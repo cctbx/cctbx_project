@@ -123,7 +123,11 @@ class manager(list):
   def show_ligand_counts(self):
     make_sub_header(' Ligands in input model ', out=self.log)
     for ligand_result in self:
-      print(ligand_result.id_str, file=self.log)
+      names = []
+      for _a in ligand_result._atoms_ligand:
+        names.append(_a.name.strip())
+      print(ligand_result.id_str, '    ' + ', '.join(names), file=self.log)
+
 
   # ----------------------------------------------------------------------------
 
@@ -166,6 +170,14 @@ class manager(list):
 {round(owab,1):^7}|\
 {val_o_min:^7}{val_o_max:^7}{round(occs.occ_mean,1):^7}|"
         print(row, file=self.log)
+        #
+        _b_min_within = f"{round(adps.b_min_within,1):^7}" if adps.b_min_within is not None else f"{'':^7}"
+        _b_max_within = f"{round(adps.b_max_within,1):^7}" if adps.b_max_within is not None else f"{'':^7}"
+        _b_mean_within = f"{round(adps.b_mean_within,1):^7}" if adps.b_mean_within is not None else f"{'':^7}"
+        sites_row = f"{'sites':^14}|{'':^12}|{'':^9}|{'':^9}|{'':^9}|\
+{_b_min_within}{_b_max_within}{_b_mean_within}\
+{'':^7}|{'':^7}{'':^7}{'':^7}|"
+        print(sites_row, file=self.log)
 
   # def show_adps(self):
   #   '''
@@ -231,6 +243,20 @@ class manager(list):
   #       clashes_result = lr.get_overlaps()
   #       print(clashes_result.clashes_str, file=self.log)
 
+  def show_sites_within(self):
+    make_sub_header(' Sites within 3 A', out=self.log)
+    for lr in self:
+      adps    = lr.get_adps()
+      isel_within_noH = adps.isel_within_noH
+      ph_within = lr._ph.select(isel_within_noH)
+      print(lr.id_str, file=self.log)
+      for rg in ph_within.residue_groups():
+        for c in rg.conformers():
+          #print(dir(c.only_residue()))
+          print('    ' + c.only_residue().id_str().split('"')[1], file=self.log)
+
+
+
 # =============================================================================
 
 class ligand_result(object):
@@ -273,6 +299,9 @@ class ligand_result(object):
   # ----------------------------------------------------------------------------
 
   def check_if_suspicious(self):
+    '''
+    If ligand metrics fulfil certain criteria, it is flagged as suspicious
+    '''
     if self._is_suspicious is not None:
       return self._is_suspicious
     self._is_suspicious = False
@@ -280,15 +309,25 @@ class ligand_result(object):
       ccs = self.get_ccs()
       if ccs.cc_2fofc < 0.5:
         self._is_suspicious = True
+    adps = self.get_adps()
+    if adps.b_mean_within is not None:
+      if adps.b_mean > 2.5 * adps.b_mean_within:
+        self._is_suspicious = True
+    occs = self.get_occupancies()
+    if occs.occ_mean < 0.5:
+      self._is_suspicious = True
     return self._is_suspicious
 
   # ----------------------------------------------------------------------------
 
   def get_occupancies(self):
+    '''
+    Get occupancies of non-H atoms
+    '''
     if self._occupancies is not None:
       return self._occupancies
     eps = 1.e-6
-    occ = self._atoms_ligand.extract_occ()
+    occ = self._atoms_ligand_noH.extract_occ()
     occ_mmm = occ.min_max_mean()
 
     self._occupancies = group_args(
@@ -307,6 +346,9 @@ class ligand_result(object):
   # ----------------------------------------------------------------------------
 
   def get_adps(self):
+    '''
+    Get isotropic B-factors of non-H atoms
+    '''
     if self._adps is not None:
       return self._adps
     b_isos  = self._xrs_ligand_noH.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.)
@@ -337,15 +379,16 @@ class ligand_result(object):
     b_min_within, b_max_within, b_mean_within = b_isos_within.min_max_mean().as_tuple()
 
     self._adps = group_args(
-      n_iso          = n_iso,
-      n_aniso        = n_aniso,
-      n_zero         = n_zero,
-      b_min          = b_min,
-      b_max          = b_max,
-      b_mean         = b_mean,
-      b_min_within   = b_min_within,
-      b_max_within   = b_max_within,
-      b_mean_within  = b_mean_within
+      n_iso           = n_iso,
+      n_aniso         = n_aniso,
+      n_zero          = n_zero,
+      b_min           = b_min,
+      b_max           = b_max,
+      b_mean          = b_mean,
+      b_min_within    = b_min_within,
+      b_max_within    = b_max_within,
+      b_mean_within   = b_mean_within,
+      isel_within_noH = isel_within_noH
       )
 
     return self._adps
@@ -383,6 +426,10 @@ class ligand_result(object):
     self._xrs_ligand = \
       self.model.select(self.ligand_isel).get_xray_structure()
     #
+    for rg in self._ph.select(self.ligand_isel).residue_groups():
+      for c in rg.conformers():
+        _resname = c.only_residue().resname
+
     #rg_ligand = self._ph.select(self.ligand_isel).only_residue_group()
     #resname = ",".join(rg_ligand.unique_resnames())
     _id_str = self._atoms_ligand[0].id_str()
@@ -390,7 +437,7 @@ class ligand_result(object):
     altloc = _id_str[4]
     resseq = _id_str[10:14]
     chain  = _id_str[8:10]
-    self.sel_str = " ".join(['chain', chain, 'and resseq', resseq])
+    self.sel_str = " ".join(['chain', chain, 'and resseq', resseq, 'and resname', _resname])
     if (altloc != ' '):
       self.sel_str = " ".join(['altloc', altloc, 'and', self.sel_str])
     _id_str = _id_str.strip().split(' ')

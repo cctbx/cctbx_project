@@ -155,6 +155,7 @@ electron density values/CC.
       log   = self.logger)
     ligand_manager.run()
     ligand_manager.show_ligand_counts()
+    ligand_manager.show_sites_within()
     ligand_manager.show_table()
     # ligand_manager.show_ligand_occupancies()
     # ligand_manager.show_adps()

@@ -91,7 +91,7 @@ def tst_occupancies(vl_manager):
       assert approx_equal(occs.occ_mean, 0.44, eps=0.01)
     if (id_str.strip() == 'SO4 A   3'):
       assert approx_equal(occs.occ_mean, 0.65, eps=0.01)
-    if (id_str.strip() == 'SO4 A   $'):
+    if (id_str.strip() == 'SO4 A   4'):
       assert approx_equal(occs.occ_mean, 0.48, eps=0.01)
     if (id_str.strip() == 'GOL A   5'):
       assert approx_equal(occs.occ_mean, 0.67, eps=0.01)
