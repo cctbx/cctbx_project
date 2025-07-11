@@ -1,3 +1,4 @@
+"""Example of how to split a model by chains into new models"""
 from __future__ import absolute_import, division, print_function
 
 import libtbx.phil
@@ -48,7 +49,9 @@ def run(args=(), params=None, out=None):
     params.output_base = os.path.basename(os.path.splitext(params.pdb_file)[0])
   # from iotbx import file_reader
   pdb_in = iotbx.pdb.input(params.pdb_file)
-  symm = pdb_in.crystallographic_section()
+  cs = None
+  if params.preserve_symmetry:
+    cs = pdb_in.crystal_symmetry()
   hierarchy = pdb_in.construct_hierarchy()
   if (len(hierarchy.models()) > 1):
     raise Sorry("Multi-model PDB files are not supported.  You can use "+
@@ -74,15 +77,10 @@ def run(args=(), params=None, out=None):
     id_counts[id] += 1
     output_file = os.path.join(params.output_dir, "%s_%s.pdb" %
       (params.output_base, suffix))
-    f = open(output_file, "w")
-    if (params.preserve_symmetry):
-      f.write("\n".join(symm))
-      f.write("\n")
     new_hierarchy = new_hierarchy_from_chain(chain)
-    f.write(new_hierarchy.as_pdb_string())
-    f.close()
-    outputs.append(output_file)
-    print("Wrote chain '%s' to %s" % (chain.id, output_file), file=out)
+    ofname = new_hierarchy.write_pdb_or_mmcif_file(target_filename=output_file, crystal_symmetry=cs)
+    outputs.append(ofname)
+    print("Wrote chain '%s' to %s" % (chain.id, ofname), file=out)
   return outputs
 
 def validate_params(params):

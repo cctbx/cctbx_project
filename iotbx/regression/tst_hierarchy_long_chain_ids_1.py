@@ -268,9 +268,10 @@ def test1():
 #     """)
 
   o_cif_str = "%s" % h.as_cif_block()
+  print(o_cif_str)
   assert_lines_in_text(o_cif_str, """\
-  ATOM  116  HG23  .  THR  A-2  5  ?   78.43100   68.11100   59.15800  1.000   48.55000  H  ?  B  ?  4  1
-  ATOM  117  N     .  SER  A-5  2  ?   62.97800  157.54800  157.30800  1.000   68.85000  N  ?  C  ?  1  1
+  ATOM  116  HG23  .  THR  A-2  5  ?   78.43100   68.11100   59.15800  1.000   48.55000  H  ?  B  ?  4  HG23  1
+  ATOM  117  N     .  SER  A-5  2  ?   62.97800  157.54800  157.30800  1.000   68.85000  N  ?  C  ?  1  N     1
     """)
 
 def test2():

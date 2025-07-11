@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 
 from libtbx.phil import parse
 from libtbx.utils import Sorry
+from xfel.ui import load_cached_settings
 from xfel.ui.db.xfel_db import xfel_db_application
 from xfel.ui.db.stats import HitrateStats
 import sys
@@ -22,7 +23,9 @@ def run(args):
       user_phil.append(parse(arg))
     except Exception as e:
       raise Sorry("Unrecognized argument %s"%arg)
-  params = phil_scope.fetch(sources=user_phil).extract()
+
+  scope = load_cached_settings(scope=phil_scope, extract=False)
+  params = scope.fetch(sources=user_phil).extract()
   print("Printing results for trial", params.trial, "using a hit cutoff of", params.n_strong_cutoff, "reflections")
   print()
   print("                 Run  N Drop Hits   (%)   N Hits   (%) N Indexed   (%) N Lattices N High qual   (%)  %HQR   N Frames")
@@ -49,7 +52,10 @@ def run(args):
         if params.run_tags:
           s1 = set(params.run_tags)
           s2 = set(tag.name for tag in run.tags)
-          if not s1.intersection(s2): continue
+          # union?
+          #if not s1.intersection(s2): continue
+          # intersection
+          if not all([t in s1.intersection(s2) for t in s1]): continue
 
         runs.append(run.run)
         run_ids.append(run.id)
@@ -62,7 +68,7 @@ def run(args):
   for run_no, rungroup_id in sorted(zip(runs, rungroups), key=lambda x: x[0]):
     if params.rungroup and params.rungroup != rungroup_id: continue
     try:
-      timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi, n_lattices = HitrateStats(app, run_no, params.trial, rungroup_id, params.d_min, params.i_sigi_cutoff)()
+      timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi, n_lattices, wavelengths = HitrateStats(app, run_no, params.trial, rungroup_id, params.d_min, params.i_sigi_cutoff)()
     except Exception as e:
       print("Couldn't get run", run_no)
       continue

@@ -123,6 +123,12 @@ peak_search
 {
 include scope mmtbx.find_peaks.master_params
 }
+structure_factors_accuracy
+  .short_caption = Structure factors accuracy
+  .style = auto_align box
+{
+  include scope mmtbx.f_model.sf_and_grads_accuracy_master_params
+}
 """
 def fo_minus_fo_master_params():
   return iotbx.phil.parse(fo_minus_fo_master_params_str, process_includes=True)
@@ -131,6 +137,7 @@ class compute_fo_minus_fo_map(object):
   def __init__(self,
       data_arrays,
       xray_structure,
+      sf_accuracy_params=None,
       log=None,
       silent=False,
       output_file=None,
@@ -156,24 +163,26 @@ class compute_fo_minus_fo_map(object):
       else :
         r_free_flags = d.array(data = flex.bool(d.data().size(), False))
       fmodel = mmtbx.f_model.manager(
-        xray_structure = xray_structure,
+        xray_structure = xray_structure.deep_copy_scatterers(),
         r_free_flags   = r_free_flags,
         target_name    = "ls_wunit_k1",
+        sf_and_grads_accuracy_params = sf_accuracy_params,
         f_obs          = d)
       fmodel.update_all_scales(log=None)
+
+      #fmodel.export( out=open("taam_%d.mtz"%i_seq,"w") )
+
       if(not silent):
         fmodel.info().show_rfactors_targets_scales_overall(out=log)
         print(file=log)
+        fmodel.show(show_header=False, show_approx=False, log=log)
+
       fmodels.append(fmodel)
     self.fmodel = fmodels[0]
     # prepare Fobs for map calculation (apply scaling):
     f_obss = []
     for fmodel in fmodels:
-      obs = fmodel.f_obs()
-      f_obs_scale   = 1.0 / fmodel.k_anisotropic() / fmodel.k_isotropic()
-      obs = miller.array(miller_set = fmodel.f_model(),
-                         data       = obs.data()*f_obs_scale)
-      f_obss.append(obs)
+      f_obss.append(fmodel.f_obs_scaled(include_fom=True))
     # given two Fobs sets, make them one-to-one matching, get phases and map coefficients
     # Note: f_calc below is just f_calc from atoms (no bulk solvent etc applied)
     fobs_1, f_model = f_obss[0].common_sets(other = fmodels[1].f_model())
@@ -182,6 +191,7 @@ class compute_fo_minus_fo_map(object):
     self.f_model = f_model
     assert fobs_2.indices().all_eq(fobs_1.indices())
     assert f_model.indices().all_eq(fobs_1.indices())
+
     # scale again
     scale_k1 = 1
     den = flex.sum(flex.abs(fobs_2.data())*flex.abs(fobs_2.data()))
@@ -189,13 +199,16 @@ class compute_fo_minus_fo_map(object):
       scale_k1 = flex.sum(flex.abs(fobs_1.data())*flex.abs(fobs_2.data())) / den
     #
     fobs_2 = fobs_2.array(data = fobs_2.data()*scale_k1)
+
     if multiscale:
-      fobs_1 = fobs_2.multiscale(other = fobs_1, reflections_per_bin=250)
+      #fobs_1 = fobs_2.multiscale(other = fobs_1, reflections_per_bin=50)
+      fobs_1 = fobs_2.multiscale(
+        other = fobs_1, reflections_per_bin=250, use_exp_scale=True)
     if(not silent):
       print("", file=log)
       print("Fobs1_vs_Fobs2 statistics:", file=log)
       print("Bin# Resolution range  Compl.  No.of refl. CC   R-factor", file=log)
-      fobs_1.setup_binner(reflections_per_bin = min(500, fobs_1.data().size()))
+      fobs_1.setup_binner(reflections_per_bin = min(50, fobs_1.data().size()))
       fobs_2.use_binning_of(fobs_1)
       for i_bin in fobs_1.binner().range_used():
         sel = fobs_1.binner().selection(i_bin)
@@ -514,6 +527,7 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
   output_files = compute_fo_minus_fo_map(
     data_arrays = f_obss,
     xray_structure = xray_structure,
+    sf_accuracy_params = params.structure_factors_accuracy,
     log = log,
     silent = command_line.options.silent,
     output_file = output_file_name,

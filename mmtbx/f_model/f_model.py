@@ -43,6 +43,7 @@ import libtbx
 import mmtbx.bulk_solvent
 import six
 from six.moves import zip, range
+import libtbx.utils
 
 ext = bp.import_ext("mmtbx_f_model_ext")
 
@@ -162,6 +163,9 @@ sf_and_grads_accuracy_master_params = iotbx.phil.parse("""\
     .type = float
   exp_table_one_over_step_size = None
     .type = float
+  taam = False
+    .type = bool
+    .help = Use aspherical form-factors (TAAM=Transferable Aspherical Atom Model)
 """)
 
 alpha_beta_master_params = iotbx.phil.parse("""\
@@ -326,7 +330,7 @@ class manager_kbu(object):
     return flex.double(self.f_obs.data().size(),
       mmtbx.bulk_solvent.scale(self.f_obs.data(), self.f_model.data()))
 
-class manager(manager_mixin):
+class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
 
   def __init__(self,
          f_obs                        = None,
@@ -359,17 +363,9 @@ class manager(manager_mixin):
          n_resolution_bins_output     = None,
          scale_method="combo",
          origin=None,
-         data_type=None,
-         discamb_mode = None):
-
-    self.discamb_mode = discamb_mode                            # XXX discamb
-    self.pydiscamb =None                                        # XXX discamb
-    self.discamb_wrapper = None                                 # XXX discamb
-    assert discamb_mode in [None, "iam", "taam"]                # XXX discamb
-    if self.discamb_mode is not None:                           # XXX discamb
-      import pydiscamb                                          # XXX discamb
-      self.pydiscamb = pydiscamb                                # XXX discamb
-
+         data_type=None):
+    self.pydiscamb = None       # XXX discamb
+    self.discamb_wrapper = None # XXX discamb
     self._origin = origin
     self._data_type = data_type
     self.russ = None
@@ -411,6 +407,7 @@ class manager(manager_mixin):
     self._hl_coeffs = abcd
     if(sf_and_grads_accuracy_params is None):
       sf_and_grads_accuracy_params = sf_and_grads_accuracy_master_params.extract()
+    self.sfg_params = sf_and_grads_accuracy_params
     if(alpha_beta_params is None):
       alpha_beta_params = alpha_beta_master_params.extract()
     self.twin = False
@@ -423,7 +420,6 @@ class manager(manager_mixin):
       # twin mate of mapped-to-asu does not have to obey this!
       assert f_obs.is_in_asu()
       assert r_free_flags.is_in_asu()
-    self.sfg_params = sf_and_grads_accuracy_params
     self.alpha_beta_params = alpha_beta_params
     self.xray_structure    = xray_structure
     self.use_f_model_scaled= use_f_model_scaled
@@ -535,6 +531,21 @@ class manager(manager_mixin):
         crystal_symmetry = miller_array.crystal_symmetry())
     return result
 
+  def _set_taam_and_compute_f_calc(self, xray_structure):     # XXX discamb
+    assert xray_structure is not None                         # XXX discamb
+    if self.pydiscamb is None:                                # XXX discamb
+      import pydiscamb                                        # XXX discamb
+      self.pydiscamb = pydiscamb                              # XXX discamb
+    self.discamb_wrapper =  self.pydiscamb.DiscambWrapper(
+      xray_structure,
+      method = self.pydiscamb.FCalcMethod.TAAM)               # XXX discamb
+    self.discamb_wrapper.set_indices(self.f_obs().indices())  # XXX discamb
+    data = flex.complex_double(self.discamb_wrapper.f_calc()) # XXX discamb
+    return self.f_obs().array(data = data)                    # XXX discamb
+
+  def is_taam(self):            # XXX discamb
+    return self.sfg_params.taam # XXX discamb
+
   def compute_f_calc(self, miller_array = None, xray_structure=None):
     xrs = xray_structure
     if(xrs is None): xrs = self.xray_structure
@@ -543,22 +554,8 @@ class manager(manager_mixin):
     if(miller_array.indices().size()==0):
       raise RuntimeError("Empty miller_array.")
 
-    if self.discamb_mode is not None:                           # XXX discamb
-      assert xrs is not None
-      assert xrs.get_scattering_table() is not None
-      if self.pydiscamb is None:
-        import pydiscamb                                          # XXX discamb
-        self.pydiscamb = pydiscamb
-      if self.discamb_mode=="iam":                                # XXX discamb
-        self.discamb_wrapper = self.pydiscamb.DiscambWrapper(
-          xrs)                                                    # XXX discamb
-      elif self.discamb_mode=="taam":                             # XXX discamb
-        self.discamb_wrapper =  self.pydiscamb.DiscambWrapper(
-          xrs,
-          method = self.pydiscamb.FCalcMethod.TAAM)             # XXX discamb
-      self.discamb_wrapper.set_indices(self.f_obs().indices())  # XXX discamb
-      data = flex.complex_double(self.discamb_wrapper.f_calc()) # XXX discamb
-      return self.f_obs().array(data = data)                    # XXX discamb
+    if self.sfg_params.taam:                                         # XXX discamb
+      return self._set_taam_and_compute_f_calc(xray_structure = xrs) # XXX discamb
 
     manager = miller_array.structure_factors_from_scatterers(
       xray_structure               = xrs,
@@ -764,12 +761,12 @@ class manager(manager_mixin):
       b_sol                        = self.b_sol,
       b_cart                       = self.b_cart,
       origin                       = self.origin(),
-      data_type                    = self.data_type(),
-      discamb_mode                 = self.discamb_mode) # XXX discamb
+      data_type                    = self.data_type())
     result.twin = self.twin
     result.twin_law_str = self.twin_law_str
     result.k_h = self.k_h
     result.b_h = self.b_h
+    result._call_stats = self._call_stats # tracking!!
     if(in_place): # XXX USE THIS INSTEAD OF ABOVE
       # TODO: six.moves.zip this file
       for k, v in six.iteritems(self.__dict__):
@@ -1469,7 +1466,7 @@ class manager(manager_mixin):
         fill         = True)
 
   def k_sol_b_sol_from_k_mask(self):
-    sel = self.f_obs().d_spacings().data()>=3.5
+    sel = self.f_obs().d_spacings().data()>=4.0
     k_mask = self.k_masks()[0].select(sel)
     ss = self.ss.select(sel)
     r = scitbx.math.gaussian_fit_1d_analytical(x=flex.sqrt(ss), y=k_mask)
@@ -1566,8 +1563,7 @@ class manager(manager_mixin):
              max_number_of_bins           = self.max_number_of_bins,
              bin_selections               = None    ,
              n_resolution_bins_output     = self.n_resolution_bins_output,
-             scale_method                 = self.scale_method,
-             discamb_mode                 = self.discamb_mode) # XXX discamb
+             scale_method                 = self.scale_method)
           o = f_model_all_scales.run(
             fmodel=self, apply_back_trace = apply_back_trace,
             remove_outliers = remove_outliers, fast = fast,
@@ -1728,6 +1724,14 @@ class manager(manager_mixin):
       return self._hl_coeffs
     else:
       return self.arrays.hl_coeffs
+
+  def f_obs_scaled(self, include_fom=False):
+    scale = 1.0 / self.k_total()
+    if include_fom:
+      scale = scale * self.figures_of_merit()
+    return miller.array(
+      miller_set = self.f_obs(),
+      data       = self.f_obs().data()*scale)
 
   def f_obs(self):
     if(self.arrays is not None):
@@ -2596,7 +2600,7 @@ class manager(manager_mixin):
     file_name = None
     if (out is None):
       out = sys.stdout
-    elif (hasattr(out, "name")):
+    elif (hasattr(out, "name") and file_name is None):
       file_name = libtbx.path.canonical_path(file_name=out.name)
     if(format == "mtz"):
       assert file_name is not None

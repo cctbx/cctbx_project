@@ -1,3 +1,4 @@
+"""Show distances between non-bonded atoms"""
 from __future__ import absolute_import, division, print_function
 from iotbx.kriber import strudat
 import iotbx.pdb

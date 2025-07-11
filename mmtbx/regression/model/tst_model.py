@@ -1277,7 +1277,7 @@ END
     model.process(pdb_interpretation_params=params, make_restraints=True)
     gs = model.geometry_statistics(use_hydrogens = True).result()
     if(use_neutron_distances):
-      assert approx_equal(gs.bond.mean, 0.0068, 0.0001)
+      assert approx_equal(gs.bond.mean, 0.0072, 0.0001)
     else:
       assert approx_equal(gs.bond.mean, 0.1054, 0.0001)
     bps, asu = model.get_restraints_manager().geometry.get_all_bond_proxies(

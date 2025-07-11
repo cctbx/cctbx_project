@@ -1,3 +1,4 @@
+"""Calculate FEM maps"""
 # LIBTBX_SET_DISPATCHER_NAME phenix.fem
 # LIBTBX_SET_DISPATCHER_NAME phenix.feature_enhanced_map
 
@@ -122,3 +123,4 @@ if(__name__ == "__main__"):
   t0 = time.time()
   run(sys.argv[1:])
   print("Time: %6.4f"%(time.time()-t0))
+

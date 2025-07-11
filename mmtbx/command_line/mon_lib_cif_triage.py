@@ -1,3 +1,4 @@
+"""Check syntax of monomer library CIF files"""
 from __future__ import absolute_import, division, print_function
 from mmtbx.monomer_library import cif_triage
 from libtbx.str_utils import show_string
@@ -16,3 +17,4 @@ def run(args, command_name=libtbx.env.dispatcher_name):
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
+

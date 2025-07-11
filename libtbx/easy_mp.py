@@ -1,3 +1,4 @@
+"""Tools for multiprocessing"""
 from __future__ import absolute_import, division, print_function
 from libtbx.str_utils import show_string
 from libtbx.math_utils import ifloor

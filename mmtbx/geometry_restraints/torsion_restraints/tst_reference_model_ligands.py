@@ -129,6 +129,7 @@ def tst_1(prefix="tst_ref_model_ligands_1"):
 
 def run():
   tst_1()
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

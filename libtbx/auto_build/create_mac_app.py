@@ -44,6 +44,9 @@ def run(args, out=sys.stdout):
   parser.add_option("--python_interpreter", dest="python_interpreter",
     action="store", help="Python interpreter to use for final app",
     default=None)
+  parser.add_option("--extra_lines", dest="extra_lines", action="store",
+    help="Extra line(s) to be added to the Python script that is run",
+    default="")
   options, args = parser.parse_args(args)
   if (len(args) == 0):
     return parser.error("Executable name not specified.")
@@ -78,13 +81,9 @@ def run(args, out=sys.stdout):
 import os
 import sys
 os.environ["PYTHONPATH"] = ""
+%s
 os.spawnv(os.P_NOWAIT, "%s", ["%s"])
-""" % (os.path.join(bin_dir, program_name), app_name))
-  f.close()
-  f = open("setup.cfg", "w")
-  f.write("""\
-[py2app]
-argv-emulation=0""")
+""" % (options.extra_lines, os.path.join(bin_dir, program_name), app_name))
   f.close()
   script_name = re.sub(".pyc$", ".py", py2app.script_py2applet.__file__)
   import subprocess

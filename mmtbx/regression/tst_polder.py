@@ -60,7 +60,7 @@ def exercise_00(prefix="tst_polder"):
     model_fn,
     mtz_fn,
     "sphere_radius=3",
-    'solvent_exclusion_mask_selection="chain A" ',
+    'solvent_exclusion_mask_selection="resname PHE and resseq 1" ',
     'debug="True"'
   ]
   r = run_program(program_class=polder.Program, args=args_polder, logger=null_out())
@@ -74,8 +74,16 @@ def exercise_00(prefix="tst_polder"):
   os.remove("box_1_polder.ccp4")
   os.remove("box_2_polder.ccp4")
   os.remove("box_3_polder.ccp4")
-  os.remove("box_polder.pdb")
   os.remove(r.output_file)
+
+  extensions = ['.pdb', '.cif']
+  for ext in extensions:
+    file_path = 'box_polder' + ext
+    if os.path.isfile(file_path):
+      try:
+        os.remove(file_path)
+      except Exception as e:
+        print(f"Error removing {file_path}: {e}")
 
   # now with high resolution cutoff
   args_polder = [
@@ -83,7 +91,7 @@ def exercise_00(prefix="tst_polder"):
     mtz_fn,
     "fmodel.xray_data.high_resolution=2.2",
     "sphere_radius=3",
-    'solvent_exclusion_mask_selection="chain A" ',
+    'solvent_exclusion_mask_selection="resname PHE and resseq 1" ',
     'output_file_name_prefix=tst_cutoff',
     'debug="True"'
   ]
@@ -99,7 +107,14 @@ def exercise_00(prefix="tst_polder"):
   os.remove("box_1_polder.ccp4")
   os.remove("box_2_polder.ccp4")
   os.remove("box_3_polder.ccp4")
-  os.remove("box_polder.pdb")
+  extensions = ['.pdb', '.cif']
+  for ext in extensions:
+    file_path = 'box_polder' + ext
+    if os.path.isfile(file_path):
+      try:
+        os.remove(file_path)
+      except Exception as e:
+        print(f"Error removing {file_path}: {e}")
 
   # now with low resolution cutoff
   args_polder = [
@@ -107,7 +122,7 @@ def exercise_00(prefix="tst_polder"):
     mtz_fn,
     "fmodel.xray_data.low_resolution=10",
     "sphere_radius=3",
-    'solvent_exclusion_mask_selection="chain A" ',
+    'solvent_exclusion_mask_selection="resname PHE and resseq 1" ',
     'output_file_name_prefix=tst_cutoff_low',
     'debug="True"'
   ]
@@ -126,7 +141,14 @@ def exercise_00(prefix="tst_polder"):
   os.remove("box_1_polder.ccp4")
   os.remove("box_2_polder.ccp4")
   os.remove("box_3_polder.ccp4")
-  os.remove("box_polder.pdb")
+  extensions = ['.pdb', '.cif']
+  for ext in extensions:
+    file_path = 'box_polder' + ext
+    if os.path.isfile(file_path):
+      try:
+        os.remove(file_path)
+      except Exception as e:
+        print(f"Error removing {file_path}: {e}")
 
 # ---------------------------------------------------------------------------
 
@@ -150,7 +172,7 @@ def check(miller_arrays, pdb_hierarchy):
   map_bias_omit = get_map(cg=cg, mc=mc_bias_omit)
   map_omit     = get_map(cg=cg, mc=mc_omit)
 
-  sel = pdb_hierarchy.atom_selection_cache().selection(string = "chain A")
+  sel = pdb_hierarchy.atom_selection_cache().selection(string = "resname PHE and resseq 1")
   sites_cart_lig = pdb_hierarchy.atoms().extract_xyz().select(sel)
   sites_frac_lig = mc_polder.unit_cell().fractionalize(sites_cart_lig)
   mp  = get_map_stats(map=map_polder,   sites_frac=sites_frac_lig)
@@ -311,5 +333,14 @@ END
 
 if (__name__ == "__main__"):
   t0 = time.time()
-  exercise_00()
+  for as_cif in (False, True):  # XXX as_cif is one way so True must be last
+    if as_cif:
+      print("CONVERTING PDB STRINGS TO CIF AND CHANGING "+
+         "CHAIN ID/HETATM RESIDUE NAMES")
+      # Convert to mmcif and make long chain ID and HETATM resname:
+      from libtbx.test_utils import convert_pdb_to_cif_for_pdb_str
+      convert_pdb_to_cif_for_pdb_str(locals(), print_new_string=False)
+    else:
+      print("USING PDB STRINGS AS IS")
+    exercise_00()
   print("OK. Time: %8.3f"%(time.time()-t0))

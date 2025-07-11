@@ -1,3 +1,4 @@
+"""Combine models into a single model"""
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import iotbx.cif.model

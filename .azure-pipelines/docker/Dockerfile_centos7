@@ -1,0 +1,10 @@
+# Dockerfile for adding sudo to base centos:7 image
+
+FROM centos:7
+
+# update mirrors
+RUN sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/*.repo \
+    && sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/*.repo \
+    && sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/*.repo \
+    && yum install -y sudo \
+    && yum clean all

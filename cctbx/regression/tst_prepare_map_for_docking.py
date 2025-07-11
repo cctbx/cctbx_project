@@ -142,8 +142,13 @@ def exercise():
   else:
     verbosity = 0
   results = assess_cryoem_errors(
-      mmm, d_min, ordered_mask_id=ordered_mask_id, sphere_points=500,
-      sphere_cent=box_centre, radius=model_radius+d_min, verbosity=verbosity)
+                  mmm=mmm,
+                  d_min=d_min,
+                  half_maps_provided=True,
+                  ordered_mask_id=ordered_mask_id,
+                  sphere_cent=box_centre,
+                  radius=model_radius+d_min,
+                  verbosity=verbosity)
 
   if debug:
     resultsdict = results.resultsdict

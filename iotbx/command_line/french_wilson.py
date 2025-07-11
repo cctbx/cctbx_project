@@ -1,3 +1,4 @@
+"""Apply French and Wilson conversion from I to F"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.french_wilson
 # LIBTBX_SET_DISPATCHER_NAME iotbx.french_wilson

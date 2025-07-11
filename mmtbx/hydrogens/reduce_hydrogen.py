@@ -702,7 +702,7 @@ The following H atoms were not placed because they could not be parameterized
 (not enough restraints information)'''
       print(msg, file=log)
       for label in self.site_labels_no_para:
-        print(label)
+        print(label, file=log)
 #    if self.charged_atoms:
 #      msg = '''
 #The following heavy atom have an unusual electron count. This could be because

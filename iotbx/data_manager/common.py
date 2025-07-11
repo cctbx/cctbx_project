@@ -95,13 +95,16 @@ class fmodel_mixins(object):
     self._is_valid_model_type(model_type)
     self.set_default_model_type(model_type)
     for filename in self.get_model_names():
-      self.set_model_type(filename, model_type)
+      if 'reference' in self.get_model_type(filename):
+        self.set_model_type(filename, [checked_type, 'reference'])
+      else:
+        self.set_model_type(filename, model_type)
 
     # miller_array
     array_type = [checked_type]
     self.set_default_miller_array_type(array_type)
     for filename in self.get_miller_array_names():
-      for label in self.get_miller_array_labels(filename):
+      for label in self.get_miller_array_all_labels(filename):
         self.set_miller_array_type(filename, label, array_type)
 
   def get_fmodel_params(self):
@@ -159,6 +162,7 @@ class fmodel_mixins(object):
                  experimental_phases_params = None,# XXX Need to be part of 'parameters'
                  scattering_table = None,
                  mask_params = None,
+                 sf_accuracy_params = None,
                  free_r_flags_scope = 'miller_array.labels.name',
                  model_filename = None,
                  ):
@@ -272,6 +276,7 @@ class fmodel_mixins(object):
       xray_structure      = model.get_xray_structure(),
       twin_law            = twin_law,
       mask_params         = mask_params,
+      sf_accuracy_params  = sf_accuracy_params,
       ignore_r_free_flags = parameters.r_free_flags.ignore_r_free_flags,
       mtz_object          = data.mtz_object,
       data_type           = array_type)

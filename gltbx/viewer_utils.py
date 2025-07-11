@@ -7,12 +7,15 @@ ext = bp.import_ext("gltbx_viewer_utils_ext")
 from gltbx_viewer_utils_ext import *
 
 def read_pixels_to_str(x, y, width, height):
-  from gltbx.gl import glPixelStorei, glReadPixels, \
+  ext = bp.import_ext("gltbx_gl_ext")
+  from gltbx_gl_ext import glPixelStorei, glReadPixels, \
     GL_PACK_ALIGNMENT, GL_RGB, GL_UNSIGNED_BYTE
+  # from gltbx.gl import glPixelStorei, glReadPixels, \
+  #   GL_PACK_ALIGNMENT, GL_RGB, GL_UNSIGNED_BYTE
   glPixelStorei(GL_PACK_ALIGNMENT, 1)
   pixels = []
   glReadPixels(
-    x=0, y=0, width=width, height=height,
+    x=x, y=y, width=width, height=height,
     format=GL_RGB, type=GL_UNSIGNED_BYTE,
     pixels=pixels)
   return pixels[0]

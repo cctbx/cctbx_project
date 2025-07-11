@@ -1,3 +1,4 @@
+"""Local improvement of electron density map by growing density"""
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 import mmtbx.f_model
@@ -559,7 +560,7 @@ How to use:
     if(not os.path.isfile(args[0]) or len(args)>1):
       print("Parameter file is expected at input. This is not a parameter file:\n", \
         args)
-      print("Run phenix.grow_density without argumets for running instructions.")
+      print("Run phenix.grow_density without arguments for running instructions.")
       return
     processed_args = utils.process_command_line_args(args = args,
       master_params = master_params(), log = None)

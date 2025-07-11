@@ -1,3 +1,4 @@
+"""Extensive testing of hierarchy methods"""
 from __future__ import absolute_import, division, print_function
 from iotbx import pdb
 from cctbx.array_family import flex
@@ -5084,52 +5085,6 @@ TER
   assert h1.is_similar_hierarchy(other=h2)
   assert h2.is_similar_hierarchy(other=h1)
   #
-  with open("tmp_tst_hierarchy.pdb", "w") as f:
-    f.write("""\
-CRYST1    2.000    3.000    4.000  90.00  80.00  90.00 P 2           5
-ATOM      0  S   SO4     0       3.302   8.419   8.560  1.00 10.00           S
-ATOM      1  O1  SO4     0       3.497   8.295   7.118  1.00 10.00           O
-ATOM      2  O2 ASO4     0       3.098   7.095   9.140  0.80 10.00           O
-ATOM      3  O2 BSO4     0       3.498   7.495   9.440  0.20 10.00           O
-ATOM      4  O3  SO4     0       4.481   9.037   9.159  1.00 10.00           O
-ATOM      5  O4  SO4     0       2.131   9.251   8.823  1.00 10.00           O
-""")
-  pdb.rewrite_normalized(
-    input_file_name="tmp_tst_hierarchy.pdb",
-    output_file_name="tmp_norm.pdb")
-  with open("tmp_norm.pdb") as f:
-    lines = f.read()
-  assert not show_diff(lines, """\
-CRYST1    2.000    3.000    4.000  90.00  80.00  90.00 P 1 2 1
-SCALE1      0.500000  0.000000 -0.088163        0.00000
-SCALE2      0.000000  0.333333  0.000000        0.00000
-SCALE3      0.000000  0.000000  0.253857        0.00000
-ATOM      1  O1  SO4     0       3.497   8.295   7.118  1.00 10.00           O
-ATOM      2  O3  SO4     0       4.481   9.037   9.159  1.00 10.00           O
-ATOM      3  O4  SO4     0       2.131   9.251   8.823  1.00 10.00           O
-ATOM      4  S   SO4     0       3.302   8.419   8.560  1.00 10.00           S
-ATOM      5  O2 ASO4     0       3.098   7.095   9.140  0.80 10.00           O
-ATOM      6  O2 BSO4     0       3.498   7.495   9.440  0.20 10.00           O
-END
-""")
-  pdb.rewrite_normalized(
-    input_file_name="tmp_tst_hierarchy.pdb",
-    output_file_name="tmp_norm.pdb",
-    keep_original_crystallographic_section=True,
-    keep_original_atom_serial=True)
-  with open("tmp_norm.pdb") as f:
-    lines = f.read()
-  assert not show_diff(lines, """\
-CRYST1    2.000    3.000    4.000  90.00  80.00  90.00 P 2           5
-ATOM      1  O1  SO4     0       3.497   8.295   7.118  1.00 10.00           O
-ATOM      2  O3  SO4     0       4.481   9.037   9.159  1.00 10.00           O
-ATOM      3  O4  SO4     0       2.131   9.251   8.823  1.00 10.00           O
-ATOM      4  S   SO4     0       3.302   8.419   8.560  1.00 10.00           S
-ATOM      5  O2 ASO4     0       3.098   7.095   9.140  0.80 10.00           O
-ATOM      6  O2 BSO4     0       3.498   7.495   9.440  0.20 10.00           O
-END
-""")
-  #
   if (pdb_file_names is None):
     print("Skipping exercise_as_pdb_string(): input files not available")
     return
@@ -6054,6 +6009,7 @@ HETATM   48  O   HOH A  14       8.000   4.000   7.299  1.00 15.18           O
 HETATM   48  O   HOH A  15      10.000   0.000   7.299  1.00 15.18           O
 """).construct_hierarchy()
   assert pdb_hierarchy.only_model().only_chain().is_protein()
+  assert not pdb_hierarchy.only_model().only_chain().is_water()
   assert not pdb_hierarchy.only_model().only_chain().is_protein(
     ignore_water=False)
 
@@ -6072,6 +6028,7 @@ HETATM   48  O   HOH A  14       8.000   4.000   7.299  1.00 15.18           O
 HETATM   48  O   HOH A  15      10.000   0.000   7.299  1.00 15.18           O
 """).construct_hierarchy()
   assert not pdb_hierarchy.only_model().only_chain().is_protein()
+  assert pdb_hierarchy.only_model().only_chain().is_water()
   assert not pdb_hierarchy.only_model().only_chain().is_protein(
     ignore_water=False)
   pdb_hierarchy = pdb.input(source_info=None, lines="""\

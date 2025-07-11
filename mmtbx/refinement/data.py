@@ -77,7 +77,7 @@ class fs(object):
       return self.tg.gradients_wrt_atomic_parameters().packed()
       assert 0
     else:
-      if self.fmodel.discamb_wrapper is None: # XXX discamb
+      if not self.fmodel.is_taam(): # XXX discamb
         if not self.sites_cart:
           g = self.tg.gradients_wrt_atomic_parameters().packed()
           result = flex.double(self.size, 0)

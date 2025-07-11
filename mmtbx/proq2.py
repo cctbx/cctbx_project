@@ -1,3 +1,5 @@
+"""Interface to ProQ2 server"""
+
 from __future__ import absolute_import, division, print_function
 
 from HTMLParser import HTMLParser

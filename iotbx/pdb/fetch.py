@@ -1,3 +1,4 @@
+"""Fetch data from PDB"""
 # TODO other PDB sites?
 #
 # See RCSB documentation at:
@@ -108,7 +109,7 @@ def fetch(id, entity='model_pdb', mirror="rcsb", emdb_number=None, link_template
   try :
     data = libtbx.utils.urlopen(url)
   except HTTPError as e :
-    if e.getcode() == 404 :
+    if e.getcode() == 404 or e.getcode() == 403 :
       raise RuntimeError("Couldn't download %s for %s at %s." % (entity, id, url))
     else :
       raise

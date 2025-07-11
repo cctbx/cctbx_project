@@ -1,6 +1,7 @@
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <cctbx/math/cos_sin_table.h>
+#include <boost/optional.hpp>
 
 namespace cctbx { namespace math { namespace boost_python {
 namespace {
@@ -14,7 +15,7 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("cos_sin_table", no_init)
-        .def(init<int>())
+        .def(init<int, optional<bool> >())
         .def("n_points", &w_t::n_points)
         .def("get", &w_t::get)
       ;

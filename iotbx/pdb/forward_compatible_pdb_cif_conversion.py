@@ -1,10 +1,10 @@
+'''
+Methods to convert between a hierarchy object and a forward_compatible_pdb compatible string.
+'''
+
 from __future__ import absolute_import, division, print_function
 
 '''
-forward_compatible_pdb_cif_conversion.py
-
-Methods to convert between a hierarchy object and a forward_compatible_pdb compatible string.
-
 Rationale: Hierarchy object and mmcif representations can contain
   chain ID values with n-characters and residue names with 3 or 5
   characters.  PDB format only allows 2 chars for chain ID and 3 for

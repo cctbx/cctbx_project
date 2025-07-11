@@ -1,3 +1,4 @@
+"""Misc utilities for working with models"""
 from __future__ import absolute_import, division, print_function
 import string
 from itertools import product
@@ -5,7 +6,7 @@ from six.moves import range
 import sys
 
 class generate_n_char_string:
-  """ Iterator to generate strings of length n_chars, using upper-case,
+  r""" Iterator to generate strings of length n_chars, using upper-case,
     lower-case and numbers as desired.
     Allows specialty sets of characters as well
 
@@ -27,6 +28,7 @@ class generate_n_char_string:
   Tested in iotbx/regression/tst_generate_n_char_string.py
 
   """
+  # The doc string must be a raw string because of the special characters
   def __init__(self, n_chars = 1,
       include_upper = True,
       include_lower = True,
@@ -43,7 +45,7 @@ class generate_n_char_string:
     all_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     all_chars_lc = all_chars.lower()
     all_numbers = '0123456789'
-    special_characters = """[]_,.;:"&<>()\/\{}'`~!@#$%*|+-"""
+    special_characters = r"""[]_,.;:"&<>()/\{}'`~!@#$%*|+-"""
     self._tilde = """~"""
 
     self._all_everything = ""
@@ -123,6 +125,7 @@ def all_chain_ids():
   return result
 
 def all_label_asym_ids(maximum_length=4):
+  """Return a list of possible label_asym_ids"""
   chars = string.ascii_uppercase
   rc = ["".join(c) for c in chars]
   for r in range(2, maximum_length+1):
@@ -131,6 +134,7 @@ def all_label_asym_ids(maximum_length=4):
   return rc
 
 def get_input_model_file_name_from_params(params):
+  """Return input model file_name from a parameters object"""
   if not params:
     return ""
 
@@ -170,6 +174,8 @@ def target_output_format_in_params(params):
 
 def get_target_output_format_from_file_name(file_name,
    default = None):
+  """Generate reasonable target_output_format (pdb/mmcif/default) from a
+  a file name"""
   if file_name:
     import os
     path, ext = os.path.splitext(file_name)
@@ -287,6 +293,7 @@ def lines_are_really_text(lines):
     return False
 
 def get_lines(text = None, file_name = None, lines = None):
+    """Read lines from text or file or lines"""
     import os
     if lines and lines_are_really_text(lines):
       text = lines
@@ -305,6 +312,7 @@ def get_lines(text = None, file_name = None, lines = None):
     return flex.split_lines(text)
 
 def check_for_missing_elements(hierarchy, file_name = None):
+    """Check a hierarchy for missing element names"""
     atoms = hierarchy.atoms()
     elements = atoms.extract_element().strip()
     if (not elements.all_ne("")):
@@ -439,7 +447,8 @@ def set_element_ignoring_spacings(hierarchy):
   atoms.set_chemical_element_simple_if_necessary()
 
 def check_for_pseudo_atoms(hierarchy):
-    # Check for special case where PDB input contains pseudo-atoms ZC ZU etc
+    """Check for special case where PDB input contains pseudo-atoms ZC ZU etc
+    """
     atoms = hierarchy.atoms()
     # Do we already have all the elements
     elements = atoms.extract_element().strip()
@@ -463,6 +472,7 @@ def check_for_pseudo_atoms(hierarchy):
             break
 
 def type_of_pdb_input(pdb_inp):
+  """Determine type of PDB input from a pdb_inp object"""
   format_type = None
   if not pdb_inp:
     return format_type
@@ -475,6 +485,7 @@ def type_of_pdb_input(pdb_inp):
     return format_type
 
 def try_to_get_hierarchy(pdb_inp):
+    """Try to get a hierarchy from a pdb_inp object"""
     try:
       return pdb_inp.construct_hierarchy()
     except Exception as e: # nothing there
@@ -494,6 +505,7 @@ def try_to_get_hierarchy(pdb_inp):
          necessary"""
         raise Sorry(ph_text+"\n"+text+"\n"+str(e))
 def add_hierarchies(hierarchy_list, create_new_chain_ids_if_necessary = True):
+  """Append all hierarchies on to the first one"""
   if not hierarchy_list:
     return None
   new_hierarchy_list = []
@@ -538,6 +550,7 @@ def add_hierarchy(hierarchy, other, create_new_chain_ids_if_necessary = True):
   return hierarchy
 
 def get_chain(hierarchy, chain_id = None):
+  """Get chain with id of chain_id"""
   for model in hierarchy.models():
     for chain in model.chains():
       if chain.id == chain_id:
@@ -635,7 +648,7 @@ def add_model(model, other, create_new_chain_ids_if_necessary = True):
   return model
 
 def get_new_chain_id(existing_chain_ids):
-  # Generate something new...
+  """Generate a new chain ID not matching existing_chain_ids"""
   lc = "abcdefghijklmnopqrstuvwxyz"
   uc = lc.upper()
   cc = uc+lc

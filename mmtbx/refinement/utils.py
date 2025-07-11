@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from libtbx.utils import null_out
 
 def two_group_selections_per_residue(
       model):
@@ -15,9 +16,14 @@ def two_group_selections_per_residue(
   #   pdb_hierarchy = all_chain_proxies.pdb_hierarchy
   #   sc = all_chain_proxies.sel_sidechain().iselection()
   #   bb = all_chain_proxies.sel_backbone().iselection()
-  sc = model.sel_sidechain().iselection()
-  bb = model.sel_backbone().iselection()
-  ogpr = [rg.atoms().extract_i_seq() for rg in model.get_hierarchy().residue_groups()]
+  model_ = model.deep_copy()
+  if not model_.processed():
+    model_.set_stop_for_unknowns(value=False)
+    model_.set_log(log=null_out())
+    model_.process(make_restraints=False)
+  sc = model_.sel_sidechain().iselection()
+  bb = model_.sel_backbone().iselection()
+  ogpr = [rg.atoms().extract_i_seq() for rg in model_.get_hierarchy().residue_groups()]
   result = []
   for g in ogpr:
     s1 = g.intersection(sc)

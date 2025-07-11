@@ -1,12 +1,12 @@
-from __future__ import absolute_import, division, print_function
 '''
-This file contains the data labels used in CIF and MTZ formats and a mapping
+Data labels used in CIF and MTZ formats and a mapping
 between the two formats
 
 References:
 http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/refln.html
 http://www.ccp4.ac.uk/html/cif2mtz.html
 '''
+from __future__ import absolute_import, division, print_function
 
 # =============================================================================
 # intensities

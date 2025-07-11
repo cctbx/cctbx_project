@@ -1,3 +1,7 @@
+"""
+Tools for reading, writing, and manipulating PDB-formatted files and
+for managing their data as a PDB hierarchy.
+"""
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 
@@ -32,6 +36,7 @@ def construct_special_position_settings(
       weak_symmetry=False,
       min_distance_sym_equiv=0.5,
       u_star_tolerance=0):
+  """Construct the special-position settings for a crystal symmetry"""
   #crystal_symmetry = crystal_symmetry(
   #  crystal_symmetry=special_position_settings,
   #  weak_symmetry=weak_symmetry)
@@ -44,6 +49,7 @@ def construct_special_position_settings(
     u_star_tolerance=u_star_tolerance)
 
 def is_pdb_file(file_name):
+  """Return True if this is a PDB file"""
   for known_binary_extension in ['mtz', 'ccp4', 'mrc', 'pickle', 'pkl']:
     if file_name.endswith(known_binary_extension):
       return False
@@ -56,7 +62,7 @@ def is_pdb_file(file_name):
       if (cryst1.ucparams is not None and cryst1.sgroup is not None):
         return True
     elif (   pdb_str.startswith("ATOM  ")
-          or pdb_str.startswith("HETATM")):
+          or pdb_str.startswith("HETATM")): # PDB OK
       try: pdb_inp = ext.input(
         source_info=None, lines=flex.std_string([pdb_str]))
       except KeyboardInterrupt: raise
@@ -68,6 +74,7 @@ def is_pdb_file(file_name):
   return False
 
 def is_pdb_mmcif_file(file_name):
+  """Return True if this is an mmCIF file"""
   try:
     cif_model = iotbx.cif.reader(file_path=file_name).model()
     cif_block = cif_model.values()[0]
@@ -77,6 +84,7 @@ def is_pdb_mmcif_file(file_name):
     return False
 
 def systematic_chain_ids():
+  """Return a list of possible 2-character chain IDS"""
   import string
   u, l, d = string.ascii_uppercase, string.ascii_lowercase, string.digits
   _ = result = list(u)
@@ -148,6 +156,7 @@ def get_one_letter_rna_dna_name(resname):
     return result
 
 def rna_dna_reference_residue_name(common_name):
+  """Return the standard RNA or DNA reference name for this common name"""
   return rna_dna_reference_residue_names.get(common_name.strip().upper())
 
 rna_dna_atom_names_reference_to_mon_lib_translation_dict = {
@@ -486,7 +495,8 @@ class rna_dna_atom_names_interpretation(object):
     return result
 
 class residue_name_plus_atom_names_interpreter(object):
-
+  """Create an object that has standard values of work_residue_name and
+     atom_name_interpretation"""
   def __init__(self,
         residue_name,
         atom_names,
@@ -641,6 +651,7 @@ class header_date(object):
        and self.yyyy is not None
 
 def header_year(record):
+  """Return year from header record"""
   if (record.startswith("HEADER")):
     date = header_date(field=record[50:59])
     if (date.is_fully_defined()): return date.yyyy
@@ -729,6 +740,7 @@ def pdb_input(
     source_info=Please_pass_string_or_None,
     lines=None,
     raise_sorry_if_format_error=False):
+  """Read in a model file and return a pdb_input object. Normally use input() instead"""
   if (file_name is not None):
     try :
       with smart_open.for_reading(file_name, gzip_mode='rt') as f:
@@ -1409,32 +1421,6 @@ class _():
   def used_amber_restraints(self):
     return self._used_what_restraints('Amber')
 
-class rewrite_normalized(object):
-
-  def __init__(self,
-        input_file_name,
-        output_file_name,
-        keep_original_crystallographic_section=False,
-        keep_original_atom_serial=False):
-    self.input = input(file_name=input_file_name)
-    if (keep_original_crystallographic_section):
-      with open(output_file_name, "w") as f:
-        print("\n".join(self.input.crystallographic_section()), file=f)
-      crystal_symmetry = None
-    else:
-      crystal_symmetry = self.input.crystal_symmetry()
-    self.hierarchy = self.input.construct_hierarchy()
-    if (keep_original_atom_serial):
-      atoms_reset_serial_first_value = None
-    else:
-      atoms_reset_serial_first_value = 1
-    self.hierarchy.write_pdb_file(
-      file_name=output_file_name,
-      open_append=keep_original_crystallographic_section,
-      crystal_symmetry=crystal_symmetry,
-      append_end=True,
-      atoms_reset_serial_first_value=atoms_reset_serial_first_value)
-
 # Table of structures split into multiple PDB files.
 # Assembled manually.
 # Based on 46377 PDB files as of Tuesday Oct 02, 2007
@@ -1535,6 +1521,7 @@ class join_fragment_files(object):
 
 def merge_files_and_check_for_overlap(file_names, output_file,
     site_clash_cutoff=0.5, log=sys.stdout):
+  """ Merge models and write composite model"""
   assert len(file_names) > 0
   merged_records = combine_unique_pdb_files(file_names)
   warnings = StringIO()
@@ -1550,6 +1537,7 @@ def merge_files_and_check_for_overlap(file_names, output_file,
 
 def quick_clash_check(file_name, site_clash_cutoff=0.5, out=sys.stdout,
     show_outliers=5):
+  """Carry out clash check on a model file"""
   pdb_inp = input(file_name=file_name)
   pdb_atoms = pdb_inp.atoms_with_labels()
   xray_structure = pdb_inp.xray_structure_simple(
@@ -1583,6 +1571,7 @@ if ("set" in __builtins__):
     standard_rhombohedral_space_group_symbols)
 
 def format_cryst1_sgroup(space_group_info):
+  """Format space_group for CRYST1 record"""
   result = space_group_info.type().lookup_symbol()
   if (result in standard_rhombohedral_space_group_symbols):
     result = result[-1] + result[1:-3]
@@ -1601,6 +1590,7 @@ def format_cryst1_sgroup(space_group_info):
   return result
 
 def format_cryst1_record(crystal_symmetry, z=None):
+  """Format CRYST1 record from crystal_symmetry"""
   # CRYST1
   #  7 - 15       Real(9.3)      a             a (Angstroms).
   # 16 - 24       Real(9.3)      b             b (Angstroms).
@@ -1621,6 +1611,7 @@ def format_cryst1_record(crystal_symmetry, z=None):
 def format_scale_records(unit_cell=None,
                          fractionalization_matrix=None,
                          u=[0,0,0]):
+  """Format SCALE records from unit_cell"""
   #  1 -  6       Record name    "SCALEn"       n=1, 2, or 3
   # 11 - 20       Real(10.6)     s[n][1]        Sn1
   # 21 - 30       Real(10.6)     s[n][2]        Sn2
@@ -1646,6 +1637,7 @@ def format_cryst1_and_scale_records(
       write_scale_records=True,
       scale_fractionalization_matrix=None,
       scale_u=[0,0,0]):
+  """Format CRYST1 and SCALE records from crystal_symmetry"""
   from cctbx import crystal
   from cctbx import sgtbx
   from cctbx import uctbx
@@ -1686,6 +1678,8 @@ def format_cryst1_and_scale_records(
   return result
 
 def format_link_records(link_list):
+  """Format LINK records"""
+
   """
 COLUMNS         DATA TYPE      FIELD           DEFINITION
 -----------------------------------------------------------------------------
@@ -1759,14 +1753,18 @@ class read_scale_record(object):
     O.r, O.t = values[:3], values[3]
 
 def resseq_decode(s):
+  """Convert from hybrid-36 to integer number """
   try: return hy36decode(width=4, s="%4s" % s)
   except ValueError:
     raise ValueError('invalid residue sequence number: "%4s"' % s)
 
 def resseq_encode(value):
+  """Convert from integer number to hybrid-36"""
   return hy36encode(width=4, value=value)
 
 def encode_serial_number(width, value):
+  """Convert from serial number to hybrid-36"""
+
   if (isinstance(value, str)):
     assert len(value) <= width
     return value
@@ -1796,6 +1794,7 @@ def make_atom_with_labels(
       icode=None,
       altloc=None,
       resname=None):
+  """Make an atom_with_labels-like object """
   if (result is None):
     result = hierarchy.atom_with_labels()
   else :
@@ -1823,6 +1822,7 @@ def make_atom_with_labels(
   return result
 
 def get_file_summary(pdb_in, hierarchy=None):
+  """Summarize model file"""
   if (hierarchy is None):
     hierarchy = pdb_in.construct_hierarchy()
   counts = hierarchy.overall_counts()
@@ -1890,6 +1890,7 @@ def get_file_summary(pdb_in, hierarchy=None):
   return info_list
 
 def show_file_summary(pdb_in, hierarchy=None, out=None):
+  """Display summary of model file"""
   if (out is None):
     out = sys.stdout
   info = get_file_summary(pdb_in, hierarchy)

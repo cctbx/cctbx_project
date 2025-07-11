@@ -343,6 +343,74 @@ other_file = %s
     assert 'duplicate user_selected_labels' in str(s)
 
 # -----------------------------------------------------------------------------
+def test_update_all_defaults():
+
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  model_1yjp = os.path.join(data_dir, 'data', '1yjp.pdb')
+  data_mtz = os.path.join(data_dir, 'data', 'phaser_1.mtz')
+
+  class testProgram(ProgramTemplate):
+
+    datatypes = ['model', 'miller_array', 'phil']
+
+    def validate(self):
+      pass
+
+    def run(self):
+      pass
+
+    def get_results(self):
+      return self.data_manager
+
+  dm = run_program(
+    program_class=testProgram,
+    args=['--quiet', '--overwrite', model_1yjp, data_mtz]
+  )
+  dm.update_all_defaults('neutron')
+  model_type = dm.get_model_type(model_1yjp)
+  assert 'neutron' in model_type
+  assert 'x_ray' not in model_type
+  assert 'electron' not in model_type
+  assert 'reference' not in model_type
+  for label in dm.get_miller_array_all_labels(data_mtz):
+    array_type = dm.get_miller_array_type(data_mtz, label)
+    assert 'neutron' in array_type
+    assert 'x_ray' not in array_type
+    assert 'electron' not in array_type
+
+  # check that all default types are updated even with label selection
+  dm = run_program(
+    program_class=testProgram,
+    args=['--quiet', '--overwrite', model_1yjp, data_mtz,
+          'user_selected=FWT,PHIFWT']
+  )
+  dm.update_all_defaults('electron')
+  model_type = dm.get_model_type(model_1yjp)
+  assert 'electron' in model_type
+  assert 'x_ray' not in model_type
+  assert 'neutron' not in model_type
+  assert 'reference' not in model_type
+  for label in dm.get_miller_array_all_labels(data_mtz):
+    array_type = dm.get_miller_array_type(data_mtz, label)
+    assert 'electron' in array_type
+    assert 'x_ray' not in array_type
+    assert 'neutron' not in array_type
+
+  # check that reference type is kept
+  dm = run_program(
+    program_class=testProgram,
+    args=['--quiet', '--overwrite', model_1yjp, data_mtz,
+          'user_selected=FWT,PHIFWT']
+  )
+  dm.set_model_type(model_1yjp, ['reference'])
+  dm.update_all_defaults('neutron')
+  model_type = dm.get_model_type(model_1yjp)
+  assert 'neutron' in model_type
+  assert 'x_ray' not in model_type
+  assert 'electron' not in model_type
+  assert 'reference' in model_type
+
+# -----------------------------------------------------------------------------
 def test_json():
   class testProgram(ProgramTemplate):
     program_name = 'tst_cli_parser'
@@ -573,12 +641,129 @@ data_manager {
     assert 'diff_test_parameter = jkl' in text
     assert 'another_parameter = mno' in text
 
-  if os.path.exists(expected_filename):
-    os.remove(expected_filename)
-    os.remove('phil_file.eff')
-    os.remove('a.eff')
-    os.remove('b.eff')
-    os.remove('c.eff')
+  for filename in [expected_filename, 'phil_file.eff', 'a.eff', 'b.eff',
+                  'c.eff']:
+    if os.path.isfile(filename):
+      os.remove(filename)
+
+# -----------------------------------------------------------------------------
+def test_check_current_dir():
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  model_1yjp = os.path.join(data_dir, 'data', '1yjp.pdb')
+
+  test_filename = 'check_current_dir_model.pdb'
+  with open(model_1yjp, 'r') as fread:
+    model_text = fread.read()
+    with open(test_filename, 'w') as fwrite:
+      fwrite.write(model_text)
+
+  original_phil = '''\
+data_manager {
+  model {
+    file = %s
+  }
+}
+''' % os.path.join(data_dir, test_filename)
+  phil_filename = 'check_current_dir.eff'
+  with open(phil_filename, 'w') as f:
+    f.write(original_phil)
+
+  class testProgram(ProgramTemplate):
+    program_name = 'tst_cli_parser'
+
+    def validate(self):
+      pass
+
+    def run(self):
+      pass
+
+    def get_results(self):
+      return self.data_manager.get_model_names()
+
+  # check for missing file
+  try:
+    run_program(program_class=testProgram, args=[phil_filename, '--quiet'])
+  except Sorry as s:
+    assert "Couldn't find the file" in str(s)
+
+  # check --check-current-dir
+  result = run_program(program_class=testProgram,
+                       args=[phil_filename, '--check-current-dir', '--quiet'])
+  expected_filename = os.path.join(os.getcwd(), test_filename)
+  assert expected_filename in result, result
+
+  for filename in [test_filename, phil_filename]:
+    if os.path.isfile(filename):
+      os.remove(filename)
+
+# -----------------------------------------------------------------------------
+def test_scattering_table():
+
+  class TestScatteringTableProgram(ProgramTemplate):
+
+    datatypes = ['model', 'phil']
+
+    use_scattering_table_for_default_type = 'a.b.c.d.efgh'
+
+    master_phil_str = """\
+a {
+  b {
+    c {
+      d {
+        efgh = electron
+          .type = str
+      }
+    }
+  }
+}
+"""
+
+    def validate(self):
+      pass
+
+    def run(self):
+      pass
+
+    def get_results(self):
+      return self.data_manager
+
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  model_1yjp = os.path.join(data_dir, 'data', '1yjp.pdb')
+  data_mtz = os.path.join(data_dir, 'data', 'phaser_1.mtz')
+
+  # check that both model and miller_array are required
+  try:
+    dm = run_program(TestScatteringTableProgram,
+                    args=['--quiet', model_1yjp, data_mtz])
+  except Sorry as s:
+    assert 'use_scattering_table_for_default_type' in str(s)
+
+  TestScatteringTableProgram.datatypes = ['miller_array', 'model', 'phil']
+
+  # check default PHIL
+  dm = run_program(TestScatteringTableProgram,
+                   args=['--quiet', model_1yjp, data_mtz])
+  model_type = dm.get_model_type(model_1yjp)
+  assert 'x_ray' not in model_type
+  assert 'electron' in model_type
+  assert 'neutron' not in model_type
+  assert 'reference' not in model_type
+
+  # check modified PHIL
+  dm = run_program(TestScatteringTableProgram,
+                   args=['--quiet', 'efgh=neutron', model_1yjp, data_mtz])
+  model_type = dm.get_model_type(model_1yjp)
+  assert 'x_ray' not in model_type
+  assert 'electron' not in model_type
+  assert 'neutron' in model_type
+  assert 'reference' not in model_type
+
+  # check wrong input
+  try:
+    dm = run_program(TestScatteringTableProgram,
+                    args=['--quiet', 'efgh=not_a_type', model_1yjp, data_mtz])
+  except Sorry as s:
+    assert 'not_a_type' in str(s)
 
 # =============================================================================
 if __name__ == '__main__':
@@ -586,7 +771,10 @@ if __name__ == '__main__':
   test_label_parsing()
   test_model_type_parsing()
   test_user_selected_labels()
+  test_update_all_defaults()
   test_json()
   test_diff_params()
+  test_check_current_dir()
+  test_scattering_table()
 
   print("OK")

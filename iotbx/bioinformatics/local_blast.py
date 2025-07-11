@@ -1,8 +1,4 @@
-from __future__ import absolute_import, division, print_function
-from libtbx import easy_run
-import os,sys,libtbx.load_env
-
-'''
+"""
 This is a tool to run BLAST locally against selected databased such
 as PDBaa ...etc.  The executables and databases are all distributed
 with Phenix so no extra installation is required. PDBaa has been
@@ -17,7 +13,12 @@ Useage:
 where
 myseq is the query protein sequence string. You can use 'X' to fill gaps.
 myxml is the stdout_lines object of the blast XML output.
-'''
+"""
+
+from __future__ import absolute_import, division, print_function
+from libtbx import easy_run
+import os,sys,libtbx.load_env
+
 #setup lib dir
 phenixpath=os.getenv('PHENIX')
 ligand_lib_dir = libtbx.env.find_in_repositories(

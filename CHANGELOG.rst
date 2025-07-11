@@ -1,3 +1,41 @@
+2025.6
+======
+
+* Added ability to remove bonds in geometry restraints manager
+* Added forward compatible PDB format for iotbx.cif_as_pdb
+* Improved tool for fixing CaBLAM outliers
+
+2025.5
+======
+
+* Added parameter for user restraints to pdb_interpretation
+* Improved barbed wire analysis, including JSON output
+* Improved consistency of handling models with hybrid36
+
+2025.4
+======
+
+* Improved mmCIF compatibility across programs
+* Updated amino acid residue parentage
+* Updated map preparation so both half-maps and full-maps can be used
+
+2025.3
+======
+
+* Improved mmCIF compatibility across programs
+* Added more intrinsic functions to fable
+* CCTBXParser: show PHIL parameters in default help output
+
+2025.2
+======
+
+* Add peak search to map manager
+* Add water renumbering to pdbtools
+* Update FSC calculation to use different binning
+* Add more searches for RCSB search API
+* CCTBXParser: --diff-params flag can proceed with non-local files
+* DataManager: fix bug where the default type for Miller arrays may not update correctly
+
 2025.1
 ======
 

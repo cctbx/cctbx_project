@@ -1,3 +1,4 @@
+"""Simple cut out map around a PDB file"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.map_box
 
@@ -1521,3 +1522,4 @@ class launcher(runtime_utils.target_with_save_result):
 
 if (__name__  ==  "__main__"):
   run(args = sys.argv[1:])
+

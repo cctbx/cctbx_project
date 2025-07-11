@@ -1,3 +1,5 @@
+"""Tools to run BLAST searches"""
+
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry
 from libtbx import slots_getstate_setstate_default_initializer

@@ -1,3 +1,5 @@
+"""Carry out homology searach by WU-BLAST at EBI"""
+
 from __future__ import absolute_import, division, print_function
 
 from iotbx.bioinformatics.xmlbuild import Single, Multiple, DataAttribute

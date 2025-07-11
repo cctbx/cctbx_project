@@ -1,3 +1,4 @@
+"""Test DNA RNA atom names"""
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from six.moves import range

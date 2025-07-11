@@ -37,7 +37,7 @@ WXTBX_SEQ_DEFAULT_STYLE = WXTBX_SEQ_SHOW_LINE_NUMBERS | \
                           WXTBX_SEQ_ENABLE_SELECT_MISSING | \
                           WXTBX_SEQ_FANCY_HELICES
 
-class sequence_panel(wx.PyPanel):
+class sequence_panel(wx.Panel):
   tooltip = "Double-click a residue to select it; hold down Shift to select \
 multiple residues."
   __bg_color = (255,255,255)
@@ -50,7 +50,7 @@ multiple residues."
   char_h = 10 # XXX Python 3 Fix
 
   def __init__(self, *args, **kwds):
-    wx.PyPanel.__init__(self, *args, **kwds)
+    wx.Panel.__init__(self, *args, **kwds)
     if self.__bg_color is not None :
       self.SetBackgroundColour(self.__bg_color)
     #from scitbx.array_family import flex, shared

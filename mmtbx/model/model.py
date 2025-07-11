@@ -80,6 +80,7 @@ import sys
 import math
 
 from mmtbx.monomer_library import pdb_interpretation
+import libtbx.utils
 
 time_model_show = 0.0
 
@@ -176,7 +177,7 @@ class xh_connectivity_table2(object):
         if("H" in h and not o.all_eq(o[0])):
           self.table.setdefault(ih).append(p.i_seqs)
 
-class manager(object):
+class manager(object, metaclass=libtbx.utils.Tracker):
   """
   Wrapper class for storing and manipulating an iotbx.pdb.hierarchy object and
   a cctbx.xray.structure object, plus optional restraints-related objects.
@@ -479,15 +480,16 @@ class manager(object):
       result.append(dbest)
     return result
 
+  def get_scattering_table(self):
+    return self.get_xray_structure().get_scattering_table()
+
   def get_xray_structure(self):
     if(self._xray_structure is None):
       cs = self.crystal_symmetry()
-      assert cs is not None
-      assert cs.unit_cell() is not None
-      assert cs.space_group() is not None
+      if cs is None or cs.unit_cell() is None or cs.space_group() is None:
+        return None
       self._xray_structure = self.get_hierarchy().extract_xray_structure(
         crystal_symmetry = cs)
-      cs = self.crystal_symmetry()
     return self._xray_structure
 
   def set_sites_cart(self, sites_cart, selection=None):
@@ -898,7 +900,7 @@ class manager(object):
       Set the unit_cell_crystal_symmetry (original crystal symmetry)
 
       Only used to reset original crystal symmetry of model
-      Requires that there is no shift_cart for this model in
+      Requires that there is no shift_cart for this model
     '''
     assert crystal_symmetry is not None
 
@@ -909,18 +911,43 @@ class manager(object):
 
     self._unit_cell_crystal_symmetry = crystal_symmetry
 
-  def set_crystal_symmetry(self, crystal_symmetry):
+  def set_crystal_symmetry(self, crystal_symmetry,
+     unit_cell_crystal_symmetry = None):
     '''
-      Set the crystal_symmetry, keeping sites_cart the same
+      Set the crystal_symmetry, keeping sites_cart the same.
 
-      NOTE: Normally instead use
-        shift_model_and_set_crystal_symmetry(shift_cart=shift_cart) and
-      shift_model_back() to shift the coordinates of the model.
+      Optionally set unit_cell_crystal_symmetry as well.
+      Setting unit_cell_crystal_symmetry requires that shift_cart is None.
+
+      Uses:
+       1. You can set crystal_symmetry (the working symmetry) for the
+       model, keeping unit_cell_crystal_symmetry (the original symmetry before
+       any boxing) the same.  This is what is used in boxing a model and map.
+
+       2. You can set both crystal_symmetry and unit_cell_crystal_symmetry.
+       This is what you would use if you are creating a new model.
+
+      NOTE 1: If you set crystal_symmetry but not unit_cell_crystal_symmetry,
+      the current value of unit_cell_crystal_symmetry will remain. Be sure
+      that is what you intend.
+
+      NOTE 2: When a model is written out, the symmetry written is normally
+      the unit_cell_crystal_symmetry, so be sure this is set appropriately.
+
+      NOTE 3: If your goal is to shift the coordinates of a model, normally
+      instead use shift_model_and_set_crystal_symmetry(shift_cart=shift_cart)
+      along with shift_model_back().
+
+      NOTE 4: If this model is part of a map_model_manager, normally
+      use that manager to make changes in symmetry, because otherwise your
+      maps and this model will be out of sync.
 
       Uses set_crystal_symmetry_and_sites_cart because sites_cart have to
       be replaced in either case.
     '''
     self.set_crystal_symmetry_and_sites_cart(crystal_symmetry,None)
+    if unit_cell_crystal_symmetry:
+      self.set_unit_cell_crystal_symmetry(unit_cell_crystal_symmetry)
 
   def set_crystal_symmetry_and_sites_cart(self, crystal_symmetry, sites_cart):
 
@@ -1027,6 +1054,10 @@ class manager(object):
       return None
 
   def shifted(self, eps=1.e-3):
+    ''' Return True if this model has been shifted from its original
+     location (e.g., by boxing a map and this model).
+    '''
+
     r = self.shift_cart()
     if(r is None): return False
     if(flex.max(flex.abs(flex.double(r)))<=eps): return False
@@ -1076,7 +1107,7 @@ class manager(object):
     return self.refinement_flags
 
   def get_number_of_atoms(self):
-    return self.get_hierarchy().atoms().size()
+    return self.get_hierarchy().atoms_size()
 
   def size(self):
     return self.get_number_of_atoms()
@@ -1561,12 +1592,30 @@ class manager(object):
         crystal_symmetry=self.crystal_symmetry())
 
   def _figure_out_cs_to_output(self, do_not_shift_back, output_cs):
+    """Decide what crystal_symmetry to output.
+
+     This is non-trivial and a little confusing because the model may
+     have a unit_cell_crystal_symmetry (the original crystal_symmetry before
+     any boxing), and it may have a crystal_symmetry (the working
+     crystal_symmetry for the model that matches the coordinates.)
+
+     The basic rule is:  write out the unit_cell_crystal_symmetry.
+
+     However, if output_cs False, return None.
+     Also, if do_not_shift_back is True, return self.crystal_symmetry()
+
+     In a special case (unit_cell_crystal_symmetry = None), the model has
+     not had unit_cell_crystal_symmetry set, so write out crystal_symmetry
+     instead. (Note: this used to be chosen by self._shift_cart == None)
+
+    """
+
     if not output_cs:
       return None
     if do_not_shift_back:
       return self._crystal_symmetry
     else:
-      if self._shift_cart is not None:
+      if (self.unit_cell_crystal_symmetry() is not None):
         return self.unit_cell_crystal_symmetry()
       else:
         return self.crystal_symmetry()
@@ -1710,7 +1759,7 @@ class manager(object):
 
   def as_pdb_or_mmcif_string(self,
        target_format = None,
-       segid_as_auth_segid = True,
+       segid_as_auth_segid = False,
        remark_section = None,
        **kw):
     '''
@@ -1720,7 +1769,7 @@ class manager(object):
 
      Method to allow shifting from general writing as pdb to
      writing as mmcif, with the change in two places (here and model.py)
-     Use default of segid_as_auth_segid=True here (different than
+     Use default of segid_as_auth_segid=False here (same as in
        as_mmcif_string())
      :param target_format: desired output format, pdb or mmcif
      :param segid_as_auth_segid: use the segid in hierarchy as the auth_segid
@@ -1742,7 +1791,7 @@ class manager(object):
   def pdb_or_mmcif_string_info(self,
       target_filename = None,
       target_format = None,
-      segid_as_auth_segid = True,
+      segid_as_auth_segid = False,
       write_file = False,
       data_manager = None,
       overwrite = True,
@@ -1756,7 +1805,7 @@ class manager(object):
 
     #  If you need a pdb string, normally use as_pdb_or_mmcif_string
     #   instead of this general function
-    #  Note default of segid_as_auth_segid = True, different from
+    #  Note default of segid_as_auth_segid = False, same as in
     #     as_mmcif_string()
 
     if target_format in ['None',None]:  # set the default format here
@@ -1774,7 +1823,8 @@ class manager(object):
           segid_as_auth_segid = segid_as_auth_segid,**kw)
         is_mmcif = True
     else:
-      pdb_str = self.model_as_mmcif(segid_as_auth_segid = segid_as_auth_segid,**kw)
+      pdb_str = self.model_as_mmcif(
+          segid_as_auth_segid = segid_as_auth_segid,**kw)
       is_mmcif = True
     if target_filename:
       import os
@@ -2072,8 +2122,13 @@ class manager(object):
     return self._has_hd
 
   def _update_has_hd(self):
-    sctr_keys = self.get_xray_structure().scattering_type_registry().type_count_dict()
-    self._has_hd = "H" in sctr_keys or "D" in sctr_keys
+    if self.get_xray_structure() is not None:
+      sctr_keys = self.get_xray_structure(
+        ).scattering_type_registry().type_count_dict()
+      self._has_hd = "H" in sctr_keys or "D" in sctr_keys
+    else:
+      sel = self.selection(string="element H or element D")
+      self._has_hd = sel.count(True)>0
     if not self._has_hd:
       self.unset_riding_h_manager()
     if self._has_hd:
@@ -3591,7 +3646,9 @@ class manager(object):
 
     if new_riding_h_manager is not None:
       new.riding_h_manager = new_riding_h_manager
-    new.get_xray_structure().scattering_type_registry()
+    new_xrs = new.get_xray_structure()
+    if new_xrs is not None:
+      new_xrs.scattering_type_registry()
     new.set_refinement_flags(new_refinement_flags)
     new.scattering_dict_info = sdi
     new._update_has_hd()
@@ -3614,6 +3671,7 @@ class manager(object):
     if hasattr(self, '_type_h_bonds') and len(self._type_h_bonds)==len(selection):
       new._type_energies = self._type_energies.select(selection)
       new._type_h_bonds = self._type_h_bonds.select(selection)
+    new._call_stats = self._call_stats # tracking!!
     return new
 
   def number_of_ordered_solvent_molecules(self):

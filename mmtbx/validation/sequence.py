@@ -830,6 +830,7 @@ class validation(object):
           '1',
           len(seq_one_letter_code_can[entity_id]) - 1
         ))
+        align_id += 1
 
     # construct block
     cif_block = iotbx.cif.model.block()

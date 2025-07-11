@@ -36,10 +36,9 @@ class result(object):
     d = "%5.2f"
     i = "%d"
     strs = [
-      "\n%sRama-Z (Ramachandran plot Z-score):"%p,
-      "%sInterpretation: bad |Rama-Z| > 3; suspicious 2 < |Rama-Z| < 3; good |Rama-Z| < 2." % p,
-      "%sScores for whole/helix/sheet/loop are scaled independently;" % p,
-      "%stherefore, the values are not related in a simple manner." % p,
+      "\n%sRama-Z values with (uncertainties):"%p,
+      "%sInterpretation: poor |Rama-Z| > 3; suspicious 2 < |Rama-Z| < 3; good |Rama-Z| < 2." % p,
+      "%sScores below are scaled independently, so they aren not related in a simple way." % p,
       "%s  whole: %s (%s), residues: %s"%(p, f(d,w.value),f(d,w.std).strip(),f(i,w.n)),
       "%s  helix: %s (%s), residues: %s"%(p, f(d,h.value),f(d,h.std).strip(),f(i,h.n)),
       "%s  sheet: %s (%s), residues: %s"%(p, f(d,s.value),f(d,s.std).strip(),f(i,s.n)),

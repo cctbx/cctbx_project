@@ -126,7 +126,7 @@ def test1():
   for l in [
       'longHOH H2 O H1 103.91 3.000',
       'data_comp_longHOH',
-      '   HETATM 10 O . longHOH A 401 ? -3.20900 -12.85600 46.10000 1.000 30.11000 O ? B ? . 1']:
+      '   HETATM 10 O . longHOH A 401 ? -3.20900 -12.85600 46.10000 1.000 30.11000 O ? B ? . O 1']:
     assert_lines_in_text(model_cif, l)
   model_pdb = model.model_as_pdb()
   assert not model.can_be_output_as_pdb()

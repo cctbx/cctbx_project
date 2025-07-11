@@ -4,12 +4,12 @@
 jobs:
   - template: ./conda-win.yml
     parameters:
-      vmImage: windows-2019
-      vs: 2019
+      vmImage: windows-2022
+      vs: 2022
       modules: modules
   - template: ./conda-linux.yml
     parameters:
-      distribution: rockylinux
+      distribution: cctbx/rockylinux
       version: [8]
       modules: ${{ parameters.modules }}
       template: ./unix-conda-build.yml

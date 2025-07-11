@@ -1,3 +1,4 @@
+"""Run reduce (add hydrogens). version 2"""
 ##################################################################################
 # Copyright(c) 2021-2023, Richardson Lab at Duke
 # Licensed under the Apache 2 license
@@ -24,19 +25,16 @@ from libtbx.utils import Sorry, null_out
 import mmtbx
 from mmtbx.probe import Helpers
 from iotbx import pdb, cli_parser
-# @todo See if we can remove the shift and box once reduce_hydrogen is complete
-from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.reduce import Optimizers
 from scitbx.array_family import flex
 from iotbx.pdb import common_residue_names_get_class, amino_acid_codes, nucleic_acid_codes
 from mmtbx.programs import probe2
 import copy
-import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "2.7.0"
+version = "2.12.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -107,6 +105,10 @@ stop_on_any_missing_hydrogen = False
 output
   .style = menu_item auto_align
 {
+  write_files = True
+    .type = bool
+    .short_caption = Write the output files
+    .help = Write the output files(s) when this is True (default). Set to False when harnessing the program.
   description_file_name = None
     .type = str
     .short_caption = Description output file name
@@ -124,7 +126,10 @@ output
     .short_caption = Print extra atom info
     .help = Print extra atom info
 }
-''' + Helpers.probe_phil_parameters
+''' + Helpers.probe_phil_parameters.replace("probe_radius = 0.25", "probe_radius = 0.0")
+# @todo We replace the default probe radius of 0.25 with 0.0 to avoid the issue described in
+# https://github.com/cctbx/cctbx_project/issues/1072 until we can figure out the appropriate
+# fix.
 
 program_citations = phil.parse('''
 citation {
@@ -974,7 +979,7 @@ NOTES:
   # Create a parser for Probe2 PHIL parameters, overriding specific defaults.
   # Use it to parse the parameters we need to change and return the parser so we
   # can extract values from it.
-  def _MakeProbePhilParser(self, movers_to_check, temp_output_file_name, extraArgs = []):
+  def _MakeProbePhilParser(self, movers_to_check, extraArgs = []):
 
     # Determine the source and target selections based on the Movers
     # that we are checking being tested against everything else.
@@ -999,13 +1004,20 @@ NOTES:
       "minimum_water_hydrogen_occupancy=0.66",
       "maximum_water_hydrogen_b=40.0",
       "minimum_occupancy=0.01",
-      "output.filename='{}'".format(temp_output_file_name),
+      "output.write_files=False",
       "ignore_lack_of_explicit_hydrogens=True",
       "output.add_group_line=False"
     ]
     args.extend(extraArgs)
-    parser.parse_args(args)
 
+    # Add the probe parameters from the command line to the parser
+    for arg in sys.argv:
+      if arg.startswith("probe."):
+        # Remove the leading "probe." and add it to the parser
+        arg = arg[6:]
+        args.append(arg)
+
+    parser.parse_args(args)
     return parser
 
 # ------------------------------------------------------------------------------
@@ -1033,7 +1045,11 @@ NOTES:
       for res in insufficient_restraints[1:]:
         bad += "," + res
       raise Sorry("Insufficient restraints were found for the following atoms:"+bad)
+
     self.model = reduce_add_h_obj.get_model()
+
+    if not self.model.has_hd():
+      raise Sorry("It was not possible to place any H atoms. Is this a single atom model?")
 
 # ------------------------------------------------------------------------------
 
@@ -1149,6 +1165,12 @@ NOTES:
       self.params.output.filename = base + suffix
       print('Writing model output to', self.params.output.filename, file=self.logger)
 
+    if os.environ.get('PHENIX_OVERWRITE_ALL', False):
+      self.data_manager.set_overwrite(True)
+    if not self.params.output.overwrite:
+      if os.path.exists(self.params.output.filename):
+        print('\n\tOutput filename exists. Use overwrite=True to continue.')
+
     self.data_manager.has_models(raise_sorry=True)
     if self.params.output.description_file_name is None:
       self.params.output.description_file_name=self.params.output.filename.replace('.pdb',
@@ -1184,9 +1206,8 @@ NOTES:
     # Get our model.
     self.model = self.data_manager.get_model()
 
-    # Fix up bogus unit cell when it occurs by checking crystal symmetry.
-    # @todo reduce_hydrogens.py:run() says: TODO temporary fix until the code is moved to model class
-    self.model = shift_and_box_model(model = self.model, shift_model=False)
+    # Use model function to set crystal symmetry if necessary 2025-03-19 TT
+    self.model.add_crystal_symmetry_if_necessary()
 
     # If we've been asked to only to a single model index from the file, strip the model down to
     # only that index.
@@ -1261,20 +1282,23 @@ NOTES:
 
     make_sub_header('Writing output', out=self.logger)
 
-    # Write the description output to the specified file.
-    self.data_manager._write_text("description", outString,
-      self.params.output.description_file_name)
+    # Skip writing the main output file and description output file if output.write_files is False.
+    # This enables a program to harness Reduce2 and not have to deal with handling output files.
+    if self.params.output.write_files:
+      # Write the description output to the specified file.
+      self.data_manager._write_text("description", outString,
+        self.params.output.description_file_name)
 
-    # Determine whether to write a PDB or CIF file and write the appropriate text output.
-    suffix = os.path.splitext(self.params.output.filename)[1]
-    if suffix.lower() == ".pdb":
-      txt = self.model.model_as_pdb()
-    else:
-      txt = self.model.model_as_mmcif()
-    self.data_manager._write_text("model", txt, self.params.output.filename)
+      # Determine whether to write a PDB or CIF file and write the appropriate text output.
+      suffix = os.path.splitext(self.params.output.filename)[1]
+      if suffix.lower() == ".pdb":
+        txt = self.model.model_as_pdb()
+      else:
+        txt = self.model.model_as_mmcif()
+      self.data_manager._write_text("model", txt, self.params.output.filename)
 
-    print('Wrote', self.params.output.filename,'and',
-      self.params.output.description_file_name, file = self.logger)
+      print('Wrote', self.params.output.filename,'and',
+        self.params.output.description_file_name, file = self.logger)
 
     # If we've been asked to do a comparison with another program's output, do it.
     if self.params.comparison_file is not None:
@@ -1306,7 +1330,6 @@ NOTES:
         # Make the Probe2 Phil parameters, then overwrite the ones that were
         # filled in with values that we want for our summaries.
         source = [ m ]
-        tempName = tempfile.mktemp()
         extraArgs = [
           "approach=once",
           "output.format=raw",
@@ -1314,7 +1337,7 @@ NOTES:
           "output.condensed=True",
           "output.count_dots=True"
           ]
-        probeParser = self._MakeProbePhilParser(source, tempName, extraArgs)
+        probeParser = self._MakeProbePhilParser(source, extraArgs)
 
         # Run Probe2
         p2 = probe2.Program(self.data_manager, probeParser.working_phil.extract(),
@@ -1334,7 +1357,6 @@ NOTES:
         myScore = sum(values)
 
         print('My values for Mover', str(m), 'are', values, 'sum is', myScore, file=self.logger)
-        os.unlink(tempName)
 
         #============================================================
         # Find the score for the comparison file.
@@ -1346,7 +1368,6 @@ NOTES:
 
         # Make the Probe2 Phil parameters, then overwrite the ones that were
         # filled in with values that we want for our summaries.
-        tempName = tempfile.mktemp()
         extraArgs = [
           "approach=once",
           "output.format=raw",
@@ -1354,7 +1375,7 @@ NOTES:
           "output.condensed=True",
           "output.count_dots=True"
           ]
-        probeParser = self._MakeProbePhilParser(source, tempName, extraArgs)
+        probeParser = self._MakeProbePhilParser(source, extraArgs)
 
         # Run Probe2
         p2 = probe2.Program(self.data_manager, probeParser.working_phil.extract(),
@@ -1374,7 +1395,6 @@ NOTES:
         otherScore = sum(values)
 
         print('Other values for Mover', str(m), 'are', values, 'sum is', otherScore, file=self.logger)
-        os.unlink(tempName)
 
         #============================================================
         # Add the line to the table, indicating if the other is better.
@@ -1520,10 +1540,7 @@ NOTES:
 
           # Modify the parameters that are passed to include the ones for
           # the harnessed program, including the source and target atom selections.
-          # Specify a temporary file for the output of Probe2, which we'll
-          # delete after running.
-          tempName = tempfile.mktemp()
-          probeParser = self._MakeProbePhilParser(amides, tempName)
+          probeParser = self._MakeProbePhilParser(amides)
 
           # Run the program and append its Kinemage output to ours, deleting
           # the temporary file that it produced.
@@ -1533,7 +1550,6 @@ NOTES:
           p2.overrideModel(self.model)
           dots, kinString = p2.run()
           flipkinText += kinString
-          os.unlink(tempName)
 
         # Write the accumulated Flipkin string to the output file.
         with open(flipkinBase+"-flipnq.kin", "w") as f:
@@ -1644,10 +1660,7 @@ NOTES:
 
           # Modify the parameters that are passed to include the ones for
           # the harnessed program, including the source and target atom selections.
-          # Specify a temporary file for the output of Probe2, which we'll
-          # delete after running.
-          tempName = tempfile.mktemp()
-          probeParser = self._MakeProbePhilParser(hists, tempName)
+          probeParser = self._MakeProbePhilParser(hists)
 
           # Run the program and append its Kinemage output to ours, deleting
           # the temporary file that it produced.
@@ -1656,7 +1669,6 @@ NOTES:
           p2.overrideModel(self.model)
           dots, kinString = p2.run()
           flipkinText += kinString
-          os.unlink(tempName)
 
         # Write the accumulated Flipkin string to the output file.
         with open(flipkinBase+"-fliphis.kin", "w") as f:

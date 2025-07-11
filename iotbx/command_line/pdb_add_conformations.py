@@ -1,3 +1,7 @@
+"""This utility will duplicate any set of atoms (by default, the
+    entire input model) to create alternate conformations.
+"""
+
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME iotbx.pdb.add_conformations
 

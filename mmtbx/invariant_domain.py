@@ -1,3 +1,4 @@
+""" Find pseudo invariant domain given a set of sites"""
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from scitbx.math import euler_angles_as_matrix

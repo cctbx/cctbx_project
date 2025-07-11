@@ -1,3 +1,5 @@
+"""Tool for sampling different conformations in attempt to
+  fix Cablam outliers"""
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
 
@@ -12,12 +14,12 @@ import os
 class Program(ProgramTemplate):
 
   description = '''
-phenix.fix_cablam: tool for sampling different conformations in attempt to
+phenix.cablam_idealization: tool for sampling different conformations in attempt to
   fix Cablam outliers.
 
 Usage examples:
-  phenix.fix_cablam model.pdb
-  phenix.fix_cablam model.cif
+  phenix.cablam_idealization model.pdb
+  phenix.cablam_idealization model.cif
   '''
 
   datatypes = ['model', 'phil']
@@ -27,10 +29,6 @@ include scope mmtbx.building.cablam_idealization.master_phil_str
 output {
   suffix = _cablam_fixed
     .type = str
-  format = *pdb mmcif
-    .type = choice(multi=True)
-  overwrite = True
-    .type = bool
 }
   """
 
@@ -67,19 +65,9 @@ output {
         (results.model, self.output_fname_base),
         (results.model_minimized, self.output_fname_base+"_minimized")]:
       if m is not None:
-        if 'pdb' in self.params.output.format:
-          str_to_output = model.model_as_pdb()
-          fname = fname_base+".pdb"
-          print('Writing results: %s' % fname)
-          self.data_manager.write_model_file(
-              str_to_output, fname)
-        if 'mmcif' in self.params.output.format:
-          str_to_output = model.model_as_mmcif()
-          fname = fname_base+".cif"
-          print('Writing results: %s' % fname)
-          self.data_manager.write_model_file(
-              str_to_output, fname)
-
+        self.final_file_name = self.data_manager.write_model_file(
+            m, fname_base)
+        print("Model written to '%s'" % self.final_file_name)
 
   # ---------------------------------------------------------------------------
   def get_results(self):

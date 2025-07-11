@@ -102,7 +102,7 @@ class AboutForm(QDialog):
     CCTBX version: """ + versionstr + \
     """
     <br/>A reflection data viewer for crystallography
-    <br/>Developers: Dr. Robert D. Oeffner<br/>
+    <br/>Developers: Robert D. Oeffner<br/>
     Cambridge Institute for Medical Research, University of Cambridge.<br/>
     HKLviewer is part of the <a href="http://cci.lbl.gov/docs/cctbx/"> CCTBX library</a>
     as well as derived software thereof.<br/>

@@ -275,10 +275,14 @@ class restraint_validation(validation):
     self.z_min = self.z_max = self.z_mean = None
     deviations_method = getattr(energies_sites, "%s_deviations" %
       self.restraint_type)
-    self.min, self.max, self.mean = deviations_method()
-    target = getattr(energies_sites, "%s_residual_sum" %
-      self.restraint_type)
     self.n_total = getattr(energies_sites, "n_%s_proxies" %
+      self.restraint_type)
+    tmp = deviations_method()
+    if len(tmp)==4:
+      self.min, self.max, self.mean, self.n_total = tmp
+    else:
+      self.min, self.max, self.mean = tmp
+    target = getattr(energies_sites, "%s_residual_sum" %
       self.restraint_type)
     if (self.n_total > 0):
       self.target = target / self.n_total
@@ -288,7 +292,7 @@ class restraint_validation(validation):
       self.restraint_type, None)
     if (deviations_z_method is not None):
       deviations_z = deviations_z_method()
-      self.z_min, self.z_max, self.z_mean = deviations_z_method()
+      self.z_min, self.z_max, self.z_mean, junk = deviations_z_method()
     self.n_outliers_by_model = {}
     self.results = sorted(self.get_outliers(
       proxies=restraint_proxies,

@@ -1,3 +1,4 @@
+"""Validate bond lengths"""
 # LIBTBX_SET_DISPATCHER_NAME phenix.mp_validate_bonds
 # LIBTBX_SET_DISPATCHER_NAME molprobity.mp_validate_bonds
 
@@ -41,3 +42,4 @@ def old_run(args, out=sys.stdout, quiet=False):
 if (__name__ == "__main__"):
   #run(sys.argv[1:])
   run_program(program_class=mp_validate_bonds.Program, hide_parsing_output=True)
+

@@ -5,13 +5,14 @@ from matplotlib import pyplot as plt
 """
 Searches the cctbx.xfel.merge log files for statistics tables.
 
-Makes lots of assumptions regarding formatting so this is a work in progres.
+Makes lots of assumptions regarding formatting.
 """
 
 # Name of stat: (Line signal, offset to first line of table, index of value for a bin line, index of value for an 'All' line)
 types = {
   "% accepted": ("Lattices resolution", 6, 4, 1),
   "Multiplicity": ("Intensity Statistics (all accepted experiments)", 14, 6, 3),
+  "Completeness": ("Intensity Statistics (all accepted experiments)", 14, 5, 2),
   "CC1/2": ("Table of Scaling Results", 6, 5, 2)
 }
 
@@ -82,7 +83,14 @@ class Scraper(object):
     ax = ax1 = fig.gca()
     ax2 = ax1.twinx()
 
-    for name, c in zip(results, ['b', 'r', 'g']):
+    colors = {
+      "% accepted": 'orange',
+      "Multiplicity": 'red',
+      "Completeness": 'green',
+      "CC1/2": 'blue'
+    }
+
+    for name in results:
       if name == 'Multiplicity':
         ax = ax2
       else:
@@ -95,7 +103,7 @@ class Scraper(object):
         bin_num, d_max, d_min, value = data
         x.append((d_max+d_min)/2)
         y.append(value)
-      ax.plot(1/(np.array(x)**2), y, '-', label = name, color = c)
+      ax.plot(1/(np.array(x)**2), y, '-', label = name, color = colors[name])
 
     def resolution(x, pos):
       if x <= 0:
@@ -130,15 +138,17 @@ class Scraper(object):
     xvals = []
     overall_cc = []
     overall_mult = []
+    overall_comp = []
     cc_cutoff = []
     mult_cutoff = []
+    comp_cutoff = []
     for r in all_results:
       if r is None or '# accepted' not in r or r['# accepted'] is None: continue
       name, value = r['# accepted'][-1]
       assert name == 'All'
       #if xvals: assert value >= xvals[-1]
       xvals.append(value)
-      for key, array in zip(['CC1/2', 'Multiplicity'], [overall_cc, overall_mult]):
+      for key, array in zip(['CC1/2', 'Multiplicity', 'Completeness'], [overall_cc, overall_mult, overall_comp]):
         if key in r:
           name, value = r[key][-1]
           assert name == 'All'
@@ -176,12 +186,28 @@ class Scraper(object):
       else:
         mult_cutoff.append(0)
 
+      if 'Completeness' in r:
+        last = last_res = 0
+        for row in r['Completeness']:
+          if row[0]=='All':
+            break
+          row_n, d_max, d_min, comp = row
+          if comp >= 90:
+            last = comp; last_res = (d_max + d_min) / 2
+          else:
+            break
+        comp_cutoff.append(last_res)
+      else:
+        comp_cutoff.append(0)
+
+
     ax1a.plot(xvals, overall_cc, 'o-', color='blue')
     ax1b.plot(xvals, overall_mult, 'o-', color='red')
     ax2.plot(xvals, 1/(np.array(cc_cutoff)**2), 'o-', color='blue')
     ax2.plot(xvals, 1/(np.array(mult_cutoff)**2), 'o-', color='red')
+    ax2.plot(xvals, 1/(np.array(comp_cutoff)**2), 'o-', color='green')
 
-    ax2.legend(["CC1/2", "Multiplicity"])
+    ax2.legend(["CC1/2 (monotonic)", "Multiplicity (10x)", "Completeness (90%)"])
 
     ax2.set_xlabel("N images")
     ax1a.set_ylabel("Overall CC1/2 (%)")
@@ -208,7 +234,7 @@ class Scraper(object):
 
 if __name__ == "__main__":
   import sys
-  args = sys.argv[2:]
+  args = sys.argv[1:]
   if len(args) > 1:
     all_results = []
     for folder in args:

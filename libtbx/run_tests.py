@@ -6,6 +6,7 @@ import libtbx.load_env
 tst_list_base = [
   "$D/metric_prefixes.py",
   "$D/tst_utils.py",
+  "$D/tst_word_index_generator.py",
   "$D/test_utils/__init__.py",
   "$D/queuing_system_utils/pbs_utils.py",
   "$D/queuing_system_utils/sge_utils.py",

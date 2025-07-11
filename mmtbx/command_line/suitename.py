@@ -1,3 +1,4 @@
+"""Identify suite name for RNA"""
 # LIBTBX_SET_DISPATCHER_NAME phenix.suitename
 # LIBTBX_SET_DISPATCHER_NAME molprobity.suitename
 # LIBTBX_SET_DISPATCHER_NAME cctbx.suitename
@@ -46,3 +47,4 @@ def old_run(args):
 if __name__ == '__main__':
   #run(sys.argv[1:])
   run_program(program_class=suitename.Program, hide_parsing_output=True)
+

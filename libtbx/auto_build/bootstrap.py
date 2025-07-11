@@ -789,6 +789,17 @@ class pydiscamb_module(SourceModule):
                'https://github.com/viljarjf/pyDiSCaMB.git',
                ]
 
+class molstar_adaptbx(SourceModule):
+  module = 'molstar_adaptbx'
+  anonymous = ['git',
+               'https://github.com/phenix-project/molstar_adaptbx.git']
+
+class molstar_module(SourceModule):
+  module = 'molstar'
+  anonymous = ['git',
+               '-b v4.11.0',
+               'https://github.com/molstar/molstar.git']
+
 class mon_lib_module(SourceModule):
   module = 'mon_lib'
   anonymous = ['curl', 'http://boa.lbl.gov/repositories/mon_lib.gz']
@@ -2291,9 +2302,8 @@ class DIALSBuilder(CCIBuilder):
 
   def get_libtbx_configure(self):
     configlst = super(DIALSBuilder, self).get_libtbx_configure()
-    if self.python != "27":
-      # Do not enable C++11 for Python 2.7 builds, cf. https://github.com/cctbx/cctbx_project/pull/497
-      configlst.append('--enable_cxx11')
+    if '--enable_cxx11' in configlst: configlst.remove('--enable_cxx11')
+    configlst.append('--cxxstd=c++14')
     return configlst
 
 class LABELITBuilder(CCIBuilder):
@@ -2369,6 +2379,8 @@ class XFELBuilder(CCIBuilder):
     configlst = super(XFELBuilder, self).get_libtbx_configure()
     if '--enable_cxx11' in configlst: configlst.remove('--enable_cxx11')
     configlst.append('--cxxstd=c++14')
+    if not self.isPlatformMacOSX():
+      configlst.append("--enable_openmp_if_possible=True")
     return configlst
 
   def add_tests(self):
@@ -2618,6 +2630,17 @@ class PhenixDiscambBuilder(PhenixBuilder):
       command=[python, '-m', 'pip', 'install', '.'],
         workdir=['modules', 'pyDiSCaMB'],
         description='pip installing pyDiSCaMB',
+      ))
+
+class PhenixMolstarBuilder(PhenixBuilder):
+  CODEBASES_EXTRA = PhenixBuilder.CODEBASES_EXTRA + ['molstar','molstar_adaptbx']
+  def add_make(self):
+    super(PhenixMolstarBuilder, self).add_make()
+    python = os.path.normpath(os.path.join(os.getcwd(), 'build', self.python_base))
+    self.add_step(self.shell(
+      command=[python, "install_molstar.py"],
+        workdir=['modules', 'molstar_adaptbx',"command_line"],
+        description='molstar adaptbx install script',
       ))
 
 class PhenixExternalRegression(PhenixBuilder):
@@ -2892,6 +2915,7 @@ def set_builder_defaults(options):
         options.no_boost_src = False
   if options.builder == 'phenix' \
     or options.builder == 'phenix_discamb' \
+    or options.builder == 'phenix_molstar' \
     or options.builder == 'phenix_voyager' \
     or options.builder == 'molprobity':
     # Apple Silicon uses Boost 1.78 in environment, Python 3.9
@@ -2915,6 +2939,7 @@ def run(root=None):
     'cctbx': CCTBXBuilder,
     'phenix': PhenixBuilder,
     'phenix_discamb': PhenixDiscambBuilder,
+    'phenix_molstar': PhenixMolstarBuilder,
     'phenix_voyager': PhenixBuilder,
     'phenix_release': PhenixReleaseBuilder,
     'xfellegacy': XFELLegacyBuilder,
@@ -3031,7 +3056,7 @@ def run(root=None):
   python_args = parser.add_mutually_exclusive_group(required=False)
   python_args.add_argument('--python',
                     default='37', type=str, nargs='?', const='37',
-                    choices=['27', '37', '38', '39', '310'],
+                    choices=['27', '37', '38', '39', '310', '311', '312', '313'],
                     help="""When set, a specific Python version of the
 conda environment will be used. This only affects environments selected with
 the --builder flag. For non-conda dependencies, any Python 3 implies

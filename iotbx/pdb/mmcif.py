@@ -1,3 +1,4 @@
+"""Interpretation of mmCIF formatted model files"""
 from __future__ import absolute_import, division, print_function
 import sys
 from cctbx.array_family import flex
@@ -39,9 +40,9 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     self.hierarchy = hierarchy.root()
     # These items are mandatory for the _atom_site loop, all others are optional
     type_symbol = self._wrap_loop_if_needed(cif_block, "_atom_site.type_symbol")
-    atom_labels = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_atom_id")
+    atom_labels = self._wrap_loop_if_needed(cif_block, "_atom_site.label_atom_id") # corresponds to chem comp atom name
     if atom_labels is None:
-      atom_labels = self._wrap_loop_if_needed(cif_block, "_atom_site.label_atom_id") # corresponds to chem comp atom name
+      atom_labels = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_atom_id")
     alt_id = self._wrap_loop_if_needed(cif_block,"_atom_site.label_alt_id") # alternate conformer id
     label_asym_id = self._wrap_loop_if_needed(cif_block, "_atom_site.label_asym_id") # chain id
     auth_asym_id = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_asym_id")

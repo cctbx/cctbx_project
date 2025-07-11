@@ -36,12 +36,12 @@ def exercise_00():
       a = es.angle_deviations()
       b_z = es.bond_deviations_z()
       a_z = es.angle_deviations_z()
-      print("%5s"%aac_, "bonds     : %5.3f %5.3f %5.3f"%b, \
-        "angles     : %5.3f %5.3f %5.3f"%a)
+      print("%5s"%aac_, "bonds     : %5.3f %5.3f %5.3f %d"%b, \
+        "angles     : %5.3f %5.3f %5.3f %d"%a)
       assert a[2] < 1.2, a[2]
       assert b[2] < 0.006, b[2]
-      print("%5s"%aac_, "bonds rmsZ: %5.3f %5.3f %5.3f"%b_z, \
-        "angles rmsZ: %5.3f %5.3f %5.3f"%a_z)
+      print("%5s"%aac_, "bonds rmsZ: %5.3f %5.3f %5.3f %d"%b_z, \
+        "angles rmsZ: %5.3f %5.3f %5.3f %d"%a_z)
       assert a_z[2] < 0.7, a_z[2]
       assert b_z[2] < 0.7, b_z[2]
 

@@ -1,3 +1,5 @@
+"""Tools to identify and evaluate reconstruction symmetry in a map"""
+
 # -*- coding: utf-8 -*-
 
 from __future__ import absolute_import, division, print_function
@@ -6,11 +8,9 @@ from libtbx import adopt_init_args
 from libtbx.utils import null_out
 from scitbx.matrix import col
 
-#  map_symmetry
-#  tool to identify and evaluate reconstruction symmetry in a map
 
 class map_symmetry:
-
+  """Identify and evaluate reconstruction symmetry in a map"""
   def __init__(self,params=None,
       map_data=None,
       map_coeffs=None,
@@ -41,6 +41,7 @@ class map_symmetry:
 
 
   def get_results(self):
+    """Get results from map_symmetry"""
     from libtbx import group_args
     if not self.ncs_object:
       from mmtbx.ncs.ncs import ncs
@@ -56,9 +57,11 @@ class map_symmetry:
     )
 
   def clean_up(self):
+    """Does nothing"""
     pass
 
   def run(self):
+    """Identify symmetry from map"""
 
     # Print out values of parameters
     import iotbx.phil
@@ -114,7 +117,7 @@ class map_symmetry:
     self.score=ncs_score
 
   def find_ncs_from_density(self):
-
+    """Find local symmetry (ncs) from density in map"""
     # First test to make sure the function is available
     try:
       from phenix.command_line.find_ncs_from_density import \
@@ -152,6 +155,7 @@ class map_symmetry:
 
     return ncs_object,ncs_cc,ncs_score
   def get_resolution(self):
+    """Use specified resolution or estimate it from map"""
     if not self.params.crystal_info.resolution:
       from cctbx.maptbx import d_min_from_map
       self.params.crystal_info.resolution=\
@@ -161,7 +165,7 @@ class map_symmetry:
         self.params.crystal_info.resolution),file=self.log)
 
   def shift_origin(self):
-
+     """Shift origin to put it at (0,0,0)"""
      origin_shift_grid_units=self.map_data.origin()
      origin_shift=(
          self.map_data.origin()[0]/self.map_data.all()[0],

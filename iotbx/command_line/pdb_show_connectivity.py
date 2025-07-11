@@ -1,3 +1,5 @@
+"""Summarize connectivity of a model"""
+
 # LIBTBX_SET_DISPATCHER_NAME iotbx.pdb.show_connectivity
 
 from __future__ import absolute_import, division, print_function

@@ -22,6 +22,9 @@ core_params_str = """
     .type = bool
     .short_caption = Optimize X-ray/ADP weight
     .style = bold noauto
+  r_free_only = False
+    .type = bool
+    .help = Use only R-free to choose the best weight
   wxc_scale = 0.5
     .type = float
     .optional = False
@@ -156,6 +159,7 @@ class adp_gradients(object):
                      iso_restraints,
                      shake):
     fmodel_dc = fmodel.deep_copy()
+    if fmodel_dc.is_taam(): fmodel_dc.sfg_params.taam=False # XXX discamb
     xray_structure = fmodel_dc.xray_structure
     sel_i = model.refinement_flags.adp_individual_iso
     sel_a = model.refinement_flags.adp_individual_aniso
@@ -238,6 +242,7 @@ class site_gradients(object):
                      gradient_filtering = False,
                      log=None):
     fmodel_dc = fmodel.deep_copy()
+    if fmodel_dc.is_taam(): fmodel_dc.sfg_params.taam=False # XXX discamb
     xray_structure = fmodel_dc.xray_structure
     sel_si  = model.refinement_flags.sites_individual
     sel_sta = model.refinement_flags.sites_torsion_angles

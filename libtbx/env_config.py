@@ -100,7 +100,7 @@ def darwin_shlinkcom(env_etc, env, lo, dylib):
     else:
       opt_m = " -m"
     shlinkcom = [
-      "ld -dynamic%s -headerpad_max_install_names -r -d -bind_at_load -o %s $SOURCES" %
+      "ld -dynamic%s -headerpad_max_install_names -r -bind_at_load -o %s $SOURCES" %
         (opt_m, lo),
       "$SHLINK -nostartfiles -undefined dynamic_lookup -Wl,-dylib"
         " %s -o %s %s" % (dylib1, dylib, lo)]
@@ -3092,6 +3092,16 @@ def get_installed_path():
     installed_path = os.path.join(sys.prefix, 'Library', 'share', 'cctbx')
   else:
     installed_path = os.path.join(get_conda_prefix(), 'share', 'cctbx')
+  if not os.path.isdir(installed_path):
+    # try libtbx/core
+    import sysconfig
+    paths = sysconfig.get_paths()
+    for key in ['purelib', 'platlib']:
+      site_packages = paths[key]
+      test_path = os.path.join(site_packages, 'libtbx', 'core', 'share', 'cctbx')
+      if os.path.isdir(test_path):
+        installed_path = test_path
+      break
   return installed_path
 
 def _get_env(build_path, env_name='libtbx_env'):

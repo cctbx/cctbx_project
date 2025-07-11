@@ -369,9 +369,13 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     self.map_types = map_types
 
     assert (self.twin_law is not None)
+
     f_obs = f_obs.map_to_asu()
+    r_free_flags = r_free_flags.map_to_asu()
+    f_obs, r_free_flags = f_obs.common_sets(r_free_flags)
     self.f_obs_ = f_obs
-    self.r_free_flags_ = r_free_flags.map_to_asu().common_set(f_obs)
+    self.r_free_flags_ = r_free_flags
+
     assert self.f_obs_.indices().all_eq( self.r_free_flags_.indices() )
 
     self.f_obs_w = f_obs.select( ~self.r_free_flags_.data() )
@@ -620,7 +624,11 @@ the percentage of R-free reflections).
       x = flex.abs( self.bulk_solvent_mask().data - manager.bulk_solvent_mask().data )
       print("Bit wise diff mask ", flex.sum( x ), file=self.out)
 
-
+  def is_taam(self):
+    """
+    Not implemented.
+    """
+    return False
 
   def deep_copy(self):
     new_object = twin_model_manager(

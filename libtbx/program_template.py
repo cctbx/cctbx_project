@@ -30,7 +30,7 @@ from __future__ import absolute_import, division, print_function
 import libtbx.phil
 
 from libtbx import Auto, citations
-from libtbx.utils import multi_out
+from libtbx.utils import multi_out, Sorry
 from libtbx.version import get_version
 
 # =============================================================================
@@ -79,8 +79,11 @@ program {
 }
 '''
 
-  # control PHIL parsing behavior when parameters are ambiguous
-  assume_when_ambiguous = False
+  # define the PHIL parameter (e.g. use "parent_scope.scattering_table" if
+  # self.params.parent_scope.scattering_table is a valid paramter)
+  # that should be checked for determining the data type of all the data
+  # stored in the DataManager.
+  use_scattering_table_for_default_type = None
 
   # the DataManager scope includes some shared PHIL parameters
   # set this to true if the DataManager scope should be shown by default
@@ -227,6 +230,18 @@ output {
 
     # optional initialization
     self.custom_init()
+
+    # set default data type, if applicable
+    if self.use_scattering_table_for_default_type is not None:
+      if not (self.data_manager.supports('model') and self.data_manager.supports('miller_array')):
+        raise Sorry('''\
+The "use_scattering_table_for_default_type" requires that the DataManager
+support both "model" and "miller_array" data.
+''')
+      scattering_table = self.params
+      for phil_name in self.use_scattering_table_for_default_type.split('.'):
+        scattering_table = getattr(scattering_table, phil_name)
+      self.data_manager.update_all_defaults(scattering_table)
 
   # ---------------------------------------------------------------------------
   def custom_init(self):
@@ -543,7 +558,6 @@ output {
     elif len(possibilities) < 1:
       return # No unused possibilities for this parameter
     else:
-      from libtbx.utils import Sorry
       raise Sorry("Please set these parameters with keywords: (%s), " %(
         " ".join(possibilities)) + "\nFor example, '%s=%s'" %(
         parameter_name, possibilities[0]))

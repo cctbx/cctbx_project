@@ -17,6 +17,7 @@ from mmtbx.validation import omegalyze
 from mmtbx.validation import cablam
 from cctbx import adptbx
 import six
+from libtbx import Auto
 
 class geometry(object):
   def __init__(self,
@@ -69,32 +70,36 @@ class geometry(object):
         self.from_restraints.den_residual_sum+
         self.from_restraints.ramachandran_residual_sum)
 
-  def angle(self, return_rmsZ=False):
+  def angle(self, origin_id=Auto, return_rmsZ=False):
     mi,ma,me,n = 0,0,0,0
     outliers = 0
     if(self.from_restraints is not None):
       if return_rmsZ:
-        mi,ma,me = self.from_restraints.angle_deviations_z()
+        mi,ma,me,n = self.from_restraints.angle_deviations_z(origin_id=origin_id)
       else:
-        mi,ma,me = self.from_restraints.angle_deviations()
-      n = self.from_restraints.get_filtered_n_angle_proxies()
+        mi,ma,me,n = self.from_restraints.angle_deviations(origin_id=origin_id)
+      # n = self.from_restraints.get_filtered_n_angle_proxies(origin_id=origin_id)
       outliers = self.from_restraints.get_angle_outliers(
         sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
-        sigma_threshold=4)
+        sigma_threshold=4,
+        origin_id=origin_id,
+        )
     return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
 
-  def bond(self, return_rmsZ=False):
+  def bond(self, origin_id=Auto, return_rmsZ=False):
     mi,ma,me,n = 0,0,0,0
     outliers = 0
     if(self.from_restraints is not None):
       if return_rmsZ:
-        mi,ma,me = self.from_restraints.bond_deviations_z()
+        mi,ma,me,n = self.from_restraints.bond_deviations_z(origin_id=origin_id)
       else:
-        mi,ma,me = self.from_restraints.bond_deviations()
-      n = self.from_restraints.get_filtered_n_bond_proxies()
+        mi,ma,me,n = self.from_restraints.bond_deviations(origin_id=origin_id)
+      # n = self.from_restraints.get_filtered_n_bond_proxies(origin_id=origin_id)
       outliers = self.from_restraints.get_bond_outliers(
         sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
-        sigma_threshold=4)
+        sigma_threshold=4,
+        origin_id=origin_id,
+        )
     return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
 
   def chirality(self):
@@ -244,6 +249,7 @@ class geometry(object):
       rama_fav   = self.ramachandran().favored)
 
   def result(self, slim=False):
+    from libtbx import Auto
     if(self.cached_result is None):
       self.cached_result = group_args(
          angle            = self.angle(),
@@ -311,7 +317,10 @@ class geometry(object):
     bonds = self.bond()
     return bonds.n
 
-  def show(self, log=None, prefix="", exclude_protein_only_stats=False, uppercase=True):
+  def show(self, log=None, prefix="",
+           exclude_protein_only_stats=False,
+           include_rmsd_details=True,
+           uppercase=True):
     if(log is None): log = sys.stdout
     def fmt(f1,f2,d1,z1=None):
       if f1 is None  : return '   -       -       -  '
@@ -328,6 +337,8 @@ class geometry(object):
     a,b,c,d,p,n = res.angle, res.bond, res.chirality, res.dihedral, \
       res.planarity, res.nonbonded
     az, bz = res.angle_z, res.bond_z
+    assert b.n>=bz.n, 'rmsd.n != rmsZ.n %s %s' % (b.n, bz.n)
+    assert a.n==az.n
     result = """%s
 %sGeometry Restraints Library: %s
 %sDeviations from Ideal Values - rmsd, rmsZ for bonds and angles.
@@ -409,6 +420,24 @@ class geometry(object):
           format_value("%7.3f", pp.max_dev),
           format_value("%7.3f", pp.mean_dev),
           pp.id)
+
+    if include_rmsd_details:
+      from cctbx.geometry_restraints.linking_class import linking_class
+      origin_ids = linking_class()
+      result += '%s\n%s\n%sDetails of bonding type rmsd' % (prefix, prefix, prefix)
+      for key, i in origin_ids.items():
+        bond_rc=self.bond(origin_id=-i)
+        angle_rc=self.angle(origin_id=-i)
+        if bond_rc.n:
+          result += '\n%s  %-20s : bond   %12.5f (%5d)' % (prefix,
+                                                           key,
+                                                           bond_rc.mean,
+                                                           bond_rc.n)
+        if angle_rc.n:
+          result += '\n%s  %-20s : angle  %12.5f (%5d)' % (prefix,
+                                                           key,
+                                                           angle_rc.mean,
+                                                           angle_rc.n)
     #
     if( uppercase ):
       result = result.upper()

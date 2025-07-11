@@ -25,6 +25,14 @@ from mmtbx.domains_from_pae import parse_pae_file
 master_phil = iotbx.phil.parse(master_phil_str)
 params = master_phil.extract()
 
+# For these tests, use defaults from original version of process_predicted_model
+params.process_predicted_model.minimum_domain_length = 10
+params.process_predicted_model.minimum_sequential_residues = 5
+params.process_predicted_model.pae_power = 1
+params.process_predicted_model.pae_cutoff = 5
+params.process_predicted_model.pae_graph_resolution = 0.5
+
+
 
 two_chains_model_file=os.path.join(data_dir,'two_chains.pdb')
 model_file=os.path.join(data_dir,'fibronectin_af_ca_1358_1537.pdb')
@@ -97,9 +105,10 @@ def tst_01(log = sys.stdout):
   params.process_predicted_model.split_model_by_compact_regions = True
   params.process_predicted_model.maximum_domains = 3
 
+
   model_info = process_predicted_model(m, params, mark_atoms_to_keep_with_occ_one= True)
   models = model_info.model_list
-  for mm,vrms,target_vrms,n1,n2 in zip(models,model_info.vrms_list,[1.1506528458663525,1.1506528458663525],[85,87],[87,85]):
+  for mm,vrms,target_vrms,n1,n2 in zip(models,model_info.vrms_list,[1.1855925413499029,1.1855925413499029],[85,87],[95,93]):
     model_occ_values = mm.get_hierarchy().atoms().extract_occ()
     assert model_occ_values.count(1) == n1
     assert model_occ_values.count(0) == n2
@@ -313,7 +322,10 @@ def tst_04(log = sys.stdout):
     print("process_predicted_model not available...skipping")
     return
 
-  args = "%s" %(two_chains_model_file)
+  args = "%s minimum_domain_length=10 minimum_sequential_residues=5 pae_power=1 pae_cutoff=5 pae_graph_resolution=0.5" %(two_chains_model_file)
+
+
+
   args = args.split()
 
   pp = run_program(program_class=run.Program,args=args)

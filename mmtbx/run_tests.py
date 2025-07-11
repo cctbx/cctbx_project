@@ -1,3 +1,5 @@
+"""Specify tests to be run in this and sub-directories"""
+
 from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
 import libtbx.load_env
@@ -99,6 +101,7 @@ general_tests = [
   "$D/regression/tst_utils.py",
   "$D/regression/tst_alignment.py",
   ["$D/regression/tst_fmodel_fd.py", "P31"],
+  "$D/regression/discamb/tst_fmodel_fd_discamb.py",
   "$D/maps/tst_composite_omit_map.py",
   "$D/maps/tst_composite_omit_map_2.py",
   "$D/maps/tst_composite_omit_map_3.py",
@@ -156,6 +159,8 @@ general_tests = [
   "$D/hydrogens/tst_add_hydrogen_4.py",
   "$D/hydrogens/tst_add_hydrogen_5.py",
   "$D/hydrogens/tst_add_hydrogen_6.py",
+  "$D/hydrogens/tst_add_hydrogen_7.py",
+  "$D/hydrogens/tst_add_hydrogen_8.py",
   #"$D/hydrogens/tst_add_hydrogen_time.py",
   "$D/hydrogens/tst_validate_H.py",
   "$D/hydrogens/tst_connectivity.py",
@@ -221,7 +226,6 @@ general_tests = [
   "$D/regression/tst_regularize_from_pdb_cif.py",
   "$D/regression/tst_find_ncs.py",
   "$D/regression/tst_minimize_chain.py",
-  "$D/regression/tst_minimize_chain_cif.py",
   "$D/regression/tst_sequence_validation.py",
   "$D/regression/tst_prune_model.py",
   "$D/regression/tst_real_space_correlation.py",
@@ -287,6 +291,7 @@ general_tests = [
   "$D/validation/regression/tst_rotalyze.py",
   "$D/validation/regression/tst_ramalyze.py",
   "$D/validation/regression/tst_ramalyze2.py",
+  "$D/validation/regression/tst_ramalyze_rare.py",
   "$D/validation/regression/tst_clashscore.py",
   "$D/validation/regression/tst_clashscore_2.py",
   "$D/validation/regression/tst_restraints.py",
@@ -361,6 +366,7 @@ general_tests = [
   "$D/regression/tst_polder_1.py",
   "$D/regression/tst_polder_2.py",
   "$D/regression/tst_polder_3.py",
+  "$D/regression/tst_polder_4.py",
   "$D/regression/tst_polder_box.py",
   "$D/regression/tst_polder_ccs.py",
   "$D/regression/tst_map_model_cc.py",
@@ -513,6 +519,7 @@ else:
 # generally failing tests
 tst_list_expected_failures = [
   "$D/monomer_library/tst_pdb_interpretation_2.py",
+  "$D/monomer_library/tst_pdb_interpretation_4.py",
   ]
 
 def run():

@@ -1,4 +1,3 @@
-
 """
 Library of convenience functions for working with models and reflection data.
 This contains a number of routines used in phenix.refine and related programs,
@@ -620,6 +619,7 @@ def fmodel_manager2(
   twin_law,
   ignore_r_free_flags,
   mask_params,
+  sf_accuracy_params,
   mtz_object=None,
   data_type=None):
   """
@@ -635,6 +635,7 @@ def fmodel_manager2(
       r_free_flags   = r_free_flags,
       abcd           = abcd,
       mask_params    = mask_params,
+      sf_and_grads_accuracy_params = sf_accuracy_params,
       xray_structure = xray_structure,
       origin         = mtz_object,
       data_type      = data_type)
@@ -650,6 +651,7 @@ def fmodel_manager2(
       twin_law_str   = twin_law,
       detwin_mode    = twin_params.detwin.mode,
       map_types      = twin_params.detwin.map_types,
+      sf_and_grads_accuracy_params = sf_accuracy_params,
       origin         = mtz_object,
       mask_params    = mask_params,
       data_type      = data_type)
@@ -1592,7 +1594,9 @@ class shift_origin(object):
 
   def write_model_file(self, file_name):
     assert self.pdb_hierarchy is not None
-    self.pdb_hierarchy.write_pdb_file(file_name=file_name,
+    self.pdb_hierarchy.write_pdb_or_mmcif_file(
+      target_format='pdb',
+      target_filename=file_name,
       crystal_symmetry=self.crystal_symmetry)
 
   def write_map_file(self, file_name):
@@ -1944,8 +1948,9 @@ class states(object):
     if([crystal_symmetry,self.xray_structure].count(None)==0):
       assert crystal_symmetry.is_similar_symmetry(
         self.xray_structure.crystal_symmetry())
-    self.root.write_pdb_file(
-      file_name        = file_name,
+    self.root.write_pdb_or_mmcif_file(
+      target_format='pdb',
+      target_filename = file_name,
       crystal_symmetry = crystal_symmetry)
 
 class f_000(object):

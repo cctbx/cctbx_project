@@ -1,3 +1,5 @@
+"""Fetch a citation for a PubMed article, output in either the format used
+internally in Phenix, or BibText"""
 
 from __future__ import absolute_import, division, print_function
 from iotbx.bioinformatics import pubmed

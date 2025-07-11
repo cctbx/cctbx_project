@@ -1,3 +1,4 @@
+"""Tools for PDB model manipulations"""
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
 from libtbx.program_template import ProgramTemplate

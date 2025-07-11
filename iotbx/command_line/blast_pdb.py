@@ -1,3 +1,4 @@
+""" Run a BLAST search on the NCBI's web servers."""
 from __future__ import absolute_import, division, print_function
 
 import libtbx.phil

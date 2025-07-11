@@ -1,3 +1,5 @@
+"""Replace values in B-factor field with estimated B values.
+Optionally remove low-confidence residues and split into domains."""
 # -*- coding: utf-8 -*-
 
 from __future__ import division, print_function
@@ -88,6 +90,13 @@ Inputs: Model file (PDB, mmCIF)
           will begin with this prefix
       .short_caption = Output remainder seq file prefix
 
+    mark_atoms_to_keep_with_occ_one = False
+       .type = bool
+       .help = Mark atoms to keep with occupancy of 1 and those to remove \
+                  with zero (default is to remove those that are not desired)
+       .short_caption = Mark atoms to keep with occupancy of 1
+
+
      maximum_output_b = 999.
        .type = float
        .help = Limit output B values (so that they fit in old-style PDB \
@@ -163,6 +172,8 @@ Inputs: Model file (PDB, mmCIF)
        distance_model = self.distance_model,
        params = self.params,
        pae_matrix = self.pae_matrix,
+       mark_atoms_to_keep_with_occ_one = \
+          self.params.output_files.mark_atoms_to_keep_with_occ_one,
        log = self.logger,
        )
 
@@ -197,6 +208,7 @@ Inputs: Model file (PDB, mmCIF)
     if not self.params.control.write_files:
       return  # done
 
+
     starting_residues = self.model.get_hierarchy().overall_counts().n_residues
     print("\nStarting residues: %s" %(starting_residues), file = self.logger)
 
@@ -206,11 +218,26 @@ Inputs: Model file (PDB, mmCIF)
       prefix, ext  = os.path.splitext(self.params.input_files.model)
       prefix = "%s_processed" %(prefix)
       prefix = os.path.basename(prefix)
-    self.processed_model_file_name = "%s.pdb" %(prefix)
+    self.processed_model_file_name = "%s.pdb" %(prefix) # PDB OK updated below
     if not self.processed_model or \
          self.processed_model.overall_counts().n_residues < 1:
       print("No residues obtained after processing...", file = self.logger)
       return None
+
+    # Special case: write out split models marking residues as missing with
+    #   occ = 0
+    if self.params.output_files.mark_atoms_to_keep_with_occ_one:
+      ii = 0
+      for m in self.model_list:
+        ii += 1
+        fn = "%s_%s.pdb" %(prefix,ii)
+        fn = self.data_manager.write_model_file(
+           m, fn,
+           format=self.params.output_files.target_output_format)
+        print("Wrote model with all residues present to %s" %(fn)
+          +"\n marking domain %s with" %(
+           ii) + " occupancy=1 and rest with occupancy=0")
+      return
     if (self.params.output_files.maximum_output_b is not None) and (
        self.processed_model.get_b_iso().min_max_mean().max >
        self.params.output_files.maximum_output_b):
@@ -249,9 +276,7 @@ Inputs: Model file (PDB, mmCIF)
           raise Sorry(
            "Input model cannot have a blank chain ID and non-blank chain IDS")
         chain_id = "A"
-      fn = "%s_%s_%s.pdb" %(prefix,chain_id, count)
-      print("Copying predicted model chain %s (#%s)to %s" %(
-           chain_id,count,fn), file = self.logger)
+      fn = "%s_%s_%s.pdb" %(prefix,chain_id, count)      # PDB OK (updated below)
       if not m or not m.overall_counts().n_residues:
         print("Skipping #%s (no residues)" %(count), file = self.logger)
         continue
@@ -259,6 +284,8 @@ Inputs: Model file (PDB, mmCIF)
            maximum_output_b = self.params.output_files.maximum_output_b)
       fn = self.data_manager.write_model_file(mm,fn,
         format=self.params.output_files.target_output_format)
+      print("Copying predicted model chain %s (#%s) to %s" %(
+           chain_id,count,fn), file = self.logger)
 
       self.processed_model_file_name_list.append(fn)
 

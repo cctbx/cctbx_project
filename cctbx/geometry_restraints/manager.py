@@ -897,11 +897,29 @@ class manager(Base_geometry):
     self.add_planarities_in_place(planarity_proxies)
     self.add_parallelities_in_place(parallelity_proxies)
 
-  def remove_secondary_structure_restraints(self):
-    # Not implemented. The problem here is to remove hbond restraints, which
-    # requires modification of pair_proxies and as complicated as addition
-    # of bond restraint.
-    raise NotImplementedError
+  def remove_secondary_structure_restraints(self, sites_cart):
+    bp_origin_id = origin_ids.get_origin_id('hydrogen bonds')
+    bonds_to_remove = []
+    for proxy_type in self.get_all_bond_proxies():
+      for proxy in proxy_type:
+        if proxy.origin_id == bp_origin_id:
+          bonds_to_remove.append(proxy.i_seqs)
+    self.remove_bond_restraints_in_place(
+        bonded_pairs=bonds_to_remove,
+        sites_cart=sites_cart)
+    if self.angle_proxies is not None:
+      self.angle_proxies = self.angle_proxies.proxy_remove(
+          origin_id=origin_ids.get_origin_id('hydrogen bonds'))
+    if self.planarity_proxies is not None:
+      self.planarity_proxies = self.planarity_proxies.proxy_remove(
+          origin_id=origin_ids.get_origin_id('basepair planarity'))
+    if self.parallelity_proxies is not None:
+      self.parallelity_proxies = self.parallelity_proxies.proxy_remove(
+          origin_id=origin_ids.get_origin_id('basepair parallelity'))
+    if self.parallelity_proxies is not None:
+      self.parallelity_proxies = self.parallelity_proxies.proxy_remove(
+          origin_id=origin_ids.get_origin_id('basepair stacking'))
+    return None
 
   def add_parallelity_proxies_for_side_chain(self, hierarchy, log):
     parallelity_proxies = create_side_chain_restraints( hierarchy=hierarchy,
@@ -939,7 +957,7 @@ class manager(Base_geometry):
     if pair_proxies is not None:
       if pair_proxies.bond_proxies is not None:
         return (pair_proxies.bond_proxies.simple,
-        pair_proxies.bond_proxies.asu)
+                pair_proxies.bond_proxies.asu)
 
   def get_covalent_angle_proxies(self):
     specific_origin_id = origin_ids.get_origin_id('covalent geometry')
@@ -1267,6 +1285,52 @@ class manager(Base_geometry):
     # print "t61: %f" % (t61-t6)
     # print "t7: %f" % (t7-t61)
     # STOP()
+
+  def remove_bond_restraints_in_place(self, bonded_pairs, sites_cart):
+    """ Removing bond restraints in place.
+    Current limitations:
+      * symmetry related cases (1' means symmetry mate of 1):
+        -: 2' --- 1 --- 2
+        -: 1' --- 1
+
+    Args:
+        bonded_pairs (list): list of bonded i_seqs to remove bonds, e.g.
+        [(0,1), (5,15)] for bonds between atoms 0--1 and 5--15 to be removed.
+    """
+    def _show_bpt(bpt):
+      print('bpt size:', bpt.size())
+      for i_seq in range(bpt.size()):
+        print('i_seq', i_seq)
+        d = bpt[i_seq]
+        for k in d.keys():
+          print('  j_seq: %d, %f' % (k, d[k].distance_ideal))
+
+    # print("1-2,"*30)
+    # print('BEGIN shell_sym_tables[0]')
+    # self.shell_sym_tables[0].show()
+    filtered_bonded_pairs = [sorted(x) for x in bonded_pairs if self.is_bonded_atoms(x[0], x[1])]
+    # print("Original BPT")
+    # _show_bpt(self.bond_params_table)
+
+    # Removing bonds from self.shell_sym_tables
+    asu_mappings = self.crystal_symmetry.special_position_settings().\
+        asu_mappings(buffer_thickness=5)
+    asu_mappings.process_sites_cart(
+        original_sites=sites_cart,
+        site_symmetry_table=self.site_symmetry_table)
+
+    pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+    for i, j in filtered_bonded_pairs:
+      del self.shell_sym_tables[0][i][j]
+    pair_asu_table.add_pair_sym_table(self.shell_sym_tables[0])
+    shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
+      pair_asu_table=pair_asu_table,
+      max_shell=3)
+    self.shell_sym_tables = [shell_asu_table.extract_pair_sym_table()
+      for shell_asu_table in shell_asu_tables]
+
+    self.reset_internals()
+    self.pair_proxies(sites_cart=sites_cart)
 
   def is_bonded_atoms(self, i_seq, j_seq):
     i_s = i_seq

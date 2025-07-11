@@ -35,18 +35,6 @@ def exercise():
   lysozyme = """KVFGRCELAAAMKRHGLDNYRGYSLGNWVCAAKFESNFNTQATNRNTDGSTDYGILQINSR"""
   homologs = rcsb_web_services.sequence_search(lysozyme, d_max=2.0)
   assert (len(homologs) > 500)
-  atp_binding = rcsb_web_services.chemical_id_search("ATP", protein_only=True)
-  # print("len(atp_binding)", len(atp_binding), atp_binding) # 1389
-  assert (len(atp_binding) > 1000)
-  atp_binding = rcsb_web_services.chemical_id_search("ATP", xray_only=True, protein_only=True)
-  # print("len(atp_binding)", len(atp_binding)) # 1389
-  assert (len(atp_binding) > 1000)
-  report = rcsb_web_services.get_high_resolution_for_structures(atp_binding)
-  assert (len(report) == len(atp_binding)) and (len(report[0]) == 2)
-  # print (report)
-  report = rcsb_web_services.get_high_resolution_and_residue_count_for_structures(atp_binding)
-  assert (len(report) == len(atp_binding)) and (len(report[0]) == 3)
-  # print (report)
   report = rcsb_web_services.get_r_work_rfree_for_structures(['1ucs', '1yjp'])
   assert report == [['1UCS', 0.133, 0.155], ['1YJP', 0.18086, 0.19014]]
   ligand_info = rcsb_web_services.get_ligand_info_for_structures(['1mru'])
@@ -60,6 +48,27 @@ def exercise():
         'c1nc(c2c(n1)n(cn2)C3C(C(C(O3)COP(=O)(O)OP(=O)(O)OP(=S)(O)O)O)O)N']]
   for answer in reference_ligand_info:
     assert answer in ligand_info, "%s\n%s" % (answer, ligand_info)
+
+def exercise_chemical_id_search():
+  atp_binding = rcsb_web_services.chemical_id_search("ATP", protein_only=True)
+  # print("len(atp_binding)", len(atp_binding), atp_binding) # 1389
+  assert (len(atp_binding) > 1000)
+  atp_binding = rcsb_web_services.chemical_id_search("ATP", xray_only=True, protein_only=True)
+  # print("len(atp_binding)", len(atp_binding)) # 1389
+  assert (len(atp_binding) > 1000)
+  report = rcsb_web_services.get_high_resolution_for_structures(atp_binding)
+  assert (len(report) == len(atp_binding)) and (len(report[0]) == 2)
+  # print (report)
+  report = rcsb_web_services.get_high_resolution_and_residue_count_for_structures(atp_binding)
+  assert (len(report) == len(atp_binding)) and (len(report[0]) == 3)
+  # print (report)
+
+  hyp_search = rcsb_web_services.chemical_id_search("HYP", xray_only=False)
+  # print("len(hyp_search)", len(hyp_search), hyp_search) # 383
+  assert len(hyp_search) >= 383, len(hyp_search)
+  hyp_search = rcsb_web_services.chemical_id_search("HYP", protein_only=True)
+  # print("len(hyp_search)", len(hyp_search), hyp_search)
+  assert len(hyp_search) >= 217, len(hyp_search)
 
 def exercise_2():
   fes_binding = rcsb_web_services.chemical_id_search(
@@ -90,13 +99,51 @@ def exercise_3():
   r = rcsb_web_services.post_query(d_min=5)
   assert len(r) > 1
   r = rcsb_web_services.post_query(sort_by_resolution=True)
-  assert len(r) > 1
+  assert len(r) > 180000
+  r = rcsb_web_services.post_query(clashscore_range=(1,5))
+  print('n clashscore filter:', len(r))
+  assert len(r) > 80000
+  r = rcsb_web_services.post_query(rama_outliers_range=(1,2))
+  print('n rama filter:', len(r))
+  assert len(r) > 10000
+  r = rcsb_web_services.post_query(rota_outliers_range=(0,5))
+  print('n rota filter:', len(r))
+  assert len(r) > 135000
 
 def exercise_get_emdb_id():
   emdb_ids = rcsb_web_services.get_emdb_id_for_pdb_id('8wcc')
   assert emdb_ids == ['EMD-37438']
   emdb_ids = rcsb_web_services.get_emdb_id_for_pdb_id('1yjp')
   assert emdb_ids == None
+
+def exercise_sequence_search():
+  lysozyme = """KVFGRCELAAAMKRHGLDNYRGYSLGNWVCAAKFESNFNTQATNRNTDGSTDYGILQINSR"""
+  r = rcsb_web_services.sequence_search(sequence=lysozyme)
+  print(len(r))
+  assert len(r) > 1200
+  r = rcsb_web_services.sequence_search(sequence=lysozyme, clashscore_range=(0,20))
+  print(len(r))
+  assert len(r) > 1100
+  assert len(r) < 1200
+  r = rcsb_web_services.sequence_search(sequence=lysozyme, rama_outliers_range=(0,1))
+  print(len(r))
+  assert len(r) > 100
+  assert len(r) < 150
+
+def exercise_reference_chain_search():
+  lysozyme = """KVFGRCELAAAMKRHGLDNYRGYSLGNWVCAAKFESNFNTQATNRNTDGSTDYGILQINSR"""
+  r = rcsb_web_services.reference_chain_search(sequence=lysozyme)
+  # print(len(r))
+
+  # This is not going to work at all:
+  # probably because geometry filters are not applicable when we request
+  # "return_type": "polymer_instance", instead of "polymer_entity" in sequence_search.
+  r = rcsb_web_services.reference_chain_search(sequence=lysozyme, clashscore_range=(0,20))
+  # print(len(r))
+  assert len(r) == 0
+  r = rcsb_web_services.reference_chain_search(sequence=lysozyme, d_max=2)
+  # print(len(r))
+  assert len(r) == 0
 
 if (__name__ == "__main__"):
   # thorough_exercise()
@@ -112,6 +159,9 @@ if (__name__ == "__main__"):
     exercise_2()
     exercise_3()
     exercise_get_emdb_id()
+    exercise_sequence_search()
+    exercise_reference_chain_search()
+    exercise_chemical_id_search()
     print("OK")
   else:
     print("OK but skipped.")

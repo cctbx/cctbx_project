@@ -144,6 +144,9 @@ class molprobity(slots_getstate_setstate):
 
   # backwards compatibility with saved results
   def __setstate__(self, state):
+    if sys.version_info.major > 2:
+      from libtbx.easy_pickle import fix_py2_pickle
+      state = fix_py2_pickle(state)
     for name,value in state.items(): setattr(self, name, value)
     for name in self.__slots__ :
       if not hasattr(self, name) : setattr(self, name, None)

@@ -1,3 +1,6 @@
+"""
+Tools for bioinformatics (reading/writing/comparison of sequence files.)
+"""
 from __future__ import absolute_import, division, print_function
 from operator import itemgetter
 from libtbx.utils import Abort
@@ -14,6 +17,7 @@ from libtbx.utils import Sorry
 
 # Wrap lines that are longer than 'width'
 def wrap(text, width):
+  """Wrap lines that are longer than 'width'"""
 
   return re.findall( "[^\n]{1,%d}" % width, text )
 
@@ -843,7 +847,7 @@ _tf_split_regex = re.compile(
 
 def tf_sequence_parse(text):
   """
-  Tom's format sequence parser
+  plain text sequence parser used for SOLVE/RESOLVE files
   """
 
   match = _tf_split_regex.search( text )
@@ -869,24 +873,25 @@ _implemented_sequence_parsers = {
   }
 
 def sequence_parser_for(file_name):
-
+  """Identify sequence parser suitable for file_name"""
   ( name, extension ) = os.path.splitext( file_name )
 
   return _implemented_sequence_parsers.get( extension )
 
 
 def sequence_parser_for_extension(extension):
+  """Identify sequence parser suitable for extension"""
 
   return _implemented_sequence_parsers.get( extension )
 
 
 def known_sequence_formats():
-
+  """List known sequence formats"""
   return list(_implemented_sequence_parsers.keys())
 
 
 def parse_sequence(data):
-
+  """Parse a sequence"""
   parsers = [
     fasta_sequence_parse,
     dbfetch_sequence_parse,
@@ -913,6 +918,7 @@ def parse_sequence(data):
 # XXX test needed
 def any_sequence_format(file_name, assign_name_if_not_defined=False,
     data=None):
+  """Parse any sequence from any format"""
   format_parser = sequence_parser_for(file_name)
   if data is None:
     with open(file_name, "r") as f:
@@ -962,6 +968,7 @@ def any_sequence_format(file_name, assign_name_if_not_defined=False,
 def merge_sequence_files(file_names, output_file, sequences=(),
     include_non_compliant=False, call_back_on_error=None,
     force_new_file=False):
+  """Merge a set of sequence files into a single file"""
   assert (len(file_names) > 0) or (len(sequences) > 0)
   if (len(file_names)==1) and (len(sequences)==0) and (not force_new_file):
     return file_names[0]
@@ -1037,6 +1044,7 @@ class generic_alignment_parser(object):
 
 
 def check_alignments_are_valid(alignments):
+  """Check for valid alignments"""
 
   if not alignments:
     return True
@@ -1151,6 +1159,7 @@ def clustal_alignment_parse(text):
 
 
 def read_clustal_block(lines):
+  """Read a block from a clustal-format file"""
 
   names = []
   sequences = []
@@ -1177,7 +1186,7 @@ def read_clustal_block(lines):
 
 
 def discard_clustal_empty_lines(lines):
-
+  """Discard empty lines from clustal file"""
   while lines:
     if lines[ -1 ].strip():
       break
@@ -1186,7 +1195,7 @@ def discard_clustal_empty_lines(lines):
 
 
 def hhalign_alignment_parse(text):
-
+  """Parse an HHalign formatted file"""
   try:
     hhalign = hhalign_parser( output = text )
 
@@ -1248,6 +1257,7 @@ _implemented_alignment_parsers = {
   }
 
 def alignment_parser_for(file_name):
+  """Identify alignment parser for file_name"""
 
   ( name, extension ) = os.path.splitext( file_name )
 
@@ -1255,15 +1265,17 @@ def alignment_parser_for(file_name):
 
 
 def alignment_parser_for_extension(extension):
+  """Identify alignment parser for extension"""
 
   return _implemented_alignment_parsers.get( extension )
 
 
 def known_alignment_formats():
-
+  """List known alignment formats"""
   return list(_implemented_alignment_parsers.keys())
 
 def any_alignment_file(file_name):
+  """Parse any alignment file"""
   base, ext = os.path.splitext(file_name)
   with open(file_name) as f:
     data = f.read()
@@ -1292,6 +1304,7 @@ def any_alignment_file(file_name):
 
 
 def any_alignment_string(data, extension = None):
+  """Parse any alignment string"""
 
   tried = None
 
@@ -1790,6 +1803,7 @@ class hhalign_parser(hhpred_parser):
       )
 
 def any_hh_file(file_name):
+  """Parse any HHalign file"""
   with open(file_name) as f:
     data = f.read()
   for parser in [hhalign_parser, hhsearch_parser] :
@@ -1803,6 +1817,7 @@ def any_hh_file(file_name):
   raise RuntimeError("Not an HHpred/HHalign/HHsearch file!")
 
 def any_a3m_file(file_name):
+  """Parse any a3m file"""
   with open(file_name) as f:
     data = f.read()
   try:
@@ -1897,6 +1912,7 @@ def ok_a3m_sequence(s, n = None, base_sequence = None):
   else:
     return False
 def composition_from_sequence_file(file_name, log=None):
+  """Get composition from a sequence file"""
   if (log is None):
     log = sys.stdout
   try :
@@ -1919,6 +1935,7 @@ def composition_from_sequence_file(file_name, log=None):
     return group_args(n_residues=n_residues, n_bases=n_bases)
 
 def composition_from_sequence(sequence):
+  """Get composition from a sequence"""
   seq = sequence.upper()
   n_residues = n_bases = 0
   n_valid = len(seq) - seq.count("X")
@@ -1931,8 +1948,8 @@ def composition_from_sequence(sequence):
   return n_residues, n_bases
 
 def duplicate_multiple_chains(text):
-  # make chains that are marked with >7WZE_1|Chains A, B[Auth X]| or similar
-  #  N times that many chains
+  """make chains that are marked with >7WZE_1|Chains A, B[Auth X]| or similar
+  N times that many chains"""
   new_groups = []
   next_lines = []
   unused_lines = []
@@ -1973,7 +1990,7 @@ def duplicate_multiple_chains(text):
     return text
 
 def remove_inside_brackets(text):
-  # remove everything enclosed in []
+  """ remove everything enclosed in []"""
   if not text.find("[")>-1:
     return text
   new_text = ""
@@ -1990,7 +2007,7 @@ def remove_inside_brackets(text):
   return new_text
 
 def get_number_of_dups(line):
-  # looks like >7WZE_1|Chains A, B[Auth X]| or similar
+  """ Get number of duplicate chains: looks like >7WZE_1|Chains A, B[Auth X]| or similar """
   if not line.startswith(">"):
     return 1
   spl = line.split("|")
@@ -2007,7 +2024,7 @@ def get_number_of_dups(line):
 
 def clear_empty_lines(text, apply_duplicate_multiple_chains = False,
     keep_labels = False):
-  # First duplicate any multiple chains, then clear empty lines.
+  """First duplicate any multiple chains, then clear empty lines."""
   if apply_duplicate_multiple_chains:
     text = duplicate_multiple_chains(text)
   # make empty lines just a blank line.  Includes >>> etc.
@@ -2037,10 +2054,10 @@ def get_sequences(file_name=None,text=None,remove_duplicates=None,
      apply_duplicate_multiple_chains = False,
      remove_unknowns = False,
      return_sequences_with_labels = False):
-  # return simple list of sequences in this file. duplicates included
-  #  unless remove_duplicates=True
-  #  remove unknowns (X) if requested
-  #  If return_sequences_with_labels,  return sequence objects with labels
+  """return simple list of sequences in this file. duplicates included
+  unless remove_duplicates=True.
+  remove unknowns (X) if requested.
+  If return_sequences_with_labels,  return sequence objects with labels"""
   if not text:
     if not file_name:
       raise Sorry("Missing file for get_sequences: %s" %(
@@ -2077,7 +2094,7 @@ def get_sequences(file_name=None,text=None,remove_duplicates=None,
 def guess_chain_types_from_sequences(file_name=None,text=None,
     return_as_dict=False,minimum_fraction=None,
     likely_chain_types=None):
-  # Guess what chain types are in this sequence file
+  """Guess what chain types are in this sequence file"""
   if not text:
     if not file_name:
       from libtbx.utils import Sorry
@@ -2127,6 +2144,7 @@ def guess_chain_types_from_sequences(file_name=None,text=None,
 
 def text_from_chains_matching_chain_type(file_name=None,text=None,
     chain_type=None,width=80):
+  """Get sequence text from all the chains that match chain_type"""
   dd=guess_chain_types_from_sequences(file_name=file_name,
     text=text,return_as_dict=True,likely_chain_types=[chain_type])
   sequence_text=""
@@ -2139,6 +2157,7 @@ def text_from_chains_matching_chain_type(file_name=None,text=None,
   return sequence_text
 
 def count_letters(letters="",text="",only_count_non_allowed=None):
+  """Count letter in text"""
   n=0
   if only_count_non_allowed: # count the ones that are not there
     for t in text:
@@ -2151,21 +2170,23 @@ def count_letters(letters="",text="",only_count_non_allowed=None):
   return n
 
 def chain_type_and_residues(text=None,chain_type=None,likely_chain_types=None):
-  # guess the type of chain from text string containing 1-letter codes
-  # and count residues
-  # if chain_type is specified, just use it
-  # if likely_chain_types are specified, use them if possible
-  #
-  # Assumptions:
-  #  1. few or no letters that are not part of the correct dict (there
-  #    may be a few like X or other unknowns)
-  #  2. if all letters are are A is is because poly-ala and poly-gly
-  #     are common for unknowns.
-  #  3. otherwise if it can be DNA or protein it is DNA (because chance is
-  #     very high that if it were protein there would be a non-DNA letter)
-  # Method:  Choose the chain-type that matches the most letters in text.
-  #  If a tie, take the chain type that has the fewest letters.
-  #  If likely_chain_types are specified, use one from there first
+  """guess the type of chain from text string containing 1-letter codes
+  and count residues.
+  If chain_type is specified, just use it.
+  If likely_chain_types are specified, use them if possible.
+
+   Assumptions:
+    1. few or no letters that are not part of the correct dict (there
+      may be a few like X or other unknowns)
+    2. if all letters are are A is is because poly-ala and poly-gly
+       are common for unknowns.
+    3. otherwise if it can be DNA or protein it is DNA (because chance is
+       very high that if it were protein there would be a non-DNA letter)
+   Method:  Choose the chain-type that matches the most letters in text.
+    If a tie, take the chain type that has the fewest letters.
+    If likely_chain_types are specified, use one from there first
+
+  """
 
   text=text.replace(" ","").replace("\n","").lower()
   if not text:
@@ -2265,6 +2286,7 @@ def chain_type_and_residues(text=None,chain_type=None,likely_chain_types=None):
 
 def random_sequence(n_residues=None,residue_basket=None,
    chain_type = 'PROTEIN'):
+  """Return n_residues random residues"""
   assert n_residues and (residue_basket or chain_type)
   if not residue_basket:
     chain_type = chain_type.upper()

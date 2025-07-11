@@ -35,6 +35,13 @@ pair_asu_j_sym_group = scitbx.stl.set.unsigned
 class symmetry(object):
   """This class represents the symmetry of a crystal and bundles information on its unit cell and space group.
   """
+  def __setstate__(self, state):
+    if sys.version_info.major > 2:
+      from libtbx.easy_pickle import fix_py2_pickle
+      state = fix_py2_pickle(state)
+    for name,value in state.items():
+      setattr(self, name, value)
+
   def __init__(self,
         unit_cell=None,
         space_group_symbol=None,

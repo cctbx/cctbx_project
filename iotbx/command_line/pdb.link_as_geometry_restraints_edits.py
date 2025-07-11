@@ -1,3 +1,4 @@
+"""Create geometry restraints edits from PDB LINK records"""
 from __future__ import absolute_import, division, print_function
 from iotbx import pdb
 from libtbx.str_utils import show_string

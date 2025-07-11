@@ -1,12 +1,12 @@
 """
+Tools for reading and writing mmCIF files.
+
 R. J. Gildea, L. J. Bourhis, O. V. Dolomanov, R. W. Grosse-Kunstleve,
 H. Puschmann, P. D. Adams and J. A. K. Howard:
 iotbx.cif: a comprehensive CIF toolbox.
 J. Appl. Cryst. (2011). 44, 1259-1263.
 
 https://doi.org/10.1107/S0021889811041161
-
-http://cctbx.sourceforge.net/iotbx_cif
 
 """
 from __future__ import absolute_import, division, print_function

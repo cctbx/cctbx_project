@@ -1362,6 +1362,42 @@ SCALE3      0.000000  0.000000  0.021784        0.00000
 END
 """
 
+def exercise_renumber_and_move_waters(prefix='exercise_renumber_and_move_waters'):
+  pdb_str = """
+ATOM     16  O   HOH A   2       5.131   5.251   5.823  0.60 10.00           O
+ATOM     18  O   HOH AAFF4       1.132   5.963   7.065  1.00 15.00           O
+ATOM     19  O   HOH A   4       4.132   9.963   7.800  0.50 15.00           O
+TER
+ATOM     60  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
+ATOM     64  CB  LYS A  32       9.193   8.732  12.170  1.00 12.23           C
+ATOM     74  CA  VAL A  33      11.708   5.617  14.332  1.00 11.42           C
+ATOM     77  CB  VAL A  33      11.101   4.227  14.591  1.00 11.47           C
+"""
+
+  with open("%s.pdb"%prefix, 'w') as f:
+    f.write(pdb_str)
+  cmd = " ".join([
+      "phenix.pdbtools",
+      "%s.pdb"%prefix,
+      "renumber_and_move_waters=True",
+      "output.prefix=out_%s"%(prefix)])
+  print(cmd)
+  run_command(command=cmd, verbose=False)
+  # assert os.path.isfile("out_%s_modified.pdb"%(prefix))
+  with open("out_%s_modified.pdb"%(prefix), 'r') as f:
+    pdb_new = f.read()
+    assert pdb_new == """\
+ATOM      1  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
+ATOM      2  CB  LYS A  32       9.193   8.732  12.170  1.00 12.23           C
+ATOM      3  CA  VAL A  33      11.708   5.617  14.332  1.00 11.42           C
+ATOM      4  CB  VAL A  33      11.101   4.227  14.591  1.00 11.47           C
+TER
+ATOM      5  O   HOH A 100       5.131   5.251   5.823  0.60 10.00           O
+ATOM      6  O   HOH A 101       1.132   5.963   7.065  1.00 15.00           O
+ATOM      7  O   HOH A 102       4.132   9.963   7.800  0.50 15.00           O
+END
+"""
+
 def exercise(args):
   exercise_average_alt_confs()
   exercise_flip_symmetric_amino_acids()
@@ -1382,6 +1418,7 @@ def exercise(args):
   exercise_mmcif_support()
   exercise_segid_manipulations()
   exercise_result_is_empty()
+  exercise_renumber_and_move_waters()
   print("OK")
 
 if (__name__ == "__main__"):

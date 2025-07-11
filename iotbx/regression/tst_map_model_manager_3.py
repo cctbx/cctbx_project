@@ -426,7 +426,6 @@ def exercise(file_name, out = sys.stdout):
   mmm.generate_map(box_cushion=0,wrapping=True, d_min=3)
   mam=mmm
   mam_dc=mam.deep_copy()
-
   new_mm_1=mam.map_manager()
   assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
      ((18, 25, 20),(18, 25, 20)))
@@ -463,8 +462,8 @@ def exercise(file_name, out = sys.stdout):
   fsc_curve=dc.map_map_fsc(
       map_id_1='map_manager',map_id_2='filtered',mask_id='mask',
       resolution=3.5,fsc_cutoff = 0.97)
-  assert approx_equal(fsc_curve.d_min, 3.93793648601,eps=0.01)
-  assert approx_equal (fsc_curve.fsc.fsc[-1],0.707536576779)
+  assert approx_equal(fsc_curve.d_min, 3.44, eps=0.01)
+  assert approx_equal (fsc_curve.fsc.fsc[-1],0.7097, eps = 0.01)
 
   # Get map-map CC
   dc=mam_dc.deep_copy()

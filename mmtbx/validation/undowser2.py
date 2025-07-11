@@ -545,15 +545,6 @@ def color_cell(clash_check):
   if clash_check: return 'bgcolor=#ff76a9'
   else: return ''
 
-def count_waters(pdb_string):
-#deprecated
-#this is fragile and dependent on pdb format, but faster than hierarchy read-in
-  water_count = 0
-  for line in pdb_string:
-    if line.startswith("HETATM") and line[17:20]=="HOH":
-      water_count += 1
-  return water_count
-
 #this subclasses probe_clashscore_manager but doesn't really use most of it. It's mainly to reuse the code for checking for probe existance
 class probe_undowser_manager(probe_clashscore_manager):
   def __init__(self,

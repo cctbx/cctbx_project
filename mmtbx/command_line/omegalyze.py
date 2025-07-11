@@ -1,3 +1,4 @@
+"""Counts of cis prolines and twisted prolines"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.omegalyze
 # LIBTBX_SET_DISPATCHER_NAME molprobity.omegalyze
@@ -57,3 +58,4 @@ def old_run(args):
 if __name__ == '__main__':
   # old_run(sys.argv[1:])
   run_program(program_class=omegalyze.Program, hide_parsing_output=True)
+

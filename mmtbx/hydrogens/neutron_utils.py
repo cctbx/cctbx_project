@@ -129,7 +129,8 @@ def neutron_exchange_hydrogens(hierarchy,
           bonds1 = get_bond_pairs(atom_group.resname)
           bonds2 = get_bond_pairs(atom_group.resname,
                                   alternate=True)
-          if cifs:
+          if 0: # PVA: This triggers a bug. Added 13-MAR-2025, modules/phenix_regression/refinement/neutron/tst_ready_set_all_d.py
+          #if cifs:
             bonds3 = get_bond_pairs_from_cif(cifs.get(atom_group.resname, None))
             if bonds3:
               bonds1 = bonds3

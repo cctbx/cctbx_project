@@ -1,3 +1,5 @@
+"""Read any file and check format"""
+
 from __future__ import absolute_import, division, print_function
 
 from iotbx import file_reader

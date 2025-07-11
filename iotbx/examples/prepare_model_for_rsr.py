@@ -1,3 +1,4 @@
+"""Preparation of model for real-space refinement"""
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import mmtbx.model

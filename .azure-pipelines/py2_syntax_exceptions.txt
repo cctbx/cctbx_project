@@ -1,8 +1,15 @@
+cctbx/maptbx/fsc_curve.py
+cctbx/maptbx/bcr/qmap.py
+cctbx_website/command_line/comment_to_docstring.py
+cctbx_website/command_line/run_pdoc_cctbx_api.py
 crys3d/hklviewer/webbrowser_messenger_py3.py
 crys3d/hklviewer/xtriage_runner.py
 crys3d/regression/tst_websocket.py
 libtbx/auto_build/conda_build/create_custom_bin.py
 libtbx/resource_monitor.py
+libtbx/word_index_generator.py
+mmtbx/regression/tst_polder.py
+mmtbx/validation/validate_ligands.py
 serialtbx/util/energy_scan_notch_finder.py
 xfel/ui/components/xfel_gui_init.py
 xfel/ui/components/ebeam_plotter.py
@@ -21,3 +28,5 @@ xfel/merging/application/filter/reflection_filter.py
 xfel/util/preference.py
 cctbx/maptbx/qscore.py
 cctbx/maptbx/tst_qscore.py
+xfel/merging/application/merge/merger.py
+xfel/command_line/auto_submit.py

@@ -1,0 +1,6 @@
+# Dockerfile for adding sudo to base rockylinux:8 image
+
+FROM rockylinux:9
+
+RUN yum install -y sudo \
+    && yum clean all

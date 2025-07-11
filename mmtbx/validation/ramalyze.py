@@ -14,7 +14,6 @@ import mmtbx.rotamer
 from mmtbx.rotamer import ramachandran_eval
 from mmtbx.validation.fav_lists import fav_tables
 from six.moves import range
-from iotbx.pdb.hybrid_36 import hy36decode
 import json
 
 # XXX Use these constants internally, never strings!
@@ -203,7 +202,6 @@ class ramalyze(validation):
     ##      chain_id = chain.id
     for three in generate_protein_threes(hierarchy=pdb_hierarchy, geometry=None):
       main_residue = three[1]
-      # print main_residue.id_str()
       phi_psi_atoms = three.get_phi_psi_atoms()
       if phi_psi_atoms is None:
         continue
@@ -224,7 +222,7 @@ class ramalyze(validation):
         if (main_residue.resname[0:3] == "GLY"):
           res_type = RAMA_GLYCINE
         elif (main_residue.resname[0:3] == "PRO"):
-          is_cis = is_cis_peptide(three)
+          is_cis = is_cislike_peptide(three)
           if is_cis:
             res_type = RAMA_CISPRO
           else:
@@ -285,8 +283,8 @@ class ramalyze(validation):
           i_seqs = main_residue.atoms().extract_i_seq()
           assert (not i_seqs.all_eq(0))
           self._outlier_i_seqs.extend(i_seqs)
-    #self.results.sort(key=lambda r: (r.model_id,r. chain_id, int(r.resseq), r.icode, r.altloc))
-    self.results.sort(key=lambda r: (r.model_id,r. chain_id, int(hy36decode(len(r.resseq), r.resseq)), r.icode, r.altloc))
+    #self.results.sort(key=lambda r: (r.model_id,r. chain_id, r.resseq_as_int(), r.icode, r.altloc))
+    self.results.sort(key=lambda r: (r.model_id,r. chain_id, r.resseq_as_int(), r.icode, r.altloc))
     out_count, out_percent = self.get_outliers_count_and_fraction()
     fav_count, fav_percent = self.get_favored_count_and_fraction()
     self.out_percent = out_percent * 100.0
@@ -609,13 +607,30 @@ def get_omega_atoms(three):
   omega_atoms = [ca1, c, n, ca2]
   return omega_atoms
 
-def is_cis_peptide(three):
+def is_cis_peptide(three): #Depricated in favor of is_cislike_peptide below
   omega_atoms = get_omega_atoms(three)
   omega = get_dihedral(omega_atoms)
   if omega is None:
     return False
   if(omega > -30 and omega < 30):
     return True
+  else:
+    return False
+
+def is_cislike_peptide(three):
+  omega_atoms = get_omega_atoms(three)
+  omega = get_dihedral(omega_atoms)
+  if omega is None:
+    return False
+  if(omega > -90 and omega < 90):
+    return True
+    #Splitting omega at 90 accounts for twisted peptides and placed them in the cis/trans
+    #  category closest to their modeled angle
+    #This split is currently only relevant for twisted Proline, since cis nonPro is extremely rare
+    #  and we do not define a separate Rama category for it
+    #Users are advised to inspect every twisted Proline manually, since twisted peptides are higly
+    #  unusual and should not be assumed to be close to correct. But they have to go somewhere on
+    #  the Ramachandran plot
   else:
     return False
 
@@ -637,34 +652,26 @@ def get_cas_from_three(three):
   ##return cas
 
 def get_altloc_from_three(three):
-  #in conformer world, where threes come from, altlocs are most accurately
-  #  stored at the atom level, in the .id_str()
   #look at all atoms in the main residues, plus the atoms used in calculations
   #  from adjacent residues to find if any have altlocs
   ##mc_atoms = (" N  ", " CA ", " C  ", " O  ")
   for atom in three[1].atoms():
-    altchar = get_altloc_from_id_str(atom.id_str())
-    if altchar != ' ':
+    altchar = atom.parent().altloc
+    if altchar != '':
       return altchar
   for atom in three[0].atoms():
     if atom.name != ' C  ':
       continue
-    altchar = get_altloc_from_id_str(atom.id_str())
-    if altchar != ' ':
+    altchar = atom.parent().altloc
+    if altchar != '':
       return altchar
   for atom in three[2].atoms():
     if atom.name != ' N  ':
       continue
-    altchar = get_altloc_from_id_str(atom.id_str())
-    if altchar != ' ':
+    altchar = atom.parent().altloc
+    if altchar != '':
       return altchar
   return ''
-
-def get_altloc_from_id_str(id_str):
-  # checks to see if the atom id_str contains model info, and adjusts if needed.
-  if id_str.startswith("model"):
-    id_str = id_str.partition("pdb=")[1]+id_str.partition("pdb=")[2]
-  return id_str[9:10]
 
 def construct_complete_residues(res_group):
   if (res_group is not None):

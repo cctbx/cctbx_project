@@ -9,6 +9,7 @@ class DialsProcessorWithLogging(Processor):
   '''Overrides for steps of dials processing of stills with XFEL GUI database logging.'''
 
   def __init__(self, params, composite_tag = None, rank = 0):
+    self.debug_file_handle = None
     super(DialsProcessorWithLogging, self).__init__(params, composite_tag, rank)
     self.tt_low = None
     self.tt_high = None
@@ -122,8 +123,15 @@ class DialsProcessorWithLogging(Processor):
 
   def pre_process(self, experiments):
     super(DialsProcessorWithLogging, self).pre_process(experiments)
-
     if self.params.radial_average.enable:
+      try:
+        self.radial_average(experiments)
+      except Exception as e:
+        run, timestamp = self.get_run_and_timestamp(experiments)
+        self.log_frame(experiments, None, run, 0, timestamp = timestamp)
+        raise e
+
+  def radial_average(self, experiments):
       from dxtbx.command_line.radial_average import run as radial_run
       from scitbx.array_family import flex
 
@@ -158,7 +166,7 @@ class DialsProcessorWithLogging(Processor):
         len(observed) < self.params.dispatch.hit_finder.minimum_number_of_reflections
     ):
       run, timestamp = self.get_run_and_timestamp(experiments)
-      self.log_frame(None, None, run, self.n_strong, timestamp = timestamp,
+      self.log_frame(experiments, None, run, self.n_strong, timestamp = timestamp,
                      two_theta_low = self.tt_low, two_theta_high = self.tt_high)
     return observed
 
@@ -167,7 +175,7 @@ class DialsProcessorWithLogging(Processor):
       experiments, indexed = super(DialsProcessorWithLogging, self).index(experiments, reflections)
     except Exception as e:
       run, timestamp = self.get_run_and_timestamp(experiments)
-      self.log_frame(None, None, run, self.n_strong, timestamp = timestamp,
+      self.log_frame(experiments, None, run, self.n_strong, timestamp = timestamp,
                      two_theta_low = self.tt_low, two_theta_high = self.tt_high)
       raise e
     else:

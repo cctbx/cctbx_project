@@ -1,3 +1,4 @@
+"""Test sorting of hierarchy"""
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from six.moves import zip

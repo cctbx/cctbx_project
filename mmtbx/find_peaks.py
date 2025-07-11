@@ -1,3 +1,4 @@
+"""Find peaks in a map"""
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 import sys

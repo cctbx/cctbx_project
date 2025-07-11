@@ -218,8 +218,9 @@ class comp_comp_id(slots_getstate_setstate):
     is_rna_dna = (self.get_classification() in ["RNA", "RNAv3", "DNA", "DNAv3"])
     normalized = False
     for atom in self.atom_list:
-      atom_id = atom.atom_id.replace("'", "*")
+      atom_id = atom.atom_id
       if is_rna_dna:
+        atom_id = atom.atom_id.replace("'", "*")
         if atom_id == "OP1":
           normalized = True
           atom_id = "O1P"

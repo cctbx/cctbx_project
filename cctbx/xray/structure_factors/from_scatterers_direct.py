@@ -6,6 +6,7 @@ from cctbx.xray.structure_factors import global_counters
 from cctbx.xray import ext
 from cctbx import miller
 from libtbx.utils import user_plus_sys_time
+from cctbx import math_module
 
 class from_scatterers_direct(managed_calculation_base):
 
@@ -25,7 +26,7 @@ class from_scatterers_direct(managed_calculation_base):
     :type algorithm: string
     :param algorithm: the name of the evaluation method, either \
     "direct", "use_alt_parallel"
-    :type cos_sin_table: boolean
+    :type cos_sin_table: boolean or math_module.cos_sin_table type
     :param cos_sin_table: If set to 'True' a precalculated cos_sin_table is used \
     instead of actual trigonometric functions. Using a manager overrides this \
     setting with the one specified in the manager.
@@ -49,6 +50,8 @@ class from_scatterers_direct(managed_calculation_base):
       cos_sin_table = default_cos_sin_table
     elif (cos_sin_table == False):
       cos_sin_table = None
+    else:
+      assert isinstance(cos_sin_table, math_module.cos_sin_table)
     if (cos_sin_table is None):
       self._results = ext.structure_factors_direct(
         self._miller_set.unit_cell(),

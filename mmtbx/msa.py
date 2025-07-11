@@ -1,3 +1,5 @@
+"""Create multiple sequence alignment file"""
+
 from __future__ import absolute_import, division, print_function
 
 from libtbx import easy_run

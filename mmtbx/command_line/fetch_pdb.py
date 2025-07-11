@@ -1,3 +1,4 @@
+"""Download structure and optionally data from PDB"""
 from __future__ import absolute_import, division, print_function
 
 # LIBTBX_SET_DISPATCHER_NAME phenix.fetch_pdb
@@ -20,3 +21,4 @@ def custom_args_proc(cli_parser):
 
 if (__name__ == "__main__"):
   run_program(program_class=fetch.Program, custom_process_arguments=custom_args_proc)
+

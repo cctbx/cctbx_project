@@ -90,7 +90,7 @@ def test_3():
   easy_run.call(cmd)
   res_fname = 'tst_reduce_model_with_biomt_test3_unique_biomt_000.cif'
   assert_lines_in_file(res_fname, """
-      ATOM 1 N . LYS 0 151 ? 72.74200 43.65400 193.22800 14.010 14.01000 N ? A ? 1 1""")
+      ATOM 1 N . LYS 0 151 ? 72.74200 43.65400 193.22800 14.010 14.01000 N ? A ? 1 N 1""")
   assert_lines_in_file(res_fname, """
       _pdbx_struct_assembly_gen.asym_id_list
        1 (1-9) A""")
@@ -100,7 +100,7 @@ def test_3():
   easy_run.call(cmd)
   res_fname = 'tst_reduce_model_with_biomt_test3_unique_biomt_001.cif'
   assert_lines_in_file(res_fname, """
-      ATOM 1 N . LYS C 151 ? 186.74500 185.38200 236.77300 14.010 14.01000 N ? A ? 1 1""")
+      ATOM 1 N . LYS C 151 ? 186.74500 185.38200 236.77300 14.010 14.01000 N ? A ? 1 N 1""")
   assert_lines_in_file(res_fname, """
       _pdbx_struct_assembly_gen.asym_id_list
        1 (1-9) A""")

@@ -17,6 +17,7 @@ import time
 import types
 
 import six
+from six.moves import cStringIO as StringIO
 from six.moves import range
 try:
   import threading
@@ -258,7 +259,22 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
 def approx_equal_core(a1, a2, eps, multiplier, out, prefix):
   if isinstance(a1, (six.text_type, six.binary_type)):
     return a1 == a2
-  if hasattr(a1, "__len__"): # traverse list
+
+  # Dictionaries
+  if isinstance(a1, dict) and isinstance(a2, dict):
+    # Check if dictionaries have the same keys
+    if set(a1.keys()) != set(a2.keys()):
+      raise AssertionError(
+        "approx_equal ERROR: a1.keys() != a2.keys(): %s != %s" % (a1.keys(), a2.keys()))
+    # Compare each key-value pair
+    for key in a1:
+      if not approx_equal_core(
+        a1[key], a2[key], eps, multiplier, out, prefix + str(key) + ": "):
+        return False
+    return True
+
+  # List-like objects
+  if hasattr(a1, "__len__"):
     if (len(a1) != len(a2)):
       raise AssertionError(
         "approx_equal ERROR: len(a1) != len(a2): %d != %d" % (
@@ -268,6 +284,8 @@ def approx_equal_core(a1, a2, eps, multiplier, out, prefix):
                 a1[i], a2[i], eps, multiplier, out, prefix+"  "):
         return False
     return True
+
+  # Complex numbers
   is_complex_1 = isinstance(a1, complex)
   is_complex_2 = isinstance(a2, complex)
   if (is_complex_1 and is_complex_2): # complex & complex
@@ -294,6 +312,8 @@ def approx_equal_core(a1, a2, eps, multiplier, out, prefix):
               0, a2.imag, eps, multiplier, out, prefix+"imag "):
       return False
     return True
+
+  # Regular numbers
   ok = True
   d = a1 - a2
   if (abs(d) > eps):
@@ -758,7 +778,6 @@ directly from within the same Python process running the unit tests.
   return cmd_result
 
 def exercise():
-  from six.moves import cStringIO as StringIO
   assert approx_equal(1, 1)
   out = StringIO()
   assert not approx_equal(1, 0, out=out)
@@ -913,6 +932,35 @@ ERROR: is_above_limit(value=None, limit=3, eps=1)
   assert precision_approx_equal(0.799999,0.800004,precision=18)==False
   print("OK")
 
+def iterate_tests_without_and_with_mmCIF_conversion():
+  """ Return a simple iterator that first does nothing and returns False,
+      then converts all pdb_str_xxxx locals to mmCIF-only format
+      and prints a notice and returns True.
+
+      Behavior can be modified by specifying "skip_mmcif" or "mmcif_only"
+       in sys.argv or by setting the value of the environmental
+      variable REGRESSION_SKIP_CIF ( mmcif_only, skip_mmcif,
+       blank or missing is run both)
+  """
+  skip_string = os.environ.get("REGRESSION_SKIP_CIF",None)
+  if skip_string is None:
+    if 'mmcif_only' in sys.argv:
+      skip_string = 'mmcif_only'
+    elif 'skip_mmcif' in sys.argv:
+      skip_string = 'skip_mmcif'
+
+  if skip_string in [None, '']:
+    run_list = [False, True]
+  elif skip_string == 'mmcif_only':
+    run_list = [True]
+  elif skip_string == 'skip_mmcif':
+    run_list = [False]
+  else:
+    raise Sorry(
+      "Unrecognized value of REGRESSION_SKIP_CIF: '%s'" %(skip_string))
+
+  return run_list
+
 def convert_pdb_to_cif_for_pdb_str(locals, chain_addition = "ZXLONG",
    key_str="pdb_str", hetatm_name_addition = "ZY", print_new_string = True):
   #  Converts all the strings that start with "pdb_str" from PDB to mmcif
@@ -961,6 +1009,7 @@ def tst_convert():
   text = """
 ATOM      1  N   VAL A   1      -5.111   0.049  13.245  1.00  9.36           N
 """
+  # print(convert_string_to_cif_long(text))
   assert convert_string_to_cif_long(text).strip() == """
 data_phenix
 loop_
@@ -982,8 +1031,9 @@ loop_
   _atom_site.label_asym_id
   _atom_site.label_entity_id
   _atom_site.label_seq_id
+  _atom_site.auth_atom_id
   _atom_site.pdbx_PDB_model_num
-  ATOM  1  N  .  VAL  AZXLONG  1  ?  -5.11100  0.04900  13.24500  1.000  9.36000  N  ?  A  ?  1  1
+  ATOM  1  N  .  VAL  AZXLONG  1  ?  -5.11100  0.04900  13.24500  1.000  9.36000  N  ?  A  ?  1  N  1
 
 loop_
   _chem_comp.id
@@ -1019,7 +1069,34 @@ def tst_raises():
   except Exception as e:
     assert str(e) == 'jkl'
 
+def exercise_dict():
+  # test 1
+  assert approx_equal({'a':1, 'b':2}, {'a':1, 'b':2})
+
+  # test 2
+  out = StringIO()
+  assert not approx_equal({'a':1, 'b':2}, {'a':2, 'b':1}, out=out)
+  assert not show_diff(out.getvalue().replace("1e-006", "1e-06"), """\
+approx_equal eps: 1e-06
+approx_equal multiplier: 10000000000.0
+a: 1 approx_equal ERROR
+a: 2 approx_equal ERROR
+a:
+b: 2 approx_equal ERROR
+b: 1 approx_equal ERROR
+b:
+""")
+
+  # test 3
+  with raises(AssertionError) as e:
+    approx_equal({'a':1, 'b':2}, {'a':1, 'b':2, 'c':3}, out=out)
+  expected_error = """approx_equal ERROR: a1.keys() != a2.keys(): dict_keys(['a', 'b']) != dict_keys(['a', 'b', 'c'])"""
+  if sys.version_info.major == 2:
+    expected_error = """approx_equal ERROR: a1.keys() != a2.keys(): ['a', 'b'] != ['a', 'c', 'b']"""
+  assert str(e.value) == expected_error
+
 if (__name__ == "__main__"):
   tst_convert()
   tst_raises()
   exercise()
+  exercise_dict()

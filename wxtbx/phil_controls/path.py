@@ -15,7 +15,7 @@ WXTBX_PHIL_PATH_NARROW = 8
 WXTBX_PHIL_PATH_UPDATE_ON_KILL_FOCUS = 16
 WXTBX_PHIL_PATH_DEFAULT_CWD = 32
 
-class PathCtrl(wx.PyPanel, phil_controls.PhilCtrl):
+class PathCtrl(wx.Panel, phil_controls.PhilCtrl):
   def __init__(self, *args, **kwds):
     phil_controls.PhilCtrl.__init__(self)
     self.SetOptional(True) # this will be overridden elsewhere if necessary
@@ -38,7 +38,7 @@ class PathCtrl(wx.PyPanel, phil_controls.PhilCtrl):
       path_size = kwds.get("size", (400, -1))
       szr2_pad = wx.LEFT
     kwds['size'] = wx.DefaultSize
-    wx.PyPanel.__init__(self, *args, **kwds)
+    wx.Panel.__init__(self, *args, **kwds)
     self._formats = ()
     szr = wx.BoxSizer(szr_type)
     self.SetSizer(szr)

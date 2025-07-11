@@ -1,3 +1,4 @@
+"""Create xray-structure from a poscar file and dump as pickle"""
 from __future__ import absolute_import, division, print_function
 def run(args):
   assert len(args) > 0

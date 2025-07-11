@@ -37,7 +37,8 @@ class unrestrained_qbr_fsr(object):
                log   = None):
     adopt_init_args(self, locals())
     data = mmtbx.refinement.data.fs(fmodel = fmodel)
-    restraints = mmtbx.refinement.restraints.manager(model = model)
+    restraints = mmtbx.refinement.restraints.manager(
+      model = model, use_target=False)
     #
     rt_old = model.get_refinement_flags()
     rf = mmtbx.refinement.refinement_flags.manager( # This is ugly!!
@@ -59,9 +60,9 @@ class unrestrained_qbr_fsr(object):
           q_min      = q_min,
           q_max      = q_max).calculator()
         minimized = minimizers.lbfgs(
-            calculator     = calculator,
-            max_iterations = max_iterations,
-            mode           = 'lbfgsb')
+          calculator     = calculator,
+          max_iterations = max_iterations,
+          mode           = 'lbfgsb')
         if log is not None:
           print("occ: r_work=%6.4f r_free=%6.4f"%(
             fmodel.r_work(), fmodel.r_free()), file = log)
@@ -74,9 +75,9 @@ class unrestrained_qbr_fsr(object):
           u_min      = adptbx.b_as_u(b_min),
           u_max      = adptbx.b_as_u(b_max)).calculator()
         minimized = minimizers.lbfgs(
-            calculator     = calculator,
-            max_iterations = max_iterations,
-            mode           = 'lbfgsb')
+          calculator     = calculator,
+          max_iterations = max_iterations,
+          mode           = 'lbfgsb')
         if log is not None:
           print("adp: r_work=%6.4f r_free=%6.4f"%(
             fmodel.r_work(), fmodel.r_free()), file = log)
@@ -153,18 +154,29 @@ class simple_fsr(object):
           r_free           = self.fmodel.r_free()
         )
       )
+      self.model.set_sites_cart(
+        sites_cart=self.fmodel.xray_structure.sites_cart())
+      self.model.set_b_iso(values=
+        self.fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1))
 
   def _macrocycle(self):
     for mc in range(self.macro_cycles):
       self._call(msg="weights   ", func=self._compute_weights)
       self._call(msg="refine xyz", func=self._refine_xyz)
       self._call(msg="refine adp", func=self._refine_adp)
+      self.fmodel.update_all_scales(remove_outliers=False)
 
   def _call(self, msg, func = None, args=None):
     timer = user_plus_sys_time()
     if(func is not None):
       if args is None: func()
       else:            func(args)
+    #
+    self.model.set_sites_cart(
+      sites_cart=self.fmodel.xray_structure.sites_cart())
+    self.model.set_b_iso(values=
+      self.fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1))
+    #
     assert self.model.get_xray_structure() == self.fmodel.xray_structure
     self._update_r_factors()
     t = timer.elapsed()
@@ -185,7 +197,7 @@ class simple_fsr(object):
       model                              = self.model,
       correct_special_position_tolerance = 1.0,
       target_weights_params              = params,
-      macro_cycle                        = 2,
+      macro_cycle                        = 0,
       show_summary                       = False,
       log                                = self.log)
 
@@ -209,7 +221,7 @@ class simple_fsr(object):
     calculator = calculators.xyz(
       data              = self.data,
       data_weight       = wx,
-      restraints_weight = weights.w,
+      restraints_weight = 1, # XXX
       restraints        = self.restraints,
       max_shift         = self.max_xyz_shift).calculator()
     minimized = minimizers.lbfgs(
@@ -224,7 +236,7 @@ class simple_fsr(object):
     calculator = calculators.adp(
       data              = self.data,
       data_weight       = wx,
-      restraints_weight = weights.w,
+      restraints_weight = 1, # XXX
       restraints        = self.restraints,
       u_min             = adptbx.b_as_u(self.b_min),
       u_max             = adptbx.b_as_u(self.b_max)).calculator()

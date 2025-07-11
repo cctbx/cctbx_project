@@ -1255,10 +1255,15 @@ std::string DotScorer::test()
           if (!res.valid) {
             return "DotScorer::test(): Could not score dots for weight scaling cases";
           }
-          const static double rowValueArray[] = { wGap, wBump, wBond, res.attractSubScore,
-            res.bumpSubScore, res.hBondSubScore };
+          std::vector<double> rowValueArray;
+          rowValueArray.push_back(wGap);
+          rowValueArray.push_back(wBump);
+          rowValueArray.push_back(wBond);
+          rowValueArray.push_back(res.attractSubScore);
+          rowValueArray.push_back(res.bumpSubScore);
+          rowValueArray.push_back(res.hBondSubScore);
           std::vector<double> row;
-          for (size_t i = 0; i < sizeof(rowValueArray)/sizeof(rowValueArray[0]); i++) {
+          for (size_t i = 0; i < rowValueArray.size(); i++) {
             row.push_back(rowValueArray[i]);
           }
           results.push_back(row);

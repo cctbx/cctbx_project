@@ -23,11 +23,30 @@ class error_modifier_mm24(worker):
       self.limit_differences = False
 
     self.tuning_param = self.params.merging.error.mm24.tuning_param
+
+    # Currently the use of intensity bins is in evaluation. Historically this algorithm has used
+    # 100 intensity bins solely because Phil Evans did in the Evans 2011 paper. Recent evaluations
+    # showed that removing binning does not harm the data processing. If anything, it might lead to
+    # a tiny improvement.
+    # To use the method without binning, set params.merging.error.mm24.number_of_intensity_bins = 0
+    # In the future, if binning is decided to be removed, delete the methods:
+    #   self.calculate_functional_binning
+    #   self.calculate_intensity_bin_limits()
+    #   self.distribute_differences_over_intensity_bins()
+    # To keep the binning, delete the methods:
+    #   self.calculate_functional_no_bining
     self.number_of_intensity_bins = self.params.merging.error.mm24.number_of_intensity_bins
-    if self.params.merging.error.mm24.cc_after_pr:
-      self.cc_key = 'correlation_after_post'
+    if self.number_of_intensity_bins > 0:
+      self.calculate_functional = self.calculate_functional_binning
     else:
-      self.cc_key = 'correlation'
+      self.calculate_functional = self.calculate_functional_no_bining
+    if self.params.merging.error.mm24.constant_sadd:
+      self.cc_key = None
+    else:
+      if self.params.merging.error.mm24.cc_after_pr:
+        self.cc_key = 'correlation_after_post'
+      else:
+        self.cc_key = 'correlation'
 
   def __repr__(self):
     return 'Adjust intensity errors -- mm24'
@@ -45,9 +64,11 @@ class error_modifier_mm24(worker):
     # First set up a reflection table to do work downstream.
     reflections = self.setup_work_arrays(reflections)
     # Now moving to intensities, find the bin limits using global min/max of the means of each reflection
-    self.calculate_intensity_bin_limits()
     # Once bin limits are determined, assign intensities on each rank to appropriate bin limits
-    self.distribute_differences_over_intensity_bins()
+    if self.number_of_intensity_bins > 0:
+      self.calculate_intensity_bin_limits()
+      self.distribute_differences_over_intensity_bins()
+    # Intialize the s_fac and s_add parameters
     self.initialize_mm24_params()
     # Run LBFGSB minimizer
     #  -- only rank0 does minimization but gradients/functionals are calculated using all rank
@@ -56,10 +77,14 @@ class error_modifier_mm24(worker):
     if self.params.merging.error.mm24.do_diagnostics:
       self.plot_diagnostics(reflections)
     # Finally update the variances of each reflection as per Eq (10) in Brewster et. al (2019)
+    if self.cc_key:
+      correlation = reflections[self.cc_key]
+    else:
+      correlation = None
     reflections['intensity.sum.variance'] = self._get_var_mm24(
       reflections['intensity.sum.variance'],
       reflections['biased_mean'],
-      reflections[self.cc_key]
+      correlation
       )
     del reflections['biased_mean']
     return reflections
@@ -77,8 +102,9 @@ class error_modifier_mm24(worker):
     pairwise_differences_normalized = flex.double()
     counting_stats_var_i = flex.double()
     counting_stats_var_j = flex.double()
-    correlation_i = flex.double()
-    correlation_j = flex.double()
+    if self.cc_key:
+      correlation_i = flex.double()
+      correlation_j = flex.double()
     number_of_reflections = 0
 
     for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections):
@@ -92,7 +118,8 @@ class error_modifier_mm24(worker):
       if number_of_measurements > self.params.merging.minimum_multiplicity:
         I = refls['intensity.sum.value'].as_numpy_array()
         var_cs = refls['intensity.sum.variance'].as_numpy_array()
-        correlation = refls[self.cc_key].as_numpy_array()
+        if self.cc_key:
+          correlation = refls[self.cc_key].as_numpy_array()
         number_of_reflections += I.size
         self.biased_mean_count.extend(flex.double(I.size, refls_biased_mean[0]))
         indices = np.triu_indices(n=I.size, k=1)
@@ -111,7 +138,8 @@ class error_modifier_mm24(worker):
             rng.shuffle(sort_indices)
             I = I[sort_indices]
             var_cs = var_cs[sort_indices]
-            correlation = correlation[sort_indices]
+            if self.cc_key:
+              correlation = correlation[sort_indices]
             # this option is for performance trade-offs
             if N > 1000:
               subset_indices = rng.choice(
@@ -129,15 +157,17 @@ class error_modifier_mm24(worker):
         biased_mean.extend(flex.double(N, refls_biased_mean[0]))
         counting_stats_var_i.extend(flex.double(var_cs[indices[0]]))
         counting_stats_var_j.extend(flex.double(var_cs[indices[1]]))
-        correlation_i.extend(flex.double(correlation[indices[0]]))
-        correlation_j.extend(flex.double(correlation[indices[1]]))
+        if self.cc_key:
+          correlation_i.extend(flex.double(correlation[indices[0]]))
+          correlation_j.extend(flex.double(correlation[indices[1]]))
 
     self.work_table['pairwise_differences'] = pairwise_differences
     self.work_table['biased_mean'] = biased_mean
     self.work_table['counting_stats_var_i'] = counting_stats_var_i
     self.work_table['counting_stats_var_j'] = counting_stats_var_j
-    self.work_table['correlation_i'] = correlation_i
-    self.work_table['correlation_j'] = correlation_j
+    if self.cc_key:
+      self.work_table['correlation_i'] = correlation_i
+      self.work_table['correlation_j'] = correlation_j
     reflections['biased_mean'] = biased_mean_to_reflections
 
     self.logger.log(f"Number of work reflections selected: {number_of_reflections}")
@@ -196,19 +226,41 @@ class error_modifier_mm24(worker):
       )
 
   def initialize_mm24_params(self):
-    mean_differences = np.zeros(self.number_of_intensity_bins)
-    for bin_index, differences in enumerate(self.intensity_bins):
-      summation = self.mpi_helper.comm.reduce(
-        flex.sum(differences['pairwise_differences']), op=self.mpi_helper.MPI.SUM, root=0
+    if len(self.refl_biased_means) == 0:
+      maximum_intensity = 0
+    else:
+      maximum_intensity = max(self.refl_biased_means)
+    upper = self.mpi_helper.comm.reduce(
+        maximum_intensity,
+        op=self.mpi_helper.MPI.MAX,
+        root=0
         )
-      counts = self.mpi_helper.comm.reduce(
-        len(differences['pairwise_differences']), op=self.mpi_helper.MPI.SUM, root=0
-        )
-      if self.mpi_helper.rank == 0:
-        if counts > 0:
-          mean_differences[bin_index] = summation / counts
-        else:
-          mean_differences[bin_index] = np.nan
+    n_bins = 100
+    if self.mpi_helper.rank == 0:
+      intensity_bins = np.linspace(0, 0.1*upper, n_bins + 1)
+      bin_centers = (intensity_bins[1:] + intensity_bins[:-1]) / 2
+    else:
+      intensity_bins = np.zeros(n_bins + 1)
+    self.mpi_helper.comm.Bcast(intensity_bins, root=0)
+    if len(self.refl_biased_means) == 0:
+      summation_rank = np.zeros(n_bins)
+      counts_rank = np.zeros(n_bins, dtype=int)
+    else:
+      biased_mean_rank = self.work_table['biased_mean'].as_numpy_array()
+      pairwise_differences_rank = self.work_table['pairwise_differences'].as_numpy_array()
+      summation_rank, _ = np.histogram(
+        biased_mean_rank,
+        bins=intensity_bins,
+        weights=pairwise_differences_rank
+      )
+      counts_rank, _ = np.histogram(
+        biased_mean_rank,
+        bins=intensity_bins
+      )
+    summation = np.zeros(n_bins)
+    counts = np.zeros(n_bins, dtype=int)
+    self.mpi_helper.comm.Reduce(summation_rank, summation, op=self.mpi_helper.MPI.SUM, root=0)
+    self.mpi_helper.comm.Reduce(counts_rank, counts, op=self.mpi_helper.MPI.SUM, root=0)
 
     if self.mpi_helper.rank == 0:
       def fitting_equation(params, bin_centers, mean_differences_0, return_jac):
@@ -229,32 +281,26 @@ class error_modifier_mm24(worker):
 
       def target_fun_bfgs(params, bin_centers, mean_differences):
         curve, dcurve_dsf, dcurve_dsadd = fitting_equation(params, bin_centers, mean_differences[0], True)
-        arg = (curve - mean_differences) / mean_differences
-        darg_dcurve = 1 / mean_differences
+        arg = curve - mean_differences
         loss = 0.5 * np.sum(arg**2)
-        dloss_dsf = np.sum(arg * darg_dcurve * dcurve_dsf)
-        dloss_dsadd = np.sum(arg * darg_dcurve * dcurve_dsadd)
+        dloss_dsf = np.sum(arg * dcurve_dsf)
+        dloss_dsadd = np.sum(arg * dcurve_dsadd)
         return loss, (dloss_dsf, dloss_dsadd)
 
       def target_fun_scalar(sadd, bin_centers, mean_differences):
         curve = fitting_equation([self.expected_sf, sadd], bin_centers, mean_differences[0], False)
-        arg = (curve - mean_differences) / mean_differences
-        darg_dcurve = 1 / mean_differences
+        arg = curve - mean_differences
         loss = 0.5 * np.sum(arg**2)
         return loss
 
-      bin_centers = (self.intensity_bin_limits[1:] + self.intensity_bin_limits[:-1]) / 2
-      good_indices = np.invert(np.isnan(mean_differences))
+      good_indices = counts > 0
+      mean_differences = summation[good_indices] / counts[good_indices]
       bin_centers = bin_centers[good_indices]
-      mean_differences = mean_differences[good_indices]
 
-      positive_indices = bin_centers > 0
-      bin_centers = bin_centers[positive_indices]
-      mean_differences = mean_differences[positive_indices]
-
-      self.sadd = [0, 0.001, 0.001]
-      self.sadd[1] = 0.001
-      self.sadd[2] = 0.001
+      if self.cc_key:
+        self.sadd = [0, 0.001, 0.001]
+      else:
+        self.sadd = [0]
       if self.expected_sf is None:
         results = scipy.optimize.minimize(
           target_fun_bfgs,
@@ -294,7 +340,10 @@ class error_modifier_mm24(worker):
 
     else:
       self.sfac = 0
-      self.sadd = [0, 0, 0]
+      if self.cc_key:
+        self.sadd = [0, 0, 0]
+      else:
+        self.sadd = [0]
     self.sfac = self.mpi_helper.comm.bcast(self.sfac, root=0)
     self.sadd = self.mpi_helper.comm.bcast(self.sadd, root=0)
 
@@ -306,36 +355,34 @@ class error_modifier_mm24(worker):
     size = self.mpi_helper.size
 
     if self.params.merging.error.mm24.tuning_param_opt:
-      param_offset = 2
       param_shift = 1
       self.x = flex.double([self.tuning_param, self.sfac, *self.sadd])
     else:
-      param_offset = 1
       param_shift = 0
       self.x = flex.double([self.sfac, *self.sadd])
-    self.n = 3 + param_offset
+    n_parameters = len(self.x)
+    l = flex.double(n_parameters, 1e-8)
+    u = flex.double(n_parameters, 0)
+    if self.params.merging.error.mm24.tuning_param_opt:
+      # normalization for the truncated t-distribution is numerically unstable for nu < 2
+      l[0] = 2.5
+      if self.x[0] < 2.5:
+        self.x[0] = 2.5
+    for degree_index in range(param_shift, n_parameters):
+      l[degree_index] = -1000
+    if self.mpi_helper.rank == 0:
+      self.minimizer = lbfgsb.minimizer(
+        n = n_parameters,
+        l = l,
+        u = u,
+        nbd = flex.int(n_parameters, 1),
+      )
     if self.mpi_helper.rank == 0:
       self.logger.main_log(
         'Initial Parameter Estimates = '
         + f'sfac: {self.sfac} '
         + f'sadd: {self.sadd[0]} '
         + f'nu: {self.tuning_param} '
-      )
-    l = flex.double(self.n, 1e-8)
-    u = flex.double(self.n, 0)
-    if self.params.merging.error.mm24.tuning_param_opt:
-      # normalization for the truncated t-distribution is numerically unstable for nu < 2
-      l[0] = 2
-      if self.x[0] < 2:
-        self.x[0] = 2
-    for degree_index in range(3):
-      l[degree_index + param_offset] = -1000
-    if self.mpi_helper.rank == 0:
-      self.minimizer = lbfgsb.minimizer(
-        n = self.n,
-        l = l,
-        u = u,
-        nbd = flex.int(self.n, 1),
       )
     while True:
       self.compute_functional_and_gradients()
@@ -347,12 +394,10 @@ class error_modifier_mm24(worker):
             tuning_param = f'{self.tuning_param:0.3f}'
           self.sfac = self.x[0 + param_shift]
           self.sadd = self.x[1 + param_shift:]
-          sfac = f'{self.sfac:0.3f}'
-          sadd = [f'{self.sadd[i]:0.3f}' for i in range(3)]
           log_out = 'intermediate minimization results = '\
             + f'loss: {self.L:.2f} '\
-            + f'sfac: {sfac} '\
-            + f'sadd: {sadd} '
+            + f'sfac: {self.sfac:0.3f} '\
+            + f'sadd: {[f"{value:0.3f}" for value in self.sadd]} '
           if self.params.merging.error.mm24.tuning_param_opt:
             log_out += f'nu: {tuning_param}'
           self.logger.main_log(log_out)
@@ -372,12 +417,10 @@ class error_modifier_mm24(worker):
 
     if self.mpi_helper.rank == 0:
       tuning_param = f'{self.tuning_param:0.3f}'
-      sfac = f'{self.sfac:0.3f}'
-      sadd = [f'{self.sadd[i]:0.3f}' for i in range(3)]
       log_out = 'FINAL mm24 VALUES = '\
         + f'loss: {self.L:.2f} '\
-        + f'sfac: {sfac} '\
-        + f'sadd: {sadd} '
+        + f'sfac: {self.sfac:0.3f} '\
+        + f'sadd: {[f"{value:0.3f}" for value in self.sadd]} '
       if self.params.merging.error.mm24.tuning_param_opt:
         log_out += f'nu: {tuning_param}'
       self.logger.main_log(log_out)
@@ -393,10 +436,6 @@ class error_modifier_mm24(worker):
   def verify_derivatives(self):
     shift = 0.000001
     import copy
-    if self.params.merging.error.mm24.tuning_param_opt:
-      self.n = 6
-    else:
-      self.n = 5
 
     self.calculate_functional()
     sfac = copy.copy(self.sfac)
@@ -439,7 +478,7 @@ class error_modifier_mm24(worker):
       print(f'der_wrt_sfac numerical: {check_der_wrt_sfac} analytical {der_wrt_sfac}')
 
     # sadd:
-    for degree_index in range(3):
+    for degree_index in range(len(self.sadd)):
       if sadd[degree_index] == 0:
         self.sadd[degree_index] = shift
       else:
@@ -529,13 +568,17 @@ class error_modifier_mm24(worker):
     return L, dL_dvar, dL_dv
 
   def _get_sadd2(self, correlation):
-    term1 = flex.exp(-self.sadd[1] * correlation)
-    sadd2 = self.sadd[0]**2 * term1 + self.sadd[2]**2
-    dsadd2_dsaddi = [
-      2 * self.sadd[0] * term1,
-      -correlation * self.sadd[0]**2 * term1,
-      2 * self.sadd[2] * flex.double(len(correlation), 1)
-      ]
+    if correlation:
+      term1 = flex.exp(-self.sadd[1] * correlation)
+      sadd2 = self.sadd[0]**2 * term1 + self.sadd[2]**2
+      dsadd2_dsaddi = [
+        2 * self.sadd[0] * term1,
+        -correlation * self.sadd[0]**2 * term1,
+        2 * self.sadd[2] * flex.double(len(correlation), 1)
+        ]
+    else:
+      sadd2 = self.sadd[0]**2
+      dsadd2_dsaddi = [2 * self.sadd[0]]
     return sadd2, dsadd2_dsaddi
 
   def _get_var_mm24(self, counting_err, biased_mean, correlation, return_der=False):
@@ -548,7 +591,60 @@ class error_modifier_mm24(worker):
     else:
       return var
 
-  def calculate_functional(self):
+  def calculate_functional_no_bining(self):
+    comm = self.mpi_helper.comm
+    MPI = self.mpi_helper.MPI
+
+    if self.cc_key:
+      correlation_i = self.work_table['correlation_i']
+      correlation_j = self.work_table['correlation_j']
+    else:
+      correlation_i = None
+      correlation_j = None
+    var_i, dvar_i_dsfac, dvar_i_dsadd2, dsadd2_i_dsaddi = self._get_var_mm24(
+      self.work_table['counting_stats_var_i'],
+      self.work_table['biased_mean'],
+      correlation_i,
+      return_der=True
+      )
+    var_j, dvar_j_dsfac, dvar_j_dsadd2, dsadd2_j_dsaddi = self._get_var_mm24(
+      self.work_table['counting_stats_var_j'],
+      self.work_table['biased_mean'],
+      correlation_j,
+      return_der=True
+      )
+
+    if self.params.merging.error.mm24.likelihood == 'normal':
+      L_rank, dL_dvar_x = self._loss_function_normal(
+        self.work_table['pairwise_differences'], var_i, var_j
+        )
+    elif self.params.merging.error.mm24.likelihood == 't-dist':
+      if self.params.merging.error.mm24.tuning_param_opt:
+        L_rank, dL_dvar_x, dL_dnu = self._loss_function_t_v_opt(
+          self.work_table['pairwise_differences'], var_i, var_j
+          )
+        dL_dnu_rank = flex.sum(dL_dnu)
+      else:
+        L_rank, dL_dvar_x = self._loss_function_t(
+          self.work_table['pairwise_differences'], var_i, var_j
+          )
+
+    dL_dsfac_rank = flex.sum(dL_dvar_x * (dvar_i_dsfac + dvar_j_dsfac))
+    dL_dsadd_rank = [None for _ in range(len(self.sadd))]
+    for degree_index in range(len(self.sadd)):
+      dL_dsadd_rank[degree_index] = flex.sum(dL_dvar_x * (
+        dvar_i_dsadd2 * dsadd2_i_dsaddi[degree_index] + dvar_j_dsadd2 * dsadd2_j_dsaddi[degree_index]
+        ))
+
+    self.L = comm.reduce(flex.sum(L_rank), MPI.SUM, root=0)
+    self.dL_dsfac = comm.reduce(dL_dsfac_rank, MPI.SUM, root=0)
+    self.dL_dsadd = [None for _ in range(len(self.sadd))]
+    for degree_index in range(len(self.sadd)):
+      self.dL_dsadd[degree_index] = comm.reduce(dL_dsadd_rank[degree_index], MPI.SUM, root=0)
+    if self.params.merging.error.mm24.tuning_param_opt:
+      self.dL_dnu = comm.reduce(dL_dnu_rank, MPI.SUM, root=0)
+
+  def calculate_functional_binning(self):
     comm = self.mpi_helper.comm
     MPI = self.mpi_helper.MPI
     L_bin_rank = flex.double(self.number_of_intensity_bins, 0)
@@ -612,8 +708,6 @@ class error_modifier_mm24(worker):
         self.dL_dnu = flex.sum(self.bin_weighting * dL_dnu_bin)
 
   def plot_diagnostics(self, reflections):
-    import matplotlib.pyplot as plt
-    I_scale = 100000
     def get_rankits(n, down_sample, distribution):
       prob_level = (np.arange(1, n+1) - 0.5) / n
       if distribution == 'half normal':
@@ -622,89 +716,34 @@ class error_modifier_mm24(worker):
         prob_level = (prob_level + 1) / 2
         return scipy.stats.t.ppf(prob_level[::down_sample], df=self.tuning_param)
 
-    # In intensity bins, the estimated std of I/sigma based on pairwise differences
-    # See Absolute pairwise differences: https://en.wikipedia.org/wiki/Robust_measures_of_scale
-    # Rousseeuw, Peter J.; Croux, Christophe (December 1993),
-    #   "Alternatives to the Median Absolute Deviation",
-    #   Journal of the American Statistical Association, 88 (424): 1273–1283
-    # This gets the conversion factor from median pairwise differences to standard deviation
-    def min_fun_t(c, df):
-      term0 = scipy.stats.t.ppf(3/4, df=df)
-      term1 = scipy.stats.t.cdf(term0 + 1/c, df=df)
-      term2 = scipy.stats.t.cdf(term0 - 1/c, df=df)
-      term3 = 1/2
-      diff = term1 - term2 - term3
-      return diff**2
-    if self.mpi_helper.rank == 0:
-      if self.params.merging.error.mm24.likelihood == 'normal':
-        conversion_factor = 1.1926
-      elif self.params.merging.error.mm24.likelihood in ['t-dist']:
-        results = scipy.optimize.minimize_scalar(
-          min_fun_t,
-          bounds=(0.1, 2),
-          args=(self.tuning_param)
-          )
-        conversion_factor = results.x
-    else:
-      conversion_factor = None
-    conversion_factor = self.mpi_helper.comm.bcast(conversion_factor)
-
-    median_differences = [[] for i in range(self.number_of_intensity_bins)]
-    for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections):
-      number_of_reflections = refls.size()
-      if number_of_reflections == 0:
-        break
-      elif number_of_reflections > 1:
-        biased_mean = flex.mean(refls['intensity.sum.value'])
-        bin_index = np.searchsorted(self.intensity_bin_limits, biased_mean) - 1
-        if biased_mean > self.intensity_bin_limits[0] and biased_mean < self.intensity_bin_limits[-1]:
-          I = refls['intensity.sum.value'].as_numpy_array()
-          var_mm24 = self._get_var_mm24(
-            refls['intensity.sum.variance'],
-            flex.double(len(refls), biased_mean),
-            refls[self.cc_key]
-            ).as_numpy_array()
-
-          # calculate the median difference for the pairwise differences
-          differences = np.abs(I[np.newaxis] - I[:, np.newaxis])
-          variances = var_mm24[np.newaxis] + var_mm24[:, np.newaxis]
-          median_differences[bin_index].append(
-            np.median(differences / np.sqrt(variances), axis=1)
-            )
-
-    binned_scale = np.zeros(self.number_of_intensity_bins)
-    for bin_index in range(self.number_of_intensity_bins):
-      if len(median_differences[bin_index]) > 0:
-        median_differences[bin_index] = np.concatenate(median_differences[bin_index])
-      all_median_differences = self.mpi_helper.gather_variable_length_numpy_arrays(
-        np.array(median_differences[bin_index], dtype=float), root=0, dtype=float
-        )
-      if self.mpi_helper.rank == 0:
-        binned_scale[bin_index] = np.median(all_median_differences) * conversion_factor
-
     # Get all the pairwise differences onto rank 0 for plotting
     pairwise_differences = []
-    for bin_index, differences in enumerate(self.intensity_bins):
-      if len(differences) > 0:
-        var_i = self._get_var_mm24(
-          differences['counting_stats_var_i'],
-          differences['biased_mean'],
-          differences['correlation_i'],
-          return_der=False
-          )
-        var_j = self._get_var_mm24(
-          differences['counting_stats_var_j'],
-          differences['biased_mean'],
-          differences['correlation_j'],
-          return_der=False
-          )
-        normalized_differences = differences['pairwise_differences'] / flex.sqrt(var_i + var_j)
-        pairwise_differences.append(normalized_differences.as_numpy_array())
+    if self.cc_key:
+      correlation_i = self.work_table['correlation_i']
+      correlation_j = self.work_table['correlation_j']
+    else:
+      correlation_i = None
+      correlation_j = None
+    var_i = self._get_var_mm24(
+      self.work_table['counting_stats_var_i'],
+      self.work_table['biased_mean'],
+      correlation_i,
+      return_der=False
+      )
+    var_j = self._get_var_mm24(
+      self.work_table['counting_stats_var_j'],
+      self.work_table['biased_mean'],
+      correlation_j,
+      return_der=False
+      )
+    normalized_differences = self.work_table['pairwise_differences'] / flex.sqrt(var_i + var_j)
+    pairwise_differences = normalized_differences.as_numpy_array()
     all_pairwise_differences = self.mpi_helper.gather_variable_length_numpy_arrays(
-        np.concatenate(pairwise_differences), root=0, dtype=float
-        )
+      pairwise_differences, root=0, dtype=float
+      )
 
     if self.mpi_helper.rank == 0:
+      import matplotlib.pyplot as plt
       sorted_pairwise_differences = np.sort(all_pairwise_differences)
       lim = 5
       downsample = 10000
@@ -718,10 +757,10 @@ class error_modifier_mm24(worker):
         sorted_pairwise_differences, bins=pairwise_differences_bins, density=True
         )
 
-      fig, axes = plt.subplots(1, 3, figsize=(8, 3))
+      fig, axes = plt.subplots(1, 2, figsize=(6, 3))
       axes[0].bar(
         pairwise_differences_centers, pairwise_differences_hist,
-        width=pairwise_differences_db, label='$\omega_{hkl}$'
+        width=pairwise_differences_db, label=r'$\omega_{hkl}$'
         )
       axes[0].plot(
         pairwise_differences_centers,
@@ -732,12 +771,12 @@ class error_modifier_mm24(worker):
         axes[0].plot(
           pairwise_differences_centers,
           2*scipy.stats.t.pdf(pairwise_differences_centers, df=self.tuning_param),
-          color=grey2, label=f't-dist\n$\\nu: ${self.tuning_param:0.1f}'
+          color=grey2, label=r't-dist $\nu$: ' + f'{self.tuning_param:0.1f}'
           )
 
       axes[0].legend(frameon=False, fontsize=8, handlelength=1)
-      axes[0].set_ylabel('Distribution of $\omega_{hbk}$')
-      axes[0].set_xlabel('Normalized PD ($\omega_{hbk}$)')
+      axes[0].set_ylabel(r'Distribution of $\omega_{hbk}$')
+      axes[0].set_xlabel(r'Normalized PD ($\omega_{hbk}$)')
       axes[0].set_xlim([0, 4.5])
       axes[0].set_xticks([0, 1, 2, 3, 4])
 
@@ -756,27 +795,12 @@ class error_modifier_mm24(worker):
 
       axes[1].set_ylim([0, lim])
       axes[1].set_ylabel('Rankits')
-      axes[1].set_xlabel('Sorted Normalized PD ($\omega_{hbk}$)')
+      axes[1].set_xlabel(r'Sorted Normalized PD ($\omega_{hbk}$)')
       axes[1].set_box_aspect(1)
       axes[1].set_xticks([0, 1, 2, 3, 4])
       axes[1].set_yticks([0, 1, 2, 3, 4])
       axes[1].set_xlim([0, 4.5])
       axes[1].set_ylim([0, 4.5])
-
-      intensity_centers = (self.intensity_bin_limits[1:] + self.intensity_bin_limits[:-1]) / 2
-      x = intensity_centers / I_scale
-      if self.params.merging.error.mm24.likelihood in ['t-dist']:
-        v = self.tuning_param
-        term0 = v / (v - 2)
-        term1 = 4*v / (np.pi * (v - 1)**2)
-        term2 = (gamma((v + 1) / 2) / gamma(v / 2))**2
-        expected_sigma = np.sqrt(term0 - term1 * term2)
-        axes[2].plot([x[0], x[-1]], expected_sigma * np.ones(2), color=grey2)
-      axes[2].plot([x[0], x[-1]], np.sqrt(1 - 2/np.pi) * np.ones(2), color=[0, 0, 0])
-      axes[2].plot(x, binned_scale, label='STD')
-
-      axes[2].set_ylabel('Standard Deviation of $I_{hbk}/\sigma_{hbk}$')
-      axes[2].set_xlabel('Mean Intensity X 100,000')
       fig.tight_layout()
       fig.savefig(os.path.join(
         self.params.output.output_dir,
@@ -785,32 +809,34 @@ class error_modifier_mm24(worker):
       plt.close()
 
     # Get the correlations for later plotting
-    cc_all = self.mpi_helper.gather_variable_length_numpy_arrays(
-        np.unique(self.work_table['correlation_i'].as_numpy_array()), root=0, dtype=float
-        )
-    if self.mpi_helper.rank == 0:
-      # CC & sadd plots #
-      bins = np.linspace(cc_all.min(), cc_all.max(), 101)
-      dbin = bins[1] - bins[0]
-      centers = (bins[1:] + bins[:-1]) / 2
-      hist_all, _ = np.histogram(cc_all, bins=bins)
+    if self.cc_key:
+      cc_all = self.mpi_helper.gather_variable_length_numpy_arrays(
+          np.unique(self.work_table['correlation_i'].as_numpy_array()), root=0, dtype=float
+          )
+      if self.mpi_helper.rank == 0:
+        # CC & sadd plots #
+        bins = np.linspace(cc_all.min(), cc_all.max(), 101)
+        dbin = bins[1] - bins[0]
+        centers = (bins[1:] + bins[:-1]) / 2
+        hist_all, _ = np.histogram(cc_all, bins=bins)
 
-      hist_color = np.array([0, 49, 60]) / 256
-      line_color = np.array([213, 120, 0]) / 256
-      sadd2, _ = self._get_sadd2(flex.double(centers))
-      fig, axes_hist = plt.subplots(1, 1, figsize=(5, 3))
-      axes_sadd = axes_hist.twinx()
-      axes_hist.bar(centers, hist_all / 1000, width=dbin, color=hist_color)
-      axes_sadd.plot(centers, self.sfac**2 * sadd2, color=line_color)
-      axes_hist.set_xlabel('Correlation Coefficient')
-      axes_hist.set_ylabel('Lattices (x1,000)')
-      axes_sadd.set_ylabel('$s_{\mathrm{fac}}^2 \\times s_{\mathrm{add}}^2$')
-      fig.tight_layout()
-      fig.savefig(os.path.join(
-        self.params.output.output_dir,
-        self.params.output.prefix + '_sadd.png'
-        ))
-      plt.close()
+        hist_color = np.array([0, 49, 60]) / 256
+        line_color = np.array([213, 120, 0]) / 256
+        sadd2, _ = self._get_sadd2(flex.double(centers))
+        fig, axes_hist = plt.subplots(1, 1, figsize=(5, 3))
+        axes_sadd = axes_hist.twinx()
+        axes_hist.bar(centers, hist_all / 1000, width=dbin, color=hist_color)
+        axes_sadd.plot(centers, self.sfac**2 * sadd2, color=line_color)
+        axes_hist.set_xlabel('Correlation Coefficient')
+        axes_hist.set_ylabel('Lattices (x1,000)')
+        axes_sadd.set_ylabel(r'$s_{\mathrm{fac}}^2 \times s_{\mathrm{add}}^2$')
+        fig.tight_layout()
+        fig.savefig(os.path.join(
+          self.params.output.output_dir,
+          self.params.output.prefix + '_sadd.png'
+          ))
+        plt.close()
+
 
 if __name__ == '__main__':
   from xfel.merging.application.worker import exercise_worker

@@ -1,8 +1,8 @@
+""" Used by the PHENIX GUI to manage file objects and associated
+phil parameters.
+"""
+
 from __future__ import absolute_import, division, print_function
-
-# This module is used by the PHENIX GUI to manage file objects and associated
-# phil parameters.
-
 # TODO better tests!  major functionality is tested as part of the handlers
 # specific to HKL/PDB formats, but not every method yet
 

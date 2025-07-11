@@ -1,3 +1,5 @@
+"""Add hydrogens to a model"""
+
 from __future__ import absolute_import, division, print_function
 import os, time
 from libtbx.program_template import ProgramTemplate

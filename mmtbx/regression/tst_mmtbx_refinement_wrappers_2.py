@@ -67,7 +67,7 @@ END
 def run(d_min            = 1.0,
         scattering_table = "electron",
         algorithm        = "direct",
-        macro_cycles     = 5,
+        macro_cycles     = 10,
         max_iterations   = 50,
         shake_model      = True,
         use_cctbx        = True):
@@ -126,6 +126,7 @@ def run(d_min            = 1.0,
   #
   # Run refinement
   #
+  sc_start = model.get_sites_cart().deep_copy()
   o = wrappers.simple_fsr(
     model           = model,
     fmodel          = fmodel,
@@ -138,6 +139,9 @@ def run(d_min            = 1.0,
     )
   o.run()
   # Sanity checks
+  print()
+  sc_final = model.get_sites_cart()
+  print("shift from start:", flex.mean(flex.sqrt((sc_start - sc_final).dot())))
   assert approx_equal(o.results[-1].r_work, fmodel.r_work())
   fmodel.update_xray_structure(
     xray_structure = model.get_xray_structure(), update_f_calc=True)

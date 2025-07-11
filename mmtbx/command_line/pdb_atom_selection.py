@@ -1,3 +1,4 @@
+"""Extract selected atoms from PDB file (useful for experimenting with atom selections)"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.pdb_atom_selection
 
@@ -65,3 +66,4 @@ if (__name__ == "__main__"):
   run_program(parser_class=SelectionParser,
               program_class=atom_selection.Program,
               custom_process_arguments=custom_args_proc)
+

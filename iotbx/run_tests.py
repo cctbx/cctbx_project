@@ -1,3 +1,7 @@
+"""
+List of tests to run in regression tests
+"""
+
 from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
 import sys
@@ -14,6 +18,7 @@ tst_list_base = [
   "$D/regression/tst_data_manager.py",
   "$D/regression/tst_map_manager_wrapping.py",
   "$D/regression/tst_map_manager.py",
+  "$D/regression/tst_map_manager_2.py",
   "$D/regression/tst_map_model_manager.py",
   "$D/regression/tst_map_model_manager_2.py",
   "$D/regression/tst_map_model_manager_3.py",
@@ -37,6 +42,7 @@ tst_list_base = [
   "$D/regression/tst_poscar.py",
   "$D/kriber/tst_strudat.py",
   "$D/cif/tests/tst_geometry.py",
+  "$D/cif/tests/tst_crystal_symmetry_builder.py",
   "$D/cif/tests/tst_lex_parse_build.py",
   "$D/cif/tests/tst_model.py",
   "$D/cif/tests/tst_restraints.py",

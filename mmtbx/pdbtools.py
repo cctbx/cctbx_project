@@ -1,7 +1,8 @@
 from __future__ import absolute_import, division, print_function
 import iotbx.phil
 from cctbx import crystal
-from mmtbx.refinement import rigid_body
+from iotbx.pdb import resseq_encode, resseq_decode
+import iotbx.pdb
 from cctbx.array_family import flex
 from libtbx.utils import Sorry
 import random
@@ -251,6 +252,12 @@ move_waters_last = False
   .short_caption = Move waters to end of model
   .help = Transfer waters to the end of the model.  Addresses some \
     limitations of water picking in phenix.refine.
+renumber_and_move_waters = False
+  .type = bool
+  .short_caption = Renumber and move waters to end of chains
+  .help = Transfer waters to the end of respective chains. Renumber them \
+    so that numbering starts at the nearest 100 after the last non-water \
+    in the chain.
 }
 """
 
@@ -263,6 +270,8 @@ class modify(object):
     self.params = params
     self.model = model
     self._neutralize_scatterers()
+    model_was_processed = self.model.processed()
+    had_restraints = self.model.restraints_manager_available()
     if not model.crystal_symmetry() or not model.crystal_symmetry().unit_cell():
       # Make it up
       from cctbx.maptbx.box import shift_and_box_model
@@ -315,6 +324,7 @@ class modify(object):
        self.params.remove_alt_confs or
        self.params.average_alt_confs or
        self.params.move_waters_last or
+       self.params.renumber_and_move_waters or
        self.params.remove_fraction or
        self.params.keep or
        self.params.remove):
@@ -330,22 +340,17 @@ class modify(object):
       self._remove_alt_confs()
       self._average_alt_confs()
       self._move_waters()
+      self._renumber_and_move_waters()
       self._remove_atoms()
       self._apply_keep_remove()
-      # Here goes really nasty hack. Never repeat it.
-      # It is here because I don't have clear idea about how to handle
-      # such dramatic changes in number of atoms etc that just was performed
-      # for hierarchy.
+      # Here we basically unset everything and reprocess if
+      # model was processed in the beginning.
       self.pdb_hierarchy.reset_atom_i_seqs()
       self.pdb_hierarchy.atoms_reset_serial()
       self.model._pdb_hierarchy = self.pdb_hierarchy
-      self.model._xray_structure = self.pdb_hierarchy.extract_xray_structure(
-          crystal_symmetry=self.model.crystal_symmetry())
-      self.model._update_atom_selection_cache()
-      self.model._update_has_hd()
-      self.model.get_hierarchy().atoms().reset_i_seq()
-
-
+      self.model.reset_after_changing_hierarchy()
+      if model_was_processed:
+        self.model.process(make_restraints=had_restraints)
 
   def _apply_keep_remove(self):
     cn = [self.params.remove, self.params.keep].count(None)
@@ -357,7 +362,7 @@ class modify(object):
         special_position_settings=crystal.special_position_settings(
             crystal_symmetry = self.crystal_symmetry))
       sel = ~asc.selection(self.params.remove)
-      self.pdb_hierarchy = self.pdb_hierarchy.select(sel)
+      self.pdb_hierarchy = self.pdb_hierarchy.select(sel, copy_atoms=True)
       s2 = self.pdb_hierarchy.atoms_size()
       print("Size before:", s1, "size after:", s2, file=self.log)
     if(self.params.keep is not None):
@@ -365,7 +370,7 @@ class modify(object):
         special_position_settings=crystal.special_position_settings(
             crystal_symmetry = self.crystal_symmetry))
       sel = asc.selection(self.params.keep)
-      self.pdb_hierarchy = self.pdb_hierarchy.select(sel)
+      self.pdb_hierarchy = self.pdb_hierarchy.select(sel, copy_atoms=True)
       s2 = self.pdb_hierarchy.atoms_size()
       print("Size before:", s1, "size after:", s2, file=self.log)
 
@@ -380,6 +385,52 @@ class modify(object):
       print("New symmetry:", file=self.log)
       self.xray_structure.crystal_symmetry().show_summary(f=self.log, prefix="  ")
       self.crystal_symmetry = self.xray_structure.crystal_symmetry()
+
+  def _renumber_and_move_waters(self):
+    def next_hundred(num):
+      if num % 100 == 0:
+        return num + 100
+      return ((num // 100) + 1) * 100
+    if not self.params.renumber_and_move_waters:
+      return
+    if (len(self.pdb_hierarchy.models()) > 1):
+      raise Sorry("Renumbering and reorganizing water molecules is "+
+        "not supported for multi-MODEL structures.")
+    print("Renumbering and reorganizing waters", file=self.log)
+    new_h = iotbx.pdb.hierarchy.root()
+    mm = iotbx.pdb.hierarchy.model()
+    new_h.append_model(mm)
+    # make chain dict 'chain id': [chains]:
+    chain_dict = {}
+    for c in self.pdb_hierarchy.only_model().chains():
+      if c.id not in chain_dict:
+        chain_dict[c.id] = [c]
+      else:
+        chain_dict[c.id].append(c)
+    for c_id, chain_list in chain_dict.items():
+      largest_nonwater_resseq = max(
+          [resseq_decode(list(c.residue_groups())[-1].resseq) for c in chain_list if not c.is_water()],
+          default=1)
+      # now merge all water chains to a new one, while adding non-water to new h
+      cc = iotbx.pdb.hierarchy.chain()
+      cc.id = c_id
+      for c in chain_list:
+        if not c.is_water():
+          # adding to new h
+          mm.append_chain(c.detached_copy())
+        else:
+          for rg in c.residue_groups():
+            cc.append_residue_group(rg.detached_copy())
+      # renumber waters in cc:
+      curent_resseq = next_hundred(largest_nonwater_resseq)
+      for rg in cc.residue_groups():
+        rg.resseq = resseq_encode(curent_resseq)
+        curent_resseq += 1
+      if cc.residue_groups_size() > 0:
+        mm.append_chain(cc)
+    new_h.reset_atom_i_seqs()
+    new_h.atoms_reset_serial()
+    self.pdb_hierarchy = new_h
 
   def _move_waters(self):
     if(self.params.move_waters_last):
@@ -396,8 +447,8 @@ class modify(object):
         print("No waters found, skipping", file=self.log)
       else :
         print("%d atoms will be moved." % n_waters, file=self.log)
-        hierarchy_water = self.pdb_hierarchy.select(water_sel)
-        hierarchy_non_water = self.pdb_hierarchy.select(~water_sel)
+        hierarchy_water = self.pdb_hierarchy.select(water_sel, copy_atoms=True)
+        hierarchy_non_water = self.pdb_hierarchy.select(~water_sel, copy_atoms=True)
         for chain in hierarchy_water.only_model().chains():
           hierarchy_non_water.only_model().append_chain(chain.detached_copy())
         self.pdb_hierarchy = hierarchy_non_water # does this work?
@@ -472,13 +523,13 @@ class modify(object):
           if (renumber_from is None):
             counter = 1
             for rg in chain.residue_groups():
-              rg.resseq=counter
+              rg.resseq=resseq_encode(counter)
               counter += 1
           else :
             for rg in chain.residue_groups():
               resseq = rg.resseq_as_int()
               resseq += renumber_from
-              rg.resseq = "%4d" % resseq
+              rg.resseq = resseq_encode(resseq)
 
   def _rename_chain_id(self):
     if([self.params.rename_chain_id.old_id,

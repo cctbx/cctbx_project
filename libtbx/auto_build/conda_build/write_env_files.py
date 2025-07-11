@@ -13,6 +13,7 @@ import sys
 bash_template = '''\
 #!/usr/bin/env bash
 
+export {program}={prefix}
 export {program}_PREFIX={prefix}
 export {program}_VERSION={version}
 export PATH={bin_dir}:$PATH
@@ -21,6 +22,7 @@ export PATH={bin_dir}:$PATH
 csh_template = '''\
 #!/usr/bin/env csh
 
+setenv {program} {prefix}
 setenv {program}_PREFIX {prefix}
 setenv {program}_VERSION {version}
 setenv PATH {bin_dir}:$PATH
@@ -29,6 +31,7 @@ setenv PATH {bin_dir}:$PATH
 # Windows file
 bat_template = '''\
 @echo off
+set {program}=%~dp0
 set {program}_PREFIX=%~dp0
 set {program}_VERSION={version}
 set PATH={bin_dir};%PATH%

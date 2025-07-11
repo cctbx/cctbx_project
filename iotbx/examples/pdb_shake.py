@@ -1,3 +1,4 @@
+"""Example of how to shake (randomize) a model"""
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from cctbx.array_family import flex
@@ -38,7 +39,7 @@ def run(args):
   # update model manager with this xray structure
   model.set_xray_structure(xrs)
   # output result in PDB format to the screen
-  print(model.model_as_pdb())
+  print(model.as_pdb_or_mmcif_string())
   print("END")
 
 if (__name__ == "__main__"):

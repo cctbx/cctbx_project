@@ -1,3 +1,4 @@
+"""Validate RNA sugar puckers, backbone bond and angle geometry, and backbone suite conformations"""
 # LIBTBX_SET_DISPATCHER_NAME phenix.rna_validate
 # LIBTBX_SET_DISPATCHER_NAME molprobity.rna_validate
 
@@ -41,3 +42,4 @@ def old_run(args, out=sys.stdout, quiet=False):
 if (__name__ == "__main__"):
   #run(sys.argv[1:])
   run_program(program_class=rna_validate.Program, hide_parsing_output=True)
+

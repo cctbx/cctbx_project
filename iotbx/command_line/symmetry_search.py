@@ -1,3 +1,4 @@
+"""Search for crystallographic symmetry based on a PDB or POSCAR file"""
 from __future__ import absolute_import, division, print_function
 def run(args):
   import iotbx.phil

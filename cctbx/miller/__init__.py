@@ -684,6 +684,8 @@ class set(crystal.symmetry):
     """
     Generate a double Miller array containing the resolution d of each
     index.
+    Note: if f000 term is present, the resolution of that term will be -1
+     and not infinity.
     """
     return array(
       self, self.unit_cell().d(self.indices()))
@@ -3696,25 +3698,46 @@ class array(set):
       .set_info(self.info()) \
       .set_observation_type(self)
 
-  def multiscale(self, other, reflections_per_bin = None):
+  def multiscale(self, other, use_exp_scale=False, reflections_per_bin=None):
+    if use_exp_scale:
+      import libtbx.load_env
+      if (not libtbx.env.has_module("mmtbx")):
+        raise ImportError("mmtbx is required for this functionality.")
+      from mmtbx import bulk_solvent
+      ss = 1./flex.pow2(self.d_spacings().data()) / 4.
+      b_range = flex.double(range(-1000,1000,1))
+      if isinstance(self.data(), flex.complex_double):
+        scaler_func = bulk_solvent.complex_f_kb_scaled
+      else:
+        scaler_func = bulk_solvent.f_kb_scaled
     if(reflections_per_bin is None):
       reflections_per_bin = other.indices().size()
     assert self.indices().all_eq(other.indices())
     assert self.is_similar_symmetry(other)
+    assert type(self.data()) == type(other.data())
+
     self.setup_binner(reflections_per_bin = reflections_per_bin)
     other.use_binning_of(self)
-    scale = flex.double(self.indices().size(),-1)
+    other_data = other.data()*0
     for i_bin in self.binner().range_used():
       sel = self.binner().selection(i_bin)
       f1  = self.select(sel)
       f2  = other.select(sel)
-      scale_ = 1.0
-      den = flex.sum(flex.abs(f2.data())*flex.abs(f2.data()))
-      if(den != 0):
-        scale_ = flex.sum(flex.abs(f1.data())*flex.abs(f2.data())) / den
-      scale.set_selected(sel, scale_)
-    assert (scale > 0).count(True) == scale.size()
-    return other.array(data = other.data()*scale)
+      if not use_exp_scale: # use scalar scale
+        scale_ = 1.0
+        den = flex.sum(flex.abs(f2.data())*flex.abs(f2.data()))
+        if(den != 0):
+          scale_ = flex.sum(flex.abs(f1.data())*flex.abs(f2.data())) / den
+        other_data.set_selected(sel, f2.data()*scale_)
+      else:
+        ss_ = ss.select(sel)
+        o = scaler_func(
+          f1      = f1.data(),
+          f2      = f2.data(),
+          b_range = b_range,
+          ss      = ss_)
+        other_data.set_selected(sel, f2.data()*o.k()*flex.exp(-o.b()*ss_))
+    return other.array(data = other_data)
 
   def apply_debye_waller_factors(self,
         u_iso=None,
@@ -4355,7 +4378,6 @@ class array(set):
     d_const = None
 
     if d.size() > 10:
-      print("1:", d.size(), d_inv.size(), fsc.size())
 
       if sel.count(True)>0:
         d_const   = d    .select(sel)
@@ -4370,8 +4392,6 @@ class array(set):
         d  .extend(d_const)
         fsc.extend(fsc_const)
       d_inv = 1./d
-
-      print("2:", d.size(), d_inv.size(), fsc.size())
 
     s = flex.sort_permutation(d_inv)
     return group_args(
@@ -6185,6 +6205,8 @@ class fft_map(maptbx.crystal_gridding):
     """
     from iotbx import mrcfile
     map_data = self.real_map(direct_access=False)
+    if (gridding_first is None) and (gridding_last is None):
+      labels.append("wrapping_outside_cell")
     if gridding_first is None :
       gridding_first = (0,0,0)
     if gridding_last is None :

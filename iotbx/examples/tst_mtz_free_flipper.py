@@ -1,3 +1,4 @@
+"""Test the routine that swaps test and working sets"""
 from __future__ import absolute_import, division, print_function
 import libtbx.load_env
 if (libtbx.env.has_module("ccp4io")):

@@ -1,3 +1,4 @@
+"""Execute Xtrapol8 calculations"""
 from __future__ import absolute_import, division, print_function
 import sys
 from phenix.program_template import ProgramTemplate

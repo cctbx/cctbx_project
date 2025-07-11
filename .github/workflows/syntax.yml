@@ -1,0 +1,92 @@
+# Basic syntax checks
+
+name: clutter_and_syntax
+on: [push, workflow_dispatch]
+
+jobs:
+  check_clutter:
+
+    name: Check for clutter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ./modules/cctbx_project
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: test
+          miniforge-version: latest
+
+      - name: Base environment info
+        run: |
+          conda info
+          conda list
+
+      - name: Create conda environment
+        run: |
+          source ${CONDA}/etc/profile.d/conda.sh
+          conda create -n test -y -c conda-forge python six future scons setuptools
+          conda activate test
+          python --version
+
+      - name: Set up cctbx
+        run: |
+          source ${CONDA}/etc/profile.d/conda.sh
+          conda activate test
+          mkdir build
+          cd build
+          python ../modules/cctbx_project/libtbx/configure.py libtbx
+          make
+
+      - name: Check for clutter
+        run: |
+          source ./build/setpaths.sh
+          cd ./modules/cctbx_project
+          libtbx.find_clutter --verbose
+
+  check_syntax:
+    if: ${{ always() }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python_version: [3.9, "3.10", 3.11, 3.12, 3.13]
+
+    name: Compiling (Python ${{ matrix.python_version }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ./modules/cctbx_project
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: test
+          miniforge-version: latest
+          python-version: ${{ matrix.python_version }}
+
+      - name: Base environment info
+        run: |
+          conda info
+          conda list
+
+      - name: Create conda environment
+        run: |
+          source ${CONDA}/etc/profile.d/conda.sh
+          conda create -y -n syntax -c conda-forge python=${{ matrix.python_version }} six future scons setuptools
+          python --version
+
+      - name: Set up cctbx
+        run: |
+          source ${CONDA}/etc/profile.d/conda.sh
+          conda activate syntax
+          mkdir build
+          cd build
+          python ../modules/cctbx_project/libtbx/configure.py libtbx
+          make
+
+      - name: Compile Python files
+        run: |
+          source ./build/setpaths.sh
+          cd ./modules/cctbx_project
+          libtbx.py_compile_all -v .

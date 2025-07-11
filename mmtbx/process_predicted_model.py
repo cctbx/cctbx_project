@@ -1,3 +1,8 @@
+"""
+   process_predicted_model: tools to update B-values used in some
+    model predictions as an error estimate indicator and to split up model
+    into domains that contain the more confident predictions
+"""
 from __future__ import division, print_function
 import sys
 
@@ -5,11 +10,6 @@ import sys
 #################### TOOLS FOR PROCESSING A PREDICTED MODEL ####################
 ################################################################################
 
-"""
-   process_predicted_model: tools to update B-values used in some
-    model predictions as an error estimate indicator and to split up model
-    into domains that contain the more confident predictions
-"""
 
 from scitbx.array_family import flex
 from libtbx.utils import Sorry
@@ -71,9 +71,11 @@ master_phil_str = """
                least maximum_domains.
       .short_caption = Adjust domain size
 
-    minimum_domain_length = 10
+    minimum_domain_length = None
       .type = float
-      .help = Minimum length of a domain to keep (reject at end if smaller).
+      .help = Minimum length of a domain to keep (reject at end if smaller).\
+              Default is 10 if no pae matrix or alt_pae_params=False and \
+                20 for pae_matrix with alt_pae_params=True
       .short_caption = Minimum domain length (residues)
 
     maximum_fraction_close = 0.3
@@ -82,9 +84,11 @@ master_phil_str = """
               before merging them
       .short_caption = Maximum fraction close
 
-    minimum_sequential_residues = 5
+    minimum_sequential_residues = None
       .type = int
-      .help = Minimum length of a short segment to keep (reject at end ).
+      .help = Minimum length of a short segment to keep (reject at end ). \
+              Default is 5 if no pae matrix or alt_pae_params=False and \
+                4 for pae_matrix with alt_pae_params=True
       .short_caption = Minimum sequential_residues
 
     minimum_remainder_sequence_length = 15
@@ -138,29 +142,42 @@ master_phil_str = """
           out the final files.  Does not affect the cutoff for removing low-\
            confidence residues.
 
-     pae_power = 1
+     pae_power = None
        .type = float
        .help = If PAE matrix (predicted alignment error matrix) is supplied,\
             each edge in the graph will be weighted proportional to \
               (1/pae**pae_power). Use this to try and get the number of domains\
-              that you want (try 1, 0.5, 1.5, 2)
+              that you want (try 1, 0.5, 1.5, 2). \
+             Default is 1 alt_pae_params=False and 2 for alt_pae_params=True
        .short_caption = PAE power (if PAE matrix supplied)
 
-     pae_cutoff = 5
+     pae_cutoff = None
        .type = float
        .help = If PAE matrix (predicted alignment error matrix) is supplied,\
             graph edges will only be created for residue pairs with \
-            pae<pae_cutoff
+            pae<pae_cutoff. \
+          Default is 5 alt_pae_params=False and 4 for alt_pae_params=True
        .short_caption = PAE cutoff (if PAE matrix supplied)
 
-     pae_graph_resolution = 0.5
+     pae_graph_resolution = None
        .type = float
        .help = If PAE matrix (predicted alignment error matrix) is supplied,\
             pae_graph_resolution regulates how aggressively the clustering \
             algorithm is. Smaller values lead to larger clusters. Value \
             should be larger than zero, and values larger than 5 are \
-            unlikely to be useful
+            unlikely to be useful, \
+          Default is 0.5 alt_pae_params=False and 4 for alt_pae_params=True
        .short_caption = PAE graph resolution (if PAE matrix supplied)
+
+     alt_pae_params = True
+       .type = bool
+       .help = If PAE matrix is supplied, use alternative set of defaults \
+           (minimum_domain_length=20 minimum_sequential_residues=10 \
+            pae_power=2 pae_cutoff=4 pae_graph_resolution=4). \
+           Standard parameters (alt_pae_params=False) are: \
+           (minimum_domain_length=10 minimum_sequential_residues=5 \
+            pae_power=1 pae_cutoff=5 pae_graph_resolution=0.5).
+       .short_caption = Use PAE defaults for pae_power=2
 
      weight_by_ca_ca_distance = False
        .type = bool
@@ -323,6 +340,16 @@ def process_predicted_model(
          domain identification using split_model_by_compact_regions without
          pae_matrix
 
+    alt_pae_params: Use alternative set of defaults for pae params if pae_matrix
+        is present. Two possibilities are:
+          Alternative if pae_matrix:
+           (minimum_domain_length=20 minimum_sequential_residues=10 \
+            pae_power=2 pae_cutoff=4 pae_graph_resolution=4).
+           Standard parameters (alt_pae_params=False or no pae_matrix) are:
+           (minimum_domain_length=10 minimum_sequential_residues=5
+            pae_power=1 pae_cutoff=5 pae_graph_resolution=0.5).
+
+
   Output:
     processed_model_info: group_args object containing:
       processed_model:  single model with regions identified in chainid field
@@ -337,6 +364,8 @@ def process_predicted_model(
 
     master_phil = iotbx.phil.parse(master_phil_str)
     params = master_phil.extract()
+    from mmtbx.process_predicted_model import set_defaults
+    set_defaults(params, pae_matrix = pae_matrix)
 
     The default values are set in the master_phil_str string above.
     You can then set values of params:
@@ -359,6 +388,8 @@ def process_predicted_model(
 
   # Decide what to do
   p = params.process_predicted_model
+  set_defaults(p, pae_matrix = pae_matrix)
+
 
   # Determine if input plddt is fractional and get b values
 
@@ -419,6 +450,9 @@ def process_predicted_model(
 
   ph  = model.get_hierarchy().deep_copy()
   ph.atoms().set_b(b_values)
+  full_model_with_new_b_values = \
+     model.as_map_model_manager().model_from_hierarchy(
+     ph, return_as_model = True)
 
   # Remove low_confidence regions if desired
   if p.remove_low_confidence_residues:
@@ -459,6 +493,12 @@ def process_predicted_model(
      get_selection_string_from_model
     selection_for_b_factor_filtering = get_selection_string_from_model(
       hierarchy = new_ph)
+    if mark_atoms_to_keep_with_occ_one:
+      selection_for_b_factor_filtering_no_chain_id = \
+        get_selection_string_from_model(
+      hierarchy = new_ph, skip_chain_id = True)
+    else:
+      selection_for_b_factor_filtering_no_chain_id = None
     print("\nSelection string for B-factor filtering: %s" %(
       selection_for_b_factor_filtering), file = log)
     keep_all = False
@@ -535,7 +575,11 @@ def process_predicted_model(
       print("Total of %s regions identified" %(
         len(chainid_list)), file = log)
       model_list = split_model_by_chainid(new_model, chainid_list,
-        mark_atoms_to_keep_with_occ_one = mark_atoms_to_keep_with_occ_one)
+        mark_atoms_to_keep_with_occ_one = mark_atoms_to_keep_with_occ_one,
+        full_model = full_model_with_new_b_values,
+        selection_for_b_factor_filtering_no_chain_id =
+          selection_for_b_factor_filtering_no_chain_id
+       )
   else:
     model_list = []
     chainid_list = []
@@ -551,6 +595,42 @@ def process_predicted_model(
     b_values = b_values,
     vrms_list = vrms_list,
     )
+
+def set_defaults(p, pae_matrix = None, log = sys.stdout):
+  # Set defaults for some parameters that depend on inputs
+  if p.minimum_domain_length is None:
+    if (pae_matrix is not None) and p.alt_pae_params:
+      p.minimum_domain_length = 20
+    else:
+      p.minimum_domain_length = 10
+    print("Minimum_domain_length=%s" %(p.minimum_domain_length), file = log)
+  if p.minimum_sequential_residues is None:
+    if (pae_matrix is not None) and p.alt_pae_params:
+      p.minimum_sequential_residues = 10
+    else:
+      p.minimum_sequential_residues = 5
+    print("Minimum_sequential_residues=%s" %(p.minimum_sequential_residues),
+      file = log)
+  if p.pae_power is None:
+    if (pae_matrix is not None) and p.alt_pae_params:
+      p.pae_power = 2
+    else:
+      p.pae_power = 1
+    print("pae_power=%s" %(p.pae_power), file = log)
+  if p.pae_cutoff is None:
+    if (pae_matrix is not None) and p.alt_pae_params:
+      p.pae_cutoff = 4
+    else:
+      p.pae_cutoff = 5
+    print("pae_cutoff=%s" %(p.pae_cutoff), file = log)
+  if p.pae_graph_resolution is None:
+    if (pae_matrix is not None) and p.alt_pae_params:
+      p.pae_graph_resolution = 4
+    else:
+      p.pae_graph_resolution = 0.5
+    print("pae_graph_resolution=%s" %(p.pae_graph_resolution), file = log)
+
+
 
 def restore_true_except_at_ends(sel1):
   ''' Set all values that are not at ends of sel1 to False (any number
@@ -602,7 +682,9 @@ def get_selection_for_short_segments(ph, minimum_sequential_residues):
 
 
 def split_model_by_chainid(m, chainid_list,
-    mark_atoms_to_keep_with_occ_one = False):
+    mark_atoms_to_keep_with_occ_one = False, full_model = None,
+    selection_for_b_factor_filtering_no_chain_id = None):
+
   """
    Split a model into pieces based on chainid
    Optionally write out everything for each model, using
@@ -617,12 +699,25 @@ def split_model_by_chainid(m, chainid_list,
     if (not mark_atoms_to_keep_with_occ_one): # usual
       m1 = m.select(sel)
     else:  # for Voyager, mark unused with zero occupancies
-      m1 = m.deep_copy()
+      # Start with full model
+      m1a = m.select(sel)
+      from mmtbx.secondary_structure.find_ss_from_ca import \
+         get_selection_string_from_model
+      selection_for_working = get_selection_string_from_model(model = m1a,
+        skip_chain_id = True)
+      full_selection = "(%s) and (%s)" %(
+        selection_for_b_factor_filtering_no_chain_id,
+         selection_for_working)
+
+      m1 = full_model.deep_copy()
       ph1 = m1.get_hierarchy()
+      asc1 = ph1.atom_selection_cache()
+      sel1 = asc1.selection(full_selection)
+
       atoms = ph1.atoms()
       occupancies = atoms.extract_occ()
-      occupancies.set_selected(sel, 1)
-      occupancies.set_selected(~sel, 0)
+      occupancies.set_selected(sel1, 1)
+      occupancies.set_selected(~sel1, 0)
       atoms.set_occ(occupancies)
     split_model_list.append(m1)
   return split_model_list
@@ -944,11 +1039,14 @@ def split_model_with_pae(
 
   from mmtbx.secondary_structure.find_ss_from_ca import \
      get_selection_string_from_model
-  selection_for_full_model = get_selection_string_from_model(model = m)
-  print("\nSelection string for final model: %s" %(selection_for_full_model),
-    file = log)
-  print("Total residues in final model: %s" %(
+  if m:
+    selection_for_full_model = get_selection_string_from_model(model = m)
+    print("\nSelection string for final model: %s" %(selection_for_full_model),
+      file = log)
+    print("Total residues in final model: %s" %(
      m.overall_counts().n_residues), file = log)
+  else:
+    print("No model obtained...", file = log)
 
 
   # All done

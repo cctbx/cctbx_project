@@ -1,3 +1,5 @@
+"""Tools for manipulation of Xray models and reflection files"""
+
 from __future__ import absolute_import, division, print_function
 from cctbx import miller
 import cctbx.xray.structure_factors

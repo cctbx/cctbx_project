@@ -280,6 +280,9 @@ def test6():
   # assert ph.as_pdb_string().find("UNK")>-1
   assert ph.as_mmcif_string().find("UNK") == -1
   assert ph.as_mmcif_string(segid_as_auth_segid=True).find("UNK") > -1
+  # Test removing segid
+  ph.remove_segid()
+  assert ph.as_mmcif_string(segid_as_auth_segid=True).find("UNK") == -1
 
 def remove_remarks_hetnam(text):
   new_text_list = []

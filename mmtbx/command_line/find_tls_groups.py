@@ -1,3 +1,4 @@
+"""Automatic identification of appropriate TLS groups in model"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.find_tls_groups
 
@@ -62,6 +63,28 @@ def consequtive_permutations(iterable, r=None):
         break
     else:
       return
+
+#def ordered_partitions(seq):
+#    """
+#    Recursively generate all ordered partitions of a list.
+#    Each partition is a list of lists, preserving order.
+#    """
+#    if not seq:
+#        return [[]]
+#
+#    result = []
+#    for i in range(1, len(seq)+1):
+#        first = seq[:i]
+#        for rest in ordered_partitions(seq[i:]):
+#            result.append([first] + rest)
+#    return result
+#
+#def generate_partitions(N):
+#    """
+#    Generate all ordered partitions for list [0, 1, ..., N-1].
+#    """
+#    return ordered_partitions(list(range(N)))
+
 
 def all_permutations(N):
   unique_set = list(range(N))
@@ -906,3 +929,4 @@ if (__name__ == "__main__"):
   t0 = time.time()
   run(args=sys.argv[1:])
   print("Time: %10.3f"%(time.time()-t0))
+

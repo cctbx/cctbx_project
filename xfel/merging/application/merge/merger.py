@@ -132,6 +132,15 @@ class merger(worker):
         column_root_label='multiplicity')
 
     mtz_obj = mtz_out.mtz_object()
+
+    # Create formatted timestamp with both local and GMT time
+    import time
+    date_str = time.strftime("%Y-%m-%d at %H:%M:%S %Z")
+
+    # Add history record with version and timestamp
+    from dials.util.version import dials_version
+    mtz_obj.add_history(f"From cctbx.xfel.merge {dials_version()}, {date_str}")
+
     mtz_obj.write(mtz_file)
     self.logger.main_log("Output anomalous and mean data:\n    %s" %os.path.abspath(mtz_file))
     self.logger.main_log("Output data summary:")

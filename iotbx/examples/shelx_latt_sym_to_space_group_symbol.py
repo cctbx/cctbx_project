@@ -1,3 +1,4 @@
+"""Example of how to convert SHELX lattice symbol to a space group symbol"""
 from __future__ import absolute_import, division, print_function
 from iotbx import shelx
 from cctbx import sgtbx

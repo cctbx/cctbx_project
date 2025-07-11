@@ -8,6 +8,7 @@ from libtbx.utils import Sorry
 import operator
 import json
 import os, sys
+from scitbx.array_family import flex
 
 OUTLIER_THRESHOLD = 0.003
 ALLOWED_THRESHOLD = 0.02
@@ -104,8 +105,10 @@ class rotamer_ensemble(residue):
     return "%-20s %s" % (self.id_str(), ", ".join(rot_out))
 
 class rotalyze(validation):
-  __slots__ = validation.__slots__ + ["n_allowed", "n_allowed_by_model", "n_favored", "n_favored_by_model", "out_percent",
-        "outlier_threshold", "data_version", "percent_favored","percent_allowed"]
+  __slots__ = validation.__slots__ + ["n_allowed", "n_allowed_by_model",
+    "n_favored", "n_favored_by_model", "out_percent",
+    "outlier_threshold", "data_version", "percent_favored","percent_allowed",
+    "_outlier_i_seqs"]
   program_description = "Analyze protein sidechain rotamers"
   output_header = "residue:occupancy:score%:chi1:chi2:chi3:chi4:"
   output_header+= "evaluation:rotamer"
@@ -132,6 +135,7 @@ class rotalyze(validation):
     from mmtbx.rotamer.rotamer_eval import RotamerID
     from mmtbx.validation import utils
     self.data_version = data_version
+    self._outlier_i_seqs = flex.size_t()
 #   if self.data_version == "500":    self.outlier_threshold = 0.01
     if self.data_version == "8000": self.outlier_threshold = OUTLIER_THRESHOLD
     else: raise ValueError(
@@ -207,6 +211,7 @@ class rotalyze(validation):
                 if evaluation == "OUTLIER":
                   kwargs['outlier'] = True
                   kwargs['rotamer_name'] = evaluation
+                  self._outlier_i_seqs.extend(atom_group.atoms().extract_i_seq())
                 else:
                   kwargs['outlier'] = False
                   if use_parent: resname=parent_name
