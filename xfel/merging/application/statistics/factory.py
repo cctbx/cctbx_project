@@ -6,6 +6,7 @@ from xfel.merging.application.statistics.intensity_resolution_statistics_cxi imp
 from xfel.merging.application.statistics.deltaccint import deltaccint
 from xfel.merging.application.statistics.experiment_resolution_statistics import experiment_resolution_statistics
 from xfel.merging.application.statistics.intensity_histogram import intensity_histogram
+from xfel.merging.application.statistics.smx_statistics import smx_statistics
 from xfel.merging.application.worker import factory as factory_base
 
 class factory(factory_base):
@@ -30,4 +31,6 @@ class factory(factory_base):
         return [intensity_histogram(params, mpi_helper, mpi_logger)]
     elif additional_info[0] == 'deltaccint':
       return [deltaccint(params, mpi_helper, mpi_logger)]
+    elif additional_info[0] == 'smx':
+      return [smx_statistics(params, mpi_helper, mpi_logger)]
 

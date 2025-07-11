@@ -708,6 +708,13 @@ statistics {
   uc_precision = 2
     .type = int
     .help = Decimal places for unit cell statistics
+  smx
+  .help = Parameters to prepare for small-molecule unit cell determination.
+  {
+    save_triplets = True
+      .type = bool
+  }
+
 }
 """
 
