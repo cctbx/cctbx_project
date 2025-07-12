@@ -49,6 +49,8 @@ electron density values/CC.
   datatypes = ['model', 'phil', 'miller_array']
 
   master_phil_str = master_phil_str
+  data_manager_options = ['model_skip_expand_with_mtrix',
+                          'model_skip_ss_annotations']
 
   # ---------------------------------------------------------------------------
 
@@ -105,10 +107,8 @@ electron density values/CC.
 
     self.data_manager.add_model(model_fn_reduce2, model_reduce2)
     self.working_model_fn = model_fn_reduce2
+    model_reduce2.process(make_restraints=True)
     self.working_model = model_reduce2
-    #print(dir(self.working_model))
-    #print(self.working_model.processed())
-    #STOP()
 
   # ---------------------------------------------------------------------------
 
