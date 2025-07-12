@@ -97,15 +97,18 @@ electron density values/CC.
     try:
       result = run_program(program_class=reduce2.Program,args=args,
        logger = null_out())
-      model_reduce2 = result.model
+      model_reduce2 = self.data_manager.get_model(model_fn_reduce2)
+      #model_reduce2 = result.model
     except Exception as e:
       msg = traceback.format_exc()
-      self.success   = False
-      self.write_log(step = 'Reduce2', msg  = msg)
       print('Reduce2 failed.\n' + msg, file=self.logger)
+
     self.data_manager.add_model(model_fn_reduce2, model_reduce2)
     self.working_model_fn = model_fn_reduce2
     self.working_model = model_reduce2
+    #print(dir(self.working_model))
+    #print(self.working_model.processed())
+    #STOP()
 
   # ---------------------------------------------------------------------------
 

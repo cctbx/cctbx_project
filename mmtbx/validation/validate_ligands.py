@@ -93,6 +93,7 @@ class manager(list):
   def run(self):
     args = []
     for ligand_isel in self.generate_ligand_iselections():
+      if ligand_isel.size() < 4: continue
       args.append(ligand_isel)
     results = self.parallel_populate(args)
     for r in results:
@@ -423,8 +424,13 @@ class ligand_result(object):
     self._ph = self.model.get_hierarchy()
     self._atoms_ligand = self._ph.select(self.ligand_isel).atoms()
     self._xrs = self.model.get_xray_structure()
-    self._xrs_ligand = \
-      self.model.select(self.ligand_isel).get_xray_structure()
+    #print(self.ligand_isel.size())
+    #print(dir(self._xrs))
+    #print(self._ph.atoms().size())
+    #print(self._xrs.scatterers().size())
+    self._xrs_ligand = self._xrs.select(self.ligand_isel)
+    #self._xrs_ligand = \
+    #  self.model.select(self.ligand_isel).get_xray_structure()
     #
     for rg in self._ph.select(self.ligand_isel).residue_groups():
       for c in rg.conformers():
@@ -443,11 +449,14 @@ class ligand_result(object):
     _id_str = _id_str.strip().split(' ')
     self.id_str = " ".join(_id_str[1:]).strip()
     #
+    #print(self.sel_str)
     _noH = ' and not (element H or element D)'
     self.ligand_isel_noH = self.model.iselection(self.sel_str + _noH)
 
-    self._xrs_ligand_noH = \
-      self.model.select(self.ligand_isel_noH).get_xray_structure()
+
+    self._xrs_ligand_noH = self._xrs.select(self.ligand_isel_noH)
+    #self._xrs_ligand_noH = \
+    #  self.model.select(self.ligand_isel_noH).get_xray_structure()
     self._atoms_ligand_noH = self._ph.select(self.ligand_isel_noH).atoms()
 
   # ----------------------------------------------------------------------------
@@ -542,12 +551,19 @@ class ligand_result(object):
     # TODO clashes with other ligands?
     sel_within_str = '%s or (residues_within (%s, %s)) and (protein or water)' \
       % (self.sel_str, within_radius, self.sel_str)
+
     sel_within = self.model.selection(sel_within_str)
-    isel_ligand_within = self.model.select(sel_within).iselection(self.sel_str)
+    #print(sel_within_str)
+    #print('in overlaps')
+    #print(sel_within.count(True))
+    isel_ligand_within = sel_within.iselection()
+    #isel_ligand_within = self.model.select(sel_within).iselection(self.sel_str)
+    #print(isel_ligand_within.size())
     #sel = flex.bool([True]*len(sel_within))
-    model_within = self.model.select(sel_within)
+    model_within = self.model.select(isel_ligand_within)
 
     processed_nbps = pnp.manager(model = model_within)
+    #processed_nbps = pnp.manager(model = self.model)
     clashes = processed_nbps.get_clashes()
     hbonds = processed_nbps.get_hbonds()
 
