@@ -1,6 +1,7 @@
 """Validate ligands in a model"""
 from __future__ import absolute_import, division, print_function
 import os
+import traceback
 try:
   from phenix.program_template import ProgramTemplate
 except ImportError:
@@ -106,7 +107,6 @@ electron density values/CC.
     self.working_model_fn = model_fn_reduce2
     self.working_model = model_reduce2
 
-
   # ---------------------------------------------------------------------------
 
   def run(self):
@@ -184,4 +184,5 @@ electron density values/CC.
 
   def get_results(self):
     return group_args(
-      ligand_manager     = self.ligand_manager)
+      working_model_fn = self.working_model_fn,
+      ligand_manager   = self.ligand_manager)
