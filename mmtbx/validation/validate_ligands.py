@@ -402,7 +402,7 @@ class ligand_result(object):
     '''
     if self._owab is not None:
       return self._owab
-
+    eps = 1.e-6
     occ = self._atoms_ligand_noH.extract_occ()
     b_isos  = self._xrs_ligand_noH.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.)
     owab = 0.
@@ -410,6 +410,9 @@ class ligand_result(object):
     for _o, _b in zip(occ, b_isos):
       owab = owab + _o * _b
       sum_occ = sum_occ + _o
+    # yes, sum_occ=0 really happens: 2ace, 1lmc, 1lrl, 1v2u, 2ou9
+    if sum_occ < eps:
+      sum_occ = 1.e-6
     owab = owab/sum_occ
     self._owab = owab
 
