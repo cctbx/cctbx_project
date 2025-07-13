@@ -80,13 +80,13 @@ electron density values/CC.
 
   # ---------------------------------------------------------------------------
 
-  def add_hydrogens(self):
+  def add_hydrogens(self, model_fn):
     '''
     Place H atoms with reduce2
     '''
     make_sub_header(' Placing H with reduce2 ', out=self.logger)
     model_reduce2 = None
-    model_fn = self.data_manager.get_default_model_name()
+    #model_fn = self.data_manager.get_default_model_name()
     basename = os.path.splitext(os.path.basename(model_fn))[0]
     model_fn_reduce2 = "%s_newH.cif" % basename
     from iotbx.cli_parser import run_program
@@ -104,6 +104,7 @@ electron density values/CC.
     except Exception as e:
       msg = traceback.format_exc()
       print('Reduce2 failed.\n' + msg, file=self.logger)
+      return
 
     self.data_manager.add_model(model_fn_reduce2, model_reduce2)
     self.working_model_fn = model_fn_reduce2
@@ -122,14 +123,28 @@ electron density values/CC.
       print('Using reflection file:', data_fn, file=self.logger)
       has_data = True
 
+    m = self.data_manager.get_model()
+    if ' X' in m.get_hierarchy().atoms().extract_element():
+      m = m.select(~m.selection('element X'))
+      basename = os.path.splitext(os.path.basename(model_fn))[0]
+      model_fn = "%s_noX.cif" % basename
+      self.data_manager.write_model_file(
+        model_str = m.model_as_mmcif(),
+        filename  = model_fn,
+        overwrite = True)
+
+    self.working_model = None
     if self.params.run_reduce2:
-      self.add_hydrogens()
+      self.add_hydrogens(model_fn = model_fn)
     else:
       self.working_model_fn = model_fn
       m = self.data_manager.get_model()
       m.set_log(log = null_out())
       m.process(make_restraints=True)
       self.working_model = m
+
+    if self.working_model is None:
+      raise Sorry('Could not create model object')
 
     # get fmodel object
     if has_data:

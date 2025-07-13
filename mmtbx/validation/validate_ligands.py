@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
-import time
+import time, sys
+import re
 from six.moves import zip
 from six.moves import cStringIO as StringIO
 import iotbx.pdb
@@ -253,7 +254,6 @@ class manager(list):
       print(lr.id_str, file=self.log)
       for rg in ph_within.residue_groups():
         for c in rg.conformers():
-          #print(dir(c.only_residue()))
           print('    ' + c.only_residue().id_str().split('"')[1], file=self.log)
 
 
@@ -407,13 +407,10 @@ class ligand_result(object):
     b_isos  = self._xrs_ligand_noH.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.)
     owab = 0.
     sum_occ = 0.
-    #print(list(occ))
-    #print(list(b_isos))
     for _o, _b in zip(occ, b_isos):
       owab = owab + _o * _b
       sum_occ = sum_occ + _o
     owab = owab/sum_occ
-    #print(owab)
     self._owab = owab
 
     return self._owab
@@ -424,19 +421,12 @@ class ligand_result(object):
     self._ph = self.model.get_hierarchy()
     self._atoms_ligand = self._ph.select(self.ligand_isel).atoms()
     self._xrs = self.model.get_xray_structure()
-    #print(self.ligand_isel.size())
-    #print(dir(self._xrs))
-    #print(self._ph.atoms().size())
-    #print(self._xrs.scatterers().size())
     self._xrs_ligand = self._xrs.select(self.ligand_isel)
-    #self._xrs_ligand = \
-    #  self.model.select(self.ligand_isel).get_xray_structure()
-    #
+
     for rg in self._ph.select(self.ligand_isel).residue_groups():
       for c in rg.conformers():
         _resname = c.only_residue().resname
 
-    #rg_ligand = self._ph.select(self.ligand_isel).only_residue_group()
     #resname = ",".join(rg_ligand.unique_resnames())
     _id_str = self._atoms_ligand[0].id_str()
     _id_str =_id_str.split('"')[1]
@@ -449,10 +439,8 @@ class ligand_result(object):
     _id_str = _id_str.strip().split(' ')
     self.id_str = " ".join(_id_str[1:]).strip()
     #
-    #print(self.sel_str)
     _noH = ' and not (element H or element D)'
     self.ligand_isel_noH = self.model.iselection(self.sel_str + _noH)
-
 
     self._xrs_ligand_noH = self._xrs.select(self.ligand_isel_noH)
     #self._xrs_ligand_noH = \
@@ -553,17 +541,20 @@ class ligand_result(object):
       % (self.sel_str, within_radius, self.sel_str)
 
     sel_within = self.model.selection(sel_within_str)
-    #print(sel_within_str)
-    #print('in overlaps')
-    #print(sel_within.count(True))
-    isel_ligand_within = sel_within.iselection()
-    #isel_ligand_within = self.model.select(sel_within).iselection(self.sel_str)
-    #print(isel_ligand_within.size())
+    #isel_ligand_within = sel_within.iselection()
+    isel_ligand_within = self.model.select(sel_within).iselection(self.sel_str)
     #sel = flex.bool([True]*len(sel_within))
-    model_within = self.model.select(isel_ligand_within)
+    model_within = self.model.select(sel_within)
+    # debug
+    #_id_str = self.id_str.replace(" ", "_")
+    #fn = "site_%s.pdb" % _id_str
+    #clean_filename = re.sub(r"\s+", "_", fn)
+    #f = open(clean_filename,"w")
+    #f.write(model_within.model_as_pdb())
+    #f.close()
+    # debug end
 
     processed_nbps = pnp.manager(model = model_within)
-    #processed_nbps = pnp.manager(model = self.model)
     clashes = processed_nbps.get_clashes()
     hbonds = processed_nbps.get_hbonds()
 
@@ -592,8 +583,12 @@ class ligand_result(object):
 
     results_hbonds = ligand_hbonds.get_results()
 
+    #clashes.show(log=sys.stdout)
+    #hbonds.show(log=sys.stdout)
+
     #string_io = StringIO()
     #ligand_clashes.show(log=string_io, show_clashscore=False)
+
     results = ligand_clashes.get_results()
 
     self._overlaps = group_args(

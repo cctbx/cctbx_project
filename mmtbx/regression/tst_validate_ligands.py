@@ -49,8 +49,8 @@ def run_test1():
 # or
   for lr in vl_manager:
     clashes_result = lr.get_overlaps()
-    assert(clashes_result.n_clashes == 6)
-    assert approx_equal(clashes_result.clashscore, 35.1, eps=1.0)
+    assert(clashes_result.n_clashes == 5)
+    assert approx_equal(clashes_result.clashscore, 29.2, eps=1.0)
 
 # ------------------------------------------------------------------------------
 
