@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import time, sys
 import re
-from six.moves import zip
 from six.moves import cStringIO as StringIO
 import iotbx.pdb
 from mmtbx import map_tools
