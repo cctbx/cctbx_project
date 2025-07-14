@@ -132,7 +132,7 @@ class manager(list):
 
   # ----------------------------------------------------------------------------
 
-  def show_table(self):
+  def show_table(self, out):
       '''
       Print summary table
       '''
@@ -143,9 +143,9 @@ class manager(list):
       lab2_str = '{:^14}|{:^12}|{:^9}|{:^9}|{:^9}|{:^28}|{:^21}|'
       #table_str = '{:>16}|{:^16.2f}|{:^5.2}|{:^15}|'
       #table_str = '{:^14}|{:^12}|{:^9.2f}|{:^9}|{:^7}{:^7}{:^7}|'
-      print('\n' + lab1_str.format(*lab_row1), file=self.log)
-      print(lab2_str.format(*lab_row2), file=self.log)
-      print('-'*100, file=self.log)
+      print('\n' + lab1_str.format(*lab_row1), file=out)
+      print(lab2_str.format(*lab_row2), file=out)
+      print('-'*100, file=out)
       for lr in self:
         ccs     = lr.get_ccs()
         clashes = lr.get_overlaps()
@@ -170,7 +170,7 @@ class manager(list):
 {round(adps.b_min,1):^7}{round(adps.b_max,1):^7}{round(adps.b_mean,1):^7}\
 {round(owab,1):^7}|\
 {val_o_min:^7}{val_o_max:^7}{round(occs.occ_mean,1):^7}|"
-        print(row, file=self.log)
+        print(row, file=out)
         #
         _b_min_within = f"{round(adps.b_min_within,1):^7}" if adps.b_min_within is not None else f"{'':^7}"
         _b_max_within = f"{round(adps.b_max_within,1):^7}" if adps.b_max_within is not None else f"{'':^7}"
@@ -178,7 +178,7 @@ class manager(list):
         sites_row = f"{'sites':^14}|{'':^12}|{'':^9}|{'':^9}|{'':^9}|\
 {_b_min_within}{_b_max_within}{_b_mean_within}\
 {'':^7}|{'':^7}{'':^7}{'':^7}|"
-        print(sites_row, file=self.log)
+        print(sites_row, file=out)
 
   # def show_adps(self):
   #   '''
