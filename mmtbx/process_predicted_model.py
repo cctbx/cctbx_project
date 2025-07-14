@@ -1010,8 +1010,9 @@ def split_model_with_pae(
       good_selections.append(selection_string)
     else:
       keep_list.append(False)
-      print("Skipping region with selection '%s' that contains %s residues" %(
-         selection_string,sel.count(True)),
+  if keep_list.count(False) > 0:
+    print("Skipping %s regions that contain fewer than %s residues" %(
+         keep_list.count(False), minimum_domain_length),
         file = log)
 
   region_name_dict, chainid_list = get_region_name_dict(m, unique_regions,
