@@ -124,6 +124,10 @@ electron density values/CC.
       has_data = True
 
     m = self.data_manager.get_model()
+    #
+    if(len(m.get_hierarchy().models())>1):
+      raise Sorry('Multi-model files currently not supported.')
+    #
     if ' X' in m.get_hierarchy().atoms().extract_element():
       m = m.select(~m.selection('element X'))
       basename = os.path.splitext(os.path.basename(model_fn))[0]
