@@ -169,7 +169,7 @@ master_phil_str = """
           Default is 0.5 alt_pae_params=False and 4 for alt_pae_params=True
        .short_caption = PAE graph resolution (if PAE matrix supplied)
 
-     alt_pae_params = True
+     alt_pae_params = False
        .type = bool
        .help = If PAE matrix is supplied, use alternative set of defaults \
            (minimum_domain_length=20 minimum_sequential_residues=10 \
