@@ -305,16 +305,22 @@ class ligand_result(object):
     if self._is_suspicious is not None:
       return self._is_suspicious
     self._is_suspicious = False
+    n_atoms = self._atoms_ligand_noH.size()
+    occs = self.get_occupancies()
+    adps = self.get_adps()
+    clashes = self.get_overlaps()
     if self.fmodel is not None:
       ccs = self.get_ccs()
       if ccs.cc_2fofc < 0.5:
         self._is_suspicious = True
-    adps = self.get_adps()
     if adps.b_mean_within is not None:
-      if adps.b_mean > 2.5 * adps.b_mean_within:
+      if adps.b_mean > 4 * adps.b_mean_within:
         self._is_suspicious = True
-    occs = self.get_occupancies()
-    if occs.occ_mean < 0.5:
+    if adps.b_mean > 150:
+      self._is_suspicious = True
+    if occs.occ_mean == 0.:
+      self._is_suspicious = True
+    if clashes.n_clashes > 0.5 * n_atoms:
       self._is_suspicious = True
     return self._is_suspicious
 
