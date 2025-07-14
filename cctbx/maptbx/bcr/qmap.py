@@ -77,8 +77,6 @@ def CalcOmegaMap(Ncrs, Scrs, Nxyz, unit_cell, bcr_scatterers) :
         RadAtomY  = RadAtom   * RprojY
         RadAtomZ  = RadAtom   * RprojZ
 
-        #print("RadAtom", RadAtom, bcr_scatterer.radius)
-
         r = bcr_scatterer.site_cart
         xat, yat, zat = r[0], r[1], r[2]
         cat, bat = bcr_scatterer.occ, bcr_scatterer.u_iso

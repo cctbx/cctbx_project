@@ -12,7 +12,7 @@ import boost_adaptbx.boost.python as bp
 ext = bp.import_ext("cctbx_maptbx_bcr_bcr_ext")
 
 # N, Res=2.5
-R = [   # mu
+R = [   # mu, mu_max = atomic_resolution * (RadFact+RadMu)
   0.000000000000000,
   2.137901575982925,
   3.573558167112186,
@@ -46,7 +46,7 @@ C = [ # kappa
     6.317387204802556,
    -6.358094541306267]
 
-nterms = 5
+nterms = 5 # because mu_max = atomic_resolution * (RadFact+RadMu)
 ScaleB = 1.0 / (8.0 * math.pi**2)
 _X_mu     = R[:nterms]
 _X_kappa  = C[:nterms]
@@ -71,6 +71,9 @@ X_kappi = [_X_kappi , _X_kappi , _X_kappi ]
 #==================== input information =====================
 
 time_t01 = time.time()
+
+RadFact = 2.0
+RadAdd  = 0.5
 
 FileMap   = 'Map_Orth_d25_B40.mrc'
 FileOut   = 'NewMap1.mrc'
@@ -97,7 +100,7 @@ for s, u, o, e in zip(sites_cart, adp_as_u, occupancy, atoms.extract_element()):
      site_cart = s,
      u_iso     = u,
      occ       = o,
-     radius    = 5,
+     radius    = 2.5*RadFact, # atomic radius = atomic_resolution * RadFact
      resolution=2.5,
      mu        = _X_mu,
      kappa     = _X_kappa,
