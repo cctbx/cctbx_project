@@ -44,12 +44,14 @@ C = [ # kappa
    -6.330524081979416,
     6.317387204802556,
    -6.358094541306267]
-_X_mu     = R
-_X_kappa  = C
+
+nterms = 5
 ScaleB = 1.0 / (8.0 * math.pi**2)
-_X_nu     = list(flex.double(B)  * ScaleB)
-_X_musq   = list(flex.double(R)*flex.double(R))
-_X_kappi  = flex.double(C)/(math.pi**1.5)
+_X_mu     = R[:nterms]
+_X_kappa  = C[:nterms]
+_X_nu     = list(flex.double(B)  * ScaleB)[:nterms]
+_X_musq   = list(flex.double(R)*flex.double(R))[:nterms]
+_X_kappi  = list(flex.double(C)/(math.pi**1.5))[:nterms]
 
 # three atoms
 X_mu    = [_X_mu    , _X_mu    , _X_mu    ]
@@ -65,179 +67,6 @@ X_kappi = [_X_kappi , _X_kappi , _X_kappi ]
 #    and calculating respective gradients            by A.G. Urzhumtsev
 #
 ######################################################
-
-
-#=====================================
-def GetMNKCoefficients(ModelTypes,RadFact,RadMu) :
-
-#   Array ModelTypes consists of a line per atom.
-#   This line contains :
-
-#   Types contains labels of atomic types, as they found in the list of atoms
-#   ResMin, ResMax contains min and max resolution for the given atomic type
-#   TermsDecomp contains consecutively all decomposition coefficients in the order
-#        of the Types and in the limits (ResMin, ResMax) for each type;
-#        for each atomic type, groups of coefficients are given increasing resolution
-#   PosTerms is the starting position in TermsDecomp of the respective group of terms
-#   ResTerms is the resolution of this group of terms
-#   TypeStart is the position of the respective atomic type in (PosTerms, ResTerms)
-
-#   extract atomic types and resolution limits for each type
-
-    Types,ResMin,ResMax,TermsAtom = FindTypes(ModelTypes)
-
-#   read coefficients for the required atomic types and the resolution ranges
-
-    TermsDecomp,TypeStart,ResTerms,PosTerms = GetDecomposition(Types,ResMin,ResMax)
-
-#   establish references from each atom to respective lines of the global table
-
-    TermsAtom = GetTables(TermsDecomp,TypeStart,ResTerms,PosTerms,RadFact,RadMu,TermsAtom)
-
-    return TermsAtom, TermsDecomp
-
-#============================
-def FindTypes(ModelTypes) :
-
-    Natoms = len(ModelTypes)
-    Ntypes = 0
-    Types, ResMin, ResMax = [], [], []
-
-    TermsAtom = [ [0.0, 0, 0] for ia in range(Natoms)]
-
-#   find atomic types and their resolution bounds
-
-    for iat in range(Natoms) :
-        TypeAtom, ResAtom = ModelTypes[iat]
-        TermsAtom[iat][0] = ResAtom
-        FoundType = False
-        for itype in range(Ntypes) :
-            if TypeAtom == Types[itype] :
-               FoundType = True
-               break
-        if FoundType :
-           if ResMin[itype] > ResAtom : ResMin[itype] = ResAtom
-           if ResMax[itype] < ResAtom : ResMax[itype] = ResAtom
-           TermsAtom[iat][1] = itype
-        else :
-           Types.append(TypeAtom)
-           ResMin.append(ResAtom)
-           ResMax.append(ResAtom)
-           TermsAtom[iat][1] = Ntypes
-           Ntypes            = Ntypes + 1
-    return Types,ResMin,ResMax, TermsAtom
-
-#============================
-def GetDecomposition(Types,ResMin,ResMax) :
-
-    print(Types)
-    print(ResMin)
-    print(ResMax)
-    #STOP()
-
-    Ntypes = len(Types)
-
-    ScaleB = 1.0 / (8.0 * math.pi**2)
-
-#   read file and save terms for the given types and resolution within bounds
-
-    iterm       = 0
-    ilist       = 0
-    TermsDecomp = []
-    ResTerms    = []
-    PosTerms    = []
-    TypeStart   = []
-
-    for itype in range(Ntypes) :
-        TypeMin = ResMin[itype]
-        TypeMax = ResMax[itype]
-        FileTerms = Types[itype] + '_MNK.tab'
-
-        nfterms  = open(FileTerms, 'r')
-        TypeStart.append(ilist)
-
-        while (True) :
-           Line = nfterms.readline()
-           if not Line : break
-
-           LineClean = Line.rstrip('\n')
-           LineCut   = LineClean.replace("="," ")
-           LineCont  = LineCut.split()
-           if len(LineCont) == 0 : break
-
-           if LineCont[0] == 'Atom' :
-              ResTable = float(LineCont[5])
-              if ResTable > TypeMax : break
-              TakeLine = False
-              if ResTable >= TypeMin :
-                 TakeLine = True
-                 ResTerms.append(ResTable)
-                 PosTerms.append(iterm)
-                 ilist = ilist + 1
-              Line = nfterms.readline()
-
-           else :
-              if TakeLine :
-                 mu, sigma, kappa = float(LineCont[1]), float(LineCont[2]), float(LineCont[3])
-                 print("mu, sigma, kappa", mu, sigma, kappa)
-                 nu    = sigma * ScaleB
-                 musq  = mu * mu
-                 kappi = kappa / math.pi**1.5
-                 TermsDecomp.append([mu,nu,kappa,musq,kappi])
-                 iterm = iterm + 1
-
-        nfterms.close()
-
-
-    return TermsDecomp, TypeStart, ResTerms, PosTerms
-
-#============================
-def GetTables(TermsDecomp, TypeStart, ResTerms, PosTerms,RadFact,RadMu,TermsAtom) :
-
-    Natoms = len(TermsAtom)
-    Ntypes = len(TypeStart)
-    Nlists = len(PosTerms)
-    Nterms = len(TermsDecomp)
-
-    for iatom in range(Natoms) :
-        ResAtom, itype, dummy = TermsAtom[iatom]
-        RadAtom, MuMax        = ResAtom * RadFact , ResAtom * RadMu
-
-#       find the part of the list (PosTerms,ResTerms) corresponding to the given type
-
-        k1 = TypeStart[itype]
-        if itype == Ntypes-1 :
-           k2 = Nlists
-        else :
-           k2 = TypeStart[itype+1]
-
-#       find the line (PosTerms) for the given type and resolution
-
-        for kres in range(k2-1, k1-1, -1) :
-            if ResAtom >= ResTerms[kres] :
-               k0 = kres
-               break
-
-        if k0 < k2-1 :
-           if (ResAtom - ResTerms[k0]) > (ResTerms[k0+1] - ResAtom ) : k0 = k0 + 1
-
-#       select from TermsDecomp all terms within the given maximal distance
-
-        N1 = PosTerms[k0]
-        if k0 == Nlists-1 :
-           NTMax = Nterms
-        else :
-           NTMax = PosTerms[k0+1]
-
-        N2 = NTMax
-        for it in range (N1,NTMax) :
-            if TermsDecomp[it][0] > MuMax :
-               N2 = it
-               break
-
-        TermsAtom[iatom] = [RadAtom, N1, N2]
-
-    return TermsAtom
 
 #-------------------------------------------
 def CalcFuncMap(OmegaMap, ControlMap, Ncrs) :
@@ -266,8 +95,7 @@ def CalcGradMap(OmegaMap ,ControlMap, Ncrs) :
     return GradMap
 
 #=====================================
-def CalcOmegaMap(TermsAtom, Ncrs,
-                 Scrs, Nxyz, unit_cell, bcr_scatterers) :
+def CalcOmegaMap(Ncrs, Scrs, Nxyz, unit_cell, bcr_scatterers) :
 
     acell, bcell, ccell, alpha, beta,  gamma = unit_cell.parameters()
     OrthMatrix  = unit_cell.orthogonalization_matrix()
@@ -309,8 +137,6 @@ def CalcOmegaMap(TermsAtom, Ncrs,
     for iatom in range(len(bcr_scatterers)) :
         bcr_scatterer = bcr_scatterers[iatom]
 
-        #RadAtom, Nterms1, Nterms2 = TermsAtom[iatom]
-        _, Nterms1, Nterms2 = TermsAtom[iatom]
         RadAtom = bcr_scatterer.radius
         RadAtom2  = RadAtom   * RadAtom
         RadAtomX  = RadAtom   * RprojX
@@ -390,10 +216,7 @@ def CalcOmegaMap(TermsAtom, Ncrs,
         GridValues = [0.0 for i in range(Ngrids)]
         GridValue0 = 0.0
 
-        print("LOOK", Nterms1, Nterms2, bcr_scatterer.mu.size())
-        for iterm in range(Nterms1, Nterms2) :
-            #mu, nu, kappa, musq, kappi = TermsDecomp[iterm]
-            #print("mu, nu, kappa, musq, kappi", mu, nu, kappa, musq, kappi,"RadAtom", RadAtom)
+        for iterm in range(0, bcr_scatterer.mu.size()) :
             mu    = bcr_scatterer.mu[iterm]
             nu    = bcr_scatterer.nu[iterm]
             musq  = bcr_scatterer.musq[iterm]
@@ -440,8 +263,7 @@ def CalcOmegaMap(TermsAtom, Ncrs,
     return OmegaMap
 
 #=====================================
-def CalcGradAtom(GradMap,TermsDecomp,TermsAtom,
-                 Ncrs, Scrs, Nxyz, unit_cell, bcr_scatterers):
+def CalcGradAtom(GradMap, Ncrs, Scrs, Nxyz, unit_cell, bcr_scatterers):
 
     Natoms = len(bcr_scatterers)
 
@@ -485,8 +307,6 @@ def CalcGradAtom(GradMap,TermsDecomp,TermsAtom,
     for iatom in range(len(bcr_scatterers)) :
         bcr_scatterer = bcr_scatterers[iatom]
 
-        #RadAtom, Nterms1, Nterms2 = TermsAtom[iatom]
-        _, Nterms1, Nterms2 = TermsAtom[iatom]
         RadAtom = bcr_scatterer.radius
         RadAtom2  = RadAtom   * RadAtom
         RadAtomX  = RadAtom   * RprojX
@@ -570,7 +390,7 @@ def CalcGradAtom(GradMap,TermsDecomp,TermsAtom,
 
 #        Nterms1, Nterms2 = TermsAtom[iatom]
 
-        for iterm in range(Nterms1, Nterms2) :
+        for iterm in range(0, bcr_scatterer.mu.size()) :
             mu    = bcr_scatterer.mu[iterm]
             nu    = bcr_scatterer.nu[iterm]
             musq  = bcr_scatterer.musq[iterm]
@@ -688,9 +508,6 @@ Ncrs = mm.map_data().all()
 Scrs = [0,0,0]
 Nxyz = mm.map_data().all()
 unit_cell = mm.crystal_symmetry().unit_cell()
-Uabc = unit_cell.parameters()[:3]
-Uang = unit_cell.parameters()[3:]
-Uang = [it*math.pi/180. for it in Uang]
 
 Mx,My,Mz = Nxyz
 ControlMap = [[[ mm.map_data()[ix,iy,iz] for ix in range(Mx) ] for iy in range(My)] for iz in range(Mz)]
@@ -757,20 +574,10 @@ for s, u, o, e in zip(sites_cart, adp_as_u, occupancy, atoms.extract_element()):
 
 #-------------- calculation --------
 
-TermsAtom, TermsDecomp = GetMNKCoefficients(ModelTypes,RadFact,RadMu)
-
-
-
-
-
-OmegaMap = CalcOmegaMap(TermsAtom,
-                        Ncrs,Scrs,Nxyz, unit_cell, bcr_scatterers)
-
+OmegaMap = CalcOmegaMap(Ncrs,Scrs,Nxyz, unit_cell, bcr_scatterers)
 FuncMap  = CalcFuncMap(OmegaMap, ControlMap, Ncrs)
 GradMap  = CalcGradMap(OmegaMap, ControlMap, Ncrs)
-
-GradAtom = CalcGradAtom(GradMap,
-                        TermsDecomp,TermsAtom,Ncrs,Scrs,Nxyz,unit_cell, bcr_scatterers)
+GradAtom = CalcGradAtom(GradMap, Ncrs,Scrs,Nxyz,unit_cell, bcr_scatterers)
 
 #=============== output results ======================================
 
