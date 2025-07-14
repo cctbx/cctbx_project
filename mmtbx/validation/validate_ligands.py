@@ -304,24 +304,28 @@ class ligand_result(object):
     '''
     if self._is_suspicious is not None:
       return self._is_suspicious
+    #
     self._is_suspicious = False
+    # get info
     n_atoms = self._atoms_ligand_noH.size()
     occs = self.get_occupancies()
     adps = self.get_adps()
     clashes = self.get_overlaps()
+    ccs = None
     if self.fmodel is not None:
       ccs = self.get_ccs()
+    # apply criteria for metrics
+    if ccs is not None:
       if ccs.cc_2fofc < 0.5:
         self._is_suspicious = True
     if adps.b_mean_within is not None:
       if adps.b_mean > 4 * adps.b_mean_within:
         self._is_suspicious = True
-    if adps.b_mean > 150:
-      self._is_suspicious = True
     if occs.occ_mean == 0.:
       self._is_suspicious = True
     if clashes.n_clashes > 0.5 * n_atoms:
       self._is_suspicious = True
+    #
     return self._is_suspicious
 
   # ----------------------------------------------------------------------------
@@ -431,6 +435,8 @@ class ligand_result(object):
     for rg in self._ph.select(self.ligand_isel).residue_groups():
       for c in rg.conformers():
         _resname = c.only_residue().resname
+
+    self.resname = _resname.strip()
 
     _id_str = self._atoms_ligand[0].id_str()
     if _id_str.startswith("model"):
