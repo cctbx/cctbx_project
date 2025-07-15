@@ -136,23 +136,24 @@ class manager(list):
       '''
       Print summary table
       '''
-      lab_row1 =  ['','','CC','','', 'ADPs', 'occupancies']
-      lab_row2 =  ['ligand', 'suspicious', '2Fo-Fc','clashes','H-bonds',\
+      lab_row1 =  ['','','', '% bad', '','', '', '']
+      lab_row2 =  ['','','CC', 'map values', '','', 'ADPs', 'occupancies']
+      lab_row3 =  ['ligand', 'suspicious', '2Fo-Fc', 'Fo-Fc','clashes','H-bonds',\
         'min   max   mean   owab', 'min   max   mean']
-      lab1_str = '{:^14}|{:^12}|{:^9}|{:^9}|{:^9}|{:^28}|{:^21}|'
-      lab2_str = '{:^14}|{:^12}|{:^9}|{:^9}|{:^9}|{:^28}|{:^21}|'
-      #table_str = '{:>16}|{:^16.2f}|{:^5.2}|{:^15}|'
-      #table_str = '{:^14}|{:^12}|{:^9.2f}|{:^9}|{:^7}{:^7}{:^7}|'
+      lab1_str = '{:^14}|{:^12}|{:^9}|{:^12}|{:^9}|{:^9}|{:^28}|{:^21}|'
       print('\n' + lab1_str.format(*lab_row1), file=out)
-      print(lab2_str.format(*lab_row2), file=out)
-      print('-'*100, file=out)
+      print(lab1_str.format(*lab_row2), file=out)
+      print(lab1_str.format(*lab_row3), file=out)
+      print('-'*120, file=out)
       for lr in self:
         ccs     = lr.get_ccs()
         clashes = lr.get_overlaps()
         adps    = lr.get_adps()
         owab    = lr.get_owab()
         occs    = lr.get_occupancies()
+        map_vals = lr.get_map_values()
         is_suspicious = lr.check_if_suspicious()
+        n_atoms = lr._atoms_ligand_noH.size()
         if is_suspicious: check='***'
         else:             check =''
 
@@ -160,22 +161,30 @@ class manager(list):
         #  round(adps.b_min,1), round(adps.b_max,1), round(adps.b_mean,1)]
         #print(table_str.format(*line), file=self.log)
 
-        value3 = f"{ccs.cc_2fofc:^9.2f}" if ccs is not None else f"{'':^9}"
-        val_clash = f"{clashes.n_clashes:^9}" if clashes.n_clashes != 0 else f"{'-':^9}"
-        value5 = f"{clashes.n_hbonds:^9}" if clashes.n_hbonds != 0 else f"{'-':^9}"
-        val_o_min = f"{round(occs.occ_min,1):^7}" if occs.occ_min != occs.occ_mean else f"{'':^7}"
-        val_o_max = f"{round(occs.occ_max,1):^7}" if occs.occ_max != occs.occ_mean else f"{'':^7}"
+        val_id      = f"{lr.id_str:^14}"
+        val_check   = f"{check:^12}"
+        val_cc      = f"{ccs.cc_2fofc:^9.2f}" if ccs is not None else f"{'':^9}"
+        val_mapvals = f"{round((map_vals.fofc_map_values<=-3).count(True)/n_atoms, 2):^12}"
+        val_clash   = f"{clashes.n_clashes:^9}" if clashes.n_clashes != 0 else f"{'-':^9}"
+        val_hbonds  = f"{clashes.n_hbonds:^9}" if clashes.n_hbonds != 0 else f"{'-':^9}"
+        val_b_min   = f"{round(adps.b_min,1):^7}"
+        val_b_max   = f"{round(adps.b_max,1):^7}"
+        val_b_mean  = f"{round(adps.b_max,1):^7}"
+        val_owab    = f"{round(owab,1):^7}"
+        val_o_min   = f"{round(occs.occ_min,1):^7}" if occs.occ_min != occs.occ_mean else f"{'':^7}"
+        val_o_max   = f"{round(occs.occ_max,1):^7}" if occs.occ_max != occs.occ_mean else f"{'':^7}"
+        val_o_mean  = f"{round(occs.occ_mean,1):^7}"
 
-        row = f"{lr.id_str:^14}|{check:^12}|{value3}|{val_clash:^9}|{value5:^9}|\
-{round(adps.b_min,1):^7}{round(adps.b_max,1):^7}{round(adps.b_mean,1):^7}\
-{round(owab,1):^7}|\
-{val_o_min:^7}{val_o_max:^7}{round(occs.occ_mean,1):^7}|"
+        row = f"{val_id}|{val_check}|{val_cc}|{val_mapvals}|{val_clash}|\
+{val_hbonds}|{val_b_min}{val_b_max}{val_b_mean}{val_owab}|\
+{val_o_min}{val_o_max}{val_o_mean}|"
         print(row, file=out)
         #
+        val_sites = f"{'sites':^14}"
         _b_min_within = f"{round(adps.b_min_within,1):^7}" if adps.b_min_within is not None else f"{'':^7}"
         _b_max_within = f"{round(adps.b_max_within,1):^7}" if adps.b_max_within is not None else f"{'':^7}"
         _b_mean_within = f"{round(adps.b_mean_within,1):^7}" if adps.b_mean_within is not None else f"{'':^7}"
-        sites_row = f"{'sites':^14}|{'':^12}|{'':^9}|{'':^9}|{'':^9}|\
+        sites_row = f"{val_sites}|{'':^12}|{'':^9}|{'':^12}|{'':^9}|{'':^9}|\
 {_b_min_within}{_b_max_within}{_b_mean_within}\
 {'':^7}|{'':^7}{'':^7}{'':^7}|"
         print(sites_row, file=out)
@@ -273,13 +282,14 @@ class ligand_result(object):
 
     # results
     self._result_attrs = {
-      '_occupancies' : 'get_occupancies',
-      '_adps'        : 'get_adps',
-      '_owab'        : 'get_owab',
-      '_overlaps'    : 'get_overlaps',
-      #'_polder_ccs'  : 'get_polder_ccs',
-      '_ccs'         : 'get_ccs',
+      '_occupancies'   : 'get_occupancies',
+      '_adps'          : 'get_adps',
+      '_owab'          : 'get_owab',
+      '_overlaps'      : 'get_overlaps',
+      '_ccs'           : 'get_ccs',
       '_is_suspicious' : 'check_if_suspicious',
+      '_map_values'    : 'get_map_values',
+      #'_polder_ccs'  : 'get_polder_ccs',
     }
 
     for attr, func in self._result_attrs.items():
@@ -312,6 +322,7 @@ class ligand_result(object):
     adps = self.get_adps()
     clashes = self.get_overlaps()
     ccs = None
+    map_vals = self.get_map_values()
     if self.fmodel is not None:
       ccs = self.get_ccs()
     # apply criteria for metrics
@@ -324,6 +335,8 @@ class ligand_result(object):
     if occs.occ_mean == 0.:
       self._is_suspicious = True
     if clashes.n_clashes > 0.5 * n_atoms:
+      self._is_suspicious = True
+    if (map_vals.fofc_map_values<-3).count(True) >= 0.5 * n_atoms:
       self._is_suspicious = True
     #
     return self._is_suspicious
@@ -534,6 +547,48 @@ class ligand_result(object):
       cc_2fofc = cc,
        )
     return self._ccs
+
+  # ----------------------------------------------------------------------------
+
+  def get_map_values(self):
+    if self.fmodel is None:
+      return
+    if self._map_values is not None:
+      return self._map_values
+
+    fofc_map_values = flex.double()
+
+   # get map coefficients
+    mc = map_tools.electron_density_map(fmodel = self.fmodel).map_coefficients(
+        map_type         = "mFo-DFc",
+        isotropize       = True,
+        fill_missing     = False)
+    # TODO d_min and cg should be accessible in class
+    d_min = self.fmodel.f_obs().d_min()
+    cg = self.fmodel.f_obs().crystal_gridding(
+      d_min             = d_min,
+      symmetry_flags    = maptbx.use_space_group_symmetry,
+      resolution_factor = 0.25)
+    # get map_data
+    map_fo = miller.fft_map(
+        crystal_gridding     = cg,
+        fourier_coefficients = mc)
+    map_fo.apply_sigma_scaling()
+    map_data_fofc = map_fo.real_map_unpadded()
+
+    # get fo-fc map values at atom centers: fo-fc
+    unit_cell = self.model.crystal_symmetry().unit_cell()
+    for site_cart, _a in zip(self._atoms_ligand_noH.extract_xyz(), self._atoms_ligand_noH):
+      site_frac = unit_cell.fractionalize(site_cart)
+      map_val = map_data_fofc.eight_point_interpolation(site_frac)
+      #print(_a.id_str(), map_val)
+      fofc_map_values.append(map_val)
+
+    self._map_values = group_args(
+      fofc_map_values = fofc_map_values,
+       )
+
+    return self._map_values
 
   # ----------------------------------------------------------------------------
 
