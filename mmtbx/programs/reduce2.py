@@ -126,8 +126,8 @@ output
     .short_caption = Print extra atom info
     .help = Print extra atom info
 }
-''' + Helpers.probe_phil_parameters.replace("probe_radius = 0.25", "probe_radius = 0.0")
-# @todo We replace the default probe radius of 0.25 with 0.0 to avoid the issue described in
+''' + Helpers.probe_phil_parameters.replace("bump_weight = 10.0", "bump_weight = 100.0").replace("hydrogen_bond_weight = 4.0", "hydrogen_bond_weight = 40.0")
+# @todo We replace the default weights to avoid the issue described in
 # https://github.com/cctbx/cctbx_project/issues/1072 until we can figure out the appropriate
 # fix.
 
@@ -904,6 +904,17 @@ NOTES:
   Note that the program also takes probe Phil arguments; run with --show_defaults to see
   all Phil arguments.
 
+  As of 7/14/2025, reduce2 is switching to new default parameters for the relative weighting of
+  external contacts (which remains the same) and both hydrogen bonds and collisions (whic are
+  increasing by 10x). This is to work as expected with a radius larger than 0 (it is being switched
+  to 0.25, which matches the probe2 default). The original Reduce had switched to a radius of 0.0
+  and was not considering external contacts; this fixes that without causing hydrogen bonds to be
+  broken. See https://github.com/cctbx/cctbx_project/issues/1072 for details. The defaults for
+  probe2 are not being changed, so its default behavior will be different from reduce2 until the
+  issue can be fully resolved and both set to the same defaults. The probe radius and relative
+  weights can be set in both probe2 and reduce2 using the probe2 Phil parameters if different
+  behavior is desired.
+
   Equivalent PHIL arguments for original Reduce command-line options:
     -quiet: No equivalent; metadata is never written to the model file, it is always
             written to the description file, and progress information is always written
@@ -918,6 +929,7 @@ NOTES:
     -onlya: alt_id=A
     -nuclear: use_neutron_distances=True
     -demandflipallnhqs: add_flip_movers=True
+    -rad0.25: probe.probe_radius=0.25
 '''.format(version)
   datatypes = ['model', 'restraint', 'phil']
   master_phil_str = master_phil_str
