@@ -465,7 +465,7 @@ def RunRegressionTests():
     try:
       # Run the program
       args = [pdb_file, "add_flip_movers=True", "output.description_file=./deleteme_description.txt",
-              "probe.probe_radius=0.25"]
+              "probe.probe_radius=0.25", "probe.bump_weight=10.0", "probe.hydrogen_bond_weight=4.0"]
       args.extend(extraArgs)
       results = run_program(program_class=reduce2.Program, logger=out, args=args)
       # Check the position of the atom to see if it is near enough to one of the expected locations.
