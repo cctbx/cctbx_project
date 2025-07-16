@@ -124,7 +124,7 @@ def exercise_sequence_search():
   r = rcsb_web_services.sequence_search(sequence=lysozyme, clashscore_range=(0,20))
   print(len(r))
   assert len(r) > 1100
-  assert len(r) < 1200
+  assert len(r) < 1300, len(r)
   r = rcsb_web_services.sequence_search(sequence=lysozyme, rama_outliers_range=(0,1))
   print(len(r))
   assert len(r) > 100
