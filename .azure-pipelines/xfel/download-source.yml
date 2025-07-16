@@ -18,6 +18,10 @@ jobs:
   - bash: echo "##vso[task.prependpath]$CONDA/bin"
     displayName: Add conda to PATH
 
+  # accept conda tos
+  - script: conda config --set plugins.auto_accept_tos yes
+    displayName: Accept conda TOS
+
   # create environment with earlier version of git
   # https://github.com/git-lfs/git-lfs/issues/5749
   - script: |

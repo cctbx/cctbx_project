@@ -53,6 +53,10 @@ jobs:
   - script: echo "##vso[task.prependpath]$CONDA/bin"
     displayName: Add conda to PATH
 
+  # accept conda tos
+  - script: conda config --set plugins.auto_accept_tos yes
+    displayName: Accept conda TOS
+
   - script: |
       conda create -y -c conda-forge -n py$(PYTHON_VERSION) python=$(PYTHON_VERSION) six future scons setuptools
     displayName: Create conda environment
