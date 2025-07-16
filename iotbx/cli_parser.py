@@ -656,9 +656,14 @@ Also, specifying this flag implies that --json is also specified.'''
       sources.append(iotbx.phil.parse('output.overwrite=True'))
 
     # process program parameters
+    skip_incompatible_objects = False
+    if self.namespace.diff_params:
+      skip_incompatible_objects = True
     if len(data_sources) + len(sources) > 0:
       self.working_phil, more_unused_phil = self.master_phil.fetch(
-        sources=data_sources + sources, track_unused_definitions=True)
+        sources=data_sources + sources,
+        track_unused_definitions=True,
+        skip_incompatible_objects=skip_incompatible_objects)
       self.unused_phil.extend(more_unused_phil)
     elif self.working_phil is None:
       self.working_phil = self.master_phil.fetch()
