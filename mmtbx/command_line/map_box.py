@@ -1048,7 +1048,7 @@ def run(args,
     ignore_symmetry_conflicts = params.ignore_symmetry_conflicts)
   if box:
     mam.box_all_maps_around_model_and_shift_origin(
-      use_cubic_boxing = params.use_cubic_boxing, 
+      use_cubic_boxing = params.use_cubic_boxing,
       stay_inside_current_map = params.stay_inside_current_map,
       box_cushion = params.box_cushion)
     if mam.warning_message():
@@ -1556,4 +1556,3 @@ class launcher(runtime_utils.target_with_save_result):
 
 if (__name__  ==  "__main__"):
   run(args = sys.argv[1:])
-
