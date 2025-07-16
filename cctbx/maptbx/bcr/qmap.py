@@ -1,6 +1,82 @@
 from __future__ import absolute_import, division, print_function
 import math
+from cctbx import adptbx
+import libtbx
+import os
+import json
+from scitbx.array_family import flex
 
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("cctbx_maptbx_bcr_bcr_ext")
+
+def load_table(element):
+  element = element.strip().upper()
+  assert element in ["C","H","N","O","S"]
+  path=libtbx.env.find_in_repositories("cctbx/maptbx/bcr/tables")
+  file_name = "%s/%s.json"%(path, element)
+  assert os.path.isfile(file_name)
+  with open(file_name, 'r') as file:
+    return json.load(file)
+
+def compute(hierarchy, unit_cell, n_real, resolution=None, resolutions=None):
+  assert [resolution, resolutions].count(None)==1
+  atoms = hierarchy.atoms()
+  if resolutions is None:
+    resolutions = [resolution,] * atoms.size()
+  RadFact = 2.0
+  RadAdd  = 0.5
+  RadMu   = RadFact + RadAdd
+  sites_cart = atoms.extract_xyz()
+  adp_as_u = atoms.extract_b()*adptbx.b_as_u(1.)
+  occupancy= atoms.extract_occ()
+  arrays = {}
+  for e in list(set(atoms.extract_element())):
+    e = e.strip().upper()
+    d = load_table(element=e)
+    arrays[e] = d
+  ScaleB = 1.0 / (8.0 * math.pi**2)
+  kscale = math.pi**1.5
+  bcr_scatterers = []
+  for s, u, o, e, r in zip(sites_cart, adp_as_u, occupancy,
+                           atoms.extract_element(), resolutions):
+    e = e.strip().upper()
+    entry = arrays[e]
+    keys = [float(x) for x in entry.keys()]
+    key = str(min(keys, key=lambda x: abs(x - r)))
+    print(key)
+    vals = entry[key]
+    R = flex.double(vals['R'])
+    B = flex.double(vals['B'])
+    C = flex.double(vals['C'])
+    sel = R < (r*RadMu)
+    mu    = R.select(sel)
+    nu    = B.select(sel) * ScaleB
+    kappa = C.select(sel)
+    musq  = mu * mu
+    kappi = kappa/kscale
+    bcr_scatterer = ext.bcr_scatterer(
+      site_cart = s,
+      u_iso     = u,
+      occ       = o,
+      radius    = r*RadFact, # atomic radius = atomic_resolution * RadFact
+      resolution=r,
+      mu        = mu,
+      kappa     = kappa,
+      nu        = nu,
+      musq      = musq,
+      kappi     = kappi)
+    bcr_scatterers.append(bcr_scatterer)
+  #
+  OmegaMap = CalcOmegaMap(Ncrs=n_real, Scrs=[0,0,0], Nxyz=n_real,
+    unit_cell=unit_cell, bcr_scatterers=bcr_scatterers)
+  nx,ny,nz = n_real
+  m2 = flex.double(flex.grid(n_real))
+  for iz in range(0, nz):
+    for iy in range(0, ny):
+      for ix in range(0, nx):
+        v = OmegaMap[iz][iy][ix]
+        m2[ix,iy,iz] = v
+  return m2
 
 #-------------------------------------------
 def CalcFuncMap(OmegaMap, ControlMap, Ncrs) :
@@ -186,11 +262,11 @@ def CalcOmegaMap(Ncrs, Scrs, Nxyz, unit_cell, bcr_scatterers) :
 
         for ig in range(Ngrids) :
             r2zyx,rzyx,rzyx2,ix,iy,iz = AtomGrids[ig]
-            OmegaMap[iz][iy][ix] = GridValues[ig] * cat
+            OmegaMap[iz][iy][ix] += GridValues[ig] * cat
 
         ix0,iy0,iz0 = AtomGrid0
         if ix0 >= 0 :
-           OmegaMap[iz0][iy0][ix0] = GridValue0 * cat
+           OmegaMap[iz0][iy0][ix0] += GridValue0 * cat
 
     return OmegaMap
 
