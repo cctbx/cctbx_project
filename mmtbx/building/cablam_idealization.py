@@ -254,8 +254,8 @@ class cablam_idealization(object):
     i -= 1
     middle_pos = (best_position + i) // 2
     # print('lenlenlen', len(scores))
-    print('cluster positions:', best_position, i, middle_pos)
-    print('cluster angles:', scores[best_position][0], scores[i][0], scores[middle_pos][0])
+    print('cluster positions:', best_position, i, middle_pos, file=self.log)
+    print('cluster angles:', scores[best_position][0], scores[i][0], scores[middle_pos][0], file=self.log)
     return scores[middle_pos][0]
 
   def _minimize(self):
@@ -413,6 +413,12 @@ class cablam_idealization(object):
     n_fixed_for_alpha = sum(1 for ci, angle in flat_cablam_results if angle != 360 and ci.feedback.alpha)
     n_fixed_for_beta = sum(1 for ci, angle in flat_cablam_results if angle != 360 and ci.feedback.beta)
     n_fixed_for_threeten = sum(1 for ci, angle in flat_cablam_results if angle != 360 and ci.feedback.threeten)
+
+    n_not_fixed_for_loop = sum(1 for ci, angle in flat_cablam_results if angle == 360 and not (ci.feedback.alpha or ci.feedback.beta or ci.feedback.threeten))
+    n_not_fixed_for_alpha = sum(1 for ci, angle in flat_cablam_results if angle == 360 and ci.feedback.alpha)
+    n_not_fixed_for_beta = sum(1 for ci, angle in flat_cablam_results if angle == 360 and ci.feedback.beta)
+    n_not_fixed_for_threeten = sum(1 for ci, angle in flat_cablam_results if angle == 360 and ci.feedback.threeten)
+
     # print
     # assert n_fixed_for_loop + n_fixed_for_alpha + n_fixed_for_beta + n_fixed_for_threeten == self.n_rotated_residues
 
@@ -428,4 +434,9 @@ class cablam_idealization(object):
       n_fixed_for_alpha = n_fixed_for_alpha,
       n_fixed_for_beta = n_fixed_for_beta,
       n_fixed_for_threeten = n_fixed_for_threeten,
+
+      n_not_fixed_for_loop = n_not_fixed_for_loop,
+      n_not_fixed_for_alpha = n_not_fixed_for_alpha,
+      n_not_fixed_for_beta = n_not_fixed_for_beta,
+      n_not_fixed_for_threeten = n_not_fixed_for_threeten,
       )
