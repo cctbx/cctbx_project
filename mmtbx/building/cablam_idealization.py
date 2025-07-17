@@ -66,6 +66,7 @@ class cablam_idealization(object):
     self.n_tried_residues = 0
     self.n_rotated_residues = 0
     self.cablam_fixed_minimized = None
+    self.cablam_results = {}
 
     if not self.params.enabled:
       return
@@ -90,9 +91,13 @@ class cablam_idealization(object):
     for chain, outliers in six.iteritems(self.outliers_by_chain):
       b_selection = self.model.selection("chain %s" % chain)
       self.atoms_around = self.model.get_xray_structure().selection_within(7, b_selection).iselection()
+      self.cablam_results[chain] = []
 
       for outlier in outliers:
-        self.fix_cablam_outlier(chain, outlier)
+        rotated_angle = self.fix_cablam_outlier(chain, outlier)
+        if rotated_angle is not None:
+          self.cablam_results[chain].append((outlier[-1], rotated_angle))
+    print("*"*80, file=self.log)
 
     if self.params.find_ss_after_fixes:
       ss_manager = ss_manager_class(
@@ -125,18 +130,12 @@ class cablam_idealization(object):
 
 
   def fix_cablam_outlier(self, chain, outlier):
-    self.n_tried_residues += 1
     scores = []
-    if len(outlier) == 1:
-      curresid = outlier[0].residue.resid()
-      prevresid = outlier[0].prevres.residue.resid()
-      curresseq_int = outlier[0].residue.resseq_as_int()
-      prevresseq_int = outlier[0].prevres.residue.resseq_as_int()
-    elif len(outlier) == 2:
-      curresid = outlier[1].residue.resid()
-      prevresid = outlier[1].prevres.residue.resid()
-      curresseq_int = outlier[1].residue.resseq_as_int()
-      prevresseq_int = outlier[1].prevres.residue.resseq_as_int()
+    if len(outlier) < 3:
+      curresid = outlier[-1].residue.resid()
+      prevresid = outlier[-1].prevres.residue.resid()
+      curresseq_int = outlier[-1].residue.resseq_as_int()
+      prevresseq_int = outlier[-1].prevres.residue.resseq_as_int()
     else:
       print("Don't know how to deal with more than 2 outliers in a row yet. Skipping.", file=self.log)
       return
@@ -151,6 +150,8 @@ class cablam_idealization(object):
 
     print("*"*80, file=self.log)
     print("Atoms for rotation:", chain, prevresid, curresid, file=self.log)
+    print("Cablam evaluation:", file=self.log)
+    print("  ", outlier[-1].feedback.alpha, outlier[-1].feedback.beta, outlier[-1].feedback.threeten, file=self.log)
     print("*"*80, file=self.log)
 
     around_str_sel = "chain %s and resid %d:%d" % (chain, prevresseq_int-2, curresseq_int+2)
@@ -185,11 +186,13 @@ class cablam_idealization(object):
       print(file=self.log)
     rot_angle = self._pick_rotation_angle(scores, self.params.require_h_bond)
     # rotate
+    self.n_tried_residues += 1
     if rot_angle != 360:
       self.n_rotated_residues += 1
       print("ROTATING by", rot_angle, file=self.log)
       self._rotate_cablam(self.model, chain,
           prevresid, curresid, a1, a2, angle=rot_angle)
+    return rot_angle
 
   def _rotate_cablam(self, model, chain, prevresid, curresid, a1, a2, angle):
     inside = False
@@ -339,7 +342,39 @@ class cablam_idealization(object):
     return results
 
   def identify_outliers(self):
-    cab_results = cablamalyze(
+    """
+    Returns a dictionary of identified Cablam outliers, organized by protein chain.
+
+    This function first identifies individual Cablam outliers and then groups
+    consecutive outliers within the same protein chain into segments.
+
+    :returns: outliers_by_chain (dict)
+        A dictionary where:
+        *   Keys: chain id (strings)
+        *   Values: Are lists of lists. Each inner list (`comb`)
+            represents a consecutive segment of Cablam outliers found
+            within that specific protein chain.
+            *   Elements within Inner Lists: Each element is a
+                Cablam outlier objec:
+                mmtbx.validation.cablam.cablam_result
+                These objects contain detailed
+                information about the individual residue identified as an
+                outlier, such as its residue sequence number, insertion code,
+                and references to its `residue` and `prevres` objects in the PDB hierarchy.
+
+    Purpose:
+    The structure of `outliers_by_chain` is designed to:
+    *   Group neighboring Cablam outliers: This facilitates subsequent
+        processing, such as applying idealizations or fixes to continuous
+        problematic regions, rather than treating each outlier in isolation.
+
+    Note:
+    *   The function explicitly skips any Cablam outliers that belong to
+        alternative conformations (i.e., those with a non-empty `altloc`
+        attribute). Therefore, `outliers_by_chain` will only contain
+        information about outliers from the primary (empty `altloc`) conformation.
+    """
+    self.starting_cablam_evaluation = cablamalyze(
         pdb_hierarchy=self.model.get_master_hierarchy(),
         outliers_only=True,
         out=null_out(),
@@ -347,13 +382,13 @@ class cablam_idealization(object):
         cablam_contours = self.cablam_contours,
         ca_contours = self.ca_contours,
         motif_contours = self.motif_contours)
-    outliers_only = [x for x in cab_results.results if x.feedback.cablam_outlier]# and x.feedback.c_alpha_geom_outlier]
+    outliers_only = [x for x in self.starting_cablam_evaluation.results if x.feedback.cablam_outlier]# and x.feedback.c_alpha_geom_outlier]
+    # Stores objects of
     outliers_by_chain = {}
     for k, g in itertools.groupby(outliers_only, key=lambda x: x.residue_id()[:2]):
       outliers_by_chain[k] = []
       comb = []
       for i in g:
-        # print i.resseq, i.resseq_as_int(), i.icode, i, i.altloc, dir(i)
         if i.altloc.strip() != '':
           print("  ", i, "<--- SKIPPING, alternative conformations.", file=self.log)
           continue
@@ -367,14 +402,30 @@ class cablam_idealization(object):
             outliers_by_chain[k].append(comb)
             comb = [i]
         print("  ", i, file=self.log)
+      # comb here is combination of adjacent outliers. If outlier is isolated - it
+      # is included as a single one.
       outliers_by_chain[k].append(comb)
-    # here we want to combine them if they are next to each other.
-    # probably will go with list of tuples
     return outliers_by_chain
 
   def get_results(self):
+    flat_cablam_results = [item for sublist in self.cablam_results.values() for item in sublist]
+    n_fixed_for_loop = sum(1 for ci, angle in flat_cablam_results if angle != 360 and not (ci.feedback.alpha or ci.feedback.beta or ci.feedback.threeten))
+    n_fixed_for_alpha = sum(1 for ci, angle in flat_cablam_results if angle != 360 and ci.feedback.alpha)
+    n_fixed_for_beta = sum(1 for ci, angle in flat_cablam_results if angle != 360 and ci.feedback.beta)
+    n_fixed_for_threeten = sum(1 for ci, angle in flat_cablam_results if angle != 360 and ci.feedback.threeten)
+    # print
+    # assert n_fixed_for_loop + n_fixed_for_alpha + n_fixed_for_beta + n_fixed_for_threeten == self.n_rotated_residues
+
     return group_args(
       model = self.model,
+      starting_cablam_evaluation = self.starting_cablam_evaluation,
+      cablam_results = self.cablam_results,
       model_minimized = self.cablam_fixed_minimized,
+      n_initial_cablam_outliers = self.starting_cablam_evaluation.summary_stats['cablam_outliers'],
       n_tried_residues = self.n_tried_residues,
-      n_rotated_residues = self.n_rotated_residues)
+      n_rotated_residues = self.n_rotated_residues,
+      n_fixed_for_loop = n_fixed_for_loop,
+      n_fixed_for_alpha = n_fixed_for_alpha,
+      n_fixed_for_beta = n_fixed_for_beta,
+      n_fixed_for_threeten = n_fixed_for_threeten,
+      )
