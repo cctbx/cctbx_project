@@ -77,7 +77,8 @@ if os.getenv("XDG_CONFIG_HOME"):
 
 def import_module(module: Union[str, ModuleType],
                   *, reload: bool = False,
-                   convert_comments_to_docstring: bool = True) -> ModuleType:
+                   convert_comments_to_docstring: bool = True,
+                   files_to_edit_for_boost: list[str] = None) -> ModuleType:
     """
     Return module object matching `module` specification (either a python
     module path or a filesystem path to file/directory).
@@ -160,7 +161,8 @@ class Module(Doc):
                  supermodule: Optional['Module'] = None,
                  context: Optional[Context] = None,
                  skip_errors: bool = False,
-                 convert_comments_to_docstring: bool = True):
+                 convert_comments_to_docstring: bool = True,
+                 files_to_edit_for_boost: list[str] = None):
         """
         Creates a `Module` documentation object given the actual
         module Python object.
@@ -182,7 +184,8 @@ class Module(Doc):
           original_module = module
           try:
             module = import_module(module,
-              convert_comments_to_docstring = convert_comments_to_docstring)
+              convert_comments_to_docstring = convert_comments_to_docstring,
+              files_to_edit_for_boost = files_to_edit_for_boost)
           except Exception as e:
             from copy import deepcopy
             module = deepcopy(dummy_module) # skipping it and marking name
@@ -309,7 +312,9 @@ class Module(Doc):
                                docfilter=docfilter, supermodule=self,
                                context=self._context, skip_errors=skip_errors,
                                convert_comments_to_docstring =
-                              convert_comments_to_docstring)
+                              convert_comments_to_docstring,
+                               files_to_edit_for_boost =
+                                 files_to_edit_for_boost)
                 except Exception as ex:
                     if skip_errors:
                         warn(str(ex), Module.ImportWarning)
@@ -550,13 +555,23 @@ def run(args, top_level = None):
   else:
     convert_comments_to_docstring = False
 
+  # Identify any files that will need to be edited for boost:
+  files_to_edit_for_boost = []
+  key = "files_to_edit_for_boost="
+  for arg in args:
+    if arg.startswith(key):
+      files_to_edit_for_boost = arg.replace(key,"").split()
+      args.remove(arg)
+      break
+
   modules = args
   context = Context()
 
   new_modules = []
   for mod in modules:
     x = Module(mod, context=context, skip_errors = True,
-      convert_comments_to_docstring = convert_comments_to_docstring)
+      convert_comments_to_docstring = convert_comments_to_docstring,
+      files_to_edit_for_boost = files_to_edit_for_boost)
     new_modules.append(x)
   modules = new_modules
   if not modules:
@@ -583,6 +598,8 @@ def run(args, top_level = None):
 
   if convert_comments_to_docstring:
     print("Converting comments at top of classes and functions to doc strings")
+  if files_to_edit_for_boost:
+    print("Files to edit for boost: %s" %(tuple(files_to_edit_for_boost)))
 
 
   ok_modules = []
@@ -622,6 +639,14 @@ def run(args, top_level = None):
   print("\nTotal of %s ok modules and %s failed modules" %(
       len(ok_modules), len(failed_modules)))
 
+def edit_file_for_boost(modified_source):
+  """
+   Edits source to convert usage of boost into something that pdoc3 can
+   recognize
+  """
+  from cctbx_web_site.command_line.edit_for_boost import modify_boost_text
+  new_source = modify_boost_text(modified_source)
+  return new_source
 
 def import_and_edit(module_name: str, file_path: Path):
     """
@@ -652,9 +677,12 @@ def import_and_edit(module_name: str, file_path: Path):
         raise ImportError(f"Could not get source for module {module_name}")
 
     # Step 3: Modify the source code in memory.
-    # For this example, we will change the MESSAGE variable and the greet function.
     from cctbx_website.command_line.comment_to_docstring import convert_comments_to_docstrings
     modified_source = convert_comments_to_docstrings(source_code)
+
+    if files_to_edit_for_boost and file_path in files_to_edit_for_boost:
+      print("Editing %s for boost" %(file_path))
+      modified_source = edit_file_for_boost(modified_source)
 
     # Step 4: Create a new module object based on the original spec.
     # This ensures __name__, __file__, __spec__, etc., are set correctly.

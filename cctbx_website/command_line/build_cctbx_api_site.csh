@@ -31,42 +31,41 @@ endif
 
 echo "Building documentation API for $PREFIX using $NPROC processors"
 echo "Base index.html will be from $INDEX_FILE"
-echo "WARNING: This version temporarily edits files in cctbx_project directory"
-echo "Do not do anything in cctbx_project while this is running"
 
 echo "Module list: $module_list"
 
 phenix.python -m pdoc --help > /dev/null
 if ($status) then
+  echo ""
   echo "This script needs pdoc3  nltk beautifulsoup4 . Install with:"
+  echo ""
   echo "phenix.python -m pip install pdoc3 nltk beautifulsoup4"
+  echo""
   goto finish
 endif
 
-# Save original version of files to edit
-setenv cctbx_project `libtbx.find_in_repositories cctbx_project`
-setenv files_to_edit "`libtbx.find_in_repositories iotbx`/pdb/hierarchy.py `libtbx.find_in_repositories scitbx`/array_family/flex.py"
+# Work in a working directory that will be deleted at the end
+if (-d working) then
+  echo 'Please run in a directory that does not have a "working" subdirectory'
+  goto finish
+endif
 
-foreach f ($files_to_edit)
-  if (! -f $f)then
-    echo "The file $f is missing"
-    goto finish
-  endif
-  cp -p ${f} ${f}.original_version
-  # Edit this file
-  phenix.python $base/edit_for_boost.py ${f}
-end
-
-rm -fr working
 mkdir working
 cd working
+
+# Edit a few special files that cannot be interpreted as is by pdoc3
+
+setenv cctbx_project `libtbx.find_in_repositories cctbx_project`
+setenv files_to_edit "`libtbx.find_in_repositories iotbx`/pdb/hierarchy.py `libtbx.find_in_repositories scitbx`/array_family/flex.py"
 
 @ i = 0
 foreach x ($module_list)
 @ i = $i + 1
 #  Get HTML from python file, converting comments at top of functions and
 #   classes to docstrings if no doc strings are present
-phenix.python $base/run_pdoc_cctbx_api.py $x convert_comments_to_docstring >& $x.log &
+phenix.python $base/run_pdoc_cctbx_api.py $x \
+  convert_comments_to_docstring \
+  files_to_edit_for_boost="${files_to_edit}" >& $x.log &
 if ($i >= $NPROC) then
  @ i = 0
  wait
@@ -74,20 +73,7 @@ endif
 
 end
 
-echo ""
-echo "WARNING: This version is temporarily editing these files: $files_to_edit"
-echo "Do not do anything in cctbx_project while this is running"
-echo ""
 wait
-
-#Restore original files
-foreach f ($files_to_edit)
-  mv ${f}.original_version ${f}
-end
-
-echo ""
-echo "Original versions of the files $files_to_edit in cctbx_project restored"
-echo ""
 
 # Add the base html index.html
 echo "Editing html files to simplify and add a base link"
