@@ -128,6 +128,17 @@ class cablam_idealization(object):
     raise Sorry("Something went wrong. Cannot find CA atom.")
     return None
 
+  @staticmethod
+  def decode_feedback(feedback):
+    if feedback.alpha:
+      true_label = "alpha"
+    elif feedback.beta:
+      true_label = "beta"
+    elif feedback.threeten:
+      true_label = "threeten"
+    else:
+      true_label = "loop"
+    return true_label
 
   def fix_cablam_outlier(self, chain, outlier):
     scores = []
@@ -150,8 +161,7 @@ class cablam_idealization(object):
 
     print("*"*80, file=self.log)
     print("Atoms for rotation:", chain, prevresid, curresid, file=self.log)
-    print("Cablam evaluation:", file=self.log)
-    print("  ", outlier[-1].feedback.alpha, outlier[-1].feedback.beta, outlier[-1].feedback.threeten, file=self.log)
+    print(f"Cablam evaluation: {self.decode_feedback(outlier[-1].feedback)}", file=self.log)
     print("*"*80, file=self.log)
 
     around_str_sel = "chain %s and resid %d:%d" % (chain, prevresseq_int-2, curresseq_int+2)
@@ -232,6 +242,8 @@ class cablam_idealization(object):
     best = scores[-1] # last, no rotation
     for s in scores[:-1]:
       # [angle, rama, cablam, hbond]
+      if require_h_bond and len(s[3]) == 0:
+        continue
       if require_h_bond and len(s[3]) > 0:
         # rama better or same, and cablam outliers decreased:
         if s[1] <= best[1] and s[2] < best[2]:

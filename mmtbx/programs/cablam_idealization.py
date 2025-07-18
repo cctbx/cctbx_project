@@ -68,11 +68,11 @@ output {
     print("Number of rotated outliers: %d" % results.n_rotated_residues, file=self.logger)
     # splitting by cablam recommendation:
     # flatten the info
-    print("Breakdown by type:")
-    print(f"  loop : {results.n_fixed_for_loop}")
-    print(f"  alpha: {results.n_fixed_for_alpha}")
-    print(f"  beta : {results.n_fixed_for_beta}")
-    print(f"  3-10 : {results.n_fixed_for_threeten}")
+    print("Breakdown by type: fixed / total")
+    print(f"  loop : {results.n_fixed_for_loop} / {results.n_fixed_for_loop+results.n_not_fixed_for_loop}")
+    print(f"  alpha: {results.n_fixed_for_alpha} / {results.n_fixed_for_alpha+results.n_not_fixed_for_alpha}")
+    print(f"  beta : {results.n_fixed_for_beta} / {results.n_fixed_for_beta+results.n_not_fixed_for_beta}")
+    print(f"  3-10 : {results.n_fixed_for_threeten} / {results.n_fixed_for_threeten+results.n_not_fixed_for_threeten}")
     # I believe this should go to data_manager. Also not clear how output of
     # two files would affect data_manager.
     for m, fname_base in [
