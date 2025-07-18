@@ -41,13 +41,12 @@ if ($status) then
   echo ""
   echo "phenix.python -m pip install pdoc3 nltk beautifulsoup4"
   echo""
-  goto finish
+  exit 1
 endif
 
 # Work in a working directory that will be deleted at the end
 if (-d working) then
-  echo 'Please run in a directory that does not have a "working" subdirectory'
-  goto finish
+  mv working working.old
 endif
 
 mkdir working
@@ -77,15 +76,12 @@ wait
 
 # Add the base html index.html
 echo "Editing html files to simplify and add a base link"
-
 cp $INDEX_FILE index.html
 
 # Edit all the files to simplify and add a base link
 foreach f (index.html */*.html */*/*.html */*/*/*.html */*/*/*/*.html)
   phenix.python $base/edit_html.py $f index_files $PREFIX >& /dev/null
 end
-wait
-
 echo ""
 echo "Results by module:"
 grep failed *.log | grep -v List
@@ -115,3 +111,4 @@ echo "Ready with $API_DIR"
 echo "ALL DONE"
 
 finish:
+exit 0

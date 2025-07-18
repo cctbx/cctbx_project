@@ -599,7 +599,7 @@ def run(args, top_level = None):
   if convert_comments_to_docstring:
     print("Converting comments at top of classes and functions to doc strings")
   if files_to_edit_for_boost:
-    print("Files to edit for boost: %s" %(tuple(files_to_edit_for_boost)))
+    print("Files to edit for boost: %s" %(" ".join(files_to_edit_for_boost)))
 
 
   ok_modules = []
