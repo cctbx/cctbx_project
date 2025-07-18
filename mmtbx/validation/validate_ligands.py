@@ -164,12 +164,12 @@ class manager(list):
         val_id      = f"{lr.id_str:^14}"
         val_check   = f"{check:^12}"
         val_cc      = f"{ccs.cc_2fofc:^9.2f}" if ccs is not None else f"{'':^9}"
-        val_mapvals = f"{round((map_vals.fofc_map_values<=-3).count(True)/n_atoms, 2):^12}"
+        val_mapvals = f"{round((map_vals.fofc_map_values<=-3).count(True)/n_atoms, 2):^12}" if map_vals is not None else f"{'':^12}"
         val_clash   = f"{clashes.n_clashes:^9}" if clashes.n_clashes != 0 else f"{'-':^9}"
         val_hbonds  = f"{clashes.n_hbonds:^9}" if clashes.n_hbonds != 0 else f"{'-':^9}"
         val_b_min   = f"{round(adps.b_min,1):^7}"
         val_b_max   = f"{round(adps.b_max,1):^7}"
-        val_b_mean  = f"{round(adps.b_max,1):^7}"
+        val_b_mean  = f"{round(adps.b_mean,1):^7}"
         val_owab    = f"{round(owab,1):^7}"
         val_o_min   = f"{round(occs.occ_min,1):^7}" if occs.occ_min != occs.occ_mean else f"{'':^7}"
         val_o_max   = f"{round(occs.occ_max,1):^7}" if occs.occ_max != occs.occ_mean else f"{'':^7}"
@@ -322,9 +322,11 @@ class ligand_result(object):
     adps = self.get_adps()
     clashes = self.get_overlaps()
     ccs = None
-    map_vals = self.get_map_values()
+    map_vals = None
+
     if self.fmodel is not None:
       ccs = self.get_ccs()
+      map_vals = self.get_map_values()
     # apply criteria for metrics
     if ccs is not None:
       if ccs.cc_2fofc < 0.5:
@@ -336,8 +338,9 @@ class ligand_result(object):
       self._is_suspicious = True
     if clashes.n_clashes > 0.5 * n_atoms:
       self._is_suspicious = True
-    if (map_vals.fofc_map_values<-3).count(True) >= 0.5 * n_atoms:
-      self._is_suspicious = True
+    if map_vals is not None:
+      if (map_vals.fofc_map_values<-3).count(True) >= 0.5 * n_atoms:
+        self._is_suspicious = True
     #
     return self._is_suspicious
 
