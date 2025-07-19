@@ -6,6 +6,7 @@
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <cctbx/maptbx/bcr/bcr.h>
+#include <cctbx/maptbx/bcr/vrm.h>
 
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <scitbx/boost_python/is_polymorphic_workaround.h>
@@ -122,6 +123,25 @@ namespace {
         .def(init<bcr_model<double> const& >((arg("bcr_model") )))
         .def("atom_radius",   &calculator<>::atom_radius)
         .def("rho",           &calculator<>::rho)
+      ;
+    }
+
+    {
+      typedef return_value_policy<return_by_value> rbv;
+      class_<OmegaMap<> >("vrm", no_init)
+        .def(init<
+          af::tiny<int, 3> const&,
+          af::tiny<int, 3> const&,
+          af::tiny<int, 3> const&,
+          cctbx::uctbx::unit_cell const&,
+          boost::python::list const& >(
+                    (arg("Ncrs"),
+                     arg("Scrs"),
+                     arg("Nxyz"),
+                     arg("unit_cell"),
+                     arg("bcr_scatterers"))))
+        .def("compute_map",   &OmegaMap<>::compute_map, (arg("arg_value")=true))
+        .add_property("map",  make_getter(&OmegaMap<>::map, rbv()))
       ;
     }
 

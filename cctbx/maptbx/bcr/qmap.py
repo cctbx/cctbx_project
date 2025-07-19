@@ -43,7 +43,6 @@ def compute(hierarchy, unit_cell, n_real, resolution=None, resolutions=None):
     entry = arrays[e]
     keys = [float(x) for x in entry.keys()]
     key = str(min(keys, key=lambda x: abs(x - r)))
-    print(key)
     vals = entry[key]
     R = flex.double(vals['R'])
     B = flex.double(vals['B'])
@@ -69,13 +68,34 @@ def compute(hierarchy, unit_cell, n_real, resolution=None, resolutions=None):
   #
   OmegaMap = CalcOmegaMap(Ncrs=n_real, Scrs=[0,0,0], Nxyz=n_real,
     unit_cell=unit_cell, bcr_scatterers=bcr_scatterers)
+
+  o = ext.vrm(Ncrs           = n_real,
+              Scrs           = [0,0,0],
+              Nxyz           = n_real,
+              unit_cell      = unit_cell,
+              bcr_scatterers = bcr_scatterers)
+  zz = o.compute_map(arg_value=False)
+  print(flex.min(zz), flex.max(zz), flex.mean(zz))
+  OmegaMap0 = o.map #()
+  print("OmegaMap0.accessor().all() ",OmegaMap0.accessor().all())
+  print(flex.min(OmegaMap0), flex.max(OmegaMap0), flex.mean(OmegaMap0))
+
   nx,ny,nz = n_real
   m2 = flex.double(flex.grid(n_real))
+  m3 = flex.double(flex.grid(n_real))
   for iz in range(0, nz):
     for iy in range(0, ny):
       for ix in range(0, nx):
         v = OmegaMap[iz][iy][ix]
         m2[ix,iy,iz] = v
+        v = zz[iz,iy,ix]
+        m3[ix,iy,iz] = v
+
+  print(flex.min(m2), flex.max(m2), flex.mean(m2))
+  print("CC1", flex.linear_correlation(x=OmegaMap0.as_1d(), y=m2.as_1d()).coefficient())
+  print("CC2", flex.linear_correlation(x=m3.as_1d(), y=m2.as_1d()).coefficient())
+
+
   return m2
 
 #-------------------------------------------
@@ -165,7 +185,6 @@ def CalcOmegaMap(Ncrs, Scrs, Nxyz, unit_cell, bcr_scatterers) :
 
         Kx1,Kx2,Ky1,Ky2,Kz1,Kz2,dxf,dyf,dzf  = AtomBox(xfrac, yfrac, zfrac,
                    RadAtomX,RadAtomY,RadAtomZ,StepX,StepY,StepZ,Sx,Sy,Sz,Fx,Fy,Fz)
-
         dx0 = orthxx * dxf + orthxy * dyf + orthxz * dzf
         dy0 =                orthyy * dyf + orthyz * dzf
         dz0 =                               orthzz * dzf
