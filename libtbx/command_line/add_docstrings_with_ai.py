@@ -1,10 +1,10 @@
 """Tool to recursively add docstrings to python files in a directory"""
 
+from __future__ import division
 import google.generativeai as genai
 from google.api_core.exceptions import ResourceExhausted # Add this line
 import os
 import time
-import difflib
 import argparse
 
 # --- Configuration ---

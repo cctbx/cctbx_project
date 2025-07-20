@@ -1,12 +1,10 @@
+from __future__ import division
 import unittest
 import os
 import shutil
-from unittest.mock import patch, MagicMock, mock_open
 from libtbx.command_line.add_docstrings_with_ai import (
     strip_markdown_fences,
     file_needs_processing,
-    process_file,
-    initialize_api,
     get_line_ranges_with_doc_strings,
     remove_doc_string_line_ranges,
     check_for_only_changes_in_doc_strings,
