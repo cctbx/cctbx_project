@@ -50,7 +50,26 @@ def initialize_api():
     try:
         api_key = os.environ.get("GOOGLE_API_KEY")
         if not api_key:
-         raise ValueError("The GOOGLE_API_KEY environment variable is not set.")
+         raise ValueError("""
+The GOOGLE_API_KEY environment variable is not set.
+
+   How to Get Your API Key 🔑
+
+Go to Google AI Studio: Navigate to makersuite.google.com/app/apikey. You may need to sign in with your Google account.
+
+Create a New Key: Click the button labeled "Create API key in new project".
+
+Copy Your Key: A pop-up window will appear displaying your new API key. Click the copy icon next to the key to copy it to your clipboard.
+
+   How to use Your API Key 🔑
+
+Set the GOOGLE_API_KEY environment variable:
+
+csh:   setenv GOOGLE_API_KEY <your-api-key>
+bash:  set GOOGLE_API_KEY=<your-api-key>
+
+""")
+
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-1.5-pro-latest')
         print("✅ Gemini API initialized successfully.")
