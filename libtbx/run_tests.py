@@ -16,6 +16,7 @@ tst_list_base = [
   "$D/tst_easy_mp_state.py",
   "$D/tst_easy_pickle.py",
   "$D/tst_fully_buffered_timeout.py",
+  "$D/tst_add_docstrings_with_ai.py",
   "$D/tst_scheduling.py",
   "$D/easy_run.py",
   "$D/tst_containers.py",
