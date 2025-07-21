@@ -86,7 +86,7 @@ END
    "A",
    5,
    "HG",
-   [ (-33.788, 46.891, 0.809)
+   [ (-33.906, 46.773, 1.342)
    ],
    0.1,
    []
@@ -273,7 +273,7 @@ END
    []
   ],
 
-  ["1xso_histidine_flipped",
+  ["1xso_histidine_uncertain",
    """\
 CRYST1   73.450   68.940   58.760  90.00  90.00  90.00 P 21 21 21    8
 ORIGX1      1.000000  0.000000  0.000000        0.00000
@@ -318,7 +318,7 @@ END
    "B",
    19,
    "ND1",
-   [ (22.666, 16.182, 21.033)
+   [ (23.897, 17.622, 20.251)
    ],
    0.1,
    []
@@ -465,7 +465,7 @@ def RunRegressionTests():
     try:
       # Run the program
       args = [pdb_file, "add_flip_movers=True", "output.description_file=./deleteme_description.txt",
-              "probe.probe_radius=0.25", "probe.bump_weight=10.0", "probe.hydrogen_bond_weight=4.0"]
+              "probe.probe_radius=0.25"]
       args.extend(extraArgs)
       results = run_program(program_class=reduce2.Program, logger=out, args=args)
       # Check the position of the atom to see if it is near enough to one of the expected locations.
@@ -487,7 +487,9 @@ def RunRegressionTests():
                     if dist <= maxDist:
                       closeEnough = True
                   if not closeEnough:
-                    return "Atom "+chain+" "+str(resID)+" "+atomName+" in "+name+" too far from expected locations"
+                    return ("Atom "+chain+" "+str(resID)+" "+atomName+" in "+name+" too far from expected locations: " +
+                            "Found at " + str(loc) + " but expected one of " + str(positions)
+                           )
       if not found:
         return "Did not find atom "+atomName+" in chain "+chain+" residue "+str(resID)+" of "+name
     except Exception as e:
