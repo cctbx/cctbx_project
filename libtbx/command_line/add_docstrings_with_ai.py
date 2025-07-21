@@ -1,8 +1,13 @@
 """Tool to recursively add docstrings to python files in a directory"""
 
 from __future__ import division
-import google.generativeai as genai
-from google.api_core.exceptions import ResourceExhausted # Add this line
+
+try:
+  import google.generativeai as genai
+  from google.api_core.exceptions import ResourceExhausted # Add this line
+except Exception as e:
+  genai = None
+
 import os
 import time
 import argparse
@@ -69,6 +74,13 @@ csh:   setenv GOOGLE_API_KEY <your-api-key>
 bash:  set GOOGLE_API_KEY=<your-api-key>
 
 """)
+
+        if not genai:
+         raise ValueError("""
+          This tool requires google-generativeai. Install with:
+
+          phenix.python -m pip install -q -U google-generativeai
+          """)
 
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-1.5-pro-latest')
