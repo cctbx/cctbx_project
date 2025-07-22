@@ -5,6 +5,9 @@ import libtbx
 import os
 import json
 from scitbx.array_family import flex
+from libtbx.test_utils import approx_equal
+
+import time
 
 import boost_adaptbx.boost.python as bp
 ext = bp.import_ext("cctbx_maptbx_bcr_bcr_ext")
@@ -18,7 +21,8 @@ def load_table(element):
   with open(file_name, 'r') as file:
     return json.load(file)
 
-def compute(hierarchy, unit_cell, n_real, resolution=None, resolutions=None):
+def compute(hierarchy, unit_cell, n_real, resolution=None, resolutions=None,
+            debug=False):
   assert [resolution, resolutions].count(None)==1
   atoms = hierarchy.atoms()
   if resolutions is None:
@@ -66,37 +70,43 @@ def compute(hierarchy, unit_cell, n_real, resolution=None, resolutions=None):
       kappi     = kappi)
     bcr_scatterers.append(bcr_scatterer)
   #
-  OmegaMap = CalcOmegaMap(Ncrs=n_real, Scrs=[0,0,0], Nxyz=n_real,
-    unit_cell=unit_cell, bcr_scatterers=bcr_scatterers)
+  if debug:
+    t0=time.time()
+    OmegaMap_py = CalcOmegaMap(Ncrs=n_real, Scrs=[0,0,0], Nxyz=n_real,
+      unit_cell=unit_cell, bcr_scatterers=bcr_scatterers)
+    print("py: ", time.time()-t0)
 
-  o = ext.vrm(Ncrs           = n_real,
-              Scrs           = [0,0,0],
-              Nxyz           = n_real,
-              unit_cell      = unit_cell,
-              bcr_scatterers = bcr_scatterers)
-  zz = o.compute_map(arg_value=False)
-  print(flex.min(zz), flex.max(zz), flex.mean(zz))
-  OmegaMap0 = o.map #()
-  print("OmegaMap0.accessor().all() ",OmegaMap0.accessor().all())
-  print(flex.min(OmegaMap0), flex.max(OmegaMap0), flex.mean(OmegaMap0))
 
+  o = ext.vrm(
+    Ncrs           = n_real,
+    Scrs           = [0,0,0],
+    Nxyz           = n_real,
+    unit_cell      = unit_cell,
+    bcr_scatterers = bcr_scatterers)
+
+  t0 = time.time()
+  OmegaMap_cpp = o.compute_map(arg_value=False)
+  print("cpp: ", time.time()-t0)
+
+  # OmegaMap_cpp = o.map  # alternative way to get the map
+  # Re-order
   nx,ny,nz = n_real
-  m2 = flex.double(flex.grid(n_real))
-  m3 = flex.double(flex.grid(n_real))
+  mpy  = flex.double(flex.grid(n_real))
+  mcpp = flex.double(flex.grid(n_real))
   for iz in range(0, nz):
     for iy in range(0, ny):
       for ix in range(0, nx):
-        v = OmegaMap[iz][iy][ix]
-        m2[ix,iy,iz] = v
-        v = zz[iz,iy,ix]
-        m3[ix,iy,iz] = v
-
-  print(flex.min(m2), flex.max(m2), flex.mean(m2))
-  print("CC1", flex.linear_correlation(x=OmegaMap0.as_1d(), y=m2.as_1d()).coefficient())
-  print("CC2", flex.linear_correlation(x=m3.as_1d(), y=m2.as_1d()).coefficient())
-
-
-  return m2
+        if debug:
+          mpy[ix,iy,iz] = OmegaMap_py[iz][iy][ix]
+        mcpp[ix,iy,iz] = OmegaMap_cpp[iz,iy,ix]
+  #
+  if debug:
+    cc = flex.linear_correlation(x=mcpp.as_1d(), y=mpy.as_1d()).coefficient()
+    assert approx_equal(cc, 1.0)
+    for func in [flex.min, flex.max, flex.mean]:
+      assert approx_equal(func(mcpp), func(mpy))
+  #
+  return mcpp
 
 #-------------------------------------------
 def CalcFuncMap(OmegaMap, ControlMap, Ncrs) :

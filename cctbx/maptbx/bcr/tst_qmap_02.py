@@ -50,7 +50,8 @@ def run(d_min=2, prefix="12"):
   fft_map = fc.fft_map(crystal_gridding = crystal_gridding)
   m1 = fft_map.real_map_unpadded()
   OmegaMap = qmap.compute(hierarchy=hierarchy, unit_cell=cs.unit_cell(),
-                     n_real=n_real, resolution=d_min, resolutions=None)
+                     n_real=n_real, resolution=d_min, resolutions=None,
+                     debug=True)
   print(flex.linear_correlation(x=m1.as_1d(), y=OmegaMap.as_1d()).coefficient())
   mm1 = iotbx.map_manager.map_manager(
     map_data                   = m1,

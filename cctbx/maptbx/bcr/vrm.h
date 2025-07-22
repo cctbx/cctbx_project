@@ -42,6 +42,8 @@ public:
   FloatType RprojZ;
   af::versa<FloatType, af::c_grid<3> > map;
   boost::python::list bcr_scatterers;
+  //cctbx::xray::detail::exponent_table<FloatType>* exp_table_;
+  cctbx::xray::detail::exponent_table<FloatType> exp_table_;
 
   OmegaMap(
     af::tiny<int, 3> const& Ncrs,
@@ -51,7 +53,9 @@ public:
     const boost::python::list & bcr_scatterers_)
   :
   bcr_scatterers(bcr_scatterers_), // is this doing copy?
-  map(af::c_grid<3>(Nxyz[0],Nxyz[1],Nxyz[2]))
+  //map(af::c_grid<3>(Nxyz[0],Nxyz[1],Nxyz[2]))
+  map(af::c_grid<3>(Nxyz[2],Nxyz[1],Nxyz[0])),
+  exp_table_(-100)
   {
     scitbx::af::tiny<FloatType, 6> ucp = unit_cell.parameters();
     FloatType acell = ucp[0];
@@ -217,7 +221,9 @@ public:
         // contribution to the node coinciding with the atomic center
         if(ix0 >= 0) {
           FloatType argg  = musq / nuatom2;
-          FloatType fact2 = std::exp(-argg);
+          //FloatType fact2 = std::exp(-argg);
+          FloatType fact2 = myexp(-argg);
+
           FloatType GridValue0 = GridValue0 + fact1 * fact2;
         }
         // contribution to nodes different from the atomic center
@@ -225,7 +231,9 @@ public:
           for (int ig = 0; ig < Ngrids; ++ig) {
             AtomGridEntry ag = AtomGrids[ig];
             FloatType argg  = ag.r2zyx / nuatom2;
-            FloatType fact2 = std::exp(-argg);
+            //FloatType fact2 = std::exp(-argg);
+            FloatType fact2 = myexp(-argg);
+
             GridValues[ig] = GridValues[ig] + fact1 * fact2;
           }
         }
@@ -234,7 +242,9 @@ public:
             AtomGridEntry ag = AtomGrids[ig];
             FloatType tterm   = ag.rzyx2 * munuat;
             FloatType argg  = std::pow(ag.rzyx-mu, 2) / nuatom2;
-            FloatType fact2 = std::exp(-argg) * (1.0 - std::exp(-tterm)) / tterm;
+            //FloatType fact2 = std::exp(-argg) * (1.0 - std::exp(-tterm)) / tterm;
+            FloatType fact2 = myexp(-argg) * (1.0 - myexp(-tterm)) / tterm;
+
             GridValues[ig] = GridValues[ig] + fact1 * fact2;
           }
         }
@@ -258,6 +268,15 @@ public:
 
     return map;
   }
+
+  //FloatType myexp(FloatType const& x) const { return (*exp_table)(x); }
+
+  inline FloatType myexp(FloatType const& x)
+  {
+    //return exp_table_(x);
+    return std::exp(x);
+  }
+
 
   inline std::tuple<int, int, int, int, int, int, double, double, double>
   AtomBox(double xfrac, double yfrac, double zfrac,
