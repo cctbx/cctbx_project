@@ -17,11 +17,11 @@ jobs:
   strategy:
     maxParallel: 2
     matrix:
-      python2.7:
-        CONDA: Linux
-        OS: linux-64
-        PYTHON_VERSION: py27
-        MODULES: ${{ parameters.modules }}
+      # python2.7:
+      #   CONDA: Linux
+      #   OS: linux-64
+      #   PYTHON_VERSION: py27
+      #   MODULES: ${{ parameters.modules }}
       python3.9:
         CONDA: Linux
         OS: linux-64

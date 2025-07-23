@@ -8,8 +8,8 @@ jobs:
   strategy:
     maxParallel: 10
     matrix:
-      python2.7:
-        PYTHON_VERSION: 2.7
+      # python2.7:
+      #   PYTHON_VERSION: 2.7
       python3.9:
         PYTHON_VERSION: 3.9
 
