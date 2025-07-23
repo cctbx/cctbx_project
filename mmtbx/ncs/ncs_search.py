@@ -95,6 +95,9 @@ def shortcut_1(
           print("No shortcut, atom names are not identical", file=log)
           return empty_result
       copy_xyz = get_chain_xyz(hierarchy, copy_chain_id)
+      if master_xyz.size() != copy_xyz.size():
+        print("No shortcut, maybe a spurious TER card?", file=log)
+        return empty_result
       lsq_fit_obj = superpose.least_squares_fit(
           reference_sites = copy_xyz,
           other_sites     = master_xyz)
