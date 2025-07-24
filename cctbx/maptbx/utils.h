@@ -292,7 +292,7 @@ DataType map_sum_at_sites_frac(
 {
   DataType result = 0;
   for(int i = 0; i < sites_frac.size(); i++) {
-    result += eight_point_interpolation(map_data, sites_frac[i]);
+    result += tricubic_interpolation(map_data, sites_frac[i]);
   }
   return result;
 }
