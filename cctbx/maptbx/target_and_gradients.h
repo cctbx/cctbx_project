@@ -470,7 +470,7 @@ target(
   MapFloatType result = 0;
   for(std::size_t i_site=0;i_site<sites_cart.size();i_site++) {
     if(selection[i_site]) {
-      result += tricubic_interpolation( //eight_point_interpolation(
+      result += eight_point_interpolation(
         density_map,
         unit_cell.fractionalize(sites_cart[i_site]));
     }
@@ -489,7 +489,7 @@ target(
 {
   MapFloatType result = 0;
   for(std::size_t i_site=0;i_site<sites_cart.size();i_site++) {
-      result += tricubic_interpolation( //eight_point_interpolation(
+      result += eight_point_interpolation(
         density_map,
         unit_cell.fractionalize(sites_cart[i_site]));
   }
