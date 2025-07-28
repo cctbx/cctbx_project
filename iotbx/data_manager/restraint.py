@@ -43,6 +43,7 @@ class RestraintDataManager(DataManagerBase):
         raise Sorry('%s is not a recognized restraints file' % filename)
       else:
         self.add_restraint(filename, a.file_object.model())
+    return filename
 
   def get_default_output_restraint_filename(self):
     filename = self.get_default_output_filename()

@@ -234,8 +234,8 @@ The choices are {}.
 
     Returns
     -------
-    None
-        The model is added to the DataManager
+    filename : str
+        The model filename added to the DataManager
 
     """
     # unique because any_file does not return a model object
