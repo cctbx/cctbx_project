@@ -428,10 +428,11 @@ def translation_search(model, map_data, shifts=None):
   cs = model.crystal_symmetry()
   fm = cs.unit_cell().fractionalization_matrix()
   if shifts is None:
-    shifts = [i/10. for i in range(0,51, 2)]
+    shifts = [i/10. for i in range(0,101, 2)]
   t_best = -999999999.
   sites_cart = sites_cart_best.deep_copy()
   size = sites_cart.size()
+  best_shift = None
   for sh in shifts:
     for x in [-1,0,1]:
       for y in [-1,0,1]:
@@ -445,15 +446,18 @@ def translation_search(model, map_data, shifts=None):
             sites_frac = sites_frac_shifted)/size
           if(t>t_best):
             t_best=t
+            best_shift = sh_[:]
             sites_cart_best=sites_cart_shifted.deep_copy()
+  #print("best_shift:", best_shift)
   model.set_sites_cart(sites_cart = sites_cart_best)
+  return best_shift
 
-def protocol_1(model, map_data, macro_cycles=2, max_iterations=25):
+def protocol_1(model, map_data, macro_cycles=6, max_iterations=25):
   """
   Rigid-body grid search translation search combined with rigid body gradient
   based minimization in real-space
   """
-  translation_search(model=model, map_data=map_data)
+  shift = translation_search(model=model, map_data=map_data)
   #
   for it in range(macro_cycles):
     delta = 0.01
@@ -467,6 +471,9 @@ def protocol_1(model, map_data, macro_cycles=2, max_iterations=25):
       unit_cell                       = model.crystal_symmetry().unit_cell(),
       states_collector                = None)
     model.set_sites_cart(sites_cart = o.sites_cart)
+    shift = translation_search(model=model, map_data=map_data)
+    max_shift = flex.max(flex.abs(flex.double(shift)))
+    if max_shift < 0.09: break
   #
-  shifts = [x * 0.01 for x in range(0, 11)]
-  translation_search(model=model, map_data=map_data, shifts=shifts)
+  shifts = [x * 0.01 for x in range(0, 21)]
+  shift = translation_search(model=model, map_data=map_data, shifts=shifts)
