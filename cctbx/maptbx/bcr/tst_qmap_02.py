@@ -4,6 +4,7 @@ import iotbx.map_manager
 import iotbx.pdb
 from cctbx.maptbx.bcr import qmap
 from cctbx import maptbx
+import time
 
 import boost_adaptbx.boost.python as bp
 ext = bp.import_ext("cctbx_maptbx_bcr_bcr_ext")
@@ -38,9 +39,9 @@ def run(d_min=2):
   fc = xrs.structure_factors(d_min=d_min).f_calc()
   fft_map = fc.fft_map(crystal_gridding = crystal_gridding)
   m1 = fft_map.real_map_unpadded()
-  OmegaMap = qmap.compute(hierarchy=hierarchy, unit_cell=cs.unit_cell(),
+  OmegaMap, _, _ = qmap.compute(hierarchy=hierarchy, unit_cell=cs.unit_cell(),
                      n_real=n_real, resolution=d_min, resolutions=None,
-                     debug=False)
+                     debug=True)
   assert flex.linear_correlation(
     x=m1.as_1d(), y=OmegaMap.as_1d()).coefficient() > 0.99
   mm1 = iotbx.map_manager.map_manager(
@@ -60,4 +61,7 @@ def run(d_min=2):
     y=mm2.map_data().as_1d()).coefficient() > 0.99
 
 if (__name__ == "__main__"):
+  start = time.perf_counter()
   run()
+  print("Time:", time.perf_counter()-start)
+  print("OK")

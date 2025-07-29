@@ -71,24 +71,21 @@ def compute(hierarchy, unit_cell, n_real, resolution=None, resolutions=None,
     bcr_scatterers.append(bcr_scatterer)
   #
   if debug:
-    t0=time.time()
     OmegaMap_py = CalcOmegaMap(Ncrs=n_real, Scrs=[0,0,0], Nxyz=n_real,
       unit_cell=unit_cell, bcr_scatterers=bcr_scatterers)
-    print("py: ", time.time()-t0)
-
-
+  #
   o = ext.vrm(
     Ncrs           = n_real,
     Scrs           = [0,0,0],
     Nxyz           = n_real,
     unit_cell      = unit_cell,
     bcr_scatterers = bcr_scatterers)
-
-  t0 = time.time()
+  #
+  #t0 = time.time()
   OmegaMap_cpp = o.compute_map(arg_value=False)
-  print("cpp: ", time.time()-t0)
+  #print("cpp: ", time.time()-t0)
 
-  # OmegaMap_cpp = o.map  # alternative way to get the map
+  OmegaMap_cpp_2 = o.map  # alternative way to get the map
   # Re-order
   nx,ny,nz = n_real
   mpy  = flex.double(flex.grid(n_real))
@@ -103,10 +100,14 @@ def compute(hierarchy, unit_cell, n_real, resolution=None, resolutions=None,
   if debug:
     cc = flex.linear_correlation(x=mcpp.as_1d(), y=mpy.as_1d()).coefficient()
     assert approx_equal(cc, 1.0)
+    cc = flex.linear_correlation(
+       x=OmegaMap_cpp.as_1d(), y=OmegaMap_cpp_2.as_1d()).coefficient()
+    assert approx_equal(cc, 1.0)
     for func in [flex.min, flex.max, flex.mean]:
       assert approx_equal(func(mcpp), func(mpy))
   #
-  return mcpp
+  if debug: return mcpp, OmegaMap_py, bcr_scatterers
+  else:     return mcpp
 
 #-------------------------------------------
 def CalcFuncMap(OmegaMap, ControlMap, Ncrs) :

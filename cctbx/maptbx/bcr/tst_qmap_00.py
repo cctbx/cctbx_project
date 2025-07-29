@@ -112,6 +112,7 @@ for s, u, o, e in zip(sites_cart, adp_as_u, occupancy, atoms.extract_element()):
 #-------------- calculation --------
 
 OmegaMap = qmap.CalcOmegaMap(Ncrs,Scrs,Nxyz, unit_cell, bcr_scatterers)
+print("OmegaMap", OmegaMap)
 FuncMap  = qmap.CalcFuncMap(OmegaMap, ControlMap, Ncrs)
 GradMap  = qmap.CalcGradMap(OmegaMap, ControlMap, Ncrs)
 GradAtom = qmap.CalcGradAtom(GradMap, Ncrs,Scrs,Nxyz,unit_cell, bcr_scatterers)
