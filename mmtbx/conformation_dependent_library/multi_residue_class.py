@@ -103,6 +103,7 @@ class ProteinResidues(LinkedResidues):
 
   def are_linked(self,
                  return_value=False,
+                 return_atoms=False,
                  use_distance_always=False,
                  bond_cut_off=2.,
                  allow_poly_ca=False,
@@ -160,6 +161,7 @@ class ProteinResidues(LinkedResidues):
       if not bond:
         break
     else:
+      if return_atoms: return c,n
       return True
     if return_value: return d2
     return False
@@ -181,6 +183,26 @@ class ProteinResidues(LinkedResidues):
       if tmp.id_str()==atom.id_str(): break
     atom = hierarchy.atoms()[i]
     return atom.parent().parent()
+
+  def trace(self, include_side_chain=False):
+    atoms={
+      'N':None,
+      'CA':None,
+      'C':None,
+      }
+    bonds={
+      ('N', 'CA'): [],
+      ('CA', 'C'): [],
+      # ('C', 'N'): [],
+      }
+    for atom in self.atoms():
+      if atom.name.strip() in atoms:
+        atoms[atom.name.strip()]=atom
+    # print(atoms)
+    for key in bonds:
+      n1, n2 = key
+      bonds[key]=[atoms[n1], atoms[n2]]
+      yield bonds[key]
 
 class TwoProteinResidues(ProteinResidues):
   def get_omega_value(self):

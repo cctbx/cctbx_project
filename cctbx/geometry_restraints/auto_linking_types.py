@@ -71,7 +71,7 @@ for link_info in [
     ],
 
     ['hydrogen bonds',
-     'hydrogen bonds added both for protein SS and NA basepairs',
+     'hydrogen bonds added both for protein (alpha, beta) and NA (basepair) SS',
      '',
      ['Bond-like', 'Secondary Structure restraints around h-bond'],
      [0,1],
