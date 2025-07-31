@@ -41,9 +41,14 @@ public:
   FloatType RprojY;
   FloatType RprojZ;
   af::versa<FloatType, af::c_grid<3> > map;
+  af::versa<FloatType, af::c_grid<3> > GradMap;
+  af::shared<scitbx::vec3<FloatType> > grad_xyz;
+  af::shared<FloatType> grad_occ;
+  af::shared<FloatType> grad_uiso;
   boost::python::list bcr_scatterers;
   //cctbx::xray::detail::exponent_table<FloatType>* exp_table_;
   cctbx::xray::detail::exponent_table<FloatType> exp_table_;
+  int n_atoms;
 
   OmegaMap(
     af::tiny<int, 3> const& Ncrs,
@@ -55,7 +60,12 @@ public:
   bcr_scatterers(bcr_scatterers_), // is this doing copy?
   //map(af::c_grid<3>(Nxyz[0],Nxyz[1],Nxyz[2]))
   map(af::c_grid<3>(Nxyz[2],Nxyz[1],Nxyz[0])),
-  exp_table_(-100)
+  GradMap(af::c_grid<3>(Nxyz[2],Nxyz[1],Nxyz[0])), // TMP, move
+  exp_table_(-100),
+  n_atoms(boost::python::len(bcr_scatterers_)),
+  //grad_xyz(boost::python::len(bcr_scatterers_)),
+  grad_occ(boost::python::len(bcr_scatterers_)),
+  grad_uiso(boost::python::len(bcr_scatterers_))
   {
     scitbx::af::tiny<FloatType, 6> ucp = unit_cell.parameters();
     FloatType acell = ucp[0];
@@ -118,7 +128,224 @@ public:
     RprojZ = std::sin(gamma) / (vol0 * ccell);
   }
 
-  af::versa<FloatType, af::c_grid<3> > compute_map(bool arg_value) {
+
+
+
+
+
+
+  void compute_gradients(af::ref<FloatType, af::c_grid<3> > map_data) {
+
+    for (int iz = 0; iz < Nz; ++iz) {
+      for (int iy = 0; iy < Ny; ++iy) {
+        for (int ix = 0; ix < Nx; ++ix) {
+          GradMap(iz,iy,ix) = map(iz,iy,ix) - map_data(iz,iy,ix);
+        }
+      }
+    }
+
+    grad_occ  = af::shared<FloatType>(n_atoms, 0);
+    grad_uiso = af::shared<FloatType>(n_atoms, 0);
+    grad_xyz  = af::shared<scitbx::vec3<FloatType> >(
+      n_atoms, scitbx::vec3<FloatType>(0,0,0));
+
+    for(std::size_t i=0; i<n_atoms; i++) {
+      bcr_scatterer<FloatType> bcrs =
+         boost::python::extract<bcr_scatterer<FloatType> >(bcr_scatterers[i])();
+      FloatType RadAtom = bcrs.radius;
+      FloatType RadAtom2  = RadAtom   * RadAtom;
+      FloatType RadAtomX  = RadAtom   * RprojX;
+      FloatType RadAtomY  = RadAtom   * RprojY;
+      FloatType RadAtomZ  = RadAtom   * RprojZ;
+      cctbx::cartesian<> r = bcrs.site_cart;
+      FloatType xat = r[0];
+      FloatType yat = r[1];
+      FloatType zat = r[2];
+      FloatType cat = bcrs.occ;
+      FloatType bat = bcrs.u_iso;
+      FloatType xfrac = dortxx * xat + dortxy * yat + dortxz * zat;
+      FloatType yfrac =                dortyy * yat + dortyz * zat;
+      FloatType zfrac =                               dortzz * zat;
+      auto box = AtomBox(xfrac, yfrac, zfrac,
+        RadAtomX,RadAtomY,RadAtomZ,StepX,StepY,StepZ,Sx,Sy,Sz,Fx,Fy,Fz);
+      int Kx1       = std::get<0>(box);
+      int Kx2       = std::get<1>(box);
+      int Ky1       = std::get<2>(box);
+      int Ky2       = std::get<3>(box);
+      int Kz1       = std::get<4>(box);
+      int Kz2       = std::get<5>(box);
+      FloatType dxf = std::get<6>(box);
+      FloatType dyf = std::get<7>(box);
+      FloatType dzf = std::get<8>(box);
+      FloatType dx0 = orthxx * dxf + orthxy * dyf + orthxz * dzf;
+      FloatType dy0 =                orthyy * dyf + orthyz * dzf;
+      FloatType dz0 =                               orthzz * dzf;
+      struct AtomGridEntry {
+        FloatType r2zyx;
+        FloatType rzyx;
+        FloatType rzyx2;
+        FloatType dx;
+        FloatType dy;
+        FloatType dz;
+        FloatType Gradxyz;
+      };
+      std::vector<AtomGridEntry> AtomGrids;
+
+      af::tiny<int, 3> AtomGrid0(-1, -1, -1);
+      int ix0 = -1;
+      FloatType Grad0 = 0.;
+
+      FloatType dz  = dz0;
+      FloatType r2z = dz * dz;
+      FloatType cz  = dz * StepZZ2 + StepZZS;
+
+      for (int iz = Kz1; iz < Kz2; ++iz) {
+        FloatType dy   = dy0;
+        FloatType dt0  = dx0;
+        FloatType r2zy = dy * dy + r2z;
+        FloatType cy   = dy * StepYY2 + StepYYS;
+        for (int iy = Ky1; iy < Ky2; ++iy) {
+          FloatType dx    = dt0;
+          FloatType r2zyx = dx * dx + r2zy;
+          FloatType cx    = dx * StepXX2 + StepXXS;
+          for (int ix = Kx1; ix < Kx2; ++ix) {
+              if(r2zyx == 0.0) {
+                 AtomGrid0 = af::tiny<int, 3>(ix,iy,iz);
+                 ix0       = ix;
+                 Grad0     = GradMap(iz, iy, ix);
+              }
+              else if(r2zyx <= RadAtom2) {
+                 FloatType rzyx  = std::sqrt(r2zyx);
+                 FloatType rzyx2 = rzyx * 2;
+                 FloatType Gradxyz = GradMap(iz, iy, ix);
+                 AtomGrids.push_back({r2zyx,rzyx,rzyx2,dx,dy,dz,Gradxyz});
+              }
+              r2zyx = r2zyx + cx;
+              cx    = cx    + StepXXS2;
+              dx    = dx    + StepXX;
+          }
+          r2zy = r2zy + cy;
+          cy   = cy   + StepYYS2;
+          dt0  = dt0  + StepXY;
+          dy   = dy   + StepYY;
+        }
+        r2z = r2z + cz;
+        cz  = cz  + StepZZS2;
+        dx0 = dx0 + StepXZ;
+        dy0 = dy0 + StepYZ;
+        dz  = dz  + StepZZ;
+      }
+      // calculate contributions
+
+      int Ngrids = AtomGrids.size();
+      af::shared<FloatType> GridValues(Ngrids, 0.0);
+      FloatType GridValue0 = 0.0;
+
+      af::shared<FloatType> GradN(Ngrids);
+      af::shared<FloatType> GradC(Ngrids);
+      af::shared<FloatType> GradR(Ngrids);
+      af::shared<FloatType> GradR0(Ngrids);
+      FloatType GradC0 = 0.0;
+      FloatType GradN0 = 0.0;
+
+      for (size_t iterm = 0; iterm < bcrs.mu.size(); ++iterm) {
+        FloatType mu    = bcrs.mu[iterm];
+        FloatType nu    = bcrs.nu[iterm];
+        FloatType musq  = bcrs.musq[iterm];
+        FloatType kappi = bcrs.kappi[iterm];
+        FloatType nuatom  = nu + bat;
+        FloatType nuatom2 = nuatom + nuatom;
+        FloatType fact1   = kappi / std::pow(nuatom2, 1.5);
+        FloatType munuat  = mu / nuatom;
+        // contribution to the node coinciding with the atomic center
+        if(AtomGrid0[0] >= 0) {
+          FloatType argg  = musq / nuatom2;
+          FloatType fact2 = fact1 * myexp(-argg);
+          FloatType fact3 = fact2 / nuatom;
+          GradC0 = GradC0 + fact2;
+          GradN0 = GradN0 + fact3 * (argg - 1.5);
+        }
+        // contribution to nodes different from the atomic center
+        if(mu == 0.0) { // here
+          for (int ig = 0; ig < Ngrids; ++ig) {
+            FloatType r2zyx = AtomGrids[ig].r2zyx;
+            FloatType argg  = r2zyx / nuatom2;
+            FloatType fact2 = fact1 * myexp(-argg);
+            FloatType fact3 = fact2 / nuatom;
+            GradC[ig]  = GradC[ig]  + fact2;
+            GradR0[ig] = GradR0[ig] + fact3;
+            GradN[ig]  = GradN[ig]  + fact3 * (argg - 1.5);
+          }
+        }
+        else {
+          for (int ig = 0; ig < Ngrids; ++ig) {
+            AtomGridEntry ag = AtomGrids[ig];
+            FloatType r2zyx = ag.r2zyx;
+            FloatType rzyx  = ag.rzyx;
+            FloatType rzyx2 = ag.rzyx2;
+            FloatType arg0  = (rzyx-mu) / nuatom;
+            FloatType argg  = (rzyx-mu) * arg0 * 0.5;
+            FloatType fact2 = fact1 * myexp(-argg);
+            FloatType tterm = ag.rzyx2 * munuat;
+            FloatType factt = myexp(-tterm);
+            FloatType factc = (1.0 - factt) / tterm;
+            GradC[ig] = GradC[ig] + fact2 *  factc;
+            GradR[ig] = GradR[ig] + fact2 * (factc*(arg0 * rzyx + 1.0) - factt);
+            GradN[ig] = GradN[ig] + fact2 * (factc*(argg - 0.5)        - factt) / nuatom;
+          }
+        }
+      }
+
+      // collect scaled sums from different grid nodes
+      FloatType GradXt = 0.0;
+      FloatType GradYt = 0.0;
+      FloatType GradZt = 0.0;
+      FloatType GradCt = 0.0;
+      FloatType GradNt = 0.0;
+      for (int ig = 0; ig < Ngrids; ++ig) {
+        AtomGridEntry ag = AtomGrids[ig];
+        FloatType r2zyx   = ag.r2zyx;
+        FloatType dx      = ag.dx;
+        FloatType dy      = ag.dy;
+        FloatType dz      = ag.dz;
+        FloatType Gradxyz = ag.Gradxyz;
+        GradCt = Gradxyz *  GradC[ig] + GradCt;
+        GradNt = Gradxyz *  GradN[ig] + GradNt;
+        FloatType GradRg = Gradxyz * (GradR[ig]/r2zyx + GradR0[ig]);
+        GradXt = GradRg * dx + GradXt;
+        GradYt = GradRg * dy + GradYt;
+        GradZt = GradRg * dz + GradZt;
+      }  // here
+
+      ix0     = AtomGrid0[0];
+      int iy0 = AtomGrid0[1];
+      int iz0 = AtomGrid0[2];
+      if(ix0 >= 0) {
+        GradCt = Grad0 * GradC0 + GradCt;
+        GradNt = Grad0 * GradN0 + GradNt;
+      }
+
+      // GradAtom[iatom] = [GradXt * cat, GradYt * cat, GradZt * cat, GradCt, GradNt * cat]
+      grad_xyz[i] = scitbx::vec3<FloatType>(
+        GradXt * cat, GradYt * cat, GradZt * cat);
+      grad_occ[i] = GradCt;
+      grad_uiso[i] = GradNt * cat;
+
+    }
+
+    // return was here
+  }
+
+
+
+
+
+
+
+
+
+
+  af::versa<FloatType, af::c_grid<3> > compute(bool compute_gradients) {
     for(std::size_t i=0; i<boost::python::len(bcr_scatterers); i++) {
       bcr_scatterer<FloatType> bcrs =
          boost::python::extract<bcr_scatterer<FloatType> >(bcr_scatterers[i])();

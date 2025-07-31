@@ -44,10 +44,13 @@ def compute(hierarchy, unit_cell, n_real, resolution=None, resolutions=None,
   for s, u, o, e, r in zip(sites_cart, adp_as_u, occupancy,
                            atoms.extract_element(), resolutions):
     e = e.strip().upper()
+    #print('e', e)
     entry = arrays[e]
     keys = [float(x) for x in entry.keys()]
     key = str(min(keys, key=lambda x: abs(x - r)))
+    #print("key", key)
     vals = entry[key]
+    #print(vals)
     R = flex.double(vals['R'])
     B = flex.double(vals['B'])
     C = flex.double(vals['C'])
@@ -82,7 +85,7 @@ def compute(hierarchy, unit_cell, n_real, resolution=None, resolutions=None,
     bcr_scatterers = bcr_scatterers)
   #
   #t0 = time.time()
-  OmegaMap_cpp = o.compute_map(arg_value=False)
+  OmegaMap_cpp = o.compute(compute_gradients=False)
   #print("cpp: ", time.time()-t0)
 
   OmegaMap_cpp_2 = o.map  # alternative way to get the map
@@ -106,7 +109,7 @@ def compute(hierarchy, unit_cell, n_real, resolution=None, resolutions=None,
     for func in [flex.min, flex.max, flex.mean]:
       assert approx_equal(func(mcpp), func(mpy))
   #
-  if debug: return mcpp, OmegaMap_py, bcr_scatterers
+  if debug: return mcpp, OmegaMap_py, bcr_scatterers, o
   else:     return mcpp
 
 #-------------------------------------------
