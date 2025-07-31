@@ -17,6 +17,8 @@ from cctbx.maptbx.box import shift_and_box_model
 ext = bp.import_ext("cctbx_geometry_restraints_ext")
 get_class = iotbx.pdb.common_residue_names_get_class
 
+special_entity_codes = ['UNL']
+
 # ==============================================================================
 
 def get_h_restraints(resname, strict=True):
@@ -108,24 +110,39 @@ def get_h_restraints(resname, strict=True):
       period='1'))
   return comp_comp_id
 
+def get_residue_name_from_restrant_objects(ro):
+  rc={}
+  for filename, cif_dict in ro:
+    # print(filename)
+    for key, item in cif_dict.items():
+      if key=='comp_list':
+        code=item['_chem_comp.id'][0]
+        rc[code]=[filename, cif_dict]
+  return rc
+
 # ==============================================================================
 
-def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True):
+def mon_lib_query(residue, mon_lib_srv, restraint_objects=None, construct_h_restraints=True):
   # if get_class(residue.resname) in ['common_rna_dna']:
   #   md = get_h_restraints(residue.resname)
   #   return md
   # if print_time: print(residue.resname, get_class(residue.resname))
-  if residue.resname == 'UNL':
-    return None
+  if residue.resname in special_entity_codes:
+    return None, None
   md, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
     residue_name=residue.resname,
     atom_names=residue.atoms().extract_name())
+  if restraint_objects:
+    user_restraint_residues=get_residue_name_from_restrant_objects(restraint_objects)
+  else:
+    user_restraint_residues=[]
   cif_object=None
-  # if md is None:
-  #   md, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
-  #     residue_name='%s_EL' % residue.resname,
-  #     atom_names=residue.atoms().extract_name(),
-  #     ad_hoc_single_atom_residues=True)
+  if residue.resname in user_restraint_residues:
+    source_info, cif_object=user_restraint_residues[residue.resname]
+    mon_lib_srv.convert_comp_list(source_info, cif_object)
+    md, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
+      residue_name=residue.resname,
+      atom_names=residue.atoms().extract_name())
   if md is None:
     md = get_h_restraints(residue.resname, strict=False)
     if md is None:
@@ -435,6 +452,10 @@ class place_hydrogens():
     # end TODO
     pdb_hierarchy = self.model.get_hierarchy()
     mon_lib_srv = self.model.get_mon_lib_srv()
+    restraint_objects = None
+    if not self.model.restraints_manager_available():
+      restraint_objects=self.model._restraint_objects
+    else: raise Sorry('not sure about this')
     #XXX This breaks for 1jxt, residue 2, TYR
     for m in pdb_hierarchy.models():
       for chain in m.chains():
@@ -447,8 +468,13 @@ class place_hydrogens():
             if(get_class(name=ag.resname) == "common_water"): continue
             actual = [a.name.strip().upper() for a in ag.atoms()]
             #
-            mlq, cif_object = mon_lib_query(residue=ag, mon_lib_srv=mon_lib_srv)
+            mlq, cif_object = mon_lib_query(residue=ag,
+                                            mon_lib_srv=mon_lib_srv,
+                                            restraint_objects=restraint_objects,
+                                            )
             if mlq is None:
+              if ag.resname in special_entity_codes:
+                raise Sorry('Residue %s is reserved. Change to another.' % ag.resname)
               self.no_H_placed_mlq.append(ag.resname)
               continue
 
