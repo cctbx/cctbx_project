@@ -308,7 +308,7 @@ class Basis:
         self.pairs = None
         self.indexed_pairs = []
         self.symmetry = symmetry
-        self.centering = centering
+        self.centering = centering or 'P'
 
     @classmethod
     def from_vectors(cls, vectors: np.ndarray, reduce=True, qmax:float = 0.5, q_tol: float = 0.001,
@@ -445,7 +445,10 @@ class Basis:
         if reduce:
             # Create temporary basis to generate points
             temp_basis = cls.from_vectors(vectors, **init_kwargs)
-            temp_basis.generate_points_and_pairs_fast()
+            try:
+                temp_basis.generate_points_and_pairs_fast()
+            except Exception:
+                return None
             points = temp_basis.points
 
             if len(params) == 3:
@@ -808,6 +811,71 @@ class Basis2d(Basis):
     def area(self):
         return abs(np.cross(*self.vectors))
 
+    def doubled_cells(self) -> list:
+        """Generate all doubled and tripled variants of the current 2D basis.
+
+        Returns:
+            List of 7 Basis2d objects: 3 doubled cells followed by 4 tripled cells
+        """
+        # Get current reciprocal basis vectors
+        a_star = self.vectors[0].copy()
+        b_star = self.vectors[1].copy()
+
+        result = []
+
+        # DOUBLED CELLS (3 cases)
+        # 1. Double a: a*' = a*/2, b*' = b*
+        basis1 = self.vectors.copy()
+        basis1[0] = a_star / 2
+        result.append(basis1)
+
+        # 2. Double b: a*' = a*, b*' = b*/2
+        basis2 = self.vectors.copy()
+        basis2[1] = b_star / 2
+        result.append(basis2)
+
+        # 3. Double along (1,1): a*' = (a*+b*)/2, b*' = (a*-b*)/2
+        basis3 = self.vectors.copy()
+        basis3[0] = (a_star + b_star) / 2
+        basis3[1] = (a_star - b_star) / 2
+        result.append(basis3)
+
+        # TRIPLED CELLS (4 cases)
+        # 4. Triple a: a*' = a*/3, b*' = b*
+        basis4 = self.vectors.copy()
+        basis4[0] = a_star / 3
+        result.append(basis4)
+
+        # 5. Triple b: a*' = a*, b*' = b*/3
+        basis5 = self.vectors.copy()
+        basis5[1] = b_star / 3
+        result.append(basis5)
+
+        # 6. Triple along (1,1): points at (1/3,1/3) and (2/3,-1/3)
+        basis6 = self.vectors.copy()
+        basis6[0] = (a_star + b_star) / 3
+        basis6[1] = (2*a_star - b_star) / 3
+        result.append(basis6)
+
+        # 7. Triple along (1,-1): points at (1/3,-1/3) and (2/3,1/3)
+        basis7 = self.vectors.copy()
+        basis7[0] = (a_star - b_star) / 3
+        basis7[1] = (2*a_star + b_star) / 3
+        result.append(basis7)
+
+        # Create new Basis2d objects
+        final_result = []
+        for basis in result:
+            new_basis = type(self).from_vectors(
+                basis,
+                qmax=self.qmax,
+                q_tol=self.q_tolerance,
+                theta_tol_deg=np.degrees(self.theta_tolerance)
+            )
+            final_result.append(new_basis)
+
+        return final_result
+
     def compute_pair_cost(self, basis_vectors: np.ndarray, pair: PairMatch2d,
                          q_weight: float = 1.0, theta_weight: float = 111.0, use_outliers=False) -> float:
         """Compute cost for a single indexed pair using Miller indices."""
@@ -1024,8 +1092,10 @@ class Basis3d(Basis):
                 )
         bins = np.linspace(0, 2, 50)
         fig, (ax1, ax2) = plt.subplots(2,1)
-        plt.title('Costs (theta first)')
+        ax1.set_title('Costs (theta component)')
         ax1.hist(theta_costs, bins=bins)
+        ax1.xaxis.set_visible(False)
+        ax2.set_title('Costs (q component)')
         ax2.hist(q_costs, bins=bins)
         plt.show()
 
@@ -1055,13 +1125,7 @@ class Basis3d(Basis):
         direct = self.compute_direct_cell_params(self.vectors)
 
         return \
-            f"Direct cell:\n" + \
-            f"  a={direct['a']:.3f}, b={direct['b']:.3f}, c={direct['c']:.3f} Å\n" + \
-            f"  α={direct['alpha']:.2f}°, β={direct['beta']:.2f}°, γ={direct['gamma']:.2f}°\n" + \
-            ','.join( [str(round(direct[x], 3)) for x in ['a','b','c','alpha','beta','gamma']] )
-            #f"Reciprocal cell:\n" + \
-            #f"  a*={a_star:.3f}, b*={b_star:.3f}, c*={c_star:.3f} Å⁻¹\n" + \
-            #f"  α*={alpha_star:.2f}°, β*={beta_star:.2f}°, γ*={gamma_star:.2f}°\n" + \
+            ','.join( [str(round(direct[x], 3)) for x in ['a','b','c','alpha','beta','gamma']] ) + ' ' + self.centering
 
 
     def compute_direct_cell_params(self, recip_basis: np.ndarray) -> dict:
@@ -1153,6 +1217,8 @@ class Basis3d(Basis):
             [4] Double ac plane: a'=a+c, b'=b, c'=a-c
             [5] Double bc plane: a'=a, b'=b+c, c'=b-c
         """
+        result = []
+
         # Get current reciprocal basis vectors
         a_star = self.vectors[0].copy()
         b_star = self.vectors[1].copy()
@@ -1164,50 +1230,143 @@ class Basis3d(Basis):
         # 1. Double a: a*' = a*/2, b*' = b*, c*' = c*
         basis1 = self.vectors.copy()
         basis1[0] = a_star / 2
+        result.append(basis1)
 
         # 2. Double b: a*' = a*, b*' = b*/2, c*' = c*
         basis2 = self.vectors.copy()
         basis2[1] = b_star / 2
+        result.append(basis2)
 
         # 3. Double c: a*' = a*, b*' = b*, c*' = c*/2
         basis3 = self.vectors.copy()
         basis3[2] = c_star / 2
+        result.append(basis3)
 
         # 4. Double ab plane: a'=a+b, b'=a-b in direct space
         # In reciprocal space: a*' = (a*+b*)/2, b*' = (a*-b*)/2, c*' = c*
         basis4 = self.vectors.copy()
         basis4[0] = (a_star + b_star) / 2
         basis4[1] = (a_star - b_star) / 2
+        result.append(basis4)
 
         # 5. Double ac plane: a'=a+c, b'=b, c'=a-c in direct space
         # In reciprocal space: a*' = (a*+c*)/2, b*' = b*, c*' = (a*-c*)/2
         basis5 = self.vectors.copy()
         basis5[0] = (a_star + c_star) / 2
         basis5[2] = (a_star - c_star) / 2
+        result.append(basis5)
 
         # 6. Double bc plane: a'=a, b'=b+c, c'=b-c in direct space
         # In reciprocal space: a*' = a*, b*' = (b*+c*)/2, c*' = (b*-c*)/2
         basis6 = self.vectors.copy()
         basis6[1] = (b_star + c_star) / 2
         basis6[2] = (b_star - c_star) / 2
+        result.append(basis6)
 
         # 7. Body-centered (I-centered)
         # In reciprocal space: a*'=a*, b*'=b*, c*'=a*/2+b*/2+c*/2
         basis7 = self.vectors.copy()
         basis7[2] = (a_star + b_star + c_star) / 2
+        result.append(basis7)
+
+        # Now the tripled cells
+
+        # Type 1: Along coordinate axes (3 cases)
+        # 1. Triple along a: a*' = a*/3
+        basis1 = self.vectors.copy()
+        basis1[0] = a_star / 3
+        result.append(basis1)
+
+        # 2. Triple along b: b*' = b*/3
+        basis2 = self.vectors.copy()
+        basis2[1] = b_star / 3
+        result.append(basis2)
+
+        # 3. Triple along c: c*' = c*/3
+        basis3 = self.vectors.copy()
+        basis3[2] = c_star / 3
+        result.append(basis3)
+
+        # Type 2: Along face diagonals (6 cases)
+        # 4. Along (1,1,0): points (1/3,1/3,0) and (2/3,-1/3,0)
+        basis4 = self.vectors.copy()
+        basis4[0] = (a_star + b_star) / 3
+        basis4[1] = (2*a_star - b_star) / 3
+        result.append(basis4)
+
+        # 5. Along (1,-1,0): points (1/3,-1/3,0) and (2/3,1/3,0)
+        basis5 = self.vectors.copy()
+        basis5[0] = (a_star - b_star) / 3
+        basis5[1] = (2*a_star + b_star) / 3
+        result.append(basis5)
+
+        # 6. Along (1,0,1): points (1/3,0,1/3) and (2/3,0,-1/3)
+        basis6 = self.vectors.copy()
+        basis6[0] = (a_star + c_star) / 3
+        basis6[2] = (2*a_star - c_star) / 3
+        result.append(basis6)
+
+        # 7. Along (1,0,-1): points (1/3,0,-1/3) and (2/3,0,1/3)
+        basis7 = self.vectors.copy()
+        basis7[0] = (a_star - c_star) / 3
+        basis7[2] = (2*a_star + c_star) / 3
+        result.append(basis7)
+
+        # 8. Along (0,1,1): points (0,1/3,1/3) and (0,2/3,-1/3)
+        basis8 = self.vectors.copy()
+        basis8[1] = (b_star + c_star) / 3
+        basis8[2] = (2*b_star - c_star) / 3
+        result.append(basis8)
+
+        # 9. Along (0,1,-1): points (0,1/3,-1/3) and (0,2/3,1/3)
+        basis9 = self.vectors.copy()
+        basis9[1] = (b_star - c_star) / 3
+        basis9[2] = (2*b_star + c_star) / 3
+        result.append(basis9)
+
+        # Type 3: Along body diagonals (4 cases)
+        # Group 8 (body diagonal case 1)
+        basis10 = self.vectors.copy()
+        basis10[0] = (a_star - 2*b_star - 2*c_star) / 3
+        basis10[1] = b_star
+        basis10[2] = c_star
+        result.append(basis10)
+
+        # Group 9 (body diagonal case 2)
+        basis11 = self.vectors.copy()
+        basis11[0] = (a_star - b_star - 2*c_star) / 3
+        basis11[1] = b_star
+        basis11[2] = c_star
+        result.append(basis11)
+
+        # Group 10 (body diagonal case 3)
+        basis12 = self.vectors.copy()
+        basis12[0] = (a_star - 2*b_star - c_star) / 3
+        basis12[1] = b_star
+        basis12[2] = c_star
+        result.append(basis12)
+
+        # Group 11 (body diagonal case 4)
+        basis13 = self.vectors.copy()
+        basis13[0] = (a_star - b_star - c_star) / 3
+        basis13[1] = b_star
+        basis13[2] = c_star
+        result.append(basis13)
+
 
         # Create new Basis3d objects
-        result = []
-        for basis in [basis1, basis2, basis3, basis4, basis5, basis6, basis7]:
+        final_result = []
+        for basis in result:
             new_basis = type(self).from_vectors(
                 basis, 
                 qmax=self.qmax,
                 q_tol=self.q_tolerance,
                 theta_tol_deg=np.degrees(self.theta_tolerance)
             )
-            result.append(new_basis)
+            final_result.append(new_basis)
 
-        return result
+
+        return final_result
 
     def match_old(self, pair: SpotPair) -> Tuple[Optional[dict], str]:
         """Find a matching pair in the lattice using vectorized operations."""
@@ -1414,17 +1573,16 @@ class Basis3d(Basis):
                 return p
 
         elif self.symmetry == 'Monoclinic':
-            initial_params = np.array([a_star, b_star, c_star, alpha_star, gamma_star])
+            initial_params = np.array([a_star, b_star, c_star, beta_star])
             bounds = [
                 (0.01, None),    # a_star > 0
                 (0.01, None),    # b_star > 0
                 (0.01, None),    # c_star > 0
-                (0.1, np.pi-0.1),  # alpha_star in (0, pi)
-                (0.1, np.pi-0.1)   # gamma_star in (0, pi)
+                (0.1, np.pi-0.1)   # beta_star in (0, pi)
             ]
             def params_to_full(p):
-                a_star, b_star, c_star, alpha_star, gamma_star = p
-                return np.array([a_star, b_star, c_star, alpha_star, np.pi/2, gamma_star])
+                a_star, b_star, c_star, beta_star = p
+                return np.array([a_star, b_star, c_star, np.pi/2, beta_star, np.pi/2])
 
         elif self.symmetry == 'Orthorhombic':
             initial_params = np.array([a_star, b_star, c_star])
@@ -1530,15 +1688,18 @@ class LatticeReconstruction:
         pair = SpotPair(q1, q2, np.radians(theta))
         self.all_pairs.append(pair)
 
-    def generate_2d_bases(self, scan_pts=11, scan_range=1, max_axis=25):
+    def generate_2d_bases(self, scan_pts=11, scan_range=1, max_axis=40):
         scan_range=np.radians(scan_range)
         self.basis_candidates_2d = []
         for pair in self.all_pairs:
             deltas = np.linspace(-scan_range, scan_range, scan_pts)
             for d in deltas:
-                b = Basis.from_params(pair.q1, pair.q2, pair.theta+d)
-                if 1/b.astar() < max_axis and 1/b.bstar() < max_axis:
-                    self.basis_candidates_2d.append(b)
+                try:
+                    b = Basis.from_params(pair.q1, pair.q2, pair.theta+d)
+                    if 1/b.astar() < max_axis and 1/b.bstar() < max_axis:
+                        self.basis_candidates_2d.append(b)
+                except Exception:
+                    pass
 
 
     def update(self) -> None:
@@ -1798,7 +1959,7 @@ def grid_search_3d_basis(recon, pair1_idx, pair2_idx,
                 # Count indexed pairs
                 hits = 0
                 vol = basis3d.volume()
-                if vol > .0002:
+                if vol > .0001:
                     for p in recon.all_pairs:
                         if basis3d.match(p)[1] != 'unindexed':
                             hits += 1
@@ -1854,9 +2015,9 @@ def plot_grid_search_results(delta_values, results_normal, results_inv):
     ax2.set_title('Inverted (inv=True)')
     ax2.set_xlabel('Delta theta 2 (degrees)')
 
-    # Add colorbar
-    cbar = fig.colorbar(im1, ax=[ax1, ax2], orientation='vertical', shrink=0.8)
-    cbar.set_label('Indexing percentage (%)')
+#    # Add colorbar
+#    cbar = fig.colorbar(im1, ax=[ax1, ax2], orientation='vertical', shrink=0.8)
+#    cbar.set_label('Indexing percentage (%)')
 
     # Add max value annotations
     max_normal = np.max(results_normal)
@@ -1870,10 +2031,10 @@ def plot_grid_search_results(delta_values, results_normal, results_inv):
     delta2_inv = delta_values[max_inv_idx[1]]
 
     ax1.plot(delta2_normal, delta1_normal, 'r+', markersize=10)
-    ax1.text(delta2_normal, delta1_normal, f' {max_normal:.1f}%', color='red')
-
+#    ax1.text(delta2_normal, delta1_normal, f' {max_normal:.1f}%', color='red')
+#
     ax2.plot(delta2_inv, delta1_inv, 'r+', markersize=10)
-    ax2.text(delta2_inv, delta1_inv, f' {max_inv:.1f}%', color='red')
+#    ax2.text(delta2_inv, delta1_inv, f' {max_inv:.1f}%', color='red')
 
     plt.tight_layout()
     return fig
@@ -2106,11 +2267,21 @@ def sb1_callback(triplet, recon):
     """
     Analyze a selected triplet and return q-values to display.
     """
-    q1, q2, theta_degrees = triplet
-    # Convert theta to radians
-    theta_rad = np.radians(theta_degrees)
+    RANGE=2
+    PTS=11
 
-    # Create basis from the triplet
+    q1, q2, theta_degrees = triplet
+    theta_rad = np.radians(theta_degrees)
+#    deltas = np.linspace(-RANGE,RANGE,PTS)
+#    candidates = []
+#    for d in deltas:
+#      test_triplet = [q1, q2, theta_rad+d*np.pi/180]
+#      b = Basis.from_params(*test_triplet)
+#      candidates.append((b, b.fom_2d(recon.all_pairs)))
+#    candidates.sort(key=lambda x:x[1], reverse=True)
+#    sb1 = candidates[0][0]
+
+
     sb1 = Basis.from_params(q1, q2, theta_rad)
     sb1.match_pairs(recon.all_pairs)
 
@@ -2123,78 +2294,129 @@ def sb1_callback(triplet, recon):
     # Compute q-values (norms of the basis points)
     qvals = np.linalg.norm(sb1.points, axis=1)
 
-    # Filter to reasonable range for display
-    qvals = qvals[(qvals > 0.1) & (qvals < 0.5)]
+    points_1 = np.vstack((sb1.q1_values, sb1.q2_values, sb1.theta_values*180/np.pi)).T
+    points_2 = np.vstack((sb1.q2_values, sb1.q1_values, sb1.theta_values*180/np.pi)).T
+    points = np.vstack((points_1, points_2))
 
-    return qvals
+    # Filter to reasonable range for display
+    qvals = qvals[(qvals > 0.05) & (qvals < 0.9)]
+
+    return qvals, points
 
 
 
 
 def run():
-    recon = LatticeReconstruction(qmax=.5)
-    for l in open(sys.argv[1]):
-        recon.store_triplet(*[float(x) for x in l.split()])
+    QMIN=.05
+    QMAX=.35
+    recon = LatticeReconstruction(qmax=QMAX)
 #    print('generate')
-#    recon.generate_2d_bases()
-#    print('fom1')
-#    basis_fom = [
-#        (b, b.fom_1d(recon.all_pairs) )
-#        for b in recon.basis_candidates_2d
-#    ]
-#    basis_fom.sort(key=lambda x:x[1], reverse=True)
-#    top_1d = basis_fom[:50]
-#    print('fom2')
-#    basis_fom1_fom2 = [
-#        (b, f, b.fom_2d(recon.all_pairs))
-#        for b, f in top_1d
-#    ]
-#    basis_fom1_fom2.sort(key=lambda x:x[2], reverse=True)
-#    for i, b in enumerate(basis_fom1_fom2[:20]):
-#        print(i, b[0], round(b[1], 1), round(b[2], 1))
-#    i_sb1 = int(input('Sub-basis 1? '))
-#    i_sb2 = int(input('Sub-basis 2? '))
-#    sb1 = basis_fom1_fom2[i_sb1]
-#    sb2 = basis_fom1_fom2[i_sb2]
-#    for sb in sb1, sb2:
-#      basis = sb[0]
-#      basis.match_pairs(recon.all_pairs)
-#      for _ in range(3):
-#        basis.reindex_pairs()
-#        basis.flag_outliers()
-#        basis.plot_costs()
-#        basis.refine()
 
     from cluster2 import ManualClusterer
-    fn2 = sys.argv[2]
-    data = np.load(fn2)['triplets'][:,1:4]
+    fn1 = sys.argv[1]
+    data = np.load(fn1)['triplets'][:,1:4]
     data[:,0] = 1/data[:,0]
     data[:,1] = 1/data[:,1]
     data2 = np.vstack((data[:,1], data[:,0], data[:,2])).transpose()
     data = np.vstack((data, data2))
 
-    # Manual select 2d sub bases
-    cl1 = ManualClusterer(data, n_maxima=0, sb1_callback=sb1_callback, recon=recon)
-    title = "select first sub-basis"
-    triplets = cl1.select_triplets(title)
-    #triplets = [[0.143404,0.171542,57.271193]]
-    #assert len(triplets) == 1
-    triplets = triplets[-1:] # keep the last one
-    triplets[0][2] = np.radians(triplets[0][2])
-    sb1 = Basis.from_params(*triplets[0])
+
+    if len(sys.argv)==3 and False:
+        for l in open(sys.argv[2]):
+            recon.store_triplet(*[float(x) for x in l.split()])
+    else:
+        cl_auto = ManualClusterer(data, n_maxima=500, qmin=QMIN, qmax=QMAX)
+        for val in cl_auto.kde_maxima:
+            recon.store_triplet(*val)
+
+#    # Manual select 2d sub bases
+    assert sys.argv[2] in ['auto', 'manual']
+    if sys.argv[2] == 'manual':
+      cl1 = ManualClusterer(data, n_maxima=0, sb1_callback=sb1_callback, recon=recon, qmin=QMIN, qmax=QMAX)
+      title = "select first sub-basis"
+      triplets = cl1.select_triplets(title)
+      # Lattice doubling test case: 0.153379 0.125106 40.434691
+      triplets = triplets[-1:] # keep the last one
+      triplets[0][2] = np.radians(triplets[0][2])
+      sb1 = Basis.from_params(*triplets[0])
+
+#    def generate_2d_bases(self, scan_pts=11, scan_range=1, max_axis=40):
+#        scan_range=np.radians(scan_range)
+#        self.basis_candidates_2d = []
+#        for pair in self.all_pairs:
+#            deltas = np.linspace(-scan_range, scan_range, scan_pts)
+#            for d in deltas:
+#                try:
+#                    b = Basis.from_params(pair.q1, pair.q2, pair.theta+d)
+#                    if 1/b.astar() < max_axis and 1/b.bstar() < max_axis:
+#                        self.basis_candidates_2d.append(b)
+#                except Exception:
+#                    pass
+
+    else:
+      # Auto select 2d sub basis
+      recon.generate_2d_bases(scan_range=0,scan_pts=1)
+      print('fom1')
+      basis_fom = [
+          (b, b.fom_1d(recon.all_pairs) )
+          for b in recon.basis_candidates_2d
+      ]
+      basis_fom.sort(key=lambda x:x[1], reverse=True)
+      top_1d = basis_fom #[:500]
+      print('fom2')
+      basis_fom1_fom2 = [
+          (b, f, b.fom_2d(recon.all_pairs))
+          for b, f in top_1d
+      ]
+      basis_fom1_fom2.sort(key=lambda x:x[2], reverse=True)
+      for i, b in enumerate(basis_fom1_fom2[:20]):
+          print(i, b[0], round(b[1], 1), round(b[2], 1))
+      i_sb1 = int(input('Sub-basis 1? '))
+      sb1 = basis_fom1_fom2[i_sb1]
+#      for sb in [sb1]: #sb1, sb2:
+#        basis = sb[0]
+#        basis.match_pairs(recon.all_pairs)
+#        for _ in range(3):
+#          basis.reindex_pairs()
+#          basis.flag_outliers()
+#          basis.plot_costs()
+#          basis.refine()
+      sb1 = sb1[0]
+
+
     sb1.match_pairs(recon.all_pairs)
     for _ in range(5):
         sb1.reindex_pairs()
         sb1.flag_outliers()
         sb1.refine()
         #sb1.plot_costs()
+
+    print(f'sb1 index percent: {sb1.index_percent()}')
+    # Test doubled/tripled sub-bases
+    i_cell = None
+    while i_cell != 0:
+        doubled_cells = sb1.doubled_cells()
+        all_cells = [sb1] + doubled_cells
+        print('Cell doubling selection:')
+        print('i \t%idx')
+        for i, c in enumerate(all_cells):
+            c.match_pairs(recon.all_pairs)
+            print(i, '\t', c.index_percent(), '\t', str(c))
+        i_cell = int(input('Cell? '))
+        sb1 = all_cells[i_cell]
+        for _ in range(3):
+            sb1.reindex_pairs()
+            sb1.flag_outliers()
+            sb1.refine()
+
+
     print('manual selection start')
     qvals_1 = np.linalg.norm(sb1.points, axis=1)
 
-    cl2 = ManualClusterer(data, n_maxima=0, qvals_1=qvals_1)
-    triplets = cl2.select_triplets(title="select second subbasis")
-    #triplets = [[0.188297,0.153116,71.261422],
-    #            [0.188085,0.171400,56.750789]]
+    cl2 = ManualClusterer(data, n_maxima=0, qvals_1=qvals_1, qmin=QMIN, qmax=QMAX)
+    triplets = cl2.select_triplets(title="Lattice expansion")
+    # Lattice doubling test case: 0.137211 0.153351 114.522842
+    #                             0.137379 0.166884 110.495585
     assert len(triplets) == 2
     pairs = [SpotPair(q1,q2,np.radians(th)) for q1,q2,th in triplets]
     matches = [sb1.match(p) for p in pairs]
@@ -2207,25 +2429,28 @@ def run():
     plt.show()
 
     best_basis.match_pairs(recon.all_pairs)
-    for _ in range(3):
+    for _ in range(6):
         best_basis.reindex_pairs()
         best_basis.flag_outliers()
         best_basis.refine()
         #best_basis.plot_costs()
-    doubled_cells = best_basis.doubled_cells()
-    all_cells = [best_basis] + doubled_cells
-    print('Cell doubling selection:')
-    print('i \t%idx')
-    for i, c in enumerate(all_cells):
-        c.match_pairs(recon.all_pairs)
-        print(i, '\t', c.index_percent())
-    i_cell = int(input('Cell? '))
-    best_basis = all_cells[i_cell]
-    for _ in range(3):
-        best_basis.reindex_pairs()
-        best_basis.flag_outliers()
-        best_basis.refine()
-        #best_basis.plot_costs_components()
+    # Test multiples of the chosen cell
+    i_cell = None
+    while i_cell != 0:
+        doubled_cells = best_basis.doubled_cells()
+        all_cells = [best_basis] + doubled_cells
+        print('Cell doubling selection:')
+        print('i \t%idx\tCell')
+        for i, c in enumerate(all_cells):
+            c.match_pairs(recon.all_pairs)
+            print(i, '\t', c.index_percent(), '\t', str(c))
+        i_cell = int(input('Cell? '))
+        best_basis = all_cells[i_cell]
+        for _ in range(3):
+            best_basis.reindex_pairs()
+            best_basis.flag_outliers()
+            best_basis.refine()
+            #best_basis.plot_costs_components()
 
     from cctbx import uctbx, crystal
     from cctbx.sgtbx.lattice_symmetry import metric_subgroups
@@ -2248,6 +2473,16 @@ def run():
             constr_basis.refine(constrained=True)
         symmetrized_bases.append((constr_basis, constr_basis.index_percent()))
             
+    for i, b in enumerate(symmetrized_bases): print(str(i) + '\t' + str(b[0]) + ' ' + str(b[1]))
+    i_final = int(input('Choice: '))
+    final_basis = symmetrized_bases[i_final][0]
+    final_points_1 = np.vstack((final_basis.q1_values, final_basis.q2_values, final_basis.theta_values*180/np.pi)).T
+    final_points_2 = np.vstack((final_basis.q2_values, final_basis.q1_values, final_basis.theta_values*180/np.pi)).T
+    final_points = np.vstack((final_points_1, final_points_2))
+    final_qvals = np.linalg.norm(final_basis.points, axis=1)
+    cl_final = ManualClusterer(data, n_maxima=0, qvals_1=final_qvals, qmin=QMIN, qmax=QMAX, points=final_points)
+    _ = cl_final.select_triplets()
+
     import IPython;IPython.embed()
     assert len(triplets) == 1
     triplets[0][2] = np.radians(triplets[0][2])
@@ -2265,7 +2500,7 @@ def run():
     # Manual select ab pairs
     qvals_1 = np.linalg.norm(sb1.points, axis=1)
     qvals_2 = np.linalg.norm(sb2.points, axis=1)
-    cl = ManualClusterer(data, n_maxima=0, qvals_1=qvals_1, qvals_2=qvals_2)
+    cl = ManualClusterer(data, n_maxima=0, qvals_1=qvals_1, qvals_2=qvals_2, qmin=.1, qmax=.5)
     triplets = cl.select_triplets("select a-b pairs")
     print(triplets)
     #triplets = [[0.15333570792827658, 0.13718166412632835, 114.6026808444415], [0.1532716587572158, 0.143893922376171, 32.211055684990406], [0.15329187415603598, 0.1836433785315679, 77.80422388061861], [0.1533567548034525, 0.25795800966128574, 50.959598431305984], [0.1667772122979944, 0.1415369213997462, 65.44425336483228], [0.1668435395895667, 0.14401664386592716, 57.66669217209992], [0.16672231651340277, 0.25795198264263536, 30.3907182392463], [0.20049139390604614, 0.1415445237130603, 25.921552407884032], [0.22693602221707057, 0.2580249296609254, 108.14834482578436], [0.27737438425400857, 0.14161107283719673, 52.546032607023136], [0.2774193570666868, 0.14393247301009263, 44.26189630562257], [0.27722723290187934, 0.28328068977243553, 52.552673251938415], [0.3069234169084582, 0.14153689240822068, 89.97024400009249], [0.30674731494727275, 0.14385171337570893, 75.9191414162387], [0.3067820484586015, 0.2578167873779439, 54.49355516464851]]

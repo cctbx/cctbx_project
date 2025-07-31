@@ -17,13 +17,17 @@ counter = 0
 
 class ManualClusterer:
     def __init__(self, data, bandwidths=[0.001, 0.001, 1.0], n_maxima=500,
-                 qvals_1=None, qvals_2=None, sb1_callback=None, recon=None):
+                 qvals_1=None, qvals_2=None, sb1_callback=None, recon=None,
+                 qmin=.1, qmax=.5, points=None):
         self.data = data
         self.bandwidths = np.array(bandwidths)
         self.n_maxima = n_maxima
         self.qvals_1 = qvals_1
         self.qvals_2 = qvals_2
         self.sb1_qvals = None
+        self.qmin = qmin
+        self.qmax = qmax
+        self.points = points
 
         self.current_selection = None
         self.final_selection = None
@@ -121,9 +125,10 @@ class ManualClusterer:
         self.ax_qval.clear()
         
         # Create histogram
-        hist, edges = np.histogram(self.data[:, 0], bins=2000, range=(.1, .5))
+        plot_range = .1, self.qmax
+        hist, edges = np.histogram(self.data[:, 0], bins=2000, range=plotrange)
         self.ax_qval.plot(edges[:-1], hist)
-        self.ax_qval.set_title(title)
+        self.ax_qval.set_title('abcd')
         self.ax_qval.set_xlabel('q-value')
         self.ax_qval.set_ylabel('Count')
         
@@ -209,10 +214,10 @@ class ManualClusterer:
     def select_triplets(self, title=None):
         """Run the interactive selection process and return the selected triplets."""
         # Create the three windows with specific sizes
-        self.fig1, self.ax1 = plt.subplots(num='Step 1: Histogram Selection', figsize=(16,2.5))
-        self.fig2, self.ax2 = plt.subplots(num='Step 2: 2D Selection', figsize=(16,2.5))
+        self.fig1, self.ax1 = plt.subplots(num='Step 1: Histogram Selection', figsize=(16,3))
+        self.fig2, self.ax2 = plt.subplots(num='Step 2: 2D Selection', figsize=(16,3))
         self.fig3, (self.ax3a, self.ax3b, self.ax3c) = plt.subplots(1, 3, num='Step 3: Final Selection',
-                                                                    figsize=(16,2.5))
+                                                                    figsize=(16,3))
 
         # Set window positions to stack them vertically
         backend = plt.get_backend()
@@ -221,7 +226,7 @@ class ManualClusterer:
         manager2 = self.fig2.canvas.manager
         manager3 = self.fig3.canvas.manager
         dpi = self.fig1.dpi
-        height1 = int(2.5 * dpi)  # 3 inches * dpi
+        height1 = int(3 * dpi)  # 3 inches * dpi
 
         # Position windows with some spacing
         self.fig1.canvas.manager.window.wm_geometry("+100+50")
@@ -229,7 +234,10 @@ class ManualClusterer:
         self.fig3.canvas.manager.window.wm_geometry(f"+100+{50 + 2*height1 + 80}")
 
         # Set fixed subplot sizes
-        self.fig3.set_tight_layout(False)
+        #self.fig3.set_tight_layout(False)
+        self.fig1.subplots_adjust(bottom=.2)
+        self.fig2.subplots_adjust(bottom=.2)
+        self.fig3.subplots_adjust(bottom=.2)
 
         # Initialize the first window
         self.show_histogram(title=title)
@@ -265,7 +273,9 @@ class ManualClusterer:
 
         # Take a random subsample (5%) for evaluation
         n_sample = max(int(len(normalized_data) * 0.05), 100000)  # At least 1000 points
+        n_sample = 200000
         n_sample = min(n_sample, len(normalized_data))  # Can't sample more than we have
+        print(f'{n_sample=}')
 
         # Random sampling without replacement
         sample_indices = np.random.choice(len(normalized_data), size=n_sample, replace=False)
@@ -348,11 +358,15 @@ class ManualClusterer:
 
     def show_histogram(self, title=None):
         self.ax1.clear()
-        hist, edges = np.histogram(self.data[:,0], bins=2000, range=(.1,.5))
+        plotrange=self.qmin, self.qmax
+        self.ax1.set_xlim(plotrange)
+        hist, edges = np.histogram(self.data[:,0], bins=2000, range=plotrange)
         self.ax1.plot(edges[:-1], hist)
         if title is None:
             title = "Select range in histogram"
         self.ax1.set_title(title)
+        self.ax1.set_xlabel('q1')
+        self.ax1.set_ylabel('counts')
         
         # Add tick marks for KDE maxima if available
         if hasattr(self, 'kde_maxima'):
@@ -369,7 +383,7 @@ class ManualClusterer:
 
         if self.sb1_qvals is not None:
             self.ax1.plot(self.sb1_qvals, np.zeros_like(self.sb1_qvals),
-                         '|', color='green', markersize=25, markeredgewidth=2)
+                         '|', color='orange', markersize=25, markeredgewidth=2)
 
 
         self.span = SpanSelector(
@@ -406,6 +420,13 @@ class ManualClusterer:
         if hasattr(self, 'kde_maxima'):
             kde_mask = (self.kde_maxima[:, 0] >= xmin) & (self.kde_maxima[:, 0] <= xmax)
             self.current_kde_selection = self.kde_maxima[kde_mask]
+
+        # Select predicted points in the span
+        if self.points is not None:
+            points_mask = (self.points[:,0] >= xmin) & (self.points[:,0] <= xmax)
+            self.current_points_selection = self.points[points_mask]
+        else:
+            self.current_points_selection = None
         
         # Show the second window
         self.show_scatter_2d()
@@ -416,7 +437,10 @@ class ManualClusterer:
 
     def show_scatter_2d(self):
         self.ax2.clear()
-        self.ax2.set_xlim((.1, .5))
+        plotrange = self.qmin, self.qmax
+        self.ax2.set_xlim(plotrange)
+        self.ax2.set_xlabel('q2')
+        self.ax2.set_ylabel('theta')
         if self.current_selection is not None and len(self.current_selection) > 0:
             self.ax2.scatter(
                 self.current_selection[:, 1],
@@ -427,7 +451,7 @@ class ManualClusterer:
             # Plot KDE maxima if available
             if hasattr(self, 'current_kde_selection') and len(self.current_kde_selection) > 0:
                 self.ax2.scatter(self.current_kde_selection[:, 1], self.current_kde_selection[:, 2],
-                               color='green', marker='x', s=50, label='KDE maxima')
+                               color='red', marker='x', s=50, label='KDE maxima')
 
             
             # Add vertical lines for q-values (second dimension)
@@ -436,10 +460,13 @@ class ManualClusterer:
                 for q in self.qvals_2:
                     if q >= self.current_selection[:, 1].min() and q <= self.current_selection[:, 1].max():
                         self.ax2.axvline(q, color='blue', linestyle='--', alpha=0.5)
-            if self.qvals_1 is not None:
+            if self.qvals_1 is not None and self.points is None:
                 for q in self.qvals_1:
                     if q >= self.current_selection[:, 1].min() and q <= self.current_selection[:, 1].max():
                         self.ax2.axvline(q, color='red', linestyle='--', alpha=0.5)
+            if self.current_points_selection is not None:
+                self.ax2.scatter(self.current_points_selection[:,1], self.current_points_selection[:,2],
+                               color='orange', marker='o', s=20, label='points')
 
             # Create RectangleSelector only if it doesn't exist already
             if not hasattr(self, 'rect') or self.rect is None:
@@ -525,6 +552,12 @@ class ManualClusterer:
         # Set the limits for each plot
         self.ax3a.set_xlim(x_min, x_max)
         self.ax3a.set_ylim(y_min, y_max)
+        self.ax3a.set_xlabel('q1')
+        self.ax3a.set_ylabel('q2')
+        self.ax3b.set_xlabel('q1')
+        self.ax3b.set_ylabel('theta')
+        self.ax3c.set_xlabel('q2')
+        self.ax3c.set_ylabel('theta')
 
         self.ax3b.set_xlim(x_min, x_max)
         self.ax3b.set_ylim(z_min, z_max)
@@ -651,9 +684,17 @@ class ManualClusterer:
                             color='red', marker='x', s=50)
         
         # Plot means
-        self.ax3a.plot(self.means[0], self.means[1], 'r*', markersize=15)
-        self.ax3b.plot(self.means[0], self.means[2], 'r*', markersize=15)
-        self.ax3c.plot(self.means[1], self.means[2], 'r*', markersize=15)
+        self.ax3a.plot(self.means[0], self.means[1], 'ro', markersize=6)
+        self.ax3b.plot(self.means[0], self.means[2], 'ro', markersize=6)
+        self.ax3c.plot(self.means[1], self.means[2], 'ro', markersize=6)
+
+        self.ax3a.set_xlabel('q1')
+        self.ax3a.set_ylabel('q2')
+        self.ax3b.set_xlabel('q1')
+        self.ax3b.set_ylabel('theta')
+        self.ax3c.set_xlabel('q2')
+        self.ax3c.set_ylabel('theta')
+
         self.fig3.canvas.draw_idle()
 
     def update_means(self):
@@ -673,7 +714,7 @@ class ManualClusterer:
                 np.savetxt(f, [self.means], fmt='%.6f')
 
             if self.sb1_callback is not None:
-                self.sb1_qvals = self.sb1_callback(triplet, self.recon)
+                self.sb1_qvals, self.points = self.sb1_callback(triplet, self.recon)
                 self.show_histogram(title=self.ax1.get_title())
 
     def on_done(self, event):
