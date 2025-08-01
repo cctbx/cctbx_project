@@ -11,8 +11,6 @@ import sys
 import time
 import traceback
 import warnings
-from functools import wraps
-from collections import OrderedDict
 
 from six.moves import cStringIO as StringIO
 
@@ -2609,6 +2607,7 @@ def display_context(text, file_name = 'file name', n_context = 5,
       text_block_list.append(info)
   return text_block_list
 
+
 class timer:
   '''
   Context manager for timing blocks of code
@@ -2626,64 +2625,3 @@ class timer:
   def __exit__(self, type, value, traceback):
     self.time = time.perf_counter() - self.time
     print('Elapsed time (s): {}'.format(self.time))
-
-class Tracker(type):
-  '''
-  Track the number of calls and total time taken for each method of a class that
-  is invoked during the lifetime of a class instance. The tracking is safe with
-  respect to deep copies and selection-aware operations.
-  '''
-  def __new__(mcs, name, bases, namespace):
-    for attr_name, attr_value in list(namespace.items()):
-      if callable(attr_value) and not attr_name.startswith('_'):
-        namespace[attr_name] = mcs.wrap_method(attr_value, attr_name)
-    # Add method 1
-    def call_stats_sorted_and_rounded(self, ndigits=3, trim=True):
-      # Sort by total_time in descending order
-      sorted_items = sorted(
-        self._call_stats.items(), key=lambda x: x[1]['total_time'], reverse=True)
-      # Build OrderedDict, round total_time, and filter out zeros
-      sorted_rounded_dict = OrderedDict()
-      for key, value in sorted_items:
-        rounded_time = round(value['total_time'], ndigits)
-        if trim and rounded_time > 0.0:
-          sorted_rounded_dict[key] = {
-            'count': value['count'],
-            'total_time': rounded_time
-          }
-      return sorted_rounded_dict
-    namespace["call_stats_sorted_and_rounded"]=call_stats_sorted_and_rounded
-    # Add method 2
-    def show_call_stats_sorted_and_rounded(self, indent=2):
-      stats_dict = self.call_stats_sorted_and_rounded()
-      # Determine longest key for alignment
-      max_key_len = max(len(key) for key in stats_dict)
-      # Format each line with consistent alignment
-      pad = ' ' * indent
-      lines = []
-      for key, val in stats_dict.items():
-        key_formatted = f"{key}:".ljust(max_key_len + 2)  # +2 for colon and a space
-        count_formatted = f"count: {val['count']:<5}"     # left-align count in fixed width
-        time_formatted = f"total_time: {val['total_time']:.3f}"
-        lines.append(f"{pad}{key_formatted} {count_formatted} {time_formatted}")
-      return '\n'.join(lines)
-    namespace["show_call_stats_sorted_and_rounded"]=\
-      show_call_stats_sorted_and_rounded
-    #
-    return super().__new__(mcs, name, bases, namespace)
-
-  @staticmethod
-  def wrap_method(method, method_name):
-    @wraps(method)
-    def wrapper(self, *args, **kwargs):
-      start = time.perf_counter()
-      result = method(self, *args, **kwargs)
-      end = time.perf_counter()
-      if not hasattr(self, '_call_stats'):
-        self._call_stats = {}
-      stats = self._call_stats.setdefault(
-        method_name, {"count": 0, "total_time": 0.0})
-      stats["count"] += 1
-      stats["total_time"] += end - start
-      return result
-    return wrapper

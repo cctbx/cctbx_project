@@ -43,7 +43,6 @@ import libtbx
 import mmtbx.bulk_solvent
 import six
 from six.moves import zip, range
-import libtbx.utils
 
 ext = bp.import_ext("mmtbx_f_model_ext")
 
@@ -330,7 +329,7 @@ class manager_kbu(object):
     return flex.double(self.f_obs.data().size(),
       mmtbx.bulk_solvent.scale(self.f_obs.data(), self.f_model.data()))
 
-class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
+class manager(manager_mixin):
 
   def __init__(self,
          f_obs                        = None,
@@ -766,7 +765,6 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     result.twin_law_str = self.twin_law_str
     result.k_h = self.k_h
     result.b_h = self.b_h
-    result._call_stats = self._call_stats # tracking!!
     if(in_place): # XXX USE THIS INSTEAD OF ABOVE
       # TODO: six.moves.zip this file
       for k, v in six.iteritems(self.__dict__):
