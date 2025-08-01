@@ -1,3 +1,10 @@
+2025.7
+======
+
+* Added _atom_site.auth_atom_id to mmCIF output
+* Added calculation of a variable resolution map
+* CCTBParser: updated --diff-params to report any incompatible PHIL as unused
+
 2025.6
 ======
 
