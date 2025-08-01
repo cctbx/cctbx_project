@@ -1220,6 +1220,9 @@ NOTES:
 
     # Use model function to set crystal symmetry if necessary 2025-03-19 TT
     self.model.add_crystal_symmetry_if_necessary()
+    if self.data_manager.has_restraints():
+      self.model.set_stop_for_unknowns(False)
+      self.model.process(make_restraints=False)
 
     # If we've been asked to only to a single model index from the file, strip the model down to
     # only that index.
