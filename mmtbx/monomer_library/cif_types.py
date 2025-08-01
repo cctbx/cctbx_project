@@ -195,6 +195,7 @@ class comp_comp_id(slots_getstate_setstate):
     "classification",
     "normalized_rna_dna",
     "cif_object",
+    'skipped_deletes',
     ]
 
   def __init__(self, source_info, chem_comp):
@@ -211,6 +212,7 @@ class comp_comp_id(slots_getstate_setstate):
     self.classification = None
     self.normalized_rna_dna = None
     self.cif_object = None
+    self.skipped_deletes=[]
 
   def normalize_atom_ids_in_place(self):
     atom_ids_mod = []
@@ -427,7 +429,13 @@ class comp_comp_id(slots_getstate_setstate):
       if (mod_atom.function == "add"):
         result.atom_list.append(mod_atom.as_chem_comp())
       elif (mod_atom.function == "delete"):
-        result.delete_atom_in_place(mod_atom.atom_id)
+        try:
+          result.delete_atom_in_place(mod_atom.atom_id)
+        except Exception as e:
+          if str(e).find('unknown atom_id')>-1:
+            result.skipped_deletes.append(mod_atom.atom_id)
+          else:
+            raise e
       elif (mod_atom.function == "change"):
         result.change_atom_in_place(mod_atom)
       else:

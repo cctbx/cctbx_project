@@ -1208,6 +1208,7 @@ class monomer_mapping(slots_getstate_setstate):
     "chainid",
     #
     'atom_names_mappings',
+    'skipped_deletes',
     ]
 
   def __init__(self,
@@ -1236,6 +1237,7 @@ class monomer_mapping(slots_getstate_setstate):
     self.pdb_residue = pdb_residue
     self.pdb_residue_id_str = residue_id_str(pdb_residue, suppress_segid=-1)
     self.residue_name = pdb_residue.resname
+    self.skipped_deletes = {}
     atom_id_str_pdbres_list = self._collect_atom_names()
     self.monomer, self.atom_name_interpretation \
       = self.mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
@@ -1642,6 +1644,11 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
       self.chem_mod_ids.add(chem_mod_id)
       self.residue_name += "%" + chem_mod_id
 
+  def _track_dels(self, dels):
+    for atom_name in dels:
+      self.skipped_deletes.setdefault(atom_name, 0)
+      self.skipped_deletes[atom_name]+=1
+
   def apply_mod(self, mod_mod_id):
     if (mod_mod_id.chem_mod.id in self.chem_mod_ids):
       return
@@ -1658,6 +1665,7 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
         "  mod id: %s" % mod_mod_id.chem_mod.id])
       raise Sorry("\n".join(msg))
     self._track_mods(chem_mod_ids=[mod_mod_id.chem_mod.id])
+    self._track_dels(dels=mod_mon.skipped_deletes)
     mod_mon.classification = self.monomer.classification
     self.monomer = mod_mon
     if (    mod_mod_id.chem_mod.name is not None
@@ -1992,6 +2000,14 @@ def special_dispensation(proxy_label, m_i, m_j, i_seqs):
     return names
   return False
 
+def override_origin_ids(origin_id):
+  overrides=[]
+  for attr in ['User supplied cif_link']:
+    overrides.append(origin_ids[attr])
+  if origin_id in overrides:
+    return True
+  return False
+
 def evaluate_registry_process_result(
       proxy_label,
       m_i, m_j, i_seqs,
@@ -2095,9 +2111,11 @@ class add_bond_proxies(object):
               and all_atoms_are_in_main_conf(atoms=atoms)):
             counters.already_assigned_to_first_conformer += 1
           else:
+            replace_in_place=override_origin_ids(origin_id)
             registry_process_result = bond_simple_proxy_registry.process(
               source_info=source_info_server(m_i=m_i, m_j=m_j),
-              proxy=proxy)
+              proxy=proxy,
+              replace_in_place=replace_in_place)
             evaluate_registry_process_result(
               proxy_label="bond_simple", m_i=m_i, m_j=m_j, i_seqs=i_seqs,
               registry_process_result=registry_process_result)
@@ -2161,6 +2179,7 @@ class add_angle_proxies(object):
         elif (involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs)):
           pass
         else:
+          replace_in_place=override_origin_ids(origin_id)
           registry_process_result = angle_proxy_registry.process(
             source_info=source_info_server(m_i=m_i, m_j=m_j),
             proxy=geometry_restraints.angle_proxy(
@@ -2168,7 +2187,8 @@ class add_angle_proxies(object):
               angle_ideal=angle.value_angle,
               weight=1/angle.value_angle_esd**2,
               origin_id=origin_id,
-              ))
+              ),
+            replace_in_place=replace_in_place)
           evaluate_registry_process_result(
             proxy_label="angle", m_i=m_i, m_j=m_j, i_seqs=i_seqs,
             registry_process_result=registry_process_result)
@@ -2317,9 +2337,11 @@ class add_dihedral_proxies(object):
                       self.chem_link_id=self.chem_link_id.replace('CIS','TRANS')
                       proxy.angle_ideal=180
 
+          replace_in_place=override_origin_ids(origin_id)
           registry_process_result = dihedral_proxy_registry.process(
             source_info=source_info_server(m_i=m_i, m_j=m_j),
-            proxy=proxy)
+            proxy=proxy,
+            replace_in_place=replace_in_place)
           evaluate_registry_process_result(
             proxy_label="dihedral", m_i=m_i, m_j=m_j, i_seqs=i_seqs,
             registry_process_result=registry_process_result,
@@ -2675,6 +2697,7 @@ class build_chain_proxies(object):
     duplicate_atoms = dicts.with_default_value(0)
     classifications = dicts.with_default_value(0)
     modifications_used = dicts.with_default_value(0)
+    skipped_deletes = dicts.with_default_value(0)
     incomplete_infos = dicts.with_default_value(0)
     missing_h_bond_type = dicts.with_default_value(0)
     link_ids = dicts.with_default_value(0)
@@ -2944,6 +2967,8 @@ class build_chain_proxies(object):
           classifications[mm.monomer.classification] += 1
         for chem_mod_id in mm.chem_mod_ids:
           modifications_used[chem_mod_id] += 1
+        for atom_name in mm.skipped_deletes:
+          skipped_deletes[atom_name]+=1
         scattering_type_registry.assign_from_monomer_mapping(
           conf_altloc=conformer.altloc, mm=mm)
         nonbonded_energy_type_registry.assign_from_monomer_mapping(
@@ -3056,6 +3081,8 @@ class build_chain_proxies(object):
         print("          Classifications:", print_dict(classifications), file=log)
       if (len(modifications_used) > 0):
         print("          Modifications used:", print_dict(modifications_used), file=log)
+      if (len(skipped_deletes) > 0):
+        print("          Skipped deletes:", print_dict(skipped_deletes), file=log)
       if (len(incomplete_infos) > 0):
         print("          Incomplete info:", print_dict(incomplete_infos), file=log)
       if (len(missing_h_bond_type) > 0):
