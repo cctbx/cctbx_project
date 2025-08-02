@@ -8,6 +8,8 @@ from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 
 import time
+from cctbx import xray
+import math
 
 import boost_adaptbx.boost.python as bp
 ext = bp.import_ext("cctbx_maptbx_bcr_bcr_ext")
@@ -21,30 +23,25 @@ def load_table(element):
   with open(file_name, 'r') as file:
     return json.load(file)
 
-def compute(hierarchy, unit_cell, n_real, resolution=None, resolutions=None,
+def compute(xray_tructure, n_real, resolution=None, resolutions=None,
             debug=False):
   assert [resolution, resolutions].count(None)==1
-  atoms = hierarchy.atoms()
+  unit_cell = xray_tructure.unit_cell()
   if resolutions is None:
-    resolutions = [resolution,] * atoms.size()
+    resolutions = [resolution,] * xray_tructure.scatterers().size()
   RadFact = 2.0
   RadAdd  = 0.5
   RadMu   = RadFact + RadAdd
-  sites_cart = atoms.extract_xyz()
-  adp_as_u = atoms.extract_b()*adptbx.b_as_u(1.)
-  occupancy= atoms.extract_occ()
   arrays = {}
-  for e in list(set(atoms.extract_element())):
-    e = e.strip().upper()
+  for scatterer in xray_tructure.scatterers():
+    e = scatterer.scattering_type.strip().upper()
     d = load_table(element=e)
     arrays[e] = d
   ScaleB = 1.0 / (8.0 * math.pi**2)
   kscale = math.pi**1.5
   bcr_scatterers = []
-  for s, u, o, e, r in zip(sites_cart, adp_as_u, occupancy,
-                           atoms.extract_element(), resolutions):
-    e = e.strip().upper()
-    #print('e', e)
+  for r, scatterer in zip(resolutions, xray_tructure.scatterers()):
+    e = scatterer.scattering_type.strip().upper()
     entry = arrays[e]
     keys = [float(x) for x in entry.keys()]
     key = str(min(keys, key=lambda x: abs(x - r)))
@@ -60,10 +57,9 @@ def compute(hierarchy, unit_cell, n_real, resolution=None, resolutions=None,
     kappa = C.select(sel)
     musq  = mu * mu
     kappi = kappa/kscale
+
     bcr_scatterer = ext.bcr_scatterer(
-      site_cart = s,
-      u_iso     = u,
-      occ       = o,
+      scatterer = scatterer,
       radius    = r*RadFact, # atomic radius = atomic_resolution * RadFact
       resolution=r,
       mu        = mu,
@@ -107,7 +103,7 @@ def compute(hierarchy, unit_cell, n_real, resolution=None, resolutions=None,
        x=OmegaMap_cpp.as_1d(), y=OmegaMap_cpp_2.as_1d()).coefficient()
     assert approx_equal(cc, 1.0)
     for func in [flex.min, flex.max, flex.mean]:
-      assert approx_equal(func(mcpp), func(mpy))
+      assert approx_equal(func(mcpp), func(mpy), 1.e-6)
   #
   if debug: return mcpp, OmegaMap_py, bcr_scatterers, o
   else:     return mcpp
@@ -142,6 +138,7 @@ def CalcGradMap(OmegaMap ,ControlMap, Ncrs) :
 def CalcOmegaMap(Ncrs, Scrs, Nxyz, unit_cell, bcr_scatterers) :
 
     acell, bcell, ccell, alpha, beta,  gamma = unit_cell.parameters()
+    alpha, beta,  gamma = math.radians(alpha), math.radians(beta),  math.radians(gamma)
     OrthMatrix  = unit_cell.orthogonalization_matrix()
     DeortMatrix = unit_cell.fractionalization_matrix()
 
@@ -170,7 +167,8 @@ def CalcOmegaMap(Ncrs, Scrs, Nxyz, unit_cell, bcr_scatterers) :
     StepXXS2, StepYYS2, StepZZS2 = StepXXS * 2, StepYYS * 2, StepZZS * 2
 
     cosalp, cosbet, cosgam = math.cos(alpha), math.cos(beta), math.cos(gamma)
-    vol0 = math.sqrt(1.0 - cosalp*cosalp - cosbet*cosbet - cosgam*cosgam + 2.0*cosalp*cosbet*cosgam)
+    sqrt_arg = 1.0 - cosalp*cosalp - cosbet*cosbet - cosgam*cosgam + 2.0*cosalp*cosbet*cosgam
+    vol0 = math.sqrt(sqrt_arg)
 
     RprojX = math.sin(alpha) / (vol0 * acell)
     RprojY = math.sin(beta)  / (vol0 * bcell)
@@ -187,9 +185,10 @@ def CalcOmegaMap(Ncrs, Scrs, Nxyz, unit_cell, bcr_scatterers) :
         RadAtomY  = RadAtom   * RprojY
         RadAtomZ  = RadAtom   * RprojZ
 
-        r = bcr_scatterer.site_cart
+        r = unit_cell.orthogonalize(bcr_scatterer.scatterer.site)
         xat, yat, zat = r[0], r[1], r[2]
-        cat, bat = bcr_scatterer.occ, bcr_scatterer.u_iso
+        cat = bcr_scatterer.scatterer.occupancy
+        bat = bcr_scatterer.scatterer.u_iso
 
 #       get parameters of the box around the atom
 
@@ -309,6 +308,7 @@ def CalcGradAtom(GradMap, Ncrs, Scrs, Nxyz, unit_cell, bcr_scatterers):
     Natoms = len(bcr_scatterers)
 
     acell, bcell, ccell, alpha, beta,  gamma = unit_cell.parameters()
+    alpha, beta,  gamma = math.radians(alpha), math.radians(beta),  math.radians(gamma)
     OrthMatrix  = unit_cell.orthogonalization_matrix()
     DeortMatrix = unit_cell.fractionalization_matrix()
 
@@ -354,9 +354,10 @@ def CalcGradAtom(GradMap, Ncrs, Scrs, Nxyz, unit_cell, bcr_scatterers):
         RadAtomY  = RadAtom   * RprojY
         RadAtomZ  = RadAtom   * RprojZ
 
-        r = bcr_scatterer.site_cart
+        r = unit_cell.orthogonalize(bcr_scatterer.scatterer.site)
         xat, yat, zat = r[0], r[1], r[2]
-        cat, bat = bcr_scatterer.occ, bcr_scatterer.u_iso
+        cat = bcr_scatterer.scatterer.occupancy
+        bat = bcr_scatterer.scatterer.u_iso
 
 #       get parameters of the box around the atom
 
