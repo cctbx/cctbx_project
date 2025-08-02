@@ -61,14 +61,10 @@ public:
     const boost::python::list & bcr_scatterers_)
   :
   bcr_scatterers(bcr_scatterers_), // is this doing copy?
-  //map(af::c_grid<3>(Nxyz[0],Nxyz[1],Nxyz[2]))
   map(af::c_grid<3>(Nxyz[2],Nxyz[1],Nxyz[0])),
   GradMap(af::c_grid<3>(Nxyz[2],Nxyz[1],Nxyz[0])), // TMP, move
   exp_table_(-100),
   n_atoms(boost::python::len(bcr_scatterers_)),
-  //grad_xyz(boost::python::len(bcr_scatterers_)),
-  grad_occ(boost::python::len(bcr_scatterers_)),
-  grad_uiso(boost::python::len(bcr_scatterers_)),
   unit_cell(unit_cell_)
   {
     scitbx::af::tiny<FloatType, 6> ucp = unit_cell.parameters();
