@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 import math
-from cctbx import adptbx
 import libtbx
 import os
 import json
@@ -8,7 +7,6 @@ from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 
 import time
-from cctbx import xray
 import math
 
 import boost_adaptbx.boost.python as bp
