@@ -47,6 +47,7 @@ public:
   af::shared<scitbx::vec3<FloatType> > grad_xyz;
   af::shared<FloatType> grad_occ;
   af::shared<FloatType> grad_uiso;
+  FloatType target;
   boost::python::list bcr_scatterers;
   //cctbx::xray::detail::exponent_table<FloatType>* exp_table_;
   cctbx::xray::detail::exponent_table<FloatType> exp_table_;
@@ -65,7 +66,8 @@ public:
   GradMap(af::c_grid<3>(Nxyz[2],Nxyz[1],Nxyz[0])), // TMP, move
   exp_table_(-100),
   n_atoms(boost::python::len(bcr_scatterers_)),
-  unit_cell(unit_cell_)
+  unit_cell(unit_cell_),
+  target(0.)
   {
     scitbx::af::tiny<FloatType, 6> ucp = unit_cell.parameters();
     FloatType acell = ucp[0];
@@ -130,13 +132,17 @@ public:
 
   void compute_gradients(af::ref<FloatType, af::c_grid<3> > map_data) {
 
+    target = 0.;
     for (int iz = 0; iz < Nz; ++iz) {
       for (int iy = 0; iy < Ny; ++iy) {
         for (int ix = 0; ix < Nx; ++ix) {
-          GradMap(iz,iy,ix) = map(iz,iy,ix) - map_data(iz,iy,ix);
+          FloatType diff = map(iz,iy,ix) - map_data(iz,iy,ix);
+          GradMap(iz,iy,ix) = diff;
+          target += diff*diff;
         }
       }
     }
+    target *= 0.5;
 
     grad_occ  = af::shared<FloatType>(n_atoms, 0);
     grad_uiso = af::shared<FloatType>(n_atoms, 0);

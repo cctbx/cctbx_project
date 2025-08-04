@@ -114,11 +114,12 @@ namespace {
                      arg("Nxyz"),
                      arg("unit_cell"),
                      arg("bcr_scatterers"))))
-        .def("compute",   &OmegaMap<>::compute, (arg("compute_gradients")=false))
+        .def("compute",             &OmegaMap<>::compute, (arg("compute_gradients")=false))
         .def("compute_gradients",   &OmegaMap<>::compute_gradients, arg("map_data"))
-        .add_property("map",  make_getter(&OmegaMap<>::map, rbv()))
-        .add_property("grad_xyz",  make_getter(&OmegaMap<>::grad_xyz, rbv()))
-        .add_property("grad_occ",  make_getter(&OmegaMap<>::grad_occ, rbv()))
+        .add_property("map",        make_getter(&OmegaMap<>::map, rbv()))
+        .add_property("target",     make_getter(&OmegaMap<>::target, rbv()))
+        .add_property("grad_xyz",   make_getter(&OmegaMap<>::grad_xyz, rbv()))
+        .add_property("grad_occ",   make_getter(&OmegaMap<>::grad_occ, rbv()))
         .add_property("grad_uiso",  make_getter(&OmegaMap<>::grad_uiso, rbv()))
       ;
     }

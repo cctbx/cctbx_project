@@ -26,7 +26,7 @@ class gradients_fd(object):
     adopt_init_args(self, locals())
 
   def compute(self):
-    OmegaMap, OmegaMap_py1, bcr_scatterers, _ = qmap.compute(
+    OmegaMap, OmegaMap_py1, bcr_scatterers, o = qmap.compute(
       xray_structure=self.xrs,
       n_real=self.n_real,
       resolution=self.d_min,
@@ -70,13 +70,13 @@ def run(d_min=2):
   g_cpp = []
   for gr, go, gb in zip(o.grad_xyz, o.grad_occ, o.grad_uiso):
     g_cpp.append([gr[0],gr[1],gr[2],go,gb])
-
   #
   gcalc = gradients_fd(
     ControlMap = ControlMap,
     xrs        = xrs,
     n_real     = n_real,
     d_min      = d_min)
+  assert approx_equal(o.target, gcalc.compute())
 
   eob = 0.00001
   er = 1.e-6

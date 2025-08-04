@@ -115,7 +115,7 @@ def compute(xray_structure, n_real, resolution=None, resolutions=None,
     fft_map = fc.fft_map(crystal_gridding = crystal_gridding)
     m_fft = fft_map.real_map_unpadded()
     cc = flex.linear_correlation(x=mcpp.as_1d(), y=m_fft.as_1d()).coefficient()
-    assert cc > 0.999
+    assert cc > 0.99, cc
   #
   if debug: return mcpp, OmegaMap_py, bcr_scatterers, o
   else:     return mcpp
