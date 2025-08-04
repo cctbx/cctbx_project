@@ -12,7 +12,8 @@ import boost_adaptbx.boost.python as bp
 ext = bp.import_ext("cctbx_maptbx_bcr_bcr_ext")
 
 pdb_str = """
-CRYST1   20.000   25.000   30.000  96.06  99.11  91.14 P 1
+remark CRYST1   20.000   25.000   30.000  96.06  99.11  91.14 P 1
+CRYST1   20.000   25.000   30.000  90.00  90.00  90.00 P 1
 ATOM      0  N   HIS A 109      10.000  14.000   9.000  1.10 30.10           N
 ATOM      1  C   HIS A 109      13.000  10.000  14.000  0.90 20.00           C
 ATOM      2  O   HIS A 109      12.000  10.000  11.000  0.50 10.00           O
@@ -26,7 +27,7 @@ class gradients_fd(object):
 
   def compute(self):
     OmegaMap, OmegaMap_py1, bcr_scatterers, _ = qmap.compute(
-      xray_tructure=self.xrs,
+      xray_structure=self.xrs,
       n_real=self.n_real,
       resolution=self.d_min,
       resolutions=None,
@@ -47,7 +48,7 @@ def run(d_min=2):
   n_real = crystal_gridding.n_real()
   #
   OmegaMap, OmegaMap_py, bcr_scatterers, o = qmap.compute(
-    xray_tructure = xrs,
+    xray_structure = xrs,
     n_real=n_real,
     resolution=d_min,
     resolutions=None,

@@ -21,24 +21,24 @@ def load_table(element):
   with open(file_name, 'r') as file:
     return json.load(file)
 
-def compute(xray_tructure, n_real, resolution=None, resolutions=None,
+def compute(xray_structure, n_real, resolution=None, resolutions=None,
             debug=False):
   assert [resolution, resolutions].count(None)==1
-  unit_cell = xray_tructure.unit_cell()
+  unit_cell = xray_structure.unit_cell()
   if resolutions is None:
-    resolutions = [resolution,] * xray_tructure.scatterers().size()
+    resolutions = [resolution,] * xray_structure.scatterers().size()
   RadFact = 2.0
   RadAdd  = 0.5
   RadMu   = RadFact + RadAdd
   arrays = {}
-  for scatterer in xray_tructure.scatterers():
+  for scatterer in xray_structure.scatterers():
     e = scatterer.scattering_type.strip().upper()
     d = load_table(element=e)
     arrays[e] = d
   ScaleB = 1.0 / (8.0 * math.pi**2)
   kscale = math.pi**1.5
   bcr_scatterers = []
-  for r, scatterer in zip(resolutions, xray_tructure.scatterers()):
+  for r, scatterer in zip(resolutions, xray_structure.scatterers()):
     e = scatterer.scattering_type.strip().upper()
     entry = arrays[e]
     keys = [float(x) for x in entry.keys()]
@@ -95,6 +95,7 @@ def compute(xray_tructure, n_real, resolution=None, resolutions=None,
         mcpp[ix,iy,iz] = OmegaMap_cpp[iz,iy,ix]
   #
   if debug:
+    from cctbx import maptbx
     cc = flex.linear_correlation(x=mcpp.as_1d(), y=mpy.as_1d()).coefficient()
     assert approx_equal(cc, 1.0)
     cc = flex.linear_correlation(
@@ -102,6 +103,19 @@ def compute(xray_tructure, n_real, resolution=None, resolutions=None,
     assert approx_equal(cc, 1.0)
     for func in [flex.min, flex.max, flex.mean]:
       assert approx_equal(func(mcpp), func(mpy), 1.e-6)
+    #
+    cs = xray_structure.crystal_symmetry()
+    crystal_gridding = maptbx.crystal_gridding(
+      unit_cell        = cs.unit_cell(),
+      space_group_info = cs.space_group_info(),
+      symmetry_flags   = maptbx.use_space_group_symmetry,
+      pre_determined_n_real = n_real
+      )
+    fc = xray_structure.structure_factors(d_min=resolutions[0]).f_calc()
+    fft_map = fc.fft_map(crystal_gridding = crystal_gridding)
+    m_fft = fft_map.real_map_unpadded()
+    cc = flex.linear_correlation(x=mcpp.as_1d(), y=m_fft.as_1d()).coefficient()
+    assert cc > 0.999
   #
   if debug: return mcpp, OmegaMap_py, bcr_scatterers, o
   else:     return mcpp
@@ -146,12 +160,12 @@ def CalcOmegaMap(Ncrs, Scrs, Nxyz, unit_cell, bcr_scatterers) :
     Fx, Fy, Fz = Sx + Mx, Sy + My, Sz + Mz
     StepX, StepY, StepZ = 1.0/float(Nx), 1.0/float(Ny), 1.0/float(Nz)
 
-    orthxx, orthxy, orthxz = OrthMatrix[0] , OrthMatrix[3] , OrthMatrix[6]
-    orthyy, orthyz         =                 OrthMatrix[4] , OrthMatrix[7]
+    orthxx, orthxy, orthxz = OrthMatrix[0] , OrthMatrix[1] , OrthMatrix[2]
+    orthyy, orthyz         =                 OrthMatrix[4] , OrthMatrix[5]
     orthzz                 =                                 OrthMatrix[8]
 
-    dortxx, dortxy, dortxz = DeortMatrix[0], DeortMatrix[3], DeortMatrix[6]
-    dortyy, dortyz         =                 DeortMatrix[4], DeortMatrix[7]
+    dortxx, dortxy, dortxz = DeortMatrix[0], DeortMatrix[1], DeortMatrix[2]
+    dortyy, dortyz         =                 DeortMatrix[4], DeortMatrix[5]
     dortzz                 =                                 DeortMatrix[8]
 
     StepXX, StepXY, StepXZ = orthxx * StepX, orthxy * StepY, orthxz * StepZ

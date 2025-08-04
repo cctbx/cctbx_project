@@ -92,16 +92,16 @@ public:
     StepY = 1.0/static_cast<FloatType>(Ny);
     StepZ = 1.0/static_cast<FloatType>(Nz);
     orthxx = OrthMatrix[0];
-    orthxy = OrthMatrix[3];
-    orthxz = OrthMatrix[6];
+    orthxy = OrthMatrix[1];
+    orthxz = OrthMatrix[2];
     orthyy = OrthMatrix[4];
-    orthyz = OrthMatrix[7];
+    orthyz = OrthMatrix[5];
     orthzz = OrthMatrix[8];
     dortxx = DeortMatrix[0];
-    dortxy = DeortMatrix[3];
-    dortxz = DeortMatrix[6];
+    dortxy = DeortMatrix[1];
+    dortxz = DeortMatrix[2];
     dortyy = DeortMatrix[4];
-    dortyz = DeortMatrix[7];
+    dortyz = DeortMatrix[5];
     dortzz = DeortMatrix[8];
     StepXX = orthxx * StepX;
     StepXY = orthxy * StepY;
@@ -346,6 +346,9 @@ public:
       FloatType xfrac = dortxx * xat + dortxy * yat + dortxz * zat;
       FloatType yfrac =                dortyy * yat + dortyz * zat;
       FloatType zfrac =                               dortzz * zat;
+      FloatType xfrac_ = bcrs.scatterer.site[0];
+      FloatType yfrac_ = bcrs.scatterer.site[1];
+      FloatType zfrac_ = bcrs.scatterer.site[2];
       auto box = AtomBox(xfrac, yfrac, zfrac,
         RadAtomX,RadAtomY,RadAtomZ,StepX,StepY,StepZ,Sx,Sy,Sz,Fx,Fy,Fz);
       int Kx1       = std::get<0>(box);
