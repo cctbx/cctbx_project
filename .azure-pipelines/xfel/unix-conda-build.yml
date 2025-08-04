@@ -67,6 +67,13 @@ steps:
   displayName: Create conda environment
   condition: eq('${{ parameters.distribution }}', 'centos')
 
+- script: |
+    set -xe
+    cd $(Pipeline.Workspace)
+    cd modules/dials
+    git checkout update_boost_asio
+  displayName: dials branch update_boost_asio
+
 # build
 - script: |
     set -xe
