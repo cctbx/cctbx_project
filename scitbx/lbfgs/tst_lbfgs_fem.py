@@ -52,6 +52,10 @@ def run_cmd(cmd):
 
 def run_and_compare_sdrive_fem(this_script):
   sdrive_fem = libtbx.env.under_build(path="scitbx/lbfgs/sdrive_fem")
+  if sys.platform == 'win32':
+    sdrive_fem = libtbx.env.under_build(path="scitbx/lbfgs/sdrive_fem.exe")
+  else:
+    sdrive_fem = libtbx.env.under_build(path="scitbx/lbfgs/sdrive_fem")
   if not os.path.isfile(sdrive_fem):
     return
   outputs = []
