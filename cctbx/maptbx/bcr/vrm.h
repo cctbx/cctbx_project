@@ -3,6 +3,8 @@
 
 #include <boost/python/list.hpp>
 #include <cctbx/maptbx/bcr/bcr.h>
+#include <cctbx/adptbx.h>
+#include <scitbx/constants.h>
 
 namespace cctbx { namespace maptbx {
 
@@ -49,31 +51,29 @@ public:
   //cctbx::xray::detail::exponent_table<FloatType>* exp_table_;
   cctbx::xray::detail::exponent_table<FloatType> exp_table_;
   int n_atoms;
+  cctbx::uctbx::unit_cell const& unit_cell;
 
   OmegaMap(
     af::tiny<int, 3> const& Ncrs,
     af::tiny<int, 3> const& Scrs,
     af::tiny<int, 3> const& Nxyz,
-    cctbx::uctbx::unit_cell const& unit_cell,
+    cctbx::uctbx::unit_cell const& unit_cell_,
     const boost::python::list & bcr_scatterers_)
   :
   bcr_scatterers(bcr_scatterers_), // is this doing copy?
-  //map(af::c_grid<3>(Nxyz[0],Nxyz[1],Nxyz[2]))
   map(af::c_grid<3>(Nxyz[2],Nxyz[1],Nxyz[0])),
   GradMap(af::c_grid<3>(Nxyz[2],Nxyz[1],Nxyz[0])), // TMP, move
   exp_table_(-100),
   n_atoms(boost::python::len(bcr_scatterers_)),
-  //grad_xyz(boost::python::len(bcr_scatterers_)),
-  grad_occ(boost::python::len(bcr_scatterers_)),
-  grad_uiso(boost::python::len(bcr_scatterers_))
+  unit_cell(unit_cell_)
   {
     scitbx::af::tiny<FloatType, 6> ucp = unit_cell.parameters();
     FloatType acell = ucp[0];
     FloatType bcell = ucp[1];
     FloatType ccell = ucp[2];
-    FloatType alpha = ucp[3];
-    FloatType beta  = ucp[4];
-    FloatType gamma = ucp[5];
+    FloatType alpha = ucp[3] * scitbx::constants::pi / 180.0;
+    FloatType beta  = ucp[4] * scitbx::constants::pi / 180.0;
+    FloatType gamma = ucp[5] * scitbx::constants::pi / 180.0;
     OrthMatrix  = unit_cell.orthogonalization_matrix();
     DeortMatrix = unit_cell.fractionalization_matrix();
     Mx = Ncrs[0];
@@ -128,12 +128,6 @@ public:
     RprojZ = std::sin(gamma) / (vol0 * ccell);
   }
 
-
-
-
-
-
-
   void compute_gradients(af::ref<FloatType, af::c_grid<3> > map_data) {
 
     for (int iz = 0; iz < Nz; ++iz) {
@@ -157,12 +151,12 @@ public:
       FloatType RadAtomX  = RadAtom   * RprojX;
       FloatType RadAtomY  = RadAtom   * RprojY;
       FloatType RadAtomZ  = RadAtom   * RprojZ;
-      cctbx::cartesian<> r = bcrs.site_cart;
+      cctbx::cartesian<> r = unit_cell.orthogonalize(bcrs.scatterer.site);
       FloatType xat = r[0];
       FloatType yat = r[1];
       FloatType zat = r[2];
-      FloatType cat = bcrs.occ;
-      FloatType bat = bcrs.u_iso;
+      FloatType cat = bcrs.scatterer.occupancy;
+      FloatType bat = bcrs.scatterer.u_iso;
       FloatType xfrac = dortxx * xat + dortxy * yat + dortxz * zat;
       FloatType yfrac =                dortyy * yat + dortyz * zat;
       FloatType zfrac =                               dortzz * zat;
@@ -332,34 +326,23 @@ public:
       grad_uiso[i] = GradNt * cat;
 
     }
-
-    // return was here
   }
 
-
-
-
-
-
-
-
-
-
   af::versa<FloatType, af::c_grid<3> > compute(bool compute_gradients) {
-    for(std::size_t i=0; i<boost::python::len(bcr_scatterers); i++) {
+    for(std::size_t i=0; i<n_atoms; i++) {
       bcr_scatterer<FloatType> bcrs =
          boost::python::extract<bcr_scatterer<FloatType> >(bcr_scatterers[i])();
       FloatType RadAtom = bcrs.radius;
-      FloatType RadAtom2  = RadAtom   * RadAtom;
-      FloatType RadAtomX  = RadAtom   * RprojX;
-      FloatType RadAtomY  = RadAtom   * RprojY;
-      FloatType RadAtomZ  = RadAtom   * RprojZ;
-      cctbx::cartesian<> r = bcrs.site_cart;
+      FloatType RadAtom2  = RadAtom * RadAtom;
+      FloatType RadAtomX  = RadAtom * RprojX;
+      FloatType RadAtomY  = RadAtom * RprojY;
+      FloatType RadAtomZ  = RadAtom * RprojZ;
+      cctbx::cartesian<> r = unit_cell.orthogonalize(bcrs.scatterer.site);
       FloatType xat = r[0];
       FloatType yat = r[1];
       FloatType zat = r[2];
-      FloatType cat = bcrs.occ;
-      FloatType bat = bcrs.u_iso;
+      FloatType cat = bcrs.scatterer.occupancy;
+      FloatType bat = bcrs.scatterer.u_iso;
       FloatType xfrac = dortxx * xat + dortxy * yat + dortxz * zat;
       FloatType yfrac =                dortyy * yat + dortyz * zat;
       FloatType zfrac =                               dortzz * zat;
