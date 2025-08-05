@@ -9,7 +9,7 @@ from cctbx import adptbx
 try:                from pydiscamb import DiscambWrapper
 except ImportError: DiscambWrapper = None
 
-debug = False
+debug = True
 
 pdb_str = """
 CRYST1   13.000   16.000   19.000  97.00 110.00  95.00 P 1
@@ -78,7 +78,7 @@ def get_cctbx_grads(xrs, tf):
 
 # ------------------------------------------------------------------------------
 
-def get_fd(fmodel_, eps=1.e-5):
+def get_fd(fmodel_, eps=1.e-5, use_discamb=False):
   '''
   Compute numerical gradients via finite differences.
 
@@ -101,6 +101,11 @@ def get_fd(fmodel_, eps=1.e-5):
   central difference to approximate the gradient.
   '''
   fmodel = fmodel_.deep_copy()
+
+  if use_discamb:
+    fmodel.sfg_params.taam = True
+    assert fmodel.is_taam()
+
   target_functor = fmodel.target_functor()
   structure = fmodel.xray_structure
   unit_cell = structure.unit_cell()
@@ -188,6 +193,7 @@ def run(table):
   g1 = get_cctbx_grads(xrs, tf)
   g2 = get_discamb_grads(xrs, d_target_d_fcalc)
   g3 = get_fd(fmodel, eps=1.e-5)
+  g4 = get_fd(fmodel, eps=1.e-5, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-6)
   assert approx_equal(g1,g3, 1.e-6)
   if debug: print()
@@ -199,6 +205,7 @@ def run(table):
   g1 = get_cctbx_grads(xrs, tf)
   g2 = get_discamb_grads(xrs, d_target_d_fcalc)
   g3 = get_fd(fmodel, eps=1.e-5)
+  g4 = get_fd(fmodel, eps=1.e-5, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-5)
   assert approx_equal(g1,g3, 1.e-5)
   if debug: print()
@@ -210,6 +217,7 @@ def run(table):
   g1 = get_cctbx_grads(xrs, tf)
   g2 = get_discamb_grads(xrs, d_target_d_fcalc)
   g3 = get_fd(fmodel, eps=1.e-5)
+  g4 = get_fd(fmodel, eps=1.e-5, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-5)
   assert approx_equal(g1,g3, 1.e-3)
   if debug: print()
@@ -221,6 +229,7 @@ def run(table):
   g1 = get_cctbx_grads(xrs, tf)
   g2 = get_discamb_grads(xrs, d_target_d_fcalc)
   g3 = get_fd(fmodel, eps=1.e-5)
+  g4 = get_fd(fmodel, eps=1.e-5, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-6)
   assert approx_equal(g1,g3, 1.e-3)
   if debug: print()
@@ -232,6 +241,7 @@ def run(table):
   g1 = get_cctbx_grads(xrs, tf)
   g2 = get_discamb_grads(xrs, d_target_d_fcalc)
   g3 = get_fd(fmodel, eps=1.e-5)
+  g4 = get_fd(fmodel, eps=1.e-5, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-6)
   assert approx_equal(g1,g3, 1.e-3)
   if debug: print()
@@ -250,6 +260,7 @@ def run(table):
   g1 = get_cctbx_grads(xrs, tf)
   g2 = get_discamb_grads(xrs, d_target_d_fcalc)
   g3 = get_fd(fmodel, eps=1.e-5)
+  g4 = get_fd(fmodel, eps=1.e-5, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-6)
   assert approx_equal(g2,g3, 1.e-5)
   if debug: print()
@@ -292,4 +303,3 @@ if(__name__ == "__main__"):
       run(table=table)
       print()
   print("OK. Time: %8.3f"%(time.time()-t0))
-
