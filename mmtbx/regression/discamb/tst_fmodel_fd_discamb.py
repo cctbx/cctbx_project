@@ -6,7 +6,9 @@ from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from cctbx import adptbx
 
-try:                from pydiscamb import DiscambWrapper
+try:
+  from pydiscamb import DiscambWrapper
+  import pydiscamb
 except ImportError: DiscambWrapper = None
 
 debug = True
@@ -101,11 +103,19 @@ def get_fd(fmodel_, eps=1.e-5, use_discamb=False):
   central difference to approximate the gradient.
   '''
   fmodel = fmodel_.deep_copy()
-
-  if use_discamb:
-    fmodel.sfg_params.taam = True
-    assert fmodel.is_taam()
-
+  #
+  def update_fc():
+    if use_discamb:
+      pdw = pydiscamb.DiscambWrapper(
+        fmodel.xray_structure,
+        method = pydiscamb.FCalcMethod.IAM)
+      pdw.set_indices(fmodel.f_obs().indices())
+      data = flex.complex_double(pdw.f_calc())
+      fc = fmodel.f_obs().customized_copy(data = data)
+      fmodel.update(f_calc = fc)
+    else:
+      fmodel.update_xray_structure(update_f_calc=True)
+  #
   target_functor = fmodel.target_functor()
   structure = fmodel.xray_structure
   unit_cell = structure.unit_cell()
@@ -122,7 +132,8 @@ def get_fd(fmodel_, eps=1.e-5, use_discamb=False):
           site_cart = list(unit_cell.orthogonalize(site_orig))
           site_cart[ix] += signed_eps
           sc.site = unit_cell.fractionalize(site_cart)
-          fmodel.update_xray_structure(update_f_calc=True)
+          #fmodel.update_xray_structure(update_f_calc=True)
+          update_fc()
           ts.append(target_functor().target_work())
         gs.append((ts[0]-ts[1])/(2*eps))
       sc.site = site_orig
@@ -132,7 +143,8 @@ def get_fd(fmodel_, eps=1.e-5, use_discamb=False):
       ts = []
       for signed_eps in [eps, -eps]:
         sc.u_iso = u_iso_orig+signed_eps
-        fmodel.update_xray_structure(update_f_calc=True)
+        #fmodel.update_xray_structure(update_f_calc=True)
+        update_fc()
         ts.append(target_functor().target_work())
       gs.append((ts[0]-ts[1])/(2*eps))
       sc.u_iso = u_iso_orig
@@ -145,7 +157,8 @@ def get_fd(fmodel_, eps=1.e-5, use_discamb=False):
           u_cart = list(adptbx.u_star_as_u_cart(unit_cell, u_star_orig))
           u_cart[ix] += signed_eps
           sc.u_star = adptbx.u_cart_as_u_star(unit_cell, u_cart)
-          fmodel.update_xray_structure(update_f_calc=True)
+          #fmodel.update_xray_structure(update_f_calc=True)
+          update_fc()
           ts.append(target_functor().target_work())
         gs.append((ts[0]-ts[1])/(2*eps))
       sc.u_star = u_star_orig
@@ -155,7 +168,8 @@ def get_fd(fmodel_, eps=1.e-5, use_discamb=False):
       ts = []
       for signed_eps in [eps, -eps]:
         sc.occupancy = occupancy_orig+signed_eps
-        fmodel.update_xray_structure(update_f_calc=True)
+        #fmodel.update_xray_structure(update_f_calc=True)
+        update_fc()
         ts.append(target_functor().target_work())
       gs.append((ts[0]-ts[1])/(2*eps))
       sc.occupancy = occupancy_orig
