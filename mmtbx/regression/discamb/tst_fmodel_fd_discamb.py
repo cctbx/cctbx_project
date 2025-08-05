@@ -23,7 +23,7 @@ HETATM    2  H2  HOH A3116       4.907   5.843   5.087  1.00  3.03           H
 
 # ------------------------------------------------------------------------------
 
-def get_discamb_grads(xrs, d_target_d_fcalc):
+def get_discamb_grads(xrs, fmodel):
   '''
   Compute analytical gradients using DiSCaMB.
 
@@ -45,6 +45,12 @@ def get_discamb_grads(xrs, d_target_d_fcalc):
   If debug mode is enabled, prints the gradients.
 '''
   w = DiscambWrapper(xrs)
+  w.set_indices(fmodel.f_obs().indices())
+  data = flex.complex_double(w.f_calc())
+  fc = fmodel.f_obs().customized_copy(data = data)
+  fmodel.update(f_calc = fc)
+  tf = fmodel.target_functor()(compute_gradients = True)
+  d_target_d_fcalc = tf.d_target_d_f_calc_work()
   g = w.d_target_d_params(d_target_d_fcalc)
   if debug:
     print("gdiscamb:", [round(_,8) for _ in g])
@@ -207,7 +213,7 @@ def run(table, fd_delta = 1.e-5):
   scatterers.flags_set_grads(state=False)
   scatterers.flags_set_grad_site(iselection = flex.size_t([1]))
   g1 = get_cctbx_grads(xrs, tf)
-  g2 = get_discamb_grads(xrs, d_target_d_fcalc)
+  g2 = get_discamb_grads(xrs, fmodel)
   g3 = get_fd(fmodel, eps=fd_delta)
   g4 = get_fd(fmodel, eps=fd_delta, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-6)
@@ -220,7 +226,7 @@ def run(table, fd_delta = 1.e-5):
   print("sites_cart_1 + uiso_2")
   scatterers.flags_set_grad_u_iso(iselection = flex.size_t([2]))
   g1 = get_cctbx_grads(xrs, tf)
-  g2 = get_discamb_grads(xrs, d_target_d_fcalc)
+  g2 = get_discamb_grads(xrs, fmodel)
   g3 = get_fd(fmodel, eps=fd_delta)
   g4 = get_fd(fmodel, eps=fd_delta, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-6)
@@ -233,7 +239,7 @@ def run(table, fd_delta = 1.e-5):
   print("sites_cart_1 + uiso_2 + occ_0")
   scatterers.flags_set_grad_occupancy(iselection = flex.size_t([0]))
   g1 = get_cctbx_grads(xrs, tf)
-  g2 = get_discamb_grads(xrs, d_target_d_fcalc)
+  g2 = get_discamb_grads(xrs, fmodel)
   g3 = get_fd(fmodel, eps=fd_delta)
   g4 = get_fd(fmodel, eps=fd_delta, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-6)
@@ -246,7 +252,7 @@ def run(table, fd_delta = 1.e-5):
   print("sites_cart_1 + uiso_2 + occ_0 + uaniso_1")
   scatterers.flags_set_grad_u_aniso(iselection = flex.size_t([1]))
   g1 = get_cctbx_grads(xrs, tf)
-  g2 = get_discamb_grads(xrs, d_target_d_fcalc)
+  g2 = get_discamb_grads(xrs, fmodel)
   g3 = get_fd(fmodel, eps=fd_delta)
   g4 = get_fd(fmodel, eps=fd_delta, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-6)
@@ -259,7 +265,7 @@ def run(table, fd_delta = 1.e-5):
   print("sites_cart_1 + uiso_2 + occ_0 + uaniso_1 + sites_cart_2")
   scatterers.flags_set_grad_site(iselection = flex.size_t([2]))
   g1 = get_cctbx_grads(xrs, tf)
-  g2 = get_discamb_grads(xrs, d_target_d_fcalc)
+  g2 = get_discamb_grads(xrs, fmodel)
   g3 = get_fd(fmodel, eps=fd_delta)
   g4 = get_fd(fmodel, eps=fd_delta, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-6)
@@ -279,7 +285,7 @@ def run(table, fd_delta = 1.e-5):
   scatterers.flags_set_grad_u_aniso(iselection = flex.size_t([1]))
   scatterers.flags_set_grad_u_iso(iselection = flex.size_t([0,2]))
   g1 = get_cctbx_grads(xrs, tf)
-  g2 = get_discamb_grads(xrs, d_target_d_fcalc)
+  g2 = get_discamb_grads(xrs, fmodel)
   g3 = get_fd(fmodel, eps=fd_delta)
   g4 = get_fd(fmodel, eps=fd_delta, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-6)
