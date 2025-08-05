@@ -96,7 +96,7 @@ class Program(ProgramTemplate):
       emdb_number = None
       emdb_ids = rcsb_web_services.get_emdb_id_for_pdb_id(pdb_id)
       if emdb_ids is not None:
-        emdb_number = int(emdb_ids[0].split('-')[1])
+        emdb_number = emdb_ids[0].split('-')[1]
       print("Fetching: PDB ID: %s, EMDB ID: %s" % (pdb_id, emdb_number), file=self.logger)
       entities_to_fetch = self.define_entities_to_fetch(emdb_number)
       for e in entities_to_fetch:
