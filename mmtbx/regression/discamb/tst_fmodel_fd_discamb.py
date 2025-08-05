@@ -177,7 +177,7 @@ def get_fd(fmodel_, eps=1.e-5, use_discamb=False):
     print("fd:", [round(_,8) for _ in gs])
   return gs
 
-def run(table):
+def run(table, fd_delta = 1.e-5):
   """
   Check packed gradinets CCTBX (IAM) vs DiSCaMB (IAM)
   """
@@ -187,13 +187,15 @@ def run(table):
   xrs.scattering_type_registry(table = table)
   xrs_iso = xrs.deep_copy_scatterers()
   xrs_iso.convert_to_isotropic()
-  f_obs = abs(xrs_iso.structure_factors(d_min=0.5).f_calc())
+  f_obs = abs(xrs_iso.structure_factors(d_min=1.0).f_calc())
   #
   params = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
   params.algorithm = "direct"
+  params.exp_table_one_over_step_size=0
   fmodel = mmtbx.f_model.manager(
     f_obs                        = f_obs,
     xray_structure               = xrs,
+    target_name                  = "ls_wunit_kunit",
     sf_and_grads_accuracy_params = params)
   scatterers = xrs.scatterers()
   tf = fmodel.target_functor()(compute_gradients = True)
@@ -206,8 +208,8 @@ def run(table):
   scatterers.flags_set_grad_site(iselection = flex.size_t([1]))
   g1 = get_cctbx_grads(xrs, tf)
   g2 = get_discamb_grads(xrs, d_target_d_fcalc)
-  g3 = get_fd(fmodel, eps=1.e-5)
-  g4 = get_fd(fmodel, eps=1.e-5, use_discamb=True)
+  g3 = get_fd(fmodel, eps=fd_delta)
+  g4 = get_fd(fmodel, eps=fd_delta, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-6)
   assert approx_equal(g1,g3, 1.e-6)
   assert approx_equal(g1,g4, 1.e-3)
@@ -219,10 +221,10 @@ def run(table):
   scatterers.flags_set_grad_u_iso(iselection = flex.size_t([2]))
   g1 = get_cctbx_grads(xrs, tf)
   g2 = get_discamb_grads(xrs, d_target_d_fcalc)
-  g3 = get_fd(fmodel, eps=1.e-5)
-  g4 = get_fd(fmodel, eps=1.e-5, use_discamb=True)
-  assert approx_equal(g1,g2, 1.e-5)
-  assert approx_equal(g1,g3, 1.e-5)
+  g3 = get_fd(fmodel, eps=fd_delta)
+  g4 = get_fd(fmodel, eps=fd_delta, use_discamb=True)
+  assert approx_equal(g1,g2, 1.e-6)
+  assert approx_equal(g1,g3, 1.e-6)
   assert approx_equal(g1,g4, 1.e-3)
   if debug: print()
   #
@@ -232,10 +234,10 @@ def run(table):
   scatterers.flags_set_grad_occupancy(iselection = flex.size_t([0]))
   g1 = get_cctbx_grads(xrs, tf)
   g2 = get_discamb_grads(xrs, d_target_d_fcalc)
-  g3 = get_fd(fmodel, eps=1.e-5)
-  g4 = get_fd(fmodel, eps=1.e-5, use_discamb=True)
-  assert approx_equal(g1,g2, 1.e-5)
-  assert approx_equal(g1,g3, 1.e-3)
+  g3 = get_fd(fmodel, eps=fd_delta)
+  g4 = get_fd(fmodel, eps=fd_delta, use_discamb=True)
+  assert approx_equal(g1,g2, 1.e-6)
+  assert approx_equal(g1,g3, 1.e-6)
   assert approx_equal(g1,g4, 1.e-3)
   if debug: print()
   #
@@ -245,10 +247,10 @@ def run(table):
   scatterers.flags_set_grad_u_aniso(iselection = flex.size_t([1]))
   g1 = get_cctbx_grads(xrs, tf)
   g2 = get_discamb_grads(xrs, d_target_d_fcalc)
-  g3 = get_fd(fmodel, eps=1.e-5)
-  g4 = get_fd(fmodel, eps=1.e-5, use_discamb=True)
+  g3 = get_fd(fmodel, eps=fd_delta)
+  g4 = get_fd(fmodel, eps=fd_delta, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-6)
-  assert approx_equal(g1,g3, 1.e-3)
+  assert approx_equal(g1,g3, 1.e-6)
   assert approx_equal(g1,g4, 1.e-3)
   if debug: print()
   #
@@ -258,10 +260,10 @@ def run(table):
   scatterers.flags_set_grad_site(iselection = flex.size_t([2]))
   g1 = get_cctbx_grads(xrs, tf)
   g2 = get_discamb_grads(xrs, d_target_d_fcalc)
-  g3 = get_fd(fmodel, eps=1.e-5)
-  g4 = get_fd(fmodel, eps=1.e-5, use_discamb=True)
+  g3 = get_fd(fmodel, eps=fd_delta)
+  g4 = get_fd(fmodel, eps=fd_delta, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-6)
-  assert approx_equal(g1,g3, 1.e-3)
+  assert approx_equal(g1,g3, 1.e-6)
   assert approx_equal(g1,g4, 1.e-3)
   if debug: print()
   #
@@ -278,10 +280,11 @@ def run(table):
   scatterers.flags_set_grad_u_iso(iselection = flex.size_t([0,2]))
   g1 = get_cctbx_grads(xrs, tf)
   g2 = get_discamb_grads(xrs, d_target_d_fcalc)
-  g3 = get_fd(fmodel, eps=1.e-5)
-  g4 = get_fd(fmodel, eps=1.e-5, use_discamb=True)
+  g3 = get_fd(fmodel, eps=fd_delta)
+  g4 = get_fd(fmodel, eps=fd_delta, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-6)
-  assert approx_equal(g2,g3, 1.e-5)
+  assert approx_equal(g2,g3, 1.e-6)
+  assert approx_equal(g1,g4, 1.e-2)
   if debug: print()
 
 # ------------------------------------------------------------------------------
