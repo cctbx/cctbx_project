@@ -210,6 +210,7 @@ def run(table):
   g4 = get_fd(fmodel, eps=1.e-5, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-6)
   assert approx_equal(g1,g3, 1.e-6)
+  assert approx_equal(g1,g4, 1.e-3)
   if debug: print()
   #
   # Now add iso B for H #2
@@ -222,6 +223,7 @@ def run(table):
   g4 = get_fd(fmodel, eps=1.e-5, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-5)
   assert approx_equal(g1,g3, 1.e-5)
+  assert approx_equal(g1,g4, 1.e-3)
   if debug: print()
   #
   # Now add occupancy of H #0
@@ -234,6 +236,7 @@ def run(table):
   g4 = get_fd(fmodel, eps=1.e-5, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-5)
   assert approx_equal(g1,g3, 1.e-3)
+  assert approx_equal(g1,g4, 1.e-3)
   if debug: print()
   #
   # Now add aniso ADP of O #1
@@ -246,6 +249,7 @@ def run(table):
   g4 = get_fd(fmodel, eps=1.e-5, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-6)
   assert approx_equal(g1,g3, 1.e-3)
+  assert approx_equal(g1,g4, 1.e-3)
   if debug: print()
   #
   # Now add sites cart of H #2
@@ -258,6 +262,7 @@ def run(table):
   g4 = get_fd(fmodel, eps=1.e-5, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-6)
   assert approx_equal(g1,g3, 1.e-3)
+  assert approx_equal(g1,g4, 1.e-3)
   if debug: print()
   #
   # Cancell all
