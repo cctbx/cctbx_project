@@ -200,6 +200,80 @@ class merged_validations():
   </tr>""".format(color=color, clashscore=data["clashscore"], percentile=pct_stats["percentile"], range_text=range_text))
     return lines
 
+  def get_clashscore_summary_stoplight(self, model, resolution=None):
+    from mmtbx.validation.molprobity import percentile_clashscore
+    color = None
+    if "clashscore" in self.summaries:
+      data = self.summaries["clashscore"][model]
+      pct_stats = percentile_clashscore.get_percentile_for_clashscore(data["clashscore"], resolution=resolution)
+      #pct_stats = {"minres":minres, "maxres":maxres, "count":nSamples, "percentile":pctRank}
+      if pct_stats["percentile"] >= 66: color=green
+      elif pct_stats["percentile"] < 33: color=red
+      else: color=yellow
+    return color
+
+  def get_ramalyze_summary_stoplight(self, model):
+    color = None
+    if "ramalyze" in self.summaries:
+      data = self.summaries["ramalyze"][model]
+      if data["outlier_percentage"] <= 0.05: color=green
+      elif data["outlier_percentage"] > 0.5 and data["num_outliers"] >= 2: color=red
+      else: color=yellow
+    return color
+
+  def get_rotalyze_summary_stoplight(self, model):
+    color = None
+    if "rotalyze" in self.summaries:
+      data = self.summaries["rotalyze"][model]
+      if data["outlier_percentage"] <= 0.3: color=green
+      elif data["outlier_percentage"] > 1.5: color=red
+      else: color=yellow
+    return color
+
+  def get_cbetadev_summary_stoplight(self, model):
+    color = None
+    if "cbetdev" in self.summaries:
+      data = self.summaries["cbetadev"][model]
+      if data["num_outliers"] == 0: color=green
+      elif data["outlier_percentage"] >= 5: color=red
+      else: color=yellow
+    return color
+
+  def get_mp_bonds_summary_stoplight(self, model):
+    color = None
+    if "mp_angles" in self.summaries:
+      data = self.summaries["mp_bonds"][model]
+      if data["num_total_protein"] == 0:
+        pct_outliers = 0.0
+      else:
+        pct_outliers = data["num_outliers_protein"]/data["num_total_protein"]*100.0
+      if pct_outliers < 0.01: color=green
+      elif pct_outliers >= 0.2: color=red
+      else: color=yellow
+    return color
+
+  def get_mp_angles_summary_stoplight(self, model):
+    color = None
+    if "mp_angles" in self.summaries:
+      data = self.summaries["mp_angles"][model]
+      if data["num_total_protein"] == 0:
+        pct_outliers = 0.0
+      else:
+        pct_outliers = data["num_outliers_protein"]/data["num_total_protein"]*100.0
+      if pct_outliers < 0.1: color=green
+      elif pct_outliers >= 0.5: color=red
+      else: color=yellow
+    return color
+
+  def get_cablam_summary_stoplight(self, model):
+    color = None
+    if "cablam" in self.summaries:
+      data = self.summaries["cablam"][model]
+      if data["cablam_outliers_percentage"] <=1: color=green
+      elif data["cablam_outliers_percentage"] > 5: color=red
+      else: color=yellow
+    return color
+
   def summary_table_proteins(self, model, red, yellow, green, resolution=None):
     protein_lines = []
     rows = 0
@@ -529,9 +603,10 @@ class merged_validations():
 
   def get_clashscore_header_content(self, model):
     clashscore_val = self.summaries["clashscore"][model]["clashscore"]
+    stoplight_color = self.get_clashscore_summary_stoplight(model)
     return (
-        f"Clash &gt; 0.4&Aring;<br><small>Clashscore: "
-        f"{clashscore_val:.2f}</small>"
+        f"<div class='th-inner' data-status='{stoplight_color}'>Clash &gt; 0.4&Aring;<br><small>Clashscore: "
+        f"{clashscore_val:.2f}</small></div>"
     )
 
   def rama_header(self, model, bootstrap=False):
@@ -544,9 +619,10 @@ class merged_validations():
 
   def get_ramalyze_header_content(self, model):
     summary = self.summaries["ramalyze"][model]
+    stoplight_color = self.get_ramalyze_summary_stoplight(model)
     return (
-        f"Ramachandran<br><small>Outliers: "
-        f"{summary['num_outliers']} out of {summary['num_residues']}</small>"
+        f"<div class='th-inner' data-status='{stoplight_color}'>Ramachandran<br><small>Outliers: "
+        f"{summary['num_outliers']} out of {summary['num_residues']}</small></div>"
     )
 
   def rota_header(self, model, bootstrap=False):
@@ -559,10 +635,11 @@ class merged_validations():
     )
 
   def get_rotalyze_header_content(self, model):
-    summary = self.summaries["rotalyze"][model]    
+    summary = self.summaries["rotalyze"][model]
+    stoplight_color = self.get_rotalyze_summary_stoplight(model)
     return (
-        f"Rotamer<br><small>Poor rotamers: "
-        f"{summary['num_outliers']} out of {summary['num_residues']}</small>"
+        f"<div class='th-inner' data-status='{stoplight_color}'>Rotamer<br><small>Poor rotamers: "
+        f"{summary['num_outliers']} out of {summary['num_residues']}</small></div>"
     )
 
   def cbdev_header(self, model, bootstrap=False):
@@ -584,9 +661,10 @@ class merged_validations():
 
   def get_cablam_header_content(self, model):
     summary = self.summaries["cablam"][model]
+    stoplight_color = self.get_cablam_summary_stoplight(model)
     return (
-        f"CaBLAM<br><small>Outliers: "
-        f"{summary['num_cablam_outliers']} out of {summary['num_residues']}</small>"
+        f"<div class='th-inner' data-status='{stoplight_color}'>CaBLAM<br><small>Outliers: "
+        f"{summary['num_cablam_outliers']} out of {summary['num_residues']}</small></div>"
     )
     
   def pperp_header(self, model, bootstrap=False):
@@ -607,9 +685,10 @@ class merged_validations():
 
   def get_mp_bonds_header_content(self, model):
     summary = self.summaries["mp_bonds"][model]
+    stoplight_color = self.get_mp_bonds_summary_stoplight(model)
     return (
-        f"Bond lengths<br><small>Outliers: "
-        f"{summary['num_outliers']} out of {summary['num_total']}</small>"
+        f"<div class='th-inner' data-status='{stoplight_color}'>Bond lengths<br><small>Outliers: "
+        f"{summary['num_outliers']} out of {summary['num_total']}</small></div>"
     )
 
   def angles_header(self, model, bootstrap=False):
@@ -622,9 +701,10 @@ class merged_validations():
     
   def get_mp_angles_header_content(self, model):
     summary = self.summaries["mp_angles"][model]
+    stoplight_color = self.get_mp_angles_summary_stoplight(model)
     return (
-        f"Bond angles<br><small>Outliers: "
-        f"{summary['num_outliers']} out of {summary['num_total']}</small>"
+        f"<div class='th-inner' data-status='{stoplight_color}'>Bond angles<br><small>Outliers: "
+        f"{summary['num_outliers']} out of {summary['num_total']}</small></div>"
     )
 
   def omegalyze_header(self, model, bootstrap=False):
@@ -1370,7 +1450,7 @@ class residue_bootstrap():
     status = status_map.get(data["rama_type"].upper(), "")
     status_attr = f'data-status="{status}"' if status else ''
     
-    content = "{rama_type} ({score:.2f}%)<br><small>{res_type}/ {phi:.1f},{psi:.1f}</small>".format(**data)
+    content = "<span>{rama_type}<span class='cell-detail'> ({score:.2f}%)</span></span><span><small>{res_type}<span class='cell-detail'>: {phi:.1f}&phi;,{psi:.1f}&psi;</small></span></span>".format(**data)
     html_div = f"<div {status_attr}>{content}</div>"
     return (html_div, data["score"])
 
@@ -1382,8 +1462,8 @@ class residue_bootstrap():
     status = status_map.get(data["evaluation"].upper(), "")
     status_attr = f'data-status="{status}"' if status else ''
     
-    chi_angles = ",".join(["%.1f" % c for c in data.get("chi_angles", []) if c is not None])
-    content = "{evaluation} ({score:.2f}%)<br><small>chi angles: {chi_angles}</small>".format(
+    chi_angles = ", ".join([f"{round(c)}&deg;" for c in data.get("chi_angles", []) if c is not None])
+    content = "<span>{evaluation}<span class='cell-detail'> ({score:.2f}%)</span></span><span class='cell-detail'><small>chi angles: {chi_angles}</small><span>".format(
         evaluation=data["evaluation"], score=data["score"], chi_angles=chi_angles
     )
     html_div = f"<div {status_attr}>{content}</div>"
@@ -1431,13 +1511,13 @@ class residue_bootstrap():
     status_attr = f'data-status="{status}"' if status else ''
     
     score = data.get("scores", {}).get("cablam", 0.0)
-    content_string = f'{outlier_type} ({score:.3f}%)'
+    content_string = f'<span>{outlier_type}<span class="cell-detail"> ({score:.3f}%)</span></span>'
     
     feedback = data.get("feedback", "")
     if feedback:
         # Clean up the feedback text and add it
         feedback_text = feedback.replace("try ", "")
-        content_string += f"<br><small>{feedback_text}</small>"
+        content_string += f"<small>{feedback_text}</small>"
     html_div = f"<div {status_attr}>{content_string}</div>"
     return (html_div, score)
 
