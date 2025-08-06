@@ -1277,6 +1277,9 @@ NOTES:
         fillAtomDump = self.params.output.print_atom_info)
       doneOpt = time.time()
       warnings = opt.getWarnings()
+      # Find the lines from warnings that start with "Warning: " and
+      # concatenate them into a single string.
+      warnings = '\n'.join([line for line in warnings.split('\n') if line.startswith('Warning:')])
       if len(warnings) > 0:
         print('\nWarnings during optimization:\n'+warnings, file=self.logger)
       outString += opt.getInfo()
