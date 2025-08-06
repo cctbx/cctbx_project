@@ -1276,6 +1276,9 @@ NOTES:
         cliqueOutlineFileName=self.params.output.clique_outline_file_name,
         fillAtomDump = self.params.output.print_atom_info)
       doneOpt = time.time()
+      warnings = opt.getWarnings()
+      if len(warnings) > 0:
+        print('\nWarnings during optimization:\n'+warnings, file=self.logger)
       outString += opt.getInfo()
       outString += 'Time to Add Hydrogen = {:.3f} sec'.format(doneAdd-startAdd)+'\n'
       outString += 'Time to Optimize = {:.3f} sec'.format(doneOpt-startOpt)+'\n'

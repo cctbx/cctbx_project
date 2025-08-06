@@ -468,20 +468,16 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
               else:
                 fullName = (chain.id + ' ' + a.parent().resname.strip() + ' ' +
                   str(a.parent().parent().resseq_as_int()) + ' ' + a.name.strip())
-                #raise Sorry("Unrecognized specific H bond type for "+fullName+", got "+hb_type+"\n")
-                warnings += ("Unrecognized specific H bond type for "+fullName+", got "+hb_type+
-                             ": keeping default values\n")
+                warnings += ("Warning: Unrecognized specific H bond type for "+fullName+", got "+hb_type+
+                             ": keeping default value\n")
                 extras.setMappingFor(a, extra)
 
             except Exception as e:
               fullName = (chain.id + ' ' + a.parent().resname.strip() + ' ' +
                 str(a.parent().parent().resseq_as_int()) + ' ' + a.name.strip())
-              #raise Sorry("Could not find atom info for "+fullName+
-              #  " (perhaps interpretation was not run on the model?)\n"+
-              #  "  Exception: "+str(e))
-              warnings += ("Could not find atom info for "+fullName+
-                " (perhaps interpretation was not run on the model?): "+
-                "  Exception: "+str(e)+": keeping default values\n")
+              warnings += ("Warning: Could not find atom info for "+fullName+
+                " (perhaps interpretation was not run on the model?):"+
+                " keeping some default values\n")
               extras.setMappingFor(a, extra)
 
   return getExtraAtomInfoReturn(extras, warnings)
