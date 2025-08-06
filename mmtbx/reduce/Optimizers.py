@@ -243,6 +243,7 @@ class Optimizer(object):
     ################################################################################
     # Initialize internal variables.
     self._infoString = ""
+    self._warningString = ""
     self._atomDump = ""
     self._waterOccCutoff = 0.66 # @todo Make this a parameter, -WaterOCCcutoff param in reduce
     self._waterBCutoff = 40.0   # @todo Make this a parameter, -WaterBcutoff param in reduce
@@ -278,6 +279,7 @@ class Optimizer(object):
     self._extraAtomInfo = ret.extraAtomInfo
     self._infoString += ret.warnings
     self._infoString += _ReportTiming(self._verbosity, "get extra atom info")
+    self._warningString += ret.warnings
 
     ################################################################################
     # Run optimization for every desired conformer and every desired model, calling
@@ -756,6 +758,18 @@ class Optimizer(object):
     """
     ret = self._infoString
     self._infoString = ""
+    return ret
+
+  def getWarnings(self):
+    """
+      Returns warnings that the user may care about regarding the processing.
+      :return: the information so far collected in the string.  Calling this method also clears
+      the information, so that later calls will not repeat it.
+      If the object was constructed with fillAtomDump = False, then the atom dump will always be
+      empty.
+    """
+    ret = self._warningString
+    self._warningString = ""
     return ret
 
   def getAtomDump(self):
