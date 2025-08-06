@@ -63,6 +63,13 @@ def test_01(method = 'model_sharpen',
     assert approx_equal((x.min,x.max,x.mean),
       (1.9835316316768663, 2.3146054110530336, 2.1600110833032353),
        eps = 0.01)
+    mm = mmm.local_resolution_map(map_id_1 = None, map_id_2 = None,
+     model_id = 'model', map_id = 'map_manager_1')
+    xx = mm.map_data().as_1d().min_max_mean()
+    from libtbx.test_utils import approx_equal
+    assert approx_equal((x.mean, xx.mean),
+      (2.1600110833032353, 2.16),
+       eps = 0.01)
 
   else: # usual
     sharpen_method(anisotropic_sharpen = False, n_bins=10)

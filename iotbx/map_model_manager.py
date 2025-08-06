@@ -7728,9 +7728,9 @@ class map_model_manager(object):
 
      parameter: map_id_1:  ID of one half-map
      parameter: map_id_2:  ID of other half-map
-     parameter: map_id :  ID of full map , if only one map supplied 
-     parameter: model_id :  ID of model, if only one map supplied 
-     parameter: map_id_model_map:  ID of model-map, if only one map supplied 
+     parameter: map_id :  ID of full map , if only one map supplied
+     parameter: model_id :  ID of model, if only one map supplied
+     parameter: map_id_model_map:  ID of model-map, if only one map supplied
      parameter: d_min: Finest resolution at which to calculate correlations
      parameter: n_bins: Number of resolution bins
      parameter: fsc_cutoff : value of correlation corresponding to
