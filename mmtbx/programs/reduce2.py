@@ -34,7 +34,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "2.12.0"
+version = "2.13.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -1079,6 +1079,7 @@ NOTES:
     # by Hydrogen placement will have flipped them, so we don't need to do it again.
     p.pdb_interpretation.flip_symmetric_amino_acids=False
     #p.pdb_interpretation.sort_atoms=True
+    self.model.set_stop_for_unknowns(False)
     self.model.process(make_restraints=make_restraints, pdb_interpretation_params=p)
 
 # ------------------------------------------------------------------------------
