@@ -1040,7 +1040,7 @@ NOTES:
       use_neutron_distances=self.params.use_neutron_distances,
       n_terminal_charge=self.params.n_terminal_charge,
       exclude_water=True,
-      stop_for_unknowns=False,
+      stop_for_unknowns=self.params.stop_on_any_missing_hydrogen,
       keep_existing_H=self.params.keep_existing_H
     )
     reduce_add_h_obj.run()
@@ -1079,7 +1079,7 @@ NOTES:
     # by Hydrogen placement will have flipped them, so we don't need to do it again.
     p.pdb_interpretation.flip_symmetric_amino_acids=False
     #p.pdb_interpretation.sort_atoms=True
-    self.model.set_stop_for_unknowns(False)
+    self.model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
     self.model.process(make_restraints=make_restraints, pdb_interpretation_params=p)
 
 # ------------------------------------------------------------------------------
@@ -1222,7 +1222,7 @@ NOTES:
     # Use model function to set crystal symmetry if necessary 2025-03-19 TT
     self.model.add_crystal_symmetry_if_necessary()
     if self.data_manager.has_restraints():
-      self.model.set_stop_for_unknowns(False)
+      self.model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
       self.model.process(make_restraints=False)
 
     # If we've been asked to only to a single model index from the file, strip the model down to
