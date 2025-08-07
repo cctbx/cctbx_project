@@ -6046,7 +6046,7 @@ class process(object):
         if atoms[i].element in ['H', 'D']:
           missing_h_atoms=True
           break
-      if missing_h_atoms and 0: # turning off until debugged NWM
+      if missing_h_atoms:
         rc = pH_dependent_restraints.adjust_geometry_proxies_registeries(
           self.all_chain_proxies.pdb_hierarchy,
           self.all_chain_proxies.geometry_proxy_registries,
