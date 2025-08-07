@@ -48,6 +48,13 @@ jobs:
     displayName: Download sources
 
   - script: |
+      set -xe
+      cd $(Pipeline.Workspace)
+      cd modules/dials
+      git checkout update_boost_asio
+    displayName: dials branch update_boost_asio
+
+  - script: |
       cd $(Pipeline.Workspace)
       cd modules/uc_metrics
       git lfs install --local
