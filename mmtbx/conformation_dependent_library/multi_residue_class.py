@@ -101,6 +101,13 @@ class ProteinResidues(LinkedResidues):
       return self._define_omega_a_la_duke_using_limit(angle, limit=limit)
     return [_is_cis_trans_twisted(o) for o in omegas]
 
+  def enol_group(self):
+    assert len(self) in [2,3], 'Enol-peptide only coded for 2,3 peptides'
+    for i, residue in enumerate(self):
+      if i!=len(self)-2: continue
+      if rc:=residue.find_atom_by(name=' HNO'): break
+    return rc
+
   def are_linked(self,
                  return_value=False,
                  return_atoms=False,

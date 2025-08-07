@@ -146,3 +146,8 @@ def get_ca_dihedrals(residues, verbose=False):
       del atoms[0]
   return dihedrals
 
+def get_enol_atoms(residue1, residue2):
+  backbone_i, outl1 = get_c_ca_n(residue1, return_subset=True)
+  backbone_i_plus_1, outl2 = get_c_ca_n(residue2, return_subset=True)
+  return backbone_i, backbone_i_plus_1
+
