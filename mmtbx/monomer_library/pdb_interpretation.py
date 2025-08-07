@@ -5798,6 +5798,23 @@ class build_all_chain_proxies(linking_mixins):
   Conformation dependent library (CDL) restraints added in %0.1f %sseconds
   """ % greek_time(cdl_time), file=log)
     #
+    # enol-peptide
+    #
+    if 1:
+      from mmtbx.conformation_dependent_library.enol_peptide_restraints import update_restraints
+      t0=time.time()
+      enol_time = time.time()-t0
+      update_restraints(
+        self.pdb_hierarchy,
+        result,
+        # cdl_proxies=cdl_proxies,
+        log=log,
+        verbose=True,
+        )
+      print("""\
+  Enol-peptide restraints added in %0.1f %sseconds
+  """ % greek_time(enol_time), file=log)
+    #
     # need autodetect code
     #
     use_omega_cdl = self.params.restraints_library.omega_cdl
@@ -6035,6 +6052,7 @@ class process(object):
     # attempt to fix pH problems
     if self.all_chain_proxies.nonbonded_energy_type_registry.n_unknown_type_symbols():
       from mmtbx.conformation_dependent_library import pH_dependent_restraints
+      from mmtbx.conformation_dependent_library import enol_peptide_restraints
       unknown_atoms = \
         self.all_chain_proxies.nonbonded_energy_type_registry.get_unknown_atoms(
           self.all_chain_proxies.pdb_hierarchy.atoms(),
@@ -6058,6 +6076,17 @@ class process(object):
           if atom_i_seq in unknown_atoms:
             self.all_chain_proxies.nonbonded_energy_type_registry.symbols[atom_i_seq] = \
                 item.type_energy
+        # ENOL
+        rc = enol_peptide_restraints.adjust_geometry_proxies_registeries(
+          self.all_chain_proxies.pdb_hierarchy,
+          self.all_chain_proxies.geometry_proxy_registries,
+          unknown_atoms,
+          )
+        for atom_i_seq, item in rc.items():
+          if atom_i_seq in unknown_atoms:
+            self.all_chain_proxies.nonbonded_energy_type_registry.symbols[atom_i_seq] = \
+                item.type_energy
+
     # Find NCS -- THIS MUST LAST -----------------------------------------------
     self.ncs_obj = None
     if(len(list(self.all_chain_proxies.pdb_hierarchy.models())) == 1 and
