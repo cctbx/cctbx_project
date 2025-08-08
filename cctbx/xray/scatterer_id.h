@@ -1,5 +1,5 @@
+// (c) O.V.D., OlexSys Ltd, 2025
 #pragma once
-
 namespace cctbx {
   namespace xray {
     /* Stores coordinates with float type precision, adopted from Olex2. */
