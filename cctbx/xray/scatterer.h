@@ -37,6 +37,7 @@ namespace xray {
     public:
       //! Facilitates meta-programming.
       typedef FloatType float_type;
+      typedef fractional<FloatType> crd_t;
       //! Facilitates meta-programming.
       typedef LabelType label_type;
       //! Facilitates meta-programming.
@@ -49,7 +50,7 @@ namespace xray {
 
       //! Initialization with isotropic displacement parameter.
       scatterer(LabelType const& label_,
-                fractional<FloatType> const& site_,
+                crd_t const& site_,
                 FloatType const& u_iso_,
                 FloatType const& occupancy_,
                 ScatteringTypeType const& scattering_type_,
@@ -71,7 +72,7 @@ namespace xray {
 
       //! Initialization with anisotropic displacement parameters.
       scatterer(LabelType const& label_,
-                fractional<FloatType> const& site_,
+                crd_t const& site_,
                 scitbx::sym_mat3<FloatType> const& u_star_,
                 FloatType const& occupancy_,
                 ScatteringTypeType const& scattering_type_,
@@ -115,7 +116,7 @@ namespace xray {
       //! Direct access to fractional coordinates.
       /*! See also: apply_symmetry(), apply_symmetry_site()
        */
-      fractional<FloatType> site;
+      crd_t site;
 
       //! Direct access to occupancy factor.
       FloatType occupancy;
@@ -514,29 +515,29 @@ namespace xray {
       float get_element_weight() const { return element_info().weight(); }
       // for use witin (-16..16)
       uint64_t get_id_2_16(short data=0, FloatType multiplier = 1) const {
-        return scatterer_id_2<FloatType, 16>(
+        return scatterer_id_2<FloatType, crd_t, 16>(
           element_info().atomic_number(), site, data, multiplier).id;
       }
       // for use within (-1..1)
       uint64_t get_id_2_1(short data = 0, FloatType multiplier = 1) const {
-        return scatterer_id_2<FloatType, 1>(
+        return scatterer_id_2<FloatType, crd_t, 1>(
           element_info().atomic_number(), site, data, multiplier).id;
       }
       // for use witin (-16..16)
       uint64_t get_id_5_16(short data = 0, FloatType multiplier = 1) const {
-        return scatterer_id_5<FloatType, 16>(element_info().atomic_number(), site, data).id;
+        return scatterer_id_5<FloatType, crd_t, 16>(element_info().atomic_number(), site, data).id;
       }
       // for use within (-1..1)
       uint64_t get_id_5_1(short data = 0, FloatType multiplier = 1) const {
-        return scatterer_id_5<FloatType, 1>(
+        return scatterer_id_5<FloatType, crd_t, 1>(
           element_info().atomic_number(), site, data, multiplier).id;
       }
 
       template <class mask_info, uint64_t cell_m> 
-      scatterer_id_base<FloatType, mask_info, cell_m>
+      scatterer_id_base<FloatType, crd_t, mask_info, cell_m>
         get_id(short data = 0, FloatType multiplier=1) const
       {
-        return scatterer_id_base<FloatType, mask_info, cell_m>(
+        return scatterer_id_base<FloatType, crd_t, mask_info, cell_m>(
           element_info().atomic_number(), site, data, multiplier);
       }
     protected:
