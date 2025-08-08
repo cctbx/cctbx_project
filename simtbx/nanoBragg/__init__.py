@@ -238,7 +238,7 @@ class _():
                      'px_mm_strategy': {'type': 'SimplePxMmStrategy'},
                      'raw_image_offset': (0, 0),
                      'thickness': 0.00001,  # TODO
-                     'trusted_range': (-1e3, 1e10),  # TODO
+                     'trusted_range': (-1e3, 1e9),  # TODO
                      'type': ''}]}
     detector = DetectorFactory.from_dict(det_descr)
     return detector
