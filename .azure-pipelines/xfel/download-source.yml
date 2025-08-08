@@ -51,6 +51,7 @@ jobs:
       cd $(Pipeline.Workspace)
       cd modules/LS49
       git remote add dwpaley https://github.com/dwpaley/LS49
+      git fetch dwpaley
       git checkout dwpaley/type_conversion
     displayName: Checkout LS49 branch
 
