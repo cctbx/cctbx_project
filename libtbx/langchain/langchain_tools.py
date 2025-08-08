@@ -124,8 +124,8 @@ def get_log_analysis_prompt() -> PromptTemplate:
         "unless there is a specific question about them. "
         "If appropriate, include validation as one of your next steps. "
         "Name the tools that are to be used, along with their inputs "
-	" and outputs and what they do. "
-	"Do not suggest depositing the model. "
+        " and outputs and what they do. "
+        "Do not suggest depositing the model. "
         "Do not suggest analyzing the biological relevance. "
     )
     return PromptTemplate(template=template, input_variables=["context", "log_summary"])
@@ -492,4 +492,3 @@ def save_as_html(markdown_string: str,
       print(f"\nSaved formatted output to: {file_name}")
 
     return html_with_style
-
