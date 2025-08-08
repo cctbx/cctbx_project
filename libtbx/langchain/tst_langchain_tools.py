@@ -13,18 +13,31 @@ class TestLangchainTools(unittest.TestCase):
     def test_get_log_map_prompt(self):
         prompt = lct.get_log_map_prompt()
         self.assertIn("You are a highly skilled data extraction bot.", prompt.template)
+        # --- ADDED CHECK for new text ---
+        self.assertIn("overall_best", prompt.template)
 
     def test_get_log_combine_prompt(self):
         prompt = lct.get_log_combine_prompt()
         self.assertIn("You are an expert research scientist.", prompt.template)
+        # --- ADDED CHECK for new text ---
+        self.assertIn("overall_best", prompt.template)
 
     def test_get_docs_query_prompt(self):
         prompt = lct.get_docs_query_prompt()
         self.assertIn("You are an expert assistant for the Phenix software suite.", prompt.template)
+        # --- ADDED CHECK for new text ---
+        self.assertIn("Do not discuss limitations of the sources.", prompt.template)
+        self.assertIn("Name the tools that are to be used", prompt.template)
+
 
     def test_get_log_analysis_prompt(self):
         prompt = lct.get_log_analysis_prompt()
-        self.assertIn("You are an expert crystallographer and Phenix power-user.", prompt.template)
+        # --- UPDATED CHECKS for new text ---
+        self.assertIn("You are expert in crystallography and cryo-EM.", prompt.template)
+        self.assertIn("You are a Phenix power-user.", prompt.template)
+        self.assertIn("Do not suggest depositing the model.", prompt.template)
+        self.assertIn("Name the tools that are to be used", prompt.template)
+
 
     def test_custom_chunker(self):
         docs = [
