@@ -10,11 +10,18 @@ from libtbx import Auto
 
 from mmtbx.geometry_restraints.base_qm_manager import get_internal_coordinate_value
 
-def get_exe():
+def get_exe(verbose=False):
   bin_dir = libtbx.env.under_base('bin')
   exe_path = os.path.join(bin_dir, 'mopac')
   bin_dir = libtbx.env.under_base('Library')
   win_exe_path = os.path.join(bin_dir,"bin", 'mopac.exe')
+  if verbose:
+    print('"'*79)
+    print('  Looking for mopac in env var PHENIX_MOPAC : %s' % os.environ.get('PHENIX_MOPAC', False))
+    print('  Looking for mopac as %s : %s' % (exe_path, os.path.exists(exe_path)))
+    # print(f'  Looking for mopac in directory {bin_dir}s')
+    print('  Looking for win mopac as %s : %s\n' % (win_exe_path, os.path.exists(win_exe_path)))
+    print('"'*79)
   if os.environ.get('PHENIX_MOPAC', False):
     return os.environ['PHENIX_MOPAC']
   elif os.path.exists(exe_path):

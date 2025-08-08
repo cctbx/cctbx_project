@@ -18,8 +18,8 @@ def env_exists_exists(env, var, check=True):
 def is_orca_installed(env, var):
   return env_exists_exists(env, var)
 
-def is_mopac_installed(env, var):
-  if mopac_manager.get_exe():
+def is_mopac_installed(env, var, verbose=False):
+  if mopac_manager.get_exe(verbose=verbose):
     return True
   else:
     return env_exists_exists(env, var)

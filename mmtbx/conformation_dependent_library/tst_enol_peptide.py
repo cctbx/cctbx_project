@@ -148,11 +148,14 @@ ANISOU  158  O  AHOH A 926     1544   2160   1503    302    417    263       O
 END
 '''
 
+h_atom = 'ATOM   4292  H   GLN A 300      -4.898  -8.487  16.858  1.00  5.37           H'
+
 def run1():
-  f = open('tst_pdb_6mu9_enol.pdb', 'w')
+  pf='tst_pdb_6mu9_enol.pdb'
+  f = open(pf, 'w')
   f.write(pdb_6mu9_enol)
   f.close()
-  cmd = 'phenix.geometry_minimization tst_pdb_6mu9_enol.pdb'
+  cmd = 'phenix.geometry_minimization %s' % pf
   print(cmd)
   rc = easy_run.go(cmd)
   find = ['Changed (significantly) 1 bond restraint(s),  added 1 bond restraint(s)',
@@ -168,8 +171,32 @@ def run1():
       assert 0, 'line not found: %s' % f
   return rc
 
+def run2():
+  pf='tst_pdb_6mu9_enol_error.pdb'
+  pdb_6mu9_enol_error = pdb_6mu9_enol.replace(
+    'ATOM    106  HA  GLN A 300      -4.061  -8.591  19.341  1.00  5.62           H',
+    'ATOM    106  HA  GLN A 300      -4.061  -8.591  19.341  1.00  5.62           H\n%s' % h_atom,
+    )
+  # print(pdb_6mu9_enol_error)
+  f = open(pf, 'w')
+  f.write(pdb_6mu9_enol_error)
+  f.close()
+  cmd = 'phenix.geometry_minimization %s' % pf
+  print(cmd)
+  rc = easy_run.go(cmd)
+  find = ['Sorry: Enol-peptide should not have a "H" hydrogen on following residue :']
+  for f in find:
+    for line in rc.stdout_lines:
+      if line.find(f)>-1:
+        break
+    else:
+      assert 0, 'line not found: %s' % f
+  return rc
+
 if __name__=="__main__":
   args = sys.argv[1:]
   del sys.argv[1:]
   rc = run1()
   assert rc.return_code==0
+  rc = run2()
+  assert rc.return_code!=0
