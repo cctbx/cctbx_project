@@ -63,7 +63,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       const std::string &file_name)
     {
       using namespace std;
-      typedef cctbx::xray::scatterer_id_5<FloatType, 16> scatterer_id_t;
+      typedef cctbx::xray::scatterer_id_5<float_type, fractional<float_type>, 16> scatterer_id_t;
       ifstream in_file(file_name.c_str());
       string line;
       vector<std::string> toks;

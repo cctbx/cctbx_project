@@ -161,10 +161,10 @@ namespace {
         ;
     }
 
-    template <typename FloatType, class mask_info, uint64_t m>
+    template <typename FloatType, class crd_t, class mask_info, uint64_t m>
     static void wrap_id(const char* name) {
       using namespace boost::python;
-      typedef scatterer_id_base<FloatType, mask_info, m> wt;
+      typedef scatterer_id_base<FloatType, crd_t, mask_info, m> wt;
       class_<wt, std::auto_ptr<wt> >(name, no_init)
         .def(init<const wt&>((arg("source"))))
         .def(init<uint64_t>((arg("id"))))
@@ -175,10 +175,10 @@ namespace {
           ;
     }
 
-    template <typename FloatType, class mask_info, uint64_t cell_m>
+    template <typename FloatType, class crd_t, class mask_info, uint64_t cell_m>
     static void wrap_lookup(const char* name) {
       using namespace boost::python;
-      typedef scatterer_lookup<FloatType, mask_info, cell_m> wt;
+      typedef scatterer_lookup<FloatType, crd_t, mask_info, cell_m> wt;
       return_internal_reference<> rir;
 
       class_<wt, std::auto_ptr<wt> >(name, no_init)
@@ -224,16 +224,17 @@ namespace {
   void wrap_scatterer()
   {
     using namespace boost::python;
+    typedef fractional<double> crd_t;
 
     scatterer_wrappers::wrap();
-    scatterer_wrappers::wrap_id<double, scatterer_id_masks_d2, 16>("scatterer_id_2_16");
-    scatterer_wrappers::wrap_id<double, scatterer_id_masks_d2, 1>("scatterer_id_2_1");
-    scatterer_wrappers::wrap_id<double, scatterer_id_masks_d5, 16>("scatterer_id_5_16");
-    scatterer_wrappers::wrap_id<double, scatterer_id_masks_d5, 1>("scatterer_id_5_1");
-    scatterer_wrappers::wrap_lookup<double, scatterer_id_masks_d2, 16>("scatterer_lookup_2_16");
-    scatterer_wrappers::wrap_lookup<double, scatterer_id_masks_d2, 1>("scatterer_lookup_2_1");
-    scatterer_wrappers::wrap_lookup<double, scatterer_id_masks_d5, 16>("scatterer_lookup_5_16");
-    scatterer_wrappers::wrap_lookup<double, scatterer_id_masks_d5, 1>("scatterer_lookup_5_1");
+    scatterer_wrappers::wrap_id<double, crd_t, scatterer_id_masks_d2, 16>("scatterer_id_2_16");
+    scatterer_wrappers::wrap_id<double, crd_t, scatterer_id_masks_d2, 1>("scatterer_id_2_1");
+    scatterer_wrappers::wrap_id<double, crd_t, scatterer_id_masks_d5, 16>("scatterer_id_5_16");
+    scatterer_wrappers::wrap_id<double, crd_t, scatterer_id_masks_d5, 1>("scatterer_id_5_1");
+    scatterer_wrappers::wrap_lookup<double, crd_t, scatterer_id_masks_d2, 16>("scatterer_lookup_2_16");
+    scatterer_wrappers::wrap_lookup<double, crd_t, scatterer_id_masks_d2, 1>("scatterer_lookup_2_1");
+    scatterer_wrappers::wrap_lookup<double, crd_t, scatterer_id_masks_d5, 16>("scatterer_lookup_5_16");
+    scatterer_wrappers::wrap_lookup<double, crd_t, scatterer_id_masks_d5, 1>("scatterer_lookup_5_1");
     scatterer_wrappers::wrap_cart_lookup<double>();
 
     def("is_positive_definite_u",

@@ -1,10 +1,10 @@
 #pragma once
-#include <cctbx/coordinates.h>
+
 namespace cctbx {
   namespace xray {
     /* Stores coordinates with float type precision, adopted from Olex2. */
     
-    template <typename FloatType, class mask_info, uint64_t cell_m> 
+    template <typename FloatType, class crd_t, class mask_info, uint64_t cell_m> 
     struct scatterer_id_base : public mask_info {
       uint64_t id;
 
@@ -16,7 +16,7 @@ namespace cctbx {
         : id(id)
       {}
       // use multiplier like 1e3 to 'crop' values
-      scatterer_id_base(int8_t z, const fractional<FloatType>& crd, short data,
+      scatterer_id_base(int8_t z, const crd_t& crd, short data,
         FloatType multiplier = 1)
       {
         id = ((uint64_t)z) & mask_info::z_mask;
@@ -52,7 +52,7 @@ namespace cctbx {
         id |= (((int64_t)data << (8 + mask_info::a_shift * 3) + 3) & mask_info::d_mask);
       }
 
-      bool test(const fractional<FloatType>& crd) const {
+      bool test(const crd_t& crd) const {
         return std::abs(crd[0]) <= cell_m &&
           std::abs(crd[1]) <= cell_m &&
           std::abs(crd[2]) <= cell_m;
@@ -80,9 +80,9 @@ namespace cctbx {
         return id < i.id ? -1 : (id > i.id ? 1 : 0);
       }
 
-      fractional<FloatType> get_crd() const {
-        static const double k = (double)cell_m / mask_info::mask_m;
-        fractional<FloatType> r(
+      crd_t get_crd() const {
+        static const FloatType k = (FloatType)cell_m / mask_info::mask_m;
+        crd_t r(
           static_cast<FloatType>((id & mask_info::a_mask) >> 8) * k,
           static_cast<FloatType>((id & mask_info::b_mask) >> (8 + mask_info::a_shift)) * k,
           static_cast<FloatType>((id & mask_info::c_mask) >> (8 + mask_info::a_shift * 2)) * k);
@@ -126,9 +126,10 @@ namespace cctbx {
     };
 
     /* 2 extra bits for data */
-    template <typename FloatType, uint64_t cell_m>
-    struct scatterer_id_2 : public scatterer_id_base<FloatType, scatterer_id_masks_d2, cell_m> {
-      typedef scatterer_id_base<FloatType, scatterer_id_masks_d2, cell_m> parent_t;
+    template <typename FloatType, class crd_t, uint64_t cell_m>
+    struct scatterer_id_2
+      : public scatterer_id_base<FloatType, crd_t, scatterer_id_masks_d2, cell_m> {
+      typedef scatterer_id_base<FloatType, crd_t, scatterer_id_masks_d2, cell_m> parent_t;
       scatterer_id_2(const scatterer_id_2& sid)
         : parent_t(sid)
       {}
@@ -137,7 +138,7 @@ namespace cctbx {
         : parent_t(id)
       {}
 
-      scatterer_id_2(int8_t z, const fractional<FloatType>& crd, short data,
+      scatterer_id_2(int8_t z, const crd_t& crd, short data,
         FloatType multiplier = 1)
         : parent_t(z, crd, data, multiplier)
       {}
@@ -161,9 +162,10 @@ namespace cctbx {
     };
 
     /* 5 extra bits for data */
-    template <typename FloatType, uint64_t cell_m>
-    struct scatterer_id_5 : public scatterer_id_base<FloatType, scatterer_id_masks_d5, cell_m> {
-      typedef scatterer_id_base<FloatType, scatterer_id_masks_d5, cell_m> parent_t;
+    template <typename FloatType, class crd_t, uint64_t cell_m>
+    struct scatterer_id_5
+      : public scatterer_id_base<FloatType, crd_t, scatterer_id_masks_d5, cell_m> {
+      typedef scatterer_id_base<FloatType, crd_t, scatterer_id_masks_d5, cell_m> parent_t;
       scatterer_id_5(const scatterer_id_5& sid)
         : parent_t(sid)
       {}
@@ -172,7 +174,7 @@ namespace cctbx {
         : parent_t(id)
       {}
       // use multiplier like 1e3 to 'crop' values
-      scatterer_id_5(int8_t z, const fractional<FloatType>& crd, short data,
+      scatterer_id_5(int8_t z, const crd_t& crd, short data,
         FloatType multiplier = 1)
         : parent_t(z, crd, data, multiplier)
       {}

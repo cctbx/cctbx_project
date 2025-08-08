@@ -1,10 +1,11 @@
+// (c) O.V.D., OlexSys Ltd, 2025
 #pragma once
 #include <cctbx/xray/scatterer.h>
 
 namespace cctbx { 
 namespace xray {
 
-  template <typename FloatType, class mask_info, uint64_t cell_m>
+  template <typename FloatType, class crd_t, class mask_info, uint64_t cell_m>
   struct scatterer_lookup {
     typedef scatterer<> scatterer_t;
 
@@ -54,10 +55,10 @@ namespace xray {
         return *si->second;
       }
 
-      uint64_t get_id(int z, const fractional<>& site,
+      uint64_t get_id(int z, const fractional<FloatType>& site,
         short data = 0, FloatType multiplier = 1) const
       {
-        return scatterer_id_base<FloatType, mask_info, cell_m>(z, site, data).id;
+        return scatterer_id_base<FloatType, crd_t, mask_info, cell_m>(z, site, data).id;
       }
     };
 
