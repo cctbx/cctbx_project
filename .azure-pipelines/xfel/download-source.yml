@@ -49,6 +49,13 @@ jobs:
 
   - script: |
       cd $(Pipeline.Workspace)
+      cd modules/LS49
+      git remote add dwpaley https://github.com/dwpaley/LS49
+      git checkout dwpaley/type_conversion
+    displayName: Checkout LS49 branch
+
+  - script: |
+      cd $(Pipeline.Workspace)
       cd modules/uc_metrics
       git lfs install --local
       git lfs pull
