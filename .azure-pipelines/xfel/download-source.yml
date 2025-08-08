@@ -52,7 +52,7 @@ jobs:
       cd modules/LS49
       git remote add dwpaley https://github.com/dwpaley/LS49
       git fetch dwpaley
-      git checkout dwpaley/type_conversion
+      git checkout dwpaley/fix_more_tests
     displayName: Checkout LS49 branch
 
   - script: |
