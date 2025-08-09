@@ -28,14 +28,12 @@ from langchain_cohere import CohereRerank
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain_core.runnables import RunnablePassthrough
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
-from langchain_community.document_loaders import DirectoryLoader, TextLoader, PyPDFLoader, UnstructuredHTMLLoader
+from langchain_community.document_loaders import TextLoader, PyPDFLoader, UnstructuredHTMLLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain.chains import create_retrieval_chain
 from langchain_core.prompts import PromptTemplate
 from langchain_core.documents import Document
 from langchain_chroma import Chroma
-from langchain.retrievers.multi_query import MultiQueryRetriever
 from typing import List
 from markdown_it import MarkdownIt
 
