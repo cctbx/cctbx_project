@@ -59,9 +59,7 @@ def run_one(args):
 
 if (__name__ == "__main__"):
   #
-  run_one(args=["S", 0.3, "wk1995"])
-  STOP()
-  NPROC=3
+  NPROC=120
   #
   for e in ["H", "O", "C", "N", "S"]:
     print(e)
@@ -69,7 +67,8 @@ if (__name__ == "__main__"):
     results = {}
     argss = []
     for d_min in [round(0.3+i*0.01, 2) for i in range(int((6-0.3)/0.01)+1)]:
-      argss.append([e, d_min, "wk1995"])
+      #argss.append([e, d_min, "wk1995"])
+      argss.append([e, d_min, "electron"])
     #
     if(NPROC>1):
       stdout_and_results = easy_mp.pool_map(
@@ -101,5 +100,5 @@ if (__name__ == "__main__"):
           B       = o.B,
           C       = o.C)
     #
-    with open("%s.json"%e, "w") as f:
+    with open("%s_electron.json"%e, "w") as f:
       json.dump(results, f, indent=2)
