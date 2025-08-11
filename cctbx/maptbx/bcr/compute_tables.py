@@ -41,13 +41,8 @@ def run_one(args):
     epsc=0.001,
     )
   r, err = rfactor(b.image_values, b.bcr_approx_values)
-  for r, i, a in zip(b.radii, b.image_values, b.bcr_approx_values):
-    print(r, i, a)
-  STOP()
-
-  print(r, err)
-  for R, B, C in zip(b.R, b.B, b.C):
-    print("%20.16f %20.16f %20.16f"%(R, B, C) )
+  #for R, B, C in zip(b.R, b.B, b.C):
+  #  print("%20.16f %20.16f %20.16f"%(R, B, C) )
   return group_args(
    d_min = d_min,
    dist  = dist,
