@@ -61,44 +61,44 @@ if (__name__ == "__main__"):
   #
   NPROC=120
   #
-  for e in ["H", "O", "C", "N", "S"]:
-    print(e)
-    sys.stdout.flush()
-    results = {}
-    argss = []
-    for d_min in [round(0.3+i*0.01, 2) for i in range(int((6-0.3)/0.01)+1)]:
-      #argss.append([e, d_min, "wk1995"])
-      argss.append([e, d_min, "electron"])
-    #
-    if(NPROC>1):
-      stdout_and_results = easy_mp.pool_map(
-        processes    = NPROC,
-        fixed_func   = run_one,
-        args         = argss,
-        func_wrapper = "buffer_stdout_stderr")
-      for it in stdout_and_results:
-        o = it[1]
-        add_entry(
-          results = results,
-          d_min   = o.d_min,
-          dist    = o.dist,
-          err     = o.err,
-          table   = o.table,
-          R       = o.R,
-          B       = o.B,
-          C       = o.C)
-    else:
-      for args in argss:
-        o = run_one(args)
-        add_entry(
-          results = results,
-          d_min   = o.d_min,
-          dist    = o.dist,
-          err     = o.err,
-          table   = o.table,
-          R       = o.R,
-          B       = o.B,
-          C       = o.C)
-    #
-    with open("%s_electron.json"%e, "w") as f:
-      json.dump(results, f, indent=2)
+  for table in ["electron", "wk1995"]:
+    for e in ["H", "O", "C", "N", "S"]:
+      print(e)
+      sys.stdout.flush()
+      results = {}
+      argss = []
+      for d_min in [round(0.3+i*0.01, 2) for i in range(int((6-0.3)/0.01)+1)]:
+        argss.append([e, d_min, table])
+      #
+      if(NPROC>1):
+        stdout_and_results = easy_mp.pool_map(
+          processes    = NPROC,
+          fixed_func   = run_one,
+          args         = argss,
+          func_wrapper = "buffer_stdout_stderr")
+        for it in stdout_and_results:
+          o = it[1]
+          add_entry(
+            results = results,
+            d_min   = o.d_min,
+            dist    = o.dist,
+            err     = o.err,
+            table   = o.table,
+            R       = o.R,
+            B       = o.B,
+            C       = o.C)
+      else:
+        for args in argss:
+          o = run_one(args)
+          add_entry(
+            results = results,
+            d_min   = o.d_min,
+            dist    = o.dist,
+            err     = o.err,
+            table   = o.table,
+            R       = o.R,
+            B       = o.B,
+            C       = o.C)
+      #
+      with open("%s_%s.json"%(e, table), "w") as f:
+        json.dump(results, f, indent=2)
