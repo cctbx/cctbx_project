@@ -7,6 +7,7 @@ import time
 import math
 from libtbx import adopt_init_args
 from libtbx.test_utils import approx_equal
+import mmtbx.model
 
 import boost_adaptbx.boost.python as bp
 ext = bp.import_ext("cctbx_maptbx_bcr_bcr_ext")
@@ -35,10 +36,13 @@ class gradients_fd(object):
     return qmap.CalcFuncMap(
       OmegaMap=OmegaMap_py1, ControlMap=self.ControlMap, Ncrs=self.n_real)
 
-def run(d_min=2):
+def run(table="electron", d_min=2):
   pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str)
-  xrs = pdb_inp.xray_structure_simple()
-  cs = pdb_inp.crystal_symmetry()
+  model = mmtbx.model.manager(model_input=pdb_inp)
+  model.setup_scattering_dictionaries(
+    scattering_table = table, d_min=d_min)
+  xrs = model.get_xray_structure()
+  cs = model.crystal_symmetry()
   uc = cs.unit_cell()
   crystal_gridding = maptbx.crystal_gridding(
     unit_cell        = cs.unit_cell(),

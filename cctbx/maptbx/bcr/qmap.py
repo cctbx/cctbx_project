@@ -12,17 +12,19 @@ import math
 import boost_adaptbx.boost.python as bp
 ext = bp.import_ext("cctbx_maptbx_bcr_bcr_ext")
 
-def load_table(element):
+def load_table(element, table):
   element = element.strip().upper()
   assert element in ["C","H","N","O","S"]
   path=libtbx.env.find_in_repositories("cctbx/maptbx/bcr/tables")
-  file_name = "%s/%s.json"%(path, element)
+  file_name = "%s/%s_%s.json"%(path, element, table)
   assert os.path.isfile(file_name)
   with open(file_name, 'r') as file:
     return json.load(file)
 
 def compute(xray_structure, n_real, resolution=None, resolutions=None,
             debug=False):
+  table = xray_structure.get_scattering_table()
+  assert table in ["electron", "wk1995"]
   assert [resolution, resolutions].count(None)==1
   unit_cell = xray_structure.unit_cell()
   if resolutions is None:
@@ -33,7 +35,7 @@ def compute(xray_structure, n_real, resolution=None, resolutions=None,
   arrays = {}
   for scatterer in xray_structure.scatterers():
     e = scatterer.scattering_type.strip().upper()
-    d = load_table(element=e)
+    d = load_table(element=e, table=table)
     arrays[e] = d
   ScaleB = 1.0 / (8.0 * math.pi**2)
   kscale = math.pi**1.5
