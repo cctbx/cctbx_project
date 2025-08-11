@@ -442,6 +442,13 @@ def get_obsolete_status_from_chemical_components(code):
       pdbx_replaced_by = tmp[1]
   return pdbx_release_status, pdbx_replaced_by
 
+def get_filenames_from_start(start):
+  rc=[]
+  for code in generate_chemical_components_codes():
+    if code.upper().find(start.upper())==0:
+      rc.append(code)
+  return rc
+
 if __name__=="__main__":
   print('\nSMILES')
   print(get_smiles(sys.argv[1]))

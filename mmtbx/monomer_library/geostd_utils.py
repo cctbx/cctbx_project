@@ -80,9 +80,12 @@ def remove_atoms_for_reduce(cif_object):
           return True
     assert 0
 
-def get_geostd_cif_file(code, pH=None):
+def get_geostd_file(code, pH=None, file_format='cif'):
   assert code
-  basename = "data_%s.cif" % code.upper()
+  if pH: assert file_format=='cif', 'pH=%s only for cif' % pH
+  basename = "%s.%s" % (code.upper(), file_format)
+  if file_format=='cif':
+    basename='data_%s' % basename
   if pH:
     basename = basename.replace('.cif', '_pH_%s.cif' % pH)
   filename = os.path.join(geostd_directory,
@@ -93,13 +96,15 @@ def get_geostd_cif_file(code, pH=None):
     return filename
   return None
 
-def get_cif_list(filename):
+def get_geostd_cif_file(code, pH=None):
+  return get_geostd_file(code, pH=pH, file_format='cif')
+
+def get_cif_list(filename, verbose=False):
   import iotbx.cif
   list_cif = os.path.join(geostd_directory,
                           "list",
                           filename,
                           )
-  print(list_cif)
   cif = iotbx.cif.reader(list_cif, strict=False).model()
-  print(cif.keys())
+  if verbose: print(cif.keys())
   return cif
