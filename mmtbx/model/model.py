@@ -2474,6 +2474,25 @@ class manager(object, metaclass=libtbx.utils.Tracker):
     ion_radii = e.lib_atom[type_energy].ion_radius
     return ion_radii
 
+  def restrain_selection_to_self_or_neighbors(self, selection_string, mode):
+    """
+    Restrain atoms selected by selection_string to their starting positions
+    (mode='self') or to nearby atoms unselected with selection_string
+    (mode='ride')
+    """
+    assert mode in ["self", "ride"]
+    assert type(selection_string) == str
+    selection = self.selection(string = selection_string)
+    size = self.size()
+    h_to_restrain = self.get_hierarchy().select(selection)
+    atoms = self.get_hierarchy().atoms()
+    def _apply_self():
+      pass
+    def _apply_riding():
+      pass
+    if   mode == "ride": _apply_riding()
+    elif mode == "self": _apply_self()
+
   def get_vdw_radii(self, vdw_radius_default = 1.0):
     """
     Return van-der-Waals radii for known atom names.
@@ -3295,7 +3314,7 @@ class manager(object, metaclass=libtbx.utils.Tracker):
     self.idealize_h_minimization(
         correct_special_position_tolerance=correct_special_position_tolerance)
 
-  def pairs_within(self, radius):
+  def pairs_within(self, radius, one_or_other=False):
     cs = self.crystal_symmetry()
     asu_mappings = crystal.symmetry.asu_mappings(cs, buffer_thickness = radius)
     special_position_settings = crystal.special_position_settings(
@@ -3305,10 +3324,16 @@ class manager(object, metaclass=libtbx.utils.Tracker):
     asu_mappings.process_sites_frac(
       original_sites      = self.get_sites_frac(),
       site_symmetry_table = site_symmetry_table)
-    pair_asu_table = crystal.pair_asu_table(asu_mappings = asu_mappings)
-    pair_asu_table.add_all_pairs(distance_cutoff = radius)
-    pst = pair_asu_table.extract_pair_sym_table()
-    return [i.i_seqs() for i in pst.iterator()]
+    if one_or_other:
+      pair_asu_table = crystal.pair_asu_table(asu_mappings = asu_mappings)
+      pair_asu_table.add_all_pairs(distance_cutoff = radius)
+      pst = pair_asu_table.extract_pair_sym_table()
+      pairs = [[p.i_seq, p.j_seq, p.rt_mx_ji] for p in pst.iterator()]
+    else:
+      fpg = crystal.neighbors_fast_pair_generator(
+        asu_mappings, distance_cutoff = radius)
+      pairs = [[p.i_seq, p.j_seq, asu_mappings.get_rt_mx_ji(p)] for p in fpg]
+    return pairs
 
   def reprocess_pdb_hierarchy_inefficient(self):
     # XXX very inefficient
@@ -3375,7 +3400,7 @@ class manager(object, metaclass=libtbx.utils.Tracker):
 
   def rms_b_iso_or_b_equiv(self, exclude_hd=True):
     result = None
-    pairs = self.pairs_within(radius=1.6)
+    pairs = [[i[0],i[1]] for i in self.pairs_within(radius=1.6)]
     atoms = self.get_hierarchy().atoms()
     values = flex.double()
     for pair in pairs:
