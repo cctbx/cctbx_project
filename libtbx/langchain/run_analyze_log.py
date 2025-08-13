@@ -2,7 +2,7 @@
 Summarizes a Phenix log file and suggests next steps in the context of the
 Phenix documentation.  Uses a two-stage pipeline with an advanced reranking RAG.
 """
-
+from __future__ import division
 from libtbx.langchain import langchain_tools as lct
 import sys, os
 import asyncio

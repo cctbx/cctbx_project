@@ -2,6 +2,7 @@
 Ask a direct question to the Phenix documentation RAG.
 Uses the advanced reranking retrieval chain.
 """
+from __future__ import division
 from libtbx.langchain import langchain_tools as lct
 import sys
 import os

@@ -1,6 +1,7 @@
 """
 Unit tests for the langchain_tools library using the built-in unittest framework.
 """
+from __future__ import division
 import unittest
 from libtbx.langchain import langchain_tools as lct
 from langchain_core.documents import Document

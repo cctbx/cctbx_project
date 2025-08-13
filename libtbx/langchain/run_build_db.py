@@ -1,6 +1,7 @@
 """
 Script to build and persist the documentation vector database.
 """
+from __future__ import division
 from libtbx.langchain import langchain_tools as lct
 import os
 

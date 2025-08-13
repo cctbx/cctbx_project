@@ -2,6 +2,7 @@
 """
 Runner script to inspect the contents of the persisted vector database.
 """
+from __future__ import division
 import langchain_tools as lct
 from collections import Counter
 
