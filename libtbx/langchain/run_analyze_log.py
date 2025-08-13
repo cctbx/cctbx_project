@@ -1,6 +1,7 @@
 """
-Summarizes a Phenix log file and suggests next steps in the context of the
-Phenix documentation.  Uses a two-stage pipeline with an advanced reranking RAG.
+Summarizes a log file (usually Phenix) and suggests next steps in the
+context of the (Phenix) documentation.  Uses a two-stage pipeline with
+an advanced reranking RAG.
 """
 from __future__ import division
 from libtbx.langchain import langchain_tools as lct
@@ -40,11 +41,15 @@ def run(file_name = None, text = None, output_file_path = None,
     lct.save_as_html(log_info.summary, file_name = fn,
        title = 'Summary of %s' %(file_name))
     print("Loading log summary at %s" %(fn))
-    from phenix.command_line.doc import load_url
-    load_url(fn)
+    try:
+      from phenix.command_line.doc import load_url
+      load_url(fn)
+    except Exception as e:
+      # phenix is not available or no viewer.  Just skip
+      print("Unable to load viewer...see text in the file: '%s' %(fn))
 
     # Analyze the log summary in the context of the docs
-    print("\nAnalyzing summary in context of Phenix docs...")
+    print("\nAnalyzing summary in context of documentation...")
     answer = asyncio.run(lct.analyze_log_summary(log_info, llm, embeddings,
       db_dir = db_dir))
 
@@ -53,8 +58,12 @@ def run(file_name = None, text = None, output_file_path = None,
     lct.save_as_html(answer, file_name = fn,
        title = 'Analysis of %s' %(file_name))
     print("Loading analysis at %s" %(fn))
-    from phenix.command_line.doc import load_url
-    load_url(fn)
+    try:
+      from phenix.command_line.doc import load_url
+      load_url(fn)
+    except Exception as e:
+      # phenix is not available or no viewer.  Just skip
+      print("Unable to load viewer...see text in the file: '%s' %(fn))
 
     # Save answer in log_info and return
     log_info.analysis = answer

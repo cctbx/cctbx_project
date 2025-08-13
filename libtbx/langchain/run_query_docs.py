@@ -37,9 +37,12 @@ def run(query_text = None, output_file_path = None, db_dir = None):
     lct.save_as_html(answer, file_name = fn,
        title = 'Answer to: %s' %(query_text))
     print("Loading answer summary at %s" %(fn))
-    from phenix.command_line.doc import load_url
-    load_url(fn)
-
+    try:
+      from phenix.command_line.doc import load_url
+      load_url(fn)
+    except Exception as e:
+      # phenix is not available or no viewer.  Just skip
+      print("Unable to load viewer...see text in the file: '%s' %(fn))
 
     return answer
 
