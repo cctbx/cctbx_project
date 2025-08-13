@@ -585,7 +585,7 @@ def process_predicted_model(
     chainid_list = []
 
   # Estimate vrms (model error) for each domain
-  vrms_list = get_vrms_list(p, model_list)
+  vrms_list = get_vrms_list(p, model_list, log = log)
   return group_args(
     group_args_type = 'processed predicted model',
     model = new_model,
@@ -646,14 +646,27 @@ def restore_true_except_at_ends(sel1):
   for i in range(first_true,last_true):
     sel1[i] = True
 
-def get_vrms_list(p, model_list):
+def get_vrms_list(p, model_list, log = sys.stdout):
   vrms_list = []
   for m in model_list:
     s = m.as_sequence(as_string = True)
     b_values = m.apply_selection_string(
        '(name ca or name P) and not element ca').get_b_iso()
-    rmsd = get_rmsd_from_plddt(get_plddt_from_b(b_values)).min_max_mean().mean
+
+    plddt_values = get_plddt_from_b(b_values)
+    rmsd = get_rmsd_from_plddt(plddt_values).min_max_mean().mean
+    rmsd2 = get_rmsd_from_plddt(get_plddt_from_b(b_values)).min_max_mean().mean
+    assert rmsd == rmsd2
+
+    mean_b = b_values.min_max_mean().mean
+    mean_plddt = plddt_values.min_max_mean().mean
+
+
+
     vrms = rmsd * p.vrms_from_rmsd_slope + p.vrms_from_rmsd_intercept
+    print("VRMS calculation for '%s':" %(m.info().file_name) +
+      "\nMean B: %.1f  pLDDT (0-100) : %.2f RMSD: %.1f A  VRMS: %.1f A" %(
+      mean_b, 100*mean_plddt, rmsd, vrms), file = log)
     vrms_list.append(vrms)
   return vrms_list
 
