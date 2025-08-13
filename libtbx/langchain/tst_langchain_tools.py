@@ -105,4 +105,3 @@ This is the summary.
 # This block allows the script to be run directly
 if __name__ == '__main__':
     unittest.main()
-

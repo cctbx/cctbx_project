@@ -31,4 +31,3 @@ def run(docs_folder_path_list = "./data_docs/", db_dir = "./docs_db",
 
 if __name__ == "__main__":
     run()
-

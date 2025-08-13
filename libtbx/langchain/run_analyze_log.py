@@ -68,4 +68,3 @@ if __name__ == "__main__":
         sys.exit(1)
     fn = sys.argv[1]
     answer = run(file_name = fn)
-

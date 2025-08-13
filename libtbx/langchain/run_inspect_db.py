@@ -49,4 +49,3 @@ if __name__ == "__main__":
       run(db_dir=sys.argv[1])
     else:
       run()
-
