@@ -3332,7 +3332,12 @@ class manager(object, metaclass=libtbx.utils.Tracker):
     else:
       fpg = crystal.neighbors_fast_pair_generator(
         asu_mappings, distance_cutoff = radius)
-      pairs = [[p.i_seq, p.j_seq, asu_mappings.get_rt_mx_ji(p)] for p in fpg]
+      pairs = []
+      seen = set()
+      [pairs.append([a, b, asu_mappings.get_rt_mx_ji(p)]) or seen.add((a, b))
+       for p in fpg
+       for a, b in [tuple(sorted((p.i_seq, p.j_seq)))]
+       if (a, b) not in seen]
     return pairs
 
   def reprocess_pdb_hierarchy_inefficient(self):

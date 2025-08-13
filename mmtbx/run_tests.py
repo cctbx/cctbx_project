@@ -96,6 +96,7 @@ general_tests = [
   "$D/regression/model/tst_model_get_vdw_radii.py",
   "$D/regression/model/tst_model_dedeuterate.py",
   "$D/regression/model/tst_model_utils_merge_models.py",
+  "$D/regression/model/tst_model_pairs_within.py",
   #
   "$D/regression/tst_fmodel.py",
   "$D/regression/tst_utils.py",
