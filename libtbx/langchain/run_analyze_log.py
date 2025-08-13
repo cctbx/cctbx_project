@@ -46,7 +46,7 @@ def run(file_name = None, text = None, output_file_path = None,
       load_url(fn)
     except Exception as e:
       # phenix is not available or no viewer.  Just skip
-      print("Unable to load viewer...see text in the file: '%s' %(fn))
+      print("Unable to load viewer...see text in the file: '%s'" %(fn))
 
     # Analyze the log summary in the context of the docs
     print("\nAnalyzing summary in context of documentation...")
@@ -63,7 +63,7 @@ def run(file_name = None, text = None, output_file_path = None,
       load_url(fn)
     except Exception as e:
       # phenix is not available or no viewer.  Just skip
-      print("Unable to load viewer...see text in the file: '%s' %(fn))
+      print("Unable to load viewer...see text in the file: '%s'" %(fn))
 
     # Save answer in log_info and return
     log_info.analysis = answer

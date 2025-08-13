@@ -42,7 +42,7 @@ def run(query_text = None, output_file_path = None, db_dir = None):
       load_url(fn)
     except Exception as e:
       # phenix is not available or no viewer.  Just skip
-      print("Unable to load viewer...see text in the file: '%s' %(fn))
+      print("Unable to load viewer...see text in the file: '%s'" %(fn))
 
     return answer
 
