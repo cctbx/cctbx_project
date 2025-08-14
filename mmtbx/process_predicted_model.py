@@ -630,7 +630,22 @@ def set_defaults(p, pae_matrix = None, log = sys.stdout):
       p.pae_graph_resolution = 0.5
     print("pae_graph_resolution=%s" %(p.pae_graph_resolution), file = log)
 
+def convert_model_from_plddt_to_b(m, input_plddt_is_fractional = None):
+  '''Convert values in B-value field from pLDDT to B values'''
+  plddt_values = m.get_b_iso()
+  b_values = get_b_values_from_plddt(plddt_values)
+  m.set_b_iso(b_values)
+  m.reset_after_changing_hierarchy()
 
+def convert_model_from_b_to_plddt(m, input_plddt_is_fractional = True):
+  ''' Convert values in B-value field from  B values to pLDDT values.
+   If input_plddt_is_fractional is False, multiply by 100 at end'''
+  b_values = m.get_b_iso()
+  plddt_values = get_plddt_from_b(b_values)
+  if (not input_plddt_is_fractional):
+     plddt_values = plddt_values * 100
+  m.set_b_iso(plddt_values)
+  m.reset_after_changing_hierarchy()
 
 def restore_true_except_at_ends(sel1):
   ''' Set all values that are not at ends of sel1 to False (any number
