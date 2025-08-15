@@ -482,3 +482,48 @@ query
   if len(emdb_ids)==0:
     return None
   return emdb_ids
+
+def get_similar_ligands_via_smiles(smiles, **kwds):
+  # sub-struct-graph-relaxed-stereo
+  # graph-relaxed-stereo
+  similar_ligand_query = '''
+{
+  "query": {
+    "type": "terminal",
+    "service": "chemical",
+    "parameters": {
+      "type": "descriptor",
+      "value": "%s",
+      "descriptor_type": "SMILES",
+      "match_type": "sub-struct-graph-relaxed-stereo"
+    }
+  },
+  "return_type": "mol_definition",
+  "request_options": {
+    "paginate": {
+      "start": 0,
+      "rows": 25
+    },
+    "results_content_type": [
+      "experimental"
+    ],
+    "sort": [
+      {
+        "sort_by": "score",
+        "direction": "desc"
+      }
+    ],
+    "scoring_strategy": "combined"
+  }
+}
+'''
+  assert (3 <= len(smiles)), 'short SMILES "%s" return too many results' % smiles
+  sqr = similar_ligand_query % (smiles)
+  print(sqr)
+  jsq = json.loads(sqr)
+  return post_query(query_json=jsq, **kwds)
+
+if __name__ == '__main__':
+  rc=get_similar_ligands_via_smiles('N#C')
+  # rc=get_similar_ligands_via_smiles('NCCC(O)=O')
+  print(rc)
