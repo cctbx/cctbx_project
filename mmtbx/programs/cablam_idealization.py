@@ -59,8 +59,10 @@ output {
     results = self.cablam_id.get_results()
 
     flat_cablam_results = [item for sublist in results.cablam_results.values() for item in sublist]
+    print("Rotated residues (angle, chain id, resnum, resname, alpha, beta):", file=self.logger)
     for cr, angle in flat_cablam_results:
-      print(f'{angle:3d} {cr.chain_id} {cr.resid} {cr.resname} {cr.feedback.alpha} {cr.feedback.alpha}')
+      a = angle if angle !=360 else 0
+      print(f'{a:3d} {cr.chain_id} {cr.resid} {cr.resname} {cr.feedback.alpha} {cr.feedback.alpha}', file=self.logger)
       # print(angle, cr)
 
     print(f"Total number of outliers in starting model: {results.n_initial_cablam_outliers}", file=self.logger)

@@ -192,7 +192,7 @@ class cablam_idealization(object):
       print(s[0], s[1], s[2], end=' ', file=self.log)
       if len(s[3]) > 0:
         for e in s[3]:
-          print("| %s, %.2f, %.2f|" % (e[0], e[1], e[2]), end=' ', file=self.log)
+          print("| %s -- > %s, %.2f, %.2f|" % (e[0], e[3].id_str(), e[1], e[2]), end=' ', file=self.log)
       print(file=self.log)
     rot_angle = self._pick_rotation_angle(scores, self.params.require_h_bond)
     # rotate
@@ -338,7 +338,7 @@ class cablam_idealization(object):
             weight=1).angle_model
         if good_hbond(angle, atom.distance(O_atom)):
           # print "Potential bond:", atom.id_str(), atom.distance(O_atom), angle
-          results.append(('NH', atom.distance(O_atom), angle))
+          results.append((O_atom.id_str(), atom.distance(O_atom), angle, atom))
       if atom.name.strip() == 'O':
         # now we want to find attached N atom (another one)
         another_C_atom = atom.parent().get_atom("C")
@@ -349,7 +349,7 @@ class cablam_idealization(object):
               weight=1).angle_model
           if good_hbond(angle, atom.distance(N_atom)):
             # print "Potential backwards bond:", atom.id_str(), atom.distance(N_atom), angle
-            results.append(('CO', atom.distance(N_atom), angle))
+            results.append((N_atom.id_str(), atom.distance(N_atom), angle, atom))
     self.atoms_around_cutted = filtered_atoms_around_cutted
     return results
 
