@@ -519,11 +519,11 @@ def get_similar_ligands_via_smiles(smiles, **kwds):
 '''
   assert (3 <= len(smiles)), 'short SMILES "%s" return too many results' % smiles
   sqr = similar_ligand_query % (smiles)
-  print(sqr)
+  # print(sqr)
   jsq = json.loads(sqr)
-  return post_query(query_json=jsq, **kwds)
+  return post_query(query_json=jsq, xray_only=False, **kwds)
 
 if __name__ == '__main__':
-  rc=get_similar_ligands_via_smiles('N#C')
-  # rc=get_similar_ligands_via_smiles('NCCC(O)=O')
+  # rc=get_similar_ligands_via_smiles('N#C')
+  rc=get_similar_ligands_via_smiles('NCCC(O)=O')
   print(rc)
