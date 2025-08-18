@@ -36,7 +36,7 @@ import mmtbx.monomer_library.server
 from mmtbx.geometry_restraints.torsion_restraints.utils import check_for_internal_chain_ter_records
 import mmtbx.tls.tools as tls_tools
 from mmtbx import ias
-
+from collections import defaultdict
 
 from mmtbx.ncs.ncs_utils import apply_transforms
 from mmtbx.command_line import find_tls_groups
@@ -81,6 +81,9 @@ import math
 
 from mmtbx.monomer_library import pdb_interpretation
 import libtbx.utils
+
+from cctbx import geometry_restraints
+from cctbx.geometry_restraints.linking_class import linking_class
 
 time_model_show = 0.0
 
@@ -2474,24 +2477,63 @@ class manager(object, metaclass=libtbx.utils.Tracker):
     ion_radii = e.lib_atom[type_energy].ion_radius
     return ion_radii
 
-  def restrain_selection_to_self_or_neighbors(self, selection_string, mode):
+  def restrain_selection_to_self_or_neighbors(self, selection_string,
+        radius=3.5):
     """
-    Restrain atoms selected by selection_string to their starting positions
-    (mode='self') or to nearby atoms unselected with selection_string
-    (mode='ride')
+    Anchor selected by selection_string atoms to others via H bond or else.
     """
-    assert mode in ["self", "ride"]
     assert type(selection_string) == str
     selection = self.selection(string = selection_string)
-    size = self.size()
+    grm = self.get_restraints_manager().geometry
     h_to_restrain = self.get_hierarchy().select(selection)
     atoms = self.get_hierarchy().atoms()
-    def _apply_self():
-      pass
-    def _apply_riding():
-      pass
-    if   mode == "ride": _apply_riding()
-    elif mode == "self": _apply_self()
+    elements = atoms.extract_element()
+    pairs = self.pairs_within(radius=radius, as_dict=True)
+    origin_ids = linking_class()
+    get_class = iotbx.pdb.common_residue_names_get_class
+    #
+    def _find_pair(i_seq, clash_dist=2.0):
+      dist_min = 1.e9
+      best_interaction = None
+      try: interactions = pairs[i_seq]
+      except KeyError: pass
+      for interaction in interactions:
+        j, symmat, d = interaction
+        if symmat.as_xyz() != "x,y,z": continue
+        if selection[j]: continue
+        e = elements[j].strip().upper()
+        if e in ["C","H","D"]: continue
+        if d < dist_min and d > clash_dist:
+          dist_min = d
+          best_interaction = interaction[:]
+      return best_interaction
+    #
+    def _bonded(l2, s1): return any((a in s1) ^ (b in s1) for a, b in l2)
+    #
+    bond_proxies,_=grm.get_all_bond_proxies(sites_cart = self.get_sites_cart())
+    bond_pairs = [[p.i_seqs[0], p.i_seqs[1]] for p in bond_proxies]
+    proxies = []
+    for ag in h_to_restrain.atom_groups():
+      class_name = get_class(name = ag.resname)
+      if class_name in ["common_water", "common_element"]:
+        if _bonded(l2=bond_pairs, s1=set(ag.atoms().extract_i_seq())):
+          continue
+        for atom in ag.atoms():
+          if atom.element_is_hydrogen(): continue
+          interaction = _find_pair(atom.i_seq)
+          if interaction is None:
+            i,j, dist = atom.i_seq, atom.i_seq, 0
+          else:
+            i,j, dist = atom.i_seq, interaction[0], interaction[-1]
+          proxy = geometry_restraints.bond_simple_proxy(
+            i_seqs         = (i,j),
+            distance_ideal = dist,
+            weight         = 1./(0.5**2),
+            origin_id      = origin_ids.get_origin_id('hydrogen bonds'))
+          proxies.append(proxy)
+      elif class_name == "common_small_molecule":
+        pass # not hanled yet, different logic to anchor..
+    grm.add_new_bond_restraints_in_place(proxies, self.get_sites_cart())
 
   def get_vdw_radii(self, vdw_radius_default = 1.0):
     """
@@ -3314,7 +3356,10 @@ class manager(object, metaclass=libtbx.utils.Tracker):
     self.idealize_h_minimization(
         correct_special_position_tolerance=correct_special_position_tolerance)
 
-  def pairs_within(self, radius, one_or_other=False):
+  def pairs_within(self, radius, as_dict=False):
+    """
+    Find pairs of atoms within radius.
+    """
     cs = self.crystal_symmetry()
     asu_mappings = crystal.symmetry.asu_mappings(cs, buffer_thickness = radius)
     special_position_settings = crystal.special_position_settings(
@@ -3324,20 +3369,21 @@ class manager(object, metaclass=libtbx.utils.Tracker):
     asu_mappings.process_sites_frac(
       original_sites      = self.get_sites_frac(),
       site_symmetry_table = site_symmetry_table)
-    if one_or_other:
-      pair_asu_table = crystal.pair_asu_table(asu_mappings = asu_mappings)
-      pair_asu_table.add_all_pairs(distance_cutoff = radius)
-      pst = pair_asu_table.extract_pair_sym_table()
-      pairs = [[p.i_seq, p.j_seq, p.rt_mx_ji] for p in pst.iterator()]
-    else:
-      fpg = crystal.neighbors_fast_pair_generator(
-        asu_mappings, distance_cutoff = radius)
-      pairs = []
-      seen = set()
-      [pairs.append([a, b, asu_mappings.get_rt_mx_ji(p)]) or seen.add((a, b))
-       for p in fpg
-       for a, b in [tuple(sorted((p.i_seq, p.j_seq)))]
-       if (a, b) not in seen]
+    pair_asu_table = crystal.pair_asu_table(asu_mappings = asu_mappings)
+    pair_asu_table.add_all_pairs(distance_cutoff = radius)
+    pst = pair_asu_table.extract_pair_sym_table()
+    pairs = []
+    sites_frac = self.get_sites_frac()
+    uc = self.crystal_symmetry().unit_cell()
+    for p in pst.full_connectivity().iterator():
+      i, j, m = p.i_seq, p.j_seq, p.rt_mx_ji
+      dist = uc.distance(sites_frac[i], m*sites_frac[j])
+      pairs.append([i, j, m, dist])
+    if as_dict:
+      result = defaultdict(list)
+      for first, second, third, fourth in pairs:
+        result[first].append([second, third, fourth])
+      pairs = result
     return pairs
 
   def reprocess_pdb_hierarchy_inefficient(self):

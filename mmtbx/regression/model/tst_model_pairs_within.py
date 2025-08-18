@@ -79,15 +79,8 @@ def run():
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
   model = mmtbx.model.manager(model_input=pdb_inp, log = null_out())
   model.process(make_restraints=True)
-  r1 = model.pairs_within(radius = 2, one_or_other=True)
-  r2 = model.pairs_within(radius = 2, one_or_other=False)
-  s1 = set(tuple(pair) for pair in r1)
-  s2 = set(tuple(pair) for pair in r2)
-  diff1 = s1 - s2
-  diff2 = s2 - s1
-  assert len(diff1)==0
-  assert len(diff2)==0
-
+  r = model.pairs_within(radius = 2)
+  assert len(r) == 118
 if (__name__ == "__main__"):
   start = time.perf_counter()
   run()
