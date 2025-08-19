@@ -2545,12 +2545,12 @@ class manager(object, metaclass=libtbx.utils.Tracker):
       rcp_selection = sorted(list(set(rcp_selection)))
       # print(f'rcp_selection, {rcp_selection}')
       grm.append_reference_coordinate_restraints_in_place(
-          reference.add_coordinate_restraints(
-              sites_cart = self.get_sites_cart().select(flex.size_t(rcp_selection)),
-              selection  = rcp_selection,
-              sigma      = 0.05,
-              limit      = 1.0,
-              top_out_potential=False))
+        reference.add_coordinate_restraints(
+          sites_cart = self.get_sites_cart().select(flex.size_t(rcp_selection)),
+          selection  = rcp_selection,
+          sigma      = 0.5,
+          limit      = 1.0,
+          top_out_potential=False))
 
 
   def get_vdw_radii(self, vdw_radius_default = 1.0):

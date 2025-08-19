@@ -5,6 +5,49 @@ import mmtbx.model
 from libtbx.utils import null_out
 import iotbx.phil
 
+expected1 = """
+Harmonic | Reference coordinate | restraints :1
+bond pdb=" O   HOH B   3 ", d2= 0.000A, sigma=  0.500, weight=  4.000
+"""
+
+expected2 = """
+Bond | User supplied | restraints: 1
+Sorted by residual:
+bond pdb=" OE1 GLN A   5 "
+     pdb="MG    MG D   2 "
+  ideal  model  delta    sigma   weight residual
+  1.000  2.298 -1.298 1.00e+00 1.00e+00 1.69e+00
+"""
+
+expected3 = """
+Bond | Solvent network | restraints: 6
+Sorted by residual:
+bond pdb=" OXT TYR A   7 "
+     pdb=" O   HOH B   5 "
+  ideal  model  delta    sigma   weight residual
+  3.219  3.219  0.000 5.00e-01 4.00e+00 3.16e-30
+bond pdb=" N   GLY A   1 "
+     pdb="MG    MG C   1 "
+  ideal  model  delta    sigma   weight residual
+  2.804  2.804  0.000 5.00e-01 4.00e+00 7.89e-31
+bond pdb=" OD1 ASN A   3 "
+     pdb=" O   HOH B   6 "
+  ideal  model  delta    sigma   weight residual
+  3.172  3.172 -0.000 5.00e-01 4.00e+00 7.89e-31
+bond pdb=" N   ASN A   6 "
+     pdb=" O   HOH B   1 "
+  ideal  model  delta    sigma   weight residual
+  2.996  2.996  0.000 5.00e-01 4.00e+00 7.89e-31
+bond pdb=" O   TYR A   7 "
+     pdb=" O   HOH B   2 "
+  ideal  model  delta    sigma   weight residual
+  2.709  2.709 -0.000 5.00e-01 4.00e+00 7.89e-31
+bond pdb=" OXT TYR A   7 "
+     pdb=" O   HOH B   4 "
+  ideal  model  delta    sigma   weight residual
+  2.675  2.675 -0.000 5.00e-01 4.00e+00 7.89e-31
+"""
+
 pdb_str = """
 CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
 ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
@@ -100,8 +143,12 @@ pdb_interpretation.geometry_restraints {
   model.process(make_restraints=True, pdb_interpretation_params=params)
   model.restrain_selection_to_self_or_neighbors(
     selection_string="not protein", radius=3.3)
-  with open("zz.geo","w") as fo:
-    fo.write(model.restraints_as_geo())
+  #
+  geo = model.restraints_as_geo()
+  geolines = [l.strip() for l in geo.splitlines()]
+  for e in [expected1, expected2, expected3]:
+    for l in e.splitlines():
+      assert l.strip() in geolines
 
 if (__name__ == "__main__"):
   start = time.perf_counter()
