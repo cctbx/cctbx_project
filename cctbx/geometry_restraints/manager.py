@@ -1099,6 +1099,8 @@ class manager(Base_geometry):
     import time
     if len(proxies) == 0:
       return
+    for p in proxies:
+      assert p.i_seqs[0] != p.i_seqs[1], "Bond between the same atom does not make sense: %d" % p.i_seqs[0]
     rt_mx_ji_options = [[] for x in proxies]
     # Get current max bond distance, copied from pair_proxies()
     t0 = time.time()

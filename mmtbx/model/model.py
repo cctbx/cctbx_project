@@ -2521,16 +2521,16 @@ class manager(object, metaclass=libtbx.utils.Tracker):
         for atom in ag.atoms():
           if atom.element_is_hydrogen(): continue
           interaction = _find_pair(atom.i_seq)
-          if interaction is None:
-            i,j, dist = atom.i_seq, atom.i_seq, 0
-          else:
+          if interaction is not None:
             i,j, dist = atom.i_seq, interaction[0], interaction[-1]
-          proxy = geometry_restraints.bond_simple_proxy(
-            i_seqs         = (i,j),
-            distance_ideal = dist,
-            weight         = 1./(0.5**2),
-            origin_id      = origin_ids.get_origin_id('hydrogen bonds'))
-          proxies.append(proxy)
+            assert i != j
+            # print(f'restraining {i}, {j}')
+            proxy = geometry_restraints.bond_simple_proxy(
+              i_seqs         = (i,j),
+              distance_ideal = dist,
+              weight         = 1./(0.5**2),
+              origin_id      = origin_ids.get_origin_id('solvent network'))
+            proxies.append(proxy)
       elif class_name == "common_small_molecule":
         pass # not hanled yet, different logic to anchor..
     grm.add_new_bond_restraints_in_place(proxies, self.get_sites_cart())

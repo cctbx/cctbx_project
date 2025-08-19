@@ -153,12 +153,12 @@ for link_info in [
      [0,1,2,3,4]
     ],
 
-    # ['solvent network',
-    #  'Bonds between water molecules',
-    #  '',
-    #  ['Solvent network'],
-    #  [0],
-    # ],
+    ['solvent network',
+     'Bonds between water molecules',
+     '',
+     ['Solvent network'],
+     [0],
+    ],
 
     ]:
   for oi in origin_ids:
