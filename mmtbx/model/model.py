@@ -2513,6 +2513,7 @@ class manager(object, metaclass=libtbx.utils.Tracker):
     bond_proxies,_=grm.get_all_bond_proxies(sites_cart = self.get_sites_cart())
     bond_pairs = [[p.i_seqs[0], p.i_seqs[1]] for p in bond_proxies]
     proxies = []
+    rcp_selection = []
     for ag in h_to_restrain.atom_groups():
       class_name = get_class(name = ag.resname)
       if class_name in ["common_water", "common_element"]:
@@ -2531,9 +2532,26 @@ class manager(object, metaclass=libtbx.utils.Tracker):
               weight         = 1./(0.5**2),
               origin_id      = origin_ids.get_origin_id('solvent network'))
             proxies.append(proxy)
+          else:
+            # collecting iseqs for reference coordinate proxies
+            rcp_selection.append(atom.i_seq)
       elif class_name == "common_small_molecule":
         pass # not hanled yet, different logic to anchor..
     grm.add_new_bond_restraints_in_place(proxies, self.get_sites_cart())
+    # add rcp:
+    if len(rcp_selection) > 0:
+      from mmtbx.geometry_restraints import reference
+      # remove duplicates and sort
+      rcp_selection = sorted(list(set(rcp_selection)))
+      # print(f'rcp_selection, {rcp_selection}')
+      grm.append_reference_coordinate_restraints_in_place(
+          reference.add_coordinate_restraints(
+              sites_cart = self.get_sites_cart().select(flex.size_t(rcp_selection)),
+              selection  = rcp_selection,
+              sigma      = 0.05,
+              limit      = 1.0,
+              top_out_potential=False))
+
 
   def get_vdw_radii(self, vdw_radius_default = 1.0):
     """
