@@ -32,7 +32,7 @@ class ChoiceDialog(wx.Dialog):
     else :
       caption = wx.StaticText(parent=self, label=message)
       caption.Wrap(480)
-      szr.Add(caption, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      szr.Add(caption, 0, wx.ALL, 5)
     choice_box = wx.BoxSizer(wx.HORIZONTAL)
     szr.Add(choice_box)
     if (choiceLabel is not None):
@@ -47,7 +47,7 @@ class ChoiceDialog(wx.Dialog):
     if (showDefaultButton):
       self.default_btn = wx.CheckBox(parent=self,
         label="Always do this in the future")
-      szr.Add(self.default_btn, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      szr.Add(self.default_btn, 0, wx.ALL, 5)
     add_ok_cancel_buttons(self, szr)
     self.Centre(wx.BOTH)
     outer_sizer.Fit(self)
