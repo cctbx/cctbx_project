@@ -3,7 +3,7 @@ from xfel.merging.application.worker import worker
 from xfel.merging.application.utils.memory_usage import get_memory_usage
 from cctbx.array_family import flex
 from cctbx import sgtbx
-from cctbx.sgtbx import change_of_basis_op
+from cctbx.sgtbx import change_of_basis_op, rt_mx
 from dxtbx.model.crystal import MosaicCrystalSauter2014
 from dxtbx.model.experiment_list import ExperimentList
 #from libtbx.development.timers import Profiler, Timer
@@ -189,7 +189,9 @@ class cosym(worker):
         this_reindex_op = reindex_op.as_hkl()
         this_coset = None
         for p_no, partition in enumerate(partitions):
-          partition_ops = [change_of_basis_op(ip).as_hkl() for ip in partition]
+          # Note: For centered cells it appears the partitions may have a translational part.
+          # We eliminate it by round-tripping the rt_mx to its rotational part and back.
+          partition_ops = [change_of_basis_op(rt_mx(ip.r())).as_hkl() for ip in partition]
           if this_reindex_op in partition_ops:
             this_coset = p_no; break
         assert this_coset is not None
@@ -246,7 +248,7 @@ class cosym(worker):
                      ANCHOR.cb_op_to_minimum[0]
           anchor_coset = None
           for p_no, partition in enumerate(partitions):
-              partition_ops = [change_of_basis_op(ip).as_hkl() for ip in partition]
+              partition_ops = [change_of_basis_op(rt_mx(ip.r())).as_hkl() for ip in partition]
               if anchor_op.as_hkl() in partition_ops:
                 anchor_coset = p_no; break
           assert anchor_coset is not None
@@ -265,7 +267,7 @@ class cosym(worker):
             this_reindex_op = reindex_op.as_hkl()
             this_coset = None
             for p_no, partition in enumerate(partitions):
-              partition_ops = [change_of_basis_op(ip).as_hkl() for ip in partition]
+              partition_ops = [change_of_basis_op(rt_mx(ip.r())).as_hkl() for ip in partition]
               if this_reindex_op in partition_ops:
                 this_coset = p_no; break
             assert this_coset is not None
