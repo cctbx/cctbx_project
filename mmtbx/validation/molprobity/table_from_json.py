@@ -232,7 +232,7 @@ class merged_validations():
 
   def get_cbetadev_summary_stoplight(self, model):
     color = None
-    if "cbetdev" in self.summaries:
+    if "cbetadev" in self.summaries:
       data = self.summaries["cbetadev"][model]
       if data["num_outliers"] == 0: color=green
       elif data["outlier_percentage"] >= 5: color=red
@@ -273,6 +273,77 @@ class merged_validations():
       elif data["cablam_outliers_percentage"] > 5: color=red
       else: color=yellow
     return color
+
+  def get_rna_puckers_summary_stoplight(self, model):
+    color = None
+    if "rna_puckers" in self.summaries:
+      data = self.summaries["rna_puckers"][model]
+      if data["num_residues"] == 0:
+        pct_outliers = 0.0
+      else:
+        pct_outliers = data["num_outliers"]/data["num_residues"]*100.0
+      if data["num_outliers"] == 0: color=green
+      elif pct_outliers > 5: color=red
+      else: color=yellow
+    return color
+
+  def get_rna_suites_summary_stoplight(self, model):
+    color = None
+    if "rna_suites" in self.summaries:
+      data = self.summaries["rna_suites"][model]
+      if data["num_suites"] == 0:
+        pct_outliers = 0.0
+      else:
+        pct_outliers = data["num_outliers"]/data["num_suites"]*100.0
+      if pct_outliers <= 5: color=green
+      elif pct_outliers > 15: color=red
+      else: color=yellow
+    return color
+
+  def get_omegalyze_summary_stoplight(self, model):
+    if "omegalyze" not in self.summaries:
+      return None
+
+    data = self.summaries["omegalyze"][model]
+    
+    # Define severity levels for the statuses
+    severity = {"green": 1, "yellow": 2, "red": 3}
+    worst_severity = severity["green"] # Start with the best possible status
+
+    # --- Check Cis non-Prolines ---
+    num_general = data.get("num_general", 0)
+    if num_general > 0:
+      pct_cis_general = data.get("num_cis_general", 0) / num_general * 100.0
+        
+      current_severity = severity["green"]
+      if pct_cis_general > 0.1:
+        current_severity = severity["red"]
+      elif pct_cis_general > 0.05:
+        current_severity = severity["yellow"]
+        
+      if current_severity > worst_severity:
+        worst_severity = current_severity
+    # --- Check Twisted Peptides ---
+    num_twisted = data.get("num_twisted_proline", 0) + data.get("num_twisted_general", 0)
+    if num_twisted > 0:
+      num_res = num_general + data.get("num_proline", 0)
+      pct_twisted = num_twisted / num_res * 100.0 if num_res > 0 else 0.0
+
+      current_severity = severity["green"]
+      if pct_twisted > 0.1:
+        current_severity = severity["red"]
+      else:
+        current_severity = severity["yellow"]
+            
+      if current_severity > worst_severity:
+        worst_severity = current_severity
+    # --- Return the color corresponding to the worst status found ---
+    if worst_severity == severity["red"]:
+      return red
+    elif worst_severity == severity["yellow"]:
+      return yellow
+    else:
+      return green
 
   def summary_table_proteins(self, model, red, yellow, green, resolution=None):
     protein_lines = []
@@ -650,6 +721,17 @@ class merged_validations():
       return "   <th>C&beta; deviation<br><small>Outliers: {num_outliers} out of {num_cbeta_residues}</small></th>".format(
         num_outliers=self.summaries["cbetadev"][model]["num_outliers"], num_cbeta_residues=self.summaries["cbetadev"][model]["num_cbeta_residues"])
     
+  def get_cbetadev_header_content(self, model):
+    summary = self.summaries["cbetadev"][model]
+    num_outliers = summary["num_outliers"]
+    num_residues = summary["num_cbeta_residues"]
+    stoplight_color = self.get_cbetadev_summary_stoplight(model)
+
+    return (
+        f"<div class='th-inner' data-status='{stoplight_color}'>C&beta; deviation<br><small>Outliers: "
+        f"{num_outliers} out of {num_residues}</small></div>"
+    )
+
   def cablam_header(self, model, bootstrap=False):
     summary = self.summaries["cablam"][model]
     sortable_attr = " data-sortable='true'" if bootstrap else ""
@@ -712,6 +794,29 @@ class merged_validations():
     total_nontrans = self.summaries["omegalyze"][model]["num_cis_proline"] + self.summaries["omegalyze"][model]["num_twisted_proline"] + self.summaries["omegalyze"][model]["num_cis_general"] + self.summaries["omegalyze"][model]["num_twisted_general"]
     return "    <th>Cis Peptides<br><small>Non-Trans: {total_nontrans} out of {total_res}</small></th>".format(
       total_nontrans=total_nontrans, total_res=total_res)
+
+  def get_omegalyze_header_content(self, model):
+    summary = self.summaries["omegalyze"][model]
+
+    # Calculate totals safely using .get() with a default of 0
+    num_proline = summary.get("num_proline", 0)
+    num_general = summary.get("num_general", 0)
+    total_res = num_proline + num_general
+
+    total_nontrans = (
+        summary.get("num_cis_proline", 0) +
+        summary.get("num_twisted_proline", 0) +
+        summary.get("num_cis_general", 0) +
+        summary.get("num_twisted_general", 0)
+    )
+
+    stoplight_color = self.get_omegalyze_summary_stoplight(model)
+
+    # Create the inner HTML content
+    return (
+        f"<div class='th-inner' data-status='{stoplight_color}'>Cis Peptides<br><small>Non-Trans: "
+        f"{total_nontrans} out of {total_res}</small></div>"
+    )
 
   def make_multicrit_table(self, model, outliers_only=False):
     lines = []
@@ -1456,18 +1561,31 @@ class residue_bootstrap():
 
   def _get_rotalyze_div(self, alt):
     data = self.validations.get("rotalyze", {}).get(alt)
-    if not data: return ("<div>-</div>", None)
+    if not data:
+      return ("<div>-</div>", None)
 
     status_map = {"OUTLIER": "outlier", "ALLOWED": "allowed", "FAVORED": "favored"}
     status = status_map.get(data["evaluation"].upper(), "")
     status_attr = f'data-status="{status}"' if status else ''
-    
+
+    # Conditionally add the rotamer name in italics if it's not an outlier
+    rotamer_display = ""
+    if data["evaluation"].upper() != "OUTLIER":
+      rotamer_name = data.get("rotamer_name", "")
+      if rotamer_name:
+        rotamer_display = f": <i>{rotamer_name}</i>"
+
     chi_angles = ", ".join([f"{round(c)}&deg;" for c in data.get("chi_angles", []) if c is not None])
-    content = "<span>{evaluation}<span class='cell-detail'> ({score:.2f}%)</span></span><span class='cell-detail'><small>chi angles: {chi_angles}</small><span>".format(
-        evaluation=data["evaluation"], score=data["score"], chi_angles=chi_angles
+
+    # Use an f-string for better readability
+    content = (
+      f"<span>{data['evaluation']}{rotamer_display}"
+      f"<span class='cell-detail'> ({data['score']:.2f}%)</span></span>"
+      f"<span class='cell-detail'><small>chi angles: {chi_angles}</small></span>"
     )
+
     html_div = f"<div {status_attr}>{content}</div>"
-    return (html_div, data["score"])
+    return (html_div, data.get("score"))
 
   def _get_mp_bonds_div(self, alt):
     data = self.validations.get("mp_bonds", {}).get(alt)
@@ -1492,6 +1610,24 @@ class residue_bootstrap():
     content = f"{len(data)} OUTLIER(S)<br><small>worst is {'-'.join(a.strip() for a in data[0]['atoms_name'])}: {score:.1f} &sigma;</small>"
     html_div = f"<div {status_attr}>{content}</div>"
     return (html_div, len(data))
+
+  def _get_cbetadev_div(self, alt):
+    """Generates the div for C-beta deviation analysis."""
+    data = self.validations.get("cbetadev", {}).get(alt)
+    if not data:
+      return ("<div>-</div>", None)
+
+    deviation = data.get("deviation")
+    status = "outlier" if data.get("outlier") else ""
+    status_attr = f'data-status="{status}"' if status else ''
+
+    # Format the content, adding the Angstrom symbol
+    content = f"{deviation:.2f}&Aring;"
+    
+    html_div = f"<div {status_attr}>{content}</div>"
+    
+    # Return the HTML and the raw deviation for sorting
+    return (html_div, deviation)
 
   def _get_cablam_div(self, alt):
     data = self.validations.get("cablam", {}).get(alt)
@@ -1520,6 +1656,41 @@ class residue_bootstrap():
         content_string += f"<small>{feedback_text}</small>"
     html_div = f"<div {status_attr}>{content_string}</div>"
     return (html_div, score)
+
+  def _get_omegalyze_div(self, alt, bootstrap=False):
+    """Generates the div for Omegalyze analysis."""
+    data = self.validations.get("omegalyze", {}).get(alt)
+    if not data:
+        return ("<div>-</div>", None)
+
+    omega_type = data.get("omega_type")
+    resname = data.get("resname")
+    omega_value = data.get("omega", 0.0)
+
+    status = ""
+    sort_value = 0 # Lower is better, so Trans peptides will sort first.
+    
+    if omega_type == "Twisted":
+        status = "severe"
+        sort_value = 3 # Highest severity
+    elif omega_type == "Cis":
+        if resname != "PRO":
+            status = "outlier"
+            sort_value = 2 # Medium severity
+        else: # Cis-proline is notable but not an outlier
+            sort_value = 1 # Low severity
+    
+    status_attr = f'data-status="{status}"' if bootstrap and status else ''
+    
+    proline_label = "PRO" if resname == "PRO" else "nonPRO"
+    content = (
+        f"<span>{omega_type} {proline_label}"
+        f"<span class='cell-detail'><br><small>omega={omega_value:.2f}&deg;</small></span></span>"
+    )
+    
+    html_div = f"<div {status_attr}>{content}</div>"
+    
+    return (html_div, sort_value)
 
 def loadModel(filename):  # from suitename/suites.py
   from iotbx.data_manager import DataManager
