@@ -504,7 +504,7 @@ class merged_validations():
       lines.append("""  <tr>
     <td>Cis nonProlines</td>
     <td bgcolor='{color}'>&nbsp;{num_cis_general} / {num_general}</td>
-    <td bgcolor='{color}'>&nbsp;{pct_cis_general}%</td>
+    <td bgcolor='{color}'>&nbsp;{pct_cis_general:.2f}%</td>
     <td>Goal: &lt;0.05%</td>
   </tr>""".format(color=color, num_cis_general=data["num_cis_general"], num_general=data["num_general"], pct_cis_general=pct_cis_general))
 
@@ -522,7 +522,7 @@ class merged_validations():
       lines.append("""  <tr>
     <td>Twisted peptides</td>
     <td bgcolor='{color}'>&nbsp;{num_twisted} / {num_res}</td>
-    <td bgcolor='{color}'>&nbsp;{pct_twisted}%</td>
+    <td bgcolor='{color}'>&nbsp;{pct_twisted:.2f}%</td>
     <td>Goal: 0</td>
   </tr>""".format(color=color, num_twisted=num_twisted, num_res=num_res, pct_twisted=pct_twisted))
     omega_lines = ["  <tr>","    <td align='center' rowspan='{rows}'>Peptide Omegas</td>".format(rows=len(lines))] + lines
@@ -1657,7 +1657,7 @@ class residue_bootstrap():
     html_div = f"<div {status_attr}>{content_string}</div>"
     return (html_div, score)
 
-  def _get_omegalyze_div(self, alt, bootstrap=False):
+  def _get_omegalyze_div(self, alt):
     """Generates the div for Omegalyze analysis."""
     data = self.validations.get("omegalyze", {}).get(alt)
     if not data:
@@ -1680,7 +1680,7 @@ class residue_bootstrap():
         else: # Cis-proline is notable but not an outlier
             sort_value = 1 # Low severity
     
-    status_attr = f'data-status="{status}"' if bootstrap and status else ''
+    status_attr = f'data-status="{status}"' if status else ''
     
     proline_label = "PRO" if resname == "PRO" else "nonPRO"
     content = (
