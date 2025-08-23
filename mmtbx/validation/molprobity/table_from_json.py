@@ -1,6 +1,8 @@
 from __future__ import division
 import os, sys
 import json
+from mmtbx.validation.molprobity import percentile_clashscore
+
 
 red = '#ff9999'
 yellow = '#ffff99'
@@ -180,7 +182,6 @@ class merged_validations():
     resolution=2.0
     lines = []
     if "clashscore" in self.summaries:
-      from mmtbx.validation.molprobity import percentile_clashscore
       data = self.summaries["clashscore"][model]
       pct_stats = percentile_clashscore.get_percentile_for_clashscore(data["clashscore"], resolution=resolution)
       #pct_stats = {"minres":minres, "maxres":maxres, "count":nSamples, "percentile":pctRank}
@@ -199,6 +200,236 @@ class merged_validations():
     <td>{percentile}<sup>th</sup> percentile {range_text}</td>
   </tr>""".format(color=color, clashscore=data["clashscore"], percentile=pct_stats["percentile"], range_text=range_text))
     return lines
+
+  def get_summary_table_data(self, model, resolution=2.0):
+    """
+    Generates a list of dictionaries containing all summary data,
+    ready to be converted to JSON.
+    """
+    table_data = []
+    
+    # --- Clashscore ---
+    if "clashscore" in self.summaries:
+        data = self.summaries["clashscore"][model]
+        pct_stats = percentile_clashscore.get_percentile_for_clashscore(data["clashscore"], resolution=resolution)
+        status = self.get_clashscore_summary_stoplight(model)
+        table_data.append({
+            "category": "All-Atom Contacts",
+            "metric": "Clashscore",
+            "value": f"{data['clashscore']:.2f}",
+            "percentile_html": f"{pct_stats['percentile']}<sup>th</sup> percentile",
+            "status": status,
+            "note": "100th percentile is the best among structures of comparable resolution; 0th is the worst."
+        })
+
+    # --- Protein Geometry ---
+    if "rotalyze" in self.summaries:
+        data = self.summaries["rotalyze"][model]
+        status = self.get_rotalyze_summary_stoplight(model) # Assumes you have this helper
+        table_data.append({
+            "category": "Protein Geometry",
+            "metric": "Poor rotamers",
+            "value": f"{data['num_outliers']} / {data['num_residues']}",
+            "percent_html": f"{data['outlier_percentage']:.1f}%",
+            "goal": "&lt;0.3%",
+            "status": status,
+            "note": "Some validations count different numbers of residues. Gly residues have no sidechains for rotamers."
+        })
+        status = self.get_rotalyze_favored_summary_stoplight(model)
+        table_data.append({
+            "category": "Protein Geometry",
+            "metric": "Favored rotamers",
+            "value": f"{data['num_favored']} / {data['num_residues']}",
+            "percent_html": f"{data['favored_percentage']:.1f}%",
+            "goal": "&gt;98%",
+            "status": status
+        })
+
+    if "ramalyze" in self.summaries:
+        data = self.summaries["ramalyze"][model]
+        status = self.get_ramalyze_summary_stoplight(model)
+        table_data.append({
+            "category": "Protein Geometry",
+            "metric": "Ramachandran outliers",
+            "value": f"{data['num_outliers']} / {data['num_residues']}",
+            "percent_html": f"{data['outlier_percentage']:.1f}%",
+            "goal": "&lt;0.05%",
+            "status": status,
+            "note": "Some validations count different numbers of residues. Ramachandran's &phi; or &psi; is incomplete at chain ends."
+        })
+        status = self.get_ramalyze_favored_summary_stoplight(model)
+        table_data.append({
+            "category": "Protein Geometry",
+            "metric": "Ramachandran favored",
+            "value": f"{data['num_favored']} / {data['num_residues']}",
+            "percent_html": f"{data['favored_percentage']:.1f}%",
+            "goal": "&gt;98%",
+            "status": status
+        })
+
+    #MolProbity Score
+    if "clashscore" in self.summaries and "ramalyze" in self.summaries and "rotalyze" in self.summaries:
+      from mmtbx.validation.utils import molprobity_score
+      from mmtbx.validation.molprobity import percentile_mpscore
+      mpscore = molprobity_score(self.summaries["clashscore"][model]["clashscore"],
+                                 self.summaries["rotalyze"][model]["outlier_percentage"],
+                                 self.summaries["ramalyze"][model]["favored_percentage"])
+      pct_stats = percentile_mpscore.get_percentile_for_mpscore(mpscore, resolution=resolution)
+      #pct_stats = {"minres":minres, "maxres":maxres, "count":nSamples, "percentile":pctRank}
+      status=None
+      if pct_stats["percentile"] >= 66: status=green
+      elif pct_stats["percentile"] < 33: status=red
+      else: status=yellow
+      table_data.append({
+          "category": "Protein Geometry",
+          "metric": "MolProbity score",
+          "value": f"{mpscore:.2f}",
+          "percent_html": f"{pct_stats['percentile']}<sup>th</sup> percentile",
+          "status": status,
+          "note": "MolProbity score combines the clashscore, rotamer, and Ramachandran evaluations into a single score, normalized to be on the same scale as X-ray resolution.  Lower is better."
+        })
+
+    if "cbetadev" in self.summaries:
+      data = self.summaries["cbetadev"][model]
+      status = self.get_cbetadev_summary_stoplight(model)
+      table_data.append({
+        "category": "Protein Geometry",
+        "metric": "C&beta; deviations &gt;0.25&Aring;",
+        "value": f"{data['num_outliers']} / {data['num_cbeta_residues']}",
+        "percent_html": f"{data['outlier_percentage']:.1f}%",
+        "goal": "0",
+        "status": status,
+        "note": "Some validations count different numbers of residues. Not all residues have a C&beta; atom, and won't be counted in the total."
+      })
+
+    # --- Bad Bonds ---
+    if "mp_bonds" in self.summaries and self.summaries["mp_bonds"][model].get("num_total_protein", 0) > 0:
+        data = self.summaries["mp_bonds"][model]
+        num_outliers = data.get("num_outliers_protein", 0)
+        num_total = data.get("num_total_protein", 0)
+        
+        pct_outliers = (num_outliers / num_total * 100.0) if num_total > 0 else 0.0
+        
+        status = self.get_mp_bonds_summary_stoplight(model)
+            
+        table_data.append({
+            "category": "Protein Geometry",
+            "metric": "Bad bonds",
+            "value": f"{num_outliers} / {num_total}",
+            "percent_html": f"{pct_outliers:.1f}%",
+            "goal": "0%",
+            "status": status 
+        })
+
+    # --- Bad Angles ---
+    if "mp_angles" in self.summaries and self.summaries["mp_angles"][model].get("num_total_protein", 0) > 0:
+        data = self.summaries["mp_angles"][model]
+        num_outliers = data.get("num_outliers_protein", 0)
+        num_total = data.get("num_total_protein", 0)
+
+        pct_outliers = (num_outliers / num_total * 100.0) if num_total > 0 else 0.0
+        
+        status = self.get_mp_angles_summary_stoplight(model)
+            
+        table_data.append({
+            "category": "Protein Geometry",
+            "metric": "Bad angles",
+            "value": f"{num_outliers} / {num_total}",
+            "percent_html": f"{pct_outliers:.1f}%",
+            "goal": "&lt;0.1%",
+            "status": status
+        })
+
+    # --- Peptide Omegas ---
+    if "omegalyze" in self.summaries:
+        data = self.summaries['omegalyze'][model]
+
+        # --- Cis Prolines (Informational) ---
+        num_proline = data.get("num_proline", 0)
+        num_cis_proline = data.get("num_cis_proline", 0)
+        pct_cis_pro = (num_cis_proline / num_proline * 100.0) if num_proline > 0 else 0.0
+        table_data.append({
+            "category": "Peptide Omegas",
+            "metric": "Cis Prolines",
+            "value": f"{num_cis_proline} / {num_proline}",
+            "percent_html": f"{pct_cis_pro:.1f}%",
+            "goal": "&le;1 per chain, or &le;5%",
+            "status": None # No stoplight color for this informational row
+        })
+
+        # --- Cis non-Prolines ---
+        num_general = data.get("num_general", 0)
+        num_cis_general = data.get("num_cis_general", 0)
+        pct_cis_general = (num_cis_general / num_general * 100.0) if num_general > 0 else 0.0
+        
+        status_cis_general = self.get_cis_nonpro_summary_stoplight(model)
+            
+        table_data.append({
+            "category": "Peptide Omegas",
+            "metric": "Cis non-Prolines",
+            "value": f"{num_cis_general} / {num_general}",
+            "percent_html": f"{pct_cis_general:.1f}%",
+            "goal": "&lt;0.05%",
+            "status": status_cis_general
+        })
+
+        # --- Twisted Peptides ---
+        num_twisted = data.get("num_twisted_proline", 0) + data.get("num_twisted_general", 0)
+        total_res = num_general + num_proline
+        pct_twisted = (num_twisted / total_res * 100.0) if total_res > 0 else 0.0
+
+        status_twisted = self.get_twisted_summary_stoplight(model)
+
+        table_data.append({
+            "category": "Peptide Omegas",
+            "metric": "Twisted peptides",
+            "value": f"{num_twisted} / {total_res}",
+            "percent_html": f"{pct_twisted:.1f}%",
+            "goal": "0",
+            "status": status_twisted
+        })
+
+            # --- Low-resolution Criteria ---
+        if "cablam" in self.summaries:
+            data = self.summaries["cablam"][model]
+
+            # --- CaBLAM Outliers ---
+            outlier_pct = data.get("cablam_outliers_percentage", 0.0)
+            status_cablam = yellow # Default to yellow
+            if outlier_pct <= 1.0:
+                status_cablam = green
+            elif outlier_pct > 5.0:
+                status_cablam = red
+
+            table_data.append({
+                "category": "Low-resolution Criteria",
+                "metric": "CaBLAM outliers",
+                "value": f'{data.get("num_cablam_outliers", 0)} / {data.get("num_residues", 0)}',
+                "percent_html": f"{outlier_pct:.1f}%",
+                "goal": "&lt;1.0%",
+                "status": status_cablam
+            })
+
+            # --- CA Geometry Outliers ---
+            ca_geom_pct = data.get("ca_geom_outliers_percentage", 0.0)
+            status_ca_geom = yellow # Default to yellow
+            if ca_geom_pct <= 0.5:
+                status_ca_geom = green
+            elif ca_geom_pct > 1.0:
+                status_ca_geom = red
+
+            table_data.append({
+                "category": "Low-resolution Criteria",
+                "metric": "CA Geometry outliers",
+                "value": f'{data.get("num_ca_geom_outliers", 0)} / {data.get("num_residues", 0)}',
+                "percent_html": f"{ca_geom_pct:.1f}%",
+                "goal": "&lt;0.5%",
+                "status": status_ca_geom
+            })
+    # ... You would continue this pattern for all other summary metrics ...
+    # (Favored Rotamers, Favored Ramachandran, MolProbity Score, etc.)
+
+    return table_data
 
   def get_clashscore_summary_stoplight(self, model, resolution=None):
     from mmtbx.validation.molprobity import percentile_clashscore
@@ -221,6 +452,15 @@ class merged_validations():
       else: color=yellow
     return color
 
+  def get_ramalyze_favored_summary_stoplight(self, model):
+    color = None
+    if "ramalyze" in self.summaries:
+      data = self.summaries["ramalyze"][model]
+      if data["favored_percentage"] >= 98: color=green
+      elif data["favored_percentage"] < 95: color=red
+      else: color=yellow
+    return color
+
   def get_rotalyze_summary_stoplight(self, model):
     color = None
     if "rotalyze" in self.summaries:
@@ -228,6 +468,19 @@ class merged_validations():
       if data["outlier_percentage"] <= 0.3: color=green
       elif data["outlier_percentage"] > 1.5: color=red
       else: color=yellow
+    return color
+
+  def get_rotalyze_favored_summary_stoplight(self, model):
+    color = None
+    if "rotalyze" in self.summaries:
+      data = self.summaries["rotalyze"][model]
+      if data["num_residues"] == 0:
+        color = None #none would be more accurate; I think this correctly shows no color in analysis_result.html
+      else:
+        favored_pct = data["num_favored"]/data["num_residues"]*100.0
+        if favored_pct >= 98: color=green
+        elif favored_pct < 95: color=red
+        else: color=yellow
     return color
 
   def get_cbetadev_summary_stoplight(self, model):
@@ -300,6 +553,38 @@ class merged_validations():
       else: color=yellow
     return color
 
+  def get_cis_nonpro_summary_stoplight(self, model):
+    if "omegalyze" in self.summaries:
+      data = self.summaries["omegalyze"][model]
+      num_general = data.get("num_general", 0)
+      num_cis_general = data.get("num_cis_general", 0)
+      pct_cis_general = (num_cis_general / num_general * 100.0) if num_general > 0 else 0.0
+      
+      color = yellow # Default to yellow
+      if pct_cis_general <= 0.05:
+        color = green
+      elif pct_cis_general > 0.1:
+        color = red
+    return color
+
+  def get_twisted_summary_stoplight(self, model):
+    if "omegalyze" in self.summaries:
+      data = self.summaries["omegalyze"][model]
+      num_general = data.get("num_general", 0)
+      num_proline = data.get("num_proline", 0)
+      num_twisted = data.get("num_twisted_proline", 0) + data.get("num_twisted_general", 0)
+      total_res = num_general + num_proline
+      pct_twisted = (num_twisted / total_res * 100.0) if total_res > 0 else 0.0
+
+      color = yellow # Default to yellow
+      if num_twisted == 0:
+          color = green
+      elif pct_twisted > 0.1:
+          color = red
+    return color
+
+  # returns the worst color out of all the omegalyze categories. 
+  # This is used for the color of the header of multicrit table.
   def get_omegalyze_summary_stoplight(self, model):
     if "omegalyze" not in self.summaries:
       return None
@@ -1588,26 +1873,32 @@ class residue_bootstrap():
     return (html_div, data.get("score"))
 
   def _get_mp_bonds_div(self, alt):
+    cutoff = 4
     data = self.validations.get("mp_bonds", {}).get(alt)
     if not data: return ("<div>-</div>", None)
 
     score = abs(data[0]["score"])
+    if score < cutoff: return ("<div>-</div>", None)
     status = "severe" if score >= 10 else "outlier"
     status_attr = f'data-status="{status}"'
+    outliers = sum(1 for item in data if item['outlier'])
     
-    content = f"{len(data)} OUTLIER(S)<br><small>worst is {data[0]['atoms_name'][0].strip()}--{data[0]['atoms_name'][1].strip()}: {score:.1f} &sigma;</small>"
+    content = f"{outliers} OUTLIER(S)<br><small>worst is {data[0]['atoms_name'][0].strip()}--{data[0]['atoms_name'][1].strip()}: {score:.1f} &sigma;</small>"
     html_div = f"<div {status_attr}>{content}</div>"
     return (html_div, len(data))
     
   def _get_mp_angles_div(self, alt):
+    cutoff = 4
     data = self.validations.get("mp_angles", {}).get(alt)
     if not data: return ("<div>-</div>", None)
 
     score = abs(data[0]["score"])
+    if score < cutoff: return ("<div>-</div>", None)
     status = "severe" if score >= 10 else "outlier"
     status_attr = f'data-status="{status}"'
+    outliers = sum(1 for item in data if item['outlier'])
     
-    content = f"{len(data)} OUTLIER(S)<br><small>worst is {'-'.join(a.strip() for a in data[0]['atoms_name'])}: {score:.1f} &sigma;</small>"
+    content = f"{outliers} OUTLIER(S)<br><small>worst is {'-'.join(a.strip() for a in data[0]['atoms_name'])}: {score:.1f} &sigma;</small>"
     html_div = f"<div {status_attr}>{content}</div>"
     return (html_div, len(data))
 
