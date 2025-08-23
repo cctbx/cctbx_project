@@ -326,7 +326,9 @@ class rotalyze(validation):
         "num_outliers" : self.n_outliers_by_model[model_id],
         "num_residues" : self.n_total_by_model[model_id],
         "outlier_percentage" : self.get_outliers_fraction_for_model(model_id) * 100,
-        "outlier_goal" : self.get_outliers_goal()
+        "outlier_goal" : self.get_outliers_goal(),
+        "favored_percentage" : self.n_favored_by_model[model_id]/self.n_total_by_model[model_id] * 100,
+        "favored_goal" : self.get_favored_goal()
       }
     data['summary_results'] = summary_results
     return json.dumps(data, indent=2)
