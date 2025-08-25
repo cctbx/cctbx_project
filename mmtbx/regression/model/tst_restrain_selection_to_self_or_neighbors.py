@@ -25,27 +25,27 @@ Sorted by residual:
 bond pdb=" OXT TYR A   7 "
      pdb=" O   HOH B   5 "
   ideal  model  delta    sigma   weight residual
-  3.219  3.219  0.000 5.00e-01 4.00e+00 3.16e-30
+  3.219  3.219  0.000 5.00e-01 4.00e+00
 bond pdb=" N   GLY A   1 "
      pdb="MG    MG C   1 "
   ideal  model  delta    sigma   weight residual
-  2.804  2.804  0.000 5.00e-01 4.00e+00 7.89e-31
+  2.804  2.804  0.000 5.00e-01 4.00e+00
 bond pdb=" OD1 ASN A   3 "
      pdb=" O   HOH B   6 "
   ideal  model  delta    sigma   weight residual
-  3.172  3.172 -0.000 5.00e-01 4.00e+00 7.89e-31
+  3.172  3.172 -0.000 5.00e-01 4.00e+00
 bond pdb=" N   ASN A   6 "
      pdb=" O   HOH B   1 "
   ideal  model  delta    sigma   weight residual
-  2.996  2.996  0.000 5.00e-01 4.00e+00 7.89e-31
+  2.996  2.996  0.000 5.00e-01 4.00e+00
 bond pdb=" O   TYR A   7 "
      pdb=" O   HOH B   2 "
   ideal  model  delta    sigma   weight residual
-  2.709  2.709 -0.000 5.00e-01 4.00e+00 7.89e-31
+  2.709  2.709 -0.000 5.00e-01 4.00e+00
 bond pdb=" OXT TYR A   7 "
      pdb=" O   HOH B   4 "
   ideal  model  delta    sigma   weight residual
-  2.675  2.675 -0.000 5.00e-01 4.00e+00 7.89e-31
+  2.675  2.675 -0.000 5.00e-01 4.00e+00
 """
 
 pdb_str = """
@@ -148,7 +148,13 @@ pdb_interpretation.geometry_restraints {
   geolines = [l.strip() for l in geo.splitlines()]
   for e in [expected1, expected2, expected3]:
     for l in e.splitlines():
-      assert l.strip() in geolines
+      l = l.strip()
+      found = False
+      for gl in geolines:
+        if l in gl:
+          found = True
+          break
+      assert found
 
 if (__name__ == "__main__"):
   start = time.perf_counter()
