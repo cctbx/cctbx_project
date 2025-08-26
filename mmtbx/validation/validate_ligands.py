@@ -519,9 +519,87 @@ class ligand_result(object):
       return
     if self._ccs is not None:
       return self._ccs
+
+    cs = self.fmodel.f_obs().crystal_symmetry()
+    crystal_gridding = maptbx.crystal_gridding(
+      unit_cell        = cs.unit_cell(),
+      space_group_info = cs.space_group_info(),
+      symmetry_flags   = maptbx.use_space_group_symmetry,
+      step             = 0.6)
+
+    # Dfmodel map including ligand
+    #fmodel.update_xray_structure(
+    #  xray_structure = self.model.get_xray_structure(),
+    #  update_f_calc=True
+    #)
+    m2 = self.compute_maps(
+      fmodel           = self.fmodel,
+      crystal_gridding = crystal_gridding,
+      map_type         = "DFmodel")
+
+    fmodel = self.fmodel.deep_copy()
+    sel = self.model.selection(string=self.sel_str)
+    # 2mFo-DFc map without ligand
+    fmodel.update_xray_structure(
+      xray_structure = fmodel.xray_structure.select(~sel),
+      update_f_calc=True
+    )
+    #print ("r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(), fmodel.r_free()))
+    #fmodel.show_short(show_k_mask=True, log=None, prefix="")
+    m1 = self.compute_maps(
+      fmodel           = fmodel,
+      crystal_gridding = crystal_gridding,
+      map_type         = "2mFo-DFc")
+
+    sites_cart = self.model.get_sites_cart().select(sel)
+    sel = maptbx.grid_indices_around_sites(
+      unit_cell  = cs.unit_cell(),
+      fft_n_real = m1.focus(),
+      fft_m_real = m1.all(),
+      sites_cart = sites_cart,
+      site_radii = flex.double(sites_cart.size(), 1.0))
+    m1 = m1.set_selected(m1<0, 0)
+    m2 = m2.set_selected(m1<0, 0)
+    cc = flex.linear_correlation(
+      x=m1.select(sel).as_1d(),
+      y=m2.select(sel).as_1d()).coefficient()
+
+    self._ccs = group_args(
+      cc_2fofc = cc,
+       )
+    return self._ccs
+
+  # ----------------------------------------------------------------------------
+
+  def compute_maps(self, fmodel, crystal_gridding, map_type):
+    map_coefficients = map_tools.electron_density_map(
+      fmodel = fmodel).map_coefficients(
+        map_type         = map_type,
+        isotropize       = True,
+        fill_missing     = False)
+    fft_map = miller.fft_map(
+      crystal_gridding     = crystal_gridding,
+      fourier_coefficients = map_coefficients)
+    fft_map.apply_sigma_scaling()
+    return fft_map.real_map_unpadded()
+
+  # ----------------------------------------------------------------------------
+
+  def get_ccs_old(self):
+    if self.fmodel is None:
+      return
+    if self._ccs is not None:
+      return self._ccs
    # get map coefficients
+    fmodel = self.fmodel.deep_copy()
+    sel = self.model.selection(string=self.sel_str)
+    # 2mFo-DFc map without ligand
+    fmodel.update_xray_structure(
+      xray_structure = fmodel.xray_structure.select(~sel),
+      update_f_calc=True
+    )
     mc = map_tools.electron_density_map(
-      fmodel = self.fmodel).map_coefficients(
+      fmodel = fmodel).map_coefficients(
         map_type         = "2mFo-DFc",
         isotropize       = True,
         fill_missing     = False)
