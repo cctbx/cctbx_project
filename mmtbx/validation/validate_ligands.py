@@ -544,7 +544,6 @@ class ligand_result(object):
       xray_structure = fmodel.xray_structure.select(~sel),
       update_f_calc=True
     )
-    #print ("r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(), fmodel.r_free()))
     #fmodel.show_short(show_k_mask=True, log=None, prefix="")
     m1 = self.compute_maps(
       fmodel           = fmodel,
@@ -582,52 +581,6 @@ class ligand_result(object):
       fourier_coefficients = map_coefficients)
     fft_map.apply_sigma_scaling()
     return fft_map.real_map_unpadded()
-
-  # ----------------------------------------------------------------------------
-
-  def get_ccs_old(self):
-    if self.fmodel is None:
-      return
-    if self._ccs is not None:
-      return self._ccs
-   # get map coefficients
-    fmodel = self.fmodel.deep_copy()
-    sel = self.model.selection(string=self.sel_str)
-    # 2mFo-DFc map without ligand
-    fmodel.update_xray_structure(
-      xray_structure = fmodel.xray_structure.select(~sel),
-      update_f_calc=True
-    )
-    mc = map_tools.electron_density_map(
-      fmodel = fmodel).map_coefficients(
-        map_type         = "2mFo-DFc",
-        isotropize       = True,
-        fill_missing     = False)
-    d_min = self.fmodel.f_obs().d_min()
-    cg = self.fmodel.f_obs().crystal_gridding(
-      d_min             = d_min,
-      symmetry_flags    = maptbx.use_space_group_symmetry,
-      resolution_factor = 0.25)
-    map_2fo = miller.fft_map(
-        crystal_gridding     = cg,
-        fourier_coefficients = mc)
-    map_2fo.apply_sigma_scaling()
-    map_2fo_data = map_2fo.real_map_unpadded()
-
-    cc_calculator = mmtbx.maps.correlation.from_map_and_xray_structure_or_fmodel(
-      xray_structure = self._xrs,
-      map_data       = map_2fo_data,
-      d_min          = d_min)
-    # Atom radius
-    atom_radius = mtriage.get_atom_radius(
-      xray_structure = self._xrs,
-      resolution     = d_min)
-    cc = cc_calculator.cc(selection = self.ligand_isel_noH, atom_radius = atom_radius)
-
-    self._ccs = group_args(
-      cc_2fofc = cc,
-       )
-    return self._ccs
 
   # ----------------------------------------------------------------------------
 
