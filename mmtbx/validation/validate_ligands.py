@@ -14,7 +14,6 @@ from cctbx import miller
 from libtbx.str_utils import make_sub_header
 import mmtbx.maps.polder
 import mmtbx.maps.correlation
-from mmtbx.maps import mtriage
 
 master_params_str = """
 validate_ligands {
