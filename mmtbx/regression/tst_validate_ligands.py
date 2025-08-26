@@ -12,10 +12,11 @@ from mmtbx.programs import validate_ligands as val_lig
 def run():
   run_test1()
   run_test2()
-  #os.remove('one_chain_ligand_water_newH.cif')
+  os.remove('one_chain_ligand_water_newH.cif')
   os.remove('one_chain_ligand_water_newH.txt')
-  #os.remove('two_chains_ligand_water_newH.cif')
+  os.remove('two_chains_ligand_water_newH.cif')
   os.remove('two_chains_ligand_water_newH.txt')
+  run_test3()
 
 # ------------------------------------------------------------------------------
 
@@ -144,6 +145,44 @@ def tst_adps(vl_manager):
     #   #print([adps.b_min_within, adps.b_max_within, adps.b_mean_within])
 
 # ------------------------------------------------------------------------------
+
+def run_test3():
+  '''
+  Test
+  - CC calculation for three ligands
+  '''
+  mtz_fname = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/reflection_files/1avd.mtz",
+    test=os.path.isfile)
+  pdb_fname = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/pdb1avd.ent.gz",
+    test=os.path.isfile)
+  #print(pdb_fname, mtz_fname)
+  args=[pdb_fname, mtz_fname]
+  #
+  print("mmtbx.development.validate_ligands %s" %(" ".join(args)))
+  try:
+    result = run_program(program_class=val_lig.Program,args=args,
+     logger = null_out())
+  except Exception as e:
+    msg = traceback.format_exc()
+
+  vl_manager = result.ligand_manager
+
+  for lr in vl_manager:
+    occs = lr.get_occupancies()
+    id_str = lr.id_str
+    adps = lr.get_adps()
+    ccs = lr.get_ccs()
+    #print(id_str, ccs.cc_2fofc)
+    if (id_str.strip() == 'NAG A 600'):
+      assert approx_equal(ccs.cc_2fofc, 0.87, eps=0.03)
+    if (id_str.strip() == 'BTN A 400'):
+      assert approx_equal(ccs.cc_2fofc, 0.94, eps=0.03)
+    if (id_str.strip() == 'BTN B 401'):
+      assert approx_equal(ccs.cc_2fofc, 0.95, eps=0.03)
+#  tst_occupancies(vl_manager = vl_manager)
+#  tst_adps(vl_manager = vl_manager)
 
 #def tst_get_overlaps(vl_manager):
 #  '''

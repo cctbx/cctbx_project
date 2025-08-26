@@ -163,7 +163,8 @@ electron density values/CC.
       print('\n', file = self.logger)
       fmodel.update_all_scales()
       fmodel.show(log=self.logger, show_header=False)
-      print ("r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(), fmodel.r_free()))
+      print ("r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(), fmodel.r_free()),
+        file=self.logger)
 
 
 #    cs = self.get_crystal_symmetry(model_fn, data_fn)
