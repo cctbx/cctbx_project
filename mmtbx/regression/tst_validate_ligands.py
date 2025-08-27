@@ -151,6 +151,8 @@ def run_test3():
   '''
   Test
   - CC calculation for three ligands
+  - ADP calculations for ligands
+  - occupancy calculations for ligands
   '''
   mtz_fname = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/reflection_files/1avd.mtz",
@@ -176,10 +178,36 @@ def run_test3():
     ccs = lr.get_ccs()
     if (id_str.strip() == 'NAG A 600'):
       assert approx_equal(ccs.cc_2fofc, 0.87, eps=0.03)
+      #
+      assert approx_equal(occs.occ_min, 0, eps=0.01)
+      assert approx_equal(occs.occ_max, 1, eps=0.01)
+      assert approx_equal(occs.occ_mean, 0.86, eps=0.01)
+      #
+      assert approx_equal(adps.b_min, 27.99, eps=0.01)
+      assert approx_equal(adps.b_max, 90.00, eps=0.01)
+      assert approx_equal(adps.b_mean, 70.71, eps=0.05)
     if (id_str.strip() == 'BTN A 400'):
       assert approx_equal(ccs.cc_2fofc, 0.94, eps=0.03)
+      #
+      assert approx_equal(occs.occ_mean, 1, eps=0.01)
+      #
+      assert approx_equal(adps.b_min, 4.00, eps=0.01)
+      assert approx_equal(adps.b_max, 90.00, eps=0.01)
+      assert approx_equal(adps.b_mean, 31.19, eps=0.05)
     if (id_str.strip() == 'BTN B 401'):
       assert approx_equal(ccs.cc_2fofc, 0.95, eps=0.03)
+      #
+      assert approx_equal(occs.occ_mean, 1, eps=0.01)
+      #
+      assert approx_equal(adps.b_min, 4.00, eps=0.01)
+      assert approx_equal(adps.b_max, 46.67, eps=0.01)
+      assert approx_equal(adps.b_mean, 23.04, eps=0.05)
+      #print(occs.occ_min)
+      #print(occs.occ_max)
+      #print(occs.occ_mean)
+      #print(adps.b_min)
+      #print(adps.b_max)
+      #print(adps.b_mean)
 
 #def tst_get_overlaps(vl_manager):
 #  '''
