@@ -184,7 +184,8 @@ def update_libtbx_env(default_dir=None):
 
   # update dispatchers
   env.reset_dispatcher_bookkeeping()
-  env.write_python_and_show_path_duplicates()
+  if 'libtbx' in env.module_dict.keys():
+    env.write_python_and_show_path_duplicates()
   for module in env.module_list:
     module.process_command_line_directories()
 
