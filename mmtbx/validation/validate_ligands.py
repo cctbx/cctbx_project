@@ -291,11 +291,13 @@ class ligand_result(object):
       #'_polder_ccs'  : 'get_polder_ccs',
     }
 
+    self._set_internals()
+
     for attr, func in self._result_attrs.items():
       setattr(self, attr, None)
       assert hasattr(self, func)
 
-    self._set_internals()
+
 
   # ----------------------------------------------------------------------------
 

@@ -109,7 +109,6 @@ def tst_adps(vl_manager):
     id_str = lr.id_str
     adps = lr.get_adps()
     if (id_str == 'ABEN B   2'):
-     #print([adps.b_min_within, adps.b_max_within, adps.b_mean_within])
       assert(adps.n_iso == 0)
       assert(adps.n_aniso == 9)
       assert(adps.b_min_within is None)
@@ -139,11 +138,6 @@ def tst_adps(vl_manager):
       assert(adps.b_min_within is None)
       assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
         [58.7,114.9,96.9], eps=0.1)
-    #   #print(adps.n_iso)
-    #   #print(adps.n_aniso)
-    #   #print(adps.n_above_100)
-    #   #print([adps.b_min, adps.b_max, adps.b_mean])
-    #   #print([adps.b_min_within, adps.b_max_within, adps.b_mean_within])
 
 # ------------------------------------------------------------------------------
 
@@ -186,6 +180,11 @@ def run_test3():
       assert approx_equal(adps.b_min, 27.99, eps=0.01)
       assert approx_equal(adps.b_max, 90.00, eps=0.01)
       assert approx_equal(adps.b_mean, 70.71, eps=0.05)
+      #
+      assert approx_equal(adps.b_min_within, 5.23, eps=0.01)
+      assert approx_equal(adps.b_max_within, 79.14, eps=0.01)
+      assert approx_equal(adps.b_mean_within, 35.37, eps=0.02)
+      #
     if (id_str.strip() == 'BTN A 400'):
       assert approx_equal(ccs.cc_2fofc, 0.94, eps=0.03)
       #
@@ -194,6 +193,11 @@ def run_test3():
       assert approx_equal(adps.b_min, 4.00, eps=0.01)
       assert approx_equal(adps.b_max, 90.00, eps=0.01)
       assert approx_equal(adps.b_mean, 31.19, eps=0.05)
+
+      assert approx_equal(adps.b_min_within, 4.00, eps=0.01)
+      assert approx_equal(adps.b_max_within, 54.65, eps=0.01)
+      assert approx_equal(adps.b_mean_within, 23.23, eps=0.02)
+      #
     if (id_str.strip() == 'BTN B 401'):
       assert approx_equal(ccs.cc_2fofc, 0.95, eps=0.03)
       #
@@ -202,6 +206,13 @@ def run_test3():
       assert approx_equal(adps.b_min, 4.00, eps=0.01)
       assert approx_equal(adps.b_max, 46.67, eps=0.01)
       assert approx_equal(adps.b_mean, 23.04, eps=0.05)
+      #
+      assert approx_equal(adps.b_min_within, 4.00, eps=0.01)
+      assert approx_equal(adps.b_max_within, 75.42, eps=0.01)
+      assert approx_equal(adps.b_mean_within, 28.16, eps=0.02)
+      #print(adps.b_min_within)
+      #print(adps.b_max_within)
+      #print(adps.b_mean_within)
       #print(occs.occ_min)
       #print(occs.occ_max)
       #print(occs.occ_mean)
