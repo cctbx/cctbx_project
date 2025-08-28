@@ -691,6 +691,7 @@ class ligand_result(object):
 
     #string_io = StringIO()
     #ligand_clashes.show(log=string_io, show_clashscore=False)
+    #print(string_io.getvalue())
 
     results = ligand_clashes.get_results()
 

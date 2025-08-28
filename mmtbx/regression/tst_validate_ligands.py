@@ -52,7 +52,8 @@ def run_test1():
   for lr in vl_manager:
     clashes_result = lr.get_overlaps()
     assert(clashes_result.n_clashes == 5)
-    #assert approx_equal(clashes_result.clashscore, 29.2, eps=1.0)
+    #print(round(clashes_result.clashscore,1), 27.6)
+    assert approx_equal(clashes_result.clashscore, 27.6, eps=0.5)
 
 # ------------------------------------------------------------------------------
 
@@ -170,6 +171,8 @@ def run_test3():
     id_str = lr.id_str
     adps = lr.get_adps()
     ccs = lr.get_ccs()
+    clashes_result = lr.get_overlaps()
+    #
     if (id_str.strip() == 'NAG A 600'):
       assert approx_equal(ccs.cc_2fofc, 0.87, eps=0.03)
       #
@@ -185,6 +188,10 @@ def run_test3():
       assert approx_equal(adps.b_max_within, 79.14, eps=0.01)
       assert approx_equal(adps.b_mean_within, 35.37, eps=0.02)
       #
+      assert(clashes_result.n_clashes == 1)
+      #print(round(clashes_result.clashscore,1))
+      assert approx_equal(clashes_result.clashscore, 9.4, eps=0.5)
+      #
     if (id_str.strip() == 'BTN A 400'):
       assert approx_equal(ccs.cc_2fofc, 0.94, eps=0.03)
       #
@@ -198,6 +205,10 @@ def run_test3():
       assert approx_equal(adps.b_max_within, 54.65, eps=0.01)
       assert approx_equal(adps.b_mean_within, 23.23, eps=0.02)
       #
+      assert(clashes_result.n_clashes == 4)
+      #print(round(clashes_result.clashscore,1))
+      assert approx_equal(clashes_result.clashscore, 13.0, eps=0.5)
+      #
     if (id_str.strip() == 'BTN B 401'):
       assert approx_equal(ccs.cc_2fofc, 0.95, eps=0.03)
       #
@@ -210,6 +221,11 @@ def run_test3():
       assert approx_equal(adps.b_min_within, 4.00, eps=0.01)
       assert approx_equal(adps.b_max_within, 75.42, eps=0.01)
       assert approx_equal(adps.b_mean_within, 28.16, eps=0.02)
+      #
+      assert(clashes_result.n_clashes == 6)
+      #print(round(clashes_result.clashscore,1))
+      assert approx_equal(clashes_result.clashscore, 18.5, eps=0.5)
+
       #print(adps.b_min_within)
       #print(adps.b_max_within)
       #print(adps.b_mean_within)
