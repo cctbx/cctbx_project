@@ -2012,6 +2012,7 @@ class CCIBuilder(Builder):
     'eigen',
     'reduce',
     'ksdssp',
+    'ncdist',
   ]
   CODEBASES_EXTRA = []
   # Copy these sources from cci.lbl.gov
