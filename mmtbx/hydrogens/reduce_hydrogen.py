@@ -110,7 +110,7 @@ def get_h_restraints(resname, strict=True):
 
 # ==============================================================================
 
-def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True):
+def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True, raise_sorry=True):
   # if get_class(residue.resname) in ['common_rna_dna']:
   #   md = get_h_restraints(residue.resname)
   #   return md
@@ -129,7 +129,10 @@ def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True):
   if md is None:
     md = get_h_restraints(residue.resname, strict=False)
     if md is None:
-      raise Sorry('Entity "%s" not found in CCD (or GeoStd). Please supply restraints.' % residue.resname)
+      if raise_sorry:
+        raise Sorry('Entity "%s" not found in CCD (or GeoStd). Please supply restraints.' % residue.resname)
+      else:
+        return None, None
     from six.moves import cStringIO as StringIO
     input_string='data_comp_list\n'
     input_string+=str(md.chem_comp.as_cif_loop())
@@ -447,7 +450,7 @@ class place_hydrogens():
             if(get_class(name=ag.resname) == "common_water"): continue
             actual = [a.name.strip().upper() for a in ag.atoms()]
             #
-            mlq, cif_object = mon_lib_query(residue=ag, mon_lib_srv=mon_lib_srv)
+            mlq, cif_object = mon_lib_query(residue=ag, mon_lib_srv=mon_lib_srv, raise_sorry=False)
             if mlq is None:
               self.no_H_placed_mlq.append(ag.resname)
               continue

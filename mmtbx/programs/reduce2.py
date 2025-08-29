@@ -101,7 +101,10 @@ stop_on_any_missing_hydrogen = False
   .type = bool
   .short_caption = Emit a Sorry and stop when any hydrogen in the model has insufficient restraints.
   .help = Emit a Sorry and stop when any hydrogen in the model has insufficient restraints. It will always emit when there are one or more residues without restraints.
-
+ignore_missing_restraints = False
+  .type = bool
+  .short_caption = Don't stop if restraints for a residue are missing.
+  .help = Don't stop if restraints for a residue are missing.
 output
   .style = menu_item auto_align
 {
@@ -1046,11 +1049,12 @@ NOTES:
     reduce_add_h_obj.run()
     reduce_add_h_obj.show(self.logger)
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
-    if len(missed_residues) > 0:
-      bad = ""
-      for res in missed_residues:
-        bad += " " + res
-      raise Sorry("Restraints were not found for the following residues:"+bad)
+    if not self.params.ignore_missing_restraints:
+      if len(missed_residues) > 0:
+        bad = ""
+        for res in missed_residues:
+          bad += " " + res
+        raise Sorry("Restraints were not found for the following residues:"+bad)
     insufficient_restraints = list(reduce_add_h_obj.site_labels_no_para)
     if self.params.stop_on_any_missing_hydrogen and len(insufficient_restraints) > 0:
       bad = insufficient_restraints[0]

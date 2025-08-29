@@ -95,6 +95,7 @@ electron density values/CC.
     from mmtbx.programs import reduce2 as reduce2
     args=["overwrite=True",
           "%s" % model_fn,
+          "ignore_missing_restraints=True",
           #"use_neutron_distances=True",
           "output.filename=%s" % model_fn_reduce2]
     print("mmtbx.reduce2 %s" %(" ".join(args)), file=self.logger)
@@ -127,7 +128,7 @@ electron density values/CC.
         for ag in rg.atom_groups():
           if (get_class(name=ag.resname) in exclude): continue
           print('Found ligand: ', ag.resname, file=self.logger)
-          mlq, cif_object = reduce_hydrogen.mon_lib_query(residue=ag, mon_lib_srv=model.get_mon_lib_srv())
+          mlq, cif_object = reduce_hydrogen.mon_lib_query(residue=ag, mon_lib_srv=model.get_mon_lib_srv(), raise_sorry=False)
           #print(mlq)
           #print(cif_object)
           if cif_object:
@@ -170,6 +171,8 @@ electron density values/CC.
       m = self.data_manager.get_model()
       self.working_model = m
 
+    if self.working_model is None:
+      raise Sorry('Could not create model object')
     self.working_model.set_log(log = null_out())
     if self.additional_ro:
       ro = self.working_model.get_restraint_objects()
@@ -177,10 +180,10 @@ electron density values/CC.
       ro.extend(self.additional_ro)
       self.working_model.set_restraint_objects(ro)
     self.working_model.set_stop_for_unknowns(False)
-    self.working_model.process(make_restraints=True)
-
-    if self.working_model is None:
-      raise Sorry('Could not create model object')
+    try:
+      self.working_model.process(make_restraints=True)
+    except Exception as e:
+      print('Could not process model to create restraints.')
 
     # get fmodel object
     if has_data:
