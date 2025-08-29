@@ -8,6 +8,8 @@ except ImportError:
   from libtbx.program_template import ProgramTemplate
 import mmtbx.validation.ligands
 from mmtbx.validation import validate_ligands
+from mmtbx.hydrogens import reduce_hydrogen
+import iotbx.pdb
 from libtbx.utils import null_out, Sorry
 from iotbx import crystal_symmetry_from_any
 from libtbx.str_utils import make_sub_header
@@ -108,14 +110,35 @@ electron density values/CC.
 
     self.data_manager.add_model(model_fn_reduce2, model_reduce2)
     self.working_model_fn = model_fn_reduce2
-    model_reduce2.process(make_restraints=True)
+    #model_reduce2.set_stop_for_unknowns(False)
+    #model_reduce2.process(make_restraints=True)
     self.working_model = model_reduce2
+
+  # ---------------------------------------------------------------------------
+
+  def check_ligands(self, model):
+    make_sub_header('Check if input model has ligands', out=self.logger)
+    get_class = iotbx.pdb.common_residue_names_get_class
+    exclude = ["common_amino_acid", "modified_amino_acid", "common_rna_dna",
+               "modified_rna_dna", "ccp4_mon_lib_rna_dna", "common_water",
+                "common_element"]
+    for chain in model.chains():
+      for rg in chain.residue_groups():
+        for ag in rg.atom_groups():
+          if (get_class(name=ag.resname) in exclude): continue
+          print('Found ligand: ', ag.resname, file=self.logger)
+          mlq, cif_object = reduce_hydrogen.mon_lib_query(residue=ag, mon_lib_srv=model.get_mon_lib_srv())
+          #print(mlq)
+          #print(cif_object)
+          if cif_object:
+            self.additional_ro.append(('auto_%s' % ag.resname, cif_object))
 
   # ---------------------------------------------------------------------------
 
   def run(self):
     has_data = False
     fmodel = None
+    self.additional_ro = []
     model_fn = self.data_manager.get_default_model_name()
     data_fn = self.data_manager.get_default_miller_array_name()
     print('Using model file:', model_fn, file=self.logger)
@@ -127,6 +150,8 @@ electron density values/CC.
     #
     if(len(m.get_hierarchy().models())>1):
       raise Sorry('Multi-model files currently not supported.')
+    #
+    self.check_ligands(model = m)
     #
     if ' X' in m.get_hierarchy().atoms().extract_element():
       m = m.select(~m.selection('element X'))
@@ -143,9 +168,16 @@ electron density values/CC.
     else:
       self.working_model_fn = model_fn
       m = self.data_manager.get_model()
-      m.set_log(log = null_out())
-      m.process(make_restraints=True)
       self.working_model = m
+
+    self.working_model.set_log(log = null_out())
+    if self.additional_ro:
+      ro = self.working_model.get_restraint_objects()
+      if ro is None: ro=[]
+      ro.extend(self.additional_ro)
+      self.working_model.set_restraint_objects(ro)
+    self.working_model.set_stop_for_unknowns(False)
+    self.working_model.process(make_restraints=True)
 
     if self.working_model is None:
       raise Sorry('Could not create model object')
