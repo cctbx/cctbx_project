@@ -128,11 +128,15 @@ electron density values/CC.
         for ag in rg.atom_groups():
           if (get_class(name=ag.resname) in exclude): continue
           print('Found ligand: ', ag.resname, file=self.logger)
-          mlq, cif_object = reduce_hydrogen.mon_lib_query(residue=ag, mon_lib_srv=model.get_mon_lib_srv(), raise_sorry=False)
-          #print(mlq)
-          #print(cif_object)
+          mlq, cif_object = reduce_hydrogen.mon_lib_query(
+                              residue     = ag,
+                              mon_lib_srv = model.get_mon_lib_srv(),
+                              raise_sorry = False)
           if cif_object:
             self.additional_ro.append(('auto_%s' % ag.resname, cif_object))
+          elif mlq is None:
+            print('\tNo restraints available for %s. No H atoms will be added.'
+              % ag.resname, file=self.logger)
 
   # ---------------------------------------------------------------------------
 
@@ -201,12 +205,6 @@ electron density values/CC.
       print ("r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(), fmodel.r_free()),
         file=self.logger)
 
-
-#    cs = self.get_crystal_symmetry(model_fn, data_fn)
-#    model = self.data_manager.get_model()
-#    print('\nWorking crystal symmetry after inspecting all inputs:', file=self.logger)
-#    cs.show_summary(f=self.logger)
-
     #t0 = time.time()
     ligand_manager = validate_ligands.manager(
       model = self.working_model,
@@ -225,22 +223,7 @@ electron density values/CC.
     self.ligand_manager = ligand_manager
     #print('time running manager: ', time.time()-t0)
 
-    # old class from Nat
-    #if self.params.ligand_code and self.data_manager.get_default_miller_array_name() is not None:
-    #  if (not(self.params.ligand_code is None or self.params.ligand_code[0] is None)):
-    #    make_sub_header("Validating ligands", out=self.logger)
-    #    for ligand_code in self.params.ligand_code :
-    #      validations = mmtbx.validation.ligands.validate_ligands(
-    #        pdb_hierarchy       = ph,
-    #        fmodel              = fmodel,
-    #        ligand_code         = ligand_code,
-    #        reference_structure = self.params.reference_structure,
-    #        only_segid          = self.params.only_segid)
-    #      if (validations is None):
-    #        raise Sorry("No ligands named '%s' found." % ligand_code)
-    #      mmtbx.validation.ligands.show_validation_results(validations=validations,
-    #        out     = self.logger,
-    #        verbose = self.params.verbose)
+  # ---------------------------------------------------------------------------
 
   def get_results(self):
     return group_args(
