@@ -3001,7 +3001,7 @@ def unpickle(build_path=None, env_name="libtbx_env"):
   if build_path is None:
     build_path = os.getenv("LIBTBX_BUILD")
   # try default installed location
-  if not build_path:
+  if not build_path or not os.path.isdir(build_path):
     build_path = get_installed_path()
   set_preferred_sys_prefix_and_sys_executable(build_path=build_path)
   with open(op.join(build_path, env_name), "rb") as libtbx_env:
