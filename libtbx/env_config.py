@@ -1208,7 +1208,7 @@ Wait for the command to finish, then try again.""" % vars())
         print('@set LIBTBX_PREFIX=%LIBTBX_PREFIX:~0,-1%', file=f)
         print(r'@for %%F in ("%LIBTBX_PREFIX%") do @set LIBTBX_PREFIX=%%~dpF', file=f)
         print('@set LIBTBX_PREFIX=%LIBTBX_PREFIX:~0,-1%', file=f)
-        print('@set LIBTBX_BUILD=%LIBTBX_PREFIX%\\Library\\share\\cctbx', file=f)
+        print('@set LIBTBX_BUILD=%LIBTBX_PREFIX%\\..\\Library\\share\\cctbx', file=f)
         print('@set LIBTBX_DISPATCHER_NAME=%~nx0', file=f)
         print('@set PATH=%LIBTBX_PREFIX%\\..;%LIBTBX_PREFIX%\\..\\mingw-w64\\bin;%LIBTBX_PREFIX%\\..\\bin;%LIBTBX_PREFIX%\\..\\..\\Scripts;%PATH%', file=f)
         def write_dispatcher_include(where):
