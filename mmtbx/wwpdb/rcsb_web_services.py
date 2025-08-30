@@ -142,6 +142,7 @@ def post_query(query_json=None, xray_only=True, d_max=None, d_min=None,
     print("  will sort by resolution", file=log)
   if "results_verbosity" not in query_json["request_options"].keys():
     query_json["request_options"]["results_verbosity"] = "compact"
+  assert query_json["request_options"]["results_verbosity"] == 'minimal'
   print("  executing HTTP request...", file=log)
   # print(json.dumps(query_json, indent=4))
   r = requests.post(search_base_url, json=query_json)
@@ -198,12 +199,14 @@ def sequence_search(
         "direction": "desc"
       }
     ]
+    "results_verbosity":"minimal",
   }
 }"""
   assert target in ["pdb_protein_sequence", "pdb_dna_sequence", "pdb_rna_sequence"]
   assert 0 < identity_cutoff < 100
   sqr = sequence_query % (e_value_cutoff, identity_cutoff/100, target, sequence)
   jsq = json.loads(sqr)
+  kwds['results_verbosity']='minimal'
   return post_query(query_json=jsq, **kwds)
 
 
@@ -500,13 +503,11 @@ def get_similar_ligands_via_smiles(smiles, **kwds):
   },
   "return_type": "mol_definition",
   "request_options": {
+    "results_verbosity":"minimal",
     "paginate": {
       "start": 0,
-      "rows": 25
+      "rows": 100
     },
-    "results_content_type": [
-      "experimental"
-    ],
     "sort": [
       {
         "sort_by": "score",
@@ -524,6 +525,12 @@ def get_similar_ligands_via_smiles(smiles, **kwds):
   return post_query(query_json=jsq, xray_only=False, **kwds)
 
 if __name__ == '__main__':
+  import sys
   # rc=get_similar_ligands_via_smiles('N#C')
-  rc=get_similar_ligands_via_smiles('NCCC(O)=O')
+  if len(sys.argv)==2:
+    smiles=sys.argv[1]
+  else:
+    smiles='NCCC(O)=O'
+    print(f'setting SMILES to {smiles}')
+  rc=get_similar_ligands_via_smiles(smiles)
   print(rc)
