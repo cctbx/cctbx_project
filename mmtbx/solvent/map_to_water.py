@@ -420,16 +420,7 @@ class run_one(object):
     self.ma.add("  input map dimenstions: %d %d %d"%n_real)
     self.ma.add("  input map grid steps (A): %s %s %s"%(
       ("%6.3f"%sx).strip(), ("%6.3f"%sy).strip(), ("%6.3f"%sz).strip()))
-    if(max(sx, sy, sz) > self.step):
-      n_real_fine = (int(a/self.step), int(b/self.step), int(c/self.step))
-      self.ma.add("  re-sampled map dimenstions: %d %d %d"%n_real_fine)
-      map_fine = flex.double(flex.grid(n_real_fine), 0)
-      maptbx.resample(
-        map_data     = self.map_data,
-        map_data_new = map_fine,
-        unit_cell    = self.unit_cell)
-      self.map_data = map_fine
-      self.ma.add("  input map (min,max,mean): %s"%self._map_mmm_str())
+    self.ma.add("  input map (min,max,mean): %s"%self._map_mmm_str())
     if(self.debug):
       self._write_map(file_name = "resampled.mrc")
     self.map_data_resampled = self.map_data.deep_copy()
