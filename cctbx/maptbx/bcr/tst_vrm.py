@@ -27,14 +27,15 @@ class gradients_fd(object):
     adopt_init_args(self, locals())
 
   def compute(self):
-    OmegaMap, OmegaMap_py1, bcr_scatterers, o = qmap.compute(
+    o = qmap.compute(
       xray_structure=self.xrs,
       n_real=self.n_real,
       resolution=self.d_min,
       resolutions=None,
+      use_exp_table=False,
       debug=True)
     return qmap.CalcFuncMap(
-      OmegaMap=OmegaMap_py1, ControlMap=self.ControlMap, Ncrs=self.n_real)
+      OmegaMap=o.OmegaMap_py, ControlMap=self.ControlMap, Ncrs=self.n_real)
 
 def run(table="electron", d_min=2):
   pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str)
@@ -51,12 +52,15 @@ def run(table="electron", d_min=2):
     step             = 1)
   n_real = crystal_gridding.n_real()
   #
-  OmegaMap, OmegaMap_py, bcr_scatterers, o = qmap.compute(
+  o = qmap.compute(
     xray_structure = xrs,
     n_real=n_real,
     resolution=d_min,
     resolutions=None,
+    use_exp_table=False,
     debug=True)
+  OmegaMap_py = o.OmegaMap_py
+  bcr_scatterers = o.bcr_scatterers
   #
   nx,ny,nz = n_real
   ControlMap = [[[ math.sin(ix*iy*iz/math.pi) for ix in range(nx) ]
@@ -70,9 +74,9 @@ def run(table="electron", d_min=2):
     for iy in range(0, ny):
       for ix in range(0, nx):
         ControlMap_flex[iz,iy,ix] = ControlMap[iz][iy][ix]
-  o.compute_gradients(map_data = ControlMap_flex)
+  grads = o.gradients(map_data = ControlMap_flex)
   g_cpp = []
-  for gr, go, gb in zip(o.grad_xyz, o.grad_occ, o.grad_uiso):
+  for gr, go, gb in zip(grads.grad_xyz, grads.grad_occ, grads.grad_uiso):
     g_cpp.append([gr[0],gr[1],gr[2],go,gb])
   #
   gcalc = gradients_fd(
@@ -80,7 +84,7 @@ def run(table="electron", d_min=2):
     xrs        = xrs,
     n_real     = n_real,
     d_min      = d_min)
-  assert approx_equal(o.target, gcalc.compute())
+  assert approx_equal(o.target(), gcalc.compute())
 
   eob = 0.00001
   er = 1.e-6

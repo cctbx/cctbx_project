@@ -108,12 +108,14 @@ namespace {
           af::tiny<int, 3> const&,
           af::tiny<int, 3> const&,
           cctbx::uctbx::unit_cell const&,
-          boost::python::list const& >(
+          boost::python::list const&,
+          bool const&  >(
                     (arg("Ncrs"),
                      arg("Scrs"),
                      arg("Nxyz"),
                      arg("unit_cell"),
-                     arg("bcr_scatterers"))))
+                     arg("bcr_scatterers"),
+                     arg("use_exp_table"))))
         .def("compute",             &OmegaMap<>::compute, (arg("compute_gradients")=false))
         .def("compute_gradients",   &OmegaMap<>::compute_gradients, arg("map_data"))
         .add_property("map",        make_getter(&OmegaMap<>::map, rbv()))

@@ -19,7 +19,7 @@ TER
 END
 """
 
-def run(d_min=2):
+def run(debug, use_exp_table, table, d_min=2):
   pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str)
   cs = pdb_inp.crystal_symmetry()
   pdb_inp.write_pdb_file(file_name="m.pdb")
@@ -28,46 +28,51 @@ def run(d_min=2):
     unit_cell        = cs.unit_cell(),
     space_group_info = cs.space_group_info(),
     symmetry_flags   = maptbx.use_space_group_symmetry,
-    step             = 0.3
+    step             = d_min/2.
     #pre_determined_n_real = (32, 40, 48)
     )
   n_real = crystal_gridding.n_real()
   xrs = pdb_inp.xray_structure_simple()
   xrs.scattering_type_registry(
-        table = "wk1995",
-        d_min = 2,
-        types_without_a_scattering_contribution=["?"])
-
+    table = table,
+    d_min = d_min,
+    types_without_a_scattering_contribution=["?"])
+  # FFT
   fc = xrs.structure_factors(d_min=d_min).f_calc()
   fft_map = fc.fft_map(crystal_gridding = crystal_gridding)
-  m1 = fft_map.real_map_unpadded()
-  OmegaMap, _, _, _ = qmap.compute(xray_structure=xrs,
-                     n_real=n_real, resolution=d_min, resolutions=None,
-                     debug=True)
+  mFFT = fft_map.real_map_unpadded()
+  # VRM
+  o = qmap.compute(xray_structure=xrs,
+                   n_real=n_real, resolution=d_min, resolutions=None,
+                   use_exp_table=use_exp_table,
+                   debug=debug)
+  mVRM = o.map_data()
+  #
   cc = flex.linear_correlation(
-    x=m1.as_1d(), y=OmegaMap.as_1d()).coefficient()
-  print(cc)
-  #assert cc > 0.99, cc
-  mm1 = iotbx.map_manager.map_manager(
-    map_data                   = m1,
-    unit_cell_grid             = m1.all(),
+    x=mFFT.as_1d(), y=mVRM.as_1d()).coefficient()
+  assert cc > 0.99, cc
+  mmFFT = iotbx.map_manager.map_manager(
+    map_data                   = mFFT,
+    unit_cell_grid             = mFFT.all(),
     unit_cell_crystal_symmetry = cs,
     wrapping                   = True)
-  mm1.write_map("m_fft.ccp4")
-  mm2 = iotbx.map_manager.map_manager(
-    map_data                   = OmegaMap,
-    unit_cell_grid             = OmegaMap.all(),
+  mmFFT.write_map("m_fft.ccp4")
+  mmVRM = iotbx.map_manager.map_manager(
+    map_data                   = mVRM,
+    unit_cell_grid             = mVRM.all(),
     unit_cell_crystal_symmetry = cs,
     wrapping                   = True)
-  mm2.write_map("m_bcr.ccp4")
+  mmVRM.write_map("m_bcr.ccp4")
   cc = flex.linear_correlation(
-    x=mm1.map_data().as_1d(),
-    y=mm2.map_data().as_1d()).coefficient()
-  print(cc)
-  #assert cc > 0.99
+    x=mmFFT.map_data().as_1d(),
+    y=mmVRM.map_data().as_1d()).coefficient()
+  assert cc > 0.99
 
 if (__name__ == "__main__"):
   start = time.perf_counter()
-  run()
+  for table in ["electron", "wk1995"]:
+    for it in [[True, False], [False, True]]:
+      debug, use_exp_table = it
+      run(debug=debug, use_exp_table=use_exp_table, table=table)
   print("Time:", time.perf_counter()-start)
   print("OK")

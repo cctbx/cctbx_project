@@ -21,106 +21,116 @@ def load_table(element, table):
   with open(file_name, 'r') as file:
     return json.load(file)
 
-def compute(xray_structure, n_real, resolution=None, resolutions=None,
-            debug=False):
-  table = xray_structure.get_scattering_table()
-  assert table in ["electron", "wk1995"]
-  assert [resolution, resolutions].count(None)==1
-  unit_cell = xray_structure.unit_cell()
-  if resolutions is None:
-    resolutions = [resolution,] * xray_structure.scatterers().size()
-  RadFact = 2.0
-  RadAdd  = 0.5
-  RadMu   = RadFact + RadAdd
-  arrays = {}
-  for scatterer in xray_structure.scatterers():
-    e = scatterer.scattering_type.strip().upper()
-    d = load_table(element=e, table=table)
-    arrays[e] = d
-  ScaleB = 1.0 / (8.0 * math.pi**2)
-  kscale = math.pi**1.5
-  bcr_scatterers = []
-  for r, scatterer in zip(resolutions, xray_structure.scatterers()):
-    e = scatterer.scattering_type.strip().upper()
-    entry = arrays[e]
-    keys = [float(x) for x in entry.keys()]
-    key = str(min(keys, key=lambda x: abs(x - r)))
-    #print("key", key)
-    vals = entry[key]
-    #print(vals)
-    R = flex.double(vals['R'])
-    B = flex.double(vals['B'])
-    C = flex.double(vals['C'])
-    sel = R < (r*RadMu)
-    mu    = R.select(sel)
-    nu    = B.select(sel) * ScaleB
-    kappa = C.select(sel)
-    musq  = mu * mu
-    kappi = kappa/kscale
+class compute(object):
 
-    bcr_scatterer = ext.bcr_scatterer(
-      scatterer = scatterer,
-      radius    = r*RadFact, # atomic radius = atomic_resolution * RadFact
-      resolution=r,
-      mu        = mu,
-      kappa     = kappa,
-      nu        = nu,
-      musq      = musq,
-      kappi     = kappi)
-    bcr_scatterers.append(bcr_scatterer)
-  #
-  if debug:
-    OmegaMap_py = CalcOmegaMap(Ncrs=n_real, Scrs=[0,0,0], Nxyz=n_real,
-      unit_cell=unit_cell, bcr_scatterers=bcr_scatterers)
-  #
-  o = ext.vrm(
-    Ncrs           = n_real,
-    Scrs           = [0,0,0],
-    Nxyz           = n_real,
-    unit_cell      = unit_cell,
-    bcr_scatterers = bcr_scatterers)
-  #
-  #t0 = time.time()
-  OmegaMap_cpp = o.compute(compute_gradients=False)
-  #print("cpp: ", time.time()-t0)
+  def __init__(self, xray_structure, n_real, resolution=None, resolutions=None,
+            use_exp_table=True, debug=False, RadFact=2.0, RadAdd=0.5):
+    table = xray_structure.get_scattering_table()
+    assert table in ["electron", "wk1995"]
+    assert [resolution, resolutions].count(None)==1
+    unit_cell = xray_structure.unit_cell()
+    if resolutions is None:
+      resolutions = [resolution,] * xray_structure.scatterers().size()
+    RadMu   = RadFact + RadAdd
+    arrays = {}
+    for scatterer in xray_structure.scatterers():
+      e = scatterer.scattering_type.strip().upper()
+      d = load_table(element=e, table=table)
+      arrays[e] = d
+    ScaleB = 1.0 / (8.0 * math.pi**2)
+    kscale = math.pi**1.5
+    self.bcr_scatterers = []
+    for r, scatterer in zip(resolutions, xray_structure.scatterers()):
+      e = scatterer.scattering_type.strip().upper()
+      entry = arrays[e]
+      keys = [float(x) for x in entry.keys()]
+      key = str(min(keys, key=lambda x: abs(x - r)))
+      #print("key", key)
+      vals = entry[key]
+      #print(vals)
+      R = flex.double(vals['R'])
+      B = flex.double(vals['B'])
+      C = flex.double(vals['C'])
+      sel = R < (r*RadMu)
+      #print(sel.size(), sel.count(True))
 
-  OmegaMap_cpp_2 = o.map  # alternative way to get the map
-  # Re-order
-  nx,ny,nz = n_real
-  mpy  = flex.double(flex.grid(n_real))
-  mcpp = flex.double(flex.grid(n_real))
-  for iz in range(0, nz):
-    for iy in range(0, ny):
-      for ix in range(0, nx):
-        if debug:
-          mpy[ix,iy,iz] = OmegaMap_py[iz][iy][ix]
-        mcpp[ix,iy,iz] = OmegaMap_cpp[iz,iy,ix]
-  #
-  if debug:
-    from cctbx import maptbx
-    cc = flex.linear_correlation(x=mcpp.as_1d(), y=mpy.as_1d()).coefficient()
-    assert approx_equal(cc, 1.0)
-    cc = flex.linear_correlation(
-       x=OmegaMap_cpp.as_1d(), y=OmegaMap_cpp_2.as_1d()).coefficient()
-    assert approx_equal(cc, 1.0)
-    for func in [flex.min, flex.max, flex.mean]:
-      assert approx_equal(func(mcpp), func(mpy), 1.e-6)
+      mu    = R.select(sel)
+      nu    = B.select(sel) * ScaleB
+      kappa = C.select(sel)
+      musq  = mu * mu
+      kappi = kappa/kscale
+
+      bcr_scatterer = ext.bcr_scatterer(
+        scatterer = scatterer,
+        radius    = r*RadFact, # atomic radius = atomic_resolution * RadFact
+        resolution=r,
+        mu        = mu,
+        kappa     = kappa,
+        nu        = nu,
+        musq      = musq,
+        kappi     = kappi)
+      self.bcr_scatterers.append(bcr_scatterer)
     #
-    cs = xray_structure.crystal_symmetry()
-    crystal_gridding = maptbx.crystal_gridding(
-      unit_cell        = cs.unit_cell(),
-      space_group_info = cs.space_group_info(),
-      symmetry_flags   = maptbx.use_space_group_symmetry,
-      pre_determined_n_real = n_real
-      )
-    fc = xray_structure.structure_factors(d_min=resolutions[0]).f_calc()
-    fft_map = fc.fft_map(crystal_gridding = crystal_gridding)
-    m_fft = fft_map.real_map_unpadded()
-    cc = flex.linear_correlation(x=mcpp.as_1d(), y=m_fft.as_1d()).coefficient()
-    assert cc > 0.99, cc
-  #
-  if debug: return mcpp, OmegaMap_py, bcr_scatterers, o
-  else:     return mcpp
+    self.OmegaMap_py=None
+    if debug:
+      self.OmegaMap_py = CalcOmegaMap(Ncrs=n_real, Scrs=[0,0,0], Nxyz=n_real,
+        unit_cell=unit_cell, bcr_scatterers=self.bcr_scatterers)
+    #
+    start = time.perf_counter()
+    self.ext_vrm = ext.vrm(
+      Ncrs           = n_real,
+      Scrs           = [0,0,0],
+      Nxyz           = n_real,
+      unit_cell      = unit_cell,
+      bcr_scatterers = self.bcr_scatterers,
+      use_exp_table  = use_exp_table)
+    OmegaMap_cpp = self.ext_vrm.compute(compute_gradients=False)
+    self.time_map = time.perf_counter()-start
+
+    OmegaMap_cpp_2 = self.ext_vrm.map  # alternative way to get the map
+    # Re-order
+    nx,ny,nz = n_real
+    mpy  = flex.double(flex.grid(n_real))
+    self.mcpp = flex.double(flex.grid(n_real))
+    for iz in range(0, nz):
+      for iy in range(0, ny):
+        for ix in range(0, nx):
+          if debug:
+            mpy[ix,iy,iz] = self.OmegaMap_py[iz][iy][ix]
+          self.mcpp[ix,iy,iz] = OmegaMap_cpp[iz,iy,ix]
+    #
+    if debug:
+      from cctbx import maptbx
+      cc = flex.linear_correlation(x=self.mcpp.as_1d(), y=mpy.as_1d()).coefficient()
+      assert approx_equal(cc, 1.0)
+      cc = flex.linear_correlation(
+         x=OmegaMap_cpp.as_1d(), y=OmegaMap_cpp_2.as_1d()).coefficient()
+      assert approx_equal(cc, 1.0)
+      for func in [flex.min, flex.max, flex.mean]:
+        assert approx_equal(func(self.mcpp), func(mpy), 1.e-6)
+      #
+      cs = xray_structure.crystal_symmetry()
+      crystal_gridding = maptbx.crystal_gridding(
+        unit_cell        = cs.unit_cell(),
+        space_group_info = cs.space_group_info(),
+        symmetry_flags   = maptbx.use_space_group_symmetry,
+        pre_determined_n_real = n_real
+        )
+      fc = xray_structure.structure_factors(d_min=resolutions[0]).f_calc()
+      fft_map = fc.fft_map(crystal_gridding = crystal_gridding)
+      m_fft = fft_map.real_map_unpadded()
+      cc = flex.linear_correlation(x=self.mcpp.as_1d(), y=m_fft.as_1d()).coefficient()
+      assert cc > 0.99, cc
+
+  def map_data(self): return self.mcpp
+
+  def target(self):
+    return self.ext_vrm.target
+
+  def gradients(self, map_data):
+    self.ext_vrm.compute_gradients(map_data = map_data)
+    return self.ext_vrm
+
 
 #-------------------------------------------
 def CalcFuncMap(OmegaMap, ControlMap, Ncrs) :

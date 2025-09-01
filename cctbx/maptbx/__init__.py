@@ -1512,7 +1512,7 @@ Fourier image of specified resolution, etc.
       d_min=d_min, b_iso=0, radius_max=radius_max, radius_step=radius_step)
     bpeak, cpeak, rpeak, _,_,_,_ = bcr.get_BCR(
       dens=im.image_values, dist=im.radii, mxp=mxp, epsc=epsc, kpres=kpres,
-      dmax=radius_max)
+      kprot=kprot, dmax=radius_max)
     #
     bcr_approx_values = flex.double()
     # FILTER

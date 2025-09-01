@@ -12,6 +12,7 @@ using scitbx::constants::pi;
 using scitbx::constants::four_pi_sq;
 using scitbx::constants::four_pi;
 
+
 template <typename FloatType=double,
           typename XrayScattererType=cctbx::xray::scatterer<> >
 class OmegaMap {
@@ -49,6 +50,7 @@ public:
   af::shared<FloatType> grad_uiso;
   FloatType target;
   boost::python::list bcr_scatterers;
+  bool use_exp_table;
   //cctbx::xray::detail::exponent_table<FloatType>* exp_table_;
   cctbx::xray::detail::exponent_table<FloatType> exp_table_;
   int n_atoms;
@@ -59,7 +61,8 @@ public:
     af::tiny<int, 3> const& Scrs,
     af::tiny<int, 3> const& Nxyz,
     cctbx::uctbx::unit_cell const& unit_cell_,
-    const boost::python::list & bcr_scatterers_)
+    const boost::python::list & bcr_scatterers_,
+    bool const& use_exp_table_)
   :
   bcr_scatterers(bcr_scatterers_), // is this doing copy?
   map(af::c_grid<3>(Nxyz[2],Nxyz[1],Nxyz[0])),
@@ -67,7 +70,8 @@ public:
   exp_table_(-100),
   n_atoms(boost::python::len(bcr_scatterers_)),
   unit_cell(unit_cell_),
-  target(0.)
+  target(0.),
+  use_exp_table(use_exp_table_)
   {
     scitbx::af::tiny<FloatType, 6> ucp = unit_cell.parameters();
     FloatType acell = ucp[0];
@@ -492,8 +496,11 @@ public:
 
   inline FloatType myexp(FloatType const& x)
   {
-    //return exp_table_(x);
-    return std::exp(x);
+    if(use_exp_table) {
+      std::cout<<x<<std::endl;
+      return exp_table_(x);
+    }
+    else              { return std::exp(x); }
   }
 
 

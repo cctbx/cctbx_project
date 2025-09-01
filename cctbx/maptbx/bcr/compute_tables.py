@@ -31,18 +31,17 @@ def run_one(args):
   e, d_min, table = args
   dist = 18.0
   o = maptbx.atom_curves(scattering_type=e, scattering_table=table)
-  b = o.bcr_approx(
-    d_min       = d_min,
-    radius_max  = dist,
-    radius_step = 0.01,
-    kprot=2,
-    kpres=0,
-    mxp=1000,
-    epsc=0.001,
-    )
-  r, err = rfactor(b.image_values, b.bcr_approx_values)
-  #for R, B, C in zip(b.R, b.B, b.C):
-  #  print("%20.16f %20.16f %20.16f"%(R, B, C) )
+  for it in range(10):
+    b = o.bcr_approx(
+      d_min       = d_min,
+      radius_max  = dist,
+      radius_step = 0.01,
+      kprot=2,
+      kpres=0,
+      mxp=1000,
+      epsc=0.001,
+      )
+    r, err = rfactor(b.image_values, b.bcr_approx_values)
   return group_args(
    d_min = d_min,
    dist  = dist,

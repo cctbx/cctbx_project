@@ -10,6 +10,152 @@ typedef unsigned char     uint8_t;
 
 namespace cctbx { namespace maptbx {
 
+/*
+
+// Sorts the data so we can compute quartiles.
+// Calculates IQR and bin width using Freedman–Diaconis.
+// If Freedman–Diaconis produces too few bins, falls back to Sturges’ formula.
+// Bins the data and finds the most populated bin.
+// Returns the mean of all values in that bin as the mode estimate.
+// Calculates mode prominence — how much higher the most populated bin is compared to the second-most populated bin, relative to the average bin count.
+// Flags “no strong mode” if the prominence is below a threshold (default 15%).
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <cmath>
+#include <numeric>
+#include <limits>
+
+double computeQuantile(const std::vector<double>& data, double q) {
+    // Assumes data is sorted
+    double pos = (data.size() - 1) * q;
+    size_t idx = (size_t)pos;
+    double frac = pos - idx;
+    if (idx + 1 < data.size())
+        return data[idx] * (1 - frac) + data[idx + 1] * frac;
+    else
+        return data[idx];
+}
+
+struct ModeResult {
+    double modeValue;
+    double prominence;
+    bool hasStrongMode;
+};
+
+ModeResult estimateModeHistogram(const std::vector<double>& data, double prominenceThreshold = 0.15) {
+    ModeResult result{NAN, 0.0, false};
+
+    if (data.empty()) return result;
+    if (data.size() == 1) {
+        result.modeValue = data[0];
+        result.hasStrongMode = true;
+        return result;
+    }
+
+    // Sort data for quantile computation
+    std::vector<double> sorted = data;
+    std::sort(sorted.begin(), sorted.end());
+
+    size_t n = sorted.size();
+    double minVal = sorted.front();
+    double maxVal = sorted.back();
+
+    // Compute IQR for Freedman–Diaconis
+    double q1 = computeQuantile(sorted, 0.25);
+    double q3 = computeQuantile(sorted, 0.75);
+    double iqr = q3 - q1;
+
+    // Freedman–Diaconis bin width
+    double h = 2.0 * iqr / std::cbrt((double)n);
+    int binCount;
+    if (h > 0) {
+        binCount = (int)std::ceil((maxVal - minVal) / h);
+    } else {
+        binCount = 1; // all values same
+    }
+
+    // If FD rule gives too few bins, use Sturges' formula
+    if (binCount < 1) {
+        binCount = (int)std::ceil(std::log2((double)n) + 1);
+    }
+
+    // Avoid too many bins
+    if (binCount > (int)n) binCount = (int)n;
+
+    // Bin edges
+    double binWidth = (maxVal - minVal) / binCount;
+
+    // Count values in each bin
+    std::vector<int> counts(binCount, 0);
+    for (double v : sorted) {
+        int binIdx = (int)((v - minVal) / binWidth);
+        if (binIdx == binCount) binIdx = binCount - 1; // edge case
+        counts[binIdx]++;
+    }
+
+    // Find most populated bin
+    int maxBinIdx = std::distance(counts.begin(),
+                                  std::max_element(counts.begin(), counts.end()));
+    int maxCount = counts[maxBinIdx];
+
+    // Find second max count
+    int secondMaxCount = 0;
+    for (int c : counts) {
+        if (c > secondMaxCount && c < maxCount) {
+            secondMaxCount = c;
+        }
+    }
+
+    double meanCount = std::accumulate(counts.begin(), counts.end(), 0.0) / counts.size();
+    double prominence = (double)(maxCount - secondMaxCount) / meanCount;
+    result.prominence = prominence;
+
+    // Check if mode is strong enough
+    if (prominence < prominenceThreshold) {
+        result.hasStrongMode = false;
+        return result; // No strong mode
+    }
+
+    // Gather values in the most populated bin
+    double binStart = minVal + maxBinIdx * binWidth;
+    double binEnd = binStart + binWidth;
+    std::vector<double> binValues;
+    for (double v : sorted) {
+        if ((v >= binStart && v < binEnd) ||
+            (maxBinIdx == binCount - 1 && v == maxVal)) {
+            binValues.push_back(v);
+        }
+    }
+
+    // Compute mean of values in most populated bin
+    double sum = std::accumulate(binValues.begin(), binValues.end(), 0.0);
+    result.modeValue = sum / binValues.size();
+    result.hasStrongMode = true;
+    return result;
+}
+
+int main() {
+    std::vector<double> data = {
+        3.1, 3.5, 3.6, 4.0, 4.1, 4.2, 5.5, 6.0, 6.1, 6.2
+    };
+
+    ModeResult modeEst = estimateModeHistogram(data);
+
+    if (modeEst.hasStrongMode) {
+        std::cout << "Estimated mode: " << modeEst.modeValue << "\n";
+        std::cout << "Prominence: " << modeEst.prominence * 100 << "% higher than average bin count\n";
+    } else {
+        std::cout << "No strong mode detected (prominence = "
+                  << modeEst.prominence * 100 << "%)\n";
+    }
+
+    return 0;
+}
+
+*/
+
 template <typename FloatType, typename GridType>
 class map_accumulator {
 public:
