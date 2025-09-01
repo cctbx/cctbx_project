@@ -54,11 +54,12 @@ class manager(list):
     funcs = []
     ligand_results = []
     inputs = []
-    for ligand_isel in args:
+    for ligand_isel, sel_str in args:
       lr = ligand_result(
-        model = self.model,
-        fmodel = self.fmodel,
-        ligand_isel = ligand_isel)
+        model       = self.model,
+        fmodel      = self.fmodel,
+        ligand_isel = ligand_isel,
+        sel_str     = sel_str)
       ligand_results.append(lr)
       for attr, func in lr._result_attrs.items():
         funcs.append([lr, func])
@@ -91,9 +92,9 @@ class manager(list):
 
   def run(self):
     args = []
-    for ligand_isel in self.generate_ligand_iselections():
+    for ligand_isel, sel_str in self.generate_ligand_iselections():
       if ligand_isel.size() < 4: continue
-      args.append(ligand_isel)
+      args.append([ligand_isel, sel_str])
     results = self.parallel_populate(args)
     for r in results:
       self.append(r)
@@ -116,7 +117,12 @@ class manager(list):
             if (not get_class(name=resname) in exclude):
               for conformer in rg.conformers():
                 iselection = conformer.atoms().extract_i_seq()
-                yield iselection
+                sel_str = 'chain %s and resseq %s and resname %s ' % (chain.id,
+                  rg.resseq_as_int(), resname)
+                if conformer.altloc:
+                  sel_str = sel_str + ' and altloc %s' % conformer.altloc
+                #print(sel_str)
+                yield iselection, sel_str
 
   # ----------------------------------------------------------------------------
 
@@ -274,10 +280,12 @@ class ligand_result(object):
   def __init__(self,
                model,
                fmodel,
-               ligand_isel):
+               ligand_isel,
+               sel_str):
     self.model       = model
     self.fmodel      = fmodel
     self.ligand_isel = ligand_isel
+    self.sel_str     = sel_str
 
     # results
     self._result_attrs = {
@@ -460,12 +468,12 @@ class ligand_result(object):
       _id_str = _id_str.split('pdb="')[1].split('"')[0]
     else:
       _id_str = _id_str.split('"')[1]
-    altloc = _id_str[4]
-    resseq = _id_str[10:14]
-    chain  = _id_str[8:10]
-    self.sel_str = " ".join(['chain', chain, 'and resseq', resseq, 'and resname', _resname])
-    if (altloc != ' '):
-      self.sel_str = " ".join(['altloc', altloc, 'and', self.sel_str])
+#    altloc = _id_str[4]
+#    resseq = _id_str[10:14]
+#    chain  = _id_str[8:10]
+#    self.sel_str = " ".join(['chain', chain, 'and resseq', resseq, 'and resname', _resname])
+#    if (altloc != ' '):
+#      self.sel_str = " ".join(['altloc', altloc, 'and', self.sel_str])
     _id_str = _id_str.strip().split(' ')
     self.id_str = " ".join(_id_str[1:]).strip()
     #
