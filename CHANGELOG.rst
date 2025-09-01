@@ -1,3 +1,10 @@
+2025.8
+======
+
+* Added function to find similar ligands via SMILES with RCSB web services
+* Improvements to ligand validation tool (work in progress)
+* Initial integration of aspherical structure factors from DiSCaMB
+
 2025.7
 ======
 
