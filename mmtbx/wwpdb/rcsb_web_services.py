@@ -486,9 +486,12 @@ query
     return None
   return emdb_ids
 
-def get_similar_ligands_via_smiles(smiles, **kwds):
-  # sub-struct-graph-relaxed-stereo
+def get_similar_ligands_via_smiles(smiles, match_type='sub-struct-graph-relaxed-stereo', **kwds):
   # graph-relaxed-stereo
+  # graph-relaxed
+  # fingerprint-similarity
+  # sub-struct-graph-relaxed-stereo
+  # sub-struct-graph-relaxed
   similar_ligand_query = '''
 {
   "query": {
@@ -498,7 +501,7 @@ def get_similar_ligands_via_smiles(smiles, **kwds):
       "type": "descriptor",
       "value": "%s",
       "descriptor_type": "SMILES",
-      "match_type": "sub-struct-graph-relaxed-stereo"
+      "match_type": "%s"
     }
   },
   "return_type": "mol_definition",
@@ -519,7 +522,7 @@ def get_similar_ligands_via_smiles(smiles, **kwds):
 }
 '''
   assert (3 <= len(smiles)), 'short SMILES "%s" return too many results' % smiles
-  sqr = similar_ligand_query % (smiles)
+  sqr = similar_ligand_query % (smiles, match_type)
   # print(sqr)
   jsq = json.loads(sqr)
   return post_query(query_json=jsq, xray_only=False, **kwds)
