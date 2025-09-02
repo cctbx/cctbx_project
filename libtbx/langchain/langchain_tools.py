@@ -1,6 +1,6 @@
 """
 A library of modular functions for building and querying LangChain RAG pipelines.
-Required packages: langchain langchain-google-genai langchain-chroma pypdf unstructured beautifulsoup4 tqdm markdown-it-py langchain_community linkify-it-py
+Required packages: google-generativeai langchain-cohere cohere langchain langchain-google-genai langchain-chroma pypdf unstructured beautifulsoup4 tqdm markdown-it-py langchain_community linkify-it-py
 
 This module contains methods for setting up a RAG database from files
 in a directory, querying the database, summarizing a log file, and
