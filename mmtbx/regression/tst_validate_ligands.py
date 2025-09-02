@@ -234,8 +234,8 @@ def run_test3():
       #print(adps.b_max)
       #print(adps.b_mean)
 
-  os.remove('pdb1avd.ent_newH.txt')
-  os.remove('pdb1avd.ent_newH.cif')
+  os.remove('pdb1avd_newH.txt')
+  os.remove('pdb1avd_newH.cif')
 #def tst_get_overlaps(vl_manager):
 #  '''
 #  Test nonbonded overlaps

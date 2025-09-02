@@ -88,9 +88,8 @@ electron density values/CC.
     '''
     make_sub_header(' Placing H with reduce2 ', out=self.logger)
     model_reduce2 = None
-    #model_fn = self.data_manager.get_default_model_name()
     basename = os.path.splitext(os.path.basename(model_fn))[0]
-    model_fn_reduce2 = "%s_newH.cif" % basename
+    model_fn_reduce2 = "%s_newH.cif" % basename.split(".")[0]
     from iotbx.cli_parser import run_program
     from mmtbx.programs import reduce2 as reduce2
     args=["overwrite=True",
