@@ -116,7 +116,7 @@ def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True, raise_sorry
   #   return md
   # if print_time: print(residue.resname, get_class(residue.resname))
   if residue.resname == 'UNL':
-    return None
+    return None, None
   md, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
     residue_name=residue.resname,
     atom_names=residue.atoms().extract_name())

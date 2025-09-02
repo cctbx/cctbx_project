@@ -120,11 +120,13 @@ electron density values/CC.
     exclude = ["common_amino_acid", "modified_amino_acid", "common_rna_dna",
                "modified_rna_dna", "ccp4_mon_lib_rna_dna", "common_water",
                 "common_element"]
+    self.has_ligands = False
     for chain in model.chains():
       for rg in chain.residue_groups():
         for ag in rg.atom_groups():
           if (get_class(name=ag.resname) in exclude): continue
           print('Found ligand: ', ag.resname, file=self.logger)
+          self.has_ligands = True
           mlq, cif_object = reduce_hydrogen.mon_lib_query(
                               residue     = ag,
                               mon_lib_srv = model.get_mon_lib_srv(),
@@ -141,6 +143,8 @@ electron density values/CC.
     has_data = False
     fmodel = None
     self.additional_ro = []
+    self.working_model_fn = None
+    self.ligand_manager = None
     model_fn = self.data_manager.get_default_model_name()
     data_fn = self.data_manager.get_default_miller_array_name()
     print('Using model file:', model_fn, file=self.logger)
@@ -154,6 +158,9 @@ electron density values/CC.
       raise Sorry('Multi-model files currently not supported.')
     #
     self.check_ligands(model = m)
+    if not self.has_ligands:
+      print('No ligands found. Exiting.', file=self.logger)
+      return
     #
     if ' X' in m.get_hierarchy().atoms().extract_element():
       m = m.select(~m.selection('element X'))

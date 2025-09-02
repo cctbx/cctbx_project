@@ -93,7 +93,7 @@ class manager(list):
   def run(self):
     args = []
     for ligand_isel, sel_str in self.generate_ligand_iselections():
-      if ligand_isel.size() < 4: continue
+      #if ligand_isel.size() < 4: continue
       args.append([ligand_isel, sel_str])
     results = self.parallel_populate(args)
     for r in results:
