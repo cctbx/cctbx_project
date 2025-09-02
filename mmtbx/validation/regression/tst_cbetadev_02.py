@@ -10,9 +10,10 @@ def tst_01():
   """
   Exercise with model where coordinates are rounded to whole angstroms.
   """
-  regression_pdb = libtbx.env.find_in_repositories(
-    relative_path="cctbx_project/mmtbx/regression/pdbs/1ucs_cutted_xyz_rounded.pdb",
-    test=os.path.isfile)
+  import mmtbx 
+  from pathlib import Path
+  data_dir = Path(mmtbx.__file__).parent / 'regression' / 'pdbs'
+  regression_pdb = str( data_dir / '1ucs_cutted_xyz_rounded.pdb')
 
   pdb_in = iotbx.pdb.input(regression_pdb)
   hierarchy = pdb_in.construct_hierarchy()

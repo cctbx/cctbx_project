@@ -8,9 +8,11 @@ import iotbx.pdb
 from mmtbx.validation.rama_z import rama_z
 import os
 
-fname = libtbx.env.find_in_repositories(
-    relative_path="cctbx_project/mmtbx/regression/pdbs/p9.pdb",
-    test=os.path.isfile)
+import mmtbx
+from pathlib import Path
+data_dir = Path(mmtbx.__file__).parent / 'regression' / 'pdbs'
+fname = str( data_dir / 'p9.pdb')
+
 
 cryst1 = "CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           1          \n"
 

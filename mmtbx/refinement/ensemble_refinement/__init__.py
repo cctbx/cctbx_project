@@ -1807,10 +1807,12 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
 
   if er_params.electron_density_maps.apply_default_maps != False\
     or len(er_params.electron_density_maps.map_coefficients) == 0:
-    maps_par = libtbx.env.find_in_repositories(
-      relative_path=\
-        "cctbx_project/mmtbx/refinement/ensemble_refinement/maps.params",
-      test=os.path.isfile)
+
+    from pathlib import Path
+    data_dir =  Path(mmtbx.__file__).parent / "refinement" / "ensemble_refinement"
+
+    maps_par = str(data_dir / "maps.params")
+
     maps_par_phil = iotbx.phil.parse(file_name=maps_par)
     working_params = mmtbx.refinement.ensemble_refinement.master_params.fetch(
                         sources = [working_phil]+[maps_par_phil])
