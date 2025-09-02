@@ -10,14 +10,8 @@ from mmtbx.programs import validate_ligands as val_lig
 
 def run():
   run_test1()
-  os.remove('one_chain_ligand_water_newH.cif')
-  os.remove('one_chain_ligand_water_newH.txt')
   run_test2()
-  os.remove('two_chains_ligand_water_newH.cif')
-  os.remove('two_chains_ligand_water_newH.txt')
   run_test3()
-  os.remove('pdb1avd.ent_newH.txt')
-  os.remove('pdb1avd.ent_newH.cif')
   run_test4()
 
 # ------------------------------------------------------------------------------
@@ -47,14 +41,14 @@ def run_test1():
     200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214,
     215, 216, 217, 218, 219])
 
-
-#  tst_get_overlaps(vl_manager = vl_manager)
-# or
   for lr in vl_manager:
     clashes_result = lr.get_overlaps()
     assert(clashes_result.n_clashes == 5)
     #print(round(clashes_result.clashscore,1), 27.6)
     assert approx_equal(clashes_result.clashscore, 27.6, eps=0.5)
+
+  os.remove('one_chain_ligand_water_newH.cif')
+  os.remove('one_chain_ligand_water_newH.txt')
 
 # ------------------------------------------------------------------------------
 
@@ -78,6 +72,9 @@ def run_test2():
   vl_manager = result.ligand_manager
   tst_occupancies(vl_manager = vl_manager)
   tst_adps(vl_manager = vl_manager)
+
+  os.remove('two_chains_ligand_water_newH.cif')
+  os.remove('two_chains_ligand_water_newH.txt')
 
 # ------------------------------------------------------------------------------
 
@@ -237,6 +234,8 @@ def run_test3():
       #print(adps.b_max)
       #print(adps.b_mean)
 
+  os.remove('pdb1avd.ent_newH.txt')
+  os.remove('pdb1avd.ent_newH.cif')
 #def tst_get_overlaps(vl_manager):
 #  '''
 #  Test nonbonded overlaps
@@ -261,7 +260,10 @@ def run_test3():
 # ------------------------------------------------------------------------------
 
 def run_test4():
-  # save test model as file
+  '''
+  Test if ligands with 5-letter ID are processed properly
+  from PDB model 7has
+  '''
   model_fn = "tst_4_fragment.cif"
   with open(model_fn, "w") as f:
     f.write(cif_str_tst_4)
@@ -289,6 +291,12 @@ def run_test4():
     assert approx_equal(adps.b_min_within, 30.55, eps=0.01)
     assert approx_equal(adps.b_max_within, 63.10, eps=0.01)
     assert approx_equal(adps.b_mean_within, 42.45, eps=0.02)
+  #
+  os.remove(model_fn)
+  os.remove('tst_4_fragment_newH.cif')
+  os.remove('tst_4_fragment_newH.txt')
+
+# ------------------------------------------------------------------------------
 
 cif_str_tst_4 = '''
 data_default
