@@ -650,6 +650,7 @@ class ligand_result(object):
     # TODO clashes with other ligands?
     sel_within_str = '%s or (residues_within (%s, %s)) and (protein or water)' \
       % (self.sel_str, within_radius, self.sel_str)
+    #print(sel_within_str)
 
     sel_within = self.model.selection(sel_within_str)
     #isel_ligand_within = sel_within.iselection()
