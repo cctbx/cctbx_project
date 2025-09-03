@@ -1,16 +1,14 @@
 
 from __future__ import absolute_import, division, print_function
 from libtbx.test_utils import approx_equal
-import libtbx.load_env
 import iotbx.pdb
 from mmtbx.validation import cbetadev
-import os
 
 def tst_01():
   """
   Exercise with model where coordinates are rounded to whole angstroms.
   """
-  import mmtbx 
+  import mmtbx
   from pathlib import Path
   data_dir = Path(mmtbx.__file__).parent / 'regression' / 'pdbs'
   regression_pdb = str( data_dir / '1ucs_cutted_xyz_rounded.pdb')

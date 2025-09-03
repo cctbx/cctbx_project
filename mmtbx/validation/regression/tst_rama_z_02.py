@@ -1,8 +1,6 @@
 from __future__ import absolute_import, division, print_function
-import libtbx.load_env
 from libtbx import easy_run
 from libtbx.test_utils import assert_lines_in_text
-import os
 
 import mmtbx
 from pathlib import Path

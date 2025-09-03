@@ -5,9 +5,7 @@ from __future__ import absolute_import, division, print_function
 import sys
 from libtbx import easy_pickle
 from libtbx.utils import Sorry
-import libtbx.load_env
 from libtbx import smart_open
-import os
 import csv
 import requests
 

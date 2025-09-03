@@ -10,7 +10,7 @@ def exercise_01(prefix="tst_custom_nb_sym_excl"):
     relative_path="cctbx_project/mmtbx/regression/pdbs/1yjp_h.pdb",
     test=os.path.isfile)
 
-  import mmtbx 
+  import mmtbx
   from pathlib import Path
   data_dir = Path(mmtbx.__file__).parent / 'regression' / 'pdbs'
   fname = str( data_dir / '1yjp_h.pdb')

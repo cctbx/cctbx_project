@@ -23,7 +23,6 @@ from libtbx import adopt_init_args, slots_getstate_setstate
 from libtbx.str_utils import format_value, make_header
 from libtbx import runtime_utils
 from libtbx import easy_mp
-import libtbx.load_env
 from six.moves import cStringIO as StringIO
 from six.moves import cPickle as pickle
 import random
