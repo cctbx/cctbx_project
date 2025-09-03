@@ -34,7 +34,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "2.13.0"
+version = "2.14.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -1066,6 +1066,11 @@ NOTES:
 
     if not self.model.has_hd():
       raise Sorry("It was not possible to place any H atoms. Is this a single atom model?")
+
+    # We must re-interpret the model when _type_energies is not defined, which happens
+    # for example when running on 8zst.cif.
+    if not hasattr(self.model, '_type_energies'):
+      self._ReinterpretModel(make_restraints=True)
 
 # ------------------------------------------------------------------------------
 

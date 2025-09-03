@@ -477,7 +477,7 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
                 str(a.parent().parent().resseq_as_int()) + ' ' + a.name.strip())
               warnings += ("Warning: Could not find atom info for "+fullName+
                 " (perhaps interpretation was not run on the model?):"+
-                " keeping some default values\n")
+                " keeping some default values: "+str(e)+"\n")
               extras.setMappingFor(a, extra)
 
   return getExtraAtomInfoReturn(extras, warnings)
