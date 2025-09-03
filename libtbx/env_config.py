@@ -2439,6 +2439,14 @@ class module:
           source_file = self.env.under_build(
             op.join(self.name, "exe", file_name[:-len(ext)]+exe_suffix),
             return_relocatable_path=True)
+          # build and prefix directories are different in installations
+          if self.env.installed:
+            from libtbx.auto_build.conda_build.update_libtbx_env import get_default_dir, get_prefix_dir
+            source_file = op.join(
+              get_default_dir(),
+              self.name, "exe", file_name[:-len(ext)]+exe_suffix)
+            source_file = relocatable_path(
+              absolute_path(get_prefix_dir()), source_file, resolve_symlinks=False)
     if (len(target_files) == 0):
       target_file = self.name.lower() + target_file_name_infix
       if (not file_name_lower.startswith("main.")
