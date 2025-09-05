@@ -13,321 +13,17 @@ namespace cctbx { namespace maptbx {
 
 /*
 
-#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <cmath>
-#include <numeric>
-#include <limits>
-
-struct ModeResult {
-    double modeValue;
-    double zScore;
-    bool hasStrongMode;
-    bool usedKDE;
-};
-
-// ---------- Utility functions ----------
-double computeQuantile(const std::vector<double>& data, double q) {
-    double pos = (data.size() - 1) * q;
-    size_t idx = (size_t)pos;
-    double frac = pos - idx;
-    if (idx + 1 < data.size())
-        return data[idx] * (1 - frac) + data[idx + 1] * frac;
-    else
-        return data[idx];
-}
-
-double mean(const std::vector<double>& data) {
-    return std::accumulate(data.begin(), data.end(), 0.0) / data.size();
-}
-
 double stdev(const std::vector<double>& data) {
-    double m = mean(data);
+    double m = 0.0;
+    for (std::vector<double>::const_iterator it = data.begin(); it != data.end(); ++it) {
+      m += *it;
+    }
+    m = m / data.size();
     double sumSq = 0.0;
     for (double v : data) sumSq += (v - m) * (v - m);
     return std::sqrt(sumSq / (data.size() - 1));
 }
 
-// ---------- Histogram mode detection ----------
-ModeResult estimateModeHistogramSignificance(const std::vector<double>& data, double zThreshold = 2.0) {
-    ModeResult result{NAN, 0.0, false, false};
-
-    if (data.empty()) return result;
-    if (data.size() == 1) {
-        result.modeValue = data[0];
-        result.hasStrongMode = true;
-        return result;
-    }
-
-    std::vector<double> sorted = data;
-    std::sort(sorted.begin(), sorted.end());
-
-    size_t n = sorted.size();
-    double minVal = sorted.front();
-    double maxVal = sorted.back();
-
-    // Freedman–Diaconis bin width
-    double q1 = computeQuantile(sorted, 0.25);
-    double q3 = computeQuantile(sorted, 0.75);
-    double iqr = q3 - q1;
-    double h = 2.0 * iqr / std::cbrt((double)n);
-
-    int binCount;
-    if (h > 0) {
-        binCount = (int)std::ceil((maxVal - minVal) / h);
-    } else {
-        binCount = 1;
-    }
-
-    // Sturges' fallback
-    if (binCount < 1) {
-        binCount = (int)std::ceil(std::log2((double)n) + 1);
-    }
-    if (binCount > (int)n) binCount = (int)n;
-
-    double binWidth = (maxVal - minVal) / binCount;
-
-    std::vector<int> counts(binCount, 0);
-    for (double v : sorted) {
-        int binIdx = (int)((v - minVal) / binWidth);
-        if (binIdx == binCount) binIdx = binCount - 1;
-        counts[binIdx]++;
-    }
-
-    // Find top two bins
-    int maxBinIdx = std::distance(counts.begin(),
-                                  std::max_element(counts.begin(), counts.end()));
-    int maxCount = counts[maxBinIdx];
-
-    int secondMaxCount = 0;
-    for (int i = 0; i < binCount; i++) {
-        if (i != maxBinIdx && counts[i] > secondMaxCount) {
-            secondMaxCount = counts[i];
-        }
-    }
-
-    // Compute z-score
-    double diff = maxCount - secondMaxCount;
-    double sigmaDiff = std::sqrt((double)maxCount + (double)secondMaxCount);
-    double z = diff / sigmaDiff;
-    result.zScore = z;
-
-    if (z < zThreshold) {
-        result.hasStrongMode = false;
-        return result;
-    }
-
-    // Gather values in most populated bin
-    double binStart = minVal + maxBinIdx * binWidth;
-    double binEnd = binStart + binWidth;
-    std::vector<double> binValues;
-    for (double v : sorted) {
-        if ((v >= binStart && v < binEnd) ||
-            (maxBinIdx == binCount - 1 && v == maxVal)) {
-            binValues.push_back(v);
-        }
-    }
-
-    double sum = std::accumulate(binValues.begin(), binValues.end(), 0.0);
-    result.modeValue = sum / binValues.size();
-    result.hasStrongMode = true;
-    return result;
-}
-
-// ---------- KDE mode detection ----------
-//double estimateModeKDE(const std::vector<double>& data, int gridPoints = 200) {
-//    std::vector<double> sorted = data;
-//    std::sort(sorted.begin(), sorted.end());
-//    size_t n = sorted.size();
-//
-//    double minVal = sorted.front();
-//    double maxVal = sorted.back();
-//
-//    // Bandwidth (Silverman's rule)
-//    double sigma = stdev(sorted);
-//    double h = 1.06 * sigma * std::pow((double)n, -0.2);
-//
-//    double bestX = minVal;
-//    double bestDensity = -1.0;
-//
-//    for (int i = 0; i < gridPoints; i++) {
-//        double x = minVal + i * (maxVal - minVal) / (gridPoints - 1);
-//        double density = 0.0;
-//        for (double xi : sorted) {
-//            double u = (x - xi) / h;
-//            density += std::exp(-0.5 * u * u);
-//        }
-//        density /= (n * h * std::sqrt(2 * M_PI));
-//
-//        if (density > bestDensity) {
-//            bestDensity = density;
-//            bestX = x;
-//        }
-//    }
-//    return bestX;
-//}
-double estimateModeKDE(const std::vector<double>& data, cctbx::xray::detail::exponent_table<double> exp_table_, int coarsePoints = 50, int finePoints = 50) {
-    std::vector<double> sorted = data;
-    std::sort(sorted.begin(), sorted.end());
-    size_t n = sorted.size();
-
-    double minVal = sorted.front();
-    double maxVal = sorted.back();
-
-    // Bandwidth (Silverman's rule)
-    double sigma = stdev(sorted);
-    double h = 1.06 * sigma * std::pow((double)n, -0.2);
-    double inv_h = 1.0 / h;
-    double normFactor = 1.0 / (n * h * std::sqrt(2 * M_PI));
-
-    auto kdeDensity = [&](double x) {
-        double density = 0.0;
-        for (double xi : sorted) {
-            double diff = x - xi;
-            if (std::fabs(diff) > 3 * h) continue; // negligible contribution
-            double u = diff * inv_h;
-            //density += std::exp(-0.5 * u * u);
-            density += exp_table_(-0.5 * u * u);
-        }
-        return density * normFactor;
-    };
-
-    // 1. Coarse scan
-    double bestX = minVal;
-    double bestDensity = -1.0;
-    for (int i = 0; i < coarsePoints; i++) {
-        double x = minVal + i * (maxVal - minVal) / (coarsePoints - 1);
-        double d = kdeDensity(x);
-        if (d > bestDensity) {
-            bestDensity = d;
-            bestX = x;
-        }
-    }
-
-    // 2. Fine scan around bestX
-    double fineRange = (maxVal - minVal) / coarsePoints; // size of coarse bin
-    double fineStart = std::max(minVal, bestX - fineRange);
-    double fineEnd   = std::min(maxVal, bestX + fineRange);
-
-    bestDensity = -1.0;
-    for (int i = 0; i < finePoints; i++) {
-        double x = fineStart + i * (fineEnd - fineStart) / (finePoints - 1);
-        double d = kdeDensity(x);
-        if (d > bestDensity) {
-            bestDensity = d;
-            bestX = x;
-        }
-    }
-
-    return bestX;
-}
-
-
-// ---------- Combined mode finder ----------
-ModeResult findModeWithKDEFallback(const std::vector<double>& data,
-       cctbx::xray::detail::exponent_table<double> exp_table_ ) {
-    ModeResult histResult = estimateModeHistogramSignificance(data);
-
-    return histResult;
-
-    if (histResult.hasStrongMode) {
-        return histResult;
-    }
-    // Fallback to KDE
-    ModeResult kdeResult{NAN, 0.0, true, true};
-    kdeResult.modeValue = estimateModeKDE(data, exp_table_);
-    return kdeResult;
-}
-
-// ---------- Main ----------
-//int main() {
-//    std::vector<double> data = {
-//        1.1, 1.2, 1.3, 2.0, 2.1, 2.2, 2.3, 2.4, 3.0, 3.1
-//    };
-//
-//    ModeResult modeEst = findModeWithKDEFallback(data);
-//
-//    if (modeEst.usedKDE) {
-//        std::cout << "Histogram found no strong mode; KDE mode estimate: "
-//                  << modeEst.modeValue << "\n";
-//    } else {
-//        std::cout << "Histogram mode estimate: " << modeEst.modeValue
-//                  << " (z-score = " << modeEst.zScore << ")\n";
-//    }
-//
-//    return 0;
-//}
-
-
-*/
-
-double mean(const std::vector<double>& data) {
-    return std::accumulate(data.begin(), data.end(), 0.0) / data.size();
-}
-
-double stdev(const std::vector<double>& data) {
-    double m = mean(data);
-    double sumSq = 0.0;
-    for (double v : data) sumSq += (v - m) * (v - m);
-    return std::sqrt(sumSq / (data.size() - 1));
-}
-
-double estimateModeKDE(const std::vector<double>& data, cctbx::xray::detail::exponent_table<double> exp_table_, int coarsePoints = 50, int finePoints = 50) {
-    std::vector<double> sorted = data;
-    std::sort(sorted.begin(), sorted.end());
-    size_t n = sorted.size();
-
-    double minVal = sorted.front();
-    double maxVal = sorted.back();
-
-    // Bandwidth (Silverman's rule)
-    double sigma = stdev(sorted);
-    double h = 1.06 * sigma * std::pow((double)n, -0.2);
-    double inv_h = 1.0 / h;
-    double normFactor = 1.0 / (n * h * std::sqrt(2 * M_PI));
-
-    auto kdeDensity = [&](double x) {
-        double density = 0.0;
-        for (double xi : sorted) {
-            double diff = x - xi;
-            if (std::fabs(diff) > 3 * h) continue; // negligible contribution
-            double u = diff * inv_h;
-            //density += std::exp(-0.5 * u * u);
-            density += exp_table_(-0.5 * u * u);
-        }
-        return density * normFactor;
-    };
-
-    // 1. Coarse scan
-    double bestX = minVal;
-    double bestDensity = -1.0;
-    for (int i = 0; i < coarsePoints; i++) {
-        double x = minVal + i * (maxVal - minVal) / (coarsePoints - 1);
-        double d = kdeDensity(x);
-        if (d > bestDensity) {
-            bestDensity = d;
-            bestX = x;
-        }
-    }
-
-    // 2. Fine scan around bestX
-    double fineRange = (maxVal - minVal) / coarsePoints; // size of coarse bin
-    double fineStart = std::max(minVal, bestX - fineRange);
-    double fineEnd   = std::min(maxVal, bestX + fineRange);
-
-    bestDensity = -1.0;
-    for (int i = 0; i < finePoints; i++) {
-        double x = fineStart + i * (fineEnd - fineStart) / (finePoints - 1);
-        double d = kdeDensity(x);
-        if (d > bestDensity) {
-            bestDensity = d;
-            bestX = x;
-        }
-    }
-
-    return bestX;
-}
 
 // Sorts the data so we can compute quartiles.
 // Calculates IQR and bin width using Freedman–Diaconis.
@@ -425,7 +121,12 @@ ModeResult estimateModeHistogram(const std::vector<double>& data, double promine
         }
     }
 
-    double meanCount = std::accumulate(counts.begin(), counts.end(), 0.0) / counts.size();
+    double meanCount = 0.0;
+    for (std::vector<double>::const_iterator it = counts.begin(); it != counts.end(); ++it) {
+      meanCount += *it;
+    }
+    meanCount = meanCount / counts.size();
+
     double prominence = (double)(maxCount - secondMaxCount) / meanCount;
     result.prominence = prominence;
 
@@ -447,29 +148,33 @@ ModeResult estimateModeHistogram(const std::vector<double>& data, double promine
     }
 
     // Compute mean of values in most populated bin
-    double sum = std::accumulate(binValues.begin(), binValues.end(), 0.0);
+    double sum = 0.0;
+    for (std::vector<double>::const_iterator it = binValues.begin(); it != binValues.end(); ++it) {
+      sum += *it;
+    }
+
     result.modeValue = sum / binValues.size();
     result.hasStrongMode = true;
     return result;
 }
 
-int main() {
-    std::vector<double> data = {
-        3.1, 3.5, 3.6, 4.0, 4.1, 4.2, 5.5, 6.0, 6.1, 6.2
-    };
-
-    ModeResult modeEst = estimateModeHistogram(data);
-
-    if (modeEst.hasStrongMode) {
-        std::cout << "Estimated mode: " << modeEst.modeValue << "\n";
-        std::cout << "Prominence: " << modeEst.prominence * 100 << "% higher than average bin count\n";
-    } else {
-        std::cout << "No strong mode detected (prominence = "
-                  << modeEst.prominence * 100 << "%)\n";
-    }
-
-    return 0;
-}
+//int main() {
+//    std::vector<double> data = {
+//        3.1, 3.5, 3.6, 4.0, 4.1, 4.2, 5.5, 6.0, 6.1, 6.2
+//    };
+//
+//    ModeResult modeEst = estimateModeHistogram(data);
+//
+//    if (modeEst.hasStrongMode) {
+//        std::cout << "Estimated mode: " << modeEst.modeValue << "\n";
+//        std::cout << "Prominence: " << modeEst.prominence * 100 << "% higher than average bin count\n";
+//    } else {
+//        std::cout << "No strong mode detected (prominence = "
+//                  << modeEst.prominence * 100 << "%)\n";
+//    }
+//
+//    return 0;
+//}
 
 
 
@@ -557,7 +262,7 @@ public:
 
 
 
-
+*/
 
 
 
