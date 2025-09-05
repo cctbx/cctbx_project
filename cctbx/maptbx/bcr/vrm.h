@@ -447,7 +447,7 @@ public:
           //FloatType fact2 = std::exp(-argg);
           FloatType fact2 = myexp(-argg);
 
-          FloatType GridValue0 = GridValue0 + fact1 * fact2;
+          GridValue0 = GridValue0 + fact1 * fact2;
         }
         // contribution to nodes different from the atomic center
         if(mu == 0.0) {
