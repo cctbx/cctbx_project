@@ -1620,6 +1620,11 @@ class Builder(object):
         command=['git', 'branch', '--set-upstream-to=origin/dials-2.2', 'dials-2.2'],
         workdir=workdir))
 
+    # pick a specific commit for cbflib
+    if module == 'cbflib':
+      self.add_step(self.shell(command=['git', 'checkout', 'a9f39aff00580bb24d6dacb9ffa1bd2df1dedc31'],
+                               workdir=['modules', 'cbflib']))
+
   def _check_for_Windows_prerequisites(self):
     if self.isPlatformWindows():
       # platform specific checks cannot run on buildbot master so add to build steps to run on slaves
