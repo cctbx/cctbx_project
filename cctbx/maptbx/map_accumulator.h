@@ -11,17 +11,13 @@ typedef unsigned char     uint8_t;
 
 namespace cctbx { namespace maptbx {
 
-/*
-
 double stdev(const std::vector<double>& data) {
-    double m = 0.0;
-    for (std::vector<double>::const_iterator it = data.begin(); it != data.end(); ++it) {
-      m += *it;
-    }
-    m = m / data.size();
-    double sumSq = 0.0;
-    for (double v : data) sumSq += (v - m) * (v - m);
-    return std::sqrt(sumSq / (data.size() - 1));
+  double m = 0.0;
+  for (int i = 0; i<data.size(); i++) m += data[i];
+  m = m / data.size();
+  double sumSq = 0.0;
+  for (double v : data) sumSq += (v - m) * (v - m);
+  return std::sqrt(sumSq / (data.size() - 1));
 }
 
 
@@ -33,22 +29,13 @@ double stdev(const std::vector<double>& data) {
 // Calculates mode prominence — how much higher the most populated bin is compared to the second-most populated bin, relative to the average bin count.
 // Flags “no strong mode” if the prominence is below a threshold (default 15%).
 
-#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <cmath>
-#include <numeric>
-#include <limits>
-
 double computeQuantile(const std::vector<double>& data, double q) {
-    // Assumes data is sorted
-    double pos = (data.size() - 1) * q;
-    size_t idx = (size_t)pos;
-    double frac = pos - idx;
-    if (idx + 1 < data.size())
-        return data[idx] * (1 - frac) + data[idx + 1] * frac;
-    else
-        return data[idx];
+  // Assumes data is sorted
+  double pos = (data.size() - 1) * q;
+  size_t idx = (size_t)pos;
+  double frac = pos - idx;
+  if (idx + 1 < data.size()) return data[idx] * (1 - frac) + data[idx + 1] * frac;
+  else return data[idx];
 }
 
 struct ModeResult {
@@ -83,16 +70,11 @@ ModeResult estimateModeHistogram(const std::vector<double>& data, double promine
     // Freedman–Diaconis bin width
     double h = 2.0 * iqr / std::cbrt((double)n);
     int binCount;
-    if (h > 0) {
-        binCount = (int)std::ceil((maxVal - minVal) / h);
-    } else {
-        binCount = 1; // all values same
-    }
+    if (h > 0)  binCount = (int)std::ceil((maxVal - minVal) / h);
+    else binCount = 1; // all values same
 
     // If FD rule gives too few bins, use Sturges' formula
-    if (binCount < 1) {
-        binCount = (int)std::ceil(std::log2((double)n) + 1);
-    }
+    if (binCount < 1) binCount = (int)std::ceil(std::log2((double)n) + 1);
 
     // Avoid too many bins
     if (binCount > (int)n) binCount = (int)n;
@@ -122,10 +104,9 @@ ModeResult estimateModeHistogram(const std::vector<double>& data, double promine
     }
 
     double meanCount = 0.0;
-    for (std::vector<double>::const_iterator it = counts.begin(); it != counts.end(); ++it) {
-      meanCount += *it;
-    }
+    for (int i = 0; i<counts.size(); i++) meanCount += counts[i];
     meanCount = meanCount / counts.size();
+
 
     double prominence = (double)(maxCount - secondMaxCount) / meanCount;
     result.prominence = prominence;
@@ -149,9 +130,7 @@ ModeResult estimateModeHistogram(const std::vector<double>& data, double promine
 
     // Compute mean of values in most populated bin
     double sum = 0.0;
-    for (std::vector<double>::const_iterator it = binValues.begin(); it != binValues.end(); ++it) {
-      sum += *it;
-    }
+    for (int i = 0; i<binValues.size(); i++) sum += binValues[i];
 
     result.modeValue = sum / binValues.size();
     result.hasStrongMode = true;
@@ -259,33 +238,6 @@ public:
   }
 
 };
-
-
-
-*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 template <typename FloatType, typename GridType>
