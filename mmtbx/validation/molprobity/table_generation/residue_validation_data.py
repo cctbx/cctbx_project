@@ -34,7 +34,7 @@ class ResidueValidationData:
     for ag in rg.atom_groups():
       resnames[ag.altloc] = ag.resname
     return resnames
-        
+
   def get_alts_from_hierarchy(self, rg):
     #Help track whether an alt came from the model or from calculations
     modeled_alternates = []
@@ -59,10 +59,10 @@ class ResidueValidationData:
       'modeled_alternates': self.modeled_alternates,
       'reskey': self.reskey,
     }
-    
+
     # Add the raw validation results for the requested columns
     for val_type in table_order:
       if val_type in self.validations:
         data[val_type] = self.validations[val_type]
-        
+
     return data

@@ -70,7 +70,7 @@ class MergedValidationTable:
           reskey = make_reskey(model_id, chain_id, resseq, icode)
           self.indices.append(reskey)
           self.data[reskey] = ResidueValidationData(rg, model_id, chain_id, resseq, icode)
-            
+
   def add_summaries(self, json_list):
     for val_json in json_list:
       self.add_summary(val_json)
@@ -162,7 +162,7 @@ class MergedValidationTable:
         continue
       for altloc in self.data[reskey].validations[val_type]:
         self.data[reskey].validations[val_type][altloc].sort(key=lambda x: abs(x["score"]), reverse=True)
-    
+
   def get_table_order(self):
     #jsons may be received in any order
     table_order = []
@@ -183,7 +183,7 @@ class MergedValidationTable:
     ready to be converted to JSON.
     """
     table_data = []
-    
+
     # --- Clashscore ---
     if "clashscore" in self.summaries:
         data = self.summaries["clashscore"][model]
@@ -283,18 +283,18 @@ class MergedValidationTable:
         data = self.summaries["mp_bonds"][model]
         num_outliers = data.get("num_outliers_protein", 0)
         num_total = data.get("num_total_protein", 0)
-        
+
         pct_outliers = (num_outliers / num_total * 100.0) if num_total > 0 else 0.0
-        
+
         status = self.get_mp_bonds_summary_stoplight(model)
-            
+
         table_data.append({
             "category": "Protein Geometry",
             "metric": "Bad bonds",
             "value": f"{num_outliers} / {num_total}",
             "percent_html": f"{pct_outliers:.1f}%",
             "goal": "0%",
-            "status": status 
+            "status": status
         })
 
     # --- Bad Angles ---
@@ -304,9 +304,9 @@ class MergedValidationTable:
         num_total = data.get("num_total_protein", 0)
 
         pct_outliers = (num_outliers / num_total * 100.0) if num_total > 0 else 0.0
-        
+
         status = self.get_mp_angles_summary_stoplight(model)
-            
+
         table_data.append({
             "category": "Protein Geometry",
             "metric": "Bad angles",
@@ -337,9 +337,9 @@ class MergedValidationTable:
         num_general = data.get("num_general", 0)
         num_cis_general = data.get("num_cis_general", 0)
         pct_cis_general = (num_cis_general / num_general * 100.0) if num_general > 0 else 0.0
-        
+
         status_cis_general = self.get_cis_nonpro_summary_stoplight(model)
-            
+
         table_data.append({
             "category": "Peptide Omegas",
             "metric": "Cis non-Prolines",
@@ -535,7 +535,7 @@ class MergedValidationTable:
       num_general = data.get("num_general", 0)
       num_cis_general = data.get("num_cis_general", 0)
       pct_cis_general = (num_cis_general / num_general * 100.0) if num_general > 0 else 0.0
-      
+
       color = yellow # Default to yellow
       if pct_cis_general <= 0.05:
         color = green
@@ -559,14 +559,14 @@ class MergedValidationTable:
           color = red
     return color
 
-  # returns the worst color out of all the omegalyze categories. 
+  # returns the worst color out of all the omegalyze categories.
   # This is used for the color of the header of multicrit table.
   def get_omegalyze_summary_stoplight(self, model):
     if "omegalyze" not in self.summaries:
       return None
 
     data = self.summaries["omegalyze"][model]
-    
+
     # Define severity levels for the statuses
     severity = {"green": 1, "yellow": 2, "red": 3}
     worst_severity = severity["green"] # Start with the best possible status
@@ -575,13 +575,13 @@ class MergedValidationTable:
     num_general = data.get("num_general", 0)
     if num_general > 0:
       pct_cis_general = data.get("num_cis_general", 0) / num_general * 100.0
-        
+
       current_severity = severity["green"]
       if pct_cis_general > 0.1:
         current_severity = severity["red"]
       elif pct_cis_general > 0.05:
         current_severity = severity["yellow"]
-        
+
       if current_severity > worst_severity:
         worst_severity = current_severity
     # --- Check Twisted Peptides ---
@@ -595,7 +595,7 @@ class MergedValidationTable:
         current_severity = severity["red"]
       else:
         current_severity = severity["yellow"]
-            
+
       if current_severity > worst_severity:
         worst_severity = current_severity
     # --- Return the color corresponding to the worst status found ---
@@ -618,7 +618,7 @@ class MergedValidationTable:
     """
     # 1. Get the raw, unformatted data for the residue
     raw_data = residue_data.get_row_data(table_order)
-    
+
     # 2. Use the HtmlBuilder to generate the formatted HTML parts
     # This returns a dictionary of {'html': "...", 'sort_value': 12.34}
     formatted_cells = self.html_builder.build_all_cells_for_residue(raw_data, table_order)
@@ -631,12 +631,12 @@ class MergedValidationTable:
       'resname_html': formatted_cells['resname']['html'],
       'alt_html': formatted_cells['alt']['html']
     }
-    
+
     # Add the sort and html values for each validation type
     for val_type in table_order:
       final_dict[f'{val_type}_sort_value'] = formatted_cells[val_type]['sort_value']
       final_dict[f'{val_type}_html'] = formatted_cells[val_type]['html']
-      
+
     return final_dict
 
   def get_all_header_data(self, model):
@@ -668,7 +668,7 @@ class MergedValidationTable:
       # 4. Execute the logic
       color = stoplight_method(model)
       header_html = header_content_method(self.summaries, model, color)
-      
+
       header_data[val_type] = header_html
 
     return header_data
@@ -686,7 +686,7 @@ class MergedValidationTable:
     """
     # 1. Get the dynamic header content
     header_data = self.get_all_header_data(model)
-    
+
     # 2. Build the table header HTML
     header_html = self.html_builder.build_multicrit_header(header_data)
 
@@ -697,7 +697,7 @@ class MergedValidationTable:
       body_rows.append(
         self.html_builder.build_residue_row(residue_data, table_order)
       )
-    
+
     # 4. Combine header and body into the final table
     return (
       f'{header_html}'

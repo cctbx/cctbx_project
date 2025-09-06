@@ -240,7 +240,7 @@ class merged_validations():
     ready to be converted to JSON.
     """
     table_data = []
-    
+
     # --- Clashscore ---
     if "clashscore" in self.summaries:
         data = self.summaries["clashscore"][model]
@@ -340,18 +340,18 @@ class merged_validations():
         data = self.summaries["mp_bonds"][model]
         num_outliers = data.get("num_outliers_protein", 0)
         num_total = data.get("num_total_protein", 0)
-        
+
         pct_outliers = (num_outliers / num_total * 100.0) if num_total > 0 else 0.0
-        
+
         status = self.get_mp_bonds_summary_stoplight(model)
-            
+
         table_data.append({
             "category": "Protein Geometry",
             "metric": "Bad bonds",
             "value": f"{num_outliers} / {num_total}",
             "percent_html": f"{pct_outliers:.1f}%",
             "goal": "0%",
-            "status": status 
+            "status": status
         })
 
     # --- Bad Angles ---
@@ -361,9 +361,9 @@ class merged_validations():
         num_total = data.get("num_total_protein", 0)
 
         pct_outliers = (num_outliers / num_total * 100.0) if num_total > 0 else 0.0
-        
+
         status = self.get_mp_angles_summary_stoplight(model)
-            
+
         table_data.append({
             "category": "Protein Geometry",
             "metric": "Bad angles",
@@ -394,9 +394,9 @@ class merged_validations():
         num_general = data.get("num_general", 0)
         num_cis_general = data.get("num_cis_general", 0)
         pct_cis_general = (num_cis_general / num_general * 100.0) if num_general > 0 else 0.0
-        
+
         status_cis_general = self.get_cis_nonpro_summary_stoplight(model)
-            
+
         table_data.append({
             "category": "Peptide Omegas",
             "metric": "Cis non-Prolines",
@@ -592,7 +592,7 @@ class merged_validations():
       num_general = data.get("num_general", 0)
       num_cis_general = data.get("num_cis_general", 0)
       pct_cis_general = (num_cis_general / num_general * 100.0) if num_general > 0 else 0.0
-      
+
       color = yellow # Default to yellow
       if pct_cis_general <= 0.05:
         color = green
@@ -616,14 +616,14 @@ class merged_validations():
           color = red
     return color
 
-  # returns the worst color out of all the omegalyze categories. 
+  # returns the worst color out of all the omegalyze categories.
   # This is used for the color of the header of multicrit table.
   def get_omegalyze_summary_stoplight(self, model):
     if "omegalyze" not in self.summaries:
       return None
 
     data = self.summaries["omegalyze"][model]
-    
+
     # Define severity levels for the statuses
     severity = {"green": 1, "yellow": 2, "red": 3}
     worst_severity = severity["green"] # Start with the best possible status
@@ -632,13 +632,13 @@ class merged_validations():
     num_general = data.get("num_general", 0)
     if num_general > 0:
       pct_cis_general = data.get("num_cis_general", 0) / num_general * 100.0
-        
+
       current_severity = severity["green"]
       if pct_cis_general > 0.1:
         current_severity = severity["red"]
       elif pct_cis_general > 0.05:
         current_severity = severity["yellow"]
-        
+
       if current_severity > worst_severity:
         worst_severity = current_severity
     # --- Check Twisted Peptides ---
@@ -652,7 +652,7 @@ class merged_validations():
         current_severity = severity["red"]
       else:
         current_severity = severity["yellow"]
-            
+
       if current_severity > worst_severity:
         worst_severity = current_severity
     # --- Return the color corresponding to the worst status found ---
@@ -984,7 +984,7 @@ class merged_validations():
   def clash_header(self, model, bootstrap=False):
     clashscore_val = self.summaries["clashscore"][model]["clashscore"]
     sortable_attr = " data-sortable='true'" if bootstrap else ""
-    
+
     return (
         f"    <th{sortable_attr}>Clash &gt; 0.4&Aring;<br><small>Clashscore: "
         f"{clashscore_val:.2f}</small></th>"
@@ -999,7 +999,7 @@ class merged_validations():
     )
 
   def rama_header(self, model, bootstrap=False):
-    if bootstrap: 
+    if bootstrap:
       return "    <th data-sortable='true'>Ramachandran<br><small>Outliers: {num_outliers} out of {num_residues}</small></th>".format(
         num_outliers=self.summaries["ramalyze"][model]["num_outliers"], num_residues=self.summaries["ramalyze"][model]["num_residues"])
     else:
@@ -1017,7 +1017,7 @@ class merged_validations():
   def rota_header(self, model, bootstrap=False):
     summary = self.summaries["rotalyze"][model]
     sortable_attr = " data-sortable='true'" if bootstrap else ""
-    
+
     return (
         f"    <th{sortable_attr}>Rotamer<br><small>Poor rotamers: "
         f"{summary['num_outliers']} out of {summary['num_residues']}</small></th>"
@@ -1038,7 +1038,7 @@ class merged_validations():
     else:
       return "   <th>C&beta; deviation<br><small>Outliers: {num_outliers} out of {num_cbeta_residues}</small></th>".format(
         num_outliers=self.summaries["cbetadev"][model]["num_outliers"], num_cbeta_residues=self.summaries["cbetadev"][model]["num_cbeta_residues"])
-    
+
   def get_cbetadev_header_content(self, model):
     summary = self.summaries["cbetadev"][model]
     num_outliers = summary["num_outliers"]
@@ -1066,7 +1066,7 @@ class merged_validations():
         f"<div class='th-inner' data-status='{stoplight_color}'>CaBLAM<br><small>Outliers: "
         f"{summary['num_cablam_outliers']} out of {summary['num_residues']}</small></div>"
     )
-    
+
   def pperp_header(self, model, bootstrap=False):
     return "    <th>Base-P perp dist.<br><small>Outliers: {num_outliers} out of {num_residues}</small></th>".format(
       num_outliers=self.summaries["rna_puckers"][model]["num_outliers"], num_residues=self.summaries["rna_puckers"][model]["num_residues"])
@@ -1098,7 +1098,7 @@ class merged_validations():
     else:
       return "    <th>Bond angles<br><small>Outliers: {num_outliers} out of {num_total}</small></th>".format(
         num_outliers=self.summaries["mp_angles"][model]["num_outliers"], num_total=self.summaries["mp_angles"][model]["num_total"])
-    
+
   def get_mp_angles_header_content(self, model):
     summary = self.summaries["mp_angles"][model]
     stoplight_color = self.get_mp_angles_summary_stoplight(model)
@@ -1458,7 +1458,7 @@ class residue():
     if geom_score >= 10:
       if bootstrap: color = " data-status='severe'"
       else: color = " bgcolor={color}".format(color=self.colors["severe"])
-    else: 
+    else:
       if bootstrap: color = " data-status='outlier'"
       else: color = " bgcolor={color}".format(color=self.colors["outlier"]) #implicitly score>=4
     line1 = "<td{color}>{outlier_count} OUTLIERS(S)".format(color=color, outlier_count=len(geom_data))
@@ -1477,7 +1477,7 @@ class residue():
     if geom_score >= 10:
       if bootstrap: color = " data-status='severe'"
       else: color = " bgcolor={color}".format(color=self.colors["severe"])
-    else: 
+    else:
       if bootstrap: color = " data-status='outlier'"
       else: color = " bgcolor={color}".format(color=self.colors["outlier"]) #implicitly score>=4
     line1 = "<td{color}>{outlier_count} OUTLIERS(S)".format(color=color, outlier_count=len(geom_data))
@@ -1686,7 +1686,7 @@ class residue_bootstrap():
     """
     # Start with a set of alternates found in the model structure
     all_alts = set(self.modeled_alternates)
-    
+
     # Add alternates found in any of the validation results
     for validation_dict in self.validations.values():
         all_alts.update(validation_dict.keys())
@@ -1694,7 +1694,7 @@ class residue_bootstrap():
     # Ensure there's at least one entry ('') for non-alternate residues
     if not all_alts:
         all_alts.add('')
-    
+
     # Sort the final, unique list of alternates
     self.alternates = sorted(list(all_alts))
 
@@ -1730,19 +1730,19 @@ class residue_bootstrap():
         if alt not in self.modeled_alternates and alt:
             alt_display = f"({alt})"
         alt_divs.append(f"<div>{alt_display}</div>")
-    
+
     data['resname_html'] = "".join(resname_divs)
     data['alt_html'] = "".join(alt_divs)
 
     for val_type in table_order:
         worst_sort_value = None
         divs = []
-        
+
         method_name = f"_get_{val_type}_div"
         # Check if a helper method exists for this validation type
         if hasattr(self, method_name):
             helper_method = getattr(self, method_name)
-            
+
             # Loop through alternates to build the content for this single cell
             for alt in self.alternates:
                 # Call the correct helper for the current val_type
@@ -1750,17 +1750,17 @@ class residue_bootstrap():
                 divs.append(div)
                 if sort_val is not None and (worst_sort_value is None or sort_val > worst_sort_value):
                     worst_sort_value = sort_val
-        
+
         # Store the raw sort value and the combined HTML for this validation type
         data[f'{val_type}_sort_value'] = worst_sort_value
         data[f'{val_type}_html'] = "".join(divs)
-            
+
     return data
 
   # --- New Main Method to Generate a Single Table Row ---
   def as_html_row(self):
     # This dictionary will hold the combined text for each validation cell
-    # "clashscore", "ramalyze", "rotalyze", "cbetadev", "cablam", "rna_puckers", 
+    # "clashscore", "ramalyze", "rotalyze", "cbetadev", "cablam", "rna_puckers",
     # "rna_suites", "mp_bonds", "mp_angles", "omegalyze"
     cell_contents = {key: [] for key in MASTER_ORDER}
     cell_sort_values = {key: None for key in MASTER_ORDER} # Dictionary to track sort values
@@ -1797,7 +1797,7 @@ class residue_bootstrap():
     row_parts.append(f"<td>{self.icode}</td>")
     row_parts.append(f"<td>{''.join(cell_contents['resname'])}</td>")
     row_parts.append(f"<td>{''.join(cell_contents['alt'])}</td>")
-    
+
     # Add validation cells with their overall status
     for key in MASTER_ORDER:
       if len(cell_contents[key])>0:
@@ -1815,7 +1815,7 @@ class residue_bootstrap():
     current_status = statuses.get(key, "favored")
     if severity.get(new_status, -1) > severity.get(current_status, -1):
         statuses[key] = new_status
-  
+
   # --- New Helper Methods to Get Divs ---
 
   def _get_clashscore_div(self, alt):
@@ -1826,7 +1826,7 @@ class residue_bootstrap():
     # Data is a list of clashes, sorted worst to best; use the first one
     worst_clash = data_list[0]
     clash_size = abs(worst_clash["overlap"])
-    
+
     # Determine status
     status = ""
     if clash_size < 0.5:
@@ -1835,12 +1835,12 @@ class residue_bootstrap():
         status = "severe"
     else:
         status = "outlier"
-    
+
     status_attr = f'data-status="{status}"' if status else ''
-    
+
     # Format the main content string
     content_string = f"{clash_size:.2f} Å"
-    
+
     # Format the details in the <small> tag
     if self.reskey == make_reskey(worst_clash["model_id"], worst_clash["chain_id"], worst_clash["resseq"], worst_clash["icode"]):
         details = "<small>{src_atom} with {trg_chain} {trg_resseq}{trg_icode} {trg_resname} {trg_atom} {trg_altloc}</small>".format(
@@ -1860,7 +1860,7 @@ class residue_bootstrap():
             trg_resname=worst_clash["resname"],
             trg_atom=worst_clash["name"],
             trg_altloc=worst_clash["altloc"])
-            
+
     content_string += f"<br>{details}"
     html_div = f"<div {status_attr}>{content_string}</div>"
     return (html_div, clash_size)
@@ -1868,11 +1868,11 @@ class residue_bootstrap():
   def _get_ramalyze_div(self, alt):
     data = self.validations.get("ramalyze", {}).get(alt)
     if not data: return ("<div>-</div>", None)
-    
+
     status_map = {"OUTLIER": "outlier", "ALLOWED": "allowed", "FAVORED": "favored"}
     status = status_map.get(data["rama_type"].upper(), "")
     status_attr = f'data-status="{status}"' if status else ''
-    
+
     content = "<span>{rama_type}<span class='cell-detail'> ({score:.2f}%)</span></span><span><small>{res_type}<span class='cell-detail'>: {phi:.1f}&phi;,{psi:.1f}&psi;</small></span></span>".format(**data)
     html_div = f"<div {status_attr}>{content}</div>"
     return (html_div, data["score"])
@@ -1915,11 +1915,11 @@ class residue_bootstrap():
     status = "severe" if score >= 10 else "outlier"
     status_attr = f'data-status="{status}"'
     outliers = sum(1 for item in data if item['outlier'])
-    
+
     content = f"{outliers} OUTLIER(S)<br><small>worst is {data[0]['atoms_name'][0].strip()}--{data[0]['atoms_name'][1].strip()}: {score:.1f} &sigma;</small>"
     html_div = f"<div {status_attr}>{content}</div>"
     return (html_div, len(data))
-    
+
   def _get_mp_angles_div(self, alt):
     cutoff = 4
     data = self.validations.get("mp_angles", {}).get(alt)
@@ -1930,7 +1930,7 @@ class residue_bootstrap():
     status = "severe" if score >= 10 else "outlier"
     status_attr = f'data-status="{status}"'
     outliers = sum(1 for item in data if item['outlier'])
-    
+
     content = f"{outliers} OUTLIER(S)<br><small>worst is {'-'.join(a.strip() for a in data[0]['atoms_name'])}: {score:.1f} &sigma;</small>"
     html_div = f"<div {status_attr}>{content}</div>"
     return (html_div, len(data))
@@ -1947,9 +1947,9 @@ class residue_bootstrap():
 
     # Format the content, adding the Angstrom symbol
     content = f"{deviation:.2f}&Aring;"
-    
+
     html_div = f"<div {status_attr}>{content}</div>"
-    
+
     # Return the HTML and the raw deviation for sorting
     return (html_div, deviation)
 
@@ -1967,12 +1967,12 @@ class residue_bootstrap():
         status = "mild"
     else:
       outlier_type = "Favored"
-    
+
     status_attr = f'data-status="{status}"' if status else ''
-    
+
     score = data.get("scores", {}).get("cablam", 0.0)
     content_string = f'<span>{outlier_type}<span class="cell-detail"> ({score:.3f}%)</span></span>'
-    
+
     feedback = data.get("feedback", "")
     if feedback:
         # Clean up the feedback text and add it
@@ -1993,7 +1993,7 @@ class residue_bootstrap():
 
     status = ""
     sort_value = 0 # Lower is better, so Trans peptides will sort first.
-    
+
     if omega_type == "Twisted":
         status = "severe"
         sort_value = 3 # Highest severity
@@ -2003,17 +2003,17 @@ class residue_bootstrap():
             sort_value = 2 # Medium severity
         else: # Cis-proline is notable but not an outlier
             sort_value = 1 # Low severity
-    
+
     status_attr = f'data-status="{status}"' if status else ''
-    
+
     proline_label = "PRO" if resname == "PRO" else "nonPRO"
     content = (
         f"<span>{omega_type} {proline_label}"
         f"<span class='cell-detail'><br><small>omega={omega_value:.2f}&deg;</small></span></span>"
     )
-    
+
     html_div = f"<div {status_attr}>{content}</div>"
-    
+
     return (html_div, sort_value)
 
 def loadModel(filename):  # from suitename/suites.py
@@ -2057,4 +2057,3 @@ if __name__ == '__main__':
   print(merged.html_header())
   print(merged.make_summary_table(""))
   print(merged.make_multicrit_table("", outliers_only=True))
-
