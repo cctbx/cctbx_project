@@ -18,6 +18,33 @@ MASTER_ORDER = ["clashscore",
                 "mp_angles",
                 "omegalyze"]
 
+VALIDATION_CATEGORIES = {
+    "clashscore": "General",
+    "ramalyze": "Protein",
+    "rotalyze": "Protein",
+    "cbetadev": "Protein",
+    "cablam": "Protein",
+    "omegalyze": "Protein",
+    "mp_bonds": "General",
+    "mp_angles": "General",
+    "rna_puckers": "RNA",
+    "rna_suites": "RNA",
+}
+
+# used for checkboxes that turn columns off and on in multicrit chart
+VALIDATION_HEADER_NAMES = {
+    "clashscore": "Clashes",
+    "ramalyze": "Ramachandran",
+    "rotalyze": "Rotamer",
+    "cbetadev": "Cβ deviation",
+    "cablam": "CaBLAM",
+    "mp_bonds": "Bond lengths",
+    "mp_angles": "Bond angles",
+    "omegalyze": "Cis peptides",
+    "rna_puckers": "RNA Puckers",
+    "rna_suites": "RNA Suites"
+}
+
 def make_reskey(model_id, chain_id, resseq, icode):
   #create a unique string residue key with mmCIF-like placeholders for blank fields
   #The residue key is space-delimited
@@ -142,6 +169,12 @@ class merged_validations():
       if x in self.validation_types:
         table_order.append(x)
     return table_order
+
+  def get_validation_categories(self):
+    return VALIDATION_CATEGORIES
+
+  def get_validation_header_names(self):
+    return VALIDATION_HEADER_NAMES
 
   def make_summary_table(self, model, red = '#ff9999', yellow = '#ffff99', green = '#99ff99'):
   # TODO: add a cleverness to do the first model if model==None
