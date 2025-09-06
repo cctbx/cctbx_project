@@ -302,22 +302,22 @@ class HtmlBuilder:
   def get_clashscore_header_content(self, summaries, model, stoplight_color):
     clashscore_val = summaries["clashscore"][model]["clashscore"]
     return (
-        f"<div class='th-inner' data-status='{stoplight_color}'>Clash &gt; 0.4&Aring;<br><small>Clashscore: "
-        f"{clashscore_val:.2f}</small></div>"
+        f"<div class='th-inner' data-status='{stoplight_color}'>Clash &gt; 0.4&Aring;<span class='cell-detail'><br><small>Clashscore: "
+        f"{clashscore_val:.2f}</small></span></div>"
     )
 
   def get_ramalyze_header_content(self, summaries, model, stoplight_color):
     summary = summaries["ramalyze"][model]
     return (
-        f"<div class='th-inner' data-status='{stoplight_color}'>Ramachandran<br><small>Outliers: "
-        f"{summary['num_outliers']} out of {summary['num_residues']}</small></div>"
+        f"<div class='th-inner' data-status='{stoplight_color}'>Ramachandran<span class='cell-detail'><br><small>Outliers: "
+        f"{summary['num_outliers']} out of {summary['num_residues']}</small></span></div>"
     )
 
   def get_rotalyze_header_content(self, summaries, model, stoplight_color):
     summary = summaries["rotalyze"][model]
     return (
-        f"<div class='th-inner' data-status='{stoplight_color}'>Rotamer<br><small>Poor rotamers: "
-        f"{summary['num_outliers']} out of {summary['num_residues']}</small></div>"
+        f"<div class='th-inner' data-status='{stoplight_color}'>Rotamer<span class='cell-detail'><br><small>Poor rotamers: "
+        f"{summary['num_outliers']} out of {summary['num_residues']}</small></span></div>"
     )
 
   def get_cbetadev_header_content(self, summaries, model, stoplight_color):
@@ -325,15 +325,15 @@ class HtmlBuilder:
     num_outliers = summary["num_outliers"]
     num_residues = summary["num_cbeta_residues"]
     return (
-        f"<div class='th-inner' data-status='{stoplight_color}'>C&beta; deviation<br><small>Outliers: "
-        f"{num_outliers} out of {num_residues}</small></div>"
+        f"<div class='th-inner' data-status='{stoplight_color}'>C&beta; deviation<span class='cell-detail'><br><small>Outliers: "
+        f"{num_outliers} out of {num_residues}</small></span></div>"
     )
 
   def get_cablam_header_content(self, summaries, model, stoplight_color):
     summary = summaries["cablam"][model]
     return (
-        f"<div class='th-inner' data-status='{stoplight_color}'>CaBLAM<br><small>Outliers: "
-        f"{summary['num_cablam_outliers']} out of {summary['num_residues']}</small></div>"
+        f"<div class='th-inner' data-status='{stoplight_color}'>CaBLAM<span class='cell-detail'><br><small>Outliers: "
+        f"{summary['num_cablam_outliers']} out of {summary['num_residues']}</small></span></div>"
     )
 
   def pperp_header(self, summaries, model, stoplight_color):
@@ -347,15 +347,15 @@ class HtmlBuilder:
   def get_mp_bonds_header_content(self, summaries, model, stoplight_color):
     summary = summaries["mp_bonds"][model]
     return (
-        f"<div class='th-inner' data-status='{stoplight_color}'>Bond lengths<br><small>Outliers: "
-        f"{summary['num_outliers']} out of {summary['num_total']}</small></div>"
+        f"<div class='th-inner' data-status='{stoplight_color}'>Bond lengths<span class='cell-detail'><br><small>Outliers: "
+        f"{summary['num_outliers']} out of {summary['num_total']}</small></span></div>"
     )
 
   def get_mp_angles_header_content(self, summaries, model, stoplight_color):
     summary = summaries["mp_angles"][model]
     return (
-        f"<div class='th-inner' data-status='{stoplight_color}'>Bond angles<br><small>Outliers: "
-        f"{summary['num_outliers']} out of {summary['num_total']}</small></div>"
+        f"<div class='th-inner' data-status='{stoplight_color}'>Bond angles<span class='cell-detail'><br><small>Outliers: "
+        f"{summary['num_outliers']} out of {summary['num_total']}</small></span></div>"
     )
 
   def get_omegalyze_header_content(self, summaries, model, stoplight_color):
@@ -374,8 +374,8 @@ class HtmlBuilder:
     )
     # Create the inner HTML content
     return (
-        f"<div class='th-inner' data-status='{stoplight_color}'>Cis Peptides<br><small>Non-Trans: "
-        f"{total_nontrans} out of {total_res}</small></div>"
+        f"<div class='th-inner' data-status='{stoplight_color}'>Peptide Omegas<span class='cell-detail'><br><small>Non-Trans: "
+        f"{total_nontrans} out of {total_res}</small></span></div>"
     )
 
   def build_all_headers(self, validation_table, table_order, model):
