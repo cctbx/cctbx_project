@@ -106,8 +106,8 @@ def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=3,nfm
 
 #   definition / estimations of the internal parameters
 
-    ceps,bmin,cmin,rmin,edist,mdist = PreciseData(kpres,epsc,epsp,edist,
-                                                  dmax,dens[0],dist,nfmes)
+    ceps,bmin,cmin,rmin,edist,mdist = PreciseData(
+      kpres,epsc,epsp,edist,dmax,dens[0],dist,nfmes)
 #--------------------------------------
 #
 #   starting point to search for the peaks;
@@ -122,6 +122,10 @@ def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=3,nfm
 #   main cycle over peaks including the residual one in the origin
 
     while (epsres >= ceps) and (npeak < mxp) :
+        #print("BEFORE B, C, R")
+        #for B,C,R in zip(bpeak,cpeak,rpeak):
+        #  print("%12.6f %12.6f %12.6f"%(B,C,R))
+        #print()
 
 #       find next group of peaks
 
@@ -164,6 +168,10 @@ def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=3,nfm
               kprot = 3
 
            kpeak = 0
+        #print("AFTER B, C, R")
+        #for B,C,R in zip(bpeak,cpeak,rpeak):
+        #  print("%12.6f %12.6f %12.6f"%(B,C,R))
+        #print()
 #
 #   end of the main cycle ;
 #
@@ -203,29 +211,26 @@ def RefineBCR(dens,dist,mdist,edist,bpeak,cpeak,rpeak,npeak,bmin,cmin,rmin,nfmes
            bcrbounds[i3+1] = (-1000.,-cmin)
 
 #   minimization
+    if 1:
+      for it in range(1,10):
+        if it > 1: xc = res.x
+        lbound = []
+        ubound = []
+        for b in bcrbounds:
+          lbound.append(b[0])
+          ubound.append(b[1])
 
-    for it in range(1,3):
-      if it > 1:
-        xc = res.x
-      lbound = []
-      ubound = []
-      for b in bcrbounds:
-        lbound.append(b[0])
-        ubound.append(b[1])
+        CALC = calculator(npeak,dens,yc,dist,nfmes, xc, mdist,edist,
+          bound_flags = flex.int(len(xc), 2),
+          lower_bound = lbound,
+          upper_bound = ubound)
 
-      CALC = calculator(npeak,dens,yc,dist,nfmes, xc, mdist,edist,
-        bound_flags = flex.int(len(xc), 2),
-        lower_bound = lbound,
-        upper_bound = ubound)
-
-      res = scitbx.minimizers.lbfgs(
-           mode='lbfgsb', max_iterations=500, calculator=CALC)
-
-    res.x = list(res.x)
-
-    if 0: # SciPy analogue. Works with Python 3 only.
-      res = minimize(FuncFit,xc,args=(npeak,dens,yc,dist,ndist,nfmes),
-                 method='L-BFGS-B',jac=GradFit, bounds = bcrbounds)
+        res = scitbx.minimizers.lbfgs(
+             mode='lbfgs', max_iterations=500, calculator=CALC)
+        res.x = list(res.x)
+    else: # SciPy analogue. Works with Python 3 only.
+      res = minimize(FuncFit,xc,args=(npeak,dens,yc,dist,ndist,edist,nfmes),
+               method='L-BFGS-B',jac=GradFit, bounds = bcrbounds)
 
 #!!!!!!!!!!! end of the insertion
 
@@ -808,7 +813,6 @@ def NextPeak(curres,mdist,kpeak,nfmes,ceps):
 
 #============================
 def FuncFit(xc,npeak,y0,yc,dist,mdist,edist,nfmes):
-
 #   calculate model curve
 
     yc = CurveCalc(xc,npeak,yc,dist,mdist,edist,nfmes)
@@ -821,7 +825,6 @@ def FuncFit(xc,npeak,y0,yc,dist,mdist,edist,nfmes):
 
 #============================
 def GradFit(xc,npeak,y0,yc,dist,mdist,edist,nfmes):
-
 #   calculate the gradient with respect to the curve yc
 
     gy = GradCurve(yc,y0,mdist)
@@ -834,7 +837,6 @@ def GradFit(xc,npeak,y0,yc,dist,mdist,edist,nfmes):
 
 #============================
 def CurveCalc(xc,npeak,yc,dist,mdist,edist,nfmes):
-
     ndist = mdist
 
     for ix in range(ndist+1):
@@ -880,7 +882,6 @@ def GradCurve(yc,y0,mdist):
 
 #============================
 def GradX(xc,npeak,yc,gy,dist,mdist,edist,nfmes):
-
     gx = [ 0 for i in range(3*(npeak+1)) ]
 
     for i in range(npeak+1):
