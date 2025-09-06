@@ -11,16 +11,6 @@ typedef unsigned char     uint8_t;
 
 namespace cctbx { namespace maptbx {
 
-double stdev(const std::vector<double>& data) {
-  double m = 0.0;
-  for (int i = 0; i<data.size(); i++) m += data[i];
-  m = m / data.size();
-  double sumSq = 0.0;
-  for (double v : data) sumSq += (v - m) * (v - m);
-  return std::sqrt(sumSq / (data.size() - 1));
-}
-
-
 // Sorts the data so we can compute quartiles.
 // Calculates IQR and bin width using Freedman–Diaconis.
 // If Freedman–Diaconis produces too few bins, falls back to Sturges’ formula.
@@ -44,7 +34,7 @@ struct ModeResult {
     bool hasStrongMode;
 };
 
-ModeResult estimateModeHistogram(const std::vector<double>& data, double prominenceThreshold = 0.1) {
+ModeResult estimateModeHistogram(const std::vector<double>& data, double prominenceThreshold = 0.2) {
     ModeResult result{NAN, 0.0, false};
 
     if (data.empty()) return result;
@@ -207,26 +197,19 @@ public:
           }
 
           ModeResult modeEst = estimateModeHistogram(data);
-          //ModeResult modeEst = findModeWithKDEFallback(data, exp_table_);
-
-          //if (modeEst.hasStrongMode) {
-          //  result(i,j,k) =  modeEst.modeValue;
-          //  cntr_mode += 1;
-          //}
-          //else {
-          //  cntr_kde += 1;
-          //  result(i,j,k) = 0;
-          //}
 
           if (modeEst.hasStrongMode) {
             result(i,j,k) = modeEst.modeValue;
             cntr_mode += 1;
           }
           else {
-            //FloatType sum = std::accumulate(data.begin(), data.end(), 0.0);
-            //FloatType mean = sum / data.size();
-            result(i,j,k) = 0.; //mean;
-            //result(i,j,k) = estimateModeKDE(data, exp_table_); //0.; //mean;
+            double mean = 0;
+            for(int p = 0; p < data.size(); p++) mean += data[p];
+            mean = mean/data.size();
+
+            if std::abs(mean)<0.05: mean = 0;
+
+            result(i,j,k) = mean;
             cntr_kde += 1;
           }
     }}}
