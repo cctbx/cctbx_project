@@ -7,7 +7,7 @@ from cctbx.array_family import flex
 import scitbx.minimizers
 
 # Adapted by Pavel Afonine. This is a verbatim copy of the original code
-# supplied by A. Urzhumtsev on September 12, 2024; dec3D, version 7.6
+# supplied by A. Urzhumtsev on October 20, 2024; dec3D, version 7.7
 
 # the modification are :
 #- removing data-iinput routines
