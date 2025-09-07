@@ -496,10 +496,8 @@ public:
 
   inline FloatType myexp(FloatType const& x)
   {
-    if(use_exp_table) {
-      std::cout<<x<<std::endl;
-      return exp_table_(x);
-    }
+    if(x < -30.)      { return 0.0; }
+    if(use_exp_table) { return exp_table_(x); }
     else              { return std::exp(x); }
   }
 
