@@ -31,19 +31,36 @@ def run_one(args):
   e, d_min, table = args
   dist = 18.0
   o = maptbx.atom_curves(scattering_type=e, scattering_table=table)
-  for it in range(10):
-    b = o.bcr_approx(
-      d_min       = d_min,
-      radius_max  = dist,
-      radius_step = 0.01,
-      mxp   = 1000,
-      epsc  = 0.001,
-      epsp  = 0.000,
-      edist = 1.0E-13,
-      kpres = 1,
-      kprot = 112
-      )
-    r, err = rfactor(b.image_values, b.bcr_approx_values)
+  #
+  b1 = o.bcr_approx(
+    d_min       = d_min,
+    radius_max  = dist,
+    radius_step = 0.01,
+    mxp   = 1000,
+    epsc  = 0.001,
+    epsp  = 0.000,
+    edist = 1.0E-13,
+    kpres = 1,
+    kprot = 111
+    )
+  r1, err1 = rfactor(b1.image_values, b1.bcr_approx_values)
+  #
+  b2 = o.bcr_approx(
+    d_min       = d_min,
+    radius_max  = dist,
+    radius_step = 0.01,
+    mxp   = 1000,
+    epsc  = 0.001,
+    epsp  = 0.000,
+    edist = 1.0E-13,
+    kpres = 1,
+    kprot = 112
+    )
+  r2, err2 = rfactor(b2.image_values, b2.bcr_approx_values)
+  #
+  if err1 < err2: b = b1
+  else:           b = b2
+  #
   return group_args(
    d_min = d_min,
    dist  = dist,
