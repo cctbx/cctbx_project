@@ -19,11 +19,18 @@ The script then waits for all the responses to come back. The total wait time is
 
 """
 
+import nest_asyncio
+nest_asyncio.apply()
+import cohere
+from cohere.core.api_error import ApiError as CohereApiError
+
 import os
 os.environ['GRPC_ENABLE_FORK_SUPPORT'] = "false"   # suppress a warning message
 
 import asyncio
+from concurrent.futures import TimeoutError
 from libtbx import group_args
+from google.api_core import exceptions as google_exceptions
 from langchain_cohere import CohereRerank
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain_core.runnables import RunnablePassthrough
@@ -243,38 +250,83 @@ def load_all_docs_from_folder(folder_path: str,
     print(f"Loaded {len(all_docs)} documents.")
     return all_docs
 
-def get_llm(model_name: str = "gemini-1.5-pro-latest", temperature: float = 0.1) -> ChatGoogleGenerativeAI:
+def get_llm(model_name: str = "gemini-1.5-pro-latest", temperature: float = 0.1, timeout: int = 60) -> ChatGoogleGenerativeAI:
     """Initializes and returns a ChatGoogleGenerativeAI instance."""
-    return ChatGoogleGenerativeAI(model=model_name, temperature=temperature)
+    return ChatGoogleGenerativeAI(model=model_name, temperature=temperature, timeout=timeout)
 
-def get_embeddings(model_name: str = "models/embedding-001") -> GoogleGenerativeAIEmbeddings:
+def get_embeddings(model_name: str = "models/embedding-001", timeout: int = 60) -> GoogleGenerativeAIEmbeddings:
     """Initializes and returns a GoogleGenerativeAIEmbeddings instance."""
-    return GoogleGenerativeAIEmbeddings(model=model_name)
+    return GoogleGenerativeAIEmbeddings(model=model_name, timeout=timeout)
 
+# In langchain_tools.py
 
-async def get_log_info(text, llm, embeddings):
+async def get_log_info(text, llm, embeddings, timeout: int = 120):
     """
-    Sets up parameters and runs the two-stage analysis pipeline with reranking.
+    Stage 1 of the two-stage log file analysis pipeline with reranking.
+    This stage summarizes the text from a log file and returns a dict with
+    summary information.
     """
-    answer = None
+    try:
+        # Pass the timeout to the summarization function
+        log_summary = await summarize_log_text(
+            text, llm, timeout=timeout)
+        # process the log file to get pieces of information
+        processed_log_dict = get_processed_log_dict(log_summary)
 
-    # Summarize Log File
-    log_summary = await summarize_log_text(text, llm)
+        return group_args(group_args_type = 'log summary',
+          summary = log_summary,
+          summary_as_html = save_as_html(log_summary),
+          processed_log_dict = processed_log_dict,
+          error = None)
 
-    # process the log file to get pieces of information
-    processed_log_dict = get_processed_log_dict(log_summary)
+    except asyncio.TimeoutError:
+        error_message = f"The Google analysis timed out.\n" +\
+         "You might try increasing the timeout in Preferences or in " +\
+          f"AnalyzeLog (currently {timeout} sec)"
 
-    return group_args(group_args_type = 'log summary',
-      summary = log_summary,
-      summary_as_html = save_as_html(log_summary),
-      processed_log_dict = processed_log_dict)
+        print(error_message)
+        return group_args(group_args_type = 'error', error=error_message)
+
+    except Exception as e:
+        # Inspect the exception's original cause to find the specific error
+        original_cause = e.__cause__
+
+        if isinstance(original_cause, google_exceptions.PermissionDenied):
+            error_message = (
+                "Google AI Permission Denied. "
+                 "This usually means your API key is invalid, "
+                "has been disabled, or is not enabled for the "
+                "Gemini API on your Google Cloud project.\n"
+                f"Details: {original_cause}"
+            )
+        elif isinstance(original_cause, google_exceptions.ResourceExhausted):
+            error_message = (
+                "Google AI API quota exceeded. "
+                "Please check your plan and billing details.\n"
+                f"Details: {original_cause}"
+            )
+        else:
+            # Handle any other general exception
+            if str(e).find("API_KEY_INVALID")> -1:
+               error_message = "The Google API key is invalid. "+ \
+                 "Please check in Preferences"
+            else:
+              error_message = f"An unexpected error occurred during summarization: {e}"
+            print("Summarize log failed")
+
+        print(error_message)
+        return group_args(group_args_type='error', error=error_message)
 
 async def analyze_log_summary(log_info, llm, embeddings,
-   db_dir: str = "./docs_db"):
-    # --- Stage 2: Analyze with Docs RAG
+   db_dir: str = "./docs_db",
+   timeout: int = 60):
+  # --- Stage 2: Analyze with Docs RAG
+
+  try:
     vectorstore = load_persistent_db(embeddings, db_dir = db_dir)
     analysis_prompt = get_log_analysis_prompt()
-    retriever = create_reranking_retriever(vectorstore, llm)
+    retriever = create_reranking_retriever(vectorstore, llm,
+      timeout = timeout)
     analysis_rag_chain = create_log_analysis_chain(retriever, llm,
         analysis_prompt)
     retriever_query = ("Here is a summary of the %s log file:\n\n " %(
@@ -293,9 +345,62 @@ async def analyze_log_summary(log_info, llm, embeddings,
         "log_summary": log_info.summary,
     })
 
-    answer = final_analysis.content
 
-    return answer
+    return group_args(group_args_type = 'answer',
+      analysis = final_analysis.content,
+      error = None)
+
+# --- EXCEPTION HANDLERS ---
+  except (TimeoutError, google_exceptions.DeadlineExceeded) as e:
+      error_message = (
+          "A network timeout occurred while communicating Google.\n"
+          "You might try increasing the timeout in Preferences or in "
+          f"AnalyzeLog (currently {timeout} sec)"
+      )
+      print(error_message)
+      print(e)
+      return group_args(group_args_type = 'answer',
+        analysis = None,
+        error = error_message)
+
+  except google_exceptions.ResourceExhausted as e:
+      error_message = (
+          "ERROR: Google AI API quota exceeded."
+          " Please check your plan and billing details.\n"
+          f"Details: {e}"
+      )
+      print(error_message)
+      return group_args(group_args_type = 'answer',
+        analysis = None,
+        error = error_message)
+
+  except CohereApiError as e:
+      # Check if the error is specifically an authentication error (401)
+      if hasattr(e, 'http_status') and e.http_status == 401:
+            error_message = (
+            "ERROR: Cohere API Authentication Error."
+            " This almost always means your Cohere API key is "
+            "invalid or missing.\n"
+                f"Details: {e}"
+            )
+      elif str(e).find("invalid api token") > -1:
+          error_message = "The Cohere API key is invalid. "+ \
+                 "Please check in Preferences"
+      else:
+            # For other Cohere errors (like rate limiting)
+            error_message = f"ERROR: A Cohere API error occurred. This may be due to rate limits.\nDetails: {e}"
+
+      print(error_message)
+      return group_args(group_args_type = 'answer',
+        analysis = None,
+        error = error_message)
+
+  except Exception as e:
+      error_message = "Reranking failed..."
+      print(error_message)
+      return group_args(group_args_type = 'answer',
+        analysis = None,
+        error = error_message)
 
 def create_and_persist_db(docs: List[Document],
       embeddings: GoogleGenerativeAIEmbeddings,
@@ -325,7 +430,8 @@ def load_persistent_db(embeddings: GoogleGenerativeAIEmbeddings,
     return Chroma(persist_directory=db_dir, embedding_function=embeddings)
 
 def create_reranking_retriever(vectorstore: Chroma,
-         llm: ChatGoogleGenerativeAI):
+         llm: ChatGoogleGenerativeAI,
+         timeout: int = 60):
     """
     Creates and returns a powerful retriever that uses a Cohere Reranker.
     """
@@ -333,8 +439,17 @@ def create_reranking_retriever(vectorstore: Chroma,
     # Create the base retriever to get a large number of initial results
     base_retriever = vectorstore.as_retriever(search_kwargs={"k": 20})
 
-    # Create the reranker to intelligently filter and re-order
-    reranker = CohereRerank(model="rerank-english-v3.0")
+    # 1. First, create a configured Cohere client with the API key and timeout.
+
+    # Use the ClientV2 class as specified in the error message.
+    cohere_client = cohere.ClientV2(
+        api_key=os.getenv("COHERE_API_KEY"),
+        timeout=timeout
+    )
+
+    # 2. Then, pass the pre-configured client to the CohereRerank object.
+    reranker = CohereRerank(client=cohere_client, model="rerank-english-v3.0")
+    #
 
     # The compression retriever combines the base retriever and the reranker
     compression_retriever = ContextualCompressionRetriever(
@@ -404,8 +519,10 @@ def find_text_block(log_text: str, target_text: str, end_text: str = "**"):
   return " ".join(text_lines)
 
 def query_docs(query_text, llm = None, embeddings = None,
-        db_dir: str = "./docs_db"):
-    """Query Phenix docs with query_text"""
+        db_dir: str = "./docs_db",
+        timeout: int = 60):
+  """Query Phenix docs with query_text"""
+  try:
     if not llm:
       # Set up the LLM and embeddings
       llm = get_llm()
@@ -424,7 +541,8 @@ def query_docs(query_text, llm = None, embeddings = None,
     vectorstore = load_persistent_db(embeddings, db_dir = db_dir)
 
     # Set up retriever
-    retriever = create_reranking_retriever(vectorstore, llm)
+    retriever = create_reranking_retriever(vectorstore, llm,
+      timeout = timeout)
 
     # Get the prompt
     prompt = get_docs_query_prompt()
@@ -435,10 +553,15 @@ def query_docs(query_text, llm = None, embeddings = None,
     # Get the response and return its content
     response = rag_chain.invoke(query_text)
     return response.content
+  except Exception as e:
+    print("Query docs failed...")
+    return None
 
-async def summarize_log_text(text: str, llm: ChatGoogleGenerativeAI) -> str:
+# Change the signature and add asyncio.wait_for
+async def summarize_log_text(
+    text: str, llm: ChatGoogleGenerativeAI, timeout: int = 120) -> str:
     """Performs the map-reduce summarization for a single log file."""
-    from langchain_core.documents import Document
+    # ... (code for creating documents and splitting text remains the same) ...
     documents = [Document(page_content=text)]
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=300000,
          chunk_overlap=30000)
@@ -448,7 +571,12 @@ async def summarize_log_text(text: str, llm: ChatGoogleGenerativeAI) -> str:
     map_chain = map_prompt | llm
 
     tasks = [map_chain.ainvoke({"text": doc.page_content}) for doc in docs]
-    map_results = await asyncio.gather(*tasks) # Simplified from tqdm for library use
+
+    # --- THIS IS THE KEY CHANGE ---
+    # We wrap the asyncio.gather call in asyncio.wait_for
+    map_results = await asyncio.wait_for(asyncio.gather(*tasks), timeout=timeout)
+    # ----------------------------
+
     intermediate_summaries = [result.content for result in map_results]
 
     summary_docs = [Document(page_content=s) for s in intermediate_summaries]

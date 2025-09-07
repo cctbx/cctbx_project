@@ -7,7 +7,8 @@ from libtbx.langchain import langchain_tools as lct
 import sys
 import os
 
-def run(query_text = None, output_file_path = None, db_dir = None):
+def run(query_text = None, output_file_path = None, db_dir = None,
+     timeout= 60):
     """
     Loads the reranking RAG and queries it with a user-provided question.
     """
@@ -25,7 +26,8 @@ def run(query_text = None, output_file_path = None, db_dir = None):
 
     print("\nQuerying the Phenix documentation with '%s'..." %(query_text))
     # Answer the question
-    answer = lct.query_docs(query_text = query_text, db_dir = db_dir)
+    answer = lct.query_docs(query_text = query_text, db_dir = db_dir,
+      timeout = timeout)
 
     # Put it in an html window
 

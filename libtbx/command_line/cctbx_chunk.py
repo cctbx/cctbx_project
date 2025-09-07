@@ -4,7 +4,7 @@ from libtbx.utils import Usage
 import sys
 
 def usage():
-  raise Usage("libtbx.chunk [n] [i]")
+  raise Usage("libtbx.cctbx_chunk [n] [i]")
 
 def run(args):
   if (len(args) == 0): usage()
