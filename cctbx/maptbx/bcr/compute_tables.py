@@ -36,10 +36,12 @@ def run_one(args):
       d_min       = d_min,
       radius_max  = dist,
       radius_step = 0.01,
-      kprot=2,
-      kpres=0,
-      mxp=1000,
-      epsc=0.001,
+      mxp   = 1000,
+      epsc  = 0.001,
+      epsp  = 0.000,
+      edist = 1.0E-13,
+      kpres = 1,
+      kprot = 112
       )
     r, err = rfactor(b.image_values, b.bcr_approx_values)
   return group_args(

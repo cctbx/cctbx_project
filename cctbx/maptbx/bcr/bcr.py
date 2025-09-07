@@ -203,23 +203,27 @@ def RefineBCR(dens,dist,mdist,edist,bpeak,cpeak,rpeak,npeak,bmin,cmin,rmin,nfmes
            bcrbounds[i3+1] = (-1000.,-cmin)
 
 #   minimization
-    if 1:
-      for it in range(1,10):
-        if it > 1: xc = res.x
+    if 1: # lbfgsb from cctbx
+      #for it in range(1,10):
+      for it in range(1,2):
         lbound = []
         ubound = []
         for b in bcrbounds:
           lbound.append(b[0])
           ubound.append(b[1])
-
         CALC = calculator(npeak,dens,yc,dist,nfmes, xc, mdist,edist,
           bound_flags = flex.int(len(xc), 2),
           lower_bound = lbound,
           upper_bound = ubound)
-
         res = scitbx.minimizers.lbfgs(
              mode='lbfgsb', max_iterations=500, calculator=CALC)
         res.x = list(res.x)
+        xc = res.x
+        if 1: # mix
+          res = minimize(FuncFit,xc,args=(npeak,dens,yc,dist,ndist,edist,nfmes),
+               method='L-BFGS-B',jac=GradFit, bounds = bcrbounds)
+          xc = res.x
+
     else: # SciPy analogue. Works with Python 3 only.
       res = minimize(FuncFit,xc,args=(npeak,dens,yc,dist,ndist,edist,nfmes),
                method='L-BFGS-B',jac=GradFit, bounds = bcrbounds)
