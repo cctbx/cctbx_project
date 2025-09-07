@@ -72,12 +72,12 @@ def run_one(args):
     of.close()
   #
   if not None in [err1, err2]:
-    if err1 < err2: b = b1
-    else:           b = b2
+    if err1 < err2: b, err = b1, err1
+    else:           b, err = b2, err2
   elif [err1, err2].count(None) == 2: return None
   else:
-    if err1 is not None: b = b1
-    else:                b = b2
+    if err1 is not None: b, err = b1, err1
+    else:                b, err = b2, err2
   #
   return group_args(
    d_min = d_min,
@@ -109,7 +109,6 @@ if (__name__ == "__main__"):
           func_wrapper = "buffer_stdout_stderr")
         for it in stdout_and_results:
           o = it[1]
-          print(o)
           if o is None:
             print("FAILED"*5)
             continue
