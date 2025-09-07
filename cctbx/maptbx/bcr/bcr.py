@@ -6,14 +6,7 @@ from libtbx import adopt_init_args
 from cctbx.array_family import flex
 import scitbx.minimizers
 
-# Adapted by Pavel Afonine. This is a verbatim copy of the original code
-# supplied by A. Urzhumtsev on October 20, 2024; dec3D, version 7.7
-
-# the modification are :
-#- removing data-iinput routines
-#- including first line till 'PreciseData'
-#- modification of the minimizer's call in 'RefineBCR'
-#- inserted that all prints are under condition : 'nfmes is not None'
+# Adapted by P. Afonine from version 8.0 supplied by A. Urzhumtsev
 
 ######################################################
 #
@@ -64,9 +57,9 @@ class calculator(object):
     return FuncFit(self.x, self.npeak, self.dens, self.yc, self.dist,
       self.mdist,self.edist, self.nfmes)
 
-#============================
-def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=3,nfmes=None):
-
+#=================================================================
+def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=112,nfmes=None):
+#
 #    dens   - array of the curve values,
 #             in in creasing order of the argument starting from 0
 #    dist   - array of the argument values ; normally this is a regular grid
@@ -85,13 +78,13 @@ def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=3,nfm
 #             1.0E-13 ie recommended;
 #    kpres  - defines if the precision is given in absolute values (=1) or as a part of
 #             peak in the origin, dens[0]
-#    kprot  - type of the peak analysis processing; kprot = 3 is recommended
-#             1 - only one iteration; refinement at the end
-#             2 - only one iteration; refinement of each term instantly
-#             3 - several iterations allowed; refinement at the end of each iteration
-#             4 - several iterations allowed; refinement at the end of each iteration
-#                 except for the first peak (supposed to be that in the origin)
-#             5 - several iterations allowed; refinement of each term instantly
+#    kprot  - type of the peak analysis processing
+#             111 - single iteration; refinement at the end
+#             112 - single iteration; refinement at the end; pre-refinement of the first term
+#             122 - single iteration; instant refinement of each term
+#             211 - multiple iterations; refinement at the end
+#             212 - multiple iterations; refinement at the end; pre-refinement of the first term
+#             222 - multiple iterations; instant refinement of each term at the first iteration
 
     #if (nfmes is not None) :
     #   print('',file=nfmes)
@@ -100,14 +93,15 @@ def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=3,nfm
     #   print('')
     #   print(30*'=',' NEW CURVE IN PROCESS ',30*'=')
 
+    assert kprot in [111, 112, 122, 211, 212, 222]
     bpeak  = [ 0 for i in range(2*mxp+2) ]
     cpeak  = [ 0 for i in range(2*mxp+2) ]
     rpeak  = [ 0 for i in range(2*mxp+2) ]
 
 #   definition / estimations of the internal parameters
 
-    ceps,bmin,cmin,rmin,edist,mdist = PreciseData(
-      kpres,epsc,epsp,edist,dmax,dens[0],dist,nfmes)
+    ceps,bmin,cmin,rmin,edist,mdist = PreciseData(kpres,epsc,epsp,edist,
+                                                  dmax,dens[0],dist,nfmes)
 #--------------------------------------
 #
 #   starting point to search for the peaks;
@@ -122,10 +116,6 @@ def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=3,nfm
 #   main cycle over peaks including the residual one in the origin
 
     while (epsres >= ceps) and (npeak < mxp) :
-        #print("BEFORE B, C, R")
-        #for B,C,R in zip(bpeak,cpeak,rpeak):
-        #  print("%12.6f %12.6f %12.6f"%(B,C,R))
-        #print()
 
 #       find next group of peaks
 
@@ -136,12 +126,14 @@ def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=3,nfm
            bpeak,cpeak,rpeak,npeak,kdist,kpeak = PeakBCR(curres,dist,mdist,ceps,kneg,kpeak,
                                             bpeak,cpeak,rpeak,npeak,epsp,bmin,cmin,rmin,mxp,nfmes)
 
-           if npeak == mxp or kprot == 2 or kprot == 5 or (kprot == 4 and npeak == 0):
+           if npeak == mxp or (kprot == 122 or kprot == 222) or \
+              (kprot == 112 and npeak == 0) or (kprot == 212 and npeak == 0) :
 
-#             if the last (mxp) peak found or
-#             if the accurate accurate search protocol applied :
-#             refine parameters in the extended interval
-#                    and remove contribution
+#             if the last (mxp) peak found                       or
+#             if each term refined instantly                     or
+#             if this is the first peak to be refined instantly
+#             - refine parameters in the extended interval
+#             - and remove contribution
 
               bpeak,cpeak,rpeak =        \
                     RefineBCR(dens,dist,mdist,edist,bpeak,cpeak,rpeak,npeak,bmin,cmin,rmin,nfmes)
@@ -151,10 +143,10 @@ def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=3,nfm
         else :
 
 #          no more peaks ; the whole interval has been analysed
-#          refine estimated parameters in the required interval
-#          remove the contribution of the modeled peaks and update start search point
+#          - refine estimated parameters, all together, in the required interval
+#          - remove the contribution of the modeled peaks and update start search point
 
-           if kprot == 1 or kprot == 3 or kprot == 4 :
+           if kprot == 111 or kprot == 112 or kprot == 211 or kprot == 212 :
 
               bpeak,cpeak,rpeak =        \
                     RefineBCR(dens,dist,mdist,edist,bpeak,cpeak,rpeak,npeak,bmin,cmin,rmin,nfmes)
@@ -162,16 +154,12 @@ def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=3,nfm
               curres,curve,epsres = \
                                CurveDiff(dens,dist,mdist,edist,nfmes,bpeak,cpeak,rpeak,npeak,mxp)
 
-           if kprot == 1 or kprot == 2 :
+           if kprot == 111 or kprot == 112 or kprot == 121 :
               break
-           elif kprot == 5 :
-              kprot = 3
+           elif kprot == 222 :
+              kprot = 211
 
            kpeak = 0
-        #print("AFTER B, C, R")
-        #for B,C,R in zip(bpeak,cpeak,rpeak):
-        #  print("%12.6f %12.6f %12.6f"%(B,C,R))
-        #print()
 #
 #   end of the main cycle ;
 #
@@ -181,6 +169,10 @@ def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=3,nfm
                        edist,epsres,bpeak,cpeak,rpeak,npeak,mxp,bmin,cmin,rmin,nfmes,ceps)
 
     return bpeak,cpeak,rpeak,mpeak,curve,curres,epsres
+
+#===========================================================
+
+
 
 #============================
 def RefineBCR(dens,dist,mdist,edist,bpeak,cpeak,rpeak,npeak,bmin,cmin,rmin,nfmes):
@@ -226,7 +218,7 @@ def RefineBCR(dens,dist,mdist,edist,bpeak,cpeak,rpeak,npeak,bmin,cmin,rmin,nfmes
           upper_bound = ubound)
 
         res = scitbx.minimizers.lbfgs(
-             mode='lbfgs', max_iterations=500, calculator=CALC)
+             mode='lbfgsb', max_iterations=500, calculator=CALC)
         res.x = list(res.x)
     else: # SciPy analogue. Works with Python 3 only.
       res = minimize(FuncFit,xc,args=(npeak,dens,yc,dist,ndist,edist,nfmes),
