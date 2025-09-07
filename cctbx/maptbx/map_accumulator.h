@@ -207,7 +207,9 @@ public:
             for(int p = 0; p < data.size(); p++) mean += data[p];
             mean = mean/data.size();
 
-            if std::abs(mean)<0.05: mean = 0;
+            if (std::abs(mean)<0.05) {
+              mean = 0;
+            }
 
             result(i,j,k) = mean;
             cntr_kde += 1;
