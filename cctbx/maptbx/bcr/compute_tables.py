@@ -4,6 +4,7 @@ from scitbx.array_family import flex
 from cctbx.eltbx import xray_scattering
 from libtbx import group_args, easy_mp
 import sys
+import traceback
 
 import boost_adaptbx.boost.python as bp
 ext = bp.import_ext("cctbx_maptbx_bcr_bcr_ext")
@@ -32,34 +33,51 @@ def run_one(args):
   dist = 18.0
   o = maptbx.atom_curves(scattering_type=e, scattering_table=table)
   #
-  b1 = o.bcr_approx(
-    d_min       = d_min,
-    radius_max  = dist,
-    radius_step = 0.01,
-    mxp   = 1000,
-    epsc  = 0.001,
-    epsp  = 0.000,
-    edist = 1.0E-13,
-    kpres = 1,
-    kprot = 111
-    )
-  r1, err1 = rfactor(b1.image_values, b1.bcr_approx_values)
+  err1, err2 = None, None
   #
-  b2 = o.bcr_approx(
-    d_min       = d_min,
-    radius_max  = dist,
-    radius_step = 0.01,
-    mxp   = 1000,
-    epsc  = 0.001,
-    epsp  = 0.000,
-    edist = 1.0E-13,
-    kpres = 1,
-    kprot = 112
-    )
-  r2, err2 = rfactor(b2.image_values, b2.bcr_approx_values)
+  try:
+    b1 = o.bcr_approx(
+      d_min       = d_min,
+      radius_max  = dist,
+      radius_step = 0.01,
+      mxp   = 1000,
+      epsc  = 0.001,
+      epsp  = 0.000,
+      edist = 1.0E-13,
+      kpres = 1,
+      kprot = 111
+      )
+    r1, err1 = rfactor(b1.image_values, b1.bcr_approx_values)
+  except Exception as e:
+    of = open("%s_%s.111.error.log"%(e, str(d_min)), "w")
+    traceback.print_exc(file=of)
+    of.close()
   #
-  if err1 < err2: b = b1
-  else:           b = b2
+  try:
+    b2 = o.bcr_approx(
+      d_min       = d_min,
+      radius_max  = dist,
+      radius_step = 0.01,
+      mxp   = 1000,
+      epsc  = 0.001,
+      epsp  = 0.000,
+      edist = 1.0E-13,
+      kpres = 1,
+      kprot = 112
+      )
+    r2, err2 = rfactor(b2.image_values, b2.bcr_approx_values)
+  except Exception as e:
+    of = open("%s_%s.112.error.log"%(e, str(d_min)), "w")
+    traceback.print_exc(file=of)
+    of.close()
+  #
+  if not None in [err1, err2]:
+    if err1 < err2: b = b1
+    else:           b = b2
+  elif [err1, err2].count(None) == 2: return None
+  else:
+    if err1 is not None: b = b1
+    else:                b = b2
   #
   return group_args(
    d_min = d_min,
@@ -91,6 +109,10 @@ if (__name__ == "__main__"):
           func_wrapper = "buffer_stdout_stderr")
         for it in stdout_and_results:
           o = it[1]
+          print(o)
+          if o is None:
+            print("FAILED"*5)
+            continue
           add_entry(
             results = results,
             d_min   = o.d_min,
