@@ -145,6 +145,15 @@ def exercise_reference_chain_search():
   # print(len(r))
   assert len(r) == 0, len(r)
 
+def exercise_similar_ligands_via_smiles():
+  smiles = 'NCCC(O)=O'
+  print(f'setting SMILES to {smiles}')
+  rc = rcsb_web_services.get_similar_ligands_via_smiles(smiles)
+  # print(rc)
+  assert len(rc) > 1
+  assert 'score' in rc[0].keys()
+  assert 'identifier' in rc[0].keys()
+
 if (__name__ == "__main__"):
   # thorough_exercise()
   # check if internet and rcsb are available
@@ -162,6 +171,7 @@ if (__name__ == "__main__"):
     exercise_sequence_search()
     exercise_reference_chain_search()
     exercise_chemical_id_search()
+    exercise_similar_ligands_via_smiles()
     print("OK")
   else:
     print("OK but skipped.")
