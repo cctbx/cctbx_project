@@ -523,6 +523,8 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
     solvent_model = default_solvent_model
   elif program_goal in ['opt', 'bound']:
     electron_model = buffer_model
+  elif program_goal in ['gradients']:
+    electron_model = buffer_model
   elif program_goal in ['pocket']:
     tmps=[]
     for atom in ligand_model.get_atoms(): tmps.append(atom.tmp)
@@ -941,6 +943,9 @@ def update_dihedral_restraints_simple(model):
 
 def get_program_goal(qmr, macro_cycle=None, energy_only=False):
   program_goal=[]
+  if qmr.calculate.count('gradients'):
+    program_goal.append('gradients')
+    return program_goal
   if not energy_only:
     program_goal=['opt']
     return program_goal
@@ -970,10 +975,30 @@ def get_program_goal(qmr, macro_cycle=None, energy_only=False):
       program_goal.append('pocket')
   return program_goal
 
+def generate_uniform_qm_scopes(qmrs):
+  for i, qmr in enumerate(qmrs):
+    print(i,qmr)
+    for attr in ['freeze_specific_atoms',
+                 'protein_optimisation_freeze',
+                 'write_files',
+                 ]:
+      if not hasattr(qmr, attr):
+        qmr.__inject__(attr, [])
+    for attr in ['calculate']: #???
+      if not hasattr(qmr, attr):
+        qmr.__inject__(attr, ['gradients'])
+    for attr in ['include_nearest_neighbours_in_optimisation',
+                 'buffer_selection',
+      ]:
+      if not hasattr(qmr, attr):
+        qmr.__inject__(attr, False)
+    yield qmr
+
 def setup_qm_jobs(model,
                   params,
                   macro_cycle,
                   energy_only=False,
+                  gradients_only=False,
                   pre_refinement=True,
                   log=StringIO()):
   prefix = get_prefix(params)
@@ -987,7 +1012,9 @@ def setup_qm_jobs(model,
   #     os.mkdir(working_directory)
   #   print('  Changing to %s' % working_directory, file=log)
   #   os.chdir(working_directory)
-  for i, qmr in enumerate(params.qi.qm_restraints):
+  qmrs=params.qi.qm_restraints
+  if hasattr(params.qi, 'qm_gradients'): qmrs+=params.qi.qm_gradients
+  for i, qmr in enumerate(generate_uniform_qm_scopes(qmrs)):
     if len(qmr.freeze_specific_atoms)>2:
       raise Sorry('Only Auto supported so multiple freezes not necessary.')
     elif len(qmr.freeze_specific_atoms)==1:
@@ -1056,8 +1083,10 @@ def run_jobs(objects, macro_cycle, nproc=1, log=StringIO()):
     xyzs = []
     xyzs_buffer = []
     energies = {}
+    gradientss = {}
     for i, (ligand_model, buffer_model, qmm, qmr) in enumerate(objects):
       xyz, xyz_buffer = results[i]
+      # print(results)
       units=''
       if qmm.program_goal in ['opt']:
         energy, units = qmm.read_energy()
@@ -1079,6 +1108,17 @@ def run_jobs(objects, macro_cycle, nproc=1, log=StringIO()):
           # qmm.preamble=qmm.preamble.replace(qmm.program_goal, 'pocket_energy')
         charge = qmm.read_charge()
         # except: charge=-99
+      elif qmm.program_goal in ['gradients']:
+        energy=xyz
+        gradients=xyz_buffer
+        xyz=None
+        # xyz_buffer=None
+        qmm.preamble += '_%s' % qmm.program_goal
+        charge = qmm.read_charge()
+        # print('11111')
+        # print(energy)
+        # # print(list(gradients))
+        # print(len(gradients))
       else:
         assert 0, 'program_goal %s not in list' % qmm.program_goal
       energies.setdefault(qmr.selection,[])
@@ -1149,6 +1189,51 @@ def run_energies(model,
   print('%s%s' % ('<'*40, '>'*40), file=log)
   return group_args(energies=energies,
                     units=units,
+                    )
+
+def run_gradients(model, params, macro_cycle=None, run_program=True, pre_refinement=True, nproc=1, log=StringIO()):
+  t0 = time.time()
+  gradients_only=True
+  if not model.restraints_manager_available():
+    model.log=null_out()
+    model.process(make_restraints=True)
+  # if macro_cycle in [None, 0]: run_program=False
+  # qi_array = quantum_interface.get_qi_macro_cycle_array(params)
+  if quantum_interface.is_quantum_interface_active_this_macro_cycle(params,
+                                                                    macro_cycle,
+                                                                    gradients_only=gradients_only,
+                                                                    # pre_refinement=pre_refinement,
+                                                                    ) and run_program:
+    print('  QM energy gradients', file=log)
+  #
+  # setup QM jobs
+  #
+  objects = setup_qm_jobs(model,
+                          params,
+                          macro_cycle,
+                          gradients_only=gradients_only,
+                          pre_refinement=pre_refinement,
+                          log=log)
+  if not run_program: return
+  # assert macro_cycle is not None
+  #
+  # run jobs
+  #
+  working_dir = quantum_interface.get_working_directory(model, params)
+  if not os.path.exists(working_dir):
+    try: os.mkdir(working_dir)
+    except Exception as e: pass
+  os.chdir(working_dir)
+  xyzs, gradients, energies, units = run_jobs(objects,
+                                                macro_cycle=macro_cycle,
+                                                nproc=nproc,
+                                                log=log)
+  os.chdir('..')
+  print('  Total time for QM gradients: %0.1fs' % (time.time()-t0), file=log)
+  print('%s%s' % ('<'*40, '>'*40), file=log)
+  return group_args(energies=energies,
+                    gradients=gradients,
+                    objects=objects,
                     )
 
 def update_restraints(model,

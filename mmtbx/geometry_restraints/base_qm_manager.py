@@ -235,8 +235,8 @@ class base_manager():
       rc=tmp
     return flex.vec3_double(rc), flex.vec3_double(rc_buffer)
 
-  def get_gradients(self):
-    assert 0
+  def get_gradients(self, *args, **kwds):
+    return []
 
   def get_timings(self, energy=False):
     return '-'
@@ -257,10 +257,11 @@ class base_qm_manager(base_manager):
     f.write(outl)
     del f
 
-  def check_file_read_safe(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False):
+  def check_file_read_safe(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False, gradients=False):
     outl = self.get_input_lines(optimise_ligand=optimise_ligand,
                                 optimise_h=optimise_h,
                                 constrain_torsions=constrain_torsions,
+                                gradients=gradients,
                                 )
     filename = self.get_input_filename()
     lines=''
@@ -446,8 +447,42 @@ class base_qm_manager(base_manager):
   def get_pocket(self, **kwds):
     return self.get_something_energy('pocket', **kwds)
 
-  def get_gradients(self):
-    assert 0
+  def get_gradients(self,
+                    cleanup=False,
+                    file_read=True,
+                    redirect_output=False,
+                    log=StringIO(),
+                    verbose=False,
+                    **kwds):
+    gradients=None
+    old_preamble = self.preamble
+    self.preamble += '_gradients'
+    optimise_ligand=False
+    filename = self.get_log_filename()
+    if file_read and self.check_file_read_safe(optimise_ligand=optimise_ligand,
+                                               optimise_h=False,
+                                               # constrain_torsions=constrain_torsions,
+                                               gradients=True,
+                                               ):
+      filename = self.get_log_filename()
+      if os.path.exists(filename):
+        if os.path.exists(filename):
+          process_qm_log_file(filename, log=log)
+        # print('  Reading energy and gradients from %s\n' % filename, file=log)
+        energy, gradients = self.read_engrad_output()
+    if gradients is None:
+      outl = self.get_input_lines(optimise_ligand=optimise_ligand,
+                                  optimise_h=False,
+                                  # constrain_torsions=constrain_torsions,
+                                  gradients=True,
+                                  )
+      self.write_input(outl)
+      self.run_cmd(redirect_output=redirect_output)
+      energy, gradients = self.read_engrad_output()
+    if cleanup: self.cleanup(level=cleanup)
+    # print('  Current energy = %0.5f %s' % (self.energy, self.units), file=log)
+    self.preamble = old_preamble
+    return energy, gradients
 
   def get_timings(self, energy=None):
     return '-'

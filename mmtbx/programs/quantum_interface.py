@@ -10,9 +10,11 @@ from libtbx.program_template import ProgramTemplate
 from mmtbx.monomer_library.linking_setup import ad_hoc_single_metal_residue_element_types
 
 from mmtbx.geometry_restraints.quantum_restraints_manager import run_energies
+from mmtbx.geometry_restraints.quantum_restraints_manager import run_gradients
 from mmtbx.geometry_restraints.quantum_restraints_manager import update_restraints
 from mmtbx.geometry_restraints.quantum_restraints_manager import min_dist2
 from mmtbx.geometry_restraints.quantum_interface import get_qm_restraints_scope
+from mmtbx.geometry_restraints.quantum_interface import get_qm_gradients_scope
 from mmtbx.geometry_restraints.quantum_interface import get_working_directory
 from mmtbx.geometry_restraints.qi_utils import classify_histidine
 from mmtbx.geometry_restraints.qi_utils import run_serial_or_parallel
@@ -29,6 +31,21 @@ from libtbx.utils import multi_out
 from mmtbx.monomer_library.linking_setup import ad_hoc_single_metal_residue_element_types
 
 get_class = iotbx.pdb.common_residue_names_get_class
+
+def safe_filename(s):
+  while s.find('  ')>-1:
+    s=s.replace('  ',' ')
+  s=s.replace('chain ','')
+  s=s.replace('resname ','')
+  s=s.replace('resid ','')
+  s=s.replace('and ','')
+  s=s.replace('altloc ','')
+  s=s.replace(' ','_')
+  s=s.replace('(','')
+  s=s.replace(')','')
+  s=s.replace(':','_')
+  s=s.replace("'",'')
+  return s
 
 def stepper(b,e,s):
   b=float(b)
@@ -329,6 +346,8 @@ Usage examples:
       .type = choice
     write_qmr_phil = Auto
       .type = bool
+    write_qmg_phil = False
+      .type = bool
     run_qmr = False
       .type = bool
     run_directory = None
@@ -572,6 +591,29 @@ Usage examples:
             xyz[j] += random.gauss(0, self.params.qi.randomise_selection)
           sites_cart[i]=tuple(xyz)
       model.set_sites_cart(sites_cart)
+
+    if self.params.qi.write_qmg_phil:
+      pf = self.write_qmg_phil()
+      program='phenix.refine'
+      ih=''
+      ih2 = self.data_manager.get_default_model_name()
+      if ih2.endswith('.updated.pdb'):
+        ih2 = ih2.replace('.updated.pdb', '.mtz')
+      elif ih2.endswith('H.pdb'):
+        ih2 = ih2.replace('H.pdb', '-sf.cif')
+      else:
+        ih2 = ' %s' % 'test.mtz'
+
+      print('''
+
+      %s %s %s %s %s
+      ''' % (program,
+             self.data_manager.get_default_model_name(),
+             ih,
+             pf,
+             ih2,
+             ), file=self.logger)
+      return
 
     if self.params.qi.write_qmr_phil:
       # for attr, item in self.params.qi.qm_restraints[0].__dict__.items():
@@ -1154,6 +1196,16 @@ Usage examples:
       outl = energies.as_string()
       print(outl, file=self.logger)
       rcs.append(rc)
+    if any(item in 'gradients' for item in qmr.calculate):
+      rc = run_gradients(
+        model,
+        self.params,
+        macro_cycle=1,
+        pre_refinement=True,
+        nproc=self.params.qi.nproc,
+        log=log,
+        )
+      assert 0
     #
     # minimise ligands geometry
     #
@@ -1206,6 +1258,17 @@ Usage examples:
                                             'capping_groups = True')
     return qi_phil_string
 
+  def get_single_qm_gradients_scope(self, selection):
+    qi_phil_string = get_qm_gradients_scope()
+    qi_phil_string = qi_phil_string.replace(' selection = None',
+                                            ' selection = "%s"' % selection)
+    qi_phil_string = qi_phil_string.replace('read_output_to_skip_opt_if_available = False',
+                                            'read_output_to_skip_opt_if_available = True')
+    qi_phil_string = qi_phil_string.replace('capping_groups = False',
+                                            'capping_groups = True')
+    return qi_phil_string
+
+
   def set_all_calculate_to_true(self, qi_phil_string):
     outl = ''
     for line in qi_phil_string.splitlines():
@@ -1235,6 +1298,41 @@ Usage examples:
 
   def set_one_write_to_true(self, qi_phil_string, attr):
     return qi_phil_string.replace(' %s' % attr, ' *%s' % attr)
+
+  def write_qmg_phil(self):
+    qi_phil_string = ''
+    for i in range(len(self.params.qi.selection)):
+      qi_phil_string += self.get_single_qm_gradients_scope(self.params.qi.selection[i])
+    qi_phil_string = qi_phil_string.replace('qm_gradients',
+                                            'refinement.qi.qm_gradients',
+                                            1)
+    qi_phil_string = qi_phil_string.replace(' *mopac',
+                                            ' ')
+    qi_phil_string = qi_phil_string.replace(' mopac',
+                                            ' ')
+    qi_phil_string = qi_phil_string.replace(' orca',
+                                            ' *orca')
+    qi_phil_string = qi_phil_string.replace(' method = Auto',
+                                            ' method = PM3')
+    qi_phil_string = qi_phil_string.replace(' read_output_to_skip_opt_if_available = True',
+                                            ' read_output_to_skip_opt_if_available = False')
+
+    qi_phil = iotbx.phil.parse(qi_phil_string,
+                             # process_includes=True,
+                             )
+
+    pf = '%s_%s_grad.phil' % (
+      self.data_manager.get_default_model_name().replace('.pdb',''),
+      safe_filename(self.params.qi.selection[0]),
+      )
+    print('  Writing QMG phil scope to %s' % pf, file=self.logger)
+    f=open(pf, 'w')
+    for line in qi_phil_string.splitlines():
+      if line.strip().startswith('.'): continue
+      print('%s' % line, file=self.logger)
+      f.write('%s\n' % line)
+    del f
+    return pf
 
   def write_qmr_phil(self,
                      iterate_NQH=False,
@@ -1304,20 +1402,6 @@ Usage examples:
 
     # qi_phil_string = qi_phil_string.replace('nproc = 1', 'nproc = 6')
 
-    def safe_filename(s):
-      while s.find('  ')>-1:
-        s=s.replace('  ',' ')
-      s=s.replace('chain ','')
-      s=s.replace('resname ','')
-      s=s.replace('resid ','')
-      s=s.replace('and ','')
-      s=s.replace('altloc ','')
-      s=s.replace(' ','_')
-      s=s.replace('(','')
-      s=s.replace(')','')
-      s=s.replace(':','_')
-      s=s.replace("'",'')
-      return s
 
     print(self.params.qi.selection)
     pf = '%s_%s.phil' % (

@@ -2209,11 +2209,18 @@ class manager(object, metaclass=libtbx.utils.Tracker):
     if hasattr(params, 'amber') and params.amber.use_amber:
       from amber_adaptbx.manager import digester
       geometry = digester(geometry, params, log=self.log)
-    elif quantum_interface.is_quantum_interface_active(params):
-      geometry = quantum_interface.digester(self,
-                                            geometry,
-                                            params,
-                                            log=self.log)
+    elif rc:=quantum_interface.is_quantum_interface_active(params):
+      if rc[1]=='qm_restraints':
+        geometry = quantum_interface.digester(self,
+                                              geometry,
+                                              params,
+                                              log=self.log)
+      elif rc[1]=='qm_gradients':
+        from mmtbx.geometry_restraints import qm_manager
+        geometry = qm_manager.digester( self,
+                                        geometry,
+                                        params,
+                                        log=self.log)
     elif hasattr(params, "schrodinger") and params.schrodinger.use_schrodinger:
       from phenix_schrodinger import schrodinger_manager
       geometry = schrodinger_manager(self._pdb_hierarchy,

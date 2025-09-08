@@ -37,7 +37,7 @@ class mopac_manager(base_qm_manager.base_qm_manager):
   def get_log_filename(self):
     return 'mopac_%s.out' % self.preamble
 
-  def _input_header(self):
+  def _input_header(self, gradients_only=False):
     if self.nproc==0:
       nproc_str=''
     else:
@@ -52,12 +52,16 @@ class mopac_manager(base_qm_manager.base_qm_manager):
                         'quintet', # - 4 unpaired electrons
                         'sextet', # - 5 unpaired electrons
                         ][self.multiplicity]
-    outl = '%s %s %s %s DISP %s\n%s\n\n' % (
+    additional_options=''
+    if gradients_only:
+      additional_options+=' 1SCF GRAD ANALYT'
+    outl = '%s %s %s %s DISP %s %s\n%s\n\n' % (
      self.method,
      self.basis_set,
      self.solvent_model,
      'CHARGE=%s %s' % (self.charge, nproc_str),
      multiplicity_str,
+     additional_options,
      self.preamble,
      )
     return outl
@@ -128,8 +132,8 @@ class mopac_manager(base_qm_manager.base_qm_manager):
     outl += '\n'
     return outl
 
-  def get_input_lines(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False):
-    outl = self._input_header()
+  def get_input_lines(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False, gradients=False):
+    outl = self._input_header(gradients_only=gradients)
     outl += self.get_coordinate_lines(optimise_ligand=optimise_ligand,
                                       optimise_h=optimise_h,
                                       constrain_torsions=constrain_torsions,
