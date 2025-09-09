@@ -448,8 +448,6 @@ Usage examples:
       if len(self.params.qi.qm_restraints)!=0:
         for attr, item in self.params.qi.qm_restraints[0].__dict__.items():
           print(attr, item)
-        #   print(self.params.qi.selection)
-        #   print(getattr(self.params.qi.selection, attr))
     #
     # validate selection
     #
@@ -491,11 +489,6 @@ Usage examples:
         if gc not in ['common_amino_acid', 'modified_amino_acid']: continue
         selection = 'chain %s and resid %s' % (rg.parent().id, rg.resseq.strip())
         qi_phil_string = self.get_single_qm_restraints_scope(selection)
-        # qi_phil_string = self.set_all_write_to_true(qi_phil_string)
-        # qi_phil_string = qi_phil_string.replace('run_in_macro_cycles = *first_only first_and_last all test',
-        #                                         'run_in_macro_cycles = first_only *first_and_last all test')
-        # qi_phil_string = qi_phil_string.replace('include_nearest_neighbours_in_optimisation = False',
-                                                # 'include_nearest_neighbours_in_optimisation = True')
         qi_phil_string = qi_phil_string.replace('ignore_x_h_distance_protein = False',
                                                 'ignore_x_h_distance_protein = True')
         qi_phil_string = qi_phil_string.replace(' pdb_final_buffer', ' *pdb_final_buffer')
@@ -1119,11 +1112,6 @@ Usage examples:
     nproc = self.params.qi.nproc
     #
     start, end, step = self.params.qi.step_buffer_radius.split(',')
-    # qi_phil_string=qi_phil_string.replace('refinement.qi.qm_restraints',
-    #                                       'qm_restraints')
-    # qi_phil_string=qi_phil_string.replace('ignore_x_h_distance_protein = False',
-    #                                       'ignore_x_h_distance_protein = True')
-    # tmp = 'qi {\n'
     steps=[]
     for r in stepper(start, end, step): steps.append(r)
     steps.reverse()

@@ -977,7 +977,6 @@ def get_program_goal(qmr, macro_cycle=None, energy_only=False):
 
 def generate_uniform_qm_scopes(qmrs):
   for i, qmr in enumerate(qmrs):
-    print(i,qmr)
     for attr in ['freeze_specific_atoms',
                  'protein_optimisation_freeze',
                  'write_files',
