@@ -159,6 +159,10 @@ def update_libtbx_env(default_dir=None):
         if module.name == 'boost' and os.path.isdir(os.path.join(path, 'boost_adaptbx')):
           new_paths[1] = env.as_relocatable_path(new_path + '_' + module.mate_suffix)
           break
+        if module.name == 'amber' and os.path.isdir(os.path.join(path, 'amber_adaptbx')):
+          new_paths[0] = None
+          new_paths[1] = env.as_relocatable_path(new_path + '_' + module.mate_suffix)
+          break
         if module.name == 'annlib' and os.path.isdir(os.path.join(path, 'annlib_adaptbx')):
           new_paths[0] = None
           new_paths[1] = env.as_relocatable_path(new_path + '_' + module.mate_suffix)
