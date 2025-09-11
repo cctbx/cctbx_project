@@ -8,11 +8,14 @@ from libtbx.langchain import langchain_tools as lct
 import sys, os
 import asyncio
 
-def run(file_name = None, text = None, output_file_path = None,
+def run(file_name = None,
+      log_as_text = None,
+      output_file_path = None,
       db_dir: str = "./docs_db",
       timeout: int = 60,
       existing_summary: str  = None,
       existing_analysis: str  = None,
+      display_results: bool = True,
       ):
 
     # What we are going to return
@@ -24,11 +27,12 @@ def run(file_name = None, text = None, output_file_path = None,
       processed_log_dict = None,
       error = None)
 
+
     # Get the text for the log file
-    if not text:
+    if not log_as_text:
       if not os.path.isfile(file_name):
         raise ValueError("Sorry, the file %s is missing" %(file_name))
-      text = open(file_name).read()
+      log_as_text = open(file_name).read()
       print("Summarizing the log file '%s'..." %(file_name))
     else:
       print("Summarizing supplied text as a log file")
@@ -47,6 +51,8 @@ def run(file_name = None, text = None, output_file_path = None,
          log_info.error = "COHERE_API_KEY environment variable not set."
          return log_info
 
+      if not db_dir:
+        raise ValueError("Sorry, the database is missing")
 
       # Set up the LLM (same one for both analyzing log file and processing)
       print("Setting up LLM")
@@ -55,7 +61,7 @@ def run(file_name = None, text = None, output_file_path = None,
 
       # Summarize the log file
       print("Summarizing log file")
-      result = asyncio.run(lct.get_log_info(text, llm, embeddings,
+      result = asyncio.run(lct.get_log_info(log_as_text, llm, embeddings,
         timeout = timeout))
       if result.error: # failed
         print("Log file summary failed")
@@ -64,19 +70,20 @@ def run(file_name = None, text = None, output_file_path = None,
       log_info = result
       log_info.analysis = None
 
-    log_info.log_text = text
+    log_info.log_text = log_as_text
 
     # Put log summary in an html window
-    fn = os.path.join(output_file_path,'log_summary.html')
-    lct.save_as_html(log_info.summary, file_name = fn,
+    if display_results:
+      fn = os.path.join(output_file_path,'log_summary.html')
+      lct.save_as_html(log_info.summary, file_name = fn,
        title = 'Summary of %s' %(file_name))
-    print("Loading log summary at %s" %(fn))
-    try:
-      from phenix.command_line.doc import load_url
-      load_url(fn)
-    except Exception as e:
-      # phenix is not available or no viewer.  Just skip
-      print("Unable to load viewer...see text in the file: '%s'" %(fn))
+      print("Loading log summary at %s" %(fn))
+      try:
+        from phenix.command_line.doc import load_url
+        load_url(fn)
+      except Exception as e:
+        # phenix is not available or no viewer.  Just skip
+        print("Unable to load viewer...see text in the file: '%s'" %(fn))
 
     # Analyze the log summary in the context of the docs
     print("\nAnalyzing summary in context of documentation...")
@@ -84,24 +91,26 @@ def run(file_name = None, text = None, output_file_path = None,
       result = asyncio.run(
         lct.analyze_log_summary(log_info, llm, embeddings,
         db_dir = db_dir, timeout = timeout))
-      if (result.error): # failed
+      if (result.error) or (not result.analysis): # failed
         log_info.error = result.error
+        log_info.analysis = ""
         print("Unable to carry out analysis of log file")
         return log_info
       else:
         log_info.analysis = result.analysis
 
     # Put it in an html window
-    fn = os.path.join(output_file_path,'analysis.html')
-    lct.save_as_html(log_info.analysis, file_name = fn,
+    if display_results:
+      fn = os.path.join(output_file_path,'analysis.html')
+      lct.save_as_html(log_info.analysis, file_name = fn,
        title = 'Analysis of %s' %(file_name))
-    print("Loading analysis at %s" %(fn))
-    try:
-      from phenix.command_line.doc import load_url
-      load_url(fn)
-    except Exception as e:
-      # phenix is not available or no viewer.  Just skip
-      print("Unable to load viewer...see text in the file: '%s'" %(fn))
+      print("Loading analysis at %s" %(fn))
+      try:
+        from phenix.command_line.doc import load_url
+        load_url(fn)
+      except Exception as e:
+        # phenix is not available or no viewer.  Just skip
+        print("Unable to load viewer...see text in the file: '%s'" %(fn))
 
     return log_info
 

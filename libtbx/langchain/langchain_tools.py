@@ -21,10 +21,12 @@ The script then waits for all the responses to come back. The total wait time is
 
 import nest_asyncio
 nest_asyncio.apply()
+import chromadb
 import cohere
 from cohere.core.api_error import ApiError as CohereApiError
 
 import os
+import time
 os.environ['GRPC_ENABLE_FORK_SUPPORT'] = "false"   # suppress a warning message
 
 import asyncio
@@ -35,12 +37,15 @@ from langchain_cohere import CohereRerank
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain_core.runnables import RunnablePassthrough
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
 from langchain_community.document_loaders import TextLoader, PyPDFLoader, UnstructuredHTMLLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import PromptTemplate
 from langchain_core.documents import Document
 from langchain_chroma import Chroma
+from typing import Iterable
 from typing import List
 from markdown_it import MarkdownIt
 
@@ -254,9 +259,29 @@ def get_llm(model_name: str = "gemini-1.5-pro-latest", temperature: float = 0.1,
     """Initializes and returns a ChatGoogleGenerativeAI instance."""
     return ChatGoogleGenerativeAI(model=model_name, temperature=temperature, timeout=timeout)
 
-def get_embeddings(model_name: str = "models/embedding-001", timeout: int = 60) -> GoogleGenerativeAIEmbeddings:
-    """Initializes and returns a GoogleGenerativeAIEmbeddings instance."""
-    return GoogleGenerativeAIEmbeddings(model=model_name, timeout=timeout)
+
+
+def get_embeddings(
+    model_name: str = "models/embedding-001",  # keep your current default
+    timeout: int = 60,
+    batch_size: int = 100,                     # IMPORTANT: bigger batches → fewer requests
+) -> GoogleGenerativeAIEmbeddings:
+    """
+    Initialize a GoogleGenerativeAIEmbeddings client with sane defaults for
+    large ingests (to avoid per-minute rate limits).
+    """
+    # Ensure the right key is loaded (paid-tier key)
+    api_key = os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        raise RuntimeError("GOOGLE_API_KEY is not set in the environment")
+
+    return GoogleGenerativeAIEmbeddings(
+        model=model_name,
+        timeout=timeout,
+        batch_size=batch_size,  # reduces # of API calls per minute
+        google_api_key=api_key,
+    )
+
 
 # In langchain_tools.py
 
@@ -402,23 +427,68 @@ async def analyze_log_summary(log_info, llm, embeddings,
         analysis = None,
         error = error_message)
 
-def create_and_persist_db(docs: List[Document],
-      embeddings: GoogleGenerativeAIEmbeddings,
-      db_dir: str = "./docs_db") -> Chroma:
-    """Creates and persists a Chroma vector store from documents."""
 
+def _iter_batches(seq: List[Document], size: int) -> Iterable[List[Document]]:
+    for i in range(0, len(seq), size):
+        yield seq[i:i+size]
+
+def create_and_persist_db(
+    docs: List[Document],
+    embeddings,                       # GoogleGenerativeAIEmbeddings
+    db_dir: str = "./docs_db",
+    *,
+    add_batch_size: int = 200,        # docs per add() call
+    pause_between_batches: float = 2.0,
+    max_attempts: int = 6,            # retries on rate limits
+    max_backoff: float = 60.0
+) -> Chroma:
+    """
+    Build a Chroma vector store with batching/throttling and automatic persistence
+    (via chromadb.PersistentClient). No vectorstore.persist() needed in Chroma ≥0.5.
+    """
+
+    # Your existing chunking
     docs_chunks = _custom_chunker(docs)
 
-    # Create and save Chroma vector store to db
-    vectorstore = Chroma.from_documents(
-        documents=docs_chunks,
-        embedding=embeddings,
-        persist_directory=db_dir
-    )
-    # Load Chroma vector store from disk
-    print("Database to be written to: %s" %(db_dir))
-    return Chroma(persist_directory=db_dir, embedding_function=embeddings)
+    # Optional: light dedup to reduce embedding calls
+    seen = set()
+    unique_docs: List[Document] = []
+    for d in docs_chunks:
+        key = (d.page_content.strip(), tuple(sorted((d.metadata or {}).items())))
+        if key not in seen:
+            seen.add(key)
+            unique_docs.append(d)
 
+    # IMPORTANT: Use PersistentClient for on-disk storage
+    client = chromadb.PersistentClient(path=db_dir)
+
+    # Initialize an (initially empty) collection-backed vectorstore
+    vectorstore = Chroma(
+        client=client,
+        collection_name="docs",
+        embedding_function=embeddings,   # NOTE: embedding_function (not "embedding")
+    )
+
+    # Add in batches with backoff on 429/rate-limit errors
+    for batch in _iter_batches(unique_docs, add_batch_size):
+        backoff = 2.0
+        for attempt in range(1, max_attempts + 1):
+            try:
+                vectorstore.add_documents(batch)
+                break
+            except Exception as e:
+                msg = str(e).lower()
+                if "429" in msg or "rate" in msg or "quota" in msg:
+                    time.sleep(backoff)
+                    backoff = min(backoff * 2.0, max_backoff)
+                    if attempt == max_attempts:
+                        raise
+                else:
+                    raise
+        time.sleep(pause_between_batches)
+
+    print(f"Database stored in: {db_dir} (persistence handled by PersistentClient)")
+    return vectorstore
 
 def load_persistent_db(embeddings: GoogleGenerativeAIEmbeddings,
       db_dir: str = "./docs_db") -> Chroma:
