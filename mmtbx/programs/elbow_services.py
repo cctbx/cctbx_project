@@ -5,7 +5,7 @@ import os
 from libtbx.program_template import ProgramTemplate
 from libtbx.utils import Sorry
 
-from mmtbx.ligands import elbow_utils
+# from mmtbx.ligands import elbow_utils
 from mmtbx.monomer_library import geostd_utils
 # from mmtbx.monomer_library import mmtbx_utils
 from mmtbx import chemical_components

@@ -1048,6 +1048,15 @@ class time_log(object):
       self.label, self.n, self.accumulation,
       self.delta, self.average())
 
+def human_readable_code(s, extra=False):
+  rc = ''
+  for c in s:
+    if c in ['O', 'I', 'S']:        rc += c.lower()
+    elif c in ['l']:                rc += c.upper()
+    elif extra and c in ['Z', 'B']: rc += c.lower()
+    else:                           rc += c
+  return rc
+
 def human_readable_time(time_in_seconds):
   """
   Rounds a time in seconds to the nearest days / hours / minutes, depending on
