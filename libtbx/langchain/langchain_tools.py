@@ -305,9 +305,9 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120):
           error = None)
 
     except asyncio.TimeoutError:
-        error_message = f"The Google analysis timed out. "+ \
-         "Try increasing timeout in Preferences or in "+\
-          f"AnalyzeLog (currently {timeout} sec)"
+        error_message = "Google analysis timed out, " + \
+             "try increasing timeout in Preferences or AnalyzeLog "+\
+               "(currently %s sec)" %(timeout)
 
         print(error_message)
         return group_args(group_args_type = 'error', error=error_message)
