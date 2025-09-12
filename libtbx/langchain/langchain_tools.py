@@ -305,8 +305,8 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120):
           error = None)
 
     except asyncio.TimeoutError:
-        error_message = f"The Google analysis timed out.\n" +\
-         "You might try increasing the timeout in Preferences or in " +\
+        error_message = f"The Google analysis timed out. "+ \
+         "Try increasing timeout in Preferences or in "+\
           f"AnalyzeLog (currently {timeout} sec)"
 
         print(error_message)
@@ -319,9 +319,7 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120):
         if isinstance(original_cause, google_exceptions.PermissionDenied):
             error_message = (
                 "Google AI Permission Denied. "
-                 "This usually means your API key is invalid, "
-                "has been disabled, or is not enabled for the "
-                "Gemini API on your Google Cloud project.\n"
+                 "This usually means your API key is invalid .\n"
                 f"Details: {original_cause}"
             )
         elif isinstance(original_cause, google_exceptions.ResourceExhausted):
@@ -378,7 +376,7 @@ async def analyze_log_summary(log_info, llm, embeddings,
 # --- EXCEPTION HANDLERS ---
   except (TimeoutError, google_exceptions.DeadlineExceeded) as e:
       error_message = (
-          "A network timeout occurred while communicating Google.\n"
+          "Network timeout with Google."
           "You might try increasing the timeout in Preferences or in "
           f"AnalyzeLog (currently {timeout} sec)"
       )
@@ -391,7 +389,6 @@ async def analyze_log_summary(log_info, llm, embeddings,
   except google_exceptions.ResourceExhausted as e:
       error_message = (
           "ERROR: Google AI API quota exceeded."
-          " Please check your plan and billing details.\n"
           f"Details: {e}"
       )
       print(error_message)
@@ -403,9 +400,7 @@ async def analyze_log_summary(log_info, llm, embeddings,
       # Check if the error is specifically an authentication error (401)
       if hasattr(e, 'http_status') and e.http_status == 401:
             error_message = (
-            "ERROR: Cohere API Authentication Error."
-            " This almost always means your Cohere API key is "
-            "invalid or missing.\n"
+            "Invalid Cohere API key.\n"
                 f"Details: {e}"
             )
       elif str(e).find("invalid api token") > -1:
