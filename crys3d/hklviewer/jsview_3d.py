@@ -203,6 +203,7 @@ class HKLview_3d:
     self.all_vectors = []
     self.realSpaceMag = 1
     self.recipSpaceMag = 1
+    self.has_unmerged_data = False
     self.cosine = 1
     self.L = 1.0
     self.nuniqueval = 0
@@ -712,7 +713,7 @@ class HKLview_3d:
     self.merge = merge
     if (self.miller_array is None):
       return
-    self.identify_suitable_fomsarrays()
+    self.inspect_arrays()
     self.GetUnitcellScales()
     self.d_min = self.miller_array.d_min()
     array_info = self.miller_array.info()
@@ -838,7 +839,7 @@ class HKLview_3d:
         self.mprint("Using cached HKL scene", verbose=1)
         return True
     if self.has_new_miller_array:
-      self.identify_suitable_fomsarrays()
+      self.inspect_arrays()
     self.mprint("Constructing HKL scenes...", verbose=1)
     idx,fdx = self.scene_id_to_array_and_foms_id(scene_id)
     fomarray = None
@@ -899,10 +900,12 @@ class HKLview_3d:
     return self.HKLscenedict[HKLsceneKey]
 
 
-  def identify_suitable_fomsarrays(self):
+  def inspect_arrays(self):
     self.mprint("Matching complex arrays to suitable FOM arrays", verbose=1)
     self.mapcoef_fom_dict = {}
     self.sceneid_from_arrayid = []
+    self.has_unmerged_data = False
+
     for k,proc_array in enumerate(self.proc_arrays):
       fom_arrays_idx = []
       array_scene_ids = [(k,-1)] # using -1 to indicate not paired with a fom array
@@ -917,6 +920,8 @@ class HKLview_3d:
         array_scene_ids.append((k,i))
       self.sceneid_from_arrayid.extend( array_scene_ids)
       self.mapcoef_fom_dict[proc_array.info().label_string()] = fom_arrays_idx
+      if proc_array.is_unmerged_intensity_array():
+        self.has_unmerged_data = True
 
 
   def get_scene_id_from_label_or_type(self, datalabel, datatype=None):

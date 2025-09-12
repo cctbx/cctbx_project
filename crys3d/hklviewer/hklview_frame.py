@@ -815,7 +815,7 @@ class HKLViewFrame() :
   def set_default_spacegroup(self):
     #self.viewer.proc_arrays = self.procarrays
     self.viewer.set_miller_array()
-    #self.viewer.identify_suitable_fomsarrays()
+    #self.viewer.inspect_arrays()
 
 
   def MakeNewMillerArrayFrom(self, operation, label, arrid1, arrid2=None):
@@ -985,8 +985,9 @@ Borrowing them from the first miller array""" %i)
       from crys3d.hklviewer.xtricorder_runner import external_cmd as external_cmd
     if self.params.external_cmd == "runXtriage":
       from crys3d.hklviewer.xtriage_runner import external_cmd as external_cmd
-    try:
-      def thrdfunc():
+
+    def thrdfunc():
+      try:
         self.mprint("run_external_cmd.thrdfunc() waiting for run_external_sem.acquire", verbose="threadingmsg")
         if not self.run_external_sem.acquire(timeout=jsview_3d.lock_timeout):
             self.mprint("Timed out getting run_external_sem semaphore within %s seconds" %jsview_3d.lock_timeout, verbose=1)
@@ -997,6 +998,10 @@ Borrowing them from the first miller array""" %i)
         self.SendInfoToGUI( {"show_log_file_from_external_cmd": [ret.tabname, ret.logfname ]  } )
         self.validated_preset_buttons = False
         self.validate_preset_buttons()
+      except Exception as e:
+        self.SendInfoToGUI( {"show_log_file_from_external_cmd": -42 } )
+        self.mprint(str(e))
+      finally:
         # reapply the phil paramaters that may have been reset by external_cmd doing an openfilename call
         self.guarded_process_PHIL_parameters(new_phil=diff2)
         self.run_external_sem.release()
@@ -1004,10 +1009,7 @@ Borrowing them from the first miller array""" %i)
 
       # Since process_PHIL_parameters() might be called by update_from_philstr() in external_cmd()
       # we run thrdfunc separately to avoid semaphore deadlock if entering process_PHIL_parameters() twice
-      threading.Thread(target = thrdfunc, daemon=True).start()
-    except Exception as e:
-      self.SendInfoToGUI( {"show_log_file_from_external_cmd": -42 } )
-      raise Sorry(str(e))
+    threading.Thread(target = thrdfunc, daemon=True).start()
 
 
   def prepare_dataloading(self):
@@ -1111,7 +1113,7 @@ Borrowing them from the first miller array""" %i)
     elif (len(valid_arrays) >= 1):
       array_info = self.process_all_miller_arrays(valid_arrays)
       self.viewer.proc_arrays = self.procarrays[:]
-      self.viewer.identify_suitable_fomsarrays()
+      self.viewer.inspect_arrays()
       self.viewer.set_miller_array(None, merge=array_info.merge,
          details=array_info.details_str)
 
@@ -1352,6 +1354,8 @@ Borrowing them from the first miller array""" %i)
       activebtns = []
       # look for strings like data_array.label="F,SIGFP" and see if that data column exists in the file
       uniquebtnids = set([])
+      useIntensities_or_Amplitudes = False
+      useConstantIntensities_or_ConstantAmplitudes = False
       if self.viewer.miller_array is not None:
         ma = self.viewer.miller_array
       elif len(self.procarrays):
@@ -1366,6 +1370,9 @@ Borrowing them from the first miller array""" %i)
           uniquebtnids.add(btn_id)
         else:
           raise Sorry("Button ID, %s, has already been used by another button." %btn_id)
+
+        if btn_id in ["Merged", "Multiplicities"] and not self.viewer.has_unmerged_data:
+          continue
 
         btnphil = libtbx.phil.parse(philstr)
         philstr_label = None
@@ -1464,6 +1471,7 @@ Borrowing them from the first miller array""" %i)
                   break
           if datalabel1 is not None and datalabel2 is not None:
             miller_array_operation_can_be_done = True
+
           if miller_array_operation_can_be_done and nvectorsfound >= len(philstr_showvectors):
             self.mprint("\"%s\" declared using %s and %s is assigned to data %s of type %s." \
                           %(btnlabel, arr1label, arr1type, datalabel, datatype), verbose=1)
@@ -1489,7 +1497,20 @@ Borrowing them from the first miller array""" %i)
           if labeltypefound and nvectorsfound >= len(philstr_showvectors):
             self.mprint("\"%s\" assigned to dataset %s of type %s." \
                           %(btnlabel + str(veclabels), datalabel, datatype), verbose=1)
-            activebtns.append((self.allbuttonslist[ibtn], datalabel, "", (philveclabel, veclabels) ))
+              
+            if btn_id in ["Intensities", "Amplitudes"]:
+              if not useIntensities_or_Amplitudes:
+                activebtns.append((self.allbuttonslist[ibtn], datalabel, "", (philveclabel, veclabels) ))
+                useIntensities_or_Amplitudes = True
+
+            if btn_id in ["ConstantAxesSliceIntens", "ConstantAxesSliceAmpl"]:
+              if not useConstantIntensities_or_ConstantAmplitudes:
+                activebtns.append((self.allbuttonslist[ibtn], datalabel, "", (philveclabel, veclabels) ))
+                useConstantIntensities_or_ConstantAmplitudes = True
+
+            if btn_id not in ["Intensities", "Amplitudes", "ConstantAxesSliceIntens", "ConstantAxesSliceAmpl"]:
+                activebtns.append((self.allbuttonslist[ibtn], datalabel, "", (philveclabel, veclabels) ))
+
           else:
             self.mprint("\"%s\" expecting dataset of type \"%s\" has not been assigned to any dataset." \
                               %(btnlabel, philstr_type), verbose=1)
