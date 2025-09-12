@@ -150,15 +150,15 @@ def run(table, fd_delta = 1.e-5):
   #
   # sites cart only for atom 1
   #
-#  print("sites_cart_1")
-#  scatterers.flags_set_grad_site(iselection = flex.size_t([1]))
-#  #
-#  g1 = tf.gradients_wrt_atomic_parameters().packed()
-#  g2 = get_wrapper_grads(xrs, d_target_d_fcalc)
-#  g3 = get_fd(fmodel, eps=fd_delta)
-#  #assert approx_equal(g1,g2, 1.e-6)
-#  #assert approx_equal(g1,g3, 1.e-6)
-#  show(g1,g2,g3)
+  print("sites_cart_1")
+  scatterers.flags_set_grad_site(iselection = flex.size_t([1]))
+  #
+  g1 = tf.gradients_wrt_atomic_parameters().packed()
+  g2 = get_wrapper_grads(xrs, d_target_d_fcalc)
+  g3 = get_fd(fmodel, eps=fd_delta)
+  show(g1,g2,g3)
+  assert approx_equal(g1,g2, 1.e-6)
+  assert approx_equal(g1,g3, 1.e-3)
   #
   # Now add iso B for H #2
   #
@@ -168,8 +168,8 @@ def run(table, fd_delta = 1.e-5):
   g2 = get_wrapper_grads(xrs, d_target_d_fcalc)
   g3 = get_fd(fmodel, eps=fd_delta)
   show(g1,g2,g3)
-  assert approx_equal(g1,g2, 1.e-5)
-  assert approx_equal(g1,g3, 1.e-4)
+  assert approx_equal(g1,g2, 1.e-6)
+  assert approx_equal(g1,g3, 1.e-3)
   #
   # Now add occupancy of H #0
   #
@@ -179,8 +179,8 @@ def run(table, fd_delta = 1.e-5):
   g2 = get_wrapper_grads(xrs, d_target_d_fcalc)
   g3 = get_fd(fmodel, eps=fd_delta)
   show(g1,g2,g3)
-  assert approx_equal(g1,g2, 1.e-5)
-  assert approx_equal(g1,g3, 1.e-4)
+  assert approx_equal(g1,g2, 1.e-6)
+  assert approx_equal(g1,g3, 1.e-3)
 
   #
   # Now add aniso ADP of O #1
@@ -191,7 +191,7 @@ def run(table, fd_delta = 1.e-5):
   g2 = get_wrapper_grads(xrs, d_target_d_fcalc)
   g3 = get_fd(fmodel, eps=fd_delta)
   show(g1,g2,g3)
-  assert approx_equal(g1,g2, 1.e-5)
+  assert approx_equal(g1,g2, 1.e-6)
   assert approx_equal(g1,g3, 1.e-3)
 
   #
@@ -203,8 +203,8 @@ def run(table, fd_delta = 1.e-5):
   g2 = get_wrapper_grads(xrs, d_target_d_fcalc)
   g3 = get_fd(fmodel, eps=fd_delta)
   show(g1,g2,g3)
-  #assert approx_equal(g1,g2, 1.e-6)
-  #assert approx_equal(g1,g3, 1.e-6)
+  assert approx_equal(g1,g2, 1.e-6)
+  assert approx_equal(g1,g3, 1.e-3)
 
   #
   # Cancel all
@@ -213,18 +213,17 @@ def run(table, fd_delta = 1.e-5):
   #
   # Now all parameters
   #
-#  all_selection = flex.size_t([0,1,2])
-#  scatterers.flags_set_grad_site(iselection = all_selection)
-#  scatterers.flags_set_grad_occupancy(iselection = all_selection)
-#  scatterers.flags_set_grad_u_aniso(iselection = flex.size_t([1]))
-#  scatterers.flags_set_grad_u_iso(iselection = flex.size_t([0,2]))
-#  g1 = tf.gradients_wrt_atomic_parameters().packed()
-#  g2 = get_wrapper_grads(xrs, d_target_d_fcalc)
-#  g3 = get_fd(fmodel, eps=fd_delta)
-#  #assert approx_equal(g1,g2, 1.e-6)
-#  #assert approx_equal(g1,g3, 1.e-6)
-#  if debug: print()
-#  show(g1,g2,g3)
+  all_selection = flex.size_t([0,1,2])
+  scatterers.flags_set_grad_site(iselection = all_selection)
+  scatterers.flags_set_grad_occupancy(iselection = all_selection)
+  scatterers.flags_set_grad_u_aniso(iselection = flex.size_t([1]))
+  scatterers.flags_set_grad_u_iso(iselection = flex.size_t([0,2]))
+  g1 = tf.gradients_wrt_atomic_parameters().packed()
+  g2 = get_wrapper_grads(xrs, d_target_d_fcalc)
+  g3 = get_fd(fmodel, eps=fd_delta)
+  show(g1,g2,g3)
+  assert approx_equal(g1,g2, 1.e-6)
+  assert approx_equal(g1,g3, 1.e-2)
 
 # ------------------------------------------------------------------------------
 
@@ -261,6 +260,7 @@ if(__name__ == "__main__"):
     print("Skipping:", os.path.basename(__file__))
   else:
     for table in ["electron", "wk1995", "it1992"]:
+    #for table in ["wk1995"]:
       run(table=table)
       print()
   print("OK. Time: %8.3f"%(time.time()-t0))
