@@ -332,7 +332,8 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120):
             # Handle any other general exception
             if str(e).find("API_KEY_INVALID")> -1:
                error_message = "The Google API key is invalid, "+ \
-                 "Please check in Preferences."
+                 "Please check in Preferences (key='%s')." %(
+                          str(os.getenv("GOOGLE_API_KEY")))
             else:
               error_message = f"An unexpected error occurred during summarization: {e}"
             print("Summarize log failed")
@@ -405,7 +406,8 @@ async def analyze_log_summary(log_info, llm, embeddings,
             )
       elif str(e).find("invalid api token") > -1:
           error_message = "The Cohere API key is invalid, "+ \
-                 "Please check in Preferences."
+                 "Please check in Preferences (key='%s')." %(
+                  str(os.getenv("COHERE_API_KEY")))
       else:
             # For other Cohere errors (like rate limiting)
             error_message = f"ERROR: A Cohere API error occurred, This may be due to rate limits.\nDetails: {e}"
