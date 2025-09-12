@@ -624,6 +624,62 @@ def query_docs(query_text, llm = None, embeddings = None,
     print("Query docs failed...")
     return None
 
+# In langchain_tools.py, add this new function
+
+def _custom_log_chunker(log_text: str) -> List[Document]:
+    """
+    Chunks a log text with a special rule for the 'Files are in the directory' section.
+
+    - If the trigger phrase is found, the text before it is chunked normally.
+    - The text from the trigger phrase to the end of the file (or to 'Citations')
+      is treated as a single, separate chunk.
+    - If the trigger phrase is not found, the entire log is chunked normally.
+    """
+    trigger_phrase = "Files are in the directory"
+    end_phrase = "Citations"
+
+    final_chunks = []
+
+    # Search for the trigger phrase case-insensitively
+    start_index = log_text.lower().find(trigger_phrase.lower())
+
+    if start_index == -1:
+        # Trigger not found, use the standard chunker for the whole document
+        documents = [Document(page_content=log_text)]
+        standard_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=300000, chunk_overlap=30000
+        )
+        return standard_splitter.split_documents(documents)
+
+    # --- Trigger was found, apply special logic ---
+
+    # 1. Chunk the text *before* the trigger phrase normally
+    before_text = log_text[:start_index].strip()
+    if before_text:
+        before_doc = [Document(page_content=before_text)]
+        standard_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=300000, chunk_overlap=30000
+        )
+        final_chunks.extend(standard_splitter.split_documents(before_doc))
+
+    # 2. Create the single, special chunk
+    special_section_text = log_text[start_index:]
+
+    # Find the end phrase within the special section
+    end_index = special_section_text.find(end_phrase)
+
+    if end_index != -1:
+        # If 'Citations' is found, end the chunk there
+        special_chunk_content = special_section_text[:end_index].strip()
+    else:
+        # Otherwise, the chunk goes to the end of the file
+        special_chunk_content = special_section_text.strip()
+
+    if special_chunk_content:
+        final_chunks.append(Document(page_content=special_chunk_content))
+
+    return final_chunks
+
 # Change the signature and add asyncio.wait_for
 async def summarize_log_text(
     text: str, llm: ChatGoogleGenerativeAI, timeout: int = 120) -> str:
@@ -632,7 +688,8 @@ async def summarize_log_text(
     documents = [Document(page_content=text)]
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=300000,
          chunk_overlap=30000)
-    docs = text_splitter.split_documents(documents)
+    docs = _custom_log_chunker(text)
+    #  docs = text_splitter.split_documents(documents)
 
     map_prompt = get_log_map_prompt()
     map_chain = map_prompt | llm
