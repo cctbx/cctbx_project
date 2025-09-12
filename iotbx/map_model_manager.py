@@ -5704,8 +5704,11 @@ class map_model_manager(object):
     if not os.path.isdir(temp_dir):
       return  # nothing to do
     else:  # remove it
-     from shutil import rmtree
-     rmtree(temp_dir)
+     try:
+       from shutil import rmtree
+       rmtree(temp_dir)
+     except Exception as e:
+       pass # must have been removed another way
 
   def _create_temp_dir(self, temp_dir):
     """Create temporary directory"""
