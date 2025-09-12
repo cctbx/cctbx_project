@@ -401,6 +401,8 @@ def atom_type_cif_loop(xray_structure, format="mmcif", covariance_matrix=None):
   sources = {
     "it1992": "International Tables Volume C Table 6.1.1.4 (pp. 500-502)",
     "wk1995": "Waasmaier & Kirfel (1995), Acta Cryst. A51, 416-431",
+    "neutron": "Neutron News, Vol. 3, No. 3, 1992, 29-37",
+    "electron": "L.-M. Peng (1998), J. Appl. Cryst. A54, 481-485"
   }
   inelastic_references = {
     "henke" : "Henke, Gullikson and Davis, At. Data and Nucl. Data Tables, 1993, 54, 2",
@@ -412,21 +414,27 @@ def atom_type_cif_loop(xray_structure, format="mmcif", covariance_matrix=None):
   unique_gaussians = scattering_type_registry.unique_gaussians_as_list()
   max_n_gaussians = max([gaussian.n_terms() for gaussian in unique_gaussians])
   max_n_gaussians = max(max_n_gaussians, 4) # Need for compliance with mmcif_pdbx_v50
-  # _atom_type_* loop
-  header = ['_atom_type%ssymbol' %separator,
-            '_atom_type%sscat_dispersion_real' %separator,
-            '_atom_type%sscat_dispersion_imag' %separator]
-  header.extend(['_atom_type%sscat_Cromer_Mann_a%i' %(separator, i+1)
-                 for i in range(max_n_gaussians)])
-  header.extend(['_atom_type%sscat_Cromer_Mann_b%i' %(separator, i+1)
-                 for i in range(max_n_gaussians)])
-  header.extend(['_atom_type%sscat_Cromer_Mann_c' %separator,
-                 '_atom_type%sscat_source' %separator,
-                 '_atom_type%sscat_dispersion_source' %separator])
+  params = xray_structure.scattering_type_registry_params
+
+  if "neutron" == params.table:
+    header = ['_atom_type%ssymbol' %separator,
+              '_atom_type%sscat_length_neutron' %separator,
+              '_atom_type%sscat_source'  %separator,
+              ]
+  else:
+    # _atom_type_* loop
+    header = ['_atom_type%ssymbol' %separator,
+              '_atom_type%sscat_dispersion_real' %separator,
+              '_atom_type%sscat_dispersion_imag' %separator]
+    header.extend(['_atom_type%sscat_Cromer_Mann_a%i' %(separator, i+1)
+                  for i in range(max_n_gaussians)])
+    header.extend(['_atom_type%sscat_Cromer_Mann_b%i' %(separator, i+1)
+                  for i in range(max_n_gaussians)])
+    header.extend(['_atom_type%sscat_Cromer_Mann_c' %separator,
+                  '_atom_type%sscat_source' %separator,
+                  '_atom_type%sscat_dispersion_source' %separator])
   atom_type_loop = model.loop(header=header)
   #gaussian_dict = scattering_type_registry.as_type_gaussian_dict()
-  scattering_type_registry = xray_structure.scattering_type_registry()
-  params = xray_structure.scattering_type_registry_params
   if covariance_matrix:
     param_map = xray_structure.parameter_map()
     covariance_diagonal = covariance_matrix.matrix_packed_u_diagonal()
@@ -490,6 +498,9 @@ Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31."
         fp = "%.5f" %fp
       if not isinstance(fdp, str):
         fdp = "%.5f" %fdp
+    if "neutron" == params.table:
+      atom_type_loop.add_row([atom_type, "%.5f" %gaussian.c(), scat_source])
+      continue
     row = [atom_type, fp, fdp]
     lds = disp_source
     if "(" in fp or "(" in fdp:
