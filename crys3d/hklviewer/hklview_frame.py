@@ -1497,7 +1497,7 @@ Borrowing them from the first miller array""" %i)
           if labeltypefound and nvectorsfound >= len(philstr_showvectors):
             self.mprint("\"%s\" assigned to dataset %s of type %s." \
                           %(btnlabel + str(veclabels), datalabel, datatype), verbose=1)
-              
+
             if btn_id in ["Intensities", "Amplitudes"]:
               if not useIntensities_or_Amplitudes:
                 activebtns.append((self.allbuttonslist[ibtn], datalabel, "", (philveclabel, veclabels) ))
