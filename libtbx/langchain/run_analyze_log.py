@@ -16,6 +16,8 @@ def run(file_name = None,
       existing_summary: str  = None,
       existing_analysis: str  = None,
       display_results: bool = True,
+      text_to_append_to_summary: str = None,
+      text_to_append_to_analysis: str = None,
       ):
 
     # What we are going to return
@@ -75,7 +77,10 @@ def run(file_name = None,
     # Put log summary in an html window
     if display_results:
       fn = os.path.join(output_file_path,'log_summary.html')
-      lct.save_as_html(log_info.summary, file_name = fn,
+      text = log_info.summary
+      if text_to_append_to_summary:
+         text += text_to_append_to_summary
+      lct.save_as_html(text, file_name = fn,
        title = 'Summary of %s' %(file_name))
       print("Loading log summary at %s" %(fn))
       try:
@@ -101,8 +106,11 @@ def run(file_name = None,
 
     # Put it in an html window
     if display_results:
+      text = log_info.analysis
+      if text_to_append_to_analysis:
+         text += text_to_append_to_analysis
       fn = os.path.join(output_file_path,'analysis.html')
-      lct.save_as_html(log_info.analysis, file_name = fn,
+      lct.save_as_html(text, file_name = fn,
        title = 'Analysis of %s' %(file_name))
       print("Loading analysis at %s" %(fn))
       try:
