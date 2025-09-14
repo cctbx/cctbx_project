@@ -2385,7 +2385,8 @@ class array(set):
     if(not result.is_unique_set_under_symmetry()):
       merged = result.merge_equivalents()
       result = merged.array()
-      info = info.customized_copy(merged=True)
+      if info is not None:
+        info = info.customized_copy(merged=True)
     result = result.map_to_asu()
     if(not result.sigmas_are_sensible()):
       result = result.customized_copy(
