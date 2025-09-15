@@ -10,7 +10,6 @@ import asyncio
 
 def run(file_name = None,
       log_as_text = None,
-      summary_info_as_text = None,
       output_file_path = None,
       db_dir: str = "./docs_db",
       timeout: int = 60,
@@ -36,6 +35,8 @@ def run(file_name = None,
       if not os.path.isfile(file_name):
         raise ValueError("Sorry, the file %s is missing" %(file_name))
       log_as_text = open(file_name).read()
+      print("Summarizing the log file '%s'..." %(file_name))
+    elif file_name:
       print("Summarizing the log file '%s'..." %(file_name))
     else:
       print("Summarizing supplied text as a log file")
@@ -90,10 +91,6 @@ def run(file_name = None,
       except Exception as e:
         # phenix is not available or no viewer.  Just skip
         print("Unable to load viewer...see text in the file: '%s'" %(fn))
-
-    if log_info.summary and summary_info_as_text:
-      # add summary info from GUI if present
-      log_info.summary += "\n\n%s" %(summary_info_as_text)
 
     # Analyze the log summary in the context of the docs
     print("\nAnalyzing summary in context of documentation...")
