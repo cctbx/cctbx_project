@@ -51,12 +51,6 @@ jobs:
       git submodule update
     displayName: Download pyDiSCaMB
 
-  - script: |
-      set -xe
-      cd $(Pipeline.Workspace)/modules/dxtbx
-      git checkout dials-3.22
-    displayName: Select dxtbx 3.22 branch
-
   # change optimization level (linux, macOS)
   - script: |
       cd $(Pipeline.Workspace)/modules/cctbx_project/libtbx
