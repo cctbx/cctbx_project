@@ -221,6 +221,7 @@ master_phil_str = get_qm_restraints_scope()
 def electrons(model,
               specific_atom_charges=None,
               specific_atom_multiplicities=None,
+              return_atom_valences=False,
               log=None):
   from libtbx.utils import Sorry
   from mmtbx.ligands import electrons
@@ -232,6 +233,7 @@ def electrons(model,
     log=log,
     verbose=False,
   )
+  if return_atom_valences: return atom_valences
   rc = atom_valences.validate(ignore_water=True,
                               raise_if_error=False)
   # rc = atom_valences.report(ignore_water)
