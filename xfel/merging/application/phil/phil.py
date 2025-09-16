@@ -735,11 +735,14 @@ lunus {
 }
 """
 
-diffbragg_phil = """
-diffBragg {
-  include scope simtbx.diffBragg.phil.phil_scope
-}
-"""
+try:
+  diffbragg_phil = """
+  diffBragg {
+    include scope simtbx.diffBragg.phil.phil_scope
+  }
+  """
+except ImportError:
+  diffbragg_phil = ""
 
 monitor_phil = """
 monitor {

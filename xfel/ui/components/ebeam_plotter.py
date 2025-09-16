@@ -4,7 +4,8 @@ import dxtbx
 from xfel.cxi.cspad_ana import cspad_tbx
 from matplotlib import pyplot as plt
 import numpy as np
-from simtbx.nanoBragg.utils import ENERGY_CONV
+from scipy import constants
+ENERGY_CONV = 10000000000.0 * constants.c * constants.h / constants.electron_volt
 
 def compare_ebeams_with_fees(locfiles, runs=None, plot=True, use_figure=None, max_events=None):
   if plot:

@@ -3,7 +3,7 @@ import numpy as np
 from six.moves import range
 from dials.array_family import flex
 import math
-from simtbx.diffBragg.utils import is_outlier
+from merging.application.utils.outlier import is_outlier
 
 class reflection_table_utils(object):
 
