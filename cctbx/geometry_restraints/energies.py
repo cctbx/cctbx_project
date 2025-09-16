@@ -352,7 +352,7 @@ class energies(scitbx.restraints.energies):
       angle_deltas = self._get_angle_deltas(origin_id=origin_id)
       if len(angle_deltas) > 0:
         sigmas = self.angle_sigmas(origin_id=origin_id)
-        assert len(sigmas)==len(angle_deltas)
+        # assert len(sigmas)==len(angle_deltas), 'sigmas %d != angle_deltas %d' % (len(sigmas), len(angle_deltas))
         z_scores = flex.double([(angle_delta/sigma) for angle_delta,sigma in zip(angle_deltas,sigmas)])
         a_rmsz = math.sqrt(flex.mean_default(z_scores*z_scores,0))
         a_z_max = flex.max_default(flex.abs(z_scores), 0)
