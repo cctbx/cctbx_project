@@ -141,15 +141,15 @@ class manager(list):
       '''
       Print summary table
       '''
-      lab_row1 =  ['','','', '% bad', '','', '', '']
-      lab_row2 =  ['','','CC', 'map values', '','', 'ADPs', 'occupancies']
+      lab_row1 =  ['','','', '% bad', '','', '', '', '']
+      lab_row2 =  ['','','CC', 'map values', '','', 'ADPs', 'occupancies', 'bond']
       lab_row3 =  ['ligand', 'suspicious', '2Fo-Fc', 'Fo-Fc','clashes','H-bonds',\
-        'min   max   mean   owab', 'min   max   mean']
-      lab1_str = '{:^14}|{:^12}|{:^9}|{:^12}|{:^9}|{:^9}|{:^28}|{:^21}|'
+        'min   max   mean   owab', 'min   max   mean', ' rmsz  outliers ']
+      lab1_str = '{:^14}|{:^12}|{:^9}|{:^12}|{:^9}|{:^9}|{:^28}|{:^21}|{:^17}|'
       print('\n' + lab1_str.format(*lab_row1), file=out)
       print(lab1_str.format(*lab_row2), file=out)
       print(lab1_str.format(*lab_row3), file=out)
-      print('-'*120, file=out)
+      print('-'*140, file=out)
       for lr in self:
         ccs     = lr.get_ccs()
         clashes = lr.get_overlaps()
@@ -157,6 +157,7 @@ class manager(list):
         owab    = lr.get_owab()
         occs    = lr.get_occupancies()
         map_vals = lr.get_map_values()
+        rmsds   = lr.get_rmsds()
         is_suspicious = lr.check_if_suspicious()
         n_atoms = lr._atoms_ligand_noH.size()
         if is_suspicious: check='***'
@@ -179,10 +180,12 @@ class manager(list):
         val_o_min   = f"{round(occs.occ_min,1):^7}" if occs.occ_min != occs.occ_mean else f"{'':^7}"
         val_o_max   = f"{round(occs.occ_max,1):^7}" if occs.occ_max != occs.occ_mean else f"{'':^7}"
         val_o_mean  = f"{round(occs.occ_mean,1):^7}"
+        val_bond_rmsz  = f"{round(rmsds.bond_rmsz,2):^9}"
+        val_bond_outl  = f"{rmsds.bond_n_outliers:^3}"+f"({rmsds.bond_n:^3})"
 
         row = f"{val_id}|{val_check}|{val_cc}|{val_mapvals}|{val_clash}|\
 {val_hbonds}|{val_b_min}{val_b_max}{val_b_mean}{val_owab}|\
-{val_o_min}{val_o_max}{val_o_mean}|"
+{val_o_min}{val_o_max}{val_o_mean}|{val_bond_rmsz}{val_bond_outl}|"
         print(row, file=out)
         #
         val_sites = f"{'sites':^14}"
@@ -293,6 +296,7 @@ class ligand_result(object):
       '_adps'          : 'get_adps',
       '_owab'          : 'get_owab',
       '_overlaps'      : 'get_overlaps',
+      '_rmsds'         : 'get_rmsds',
       '_ccs'           : 'get_ccs',
       '_is_suspicious' : 'check_if_suspicious',
       '_map_values'    : 'get_map_values',
@@ -352,6 +356,52 @@ class ligand_result(object):
         self._is_suspicious = True
     #
     return self._is_suspicious
+
+  # ----------------------------------------------------------------------------
+
+  def get_rmsds(self):
+
+    if self._rmsds is not None:
+      return self._rmsds
+    # ligand without H atoms
+    model_ligand = self.model.select(self.ligand_isel_noH)
+    stats = model_ligand.geometry_statistics()
+
+    bond = stats.bond(origin_id=0)
+    #print('number bond outliers', len(bond.outliers))
+    #print('bond rmsd',bond.mean)
+    bond_z = stats.bond(origin_id=0, return_rmsZ=True)
+    #print('bond rmsz',bond_z.mean)
+
+    angle = stats.angle(origin_id=0)
+    #print('number angle outliers', len(angle.outliers))
+    #print('angle rmsd',angle.mean)
+    angle_z = stats.angle(origin_id=0, return_rmsZ=True)
+    #print('angle rmsz',angle_z.mean)
+
+    dihedral = stats.dihedral()
+    #print('number dihedral outliers', len(dihedral.outliers))
+    #print('dihedral rmsd',dihedral.mean)
+
+    # Note that geo.bond.outliers will be empty list, need to supply origin_id
+    # in stats.bond() to get list of outliers
+    # geo = stats.result()
+
+    self._rmsds = group_args(
+      bond_rmsd  = bond.mean,
+      bond_rmsz  = bond_z.mean,
+      bond_n     = bond.n,
+      bond_n_outliers = len(bond.outliers),
+      angle_rmsd = angle.mean,
+      angle_n     = angle.n,
+      angle_n_outliers = len(angle.outliers),
+      angle_rmsz = angle_z.mean,
+      #chirality_rmsd = geo.chirality.mean,
+      #planarity_rmsd = geo.planarity.mean,
+      dihedral_rmsd = dihedral.mean,
+      dihedral_n     = dihedral.n,
+      dihedral_n_outliers = len(dihedral.outliers),)
+    return self._rmsds
 
   # ----------------------------------------------------------------------------
 
