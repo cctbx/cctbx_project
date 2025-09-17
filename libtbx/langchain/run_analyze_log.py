@@ -4,9 +4,7 @@ context of the (Phenix) documentation.  Uses a two-stage pipeline with
 an advanced reranking RAG.
 """
 from __future__ import division
-from libtbx.langchain import langchain_tools as lct
 import sys, os
-import asyncio
 
 def run(file_name = None,
       log_as_text = None,
@@ -57,6 +55,13 @@ def run(file_name = None,
 
       if not db_dir:
         raise ValueError("Sorry, the database is missing")
+
+      try:
+        from libtbx.langchain import langchain_tools as lct
+        import asyncio
+      except Exception as e:
+        raise ValueError("Sorry, unable to analyze the file %s " %(file_name))
+
 
       # Set up the LLM (same one for both analyzing log file and processing)
       print("Setting up LLM")
