@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
-import iotbx.map_manager
 import iotbx.pdb
 from cctbx.maptbx.bcr import qmap
 from cctbx import maptbx

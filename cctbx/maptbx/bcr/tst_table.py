@@ -12,13 +12,13 @@ def rfactor(a,b):
   return n/d*100*2, flex.max(flex.abs(a-b))
 
 def run():
-  if 0: 
+  if 0:
     o = maptbx.atom_curves(scattering_type="S", scattering_table="wk1995")
     b = o.bcr_approx(
       d_min       = 0.41,
       radius_max  = 14.,
       radius_step = 0.01,
-      mxp   = 1000, 
+      mxp   = 1000,
       epsc  = 0.001,
       epsp  = 0.000,
       edist = 1.0E-13,
