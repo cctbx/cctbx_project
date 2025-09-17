@@ -736,13 +736,15 @@ lunus {
 """
 
 try:
+  from simtbx.diffBragg.phil import phil_scope
+except (ModuleNotFoundError, ImportError):
+  diffbragg_phil = ""
+else:
   diffbragg_phil = """
   diffBragg {
     include scope simtbx.diffBragg.phil.phil_scope
   }
-  """
-except ImportError:
-  diffbragg_phil = ""
+"""
 
 monitor_phil = """
 monitor {
