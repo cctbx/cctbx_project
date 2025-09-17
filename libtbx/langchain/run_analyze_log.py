@@ -5,7 +5,6 @@ an advanced reranking RAG.
 """
 from __future__ import division
 import sys, os
-from markdown_it import MarkdownIt
 
 def run(file_name = None,
       log_as_text = None,
@@ -130,13 +129,32 @@ def run(file_name = None,
 
     return log_info
 
+# In run_analyze_log.py
+
 def save_as_html(markdown_string: str,
      title: str = "Summary", file_name: str = None):
-    """Converts a Markdown string to an HTML file."""
-    md = MarkdownIt("gfm-like")
-    html_content = md.render(markdown_string)
+    """
+    Converts a Markdown string to an HTML file.
+    If markdown-it-py is not installed, it falls back to a simple
+    pre-formatted text block.
+    """
+    html_content = ""
+    try:
+        # Try to import the library
+        from markdown_it import MarkdownIt
 
-    # Add some basic styling for better readability
+        # If successful, render the full HTML
+        md = MarkdownIt("gfm-like")
+        html_content = md.render(markdown_string)
+        print("Using 'markdown-it-py' for rich HTML rendering.")
+
+    except ImportError:
+        # If the import fails, use the fallback
+        print("Warning: 'markdown-it-py' not found. Falling back to plain text rendering.")
+        # Wrap the raw text in <pre> tags to preserve formatting
+        html_content = f"<pre>{markdown_string}</pre>"
+
+    # The rest of the function remains the same, wrapping the content
     html_with_style = f"""
     <html>
     <head>
@@ -147,6 +165,7 @@ def save_as_html(markdown_string: str,
             th, td {{ border: 1px solid #dddddd; text-align: left; padding: 8px; }}
             th {{ background-color: #f2f2f2; }}
             code {{ background-color: #eee; padding: 2px 4px; border-radius: 3px; }}
+            pre {{ background-color: #f6f8fa; padding: 16px; border-radius: 6px; overflow: auto; white-space: pre-wrap; word-wrap: break-word;}}
         </style>
     </head>
     <body>
@@ -162,7 +181,6 @@ def save_as_html(markdown_string: str,
       print(f"\nSaved formatted output to: {file_name}")
 
     return html_with_style
-
 
 if __name__ == "__main__":
     import sys
