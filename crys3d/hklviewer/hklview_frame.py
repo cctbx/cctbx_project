@@ -49,6 +49,7 @@ class HKLViewFrame() :
     kwds['mprint'] = self.mprint
     self.outputmsgtypes = []
     self.userpresetbuttonsfname = os.path.join( Path.home(), ".hkl_viewer_buttons.py")
+    self.hasPhaserTNG = False
     self.infostr = ""
     self.allbuttonslist = []
     self.hklfile_history = []
@@ -97,6 +98,7 @@ class HKLViewFrame() :
       try:
         from phasertng.scripts import xtricorder # then we can run xtricorder from phasertng
         self.SendInfoToGUI({"AddXtricorderButton": True}) # show the button next to the xtriage button
+        self.hasPhaserTNG = True
       except Exception as e: # no phasertng present, just a cctbx installation
         pass # only xtriage button is shown
     else:
@@ -1372,7 +1374,12 @@ Borrowing them from the first miller array""" %i)
           raise Sorry("Button ID, %s, has already been used by another button." %btn_id)
 
         if btn_id in ["Merged", "Multiplicities"] and not self.viewer.has_unmerged_data:
-          continue
+          continue # don't show merge button if no unmerged data is present
+
+        if btn_id in ["TNCSlayer_xtriage",
+                      "TNCSvecrotate_xtriage_F",
+                      "TNCSvecrotate_xtriage_I"] and self.hasPhaserTNG:
+          continue # don't show TNCS buttons from Xtriage if Xtricorder is already present
 
         btnphil = libtbx.phil.parse(philstr)
         philstr_label = None
