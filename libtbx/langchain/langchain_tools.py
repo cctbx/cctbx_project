@@ -47,7 +47,6 @@ from langchain_core.documents import Document
 from langchain_chroma import Chroma
 from typing import Iterable
 from typing import List
-from markdown_it import MarkdownIt
 from libtbx.langchain.run_analyze_log import save_as_html
 
 # --- Configuration ---
@@ -711,4 +710,3 @@ async def summarize_log_text(
     reduce_chain = create_stuff_documents_chain(llm, combine_prompt)
     final_output = reduce_chain.invoke({"context": summary_docs})
     return final_output
-
