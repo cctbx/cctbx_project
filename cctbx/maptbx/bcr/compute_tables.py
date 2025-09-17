@@ -30,7 +30,7 @@ def rfactor(a,b):
 
 def run_one(args):
   e, d_min, table = args
-  dist = 18.0
+  dist = 14.0
   o = maptbx.atom_curves(scattering_type=e, scattering_table=table)
   #
   err1, err2 = None, None
@@ -53,23 +53,24 @@ def run_one(args):
     traceback.print_exc(file=of)
     of.close()
   #
-  try:
-    b2 = o.bcr_approx(
-      d_min       = d_min,
-      radius_max  = dist,
-      radius_step = 0.01,
-      mxp   = 1000,
-      epsc  = 0.001,
-      epsp  = 0.000,
-      edist = 1.0E-13,
-      kpres = 1,
-      kprot = 112
-      )
-    r2, err2 = rfactor(b2.image_values, b2.bcr_approx_values)
-  except Exception as e:
-    of = open("%s_%s.112.error.log"%(e, str(d_min)), "w")
-    traceback.print_exc(file=of)
-    of.close()
+  if err1 > 0.01:
+    try:
+      b2 = o.bcr_approx(
+        d_min       = d_min,
+        radius_max  = dist,
+        radius_step = 0.01,
+        mxp   = 1000,
+        epsc  = 0.001,
+        epsp  = 0.000,
+        edist = 1.0E-13,
+        kpres = 1,
+        kprot = 112
+        )
+      r2, err2 = rfactor(b2.image_values, b2.bcr_approx_values)
+    except Exception as e:
+      of = open("%s_%s.112.error.log"%(e, str(d_min)), "w")
+      traceback.print_exc(file=of)
+      of.close()
   #
   if not None in [err1, err2]:
     if err1 < err2: b, err = b1, err1

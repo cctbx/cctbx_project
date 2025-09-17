@@ -154,7 +154,7 @@ def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=112,n
               curres,curve,epsres = \
                                CurveDiff(dens,dist,mdist,edist,nfmes,bpeak,cpeak,rpeak,npeak,mxp)
 
-           if kprot == 111 or kprot == 112 or kprot == 121 :
+           if kprot == 111 or kprot == 112 or kprot == 122 :
               break
            elif kprot == 222 :
               kprot = 211

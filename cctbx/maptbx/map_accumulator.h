@@ -11,142 +11,94 @@ typedef unsigned char     uint8_t;
 
 namespace cctbx { namespace maptbx {
 
-// Sorts the data so we can compute quartiles.
-// Calculates IQR and bin width using Freedman–Diaconis.
-// If Freedman–Diaconis produces too few bins, falls back to Sturges’ formula.
-// Bins the data and finds the most populated bin.
-// Returns the mean of all values in that bin as the mode estimate.
-// Calculates mode prominence — how much higher the most populated bin is compared to the second-most populated bin, relative to the average bin count.
-// Flags “no strong mode” if the prominence is below a threshold (default 15%).
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <cmath>
+#include <limits>
 
-double computeQuantile(const std::vector<double>& data, double q) {
-  // Assumes data is sorted
-  double pos = (data.size() - 1) * q;
-  size_t idx = (size_t)pos;
-  double frac = pos - idx;
-  if (idx + 1 < data.size()) return data[idx] * (1 - frac) + data[idx + 1] * frac;
-  else return data[idx];
+// Compute median
+double median(std::vector<double> data) {
+    size_t n = data.size();
+    std::nth_element(data.begin(), data.begin() + n / 2, data.end());
+    double med = data[n / 2];
+    if (n % 2 == 0) {
+        std::nth_element(data.begin(), data.begin() + n / 2 - 1, data.end());
+        med = 0.5 * (med + data[n / 2 - 1]);
+    }
+    return med;
 }
 
-struct ModeResult {
-    double modeValue;
-    double prominence;
-    bool hasStrongMode;
-};
-
-ModeResult estimateModeHistogram(const std::vector<double>& data, double prominenceThreshold = 0.2) {
-    ModeResult result{NAN, 0.0, false};
-
-    if (data.empty()) return result;
-    if (data.size() == 1) {
-        result.modeValue = data[0];
-        result.hasStrongMode = true;
-        return result;
-    }
-
-    // Sort data for quantile computation
-    std::vector<double> sorted = data;
-    std::sort(sorted.begin(), sorted.end());
-
-    size_t n = sorted.size();
-    double minVal = sorted.front();
-    double maxVal = sorted.back();
-
-    // Compute IQR for Freedman–Diaconis
-    double q1 = computeQuantile(sorted, 0.25);
-    double q3 = computeQuantile(sorted, 0.75);
-    double iqr = q3 - q1;
-
-    // Freedman–Diaconis bin width
-    double h = 2.0 * iqr / std::cbrt((double)n);
-    int binCount;
-    if (h > 0)  binCount = (int)std::ceil((maxVal - minVal) / h);
-    else binCount = 1; // all values same
-
-    // If FD rule gives too few bins, use Sturges' formula
-    if (binCount < 1) binCount = (int)std::ceil(std::log2((double)n) + 1);
-
-    // Avoid too many bins
-    if (binCount > (int)n) binCount = (int)n;
-
-    // Bin edges
-    double binWidth = (maxVal - minVal) / binCount;
-
-    // Count values in each bin
-    std::vector<int> counts(binCount, 0);
-    for (double v : sorted) {
-        int binIdx = (int)((v - minVal) / binWidth);
-        if (binIdx == binCount) binIdx = binCount - 1; // edge case
-        counts[binIdx]++;
-    }
-
-    // Find most populated bin
-    int maxBinIdx = std::distance(counts.begin(),
-                                  std::max_element(counts.begin(), counts.end()));
-    int maxCount = counts[maxBinIdx];
-
-    // Find second max count
-    int secondMaxCount = 0;
-    for (int c : counts) {
-        if (c > secondMaxCount && c < maxCount) {
-            secondMaxCount = c;
-        }
-    }
-
-    double meanCount = 0.0;
-    for (int i = 0; i<counts.size(); i++) meanCount += counts[i];
-    meanCount = meanCount / counts.size();
-
-
-    double prominence = (double)(maxCount - secondMaxCount) / meanCount;
-    result.prominence = prominence;
-
-    // Check if mode is strong enough
-    if (prominence < prominenceThreshold) {
-        result.hasStrongMode = false;
-        return result; // No strong mode
-    }
-
-    // Gather values in the most populated bin
-    double binStart = minVal + maxBinIdx * binWidth;
-    double binEnd = binStart + binWidth;
-    std::vector<double> binValues;
-    for (double v : sorted) {
-        if ((v >= binStart && v < binEnd) ||
-            (maxBinIdx == binCount - 1 && v == maxVal)) {
-            binValues.push_back(v);
-        }
-    }
-
-    // Compute mean of values in most populated bin
-    double sum = 0.0;
-    for (int i = 0; i<binValues.size(); i++) sum += binValues[i];
-
-    result.modeValue = sum / binValues.size();
-    result.hasStrongMode = true;
-    return result;
+// Compute IQR (Interquartile Range)
+double iqr(std::vector<double> data) {
+    size_t n = data.size();
+    std::sort(data.begin(), data.end());
+    double q1 = data[n / 4];
+    double q3 = data[(3 * n) / 4];
+    return q3 - q1;
 }
 
-//int main() {
-//    std::vector<double> data = {
-//        3.1, 3.5, 3.6, 4.0, 4.1, 4.2, 5.5, 6.0, 6.1, 6.2
-//    };
-//
-//    ModeResult modeEst = estimateModeHistogram(data);
-//
-//    if (modeEst.hasStrongMode) {
-//        std::cout << "Estimated mode: " << modeEst.modeValue << "\n";
-//        std::cout << "Prominence: " << modeEst.prominence * 100 << "% higher than average bin count\n";
-//    } else {
-//        std::cout << "No strong mode detected (prominence = "
-//                  << modeEst.prominence * 100 << "%)\n";
-//    }
-//
-//    return 0;
-//}
+// Auto bin count selection using Freedman-Diaconis
+int auto_num_bins(const std::vector<double>& data) {
+    double min_val = *std::min_element(data.begin(), data.end());
+    double max_val = *std::max_element(data.begin(), data.end());
+    double range = max_val - min_val;
+    if (range == 0) return 1; // all values same
 
+    double IQR = iqr(data);
+    if (IQR == 0) {
+        // Fallback to Sturges' rule
+        return std::max(8, (int)std::ceil(std::log2(data.size()) + 1));
+    }
 
+    double bin_width = 2.0 * IQR / std::cbrt((double)data.size());
+    int bins = (int)std::ceil(range / bin_width);
 
+    // Clamp bins to reasonable range
+    if (bins < 8) bins = 8;
+    if (bins > 128) bins = 128;
+
+    return bins;
+}
+
+// Fast robust mode or median with auto bin count and auto threshold
+double fast_mode_or_median_auto_bins(const std::vector<double>& data) {
+    if (data.empty()) return std::numeric_limits<double>::quiet_NaN();
+
+    int num_bins = auto_num_bins(data);
+
+    double min_val = *std::min_element(data.begin(), data.end());
+    double max_val = *std::max_element(data.begin(), data.end());
+    if (min_val == max_val) return min_val;
+
+    double bin_width = (max_val - min_val) / num_bins;
+    std::vector<int> counts(num_bins, 0);
+
+    // Fill histogram
+    for (size_t i = 0; i < data.size(); ++i) {
+        int bin = (int)((data[i] - min_val) / bin_width);
+        if (bin == num_bins) bin--; // edge case
+        counts[bin]++;
+    }
+
+    // Find max bin
+    int max_bin_idx = std::max_element(counts.begin(), counts.end()) - counts.begin();
+    int max_count = counts[max_bin_idx];
+    double avg_count = (double)data.size() / num_bins;
+
+    // Auto threshold based on statistical noise
+    double p = 1.0 / num_bins;
+    double noise_level = std::sqrt((1.0 - p) / (data.size() * p));
+    double prominence_threshold = noise_level * 2.0; // 2sigma rule
+
+    double prominence = (max_count - avg_count) / (double)max_count;
+
+    if (prominence < prominence_threshold) {
+        return median(data); // flat -- median
+    } else {
+        return min_val + (max_bin_idx + 0.5) * bin_width; // mode midpoint
+    }
+}
 
 template <typename FloatType, typename GridType>
 class map_accumulator2 {
@@ -180,9 +132,6 @@ public:
   af::versa<FloatType, GridType>
   as_median_map()
   {
-    int cntr_mode = 0;
-    int cntr_kde  = 0;
-
     af::versa<FloatType, GridType> result;
     result.resize(GridType(n_real), 0.0);
     for(int i = 0; i < n_real[0]; i++) {
@@ -193,31 +142,58 @@ public:
           std::vector<FloatType> data;
           af::shared<FloatType> dataf = map_new(i,j,k);
           for(int N = 0; N < map_new(i,j,k).size(); N++) {
-            data.push_back(dataf[N]);
+            FloatType d = dataf[N];
+            data.push_back(d);
           }
 
-          ModeResult modeEst = estimateModeHistogram(data);
+          double representative = fast_mode_or_median_auto_bins(data);
+          result(i,j,k) = representative;
 
-          if (modeEst.hasStrongMode) {
-            result(i,j,k) = modeEst.modeValue;
-            cntr_mode += 1;
-          }
-          else {
-            double mean = 0;
-            for(int p = 0; p < data.size(); p++) mean += data[p];
-            mean = mean/data.size();
+//            std::size_t N = data.size();
+//            double max = data[0];
+//            // ---- Compute mean ----
+//            FloatType sum = 0;
+//            for (size_t i = 0; i < N; ++i) {
+//                sum += data[i];
+//                if(max < data[i]) max = data[i];
+//            }
+//            FloatType mean = sum / static_cast<FloatType>(N);
+//
+//            result(i,j,k) = mean;
 
-            if (std::abs(mean)<0.05) {
-              mean = 0;
-            }
 
-            result(i,j,k) = mean;
-            cntr_kde += 1;
-          }
+//
+//          if(std::abs(mean) < 0.2) result(i,j,k) = 0.0;
+//          else {
+//
+//            // ---- Compute variance ----
+//            FloatType var_sum = 0;
+//            for (size_t i = 0; i < N; ++i) {
+//                FloatType diff = data[i] - mean;
+//                var_sum += diff * diff;
+//            }
+//
+//            // Sample standard deviation (N-1 in denominator)
+//            FloatType stdev = 0.;
+//            if (N > 1) {
+//                stdev = std::sqrt(var_sum / static_cast<FloatType>(N - 1));
+//            }
+//
+//            double CV = stdev / std::abs(mean);
+//            if(CV > 2.0) {
+//              result(i,j,k) = 0;
+//              cntr_kde += 1;
+//            }
+//            else {
+//              ModeResult modeEst = estimateModeHistogram(data);
+//              cntr_mode += 1;
+//              if (modeEst.hasStrongMode) result(i,j,k) = modeEst.modeValue;
+//              else                       result(i,j,k) = mean;
+//            }
+//
+//          }
+
     }}}
-
-    std::cout<<" cntr_mode "<< cntr_mode << std::endl;
-    std::cout<<" cntr_kde  "<< cntr_kde << std::endl;
 
     return result;
   }
