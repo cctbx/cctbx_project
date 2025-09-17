@@ -339,7 +339,7 @@ class geometry(object):
     az, bz = res.angle_z, res.bond_z
     assert b.n>=bz.n, 'rmsd.n != rmsZ.n %s %s' % (b.n, bz.n)
     assert a.n==az.n
-    result = """%s
+    result = """
 %sGeometry Restraints Library: %s
 %sDeviations from Ideal Values - rmsd, rmsZ for bonds and angles.
 %s  Bond      : %s
@@ -348,9 +348,8 @@ class geometry(object):
 %s  Planarity : %s
 %s  Dihedral  : %s
 %s  Min Nonbonded Distance : %s
-%s"""%(#prefix.strip(),
-       prefix,
-       prefix,
+%s\n"""%(prefix,
+       # prefix,
        self.restraints_source,
        prefix,
        prefix, fmt(b.mean, b.max, b.n, bz.mean),
@@ -361,8 +360,7 @@ class geometry(object):
        prefix, fmt2(n.min).strip(),
        prefix)
     if not exclude_protein_only_stats:
-      result += """%s
-%sMolprobity Statistics.
+      result += """%sMolprobity Statistics.
 %s  All-atom Clashscore : %s
 %s  Ramachandran Plot:
 %s    Outliers : %5.2f %%
@@ -379,7 +377,7 @@ class geometry(object):
 %s    Twisted Proline : %s %%
 %s    Twisted General : %s %%"""%(
         prefix,
-        prefix,
+        # prefix,
         prefix, format_value("%5.2f", res.clash.score).strip(),
         prefix,
         prefix, res.ramachandran.outliers,
@@ -395,36 +393,37 @@ class geometry(object):
         prefix, format_value("%5.2f", res.omega.cis_general).strip(),
         prefix, format_value("%5.2f", res.omega.twisted_proline).strip(),
         prefix, format_value("%5.2f", res.omega.twisted_general).strip())
-      result += """
-%s"""%prefix
+      result += "\n%s"%prefix
       result += res.rama_z.as_string(prefix=prefix)
+      result += "\n%s"%prefix
     #
-    result+="\n%s"%prefix
-    if p.protein_planes_max_dev:
-      result += "\n%sMax deviation from planes:"%prefix
-      result += "\n%s   Type  MaxDev  MeanDev LineInFile"%prefix
-      for pp in p.protein_planes_max_dev:
-        result += "\n%s %s %s %s  %s"%(
-          prefix,
-          format_value("%s", pp.resname),
-          format_value("%7.3f", pp.max_dev),
-          format_value("%7.3f", pp.mean_dev),
-          pp.id)
-    if p.protein_planes_max_dev_noH is not None:
-      result += "\n\n%sMax deviation from planes (no H):"%prefix
-      result += "\n%s   Type  MaxDev  MeanDev LineInFile"%prefix
-      for pp in p.protein_planes_max_dev_noH:
-        result += "\n%s %s %s %s  %s"%(
-          prefix,
-          format_value("%s", pp.resname),
-          format_value("%7.3f", pp.max_dev),
-          format_value("%7.3f", pp.mean_dev),
-          pp.id)
-
+      # result+="\n%s"%prefix
+      if p.protein_planes_max_dev:
+        result += "\n%sMax deviation from planes:"%prefix
+        result += "\n%s   Type  MaxDev  MeanDev LineInFile"%prefix
+        for pp in p.protein_planes_max_dev:
+          result += "\n%s %s %s %s  %s"%(
+            prefix,
+            format_value("%s", pp.resname),
+            format_value("%7.3f", pp.max_dev),
+            format_value("%7.3f", pp.mean_dev),
+            pp.id)
+        result += "\n%s\n"%prefix
+      if p.protein_planes_max_dev_noH is not None:
+        result += "\n\n%sMax deviation from planes (no H):"%prefix
+        result += "\n%s   Type  MaxDev  MeanDev LineInFile"%prefix
+        for pp in p.protein_planes_max_dev_noH:
+          result += "\n%s %s %s %s  %s"%(
+            prefix,
+            format_value("%s", pp.resname),
+            format_value("%7.3f", pp.max_dev),
+            format_value("%7.3f", pp.mean_dev),
+            pp.id)
+        result += "\n%s\n"%prefix
     if include_rmsd_details:
       from cctbx.geometry_restraints.linking_class import linking_class
       origin_ids = linking_class()
-      result += '%s\n%s\n%sDetails of bonding type rmsd' % (prefix, prefix, prefix)
+      result += '%sDetails of bonding type rmsd' % (prefix)
       for key, i in origin_ids.items():
         bond_rc=self.bond(origin_id=-i)
         angle_rc=self.angle(origin_id=-i)
