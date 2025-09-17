@@ -48,6 +48,7 @@ from langchain_chroma import Chroma
 from typing import Iterable
 from typing import List
 from markdown_it import MarkdownIt
+from libtbx.langchain.run_analyze_log import save_as_html
 
 # --- Configuration ---
 
@@ -711,35 +712,3 @@ async def summarize_log_text(
     final_output = reduce_chain.invoke({"context": summary_docs})
     return final_output
 
-def save_as_html(markdown_string: str,
-     title: str = "Summary", file_name: str = None):
-    """Converts a Markdown string to an HTML file."""
-    md = MarkdownIt("gfm-like")
-    html_content = md.render(markdown_string)
-
-    # Add some basic styling for better readability
-    html_with_style = f"""
-    <html>
-    <head>
-        <title>{title}</title>
-        <style>
-            body {{ font-family: sans-serif; line-height: 1.6; padding: 2em; max-width: 800px; margin: auto; }}
-            table {{ border-collapse: collapse; width: 100%; margin-bottom: 1em; }}
-            th, td {{ border: 1px solid #dddddd; text-align: left; padding: 8px; }}
-            th {{ background-color: #f2f2f2; }}
-            code {{ background-color: #eee; padding: 2px 4px; border-radius: 3px; }}
-        </style>
-    </head>
-    <body>
-        <h2></b>{title}</b></h2>
-        {html_content}
-    </body>
-    </html>
-    """
-
-    if file_name:
-      with open(file_name, "w") as f:
-        f.write(html_with_style)
-      print(f"\nSaved formatted output to: {file_name}")
-
-    return html_with_style

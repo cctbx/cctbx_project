@@ -5,6 +5,7 @@ an advanced reranking RAG.
 """
 from __future__ import division
 import sys, os
+from markdown_it import MarkdownIt
 
 def run(file_name = None,
       log_as_text = None,
@@ -87,7 +88,7 @@ def run(file_name = None,
       text = log_info.summary
       if text_to_append_to_summary:
          text += text_to_append_to_summary
-      lct.save_as_html(text, file_name = fn,
+      save_as_html(text, file_name = fn,
        title = 'Summary of %s' %(file_name))
       print("Loading log summary at %s" %(fn))
       try:
@@ -117,7 +118,7 @@ def run(file_name = None,
       if text_to_append_to_analysis:
          text += text_to_append_to_analysis
       fn = os.path.join(output_file_path,'analysis.html')
-      lct.save_as_html(text, file_name = fn,
+      save_as_html(text, file_name = fn,
        title = 'Analysis of %s' %(file_name))
       print("Loading analysis at %s" %(fn))
       try:
@@ -128,6 +129,40 @@ def run(file_name = None,
         print("Unable to load viewer...see text in the file: '%s'" %(fn))
 
     return log_info
+
+def save_as_html(markdown_string: str,
+     title: str = "Summary", file_name: str = None):
+    """Converts a Markdown string to an HTML file."""
+    md = MarkdownIt("gfm-like")
+    html_content = md.render(markdown_string)
+
+    # Add some basic styling for better readability
+    html_with_style = f"""
+    <html>
+    <head>
+        <title>{title}</title>
+        <style>
+            body {{ font-family: sans-serif; line-height: 1.6; padding: 2em; max-width: 800px; margin: auto; }}
+            table {{ border-collapse: collapse; width: 100%; margin-bottom: 1em; }}
+            th, td {{ border: 1px solid #dddddd; text-align: left; padding: 8px; }}
+            th {{ background-color: #f2f2f2; }}
+            code {{ background-color: #eee; padding: 2px 4px; border-radius: 3px; }}
+        </style>
+    </head>
+    <body>
+        <h2></b>{title}</b></h2>
+        {html_content}
+    </body>
+    </html>
+    """
+
+    if file_name:
+      with open(file_name, "w") as f:
+        f.write(html_with_style)
+      print(f"\nSaved formatted output to: {file_name}")
+
+    return html_with_style
+
 
 if __name__ == "__main__":
     import sys

@@ -4,6 +4,8 @@ Uses the advanced reranking retrieval chain.
 """
 from __future__ import division
 from libtbx.langchain import langchain_tools as lct
+from libtbx.langchain.run_analyze_log import save_as_html
+
 import sys
 import os
 
@@ -36,7 +38,7 @@ def run(query_text = None, output_file_path = None, db_dir = None,
       output_file_path = '/var/tmp'
 
     fn = os.path.join(output_file_path,'query.html')
-    lct.save_as_html(answer, file_name = fn,
+    save_as_html(answer, file_name = fn,
        title = 'Answer to: %s' %(query_text))
     print("Loading answer summary at %s" %(fn))
     try:
