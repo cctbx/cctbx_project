@@ -2271,9 +2271,9 @@ class CCTBXBuilder(CCIBuilder):
       if module == 'dxtbx':
         self.add_step(self.shell(command=['git', 'remote', 'set-url', 'origin', 'https://github.com/dials/dxtbx.git'], workdir=workdir))
         self.add_step(self.shell(command=['git', 'fetch', 'origin'], workdir=workdir))
-      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.22'], workdir=workdir))
+      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.5'], workdir=workdir))
       self.add_step(self.shell(
-        command=['git', 'branch', '--set-upstream-to=origin/dials-3.22', 'dials-3.22'],
+        command=['git', 'branch', '--set-upstream-to=origin/dials-3.5', 'dials-3.5'],
         workdir=workdir))
     # switch eigen to 3.3.9 for CentOS 6
     if module == 'eigen':
@@ -2477,9 +2477,9 @@ class PhenixBuilder(CCIBuilder):
       if module == 'dxtbx':
         self.add_step(self.shell(command=['git', 'remote', 'set-url', 'origin', 'https://github.com/dials/dxtbx.git'], workdir=workdir))
         self.add_step(self.shell(command=['git', 'fetch', 'origin'], workdir=workdir))
-      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.22'], workdir=workdir))
+      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.8'], workdir=workdir))
       self.add_step(self.shell(
-        command=['git', 'branch', '--set-upstream-to=origin/dials-3.22', 'dials-3.22'],
+        command=['git', 'branch', '--set-upstream-to=origin/dials-3.8', 'dials-3.8'],
         workdir=workdir))
 
   def add_module(self, module, workdir=None, module_directory=None):
