@@ -62,7 +62,8 @@ def run(d_min, pdb_file, RadFact, RadAdd, table = "wk1995"):
     RadAdd         = RadAdd,
     resolutions    = None,
     use_exp_table  = True, # XXX <<<<
-    debug          = False)
+    debug          = False,
+    show_BCR       = True)
   OmegaMap = o.map_data()
   ttimeVRM = o.time_map
   #
@@ -95,32 +96,24 @@ def run(d_min, pdb_file, RadFact, RadAdd, table = "wk1995"):
 
 
 if (__name__ == "__main__"):
-  #files = ["1crn_box_000.pdb",]
-  files = ["1lzt_box_000.pdb",]
-  #files = ["1lzt_box_000.pdb", "1f8t_box_000.pdb"]
-  #d_mins = [0.3, 0.5, 1, 2, 3, 4, 5, 6]
-  #RadAdd = [0, 0.5]
-
-  #d_mins = [0.3, 0.5, 1.0]
-  #RadFact_s = [1, 2, 3, 4, 5, 6, 7, 8]
-
-  #d_mins = [2, 3, 4]
-  #RadFact_s = [0.25, 0.5, 1, 2, 3]
-
-  d_mins = [5, 6]
-  RadFact_s = [0.25, 0.5, 1, 2]
-
   start = time.perf_counter()
-  for pdb_file in files:
-    print(pdb_file)
-    for RadFact in RadFact_s:
-      for RadAdd in [0, 0.5]:
-        print("  RadFact, RadAdd:", RadFact, RadAdd)
-        for d_min in d_mins:
-          v = run(d_min    = d_min,
-                  pdb_file = pdb_file,
-                  RadFact  = RadFact,
-                  RadAdd   = RadAdd)
-          print("    d_min: %3s"%str(d_min), v)
+  files = ["1crn_box_000H.pdb",]
+  for it in [
+      [[0.3, 0.5, 1.0], [1, 2, 3, 4, 5, 6, 7, 8]],
+      [[2, 3, 4],       [1, 2, 3, 4, 5, 6, 7, 8]],
+      [[5, 6],          [0.25, 0.5, 1, 2]]
+      ]:
+    d_mins, RadFact_s = it
+    for pdb_file in files:
+      print(pdb_file)
+      for RadFact in RadFact_s:
+        for RadAdd in [0, 0.5]:
+          print("  RadFact, RadAdd:", RadFact, RadAdd)
+          for d_min in d_mins:
+            v = run(d_min    = d_min,
+                    pdb_file = pdb_file,
+                    RadFact  = RadFact,
+                    RadAdd   = RadAdd)
+            print("    d_min: %3s"%str(d_min), v)
   print("Time:", time.perf_counter()-start)
   print("OK")

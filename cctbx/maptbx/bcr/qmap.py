@@ -24,7 +24,8 @@ def load_table(element, table):
 class compute(object):
 
   def __init__(self, xray_structure, n_real, resolution=None, resolutions=None,
-            use_exp_table=True, debug=False, RadFact=2.0, RadAdd=0.5):
+            use_exp_table=True, debug=False, RadFact=2.0, RadAdd=0.5,
+            show_BCR=False):
     table = xray_structure.get_scattering_table()
     assert table in ["electron", "wk1995"]
     assert [resolution, resolutions].count(None)==1
@@ -40,6 +41,7 @@ class compute(object):
     ScaleB = 1.0 / (8.0 * math.pi**2)
     kscale = math.pi**1.5
     self.bcr_scatterers = []
+    shown = []
     for r, scatterer in zip(resolutions, xray_structure.scatterers()):
       e = scatterer.scattering_type.strip().upper()
       entry = arrays[e]
@@ -53,10 +55,18 @@ class compute(object):
       C = flex.double(vals['C'])
       sel = R < (r*RadMu)
       #print(sel.size(), sel.count(True))
+      R = R.select(sel)
+      B = B.select(sel)
+      C = C.select(sel)
+      if show_BCR and not e in shown:
+        shown.append(e)
+        print("    %s: R B C"%e)
+        for r,b,c in zip(R,B,C):
+          print("%15.9f %15.9f %15.9f"%(r,b,c))
 
-      mu    = R.select(sel)
-      nu    = B.select(sel) * ScaleB
-      kappa = C.select(sel)
+      mu    = R
+      nu    = B * ScaleB
+      kappa = C
       musq  = mu * mu
       kappi = kappa/kscale
 
