@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
-import iotbx.map_manager
 import iotbx.pdb
 from cctbx.maptbx.bcr import qmap
 from cctbx import maptbx
@@ -29,7 +28,6 @@ def run(debug, use_exp_table, table, d_min=2):
     space_group_info = cs.space_group_info(),
     symmetry_flags   = maptbx.use_space_group_symmetry,
     step             = d_min/2.
-    #pre_determined_n_real = (32, 40, 48)
     )
   n_real = crystal_gridding.n_real()
   xrs = pdb_inp.xray_structure_simple()

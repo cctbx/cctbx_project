@@ -37,7 +37,7 @@ class gradients_fd(object):
     return qmap.CalcFuncMap(
       OmegaMap=o.OmegaMap_py, ControlMap=self.ControlMap, Ncrs=self.n_real)
 
-def run(table="electron", d_min=2):
+def run(d_min, table="wk1995"):
   pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str)
   model = mmtbx.model.manager(model_input=pdb_inp)
   model.setup_scattering_dictionaries(
@@ -144,8 +144,11 @@ def run(table="electron", d_min=2):
 
 if (__name__ == "__main__"):
   start = time.perf_counter()
-  for d_min in [round(x * 0.1, 1) for x in range(10, 61)]:
-  #for d_min in [4.5,]:
+  #
+  # This fails for some resolutions. Need to investigate the reason.
+  #
+  #for d_min in [round(x * 0.1, 1) for x in range(10, 61)]:
+  for d_min in [1.0, 2.0]:
     d_min = round(d_min, 1)
     print(d_min)
     run(d_min = d_min)
