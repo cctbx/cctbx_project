@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-import time, os
+import time, os, traceback
 from libtbx.utils import null_out
 import libtbx.load_env
 from libtbx.test_utils import approx_equal
@@ -18,7 +18,10 @@ def run():
 
 def run_test1():
   '''
-  Test if iselection for ligand PG5 (chain A resseq 201) is correct.
+  Several tests:
+    - check if iselection for ligand PG5 (chain A resseq 201) is correct
+    - count clashes involving ligand and calculate ligand clashscore
+    - check geometry outliers
   '''
   pdb_fname = libtbx.env.find_in_repositories(
     relative_path="mmtbx/regression/pdbs/one_chain_ligand_water.pdb",
@@ -34,18 +37,28 @@ def run_test1():
   vl_manager = result.ligand_manager
 
   assert (len(vl_manager) == 1)
-  for lr in vl_manager:
-    assert (lr.id_str == 'PG5 A 201')
+  lr = vl_manager[0]
+  assert (lr.id_str == 'PG5 A 201')
+
   # test iselection
   assert(list(lr.ligand_isel) == [190, 191, 192, 193, 194, 195, 196, 197, 198, 199,
     200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214,
     215, 216, 217, 218, 219])
 
-  for lr in vl_manager:
-    clashes_result = lr.get_overlaps()
-    assert(clashes_result.n_clashes == 5)
-    #print(round(clashes_result.clashscore,1), 27.6)
-    assert approx_equal(clashes_result.clashscore, 27.6, eps=0.5)
+  # Number of clashes and clashscore
+  clashes_result = lr.get_overlaps()
+  assert(clashes_result.n_clashes == 5)
+  assert approx_equal(clashes_result.clashscore, 27.6, eps=0.5)
+  #
+  # Geometry deviations
+  rmsd_result = lr.get_rmsds()
+  assert approx_equal(rmsd_result.bond_rmsd, 0.093, eps=0.005)
+  assert approx_equal(rmsd_result.bond_rmsz, 4.654, eps=0.005)
+  assert(rmsd_result.bond_n_outliers == 4)
+  assert approx_equal(rmsd_result.angle_rmsd, 4.48, eps=0.05)
+  assert approx_equal(rmsd_result.angle_rmsz, 1.49, eps=0.05)
+  assert(rmsd_result.angle_n_outliers == 0)
+  assert approx_equal(rmsd_result.dihedral_rmsd, 32.6, eps=0.5)
 
   os.remove('one_chain_ligand_water_newH.cif')
   os.remove('one_chain_ligand_water_newH.txt')
@@ -72,9 +85,25 @@ def run_test2():
   vl_manager = result.ligand_manager
   tst_occupancies(vl_manager = vl_manager)
   tst_adps(vl_manager = vl_manager)
+  tst_rmsds(vl_manager = vl_manager)
 
   os.remove('two_chains_ligand_water_newH.cif')
   os.remove('two_chains_ligand_water_newH.txt')
+
+# ------------------------------------------------------------------------------
+
+def tst_rmsds(vl_manager):
+  for lr in vl_manager:
+    id_str = lr.id_str
+    if (id_str.strip() == 'SO4 A   4'):
+      rmsd_result = lr.get_rmsds()
+      assert approx_equal(rmsd_result.bond_rmsd, 0.055, eps=0.005)
+      assert approx_equal(rmsd_result.bond_rmsz, 2.761, eps=0.005)
+      assert(rmsd_result.bond_n_outliers == 1)
+      #
+      assert approx_equal(rmsd_result.angle_rmsd, 4.08, eps=0.05)
+      assert approx_equal(rmsd_result.angle_rmsz, 1.36, eps=0.05)
+      assert(rmsd_result.angle_n_outliers == 0)
 
 # ------------------------------------------------------------------------------
 
@@ -187,7 +216,6 @@ def run_test3():
       assert approx_equal(adps.b_mean_within, 35.37, eps=0.02)
       #
       assert(clashes_result.n_clashes == 1)
-      #print(round(clashes_result.clashscore,1))
       assert approx_equal(clashes_result.clashscore, 9.4, eps=0.5)
       #
     if (id_str.strip() == 'BTN A 400'):
@@ -198,14 +226,24 @@ def run_test3():
       assert approx_equal(adps.b_min, 4.00, eps=0.01)
       assert approx_equal(adps.b_max, 90.00, eps=0.01)
       assert approx_equal(adps.b_mean, 31.19, eps=0.05)
-
+      #
       assert approx_equal(adps.b_min_within, 4.00, eps=0.01)
       assert approx_equal(adps.b_max_within, 54.65, eps=0.01)
       assert approx_equal(adps.b_mean_within, 23.23, eps=0.02)
       #
       assert(clashes_result.n_clashes == 4)
-      #print(round(clashes_result.clashscore,1))
       assert approx_equal(clashes_result.clashscore, 13.0, eps=0.5)
+
+      rmsd_result = lr.get_rmsds()
+      assert approx_equal(rmsd_result.bond_rmsd, 0.033, eps=0.005)
+      assert approx_equal(rmsd_result.bond_rmsz, 1.639, eps=0.005)
+      assert(rmsd_result.bond_n_outliers == 1)
+      #
+      assert approx_equal(rmsd_result.angle_rmsd, 4.00, eps=0.05)
+      assert approx_equal(rmsd_result.angle_rmsz, 1.33, eps=0.05)
+      assert(rmsd_result.angle_n_outliers == 1)
+      assert approx_equal(rmsd_result.dihedral_rmsd, 17.4, eps=0.5)
+      assert approx_equal(rmsd_result.planarity_rmsd, 0.02, eps=0.05)
       #
     if (id_str.strip() == 'BTN B 401'):
       assert approx_equal(ccs.cc_2fofc, 0.95, eps=0.03)
@@ -221,9 +259,9 @@ def run_test3():
       assert approx_equal(adps.b_mean_within, 28.16, eps=0.02)
       #
       assert(clashes_result.n_clashes == 6)
-      #print(round(clashes_result.clashscore,1))
       assert approx_equal(clashes_result.clashscore, 18.5, eps=0.5)
 
+      #print(round(clashes_result.clashscore,1))
       #print(adps.b_min_within)
       #print(adps.b_max_within)
       #print(adps.b_mean_within)
@@ -236,6 +274,7 @@ def run_test3():
 
   os.remove('pdb1avd_newH.txt')
   os.remove('pdb1avd_newH.cif')
+
 #def tst_get_overlaps(vl_manager):
 #  '''
 #  Test nonbonded overlaps

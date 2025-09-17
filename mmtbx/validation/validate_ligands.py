@@ -387,6 +387,9 @@ class ligand_result(object):
     #print('number dihedral outliers', len(dihedral.outliers))
     #print('dihedral rmsd',dihedral.mean)
 
+    plane = stats.planarity()
+    #print('plane rmsd', plane.mean)
+
     # Note that geo.bond.outliers will be empty list, need to supply origin_id
     # in stats.bond() to get list of outliers
     # So the stats.result() object does not have the list of outliers
@@ -402,7 +405,7 @@ class ligand_result(object):
       angle_n_outliers = len(angle.outliers),
       angle_rmsz = angle_z.mean,
       #chirality_rmsd = geo.chirality.mean,
-      #planarity_rmsd = geo.planarity.mean,
+      planarity_rmsd = plane.mean,
       dihedral_rmsd = dihedral.mean,
       dihedral_n     = dihedral.n,
       dihedral_n_outliers = len(dihedral.outliers),)
