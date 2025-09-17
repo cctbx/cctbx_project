@@ -141,15 +141,17 @@ class manager(list):
       '''
       Print summary table
       '''
-      lab_row1 =  ['','','', '% bad', '','', '', '', '']
-      lab_row2 =  ['','','CC', 'map values', '','', 'ADPs', 'occupancies', 'bond']
+      lab_row1 =  ['','','', '% bad', '','', '', '', '', '']
+      lab_row2 =  ['','','CC', 'map values', '','', 'ADPs', 'occupancies',
+        'bond', 'angle']
       lab_row3 =  ['ligand', 'suspicious', '2Fo-Fc', 'Fo-Fc','clashes','H-bonds',\
-        'min   max   mean   owab', 'min   max   mean', ' rmsz  outliers ']
-      lab1_str = '{:^14}|{:^12}|{:^9}|{:^12}|{:^9}|{:^9}|{:^28}|{:^21}|{:^17}|'
+        'min   max   mean   owab', 'min   max   mean', ' rmsz  outliers ',
+        ' rmsz  outliers ']
+      lab1_str = '{:^14}|{:^12}|{:^9}|{:^12}|{:^9}|{:^9}|{:^28}|{:^21}|{:^17}|{:^17}|'
       print('\n' + lab1_str.format(*lab_row1), file=out)
       print(lab1_str.format(*lab_row2), file=out)
       print(lab1_str.format(*lab_row3), file=out)
-      print('-'*140, file=out)
+      print('-'*157, file=out)
       for lr in self:
         ccs     = lr.get_ccs()
         clashes = lr.get_overlaps()
@@ -180,12 +182,16 @@ class manager(list):
         val_o_min   = f"{round(occs.occ_min,1):^7}" if occs.occ_min != occs.occ_mean else f"{'':^7}"
         val_o_max   = f"{round(occs.occ_max,1):^7}" if occs.occ_max != occs.occ_mean else f"{'':^7}"
         val_o_mean  = f"{round(occs.occ_mean,1):^7}"
-        val_bond_rmsz  = f"{round(rmsds.bond_rmsz,2):^9}"
-        val_bond_outl  = f"{rmsds.bond_n_outliers:^3}"+f"({rmsds.bond_n:^3})"
+        val_bond_str = str(round(rmsds.bond_rmsz,2)) + '  ' + str(rmsds.bond_n_outliers) + \
+          '(' + str(rmsds.bond_n) + ')'
+        val_bond  = f"{val_bond_str:^17}"
+        val_angle_str = str(round(rmsds.angle_rmsz,2)) + '  ' + str(rmsds.angle_n_outliers) + \
+          '(' + str(rmsds.angle_n) + ')'
+        val_angle  = f"{val_angle_str:^17}"
 
         row = f"{val_id}|{val_check}|{val_cc}|{val_mapvals}|{val_clash}|\
 {val_hbonds}|{val_b_min}{val_b_max}{val_b_mean}{val_owab}|\
-{val_o_min}{val_o_max}{val_o_mean}|{val_bond_rmsz}{val_bond_outl}|"
+{val_o_min}{val_o_max}{val_o_mean}|{val_bond}|{val_angle}|"
         print(row, file=out)
         #
         val_sites = f"{'sites':^14}"
@@ -271,8 +277,6 @@ class manager(list):
       for rg in ph_within.residue_groups():
         for c in rg.conformers():
           print('    ' + c.only_residue().id_str().split('"')[1], file=self.log)
-
-
 
 # =============================================================================
 
@@ -385,6 +389,7 @@ class ligand_result(object):
 
     # Note that geo.bond.outliers will be empty list, need to supply origin_id
     # in stats.bond() to get list of outliers
+    # So the stats.result() object does not have the list of outliers
     # geo = stats.result()
 
     self._rmsds = group_args(
