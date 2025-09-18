@@ -192,6 +192,7 @@ class cache(slots_getstate_setstate):
     "nucleotide",
     "single_atom_residue",
     "water",
+    'ion',
     "hetero",
     "backbone",
     "sidechain",
@@ -207,6 +208,7 @@ class cache(slots_getstate_setstate):
     self.protein = None
     self.nucleotide = None
     self.water = None
+    self.ion = None
     self.hetero = None
     self.backbone = None
     self.sidechain = None
@@ -339,6 +341,17 @@ class cache(slots_getstate_setstate):
                   atom.tmp = 1
       self.water = (atoms.extract_tmp_as_size_t() == 1).iselection()
     return [self.water]
+
+  def get_ion(self):
+    from mmtbx.monomer_library.linking_setup import ad_hoc_single_metal_residue_element_types
+    if self.ion is None:
+      atoms = self.root.atoms()
+      atoms.set_chemical_element_simple_if_necessary()
+      for atom in atoms:
+        if atom.element.upper() in ad_hoc_single_metal_residue_element_types:
+          atom.tmp=1
+      self.ion = (atoms.extract_tmp_as_size_t() == 1).iselection()
+    return [self.ion]
 
   def get_protein(self):
     if self.protein is None:
@@ -523,6 +536,9 @@ class cache(slots_getstate_setstate):
 
   def sel_water(self):
     return self.union(iselections=self.get_water())
+
+  def sel_ion(self):
+    return self.union(iselections=self.get_ion())
 
   def sel_hetero(self):
     return self.union(iselections=self.get_hetero())
@@ -711,6 +727,8 @@ class cache(slots_getstate_setstate):
           result_stack.append(self.sel_single_atom_residue())
         elif (lword == "water"):
           result_stack.append(self.sel_water())
+        elif (lword == "ion"):
+          result_stack.append(self.sel_ion())
         elif (lword == "hetero") or (lword == "hetatm"):
           result_stack.append(self.sel_hetero())
         elif (lword == "bfactor") or (lword == "occupancy"):
