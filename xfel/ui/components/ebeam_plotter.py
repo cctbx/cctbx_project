@@ -4,7 +4,7 @@ import dxtbx
 from xfel.cxi.cspad_ana import cspad_tbx
 from matplotlib import pyplot as plt
 import numpy as np
-from simtbx.nanoBragg.utils import ENERGY_CONV
+from cctbx import factor_kev_angstrom
 
 def compare_ebeams_with_fees(locfiles, runs=None, plot=True, use_figure=None, max_events=None):
   if plot:
@@ -37,9 +37,9 @@ def compare_ebeams_with_fees(locfiles, runs=None, plot=True, use_figure=None, ma
       if not ewav:
         continue # no ebeam
       fee_coms_wav.append(fwav:=img.get_beam(j).get_wavelength())
-      fee_coms_eV.append(feV:=ENERGY_CONV/fwav)
+      fee_coms_eV.append(feV:=factor_kev_angstrom*1000./fwav)
       ebeams_wav.append(ewav)
-      ebeams_eV.append(eeV:=ENERGY_CONV/ewav)
+      ebeams_eV.append(eeV:=factor_kev_angstrom*1000./ewav)
       print(f'{i}: {int(feV)} eV FEE / {int(eeV)} eV Ebeam')
 
     if len(ebeams_eV) == 0:

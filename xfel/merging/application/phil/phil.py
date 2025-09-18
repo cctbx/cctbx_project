@@ -735,10 +735,15 @@ lunus {
 }
 """
 
-diffbragg_phil = """
-diffBragg {
-  include scope simtbx.diffBragg.phil.phil_scope
-}
+try:
+  from simtbx.diffBragg.phil import phil_scope
+except (ModuleNotFoundError, ImportError):
+  diffbragg_phil = ""
+else:
+  diffbragg_phil = """
+  diffBragg {
+    include scope simtbx.diffBragg.phil.phil_scope
+  }
 """
 
 monitor_phil = """
