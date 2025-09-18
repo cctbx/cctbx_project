@@ -332,6 +332,7 @@ def update_restraints(hierarchy,
   twos = None
   average_updates = 0
   total_updates = 0
+  enols=0
   for twos in generate_protein_tuples(hierarchy,
                                         geometry,
                                         2,
@@ -351,6 +352,7 @@ def update_restraints(hierarchy,
       i_seqs=[c1.i_seq, n2.i_seq]
       bond=twos.bond_params_table.lookup(*i_seqs)
       bond.distance_ideal=1.27
+      enols+=1
   geometry.reset_internals()
-  return geometry
+  return geometry, enols
 

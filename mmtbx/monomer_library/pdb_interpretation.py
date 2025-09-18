@@ -5804,16 +5804,16 @@ class build_all_chain_proxies(linking_mixins):
       from mmtbx.conformation_dependent_library.enol_peptide_restraints import update_restraints
       t0=time.time()
       enol_time = time.time()-t0
-      update_restraints(
+      junk, number_of_enols = update_restraints(
         self.pdb_hierarchy,
         result,
-        # cdl_proxies=cdl_proxies,
         log=log,
         verbose=True,
         )
-      print("""\
-  Enol-peptide restraints added in %0.1f %sseconds
-  """ % greek_time(enol_time), file=log)
+      if number_of_enols:
+        print("""\
+  Enol-peptide restraints (%d) added in %0.1f %sseconds
+  """ % (number_of_enols, greek_time(enol_time)), file=log)
     #
     # need autodetect code
     #
