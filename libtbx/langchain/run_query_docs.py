@@ -31,6 +31,9 @@ def run(query_text = None, output_file_path = None, db_dir = None,
     answer = lct.query_docs(query_text = query_text, db_dir = db_dir,
       timeout = timeout)
 
+    if not answer: # no result
+      print("No answer obtained")
+      return answer
     # Put it in an html window
 
     # Decide where to write files

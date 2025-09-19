@@ -24,9 +24,14 @@ nest_asyncio.apply()
 import chromadb
 import cohere
 from cohere.core.api_error import ApiError as CohereApiError
+from langchain_google_genai._common import GoogleGenerativeAIError
 
 import os
 import time
+
+# --- GLOBAL VARIABLE to track the last query time ---
+_last_query_time = 0
+
 os.environ['GRPC_ENABLE_FORK_SUPPORT'] = "false"   # suppress a warning message
 
 import asyncio
@@ -325,8 +330,6 @@ def get_embeddings(
     )
 
 
-# In langchain_tools.py
-
 async def get_log_info(text, llm, embeddings, timeout: int = 120):
     """
     Stage 1 of the two-stage log file analysis pipeline with reranking.
@@ -335,14 +338,19 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120):
     """
     try:
         # Pass the timeout to the summarization function
-        log_summary = await summarize_log_text(
+        log_summary_info = await summarize_log_text(
             text, llm, timeout=timeout)
         # process the log file to get pieces of information
-        processed_log_dict = get_processed_log_dict(log_summary)
+        processed_log_dict = get_processed_log_dict(
+           log_summary_info.log_summary)
+
+        if log_summary_info.error:  # failed
+           return group_args(
+               group_args_type = 'error', error=log_summary_info.error)
 
         return group_args(group_args_type = 'log summary',
-          summary = log_summary,
-          summary_as_html = save_as_html(log_summary),
+          summary = log_summary_info.log_summary,
+          summary_as_html = save_as_html(log_summary_info.log_summary),
           processed_log_dict = processed_log_dict,
           error = None)
 
@@ -376,6 +384,12 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120):
                error_message = "The Google API key is invalid, "+ \
                  "Please check in Preferences (key='%s')." %(
                           str(os.getenv("GOOGLE_API_KEY")))
+            elif str(e).find("free_tier_requests, limit: 0")> -1:
+               error_message = "The Google API key is not activated, " %(
+                          str(os.getenv("GOOGLE_API_KEY"))) + \
+                 "Please go to console.cloud.google.com/billing and "+\
+                 "check under Your Project." 
+
             else:
               error_message = f"An unexpected error occurred during summarization: {e}"
             print("Summarize log failed")
@@ -627,7 +641,100 @@ def find_text_block(log_text: str, target_text: str, end_text: str = "**"):
       text_lines.append(line)
   return " ".join(text_lines)
 
-def query_docs(query_text, llm = None, embeddings = None,
+# In langchain_tools.py
+
+def query_docs(query_text, llm=None, embeddings=None,
+        db_dir: str = "./docs_db",
+        timeout: int = 60,
+        max_attempts: int = 5, # Maximum number of retries
+        use_throttling: bool = False):
+    """Query Phenix docs with query_text, 
+    with automatic retries on rate limits."""
+
+    global _last_query_time
+
+    # --- Conditional Throttling Block ---
+    if use_throttling:
+        min_interval = 4  # seconds, for ~15 RPM
+        elapsed_time = time.time() - _last_query_time
+        if elapsed_time < min_interval:
+            wait_time = min_interval - elapsed_time
+            print(f"Throttling: Waiting {wait_time:.1f} seconds ...")
+            time.sleep(wait_time)
+
+        # Update the timestamp only when throttling is active
+        _last_query_time = time.time()
+    # ------------------------------------------
+
+    if not llm:
+      # Set up the LLM and embeddings
+      llm = get_llm(timeout=timeout)
+      embeddings = get_embeddings(timeout=timeout)
+
+    # Add some qualifications to the query text to make it focus on Phenix
+    query_text += """Consider this question in the context of the process
+        of structure determinaion in Phenix. Focus on using Phenix tools,
+        but include the use of Coot or Isolde if appropriate. Name the tools
+        that are to be used, along with their inputs and outputs and what
+        they do."""
+
+    # Get the data from the database
+    vectorstore = load_persistent_db(embeddings, db_dir=db_dir)
+
+    # Set up retriever
+    retriever = create_reranking_retriever(vectorstore, llm, timeout=timeout)
+
+    # Get the prompt
+    prompt = get_docs_query_prompt()
+
+    #  Create the advanced chain
+    rag_chain = create_reranking_rag_chain(retriever, llm, prompt)
+
+    # --- NEW: Add retry loop with exponential backoff ---
+    backoff_time = 2.0  # Initial wait time in seconds
+    for attempt in range(max_attempts):
+        try:
+            # Get the response and return its content
+            response = rag_chain.invoke(query_text)
+            return response.content
+
+        except (google_exceptions.ResourceExhausted,
+                 GoogleGenerativeAIError) as e:
+            # check the error message text 
+            error_text = str(e).lower()
+            if "429" in error_text or "quota" in \
+                   error_text or "rate limit" in error_text:
+                if attempt < max_attempts - 1:
+                    print("Rate limit exceeded. ")
+                    print(f"Waiting for {backoff_time:.1f} sec...")
+                    time.sleep(backoff_time)
+                    backoff_time *= 2
+                else:
+
+                  error_message = (
+                    "Google AI API quota exceeded, "
+                    "Please check your plan and billing details.\n"
+                    )
+                  print(error_message)
+                  return None
+            else:
+                # If it's a different kind of GoogleGenerativeAIError 
+                #    (not a rate limit), handle it here
+                print(f"An unexpected Google AI error occurred: {e}")
+                return None
+
+
+        except Exception as e:
+            # Handle other exceptions
+            print(f"An unexpected error occurred during query: {e}")
+            return None
+
+    # This part is reached if all retries fail
+    print("Query docs failed...")
+    return None
+
+
+def query_docs_old(query_text, llm = None, embeddings = None,
         db_dir: str = "./docs_db",
         timeout: int = 60):
   """Query Phenix docs with query_text"""
@@ -722,32 +829,66 @@ def _custom_log_chunker(log_text: str) -> List[Document]:
 
     return final_chunks
 
-# Change the signature and add asyncio.wait_for
+# In langchain_tools.py
+
 async def summarize_log_text(
-    text: str, llm: ChatGoogleGenerativeAI, timeout: int = 120) -> str:
-    """Performs the map-reduce summarization for a single log file."""
-    # ... (code for creating documents and splitting text remains the same) ...
-    documents = [Document(page_content=text)]
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=300000,
-         chunk_overlap=30000)
+    text: str,
+    llm: ChatGoogleGenerativeAI,
+    timeout: int = 120,
+    batch_size: int = 10,  # Process 10 chunks at a time (safely under 15 RPM limit)
+    pause_between_batches: int = 60,  # Wait 60 seconds between batches
+    use_throttling: bool = False,
+) -> str:
+    """
+    Performs a map-reduce summarization with batching to respect API rate limits.
+    """
     docs = _custom_log_chunker(text)
-    #  docs = text_splitter.split_documents(documents)
+    if not docs:
+      return group_args(group_args_type = 'log_summary',
+        log_summary = None,
+        error = "Log file produced no content to summarize.")
 
     map_prompt = get_log_map_prompt()
     map_chain = map_prompt | llm
 
-    tasks = [map_chain.ainvoke({"text": doc.page_content}) for doc in docs]
+    all_intermediate_summaries = []
 
-    # --- THIS IS THE KEY CHANGE ---
-    # We wrap the asyncio.gather call in asyncio.wait_for
-    map_results = await asyncio.wait_for(asyncio.gather(*tasks), timeout=timeout)
-    # ----------------------------
+    # Use the existing _iter_batches helper to process chunks in batches
+    num_batches = (len(docs) + batch_size - 1) // batch_size
+    print(f"Summarizing {len(docs)} chunks in {num_batches} batches to respect rate limits...")
 
-    intermediate_summaries = [result.content for result in map_results]
+    for i, batch in enumerate(_iter_batches(docs, batch_size)):
+        print(f"  - Processing batch {i + 1} of {num_batches}...")
 
-    summary_docs = [Document(page_content=s) for s in intermediate_summaries]
+        # Create tasks for the current batch only
+        tasks = [map_chain.ainvoke({"text": doc.page_content}) for doc in batch]
+
+        # Await the completion of the current batch
+        try:
+            map_results = await asyncio.wait_for(asyncio.gather(*tasks), timeout=timeout)
+            all_intermediate_summaries.extend([result.content for result in map_results])
+        except asyncio.TimeoutError:
+            # Handle timeout for the batch
+            print(f"Batch {i + 1} timed out after {timeout} seconds. Proceeding with partial results.")
+            continue # You could also choose to raise the error here
+
+        # If it's not the last batch and throttling is enabled, pause.
+        if use_throttling and (i < num_batches - 1):
+            print(f"  - Pausing {pause_between_batches} seconds ...")
+            await asyncio.sleep(pause_between_batches)
+        # ----------------------------
+
+    # --- The rest of the function proceeds as before with the collected summaries ---
+    if not all_intermediate_summaries:
+      return group_args(group_args_type = 'log_summary',
+        log_summary = None,
+        error = "Log summarization failed to produce any results.")
+
+    summary_docs = [Document(page_content=s) for s in all_intermediate_summaries]
 
     combine_prompt = get_log_combine_prompt()
     reduce_chain = create_stuff_documents_chain(llm, combine_prompt)
     final_output = reduce_chain.invoke({"context": summary_docs})
-    return final_output
+    return group_args(group_args_type = 'log_summary',
+      log_summary = final_output,
+      error = None)
