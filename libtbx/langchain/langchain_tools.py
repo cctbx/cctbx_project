@@ -391,7 +391,7 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120):
                           str(os.getenv("GOOGLE_API_KEY"))) + \
                  "If this is your key, please go to " \
                  "console.cloud.google.com/billing and "+\
-                 "check under Your Project." 
+                 "check under Your Project."
 
             elif "limit: 0" in error_text:
                   error_message = (
@@ -680,7 +680,7 @@ def query_docs(query_text, llm=None, embeddings=None,
         timeout: int = 60,
         max_attempts: int = 5, # Maximum number of retries
         use_throttling: bool = False):
-    """Query Phenix docs with query_text, 
+    """Query Phenix docs with query_text,
     with automatic retries on rate limits."""
 
     global _last_query_time
@@ -732,7 +732,7 @@ def query_docs(query_text, llm=None, embeddings=None,
 
         except (google_exceptions.ResourceExhausted,
                  GoogleGenerativeAIError) as e:
-            # check the error message text 
+            # check the error message text
             error_text = str(e).lower()
             if "you exceeded your current quota" in error_text:
                 if "limit: 0" in error_text:
@@ -767,7 +767,7 @@ def query_docs(query_text, llm=None, embeddings=None,
                   print(error_message)
                   return None
             else:
-                # If it's a different kind of GoogleGenerativeAIError 
+                # If it's a different kind of GoogleGenerativeAIError
                 #    (not a rate limit), handle it here
                 print(f"An unexpected Google AI error occurred: {e}")
                 return None
