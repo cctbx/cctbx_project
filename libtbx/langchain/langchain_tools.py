@@ -206,54 +206,95 @@ def _custom_chunker(docs: List[Document], keyword_phrase: str = "List of all ava
 
     return final_chunks
 
+# In langchain_tools.py
+
 def load_all_docs_from_folder(folder_path: str,
-         excluded_dirs: list[str] = None) -> List[Document]:
-    """Loads all supported documents (.txt, .pdf, .html) from a directory,
-        excluding specified subdirectories."""
+         excluded_dirs: list[str] = None) -> (List[Document], List[str]): # Note the return type hint change
+    """
+    Loads all supported documents (.txt, .pdf, .html) from a directory,
+    reliably excluding specified subdirectories and all their content.
+    Returns a tuple of (all_docs, processed_files).
+    """
     print(f"Loading documents from {folder_path}...")
 
-    if excluded_dirs:
-      exclude_patterns = [f"{d}/**" for d in excluded_dirs]
+    if excluded_dirs is None:
+        excluded_dirs = set()
     else:
-      exclude_patterns = []
+        excluded_dirs = set(excluded_dirs)
 
+    all_docs = []
+    processed_files = [] # Initialize a list for file paths ---
     loaders = {
         '.txt': TextLoader,
         '.pdf': PyPDFLoader,
         '.html': UnstructuredHTMLLoader
     }
 
-    all_docs = []
-
-    # os.walk is a standard Python function to recursively explore a directory.
     for dirpath, dirnames, filenames in os.walk(folder_path, topdown=True):
-
-        # We modify 'dirnames' in-place. os.walk will see this modification
-        # and will NOT recurse into any of the directories we remove.
         dirnames[:] = [d for d in dirnames if d not in excluded_dirs]
-
         for filename in filenames:
-            # Construct the full path to the file
-            file_path = os.path.join(dirpath, filename)
 
-            # Determine the file extension
+            # Skip all hidden files (like .DS_Store)
+            if filename.startswith('.'):
+                continue
+
+            file_path = os.path.join(dirpath, filename)
             file_ext = os.path.splitext(filename)[1].lower()
 
-            # If we have a loader for this extension, use it
             if file_ext in loaders:
                 loader_cls = loaders[file_ext]
                 try:
-                    # Initialize the loader with the specific file path
                     loader = loader_cls(file_path)
-                    # Load the document and add its content to our list
                     all_docs.extend(loader.load())
+                    processed_files.append(file_path) # --- Record the path
                     print("LOADING: %s (%s)" %(file_path, len(all_docs)))
                 except Exception as e:
-                    # Print an error if a specific file fails to load
                     print(f"Error loading file {file_path}: {e}")
 
-
     print(f"Loaded {len(all_docs)} documents.")
+    return all_docs, processed_files
+
+# In langchain_tools.py
+
+def load_specific_docs(file_path_list: List[str]) -> List[Document]:
+    """
+    Loads a specific list of documents from their file paths.
+
+    Args:
+        file_path_list: A list of full paths to the files to be loaded.
+
+    Returns:
+        A list of LangChain Document objects.
+    """
+    all_docs = []
+    loaders = {
+        '.txt': TextLoader,
+        '.pdf': PyPDFLoader,
+        '.html': UnstructuredHTMLLoader
+    }
+
+    print(f"Loading {len(file_path_list)} specific files...")
+
+    for file_path in file_path_list:
+        # Determine the file extension
+        file_ext = os.path.splitext(file_path)[1].lower()
+
+        # If we have a loader for this extension, use it
+        if file_ext in loaders:
+            loader_cls = loaders[file_ext]
+            try:
+                # Initialize the loader with the specific file path
+                loader = loader_cls(file_path)
+                # Load the document and add its content to our list
+                all_docs.extend(loader.load())
+                print(f"  - Successfully loaded: {os.path.basename(file_path)}")
+            except Exception as e:
+                # Print an error if a specific file fails to load but continue
+                print(f"  - WARNING: Error loading file {file_path}: {e}")
+        else:
+            print(f"  - WARNING: No loader available for file type: {file_path}")
+
+    print(f"Successfully loaded content from {len(all_docs)} documents.")
     return all_docs
 
 def get_llm(model_name: str = "gemini-1.5-pro-latest", temperature: float = 0.1, timeout: int = 60) -> ChatGoogleGenerativeAI:
