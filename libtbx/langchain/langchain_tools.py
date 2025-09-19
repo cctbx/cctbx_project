@@ -304,7 +304,8 @@ def load_specific_docs(file_path_list: List[str]) -> List[Document]:
 
 def get_llm(model_name: str = "gemini-1.5-pro-latest", temperature: float = 0.1, timeout: int = 60) -> ChatGoogleGenerativeAI:
     """Initializes and returns a ChatGoogleGenerativeAI instance."""
-    return ChatGoogleGenerativeAI(model=model_name, temperature=temperature, timeout=timeout)
+    return ChatGoogleGenerativeAI(model=model_name,
+       temperature=temperature, timeout=timeout, max_retries=0)
 
 
 
@@ -384,11 +385,22 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120):
                error_message = "The Google API key is invalid, "+ \
                  "Please check in Preferences (key='%s')." %(
                           str(os.getenv("GOOGLE_API_KEY")))
+
             elif str(e).find("free_tier_requests, limit: 0")> -1:
-               error_message = "The Google API key is not activated, " %(
+               error_message = "The Google API key ('%s') is not activated, " %(
                           str(os.getenv("GOOGLE_API_KEY"))) + \
-                 "Please go to console.cloud.google.com/billing and "+\
+                 "If this is your key, please go to " \
+                 "console.cloud.google.com/billing and "+\
                  "check under Your Project." 
+
+            elif "limit: 0" in error_text:
+                  error_message = (
+                    "Google AI API key ('%s') has a zero quota, " %(
+                          str(os.getenv("GOOGLE_API_KEY"))) + \
+                    "Please go to console.cloud.google.com/billing if this is"
+                    "your plan and check if it is active.\n"
+                    )
+
 
             else:
               error_message = f"An unexpected error occurred during summarization: {e}"
@@ -531,13 +543,33 @@ def create_and_persist_db(
                 break
             except Exception as e:
                 msg = str(e).lower()
-                if "429" in msg or "rate" in msg or "quota" in msg:
+
+                if "you exceeded your current quota" in error_text:
+                   if "limit: 0" in error_text:
+                     error_message = (
+                       "Google AI API has a zero quota, "
+                       "Please go to console.cloud.google.com if this is"
+                       "your plan and check if it is active.\n"
+                       )
+                     print(error_message)
+                     return None
+                   else:
+                     error_message = (
+                       "Google AI API quota exceeded, "
+                       "Please go to console.cloud.google.com if this is"
+                       "your plan and check if it is active.\n"
+                       )
+                     print(error_message)
+                     return None
+
+
+                elif "429" in msg or "rate" in msg:
                     time.sleep(backoff)
                     backoff = min(backoff * 2.0, max_backoff)
                     if attempt == max_attempts:
-                        raise
+                        raise RuntimeError("Failed to use Google API")
                 else:
-                    raise
+                    raise RuntimeError("Failed to use Google API")
         time.sleep(pause_between_batches)
 
     print(f"Database stored in: {db_dir} (persistence handled by PersistentClient)")
@@ -702,8 +734,25 @@ def query_docs(query_text, llm=None, embeddings=None,
                  GoogleGenerativeAIError) as e:
             # check the error message text 
             error_text = str(e).lower()
-            if "429" in error_text or "quota" in \
-                   error_text or "rate limit" in error_text:
+            if "you exceeded your current quota" in error_text:
+                if "limit: 0" in error_text:
+                  error_message = (
+                    "Google AI API has a zero quota, "
+                    "Please go to console.cloud.google.com if this is"
+                    "your plan and check if it is active.\n"
+                    )
+                  print(error_message)
+                  return None
+                else:
+                  error_message = (
+                    "Google AI API quota exceeded, "
+                    "Please go to console.cloud.google.com if this is"
+                    "your plan and check if it is active.\n"
+                    )
+                  print(error_message)
+                  return None
+
+            if "429" in error_text or "rate limit" in error_text:
                 if attempt < max_attempts - 1:
                     print("Rate limit exceeded. ")
                     print(f"Waiting for {backoff_time:.1f} sec...")
