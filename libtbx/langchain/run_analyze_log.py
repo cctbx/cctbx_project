@@ -16,6 +16,7 @@ def run(file_name = None,
       display_results: bool = True,
       text_to_append_to_summary: str = None,
       text_to_append_to_analysis: str = None,
+      provider: str = 'google',
       ):
 
     # What we are going to return
@@ -46,9 +47,14 @@ def run(file_name = None,
 
     if (not log_info.summary) or (not log_info.analysis):
       # need to get the info
-      if not os.getenv("GOOGLE_API_KEY"):
-         log_info.error = "GOOGLE_API_KEY environment variable not set."
-         return log_info
+      if provider == 'google':
+        if not os.getenv("GOOGLE_API_KEY"):
+           log_info.error = "GOOGLE_API_KEY environment variable not set."
+           return log_info
+      elif provider == 'openai':
+        if not os.getenv("OPENAI_API_KEY"):
+           log_info.error = "OPENAI_API_KEY environment variable not set."
+           return log_info
       if not os.getenv("COHERE_API_KEY"):
          log_info.error = "COHERE_API_KEY environment variable not set."
          return log_info
@@ -65,13 +71,17 @@ def run(file_name = None,
 
       # Set up the LLM (same one for both analyzing log file and processing)
       print("Setting up LLM")
-      llm = lct.get_llm()
-      embeddings = lct.get_embeddings()
+      try:
+        llm, embeddings = lct.get_llm_and_embeddings(
+            provider=provider, timeout=timeout)
+      except ValueError as e:
+        print(e)
+        raise ValueError("Sorry, unable to set up LLM with %s" %(provider))
 
       # Summarize the log file
       print("Summarizing log file")
       result = asyncio.run(lct.get_log_info(log_as_text, llm, embeddings,
-        timeout = timeout))
+        timeout = timeout, provider = provider))
       if result.error: # failed
         print("Log file summary failed")
         log_info.error = result.error

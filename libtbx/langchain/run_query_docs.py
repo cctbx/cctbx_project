@@ -10,12 +10,21 @@ import sys
 import os
 
 def run(query_text = None, output_file_path = None, db_dir = None,
-     timeout= 60):
+     timeout= 60, provider = 'google'):
     """
     Loads the reranking RAG and queries it with a user-provided question.
     """
-    if not os.getenv("GOOGLE_API_KEY"):
+
+
+
+    if provider == 'google':
+      if not os.getenv("GOOGLE_API_KEY"):
         raise ValueError("GOOGLE_API_KEY environment variable not set.")
+    elif provider == 'openai':
+      if not os.getenv("OPENAI_API_KEY"):
+        raise ValueError("OPENAI_API_KEY environment variable not set.")
+    else:
+        raise ValueError("Provider must be google or openai ")
 
     if len(sys.argv) < 2:
         print("Usage: python3 run_query_docs.py \"<Your question here>\"")
@@ -23,13 +32,18 @@ def run(query_text = None, output_file_path = None, db_dir = None,
 
 
     # Set up the LLM
-    llm = lct.get_llm()
-    embeddings = lct.get_embeddings()
+    try:
+      llm, embeddings = lct.get_llm_and_embeddings(
+            provider=provider, timeout=timeout)
+    except ValueError as e:
+      print(e)
+      raise ValueError("Sorry, unable to set up LLM with %s" %(provider))
+
 
     print("\nQuerying the Phenix documentation with '%s'..." %(query_text))
     # Answer the question
     answer = lct.query_docs(query_text = query_text, db_dir = db_dir,
-      timeout = timeout)
+      timeout = timeout, provider = provider)
 
     if not answer: # no result
       print("No answer obtained")

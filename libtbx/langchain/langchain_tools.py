@@ -25,7 +25,8 @@ import chromadb
 import cohere
 from cohere.core.api_error import ApiError as CohereApiError
 from langchain_google_genai._common import GoogleGenerativeAIError
-
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+import openai # For handling OpenAI-specific exceptions
 
 import os
 import time
@@ -299,37 +300,68 @@ def load_specific_docs(file_path_list: List[str]) -> List[Document]:
     print(f"Successfully loaded content from {len(all_docs)} documents.")
     return all_docs
 
-
-def get_llm(model_name: str = "gemini-1.5-pro-latest", temperature: float = 0.1, timeout: int = 60) -> ChatGoogleGenerativeAI:
-    """Initializes and returns a ChatGoogleGenerativeAI instance."""
-    return ChatGoogleGenerativeAI(model=model_name,
-       temperature=temperature, timeout=timeout, max_retries=0)
-
-
-
-def get_embeddings(
-    model_name: str = "models/embedding-001",  # keep your current default
+def get_llm_and_embeddings(
+    provider: str = "google",
+    llm_model_name: str = None,
+    embedding_model_name: str = None,
+    temperature: float = 0.1,
     timeout: int = 60,
-    batch_size: int = 100,                     # IMPORTANT: bigger batches → fewer requests
-) -> GoogleGenerativeAIEmbeddings:
+    batch_size: int = 100
+):
     """
-    Initialize a GoogleGenerativeAIEmbeddings client with sane defaults for
-    large ingests (to avoid per-minute rate limits).
+    Initializes and returns the LLM and Embeddings clients for a given provider.
+
+    Args:
+        provider (str): "google" or "openai". Defaults to "google".
     """
-    # Ensure the right key is loaded (paid-tier key)
-    api_key = os.environ.get("GOOGLE_API_KEY")
-    if not api_key:
-        raise RuntimeError("GOOGLE_API_KEY is not set in the environment")
+    provider = provider.lower()
+    if provider == "google":
+        if llm_model_name is None:
+            llm_model_name = "gemini-1.5-pro-latest"
+        if embedding_model_name is None:
+            embedding_model_name = "models/embedding-001"
 
-    return GoogleGenerativeAIEmbeddings(
-        model=model_name,
-        timeout=timeout,
-        batch_size=batch_size,  # reduces # of API calls per minute
-        google_api_key=api_key,
-    )
+        llm = ChatGoogleGenerativeAI(
+            model=llm_model_name,
+            temperature=temperature,
+            timeout=timeout,
+            max_retries=0
+        )
+        embeddings = GoogleGenerativeAIEmbeddings(
+            model=embedding_model_name,
+            timeout=timeout,
+            batch_size=batch_size,
+            google_api_key=os.getenv("GOOGLE_API_KEY")
+        )
+        print("Using Google Gemini models.")
 
+    elif provider == "openai":
+        if llm_model_name is None:
+            # Use a powerful and cost-effective model like gpt-4o
+            llm_model_name = "gpt-4o"
+        if embedding_model_name is None:
+            # Use OpenAI's latest embedding model
+            embedding_model_name = "text-embedding-3-small"
 
-async def get_log_info(text, llm, embeddings, timeout: int = 120):
+        llm = ChatOpenAI(
+            model=llm_model_name,
+            temperature=temperature,
+            timeout=timeout,
+            max_retries=2 # OpenAI client handles retries well
+        )
+        embeddings = OpenAIEmbeddings(
+            model=embedding_model_name,
+            chunk_size=batch_size # Corresponds to batch_size
+        )
+        print("Using OpenAI models.")
+
+    else:
+        raise ValueError("Unsupported provider. Choose 'google' or 'openai'.")
+
+    return llm, embeddings
+
+async def get_log_info(text, llm, embeddings, timeout: int = 120,
+    provider: str = 'google'):
     """
     Stage 1 of the two-stage log file analysis pipeline with reranking.
     This stage summarizes the text from a log file and returns a dict with
@@ -338,7 +370,7 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120):
     try:
         # Pass the timeout to the summarization function
         log_summary_info = await summarize_log_text(
-            text, llm, timeout=timeout)
+            text, llm, timeout=timeout, provider = provider)
         # process the log file to get pieces of information
         processed_log_dict = get_processed_log_dict(
            log_summary_info.log_summary)
@@ -360,6 +392,13 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120):
 
         print(error_message)
         return group_args(group_args_type = 'error', error=error_message)
+
+    # --- OpenAI Specific Errors ---
+    except openai.AuthenticationError:
+        error_message = (
+                "OPENAI Permission Denied, "
+                 "This usually means your API key is invalid .\n"
+            )
 
     except Exception as e:
         # Inspect the exception's original cause to find the specific error
@@ -682,7 +721,8 @@ def query_docs(query_text, llm=None, embeddings=None,
         db_dir: str = "./docs_db",
         timeout: int = 60,
         max_attempts: int = 5, # Maximum number of retries
-        use_throttling: bool = False):
+        use_throttling: bool = False,
+        provider: str = "google"):
     """Query Phenix docs with query_text,
     with automatic retries on rate limits."""
 
@@ -703,8 +743,14 @@ def query_docs(query_text, llm=None, embeddings=None,
 
     if not llm:
       # Set up the LLM and embeddings
-      llm = get_llm(timeout=timeout)
-      embeddings = get_embeddings(timeout=timeout)
+      try:
+        llm, embeddings = get_llm_and_embeddings(
+            provider=provider, timeout=timeout)
+      except ValueError as e:
+        print(e)
+        raise ValueError("Sorry, unable to set up LLM with %s" %(provider))
+
+
 
     # Add some qualifications to the query text to make it focus on Phenix
     query_text += """Consider this question in the context of the process
@@ -732,6 +778,20 @@ def query_docs(query_text, llm=None, embeddings=None,
             # Get the response and return its content
             response = rag_chain.invoke(query_text)
             return response.content
+
+        # --- OpenAI Specific Errors ---
+        except openai.RateLimitError:
+            if attempt < max_attempts - 1:
+                print(f"OpenAI rate limit exceeded. Waiting {backoff_time:.1f} sec...")
+                time.sleep(backoff_time)
+                backoff_time *= 2
+            else:
+                print("OpenAI API rate limit exceeded after multiple retries.")
+                return None
+        except openai.AuthenticationError:
+            print("OpenAI authentication failed. Check your OPENAI_API_KEY.")
+            return None
+
 
         except (google_exceptions.ResourceExhausted,
                  GoogleGenerativeAIError) as e:
@@ -786,46 +846,26 @@ def query_docs(query_text, llm=None, embeddings=None,
     return None
 
 
-def query_docs_old(query_text, llm = None, embeddings = None,
-        db_dir: str = "./docs_db",
-        timeout: int = 60):
-  """Query Phenix docs with query_text"""
-  try:
-    if not llm:
-      # Set up the LLM and embeddings
-      llm = get_llm()
-      embeddings = get_embeddings()
+def get_chunk_size(provider: str = 'google'):
+    provider = provider.lower()
+    if provider == "openai":
+        chunk_size = 100000  # Safe for GPT-4o's 128k limit
+        chunk_overlap = 10000
+        print("Using smaller chunk size for OpenAI.")
+    elif provider == "google":
+        chunk_size = 750000  # Safe for Gemini 1.5 Pro's 1M limit
+        chunk_overlap = 50000
+        print("Using larger chunk size for Google Gemini.")
+    else:
+        # Default to the safest (smallest) size if provider is unknown
+        chunk_size = 100000
+        chunk_overlap = 10000
+        print(f"Warning: Unknown provider '{provider}'. Defaulting to smaller chunk size.")
+    # -------------------------------------
+    return chunk_size, chunk_overlap
 
-    # Add some qualifications to the query text to make it focus on Phenix
-
-    query_text += """Consider this question in the context of the process
-        of structure determinaion in Phenix. Focus on using Phenix tools,
-        but include the use of Coot or Isolde if appropriate. Name the tools
-        that are to be used, along with their inputs and outputs and what
-        they do."""
-
-
-    # Get the data from the database
-    vectorstore = load_persistent_db(embeddings, db_dir = db_dir)
-
-    # Set up retriever
-    retriever = create_reranking_retriever(vectorstore, llm,
-      timeout = timeout)
-
-    # Get the prompt
-    prompt = get_docs_query_prompt()
-
-    #  Create the advanced chain
-    rag_chain = create_reranking_rag_chain(retriever, llm, prompt)
-
-    # Get the response and return its content
-    response = rag_chain.invoke(query_text)
-    return response.content
-  except Exception as e:
-    print("Query docs failed...")
-    return None
-
-def _custom_log_chunker(log_text: str) -> List[Document]:
+def _custom_log_chunker(log_text: str,
+     provider: str = "google") -> List[Document]:
     """
     Chunks a log text with a special rule for the 'Files are in the directory' section.
 
@@ -834,6 +874,10 @@ def _custom_log_chunker(log_text: str) -> List[Document]:
       is treated as a single, separate chunk.
     - If the trigger phrase is not found, the entire log is chunked normally.
     """
+
+
+    chunk_size, chunk_overlap = get_chunk_size(provider)
+
     trigger_phrase = "Files are in the directory"
     end_phrase = "Citations"
 
@@ -846,7 +890,7 @@ def _custom_log_chunker(log_text: str) -> List[Document]:
         # Trigger not found, use the standard chunker for the whole document
         documents = [Document(page_content=log_text)]
         standard_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=300000, chunk_overlap=30000
+            chunk_size=chunk_size, chunk_overlap=chunk_overlap
         )
         return standard_splitter.split_documents(documents)
 
@@ -857,7 +901,7 @@ def _custom_log_chunker(log_text: str) -> List[Document]:
     if before_text:
         before_doc = [Document(page_content=before_text)]
         standard_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=300000, chunk_overlap=30000
+            chunk_size=chunk_size, chunk_overlap=chunk_overlap
         )
         final_chunks.extend(standard_splitter.split_documents(before_doc))
 
@@ -886,11 +930,12 @@ async def summarize_log_text(
     batch_size: int = 10,  # Process 10 chunks at a time (safely under 15 RPM limit)
     pause_between_batches: int = 60,  # Wait 60 seconds between batches
     use_throttling: bool = False,
+    provider: str = 'google',
 ) -> str:
     """
     Performs a map-reduce summarization with batching to respect API rate limits.
     """
-    docs = _custom_log_chunker(text)
+    docs = _custom_log_chunker(text, provider = provider)
     if not docs:
       return group_args(group_args_type = 'log_summary',
         log_summary = None,
