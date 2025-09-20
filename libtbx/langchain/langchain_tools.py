@@ -928,7 +928,7 @@ async def summarize_log_text(
     llm: ChatGoogleGenerativeAI,
     timeout: int = 120,
     batch_size: int = 10,  # Process 10 chunks at a time (safely under 15 RPM limit)
-    pause_between_batches: int = 60,  # Wait 60 seconds between batches
+    pause_between_batches: int = 1,  # Wait 1 seconds between batches
     use_throttling: bool = False,
     provider: str = 'google',
 ) -> str:
