@@ -143,7 +143,7 @@ public:
           af::shared<FloatType> dataf = map_new(i,j,k);
           for(int N = 0; N < map_new(i,j,k).size(); N++) {
             FloatType d = dataf[N];
-            data.push_back(d);
+            if(std::abs(d)>0.001) data.push_back(d);
           }
 
           double representative = fast_mode_or_median_auto_bins(data);
