@@ -26,6 +26,7 @@ import cohere
 from cohere.core.api_error import ApiError as CohereApiError
 from langchain_google_genai._common import GoogleGenerativeAIError
 
+
 import os
 import time
 
@@ -211,8 +212,6 @@ def _custom_chunker(docs: List[Document], keyword_phrase: str = "List of all ava
 
     return final_chunks
 
-# In langchain_tools.py
-
 def load_all_docs_from_folder(folder_path: str,
          excluded_dirs: list[str] = None) -> (List[Document], List[str]): # Note the return type hint change
     """
@@ -259,8 +258,6 @@ def load_all_docs_from_folder(folder_path: str,
     print(f"Loaded {len(all_docs)} documents.")
     return all_docs, processed_files
 
-# In langchain_tools.py
-
 def load_specific_docs(file_path_list: List[str]) -> List[Document]:
     """
     Loads a specific list of documents from their file paths.
@@ -301,6 +298,7 @@ def load_specific_docs(file_path_list: List[str]) -> List[Document]:
 
     print(f"Successfully loaded content from {len(all_docs)} documents.")
     return all_docs
+
 
 def get_llm(model_name: str = "gemini-1.5-pro-latest", temperature: float = 0.1, timeout: int = 60) -> ChatGoogleGenerativeAI:
     """Initializes and returns a ChatGoogleGenerativeAI instance."""
@@ -381,7 +379,8 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120):
             )
         else:
             # Handle any other general exception
-            if str(e).find("API_KEY_INVALID")> -1:
+            if (str(e).find("API_KEY_INVALID")> -1) or (
+                str(e).find("API_KEY_IP_ADDRESS_BLOCKED") > -1):
                error_message = "The Google API key is invalid, "+ \
                  "Please check in Preferences (key='%s')." %(
                           str(os.getenv("GOOGLE_API_KEY")))
@@ -393,13 +392,14 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120):
                  "console.cloud.google.com/billing and "+\
                  "check under Your Project."
 
-            elif "limit: 0" in error_text:
+            elif str(e).find("limit: 0") > -1:
                   error_message = (
                     "Google AI API key ('%s') has a zero quota, " %(
                           str(os.getenv("GOOGLE_API_KEY"))) + \
                     "Please go to console.cloud.google.com/billing if this is"
                     "your plan and check if it is active.\n"
                     )
+
 
 
             else:
@@ -543,9 +543,14 @@ def create_and_persist_db(
                 break
             except Exception as e:
                 msg = str(e).lower()
+                if "API_KEY_IP_ADDRESS_BLOCKED" in msg:
+                     error_message = (
+                      "Google AI API key does not allow access from this server"
+                       )
+                     print(error_message)
 
-                if "you exceeded your current quota" in error_text:
-                   if "limit: 0" in error_text:
+                elif "you exceeded your current quota" in msg:
+                   if "limit: 0" in msg:
                      error_message = (
                        "Google AI API has a zero quota, "
                        "Please go to console.cloud.google.com if this is"
@@ -672,8 +677,6 @@ def find_text_block(log_text: str, target_text: str, end_text: str = "**"):
     if started:
       text_lines.append(line)
   return " ".join(text_lines)
-
-# In langchain_tools.py
 
 def query_docs(query_text, llm=None, embeddings=None,
         db_dir: str = "./docs_db",
@@ -822,8 +825,6 @@ def query_docs_old(query_text, llm = None, embeddings = None,
     print("Query docs failed...")
     return None
 
-# In langchain_tools.py, add this new function
-
 def _custom_log_chunker(log_text: str) -> List[Document]:
     """
     Chunks a log text with a special rule for the 'Files are in the directory' section.
@@ -877,8 +878,6 @@ def _custom_log_chunker(log_text: str) -> List[Document]:
         final_chunks.append(Document(page_content=special_chunk_content))
 
     return final_chunks
-
-# In langchain_tools.py
 
 async def summarize_log_text(
     text: str,
