@@ -386,7 +386,7 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120,
           error = None)
 
     except asyncio.TimeoutError:
-        error_message = "Google analysis timed out, " + \
+        error_message = "Analysis timed out, " + \
              "try increasing timeout in Preferences or AnalyzeLog "+\
                "(currently %s sec)." %(timeout)
 
@@ -396,8 +396,7 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120,
     # --- OpenAI Specific Errors ---
     except openai.AuthenticationError:
         error_message = (
-                "OPENAI Permission Denied, "
-                 "This usually means your API key is invalid .\n"
+                "OPENAI API key is invalid"
             )
 
     except Exception as e:
@@ -406,38 +405,23 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120,
 
         if isinstance(original_cause, google_exceptions.PermissionDenied):
             error_message = (
-                "Google AI Permission Denied, "
-                 "This usually means your API key is invalid .\n"
-                f"Details: {original_cause}"
+                "Google AI API key is invalid"
             )
         elif isinstance(original_cause, google_exceptions.ResourceExhausted):
             error_message = (
-                "Google AI API quota exceeded, "
-                "Please check your plan and billing details.\n"
-                f"Details: {original_cause}"
+                "Google AI API quota exceeded "
             )
         else:
             # Handle any other general exception
             if (str(e).find("API_KEY_INVALID")> -1) or (
                 str(e).find("API_KEY_IP_ADDRESS_BLOCKED") > -1):
-               error_message = "The Google API key is invalid, "+ \
-                 "Please check in Preferences (key='%s')." %(
-                          str(os.getenv("GOOGLE_API_KEY")))
+               error_message = "Google API key is invalid "
 
             elif str(e).find("free_tier_requests, limit: 0")> -1:
-               error_message = "The Google API key ('%s') is not activated, " %(
-                          str(os.getenv("GOOGLE_API_KEY"))) + \
-                 "If this is your key, please go to " \
-                 "console.cloud.google.com/billing and "+\
-                 "check under Your Project."
+               error_message = "Google API key is not activated"
 
             elif str(e).find("limit: 0") > -1:
-                  error_message = (
-                    "Google AI API key ('%s') has a zero quota, " %(
-                          str(os.getenv("GOOGLE_API_KEY"))) + \
-                    "Please go to console.cloud.google.com/billing if this is"
-                    "your plan and check if it is active.\n"
-                    )
+                  error_message = ( "Google AI API key has a zero quota" )
 
 
 
@@ -509,12 +493,9 @@ async def analyze_log_summary(log_info, llm, embeddings,
       if hasattr(e, 'http_status') and e.http_status == 401:
             error_message = (
             "Invalid Cohere API key.\n"
-                f"Details: {e}"
             )
       elif str(e).find("invalid api token") > -1:
-          error_message = "The Cohere API key is invalid, "+ \
-                 "Please check in Preferences (key='%s')." %(
-                  str(os.getenv("COHERE_API_KEY")))
+          error_message = "Cohere API key is invalid"
       else:
             # For other Cohere errors (like rate limiting)
             error_message = f"ERROR: A Cohere API error occurred, This may be due to rate limits.\nDetails: {e}"
@@ -591,17 +572,13 @@ def create_and_persist_db(
                 elif "you exceeded your current quota" in msg:
                    if "limit: 0" in msg:
                      error_message = (
-                       "Google AI API has a zero quota, "
-                       "Please go to console.cloud.google.com if this is"
-                       "your plan and check if it is active.\n"
+                       "Google AI API key has a zero quota, "
                        )
                      print(error_message)
                      return None
                    else:
                      error_message = (
                        "Google AI API quota exceeded, "
-                       "Please go to console.cloud.google.com if this is"
-                       "your plan and check if it is active.\n"
                        )
                      print(error_message)
                      return None
@@ -789,7 +766,7 @@ def query_docs(query_text, llm=None, embeddings=None,
                 print("OpenAI API rate limit exceeded after multiple retries.")
                 return None
         except openai.AuthenticationError:
-            print("OpenAI authentication failed. Check your OPENAI_API_KEY.")
+            print("OpenAI API key is invalid")
             return None
 
 
