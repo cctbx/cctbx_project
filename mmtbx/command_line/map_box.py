@@ -1529,7 +1529,7 @@ def apply_mask_around_edge_of_box(mam, params = None, log = None):
       print("Value outside mask will be set to mean inside", file = log)
 
     mam.map_manager().create_mask_around_edges(
-          soft_mask_radius = params.soft_mask_radius)
+          boundary_radius = params.soft_mask_radius)
     mam.map_manager().soft_mask(soft_mask_radius = params.soft_mask_radius)
     mam.map_manager().apply_mask(
       set_outside_to_mean_inside = params.set_outside_to_mean_inside)
