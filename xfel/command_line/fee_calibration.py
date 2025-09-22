@@ -91,7 +91,7 @@ def tally_fee_data(experiment, runs, plot=True, verbose=True, max_events=None):
               if verbose:
                   print(r, i, 'no fee')
               bad += 1
-                events.append(0)
+              events.append(0)
               continue
           if data is None:
               data = f.astype(float)
