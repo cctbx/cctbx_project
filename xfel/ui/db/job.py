@@ -866,8 +866,11 @@ class PhenixJob(Job):
     return "%s_%s%03d_v%03d"%(self.dataset.name, self.task.type, self.task.id, self.dataset_version.version)
 
   def delete(self, output_only=False):
-    job_folder = self.get_global_path()
-    if os.path.exists(job_folder):
+    try:
+      job_folder = self.get_global_path()
+    except AttributeError: # If job fails to submit for example
+      job_folder = None
+    if job_folder and os.path.exists(job_folder):
       print("Deleting job folder for job", self.id)
       shutil.rmtree(job_folder)
     else:
@@ -909,12 +912,13 @@ class PhenixJob(Job):
       params.nnodes = params.nnodes_merge
     params.use_mpi = False
     params.shifter.staging = None
-    if 'upload' in command or 'evaluate_anom' in command:
-      params.nnodes = 1
-      params.nproc_per_node = 1
-      #params.queue = 'shared'
-    else:
+    if not('upload' in command or 'evaluate_anom' in command):
       params.env_script = params.phenix_script
+      if not params.extra_options:
+        params.extra_options = ""
+      params.extra_options.append("--export=None")
+    params.nnodes = 1
+    params.nproc_per_node = 1
 
     if params.method == 'shifter' and 'upload' not in command:
        import libtbx.load_env
@@ -938,7 +942,9 @@ class _job(object):
     self.dataset_version = dataset_version
 
   def __str__(self):
-    s = "Job: Trial %d, rg %d, run %s"%(self.trial.trial, self.rungroup.id, self.run.run)
+    s = "Job: Trial %s, rg %s, run %s"%(str(self.trial.trial) if self.trial else 'None',
+                                        str(self.rungroup.id) if self.rungroup else 'None',
+                                        self.run.run if self.run else 'None')
     if self.task:
       s += ", task %d %s"%(self.task.id, self.task.type)
     if self.dataset:

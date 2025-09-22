@@ -90,7 +90,7 @@ combine_experiments {
     detector = 0
   }
   clustering {
-    use = True
+    use = False
   }
 }
 '''

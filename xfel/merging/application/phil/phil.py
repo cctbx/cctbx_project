@@ -130,7 +130,7 @@ filter
   .help = or to modify the entire experiment by a reindexing operator
   .help = refer to the select section for filtering of individual reflections
   {
-  algorithm = n_obs resolution unit_cell
+  algorithm = n_obs resolution unit_cell energy
     .type = choice(multi=True)
   n_obs {
     min = None
@@ -219,6 +219,14 @@ filter
       .help = This filter is not applied if scaling.model==None. No experiments are rejected with min_corr=-1.
       .help = This either keeps or rejects the whole experiment.
     assmann_diederichs {}
+  }
+  energy {
+    min_eV = None
+      .type = float
+      .help = Filter out lattices with beam energy lower than this number
+    max_eV = None
+      .type = float
+      .help = Filter out lattices with beam energy higher than or equal to this number
   }
 }
 """

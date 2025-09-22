@@ -34,39 +34,74 @@ def tally_fee_data(experiment, runs, plot=True, verbose=True, max_events=None):
 
   for r in runs:
     print(f"Processing run {r}...".format())
-    ds = psana.DataSource(f'exp={experiment}:run={r}:idx'.format())
-    d = psana.Detector('FEE-SPEC0')
-    pr = list(ds.runs())[0]
-    times = pr.times()
-    data = None
-    total = 0
-    if max_events is None:
-      iterable = range(len(times))
-    else:
-      iterable = range(min(len(times), max_events))
-    for i in iterable:
-      e = pr.event(times[i])
-      f = d.get(e)
-      if f:
+    try:
+        ds = psana.DataSource(f'exp={experiment}:run={r}:idx'.format())
+        d = psana.Detector('FEE-SPEC0')
+        pr = list(ds.runs())[0]
+        times = pr.times()
+        data = None
+        total = 0
+        if max_events is None:
+          iterable = range(len(times))
+        else:
+          iterable = range(min(len(times), max_events))
+        for i in iterable:
+          e = pr.event(times[i])
+          f = d.get(e)
+          if f:
+            if verbose:
+              print(r, i)
+            good += 1
+            events.append(1)
+          else:
+            if verbose:
+              print(r, i, 'no fee')
+            bad += 1
+            events.append(0)
+            continue
+          if data is None:
+            data = f.hproj().astype(float)
+          else:
+            data += f.hproj().astype(float)
+          total += 1
         if verbose:
-          print(r, i)
-        good += 1
-        events.append(1)
+          print(total)
+        data /= total
+        rundata.append(data)
+    except Exception: # todo: test under psana1 and psana2, same sources, get proper exception
+      # psana2
+      if max_events:
+        ds = psana.DataSource(exp=experiment,run=r,
+                  detectors=['feespec'], max_events=max_events)
       else:
-        if verbose:
-          print(r, i, 'no fee')
-        bad += 1
-        events.append(0)
-        continue
-      if data is None:
-        data = f.hproj().astype(float)
-      else:
-        data += f.hproj().astype(float)
-      total += 1
-    if verbose:
-      print(total)
-    data /= total
-    rundata.append(data)
+        ds = psana.DataSource(exp=experiment,run=r,detectors=['feespec'])
+      run = next(ds.runs())
+      d = run.Detector('feespec')
+      data = None
+      total = 0
+      for i, evt in enumerate(run.events()):
+          f = d.raw.hproj(evt)
+          if f is None or not len(f): continue
+          if len(f) > 0:
+              if verbose:
+                  print(r, i)
+              good += 1
+              events.append(1)
+          else:
+              if verbose:
+                  print(r, i, 'no fee')
+              bad += 1
+                events.append(0)
+              continue
+          if data is None:
+              data = f.astype(float)
+          else:
+              data += f.astype(float)
+          total += 1
+      if verbose:
+        print(total)
+      data /= total
+      rundata.append(data)
     print(f"Found {good} events with FEE, {bad} events without ({good+bad} total)".format())
   if plot:
     plt.plot(range(len(events)), events, '-')

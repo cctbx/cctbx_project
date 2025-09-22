@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
+from cctbx import factor_ev_angstrom
 from cctbx.crystal import symmetry
 from libtbx import Auto
 
@@ -13,6 +14,7 @@ class experiment_filter(worker):
     filter_by_unit_cell = 'unit_cell' in self.params.filter.algorithm
     filter_by_n_obs = 'n_obs' in self.params.filter.algorithm
     filter_by_resolution = 'resolution' in self.params.filter.algorithm
+    filter_by_energy = 'energy' in self.params.filter.algorithm
     if filter_by_unit_cell:
       assert self.params.filter.unit_cell.value.target_space_group is not None, \
         'Space group is required for unit cell filtering'
@@ -27,6 +29,10 @@ class experiment_filter(worker):
     if filter_by_resolution:
       assert self.params.filter.resolution.d_min is not None, \
         'd_min is required for resolution filtering'
+    if filter_by_energy:
+      assert self.params.filter.energy.min_eV is not None or \
+        self.params.filter.energy.max_eV is not None, \
+        'Specify either min_eV or max_eV for energy filtering'
 
   def __repr__(self):
     return 'Filter experiments'
@@ -82,8 +88,9 @@ class experiment_filter(worker):
     filter_by_unit_cell = 'unit_cell' in self.params.filter.algorithm
     filter_by_n_obs = 'n_obs' in self.params.filter.algorithm
     filter_by_resolution = 'resolution' in self.params.filter.algorithm
-    # only "unit_cell" "n_obs" and "resolution" algorithms are supported
-    if (not filter_by_unit_cell) and (not filter_by_n_obs) and (not filter_by_resolution):
+    filter_by_energy = 'energy' in self.params.filter.algorithm
+    # only unit_cell, n_obs, resolution, and energy algorithms are supported
+    if (not filter_by_unit_cell) and (not filter_by_n_obs) and (not filter_by_resolution) and (not filter_by_energy):
       return experiments, reflections
     self.logger.log_step_time("FILTER_EXPERIMENTS")
 
@@ -105,6 +112,11 @@ class experiment_filter(worker):
       experiment_ids_to_remove += experiment_ids_to_remove_resolution
     else:
       removed_for_resolution = 0
+    if filter_by_energy:
+      experiment_ids_to_remove_energy, removed_for_energy = self.run_filter_by_energy(experiments, reflections)
+      experiment_ids_to_remove += experiment_ids_to_remove_energy
+    else:
+      removed_for_energy = 0
     experiment_ids_to_remove = list(set(experiment_ids_to_remove))
 
     input_len_expts = len(experiments)
@@ -118,6 +130,7 @@ class experiment_filter(worker):
     self.logger.log("Experiments rejected because of space group %d"%removed_for_space_group)
     self.logger.log("Experiments rejected because of n_obs %d"%removed_for_n_obs)
     self.logger.log("Experiments rejected because of resolution %d"%removed_for_resolution)
+    self.logger.log("Experiments rejected because of energy %d"%removed_for_energy)
     self.logger.log("Reflections rejected because of rejected experiments: %d"%removed_reflections)
 
     # MPI-reduce total counts
@@ -127,6 +140,7 @@ class experiment_filter(worker):
     total_removed_for_space_group = comm.reduce(removed_for_space_group, MPI.SUM, 0)
     total_removed_for_n_obs = comm.reduce(removed_for_n_obs, MPI.SUM, 0)
     total_removed_for_resolution = comm.reduce(removed_for_resolution, MPI.SUM, 0)
+    total_removed_for_energy = comm.reduce(removed_for_energy, MPI.SUM, 0)
     total_reflections_removed = comm.reduce(removed_reflections, MPI.SUM, 0)
 
     # rank 0: log total counts
@@ -135,6 +149,7 @@ class experiment_filter(worker):
       self.logger.main_log("Total experiments rejected because of space group %d"%total_removed_for_space_group)
       self.logger.main_log("Total experiments rejected because of n_obs %d"%total_removed_for_n_obs)
       self.logger.main_log("Total experiments rejected because of resolution %d"%total_removed_for_resolution)
+      self.logger.main_log("Total experiments rejected because of energy %d"%total_removed_for_energy)
       self.logger.main_log("Total reflections rejected because of rejected experiments %d"%total_reflections_removed)
 
     self.logger.log_step_time("FILTER_EXPERIMENTS", True)
@@ -233,6 +248,19 @@ class experiment_filter(worker):
         experiment_ids_to_remove.append(expt.identifier)
         removed_for_resolution += 1
     return experiment_ids_to_remove, removed_for_resolution
+
+  def run_filter_by_energy(self, experiments, reflections):
+    experiment_ids_to_remove = []
+    removed_for_energy = 0
+    for expt_index, expt in enumerate(experiments):
+      energy = factor_ev_angstrom / expt.beam.get_wavelength()
+      if self.params.filter.energy.min_eV and energy < self.params.filter.energy.min_eV:
+        experiment_ids_to_remove.append(expt.identifier)
+        removed_for_energy += 1
+      if self.params.filter.energy.max_eV and energy >= self.params.filter.energy.max_eV:
+        experiment_ids_to_remove.append(expt.identifier)
+        removed_for_energy += 1
+    return experiment_ids_to_remove, removed_for_energy
 
 if __name__ == '__main__':
   from xfel.merging.application.worker import exercise_worker

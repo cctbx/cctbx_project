@@ -102,7 +102,9 @@ class QueueInterrogator(object):
                   'STOPPED': 'SUSP',
                   'CANCELLED': 'EXIT',
                   'TIMEOUT': 'TIMEOUT',
+                  'OUT_OF_ME': 'EXIT',
                  }
+      if status not in statuses: print('Unknown job status', status)
       return statuses[status] if status in statuses else 'UNKWN'
     elif self.queueing_system == 'htcondor':
       # (copied from the man page)
