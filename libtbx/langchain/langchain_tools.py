@@ -70,7 +70,10 @@ def get_log_map_prompt() -> PromptTemplate:
     1.  **Identify Key Steps:** Look for lines that indicate the start or end of a major computational step (e.g., "Starting AlphaFold prediction", "Docking model", "Rebuilding model").
     2.  **Extract File Names:** List any input or output file names mentioned (`.pdb`, `.cif`, `.seq`, `.fasta`, `.mtz`, `.ccp4`). Ignore `.dat` files. Be sure to capture all output file names that contain the text `overall_best` as these are generally the current best result files.
     3.  **Capture Metrics:** Record any specific numbers or metrics reported, especially map-model correlation coefficients (CC), resolution estimates, scores, and R values.
-    4.  **Be Concise:** Create a brief, bulleted list of these key facts. Do not add conversational text or explanations.
+    4.  **Identify X-ray vs CryoEM data** Notice whether the data are X-ray
+       crystallography data (typically mtz files) or cryo-EM data (typically
+       mrc or ccp4 files).
+    5.  **Be Concise:** Create a brief, bulleted list of these key facts. Do not add conversational text or explanations.
 
     Log Chunk:
     "{text}"
@@ -91,7 +94,7 @@ def get_log_combine_prompt() -> PromptTemplate:
         "must contain all the information requested below.\n\n"
         "Summaries:\n{context}\n\n"
         "Final Report Requirements:\n"
-        "1. Table of input files and their contents.\n"
+        "1. Table of input files and their contents. Specify whether the data are X-ray or cryo-EM.\n"
         "2. Table of specified input parameters.\n"
         "3. The name of the Phenix program that was run.\n"
         "4. Detailed description of each step carried out.\n"
@@ -125,14 +128,17 @@ def get_log_analysis_prompt() -> PromptTemplate:
         "The analysis should include the following:\n\n"
         "1.For the run described in the log summary, list the inputs and "
         "briefly describe what was done."
-
+        "Report whether the data are from crystallography (X-ray or neutron)"
+        " or from cryo-EM"
         "2. List the key output files from this run, along with the values "
         "of any available metrics describing their utilities. "
         "If no metrics are available, do not provide any. "
         "3. Evaluate whether the run described in the summary was useful. "
           "List reported metrics and expected values of these metrics and "
           "consider the goals of the program.\n"
-        "4. Considering the normal sequence of Phenix tool use, suggest "
+        "4. Considering whether the data are from crystallography or"
+        "cryo-EM and considering the normal sequence of Phenix tool use,"
+        "suggest "
         "three concrete next steps in structure determination using Phenix "
         "or graphical tools such as Coot or Isolde that I should take, "
         "justifying each suggestion with information from the provided "
@@ -447,7 +453,9 @@ async def analyze_log_summary(log_info, llm, embeddings,
     retriever_query = ("Here is a summary of the %s log file:\n\n " %(
        log_info.processed_log_dict['phenix_program']) +
        log_info.processed_log_dict['summary'] +
-       "\n\nConsidering the normal procedure for structure determination "
+       "\n\nConsidering whether the input data are from crystallography "+
+       "(X-ray or neutron) or from cryo-EM, and considering the "+
+       "the normal procedure for structure determination "
        "in Phenix, what are the next steps that I should carry out?" +
        "Consider this question in the context of the process of structure "+
        "determination in Phenix. Focus on using Phenix tools, but include "+
