@@ -206,7 +206,7 @@ namespace smtbx { namespace ED
       ExpDen.resize(n_beams);
       ExpDen[0] = Kn; //for g0
       for (size_t i = 1; i < n_beams; i++) {
-        miller::index<> h = this->indices[i - 1];
+        const miller::index<>& h = this->indices[i - 1];
         cart_t K_g = this->K + this->RMf * cart_t(h[0], h[1], h[2]);
         FloatType s_2k = Kl * Kl - K_g.length_sq();
         this->A(i, i) = s_2k;

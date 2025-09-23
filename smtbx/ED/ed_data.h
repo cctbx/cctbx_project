@@ -144,22 +144,6 @@ namespace smtbx { namespace ED
       FloatType MaxG
     ) const;
 
-    void top_up(cart_t const& K,
-      size_t num, FloatType min_d,
-      FloatType MaxSg,
-      uctbx::unit_cell const& unit_cell,
-      sgtbx::space_group const& space_group,
-      sgtbx::space_group const& uniq_sg
-    );
-
-    void top_up_N(cart_t const& K,
-      size_t num, FloatType min_d,
-      FloatType MaxSg,
-      uctbx::unit_cell const& unit_cell,
-      sgtbx::space_group const& space_group,
-      sgtbx::space_group const& uniq_sg
-    );
-
     void add_indices(const af::shared<miller::index<> >& indices);
 
     void add_beam(const miller::index<>& index,
@@ -279,88 +263,6 @@ namespace smtbx { namespace ED
     this->indices.reserve(this->indices.size() + indices.size());
     for (size_t i = 0; i < indices.size(); i++) {
       this->indices.push_back(indices[i]);
-    }
-  }
-
-  template <typename FloatType>
-  void BeamGroup<FloatType>::top_up(
-    cart_t const& K,
-    size_t num, FloatType min_d,
-    FloatType MaxSg,
-    uctbx::unit_cell const& unit_cell,
-    sgtbx::space_group const &space_group,
-    sgtbx::space_group const& uniq_sg)
-  {
-    if (indices.size() >= num) {
-      return;
-    }
-    typedef miller::lookup_utils::lookup_tensor<FloatType> lookup_t;
-
-    af::shared<typename utils<FloatType>::ExcitedBeam> ebeams;
-    af::shared<mat3_t> RMfs(af::reserve(beams.size()));
-    for (size_t i = 0; i < beams.size(); i++) {
-      FloatType da = this->get_diffraction_angle(beams[i].index, K);
-      RMfs.push_back(this->get_R(da));
-    }
-    ebeams = utils<FloatType>::generate_index_set(RMfs, K, min_d,
-      MaxSg, unit_cell);
-
-    lookup_t existing = lookup_t(
-      indices.const_ref(),
-      uniq_sg,
-      true);
-
-    for (size_t i = 0; i < ebeams.size(); i++) {
-      if (space_group.is_sys_absent(ebeams[i].h)) {
-        continue;
-      }
-      if (existing.add_hkl(ebeams[i].h)) {
-        indices.push_back(ebeams[i].h);
-        if (indices.size() >= num) {
-          break;
-        }
-      }
-    }
-  }
-
-  template <typename FloatType>
-  void BeamGroup<FloatType>::top_up_N(
-    cart_t const& K,
-    size_t num, FloatType min_d,
-    FloatType MaxSg,
-    uctbx::unit_cell const& unit_cell,
-    sgtbx::space_group const& space_group,
-    sgtbx::space_group const& uniq_sg)
-  {
-    typedef miller::lookup_utils::lookup_tensor<FloatType> lookup_t;
-
-    af::shared<af::shared<typename utils<FloatType>::ExcitedBeam> > ebeams;
-    af::shared<mat3_t> RMfs(af::reserve(beams.size()));
-    for (size_t i = 0; i < beams.size(); i++) {
-      FloatType da = this->get_diffraction_angle(beams[i].index, K);
-      RMfs.push_back(this->get_R(da));
-    }
-    ebeams = utils<FloatType>::generate_index_set_N(RMfs, K, min_d,
-      MaxSg, unit_cell);
-
-    lookup_t existing = lookup_t(
-      indices.const_ref(),
-      uniq_sg,
-      true);
-
-    for (size_t i = 0; i < ebeams.size(); i++) {
-      size_t added = 0;
-      for (size_t j = 0; j < ebeams[i].size(); j++) {
-        if (space_group.is_sys_absent(ebeams[i][j].h)) {
-          continue;
-        }
-        if (existing.add_hkl(ebeams[i][j].h)) {
-          indices.push_back(ebeams[i][j].h);
-        }
-        if (++added >= num) {
-          break;
-        }
-      }
     }
   }
 
@@ -597,7 +499,7 @@ namespace smtbx { namespace ED
     RefinementParams(const af::shared<FloatType> &values)
       : values(values)
     {
-      SMTBX_ASSERT(values.size() > 17);
+      SMTBX_ASSERT(values.size() > 20);
     }
     RefinementParams(const RefinementParams &params)
       : values(params.values)
@@ -630,6 +532,9 @@ namespace smtbx { namespace ED
     particular intensity after the integration
     */
     bool useFlatScales() const { return static_cast<size_t>(values[17]); }
+    FloatType getTopUpD() const { return values[18]; }
+    FloatType getTopUpMaxSg() const { return values[19]; }
+    FloatType getGroupWidth() const { return values[20]; }
   };
 
 }}

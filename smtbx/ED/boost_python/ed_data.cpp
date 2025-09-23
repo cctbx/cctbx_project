@@ -14,6 +14,7 @@
 #include <smtbx/ED/beam_group_profiler.h>
 #include <smtbx/ED/dyn_calculator.h>
 #include <smtbx/ED/n_beam.h>
+#include <smtbx/refinement/least_squares_fc_ed_N_beam.h>
 
 // what is going on here???
 //#ifdef __WIN32__
@@ -56,8 +57,6 @@ namespace boost_python {
         .def("is_fully_covered", &wt::is_excited_beam)
         .def("add_beam", &wt::add_beam)
         .def("set_beams", &wt::set_beams)
-        .def("top_up", &wt::top_up)
-        .def("top_up_N", &wt::top_up_N)
         .def("unify", &wt::unify)
         .def("add_indices", &wt::add_indices)
         .def("analyse_strength", &wt::analyse_strength)
@@ -112,37 +111,8 @@ namespace boost_python {
       scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("peak_profile_point");
     }
 
-    static void wrap_beam_group_profiler() {
-      using namespace boost::python;
-      typedef beam_group_profiler<FloatType> wt;
-      typedef refinement::least_squares::f_calc_function_base<FloatType> f_calc_f_t;
-      return_internal_reference<> rir;
-      return_value_policy<return_by_value> rbv;
-
-      class_<wt, std::auto_ptr<wt> >("beam_group_profiler", no_init)
-        .def(init< const BeamGroup<FloatType> &,
-          f_calc_f_t&,
-          cctbx::xray::fc_correction<FloatType> const&,
-          sgtbx::space_group const&,
-          bool,
-          cctbx::xray::thickness<FloatType> const&,
-          RefinementParams<FloatType> const&>(
-            (arg("beam_group"),
-              arg("f_calc_function"), arg("fc_correction"),
-              arg("space_group"), arg("anomalous_flag"),
-              arg("thickness"),
-              arg("params"))))
-        .def("build_group_profile", &wt::build_group_profile)
-        .def("build_reflection_profile", &wt::build_reflection_profile)
-        .def("build_incident_profile", &wt::build_incident_profile)
-        .add_property("mi_lookup", make_getter(&wt::mi_lookup, rir))
-        .add_property("Fcs_k", make_getter(&wt::Fcs_k, rbv))
-        ;
-    }
-
     static void wrap_refinement_params() {
       using namespace boost::python;
-      typedef return_internal_reference<> rir_t;
       typedef RefinementParams<FloatType> wt;
 
       class_<wt, std::auto_ptr<wt> >("refinement_params", no_init)
@@ -166,6 +136,8 @@ namespace boost_python {
         .add_property("int_profile_span_sg", &wt::getIntProfileSpan_Sg)
         .add_property("int_profile_points", &wt::getIntProfilePoints)
         .add_property("use_flat_scales", &wt::useFlatScales)
+        .add_property("top_up_d", &wt::getTopUpD)
+        .add_property("top_up_max_sg", &wt::getTopUpMaxSg)
         ;
     }
 
@@ -173,7 +145,6 @@ namespace boost_python {
       wrap_beam_group();
       wrap_beam();
       wrap_peak_profile_point();
-      wrap_beam_group_profiler();
       wrap_refinement_params();
     }
   };
@@ -185,13 +156,14 @@ namespace boost_python {
     static void wrap_excited_beam() {
       using namespace boost::python;
       typedef typename utils<FloatType>::ExcitedBeam wt;
+      typedef return_internal_reference<> rir_t;
+
       class_<wt>("ExcitedBeam", no_init)
         .add_property("weight", &wt::w)
         .add_property("Sg", &wt::Sg)
         .add_property("h", &wt::h)
         .add_property("g", &wt::g)
         ;
-      typedef return_internal_reference<> rir_t;
       scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("shared_excited_beams");
     }
 
@@ -199,7 +171,7 @@ namespace boost_python {
     static Ug_rt build_Ug_matrix_N(
       const af::shared<complex_t>& Fcs_k,
       const lookup_t& mi_lookup,
-      const af::shared<miller::index<> >& index_selection,
+      const typename utils<FloatType>::ReflectionSlice& index_selection,
       const cart_t& K,
       const miller::index<>& h,
       const mat3_t& RMf,
@@ -234,6 +206,7 @@ namespace boost_python {
       wrap_utils();
     }
   };
+
   template <typename FloatType>
   struct dyn_calculator_wrapper {
     ED_UTIL_TYPEDEFS;
@@ -282,6 +255,89 @@ namespace boost_python {
         ;
     }
 
+    static void wrap_N_beam_shared_data_base() {
+      using namespace boost::python;
+      typedef N_beam_shared_data_base<FloatType> wt;
+      return_value_policy<return_by_value> rbv;
+      return_internal_reference<> rir;
+
+      class_<wt, std::auto_ptr<wt> >("N_beam_shared_data_base", no_init)
+        .def(init<f_calc_function_base<FloatType>&,
+          sgtbx::space_group const&,
+          uctbx::unit_cell const&,
+          cctbx::xray::thickness<FloatType> const&,
+          RefinementParams<FloatType> const&>(
+            (arg("f_calc_function"),
+              arg("space_group"), arg("unit_cell"),
+              arg("beam_groups"), arg("thickness"),
+              arg("params"))))
+        .def("build", &wt::build)
+        .add_property("beam_groups", make_getter(&wt::beam_groups, rbv))
+        .add_property("mi_lookup", make_getter(&wt::mi_lookup, rir))
+        .add_property("Fcs_kin", make_getter(&wt::Fcs_kin, rbv))
+        ;
+    }
+
+    static void wrap_beam_group_profiler() {
+      using namespace boost::python;
+      typedef N_beam_shared_data_base<FloatType> base_t;
+      typedef beam_group_profiler<FloatType> wt;
+      typedef refinement::least_squares::f_calc_function_base<FloatType> f_calc_f_t;
+      return_value_policy<return_by_value> rbv;
+
+      class_<wt, bases<base_t>, std::auto_ptr<wt> >("beam_group_profiler", no_init)
+        .def(init< const BeamGroup<FloatType> &,
+          f_calc_f_t&,
+          sgtbx::space_group const&,
+          const uctbx::unit_cell&,
+          RefinementParams<FloatType> const&,
+          cctbx::xray::thickness<FloatType> const&>(
+            (arg("beam_group"),
+              arg("f_calc_function"),
+              arg("space_group"), arg("unit_cell"),
+              arg("params"), arg("thickness"))))
+        .def("build_group_profile", &wt::build_group_profile)
+        .def("build_reflection_profile", &wt::build_reflection_profile)
+        .def("build_incident_profile", &wt::build_incident_profile)
+        ;
+    }
+
+    static void wrap_N_beam_shared_data() {
+      using namespace boost::python;
+      using namespace smtbx::refinement::least_squares;
+
+      typedef N_beam_shared_data_base<FloatType> base_t;
+      typedef N_beam_shared_data<FloatType> wt;
+      return_value_policy<return_by_value> rbv;
+
+      class_<wt, bases<base_t>, std::auto_ptr<wt> >("N_beam_shared_data", no_init)
+        .def(init<const scitbx::sparse::matrix<FloatType>&,
+          f_calc_function_base<FloatType>&,
+          sgtbx::space_group const&,
+          uctbx::unit_cell const&,
+          af::shared<BeamGroup<FloatType> >,
+          cctbx::xray::thickness<FloatType> const&,
+          RefinementParams<FloatType> const&,
+          bool, bool>(
+            (arg("Jt_matching_grad_fc"),
+              arg("f_calc_function"),
+              arg("space_group"), arg("unit_cell"),
+              arg("beam_groups"), arg("thickness"),
+              arg("params"), arg("compute_grad"), arg("build") = true)))
+        .def("build", &wt::build)
+        .def("build_width_cache", &wt::build_width_cache,
+          (arg("rebuild") = false))
+        .def("compute_dynI", &wt::compute_dynI,
+          (arg("indices")))
+        .def("compute_OSF", &wt::compute_OSF)
+        .def("optimise_linear_scales", &wt::optimise_linear_scales,
+          (arg("weighting_scheme"), arg("OSF"), arg("compute_wR2")))
+        .def("optimise_flat_scales", &wt::optimise_flat_scales,
+          (arg("weighting_scheme"), arg("OSF"), arg("compute_wR2")))
+        .add_property("width_cache", make_getter(&wt::width_cache, rbv), &wt::set_width_cache)
+        ;
+    }
+
     static void wrap_n_beam() {
       using namespace boost::python;
       typedef dyn_calculator_n_beam<FloatType> wt;
@@ -290,16 +346,14 @@ namespace boost_python {
 
       typedef wt& (wt::*init_t1)(const miller::index<> &, FloatType,
         const af::shared<complex_t> &, const lookup_t &);
-      typedef wt& (wt::*init_t2)(const miller::index<>&,
+      typedef wt& (wt::* init_t2)(const miller::index<>&,
         const mat3_t&, const af::shared<complex_t>&, const lookup_t&);
-      
+
       class_<wt, boost::shared_ptr<wt>,
         boost::noncopyable>("dyn_calculator_n_beam", no_init)
         .def(init<
-          size_t, int, const BeamGroup<FloatType>&,
-          const cart_t &, FloatType, bool, FloatType>(
-            (arg("N"), arg("mat_type"),arg("beam_group"), arg("K"),
-              arg("thickness"), arg("useSG"), arg("wght"))))
+          const N_beam_shared_data_base<FloatType> &, const BeamGroup<FloatType>&,
+          int>((arg("data"), arg("beam_group"), arg("mat_type"))))
         .def("calc_amp", &wt::calc_amp,
           (arg("fi"), arg("idx")=1))
         .def("init", (init_t1) & wt::init, reo)
@@ -314,6 +368,9 @@ namespace boost_python {
     static void wrap() {
       wrap_base();
       wrap_factory();
+      wrap_N_beam_shared_data_base();
+      wrap_beam_group_profiler();
+      wrap_N_beam_shared_data();
       wrap_n_beam();
     }
   };

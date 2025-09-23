@@ -1,13 +1,9 @@
 #pragma once
-
-#include <cctbx/miller/lookup_utils.h>
-#include <cctbx/xray/thickness.h>
-
-#include <smtbx/refinement/least_squares_fc.h>
 #include <scitbx/vec3.h>
 #include <scitbx/constants.h>
 #include <scitbx/lstbx/normal_equations.h>
 #include <smtbx/ED/n_beam.h>
+#include <smtbx/refinement/weighting_schemes.h>
 
 namespace smtbx {  namespace refinement  { namespace least_squares
 {
@@ -26,94 +22,31 @@ namespace smtbx {  namespace refinement  { namespace least_squares
   };
 
   template <typename FloatType>
-  struct N_beam_shared_data {
+  struct N_beam_shared_data : public N_beam_shared_data_base<FloatType> {
     ED_UTIL_TYPEDEFS;
-    typedef f_calc_function_base<FloatType> f_calc_function_base_t;
-    typedef boost::shared_ptr< f_calc_function_base_t> f_calc_function_base_ptr_t;
-    typedef builder_base<FloatType> data_t;
-    typedef af::shared<const BeamInfo<FloatType>*> beam_at;
-    typedef std::pair<int, af::shared<const BeamInfo<FloatType>*> > beam_me;
-    typedef boost::shared_ptr<lookup_t> lookup_ptr_t;
-    typedef cctbx::xray::fc_correction<FloatType> fc_correction_t;
-    typedef boost::shared_ptr< fc_correction_t> fc_correction_ptr_t;
+    N_NEAM_SHARED_DATA_TYPEDES;
+    typedef N_beam_shared_data_base<FloatType> base_t;
 
     N_beam_shared_data(const scitbx::sparse::matrix<FloatType>&
-      Jt_matching_grad_fc,
+        Jt_matching_grad_fc,
       f_calc_function_base_t& f_calc_function,
       sgtbx::space_group const& space_group,
-      bool anomalous_flag,
+      uctbx::unit_cell const &unit_cell,
       af::shared<BeamGroup<FloatType> > beam_groups,
       cctbx::xray::thickness<FloatType> const& thickness,
       const RefinementParams<FloatType>& params,
       bool compute_grad,
       bool do_build = true)
-      : Jt_matching_grad_fc(Jt_matching_grad_fc),
-      f_calc_function(f_calc_function),
-      space_group(space_group),
-      params(params),
-      Kl(params.getKl()),
-      Fc2Ug(params.getFc2Ug()),
-      beam_groups(beam_groups),
-      thickness(thickness),
-      compute_grad(compute_grad),
-      thread_n(params.getThreadN())
+      : base_t(f_calc_function, space_group, unit_cell, thickness, params),
+      Jt_matching_grad_fc(Jt_matching_grad_fc),
+      compute_grad(compute_grad)
     {
+      base_t::init(beam_groups);
+      for (size_t i = 0; i < beam_groups.size(); i++) {
+        BeamGroup<FloatType>& beam_group = beam_groups[i];
+        beam_groups_map.insert(std::make_pair(beam_group.id, &beam_group));
+      }
       BeamGroup<FloatType>::link_groups(beam_groups);
-      K = beam_groups[0].geometry->Kl_as_K(Kl);
-      // build lookups for each beam_group + collect all indices and they diffs
-      af::shared<miller::index<> > all_indices;
-      // treat equivalents independently inside the beam_groups
-      sgtbx::space_group P1("P 1");
-      if (params.getBeamN() == 2) {
-        for (size_t i = 0; i < beam_groups.size(); i++) {
-          BeamGroup<FloatType>& beam_group = beam_groups[i];
-          beam_groups_map.insert(std::make_pair(beam_group.id, &beam_group));
-          for (size_t hi = 0; hi < beam_group.strong_beams.size(); hi++) {
-            const miller::index<>& h = beam_group.indices[beam_group.strong_beams[hi]];
-            all_indices.push_back(h);
-            all_indices.push_back(-h);
-          }
-          lookup_ptr_t mi_l(new lookup_t(
-            af::select(beam_group.indices.const_ref(),
-              beam_group.strong_measured_beams.const_ref()).const_ref(),
-            P1,
-            true));
-          beam_group_lookups.insert(std::make_pair(beam_groups[i].id, mi_l));
-        }
-      }
-      else {
-        SMTBX_ASSERT(params.getBeamN() > 2);
-        for (size_t i = 0; i < beam_groups.size(); i++) {
-          BeamGroup<FloatType>& beam_group = beam_groups[i];
-          beam_groups_map.insert(std::make_pair(beam_group.id, &beam_group));
-          for (size_t hi = 0; hi < beam_group.strong_beams.size(); hi++) {
-            const miller::index<>& h = beam_group.indices[beam_group.strong_beams[hi]];
-            all_indices.push_back(h);
-            all_indices.push_back(-h);
-            for (size_t hj = hi + 1; hj < beam_group.strong_beams.size(); hj++) {
-              const miller::index<>& k = beam_group.indices[beam_group.strong_beams[hj]];
-              all_indices.push_back(h - k);
-              all_indices.push_back(k - h);
-            }
-          }
-          lookup_ptr_t mi_l(new lookup_t(
-            af::select(beam_group.indices.const_ref(),
-              beam_group.strong_measured_beams.const_ref()).const_ref(),
-            P1,
-            true));
-          beam_group_lookups.insert(std::make_pair(beam_groups[i].id, mi_l));
-        }
-      }
-      // a tricky way of getting unique only...
-      mi_lookup = lookup_t(
-        all_indices.const_ref(),
-        P1,
-        anomalous_flag);
-      indices = mi_lookup.get_unique();
-      mi_lookup = lookup_t(
-        indices.const_ref(),
-        P1,
-        anomalous_flag);
       if (do_build) {
         build();
       }
@@ -123,24 +56,30 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     }
 
     void do_build_kin_mt() {
-      if (thread_n < 0) {
-        thread_n = builder_base<FloatType>::get_available_threads();
+      if (this->thread_n < 0) {
+        this->thread_n = builder_base<FloatType>::get_available_threads();
       }
-      build_kin_mt(thread_n, Jt_matching_grad_fc, Fc2Ug, f_calc_function,
-        indices, Fcs_kin, design_matrix_kin, compute_grad);
+      build_kin_mt_ext(this->thread_n, Jt_matching_grad_fc, this->Fc2Ug,
+        this->f_calc_function,
+        this->indices, this->Fcs_kin, design_matrix_kin, compute_grad);
     }
 
     void build() {
-      if (Fcs_kin.size() != indices.size()) {
+      if (this->Fcs_kin.size() != this->indices.size()) {
         if (compute_grad) {
-          size_t cn = Jt_matching_grad_fc.n_rows() - (thickness.grad ? 1 : 0);
+          size_t cn = Jt_matching_grad_fc.n_rows() - (this->thickness.grad ? 1 : 0);
           if (cn > 0) {
             design_matrix_kin.resize(
-              af::mat_grid(indices.size(), cn));
+              af::mat_grid(this->indices.size(), cn));
           }
         }
-        Fcs_kin.resize(indices.size());
+        this->Fcs_kin.resize(this->indices.size());
         do_build_kin_mt();
+        for (size_t i = 0; i < this->complete_sorted_set.size(); i++) {
+          int j = this->mi_lookup.find_hkl(this->complete_sorted_set[i]->h);
+          SMTBX_ASSERT(j >= 0);
+          this->complete_sorted_set[i]->Ug = this->Fcs_kin[j];
+        }
       }
     }
 
@@ -176,25 +115,11 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     }
 
     scitbx::sparse::matrix<FloatType> Jt_matching_grad_fc;
-    f_calc_function_base_t& f_calc_function;
-    sgtbx::space_group const& space_group;
-    af::shared<miller::index<> > indices;
-    RefinementParams<FloatType> params;
-    FloatType Kl, Fc2Ug;
-    cart_t K;
-    /* to lookup an index in particular beam_group, have to keep a copy of the
-    indices
-    */
-    typename std::map<int, lookup_ptr_t> beam_group_lookups;
+
     typename std::map<int, BeamGroup<FloatType>*> beam_groups_map;
-    af::shared<BeamGroup<FloatType> > beam_groups;
-    cctbx::xray::thickness<FloatType> const& thickness;
     bool compute_grad;
-    af::shared<complex_t> Fcs_kin;
     // 
     cmat_t design_matrix_kin;
-    lookup_t mi_lookup;
-    int thread_n;
     beam_width_cache<FloatType> width_cache;
   };
 
@@ -304,14 +229,15 @@ namespace smtbx {  namespace refinement  { namespace least_squares
         }
       }
       mat3_t da_rm = beam_group->geometry->get_RM(da);
-      dyn_calculator_n_beam<FloatType> n_beam_dc(data.params.getBeamN()-1,
-        data.params.getMatrixType(),
-        *beam_group, data.K, data.thickness.value,
-        data.params.useNBeamSg(), data.params.getNBeamWght());
+      dyn_calculator_n_beam<FloatType> n_beam_dc(
+        data, *beam_group, data.params.getMatrixType());
 
       if (!data.params.isNBeamFloating()) {
-        n_beam_dc.init(h, beam_group->geometry->get_RMf(da_rm), data.Fcs_kin, data.mi_lookup);
-        //n_beam_dc.init(h, angles, data.Fcs_kin, data.mi_lookup);
+        n_beam_dc.init(h, beam_group->geometry->get_RMf(da_rm), data.Fcs_kin,
+          data.mi_lookup);
+      }
+      else {
+        n_beam_dc.init(h, angles);
       }
 
       mat_t D_dyn;
@@ -451,13 +377,15 @@ namespace smtbx {  namespace refinement  { namespace least_squares
         test_span / test_points);
 
       mat3_t da_rm = group.geometry->get_RM(da);
-      dyn_calculator_n_beam<FloatType> n_beam_dc(data.params.getBeamN()-1,
-        data.params.getMatrixType(),
-        group, data.K, data.thickness.value,
-        data.params.useNBeamSg(), data.params.getNBeamWght());
+      dyn_calculator_n_beam<FloatType> n_beam_dc(
+        data, group, data.params.getMatrixType());
 
       if (!data.params.isNBeamFloating()) {
-        n_beam_dc.init(index, group.geometry->get_RMf(da_rm), data.Fcs_kin, data.mi_lookup);
+        n_beam_dc.init(index, group.geometry->get_RMf(da_rm), data.Fcs_kin,
+          data.mi_lookup);
+      }
+      else {
+        n_beam_dc.init(index, angles);
       }
       size_t start_idx = ~0, end_idx = ~0;
       af::shared<FloatType> amps(angles.size());
@@ -589,18 +517,18 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     if (!rebuild && width_cache.cache.size() > 0) {
       return;
     }
-    if (thread_n < 0) {
-      thread_n = builder_base<FloatType>::get_available_threads();
+    if (this->thread_n < 0) {
+      this->thread_n = builder_base<FloatType>::get_available_threads();
     }
     boost::thread_group pool;
     f_calc_function_ed_N_beam<FloatType> calc_func(*this);
     size_t start = 0;
-    while (start < beam_groups.size()) {
+    while (start < this->beam_groups.size()) {
       std::vector<build_bw_t> accumulators;
-      size_t end = std::min(beam_groups.size() - start, (size_t)thread_n);
+      size_t end = std::min(this->beam_groups.size() - start, (size_t)this->thread_n);
       for (size_t th = 0; th < end; th++) {
         build_bw_t pf(
-          new builder_t(beam_groups[start + th], calc_func)
+          new builder_t(this->beam_groups[start + th], calc_func)
         );
         accumulators.push_back(pf);
         pool.create_thread(boost::ref(*pf));
@@ -614,7 +542,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
           accumulators[th]->cache.begin(),
           accumulators[th]->cache.end());
       }
-      start += thread_n;
+      start += this->thread_n;
     }
   }
 
@@ -673,16 +601,16 @@ namespace smtbx {  namespace refinement  { namespace least_squares
   {
     typedef dynI_thread<FloatType> thread_t;
     typedef typename boost::shared_ptr<thread_t> build_bw_t;
-    int thN = thread_n < 0 ? builder_base<FloatType>::get_available_threads()
-      : thread_n;
+    int thN = this->thread_n < 0 ? builder_base<FloatType>::get_available_threads()
+      : this->thread_n;
     
     std::map<miller::index<>, const BeamGroup<FloatType>*> lookup;
-    for (size_t i = 0; i < beam_groups.size(); i++) {
+    for (size_t i = 0; i < this->beam_groups.size(); i++) {
       af::shared<miller::index<> > g_indices =
-        af::select(beam_groups[i].indices.const_ref(),
-          beam_groups[i].strong_measured_beams.const_ref());
+        af::select(this->beam_groups[i].indices.const_ref(),
+          this->beam_groups[i].strong_measured_beams.const_ref());
       for (size_t j = 0; j < g_indices.size(); j++) {
-        lookup.insert(std::make_pair(g_indices[j], &beam_groups[i]));
+        lookup.insert(std::make_pair(g_indices[j], &this->beam_groups[i]));
       }
     }
     boost::thread_group pool;
@@ -723,11 +651,11 @@ namespace smtbx {  namespace refinement  { namespace least_squares
   {
     af::shared<FloatType> rv(indices.size());
     f_calc_function_ed_N_beam<FloatType> calc_func(*this);
-    for (size_t i = 0, ii = 0; i < beam_groups.size(); i++) {
-      for (size_t j = 0; j < beam_groups[i].strong_measured_beams.size(); j++, ii++) {
+    for (size_t i = 0, ii = 0; i < this->beam_groups.size(); i++) {
+      for (size_t j = 0; j < this->beam_groups[i].strong_measured_beams.size(); j++, ii++) {
         calc_func.setup_compute(
-          beam_groups[i].indices[beam_groups[i].strong_measured_beams[j]],
-          &beam_groups[i]);
+          this->beam_groups[i].indices[this->beam_groups[i].strong_measured_beams[j]],
+          &this->beam_groups[i]);
         rv[ii] = calc_func.compute_scale();
       }
     }
@@ -742,8 +670,8 @@ namespace smtbx {  namespace refinement  { namespace least_squares
   {
     FloatType yo_dot_yc = 0, yc_sq = 0;
     size_t scales_off = Is.size() / 2;
-    for (size_t i = 0, ii = 0; i < beam_groups.size(); i++) {
-      const BeamGroup<FloatType>& group = beam_groups[i];
+    for (size_t i = 0, ii = 0; i < this->beam_groups.size(); i++) {
+      const BeamGroup<FloatType>& group = this->beam_groups[i];
       for (size_t hi = 0; hi < group.strong_measured_beams.size(); hi++, ii++) {
         //SMTBX_ASSERT(ii < Is.size());
         size_t bi = group.strong_measured_beams[hi];
@@ -766,16 +694,16 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       FloatType OSF,
       size_t group_idx) const
   {
-    SMTBX_ASSERT(group_idx < beam_groups.size());
+    SMTBX_ASSERT(group_idx < this->beam_groups.size());
     size_t off = 0;
-    for (size_t i = 0; i < beam_groups.size(); i++) {
+    for (size_t i = 0; i < this->beam_groups.size(); i++) {
       if (i == group_idx) {
         break;
       }
-      off += beam_groups[i].strong_measured_beams.size();
+      off += this->beam_groups[i].strong_measured_beams.size();
     }
     size_t sz = Is.size() / 2;
-    const BeamGroup<FloatType>& group = beam_groups[group_idx];
+    const BeamGroup<FloatType>& group = this->beam_groups[group_idx];
     FloatType wR2_up = 0, wR2_dn = 0;
     for (size_t i = 0; i < group.strong_measured_beams.size(); i++) {
       size_t bi = group.strong_measured_beams[i];
@@ -794,8 +722,8 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       bool compute_wR2)
   {
     af::shared<miller::index<> > idx_obs;
-    for (size_t i = 0; i < beam_groups.size(); i++) {
-      const BeamGroup<FloatType>& group = beam_groups[i];
+    for (size_t i = 0; i < this->beam_groups.size(); i++) {
+      const BeamGroup<FloatType>& group = this->beam_groups[i];
       af::shared<miller::index<> > g_indices =
         af::select(group.indices.const_ref(),
         group.strong_measured_beams.const_ref());
@@ -804,9 +732,9 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     af::shared<FloatType> Is = this->compute_dynI(idx_obs);
     size_t sz = idx_obs.size();
     FloatType bare_OSF = compute_OSF(Is, ws, OSF, false);
-    scitbx::lstbx::normal_equations::linear_ls<FloatType> ls(beam_groups.size());
-    for (size_t i = 0, ii=0; i < beam_groups.size(); i++) {
-      const BeamGroup<FloatType>& group = beam_groups[i];
+    scitbx::lstbx::normal_equations::linear_ls<FloatType> ls(this->beam_groups.size());
+    for (size_t i = 0, ii=0; i < this->beam_groups.size(); i++) {
+      const BeamGroup<FloatType>& group = this->beam_groups[i];
       size_t beam_sz = group.strong_measured_beams.size();
       for (size_t hi = 0; hi < beam_sz; hi++, ii++) {
         const miller::index<>& h = idx_obs[ii];
@@ -815,7 +743,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
         FloatType Sg1 = std::abs(group.calc_Sg(h, this->K)),
           I = bare_OSF * Is[ii];
 
-        af::shared<FloatType> row(beam_groups.size());
+        af::shared<FloatType> row(this->beam_groups.size());
         if (group.prev != 0 && da < group.angle && da > group.prev->angle) {
           FloatType Sg2 = std::abs(group.prev->calc_Sg(h, this->K));
           FloatType Sgr = Sg1 + Sg2;
@@ -839,8 +767,8 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     }
     ls.solve();
     af::shared<FloatType> rv = ls.solution();
-    for (size_t i = 0; i < beam_groups.size(); i++) {
-      beam_groups[i].scale = rv[i];
+    for (size_t i = 0; i < this->beam_groups.size(); i++) {
+      this->beam_groups[i].scale = rv[i];
     }
     FloatType new_OSF = compute_OSF(Is, ws, OSF, true);
     if (compute_wR2) {
@@ -848,7 +776,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       for (size_t i = 0; i < sz; i++) {
         Is[sz + i] = l_scales[i];
       }
-      for (size_t i = 0; i < beam_groups.size(); i++) {
+      for (size_t i = 0; i < this->beam_groups.size(); i++) {
         rv.push_back(
           compute_group_wR2(Is, ws, new_OSF, i));
       }
@@ -863,8 +791,8 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       bool compute_wR2)
   {
     af::shared<miller::index<> > idx_obs;
-    for (size_t i = 0; i < beam_groups.size(); i++) {
-      const BeamGroup<FloatType>& group = beam_groups[i];
+    for (size_t i = 0; i < this->beam_groups.size(); i++) {
+      const BeamGroup<FloatType>& group = this->beam_groups[i];
       af::shared<miller::index<> > g_indices =
         af::select(group.indices.const_ref(),
           group.strong_measured_beams.const_ref());
@@ -873,9 +801,9 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     af::shared<FloatType> Is = this->compute_dynI(idx_obs);
     size_t sz = idx_obs.size();
     FloatType bare_OSF = compute_OSF(Is, ws, OSF, false);
-    af::shared<FloatType> rv(af::reserve(beam_groups.size()));
-    for (size_t i = 0, ii = 0; i < beam_groups.size(); i++) {
-      const BeamGroup<FloatType>& group = beam_groups[i];
+    af::shared<FloatType> rv(af::reserve(this->beam_groups.size()));
+    for (size_t i = 0, ii = 0; i < this->beam_groups.size(); i++) {
+      const BeamGroup<FloatType>& group = this->beam_groups[i];
       size_t beam_sz = group.strong_measured_beams.size();
       FloatType left = 0, right = 0;
       for (size_t hi = 0; hi < beam_sz; hi++, ii++) {
@@ -888,12 +816,12 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       }
       rv.push_back(right / left);
     }
-    for (size_t i = 0; i < beam_groups.size(); i++) {
-      beam_groups[i].scale = rv[i];
+    for (size_t i = 0; i < this->beam_groups.size(); i++) {
+      this->beam_groups[i].scale = rv[i];
     }
     FloatType new_OSF = bare_OSF;// compute_OSF(Is, ws, OSF, true);
     if (compute_wR2) {
-      for (size_t i = 0; i < beam_groups.size(); i++) {
+      for (size_t i = 0; i < this->beam_groups.size(); i++) {
         rv.push_back(
           compute_group_wR2(Is, ws, new_OSF, i));
       }

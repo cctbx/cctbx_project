@@ -3,6 +3,7 @@
 #include <cctbx/miller/index_generator.h>
 #include <smtbx/ED/math_utils.h>
 #include <set>
+#include <vector>
 
 namespace smtbx { namespace ED
 {
@@ -80,8 +81,9 @@ namespace smtbx { namespace ED
           g = ryb * g;
         }
         FloatType a = g[2], b = g[1];
-        FloatType p = g.length_sq() / (-2 * K[2]);
-        FloatType d = sqrt(a * a * b * b + b * b * b * b - b * b * p * p);
+        FloatType p = g.length_sq() / (-2 * K[2]),
+          x = a * a * b * b + b * b * b * b - b * b * p * p;
+        FloatType d = x <= 0 ? 0 : sqrt(x);
         FloatType r1 = atan2((-a * d + p * b * b) / (b * a * a + b * b * b), (p * a + d) / (a * a + b * b));
         return r1;
       }
@@ -105,13 +107,54 @@ namespace smtbx { namespace ED
       {
         cart_t g = this->get_UB() * cart_t(h[0], h[1], h[2]);
         FloatType a = g[0], b = g[1];
-        FloatType p = g.length_sq() / (-2 * K[0]);
-        FloatType d = sqrt(a * a * b * b + b * b * b * b - b * b * p * p);
+        FloatType p = g.length_sq() / (-2 * K[0]),
+          x = a * a * b * b + b * b * b * b - b * b * p * p;
+        FloatType d = x <= 0 ? 0 : sqrt(x);
         FloatType r1 = atan2((-a * d + p * b * b) / (b * a * a + b * b * b), (p * a + d) / (a * a + b * b));
         //FloatType r2 = atan2((a * d + p * b * b) / (b * a * a + b * b * b), (p * a - d) / (a * a + b * b));
+        if (r1 != r1) {
+          r1 = 0;
+        }
         return r1;
       }
     };
+
+    struct Reflection {
+      miller::index<> h;
+      Reflection(const miller::index<>& h, FloatType da)
+        : h(h), da(da)
+      {}
+      FloatType da;
+      complex_t Ug;
+      
+      static bool cmp_refs(const Reflection &a, const Reflection& b) {
+        return a.da < b.da;
+      }
+      static bool cmp_ptrs(const Reflection* a, const Reflection* b) {
+        return a->da < b->da;
+      }
+    };
+
+    struct ReflectionSlice {
+      ReflectionSlice(const af::shared<Reflection*>& reflections,
+        const af::shared<size_t>& selection)
+        : reflections(reflections),
+        selection(selection)
+      {}
+      ReflectionSlice(const ReflectionSlice& o)
+        : reflections(o.reflections),
+        selection(o.selection)
+      {}
+
+      size_t size() const { return selection.size(); }
+      const Reflection& operator[] (size_t i) const {
+        return *reflections[selection[i]];
+      }
+
+      const af::shared<Reflection*>& reflections;
+      af::shared<size_t> selection;
+    };
+
 
     static void build_Ug_matrix(
       cmat_t& A,
@@ -143,6 +186,33 @@ namespace smtbx { namespace ED
       }
     }
 
+    static void build_Ug_matrix(
+      cmat_t& A,
+      const af::shared<complex_t>& Fcs_k,
+      const lookup_t& mi_lookup,
+      const std::vector<const Reflection*>& refs) // implicit {0,0,0} at 0
+    {
+      const size_t n_beams = refs.size() + 1; // g0+
+      A.resize(af::mat_grid(n_beams, n_beams));
+      A(0, 0) = 0;
+      for (size_t i = 1; i < n_beams; i++) {
+        const Reflection& r_i = *refs[i - 1];
+        // h_i - (0,0,0)
+        A(i, 0) = r_i.Ug;
+        // (0,0,0) - h_i
+        A(0, i) = std::conj(r_i.Ug);
+        A(i, i) = 0;
+        for (size_t j = i + 1; j < n_beams; j++) {
+          const Reflection& r_j = *refs[j - 1];
+          int i_m_j = mi_lookup.find_hkl(r_i.h - r_j.h);
+          SMTBX_ASSERT(i_m_j >= 0);
+          complex_t Fc = Fcs_k[i_m_j];
+          A(i, j) = Fc;
+          A(j, i) = std::conj(Fc);
+        }
+      }
+    }
+
     static bool sort_beams(const std::pair<size_t, FloatType>& a,
       const std::pair<size_t, FloatType>& b)
     {
@@ -156,7 +226,7 @@ namespace smtbx { namespace ED
     static af::shared<miller::index<> > build_Ug_matrix_N(cmat_t& A,
       const af::shared<complex_t>& Fcs_k,
       const lookup_t& mi_lookup,
-      const af::shared<miller::index<> >& index_selection,
+      const ReflectionSlice& index_selection,
       const cart_t& K,
       const miller::index<> &h,
       const mat3_t &RMf,
@@ -165,45 +235,55 @@ namespace smtbx { namespace ED
       typedef std::pair<size_t, FloatType> se_t;
       std::vector<se_t> beams;
       beams.reserve(index_selection.size());
+      const Reflection* o_ref = 0;
       for (size_t i = 0; i < index_selection.size(); i++) {
-        miller::index<> h_ = index_selection[i];
-        if (h_ == h) {
+        const Reflection& r = index_selection[i];
+        if (o_ref == 0 && r.h == h) {
+          o_ref = &r;
           continue;
         }
-        long idx = mi_lookup.find_hkl(h_);
-        cart_t g = RMf * cart_t(h_[0], h_[1], h_[2]);
+        cart_t g = RMf * cart_t(r.h[0], r.h[1], r.h[2]);
         FloatType Sg = std::abs(calc_Sg(g, K));
         if (use_Sg) {
           beams.push_back(std::make_pair(i, Sg));
         }
         else {
           beams.push_back(
-            std::make_pair(i, std::abs(Fcs_k[idx]) / (Sg + wght)));
+            std::make_pair(i, std::abs(r.Ug) / (Sg + wght)));
         }
       }
-      std::sort(beams.begin(), beams.end(), sort_beams);
-      af::shared<miller::index<> > indices;
-      indices.push_back(h);
-      if (use_Sg) {
-        for (size_t i = 0; i < std::min(num, beams.size()); i++) {
-          if (beams[i].second < wght) {
-            indices.push_back(index_selection[beams[i].first]);
-            if (indices.size() == num) {
+      SMTBX_ASSERT(o_ref != 0);
+      size_t sz = std::min(num, beams.size());
+      std::vector<const Reflection *> refs;
+      refs.reserve(sz + 1);
+      af::shared<miller::index<> > indices(af::reserve(sz + 1));
+      refs.push_back(o_ref);
+      indices.push_back(o_ref->h);
+      if (sz > 0) {
+        std::sort(beams.begin(), beams.end(), sort_beams);
+        if (use_Sg) {
+          for (size_t i = 0; i < sz; i++) {
+            if (beams[i].second < wght) {
+              refs.push_back(&index_selection[beams[i].first]);
+              indices.push_back(index_selection[beams[i].first].h);
+              if (refs.size() == num) {
+                break;
+              }
+            }
+            else {
               break;
             }
           }
-          else {
-            break;
+        }
+        else {
+          for (size_t i = 0; i < sz - 1; i++) {
+            refs.push_back(&index_selection[beams[beams.size() - i - 1].first]);
+            indices.push_back(index_selection[beams[beams.size() - i - 1].first].h);
           }
-
         }
       }
-      else {
-        for (size_t i = 0; i < std::min(num, beams.size()) - 1; i++) {
-          indices.push_back(index_selection[beams[beams.size() - i - 1].first]);
-        }
-      }
-      build_Ug_matrix(A, Fcs_k, mi_lookup, indices);
+      // else is 2-beam case
+      build_Ug_matrix(A, Fcs_k, mi_lookup, refs);
       return indices;
     }
 
@@ -543,120 +623,5 @@ namespace smtbx { namespace ED
       }
     };
 
-    /* Generates a list of miller indices for given resolution and space group
-    * The indices will fulfil the MaxSg and MaxG parameters and sorted by Sg
-    */
-    static af::shared<ExcitedBeam> generate_index_set(
-      mat3_t const& RMf, // matrix to orthogonalise and rotate into the given basis
-      cart_t const& K,
-      FloatType min_d,
-      FloatType MaxSg,
-      uctbx::unit_cell const& unit_cell)
-    {
-      using namespace cctbx::miller;
-
-      index_generator h_generator(unit_cell, sgtbx::space_group_type("P1"),
-        true,
-        min_d, false);
-
-      miller::index<> h;
-      af::shared<ExcitedBeam> all;
-
-      const FloatType Kl = K.length(),
-        Kl_sq = Kl * Kl;
-      while (!(h = h_generator.next()).is_zero()) {
-        cart_t g = RMf * cart_t(h[0], h[1], h[2]);
-        FloatType g_sq = g.length_sq();
-        FloatType Kg_sq = (K + g).length_sq();
-        FloatType s = Kl_sq - Kg_sq;
-        FloatType Sg = std::abs(s / (2 * Kl));
-        if (MaxSg > 0 && Sg > MaxSg) {
-          continue;
-        }
-        //FloatType w = s * s * Kg_sq;
-        all.push_back(ExcitedBeam(h, g, Sg, Sg));
-      }
-      std::sort(all.begin(), all.end(), &ExcitedBeam::compare);
-      return all;
-    }
-
-    static af::shared<ExcitedBeam> generate_index_set(
-      // matrices to orthogonalise and rotate into the beams' basis
-      af::shared<mat3_t> const& RMfs,
-      cart_t const& K,
-      FloatType min_d,
-      FloatType MaxSg,
-      uctbx::unit_cell const& unit_cell)
-    {
-      using namespace cctbx::miller;
-
-      index_generator h_generator(unit_cell, sgtbx::space_group_type("P1"),
-        true,
-        min_d, false);
-
-      miller::index<> h;
-      af::shared<ExcitedBeam> all;
-
-      const FloatType Kl = K.length(),
-        Kl_sq = Kl * Kl;
-      while (!(h = h_generator.next()).is_zero()) {
-        FloatType min_sg = MaxSg;
-        cart_t g;
-        for (size_t mi = 0; mi < RMfs.size(); mi++) {
-          g = RMfs[mi] * cart_t(h[0], h[1], h[2]);
-          FloatType Kg_sq = (K + g).length_sq();
-          FloatType s = Kl_sq - Kg_sq;
-          FloatType Sg = std::abs(s / (2 * Kl));
-          if (MaxSg > 0 && Sg > MaxSg) {
-            continue;
-          }
-          if (Sg < min_sg) {
-            min_sg = Sg;
-          }
-        }
-        if (min_sg < MaxSg) {
-          all.push_back(ExcitedBeam(h, g, min_sg, min_sg));
-        }
-      }
-      std::sort(all.begin(), all.end(), &ExcitedBeam::compare);
-      return all;
-    }
-
-    static af::shared<af::shared<ExcitedBeam> > generate_index_set_N(
-      // matrices to orthogonalise and rotate into the beams' basis
-      af::shared<mat3_t> const& RMfs,
-      cart_t const& K,
-      FloatType min_d,
-      FloatType MaxSg,
-      uctbx::unit_cell const& unit_cell)
-    {
-      using namespace cctbx::miller;
-
-      index_generator h_generator(unit_cell, sgtbx::space_group_type("P1"),
-        true,
-        min_d, false);
-
-      miller::index<> h;
-      af::shared<af::shared<ExcitedBeam> > all(RMfs.size());
-
-      const FloatType Kl = K.length(),
-        Kl_sq = Kl * Kl;
-      while (!(h = h_generator.next()).is_zero()) {
-        for (size_t mi = 0; mi < RMfs.size(); mi++) {
-          cart_t g = RMfs[mi] * cart_t(h[0], h[1], h[2]);
-          FloatType Kg_sq = (K + g).length_sq();
-          FloatType s = Kl_sq - Kg_sq;
-          FloatType Sg = std::abs(s / (2 * Kl));
-          if (MaxSg > 0 && Sg > MaxSg) {
-            continue;
-          }
-          all[mi].push_back(ExcitedBeam(h, g, Sg, Sg));
-        }
-      }
-      for (size_t i = 0; i < all.size(); i++) {
-        std::sort(all[i].begin(), all[i].end(), &ExcitedBeam::compare);
-      }
-      return all;
-    }
   }; //struct smtbx::ED::utils
 }} // namespace smtbx::ED

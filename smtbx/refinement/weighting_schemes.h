@@ -1,3 +1,4 @@
+#pragma once
 /// Weighting schemes for L.S. (least_squares.h)
 
 #include <scitbx/array_family/shared.h>
