@@ -35,7 +35,8 @@ namespace cctbx { namespace xray {
         rv = 1 / k_sqrt;
       if (compute_grad) {
         grad_value = -fc_sq * p / (2 * k * k_sqrt);
-        //grad_fc_mod = rv - fc_sq*value/(2 * k * k_sqrt);
+        // Laura Midgley, Oct 2020
+        //grad_fc_mod = 0.5*(rv + rv*rv*rv);
       }
       return rv;
     }

@@ -251,7 +251,7 @@ namespace smtbx { namespace ED
       af::shared<FloatType> dens(n_beams);
       dens[0] = 1;
       for (size_t i = 1; i < n_beams; i++) {
-        miller::index<> h = this->indices[i - 1];
+        const miller::index<> &h = this->indices[i - 1];
         cart_t g = this->RMf * cart_t(h[0], h[1], h[2]);
         gs[i] = g;
         dens[i] = std::sqrt(1. / (1 + std::abs(g * this->N / Kn)));
