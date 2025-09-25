@@ -52,7 +52,9 @@ def run(query_text = None, output_file_path = None, db_dir = None,
 
     # Decide where to write files
     if not output_file_path:
-      output_file_path = '/var/tmp'
+      import tempfile
+      dd = tempfile.TemporaryDirectory()
+      output_file_path = dd.name
 
     fn = os.path.join(output_file_path,'query.html')
     save_as_html(answer, file_name = fn,
@@ -63,7 +65,7 @@ def run(query_text = None, output_file_path = None, db_dir = None,
       load_url(fn)
     except Exception as e:
       # phenix is not available or no viewer.  Just skip
-      print("Unable to load viewer...see text in the file: '%s'" %(fn))
+      print("Unable to load viewer")
 
     return answer
 

@@ -43,7 +43,10 @@ def run(file_name = None,
 
     # Decide where to write files
     if not output_file_path:
-      output_file_path = '/var/tmp'
+      import tempfile
+      dd = tempfile.TemporaryDirectory()
+      output_file_path = dd.name
+      # Note: will be deleted when execution ends
 
     if (not log_info.summary) or (not log_info.analysis):
       # need to get the info
@@ -105,7 +108,7 @@ def run(file_name = None,
         load_url(fn)
       except Exception as e:
         # phenix is not available or no viewer.  Just skip
-        print("Unable to load viewer...see text in the file: '%s'" %(fn))
+        print("Unable to load viewer")
 
     # Analyze the log summary in the context of the docs
     print("\nAnalyzing summary in context of documentation...")
@@ -135,8 +138,10 @@ def run(file_name = None,
         load_url(fn)
       except Exception as e:
         # phenix is not available or no viewer.  Just skip
-        print("Unable to load viewer...see text in the file: '%s'" %(fn))
-
+        print("Unable to load viewer")
+    # Make sure viewer has enough time to load
+    import time
+    time.sleep(0.5)
     return log_info
 
 # In run_analyze_log.py
