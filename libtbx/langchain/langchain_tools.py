@@ -323,7 +323,7 @@ def get_llm_and_embeddings(
     provider = provider.lower()
     if provider == "google":
         if llm_model_name is None:
-            llm_model_name = "gemini-1.5-pro-latest"
+            llm_model_name = "gemini-2.5-flash"
         if embedding_model_name is None:
             embedding_model_name = "models/embedding-001"
 
@@ -838,7 +838,7 @@ def get_chunk_size(provider: str = 'google'):
         chunk_overlap = 10000
         print("Using smaller chunk size for OpenAI.")
     elif provider == "google":
-        chunk_size = 750000  # Safe for Gemini 1.5 Pro's 1M limit
+        chunk_size = 750000  # Safe for Gemini 2.5 Flash 1M limit
         chunk_overlap = 50000
         print("Using larger chunk size for Google Gemini.")
     else:
