@@ -429,7 +429,8 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120,
             elif str(e).find("limit: 0") > -1:
                   error_message = ( "Google AI API key has a zero quota" )
 
-
+            elif str(e).find("request timed out") > -1:
+                  error_message = ( "Summarizing timed out" )
 
             else:
               error_message = f"An unexpected error occurred during summarization: {e}"
@@ -514,7 +515,7 @@ async def analyze_log_summary(log_info, llm, embeddings,
         error = error_message)
 
   except Exception as e:
-      error_message = "Reranking failed..."
+      error_message = "Reranking failed..."+str(e)
       print(error_message)
       return group_args(group_args_type = 'answer',
         analysis = None,

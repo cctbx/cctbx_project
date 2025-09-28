@@ -85,7 +85,7 @@ def run(file_name = None,
       print("Summarizing log file")
       result = asyncio.run(lct.get_log_info(log_as_text, llm, embeddings,
         timeout = timeout, provider = provider))
-      if result.error: # failed
+      if result.error or not result.summary: # failed
         print("Log file summary failed")
         log_info.error = result.error
         return log_info
