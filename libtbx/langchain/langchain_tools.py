@@ -79,7 +79,9 @@ def get_log_map_prompt() -> PromptTemplate:
        crystallography data (typically mtz files) or cryo-EM data (typically
        mrc or ccp4 files).
     5. **Note any warnings, errors, and advisories**
-    6.  **Be Concise:** Create a brief, bulleted list of these key facts. Do not add conversational text or explanations.
+    6. **Identify the program that was used, if it is clear. If it is not
+       clear, do not report anything.
+    7.  **Be Concise:** Create a brief, bulleted list of these key facts. Do not add conversational text or explanations.
 
     Log Chunk:
     "{text}"
@@ -100,9 +102,11 @@ def get_log_combine_prompt() -> PromptTemplate:
         "must contain all the information requested below.\n\n"
         "Summaries:\n{context}\n\n"
         "Final Report Requirements:\n"
-        "1. Table of input files and their contents. Specify whether the data are X-ray or cryo-EM.\n"
+        "1. Table of input files and their contents. Specify whether "
+         "the data are X-ray or cryo-EM.\n"
         "2. Table of specified input parameters.\n"
-        "3. The name of the Phenix program that was run.\n"
+        "3. The name of the Phenix program that was run (just the name"
+          "of the program, no description or explanation).\n"
         "4. Detailed description of each step carried out.\n"
         "5. Detailed table of all metrics obtained.\n"
         "6. Detailed table of all warnings, errors and advisories obtained.\n"
@@ -689,11 +693,17 @@ def create_log_analysis_chain(retriever, llm: ChatGoogleGenerativeAI, prompt: Pr
     )
     return analysis_rag_chain
 
-def get_processed_log_dict(log_text: str ) -> dict:
+def get_processed_log_dict(log_text: str,
+   summary_text_block_start = "**8",
+   program_text_block_start = "**3") -> dict:
   # Break up log_text into sections based on the text like:
   #  **8. Key Output Files and Evaluation:**
-  summary = find_text_block(log_text, "**8", end_text = "**")
-  phenix_program = find_text_block(log_text, "**3", end_text = "**")
+  summary = ""
+  phenix_program = find_text_block(
+    log_text, program_text_block_start, end_text = "**")
+  if not phenix_program:
+    phenix_program = find_text_block(
+      log_text, program_text_block_start.replace("*","#"), end_text = "##")
 
   dd = {'phenix_program':phenix_program,
         'summary':summary}
@@ -703,9 +713,9 @@ def find_text_block(log_text: str, target_text: str, end_text: str = "**"):
   text_lines = []
   started = False
   for line in log_text.splitlines():
-    if (not started) and line.strip().startswith(target_text):
+    if (not started) and line.strip().replace(" ","").startswith(target_text):
        started = True
-    elif (started) and line.strip().startswith(end_text):
+    elif (started) and line.strip().replace(" ","").startswith(end_text):
        break
     if started:
       text_lines.append(line)

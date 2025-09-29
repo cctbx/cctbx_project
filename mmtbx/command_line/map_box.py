@@ -916,8 +916,8 @@ def run(args,
   if (log is None): log = sys.stdout
 
 
+  print_default_message(log = log)
   if(len(args)  ==  0 and not pdb_hierarchy):
-    print_default_message(log = log)
     master_phil.show(prefix = "  ")
     return
 
