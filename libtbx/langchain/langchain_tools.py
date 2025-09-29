@@ -78,7 +78,8 @@ def get_log_map_prompt() -> PromptTemplate:
     4.  **Identify X-ray vs CryoEM data** Notice whether the data are X-ray
        crystallography data (typically mtz files) or cryo-EM data (typically
        mrc or ccp4 files).
-    5.  **Be Concise:** Create a brief, bulleted list of these key facts. Do not add conversational text or explanations.
+    5. **Note any warnings, errors, and advisories**
+    6.  **Be Concise:** Create a brief, bulleted list of these key facts. Do not add conversational text or explanations.
 
     Log Chunk:
     "{text}"
@@ -104,13 +105,14 @@ def get_log_combine_prompt() -> PromptTemplate:
         "3. The name of the Phenix program that was run.\n"
         "4. Detailed description of each step carried out.\n"
         "5. Detailed table of all metrics obtained.\n"
-        "6. Full reproduction of any summary table found at the end of the run."
+        "6. Detailed table of all warnings, errors and advisories obtained.\n"
+        "7. Full reproduction of any summary table found at the end of the run."
         " Do not include any information from files with the suffix of .dat\n"
-        "7. List of all output files and their contents. "
+        "8. List of all output files and their contents. "
          "Ignore files with the suffix of .dat.  Try to include files "
          "that contain the text `overall_best`, as these are usually "
          "the current best result files. \n"
-        "8. Identification and analysis of the key output files and their "
+        "9. Identification and analysis of the key output files and their "
          "evaluation metrics. Ignore files with the suffix of .dat"
     )
     return PromptTemplate(template=template, input_variables=["context"])
@@ -140,7 +142,8 @@ def get_log_analysis_prompt() -> PromptTemplate:
         "If no metrics are available, do not provide any. "
         "3. Evaluate whether the run described in the summary was useful. "
           "List reported metrics and expected values of these metrics and "
-          "consider the goals of the program.\n"
+          "consider the goals of the program. Note any warnings, errors,"
+          "or advisories obtained.\n"
         "4. Considering whether the data are from crystallography or"
         "cryo-EM and considering the normal sequence of Phenix tool use"
         "for that type of data, suggest "
