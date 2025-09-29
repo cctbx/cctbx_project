@@ -69,9 +69,12 @@ def get_log_map_prompt() -> PromptTemplate:
     **Instructions:**
     1.  **Identify Key Steps:** Look for lines that indicate the start or end of a major computational step (e.g., "Starting AlphaFold prediction", "Docking model", "Rebuilding model").
     2.  **Extract File Names:** List any input files that mentioned (`.pdb`, `.cif`, `.seq`, `.fasta`, `.mtz`, `.ccp4`). List any output files that are actually written out (ignore output files that are not written out). Ignore `.dat` files. Be sure to capture all output file names that contain the text `overall_best` as these are generally the current best result files.
-    3.  **Capture Metrics:** Record any specific numbers or metrics reported, especially map-model correlation coefficients (CC), resolution estimates, scores, LLG values, TFZ values, and R values. Try to find and report the final values,
-refined values if available. If there are multiple solutions, report final
-or refined values for each.
+    3.  **Capture Metrics:** Record any specific numbers or metrics reported,
+       especially map-model correlation coefficients (CC), resolution estimates,
+       scores, LLG values, TFZ values, and R values. Try to find and report
+       the final values, refined values if available. Notice whether there
+       was a single solution or multiple solutions.  If there are multiple
+       solutions, report final or refined values for each.
     4.  **Identify X-ray vs CryoEM data** Notice whether the data are X-ray
        crystallography data (typically mtz files) or cryo-EM data (typically
        mrc or ccp4 files).
