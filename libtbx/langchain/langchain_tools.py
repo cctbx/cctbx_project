@@ -442,7 +442,7 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120,
                   error_message = ( "Google AI API key has a zero quota" )
 
             elif str(e).find("request timed out") > -1:
-                  error_message = ( "Summarizing timed out" )
+                  error_message = ( "Summarizing timed out." )
 
             else:
               error_message = f"An unexpected error occurred during summarization: {e}"
