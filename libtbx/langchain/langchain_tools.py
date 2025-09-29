@@ -712,6 +712,8 @@ def get_processed_log_dict(log_text: str,
 def find_text_block(log_text: str, target_text: str, end_text: str = "**"):
   text_lines = []
   started = False
+  if log_text is None:
+    log_text = ""
   for line in log_text.splitlines():
     if (not started) and line.strip().replace(" ","").startswith(target_text):
        started = True
