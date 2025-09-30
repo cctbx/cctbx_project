@@ -118,6 +118,8 @@ def get_log_combine_prompt() -> PromptTemplate:
          "the current best result files. \n"
         "9. Identification and analysis of the key output files and their "
          "evaluation metrics. Ignore files with the suffix of .dat"
+        "\nDo not provide notes on content adherance."
+        "\nDo not suggest additional actions that you might take."
     )
     return PromptTemplate(template=template, input_variables=["context"])
 
@@ -356,7 +358,7 @@ def get_llm_and_embeddings(
     elif provider == "openai":
         if llm_model_name is None:
             # Use a powerful and cost-effective model like gpt-4o
-            llm_model_name = "gpt-4o-mini"  #"gpt-4o"
+            llm_model_name = "gpt-5-nano" # "gpt-5-mini" #"gpt-4o" #"gpt-4o-mini"  #"gpt-4o"
         if embedding_model_name is None:
             # Use OpenAI's latest embedding model
             embedding_model_name = "text-embedding-3-small"
