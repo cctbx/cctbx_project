@@ -335,7 +335,7 @@ def get_llm_and_embeddings(
     provider = provider.lower()
     if provider == "google":
         if llm_model_name is None:
-            llm_model_name = "gemini-2.5-flash"
+            llm_model_name = "gemini-2.5-flash-lite" #"gemini-2.0-flash" # gemini-2.0-flash-lite-001" #"gemini-2.5-flash"
         if embedding_model_name is None:
             embedding_model_name = "models/embedding-001"
 
@@ -356,7 +356,7 @@ def get_llm_and_embeddings(
     elif provider == "openai":
         if llm_model_name is None:
             # Use a powerful and cost-effective model like gpt-4o
-            llm_model_name = "gpt-4o"
+            llm_model_name = "gpt-4o-mini"  #"gpt-4o"
         if embedding_model_name is None:
             # Use OpenAI's latest embedding model
             embedding_model_name = "text-embedding-3-small"
