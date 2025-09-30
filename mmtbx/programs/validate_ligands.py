@@ -101,8 +101,8 @@ electron density values/CC.
     try:
       result = run_program(program_class=reduce2.Program,args=args,
        logger = null_out())
-      model_reduce2 = self.data_manager.get_model(model_fn_reduce2)
-      #model_reduce2 = result.model
+      #model_reduce2 = self.data_manager.get_model(model_fn_reduce2)
+      model_reduce2 = result.model
     except Exception as e:
       msg = traceback.format_exc()
       print('Reduce2 failed.\n' + msg, file=self.logger)
@@ -188,10 +188,16 @@ electron density values/CC.
       ro.extend(self.additional_ro)
       self.working_model.set_restraint_objects(ro)
     self.working_model.set_stop_for_unknowns(False)
+    pi = self.working_model.get_current_pdb_interpretation_params()
+    pi.pdb_interpretation.allow_polymer_cross_special_position = True
     try:
-      self.working_model.process(make_restraints=True)
+      self.working_model.process(
+        make_restraints=True,
+        pdb_interpretation_params = pi)
     except Exception as e:
+      print(e, file=self.logger)
       print('Could not process model to create restraints.')
+      return
 
     # get fmodel object
     if has_data:
