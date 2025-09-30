@@ -103,6 +103,7 @@ electron density values/CC.
        logger = null_out())
       #model_reduce2 = self.data_manager.get_model(model_fn_reduce2)
       model_reduce2 = result.model
+      model_reduce2.unset_riding_h_manager()
     except Exception as e:
       msg = traceback.format_exc()
       print('Reduce2 failed.\n' + msg, file=self.logger)

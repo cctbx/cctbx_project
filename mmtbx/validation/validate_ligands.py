@@ -93,7 +93,6 @@ class manager(list):
   def run(self):
     args = []
     for ligand_isel, sel_str in self.generate_ligand_iselections():
-      #if ligand_isel.size() < 4: continue
       args.append([ligand_isel, sel_str])
     results = self.parallel_populate(args)
     for r in results:
@@ -113,16 +112,17 @@ class manager(list):
     for model in ph.models():
       for chain in model.chains():
         for rg in chain.residue_groups():
-          for resname in rg.unique_resnames():
+          for conformer in rg.conformers():
+            residue = conformer.only_residue()
+            resname = residue.resname
             if (not get_class(name=resname) in exclude):
-              for conformer in rg.conformers():
-                iselection = conformer.atoms().extract_i_seq()
-                sel_str = 'chain %s and resseq %s and resname %s ' % (chain.id,
-                  rg.resseq_as_int(), resname)
-                if conformer.altloc:
-                  sel_str = sel_str + ' and altloc %s' % conformer.altloc
-                #print(sel_str)
-                yield iselection, sel_str
+              iselection = residue.atoms().extract_i_seq()
+              sel_str = 'chain %s and resseq %s and resname %s ' % (chain.id,
+                rg.resseq_as_int(), resname)
+              if conformer.altloc:
+                sel_str = sel_str + ' and altloc %s' % conformer.altloc
+              #print(sel_str)
+              yield iselection, sel_str
 
   # ----------------------------------------------------------------------------
 
@@ -659,29 +659,42 @@ class ligand_result(object):
 
     fofc_map_values = flex.double()
 
-   # get map coefficients
-    mc = map_tools.electron_density_map(fmodel = self.fmodel).map_coefficients(
-        map_type         = "mFo-DFc",
-        isotropize       = True,
-        fill_missing     = False)
-    # TODO d_min and cg should be accessible in class
-    d_min = self.fmodel.f_obs().d_min()
-    cg = self.fmodel.f_obs().crystal_gridding(
-      d_min             = d_min,
-      symmetry_flags    = maptbx.use_space_group_symmetry,
-      resolution_factor = 0.25)
-    # get map_data
-    map_fo = miller.fft_map(
-        crystal_gridding     = cg,
-        fourier_coefficients = mc)
-    map_fo.apply_sigma_scaling()
-    map_data_fofc = map_fo.real_map_unpadded()
+#   # get map coefficients
+#    mc = map_tools.electron_density_map(fmodel = self.fmodel).map_coefficients(
+#        map_type         = "mFo-DFc",
+#        isotropize       = True,
+#        fill_missing     = False)
+#    # TODO d_min and cg should be accessible in class
+#    d_min = self.fmodel.f_obs().d_min()
+#    cg = self.fmodel.f_obs().crystal_gridding(
+#      d_min             = d_min,
+#      symmetry_flags    = maptbx.use_space_group_symmetry,
+#      resolution_factor = 0.25)
+#    # get map_data
+#    map_fo = miller.fft_map(
+#        crystal_gridding     = cg,
+#        fourier_coefficients = mc)
+#    map_fo.apply_sigma_scaling()
+#    map_data_fofc = map_fo.real_map_unpadded()
+
+    # could make crystal gridding class attribute?
+    cs = self.fmodel.f_obs().crystal_symmetry()
+    crystal_gridding = maptbx.crystal_gridding(
+      unit_cell        = cs.unit_cell(),
+      space_group_info = cs.space_group_info(),
+      symmetry_flags   = maptbx.use_space_group_symmetry,
+      step             = 0.6)
+    # mFo-DFc map with ligand present
+    m_fofc = self.compute_maps(
+      fmodel           = self.fmodel,
+      crystal_gridding = crystal_gridding,
+      map_type         = "2mFo-DFc")
 
     # get fo-fc map values at atom centers: fo-fc
     unit_cell = self.model.crystal_symmetry().unit_cell()
     for site_cart, _a in zip(self._atoms_ligand_noH.extract_xyz(), self._atoms_ligand_noH):
       site_frac = unit_cell.fractionalize(site_cart)
-      map_val = map_data_fofc.eight_point_interpolation(site_frac)
+      map_val = m_fofc.eight_point_interpolation(site_frac)
       #print(_a.id_str(), map_val)
       fofc_map_values.append(map_val)
 
@@ -711,10 +724,15 @@ class ligand_result(object):
     #print(sel_within_str)
 
     sel_within = self.model.selection(sel_within_str)
-    #isel_ligand_within = sel_within.iselection()
-    isel_ligand_within = self.model.select(sel_within).iselection(self.sel_str)
-    #sel = flex.bool([True]*len(sel_within))
+    #print(sel_within.count(True))
     model_within = self.model.select(sel_within)
+    isel_ligand_within = model_within.iselection(self.sel_str)
+
+
+    ##isel_ligand_within = sel_within.iselection()
+    #isel_ligand_within = self.model.select(sel_within).iselection(self.sel_str)
+    ##sel = flex.bool([True]*len(sel_within))
+    #model_within = self.model.select(sel_within)
     # debug
     #_id_str = self.id_str.replace(" ", "_")
     #fn = "site_%s.pdb" % _id_str
