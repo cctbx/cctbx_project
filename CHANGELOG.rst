@@ -1,3 +1,10 @@
+2025.9
+======
+
+* Added tool for finding restraint files in installation
+  (mmtbx.where_is_that_cif_file)
+* Improvements to variable resolution map calculation
+
 2025.8
 ======
 
