@@ -138,19 +138,15 @@ def get_log_analysis_prompt() -> PromptTemplate:
         "context of a "
         "typical Phenix structure determination workflow as described in "
         "the documentation and papers, but do not describe this context. "
-        "The analysis should include the following:\n\n"
-        "1.For the run described in the log summary, list the inputs and "
-        "briefly describe what was done."
-        "Report whether the data are from crystallography (X-ray or neutron)"
-        " or from cryo-EM"
-        "2. List the key output files from this run, along with the values "
-        "of any available metrics describing their utilities. "
-        "If no metrics are available, do not provide any. "
-        "3. Evaluate whether the run described in the summary was useful. "
+        "The analysis should include the following for the run "
+        "described in the log summary:\n\n"
+
+        "1. Evaluate whether the run described in the summary was useful. "
           "List reported metrics and expected values of these metrics and "
           "consider the goals of the program. Note any warnings, errors,"
           "or advisories obtained.\n"
-        "4. Considering whether the data are from crystallography or"
+
+        "2. Considering whether the data are from crystallography or"
         "cryo-EM and considering the normal sequence of Phenix tool use"
         "for that type of data, suggest "
         "three concrete next steps in structure determination using Phenix "
@@ -165,6 +161,18 @@ def get_log_analysis_prompt() -> PromptTemplate:
         " and outputs and what they do. "
         "Do not suggest depositing the model. "
         "Do not suggest analyzing the biological relevance. "
+
+        "3.List the inputs and briefly describe what was done."
+        "Report whether the data are from crystallography (X-ray or neutron)"
+        " or from cryo-EM"
+
+        "4. List the key output files from this run, along with the values "
+        "of any available metrics describing their utilities. "
+        "If no metrics are available, do not provide any. "
+
+        "**Please note: no offers of help***  Do not offer to help the "
+        "user with additional analyses."
+
     )
     return PromptTemplate(template=template, input_variables=["context", "log_summary"])
 
