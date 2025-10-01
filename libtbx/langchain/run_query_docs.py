@@ -6,7 +6,7 @@ from __future__ import division
 from libtbx.langchain import langchain_tools as lct
 from libtbx.langchain.run_analyze_log import save_as_html
 
-import sys
+import sys, time
 import os
 
 def run(query_text = None, output_file_path = None, db_dir = None,
@@ -66,6 +66,7 @@ def run(query_text = None, output_file_path = None, db_dir = None,
     except Exception as e:
       # phenix is not available or no viewer.  Just skip
       print("Unable to load viewer")
+    time.sleep(1)
 
     return answer
 
