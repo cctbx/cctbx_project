@@ -145,7 +145,9 @@ def get_log_analysis_prompt() -> PromptTemplate:
           "Provide a short summary of the usefulness of the run."
           "Then List reported metrics and expected values of these metrics and "
           "consider the goals of the program. Note any warnings, errors,"
-          "or advisories obtained.\n"
+          "or advisories obtained. "
+          "If the results of the run indicate a low confidence solution,"
+          "multiple solutions, or no solution, clearly state this observation."
 
         "2. Considering whether the data are from crystallography or"
         "cryo-EM and considering the normal sequence of Phenix tool use"
@@ -175,7 +177,8 @@ def get_log_analysis_prompt() -> PromptTemplate:
         "If no metrics are available, do not provide any. "
 
         "**Please note: no offers of help***  Do not offer to help the "
-        "user with additional analyses."
+        "user with additional analyses and do not mention that you are"
+        "not to offer to help."
 
     )
     return PromptTemplate(template=template, input_variables=["context", "log_summary"])
