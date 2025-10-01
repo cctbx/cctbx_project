@@ -114,25 +114,28 @@ def run(file_name = None,
     # Analyze the log summary in the context of the docs
     print("\nAnalyzing summary in context of documentation...")
     if (db_dir and (not log_info.analysis)):
+      ok = False
       for i in range(max_analyze_log_tries):
         result = asyncio.run(
           lct.analyze_log_summary(log_info, llm, embeddings,
           db_dir = db_dir, timeout = timeout))
         if (not result.error) and (result.analysis): # passed
           log_info.analysis = result.analysis
-          return log_info
+          ok = True
         elif result.error and (not result.error.startswith("Reranking failed")):
           # give up right away
           log_info.error = result.error
           log_info.analysis = ""
           print("Unable to carry out analysis of log file")
           return log_info
-
-      # If we get here, we tried a few times and it did not work
-      log_info.error = result.error
-      log_info.analysis = ""
-      print("Unable to carry out analysis of log file")
-      return log_info
+        if ok:
+          break # done
+      if (not ok):
+        # If we get here, we tried a few times and it did not work
+        log_info.error = result.error
+        log_info.analysis = ""
+        print("Unable to carry out analysis of log file")
+        return log_info
 
     # Put it in an html window
     if display_results:

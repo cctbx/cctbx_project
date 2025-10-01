@@ -142,7 +142,8 @@ def get_log_analysis_prompt() -> PromptTemplate:
         "described in the log summary:\n\n"
 
         "1. Evaluate whether the run described in the summary was useful. "
-          "List reported metrics and expected values of these metrics and "
+          "Provide a short summary of the usefulness of the run."
+          "Then List reported metrics and expected values of these metrics and "
           "consider the goals of the program. Note any warnings, errors,"
           "or advisories obtained.\n"
 
