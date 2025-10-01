@@ -10,7 +10,7 @@ import sys, time
 import os
 
 def run(query_text = None, output_file_path = None, db_dir = None,
-     timeout= 60, provider = 'google'):
+     timeout= 60, provider = 'openai'):
     """
     Loads the reranking RAG and queries it with a user-provided question.
     """

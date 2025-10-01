@@ -16,7 +16,9 @@ def run(file_name = None,
       display_results: bool = True,
       text_to_append_to_summary: str = None,
       text_to_append_to_analysis: str = None,
-      provider: str = 'google',
+      summary_html_file_name = None,  # write to these files if supplied
+      analysis_html_file_name = None, # write to these files if supplied
+      provider: str = 'openai',
       max_analyze_log_tries = 3,
       ):
 
@@ -97,7 +99,9 @@ def run(file_name = None,
 
     # Put log summary in an html window
     if display_results:
-      fn = os.path.join(output_file_path,'log_summary.html')
+      fn = summary_html_file_name
+      if not fn:
+        fn = os.path.join(output_file_path,'log_summary.html')
       text = log_info.summary
       if text_to_append_to_summary:
          text += text_to_append_to_summary
@@ -142,7 +146,9 @@ def run(file_name = None,
       text = log_info.analysis
       if text_to_append_to_analysis:
          text += text_to_append_to_analysis
-      fn = os.path.join(output_file_path,'analysis.html')
+      fn = analysis_html_file_name
+      if not fn:
+        fn = os.path.join(output_file_path,'analysis.html')
       save_as_html(text, file_name = fn,
        title = 'Analysis of %s' %(file_name))
       print("Loading analysis at %s" %(fn))
