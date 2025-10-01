@@ -122,6 +122,7 @@ electron density values/CC.
                "modified_rna_dna", "ccp4_mon_lib_rna_dna", "common_water",
                 "common_element"]
     self.has_ligands = False
+    model = model.select(~model.selection('element X'))
     for chain in model.chains():
       for rg in chain.residue_groups():
         for ag in rg.atom_groups():

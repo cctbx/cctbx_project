@@ -1228,6 +1228,8 @@ NOTES:
     # Get our model.
     self.model = self.data_manager.get_model()
 
+    self.model = self.model.select(~self.model.selection('element X'))
+
     # Use model function to set crystal symmetry if necessary 2025-03-19 TT
     self.model.add_crystal_symmetry_if_necessary()
     if self.data_manager.has_restraints():
