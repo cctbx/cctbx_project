@@ -160,7 +160,7 @@ def run(file_name = None,
         print("Unable to load viewer")
     # Make sure viewer has enough time to load
     import time
-    time.sleep(2)
+    time.sleep(0.5)
     return log_info
 
 # In run_analyze_log.py
