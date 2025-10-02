@@ -23,25 +23,32 @@ from cctbx import adptbx
 from mmtbx_tls_ext import tlso, uaniso_from_tls_one_group
 
 # Reserved phil scope for MapModelManager
+map_phil_str = '''
+full_map = None
+  .type = path
+  .help = Input full map file
+  .short_caption = Map
+  .style = file_type:ccp4_map input_file
+half_map = None
+  .type = path
+  .multiple = True
+  .help = Input half map files
+  .short_caption = Half map
+  .style = file_type:ccp4_map input_file
+'''
+
+model_phil_str = '''
+model = None
+  .type = path
+  .help = Input model file
+  .style = file_type:pdb input_file
+  .short_caption = Model
+'''
+
 map_model_phil_str = '''
 map_model {
-  full_map = None
-    .type = path
-    .help = Input full map file
-    .short_caption = Map
-    .style = file_type:ccp4_map input_file
-
-  half_map = None
-    .type = path
-    .multiple = True
-    .help = Input half map files
-    .short_caption = Half map
-    .style = file_type:ccp4_map input_file
-  model = None
-    .type = path
-    .help = Input model file
-    .style = file_type:pdb input_file
-    .short_caption = Model
+  include scope iotbx.map_model_manager.map_phil_str
+  include scope iotbx.map_model_manager.model_phil_str
 }
 '''
 
