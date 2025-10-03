@@ -242,7 +242,6 @@ namespace smtbx { namespace ED {
 
     const BeamGroup<FloatType>& beam_group;
     int mat_type;
-    size_t beam_n;
     cmat_t A;
   };
 }} // end of smtbx::ED
