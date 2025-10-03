@@ -544,7 +544,7 @@ async def analyze_log_summary(log_info, llm, embeddings,
         error = error_message)
 
   except Exception as e:
-      error_message = "Reranking failed..."+str(e)
+      error_message = "Reranking failed - try again in a few seconds..."+str(e)
       print(error_message)
       return group_args(group_args_type = 'answer',
         analysis = None,
