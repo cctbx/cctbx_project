@@ -2149,7 +2149,7 @@ class structure(crystal.special_position_settings):
         uc.u_star_to_u_cif_linear_map()))
       u_star_to_u_iso_linear_form = matrix.row(
         uc.u_star_to_u_iso_linear_form())
-    fmt = "%.6f"
+    fmt = "%.6g"
 
     # _atom_site_* loop
     atom_site_loop = model.loop(header=(
@@ -2169,7 +2169,7 @@ class structure(crystal.special_position_settings):
           site = []
           for i in range(3):
             site.append(format_float_with_su(sc.site[i],
-              math.sqrt(covariance_diagonal[params.site+i])))
+              math.sqrt(covariance_diagonal[params.site+i]), min_format=fmt))
         #occupancy
         if sc.flags.grad_occupancy() and params.occupancy >= 0:
           occu = format_float_with_su(sc.occupancy,
@@ -2179,22 +2179,22 @@ class structure(crystal.special_position_settings):
           if sc.flags.grad_u_iso():
             u_iso_or_equiv = format_float_with_su(
               sc.u_iso, math.sqrt(covariance.variance_for_u_iso(
-                i_seq, covariance_matrix, param_map)))
+                i_seq, covariance_matrix, param_map)), min_format=fmt)
           else:
             cov = covariance.extract_covariance_matrix_for_u_aniso(
               i_seq, covariance_matrix, param_map).matrix_packed_u_as_symmetric()
             var = (u_star_to_u_iso_linear_form * matrix.sqr(cov)
                    ).dot(u_star_to_u_iso_linear_form)
             u_iso_or_equiv = format_float_with_su(
-              sc.u_iso_or_equiv(uc), math.sqrt(var))
+              sc.u_iso_or_equiv(uc), math.sqrt(var), min_format=fmt)
         if sc.flags.grad_fp() or sc.flags.grad_fdp():
           fp, fdp = sc.fp, sc.fdp
           if sc.flags.grad_fp():
             fp = format_float_with_su(sc.fp,
-                math.sqrt(covariance_diagonal[params.fp]))
+                math.sqrt(covariance_diagonal[params.fp]), min_format=fmt)
           if sc.flags.grad_fdp():
             fdp = format_float_with_su(sc.fdp,
-                math.sqrt(covariance_diagonal[params.fdp]))
+                math.sqrt(covariance_diagonal[params.fdp]), min_format=fmt)
           refined_disp.append((sc, fp, fdp))
 
       if site is None:
