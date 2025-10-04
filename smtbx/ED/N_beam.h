@@ -41,8 +41,8 @@ namespace smtbx { namespace ED
       FloatType max_d_start_sq = 1./scitbx::fn::pow2(params.getTopUpD());
       for (size_t i = 0; i < beam_groups.size(); i++) {
         BeamGroup<FloatType>& beam_group = beam_groups[i];
-        for (size_t hi = 0; hi < beam_group.strong_beams.size(); hi++) {
-          const miller::index<>& h = beam_group.indices[beam_group.strong_beams[hi]];
+        for (size_t bi = 0; bi < beam_group.beams.size(); bi++) {
+          const miller::index<>& h = beam_group.beams[bi].h;
           groups_indices.push_back(h);
           FloatType d_star_sq = unit_cell.d_star_sq(h);
           if (d_star_sq > max_d_start_sq) {
