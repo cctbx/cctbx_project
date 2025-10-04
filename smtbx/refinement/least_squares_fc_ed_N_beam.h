@@ -486,14 +486,12 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     
     void operator ()() {
       try {
-        af::shared<miller::index<> > indices =
-          af::select(beam_group.indices.const_ref(),
-            beam_group.strong_measured_beams.const_ref());
         FloatType Sg_span = f_calc_function->get_data().params.getIntProfileSpan_Sg();
         size_t pts_N = f_calc_function->get_data().params.getIntProfilePoints();
-        for (size_t i = 0; i < indices.size(); i++) {
-          FloatType width = f_calc_function->compute_width(indices[i], beam_group, Sg_span, pts_N);
-          cache.insert(std::make_pair(indices[i], width));
+        for (size_t bi = 0; bi < beam_group.beams.size(); bi++) {
+          FloatType width = f_calc_function->compute_width(
+            beam_group.beams[bi].h, beam_group, Sg_span, pts_N);
+          cache.insert(std::make_pair(beam_group.beams[bi].h, width));
         }
       }
       catch (smtbx::error const& e) {
@@ -606,11 +604,9 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     
     std::map<miller::index<>, const BeamGroup<FloatType>*> lookup;
     for (size_t i = 0; i < this->beam_groups.size(); i++) {
-      af::shared<miller::index<> > g_indices =
-        af::select(this->beam_groups[i].indices.const_ref(),
-          this->beam_groups[i].strong_measured_beams.const_ref());
-      for (size_t j = 0; j < g_indices.size(); j++) {
-        lookup.insert(std::make_pair(g_indices[j], &this->beam_groups[i]));
+      const BeamGroup<FloatType>& group = this->beam_groups[i];
+      for (size_t bi = 0; bi < group.beams.size(); bi++) {
+        lookup.insert(std::make_pair(group.beams[bi].h, &group));
       }
     }
     boost::thread_group pool;
@@ -652,10 +648,9 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     af::shared<FloatType> rv(indices.size());
     f_calc_function_ed_N_beam<FloatType> calc_func(*this);
     for (size_t i = 0, ii = 0; i < this->beam_groups.size(); i++) {
-      for (size_t j = 0; j < this->beam_groups[i].strong_measured_beams.size(); j++, ii++) {
-        calc_func.setup_compute(
-          this->beam_groups[i].indices[this->beam_groups[i].strong_measured_beams[j]],
-          &this->beam_groups[i]);
+      const BeamGroup<FloatType>& group = this->beam_groups[i];
+      for (size_t bi = 0; bi < group.beams.size(); bi++) {
+        calc_func.setup_compute(group.beams[bi].h, &group);
         rv[ii] = calc_func.compute_scale();
       }
     }
@@ -672,9 +667,8 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     size_t scales_off = Is.size() / 2;
     for (size_t i = 0, ii = 0; i < this->beam_groups.size(); i++) {
       const BeamGroup<FloatType>& group = this->beam_groups[i];
-      for (size_t hi = 0; hi < group.strong_measured_beams.size(); hi++, ii++) {
+      for (size_t bi = 0; bi < group.beams.size(); bi++, ii++) {
         //SMTBX_ASSERT(ii < Is.size());
-        size_t bi = group.strong_measured_beams[hi];
         FloatType Ic = Is[ii], Io = group.beams[bi].I;
         if (use_scales) {
           Ic *= Is[scales_off + ii];
@@ -700,16 +694,15 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       if (i == group_idx) {
         break;
       }
-      off += this->beam_groups[i].strong_measured_beams.size();
+      off += this->beam_groups[i].beams.size();
     }
     size_t sz = Is.size() / 2;
     const BeamGroup<FloatType>& group = this->beam_groups[group_idx];
     FloatType wR2_up = 0, wR2_dn = 0;
-    for (size_t i = 0; i < group.strong_measured_beams.size(); i++) {
-      size_t bi = group.strong_measured_beams[i];
-      FloatType Ic = Is[off+i], Io = group.beams[bi].I;
+    for (size_t bi = 0; bi < group.beams.size(); bi++) {
+      FloatType Ic = Is[off+bi], Io = group.beams[bi].I;
       FloatType w = ws.compute(Io, group.beams[bi].sig, Ic, OSF);
-      FloatType x = Ic * OSF * Is[sz + off + i] * group.scale;
+      FloatType x = Ic * OSF * Is[sz + off + bi] * group.scale;
       wR2_up += w * scitbx::fn::pow2(Io - x);
       wR2_dn += w * x * x;
     }
@@ -724,10 +717,9 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     af::shared<miller::index<> > idx_obs;
     for (size_t i = 0; i < this->beam_groups.size(); i++) {
       const BeamGroup<FloatType>& group = this->beam_groups[i];
-      af::shared<miller::index<> > g_indices =
-        af::select(group.indices.const_ref(),
-        group.strong_measured_beams.const_ref());
-      idx_obs.extend(g_indices.begin(), g_indices.end());
+      for (size_t bi = 0; bi < group.beams.size(); bi++) {
+        idx_obs.push_back(group.beams[bi].h);
+      }
     }
     af::shared<FloatType> Is = this->compute_dynI(idx_obs);
     size_t sz = idx_obs.size();
@@ -735,10 +727,9 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     scitbx::lstbx::normal_equations::linear_ls<FloatType> ls(this->beam_groups.size());
     for (size_t i = 0, ii=0; i < this->beam_groups.size(); i++) {
       const BeamGroup<FloatType>& group = this->beam_groups[i];
-      size_t beam_sz = group.strong_measured_beams.size();
-      for (size_t hi = 0; hi < beam_sz; hi++, ii++) {
+      size_t beam_sz = group.beams.size();
+      for (size_t bi = 0; bi < beam_sz; bi++, ii++) {
         const miller::index<>& h = idx_obs[ii];
-        size_t bi = group.strong_measured_beams[hi];
         FloatType da = group.geometry->get_diffraction_angle(h, this->K);
         FloatType Sg1 = std::abs(group.calc_Sg(h, this->K)),
           I = bare_OSF * Is[ii];
@@ -793,10 +784,9 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     af::shared<miller::index<> > idx_obs;
     for (size_t i = 0; i < this->beam_groups.size(); i++) {
       const BeamGroup<FloatType>& group = this->beam_groups[i];
-      af::shared<miller::index<> > g_indices =
-        af::select(group.indices.const_ref(),
-          group.strong_measured_beams.const_ref());
-      idx_obs.extend(g_indices.begin(), g_indices.end());
+      for (size_t bi = 0; bi < group.beams.size(); bi++) {
+        idx_obs.push_back(group.beams[bi].h);
+      }
     }
     af::shared<FloatType> Is = this->compute_dynI(idx_obs);
     size_t sz = idx_obs.size();
@@ -804,11 +794,10 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     af::shared<FloatType> rv(af::reserve(this->beam_groups.size()));
     for (size_t i = 0, ii = 0; i < this->beam_groups.size(); i++) {
       const BeamGroup<FloatType>& group = this->beam_groups[i];
-      size_t beam_sz = group.strong_measured_beams.size();
+      size_t beam_sz = group.beams.size();
       FloatType left = 0, right = 0;
-      for (size_t hi = 0; hi < beam_sz; hi++, ii++) {
+      for (size_t bi = 0; bi < beam_sz; bi++, ii++) {
         const miller::index<>& h = idx_obs[ii];
-        size_t bi = group.strong_measured_beams[hi];
         FloatType I = bare_OSF * Is[ii];
         FloatType w = ws(group.beams[bi].I, group.beams[bi].sig, Is[ii], bare_OSF);
         right += w * I * group.beams[bi].I;
