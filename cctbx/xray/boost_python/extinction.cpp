@@ -1,7 +1,7 @@
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
-
+#include <boost/python/register_ptr_to_python.hpp>
 #include <cctbx/xray/extinction.h>
 
 namespace cctbx { namespace xray { namespace boost_python {
@@ -23,7 +23,9 @@ namespace {
         .add_property("gradients", &wt::get_gradients)
         .def_readwrite("grad", &wt::grad)
         .add_property("n_param", &wt::n_param)
+        .def("fork", &wt::fork)
         ;
+      register_ptr_to_python<boost::shared_ptr<wt> >();
     }
   };
 
