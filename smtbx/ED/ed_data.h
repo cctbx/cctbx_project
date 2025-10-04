@@ -138,30 +138,26 @@ namespace smtbx { namespace ED
       FloatType MaxG
       ) const;
   
+    af::shared<miller::index<> > get_indices() const;
+
+    bool contains_index(const miller::index<>& h) const;
+
     bool is_excited_beam(const BeamInfo<FloatType>& beam,
       const cart_t& K,
       FloatType MaxSg,
       FloatType MaxG
     ) const;
 
-    void add_indices(const af::shared<miller::index<> >& indices);
-
     void add_beam(const miller::index<>& index,
       FloatType I, FloatType sig);
-    // resets indices to match the beams
+
     void set_beams(af::shared<BeamInfo<FloatType> > const& beams);
-    /* removes symmetry equivalents beams (and corresponding indices) and
-    return the number of removed elements
+    /* removes symmetry equivalents beams and return the number of removed
+    elements
     */
     size_t unify(sgtbx::space_group const& space_group,
       sgtbx::space_group const& uniq_sg, bool anomalous, bool exclude_sys_abs);
 
-    void analyse_strength(
-      af::shared<complex_t> const& Fcs_k,
-      cart_t const& K,
-      FloatType MaxSg,
-      FloatType MinP,
-      bool force_Sg);
     /* computes integration angles making sure that the diffraction angles are
     in the list. Using threshold to merge near-by points
     * */
@@ -200,26 +196,18 @@ namespace smtbx { namespace ED
 
     // experimental data
     af::shared<BeamInfo<FloatType> > beams;
-    // populated by analyse_strength
-    af::shared<cart_t> gs;
-    // all indices, first ones are strong_beams
-    af::shared<miller::index<> > indices;
-    af::shared<size_t> strong_beams, weak_beams,
-      strong_measured_beams, weak_measured_beams;
-    // 2 * Kl * Sg, populated by analyse_strength
-    af::shared<FloatType> excitation_errors;
   };
 
   template <typename FloatType>
   struct BeamInfo {
     BeamInfo() {}
 
-    BeamInfo(const miller::index<>& index,
+    BeamInfo(const miller::index<>& h,
       FloatType I, FloatType sig)
-      : index(index),
+      : h(h),
       I(I), sig(sig)
     {}
-    miller::index<> index;
+    miller::index<> h;
     FloatType I, sig, diffraction_angle;
   };
 
@@ -234,90 +222,20 @@ namespace smtbx { namespace ED
   bool BeamGroup<FloatType>::is_excited_beam(const BeamInfo<FloatType>& beam,
     const cart_t& K, FloatType MaxSg, FloatType MaxG) const
   {
-    return is_excited_index(beam.index, K, MaxSg, MaxG);
+    return is_excited_index(beam.h, K, MaxSg, MaxG);
   }
 
   template <typename FloatType>
   void BeamGroup<FloatType>::add_beam(
-    const miller::index<>& index,
+    const miller::index<>& h,
     FloatType I, FloatType sig)
   {
-    beams.push_back(BeamInfo<FloatType>(index, I, sig));
-    indices.push_back(index);
+    beams.push_back(BeamInfo<FloatType>(h, I, sig));
   }
 
   template <typename FloatType>
   void BeamGroup<FloatType>::set_beams(af::shared<BeamInfo<FloatType> > const& beams) {
     this->beams = beams.deep_copy();
-    indices.clear();
-    indices.reserve(beams.size());
-    for (size_t i = 0; i < beams.size(); i++) {
-      indices.push_back(beams[i].index);
-    }
-  }
-
-  template <typename FloatType>
-  void BeamGroup<FloatType>::add_indices(
-    const af::shared<miller::index<> >& indices)
-  {
-    this->indices.reserve(this->indices.size() + indices.size());
-    for (size_t i = 0; i < indices.size(); i++) {
-      this->indices.push_back(indices[i]);
-    }
-  }
-
-  // J.M. Zuo, A.L. Weickenmeier / Ultramicroscopy 57 (1995) 375-383
-  template <typename FloatType>
-  void BeamGroup<FloatType>::analyse_strength(
-    af::shared<complex_t> const& Ugs,
-    cart_t const& K,
-    FloatType MaxSg,
-    FloatType MinP,
-    bool force_Sg)
-  {
-    SMTBX_ASSERT(indices.size() == Ugs.size());
-    strong_beams.clear();
-    strong_measured_beams.clear();
-    weak_beams.clear();
-    weak_measured_beams.clear();
-    excitation_errors.resize(indices.size());
-    gs.resize(indices.size());
-
-    FloatType Kl_sq = K.length_sq(),
-      Kl = std::sqrt(Kl_sq);
-    for (size_t i = 0; i < indices.size(); i++) {
-      miller::index<> const& h = indices[i];
-      cart_t g = RMf * cart_t(h[0], h[1], h[2]);
-      gs[i] = g;
-      cart_t K_g = K + g;
-      FloatType s = Kl_sq - K_g.length_sq();
-      excitation_errors[i] = s;
-      if (s < 0) {
-        s = -s;
-      }
-      FloatType Sg = s / (2 * Kl);
-      if (!force_Sg) {
-        strong_beams.push_back(i);
-        if (i < beams.size() && Sg < MaxSg) {
-          strong_measured_beams.push_back(i);
-        }
-        continue;
-      }
-      if (Sg < MaxSg) {
-        strong_beams.push_back(i);
-        if (i < beams.size()) {
-          strong_measured_beams.push_back(i);
-        }
-        continue;
-      }
-      FloatType strength_p = std::abs(Ugs[i] / s);
-      if (strength_p > MinP) { // add for perturbation
-        weak_beams.push_back(i);
-        if (i < beams.size()) {
-          weak_measured_beams.push_back(i);
-        }
-      }
-    }
   }
 
   template <typename FloatType>
@@ -329,11 +247,10 @@ namespace smtbx { namespace ED
     lookup_t bm = lookup_t(uniq_sg, anomalous);
     size_t cnt = 0;
     for (size_t i = 0; i < beams.size(); i++) {
-      if ((exclude_sys_abs && space_group.is_sys_absent(beams[i].index)) ||
-        !bm.add_hkl(beams[i].index))
+      if ((exclude_sys_abs && space_group.is_sys_absent(beams[i].h)) ||
+        !bm.add_hkl(beams[i].h))
       {
         beams.erase(&beams[i]);
-        indices.erase(&indices[i]);
         cnt++;
         i--;
       }
@@ -440,8 +357,8 @@ namespace smtbx { namespace ED
     const cart_t& K, FloatType span_, FloatType step_, size_t N, bool use_Sg) const
   {
     af::shared<FloatType> angles, d_angles, res;
-    for (size_t i = 0; i < strong_measured_beams.size(); i++) {
-      const miller::index<>& h = indices[strong_measured_beams[i]];
+    for (size_t i = 0; i < beams.size(); i++) {
+      const miller::index<>& h = beams[i].h;
       FloatType da = this->get_diffraction_angle(h, K);
       d_angles.push_back(da);
       af::shared<FloatType> b_angles;
@@ -479,6 +396,25 @@ namespace smtbx { namespace ED
 
     std::sort(res.begin(), res.end());
     return res;
+  }
+
+  template <typename FloatType>
+  af::shared<miller::index<> > BeamGroup<FloatType>::get_indices() const {
+    af::shared<miller::index<> > rv(af::reserve(beams.size()));
+    for (size_t bi = 0; bi < beams.size(); bi++) {
+      rv.push_back(beams[bi].h);
+    }
+    return rv;
+  }
+
+  template <typename FloatType>
+  bool BeamGroup<FloatType>::contains_index(const miller::index<>& h) const {
+    for (size_t bi = 0; bi < beams.size(); bi++) {
+      if (beams[bi].h == h) {
+        return true;
+      }
+    }
+    return false;
   }
 
 
