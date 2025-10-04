@@ -2149,7 +2149,9 @@ class structure(crystal.special_position_settings):
         uc.u_star_to_u_cif_linear_map()))
       u_star_to_u_iso_linear_form = matrix.row(
         uc.u_star_to_u_iso_linear_form())
-    fmt = "%.6g"
+    def fmt_func(v):
+      if abs(v) < 1e-16:  return "0"
+      return "%.6g" %v
 
     # _atom_site_* loop
     atom_site_loop = model.loop(header=(
@@ -2169,7 +2171,7 @@ class structure(crystal.special_position_settings):
           site = []
           for i in range(3):
             site.append(format_float_with_su(sc.site[i],
-              math.sqrt(covariance_diagonal[params.site+i]), min_format=fmt))
+              math.sqrt(covariance_diagonal[params.site+i]), min_format_func=fmt_func))
         #occupancy
         if sc.flags.grad_occupancy() and params.occupancy >= 0:
           occu = format_float_with_su(sc.occupancy,
@@ -2179,30 +2181,30 @@ class structure(crystal.special_position_settings):
           if sc.flags.grad_u_iso():
             u_iso_or_equiv = format_float_with_su(
               sc.u_iso, math.sqrt(covariance.variance_for_u_iso(
-                i_seq, covariance_matrix, param_map)), min_format=fmt)
+                i_seq, covariance_matrix, param_map)), min_format_func=fmt_func)
           else:
             cov = covariance.extract_covariance_matrix_for_u_aniso(
               i_seq, covariance_matrix, param_map).matrix_packed_u_as_symmetric()
             var = (u_star_to_u_iso_linear_form * matrix.sqr(cov)
                    ).dot(u_star_to_u_iso_linear_form)
             u_iso_or_equiv = format_float_with_su(
-              sc.u_iso_or_equiv(uc), math.sqrt(var), min_format=fmt)
+              sc.u_iso_or_equiv(uc), math.sqrt(var), min_format_func=fmt_func)
         if sc.flags.grad_fp() or sc.flags.grad_fdp():
           fp, fdp = sc.fp, sc.fdp
           if sc.flags.grad_fp():
             fp = format_float_with_su(sc.fp,
-                math.sqrt(covariance_diagonal[params.fp]), min_format=fmt)
+                math.sqrt(covariance_diagonal[params.fp]), min_format_func=fmt_func)
           if sc.flags.grad_fdp():
             fdp = format_float_with_su(sc.fdp,
-                math.sqrt(covariance_diagonal[params.fdp]), min_format=fmt)
+                math.sqrt(covariance_diagonal[params.fdp]), min_format_func=fmt_func)
           refined_disp.append((sc, fp, fdp))
 
       if site is None:
-        site = [fmt % sc.site[i] for i in range(3)]
+        site = [fmt_func(sc.site[i]) for i in range(3)]
       if occu is None:
-        occu = fmt % sc.occupancy
+        occu = fmt_func(sc.occupancy)
       if u_iso_or_equiv is None:
-        u_iso_or_equiv = fmt % sc.u_iso_or_equiv(uc)
+        u_iso_or_equiv = fmt_func(sc.u_iso_or_equiv(uc))
 
       if sc.flags.use_u_aniso():
         adp_type = 'Uani'
@@ -2239,11 +2241,11 @@ class structure(crystal.special_position_settings):
                 row.append(
                   format_float_with_su(u_cif[i], math.sqrt(var[i])))
               else:
-                row.append(fmt%u_cif[i])
+                row.append(fmt_func(u_cif[i]))
           else:
-            row = [sc.label] + [fmt%u_cif[i] for i in range(6)]
+            row = [sc.label] + [fmt_func(u_cif[i]) for i in range(6)]
         else:
-          row = [sc.label] + [fmt%u_cif[i] for i in range(6)]
+          row = [sc.label] + [fmt_func(u_cif[i]) for i in range(6)]
         aniso_loop.add_row(row)
       cs_cif_block.add_loop(aniso_loop)
       if anharmonic_scatterers:

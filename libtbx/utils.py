@@ -1823,7 +1823,7 @@ class progress_bar(progress_displayed_as_fraction):
     self.i += 1
 
 def format_float_with_standard_uncertainty(value, standard_uncertainty,
-                                           minimum=1e-15, min_format=None):
+                                           minimum=1e-15, min_format_func=None):
   """
   Formats a float, including the uncertainty in its value.
 
@@ -1832,7 +1832,8 @@ def format_float_with_standard_uncertainty(value, standard_uncertainty,
   value : float
   standard_uncertainty : float
   minimum : float
-
+  min_format_func: a function to be called when su is <= of minimum, this is
+    to allow special handling of near-0 values etc
   Returns
   -------
   str
@@ -1845,7 +1846,7 @@ def format_float_with_standard_uncertainty(value, standard_uncertainty,
   '0.0050000(10)'
   """
   if standard_uncertainty <= minimum:
-    if min_format: return min_format % value
+    if min_format_func: return min_format_func(value)
     return str(value)
   precision = -int(round2(math.log10(standard_uncertainty)))
   if precision > -1:
