@@ -301,20 +301,12 @@ class map_mixins(object):
     return self._check_count(datatype, actual_n, expected_n, exact_count, raise_sorry)
 
 # -----------------------------------------------------------------------------
-# extra functions for models and real_maps
-class map_model_mixins(object):
+# extra functions for real maps
+class real_map_mixins(object):
   '''
-  Functions that are available when the DataManager supports both the
-  "model" and "real_map" data types.
+  Functions that are available when the DataManager supports the
+  "real_map" data type.
   '''
-  def remove_maps_and_models(self):
-    ''' Remove all existing maps and models so they are not used by default'''
-
-    for file_name in self.get_real_map_names():   # list of previously read maps
-      self.remove_real_map(file_name)   # forget previous reads
-    for file_name in self.get_model_names():
-      self.remove_model(file_name)   # forget previous reads
-
   def get_map_model_manager(
     self,
     model_file=None,
@@ -481,3 +473,18 @@ class map_model_mixins(object):
       self.remove_model(model_file)
 
     return mmm
+
+# -----------------------------------------------------------------------------
+# extra functions for models and real_maps
+class map_model_mixins(object):
+  '''
+  Functions that are available when the DataManager supports both the
+  "model" and "real_map" data types.
+  '''
+  def remove_maps_and_models(self):
+    ''' Remove all existing maps and models so they are not used by default'''
+
+    for file_name in self.get_real_map_names():   # list of previously read maps
+      self.remove_real_map(file_name)   # forget previous reads
+    for file_name in self.get_model_names():
+      self.remove_model(file_name)   # forget previous reads

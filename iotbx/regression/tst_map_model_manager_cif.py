@@ -235,7 +235,7 @@ def test_01():
   dm = DataManager(['model'])
   assert not hasattr(dm, 'get_map_model_manager')
   dm = DataManager(['real_map'])
-  assert not hasattr(dm, 'get_map_model_manager')
+  assert hasattr(dm, 'get_map_model_manager')
   dm = DataManager(['sequence'])
   assert not hasattr(dm, 'get_map_model_manager')
   dm = DataManager(['model', 'real_map'])

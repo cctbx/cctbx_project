@@ -7,6 +7,7 @@ import libtbx.load_env
 import libtbx.phil
 
 from cctbx import crystal
+from libtbx import group_args
 from libtbx.program_template import ProgramTemplate
 from libtbx.utils import Sorry
 from iotbx.data_manager import DataManager
@@ -775,6 +776,39 @@ def test_map_mixins():
   os.remove(map_coefficients_file)
 
 # -----------------------------------------------------------------------------
+def test_real_map_mixins():
+  dm = DataManager(['real_map'])
+  assert hasattr(dm, 'get_map_model_manager')
+
+  dm = DataManager(['map_coefficients'])
+  assert not hasattr(dm, 'get_map_model_manager')
+
+  dm = DataManager()
+  assert hasattr(dm, 'get_map_model_manager')
+
+  real_map_file = libtbx.env.under_dist('iotbx', 'regression/data/non_zero_origin_map.ccp4')
+  dm.process_real_map_file(real_map_file)
+
+  test_phil_str = '''
+include scope iotbx.map_model_manager.map_model_phil_str
+'''
+  test_program = group_args()
+  test_program.params = iotbx.phil.parse(test_phil_str, process_includes=True).fetch().extract()
+
+  dm._program = test_program
+
+  # without model
+  mmm = dm.get_map_model_manager(from_phil=True)
+  assert mmm is not None
+
+  # with model
+  model_file = libtbx.env.under_dist('iotbx', 'regression/data/non_zero_origin_model.pdb')
+  dm.process_model_file(model_file)
+
+  mmm = dm.get_map_model_manager(from_phil=True)
+  assert mmm is not None
+
+# -----------------------------------------------------------------------------
 def test_default_filenames():
   datatypes = ['model', 'ncs_spec', 'phil', 'real_map', 'restraint', 'sequence']
   extensions = ['cif', 'ncs_spec', 'eff', 'ccp4', 'cif', 'seq']
@@ -1118,6 +1152,7 @@ if __name__ == '__main__':
   test_miller_array_datatype()
   test_real_map_datatype()
   test_map_mixins()
+  test_real_map_mixins()
   test_default_filenames()
   test_model_skip_ss_annotations()
   test_fmodel_params()
