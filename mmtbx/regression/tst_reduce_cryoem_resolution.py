@@ -1,16 +1,16 @@
 from __future__ import print_function
 from __future__ import division
 import os
-import sys
+# import sys
 import math
 from iotbx.data_manager import DataManager
 from iotbx.map_model_manager import map_model_manager
 from iotbx.cli_parser import run_program
-from cctbx import miller
+# from cctbx import miller
 from mmtbx.programs import reduce_cryoem_resolution
 from scitbx.array_family import flex
 from libtbx.utils import null_out
-from libtbx import group_args
+# from libtbx import group_args
 from libtbx.utils import format_cpu_times
 from libtbx.test_utils import approx_equal
 import numpy as np
