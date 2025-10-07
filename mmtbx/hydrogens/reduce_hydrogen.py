@@ -403,6 +403,8 @@ class place_hydrogens():
           pass
         for ag in rgs.atom_groups():
           #if ag.resname == 'AYA': return
+          # SAC in 5xdq, 5zcp. Never needs propeller.
+          if ag.resname == 'SAC': return
           if (get_class(name=ag.resname) in
               ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
             if ag.get_atom('H'):
