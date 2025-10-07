@@ -45,8 +45,8 @@ def exercise(half_maps=True):
       'regression')
   file_name=os.path.join(iotbx_regression,'data', 'big_cube_model.pdb')
 
-  d_min = 2.5
-  target_d_min = 3.5
+  d_min = 3.
+  target_d_min = 4.
   dm = DataManager()
   start_model = dm.get_model(file_name)
 
@@ -78,6 +78,8 @@ def exercise(half_maps=True):
   mask_fraction = masked_mmm.mask_info().mean # Use to correct noise for full box
   filenames = []
   if half_maps:
+    if debug:
+      print("\n\nTesting with half maps\n")
     mc1 = start_map_coeffs.deep_copy()
     mc2 = start_map_coeffs.deep_copy()
     target_params = fsc_params_from_d_min(d_min)
@@ -115,7 +117,6 @@ def exercise(half_maps=True):
     d_min_results = d_min_from_fsc_analytical(wmc1, wmc2, guess_d_min=d_min)
     d_min_from_fsc = d_min_results.d_min
     if debug:
-      print("\n\nRegression tests:\n")
       print("Requested and actual d_min_from fsc for simulated half-maps: ",
             d_min, d_min_from_fsc)
     else:
@@ -142,7 +143,7 @@ def exercise(half_maps=True):
     os.remove(map_fn2)
   else:
     if debug:
-      print("No half maps")
+      print("\n\nTesting with only full map\n")
     map_fn = "tmp_map.map"
     mmm.map_manager().write_map(map_fn)
     args_rcr = [
