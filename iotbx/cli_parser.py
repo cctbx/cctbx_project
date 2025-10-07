@@ -8,7 +8,7 @@ PHIL scope and citations for a program.
 '''
 from __future__ import absolute_import, division, print_function
 
-import argparse, getpass, logging, os, sys, time
+import argparse, getpass, logging, os, sys, textwrap, time
 
 from six.moves import cStringIO as StringIO
 
@@ -149,7 +149,7 @@ class CCTBXParser(ParserBase):
 
     # print header
     border = '-' * self.text_width
-    description = border + program_class.description + border
+    description = border + textwrap.dedent(program_class.description) + border
     epilog = border + program_class.epilog
     super(CCTBXParser, self).__init__(
       prog=self.prog, description=description, epilog=epilog,
