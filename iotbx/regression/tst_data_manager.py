@@ -777,13 +777,10 @@ def test_map_mixins():
 
 # -----------------------------------------------------------------------------
 def test_real_map_mixins():
-  dm = DataManager(['real_map'])
-  assert hasattr(dm, 'get_map_model_manager')
-
   dm = DataManager(['map_coefficients'])
   assert not hasattr(dm, 'get_map_model_manager')
 
-  dm = DataManager()
+  dm = DataManager(['real_map'])
   assert hasattr(dm, 'get_map_model_manager')
 
   real_map_file = libtbx.env.under_dist('iotbx', 'regression/data/non_zero_origin_map.ccp4')
@@ -802,6 +799,12 @@ include scope iotbx.map_model_manager.map_model_phil_str
   assert mmm is not None
 
   # with model
+  dm = DataManager()
+  assert hasattr(dm, 'get_map_model_manager')
+  dm._program = test_program
+
+  dm.process_real_map_file(real_map_file)
+
   model_file = libtbx.env.under_dist('iotbx', 'regression/data/non_zero_origin_model.pdb')
   dm.process_model_file(model_file)
 

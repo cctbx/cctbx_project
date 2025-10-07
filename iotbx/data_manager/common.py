@@ -344,6 +344,11 @@ class real_map_mixins(object):
       map_model_manager object
     '''
 
+    # unset guess_files if only real_map is supported
+    # model functions will not exist in the DataManager
+    if not self.supports('model'):
+      guess_files = False
+
     # get filenames from PHIL
     map_model = None
     if map_files and (not isinstance(map_files,list)):
