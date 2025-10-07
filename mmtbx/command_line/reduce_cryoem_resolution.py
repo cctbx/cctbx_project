@@ -3,7 +3,7 @@
 from __future__ import absolute_import, division, print_function
 
 from iotbx.cli_parser import run_program
-from mmtbxx.programs import reduce_cryoem_resolution
+from mmtbx.programs import reduce_cryoem_resolution
 
 if __name__ == '__main__':
   run_program(program_class=reduce_cryoem_resolution.Program)
