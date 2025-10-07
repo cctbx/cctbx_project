@@ -344,11 +344,6 @@ class real_map_mixins(object):
       map_model_manager object
     '''
 
-    # unset guess_files if only real_map is supported
-    # model functions will not exist in the DataManager
-    if not self.supports('model'):
-      guess_files = False
-
     # get filenames from PHIL
     map_model = None
     if map_files and (not isinstance(map_files,list)):
@@ -394,13 +389,13 @@ class real_map_mixins(object):
     # If we didn't get anything, try looking directly at the
     #  available maps and models. If there are 1, 2 or 3 maps and 1 model,
     #  take them
-    if guess_files and (not model_file) and self.get_model_names() and \
-         len(self.get_model_names()) == 1:
-      model_file = self.get_default_model_name()
-      if map_model:
-        map_model.model = model_file
-    if guess_files and (not map_files) and self.get_real_map_names():
-      if len(self.get_real_map_names()) == 1:
+    if guess_files and self.supports('model'):
+      if (not model_file) and self.get_model_names() and len(self.get_model_names()) == 1:
+        model_file = self.get_default_model_name()
+        if map_model:
+          map_model.model = model_file
+    if guess_files and self.supports('real_map'):
+      if (not map_files) and self.get_real_map_names() and len(self.get_real_map_names()) == 1:
         map_files = [self.get_default_real_map_name()]
 
       elif len(self.get_real_map_names()) in [2,3]:
