@@ -141,7 +141,7 @@ class Program(ProgramTemplate):
 
     # Required attributes for Program class
     master_phil_str = master_phil_str
-    datatypes = ['real_map', 'model', 'phil']
+    datatypes = ['real_map', 'phil']
 
     def validate(self):
         """
