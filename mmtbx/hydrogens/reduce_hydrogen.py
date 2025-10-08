@@ -108,6 +108,17 @@ def get_h_restraints(resname, strict=True):
       period='1'))
   return comp_comp_id
 
+def bonds_in_restraints(atom):
+  from mmtbx.chemical_components import get_cif_dictionary
+  cc_cif = get_cif_dictionary(atom.parent().resname)
+  rc=[]
+  for b in cc_cif.get('_chem_comp_bond',[]):
+    if b.atom_id_1.strip()==atom.name.strip():
+      rc.append(b.atom_id_2)
+    if b.atom_id_2.strip()==atom.name.strip():
+      rc.append(b.atom_id_1)
+  return rc
+
 # ==============================================================================
 
 def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True, raise_sorry=True):
@@ -404,7 +415,13 @@ class place_hydrogens():
         for ag in rgs.atom_groups():
           #if ag.resname == 'AYA': return
           # SAC in 5xdq, 5zcp. Never needs propeller.
-          if ag.resname == 'SAC': return
+          # if ag.resname == 'SAC': return
+          for ag in rgs.atom_groups():
+            n=ag.get_atom('N') # assumes atom name "N"
+            if n: break
+          if not n: continue
+          bonds=bonds_in_restraints(n)
+          if len(bonds)==3: continue
           if (get_class(name=ag.resname) in
               ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
             if ag.get_atom('H'):
