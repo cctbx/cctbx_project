@@ -213,7 +213,7 @@ def save_as_html(markdown_string: str,
     """
 
     if file_name:
-      with open(file_name, "w") as f:
+      with open(file_name, "w", encoding='utf-8') as f:
         f.write(html_with_style)
       print(f"\nSaved formatted output to: {file_name}")
 
