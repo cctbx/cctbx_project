@@ -415,13 +415,13 @@ class place_hydrogens():
         for ag in rgs.atom_groups():
           #if ag.resname == 'AYA': return
           # SAC in 5xdq, 5zcp. Never needs propeller.
-          # if ag.resname == 'SAC': return
-          for ag in rgs.atom_groups():
-            n=ag.get_atom('N') # assumes atom name "N"
-            if n: break
-          if not n: continue
-          bonds=bonds_in_restraints(n)
-          if len(bonds)==3: continue
+          if ag.resname == 'SAC': return
+          #for ag in rgs.atom_groups():
+          #  n=ag.get_atom('N') # assumes atom name "N"
+          #  if n: break
+          #if not n: continue
+          #bonds=bonds_in_restraints(n)
+          #if len(bonds)==3: continue
           if (get_class(name=ag.resname) in
               ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
             if ag.get_atom('H'):
