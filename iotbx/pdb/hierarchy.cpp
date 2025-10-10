@@ -172,7 +172,7 @@ namespace {
 #ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
     siguij(other.siguij),
 #endif
-    fp(other.fp), fdp(other.fdp),
+    fp(other.fp), fdp(other.fdp), resolution(other.resolution),
     i_seq(other.i_seq), tmp(0), have_sentinel(false),
     hetero(other.hetero), serial(other.serial), name(other.name),
     segid(other.segid), element(other.element), charge(other.charge)
@@ -191,7 +191,7 @@ namespace {
 #else
       sym_mat3(-1,-1,-1,-1,-1,-1),
 #endif
-      data->fp, data->fdp,
+      data->fp, data->fdp, data->resolution,
       data->hetero, data->serial.elems, data->name.elems,
       data->segid.elems, data->element.elems, data->charge.elems);
   }
