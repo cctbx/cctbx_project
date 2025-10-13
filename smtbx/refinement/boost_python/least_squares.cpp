@@ -89,11 +89,15 @@ namespace smtbx { namespace refinement { namespace least_squares {
         scitbx::matrix::rank_n_update>
         NormalEquations_BLAS3;
       def_init_<ObjectType, NormalEquations_BLAS2, mainstream_shelx_weighting>(klass);
+      def_init_<ObjectType, NormalEquations_BLAS2, new_shelx_weighting       >(klass);
       def_init_<ObjectType, NormalEquations_BLAS2, unit_weighting            >(klass);
       def_init_<ObjectType, NormalEquations_BLAS2, sigma_weighting           >(klass);
+      def_init_<ObjectType, NormalEquations_BLAS2, stl_weighting             >(klass);
       def_init_<ObjectType, NormalEquations_BLAS3, mainstream_shelx_weighting>(klass);
+      def_init_<ObjectType, NormalEquations_BLAS3, new_shelx_weighting       >(klass);
       def_init_<ObjectType, NormalEquations_BLAS3, unit_weighting            >(klass);
       def_init_<ObjectType, NormalEquations_BLAS3, sigma_weighting           >(klass);
+      def_init_<ObjectType, NormalEquations_BLAS3, stl_weighting             >(klass);
     }
 
     struct normal_equation_building {
