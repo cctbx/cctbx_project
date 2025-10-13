@@ -19,10 +19,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
                                       af::const_ref<double> const &fo_sq,
                                       af::const_ref<double> const &sigmas,
                                       af::const_ref<double> const &fc_sq,
-                                      double scale_factor)
+                                      double scale_factor,
+                                      af::const_ref<double> const &stl = 1.0)
     {
       return least_squares::weights(
-        weighting_scheme, fo_sq, sigmas, fc_sq, scale_factor);
+        weighting_scheme, fo_sq, sigmas, fc_sq, scale_factor, stl);
     }
 
     weighting_scheme_class(char const *name)
@@ -30,9 +31,13 @@ namespace smtbx { namespace refinement { namespace least_squares {
     {
       using namespace boost::python;
       this->def("__call__", &wt::operator(),
-          (arg("fo_sq"), arg("sigma"), arg("fc_sq"), arg("scale_factor")));
+          (arg("fo_sq"), arg("sigma"), arg("fc_sq"), arg("scale_factor"), 
+           arg("stl")));
       this->def("compute", &wt::compute,
-        (arg("fo_sq"), arg("sigma"), arg("fc_sq"), arg("scale_factor")));
+          (arg("fo_sq"), arg("sigma"), arg("fc_sq"), arg("scale_factor"), 
+           arg("stl")));
+      this->def("__call__", weights,
+          (arg("fo_sq"), arg("sigmas"), arg("fc_sq"), arg("scale_factor"), arg("stl")));
       this->def("__call__", weights,
           (arg("fo_sq"), arg("sigmas"), arg("fc_sq"), arg("scale_factor")));
     }
@@ -61,6 +66,31 @@ namespace smtbx { namespace refinement { namespace least_squares {
     }
   };
 
+  struct new_shelx_weighting_wrapper
+  {
+    static void wrap() {
+      using namespace boost::python;
+      typedef weighting_scheme_class<new_shelx_weighting> wt;
+      wt("new_shelx_weighting")
+        .def(init<optional<double, double> >((arg("a"), arg("b"))))
+        .def_readwrite("a", &wt::wt::a)
+        .def_readwrite("b", &wt::wt::b)
+        ;
+    }
+  };
+
+  struct stl_weighting_wrapper
+  {
+    static void wrap() {
+      using namespace boost::python;
+      typedef weighting_scheme_class<stl_weighting> wt;
+      wt("stl_weighting")
+        .def(init<optional<double> >((arg("a"))))
+        .def_readwrite("a", &wt::wt::a)
+        ;
+    }
+  };
+
   struct unit_weighting_wrapper
   {
     static void wrap() {
@@ -84,8 +114,10 @@ namespace smtbx { namespace refinement { namespace least_squares {
   void wrap_weighting_schemes() {
     iweighting_scheme_wrapper::wrap();
     mainstream_shelx_weighting_wrapper::wrap();
+    new_shelx_weighting_wrapper::wrap();
     unit_weighting_wrapper::wrap();
     sigma_weighting_wrapper::wrap();
+    stl_weighting_wrapper::wrap();
   }
 
 

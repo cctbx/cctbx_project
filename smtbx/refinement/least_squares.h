@@ -468,6 +468,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
                 f_calc_function.compute(h, boost::none, fraction, compute_grad);
               }
               f_calc[i_h] = f_calc_function.get_f_calc();
+              const FloatType stl = std::sqrt(f_calc_function.get_d_star_sq()*0.25);
               if (compute_grad) {
                 if (f_calc_function.raw_gradients()) {
                   gradients =
@@ -491,7 +492,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
               observables[i_h] = observable;
 
               FloatType weight = weighting_scheme(reflections.fo_sq(i_h),
-                reflections.sig(i_h), observable, scale_factor);
+                reflections.sig(i_h), observable, scale_factor, stl);
               weights[i_h] = weight;
               if (objective_only) {
                 normal_equations.add_residual(observable,

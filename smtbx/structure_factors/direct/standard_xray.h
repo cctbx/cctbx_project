@@ -1017,6 +1017,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
       bool own_scatterer_contribution;
     public:
       complex_type f_calc;
+      FloatType d_star_sq;
       af::ref_owning_shared<complex_type> grad_f_calc;
     public:
       /** @brief The evaluation or linearisation of \f$F_c\f$
@@ -1094,7 +1095,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
                    boost::optional<complex_type> const &f_mask=boost::none,
                    bool compute_grad=true)
       {
-        float_type d_star_sq = unit_cell.d_star_sq(h);
+        d_star_sq = unit_cell.d_star_sq(h);
         Heir &heir = static_cast<Heir &>(*this);
 
         typedef one_scatterer_one_h::in_generic_space_group<
@@ -1241,7 +1242,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
         boost::optional<complex_type> const& f_mask = boost::none,
         bool compute_grad = true)
       {
-        float_type d_star_sq = parent_t::unit_cell.d_star_sq(h);
+        d_star_sq = parent_t::unit_cell.d_star_sq(h);
         Heir& heir = static_cast<Heir&>(*this);
 
         typedef typename one_scatterer_one_h::in_generic_space_group<

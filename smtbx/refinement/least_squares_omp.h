@@ -141,6 +141,7 @@ struct accumulate_reflection_chunk_omp {
               error_string = e.what();
               continue;
             }
+            const FloatType stl = std::sqrt(f_calc_threads[thread]->get_d_star_sq()*0.25);
             f_calc[refl_i] = f_calc_threads[thread]->get_f_calc();
             //skip hoarding memory if Gradients are not needed.
             if (compute_grad) {
@@ -167,7 +168,7 @@ struct accumulate_reflection_chunk_omp {
             observables[refl_i] = observable;
 
             FloatType weight = weighting_scheme(reflections.fo_sq(refl_i),
-              reflections.sig(refl_i), observable, scale_factor);
+              reflections.sig(refl_i), observable, scale_factor, stl);
             weights[refl_i] = weight;
             if (!objective_only) {
               if (fc_crs[thread]->grad) {

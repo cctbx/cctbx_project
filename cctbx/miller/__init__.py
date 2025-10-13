@@ -693,6 +693,10 @@ class set(crystal.symmetry):
   def sin_theta_over_lambda_sq(self):
     return array(
       self, self.unit_cell().stol_sq(self.indices()))
+    
+  def sin_theta_over_lambda(self):
+    return array(
+      self, self.unit_cell().stol(self.indices()))
 
   def two_theta(self, wavelength, deg=False):
     """
