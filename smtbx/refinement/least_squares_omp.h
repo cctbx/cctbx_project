@@ -3,8 +3,7 @@ The following struct is optimized for cache efficient parallel
 calculations using OpenMP making sure there is no strides
 in adressing memory by scheduling with chunksize 1
 */
-template<class NormalEquations,
-  template<typename> class WeightingScheme>
+template<class NormalEquations>
 struct accumulate_reflection_chunk_omp {
   typedef f_calc_function_base<FloatType>
     f_calc_function_base_t;
@@ -15,7 +14,7 @@ struct accumulate_reflection_chunk_omp {
   cctbx::xray::observations<FloatType> const& reflections;
   MaskData<FloatType> const& f_mask_data;
   twinning_processor<FloatType> const& twp;
-  WeightingScheme<FloatType> const& weighting_scheme;
+  IWeightingScheme<FloatType> const& weighting_scheme;
   boost::optional<FloatType> scale_factor;
   boost::shared_ptr<f_calc_function_base_t> f_calc_function_ptr;
   f_calc_function_base_t& f_calc_function;
@@ -36,7 +35,7 @@ struct accumulate_reflection_chunk_omp {
     cctbx::xray::observations<FloatType> const& reflections,
     MaskData<FloatType> const& f_mask_data,
     twinning_processor<FloatType> const& twp,
-    WeightingScheme<FloatType> const& weighting_scheme,
+    IWeightingScheme<FloatType> const& weighting_scheme,
     boost::optional<FloatType> scale_factor,
     boost::shared_ptr<f_calc_function_base_t> f_calc_function_ptr,
     scitbx::sparse::matrix<FloatType> const&
@@ -141,7 +140,6 @@ struct accumulate_reflection_chunk_omp {
               error_string = e.what();
               continue;
             }
-            const FloatType stl = std::sqrt(f_calc_threads[thread]->get_d_star_sq()*0.25);
             f_calc[refl_i] = f_calc_threads[thread]->get_f_calc();
             //skip hoarding memory if Gradients are not needed.
             if (compute_grad) {
@@ -168,7 +166,7 @@ struct accumulate_reflection_chunk_omp {
             observables[refl_i] = observable;
 
             FloatType weight = weighting_scheme(reflections.fo_sq(refl_i),
-              reflections.sig(refl_i), observable, scale_factor, stl);
+              reflections.sig(refl_i), observable, h, scale_factor);
             weights[refl_i] = weight;
             if (!objective_only) {
               if (fc_crs[thread]->grad) {

@@ -24,20 +24,18 @@ namespace smtbx { namespace refinement { namespace least_squares {
   template <typename FloatType>
   struct wrapper {
 
-    template <class ObjectType,
-      class NormalEquations,
-      template<typename> class WeightingSchemeType>
+    template <class ObjectType, class NormalEquations>
     static void def_init_(class_<ObjectType, bases<builder_base<FloatType> > >& klass) {
       using namespace boost::python;
       typedef void (ObjectType::* build_t)(NormalEquations&,
-        WeightingSchemeType<FloatType> const&);
+        IWeightingScheme<FloatType> const&);
 
       klass.def(
         init<
         NormalEquations&, // normal_equations
         cctbx::xray::observations<FloatType> const&, // reflections
         MaskData<FloatType> const&, // f_mask_data
-        WeightingSchemeType<FloatType> const&, // weighting_scheme
+        IWeightingScheme<FloatType> const&, // weighting_scheme
         boost::optional<FloatType>, // scale_factor
         f_calc_function_base<FloatType> &, // f_calc_function
         scitbx::sparse::matrix<FloatType> const&,
@@ -88,16 +86,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
         FloatType,
         scitbx::matrix::rank_n_update>
         NormalEquations_BLAS3;
-      def_init_<ObjectType, NormalEquations_BLAS2, mainstream_shelx_weighting>(klass);
-      def_init_<ObjectType, NormalEquations_BLAS2, new_shelx_weighting       >(klass);
-      def_init_<ObjectType, NormalEquations_BLAS2, unit_weighting            >(klass);
-      def_init_<ObjectType, NormalEquations_BLAS2, sigma_weighting           >(klass);
-      def_init_<ObjectType, NormalEquations_BLAS2, stl_weighting             >(klass);
-      def_init_<ObjectType, NormalEquations_BLAS3, mainstream_shelx_weighting>(klass);
-      def_init_<ObjectType, NormalEquations_BLAS3, new_shelx_weighting       >(klass);
-      def_init_<ObjectType, NormalEquations_BLAS3, unit_weighting            >(klass);
-      def_init_<ObjectType, NormalEquations_BLAS3, sigma_weighting           >(klass);
-      def_init_<ObjectType, NormalEquations_BLAS3, stl_weighting             >(klass);
+      def_init_<ObjectType, NormalEquations_BLAS2>(klass);
+      def_init_<ObjectType, NormalEquations_BLAS3>(klass);
     }
 
     struct normal_equation_building {
