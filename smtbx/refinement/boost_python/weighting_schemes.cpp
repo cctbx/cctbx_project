@@ -86,7 +86,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       using namespace boost::python;
       typedef weighting_scheme_class<stl_weighting> wt;
       wt("stl_weighting")
-        .def(init<unit_cell const&, optional<double> >((arg("unit_cell"), arg("b"))))
+        .def(init<unit_cell const&, optional<double> >((arg("unit_cell"), arg("a"))))
         .def_readwrite("a", &wt::wt::a)
         ;
     }
