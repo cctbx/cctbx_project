@@ -4,6 +4,9 @@
 
 
 namespace smtbx { namespace refinement { namespace least_squares {
+  using namespace cctbx;
+  using namespace cctbx::uctbx;
+
   namespace boost_python {
   
   template<template<typename FloatType> class WeightingScheme>
@@ -19,11 +22,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
                                       af::const_ref<double> const &fo_sq,
                                       af::const_ref<double> const &sigmas,
                                       af::const_ref<double> const &fc_sq,
-                                      double scale_factor,
-                                      af::const_ref<double> const &stl = 1.0)
+                                      af::const_ref<miller::index<> > const& indices,
+                                      double scale_factor)
     {
       return least_squares::weights(
-        weighting_scheme, fo_sq, sigmas, fc_sq, scale_factor, stl);
+        weighting_scheme, fo_sq, sigmas, fc_sq, indices, scale_factor);
     }
 
     weighting_scheme_class(char const *name)
@@ -31,15 +34,13 @@ namespace smtbx { namespace refinement { namespace least_squares {
     {
       using namespace boost::python;
       this->def("__call__", &wt::operator(),
-          (arg("fo_sq"), arg("sigma"), arg("fc_sq"), arg("scale_factor"), 
-           arg("stl")));
+          (arg("fo_sq"), arg("sigma"), arg("fc_sq"), arg("h"), arg("scale_factor")));
       this->def("compute", &wt::compute,
-          (arg("fo_sq"), arg("sigma"), arg("fc_sq"), arg("scale_factor"), 
-           arg("stl")));
+          (arg("fo_sq"), arg("sigma"), arg("fc_sq"), arg("h"), arg("scale_factor")));
       this->def("__call__", weights,
-          (arg("fo_sq"), arg("sigmas"), arg("fc_sq"), arg("scale_factor"), arg("stl")));
-      this->def("__call__", weights,
-          (arg("fo_sq"), arg("sigmas"), arg("fc_sq"), arg("scale_factor")));
+          (arg("fo_sq"), arg("sigmas"), arg("fc_sq"), arg("indices"), arg("scale_factor")));
+      //this->def("__call__", weights,
+      //    (arg("fo_sq"), arg("sigmas"), arg("fc_sq"), arg("scale_factor")));
     }
   };
 
@@ -85,7 +86,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       using namespace boost::python;
       typedef weighting_scheme_class<stl_weighting> wt;
       wt("stl_weighting")
-        .def(init<optional<double> >((arg("a"))))
+        .def(init<unit_cell const&, optional<double> >((arg("unit_cell"), arg("b"))))
         .def_readwrite("a", &wt::wt::a)
         ;
     }

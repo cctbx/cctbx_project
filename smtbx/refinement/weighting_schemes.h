@@ -2,6 +2,8 @@
 /// Weighting schemes for L.S. (least_squares.h)
 
 #include <scitbx/array_family/shared.h>
+#include <cctbx/miller.h>
+#include <cctbx/uctbx.h>
 #include <smtbx/error.h>
 #include <smtbx/import_scitbx_af.h>
 
@@ -9,18 +11,20 @@
 #include <cmath>
 
 namespace smtbx { namespace refinement { namespace least_squares {
+  using namespace cctbx;
+  using namespace cctbx::uctbx;
 
   template<typename T>
   class IWeightingScheme {
   public:
     virtual ~IWeightingScheme() {}
     virtual T compute(T fo_sq, T sigma, T fc_sq,
-      boost::optional<T> scale_factor, boost::optional<T> stl) const = 0;
+      miller::index<> const &h, boost::optional<T> scale_factor) const = 0;
 
     T operator()(T fo_sq, T sigma, T fc_sq,
-      boost::optional<T> scale_factor, boost::optional<T> stl) const
+      miller::index<> const& h, boost::optional<T> scale_factor) const
     {
-      return compute(fo_sq, sigma, fc_sq, scale_factor, stl);
+      return compute(fo_sq, sigma, fc_sq, h, scale_factor);
     }
   };
   /// Given the list of computed and measured structure factors, with
@@ -31,13 +35,13 @@ namespace smtbx { namespace refinement { namespace least_squares {
                         af::const_ref<T> const &fo_sq,
                         af::const_ref<T> const &sigmas,
                         af::const_ref<T> const &fc_sq,
-                        T scale_factor,
-                        af::const_ref<T> const &stl)
+                        af::const_ref<miller::index<> > const& indices,
+                        T scale_factor)
   {
     af::shared<T> result(fo_sq.size());
     for (int i=0; i<fo_sq.size(); i++) {
       result[i] = weighting_scheme(fo_sq[i], sigmas[i], fc_sq[i],
-                                   scale_factor, stl[i]);
+        indices[i], scale_factor);
     }
     return result;
   }
@@ -48,7 +52,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
   template <typename T>
   struct sigma_weighting : public IWeightingScheme<T> {
     T compute(T fo_sq, T sigma, T fc_sq,
-      boost::optional<T> scale_factor, boost::optional<T> stl) const
+      miller::index<> const& h, boost::optional<T> scale_factor) const
     {
       SMTBX_ASSERT(sigma > 0);
       return std::pow(sigma, -2);
@@ -60,7 +64,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
   template <typename T>
   struct unit_weighting : public IWeightingScheme<T> {
     T compute(T fo_sq, T sigma, T fc_sq,
-      boost::optional<T> scale_factor, boost::optional<T> stl) const
+      miller::index<> const& h, boost::optional<T> scale_factor) const
     {
       return 1.;
     }
@@ -71,17 +75,18 @@ namespace smtbx { namespace refinement { namespace least_squares {
   template <typename T>
   struct stl_weighting : public IWeightingScheme<T> {
     T a;
-    stl_weighting(T a = 1.0) 
-      : a(a) 
+    stl_weighting(unit_cell const& uc, T a = 1.0) 
+      : uc(uc), a(a) 
     {}
 
     T compute(T fo_sq, T sigma, T fc_sq,
-      boost::optional<T> scale_factor,
-      boost::optional<T> stl) const
+      miller::index<> const& h,
+      boost::optional<T> scale_factor) const
     {
-      T val = stl ? *stl : 1.0;
+      T val = std::sqrt(uc.d_star_sq(h) / 4);
       return std::pow(val, a);
     }
+    unit_cell const& uc;
   };
 
   /// Weighting scheme used in George Sheldrick's SHELXL
@@ -110,7 +115,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     {}
 
     T compute(T fo_sq, T sigma, T fc_sq,
-      boost::optional<T> scale_factor, boost::optional<T> stl) const
+      miller::index<> const& h, boost::optional<T> scale_factor) const
     {
       SMTBX_ASSERT(scale_factor);
       T k = *scale_factor;
@@ -145,7 +150,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     {}
 
     T compute(T fo_sq, T sigma, T fc_sq,
-      boost::optional<T> scale_factor, boost::optional<T> stl) const
+      miller::index<> const& h, boost::optional<T> scale_factor) const
     {
       SMTBX_ASSERT(scale_factor);
       T k = *scale_factor;

@@ -136,7 +136,8 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       : data(data),
       index(-1),
       observable_updated(false),
-      computed(false), raw_I(false)
+      computed(false),
+      raw_I(false)
     {
       beam_group = 0;
     }
@@ -366,12 +367,6 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       return grads.const_ref();
     }
 
-    //Placeholder, not implemented for ED
-    virtual FloatType get_d_star_sq() const {
-      SMTBX_NOT_IMPLEMENTED();
-      throw 1;
-    }
-
     virtual bool raw_gradients() const { return false; }
 
     FloatType compute_width(const miller::index<>& index,
@@ -471,7 +466,6 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     mutable bool observable_updated, computed;
     mutable complex_t Fc;
     mutable FloatType Fsq, scale;
-    mutable FloatType d_star_sq;
     mutable af::shared<FloatType> grads;
     miller::index<> h;
   public:
@@ -681,8 +675,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
         if (use_scales) {
           Ic *= Is[scales_off + ii];
         }
-        FloatType stl = 1.0; //ToDo: fix stin theta over lambda weighting for ED
-        FloatType w = ws.compute(Io, group.beams[bi].sig, Ic, OSF, stl);
+        FloatType w = ws.compute(Io, group.beams[bi].sig, Ic, group.beams[bi].h, OSF);
         yo_dot_yc += w * Io * Ic;
         yc_sq += w * Ic * Ic;
       }
@@ -710,8 +703,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     FloatType wR2_up = 0, wR2_dn = 0;
     for (size_t bi = 0; bi < group.beams.size(); bi++) {
       FloatType Ic = Is[off+bi], Io = group.beams[bi].I;
-      FloatType stl = 1.0; //ToDo: fix stin theta over lambda weighting for ED
-      FloatType w = ws.compute(Io, group.beams[bi].sig, Ic, OSF, stl);
+      FloatType w = ws.compute(Io, group.beams[bi].sig, Ic, group.beams[bi].h, OSF);
       FloatType x = Ic * OSF * Is[sz + off + bi] * group.scale;
       wR2_up += w * scitbx::fn::pow2(Io - x);
       wR2_dn += w * x * x;
@@ -762,9 +754,8 @@ namespace smtbx {  namespace refinement  { namespace least_squares
         else {
           row[group.id - 1] = I;
         }
-        FloatType stl = 1.0; //ToDo: fix stin theta over lambda weighting for ED
         ls.add_equation(group.beams[bi].I, row.const_ref(),
-          ws(group.beams[bi].I, group.beams[bi].sig, I / bare_OSF, bare_OSF, stl));
+          ws(group.beams[bi].I, group.beams[bi].sig, I / bare_OSF, group.beams[bi].h, bare_OSF));
       }
     }
     ls.solve();
@@ -810,8 +801,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       for (size_t bi = 0; bi < beam_sz; bi++, ii++) {
         const miller::index<>& h = idx_obs[ii];
         FloatType I = bare_OSF * Is[ii];
-        FloatType stl = 1.0; //ToDo: fix stin theta over lambda weighting for ED
-        FloatType w = ws(group.beams[bi].I, group.beams[bi].sig, Is[ii], bare_OSF, stl);
+        FloatType w = ws.compute(group.beams[bi].I, group.beams[bi].sig, Is[ii], h, bare_OSF);
         right += w * I * group.beams[bi].I;
         left += w * I * I;
       }

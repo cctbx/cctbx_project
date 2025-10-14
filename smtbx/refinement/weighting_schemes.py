@@ -59,7 +59,7 @@ class _():
       weighting.a = a
       weighting.b = b
       weights = weighting(
-        fo_sq.data(), fo_sq.sigmas(), fc_sq.data(), scale_factor, flex.double(fo_sq.size(),1.0))
+        fo_sq.data(), fo_sq.sigmas(), fc_sq.data(), fo_sq.indices(), scale_factor)
       return (flex.sum(
         weights * flex.pow2(fo_sq.data() - scale_factor * fc_sq.data())))
 
@@ -188,7 +188,7 @@ class _():
       weighting.a = a
       weighting.b = b
       weights = weighting(
-        fo_sq.data(), fo_sq.sigmas(), fc_sq.data(), scale_factor, flex.double(fo_sq.size(),1.0))
+        fo_sq.data(), fo_sq.sigmas(), fc_sq.data(), fo_sq.indices(), scale_factor)
       return (flex.sum(
         weights * flex.pow2(fo_sq.data() - scale_factor * fc_sq.data())))
 
@@ -225,7 +225,7 @@ class _():
       bin_count.append(bin_limits[i+1] - bin_limits[i])
 
     n = fo_sq.size()//(fo_sq.size()-n_independent_params)
-    
+
     def calcres(w):
       averages = [flex.double() for i in range(n_bins)]
       for i_bin in range(n_bins):
@@ -283,7 +283,7 @@ class _():
       weighting.a = a
       weighting.b = b
       weights = weighting(
-        fo_sq.data(), fo_sq.sigmas(), fc_sq.data(), scale_factor, flex.double(fo_sq.size(),1.0))
+        fo_sq.data(), fo_sq.sigmas(), fc_sq.data(), fo_sq.indices(), scale_factor)
       return (flex.sum(
         weights * flex.pow2(fo_sq.data() - scale_factor * fc_sq.data())))
 
@@ -386,11 +386,12 @@ class _():
 
   def optimise_parameters(self, fo_sq, fc_sq,
                           scale_factor, n_independent_params):
-    weighting = ext.stl_weighting(a=self.a)
-    def stl_weighting_compute_chi_sq(fo_sq, fc_sq, _stl, a):
+    uc = self.fo_sq.crystal_symmetry().unit_cell()
+    weighting = ext.stl_weighting(uc, a=self.a)
+    def stl_weighting_compute_chi_sq(fo_sq, fc_sq, a):
       weighting.a = a
       weights = weighting(
-        fo_sq.data(), fo_sq.sigmas(), fc_sq.data(), scale_factor, _stl)
+        fo_sq.data(), fo_sq.sigmas(), fc_sq.data(), fo_sq.indices(), scale_factor)
       return (flex.sum(
         weights * flex.pow2(fo_sq.data() - scale_factor * fc_sq.data())))
 
@@ -415,15 +416,14 @@ class _():
       bin_count.append(bin_limits[i+1] - bin_limits[i])
 
     n = fo_sq.size()//(fo_sq.size()-n_independent_params)
-    
+
     def calcres(w):
       averages = [flex.double() for i in range(n_bins)]
       for i_bin in range(n_bins):
         sel = flex.size_t_range(bin_limits[i_bin], bin_limits[i_bin+1])
         fc2 = fc_sq.select(sel)
         fo2 = fo_sq.select(sel)
-        stl = flex.sqrt(fo_sq.sin_theta_over_lambda_sq().select(sel).data())
-        binned_chi_sq = stl_weighting_compute_chi_sq(fo2, fc2, stl, w[0])
+        binned_chi_sq = stl_weighting_compute_chi_sq(fo2, fc2, w[0])
         averages[i_bin] = math.sqrt(binned_chi_sq*n/bin_count[i_bin])
       #goof = flex.mean(averages)
       residual = np.sum((np.array(averages)-1.0)**2)

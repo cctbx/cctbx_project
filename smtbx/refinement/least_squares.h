@@ -14,6 +14,7 @@
 #include <smtbx/error.h>
 #include <smtbx/structure_factors/direct/standard_xray.h>
 #include <smtbx/refinement/least_squares_twinning.h>
+#include <smtbx/refinement/weighting_schemes.h>
 
 #include <algorithm>
 #include <vector>
@@ -157,13 +158,12 @@ namespace smtbx { namespace refinement { namespace least_squares {
         build_design_matrix ? jacobian_transpose_matching_grad_fc.n_rows() : 0))
     {}
 
-    template<class NormalEquations,
-      template<typename> class WeightingScheme>
+    template<class NormalEquations>
     build_design_matrix_and_normal_equations(
       NormalEquations& normal_equations,
       cctbx::xray::observations<FloatType> const& reflections,
       MaskData<FloatType> const& f_mask_data,
-      WeightingScheme<FloatType> const& weighting_scheme,
+      IWeightingScheme<FloatType> const& weighting_scheme,
       boost::optional<FloatType> scale_factor,
       f_calc_function_base_t &f_calc_function,
       scitbx::sparse::matrix<FloatType> const &
@@ -194,15 +194,13 @@ namespace smtbx { namespace refinement { namespace least_squares {
       build(normal_equations, weighting_scheme);
     }
 
-    template<class NormalEquations,
-      template<typename> class WeightingScheme>
+    template<class NormalEquations>
     void build(NormalEquations& normal_equations,
-      WeightingScheme<FloatType> const& weighting_scheme)
+      IWeightingScheme<FloatType> const& weighting_scheme)
     {
       typedef boost::shared_ptr<NormalEquations>
               normal_equations_ptr_t;
-      typedef accumulate_reflection_chunk<
-        NormalEquations, WeightingScheme>
+      typedef accumulate_reflection_chunk<NormalEquations>
         accumulate_reflection_chunk_t;
       typedef boost::shared_ptr<accumulate_reflection_chunk_t>
               accumulate_reflection_chunk_ptr_t;
@@ -218,8 +216,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         scitbx::matrix::tensors::initialise<FloatType>();
 #if defined(_OPENMP)
         if (use_openmp) {
-          typedef accumulate_reflection_chunk_omp<
-            NormalEquations, WeightingScheme>
+          typedef accumulate_reflection_chunk_omp<NormalEquations>
             accumulate_reflection_chunk_omp_t;
           /**
            * @brief A pointer to the normal equations object for local refinement.
@@ -384,8 +381,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
     /// Accumulate from reflections whose indices are
     /// returned by scheduler
-    template<class NormalEquations,
-      template<typename> class WeightingScheme>
+    template<class NormalEquations>
     struct accumulate_reflection_chunk {
       builder_base<FloatType>& parent;
       Scheduler& scheduler;
@@ -395,7 +391,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       cctbx::xray::observations<FloatType> const &reflections;
       MaskData<FloatType> const& f_mask_data;
       twinning_processor<FloatType> const& twp;
-      WeightingScheme<FloatType> const &weighting_scheme;
+      IWeightingScheme<FloatType> const &weighting_scheme;
       boost::optional<FloatType> scale_factor;
       boost::shared_ptr<f_calc_function_base_t> f_calc_function_ptr;
       f_calc_function_base_t &f_calc_function;
@@ -415,7 +411,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         cctbx::xray::observations<FloatType> const &reflections,
         MaskData<FloatType> const& f_mask_data,
         twinning_processor<FloatType> const& twp,
-        WeightingScheme<FloatType> const &weighting_scheme,
+        IWeightingScheme<FloatType> const &weighting_scheme,
         boost::optional<FloatType> scale_factor,
         boost::shared_ptr<f_calc_function_base_t> const &f_calc_function_ptr,
         scitbx::sparse::matrix<FloatType> const
@@ -468,7 +464,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
                 f_calc_function.compute(h, boost::none, fraction, compute_grad);
               }
               f_calc[i_h] = f_calc_function.get_f_calc();
-              const FloatType stl = std::sqrt(f_calc_function.get_d_star_sq()*0.25);
               if (compute_grad) {
                 if (f_calc_function.raw_gradients()) {
                   gradients =
@@ -492,7 +487,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
               observables[i_h] = observable;
 
               FloatType weight = weighting_scheme(reflections.fo_sq(i_h),
-                reflections.sig(i_h), observable, scale_factor, stl);
+                reflections.sig(i_h), observable, h, scale_factor);
               weights[i_h] = weight;
               if (objective_only) {
                 normal_equations.add_residual(observable,
@@ -590,13 +585,12 @@ namespace smtbx { namespace refinement { namespace least_squares {
         objective_only, may_parallelise, use_openmp)
     {}
 
-    template<class NormalEquations,
-      template<typename> class WeightingScheme>
+    template<class NormalEquations>
     build_normal_equations(
        NormalEquations &normal_equations,
        cctbx::xray::observations<FloatType> const &reflections,
        MaskData<FloatType> const& f_mask_data,
-       WeightingScheme<FloatType> const &weighting_scheme,
+       IWeightingScheme<FloatType> const &weighting_scheme,
        boost::optional<FloatType> scale_factor,
        f_calc_function_base<FloatType> &f_calc_function,
        scitbx::sparse::matrix<FloatType> const
@@ -647,13 +641,12 @@ namespace smtbx { namespace refinement { namespace least_squares {
         objective_only, may_parallelise, use_openmp)
     {}
 
-    template<class NormalEquations,
-      template<typename> class WeightingScheme>
+    template<class NormalEquations>
     build_design_matrix(
        NormalEquations &normal_equations,
        cctbx::xray::observations<FloatType> const &reflections,
       MaskData<FloatType> const& f_mask_data,
-       WeightingScheme<FloatType> const &weighting_scheme,
+       IWeightingScheme<FloatType> const &weighting_scheme,
        boost::optional<FloatType> scale_factor,
        f_calc_function_base<FloatType> &f_calc_function,
        scitbx::sparse::matrix<FloatType> const

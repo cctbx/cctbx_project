@@ -61,7 +61,6 @@ namespace smtbx {
 
         virtual FloatType get_observable() const = 0;
         virtual complex_t get_f_calc() const = 0;
-        virtual FloatType get_d_star_sq() const = 0;
         virtual af::const_ref<complex_t > get_grad_f_calc() const = 0;
         virtual af::const_ref<FloatType> get_grad_observable() const = 0;
         /* returns true if grads are for all and not independent only params */
@@ -99,9 +98,6 @@ namespace smtbx {
         virtual complex_t get_f_calc() const {
           return f_calc_function->f_calc;
         }
-        virtual FloatType get_d_star_sq() const {
-          return f_calc_function->d_star_sq;
-        }
         virtual af::const_ref<complex_t> get_grad_f_calc() const {
           return f_calc_function->grad_f_calc.const_ref();
         }
@@ -125,13 +121,11 @@ namespace smtbx {
           f_calc_function_result(
             FloatType const& observable,
             complex_t const& f_calc,
-            FloatType const& d_star_sq,
             af::const_ref<complex_t> const& grad_f_calc,
             af::const_ref<FloatType> const& grad_observable)
             :
             observable(observable),
             f_calc(f_calc),
-            d_star_sq(d_star_sq),
             grad_f_calc(grad_f_calc.begin(), grad_f_calc.end()),
             grad_observable(grad_observable.begin(), grad_observable.end())
           {}
@@ -147,7 +141,6 @@ namespace smtbx {
 
           FloatType const observable;
           complex_t const f_calc;
-          FloatType const d_star_sq;
           af::shared<complex_t> grad_f_calc;
           af::shared<FloatType> grad_observable;
         };
@@ -172,7 +165,6 @@ namespace smtbx {
             grad_f_calc = f_calc_function->get_grad_f_calc();
             grad_observable = f_calc_function->get_grad_observable();
             f_calc = f_calc_function->get_f_calc();
-            d_star_sq = f_calc_function->get_d_star_sq();
           }
           else {
             FloatType h_length_sq = h.length_sq();
@@ -187,13 +179,11 @@ namespace smtbx {
               grad_f_calc = f_calc_function->get_grad_f_calc();
               grad_observable = f_calc_function->get_grad_observable();
               f_calc = f_calc_function->get_f_calc();
-              d_star_sq = f_calc_function->get_d_star_sq();
               cache.insert(
                 std::pair<miller::index<>, f_calc_function_result>(
                   h, f_calc_function_result(
                     observable,
                     f_calc,
-                    d_star_sq,
                     grad_f_calc,
                     grad_observable)));
             }
@@ -224,9 +214,6 @@ namespace smtbx {
         virtual complex_t get_f_calc() const {
           return f_calc;
         }
-        virtual FloatType get_d_star_sq() const {
-          return d_star_sq;
-        }
         virtual af::const_ref<complex_t> get_grad_f_calc() const {
           return grad_f_calc;
         }
@@ -241,7 +228,6 @@ namespace smtbx {
         af::const_ref<complex_t> grad_f_calc;
         af::const_ref<FloatType> grad_observable;
         complex_t f_calc;
-        FloatType d_star_sq;
         bool use_cache;
         FloatType length_sq;
         cache_t cache;
