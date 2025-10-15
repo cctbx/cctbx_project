@@ -62,7 +62,7 @@ namespace {
                   scitbx::af::shared<FloatType> const&,
                   scitbx::af::shared<
                     cctbx::xray::twin_component<FloatType>*> const& >
-             ((arg("space_group"), 
+             ((arg("space_group"),
                arg("indices"),
                arg("data"),
                arg("sigmas"),

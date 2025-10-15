@@ -94,7 +94,7 @@ namespace lookup_utils{
       add_hkl(cctbx::miller::index<> const& h)
     {
       cctbx::miller::asym_index asumap(space_group_, asu_choice_, h);
-      cctbx::miller::index_table_layout_adaptor asu_target_hkl = 
+      cctbx::miller::index_table_layout_adaptor asu_target_hkl =
         asumap.one_column(anomalous_flag_);
       lookup_map_type::const_iterator l = hkl_lookup_.find(asu_target_hkl.h());
       n_indices_++;

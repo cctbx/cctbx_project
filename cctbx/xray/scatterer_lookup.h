@@ -2,7 +2,7 @@
 #pragma once
 #include <cctbx/xray/scatterer.h>
 
-namespace cctbx { 
+namespace cctbx {
 namespace xray {
 
   template <typename FloatType, class crd_t, class mask_info, uint64_t cell_m>
@@ -17,7 +17,7 @@ namespace xray {
     {
       init(scatterers, multiplier);
     }
-    
+
     scatterer_lookup(const af::shared<scatterer_t>& scatterers,
       const af::shared<int>& data, FloatType multiplier = 1)
     {
@@ -83,7 +83,7 @@ namespace xray {
       {
         init(scatterers);
       }
-      
+
       scatterer_cart_lookup(const uctbx::unit_cell& u_cell,
         const af::shared<scatterer_t>& scatterers,
         const af::shared<int>& data)
@@ -91,7 +91,7 @@ namespace xray {
       {
         init_with_data(scatterers, data);
       }
-      
+
       void init(const af::shared<scatterer_t>& scatterers) {
         this->scatterers = scatterers;
         crds.reserve(scatterers.size());

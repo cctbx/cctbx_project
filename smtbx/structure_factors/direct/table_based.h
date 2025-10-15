@@ -178,7 +178,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         }
       }
     }
-    
+
     void read_binary(af::shared<xray::scatterer<float_type> > const &scatterers,
       const std::string &file_name)
     {

@@ -466,7 +466,7 @@ namespace fast_linalg {
     SCITBX_NOT_IMPLEMENTED();
     return 0;
   }
-  
+
   template <typename FloatType>
   inline lapack_int geev(int, char, char, lapack_int,
     std::complex<FloatType>*, lapack_int,
@@ -493,7 +493,7 @@ namespace fast_linalg {
     SCITBX_NOT_IMPLEMENTED();
     return 0;
   }
-  
+
   template <typename FloatType>
   void syr(int, int, int, FloatType, const FloatType*, int,
     FloatType*, int)

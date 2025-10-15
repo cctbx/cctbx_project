@@ -144,7 +144,7 @@ void non_linear_ls_with_separable_scale_factor<
       const int thread = omp_get_thread_num();
       FloatType* l_matrix = &(matrix[thread * limit]);
       /* Take just the piece of the given array that is required for this thread */
-      FloatType* l_ogc = &(yo_dot_grad_yc_[thread * n_par]);  
+      FloatType* l_ogc = &(yo_dot_grad_yc_[thread * n_par]);
       FloatType* l_cgc = &(yc_dot_grad_yc_[thread * n_par]);
 #pragma omp for reduction(+:temp2, temp3, temp4)
       for (int i = start; i < start + chunk_size; i++) {

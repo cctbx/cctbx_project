@@ -89,7 +89,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     FloatType compute_OSF(const af::shared<FloatType>& Is,
       const IWeightingScheme<FloatType>& ws,
       FloatType OSF, bool use_scales) const;
-    
+
     /* Is is from compute_dynI - raw intensities + scales */
     FloatType compute_group_wR2(const af::shared<FloatType>& Is,
       const IWeightingScheme<FloatType>& ws,
@@ -118,7 +118,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
 
     typename std::map<int, BeamGroup<FloatType>*> beam_groups_map;
     bool compute_grad;
-    // 
+    //
     cmat_t design_matrix_kin;
     beam_width_cache<FloatType> width_cache;
   };
@@ -485,7 +485,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     : beam_group(beam_group),
       f_calc_function(f_calc_function.raw_fork())
     {}
-    
+
     void operator ()() {
       try {
         FloatType Sg_span = f_calc_function->get_data().params.getIntProfileSpan_Sg();
@@ -603,7 +603,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     typedef typename boost::shared_ptr<thread_t> build_bw_t;
     int thN = this->thread_n < 0 ? builder_base<FloatType>::get_available_threads()
       : this->thread_n;
-    
+
     std::map<miller::index<>, const BeamGroup<FloatType>*> lookup;
     for (size_t i = 0; i < this->beam_groups.size(); i++) {
       const BeamGroup<FloatType>& group = this->beam_groups[i];

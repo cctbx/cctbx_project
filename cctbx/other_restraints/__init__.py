@@ -1,13 +1,8 @@
 from __future__ import absolute_import, division, print_function
-from cctbx.array_family import flex
-
 import boost_adaptbx.boost.python as bp
-from six.moves import zip
 ext = bp.import_ext("cctbx_other_restraints_ext")
 from cctbx_other_restraints_ext import *
-
 from cctbx.geometry_restraints import weight_as_sigma
-import sys
 
 @bp.inject_into(sump_proxy)
 class _():

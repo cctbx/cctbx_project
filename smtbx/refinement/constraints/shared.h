@@ -175,7 +175,7 @@ public:
 
   virtual void linearise(uctbx::unit_cell const& unit_cell,
     sparse_matrix_type* jacobian_transpose);
-  
+
   virtual void validate();
 
 };
