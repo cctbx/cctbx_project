@@ -415,7 +415,7 @@ class place_hydrogens():
         for ag in rgs.atom_groups():
           #if ag.resname == 'AYA': return
           # SAC in 5xdq, 5zcp. Never needs propeller.
-          if ag.resname == 'SAC': return
+          if ag.resname in ['SAC','AYA']: return
           #for ag in rgs.atom_groups():
           #  n=ag.get_atom('N') # assumes atom name "N"
           #  if n: break
