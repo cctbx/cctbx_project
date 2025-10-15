@@ -48,5 +48,3 @@ class _():
     for proxy in self:
       r = sump(site_occupancies, proxy)
       r.linearise(linearised_eqns, param_map, proxy.i_seqs)
-
-
