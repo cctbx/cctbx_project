@@ -89,7 +89,7 @@ namespace smtbx {
           }
         }
       public:
-        
+
         twinning_processor(
           cctbx::xray::observations<FloatType> const& reflections,
           MaskData<FloatType> const& f_mask_data,

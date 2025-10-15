@@ -1,14 +1,12 @@
 #include <smtbx/refinement/weighting_schemes.h>
-
 #include <boost/python/class.hpp>
-
 
 namespace smtbx { namespace refinement { namespace least_squares {
   using namespace cctbx;
   using namespace cctbx::uctbx;
 
   namespace boost_python {
-  
+
   template<template<typename FloatType> class WeightingScheme>
   struct weighting_scheme_class
     : boost::python::class_<WeightingScheme<double>,

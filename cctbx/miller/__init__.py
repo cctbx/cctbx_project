@@ -693,7 +693,7 @@ class set(crystal.symmetry):
   def sin_theta_over_lambda_sq(self):
     return array(
       self, self.unit_cell().stol_sq(self.indices()))
-    
+
   def sin_theta_over_lambda(self):
     return array(
       self, self.unit_cell().stol(self.indices()))
@@ -2523,8 +2523,8 @@ class array(set):
     return self.customized_copy(
       data=flex.double(new_data),
       sigmas=self.sigmas())
-        
-      
+
+
   def enforce_positive_amplitudes(self,i_sig_level=-4.0):
     """
     Takes in an intensity array (including negatives) and spits out amplitudes.

@@ -77,7 +77,7 @@ namespace cctbx { namespace adptbx { namespace anharmonic {
       }
       return r;
     }
-    
+
     size_t param_count() const {
       return order == 3 ? 10 : 25;
     }
