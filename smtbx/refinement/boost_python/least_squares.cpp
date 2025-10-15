@@ -47,7 +47,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
           arg("weighting_scheme"), arg("scale_factor"),
           arg("f_calc_function"), arg("jacobian_transpose_matching_grad_fc"),
           arg("fc_correction"), arg("objective_only") = false,
-          arg("may_parallelise") = false, 
+          arg("may_parallelise") = false,
           arg("use_openmp") = false,
           arg("max_memory") = 300)))
         .def(
@@ -64,7 +64,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
           >((arg("reflections"), arg("f_mask_data"), arg("scale_factor"),
             arg("f_calc_function"), arg("jacobian_transpose_matching_grad_fc"),
             arg("fc_correction"), arg("objective_only") = false,
-            arg("may_parallelise") = false, 
+            arg("may_parallelise") = false,
             arg("use_openmp") = false,
             arg("max_memory") = 300)))
         .def("build", (build_t)&ObjectType::build)
@@ -246,7 +246,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       }
     };
   };
-  
+
   void wrap_least_squares() {
     using namespace boost::python;
     typedef wrapper<double> wrapper_t;

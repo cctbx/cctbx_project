@@ -120,7 +120,7 @@ namespace smtbx { namespace ED {
         }
         return Is;
       }
-      
+
       FloatType process_incident(const mat3_t& RMf) {
         try {
           FloatType I_sum = 0;

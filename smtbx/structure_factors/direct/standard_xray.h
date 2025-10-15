@@ -352,7 +352,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
             }
           }
         }
-  
+
 
 #if (defined(__linux__) && defined(__GNUC__) \
              && __GNUC__ == 4 && __GNUC_MINOR__ == 0 && __GNUC_PATCHLEVEL__ == 0)
@@ -470,7 +470,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
         // Finish
         structure_factor *= ff_iso;
-        
+
         if (!compute_grad) {
           return;
         }

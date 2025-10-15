@@ -1,5 +1,5 @@
 /*
-The following struct is optimized for cache efficient parallel 
+The following struct is optimized for cache efficient parallel
 calculations using OpenMP making sure there is no strides
 in adressing memory by scheduling with chunksize 1
 */

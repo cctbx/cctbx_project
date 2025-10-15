@@ -115,7 +115,7 @@ public:
         params.push_back(ip[i]);
       }
     }
-    
+
     set_arguments(new independent_vector_parameter(
       params,
       scatterer->flags.use_u_aniso() && scatterer->flags.grad_u_aniso()));

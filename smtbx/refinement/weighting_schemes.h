@@ -75,8 +75,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
   template <typename T>
   struct stl_weighting : public IWeightingScheme<T> {
     T a;
-    stl_weighting(unit_cell const& uc, T a = 1.0) 
-      : uc(uc), a(a) 
+    stl_weighting(unit_cell const& uc, T a = 1.0)
+      : uc(uc), a(a)
     {}
 
     T compute(T fo_sq, T sigma, T fc_sq,

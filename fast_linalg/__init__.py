@@ -58,7 +58,7 @@ if not env.initialised and try_to_initialise:
       for lib_file in files:
         try:
           env.initialise(lib_file.encode("utf-8"))
-        except:
+        except Exception:
           continue
         if env.initialised:
           print("Successfully initialised OpenBlas from %s:" %lib_file)

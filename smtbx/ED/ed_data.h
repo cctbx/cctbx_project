@@ -120,7 +120,7 @@ namespace smtbx { namespace ED
       std::pair<FloatType, FloatType> k = Sg_to_angle_k(h, K, sweep_angle);
       return k.second*(ang - k.first);
     }
-    
+
     FloatType calc_Sg(const miller::index<> &h,
       const cart_t& K) const
     {
@@ -137,7 +137,7 @@ namespace smtbx { namespace ED
       FloatType MaxSg,
       FloatType MaxG
       ) const;
-  
+
     af::shared<miller::index<> > get_indices() const;
 
     bool contains_index(const miller::index<>& h) const;
@@ -454,7 +454,7 @@ namespace smtbx { namespace ED
     size_t getIntPoints() const { return static_cast<size_t>(values[9]); }
     bool isAngleInt() const { return values[10] == 1; }
     bool useNBeamSg() const { return values[11] == 1; }
-    // with useNBeamSg - maxSg, otherwise is used as weight in |Fc|/(Sg+weight) 
+    // with useNBeamSg - maxSg, otherwise is used as weight in |Fc|/(Sg+weight)
     FloatType getNBeamWght() const { return values[12]; }
     bool isNBeamFloating() const { return values[13] != 0; }
     /* The following three params are used in reflection profile 'detection'

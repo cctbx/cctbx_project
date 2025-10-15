@@ -15,7 +15,7 @@
   typedef scitbx::mat3<FloatType> mat3_t;                          \
   typedef miller::lookup_utils::lookup_tensor<FloatType> lookup_t; \
   typedef typename af::versa<FloatType, af::mat_grid> mat_t;       \
-  typedef typename af::versa<complex_t, af::mat_grid> cmat_t;      
+  typedef typename af::versa<complex_t, af::mat_grid> cmat_t;
 
 namespace smtbx { namespace ED{
   enum {

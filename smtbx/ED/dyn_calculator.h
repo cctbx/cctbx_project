@@ -4,7 +4,7 @@
 namespace smtbx { namespace ED
 {
   using namespace cctbx;
-  
+
   template <typename FloatType>
   class a_dyn_calculator {
   public:
@@ -109,5 +109,5 @@ namespace smtbx { namespace ED
   private:
     int type;
   };
-  
+
 }}

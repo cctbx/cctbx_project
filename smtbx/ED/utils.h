@@ -126,7 +126,7 @@ namespace smtbx { namespace ED
       {}
       FloatType da;
       complex_t Ug;
-      
+
       static bool cmp_refs(const Reflection &a, const Reflection& b) {
         return a.da < b.da;
       }

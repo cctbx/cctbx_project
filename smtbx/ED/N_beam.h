@@ -274,7 +274,7 @@ namespace smtbx { namespace ED
     af::shared<typename utils<FloatType>::Reflection*> complete_sorted_set;
 
     af::shared<complex_t> Fcs_kin;
-    // 
+    //
     lookup_t mi_lookup;
     int thread_n;
     mutable boost::shared_ptr<boost::mutex> mtx;
@@ -350,7 +350,7 @@ namespace smtbx { namespace ED
       dc = dc_f.make(indices, K, beam_group.get_N(), thickness);
       return *this;
     }
-    
+
     // just initailises the reflection selection cache
     dyn_calculator_n_beam& init(const miller::index<>& h,
       const af::shared<mat3_t>& RMfs)

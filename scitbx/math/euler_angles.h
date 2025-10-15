@@ -61,7 +61,7 @@ namespace scitbx {  namespace math {  namespace euler_angles {
     }
     return rv;
   }
-// angles are in degrees  
+// angles are in degrees
 template< typename FloatType >
 const scitbx::mat3< FloatType >
 xyz_matrix( const FloatType& ax, const FloatType& ay, const FloatType& az,

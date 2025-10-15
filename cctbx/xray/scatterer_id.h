@@ -3,8 +3,8 @@
 namespace cctbx {
   namespace xray {
     /* Stores coordinates with float type precision, adopted from Olex2. */
-    
-    template <typename FloatType, class crd_t, class mask_info, uint64_t cell_m> 
+
+    template <typename FloatType, class crd_t, class mask_info, uint64_t cell_m>
     struct scatterer_id_base : public mask_info {
       uint64_t id;
 

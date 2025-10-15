@@ -251,7 +251,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
           built = true;
           return;
         }
-#endif 
+#endif
         const int thread_count = parent_t::get_available_threads();
         boost::thread_group pool;
         std::vector<accumulate_reflection_chunk_ptr_t> accumulators;
@@ -618,7 +618,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
   The constraints is performed with a reparametrisation whose Jacobian
   transpose is passed as an argument.
   */
-  
+
   template <typename FloatType>
   struct build_design_matrix
     : public build_design_matrix_and_normal_equations<FloatType, true>
@@ -666,11 +666,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
     virtual af::versa<FloatType, af::c_grid<2> > const& design_matrix() const {
       return parent_t::design_matrix_;
     }
- 
+
   };
 
-
 }}}
+
 extern "C" DllExport void SetRefinementProgressListener(ProgressListener listener);
 
 #endif // GUARD
