@@ -386,7 +386,7 @@ class _():
 
   def optimise_parameters(self, fo_sq, fc_sq,
                           scale_factor, n_independent_params):
-    uc = self.fo_sq.crystal_symmetry().unit_cell()
+    uc = fo_sq.crystal_symmetry().unit_cell()
     weighting = ext.stl_weighting(uc, a=self.a)
     def stl_weighting_compute_chi_sq(fo_sq, fc_sq, a):
       weighting.a = a
