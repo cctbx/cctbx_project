@@ -2003,7 +2003,6 @@ def exercise_r_factor():
 def exercise_scatterer_id():
   import random
   # must import this for x.element_info() to work!!!
-  from cctbx.eltbx import tiny_pse
   from cctbx.xray import ext
   num = 200
   base_id_16, range_16 = 100.0, 1600
