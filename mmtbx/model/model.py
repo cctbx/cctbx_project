@@ -506,7 +506,7 @@ class manager(object):
     if(self._xray_structure is not None):
       self._xray_structure.set_sites_cart(sites_cart_)
 
-  def set_b_iso(self, values, selection=None):
+  def set_b_iso(self, values, selection=None, keep_aniso=False):
     if(values is None): return
     if(selection is not None):
       b_iso = self.get_hierarchy().atoms().extract_b()
@@ -515,9 +515,10 @@ class manager(object):
       b_iso = values
     if(self._xray_structure is not None):
       self.get_xray_structure().set_b_iso(values = b_iso, selection=selection)
-      u_iso = self.get_xray_structure().scatterers().extract_u_iso()
-      b_iso = u_iso * adptbx.u_as_b(1)
-      b_iso = b_iso.set_selected(~self.get_xray_structure().use_u_iso(), -1)
+      if keep_aniso is False:
+       u_iso = self.get_xray_structure().scatterers().extract_u_iso()
+       b_iso = u_iso * adptbx.u_as_b(1)
+       b_iso = b_iso.set_selected(~self.get_xray_structure().use_u_iso(), -1)
     self.get_hierarchy().atoms().set_b(b_iso)
 
   def convert_to_isotropic(self, selection=None):
@@ -2898,7 +2899,7 @@ class manager(object):
       selection[j_seq] = False
     return selection
 
-  def reset_adp_for_hydrogens(self, scale=1.2):
+  def reset_adp_for_hydrogens(self, scale=1.2, keep_aniso=False):
     """
     Set the isotropic B-factor for all hydrogens to those of the associated
     heavy atoms (using the total isotropic equivalent) times a scale factor of
@@ -2913,7 +2914,7 @@ class manager(object):
       for t in self.xh_connectivity_table():
         i_x, i_h = t[0], t[1]
         bfi[i_h] = adptbx.u_as_b(bfi[i_x])*scale
-      self.set_b_iso(values = bfi, selection = hd_sel)
+      self.set_b_iso(values = bfi, selection = hd_sel, keep_aniso=keep_aniso)
 
   def reset_occupancy_for_hydrogens_simple(self):
     """
