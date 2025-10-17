@@ -338,6 +338,9 @@ class place_hydrogens():
 
     sel_h = self.model.get_hd_selection()
 
+    #f = open("intermediate3a.pdb","w")
+    #f.write(self.model.model_as_pdb())
+
     # Setup riding H manager
     # ----------------------
     t0 = time.time()
@@ -361,8 +364,8 @@ class place_hydrogens():
       self.model = self.model.select(~sel_h_not_in_para)
     self.time_remove_H_nopara = round(time.time()-t0, 2)
 
-  #  f = open("intermediate4.pdb","w")
-  #  f.write(model.model_as_pdb())
+    #f = open("intermediate4.pdb","w")
+    #f.write(self.model.model_as_pdb())
 
 # to be removed; was for curiosity only
 #    if self.validate_e:
@@ -374,7 +377,7 @@ class place_hydrogens():
     # Reset occupancies, ADPs and idealize H atom positions
     # -----------------------------------------------------
     t0 = time.time()
-    self.model.reset_adp_for_hydrogens(scale = self.adp_scale)
+    self.model.reset_adp_for_hydrogens(scale = self.adp_scale, keep_aniso=True)
     self.model.reset_occupancy_for_hydrogens_simple()
     self.time_reset = round(time.time()-t0, 2)
     t0 = time.time()
@@ -389,8 +392,8 @@ class place_hydrogens():
 
 
     # TODO: this should be ideally done *after* reduce optimization
-    if not self.exclude_water:
-      self.model.add_hydrogens(1., occupancy=0.)
+    #if not self.exclude_water:
+    #  self.model.add_hydrogens(1., occupancy=0.)
 
     self.n_H_final = self.model.get_hd_selection().count(True)
 

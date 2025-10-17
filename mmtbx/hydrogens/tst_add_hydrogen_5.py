@@ -3,7 +3,6 @@ import time
 from mmtbx.hydrogens.tst_add_hydrogen_1 import compare_models
 
 
-
 def run():
   test_000()
   test_001()
