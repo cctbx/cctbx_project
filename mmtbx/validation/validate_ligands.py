@@ -386,6 +386,7 @@ class ligand_result(object):
     dihedral = stats.dihedral()
     #print('number dihedral outliers', len(dihedral.outliers))
     #print('dihedral rmsd',dihedral.mean)
+    dihedral_z = stats.dihedral(return_rmsZ=True)
 
     plane = stats.planarity()
     #print('plane rmsd', plane.mean)
@@ -401,12 +402,13 @@ class ligand_result(object):
       bond_n     = bond.n,
       bond_n_outliers = len(bond.outliers),
       angle_rmsd = angle.mean,
+      angle_rmsz = angle_z.mean,
       angle_n     = angle.n,
       angle_n_outliers = len(angle.outliers),
-      angle_rmsz = angle_z.mean,
       #chirality_rmsd = geo.chirality.mean,
       planarity_rmsd = plane.mean,
       dihedral_rmsd = dihedral.mean,
+      dihedral_rmsz = dihedral_z.mean,
       dihedral_n     = dihedral.n,
       dihedral_n_outliers = len(dihedral.outliers),)
     return self._rmsds
