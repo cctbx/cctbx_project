@@ -112,12 +112,15 @@ class geometry(object):
         sigma_threshold=4)
     return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
 
-  def dihedral(self):
+  def dihedral(self, return_rmsZ=False):
     mi,ma,me,n = 0,0,0,0
     outliers = 0
     if(self.from_restraints is not None):
-      mi,ma,me = self.from_restraints.dihedral_deviations()
-      n = self.from_restraints.get_filtered_n_dihedral_proxies()
+      if return_rmsZ:
+        mi,ma,me,n = self.from_restraints.dihedral_deviations_z()
+      else:
+        mi,ma,me = self.from_restraints.dihedral_deviations()
+        n = self.from_restraints.get_filtered_n_dihedral_proxies()
       outliers = self.from_restraints.get_dihedral_outliers(
         sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
         sigma_threshold=4)
