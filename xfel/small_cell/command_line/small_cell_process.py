@@ -29,6 +29,7 @@ dispatch {
   }
 }
 refinement.parameterisation.crystal.fix = cell
+refinement.reflections.outlier.algorithm = null
 profile {
   gaussian_rs {
     centroid_definition = *com s1
