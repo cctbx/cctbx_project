@@ -225,12 +225,7 @@ def fix_py2_pickle(p):
         p[str_key] = p[key]
         del p[key]
         key = str_key
-      try:
-        new_p = fix_py2_pickle(p[key])
-      except Exception as e: # keep original
-        new_p = p[key]
-      p[key] = new_p
-
+      p[key] = fix_py2_pickle(p[key])
 
 
   elif isinstance(p,tuple):
