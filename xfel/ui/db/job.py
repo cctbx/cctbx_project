@@ -627,6 +627,12 @@ class EnsembleRefinementJob(Job):
     path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
     os.mkdir(path)
 
+    if self.app.params.facility.name == 'lcls':
+      import psana
+      psana2_mode = getattr(psana, 'xtc_version', None) == 2
+    else:
+      psana2_mode = False
+
     arguments = """
     mp.queue={}
     mp.nnodes={}
@@ -658,6 +664,7 @@ class EnsembleRefinementJob(Job):
     striping.dry_run=True
     striping.output_folder={}
     reintegration.integration.lookup.mask={}
+    reintegration.mp.psana2_mode={}
     mp.local.include_mp_in_command=False
     """.format(self.app.params.mp.queue if len(self.app.params.mp.queue) > 0 else None,
                self.app.params.mp.nnodes_tder or self.app.params.mp.nnodes,
@@ -685,6 +692,7 @@ class EnsembleRefinementJob(Job):
                target_phil_path,
                path,
                self.rungroup.untrusted_pixel_mask_path,
+               psana2_mode,
                ).split('\n')
     arguments = [arg.strip() for arg in arguments]
 
