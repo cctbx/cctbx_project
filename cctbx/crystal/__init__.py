@@ -37,8 +37,8 @@ class symmetry(object):
   """
   def __setstate__(self, state):
     if sys.version_info.major > 2:
-      from libtbx.easy_pickle import fix_py2_pickle
-      state = fix_py2_pickle(state)
+      from libtbx.easy_pickle import fix_py2_pickle_orig
+      state = fix_py2_pickle_orig(state)
     for name,value in state.items():
       setattr(self, name, value)
 
