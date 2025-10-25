@@ -785,8 +785,8 @@ class qrefine_module(SourceModule):
 class pydiscamb_module(SourceModule):
   module = 'pyDiSCaMB'
   anonymous = ['git',
-               'git@github.com:viljarjf/pyDiSCaMB.git',
-               'https://github.com/viljarjf/pyDiSCaMB.git',
+               'git@github.com:discamb-project/pyDiSCaMB.git',
+               'https://github.com/discamb-project/pyDiSCaMB.git',
                ]
 
 class molstar_adaptbx(SourceModule):
