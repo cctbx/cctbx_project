@@ -60,11 +60,11 @@ class PDBSymmList(wx.ListCtrl):
   def SetResults(self, results):
     self.DeleteAllItems()
     for result in results :
-      i = self.InsertStringItem(sys.maxunicode, result.pdb_id)
-      self.SetStringItem(i, 1, "%6.3f" % result.rmsd)
-      self.SetStringItem(i, 2, "%g" % result.volume_ratio)
-      self.SetStringItem(i, 3, str(result.pdb_symmetry.space_group_info()))
-      self.SetStringItem(i, 4, "%g %g %g %g %g %g" %
+      i = self.InsertItem(sys.maxunicode, result.pdb_id)
+      self.SetItem(i, 1, "%6.3f" % result.rmsd)
+      self.SetItem(i, 2, "%g" % result.volume_ratio)
+      self.SetItem(i, 3, str(result.pdb_symmetry.space_group_info()))
+      self.SetItem(i, 4, "%g %g %g %g %g %g" %
         result.pdb_symmetry.unit_cell().parameters())
 
   def GetSelectedID(self):
