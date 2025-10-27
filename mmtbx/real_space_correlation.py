@@ -2,12 +2,13 @@
 """
 
 from __future__ import absolute_import, division, print_function
+import sys
+from six.moves import range
 import mmtbx.utils
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx.file_reader import any_file
 import iotbx.phil
-import iotbx.pdb
 from cctbx.array_family import flex
 from cctbx import miller
 from cctbx import maptbx
@@ -16,9 +17,6 @@ from libtbx import group_args
 from mmtbx.command_line.map_comparison import get_mtz_labels, get_d_min,\
   get_crystal_symmetry
 from cctbx.sgtbx import space_group_info
-import os
-import sys
-from six.moves import range
 from iotbx import extract_xtal_data
 
 core_params_str = """\
