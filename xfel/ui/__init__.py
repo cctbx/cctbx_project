@@ -155,7 +155,7 @@ known_dials_dispatchers = {
   'cctbx.xfel.process': 'xfel.command_line.xfel_process',
   'dials.stills_process': 'dials.command_line.stills_process',
   'cctbx.xfel.small_cell_process': 'xfel.small_cell.command_line.xfel_small_cell_process',
-  'cctbx.xfel.stripe_experiment': 'xfel.command_line.striping',
+  'cctbx.xfel.time_varying_refinement': 'xfel.command_line.time_varying_refinement',
   'cctbx.xfel.merge': 'xfel.merging.application.phil.phil'
 }
 
