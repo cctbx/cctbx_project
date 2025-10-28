@@ -35,6 +35,8 @@ class load_balancer(worker):
     else:
       expt_counts_by_rank = None
 
+    if not self.check_psana2(): return experiments, reflections
+
     if self.params.input.parallel_file_load.balance == "global1":
       new_experiments, new_reflections = self.distribute_over_ranks_shuffle(experiments, reflections, self.mpi_helper.comm, self.mpi_helper.size)
     elif self.params.input.parallel_file_load.balance == "global2":
@@ -53,7 +55,7 @@ class load_balancer(worker):
 
     # Do we have any data?
     from xfel.merging.application.utils.data_counter import data_counter
-    data_counter(self.params).count(new_experiments, new_reflections)
+    data_counter(self.params, mpi_helper = self.mpi_helper, mpi_logger = self.logger).count(new_experiments, new_reflections)
 
     return new_experiments, new_reflections
 

@@ -111,6 +111,8 @@ class simple_file_loader(worker):
       starting_refls_count = len(all_reflections)
     self.logger.log("Initial number of experiments: %d; Initial number of reflections: %d"%(starting_expts_count, starting_refls_count))
 
+    if not self.check_psana2(): return all_experiments, all_reflections
+
     # Generate and send a list of file paths to each worker
     if self.mpi_helper.rank == 0:
       file_list = list_input_pairs(self.params)
@@ -208,7 +210,7 @@ class simple_file_loader(worker):
 
     # Do we have any data?
     from xfel.merging.application.utils.data_counter import data_counter
-    data_counter(self.params).count(all_experiments, all_reflections)
+    data_counter(self.params, mpi_helper = self.mpi_helper, mpi_logger = self.logger).count(all_experiments, all_reflections)
     return all_experiments, all_reflections
 
   def prune_reflection_table_keys(self, reflections):

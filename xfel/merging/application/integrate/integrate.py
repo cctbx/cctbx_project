@@ -34,6 +34,16 @@ class integrate(worker):
     all_integrated_refls = None
     current_imageset = None
     current_imageset_path = None
+
+    if self.params.mp.psana2_mode:
+      self.check_psana2(split_comm=False)
+      paths_ = list(set([p for iset in experiments.imagesets() for p in iset.paths()]))
+      paths = list(set([p for plist in self.mpi_helper.comm.allgather(paths_) for p in plist]))
+      assert len(paths) == 1
+
+      current_imageset_path = paths[0]
+      current_imageset = ImageSetFactory.make_imageset([current_imageset_path])
+
     for expt_id, expt in enumerate(experiments):
       assert len(expt.imageset.paths()) == 1 and len(expt.imageset) == 1
       self.logger.log("Starting integration experiment %d"%expt_id)

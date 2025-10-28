@@ -30,6 +30,36 @@ class worker(object):
     """ Process the data """
     pass
 
+  def check_psana2(self, split_comm=True):
+    # psana2 custom check, needed only for the integrate worker
+    # psana2 preempts MPI ranks 0 and 1, so this code splits the mpi_helper's
+    # communicator into two communicators, so 0 and 1 can no-op when needed
+    # (e.g. the file loader and balance workers)
+    if self.params.mp.psana2_mode:
+      import psana # trigger MPI in psana2
+      from libtbx.mpi4py import MPI
+      if split_comm:
+        if self.mpi_helper.comm is MPI.COMM_WORLD:
+          if self.mpi_helper.rank < 2:
+            color = 0
+            key = self.mpi_helper.rank
+          else:
+            color = 1
+            key = self.mpi_helper.rank - 2
+          self.mpi_helper.comm = self.mpi_helper.comm.Split(color, key)
+          self.mpi_helper.rank = self.mpi_helper.comm.Get_rank()
+          self.mpi_helper.size = self.mpi_helper.comm.Get_size()
+          self.mpi_helper.color = color
+        return self.mpi_helper.color == 1
+      else:
+        # reset to a single communicator
+        self.mpi_helper.comm = MPI.COMM_WORLD
+        self.mpi_helper.rank = self.mpi_helper.comm.Get_rank()
+        self.mpi_helper.size = self.mpi_helper.comm.Get_size()
+        self.mpi_helper.color = None
+        return True
+    return True
+
 class factory(object):
   """ Constructs worker objects """
 
