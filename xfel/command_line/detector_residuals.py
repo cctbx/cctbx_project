@@ -182,6 +182,10 @@ plots {
             center of the panel as an origin, plot the reflection displaced   \
             from the center of its panel along its deltaXY vector. The        \
             reflections are colored by their delta psi values.
+  transverse_radial_deltapsi_resolution = True
+    .type = bool
+    .help = Plot transverse vs. radial displacements, colored by delta psi, \
+            binned by resolution.
   deltaXY_by_reflection_energy = False
     .type = bool
     .help = As deltaXY_by_deltapsi, but reflections are colored mean pixel   \
@@ -295,6 +299,8 @@ def setup_stats(experiments, reflections, two_theta_only = False):
   for expt_id, expt in enumerate(experiments):
     expt_refls = reflections.select(reflections['id'] == expt_id)
     if len(expt_refls) == 0: continue
+    if 'd' not in expt_refls:
+      expt_refls['d'] = expt.crystal.get_unit_cell().d(expt_refls['miller_index'])
     for panel_id, panel in enumerate(expt.detector):
       refls = expt_refls.select(expt_refls['panel'] == panel_id)
       if len(refls) == 0: continue
@@ -1298,6 +1304,35 @@ class ResidualsPlotter(object):
         plt.figure()
         plt.title('Ewald offsets vs. two theta')
         plt.hist2d(all_twothetas.as_numpy_array(), all_offsets.as_numpy_array(), bins=100)
+
+      if self.params.plots.transverse_radial_deltapsi_resolution:
+        n_bins = 10
+        d = reflections['d']
+        inv = 1/(d**2)
+        h = flex.histogram(inv, n_slots=n_bins)
+
+        fig, axes = plt.subplots(2, 5)
+        for i, info in enumerate(h.slot_infos()):
+          subset = reflections.select((inv >= info.low_cutoff) & (inv <= info.high_cutoff))
+
+          data = subset['delpsical.rad'] * (180/math.pi)
+          norm, cmap, color_vals, sm = self.get_normalized_colors(data, vmin=-0.1, vmax=0.1)
+
+          ax = axes.ravel()[i]
+          ax.set_title(r'%.2f-%.2f$\AA$, n:%d'%(1/math.sqrt(info.low_cutoff), 1/math.sqrt(info.high_cutoff), len(subset)))
+          ax.scatter(subset['radial_displacements'], subset['transverse_displacements'], c = data, norm=norm, cmap = cmap, linewidths=0, s=self.params.dot_size)
+          min_dis = min(flex.min(subset['radial_displacements']), flex.min(subset['transverse_displacements']))
+          max_dis = min(flex.max(subset['radial_displacements']), flex.max(subset['transverse_displacements']))
+          extent = max(abs(min_dis), abs(max_dis))
+          ax.set_xlim(-0.8, 0.8)
+          ax.set_ylim(-0.8, 0.8)
+          #ax.set_xlim(-extent, extent)
+          #ax.set_ylim(-extent, extent)
+          ax.set_aspect('equal')
+        fig.supxlabel('Radial displacements (mm)')
+        fig.supylabel('Transverse displacements (mm)')
+        fig.suptitle(r'%sTransverse vs. radials displacements colored by $\Delta\Psi$ and binned by resolution'%tag)
+        fig.tight_layout()
 
       if self.params.save_pdf:
         pp = PdfPages('residuals_%s.pdf'%(tag.strip()))
