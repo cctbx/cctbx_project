@@ -93,7 +93,7 @@ output_folder = ""
   .type = path
   .help = Processing results will go in this folder
 
-include scope xfel.command_line.cxi_mpi_submit.mp_phil_scope
+include scope xfel.command_line.submit_job.mp_phil_scope
 """
 db_phil_str = """
 experiment_tag = None
