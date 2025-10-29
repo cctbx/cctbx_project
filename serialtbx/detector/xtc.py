@@ -121,7 +121,7 @@ def evt_wavelength(evt, delta_k=0):
   if evt is not None:
     try:
       ebeam = get_ebeam(evt)
-    except:
+    except UnboundLocalError:
       # UED
       return factor_ev_angstrom / 3.12e6 # hard-code UED electron energy to 3.12 MeV
 
