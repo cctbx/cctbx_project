@@ -2,6 +2,7 @@ from __future__ import division
 
 from scitbx import matrix
 from serialtbx.detector import basis
+from cctbx import factor_ev_angstrom
 
 def basis_from_geo(geo, use_z = True):
   """ Given a psana GeometryObject, construct a basis object """
@@ -98,7 +99,7 @@ def get_ebeam(evt):
     except ImportError:
       # psana2
       try:
-        ebeam = evt.run().Detector('ebeamh') #.raw.ebeamPhotonEnergy(evt)
+        ebeam = evt.run().Detector('ebeamh')
       except KeyError:
         # UED
         beam = None
@@ -122,14 +123,14 @@ def evt_wavelength(evt, delta_k=0):
       ebeam = get_ebeam(evt)
     except:
       # UED
-      return 12398.4187 / 3.12e6 # hard-code UED electron energy to 3.12 MeV
+      return factor_ev_angstrom / 3.12e6 # hard-code UED electron energy to 3.12 MeV
 
     if hasattr(ebeam, 'fEbeamPhotonEnergy') and ebeam.fEbeamPhotonEnergy > 0:
       # pyana
-      return 12398.4187 / ebeam.fEbeamPhotonEnergy
+      return factor_ev_angstrom / ebeam.fEbeamPhotonEnergy
     if hasattr(ebeam, 'ebeamPhotonEnergy') and ebeam.ebeamPhotonEnergy() > 0:
       # psana
-      return 12398.4187 / ebeam.ebeamPhotonEnergy()
+      return factor_ev_angstrom / ebeam.ebeamPhotonEnergy()
 
     if hasattr(ebeam, 'fEbeamL3Energy') and ebeam.fEbeamL3Energy > 0:
       # pyana
@@ -139,7 +140,7 @@ def evt_wavelength(evt, delta_k=0):
       gamma = ebeam.ebeamL3Energy() / 0.510998910
     elif hasattr(ebeam, 'raw'):
       # psana2
-      return 12398.4187 / ebeam.raw.ebeamPhotonEnergy(evt)
+      return factor_ev_angstrom / ebeam.raw.ebeamPhotonEnergy(evt)
     else:
       return None
     K = 3.5 + delta_k
