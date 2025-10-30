@@ -53,8 +53,9 @@ class mpi_helper(object):
   def time(self):
     return self.MPI.Wtime()
 
-  def finalize(self):
-    self.MPI.Finalize()
+  def finalize(self, mpi_finalize = True):
+    if mpi_finalize:
+      self.MPI.Finalize()
 
   def cumulative_flex(self, flex_array, flex_type=None, root=0):
     """

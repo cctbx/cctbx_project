@@ -109,6 +109,9 @@ mp {
       .type = bool
       .help = Enable code profiling. Use (for example) runsnake to visualize processing performance
   }
+  psana2_mode = False
+    .type = bool
+    .help = Needed when using the integrate worker with psana2/XTC2 data
 }
 """
 
