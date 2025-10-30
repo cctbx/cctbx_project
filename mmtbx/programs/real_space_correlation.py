@@ -49,8 +49,6 @@ Examples:
         exact_count = True)
       self.params.pdb_file_name = self.data_manager.get_default_model_name()
 
-    #print(dir(self.data_manager))
-
     has_miller = self.data_manager.has_miller_arrays()
     has_map = self.data_manager.has_real_maps()
 
@@ -75,14 +73,11 @@ Examples:
       if len(self.data_manager.get_real_map_names())>1:
         raise Sorry('Supply only one map file.')
       self.params.map_file_name = self.data_manager.get_default_real_map_name()
-    #map_coeffs_fn = self.data_manager.get_default_map_coefficients_name()
-
 
   # ---------------------------------------------------------------------------
 
   def run(self):
 
-    #self.params.pdb_file_name = self.data_manager.get_default_model_name()
     broadcast(m="Input model file name: %s"%self.params.pdb_file_name,
       log=self.logger)
 
