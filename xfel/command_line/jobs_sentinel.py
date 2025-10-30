@@ -125,7 +125,7 @@ def submit_job(params, dbobj, trial_id, trial, rungroup_id, run, config_path):
   template.close()
   phil.close()
 
-  from xfel.command_line.cxi_mpi_submit import Script as submit_script
+  from xfel.command_line.submit_job import Script as submit_script
   submit_script().run([submit_phil_path])
 
 def run(args):

@@ -396,7 +396,7 @@ class DBCredentialsDialog(BaseDialog):
       self.params.db.server.basedir = self.start_db_dialog.get_db_basedir.ctr.GetValue()
 
       def _submit_start_server_job(params):
-        from xfel.command_line.cxi_mpi_submit import do_submit
+        from xfel.command_line.submit_job import do_submit
         assert self.params.db.user is not None, "DB User not defined!"
         assert self.params.db.password is not None, "Password for DB User not defined!"
         assert self.params.db.server.root_password is not None, "Root password for DB not defined!"

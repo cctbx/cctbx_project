@@ -14,7 +14,7 @@ help_str = """
 Use cxi.xtc_process to analyze XTC streams from LCLS using psana modules
 specified in a config file.
 
-You will likely find cxi.mpi_submit more useful generally, but use this prog-
+You will likely find cctbx.xfel.submit_job more useful generally, but use this prog-
 ram to test your config files for a few events.
 
 Should be ran from your myrelease directory. Be sure to run sit_setup first.
