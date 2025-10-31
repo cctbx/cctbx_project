@@ -98,7 +98,10 @@ def get_ebeam(evt):
         ebeam = evt.get(Bld.BldDataEBeam, src) # recent version of psana will return a V7 event or higher if this type is asked for
     except ImportError:
       # psana2
-      ebeam = evt.run().Detector('ebeamh')
+      try:
+        ebeam = evt.run().Detector('ebeamh')
+      except KeyError: # UED has no ebeam
+        return None
   return ebeam
 
 def evt_wavelength(evt, delta_k=0):
