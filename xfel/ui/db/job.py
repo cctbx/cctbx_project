@@ -115,7 +115,7 @@ class AveragingJob(Job):
     return s
 
   def submit(self, previous_job=None):
-    from xfel.command_line.cxi_mpi_submit import Script as submit_script
+    from xfel.command_line.submit_job import Script as submit_script
     params = copy.deepcopy(self.app.params)
     params.dispatcher = 'dxtbx.image_average'
     configs_dir = os.path.join(settings_dir, "cfgs")
@@ -123,7 +123,7 @@ class AveragingJob(Job):
       os.makedirs(configs_dir)
     identifier_string = self.get_identifier_string()
 
-    # Make an argument list that can be submitted to cxi_mpi_submit.
+    # Make an argument list that can be submitted to cctbx.xfel.submit_job.
     # dxtbx.image_average does not use phil files.
     extra_args = "-a <output_dir>/avg.cbf -m <output_dir>/max.cbf -s <output_dir>/std.cbf"
     if self.skip_images > 0:
@@ -444,7 +444,7 @@ class IndexingJob(Job):
     template.close()
     phil.close()
 
-    from xfel.command_line.cxi_mpi_submit import Script as submit_script
+    from xfel.command_line.submit_job import Script as submit_script
     args = [submit_phil_path]
     if self.app.params.facility.name not in ['lcls']:
       args.append(self.run.path)
@@ -615,7 +615,7 @@ class EnsembleRefinementJob(Job):
 
   def submit(self, previous_job = None):
     from xfel.command_line.striping import Script
-    from xfel.command_line.cxi_mpi_submit import get_submission_id
+    from xfel.command_line.submit_job import get_submission_id
     from libtbx import easy_run
     configs_dir = os.path.join(settings_dir, "cfgs")
     identifier_string = self.get_identifier_string()
@@ -777,7 +777,7 @@ class ScalingJob(Job):
         phil.write(line.format(**d))
 
   def submit(self, previous_job = None):
-    from xfel.command_line.cxi_mpi_submit import Script as submit_script
+    from xfel.command_line.submit_job import Script as submit_script
 
     output_path = os.path.join(get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task), 'out')
 
@@ -829,7 +829,7 @@ class MergingJob(Job):
     return path, None, None, "%s_v%03d_all.mtz"%(self.dataset.name, self.dataset_version.version), None
 
   def submit(self, previous_job = None):
-    from xfel.command_line.cxi_mpi_submit import do_submit
+    from xfel.command_line.submit_job import do_submit
 
     output_path = self.get_global_path()
     if not os.path.exists(output_path):
@@ -890,7 +890,7 @@ class PhenixJob(Job):
     return path, None, None, ".mtz", ".pdb"
 
   def submit(self, previous_job = None):
-    from xfel.command_line.cxi_mpi_submit import do_submit
+    from xfel.command_line.submit_job import do_submit
 
     output_path = self.get_global_path()
     if not os.path.exists(output_path):
