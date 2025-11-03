@@ -1,3 +1,11 @@
+2025.10
+=======
+
+* Added mmtbx.reduce_cryoem_resolution for creating lower resolution maps
+  from existing maps
+* Initial support for Python 3.14
+* General wxPython syntax updates in wxtbx
+
 2025.9
 ======
 
