@@ -526,7 +526,7 @@ class Script(object):
           n_batches = len(glob.glob(self.filename + '_combined_*.expt'))
           iterable = ["_combined_%03d"%i for i in range(n_batches)]
         else:
-          iterable = [""] # XXX broken now missing the word combined in the filename!!!
+          iterable = ["_combined"]
 
         for suffix in iterable:
           self.filename = "t%03d_%s_%s%03d%s" % (self.params.time_varying_refinement.trial, batch, tag, idx, suffix)
