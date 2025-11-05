@@ -617,6 +617,10 @@ class EnsembleRefinementJob(Job):
     from xfel.command_line.time_varying_refinement import Script, phil_scope
     from xfel.command_line.submit_job import get_submission_id
     from libtbx import easy_run
+
+    if "striping" in self.task.parameters:
+      raise RuntimeError("The striping parameter has been renamed to time_varying_refinement. Edit your ensemble_refinement task (no need to create a new one).")
+
     configs_dir = os.path.join(settings_dir, "cfgs")
     identifier_string = self.get_identifier_string()
     target_phil_path = os.path.join(configs_dir, identifier_string + "_params.phil")
@@ -624,7 +628,7 @@ class EnsembleRefinementJob(Job):
       if self.task.parameters:
         f.write(self.task.parameters)
 
-    pre_split = phil_scope.fetch(parse(self.task.parameters)).extract().striping.pre_split
+    pre_split = phil_scope.fetch(parse(self.task.parameters)).extract().time_varying_refinement.pre_split
     chunk_size = 2000 if pre_split else 64
 
     path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
@@ -657,16 +661,16 @@ class EnsembleRefinementJob(Job):
     mp.shifter.reservation={}
     mp.shifter.constraint={}
     mp.shifter.staging={}
-    striping.results_dir={}
-    striping.trial={}
-    striping.rungroup={}
-    striping.run={}
+    time_varying_refinement.results_dir={}
+    time_varying_refinement.trial={}
+    time_varying_refinement.rungroup={}
+    time_varying_refinement.run={}
     {}
-    striping.chunk_size={}
-    striping.pre_split={}
-    striping.stripe=False
-    striping.dry_run=True
-    striping.output_folder={}
+    time_varying_refinement.chunk_size={}
+    time_varying_refinement.pre_split={}
+    time_varying_refinement.stripe=False
+    time_varying_refinement.dry_run=True
+    time_varying_refinement.output_folder={}
     reintegration.integration.lookup.mask={}
     reintegration.mp.psana2_mode={}
     mp.local.include_mp_in_command=False

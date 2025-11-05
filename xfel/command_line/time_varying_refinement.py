@@ -26,19 +26,19 @@ mp {
 }
 '''
 
-striping_str = '''
-striping {
+time_varying_refinement_str = '''
+time_varying_refinement {
   results_dir = None
     .type = path
     .help = "cctbx.xfel results directory containint runs starting with r."
   rungroup = None
     .type = int
     .multiple = True
-    .help = "Selected rungroups to stripe. If None, all rungroups are accepted."
+    .help = "Selected rungroups to refine. If None, all rungroups are accepted."
   run = None
     .type = str
     .multiple = True
-    .help = "Selected runs to stripe. If None, all runs are accepted."
+    .help = "Selected runs to refine. If None, all runs are accepted."
   trial = None
     .type = int
     .help = "Trial identifier for a cctbx.xfel formatted processing trial."
@@ -51,7 +51,7 @@ striping {
     .help = "Maximum number of images per chunk or stripe."
   respect_rungroup_barriers = True
     .type = bool
-    .help = "Enforce separation by rungroup at time of striping (default)."
+    .help = "Enforce separation by rungroup (default)."
             "Turn off to allow multiple rungroups to share a detector model."
   dry_run = False
     .type = bool
@@ -229,7 +229,7 @@ postprocessing {
 }
 """
 
-master_defaults_str = multiprocessing_str + striping_str + combining_str + filtering_str + \
+master_defaults_str = multiprocessing_str + time_varying_refinement_str + combining_str + filtering_str + \
                         refinement_str + recompute_mosaicity_str + reintegration_str + postprocessing_str
 
 # initialize a master scope from the multiprocessing phil string
@@ -244,7 +244,7 @@ phil_scope = phil_scope.fetch(parse(multiprocessing_override_str, process_includ
 
 helpstring = """cctbx.xfel.time_varying_refinement: parallel processing of an XFEL UI-generated trial.
 
-usage: cctbx.xfel.time_varying_refinement striping.results_dir=/path/to/results striping.trial=000
+usage: cctbx.xfel.time_varying_refinement time_varying_refinement.results_dir=/path/to/results time_varying_refinement.trial=000
 
 for interactive unit cell clustering, use combine_experiments.clustering.dendrogram=True
 """
@@ -447,7 +447,7 @@ class Script(object):
     diff_str = "\n".join(diff_parts)
     phil_filename = "%s_%s_CLUSTER.phil" % (self.filename, section_tag) if clustering else \
       "%s_%s.phil" % (self.filename, section_tag)
-    phil_path = os.path.join(self.params.striping.output_folder, self.intermediates, phil_filename)
+    phil_path = os.path.join(self.params.time_varying_refinement.output_folder, self.intermediates, phil_filename)
     if os.path.isfile(phil_path):
       os.remove(phil_path)
     with open(phil_path, "w") as phil_outfile:
@@ -458,27 +458,27 @@ class Script(object):
         phil_filename,
         dispatcher_name,
         self.intermediates)
-      command = ". %s" % os.path.join(self.params.striping.output_folder, self.intermediates, script)
+      command = ". %s" % os.path.join(self.params.time_varying_refinement.output_folder, self.intermediates, script)
     else:
       command = "%s_phil=%s" % (dispatcher_name, phil_filename)
     self.argument_sequence.append(command)
 
   def run(self):
     '''Execute the script.'''
-    runs = ["r%04d" % int(r) if r.isnumeric() else r for r in self.params.striping.run]
-    if self.params.striping.run:
+    runs = ["r%04d" % int(r) if r.isnumeric() else r for r in self.params.time_varying_refinement.run]
+    if self.params.time_varying_refinement.run:
       print("processing runs " + ", ".join(runs))
-    if self.params.striping.rungroup:
-      print("processing rungroups " + ", ".join(["rg%03d" % rg for rg in self.params.striping.rungroup]))
-    batch_chunks = allocate_chunks(self.params.striping.results_dir,
-                                   self.params.striping.trial,
-                                   rgs_selected=["rg%03d" % rg for rg in self.params.striping.rungroup],
-                                   respect_rungroup_barriers=self.params.striping.respect_rungroup_barriers,
+    if self.params.time_varying_refinement.rungroup:
+      print("processing rungroups " + ", ".join(["rg%03d" % rg for rg in self.params.time_varying_refinement.rungroup]))
+    batch_chunks = allocate_chunks(self.params.time_varying_refinement.results_dir,
+                                   self.params.time_varying_refinement.trial,
+                                   rgs_selected=["rg%03d" % rg for rg in self.params.time_varying_refinement.rungroup],
+                                   respect_rungroup_barriers=self.params.time_varying_refinement.respect_rungroup_barriers,
                                    runs_selected=runs,
-                                   stripe=self.params.striping.stripe,
-                                   max_size=self.params.striping.chunk_size,
+                                   stripe=self.params.time_varying_refinement.stripe,
+                                   max_size=self.params.time_varying_refinement.chunk_size,
                                    integrated=self.params.combine_experiments.keep_integrated)
-    self.dirname = os.path.join(self.params.striping.output_folder, "combine_experiments_t%03d" % self.params.striping.trial)
+    self.dirname = os.path.join(self.params.time_varying_refinement.output_folder, "combine_experiments_t%03d" % self.params.time_varying_refinement.trial)
     self.intermediates = os.path.join(self.dirname, "intermediates")
     self.extracted = os.path.join(self.dirname, "final_extracted")
     for d in self.dirname, self.intermediates, self.extracted:
@@ -486,18 +486,18 @@ class Script(object):
         os.mkdir(d)
     # submit queued jobs from appropriate directory
     os.chdir(self.intermediates)
-    tag = "stripe" if self.params.striping.stripe else "chunk"
+    tag = "stripe" if self.params.time_varying_refinement.stripe else "chunk"
     all_commands = []
     for batch, ch_list in six.iteritems(batch_chunks):
       for idx in range(len(ch_list)):
         chunk = ch_list[idx]
 
         # reset for this chunk/stripe
-        self.filename = "t%03d_%s_%s%03d" % (self.params.striping.trial, batch, tag, idx)
+        self.filename = "t%03d_%s_%s%03d" % (self.params.time_varying_refinement.trial, batch, tag, idx)
         self.argument_sequence = []
 
         # set up the file containing input expts and refls (logging)
-        chunk_path = os.path.join(self.params.striping.output_folder, self.intermediates, self.filename)
+        chunk_path = os.path.join(self.params.time_varying_refinement.output_folder, self.intermediates, self.filename)
         if os.path.isfile(chunk_path):
           os.remove(chunk_path)
         with open(chunk_path, "w") as outfile:
@@ -512,14 +512,14 @@ class Script(object):
           custom_parts.append("    reflections = %s" % refl_path)
         custom_parts.append("  }")
 
-        if self.params.striping.pre_split:
+        if self.params.time_varying_refinement.pre_split:
           custom_parts.append("output.sort_by_imageset_path_and_image_index=True")
-          custom_parts.append("output.max_batch_size=%s"%self.params.striping.chunk_size)
+          custom_parts.append("output.max_batch_size=%s"%self.params.time_varying_refinement.chunk_size)
 
         self.set_up_section("combine_experiments", "combine_experiments",
           clustering=False, custom_parts=custom_parts)
 
-        if self.params.striping.pre_split:
+        if self.params.time_varying_refinement.pre_split:
           from dials.command_line.combine_experiments import run as combine_run
           combine_phil = self.argument_sequence.pop().split('=')[1]
           combine_run(args=[combine_phil])
@@ -529,7 +529,7 @@ class Script(object):
           iterable = [""] # XXX broken now missing the word combined in the filename!!!
 
         for suffix in iterable:
-          self.filename = "t%03d_%s_%s%03d%s" % (self.params.striping.trial, batch, tag, idx, suffix)
+          self.filename = "t%03d_%s_%s%03d%s" % (self.params.time_varying_refinement.trial, batch, tag, idx, suffix)
 
           # refinement of the grouped experiments
           self.set_up_section("refinement", "refine",
@@ -559,14 +559,14 @@ class Script(object):
           if self.params.combine_experiments.clustering.dendrogram:
             easy_run.fully_buffered(command).raise_if_errors().show_stdout()
           else:
-            submit_folder = os.path.join(self.params.striping.output_folder, self.intermediates)
+            submit_folder = os.path.join(self.params.time_varying_refinement.output_folder, self.intermediates)
             submit_path = os.path.join(submit_folder, "combine_%s.sh" % self.filename)
             submit_command = get_submit_command_chooser(command, submit_path, self.intermediates, self.params.mp,
               log_name=os.path.splitext(os.path.basename(submit_path))[0] + ".out",
               err_name=os.path.splitext(os.path.basename(submit_path))[0] + ".err",
               root_dir = submit_folder)
             all_commands.append(submit_command)
-            if not self.params.striping.dry_run:
+            if not self.params.time_varying_refinement.dry_run:
               print("executing command: %s" % submit_command)
               try:
                 easy_run.fully_buffered(submit_command).raise_if_errors().show_stdout()
@@ -584,7 +584,7 @@ if __name__ == "__main__":
     expert_level = int(sys.argv[sys.argv.index("-e") + 1]) if "-e" in sys.argv[1:] else 0
     attr_level = int(sys.argv[sys.argv.index("-a") + 1]) if "-a" in sys.argv[1:] else 0
     phil_scope.show(expert_level=expert_level, attributes_level=attr_level)
-    with open("striping_defaults.phil", "w") as defaults:
+    with open("time_varying_refinement_defaults.phil", "w") as defaults:
       defaults.write(phil_scope.as_str())
     exit()
   with show_mail_on_error():
