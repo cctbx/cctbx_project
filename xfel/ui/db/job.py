@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from xfel.ui import settings_dir
 from xfel.ui.db import db_proxy, get_run_path, write_xtc_locator, get_image_mode
 import os, shutil, copy
+from iotbx.phil import parse
 
 known_job_statuses = ["DONE", "ERR", "PEND", "RUN", "SUSP", "PSUSP", "SSUSP", "UNKWN", "EXIT", "DONE", "ZOMBI", "DELETED", "SUBMIT_FAIL", "SUBMITTED", "HOLD", "TIMEOUT"]
 finished_job_statuses = ["DONE", "EXIT", "DELETED", "UNKWN", "ERR", "SUBMIT_FAIL", "TIMEOUT"]
@@ -207,7 +208,6 @@ class IndexingJob(Job):
       orig_phil_scope = load_phil_scope_from_dispatcher(dispatcher)
       if os.path.isfile(dispatcher):
         dispatcher = 'libtbx.python ' + dispatcher
-      from iotbx.phil import parse
       if self.rungroup.two_theta_low is not None or self.rungroup.two_theta_high is not None:
         override_str = """
         radial_average {
@@ -614,7 +614,7 @@ class EnsembleRefinementJob(Job):
       "combine_t%03d_rg%03d_chunk000.out"%(self.trial.trial, self.rungroup.id)) # XXX there can be multiple chunks or multiple clusters
 
   def submit(self, previous_job = None):
-    from xfel.command_line.striping import Script
+    from xfel.command_line.time_varying_refinement import Script, phil_scope
     from xfel.command_line.submit_job import get_submission_id
     from libtbx import easy_run
     configs_dir = os.path.join(settings_dir, "cfgs")
@@ -623,6 +623,9 @@ class EnsembleRefinementJob(Job):
     with open(target_phil_path, 'w') as f:
       if self.task.parameters:
         f.write(self.task.parameters)
+
+    pre_split = phil_scope.fetch(parse(self.task.parameters)).extract().striping.pre_split
+    chunk_size = 2000 if pre_split else 64
 
     path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
     os.mkdir(path)
@@ -659,7 +662,8 @@ class EnsembleRefinementJob(Job):
     striping.rungroup={}
     striping.run={}
     {}
-    striping.chunk_size=64
+    striping.chunk_size={}
+    striping.pre_split={}
     striping.stripe=False
     striping.dry_run=True
     striping.output_folder={}
@@ -690,6 +694,8 @@ class EnsembleRefinementJob(Job):
                self.rungroup.id,
                self.run.run,
                target_phil_path,
+               chunk_size,
+               pre_split,
                path,
                self.rungroup.untrusted_pixel_mask_path,
                psana2_mode,

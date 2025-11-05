@@ -16,7 +16,7 @@ from xfel.util.dials_file_matcher import match_dials_files
 from xfel.util.mp import mp_phil_str as multiprocessing_str
 from xfel.util.mp import get_submit_command_chooser
 import sys
-
+import glob
 import os, math
 import six
 
@@ -56,6 +56,12 @@ striping {
   dry_run = False
     .type = bool
     .help = "Only set up jobs but do not execute them"
+  pre_split = False
+    .type = bool
+    .help = "If True, load the input data and chunk it before submitting"
+            "refinement jobs based on the total number of input lattices."
+            "If False, chunk the data by counting the number of expt/refl"
+            "files."
   output_folder = None
     .type = path
     .help = "Path for output data. If None, use current directory"
@@ -143,8 +149,8 @@ refinement {
     }
   }
   input {
-    experiments = FILENAME_combined_CLUSTER.expt
-    reflections = FILENAME_combined_CLUSTER.refl
+    experiments = FILENAME_CLUSTER.expt
+    reflections = FILENAME_CLUSTER.refl
   }
 }
 '''
@@ -312,7 +318,10 @@ def allocate_chunks(results_dir,
       print("no images found for %s" % batch)
       del batch_contents[batch]
       continue
-    n_chunks = int(math.ceil(n_img/max_size))
+    if max_size:
+      n_chunks = int(math.ceil(n_img/max_size))
+    else:
+      n_chunks = 1
     chunk_size = int(math.ceil(n_img/n_chunks))
     batch_chunk_nums_sizes[batch] = (n_chunks, chunk_size)
   if len(batch_contents) == 0:
@@ -475,8 +484,8 @@ class Script(object):
     for d in self.dirname, self.intermediates, self.extracted:
       if not os.path.isdir(d):
         os.mkdir(d)
-    if self.params.striping.output_folder is None:
-      self.params.striping.output_folder = os.getcwd()
+    # submit queued jobs from appropriate directory
+    os.chdir(self.intermediates)
     tag = "stripe" if self.params.striping.stripe else "chunk"
     all_commands = []
     for batch, ch_list in six.iteritems(batch_chunks):
@@ -502,53 +511,68 @@ class Script(object):
         for refl_path in chunk[1]:
           custom_parts.append("    reflections = %s" % refl_path)
         custom_parts.append("  }")
+
+        if self.params.striping.pre_split:
+          custom_parts.append("output.sort_by_imageset_path_and_image_index=True")
+          custom_parts.append("output.max_batch_size=%s"%self.params.striping.chunk_size)
+
         self.set_up_section("combine_experiments", "combine_experiments",
           clustering=False, custom_parts=custom_parts)
 
-        # refinement of the grouped experiments
-        self.set_up_section("refinement", "refine",
-          clustering=self.clustering)
-
-        # refinement of the grouped experiments
-        self.set_up_section("recompute_mosaicity", "recompute_mosaicity",
-          clustering=self.clustering)
-
-        # reintegration
-        if self.params.reintegration.enable:
-          self.set_up_section("reintegration", "integration", clustering=self.clustering)
-
-        # extract results to integration pickles for merging
-        if self.params.postprocessing.enable:
-          pass # disabled
-          #lambda_diff_str = lambda diff_str: (diff_str % \
-          #  (os.path.join("..", "final_extracted"))).replace("ITER", "%04d")
-          #self.set_up_section("postprocessing", "cctbx.xfel.frame_extractor",
-          #  lambda_diff_str=lambda_diff_str, clustering=self.clustering)
-
-        # submit queued job from appropriate directory
-        os.chdir(self.intermediates)
-        command = "cctbx.xfel.ensemble_refinement_pipeline " + " ".join(self.argument_sequence)
-
-        if self.params.mp.method != 'shifter' and self.params.mp.mpi_command:
-          command = "%s %s"%(self.params.mp.mpi_command, command)
-
-        if self.params.combine_experiments.clustering.dendrogram:
-          easy_run.fully_buffered(command).raise_if_errors().show_stdout()
+        if self.params.striping.pre_split:
+          from dials.command_line.combine_experiments import run as combine_run
+          combine_phil = self.argument_sequence.pop().split('=')[1]
+          combine_run(args=[combine_phil])
+          n_batches = len(glob.glob(self.filename + '_combined_*.expt'))
+          iterable = ["_combined_%03d"%i for i in range(n_batches)]
         else:
-          submit_folder = os.path.join(self.params.striping.output_folder, self.intermediates)
-          submit_path = os.path.join(submit_folder, "combine_%s.sh" % self.filename)
-          submit_command = get_submit_command_chooser(command, submit_path, self.intermediates, self.params.mp,
-            log_name=os.path.splitext(os.path.basename(submit_path))[0] + ".out",
-            err_name=os.path.splitext(os.path.basename(submit_path))[0] + ".err",
-            root_dir = submit_folder)
-          all_commands.append(submit_command)
-          if not self.params.striping.dry_run:
-            print("executing command: %s" % submit_command)
-            try:
-              easy_run.fully_buffered(submit_command).raise_if_errors().show_stdout()
-            except Exception as e:
-              if not "Warning: job being submitted without an AFS token." in str(e):
-                raise e
+          iterable = [""] # XXX broken now missing the word combined in the filename!!!
+
+        for suffix in iterable:
+          self.filename = "t%03d_%s_%s%03d%s" % (self.params.striping.trial, batch, tag, idx, suffix)
+
+          # refinement of the grouped experiments
+          self.set_up_section("refinement", "refine",
+            clustering=self.clustering)
+
+          # refinement of the grouped experiments
+          self.set_up_section("recompute_mosaicity", "recompute_mosaicity",
+            clustering=self.clustering)
+
+          # reintegration
+          if self.params.reintegration.enable:
+            self.set_up_section("reintegration", "integration", clustering=self.clustering)
+
+          # extract results to integration pickles for merging
+          if self.params.postprocessing.enable:
+            pass # disabled
+            #lambda_diff_str = lambda diff_str: (diff_str % \
+            #  (os.path.join("..", "final_extracted"))).replace("ITER", "%04d")
+            #self.set_up_section("postprocessing", "cctbx.xfel.frame_extractor",
+            #  lambda_diff_str=lambda_diff_str, clustering=self.clustering)
+
+          command = "cctbx.xfel.ensemble_refinement_pipeline " + " ".join(self.argument_sequence)
+
+          if self.params.mp.method != 'shifter' and self.params.mp.mpi_command:
+            command = "%s %s"%(self.params.mp.mpi_command, command)
+
+          if self.params.combine_experiments.clustering.dendrogram:
+            easy_run.fully_buffered(command).raise_if_errors().show_stdout()
+          else:
+            submit_folder = os.path.join(self.params.striping.output_folder, self.intermediates)
+            submit_path = os.path.join(submit_folder, "combine_%s.sh" % self.filename)
+            submit_command = get_submit_command_chooser(command, submit_path, self.intermediates, self.params.mp,
+              log_name=os.path.splitext(os.path.basename(submit_path))[0] + ".out",
+              err_name=os.path.splitext(os.path.basename(submit_path))[0] + ".err",
+              root_dir = submit_folder)
+            all_commands.append(submit_command)
+            if not self.params.striping.dry_run:
+              print("executing command: %s" % submit_command)
+              try:
+                easy_run.fully_buffered(submit_command).raise_if_errors().show_stdout()
+              except Exception as e:
+                if not "Warning: job being submitted without an AFS token." in str(e):
+                  raise e
     return all_commands
 
 if __name__ == "__main__":
