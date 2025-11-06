@@ -421,14 +421,14 @@ class energies(scitbx.restraints.energies):
 
   def dihedral_deviations_z(self):
     '''
-    Calculate rmsz of angles deviations
+    Calculate rmsz of dihedral deviations
 
     Compute rmsz, the Root-Mean-Square of the z-scors for a set of data
     using z_i = {x_i - mu / sigma}  and rmsz = sqrt(mean(z*z))
 
     Compute rmsz, the Root-Mean-Square of the z-scors for a set of data
     using z_i = {x_i - mu / sigma}  and rmsz = sqrt(mean(z*z))
-    x_i: atcual bond angle
+    x_i: atcual dihedral
     mu: geometry restraints mean
     sigma:  geometry restraints standard deviation
     z_i: z-score for bond i
@@ -438,8 +438,8 @@ class energies(scitbx.restraints.energies):
     from self, not calculated from data.
 
     :returns:
-    a_rmsz: rmsz, root mean square of the z-scors of all angles
-    a_z_min/max: min/max values of z-scors
+    d_rmsz: rmsz, root mean square of the z-scors of all dihedrals
+    d_z_min/max: min/max values of z-scors
     '''
     if(self.n_dihedral_proxies is not None):
       covalent_dihedrals = self.dihedral_proxies.proxy_select(origin_id=0)
