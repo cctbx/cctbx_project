@@ -157,7 +157,7 @@ output {
 
   # ---------------------------------------------------------------------------
   # Convenience features
-  def _print(self, text):
+  def _print(self, text=''):
     '''
     Print function that just replaces print(text, file=self.logger)
     '''
