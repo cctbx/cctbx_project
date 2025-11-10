@@ -25,6 +25,14 @@
 #include <scitbx/array_family/boost_python/selections_wrapper.h>
 #include <scitbx/misc/positive_getitem_index.h>
 
+#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 199711L) || __cplusplus >= 199711L) // C++98
+  template <typename f_t, typename a_t>
+  auto cctbx_compat_bind2nd(const f_t &f, const a_t &a) {
+    return std::bind(f, std::placeholders::_1, a);
+  }
+#else
+#define cctbx_compat_bind2nd std::bind2nd
+#endif
 namespace scitbx { namespace af { namespace boost_python {
 
   using scitbx::positive_getitem_index;
@@ -613,12 +621,12 @@ namespace scitbx { namespace af { namespace boost_python {
 
     static boost::optional<std::size_t>
     first_index_a_s(f_t const& a, e_t x) {
-      return first_index(a, std::bind2nd(std::equal_to<e_t>(), x));
+      return first_index(a, cctbx_compat_bind2nd(std::equal_to<e_t>(), x));
     }
 
     static boost::optional<std::size_t>
     last_index_a_s(f_t const& a, e_t x) {
-      return last_index(a, std::bind2nd(std::equal_to<e_t>(), x));
+      return last_index(a, cctbx_compat_bind2nd(std::equal_to<e_t>(), x));
     }
 
     static f_t neg_a(f_t const& a) { return -a; }

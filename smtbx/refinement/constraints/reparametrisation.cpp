@@ -326,7 +326,7 @@ namespace smtbx { namespace refinement { namespace constraints {
 
     // Assign indices to parameters
     n_independents_ = n_intermediates_ = n_non_trivial_roots_ = 0;
-    BOOST_FOREACH(parameter *p, all) {
+    BOOST_FOREACH(parameter_ptr_t p, all) {
       std::size_t s = p->size();
       if      (!p->is_variable())   n_intermediates_ += s;
       else if (p->is_independent()) n_independents_ += s;
@@ -336,7 +336,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     std::size_t i_independent = 0,
     i_intermediate = n_independents(),
     i_non_trivial_root = n_independents() + n_intermediates();
-    BOOST_FOREACH(parameter *p, all) {
+    BOOST_FOREACH(parameter_ptr_t p, all) {
       std::size_t s = p->size();
       if      (!p->is_variable()) {
         p->set_index(i_intermediate);
@@ -367,9 +367,9 @@ namespace smtbx { namespace refinement { namespace constraints {
   }
 
   void reparametrisation
-  ::add(parameter *p) {
-    typedef std::back_insert_iterator<std::vector<parameter *> >
-    all_param_inserter_t;
+  ::add(const parameter_ptr_t &p) {
+    typedef typename std::back_insert_iterator<parameter_array_t>
+      all_param_inserter_t;
     topologist<all_param_inserter_t> t(std::back_inserter(all));
     t.visit(p);
   }
@@ -381,7 +381,7 @@ namespace smtbx { namespace refinement { namespace constraints {
   }
 
   reparametrisation::~reparametrisation() {
-    BOOST_FOREACH(parameter *p, all) delete p;
+    //BOOST_FOREACH(parameter *p, all) delete p;
   }
 
   void reparametrisation
@@ -397,7 +397,7 @@ namespace smtbx { namespace refinement { namespace constraints {
   void reparametrisation
   ::apply_shifts(af::const_ref<double> const &shifts) {
     SMTBX_ASSERT(shifts.size() == n_independents());
-    BOOST_FOREACH(parameter *p, all) {
+    BOOST_FOREACH(parameter_ptr_t p, all) {
       if (p->is_independent() && p->is_variable()) {
         double const *s = &shifts[p->index()];
         af::ref<double> x = p->components();
@@ -411,7 +411,7 @@ namespace smtbx { namespace refinement { namespace constraints {
   double reparametrisation
   ::norm_of_independent_parameter_vector() {
     scitbx::math::accumulator::norm_accumulator<double> acc;
-    BOOST_FOREACH(parameter *p, all) {
+    BOOST_FOREACH(parameter_ptr_t p, all) {
       if (p->is_independent() && p->is_variable()) {
         acc(af::sum_sq(p->components()));
       }
@@ -421,24 +421,24 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   void reparametrisation
   ::store() {
-    BOOST_FOREACH(parameter *p, all) {
-      asu_parameter *cp = dynamic_cast<asu_parameter *> (p);
+    BOOST_FOREACH(parameter_ptr_t p, all) {
+      asu_parameter *cp = dynamic_cast<asu_parameter *> (p.get());
       if (cp) cp->store(unit_cell_);
     }
   }
 
   void reparametrisation
   ::whiten() {
-    BOOST_FOREACH(parameter *p, all) p->set_colour(white);
+    BOOST_FOREACH(parameter_ptr_t p, all) p->set_colour(white);
   }
 
   af::shared<parameter*> reparametrisation
     ::independent() const
   {
     af::shared<parameter*> rv;
-    BOOST_FOREACH(parameter * p, all) {
+    BOOST_FOREACH(parameter_ptr_t p, all) {
       if (p->is_independent() && p->is_variable()) {
-        rv.push_back(p);
+        rv.push_back(p.get());
       }
     }
     return rv;
@@ -449,8 +449,8 @@ namespace smtbx { namespace refinement { namespace constraints {
   {
     af::shared<asu_parameter*> rv;
     std::map<const parameter *, asu_parameter *> p_map;
-    BOOST_FOREACH(parameter * p, all) {
-      asu_parameter *asu_p = dynamic_cast<asu_parameter*>(p);
+    BOOST_FOREACH(parameter_ptr_t p, all) {
+      asu_parameter *asu_p = dynamic_cast<asu_parameter*>(p.get());
       if (asu_p == 0) {
         continue;
       }
@@ -459,7 +459,7 @@ namespace smtbx { namespace refinement { namespace constraints {
       }
     }
 
-    BOOST_FOREACH(parameter * p, params) {
+    BOOST_FOREACH(parameter *p, params) {
       asu_parameter* asu_p = dynamic_cast<asu_parameter*>(p);
       if (asu_p != 0) {
         rv.push_back(asu_p);

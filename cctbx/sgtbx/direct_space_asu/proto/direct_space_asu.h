@@ -180,7 +180,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
     direct_space_asu(const direct_space_asu &a) : hall_symbol(a.hall_symbol),
       faces(a.faces->new_copy()) {}
-    direct_space_asu() : hall_symbol(), faces(NULL) {}
+    direct_space_asu() : hall_symbol() {}
 
     //! Creates asymmetric unit from space group type
     explicit direct_space_asu(const space_group_type &group_type)

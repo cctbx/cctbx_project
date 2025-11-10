@@ -14,7 +14,7 @@ namespace smtbx { namespace refinement { namespace constraints {
         using namespace boost::python;
         class_<wt,
                bases<affine_scalar_parameter, asu_parameter>,
-               std::auto_ptr<wt> >("affine_asu_occupancy_parameter", no_init)
+               boost::shared_ptr<wt> >("affine_asu_occupancy_parameter", no_init)
           .def(init<scalar_parameter *, double, double,
                     wt::scatterer_type *>
                ((arg("dependee"), arg("a"), arg("b"), arg("scatterer"))))
@@ -31,7 +31,7 @@ namespace smtbx { namespace refinement { namespace constraints {
                     wt::scatterer_type *>
                ((arg("dependees"), arg("a"), arg("b"), arg("scatterer"))))
             ;
-        implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+        implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
       }
     };
 
@@ -43,7 +43,7 @@ namespace smtbx { namespace refinement { namespace constraints {
         return_internal_reference<> rir;
         class_<wt,
                bases<asu_occupancy_parameter>,
-               std::auto_ptr<wt> >("dependent_occupancy", no_init)
+               boost::shared_ptr<wt> >("dependent_occupancy", no_init)
           .def(init<scalar_parameter *,
                     double,
                     double,
@@ -56,7 +56,7 @@ namespace smtbx { namespace refinement { namespace constraints {
                  arg("scatterer"))))
           .add_property("occupancy", make_function(&wt::reference, rir))
           ;
-        implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+        implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
       }
     };
 
