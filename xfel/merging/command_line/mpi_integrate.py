@@ -53,6 +53,20 @@ integrate_phil_str = '''
         .help = "Override the panel trusted range (underload and saturation) during integration."
         .short_caption = "Panel trusted range"
     }
+    recruitment {
+      expand_nave_parameters = False
+        .type = bool
+        .help = For stills integration, post time-dependent re-refinement,
+        .help = Expand the Nave-parameter envelope used to predict spots, in order to capture more signal.
+      expansion_factor = 2.0
+        .type = float
+        .help = apply this expansion of the current trumpet plot, note that the stills_process application
+        .help = already encodes an expansion-factor of 1.4 at the indexing step, this is on top of that.
+      significance_cutoff = 2.0
+        .type = float
+        .help = Once the expanded predictions are integrated, re-determine the Nave parameters, but instead of
+        .help = fitting on spotfinder spots, fit on integrated I/sigma spots with this cutoff.
+    }
   }
 
   output {
