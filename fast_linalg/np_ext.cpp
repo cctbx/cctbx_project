@@ -94,49 +94,53 @@ namespace fast_linalg {
     void init_(std::string lib_name) {
       lib = dll::shared_library(lib_name, dll::load_mode::search_system_folders);
       SCITBX_ASSERT(lib);
-      LAPACKE_dpftrf = &lib.get<LAPACKE_dpftrf_t>("LAPACKE_dpftrf");
-      LAPACKE_spftrf = &lib.get<LAPACKE_spftrf_t>("LAPACKE_spftrf");
-      LAPACKE_dsfrk = &lib.get<LAPACKE_dsfrk_t>("LAPACKE_dsfrk");
-      LAPACKE_ssfrk = &lib.get<LAPACKE_ssfrk_t>("LAPACKE_ssfrk");
-      LAPACKE_dtfttp = &lib.get<LAPACKE_dtfttp_t>("LAPACKE_dtfttp");
-      LAPACKE_stfttp = &lib.get<LAPACKE_stfttp_t>("LAPACKE_stfttp");
-      LAPACKE_dtpttf = &lib.get<LAPACKE_dtpttf_t>("LAPACKE_dtpttf");
-      LAPACKE_stpttf = &lib.get<LAPACKE_stpttf_t>("LAPACKE_stpttf");
-      LAPACKE_dpftri = &lib.get<LAPACKE_dpftri_t>("LAPACKE_dpftri");
-      LAPACKE_spftri = &lib.get<LAPACKE_spftri_t>("LAPACKE_spftri");
-      LAPACKE_ssyev = &lib.get<LAPACKE_ssyev_t>("LAPACKE_ssyev");
-      LAPACKE_dsyev = &lib.get<LAPACKE_dsyev_t>("LAPACKE_dsyev");
-      LAPACKE_cheev = &lib.get<LAPACKE_cheev_t>("LAPACKE_cheev");
-      LAPACKE_zheev = &lib.get<LAPACKE_zheev_t>("LAPACKE_zheev");
-      LAPACKE_cgeev = &lib.get<LAPACKE_cgeev_t>("LAPACKE_cgeev");
-      LAPACKE_zgeev = &lib.get<LAPACKE_zgeev_t>("LAPACKE_zgeev");
-      LAPACKE_cgetrf = &lib.get< LAPACKE_cgetrf_t>("LAPACKE_cgetrf");
-      LAPACKE_zgetrf = &lib.get< LAPACKE_zgetrf_t>("LAPACKE_zgetrf");
-      LAPACKE_cgetri = &lib.get< LAPACKE_cgetri_t>("LAPACKE_cgetri");
-      LAPACKE_zgetri = &lib.get< LAPACKE_zgetri_t>("LAPACKE_zgetri");
+      std::string prefix;
+      if (lib.has("scipy_LAPACKE_dpftrf")) {
+        prefix = "scipy_";
+      }
+      LAPACKE_dpftrf = &lib.get<LAPACKE_dpftrf_t>(prefix + "LAPACKE_dpftrf");
+      LAPACKE_spftrf = &lib.get<LAPACKE_spftrf_t>(prefix + "LAPACKE_spftrf");
+      LAPACKE_dsfrk = &lib.get<LAPACKE_dsfrk_t>(prefix + "LAPACKE_dsfrk");
+      LAPACKE_ssfrk = &lib.get<LAPACKE_ssfrk_t>(prefix + "LAPACKE_ssfrk");
+      LAPACKE_dtfttp = &lib.get<LAPACKE_dtfttp_t>(prefix + "LAPACKE_dtfttp");
+      LAPACKE_stfttp = &lib.get<LAPACKE_stfttp_t>(prefix + "LAPACKE_stfttp");
+      LAPACKE_dtpttf = &lib.get<LAPACKE_dtpttf_t>(prefix + "LAPACKE_dtpttf");
+      LAPACKE_stpttf = &lib.get<LAPACKE_stpttf_t>(prefix + "LAPACKE_stpttf");
+      LAPACKE_dpftri = &lib.get<LAPACKE_dpftri_t>(prefix + "LAPACKE_dpftri");
+      LAPACKE_spftri = &lib.get<LAPACKE_spftri_t>(prefix + "LAPACKE_spftri");
+      LAPACKE_ssyev = &lib.get<LAPACKE_ssyev_t>(prefix + "LAPACKE_ssyev");
+      LAPACKE_dsyev = &lib.get<LAPACKE_dsyev_t>(prefix + "LAPACKE_dsyev");
+      LAPACKE_cheev = &lib.get<LAPACKE_cheev_t>(prefix + "LAPACKE_cheev");
+      LAPACKE_zheev = &lib.get<LAPACKE_zheev_t>(prefix + "LAPACKE_zheev");
+      LAPACKE_cgeev = &lib.get<LAPACKE_cgeev_t>(prefix + "LAPACKE_cgeev");
+      LAPACKE_zgeev = &lib.get<LAPACKE_zgeev_t>(prefix + "LAPACKE_zgeev");
+      LAPACKE_cgetrf = &lib.get< LAPACKE_cgetrf_t>(prefix + "LAPACKE_cgetrf");
+      LAPACKE_zgetrf = &lib.get< LAPACKE_zgetrf_t>(prefix + "LAPACKE_zgetrf");
+      LAPACKE_cgetri = &lib.get< LAPACKE_cgetri_t>(prefix + "LAPACKE_cgetri");
+      LAPACKE_zgetri = &lib.get< LAPACKE_zgetri_t>(prefix + "LAPACKE_zgetri");
 
       openblas_get_num_threads = &lib.get<openblas_get_num_threads_t>(
-        "openblas_get_num_threads");
+        prefix + "openblas_get_num_threads");
       openblas_get_num_procs = &lib.get<openblas_get_num_procs_t>(
-        "openblas_get_num_procs");
+        prefix + "openblas_get_num_procs");
       openblas_set_num_threads = &lib.get<openblas_set_num_threads_t>(
-        "openblas_set_num_threads");
+        prefix + "openblas_set_num_threads");
       openblas_get_corename = &lib.get<openblas_get_corename_t>(
-        "openblas_get_corename");
+        prefix + "openblas_get_corename");
       openblas_get_config = &lib.get<openblas_get_config_t>(
-        "openblas_get_config");
+        prefix + "openblas_get_config");
 
-      cblas_ssyr = &lib.get<cblas_ssyr_t>("cblas_ssyr");
-      cblas_dsyr = &lib.get<cblas_dsyr_t>("cblas_dsyr");
+      cblas_ssyr = &lib.get<cblas_ssyr_t>(prefix + "cblas_ssyr");
+      cblas_dsyr = &lib.get<cblas_dsyr_t>(prefix + "cblas_dsyr");
 
-      cblas_sspr = &lib.get<cblas_sspr_t>("cblas_sspr");
-      cblas_dspr = &lib.get<cblas_dspr_t>("cblas_dspr");
+      cblas_sspr = &lib.get<cblas_sspr_t>(prefix + "cblas_sspr");
+      cblas_dspr = &lib.get<cblas_dspr_t>(prefix + "cblas_dspr");
 
-      cblas_ssyrk = &lib.get<cblas_ssyrk_t>("cblas_ssyrk");
-      cblas_dsyrk = &lib.get<cblas_dsyrk_t>("cblas_dsyrk");
+      cblas_ssyrk = &lib.get<cblas_ssyrk_t>(prefix + "cblas_ssyrk");
+      cblas_dsyrk = &lib.get<cblas_dsyrk_t>(prefix + "cblas_dsyrk");
 
-      cblas_sgemm = &lib.get<cblas_sgemm_t>("cblas_sgemm");
-      cblas_dgemm = &lib.get<cblas_dgemm_t>("cblas_dgemm");
+      cblas_sgemm = &lib.get<cblas_sgemm_t>(prefix + "cblas_sgemm");
+      cblas_dgemm = &lib.get<cblas_dgemm_t>(prefix + "cblas_dgemm");
     }
     void init_() {
       LAPACKE_dpftrf = 0;

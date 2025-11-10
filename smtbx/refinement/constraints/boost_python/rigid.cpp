@@ -16,7 +16,7 @@ namespace smtbx { namespace refinement { namespace constraints {
         return_internal_reference<> rir;
         class_<wt,
                bases<asu_parameter>,
-               std::auto_ptr<wt> >("rigid_pivoted_rotatable_group", no_init)
+               boost::shared_ptr<wt> >("rigid_pivoted_rotatable_group", no_init)
           .def(init<site_parameter *,
                     site_parameter *,
                     independent_scalar_parameter *,
@@ -28,7 +28,7 @@ namespace smtbx { namespace refinement { namespace constraints {
                  arg("size"),
                  arg("scatterers"))))
           ;
-        implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+        implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
       }
     };
 
@@ -39,7 +39,7 @@ namespace smtbx { namespace refinement { namespace constraints {
         using namespace boost::python;
         class_<wt,
                bases<asu_parameter>,
-               std::auto_ptr<wt> >("rigid_rotatable_expandable_group", no_init)
+               boost::shared_ptr<wt> >("rigid_rotatable_expandable_group", no_init)
           .def(init<site_parameter *,
                     independent_scalar_parameter *,
                     independent_scalar_parameter *,
@@ -53,7 +53,7 @@ namespace smtbx { namespace refinement { namespace constraints {
                  arg("gamma"),
                  arg("scatterers"))))
           ;
-        implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+        implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
       }
     };
 
@@ -65,7 +65,7 @@ namespace smtbx { namespace refinement { namespace constraints {
         using namespace boost::python;
         class_<wt,
                bases<asu_parameter>,
-               std::auto_ptr<wt> >("rigid_riding_expandable_group", no_init)
+               boost::shared_ptr<wt> >("rigid_riding_expandable_group", no_init)
           .def(init<site_parameter *,
                     independent_scalar_parameter *,
                     const af::shared<wt::scatterer_type *>&>
@@ -73,7 +73,7 @@ namespace smtbx { namespace refinement { namespace constraints {
                  arg("size"),
                  arg("scatterers"))))
           ;
-        implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+        implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
       }
     };
 
@@ -84,7 +84,7 @@ namespace smtbx { namespace refinement { namespace constraints {
         using namespace boost::python;
         class_<wt,
                bases<site_parameter>,
-               std::auto_ptr<wt> >("rigid_site_proxy", no_init)
+               boost::shared_ptr<wt> >("rigid_site_proxy", no_init)
           .def(init<pivoted_rotatable_group *,
                     int>
                 ((arg("parent"),
@@ -98,7 +98,7 @@ namespace smtbx { namespace refinement { namespace constraints {
                 ((arg("parent"),
                   arg("index"))))
           ;
-        implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+        implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
       }
     };
 

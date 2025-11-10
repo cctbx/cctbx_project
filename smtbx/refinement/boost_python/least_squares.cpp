@@ -162,7 +162,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
           structure_factors::direct::one_h::modulus_squared> default_f_calc_func_t;
         typedef f_calc_function_default<FloatType, default_f_calc_func_t> wt;
         class_<wt, bases<f_calc_function_base<FloatType> >,
-          std::auto_ptr<wt> >("f_calc_function_default", no_init)
+          boost::shared_ptr<wt> >("f_calc_function_default", no_init)
           .def(init<boost::shared_ptr<default_f_calc_func_t> >(
             (arg("f_calc_function"))))
           ;
@@ -174,7 +174,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
           default_f_calc_func_t;
         typedef f_calc_function_default<FloatType, default_f_calc_func_t> wt;
         class_<wt, bases<f_calc_function_base<FloatType> >,
-          std::auto_ptr<wt> >("f_calc_function_default_fc", no_init)
+          boost::shared_ptr<wt> >("f_calc_function_default_fc", no_init)
           .def(init<boost::shared_ptr<default_f_calc_func_t> >(
             (arg("f_calc_function"))))
           ;
@@ -184,7 +184,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         using namespace boost::python;
         typedef f_calc_function_with_cache<FloatType> wt;
         class_<wt, bases<f_calc_function_base<FloatType> >,
-          std::auto_ptr<wt> >("f_calc_function_with_cache", no_init)
+          boost::shared_ptr<wt> >("f_calc_function_with_cache", no_init)
           .def(init<boost::shared_ptr<f_calc_function_base<FloatType> >, bool>(
             (arg("f_calc_function"), arg("use_cache")=false)))
           ;
@@ -196,7 +196,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         typedef f_calc_function_base<FloatType> f_calc_f_t;
 
         class_<wt, bases<f_calc_function_base<FloatType> >,
-          std::auto_ptr<wt> >("f_calc_function_ed_N_beam", no_init)
+          boost::shared_ptr<wt> >("f_calc_function_ed_N_beam", no_init)
           .def(init<N_beam_shared_data<FloatType> const&>(
               (arg("data"),
                 arg("params"))))
@@ -207,7 +207,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         using namespace boost::python;
         typedef beam_width_cache<FloatType> wt;
 
-        class_<wt, std::auto_ptr<wt> >("beam_width_cache", no_init)
+        class_<wt, boost::shared_ptr<wt> >("beam_width_cache", no_init)
           .def(init<beam_width_cache<FloatType> const&>(
             (arg("cache"))))
           .def("find_width", &wt::find_width)

@@ -165,7 +165,7 @@ namespace {
     static void wrap_id(const char* name) {
       using namespace boost::python;
       typedef scatterer_id_base<FloatType, crd_t, mask_info, m> wt;
-      class_<wt, std::auto_ptr<wt> >(name, no_init)
+      class_<wt, boost::shared_ptr<wt> >(name, no_init)
         .def(init<const wt&>((arg("source"))))
         .def(init<uint64_t>((arg("id"))))
         .def("get_z", &wt::get_z)
@@ -181,7 +181,7 @@ namespace {
       typedef scatterer_lookup<FloatType, crd_t, mask_info, cell_m> wt;
       return_internal_reference<> rir;
 
-      class_<wt, std::auto_ptr<wt> >(name, no_init)
+      class_<wt, boost::shared_ptr<wt> >(name, no_init)
         .def(init <const af::shared<scatterer<> > &, FloatType>(
           (arg("scatterers"), arg("multiplier") = 1)))
         .def(init <const af::shared<scatterer<> > &, const af::shared<int>&, FloatType>(
@@ -200,7 +200,7 @@ namespace {
       typedef scatterer_cart_lookup<FloatType> wt;
       return_internal_reference<> rir;
 
-      class_<wt, std::auto_ptr<wt> >("scatterer_lookup_cart", no_init)
+      class_<wt, boost::shared_ptr<wt> >("scatterer_lookup_cart", no_init)
         .def(init<const uctbx::unit_cell&, const af::shared<scatterer<> > &>(
           (arg("unit_cell"), arg("scatterers"))))
         .def(init<const uctbx::unit_cell&,
