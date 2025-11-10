@@ -36,7 +36,7 @@ namespace boost_python {
       typedef BeamGroup<FloatType> wt;
       typedef typename utils<FloatType>::a_geometry geometry_t;
 
-      class_<wt, std::auto_ptr<wt> >("beam_group", no_init)
+      class_<wt, boost::shared_ptr<wt> >("beam_group", no_init)
         .def(init<int, boost::shared_ptr<geometry_t>,
           FloatType, FloatType>
           ((arg("id"), arg("geometry"), arg("angle"), arg("scale"))))
@@ -79,7 +79,7 @@ namespace boost_python {
       typedef return_internal_reference<> rir_t;
       typedef BeamInfo<FloatType> wt;
 
-      class_<wt, std::auto_ptr<wt> >("beam_info", no_init)
+      class_<wt, boost::shared_ptr<wt> >("beam_info", no_init)
         .def(init<const miller::index<> &,
           FloatType, FloatType>
           ((arg("h"), arg("I"),
@@ -97,7 +97,7 @@ namespace boost_python {
       typedef return_internal_reference<> rir_t;
       typedef PeakProfilePoint<FloatType> wt;
 
-      class_<wt, std::auto_ptr<wt> >("peak_profile_point", no_init)
+      class_<wt, boost::shared_ptr<wt> >("peak_profile_point", no_init)
         .add_property("I", &wt::I)
         .add_property("Sg", &wt::Sg)
         .add_property("angle", &wt::angle)
@@ -110,7 +110,7 @@ namespace boost_python {
       using namespace boost::python;
       typedef RefinementParams<FloatType> wt;
 
-      class_<wt, std::auto_ptr<wt> >("refinement_params", no_init)
+      class_<wt, boost::shared_ptr<wt> >("refinement_params", no_init)
         .def(init<const af::shared<FloatType> &>
           ((arg("values"))))
         .add_property("Kl_val", &wt::getKl_vac)
@@ -256,7 +256,7 @@ namespace boost_python {
       return_value_policy<return_by_value> rbv;
       return_internal_reference<> rir;
 
-      class_<wt, std::auto_ptr<wt> >("N_beam_shared_data_base", no_init)
+      class_<wt, boost::shared_ptr<wt> >("N_beam_shared_data_base", no_init)
         .def(init<f_calc_function_base<FloatType>&,
           sgtbx::space_group const&,
           uctbx::unit_cell const&,
@@ -280,7 +280,7 @@ namespace boost_python {
       typedef refinement::least_squares::f_calc_function_base<FloatType> f_calc_f_t;
       return_value_policy<return_by_value> rbv;
 
-      class_<wt, bases<base_t>, std::auto_ptr<wt> >("beam_group_profiler", no_init)
+      class_<wt, bases<base_t>, boost::shared_ptr<wt> >("beam_group_profiler", no_init)
         .def(init< const BeamGroup<FloatType> &,
           f_calc_f_t&,
           sgtbx::space_group const&,
@@ -305,7 +305,7 @@ namespace boost_python {
       typedef N_beam_shared_data<FloatType> wt;
       return_value_policy<return_by_value> rbv;
 
-      class_<wt, bases<base_t>, std::auto_ptr<wt> >("N_beam_shared_data", no_init)
+      class_<wt, bases<base_t>, boost::shared_ptr<wt> >("N_beam_shared_data", no_init)
         .def(init<const scitbx::sparse::matrix<FloatType>&,
           f_calc_function_base<FloatType>&,
           sgtbx::space_group const&,
@@ -396,7 +396,7 @@ namespace boost_python {
       typedef typename utils<FloatType>::a_geometry base_t;
       typedef typename utils<FloatType>::PETS_geometry wt;
 
-      class_<wt, bases<base_t>, std::auto_ptr<wt> >("PETS_geometry", no_init)
+      class_<wt, bases<base_t>, boost::shared_ptr<wt> >("PETS_geometry", no_init)
         .def(init<const mat3_t&, FloatType, FloatType>(
           (arg("UB"), arg("beta"), arg("omega"))));
     }
@@ -406,7 +406,7 @@ namespace boost_python {
       typedef typename utils<FloatType>::a_geometry base_t;
       typedef typename utils<FloatType>::CAP_geometry wt;
 
-      class_<wt, bases<base_t>, std::auto_ptr<wt> >("CAP_geometry", no_init)
+      class_<wt, bases<base_t>, boost::shared_ptr<wt> >("CAP_geometry", no_init)
         .def(init<const mat3_t&>((arg("UB"))));
     }
 

@@ -13,7 +13,7 @@ namespace smtbx { namespace refinement { namespace constraints {
       using namespace boost::python;
       class_<wt,
              bases<scalar_parameter>,
-             std::auto_ptr<wt> >("affine_scalar_parameter", no_init)
+             boost::shared_ptr<wt> >("affine_scalar_parameter", no_init)
         .def(init<scalar_parameter *, double, double>
              ((arg("dependee"), arg("a"), arg("b"))))
         .def(init<scalar_parameter *, double,
@@ -27,7 +27,7 @@ namespace smtbx { namespace refinement { namespace constraints {
              ((arg("dependees"), arg("a"), arg("b"))))
         .add_property("affine_form", &wt::affine_form)
         ;
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 

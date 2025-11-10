@@ -47,8 +47,8 @@ bool check_packed_full(int N, const double* x, const double* y) {
   return correct;
 }
 using namespace fast_linalg;
-extern void print_matrix(char* desc, lapack_int m, lapack_int n, std::complex<double>* a, lapack_int lda);
-void print_matrix(char* desc, lapack_int m, lapack_int n, double* a, lapack_int lda);
+void print_matrix(const char* desc, lapack_int m, lapack_int n, std::complex<double>* a, lapack_int lda);
+void print_matrix(const char* desc, lapack_int m, lapack_int n, double* a, lapack_int lda);
 
 template <typename FT>
 bool cmp_arrays(const FT* a, const FT* b, size_t l) {
@@ -317,7 +317,7 @@ int main(int argc, char** argv) {
   return all_correct ? 0 : 1;
 }
 
-void print_matrix(char* desc, lapack_int m, lapack_int n, std::complex<double>* a, lapack_int lda) {
+void print_matrix(const char* desc, lapack_int m, lapack_int n, std::complex<double>* a, lapack_int lda) {
   printf("\n %s\n", desc);
   for (lapack_int i = 0; i < m; i++) {
     for (lapack_int j = 0; j < n; j++) {
@@ -327,7 +327,7 @@ void print_matrix(char* desc, lapack_int m, lapack_int n, std::complex<double>* 
   }
 }
 
-void print_matrix(char* desc, lapack_int m, lapack_int n, double* a, lapack_int lda) {
+void print_matrix(const char* desc, lapack_int m, lapack_int n, double* a, lapack_int lda) {
   printf("\n %s\n", desc);
   for (lapack_int i = 0; i < m; i++) {
     for (lapack_int j = 0; j < n; j++) {

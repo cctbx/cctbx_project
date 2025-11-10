@@ -20,6 +20,7 @@
 #include <smtbx/refinement/constraints/reparametrisation.h>
 
 namespace smtbx { namespace refinement { namespace constraints {
+
 namespace boost_python {
 
   /* Three goals may be pursued in relation to inheritance:
@@ -57,7 +58,7 @@ namespace boost_python {
    of parameter classes (and heirs). Since class reparametrisation owns the
    pointers to the objects it refers too, we need to be very carefull that
    the Python side releases ownership and transfers it correctly. The first
-   step to do that is to instruct Boost.Python to use std::auto_ptr storage
+   step to do that is to instruct Boost.Python to use boost::shared_ptr storage
    for all instanciable classes (i.e. without any non-overriden pure
    virtual member functions). The second step is the Boost.Python binding
    for class reparametrisation (see below).
@@ -152,10 +153,10 @@ namespace boost_python {
       using namespace boost::python;
       class_<wt,
              bases<independent_parameter, scalar_parameter>,
-             std::auto_ptr<wt> >("independent_scalar_parameter", no_init)
+             boost::shared_ptr<wt> >("independent_scalar_parameter", no_init)
         .def(init<double, optional<bool> >
              ((arg("value"), arg("variable")=true)));
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
@@ -167,10 +168,10 @@ namespace boost_python {
       using namespace boost::python;
       class_<wt,
              bases<independent_parameter>,
-             std::auto_ptr<wt> >("twin_fraction_parameter", no_init)
+             boost::shared_ptr<wt> >("twin_fraction_parameter", no_init)
         .def(init<cctbx::xray::twin_fraction<double> *>((
           arg("twin_fraction"))));
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
@@ -182,10 +183,10 @@ namespace boost_python {
       using namespace boost::python;
       class_<wt,
              bases<independent_parameter>,
-             std::auto_ptr<wt> >("extinction_parameter", no_init)
+             boost::shared_ptr<wt> >("extinction_parameter", no_init)
         .def(init<cctbx::xray::shelx_extinction_correction<double> *>((
           arg("extinction"))));
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
@@ -197,10 +198,10 @@ namespace boost_python {
       using namespace boost::python;
       class_<wt,
         bases<independent_parameter>,
-        std::auto_ptr<wt> >("SWAT_parameter", no_init)
+        boost::shared_ptr<wt> >("SWAT_parameter", no_init)
         .def(init<cctbx::xray::shelx_SWAT_correction<double>*>((
           arg("swat"))));
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
@@ -212,12 +213,12 @@ namespace boost_python {
       return_value_policy<return_by_value> rbv;
       class_<wt,
         bases<independent_parameter>,
-        std::auto_ptr<wt> >("thickness_parameter", no_init)
+        boost::shared_ptr<wt> >("thickness_parameter", no_init)
         .def(init<cctbx::xray::thickness<double>*>
           (arg("thickness")))
         .def_readwrite("constrained", &wt::constrained)
         ;
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
@@ -251,11 +252,11 @@ namespace boost_python {
         boost::format("independent_small_%1%_vector_parameter") % N).str();
       class_<wt,
              bases<small_vector_parameter<N> >,
-             std::auto_ptr<wt> >(name.c_str(), no_init)
+             boost::shared_ptr<wt> >(name.c_str(), no_init)
         .def(init<af::small<double, N> const &, optional<bool> >
              ((arg("value"), arg("variable")=true)));
         ;
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
@@ -281,11 +282,11 @@ namespace boost_python {
       using namespace boost::python;
       class_<wt,
         bases<vector_parameter>,
-        std::auto_ptr<wt> >("independent_vector_parameter", no_init)
+        boost::shared_ptr<wt> >("independent_vector_parameter", no_init)
         .def(init<af::shared<double> const &, optional<bool> >
         ((arg("value"), arg("variable") = true)));
       ;
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
@@ -327,10 +328,10 @@ namespace boost_python {
       using namespace boost::python;
       class_<wt,
              bases<asu_site_parameter>,
-             std::auto_ptr<wt> >("independent_site_parameter", no_init)
+             boost::shared_ptr<wt> >("independent_site_parameter", no_init)
         .def(init<asu_parameter::scatterer_type *>(arg("scatterer")))
         ;
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
@@ -372,10 +373,10 @@ namespace boost_python {
       using namespace boost::python;
       class_<wt,
              bases<asu_u_star_parameter>,
-             std::auto_ptr<wt> >("independent_u_star_parameter", no_init)
+             boost::shared_ptr<wt> >("independent_u_star_parameter", no_init)
         .def(init<asu_parameter::scatterer_type *>(arg("scatterer")))
         ;
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
@@ -414,10 +415,10 @@ namespace boost_python {
       using namespace boost::python;
       class_<wt,
         bases<asu_anharmonic_adp_parameter>,
-        std::auto_ptr<wt> >("independent_anharmonic_adp_parameter", no_init)
+        boost::shared_ptr<wt> >("independent_anharmonic_adp_parameter", no_init)
         .def(init<asu_parameter::scatterer_type *>(arg("scatterer")))
         ;
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
@@ -442,10 +443,10 @@ namespace boost_python {
       using namespace boost::python;
       class_<wt,
              bases<asu_occupancy_parameter>,
-             std::auto_ptr<wt> >("independent_occupancy_parameter", no_init)
+             boost::shared_ptr<wt> >("independent_occupancy_parameter", no_init)
         .def(init<asu_parameter::scatterer_type *>(arg("scatterer")))
         ;
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
@@ -470,10 +471,10 @@ namespace boost_python {
       using namespace boost::python;
       class_<wt,
              bases<asu_u_iso_parameter>,
-             std::auto_ptr<wt> >("independent_u_iso_parameter", no_init)
+             boost::shared_ptr<wt> >("independent_u_iso_parameter", no_init)
         .def(init<asu_parameter::scatterer_type *>(arg("scatterer")))
         ;
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
@@ -496,10 +497,10 @@ namespace boost_python {
       using namespace boost::python;
       class_<wt,
         bases<asu_fp_parameter>,
-        std::auto_ptr<wt> >("independent_fp_parameter", no_init)
+        boost::shared_ptr<wt> >("independent_fp_parameter", no_init)
         .def(init<asu_parameter::scatterer_type *>(arg("scatterer")))
         ;
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
@@ -522,10 +523,10 @@ namespace boost_python {
       using namespace boost::python;
       class_<wt,
         bases<asu_fdp_parameter>,
-        std::auto_ptr<wt> >("independent_fdp_parameter", no_init)
+        boost::shared_ptr<wt> >("independent_fdp_parameter", no_init)
         .def(init<asu_parameter::scatterer_type *>(arg("scatterer")))
         ;
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
@@ -564,29 +565,26 @@ namespace boost_python {
        */
       object py_param = klass(*param_args, **kwds);
 
-      /* All Python wrapper in the parameter hierarchy have std::auto_ptr<>
+      /* All Python wrapper in the parameter hierarchy have boost::shared_ptr<>
          storage and instruct Boost.Python of the conversion
-         from std::auto_ptr<> to std::auto_ptr<parameter> (downcast to base
+         from boost::shared_ptr<> to boost::shared_ptr<parameter> (downcast to base
          class): thus the following 'extract' works.
        */
-      std::auto_ptr<parameter>
-      borrowed_param = extract<std::auto_ptr<parameter> >(py_param)();
+      boost::shared_ptr<parameter> borrowed_param = extract<boost::shared_ptr<parameter> >(py_param)();
 
       /* Apply the official recipe to transfer ownership from Boost.Python
          hands to the reparametrisation instance self
          (http://www.boost.org/doc/libs/1_43_0/libs/python/doc/v2/faq.html#ownership).
        */
-      parameter *p = borrowed_param.get();
-      self.add(p);
-      borrowed_param.release();
-      return p;
+      self.add(borrowed_param);
+      return borrowed_param.get();
     }
 
     static void wrap() {
       using namespace boost::python;
 
-      boost_adaptbx::iterator_range_wrapper<wt::range>
-      ::wrap("parameter_iterator");
+      //boost_adaptbx::iterator_range_wrapper<wt::range>
+      //::wrap("parameter_iterator");
 
       class_<wt> klass("reparametrisation", no_init);
       klass

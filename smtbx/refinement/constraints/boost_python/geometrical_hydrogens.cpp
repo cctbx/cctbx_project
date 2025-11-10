@@ -27,7 +27,7 @@ namespace boost_python {
       if (staggered) {
         class_<wt,
                bases<asu_parameter>,
-               std::auto_ptr<wt> >(name.c_str(), no_init)
+               boost::shared_ptr<wt> >(name.c_str(), no_init)
           .def(init<site_parameter *,
                     site_parameter *,
                     site_parameter *,
@@ -42,7 +42,7 @@ namespace boost_python {
       else {
         class_<wt,
                bases<asu_parameter>,
-               std::auto_ptr<wt> >(name.c_str(), no_init)
+               boost::shared_ptr<wt> >(name.c_str(), no_init)
           .def(init<site_parameter *,
                     site_parameter *,
                     independent_scalar_parameter *,
@@ -56,7 +56,7 @@ namespace boost_python {
                  arg("hydrogen"))))
           ;
       }
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
@@ -67,13 +67,13 @@ namespace boost_python {
       using namespace boost::python;
       class_<wt,
              bases<scalar_parameter>,
-             std::auto_ptr<wt> >("angle_parameter", no_init)
+             boost::shared_ptr<wt> >("angle_parameter", no_init)
         .def(init<site_parameter *,
                 site_parameter *,
                 site_parameter *,
                 double>
            ((arg("left"), arg("center"), arg("right"), arg("value"))));
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
@@ -85,7 +85,7 @@ namespace boost_python {
       using namespace boost::python;
       class_<wt,
              bases<asu_parameter>,
-             std::auto_ptr<wt> >("secondary_xh2_sites", no_init)
+             boost::shared_ptr<wt> >("secondary_xh2_sites", no_init)
         .def(init<site_parameter *,
                 site_parameter *,
                 site_parameter *,
@@ -96,7 +96,7 @@ namespace boost_python {
            ((arg("pivot"), arg("pivot_neighbour_0"), arg("pivot_neighbour_1"),
              arg("length"), arg("h_c_h_angle"),
              arg("hydrogen_0"), arg("hydrogen_1"))));
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
@@ -108,7 +108,7 @@ namespace boost_python {
       using namespace boost::python;
       class_<wt,
              bases<asu_parameter>,
-             std::auto_ptr<wt> >("tertiary_xh_site", no_init)
+             boost::shared_ptr<wt> >("tertiary_xh_site", no_init)
         .def(init<site_parameter *,
                   site_parameter *,
                   site_parameter *,
@@ -118,7 +118,7 @@ namespace boost_python {
              ((arg("pivot"), arg("pivot_neighbour_0"), arg("pivot_neighbour_1"),
                arg("pivot_neighbour_2"), arg("length"),
                arg("hydrogen"))));
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
@@ -130,7 +130,7 @@ namespace boost_python {
       using namespace boost::python;
       class_<wt,
              bases<asu_parameter>,
-             std::auto_ptr<wt> >("secondary_planar_xh_site", no_init)
+             boost::shared_ptr<wt> >("secondary_planar_xh_site", no_init)
         .def(init<site_parameter *,
                   site_parameter *,
                   site_parameter *,
@@ -139,7 +139,7 @@ namespace boost_python {
              ((arg("pivot"), arg("pivot_neighbour_0"), arg("pivot_neighbour_1"),
                arg("length"),
                arg("hydrogen"))));
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
@@ -151,7 +151,7 @@ namespace boost_python {
       using namespace boost::python;
       class_<wt,
              bases<asu_parameter>,
-             std::auto_ptr<wt> >("terminal_planar_xh2_sites", no_init)
+             boost::shared_ptr<wt> >("terminal_planar_xh2_sites", no_init)
         .def(init<site_parameter *,
                   site_parameter *,
                   site_parameter *,
@@ -160,7 +160,7 @@ namespace boost_python {
              ((arg("pivot"), arg("pivot_neighbour"),
                arg("pivot_neighbour_substituent"), arg("length"),
                arg("hydrogen_0"), arg("hydrogen_1"))));
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
@@ -173,14 +173,14 @@ namespace boost_python {
       using namespace boost::python;
       class_<wt,
              bases<asu_parameter>,
-             std::auto_ptr<wt> >("terminal_linear_ch_site", no_init)
+             boost::shared_ptr<wt> >("terminal_linear_ch_site", no_init)
         .def(init<site_parameter *,
                   site_parameter *,
                   independent_scalar_parameter *,
                   wt::scatterer_type *>
              ((arg("pivot"), arg("pivot_neighbour"), arg("length"),
                arg("hydrogen"))));
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
@@ -192,14 +192,14 @@ namespace boost_python {
       using namespace boost::python;
       class_<wt,
              bases<asu_parameter>,
-             std::auto_ptr<wt> >("polyhedral_bh_site", no_init)
+             boost::shared_ptr<wt> >("polyhedral_bh_site", no_init)
         .def(init<site_parameter *,
                   af::shared<site_parameter *> const&,
                   independent_scalar_parameter *,
                   wt::scatterer_type *>
              ((arg("pivot"), arg("pivot_neighbours"), arg("length"),
                arg("hydrogen"))));
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 

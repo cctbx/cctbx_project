@@ -883,8 +883,9 @@ public:
   {}
 };
 
-class computing_graph_has_cycle_error : public error
-{
+typedef boost::shared_ptr<parameter> parameter_ptr_t;
+
+class computing_graph_has_cycle_error : public error {
 public:
   computing_graph_has_cycle_error(parameter *p)
     : error("Cycle detected in constraints computing graph at", p)
@@ -898,24 +899,26 @@ template <class DerivedType>
 class dfs_visitor
 {
 public:
-  void visit(parameter *p) {
+  void visit(const parameter_ptr_t &p) {
     if (p->colour() == white) {
       heir()->start(p);
       if (heir()->shall_start_visit_from(p)) visit_from(p);
     }
   }
-
+  static void null_del(parameter*) {}
 private:
   DerivedType *heir() { return static_cast<DerivedType *>(this); }
 
-  void visit_from(parameter *p) {
+  void visit_from(const parameter_ptr_t& p) {
     heir()->discover(p);
     p->set_colour(grey);
     for (int i=0; i<p->n_arguments(); ++i) {
       parameter *q = p->argument(i);
       heir()->examine_edge(p, q);
-      if (!shall_cross(p, q)) continue;
-      if (q->colour() == white) visit_from(q);
+      if (!shall_cross(p, q)) {
+        continue;
+      }
+      if (q->colour() == white) visit_from(parameter_ptr_t(q, null_del));
       else if(q->colour() == grey) throw computing_graph_has_cycle_error(q);
     }
     heir()->finish(p);
@@ -927,23 +930,23 @@ private:
 
   /// Called with the parameter the visit starts from
   /** The default is to do nothing */
-  void start(parameter *p) { }
+  void start(const parameter_ptr_t&) { }
 
   /// Whether the visit shall proceed by starting a DFS from p
   /** The default is to do so */
-  bool shall_start_visit_from(parameter *p) { return true; }
+  bool shall_start_visit_from(const parameter_ptr_t&) { return true; }
 
   /// Called just after p is first seen
   /** The default is to do nothing */
-  void discover(parameter *p) { }
+  void discover(const parameter_ptr_t&) { }
 
   /// Call just after the edge from p to its argument q is discovered
   /** the default is to do nothing */
-  void examine_edge(parameter *p, parameter *q) { }
+  void examine_edge(const parameter_ptr_t& p, parameter *q) { }
 
   /// Whether the visit shall proceed by crossing from p to its argument q.
   /** The default is to do so. */
-  bool shall_cross(parameter *p, parameter *q) { return true; }
+  bool shall_cross(const parameter_ptr_t& p, parameter *q) { return true; }
 
   /// Called just before p is seen for the last time.
   /** This is after the entire subtree hanging from p has been explored.
@@ -962,7 +965,7 @@ public:
     : unit_cell(unit_cell)
   {}
 
-  void finish(parameter *p) {
+  void finish(const parameter_ptr_t& p) {
     if (p->n_arguments()) {
       p->set_variable(false);
       for (int i=0; i<p->n_arguments(); ++i) {
@@ -982,15 +985,16 @@ class evaluator : public dfs_visitor<evaluator>
 {
 public:
   evaluator(uctbx::unit_cell const &unit_cell,
-            sparse_matrix_type *jacobian_transpose)
-    : unit_cell(unit_cell), jacobian_transpose(jacobian_transpose)
+    sparse_matrix_type *jacobian_transpose)
+    : unit_cell(unit_cell),
+    jacobian_transpose(jacobian_transpose)
   {}
 
-  bool shall_start_visit_from(parameter *p) { return p->is_variable(); }
+  bool shall_start_visit_from(const parameter_ptr_t& p) { return p->is_variable(); }
 
-  bool shall_cross(parameter *p, parameter *q) { return q->is_variable(); }
+  bool shall_cross(const parameter_ptr_t& p, parameter *q) { return q->is_variable(); }
 
-  void finish(parameter *p) { p->linearise(unit_cell, jacobian_transpose); }
+  void finish(const parameter_ptr_t& p) { p->linearise(unit_cell, jacobian_transpose); }
 
 private:
   uctbx::unit_cell const &unit_cell;
@@ -1006,11 +1010,13 @@ public:
     : all(all)
   {}
 
-  void start(parameter *p) { p->set_root(true); }
+  void start(const parameter_ptr_t &p) { p->set_root(true); }
 
-  void examine_edge(parameter *p, parameter *q) { q->set_root(false); }
+  void examine_edge(const parameter_ptr_t &p, parameter *q) {
+    q->set_root(false);
+  }
 
-  void finish(parameter *p) { *all++ = p; }
+  void finish(const parameter_ptr_t &p) { *all++ = p; }
 
 private:
   OutputPointerType all;
@@ -1035,8 +1041,8 @@ public:
 class reparametrisation
 {
 private:
-  typedef std::vector<parameter *> parameter_array_t;
-
+  typedef std::vector<parameter_ptr_t> parameter_array_t;
+  static void null_del(parameter*) {}
 public:
   typedef asu_parameter::scatterer_type scatterer_type;
 
@@ -1055,10 +1061,12 @@ public:
     : unit_cell_(unit_cell)
   {
     // Classify parameters
-    typedef std::back_insert_iterator<std::vector<parameter *> >
+    typedef typename std::back_insert_iterator<parameter_array_t>
             all_param_inserter_t;
     topologist<all_param_inserter_t> t(std::back_inserter(all));
-    BOOST_FOREACH(parameter *p, params) t.visit(p);
+    BOOST_FOREACH(parameter *p, params) {
+      t.visit(parameter_ptr_t(p, null_del));
+    }
     whiten(); // only time we need to call that explicitly
 
     analyse_variability();
@@ -1078,7 +1086,7 @@ public:
       This object takes ownership of those parameters, which will therefore
       be deallocated when this object is destroyed.
    */
-  void add(parameter *p);
+  void add(const boost::shared_ptr<parameter>& p);
 
   /// Ready this for linearise(), etc.
   void finalise();
@@ -1132,7 +1140,7 @@ public:
    */
   template <class Visitor>
   void accept(Visitor &v) {
-    BOOST_FOREACH(parameter *p, all) if (p->is_root()) v.visit(p);
+    BOOST_FOREACH(parameter_ptr_t p, all) if (p->is_root()) v.visit(p);
     whiten();
   }
 
@@ -1151,7 +1159,6 @@ public:
   }
 private:
   void whiten();
-
 public:
   /// The transpose of the Jacobian of the function transforming independent
   /// parameters into root parameters.
