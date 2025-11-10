@@ -8,45 +8,6 @@ namespace smtbx { namespace ED
   using namespace cctbx;
 
   template <typename FloatType> struct BeamInfo;
-  template <typename FloatType> struct BeamGroup;
-  template <typename FloatType>
-  class EDData {
-    ED_UTIL_TYPEDEFS;
-    typedef typename utils<FloatType>::a_geometry geometry_t;
-    struct Frame {
-      cart_t normal;
-      FloatType start, end, scale;
-      Frame(const cart_t& n,
-        FloatType start, FloatType end)
-        : normal(n), start(start), end(end)
-      {}
-    };
-    struct Beam {
-      miller::index<> h;
-      FloatType I, sig, scale, start, end;
-      const Frame* frame;
-      Beam(const Frame& f, const miller::index<>& h,
-        FloatType I, FloatType sig, FloatType scale,
-        FloatType start, FloatType end)
-        : frame(&f),
-        h(h), I(I), sig(sig), scale(scale),
-        start(start), end(end)
-      {}
-    };
-    af::shared<Beam> beams;
-  public:
-    EDData(boost::shared_ptr<geometry_t> geometry)
-      : geometry(geometry)
-    {}
-    void add(const miller::index<>& h,
-      FloatType start, FloatType middle, FloatType end)
-    {
-      beams.push_back(Beam(h, start, middle, end));
-    }
-    af::shared<BeamGroup<FloatType> > generate_groups(FloatType width) const;
-
-    boost::shared_ptr<geometry_t> geometry;
-  };
 
   template <typename FloatType>
   class BeamGroup {
