@@ -36,7 +36,8 @@ def run(file_name = None,
     if not log_as_text:
       if not os.path.isfile(file_name):
         raise ValueError("Sorry, the file %s is missing" %(file_name))
-      log_as_text = open(file_name).read()
+      log_as_text = open(
+         file_name, 'r', encoding='utf-8', errors='ignore').read()
       print("Summarizing the log file '%s'..." %(file_name))
     elif file_name:
       print("Summarizing the log file '%s'..." %(file_name))
@@ -75,19 +76,50 @@ def run(file_name = None,
         raise ValueError("Sorry, unable to analyze the file %s " %(file_name))
 
 
-      # Set up the LLM (same one for both analyzing log file and processing)
-      print("Setting up LLM")
+# --- MODIFIED SECTION: Set up two LLMs ---
+      print("Setting up LLMs...")
       try:
-        llm, embeddings = lct.get_llm_and_embeddings(
+        # 1. Get the CHEAP LLM (and the embeddings)
+        # This will use the default model (e.g.,
+        #     'gpt-5-nano' or 'gemini-2.5-flash-lite')
+        cheap_llm, embeddings = lct.get_llm_and_embeddings(
             provider=provider, timeout=timeout)
+        print(f"Using cheap model for summarization: {cheap_llm.model_name if provider == 'openai' else cheap_llm.model}")
+
+        # 2. Get the EXPENSIVE LLM for final analysis
+        expensive_model_name = None
+        if provider == 'openai':
+            expensive_model_name = 'gpt-5' # Your requested powerful model
+        elif provider == 'google':
+            expensive_model_name = 'gemini-1.5-pro' # A powerful Google equivalent
+
+        if expensive_model_name:
+            expensive_llm, _ = lct.get_llm_and_embeddings(
+                provider=provider,
+                timeout=timeout,
+                llm_model_name=expensive_model_name
+            )
+            print(f"Using expensive model for analysis: {expensive_llm.model_name if provider == 'openai' else expensive_llm.model}")
+        else:
+            print("Warning: No expensive model defined. "+
+               "Using cheap model for all steps.")
+            expensive_llm = cheap_llm
+
       except ValueError as e:
         print(e)
         raise ValueError("Sorry, unable to set up LLM with %s" %(provider))
+      # --- END OF MODIFIED SECTION ---
 
-      # Summarize the log file
-      print("Summarizing log file")
-      result = asyncio.run(lct.get_log_info(log_as_text, llm, embeddings,
-        timeout = timeout, provider = provider))
+
+      # Summarize the log file (using the CHEAP LLM)
+      print("Summarizing log file (using cheap model)...")
+      result = asyncio.run(lct.get_log_info(
+          log_as_text,
+          cheap_llm,  # <-- Pass cheap_llm
+          embeddings,
+          timeout = timeout,
+          provider = provider
+      ))
       if result.error or not result.summary: # failed
         print("Log file summary failed")
         log_info.error = result.error
@@ -115,34 +147,40 @@ def run(file_name = None,
         # phenix is not available or no viewer.  Just skip
         print("Unable to load viewer")
 
+# In run_analyze_log.py, in the "run" function
+
     # Analyze the log summary in the context of the docs
-    print("\nAnalyzing summary in context of documentation...")
+    print("\nAnalyzing summary in context of documentation (using expensive model)...")
     if (db_dir and (not log_info.analysis)):
       ok = False
       from copy import deepcopy
       log_info_std = deepcopy(log_info)
+
+      # --- MODIFIED RETRY LOGIC ---
+      last_error = "" # Keep track of the last error
       for i in range(max_analyze_log_tries):
         log_info = deepcopy(log_info_std)
         result = asyncio.run(
-          lct.analyze_log_summary(log_info, llm, embeddings,
+          lct.analyze_log_summary(log_info, expensive_llm, embeddings,
           db_dir = db_dir, timeout = timeout))
-        if (not result.error) and (result.analysis): # passed
+
+        if (not result.error) and (result.analysis): # Success
           log_info.analysis = result.analysis
           ok = True
-        elif result.error and (not result.error.startswith("Reranking failed")):
-          # give up right away
-          log_info.error = result.error+"\nUnknown why reranking failed"
-          log_info.analysis = ""
-          print("Unable to carry out analysis of log file")
-          return log_info
-        if ok:
-          break # done
+          break # Exit the loop on success
+        else:
+          # Failure, store the error and try again
+          last_error = result.error or "Unknown analysis error"
+          print(f"Analysis failed (Attempt {i+1}/{max_analyze_log_tries}): {last_error}")
+          time.sleep(1) # Optional: short pause before retry
+
       if (not ok):
-        # If we get here, we tried a few times and it did not work
-        log_info.error = result.error + "\nReranking failed %s times" %(i)
+        # If we get here, all retries failed
+        log_info.error = f"Analysis failed after {max_analyze_log_tries} attempts. Last error: {last_error}"
         log_info.analysis = ""
-        print("Unable to carry out analysis of log file")
+        print("Unable to carry out analysis of log file.")
         return log_info
+      # --- END OF MODIFIED LOGIC ---
 
     # Put it in an html window
     if display_results:
