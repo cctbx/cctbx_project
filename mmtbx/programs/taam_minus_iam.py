@@ -24,6 +24,10 @@ scattering_table = *wk1995 it1992 electron
   .type = choice
   .short_caption = Scattering table
   .help = Scattering table for structure factors calculations
+apply_scaling = True
+  .type = bool
+  .short_caption = Apply a scale factor for Fcalc(TAAM)
+  .help = Apply a scale factor for Fcalc(TAAM)
 '''
 
 # =============================================================================
@@ -175,11 +179,14 @@ Usage examples:
 
     fc1 = self.cctbx_direct(xrs=xrs, complete_set=miller_array)
     fc2 = self.discamb_taam(xrs=xrs, complete_set=miller_array)
-    sc = self.scale(x=fc1.data(), y=fc2)
-    print("\nscale:", sc)
-    fc2 = fc1.customized_copy(data = fc2*sc)
+    if self.params.apply_scaling:
+      sc = self.scale(x=fc1.data(), y=fc2)
+      print("\nscale:", sc, file=self.logger)
+      fc2 = fc1.customized_copy(data = fc2*sc)
+      print("\nr:",self.r(fc1.data(), fc2.data()), file=self.logger)
+    else:
+      fc2 = fc1.customized_copy(data = fc2)
     diff = fc1.customized_copy(data = fc2.data()-fc1.data())
-    print("\nr:",self.r(fc1.data(), fc2.data()))
 
     mtz_dataset = diff.as_mtz_dataset(column_root_label = "TAAM-IAM")
     mtz_object = mtz_dataset.mtz_object()
