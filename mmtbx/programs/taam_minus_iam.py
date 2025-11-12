@@ -107,6 +107,8 @@ Usage examples:
     y = flex.abs(y)
     return flex.sum(x*y)/flex.sum(y*y)
 
+  # ---------------------------------------------------------------------------
+
   def r(self, x, y):
     x = flex.abs(x)
     y = flex.abs(y)
@@ -115,17 +117,22 @@ Usage examples:
     den = flex.sum(flex.abs(x+scale*y))
     return num/den*2*100.
 
+  # ---------------------------------------------------------------------------
+
   def cctbx_direct(self, xrs, complete_set):
     return complete_set.structure_factors_from_scatterers(
       xray_structure = xrs,
       algorithm      = "direct",
       cos_sin_table  =  False).f_calc()
 
+  # ---------------------------------------------------------------------------
+
   def discamb_taam(self, xrs, complete_set):
     wrapper = pydiscamb.DiscambWrapper(
       xrs,
       method=pydiscamb.FCalcMethod.TAAM,
       assignment_info="atom_type_assignment.log") # XXX Can't be None
+    wrapper.show_atom_type_assignment()
     wrapper.set_indices(complete_set.indices())
     return wrapper.f_calc()
 
