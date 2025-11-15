@@ -5,6 +5,7 @@ an advanced reranking RAG.
 """
 from __future__ import division
 import sys, os
+import time
 
 def run(file_name = None,
       log_as_text = None,
@@ -31,7 +32,6 @@ def run(file_name = None,
       processed_log_dict = None,
       error = None)
 
-
     # Get the text for the log file
     if not log_as_text:
       if not os.path.isfile(file_name):
@@ -51,7 +51,6 @@ def run(file_name = None,
       dd = tempfile.TemporaryDirectory()
       output_file_path = dd.name
       # Note: will be deleted when execution ends
-
     if (not log_info.summary) or (not log_info.analysis):
       # need to get the info
       if provider == 'google':
@@ -79,47 +78,49 @@ def run(file_name = None,
 # --- MODIFIED SECTION: Set up two LLMs ---
       print("Setting up LLMs...")
       try:
-        # 1. Get the CHEAP LLM (and the embeddings)
-        # This will use the default model (e.g.,
-        #     'gpt-5-nano' or 'gemini-2.5-flash-lite')
-        cheap_llm, embeddings = lct.get_llm_and_embeddings(
-            provider=provider, timeout=timeout)
-        print(f"Using cheap model for summarization: {cheap_llm.model_name if provider == 'openai' else cheap_llm.model}")
-
-        # 2. Get the EXPENSIVE LLM for final analysis
-        expensive_model_name = None
-        if provider == 'openai':
-            expensive_model_name = 'gpt-5' # Your requested powerful model
-        elif provider == 'google':
-            expensive_model_name = 'gemini-1.5-pro' # A powerful Google equivalent
-
-        if expensive_model_name:
-            expensive_llm, _ = lct.get_llm_and_embeddings(
-                provider=provider,
-                timeout=timeout,
-                llm_model_name=expensive_model_name
-            )
-            print(f"Using expensive model for analysis: {expensive_llm.model_name if provider == 'openai' else expensive_llm.model}")
+        # 1. the EXPENSIVE model ('gpt-5') for final analysis or gemini-2.5-pro
+        if provider == "google":
+          expensive_llm, embeddings = lct.get_llm_and_embeddings(
+            provider=provider,
+            timeout=timeout,
+            llm_model_name='gemini-2.5-pro' # Your requested powerful model
+          )
+          print(f"Using expensive model for analysis: {expensive_llm.model}")
         else:
-            print("Warning: No expensive model defined. "+
-               "Using cheap model for all steps.")
-            expensive_llm = cheap_llm
+          expensive_llm, embeddings = lct.get_llm_and_embeddings(
+            provider=provider,
+            timeout=timeout,
+            llm_model_name='gpt-5' # Your requested powerful model
+          )
+          print(f"Using expensive model for analysis: {expensive_llm.model_name}")
+
+        # 2. Get the CHEAP & FAST Google model for summarization
+        #    This model is fast, cheap, and built for this kind of work.
+        #    We let it use its default: gemini-2.5-flash-lite
+        cheap_llm, _ = lct.get_llm_and_embeddings(
+            provider='google',
+            timeout=timeout
+        )
+        # Note: We discard Google's embeddings (_) since we only need its LLM.
+        print(f"Using cheap/fast model for summarization: {cheap_llm.model}")
 
       except ValueError as e:
         print(e)
-        raise ValueError("Sorry, unable to set up LLM with %s" %(provider))
+        raise ValueError("Sorry, unable to set up LLM. Check both GOOGLE_API_KEY and OPENAI_API_KEY.")
       # --- END OF MODIFIED SECTION ---
 
 
-      # Summarize the log file (using the CHEAP LLM)
-      print("Summarizing log file (using cheap model)...")
+      # Summarize the log file (using the CHEAP & FAST Google LLM)
+      print("Summarizing log file (using cheap Google model)...")
       result = asyncio.run(lct.get_log_info(
           log_as_text,
-          cheap_llm,  # <-- Pass cheap_llm
-          embeddings,
+          cheap_llm,  # <-- Pass Google's cheap_llm
+          embeddings, # <-- Pass OpenAI's embeddings (summarize doesn't use them)
           timeout = timeout,
-          provider = provider
+          provider = 'google' # Tell the function which provider we're using
       ))
+
+
       if result.error or not result.summary: # failed
         print("Log file summary failed")
         log_info.error = result.error
@@ -200,7 +201,6 @@ def run(file_name = None,
         # phenix is not available or no viewer.  Just skip
         print("Unable to load viewer")
     # Make sure viewer has enough time to load
-    import time
     time.sleep(0.5)
     return log_info
 

@@ -90,50 +90,44 @@ def get_log_map_prompt() -> PromptTemplate:
     """
     return PromptTemplate.from_template(template)
 
-def get_log_combine_prompt() -> PromptTemplate:
+# In langchain_tools.py
 
+# In langchain_tools.py, replace get_log_combine_prompt
+
+def get_log_combine_prompt() -> PromptTemplate:
     """Returns the prompt for synthesizing log chunk summaries into
         a final report."""
 
     template = (
-        "You are an expert research scientist. "
-          "Synthesize the following summaries "
-        "from a long log file into a single, structured report. Your report "
-        "must contain all the information requested below.\n\n"
-        "Summaries:\n{context}\n\n"
+        "You are an expert research scientist. Synthesize the following summaries "
+        "from a long log file into a structured report. Your report "
+        "must contain the key information requested below.\n\n"
         "Final Report Requirements:\n"
-        "1. Table of input files and their contents. Specify whether "
-         "the data are X-ray or cryo-EM.\n"
-        "2. Table of specified input parameters.\n"
-        "3. The name of the Phenix program that was run (just the name"
-          "of the program, no description or explanation).\n"
-        "4. Detailed description of each step carried out.\n"
-        "5. Detailed table of all metrics obtained.\n"
-        "6. Detailed table of all warnings, errors and advisories obtained.\n"
-        "7. Full reproduction of any summary table found at the end of the run."
-        " Do not include any information from files with the suffix of .dat\n"
-        "8. List of all output files and their contents. "
-         "Ignore files with the suffix of .dat.  Try to include files "
-         "that contain the text `overall_best`, as these are usually "
-         "the current best result files. \n"
-        "9. Identification and analysis of the key output files and their "
-         "evaluation metrics. Ignore files with the suffix of .dat"
-        "\nDo not provide notes on content adherance."
-        "\nDo not suggest additional actions that you might take."
+        "1. **Input Files:** List key input files and data type (X-ray or cryo-EM).\n"
+        "2. **Program Name:** The name of the Phenix program that was run.\n"
+        "3. **Key Steps:** A high-level, bulleted list of the main steps carried out.\n"
+        "4. **Key Metrics:** A concise table of the *final* key metrics (e.g., CC, R-values, resolution). Do not list intermediate values.\n"
+        "5. **Warnings/Errors:** A list of any critical warnings or errors.\n"
+        "6. **Key Output Files:** List the most important output files (e.g., 'overall_best').\n\n"
+        
+        "**IMPORTANT:** Be structured and clear. Do NOT provide 'Detailed descriptions' or 'Full reproductions' of tables. "
+        "Focus on the most critical, final information. "
+        "Do not add conversational text or offer help.\n\n"
+
+        "Now, synthesize the following summaries:\n"
+        "{context}" # <-- Dynamic content is at the end
     )
     return PromptTemplate(template=template, input_variables=["context"])
 
 def get_log_analysis_prompt() -> PromptTemplate:
-    """Returns the prompt for analyzing a log summary against
-        the documentation."""
+    """Returns the prompt for analyzing a log summary..."""
+
     template = (
         "You are expert in crystallography and cryo-EM."
         "You are a Phenix power-user. Your task is to analyze "
         "a program summary in the context of the provided documentation "
         "and research papers.\n\n"
-        "Documentation Context:\n{context}\n\n"
-        "Log File Summary:\n{log_summary}\n\n"
-        "Based on all the information above, please perform the following "
+        "Based on the data provided at the end, please perform the following "
         " analysis. Consider the events of the log summary in the broader "
         "context of a "
         "typical Phenix structure determination workflow as described in "
@@ -147,7 +141,7 @@ def get_log_analysis_prompt() -> PromptTemplate:
           "consider the goals of the program. Note any warnings, errors,"
           "or advisories obtained. "
           "If the results of the run indicate a low confidence solution,"
-          "multiple solutions, or no solution, clearly state this observation."
+          "multiple solutions, or no solution, clearly state this observation.\n\n"
 
         "2. Considering whether the data are from crystallography or"
         "cryo-EM and considering the normal sequence of Phenix tool use"
@@ -166,23 +160,26 @@ def get_log_analysis_prompt() -> PromptTemplate:
         "Name the tools that are to be used, along with their inputs "
         " and outputs and what they do. "
         "Do not suggest depositing the model. "
-        "Do not suggest analyzing the biological relevance. "
+        "Do not suggest analyzing the biological relevance. \n\n"
 
         "3.List the inputs and briefly describe what was done."
         "Report whether the data are from crystallography (X-ray or neutron)"
-        " or from cryo-EM"
+        " or from cryo-EM\n\n"
 
         "4. List the key output files from this run, along with the values "
         "of any available metrics describing their utilities. "
-        "If no metrics are available, do not provide any. "
+        "If no metrics are available, do not provide any. \n\n"
 
-        "**Please note: no offers of help***  Do not offer to help the "
+        "**Please note: no offers of help*** Do not offer to help the "
         "user with additional analyses and do not mention that you are"
         "not to offer to help."
-
+        "\n\n---BEGIN DATA FOR ANALYSIS---\n"
+        "Documentation Context:\n{context}\n\n"
+        "Log File Summary:\n{log_summary}" # <-- Both dynamic vars at the end
     )
     return PromptTemplate(template=template, input_variables=["context", "log_summary"])
 
+# In langchain_tools.py
 
 def get_docs_query_prompt() -> PromptTemplate:
     """Returns the general-purpose prompt for querying the documentation RAG."""
@@ -199,17 +196,18 @@ Consider this question in the context of the process of structure determinaion i
 Focus on using Phenix tools, but include the use of Coot or Isolde if appropriate.
 Name the tools that are to be used, along with their inputs and outputs and what they do.
 
+Provide your answer based on the context and question below.
+
+---BEGIN CONTEXT AND QUESTION---
 Context:
 {context}
 
 Question:
 {input}
-
-Answer:"""
+""" # <-- All dynamic content is at the end. The "Answer:" is implied.
     return PromptTemplate(
         template=template, input_variables=["context", "input"]
     )
-
 
 # --- Core Functionality ---
 
@@ -662,7 +660,7 @@ def create_reranking_retriever(vectorstore: Chroma,
     )
 
     # 2. Then, pass the pre-configured client to the CohereRerank object.
-    reranker = CohereRerank(client=cohere_client, model="rerank-english-v3.0")
+    reranker = CohereRerank(client=cohere_client, model="rerank-english-v3.0", top_n=8)
     #
 
     # The compression retriever combines the base retriever and the reranker
@@ -950,9 +948,9 @@ async def summarize_log_text(
     text: str,
     llm: ChatGoogleGenerativeAI,
     timeout: int = 120,
-    batch_size: int = 10,  # Process 10 chunks at a time (safely under 15 RPM limit)
+    batch_size: int = 3,  # Process 3 chunks at a time (safely under 15 RPM limit)
     pause_between_batches: int = 1,  # Wait 1 seconds between batches
-    use_throttling: bool = False,
+    use_throttling: bool = True,
     provider: str = 'google',
 ) -> str:
     """
