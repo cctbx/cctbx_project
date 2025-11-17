@@ -109,7 +109,7 @@ def get_log_combine_prompt() -> PromptTemplate:
         "4. **Key Metrics:** A concise table of the *final* key metrics (e.g., CC, R-values, resolution). Do not list intermediate values.\n"
         "5. **Warnings/Errors:** A list of any critical warnings or errors.\n"
         "6. **Key Output Files:** List the most important output files (e.g., 'overall_best').\n\n"
-        
+
         "**IMPORTANT:** Be structured and clear. Do NOT provide 'Detailed descriptions' or 'Full reproductions' of tables. "
         "Focus on the most critical, final information. "
         "Do not add conversational text or offer help.\n\n"
