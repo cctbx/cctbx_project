@@ -1019,6 +1019,7 @@ def setup_qm_jobs(model,
     elif len(qmr.freeze_specific_atoms)==1:
       if qmr.freeze_specific_atoms[0].atom_selection!=Auto:
         raise Sorry('Freezing ligand atoms only supports "Auto" for centre of mass.')
+    print('\n%s QM selection %d "%s" %s' % ('-'*10, i+1, qmr.selection, '-'*10), file=log)
     number_of_macro_cycles = 1
     if hasattr(params, 'main'):
       number_of_macro_cycles = params.main.number_of_macro_cycles
@@ -1042,6 +1043,7 @@ def setup_qm_jobs(model,
     #
     program_goals = get_program_goal(qmr, macro_cycle, energy_only=energy_only)
     for program_goal in program_goals:
+      print(f'  QM program "{program_goal}"', file=log)
       qmm = get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=log)
       preamble = quantum_interface.get_preamble(macro_cycle, i, qmr)
       if not energy_only: # only write PDB files for restraints update

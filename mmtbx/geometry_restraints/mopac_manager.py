@@ -43,7 +43,7 @@ class mopac_manager(base_qm_manager.base_qm_manager):
     else:
       nproc_str='THREADS=%s' % self.nproc
     multiplicity_str=''
-    if self.multiplicity not in [None, Auto]:
+    if self.multiplicity not in [None, Auto, 1]:
       multiplicity_str=[None,
                         'singlet', # - 0 unpaired electrons
                         'doublet', # - 1 unpaired electrons
