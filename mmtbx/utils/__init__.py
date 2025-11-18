@@ -1229,15 +1229,15 @@ class fmodel_from_xray_structure(object):
       try: hr = params.high_resolution
       except Exception: self.Sorry_high_resolution_is_not_defined()
       if(params.scattering_table == "neutron"):
-        if(new_scattering_dictionary):
-          xray_structure.scattering_type_registry(
-            custom_dict = new_scattering_dictionary)
-          xray_structure.scattering_type_registry().show(out = out)
-        else:
-          xray_structure.switch_to_neutron_scattering_dictionary()
+        xray_structure.switch_to_neutron_scattering_dictionary()
       else:
         xray_structure.scattering_type_registry(
           table = params.scattering_table, d_min = hr)
+      if(new_scattering_dictionary):
+        xray_structure.scattering_type_registry(
+            custom_dict = new_scattering_dictionary)
+        xray_structure.scattering_type_registry().show(out = out)
+
       if(hr is None): self.Sorry_high_resolution_is_not_defined()
       f_obs = xray_structure.structure_factors(d_min = hr).f_calc()
       sfga = params.structure_factors_accuracy
