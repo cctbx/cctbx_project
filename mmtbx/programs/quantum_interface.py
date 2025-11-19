@@ -65,7 +65,8 @@ def substitute_ag_into_hierarchy(hierarchy, atom_group):
       rg.append_atom_group(atom_group.detached_copy())
       break
 
-def merge_water(hierarchy, filenames, chain_id='A'):
+def merge_water(model, filenames, chain_id='A'):
+  hierarchy=model.get_hierarchy()
   hierarchies = []
   for filename in filenames:
     ph = iotbx.pdb.input(filename).construct_hierarchy()
@@ -377,6 +378,9 @@ Usage examples:
       .type = str
     include_amino_acids = None
       .type = str
+    carve_selection = None
+      .type = atom_selection
+      .help = only work on this selection
     each_amino_acid = False
       .type = bool
     each_water = False
@@ -539,7 +543,13 @@ Usage examples:
         print('no working directory', file=self.logger)
 
     if self.params.qi.each_water:
-      def _water_scope_generator(hierarchy):
+      def _water_scope_generator(hierarchy, carve_selection=None):
+        if carve_selection:
+          selection_array = model.selection(carve_selection)
+          selected_model = model.select(selection_array)
+          hierarchy = selected_model.get_hierarchy()
+        else:
+          hierarchy = model.get_hierarchy()
         for rg in hierarchy.residue_groups():
           if len(rg.atom_groups())!=1: continue
           resname=rg.atom_groups()[0].resname
@@ -556,10 +566,10 @@ Usage examples:
                                                   'do_not_update_restraints = True')
           # print('  writing phil for %s %s' % (rg.id_str(), rg.atom_groups()[0].resname), file=self.logger)
           yield qi_phil_string
-      hierarchy = model.get_hierarchy()
       if not self.params.qi.run_qmr:
         outl = ''
-        for qi_phil_string in _water_scope_generator(hierarchy):
+        for qi_phil_string in _water_scope_generator(model,
+                                                     carve_selection=self.params.qi.carve_selection):
           outl += '%s' % qi_phil_string
         pf = '%s_water.phil' % (
           self.data_manager.get_default_model_name().replace('.pdb',''))
@@ -583,7 +593,8 @@ Usage examples:
         nproc=self.params.qi.nproc
         argstuples=[]
         # for qmr in self.params.qi.qm_restraints:
-        for i, qi_phil_string in enumerate(_water_scope_generator(hierarchy)):
+        for i, qi_phil_string in enumerate(_water_scope_generator(model,
+                                                                  carve_selection=self.params.qi.carve_selection)):
           # print(dir(qmr))
           # print(qmr.selection)
 
@@ -609,7 +620,8 @@ Usage examples:
             for j in range(len(params.qi.qm_restraints)-1,-1,-1):
               if i==j: continue
               del params.qi.qm_restraints[j]
-            print(params.qi.qm_restraints[0].selection)
+            if len(params.qi.qm_restraints)==0: continue
+            print('  Queued selection "%s"' % params.qi.qm_restraints[0].selection, file=self.logger)
             argstuples.append(( model,
                                 params,
                                 None, # macro_cycle=None,
@@ -617,7 +629,6 @@ Usage examples:
                                 1, # nproc=1,
                                 None, #null_out(),
                                 ))
-        print(len(argstuples))
         results = run_serial_or_parallel(update_restraints, argstuples, nproc)
         # rc = self.run_qmr(self.params.qi.format, return_minimised=True)
         rc=results[0]
@@ -628,7 +639,7 @@ Usage examples:
         # print(cmd)
         cwd=os.getcwd()
         os.chdir(qm_work_dir)
-        merge_water(hierarchy, args)
+        merge_water(model, args)
         os.chdir(cwd)
         model = self.data_manager.get_model()
         fn=self.data_manager.get_default_model_name()
