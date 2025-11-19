@@ -9,6 +9,27 @@ jobs:
 
   steps:
 
+  # free up more disk space
+  - script: |
+      sudo apt update
+      sudo apt install rsync
+      sudo mkdir -p /tmp/empty_dir
+      sudo rsync --stats -a --delete /tmp/empty_dir/ /tmp/host_opt/hostedtoolcache
+      for d in \
+          lib/jvm \
+          local/.ghcup \
+          local/lib/android \
+          local/share/powershell \
+          share/dotnet \
+          share/swift \
+        ; do
+        echo Deleting $d
+        sudo rsync --stats -a --delete /tmp/empty_dir/ /usr/$d
+      done
+      df -h
+    displayName: Clean up host image
+    continueOnError: true
+
   # download sources
   - checkout: self
     path: ./modules/cctbx_project
