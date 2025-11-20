@@ -136,7 +136,7 @@ Usage examples:
       xrs,
       method=pydiscamb.FCalcMethod.TAAM,
       assignment_info="atom_type_assignment.log") # XXX Can't be None
-    wrapper.show_atom_type_assignment()
+    wrapper.show_atom_type_assignment(log=self.logger)
     wrapper.set_indices(complete_set.indices())
     return wrapper.f_calc()
 
