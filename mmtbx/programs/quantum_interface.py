@@ -65,8 +65,21 @@ def substitute_ag_into_hierarchy(hierarchy, atom_group):
       rg.append_atom_group(atom_group.detached_copy())
       break
 
-def merge_water(model, filenames, chain_id='A'):
+def merge_water(model, filenames, chain_id='A', carve_selection=None):
   hierarchy=model.get_hierarchy()
+  selected_model=None
+  if carve_selection:
+    selection_array = model.selection(carve_selection)
+    selected_model = model.select(selection_array)
+    for ag in hierarchy.atom_groups():
+      if ag.resname=='DOD': assert 0
+      if ag.resname=='HOH':
+        remove=[]
+        for atom in ag.atoms():
+          if atom.element.strip()=='H':
+            remove.append(atom)
+        for atom in remove:
+          ag.remove_atom(atom)
   hierarchies = []
   for filename in filenames:
     ph = iotbx.pdb.input(filename).construct_hierarchy()
@@ -74,12 +87,15 @@ def merge_water(model, filenames, chain_id='A'):
   waters = {}
   for ph in hierarchies:
     # ph.show()
+    if selected_model:
+      smp=selected_model.get_hierarchy()
+      for hoh in ph.atom_groups(): break
+      for ag in smp.atom_groups():
+        if ag.id_str()==hoh.id_str(): break
+      else:
+        continue
     for ag in ph.atom_groups():
       substitute_ag_into_hierarchy(hierarchy, ag)
-      # if ag.parent().parent().id!=chain_id: continue
-      # if get_class(ag.resname)=='common_water':
-      #   waters.setdefault(ag.id_str(), [])
-      #   waters[ag.id_str()].append(ag)
   return
 
   outl = ''
@@ -559,7 +575,7 @@ Usage examples:
           if gc not in ['common_water']: continue
           selection = 'chain %s and resid %s and resname HOH' % (rg.parent().id, rg.resseq.strip())
           qi_phil_string = self.get_single_qm_restraints_scope(selection)
-          qi_phil_string = self.set_one_write_to_true(qi_phil_string, 'pdb_final_buffer')
+          qi_phil_string = self.set_one_write_to_true(qi_phil_string, 'pdb_final_core')
           qi_phil_string = qi_phil_string.replace('ignore_x_h_distance_protein = False',
                                                   'ignore_x_h_distance_protein = True')
           qi_phil_string = qi_phil_string.replace('do_not_update_restraints = False',
@@ -582,6 +598,8 @@ Usage examples:
         del f
 
         ih = 'each_water=True'
+        if self.params.qi.carve_selection:
+          ih += ' carve_selection="%s"' % self.params.qi.carve_selection
         print('''
 
         mmtbx.quantum_interface %s run_qmr=True %s %s
@@ -595,9 +613,6 @@ Usage examples:
         # for qmr in self.params.qi.qm_restraints:
         for i, qi_phil_string in enumerate(_water_scope_generator(model,
                                                                   carve_selection=self.params.qi.carve_selection)):
-          # print(dir(qmr))
-          # print(qmr.selection)
-
           if nproc==-1:
             print('  Running %s flip %d' % (nq_or_h, i+1), file=self.logger)
             res = update_restraints(model,
@@ -613,10 +628,6 @@ Usage examples:
             print('    RMSD   : %8.3f' % res.rmsds[0][1], file=self.logger)
           else:
             params = copy.deepcopy(self.params)
-            # import libtbx
-            # qi_phil_string='qi.%s' % (qi_phil_string[1:])
-            # print(qi_phil_string)
-            # params=libtbx.phil.parse(qi_phil_string)
             for j in range(len(params.qi.qm_restraints)-1,-1,-1):
               if i==j: continue
               del params.qi.qm_restraints[j]
@@ -630,16 +641,14 @@ Usage examples:
                                 None, #null_out(),
                                 ))
         results = run_serial_or_parallel(update_restraints, argstuples, nproc)
-        # rc = self.run_qmr(self.params.qi.format, return_minimised=True)
-        rc=results[0]
         args = []
-        for filenames in rc.final_pdbs:
-          args.append(filenames[-1])
-          # cmd += ' %s' % args[-1]
-        # print(cmd)
+        for result in results:
+          for filenames in result.final_pdbs:
+            args.append(filenames[-1])
+
         cwd=os.getcwd()
         os.chdir(qm_work_dir)
-        merge_water(model, args)
+        merge_water(model, args, carve_selection=self.params.qi.carve_selection)
         os.chdir(cwd)
         model = self.data_manager.get_model()
         fn=self.data_manager.get_default_model_name()
