@@ -395,19 +395,18 @@ namespace fast_linalg {
   }
 
   inline void initialise(const std::string &lib_name) {
-    SCITBX_NOT_IMPLEMENTED();
+    throw SCITBX_NOT_IMPLEMENTED();
   }
 
   inline void finalise() {
-    SCITBX_NOT_IMPLEMENTED();
+    throw SCITBX_NOT_IMPLEMENTED();
   }
 
   template <typename FloatType>
   lapack_int pftrf(int matrix_order, char transr, char uplo,
     lapack_int n, FloatType* a)
   {
-    SCITBX_NOT_IMPLEMENTED();
-    return 0;
+    throw SCITBX_NOT_IMPLEMENTED();
   }
 
   template <typename FloatType>
@@ -416,55 +415,49 @@ namespace fast_linalg {
     const FloatType* a, lapack_int lda, FloatType beta,
     FloatType* c)
   {
-    SCITBX_NOT_IMPLEMENTED();
-    return 0;
+    throw SCITBX_NOT_IMPLEMENTED();
   }
 
   template <typename FloatType>
   lapack_int tfttp(int matrix_order, char transr,
     char uplo, lapack_int n, const FloatType* arf, FloatType* ap)
   {
-    SCITBX_NOT_IMPLEMENTED();
-    return 0;
+    throw SCITBX_NOT_IMPLEMENTED();
   }
 
   template <typename FloatType>
   lapack_int tpttf(int matrix_order, char transr, char uplo,
     lapack_int n, const FloatType* ap, FloatType* arf)
   {
-    SCITBX_NOT_IMPLEMENTED();
-    return 0;
+    throw SCITBX_NOT_IMPLEMENTED();
   }
 
   template <typename FloatType>
   lapack_int pftri(int matrix_order, char transr, char uplo,
     lapack_int n, FloatType* a)
   {
-    SCITBX_NOT_IMPLEMENTED();
-    return 0;
+    throw SCITBX_NOT_IMPLEMENTED();
   }
 
   template <typename FloatType>
   void spr(int, int, int, FloatType, const FloatType *, int,
     FloatType *)
   {
-    SCITBX_NOT_IMPLEMENTED();
+    throw SCITBX_NOT_IMPLEMENTED();
   }
 
   template <typename FloatType>
   inline lapack_int syev(int, char, char, lapack_int, FloatType*,
     lapack_int, FloatType*)
   {
-    SCITBX_NOT_IMPLEMENTED();
-    return 0;
+    throw SCITBX_NOT_IMPLEMENTED();
   }
 
   template <typename FloatType>
   inline lapack_int heev(int, char, char, lapack_int, std::complex<FloatType>*,
     lapack_int, FloatType*)
   {
-    SCITBX_NOT_IMPLEMENTED();
-    return 0;
+    throw SCITBX_NOT_IMPLEMENTED();
   }
 
   template <typename FloatType>
@@ -473,8 +466,7 @@ namespace fast_linalg {
     std::complex<FloatType>*, std::complex<FloatType>*,
     lapack_int, std::complex<FloatType>*, lapack_int)
   {
-    SCITBX_NOT_IMPLEMENTED();
-    return 0;
+    throw SCITBX_NOT_IMPLEMENTED();
   }
 
   template <typename FloatType>
@@ -482,37 +474,35 @@ namespace fast_linalg {
     std::complex<FloatType>* , lapack_int,
     std::complex<FloatType>*)
   {
-    SCITBX_NOT_IMPLEMENTED();
-    return 0;
+    throw SCITBX_NOT_IMPLEMENTED();
   }
 
   template <typename FloatType>
   lapack_int lapack_getri(int, lapack_int, std::complex<FloatType>*,
     lapack_int, std::complex<FloatType>*)
   {
-    SCITBX_NOT_IMPLEMENTED();
-    return 0;
+    throw SCITBX_NOT_IMPLEMENTED();
   }
 
   template <typename FloatType>
   void syr(int, int, int, FloatType, const FloatType*, int,
     FloatType*, int)
   {
-    SCITBX_NOT_IMPLEMENTED();
+    throw SCITBX_NOT_IMPLEMENTED();
   }
 
   template <typename FloatType>
   void syrk(int, int, int, int, int, FloatType, const FloatType *, int,
     FloatType, FloatType *, int)
   {
-    SCITBX_NOT_IMPLEMENTED();
+    throw SCITBX_NOT_IMPLEMENTED();
   }
 
   template <typename FloatType>
   void gemm(int, int, int, int, int, int, FloatType, const FloatType*, int,
     const FloatType*, int, FloatType, FloatType*, int)
   {
-    SCITBX_NOT_IMPLEMENTED();
+    throw SCITBX_NOT_IMPLEMENTED();
   }
 }
 
