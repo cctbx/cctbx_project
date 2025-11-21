@@ -27,12 +27,12 @@ namespace smtbx { namespace ED
     virtual af::shared<complex_t> calc_amps(size_t num, bool include_incident) {
       using namespace fast_linalg;
       const size_t n_beams = this->A.accessor().n_columns();
-      af::shared<FloatType> ev(n_beams);
+      std::vector<FloatType> ev(n_beams);
       // heev replaces A with column-wise eigenvectors
       lapack_int info = heev(LAPACK_ROW_MAJOR, 'V', LAPACK_UPPER, n_beams,
-        this->A.begin(), n_beams, ev.begin());
+        this->A.begin(), n_beams, &ev[0]);
       SMTBX_ASSERT(!info)(info);
-      af::shared<complex_t> im(n_beams);
+      std::vector<complex_t> im(n_beams);
       const complex_t exp_k(0, scitbx::constants::pi * this->thickness / Kn);
       for (size_t i = 0; i < n_beams; i++) {
         im[i] = std::exp(ev[i] * exp_k) * std::conj(this->A(0, i)) * M[i];
@@ -50,10 +50,10 @@ namespace smtbx { namespace ED
     virtual complex_t calc_amps_1(size_t idx) {
       using namespace fast_linalg;
       const size_t n_beams = this->A.accessor().n_columns();
-      af::shared<FloatType> ev(n_beams);
+      std::vector<FloatType> ev(n_beams);
       // heev replaces A with column-wise eigenvectors
       lapack_int info = heev(LAPACK_ROW_MAJOR, 'V', LAPACK_UPPER, n_beams,
-        this->A.begin(), n_beams, ev.begin());
+        this->A.begin(), n_beams, &ev[0]);
       SMTBX_ASSERT(!info)(info)(this->indices[idx].as_string());
       const complex_t exp_k(0, scitbx::constants::pi * this->thickness / Kn);
 
@@ -77,15 +77,15 @@ namespace smtbx { namespace ED
       using namespace fast_linalg;
       const size_t n_beams = this->A.accessor().n_columns();
       SMTBX_ASSERT(num + 1 < n_beams);
-      af::shared<FloatType> ev(n_beams);
+      std::vector<FloatType> ev(n_beams);
       // heev replaces A with column-wise eigenvectors
       lapack_int info = heev(LAPACK_ROW_MAJOR, 'V', LAPACK_UPPER, n_beams,
-        this->A.begin(), n_beams, ev.begin());
+        this->A.begin(), n_beams, &ev[0]);
       SMTBX_ASSERT(!info)(info);
       cmat_t A_cjt(af::mat_grid(n_beams, n_beams));
       const complex_t exp_k(0, scitbx::constants::pi * this->thickness / Kn),
         k_dt(0, scitbx::constants::pi / Kn);
-      af::shared<complex_t> exps(n_beams), im(n_beams),
+      std::vector<complex_t> exps(n_beams), im(n_beams),
         im_dt(n_beams);
       for (size_t i = 0; i < n_beams; i++) {
         A_cjt(i, i) = std::conj(this->A(i, i));
@@ -163,15 +163,15 @@ namespace smtbx { namespace ED
     {
       using namespace fast_linalg;
       const size_t n_beams = this->A.accessor().n_columns();
-      af::shared<FloatType> ev(n_beams);
+      std::vector<FloatType> ev(n_beams);
       // heev replaces A with column-wise eigenvectors
       lapack_int info = heev(LAPACK_ROW_MAJOR, 'V', LAPACK_UPPER, n_beams,
-        this->A.begin(), n_beams, ev.begin());
+        this->A.begin(), n_beams, &ev[0]);
       SMTBX_ASSERT(!info)(info);
       cmat_t A_cjt(af::mat_grid(n_beams, n_beams));
       const complex_t exp_k(0, scitbx::constants::pi * this->thickness / Kn),
         k_dt(0, scitbx::constants::pi / Kn);
-      af::shared<complex_t> exps(n_beams), im(n_beams),
+      std::vector<complex_t> exps(n_beams), im(n_beams),
         im_dt(n_beams);
       for (size_t i = 0; i < n_beams; i++) {
         A_cjt(i, i) = std::conj(this->A(i, i));
@@ -225,7 +225,7 @@ namespace smtbx { namespace ED
           this->A.const_ref());
 
         // Hadamard product of G x V by A* first column into dI_dP
-        af::shared<complex_t> df(n_beams);
+        std::vector<complex_t> df(n_beams);
         for (size_t i = 0; i < n_beams; i++) {
           for (size_t j = 0; j < n_beams; j++) {
             df[i] += G(i, j) * V(i, j) * A_cjt(j, 0);
@@ -247,8 +247,8 @@ namespace smtbx { namespace ED
       const size_t n_beams = this->indices.size() + 1; // g0+
       M.resize(n_beams);
       M[0] = 1; //for g0
-      af::shared<cart_t> gs(n_beams);
-      af::shared<FloatType> dens(n_beams);
+      std::vector<cart_t> gs(n_beams);
+      std::vector<FloatType> dens(n_beams);
       dens[0] = 1;
       for (size_t i = 1; i < n_beams; i++) {
         const miller::index<> &h = this->indices[i - 1];
