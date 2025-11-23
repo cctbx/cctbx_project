@@ -14,6 +14,7 @@ import os
 import wx
 from wx.lib.mixins.listctrl import TextEditMixin, getListCtrlSelection
 from wx.lib.scrolledpanel import ScrolledPanel
+from iotbx.phil import parse
 from xfel.ui.db.task import task_types
 import numpy as np
 
@@ -2709,7 +2710,7 @@ class TrialDialog(BaseDialog):
                                          button1_label='Import PHIL',
                                          button1_size=(120, -1),
                                          button2=True,
-                                         button2_label='Default PHIL',
+                                         button2_label='Edit PHIL' if new else 'Show PHIL',
                                          button2_size=(120, -1),
                                          value="{}".format(trial_number))
     self.trial_comment = gctr.TextButtonCtrl(self,
@@ -2718,7 +2719,16 @@ class TrialDialog(BaseDialog):
                                              label_style='bold',
                                              ghost_button=False)
 
-    self.phil_box = gctr.RichTextCtrl(self, style=wx.VSCROLL, size=(-1, 400))
+    self.unit_cell = gctr.TextButtonCtrl(self,
+                                         label='Unit cell:',
+                                         label_size=(100, -1),
+                                         label_style='bold',
+                                         ghost_button=False)
+    self.space_group = gctr.TextButtonCtrl(self,
+                                           label='Space group:',
+                                           label_size=(150, -1),
+                                           label_style='bold',
+                                           ghost_button=False)
 
     choices = [('None', None)] + \
               [('Trial {}'.format(t.trial), t.trial) for t in self.all_trials]
@@ -2775,7 +2785,10 @@ class TrialDialog(BaseDialog):
     self.main_sizer.Add(self.trial_comment,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)
-    self.main_sizer.Add(self.phil_box, 1,
+    self.main_sizer.Add(self.unit_cell,
+                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
+                        border=10)
+    self.main_sizer.Add(self.space_group,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)
     self.main_sizer.Add(self.option_sizer, flag=wx.EXPAND | wx.ALL, border=10)
@@ -2814,10 +2827,8 @@ class TrialDialog(BaseDialog):
 
       # Disable controls for viewing
       self.trial_info.button1.Disable()
-      self.trial_info.button2.Disable()
       self.trial_info.ctr.SetEditable(False)
       self.copy_runblocks.Hide()
-      self.phil_box.SetEditable(False)
       self.throttle.ctr.Disable()
       self.num_bins.ctr.Disable()
       self.d_min.ctr.Disable()
@@ -2826,13 +2837,47 @@ class TrialDialog(BaseDialog):
       target_phil_str = ""
     if process_percent is None:
       process_percent = 100
-    self.phil_box.SetValue(target_phil_str)
+
+    dispatcher = self.db.params.dispatcher
+    from xfel.ui import load_phil_scope_from_dispatcher
+    self.phil_scope = load_phil_scope_from_dispatcher(dispatcher)
+
+    self.sync_controls(target_phil_str)
+
     self.throttle.ctr.SetValue(process_percent)
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onBrowse, self.trial_info.button1)
-    self.Bind(wx.EVT_BUTTON, self.onDefault, self.trial_info.button2)
+    self.Bind(wx.EVT_BUTTON, self.onEdit, self.trial_info.button2)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+  def sync_controls(self, phil_str):
+    params, _ = self.parse_trial_phil(phil_str)
+    if params:
+      if params.indexing.known_symmetry.unit_cell:
+        self.unit_cell.ctr.SetValue(" ".join("%.f"%p for p in params.indexing.known_symmetry.unit_cell.parameters()))
+      else:
+        self.unit_cell.ctr.SetValue("")
+      if params.indexing.known_symmetry.space_group:
+        self.space_group.ctr.SetValue(str(params.indexing.known_symmetry.space_group))
+      else:
+        self.space_group.ctr.SetValue("")
+      self.target_phil_str = phil_str
+
+  def sync_phil_str(self):
+    phil_str = self.target_phil_str
+    controls_params = parse(f"""
+    indexing {{
+      known_symmetry {{
+        unit_cell = {self.unit_cell.ctr.GetValue()}
+        space_group = {self.space_group.ctr.GetValue()}
+      }}
+    }}
+    """)
+    combined_scope = self.phil_scope.fetch(parse(phil_str)).fetch(controls_params)
+    diff_scope = self.phil_scope.fetch_diff(combined_scope)
+    self.target_phil_str = diff_scope.as_str()
+    # XXX check results
 
   def onBrowse(self, e):
     ''' Open dialog for selecting PHIL file '''
@@ -2848,39 +2893,48 @@ class TrialDialog(BaseDialog):
       target_file = load_dlg.GetPaths()[0]
       with open(target_file, 'r') as phil_file:
         phil_file_contents = phil_file.read()
-      self.phil_box.SetValue(phil_file_contents)
+      self.sync_controls(phil_file_contents)
     load_dlg.Destroy()
 
-  def onDefault(self, e):
-    # TODO: Generate default PHIL parameters
-    pass
+  def onEdit(self, e):
+    if self.new:
+      self.sync_phil_str()
+    edit_phil_dlg = EditPhilDialog(self,
+                                   db=self.db,
+                                   read_only=not self.new,
+                                   phil_scope=self.phil_scope,
+                                   phil_str=self.target_phil_str)
+    edit_phil_dlg.Fit()
+
+    if edit_phil_dlg.ShowModal() == wx.ID_OK:
+      self.sync_controls(edit_phil_dlg.phil_box.GetValue())
+
+  def parse_trial_phil(self, target_phil_str):
+    # Parameter validation
+    msg = None
+    try:
+      trial_params, unused = self.phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
+    except Exception as e:
+      msg = '\nParameters incompatible with %s dispatcher:\n%s\n' % (self.db.params.dispatcher, str(e))
+    else:
+      if len(unused) > 0:
+        msg = [str(item) for item in unused]
+        msg = '\n'.join(['  %s' % line for line in msg])
+        msg = 'The following definitions were not recognized:\n%s\n' % msg
+
+      try:
+        params = trial_params.extract()
+      except Exception as e:
+        if msg is None: msg = ""
+        msg += '\nOne or more values could not be parsed:\n%s\n' % str(e)
+        params = None
+    return params, msg
 
   def onOK(self, e):
     if self.new:
-      target_phil_str = self.phil_box.GetValue()
-
-      # Parameter validation
-      dispatcher = self.db.params.dispatcher
-      from xfel.ui import load_phil_scope_from_dispatcher
-      phil_scope = load_phil_scope_from_dispatcher(dispatcher)
-
-      from iotbx.phil import parse
-      msg = None
-      try:
-        trial_params, unused = phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
-      except Exception as e:
-        msg = '\nParameters incompatible with %s dispatcher:\n%s\n' % (dispatcher, str(e))
-      else:
-        if len(unused) > 0:
-          msg = [str(item) for item in unused]
-          msg = '\n'.join(['  %s' % line for line in msg])
-          msg = 'The following definitions were not recognized:\n%s\n' % msg
-
-        try:
-          params = trial_params.extract()
-        except Exception as e:
-          if msg is None: msg = ""
-          msg += '\nOne or more values could not be parsed:\n%s\n' % str(e)
+      self.sync_phil_str()
+      target_phil_str = self.target_phil_str
+      _, msg = self.parse_trial_phil(target_phil_str)
 
       if msg is not None:
         msg += '\nFix the parameters and press OK again'
@@ -2923,6 +2977,98 @@ class TrialDialog(BaseDialog):
     else:
       if self.trial.comment != self.trial_comment.ctr.GetValue():
         self.trial.comment = self.trial_comment.ctr.GetValue()
+    e.Skip()
+
+class EditPhilDialog(BaseDialog):
+  def __init__(self, parent, db,
+               read_only=False,
+               phil_scope=None,
+               phil_str="",
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+    self.db = db
+    self.read_only = read_only
+    self.phil_scope = phil_scope
+
+    BaseDialog.__init__(self, parent,
+                        label_style=label_style,
+                        content_style=content_style,
+                        size=(600, 600),
+                        *args, **kwargs)
+
+    self.phil_box = gctr.RichTextCtrl(self, style=wx.VSCROLL, size=(400, 400))
+
+    self.main_sizer.Add(self.phil_box, 1,
+                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
+                        border=10)
+
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    self.main_sizer.Add(dialog_box,
+                        flag=wx.EXPAND | wx.ALL,
+                        border=10)
+
+    # Dialog control
+    if self.read_only:
+      dialog_box = self.CreateSeparatedButtonSizer(wx.OK)
+    else:
+      dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+
+    self.main_sizer.Add(dialog_box,
+                        flag=wx.EXPAND | wx.ALL,
+                        border=10)
+
+    self.Layout()
+
+    self.SetTitle('Settings')
+    if self.read_only:
+      # Disable controls for viewing
+      self.phil_box.SetEditable(False)
+
+    if phil_str is None:
+      phil_str = ""
+
+    self.phil_box.SetValue(phil_str)
+
+    # Bindings
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+  def parse_trial_phil(self, target_phil_str):
+    # Parameter validation
+    msg = None
+    params = None
+    try:
+      trial_params, unused = self.phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
+    except Exception as e:
+      msg = '\nParameters incompatible with %s dispatcher:\n%s\n' % (self.db.params.dispatcher, str(e))
+    else:
+      if len(unused) > 0:
+        msg = [str(item) for item in unused]
+        msg = '\n'.join(['  %s' % line for line in msg])
+        msg = 'The following definitions were not recognized:\n%s\n' % msg
+
+      try:
+        params = trial_params.extract()
+      except Exception as e:
+        if msg is None: msg = ""
+        msg += '\nOne or more values could not be parsed:\n%s\n' % str(e)
+    return params, msg
+
+  def onOK(self, e):
+    if not self.read_only:
+      target_phil_str = self.phil_box.GetValue()
+      _, msg = self.parse_trial_phil(target_phil_str)
+
+      if msg is not None:
+        msg += '\nFix the parameters and press OK again'
+        msgdlg = wx.MessageDialog(self,
+                                  message=msg,
+                                  caption='Warning',
+                                  style=wx.OK |  wx.ICON_EXCLAMATION)
+        msgdlg.ShowModal()
+        return
     e.Skip()
 
 class DatasetDialog(BaseDialog):
@@ -3124,7 +3270,6 @@ class TaskDialog(BaseDialog):
 
     # Parameter validation
     from xfel.ui.db.task import Task
-    from iotbx.phil import parse
     dispatcher, phil_scope = Task.get_phil_scope(self.db, task_type)
 
     if phil_scope is not None:
