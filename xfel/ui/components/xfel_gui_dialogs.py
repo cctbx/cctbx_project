@@ -2719,16 +2719,50 @@ class TrialDialog(BaseDialog):
                                              label_style='bold',
                                              ghost_button=False)
 
-    self.unit_cell = gctr.TextButtonCtrl(self,
+    self.overall_panel = wx.Panel(self)
+    overall_box = wx.StaticBox(self.overall_panel, label='Overall parameters')
+    self.overall_sizer = wx.StaticBoxSizer(overall_box)
+    self.overall_panel.SetSizer(self.overall_sizer)
+
+    self.chk_find_spots = wx.CheckBox(self.overall_panel,
+                                      label='Find spots')
+    self.chk_index = wx.CheckBox(self.overall_panel,
+                                 label='Index')
+    self.chk_integrate = wx.CheckBox(self.overall_panel,
+                                     label='Integrate')
+    self.overall_chk_sizer = wx.FlexGridSizer(1, 3, 10, 20)
+    self.overall_chk_sizer.Add(self.chk_find_spots, flag=wx.ALL, border=10)
+    self.overall_chk_sizer.Add(self.chk_index, flag=wx.ALL, border=10)
+    self.overall_chk_sizer.Add(self.chk_integrate, flag=wx.ALL, border=10)
+    self.overall_sizer.Add(self.overall_chk_sizer)
+
+    self.spotfinding_panel = wx.Panel(self)
+    spotfinding_box = wx.StaticBox(self.spotfinding_panel, label='Spotfinding parameters')
+    self.spotfinding_sizer = wx.StaticBoxSizer(spotfinding_box)
+    self.spotfinding_panel.SetSizer(self.spotfinding_sizer)
+
+    self.indexing_panel = wx.Panel(self)
+    indexing_box = wx.StaticBox(self.indexing_panel, label='Indexing parameters')
+    self.indexing_sizer = wx.StaticBoxSizer(indexing_box)
+    self.indexing_panel.SetSizer(self.indexing_sizer)
+
+    self.unit_cell = gctr.TextButtonCtrl(self.indexing_panel,
                                          label='Unit cell:',
                                          label_size=(100, -1),
                                          label_style='bold',
                                          ghost_button=False)
-    self.space_group = gctr.TextButtonCtrl(self,
+    self.space_group = gctr.TextButtonCtrl(self.indexing_panel,
                                            label='Space group:',
                                            label_size=(150, -1),
                                            label_style='bold',
                                            ghost_button=False)
+
+    self.indexing_sizer.Add(self.unit_cell,
+                            flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
+                            border=10)
+    self.indexing_sizer.Add(self.space_group,
+                            flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
+                            border=10)
 
     choices = [('None', None)] + \
               [('Trial {}'.format(t.trial), t.trial) for t in self.all_trials]
@@ -2785,12 +2819,9 @@ class TrialDialog(BaseDialog):
     self.main_sizer.Add(self.trial_comment,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)
-    self.main_sizer.Add(self.unit_cell,
-                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
-    self.main_sizer.Add(self.space_group,
-                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
+    self.main_sizer.Add(self.overall_panel, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.spotfinding_panel, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.indexing_panel, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.option_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
 
@@ -2841,8 +2872,9 @@ class TrialDialog(BaseDialog):
     dispatcher = self.db.params.dispatcher
     from xfel.ui import load_phil_scope_from_dispatcher
     self.phil_scope = load_phil_scope_from_dispatcher(dispatcher)
+    self.working_phil_scope = self.phil_scope.fetch(parse(target_phil_str))
 
-    self.sync_controls(target_phil_str)
+    self.sync_controls()
 
     self.throttle.ctr.SetValue(process_percent)
 
@@ -2851,33 +2883,52 @@ class TrialDialog(BaseDialog):
     self.Bind(wx.EVT_BUTTON, self.onEdit, self.trial_info.button2)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
-  def sync_controls(self, phil_str):
-    params, _ = self.parse_trial_phil(phil_str)
-    if params:
-      if params.indexing.known_symmetry.unit_cell:
-        self.unit_cell.ctr.SetValue(" ".join("%.f"%p for p in params.indexing.known_symmetry.unit_cell.parameters()))
-      else:
-        self.unit_cell.ctr.SetValue("")
-      if params.indexing.known_symmetry.space_group:
-        self.space_group.ctr.SetValue(str(params.indexing.known_symmetry.space_group))
-      else:
-        self.space_group.ctr.SetValue("")
-      self.target_phil_str = phil_str
+  def sync_controls(self):
+    params = self.working_phil_scope.extract()
+    self.chk_find_spots.SetValue(params.dispatch.find_spots)
+    self.chk_index.SetValue(params.dispatch.index)
+    self.chk_integrate.SetValue(params.dispatch.integrate)
 
-  def sync_phil_str(self):
-    phil_str = self.target_phil_str
-    controls_params = parse(f"""
+    if params.indexing.known_symmetry.unit_cell:
+      self.unit_cell.ctr.SetValue(" ".join("%.f"%p for p in params.indexing.known_symmetry.unit_cell.parameters()))
+    else:
+      self.unit_cell.ctr.SetValue("")
+    if params.indexing.known_symmetry.space_group:
+      self.space_group.ctr.SetValue(str(params.indexing.known_symmetry.space_group))
+    else:
+      self.space_group.ctr.SetValue("")
+
+  def sync_phil_scope(self):
+    trial_phil = f"""
+    dispatch {{
+      find_spots = {self.chk_find_spots.GetValue()}
+      index = {self.chk_index.GetValue()}
+      integrate = {self.chk_integrate.GetValue()}
+    }}
     indexing {{
       known_symmetry {{
         unit_cell = {self.unit_cell.ctr.GetValue()}
         space_group = {self.space_group.ctr.GetValue()}
       }}
     }}
-    """)
-    combined_scope = self.phil_scope.fetch(parse(phil_str)).fetch(controls_params)
-    diff_scope = self.phil_scope.fetch_diff(combined_scope)
-    self.target_phil_str = diff_scope.as_str()
-    # XXX check results
+    """
+    params, msg = self.parse_trial_phil(trial_phil)
+
+    if msg is None:
+      unit_cell = params.indexing.known_symmetry.unit_cell
+      space_group = params.indexing.known_symmetry.space_group
+      if unit_cell and space_group and space_group.group().is_compatible_unit_cell(unit_cell):
+        return True
+      else:
+        msg = "Unit cell is incompatible with space group"
+
+    msg += '\nFix the parameters and try again'
+    msgdlg = wx.MessageDialog(self,
+                              message=msg,
+                              caption='Warning',
+                              style=wx.OK |  wx.ICON_EXCLAMATION)
+    msgdlg.ShowModal()
+    return False
 
   def onBrowse(self, e):
     ''' Open dialog for selecting PHIL file '''
@@ -2893,27 +2944,39 @@ class TrialDialog(BaseDialog):
       target_file = load_dlg.GetPaths()[0]
       with open(target_file, 'r') as phil_file:
         phil_file_contents = phil_file.read()
-      self.sync_controls(phil_file_contents)
+      _, msg = self.parse_trial_phil(phil_file_contents)
+
+      if msg is not None:
+        self.sync_controls(phil_file_contents)
+      else:
+        msg += '\nFix the parameters in the file and reload'
+        msgdlg = wx.MessageDialog(self,
+                                  message=msg,
+                                  caption='Warning',
+                                  style=wx.OK |  wx.ICON_EXCLAMATION)
+        msgdlg.ShowModal()
+
     load_dlg.Destroy()
 
   def onEdit(self, e):
-    if self.new:
-      self.sync_phil_str()
+    if self.new and not self.sync_phil_scope():
+      return
     edit_phil_dlg = EditPhilDialog(self,
                                    db=self.db,
                                    read_only=not self.new,
                                    phil_scope=self.phil_scope,
-                                   phil_str=self.target_phil_str)
+                                   working_phil_scope=self.working_phil_scope)
     edit_phil_dlg.Fit()
 
     if edit_phil_dlg.ShowModal() == wx.ID_OK:
-      self.sync_controls(edit_phil_dlg.phil_box.GetValue())
+      self.parse_trial_phil(edit_phil_dlg.phil_box.GetValue())
+      self.sync_controls()
 
   def parse_trial_phil(self, target_phil_str):
     # Parameter validation
     msg = None
     try:
-      trial_params, unused = self.phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
+      working_phil_scope, unused = self.phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
     except Exception as e:
       msg = '\nParameters incompatible with %s dispatcher:\n%s\n' % (self.db.params.dispatcher, str(e))
     else:
@@ -2923,27 +2986,20 @@ class TrialDialog(BaseDialog):
         msg = 'The following definitions were not recognized:\n%s\n' % msg
 
       try:
-        params = trial_params.extract()
+        params = working_phil_scope.extract()
       except Exception as e:
         if msg is None: msg = ""
         msg += '\nOne or more values could not be parsed:\n%s\n' % str(e)
         params = None
+      else:
+        self.working_phil_scope = working_phil_scope
     return params, msg
 
   def onOK(self, e):
     if self.new:
-      self.sync_phil_str()
-      target_phil_str = self.target_phil_str
-      _, msg = self.parse_trial_phil(target_phil_str)
-
-      if msg is not None:
-        msg += '\nFix the parameters and press OK again'
-        msgdlg = wx.MessageDialog(self,
-                                  message=msg,
-                                  caption='Warning',
-                                  style=wx.OK |  wx.ICON_EXCLAMATION)
-        msgdlg.ShowModal()
+      if not self.sync_phil_scope():
         return
+      target_phil_str = self.phil_scope.fetch_diff(self.working_phil_scope).as_str()
 
       comment = self.trial_comment.ctr.GetValue()
       process_percent = int(self.throttle.ctr.GetValue())
@@ -2983,7 +3039,7 @@ class EditPhilDialog(BaseDialog):
   def __init__(self, parent, db,
                read_only=False,
                phil_scope=None,
-               phil_str="",
+               working_phil_scope=None,
                label_style='bold',
                content_style='normal',
                *args, **kwargs):
@@ -3027,10 +3083,7 @@ class EditPhilDialog(BaseDialog):
       # Disable controls for viewing
       self.phil_box.SetEditable(False)
 
-    if phil_str is None:
-      phil_str = ""
-
-    self.phil_box.SetValue(phil_str)
+    self.phil_box.SetValue(phil_scope.fetch_diff(working_phil_scope).as_str())
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
@@ -3040,7 +3093,7 @@ class EditPhilDialog(BaseDialog):
     msg = None
     params = None
     try:
-      trial_params, unused = self.phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
+      working_phil_scope, unused = self.phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
     except Exception as e:
       msg = '\nParameters incompatible with %s dispatcher:\n%s\n' % (self.db.params.dispatcher, str(e))
     else:
@@ -3050,10 +3103,12 @@ class EditPhilDialog(BaseDialog):
         msg = 'The following definitions were not recognized:\n%s\n' % msg
 
       try:
-        params = trial_params.extract()
+        params = working_phil_scope.extract()
       except Exception as e:
         if msg is None: msg = ""
         msg += '\nOne or more values could not be parsed:\n%s\n' % str(e)
+      else:
+        self.working_phil_scope = working_phil_scope
     return params, msg
 
   def onOK(self, e):
