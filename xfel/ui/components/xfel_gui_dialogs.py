@@ -2741,10 +2741,64 @@ class TrialDialog(BaseDialog):
     self.spotfinding_sizer = wx.StaticBoxSizer(spotfinding_box)
     self.spotfinding_panel.SetSizer(self.spotfinding_sizer)
 
+    self.min_spot_size = gctr.TextButtonCtrl(self.spotfinding_panel,
+                                             label='Min spot size',
+                                             label_size=(-1, -1),
+                                             label_style='bold',
+                                             ghost_button=False)
+    self.max_spot_size = gctr.TextButtonCtrl(self.spotfinding_panel,
+                                             label='Max spot size',
+                                             label_size=(-1, -1),
+                                             label_style='bold',
+                                             ghost_button=False)
+    self.sigma_background = gctr.TextButtonCtrl(self.spotfinding_panel,
+                                               label='Sigma background',
+                                               label_size=(-1, -1),
+                                               label_style='bold',
+                                               ghost_button=False)
+    self.sigma_strong = gctr.TextButtonCtrl(self.spotfinding_panel,
+                                            label='Sigma strong',
+                                            label_size=(-1, -1),
+                                            label_style='bold',
+                                            ghost_button=False)
+    self.global_threshold = gctr.TextButtonCtrl(self.spotfinding_panel,
+                                                label='Global threshold',
+                                                label_size=(-1, -1),
+                                                label_style='bold',
+                                                ghost_button=False)
+    self.gain = gctr.TextButtonCtrl(self.spotfinding_panel,
+                                    label='Gain',
+                                    label_size=(-1, -1),
+                                    label_style='bold',
+                                    ghost_button=False)
+    self.kernel_size = gctr.TextButtonCtrl(self.spotfinding_panel,
+                                          label='Kernel size',
+                                          label_size=(-1, -1),
+                                          label_style='bold',
+                                          ghost_button=False)
+    self.threshold_algorithm = gctr.ChoiceCtrl(self.spotfinding_panel,
+                                               label='Threshold algorithm:',
+                                               label_size=(200, -1),
+                                               label_style='normal',
+                                               ctrl_size=(200, -1),
+                                               choices=['dispersion', 'dispersion_extended', 'radial_profile'])
+
+    self.spotfinding_ctrl_sizer = wx.FlexGridSizer(4, 2, 10, 10)
+    self.spotfinding_ctrl_sizer.Add(self.min_spot_size, flag=wx.ALL, border=10)
+    self.spotfinding_ctrl_sizer.Add(self.max_spot_size, flag=wx.ALL, border=10)
+    self.spotfinding_ctrl_sizer.Add(self.sigma_background, flag=wx.ALL, border=10)
+    self.spotfinding_ctrl_sizer.Add(self.sigma_strong, flag=wx.ALL, border=10)
+    self.spotfinding_ctrl_sizer.Add(self.global_threshold, flag=wx.ALL, border=10)
+    self.spotfinding_ctrl_sizer.Add(self.gain, flag=wx.ALL, border=10)
+    self.spotfinding_ctrl_sizer.Add(self.kernel_size, flag=wx.ALL, border=10)
+    self.spotfinding_ctrl_sizer.Add(self.threshold_algorithm, flag=wx.ALL, border=10)
+    self.spotfinding_sizer.Add(self.spotfinding_ctrl_sizer)
+
     self.indexing_panel = wx.Panel(self)
     indexing_box = wx.StaticBox(self.indexing_panel, label='Indexing parameters')
     self.indexing_sizer = wx.StaticBoxSizer(indexing_box)
     self.indexing_panel.SetSizer(self.indexing_sizer)
+    self.indexing_ctrl_sizer = wx.FlexGridSizer(4, 2, 10, 10)
 
     self.unit_cell = gctr.TextButtonCtrl(self.indexing_panel,
                                          label='Unit cell:',
@@ -2756,13 +2810,25 @@ class TrialDialog(BaseDialog):
                                            label_size=(150, -1),
                                            label_style='bold',
                                            ghost_button=False)
+    self.d_min_indexing = gctr.TextButtonCtrl(self.indexing_panel,
+                                              label='d_min indexing:',
+                                              label_size=(150, -1),
+                                              label_style='bold',
+                                              ghost_button=False)
+    self.max_lattices = gctr.TextButtonCtrl(self.indexing_panel,
+                                            label='Max lattices:',
+                                            label_size=(150, -1),
+                                            label_style='bold',
+                                            ghost_button=False)
+    self.chk_subsampling = wx.CheckBox(self.indexing_panel,
+                                       label='Reflection subsampling')
 
-    self.indexing_sizer.Add(self.unit_cell,
-                            flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                            border=10)
-    self.indexing_sizer.Add(self.space_group,
-                            flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                            border=10)
+    self.indexing_ctrl_sizer.Add(self.unit_cell, flag=wx.ALL, border=10)
+    self.indexing_ctrl_sizer.Add(self.space_group, flag=wx.ALL, border=10)
+    self.indexing_ctrl_sizer.Add(self.d_min_indexing, flag=wx.ALL, border=10)
+    self.indexing_ctrl_sizer.Add(self.max_lattices, flag=wx.ALL, border=10)
+    self.indexing_ctrl_sizer.Add(self.chk_subsampling, flag=wx.ALL, border=10)
+    self.indexing_sizer.Add(self.indexing_ctrl_sizer)
 
     choices = [('None', None)] + \
               [('Trial {}'.format(t.trial), t.trial) for t in self.all_trials]
@@ -2884,10 +2950,27 @@ class TrialDialog(BaseDialog):
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
   def sync_controls(self):
+    def set_value(control, value):
+      # use for parameters that could be None
+      if value is None:
+        control.SetValue("")
+      else:
+        control.SetValue(str(value))
+
     params = self.working_phil_scope.extract()
     self.chk_find_spots.SetValue(params.dispatch.find_spots)
     self.chk_index.SetValue(params.dispatch.index)
     self.chk_integrate.SetValue(params.dispatch.integrate)
+
+    self.max_spot_size.ctr.SetValue(str(params.spotfinder.filter.max_spot_size))
+    self.threshold_algorithm.ctr.SetSelection(self.threshold_algorithm.ctr.GetStrings().index(params.spotfinder.threshold.algorithm))
+    self.kernel_size.ctr.SetValue(" ".join(str(k) for k in params.spotfinder.threshold.dispersion.kernel_size))
+
+    set_value(self.gain.ctr, params.spotfinder.threshold.dispersion.gain)
+    set_value(self.min_spot_size.ctr, params.spotfinder.filter.min_spot_size)
+    set_value(self.sigma_background.ctr, params.spotfinder.threshold.dispersion.sigma_background)
+    set_value(self.sigma_strong.ctr, params.spotfinder.threshold.dispersion.sigma_strong)
+    set_value(self.global_threshold.ctr, params.spotfinder.threshold.dispersion.global_threshold)
 
     if params.indexing.known_symmetry.unit_cell:
       self.unit_cell.ctr.SetValue(" ".join("%.f"%p for p in params.indexing.known_symmetry.unit_cell.parameters()))
@@ -2898,17 +2981,52 @@ class TrialDialog(BaseDialog):
     else:
       self.space_group.ctr.SetValue("")
 
+    set_value(self.d_min_indexing.ctr, params.indexing.refinement_protocol.d_min_start)
+    set_value(self.max_lattices.ctr, params.indexing.multiple_lattice_search.max_lattices)
+
+    self.chk_subsampling.SetValue(params.indexing.stills.reflection_subsampling.enable)
+
   def sync_phil_scope(self):
+    def str_or_none(control):
+      return control.GetValue() if control.GetValue() else "None"
+
     trial_phil = f"""
     dispatch {{
       find_spots = {self.chk_find_spots.GetValue()}
       index = {self.chk_index.GetValue()}
       integrate = {self.chk_integrate.GetValue()}
     }}
+    spotfinder {{
+      filter {{
+        min_spot_size = {str_or_none(self.min_spot_size.ctr)}
+        max_spot_size = {str_or_none(self.max_spot_size.ctr)}
+      }}
+      threshold {{
+        algorithm = {self.threshold_algorithm.ctr.GetString(self.threshold_algorithm.ctr.GetSelection())}
+        dispersion {{
+          gain = {str_or_none(self.gain.ctr)}
+          kernel_size = {self.kernel_size.ctr.GetValue()}
+          sigma_background = {str_or_none(self.sigma_background.ctr)}
+          sigma_strong = {str_or_none(self.sigma_strong.ctr)}
+          global_threshold = {str_or_none(self.global_threshold.ctr)}
+        }}
+      }}
+    }}
     indexing {{
       known_symmetry {{
-        unit_cell = {self.unit_cell.ctr.GetValue()}
-        space_group = {self.space_group.ctr.GetValue()}
+        unit_cell = {str_or_none(self.unit_cell.ctr)}
+        space_group = {str_or_none(self.space_group.ctr)}
+      }}
+      refinement_protocol {{
+        d_min_start = {str_or_none(self.d_min_indexing.ctr)}
+      }}
+      multiple_lattice_search {{
+        max_lattices = {str_or_none(self.max_lattices.ctr)}
+      }}
+      stills {{
+        reflection_subsampling {{
+          enable = {self.chk_subsampling.GetValue()}
+        }}
       }}
     }}
     """
@@ -2917,10 +3035,13 @@ class TrialDialog(BaseDialog):
     if msg is None:
       unit_cell = params.indexing.known_symmetry.unit_cell
       space_group = params.indexing.known_symmetry.space_group
-      if unit_cell and space_group and space_group.group().is_compatible_unit_cell(unit_cell):
-        return True
+      if unit_cell and space_group:
+        if space_group.group().is_compatible_unit_cell(unit_cell, absolute_angle_tolerance=0.1):
+          return True
+        else:
+          msg = "Unit cell is incompatible with space group"
       else:
-        msg = "Unit cell is incompatible with space group"
+        return True
 
     msg += '\nFix the parameters and try again'
     msgdlg = wx.MessageDialog(self,
@@ -2946,8 +3067,8 @@ class TrialDialog(BaseDialog):
         phil_file_contents = phil_file.read()
       _, msg = self.parse_trial_phil(phil_file_contents)
 
-      if msg is not None:
-        self.sync_controls(phil_file_contents)
+      if msg is None:
+        self.sync_controls()
       else:
         msg += '\nFix the parameters in the file and reload'
         msgdlg = wx.MessageDialog(self,
@@ -2974,6 +3095,7 @@ class TrialDialog(BaseDialog):
 
   def parse_trial_phil(self, target_phil_str):
     # Parameter validation
+    params = None
     msg = None
     try:
       working_phil_scope, unused = self.phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
@@ -2990,7 +3112,6 @@ class TrialDialog(BaseDialog):
       except Exception as e:
         if msg is None: msg = ""
         msg += '\nOne or more values could not be parsed:\n%s\n' % str(e)
-        params = None
       else:
         self.working_phil_scope = working_phil_scope
     return params, msg
@@ -3090,8 +3211,8 @@ class EditPhilDialog(BaseDialog):
 
   def parse_trial_phil(self, target_phil_str):
     # Parameter validation
-    msg = None
     params = None
+    msg = None
     try:
       working_phil_scope, unused = self.phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
     except Exception as e:
