@@ -2730,11 +2730,17 @@ class TrialDialog(BaseDialog):
                                  label='Index')
     self.chk_integrate = wx.CheckBox(self.overall_panel,
                                      label='Integrate')
-    self.overall_chk_sizer = wx.FlexGridSizer(1, 3, 10, 20)
-    self.overall_chk_sizer.Add(self.chk_find_spots, flag=wx.ALL, border=10)
-    self.overall_chk_sizer.Add(self.chk_index, flag=wx.ALL, border=10)
-    self.overall_chk_sizer.Add(self.chk_integrate, flag=wx.ALL, border=10)
-    self.overall_sizer.Add(self.overall_chk_sizer)
+    self.min_spots = gctr.TextButtonCtrl(self.overall_panel,
+                                         label='Min spots',
+                                         label_size=(-1, -1),
+                                         label_style='bold',
+                                         ghost_button=False)
+    self.overall_ctrl_sizer = wx.FlexGridSizer(1, 4, 10, 20)
+    self.overall_ctrl_sizer.Add(self.chk_find_spots, flag=wx.ALL, border=10)
+    self.overall_ctrl_sizer.Add(self.chk_index, flag=wx.ALL, border=10)
+    self.overall_ctrl_sizer.Add(self.chk_integrate, flag=wx.ALL, border=10)
+    self.overall_ctrl_sizer.Add(self.min_spots, flag=wx.ALL, border=10)
+    self.overall_sizer.Add(self.overall_ctrl_sizer)
 
     self.spotfinding_panel = wx.Panel(self)
     spotfinding_box = wx.StaticBox(self.spotfinding_panel, label='Spotfinding parameters')
@@ -2961,6 +2967,7 @@ class TrialDialog(BaseDialog):
     self.chk_find_spots.SetValue(params.dispatch.find_spots)
     self.chk_index.SetValue(params.dispatch.index)
     self.chk_integrate.SetValue(params.dispatch.integrate)
+    set_value(self.min_spots.ctr, params.dispatch.hit_finder.minimum_number_of_reflections)
 
     self.max_spot_size.ctr.SetValue(str(params.spotfinder.filter.max_spot_size))
     self.threshold_algorithm.ctr.SetSelection(self.threshold_algorithm.ctr.GetStrings().index(params.spotfinder.threshold.algorithm))
@@ -2973,7 +2980,7 @@ class TrialDialog(BaseDialog):
     set_value(self.global_threshold.ctr, params.spotfinder.threshold.dispersion.global_threshold)
 
     if params.indexing.known_symmetry.unit_cell:
-      self.unit_cell.ctr.SetValue(" ".join("%.f"%p for p in params.indexing.known_symmetry.unit_cell.parameters()))
+      self.unit_cell.ctr.SetValue(str(params.indexing.known_symmetry.unit_cell).strip('()'))
     else:
       self.unit_cell.ctr.SetValue("")
     if params.indexing.known_symmetry.space_group:
@@ -2995,6 +3002,9 @@ class TrialDialog(BaseDialog):
       find_spots = {self.chk_find_spots.GetValue()}
       index = {self.chk_index.GetValue()}
       integrate = {self.chk_integrate.GetValue()}
+      hit_finder {{
+        minimum_number_of_reflections = {str_or_none(self.min_spots.ctr)}
+      }}
     }}
     spotfinder {{
       filter {{
@@ -3098,7 +3108,7 @@ class TrialDialog(BaseDialog):
     params = None
     msg = None
     try:
-      working_phil_scope, unused = self.phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
+      working_phil_scope, unused = self.working_phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
     except Exception as e:
       msg = '\nParameters incompatible with %s dispatcher:\n%s\n' % (self.db.params.dispatcher, str(e))
     else:
@@ -3168,6 +3178,7 @@ class EditPhilDialog(BaseDialog):
     self.db = db
     self.read_only = read_only
     self.phil_scope = phil_scope
+    self.working_phil_scope = working_phil_scope
 
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
@@ -3179,12 +3190,6 @@ class EditPhilDialog(BaseDialog):
 
     self.main_sizer.Add(self.phil_box, 1,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
-
-    # Dialog control
-    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
-    self.main_sizer.Add(dialog_box,
-                        flag=wx.EXPAND | wx.ALL,
                         border=10)
 
     # Dialog control
@@ -3214,7 +3219,7 @@ class EditPhilDialog(BaseDialog):
     params = None
     msg = None
     try:
-      working_phil_scope, unused = self.phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
+      working_phil_scope, unused = self.working_phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
     except Exception as e:
       msg = '\nParameters incompatible with %s dispatcher:\n%s\n' % (self.db.params.dispatcher, str(e))
     else:
