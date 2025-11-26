@@ -2676,7 +2676,7 @@ class TrialDialog(BaseDialog):
   def __init__(self, parent, db,
                new=True,
                trial=None,
-               label_style='bold',
+               label_style='normal',
                content_style='normal',
                *args, **kwargs):
 
@@ -2705,7 +2705,7 @@ class TrialDialog(BaseDialog):
     self.trial_info = gctr.TwoButtonCtrl(self,
                                          label='Trial number:',
                                          label_size=(100, -1),
-                                         label_style='bold',
+                                         label_style='normal',
                                          button1=True,
                                          button1_label='Import PHIL',
                                          button1_size=(120, -1),
@@ -2716,7 +2716,7 @@ class TrialDialog(BaseDialog):
     self.trial_comment = gctr.TextButtonCtrl(self,
                                              label='Comment:',
                                              label_size=(100, -1),
-                                             label_style='bold',
+                                             label_style='normal',
                                              ghost_button=False)
 
     self.overall_panel = wx.Panel(self)
@@ -2733,7 +2733,7 @@ class TrialDialog(BaseDialog):
     self.min_spots = gctr.TextButtonCtrl(self.overall_panel,
                                          label='Min spots',
                                          label_size=(-1, -1),
-                                         label_style='bold',
+                                         label_style='normal',
                                          ghost_button=False)
     self.overall_ctrl_sizer = wx.FlexGridSizer(1, 4, 10, 20)
     self.overall_ctrl_sizer.Add(self.chk_find_spots, flag=wx.ALL, border=10)
@@ -2750,37 +2750,37 @@ class TrialDialog(BaseDialog):
     self.min_spot_size = gctr.TextButtonCtrl(self.spotfinding_panel,
                                              label='Min spot size',
                                              label_size=(-1, -1),
-                                             label_style='bold',
+                                             label_style='normal',
                                              ghost_button=False)
     self.max_spot_size = gctr.TextButtonCtrl(self.spotfinding_panel,
                                              label='Max spot size',
                                              label_size=(-1, -1),
-                                             label_style='bold',
+                                             label_style='normal',
                                              ghost_button=False)
     self.sigma_background = gctr.TextButtonCtrl(self.spotfinding_panel,
                                                label='Sigma background',
                                                label_size=(-1, -1),
-                                               label_style='bold',
+                                               label_style='normal',
                                                ghost_button=False)
     self.sigma_strong = gctr.TextButtonCtrl(self.spotfinding_panel,
                                             label='Sigma strong',
                                             label_size=(-1, -1),
-                                            label_style='bold',
+                                            label_style='normal',
                                             ghost_button=False)
     self.global_threshold = gctr.TextButtonCtrl(self.spotfinding_panel,
                                                 label='Global threshold',
                                                 label_size=(-1, -1),
-                                                label_style='bold',
+                                                label_style='normal',
                                                 ghost_button=False)
     self.gain = gctr.TextButtonCtrl(self.spotfinding_panel,
                                     label='Gain',
                                     label_size=(-1, -1),
-                                    label_style='bold',
+                                    label_style='normal',
                                     ghost_button=False)
     self.kernel_size = gctr.TextButtonCtrl(self.spotfinding_panel,
                                           label='Kernel size',
                                           label_size=(-1, -1),
-                                          label_style='bold',
+                                          label_style='normal',
                                           ghost_button=False)
     self.threshold_algorithm = gctr.ChoiceCtrl(self.spotfinding_panel,
                                                label='Threshold algorithm:',
@@ -2809,22 +2809,22 @@ class TrialDialog(BaseDialog):
     self.unit_cell = gctr.TextButtonCtrl(self.indexing_panel,
                                          label='Unit cell:',
                                          label_size=(100, -1),
-                                         label_style='bold',
+                                         label_style='normal',
                                          ghost_button=False)
     self.space_group = gctr.TextButtonCtrl(self.indexing_panel,
                                            label='Space group:',
                                            label_size=(150, -1),
-                                           label_style='bold',
+                                           label_style='normal',
                                            ghost_button=False)
     self.d_min_indexing = gctr.TextButtonCtrl(self.indexing_panel,
                                               label='d_min indexing:',
                                               label_size=(150, -1),
-                                              label_style='bold',
+                                              label_style='normal',
                                               ghost_button=False)
     self.max_lattices = gctr.TextButtonCtrl(self.indexing_panel,
                                             label='Max lattices:',
                                             label_size=(150, -1),
-                                            label_style='bold',
+                                            label_style='normal',
                                             ghost_button=False)
     self.chk_subsampling = wx.CheckBox(self.indexing_panel,
                                        label='Reflection subsampling')
@@ -2849,7 +2849,7 @@ class TrialDialog(BaseDialog):
                                   name='trial_throttle',
                                   label='Percent events processed:',
                                   label_size=(180, -1),
-                                  label_style='bold',
+                                  label_style='normal',
                                   ctrl_size=(150, -1),
                                   ctrl_value='100',
                                   ctrl_min=1,
@@ -2858,7 +2858,7 @@ class TrialDialog(BaseDialog):
                                   name='trial_num_bins',
                                   label='Number of bins:',
                                   label_size=(180, -1),
-                                  label_style='bold',
+                                  label_style='normal',
                                   ctrl_size=(150, -1),
                                   ctrl_value='20',
                                   ctrl_min=1,
@@ -2869,7 +2869,7 @@ class TrialDialog(BaseDialog):
                                label='High res. limit ({}):'
                                ''.format(u'\N{ANGSTROM SIGN}'.encode('utf-8')),
                                label_size=(180, -1),
-                               label_style='bold',
+                               label_style='normal',
                                ctrl_size=(150, -1),
                                ctrl_value=str(d_min),
                                ctrl_min=0.1,
@@ -3171,7 +3171,7 @@ class EditPhilDialog(BaseDialog):
                read_only=False,
                phil_scope=None,
                working_phil_scope=None,
-               label_style='bold',
+               label_style='normal',
                content_style='normal',
                *args, **kwargs):
 
