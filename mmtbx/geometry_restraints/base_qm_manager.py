@@ -51,8 +51,13 @@ def process_qm_log_file(log_filename=None,
                         verbose=False,
                         ):
   if log_filename is not None: generator=loop_over_file(log_filename)
+  if error_lines is None:
+    error_lines = {
+      '* GEOMETRY IN ERROR.' : 'Check protonated ligand and/or protein pocket',
+      }
   error_line = None
   status = None
+  errors=None
   for i, line in enumerate(generator):
     if line.find('GEOMETRY OPTIMIZATION CYCLE')>-1:
       cycle = int(line.split()[4])
@@ -68,16 +73,17 @@ def process_qm_log_file(log_filename=None,
     if line.find('* JOB ENDED NORMALLY *')>-1:
       status = True
     if error_lines:
-      for el in error_lines:
+      for el, ad in error_lines.items():
         if line.find(el)>-1:
           error_line = line
+          advice = ad
           break
     if error_line: break
   if error_line:
-    raise Sorry(error_line)
+    raise Sorry(f'{error_line}\nAdvice: {advice}')
   if not status:
     raise Sorry('QM does not seem to have converged. Check %s' % log_filename)
-  return status
+  return status, errors
 
 def run_command(command):
     """
