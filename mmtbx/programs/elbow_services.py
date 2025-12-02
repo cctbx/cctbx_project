@@ -7,7 +7,7 @@ from libtbx.utils import Sorry
 
 # from mmtbx.ligands import elbow_utils
 from mmtbx.monomer_library import geostd_utils
-# from mmtbx.monomer_library import mmtbx_utils
+from mmtbx.monomer_library import mmtbx_utils
 from mmtbx import chemical_components
 
 sources='geostd monlib ccd user'
@@ -47,6 +47,8 @@ Usage examples:
     user_dir = None
       .type = path
       .short_caption = directory to look for restraints
+    name = None
+      .type = str
   }
 """ % sources
 
@@ -79,8 +81,8 @@ Usage examples:
     filename=None
     if source=='geostd':
       filename = geostd_utils.get_geostd_file(code, pH=pH, file_format=file_format)
-    # elif source=='monlib':
-      # filename = mmtbx_utils.get_monomer_cif_file(code)
+    elif source=='monlib':
+      filename = mmtbx_utils.get_monomer_cif_file(code)
     elif source=='user':
       filename=None
       d=self.get_user_dir()
@@ -154,20 +156,32 @@ Usage examples:
                                                  file_format=self.params.where.format,
                                                  )
       # display
-      if (filename is None and
-          self.params.where.format == 'cif' and
-          self.params.where.pH is None):
-        print('  File not found in %s' % sources_long[source], file=self.logger)
-        if 'ccd' not in self.params.where.sources and len(self.params.where.sources)==i+1:
-          print('  Checking Chem. Comp. Lib.', file=self.logger)
-          source='ccd'
-          filename=self._find_filename_from_source(code, source)
+      for ts, to in [['monlib', '  Checking "Monomer Library"'],
+                     ['ccd',    '  Checking "Chem. Comp. Lib."'],
+                    ]:
+        if (filename is None and
+            self.params.where.format == 'cif' and
+            self.params.where.pH is None):
+          print('  File not found in "%s"' % sources_long[source], file=self.logger)
+          if ts not in self.params.where.sources and len(self.params.where.sources)==i+1:
+            print(to, file=self.logger)
+            source=ts
+            filename=self._find_filename_from_source(code, source)
+          if filename: break
       if filename is None:
         continue
       displayed=True
       lines=self.update_results(filename, source)
       if self.params.where.display=='full':
-        print(lines, file=self.logger)
+        if self.params.where.name:
+          for line in lines.splitlines():
+            if line.find('loop_')>-1: print(line, file=self.logger)
+            if line.find('_chem_comp.')>-1: continue
+            if line.strip().find('_')==0: print(line, file=self.logger)
+            if line.find(' %s ' % self.params.where.name)>-1:
+              print(line, file=self.logger)
+        else:
+          print(lines, file=self.logger)
       elif self.params.where.display in ['compact', 'ultra']:
         outl=''
         loop=''
