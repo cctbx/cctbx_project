@@ -55,102 +55,7 @@ class result(object):
                     'n_residues':obj.n}
     return json.dumps(data, indent=2)
 
-class z_score_mixins(object):
-  def _get_mean_one_table(self, table, verbose=False):
-    if verbose:
-      for i, a in enumerate(table):
-        outl=''
-        for j, b in enumerate(a):
-          outl+='%3d '%b
-        print(outl)
-    # Origianl paper calc:
-    reg_sum = 0
-    sq_sum = 0
-    for i in table:
-      for j in i:
-        reg_sum += j
-        sq_sum += j*j
-    if reg_sum > 0:
-      mean = sq_sum / reg_sum
-    else:
-      mean = 0
-    if verbose: print('mean',mean)
-    return mean
-
-  def _get_min_max_one_table(self, table):
-    min_info=[1e9,0,0]
-    max_info=[-1e9,0,0]
-    for x, i in enumerate(table):
-      for y, j in enumerate(i):
-        if j<min_info[0]:
-          min_info[0]=j
-          min_info[1]=x
-          min_info[2]=y
-        if j>max_info[0]:
-          max_info[0]=j
-          max_info[1]=x
-          max_info[2]=y
-    return min_info, max_info
-
-  def _get_std_one_table(self, table, mean):
-    # Origianl paper calc:
-    ch = 0
-    zn = 0
-    for i in table:
-      for j in i:
-        ch += j * (j-mean)**2
-        zn += j
-    zn -= 1
-    if zn == 0:
-      return 0
-    std = math.sqrt(ch/zn)
-    return std
-
-  def _get_z_score_point_one_table(self, table, phi, psi, step=4):
-    half_step=step//2
-    vmin = -180+half_step
-    if phi < -180+half_step:
-      i = -1
-      x1 = -180-half_step
-      x2 = -180+half_step
-    elif phi >= 180-half_step:
-      i = -1
-      x1 = 180-half_step
-      x2 = 180+half_step
-    else:
-      i = int(abs(-180 + half_step - phi) // step)
-      nsteps = abs(vmin - phi) // step
-      x1 = vmin + nsteps * step
-      x2 = x1 + step
-
-    if psi < -180+half_step:
-      j = -1
-      y1 = -180-half_step
-      y2 = -180+half_step
-    elif psi >= 180-half_step:
-      j = -1
-      y1 = 180-half_step
-      y2 = 180+half_step
-    else:
-      j = int(abs(-180 + half_step - psi) // step)
-      nsteps = abs(vmin - psi) // step
-      y1 = vmin + nsteps * step
-      y2 = y1 + step
-
-    xx = phi
-    yy = psi
-    v1 = table[i][j]
-    v2 = table[i+1][j+1]
-    v3 = table[i][j+1]
-    v4 = table[i+1][j]
-
-    int_sc = linear_interpolation_2d(x1,y1,x2,y2,v1,v2,v3,v4,xx,yy)
-    # print('>>>',phi,psi,x1,y1,x2,y2,v1,v2,v3,v4,int_sc)
-    assert phi>=x1 and phi<=x2
-    assert psi>=y1 and psi<=y2, f'{y1} {psi} {y2}'
-    return int_sc
-
-class rama_z(z_score_mixins):
+class rama_z(object):
   def __init__(self, models, log):
     db_path = libtbx.env.find_in_repositories(
         relative_path="chem_data/rama_z/top8000_rama_z_dict.pkl",
@@ -169,12 +74,7 @@ class rama_z(z_score_mixins):
         'H': (-0.045355950779513175, 0.1951165524439217),
         'S': (-0.0425581278436754, 0.20068584887814633),
         'L': (-0.018457764754231075, 0.15788374669456848),
-        'W': (-0.016806654295023003, 0.12044960331869274)
-        # 'H': (-0.0, 1),
-        # 'S': (-0.0, 1),
-        # 'L': (-0.0, 1),
-        # 'W': (-0.0, 1)
-        }
+        'W': (-0.016806654295023003, 0.12044960331869274)}
     self.residue_counts = {"H": 0, "S": 0, "L":0}
     self.z_score = {"H": None, "S": None, "L":None, 'W': None}
     self.means = {"H": {}, "S": {}, "L": {}}
@@ -321,7 +221,44 @@ class rama_z(z_score_mixins):
     if resname == 'cisPRO':
       ss_type = 'L'
     table = self.db[ss_type][resname]
-    int_sc = self._get_z_score_point_one_table(table, phi, psi)
+    vmin = -178
+    step = 4
+    if phi < -178:
+      i = -1
+      x1 = -182
+      x2 = -178
+    elif phi > 178:
+      i = -1
+      x1 = 178
+      x2 = 182
+    else:
+      i = int(abs(-178 - phi) // 4)
+      nsteps = abs(vmin - phi) // step
+      x1 = vmin + nsteps * step
+      x2 = x1 + 4
+
+    if psi < -178:
+      j = -1
+      y1 = -182
+      y2 = -178
+    elif psi > 178:
+      j = -1
+      y1 = 178
+      y2 = 182
+    else:
+      j = int(abs(-178 - psi) // 4)
+      nsteps = abs(vmin - psi) // step
+      y1 = vmin + nsteps * step
+      y2 = y1 + 4
+
+    xx = phi
+    yy = psi
+    v1 = table[i][j]
+    v2 = table[i+1][j+1]
+    v3 = table[i][j+1]
+    v4 = table[i+1][j]
+
+    int_sc = linear_interpolation_2d(x1,y1,x2,y2,v1,v2,v3,v4,xx,yy)
     if self.means[ss_type].get(resname, None) is None:
       self.means[ss_type][resname] = self._get_mean(ss_type, resname)
     if self.stds[ss_type].get(resname, None) is None:
@@ -329,10 +266,32 @@ class rama_z(z_score_mixins):
     return (int_sc - self.means[ss_type][resname]) / self.stds[ss_type][resname]
 
   def _get_mean(self, ss_type, resname):
-    return self._get_mean_one_table(self.db[ss_type][resname])
+    # Origianl paper calc:
+    reg_sum = 0
+    sq_sum = 0
+    for i in self.db[ss_type][resname]:
+      for j in i:
+        reg_sum += j
+        sq_sum += j*j
+    if reg_sum > 0:
+      mean = sq_sum / reg_sum
+    else:
+      mean = 0
+    return mean
 
   def _get_std(self, ss_type, resname, mean):
-    return self._get_std_one_table(self.db[ss_type][resname], mean)
+    # Origianl paper calc:
+    ch = 0
+    zn = 0
+    for i in self.db[ss_type][resname]:
+      for j in i:
+        ch += j * (j-mean)**2
+        zn += j
+    zn -= 1
+    if zn == 0:
+      return 0
+    std = math.sqrt(ch/zn)
+    return std
 
   def _get_resname(self, rama_type, resname):
     rn = resname

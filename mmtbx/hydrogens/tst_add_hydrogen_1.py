@@ -59,7 +59,7 @@ def compare_models(pdb_str,
   hd_sel_h_added = model_h_added.get_hd_selection()
 
   # For debugging
-  if 1:
+  if 0:
     f = open("m_initial.pdb","w")
     f.write(model_initial.model_as_pdb())
     f.close()

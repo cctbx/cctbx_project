@@ -54,7 +54,6 @@ def process_qm_log_file(log_filename=None,
   if error_lines is None:
     error_lines = {
       '* GEOMETRY IN ERROR.' : 'Check protonated ligand and/or protein pocket',
-      '* UNABLE TO ACHIEVE SELF-CONSISTENCE' : 'Check input geometry for faults',
       }
   error_line = None
   status = None

@@ -2007,8 +2007,7 @@ class manager(object):
         grm_normalization         = True,
         plain_pairs_radius        = 5,
         custom_nb_excl            = None,
-        run_clash_guard           = False,
-        retain_zero_dihedrals     = False):
+        run_clash_guard           = False):
     self._processed = True
     if(pdb_interpretation_params is not None):
       self.unset_restraints_manager()
@@ -2039,7 +2038,6 @@ class manager(object):
       cif_parameters            = self._monomer_parameters, # mmtbx.utils.cif_params scope - should be refactored to remove
       mon_lib_srv               = None,
       ener_lib                  = None,
-      retain_zero_dihedrals     = retain_zero_dihedrals,
       use_neutron_distances     = pip.pdb_interpretation.use_neutron_distances)
     if(self._processed_pdb_file is None):
       self._processed_pdb_file, _ = processed_pdb_files_srv.process_pdb_files(
@@ -2092,8 +2090,7 @@ class manager(object):
        grm_normalization         = grm_normalization,
        plain_pairs_radius        = plain_pairs_radius,
        custom_nb_excl            = custom_nb_excl,
-       run_clash_guard           = run_clash_guard,
-       retain_zero_dihedrals     = retain_zero_dihedrals)
+       run_clash_guard           = run_clash_guard)
     #
     if self._processed_pdb_file:
       self._clash_guard_msg = self._processed_pdb_file.clash_guard(
@@ -2165,7 +2162,6 @@ class manager(object):
       plain_pairs_radius=5.0,
       custom_nb_excl=None,
       run_clash_guard = True,
-      retain_zero_dihedrals = False,
       ):
     if(self.restraints_manager is not None): return
     assert self._processed_pdb_file is not None
