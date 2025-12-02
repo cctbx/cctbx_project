@@ -74,7 +74,9 @@ class determine_connectivity(object):
     #    find preliminary list of third neighbors in cases where no dihedral
     #    proxy is present
     self.determine_a0_angles_and_third_neighbors_without_dihedral(
-      angle_proxies = angle_proxies)
+      angle_proxies = angle_proxies,
+      atoms=pdb_hierarchy.atoms(),
+      )
 
     # 7. Assign the angles found previously and process preliminary list of
     #    third neighbors
@@ -186,7 +188,7 @@ class determine_connectivity(object):
           #self.a0a1_dict[i_parent] = i_a1
 
 
-  def determine_a0_angles_and_third_neighbors_without_dihedral(self, angle_proxies):
+  def determine_a0_angles_and_third_neighbors_without_dihedral(self, angle_proxies, atoms=None):
     """Loop through angle proxies to find angles involving a0 and second
     neighbors. Find raw list of third neighbors, which don't have dihedral
     proxies."""
@@ -194,6 +196,8 @@ class determine_connectivity(object):
     self.third_neighbors_raw = [[] for i in range(self.n_atoms)]
     for ap in angle_proxies:
       ix, iy, iz = ap.i_seqs
+      if atoms:
+        print(ap.i_seqs, atoms[ix].id_str(), atoms[iy].id_str(), atoms[iz].id_str())
       is_hd_ix = self.hd_sel[ix]
       is_hd_iz = self.hd_sel[iz]
       # get all X1-A0-X2 angles if A0 is parent atom

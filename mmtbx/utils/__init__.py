@@ -238,6 +238,7 @@ class process_pdb_file_srv(object):
                      pdb_parameters            = None,
                      pdb_interpretation_params = None,
                      stop_for_unknowns         = None,
+                     retain_zero_dihedrals     = False,
                      log                       = None,
                      cif_objects               = None,
                      cif_parameters            = None,
@@ -254,6 +255,7 @@ class process_pdb_file_srv(object):
           process_includes=True).extract()
       self.pdb_interpretation_params = ppdb_interpretation_params.pdb_interpretation
     self.stop_for_unknowns         = stop_for_unknowns
+    self.retain_zero_dihedrals     = retain_zero_dihedrals
     self.cif_objects               = cif_objects
     self.cif_parameters            = cif_parameters
     self.log                       = log
@@ -282,10 +284,12 @@ class process_pdb_file_srv(object):
       pdb_inp                  = pdb_inp,
       hierarchy                = hierarchy,
       # stop_if_duplicate_labels = stop_if_duplicate_labels,
+      retain_zero_dihedrals    = self.retain_zero_dihedrals,
       allow_missing_symmetry   = allow_missing_symmetry)
 
   def _process_pdb_file(self, pdb_file_names, raw_records, pdb_inp,
                         hierarchy = None,
+                        retain_zero_dihedrals = False,
                         # stop_if_duplicate_labels,
                         allow_missing_symmetry=False):
     assert [pdb_file_names, raw_records, hierarchy, pdb_inp].count(None) >= 2
@@ -353,6 +357,7 @@ class process_pdb_file_srv(object):
       force_symmetry           = True,
       log                      = self.log,
       restraints_loading_flags = restraints_loading_flags,
+      retain_zero_dihedrals    = retain_zero_dihedrals,
       substitute_non_crystallographic_unit_cell_if_necessary=allow_missing_symmetry)
     processed_pdb_file.xray_structure(show_summary=True)
     if self.stop_for_unknowns == False:

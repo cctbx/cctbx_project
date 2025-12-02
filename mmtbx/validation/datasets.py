@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os, sys
 import libtbx.load_env
 from libtbx.utils import Sorry
+import copy
 
 curated_repository_dir = libtbx.env.find_in_repositories(
   relative_path="chem_data/curated_datasets",
@@ -55,18 +56,19 @@ def generate_data_items(data):
   for row in data["data"]:
     yield dataset_item(data["headers"], row)
 
-data_lookups = {}
-for key in locals().keys():
-  if not key.endswith("_data"): continue
-  cmd = "generate_%s = generate_data_items(%s)" % (key[:-5],
-                                                   key,
-                                                 )
-  exec(cmd)
-  if key=="top8000_data": data_lookups[key]="Top 8000"
-  elif key=="rna11_data": data_lookups[key]="RNA 11"
-  elif key=="hiq54_data": data_lookups[key]="HiQ54"
-  elif key=="iridium_data": data_lookups[key]="Iridium"
-  else: assert 0
+# data_lookups = {}
+# keys=copy.deepcopy(locals().keys())
+# for key in keys:
+#   if not key.endswith("_data"): continue
+#   cmd = "generate_%s = generate_data_items(%s)" % (key[:-5],
+#                                                    key,
+#                                                  )
+#   exec(cmd)
+#   if key=="top8000_data": data_lookups[key]="Top 8000"
+#   elif key=="rna11_data": data_lookups[key]="RNA 11"
+#   elif key=="hiq54_data": data_lookups[key]="HiQ54"
+#   elif key=="iridium_data": data_lookups[key]="Iridium"
+#   else: assert 0
 
 
 def run(local):

@@ -161,6 +161,7 @@ restraints_library_str = """
       .style = bold
     include_modified_amino_acid_in_cdl = False
       .type = bool
+      .style = hidden
     mcl = True
       .type = bool
       .short_caption = Use Metal Coordination Library (MCL)
@@ -175,7 +176,6 @@ restraints_library_str = """
       .short_caption = Use Omega Conformation-Dependent Library
       .help = Use Omega Conformation Dependent Library (omega-CDL) \
         for geometry restraints
-      .style = hidden
     cdl_nucleotides
       .short_caption = CDL for Nucleotides
     {
@@ -2677,6 +2677,7 @@ class build_chain_proxies(object):
         log,
         restraints_loading_flags=None,
         fatal_problem_max_lines=10,
+        retain_zero_dihedrals=False,
                ):
     if restraints_loading_flags is None: restraints_loading_flags={}
     self._cif = cif_output_holder()
@@ -2994,6 +2995,10 @@ class build_chain_proxies(object):
           += mm.angle_counters.unresolved_non_hydrogen
         n_angles_discarded_because_of_special_positions \
           += mm.angle_counters.discarded_because_of_special_positions
+        if retain_zero_dihedrals:
+          for tor in mm.monomer.tor_list:
+            if tor.value_angle_esd in [None, 0]:
+              tor.value_angle_esd=999
         mm.add_dihedral_proxies(
           dihedral_function_type=dihedral_function_type,
           special_position_dict=special_position_dict,
@@ -3472,6 +3477,7 @@ class build_all_chain_proxies(linking_mixins):
         max_atoms=None,
         log=None,
         carbohydrate_callback=None,
+        retain_zero_dihedrals=False,
         restraints_loading_flags=None,
                 ):
     self._cif = cif_output_holder()
@@ -3801,6 +3807,7 @@ class build_all_chain_proxies(linking_mixins):
               =self.params.show_max_items.fatal_problem_max_lines,
             cis_trans_specifications=cis_trans_specifications,
             apply_restraints_specifications=apply_restraints_specifications,
+            retain_zero_dihedrals=retain_zero_dihedrals,
             log=log,
             )
           self._cif.update(chain_proxies._cif)
@@ -5375,6 +5382,7 @@ class build_all_chain_proxies(linking_mixins):
         custom_nonbonded_exclusions=None,
         assume_hydrogens_all_missing=True,
         external_energy_function=None,
+        retain_zero_dihedrals=False,
         log=None):
     assert self.special_position_settings is not None
     timer = user_plus_sys_time()
@@ -5999,6 +6007,7 @@ class process(object):
         max_atoms=None,
         log=None,
         carbohydrate_callback=None,
+        retain_zero_dihedrals=False,
         restraints_loading_flags=None):
     self.mon_lib_srv = mon_lib_srv
     self.ener_lib = ener_lib
@@ -6039,6 +6048,7 @@ class process(object):
       max_atoms=max_atoms,
       log=log,
       carbohydrate_callback=carbohydrate_callback,
+      retain_zero_dihedrals=retain_zero_dihedrals,
       restraints_loading_flags=restraints_loading_flags)
     if (log is not None
         and self.all_chain_proxies.time_building_chain_proxies is not None):
@@ -6103,6 +6113,7 @@ class process(object):
         show_energies=True,
         hard_minimum_bond_distance_model=0.001,
         external_energy_function=None,
+        retain_zero_dihedrals=False,
         den_manager=None,
         ):
     if (    self.all_chain_proxies.sites_cart is not None
@@ -6118,6 +6129,7 @@ class process(object):
             custom_nonbonded_exclusions=custom_nonbonded_exclusions,
             assume_hydrogens_all_missing=assume_hydrogens_all_missing,
             external_energy_function=external_energy_function,
+            retain_zero_dihedrals=retain_zero_dihedrals,
             log=self.log)
 
       #for key, item in self.all_chain_proxies.pdb_link_records.items():

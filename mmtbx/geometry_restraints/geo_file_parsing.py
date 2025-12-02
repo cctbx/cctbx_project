@@ -683,3 +683,29 @@ def coerce_type(val):
   if out is not None:
     return out
   return val # input (probably string)
+
+if __name__ == '__main__':
+  import sys
+  print(sys.argv)
+  f=open(sys.argv[1])
+  geo_lines=f.readlines()
+  del f
+  parser = GeoParser(geo_lines)     # Initialize
+  print(dir(parser))
+  entries = parser.entries_list       # Access data as Entry instances
+  records = parser.records_list
+  proxies = parser.proxies
+  for record in records:
+    print(record)
+    # print(dir(record))
+    # print(type(record))
+    break
+    if record['origin_id']!=0:
+      break
+  for entry in entries:
+    print(entry)
+    print(dir(entry))
+    print(type(entry))
+    print(entry.ideal)
+    assert 0
+

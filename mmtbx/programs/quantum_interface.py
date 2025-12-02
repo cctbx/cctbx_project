@@ -287,7 +287,6 @@ def should_get_selection_from_user(params):
     qm_restraints_has_selection(params),
     not params.qi.each_amino_acid,
     not params.qi.each_water,
-    not params.qi.merge_water,
     ]
   bc=0
   if not params.qi.selection:
@@ -401,8 +400,6 @@ Usage examples:
       .type = bool
     each_water = False
       .type = bool
-    merge_water = False
-      .type = bool
     nproc = 1
       .type = int
     randomise_selection = None
@@ -432,6 +429,8 @@ Usage examples:
     if self.params.qi.write_qmr_phil is Auto:
       if self.params.qi.run_qmr:
         self.params.qi.write_qmr_phil=False
+      else:
+        self.params.qi.write_qmr_phil=True
 
   # ---------------------------------------------------------------------------
   def run(self, log=None):
@@ -543,21 +542,6 @@ Usage examples:
                                                   pf), file=self.logger)
       return
 
-    if self.params.qi.merge_water:
-      pf = self.data_manager.get_default_model_name().replace('.pdb', '')
-      if os.path.exists(qm_work_dir):
-        os.chdir(qm_work_dir)
-        filenames=[]
-        for filename in os.listdir('.'):
-          if not filename.startswith(pf): continue
-          if not filename.endswith('pdb'): continue
-          if filename.find('HOH')==-1: continue
-          if filename.find('_cluster_final_')==-1: continue
-          filenames.append(filename)
-        merge_water(filenames)
-      else:
-        print('no working directory', file=self.logger)
-
     if self.params.qi.each_water:
       def _water_scope_generator(hierarchy, carve_selection=None):
         if carve_selection:
@@ -575,13 +559,16 @@ Usage examples:
           if gc not in ['common_water']: continue
           selection = 'chain %s and resid %s and resname HOH' % (rg.parent().id, rg.resseq.strip())
           qi_phil_string = self.get_single_qm_restraints_scope(selection)
+          qi_phil_string = self.set_one_write_to_true(qi_phil_string, 'pdb_buffer')
           qi_phil_string = self.set_one_write_to_true(qi_phil_string, 'pdb_final_core')
+          qi_phil_string = self.set_one_write_to_true(qi_phil_string, 'pdb_final_buffer')
           qi_phil_string = qi_phil_string.replace('ignore_x_h_distance_protein = False',
                                                   'ignore_x_h_distance_protein = True')
           qi_phil_string = qi_phil_string.replace('do_not_update_restraints = False',
                                                   'do_not_update_restraints = True')
           # print('  writing phil for %s %s' % (rg.id_str(), rg.atom_groups()[0].resname), file=self.logger)
           yield qi_phil_string
+
       if not self.params.qi.run_qmr:
         outl = ''
         for qi_phil_string in _water_scope_generator(model,
@@ -610,11 +597,10 @@ Usage examples:
       else:
         nproc=self.params.qi.nproc
         argstuples=[]
-        # for qmr in self.params.qi.qm_restraints:
+        t0=time.time()
         for i, qi_phil_string in enumerate(_water_scope_generator(model,
                                                                   carve_selection=self.params.qi.carve_selection)):
           if nproc==-1:
-            print('  Running %s flip %d' % (nq_or_h, i+1), file=self.logger)
             res = update_restraints(model,
                                     self.params,
                                     never_write_restraints=True,
@@ -644,7 +630,10 @@ Usage examples:
         args = []
         for result in results:
           for filenames in result.final_pdbs:
-            args.append(filenames[-1])
+            for j, fn in enumerate(filenames):
+              if fn.find('ligand_final')>-1: break
+            else: assert 0
+            args.append(filenames[j])
 
         cwd=os.getcwd()
         os.chdir(qm_work_dir)
