@@ -1178,6 +1178,7 @@ NOTES:
     # Set the default output file name if one has not been given.
     if self.params.output.filename is None:
       inName = self.data_manager.get_default_model_name()
+      if inName is None: raise Sorry('model not found')
       suffix = os.path.splitext(os.path.basename(inName))[1]
       if self.params.add_flip_movers:
         pad = 'FH'
