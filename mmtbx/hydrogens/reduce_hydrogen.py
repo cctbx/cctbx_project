@@ -324,7 +324,7 @@ class place_hydrogens():
       log               = null_out())
     self.model.process(pdb_interpretation_params=p,
                        make_restraints=True,
-                       retain_zero_dihedrals=True,
+                       # retain_zero_dihedrals=True,
                        )
     #self.model.idealize_h_minimization()
     #STOP()
