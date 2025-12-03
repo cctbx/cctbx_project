@@ -28,18 +28,18 @@ jobs:
   - template: ./conda-osx.yml
     parameters:
       vmImage: [15]
-      xcode_version: [16, 2]
+      xcode_version: [26, 1, 1]
+      modules: ${{ parameters.modules }}
+      template: ./unix-conda-build.yml
+  - template: ./conda-osx.yml
+    parameters:
+      vmImage: [15]
+      xcode_version: [16, 4]
       modules: ${{ parameters.modules }}
       template: ./unix-conda-build.yml
   - template: ./conda-osx.yml
     parameters:
       vmImage: [14]
       xcode_version: [15, 4]
-      modules: ${{ parameters.modules }}
-      template: ./unix-conda-build.yml
-  - template: ./conda-osx.yml
-    parameters:
-      vmImage: [13]
-      xcode_version: [14, 3, 1]
       modules: ${{ parameters.modules }}
       template: ./unix-conda-build.yml

@@ -15,7 +15,7 @@ jobs:
       template: ./unix-conda-build.yml
   - template: ./conda-osx.yml
     parameters:
-      vmImage: [13]
-      xcode_version: [14, 3, 1]
+      vmImage: [14]
+      xcode_version: [15, 4]
       modules: modules
       template: ./unix-conda-build.yml
