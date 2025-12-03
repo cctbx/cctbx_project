@@ -151,11 +151,12 @@ class AveragingJob(Job):
         f'mp.nnodes = {params.mp.nnodes}',
         f'mp.nproc = {params.mp.nproc}',
         f'mp.nproc_per_node = {params.mp.nproc_per_node}',
-        f'mp.queue = {params.mp.queue}',
         f'mp.env_script = {params.mp.env_script[0]}',
         f'mp.wall_time = {params.mp.wall_time}',
         f'mp.htcondor.executable_path = {params.mp.htcondor.executable_path}',
       ]
+      if params.mp.queue:
+        mp_args.append(f'mp.queue = {params.mp.queue}')
       for arg in mp_args:
         self.args.append(arg)
     if params.mp.shifter.shifter_image is not None:
@@ -618,7 +619,7 @@ class EnsembleRefinementJob(Job):
     from xfel.command_line.submit_job import get_submission_id
     from libtbx import easy_run
 
-    if "striping" in self.task.parameters:
+    if self.task and self.task.parameters and "striping" in self.task.parameters:
       raise RuntimeError("The striping parameter has been renamed to time_varying_refinement. Edit your ensemble_refinement task (no need to create a new one).")
 
     configs_dir = os.path.join(settings_dir, "cfgs")
@@ -628,7 +629,7 @@ class EnsembleRefinementJob(Job):
       if self.task.parameters:
         f.write(self.task.parameters)
 
-    pre_split = phil_scope.fetch(parse(self.task.parameters)).extract().time_varying_refinement.pre_split
+    pre_split = phil_scope.fetch(parse(self.task.parameters)).extract().time_varying_refinement.pre_split if self.task.parameters else False
     chunk_size = 2000 if pre_split else 64
 
     path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
