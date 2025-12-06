@@ -25,7 +25,9 @@ def run(file_name = None,
       job_id: str = None,        # The ID for this specific run (e.g., '23')
       run_agent: bool = False,   # are we going to run the agent
       history_files: list = None,  # text files here
-      history_simple_string: str = None # content from client
+      history_simple_string: str = None, # content from client
+      project_advice: str = None,  # User guidance
+      original_files: list = None  # List of ground-truth files
       ):
 
     # What we are going to return (Backwards Compatible Object)
@@ -89,7 +91,7 @@ def run(file_name = None,
          log_info.error = "COHERE_API_KEY environment variable not set."
          return log_info
 
-      # --- NEW: Automatically select DB directory based on provider ---
+      # --- Automatically select DB directory based on provider ---
       if db_dir == "./docs_db":
         if provider == 'google':
             db_dir = "./docs_db_google"
@@ -113,22 +115,22 @@ def run(file_name = None,
       except Exception as e:
         raise ValueError("Sorry, unable to analyze the file %s " %(file_name))
 
-      # --- MODIFIED SECTION: Set up two LLMs ---
+      # --- Set up two LLMs ---
       print("Setting up LLMs...")
       try:
-        # 1. the EXPENSIVE model ('gpt-5') for final analysis or gemini-2.5-pro
+        # 1. the EXPENSIVE model ('gpt-5' or 'gemini-2.5-pro') for final analysis
         if provider == "google":
           expensive_llm, embeddings = lct.get_llm_and_embeddings(
             provider=provider,
             timeout=timeout,
-            llm_model_name='gemini-2.5-pro' # Your requested powerful model
+            llm_model_name='gemini-2.5-pro'
           )
           print(f"Using expensive model for analysis: {expensive_llm.model}")
         else:
           expensive_llm, embeddings = lct.get_llm_and_embeddings(
             provider=provider,
             timeout=timeout,
-            llm_model_name='gpt-5' # Your requested powerful model
+            llm_model_name='gpt-5'
           )
           print(f"Using expensive model for analysis: {expensive_llm.model_name}")
 
@@ -143,7 +145,6 @@ def run(file_name = None,
         print(e)
         raise ValueError("Sorry, unable to set up LLM. Check both GOOGLE_API_KEY and OPENAI_API_KEY.")
       # --- END OF MODIFIED SECTION ---
-
 
       # Summarize the log file (using the CHEAP & FAST Google LLM)
       print("Summarizing log file (using cheap Google model)...")
@@ -190,8 +191,8 @@ def run(file_name = None,
       from copy import deepcopy
       log_info_std = deepcopy(log_info)
 
-      # --- MODIFIED RETRY LOGIC ---
-      last_error = "" # Keep track of the last error
+      # --- RETRY LOGIC ---
+      last_error = ""
       for i in range(max_analyze_log_tries):
         log_info = deepcopy(log_info_std)
         result = asyncio.run(
@@ -203,18 +204,15 @@ def run(file_name = None,
           ok = True
           break # Exit the loop on success
         else:
-          # Failure, store the error and try again
           last_error = result.error or "Unknown analysis error"
           print(f"Analysis failed (Attempt {i+1}/{max_analyze_log_tries}): {last_error}")
-          time.sleep(1) # Optional: short pause before retry
+          time.sleep(1)
 
       if (not ok):
-        # If we get here, all retries failed
         log_info.error = f"Analysis failed after {max_analyze_log_tries} attempts. Last error: {last_error}"
         log_info.analysis = ""
         print("Unable to carry out analysis of log file.")
         return log_info # Return object
-      # --- END OF MODIFIED LOGIC ---
 
     # Put it in an html window
     if display_results:
@@ -233,7 +231,7 @@ def run(file_name = None,
       except Exception as e:
         # phenix is not available or no viewer.  Just skip
         print("Unable to load viewer")
-    # Make sure viewer has enough time to load
+
     time.sleep(0.5)
 
     # Save History to JSON ---
@@ -246,9 +244,7 @@ def run(file_name = None,
         try:
             if not os.path.exists(log_directory):
                 os.makedirs(log_directory)
-                print(f"Created log directory: {log_directory}")
 
-            # Create a filename. Use job_id if provided, else timestamp.
             if job_id:
                 json_filename = f"job_{job_id}.json"
             else:
@@ -265,11 +261,11 @@ def run(file_name = None,
             print(f"Warning: Failed to save history JSON: {e}")
     # ---------------------------------
 
-    # --- AGENT LOGIC (The New Brain) ---
+    # --- AGENT LOGIC ---
     if run_agent:
         print("\n--- Running Agent for Next Move ---")
         try:
-            # 1. Ensure LLM is loaded (Fixes the "Missing Brain" crash)
+            # 1. Ensure LLM is loaded (Fix for reused summaries)
             if 'expensive_llm' not in locals() or 'embeddings' not in locals():
                 from libtbx.langchain import langchain_tools as lct
                 if provider == "google":
@@ -311,9 +307,10 @@ def run(file_name = None,
                 llm=expensive_llm,
                 embeddings=embeddings,
                 db_dir=db_dir,
-                timeout=timeout*3
+                timeout=timeout*3,
+                project_advice=project_advice, # Pass User Context
+                original_files=original_files  # Pass File Context
             ))
-
 
             if agent_result:
                 next_move_dict = {
@@ -399,6 +396,12 @@ if __name__ == "__main__":
     parser.add_argument("--job_id", default=None, help="Job ID for history")
     parser.add_argument("--provider", default="google", help="LLM Provider")
 
+    # Agent Args
+    parser.add_argument("--run_agent", action="store_true")
+    parser.add_argument("--history_file", action="append")
+    parser.add_argument("--project_advice", type=str, default=None)
+    parser.add_argument("--original_files", nargs="+", default=None)
+
     args = parser.parse_args()
 
     log_text = None
@@ -421,6 +424,10 @@ if __name__ == "__main__":
         db_dir=args.db_dir,
         log_directory=args.log_dir,
         job_id=args.job_id,
-        provider=args.provider
+        provider=args.provider,
+        run_agent=args.run_agent,
+        history_files=args.history_file,
+        project_advice=args.project_advice,
+        original_files=args.original_files
     )
 

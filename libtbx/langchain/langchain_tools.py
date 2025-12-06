@@ -153,14 +153,17 @@ def get_run_history(log_directory, max_history=5):
         print(f"Error: Log directory '{log_directory}' does not exist.")
         return []
 
+    # Find all json files matching the pattern job_*.json
     search_path = os.path.join(log_directory, "job_*.json")
     files = glob.glob(search_path)
 
     if not files:
         return []
 
+    # Sort files by modification time (Oldest -> Newest)
     files.sort(key=os.path.getmtime)
 
+    # Load the data
     history = []
     for fpath in files:
         try:
@@ -170,6 +173,7 @@ def get_run_history(log_directory, max_history=5):
         except Exception as e:
             print(f"Skipping corrupt file {fpath}: {e}")
 
+    # Slice to keep only the last N
     if len(history) > max_history:
         history = history[-max_history:]
 
@@ -179,14 +183,19 @@ def get_run_history(log_directory, max_history=5):
 def get_phenix_program_list() -> list:
     """
     Returns a sorted list of all available Phenix programs.
+    Scans the bin directory associated with the current environment.
     """
     import sys
+
+    # Attempt to find the bin directory
     bin_dir = os.path.dirname(sys.executable)
     if not os.path.isdir(bin_dir):
+        # Fallback for some environments
         return []
 
     programs = []
     for filename in os.listdir(bin_dir):
+        # Filter for likely Phenix/CCTBX programs
         if filename.startswith("phenix.") or filename.startswith("mmtbx.") or \
            filename.startswith("iotbx.") or filename.startswith("phaser."):
             programs.append(filename)
@@ -280,13 +289,19 @@ def get_strategic_planning_prompt() -> PromptTemplate:
     template = """You are a Lead Crystallographer supervising a structure solution project.
     You have reports from {num_runs} previous jobs. Your goal is to determine the SINGLE best next step.
 
+    **User's Goal / Advice:**
+    {project_advice}
+
+    **Original Input Files (Ground Truth):**
+    {original_files}
+
     **Project History:**
     {history}
 
     **FORBIDDEN PROGRAMS:**
     1. **Do NOT use `phenix.cosym`**: It is not available. Use `phenix.xtriage`.
     2. **Do NOT use `pointless`**: Use `phenix.xtriage`.
-    3. **Do NOT use `phenix.reindex`**: Use `phenix.xtriage` to diagnose first.
+    3. **Do NOT use `phenix.reindex`**: Use `phenix.xtriage`.
 
     **ANALYSIS PROTOCOL:**
 
@@ -308,7 +323,7 @@ def get_strategic_planning_prompt() -> PromptTemplate:
        - Do not skip to Refinement if Phasing failed or hasn't run.
 
     **FILE REALITY PROTOCOL (Strict):**
-    1. **Existing Files Only:** You can ONLY use files explicitly listed in the "Project History".
+    1. **Existing Files Only:** You can ONLY use files explicitly listed in "Original Input Files" OR the "Project History".
     2. **No Invented Filenames:** Do NOT use `input.pdb` or `model.pdb` unless they exist in the history.
     3. **Missing Files:** If you need a file but it is NOT in the history:
        - **DECISION:** Output `STOP: Missing Input`.
@@ -326,7 +341,7 @@ def get_strategic_planning_prompt() -> PromptTemplate:
         "input_files": "List of input files."
     }}
     """
-    return PromptTemplate(template=template, input_variables=["num_runs", "history"])
+    return PromptTemplate(template=template, input_variables=["num_runs", "history", "project_advice", "original_files"])
 
 
 def get_command_writer_prompt() -> PromptTemplate:
@@ -674,18 +689,13 @@ def get_llm_and_embeddings(
 
 async def get_log_info(text, llm, embeddings, timeout: int = 120,
     provider: str = 'google'):
-    """
-    Stage 1: Summarize log file with robust error handling.
-    """
     try:
-        # Pass the timeout to the summarization function
         log_summary_info = await summarize_log_text(
             text, llm, timeout=timeout, provider = provider)
-        # process the log file to get pieces of information
         processed_log_dict = get_processed_log_dict(
            log_summary_info.log_summary)
 
-        if log_summary_info.error:  # failed
+        if log_summary_info.error:
            return group_args(
                group_args_type = 'error', error=log_summary_info.error)
 
@@ -696,9 +706,7 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120,
           error = None)
 
     except asyncio.TimeoutError:
-        error_message = "Analysis timed out, " + \
-             "try increasing timeout in Preferences or AnalyzeLog "+\
-               "(currently %s sec)." %(timeout)
+        error_message = "Analysis timed out, try increasing timeout."
         print(error_message)
         return group_args(group_args_type = 'error', error=error_message)
 
@@ -762,8 +770,6 @@ async def get_program_keywords(program_name: str, llm, embeddings,
 async def analyze_log_summary(log_info, llm, embeddings,
    db_dir: str = "./docs_db",
    timeout: int = 60):
-  # --- Stage 2: Analyze with Docs RAG
-
   try:
     vectorstore = load_persistent_db(embeddings, db_dir = db_dir)
     analysis_prompt = get_log_analysis_prompt()
@@ -865,6 +871,7 @@ def create_and_persist_db(
             unique_docs.append(d)
 
     client = chromadb.PersistentClient(path=db_dir)
+
     vectorstore = Chroma(
         client=client,
         collection_name="docs",
@@ -1200,7 +1207,9 @@ async def generate_next_move(
     llm,
     embeddings,
     db_dir: str = "./docs_db",
-    timeout: int = 60
+    timeout: int = 60,
+    project_advice: str = None,
+    original_files: list = None
 ):
     from langchain_core.output_parsers import JsonOutputParser
 
@@ -1215,6 +1224,23 @@ async def generate_next_move(
     await learn_from_history(run_history, llm, memory_file=memory_file_path, logger=log)
 
     log(f"thinking... (Analyzing {len(run_history)} past runs)")
+
+    # Format Inputs
+    advice_text = project_advice if project_advice else "No specific advice provided. Optimize for best structure."
+
+    if original_files:
+        if isinstance(original_files, str):
+            original_files_list = original_files.split()
+        else:
+            original_files_list = []
+            for item in original_files:
+                if item:
+                    original_files_list.extend(str(item).split())
+
+        orig_files_text = ", ".join(original_files_list)
+    else:
+        orig_files_text = "None provided."
+        original_files_list = []
 
     history_text = ""
     for i, run in enumerate(run_history):
@@ -1232,7 +1258,9 @@ async def generate_next_move(
         try:
             plan = strategy_chain.invoke({
                 "num_runs": len(run_history),
-                "history": history_text
+                "history": history_text,
+                "project_advice": advice_text,
+                "original_files": orig_files_text
             })
 
             program = plan.get('selected_program', '').strip()
@@ -1348,14 +1376,22 @@ async def generate_next_move(
                     continue
 
                 if f not in trusted_text:
-                    missing_files.append(f)
+                    # New: Check Original Files List (Basename comparison)
+                    in_original = False
+                    f_base = os.path.basename(f)
+                    for orig in original_files_list:
+                        if f_base == os.path.basename(orig):
+                            in_original = True
+                            break
+                    if not in_original:
+                        missing_files.append(f)
 
             if missing_files:
                  log(f"Notice: Agent tried to use missing files: {missing_files}. Auto-stopping.")
                  return group_args(
                     group_args_type='next_move',
                     command="No command generated.",
-                    explanation=f"**MISSING INPUT ERROR:**\nThe Agent attempted to use files {missing_files}, but these files do not appear in the history. \n\n**REQUIRED ACTION:**\nPlease provide these files and try again.",
+                    explanation=f"**MISSING INPUT ERROR:**\nThe Agent attempted to use files {missing_files}, but these files do not appear in the history or original inputs. \n\n**REQUIRED ACTION:**\nPlease provide these files and try again.",
                     program="STOP",
                     strategy="Missing Input",
                     process_log="\n".join(process_log),
