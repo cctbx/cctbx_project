@@ -53,6 +53,32 @@ os.environ['GRPC_ENABLE_FORK_SUPPORT'] = "false"   # suppress a warning message
 
 # --- LEARNING / MEMORY FUNCTIONS ---
 
+def get_phenix_program_list() -> list:
+    """
+    Returns a sorted list of all available Phenix programs.
+    Scans the bin directory associated with the current environment.
+    """
+    import sys
+
+    # Attempt to find the bin directory
+    bin_dir = os.path.dirname(sys.executable)
+    if not os.path.isdir(bin_dir):
+        # Fallback for some environments
+        return []
+
+    programs = []
+    for filename in os.listdir(bin_dir):
+        # Filter for likely Phenix/CCTBX programs
+        if filename.find("development") > -1:
+          continue
+        if filename.startswith("phenix.") or filename.startswith("mmtbx.") or \
+           filename.startswith("iotbx.") or filename.startswith("phaser."):
+            programs.append(filename)
+
+    return sorted(programs)
+
+VALID_PHENIX_PROGRAMS = get_phenix_program_list()
+
 def get_memory_file_path(db_dir):
     """
     Determines the path for the learned memory file.
@@ -180,27 +206,6 @@ def get_run_history(log_directory, max_history=5):
     return history
 
 
-def get_phenix_program_list() -> list:
-    """
-    Returns a sorted list of all available Phenix programs.
-    Scans the bin directory associated with the current environment.
-    """
-    import sys
-
-    # Attempt to find the bin directory
-    bin_dir = os.path.dirname(sys.executable)
-    if not os.path.isdir(bin_dir):
-        # Fallback for some environments
-        return []
-
-    programs = []
-    for filename in os.listdir(bin_dir):
-        # Filter for likely Phenix/CCTBX programs
-        if filename.startswith("phenix.") or filename.startswith("mmtbx.") or \
-           filename.startswith("iotbx.") or filename.startswith("phaser."):
-            programs.append(filename)
-
-    return sorted(programs)
 
 def get_keywords_as_phil_string(program: str) -> str:
     from libtbx import easy_run
@@ -1318,7 +1323,7 @@ async def generate_next_move(
                 plan['selected_program'] = program
 
             # 3. Check Allow-List
-            if hasattr(pk, 'VALID_PHENIX_PROGRAMS') and program not in pk.VALID_PHENIX_PROGRAMS:
+            if program not in VALID_PHENIX_PROGRAMS:
                  log(f"Correction: '{program}' is not in the allowed list. Retrying...")
                  history_text += f"\n\nSYSTEM NOTE: '{program}' is not supported. Choose a standard tool.\n"
                  continue

@@ -3,18 +3,7 @@ phenix_knowledge.py
 Central repository for Phenix-specific rules, hints, and strategies.
 """
 
-# 1. The Allow-List (Prevent Hallucinations)
-VALID_PHENIX_PROGRAMS = {
-    "phenix.refine", "phenix.real_space_refine", "phenix.autobuild",
-    "phenix.automr", "phenix.phaser", "phenix.xtriage", "phenix.maps",
-    "phenix.ligandfit", "phenix.rosetta_refine", "phenix.den_refine",
-    "phenix.model_vs_data", "phenix.simple_homology_model",
-    "phenix.reflection_file_converter", "phenix.ready_set",
-    "phenix.reduce", "phenix.merging_statistics",
-    "phenix.explore_metric_symmetry", "phenix.mtz.dump",
-    "phenix.predict_and_build",
-    "phenix.reindex"
-}
+# 1. The Allow-List (Prevent Hallucinations) Use phenix_program_list
 
 # 2. Syntax Hints (The "Tactician's" Cheat Sheet)
 USAGE_HINTS = {
