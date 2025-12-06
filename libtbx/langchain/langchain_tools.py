@@ -321,8 +321,11 @@ def get_strategic_planning_prompt() -> PromptTemplate:
          -> **STRATEGY:** Explicitly handle this as a **TWINNING** case in the lower symmetry.
 
     3. **STATUS CHECK:**
-       - **Did the last job fail?**
-         -> **ACTION:** Retry, fixing the specific error (e.g. add missing label, fix syntax).
+       - **Did it fail with "Couldn't find array" or "Missing label"?**
+         -> **ACTION:** Do NOT run `xtriage`. You must look at the *previous* jobs in the history (which likely ran xtriage) to find the correct data label (e.g. `I-obs`, `F-obs`).
+         -> **FIX:** Retry the command using the correct label
+       - **Did it fail with other errors?**
+         -> **ACTION:** Retry, fixing the specific error.
        - **Did it succeed?**
          -> **ACTION:** Move to the next pipeline step.
 

@@ -57,6 +57,7 @@ KNOWN_ISSUES = {
     "You must specify a reflections file": "ACTION: Retry `phenix.phaser` with bare filename first.",
     "Unknown space group": "ACTION: Run `phenix.xtriage` to get space group possibilities.",
     "Ambiguous parameter definition": "ACTION: Use full parameter scope.",
-    "Please use --label": "ACTION: Add `--label=I-obs`."
+    "Please use --label": "ACTION: Add `--label=I-obs`.",
+    "Couldn't find array": "ACTION: The data label is wrong. Do NOT run xtriage. Check the history (previous Xtriage logs) for valid labels (e.g. I-obs) and retry."
 }
 
