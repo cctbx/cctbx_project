@@ -81,106 +81,92 @@ def run(file_name = None,
       output_file_path = dd.name
       # Note: will be deleted when execution ends
 
-    if (not log_info.summary) or (not log_info.analysis):
+if (not log_info.summary) or (not log_info.analysis):
 
-      # --- NEW: FAST FAIL CHECK ---
-      # If the log contains a standard Phenix "Sorry" message, we capture it
-      # and skip the expensive LLM analysis.
+      # --- 1. DETECT CRASH (Construct Summary) ---
+      found_crash = None
       if log_as_text:
           for line in log_as_text.splitlines():
               if line.strip().startswith("Sorry:"):
-                  log_info.error = line.strip()
-                  print(f"NOTE: Found fatal error in log: {log_info.error}")
-                  break # BREAK, NOT RETURN (To allow saving history)
-      # ----------------------------
+                  found_crash = line.strip()
+                  print(f"NOTE: Found fatal error in log: {found_crash}")
+                  # Set summary so we skip expensive summarization but run Analysis
+                  log_info.summary = f"The job failed immediately with the following error:\n{found_crash}"
+                  break
+      # -------------------------------------------
 
-      # Only proceed with LLM if no fatal error was found
-      if not log_info.error:
-          # need to get the info
-          if provider == 'google':
-            if not os.getenv("GOOGLE_API_KEY"):
-               log_info.error = "GOOGLE_API_KEY environment variable not set."
-               return log_info
-          elif provider == 'openai':
-            if not os.getenv("OPENAI_API_KEY"):
-               log_info.error = "OPENAI_API_KEY environment variable not set."
-               return log_info
-          if not os.getenv("COHERE_API_KEY"):
-             log_info.error = "COHERE_API_KEY environment variable not set."
-             return log_info
+      # --- 2. SETUP (Always run) ---
+      if provider == 'google':
+        if not os.getenv("GOOGLE_API_KEY"):
+           log_info.error = "GOOGLE_API_KEY environment variable not set."
+           return log_info
+      elif provider == 'openai':
+        if not os.getenv("OPENAI_API_KEY"):
+           log_info.error = "OPENAI_API_KEY environment variable not set."
+           return log_info
+      if not os.getenv("COHERE_API_KEY"):
+         log_info.error = "COHERE_API_KEY environment variable not set."
+         return log_info
 
-          # --- Automatically select DB directory based on provider ---
-          if db_dir == "./docs_db":
-            if provider == 'google':
-                db_dir = "./docs_db_google"
-                print(f"Provider is 'google', using default database: {db_dir}")
-            elif provider == 'openai':
-                db_dir = "./docs_db_openai"
-                print(f"Provider is 'openai', using default database: {db_dir}")
+      if db_dir == "./docs_db":
+        if provider == 'google':
+            db_dir = "./docs_db_google"
+            print(f"Provider is 'google', using default database: {db_dir}")
+        elif provider == 'openai':
+            db_dir = "./docs_db_openai"
+            print(f"Provider is 'openai', using default database: {db_dir}")
 
-          if not os.path.exists(db_dir):
-              log_info.error = (
-                  f"Database not found for provider '{provider}'. "
-                  f"Expected at: {db_dir}\n"
-                  "Please run the database build script for this provider."
-              )
-              return log_info
-          # ---------------------------------------------------------------
+      if not os.path.exists(db_dir):
+          log_info.error = (
+              f"Database not found for provider '{provider}'. "
+              f"Expected at: {db_dir}\n"
+              "Please run the database build script for this provider."
+          )
+          return log_info
 
-          try:
-            from libtbx.langchain import langchain_tools as lct
-            import asyncio
-          except Exception as e:
-            raise ValueError("Sorry, unable to analyze the file %s " %(file_name))
+      try:
+        from libtbx.langchain import langchain_tools as lct
+        import asyncio
+      except Exception as e:
+        raise ValueError("Sorry, unable to analyze the file %s " %(file_name))
 
-          # --- Set up two LLMs ---
-          print("Setting up LLMs...")
-          try:
-            # 1. the EXPENSIVE model ('gpt-5' or 'gemini-2.5-pro') for final analysis
-            if provider == "google":
-              expensive_llm, embeddings = lct.get_llm_and_embeddings(
-                provider=provider,
-                timeout=timeout,
-                llm_model_name='gemini-2.5-pro'
-              )
-              print(f"Using expensive model for analysis: {expensive_llm.model}")
-            else:
-              expensive_llm, embeddings = lct.get_llm_and_embeddings(
-                provider=provider,
-                timeout=timeout,
-                llm_model_name='gpt-5'
-              )
-              print(f"Using expensive model for analysis: {expensive_llm.model_name}")
+      print("Setting up LLMs...")
+      try:
+        if provider == "google":
+          expensive_llm, embeddings = lct.get_llm_and_embeddings(
+            provider=provider, timeout=timeout, llm_model_name='gemini-2.5-pro')
+          print(f"Using expensive model for analysis: {expensive_llm.model}")
+        else:
+          expensive_llm, embeddings = lct.get_llm_and_embeddings(
+            provider=provider, timeout=timeout, llm_model_name='gpt-5')
+          print(f"Using expensive model for analysis: {expensive_llm.model_name}")
 
-            # 2. Get the CHEAP & FAST Google model for summarization
-            cheap_llm, _ = lct.get_llm_and_embeddings(
-                provider='google',
-                timeout=timeout
-            )
-            print(f"Using cheap/fast model for summarization: {cheap_llm.model}")
+        cheap_llm, _ = lct.get_llm_and_embeddings(
+            provider='google', timeout=timeout)
+        print(f"Using cheap/fast model for summarization: {cheap_llm.model}")
 
-          except ValueError as e:
-            print(e)
-            raise ValueError("Sorry, unable to set up LLM. Check both GOOGLE_API_KEY and OPENAI_API_KEY.")
-          # --- END OF MODIFIED SECTION ---
+      except ValueError as e:
+        print(e)
+        raise ValueError("Sorry, unable to set up LLM. Check API keys.")
 
-          # Summarize the log file (using the CHEAP & FAST Google LLM)
+      # --- 3. SUMMARIZE (Skip if we found a crash) ---
+      if not log_info.summary:
           print("Summarizing log file (using cheap Google model)...")
           result = asyncio.run(lct.get_log_info(
-              log_as_text,
-              cheap_llm,  # <-- Pass Google's cheap_llm
-              embeddings, # <-- Pass OpenAI's embeddings (summarize doesn't use them)
-              timeout = timeout,
-              provider = 'google' # Tell the function which provider we're using
-          ))
+              log_as_text, cheap_llm, embeddings, timeout=timeout, provider='google'))
 
-          if result.error or not result.summary: # failed
+          if result.error or not result.summary:
             print("Log file summary failed")
             log_info.error = result.error
-            return log_info # Return object
+            return log_info
 
           log_info = result
           log_info.analysis = None
+
+      # Restore the error flag so history records it as a failure
+      if found_crash:
+          log_info.error = found_crash
+      # ------------------------------------------------
 
     log_info.log_text = log_as_text
 
