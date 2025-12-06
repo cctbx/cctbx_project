@@ -77,8 +77,6 @@ def get_phenix_program_list() -> list:
 
     return sorted(programs)
 
-VALID_PHENIX_PROGRAMS = get_phenix_program_list()
-
 def get_memory_file_path(db_dir):
     """
     Determines the path for the learned memory file.
@@ -1323,7 +1321,12 @@ async def generate_next_move(
                 plan['selected_program'] = program
 
             # 3. Check Allow-List
-            if program not in VALID_PHENIX_PROGRAMS:
+            # Prefer the Knowledge Base, fall back to dynamic list
+            allowed_programs = getattr(pk, 'VALID_PHENIX_PROGRAMS', None)
+            if allowed_programs is None:
+                 allowed_programs = get_phenix_program_list()
+
+            if program not in allowed_programs:
                  log(f"Correction: '{program}' is not in the allowed list. Retrying...")
                  history_text += f"\n\nSYSTEM NOTE: '{program}' is not supported. Choose a standard tool.\n"
                  continue
