@@ -28,6 +28,9 @@ USAGE_HINTS = {
         "CRITICAL: You MUST specify `--label`. Look at the error log for choices."
     ),
     "phenix.explore_metric_symmetry": "USAGE RULE: phenix.explore_metric_symmetry <data.mtz> [options]\nNOTE: File must be positional.",
+    "phenix.predict_model": (
+        "CRITICAL INPUTS: This tool takes a SEQUENCE file (.seq, .fa). It does NOT take a PDB file (it creates one).\n"
+    ),
     "phenix.predict_and_build": (
         "USAGE RULE: phenix.predict_and_build [options] [param=value]\n"
         "USAGE RULE: be sure to add resolution=xxx as resolution is required.\n"

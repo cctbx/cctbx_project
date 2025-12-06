@@ -1310,6 +1310,11 @@ async def generate_next_move(
                  continue
 
             # 2. Auto-Correct Known Hallucinations
+            if "alphafold" in program:
+                log(f"Notice: Agent selected 'phenix.alphafold'. Auto-switching to 'phenix.predict_model'.")
+                program = "phenix.predict_model"
+                plan['selected_program'] = program
+
             if "cosym" in program:
                 log(f"Notice: Agent selected 'phenix.cosym'. Auto-switching to 'phenix.xtriage'.")
                 program = "phenix.xtriage"
