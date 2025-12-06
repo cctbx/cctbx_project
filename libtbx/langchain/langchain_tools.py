@@ -61,7 +61,8 @@ def get_phenix_program_list() -> list:
     import sys
 
     # Attempt to find the bin directory
-    bin_dir = os.path.dirname(sys.executable)
+    import libtbx.load_env
+    bin_dir = abs(libtbx.env.bin_path)
     if not os.path.isdir(bin_dir):
         # Fallback for some environments
         return []
@@ -71,8 +72,7 @@ def get_phenix_program_list() -> list:
         # Filter for likely Phenix/CCTBX programs
         if filename.find("development") > -1:
           continue
-        if filename.startswith("phenix.") or filename.startswith("mmtbx.") or \
-           filename.startswith("iotbx.") or filename.startswith("phaser."):
+        if filename.startswith("phenix."):
             programs.append(filename)
 
     return sorted(programs)
