@@ -81,7 +81,7 @@ def run(file_name = None,
       output_file_path = dd.name
       # Note: will be deleted when execution ends
 
-if (not log_info.summary) or (not log_info.analysis):
+    if (not log_info.summary) or (not log_info.analysis):
 
       # --- 1. DETECT CRASH (Construct Summary) ---
       found_crash = None
