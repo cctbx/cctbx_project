@@ -305,20 +305,28 @@ def get_strategic_planning_prompt() -> PromptTemplate:
 
     **ANALYSIS PROTOCOL:**
 
-    1. **DEADLOCK CHECK (Symmetry):** Look at the history.
+    1. **TERMINATION CHECK (Stop cleanly):**
+       - **SUCCESS:** If the latest R-free is good (e.g. < 0.25) AND validation (MolProbity) shows no serious outliers AND the strategy has converged:
+         -> **DECISION:** Output `STOP: Success`.
+         -> **REASONING:** "The structure is solved and refined (R-free=... for X-ray data or map-model CC=... for cryo-EM data). No further automated steps are needed."
+       - **MANUAL:** If the R-factors have plateaued but are still high (X-ray data) OR map-model CC have plateuaed but are still low (cryo-EM data), AND further automated tools (AutoBuild, Refine) are making no progress:
+         -> **DECISION:** Output `STOP: Manual Intervention`.
+         -> **REASONING:** "Automated tools have converged. The model requires manual rebuilding in Coot or Isolde to fix complex errors."
+
+    2. **DEADLOCK CHECK (Symmetry):** Look at the history.
        - **Did a previous attempt to change the space group FAIL?** (e.g. "Incompatible unit cell").
        - **OR has Xtriage already been run multiple times?**
          -> **HARD STOP:** The lattice physically cannot support the higher symmetry.
          -> **REQUIRED ACTION:** You MUST abandon the idea of changing the space group. Proceed using the **ORIGINAL (Input)** space group.
          -> **STRATEGY:** Explicitly handle this as a **TWINNING** case in the lower symmetry.
 
-    2. **STATUS CHECK:**
+    3. **STATUS CHECK:**
        - **Did the last job fail?**
          -> **ACTION:** Retry, fixing the specific error (e.g. add missing label, fix syntax).
        - **Did it succeed?**
          -> **ACTION:** Move to the next pipeline step.
 
-    3. **PIPELINE ORDER:**
+    4. **PIPELINE ORDER:**
        - **1. Data (Xtriage)** -> **2. Phasing (Phaser)** -> **3. Refinement**.
        - Do not skip to Refinement if Phasing failed or hasn't run.
 
@@ -1268,14 +1276,23 @@ async def generate_next_move(
 
             # --- VALIDATION CHECKS ---
 
-            # 0. Handle Explicit Stop
+            # 0. Handle Explicit Stop (Success, Manual, or Missing)
             if "STOP" in program.upper() or "MISSING" in program.upper():
+
+                # Determine the header based on the type of stop
+                if "SUCCESS" in program.upper():
+                    header = "**PROJECT COMPLETE (SUCCESS):**"
+                elif "MANUAL" in program.upper():
+                    header = "**AUTOMATION STOPPED (MANUAL STEPS REQUIRED):**"
+                else:
+                    header = "**MISSING INPUT / ERROR:**"
+
                 return group_args(
                     group_args_type='next_move',
                     command="No command generated.",
-                    explanation=f"**REQUEST FOR INFO:**\n{plan.get('reasoning', '')}",
+                    explanation=f"{header}\n{plan.get('reasoning', '')}",
                     program="STOP",
-                    strategy="",
+                    strategy=plan.get('strategy_details', ""),
                     process_log="\n".join(process_log),
                     error=None
                 )
