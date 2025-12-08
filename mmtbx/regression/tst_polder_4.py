@@ -40,7 +40,36 @@ END
   os.remove('tst_phenix_regression_maps_polder.zlog')
   os.remove('tst_phenix_regression_maps_polder_polder_map_coeffs.mtz')
 
+def exercise_01(prefix="tst_polder_and_twins"):
+  """
+  Makre sure Sorry happens in case of twinning.
+  """
+  pdb_str= """
+CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 1
+HETATM    1  O   HOH A   1       1.000   2.000   3.000  1.00 10.00           O
+HETATM    2  O   HOH A   2       4.000   5.000   6.000  1.00 20.00           O
+END
+"""
+  pdb_inp = iotbx.pdb.input(lines = pdb_str, source_info=None)
+  pdb_inp.write_pdb_file(file_name="%s.pdb"%prefix)
+  xrs = pdb_inp.xray_structure_simple()
+  fo = abs(xrs.structure_factors(d_min=1).f_calc())
+  mtz_dataset = fo.as_mtz_dataset(column_root_label = "FOBS")
+  mtz_object = mtz_dataset.mtz_object()
+  mtz_object.write(file_name = "%s.mtz"%prefix)
+  cmd = " ".join([
+    "phenix.polder",
+    "%s.mtz"%prefix,
+    "%s.pdb"%prefix,
+    "selection='resseq 1' ",
+    "data_manager.fmodel.xray_data.twin_law='h,-h-k,-l' ",
+    "> %s.zlog"%prefix
+    ])
+  r = easy_run.go(cmd)
+  assert 'Sorry: Twinning is not supported in Polder map calculation.' in r.stdout_lines
+
 if (__name__ == "__main__"):
   t0 = time.time()
+  exercise_01()
   exercise_00()
   print("Time: %6.4f" % (time.time()-t0))

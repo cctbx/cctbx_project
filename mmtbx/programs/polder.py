@@ -356,12 +356,22 @@ omitted atoms. But it is recommended to inspect the maps to confirm."""
 
     f_obs, r_free_flags = self.fmodel.f_obs(), self.fmodel.r_free_flags()
 
-    print('Input data...', file=self.logger)
-    print('  Reflection data:', f_obs.info().labels, file=self.logger)
-    if (r_free_flags.info() is not None):
-      print('  Free-R flags:', r_free_flags.info().labels, file=self.logger)
-    else:
-      print('  Free-R flags: not present or not found', file=self.logger)
+    self.fmodel.update_all_scales()
+    print("Initial r_work, r_free: %6.4f %6.4f"%(
+      self.fmodel.r_work(), self.fmodel.r_free()), file=self.logger)
+
+    if(self.fmodel.twin_law is not None or
+       isinstance(self.fmodel, mmtbx.twinning.twin_f_model.twin_model_manager)):
+      raise Sorry("Twinning is not supported in Polder map calculation.")
+
+    if f_obs.info() is not None:
+      print('Input data...', file=self.logger)
+      print('  Reflection data:', f_obs.info().labels, file=self.logger)
+      if (r_free_flags.info() is not None):
+        print('  Free-R flags:', r_free_flags.info().labels, file=self.logger)
+      else:
+        print('  Free-R flags: not present or not found', file=self.logger)
+
     print('\nWorking crystal symmetry after inspecting all inputs:', file=self.logger)
     cs.show_summary(f=self.logger)
 
