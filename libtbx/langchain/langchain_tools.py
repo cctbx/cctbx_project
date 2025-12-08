@@ -1429,7 +1429,7 @@ async def generate_next_move(
                         log(f"MISSING: {f} {f_base} ")
 
             if missing_files:
-                 log(f"Notice: Agent tried to use missing files: {missing_files}. Auto-stopping. TRUSTED TEXT: {trusted_text} UNTRUSTED TEXT: {untrusted_text}" )
+                 log(f"Notice: Agent tried to use missing files: {missing_files}. Auto-stopping.")
                  return group_args(
                     group_args_type='next_move',
                     command="No command generated.",
