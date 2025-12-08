@@ -59,7 +59,6 @@ def run(file_name = None,
         if next_move:
             rec['next_move'] = next_move
         return rec
-
     # Get the text for the log file
     something_to_analyze = True
     if file_name and (not log_as_text):
@@ -73,11 +72,13 @@ def run(file_name = None,
     elif log_as_text:
       print("Summarizing supplied text as a log file")
       file_name = "Supplied text"
+    elif log_info.summary or log_info.analysis:
+      print("Summarizing existing info")
+      file_name = "Existing info"
     else:
       print("No text to summarize")
       file_name = "No supplied text"
       something_to_analyze = False
-
     # Decide where to write files
     if not output_file_path:
       import tempfile
@@ -85,60 +86,6 @@ def run(file_name = None,
       output_file_path = dd.name
       # Note: will be deleted when execution ends
 
-    # --- 2. SETUP (Always run) ---
-    if provider == 'google':
-      if not os.getenv("GOOGLE_API_KEY"):
-         log_info.error = "GOOGLE_API_KEY environment variable not set."
-         return log_info
-    elif provider == 'openai':
-      if not os.getenv("OPENAI_API_KEY"):
-         log_info.error = "OPENAI_API_KEY environment variable not set."
-         return log_info
-    if not os.getenv("COHERE_API_KEY"):
-       log_info.error = "COHERE_API_KEY environment variable not set."
-       return log_info
-
-    if db_dir == "./docs_db":
-      if provider == 'google':
-          db_dir = "./docs_db_google"
-          print(f"Provider is 'google', using default database: {db_dir}")
-      elif provider == 'openai':
-          db_dir = "./docs_db_openai"
-          print(f"Provider is 'openai', using default database: {db_dir}")
-
-    if not os.path.exists(db_dir):
-        log_info.error = (
-            f"Database not found for provider '{provider}'. "
-            f"Expected at: {db_dir}\n"
-            "Please run the database build script for this provider."
-        )
-        return log_info
-
-    try:
-      from libtbx.langchain import langchain_tools as lct
-      import asyncio
-    except Exception as e:
-      raise ValueError("Sorry, unable to analyze the file %s " %(file_name))
-
-    print("Setting up LLMs...")
-    try:
-      if provider == "google":
-        expensive_llm, embeddings = lct.get_llm_and_embeddings(
-          provider=provider, timeout=timeout, llm_model_name='gemini-2.5-pro')
-        print(f"Using expensive model for analysis: {expensive_llm.model}")
-      else:
-        expensive_llm, embeddings = lct.get_llm_and_embeddings(
-          provider=provider, timeout=timeout, llm_model_name='gpt-5')
-        print(f"Using expensive model for analysis: {expensive_llm.model_name}")
-
-      cheap_llm, _ = lct.get_llm_and_embeddings(
-          provider='google', timeout=timeout)
-      print(f"Using cheap/fast model for summarization: {cheap_llm.model}")
-
-    except ValueError as e:
-      print(e)
-      raise ValueError("Sorry, unable to set up LLM. Check API keys.")
-    # ------ DONE WITH SETUP --------
 
     if something_to_analyze and (
        (not log_info.summary) or (not log_info.analysis)):
@@ -154,9 +101,63 @@ def run(file_name = None,
                   log_info.summary = f"The job failed immediately with the following error:\n{found_crash}"
                   break
       # -------------------------------------------
+      # --- 2. SETUP (Always run) ---
+      if provider == 'google':
+        if not os.getenv("GOOGLE_API_KEY"):
+           log_info.error = "GOOGLE_API_KEY environment variable not set."
+           return log_info
+      elif provider == 'openai':
+        if not os.getenv("OPENAI_API_KEY"):
+           log_info.error = "OPENAI_API_KEY environment variable not set."
+           return log_info
+      if not os.getenv("COHERE_API_KEY"):
+         log_info.error = "COHERE_API_KEY environment variable not set."
+         return log_info
+
+      if db_dir == "./docs_db":
+        if provider == 'google':
+            db_dir = "./docs_db_google"
+            print(f"Provider is 'google', using default database: {db_dir}")
+        elif provider == 'openai':
+            db_dir = "./docs_db_openai"
+            print(f"Provider is 'openai', using default database: {db_dir}")
+
+      if not os.path.exists(db_dir):
+          log_info.error = (
+              f"Database not found for provider '{provider}'. "
+              f"Expected at: {db_dir}\n"
+              "Please run the database build script for this provider."
+          )
+          return log_info
+
+      try:
+        from libtbx.langchain import langchain_tools as lct
+        import asyncio
+      except Exception as e:
+        raise ValueError("Sorry, unable to analyze the file %s " %(file_name))
+
+      print("Setting up LLMs...")
+      try:
+        if provider == "google":
+          expensive_llm, embeddings = lct.get_llm_and_embeddings(
+            provider=provider, timeout=timeout, llm_model_name='gemini-2.5-pro')
+          print(f"Using expensive model for analysis: {expensive_llm.model}")
+        else:
+          expensive_llm, embeddings = lct.get_llm_and_embeddings(
+            provider=provider, timeout=timeout, llm_model_name='gpt-5')
+          print(f"Using expensive model for analysis: {expensive_llm.model_name}")
+
+        cheap_llm, _ = lct.get_llm_and_embeddings(
+            provider='google', timeout=timeout)
+        print(f"Using cheap/fast model for summarization: {cheap_llm.model}")
+
+      except ValueError as e:
+        print(e)
+        raise ValueError("Sorry, unable to set up LLM. Check API keys.")
+      # ------ DONE WITH SETUP --------
 
 
-      # --- 2. SUMMARIZE (Skip if we found a crash) ---
+      # --- 3. SUMMARIZE (Skip if we found a crash) ---
       if not log_info.summary:
           print("Summarizing log file (using cheap Google model)...")
           result = asyncio.run(lct.get_log_info(
