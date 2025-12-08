@@ -29,7 +29,6 @@ def run(file_name = None,
       project_advice: str = None,  # User guidance
       original_files: list = None  # List of ground-truth files
       ):
-
     # What we are going to return (Backwards Compatible Object)
     from libtbx import group_args
     log_info = group_args(group_args_type = 'log summary',
@@ -62,17 +61,22 @@ def run(file_name = None,
         return rec
 
     # Get the text for the log file
-    if not log_as_text:
+    something_to_analyze = True
+    if file_name and (not log_as_text):
       if not os.path.isfile(file_name):
         raise ValueError("Sorry, the file %s is missing" %(file_name))
       log_as_text = open(
          file_name, 'r', encoding='utf-8', errors='ignore').read()
       print("Summarizing the log file '%s'..." %(file_name))
-    elif file_name:
+    elif file_name and log_as_text:
       print("Summarizing the log file '%s'..." %(file_name))
-    else:
+    elif log_as_text:
       print("Summarizing supplied text as a log file")
       file_name = "Supplied text"
+    else:
+      print("No text to summarize")
+      file_name = "No supplied text"
+      something_to_analyze = False
 
     # Decide where to write files
     if not output_file_path:
@@ -81,7 +85,63 @@ def run(file_name = None,
       output_file_path = dd.name
       # Note: will be deleted when execution ends
 
-    if (not log_info.summary) or (not log_info.analysis):
+    # --- 2. SETUP (Always run) ---
+    if provider == 'google':
+      if not os.getenv("GOOGLE_API_KEY"):
+         log_info.error = "GOOGLE_API_KEY environment variable not set."
+         return log_info
+    elif provider == 'openai':
+      if not os.getenv("OPENAI_API_KEY"):
+         log_info.error = "OPENAI_API_KEY environment variable not set."
+         return log_info
+    if not os.getenv("COHERE_API_KEY"):
+       log_info.error = "COHERE_API_KEY environment variable not set."
+       return log_info
+
+    if db_dir == "./docs_db":
+      if provider == 'google':
+          db_dir = "./docs_db_google"
+          print(f"Provider is 'google', using default database: {db_dir}")
+      elif provider == 'openai':
+          db_dir = "./docs_db_openai"
+          print(f"Provider is 'openai', using default database: {db_dir}")
+
+    if not os.path.exists(db_dir):
+        log_info.error = (
+            f"Database not found for provider '{provider}'. "
+            f"Expected at: {db_dir}\n"
+            "Please run the database build script for this provider."
+        )
+        return log_info
+
+    try:
+      from libtbx.langchain import langchain_tools as lct
+      import asyncio
+    except Exception as e:
+      raise ValueError("Sorry, unable to analyze the file %s " %(file_name))
+
+    print("Setting up LLMs...")
+    try:
+      if provider == "google":
+        expensive_llm, embeddings = lct.get_llm_and_embeddings(
+          provider=provider, timeout=timeout, llm_model_name='gemini-2.5-pro')
+        print(f"Using expensive model for analysis: {expensive_llm.model}")
+      else:
+        expensive_llm, embeddings = lct.get_llm_and_embeddings(
+          provider=provider, timeout=timeout, llm_model_name='gpt-5')
+        print(f"Using expensive model for analysis: {expensive_llm.model_name}")
+
+      cheap_llm, _ = lct.get_llm_and_embeddings(
+          provider='google', timeout=timeout)
+      print(f"Using cheap/fast model for summarization: {cheap_llm.model}")
+
+    except ValueError as e:
+      print(e)
+      raise ValueError("Sorry, unable to set up LLM. Check API keys.")
+    # ------ DONE WITH SETUP --------
+
+    if something_to_analyze and (
+       (not log_info.summary) or (not log_info.analysis)):
 
       # --- 1. DETECT CRASH (Construct Summary) ---
       found_crash = None
@@ -95,61 +155,8 @@ def run(file_name = None,
                   break
       # -------------------------------------------
 
-      # --- 2. SETUP (Always run) ---
-      if provider == 'google':
-        if not os.getenv("GOOGLE_API_KEY"):
-           log_info.error = "GOOGLE_API_KEY environment variable not set."
-           return log_info
-      elif provider == 'openai':
-        if not os.getenv("OPENAI_API_KEY"):
-           log_info.error = "OPENAI_API_KEY environment variable not set."
-           return log_info
-      if not os.getenv("COHERE_API_KEY"):
-         log_info.error = "COHERE_API_KEY environment variable not set."
-         return log_info
 
-      if db_dir == "./docs_db":
-        if provider == 'google':
-            db_dir = "./docs_db_google"
-            print(f"Provider is 'google', using default database: {db_dir}")
-        elif provider == 'openai':
-            db_dir = "./docs_db_openai"
-            print(f"Provider is 'openai', using default database: {db_dir}")
-
-      if not os.path.exists(db_dir):
-          log_info.error = (
-              f"Database not found for provider '{provider}'. "
-              f"Expected at: {db_dir}\n"
-              "Please run the database build script for this provider."
-          )
-          return log_info
-
-      try:
-        from libtbx.langchain import langchain_tools as lct
-        import asyncio
-      except Exception as e:
-        raise ValueError("Sorry, unable to analyze the file %s " %(file_name))
-
-      print("Setting up LLMs...")
-      try:
-        if provider == "google":
-          expensive_llm, embeddings = lct.get_llm_and_embeddings(
-            provider=provider, timeout=timeout, llm_model_name='gemini-2.5-pro')
-          print(f"Using expensive model for analysis: {expensive_llm.model}")
-        else:
-          expensive_llm, embeddings = lct.get_llm_and_embeddings(
-            provider=provider, timeout=timeout, llm_model_name='gpt-5')
-          print(f"Using expensive model for analysis: {expensive_llm.model_name}")
-
-        cheap_llm, _ = lct.get_llm_and_embeddings(
-            provider='google', timeout=timeout)
-        print(f"Using cheap/fast model for summarization: {cheap_llm.model}")
-
-      except ValueError as e:
-        print(e)
-        raise ValueError("Sorry, unable to set up LLM. Check API keys.")
-
-      # --- 3. SUMMARIZE (Skip if we found a crash) ---
+      # --- 2. SUMMARIZE (Skip if we found a crash) ---
       if not log_info.summary:
           print("Summarizing log file (using cheap Google model)...")
           result = asyncio.run(lct.get_log_info(
@@ -168,6 +175,13 @@ def run(file_name = None,
           log_info.error = found_crash
       # ------------------------------------------------
 
+    elif something_to_analyze:
+      print(f"NOTE: Analysis already prepared")
+    else:  # nothing to analyze
+      print(f"NOTE: No text analyzed")
+      log_info.summary = None
+      log_info.analysis = None
+      # -------------------------------------------
     log_info.log_text = log_as_text
 
     # Put log summary in an html window
@@ -238,15 +252,18 @@ def run(file_name = None,
             print("Unable to load viewer")
 
         time.sleep(0.5)
-
     # Save History to JSON ---
-    # Convert to dict for saving, but we keep log_info as object for return
-    history_record_dict = create_history_record_dict(log_info)
+    if something_to_analyze:
+      # Convert to dict for saving, but we keep log_info as object for return
+      history_record_dict = create_history_record_dict(log_info)
+    else:
+      history_record_dict = {}
     log_info.history_record = history_record_dict # Attach to object
 
     # --- UPDATED CONDITION: Save if Summary OR Error exists ---
     if log_directory and (
-          (log_info.summary and log_info.analysis) or log_info.error
+          (log_info.summary and log_info.analysis) or log_info.error or
+          (not something_to_analyze)
        ):
         try:
             if not os.path.exists(log_directory):
@@ -266,11 +283,16 @@ def run(file_name = None,
 
         except Exception as e:
             print(f"Warning: Failed to save history JSON: {e}")
+    else:
+      json_path = None
     # ---------------------------------
 
     # --- AGENT LOGIC ---
-    # Run if we have a summary OR if we caught a fatal error (to fix it)
-    if run_agent and (log_info.summary or log_info.error):
+    # Run if we have a summary OR if we caught a fatal error (to fix it) OR
+    #   there was no log file at all
+    from libtbx.utils import Sorry
+    if run_agent and (
+      log_info.summary or log_info.error or (not something_to_analyze)):
         print("\n--- Running Agent for Next Move ---")
         try:
             # 1. Ensure LLM is loaded (Fix for reused summaries)
@@ -306,7 +328,10 @@ def run(file_name = None,
                         except: pass
 
             # 3. Append Current Run
-            full_history = past_history + [history_record_dict]
+            if something_to_analyze:
+              full_history = past_history + [history_record_dict]
+            else:
+              full_history = past_history
 
             # 4. Run Agent
             from libtbx.langchain import langchain_tools as lct

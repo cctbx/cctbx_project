@@ -128,8 +128,8 @@ async def learn_from_history(run_history, llm, memory_file="phenix_learned_memor
     prev_summary = str(prev_run.get('summary', '')).lower()
     curr_summary = str(last_run.get('summary', '')).lower()
 
-    prev_failed = "error" in prev_summary or "failed" in prev_summary or "exception" in prev_summary
-    curr_success = "error" not in curr_summary and "failed" not in curr_summary and "exception" not in curr_summary
+    prev_failed = " error " in prev_summary or "failed" in prev_summary or "exception" in prev_summary
+    curr_success = " error " not in curr_summary and "failed" not in curr_summary and "exception" not in curr_summary
 
     prog_prev = prev_run.get('program', 'unknown')
     prog_curr = last_run.get('program', 'unknown')
@@ -305,6 +305,7 @@ def get_strategic_planning_prompt() -> PromptTemplate:
     1. **Do NOT use `phenix.cosym`**: It is not available. Use `phenix.xtriage`.
     2. **Do NOT use `pointless`**: Use `phenix.xtriage`.
     3. **Do NOT use `phenix.reindex`**: Use `phenix.xtriage`.
+    3. **Do NOT use `phenix.predict_model` or `phenix.predict_chain`**: Use `phenix.predict_and_build` with the keyword `stop_after_predict=True`.
 
     **ANALYSIS PROTOCOL:**
 
@@ -368,7 +369,7 @@ def get_command_writer_prompt() -> PromptTemplate:
     **Input Files:**
     {input_files}
 
-    **Reference Documentation:**
+    **Reference Documentation (list of valid keywords.  ONLY use keywords in this list:**
     {valid_keywords}
 
     **LEARNED HISTORY (Mistakes from previous runs):**
@@ -382,6 +383,7 @@ def get_command_writer_prompt() -> PromptTemplate:
        - **Exception:** If Reference says to use double-dashes (`--flag`), use that.
     4. **File Check:** ONLY use the files listed in "**Input Files**". Do not invent filenames.
     5. **Completeness:** Ensure every defined object has an action.
+    6. **Do not guess keywords:** If you are not sure a keyword exists, do not use it.
 
     **Output:**
     Provide ONLY the command string. No markdown.
@@ -1359,7 +1361,7 @@ async def generate_next_move(
                 last_run = run_history[-1]
                 last_program = last_run.get('program', '').strip()
                 last_summary = last_run.get('summary', '').lower()
-                last_run_failed = "error" in last_summary or "failed" in last_summary or "exception" in last_summary
+                last_run_failed = " error " in last_summary or "failed" in last_summary or "exception" in last_summary
 
                 if program == last_program and not last_run_failed:
                     diagnostic_tools = ["phenix.xtriage", "phenix.mtz.dump", "phenix.reflection_file_converter", "phenix.explore_metric_symmetry"]
@@ -1392,35 +1394,42 @@ async def generate_next_move(
             missing_files = []
 
             # A. Construct Trusted Text (Successful jobs + Job 1)
+            untrusted_text = ""
             trusted_text = ""
             for i, run in enumerate(run_history):
                 summary = str(run.get('summary', '')).lower()
                 is_first_job = (i == 0)
-                is_successful = "error" not in summary and "failed" not in summary and "exception" not in summary
+                is_successful = (" error " not in summary) and (
+                 "failed" not in summary) and ("exception" not in summary) and (
+                  "sorry:" not in summary)
                 if is_first_job or is_successful:
                     trusted_text += str(run.get('summary', '')) + "\n"
+                else:
+                    untrusted_text += str(run.get('summary', '')) + "\n"
 
             # B. Check files
             for f in files_to_check:
                 if len(f) < 3: continue
+                f_base = os.path.basename(f)
 
-                if hasattr(pk, 'INVALID_FILENAMES') and f in pk.INVALID_FILENAMES:
+                if hasattr(pk, 'INVALID_FILENAMES') and f_base \
+                       in pk.INVALID_FILENAMES:
                     missing_files.append(f)
                     continue
 
-                if f not in trusted_text:
+                if f_base not in trusted_text:
                     # New: Check Original Files List (Basename comparison)
                     in_original = False
-                    f_base = os.path.basename(f)
                     for orig in original_files_list:
                         if f_base == os.path.basename(orig):
                             in_original = True
                             break
                     if not in_original:
                         missing_files.append(f)
+                        log(f"MISSING: {f} {f_base} ")
 
             if missing_files:
-                 log(f"Notice: Agent tried to use missing files: {missing_files}. Auto-stopping.")
+                 log(f"Notice: Agent tried to use missing files: {missing_files}. Auto-stopping. TRUSTED TEXT: {trusted_text} UNTRUSTED TEXT: {untrusted_text}" )
                  return group_args(
                     group_args_type='next_move',
                     command="No command generated.",
