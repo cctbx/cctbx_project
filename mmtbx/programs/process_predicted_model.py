@@ -291,6 +291,13 @@ Inputs: Model file (PDB, mmCIF)
 
 
     # Write out seq file for remainder (unused part) of model
+    if remainder_sequence_str_list: # Make sure each element is not None
+      r_list = []
+      for r in remainder_sequence_str_list:
+        if not r: continue
+        r_list.append(r)
+      remainder_sequence_str_list = r_list
+
     if remainder_sequence_str_list:
       remainder_sequence_str = "\n".join(remainder_sequence_str_list)
       if self.params.output_files.remainder_seq_file_prefix:
