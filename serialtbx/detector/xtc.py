@@ -118,7 +118,11 @@ def evt_wavelength(evt, delta_k=0):
   @return        Wavelength, in Ångström
   """
   if evt is not None:
-    ebeam = get_ebeam(evt)
+    try:
+      ebeam = get_ebeam(evt)
+    except:
+      # UED
+      return 12398.4187 / 3.12e6 # hard-code UED electron energy to 3.12 MeV
 
     if hasattr(ebeam, 'fEbeamPhotonEnergy') and ebeam.fEbeamPhotonEnergy > 0:
       # pyana
@@ -135,7 +139,11 @@ def evt_wavelength(evt, delta_k=0):
       gamma = ebeam.ebeamL3Energy() / 0.510998910
     elif hasattr(ebeam, 'raw'):
       # psana2
+<<<<<<< HEAD
       return factor_ev_angstrom / ebeam.raw.ebeamPhotonEnergy(evt)
+=======
+      return 12398.4187 / ebeam.raw.ebeamPhotonEnergy(evt)
+>>>>>>> d77d0a47e5 (port to XTC2)
     else:
       return None
     K = 3.5 + delta_k
