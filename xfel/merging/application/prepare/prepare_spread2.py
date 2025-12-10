@@ -40,6 +40,8 @@ MTZ_NAME="{mtz_name}"
 NPROC={stage2_nproc}
 PDB_FILE="{phenix_pdb_path}"
 PHENIX_PHIL="{phenix_phil_path}"
+CCTBX_ACTIVATE="{cctbx_activate}"
+PHENIX_ACTIVATE="{phenix_activate}"
 
 mkdir -p ${{STATUS_DIR}}
 
@@ -55,6 +57,7 @@ fi
 for TASK_ID in ${{TASK_IDS[@]}}; do
   if [ $TASK_ID -lt $N_SLICES ]; then
     # Stage 2 merge task
+    source $CCTBX_ACTIVATE
     SLICE_IDX=$(printf "%03d" $TASK_ID)
     PHIL_FILE="${{SCRIPTS_DIR}}/stage2_slice_${{SLICE_IDX}}.phil"
     echo "Running stage 2 merge for slice ${{SLICE_IDX}}..."
@@ -79,7 +82,8 @@ for TASK_ID in ${{TASK_IDS[@]}}; do
       done
     fi
 
-    # Run all phenix refinements in parallel
+    # Activate phenix environment and run all refinements in parallel
+    source $PHENIX_ACTIVATE
     echo "Starting phenix refinements..."
     for i in $(seq 0 $((N_SLICES - 1))); do
       SLICE_IDX=$(printf "%03d" $i)
@@ -123,10 +127,9 @@ class prepare_spread(worker):
   def run(self, experiments, reflections):
     self.logger.log_step_time("SPREAD_PREPARE")
 
-    # Extract parameters (with defaults if not yet in phil)
-    n_bins = getattr(self.params.prepare.spread, 'n_energy_bins', 100)
-    output_dir = getattr(self.params.prepare.spread, 'output_dir',
-                         self.params.output.output_dir)
+    # Extract parameters
+    n_bins = self.params.prepare.spread.n_energy_bins
+    output_dir = self.params.prepare.spread.output_dir or self.params.output.output_dir
 
     # Step 1: Compute local energies from wavelengths
     self.logger.log_step_time("COMPUTE_ENERGIES")
@@ -169,8 +172,8 @@ class prepare_spread(worker):
 
     self.logger.log_step_time("SPREAD_PREPARE", True)
 
-    # Return empty - this worker is a terminal step that writes to disk
-    return None, None
+    # Return original experiments and reflections for potential downstream processing
+    return experiments, reflections
 
   def _compute_local_energies(self, experiments):
     """
@@ -384,23 +387,26 @@ class prepare_spread(worker):
       - slices.txt metadata file
     """
     # Extract parameters
-    window_width = getattr(self.params.prepare.spread, 'window_width', 20)
-    window_step = getattr(self.params.prepare.spread, 'window_step', 1)
-    stage2_phil_path = getattr(self.params.prepare.spread, 'stage2_phil', None)
-    stage2_nproc = getattr(self.params.prepare.spread, 'stage2_nproc', 128)
-    stage2_output_dir = getattr(self.params.prepare.spread, 'stage2_output_dir',
-                                 os.path.join(output_dir, 'stage2'))
+    window_width = self.params.prepare.spread.window_width
+    window_step = self.params.prepare.spread.window_step
+    stage2_phil_path = self.params.prepare.spread.stage2_phil
+    stage2_nproc = self.params.prepare.spread.stage2_nproc
+    stage2_output_dir = self.params.prepare.spread.stage2_output_dir or os.path.join(output_dir, 'stage2')
 
     # Phenix refinement parameters
-    phenix_phil_path = getattr(self.params.prepare.spread, 'phenix_phil', None) or ""
-    phenix_pdb_path = getattr(self.params.prepare.spread, 'phenix_pdb', None) or ""
-    mtz_name = getattr(self.params.prepare.spread, 'mtz_name', 'iobs_all.mtz')
+    phenix_phil_path = self.params.prepare.spread.phenix_phil or ""
+    phenix_pdb_path = self.params.prepare.spread.phenix_pdb or ""
+    mtz_name = self.params.prepare.spread.mtz_name
 
     # SLURM parameters (optional)
-    slurm_partition = getattr(self.params.prepare.spread, 'slurm_partition', None)
-    slurm_account = getattr(self.params.prepare.spread, 'slurm_account', None)
-    slurm_time_limit = getattr(self.params.prepare.spread, 'slurm_time_limit', '00:30:00')
-    slurm_constraint = getattr(self.params.prepare.spread, 'slurm_constraint', None)
+    slurm_partition = self.params.prepare.spread.slurm_partition
+    slurm_account = self.params.prepare.spread.slurm_account
+    slurm_time_limit = self.params.prepare.spread.slurm_time_limit
+    slurm_constraint = self.params.prepare.spread.slurm_constraint
+
+    # Activation scripts
+    cctbx_activate = self.params.prepare.spread.cctbx_activate
+    phenix_activate = self.params.prepare.spread.phenix_activate
 
     # Read base phil content if provided
     base_phil_content = ""
@@ -488,7 +494,9 @@ class prepare_spread(worker):
       mtz_name=mtz_name,
       stage2_nproc=stage2_nproc,
       phenix_pdb_path=phenix_pdb_path,
-      phenix_phil_path=phenix_phil_path
+      phenix_phil_path=phenix_phil_path,
+      cctbx_activate=cctbx_activate,
+      phenix_activate=phenix_activate
     )
 
     spread_script_path = os.path.join(scripts_dir, 'run_spread.sh')
