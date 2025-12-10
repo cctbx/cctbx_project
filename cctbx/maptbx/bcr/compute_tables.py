@@ -8,8 +8,8 @@ std_labels = xray_scattering.standard_labels_list()
 
 def run_one(args):
   bcr.compute_tables(
-      MinResolution = 4.0,
-      MaxResolution = 4.0,
+      MinResolution = 0.996,
+      MaxResolution = 10.1,
       scattering_table = "wk1995",
       TypesAtoms = args)
 
