@@ -118,11 +118,7 @@ def evt_wavelength(evt, delta_k=0):
   @return        Wavelength, in Ångström
   """
   if evt is not None:
-    try:
-      ebeam = get_ebeam(evt)
-    except UnboundLocalError:
-      # UED
-      return factor_ev_angstrom / 3.12e6 # hard-code UED electron energy to 3.12 MeV
+    ebeam = get_ebeam(evt)
 
     if hasattr(ebeam, 'fEbeamPhotonEnergy') and ebeam.fEbeamPhotonEnergy > 0:
       # pyana
