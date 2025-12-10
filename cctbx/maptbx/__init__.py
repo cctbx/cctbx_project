@@ -1525,6 +1525,7 @@ Fourier image of specified resolution, etc.
       edist = edist,
       kpres = kpres,
       kprot = kprot,
+      nfmes = None,
       )
     #
     bcr_approx_values = flex.double()
@@ -1561,6 +1562,10 @@ Fourier image of specified resolution, etc.
             radius_max = 5.,
             radius_step = 0.001,
             n_integration_steps = 2000):
+    """
+    This can be done nicer. See generate_BCR_atom_22.txt attachment in email
+    from AU received on 12/8/25, 11:02.
+    """
     r = radius_min
     assert d_max !=  0.
     if(d_max is None): s_min = 0
