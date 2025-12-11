@@ -844,6 +844,9 @@ prepare
     slurm_constraint = None
       .type = str
       .help = SLURM constraint (e.g. cpu, gpu) for batch jobs
+    slurm_qos = None
+      .type = str
+      .help = SLURM QOS (quality of service) for batch jobs
     slurm_array_concurrency = 8
       .type = int
       .help = Maximum number of SLURM array tasks to run simultaneously

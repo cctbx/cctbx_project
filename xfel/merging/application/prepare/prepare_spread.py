@@ -22,9 +22,11 @@ output.output_dir={slice_output_dir}
 # Template for the unified batch script (SLURM + local)
 SPREAD_SCRIPT_TEMPLATE = """\
 #!/bin/bash
-#SBATCH --array=0-{n_slices}%{slurm_array_concurrency}
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node={stage2_nproc}
+{slurm_optional_directives}#SBATCH --array=0-{n_slices}%{slurm_array_concurrency}
 #SBATCH --time={slurm_time_limit}
-{slurm_optional_directives}#SBATCH --job-name=spread
+#SBATCH --job-name=spread
 #SBATCH --output={scripts_dir}/slurm_%A_%a.out
 #SBATCH --error={scripts_dir}/slurm_%A_%a.err
 
@@ -430,6 +432,7 @@ class prepare_spread(worker):
     slurm_account = self.params.prepare.spread.slurm_account
     slurm_time_limit = self.params.prepare.spread.slurm_time_limit
     slurm_constraint = self.params.prepare.spread.slurm_constraint
+    slurm_qos = self.params.prepare.spread.slurm_qos
     slurm_array_concurrency = self.params.prepare.spread.slurm_array_concurrency
 
     # Activation scripts
@@ -504,12 +507,14 @@ class prepare_spread(worker):
 
     # Build optional SLURM directives
     slurm_optional = ""
+    if slurm_constraint:
+      slurm_optional += f"#SBATCH --constraint={slurm_constraint}\n"
+    if slurm_qos:
+      slurm_optional += f"#SBATCH --qos={slurm_qos}\n"
     if slurm_partition:
       slurm_optional += f"#SBATCH --partition={slurm_partition}\n"
     if slurm_account:
       slurm_optional += f"#SBATCH --account={slurm_account}\n"
-    if slurm_constraint:
-      slurm_optional += f"#SBATCH --constraint={slurm_constraint}\n"
 
     # Write unified batch script
     spread_script_content = SPREAD_SCRIPT_TEMPLATE.format(
