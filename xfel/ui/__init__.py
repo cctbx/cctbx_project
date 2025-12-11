@@ -147,8 +147,13 @@ db {
 """
 master_phil_scope = parse(master_phil_str + db_phil_str, process_includes=True)
 
-settings_dir = os.path.join(os.path.expanduser('~'), '.cctbx.xfel')
-settings_file = os.path.join(settings_dir, 'settings.phil')
+if len(sys.argv)==1:
+  settings_dir = os.path.join(os.path.expanduser('~'), '.cctbx.xfel')
+  settings_file = os.path.join(settings_dir, 'settings.phil')
+else:
+  settings_file = os.path.expanduser(sys.argv[1])
+
+print('Load settings from', settings_file)
 
 known_dials_dispatchers = {
   'cctbx.xfel.xtc_process': 'xfel.command_line.xtc_process',
