@@ -116,28 +116,36 @@ def save_learned_memory(memory, memory_file="phenix_learned_memory.json"):
 async def learn_from_history(run_history, llm, memory_file="phenix_learned_memory.json", logger=print):
     """
     Scans history for [Fail] -> [Success] patterns and extracts a lesson.
-    Uses a 'logger' callback to capture output.
+    Uses LLM to consolidate and deduplicate lessons.
     """
+    import json
+    import re
+
     if len(run_history) < 2:
         return
 
     last_run = run_history[-1]
     prev_run = run_history[-2]
 
-    # Check pattern: Previous Failed -> Current Succeeded
     prev_summary = str(prev_run.get('summary', '')).lower()
     curr_summary = str(last_run.get('summary', '')).lower()
 
-    prev_failed = " error " in prev_summary or "failed" in prev_summary or "exception" in prev_summary
-    curr_success = " error " not in curr_summary and "failed" not in curr_summary and "exception" not in curr_summary
+    prev_failed = "error" in prev_summary or "failed" in prev_summary or "exception" in prev_summary
+    curr_success = "error" not in curr_summary and "failed" not in curr_summary and "exception" not in curr_summary
 
-    prog_prev = prev_run.get('program', 'unknown')
-    prog_curr = last_run.get('program', 'unknown')
+    prog_prev = prev_run.get('program', 'Unknown')
+    prog_curr = last_run.get('program', 'Unknown')
 
-    if prev_failed and curr_success and prog_curr != "unknown":
+    # Ignore empty or unknown program names
+    if not prog_curr or prog_curr.lower() == 'unknown':
+        return
+
+    # Only learn if we retried the SAME program
+    if prev_failed and curr_success and prog_curr == prog_prev:
         logger(f"\n[Learning] Detected a successful fix for {prog_curr}. Extracting lesson...")
 
-        prompt = f"""
+        # 1. Extract the raw lesson from the logs
+        extract_prompt = f"""
         Compare these two attempts to run {prog_curr}.
 
         FAILED ATTEMPT SUMMARY:
@@ -151,22 +159,61 @@ async def learn_from_history(run_history, llm, memory_file="phenix_learned_memor
         """
 
         try:
-            lesson = llm.invoke(prompt).content.strip()
+            lesson = llm.invoke(extract_prompt).content.strip()
 
-            # Save to memory
+            # 2. Load Existing Memory
             memory = load_learned_memory(memory_file)
             if prog_curr not in memory:
                 memory[prog_curr] = []
 
-            # Simple deduplication
-            if lesson not in memory[prog_curr]:
-                memory[prog_curr].append(lesson)
-                save_learned_memory(memory, memory_file)
-                logger(f"[Learning] Saved new rule for {prog_curr}: {lesson}")
+            existing_tips = memory[prog_curr]
+
+            # 3. Consolidate: Ask LLM to merge the new tip into the list and remove duplicates
+            cleanup_prompt = f"""
+            You are maintaining a list of troubleshooting tips for the software '{prog_curr}'.
+
+            Current Tips:
+            {json.dumps(existing_tips)}
+
+            New Candidate Tip:
+            "{lesson}"
+
+            INSTRUCTIONS:
+            1. If the "New Candidate Tip" is redundant with Current Tips, ignore it.
+            2. If it is new, add it.
+            3. Merge any duplicate or very similar tips in the list into concise, unique rules.
+            4. Return ONLY the final JSON list of strings (e.g. ["Tip 1", "Tip 2"]).
+            """
+
+            try:
+                response = llm.invoke(cleanup_prompt).content
+
+                # Parse JSON (handling potential Markdown wrappers)
+                if "```" in response:
+                    match = re.search(r'\[.*\]', response, re.DOTALL)
+                    if match:
+                         response = match.group(0)
+                    else:
+                         response = response.replace("```json", "").replace("```", "").strip()
+
+                cleaned_list = json.loads(response)
+
+                if isinstance(cleaned_list, list) and all(isinstance(s, str) for s in cleaned_list):
+                    memory[prog_curr] = cleaned_list
+                    save_learned_memory(memory, memory_file)
+                    logger(f"[Learning] Consolidated tips for {prog_curr}. (Total: {len(cleaned_list)})")
+                else:
+                    raise ValueError("LLM did not return a valid list of strings")
+
+            except Exception as e:
+                # Fallback: Just append if consolidation fails
+                logger(f"[Learning] Consolidation failed ({e}). Appending raw tip.")
+                if lesson not in existing_tips:
+                    memory[prog_curr].append(lesson)
+                    save_learned_memory(memory, memory_file)
 
         except Exception as e:
             logger(f"[Learning] Failed to extract lesson: {e}")
-
 
 def get_run_history(log_directory, max_history=5):
     """
@@ -277,7 +324,7 @@ def get_log_combine_prompt() -> PromptTemplate:
         "4. **Key Metrics:** A concise table of the *final* key metrics (e.g., CC, R-values, resolution).\n"
         "5. **Key Space Group:** Specify the space group used and any recommendations.\n"
         "6. **Warnings/Errors:** A list of any critical warnings or errors.\n"
-        "7. **Key Output Files:** List the most important output files (e.g., 'overall_best').\n\n"
+        "7. **Key Output Files:** A comma-separated list of the most important output filenames generated by this run (e.g. model.pdb, data.mtz).\n\n"
 
         "**IMPORTANT:** Be structured and clear. Do NOT provide 'Detailed descriptions' or 'Full reproductions' of tables. "
         "Focus on the most critical, final information. "
@@ -302,46 +349,46 @@ def get_strategic_planning_prompt() -> PromptTemplate:
     {history}
 
     **FORBIDDEN PROGRAMS:**
-    1. **Do NOT use `phenix.cosym`**: It is not available. Use `phenix.xtriage`.
+    1. **Do NOT use `phenix.cosym`**: Use `phenix.xtriage`.
     2. **Do NOT use `pointless`**: Use `phenix.xtriage`.
-    3. **Do NOT use `phenix.reindex`**: Use `phenix.xtriage`.
-    3. **Do NOT use `phenix.predict_model` or `phenix.predict_chain`**: Use `phenix.predict_and_build` with the keyword `stop_after_predict=True`.
+    3. **Do NOT use `phenix.reindex`**: Use `phenix.xtriage` to diagnose first.
+    4. **Do NOT use `phenix.predict_model` or `phenix.predict_chain`**: Use `phenix.predict_and_build` with the keyword `stop_after_predict=True`.
 
-    **ANALYSIS PROTOCOL:**
+    **ANALYSIS PROTOCOL (Follow in Order):**
 
     1. **TERMINATION CHECK (Stop cleanly):**
-       - **SUCCESS:** If the latest R-free is good (e.g. < 0.25) AND validation (MolProbity) shows no serious outliers AND the strategy has converged:
+       - **SUCCESS:** If R-free < 0.25 (X-ray) or map CC is high (CryoEM) AND validation is good:
          -> **DECISION:** Output `STOP: Success`.
-         -> **REASONING:** "The structure is solved and refined (R-free=... for X-ray data or map-model CC=... for cryo-EM data). No further automated steps are needed."
-       - **MANUAL:** If the R-factors have plateaued but are still high (X-ray data) OR map-model CC have plateuaed but are still low (cryo-EM data), AND further automated tools (AutoBuild, Refine) are making no progress:
+       - **MANUAL:** If R-factors are stalled/high and automation is failing:
          -> **DECISION:** Output `STOP: Manual Intervention`.
-         -> **REASONING:** "Automated tools have converged. The model requires manual rebuilding in Coot or Isolde to fix complex errors."
 
-    2. **DEADLOCK CHECK (Symmetry):** Look at the history.
+    2. **STATUS CHECK (Fix Crashes First):**
+       - **Did the last job fail?** (e.g. "Sorry: ...", "Error", "Exception").
+         -> **ACTION:** You MUST retry the *same* program (or a direct alternative) to fix the error.
+         -> **CRITICAL:** If error is about "R-free flags", add `xray_data.r_free_flags.generate=True`.
+         -> **CRITICAL:** If error is "No search procedure", add `ncopies=1`.
+       - **Did it succeed?**
+         -> **ACTION:** Move to Protocol #3.
+
+    3. **DEADLOCK CHECK (Symmetry):**
        - **Did a previous attempt to change the space group FAIL?** (e.g. "Incompatible unit cell").
        - **OR has Xtriage already been run multiple times?**
-         -> **HARD STOP:** The lattice physically cannot support the higher symmetry.
-         -> **REQUIRED ACTION:** You MUST abandon the idea of changing the space group. Proceed using the **ORIGINAL (Input)** space group.
+         -> **HARD STOP:** The lattice cannot support the higher symmetry.
+         -> **REQUIRED ACTION:** Abandon re-indexing. Proceed using the **ORIGINAL (Input)** space group.
          -> **STRATEGY:** Explicitly handle this as a **TWINNING** case in the lower symmetry.
-
-    3. **STATUS CHECK:**
-       - **Did it fail with "Couldn't find array" or "Missing label"?**
-         -> **ACTION:** Do NOT run `xtriage`. You must look at the *previous* jobs in the history (which likely ran xtriage) to find the correct data label (e.g. `I-obs`, `F-obs`).
-         -> **FIX:** Retry the command using the correct label
-       - **Did it fail with other errors?**
-         -> **ACTION:** Retry, fixing the specific error.
-       - **Did it succeed?**
-         -> **ACTION:** Move to the next pipeline step.
 
     4. **PIPELINE ORDER:**
        - **1. Data (Xtriage)** -> **2. Phasing (Phaser)** -> **3. Refinement**.
        - Do not skip to Refinement if Phasing failed or hasn't run.
+       - **MODEL GENERATION:** If you have a sequence but no model, run `phenix.predict_and_build` (`stop_after_predict=True`).
 
     **FILE REALITY PROTOCOL (Strict):**
     1. **Existing Files Only:** You can ONLY use files explicitly listed in "Original Input Files" OR the "Project History".
-    2. **No Invented Filenames:** Do NOT use `input.pdb` or `model.pdb` unless they exist in the history.
-    3. **Missing Files:** If you need a file but it is NOT in the history:
-       - **DECISION:** Output `STOP: Missing Input`.
+    2. **Missing Files:** If you need a file but it is NOT in the history:
+       - **ACTION:** Do NOT stop. Identify the tool that *creates* that file and run THAT tool instead.
+
+    **ANTI-LOOPING (Crucial):**
+    - You CANNOT run the exact same command twice. If you retry a program, you MUST change at least one parameter.
 
     **OUTPUT RULES:**
     - **No Placeholders:** Provide exact values.
@@ -369,27 +416,29 @@ def get_command_writer_prompt() -> PromptTemplate:
     **Input Files:**
     {input_files}
 
-    **Reference Documentation (list of valid keywords.  ONLY use keywords in this list:**
+    **Original Input Files (Look here for paths):**
+    {original_files}
+
+    **Reference Documentation:**
     {valid_keywords}
 
     **LEARNED HISTORY (Mistakes from previous runs):**
     {learned_tips}
 
     **CRITICAL RULES:**
-    1. **Prioritize History:** If "LEARNED HISTORY" warns about a specific syntax error, you MUST follow that advice.
-    2. **Follow the Reference:** Use the syntax rules found in the "Reference Documentation".
-    3. **Syntax Priority:**
+    1. **PATH RESOLUTION (Crucial):** If a file in "Input Files" (e.g. `data.mtz`) matches a file in "Original Input Files" (e.g. `subdir/data.mtz`), you MUST use the FULL PATH from the Original list. Do NOT use bare filenames if a path is known.
+    2. **Prioritize History:** If "LEARNED HISTORY" warns about a specific syntax error, you MUST follow that advice.
+    3. **Follow the Reference:** Use the syntax rules found in the "Reference Documentation".
+    4. **Syntax Priority:**
        - **Default:** Standard Phenix uses `key=value`.
        - **Exception:** If Reference says to use double-dashes (`--flag`), use that.
-    4. **File Check:** ONLY use the files listed in "**Input Files**". Do not invent filenames.
     5. **Completeness:** Ensure every defined object has an action.
-    6. **Do not guess keywords:** If you are not sure a keyword exists, do not use it.
 
     **Output:**
     Provide ONLY the command string. No markdown.
     """
-    return PromptTemplate(template=template, input_variables=["program", "strategy_details", "input_files", "valid_keywords", "learned_tips"])
-
+    # Added "original_files" to input_variables
+    return PromptTemplate(template=template, input_variables=["program", "strategy_details", "input_files", "valid_keywords", "learned_tips", "original_files"])
 
 def get_log_analysis_prompt() -> PromptTemplate:
     """Returns the prompt for analyzing a log summary..."""
@@ -1218,6 +1267,27 @@ async def summarize_log_text(
       log_summary = final_output,
       error = None)
 
+def extract_output_files(summary_text):
+    """Parses the 'Key Output Files' section from a summary."""
+    if not summary_text: return []
+    files = []
+    try:
+        if "**Key Output Files:**" in summary_text:
+            # Grab text after header
+            post = summary_text.split("**Key Output Files:**")[1]
+            # Stop at next header or end
+            content = post.split("**")[0].strip()
+            # Split by commas or newlines and clean
+            raw_items = content.replace('\n', ',').split(',')
+            for item in raw_items:
+                clean = item.strip()
+                # Basic validation: must look like a file
+                if clean and '.' in clean and len(clean) > 2:
+                    files.append(clean)
+    except:
+        pass
+    return files
+
 async def generate_next_move(
     run_history: list,
     llm,
@@ -1240,6 +1310,18 @@ async def generate_next_move(
     await learn_from_history(run_history, llm, memory_file=memory_file_path, logger=log)
 
     log(f"thinking... (Analyzing {len(run_history)} past runs)")
+
+    # --- BUILD COMMAND HISTORY ---
+    # We collect all commands run previously to prevent duplicates
+    past_commands = set()
+    for run in run_history:
+        nm = run.get('next_move')
+        if nm and isinstance(nm, dict) and 'command' in nm:
+            cmd = nm['command'].strip()
+            # We normalize whitespace to catch "cmd arg" vs "cmd  arg"
+            if cmd:
+                norm_cmd = " ".join(cmd.split())
+                past_commands.add(norm_cmd)
 
     # Format Inputs
     advice_text = project_advice if project_advice else "No specific advice provided. Optimize for best structure."
@@ -1268,6 +1350,7 @@ async def generate_next_move(
     plan = {}
     program = "Unknown"
     long_term_plan = "No plan generated."
+    command = "No command generated."
 
     max_retries = 5
     for attempt in range(max_retries):
@@ -1383,7 +1466,8 @@ async def generate_next_move(
                      history_text += "\n\nSYSTEM NOTE: 'unit_cell' must be numbers. Provide values or omit.\n"
                      continue
 
-            # 8. HISTORY-BASED FILE CHECK
+
+            # --- 8. FILE AVAILABILITY CHECK ---
             input_files_raw = plan.get('input_files', [])
             files_to_check = []
             if isinstance(input_files_raw, str):
@@ -1391,99 +1475,128 @@ async def generate_next_move(
             elif isinstance(input_files_raw, list):
                 files_to_check = [str(f).strip() for f in input_files_raw]
 
+            # A. Build List of Available Files
+            available_files = set()
+
+            # 1. Add Original Files (Ground Truth)
+            if original_files_list:
+                for f in original_files_list:
+                    available_files.add(os.path.basename(f))
+
+            # 2. Add Files from History (Using Regex)
+            for run in run_history:
+                outs = run.get('output_files', [])
+                if not outs:
+                    outs = extract_output_files(run.get('summary', ''))
+                for f in outs:
+                    available_files.add(os.path.basename(f))
+
+            # --- DEBUG: Print what the Agent sees ---
+            # This fulfills your request to see available files during the thought process
+            log(f"DEBUG: Available Files: {list(available_files)}")
+
+            # B. Check Files
             missing_files = []
-
-            # A. Construct Trusted Text (Successful jobs + Job 1)
-            untrusted_text = ""
-            trusted_text = ""
-            for i, run in enumerate(run_history):
-                summary = str(run.get('summary', '')).lower()
-                is_first_job = (i == 0)
-                is_successful = (" error " not in summary) and (
-                 "failed" not in summary) and ("exception" not in summary) and (
-                  "sorry:" not in summary)
-                if is_first_job or is_successful:
-                    trusted_text += str(run.get('summary', '')) + "\n"
-                else:
-                    untrusted_text += str(run.get('summary', '')) + "\n"
-
-            # B. Check files
             for f in files_to_check:
                 if len(f) < 3: continue
                 f_base = os.path.basename(f)
 
-                if hasattr(pk, 'INVALID_FILENAMES') and f_base \
-                       in pk.INVALID_FILENAMES:
+                if hasattr(pk, 'INVALID_FILENAMES') and f_base in pk.INVALID_FILENAMES:
                     missing_files.append(f)
                     continue
 
-                if f_base not in trusted_text:
-                    # New: Check Original Files List (Basename comparison)
-                    in_original = False
-                    for orig in original_files_list:
-                        if f_base == os.path.basename(orig):
-                            in_original = True
-                            break
-                    if not in_original:
-                        missing_files.append(f)
-                        log(f"MISSING: {f} {f_base} ")
+                if f_base not in available_files:
+                    missing_files.append(f)
 
-            if missing_files:
-                 log(f"Notice: Agent tried to use missing files: {missing_files}. Auto-stopping.")
-                 return group_args(
-                    group_args_type='next_move',
-                    command="No command generated.",
-                    explanation=f"**MISSING INPUT ERROR:**\nThe Agent attempted to use files {missing_files}, but these files do not appear in the history or original inputs. \n\n**REQUIRED ACTION:**\nPlease provide these files and try again.",
-                    program="STOP",
-                    strategy="Missing Input",
-                    process_log="\n".join(process_log),
-                    error=None
-                )
+                if missing_files:
+                 log(f"Notice: Agent tried to use missing files: {missing_files}. Retrying with valid file list...")
+
+                 # Create a list of valid files to help the Agent correct itself
+                 valid_list_str = ", ".join(sorted(list(available_files)))
+
+                 history_text += (
+                     f"\n\nSYSTEM NOTE: The file(s) {missing_files} do NOT exist. "
+                     f"You cannot use them.\n"
+                     f"Here is the list of VALID files you can use: [{valid_list_str}].\n"
+                     "Please correct the filename in your strategy. "
+                     "If the file you need is truly missing and not in this list, output 'DECISION: STOP'."
+                 )
+                 continue
+
+
+            # --- STEP 2A: FETCH KEYWORDS (Moved Inside Loop) ---
+            log(f"fetching keywords for {program}...")
+            kw_result = await get_program_keywords(program, llm, embeddings, db_dir=db_dir, timeout=timeout)
+
+            if kw_result.error or not kw_result.keywords:
+                # If keywords fail, retry (Agent might have picked bad program name)
+                log(f"Correction: Could not find keywords for '{program}'. Retrying...")
+                history_text += f"\n\nSYSTEM NOTE: Could not find keywords/help for '{program}'. It might be invalid. Try a different tool.\n"
+                continue
+
+            # --- STEP 3A: CONSTRUCT COMMAND (Moved Inside Loop) ---
+            log("constructing command...")
+
+            memory = load_learned_memory(memory_file_path)
+            relevant_tips = ""
+            if program in memory:
+                tips_list = memory[program]
+                relevant_tips = "\n".join([f"- {tip}" for tip in tips_list])
+                log(f"  -> Applying {len(tips_list)} learned tips for {program}")
+            else:
+                relevant_tips = "No specific history for this program."
+
+            cmd_prompt = get_command_writer_prompt()
+            cmd_chain = cmd_prompt | llm
+
+            # Generate the command object
+            command_obj = cmd_chain.invoke({
+                "program": program,
+                "strategy_details": plan.get('strategy_details', ""),
+                "input_files": plan.get('input_files', ""),
+                "valid_keywords": kw_result.keywords,
+                "learned_tips": relevant_tips,
+                "original_files": orig_files_text,
+            })
+            # Extract string content
+            command = command_obj.content.strip()
+
+
+            # --- 9. DUPLICATE COMMAND CHECK ---
+            norm_cmd = " ".join(command.split())
+            if norm_cmd in past_commands:
+                log(f"Correction: Agent generated exact duplicate command. Retrying...")
+                history_text += f"\n\nSYSTEM NOTE: You just generated the command:\n'{command}'\nThis command was ALREADY RUN in a previous job and failed/insufficient. You CANNOT run the exact same command again. You MUST change at least one parameter (e.g. add `ncopies`, change resolution, add `twinning=True`) OR run a different command.\n"
+                continue
+            # ----------------------------------------
+
 
             break
 
         except Exception as e:
             if attempt == max_retries - 1:
                 log(f"ERROR: Strategy generation failed: {e}")
-                return group_args(group_args_type='error', error=f"Strategy generation failed: {e}")
+                # --- FIX: Return complete object to prevent AttributeError ---
+                return group_args(
+                    group_args_type='error',
+                    error=f"Strategy generation failed: {e}",
+                    program="CRASH",
+                    explanation="Strategy generation failed after retries.",
+                    strategy="",
+                    command="No command generated.",
+                    process_log="\n".join(process_log)
+                )
+                # -------------------------------------------------------------
             log(f"Strategy generation error: {e}. Retrying...")
+
 
     log(f"Decision: Run {program}")
     log(f"Reasoning: {plan.get('reasoning', 'No reasoning provided')}")
 
-    # --- Step 2: Fetch Keywords ---
-    log(f"fetching keywords for {program}...")
-    kw_result = await get_program_keywords(program, llm, embeddings, db_dir=db_dir, timeout=timeout)
-
-    if kw_result.error or not kw_result.keywords:
-        return group_args(group_args_type='error', error=f"Could not find keywords for {program}: {kw_result.error}")
-
-    # --- Step 3: Construct Command ---
-    log("constructing command...")
-
-    memory = load_learned_memory(memory_file_path)
-    relevant_tips = ""
-    if program in memory:
-        tips_list = memory[program]
-        relevant_tips = "\n".join([f"- {tip}" for tip in tips_list])
-        log(f"  -> Applying {len(tips_list)} learned tips for {program}")
-    else:
-        relevant_tips = "No specific history for this program."
-
-    cmd_prompt = get_command_writer_prompt()
-    cmd_chain = cmd_prompt | llm
-
-    command = cmd_chain.invoke({
-        "program": program,
-        "strategy_details": plan.get('strategy_details', ""),
-        "input_files": plan.get('input_files', ""),
-        "valid_keywords": kw_result.keywords,
-        "learned_tips": relevant_tips
-    })
 
     return group_args(
         group_args_type='next_move',
-        command=command.content.strip(),
+        command=command,
         explanation=f"PLAN: {long_term_plan}\n\nREASONING: {plan.get('reasoning', '')}",
         program=program,
         strategy=plan.get('strategy_details', ""),

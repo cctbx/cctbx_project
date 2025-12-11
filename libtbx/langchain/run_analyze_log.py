@@ -6,6 +6,7 @@ an advanced reranking RAG.
 from __future__ import division
 import sys, os, json
 import time
+import asyncio
 
 def run(file_name = None,
       log_as_text = None,
@@ -37,15 +38,41 @@ def run(file_name = None,
       log_text = None,
       processed_log_dict = None,
       error = None,
-      next_move = None,     # NEW field
-      history_record = None # NEW field
+      next_move = None,
+      history_record = None,
       )
+
+    # Ensure tools are imported to extract files
+    try:
+        from libtbx.langchain import langchain_tools as lct
+    except ImportError:
+        raise ValueError("Sorry, unable to import tools ")
 
     def create_history_record_dict(log_info, next_move=None):
         """Helper to create the dict for JSON serialization"""
         program_name = 'Unknown'
         if log_info.processed_log_dict:
              program_name = log_info.processed_log_dict.get('phenix_program', 'Unknown')
+
+        # --- Fallback Program Name Extraction (For Crashed Jobs) ---
+        # If the summary didn't find the name (because of a crash), scan the raw log.
+        if (program_name == 'Unknown' or not program_name) and log_info.log_text:
+            for line in log_info.log_text.splitlines():
+                # Look for the header your client script writes
+                if "COMMAND THAT WAS RUN:" in line:
+                    # Line format: "COMMAND THAT WAS RUN: phenix.refine ..."
+                    parts = line.strip().split()
+                    for p in parts:
+                        if p.startswith("phenix."):
+                            program_name = p
+                            break
+                    break
+
+        # --- Extract Output Files ---
+        # We try to use the lct module if available
+        out_files = []
+        if log_info.summary:
+           out_files = lct.extract_output_files(log_info.summary)
 
         rec = {
             "job_id": job_id,
@@ -55,10 +82,12 @@ def run(file_name = None,
             "summary": log_info.summary,
             "analysis": log_info.analysis,
             "error": log_info.error,
+            "output_files": out_files,
         }
         if next_move:
             rec['next_move'] = next_move
         return rec
+
     # Get the text for the log file
     something_to_analyze = True
     if file_name and (not log_as_text):
@@ -91,14 +120,17 @@ def run(file_name = None,
        (not log_info.summary) or (not log_info.analysis)):
 
       # --- 1. DETECT CRASH (Construct Summary) ---
-      found_crash = None
       if log_as_text:
-          for line in log_as_text.splitlines():
+          lines = log_as_text.splitlines()
+          for i, line in enumerate(lines):
               if line.strip().startswith("Sorry:"):
-                  found_crash = line.strip()
-                  print(f"NOTE: Found fatal error in log: {found_crash}")
-                  # Set summary so we skip expensive summarization but run Analysis
-                  log_info.summary = f"The job failed immediately with the following error:\n{found_crash}"
+                  # Capture the Sorry line plus the next 20 lines (context/suggestions)
+                  context = "\n".join(lines[i:i+20])
+                  log_info.error = context
+                  print(f"NOTE: Found fatal error in log: {line.strip()}")
+
+                  # Set summary so we skip expensive summarization but run Analysis on the error
+                  log_info.summary = f"The job failed with the following error and context:\n{context}"
                   break
       # -------------------------------------------
       # --- 2. SETUP (Always run) ---
@@ -130,11 +162,6 @@ def run(file_name = None,
           )
           return log_info
 
-      try:
-        from libtbx.langchain import langchain_tools as lct
-        import asyncio
-      except Exception as e:
-        raise ValueError("Sorry, unable to analyze the file %s " %(file_name))
 
       print("Setting up LLMs...")
       try:
@@ -171,10 +198,6 @@ def run(file_name = None,
           log_info = result
           log_info.analysis = None
 
-      # Restore the error flag so history records it as a failure
-      if found_crash:
-          log_info.error = found_crash
-      # ------------------------------------------------
 
     elif something_to_analyze:
       print(f"NOTE: Analysis already prepared")
@@ -289,12 +312,21 @@ def run(file_name = None,
     # ---------------------------------
 
     # --- AGENT LOGIC ---
+    if run_agent:
+        print("\n--- DATA AVAILABILITY CHECK ---")
+        if original_files:
+            print(f"Original Files (User Provided): {original_files}")
+        else:
+            print("Original Files: None provided")
+
     # Run if we have a summary OR if we caught a fatal error (to fix it) OR
     #   there was no log file at all
     from libtbx.utils import Sorry
+    # Run if we have a summary OR if we caught a fatal error OR if we are just starting/resuming (no text)
     if run_agent and (
       log_info.summary or log_info.error or (not something_to_analyze)):
         print("\n--- Running Agent for Next Move ---")
+
         try:
             # 1. Ensure LLM is loaded (Fix for reused summaries)
             if 'expensive_llm' not in locals() or 'embeddings' not in locals():
@@ -370,6 +402,27 @@ def run(file_name = None,
 
         except Exception as e:
             print(f"Agent failed: {e}")
+            # --- FIX: Report crash to client ---
+            next_move_dict = {
+                "program": "CRASH",
+                "explanation": "The Agent crashed while generating a move.",
+                "strategy": "Debug",
+                "command": "No command generated.",
+                "process_log": f"AGENT CRASH TRACEBACK:\n{e}",
+                "error": str(e)
+            }
+            # Attach to object AND dict
+            log_info.next_move = next_move_dict
+            history_record_dict['next_move'] = next_move_dict
+            log_info.history_record = history_record_dict
+            # -----------------------------------
+
+
+    # Debug check at end of run()
+    if hasattr(log_info, 'next_move') and log_info.next_move:
+        print("DEBUG SERVER: Returning log_info with next_move attached.")
+    else:
+        print("DEBUG SERVER: log_info has NO next_move.")
 
     return log_info # RETURN OBJECT (Backwards Compatible)
 
@@ -422,7 +475,7 @@ if __name__ == "__main__":
     # Standard file input
     parser.add_argument("file_name", nargs="?", help="Path to log file")
 
-    # NEW: Allow raw error text input
+    # Allow raw error text input
     parser.add_argument("--error", type=str, help="Paste the error message string here")
 
     parser.add_argument("--db_dir", default="./docs_db", help="Database directory")
