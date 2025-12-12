@@ -28,8 +28,18 @@ def run(file_name = None,
       history_files: list = None,  # text files here
       history_simple_string: str = None, # content from client
       project_advice: str = None,  # User guidance
-      original_files: list = None  # List of ground-truth files
+      original_files: list = None,  # List of ground-truth files
+      project_state_json: str = None, # Database
       ):
+
+    debug_log = []
+
+    # --- FIX: Handle string "None" from command line/server args ---
+    if str(log_directory).lower() == 'none' or log_directory == '':
+        log_directory = None
+    # ---------------------------------------------------------------
+
+
     # What we are going to return (Backwards Compatible Object)
     from libtbx import group_args
     log_info = group_args(group_args_type = 'log summary',
@@ -40,6 +50,7 @@ def run(file_name = None,
       error = None,
       next_move = None,
       history_record = None,
+      debug_log = debug_log,
       )
 
     # Ensure tools are imported to extract files
@@ -48,8 +59,10 @@ def run(file_name = None,
     except ImportError:
         raise ValueError("Sorry, unable to import tools ")
 
-    def create_history_record_dict(log_info, next_move=None):
+    def create_history_record_dict(log_info, next_move=None, debug_log = None):
         """Helper to create the dict for JSON serialization"""
+        if debug_log is None:
+             debug_log = []
         program_name = 'Unknown'
         if log_info.processed_log_dict:
              program_name = log_info.processed_log_dict.get('phenix_program', 'Unknown')
@@ -69,7 +82,13 @@ def run(file_name = None,
                     break
 
         # --- Extract Output Files ---
-        # We try to use the lct module if available
+
+        state_updates = getattr(log_info, 'state_updates', {})
+
+        # CAPTURE DEBUG
+        debug_log.append(f"DEBUG CREATE_HIST: state_updates retrieved = {state_updates}")
+        debug_log.append(f"DEBUG CREATE_HIST: Type = {type(state_updates)}")
+
         out_files = []
         if log_info.summary:
            out_files = lct.extract_output_files(log_info.summary)
@@ -83,7 +102,10 @@ def run(file_name = None,
             "analysis": log_info.analysis,
             "error": log_info.error,
             "output_files": out_files,
+            "state_updates": state_updates,
         }
+        debug_log.append(f"DEBUG CREATE_HIST: rec['state_updates'] = {rec.get('state_updates')}")
+
         if next_move:
             rec['next_move'] = next_move
         return rec
@@ -276,13 +298,72 @@ def run(file_name = None,
             print("Unable to load viewer")
 
         time.sleep(0.5)
+
+    # --- Parse Project State ---
+    project_state = {}
+    if project_state_json:
+        try:
+             from phenix.rest import simple_string_as_text
+             # Decode if simple string, or just load if json
+             try:
+                 s = simple_string_as_text(project_state_json)
+                 project_state = json.loads(s)
+             except:
+                 project_state = json.loads(project_state_json)
+        except: pass
+
+    # --- Extract Updates ---
+    state_updates = {}
+    # Ensure we have something to analyze and the agent is enabled
+    if (log_info.summary or log_info.error) and run_agent:
+        try:
+             state_updates = asyncio.run(lct.extract_project_state_updates(
+                 log_info.summary, project_state, expensive_llm))
+             # CAPTURE DEBUG
+             debug_log.append(f"DEBUG EXTRACT: state_updates = {state_updates}")
+             debug_log.append(f"DEBUG EXTRACT: Type = {type(state_updates)}, Empty = {len(state_updates) == 0}")
+
+        except Exception as e:
+             print(f"Warning: Could not extract state updates: {e}")
+             debug_log.append(f"DEBUG EXTRACT: Exception = {e}")
+
+    # --- PACK FOR TRANSPORT (Critical Fix) ---
+    if state_updates:
+        try:
+             from phenix.rest import text_as_simple_string
+             updates_json = json.dumps(state_updates)
+             # Attach to log_info so server sends it back
+             log_info.state_updates_as_simple_string = text_as_simple_string(updates_json)
+             log_info.state_updates = state_updates
+             # CAPTURE DEBUG
+             debug_log.append(f"DEBUG PACK: Successfully packed state_updates")
+             debug_log.append(f"DEBUG PACK: Has state_updates attr = {hasattr(log_info, 'state_updates')}")
+
+        except Exception as e:
+             print(f"Warning: Failed to encode state_updates: {e}")
+             debug_log.append(f"DEBUG PACK: Encoding exception = {e}")
+    else:
+        debug_log.append(f"DEBUG PACK: state_updates is empty, NOT packing")
+
+    # -----------------------------------------
+
     # Save History to JSON ---
     if something_to_analyze:
-      # Convert to dict for saving, but we keep log_info as object for return
-      history_record_dict = create_history_record_dict(log_info)
+      history_record_dict = create_history_record_dict(log_info, debug_log=debug_log)
     else:
       history_record_dict = {}
-    log_info.history_record = history_record_dict # Attach to object
+
+    # --- ADD UPDATES TO RECORD ---
+    if state_updates:
+        history_record_dict['state_updates'] = state_updates
+    # -----------------------------
+
+    log_info.history_record = history_record_dict
+    # ADD: Attach debug_log to history record for transport
+    if debug_log:
+        history_record_dict['debug_log'] = debug_log
+        log_info.debug_log = debug_log
+
 
     # --- UPDATED CONDITION: Save if Summary OR Error exists ---
     if log_directory and (
@@ -375,7 +456,8 @@ def run(file_name = None,
                 db_dir=db_dir,
                 timeout=timeout*3,
                 project_advice=project_advice, # Pass User Context
-                original_files=original_files  # Pass File Context
+                original_files=original_files,  # Pass File Context
+                project_state=project_state,
             ))
 
             if agent_result:

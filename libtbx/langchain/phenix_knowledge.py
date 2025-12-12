@@ -47,15 +47,15 @@ USAGE_HINTS = {
     ),
     "phenix.refine": (
         "USAGE RULE: phenix.refine <model.pdb> <data.mtz> [options]\n"
-        "CRITICAL: If you need to generate R-free flags, do NOT use `r_free_flags.generate=True` (it is ambiguous). "
-        "Use the full path: `xray_data.r_free_flags.generate=True`."
+        "CRITICAL: If you need to generate R-free flags, use the full path: `xray_data.r_free_flags.generate=True`."
+        "CRITICAL: Include twinning in refinement ONLY if twinning is definitely present and the twin fraction is at least 0.20."
+        "CRITICAL: To specify twinning: use the full path: `refinement.twinning.twin_law=...`"
     ),
 }
 
 # 3. Strategic Heuristics (The "Strategist's" Playbook)
 KNOWN_ISSUES = {
-    "No array of R-free flags found": "ACTION: if this is phenix.refine, rerun with `xray_data.r_free_flags.generate=True`",
-    "If you previously needed to generate R-free flags": "ACTION: Retry `phenix.refine` with `xray_data.r_free_flags.generate=True`.",
+    "No array of R-free flags found": "ACTION: if you got this running phenix.refine, rerun with `xray_data.r_free_flags.generate=True`",
     "File not found": "ACTION: if this is an input file, make sure that you have included the path to the file.  Look at your list of `Original Input Files`",
     "Incompatible unit cell": "ACTION: If re-indexing failed, the space group is physically impossible. Revert to ORIGINAL space group and assume Twinning.",
     "Symmetry error": "ACTION: Run `phenix.xtriage` to check lattice.",
