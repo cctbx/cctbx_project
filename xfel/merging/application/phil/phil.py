@@ -819,13 +819,16 @@ prepare
       .help = Number of MPI ranks for stage 2 merge jobs
     stage2_output_dir = None
       .type = path
-      .help = Directory for stage 2 merge outputs. If None, uses {output_dir}/stage2
+      .help = Directory for stage 2 merge outputs. If None, uses output_dir/stage2
     phenix_phil = None
       .type = path
       .help = Path to phil/eff file containing phenix.refine parameters
     phenix_pdb = None
       .type = path
       .help = Path to starting model PDB for phenix refinement
+    n_anomalous_scatterers = 1
+      .type = int
+      .help = Number of anomalous scatterers to extract f' and f'' values for
     mtz_name = iobs_all.mtz
       .type = str
       .help = Name of the merged MTZ file produced by stage 2 merge
@@ -841,6 +844,18 @@ prepare
     slurm_constraint = None
       .type = str
       .help = SLURM constraint (e.g. cpu, gpu) for batch jobs
+    slurm_qos = None
+      .type = str
+      .help = SLURM QOS (quality of service) for batch jobs
+    slurm_array_concurrency = 8
+      .type = int
+      .help = Maximum number of SLURM array tasks to run simultaneously
+    cctbx_activate = None
+      .type = path
+      .help = Path to cctbx activation script (sourced before stage 2 merge jobs)
+    phenix_activate = None
+      .type = path
+      .help = Path to phenix activation script (sourced before phenix refinements)
     }
   }
 """

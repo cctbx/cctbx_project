@@ -22,9 +22,11 @@ output.output_dir={slice_output_dir}
 # Template for the unified batch script (SLURM + local)
 SPREAD_SCRIPT_TEMPLATE = """\
 #!/bin/bash
-#SBATCH --array=0-{n_slices}
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node={stage2_nproc}
+{slurm_optional_directives}#SBATCH --array=0-{n_slices}%{slurm_array_concurrency}
 #SBATCH --time={slurm_time_limit}
-{slurm_optional_directives}#SBATCH --job-name=spread
+#SBATCH --job-name=spread
 #SBATCH --output={scripts_dir}/slurm_%A_%a.out
 #SBATCH --error={scripts_dir}/slurm_%A_%a.err
 
@@ -42,6 +44,7 @@ PDB_FILE="{phenix_pdb_path}"
 PHENIX_PHIL="{phenix_phil_path}"
 CCTBX_ACTIVATE="{cctbx_activate}"
 PHENIX_ACTIVATE="{phenix_activate}"
+N_SCATTERERS={n_anomalous_scatterers}
 
 mkdir -p ${{STATUS_DIR}}
 
@@ -103,6 +106,31 @@ for TASK_ID in ${{TASK_IDS[@]}}; do
     echo "Waiting for all phenix refinements to complete..."
     wait
     echo "All phenix refinements complete."
+
+    # Scrape results from logs
+    echo "Scraping results from logs..."
+    RESULTS_FILE="${{STAGE2_DIR}}/spread_results.txt"
+    echo "# slice wavelength f_prime[1..N] f_double_prime[1..N]" > $RESULTS_FILE
+
+    for i in $(seq 0 $((N_SLICES - 1))); do
+      SLICE_IDX=$(printf "%03d" $i)
+      SLICE_DIR="${{STAGE2_DIR}}/slice_${{SLICE_IDX}}"
+      MERGE_LOG="${{SLICE_DIR}}/iobs_main.log"
+      REFINE_LOG="${{SLICE_DIR}}/refine_${{SLICE_IDX}}.log"
+
+      # Extract wavelength from merge log
+      WAVELENGTH=$(grep 'Average wavelength' $MERGE_LOG 2>/dev/null | tail -1 | awk '{{print $3}}' | tr -d '()' || echo "NA")
+
+      # Extract f' values
+      F_PRIME=$(grep 'f_prime' $REFINE_LOG 2>/dev/null | grep -v refine | tail -$N_SCATTERERS | awk '{{print $2}}' | tr '\\n' ' ' || echo "NA")
+
+      # Extract f'' values
+      F_DOUBLE_PRIME=$(grep 'f_double_prime' $REFINE_LOG 2>/dev/null | grep -v refine | tail -$N_SCATTERERS | awk '{{print $2}}' | tr '\\n' ' ' || echo "NA")
+
+      echo "$SLICE_IDX $WAVELENGTH $F_PRIME $F_DOUBLE_PRIME" >> $RESULTS_FILE
+    done
+
+    echo "Results written to $RESULTS_FILE"
   fi
 done
 """
@@ -396,6 +424,7 @@ class prepare_spread(worker):
     # Phenix refinement parameters
     phenix_phil_path = self.params.prepare.spread.phenix_phil or ""
     phenix_pdb_path = self.params.prepare.spread.phenix_pdb or ""
+    n_anomalous_scatterers = self.params.prepare.spread.n_anomalous_scatterers
     mtz_name = self.params.prepare.spread.mtz_name
 
     # SLURM parameters (optional)
@@ -403,6 +432,8 @@ class prepare_spread(worker):
     slurm_account = self.params.prepare.spread.slurm_account
     slurm_time_limit = self.params.prepare.spread.slurm_time_limit
     slurm_constraint = self.params.prepare.spread.slurm_constraint
+    slurm_qos = self.params.prepare.spread.slurm_qos
+    slurm_array_concurrency = self.params.prepare.spread.slurm_array_concurrency
 
     # Activation scripts
     cctbx_activate = self.params.prepare.spread.cctbx_activate
@@ -476,16 +507,19 @@ class prepare_spread(worker):
 
     # Build optional SLURM directives
     slurm_optional = ""
+    if slurm_constraint:
+      slurm_optional += f"#SBATCH --constraint={slurm_constraint}\n"
+    if slurm_qos:
+      slurm_optional += f"#SBATCH --qos={slurm_qos}\n"
     if slurm_partition:
       slurm_optional += f"#SBATCH --partition={slurm_partition}\n"
     if slurm_account:
       slurm_optional += f"#SBATCH --account={slurm_account}\n"
-    if slurm_constraint:
-      slurm_optional += f"#SBATCH --constraint={slurm_constraint}\n"
 
     # Write unified batch script
     spread_script_content = SPREAD_SCRIPT_TEMPLATE.format(
       n_slices=n_slices,
+      slurm_array_concurrency=slurm_array_concurrency,
       slurm_time_limit=slurm_time_limit,
       slurm_optional_directives=slurm_optional,
       scripts_dir=scripts_dir,
@@ -496,7 +530,8 @@ class prepare_spread(worker):
       phenix_pdb_path=phenix_pdb_path,
       phenix_phil_path=phenix_phil_path,
       cctbx_activate=cctbx_activate,
-      phenix_activate=phenix_activate
+      phenix_activate=phenix_activate,
+      n_anomalous_scatterers=n_anomalous_scatterers
     )
 
     spread_script_path = os.path.join(scripts_dir, 'run_spread.sh')
