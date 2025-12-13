@@ -155,8 +155,8 @@ class prepare_spread(worker):
   def run(self, experiments, reflections):
     self.logger.log_step_time("SPREAD_PREPARE")
 
-    # Extract parameters
-    n_bins = self.params.prepare.spread.n_energy_bins
+    # Extract common parameters
+    binning_mode = self.params.prepare.spread.binning
     output_dir = self.params.prepare.spread.output_dir or self.params.output.output_dir
 
     # Step 1: Compute local energies from wavelengths
@@ -166,17 +166,42 @@ class prepare_spread(worker):
       self.mpi_helper.rank, len(local_energies)))
     self.logger.log_step_time("COMPUTE_ENERGIES", True)
 
-    # Step 2: Gather all energies to compute global percentile boundaries
-    self.logger.log_step_time("COMPUTE_PERCENTILES")
-    bin_edges = self._compute_global_percentile_edges(local_energies, n_bins)
-    self.logger.log("Energy bin edges: %.2f to %.2f eV (%d bins)" % (
-      bin_edges[0], bin_edges[-1], n_bins))
-    self.logger.log_step_time("COMPUTE_PERCENTILES", True)
+    if binning_mode == 'count':
+      # Equal-count percentile binning
+      n_bins = self.params.prepare.spread.n_energy_bins
 
-    # Step 3: Assign each experiment to a bin
-    self.logger.log_step_time("ASSIGN_BINS")
-    expt_to_bin = self._assign_experiments_to_bins(expt_to_energy, bin_edges, n_bins)
-    self.logger.log_step_time("ASSIGN_BINS", True)
+      # Step 2: Gather all energies to compute global percentile boundaries
+      self.logger.log_step_time("COMPUTE_PERCENTILES")
+      bin_edges = self._compute_global_percentile_edges(local_energies, n_bins)
+      self.logger.log("Energy bin edges: %.2f to %.2f eV (%d bins)" % (
+        bin_edges[0], bin_edges[-1], n_bins))
+      self.logger.log_step_time("COMPUTE_PERCENTILES", True)
+
+      # Step 3: Assign each experiment to a bin
+      self.logger.log_step_time("ASSIGN_BINS")
+      expt_to_bin = self._assign_experiments_to_bins(expt_to_energy, bin_edges, n_bins)
+      self.logger.log_step_time("ASSIGN_BINS", True)
+
+      file_prefix = "pct"
+
+    else:  # binning_mode == 'width'
+      # Equal-width energy binning
+      bin_start = self.params.prepare.spread.bin_start_eV
+      bin_end = self.params.prepare.spread.bin_end_eV
+
+      # Each bin is 1 eV wide; number of bins = energy range
+      n_bins = int(bin_end - bin_start)
+      bin_edges = np.linspace(bin_start, bin_end, n_bins + 1)
+
+      self.logger.log("Energy bins: %.2f to %.2f eV (%d x 1 eV bins)" % (
+        bin_start, bin_end, n_bins))
+
+      # Step 3: Assign each experiment to a bin
+      self.logger.log_step_time("ASSIGN_BINS")
+      expt_to_bin = self._assign_experiments_to_bins_width(expt_to_energy, bin_start, bin_end, n_bins)
+      self.logger.log_step_time("ASSIGN_BINS", True)
+
+      file_prefix = "slice"
 
     # Step 4: Redistribute data by energy bin (all-to-all)
     self.logger.log_step_time("REDISTRIBUTE")
@@ -189,13 +214,13 @@ class prepare_spread(worker):
     # Step 5: Write output files
     self.logger.log_step_time("WRITE_FILES")
     self._write_binned_files(redistributed_experiments, redistributed_reflections,
-                             expt_to_bin, n_bins, output_dir)
+                             expt_to_bin, n_bins, output_dir, file_prefix)
     self.logger.log_step_time("WRITE_FILES", True)
 
     # Step 6: Write batch scripts (only on rank 0)
     if self.mpi_helper.rank == 0:
       self.logger.log_step_time("WRITE_SCRIPTS")
-      self._write_batch_scripts(n_bins, bin_edges, output_dir)
+      self._write_batch_scripts(n_bins, bin_edges, output_dir, file_prefix)
       self.logger.log_step_time("WRITE_SCRIPTS", True)
 
     self.logger.log_step_time("SPREAD_PREPARE", True)
@@ -266,12 +291,29 @@ class prepare_spread(worker):
       expt_to_bin[expt_idx] = bin_idx
     return expt_to_bin
 
+  def _assign_experiments_to_bins_width(self, expt_to_energy, bin_start, bin_end, n_bins):
+    """
+    Assign each experiment to a 1 eV bin based on its energy (width mode).
+    Returns dict mapping experiment index to bin index (0 to n_bins-1).
+    Experiments outside the range are excluded (assigned -1).
+    """
+    expt_to_bin = {}
+    for expt_idx, energy in expt_to_energy.items():
+      if energy < bin_start or energy >= bin_end:
+        expt_to_bin[expt_idx] = -1  # Outside range
+      else:
+        bin_idx = int(energy - bin_start)
+        bin_idx = min(bin_idx, n_bins - 1)  # Handle edge case at exactly bin_end
+        expt_to_bin[expt_idx] = bin_idx
+    return expt_to_bin
+
   def _redistribute_by_energy_bin(self, experiments, reflections, expt_to_bin, n_bins):
     """
     Redistribute experiments and reflections so that each rank owns
     specific energy bins. Uses all-to-all communication pattern.
 
     Rank r will own bins where (bin_idx % n_ranks == r).
+    Experiments with bin_idx=-1 (outside energy range) are excluded.
     """
     comm = self.mpi_helper.comm
     n_ranks = self.mpi_helper.size
@@ -287,13 +329,15 @@ class prepare_spread(worker):
 
     for expt_idx, expt in enumerate(experiments):
       bin_idx = expt_to_bin[expt_idx]
+      if bin_idx < 0:
+        continue  # Skip experiments outside energy range
       dest_rank = bin_idx % n_ranks
 
       send_expt_lists[dest_rank].append((bin_idx, expt))
 
     # Now assign reflections based on their experiment's destination
-    # First, build a quick lookup of expt_idx -> dest_rank
-    expt_to_dest = {idx: expt_to_bin[idx] % n_ranks for idx in expt_to_bin}
+    # First, build a quick lookup of expt_idx -> dest_rank (excluding bin_idx=-1)
+    expt_to_dest = {idx: expt_to_bin[idx] % n_ranks for idx in expt_to_bin if expt_to_bin[idx] >= 0}
 
     # Group reflections by destination rank
     for dest_rank in range(n_ranks):
@@ -327,12 +371,13 @@ class prepare_spread(worker):
 
     return new_experiments, new_reflections
 
-  def _write_binned_files(self, experiments, reflections, expt_to_bin, n_bins, output_dir):
+  def _write_binned_files(self, experiments, reflections, expt_to_bin, n_bins, output_dir, file_prefix):
     """
     Write experiments and reflections to files organized by energy bin and chunk.
 
-    File naming: pct_{bin:02d}_c{chunk:02d}.expt / .refl
-    where bin is the percentile bin (0 to n_bins-1) and chunk is derived from rank.
+    File naming: {file_prefix}_{bin:0Nd}_c{chunk:02d}.expt / .refl
+    where bin is the bin index (0 to n_bins-1) and chunk is derived from rank.
+    file_prefix is 'pct' for count mode, 'slice' for width mode.
     """
     n_ranks = self.mpi_helper.size
     my_rank = self.mpi_helper.rank
@@ -392,7 +437,7 @@ class prepare_spread(worker):
 
       # Format bin index width based on n_bins
       bin_width = len(str(n_bins - 1))
-      filename_base = f"pct_{bin_idx:0{bin_width}d}_c{chunk_idx:02d}"
+      filename_base = f"{file_prefix}_{bin_idx:0{bin_width}d}_c{chunk_idx:02d}"
 
       expt_path = os.path.join(output_dir, f"{filename_base}.expt")
       refl_path = os.path.join(output_dir, f"{filename_base}.refl")
@@ -405,7 +450,7 @@ class prepare_spread(worker):
 
       self.logger.log(f"Wrote {len(expts)} experiments to {filename_base}.expt/.refl")
 
-  def _write_batch_scripts(self, n_bins, bin_edges, output_dir):
+  def _write_batch_scripts(self, n_bins, bin_edges, output_dir, file_prefix):
     """
     Generate batch scripts for running stage 2 merging jobs.
 
@@ -414,9 +459,8 @@ class prepare_spread(worker):
       - run_spread.sh for SLURM/local execution
       - slices.txt metadata file
     """
-    # Extract parameters
-    window_width = self.params.prepare.spread.window_width
-    window_step = self.params.prepare.spread.window_step
+    # Extract common parameters
+    binning_mode = self.params.prepare.spread.binning
     stage2_phil_path = self.params.prepare.spread.stage2_phil
     stage2_nproc = self.params.prepare.spread.stage2_nproc
     stage2_output_dir = self.params.prepare.spread.stage2_output_dir or os.path.join(output_dir, 'stage2')
@@ -445,17 +489,31 @@ class prepare_spread(worker):
       with open(stage2_phil_path, 'r') as f:
         base_phil_content = f.read()
 
-    # Calculate valid slice centers
-    # Window covers [center - width/2, center + width/2)
-    # For 20% window: first valid center is 10 (covers 0-19), last is 90 (covers 80-99)
-    half_width = window_width // 2
-    first_center = half_width
-    last_center = (n_bins - 1) - half_width + (1 if window_width % 2 == 0 else 0)
+    # Calculate slice parameters based on binning mode
+    if binning_mode == 'count':
+      window_width = self.params.prepare.spread.window_width
+      window_step = self.params.prepare.spread.window_step
+      # Window covers [center - width/2, center + width/2)
+      # For 20% window: first valid center is 10 (covers 0-19), last is 90 (covers 80-99)
+      half_width = window_width // 2
+      first_center = half_width
+      last_center = (n_bins - 1) - half_width + (1 if window_width % 2 == 0 else 0)
+      slice_centers = list(range(first_center, last_center + 1, window_step))
+      window_unit = "pct"
+    else:  # width mode
+      bin_width_eV = self.params.prepare.spread.bin_width_eV
+      bin_step_eV = self.params.prepare.spread.bin_step_eV
+      window_width = int(bin_width_eV)  # Each bin is 1 eV, so window width in bins = width in eV
+      window_step = int(bin_step_eV)
+      half_width = window_width // 2
+      first_center = half_width
+      last_center = (n_bins - 1) - half_width + (1 if window_width % 2 == 0 else 0)
+      slice_centers = list(range(first_center, last_center + 1, window_step))
+      window_unit = "eV"
 
-    slice_centers = list(range(first_center, last_center + 1, window_step))
     n_slices = len(slice_centers)
 
-    self.logger.log(f"Generating {n_slices} slice phil files (window_width={window_width}%, step={window_step}%)")
+    self.logger.log(f"Generating {n_slices} slice phil files (window_width={window_width} {window_unit}, step={window_step} {window_unit})")
 
     # Create scripts directory
     scripts_dir = os.path.join(output_dir, 'scripts')
@@ -466,37 +524,37 @@ class prepare_spread(worker):
     # Write slices.txt metadata
     slices_metadata_path = os.path.join(scripts_dir, 'slices.txt')
     with open(slices_metadata_path, 'w') as f:
-      f.write("# slice_index center_percentile pct_start pct_end energy_start_eV energy_end_eV\n")
+      f.write("# slice_index center bin_start bin_end energy_start_eV energy_end_eV\n")
       for slice_idx, center in enumerate(slice_centers):
-        pct_start = center - half_width
-        pct_end = pct_start + window_width - 1
-        energy_start = bin_edges[pct_start]
-        energy_end = bin_edges[pct_end + 1]
-        f.write(f"{slice_idx:03d} {center:3d} {pct_start:3d} {pct_end:3d} {energy_start:.2f} {energy_end:.2f}\n")
+        bin_start = center - half_width
+        bin_end = bin_start + window_width - 1
+        energy_start = bin_edges[bin_start]
+        energy_end = bin_edges[bin_end + 1]
+        f.write(f"{slice_idx:03d} {center:3d} {bin_start:3d} {bin_end:3d} {energy_start:.2f} {energy_end:.2f}\n")
 
     # Determine bin index width for filename formatting
-    bin_width = len(str(n_bins - 1))
+    bin_idx_width = len(str(n_bins - 1))
 
     # Write individual slice phil files
     for slice_idx, center in enumerate(slice_centers):
-      pct_start = center - half_width
-      pct_end = pct_start + window_width - 1
+      bin_start = center - half_width
+      bin_end = bin_start + window_width - 1
 
       # Build input paths
       input_paths = "\n".join(
-        f"input.path={output_dir}/pct_{pct:0{bin_width}d}_c*.*"
-        for pct in range(pct_start, pct_end + 1)
+        f"input.path={output_dir}/{file_prefix}_{b:0{bin_idx_width}d}_c*.*"
+        for b in range(bin_start, bin_end + 1)
       )
 
       slice_phil_content = SLICE_PHIL_TEMPLATE.format(
         stage2_phil_path=stage2_phil_path or "N/A",
         base_phil_content=base_phil_content,
         slice_idx=slice_idx,
-        pct_start=pct_start,
-        pct_end=pct_end,
+        pct_start=bin_start,
+        pct_end=bin_end,
         center=center,
-        energy_start=bin_edges[pct_start],
-        energy_end=bin_edges[pct_end + 1],
+        energy_start=bin_edges[bin_start],
+        energy_end=bin_edges[bin_end + 1],
         input_paths=input_paths,
         slice_output_dir=os.path.join(stage2_output_dir, f'slice_{slice_idx:03d}')
       )
