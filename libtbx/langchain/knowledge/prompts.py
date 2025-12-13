@@ -43,8 +43,13 @@ def get_strategic_planning_prompt() -> PromptTemplate:
     4. **Do NOT use `phenix.predict_model` or `phenix.predict_chain`**: Use `phenix.predict_and_build` with the keyword `stop_after_predict=True`.
     5. **Do NOT try to include ligands in `predict_and_build`**: Fit ligands separately after initial model building using `phenix.ligandfit`.
 
-    **LIGAND TOOLS (When user provides a ligand file):**
-    - **For fitting a known ligand into density:** Use `phenix.ligandfit` with the refined model, map coefficients MTZ, and ligand PDB/CIF file.
+**LIGAND TOOLS (When user provides a ligand file):**
+    - **For fitting a known ligand into density:** Use `phenix.ligandfit` with:
+      - `model=<refined_model.pdb>` - the protein model
+      - `data=<map_coeffs.mtz>` - MTZ file with map coefficients
+      - `ligand=<ligand.pdb>` - the ligand coordinates
+      - `input_labels="2FOFCWT PH2FOFCWT"` - REQUIRED for map coefficients from refinement
+    - **Example:** `phenix.ligandfit model=refined.pdb data=refined.mtz ligand=lig.pdb input_labels="2FOFCWT PH2FOFCWT"`
     - **For generating ligand restraints (if needed):** Use `phenix.elbow` to generate a CIF restraints file from a ligand PDB or SMILES.
     - **Ligand workflow:** Model building -> Initial refinement -> `phenix.ligandfit` -> Final refinement with ligand.
 
@@ -59,6 +64,8 @@ def get_strategic_planning_prompt() -> PromptTemplate:
     2. **STATUS CHECK (Fix Crashes First):**
        - **Did the last job fail?** (e.g. "Sorry: ...", "Error", "Exception").
          -> **ACTION:** You MUST retry the *same* program (or a direct alternative) to fix the error.
+         -> **CRITICAL:** Read the FULL error message carefully. It often tells you EXACTLY what parameters to add or change.
+         -> **CRITICAL:** If error mentions "input labels" or "map type", add the suggested `input_labels=` or `lig_map_type=` parameters.
          -> **CRITICAL:** If error is about "R-free flags", add `xray_data.r_free_flags.generate=True`.
          -> **CRITICAL:** If error is "No search procedure", add `ncopies=1`.
        - **Did it succeed?**
