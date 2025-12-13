@@ -166,7 +166,7 @@ class AgentSession:
     def get_all_commands(self):
         """
         Get all commands that have been run successfully (for duplicate detection).
-        Excludes CRASH cycles and failed cycles.
+        Only includes cycles where the command actually executed successfully.
 
         Returns:
             list of tuples: [(cycle_number, normalized_command), ...]
@@ -178,9 +178,9 @@ class AgentSession:
             if program == "CRASH" or program == "":
                 continue
 
-            # Skip cycles that didn't complete successfully
+            # Only include cycles that ran successfully
             result = cycle.get("result", "")
-            if "CRASH" in result or "No command generated" in result:
+            if not result.startswith("SUCCESS"):
                 continue
 
             cmd = cycle.get("command", "").strip()
@@ -192,15 +192,14 @@ class AgentSession:
 
     def cleanup_crash_cycles(self):
         """
-        Remove CRASH cycles from the session.
+        Remove CRASH cycles and cycles that never ran successfully from the session.
         Call this at the start of a new run to clean up from previous failures.
         """
         original_count = len(self.data["cycles"])
         self.data["cycles"] = [
             c for c in self.data["cycles"]
-            if c.get("program") != "CRASH"
-            and "CRASH" not in c.get("result", "")
-            and c.get("command", "") != "No command generated."
+            if c.get("program") not in ("CRASH", "")
+            and c.get("result", "").startswith("SUCCESS")
         ]
 
         # Renumber remaining cycles
@@ -209,7 +208,7 @@ class AgentSession:
 
         removed = original_count - len(self.data["cycles"])
         if removed > 0:
-            print(f"Cleaned up {removed} failed/crash cycles from previous session")
+            print(f"Cleaned up {removed} failed/incomplete cycles from previous session")
             self.save()
 
         return removed
