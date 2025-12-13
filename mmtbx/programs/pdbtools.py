@@ -49,10 +49,15 @@ gui
     self.data_manager.has_models(
       raise_sorry = True,
       expected_n  = 1,
-      exact_count = True)
+      exact_count = False)
 
   def run(self):
-    self.model = self.data_manager.get_model()
+    models = []
+    for model_name in self.data_manager.get_model_names():
+      models.append(self.data_manager.get_model(model_name))
+    from iotbx.pdb.utils import add_models
+    self.model = add_models(models)
+
     cs = self.model.crystal_symmetry()
     if(cs is None or cs.is_empty() or cs.is_nonsense()):
       print("Crystal symmetry undefined, creating fake P1 box.")
