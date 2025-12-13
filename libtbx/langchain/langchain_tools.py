@@ -104,6 +104,7 @@ from libtbx.langchain.agent import (
     learn_from_history,
     get_program_keywords,
     extract_output_files,
+    AgentSession,
 )
 
 # =============================================================================
