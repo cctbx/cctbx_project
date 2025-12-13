@@ -94,6 +94,70 @@ class AgentSession:
                 self.data["original_files"] = list(original_files)
         self.save()
 
+    def write_history_file(self, output_path=None):
+        """
+        Write session history as a job_*.json file for the agent to read.
+
+        Args:
+            output_path: Path to write to. If None, creates temp file.
+
+        Returns:
+            str: Path to the written file
+        """
+        import tempfile
+
+        if output_path is None:
+            fd, output_path = tempfile.mkstemp(suffix='.json', prefix='session_history_')
+            os.close(fd)
+
+        # Build a history record that looks like job_*.json
+        # Include all successful cycles
+        successful_cycles = [
+            c for c in self.data["cycles"]
+            if c.get("result", "").startswith("SUCCESS")
+        ]
+
+        if not successful_cycles:
+            # No successful cycles, write minimal record
+            history = {
+                "job_id": "session_0",
+                "timestamp": self.data.get("session_id", ""),
+                "program": "session",
+                "summary": f"Session started. Project advice: {self.data.get('project_advice', 'None')}",
+                "analysis": "",
+                "error": None,
+                "next_move": None
+            }
+        else:
+            # Build summary from all successful cycles
+            cycle_summaries = []
+            for c in successful_cycles:
+                cycle_summaries.append(
+                    f"Cycle {c['cycle_number']}: {c['program']} - {c['result']}\n"
+                    f"Command: {c['command']}"
+                )
+
+            last_cycle = successful_cycles[-1]
+
+            history = {
+                "job_id": f"session_{len(successful_cycles)}",
+                "timestamp": last_cycle.get("timestamp", ""),
+                "program": last_cycle.get("program", ""),
+                "summary": f"Session history ({len(successful_cycles)} successful cycles):\n" +
+                          "\n\n".join(cycle_summaries),
+                "analysis": self.data.get("summary", ""),
+                "error": None,
+                "next_move": {
+                    "command": last_cycle.get("command", ""),
+                    "program": last_cycle.get("program", "")
+                }
+            }
+
+        with open(output_path, 'w') as f:
+            json.dump(history, f, indent=2)
+
+        return output_path
+
     def start_cycle(self, cycle_number):
         """
         Start a new cycle. Creates the cycle entry if it doesn't exist.

@@ -297,7 +297,6 @@ def run(file_name = None,
             # phenix is not available or no viewer.  Just skip
             print("Unable to load viewer")
 
-        time.sleep(0.5)
 
     # --- Parse Project State ---
     project_state = {}
@@ -506,6 +505,7 @@ def run(file_name = None,
     else:
         print("DEBUG SERVER: log_info has NO next_move.")
 
+    time.sleep(1.0)  # give document loader time to load before deleting files
     return log_info # RETURN OBJECT (Backwards Compatible)
 
 def save_as_html(markdown_string: str,
