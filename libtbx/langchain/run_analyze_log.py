@@ -30,9 +30,22 @@ def run(file_name = None,
       project_advice: str = None,  # User guidance
       original_files: list = None,  # List of ground-truth files
       project_state_json: str = None, # Database
+      file_list_as_simple_string: str = None,
       ):
 
     debug_log = []
+
+    # --- Parse file list ---
+    file_list = None
+    if file_list_as_simple_string:
+        from phenix.rest import simple_string_as_text
+        try:
+            file_list_text = simple_string_as_text(file_list_as_simple_string)
+            file_list = [f.strip() for f in file_list_text.split('\n') if f.strip()]
+        except Exception as e:
+            print(f"Error parsing file list: {e}")
+    # -----------------------
+
 
     # --- FIX: Handle string "None" from command line/server args ---
     if str(log_directory).lower() == 'none' or log_directory == '':
@@ -457,6 +470,7 @@ def run(file_name = None,
                 project_advice=project_advice, # Pass User Context
                 original_files=original_files,  # Pass File Context
                 project_state=project_state,
+                file_list=file_list,
             ))
 
             if agent_result:

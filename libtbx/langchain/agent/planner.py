@@ -119,8 +119,10 @@ async def generate_next_move(
     timeout: int = 60,
     project_advice: str = None,
     original_files: list = None,
-    project_state: dict = None
+    project_state: dict = None,
+    file_list: list = None,
 ):
+
     """
     Generates the next move for the structure determination agent.
 
@@ -139,7 +141,7 @@ async def generate_next_move(
         project_advice: User's goal or advice
         original_files: List of original input files
         project_state: Current project state dictionary
-
+        file_list: List of all available files (from active_file_list.json)
     Returns:
         group_args with:
             - command: The command to run
@@ -339,6 +341,12 @@ async def generate_next_move(
             if original_files_list:
                 for f in original_files_list:
                     available_files.add(os.path.basename(f))
+
+            # 1b. Add Files from file_list (active files)
+            if file_list:
+                for f in file_list:
+                    available_files.add(os.path.basename(f))
+
 
             # 2. Add Files from History
             for run in run_history:
