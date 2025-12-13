@@ -799,18 +799,33 @@ prepare
     .help = Bins experiments by energy, writes to disk, and generates batch scripts
     .help = for stage 2 merging and phenix refinement.
     {
+    binning = *count width
+      .type = choice
+      .help = Binning mode: count for equal-count percentile bins, width for equal-width energy bins
     n_energy_bins = 100
       .type = int
-      .help = Number of energy bins (percentiles) for partitioning the dataset
+      .help = Number of energy bins (percentiles) for partitioning the dataset (count mode only)
+    window_width = 20
+      .type = int
+      .help = Width of the sliding window in percentile units for stage 2 slices (count mode only)
+    window_step = 1
+      .type = int
+      .help = Step size for sliding window center in percentile units (count mode only)
+    bin_start_eV = None
+      .type = float
+      .help = Start energy in eV for width binning mode
+    bin_end_eV = None
+      .type = float
+      .help = End energy in eV for width binning mode
+    bin_width_eV = 8
+      .type = float
+      .help = Width of sliding window in eV for stage 2 slices (width mode only)
+    bin_step_eV = 1
+      .type = float
+      .help = Step size for sliding window in eV (width mode only)
     output_dir = None
       .type = path
       .help = Directory for writing energy-binned files. If None, uses output.output_dir
-    window_width = 20
-      .type = int
-      .help = Width of the sliding window in percentile units for stage 2 slices
-    window_step = 1
-      .type = int
-      .help = Step size for sliding window center in percentile units
     stage2_phil = None
       .type = path
       .help = Path to phil file containing base parameters for stage 2 merge jobs
@@ -859,7 +874,6 @@ prepare
     }
   }
 """
-
 
 
 # A place to override any defaults included from elsewhere
