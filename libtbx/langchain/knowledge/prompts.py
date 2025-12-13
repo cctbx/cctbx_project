@@ -105,6 +105,9 @@ def get_command_writer_prompt() -> PromptTemplate:
     template = """You are a Phenix Command-Line Expert.
     Your task is to construct a valid command line for "{program}".
 
+    **USER'S SPECIFIC INSTRUCTIONS (HIGHEST PRIORITY):**
+    {project_advice}
+
     **The Strategy:**
     {strategy_details}
 
@@ -121,56 +124,26 @@ def get_command_writer_prompt() -> PromptTemplate:
     {learned_tips}
 
     **CRITICAL RULES:**
-    1. **PATH RESOLUTION (Crucial):** If a file in "Input Files" (e.g. `data.mtz`) matches a file in "Original Input Files" (e.g. `subdir/data.mtz`), you MUST use the FULL PATH from the Original list. Do NOT use bare filenames if a path is known.
-    2. **Prioritize History:** If "LEARNED HISTORY" warns about a specific syntax error, you MUST follow that advice.
-    3. **Follow the Reference:** Use the syntax rules found in the "Reference Documentation".
-    4. **Syntax Priority:**
+    1. **USER INSTRUCTIONS FIRST:** If the user gave specific instructions above (e.g., "use nproc=4", "use quick mode"), you MUST include those parameters.
+    2. **PATH RESOLUTION (Crucial):** If a file in "Input Files" (e.g. `data.mtz`) matches a file in "Original Input Files" (e.g. `subdir/data.mtz`), you MUST use the FULL PATH from the Original list. Do NOT use bare filenames if a path is known.
+    3. **Prioritize History:** If "LEARNED HISTORY" warns about a specific syntax error, you MUST follow that advice.
+    4. **Follow the Reference:** Use the syntax rules found in the "Reference Documentation".
+    5. **Syntax Priority:**
        - **Default:** Standard Phenix uses `key=value`.
-       - **Exception:** If Reference says to use double-dashes (`--flag`), use that.
-    5. **Completeness:** Ensure every defined object has an action.
+       - **Exception:** If Reference says to use double-dashes `--flag`), use that.
+    6. **Completeness:** Ensure every defined object has an action.
 
     **Output:**
     Provide ONLY the command string. No markdown.
     """
     return PromptTemplate(
         template=template,
-        input_variables=["program", "strategy_details", "input_files", "valid_keywords", "learned_tips", "original_files"]
+        input_variables=[
+            "program", "strategy_details", "input_files",
+            "original_files", "valid_keywords", "learned_tips",
+            "project_advice"
+        ]
     )
-
-
-def get_keywords_prompt() -> PromptTemplate:
-    """
-    Returns the prompt for extracting BOTH parameters AND usage examples.
-    """
-    template = """You are a Phenix command-line expert.
-    Your task is to provide the critical information needed to construct a valid command for "{program_name}".
-
-    **Goal:**
-    The user needs to run this program for a specific task (e.g., "{program_name} simulated annealing").
-    You must extract:
-    1. **Valid Parameters:** (e.g. `start_temperature=5000`)
-    2. **Usage Examples:** (e.g. `phenix.refine data.mtz model.pdb annealing=True`) - THIS IS CRITICAL.
-
-    **Instructions:**
-    1. Scan the text for "Usage" or "Examples" sections.
-    2. Look for patterns: how are input files specified? Do they use flags (e.g. `hklin=...`) or positional arguments?
-    3. Look for the specific parameter syntax (e.g. is it `search.copies=1` or `ncopies=1`?).
-    4. If broken lines appear (e.g. `param \n = value`), reconstruct them to `param=value`.
-
-    ---BEGIN CONTEXT---
-    {context}
-    ---END CONTEXT---
-
-    **Output:**
-    Provide a concise summary in two sections:
-
-    SECTION 1: SYNTAX RULES & EXAMPLES
-    (Paste any relevant command-line examples found in the text here. If none, describe the standard usage pattern.)
-
-    SECTION 2: RELEVANT KEYWORDS
-    (List of clean `key=value` strings found.)
-    """
-    return PromptTemplate(template=template, input_variables=["context", "program_name"])
 
 
 def get_docs_query_prompt() -> PromptTemplate:

@@ -407,7 +407,9 @@ async def generate_next_move(
                 "valid_keywords": kw_result.keywords,
                 "learned_tips": relevant_tips,
                 "original_files": orig_files_text,
+                "project_advice": advice_text,
             })
+
             command = command_obj.content.strip()
 
             # --- 9. DUPLICATE COMMAND CHECK ---
