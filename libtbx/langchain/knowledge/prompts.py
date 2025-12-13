@@ -145,6 +145,39 @@ def get_command_writer_prompt() -> PromptTemplate:
         ]
     )
 
+def get_keywords_prompt() -> PromptTemplate:
+    """
+    Returns the prompt for extracting keywords and usage patterns from documentation.
+    """
+    template = """You are a Phenix documentation expert.
+    Your task is to provide the critical information needed to construct a valid command for "{program_name}".
+
+    **Goal:**
+    The user needs to run this program for a specific task.
+    You must extract:
+    1. **Valid Parameters:** (e.g. `start_temperature=5000`)
+    2. **Usage Examples:** (e.g. `phenix.refine data.mtz model.pdb annealing=True`) - THIS IS CRITICAL.
+
+    **Instructions:**
+    1. Scan the text for "Usage" or "Examples" sections.
+    2. Look for patterns: how are input files specified? Do they use flags (e.g. `hklin=...`) or positional arguments?
+    3. Look for the specific parameter syntax (e.g. is it `search.copies=1` or `ncopies=1`?).
+    4. If broken lines appear (e.g. `param \\n = value`), reconstruct them to `param=value`.
+
+    ---BEGIN CONTEXT---
+    {context}
+    ---END CONTEXT---
+
+    **Output:**
+    Provide a concise summary in two sections:
+
+    SECTION 1: SYNTAX RULES & EXAMPLES
+    (Paste any relevant command-line examples found in the text here. If none, describe the standard usage pattern.)
+
+    SECTION 2: RELEVANT KEYWORDS
+    (List of clean `key=value` strings found.)
+    """
+    return PromptTemplate(template=template, input_variables=["context", "program_name"])
 
 def get_docs_query_prompt() -> PromptTemplate:
     """
