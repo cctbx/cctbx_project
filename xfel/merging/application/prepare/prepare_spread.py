@@ -45,6 +45,7 @@ PHENIX_PHIL="{phenix_phil_path}"
 CCTBX_ACTIVATE="{cctbx_activate}"
 PHENIX_ACTIVATE="{phenix_activate}"
 N_SCATTERERS={n_anomalous_scatterers}
+STATS_BIN="{statistics_bin_i}"
 
 mkdir -p ${{STATUS_DIR}}
 
@@ -110,7 +111,20 @@ for TASK_ID in ${{TASK_IDS[@]}}; do
     # Scrape results from logs
     echo "Scraping results from logs..."
     RESULTS_FILE="${{STAGE2_DIR}}/spread_results.txt"
-    echo "# slice wavelength f_prime[1..N] f_double_prime[1..N]" > $RESULTS_FILE
+
+    # Get resolution range from first slice (constant across all datasets)
+    FIRST_SLICE_DIR="${{STAGE2_DIR}}/slice_000"
+    FIRST_MERGE_LOG="${{FIRST_SLICE_DIR}}/iobs_main.log"
+    if [ -n "$STATS_BIN" ] && [ -f "$FIRST_MERGE_LOG" ]; then
+      RES_RANGE=$(awk -v bin="$STATS_BIN" '
+        /Intensity Statistics \(all accepted experiments\)/,/^All / {{
+          if ($1 == bin && $2 ~ /^-?[0-9]/) print $2, $3, $4
+        }}' $FIRST_MERGE_LOG)
+      echo "# Resolution bin $STATS_BIN: $RES_RANGE" > $RESULTS_FILE
+      echo "# slice wavelength asu_multi f_prime[1..N] f_double_prime[1..N]" >> $RESULTS_FILE
+    else
+      echo "# slice wavelength asu_multi f_prime[1..N] f_double_prime[1..N]" > $RESULTS_FILE
+    fi
 
     for i in $(seq 0 $((N_SLICES - 1))); do
       SLICE_IDX=$(printf "%03d" $i)
@@ -121,13 +135,24 @@ for TASK_ID in ${{TASK_IDS[@]}}; do
       # Extract wavelength from merge log
       WAVELENGTH=$(grep 'Average wavelength' $MERGE_LOG 2>/dev/null | tail -1 | awk '{{print $3}}' | tr -d '()' || echo "NA")
 
+      # Extract asu multiplicity for specified bin from the correct table
+      if [ -n "$STATS_BIN" ]; then
+        ASU_MULTI=$(awk -v bin="$STATS_BIN" '
+          /Intensity Statistics \(all accepted experiments\)/,/^All / {{
+            if ($1 == bin && $2 ~ /^-?[0-9]/) print $7
+          }}' $MERGE_LOG 2>/dev/null || echo "NA")
+        [ -z "$ASU_MULTI" ] && ASU_MULTI="NA"
+      else
+        ASU_MULTI="NA"
+      fi
+
       # Extract f' values
       F_PRIME=$(grep 'f_prime' $REFINE_LOG 2>/dev/null | grep -v refine | tail -$N_SCATTERERS | awk '{{print $2}}' | tr '\\n' ' ' || echo "NA")
 
       # Extract f'' values
       F_DOUBLE_PRIME=$(grep 'f_double_prime' $REFINE_LOG 2>/dev/null | grep -v refine | tail -$N_SCATTERERS | awk '{{print $2}}' | tr '\\n' ' ' || echo "NA")
 
-      echo "$SLICE_IDX $WAVELENGTH $F_PRIME $F_DOUBLE_PRIME" >> $RESULTS_FILE
+      echo "$SLICE_IDX $WAVELENGTH $ASU_MULTI $F_PRIME $F_DOUBLE_PRIME" >> $RESULTS_FILE
     done
 
     echo "Results written to $RESULTS_FILE"
@@ -469,6 +494,7 @@ class prepare_spread(worker):
     phenix_phil_path = self.params.prepare.spread.phenix_phil or ""
     phenix_pdb_path = self.params.prepare.spread.phenix_pdb or ""
     n_anomalous_scatterers = self.params.prepare.spread.n_anomalous_scatterers
+    statistics_bin_i = self.params.prepare.spread.statistics_bin_i or ""
     mtz_name = self.params.prepare.spread.mtz_name
 
     # SLURM parameters (optional)
@@ -589,7 +615,8 @@ class prepare_spread(worker):
       phenix_phil_path=phenix_phil_path,
       cctbx_activate=cctbx_activate,
       phenix_activate=phenix_activate,
-      n_anomalous_scatterers=n_anomalous_scatterers
+      n_anomalous_scatterers=n_anomalous_scatterers,
+      statistics_bin_i=statistics_bin_i
     )
 
     spread_script_path = os.path.join(scripts_dir, 'run_spread.sh')

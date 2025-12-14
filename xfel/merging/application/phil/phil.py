@@ -844,6 +844,9 @@ prepare
     n_anomalous_scatterers = 1
       .type = int
       .help = Number of anomalous scatterers to extract f' and f'' values for
+    statistics_bin_i = None
+      .type = int
+      .help = Resolution bin index (1-based, from merging statistics table) to extract multiplicity from
     mtz_name = iobs_all.mtz
       .type = str
       .help = Name of the merged MTZ file produced by stage 2 merge
