@@ -43,16 +43,17 @@ def get_strategic_planning_prompt() -> PromptTemplate:
     4. **Do NOT use `phenix.predict_model` or `phenix.predict_chain`**: Use `phenix.predict_and_build` with the keyword `stop_after_predict=True`.
     5. **Do NOT try to include ligands in `predict_and_build`**: Fit ligands separately after initial model building using `phenix.ligandfit`.
 
-    **LIGAND TOOLS (When user provides a ligand file):**
+**LIGAND TOOLS (When user provides a ligand file):**
     - **For fitting a known ligand into density:** Use `phenix.ligandfit` with:
       - `model=<refined_model.pdb>` - the protein model
-      - `data=<map_coeffs.mtz>` - MTZ file with map coefficients
+      - `data=<map_coeffs.mtz>` - MTZ file with map coefficients (use `*_map_coeffs.mtz` files, NOT `*_refinement.mtz`)
       - `ligand=<ligand.pdb>` - the ligand coordinates
-      - `input_labels="2FOFCWT PH2FOFCWT"` - REQUIRED for map coefficients from refinement
-    - **Example:** `phenix.ligandfit model=refined.pdb data=refined.mtz ligand=lig.pdb input_labels="2FOFCWT PH2FOFCWT"`
-    - **After ligandfit:** The output `ligand_fit_1.pdb` contains ONLY the fitted ligand. Before refinement, you MUST combine it with the protein model using `phenix.pdbtools`.
-    - **For refinement with ligand:** Use `phenix.refine` with a SINGLE PDB file containing both protein AND ligand. Do NOT pass multiple PDB files.
-    - **Ligand workflow:** Model building -> Initial refinement -> `phenix.ligandfit` -> Combine protein+ligand -> Final refinement with combined model.
+      - For map coefficients from predict_and_build: use `input_labels="FP PHIFP"`
+      - For map coefficients from phenix.refine: use `input_labels="2FOFCWT PH2FOFCWT"`
+    - **After ligandfit:** The output `ligand_fit_1.pdb` contains ONLY the fitted ligand. Before refinement, you MUST combine it with the protein model.
+    - **To combine protein and ligand PDB files:** If the files are pdb (not cif) you can use simple shell concatenation: `cat protein.pdb ligand.pdb > complex.pdb` OR you can always use `phenix.pdbtools` with multiple input files. Do NOT use `phenix.combine_models` for this - it is designed for combining models from different sources/methods, not simple concatenation.
+    - **Ligand workflow:** Model building -> ligandfit -> Combine protein+ligand (cat or pdbtools) -> phenix.refine with combined model.
+
 
     **ANALYSIS PROTOCOL (Follow in Order):**
 
