@@ -121,9 +121,9 @@ for TASK_ID in ${{TASK_IDS[@]}}; do
           if ($1 == bin && $2 ~ /^-?[0-9]/) print $2, $3, $4
         }}' $FIRST_MERGE_LOG)
       echo "# Resolution bin $STATS_BIN: $RES_RANGE" > $RESULTS_FILE
-      echo "# slice wavelength asu_multi f_prime[1..N] f_double_prime[1..N]" >> $RESULTS_FILE
+      echo "# slice wavelength asu_multi r_free f_prime[1..N] f_double_prime[1..N]" >> $RESULTS_FILE
     else
-      echo "# slice wavelength asu_multi f_prime[1..N] f_double_prime[1..N]" > $RESULTS_FILE
+      echo "# slice wavelength asu_multi r_free f_prime[1..N] f_double_prime[1..N]" > $RESULTS_FILE
     fi
 
     for i in $(seq 0 $((N_SLICES - 1))); do
@@ -146,13 +146,17 @@ for TASK_ID in ${{TASK_IDS[@]}}; do
         ASU_MULTI="NA"
       fi
 
+      # Extract final R-free from phenix log
+      R_FREE=$(grep 'Final R-work' $REFINE_LOG 2>/dev/null | tail -1 | awk '{{print $NF}}' || echo "NA")
+      [ -z "$R_FREE" ] && R_FREE="NA"
+
       # Extract f' values
       F_PRIME=$(grep 'f_prime' $REFINE_LOG 2>/dev/null | grep -v refine | tail -$N_SCATTERERS | awk '{{print $2}}' | tr '\\n' ' ' || echo "NA")
 
       # Extract f'' values
       F_DOUBLE_PRIME=$(grep 'f_double_prime' $REFINE_LOG 2>/dev/null | grep -v refine | tail -$N_SCATTERERS | awk '{{print $2}}' | tr '\\n' ' ' || echo "NA")
 
-      echo "$SLICE_IDX $WAVELENGTH $ASU_MULTI $F_PRIME $F_DOUBLE_PRIME" >> $RESULTS_FILE
+      echo "$SLICE_IDX $WAVELENGTH $ASU_MULTI $R_FREE $F_PRIME $F_DOUBLE_PRIME" >> $RESULTS_FILE
     done
 
     echo "Results written to $RESULTS_FILE"
