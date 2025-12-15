@@ -22,7 +22,7 @@ output.output_dir={slice_output_dir}
 # Template for the unified batch script (SLURM + local)
 SPREAD_SCRIPT_TEMPLATE = """\
 #!/bin/bash
-#SBATCH --nodes=1
+#SBATCH --nodes={stage2_nnodes}
 #SBATCH --ntasks-per-node={stage2_nproc}
 {slurm_optional_directives}#SBATCH --array=0-{n_slices}%{slurm_array_concurrency}
 #SBATCH --time={slurm_time_limit}
@@ -88,6 +88,40 @@ for TASK_ID in ${{TASK_IDS[@]}}; do
 
     # Activate phenix environment and run all refinements in parallel
     source $PHENIX_ACTIVATE
+
+    # Scrape preliminary multiplicity results before phenix refinements
+    echo "Scraping preliminary multiplicity results..."
+    MULTI_FILE="${{STAGE2_DIR}}/spread_multiplicity.txt"
+
+    FIRST_SLICE_DIR="${{STAGE2_DIR}}/slice_000"
+    FIRST_MERGE_LOG="${{FIRST_SLICE_DIR}}/iobs_main.log"
+    if [ -n "$STATS_BIN" ] && [ -f "$FIRST_MERGE_LOG" ]; then
+      RES_RANGE=$(sed -n '/all accepted experiments/,/^All /p' $FIRST_MERGE_LOG | awk -v bin="$STATS_BIN" '$1 == bin {{print $2, $3, $4}}')
+      echo "# Resolution bin $STATS_BIN: $RES_RANGE" > $MULTI_FILE
+      echo "# slice wavelength asu_multi" >> $MULTI_FILE
+    else
+      echo "# slice wavelength asu_multi" > $MULTI_FILE
+    fi
+
+    for i in $(seq 0 $((N_SLICES - 1))); do
+      SLICE_IDX=$(printf "%03d" $i)
+      SLICE_DIR="${{STAGE2_DIR}}/slice_${{SLICE_IDX}}"
+      MERGE_LOG="${{SLICE_DIR}}/iobs_main.log"
+
+      WAVELENGTH=$(grep 'Average wavelength' $MERGE_LOG 2>/dev/null | tail -1 | awk '{{print $3}}' | tr -d '()' || echo "NA")
+
+      if [ -n "$STATS_BIN" ]; then
+        ASU_MULTI=$(sed -n '/all accepted experiments/,/^All /p' $MERGE_LOG 2>/dev/null | awk -v bin="$STATS_BIN" '$1 == bin {{print $7}}')
+        [ -z "$ASU_MULTI" ] && ASU_MULTI="NA"
+      else
+        ASU_MULTI="NA"
+      fi
+
+      echo "$SLICE_IDX $WAVELENGTH $ASU_MULTI" >> $MULTI_FILE
+    done
+    echo "Preliminary results written to $MULTI_FILE"
+
+    # Run all phenix refinements in parallel
     echo "Starting phenix refinements..."
     for i in $(seq 0 $((N_SLICES - 1))); do
       SLICE_IDX=$(printf "%03d" $i)
@@ -486,6 +520,7 @@ class prepare_spread(worker):
     binning_mode = self.params.prepare.spread.binning
     stage2_phil_path = self.params.prepare.spread.stage2_phil
     stage2_nproc = self.params.prepare.spread.stage2_nproc
+    stage2_nnodes = self.params.prepare.spread.stage2_nnodes
     stage2_output_dir = self.params.prepare.spread.stage2_output_dir or os.path.join(output_dir, 'stage2')
 
     # Phenix refinement parameters
@@ -609,6 +644,7 @@ class prepare_spread(worker):
       stage2_output_dir=stage2_output_dir,
       mtz_name=mtz_name,
       stage2_nproc=stage2_nproc,
+      stage2_nnodes=stage2_nnodes,
       phenix_pdb_path=phenix_pdb_path,
       phenix_phil_path=phenix_phil_path,
       cctbx_activate=cctbx_activate,
