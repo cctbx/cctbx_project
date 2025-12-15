@@ -116,10 +116,7 @@ for TASK_ID in ${{TASK_IDS[@]}}; do
     FIRST_SLICE_DIR="${{STAGE2_DIR}}/slice_000"
     FIRST_MERGE_LOG="${{FIRST_SLICE_DIR}}/iobs_main.log"
     if [ -n "$STATS_BIN" ] && [ -f "$FIRST_MERGE_LOG" ]; then
-      RES_RANGE=$(awk -v bin="$STATS_BIN" '
-        /Intensity Statistics \(all accepted experiments\)/,/^All / {{
-          if ($1 == bin && $2 ~ /^-?[0-9]/) print $2, $3, $4
-        }}' $FIRST_MERGE_LOG)
+      RES_RANGE=$(sed -n '/all accepted experiments/,/^All /p' $FIRST_MERGE_LOG | awk -v bin="$STATS_BIN" '$1 == bin {{print $2, $3, $4}}')
       echo "# Resolution bin $STATS_BIN: $RES_RANGE" > $RESULTS_FILE
       echo "# slice wavelength asu_multi r_free f_prime[1..N] f_double_prime[1..N]" >> $RESULTS_FILE
     else
@@ -137,10 +134,7 @@ for TASK_ID in ${{TASK_IDS[@]}}; do
 
       # Extract asu multiplicity for specified bin from the correct table
       if [ -n "$STATS_BIN" ]; then
-        ASU_MULTI=$(awk -v bin="$STATS_BIN" '
-          /Intensity Statistics \(all accepted experiments\)/,/^All / {{
-            if ($1 == bin && $2 ~ /^-?[0-9]/) print $7
-          }}' $MERGE_LOG 2>/dev/null || echo "NA")
+        ASU_MULTI=$(sed -n '/all accepted experiments/,/^All /p' $MERGE_LOG 2>/dev/null | awk -v bin="$STATS_BIN" '$1 == bin {{print $7}}')
         [ -z "$ASU_MULTI" ] && ASU_MULTI="NA"
       else
         ASU_MULTI="NA"
