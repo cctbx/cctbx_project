@@ -832,6 +832,9 @@ prepare
     stage2_nproc = 128
       .type = int
       .help = Number of MPI ranks for stage 2 merge jobs
+    stage2_nnodes = 1
+      .type = int
+      .help = Number of nodes for stage 2 merge jobs
     stage2_output_dir = None
       .type = path
       .help = Directory for stage 2 merge outputs. If None, uses output_dir/stage2
