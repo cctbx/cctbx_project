@@ -583,6 +583,9 @@ def add_models(model_list, create_new_chain_ids_if_necessary = True):
 
   if not model_list:
     return None # nothing to do
+  if len(model_list) == 1:
+    return model_list[0]
+
   new_model_list = []
   new_model_format = None
 
@@ -610,7 +613,6 @@ def add_models(model_list, create_new_chain_ids_if_necessary = True):
     # Can deep-copy a hierarchy without crystal_symmetry
     ph = model_list[0].get_hierarchy().deep_copy()
     model_list[0] = ph.as_model_manager(crystal_symmetry = crystal_symmetry)
-    model_list[0].add_crystal_symmetry_if_necessary()
     m_had_crystal_symmetry = False
 
   model = model_list[0]
@@ -619,7 +621,8 @@ def add_models(model_list, create_new_chain_ids_if_necessary = True):
          create_new_chain_ids_if_necessary = create_new_chain_ids_if_necessary)
 
   if not m_had_crystal_symmetry:
-    model = model.get_hierarchy().as_model_manager(crystal_symmetry = None)
+    model = model.get_hierarchy().as_model_manager(crystal_symmetry = None,
+       force_no_crystal_symmetry = True)
   if new_model_format:
     model._original_model_format = new_model_format
   return model

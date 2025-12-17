@@ -995,7 +995,8 @@ class _():
 
   def as_model_manager(self, crystal_symmetry,
        unit_cell_crystal_symmetry = None,
-       shift_cart = None):
+       shift_cart = None,
+       force_no_crystal_symmetry = False):
     ''' Returns simple version of model object based on this hierarchy
      Expects but does not require crystal_symmetry.
      Optional unit_cell_crystal_symmetry and shift_cart.
@@ -1006,8 +1007,11 @@ class _():
      '''
     import mmtbx.model
 
-    # make up crystal_symmetry if not present
-    crystal_symmetry = self.generate_crystal_symmetry(crystal_symmetry)
+    if (force_no_crystal_symmetry):
+       crystal_symmetry = None
+    else:
+      # make up crystal_symmetry if not present
+      crystal_symmetry = self.generate_crystal_symmetry(crystal_symmetry)
 
     mm = mmtbx.model.manager(
           model_input = None, # REQUIRED
