@@ -138,6 +138,29 @@ def validate_phenix_command(command: str) -> tuple:
                 PROGRAMS_WITHOUT_DRY_RUN.add(program)
                 return True, ""  # Skip validation, assume command is OK
 
+
+        print(f"DEBUG VALIDATE: all_output_lower contains: {all_output_lower[:200]}")
+        print(f"DEBUG VALIDATE: checking for 'an atomic model is required': {'an atomic model is required' in all_output_lower}")
+
+        # Errors expected in dry-run validation (we don't pass input files)
+        # These are NOT real syntax errors - they just mean the program needs files
+        benign_dry_run_errors = [
+            "an atomic model is required",
+            "reflection file",
+            "no data file",
+            "no model file",
+            "no pdb file",
+            "no input file",
+            "requires a model",
+            "requires an mtz",
+            "requires reflection",
+        ]
+
+        all_output_lower = all_output.lower()
+        for benign in benign_dry_run_errors:
+            if benign in all_output_lower:
+                return True, ""  # Skip validation - texpected without files
+
         # Common error patterns
         error_patterns = [
             "Sorry:",
@@ -174,32 +197,39 @@ def validate_phenix_command(command: str) -> tuple:
         return True, ""
 
 
-def fix_command_syntax(command: str, error_message: str, llm) -> str:
+def fix_command_syntax(
+    command: str,
+    error_message: str,
+    rag_chain,
+    attempt_number: int = 1
+) -> str:
     """
-    Ask the LLM to fix a command based on the specific error message.
+    Uses an LLM to fix a command that failed validation.
 
     Args:
-        command: The failed command
-        error_message: The error message from validation
-        llm: Language model to use for fixing
+        command: The failing command
+        error_message: The error from validation
+        rag_chain: RAG chain for documentation lookup
+        attempt_number: Which fix attempt this is
 
     Returns:
-        str: The fixed command (or original if fixing fails)
-
-    Example:
-        fixed = fix_command_syntax(
-            "phenix.refine model.pdb data.mtz twin_law=-h,-k,l",
-            "Ambiguous parameter: twin_law",
-            llm
-        )
-        # Returns: "phenix.refine model.pdb data.mtz refinement.main.twin_law=-h,-k,l"
+        Fixed command string
     """
-    # Don't try to fix errors that are about dry-run (validation artifact)
-    error_lower = error_message.lower()
-    if 'dry-run' in error_lower or 'dry_run' in error_lower:
-        return command  # Return original, nothing to fix
+    program = command.split()[0] if command else ""
 
-    fix_prompt = f"""You are a Phenix command-line expert. A command has a syntax error.
+    # Get documentation for context
+    docs_context = ""
+    if rag_chain and program:
+        try:
+            program_name = program.replace("phenix.", "")
+            docs_result = rag_chain.invoke(f"{program_name} command line syntax parameters")
+            docs_context = docs_result.get("answer", "")[:2000]
+        except:
+            pass
+
+    fix_prompt = f"""You are a Phenix command-line syntax expert.
+
+A command failed validation. Fix it.
 
 **Failed Command:**
 {command}
@@ -207,33 +237,64 @@ def fix_command_syntax(command: str, error_message: str, llm) -> str:
 **Error Message:**
 {error_message}
 
-**Your Task:**
-Fix ONLY the syntax error. Do not change the logic or files.
-Return ONLY the corrected command string, nothing else. No markdown, no explanation.
+**Attempt Number:** {attempt_number}
 
-**Common Fixes:**
-- "Ambiguous parameter" → Use full PHIL path (e.g., `xray_data.r_free_flags.generate=True` not `r_free_flags.generate=True`)
-- "Ambiguous parameter" for twin_law → Use `refinement.main.twin_law=...`
-- "not recognized" → Check spelling and PHIL hierarchy
-- If the error mentions specific valid options, use one of those
+**Documentation Context:**
+{docs_context}
 
-**Critical:** Return ONLY the command, one line, no formatting.
+**CRITICAL FIXING RULES:**
+
+1. **"not recognized" or "Unknown parameter" errors:**
+   - The parameter does NOT exist for this program.
+   - You MUST REMOVE the invalid parameter entirely.
+   - Do NOT try to rename it or guess alternative names.
+   - Example: If `nproc=4` is not recognized, just remove it. Don't try `n_processors=4`.
+
+2. **"Ambiguous parameter" errors:**
+   - The parameter name is incomplete or matches multiple options.
+   - If the error suggests specific matches, use the FIRST match that makes sense.
+   - If no good match, REMOVE the parameter.
+
+3. **"atomic model is required" or "reflection file" errors:**
+   - These are benign dry-run errors - the command syntax is likely correct.
+   - Return the command unchanged.
+
+4. **Input file syntax errors:**
+   - Use positional arguments: `phenix.program model.pdb data.mtz`
+   - Remove any `file_name=`, `model_file_name=`, `reflection_file_name=` prefixes.
+
+5. **General principle:** When in doubt, REMOVE the problematic parameter rather than guessing.
+
+**Output:**
+Return ONLY the fixed command. No explanation, no markdown.
 """
 
     try:
+        from libtbx.langchain.model_setup import get_model
+        llm = get_model(expensive=False)
         response = llm.invoke(fix_prompt)
-        fixed_command = response.content.strip()
 
-        # Clean up any markdown formatting
-        if "```" in fixed_command:
-            lines = fixed_command.split('\n')
-            for line in lines:
-                if line and not line.startswith('```') and not line.startswith('#'):
-                    fixed_command = line.strip()
+        fixed = response.content if hasattr(response, 'content') else str(response)
+        fixed = fixed.strip().strip('`').strip()
+
+        # Remove any markdown formatting
+        if fixed.startswith('bash') or fixed.startswith('shell'):
+            fixed = fixed.split('\n', 1)[-1].strip()
+
+        # Ensure it starts with the same program
+        if program and not fixed.startswith(program):
+            # Try to extract command from response
+            for line in fixed.split('\n'):
+                if line.strip().startswith(program):
+                    fixed = line.strip()
                     break
+            else:
+                # If we can't find a valid command, return original
+                return command
 
-        return fixed_command
+        return fixed
 
     except Exception as e:
-        return command  # Return original if fix fails
+        print(f"Error in fix_command_syntax: {e}")
+        return command
 

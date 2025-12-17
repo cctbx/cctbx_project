@@ -133,6 +133,15 @@ def all_label_asym_ids(maximum_length=4):
     rc += ["".join(p) for p in char_upper]
   return rc
 
+def tst_get_input_model_file_name_from_params():
+  from libtbx import group_args
+  params = group_args(
+    input_files=group_args(
+      pdb_in = group_args(test='test'),
+    model =['abcf.pdb','cdef.pdb'],
+    search_model=['abcf.pdb','cdef.pdb'],))
+  print(get_input_model_file_name_from_params(params))
+
 def get_input_model_file_name_from_params(params):
   """Return input model file_name from a parameters object"""
   if not params:
@@ -150,11 +159,18 @@ def get_input_model_file_name_from_params(params):
       elif hasattr(params,s):
         ss = getattr(params,s)
         file_name = getattr(ss,x,None)
-  if type(file_name) in [type([1,2,3]),type((1,2,3))]:
-    if file_name:
-      file_name = file_name[0]
-    else:
-      file_name = ''
+      if file_name and type(file_name) in [type([1,2,3]),type((1,2,3))] and (
+           file_name[0]):
+        file_name = file_name[0]
+      if file_name:
+        try:
+          import os
+          path, ext = os.path.splitext(file_name)
+        except Exception as e:  # if it is not a path, do not use it
+          file_name = ''
+      else:
+        file_name = ''
+
   return file_name
 
 def target_output_format_in_params(params):
@@ -568,9 +584,16 @@ def add_models(model_list, create_new_chain_ids_if_necessary = True):
   if not model_list:
     return None # nothing to do
   new_model_list = []
+  new_model_format = None
+
   for m in model_list:
     if m and (m.get_hierarchy().overall_counts().n_residues > 0):
       new_model_list.append(m)
+      if (not new_model_format) or m._original_model_format == 'mmcif':
+        new_model_format = m._original_model_format
+      elif (not new_model_format) and m._original_model_format:
+        new_model_format = m._original_model_format
+
   model_list = new_model_list
   if not model_list:
     return None # nothing to do
@@ -597,6 +620,8 @@ def add_models(model_list, create_new_chain_ids_if_necessary = True):
 
   if not m_had_crystal_symmetry:
     model = model.get_hierarchy().as_model_manager(crystal_symmetry = None)
+  if new_model_format:
+    model._original_model_format = new_model_format
   return model
 
 def add_model(model, other, create_new_chain_ids_if_necessary = True):

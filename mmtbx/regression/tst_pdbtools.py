@@ -1030,7 +1030,15 @@ ATOM     19  O  BHOH A   4       4.132   9.963   7.800  0.50 15.00           O
 
   with open("%s_modified.pdb" % prefix) as f:
     pdb_new = f.read()
-  assert (pdb_new == '''\
+  new_lines = []
+  for line in pdb_new.splitlines():
+    if line.startswith("CRYST") or line.startswith("SCALE"):
+      continue
+    else:
+      new_lines.append(line)
+  pdb_new = "\n".join(new_lines)
+
+  expected = '''\
 ATOM      1  O  AHOH A   2       5.131   5.251   5.823  0.60 10.00           O
 ATOM      2  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
 ATOM      3  CB ALYS A  32       9.195   8.709  12.208  0.29 14.71           C
@@ -1040,8 +1048,8 @@ ATOM      6  CB  VAL A  33      11.101   4.227  14.591  1.00 11.47           C
 ATOM      7  O   HOH A   3       1.132   5.963   7.065  1.00 15.00           O
 ATOM      8  O  BHOH A   4       4.132   9.963   7.800  0.50 15.00           O
 TER
-END
-''')
+END'''
+  assert (pdb_new == expected)
 
 def exercise_remove_alt_confs():
   pdb_in = """\

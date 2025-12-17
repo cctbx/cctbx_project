@@ -330,9 +330,23 @@ async def generate_next_move(
             input_files_raw = plan.get('input_files', [])
             files_to_check = []
             if isinstance(input_files_raw, str):
-                files_to_check = [f.strip() for f in input_files_raw.replace(',', ' ').split() if '.' in f]
+                raw_files = [f.strip() for f in input_files_raw.replace(',', ' ').split() if '.' in f]
+                # Strip parameter prefixes like "data=", "model=", "ligand=" etc.
+                for f in raw_files:
+                    if '=' in f:
+                        f = f.split('=', 1)[-1]  # Take everything after the '='
+                    # Also strip quotes
+                    f = f.strip('"\'')
+                    if f:
+                        files_to_check.append(f)
             elif isinstance(input_files_raw, list):
-                files_to_check = [str(f).strip() for f in input_files_raw]
+                for f in input_files_raw:
+                    f_str = str(f).strip()
+                    if '=' in f_str:
+                        f_str = f_str.split('=', 1)[-1]
+                    f_str = f_str.strip('"\'')
+                    if f_str:
+                        files_to_check.append(f_str)
 
             # A. Build List of Available Files
             available_files = set()
@@ -474,6 +488,30 @@ async def generate_next_move(
 
         command = fixed_command
         is_valid, error = validate_phenix_command(command)
+
+    # Mechanical fallback: strip unrecognized parameters if LLM fix failed
+    if not is_valid and ("not recognized" in error.lower() or
+                          "unknown" in error.lower() or
+                          "ambiguous" in error.lower()):
+        import re
+        # Try to extract and remove the bad parameter
+        patterns = [
+            r"parameter.*?:\s*(\w+)\s*=",
+            r"definition:\s*(\w+)\s*=",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, error, re.IGNORECASE)
+            if match:
+                bad_param = match.group(1)
+                stripped = re.sub(rf'\s*\b{bad_param}\s*=\s*\S+', '', command)
+                stripped = ' '.join(stripped.split())
+                if stripped != command:
+                    log(f" Stripping invalid parameter '{bad_param}'...")
+                    is_valid, error = validate_phenix_command(stripped)
+                    if is_valid:
+                        command = stripped
+                        log(f" ✓ Parameter strip succeeded")
+                    break
 
     if not is_valid:
         log(f" WARNING: Command still invalid after {max_fix_attempts} attempts")

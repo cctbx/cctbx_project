@@ -16,7 +16,6 @@ from __future__ import absolute_import, division, print_function
 
 from langchain_core.prompts import PromptTemplate
 
-
 def get_strategic_planning_prompt() -> PromptTemplate:
     """
     Returns the prompt for strategic planning - deciding what program to run next.
@@ -43,17 +42,71 @@ def get_strategic_planning_prompt() -> PromptTemplate:
     4. **Do NOT use `phenix.predict_model` or `phenix.predict_chain`**: Use `phenix.predict_and_build` with the keyword `stop_after_predict=True`.
     5. **Do NOT try to include ligands in `predict_and_build`**: Fit ligands separately after initial model building using `phenix.ligandfit`.
 
-**LIGAND TOOLS (When user provides a ligand file):**
-    - **For fitting a known ligand into density:** Use `phenix.ligandfit` with:
+    **LIGAND TOOLS (When user provides a ligand file):**
+    - **For fitting a known ligand into density with xray data:** Use `phenix.ligandfit` with:
       - `model=<refined_model.pdb>` - the protein model
       - `data=<map_coeffs.mtz>` - MTZ file with map coefficients (use `*_map_coeffs.mtz` files, NOT `*_refinement.mtz`)
       - `ligand=<ligand.pdb>` - the ligand coordinates
       - For map coefficients from predict_and_build: use `input_labels="FP PHIFP"`
       - For map coefficients from phenix.refine: use `input_labels="2FOFCWT PH2FOFCWT"`
-    - **After ligandfit:** The output `ligand_fit_1.pdb` contains ONLY the fitted ligand. Before refinement, you MUST combine it with the protein model.
-    - **To combine protein and ligand PDB files:** If the files are pdb (not cif) you can use simple shell concatenation: `cat protein.pdb ligand.pdb > complex.pdb` OR you can always use `phenix.pdbtools` with multiple input files. Do NOT use `phenix.combine_models` for this - it is designed for combining models from different sources/methods, not simple concatenation.
-    - **Ligand workflow:** Model building -> ligandfit -> Combine protein+ligand (cat or pdbtools) -> phenix.refine with combined model.
+    - **For fitting a known ligand into density with cryo-EM data:** Use `phenix.ligandfit` with:
+      - `model=<refined_model.pdb>` - the protein model
+      - `data=<cryo-em-map.ccp4>` - CCP4 or mrc file with map
+      - `ligand=<ligand.pdb>` - the ligand coordinates
 
+    **AFTER SUCCESSFUL LIGANDFIT - REQUIRED NEXT STEPS:**
+
+    When `phenix.ligandfit` completes successfully:
+    1. The output `ligand_fit_1.pdb` contains ONLY the fitted ligand coordinates
+    2. You must COMBINE the protein model and fitted ligand into one file
+    3. Then run final refinement on the combined complex
+
+    **Step-by-step workflow after ligandfit:**
+```
+    Step 1: Combine protein + ligand
+       phenix.pdbtools overall_best.pdb ligand_fit_1.pdb output.file_name=complex.pdb
+
+    Step 2: Final refinement
+       phenix.refine complex.updated.pdb data.mtz <optional: refinement.input.xray_data.r_free_flags.generate=True>
+```
+
+    **NEVER re-run ligandfit after it succeeds.** If ligandfit worked, proceed to combining and refining.
+
+    **Common mistake:** Trying to run ligandfit again because the fit was "incomplete" (e.g., 20/40 atoms).
+    This is often acceptable - proceed with combining and refinement. The refinement will optimize the ligand position.
+
+
+    **PHENIX.REFINE SYNTAX (Common errors to avoid):**
+    - **Input files are positional:** Use `phenix.refine model.pdb data.mtz` NOT `phenix.refine file_name=model.pdb`
+    - **Do NOT use `model_file_name=`, `reflection_file_name=`, or `file_name=`** for input files - these cause errors
+    - **Do NOT use `main.nproc=4`** - use `nproc=4` or omit entirely
+    - **Working command:** `phenix.refine model.pdb data.mtz xray_data.r_free_flags.generate=True`
+    - **With resolution:** `phenix.refine model.pdb data.mtz xray_data.high_resolution=2.9 xray_data.r_free_flags.generate=True`
+
+    **PHENIX.MTRIAGE SYNTAX (Common errors to avoid):**
+    - **Working command:** `phenix.mtriage map.ccp4`
+    - **With half-maps :** `phenix.mtriage half_map=map_1.ccp4 half_map=map_2.ccp4`
+    - **With full and half-maps :** `phenix.mtriage map=map.ccp4 half_map=map_1.ccp4 half_map=map_2.ccp4`
+
+    **PHENIX.PHASER SYNTAX (Common errors to avoid):**
+    - **Do NOT use `search.copies=N`** - this causes AssertionError. Let Phaser determine copies automatically, or use `phaser.mode=MR_AUTO`
+    - **Working command:** `phenix.phaser data.mtz model.pdb sequence.fa phaser.mode=MR_AUTO`
+    - **With resolution:** `phenix.phaser data.mtz model.pdb sequence.fa phaser.mode=MR_AUTO phaser.keywords.resolution.high=2.9`
+
+    **PHENIX.PREDICT_AND_BUILD RESOLUTION (Common errors to avoid):**
+    - **If you are running a full predict_and_build run (stop_after_predict=False) AND this is CRYO-EM data, you must supply a value for resolution. Do not supply a resolution value less than 2.0 unless the user has specifically told you to do so.
+
+    **MANDATORY PRE-REFINEMENT CHECK (READ BEFORE EVERY phenix.refine DECISION):**
+
+    BEFORE you decide to run `phenix.refine`, you MUST check the command history:
+    1. Find the command that created the model you want to refine
+    2. Look for `stop_after_predict=True` in that command
+
+    If `stop_after_predict=True` was used:
+    DO NOT run phenix.refine - it WILL FAIL with "space group mismatch"
+    Run phenix.phaser FIRST to place the model
+
+    This applies to ALL output files from that command, including `*_rebuilt.pdb`
 
     **ANALYSIS PROTOCOL (Follow in Order):**
 
@@ -73,19 +126,55 @@ def get_strategic_planning_prompt() -> PromptTemplate:
        - **Did it succeed?**
          -> **ACTION:** Move to Protocol #3.
 
-    3. **DEADLOCK CHECK (Symmetry):**
+    3. **MODEL PLACEMENT CHECK (CRITICAL - STOP AND READ BEFORE ANY phenix.refine):**
+
+
+       If you are considering running `phenix.refine`, STOP and answer these questions:
+
+       a) What command created the model you want to refine?
+       b) Did that command include `stop_after_predict=True`?
+
+       If YES to (b): DO NOT RUN phenix.refine. The model is UNPLACED (space group P1).
+       You MUST run `phenix.phaser` or another program first to place it in the crystal unit cell.
+
+       Models from `stop_after_predict=True` include ALL files in the output:
+       - `*_predicted_*.pdb` files - UNPLACED
+       - `*_rebuilt.pdb` files - UNPLACED (despite the name!)
+
+       Only after Phaser outputs `PHASER.*.pdb` can you run phenix.refine.
+
+       **Correct workflow when stop_after_predict=True:**
+       1. predict_and_build (stop_after_predict=True) -> Creates UNPLACED models in P1
+       2. phenix.phaser -> Places the model, outputs PHASER.*.pdb in correct space group
+       3. phenix.refine -> Now refinement will work
+
+       **NEVER do this:**
+       predict_and_build (stop_after_predict=True) -> phenix.refine (WILL FAIL!)
+
+       **Common mistake:** The file `*_rebuilt.pdb` from stop_after_predict=True is still UNPLACED.
+       Do not be fooled by the filename - check the command that created it!
+
+
+    4. **DEADLOCK CHECK (Symmetry):**
        - **Did a previous attempt to change the space group FAIL?** (e.g. "Incompatible unit cell").
        - **OR has Xtriage already been run multiple times?**
          -> **HARD STOP:** The lattice cannot support the higher symmetry.
          -> **REQUIRED ACTION:** Abandon re-indexing. Proceed using the **ORIGINAL (Input)** space group.
          -> **STRATEGY:** Explicitly handle this as a **TWINNING** case in the lower symmetry.
 
-    4. **PIPELINE ORDER:**
-       - **Standard:** Data Analysis (Xtriage) -> Phasing (Phaser/predict_and_build) -> Refinement -> Validation.
-       - **With Ligand:** Data Analysis -> Phasing -> Initial Refinement -> **Ligand Fitting** -> Final Refinement -> Validation.
-       - Do not skip to Refinement if Phasing failed or hasn't run.
+    5. **PIPELINE ORDER:**
+       - **Xray automated AlphaFold (RECOMMENDED):** Data Analysis (Xtriage) -> Prediction, molecular replacement and rebuilding (PredictAndBuild with stop_after_predict=False) -> Refinement -> Optional ligand fitting -> Validation.
+       - **Xray step-by-step AlphaFold:** Data Analysis (Xtriage) -> Prediction (PredictAndBuild with stop_after_predict=True) -> **Molecular replacement (Phaser) [REQUIRED - model not placed yet!]** -> Rebuilding (AutoBuild) -> Refinement -> Optional ligand fitting -> Validation.
+       - **Xray experimental phasing:** Data Analysis (Xtriage) -> Phasing (AutoSol) -> Refinement -> Optional ligand fitting -> Validation.
+       - **Cryo automated AlphaFold:** Data Analysis (Mtriage) -> Prediction, docking, and refinement (PredictAndBuild) -> Refinement -> Optional ligand fitting -> Validation.
+       - **Cryo EM step-by-step AlphaFold:** Data Analysis (Mtriage) -> Prediction (PredictAndBuild with stop_after_predict=True) -> Docking (DockInMap or EMPlacement) -> Refinement -> Optional ligand fitting -> Validation.
+
+       **CRITICAL:** If `stop_after_predict=True` was used, the predicted model is in an arbitrary orientation. You MUST run Phaser (X-ray) or DockInMap (CryoEM) before refinement. Skipping this step will cause refinement to fail or produce garbage results.
+
+       - In Xray analysis do not skip to Refinement if Phasing/MR failed or hasn't run.
+       - In Cryo EM analysis do not skip to Refinement if docking failed or hasn't run.
        - **MODEL GENERATION:** If you have a sequence but no model, run `phenix.predict_and_build` (`stop_after_predict=True`).
-       - **LIGAND FITTING:** If Original Files include a ligand file (e.g., `*_ligand.pdb`, `*_ligand.cif`, or user mentions "ligand"), run `phenix.ligandfit` AFTER initial refinement to place the ligand into density.
+       - **LIGAND FITTING:** If Original Files include a ligand file (e.g., `*_ligand.pdb`, `*_ligand.cif`, or user mentions "ligand"), run `phenix.ligandfit` AFTER refinement to place the ligand into density.
 
     **FILE REALITY PROTOCOL (Strict):**
     1. **Existing Files Only:** You can ONLY use files explicitly listed in "Original Input Files" OR the "Project History".
@@ -114,7 +203,6 @@ def get_strategic_planning_prompt() -> PromptTemplate:
         input_variables=["num_runs", "history", "project_advice", "original_files", "project_state"]
     )
 
-
 def get_command_writer_prompt() -> PromptTemplate:
     """
     Returns the prompt for constructing valid Phenix command lines.
@@ -122,7 +210,7 @@ def get_command_writer_prompt() -> PromptTemplate:
     template = """You are a Phenix Command-Line Expert.
     Your task is to construct a valid command line for "{program}".
 
-    **USER'S SPECIFIC INSTRUCTIONS (HIGHEST PRIORITY):**
+    **USER'S SPECIFIC INSTRUCTIONS:**
     {project_advice}
 
     **The Strategy:**
@@ -134,24 +222,33 @@ def get_command_writer_prompt() -> PromptTemplate:
     **Original Input Files (Look here for paths):**
     {original_files}
 
-    **Reference Documentation:**
+    **VALID PARAMETERS FOR THIS PROGRAM (from phenix documentation):**
     {valid_keywords}
 
     **LEARNED HISTORY (Mistakes from previous runs):**
     {learned_tips}
 
-    **CRITICAL RULES:**
-    1. **USER INSTRUCTIONS FIRST:** If the user gave specific instructions above (e.g., "use nproc=4", "use quick mode"), you MUST include those parameters.
-    2. **PATH RESOLUTION (Crucial):** If a file in "Input Files" (e.g. `data.mtz`) matches a file in "Original Input Files" (e.g. `subdir/data.mtz`), you MUST use the FULL PATH from the Original list. Do NOT use bare filenames if a path is known.
-    3. **Prioritize History:** If "LEARNED HISTORY" warns about a specific syntax error, you MUST follow that advice.
-    4. **Follow the Reference:** Use the syntax rules found in the "Reference Documentation".
-    5. **Syntax Priority:**
-       - **Default:** Standard Phenix uses `key=value`.
-       - **Exception:** If Reference says to use double-dashes `--flag`), use that.
-    6. **Completeness:** Ensure every defined object has an action.
+    **CRITICAL RULES (in order of priority):**
+
+    1. **PARAMETER VALIDATION (HIGHEST PRIORITY - VIOLATIONS CAUSE CRASHES):**
+       - You may ONLY use parameters that appear in "VALID PARAMETERS FOR THIS PROGRAM" above.
+       - If the user requested a parameter (like `nproc=4` or "use 4 processors") but that parameter does NOT appear in the valid parameters list for this specific program, you MUST OMIT IT ENTIRELY.
+       - Do NOT invent alternative parameter names. If `nproc` isn't listed, don't try `n_processors`, `main.nproc`, `num_processors`, etc.
+       - This rule OVERRIDES user instructions. Invalid parameters cause the program to crash.
+       - When in doubt, leave the parameter out.
+
+    2. **PATH RESOLUTION:** If a file in "Input Files" matches one in "Original Input Files", use the FULL PATH from Original Input Files.
+
+    3. **LEARNED HISTORY:** If history warns about a specific syntax error, follow that advice.
+
+    4. **INPUT FILE SYNTAX:**
+       - Most Phenix programs use positional arguments for input files: `phenix.program model.pdb data.mtz`
+       - Do NOT use `file_name=`, `model_file_name=`, `reflection_file_name=` unless the valid parameters explicitly show this syntax.
+
+    5. **USER INSTRUCTIONS:** Apply user instructions (resolution, etc.) ONLY if the corresponding parameter exists in the valid parameters list.
 
     **Output:**
-    Provide ONLY the command string. No markdown.
+    Provide ONLY the command string. No markdown, no explanations, no commentary.
     """
     return PromptTemplate(
         template=template,
@@ -161,7 +258,6 @@ def get_command_writer_prompt() -> PromptTemplate:
             "project_advice"
         ]
     )
-
 
 def get_keywords_prompt() -> PromptTemplate:
     """

@@ -50,6 +50,8 @@ USAGE_HINTS = {
         "CRITICAL: If you need to generate R-free flags, use the full path: `xray_data.r_free_flags.generate=True`."
         "CRITICAL: Include twinning in refinement ONLY if twinning is definitely present and the twin fraction is at least 0.20."
         "CRITICAL: To specify twinning: use the full path: `refinement.twinning.twin_law=...`"
+        "CRITICAL: To specify resolution: use the full path: `xray_data.high_resolution==...`"
+        "CRITICAL: To specify nproc: use the full path: `refinement.main.nproc=...`"
     ),
 }
 

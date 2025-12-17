@@ -422,6 +422,8 @@ class AgentSession:
             str: Log text for summarization
         """
         lines = [
+            f"WORKING DIRECTORY:{os.getcwd()}",
+            "COMMAND THAT WAS RUN: phenix.run_agent",
             "PHENIX AGENT SESSION LOG",
             f"Project Advice: {self.data.get('project_advice', 'None')}",
             f"Original Files: {', '.join(self.data.get('original_files', []))}",
