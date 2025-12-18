@@ -14,7 +14,7 @@ ext = bp.import_ext("cctbx_maptbx_bcr_bcr_ext")
 
 def load_table(element, table):
   element = element.strip().upper()
-  assert element in ["C","H","N","O","S"]
+  assert element in ["C","H","N","O","S","P"]
   path=libtbx.env.find_in_repositories("cctbx/maptbx/bcr/tables")
   file_name = "%s/%s_%s.json"%(path, element, table)
   assert os.path.isfile(file_name)
