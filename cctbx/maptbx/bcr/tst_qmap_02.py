@@ -4,6 +4,7 @@ import iotbx.pdb
 from cctbx.maptbx.bcr import qmap
 from cctbx import maptbx
 import time
+import iotbx.map_manager
 
 import boost_adaptbx.boost.python as bp
 ext = bp.import_ext("cctbx_maptbx_bcr_bcr_ext")
