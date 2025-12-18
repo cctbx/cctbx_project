@@ -503,7 +503,7 @@ def type_of_pdb_input(pdb_inp):
 def try_to_get_hierarchy(pdb_inp):
     """Try to get a hierarchy from a pdb_inp object"""
     try:
-      return pdb_inp.construct_hierarchy()
+      return pdb_inp.construct_hierarchy(sort_atoms=False)
     except Exception as e: # nothing there
       if str(e).find("something is not present") > -1:  # was empty hierarchy
         # NOTE this text is in modules/cctbx_project/iotbx/pdb/mmcif.py
