@@ -405,8 +405,15 @@ public:
                  ix0       = ix;
               }
               else if(r2zyx <= RadAtom2) {
-                 FloatType rzyx  = std::sqrt(r2zyx);
-                 FloatType rzyx2 = rzyx * 2;
+                 FloatType rzyx, rzyx2;
+                 if (r2zyx < 0.0) {
+                   rzyx  = 0.0;
+                   rzyx2 = 0.0;
+                 }
+                 else {
+                   rzyx  = std::sqrt(r2zyx);
+                   rzyx2 = rzyx * 2;
+                 }
                  AtomGrids.push_back({r2zyx, rzyx, rzyx2, ix, iy, iz});
               }
               r2zyx = r2zyx + cx;
@@ -444,9 +451,7 @@ public:
         // contribution to the node coinciding with the atomic center
         if(ix0 >= 0) {
           FloatType argg  = musq / nuatom2;
-          //FloatType fact2 = std::exp(-argg);
           FloatType fact2 = myexp(-argg);
-
           GridValue0 = GridValue0 + fact1 * fact2;
         }
         // contribution to nodes different from the atomic center
@@ -454,20 +459,17 @@ public:
           for (int ig = 0; ig < Ngrids; ++ig) {
             AtomGridEntry ag = AtomGrids[ig];
             FloatType argg  = ag.r2zyx / nuatom2;
-            //FloatType fact2 = std::exp(-argg);
             FloatType fact2 = myexp(-argg);
-
             GridValues[ig] = GridValues[ig] + fact1 * fact2;
           }
         }
         else {
           for (int ig = 0; ig < Ngrids; ++ig) {
             AtomGridEntry ag = AtomGrids[ig];
+            if(std::abs(ag.rzyx2)<1.e-9) { continue; }
             FloatType tterm   = ag.rzyx2 * munuat;
             FloatType argg  = std::pow(ag.rzyx-mu, 2) / nuatom2;
-            //FloatType fact2 = std::exp(-argg) * (1.0 - std::exp(-tterm)) / tterm;
             FloatType fact2 = myexp(-argg) * (1.0 - myexp(-tterm)) / tterm;
-
             GridValues[ig] = GridValues[ig] + fact1 * fact2;
           }
         }
