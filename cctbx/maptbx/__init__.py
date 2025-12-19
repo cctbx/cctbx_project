@@ -25,6 +25,7 @@ from scitbx import fftpack
 from libtbx.test_utils import approx_equal
 from cctbx import uctbx
 import scitbx.math
+from cctbx.maptbx.bcr import bcr
 
 debug_peak_cluster_analysis = os.environ.get(
   "CCTBX_MAPTBX_DEBUG_PEAK_CLUSTER_ANALYSIS", "")
@@ -1512,7 +1513,7 @@ Fourier image of specified resolution, etc.
                  kprot = 112,
                  ):
     b_iso = 0 # Must always be 0! All image vals below are for b_iso=0 !!!
-    from cctbx.maptbx.bcr import bcr
+
     im = self.image(
       d_min=d_min, b_iso=0, radius_max=radius_max, radius_step=radius_step)
     bpeak, cpeak, rpeak, _,_,_,_ = bcr.get_BCR(
@@ -1527,27 +1528,8 @@ Fourier image of specified resolution, etc.
       kprot = kprot,
       nfmes = None,
       )
-    #
-    bcr_approx_values = flex.double()
-    # FILTER
-    bpeak_, cpeak_, rpeak_ = [],[],[]
-    for bi, ci, ri in zip(bpeak, cpeak, rpeak):
-      if(abs(bi)<1.e-6 or abs(ci)<1.e-6): continue
-      else:
-        bpeak_.append(bi)
-        cpeak_.append(ci)
-        rpeak_.append(ri)
-    bpeak, cpeak, rpeak = bpeak_, cpeak_, rpeak_
-    #
-    for r in im.radii:
-      first = 0
-      second = 0
-      for B, C, R in zip(bpeak, cpeak, rpeak):
-        if(abs(R)<1.e-6):
-          first += bcr.gauss(B=B, C=C, r=r, b_iso=0)
-        else:
-          second += C*bcr.chi(B=B, R=R, r=r, b_iso=0)
-      bcr_approx_values.append(first + second)
+    bcr_approx_values = bcr.curve(
+      B=bpeak, C=cpeak, R=rpeak, radii=im.radii, b_iso=0)
     return group_args(
       radii             = im.radii,
       image_values      = im.image_values,

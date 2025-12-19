@@ -28,6 +28,28 @@ def chi(B, R, r, b_iso):
     e2 = math.exp(mfpsob*(r+R)**2)
     return (4*math.pi*B)**(-0.5) * (1/(r*R)) * (e1-e2)
 
+def curve(B, C, R, radii, b_iso=0):
+  result = flex.double()
+  # FILTER
+  B_, C_, R_ = [],[],[]
+  for bi, ci, ri in zip(B, C, R):
+    if(abs(bi)<1.e-6 or abs(ci)<1.e-6): continue
+    else:
+      B_.append(bi)
+      C_.append(ci)
+      R_.append(ri)
+  #
+  for r in radii:
+    first = 0
+    second = 0
+    for bi, ci, ri in zip(B_, C_, R_):
+      if(abs(ri)<1.e-6):
+        first += gauss(B=bi, C=ci, r=r, b_iso=b_iso)
+      else:
+        second += ci*chi(B=bi, R=ri, r=r, b_iso=b_iso)
+    result.append(first + second)
+  return result
+
 class calculator(object):
 
   def __init__(self, npeak,dens,yc,dist,nfmes, x, mdist,edist,
