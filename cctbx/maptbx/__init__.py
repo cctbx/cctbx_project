@@ -1447,7 +1447,7 @@ def atom_image(ff_packed, d_min, n_grid, dist_max, scaled=False):
   #
   DistImage  = dist_max + 1.0
   StepImage  = dist_max / n_grid
-  def _SFactG(ScatAtom,Resolution,NSgrid) :
+  def SFactG(ScatAtom,Resolution,NSgrid) :
     ScatFunc = [0.0 for ig in range(NSgrid+1)]
     Smax    = 1.0 / Resolution
     dsstep  = Smax / NSgrid
