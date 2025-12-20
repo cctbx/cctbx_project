@@ -1545,7 +1545,7 @@ def atom_image(ff_packed, d_min, n_grid, dist_max, scaled=False):
     DistImage = DistImage*d_min
     StepImage = StepImage*d_min
   return AtomImage(
-    ScatFunc   = ff_packed,
+    ScatFunc   = ScatFunc,
     Resolution = d_min,
     DistImage  = DistImage,
     StepImage  = StepImage)
