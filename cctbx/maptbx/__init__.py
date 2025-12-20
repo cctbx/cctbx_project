@@ -1441,6 +1441,80 @@ def atom_radius_as_central_peak_width(element, b_iso, d_min, scattering_table):
   assert radius is not None
   return radius
 
+def atom_image(ff_packed, d_min, n_grid, dist_max, scaled=False):
+  #
+  # ff_packed is array_of_a() + c() + array_of_b() + (0,)
+  #
+  DistImage  = dist_max + 1.0
+  StepImage  = dist_max / n_grid
+  def _SFactG(ScatAtom,Resolution,NSgrid) :
+    ScatFunc = [0.0 for ig in range(NSgrid+1)]
+    Smax    = 1.0 / Resolution
+    dsstep  = Smax / NSgrid
+    NGauss  = int(len(ScatAtom) / 2)
+    for isg in range(NSgrid+1) :
+      sg   = dsstep * isg
+      ss24 = sg * sg / 4.0
+      fact = 0.0
+      for ig in range(NGauss) :
+        argexp = ScatAtom[ig + NGauss] * ss24
+        fact  += ScatAtom[ig] * math.exp(-argexp)
+      ScatFunc[isg] = fact
+    return ScatFunc
+  def AtomImage(ScatFunc,Resolution,DistImage,StepImage) :
+    NImage = int(DistImage/StepImage) + 1
+    NSGrid = len(ScatFunc) - 1
+    Smax   = 1.0 / Resolution
+    SStep  = Smax / NSGrid
+    Image = [0.0 for j in range(NImage+1)]
+    dx = 2. * math.pi * StepImage
+    # integrate scattering curve
+    # odd points
+    for igs in range(1, NSGrid, 2):
+      ss     = SStep * igs
+      fatoms = ScatFunc[igs] * ss * 4.
+      for ir in range(1,NImage):
+        rr   = dx * ir
+        arg  = rr * ss
+        sarg = math.sin(arg)
+        Image[ir] = Image[ir] + fatoms * sarg
+      Image[0] = Image[0] + fatoms * ss
+    # even points
+    for igs in range(2, NSGrid-1, 2):
+      ss     = SStep * igs
+      fatoms = ScatFunc[igs] * ss * 2.
+      for ir in range(1,NImage):
+        rr   = dx * ir
+        arg  = rr * ss
+        sarg = math.sin(arg)
+        Image[ir] = Image[ir] + fatoms * sarg
+      Image[0] = Image[0] + fatoms * ss
+    # terminal point (point s = 0 gives zero contribution and is ignored)
+    ss     = SStep * NSGrid
+    fatoms = ScatFunc[NSGrid] * ss
+    for ir in range(1,NImage):
+      rr   = dx * ir
+      arg  = rr * ss
+      sarg = math.sin(arg)
+      Image[ir] = Image[ir] + fatoms * sarg
+    Image[0] = Image[0] + fatoms * ss
+    # ---- normalisation ----
+    scal = 2.0 * SStep / 3.0
+    for ir in range(1,NImage):
+      rr = ir * StepImage
+      Image[ir] = Image[ir] * scal / rr
+    Image[0] = Image[0] * SStep * 4. * math.pi / 3.
+    return Image
+  ScatFunc = SFactG(ScatAtom=ff_packed, Resolution=d_min, NSgrid=n_grid)
+  if scaled:
+    DistImage = DistImage*d_min
+    StepImage = StepImage*d_min
+  return AtomImage(
+    ScatFunc   = ff_packed,
+    Resolution = d_min,
+    DistImage  = DistImage,
+    StepImage  = StepImage)
+
 class atom_curves(object):
   """
 Class-toolkit to compute various 1-atom 1D curves: exact electron density,
