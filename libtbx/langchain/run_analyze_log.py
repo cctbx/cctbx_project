@@ -320,9 +320,9 @@ def run(file_name = None,
              try:
                  s = simple_string_as_text(project_state_json)
                  project_state = json.loads(s)
-             except:
+             except Exception as e:
                  project_state = json.loads(project_state_json)
-        except: pass
+        except Exception as e: pass
 
     # --- Extract Updates ---
     state_updates = {}
@@ -451,7 +451,7 @@ def run(file_name = None,
                         try:
                             with open(fpath, 'r') as f:
                                 past_history.append(json.load(f))
-                        except: pass
+                        except Exception as e: pass
 
             # 3. Append Current Run
             if something_to_analyze:

@@ -1,7 +1,6 @@
 from __future__ import division
 import asyncio
 from libtbx.langchain import langchain_tools as lct
-import sys
 
 def run():
     # --- 1. Setup ---

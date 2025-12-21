@@ -264,7 +264,6 @@ def get_phenix_program_list() -> list:
     Returns a sorted list of all available Phenix programs.
     Scans the bin directory associated with the current environment.
     """
-    import sys
 
     # Attempt to find the bin directory
     import libtbx.load_env
@@ -310,7 +309,7 @@ def load_learned_memory(memory_file="phenix_learned_memory.json"):
         try:
             with open(memory_file, 'r') as f:
                 return json.load(f)
-        except:
+        except Exception as e:
             pass
     return {}
 
@@ -1525,7 +1524,7 @@ def extract_output_files(summary_text):
                 # Basic validation: must look like a file
                 if clean and '.' in clean and len(clean) > 2:
                     files.append(clean)
-    except:
+    except Exception as e:
         pass
     return files
 

@@ -224,7 +224,7 @@ def fix_command_syntax(
             program_name = program.replace("phenix.", "")
             docs_result = rag_chain.invoke(f"{program_name} command line syntax parameters")
             docs_context = docs_result.get("answer", "")[:2000]
-        except:
+        except Exception as e:
             pass
 
     fix_prompt = f"""You are a Phenix command-line syntax expert.

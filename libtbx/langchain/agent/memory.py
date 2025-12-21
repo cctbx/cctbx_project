@@ -66,7 +66,7 @@ def load_learned_memory(memory_file="phenix_learned_memory.json"):
         try:
             with open(memory_file, 'r') as f:
                 return json.load(f)
-        except:
+        except Exception as e:
             pass
     return {}
 

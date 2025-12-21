@@ -62,7 +62,7 @@ def extract_output_files(summary_text):
             # Extract filenames (simple pattern)
             import re
             files = re.findall(r'[\w\-\.]+\.\w{2,4}', content)
-    except:
+    except Exception as e:
         pass
     return files
 
