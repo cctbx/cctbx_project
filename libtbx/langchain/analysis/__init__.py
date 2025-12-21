@@ -45,4 +45,3 @@ __all__ = [
     # Log info
     'get_log_info',
 ]
-

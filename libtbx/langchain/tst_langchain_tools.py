@@ -480,4 +480,3 @@ class TestIntegration(unittest.TestCase):
 if __name__ == '__main__':
     # Run with verbosity
     unittest.main(verbosity=2)
-

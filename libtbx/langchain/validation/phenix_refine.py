@@ -53,4 +53,3 @@ class RefineValidator(ProgramValidator):
                 "example": "refinement.main.number_of_macro_cycles=5"
             }
         }
-

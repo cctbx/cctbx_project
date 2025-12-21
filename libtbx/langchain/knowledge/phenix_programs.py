@@ -104,4 +104,3 @@ def get_keywords_as_phil_string(program: str) -> str:
         return hint_text + none_text
 
     return f"ERROR: Could not extract keywords for {program}. It might not be in the path."
-

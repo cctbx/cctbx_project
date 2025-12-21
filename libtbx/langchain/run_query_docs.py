@@ -74,4 +74,3 @@ def run(query_text=None, output_file_path=None, db_dir=None,
 if __name__ == "__main__":
     query_text = " ".join(sys.argv[1:])
     run(query_text=query_text)
-

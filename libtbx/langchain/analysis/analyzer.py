@@ -203,4 +203,3 @@ async def analyze_log_summary(log_info, llm, embeddings,
             analysis=None,
             error=error_message
         )
-

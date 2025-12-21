@@ -493,4 +493,3 @@ SUMMARY:"""
         """Reset the session (start fresh)."""
         self._init_new_session()
         self.save()
-

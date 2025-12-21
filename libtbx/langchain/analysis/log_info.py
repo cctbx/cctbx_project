@@ -101,4 +101,3 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120,
 
         print(error_message)
         return group_args(group_args_type='error', error=error_message)
-

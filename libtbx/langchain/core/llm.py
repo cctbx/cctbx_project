@@ -107,4 +107,3 @@ def get_llm_and_embeddings(
         raise ValueError(f"Unsupported provider: '{provider}'. Choose 'google' or 'openai'.")
 
     return llm, embeddings
-

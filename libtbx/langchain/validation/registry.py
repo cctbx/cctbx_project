@@ -74,4 +74,3 @@ def register_validator(validator: ProgramValidator) -> None:
         register_validator(MyValidator())
     """
     _VALIDATORS[validator.program_name] = validator
-

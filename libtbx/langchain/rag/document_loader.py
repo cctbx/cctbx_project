@@ -206,4 +206,3 @@ def load_specific_docs(file_path_list: List[str]) -> List[Document]:
 
     print(f"Successfully loaded content from {len(all_docs)} documents.")
     return all_docs
-

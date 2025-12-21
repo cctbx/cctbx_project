@@ -70,4 +70,3 @@ KNOWN_ISSUES = {
     "Couldn't find array": "ACTION: The data label is wrong. Do NOT run xtriage. Check the history (previous Xtriage logs) for valid labels (e.g. I-obs) and retry.",
     "MTZ file read error": "ACTION: The file path is incorrect or missing. Check 'Original Input Files' and use the FULL PATH (e.g. `dir/data.mtz`) instead of the bare filename."
 }
-

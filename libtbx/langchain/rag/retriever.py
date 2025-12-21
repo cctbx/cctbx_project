@@ -164,4 +164,3 @@ def create_keyword_lookup_chain(retriever, llm, prompt: PromptTemplate):
         | llm
     )
     return chain
-

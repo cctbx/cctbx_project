@@ -127,4 +127,3 @@ def query_docs(query_text, llm=None, embeddings=None,
 
     print("Query docs failed...")
     return None
-

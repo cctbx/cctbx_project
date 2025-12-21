@@ -238,4 +238,3 @@ def get_run_history(log_directory, max_history=5):
         history = history[-max_history:]
 
     return history
-

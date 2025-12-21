@@ -73,4 +73,3 @@ def get_processed_log_dict(log_text: str,
         'summary': summary
     }
     return dd
-

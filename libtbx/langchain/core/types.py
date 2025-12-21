@@ -193,4 +193,3 @@ class NextMove:
     def success(self) -> bool:
         """Returns True if planning succeeded (no error)."""
         return self.error is None and self.command != ""
-

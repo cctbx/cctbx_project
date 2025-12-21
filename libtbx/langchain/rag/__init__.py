@@ -40,4 +40,3 @@ __all__ = [
     'create_log_analysis_chain',
     'create_keyword_lookup_chain',
 ]
-

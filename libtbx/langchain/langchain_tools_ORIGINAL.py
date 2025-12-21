@@ -1913,4 +1913,3 @@ async def generate_next_move(
         process_log="\n".join(process_log),
         error=None
     )
-

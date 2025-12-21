@@ -118,4 +118,3 @@ def create_and_persist_db(
 
     print(f"Database stored in: {db_dir}")
     return vectorstore
-

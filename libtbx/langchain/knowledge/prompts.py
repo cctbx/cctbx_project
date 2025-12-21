@@ -320,4 +320,3 @@ Question:
 {input}
 """
     return PromptTemplate(template=template, input_variables=["context", "input"])
-

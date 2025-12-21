@@ -70,4 +70,3 @@ if __name__ == "__main__":
         provider = sys.argv[2]
 
     run(db_dir=db_dir, provider=provider)
-

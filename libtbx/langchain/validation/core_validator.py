@@ -297,4 +297,3 @@ Return ONLY the fixed command. No explanation, no markdown.
     except Exception as e:
         print(f"Error in fix_command_syntax: {e}")
         return command
-

@@ -46,4 +46,3 @@ __all__ = [
     'get_all_validators',
     'register_validator',
 ]
-

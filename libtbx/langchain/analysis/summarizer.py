@@ -252,4 +252,3 @@ async def summarize_log_text(
         log_summary=final_output,
         error=None
     )
-

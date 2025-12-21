@@ -104,4 +104,3 @@ def add_rfree_generation_if_needed(command: str, program: str) -> str:
         command += " xray_data.r_free_flags.generate=True"
 
     return command
-

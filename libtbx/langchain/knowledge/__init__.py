@@ -29,4 +29,3 @@ __all__ = [
     'get_keywords_prompt',
     'get_docs_query_prompt',
 ]
-

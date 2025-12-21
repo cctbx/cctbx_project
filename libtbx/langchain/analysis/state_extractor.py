@@ -106,4 +106,3 @@ async def extract_project_state_updates(log_summary, current_state, llm):
     except Exception as e:
         print(f"State extraction failed: {e}")
         return {}
-

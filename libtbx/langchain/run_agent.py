@@ -7,7 +7,7 @@ import json
 import time
 
 # Force using local library if needed
-sys.path.insert(0, ".") 
+sys.path.insert(0, ".")
 import langchain_tools as lct
 
 def get_run_history(log_directory, max_history=5):
@@ -22,7 +22,7 @@ def get_run_history(log_directory, max_history=5):
     # Find all json files matching the pattern job_*.json
     search_path = os.path.join(log_directory, "job_*.json")
     files = glob.glob(search_path)
-    
+
     if not files:
         print(f"No history files found in {log_directory}")
         return []
@@ -34,7 +34,7 @@ def get_run_history(log_directory, max_history=5):
     # Load the data
     history = []
     print(f"Found {len(files)} history files.")
-    
+
     for fpath in files:
         try:
             with open(fpath, 'r') as f:
@@ -47,13 +47,13 @@ def get_run_history(log_directory, max_history=5):
     if len(history) > max_history:
         print(f"Trimming history to last {max_history} runs (from {len(history)} total).")
         history = history[-max_history:]
-    
+
     return history
 def run(log_directory=".", max_history=5, db_dir = './docs_db'):
     # --- 1. Setup ---
     # Increase timeout to 180 seconds (3 minutes) to prevent 504 errors
-    TIMEOUT = 180 
-    
+    TIMEOUT = 180
+
     try:
         print("Initializing Agent (Super-Analyst)...")
         # Use the PRO model for high-level reasoning
@@ -76,7 +76,7 @@ def run(log_directory=".", max_history=5, db_dir = './docs_db'):
 
     # --- 3. Run Super-Analysis ---
     print("\n--- Starting Super-Analysis ---")
-    
+
     # We pass db_dir explicitly to ensure it finds your new database
     result = asyncio.run(lct.generate_next_move(
         run_history=history,
@@ -107,10 +107,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Phenix Agent")
     parser.add_argument("--log_dir", required=True, help="Directory containing job_*.json files")
     parser.add_argument("--max_history", type=int, default=5, help="Number of past jobs to consider")
-    
+
     parser.add_argument("--db_dir", type=str, default='./docs_db', help="database_directory")
-    
+
     args = parser.parse_args()
-    
+
     run(log_directory=args.log_dir, max_history=args.max_history,
             db_dir = args.db_dir)

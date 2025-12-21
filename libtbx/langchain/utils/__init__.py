@@ -21,4 +21,3 @@ __all__ = [
     'get_processed_log_dict',
     'query_docs',
 ]
-
