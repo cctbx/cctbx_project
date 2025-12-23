@@ -66,11 +66,13 @@ def run(file_name = None,
       debug_log = debug_log,
       )
 
-    # Ensure tools are imported to extract files
+    # Ensure tools are imported to extract files. Not needed when run locally
     try:
         from libtbx.langchain import langchain_tools as lct
     except ImportError:
-        raise ValueError("Sorry, unable to import tools ")
+        lct = None
+    except Exception as e:
+        lct = None
 
     def create_history_record_dict(log_info, next_move=None, debug_log = None):
         """Helper to create the dict for JSON serialization"""
@@ -103,7 +105,7 @@ def run(file_name = None,
         debug_log.append(f"DEBUG CREATE_HIST: Type = {type(state_updates)}")
 
         out_files = []
-        if log_info.summary:
+        if lct and log_info.summary:
            out_files = lct.extract_output_files(log_info.summary)
 
         rec = {
@@ -220,7 +222,7 @@ def run(file_name = None,
 
 
       # --- 3. SUMMARIZE (Skip if we found a crash) ---
-      if not log_info.summary:
+      if lct and (not log_info.summary):
           print("Summarizing log file (using cheap Google model)...")
           result = asyncio.run(lct.get_log_info(
               log_as_text, cheap_llm, embeddings, timeout=timeout, provider='google'))
@@ -264,7 +266,7 @@ def run(file_name = None,
     # Analyze the log summary in the context of the docs
     if log_info.summary and not log_info.error:
         print("\nAnalyzing summary in context of documentation (using expensive model)...")
-        if (db_dir and (not log_info.analysis)):
+        if lct and db_dir and (not log_info.analysis):
           ok = False
           from copy import deepcopy
           log_info_std = deepcopy(log_info)
