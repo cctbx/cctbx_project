@@ -1379,6 +1379,7 @@ def RefinedTable(AtomType,Resolutions,DistMax,Ngrid,Terms_Resol,
 def compute_tables(
       MinResolution = 4.0,
       MaxResolution = 4.0,
+      DistMax          = 5.0,
       scattering_table = "wk1995",
       TypesAtoms = ["C",]):
 
@@ -1418,7 +1419,7 @@ def compute_tables(
 
   # parameters which may be modified
 
-  DistMax        = 5.0                   # approximation up to DistMax * Resolution
+  DistMax = DistMax                   # approximation up to DistMax * Resolution
 
   #==========================================================================
 
