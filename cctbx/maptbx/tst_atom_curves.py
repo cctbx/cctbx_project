@@ -107,7 +107,7 @@ def exercise_03(d_min=2, radius_max=5, n_grid=2000, sct="C"):
   ff_AU_style = tuple(v.array_of_a()) + (v.c(),) + tuple(v.array_of_b()) + (0,)
   image2 = maptbx.atom_image(ff_packed=ff_AU_style, d_min=d_min,
     n_grid=n_grid, dist_max=radius_max, scaled=False)
-  assert approx_equal(image1[:n_grid], image2[:n_grid], 1.e-3)
+  assert approx_equal(image1, image2, 1.e-3)
 
 if (__name__ == "__main__"):
   t0 = time.time()

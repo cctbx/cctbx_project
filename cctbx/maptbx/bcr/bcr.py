@@ -1504,17 +1504,29 @@ def compute_tables(
   #
   #       Image = AtomImage(ScatFunc,Resolution,DistImage*Resolution,StepImage*Resolution)
 
-         o = maptbx.atom_curves(scattering_type=AtomType, scattering_table=scattering_table)
-         oresult = o.image(
-              d_min=Resolution,
-              b_iso=0,
-              d_max = None,
-              radius_min = 0,
-              radius_max = DistImage*Resolution,
-              radius_step = StepImage*Resolution,
-              n_integration_steps = 2000)
-         Image = oresult.image_values
 
+         o = maptbx.atom_curves(scattering_type=AtomType, scattering_table=scattering_table)
+         # SLOW VERSION and also poor -- not full longer curve
+         #oresult = o.image(
+         #     d_min=Resolution,
+         #     b_iso=0,
+         #     d_max = None,
+         #     radius_min = 0,
+         #     radius_max = DistImage*Resolution,
+         #     radius_step = StepImage*Resolution,
+         #     n_integration_steps = 2000)
+         #Image = oresult.image_values
+         #
+         # FAST VERSION:
+         #
+         v = list(o.scr.as_type_gaussian_dict().values())[0]
+         ff_AU_style = tuple(v.array_of_a()) + (v.c(),) + tuple(v.array_of_b()) + (0,)
+         Image = maptbx.atom_image(
+           ff_packed = ff_AU_style,
+           d_min     = Resolution,
+           n_grid    = NSgrid,
+           dist_max  = DistMax,
+           scaled    = True)
 
          NGridImage = len(Image)
          Distance   = [ id * StepImage for id in range(NGridImage)]

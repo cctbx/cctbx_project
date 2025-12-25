@@ -1445,14 +1445,18 @@ def atom_image(ff_packed, d_min, n_grid, dist_max, scaled=False):
   #
   # ff_packed is array_of_a() + c() + array_of_b() + (0,)
   #
-  DistImage  = dist_max + 1.0
+  # scaled=True is for BCR optimization only. Not comparable with actual image
+  #
+  #
+  DistImage  = dist_max
+  if scaled: DistImage  = dist_max + 1.0
   StepImage  = dist_max / n_grid
   def _SFactG(ScatAtom,Resolution,NSgrid) :
-    ScatFunc = [0.0 for ig in range(NSgrid+1)]
+    ScatFunc = [0.0 for ig in range(NSgrid)]
     Smax    = 1.0 / Resolution
     dsstep  = Smax / NSgrid
     NGauss  = int(len(ScatAtom) / 2)
-    for isg in range(NSgrid+1) :
+    for isg in range(NSgrid) :
       sg   = dsstep * isg
       ss24 = sg * sg / 4.0
       fact = 0.0
@@ -1462,11 +1466,11 @@ def atom_image(ff_packed, d_min, n_grid, dist_max, scaled=False):
       ScatFunc[isg] = fact
     return ScatFunc
   def _AtomImage(ScatFunc,Resolution,DistImage,StepImage) :
-    NImage = int(DistImage/StepImage) + 1
-    NSGrid = len(ScatFunc) - 1
+    NImage = int(DistImage/StepImage)
+    NSGrid = len(ScatFunc)
     Smax   = 1.0 / Resolution
     SStep  = Smax / NSGrid
-    Image = [0.0 for j in range(NImage+1)]
+    Image = [0.0 for j in range(NImage)]
     dx = 2. * math.pi * StepImage
     #   integrate scattering curve
     #   odd points
@@ -1491,7 +1495,7 @@ def atom_image(ff_packed, d_min, n_grid, dist_max, scaled=False):
       Image[0] = Image[0] + fatoms * ss
     #   terminal point (point s = 0 gives zero contribution and is ignored)
     ss     = SStep * NSGrid
-    fatoms = ScatFunc[NSGrid] * ss
+    fatoms = ScatFunc[-1] * ss
     for ir in range(1,NImage):
       rr   = dx * ir
       arg  = rr * ss
