@@ -8,12 +8,15 @@ from libtbx.langchain.core import get_llm_and_embeddings
 from libtbx.langchain.rag import load_all_docs_from_folder, create_and_persist_db
 
 
-def run(docs_folder_path_list=["./data_docs/"], db_dir="./docs_db",
-        excluded_dirs=None, provider='google', timeout=300):
+def run(docs_folder_path_list=["./data_docs/"], db_dir=None,
+        excluded_dirs=None, provider=None, timeout=300):
     """
     Initializes models and builds the documentation vector database.
     Returns a list of the file paths that were processed.
     """
+    if provider is None:
+        provider = os.getenv("LLM_PROVIDER", "ollama")
+
     if provider == 'google':
         if not os.getenv("GOOGLE_API_KEY"):
             raise ValueError("GOOGLE_API_KEY environment variable not set.")

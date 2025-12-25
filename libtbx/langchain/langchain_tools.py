@@ -28,6 +28,8 @@ os.environ['GRPC_ENABLE_FORK_SUPPORT'] = "false"
 # Re-export from core module
 # =============================================================================
 from libtbx.langchain.core import get_llm_and_embeddings
+from libtbx.langchain.core import get_expensive_llm
+from libtbx.langchain.core import get_cheap_llm
 
 # =============================================================================
 # Re-export from analysis module

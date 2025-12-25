@@ -21,7 +21,7 @@ from bs4 import BeautifulSoup
 from langchain_core.documents import Document
 from langchain_community.document_loaders import TextLoader, PyPDFLoader, UnstructuredHTMLLoader
 from langchain_community.document_loaders.base import BaseLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
 # =============================================================================

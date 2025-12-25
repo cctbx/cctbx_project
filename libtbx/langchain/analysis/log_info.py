@@ -6,6 +6,7 @@ summarization and processing into a single operation.
 """
 from __future__ import absolute_import, division, print_function
 
+import os
 import asyncio
 
 import openai
@@ -17,7 +18,7 @@ from libtbx.langchain.utils.text_processing import get_processed_log_dict
 
 
 async def get_log_info(text, llm, embeddings, timeout: int = 120,
-                       provider: str = 'google'):
+                       provider: str = None):
     """
     Summarizes a log file and extracts key information.
 
@@ -30,7 +31,7 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120,
         llm: Language model for summarization
         embeddings: Embeddings model (not currently used, kept for API compatibility)
         timeout: Timeout in seconds
-        provider: 'google' or 'openai'
+        provider: 'google' or 'openai' or 'ollama'
 
     Returns:
         group_args with:
@@ -46,6 +47,9 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120,
         else:
             print(result.summary)
     """
+    if provider is None:
+        provider = os.getenv("LLM_PROVIDER", "ollama")
+
     try:
         log_summary_info = await summarize_log_text(
             text, llm, timeout=timeout, provider=provider)

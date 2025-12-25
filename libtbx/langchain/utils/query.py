@@ -7,6 +7,7 @@ for querying the Phenix documentation RAG.
 from __future__ import absolute_import, division, print_function
 
 import time
+import os
 
 import openai
 from google.api_core import exceptions as google_exceptions
@@ -30,7 +31,7 @@ def query_docs(query_text, llm=None, embeddings=None,
                timeout: int = 60,
                max_attempts: int = 5,
                use_throttling: bool = False,
-               provider: str = "google"):
+               provider: str = None):
     """
     Query Phenix docs with query_text, with automatic retries on rate limits.
 
@@ -42,7 +43,7 @@ def query_docs(query_text, llm=None, embeddings=None,
         timeout: Timeout in seconds
         max_attempts: Maximum retry attempts
         use_throttling: Whether to throttle queries
-        provider: 'google' or 'openai'
+        provider: 'google' or 'openai' or 'ollama'
 
     Returns:
         str: The answer, or None if query failed
@@ -53,6 +54,8 @@ def query_docs(query_text, llm=None, embeddings=None,
     """
     global _last_query_time
 
+    if provider is None:
+        provider = os.getenv("LLM_PROVIDER", "ollama")
     if use_throttling:
         min_interval = 4
         elapsed_time = time.time() - _last_query_time

@@ -19,10 +19,11 @@ from __future__ import absolute_import, division, print_function
 
 import asyncio
 from typing import List, Iterable
+import os
 
 from langchain_core.documents import Document
 from langchain_core.prompts import PromptTemplate
-from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_classic.chains.combine_documents import create_stuff_documents_chain
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from libtbx import group_args
@@ -84,7 +85,7 @@ def get_log_combine_prompt() -> PromptTemplate:
 # Helper Functions
 # =============================================================================
 
-def get_chunk_size(provider: str = 'google'):
+def get_chunk_size(provider: str = None):
     """
     Returns appropriate chunk size based on provider.
 
@@ -94,6 +95,9 @@ def get_chunk_size(provider: str = 'google'):
     Returns:
         tuple: (chunk_size, chunk_overlap)
     """
+    if provider is None:
+        provider = os.getenv("LLM_PROVIDER", "ollama")
+
     provider = provider.lower()
     if provider == "openai":
         chunk_size = 100000
@@ -103,6 +107,11 @@ def get_chunk_size(provider: str = 'google'):
         chunk_size = 750000
         chunk_overlap = 50000
         print("Using larger chunk size for Google Gemini.")
+    elif provider == "ollama":
+        # Ollama with llama3.1 has 8k-128k context depending on model
+        # Use moderate chunks for efficiency
+        chunk_size = 100000
+        chunk_overlap = 10000
     else:
         chunk_size = 100000
         chunk_overlap = 10000
@@ -175,7 +184,7 @@ async def summarize_log_text(
     batch_size: int = 3,
     pause_between_batches: int = 1,
     use_throttling: bool = True,
-    provider: str = 'google',
+    provider: str = None,
 ):
     """
     Performs a map-reduce summarization with batching to respect API rate limits.
@@ -187,7 +196,7 @@ async def summarize_log_text(
         batch_size: Number of chunks to process in parallel
         pause_between_batches: Seconds to pause between batches
         use_throttling: Whether to pause between batches
-        provider: 'google' or 'openai'
+        provider: 'google' or 'openai' or 'ollama'
 
     Returns:
         group_args with:
@@ -202,6 +211,9 @@ async def summarize_log_text(
         else:
             print(result.log_summary)
     """
+    if provider is None:
+        provider = os.getenv("LLM_PROVIDER", "ollama")
+
     docs = _custom_log_chunker(text, provider=provider)
     if not docs:
         return group_args(

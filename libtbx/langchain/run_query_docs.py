@@ -13,10 +13,13 @@ from libtbx.langchain.run_analyze_log import save_as_html
 
 
 def run(query_text=None, output_file_path=None, db_dir=None,
-        timeout=60, provider='openai'):
+        timeout=60, provider=None):
     """
     Loads the reranking RAG and queries it with a user-provided question.
     """
+
+    if provider is None:
+        provider = os.getenv("LLM_PROVIDER", "ollama")
 
     if provider == 'google':
         if not os.getenv("GOOGLE_API_KEY"):
@@ -24,8 +27,10 @@ def run(query_text=None, output_file_path=None, db_dir=None,
     elif provider == 'openai':
         if not os.getenv("OPENAI_API_KEY"):
             raise ValueError("OPENAI_API_KEY environment variable not set.")
+    elif provider == 'ollama':
+        pass # ok
     else:
-        raise ValueError("Provider must be google or openai ")
+        raise ValueError(f"Unknown provider: {provider}")
 
     if len(sys.argv) < 2:
         print("Usage: python3 run_query_docs.py \"<Your question here>\"")

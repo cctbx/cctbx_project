@@ -11,7 +11,7 @@ import asyncio
 def run(file_name = None,
       log_as_text = None,
       output_file_path = None,
-      db_dir: str = "./docs_db",
+      db_dir: str = None,
       timeout: int = 60,
       existing_summary: str  = None,
       existing_analysis: str  = None,
@@ -20,7 +20,7 @@ def run(file_name = None,
       text_to_append_to_analysis: str = None,
       summary_html_file_name = None,  # write to these files if supplied
       analysis_html_file_name = None, # write to these files if supplied
-      provider: str = 'google',
+      provider: str = None, 
       max_analyze_log_tries = 3,
       log_directory: str = None, # Where to save the history
       job_id: str = None,        # The ID for this specific run (e.g., '23')
@@ -33,6 +33,8 @@ def run(file_name = None,
       file_list_as_simple_string: str = None,
       ):
 
+    if provider is None:
+      provider = os.getenv("LLM_PROVIDER", "ollama")
     debug_log = []
 
     # --- Parse file list ---
@@ -183,13 +185,16 @@ def run(file_name = None,
          log_info.error = "COHERE_API_KEY environment variable not set."
          return log_info
 
-      if db_dir == "./docs_db":
+      if db_dir is None:
         if provider == 'google':
             db_dir = "./docs_db_google"
             print(f"Provider is 'google', using default database: {db_dir}")
         elif provider == 'openai':
             db_dir = "./docs_db_openai"
             print(f"Provider is 'openai', using default database: {db_dir}")
+        elif provider == 'ollama':
+            db_dir = "./docs_db_ollama"
+            print(f"Provider is 'ollama', using default database: {db_dir}")
 
       if not os.path.exists(db_dir):
           log_info.error = (
@@ -201,23 +206,11 @@ def run(file_name = None,
 
 
       print("Setting up LLMs...")
-      try:
-        if provider == "google":
-          expensive_llm, embeddings = lct.get_llm_and_embeddings(
-            provider=provider, timeout=timeout, llm_model_name='gemini-2.5-pro')
-          print(f"Using expensive model for analysis: {expensive_llm.model}")
-        else:
-          expensive_llm, embeddings = lct.get_llm_and_embeddings(
-            provider=provider, timeout=timeout, llm_model_name='gpt-5')
-          print(f"Using expensive model for analysis: {expensive_llm.model_name}")
-
-        cheap_llm, _ = lct.get_llm_and_embeddings(
-            provider='google', timeout=timeout)
-        print(f"Using cheap/fast model for summarization: {cheap_llm.model}")
-
-      except ValueError as e:
-        print(e)
-        raise ValueError("Sorry, unable to set up LLM. Check API keys.")
+      expensive_llm, embeddings = lct.get_expensive_llm(
+          provider=provider, timeout=timeout)
+      cheap_llm = lct.get_cheap_llm(
+          provider=provider, timeout=timeout)
+         
       # ------ DONE WITH SETUP --------
 
 
@@ -468,6 +461,7 @@ def run(file_name = None,
                 llm=expensive_llm,
                 embeddings=embeddings,
                 db_dir=db_dir,
+                cheap_llm=cheap_llm,
                 timeout=timeout*3,
                 project_advice=project_advice, # Pass User Context
                 original_files=original_files,  # Pass File Context
@@ -579,7 +573,8 @@ if __name__ == "__main__":
     parser.add_argument("--db_dir", default="./docs_db", help="Database directory")
     parser.add_argument("--log_dir", default=None, help="Directory to save history JSON")
     parser.add_argument("--job_id", default=None, help="Job ID for history")
-    parser.add_argument("--provider", default="google", help="LLM Provider")
+    parser.add_argument("--provider", default=None, help="LLM Provider (ollama, google, openai)")
+
 
     args = parser.parse_args()
 
@@ -603,5 +598,5 @@ if __name__ == "__main__":
         db_dir=args.db_dir,
         log_directory=args.log_dir,
         job_id=args.job_id,
-        provider=args.provider
+        provider = args.provider or os.getenv("LLM_PROVIDER", "ollama")
     )

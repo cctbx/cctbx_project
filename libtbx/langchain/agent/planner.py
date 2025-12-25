@@ -9,7 +9,7 @@ This module contains the main agent logic for:
 Usage:
     from libtbx.langchain.agent import generate_next_move
 
-    result = await generate_next_move(run_history, llm, embeddings, db_dir)
+    result = await generate_next_move(run_history, llm, embeddings, db_dir = xx, cheap_llm = xxx)
 """
 from __future__ import absolute_import, division, print_function
 
@@ -19,7 +19,6 @@ import json
 from langchain_core.output_parsers import JsonOutputParser
 
 from libtbx import group_args
-from libtbx.langchain.core import get_llm_and_embeddings
 from libtbx.langchain.knowledge import (
     get_phenix_program_list,
     get_keywords_as_phil_string,
@@ -115,7 +114,9 @@ async def generate_next_move(
     run_history: list,
     llm,
     embeddings,
-    db_dir: str = "./docs_db",
+    cheap_llm = None,
+    db_dir: str = None,
+    provider: str = None,
     timeout: int = 60,
     project_advice: str = None,
     original_files: list = None,
@@ -156,16 +157,6 @@ async def generate_next_move(
     def log(msg):
         print(msg)
         process_log.append(str(msg))
-
-    # Get cheap llm for learning
-    try:
-        cheap_llm, _ = get_llm_and_embeddings(
-            provider='google',
-            timeout=timeout,
-        )
-    except Exception as e:
-        log(f"Warning: Could not load cheap LLM for learning: {e}")
-        cheap_llm = llm  # Fallback to expensive if cheap fails
 
     # --- 1. LEARNING PHASE ---
     memory_file_path = get_memory_file_path(db_dir)

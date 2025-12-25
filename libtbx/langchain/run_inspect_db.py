@@ -5,15 +5,19 @@ Runner script to inspect the contents of the persisted vector database.
 from __future__ import division
 from collections import Counter
 import sys
+import os 
 
 from libtbx.langchain.core import get_llm_and_embeddings
 from libtbx.langchain.rag import load_persistent_db
 
 
-def run(db_dir="./docs_db", provider="google"):
+def run(db_dir="./docs_db", provider=None):
     """
     Loads the database and prints a summary of its contents.
     """
+    if provider is None:
+      provider = os.getenv("LLM_PROVIDER", "ollama")
+
     try:
         # We ignore the LLM (_) as we only need embeddings here
         print(f"Loading embeddings for provider: {provider}...")
@@ -62,7 +66,7 @@ if __name__ == "__main__":
     # Usage: phenix.python run_inspect_db.py [db_dir] [provider]
 
     db_dir = "/net/cci-gpu-01/raid1/scratch1/terwill/build_dir/modules/phenix/phenix/phenix_ai/docs_db_google"
-    provider = "google"
+    provider = os.getenv("LLM_PROVIDER", "ollama")
 
     if len(sys.argv) > 1:
         db_dir = sys.argv[1]
