@@ -19,7 +19,7 @@ if (__name__ == "__main__"):
   NPROC=120
   #
   argss = []
-  for e in [["H","C"], ["O","N"], ["P","S"]]:
+  for e in [["H","C"], ["O","N"], ["P","S"], ["Fe","Fe2+","Fe3+"], ["Zn","Zn2+"]]:
     argss.append(e)
   print(argss)
   #
