@@ -90,10 +90,30 @@ def exercise_02():
   assert rf(r1,r2) < 2
   assert flex.linear_correlation(r1,r2).coefficient() > 0.999
 
+def exercise_03(d_min=2, radius_max=5, n_grid=2000, sct="C"):
+  o = maptbx.atom_curves(scattering_type=sct, scattering_table="wk1995")
+  r = o.image(
+    d_min               = d_min,
+    b_iso               = 0,
+    d_max               = None,
+    radius_min          = 0,
+    radius_max          = radius_max,
+    radius_step         = radius_max/n_grid,
+    n_integration_steps = n_grid)
+  image1 = r.image_values
+  radii1 = r.radii
+  #
+  v = o.scr.as_type_gaussian_dict()[sct]
+  ff_AU_style = tuple(v.array_of_a()) + (v.c(),) + tuple(v.array_of_b()) + (0,)
+  image2 = maptbx.atom_image(ff_packed=ff_AU_style, d_min=d_min,
+    n_grid=n_grid, dist_max=radius_max, scaled=False)
+  assert approx_equal(image1[:n_grid], image2[:n_grid], 1.e-3)
+
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_00()
   exercise_01()
   exercise_02()
+  exercise_03()
   print("Time: %6.3f"%(time.time()-t0))
   print("OK")

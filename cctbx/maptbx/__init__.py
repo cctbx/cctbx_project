@@ -1630,7 +1630,7 @@ Fourier image of specified resolution, etc.
     s_max = 1./d_min
     image_values = flex.double()
     radii        = flex.double()
-    while r < radius_max:
+    while r <= radius_max:
       s = scitbx.math.simpson(
         f = self.integrand(r, b_iso), a = s_min, b = s_max, n = n_integration_steps)
       image_values.append(s)

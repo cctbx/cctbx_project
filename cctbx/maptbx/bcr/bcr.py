@@ -1401,6 +1401,9 @@ def compute_tables(
   Protocols      = [0, 1, 111, 112, 122, 212]              # allowed protocol to be tried
   Nprotocols     = len(Protocols)
 
+  CheckProtAll   = 100
+  CheckProtFast  = 20
+
   RefineFlag = True
 
   # resolution bounds defining resolution increment for the resolution tables
@@ -1436,7 +1439,7 @@ def compute_tables(
   while Resolution <= MaxResolution :
       Resolutions.append(Resolution)
       Resolution += AddRes
-      if Resolution >= UpperBound :
+      if Resolution >= UpperBound * 0.999999 :
          kbound += 1
          if kbound == NumBound : break
          UpperBound = ResBound[kbound]
@@ -1548,9 +1551,9 @@ def compute_tables(
          Mterms   = [ 0   for iprot in range(Nprotocols) ]
          BCRterms = [ [ [0.0, 0.0, 0.0] for iterm in range(MaxTerms)] for iprot in range(Nprotocols) ]
 
-         if ires == 0 or ires == int(ires/100) * 100:
+         if ires == 0 or ires == int(ires/CheckProtAll) * CheckProtAll:
             NumProt = Nprotocols
-         elif ires == int(ires/20) * 20 :
+         elif ires == int(ires/CheckProtFast) * CheckProtFast :
             NumProt = 4
          else :
             NumProt = 2
