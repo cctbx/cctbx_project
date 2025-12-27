@@ -188,14 +188,13 @@ def get_strategic_planning_prompt() -> PromptTemplate:
     - **No Placeholders:** Provide exact values.
     - **Strategy Details:** Clean `key=value` pairs.
 
-    **Output Format (Strict JSON):**
-    {{
-        "long_term_plan": "Step 1: [Done], Step 2: [Current], Step 3: [Goal]",
-        "reasoning": "Explain decision. If fixing an error, be explicit.",
-        "selected_program": "phenix.program_name",
-        "strategy_details": "Exact parameters.",
-        "input_files": "List of input files."
-    }}
+    **Output Format (Strict JSON - NO MARKDOWN):**
+    You MUST respond with ONLY a valid JSON object. Do not use markdown formatting.
+    Do not include ```json``` code blocks. Do not include **bold** text.
+    Output ONLY this exact JSON structure with your values filled in:
+
+    {{"long_term_plan": "Step 1: [Done], Step 2: [Current], Step 3: [Goal]", "reasoning": "Your explanation here", "selected_program": "phenix.program_name", "strategy_details": "key=value pairs", "input_files": "file1.mtz file2.pdb"}}
+
     """
 
     return PromptTemplate(

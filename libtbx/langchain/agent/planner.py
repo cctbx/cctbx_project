@@ -115,6 +115,7 @@ async def generate_next_move(
     llm,
     embeddings,
     cheap_llm = None,
+    command_llm = None,
     db_dir: str = None,
     provider: str = None,
     timeout: int = 60,
@@ -410,8 +411,9 @@ async def generate_next_move(
             else:
                 relevant_tips = "No specific history for this program."
 
+
             cmd_prompt = get_command_writer_prompt()
-            cmd_chain = cmd_prompt | llm
+            cmd_chain = cmd_prompt | (command_llm if command_llm else llm)
 
             command_obj = cmd_chain.invoke({
                 "program": program,

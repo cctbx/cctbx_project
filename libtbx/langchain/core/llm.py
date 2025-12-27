@@ -26,7 +26,9 @@ def get_llm_and_embeddings(
     timeout: int = 120,
     batch_size: int = 100,
     ollama_base_url: str = None,
+    json_mode: bool = False,
     num_ctx: int = 8192,
+    seed: int = 42,
 ):
     """
     Initialize LLM and Embeddings from the specified provider.
@@ -40,6 +42,8 @@ def get_llm_and_embeddings(
         timeout: Request timeout in seconds
         batch_size: Batch size for embedding requests
         ollama_base_url: Base URL for Ollama server (default from env or localhost)
+        json_mode: If True, force JSON output (for structured responses).
+                   Only applies to Ollama provider.
         num_ctx: Context window size for Ollama models (default: 8192)
 
     Returns:
@@ -63,19 +67,28 @@ def get_llm_and_embeddings(
         if ollama_base_url is None:
             ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
-        llm = ChatOllama(
-            model=llm_model_name,
-            base_url=ollama_base_url,
-            temperature=temperature,
-            num_ctx=num_ctx,
-            num_predict=4096,
-        )
+        # Build kwargs conditionally
+        llm_kwargs = {
+            "model": llm_model_name,
+            "base_url": ollama_base_url,
+            "temperature": temperature,
+            "num_ctx": num_ctx,
+            "num_predict": 4096,
+            "seed": seed,
+            "think": False,
+        }
+        if json_mode:
+            llm_kwargs["format"] = "json"
+
+        llm = ChatOllama(**llm_kwargs)
         embeddings = OllamaEmbeddings(
             model=embedding_model_name,
             base_url=ollama_base_url,
         )
-        print(f"Using Ollama at {ollama_base_url}")
+        mode_str = " (JSON mode)" if json_mode else ""
+        print(f"Using Ollama at {ollama_base_url}{mode_str}")
         print(f"  LLM: {llm_model_name}, Embeddings: {embedding_model_name}")
+
 
     elif provider == "google":
         from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
@@ -126,7 +139,7 @@ def get_llm_and_embeddings(
 
 # Get expensive or cheap LLMs
 
-def get_expensive_llm(provider = None, timeout = None):
+def get_expensive_llm(provider = None, timeout = None, json_mode=False):
       try:
         if provider == "google":
           expensive_llm, embeddings = get_llm_and_embeddings(
@@ -138,7 +151,8 @@ def get_expensive_llm(provider = None, timeout = None):
           print(f"Using expensive model for analysis: {expensive_llm.model_name}")
         elif provider == "ollama":
           expensive_llm, embeddings = get_llm_and_embeddings(
-            provider=provider, timeout=timeout, llm_model_name='llama3.1:70b')
+            provider=provider, timeout=timeout, llm_model_name='qwen3:32b', #'llama3.1:70b',# 'qwen2.5:72b',# 'llama3.1:405b', #'qwen2.5:72b', #llm_model_name='llama3.1:70b',
+             json_mode=json_mode)
           print(f"Using expensive model for analysis: {expensive_llm.model}")
         else:
           raise ValueError("Sorry, unable to set up LLM. Check llm provider (%s)" %provider)
@@ -146,66 +160,24 @@ def get_expensive_llm(provider = None, timeout = None):
           raise ValueError("Sorry, unable to set up LLM. API keys for provider (%s)" %provider)
       return expensive_llm, embeddings
 
-def get_cheap_llm(provider = None, timeout = None):
-  if provider is None:
-    provider = os.getenv("LLM_PROVIDER", "ollama")
+def get_cheap_llm(provider=None, timeout=None):
+    if provider is None:
+        provider = os.getenv("LLM_PROVIDER", "ollama")
+    
+    try:
+        if provider in ["google", "openai"]:
+            cheap_llm, _ = get_llm_and_embeddings(provider=provider, timeout=timeout)
+        else:
+            cheap_llm, _ = get_llm_and_embeddings(
+                provider=provider, timeout=timeout, llm_model_name='qwen2.5:14b') #'qwen2.5:32b') #'qwen3:32b')# 'qwen2.5:7b') # qwen2.5:72b') #'llama3.1:8b')
+        
+        # Handle different attribute names across providers
+        model_name = getattr(cheap_llm, 'model', None) or getattr(cheap_llm, 'model_name', 'unknown')
+        print(f"Using cheap/fast model for summarization: {model_name}")
+        
+        return cheap_llm
+        
+    except ValueError as e:
+        print(e)
+        raise ValueError("Sorry, unable to set up LLM (%s). Check API keys." % provider)
 
-  try:
-    if provider in ["google", "openai"]:
-      cheap_llm, _ = get_llm_and_embeddings(provider='google', timeout=timeout)
-    else:
-      cheap_llm, _ = get_llm_and_embeddings(
-       provider=provider, timeout=timeout, llm_model_name='llama3.1:8b')
-    # Handle different attribute names
-    model_name = getattr(cheap_llm, 'model', None) or getattr(cheap_llm, 'model_name', 'unknown')
-    print(f"Using cheap/fast model for summarization: {model_name}")
-
-  except ValueError as e:
-    print(e)
-    raise ValueError("Sorry, unable to set up LLM (%s). Check API keys." %(
-         provider))
-  return cheap_llm
-
-
-# Convenience functions for Ollama
-def get_ollama_llm(
-    model_name: str = None,
-    base_url: str = None,
-    temperature: float = 0.1,
-    num_ctx: int = 8192,
-):
-    """Get just the Ollama LLM without embeddings."""
-    from langchain_ollama import ChatOllama
-
-    if model_name is None:
-        model_name = os.getenv("OLLAMA_LLM_MODEL", "llama3.1:70b")
-    if base_url is None:
-        base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-
-    return ChatOllama(
-        model=model_name,
-        base_url=base_url,
-        temperature=temperature,
-        num_ctx=num_ctx,
-        num_predict=4096,
-    )
-
-
-def get_ollama_fast_llm(base_url: str = None):
-    """Get a fast Ollama LLM for simple tasks."""
-    return get_ollama_llm(
-        model_name="llama3.1:8b",
-        base_url=base_url,
-        temperature=0.0,
-        num_ctx=4096,
-    )
-
-
-def get_ollama_smart_llm(base_url: str = None):
-    """Get a powerful Ollama LLM for complex reasoning."""
-    return get_ollama_llm(
-        model_name="llama3.1:70b",
-        base_url=base_url,
-        temperature=0.1,
-        num_ctx=8192,
-    )

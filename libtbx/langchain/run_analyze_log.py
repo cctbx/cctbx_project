@@ -20,7 +20,7 @@ def run(file_name = None,
       text_to_append_to_analysis: str = None,
       summary_html_file_name = None,  # write to these files if supplied
       analysis_html_file_name = None, # write to these files if supplied
-      provider: str = None, 
+      provider: str = None,
       max_analyze_log_tries = 3,
       log_directory: str = None, # Where to save the history
       job_id: str = None,        # The ID for this specific run (e.g., '23')
@@ -204,26 +204,39 @@ def run(file_name = None,
           )
           return log_info
 
-
       print("Setting up LLMs...")
       expensive_llm, embeddings = lct.get_expensive_llm(
-          provider=provider, timeout=timeout)
+         provider=provider, timeout=timeout, json_mode=False)
+
+      # Only create separate planning LLM for Ollama (needs JSON mode)
+      if provider == 'ollama':
+        planning_llm, _ = lct.get_expensive_llm(
+          provider=provider, timeout=timeout, json_mode=True)
+      else:
+        planning_llm = expensive_llm  # Same LLM for Google/OpenAI
+
       cheap_llm = lct.get_cheap_llm(
-          provider=provider, timeout=timeout)
-         
+        provider=provider, timeout=timeout)
+
       # ------ DONE WITH SETUP --------
 
 
       # --- 3. SUMMARIZE (Skip if we found a crash) ---
       if lct and (not log_info.summary):
-          print("Summarizing log file (using cheap Google model)...")
+          print("Summarizing log file (using cheap model)...")
+          for line in log_as_text.splitlines():
+            debug_log.append(f"DEBUG LOG_AS_TEXT: {line}")
+            debug_log.append(f"DEBUG SUMMARY MODEL: {cheap_llm} {provider}")
+             
           result = asyncio.run(lct.get_log_info(
-              log_as_text, cheap_llm, embeddings, timeout=timeout, provider='google'))
+              log_as_text, cheap_llm, embeddings, timeout=timeout, provider=provider))
 
           if result.error or not result.summary:
             print("Log file summary failed")
             log_info.error = result.error
             return log_info
+          for line in result.summary.splitlines():
+            debug_log.append(f"DEBUG SUMMARY: {line}")
 
           log_info = result
           log_info.analysis = None
@@ -325,7 +338,7 @@ def run(file_name = None,
     if (log_info.summary or log_info.error) and run_agent:
         try:
              state_updates = asyncio.run(lct.extract_project_state_updates(
-                 log_info.summary, project_state, expensive_llm))
+                 log_info.summary, project_state, planning_llm))
              # CAPTURE DEBUG
              debug_log.append(f"DEBUG EXTRACT: state_updates = {state_updates}")
              debug_log.append(f"DEBUG EXTRACT: Type = {type(state_updates)}, Empty = {len(state_updates) == 0}")
@@ -458,10 +471,11 @@ def run(file_name = None,
             from libtbx.langchain import langchain_tools as lct
             agent_result = asyncio.run(lct.generate_next_move(
                 run_history=full_history,
-                llm=expensive_llm,
+                llm=planning_llm,
                 embeddings=embeddings,
                 db_dir=db_dir,
                 cheap_llm=cheap_llm,
+                command_llm=expensive_llm,
                 timeout=timeout*3,
                 project_advice=project_advice, # Pass User Context
                 original_files=original_files,  # Pass File Context
