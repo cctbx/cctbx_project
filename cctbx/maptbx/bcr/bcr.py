@@ -1484,7 +1484,7 @@ def compute_tables(
 
   #   generate file name for the coefficients for a given atomic type
 
-      fileBCRname = 'BCR_' + AtomType + '.temp'
+      fileBCRname = 'BCR_%s_'%scattering_table + AtomType + '.temp'
       fileBCRtemp = open(fileBCRname, 'w')
 
       for ires in range(Nresol) :              # MAIN CYCLE OVER RESOLUTIONS
@@ -1666,7 +1666,7 @@ def compute_tables(
   #   if required refine the set of coefficients ; create a file with refined coefficients
 
       if RefineFlag :
-         fileBCRname = 'BCR_' + AtomType + '.table'
+         fileBCRname = 'BCR_%s_'%scattering_table + AtomType + '.table'
          fileBCR     = open(fileBCRname, 'w')
 
          results = {}
