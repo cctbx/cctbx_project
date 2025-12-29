@@ -77,7 +77,6 @@ def get_parameter_fixes():
         _PARAMETER_FIXES = load_parameter_fixes()
     return _PARAMETER_FIXES
 
-
 def fix_program_parameters(command, program):
     """
     Fix common parameter mistakes for a specific program.
@@ -102,9 +101,15 @@ def fix_program_parameters(command, program):
         # Skip comment keys
         if wrong_param.startswith('_'):
             continue
+        
+        # Skip if right_param is already in the command (avoid double-fixing)
+        if right_param is not None and right_param + '=' in command:
+            continue
             
         # Pattern to match parameter=value (handles quoted values too)
-        pattern = rf'\b{re.escape(wrong_param)}=("(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'|\S+)'
+        # Use word boundary and negative lookbehind to avoid matching if already prefixed
+        # e.g., don't match "input_labels" if "file_info.input_labels" exists
+        pattern = rf'(?<![.\w]){re.escape(wrong_param)}=("(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'|\S+)'
         
         if right_param is None:
             # Remove the parameter entirely
