@@ -15,6 +15,7 @@ from libtbx.langchain.validation.base import ProgramValidator
 from libtbx.langchain.validation.core_validator import (
     validate_phenix_command,
     fix_command_syntax,
+    validate_is_phenix_command,
 )
 
 from libtbx.langchain.validation.mtz_utils import (
@@ -36,6 +37,7 @@ __all__ = [
     # Core validation
     'validate_phenix_command',
     'fix_command_syntax',
+    'validate_is_phenix_command',
     # MTZ utilities
     'mtz_has_rfree_flags',
     'add_rfree_generation_if_needed',

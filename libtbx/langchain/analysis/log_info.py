@@ -18,7 +18,7 @@ from libtbx.langchain.utils.text_processing import get_processed_log_dict
 
 
 async def get_log_info(text, llm, embeddings, timeout: int = 120,
-                       provider: str = None):
+                       provider: str = None, program_name: str = None):
     """
     Summarizes a log file and extracts key information.
 
@@ -32,6 +32,8 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120,
         embeddings: Embeddings model (not currently used, kept for API compatibility)
         timeout: Timeout in seconds
         provider: 'google' or 'openai' or 'ollama'
+        program_name: Explicit program name (e.g., 'phenix.refine') to ensure
+                      correct summary template is used. If None, will be auto-detected.
 
     Returns:
         group_args with:
@@ -41,7 +43,7 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120,
             - error: Error message if any
 
     Example:
-        result = await get_log_info(log_text, llm, embeddings)
+        result = await get_log_info(log_text, llm, embeddings, program_name='phenix.refine')
         if result.error:
             print(f"Error: {result.error}")
         else:
@@ -50,9 +52,16 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120,
     if provider is None:
         provider = os.getenv("LLM_PROVIDER", "ollama")
 
+    # Debug: Log the program name being used
+    if program_name:
+        print(f"[LOG_INFO] Using explicit program_name: {program_name}")
+    else:
+        print(f"[LOG_INFO] No program_name provided - will auto-detect")
+
     try:
         log_summary_info = await summarize_log_text(
-            text, llm, timeout=timeout, provider=provider)
+            text, llm, timeout=timeout, provider=provider,
+            program_name=program_name)
         processed_log_dict = get_processed_log_dict(
             log_summary_info.log_summary)
 
@@ -105,3 +114,4 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120,
 
         print(error_message)
         return group_args(group_args_type='error', error=error_message)
+

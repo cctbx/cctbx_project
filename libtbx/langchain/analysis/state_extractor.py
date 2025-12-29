@@ -63,25 +63,25 @@ async def extract_project_state_updates(log_summary, current_state, llm):
     """
     Uses LLM to identify updates to the persistent project database.
 
-    Args:
-        log_summary: Summary text from a recent job
-        current_state: Current project state dict
-        llm: Language model to use for extraction
-
-    Returns:
-        dict: Updates to apply to project state, or empty dict if extraction fails
-
-    Example:
-        updates = await extract_project_state_updates(
-            log_summary="Refinement complete. R-free = 0.22. Output: refine_1.pdb",
-            current_state={"crystallography": {"space_group": "P 21 21 21"}},
-            llm=llm
-        )
-        # Returns: {"model_list": [{"file": "refine_1.pdb", "r_free": 0.22}]}
+    Includes validation to prevent hallucinated file names from corrupting state.
     """
     try:
         if not log_summary:
             return {}
+
+        # Don't extract state from initialization summaries
+        initialization_indicators = [
+            "No log file to analyze",
+            "project initialization phase",
+            "No log content",
+            "This is the project initialization",
+        ]
+
+        summary_lower = log_summary.lower()
+        for indicator in initialization_indicators:
+            if indicator.lower() in summary_lower:
+                print("Skipping state extraction - initialization phase")
+                return {}
 
         prompt = get_state_update_prompt()
         chain = prompt | llm
@@ -101,8 +101,132 @@ async def extract_project_state_updates(log_summary, current_state, llm):
             if match:
                 text = match.group(0)
 
-        return json.loads(text)
+        updates = json.loads(text)
+
+        # === VALIDATION PHASE ===
+        # Detect which program was run from the summary
+        program_name = _detect_program_from_summary(log_summary)
+
+        # Validate and filter the updates
+        validated_updates = _validate_state_updates(updates, program_name, log_summary)
+
+        return validated_updates
 
     except Exception as e:
         print(f"State extraction failed: {e}")
         return {}
+
+
+def _detect_program_from_summary(log_summary):
+    """Detect which Phenix program produced this summary."""
+    summary_lower = log_summary.lower()
+
+    if 'xtriage' in summary_lower:
+        return 'xtriage'
+    elif 'phaser' in summary_lower:
+        return 'phaser'
+    elif 'refine' in summary_lower:
+        return 'refine'
+    elif 'autobuild' in summary_lower:
+        return 'autobuild'
+    elif 'ligandfit' in summary_lower or 'ligand_fit' in summary_lower:
+        return 'ligandfit'
+    elif 'predict_and_build' in summary_lower:
+        return 'predict_and_build'
+    elif 'mtriage' in summary_lower:
+        return 'mtriage'
+    else:
+        return 'unknown'
+
+
+def _validate_state_updates(updates, program_name, log_summary):
+    """
+    Filter out updates that couldn't have come from the detected program.
+    This prevents hallucinated file names from corrupting the state.
+    """
+    if not updates:
+        return {}
+
+    validated = {}
+
+    # Programs that CAN produce model files
+    model_producing_programs = ['phaser', 'refine', 'autobuild', 'ligandfit',
+                                 'predict_and_build', 'dock_and_rebuild']
+
+    # Programs that CAN produce MTZ with R-free flags
+    rfree_mtz_programs = ['refine', 'autobuild', 'reflection_file_converter']
+
+    # Diagnostic programs that produce NO structural files
+    diagnostic_programs = ['xtriage', 'mtriage', 'mtz.dump', 'explore_metric_symmetry']
+
+    # Hallucination markers - generic placeholder names
+    hallucination_markers = [
+        'refined_001.mtz',
+        'model.pdb',
+        'data.mtz',
+        'file1.', 'file2.',
+        '/path/to/',
+    ]
+
+    for key, value in updates.items():
+        if key == 'model_list':
+            # Only accept model_list updates from programs that create models
+            if program_name in diagnostic_programs:
+                print(f"WARNING: Rejecting model_list from {program_name} (diagnostic tool)")
+                continue
+
+            # Filter individual models for hallucinations
+            if isinstance(value, list):
+                valid_models = []
+                for model in value:
+                    if isinstance(model, dict):
+                        filename = model.get('file', '')
+                        # Check for hallucination markers
+                        is_hallucinated = any(marker in filename for marker in hallucination_markers)
+                        # Check if filename is explicitly mentioned in log with "written" context
+                        is_in_log = filename.lower() in log_summary.lower()
+                        written_context = any(
+                            phrase in log_summary.lower()
+                            for phrase in ['written to', 'output:', 'saved to', 'solution #']
+                        )
+
+                        if is_hallucinated:
+                            print(f"WARNING: Rejecting hallucinated model: {filename}")
+                        elif is_in_log and (written_context or program_name in model_producing_programs):
+                            valid_models.append(model)
+                        elif not is_in_log:
+                            print(f"WARNING: Rejecting model not in log: {filename}")
+                        else:
+                            valid_models.append(model)
+
+                if valid_models:
+                    validated['model_list'] = valid_models
+
+        elif key == 'crystallography':
+            if isinstance(value, dict):
+                valid_cryst = {}
+                for cryst_key, cryst_val in value.items():
+                    # Check for hallucinated mtz files from wrong programs
+                    if cryst_key in ['data_with_free_r_flags', 'data_file']:
+                        if program_name in diagnostic_programs:
+                            print(f"WARNING: Rejecting {cryst_key} from {program_name}")
+                            continue
+                        # Check for hallucination markers
+                        if any(marker in str(cryst_val) for marker in hallucination_markers):
+                            print(f"WARNING: Rejecting hallucinated {cryst_key}: {cryst_val}")
+                            continue
+
+                    # Space group and resolution are OK from diagnostic tools
+                    valid_cryst[cryst_key] = cryst_val
+
+                if valid_cryst:
+                    validated['crystallography'] = valid_cryst
+
+        else:
+            # Other keys pass through with basic hallucination check
+            str_val = str(value)
+            if not any(marker in str_val for marker in hallucination_markers):
+                validated[key] = value
+
+    return validated
+

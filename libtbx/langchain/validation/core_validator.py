@@ -74,6 +74,35 @@ PROGRAMS_WITHOUT_DRY_RUN = {
     'phenix.xtriage',
 }
 
+def validate_is_phenix_command(command):
+    """
+    Ensure the command starts with a valid Phenix program name.
+    
+    Args:
+        command: The command string to validate
+        
+    Returns:
+        tuple: (is_valid: bool, error_message: str or None)
+    """
+    if not command:
+        return False, "Empty command"
+    
+    command = command.strip()
+    
+    # Get the first word (program name)
+    first_word = command.split()[0] if command.split() else ""
+    
+    # Must start with phenix.
+    if not first_word.startswith('phenix.'):
+        return False, f"Command does not start with 'phenix.': got '{first_word[:50]}...'" if len(first_word) > 50 else f"Command does not start with 'phenix.': got '{first_word}'"
+    
+    # Check for obvious garbage (non-ASCII characters in program name)
+    try:
+        first_word.encode('ascii')
+    except UnicodeEncodeError:
+        return False, f"Command contains non-ASCII characters: '{first_word[:30]}...'"
+    
+    return True, None
 
 def validate_phenix_command(command: str) -> tuple:
     """
@@ -196,6 +225,44 @@ def validate_phenix_command(command: str) -> tuple:
         # If validation itself fails, be permissive
         return True, ""
 
+def fix_ambiguous_parameters(command: str, error_message: str) -> str:
+    """
+    Mechanically fix common ambiguous parameter errors.
+    """
+    import re
+    
+    # Extract the ambiguous parameter from error
+    match = re.search(r'Ambiguous parameter definition:\s*(\w+)\s*=\s*(\S+)', error_message)
+    if not match:
+        return command
+    
+    param_name = match.group(1)
+    param_value = match.group(2)
+    
+    # Extract best matches from error message - try multiple patterns
+    best_matches = []
+    
+    # Pattern 1: Lines that are just indented parameter names
+    best_matches = re.findall(r'^\s{2,}(\S+\.[\w\.]+)\s*$', error_message, re.MULTILINE)
+    
+    # Pattern 2: After "Best matches:"
+    if not best_matches:
+        section_match = re.search(r'Best matches?:(.*?)(?:\n\n|\Z)', error_message, re.DOTALL)
+        if section_match:
+            best_matches = re.findall(r'(\S+\.[\w\.]+)', section_match.group(1))
+    
+    if not best_matches:
+        return command
+    
+    # Use the first best match
+    full_param = best_matches[0].strip()
+    
+    # Replace the ambiguous parameter with the full path
+    pattern = rf'\b{re.escape(param_name)}\s*=\s*{re.escape(param_value)}'
+    replacement = f'{full_param}={param_value}'
+    new_command = re.sub(pattern, replacement, command)
+    
+    return new_command
 
 def fix_command_syntax(
     command: str,
@@ -215,6 +282,30 @@ def fix_command_syntax(
     Returns:
         Fixed command string
     """
+    # NEW: Try mechanical fix for ambiguous parameters FIRST
+    if "ambiguous parameter" in error_message.lower():
+        fixed = fix_ambiguous_parameters(command, error_message)
+        if fixed != command:
+            return fixed
+
+    # NEW: Try mechanical fix for unrecognized parameters
+    if "not recognized" in error_message.lower():
+        import re
+        # Try to extract and remove the bad parameter
+        patterns = [
+            r"parameter.*?:\s*(\w+)\s*=",
+            r"definition:\s*(\w+)\s*=",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, error_message, re.IGNORECASE)
+            if match:
+                bad_param = match.group(1)
+                stripped = re.sub(rf'\s*\b{bad_param}\s*=\s*\S+', '', command)
+                stripped = ' '.join(stripped.split())
+                if stripped != command:
+                    return stripped
+
+
     program = command.split()[0] if command else ""
 
     # Get documentation for context
@@ -239,31 +330,28 @@ A command failed validation. Fix it.
 
 **Attempt Number:** {attempt_number}
 
-**Documentation Context:**
-{docs_context}
-
 **CRITICAL FIXING RULES:**
 
-1. **"not recognized" or "Unknown parameter" errors:**
+1. **"Ambiguous parameter" errors:**
+   - The error shows "Best matches:" with specific parameter names
+   - You MUST use one of those EXACT matches
+   - Example: If error says "resolution = 3.5" is ambiguous with matches:
+     - crystal_info.resolution
+     - prediction.resolution
+   - You should change `resolution=3.5` to `crystal_info.resolution=3.5`
+
+2. **"not recognized" or "Unknown parameter" errors:**
    - The parameter does NOT exist for this program.
    - You MUST REMOVE the invalid parameter entirely.
    - Do NOT try to rename it or guess alternative names.
-   - Example: If `nproc=4` is not recognized, just remove it. Don't try `n_processors=4`.
 
-2. **"Ambiguous parameter" errors:**
-   - The parameter name is incomplete or matches multiple options.
-   - If the error suggests specific matches, use the FIRST match that makes sense.
-   - If no good match, REMOVE the parameter.
-
-3. **"atomic model is required" or "reflection file" errors:**
-   - These are benign dry-run errors - the command syntax is likely correct.
-   - Return the command unchanged.
-
-4. **Input file syntax errors:**
+3. **Input file errors:**
    - Use positional arguments: `phenix.program model.pdb data.mtz`
-   - Remove any `file_name=`, `model_file_name=`, `reflection_file_name=` prefixes.
+   - Remove any `file_name=`, `model_file_name=` prefixes.
 
-5. **General principle:** When in doubt, REMOVE the problematic parameter rather than guessing.
+4. **NEVER use placeholders:**
+   - Never use `/path/to/`, `/dev/null`, `model.pdb`, `data.mtz`
+   - Use the actual filenames from the command
 
 **Output:**
 Return ONLY the fixed command. No explanation, no markdown.

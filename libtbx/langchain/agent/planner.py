@@ -47,6 +47,79 @@ except ImportError:
 # Helper Functions
 # =============================================================================
 
+def extract_clean_command(raw_output):
+    """
+    Extract the actual Phenix command from model output that may contain
+    thinking tokens, chain-of-thought, or other garbage.
+    """
+    import re
+
+    # Remove <think>...</think> blocks
+    raw_output = re.sub(r'<think>.*?</think>', '', raw_output, flags=re.DOTALL)
+
+    # Remove </think> if present without opening tag
+    raw_output = raw_output.replace('</think>', '')
+
+    # Look for a line that starts with phenix.
+    lines = raw_output.strip().split('\n')
+    for line in lines:
+        line = line.strip()
+        if line.startswith('phenix.'):
+            return line
+
+    # If no phenix. command found, try to find any line that looks like a command
+    for line in lines:
+        line = line.strip()
+        # Skip empty lines and lines that look like natural language
+        if not line:
+            continue
+        if len(line.split()) > 20:  # Too long to be a command
+            continue
+        if line[0].islower() and ' ' in line and not line.startswith('phenix'):
+            continue  # Looks like natural language
+        # Check if it starts with a word that could be a program name
+        first_word = line.split()[0] if line.split() else ''
+        if first_word and '.' not in first_word and not first_word.startswith('phenix'):
+            continue
+        return line
+
+    # Fallback: return first non-empty line (will likely fail, but at least it's clean)
+    for line in lines:
+        if line.strip():
+            return line.strip()
+
+    return raw_output.strip()
+
+
+def get_relative_path(filepath, working_dir):
+    """
+    Convert an absolute path to a relative path from working_dir.
+    Falls back to basename if relative path cannot be computed.
+    
+    Args:
+        filepath: The file path (absolute or relative)
+        working_dir: The working directory to compute relative path from
+    
+    Returns:
+        Relative path string
+    """
+    if not filepath:
+        return filepath
+    
+    if os.path.isabs(filepath):
+        try:
+            rel_path = os.path.relpath(filepath, working_dir)
+            # Don't return paths that go up too many directories
+            if rel_path.startswith('..') and rel_path.count('..') > 2:
+                return os.path.basename(filepath)
+            return rel_path
+        except ValueError:
+            # On Windows, relpath can fail across drives
+            return os.path.basename(filepath)
+    else:
+        return filepath
+
+
 def extract_output_files(summary_text):
     """Parses the 'Key Output Files' section from a summary."""
     if not summary_text:
@@ -60,7 +133,7 @@ def extract_output_files(summary_text):
             content = post.split("**")[0].strip()
             # Extract filenames (simple pattern)
             import re
-            files = re.findall(r'[\w\-\.]+\.\w{2,4}', content)
+            files = re.findall(r'[\w\-\.\/]+\.\w{2,4}', content)  # Added \/ to capture paths
     except Exception as e:
         pass
     return files
@@ -158,6 +231,9 @@ async def generate_next_move(
     def log(msg):
         print(msg)
         process_log.append(str(msg))
+
+    # --- GET WORKING DIRECTORY ---
+    working_dir = os.getcwd()
 
     # --- 1. LEARNING PHASE ---
     memory_file_path = get_memory_file_path(db_dir)
@@ -341,28 +417,133 @@ async def generate_next_move(
                         files_to_check.append(f_str)
 
             # A. Build List of Available Files
+            # IMPORTANT: The server cannot validate files on disk.
+            # We trust the file_list from the client (already validated) and 
+            # original_files. We do NOT trust files extracted from summaries
+            # because the LLM may have hallucinated them.
+            
             available_files = set()
+            # Also keep a mapping from basename to full relative path
+            basename_to_relpath = {}
+            
+            # Known hallucinated file patterns to reject
+            hallucinated_patterns = [
+                "PHENIX.1.pdb",  # Common hallucination
+                "HKLOUT",  # Placeholder name, not a real file
+                "file1.", "file2.",  # Generic hallucinations
+                "/path/to/",  # Path placeholder
+                "/nonexistent/",  # Obvious placeholder
+            ]
+            
+            def is_likely_hallucinated(filename):
+                """Check if filename looks like a hallucination."""
+                if not filename:
+                    return True
+                basename = os.path.basename(filename)
+                # Check against known patterns
+                for pattern in hallucinated_patterns:
+                    if pattern in basename or pattern in filename:
+                        return True
+                # Generic placeholder check
+                if basename.startswith("file") and basename[4:5].isdigit():
+                    return True
+                return False
 
-            # 1. Add Original Files (Ground Truth)
+            # 1. Add Original Files (Ground Truth from client)
             if original_files_list:
                 for f in original_files_list:
-                    available_files.add(os.path.basename(f))
+                    rel_path = get_relative_path(f, working_dir)
+                    basename = os.path.basename(rel_path)
+                    
+                    if not is_likely_hallucinated(basename):
+                        available_files.add(rel_path)
+                        # Map basename to relative path for lookup
+                        if basename not in basename_to_relpath:
+                            basename_to_relpath[basename] = rel_path
 
-            # 1b. Add Files from file_list (active files)
+            # 2. Add Files from file_list (validated by client)
+            # This is the AUTHORITATIVE source - client validated these exist
             if file_list:
                 for f in file_list:
-                    available_files.add(os.path.basename(f))
+                    rel_path = get_relative_path(f, working_dir)
+                    basename = os.path.basename(rel_path)
+                    
+                    if not is_likely_hallucinated(basename):
+                        available_files.add(rel_path)
+                        # Map basename to relative path for lookup
+                        # Prefer paths with subdirectories over plain basenames
+                        if basename not in basename_to_relpath or '/' in rel_path:
+                            basename_to_relpath[basename] = rel_path
 
-
-            # 2. Add Files from History
+            # 3. Add Files from History - BE VERY SKEPTICAL
+            # Only add if the file was mentioned as a RESULT of a SUCCESSFUL run
+            # AND matches expected output patterns for that program
+            expected_output_patterns = {
+                'phenix.phaser': ['PHASER.', '.sol', '_MR.'],
+                'phenix.refine': ['_refine_', '_refined', '_001.pdb', '_001.mtz'],
+                'phenix.autobuild': ['_autobuild_', '_rebuilt'],
+                'phenix.ligandfit': ['ligand_fit_', '_lig.pdb'],
+                'phenix.predict_and_build': ['_rebuilt', '_predicted', '_overall_best'],
+                'phenix.dock_and_rebuild': ['_rebuilt', '_docked'],
+            }
+            
             for run in run_history:
+                # Only trust output files from successful runs
+                result = run.get('result', '')
+                if not (isinstance(result, str) and result.startswith('SUCCESS')):
+                    continue
+                    
+                run_program = run.get('program', '')
                 outs = run.get('output_files', [])
                 if not outs:
                     outs = extract_output_files(run.get('summary', ''))
+                
                 for f in outs:
-                    available_files.add(os.path.basename(f))
+                    # Preserve path structure if present
+                    rel_path = get_relative_path(f, working_dir)
+                    basename = os.path.basename(rel_path)
+                    
+                    # Skip obvious hallucinations
+                    if is_likely_hallucinated(basename):
+                        log(f"WARNING: Rejecting likely hallucinated file: {basename}")
+                        continue
+                    
+                    # If we have expected patterns for this program, validate
+                    patterns = expected_output_patterns.get(run_program, [])
+                    if patterns:
+                        matches_pattern = any(p in basename for p in patterns)
+                        if not matches_pattern:
+                            log(f"WARNING: File {basename} doesn't match expected output for {run_program}")
+                            continue
+                    
+                    # If already in file_list (validated by client), use that path
+                    if file_list:
+                        for fl in file_list:
+                            if os.path.basename(fl) == basename:
+                                rel_path = get_relative_path(fl, working_dir)
+                                available_files.add(rel_path)
+                                if basename not in basename_to_relpath or '/' in rel_path:
+                                    basename_to_relpath[basename] = rel_path
+                                break
+                        else:
+                            # Not in file_list, be more skeptical
+                            if basename.endswith(('.pdb', '.mtz', '.cif')):
+                                cycle_num = run.get('job_id', '0')
+                                try:
+                                    if int(str(cycle_num).replace('job_', '')) > 1:
+                                        available_files.add(rel_path)
+                                        if basename not in basename_to_relpath:
+                                            basename_to_relpath[basename] = rel_path
+                                except:
+                                    pass
+                    else:
+                        # No file_list, use what we have
+                        if basename.endswith(('.pdb', '.mtz', '.cif')):
+                            available_files.add(rel_path)
+                            if basename not in basename_to_relpath:
+                                basename_to_relpath[basename] = rel_path
 
-            log(f"DEBUG: Available Files: {list(available_files)}")
+            log(f"DEBUG: Available Files (filtered): {sorted(list(available_files))}")
 
             # B. Check Files
             missing_files = []
@@ -375,7 +556,20 @@ async def generate_next_move(
                     missing_files.append(f)
                     continue
 
-                if f_base not in available_files:
+                # Check if file exists in available_files (either as full path or basename)
+                file_found = False
+                if f in available_files:
+                    file_found = True
+                elif f_base in basename_to_relpath:
+                    file_found = True
+                else:
+                    # Check if any available file ends with this path
+                    for avail in available_files:
+                        if avail.endswith(f) or os.path.basename(avail) == f_base:
+                            file_found = True
+                            break
+                
+                if not file_found:
                     missing_files.append(f)
 
             if missing_files:
@@ -385,7 +579,7 @@ async def generate_next_move(
                     f"\n\nSYSTEM NOTE: The file(s) {missing_files} do NOT exist. "
                     f"You cannot use them.\n"
                     f"Here is the list of VALID files you can use: [{valid_list_str}].\n"
-                    "Please correct the filename in your strategy. "
+                    "Please correct the filename in your strategy. Use the FULL PATH shown above including any subdirectories. "
                     "If the file you need is truly missing and not in this list, output 'DECISION: STOP'."
                 )
                 continue
@@ -415,17 +609,130 @@ async def generate_next_move(
             cmd_prompt = get_command_writer_prompt()
             cmd_chain = cmd_prompt | (command_llm if command_llm else llm)
 
+            # Pass available files with full paths to command writer
+            available_files_text = "\n".join(sorted(list(available_files)))
+
             command_obj = cmd_chain.invoke({
                 "program": program,
                 "strategy_details": plan.get('strategy_details', ""),
                 "input_files": plan.get('input_files', ""),
                 "valid_keywords": kw_result.keywords,
                 "learned_tips": relevant_tips,
-                "original_files": orig_files_text,
+                "original_files": f"{orig_files_text}\n\nALL AVAILABLE FILES (use exact paths):\n{available_files_text}",
                 "project_advice": advice_text,
             })
 
             command = command_obj.content.strip()
+            # NEW: Strip thinking tokens and extract just the command
+            command = extract_clean_command(command)
+            
+            # --- FIX BASENAME-ONLY REFERENCES ---
+            # If the command uses just a basename but we have a full path, substitute it
+            command_parts = command.split()
+            fixed_parts = []
+            for part in command_parts:
+                # Check if this part is a file reference (contains . and looks like a filename)
+                if '=' in part:
+                    # Handle key=value pairs
+                    key, value = part.split('=', 1)
+                    value = value.strip('"\'')
+                    if value in basename_to_relpath:
+                        fixed_parts.append(f"{key}={basename_to_relpath[value]}")
+                    else:
+                        fixed_parts.append(part)
+                elif '.' in part and not part.startswith('phenix.'):
+                    # Could be a filename
+                    part_clean = part.strip('"\'')
+                    basename = os.path.basename(part_clean)
+                    if basename in basename_to_relpath and basename == part_clean:
+                        # Only fix if it's just the basename (not already a path)
+                        fixed_parts.append(basename_to_relpath[basename])
+                    else:
+                        fixed_parts.append(part)
+                else:
+                    fixed_parts.append(part)
+            
+            command = ' '.join(fixed_parts)
+            
+            # NEW: Hard block - remove docked_model_file if it references a ligand
+            LIGAND_FILE_PATTERNS = ['lig.pdb', 'ligand.pdb', '_lig.pdb', '_ligand.pdb', 'lig.cif', 'ligand.cif']
+
+            if 'docked_model_file' in command:
+                import re
+                match = re.search(r'docked_model_file[=\s]+["\']?([^\s"\']+)', command)
+                if match:
+                    referenced_file = match.group(1).lower()
+                    # Check against known ligand patterns
+                    is_ligand = any(pattern in referenced_file for pattern in LIGAND_FILE_PATTERNS)
+                    # Also check if filename contains 'lig' anywhere
+                    is_ligand = is_ligand or 'lig' in os.path.basename(referenced_file).lower()
+
+                    if is_ligand:
+                        log(f"BLOCKING: Removing docked_model_file={match.group(1)} - ligand files cannot be used with this parameter")
+                        command = re.sub(r'\s*input_files\.docked_model_file[=\s]+["\']?[^\s"\']+["\']?', '', command)
+                        command = re.sub(r'\s*docked_model_file[=\s]+["\']?[^\s"\']+["\']?', '', command)
+                        command = ' '.join(command.split())
+
+
+            # NEW: Hard block - reject commands with placeholder paths
+            placeholder_patterns = [
+                '/path/to/',
+                '/dev/null',
+                'model.pdb',  # Generic placeholder
+                'data.mtz',   # Generic placeholder
+                'input.pdb',
+                'input.mtz',
+                '/input/',
+                '/output/',
+            ]
+            
+            has_placeholder = False
+            for pattern in placeholder_patterns:
+                if pattern in command:
+                    has_placeholder = True
+                    log(f"ERROR: Command contains placeholder '{pattern}'")
+                    break
+            
+            if has_placeholder:
+                # Get actual available files for the error message
+                pdb_files = [f for f in available_files if f.endswith('.pdb')]
+                mtz_files = [f for f in available_files if f.endswith('.mtz')]
+                history_text += (
+                    f"\n\nSYSTEM ERROR: You used placeholder paths like '/path/to/' or 'model.pdb'. "
+                    f"You MUST use ACTUAL filenames from the available files.\n"
+                    f"Available PDB files: {pdb_files}\n"
+                    f"Available MTZ files: {mtz_files}\n"
+                    f"Example correct command: phenix.refine PHASER.1.pdb PHASER.1.mtz\n"
+                )
+                continue  # Retry
+
+            # NEW: Hard block - remove ensemble.pdb if it references a ligand
+            if 'ensemble.pdb' in command or 'ensemble_pdb' in command:
+                import re
+                match = re.search(r'ensemble[._]pdb[=\s]+["\']?([^\s"\']+)', command)
+                if match:
+                    referenced_file = match.group(1).lower()
+                    is_ligand = any(pattern in referenced_file for pattern in LIGAND_FILE_PATTERNS)
+                    is_ligand = is_ligand or 'lig' in os.path.basename(referenced_file).lower()
+
+                    if is_ligand:
+                        log(f"BLOCKING: Removing ensemble.pdb={match.group(1)} - ligand files cannot be used as phaser ensemble")
+                        command = re.sub(r'\s*phaser\.ensemble\.pdb[=\s]+["\']?[^\s"\']+["\']?', '', command)
+                        command = re.sub(r'\s*ensemble\.pdb[=\s]+["\']?[^\s"\']+["\']?', '', command)
+                        command = ' '.join(command.split())
+
+
+            # NEW: Validate it's actually a Phenix command
+            from libtbx.langchain.validation.core_validator import validate_is_phenix_command
+
+            is_valid, error_msg = validate_is_phenix_command(command)
+            if not is_valid:
+              log(f"ERROR: Invalid command generated: {error_msg}")
+              log(f"Raw output was: {command_obj.content[:200]}...")
+              # Retry with feedback
+              history_text += f"\n\nSYSTEM NOTE: Your previous output was not a valid Phenix command. {error_msg}. You MUST output ONLY a valid phenix command starting with 'phenix.' - no explanations, no thinking, just the command.\n"
+              continue  # This continues the retry loop
+
 
             # --- 9. DUPLICATE COMMAND CHECK ---
             norm_cmd = " ".join(command.split())
@@ -534,3 +841,4 @@ async def generate_next_move(
         process_log="\n".join(process_log),
         error=None
     )
+

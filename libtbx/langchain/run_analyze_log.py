@@ -8,6 +8,15 @@ import sys, os, json
 import time
 import asyncio
 
+# Import the program detection function from summarizer
+try:
+    from libtbx.langchain.analysis.summarizer import detect_program_from_text
+except ImportError:
+    # Fallback if import fails
+    def detect_program_from_text(text):
+        return ""
+
+
 def run(file_name = None,
       log_as_text = None,
       output_file_path = None,
@@ -31,6 +40,7 @@ def run(file_name = None,
       original_files: list = None,  # List of ground-truth files
       project_state_json: str = None, # Database
       file_list_as_simple_string: str = None,
+      program_name: str = None,  # Explicit program name
       ):
 
     if provider is None:
@@ -80,13 +90,13 @@ def run(file_name = None,
         """Helper to create the dict for JSON serialization"""
         if debug_log is None:
              debug_log = []
-        program_name = 'Unknown'
+        prog_name = 'Unknown'
         if log_info.processed_log_dict:
-             program_name = log_info.processed_log_dict.get('phenix_program', 'Unknown')
+             prog_name = log_info.processed_log_dict.get('phenix_program', 'Unknown')
 
         # --- Fallback Program Name Extraction (For Crashed Jobs) ---
         # If the summary didn't find the name (because of a crash), scan the raw log.
-        if (program_name == 'Unknown' or not program_name) and log_info.log_text:
+        if (prog_name == 'Unknown' or not prog_name) and log_info.log_text:
             for line in log_info.log_text.splitlines():
                 # Look for the header your client script writes
                 if "COMMAND THAT WAS RUN:" in line:
@@ -94,7 +104,7 @@ def run(file_name = None,
                     parts = line.strip().split()
                     for p in parts:
                         if p.startswith("phenix."):
-                            program_name = p
+                            prog_name = p
                             break
                     break
 
@@ -114,7 +124,7 @@ def run(file_name = None,
             "job_id": job_id,
             "timestamp": time.time(),
             "file_name": file_name,
-            "program": program_name,
+            "program": prog_name,
             "summary": log_info.summary,
             "analysis": log_info.analysis,
             "error": log_info.error,
@@ -147,6 +157,18 @@ def run(file_name = None,
       print("No text to summarize")
       file_name = "No supplied text"
       something_to_analyze = False
+
+    # --- Extract program name from log if not provided ---
+    if not program_name and log_as_text:
+        program_name = detect_program_from_text(log_as_text)
+        if program_name:
+            print(f"[RUN] Auto-detected program from log: {program_name}")
+        else:
+            print(f"[RUN] Could not detect program from log")
+    elif program_name:
+        print(f"[RUN] Using provided program_name: {program_name}")
+    # ----------------------------------------------------------
+
     # Decide where to write files
     if not output_file_path:
       import tempfile
@@ -154,25 +176,10 @@ def run(file_name = None,
       output_file_path = dd.name
       # Note: will be deleted when execution ends
 
+    # --- SETUP: Run if we need to analyze OR if agent is enabled ---
+    needs_llm = (something_to_analyze and ((not log_info.summary) or (not log_info.analysis))) or run_agent
 
-    if something_to_analyze and (
-       (not log_info.summary) or (not log_info.analysis)):
-
-      # --- 1. DETECT CRASH (Construct Summary) ---
-      if log_as_text:
-          lines = log_as_text.splitlines()
-          for i, line in enumerate(lines):
-              if line.strip().startswith("Sorry:"):
-                  # Capture the Sorry line plus the next 20 lines (context/suggestions)
-                  context = "\n".join(lines[i:i+20])
-                  log_info.error = context
-                  print(f"NOTE: Found fatal error in log: {line.strip()}")
-
-                  # Set summary so we skip expensive summarization but run Analysis on the error
-                  log_info.summary = f"The job failed with the following error and context:\n{context}"
-                  break
-      # -------------------------------------------
-      # --- 2. SETUP (Always run) ---
+    if needs_llm:
       if provider == 'google':
         if not os.getenv("GOOGLE_API_KEY"):
            log_info.error = "GOOGLE_API_KEY environment variable not set."
@@ -217,30 +224,66 @@ def run(file_name = None,
 
       cheap_llm = lct.get_cheap_llm(
         provider=provider, timeout=timeout)
+    # ------ DONE WITH SETUP --------
 
-      # ------ DONE WITH SETUP --------
+    # --- 1. DETECT CRASH (Construct Summary) ---
+    if something_to_analyze and log_as_text and (not log_info.summary):
+        lines = log_as_text.splitlines()
+        for i, line in enumerate(lines):
+            if line.strip().startswith("Sorry:"):
+                # Capture the Sorry line plus the next 20 lines (context/suggestions)
+                context = "\n".join(lines[i:i+20])
+                log_info.error = context
+                print(f"NOTE: Found fatal error in log: {line.strip()}")
 
+                # Set summary so we skip expensive summarization but run Analysis on the error
+                log_info.summary = f"The job failed with the following error and context:\n{context}"
+                break
+    # -------------------------------------------
 
-      # --- 3. SUMMARIZE (Skip if we found a crash) ---
-      if lct and (not log_info.summary):
-          print("Summarizing log file (using cheap model)...")
-          for line in log_as_text.splitlines():
-            debug_log.append(f"DEBUG LOG_AS_TEXT: {line}")
-            debug_log.append(f"DEBUG SUMMARY MODEL: {cheap_llm} {provider}")
-             
-          result = asyncio.run(lct.get_log_info(
-              log_as_text, cheap_llm, embeddings, timeout=timeout, provider=provider))
+    # --- 2. SUMMARIZE (Skip if we found a crash or already have summary) ---
+    if something_to_analyze and (not log_info.summary):
+        if lct:
+            print("Summarizing log file (using cheap model)...")
+            if 0:
+              for line in log_as_text.splitlines():
+                debug_log.append(f"DEBUG LOG_AS_TEXT: {line}")
+                debug_log.append(f"DEBUG SUMMARY MODEL: {cheap_llm} {provider}")
 
-          if result.error or not result.summary:
-            print("Log file summary failed")
-            log_info.error = result.error
-            return log_info
-          for line in result.summary.splitlines():
-            debug_log.append(f"DEBUG SUMMARY: {line}")
+            # Pass program_name to get_log_info
+            result = asyncio.run(lct.get_log_info(
+                log_as_text, cheap_llm, embeddings, timeout=timeout,
+                provider=provider, program_name=program_name))
 
-          log_info = result
-          log_info.analysis = None
+            if result.error or not result.summary:
+              print("Log file summary failed")
+              log_info.error = result.error
+              return log_info
 
+            # Validate summary for hallucinations before using it
+            summary_text = result.summary
+            hallucination_markers = [
+                "/path/to/file",
+                "/nonexistent/",
+                "file1.mtz",
+                "file2.pdb",
+                "file1.pdb",
+                "file2.mtz",
+            ]
+
+            has_hallucination = any(marker in summary_text for marker in hallucination_markers)
+            if has_hallucination:
+                print("WARNING: Summary contains likely hallucinated content. Replacing with safe default.")
+                debug_log.append("DEBUG SUMMARY: HALLUCINATION DETECTED - replacing summary")
+                result.summary = "Log analysis produced unreliable results. Please re-run the analysis."
+                # Don't extract state from hallucinated summaries
+                log_info = result
+                log_info.analysis = None
+            else:
+                for line in result.summary.splitlines():
+                    debug_log.append(f"DEBUG SUMMARY: {line}")
+                log_info = result
+                log_info.analysis = None
 
     elif something_to_analyze:
       print(f"NOTE: Analysis already prepared")
@@ -248,7 +291,8 @@ def run(file_name = None,
       print(f"NOTE: No text analyzed")
       log_info.summary = None
       log_info.analysis = None
-      # -------------------------------------------
+    # -------------------------------------------
+
     log_info.log_text = log_as_text
 
     # Put log summary in an html window
@@ -429,17 +473,7 @@ def run(file_name = None,
         print("\n--- Running Agent for Next Move ---")
 
         try:
-            # 1. Ensure LLM is loaded (Fix for reused summaries)
-            if 'expensive_llm' not in locals() or 'embeddings' not in locals():
-                from libtbx.langchain import langchain_tools as lct
-                if provider == "google":
-                    expensive_llm, embeddings = lct.get_llm_and_embeddings(
-                        provider=provider, timeout=timeout, llm_model_name='gemini-2.5-pro')
-                else:
-                    expensive_llm, embeddings = lct.get_llm_and_embeddings(
-                        provider=provider, timeout=timeout, llm_model_name='gpt-5')
-
-            # 2. Load Past History
+            # 1. Load Past History
             past_history = []
 
             # Method A: String from Client (Robust for Remote)
@@ -461,13 +495,13 @@ def run(file_name = None,
                                 past_history.append(json.load(f))
                         except Exception as e: pass
 
-            # 3. Append Current Run
+            # 2. Append Current Run
             if something_to_analyze:
               full_history = past_history + [history_record_dict]
             else:
               full_history = past_history
 
-            # 4. Run Agent
+            # 3. Run Agent
             from libtbx.langchain import langchain_tools as lct
             agent_result = asyncio.run(lct.generate_next_move(
                 run_history=full_history,
@@ -507,6 +541,8 @@ def run(file_name = None,
 
         except Exception as e:
             print(f"Agent failed: {e}")
+            import traceback
+            traceback.print_exc()
             # --- FIX: Report crash to client ---
             next_move_dict = {
                 "program": "CRASH",
@@ -531,6 +567,7 @@ def run(file_name = None,
 
     time.sleep(1.0)  # give document loader time to load before deleting files
     return log_info # RETURN OBJECT (Backwards Compatible)
+
 
 def save_as_html(markdown_string: str,
      title: str = "Summary", file_name: str = None):
@@ -574,6 +611,7 @@ def save_as_html(markdown_string: str,
 
     return html_with_style
 
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Analyze Phenix Log or Error")
@@ -614,3 +652,4 @@ if __name__ == "__main__":
         job_id=args.job_id,
         provider = args.provider or os.getenv("LLM_PROVIDER", "ollama")
     )
+

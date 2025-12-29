@@ -169,7 +169,7 @@ def get_cheap_llm(provider=None, timeout=None):
             cheap_llm, _ = get_llm_and_embeddings(provider=provider, timeout=timeout)
         else:
             cheap_llm, _ = get_llm_and_embeddings(
-                provider=provider, timeout=timeout, llm_model_name='qwen2.5:14b') #'qwen2.5:32b') #'qwen3:32b')# 'qwen2.5:7b') # qwen2.5:72b') #'llama3.1:8b')
+                provider=provider, timeout=timeout, llm_model_name='qwen2.5:7b') #'qwen2.5:14b') #'qwen2.5:32b') #'qwen3:32b')# 'qwen2.5:7b') # qwen2.5:72b') #'llama3.1:8b')
         
         # Handle different attribute names across providers
         model_name = getattr(cheap_llm, 'model', None) or getattr(cheap_llm, 'model_name', 'unknown')
