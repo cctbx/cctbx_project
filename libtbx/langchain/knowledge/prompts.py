@@ -151,11 +151,19 @@ def get_strategic_planning_prompt() -> PromptTemplate:
     **PHENIX.PREDICT_AND_BUILD RESOLUTION (Common errors to avoid):**
     - **If you are running a full predict_and_build run (stop_after_predict=False) AND this is CRYO-EM data, you must supply a value for resolution. Do not supply a resolution value less than 2.0 unless the user has specifically told you to do so.
 
-    **PHENIX.LIGANDFIT SYNTAX:**
+    **PHENIX.LIGANDFIT SYNTAX FOR XRAY DATA:**
     - **CRITICAL:** Use the REFINED model (`*_refine_001.pdb`), NOT the MR output (`PHASER.1.pdb`)
     - **Map coefficients:** Use `*_refine_001.mtz` which contains 2mFo-DFc maps
     - **Map labels from refine:** `input_labels="2FOFCWT PH2FOFCWT"`
-    - **Working command:** `phenix.ligandfit model=PHASER.1_refine_001.pdb map_coeffs=PHASER.1_refine_001.mtz ligand=lig.pdb input_labels="2FOFCWT PH2FOFCWT"`
+    - **PDB and MTZ files are POSITIONAL arguments** - do NOT use `data=` or `model=` or `map_coeffs=`
+    - **Do not use `map_coeffs=` for the input data file. Just specify the file name **
+    - **Use `ligand=` for the ligand file**
+    - **Use `file_info.input_labels=` for map labels (NOT just `input_labels=`)**
+    - **Use `general.nproc=` for processors (NOT just `nproc=`)**
+    - **Working command:**
+```
+      phenix.ligandfit refined.pdb data=refined.mtz ligand=ligand.pdb file_info.input_labels="2FOFCWT PH2FOFCWT" general.nproc=4
+```
 
     **MANDATORY PRE-REFINEMENT CHECK (READ BEFORE EVERY phenix.refine DECISION):**
 

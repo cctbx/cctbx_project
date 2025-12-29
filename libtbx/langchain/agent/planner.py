@@ -13,6 +13,7 @@ Usage:
 """
 from __future__ import absolute_import, division, print_function
 
+import re
 import os
 import json
 
@@ -46,13 +47,82 @@ except ImportError:
 # =============================================================================
 # Helper Functions
 # =============================================================================
+_PARAMETER_FIXES = None
+
+# Load parameter fixes from JSON
+def load_parameter_fixes():
+    """Load program-specific parameter fixes from JSON."""
+    fixes = {}
+    
+    # JSON file is in same directory as this script
+    path = os.path.join(os.path.dirname(__file__), 'parameter_fixes.json')
+    
+    if os.path.exists(path):
+        try:
+            with open(path, 'r') as f:
+                fixes = json.load(f)
+            print(f"Loaded parameter fixes from {path}")
+        except Exception as e:
+            print(f"Warning: Could not load parameter fixes from {path}: {e}")
+    else:
+        print(f"Warning: parameter_fixes.json not found at {path}")
+    
+    return fixes
+
+
+def get_parameter_fixes():
+    """Get parameter fixes, loading from file if needed."""
+    global _PARAMETER_FIXES
+    if _PARAMETER_FIXES is None:
+        _PARAMETER_FIXES = load_parameter_fixes()
+    return _PARAMETER_FIXES
+
+
+def fix_program_parameters(command, program):
+    """
+    Fix common parameter mistakes for a specific program.
+    
+    Uses a JSON config that maps wrong parameter names to correct ones.
+    
+    Args:
+        command: The generated command string
+        program: The program name (e.g., 'phenix.ligandfit')
+    
+    Returns:
+        Fixed command string
+    """
+    fixes = get_parameter_fixes()
+    
+    if program not in fixes:
+        return command
+    
+    program_fixes = fixes[program]
+    
+    for wrong_param, right_param in program_fixes.items():
+        # Skip comment keys
+        if wrong_param.startswith('_'):
+            continue
+            
+        # Pattern to match parameter=value (handles quoted values too)
+        pattern = rf'\b{re.escape(wrong_param)}=("(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'|\S+)'
+        
+        if right_param is None:
+            # Remove the parameter entirely
+            command = re.sub(pattern, '', command)
+        else:
+            # Replace with correct parameter name
+            command = re.sub(pattern, rf'{right_param}=\1', command)
+    
+    # Clean up any double spaces
+    command = ' '.join(command.split())
+    
+    return command
 
 def extract_clean_command(raw_output):
     """
     Extract the actual Phenix command from model output that may contain
     thinking tokens, chain-of-thought, or other garbage.
     """
-    import re
 
     # Remove <think>...</think> blocks
     raw_output = re.sub(r'<think>.*?</think>', '', raw_output, flags=re.DOTALL)
@@ -91,33 +161,77 @@ def extract_clean_command(raw_output):
     return raw_output.strip()
 
 
-def get_relative_path(filepath, working_dir):
+def get_relative_path(filepath, working_dir=None):
     """
-    Convert an absolute path to a relative path from working_dir.
-    Falls back to basename if relative path cannot be computed.
+    Extract a usable relative path from a filepath.
+    
+    Since the server may have a different working directory than the client,
+    we look for known subdirectory patterns to preserve the path structure
+    needed for Phenix commands.
     
     Args:
         filepath: The file path (absolute or relative)
-        working_dir: The working directory to compute relative path from
+        working_dir: The working directory (optional, may not match client's)
     
     Returns:
-        Relative path string
+        Relative path string suitable for use in Phenix commands
     """
     if not filepath:
         return filepath
     
-    if os.path.isabs(filepath):
-        try:
-            rel_path = os.path.relpath(filepath, working_dir)
-            # Don't return paths that go up too many directories
-            if rel_path.startswith('..') and rel_path.count('..') > 2:
-                return os.path.basename(filepath)
-            return rel_path
-        except ValueError:
-            # On Windows, relpath can fail across drives
-            return os.path.basename(filepath)
-    else:
+    # If already a simple relative path (no absolute indicators), use as-is
+    if not os.path.isabs(filepath) and not filepath.startswith('/'):
         return filepath
+    
+    # Normalize path separators
+    filepath = filepath.replace('\\', '/')
+    
+    # Known output subdirectory patterns from Phenix programs
+    # If found, preserve from that point to maintain correct relative paths
+    known_subdirs = [
+        'PredictAndBuild_',
+        'PHASER_',
+        'Refine_',
+        'AutoBuild_',
+        'LigandFit_',
+        'DockAndRebuild_',
+        'CarryOn',
+        'local_prediction_',
+    ]
+    
+    # Check if any known subdirectory pattern exists in the path
+    for subdir in known_subdirs:
+        if subdir in filepath:
+            # Find where this subdirectory starts
+            idx = filepath.find(subdir)
+            # Go back to find the slash before this directory name
+            slash_idx = filepath.rfind('/', 0, idx)
+            if slash_idx != -1:
+                # Return everything after that slash
+                return filepath[slash_idx + 1:]
+            else:
+                # No slash found before, return from the pattern
+                return filepath[idx:]
+    
+    # No known subdirectory pattern found
+    # Try to extract just the filename (basename)
+    basename = os.path.basename(filepath)
+    
+    # But first, check if there's a simple subdirectory we should preserve
+    # e.g., "subdir/file.pdb" from "/long/path/to/project/subdir/file.pdb"
+    parts = filepath.split('/')
+    if len(parts) >= 2:
+        # Get the last two parts (potential subdir/file)
+        last_two = '/'.join(parts[-2:])
+        # If the second-to-last part looks like a subdirectory (not a system dir)
+        parent = parts[-2]
+        if parent and not parent.startswith('.') and \
+           parent not in ['Users', 'home', 'tmp', 'var', 'net', 'raid1', 'scratch1']:
+            # Check if it looks like a project subdirectory
+            if any(c.isupper() for c in parent) or '_' in parent or parent.endswith('_0'):
+                return last_two
+    
+    return basename
 
 
 def extract_output_files(summary_text):
@@ -131,9 +245,8 @@ def extract_output_files(summary_text):
             post = summary_text.split("**Key Output Files:**")[1]
             # Stop at next header or end
             content = post.split("**")[0].strip()
-            # Extract filenames (simple pattern)
-            import re
-            files = re.findall(r'[\w\-\.\/]+\.\w{2,4}', content)  # Added \/ to capture paths
+            # Extract filenames (pattern includes paths with /)
+            files = re.findall(r'[\w\-\.\/]+\.\w{2,4}', content)
     except Exception as e:
         pass
     return files
@@ -231,9 +344,6 @@ async def generate_next_move(
     def log(msg):
         print(msg)
         process_log.append(str(msg))
-
-    # --- GET WORKING DIRECTORY ---
-    working_dir = os.getcwd()
 
     # --- 1. LEARNING PHASE ---
     memory_file_path = get_memory_file_path(db_dir)
@@ -452,7 +562,7 @@ async def generate_next_move(
             # 1. Add Original Files (Ground Truth from client)
             if original_files_list:
                 for f in original_files_list:
-                    rel_path = get_relative_path(f, working_dir)
+                    rel_path = get_relative_path(f)
                     basename = os.path.basename(rel_path)
                     
                     if not is_likely_hallucinated(basename):
@@ -465,7 +575,7 @@ async def generate_next_move(
             # This is the AUTHORITATIVE source - client validated these exist
             if file_list:
                 for f in file_list:
-                    rel_path = get_relative_path(f, working_dir)
+                    rel_path = get_relative_path(f)
                     basename = os.path.basename(rel_path)
                     
                     if not is_likely_hallucinated(basename):
@@ -500,7 +610,7 @@ async def generate_next_move(
                 
                 for f in outs:
                     # Preserve path structure if present
-                    rel_path = get_relative_path(f, working_dir)
+                    rel_path = get_relative_path(f)
                     basename = os.path.basename(rel_path)
                     
                     # Skip obvious hallucinations
@@ -520,7 +630,7 @@ async def generate_next_move(
                     if file_list:
                         for fl in file_list:
                             if os.path.basename(fl) == basename:
-                                rel_path = get_relative_path(fl, working_dir)
+                                rel_path = get_relative_path(fl)
                                 available_files.add(rel_path)
                                 if basename not in basename_to_relpath or '/' in rel_path:
                                     basename_to_relpath[basename] = rel_path
@@ -544,6 +654,7 @@ async def generate_next_move(
                                 basename_to_relpath[basename] = rel_path
 
             log(f"DEBUG: Available Files (filtered): {sorted(list(available_files))}")
+            log(f"DEBUG: Basename to path mapping: {basename_to_relpath}")
 
             # B. Check Files
             missing_files = []
@@ -618,13 +729,20 @@ async def generate_next_move(
                 "input_files": plan.get('input_files', ""),
                 "valid_keywords": kw_result.keywords,
                 "learned_tips": relevant_tips,
-                "original_files": f"{orig_files_text}\n\nALL AVAILABLE FILES (use exact paths):\n{available_files_text}",
+                "original_files": f"{orig_files_text}\n\nALL AVAILABLE FILES (use exact paths including subdirectories):\n{available_files_text}",
                 "project_advice": advice_text,
             })
 
             command = command_obj.content.strip()
-            # NEW: Strip thinking tokens and extract just the command
+            # Strip thinking tokens and extract just the command
             command = extract_clean_command(command)
+
+            # NEW: Fix common parameter mistakes for this program
+            original_command = command
+            command = fix_program_parameters(command, program)
+            if command != original_command:
+                log(f"DEBUG: Fixed parameters: {original_command} -> {command}")
+
             
             # --- FIX BASENAME-ONLY REFERENCES ---
             # If the command uses just a basename but we have a full path, substitute it
@@ -636,16 +754,18 @@ async def generate_next_move(
                     # Handle key=value pairs
                     key, value = part.split('=', 1)
                     value = value.strip('"\'')
-                    if value in basename_to_relpath:
-                        fixed_parts.append(f"{key}={basename_to_relpath[value]}")
+                    value_basename = os.path.basename(value)
+                    # If value is just a basename and we have a full path, use the full path
+                    if value_basename == value and value_basename in basename_to_relpath:
+                        fixed_parts.append(f"{key}={basename_to_relpath[value_basename]}")
                     else:
                         fixed_parts.append(part)
-                elif '.' in part and not part.startswith('phenix.'):
+                elif '.' in part and not part.startswith('phenix.') and not part.startswith('-'):
                     # Could be a filename
                     part_clean = part.strip('"\'')
                     basename = os.path.basename(part_clean)
-                    if basename in basename_to_relpath and basename == part_clean:
-                        # Only fix if it's just the basename (not already a path)
+                    # Only fix if it's just the basename (not already a path)
+                    if basename == part_clean and basename in basename_to_relpath:
                         fixed_parts.append(basename_to_relpath[basename])
                     else:
                         fixed_parts.append(part)
@@ -653,12 +773,12 @@ async def generate_next_move(
                     fixed_parts.append(part)
             
             command = ' '.join(fixed_parts)
+            log(f"DEBUG: Command after basename fix: {command}")
             
-            # NEW: Hard block - remove docked_model_file if it references a ligand
+            # Hard block - remove docked_model_file if it references a ligand
             LIGAND_FILE_PATTERNS = ['lig.pdb', 'ligand.pdb', '_lig.pdb', '_ligand.pdb', 'lig.cif', 'ligand.cif']
 
             if 'docked_model_file' in command:
-                import re
                 match = re.search(r'docked_model_file[=\s]+["\']?([^\s"\']+)', command)
                 if match:
                     referenced_file = match.group(1).lower()
@@ -674,7 +794,7 @@ async def generate_next_move(
                         command = ' '.join(command.split())
 
 
-            # NEW: Hard block - reject commands with placeholder paths
+            # Hard block - reject commands with placeholder paths
             placeholder_patterns = [
                 '/path/to/',
                 '/dev/null',
@@ -706,9 +826,8 @@ async def generate_next_move(
                 )
                 continue  # Retry
 
-            # NEW: Hard block - remove ensemble.pdb if it references a ligand
+            # Hard block - remove ensemble.pdb if it references a ligand
             if 'ensemble.pdb' in command or 'ensemble_pdb' in command:
-                import re
                 match = re.search(r'ensemble[._]pdb[=\s]+["\']?([^\s"\']+)', command)
                 if match:
                     referenced_file = match.group(1).lower()
@@ -722,7 +841,7 @@ async def generate_next_move(
                         command = ' '.join(command.split())
 
 
-            # NEW: Validate it's actually a Phenix command
+            # Validate it's actually a Phenix command
             from libtbx.langchain.validation.core_validator import validate_is_phenix_command
 
             is_valid, error_msg = validate_is_phenix_command(command)
@@ -793,7 +912,6 @@ async def generate_next_move(
     if not is_valid and ("not recognized" in error.lower() or
                           "unknown" in error.lower() or
                           "ambiguous" in error.lower()):
-        import re
         # Try to extract and remove the bad parameter
         patterns = [
             r"parameter.*?:\s*(\w+)\s*=",

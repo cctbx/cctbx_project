@@ -1,0 +1,31 @@
+{
+  "_comment": "Maps wrong parameter names to correct ones. null means remove entirely.",
+  
+  "phenix.ligandfit": {
+    "model": null,
+    "map_coeffs": "data",
+    "input_labels": "file_info.input_labels",
+    "nproc": "general.nproc"
+  },
+  
+  "phenix.phaser": {
+    "nproc": "phaser.keywords.general.jobs",
+    "search.copies": null,
+    "ensemble.pdb": "phaser.ensemble.coordinates"
+  },
+  
+  "phenix.predict_and_build": {
+    "data_file": "xray_data_file",
+    "input_files.data_file": "input_files.xray_data_file",
+    "control.nproc": null,
+    "prediction.nproc": null
+  },
+  
+  "phenix.refine": {
+    "nproc": "main.nproc"
+  },
+  
+  "phenix.xtriage": {
+    "nproc": null
+  }
+}
