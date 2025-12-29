@@ -164,75 +164,70 @@ def extract_clean_command(raw_output):
 def get_relative_path(filepath, working_dir=None):
     """
     Extract a usable relative path from a filepath.
-    
+
     Since the server may have a different working directory than the client,
     we look for known subdirectory patterns to preserve the path structure
     needed for Phenix commands.
-    
+
     Args:
         filepath: The file path (absolute or relative)
         working_dir: The working directory (optional, may not match client's)
-    
+
     Returns:
         Relative path string suitable for use in Phenix commands
     """
     if not filepath:
         return filepath
-    
+
     # If already a simple relative path (no absolute indicators), use as-is
     if not os.path.isabs(filepath) and not filepath.startswith('/'):
         return filepath
-    
+
     # Normalize path separators
     filepath = filepath.replace('\\', '/')
-    
+
     # Known output subdirectory patterns from Phenix programs
-    # If found, preserve from that point to maintain correct relative paths
-    known_subdirs = [
-        'PredictAndBuild_',
+    # These patterns identify directories that contain output files
+    # Order matters - check more specific patterns first
+    known_subdir_patterns = [
+        '_CarryOn/',           # e.g., PredictAndBuild_0_CarryOn/
+        '_CarryOn',            # At end of path
+        'local_prediction_',   # e.g., PredictAndBuild_0/local_prediction_1_0/
+        'PredictAndBuild_',    # e.g., PredictAndBuild_0/
         'PHASER_',
         'Refine_',
         'AutoBuild_',
         'LigandFit_',
         'DockAndRebuild_',
-        'CarryOn',
-        'local_prediction_',
     ]
-    
-    # Check if any known subdirectory pattern exists in the path
-    for subdir in known_subdirs:
-        if subdir in filepath:
-            # Find where this subdirectory starts
-            idx = filepath.find(subdir)
-            # Go back to find the slash before this directory name
-            slash_idx = filepath.rfind('/', 0, idx)
-            if slash_idx != -1:
-                # Return everything after that slash
-                return filepath[slash_idx + 1:]
-            else:
-                # No slash found before, return from the pattern
-                return filepath[idx:]
-    
-    # No known subdirectory pattern found
-    # Try to extract just the filename (basename)
-    basename = os.path.basename(filepath)
-    
-    # But first, check if there's a simple subdirectory we should preserve
-    # e.g., "subdir/file.pdb" from "/long/path/to/project/subdir/file.pdb"
-    parts = filepath.split('/')
-    if len(parts) >= 2:
-        # Get the last two parts (potential subdir/file)
-        last_two = '/'.join(parts[-2:])
-        # If the second-to-last part looks like a subdirectory (not a system dir)
-        parent = parts[-2]
-        if parent and not parent.startswith('.') and \
-           parent not in ['Users', 'home', 'tmp', 'var', 'net', 'raid1', 'scratch1']:
-            # Check if it looks like a project subdirectory
-            if any(c.isupper() for c in parent) or '_' in parent or parent.endswith('_0'):
-                return last_two
-    
-    return basename
 
+    # First, check if path contains a _CarryOn directory - this is the most specific
+    if '_CarryOn/' in filepath or filepath.endswith('_CarryOn'):
+        # Find the parent directory of _CarryOn (e.g., PredictAndBuild_0_CarryOn)
+        # We want to return "PredictAndBuild_0_CarryOn/filename.pdb"
+        parts = filepath.split('/')
+        for i, part in enumerate(parts):
+            if '_CarryOn' in part:
+                # Return from this directory onwards
+                return '/'.join(parts[i:])
+
+    # Check for local_prediction subdirectories
+    if 'local_prediction_' in filepath:
+        parts = filepath.split('/')
+        for i, part in enumerate(parts):
+            if part.startswith('PredictAndBuild_') or part.startswith('local_prediction_'):
+                return '/'.join(parts[i:])
+
+    # Check for other known patterns
+    for pattern in known_subdir_patterns:
+        if pattern in filepath:
+            parts = filepath.split('/')
+            for i, part in enumerate(parts):
+                if pattern.rstrip('/') in part:
+                    return '/'.join(parts[i:])
+
+    # No known subdirectory found - return basename
+    return os.path.basename(filepath)
 
 def extract_output_files(summary_text):
     """Parses the 'Key Output Files' section from a summary."""
