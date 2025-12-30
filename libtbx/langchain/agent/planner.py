@@ -49,14 +49,359 @@ except ImportError:
 # =============================================================================
 _PARAMETER_FIXES = None
 
+def construct_command_mechanically(program, plan, original_files_list, required_params, log):
+    """
+    Construct commands mechanically for key programs.
+
+    Args:
+        program: The program name (e.g., 'phenix.refine')
+        plan: Plan dict from planner (contains 'input_files', 'strategy_details')
+        original_files_list: List of original files provided by user
+        required_params: Dict of required parameters (e.g., {'model': 'model=xxx.pdb'})
+        log: Logging function
+
+    Returns:
+        str: Constructed command, or None if no mechanical construction available
+    """
+    command = None
+
+    input_files_list = plan.get('input_files', '').split()
+    strategy_details = plan.get('strategy_details', '').lower()
+
+    def extract_filename(param_value):
+        """Extract just the filename from 'key=filename' or 'filename'."""
+        if not param_value:
+            return None
+        if '=' in param_value:
+            return param_value.split('=', 1)[1]
+        return param_value
+
+    if program == "phenix.refine":
+        # Find model (prefer *_with_ligand.pdb, then *_refine_*.pdb, then any .pdb)
+        model_file = None
+        data_file = None
+
+        for f in input_files_list:
+            if f.endswith('.pdb'):
+                if 'with_ligand' in f or 'complex' in f:
+                    model_file = f  # Highest priority - combined model
+                elif model_file is None:
+                    model_file = f
+                elif '_refine_' in f and 'with_ligand' not in (model_file or ''):
+                    model_file = f  # Prefer refined over unrefined
+            elif f.endswith('.mtz'):
+                data_file = f
+
+        # Override with required_params if set (extract just filename for positional args)
+        if required_params.get('model'):
+            model_file = extract_filename(required_params['model'])
+
+        if model_file and data_file:
+            command = f"phenix.refine {model_file} {data_file} xray_data.r_free_flags.generate=True"
+            log(f"DEBUG: Mechanically constructed refine command: {command}")
+
+    elif program == "phenix.ligandfit":
+        # required_params already has 'model': 'model=filename.pdb' format
+        model_param = required_params.get('model', '')
+        data_param = required_params.get('data', '')
+        ligand_param = required_params.get('ligand', '')
+
+        # Fallback: find files from input_files_list (need to add key= prefix)
+        if not model_param:
+            for f in input_files_list:
+                if '_refine_' in f and f.endswith('.pdb') and 'ligand' not in f.lower():
+                    model_param = f"model={f}"
+                    break
+        if not data_param:
+            for f in input_files_list:
+                if '_refine_' in f and f.endswith('.mtz'):
+                    data_param = f"data={f}"
+                    break
+        if not ligand_param:
+            for f in input_files_list:
+                if f.endswith('.pdb') and ('lig' in f.lower() or 'ligand' in f.lower()):
+                    if '_refine_' not in f:
+                        ligand_param = f"ligand={f}"
+                        break
+
+        if model_param and data_param and ligand_param:
+            command = f"phenix.ligandfit {model_param} {data_param} {ligand_param} file_info.input_labels=\"2FOFCWT PH2FOFCWT\" general.nproc=4"
+            log(f"DEBUG: Mechanically constructed ligandfit command: {command}")
+
+    elif program == "phenix.pdbtools":
+        # Look for protein model and ligand to combine
+        protein_file = None
+        ligand_file = None
+
+        for f in input_files_list:
+            if f.endswith('.pdb'):
+                if 'ligand_fit' in f.lower():
+                    ligand_file = f
+                elif f.lower().startswith('lig') and '_refine_' not in f:
+                    ligand_file = f
+                elif '_refine_' in f and 'with_ligand' not in f:
+                    protein_file = f
+                elif protein_file is None and 'with_ligand' not in f and 'ligand_fit' not in f.lower():
+                    protein_file = f
+
+        # Also search original_files for ligand if not found
+        if not ligand_file:
+            for f in original_files_list:
+                if f.endswith('.pdb') and ('lig' in f.lower() or 'ligand' in f.lower()):
+                    if '_refine_' not in f and 'with_ligand' not in f:
+                        ligand_file = f
+                        break
+
+        if protein_file and ligand_file:
+            # Generate output name
+            base = protein_file.replace('.pdb', '')
+            output_name = f"{base}_with_ligand.pdb"
+            command = f"phenix.pdbtools {protein_file} {ligand_file} output.file_name={output_name}"
+            log(f"DEBUG: Mechanically constructed pdbtools command: {command}")
+
+    elif program == "phenix.phaser":
+        model_file = None
+        data_file = None
+        seq_file = None
+
+        for f in input_files_list:
+            if f.endswith('.pdb'):
+                model_file = f
+            elif f.endswith('.mtz'):
+                data_file = f
+            elif f.endswith('.fa') or f.endswith('.fasta') or f.endswith('.seq'):
+                seq_file = f
+
+        # Fallback to original_files
+        if not data_file:
+            for f in original_files_list:
+                if f.endswith('.mtz'):
+                    data_file = f
+                    break
+        if not seq_file:
+            for f in original_files_list:
+                if f.endswith('.fa') or f.endswith('.fasta') or f.endswith('.seq'):
+                    seq_file = f
+                    break
+
+        if model_file and data_file:
+            command = f"phenix.phaser {data_file} {model_file}"
+            if seq_file:
+                command += f" {seq_file}"
+            command += " phaser.mode=MR_AUTO"
+            log(f"DEBUG: Mechanically constructed phaser command: {command}")
+
+    elif program == "phenix.xtriage":
+        data_file = None
+        seq_file = None
+
+        for f in input_files_list:
+            if f.endswith('.mtz'):
+                data_file = f
+            elif f.endswith('.fa') or f.endswith('.fasta') or f.endswith('.seq'):
+                seq_file = f
+
+        # Fallback to original_files
+        if not data_file:
+            for f in original_files_list:
+                if f.endswith('.mtz'):
+                    data_file = f
+                    break
+        if not seq_file:
+            for f in original_files_list:
+                if f.endswith('.fa') or f.endswith('.fasta') or f.endswith('.seq'):
+                    seq_file = f
+                    break
+
+        if data_file:
+            command = f"phenix.xtriage {data_file}"
+            if seq_file:
+                command += f" scaling.input.asu_contents.sequence_file={seq_file}"
+            log(f"DEBUG: Mechanically constructed xtriage command: {command}")
+
+    elif program == "phenix.predict_and_build":
+        data_file = None
+        seq_file = None
+
+        for f in input_files_list:
+            if f.endswith('.mtz'):
+                data_file = f
+            elif f.endswith('.fa') or f.endswith('.fasta') or f.endswith('.seq'):
+                seq_file = f
+
+        # Fallback to original_files
+        if not data_file:
+            for f in original_files_list:
+                if f.endswith('.mtz'):
+                    data_file = f
+                    break
+        if not seq_file:
+            for f in original_files_list:
+                if f.endswith('.fa') or f.endswith('.fasta') or f.endswith('.seq'):
+                    seq_file = f
+                    break
+
+        if seq_file:
+            command = f"phenix.predict_and_build input_files.seq_file={seq_file}"
+            if data_file:
+                command += f" input_files.xray_data_file={data_file}"
+            # Check if stop_after_predict was in strategy
+            if 'stop_after_predict' in strategy_details:
+                command += " predict_and_build.stop_after_predict=True"
+            log(f"DEBUG: Mechanically constructed predict_and_build command: {command}")
+
+    elif program == "phenix.mtriage":
+        map_file = None
+        half_map_1 = None
+        half_map_2 = None
+
+        for f in input_files_list:
+            if f.endswith('.ccp4') or f.endswith('.mrc') or f.endswith('.map'):
+                if 'half' in f.lower() or '_1' in f or '_2' in f:
+                    if half_map_1 is None:
+                        half_map_1 = f
+                    else:
+                        half_map_2 = f
+                else:
+                    map_file = f
+
+        # Fallback to original_files
+        if not map_file and not half_map_1:
+            for f in original_files_list:
+                if f.endswith('.ccp4') or f.endswith('.mrc') or f.endswith('.map'):
+                    map_file = f
+                    break
+
+        if half_map_1 and half_map_2:
+            command = f"phenix.mtriage half_map={half_map_1} half_map={half_map_2}"
+            if map_file:
+                command = f"phenix.mtriage map={map_file} half_map={half_map_1} half_map={half_map_2}"
+            log(f"DEBUG: Mechanically constructed mtriage command: {command}")
+        elif map_file:
+            command = f"phenix.mtriage {map_file}"
+            log(f"DEBUG: Mechanically constructed mtriage command: {command}")
+
+    elif program == "phenix.process_predicted_model":
+        model_file = None
+
+        for f in input_files_list:
+            if f.endswith('.pdb') and 'predicted' in f.lower():
+                model_file = f
+                break
+
+        # Fallback: any pdb file
+        if not model_file:
+            for f in input_files_list:
+                if f.endswith('.pdb'):
+                    model_file = f
+                    break
+
+        if model_file:
+            command = f"phenix.process_predicted_model {model_file}"
+            log(f"DEBUG: Mechanically constructed process_predicted_model command: {command}")
+
+    elif program == "phenix.dock_in_map":
+        model_file = None
+        map_file = None
+        seq_file = None
+
+        for f in input_files_list:
+            if f.endswith('.pdb'):
+                model_file = f
+            elif f.endswith('.ccp4') or f.endswith('.mrc') or f.endswith('.map'):
+                map_file = f
+            elif f.endswith('.fa') or f.endswith('.fasta') or f.endswith('.seq'):
+                seq_file = f
+
+        # Fallback to original_files
+        if not map_file:
+            for f in original_files_list:
+                if f.endswith('.ccp4') or f.endswith('.mrc') or f.endswith('.map'):
+                    map_file = f
+                    break
+        if not seq_file:
+            for f in original_files_list:
+                if f.endswith('.fa') or f.endswith('.fasta') or f.endswith('.seq'):
+                    seq_file = f
+                    break
+
+        if model_file and map_file:
+            command = f"phenix.dock_in_map {model_file} {map_file}"
+            if seq_file:
+                command += f" {seq_file}"
+            log(f"DEBUG: Mechanically constructed dock_in_map command: {command}")
+
+    elif program == "phenix.real_space_refine":
+        model_file = None
+        map_file = None
+
+        for f in input_files_list:
+            if f.endswith('.pdb'):
+                model_file = f
+            elif f.endswith('.ccp4') or f.endswith('.mrc') or f.endswith('.map'):
+                map_file = f
+
+        # Fallback to original_files
+        if not map_file:
+            for f in original_files_list:
+                if f.endswith('.ccp4') or f.endswith('.mrc') or f.endswith('.map'):
+                    map_file = f
+                    break
+
+        if model_file and map_file:
+            command = f"phenix.real_space_refine {model_file} {map_file}"
+            log(f"DEBUG: Mechanically constructed real_space_refine command: {command}")
+
+    return command
+
+
+def get_required_params(program, input_files, original_files):
+    """
+    Pre-compute required parameters for specific programs.
+    Returns a dict of param_name: value that MUST be included in the command.
+    """
+    required = {}
+
+    # Combine all available files
+    all_files = input_files.split() if input_files else []
+    if original_files:
+        all_files.extend(original_files.split())
+
+    if program == "phenix.ligandfit":
+        for f in all_files:
+            # Find refined model (prefer *_refine_*.pdb)
+            if "_refine_" in f and f.endswith(".pdb") and "ligand" not in f.lower():
+                if "model" not in required:
+                    required["model"] = f
+            # Find refined MTZ
+            if "_refine_" in f and f.endswith(".mtz"):
+                if "data" not in required:
+                    required["data"] = f
+            # Find ligand file
+            if f.endswith(".pdb") and ("lig" in f.lower() or "ligand" in f.lower()):
+                if "_refine_" not in f:
+                    required["ligand"] = f
+
+    elif program == "phenix.refine":
+        # After ligand combination, use the combined model
+        for f in all_files:
+            if "with_ligand" in f and f.endswith(".pdb"):
+                required["model"] = f
+                break
+            if "complex" in f and f.endswith(".pdb"):
+                required["model"] = f
+                break
+
+    return required
+
 # Load parameter fixes from JSON
 def load_parameter_fixes():
     """Load program-specific parameter fixes from JSON."""
     fixes = {}
-    
+
     # JSON file is in same directory as this script
     path = os.path.join(os.path.dirname(__file__), 'parameter_fixes.json')
-    
+
     if os.path.exists(path):
         try:
             with open(path, 'r') as f:
@@ -66,7 +411,7 @@ def load_parameter_fixes():
             print(f"Warning: Could not load parameter fixes from {path}: {e}")
     else:
         print(f"Warning: parameter_fixes.json not found at {path}")
-    
+
     return fixes
 
 
@@ -80,47 +425,50 @@ def get_parameter_fixes():
 def fix_program_parameters(command, program):
     """
     Fix common parameter mistakes for a specific program.
-    
+
     Uses a JSON config that maps wrong parameter names to correct ones.
-    
+
     Args:
         command: The generated command string
         program: The program name (e.g., 'phenix.ligandfit')
-    
+
     Returns:
         Fixed command string
     """
     fixes = get_parameter_fixes()
-    
+
     if program not in fixes:
         return command
-    
+
     program_fixes = fixes[program]
-    
+
     for wrong_param, right_param in program_fixes.items():
         # Skip comment keys
         if wrong_param.startswith('_'):
             continue
-        
+
         # Skip if right_param is already in the command (avoid double-fixing)
-        if right_param is not None and right_param + '=' in command:
+        if right_param and right_param + '=' in command:
             continue
-            
+
         # Pattern to match parameter=value (handles quoted values too)
         # Use word boundary and negative lookbehind to avoid matching if already prefixed
         # e.g., don't match "input_labels" if "file_info.input_labels" exists
         pattern = rf'(?<![.\w]){re.escape(wrong_param)}=("(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'|\S+)'
-        
-        if right_param is None:
-            # Remove the parameter entirely
+
+        if right_param == "":
+            # Remove the parameter name but keep the value
+            command = re.sub(pattern, r'\1', command)
+        elif right_param is None:
+            # Remove entirely
             command = re.sub(pattern, '', command)
         else:
             # Replace with correct parameter name
             command = re.sub(pattern, rf'{right_param}=\1', command)
-    
+
     # Clean up any double spaces
     command = ' '.join(command.split())
-    
+
     return command
 
 def extract_clean_command(raw_output):
@@ -528,14 +876,14 @@ async def generate_next_move(
 
             # A. Build List of Available Files
             # IMPORTANT: The server cannot validate files on disk.
-            # We trust the file_list from the client (already validated) and 
+            # We trust the file_list from the client (already validated) and
             # original_files. We do NOT trust files extracted from summaries
             # because the LLM may have hallucinated them.
-            
+
             available_files = set()
             # Also keep a mapping from basename to full relative path
             basename_to_relpath = {}
-            
+
             # Known hallucinated file patterns to reject
             hallucinated_patterns = [
                 "PHENIX.1.pdb",  # Common hallucination
@@ -544,7 +892,7 @@ async def generate_next_move(
                 "/path/to/",  # Path placeholder
                 "/nonexistent/",  # Obvious placeholder
             ]
-            
+
             def is_likely_hallucinated(filename):
                 """Check if filename looks like a hallucination."""
                 if not filename:
@@ -564,7 +912,7 @@ async def generate_next_move(
                 for f in original_files_list:
                     rel_path = get_relative_path(f)
                     basename = os.path.basename(rel_path)
-                    
+
                     if not is_likely_hallucinated(basename):
                         available_files.add(rel_path)
                         # Map basename to relative path for lookup
@@ -577,7 +925,7 @@ async def generate_next_move(
                 for f in file_list:
                     rel_path = get_relative_path(f)
                     basename = os.path.basename(rel_path)
-                    
+
                     if not is_likely_hallucinated(basename):
                         available_files.add(rel_path)
                         # Map basename to relative path for lookup
@@ -596,28 +944,28 @@ async def generate_next_move(
                 'phenix.predict_and_build': ['_rebuilt', '_predicted', '_overall_best'],
                 'phenix.dock_and_rebuild': ['_rebuilt', '_docked'],
             }
-            
+
             for run in run_history:
                 # Only trust output files from successful runs
                 result = run.get('result', '')
                 if not (isinstance(result, str) and result.startswith('SUCCESS')):
                     continue
-                    
+
                 run_program = run.get('program', '')
                 outs = run.get('output_files', [])
                 if not outs:
                     outs = extract_output_files(run.get('summary', ''))
-                
+
                 for f in outs:
                     # Preserve path structure if present
                     rel_path = get_relative_path(f)
                     basename = os.path.basename(rel_path)
-                    
+
                     # Skip obvious hallucinations
                     if is_likely_hallucinated(basename):
                         log(f"WARNING: Rejecting likely hallucinated file: {basename}")
                         continue
-                    
+
                     # If we have expected patterns for this program, validate
                     patterns = expected_output_patterns.get(run_program, [])
                     if patterns:
@@ -625,7 +973,7 @@ async def generate_next_move(
                         if not matches_pattern:
                             log(f"WARNING: File {basename} doesn't match expected output for {run_program}")
                             continue
-                    
+
                     # If already in file_list (validated by client), use that path
                     if file_list:
                         for fl in file_list:
@@ -679,7 +1027,7 @@ async def generate_next_move(
                         if avail.endswith(f) or os.path.basename(avail) == f_base:
                             file_found = True
                             break
-                
+
                 if not file_found:
                     missing_files.append(f)
 
@@ -715,6 +1063,7 @@ async def generate_next_move(
                 log(f"  -> Applying {len(tips_list)} learned tips for {program}")
             else:
                 relevant_tips = "No specific history for this program."
+                log(f"  -> No learned tips applied for {program}")
 
 
             cmd_prompt = get_command_writer_prompt()
@@ -722,6 +1071,24 @@ async def generate_next_move(
 
             # Pass available files with full paths to command writer
             available_files_text = "\n".join(sorted(list(available_files)))
+
+            # Get required parameters for this program
+            required_params = get_required_params(
+                program,
+                plan.get('input_files', ""),
+                orig_files_text
+            )
+            required_params_text = ""
+            if required_params:
+                required_params_text = "\n".join([f"{k}={v}" for k, v in required_params.items()])
+
+            log(f"DEBUG program to run: {program}")
+            log(f"DEBUG Strategy details: {plan.get('strategy_details', 'No details provided')}")
+            log(f"DEBUG input files: {plan.get('input_files', 'No files provided')}")
+            log(f"DEBUG original files: {orig_files_text}")
+            log(f"DEBUG tips: {relevant_tips}")
+            log(f"DEBUG advice: {advice_text}")
+            log(f"DEBUG required_params_text: {required_params_text}")
 
             command_obj = cmd_chain.invoke({
                 "program": program,
@@ -731,11 +1098,32 @@ async def generate_next_move(
                 "learned_tips": relevant_tips,
                 "original_files": f"{orig_files_text}\n\nALL AVAILABLE FILES (use exact paths including subdirectories):\n{available_files_text}",
                 "project_advice": advice_text,
+                "required_params": required_params_text,
             })
 
             command = command_obj.content.strip()
+            log(f"DEBUG: Original command: {command}")
             # Strip thinking tokens and extract just the command
             command = extract_clean_command(command)
+
+            # Save the agent's original command
+            agent_command = command
+
+            # Generate a backup mechanical command
+            mechanical_command = construct_command_mechanically(
+                program,
+                plan,
+                original_files_list,
+                required_params,
+                log
+            )
+
+            if mechanical_command:
+                log(f"DEBUG: Agent command: {agent_command}")
+                log(f"DEBUG: Backup mechanical command: {mechanical_command}")
+
+            # Use agent's command first (don't override)
+            # mechanical_command will be used as fallback if agent's command fails
 
             # NEW: Fix common parameter mistakes for this program
             original_command = command
@@ -743,9 +1131,10 @@ async def generate_next_move(
             if command != original_command:
                 log(f"DEBUG: Fixed parameters: {original_command} -> {command}")
 
-            
+
             # --- FIX BASENAME-ONLY REFERENCES ---
             # If the command uses just a basename but we have a full path, substitute it
+            log(f"\nDEBUG: Command before basename fix: {command}")
             command_parts = command.split()
             fixed_parts = []
             for part in command_parts:
@@ -771,10 +1160,10 @@ async def generate_next_move(
                         fixed_parts.append(part)
                 else:
                     fixed_parts.append(part)
-            
+
             command = ' '.join(fixed_parts)
             log(f"DEBUG: Command after basename fix: {command}")
-            
+
             # Hard block - remove docked_model_file if it references a ligand
             LIGAND_FILE_PATTERNS = ['lig.pdb', 'ligand.pdb', '_lig.pdb', '_ligand.pdb', 'lig.cif', 'ligand.cif']
 
@@ -798,21 +1187,39 @@ async def generate_next_move(
             placeholder_patterns = [
                 '/path/to/',
                 '/dev/null',
-                'model.pdb',  # Generic placeholder
-                'data.mtz',   # Generic placeholder
-                'input.pdb',
-                'input.mtz',
                 '/input/',
                 '/output/',
             ]
-            
+
+            # These should only match as standalone filenames, not substrings
+            standalone_placeholder_files = [
+                'model.pdb',
+                'data.mtz',
+                'input.pdb',
+                'input.mtz',
+            ]
+
             has_placeholder = False
+
+            # Check path patterns (substring match is fine)
             for pattern in placeholder_patterns:
                 if pattern in command:
                     has_placeholder = True
                     log(f"ERROR: Command contains placeholder '{pattern}'")
                     break
-            
+
+            # Check standalone file placeholders (must be exact filename match)
+            if not has_placeholder:
+                import re
+                for placeholder in standalone_placeholder_files:
+                    # Match only if it's a standalone filename (not part of a longer name)
+                    # Looks for the placeholder preceded by space, =, or start, and followed by space or end
+                    pattern = rf'(?:^|[\s=])({re.escape(placeholder)})(?:\s|$)'
+                    if re.search(pattern, command):
+                        has_placeholder = True
+                        log(f"ERROR: Command contains placeholder '{placeholder}'")
+                        break
+
             if has_placeholder:
                 # Get actual available files for the error message
                 pdb_files = [f for f in available_files if f.endswith('.pdb')]
@@ -953,6 +1360,7 @@ async def generate_next_move(
     return group_args(
         group_args_type='next_move',
         command=command,
+        mechanical_command=mechanical_command,
         explanation=f"PLAN: {long_term_plan}\n\nREASONING: {plan.get('reasoning', '')}",
         program=program,
         strategy=plan.get('strategy_details', ""),

@@ -55,7 +55,7 @@ def run(file_name = None,
             file_list_text = simple_string_as_text(file_list_as_simple_string)
             file_list = [f.strip() for f in file_list_text.split('\n') if f.strip()]
         except Exception as e:
-            print(f"Error parsing file list: {e}")
+            debug_log.append(f"Error parsing file list: {e}")
     # -----------------------
 
 
@@ -144,17 +144,17 @@ def run(file_name = None,
         raise ValueError("Sorry, the file %s is missing" %(file_name))
       log_as_text = open(
          file_name, 'r', encoding='utf-8', errors='ignore').read()
-      print("Summarizing the log file '%s'..." %(file_name))
+      debug_log.append("Summarizing the log file '%s'..." %(file_name))
     elif file_name and log_as_text:
-      print("Summarizing the log file '%s'..." %(file_name))
+      debug_log.append("Summarizing the log file '%s'..." %(file_name))
     elif log_as_text:
-      print("Summarizing supplied text as a log file")
+      debug_log.append("Summarizing supplied text as a log file")
       file_name = "Supplied text"
     elif log_info.summary or log_info.analysis:
-      print("Summarizing existing info")
+      debug_log.append("Summarizing existing info")
       file_name = "Existing info"
     else:
-      print("No text to summarize")
+      debug_log.append("No text to summarize")
       file_name = "No supplied text"
       something_to_analyze = False
 
@@ -162,11 +162,11 @@ def run(file_name = None,
     if not program_name and log_as_text:
         program_name = detect_program_from_text(log_as_text)
         if program_name:
-            print(f"[RUN] Auto-detected program from log: {program_name}")
+            debug_log.append(f"[RUN] Auto-detected program from log: {program_name}")
         else:
-            print(f"[RUN] Could not detect program from log")
+            debug_log.append(f"[RUN] Could not detect program from log")
     elif program_name:
-        print(f"[RUN] Using provided program_name: {program_name}")
+        debug_log.append(f"[RUN] Using provided program_name: {program_name}")
     # ----------------------------------------------------------
 
     # Decide where to write files
@@ -195,13 +195,13 @@ def run(file_name = None,
       if db_dir is None:
         if provider == 'google':
             db_dir = "./docs_db_google"
-            print(f"Provider is 'google', using default database: {db_dir}")
+            debug_log.append(f"Provider is 'google', using default database: {db_dir}")
         elif provider == 'openai':
             db_dir = "./docs_db_openai"
-            print(f"Provider is 'openai', using default database: {db_dir}")
+            debug_log.append(f"Provider is 'openai', using default database: {db_dir}")
         elif provider == 'ollama':
             db_dir = "./docs_db_ollama"
-            print(f"Provider is 'ollama', using default database: {db_dir}")
+            debug_log.append(f"Provider is 'ollama', using default database: {db_dir}")
 
       if not os.path.exists(db_dir):
           log_info.error = (
@@ -211,7 +211,7 @@ def run(file_name = None,
           )
           return log_info
 
-      print("Setting up LLMs...")
+      debug_log.append("Setting up LLMs...")
       expensive_llm, embeddings = lct.get_expensive_llm(
          provider=provider, timeout=timeout, json_mode=False)
 
@@ -234,7 +234,7 @@ def run(file_name = None,
                 # Capture the Sorry line plus the next 20 lines (context/suggestions)
                 context = "\n".join(lines[i:i+20])
                 log_info.error = context
-                print(f"NOTE: Found fatal error in log: {line.strip()}")
+                debug_log.append(f"NOTE: Found fatal error in log: {line.strip()}")
 
                 # Set summary so we skip expensive summarization but run Analysis on the error
                 log_info.summary = f"The job failed with the following error and context:\n{context}"
@@ -244,7 +244,7 @@ def run(file_name = None,
     # --- 2. SUMMARIZE (Skip if we found a crash or already have summary) ---
     if something_to_analyze and (not log_info.summary):
         if lct:
-            print("Summarizing log file (using cheap model)...")
+            debug_log.append("Summarizing log file (using cheap model)...")
             if 0:
               for line in log_as_text.splitlines():
                 debug_log.append(f"DEBUG LOG_AS_TEXT: {line}")
@@ -256,7 +256,7 @@ def run(file_name = None,
                 provider=provider, program_name=program_name))
 
             if result.error or not result.summary:
-              print("Log file summary failed")
+              debug_log.append("Log file summary failed")
               log_info.error = result.error
               return log_info
 
@@ -273,7 +273,6 @@ def run(file_name = None,
 
             has_hallucination = any(marker in summary_text for marker in hallucination_markers)
             if has_hallucination:
-                print("WARNING: Summary contains likely hallucinated content. Replacing with safe default.")
                 debug_log.append("DEBUG SUMMARY: HALLUCINATION DETECTED - replacing summary")
                 result.summary = "Log analysis produced unreliable results. Please re-run the analysis."
                 # Don't extract state from hallucinated summaries
@@ -286,9 +285,9 @@ def run(file_name = None,
                 log_info.analysis = None
 
     elif something_to_analyze:
-      print(f"NOTE: Analysis already prepared")
+      debug_log.append(f"NOTE: Analysis already prepared")
     else:  # nothing to analyze
-      print(f"NOTE: No text analyzed")
+      debug_log.append(f"NOTE: No text analyzed")
       log_info.summary = None
       log_info.analysis = None
     # -------------------------------------------
@@ -305,17 +304,16 @@ def run(file_name = None,
          text += text_to_append_to_summary
       save_as_html(text, file_name = fn,
        title = 'Summary of %s' %(file_name))
-      print("Loading log summary at %s" %(fn))
+      debug_log.append("Loading log summary at %s" %(fn))
       try:
         from phenix.command_line.doc import load_url
         load_url(fn)
       except Exception as e:
-        # phenix is not available or no viewer.  Just skip
-        print("Unable to load viewer")
+        pass # phenix is not available or no viewer.  Just skip
 
     # Analyze the log summary in the context of the docs
     if log_info.summary and not log_info.error:
-        print("\nAnalyzing summary in context of documentation (using expensive model)...")
+        debug_log.append("\nAnalyzing summary in context of documentation (using expensive model)...")
         if lct and db_dir and (not log_info.analysis):
           ok = False
           from copy import deepcopy
@@ -335,13 +333,13 @@ def run(file_name = None,
               break # Exit the loop on success
             else:
               last_error = result.error or "Unknown analysis error"
-              print(f"Analysis failed (Attempt {i+1}/{max_analyze_log_tries}): {last_error}")
+              debug_log.append(f"Analysis failed (Attempt {i+1}/{max_analyze_log_tries}): {last_error}")
               time.sleep(1)
 
           if (not ok):
             log_info.error = f"Analysis failed after {max_analyze_log_tries} attempts. Last error: {last_error}"
             log_info.analysis = ""
-            print("Unable to carry out analysis of log file.")
+            debug_log.append("Unable to carry out analysis of log file.")
             return log_info # Return object
 
         # Put it in an html window
@@ -354,13 +352,12 @@ def run(file_name = None,
             fn = os.path.join(output_file_path,'analysis.html')
           save_as_html(text, file_name = fn,
            title = 'Analysis of %s' %(file_name))
-          print("Loading analysis at %s" %(fn))
+          debug_log.append("Loading analysis at %s" %(fn))
           try:
             from phenix.command_line.doc import load_url
             load_url(fn)
           except Exception as e:
-            # phenix is not available or no viewer.  Just skip
-            print("Unable to load viewer")
+            pass # phenix is not available or no viewer.  Just skip
 
 
     # --- Parse Project State ---
@@ -388,7 +385,6 @@ def run(file_name = None,
              debug_log.append(f"DEBUG EXTRACT: Type = {type(state_updates)}, Empty = {len(state_updates) == 0}")
 
         except Exception as e:
-             print(f"Warning: Could not extract state updates: {e}")
              debug_log.append(f"DEBUG EXTRACT: Exception = {e}")
 
     # --- PACK FOR TRANSPORT (Critical Fix) ---
@@ -404,7 +400,6 @@ def run(file_name = None,
              debug_log.append(f"DEBUG PACK: Has state_updates attr = {hasattr(log_info, 'state_updates')}")
 
         except Exception as e:
-             print(f"Warning: Failed to encode state_updates: {e}")
              debug_log.append(f"DEBUG PACK: Encoding exception = {e}")
     else:
         debug_log.append(f"DEBUG PACK: state_updates is empty, NOT packing")
@@ -448,52 +443,69 @@ def run(file_name = None,
             with open(json_path, 'w') as f:
                 json.dump(history_record_dict, f, indent=2)
 
-            print(f"Saved run history to: {json_path}")
+            debug_log.append(f"Saved run history to: {json_path}")
 
         except Exception as e:
-            print(f"Warning: Failed to save history JSON: {e}")
+            debug_log.append(f"Warning: Failed to save history JSON: {e}")
     else:
       json_path = None
     # ---------------------------------
 
     # --- AGENT LOGIC ---
     if run_agent:
-        print("\n--- DATA AVAILABILITY CHECK ---")
+        debug_log.append("\n--- DATA AVAILABILITY CHECK ---")
         if original_files:
-            print(f"Original Files (User Provided): {original_files}")
+            debug_log.append(f"Original Files (User Provided): {original_files}")
         else:
-            print("Original Files: None provided")
+            debug_log.append("Original Files: None provided")
 
     # Run if we have a summary OR if we caught a fatal error (to fix it) OR
     #   there was no log file at all
     from libtbx.utils import Sorry
     # Run if we have a summary OR if we caught a fatal error OR if we are just starting/resuming (no text)
+    past_history = []
+    debug_log.append(f"DEBUG SERVER: About to run agent")
     if run_agent and (
       log_info.summary or log_info.error or (not something_to_analyze)):
-        print("\n--- Running Agent for Next Move ---")
+        debug_log.append("\n--- Running Agent for Next Move ---")
 
         try:
             # 1. Load Past History
-            past_history = []
 
             # Method A: String from Client (Robust for Remote)
+            debug_log.append(f"DEBUG SERVER: history_simple_string is None: {history_simple_string is None}")
+            debug_log.append(f"DEBUG SERVER: history_simple_string length: {len(history_simple_string) if history_simple_string else 0}")
+
             if history_simple_string:
-                from phenix.rest import simple_string_as_text
-                try:
-                    json_str = simple_string_as_text(history_simple_string)
-                    past_history = json.loads(json_str)
-                except Exception as e:
-                    print(f"Error decoding history string: {e}")
+              from phenix.rest import simple_string_as_text
+              try:
+                json_str = simple_string_as_text(history_simple_string)
+                past_history = json.loads(json_str)
+                debug_log.append(f"DEBUG SERVER: past_history type = {type(past_history)}")
+                debug_log.append(f"DEBUG SERVER: past_history keys/len = {past_history.keys() if isinstance(past_history, dict) else len(past_history)}")
+                # Ensure past_history is a list
+                if isinstance(past_history, dict):
+                    past_history = [past_history]
+                    debug_log.append(f"DEBUG SERVER: Converted dict to list, now len = {len(past_history)}")
+                elif not isinstance(past_history, list):
+                    past_history = []
+              except Exception as e:
+                debug_log.append(f"Error decoding history string: {e}")
+                past_history = []
 
             # Method B: Files (Local backup)
             elif history_files:
-                print(f"Loading {len(history_files)} past history files...")
+                debug_log.append(f"Loading {len(history_files)} past history files...")
                 for fpath in history_files:
                     if os.path.isfile(fpath):
                         try:
                             with open(fpath, 'r') as f:
                                 past_history.append(json.load(f))
                         except Exception as e: pass
+
+            else:  # Neither local or in string
+              debug_log.append(f"DEBUG SERVER: No history_simple_string received")
+              past_history = []
 
             # 2. Append Current Run
             if something_to_analyze:
@@ -535,12 +547,12 @@ def run(file_name = None,
                      with open(json_path, 'w') as f:
                         json.dump(history_record_dict, f, indent=2)
 
-                print("\n=== AGENT RECOMMENDATION ===")
-                print(agent_result.command)
-                print("============================\n")
+                debug_log.append("\n=== AGENT RECOMMENDATION ===")
+                debug_log.append(agent_result.command)
+                debug_log.append("============================\n")
 
         except Exception as e:
-            print(f"Agent failed: {e}")
+            debug_log.append(f"Agent failed: {e}")
             import traceback
             traceback.print_exc()
             # --- FIX: Report crash to client ---
@@ -561,9 +573,9 @@ def run(file_name = None,
 
     # Debug check at end of run()
     if hasattr(log_info, 'next_move') and log_info.next_move:
-        print("DEBUG SERVER: Returning log_info with next_move attached.")
+        debug_log.append("DEBUG SERVER: Returning log_info with next_move attached.")
     else:
-        print("DEBUG SERVER: log_info has NO next_move.")
+        debug_log.append("DEBUG SERVER: log_info has NO next_move.")
 
     time.sleep(1.0)  # give document loader time to load before deleting files
     return log_info # RETURN OBJECT (Backwards Compatible)

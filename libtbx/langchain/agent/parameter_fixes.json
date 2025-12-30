@@ -1,14 +1,15 @@
 {
-  "_comment": "Maps wrong parameter names to correct ones. null means remove entirely.",
+  "_comment": "Maps wrong parameter names to correct ones. null means remove entirely. Empty string means keep the value but remove the parameter name and equals sign",
   
   "phenix.ligandfit": {
-    "model": null,
     "map_coeffs": "data",
     "input_labels": "file_info.input_labels",
     "nproc": "general.nproc"
   },
   
   "phenix.phaser": {
+    "data":"",
+    "model":"",
     "nproc": "phaser.keywords.general.jobs",
     "search.copies": null,
     "ensemble.pdb": "phaser.ensemble.coordinates"
