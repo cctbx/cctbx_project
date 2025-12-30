@@ -109,6 +109,25 @@ def get_strategic_planning_prompt() -> PromptTemplate:
     **Common mistake:** Trying to run ligandfit again because the fit was "incomplete" (e.g., 20/40 atoms).
     This is often acceptable - proceed with combining and refinement. The refinement will optimize the ligand position.
 
+    **AFTER COMBINING PROTEIN + LIGAND (FINAL REFINEMENT):**
+
+    When `phenix.pdbtools` has combined the protein and ligand into a single file:
+    1. The combined file (e.g., `complex.pdb` or `protein_with_ligand.pdb`) contains BOTH protein AND ligand
+    2. You MUST run `phenix.refine` on this COMBINED file
+    3. Use the ORIGINAL experimental data MTZ (e.g., `7qz0.mtz` or `PHASER.1.mtz`), OR the refined MTZ
+
+    **CRITICAL:** Do NOT re-refine the old protein-only model (`PHASER.1.pdb` or `*_refine_001.pdb`).
+    The goal is to refine the NEW complex with the ligand included.
+
+    **Correct final refinement:**
+```
+    phenix.refine complex.pdb PHASER.1.mtz
+```
+
+    **WRONG (common mistake):**
+```
+    phenix.refine PHASER.1.pdb PHASER.1.mtz  # <-- This ignores the ligand!
+```
 
     **PHENIX.REFINE SYNTAX (Common errors to avoid):**
     - **Input files are positional:** Use `phenix.refine model.pdb data.mtz` NOT `phenix.refine` alone
@@ -326,8 +345,12 @@ def get_command_writer_prompt() -> PromptTemplate:
     - map_coeffs= MUST be the refined MTZ (e.g., `PHASER.1_refine_001.mtz`)
     - DO NOT use `PHASER.1.pdb` - that's the unrefined MR output!
 
-    **Example correct ligandfit command:**
-    `phenix.ligandfit model=PHASER.1_refine_001.pdb map_coeffs=PHASER.1_refine_001.mtz ligand=lig.pdb input_labels="2FOFCWT PH2FOFCWT"`
+    **FOR PHENIX.REFINE AFTER LIGAND COMBINATION:**
+    - If pdbtools just combined protein + ligand, the output file (e.g., `*_with_ligand.pdb`) is your NEW model
+    - You MUST refine the COMBINED file, not the old protein-only model
+    - Look in Input Files for filenames containing "with_ligand" or "complex"
+    - Example: `phenix.refine PHASER.1_refine_001_with_ligand.pdb PHASER.1_refine_001.mtz`
+    - WRONG: `phenix.refine PHASER.1.pdb ...` or `phenix.refine PHASER.1_refine_001.pdb ...` (these ignore the ligand!)
 
     ============================================================================
 
