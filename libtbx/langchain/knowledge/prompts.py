@@ -341,10 +341,20 @@ def get_command_writer_prompt() -> PromptTemplate:
     - After phenix.phaser: use `PHASER.1.pdb` and `PHASER.1.mtz`
     - NEVER use an earlier file when a newer output exists
 
-    **FOR PHENIX.LIGANDFIT SPECIFICALLY:**
-    - model= MUST be the REFINED model (e.g., `PHASER.1_refine_001.pdb`)
-    - map_coeffs= MUST be the refined MTZ (e.g., `PHASER.1_refine_001.mtz`)
+    **FOR PHENIX.LIGANDFIT SPECIFICALLY (CRITICAL - COMMAND WILL FAIL WITHOUT model=):**
+    - You MUST include `model=<refined_model.pdb>` - WITHOUT THIS THE COMMAND FAILS
+    - `model=` MUST be the REFINED model (e.g., `model=PHASER.1_refine_001.pdb`)
+    - `data=` is the refined MTZ (e.g., `data=PHASER.1_refine_001.mtz`)
+    - `ligand=` is the ligand file
     - DO NOT use `PHASER.1.pdb` - that's the unrefined MR output!
+
+    **REQUIRED ligandfit parameters (missing any = failure):**
+    1. model=refined.pdb
+    2. data=refined.mtz
+    3. ligand=ligand.pdb
+
+    **Example:**
+    `phenix.ligandfit model=PHASER.1_refine_001.pdb data=PHASER.1_refine_001.mtz ligand=lig.pdb file_info.input_labels="2FOFCWT PH2FOFCWT" general.nproc=4`
 
     **FOR PHENIX.REFINE AFTER LIGAND COMBINATION:**
     - If pdbtools just combined protein + ligand, the output file (e.g., `*_with_ligand.pdb`) is your NEW model
