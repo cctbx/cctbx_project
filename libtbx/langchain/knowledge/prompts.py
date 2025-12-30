@@ -181,7 +181,8 @@ def get_strategic_planning_prompt() -> PromptTemplate:
     - **Use `general.nproc=` for processors (NOT just `nproc=`)**
     - **Working command:**
 ```
-      phenix.ligandfit refined.pdb data=refined.mtz ligand=ligand.pdb file_info.input_labels="2FOFCWT PH2FOFCWT" general.nproc=4
+      phenix.ligandfit model=refined.pdb data=refined.mtz ligand=ligand.pdb file_info.input_labels="2FOFCWT PH2FOFCWT" general.nproc=4
+
 ```
 
     **MANDATORY PRE-REFINEMENT CHECK (READ BEFORE EVERY phenix.refine DECISION):**
