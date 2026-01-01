@@ -227,25 +227,25 @@ Be conservative - only report metrics you're confident are present.
 def detect_program_from_text(text: str) -> str:
     """
     Detects the Phenix program name from log text.
-    
+
     Checks multiple patterns:
     1. Client-added header "COMMAND THAT WAS RUN: phenix.xxx ..."
     2. Standard Phenix log header "Starting phenix.xxx on ..."
     3. Program-specific content patterns
-    
+
     Args:
         text: Log file content
-        
+
     Returns:
         Program name (e.g., "phenix.refine") or empty string
     """
     if not text:
         return ""
-    
+
     # Check first 5000 chars for efficiency
     text_start = text[:5000]
     text_start_lower = text_start.lower()
-    
+
     # Pattern 1: Client-added header "COMMAND THAT WAS RUN: phenix.xxx ..."
     for line in text_start.splitlines():
         if "COMMAND THAT WAS RUN:" in line:
@@ -254,7 +254,7 @@ def detect_program_from_text(text: str) -> str:
                 if p.startswith("phenix."):
                     debug_print(f"Detected program from COMMAND header: {p}")
                     return p
-    
+
     # Pattern 2: Standard Phenix log header "Starting phenix.xxx on ..."
     for line in text_start.splitlines():
         line_stripped = line.strip()
@@ -264,7 +264,7 @@ def detect_program_from_text(text: str) -> str:
                 if p.startswith("phenix."):
                     debug_print(f"Detected program from 'Starting' header: {p}")
                     return p
-    
+
     # Pattern 3: Program-specific content patterns
     # Order matters - check more specific patterns first
     program_patterns = [
@@ -281,13 +281,13 @@ def detect_program_from_text(text: str) -> str:
         ("phenix.dock_in_map", ["phenix.dock_in_map", "dock_in_map"]),
         ("phenix.autosol", ["phenix.autosol", "autosol", "sad phasing", "experimental phasing"]),
     ]
-    
+
     for program_name, patterns in program_patterns:
         for pattern in patterns:
             if pattern in text_start_lower:
                 debug_print(f"Detected program from content pattern '{pattern}': {program_name}")
                 return program_name
-    
+
     debug_print("Could not detect program from text")
     return ""
 
@@ -298,15 +298,15 @@ def detect_program_from_text(text: str) -> str:
 def get_log_map_prompt(program_name: str = "") -> PromptTemplate:
     """
     Returns the prompt for summarizing a single chunk of a log file.
-    
+
     Args:
         program_name: Optional program name for specific guidance
-        
+
     Returns:
         PromptTemplate configured for the program type
     """
     program_guidance = get_program_specific_guidance(program_name)
-    
+
     template = f"""You are a crystallography data extraction expert analyzing a Phenix log file.
 
 {program_guidance}
@@ -634,7 +634,7 @@ async def summarize_log_text(
 
         try:
             map_results = await asyncio.wait_for(asyncio.gather(*tasks), timeout=timeout)
-            
+
             for j, result in enumerate(map_results):
                 summary_text = result.content
                 all_intermediate_summaries.append(summary_text)
@@ -678,7 +678,7 @@ async def summarize_log_text(
     # NEW: Use program-specific combine prompt
     combine_prompt = get_log_combine_prompt(program_name)
 
-    
+
     # Debug: show the combine prompt
     debug_print("COMBINE PROMPT TEMPLATE:")
     debug_print(combine_prompt.template[:500] + "...")
@@ -696,4 +696,3 @@ async def summarize_log_text(
         log_summary=final_output,
         error=None
     )
-

@@ -131,3 +131,5 @@ if __name__ == "__main__":
     print(f"get_llm_and_embeddings: {get_llm_and_embeddings}")
     print(f"generate_next_move: {generate_next_move}")
     print(f"summarize_log_text: {summarize_log_text}")
+    print(f"get_expensive_llm: {get_expensive_llm}")
+    print(f"get_cheap_llm: {get_cheap_llm}")

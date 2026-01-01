@@ -77,31 +77,31 @@ PROGRAMS_WITHOUT_DRY_RUN = {
 def validate_is_phenix_command(command):
     """
     Ensure the command starts with a valid Phenix program name.
-    
+
     Args:
         command: The command string to validate
-        
+
     Returns:
         tuple: (is_valid: bool, error_message: str or None)
     """
     if not command:
         return False, "Empty command"
-    
+
     command = command.strip()
-    
+
     # Get the first word (program name)
     first_word = command.split()[0] if command.split() else ""
-    
+
     # Must start with phenix.
     if not first_word.startswith('phenix.'):
         return False, f"Command does not start with 'phenix.': got '{first_word[:50]}...'" if len(first_word) > 50 else f"Command does not start with 'phenix.': got '{first_word}'"
-    
+
     # Check for obvious garbage (non-ASCII characters in program name)
     try:
         first_word.encode('ascii')
     except UnicodeEncodeError:
         return False, f"Command contains non-ASCII characters: '{first_word[:30]}...'"
-    
+
     return True, None
 
 def validate_phenix_command(command: str) -> tuple:
@@ -230,38 +230,38 @@ def fix_ambiguous_parameters(command: str, error_message: str) -> str:
     Mechanically fix common ambiguous parameter errors.
     """
     import re
-    
+
     # Extract the ambiguous parameter from error
     match = re.search(r'Ambiguous parameter definition:\s*(\w+)\s*=\s*(\S+)', error_message)
     if not match:
         return command
-    
+
     param_name = match.group(1)
     param_value = match.group(2)
-    
+
     # Extract best matches from error message - try multiple patterns
     best_matches = []
-    
+
     # Pattern 1: Lines that are just indented parameter names
     best_matches = re.findall(r'^\s{2,}(\S+\.[\w\.]+)\s*$', error_message, re.MULTILINE)
-    
+
     # Pattern 2: After "Best matches:"
     if not best_matches:
         section_match = re.search(r'Best matches?:(.*?)(?:\n\n|\Z)', error_message, re.DOTALL)
         if section_match:
             best_matches = re.findall(r'(\S+\.[\w\.]+)', section_match.group(1))
-    
+
     if not best_matches:
         return command
-    
+
     # Use the first best match
     full_param = best_matches[0].strip()
-    
+
     # Replace the ambiguous parameter with the full path
     pattern = rf'\b{re.escape(param_name)}\s*=\s*{re.escape(param_value)}'
     replacement = f'{full_param}={param_value}'
     new_command = re.sub(pattern, replacement, command)
-    
+
     return new_command
 
 def fix_command_syntax(

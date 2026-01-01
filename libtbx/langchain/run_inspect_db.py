@@ -5,7 +5,7 @@ Runner script to inspect the contents of the persisted vector database.
 from __future__ import division
 from collections import Counter
 import sys
-import os 
+import os
 
 from libtbx.langchain.core import get_llm_and_embeddings
 from libtbx.langchain.rag import load_persistent_db
