@@ -1,3 +1,10 @@
+2025.12
+=======
+
+* Polder maps: stop when data is twinned
+* mmtbx.table_one: fix bug with twinned data and using model header information
+* Speed up variable resolution map calculation
+
 2025.11
 =======
 
