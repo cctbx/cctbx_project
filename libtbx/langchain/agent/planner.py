@@ -40,9 +40,8 @@ from libtbx.langchain.agent.memory import (
 # Import phenix_knowledge for constants
 try:
     from libtbx.langchain import phenix_knowledge as pk
-except ImportError:
+except Exception as e:
     pk = None
-
 
 # =============================================================================
 # Helper Functions
@@ -992,7 +991,7 @@ async def generate_next_move(
                                         available_files.add(rel_path)
                                         if basename not in basename_to_relpath:
                                             basename_to_relpath[basename] = rel_path
-                                except:
+                                except Exception as e:
                                     pass
                     else:
                         # No file_list, use what we have
