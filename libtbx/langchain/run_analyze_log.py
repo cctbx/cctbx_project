@@ -41,6 +41,7 @@ def run(file_name = None,
       project_state_json: str = None, # Database
       file_list_as_simple_string: str = None,
       program_name: str = None,  # Explicit program name
+      out = sys.stdout,
       ):
 
     if provider is None:
@@ -144,6 +145,7 @@ def run(file_name = None,
         raise ValueError("Sorry, the file %s is missing" %(file_name))
       log_as_text = open(
          file_name, 'r', encoding='utf-8', errors='ignore').read()
+      print("Summarizing the log file '%s'..." %(file_name), file = out)
       debug_log.append("Summarizing the log file '%s'..." %(file_name))
     elif file_name and log_as_text:
       debug_log.append("Summarizing the log file '%s'..." %(file_name))
@@ -303,13 +305,15 @@ def run(file_name = None,
       if text_to_append_to_summary:
          text += text_to_append_to_summary
       save_as_html(text, file_name = fn,
-       title = 'Summary of %s' %(file_name))
+       title = 'Summary of %s' %(file_name), out = out)
       debug_log.append("Loading log summary at %s" %(fn))
-      try:
-        from phenix.command_line.doc import load_url
-        load_url(fn)
-      except Exception as e:
-        pass # phenix is not available or no viewer.  Just skip
+      display_summary = False
+      if display_summary:
+        try:
+          from phenix.command_line.doc import load_url
+          load_url(fn)
+        except Exception as e:
+          pass # phenix is not available or no viewer.  Just skip
 
     # Analyze the log summary in the context of the docs
     if log_info.summary and not log_info.error:
@@ -351,7 +355,7 @@ def run(file_name = None,
           if not fn:
             fn = os.path.join(output_file_path,'analysis.html')
           save_as_html(text, file_name = fn,
-           title = 'Analysis of %s' %(file_name))
+           title = 'Analysis of %s' %(file_name), out = out)
           debug_log.append("Loading analysis at %s" %(fn))
           try:
             from phenix.command_line.doc import load_url
@@ -582,7 +586,7 @@ def run(file_name = None,
 
 
 def save_as_html(markdown_string: str,
-     title: str = "Summary", file_name: str = None):
+     title: str = "Summary", file_name: str = None, out = sys.stdout):
     """
     Converts a Markdown string to an HTML file.
     """
@@ -591,9 +595,7 @@ def save_as_html(markdown_string: str,
         from markdown_it import MarkdownIt
         md = MarkdownIt("gfm-like")
         html_content = md.render(markdown_string)
-        print("Using 'markdown-it-py' for rich HTML rendering.")
     except ImportError:
-        print("Warning: 'markdown-it-py' not found. Falling back to plain text rendering.")
         html_content = f"<pre>{markdown_string}</pre>"
 
     html_with_style = f"""
@@ -619,7 +621,7 @@ def save_as_html(markdown_string: str,
     if file_name:
       with open(file_name, "w", encoding='utf-8') as f:
         f.write(html_with_style)
-      print(f"\nSaved formatted output to: {file_name}")
+      print(f"\nSaved formatted output to: {file_name}", file = out)
 
     return html_with_style
 
@@ -648,12 +650,12 @@ if __name__ == "__main__":
     # Logic: Did user provide a file or an error string?
     if args.error:
         log_text = f"COMMAND FAILURE REPORT:\n{args.error}"
-        print(f"Analyzing error message...")
+        print(f"Analyzing error message...", file = out)
     elif args.file_name:
         file_label = args.file_name
         # The run function handles file reading, so we leave log_text None
     else:
-        print("Usage: phenix.python run_analyze_log.py <file> OR --error 'Error text'")
+        print("Usage: phenix.python run_analyze_log.py <file> OR --error 'Error text'", file = out)
         sys.exit(1)
 
     answer = run(
