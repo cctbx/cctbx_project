@@ -5,6 +5,7 @@ import subprocess
 import sys
 import threading
 import signal
+import shlex  # <--- Added for secure tokenization
 from six.moves import range
 
 
@@ -140,6 +141,7 @@ class fully_buffered_subprocess(fully_buffered_base):
   def __init__(self,
         command,
         timeout=None,
+        use_shell_in_subprocess=True,
         stdin_lines=None,
         join_stdout_stderr=False,
         stdout_splitlines=True,
@@ -151,13 +153,37 @@ class fully_buffered_subprocess(fully_buffered_base):
 
     self.command = command
     self.join_stdout_stderr = join_stdout_stderr
-    if (not isinstance(command, str)):
-      command = subprocess.list2cmdline(command)
+
+    # --- MODIFICATION START ---
+    run_env = None  # Default: behaves identical to legacy (inherit env)
+
+    if use_shell_in_subprocess:
+        # LEGACY BEHAVIOR (Exact Match)
+        if (not isinstance(command, str)):
+          command = subprocess.list2cmdline(command)
+        if (sys.platform == 'darwin'):   # bypass SIP on OS X 10.11
+          command = ('%s exec ' % macos_dyld()) + command
+    else:
+        # SECURE BEHAVIOR
+        # 1. Parse string to list if needed
+        if isinstance(command, str):
+            command = shlex.split(command)
+
+        # 2. Handle Mac SIP manually (only needed because we lack a shell)
+        if (sys.platform == 'darwin'):
+            run_env = os.environ.copy()
+            # Manually extract the vars that macos_dyld() was injecting
+            for dyld in ['DYLD_LIBRARY_PATH', 'DYLD_FALLBACK_LIBRARY_PATH']:
+                val = os.environ.get(dyld)
+                if val: run_env[dyld] = val
+    # --- MODIFICATION END ---
+
+    # [DELETED] Redundant check removed here.
+
     # Timeout functionality based on:
     # https://stackoverflow.com/questions/1191374/using-module-subprocess-with-timeout
     # https://stackoverflow.com/questions/4789837/how-to-terminate-a-python-subprocess-launched-with-shell-true
-    if (sys.platform == 'darwin'):   # bypass SIP on OS X 10.11
-      command = ('%s exec ' % macos_dyld()) + command
+
     if (stdin_lines is not None):
       if (not isinstance(stdin_lines, str)):
         stdin_lines = '\n'.join(stdin_lines)
@@ -167,16 +193,19 @@ class fully_buffered_subprocess(fully_buffered_base):
       stderr = subprocess.STDOUT
     else:
       stderr = subprocess.PIPE
+
     p = subprocess.Popen(
       args=command,
-      shell=True,
+      shell=use_shell_in_subprocess, # True by default
       bufsize=bufsize,
       stdin=subprocess.PIPE,
       stdout=subprocess.PIPE,
       stderr=stderr,
+      env=run_env, # <--- PASSING NONE IS IDENTICAL TO LEGACY
       universal_newlines=True,
       close_fds=(sys.platform != 'win32'),
       preexec_fn=os.setsid if sys.platform != 'win32' else None)
+
     if timeout is not None:
       if sys.platform != 'win32':
         r = [None, None]
@@ -206,11 +235,12 @@ class fully_buffered_subprocess(fully_buffered_base):
 
 fully_buffered = fully_buffered_subprocess
 
-def go(command, stdin_lines=None,join_stdout_stderr=True):
+def go(command, stdin_lines=None, join_stdout_stderr=True, use_shell_in_subprocess=True):
   return fully_buffered(
     command=command,
     stdin_lines=stdin_lines,
-    join_stdout_stderr=join_stdout_stderr)
+    join_stdout_stderr=join_stdout_stderr,
+    use_shell_in_subprocess=use_shell_in_subprocess)
 
 def call(command):
   """
@@ -492,3 +522,4 @@ sys.stderr.flush()"''' % (n_lines_e, ord("\n"))).splitlines())
 
 if (__name__ == "__main__"):
   exercise()
+
