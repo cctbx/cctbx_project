@@ -29,7 +29,7 @@ class SymmetryDialog(wx.Dialog):
     txt.Wrap(480)
     caption_sizer.Add(txt, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 5)
     szr2.Add(caption_sizer, 0, wx.ALL, 0)
-    szr3 = wx.FlexGridSizer(rows=3, cols=2)
+    szr3 = wx.FlexGridSizer(rows=3, cols=2, vgap=0, hgap=0)
     szr2.Add(szr3, 0, wx.ALL, 0)
     txt2 = wx.StaticText(self, -1, "Unit cell:")
     self.unit_cell_ctrl = unit_cell.UnitCellCtrl(
