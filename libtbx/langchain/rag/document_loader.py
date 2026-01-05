@@ -147,7 +147,8 @@ def load_all_docs_from_folder(folder_path: str,
     }
 
     for dirpath, dirnames, filenames in os.walk(folder_path, topdown=True):
-        dirnames[:] = [d for d in dirnames if d not in excluded_dirs]
+        dirnames[:] = [d for d in dirnames if (
+           (d not in excluded_dirs) and (not d.endswith("_api")))]
         for filename in filenames:
             if filename.startswith('.'):
                 continue

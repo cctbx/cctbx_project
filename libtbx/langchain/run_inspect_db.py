@@ -16,7 +16,7 @@ def run(db_dir="./docs_db", provider=None):
     Loads the database and prints a summary of its contents.
     """
     if provider is None:
-      provider = os.getenv("LLM_PROVIDER", "ollama")
+      provider = os.getenv("LLM_PROVIDER", "google")
 
     try:
         # We ignore the LLM (_) as we only need embeddings here
@@ -66,11 +66,11 @@ if __name__ == "__main__":
     # Usage: phenix.python run_inspect_db.py [db_dir] [provider]
 
     db_dir = "/net/cci-gpu-01/raid1/scratch1/terwill/build_dir/modules/phenix/phenix/phenix_ai/docs_db_google"
-    provider = os.getenv("LLM_PROVIDER", "ollama")
+    provider = "google"
 
     if len(sys.argv) > 1:
         db_dir = sys.argv[1]
     if len(sys.argv) > 2:
         provider = sys.argv[2]
-
+    print("ZZA",db_dir,provider)
     run(db_dir=db_dir, provider=provider)

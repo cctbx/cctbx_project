@@ -296,29 +296,23 @@ def detect_program_from_text(text: str) -> str:
 # =============================================================================
 
 def get_log_map_prompt(program_name: str = "") -> PromptTemplate:
-    """
-    Returns the prompt for summarizing a single chunk of a log file.
-
-    Args:
-        program_name: Optional program name for specific guidance
-
-    Returns:
-        PromptTemplate configured for the program type
-    """
+    # 1. Get the guidance string
     program_guidance = get_program_specific_guidance(program_name)
 
-    template = f"""You are a crystallography data extraction expert analyzing a Phenix log file.
+    # 2. Use a standard string (no 'f') and use single braces for all variables
+    #    We will "hard code" the guidance into the template using .partial()
+    template = """You are a crystallography data extraction expert analyzing a Phenix log file.
 
-{program_guidance}
+{program_guidance_text}
 
 **CRITICAL INSTRUCTIONS:**
 1. Analyze the ENTIRE log text below - not just the beginning or end
-2. Extract ONLY information that is explicitly present in the log
-3. Do NOT invent or assume information not shown
-4. For output files, only list files explicitly shown as "written to" or "Writing:" or "Output:"
+2. I will provide a log file summary enclosed in <log_data> tags.
+3. Extract ONLY information that is explicitly present in the log
+4. Do NOT invent or assume information not shown
+5. For output files, only list files explicitly shown as "written to" or "Writing:" or "Output:"
 
 **EXTRACT THE FOLLOWING (if present):**
-
 1. PROGRAM NAME: The specific phenix program (e.g., phenix.xtriage, phenix.phaser)
 2. INPUT FILES: File paths for .mtz, .pdb, .fa, .seq files
 3. OUTPUT FILES: ONLY files explicitly written (look for "Writing:", "written to", "Output:")
@@ -330,12 +324,19 @@ def get_log_map_prompt(program_name: str = "") -> PromptTemplate:
 
 ---
 LOG CHUNK TO ANALYZE:
-"{{text}}"
+<log_data>
+{text}
+</log_data>
 ---
 
 Extracted information:
 """
-    return PromptTemplate.from_template(template)
+    # 3. Create template and inject guidance immediately
+    prompt = PromptTemplate.from_template(template)
+
+    # This "bakes in" the guidance safely, even if it has special characters
+    return prompt.partial(program_guidance_text=program_guidance)
+
 
 def get_log_combine_prompt(program_name: str = "") -> PromptTemplate:
     """

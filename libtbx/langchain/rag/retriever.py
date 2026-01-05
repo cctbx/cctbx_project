@@ -28,29 +28,23 @@ from langchain_chroma import Chroma
 # Database Loading
 # =============================================================================
 
-def load_persistent_db(embeddings, db_dir: str = "./docs_db"):
+# In libtbx/langchain/rag/retriever.py
+
+def load_persistent_db(embeddings, db_dir: str = "./docs_db", collection_name: str = "docs"):
     """
     Loads a persisted Chroma vector store from disk.
-
-    Args:
-        embeddings: Embedding model to use
-        db_dir: Path to the persisted database directory
-
-    Returns:
-        Chroma: The loaded vector store
-
-    Raises:
-        FileNotFoundError: If database directory doesn't exist
-
-    Example:
-        from libtbx.langchain.core import get_llm_and_embeddings
-        _, embeddings = get_llm_and_embeddings()
-        vectorstore = load_persistent_db(embeddings, './docs_db')
+    Now defaults to collection_name="docs" to match your build script.
     """
     if not os.path.exists(db_dir):
         raise FileNotFoundError(f"Database directory not found at '{db_dir}'.")
-    return Chroma(persist_directory=db_dir, embedding_function=embeddings)
 
+    print(f"Loading Vector Store from '{db_dir}' (Collection: '{collection_name}')...")
+
+    return Chroma(
+        persist_directory=db_dir,
+        embedding_function=embeddings,
+        collection_name=collection_name  # <--- THIS IS THE CRITICAL FIX
+    )
 
 # =============================================================================
 # Retriever Creation
@@ -115,6 +109,43 @@ def create_reranking_rag_chain(retriever, llm, prompt: PromptTemplate):
     )
     return rag_chain
 
+
+def create_log_analysis_chain_debug(retriever, llm, prompt: PromptTemplate):
+    """
+    Creates a chain specifically for log analysis with RAG context.
+    """
+
+    # --- DEFINE THE DEBUG FUNCTION INSIDE HERE ---
+    def retrieve_and_print(x):
+        query = x["input"]
+
+        # Now it can see 'retriever' because it's in the same scope
+        docs = retriever.invoke(query)
+
+        # Debug print
+        print(f"\n[DEBUG] RAG Query: '{query}'")
+        print(f"[DEBUG] Found {len(docs)} docs.")
+        for i, doc in enumerate(docs):
+            src = doc.metadata.get('source', 'unknown')
+            snippet = doc.page_content[:100].replace('\n', ' ')
+            print(f"   {i+1}. [{os.path.basename(src)}] {snippet}...")
+        print("-" * 40)
+
+        return docs
+    # ---------------------------------------------
+
+    inputs = {
+        # Use the local function here
+        "context": retrieve_and_print,
+        "log_summary": lambda x: x["log_summary"]
+    }
+
+    analysis_rag_chain = (
+        RunnablePassthrough.assign(**inputs)
+        | prompt
+        | llm
+    )
+    return analysis_rag_chain
 
 def create_log_analysis_chain(retriever, llm, prompt: PromptTemplate):
     """

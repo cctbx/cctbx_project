@@ -13,7 +13,7 @@ Usage:
     await learn_from_history(run_history, llm, memory_file)
 """
 from __future__ import absolute_import, division, print_function
-
+from langchain_core.prompts import PromptTemplate
 import os
 import json
 import glob
@@ -121,19 +121,36 @@ async def learn_from_history(run_history, llm, memory_file="phenix_learned_memor
     if prev_failed and curr_success and prog_curr == prog_prev:
         logger(f"\n[Learning] Detected a successful fix for {prog_curr}. Extracting lesson...")
 
-        # 1. Extract the raw lesson from the logs
-        extract_prompt = f"""
-        Compare these two attempts to run {prog_curr}.
+        # 1. Extract the raw lesson from the logs using the Safe Pattern
+        template = """Compare these two attempts to run {prog_curr}.
 
-        FAILED ATTEMPT SUMMARY:
-        {prev_run.get('summary', '')[:2000]}
+I will provide the failed attempt summary in <failed_attempt> tags,
+and the successful attempt summary in <successful_attempt> tags.
 
-        SUCCESSFUL ATTEMPT SUMMARY:
-        {last_run.get('summary', '')[:2000]}
+FAILED ATTEMPT SUMMARY:
+<failed_attempt>
+{failed_summary}
+</failed_attempt>
 
-        Identify the SPECIFIC syntax or parameter change that fixed the error.
-        Be concise. Format as a rule. (e.g. "Do not use 'hklin=', use bare filename.")
-        """
+SUCCESSFUL ATTEMPT SUMMARY:
+<successful_attempt>
+{success_summary}
+</successful_attempt>
+
+Identify the SPECIFIC syntax or parameter change that fixed the error.
+Be concise. Format as a rule. (e.g. "Do not use 'hklin=', use bare filename.")
+"""
+
+        # Create the safe prompt object
+        prompt_template = PromptTemplate.from_template(template)
+
+        # Generate the string safely
+        extract_prompt = prompt_template.format(
+            prog_curr=prog_curr,
+            failed_summary=prev_run.get('summary', '')[:2000],
+            success_summary=last_run.get('summary', '')[:2000]
+        )
+
 
         try:
             lesson = llm.invoke(extract_prompt).content.strip()
@@ -145,22 +162,39 @@ async def learn_from_history(run_history, llm, memory_file="phenix_learned_memor
 
             existing_tips = memory[prog_curr]
 
-            # 3. Consolidate: Ask LLM to merge the new tip into the list and remove duplicates
-            cleanup_prompt = f"""
-            You are maintaining a list of troubleshooting tips for the software '{prog_curr}'.
+            # 3. Consolidate: Ask LLM to merge the new tip using the Safe Pattern
+            template = """You are maintaining a list of troubleshooting tips for the software '{prog_curr}'.
 
-            Current Tips:
-            {json.dumps(existing_tips)}
+I will provide the current list of tips in <current_tips> tags,
+and a new candidate tip in <new_candidate_tip> tags.
 
-            New Candidate Tip:
-            "{lesson}"
+Current Tips:
+<current_tips>
+{current_tips}
+</current_tips>
 
-            INSTRUCTIONS:
-            1. If the "New Candidate Tip" is redundant with Current Tips, ignore it.
-            2. If it is new, add it.
-            3. Merge any duplicate or very similar tips in the list into concise, unique rules.
-            4. Return ONLY the final JSON list of strings (e.g. ["Tip 1", "Tip 2"]).
-            """
+New Candidate Tip:
+<new_candidate_tip>
+{new_tip}
+</new_candidate_tip>
+
+INSTRUCTIONS:
+1. If the "New Candidate Tip" is redundant with Current Tips, ignore it.
+2. If it is new, add it.
+3. Merge any duplicate or very similar tips in the list into concise, unique rules.
+4. Return ONLY the final JSON list of strings (e.g. ["Tip 1", "Tip 2"]).
+"""
+
+            # Create the safe prompt object
+            prompt_template = PromptTemplate.from_template(template)
+
+            # Generate the string safely
+            # Note: json.dumps happens HERE, not inside the template string
+            cleanup_prompt = prompt_template.format(
+                prog_curr=prog_curr,
+                current_tips=json.dumps(existing_tips),
+                new_tip=lesson
+            )
 
             try:
                 response = llm.invoke(cleanup_prompt).content

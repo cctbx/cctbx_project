@@ -23,18 +23,30 @@ def get_strategic_planning_prompt() -> PromptTemplate:
     """
     template = """You are a Lead Crystallographer supervising a structure solution project.
 You have reports from {num_runs} previous jobs. Your goal is to determine the SINGLE best next step.
+I will provide project advice enclosed in <project_advice> tags,
+the project state enclosed in <project_state> tags,
+the original input files enclosed in <original_files> tags,
+and the project history enclosed in <project_history> tags.
 
 **User's Goal / Advice:**
+<project_advice>
 {project_advice}
+</project_advice>
 
 **Project Database (Current Scientific State):**
+<project_state>
 {project_state}
+</project_state>
 
 **Original Input Files:**
+<original_files>
 {original_files}
+</original_files>
 
 **Project History:**
+<history>
 {history}
+</history>
 
 ================================================================================
 WORKFLOW RULES
@@ -136,11 +148,15 @@ def get_command_writer_prompt() -> PromptTemplate:
     """
     template = """You are a Phenix Command-Line Expert.
 Construct a valid command line for "{program}".
+I will provide project advice enclosed in <project_advice> tags,
+the strategy_details enclosed in <strategy_details> tags,
+suggested input files enclosed in <input_files> tags.
+and all available input files enclosed in <available_files> tags.
 
-**User Instructions:** {project_advice}
-**Strategy:** {strategy_details}
-**Input Files:** {input_files}
-**Available Files:** {original_files}
+**User Instructions:** <project_advice>{project_advice}</project_advice>
+**Strategy:** <strategy_details>{strategy_details}</strategy_details>
+**Input Files:** <input_files>{input_files}</input_files>
+**Available Files:** <available_files>{original_files}</available_files>
 
 ================================================================================
 REQUIRED PARAMETERS (MUST INCLUDE EXACTLY AS SHOWN)
@@ -246,8 +262,12 @@ def get_keywords_prompt() -> PromptTemplate:
     """
     template = """Extract command-line information for "{program_name}" from the documentation below.
 
+  I will provide documentation between <documentation_context> tags.
+
 ---BEGIN DOCUMENTATION---
+<documentation_context>
 {context}
+</documentation_context>
 ---END DOCUMENTATION---
 
 Provide TWO sections:
@@ -267,11 +287,13 @@ def get_docs_query_prompt() -> PromptTemplate:
     """
     template = """Answer the question based on the Phenix documentation below.
 
+I will provide context between <context> tags and the question between <input> tags
+
 **Context:**
-{context}
+<context>{context}</context>
 
 **Question:**
-{input}
+<input>{input}</input>
 
 Focus on Phenix tools. Name specific programs with their inputs, outputs, and purpose.
 If the information isn't in the context, say so.

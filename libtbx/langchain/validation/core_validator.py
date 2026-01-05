@@ -14,7 +14,7 @@ Usage:
         fixed_command = fix_command_syntax(command, error, llm)
 """
 from __future__ import absolute_import, division, print_function
-
+from langchain_core.prompts import PromptTemplate
 
 # Programs known to NOT support --dry-run (tested empirically)
 PROGRAMS_WITHOUT_DRY_RUN = {
@@ -318,15 +318,17 @@ def fix_command_syntax(
         except Exception as e:
             pass
 
-    fix_prompt = f"""You are a Phenix command-line syntax expert.
+    template = """You are a Phenix command-line syntax expert.
 
 A command failed validation. Fix it.
+I will enclose the command in <failed_command> tags,
+and the error message in <error_traceback> tags
 
 **Failed Command:**
-{command}
+<failed_command>{command}</failed_command>
 
 **Error Message:**
-{error_message}
+<error_traceback>{error_message}</error_traceback>
 
 **Attempt Number:** {attempt_number}
 
@@ -356,6 +358,17 @@ A command failed validation. Fix it.
 **Output:**
 Return ONLY the fixed command. No explanation, no markdown.
 """
+
+    # Create the template object
+    prompt_template = PromptTemplate.from_template(template)
+
+    # Generate the final string safely
+    fix_prompt = prompt_template.format(
+        command=command,
+        error_message=error_message,
+        attempt_number=attempt_number
+    )
+
 
     try:
         from libtbx.langchain.model_setup import get_model

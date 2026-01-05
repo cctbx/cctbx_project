@@ -21,6 +21,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import json
 from datetime import datetime
+from langchain_core.prompts import PromptTemplate
 
 
 class AgentSession:
@@ -459,7 +460,9 @@ class AgentSession:
         """
         log_text = self.generate_log_for_summary()
 
-        prompt = f"""You are an expert crystallographer reviewing an automated Phenix structure determination session.
+
+        # Define the template using a standard string
+        template = """You are an expert crystallographer reviewing an automated Phenix structure determination session.
 
 Summarize the following agent session log. Include:
 1. Overall goal and what was accomplished
@@ -470,9 +473,18 @@ Summarize the following agent session log. Include:
 Be concise but informative. Use bullet points for clarity.
 
 SESSION LOG:
+<session_log>
 {log_text}
+</session_log>
 
 SUMMARY:"""
+
+        # Create the safe prompt object
+        prompt_template = PromptTemplate.from_template(template)
+
+        # Generate the string safely
+        # .format handles escaping if log_text contains { or }
+        prompt = prompt_template.format(log_text=log_text)
 
         try:
             response = llm.invoke(prompt)

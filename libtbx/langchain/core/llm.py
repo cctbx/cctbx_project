@@ -22,7 +22,7 @@ def get_llm_and_embeddings(
     provider: str = None,
     llm_model_name: str = None,
     embedding_model_name: str = None,
-    temperature: float = 0.1,
+    temperature: float = 0.0,
     timeout: int = 120,
     batch_size: int = 100,
     ollama_base_url: str = None,
