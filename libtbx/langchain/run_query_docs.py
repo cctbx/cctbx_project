@@ -9,7 +9,7 @@ import os
 
 from libtbx.langchain.core import get_llm_and_embeddings
 from libtbx.langchain.utils import query_docs
-from libtbx.langchain.run_analyze_log import save_as_html
+from libtbx.langchain.utils.run_utils import save_as_html
 
 
 def run(query_text=None, output_file_path=None, db_dir=None,

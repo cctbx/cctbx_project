@@ -12,9 +12,12 @@ from libtbx.langchain.utils.text_processing import (
     get_processed_log_dict,
 )
 
-from libtbx.langchain.utils.query import (
+try:
+  from libtbx.langchain.utils.query import (
     query_docs,
-)
+   )
+except Exception as e:
+  query_docs = None
 
 __all__ = [
     'find_text_block',
