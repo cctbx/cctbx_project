@@ -6540,8 +6540,6 @@ class map_model_manager(object):
 
     self._print_overall_u(aniso_b_cart,b_iso)
 
-    if scaling_group_info.scaling_info_list:
-
     self._display_scale_values(
       si_list = scaling_group_info.scaling_info_list,
       direction_vectors = scaling_group_info.direction_vectors,
