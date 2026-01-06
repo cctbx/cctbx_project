@@ -6400,6 +6400,10 @@ class map_model_manager(object):
       decimal_places = 2,
       ):
     """Display scale values"""
+
+    if not si_list:
+      return # Nothing to do
+
     assert len(list(direction_vectors))==len(si_list)
 
     n = len(si_list)
@@ -6536,10 +6540,13 @@ class map_model_manager(object):
 
     self._print_overall_u(aniso_b_cart,b_iso)
 
+    if scaling_group_info.scaling_info_list:
+
     self._display_scale_values(
       si_list = scaling_group_info.scaling_info_list,
       direction_vectors = scaling_group_info.direction_vectors,
-      overall_values = scaling_group_info.scaling_info_list[0].rms_fc_list,
+      overall_values = scaling_group_info.scaling_info_list[0].rms_fc_list if
+          scaling_group_info.scaling_info_list else None,
       key = 'rms_fo_list',
       text = 'RMS Fobs ',
       overall_text = 'RMS Fc',
