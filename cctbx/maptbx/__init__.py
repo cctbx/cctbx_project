@@ -1555,15 +1555,20 @@ Fourier image of specified resolution, etc.
     return self.scr.gaussian(self.scattering_type).gradient(r = r, t = t, t0 = t0,
       b_iso = b_iso)
 
-  def exact_density(self, b_iso, radius_max = 5., radius_step = 0.001):
-    r = 0.0
+  def exact_density(self, b_iso, radius_max = 5., radius_step = 0.001,
+                    radii = None, norm_to_max = False):
+    if radii is None:
+      radii = flex.double()
+      r = 0
+      while r <= radius_max:
+        radii.append(r)
+        r+= radius_step
     density = flex.double()
-    radii   = flex.double()
     ed = self.scr.gaussian(self.scattering_type)
-    while r < radius_max:
-      density.append(ed.electron_density(r, b_iso))
-      radii.append(r)
-      r+= radius_step
+    for r in radii:
+      val = ed.electron_density(r, b_iso)
+      density.append(val)
+    if norm_to_max: density = density / flex.max(density)
     return group_args(radii = radii, density = density)
 
   def form_factor(self, ss, b_iso):
@@ -1618,6 +1623,7 @@ Fourier image of specified resolution, etc.
             d_min,
             b_iso,
             d_max = None,
+            radii = None,
             radius_min = 0,
             radius_max = 5.,
             radius_step = 0.001,
@@ -1626,20 +1632,24 @@ Fourier image of specified resolution, etc.
     This can be done nicer. See generate_BCR_atom_22.txt attachment in email
     from AU received on 12/8/25, 11:02.
     """
-    r = radius_min
+    # define radii if not supplied
+    if radii is None:
+      radii = flex.double()
+      r = radius_min
+      while r <= radius_max:
+        radii.append(r)
+        r+= radius_step
+    #
     assert d_max !=  0.
     if(d_max is None): s_min = 0
     else:              s_min = 1./d_max
     assert d_min !=  0.
     s_max = 1./d_min
     image_values = flex.double()
-    radii        = flex.double()
-    while r <= radius_max:
+    for r in radii:
       s = scitbx.math.simpson(
         f = self.integrand(r, b_iso), a = s_min, b = s_max, n = n_integration_steps)
       image_values.append(s)
-      radii.append(r)
-      r+= radius_step
     # Fine first inflection point
     first_inflection_point = None
     i_first_inflection_point = None
