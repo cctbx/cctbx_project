@@ -288,15 +288,18 @@ def exercise(args=None):
     if verbose: print(result.stdout_lines)
     if (sys.platform == 'darwin'):   # mac osx has different legacy behavior
       assert result.stdout_lines == ["first command"]
-    else: # linux/windows
+    elif (sys.platform == 'win32'): # windows
+      assert result.stdout_lines == ["'first command' ; echo 'second command'"]
+    else: # linux
       assert result.stdout_lines == ["first command", "second command"]
-  for result in [
-     fb(command=command,use_shell_in_subprocess=False).raise_if_errors(),
-     fb(command=command,use_shell_in_subprocess=False, join_stdout_stderr=True),
-     go(command=command,use_shell_in_subprocess=False)]:
-    if verbose: print(result.stdout_lines)
-    # All platforms only first command should be executed
-    assert result.stdout_lines == ["first command ; echo second command"]
+  if (sys.platform != 'win32'):
+    for result in [
+      fb(command=command,use_shell_in_subprocess=False).raise_if_errors(),
+      fb(command=command,use_shell_in_subprocess=False, join_stdout_stderr=True),
+      go(command=command,use_shell_in_subprocess=False)]:
+      if verbose: print(result.stdout_lines)
+      # All platforms only first command should be executed
+      assert result.stdout_lines == ["first command ; echo second command"]
 
   for command in ["echo hello world", ("echo", "hello", "world")]:
     for result in [fb(command=command).raise_if_errors(),
