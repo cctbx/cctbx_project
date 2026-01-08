@@ -24,6 +24,8 @@ from libtbx.utils import format_float_with_standard_uncertainty \
 import math
 from scitbx import matrix
 import scitbx.cubicle_neighbors
+from cctbx.uctbx.near_minimum import find_near_minimum_settings, cell_distance
+import numpy as np
 cubicles_max_memory_allocation_set(
   number_of_bytes=scitbx.cubicle_neighbors.cubicles_max_memory_allocation_get())
 
@@ -537,8 +539,6 @@ class symmetry(object):
         A new symmetry object representing 'other' in the setting
         that best matches self
     """
-    import numpy as np
-    from cctbx.uctbx.near_minimum import find_near_minimum_settings, cell_distance
 
     # Get or compute cached nearly-reduced settings for self
     cache_key = ('_near_minimum_cache', length_tolerance, angle_tolerance)
@@ -561,14 +561,13 @@ class symmetry(object):
     mc_other = other.minimum_cell()
     uc_other = np.array(mc_other.unit_cell().parameters())
 
-    # Find best matching nearly-reduced setting
-    best_idx = 0
-    best_dist = float('inf')
-    for i, setting in enumerate(settings):
-      dist = cell_distance(uc_other, setting['cell'])
-      if dist < best_dist:
-        best_dist = dist
-        best_idx = i
+    # Compute distances for each nearly-reduced setting
+    distances = [cell_distance(uc_other, setting['cell']) for setting in settings]
+    best_dist = min(distances)
+    tolerance = 1e-6
+    tied_indices = [i for i, d in enumerate(distances) if abs(d - best_dist) <= tolerance]
+    import random
+    best_idx = random.choice(tied_indices)
 
     # Get the transformation matrix and invert it for change_of_basis_op
     # Convention: P from find_near_minimum_settings satisfies P = inv(cb.c().r())
