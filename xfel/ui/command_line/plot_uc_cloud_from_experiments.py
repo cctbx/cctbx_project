@@ -45,6 +45,19 @@ phil_str = """
   scale = *linear log
     .type = choice
     .help = Z-axis scale for 2d histograms
+  move_near {
+    unit_cell = None
+      .type = unit_cell
+    space_group = P1
+      .type = space_group
+    relative_length_tolerance = 0.05
+      .type = float
+    absolute_angle_tolerance_deg = 3
+      .type = float
+    enable = True
+      .type = bool
+  }
+
 """
 phil_scope = parse(phil_str)
 
