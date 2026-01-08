@@ -92,8 +92,33 @@ class Script(object):
     if params.write_gnuplot_cloud:
       gnuplot = open("uccloud.dat", 'w')
 
-    def get_info(experiment):
-      a, b, c, alpha, beta, gamma = experiment.crystal.get_unit_cell().parameters()
+    def get_info(experiment, params=None):
+      # Get the crystal symmetry
+      crystal_sym = experiment.crystal
+
+      # Apply move_near transformation if enabled
+      if params and params.move_near.enable and params.move_near.unit_cell is not None:
+        from cctbx import crystal
+        # Create reference symmetry object
+        ref_sym = crystal.symmetry(
+          unit_cell=params.move_near.unit_cell,
+          space_group_symbol=str(params.move_near.space_group)
+        )
+        # Create experiment's symmetry object
+        exp_sym = crystal.symmetry(
+          unit_cell=crystal_sym.get_unit_cell(),
+          space_group_symbol=str(crystal_sym.get_space_group().type().lookup_symbol())
+        )
+        # Find nearest setting
+        moved_sym = ref_sym.nearest_setting(
+          exp_sym,
+          length_tolerance=params.move_near.relative_length_tolerance,
+          angle_tolerance=params.move_near.absolute_angle_tolerance_deg
+        )
+        a, b, c, alpha, beta, gamma = moved_sym.unit_cell().parameters()
+      else:
+        a, b, c, alpha, beta, gamma = crystal_sym.get_unit_cell().parameters()
+
       return {'a':a,
               'b':b,
               'c':c,
@@ -109,7 +134,7 @@ class Script(object):
       for experiments in experiments_list:
         infos = []
         for experiment in experiments:
-          info = get_info(experiment)
+          info = get_info(experiment, params=params)
           infos.append(info)
           if params.write_gnuplot_cloud:
             gnuplot.write("% 3.10f % 3.10f % 3.10f\n"%(info['a'], info['b'], info['c']))
@@ -120,7 +145,7 @@ class Script(object):
       for experiments in experiments_list:
         infos = []
         for experiment in experiments:
-          info = get_info(experiment)
+          info = get_info(experiment, params=params)
           infos.append(info)
           if params.write_gnuplot_cloud:
             gnuplot.write("% 3.10f % 3.10f % 3.10f\n"%(info['a'], info['b'], info['c']))
