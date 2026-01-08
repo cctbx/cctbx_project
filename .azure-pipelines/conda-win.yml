@@ -32,10 +32,10 @@ jobs:
         OS: win-64
         PYTHON_VERSION: py312
         MODULES: ${{ parameters.modules }}
-      python3.13:
-        OS: win-64
-        PYTHON_VERSION: py313
-        MODULES: ${{ parameters.modules }}
+      # python3.13:
+      #   OS: win-64
+      #   PYTHON_VERSION: py313
+      #   MODULES: ${{ parameters.modules }}
 
   variables:
   - name: artifact_name
