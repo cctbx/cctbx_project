@@ -582,9 +582,14 @@ class symmetry(object):
     # Apply transformations: other_minimum -> near-reduced -> self's original setting
     result_uc = mc_other.unit_cell().change_basis(cb_near).change_basis(cbi_self)
 
+    # Create result space group with same centering as self but no rotational symmetry
+    self_centring = self.space_group().conventional_centring_type_symbol()
+    result_sg_symbol = self_centring + ' 1'
+    result_sg = sgtbx.space_group(result_sg_symbol)
+
     return symmetry(
       unit_cell=result_uc,
-      space_group_info=other.space_group_info()
+      space_group=result_sg
     )
 
 def select_crystal_symmetry(
