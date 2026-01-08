@@ -506,6 +506,88 @@ class symmetry(object):
   def is_incomplete(self):
     return self.unit_cell() is None or self.space_group() is None
 
+  def nearest_setting(self, other,
+                      length_tolerance=0.03,
+                      angle_tolerance=3.0):
+    """
+    Find the setting of 'other' that is nearest to self.
+
+    This method is useful for comparing unit cells that may lie near
+    reduction boundaries, where small measurement errors can cause
+    different reduction paths and make similar cells appear different.
+
+    The algorithm:
+    1. Convert self to minimum cell and find all nearly-reduced settings
+    2. Convert other to minimum cell
+    3. Find which nearly-reduced setting of self best matches other
+    4. Apply the corresponding transformation to other
+
+    Parameters
+    ----------
+    other : symmetry
+        The crystal symmetry to transform
+    length_tolerance : float
+        Fractional tolerance for length perturbations (default 0.03 = 3%)
+    angle_tolerance : float
+        Tolerance for angle perturbations in degrees (default 3.0)
+
+    Returns
+    -------
+    symmetry
+        A new symmetry object representing 'other' in the setting
+        that best matches self
+    """
+    import numpy as np
+    from cctbx.uctbx.near_minimum import find_near_minimum_settings, cell_distance
+
+    # Get or compute cached nearly-reduced settings for self
+    cache_key = ('_near_minimum_cache', length_tolerance, angle_tolerance)
+    if not hasattr(self, '_near_minimum_cache') or \
+       getattr(self, '_near_minimum_cache_params', None) != (length_tolerance, angle_tolerance):
+      mc_self = self.minimum_cell()
+      settings = find_near_minimum_settings(
+        mc_self.unit_cell(),
+        length_tolerance=length_tolerance,
+        angle_tolerance=angle_tolerance
+      )
+      self._near_minimum_cache = settings
+      self._near_minimum_cache_params = (length_tolerance, angle_tolerance)
+      self._near_minimum_cbi_self = self.change_of_basis_op_to_minimum_cell().inverse()
+
+    settings = self._near_minimum_cache
+    cbi_self = self._near_minimum_cbi_self
+
+    # Convert other to minimum cell
+    mc_other = other.minimum_cell()
+    uc_other = np.array(mc_other.unit_cell().parameters())
+
+    # Find best matching nearly-reduced setting
+    best_idx = 0
+    best_dist = float('inf')
+    for i, setting in enumerate(settings):
+      dist = cell_distance(uc_other, setting['cell'])
+      if dist < best_dist:
+        best_dist = dist
+        best_idx = i
+
+    # Get the transformation matrix and invert it for change_of_basis_op
+    # Convention: P from find_near_minimum_settings satisfies P = inv(cb.c().r())
+    # So to construct cb_op, we need to pass P^{-1}
+    P = settings[best_idx]['P']
+    P_inv = np.linalg.inv(P).astype(int)
+    P_inv_flat = tuple(int(x) for x in P_inv.T.ravel())
+
+    rot_mx = sgtbx.rot_mx(P_inv_flat)
+    cb_near = sgtbx.change_of_basis_op(sgtbx.rt_mx(rot_mx))
+
+    # Apply transformations: other_minimum -> near-reduced -> self's original setting
+    result_uc = mc_other.unit_cell().change_basis(cb_near).change_basis(cbi_self)
+
+    return symmetry(
+      unit_cell=result_uc,
+      space_group_info=other.space_group_info()
+    )
+
 def select_crystal_symmetry(
       from_command_line     = None,
       from_parameter_file   = None,
