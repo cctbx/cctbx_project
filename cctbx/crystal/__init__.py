@@ -564,19 +564,23 @@ class symmetry(object):
     # Compute distances for each nearly-reduced setting
     distances = [cell_distance(uc_other, setting['cell']) for setting in settings]
     best_dist = min(distances)
-    tolerance = 1e-6
+    tolerance = 1e-7
     tied_indices = [i for i, d in enumerate(distances) if abs(d - best_dist) <= tolerance]
-    import random
-    best_idx = random.choice(tied_indices)
+    # If there are multiple best settings and we are handling multiple cells,
+    # then we want all best settings to be represented; but we want to do it
+    # deterministically for testing purposes.
+    if not hasattr(self, 'nearest_setting_count'):
+      self.nearest_setting_count = 0
+    best_idx = tied_indices[self.nearest_setting_count % len(tied_indices)]
+    self.nearest_setting_count += 1
 
     # Get the transformation matrix and invert it for change_of_basis_op
     # Convention: P from find_near_minimum_settings satisfies P = inv(cb.c().r())
     # So to construct cb_op, we need to pass P^{-1}
     P = settings[best_idx]['P']
-    P_inv = np.linalg.inv(P).astype(int)
-    P_inv_flat = tuple(int(x) for x in P_inv.T.ravel())
+    P_flat = tuple(int(x) for x in P.ravel())
 
-    rot_mx = sgtbx.rot_mx(P_inv_flat)
+    rot_mx = sgtbx.rot_mx(P_flat)
     cb_near = sgtbx.change_of_basis_op(sgtbx.rt_mx(rot_mx))
 
     # Apply transformations: other_minimum -> near-reduced -> self's original setting
