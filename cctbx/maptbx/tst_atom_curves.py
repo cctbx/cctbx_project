@@ -90,30 +90,49 @@ def exercise_02():
   assert rf(r1,r2) < 2
   assert flex.linear_correlation(r1,r2).coefficient() > 0.999
 
-def exercise_03(d_min=2, radius_max=5, n_grid=2000, sct="C"):
+def exercise_03(sct, eps, d_min, radius_max=5, n_grid=2000):
   o = maptbx.atom_curves(scattering_type=sct, scattering_table="wk1995")
-  r = o.image(
-    d_min               = d_min,
-    b_iso               = 0,
-    d_max               = None,
-    radius_min          = 0,
-    radius_max          = radius_max,
-    radius_step         = radius_max/n_grid,
-    n_integration_steps = n_grid)
-  image1 = r.image_values
-  radii1 = r.radii
+  def _helper(fast):
+    r = o.image(
+      d_min               = d_min,
+      b_iso               = 0,
+      d_max               = None,
+      radius_min          = 0,
+      radius_max          = radius_max,
+      radius_step         = radius_max/n_grid,
+      n_integration_steps = n_grid,
+      fast                = fast)
+    return r.image_values, r.radii
+  image1, radii = _helper(fast = False)
   #
   v = o.scr.as_type_gaussian_dict()[sct]
   ff_AU_style = tuple(v.array_of_a()) + (v.c(),) + tuple(v.array_of_b()) + (0,)
-  image2 = maptbx.atom_image(ff_packed=ff_AU_style, d_min=d_min,
+  image2 = maptbx.atom_image_fast(ff_packed=ff_AU_style, d_min=d_min,
     n_grid=n_grid, dist_max=radius_max, scaled=False)
-  assert approx_equal(image1, image2, 1.e-3)
+  assert approx_equal(image1, image2, eps)
+  image3, _ = _helper(fast = True)
+  #
+  from cctbx.maptbx.bcr import qmap
+  from cctbx.maptbx.bcr import bcr
+  t = qmap.load_table(element="S", table="wk1995")
+  d = t["1.0"]
+  B = d["B"]
+  C = d["C"]
+  R = d["R"]
+  vals = bcr.curve(B=B, C=C, R=R, radii=radii, b_iso=0)
+  print(vals[0], image3[0], image2[0], image1[0])
+  #
+  im = o.image(d_min=1.0, b_iso=0, radii=radii, fast=True)
+  print(im.image_values[0])
+  assert approx_equal(image3, image2)
 
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_00()
   exercise_01()
   exercise_02()
-  exercise_03()
+  # THESE SHOWS INACCURACY OF SLOW METHOD OF IMAGE CALCULATIONS
+  exercise_03(sct="C", eps=1.e-3, d_min=2)
+  exercise_03(sct="S", eps=1.e-1, d_min=1)
   print("Time: %6.3f"%(time.time()-t0))
   print("OK")
