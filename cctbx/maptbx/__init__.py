@@ -329,7 +329,8 @@ def mask(xray_structure,
          mask_value_inside_molecule = 0,
          mask_value_outside_molecule = 1,
          solvent_radius = 0,
-         atom_radius = None):
+         atom_radius = None,
+         wrapping = True):
   xrs_p1 = xray_structure.expand_to_p1(sites_mod_positive = True)
   if(atom_radius is None):
     from cctbx.masks import vdw_radii_from_xray_structure
@@ -342,7 +343,8 @@ def mask(xray_structure,
     n_real                      = n_real,
     mask_value_inside_molecule  = mask_value_inside_molecule,
     mask_value_outside_molecule = mask_value_outside_molecule,
-    radii                       = atom_radii + solvent_radius)
+    radii                       = atom_radii + solvent_radius,
+    wrapping                    = wrapping)
 
 class statistics(ext.statistics):
 
@@ -1441,7 +1443,7 @@ def atom_radius_as_central_peak_width(element, b_iso, d_min, scattering_table):
   assert radius is not None
   return radius
 
-def atom_image(ff_packed, d_min, n_grid, dist_max, scaled=False):
+def atom_image_fast(ff_packed, d_min, n_grid, dist_max, scaled=False):
   #
   # ff_packed is array_of_a() + c() + array_of_b() + (0,)
   #
@@ -1627,11 +1629,9 @@ Fourier image of specified resolution, etc.
             radius_min = 0,
             radius_max = 5.,
             radius_step = 0.001,
-            n_integration_steps = 2000):
-    """
-    This can be done nicer. See generate_BCR_atom_22.txt attachment in email
-    from AU received on 12/8/25, 11:02.
-    """
+            n_integration_steps = 2000,
+            compute_derivatives=True,
+            fast=False):
     # define radii if not supplied
     if radii is None:
       radii = flex.double()
@@ -1646,32 +1646,46 @@ Fourier image of specified resolution, etc.
     assert d_min !=  0.
     s_max = 1./d_min
     image_values = flex.double()
-    for r in radii:
-      s = scitbx.math.simpson(
-        f = self.integrand(r, b_iso), a = s_min, b = s_max, n = n_integration_steps)
-      image_values.append(s)
+    if not fast: # Use direct integration
+      for r in radii:
+        s = scitbx.math.simpson(
+          f = self.integrand(r, b_iso), a = s_min, b = s_max,
+            n = n_integration_steps)
+        image_values.append(s)
+    else: # use AU's adopted code, limited (see assertions below)
+      assert d_max is None
+      v = self.scr.as_type_gaussian_dict()[self.scattering_type]
+      ff_AU_style=tuple(v.array_of_a())+(v.c(),)+tuple(v.array_of_b())+(0,)
+      image_values = atom_image_fast(
+        ff_packed = ff_AU_style,
+        d_min     = d_min,
+        n_grid    = radii.size(),
+        dist_max  = radius_max, scaled=False)
+      image_values = flex.double(image_values)
     # Fine first inflection point
     first_inflection_point = None
     i_first_inflection_point = None
     size = image_values.size()
     second_derivatives = flex.double()
-    for i in range(size):
-      if(i>0 and i<size-1):
-        dxx = image_values[i-1]+image_values[i+1]-2*image_values[i]
-      elif(i == 0):
-        dxx = 2*image_values[i+1]-2*image_values[i]
-      else:
-        dxx = second_derivatives[i-1]*radius_step**2
-      if(first_inflection_point is None and dxx>0):
-        first_inflection_point = (radii[i-1]+radii[i])/2.
-        i_first_inflection_point = i
-      second_derivatives.append(dxx/radius_step**2)
+    if compute_derivatives:
+      for i in range(size):
+        if(i>0 and i<size-1):
+          dxx = image_values[i-1]+image_values[i+1]-2*image_values[i]
+        elif(i == 0):
+          dxx = 2*image_values[i+1]-2*image_values[i]
+        else:
+          dxx = second_derivatives[i-1]*radius_step**2
+        if(first_inflection_point is None and dxx>0):
+          first_inflection_point = (radii[i-1]+radii[i])/2.
+          i_first_inflection_point = i
+        second_derivatives.append(dxx/radius_step**2)
+      first_inflection_point = first_inflection_point*2
     return group_args(
       radii                    = radii,
       image_values             = image_values,
       first_inflection_point   = first_inflection_point,
       i_first_inflection_point = i_first_inflection_point,
-      radius                   = first_inflection_point*2,
+      radius                   = first_inflection_point,
       second_derivatives       = second_derivatives)
 
   def image_from_miller_indices(self, miller_indices, b_iso, uc,
