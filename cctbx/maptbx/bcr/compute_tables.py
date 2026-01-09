@@ -57,8 +57,15 @@ def run_one_e(args):
     scattering_table = "electron",
     TypesAtoms = args)
 
+def run_one():
+   bcr.compute_tables(
+    MinResolution = 0.996,
+    MaxResolution = 1.0,
+    DistMax       = 10.0,
+    scattering_table = "wk1995",
+    TypesAtoms = ["S", "C"])
 
-if (__name__ == "__main__"):
+def run_all():
   #
   e_list = []
   for l in std_labels:
@@ -92,3 +99,8 @@ if (__name__ == "__main__"):
   else:
     for args in argss:
       o = run_one(args)
+
+
+if (__name__ == "__main__"):
+  #run_all()
+  run_one()
