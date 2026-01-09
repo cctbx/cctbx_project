@@ -1379,7 +1379,7 @@ def RefinedTable(AtomType,Resolutions,DistMax,Ngrid,Terms_Resol,
 def compute_tables(
       MinResolution = 4.0,
       MaxResolution = 4.0,
-      DistMax          = 5.0,
+      DistMax       = 5.0,
       scattering_table = "wk1995",
       TypesAtoms = ["C",]):
 
@@ -1522,7 +1522,7 @@ def compute_tables(
          #
          v = list(o.scr.as_type_gaussian_dict().values())[0]
          ff_AU_style = tuple(v.array_of_a()) + (v.c(),) + tuple(v.array_of_b()) + (0,)
-         Image = maptbx.atom_image(
+         Image = maptbx.atom_image_fast(
            ff_packed = ff_AU_style,
            d_min     = Resolution,
            n_grid    = NSgrid,
