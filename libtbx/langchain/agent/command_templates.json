@@ -1,0 +1,364 @@
+{
+  "phenix.xtriage": {
+    "description": "Data quality analysis for X-ray crystallography.",
+    "file_slots": {
+      "data": { "flag": "", "required": true, "extensions": [".mtz", ".sca", ".hkl", ".sdf"] },
+      "sequence": { "flag": "scaling.input.asu_contents.sequence_file=", "required": false, "extensions": [".fa", ".fasta", ".seq", ".dat"] }
+    },
+    "defaults": {},
+    "strategy_flags": {}
+  },
+
+  "phenix.predict_and_build": {
+    "description": "AlphaFold prediction and model building - use when you have sequence but no model!",
+    "file_slots": {
+      "sequence": { "flag": "input_files.seq_file=", "required": true, "extensions": [".fa", ".fasta", ".seq", ".dat"] },
+      "data": { "flag": "input_files.xray_data_file=", "required": false, "extensions": [".mtz", ".sca", ".hkl", ".sdf"] },
+      "full_map": { "flag": "map_model.full_map=", "required": false, "extensions": [".mrc", ".ccp4", ".map"] },
+      "half_map": { "flag": "map_model.half_map=", "required": false, "multiple": true, "extensions": [".mrc", ".ccp4", ".map"] }
+    },
+    "defaults": {
+      "control.nproc": 4
+    },
+    "strategy_flags": {
+      "stop_after_predict": {
+        "true": "predict_and_build.stop_after_predict=True",
+        "false": ""
+      },
+      "quick": {
+        "true": "quick=True",
+        "false": ""
+      },
+      "nproc": {
+        "format": "control.nproc={}"
+      },
+      "resolution": {
+        "format": "crystal_info.resolution={}"
+      }
+    },
+    "hints": [
+      "If stop_after_predict is False (default), you MUST provide resolution (e.g., 2.5)",
+      "If you only want the AlphaFold model without building, set stop_after_predict: true",
+      "Resolution can be found in xtriage/mtriage output or MTZ file header",
+      "For cryo-EM: use full_map for single map, or half_map for two half-maps, or both"
+    ]
+  },
+
+  "phenix.process_predicted_model": {
+    "description": "Process AlphaFold model for molecular replacement.",
+    "file_slots": {
+      "model": { "flag": "", "required": true, "extensions": [".pdb"] }
+    },
+    "defaults": {},
+    "strategy_flags": {}
+  },
+
+  "phenix.phaser": {
+    "description": "Molecular replacement using a search model.",
+    "file_slots": {
+      "data": { "flag": "", "required": true, "extensions": [".mtz", ".sca", ".hkl", ".sdf"] },
+      "model": { "flag": "", "required": true, "extensions": [".pdb"] },
+      "sequence": { "flag": "", "required": false, "extensions": [".fa", ".fasta", ".seq", ".dat"] }
+    },
+    "defaults": {
+      "phaser.mode": "MR_AUTO"
+    },
+    "strategy_flags": {
+      "component_copies": {
+        "format": "phaser.ensemble.copies={}"
+      }
+    }
+  },
+
+  "phenix.refine": {
+    "description": "Automated refinement of atomic models against X-ray data.",
+    "file_slots": {
+      "model": { "flag": "", "required": true, "extensions": [".pdb", ".cif"], "priority_patterns": ["with_ligand", "refine", "PHASER"] },
+      "data": { "flag": "", "required": true, "extensions": [".mtz", ".sca", ".hkl", ".sdf"] }
+    },
+    "defaults": {},
+    "strategy_flags": {
+      "use_simulated_annealing": {
+        "true": "main.simulated_annealing=True",
+        "false": ""
+      },
+      "generate_rfree_flags": {
+        "true": "xray_data.r_free_flags.generate=True",
+        "false": ""
+      },
+      "optimize_xyz": {
+        "true": "refine.strategy=individual_sites",
+        "false": ""
+      },
+      "optimize_adp": {
+        "true": "refine.strategy=individual_adp",
+        "false": ""
+      },
+      "add_waters": {
+        "true": "ordered_solvent=True",
+        "false": "ordered_solvent=False"
+      },
+      "twin_law": {
+        "format": "refinement.twinning.twin_law={}"
+      },
+      "anisotropic_adp": {
+        "true": "refine.adp.individual.anisotropic=\"not (water or element H)\"",
+        "false": ""
+      },
+      "resolution_limit": {
+        "format": "xray_data.high_resolution={}"
+      },
+      "nproc": {
+        "format": "refinement.main.nproc={}"
+      }
+    },
+    "hints": [
+      "FIRST refinement after phaser: use generate_rfree_flags=true",
+      "SUBSEQUENT refinements: do NOT generate new R-free flags (use existing from MTZ)",
+      "Add waters (ordered_solvent=True) only after 2+ refine cycles AND R-free < 0.35 AND resolution <= 3.0Å",
+      "Do NOT use simulated_annealing for initial refinement",
+      "Only use simulated_annealing=True if R-free > 0.40 AND previous refinement didn't improve",
+      "If TWINNING detected, include twin_law (e.g., twin_law='-h,-k,l')",
+      "At very high resolution (<1.5Å), consider anisotropic_adp=true"
+    ]
+  },
+
+  "phenix.ligandfit": {
+    "description": "Fit a ligand into difference density.",
+    "file_slots": {
+      "model": { "flag": "model=", "required": true, "extensions": [".pdb"], "exclude_patterns": ["ligand", "lig.pdb", "ligand_fit"] },
+      "data": { "flag": "data=", "required": true, "extensions": [".mtz", ".sca", ".hkl", ".sdf"] },
+      "ligand": { "flag": "ligand=", "required": true, "extensions": [".pdb", ".cif"], "prefer_patterns": ["lig", "ligand"] }
+    },
+    "defaults": {
+      "file_info.input_labels": "\"2FOFCWT PH2FOFCWT\"",
+      "general.nproc": 4
+    },
+    "strategy_flags": {
+      "nproc": {
+        "format": "general.nproc={}"
+      }
+    }
+  },
+
+  "phenix.pdbtools": {
+    "description": "Combine PDB files (e.g., protein + ligand).",
+    "file_slots": {
+      "protein": { "flag": "", "required": true, "extensions": [".pdb"], "exclude_patterns": ["ligand_fit", "lig.pdb", "with_ligand"], "priority_patterns": ["refine"] },
+      "ligand": { "flag": "", "required": true, "extensions": [".pdb"], "prefer_patterns": ["ligand_fit", "lig"] }
+    },
+    "defaults": {},
+    "strategy_flags": {
+      "output_name": {
+        "format": "output.file_name={}"
+      }
+    }
+  },
+
+  "phenix.real_space_refine": {
+    "description": "Refinement of atomic models against Cryo-EM maps. Requires a full map (not half-maps).",
+    "file_slots": {
+      "model": { "flag": "", "required": true, "extensions": [".pdb", ".cif"] },
+      "map": { "flag": "", "required": true, "extensions": [".mrc", ".ccp4", ".map"], "exclude_patterns": ["half", "_1.ccp4", "_2.ccp4", "_1.mrc", "_2.mrc", "_a.ccp4", "_b.ccp4", "_a.mrc", "_b.mrc"] }
+    },
+    "defaults": {},
+    "strategy_flags": {
+      "nproc": {
+        "format": "nproc={}"
+      },
+      "resolution": {
+        "format": "resolution={}"
+      }
+    }
+  },
+
+  "phenix.autobuild": {
+    "description": "Iterative model building and refinement.",
+    "file_slots": {
+      "data": { "flag": "data=", "required": true, "extensions": [".mtz", ".sca", ".hkl", ".sdf"], "priority_patterns": ["refine"] },
+      "model": { "flag": "model=", "required": false, "extensions": [".pdb"], "priority_patterns": ["refine", "PHASER"] },
+      "sequence": { "flag": "seq_file=", "required": true, "extensions": [".fa", ".fasta", ".seq", ".dat"] }
+    },
+    "defaults": {
+      "nproc": 4
+    },
+    "strategy_flags": {
+      "quick": {
+        "true": "quick=True",
+        "false": ""
+      },
+      "nproc": {
+        "format": "nproc={}"
+      },
+      "resolution": {
+        "format": "resolution={}"
+      }
+    },
+    "hints": [
+      "REQUIRES phased MTZ (from phaser or refine output) - will not work with raw F/SIGF data",
+      "If resolution is better than 2.0Å, set resolution=2.0 to speed up building",
+      "Use the refined MTZ (with map coefficients) not the original data MTZ",
+      "IMPORTANT: If a refined model exists, include it with model= for better results"
+    ]
+  },
+
+  "phenix.mtriage": {
+    "description": "Map quality analysis for cryo-EM.",
+    "file_slots": {
+      "full_map": { "flag": "full_map=", "required": false, "extensions": [".mrc", ".ccp4", ".map"] },
+      "half_map": { "flag": "half_map=", "required": false, "multiple": true, "extensions": [".mrc", ".ccp4", ".map"] }
+    },
+    "defaults": {},
+    "strategy_flags": {}
+  },
+
+  "phenix.resolve_cryo_em": {
+    "description": "Optimize cryo-EM map clarity using density modification. Produces a sharpened full map from half-maps. Try this first for map improvement.",
+    "file_slots": {
+      "half_map": { "flag": "", "required": true, "multiple": true, "extensions": [".mrc", ".ccp4", ".map"] },
+      "sequence": { "flag": "seq_file=", "required": false, "extensions": [".fa", ".fasta", ".seq", ".dat"] }
+    },
+    "defaults": {},
+    "strategy_flags": {}
+  },
+
+  "phenix.map_sharpening": {
+    "description": "Sharpen cryo-EM map to improve clarity. Alternative to resolve_cryo_em for map optimization.",
+    "file_slots": {
+      "half_map": { "flag": "", "required": true, "multiple": true, "extensions": [".mrc", ".ccp4", ".map"] },
+      "sequence": { "flag": "seq_file=", "required": false, "extensions": [".fa", ".fasta", ".seq", ".dat"] }
+    },
+    "defaults": {},
+    "strategy_flags": {}
+  },
+
+  "phenix.dock_in_map": {
+    "description": "Dock model into cryo-EM map.",
+    "file_slots": {
+      "model": { "flag": "", "required": true, "extensions": [".pdb"] },
+      "map": { "flag": "", "required": true, "extensions": [".mrc", ".ccp4", ".map"] },
+      "sequence": { "flag": "", "required": false, "extensions": [".fa", ".fasta", ".seq", ".dat"] }
+    },
+    "defaults": {},
+    "strategy_flags": {}
+  },
+
+  "phenix.autosol": {
+    "description": "Experimental phasing (SAD/MAD) - use when MTZ has anomalous data and no model exists.",
+    "file_slots": {
+      "data": { "flag": "autosol.data=", "required": true, "extensions": [".mtz", ".sca", ".hkl", ".sdf"] },
+      "sequence": { "flag": "seq_file=", "required": true, "extensions": [".fa", ".fasta", ".seq", ".dat"] }
+    },
+    "defaults": {
+      "nproc": 4
+    },
+    "strategy_flags": {
+      "nproc": {
+        "format": "nproc={}"
+      },
+      "quick": {
+        "true": "quick=True",
+        "false": ""
+      },
+      "atom_type": {
+        "format": "autosol.atom_type={}"
+      },
+      "wavelength": {
+        "format": "autosol.wavelength={}"
+      },
+      "sites": {
+        "format": "autosol.sites={}"
+      }
+    },
+    "hints": [
+      "Use for SAD/MAD experimental phasing when data has anomalous signal",
+      "Requires anomalous data (F+/F- or I+/I-) in the data file",
+      "Set atom_type to the anomalous scatterer (e.g., 'Se', 'S', 'Zn', 'Fe')",
+      "Alternative to MR when no homologous model exists"
+    ]
+  },
+
+  "phenix.map_to_model": {
+    "description": "Build atomic model directly into cryo-EM map.",
+    "file_slots": {
+      "map": { "flag": "", "required": true, "extensions": [".mrc", ".ccp4", ".map"] },
+      "sequence": { "flag": "seq_file=", "required": true, "extensions": [".fa", ".fasta", ".seq", ".dat"] },
+      "model": { "flag": "model=", "required": false, "extensions": [".pdb"] }
+    },
+    "defaults": {
+      "nproc": 4
+    },
+    "strategy_flags": {
+      "nproc": {
+        "format": "nproc={}"
+      },
+      "resolution": {
+        "format": "resolution={}"
+      }
+    },
+    "hints": [
+      "Use when you have a cryo-EM map and sequence but no model",
+      "Alternative to docking a predicted model"
+    ]
+  },
+
+  "phenix.molprobity": {
+    "description": "Comprehensive model validation (geometry, clashes, Ramachandran).",
+    "file_slots": {
+      "model": { "flag": "", "required": true, "extensions": [".pdb", ".cif"], "priority_patterns": ["refine"] }
+    },
+    "defaults": {},
+    "strategy_flags": {},
+    "hints": [
+      "Run after refinement to check model quality",
+      "Good values: Ramachandran outliers <0.5%, rotamer outliers <1%, clashscore <4, MolProbity score <1.5",
+      "Poor values: any metric >2x the good threshold indicates problems"
+    ]
+  },
+
+  "phenix.model_vs_data": {
+    "description": "Validate model against X-ray data (R-factors, map quality).",
+    "file_slots": {
+      "model": { "flag": "", "required": true, "extensions": [".pdb", ".cif"], "priority_patterns": ["refine"] },
+      "data": { "flag": "", "required": true, "extensions": [".mtz", ".sca", ".hkl", ".sdf"] }
+    },
+    "defaults": {},
+    "strategy_flags": {},
+    "hints": [
+      "Run after X-ray refinement to validate model vs data",
+      "Reports R-work, R-free, and map-model correlation"
+    ]
+  },
+
+  "phenix.validation_cryoem": {
+    "description": "Validate model against cryo-EM map.",
+    "file_slots": {
+      "model": { "flag": "", "required": true, "extensions": [".pdb", ".cif"], "priority_patterns": ["refine"] },
+      "map": { "flag": "", "required": true, "extensions": [".mrc", ".ccp4", ".map"] }
+    },
+    "defaults": {},
+    "strategy_flags": {
+      "resolution": {
+        "format": "resolution={}"
+      }
+    },
+    "hints": [
+      "Run after cryo-EM refinement to validate model",
+      "Reports map-model correlation and geometry statistics"
+    ]
+  },
+
+  "phenix.holton_geometry_validation": {
+    "description": "Detailed geometry validation with energy-based scoring.",
+    "file_slots": {
+      "model": { "flag": "", "required": true, "extensions": [".pdb", ".cif"], "priority_patterns": ["refine"] }
+    },
+    "defaults": {},
+    "strategy_flags": {},
+    "hints": [
+      "Provides detailed geometry analysis with energy scores",
+      "Overall geometry energy should be close to expected value (~67 for ideal)",
+      "Reports worst deviations in each category (bonds, angles, clashes, etc.)"
+    ]
+  }
+}
