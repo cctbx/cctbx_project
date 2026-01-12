@@ -79,6 +79,7 @@ class Spotfinder_radial_average:
     #apply beam center correction to expts
     detector = expts[0].detector
     if not np.allclose(params.xyz_offset, [0,0,0]):
+      assert params.single_detector
       ref_detector = copy.deepcopy(detector)
       hierarchy = detector.hierarchy()
       fast = hierarchy.get_local_fast_axis()
@@ -92,11 +93,12 @@ class Spotfinder_radial_average:
       hierarchy.set_local_frame(fast, slow, corrected_origin)
     else:
       ref_detector = detector
-    compare_detector = DetectorComparison()
-    for expt in expts:
-      if expt.detector is detector: continue
-      assert compare_detector(ref_detector, expt.detector)
-      expt.detector = detector
+    if params.single_detector:
+      compare_detector = DetectorComparison()
+      for expt in expts:
+        if expt.detector is detector: continue
+        assert compare_detector(ref_detector, expt.detector)
+        expt.detector = detector
 
     for i, expt in enumerate(expts):
       self.current_panelsums = [
@@ -269,6 +271,7 @@ class Center_scan:
   def __init__(self, experiments, reflections, params):
     self.params = params
 
+    assert params.single_detector
     self.reflections = reflections
     self.experiments = experiments
     assert len(self.experiments.detectors())==1
