@@ -1443,22 +1443,22 @@ def atom_radius_as_central_peak_width(element, b_iso, d_min, scattering_table):
   assert radius is not None
   return radius
 
-def atom_image_fast(ff_packed, d_min, n_grid, dist_max, scaled=False):
+def atom_image_fast(ff_packed, d_min, n_grid, dist_max, n_sf_grid=2001):
   #
-  # ff_packed is array_of_a() + c() + array_of_b() + (0,)
+  # ff_packed is linear array of array_of_a() + c() + array_of_b() + (0,)
   #
-  # scaled=True is for BCR optimization only. Not comparable with actual image
-  #
+  # scaled - special mode that produced scaled image on an extended interval
+  #          (used for BCR)
   #
   DistImage  = dist_max
-  if scaled: DistImage  = dist_max + 1.0
-  StepImage  = dist_max / n_grid
-  def _SFactG(ScatAtom,Resolution,NSgrid) :
-    ScatFunc = [0.0 for ig in range(NSgrid)]
+  NImage     = n_grid
+  #
+  def _SFactG(ScatAtom,Resolution,n_sf_grid) :
+    ScatFunc = [0.0 for ig in range(n_sf_grid)]
     Smax    = 1.0 / Resolution
-    dsstep  = Smax / NSgrid
+    dsstep  = Smax / (n_sf_grid - 1)
     NGauss  = int(len(ScatAtom) / 2)
-    for isg in range(NSgrid) :
+    for isg in range(n_sf_grid) :
       sg   = dsstep * isg
       ss24 = sg * sg / 4.0
       fact = 0.0
@@ -1467,15 +1467,16 @@ def atom_image_fast(ff_packed, d_min, n_grid, dist_max, scaled=False):
         fact  += ScatAtom[ig] * math.exp(-argexp)
       ScatFunc[isg] = fact
     return ScatFunc
-  def _AtomImage(ScatFunc,Resolution,DistImage,StepImage) :
-    NImage = int(DistImage/StepImage)
-    NSGrid = len(ScatFunc)
+  #
+  def _AtomImage(ScatFunc,Resolution,DistImage,NImage) :
+    StepImage  = DistImage / (NImage - 1)
+    NSGrid = len(ScatFunc) - 1
     Smax   = 1.0 / Resolution
     SStep  = Smax / NSGrid
     Image = [0.0 for j in range(NImage)]
     dx = 2. * math.pi * StepImage
-    #   integrate scattering curve
-    #   odd points
+#   integrate scattering curve
+#   odd points
     for igs in range(1, NSGrid, 2):
       ss     = SStep * igs
       fatoms = ScatFunc[igs] * ss * 4.
@@ -1485,7 +1486,7 @@ def atom_image_fast(ff_packed, d_min, n_grid, dist_max, scaled=False):
         sarg = math.sin(arg)
         Image[ir] = Image[ir] + fatoms * sarg
       Image[0] = Image[0] + fatoms * ss
-    #   even points
+#   even points
     for igs in range(2, NSGrid-1, 2):
       ss     = SStep * igs
       fatoms = ScatFunc[igs] * ss * 2.
@@ -1495,31 +1496,31 @@ def atom_image_fast(ff_packed, d_min, n_grid, dist_max, scaled=False):
         sarg = math.sin(arg)
         Image[ir] = Image[ir] + fatoms * sarg
       Image[0] = Image[0] + fatoms * ss
-    #   terminal point (point s = 0 gives zero contribution and is ignored)
+#   terminal point (point s = 0 gives zero contribution and is ignored)
     ss     = SStep * NSGrid
-    fatoms = ScatFunc[-1] * ss
+    fatoms = ScatFunc[NSGrid] * ss
     for ir in range(1,NImage):
       rr   = dx * ir
       arg  = rr * ss
       sarg = math.sin(arg)
       Image[ir] = Image[ir] + fatoms * sarg
     Image[0] = Image[0] + fatoms * ss
-    # ---- normalisation ----
+# ---- normalisation ----
     scal = 2.0 * SStep / 3.0
     for ir in range(1,NImage):
       rr = ir * StepImage
       Image[ir] = Image[ir] * scal / rr
     Image[0] = Image[0] * SStep * 4. * math.pi / 3.
-    return Image
-  ScatFunc = _SFactG(ScatAtom=ff_packed, Resolution=d_min, NSgrid=n_grid)
-  if scaled:
-    DistImage = DistImage*d_min
-    StepImage = StepImage*d_min
-  return _AtomImage(
+    return Image, StepImage
+  #
+  ScatFunc = _SFactG(ScatAtom=ff_packed, Resolution=d_min, n_sf_grid=n_sf_grid)
+  Image, StepImage = _AtomImage(
     ScatFunc   = ScatFunc,
     Resolution = d_min,
     DistImage  = DistImage,
-    StepImage  = StepImage)
+    NImage     = NImage)
+  Distance = [_ * StepImage for _ in range(len(Image))]
+  return Image, Distance
 
 class atom_curves(object):
   """
@@ -1629,17 +1630,20 @@ Fourier image of specified resolution, etc.
             radius_min = 0,
             radius_max = 5.,
             radius_step = 0.001,
-            n_integration_steps = 2000,
+            n_integration_steps = 4,
             compute_derivatives=True,
             fast=False):
     # define radii if not supplied
     if radii is None:
       radii = flex.double()
       r = radius_min
-      while r <= radius_max:
+      while r <= radius_max + 1e-10:
         radii.append(r)
-        r+= radius_step
-    #
+        r += radius_step
+        if math.isclose(r, radius_max, abs_tol=1e-10):
+            radii.append(radius_max)
+            break
+    if radii.size()%2 != 0: radii.append(radii[-1]+radius_step)
     assert d_max !=  0.
     if(d_max is None): s_min = 0
     else:              s_min = 1./d_max
@@ -1650,17 +1654,25 @@ Fourier image of specified resolution, etc.
       for r in radii:
         s = scitbx.math.simpson(
           f = self.integrand(r, b_iso), a = s_min, b = s_max,
-            n = n_integration_steps)
+          n=n_integration_steps)
         image_values.append(s)
     else: # use AU's adopted code, limited (see assertions below)
       assert d_max is None
+      assert abs(b_iso) < 1.e-6
       v = self.scr.as_type_gaussian_dict()[self.scattering_type]
       ff_AU_style=tuple(v.array_of_a())+(v.c(),)+tuple(v.array_of_b())+(0,)
-      image_values = atom_image_fast(
+      #
+      # Reason for this is unknown. Values in ff_AU_style do not match
+      # wk1995.ccp -- there is more digits after 6x position. The rounding
+      # below is meant to make these numbers match the wk1995.ccp table
+      # exactly.
+      #
+      ff_AU_style = [round(_,6) for _ in ff_AU_style]
+      image_values, _ = atom_image_fast(
         ff_packed = ff_AU_style,
         d_min     = d_min,
-        n_grid    = radii.size(),
-        dist_max  = radius_max, scaled=False)
+        n_grid    = radii.size(), # Must be even!!!
+        dist_max  = radius_max)
       image_values = flex.double(image_values)
     # Fine first inflection point
     first_inflection_point = None
