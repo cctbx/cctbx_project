@@ -12,11 +12,12 @@ import math
 import boost_adaptbx.boost.python as bp
 ext = bp.import_ext("cctbx_maptbx_bcr_bcr_ext")
 
-def load_table(element, table):
-  element = element.strip().upper()
-  assert element in ["C","H","N","O","S","P"]
-  path=libtbx.env.find_in_repositories("cctbx/maptbx/bcr/tables")
-  file_name = "%s/%s_%s.json"%(path, element, table)
+def load_table(element=None, table=None, file_name=None):
+  if file_name is None:
+    element = element.strip().upper()
+    assert element in ["C","H","N","O","S","P"]
+    path=libtbx.env.find_in_repositories("cctbx/maptbx/bcr/tables")
+    file_name = "%s/%s_%s.json"%(path, element, table)
   assert os.path.isfile(file_name)
   with open(file_name, 'r') as file:
     return json.load(file)
