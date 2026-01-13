@@ -1504,6 +1504,7 @@ def compute_tables(
          o = maptbx.atom_curves(scattering_type=AtomType, scattering_table=scattering_table)
          v = list(o.scr.as_type_gaussian_dict().values())[0]
          ff_AU_style = tuple(v.array_of_a()) + (v.c(),) + tuple(v.array_of_b()) + (0,)
+         ff_AU_style = [round(_,6) for _ in ff_AU_style]
          ScatFunc = SFactG(ff_AU_style,Resolution,NSgrid)
          Image = AtomImage(ScatFunc,Resolution,DistImage*Resolution,StepImage*Resolution)
 
