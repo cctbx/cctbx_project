@@ -6,33 +6,25 @@ from cctbx.array_family import flex
 from cctbx import xray
 from cctbx.maptbx.bcr import bcr
 
-
 std_labels = xray_scattering.standard_labels_list()
 
 def chunk_list(original_list):
     L = len(original_list)
-
     # Check if the list is smaller than the minimum required length for meaningful chunks
     if L < 3:
-        raise ValueError("The length of the list must be at least 3.")
-
+      raise ValueError("The length of the list must be at least 3.")
     chunks = []
     start_index = 0
-
     # Loop until we reach the end of the original list
     while start_index < L:
-        # Ensure there's enough remaining elements for at least a size of 3
-        end_index = start_index + 3  # Default size of each chunk
-
-        # Adjust the end_index if there aren't enough elements left
-        if end_index > L:
-            end_index = L
-
-        chunks.append(original_list[start_index:end_index])
-
-        # Move the start index forward by the length of the current chunk
-        start_index += 3  # Ensure each chunk has at least 3 items
-
+      # Ensure there's enough remaining elements for at least a size of 3
+      end_index = start_index + 3  # Default size of each chunk
+      # Adjust the end_index if there aren't enough elements left
+      if end_index > L:
+        end_index = L
+      chunks.append(original_list[start_index:end_index])
+      # Move the start index forward by the length of the current chunk
+      start_index += 3  # Ensure each chunk has at least 3 items
     return chunks
 
 def make_xrs(s):
@@ -60,12 +52,12 @@ def run_one_e(args):
 def run_one():
    bcr.compute_tables(
     MinResolution = 0.996,
-    MaxResolution = 1.0,
+    MaxResolution = 1.1,
     DistMax       = 10.0,
     scattering_table = "wk1995",
-    TypesAtoms = ["S", "C"])
+    TypesAtoms = ["N", "S", "C"])
 
-def run_all():
+def run_all(xray=True, electron=False):
   #
   e_list = []
   for l in std_labels:
@@ -73,34 +65,30 @@ def run_all():
     r = xrs.scattering_type_registry(table="electron")
     if len(list(r.unassigned_types()))==0:
       e_list.append(l)
-    #xrs.structure_factors(d_min=2)
   #
   e_list = chunk_list(original_list=e_list)
   x_list = chunk_list(original_list=std_labels)
   #
   NPROC=120
   #
-  #argss = []
-  #for e in [["H","C"], ["O","N"], ["P","S"], ["Fe","Fe2+","Fe3+"], ["Zn","Zn2+"]]:
-  #  argss.append(e)
-  #print(e_list)
-  #
   if(NPROC>1):
-    stdout_and_results = easy_mp.pool_map(
-      processes    = NPROC,
-      fixed_func   = run_one_x,
-      args         = x_list,
-      func_wrapper = "buffer_stdout_stderr")
-    stdout_and_results = easy_mp.pool_map(
-      processes    = NPROC,
-      fixed_func   = run_one_e,
-      args         = e_list,
-      func_wrapper = "buffer_stdout_stderr")
-  else:
+    if xray:
+      stdout_and_results = easy_mp.pool_map(
+        processes    = NPROC,
+        fixed_func   = run_one_x,
+        args         = x_list,
+        func_wrapper = "buffer_stdout_stderr")
+    if electron:
+      stdout_and_results = easy_mp.pool_map(
+        processes    = NPROC,
+        fixed_func   = run_one_e,
+        args         = e_list,
+        func_wrapper = "buffer_stdout_stderr")
+  else: # XXX BROKEN
     for args in argss:
       o = run_one(args)
 
 
 if (__name__ == "__main__"):
-  #run_all()
-  run_one()
+  if True: run_all()
+  else:    run_one()
