@@ -5,7 +5,7 @@ This module analyzes log summaries in the context of Phenix documentation
 to provide insights and suggest next steps.
 
 Usage:
-    from libtbx.langchain.analysis import analyze_log_summary
+    from libtbx.langchain.analysis.analyzer import analyze_log_summary
 
     result = await analyze_log_summary(log_info, llm, embeddings, db_dir)
     if result.error:
@@ -22,7 +22,7 @@ from cohere.core.api_error import ApiError as CohereApiError
 from google.api_core import exceptions as google_exceptions
 
 from libtbx import group_args
-from libtbx.langchain.rag import (
+from libtbx.langchain.rag.retriever import (
     load_persistent_db,
     create_reranking_retriever,
     create_log_analysis_chain,

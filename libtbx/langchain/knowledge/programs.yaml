@@ -1,0 +1,829 @@
+# =============================================================================
+# PHENIX AI Agent - Program Definitions
+# =============================================================================
+# This file defines all programs the agent can use.
+# Each program specifies:
+#   - What it does (description)
+#   - What files it needs (inputs)
+#   - What it produces (outputs)
+#   - How to build the command (command template)
+#   - How to extract metrics from its log (log_parsing)
+#
+# To add a new program, copy an existing entry and modify it.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# DATA ANALYSIS PROGRAMS
+# -----------------------------------------------------------------------------
+
+phenix.xtriage:
+  description: "Analyze X-ray data quality, detect twinning and anomalous signal"
+  category: analysis
+  experiment_types: [xray]
+
+  inputs:
+    required:
+      mtz:
+        extensions: [.mtz, .sca, .hkl, .sdf]
+        flag: ""
+    optional:
+      sequence:
+        extensions: [.fa, .fasta, .seq, .dat]
+        flag: "scaling.input.asu_contents.sequence_file="
+
+  outputs:
+    metrics:
+      - resolution
+      - completeness
+      - twinning
+      - twin_fraction
+      - twin_law
+      - anomalous_signal
+      - space_group
+
+  command: "phenix.xtriage {mtz}"
+
+  log_parsing:
+    resolution:
+      pattern: 'High resolution limit\s*[=:]\s*([0-9.]+)'
+      type: float
+    completeness:
+      pattern: '[Cc]ompleteness\s*[=:]\s*([0-9.]+)'
+      type: float
+    twin_fraction:
+      pattern: '(?:Britton alpha|Twin fraction)[:\s=]+([0-9.]+)'
+      type: float
+    twin_law:
+      pattern: 'Twin law\s*[=:]\s*([^\n]+)'
+      type: string
+    anomalous_signal:
+      pattern: 'Anomalous signal.*?([0-9.]+)\s*[AÅ]'
+      type: float
+    space_group:
+      pattern: 'Space group\s*[=:]\s*([^\n]+)'
+      type: string
+    no_twinning_suspected:
+      pattern: 'No twinning suspected'
+      type: boolean
+
+
+phenix.mtriage:
+  description: "Analyze cryo-EM map quality and estimate resolution"
+  category: analysis
+  experiment_types: [cryoem]
+
+  inputs:
+    optional:
+      full_map:
+        extensions: [.mrc, .ccp4, .map]
+        flag: "full_map="
+        exclude_patterns: [half, _1, _2, _a, _b]
+      half_map:
+        extensions: [.mrc, .ccp4, .map]
+        flag: "half_map="
+        multiple: true
+
+  outputs:
+    metrics:
+      - resolution
+      - map_cc
+
+  command: "phenix.mtriage {half_map} {full_map}"
+
+  log_parsing:
+    resolution:
+      pattern: 'd_fsc_model(?:_05|_0.5)?[=:\s]+([0-9.]+)'
+      type: float
+      fallback_pattern: 'd99[=:\s]+([0-9.]+)'
+    map_cc:
+      pattern: 'CC_mask\s*[=:]\s*([0-9.]+)'
+      type: float
+
+
+# -----------------------------------------------------------------------------
+# MODEL BUILDING PROGRAMS
+# -----------------------------------------------------------------------------
+
+phenix.predict_and_build:
+  description: "AlphaFold prediction and automatic model building"
+  category: model_building
+  experiment_types: [xray, cryoem]
+
+  inputs:
+    required:
+      sequence:
+        extensions: [.fa, .fasta, .seq, .dat]
+        flag: "input_files.seq_file="
+    optional:
+      mtz:
+        extensions: [.mtz, .sca, .hkl, .sdf]
+        flag: "input_files.xray_data_file="
+      full_map:
+        extensions: [.mrc, .ccp4, .map]
+        flag: "map_model.full_map="
+      half_map:
+        extensions: [.mrc, .ccp4, .map]
+        flag: "map_model.half_map="
+        multiple: true
+
+  outputs:
+    files:
+      - pattern: "*overall_best*.pdb"
+        type: model
+      - pattern: "*_predicted_model*.pdb"
+        type: model
+      - pattern: "*_map.ccp4"
+        type: map
+    metrics:
+      - r_free
+      - r_work
+      - map_cc
+
+  command: "phenix.predict_and_build {sequence} {mtz} {full_map} {half_map}"
+
+  defaults:
+    control.nproc: 4
+
+  strategy_flags:
+    stop_after_predict:
+      flag: "predict_and_build.stop_after_predict={value}"
+      type: boolean
+      hint: "Set True to only get AlphaFold model without building"
+    resolution:
+      flag: "crystal_info.resolution={value}"
+      type: float
+      hint: "Required unless stop_after_predict=True"
+    quick:
+      flag: "quick={value}"
+      type: boolean
+    nproc:
+      flag: "control.nproc={value}"
+      type: int
+
+  # Invariants are checked before building command
+  # If violated, the fix is applied automatically
+  invariants:
+    - name: data_or_predict_only
+      description: "Must have data file OR stop_after_predict=True"
+      check:
+        any_of:
+          - has_file: [mtz, full_map, half_map]
+          - strategy_equals: {stop_after_predict: true}
+      fix:
+        set_strategy: {stop_after_predict: true}
+      message: "No data file provided, switching to prediction-only mode"
+
+  hints:
+    - "If stop_after_predict=False (default), resolution is REQUIRED"
+    - "Resolution can be found in xtriage/mtriage output"
+    - "For cryo-EM: use full_map or half_map (or both)"
+
+
+phenix.phaser:
+  description: "Molecular replacement to place a search model"
+  category: model_building
+  experiment_types: [xray]
+
+  inputs:
+    required:
+      mtz:
+        extensions: [.mtz, .sca, .hkl, .sdf]
+        flag: ""
+      model:
+        extensions: [.pdb]
+        flag: ""
+    optional:
+      sequence:
+        extensions: [.fa, .fasta, .seq, .dat]
+        flag: ""
+
+  outputs:
+    files:
+      - pattern: "PHASER.*.pdb"
+        type: model
+      - pattern: "PHASER.*.mtz"
+        type: mtz
+    metrics:
+      - tfz
+      - llg
+      - rfz
+
+  command: "phenix.phaser {mtz} {model} {sequence}"
+
+  defaults:
+    phaser.mode: "MR_AUTO"
+
+  strategy_flags:
+    component_copies:
+      flag: "phaser.ensemble.copies={value}"
+      type: int
+
+  log_parsing:
+    tfz:
+      pattern: 'TFZ==?([0-9.]+)'
+      type: float
+      extract: last  # Take the last value (final refined TFZ)
+    llg:
+      pattern: 'LLG=([0-9.]+)'
+      type: float
+      extract: last
+    rfz:
+      pattern: 'RFZ=([0-9.]+)'
+      type: float
+    space_group:
+      pattern: 'SOLU SPAC\s+(.+?)(?:\n|$)'
+      type: string
+
+
+phenix.autobuild:
+  description: "Iterative model building and refinement"
+  category: model_building
+  experiment_types: [xray]
+
+  inputs:
+    required:
+      mtz:
+        extensions: [.mtz, .sca, .hkl, .sdf]
+        flag: "data="
+        priority_patterns: [refine]  # Prefer refined MTZ with phases
+      sequence:
+        extensions: [.fa, .fasta, .seq, .dat]
+        flag: "seq_file="
+    optional:
+      model:
+        extensions: [.pdb]
+        flag: "model="
+        priority_patterns: [refine, PHASER]
+
+  outputs:
+    files:
+      - pattern: "*overall_best*.pdb"
+        type: model
+      - pattern: "*overall_best*.mtz"
+        type: mtz
+    metrics:
+      - r_free
+      - r_work
+
+  command: "phenix.autobuild {mtz} {sequence} {model}"
+
+  defaults:
+    nproc: 4
+
+  strategy_flags:
+    quick:
+      flag: "quick={value}"
+      type: boolean
+    nproc:
+      flag: "nproc={value}"
+      type: int
+    resolution:
+      flag: "resolution={value}"
+      type: float
+
+  hints:
+    - "REQUIRES phased MTZ (from phaser or refine output)"
+    - "Will not work with raw F/SIGF data"
+    - "If a refined model exists, include it for better results"
+
+
+phenix.autosol:
+  description: "Experimental phasing (SAD/MAD) for when data has anomalous signal"
+  category: model_building
+  experiment_types: [xray]
+
+  inputs:
+    required:
+      mtz:
+        extensions: [.mtz, .sca, .hkl, .sdf]
+        flag: "autosol.data="
+      sequence:
+        extensions: [.fa, .fasta, .seq, .dat]
+        flag: "seq_file="
+
+  outputs:
+    files:
+      - pattern: "*overall_best*.pdb"
+        type: model
+    metrics:
+      - fom
+      - sites_found
+
+  command: "phenix.autosol {mtz} {sequence}"
+
+  defaults:
+    nproc: 4
+
+  strategy_flags:
+    atom_type:
+      flag: "autosol.atom_type={value}"
+      type: string
+      hint: "Anomalous scatterer: Se, S, Zn, Fe, etc."
+    wavelength:
+      flag: "autosol.wavelength={value}"
+      type: float
+    sites:
+      flag: "autosol.sites={value}"
+      type: int
+    quick:
+      flag: "quick={value}"
+      type: boolean
+    nproc:
+      flag: "nproc={value}"
+      type: int
+
+  hints:
+    - "Use for SAD/MAD when data has anomalous signal"
+    - "Requires anomalous data (F+/F- or I+/I-)"
+    - "Set atom_type to the anomalous scatterer"
+
+
+phenix.dock_in_map:
+  description: "Dock a model into a cryo-EM map"
+  category: model_building
+  experiment_types: [cryoem]
+
+  inputs:
+    required:
+      model:
+        extensions: [.pdb]
+        flag: ""
+      map:
+        extensions: [.mrc, .ccp4, .map]
+        flag: ""
+    optional:
+      sequence:
+        extensions: [.fa, .fasta, .seq, .dat]
+        flag: ""
+
+  outputs:
+    files:
+      - pattern: "*docked*.pdb"
+        type: model
+    metrics:
+      - map_cc
+
+  command: "phenix.dock_in_map {model} {map} {sequence}"
+
+  strategy_flags:
+    resolution:
+      flag: "resolution={value}"
+      type: float
+      required: true
+      hint: "REQUIRED - get from mtriage"
+
+  hints:
+    - "Resolution is REQUIRED - get it from mtriage"
+
+
+phenix.map_to_model:
+  description: "Build atomic model directly into cryo-EM map"
+  category: model_building
+  experiment_types: [cryoem]
+
+  inputs:
+    required:
+      map:
+        extensions: [.mrc, .ccp4, .map]
+        flag: ""
+      sequence:
+        extensions: [.fa, .fasta, .seq, .dat]
+        flag: "seq_file="
+    optional:
+      model:
+        extensions: [.pdb]
+        flag: "model="
+
+  outputs:
+    files:
+      - pattern: "*.pdb"
+        type: model
+
+  command: "phenix.map_to_model {map} {sequence} {model}"
+
+  defaults:
+    nproc: 4
+
+  strategy_flags:
+    resolution:
+      flag: "resolution={value}"
+      type: float
+    nproc:
+      flag: "nproc={value}"
+      type: int
+
+
+phenix.process_predicted_model:
+  description: "Process AlphaFold model for molecular replacement"
+  category: model_building
+  experiment_types: [xray]
+
+  inputs:
+    required:
+      model:
+        extensions: [.pdb]
+        flag: ""
+
+  outputs:
+    files:
+      - pattern: "*processed*.pdb"
+        type: model
+
+  command: "phenix.process_predicted_model {model}"
+
+
+# -----------------------------------------------------------------------------
+# REFINEMENT PROGRAMS
+# -----------------------------------------------------------------------------
+
+phenix.refine:
+  description: "Refine atomic model against X-ray diffraction data"
+  category: refinement
+  experiment_types: [xray]
+
+  inputs:
+    required:
+      model:
+        extensions: [.pdb, .cif]
+        flag: ""
+        priority_patterns: [with_ligand, refine, PHASER]
+      mtz:
+        extensions: [.mtz, .sca, .hkl, .sdf]
+        flag: ""
+
+  outputs:
+    files:
+      - pattern: "*_refine_*.pdb"
+        type: model
+      - pattern: "*_refine_*.mtz"
+        type: mtz
+    metrics:
+      - r_free
+      - r_work
+      - bonds_rmsd
+      - angles_rmsd
+
+  command: "phenix.refine {model} {mtz}"
+
+  strategy_flags:
+    output_prefix:
+      flag: "output.prefix={value}"
+      type: string
+      hint: "Use short prefix to avoid long filenames (e.g., refine_001)"
+    generate_rfree_flags:
+      flag: "xray_data.r_free_flags.generate={value}"
+      type: boolean
+      hint: "ONLY use on first refinement after phaser"
+    simulated_annealing:
+      flag: "main.simulated_annealing={value}"
+      type: boolean
+      hint: "Use if R-free > 0.40 and not improving"
+    ordered_solvent:
+      flag: "ordered_solvent={value}"
+      type: boolean
+      hint: "Add waters after 2+ cycles AND R-free < 0.35 AND resolution <= 3.0Å"
+    twin_law:
+      flag: "refinement.twinning.twin_law={value}"
+      type: string
+      hint: "Include if twinning detected (e.g., '-h,-k,l')"
+    anisotropic_adp:
+      flag: 'refine.adp.individual.anisotropic="not (water or element H)"'
+      type: boolean
+      hint: "Only at very high resolution (<1.5Å)"
+    resolution_limit:
+      flag: "xray_data.high_resolution={value}"
+      type: float
+    nproc:
+      flag: "refinement.main.nproc={value}"
+      type: int
+
+  log_parsing:
+    r_free:
+      pattern: 'R-free\s*[=:]\s*([0-9.]+)'
+      type: float
+    r_work:
+      pattern: 'R-work\s*[=:]\s*([0-9.]+)'
+      type: float
+    bonds_rmsd:
+      pattern: '[Bb]onds?\s*(?:RMSD)?\s*[=:]\s*([0-9.]+)'
+      type: float
+    angles_rmsd:
+      pattern: '[Aa]ngles?\s*(?:RMSD)?\s*[=:]\s*([0-9.]+)'
+      type: float
+
+  hints:
+    - "FIRST refinement after phaser: use generate_rfree_flags=True"
+    - "SUBSEQUENT refinements: do NOT generate new R-free flags"
+    - "Add waters only after 2+ cycles AND R-free < 0.35"
+    - "If TWINNING detected, include twin_law"
+
+
+phenix.real_space_refine:
+  description: "Refine atomic model against cryo-EM map"
+  category: refinement
+  experiment_types: [cryoem]
+
+  inputs:
+    required:
+      model:
+        extensions: [.pdb, .cif]
+        flag: ""
+      map:
+        extensions: [.mrc, .ccp4, .map]
+        flag: ""
+        exclude_patterns: [half, _1, _2, _a, _b]
+    optional:
+      resolution:
+        from_session: true
+        flag: "resolution="
+
+  outputs:
+    files:
+      - pattern: "*_real_space_refined*.pdb"
+        type: model
+    metrics:
+      - map_cc
+      - clashscore
+
+  command: "phenix.real_space_refine {model} {map} resolution={resolution}"
+
+  strategy_flags:
+    output_prefix:
+      flag: "output.prefix={value}"
+      type: string
+      hint: "Use short prefix to avoid long filenames (e.g., rsr_001)"
+    resolution:
+      flag: "resolution={value}"
+      type: float
+      required: true
+      hint: "REQUIRED - get from mtriage"
+    macro_cycles:
+      flag: "macro_cycles={value}"
+      type: int
+      hint: "More cycles for difficult cases"
+    nproc:
+      flag: "nproc={value}"
+      type: int
+
+  log_parsing:
+    map_cc:
+      pattern: 'CC_mask\s*[=:]\s*([0-9.]+)'
+      type: float
+
+  hints:
+    - "Resolution is REQUIRED - get it from mtriage"
+    - "Requires a FULL map, not half-maps"
+
+
+# -----------------------------------------------------------------------------
+# LIGAND PROGRAMS
+# -----------------------------------------------------------------------------
+
+phenix.ligandfit:
+  description: "Fit a ligand into difference density"
+  category: ligand
+  experiment_types: [xray, cryoem]
+
+  inputs:
+    required:
+      model:
+        extensions: [.pdb]
+        flag: "model="
+        exclude_patterns: [ligand, lig.pdb, ligand_fit]
+      mtz:
+        extensions: [.mtz, .sca, .hkl, .sdf]
+        flag: "data="
+      ligand:
+        extensions: [.pdb, .cif]
+        flag: "ligand="
+        prefer_patterns: [lig, ligand]
+
+  outputs:
+    files:
+      - pattern: "*ligand_fit*.pdb"
+        type: model
+
+  command: "phenix.ligandfit {model} {mtz} {ligand}"
+
+  defaults:
+    file_info.input_labels: '"2FOFCWT PH2FOFCWT"'
+    general.nproc: 4
+
+  strategy_flags:
+    nproc:
+      flag: "general.nproc={value}"
+      type: int
+
+
+phenix.pdbtools:
+  description: "Combine PDB files (e.g., protein + ligand)"
+  category: utility
+  experiment_types: [xray, cryoem]
+
+  inputs:
+    required:
+      protein:
+        extensions: [.pdb]
+        flag: ""
+        exclude_patterns: [ligand_fit, lig.pdb, with_ligand]
+        priority_patterns: [refine]
+      ligand:
+        extensions: [.pdb]
+        flag: ""
+        prefer_patterns: [ligand_fit, lig]
+
+  outputs:
+    files:
+      - pattern: "*with_ligand*.pdb"
+        type: model
+
+  command: "phenix.pdbtools {protein} {ligand}"
+
+  strategy_flags:
+    output_name:
+      flag: "output.file_name={value}"
+      type: string
+
+
+# -----------------------------------------------------------------------------
+# MAP OPTIMIZATION PROGRAMS
+# -----------------------------------------------------------------------------
+
+phenix.resolve_cryo_em:
+  description: "Optimize cryo-EM map using density modification"
+  category: map_optimization
+  experiment_types: [cryoem]
+
+  inputs:
+    required:
+      half_map:
+        extensions: [.mrc, .ccp4, .map]
+        flag: ""
+        multiple: true
+    optional:
+      sequence:
+        extensions: [.fa, .fasta, .seq, .dat]
+        flag: "seq_file="
+
+  outputs:
+    files:
+      - pattern: "*_sharpened*.ccp4"
+        type: map
+      - pattern: "*_sharpened*.mrc"
+        type: map
+
+  command: "phenix.resolve_cryo_em {half_map} {sequence}"
+
+  hints:
+    - "Produces optimized full map from half-maps"
+    - "Try this first for map improvement"
+
+
+phenix.map_sharpening:
+  description: "Sharpen cryo-EM map to improve clarity"
+  category: map_optimization
+  experiment_types: [cryoem]
+
+  inputs:
+    required:
+      half_map:
+        extensions: [.mrc, .ccp4, .map]
+        flag: ""
+        multiple: true
+    optional:
+      sequence:
+        extensions: [.fa, .fasta, .seq, .dat]
+        flag: "seq_file="
+
+  outputs:
+    files:
+      - pattern: "*_sharpened*.ccp4"
+        type: map
+      - pattern: "*_sharpened*.mrc"
+        type: map
+
+  command: "phenix.map_sharpening {half_map} {sequence}"
+
+  hints:
+    - "Alternative to resolve_cryo_em for map optimization"
+
+
+# -----------------------------------------------------------------------------
+# VALIDATION PROGRAMS
+# -----------------------------------------------------------------------------
+
+phenix.molprobity:
+  description: "Comprehensive model validation (geometry, clashes, Ramachandran)"
+  category: validation
+  experiment_types: [xray, cryoem]
+
+  inputs:
+    required:
+      model:
+        extensions: [.pdb, .cif]
+        flag: ""
+        priority_patterns: [refine]
+
+  outputs:
+    metrics:
+      - clashscore
+      - ramachandran_favored
+      - ramachandran_outliers
+      - rotamer_outliers
+      - molprobity_score
+
+  command: "phenix.molprobity {model}"
+
+  log_parsing:
+    clashscore:
+      pattern: '[Cc]lashscore\s*[=:]\s*([0-9.]+)'
+      type: float
+    ramachandran_favored:
+      pattern: '[Rr]amachandran.*?favou?red\s*[=:]\s*([0-9.]+)'
+      type: float
+    ramachandran_outliers:
+      pattern: '[Rr]amachandran.*?outliers?\s*[=:]\s*([0-9.]+)'
+      type: float
+    rotamer_outliers:
+      pattern: '[Rr]otamer.*?outliers?\s*[=:]\s*([0-9.]+)'
+      type: float
+    molprobity_score:
+      pattern: 'MolProbity score\s*[=:]\s*([0-9.]+)'
+      type: float
+
+  hints:
+    - "Good values: clashscore <4, Ramachandran outliers <0.5%"
+    - "Run after refinement to check model quality"
+
+
+phenix.model_vs_data:
+  description: "Validate model against X-ray data"
+  category: validation
+  experiment_types: [xray]
+
+  inputs:
+    required:
+      model:
+        extensions: [.pdb, .cif]
+        flag: ""
+        priority_patterns: [refine]
+      mtz:
+        extensions: [.mtz, .sca, .hkl, .sdf]
+        flag: ""
+
+  outputs:
+    metrics:
+      - r_free
+      - r_work
+      - map_cc
+
+  command: "phenix.model_vs_data {model} {mtz}"
+
+
+phenix.validation_cryoem:
+  description: "Validate model against cryo-EM map"
+  category: validation
+  experiment_types: [cryoem]
+
+  inputs:
+    required:
+      model:
+        extensions: [.pdb, .cif]
+        flag: ""
+        priority_patterns: [refine]
+      map:
+        extensions: [.mrc, .ccp4, .map]
+        flag: ""
+
+  outputs:
+    metrics:
+      - map_cc
+
+  command: "phenix.validation_cryoem {model} {map}"
+
+  strategy_flags:
+    resolution:
+      flag: "resolution={value}"
+      type: float
+
+
+phenix.holton_geometry_validation:
+  description: "Detailed geometry validation with energy scoring"
+  category: validation
+  experiment_types: [xray, cryoem]
+
+  inputs:
+    required:
+      model:
+        extensions: [.pdb, .cif]
+        flag: ""
+        priority_patterns: [refine]
+
+  outputs:
+    metrics:
+      - geometry_energy
+
+  command: "phenix.holton_geometry_validation {model}"
+
+  hints:
+    - "Overall geometry energy should be close to ~67 for ideal model"

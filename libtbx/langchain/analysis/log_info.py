@@ -70,7 +70,7 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120,
                 group_args_type='error', error=log_summary_info.error)
 
         # Import save_as_html here to avoid circular imports
-        from libtbx.langchain.run_analyze_log import save_as_html
+        from libtbx.langchain.utils.run_utils import save_as_html
 
         return group_args(
             group_args_type='log summary',

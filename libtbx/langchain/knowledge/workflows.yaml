@@ -1,0 +1,468 @@
+# =============================================================================
+# PHENIX AI Agent - Workflow Definitions
+# =============================================================================
+# This file defines the workflow (state machine) for each experiment type.
+#
+# Each workflow has:
+#   - phases: Sequential stages of structure determination
+#   - transitions: Rules for moving between phases
+#   - targets: Quality metrics that define "done"
+#
+# To modify workflow behavior, edit the phases and transitions.
+# To change quality thresholds, edit the targets section.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# X-RAY CRYSTALLOGRAPHY WORKFLOW
+# -----------------------------------------------------------------------------
+
+xray:
+  description: "X-ray crystallography structure determination"
+
+  # Define the phases in order
+  phases:
+
+    # Phase 1: Analyze data quality
+    analyze:
+      description: "Analyze data quality and detect special conditions"
+      goal: "Understand data characteristics before proceeding"
+
+      programs:
+        - phenix.xtriage
+
+      transitions:
+        on_complete: obtain_model
+
+      extracts:
+        - resolution
+        - twinning
+        - anomalous_signal
+
+    # Phase 2: Get an initial model
+    obtain_model:
+      description: "Obtain an initial atomic model"
+      goal: "Get coordinates that can be refined"
+
+      programs:
+        # Order indicates preference (first = most preferred)
+        - program: phenix.predict_and_build
+          preferred: true
+          conditions:
+            - has: sequence
+          strategy:
+            stop_after_predict: false
+
+        - program: phenix.phaser
+          conditions:
+            - has: search_model
+
+        - program: phenix.autosol
+          conditions:
+            - has: sequence
+            - has: anomalous_data
+            - not_done: autosol
+          hint: "Use for SAD/MAD experimental phasing when anomalous signal extends to < 4.0Å"
+
+      transitions:
+        on_complete: refine
+
+        # Special case: if predict_and_build made prediction only
+        if_predict_only: molecular_replacement
+
+    # Phase 2b: Place predicted model (if needed)
+    molecular_replacement:
+      description: "Place predicted model in unit cell"
+      goal: "Position AlphaFold model using diffraction data"
+
+      programs:
+        - program: phenix.process_predicted_model
+          conditions:
+            - has: predicted_model
+            - not_done: process_predicted_model
+
+        - program: phenix.phaser
+          conditions:
+            - has: processed_model
+
+      transitions:
+        on_complete: refine
+
+    # Phase 2c: Build from phases (after autosol)
+    build_from_phases:
+      description: "Build model from experimental phases"
+      goal: "Complete model building after SAD/MAD phasing"
+
+      programs:
+        - phenix.autobuild
+
+      transitions:
+        on_complete: refine
+
+    # Phase 3: Refine the model
+    refine:
+      description: "Improve model against diffraction data"
+      goal: "Achieve target R-free"
+
+      programs:
+        - program: phenix.refine
+          preferred: true
+
+        - program: phenix.autobuild
+          conditions:
+            - r_free: "> autobuild_threshold"
+            - has: sequence
+            - not_done: autobuild
+          hint: "Try if R-free stuck above 0.35"
+
+        - program: phenix.ligandfit
+          conditions:
+            - has: ligand_file
+            - not_done: ligandfit
+            - r_free: "< 0.35"
+          hint: "Fit ligand when model is good enough"
+
+      repeat:
+        max_cycles: 8
+        until:
+          any:
+            - r_free: "< target_r_free"
+            - condition: plateau
+              cycles: 3
+              threshold: 0.003  # Less than 0.3% improvement
+
+      transitions:
+        on_ligandfit: combine_ligand
+        on_target_reached: validate
+        on_plateau: validate
+        on_max_cycles: validate
+
+    # Phase 3b: Combine ligand with protein
+    combine_ligand:
+      description: "Combine fitted ligand with protein model"
+      goal: "Create single model with ligand"
+
+      programs:
+        - phenix.pdbtools
+
+      transitions:
+        on_complete: refine  # Go back to refine with ligand
+
+    # Phase 4: Validate the model
+    validate:
+      description: "Check model quality"
+      goal: "Ensure model meets quality standards"
+
+      programs:
+        - program: phenix.molprobity
+          required: true
+
+        - program: phenix.model_vs_data
+          optional: true
+
+      transitions:
+        if_quality_acceptable: complete
+        if_quality_poor: refine
+
+    # Phase 5: Done
+    complete:
+      description: "Structure determination complete"
+      stop: true
+
+      stop_reasons:
+        - "R-free target achieved"
+        - "Model quality acceptable"
+        - "Refinement plateau reached"
+
+  # Quality targets (can be resolution-dependent)
+  targets:
+    r_free:
+      default: 0.25
+      by_resolution:
+        - range: [0, 1.5]
+          value: 0.20
+        - range: [1.5, 2.5]
+          value: 0.25
+        - range: [2.5, 3.5]
+          value: 0.30
+        - range: [3.5, 999]
+          value: 0.35
+
+    clashscore:
+      default: 5
+      good: 2
+      acceptable: 5
+      poor: 10
+
+    ramachandran_outliers:
+      default: 0.5
+      good: 0.2
+      acceptable: 0.5
+      poor: 1.0
+
+  # Thresholds for workflow decisions
+  thresholds:
+    autobuild_rfree: 0.35
+    ligandfit_rfree: 0.35
+    add_waters_rfree: 0.35
+    add_waters_resolution: 3.0
+
+
+# -----------------------------------------------------------------------------
+# CRYO-EM WORKFLOW
+# -----------------------------------------------------------------------------
+
+cryoem:
+  description: "Cryo-EM structure determination"
+
+  # Two automation paths
+  automation_paths:
+    stepwise:
+      description: "More control with intermediate checkpoints"
+      predict_strategy:
+        stop_after_predict: true
+    automated:
+      description: "Fully automated, fewer steps"
+      predict_strategy:
+        stop_after_predict: false
+
+  phases:
+
+    # Phase 1: Analyze map quality
+    analyze:
+      description: "Analyze map quality and estimate resolution"
+      goal: "Understand map characteristics"
+
+      programs:
+        - phenix.mtriage
+
+      transitions:
+        on_complete: obtain_model
+
+      extracts:
+        - resolution
+        - map_cc
+
+    # Phase 2: Get a model
+    obtain_model:
+      description: "Obtain initial model"
+      goal: "Get coordinates to refine against map"
+
+      programs:
+        - program: phenix.predict_and_build
+          preferred: true
+          conditions:
+            - has: sequence
+            - has_any: [full_map, half_map]
+          strategy_depends_on: automation_path
+
+        - program: phenix.dock_in_map
+          conditions:
+            - has: search_model
+            - has: full_map
+
+        - program: phenix.map_to_model
+          conditions:
+            - has: sequence
+            - has: full_map
+
+        # Map optimization when only half-maps available
+        - program: phenix.resolve_cryo_em
+          conditions:
+            - has: half_map
+            - not_has: full_map
+          hint: "Create optimized map from half-maps"
+
+        - program: phenix.map_sharpening
+          conditions:
+            - has: half_map
+            - not_has: full_map
+          hint: "Sharpen map from half-maps"
+
+      transitions:
+        on_complete: check_map
+        if_predict_only: dock_model  # For stepwise path
+
+    # Phase 2b: Dock predicted model (stepwise path)
+    dock_model:
+      description: "Process and dock AlphaFold model into map"
+      goal: "Position prediction in map"
+
+      programs:
+        # First process the predicted model (removes low-confidence regions)
+        - program: phenix.process_predicted_model
+          conditions:
+            - has: predicted_model
+            - not_done: process_predicted_model
+
+        # Then dock the processed model into the map
+        - program: phenix.dock_in_map
+          conditions:
+            - has: processed_model
+
+      transitions:
+        on_complete: check_map
+
+    # Phase 2c: Check if map needs optimization
+    check_map:
+      description: "Decide if map needs optimization"
+      goal: "Get best possible map for refinement"
+
+      conditions:
+        needs_optimization:
+          - has: half_map
+          - not_has: optimized_full_map
+
+      programs:
+        - program: phenix.resolve_cryo_em
+          preferred: true
+          conditions:
+            - has: half_map
+
+        - program: phenix.map_sharpening
+          conditions:
+            - has: half_map
+
+      transitions:
+        if_has_full_map: refine
+        if_needs_optimization: optimize_map
+        else: refine
+
+    # Phase 2d: Optimize map
+    optimize_map:
+      description: "Improve map quality"
+      goal: "Create optimized full map from half-maps"
+      optional: true
+
+      programs:
+        - program: phenix.resolve_cryo_em
+          preferred: true
+        - program: phenix.map_sharpening
+
+      transitions:
+        on_complete: refine
+
+    # Phase 3: Refine
+    refine:
+      description: "Refine model against map"
+      goal: "Improve map-model correlation"
+
+      requires:
+        - resolution  # Must have resolution from mtriage
+        - full_map    # Must have full map (not half-maps)
+
+      programs:
+        - program: phenix.real_space_refine
+          requires_resolution: true
+
+        - program: phenix.ligandfit
+          conditions:
+            - has: ligand_file
+            - not_done: ligandfit
+            - map_cc: "> 0.6"
+
+      repeat:
+        max_cycles: 8
+        until:
+          any:
+            - map_cc: "> 0.75"
+            - condition: plateau
+              cycles: 3
+              threshold: 0.003
+
+      transitions:
+        on_target_reached: validate
+        on_plateau: validate
+        on_max_cycles: validate
+
+    # Phase 4: Validate
+    validate:
+      description: "Check model quality"
+      goal: "Ensure model meets quality standards"
+
+      programs:
+        - program: phenix.molprobity
+          required: true
+
+        - program: phenix.validation_cryoem
+          optional: true
+
+      transitions:
+        if_quality_acceptable: complete
+        if_quality_poor: refine
+
+    # Phase 5: Done
+    complete:
+      description: "Structure determination complete"
+      stop: true
+
+      stop_reasons:
+        - "Map-model CC target achieved"
+        - "Model quality acceptable"
+        - "Refinement plateau reached"
+
+  # Quality targets
+  targets:
+    map_cc:
+      default: 0.75
+      good: 0.80
+      acceptable: 0.70
+      poor: 0.60
+
+    clashscore:
+      default: 5
+      good: 2
+      acceptable: 5
+      poor: 10
+
+    ramachandran_outliers:
+      default: 0.5
+      good: 0.2
+      acceptable: 0.5
+      poor: 1.0
+
+
+# -----------------------------------------------------------------------------
+# SHARED RULES
+# -----------------------------------------------------------------------------
+
+shared:
+  # Maximum refinement cycles before forcing stop
+  max_refine_cycles: 8
+
+  # Improvement threshold (percentage) - below this is "plateau"
+  plateau_threshold: 0.3
+
+  # Number of cycles to confirm plateau
+  plateau_cycles: 3
+
+  # Twinning detection threshold (Britton alpha)
+  # Twin fraction above this indicates significant twinning
+  twinning_threshold: 0.20
+
+  # Anomalous signal threshold
+  # Anomalous data is useful for SAD if resolution is better than this
+  anomalous_resolution_cutoff: 4.0
+
+  # Validation is required before stopping if:
+  validation_required:
+    - r_free: "< target + 0.02"
+    - map_cc: "> 0.70"
+    - refine_cycles: ">= 3"
+
+  # File categorization rules
+  file_patterns:
+    half_map:
+      - contains: "half"
+      - ends_with: ["_1.ccp4", "_2.ccp4", "_1.mrc", "_2.mrc"]
+      - ends_with: ["_a.ccp4", "_b.ccp4", "_a.mrc", "_b.mrc"]
+
+    predicted_model:
+      - contains: ["predict", "alphafold", "colabfold"]
+
+    refined_model:
+      - contains: "refine"
+      - not_contains: "real_space"
+
+    phaser_output:
+      - starts_with: "PHASER"
+      - contains: "phaser"

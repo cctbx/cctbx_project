@@ -13,22 +13,91 @@ from __future__ import absolute_import, division, print_function
 import json
 import os
 
+# Import YAML-based program registry
+from libtbx.langchain.agent.program_registry import ProgramRegistry
+
+
+def generate_program_reference_from_yaml():
+    """
+    Generate PROGRAM REFERENCE section from YAML definitions.
+
+    This can be used to replace the hardcoded program reference
+    in SYSTEM_PROMPT when ready for full migration.
+
+    Returns:
+        str: Formatted program reference section
+    """
+    registry = ProgramRegistry(use_yaml=True)
+
+    sections = ["### PROGRAM REFERENCE (Generated from YAML)\n"]
+
+    # Group by category
+    categories = {
+        "analysis": "DATA ANALYSIS",
+        "model_building": "MODEL BUILDING",
+        "refinement": "REFINEMENT",
+        "ligand": "LIGAND HANDLING",
+        "map_optimization": "MAP OPTIMIZATION",
+        "validation": "VALIDATION",
+        "utility": "UTILITY",
+    }
+
+    programs_by_category = {}
+    for prog_name in registry.get_all_programs():
+        prog = registry.get_program(prog_name)
+        category = prog.get("category", "other")
+        if category not in programs_by_category:
+            programs_by_category[category] = []
+        programs_by_category[category].append((prog_name, prog))
+
+    for cat_key, cat_name in categories.items():
+        if cat_key not in programs_by_category:
+            continue
+
+        sections.append("\n**%s**\n" % cat_name)
+
+        for prog_name, prog in programs_by_category[cat_key]:
+            desc = prog.get("description", "")
+            sections.append("**%s** - %s" % (prog_name, desc))
+
+            # Format inputs
+            inputs = prog.get("inputs", {})
+            required = inputs.get("required", {})
+            optional = inputs.get("optional", {})
+
+            if required:
+                file_parts = []
+                for slot, slot_def in required.items():
+                    exts = slot_def.get("extensions", [])
+                    ext_str = "/".join(exts) if exts else "file"
+                    file_parts.append("%s: %s" % (slot, ext_str))
+                sections.append("  Files: {%s}" % ", ".join(file_parts))
+
+            # Add hints
+            hints = prog.get("hints", [])
+            for hint in hints[:2]:  # First 2 hints
+                sections.append("  - %s" % hint)
+
+            sections.append("")
+
+    return "\n".join(sections)
+
 
 def format_recommendations_for_prompt(workflow_state):
     """
     Format the tiered recommendations from workflow_state for the LLM prompt.
-    
+
     Args:
         workflow_state: Output from detect_workflow_state() with new recommendation fields
-        
+
     Returns:
         str: Formatted recommendations section for prompt
     """
     if not workflow_state:
         return ""
-    
+
     sections = []
-    
+
     # === RANKED PROGRAMS ===
     ranked_programs = workflow_state.get("ranked_programs", [])
     if ranked_programs:
@@ -36,7 +105,7 @@ def format_recommendations_for_prompt(workflow_state):
         for item in ranked_programs:
             if item.get("rank"):
                 sections.append("  %d. %s - %s" % (item["rank"], item["program"], item["reason"]))
-    
+
     # === RECOMMENDED STRATEGY ===
     recommended_strategy = workflow_state.get("recommended_strategy", {})
     if recommended_strategy:
@@ -50,7 +119,7 @@ def format_recommendations_for_prompt(workflow_state):
                 sections.append("    Reason: %s" % reason)
         sections.append("")
         sections.append("You may override these defaults. If you do, your choice will be accepted but logged.")
-    
+
     # === HARD CONSTRAINTS ===
     hard_constraints = workflow_state.get("hard_constraints", [])
     if hard_constraints:
@@ -58,7 +127,7 @@ def format_recommendations_for_prompt(workflow_state):
         sections.append("**Hard Constraints (cannot override):**")
         for constraint in hard_constraints:
             sections.append("  - %s" % constraint)
-    
+
     # === SOFT SUGGESTIONS ===
     soft_suggestions = workflow_state.get("soft_suggestions", [])
     if soft_suggestions:
@@ -66,7 +135,7 @@ def format_recommendations_for_prompt(workflow_state):
         sections.append("**Suggestions:**")
         for suggestion in soft_suggestions:
             sections.append("  - %s" % suggestion)
-    
+
     # === THRESHOLDS INFO ===
     thresholds = workflow_state.get("thresholds", {})
     if thresholds:
@@ -76,14 +145,35 @@ def format_recommendations_for_prompt(workflow_state):
             # Format nicely
             nice_key = key.replace("_", " ").replace("rfree", "R-free")
             sections.append("  - %s: %.2f" % (nice_key, value))
-    
+
     if sections:
         return "\n### GRAPH RECOMMENDATIONS\n\n" + "\n".join(sections) + "\n"
-    
+
     return ""
 
 SYSTEM_PROMPT = """You are an expert crystallographer and cryo-EM analyst.
 Your goal is to determine the next processing step to improve the model or map.
+
+### USER ADVICE (HIGHEST PRIORITY)
+
+**If the user provides advice, you MUST follow it.**
+User advice may include:
+- Specific programs to use or avoid
+- Strategy parameters (e.g., resolution, number of cycles)
+- Workflow preferences (e.g., "use experimental phasing", "try molecular replacement first")
+- Troubleshooting hints (e.g., "the model has wrong hand", "try different space group")
+
+**CRITICAL: User advice overrides default program preferences.**
+
+Examples of user advice that MUST be followed:
+- "use experimental phasing" or "use SAD phasing" → Choose phenix.autosol (NOT predict_and_build)
+- "use molecular replacement" → Choose phenix.phaser
+- "skip prediction" → Do NOT use predict_and_build
+
+When user advice conflicts with workflow recommendations:
+1. User advice takes precedence over soft recommendations and "preferred" markers
+2. User advice cannot override hard constraints (e.g., file availability)
+3. If user requests an invalid program, explain why and suggest alternatives
 
 ### WORKFLOW RULES
 
@@ -142,7 +232,7 @@ You must output a SINGLE JSON object matching this schema:
 **phenix.xtriage** - Data quality analysis (X-ray)
   Files: {data: .mtz/.sca/.hkl}
   Use: ALWAYS run first on X-ray data
-  
+
 **phenix.mtriage** - Map quality analysis (Cryo-EM)
   Files: {full_map: .mrc/.ccp4, half_map: [.mrc/.ccp4, .mrc/.ccp4]}
   Use: ALWAYS run first on cryo-EM maps
@@ -163,17 +253,17 @@ You must output a SINGLE JSON object matching this schema:
   Files: {half_map: [.mrc/.ccp4, .mrc/.ccp4], sequence: .fa/.seq (optional)}
   Use: Alternative to resolve_cryo_em for map sharpening
   Output: *_sharpened.ccp4 (full map suitable for real_space_refine)
-  
+
 **phenix.predict_and_build** - AlphaFold prediction + building
   Files: {sequence: .fa/.seq/.dat, data: .mtz/.sca (X-ray), full_map: .mrc/.ccp4 (cryo-EM), half_map: [.mrc, .mrc] (cryo-EM)}
   Strategy: {resolution: N, stop_after_predict: true/false}
   IMPORTANT: Set resolution if building (get from xtriage/mtriage)
   For cryo-EM: Use full_map= for single map, or half_map= twice for half-maps, or both
-  
+
 **phenix.process_predicted_model** - Prepare AlphaFold model for MR
   Files: {model: .pdb}
   Use: After predict_and_build (X-ray or stepwise cryo-EM) to prepare model for phaser
-  
+
 **phenix.phaser** - Molecular replacement
   Files: {data: .mtz/.sca/.hkl, model: .pdb}
   REQUIRES: A model file
@@ -189,15 +279,15 @@ You must output a SINGLE JSON object matching this schema:
 **phenix.refine** - Crystallographic refinement
   Files: {model: .pdb, data: .mtz/.sca/.hkl}
   Strategy: {generate_rfree_flags: true/false, add_waters: true/false, use_simulated_annealing: true/false, nproc: N}
-  
+
   R-FREE FLAGS:
     - FIRST refinement after phaser: set generate_rfree_flags=true
     - ALL subsequent refinements: do NOT set generate_rfree_flags (use existing flags in MTZ)
-  
+
   WATER BUILDING (ordered_solvent):
     - Do NOT add waters on first 1-2 refinement cycles
     - Add waters (add_waters=true) only when: R-free < 0.35 AND resolution <= 3.0Å AND 2+ refine cycles done
-  
+
   SIMULATED ANNEALING:
     - Do NOT use for initial/normal refinement
     - Only use simulated_annealing=true if R-free > 0.40 AND model is stuck
@@ -206,7 +296,7 @@ You must output a SINGLE JSON object matching this schema:
   Files: {model: .pdb, map: .mrc/.ccp4 (FULL MAP REQUIRED)}
   Strategy: {resolution: N} (REQUIRED - get from mtriage)
   NOTE: Cannot use half-maps directly - requires a full/combined map
-  
+
 **phenix.ligandfit** - Fit ligand into density
   Files: {model: .pdb, data: .mtz/.sca OR map: .mrc, ligand: .cif/.pdb}
   REQUIRES: Ligand coordinates file
@@ -230,11 +320,11 @@ You must output a SINGLE JSON object matching this schema:
 **phenix.molprobity** - Geometry validation (X-ray and cryo-EM)
   Files: {model: .pdb}
   Good values: Ramachandran outliers <0.5%, rotamer <1%, clashscore <4, MolProbity <1.5
-  
+
 **phenix.model_vs_data** - Model vs X-ray data validation
   Files: {model: .pdb, data: .mtz/.sca/.hkl}
-  
-**phenix.validation_cryoem** - Model vs cryo-EM map validation  
+
+**phenix.validation_cryoem** - Model vs cryo-EM map validation
   Files: {model: .pdb, map: .mrc}
 
 **phenix.holton_geometry_validation** - Detailed geometry scoring
@@ -272,11 +362,11 @@ Set "stop": true when:
 """
 
 
-def get_planning_prompt(history, analysis, available_files, previous_attempts=None, 
+def get_planning_prompt(history, analysis, available_files, previous_attempts=None,
                         user_advice="", metrics_trend=None, workflow_state=None):
     """
     Constructs the system and user messages for the LLM planner.
-    
+
     Args:
         history: List of previous cycle records
         analysis: Current log analysis dict
@@ -285,13 +375,13 @@ def get_planning_prompt(history, analysis, available_files, previous_attempts=No
         user_advice: User-provided instructions
         metrics_trend: Output from analyze_metrics_trend()
         workflow_state: Output from detect_workflow_state()
-        
+
     Returns:
         tuple: (system_message, user_message)
     """
     # Start with the provided available files
     files_list = list(available_files)
-    
+
     # Accumulate output files from history
     if history:
         for h in history:
@@ -300,23 +390,23 @@ def get_planning_prompt(history, analysis, available_files, previous_attempts=No
                 for f in output_files:
                     if f and f not in files_list:
                         files_list.append(f)
-    
+
     # Also add output files from current analysis
     if analysis and isinstance(analysis, dict):
         current_outputs = analysis.get('output_files', [])
         for f in current_outputs:
             if f and f not in files_list:
                 files_list.append(f)
-    
+
     # Analyze all available files
     # X-ray data files can be .mtz, .sca (scalepack), .hkl, .sdf
     xray_data_extensions = ('.mtz', '.sca', '.hkl', '.sdf')
-    
+
     pdb_files = [f for f in files_list if f.endswith('.pdb')]
     data_files = [f for f in files_list if f.endswith(xray_data_extensions)]
     seq_files = [f for f in files_list if f.endswith(('.fa', '.fasta', '.seq', '.dat'))]
     map_files = [f for f in files_list if f.endswith(('.mrc', '.ccp4', '.map'))]
-    
+
     # Categorize map files into full maps and half maps
     # Half-map naming patterns: half_map_1, half1, map_1, map_2, _a, _b, etc.
     def is_half_map(filepath):
@@ -331,10 +421,10 @@ def get_planning_prompt(history, analysis, available_files, previous_attempts=No
         if re.search(r'map[_-]?[12]', basename):
             return True
         return False
-    
+
     full_map_files = [f for f in map_files if not is_half_map(f)]
     half_map_files = [f for f in map_files if is_half_map(f)]
-    
+
     # CIF files need careful categorization:
     # - Model CIFs: from refinement (contain 'refine' in name) - these are NOT ligands
     # - Ligand CIFs: restraint files for ligands (typically small, have 'lig' in name, or are user-provided)
@@ -349,28 +439,28 @@ def get_planning_prompt(history, analysis, available_files, previous_attempts=No
         else:
             # Assume other CIFs are ligand restraint files
             ligand_cif_files.append(f)
-    
+
     # Build file summary
     file_summary = []
     if pdb_files:
         file_summary.append("MODELS (.pdb): %s" % ", ".join(pdb_files))
     else:
         file_summary.append("MODELS (.pdb): NONE AVAILABLE")
-    
+
     # Include model CIFs with models
     if model_cif_files:
         file_summary.append("MODEL CIFs (from refinement): %s" % ", ".join(model_cif_files))
-        
+
     if data_files:
         file_summary.append("DATA (.mtz/.sca/.hkl): %s" % ", ".join(data_files))
     else:
         file_summary.append("DATA (.mtz/.sca/.hkl): NONE")
-        
+
     if seq_files:
         file_summary.append("SEQUENCE (.fa/.seq/.dat): %s" % ", ".join(seq_files))
     else:
         file_summary.append("SEQUENCE: NONE")
-    
+
     # Show map files with proper categorization for cryo-EM
     if full_map_files or half_map_files:
         if full_map_files:
@@ -381,7 +471,7 @@ def get_planning_prompt(history, analysis, available_files, previous_attempts=No
                 file_summary.append("  -> Use with mtriage: half_map=%s half_map=%s" % (half_map_files[0], half_map_files[1]))
             elif len(half_map_files) > 2:
                 file_summary.append("  -> WARNING: More than 2 half maps detected, select the matching pair")
-        
+
     if ligand_cif_files:
         file_summary.append("LIGAND RESTRAINTS (.cif): %s" % ", ".join(ligand_cif_files))
 
@@ -403,15 +493,15 @@ You MUST choose from the valid programs above, or set "stop": true.
             workflow_state.get("reason", ""),
             valid_list
         )
-        
+
         # Add automation path note for cryo-EM
         if workflow_state.get("automation_path"):
             workflow_section += "\nAutomation path: %s\n" % workflow_state["automation_path"]
-            
+
             if workflow_state["automation_path"] == "stepwise":
                 if "predict_and_build" in valid_list:
                     workflow_section += "NOTE: Use predict_and_build with strategy: {\"stop_after_predict\": true}\n"
-        
+
         # Add recommendations section if available
         recommendations = format_recommendations_for_prompt(workflow_state)
         if recommendations:
@@ -422,15 +512,15 @@ You MUST choose from the valid programs above, or set "stop": true.
     if metrics_trend:
         metrics_section = "\n### REFINEMENT PROGRESS\n"
         metrics_section += metrics_trend.get("trend_summary", "No trend data")
-        
+
         if metrics_trend.get("consecutive_refines", 0) > 0:
             metrics_section += "\nConsecutive X-ray refinement cycles: %d" % metrics_trend["consecutive_refines"]
         if metrics_trend.get("consecutive_rsr", 0) > 0:
             metrics_section += "\nConsecutive real-space refinement cycles: %d" % metrics_trend["consecutive_rsr"]
-        
+
         if metrics_trend.get("recommendation") == "consider_stopping":
             metrics_section += "\n\n*** DIMINISHING RETURNS - Consider stopping or trying different strategy ***"
-        
+
         if metrics_trend.get("should_stop"):
             metrics_section += "\n\n*** STOP RECOMMENDED: %s ***\nSet \"stop\": true in your response." % (
                 metrics_trend.get("reason", "Unknown reason")
@@ -441,7 +531,7 @@ You MUST choose from the valid programs above, or set "stop": true.
     last_error = None
     last_failed_command = None
     last_failed_program = None
-    
+
     if history:
         for h in history[-5:]:  # Last 5 cycles
             if isinstance(h, dict):
@@ -460,14 +550,14 @@ You MUST choose from the valid programs above, or set "stop": true.
                     error = h
             else:
                 continue
-            
+
             # Detect failure in result string
             if str(result).startswith("FAILED") or "Sorry" in str(result):
                 error = result
-            
+
             if len(str(result)) > 100:
                 result = str(result)[:100] + "..."
-            
+
             line = "- Cycle %s: %s" % (cycle_num, program)
             if error:
                 line += " [ERROR: %s]" % str(error)[:80]
@@ -505,7 +595,7 @@ YOU MUST FIX THIS. Try a DIFFERENT approach:
             "phil parameter", "unknown parameter", "unrecognized", "invalid keyword",
             "not a valid", "syntax error", "unexpected"
         ])
-        
+
         if is_phil_error:
             runtime_error_msg = """
 !!! PREVIOUS CYCLE FAILED - PHIL SYNTAX ERROR !!!
@@ -535,11 +625,19 @@ You must adapt:
         )
 
     # === BUILD USER MESSAGE ===
-    user_msg = """
+    # User advice at the top for prominence
+    user_advice_section = ""
+    if user_advice and user_advice.strip() and user_advice.strip().lower() != "none provided":
+        user_advice_section = """
+### USER ADVICE (FOLLOW THIS)
 %s
+
+""" % user_advice
+
+    user_msg = """
+%s%s
 %s
 ### CURRENT STATUS
-User Advice: %s
 
 Log Analysis: %s
 
@@ -551,12 +649,12 @@ Log Analysis: %s
 %s
 %s
 %s
-Based on the workflow state and available files, what is the next step?
+Based on the workflow state, user advice, and available files, what is the next step?
 Output JSON only.
 """ % (
+        user_advice_section,
         workflow_section,
         metrics_section,
-        user_advice or "None provided",
         json.dumps(analysis, indent=2) if analysis else "No analysis yet (first run)",
         "\n".join(file_summary),
         history_str,

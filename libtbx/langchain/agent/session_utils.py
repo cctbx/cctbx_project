@@ -52,13 +52,13 @@ def show_session(data, detailed=False):
     print("Project Advice: %s" % (data.get("project_advice", "None") or "None"))
     print("Total Cycles: %d" % len(data.get("cycles", [])))
     print("-"*60)
-    
+
     # Show original files
     original_files = data.get("original_files", [])
     print("\nORIGINAL INPUT FILES (%d):" % len(original_files))
     for f in original_files:
         print("  - %s" % f)
-    
+
     if not detailed:
         # Brief view
         print("\n" + "-"*60)
@@ -83,7 +83,7 @@ def show_session(data, detailed=False):
         print("\n")
         for cycle in data.get("cycles", []):
             show_cycle_detailed(cycle)
-    
+
     # Show cumulative file list
     print("\n" + "="*60)
     print("CUMULATIVE AVAILABLE FILES")
@@ -92,14 +92,14 @@ def show_session(data, detailed=False):
     for i, f in enumerate(all_files, 1):
         print("  %d. %s" % (i, f))
     print("Total: %d files" % len(all_files))
-    
+
     # Show summary if present
     if data.get("summary"):
         print("\n" + "="*60)
         print("SESSION SUMMARY (AI-generated)")
         print("="*60)
         print(data["summary"])
-    
+
     print("="*60 + "\n")
 
 
@@ -108,21 +108,21 @@ def show_cycle_detailed(cycle):
     cycle_num = cycle.get("cycle_number", "?")
     program = cycle.get("program", "N/A")
     result = cycle.get("result", "N/A")
-    
+
     status = "✓" if result.startswith("SUCCESS") else "✗"
-    
+
     print("=" * 60)
     print("%s CYCLE %s: %s" % (status, cycle_num, program))
     print("=" * 60)
-    
+
     # Timestamp
     if cycle.get("timestamp"):
         print("Timestamp: %s" % cycle["timestamp"])
-    
+
     # Decision/Reasoning
     if cycle.get("decision"):
         print("\nDECISION: %s" % cycle["decision"])
-    
+
     if cycle.get("reasoning"):
         print("\nREASONING:")
         # Wrap long reasoning text
@@ -130,19 +130,19 @@ def show_cycle_detailed(cycle):
         if len(reasoning) > 500:
             reasoning = reasoning[:500] + "..."
         print("  %s" % reasoning)
-    
+
     # Full command
     print("\nCOMMAND:")
     command = cycle.get("command", "N/A")
     print("  %s" % command)
-    
+
     # Result
     print("\nRESULT:")
     result_text = cycle.get("result", "N/A")
     if len(result_text) > 300:
         result_text = result_text[:300] + "..."
     print("  %s" % result_text)
-    
+
     # Output files from this cycle
     output_files = cycle.get("output_files", [])
     if output_files:
@@ -154,14 +154,14 @@ def show_cycle_detailed(cycle):
             print("  %s %s" % (status_mark, f))
     else:
         print("\nOUTPUT FILES: None recorded")
-    
+
     # Extract and show any metrics from the result
     metrics = extract_metrics_from_result(cycle.get("result", ""))
     if metrics:
         print("\nMETRICS EXTRACTED:")
         for key, value in metrics.items():
             print("  %s: %s" % (key, value))
-    
+
     print("")
 
 
@@ -169,10 +169,10 @@ def extract_metrics_from_result(result_text):
     """Extract key metrics from result text."""
     import re
     metrics = {}
-    
+
     if not result_text:
         return metrics
-    
+
     # Common metric patterns
     patterns = {
         'R-free': r'R.?free[:\s=]+([0-9.]+)',
@@ -190,7 +190,7 @@ def extract_metrics_from_result(result_text):
         'Completeness': r'completeness[:\s=]+([0-9.]+)',
         'Anomalous signal': r'anomalous.{0,20}signal[:\s=]+([0-9.]+)',
     }
-    
+
     for name, pattern in patterns.items():
         match = re.search(pattern, result_text, re.IGNORECASE)
         if match:
@@ -199,7 +199,7 @@ def extract_metrics_from_result(result_text):
                 metrics[name] = value
             except ValueError:
                 pass
-    
+
     return metrics
 
 
@@ -210,7 +210,7 @@ def get_available_files_from_data(data):
     """
     files = []
     seen = set()
-    
+
     # 1. Original input files
     for f in data.get("original_files", []):
         if f:
@@ -219,7 +219,7 @@ def get_available_files_from_data(data):
             if basename not in seen:
                 files.append(abs_path)
                 seen.add(basename)
-    
+
     # 2. Output files from each cycle
     for cycle in data.get("cycles", []):
         for f in cycle.get("output_files", []):
@@ -229,7 +229,7 @@ def get_available_files_from_data(data):
                 if basename not in seen:
                     files.append(abs_path)
                     seen.add(basename)
-    
+
     return files
 
 
@@ -252,32 +252,32 @@ def remove_last_cycles(data, n, session_dir=None):
 
     removed = original_count - len(data["cycles"])
     print("Removed last %d cycle(s). %d cycles remaining." % (removed, len(data["cycles"])))
-    
+
     # Clear the AI-generated summary since it may reference removed cycles
     if data.get("summary"):
         data["summary"] = ""
         print("Cleared stale session summary (referenced removed cycles)")
-    
+
     # Rebuild active_files.json to match the new session state
     # This ensures any code reading active_files.json stays in sync
     if session_dir:
         rebuild_active_files(data, session_dir)
-    
+
     return data, removed
 
 
 def rebuild_active_files(data, session_dir):
     """
     Rebuild active_files.json from session data.
-    
+
     This ensures the active_files.json stays in sync with the session
     after cycles are removed or the session is modified.
     """
     import os
-    
+
     files = []
     seen = set()
-    
+
     # 1. Original input files
     for f in data.get("original_files", []):
         if f:
@@ -286,7 +286,7 @@ def rebuild_active_files(data, session_dir):
             if basename not in seen:
                 files.append(abs_path)
                 seen.add(basename)
-    
+
     # 2. Output files from remaining cycles
     for cycle in data.get("cycles", []):
         for f in cycle.get("output_files", []):
@@ -296,7 +296,7 @@ def rebuild_active_files(data, session_dir):
                 if basename not in seen and os.path.exists(abs_path):
                     files.append(abs_path)
                     seen.add(basename)
-    
+
     # Write to active_files.json
     active_files_path = os.path.join(session_dir, "active_files.json")
     try:
@@ -312,19 +312,19 @@ def reset_session(data, session_dir=None):
     num_cycles = len(data.get("cycles", []))
     data["cycles"] = []
     data["summary"] = ""
-    
+
     # Clear resolution (single source of truth from xtriage/mtriage)
     if "resolution" in data:
         del data["resolution"]
     if "resolution_source" in data:
         del data["resolution_source"]
-    
+
     print("Session reset. Removed %d cycles." % num_cycles)
-    
+
     # Rebuild active_files.json (will only contain original_files now)
     if session_dir:
         rebuild_active_files(data, session_dir)
-    
+
     return data
 
 

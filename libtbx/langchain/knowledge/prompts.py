@@ -8,7 +8,7 @@ This module contains all prompts used by the agent for:
 - Documentation queries
 
 Usage:
-    from libtbx.langchain.knowledge import get_strategic_planning_prompt
+    from libtbx.langchain.knowledge.prompts import get_strategic_planning_prompt
 
     prompt = get_strategic_planning_prompt()
 """

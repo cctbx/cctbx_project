@@ -1,0 +1,69 @@
+# =============================================================================
+# Test Scenario: cryoem_basic
+# =============================================================================
+# Basic cryo-EM workflow from map to validated model.
+# Tests the standard path: mtriage → predict_and_build → real_space_refine → molprobity
+#
+# This scenario simulates:
+# - Map analysis with mtriage (3.2 Å resolution)
+# - Model prediction and docking
+# - Three rounds of real-space refinement (CC: 0.65 → 0.72 → 0.76)
+# - Final validation with molprobity
+# - Agent should STOP after validation shows acceptable quality
+# =============================================================================
+
+name: cryoem_basic
+description: "Basic cryo-EM workflow: analyze map → predict → refine → validate"
+experiment_type: cryoem
+
+# Initial files available to the agent
+initial_files:
+  - inputs/map.mrc
+  - inputs/sequence.fa
+
+# Ordered list of program calls and their simulated outputs
+steps:
+  # Step 1: Map analysis
+  - program: phenix.mtriage
+    log: steps/phenix.mtriage_1/log.txt
+    outputs: []
+
+  # Step 2: Model prediction and building
+  - program: phenix.predict_and_build
+    log: steps/phenix.predict_and_build_1/log.txt
+    outputs:
+      - steps/phenix.predict_and_build_1/outputs/predict_and_build.pdb
+
+  # Step 3: First real-space refinement cycle
+  - program: phenix.real_space_refine
+    log: steps/phenix.real_space_refine_1/log.txt
+    outputs:
+      - steps/phenix.real_space_refine_1/outputs/model_rsr_001.pdb
+
+  # Step 4: Second real-space refinement cycle
+  - program: phenix.real_space_refine
+    log: steps/phenix.real_space_refine_2/log.txt
+    outputs:
+      - steps/phenix.real_space_refine_2/outputs/model_rsr_002.pdb
+
+  # Step 5: Third real-space refinement cycle
+  - program: phenix.real_space_refine
+    log: steps/phenix.real_space_refine_3/log.txt
+    outputs:
+      - steps/phenix.real_space_refine_3/outputs/model_rsr_003.pdb
+
+  # Step 6: Validation
+  - program: phenix.molprobity
+    log: steps/phenix.molprobity_1/log.txt
+    outputs: []
+
+# Expected outcome for test validation
+expected:
+  final_command: STOP
+  min_cycles: 5
+  max_cycles: 8
+  programs_must_run:
+    - phenix.mtriage
+    - phenix.real_space_refine
+    - phenix.molprobity
+  final_map_cc_above: 0.70

@@ -33,6 +33,7 @@ from __future__ import absolute_import, division, print_function
 
 from abc import ABC, abstractmethod
 from typing import Any
+assert Any is not None
 
 from libtbx.langchain.core.types import AgentPlan
 

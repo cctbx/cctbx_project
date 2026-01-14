@@ -7,8 +7,8 @@ import sys
 import time
 import os
 
-from libtbx.langchain.core import get_llm_and_embeddings
-from libtbx.langchain.utils import query_docs
+from libtbx.langchain.core.llm import get_llm_and_embeddings
+from libtbx.langchain.utils.query import query_docs
 from libtbx.langchain.utils.run_utils import save_as_html
 
 

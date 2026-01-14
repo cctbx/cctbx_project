@@ -1,0 +1,448 @@
+# =============================================================================
+# PHENIX AI Agent - Metrics Definitions
+# =============================================================================
+# This file defines all metrics the agent tracks and uses for decisions.
+#
+# Each metric specifies:
+#   - What it measures (description)
+#   - Whether higher or lower is better (direction)
+#   - Quality thresholds (good, acceptable, poor)
+#   - How to extract it from logs (patterns)
+#
+# To add a new metric, copy an existing entry and modify it.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# REFINEMENT METRICS (X-ray)
+# -----------------------------------------------------------------------------
+
+r_free:
+  description: "Cross-validation R-factor - measures model quality against unseen data"
+  type: float
+  direction: minimize  # Lower is better
+  unit: ""
+  format: "{:.4f}"
+
+  thresholds:
+    good: 0.22
+    acceptable: 0.28
+    poor: 0.35
+
+  # Resolution-dependent targets
+  by_resolution:
+    - range: [0.0, 1.5]
+      good: 0.18
+      acceptable: 0.22
+      poor: 0.28
+    - range: [1.5, 2.0]
+      good: 0.20
+      acceptable: 0.25
+      poor: 0.30
+    - range: [2.0, 2.5]
+      good: 0.22
+      acceptable: 0.27
+      poor: 0.32
+    - range: [2.5, 3.0]
+      good: 0.25
+      acceptable: 0.30
+      poor: 0.35
+    - range: [3.0, 999]
+      good: 0.28
+      acceptable: 0.33
+      poor: 0.38
+
+  extraction:
+    patterns:
+      - 'R-free\s*[=:]\s*([0-9.]+)'
+      - 'Rfree\s*[=:]\s*([0-9.]+)'
+      - 'RFREE\s+([0-9.]+)'  # Autobuild table format
+
+
+r_work:
+  description: "Working R-factor - measures fit to data used in refinement"
+  type: float
+  direction: minimize
+  unit: ""
+  format: "{:.4f}"
+
+  thresholds:
+    good: 0.18
+    acceptable: 0.22
+    poor: 0.28
+
+  extraction:
+    patterns:
+      - 'R-work\s*[=:]\s*([0-9.]+)'
+      - 'Rwork\s*[=:]\s*([0-9.]+)'
+
+
+# -----------------------------------------------------------------------------
+# REFINEMENT METRICS (Cryo-EM)
+# -----------------------------------------------------------------------------
+
+map_cc:
+  description: "Map-model correlation coefficient"
+  type: float
+  direction: maximize  # Higher is better
+  unit: ""
+  format: "{:.3f}"
+
+  thresholds:
+    good: 0.80
+    acceptable: 0.70
+    poor: 0.60
+
+  extraction:
+    patterns:
+      - 'CC_mask\s*[=:]\s*([0-9.]+)'
+      - 'map.model.CC\s*[=:]\s*([0-9.]+)'
+      - 'CC\s*[=:]\s*([0-9.]+)'
+
+
+# -----------------------------------------------------------------------------
+# MOLECULAR REPLACEMENT METRICS
+# -----------------------------------------------------------------------------
+
+tfz:
+  description: "Translation Function Z-score - measures MR solution quality"
+  type: float
+  direction: maximize
+  unit: ""
+  format: "{:.1f}"
+
+  thresholds:
+    good: 12.0      # Strong solution
+    acceptable: 8.0  # Likely correct
+    poor: 5.0       # Marginal
+
+  interpretation:
+    - range: [15, 999]
+      meaning: "Excellent - highly confident solution"
+    - range: [8, 15]
+      meaning: "Good - likely correct solution"
+    - range: [5, 8]
+      meaning: "Marginal - may need verification"
+    - range: [0, 5]
+      meaning: "Poor - solution probably incorrect"
+
+  extraction:
+    patterns:
+      - 'TFZ==?([0-9.]+)'
+    extract: last  # Take last value (final refined TFZ)
+
+
+llg:
+  description: "Log-likelihood Gain - statistical quality of MR solution"
+  type: float
+  direction: maximize
+  unit: ""
+  format: "{:.0f}"
+
+  thresholds:
+    good: 100
+    acceptable: 50
+    poor: 20
+
+  extraction:
+    patterns:
+      - 'LLG=([0-9.]+)'
+    extract: last
+
+
+rfz:
+  description: "Rotation Function Z-score"
+  type: float
+  direction: maximize
+  unit: ""
+  format: "{:.1f}"
+
+  extraction:
+    patterns:
+      - 'RFZ=([0-9.]+)'
+
+
+# -----------------------------------------------------------------------------
+# GEOMETRY METRICS
+# -----------------------------------------------------------------------------
+
+clashscore:
+  description: "Steric clashes per 1000 atoms"
+  type: float
+  direction: minimize
+  unit: "clashes/1000 atoms"
+  format: "{:.1f}"
+
+  thresholds:
+    good: 2
+    acceptable: 5
+    poor: 10
+
+  extraction:
+    patterns:
+      - '[Cc]lashscore\s*[=:]\s*([0-9.]+)'
+
+
+ramachandran_favored:
+  description: "Percentage of residues in favored Ramachandran regions"
+  type: float
+  direction: maximize
+  unit: "%"
+  format: "{:.1f}%"
+
+  thresholds:
+    good: 98
+    acceptable: 95
+    poor: 90
+
+  extraction:
+    patterns:
+      - '[Rr]amachandran.*?favou?red\s*[=:]\s*([0-9.]+)'
+
+
+ramachandran_outliers:
+  description: "Percentage of residues in disallowed Ramachandran regions"
+  type: float
+  direction: minimize
+  unit: "%"
+  format: "{:.2f}%"
+
+  thresholds:
+    good: 0.2
+    acceptable: 0.5
+    poor: 1.0
+
+  extraction:
+    patterns:
+      - '[Rr]amachandran.*?outliers?\s*[=:]\s*([0-9.]+)'
+
+
+rotamer_outliers:
+  description: "Percentage of residues with poor rotamers"
+  type: float
+  direction: minimize
+  unit: "%"
+  format: "{:.1f}%"
+
+  thresholds:
+    good: 0.5
+    acceptable: 1.0
+    poor: 2.0
+
+  extraction:
+    patterns:
+      - '[Rr]otamer.*?outliers?\s*[=:]\s*([0-9.]+)'
+
+
+bonds_rmsd:
+  description: "RMS deviation of bond lengths from ideal"
+  type: float
+  direction: minimize
+  unit: "Å"
+  format: "{:.4f} Å"
+
+  thresholds:
+    good: 0.010
+    acceptable: 0.015
+    poor: 0.020
+
+  extraction:
+    patterns:
+      - '[Bb]onds?\s*(?:RMSD)?\s*[=:]\s*([0-9.]+)'
+
+
+angles_rmsd:
+  description: "RMS deviation of bond angles from ideal"
+  type: float
+  direction: minimize
+  unit: "°"
+  format: "{:.2f}°"
+
+  thresholds:
+    good: 1.0
+    acceptable: 1.5
+    poor: 2.0
+
+  extraction:
+    patterns:
+      - '[Aa]ngles?\s*(?:RMSD)?\s*[=:]\s*([0-9.]+)'
+
+
+molprobity_score:
+  description: "Overall MolProbity score (combines multiple metrics)"
+  type: float
+  direction: minimize
+  unit: ""
+  format: "{:.2f}"
+
+  thresholds:
+    good: 1.0
+    acceptable: 1.5
+    poor: 2.5
+
+  extraction:
+    patterns:
+      - 'MolProbity score\s*[=:]\s*([0-9.]+)'
+
+
+# -----------------------------------------------------------------------------
+# DATA QUALITY METRICS
+# -----------------------------------------------------------------------------
+
+resolution:
+  description: "High resolution limit of diffraction data or map"
+  type: float
+  direction: minimize  # Lower number = better resolution
+  unit: "Å"
+  format: "{:.2f} Å"
+
+  thresholds:
+    good: 2.0
+    acceptable: 3.0
+    poor: 4.0
+
+  extraction:
+    patterns:
+      - 'High resolution limit\s*[=:]\s*([0-9.]+)'
+      - 'd_fsc_model(?:_05|_0.5)?[=:\s]+([0-9.]+)'
+      - 'd99[=:\s]+([0-9.]+)'
+      - '[Rr]esolution\s*[=:]\s*([0-9.]+)\s*[AÅ]?'
+
+
+completeness:
+  description: "Percentage of theoretically possible reflections measured"
+  type: float
+  direction: maximize
+  unit: "%"
+  format: "{:.1f}%"
+
+  thresholds:
+    good: 99
+    acceptable: 95
+    poor: 90
+
+  extraction:
+    patterns:
+      - '[Cc]ompleteness\s*[=:]\s*([0-9.]+)'
+
+
+# -----------------------------------------------------------------------------
+# SPECIAL CONDITION METRICS
+# -----------------------------------------------------------------------------
+
+twinning:
+  description: "Whether crystal twinning is detected"
+  type: boolean
+
+  extraction:
+    patterns:
+      - 'No twinning suspected'  # If found, twinning = false
+    invert: true  # Absence of pattern means twinning possible
+
+
+twin_fraction:
+  description: "Estimated twin fraction (Britton alpha)"
+  type: float
+  direction: minimize  # Lower is better (less twinning)
+  unit: ""
+  format: "{:.3f}"
+
+  thresholds:
+    good: 0.05      # Negligible twinning
+    acceptable: 0.20 # Some twinning
+    poor: 0.40      # Severe twinning
+
+  extraction:
+    patterns:
+      - '(?:Britton alpha|Twin fraction)[:\s=]+([0-9.]+)'
+
+
+twin_law:
+  description: "Twin law operator if twinning detected"
+  type: string
+
+  extraction:
+    patterns:
+      - 'Twin law\s*[=:]\s*([^\n]+)'
+
+
+anomalous_signal:
+  description: "Resolution to which anomalous signal extends"
+  type: float
+  direction: minimize  # Lower = stronger signal to higher resolution
+  unit: "Å"
+  format: "{:.1f} Å"
+
+  interpretation:
+    - range: [0, 2.5]
+      meaning: "Strong signal - good for SAD/MAD"
+    - range: [2.5, 4.0]
+      meaning: "Moderate signal - SAD possible"
+    - range: [4.0, 999]
+      meaning: "Weak signal - SAD unlikely to succeed"
+
+  extraction:
+    patterns:
+      - 'Anomalous signal.*?([0-9.]+)\s*[AÅ]'
+
+
+# -----------------------------------------------------------------------------
+# COMPOSITE QUALITY ASSESSMENT
+# -----------------------------------------------------------------------------
+
+quality_assessment:
+  description: "Rules for determining overall model quality"
+
+  # Model is "acceptable" if ALL required conditions met PLUS one refinement metric
+  acceptable:
+    required:
+      - metric: clashscore
+        operator: "<="
+        threshold: acceptable
+      - metric: ramachandran_outliers
+        operator: "<="
+        threshold: acceptable
+    # Plus ONE of these refinement metrics
+    any_of:
+      - metric: r_free
+        operator: "<="
+        threshold: acceptable
+      - metric: map_cc
+        operator: ">="
+        threshold: acceptable
+
+  # Model is "good" if ALL required conditions met PLUS one refinement metric
+  good:
+    required:
+      - metric: clashscore
+        operator: "<="
+        threshold: good
+      - metric: ramachandran_outliers
+        operator: "<="
+        threshold: good
+    any_of:
+      - metric: r_free
+        operator: "<="
+        threshold: good
+      - metric: map_cc
+        operator: ">="
+        threshold: good
+
+
+# -----------------------------------------------------------------------------
+# IMPROVEMENT DETECTION
+# -----------------------------------------------------------------------------
+
+improvement:
+  description: "Thresholds for detecting significant improvement"
+
+  # Minimum change to be considered "improvement"
+  significant_change:
+    r_free: 0.005     # 0.5% change
+    r_work: 0.005
+    map_cc: 0.01      # 1% change
+    clashscore: 1.0
+
+  # Plateau detection (not improving)
+  plateau:
+    cycles: 3         # Number of cycles to confirm plateau
+    threshold: 0.003  # Less than 0.3% improvement = plateau

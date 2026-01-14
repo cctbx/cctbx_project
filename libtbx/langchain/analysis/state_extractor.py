@@ -9,7 +9,7 @@ based on log summaries. It extracts:
 - Model files with metrics
 
 Usage:
-    from libtbx.langchain.analysis import extract_project_state_updates
+    from libtbx.langchain.analysis.state_extractor import extract_project_state_updates
 
     updates = await extract_project_state_updates(log_summary, current_state, llm)
     # updates is a dict like: {"crystallography": {"space_group": "P 21 21 21"}}

@@ -7,7 +7,7 @@ This module handles:
 - Persisting vector stores to disk
 
 Usage:
-    from libtbx.langchain.rag import create_and_persist_db
+    from libtbx.langchain.rag.vector_store import create_and_persist_db
 
     vectorstore = create_and_persist_db(docs, embeddings, './docs_db')
 """
@@ -15,6 +15,7 @@ from __future__ import absolute_import, division, print_function
 
 import time
 from typing import List, Iterable
+assert Iterable is not None
 
 import chromadb
 from langchain_core.documents import Document
@@ -63,8 +64,9 @@ def create_and_persist_db(
         Chroma: The created vector store, or None if creation failed
 
     Example:
-        from libtbx.langchain.core import get_llm_and_embeddings
-        from libtbx.langchain.rag import load_all_docs_from_folder, create_and_persist_db
+        from libtbx.langchain.core.llm import get_llm_and_embeddings
+        from libtbx.langchain.rag.document_loader import load_all_docs_from_folder
+        from libtbx.langchain.rag.vector_store import create_and_persist_db
 
         _, embeddings = get_llm_and_embeddings()
         docs, _ = load_all_docs_from_folder('./docs/')

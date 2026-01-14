@@ -8,7 +8,7 @@ This module handles:
 - Generating session summaries
 
 Usage:
-    from libtbx.langchain.agent import AgentSession
+    from libtbx.langchain.agent.session import AgentSession
 
     session = AgentSession(session_dir='./agent_session')
     session.start_cycle(cycle_number=1)
@@ -68,6 +68,7 @@ class AgentSession:
             "summary": "",
             "resolution": None,  # Single source of truth for resolution
             "resolution_source": None,  # Which program/cycle set it (e.g., "mtriage_1")
+            "ignored_commands": {},  # Commands that failed due to input errors
         }
 
     def load(self):
@@ -101,40 +102,40 @@ class AgentSession:
     def get_resolution(self):
         """
         Get the session resolution (single source of truth).
-        
+
         Returns:
             float or None: Resolution in Angstroms
         """
         return self.data.get("resolution")
-    
+
     def set_resolution(self, resolution, source, force=False):
         """
         Set the session resolution.
-        
+
         Args:
             resolution: Resolution value in Angstroms
             source: String describing source (e.g., "mtriage_1", "resolve_cryo_em_3")
             force: If True, always update. If False, only update if better (lower) or not set.
-        
+
         Returns:
             tuple: (was_updated, message)
         """
         current = self.data.get("resolution")
-        
+
         if current is None:
             # First time setting resolution
             self.data["resolution"] = round(resolution, 2)
             self.data["resolution_source"] = source
             self.save()
             return True, f"Resolution set to {resolution:.2f}Å from {source}"
-        
+
         if force:
             old = current
             self.data["resolution"] = round(resolution, 2)
             self.data["resolution_source"] = source
             self.save()
             return True, f"Resolution updated from {old:.2f}Å to {resolution:.2f}Å (forced by {source})"
-        
+
         # Only update if better (lower resolution value = higher resolution data)
         if resolution < current:
             old = current
@@ -148,6 +149,58 @@ class AgentSession:
         else:
             # Similar value, no update needed
             return False, None
+
+    # =========================================================================
+    # IGNORED COMMANDS (Input errors that should not be repeated)
+    # =========================================================================
+
+    def record_ignored_command(self, command, reason):
+        """
+        Record a command that failed due to input error (wrong parameters, etc).
+
+        These commands should not be repeated - they indicate agent mistakes
+        that need to be avoided on retry.
+
+        Args:
+            command: The full command string that failed
+            reason: Brief description of why it failed
+        """
+        if "ignored_commands" not in self.data:
+            self.data["ignored_commands"] = {}
+        self.data["ignored_commands"][command] = {
+            "reason": reason,
+            "timestamp": datetime.now().isoformat()
+        }
+        self.save()
+
+    def get_ignored_commands(self):
+        """
+        Get dict of commands that failed due to input errors.
+
+        Returns:
+            dict: {command: {"reason": str, "timestamp": str}, ...}
+        """
+        return self.data.get("ignored_commands", {})
+
+    def is_command_ignored(self, command):
+        """
+        Check if a command was previously ignored.
+
+        Args:
+            command: Command string to check
+
+        Returns:
+            tuple: (is_ignored, reason) - reason is None if not ignored
+        """
+        ignored = self.data.get("ignored_commands", {})
+        if command in ignored:
+            return True, ignored[command].get("reason", "Unknown")
+        return False, None
+
+    def clear_ignored_commands(self):
+        """Clear all ignored commands (use when starting fresh)."""
+        self.data["ignored_commands"] = {}
+        self.save()
 
     def write_history_file(self, output_path=None):
         """
@@ -277,45 +330,45 @@ class AgentSession:
         self.start_cycle(cycle_number)
         cycle = self.data["cycles"][cycle_number - 1]
         cycle["result"] = result
-        
+
         # Store output files
         if output_files:
             # Ensure output_files is a list
             if isinstance(output_files, str):
                 output_files = [output_files]
             cycle["output_files"] = list(output_files)
-        
+
         # Extract and store metrics from result for use by workflow_state
         program = cycle.get("program", "")
         metrics = self._extract_metrics_from_result(result, program)
         if metrics:
             cycle["metrics"] = metrics
-            
+
             # Update session resolution from key programs
             if metrics.get("resolution"):
                 resolution = metrics["resolution"]
                 program_lower = program.lower()
                 source = f"{program}_{cycle_number}"
-                
+
                 # Programs that establish resolution (first time)
                 if "xtriage" in program_lower or "mtriage" in program_lower:
                     updated, msg = self.set_resolution(resolution, source)
                     if msg:
                         cycle["resolution_note"] = msg
-                
+
                 # Programs that might improve resolution (cryo-EM map optimization)
                 elif "resolve_cryo_em" in program_lower or "map_sharpening" in program_lower:
                     # These can improve resolution - update if better
                     updated, msg = self.set_resolution(resolution, source)
                     if msg:
                         cycle["resolution_note"] = msg
-                
+
                 # Other programs - just note if significantly different
                 else:
                     current = self.get_resolution()
                     if current and abs(resolution - current) > 0.5:
                         cycle["resolution_note"] = f"Program reports {resolution:.2f}Å (session: {current:.2f}Å)"
-        
+
         self.save()
 
     def get_cycle(self, cycle_number):
@@ -420,7 +473,7 @@ class AgentSession:
     def get_history_for_agent(self):
         """
         Get cycle history in format expected by the agent.
-        
+
         IMPORTANT: This now includes output_files so the agent knows
         what files were produced by each cycle, and metrics (as 'analysis')
         so workflow_state can access resolution, r_free, etc.
@@ -456,7 +509,7 @@ class AgentSession:
     def get_all_output_files(self):
         """
         Get all output files from all successful cycles.
-        
+
         Returns:
             list: List of file paths
         """
@@ -506,7 +559,7 @@ class AgentSession:
             f"Command: {cycle.get('command', 'N/A')}",
             f"Result: {cycle.get('result', 'N/A')}",
         ])
-        
+
         # Show output files if any
         output_files = cycle.get('output_files', [])
         if output_files:
@@ -564,7 +617,7 @@ class AgentSession:
         # Determine experiment type from files and history
         original_files = self.data.get('original_files', [])
         experiment_type = self._detect_experiment_type_for_summary(original_files)
-        
+
         lines = [
             f"WORKING DIRECTORY:{os.getcwd()}",
             "COMMAND THAT WAS RUN: phenix.run_agent",
@@ -574,25 +627,25 @@ class AgentSession:
             f"Original Files: {', '.join(original_files)}",
             f"Total Cycles: {len(self.data['cycles'])}",
         ]
-        
+
         # Add resolution if set
         resolution = self.data.get("resolution")
         if resolution:
             lines.append(f"Resolution: {resolution:.2f} Å")
-        
+
         lines.append("")
-        
+
         # Collect key metrics by program (keep only final values)
         metrics_by_program = {}
         final_output_files = []
         programs_run = []
-        
+
         for cycle in self.data["cycles"]:
             program = cycle.get('program', 'unknown')
             if program and program not in ['STOP', 'unknown', None]:
                 if program not in programs_run:
                     programs_run.append(program)
-            
+
             # Extract metrics from result text
             result = cycle.get('result', '')
             if isinstance(result, str):
@@ -600,12 +653,12 @@ class AgentSession:
                 metrics = self._extract_metrics_from_result(result, program)
                 if metrics:
                     metrics_by_program[program] = metrics  # Overwrite with latest
-            
+
             # Collect output files (final cycle's files are most relevant)
             output_files = cycle.get('output_files', [])
             if output_files:
                 final_output_files = output_files  # Keep updating to get latest
-        
+
         # Programs run
         lines.extend([
             "="*40,
@@ -614,20 +667,20 @@ class AgentSession:
             ", ".join(programs_run),
             "",
         ])
-        
+
         # Consolidated metrics table (final values only)
         lines.extend([
             "="*40,
             "FINAL METRICS (most recent values)",
             "="*40,
         ])
-        
+
         for program, metrics in metrics_by_program.items():
             if metrics:
                 lines.append(f"\n{program}:")
                 for key, value in metrics.items():
                     lines.append(f"  {key}: {value}")
-        
+
         # Brief cycle summary (just program + outcome)
         lines.extend([
             "",
@@ -635,7 +688,7 @@ class AgentSession:
             "CYCLE HISTORY (brief)",
             "="*40,
         ])
-        
+
         for cycle in self.data["cycles"]:
             cycle_num = cycle.get('cycle_number', '?')
             program = cycle.get('program', 'N/A')
@@ -646,7 +699,7 @@ class AgentSession:
             else:
                 result_brief = str(result)[:80]
             lines.append(f"Cycle {cycle_num}: {program} - {result_brief}")
-        
+
         # Final output files
         if final_output_files:
             lines.extend([
@@ -659,14 +712,14 @@ class AgentSession:
                 lines.append(f"  {os.path.basename(f)}")
 
         return "\n".join(lines)
-    
+
     def _detect_experiment_type_for_summary(self, files):
         """
         Detect experiment type from files and history for summary generation.
-        
+
         Args:
             files: List of file paths
-            
+
         Returns:
             str: "Cryo-EM" or "X-ray Crystallography"
         """
@@ -675,38 +728,38 @@ class AgentSession:
             program = cycle.get("program", "").lower()
             if "mtriage" in program or "real_space_refine" in program:
                 return "Cryo-EM"
-        
+
         # Check file extensions
         has_mtz = False
         has_map = False
-        
+
         for f in files:
             f_lower = f.lower()
             basename = os.path.basename(f_lower)
-            
+
             # X-ray data files
             if f_lower.endswith(('.mtz', '.sca', '.hkl')):
                 has_mtz = True
-            
+
             # Map files (cryo-EM)
             if f_lower.endswith(('.ccp4', '.mrc', '.map')):
                 has_map = True
-        
+
         if has_map and not has_mtz:
             return "Cryo-EM"
         elif has_mtz:
             return "X-ray Crystallography"
         else:
             return "Unknown"
-    
+
     def _extract_metrics_from_result(self, result_text, program):
         """Extract key metrics from result text."""
         import re
         metrics = {}
-        
+
         if not result_text:
             return metrics
-        
+
         # Common metric patterns
         # IMPORTANT: Use lowercase keys to match workflow_state expectations
         patterns = {
@@ -721,7 +774,7 @@ class AgentSession:
             'map_cc': r'(?:map.?model.?)?CC[:\s=]+([0-9.]+)',
             'completeness': r'[Cc]ompleteness[:\s=]+([0-9.]+)',
         }
-        
+
         for name, pattern in patterns.items():
             match = re.search(pattern, result_text, re.IGNORECASE)
             if match:
@@ -733,7 +786,7 @@ class AgentSession:
                     metrics[name] = value
                 except ValueError:
                     pass
-        
+
         return metrics
 
     def generate_summary(self, llm):
@@ -752,7 +805,7 @@ class AgentSession:
         # Define the template using a standard string
         template = """You are an expert crystallographer reviewing an automated Phenix structure determination session.
 
-Create a concise final report from the following session log. 
+Create a concise final report from the following session log.
 
 IMPORTANT FORMATTING RULES:
 - Do NOT repeat metrics multiple times - show only the FINAL values
@@ -797,22 +850,22 @@ FINAL REPORT:"""
     def get_available_files(self):
         """
         Compute the list of available files from session data.
-        
+
         This is the SINGLE SOURCE OF TRUTH for what files the agent can use.
         It combines:
         - original_files: The user's initial input files
         - output_files from each cycle: Files produced by completed cycles
-        
+
         When cycles are removed (e.g., via session_utils --remove-last),
         this automatically returns the correct reduced file list.
-        
+
         Returns:
             list: Absolute paths to all available files
         """
         import os
         files = []
         seen = set()  # Track by basename to avoid duplicates
-        
+
         # 1. Start with original input files
         for f in self.data.get("original_files", []):
             if f:
@@ -821,7 +874,7 @@ FINAL REPORT:"""
                 if basename not in seen:
                     files.append(abs_path)
                     seen.add(basename)
-        
+
         # 2. Add output files from each cycle (in order)
         for cycle in self.data.get("cycles", []):
             for f in cycle.get("output_files", []):
@@ -832,7 +885,7 @@ FINAL REPORT:"""
                     if basename not in seen and os.path.exists(abs_path):
                         files.append(abs_path)
                         seen.add(basename)
-        
+
         return files
 
     def reset(self):

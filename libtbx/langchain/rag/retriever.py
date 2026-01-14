@@ -7,7 +7,7 @@ This module handles:
 - Building RAG chains for various purposes
 
 Usage:
-    from libtbx.langchain.rag import load_persistent_db, create_reranking_retriever
+    from libtbx.langchain.rag.retriever import load_persistent_db, create_reranking_retriever
 
     vectorstore = load_persistent_db(embeddings, db_dir='./docs_db')
     retriever = create_reranking_retriever(vectorstore, llm)
@@ -22,6 +22,7 @@ from langchain_classic.retrievers import ContextualCompressionRetriever
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import PromptTemplate
 from langchain_chroma import Chroma
+assert PromptTemplate is not None
 
 
 # =============================================================================

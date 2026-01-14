@@ -9,7 +9,6 @@ Tests cover:
 - Knowledge module (programs, prompts)
 - Agent module (memory, planning)
 - Utils module (text processing)
-- Backward compatibility (langchain_tools shim)
 
 Run with: phenix.python tst_langchain_tools.py
 Or: python -m pytest tst_langchain_tools.py -v
@@ -17,7 +16,6 @@ Or: python -m pytest tst_langchain_tools.py -v
 from __future__ import division
 import unittest
 import os
-import json
 import tempfile
 
 from langchain_core.documents import Document
@@ -29,7 +27,7 @@ class TestCoreModule(unittest.TestCase):
 
     def test_imports(self):
         """Test that core module imports work."""
-        from libtbx.langchain.core import get_llm_and_embeddings
+        from libtbx.langchain.core.llm import get_llm_and_embeddings
         self.assertIsNotNone(get_llm_and_embeddings)
 
     def test_types_agent_plan(self):
@@ -62,18 +60,14 @@ class TestAnalysisModule(unittest.TestCase):
 
     def test_imports(self):
         """Test that analysis module imports work."""
-        from libtbx.langchain.analysis import (
-            summarize_log_text,
-            analyze_log_summary,
-            extract_project_state_updates,
-            get_log_info,
-        )
+        from libtbx.langchain.analysis.summarizer import summarize_log_text
+        from libtbx.langchain.analysis.analyzer import analyze_log_summary
         self.assertIsNotNone(summarize_log_text)
         self.assertIsNotNone(analyze_log_summary)
 
     def test_get_log_map_prompt(self):
         """Test log map prompt content."""
-        from libtbx.langchain.analysis import get_log_map_prompt
+        from libtbx.langchain.analysis.summarizer import get_log_map_prompt
         prompt = get_log_map_prompt()
         self.assertIsInstance(prompt, PromptTemplate)
         self.assertIn("data extraction bot", prompt.template)
@@ -81,14 +75,14 @@ class TestAnalysisModule(unittest.TestCase):
 
     def test_get_log_combine_prompt(self):
         """Test log combine prompt content."""
-        from libtbx.langchain.analysis import get_log_combine_prompt
+        from libtbx.langchain.analysis.summarizer import get_log_combine_prompt
         prompt = get_log_combine_prompt()
         self.assertIsInstance(prompt, PromptTemplate)
         self.assertIn("expert research scientist", prompt.template)
 
     def test_get_log_analysis_prompt(self):
         """Test log analysis prompt content."""
-        from libtbx.langchain.analysis import get_log_analysis_prompt
+        from libtbx.langchain.analysis.analyzer import get_log_analysis_prompt
         prompt = get_log_analysis_prompt()
         self.assertIsInstance(prompt, PromptTemplate)
         self.assertIn("crystallography and cryo-EM", prompt.template)
@@ -96,14 +90,14 @@ class TestAnalysisModule(unittest.TestCase):
 
     def test_get_chunk_size_google(self):
         """Test chunk size for Google provider."""
-        from libtbx.langchain.analysis import get_chunk_size
+        from libtbx.langchain.analysis.summarizer import get_chunk_size
         chunk_size, chunk_overlap = get_chunk_size('google')
         self.assertEqual(chunk_size, 750000)
         self.assertEqual(chunk_overlap, 50000)
 
     def test_get_chunk_size_openai(self):
         """Test chunk size for OpenAI provider."""
-        from libtbx.langchain.analysis import get_chunk_size
+        from libtbx.langchain.analysis.summarizer import get_chunk_size
         chunk_size, chunk_overlap = get_chunk_size('openai')
         self.assertEqual(chunk_size, 100000)
         self.assertEqual(chunk_overlap, 10000)
@@ -114,19 +108,14 @@ class TestRAGModule(unittest.TestCase):
 
     def test_imports(self):
         """Test that RAG module imports work."""
-        from libtbx.langchain.rag import (
-            load_all_docs_from_folder,
-            load_specific_docs,
-            create_and_persist_db,
-            load_persistent_db,
-            create_reranking_retriever,
-        )
+        from libtbx.langchain.rag.document_loader import load_all_docs_from_folder
+        from libtbx.langchain.rag.retriever import load_persistent_db
         self.assertIsNotNone(load_all_docs_from_folder)
         self.assertIsNotNone(load_persistent_db)
 
     def test_phenix_html_loader(self):
         """Test custom HTML loader."""
-        from libtbx.langchain.rag import PhenixHTMLLoader
+        from libtbx.langchain.rag.document_loader import PhenixHTMLLoader
 
         # Create a temporary HTML file
         with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False) as f:
@@ -170,38 +159,34 @@ class TestValidationModule(unittest.TestCase):
 
     def test_imports(self):
         """Test that validation module imports work."""
-        from libtbx.langchain.validation import (
-            validate_phenix_command,
-            fix_command_syntax,
-            mtz_has_rfree_flags,
-            get_validator,
-        )
+        from libtbx.langchain.validation.core_validator import validate_phenix_command
+        from libtbx.langchain.validation.registry import get_validator
         self.assertIsNotNone(validate_phenix_command)
         self.assertIsNotNone(get_validator)
 
     def test_get_validator_refine(self):
         """Test getting validator for phenix.refine."""
-        from libtbx.langchain.validation import get_validator
+        from libtbx.langchain.validation.registry import get_validator
         validator = get_validator('phenix.refine')
         self.assertIsNotNone(validator)
         self.assertEqual(validator.program_name, 'phenix.refine')
 
     def test_get_validator_unknown(self):
         """Test getting validator for unknown program returns None."""
-        from libtbx.langchain.validation import get_validator
+        from libtbx.langchain.validation.registry import get_validator
         validator = get_validator('phenix.nonexistent')
         self.assertIsNone(validator)
 
     def test_get_all_validators(self):
         """Test getting all registered validators."""
-        from libtbx.langchain.validation import get_all_validators
+        from libtbx.langchain.validation.registry import get_all_validators
         validators = get_all_validators()
         self.assertIsInstance(validators, dict)
         self.assertIn('phenix.refine', validators)
 
     def test_refine_validator_common_errors(self):
         """Test RefineValidator has common error patterns."""
-        from libtbx.langchain.validation import RefineValidator
+        from libtbx.langchain.validation.phenix_refine import RefineValidator
         validator = RefineValidator()
         errors = validator.get_common_errors()
         self.assertIsInstance(errors, dict)
@@ -214,18 +199,14 @@ class TestKnowledgeModule(unittest.TestCase):
 
     def test_imports(self):
         """Test that knowledge module imports work."""
-        from libtbx.langchain.knowledge import (
-            get_phenix_program_list,
-            get_keywords_as_phil_string,
-            get_strategic_planning_prompt,
-            get_command_writer_prompt,
-        )
+        from libtbx.langchain.knowledge.phenix_programs import get_phenix_program_list
+        from libtbx.langchain.knowledge.prompts import get_strategic_planning_prompt
         self.assertIsNotNone(get_phenix_program_list)
         self.assertIsNotNone(get_strategic_planning_prompt)
 
     def test_get_phenix_program_list(self):
         """Test that program list contains expected programs."""
-        from libtbx.langchain.knowledge import get_phenix_program_list
+        from libtbx.langchain.knowledge.phenix_programs import get_phenix_program_list
         programs = get_phenix_program_list()
         self.assertIsInstance(programs, list)
         self.assertGreater(len(programs), 0)
@@ -235,7 +216,7 @@ class TestKnowledgeModule(unittest.TestCase):
 
     def test_get_strategic_planning_prompt(self):
         """Test strategic planning prompt content."""
-        from libtbx.langchain.knowledge import get_strategic_planning_prompt
+        from libtbx.langchain.knowledge.prompts import get_strategic_planning_prompt
         prompt = get_strategic_planning_prompt()
         self.assertIsInstance(prompt, PromptTemplate)
         self.assertIn("Lead Crystallographer", prompt.template)
@@ -243,14 +224,14 @@ class TestKnowledgeModule(unittest.TestCase):
 
     def test_get_command_writer_prompt(self):
         """Test command writer prompt content."""
-        from libtbx.langchain.knowledge import get_command_writer_prompt
+        from libtbx.langchain.knowledge.prompts import get_command_writer_prompt
         prompt = get_command_writer_prompt()
         self.assertIsInstance(prompt, PromptTemplate)
         self.assertIn("Command-Line Expert", prompt.template)
 
     def test_get_docs_query_prompt(self):
         """Test docs query prompt content."""
-        from libtbx.langchain.knowledge import get_docs_query_prompt
+        from libtbx.langchain.knowledge.prompts import get_docs_query_prompt
         prompt = get_docs_query_prompt()
         self.assertIsInstance(prompt, PromptTemplate)
         self.assertIn("expert assistant for the Phenix software suite", prompt.template)
@@ -261,25 +242,20 @@ class TestAgentModule(unittest.TestCase):
 
     def test_imports(self):
         """Test that agent module imports work."""
-        from libtbx.langchain.agent import (
-            generate_next_move,
-            get_run_history,
-            load_learned_memory,
-            save_learned_memory,
-            get_memory_file_path,
-        )
+        from libtbx.langchain.agent.planner import generate_next_move
+        from libtbx.langchain.agent.memory import load_learned_memory
         self.assertIsNotNone(generate_next_move)
         self.assertIsNotNone(load_learned_memory)
 
     def test_get_memory_file_path(self):
         """Test memory file path generation."""
-        from libtbx.langchain.agent import get_memory_file_path
+        from libtbx.langchain.agent.memory import get_memory_file_path
         path = get_memory_file_path("./test_db")
         self.assertIn("phenix_learned_memory.json", path)
 
     def test_load_save_learned_memory(self):
         """Test loading and saving learned memory."""
-        from libtbx.langchain.agent import load_learned_memory, save_learned_memory
+        from libtbx.langchain.agent.memory import load_learned_memory, save_learned_memory
 
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
             temp_path = f.name
@@ -297,19 +273,19 @@ class TestAgentModule(unittest.TestCase):
 
     def test_load_nonexistent_memory(self):
         """Test loading memory from nonexistent file returns empty dict."""
-        from libtbx.langchain.agent import load_learned_memory
+        from libtbx.langchain.agent.memory import load_learned_memory
         result = load_learned_memory("/nonexistent/path/memory.json")
         self.assertEqual(result, {})
 
     def test_get_run_history_empty_dir(self):
         """Test get_run_history with nonexistent directory."""
-        from libtbx.langchain.agent import get_run_history
+        from libtbx.langchain.agent.memory import get_run_history
         result = get_run_history("/nonexistent/directory")
         self.assertEqual(result, [])
 
     def test_extract_output_files(self):
         """Test extracting output files from summary."""
-        from libtbx.langchain.agent import extract_output_files
+        from libtbx.langchain.agent.planner import extract_output_files
 
         summary = """
         **Key Output Files:**
@@ -326,17 +302,14 @@ class TestUtilsModule(unittest.TestCase):
 
     def test_imports(self):
         """Test that utils module imports work."""
-        from libtbx.langchain.utils import (
-            find_text_block,
-            get_processed_log_dict,
-            query_docs,
-        )
+        from libtbx.langchain.utils.text_processing import find_text_block
+        from libtbx.langchain.utils.query import query_docs
         self.assertIsNotNone(find_text_block)
         self.assertIsNotNone(query_docs)
 
     def test_find_text_block(self):
         """Test extracting text blocks from logs."""
-        from libtbx.langchain.utils import find_text_block
+        from libtbx.langchain.utils.text_processing import find_text_block
 
         log_text = """
 **1. Some header**
@@ -356,19 +329,19 @@ End of text.
 
     def test_find_text_block_not_found(self):
         """Test find_text_block when target not found."""
-        from libtbx.langchain.utils import find_text_block
+        from libtbx.langchain.utils.text_processing import find_text_block
         result = find_text_block("Some text", "**NOTFOUND**")
         self.assertEqual(result, "")
 
     def test_find_text_block_none_input(self):
         """Test find_text_block with None input."""
-        from libtbx.langchain.utils import find_text_block
+        from libtbx.langchain.utils.text_processing import find_text_block
         result = find_text_block(None, "**3")
         self.assertEqual(result, "")
 
     def test_get_processed_log_dict(self):
         """Test extracting program info from log."""
-        from libtbx.langchain.utils import get_processed_log_dict
+        from libtbx.langchain.utils.text_processing import get_processed_log_dict
 
         log_text = """
 **3. The Phenix Program**
@@ -381,72 +354,18 @@ This is the summary.
         self.assertIn("phenix.real_space_refine", processed_dict['phenix_program'])
 
 
-class TestBackwardCompatibility(unittest.TestCase):
-    """Tests for backward compatibility with langchain_tools shim."""
-
-    def test_import_as_lct(self):
-        """Test importing as langchain_tools (legacy style)."""
-        from libtbx.langchain import langchain_tools as lct
-        self.assertIsNotNone(lct)
-
-    def test_all_functions_available(self):
-        """Test that all expected functions are available via shim."""
-        from libtbx.langchain import langchain_tools as lct
-
-        # Core
-        self.assertTrue(hasattr(lct, 'get_llm_and_embeddings'))
-
-        # Analysis
-        self.assertTrue(hasattr(lct, 'summarize_log_text'))
-        self.assertTrue(hasattr(lct, 'analyze_log_summary'))
-        self.assertTrue(hasattr(lct, 'extract_project_state_updates'))
-        self.assertTrue(hasattr(lct, 'get_log_info'))
-
-        # RAG
-        self.assertTrue(hasattr(lct, 'load_all_docs_from_folder'))
-        self.assertTrue(hasattr(lct, 'create_and_persist_db'))
-        self.assertTrue(hasattr(lct, 'load_persistent_db'))
-        self.assertTrue(hasattr(lct, 'create_reranking_retriever'))
-
-        # Validation
-        self.assertTrue(hasattr(lct, 'validate_phenix_command'))
-        self.assertTrue(hasattr(lct, 'mtz_has_rfree_flags'))
-
-        # Knowledge
-        self.assertTrue(hasattr(lct, 'get_phenix_program_list'))
-        self.assertTrue(hasattr(lct, 'get_strategic_planning_prompt'))
-
-        # Agent
-        self.assertTrue(hasattr(lct, 'generate_next_move'))
-        self.assertTrue(hasattr(lct, 'get_run_history'))
-
-        # Utils
-        self.assertTrue(hasattr(lct, 'find_text_block'))
-        self.assertTrue(hasattr(lct, 'query_docs'))
-
-    def test_functions_are_same(self):
-        """Test that shim functions point to the same implementations."""
-        from libtbx.langchain import langchain_tools as lct
-        from libtbx.langchain.core import get_llm_and_embeddings
-        from libtbx.langchain.analysis import summarize_log_text
-        from libtbx.langchain.agent import generate_next_move
-
-        self.assertIs(lct.get_llm_and_embeddings, get_llm_and_embeddings)
-        self.assertIs(lct.summarize_log_text, summarize_log_text)
-        self.assertIs(lct.generate_next_move, generate_next_move)
-
 
 class TestIntegration(unittest.TestCase):
     """Integration tests that verify modules work together."""
 
     def test_prompts_have_required_variables(self):
         """Test that all prompts have their required input variables."""
-        from libtbx.langchain.analysis import (
+        from libtbx.langchain.analysis.summarizer import (
             get_log_map_prompt,
             get_log_combine_prompt,
-            get_log_analysis_prompt,
         )
-        from libtbx.langchain.knowledge import (
+        from libtbx.langchain.analysis.analyzer import get_log_analysis_prompt
+        from libtbx.langchain.knowledge.prompts import (
             get_strategic_planning_prompt,
             get_command_writer_prompt,
         )

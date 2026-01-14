@@ -11,6 +11,8 @@ from __future__ import absolute_import, division, print_function
 
 import asyncio
 from typing import List, Iterable
+assert List is not None
+assert Iterable is not None
 import os
 
 from langchain_core.documents import Document

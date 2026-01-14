@@ -5,10 +5,10 @@ from __future__ import division
 import os
 import shutil  # <--- Added for cleanup
 
-from libtbx.langchain.core import get_llm_and_embeddings
+from libtbx.langchain.core.llm import get_llm_and_embeddings
 # Import the chunker explicitly
 from libtbx.langchain.rag.document_loader import load_all_docs_from_folder, _custom_chunker
-from libtbx.langchain.rag import create_and_persist_db
+from libtbx.langchain.rag.vector_store import create_and_persist_db
 
 def run(docs_folder_path_list=["./data_docs/"], db_dir=None,
         excluded_dirs=None, provider=None, timeout=300):

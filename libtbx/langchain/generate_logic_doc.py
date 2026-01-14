@@ -47,13 +47,13 @@ def extract_workflow_states():
     path = os.path.join(SCRIPT_DIR, "agent", "workflow_state.py")
     with open(path) as f:
         content = f.read()
-    
+
     states = []
-    
+
     # Find all state returns in _detect_xray_state
     xray_match = re.search(
-        r'def _detect_xray_state\(.*?\):(.*?)(?=\ndef |\Z)', 
-        content, 
+        r'def _detect_xray_state\(.*?\):(.*?)(?=\ndef |\Z)',
+        content,
         re.DOTALL
     )
     if xray_match:
@@ -72,11 +72,11 @@ def extract_workflow_states():
                 "valid_programs": progs,
                 "reason": reason.split(',')[0]  # First part of reason
             })
-    
+
     # Find all state returns in _detect_cryoem_state
     cryoem_match = re.search(
-        r'def _detect_cryoem_state\(.*?\):(.*?)(?=\ndef |\Z)', 
-        content, 
+        r'def _detect_cryoem_state\(.*?\):(.*?)(?=\ndef |\Z)',
+        content,
         re.DOTALL
     )
     if cryoem_match:
@@ -94,7 +94,7 @@ def extract_workflow_states():
                 "valid_programs": progs,
                 "reason": reason.split(',')[0]
             })
-    
+
     return states
 
 
@@ -103,9 +103,9 @@ def extract_stop_conditions():
     path = os.path.join(SCRIPT_DIR, "agent", "metrics_analyzer.py")
     with open(path) as f:
         content = f.read()
-    
+
     conditions = []
-    
+
     # Find success threshold logic
     if "dynamic_target" in content:
         conditions.append({
@@ -113,15 +113,15 @@ def extract_stop_conditions():
             "description": "R-free below dynamic target (resolution/10, bounded 0.20-0.30)",
             "formula": "R-free < max(0.20, min(0.30, resolution/10)) - 0.02"
         })
-    
+
     # Find plateau detection
     if "PLATEAU" in content:
         conditions.append({
-            "name": "Plateau Detection", 
+            "name": "Plateau Detection",
             "description": "Less than 0.5% improvement for 2+ consecutive cycles",
             "formula": "improvement < 0.5% for last 2 cycles"
         })
-    
+
     # Find excessive refinement
     if "EXCESSIVE" in content:
         conditions.append({
@@ -129,7 +129,7 @@ def extract_stop_conditions():
             "description": "Too many consecutive refinement cycles",
             "formula": "consecutive_refines >= 5"
         })
-    
+
     # Find cryo-EM success
     if "map_cc" in content and "0.75" in content:
         conditions.append({
@@ -137,7 +137,7 @@ def extract_stop_conditions():
             "description": "Map-model correlation above threshold",
             "formula": "map_cc > 0.75"
         })
-    
+
     return conditions
 
 
@@ -146,9 +146,9 @@ def extract_file_categorization():
     path = os.path.join(SCRIPT_DIR, "agent", "workflow_state.py")
     with open(path) as f:
         content = f.read()
-    
+
     rules = []
-    
+
     # Find _categorize_files function
     match = re.search(
         r'def _categorize_files\(.*?\):(.*?)(?=\ndef |\Z)',
@@ -157,7 +157,7 @@ def extract_file_categorization():
     )
     if match:
         func_code = match.group(1)
-        
+
         # Extract patterns
         patterns = [
             ("MTZ files", ".mtz", "X-ray data"),
@@ -165,10 +165,10 @@ def extract_file_categorization():
             ("Map files", ".mrc, .ccp4, .map", "Cryo-EM maps"),
             ("PDB files", ".pdb", "Model coordinates"),
         ]
-        
+
         for name, ext, desc in patterns:
             rules.append({"name": name, "extensions": ext, "description": desc})
-        
+
         # PDB subcategories
         if "'phaser'" in func_code:
             rules.append({"name": "Phaser output", "pattern": "'phaser' in filename", "description": "MR solution"})
@@ -180,20 +180,20 @@ def extract_file_categorization():
             rules.append({"name": "Autobuild output", "pattern": "'autobuild', 'buccaneer', 'build' in filename", "description": "Model building output"})
         if "'ligand'" in func_code:
             rules.append({"name": "Ligand CIF", "pattern": ".cif without 'refine'", "description": "Ligand restraints"})
-    
+
     return rules
 
 
 def extract_key_thresholds():
     """Extract important threshold values from decision_config.json or code."""
     thresholds = []
-    
+
     # Try to get from decision_config.json first
     config = load_decision_config()
     if config:
         xray = config.get("thresholds", {}).get("xray", {})
         cryoem = config.get("thresholds", {}).get("cryoem", {})
-        
+
         # Resolution-dependent thresholds
         res_dep = xray.get("resolution_dependent", {})
         for bin_name, bin_config in res_dep.items():
@@ -207,7 +207,7 @@ def extract_key_thresholds():
                 range_str = "%.1f-%.1fÅ" % (range_info["min"], range_info["max"])
             elif "min" in range_info:
                 range_str = "> %.1fÅ" % range_info["min"]
-            
+
             thresholds.append({
                 "name": "%s (%s)" % (bin_name.replace("_", " ").title(), range_str),
                 "value": "autobuild=%.2f, good=%.2f, ligandfit=%.2f" % (
@@ -217,7 +217,7 @@ def extract_key_thresholds():
                 ),
                 "description": "Resolution-dependent R-free thresholds"
             })
-        
+
         # Other thresholds
         if "plateau_improvement_threshold" in xray:
             thresholds.append({
@@ -228,47 +228,47 @@ def extract_key_thresholds():
                 ),
                 "description": "Trigger plateau warning"
             })
-        
+
         if "excessive_refine_cycles" in xray:
             thresholds.append({
                 "name": "Excessive refinement",
                 "value": ">= %d cycles" % xray["excessive_refine_cycles"],
                 "description": "Too many consecutive refinement cycles"
             })
-        
+
         if "success_cc" in cryoem:
             thresholds.append({
                 "name": "Cryo-EM success",
                 "value": "CC > %.2f" % cryoem["success_cc"],
                 "description": "Map-model correlation target"
             })
-        
+
         return thresholds
-    
+
     # Fallback to code extraction
     ws_path = os.path.join(SCRIPT_DIR, "agent", "workflow_state.py")
     with open(ws_path) as f:
         ws_content = f.read()
-    
+
     if "0.35" in ws_content:
         thresholds.append({
             "name": "Autobuild threshold",
             "value": "R-free > 0.35 (medium res)",
             "description": "Offer autobuild when model quality is poor"
         })
-    
+
     return thresholds
 
 
 def generate_tiered_docs(config):
     """Generate documentation for the tiered decision architecture."""
     lines = []
-    
+
     if not config:
         return lines
-    
+
     tiers = config.get("tiers", {})
-    
+
     # === TIER 1: HARD CONSTRAINTS ===
     lines.append("## Tiered Decision Architecture")
     lines.append("")
@@ -280,14 +280,14 @@ def generate_tiered_docs(config):
     lines.append("| 2 | Strong Defaults | Applied automatically | Yes (with warning) |")
     lines.append("| 3 | Soft Guidance | Suggestions only | Yes (no warning) |")
     lines.append("")
-    
+
     # Tier 1
     tier1 = tiers.get("tier1_hard_constraints", {})
     lines.append("### Tier 1: Hard Constraints")
     lines.append("")
     lines.append(tier1.get("description", "Cannot be overridden"))
     lines.append("")
-    
+
     rules = tier1.get("rules", {})
     if rules:
         lines.append("| Rule | Description | Applies To |")
@@ -297,14 +297,14 @@ def generate_tiered_docs(config):
             applies = rule_info.get("applies_to", "all")
             lines.append("| %s | %s | %s |" % (rule_name, desc, applies))
         lines.append("")
-    
+
     # Tier 2
     tier2 = tiers.get("tier2_strong_defaults", {})
     lines.append("### Tier 2: Strong Defaults")
     lines.append("")
     lines.append(tier2.get("description", "Applied automatically; LLM can override"))
     lines.append("")
-    
+
     lines.append("| Default | Condition | Value | Override Warning |")
     lines.append("|---------|-----------|-------|------------------|")
     for rule_name, rule_info in tier2.items():
@@ -319,14 +319,14 @@ def generate_tiered_docs(config):
             warning = warning[:30] + "..."
         lines.append("| %s | %s | %s | %s |" % (rule_name, condition, value, warning))
     lines.append("")
-    
+
     # Tier 3
     tier3 = tiers.get("tier3_soft_guidance", {})
     lines.append("### Tier 3: Soft Guidance")
     lines.append("")
     lines.append(tier3.get("description", "Suggestions only"))
     lines.append("")
-    
+
     suggestions = tier3.get("suggestions", [])
     if suggestions:
         for item in suggestions:
@@ -334,7 +334,7 @@ def generate_tiered_docs(config):
             suggestion = item.get("suggestion", "")
             lines.append("- **When** `%s`: %s" % (condition, suggestion))
         lines.append("")
-    
+
     # === PROGRAM RANKINGS ===
     rankings = config.get("program_rankings", {})
     if rankings:
@@ -342,12 +342,12 @@ def generate_tiered_docs(config):
         lines.append("")
         lines.append("The graph recommends programs in priority order:")
         lines.append("")
-        
+
         for state_name, state_info in rankings.items():
             desc = state_info.get("description", "")
             lines.append("**%s** - %s" % (state_name, desc))
             lines.append("")
-            
+
             state_rankings = state_info.get("rankings", [])
             if state_rankings:
                 lines.append("| Priority | Program | Condition |")
@@ -360,20 +360,20 @@ def generate_tiered_docs(config):
                     prio = item.get("priority", "?")
                     lines.append("| %s | %s | %s |" % (prio, prog, cond))
                 lines.append("")
-    
+
     return lines
 
 
 def generate_markdown(templates, states, stop_conditions, file_rules, thresholds, config=None):
     """Generate markdown documentation."""
     lines = []
-    
+
     lines.append("# PHENIX AI Agent Logic Documentation")
     lines.append("")
     lines.append("This document describes all decision logic used by the AI agent.")
     lines.append("Generated automatically from source code and configuration files.")
     lines.append("")
-    
+
     # Table of Contents
     lines.append("## Table of Contents")
     lines.append("1. [Tiered Decision Architecture](#tiered-decision-architecture)")
@@ -383,17 +383,17 @@ def generate_markdown(templates, states, stop_conditions, file_rules, thresholds
     lines.append("5. [File Categorization](#file-categorization)")
     lines.append("6. [Key Thresholds](#key-thresholds)")
     lines.append("")
-    
+
     # Tiered Decision Architecture (from config)
     lines.append("---")
     tiered_docs = generate_tiered_docs(config)
     lines.extend(tiered_docs)
-    
+
     # Workflow States
     lines.append("---")
     lines.append("## Workflow States")
     lines.append("")
-    
+
     # X-ray states
     lines.append("### X-ray Crystallography Workflow")
     lines.append("")
@@ -414,7 +414,7 @@ def generate_markdown(templates, states, stop_conditions, file_rules, thresholds
     lines.append("                                              refine  autobuild  STOP")
     lines.append("```")
     lines.append("")
-    
+
     xray_states = [s for s in states if s["type"] == "xray"]
     if xray_states:
         lines.append("| State | Valid Programs | Description |")
@@ -425,7 +425,7 @@ def generate_markdown(templates, states, stop_conditions, file_rules, thresholds
                 progs += "..."
             lines.append(f"| {s['name']} | {progs} | {s['reason'][:50]} |")
         lines.append("")
-    
+
     # Cryo-EM states
     lines.append("### Cryo-EM Workflow")
     lines.append("")
@@ -447,7 +447,7 @@ def generate_markdown(templates, states, stop_conditions, file_rules, thresholds
     lines.append("                                            cryoem_has_model → real_space_refine")
     lines.append("```")
     lines.append("")
-    
+
     cryoem_states = [s for s in states if s["type"] == "cryoem"]
     if cryoem_states:
         lines.append("| State | Valid Programs | Description |")
@@ -458,18 +458,18 @@ def generate_markdown(templates, states, stop_conditions, file_rules, thresholds
                 progs += "..."
             lines.append(f"| {s['name']} | {progs} | {s['reason'][:50]} |")
         lines.append("")
-    
+
     # Program Templates
     lines.append("---")
     lines.append("## Program Templates")
     lines.append("")
-    
+
     for prog_name, config in templates.items():
         lines.append(f"### {prog_name}")
         lines.append("")
         lines.append(f"**Description:** {config.get('description', 'N/A')}")
         lines.append("")
-        
+
         # File slots
         if "file_slots" in config:
             lines.append("**Required Files:**")
@@ -478,14 +478,14 @@ def generate_markdown(templates, states, stop_conditions, file_rules, thresholds
                 exts = ", ".join(info.get("extensions", []))
                 lines.append(f"- `{slot}`: {exts} ({req})")
             lines.append("")
-        
+
         # Defaults
         if config.get("defaults"):
             lines.append("**Default Flags:**")
             for key, val in config["defaults"].items():
                 lines.append(f"- `{key}={val}`")
             lines.append("")
-        
+
         # Strategy flags
         if config.get("strategy_flags"):
             lines.append("**Strategy Options:**")
@@ -496,27 +496,27 @@ def generate_markdown(templates, states, stop_conditions, file_rules, thresholds
                     elif "true" in options:
                         lines.append(f"- `{flag}`: true → `{options['true']}`")
             lines.append("")
-        
+
         # Hints
         if config.get("hints"):
             lines.append("**Usage Hints:**")
             for hint in config["hints"]:
                 lines.append(f"- {hint}")
             lines.append("")
-    
+
     # Stop Conditions
     lines.append("---")
     lines.append("## Stop Conditions")
     lines.append("")
     lines.append("The agent will recommend stopping when any of these conditions are met:")
     lines.append("")
-    
+
     for cond in stop_conditions:
         lines.append(f"### {cond['name']}")
         lines.append(f"- **Description:** {cond['description']}")
         lines.append(f"- **Formula:** `{cond['formula']}`")
         lines.append("")
-    
+
     # File Categorization
     lines.append("---")
     lines.append("## File Categorization")
@@ -529,7 +529,7 @@ def generate_markdown(templates, states, stop_conditions, file_rules, thresholds
         ext = rule.get("extensions", rule.get("pattern", ""))
         lines.append(f"| {rule['name']} | {ext} | {rule['description']} |")
     lines.append("")
-    
+
     # Key Thresholds
     lines.append("---")
     lines.append("## Key Thresholds")
@@ -541,7 +541,7 @@ def generate_markdown(templates, states, stop_conditions, file_rules, thresholds
     for t in thresholds:
         lines.append(f"| {t['name']} | {t['value']} | {t['description']} |")
     lines.append("")
-    
+
     # Footer
     lines.append("---")
     lines.append("")
@@ -564,7 +564,7 @@ def generate_markdown(templates, states, stop_conditions, file_rules, thresholds
     lines.append("2. `workflow_state.py` - State machine logic (uses config_loader)")
     lines.append("3. `metrics_analyzer.py` - Stop condition detection")
     lines.append("")
-    
+
     return "\n".join(lines)
 
 
@@ -575,7 +575,7 @@ def main():
     parser.add_argument("--output", "-o", type=str, default=None,
                        help="Output file (default: stdout)")
     args = parser.parse_args()
-    
+
     # Extract all information
     config = load_decision_config()
     templates = load_command_templates()
@@ -583,10 +583,10 @@ def main():
     stop_conditions = extract_stop_conditions()
     file_rules = extract_file_categorization()
     thresholds = extract_key_thresholds()
-    
+
     # Generate documentation
     doc = generate_markdown(templates, states, stop_conditions, file_rules, thresholds, config)
-    
+
     # Output
     if args.output:
         with open(args.output, "w") as f:

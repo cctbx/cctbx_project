@@ -6,7 +6,7 @@ This module handles:
 - Adding R-free generation parameter when needed
 
 Usage:
-    from libtbx.langchain.validation import mtz_has_rfree_flags
+    from libtbx.langchain.validation.mtz_utils import mtz_has_rfree_flags
 
     if not mtz_has_rfree_flags('data.mtz'):
         print("MTZ file lacks R-free flags")

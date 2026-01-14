@@ -2,406 +2,317 @@
 
 ## Overview
 
-The PHENIX AI Agent is a LangGraph-based system that automates crystallographic and cryo-EM structure determination workflows. It operates as a cyclic graph that perceives the current state, plans the next action, builds commands, validates them, and executes them until the workflow completes.
+The PHENIX AI Agent automates crystallographic and cryo-EM structure determination workflows. It uses a YAML-driven architecture where domain knowledge (programs, workflows, metrics) is defined in configuration files, while Python code provides a generic execution engine.
 
-## Architecture Components
-
-### 1. Graph Structure
-
-The agent operates as a state machine with the following nodes:
+## Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                                                                 │
-│    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌─────────┐ │
-│ ──►│ PERCEIVE │───►│   PLAN   │───►│  BUILD   │───►│VALIDATE │ │
-│    └──────────┘    └──────────┘    └──────────┘    └────┬────┘ │
-│         ▲                                               │      │
-│         │              ┌──────────┐                     │      │
-│         │         ┌───►│ FALLBACK │◄────────────────────┤      │
-│         │         │    └──────────┘   (on 3 failures)   │      │
-│         │         │                                     │      │
-│         │         ▼                                     ▼      │
-│    ┌──────────┐◄──────────────────────────────────┌─────────┐  │
-│    │  OUTPUT  │                                   │ EXECUTE │  │
-│    └──────────┘◄──────────────────────────────────└─────────┘  │
-│         │                                                      │
-│         ▼                                                      │
-│      [END or LOOP]                                             │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                          YAML CONFIGURATION                         │
+│  ┌─────────────┐  ┌─────────────────┐  ┌─────────────────────────┐  │
+│  │ programs.yaml│  │ workflows.yaml │  │     metrics.yaml       │  │
+│  │             │  │                 │  │                         │  │
+│  │ - inputs    │  │ - phases        │  │ - thresholds            │  │
+│  │ - outputs   │  │ - transitions   │  │ - resolution-dependent  │  │
+│  │ - commands  │  │ - conditions    │  │ - quality assessment    │  │
+│  └─────────────┘  └─────────────────┘  └─────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                         EXECUTION ENGINE                            │
+│                                                                     │
+│   ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌─────────────┐  │
+│   │ PERCEIVE │───►│   PLAN   │───►│  BUILD   │───►│  VALIDATE   │  │
+│   └──────────┘    └──────────┘    └──────────┘    └──────┬──────┘  │
+│        ▲                                                 │         │
+│        │              ┌──────────┐                       │         │
+│        │         ┌───►│ FALLBACK │◄──────────────────────┤         │
+│        │         │    └──────────┘    (on 3 failures)    │         │
+│        │         │                                       │         │
+│        │         ▼                                       ▼         │
+│   ┌──────────┐◄──────────────────────────────────┌───────────┐    │
+│   │  OUTPUT  │                                   │  EXECUTE  │    │
+│   └──────────┘◄──────────────────────────────────└───────────┘    │
+│        │                                                           │
+│        ▼                                                           │
+│    [END or LOOP]                                                   │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Node Responsibilities
+## Node Responsibilities
 
-| Node | Function |
-|------|----------|
-| **PERCEIVE** | Analyzes history, categorizes files, detects workflow state, extracts metrics |
-| **PLAN** | Uses LLM to decide next program based on workflow state and recommendations |
-| **BUILD** | Constructs command with correct files and parameters, applies Tier 2 defaults |
-| **VALIDATE** | Checks program validity, file existence, and duplicate prevention |
-| **EXECUTE** | Runs the PHENIX command (handled externally) |
-| **FALLBACK** | Mechanical backup when LLM fails 3 times |
-| **OUTPUT** | Formats results and determines if workflow should continue |
+| Node | Responsibility |
+|------|----------------|
+| **PERCEIVE** | Analyze history, categorize files, detect workflow state, extract metrics |
+| **PLAN** | Select next program (via LLM or RulesSelector) |
+| **BUILD** | Construct command with files and parameters |
+| **VALIDATE** | Check program validity, file existence, duplicate prevention |
+| **EXECUTE** | Run PHENIX command (or simulate in dry run mode) |
+| **FALLBACK** | Mechanical backup when primary selection fails |
+| **OUTPUT** | Format results, determine if workflow continues |
 
 ## Decision-Making Layers
 
 ### Layer 1: Workflow State Detection
 
-The system first determines the current state based on:
-- **History analysis**: What programs have run, their outcomes
-- **File categorization**: Available PDBs, MTZs, maps, sequences
-- **Metrics extraction**: R-free, R-work, resolution, map CC
+The `WorkflowEngine` reads `workflows.yaml` to determine:
 
-#### X-ray Crystallography States
+- **Current phase** based on history and available files
+- **Valid programs** for this phase
+- **Transition conditions** to next phase
 
-| State | Description | Typical Valid Programs |
-|-------|-------------|----------------------|
-| `xray_initial` | Starting point | xtriage |
-| `xray_analyzed` | After xtriage | predict_and_build, phaser |
-| `xray_has_prediction` | Have AlphaFold model | process_predicted_model |
-| `xray_model_processed` | Prediction trimmed | phaser |
-| `xray_has_phases` | After experimental phasing | autobuild |
-| `xray_has_model` | Have placed model | refine |
-| `xray_refined` | After refinement | refine, autobuild, molprobity, ligandfit, STOP |
-| `xray_has_ligand` | Ligand fitted | pdbtools |
-| `xray_combined` | Ligand + protein combined | refine, molprobity, STOP |
+```python
+from agent.workflow_engine import WorkflowEngine
 
-#### Cryo-EM States
+engine = WorkflowEngine()
+state = engine.get_workflow_state(history, files, experiment_type)
+# Returns: {state_name, valid_programs, phase, reason}
+```
 
-| State | Description | Typical Valid Programs |
-|-------|-------------|----------------------|
-| `cryoem_initial` | Starting point | mtriage |
-| `cryoem_analyzed` | After mtriage | predict_and_build, dock_in_map |
-| `cryoem_has_model` | Model in map | real_space_refine |
-| `cryoem_refined` | After RSR | real_space_refine, molprobity, STOP |
+### Layer 2: Program Selection
 
-### Layer 2: Tiered Decision System
+Two modes available:
 
-Decisions are governed by a three-tier configuration system defined in `decision_config.json`:
+**LLM Mode** (default):
+- Constructs prompt with state, recommendations, constraints
+- LLM chooses from valid programs
+- Falls back to rules on failure
 
-#### Tier 1: Hard Constraints (Cannot Override)
+**Rules Mode** (`use_rules_only=True`):
+- `RulesSelector` uses workflows.yaml priorities
+- Fully deterministic, no API calls
+- Selects highest-priority valid program
 
-These are absolute rules that must be followed:
+```python
+from agent.rules_selector import RulesSelector
 
-| Constraint | Description |
-|------------|-------------|
-| `xtriage_before_mr` | Must run xtriage before molecular replacement |
-| `phaser_requires_model` | Phaser needs a search model |
-| `autobuild_requires_phases` | Autobuild needs phased MTZ |
-| `refine_requires_model_and_data` | Refine needs both PDB and MTZ |
-| `no_duplicate_commands` | Cannot run identical command twice |
+selector = RulesSelector()
+intent = selector.select_next_action(workflow_state, files, metrics_trend)
+# Returns: {program, files, strategy, reasoning}
+```
 
-#### Tier 2: Strong Defaults (Override with Warning)
+### Layer 3: Metrics Evaluation
 
-Applied automatically; LLM can override but a warning is logged:
+The `MetricEvaluator` reads `metrics.yaml` to assess:
 
-| Default | Condition | Value | Override Warning |
-|---------|-----------|-------|------------------|
-| `generate_rfree_flags` | First refinement | True | May compromise R-free statistics |
-| `use_existing_rfree_flags` | Subsequent refinements | True | Generating new flags loses continuity |
-| `add_waters` | R-free < 0.35, resolution ≤ 3.0Å | True | Skipping water building prematurely |
-| `twin_law` | Twinning detected | Include twin law | Ignoring detected twinning |
+- **Quality level** (good/acceptable/poor)
+- **Improvement** between cycles
+- **Plateau detection** for stopping
+- **Resolution-dependent thresholds**
 
-#### Tier 3: Soft Guidance (Suggestions Only)
+```python
+from agent.metric_evaluator import MetricEvaluator
 
-Presented to LLM but no enforcement or warnings:
-
-- Consider anisotropic ADP for resolution < 1.5Å
-- Consider riding hydrogens for resolution < 1.2Å
-- Consider stopping when R-free below target
-- Suggest validation after 3+ refinement cycles
-
-### Layer 3: Program Rankings
-
-For each state, programs are ranked by priority with conditions:
-
-```json
-"xray_refined": {
-  "rankings": [
-    {"program": "phenix.ligandfit", "priority": 1, "condition": "has_ligand and model_is_good"},
-    {"program": "phenix.autobuild", "priority": 2, "condition": "r_free_high and has_sequence"},
-    {"program": "phenix.molprobity", "priority": 3, "condition": "suggest_validation"},
-    {"program": "phenix.refine", "priority": 4, "condition": "r_free_above_target"},
-    {"program": "STOP", "priority": 5, "condition": "always"}
-  ]
-}
+evaluator = MetricEvaluator()
+quality = evaluator.assess_quality({"r_free": 0.25}, resolution=2.0)
+trend = evaluator.analyze_trend(history, "xray", resolution=2.0)
 ```
 
 ### Layer 4: Validation Gate
 
-A critical safety mechanism that **prevents stopping without validation**:
+Critical safety mechanism requiring validation before stopping:
 
-**Conditions for requiring validation before STOP:**
-1. R-free is below success threshold (target - 0.02), OR
-2. 3+ refinement cycles have been completed, OR
-3. R-free is below the good model threshold
+**Conditions requiring validation:**
+- R-free below success threshold
+- 3+ refinement cycles completed
+- Model quality is "good"
 
-**When validation is required:**
-- `STOP` is removed from `valid_programs`
-- `phenix.molprobity` is added at highest priority
-- Reason includes "VALIDATION REQUIRED BEFORE STOPPING"
+**Behavior:**
+- STOP removed from valid_programs
+- molprobity added at highest priority
+- After validation: STOP restored
 
-**After validation completes:**
-- `STOP` is restored to `valid_programs` (at position 0 if model is good)
-- Workflow can terminate
+### Layer 5: Command Building
 
-### Layer 5: LLM Planning
+The `TemplateBuilder` reads `programs.yaml` to:
 
-The LLM receives a structured prompt containing:
-1. Current workflow state and valid programs
-2. Ranked program recommendations with reasons
-3. Tier 2 defaults that will be applied
-4. Hard constraints that cannot be violated
-5. Soft suggestions to consider
-6. Recent history and metrics trend
+1. Match files to program inputs by extension
+2. Apply required flags from YAML
+3. Handle optional parameters
+4. Build final command string
 
-The LLM outputs a JSON decision:
-```json
-{
-  "program": "phenix.refine",
-  "reasoning": "Model quality improving, continue refinement...",
-  "files": {"data": "data.mtz", "model": "model.pdb"},
-  "strategy": {"ordered_solvent": true},
-  "stop": false
-}
+## Operating Modes
+
+### Standard Mode
+
+```bash
+phenix.ai_agent original_files="data.mtz seq.fa"
 ```
 
-### Layer 6: Command Building
+- LLM selects programs
+- YAML defines constraints
+- Full automation
 
-The BUILD node:
-1. Validates LLM's program choice against `valid_programs`
-2. Overrides if LLM tries to STOP when STOP isn't allowed
-3. Corrects file paths (maps basenames to full paths)
-4. Applies Tier 2 defaults if LLM didn't specify
-5. Logs any overrides with warnings
-6. Constructs the final command string
+### Rules-Only Mode
 
-### Layer 7: Validation & Fallback
-
-**Validation checks:**
-1. Program is in valid_programs for current state
-2. All referenced files exist
-3. Command is not a duplicate of previous cycle
-
-**On validation failure:**
-- Increment attempt counter
-- Return to PLAN for retry
-- After 3 failures, go to FALLBACK
-
-**FALLBACK behavior:**
-1. Try each valid program in order (skip duplicates)
-2. If molprobity is valid (validation required), run it
-3. Last resort: STOP with reason "all_commands_duplicate"
-
-## Metrics and Stop Conditions
-
-### Resolution-Dependent Thresholds
-
-| Resolution | Autobuild R-free | Good Model R-free | Success Threshold |
-|------------|------------------|-------------------|-------------------|
-| < 1.5Å | 0.30 | 0.20 | 0.18 |
-| 1.5-2.5Å | 0.35 | 0.25 | 0.23 |
-| 2.5-3.5Å | 0.38 | 0.28 | 0.26 |
-| > 3.5Å | 0.38 | 0.30 | 0.28 |
-
-### Stop Conditions
-
-The workflow stops when:
-1. **SUCCESS**: R-free below success threshold AND validation done
-2. **PLATEAU**: < 0.3% improvement for 3+ consecutive cycles
-3. **EXCESSIVE**: 8+ consecutive refinement cycles
-4. **USER REQUEST**: LLM chooses STOP (only when allowed)
-5. **ALL DUPLICATES**: No non-duplicate commands available
-
-## Data Flow
-
+```bash
+phenix.ai_agent use_rules_only=True original_files="data.mtz seq.fa"
 ```
-┌─────────────┐
-│   History   │────┐
-│  (cycles)   │    │
-└─────────────┘    │
-                   ▼
-┌─────────────┐  ┌─────────────────┐  ┌──────────────┐
-│  Available  │─►│  WORKFLOW STATE │─►│ valid_programs│
-│    Files    │  │    DETECTION    │  │ ranked_programs│
-└─────────────┘  └─────────────────┘  │ recommendations│
-                   │                   └──────────────┘
-                   ▼                          │
-              ┌─────────────┐                 │
-              │   METRICS   │                 │
-              │  ANALYZER   │                 │
-              └─────────────┘                 │
-                   │                          │
-                   ▼                          ▼
-              ┌─────────────┐          ┌─────────────┐
-              │ should_stop │          │   PROMPT    │
-              │   reason    │─────────►│ CONSTRUCTION│
-              │   trend     │          └─────────────┘
-              └─────────────┘                 │
-                                             ▼
-                                       ┌─────────────┐
-                                       │     LLM     │
-                                       │   DECISION  │
-                                       └─────────────┘
-                                             │
-                                             ▼
-                                       ┌─────────────┐
-                                       │   COMMAND   │
-                                       │   BUILDER   │
-                                       └─────────────┘
+
+- No LLM/API calls
+- Deterministic selection
+- Offline-capable
+
+### Dry Run Mode
+
+```bash
+phenix.ai_agent dry_run=True dry_run_scenario=xray_basic use_rules_only=True
 ```
+
+- Simulates program execution
+- Uses pre-recorded logs/outputs
+- Full workflow testing
 
 ## Configuration Files
 
-| File | Purpose |
-|------|---------|
-| `decision_config.json` | Tiered rules, thresholds, program rankings |
-| `command_templates.json` | Program file slots, defaults, strategy flags |
-| `prompts_hybrid.py` | LLM prompt templates and formatting |
+### programs.yaml Structure
 
----
+```yaml
+phenix.program_name:
+  description: "What it does"
+  category: analysis|building|refinement|validation
+  experiment_types: [xray, cryoem]
+  
+  inputs:
+    required:
+      slot_name:
+        extensions: [.ext1, .ext2]
+        flag: "parameter="
+    optional:
+      slot_name:
+        extensions: [.ext]
+        flag: "optional_param="
+  
+  outputs:
+    files:
+      - pattern: "*.pdb"
+        type: model
+    metrics: [metric1, metric2]
+  
+  command: "phenix.program {slot1} {slot2}"
+  
+  log_parsing:
+    metric_name:
+      pattern: 'regex pattern'
+      type: float|int|str
+```
 
-## Limitations
+### workflows.yaml Structure
 
-### 1. Resolution Value Extraction
+```yaml
+experiment_type:
+  description: "Workflow description"
+  
+  phases:
+    phase_name:
+      description: "Phase description"
+      programs:
+        - program: phenix.program
+          preferred: true
+          conditions:
+            - has: file_type
+      transitions:
+        on_complete: next_phase
+        on_target_reached: validate
+        on_plateau: validate
+    
+    complete:
+      stop: true
+      stop_reasons: ["Success message"]
+```
 
-The system sometimes extracts incorrect resolution values (e.g., 47.31Å instead of 2.1Å). This appears to be a parsing issue where the low-resolution limit is captured instead of the high-resolution limit. This affects threshold calculations and decision-making.
+### metrics.yaml Structure
 
-### 2. LLM Reliability
+```yaml
+metric_name:
+  description: "What it measures"
+  direction: minimize|maximize
+  thresholds:
+    good: 0.25
+    acceptable: 0.30
+  resolution_dependent:
+    - range: [0, 1.5]
+      good: 0.20
+    - range: [1.5, 2.5]
+      good: 0.25
+```
 
-- The LLM may choose STOP even when told not to (requires override logic)
-- The LLM may generate duplicate commands, requiring retry cycles
-- Different LLM providers (Google, OpenAI) may behave differently
-- LLM reasoning doesn't always match its actual decision
+## Stop Conditions
 
-### 3. File Selection
+| Condition | Trigger | Action |
+|-----------|---------|--------|
+| Success | Metrics at target + validated | STOP |
+| Plateau | <0.5% improvement for 2 cycles | STOP |
+| Excessive | 5+ refinement cycles | STOP |
+| Validation Required | Good metrics, no validation | Force molprobity |
+| All Duplicates | No non-duplicate commands | STOP |
 
-- The LLM sometimes selects wrong files (e.g., original MTZ instead of refined MTZ with R-free flags)
-- File path correction relies on basename matching, which can fail with duplicate names
-- No semantic understanding of which file is "best" for a given purpose
+## Test Scenarios
 
-### 4. State Detection Edge Cases
+Located in `tests/scenarios/`:
 
-- Intermediate states during ligand fitting workflow can be ambiguous
-- The system may not correctly detect when autobuild has been run if output files have non-standard names
-- Cryo-EM workflows are less thoroughly tested than X-ray
+| Scenario | Workflow | Programs |
+|----------|----------|----------|
+| `xray_basic` | xtriage → predict_and_build → refine(×3) → molprobity | 6 steps |
+| `cryoem_basic` | mtriage → predict_and_build → real_space_refine(×3) → molprobity | 6 steps |
 
-### 5. Metrics Parsing
+### Scenario Structure
 
-- Autobuild table format requires special parsing
-- Some programs don't output metrics in a parseable format
-- The "Final Quality Metrics Report" may show duplicate/outdated values
+```
+scenario_name/
+├── scenario.yaml          # Configuration
+├── inputs/                # Initial files
+│   ├── data.mtz
+│   └── sequence.fa
+└── steps/
+    ├── phenix.program_1/
+    │   ├── log.txt        # Simulated output
+    │   └── outputs/       # Output files
+    └── ...
+```
 
-### 6. Validation Limitations
+## Key Classes
 
-- Molprobity is the only validation tool currently integrated
-- No integration with wwPDB validation server
-- Validation metrics aren't used to guide further refinement decisions
+| Class | File | Purpose |
+|-------|------|---------|
+| `WorkflowEngine` | `agent/workflow_engine.py` | YAML workflow interpreter |
+| `RulesSelector` | `agent/rules_selector.py` | Deterministic program selection |
+| `MetricEvaluator` | `agent/metric_evaluator.py` | YAML-based metrics |
+| `ProgramRegistry` | `agent/program_registry.py` | Program definitions |
+| `TemplateBuilder` | `agent/template_builder.py` | Command construction |
+| `DryRunManager` | `agent/dry_run_manager.py` | Test scenario management |
 
-### 7. Single-Threaded Execution
+## Utilities
 
-- Commands run sequentially, not in parallel
-- Long-running jobs (autobuild, predict_and_build) block the workflow
-- No checkpoint/resume capability for interrupted long jobs
+### yaml_tools.py
 
-### 8. Error Recovery
+```bash
+# Validate YAML files
+python yaml_tools.py validate
 
-- Some errors (e.g., R-free flag mismatch) require user intervention
-- The system may get stuck in retry loops
-- No automatic rollback to previous good state
+# Display formatted contents
+python yaml_tools.py display knowledge/programs.yaml
 
----
+# Show summary of all configurations
+python yaml_tools.py summary
+```
 
-## Future Improvements
+### run_all_tests.py
 
-### Short-Term (Implementation Ready)
+```bash
+# Run all test suites
+python run_all_tests.py
 
-1. **Fix Resolution Parsing**
-   - Add specific regex for high-resolution limit
-   - Cross-validate resolution from multiple sources (xtriage, refine)
-   - Reject obviously wrong values (> 10Å for typical macromolecular data)
+# Individual suites
+python tests/test_dry_run.py
+python tests/test_integration.py
+```
 
-2. **Improve File Selection**
-   - Track file provenance (which program created which file)
-   - Prefer files from most recent successful cycle
-   - Implement explicit MTZ label checking for R-free flags
+## Future Enhancements
 
-3. **Better Duplicate Handling**
-   - Vary strategy parameters (e.g., cycles, optimization target) to avoid duplicates
-   - Track what strategies have been tried
-   - Smarter differentiation of "same command" vs "same intent"
-
-4. **Enhanced Metrics Display**
-   - De-duplicate metrics in final report
-   - Show metrics progression graph
-   - Highlight improvements/regressions
-
-### Medium-Term (Design Required)
-
-5. **Multi-Model Support**
-   - Track multiple alternative models
-   - Compare models and select best
-   - Support ensemble refinement
-
-6. **Ligand Workflow Improvements**
-   - Better ligand file detection and handling
-   - Integration with eLBOW for restraint generation
-   - Support for multiple ligands
-
-7. **Advanced Validation**
-   - Integrate wwPDB OneDep validation
-   - Use validation results to guide refinement strategy
-   - Set validation-based stop conditions
-
-8. **Checkpoint/Resume**
-   - Save state after each successful cycle
-   - Resume from last checkpoint after interruption
-   - Support for long-running jobs
-
-### Long-Term (Research Required)
-
-9. **Adaptive Strategy Selection**
-   - Learn from successful/failed strategies
-   - Per-resolution and per-space-group optimization
-   - Integration with crystallographic knowledge bases
-
-10. **Parallel Execution**
-    - Run independent tasks in parallel
-    - Distributed computing support
-    - Job queue management
-
-11. **Interactive Mode**
-    - Allow user intervention at decision points
-    - Support for "suggest but don't execute" mode
-    - Better explanation of decisions
-
-12. **Expanded Workflow Support**
-    - SAD/MAD phasing workflows
-    - Neutron crystallography
-    - Time-resolved crystallography
-    - Microcrystal electron diffraction (MicroED)
-
-13. **Quality Prediction**
-    - Predict expected R-free improvement before running
-    - Estimate time to convergence
-    - Early stopping based on predicted diminishing returns
-
----
-
-## Summary
-
-The PHENIX AI Agent implements a sophisticated multi-layer decision system:
-
-1. **Perception** → Understand current state from history and files
-2. **Rules** → Apply hard constraints and resolution-dependent thresholds
-3. **Recommendations** → Rank programs by priority with conditions
-4. **Gates** → Enforce validation before stopping
-5. **LLM Planning** → Intelligent decision-making with full context
-6. **Defaults** → Apply best practices automatically
-7. **Validation** → Catch errors before execution
-8. **Fallback** → Mechanical backup when LLM fails
-
-This architecture balances flexibility (LLM can adapt to unusual situations) with safety (hard constraints and validation gates prevent bad decisions). The tiered configuration system makes it easy to adjust thresholds and rules without code changes.
-
-The system successfully automates routine structure determination while maintaining the quality standards expected in crystallography.
+1. **More test scenarios** - SAD phasing, ligand fitting, twinning
+2. **Better plateau detection** - Use multiple metrics
+3. **Adaptive thresholds** - Learn from successful workflows
+4. **Parallel execution** - Run independent programs simultaneously
+5. **Web interface** - Visual workflow monitoring

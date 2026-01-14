@@ -1,0 +1,52 @@
+================================================================================
+phenix.refine - Macromolecular Refinement
+================================================================================
+
+Input files:
+  Model: model_refine_002.pdb
+  Data: data.mtz
+
+------------------------------------------------------------------------------
+Refinement Strategy
+------------------------------------------------------------------------------
+
+Strategy: Individual sites + Individual B-factors + TLS + waters
+Number of cycles: 3
+Weight optimization: automatic
+
+------------------------------------------------------------------------------
+Refinement Progress
+------------------------------------------------------------------------------
+
+Starting R-work: 0.262
+Starting R-free: 0.280
+
+Cycle 1: R-work = 0.255, R-free = 0.272
+Cycle 2: R-work = 0.248, R-free = 0.265
+Cycle 3: R-work = 0.242, R-free = 0.260
+
+------------------------------------------------------------------------------
+Final Statistics
+------------------------------------------------------------------------------
+
+Final R-work: 0.242
+Final R-free: 0.260
+
+Resolution: 2.0 A
+Number of reflections: 15234
+Number of atoms: 658 (including 33 waters)
+
+Geometry:
+  Bond RMSD: 0.008 A
+  Angle RMSD: 1.18 degrees
+
+------------------------------------------------------------------------------
+Output Files
+------------------------------------------------------------------------------
+
+Refined model: model_refine_003.pdb
+Map coefficients: model_refine_003.mtz
+
+================================================================================
+phenix.refine completed successfully
+================================================================================

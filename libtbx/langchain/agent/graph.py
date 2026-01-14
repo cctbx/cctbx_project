@@ -1,22 +1,17 @@
 from __future__ import absolute_import, division, print_function
 from langgraph.graph import StateGraph, END
 
-# These imports will work when installed in libtbx
-try:
-  from libtbx.langchain.agent.graph_state import AgentState
-  from libtbx.langchain.agent.graph_nodes import (
+# Import from libtbx.langchain
+from libtbx.langchain.agent.graph_state import AgentState
+from libtbx.langchain.agent.graph_nodes import (
     perceive, plan, build, validate, fallback, output_node
-  )
-except ImportError:
-  # Fallback for local testing
-  from graph_state import AgentState
-  from graph_nodes import perceive, plan, build, validate, fallback, output_node
+)
 
 
 def route_after_validate(state):
   """
   Conditional Edge Logic after Validate node.
-  
+
   Routes to:
   - "output": if stop flag set or validation passed
   - "plan": if validation failed and attempts < 3 (retry)
@@ -41,9 +36,9 @@ def route_after_validate(state):
 def build_agent_graph():
   """
   Build and compile the LangGraph agent.
-  
+
   Graph topology:
-  
+
     perceive --> plan --> build --> validate --+--> output --> END
                   ^                            |
                   |  (retry if attempts < 3)   |
@@ -53,7 +48,7 @@ def build_agent_graph():
                                                |
                                                v
                                            fallback --> output --> END
-  
+
   Returns:
     Compiled LangGraph application
   """
@@ -97,21 +92,21 @@ def build_agent_graph():
 def invoke_agent(available_files, log_text="", history=None, user_advice="", max_cycles=20):
   """
   Convenience function to invoke the agent graph.
-  
+
   Args:
     available_files: List of files available on client
     log_text: Log text to analyze
     history: List of previous cycle records
     user_advice: User instructions
     max_cycles: Maximum cycles
-    
+
   Returns:
     dict: Final state with command and reasoning
   """
-  from graph_state import create_initial_state
-  
+  from libtbx.langchain.agent.graph_state import create_initial_state
+
   app = build_agent_graph()
-  
+
   initial_state = create_initial_state(
     available_files=available_files,
     log_text=log_text,
@@ -119,5 +114,5 @@ def invoke_agent(available_files, log_text="", history=None, user_advice="", max
     user_advice=user_advice,
     max_cycles=max_cycles
   )
-  
+
   return app.invoke(initial_state)

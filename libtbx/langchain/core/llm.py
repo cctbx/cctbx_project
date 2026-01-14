@@ -5,7 +5,7 @@ This module handles initialization of Language Models and Embedding models
 from different providers (Ollama, Google, OpenAI).
 
 Usage:
-    from libtbx.langchain.core import get_llm_and_embeddings
+    from libtbx.langchain.core.llm import get_llm_and_embeddings
 
     # Use local Ollama (recommended)
     llm, embeddings = get_llm_and_embeddings(provider='ollama')

@@ -7,8 +7,8 @@ from collections import Counter
 import sys
 import os
 
-from libtbx.langchain.core import get_llm_and_embeddings
-from libtbx.langchain.rag import load_persistent_db
+from libtbx.langchain.core.llm import get_llm_and_embeddings
+from libtbx.langchain.rag.retriever import load_persistent_db
 
 
 def run(db_dir="./docs_db", provider=None):

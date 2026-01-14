@@ -7,7 +7,7 @@ This module contains the main agent logic for:
 - Validating and fixing commands
 
 Usage:
-    from libtbx.langchain.agent import generate_next_move
+    from libtbx.langchain.agent.planner import generate_next_move
 
     result = await generate_next_move(run_history, llm, embeddings, db_dir = xx, cheap_llm = xxx)
 """
@@ -20,17 +20,19 @@ import json
 from langchain_core.output_parsers import JsonOutputParser
 
 from libtbx import group_args
-from libtbx.langchain.knowledge import (
+from libtbx.langchain.knowledge.phenix_programs import (
     get_phenix_program_list,
     get_keywords_as_phil_string,
+)
+from libtbx.langchain.knowledge.prompts import (
     get_strategic_planning_prompt,
     get_command_writer_prompt,
 )
-from libtbx.langchain.validation import (
+from libtbx.langchain.validation.core_validator import (
     validate_phenix_command,
     fix_command_syntax,
-    add_rfree_generation_if_needed,
 )
+from libtbx.langchain.validation.mtz_utils import add_rfree_generation_if_needed
 from libtbx.langchain.agent.memory import (
     get_memory_file_path,
     load_learned_memory,
