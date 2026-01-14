@@ -1,0 +1,233 @@
+# File Categories for PHENIX AI Agent
+#
+# This file defines how files are categorized based on their names and extensions.
+# Categories are used for:
+#   1. File selection in input_priorities (programs.yaml)
+#   2. Workflow state detection
+#   3. Determining which programs can run
+#
+# Each category has:
+#   - description: Human-readable explanation
+#   - extensions: File extensions that match this category (primary matching)
+#   - patterns: Filename patterns that match (for subcategorization)
+#   - excludes: Patterns that prevent matching even if other patterns match
+#   - subcategory_of: Parent category (file will be in both)
+
+# =============================================================================
+# PRIMARY FILE TYPES (by extension)
+# =============================================================================
+
+mtz:
+  description: "X-ray reflection data files"
+  extensions: [".mtz", ".sca", ".hkl", ".sdf"]
+  notes: "PHENIX can read multiple X-ray data formats"
+
+pdb:
+  description: "Atomic model coordinate files"
+  extensions: [".pdb"]
+  notes: "PDB files are further subcategorized by origin/purpose"
+
+sequence:
+  description: "Protein/nucleic acid sequence files"
+  extensions: [".fa", ".fasta", ".seq", ".dat"]
+  notes: "Required for AlphaFold prediction and some phasing methods"
+
+map:
+  description: "Electron density or cryo-EM map files"
+  extensions: [".mrc", ".ccp4", ".map"]
+  notes: "Parent category for full_map and half_map"
+
+cif:
+  description: "Crystallographic Information Files"
+  extensions: [".cif"]
+  notes: "Can be ligand restraints or model coordinates"
+
+# =============================================================================
+# MTZ SUBCATEGORIES
+# =============================================================================
+
+refined_mtz:
+  description: "MTZ files from refinement (contain R-free flags)"
+  subcategory_of: mtz
+  patterns:
+    - "*refine*"
+    - "*_001*"
+    - "*_002*"
+    - "*_003*"
+    # Short prefix format (e.g., 001_001.mtz from output.prefix=001)
+    - "[0-9][0-9][0-9]_[0-9][0-9][0-9].mtz"
+  notes: "Preferred for subsequent refinement cycles"
+
+# =============================================================================
+# MODEL (PDB) SUBCATEGORIES
+# =============================================================================
+
+phaser_output:
+  description: "Models from molecular replacement (Phaser)"
+  subcategory_of: pdb
+  patterns:
+    - "phaser*"
+    - "PHASER*"
+    - "*phaser*"
+  notes: "Positioned in unit cell, ready for refinement"
+
+refined:
+  description: "X-ray refined models"
+  subcategory_of: pdb
+  patterns:
+    - "*refine*"
+    # Short prefix format (e.g., 001_001.pdb from output.prefix=001)
+    - "[0-9][0-9][0-9]_[0-9][0-9][0-9].pdb"
+  excludes:
+    - "*real_space*"
+    - "*rsr*"
+  notes: "Output from phenix.refine, NOT real_space_refine"
+
+rsr_output:
+  description: "Real-space refined models (cryo-EM)"
+  subcategory_of: pdb
+  patterns:
+    - "*real_space_refined*"
+    - "*rsr_*"
+    - "*_rsr*"
+    - "*_rsr_*"
+  notes: "Output from phenix.real_space_refine"
+
+autobuild_output:
+  description: "Models from automated building"
+  subcategory_of: pdb
+  patterns:
+    - "*autobuild*"
+    - "*auto_build*"
+    - "*AutoBuild*"
+    - "*overall_best*"
+    - "*build*"
+    - "*built*"
+    - "*buccaneer*"
+    - "*arp_warp*"
+    - "*shelxe*trace*"
+  excludes:
+    - "*predict*"
+  notes: "Output from phenix.autobuild or similar programs"
+
+predicted:
+  description: "AI-predicted models (AlphaFold, etc.)"
+  subcategory_of: pdb
+  patterns:
+    - "*predict*"
+    - "*alphafold*"
+    - "*colabfold*"
+    - "*AF-*"
+    - "*ESMFold*"
+  notes: "Raw predictions, may need processing before MR"
+
+processed_predicted:
+  description: "Processed predicted models (trimmed, B-factors adjusted)"
+  subcategory_of: pdb
+  patterns:
+    - "*processed*predict*"
+    - "*processed*model*"
+  also_in: [predicted]
+  notes: "Ready for molecular replacement"
+
+docked:
+  description: "Models docked into cryo-EM maps"
+  subcategory_of: pdb
+  patterns:
+    - "*dock*map*"
+    - "*docked*"
+    - "placed_model*"
+    - "*_placed*"
+  notes: "Output from phenix.dock_in_map"
+
+intermediate_mr:
+  description: "Intermediate MR files (should not be used directly)"
+  subcategory_of: pdb
+  patterns:
+    - "run_mr*"
+    - "*mr.[0-9]*"
+    - "*_mr_*temp*"
+  notes: "Intermediate files from dock_in_map internal MR - never use for refinement"
+
+with_ligand:
+  description: "Models that include fitted ligands"
+  subcategory_of: pdb
+  patterns:
+    - "*with_ligand*"
+    - "*_liganded*"
+  notes: "Combined protein + ligand models"
+
+ligand_fit:
+  description: "Ligand fitting output models"
+  subcategory_of: pdb
+  patterns:
+    - "*ligand_fit*"
+    - "*ligandfit*"
+  notes: "Output from phenix.ligandfit"
+
+ligand_pdb:
+  description: "Standalone ligand coordinate files"
+  subcategory_of: pdb
+  patterns:
+    - "lig*.pdb"
+    - "ligand*.pdb"
+    - "LIG*.pdb"
+  excludes:
+    - "*ligand_fit*"
+    - "*ligandfit*"
+    - "*with_ligand*"
+  max_basename_length: 20
+  notes: "Small molecule coordinates for fitting"
+
+# =============================================================================
+# MAP SUBCATEGORIES
+# =============================================================================
+
+full_map:
+  description: "Full cryo-EM reconstruction maps"
+  subcategory_of: map
+  patterns:
+    - "*"
+  excludes:
+    - "*half*"
+    - "*_1.*"
+    - "*_2.*"
+    - "*_a.*"
+    - "*_b.*"
+    - "*-1.*"
+    - "*-2.*"
+  notes: "Combined map from all data"
+
+half_map:
+  description: "Cryo-EM half-maps (for FSC calculation)"
+  subcategory_of: map
+  patterns:
+    - "*half*"
+    - "*_1.*"
+    - "*_2.*"
+    - "*_a.*"
+    - "*_b.*"
+    - "*-1.*"
+    - "*-2.*"
+  notes: "Usually come in pairs, used for resolution estimation"
+
+# =============================================================================
+# CIF SUBCATEGORIES
+# =============================================================================
+
+ligand_cif:
+  description: "Ligand restraint/geometry files"
+  subcategory_of: cif
+  patterns:
+    - "*"
+  excludes:
+    - "*refine*"
+  notes: "Chemical restraints for ligand refinement"
+
+model_cif:
+  description: "Model coordinate files in mmCIF format"
+  subcategory_of: cif
+  patterns:
+    - "*refine*"
+  also_in: [pdb, refined]
+  notes: "mmCIF format model files from refinement"

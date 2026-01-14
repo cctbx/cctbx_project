@@ -10,19 +10,143 @@ This module provides:
 
 The actual workflow logic is defined in:
 - knowledge/workflows.yaml (state machine)
+- knowledge/file_categories.yaml (file categorization rules)
 - agent/workflow_engine.py (YAML interpreter)
 """
 
 from __future__ import absolute_import, division, print_function
 import os
 import re
+import fnmatch
 
 
 # =============================================================================
 # FILE CATEGORIZATION
 # =============================================================================
 
+def _load_category_rules():
+    """Load file category rules from YAML."""
+    try:
+        from libtbx.langchain.knowledge.yaml_loader import load_file_categories
+        return load_file_categories()
+    except ImportError:
+        # Fallback if not in libtbx environment
+        try:
+            import sys
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            parent_dir = os.path.dirname(script_dir)
+            if parent_dir not in sys.path:
+                sys.path.insert(0, parent_dir)
+            from knowledge.yaml_loader import load_file_categories
+            return load_file_categories()
+        except ImportError:
+            return None
+
+
+def _match_pattern(filename, pattern):
+    """Check if filename matches a pattern (supports * wildcards)."""
+    # Convert pattern to regex-friendly fnmatch pattern
+    return fnmatch.fnmatch(filename.lower(), pattern.lower())
+
+
 def _categorize_files(available_files):
+    """
+    Categorize files by type and purpose.
+
+    Uses rules from knowledge/file_categories.yaml.
+
+    Returns dict with keys:
+        mtz, pdb, sequence, map, ligand_cif, ligand_pdb,
+        phaser_output, refined, rsr_output, with_ligand, ligand_fit, predicted,
+        full_map, half_map (for cryo-EM half-maps), etc.
+    """
+    # Try to load YAML rules
+    category_rules = _load_category_rules()
+
+    if category_rules:
+        return _categorize_files_yaml(available_files, category_rules)
+    else:
+        # Fallback to hardcoded rules if YAML not available
+        return _categorize_files_hardcoded(available_files)
+
+
+def _categorize_files_yaml(available_files, rules):
+    """Categorize files using YAML-defined rules."""
+    # Initialize all categories from YAML
+    files = {cat: [] for cat in rules.keys()}
+
+    # Group categories by extension for primary matching
+    ext_to_categories = {}
+    for cat_name, cat_def in rules.items():
+        for ext in cat_def.get("extensions", []):
+            if ext not in ext_to_categories:
+                ext_to_categories[ext] = []
+            ext_to_categories[ext].append(cat_name)
+
+    for f in available_files:
+        f_lower = f.lower()
+        basename = os.path.basename(f_lower)
+        _, ext = os.path.splitext(f_lower)
+
+        # Step 1: Primary categorization by extension
+        primary_categories = ext_to_categories.get(ext, [])
+
+        for cat in primary_categories:
+            files[cat].append(f)
+
+        # Step 2: Subcategorization by patterns
+        for cat_name, cat_def in rules.items():
+            # Skip if this is a primary category (already handled)
+            if "extensions" in cat_def and not cat_def.get("subcategory_of"):
+                continue
+
+            # Check if parent category matches
+            parent = cat_def.get("subcategory_of")
+            if parent and f not in files.get(parent, []):
+                continue
+
+            # Check patterns
+            patterns = cat_def.get("patterns", [])
+            excludes = cat_def.get("excludes", [])
+            max_len = cat_def.get("max_basename_length")
+
+            # Check excludes first
+            excluded = False
+            for exc_pattern in excludes:
+                if _match_pattern(basename, exc_pattern):
+                    excluded = True
+                    break
+
+            if excluded:
+                continue
+
+            # Check max basename length
+            if max_len and len(os.path.splitext(basename)[0]) > max_len:
+                continue
+
+            # Check patterns
+            matched = False
+            for pattern in patterns:
+                if pattern == "*":
+                    # Wildcard matches all (used with excludes)
+                    matched = True
+                    break
+                if _match_pattern(basename, pattern):
+                    matched = True
+                    break
+
+            if matched and f not in files[cat_name]:
+                files[cat_name].append(f)
+
+                # Also add to "also_in" categories
+                for also_cat in cat_def.get("also_in", []):
+                    if also_cat in files and f not in files[also_cat]:
+                        files[also_cat].append(f)
+
+    return files
+
+
+def _categorize_files_hardcoded(available_files):
     """
     Categorize files by type and purpose.
 
@@ -50,6 +174,7 @@ def _categorize_files(available_files):
         "processed_predicted": [],
         "autobuild_output": [],
         "docked": [],  # dock_in_map output
+        "intermediate_mr": [],  # Intermediate MR files (never use for refinement)
     }
 
     # X-ray data file extensions (PHENIX can read these)
@@ -120,6 +245,13 @@ def _categorize_files(available_files):
 
             if 'dock' in basename and 'map' in basename:
                 files["docked"].append(f)
+            # Also match placed_model* from dock_in_map output
+            if basename.startswith('placed_model') or '_placed' in basename:
+                files["docked"].append(f)
+
+            # Intermediate MR files from dock_in_map - never use for refinement
+            if basename.startswith('run_mr') or fnmatch.fnmatch(basename, '*mr.[0-9]*'):
+                files["intermediate_mr"].append(f)
 
             if (basename.startswith('lig') and len(basename) < 20) or 'ligand' in basename:
                 if not any(x in basename for x in ['ligand_fit', 'ligandfit', 'with_ligand']):

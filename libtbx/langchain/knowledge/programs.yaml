@@ -38,7 +38,7 @@ phenix.xtriage:
       - twinning
       - twin_fraction
       - twin_law
-      - anomalous_signal
+      - anomalous_measurability
       - space_group
 
   command: "phenix.xtriage {mtz}"
@@ -56,15 +56,14 @@ phenix.xtriage:
     twin_law:
       pattern: 'Twin law\s*[=:]\s*([^\n]+)'
       type: string
-    anomalous_signal:
-      pattern: 'Anomalous signal.*?([0-9.]+)\s*[AÅ]'
-      type: float
     space_group:
       pattern: 'Space group\s*[=:]\s*([^\n]+)'
       type: string
     no_twinning_suspected:
       pattern: 'No twinning suspected'
       type: boolean
+    # Note: anomalous_measurability is extracted by log_parsers.py
+    # using table parsing, not a simple regex pattern
 
 
 phenix.mtriage:
@@ -173,6 +172,24 @@ phenix.predict_and_build:
         set_strategy: {stop_after_predict: true}
       message: "No data file provided, switching to prediction-only mode"
 
+    - name: resolution_when_building
+      description: "Resolution required when building (not just predicting)"
+      check:
+        any_of:
+          - strategy_equals: {stop_after_predict: true}
+          - has_strategy: resolution
+      fix:
+        auto_fill_resolution: true
+      message: "Resolution required for model building"
+
+  # Keywords in user advice that indicate this program should be preferred
+  user_advice_keywords:
+    - "alphafold"
+    - "predict"
+    - "prediction"
+    - "ai model"
+    - "predicted model"
+
   hints:
     - "If stop_after_predict=False (default), resolution is REQUIRED"
     - "Resolution can be found in xtriage/mtriage output"
@@ -197,6 +214,15 @@ phenix.phaser:
         extensions: [.fa, .fasta, .seq, .dat]
         flag: ""
 
+  # Input priorities for molecular replacement
+  # For search model: prefer processed predictions, then any PDB
+  input_priorities:
+    model:
+      categories: [processed_predicted, pdb]
+      exclude_categories: [predicted]  # Raw predictions should be processed first
+    mtz:
+      categories: [mtz]  # Original data, not refined MTZ
+
   outputs:
     files:
       - pattern: "PHASER.*.pdb"
@@ -217,6 +243,13 @@ phenix.phaser:
     component_copies:
       flag: "phaser.ensemble.copies={value}"
       type: int
+
+  # Keywords in user advice that indicate this program should be preferred
+  user_advice_keywords:
+    - "molecular replacement"
+    - "phaser"
+    - "mr"
+    - "search model"
 
   log_parsing:
     tfz:
@@ -254,6 +287,14 @@ phenix.autobuild:
         extensions: [.pdb]
         flag: "model="
         priority_patterns: [refine, PHASER]
+
+  # Input priorities for autobuild
+  input_priorities:
+    model:
+      categories: [refined, phaser_output, autobuild_output, pdb]
+      exclude_categories: [predicted]  # Raw predictions not suitable
+    mtz:
+      categories: [refined_mtz, mtz]  # Prefer MTZ with phases/R-free
 
   outputs:
     files:
@@ -332,6 +373,18 @@ phenix.autosol:
       flag: "nproc={value}"
       type: int
 
+  # Keywords in user advice that indicate this program should be preferred
+  user_advice_keywords:
+    - "experimental phasing"
+    - "sad phasing"
+    - "mad phasing"
+    - "autosol"
+    - "anomalous"
+    - "se-met"
+    - "selenomethionine"
+    - "sulfur sad"
+    - "s-sad"
+
   hints:
     - "Use for SAD/MAD when data has anomalous signal"
     - "Requires anomalous data (F+/F- or I+/I-)"
@@ -356,8 +409,19 @@ phenix.dock_in_map:
         extensions: [.fa, .fasta, .seq, .dat]
         flag: ""
 
+  # Input priorities for docking
+  # Prefer processed predictions (trimmed for docking) over raw predictions
+  input_priorities:
+    model:
+      categories: [processed_predicted, pdb]
+      exclude_categories: [predicted]  # Raw predictions should be processed first
+    map:
+      categories: [full_map, map]
+
   outputs:
     files:
+      - pattern: "placed_model*.pdb"
+        type: model
       - pattern: "*docked*.pdb"
         type: model
     metrics:
@@ -371,6 +435,15 @@ phenix.dock_in_map:
       type: float
       required: true
       hint: "REQUIRED - get from mtriage"
+
+  invariants:
+    - name: requires_resolution
+      description: "Resolution parameter is required for dock_in_map"
+      check:
+        has_strategy: resolution
+      fix:
+        auto_fill_resolution: true
+      message: "Resolution required for dock_in_map"
 
   hints:
     - "Resolution is REQUIRED - get it from mtriage"
@@ -424,6 +497,12 @@ phenix.process_predicted_model:
         extensions: [.pdb]
         flag: ""
 
+  # Input priorities - ONLY use raw predicted models, not processed ones
+  input_priorities:
+    model:
+      categories: [predicted, pdb]
+      exclude_categories: [processed_predicted, refined, phaser_output, rsr_output]
+
   outputs:
     files:
       - pattern: "*processed*.pdb"
@@ -446,16 +525,30 @@ phenix.refine:
       model:
         extensions: [.pdb, .cif]
         flag: ""
-        priority_patterns: [with_ligand, refine, PHASER]
       mtz:
         extensions: [.mtz, .sca, .hkl, .sdf]
         flag: ""
+
+  # Input priorities: which file categories to prefer for each input
+  # Categories are checked in order; first match wins
+  input_priorities:
+    model:
+      categories: [with_ligand, refined, phaser_output, autobuild_output, pdb]
+      exclude_categories: [predicted, intermediate_mr]  # Never use raw predictions or intermediate MR files
+    mtz:
+      categories: [refined_mtz, mtz]  # Prefer MTZ with R-free flags
 
   outputs:
     files:
       - pattern: "*_refine_*.pdb"
         type: model
       - pattern: "*_refine_*.mtz"
+        type: mtz
+      # Short prefix format (e.g., output.prefix=001 produces 001_001.pdb)
+      # These patterns match NNN_NNN.ext where N is a digit
+      - pattern: "[0-9][0-9][0-9]_[0-9][0-9][0-9].pdb"
+        type: model
+      - pattern: "[0-9][0-9][0-9]_[0-9][0-9][0-9].mtz"
         type: mtz
     metrics:
       - r_free
@@ -537,6 +630,14 @@ phenix.real_space_refine:
         from_session: true
         flag: "resolution="
 
+  # Input priorities for cryo-EM refinement
+  # Note: predicted and processed_predicted are excluded - must be docked first
+  # Note: intermediate_mr files are internal MR outputs from dock_in_map - never use
+  input_priorities:
+    model:
+      categories: [rsr_output, docked, with_ligand, autobuild_output, pdb]
+      exclude_categories: [predicted, processed_predicted, intermediate_mr]
+
   outputs:
     files:
       - pattern: "*_real_space_refined*.pdb"
@@ -564,6 +665,15 @@ phenix.real_space_refine:
     nproc:
       flag: "nproc={value}"
       type: int
+
+  invariants:
+    - name: requires_resolution
+      description: "Resolution parameter is required for real_space_refine"
+      check:
+        has_strategy: resolution
+      fix:
+        auto_fill_resolution: true
+      message: "Resolution required for real_space_refine"
 
   log_parsing:
     map_cc:

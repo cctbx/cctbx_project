@@ -537,11 +537,12 @@ def test_cryoem_has_prediction_stepwise():
 
     state = detect_workflow_state(history, files, maximum_automation=False)
 
-    # Stepwise: after predict_only, need to dock the model in map
+    # Stepwise: after predict_only, need to PROCESS the model first, then dock
+    # Workflow is: predict → process → dock
     assert state["state"] in ["cryoem_has_prediction", "dock_model"], \
-        "Expected cryoem_has_prediction, got %s" % state["state"]
-    assert "phenix.dock_in_map" in state["valid_programs"], \
-        "Expected dock_in_map, got %s" % state["valid_programs"]
+        "Expected cryoem_has_prediction or dock_model, got %s" % state["state"]
+    assert "phenix.process_predicted_model" in state["valid_programs"], \
+        "Expected process_predicted_model, got %s" % state["valid_programs"]
 
     print("  PASSED")
 
@@ -776,6 +777,39 @@ def test_file_categorization_edge_cases():
     print("  PASSED")
 
 
+def test_rsr_output_categorization():
+    """Test that real_space_refine outputs are categorized as rsr_output."""
+    print("Test: rsr_output_categorization")
+
+    # Various forms of RSR output filenames
+    files = [
+        "model_real_space_refined.pdb",
+        "protein_real_space_refined_001.pdb",
+        "rsr_cycle_5.pdb",
+        "output_rsr_final.pdb",
+        "model_rsr_001.pdb",
+    ]
+
+    cat = _categorize_files(files)
+
+    # All should be in rsr_output
+    for f in files:
+        assert f in cat["rsr_output"], "%s should be in rsr_output" % f
+
+    # None should be in refined (X-ray category)
+    for f in files:
+        assert f not in cat["refined"], "%s should NOT be in refined" % f
+
+    # Test that X-ray refine outputs are NOT in rsr_output
+    xray_files = ["refine_001.pdb", "model_refine_5.pdb"]
+    cat2 = _categorize_files(xray_files)
+    for f in xray_files:
+        assert f not in cat2["rsr_output"], "%s should NOT be in rsr_output" % f
+        assert f in cat2["refined"], "%s should be in refined" % f
+
+    print("  PASSED")
+
+
 def test_history_analysis():
     """Test history analysis helper."""
     print("Test: history_analysis")
@@ -910,6 +944,7 @@ def run_all_tests():
     test_mixed_xray_cryoem_files()
     test_file_categorization()
     test_file_categorization_edge_cases()
+    test_rsr_output_categorization()
     test_history_analysis()
     test_format_workflow_for_prompt()
     test_dock_in_map_option()

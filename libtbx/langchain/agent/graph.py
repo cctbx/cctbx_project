@@ -103,7 +103,7 @@ def invoke_agent(available_files, log_text="", history=None, user_advice="", max
   Returns:
     dict: Final state with command and reasoning
   """
-  from libtbx.langchain.agent.graph_state import create_initial_state
+  from graph_state import create_initial_state
 
   app = build_agent_graph()
 

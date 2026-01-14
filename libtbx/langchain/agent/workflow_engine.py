@@ -108,14 +108,27 @@ class WorkflowEngine:
             "resolution": self._get_metric(analysis, history_info, "resolution", "resolution"),
             "tfz": self._get_metric(analysis, history_info, "tfz", "last_tfz"),
 
-            # Special conditions
-            "has_anomalous": history_info.get("has_anomalous", False),
-            "strong_anomalous": history_info.get("strong_anomalous", False),
-            "anomalous_measurability": history_info.get("anomalous_measurability"),
-            "has_twinning": history_info.get("has_twinning", False),
-            "twin_law": history_info.get("twin_law"),
-            "anomalous_resolution": history_info.get("anomalous_resolution"),
+            # Special conditions - check both current analysis and history
+            "has_anomalous": self._get_bool(analysis, history_info, "has_anomalous"),
+            "strong_anomalous": self._get_bool(analysis, history_info, "strong_anomalous"),
+            "anomalous_measurability": self._get_metric(analysis, history_info, "anomalous_measurability", "anomalous_measurability"),
+            "has_twinning": self._get_bool(analysis, history_info, "has_twinning"),
+            "twin_law": self._get_metric(analysis, history_info, "twin_law", "twin_law"),
+            "twin_fraction": self._get_metric(analysis, history_info, "twin_fraction", "twin_fraction"),
+            "anomalous_resolution": self._get_metric(analysis, history_info, "anomalous_resolution", "anomalous_resolution"),
         }
+
+        # Derive has_twinning from twin_fraction if not explicitly set
+        if not context["has_twinning"] and context.get("twin_fraction"):
+            # Twinning threshold is 0.20 (from workflows.yaml)
+            if context["twin_fraction"] > 0.20:
+                context["has_twinning"] = True
+
+        # Derive strong_anomalous from measurability if not explicitly set
+        if not context["strong_anomalous"] and context.get("anomalous_measurability"):
+            if context["anomalous_measurability"] > 0.10:
+                context["strong_anomalous"] = True
+                context["has_anomalous"] = True
 
         # Compute derived conditions
         context["model_is_good"] = self._is_model_good(context)
@@ -127,6 +140,12 @@ class WorkflowEngine:
         if analysis and analysis.get(analysis_key):
             return analysis[analysis_key]
         return history_info.get(history_key)
+
+    def _get_bool(self, analysis, history_info, key):
+        """Get boolean from analysis or history (True if either is True)."""
+        if analysis and analysis.get(key):
+            return True
+        return history_info.get(key, False)
 
     def _has_search_model(self, files):
         """Check if there's a search model (not from refinement/prediction)."""
@@ -594,6 +613,9 @@ class WorkflowEngine:
         phase_info = self.detect_phase(experiment_type, context)
         valid_programs = self.get_valid_programs(experiment_type, phase_info, context)
 
+        # Get priority_when info for each valid program
+        program_priorities = self._get_program_priorities(experiment_type, phase_info, context)
+
         # Map YAML phase name to original state name for compatibility
         phase_name = phase_info.get("phase", "unknown")
         state_name = self._map_phase_to_state(phase_name, experiment_type)
@@ -621,12 +643,61 @@ class WorkflowEngine:
             "state": state_name,  # Use mapped state name
             "experiment_type": experiment_type,
             "valid_programs": valid_programs,
+            "program_priorities": program_priorities,  # NEW: priority_when triggers
             "reason": reason,
             "conditions": {},
             "phase_info": phase_info,
             "context": context,
             "resolution": context.get("resolution"),
         }
+
+    def _get_program_priorities(self, experiment_type, phase_info, context):
+        """
+        Get programs that should be prioritized based on priority_when conditions.
+
+        Args:
+            experiment_type: "xray" or "cryoem"
+            phase_info: Phase detection result
+            context: Context dict
+
+        Returns:
+            list: Programs that should be prioritized, in priority order
+        """
+        phases = get_workflow_phases(experiment_type)
+        phase_name = phase_info.get("phase", "")
+        phase_def = phases.get(phase_name, {})
+
+        prioritized = []
+        phase_programs = phase_def.get("programs", [])
+
+        for prog_entry in phase_programs:
+            if isinstance(prog_entry, dict):
+                prog_name = prog_entry.get("program")
+                priority_when = prog_entry.get("priority_when")
+
+                if prog_name and priority_when:
+                    # Check if priority_when condition is met
+                    if self._check_priority_condition(priority_when, context):
+                        prioritized.append(prog_name)
+
+        return prioritized
+
+    def _check_priority_condition(self, condition, context):
+        """
+        Check if a priority_when condition is satisfied.
+
+        Args:
+            condition: Condition string (e.g., "strong_anomalous")
+            context: Context dict
+
+        Returns:
+            bool: True if condition is met
+        """
+        if condition == "strong_anomalous":
+            return context.get("strong_anomalous", False)
+
+        # Add more conditions as needed
+        return False
 
 
 # =============================================================================

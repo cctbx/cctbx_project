@@ -36,7 +36,7 @@ xray:
       extracts:
         - resolution
         - twinning
-        - anomalous_signal
+        - anomalous_measurability
 
     # Phase 2: Get an initial model
     obtain_model:
@@ -59,8 +59,10 @@ xray:
         - program: phenix.autosol
           conditions:
             - has: sequence
-            - has: anomalous_data
+            - has: anomalous
             - not_done: autosol
+          # Becomes highest priority when strong anomalous signal detected
+          priority_when: strong_anomalous
           hint: "Use for SAD/MAD experimental phasing when anomalous signal extends to < 4.0Å"
 
       transitions:

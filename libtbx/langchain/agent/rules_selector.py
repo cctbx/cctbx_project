@@ -113,7 +113,8 @@ class RulesSelector:
             state_name,
             files,
             history_info,
-            metrics_trend
+            metrics_trend,
+            workflow_state
         )
 
         if program is None:
@@ -146,8 +147,13 @@ class RulesSelector:
         # the reasoning reflects any fixes applied
         from libtbx.langchain.agent.template_builder import TemplateBuilder
         builder = TemplateBuilder()
+        invariant_context = {
+            "resolution": resolution,
+            "workflow_state": workflow_state,
+        }
         selected_files, strategy, warnings = builder.validate_and_fix(
-            program, selected_files, strategy
+            program, selected_files, strategy,
+            context=invariant_context
         )
         # warnings are logged if needed, but reasoning is built with fixed values
 
@@ -213,7 +219,7 @@ class RulesSelector:
     # =========================================================================
 
     def _select_program(self, valid_programs, experiment_type, state_name,
-                       files, history_info, metrics_trend):
+                       files, history_info, metrics_trend, workflow_state):
         """
         Select the best program from valid options.
 
@@ -236,20 +242,28 @@ class RulesSelector:
         # Multiple candidates - use priority rules
         return self._prioritize_programs(
             candidates, experiment_type, state_name,
-            files, history_info, metrics_trend
+            files, history_info, metrics_trend, workflow_state
         )
 
     def _prioritize_programs(self, candidates, experiment_type, state_name,
-                            files, history_info, metrics_trend):
+                            files, history_info, metrics_trend, workflow_state):
         """
         Prioritize among multiple valid programs.
 
         Priority rules:
-        1. Validation programs when metrics are good
-        2. Refinement programs when model needs improvement
-        3. Building programs when model is missing
-        4. Analysis programs at start
+        1. Programs with priority_when conditions met (from workflow YAML)
+        2. Validation programs when metrics are good
+        3. Refinement programs when model needs improvement
+        4. Building programs when model is missing
+        5. Analysis programs at start
         """
+        # First check for programs with priority_when conditions met
+        # These are defined in workflows.yaml and checked by workflow_engine
+        program_priorities = workflow_state.get("program_priorities", [])
+        for prog in program_priorities:
+            if prog in candidates:
+                return prog, "Priority condition met (from workflow)"
+
         # Define priority order by context
         if state_name in ("analyze", "xray_initial", "cryoem_initial"):
             # At start: prefer analysis
@@ -285,14 +299,8 @@ class RulesSelector:
             ]
 
         elif state_name in ("obtain_model", "molecular_replacement"):
-            # Model building: check for strong anomalous data first
-            # If strong anomalous signal detected, prefer experimental phasing
-            if history_info.get("strong_anomalous") or history_info.get("anomalous_measurability", 0) > 0.10:
-                if "phenix.autosol" in candidates:
-                    measurability = history_info.get("anomalous_measurability", 0)
-                    return "phenix.autosol", "Strong anomalous signal detected (measurability=%.3f), using experimental phasing" % measurability
-
-            # Otherwise use normal priority
+            # Model building priority
+            # Note: strong_anomalous check is now handled by program_priorities above
             if files.get("sequence") and not files.get("pdb"):
                 priority = [
                     "phenix.predict_and_build",
@@ -332,25 +340,26 @@ class RulesSelector:
 
         Filters valid_programs based on user preferences. Does not add programs
         that aren't already valid - the workflow state machine controls validity.
+
+        Keywords are now defined in programs.yaml under user_advice_keywords.
         """
         advice_lower = user_advice.lower()
 
-        # Check for specific program mentions
+        # Check for specific program mentions (e.g., "use phaser", "run refine")
         for prog in valid_programs:
             prog_name = prog.replace("phenix.", "").replace("_", " ")
             if prog_name in advice_lower or prog.lower() in advice_lower:
                 return [prog]  # User specifically wants this
 
-        # Check for experimental phasing keywords - prefer autosol if it's valid
-        experimental_keywords = ["experimental phasing", "sad phasing", "mad phasing",
-                                 "autosol", "anomalous", "se-met", "sulfur sad"]
-        if any(kw in advice_lower for kw in experimental_keywords):
-            if "phenix.autosol" in valid_programs:
-                return ["phenix.autosol"]
-            # If autosol not yet valid (e.g., xtriage hasn't run),
-            # let normal workflow proceed - xtriage will detect anomalous signal
+        # Check each valid program's keywords from YAML
+        for prog in valid_programs:
+            keywords = self.program_registry.get_user_advice_keywords(prog)
+            if keywords:
+                for kw in keywords:
+                    if kw.lower() in advice_lower:
+                        return [prog]
 
-        # Check for keywords
+        # Generic keyword fallbacks for common cases
         if "refine" in advice_lower:
             refined = [p for p in valid_programs if "refine" in p]
             if refined:
@@ -474,62 +483,74 @@ class RulesSelector:
             program: Program name (for context-specific selection)
             experiment_type: 'xray' or 'cryoem'
         """
-        # For models, build prioritized list (order matters for selection)
+        # Check if program has YAML-defined input priorities
+        priorities = self.program_registry.get_input_priorities(program, input_name)
+        priority_categories = priorities.get("categories", [])
+        exclude_categories = priorities.get("exclude_categories", [])
+
+        # If we have YAML-defined priorities, use them
+        if priority_categories:
+            result_files = []
+            for category in priority_categories:
+                cat_files = files.get(category, [])
+                for f in cat_files:
+                    if f not in result_files:
+                        # Check exclusions
+                        excluded = False
+                        for excl_cat in exclude_categories:
+                            if f in files.get(excl_cat, []):
+                                excluded = True
+                                break
+                        if not excluded:
+                            result_files.append(f)
+
+            # Also add any files from pdb category that aren't in excluded categories
+            if input_name == "model" and "pdb" in priority_categories:
+                for f in files.get("pdb", []):
+                    if f not in result_files:
+                        basename = os.path.basename(f).lower()
+                        excluded = False
+                        for excl_cat in exclude_categories:
+                            # Check by category and by pattern
+                            if f in files.get(excl_cat, []):
+                                excluded = True
+                                break
+                            if excl_cat == "predicted" and 'predicted' in basename and 'processed' not in basename:
+                                excluded = True
+                                break
+                        if not excluded:
+                            result_files.append(f)
+
+            if result_files:
+                return result_files
+
+        # Fallback: simple default mappings for programs without input_priorities
+        # Most programs should have input_priorities defined in programs.yaml
+
+        # Default model priority (used if no YAML priorities defined)
         if input_name == "model":
-            # For real_space_refine in cryo-EM, predicted models must be DOCKED first
-            # They can't be refined until placed in the map
-            exclude_unplaced_predictions = (
-                program == "phenix.real_space_refine" and
-                experiment_type == "cryoem"
-            )
-
-            # Priority: with_ligand > refined > phaser_output > rsr_output > docked >
-            #           processed_predicted (if allowed) > autobuild > other pdb
-            # NOTE: Raw predicted models are ALWAYS excluded from refinement
+            # Generic fallback: prefer refined/placed models over raw predictions
             model_files = []
-            # Most preferred: models with ligands added
-            model_files.extend(files.get("with_ligand", []))
-            # Then: refined output (X-ray)
-            model_files.extend(files.get("refined", []))
-            # Then: Phaser output (X-ray)
-            model_files.extend(files.get("phaser_output", []))
-            # Then: RSR output (cryo-EM refined)
-            model_files.extend(files.get("rsr_output", []))
-            # Then: docked models (cryo-EM placed predictions)
-            model_files.extend(files.get("docked", []))
-
-            # Processed predictions: only include if not doing cryo-EM refinement
-            # (they need to be docked first for cryo-EM)
-            if not exclude_unplaced_predictions:
-                model_files.extend(files.get("processed_predicted", []))
-
-            # Then: autobuild output
-            model_files.extend(files.get("autobuild_output", []))
-
-            # Finally: any other PDB (but NOT raw predictions)
+            for cat in ["with_ligand", "refined", "phaser_output", "rsr_output",
+                        "docked", "processed_predicted", "autobuild_output"]:
+                model_files.extend(files.get(cat, []))
+            # Add generic PDBs, excluding raw predictions
             for f in files.get("pdb", []):
                 basename = os.path.basename(f).lower()
-                # Exclude raw predicted models always
-                # Exclude processed predictions for cryo-EM refinement
-                if 'predicted' in basename:
-                    if 'processed' in basename and not exclude_unplaced_predictions:
+                if 'predicted' not in basename or 'processed' in basename:
+                    if f not in model_files:
                         model_files.append(f)
-                    # else: skip predicted models
-                else:
-                    model_files.append(f)
             return model_files
 
-        # For MTZ/data, prefer refined MTZ files (they have R-free flags)
+        # Default MTZ priority
         if input_name in ("mtz", "data"):
-            # Refined MTZ first (has R-free flags), then all MTZ
-            mtz_files = []
-            mtz_files.extend(files.get("refined_mtz", []))
-            # Add other MTZ files that aren't already in the list
+            mtz_files = list(files.get("refined_mtz", []))
             for f in files.get("mtz", []):
                 if f not in mtz_files:
                     mtz_files.append(f)
             return mtz_files
 
+        # Simple mappings for other input types
         mapping = {
             "sequence": files.get("sequence", []),
             "map": files.get("full_map", []) + files.get("map", []),
@@ -608,9 +629,9 @@ class RulesSelector:
         """
         strategy = {}
 
-        # Resolution
+        # Resolution (round to 1 decimal place)
         if resolution:
-            strategy["resolution"] = resolution
+            strategy["resolution"] = round(float(resolution), 1)
 
         # Get cycle number for output prefix
         cycle_number = history_info.get("cycle_number", 1)

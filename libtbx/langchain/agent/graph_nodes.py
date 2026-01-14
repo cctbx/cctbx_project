@@ -809,6 +809,23 @@ def build(state):
                 strategy["twin_law"] = workflow_state["twin_law"]
                 state = _log(state, "BUILD: Adding twin law %s (twinning detected)" % workflow_state["twin_law"])
 
+    # === OUTPUT PREFIX (prevent long filename accumulation) ===
+    # Use cycle number as prefix to avoid PHASER.1_refine_001_refine_001_... filenames
+    if program in ("phenix.refine", "phenix.real_space_refine"):
+        if "output_prefix" not in strategy:
+            history_info = state.get("history_info", {})
+            cycle_number = history_info.get("cycle_number", 1)
+            # Also count from history if cycle_number not set
+            if cycle_number <= 1:
+                history = state.get("history", [])
+                refine_count = sum(1 for h in history
+                                   if isinstance(h, dict) and
+                                   h.get("program") in ("phenix.refine", "phenix.real_space_refine") and
+                                   h.get("result") == "SUCCESS")
+                cycle_number = refine_count + 1
+            strategy["output_prefix"] = "%03d" % cycle_number
+            state = _log(state, "BUILD: Using output_prefix=%03d to avoid long filenames" % cycle_number)
+
     # === HIGH RESOLUTION SUGGESTIONS (just log, don't auto-apply) ===
     if program == "phenix.refine" and workflow_state.get("high_res_suggestions"):
         for suggestion in workflow_state["high_res_suggestions"]:
@@ -859,29 +876,9 @@ def build(state):
 
         return None, None
 
-    # predict_and_build needs resolution when building (not just predicting)
-    if program == "phenix.predict_and_build":
-        if "resolution" not in strategy or strategy.get("resolution") is None:
-            resolution, source = find_resolution()
-            if resolution:
-                strategy["resolution"] = round(resolution, 2)
-                state = _log(state, "BUILD: Using resolution %.2fÅ from %s for predict_and_build" % (resolution, source))
-
-    # real_space_refine requires resolution parameter
-    if program == "phenix.real_space_refine":
-        if "resolution" not in strategy or strategy.get("resolution") is None:
-            resolution, source = find_resolution()
-            if resolution:
-                strategy["resolution"] = round(resolution, 2)
-                state = _log(state, "BUILD: Using resolution %.2fÅ from %s for real_space_refine" % (resolution, source))
-
-    # dock_in_map requires resolution parameter
-    if program == "phenix.dock_in_map":
-        if "resolution" not in strategy or strategy.get("resolution") is None:
-            resolution, source = find_resolution()
-            if resolution:
-                strategy["resolution"] = round(resolution, 2)
-                state = _log(state, "BUILD: Using resolution %.2fÅ from %s for dock_in_map" % (resolution, source))
+    # NOTE: Resolution requirements for predict_and_build, real_space_refine,
+    # and dock_in_map are now handled by invariants in programs.yaml.
+    # The validate_and_fix() call below will auto-fill resolution from context.
 
     # Correct file paths from LLM - map basenames to actual paths
     available_files = state.get("available_files", [])
@@ -947,32 +944,57 @@ def build(state):
     # === OVERRIDE MODEL FOR REFINEMENT PROGRAMS ===
     # For refine/real_space_refine, ensure we use the MOST RECENT refined model
     # The LLM often picks older models incorrectly
+    # Priority order is now defined in programs.yaml input_priorities
     if program in ("phenix.refine", "phenix.real_space_refine"):
         workflow_state = state.get("workflow_state", {})
         categorized_files = workflow_state.get("categorized_files", {})
 
-        # Find best model from categories (priority order matters)
+        # Get input priorities from YAML
+        priorities = builder._registry.get_input_priorities(program, "model")
+        priority_categories = priorities.get("categories", [])
+        exclude_categories = priorities.get("exclude_categories", [])
+
+        # Find best model from categories (priority order from YAML)
         best_model = None
         best_source = None
 
-        if program == "phenix.real_space_refine":
-            # Cryo-EM: prefer rsr_output > docked > with_ligand
-            for cat, label in [("rsr_output", "RSR output"),
-                               ("docked", "docked model"),
-                               ("with_ligand", "model with ligand")]:
-                if categorized_files.get(cat):
-                    best_model = categorized_files[cat][0]
-                    best_source = label
+        if priority_categories:
+            for cat in priority_categories:
+                cat_files = categorized_files.get(cat, [])
+                if cat_files:
+                    # Check exclusions
+                    for f in cat_files:
+                        excluded = False
+                        for excl_cat in exclude_categories:
+                            if f in categorized_files.get(excl_cat, []):
+                                excluded = True
+                                break
+                        if not excluded:
+                            best_model = f
+                            best_source = cat.replace("_", " ")
+                            break
+                if best_model:
                     break
         else:
-            # X-ray: prefer refined > phaser_output > with_ligand
-            for cat, label in [("refined", "refined model"),
-                               ("phaser_output", "Phaser output"),
-                               ("with_ligand", "model with ligand")]:
-                if categorized_files.get(cat):
-                    best_model = categorized_files[cat][0]
-                    best_source = label
-                    break
+            # Fallback: use hardcoded priorities if YAML not defined
+            if program == "phenix.real_space_refine":
+                # Cryo-EM: prefer rsr_output > docked > with_ligand
+                for cat, label in [("rsr_output", "RSR output"),
+                                   ("docked", "docked model"),
+                                   ("with_ligand", "model with ligand")]:
+                    if categorized_files.get(cat):
+                        best_model = categorized_files[cat][0]
+                        best_source = label
+                        break
+            else:
+                # X-ray: prefer refined > phaser_output > with_ligand
+                for cat, label in [("refined", "refined model"),
+                                   ("phaser_output", "Phaser output"),
+                                   ("with_ligand", "model with ligand")]:
+                    if categorized_files.get(cat):
+                        best_model = categorized_files[cat][0]
+                        best_source = label
+                        break
 
         # Override LLM's choice if we found a better model
         if best_model:
@@ -1009,27 +1031,49 @@ def build(state):
                 required_inputs = []
 
             # Auto-fill missing required files from categorized_files
+            # Use YAML input_priorities if defined, otherwise simple defaults
             for input_name in required_inputs:
                 if input_name not in corrected_files:
-                    # Try to find from categorized files
                     file_found = None
-                    if input_name == "mtz":
-                        # Prefer refined MTZ (has R-free flags) over original
-                        if categorized_files.get("refined_mtz"):
-                            file_found = categorized_files["refined_mtz"][0]
-                        elif categorized_files.get("mtz"):
-                            file_found = categorized_files["mtz"][0]
-                    elif input_name == "model":
-                        # Priority: refined > phaser > rsr > processed_predicted > pdb
-                        for cat in ["refined", "phaser_output", "rsr_output",
-                                   "processed_predicted", "pdb"]:
-                            if categorized_files.get(cat):
-                                file_found = categorized_files[cat][0]
+
+                    # Try to get priorities from YAML
+                    priorities = builder._registry.get_input_priorities(program, input_name)
+                    priority_categories = priorities.get("categories", [])
+                    exclude_categories = priorities.get("exclude_categories", [])
+
+                    if priority_categories:
+                        # Use YAML-defined priorities
+                        for cat in priority_categories:
+                            cat_files = categorized_files.get(cat, [])
+                            for f in cat_files:
+                                # Check exclusions
+                                excluded = False
+                                for excl_cat in exclude_categories:
+                                    if f in categorized_files.get(excl_cat, []):
+                                        excluded = True
+                                        break
+                                if not excluded:
+                                    file_found = f
+                                    break
+                            if file_found:
                                 break
-                    elif input_name == "sequence" and categorized_files.get("sequence"):
-                        file_found = categorized_files["sequence"][0]
-                    elif input_name == "map" and categorized_files.get("full_map"):
-                        file_found = categorized_files["full_map"][0]
+                    else:
+                        # Simple fallback for common input types
+                        if input_name == "mtz":
+                            if categorized_files.get("refined_mtz"):
+                                file_found = categorized_files["refined_mtz"][0]
+                            elif categorized_files.get("mtz"):
+                                file_found = categorized_files["mtz"][0]
+                        elif input_name == "model":
+                            for cat in ["refined", "phaser_output", "rsr_output",
+                                       "processed_predicted", "pdb"]:
+                                if categorized_files.get(cat):
+                                    file_found = categorized_files[cat][0]
+                                    break
+                        elif input_name == "sequence" and categorized_files.get("sequence"):
+                            file_found = categorized_files["sequence"][0]
+                        elif input_name == "map" and categorized_files.get("full_map"):
+                            file_found = categorized_files["full_map"][0]
 
                     if file_found:
                         corrected_files[input_name] = file_found
@@ -1037,9 +1081,19 @@ def build(state):
                             input_name, os.path.basename(file_found)))
 
             # Validate invariants and apply fixes (single place for all program constraints)
+            # Build context for auto-fills (resolution, etc.)
+            # Use find_resolution() to get resolution from all possible sources
+            found_resolution, res_source = find_resolution()
+            invariant_context = {
+                "session_resolution": state.get("session_resolution"),
+                "resolution": found_resolution,  # From find_resolution() priority order
+                "resolution_source": res_source,
+                "workflow_state": workflow_state,
+            }
             corrected_files, strategy, warnings = builder.validate_and_fix(
                 program, corrected_files, strategy,
-                log=lambda msg: None  # Could log to state if needed
+                log=lambda msg: None,  # Could log to state if needed
+                context=invariant_context
             )
             for warning in warnings:
                 state = _log(state, "BUILD: %s" % warning)
@@ -1236,13 +1290,23 @@ def fallback(state):
         if f not in prioritized_files:
             prioritized_files.insert(0, f)  # Add at front for priority
 
+    # Build context for invariant validation (resolution, etc.)
+    # This ensures programs like real_space_refine get resolution auto-filled
+    fallback_context = {
+        "session_resolution": state.get("session_resolution"),
+        "resolution": state.get("session_resolution"),  # Use session resolution
+        "workflow_state": workflow_state,
+    }
+
     # Try each valid program until one works without duplicating
     for program in runnable:
         # For refine, try with prioritized files (recent outputs first)
         if "refine" in program.lower():
-            cmd = builder.build_command_for_program(program, prioritized_files)
+            cmd = builder.build_command_for_program(program, prioritized_files,
+                                                    context=fallback_context)
         else:
-            cmd = builder.build_command_for_program(program, available_files)
+            cmd = builder.build_command_for_program(program, available_files,
+                                                    context=fallback_context)
 
         if cmd and cmd not in previous_commands:
             state = _log(state, "FALLBACK: Built command for %s" % program)
@@ -1260,7 +1324,8 @@ def fallback(state):
     # If all valid programs would duplicate, try autobuild ONLY if it's valid for this state
     sequence_files = [f for f in available_files if f.endswith(('.fa', '.fasta', '.seq'))]
     if sequence_files and "phenix.autobuild" in valid_programs and "phenix.autobuild" not in runnable:
-        cmd = builder.build_command_for_program("phenix.autobuild", available_files)
+        cmd = builder.build_command_for_program("phenix.autobuild", available_files,
+                                                context=fallback_context)
         if cmd and cmd not in previous_commands:
             state = _log(state, "FALLBACK: Trying autobuild as alternative")
             return {

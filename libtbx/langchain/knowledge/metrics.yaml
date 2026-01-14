@@ -150,15 +150,35 @@ llg:
 
 
 rfz:
-  description: "Rotation Function Z-score"
+  description: "Rotation Function Z-score - measures rotation search quality"
   type: float
   direction: maximize
   unit: ""
   format: "{:.1f}"
 
+  thresholds:
+    good: 6.0       # Strong rotation signal
+    acceptable: 4.0  # Promising rotation
+    poor: 3.0       # Marginal
+
+  interpretation:
+    - range: [8, 999]
+      meaning: "Excellent - very strong rotation signal"
+    - range: [5, 8]
+      meaning: "Good - clear rotation solution"
+    - range: [3, 5]
+      meaning: "Marginal - may need better search model"
+    - range: [0, 3]
+      meaning: "Poor - rotation search failed"
+
   extraction:
     patterns:
       - 'RFZ=([0-9.]+)'
+
+  notes: |
+    RFZ is evaluated before TFZ during molecular replacement.
+    A good RFZ indicates the search model orientation is correct.
+    TFZ is generally more decisive for solution quality.
 
 
 # -----------------------------------------------------------------------------
@@ -365,24 +385,29 @@ twin_law:
       - 'Twin law\s*[=:]\s*([^\n]+)'
 
 
-anomalous_signal:
-  description: "Resolution to which anomalous signal extends"
+anomalous_measurability:
+  description: "Measurability of anomalous signal from xtriage (0-1 scale)"
   type: float
-  direction: minimize  # Lower = stronger signal to higher resolution
-  unit: "Å"
-  format: "{:.1f} Å"
+  direction: maximize  # Higher = stronger anomalous signal
+  unit: ""
+  format: "{:.3f}"
+
+  thresholds:
+    good: 0.10       # Strong signal, good for SAD/MAD
+    acceptable: 0.05  # Moderate signal, SAD may be possible
 
   interpretation:
-    - range: [0, 2.5]
+    - range: [0.10, 1.0]
       meaning: "Strong signal - good for SAD/MAD"
-    - range: [2.5, 4.0]
+    - range: [0.05, 0.10]
       meaning: "Moderate signal - SAD possible"
-    - range: [4.0, 999]
+    - range: [0, 0.05]
       meaning: "Weak signal - SAD unlikely to succeed"
 
-  extraction:
-    patterns:
-      - 'Anomalous signal.*?([0-9.]+)\s*[AÅ]'
+  notes: |
+    Measurability indicates the fraction of anomalous differences that are
+    statistically significant. Values above 0.10 indicate strong anomalous
+    signal suitable for experimental phasing.
 
 
 # -----------------------------------------------------------------------------

@@ -35,6 +35,7 @@ except ImportError:
 _PROGRAMS = None
 _WORKFLOWS = None
 _METRICS = None
+_FILE_CATEGORIES = None
 
 
 # =============================================================================
@@ -112,6 +113,43 @@ def load_metrics(force_reload=False):
     if _METRICS is None or force_reload:
         _METRICS = _load_yaml_file("metrics.yaml")
     return _METRICS
+
+
+def load_file_categories(force_reload=False):
+    """
+    Load file category definitions from file_categories.yaml.
+
+    Returns:
+        dict: Category name -> category definition
+    """
+    global _FILE_CATEGORIES
+    if _FILE_CATEGORIES is None or force_reload:
+        _FILE_CATEGORIES = _load_yaml_file("file_categories.yaml")
+    return _FILE_CATEGORIES
+
+
+def get_file_category(category_name):
+    """
+    Get definition for a specific file category.
+
+    Args:
+        category_name: Name of the category (e.g., "refined", "rsr_output")
+
+    Returns:
+        dict: Category definition or None if not found
+    """
+    categories = load_file_categories()
+    return categories.get(category_name)
+
+
+def get_all_file_categories():
+    """
+    Get all file category names.
+
+    Returns:
+        list: List of category names
+    """
+    return list(load_file_categories().keys())
 
 
 # =============================================================================
@@ -225,6 +263,34 @@ def get_program_outputs(program_name):
     if program:
         return program.get("outputs", {})
     return {}
+
+
+def get_all_output_file_patterns():
+    """
+    Get all output file patterns from all programs.
+
+    This is used by utilities.scan_directory_for_output_files() to find
+    output files produced by any PHENIX program.
+
+    Returns:
+        list: Unique glob patterns for output files (e.g., ["*_refine_*.pdb", "PHASER.*.pdb"])
+    """
+    programs = load_programs()
+    patterns = set()
+
+    for prog_name, prog_def in programs.items():
+        outputs = prog_def.get("outputs", {})
+        files = outputs.get("files", [])
+
+        for file_def in files:
+            if isinstance(file_def, dict):
+                pattern = file_def.get("pattern")
+                if pattern:
+                    patterns.add(pattern)
+            elif isinstance(file_def, str):
+                patterns.add(file_def)
+
+    return list(patterns)
 
 
 def get_program_log_patterns(program_name):

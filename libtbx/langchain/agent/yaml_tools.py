@@ -122,12 +122,25 @@ def print_info(text):
 # =============================================================================
 
 def find_yaml_files(directory):
-    """Find all YAML files in a directory."""
-    yaml_files = []
-    knowledge_dir = os.path.join(directory, "knowledge")
+    """Find all YAML files in a directory.
 
+    Searches for YAML files in:
+    1. <directory>/knowledge/ (if exists)
+    2. <directory>/../knowledge/ (sibling directory, if exists)
+    3. <directory> itself
+    """
+    yaml_files = []
+
+    # Try subdirectory first
+    knowledge_dir = os.path.join(directory, "knowledge")
     if os.path.isdir(knowledge_dir):
         directory = knowledge_dir
+    else:
+        # Try sibling directory (for when script is in agent/ but YAML is in knowledge/)
+        parent_dir = os.path.dirname(directory)
+        sibling_knowledge = os.path.join(parent_dir, "knowledge")
+        if os.path.isdir(sibling_knowledge):
+            directory = sibling_knowledge
 
     if os.path.isdir(directory):
         for f in os.listdir(directory):
@@ -135,6 +148,84 @@ def find_yaml_files(directory):
                 yaml_files.append(os.path.join(directory, f))
 
     return sorted(yaml_files)
+
+
+def list_yaml_files(paths=None):
+    """
+    List all available YAML files with descriptions.
+
+    Args:
+        paths: Optional list of directories to search. If empty, uses default location.
+    """
+    # Determine directory to search
+    if paths:
+        search_dirs = paths
+    else:
+        search_dirs = [script_dir]
+
+    print_header("Available YAML Configuration Files")
+    print()
+
+    # File descriptions
+    file_descriptions = {
+        'programs.yaml': 'Program definitions (inputs, outputs, commands, invariants)',
+        'workflows.yaml': 'Workflow state machines (phases, transitions, conditions)',
+        'metrics.yaml': 'Quality metrics and thresholds',
+        'file_categories.yaml': 'File categorization rules (extensions, patterns)',
+    }
+
+    total_files = 0
+
+    for search_dir in search_dirs:
+        yaml_files = find_yaml_files(search_dir)
+
+        if not yaml_files:
+            print(colored("  No YAML files found in: %s" % search_dir, Colors.YELLOW))
+            continue
+
+        # Show the actual directory where files were found
+        if yaml_files:
+            display_dir = os.path.dirname(yaml_files[0])
+        else:
+            display_dir = search_dir
+
+        print(colored("  Directory: %s" % display_dir, Colors.DIM))
+        print()
+
+        for filepath in yaml_files:
+            filename = os.path.basename(filepath)
+            filesize = os.path.getsize(filepath)
+
+            # Get description
+            desc = file_descriptions.get(filename, "")
+
+            # Try to get entry count from file
+            data, error = load_yaml_file(filepath)
+            entry_count = ""
+            if not error and isinstance(data, dict):
+                count = len(data)
+                entry_count = "(%d entries)" % count
+
+            # Format size
+            if filesize < 1024:
+                size_str = "%d B" % filesize
+            else:
+                size_str = "%.1f KB" % (filesize / 1024.0)
+
+            print("  %s" % colored(filename, Colors.CYAN + Colors.BOLD))
+            print("    Path: %s" % filepath)
+            print("    Size: %s %s" % (size_str, entry_count))
+            if desc:
+                print("    %s" % colored(desc, Colors.DIM))
+            print()
+
+            total_files += 1
+
+    print(colored("  Total: %d YAML file(s)" % total_files, Colors.GREEN))
+    print()
+    print(colored("  Use 'yaml_tools.py display <file>' to view contents", Colors.DIM))
+    print(colored("  Use 'yaml_tools.py validate' to check for errors", Colors.DIM))
+    print(colored("  Use 'yaml_tools.py terms' to see all defined terms", Colors.DIM))
 
 
 def load_yaml_file(filepath):
@@ -183,6 +274,8 @@ def validate_yaml_structure(data, filepath):
         issues.extend(_validate_workflows(data))
     elif 'metric' in filename:
         issues.extend(_validate_metrics(data))
+    elif 'file_categor' in filename or 'categories' in filename:
+        issues.extend(_validate_file_categories(data))
     else:
         # Try to auto-detect based on content
         if any(k.startswith('phenix.') for k in data.keys()):
@@ -191,6 +284,74 @@ def validate_yaml_structure(data, filepath):
             issues.extend(_validate_workflows(data))
         elif any('direction' in v or 'thresholds' in v for v in data.values() if isinstance(v, dict)):
             issues.extend(_validate_metrics(data))
+        elif any('extensions' in v or 'patterns' in v for v in data.values() if isinstance(v, dict)):
+            issues.extend(_validate_file_categories(data))
+
+    return issues
+
+
+def _validate_file_categories(data):
+    """Validate file_categories.yaml structure."""
+    issues = []
+
+    if not isinstance(data, dict):
+        issues.append(('error', "Root must be a dictionary"))
+        return issues
+
+    # Valid fields for a category
+    valid_category_fields = {
+        'description', 'extensions', 'patterns', 'excludes',
+        'subcategory_of', 'also_in', 'notes', 'max_basename_length'
+    }
+
+    # Track category names for cross-reference validation
+    category_names = set(data.keys())
+
+    for cat_name, cat_def in data.items():
+        if not isinstance(cat_def, dict):
+            issues.append(('error', "Category '%s' must be a dictionary" % cat_name))
+            continue
+
+        # Check for unknown fields
+        for field in cat_def.keys():
+            if field not in valid_category_fields:
+                issues.append(('warning', "Category '%s' has unknown field '%s'" % (cat_name, field)))
+
+        # Check required fields
+        if 'description' not in cat_def:
+            issues.append(('warning', "Category '%s' missing 'description'" % cat_name))
+
+        # Validate extensions are a list
+        extensions = cat_def.get('extensions', [])
+        if extensions and not isinstance(extensions, list):
+            issues.append(('error', "Category '%s' extensions must be a list" % cat_name))
+
+        # Validate patterns are a list
+        patterns = cat_def.get('patterns', [])
+        if patterns and not isinstance(patterns, list):
+            issues.append(('error', "Category '%s' patterns must be a list" % cat_name))
+
+        # Validate excludes are a list
+        excludes = cat_def.get('excludes', [])
+        if excludes and not isinstance(excludes, list):
+            issues.append(('error', "Category '%s' excludes must be a list" % cat_name))
+
+        # Validate subcategory_of reference exists
+        parent = cat_def.get('subcategory_of')
+        if parent and parent not in category_names:
+            issues.append(('warning', "Category '%s' references unknown parent '%s'" % (cat_name, parent)))
+
+        # Validate also_in references exist
+        also_in = cat_def.get('also_in', [])
+        if also_in:
+            if not isinstance(also_in, list):
+                issues.append(('error', "Category '%s' also_in must be a list" % cat_name))
+            else:
+                for ref in also_in:
+                    if ref not in category_names:
+                        issues.append(('warning', "Category '%s' also_in references unknown '%s'" % (cat_name, ref)))
+
+    return issues
 
     return issues
 
@@ -219,7 +380,11 @@ def _validate_programs(data):
         'description', 'category', 'experiment_type', 'experiment_types',
         'inputs', 'outputs', 'command', 'log_parsing', 'strategy_options',
         'requires', 'produces', 'hint', 'notes', 'defaults', 'strategy_flags',
-        'hints'
+        'hints',
+        # New fields from steps 1-3
+        'invariants',           # Step 1: Auto-fix rules
+        'input_priorities',     # Step 2: File category priorities
+        'user_advice_keywords', # Step 3: Keywords for user advice matching
     }
 
     # Valid fields for input definitions
@@ -237,6 +402,26 @@ def _validate_programs(data):
     # Valid fields for log_parsing
     valid_log_parsing_fields = {
         'pattern', 'type', 'group', 'default', 'fallback_pattern', 'extract'
+    }
+
+    # Valid fields for invariants (Step 1)
+    valid_invariant_fields = {
+        'name', 'description', 'check', 'fix', 'message'
+    }
+
+    # Valid fields for invariant checks
+    valid_check_fields = {
+        'has_file', 'has_strategy', 'strategy_equals', 'any_of', 'all_of'
+    }
+
+    # Valid fields for invariant fixes
+    valid_fix_fields = {
+        'set_strategy', 'set_file', 'remove_file', 'auto_fill_resolution'
+    }
+
+    # Valid fields for input_priorities (Step 2)
+    valid_input_priority_fields = {
+        'categories', 'exclude_categories', 'reason'
     }
 
     for prog_name, prog_def in programs.items():
@@ -297,6 +482,81 @@ def _validate_programs(data):
                             issues.append(('warning', "Log parsing '%s.%s' has unknown field '%s' (typo?)" % (
                                 prog_name, metric_name, field)))
 
+        # Validate invariants structure (Step 1)
+        invariants = prog_def.get('invariants', [])
+        if invariants:
+            if not isinstance(invariants, list):
+                issues.append(('error', "Program '%s' invariants must be a list" % prog_name))
+            else:
+                for i, inv in enumerate(invariants):
+                    if not isinstance(inv, dict):
+                        issues.append(('error', "Program '%s' invariant %d must be a dict" % (prog_name, i)))
+                        continue
+
+                    # Check invariant fields
+                    for field in inv.keys():
+                        if field not in valid_invariant_fields:
+                            issues.append(('warning', "Invariant '%s[%d]' has unknown field '%s'" % (
+                                prog_name, i, field)))
+
+                    # Check required invariant fields
+                    if 'name' not in inv:
+                        issues.append(('warning', "Invariant '%s[%d]' missing 'name'" % (prog_name, i)))
+                    if 'check' not in inv:
+                        issues.append(('warning', "Invariant '%s[%d]' missing 'check'" % (prog_name, i)))
+
+                    # Validate check structure
+                    check = inv.get('check', {})
+                    if isinstance(check, dict):
+                        _validate_check_recursive(check, valid_check_fields, prog_name, i, issues)
+
+                    # Validate fix structure
+                    fix = inv.get('fix', {})
+                    if isinstance(fix, dict):
+                        for field in fix.keys():
+                            if field not in valid_fix_fields:
+                                issues.append(('warning', "Invariant fix '%s[%d]' has unknown field '%s'" % (
+                                    prog_name, i, field)))
+
+        # Validate input_priorities structure (Step 2)
+        input_priorities = prog_def.get('input_priorities', {})
+        if input_priorities:
+            if not isinstance(input_priorities, dict):
+                issues.append(('error', "Program '%s' input_priorities must be a dict" % prog_name))
+            else:
+                for input_name, priority_def in input_priorities.items():
+                    if not isinstance(priority_def, dict):
+                        issues.append(('error', "Input priority '%s.%s' must be a dict" % (
+                            prog_name, input_name)))
+                        continue
+
+                    for field in priority_def.keys():
+                        if field not in valid_input_priority_fields:
+                            issues.append(('warning', "Input priority '%s.%s' has unknown field '%s'" % (
+                                prog_name, input_name, field)))
+
+                    # Validate categories is a list
+                    categories = priority_def.get('categories', [])
+                    if categories and not isinstance(categories, list):
+                        issues.append(('error', "Input priority '%s.%s' categories must be a list" % (
+                            prog_name, input_name)))
+
+                    exclude = priority_def.get('exclude_categories', [])
+                    if exclude and not isinstance(exclude, list):
+                        issues.append(('error', "Input priority '%s.%s' exclude_categories must be a list" % (
+                            prog_name, input_name)))
+
+        # Validate user_advice_keywords (Step 3)
+        keywords = prog_def.get('user_advice_keywords', [])
+        if keywords:
+            if not isinstance(keywords, list):
+                issues.append(('error', "Program '%s' user_advice_keywords must be a list" % prog_name))
+            else:
+                for kw in keywords:
+                    if not isinstance(kw, str):
+                        issues.append(('warning', "Keyword in '%s' should be a string, got %s" % (
+                            prog_name, type(kw).__name__)))
+
         # Check command template
         command = prog_def.get('command', {})
         if command and isinstance(command, dict):
@@ -304,6 +564,22 @@ def _validate_programs(data):
                 issues.append(('warning', "Program '%s' command has no base" % prog_name))
 
     return issues
+
+
+def _validate_check_recursive(check, valid_fields, prog_name, inv_idx, issues):
+    """Recursively validate check structure (handles any_of, all_of)."""
+    for field in check.keys():
+        if field not in valid_fields:
+            issues.append(('warning', "Check in '%s[%d]' has unknown field '%s'" % (
+                prog_name, inv_idx, field)))
+
+        # Recurse into any_of / all_of
+        if field in ('any_of', 'all_of'):
+            sub_checks = check[field]
+            if isinstance(sub_checks, list):
+                for sub_check in sub_checks:
+                    if isinstance(sub_check, dict):
+                        _validate_check_recursive(sub_check, valid_fields, prog_name, inv_idx, issues)
 
 
 def _validate_workflows(data):
@@ -339,7 +615,14 @@ def _validate_workflows(data):
     # Valid fields for a program entry in a phase
     valid_program_entry_fields = {
         'program', 'preferred', 'conditions', 'strategy', 'hint',
-        'required', 'optional', 'requires_resolution', 'strategy_depends_on'
+        'required', 'optional', 'requires_resolution', 'strategy_depends_on',
+        'priority_when',  # Step 3: Condition for priority selection
+    }
+
+    # Valid priority_when conditions
+    valid_priority_when_conditions = {
+        'strong_anomalous',  # Strong anomalous signal detected
+        # Add more conditions here as needed
     }
 
     # Valid fields for transitions
@@ -387,6 +670,13 @@ def _validate_workflows(data):
                                 issues.append(('warning', "Program entry in '%s.%s' has unknown field '%s' (typo?)" % (
                                     wf_name, phase_name, field)))
 
+                        # Validate priority_when value
+                        priority_when = prog_entry.get('priority_when')
+                        if priority_when:
+                            if priority_when not in valid_priority_when_conditions:
+                                issues.append(('warning', "Program '%s' in '%s.%s' has unknown priority_when '%s'" % (
+                                    prog_entry.get('program', '?'), wf_name, phase_name, priority_when)))
+
             # Check transitions
             transitions = phase_def.get('transitions', {})
             if isinstance(transitions, dict):
@@ -423,7 +713,8 @@ def _validate_metrics(data):
     # Valid top-level fields for a metric
     valid_metric_fields = {
         'description', 'direction', 'thresholds', 'resolution_dependent',
-        'unit', 'format', 'display_name', 'category'
+        'unit', 'format', 'display_name', 'category', 'notes',
+        'type', 'by_resolution', 'extraction', 'interpretation',  # Additional fields used in metrics.yaml
     }
 
     # Valid fields for thresholds
@@ -580,6 +871,36 @@ def display_programs(data):
                 elif isinstance(outputs, list):
                     print("      Outputs: %s" % ", ".join(str(o) for o in outputs))
 
+            # Show invariants (Step 1)
+            invariants = defn.get('invariants', [])
+            if invariants:
+                inv_names = [inv.get('name', '?') for inv in invariants if isinstance(inv, dict)]
+                print("      Invariants: %s" % colored(", ".join(inv_names), Colors.YELLOW))
+
+            # Show input_priorities (Step 2)
+            input_priorities = defn.get('input_priorities', {})
+            if input_priorities:
+                priority_parts = []
+                for input_name, prio_def in input_priorities.items():
+                    if isinstance(prio_def, dict):
+                        cats = prio_def.get('categories', [])
+                        excludes = prio_def.get('exclude_categories', [])
+                        if cats:
+                            part = "%s: %s" % (input_name, "→".join(cats[:3]))
+                            if excludes:
+                                part += " (excludes: %s)" % ", ".join(excludes[:3])
+                            priority_parts.append(part)
+                if priority_parts:
+                    print("      Input priorities: %s" % colored("; ".join(priority_parts), Colors.BLUE))
+
+            # Show user_advice_keywords (Step 3)
+            keywords = defn.get('user_advice_keywords', [])
+            if keywords:
+                kw_display = ", ".join(keywords[:4])
+                if len(keywords) > 4:
+                    kw_display += " (+%d more)" % (len(keywords) - 4)
+                print("      User advice keywords: %s" % colored(kw_display, Colors.CYAN))
+
 
 def display_workflows(data):
     """Display workflows.yaml contents in a formatted way."""
@@ -617,17 +938,41 @@ def display_workflows(data):
                     colored("STOP", Colors.RED + Colors.BOLD)
                 ))
             else:
-                prog_names = []
+                prog_parts = []
+                priority_progs = []
+                preferred_prog = None
+
                 for p in programs:
                     if isinstance(p, str):
-                        prog_names.append(p)
+                        prog_parts.append(p)
                     elif isinstance(p, dict):
-                        prog_names.append(p.get('program', '?'))
+                        prog_name = p.get('program', '?')
+
+                        # Check for preferred marker
+                        if p.get('preferred'):
+                            preferred_prog = prog_name
+                            prog_parts.append(prog_name + "*")
+                        # Check for priority_when
+                        elif p.get('priority_when'):
+                            priority_progs.append((prog_name, p['priority_when']))
+                            prog_parts.append(prog_name + "†")
+                        else:
+                            prog_parts.append(prog_name)
 
                 print("    %s: %s" % (
                     colored(phase_name, Colors.CYAN),
-                    ", ".join(prog_names) or "(no programs)"
+                    ", ".join(prog_parts) or "(no programs)"
                 ))
+
+                # Show legend if needed
+                if preferred_prog or priority_progs:
+                    notes = []
+                    if preferred_prog:
+                        notes.append("* = default preferred")
+                    if priority_progs:
+                        for prog, cond in priority_progs:
+                            notes.append("† %s when %s" % (prog, cond))
+                    print("      %s" % colored("; ".join(notes), Colors.DIM))
 
             if desc:
                 print("      %s" % colored(desc, Colors.DIM))
@@ -709,10 +1054,71 @@ def display_file(filepath):
         display_workflows(data)
     elif filename == 'metrics.yaml':
         display_metrics(data)
+    elif filename == 'file_categories.yaml':
+        display_file_categories(data)
     else:
         # Generic display
         print()
         print(yaml.dump(data, default_flow_style=False, indent=2))
+
+
+def display_file_categories(data):
+    """Display file_categories.yaml contents in a formatted way."""
+    print_subheader("File Categories (%d total)" % len(data))
+    print()
+    print(colored("  This file defines how files are categorized based on name/extension.", Colors.DIM))
+    print(colored("  Categories are used in input_priorities and workflow state detection.", Colors.DIM))
+    print()
+    print(colored("  Primary categories: Match by file extension", Colors.DIM))
+    print(colored("  Subcategories: Match by filename patterns within a parent category", Colors.DIM))
+    print()
+
+    # Group into primary (have extensions) and subcategories
+    primary = []
+    by_parent = {}
+
+    for cat_name, cat_def in data.items():
+        parent = cat_def.get("subcategory_of")
+        if parent:
+            if parent not in by_parent:
+                by_parent[parent] = []
+            by_parent[parent].append((cat_name, cat_def))
+        elif cat_def.get("extensions"):
+            primary.append((cat_name, cat_def))
+
+    for cat_name, cat_def in sorted(primary):
+        desc = cat_def.get("description", "")
+        exts = cat_def.get("extensions", [])
+
+        print("  %s" % colored(cat_name, Colors.CYAN + Colors.BOLD))
+        if desc:
+            print("    %s" % colored(desc, Colors.DIM))
+        if exts:
+            print("    Extensions: %s" % ", ".join(exts))
+
+        # Show subcategories
+        subcats = by_parent.get(cat_name, [])
+        if subcats:
+            print("    Subcategories:")
+            for sub_name, sub_def in sorted(subcats):
+                sub_desc = sub_def.get("description", "")[:50]
+                patterns = sub_def.get("patterns", [])
+                excludes = sub_def.get("excludes", [])
+
+                pattern_str = ""
+                if patterns:
+                    pattern_str = " patterns: %s" % ", ".join(patterns[:3])
+                    if len(patterns) > 3:
+                        pattern_str += "..."
+                if excludes:
+                    pattern_str += " (excludes: %s)" % ", ".join(excludes[:2])
+
+                print("      %s - %s%s" % (
+                    colored(sub_name, Colors.CYAN),
+                    colored(sub_desc, Colors.DIM),
+                    colored(pattern_str, Colors.DIM) if pattern_str else ""
+                ))
+        print()
 
 
 # =============================================================================
@@ -939,14 +1345,23 @@ def show_summary():
 
     print_header("PHENIX AI Agent - YAML Configuration Summary")
     print()
-    print(colored("  The AI Agent uses three YAML configuration files:", Colors.DIM))
+    print(colored("  The AI Agent uses four YAML configuration files:", Colors.DIM))
     print()
-    print(colored("  1. programs.yaml  - Defines available programs (inputs, outputs, commands)", Colors.CYAN))
-    print(colored("  2. workflows.yaml - Defines workflow phases and transitions", Colors.CYAN))
-    print(colored("  3. metrics.yaml   - Defines quality metrics and thresholds", Colors.CYAN))
+    print(colored("  1. programs.yaml       - Defines available programs (inputs, outputs, commands)", Colors.CYAN))
+    print(colored("  2. workflows.yaml      - Defines workflow phases and transitions", Colors.CYAN))
+    print(colored("  3. metrics.yaml        - Defines quality metrics and thresholds", Colors.CYAN))
+    print(colored("  4. file_categories.yaml - Defines file categorization rules", Colors.CYAN))
     print()
     print(colored("  Edit these files to customize agent behavior without changing code.", Colors.DIM))
     print(colored("  Use 'yaml_tools.py validate' to check for errors after editing.", Colors.DIM))
+    print(colored("  Use 'yaml_tools.py terms' to see all defined terms and their usage.", Colors.DIM))
+    print()
+    print(colored("  Key Configuration Features:", Colors.YELLOW + Colors.BOLD))
+    print(colored("    • invariants        - Auto-fix rules (e.g., auto-fill resolution)", Colors.DIM))
+    print(colored("    • input_priorities  - File category preferences per program", Colors.DIM))
+    print(colored("    • user_advice_keywords - Keywords to match user requests", Colors.DIM))
+    print(colored("    • priority_when     - Conditional program priority in workflows", Colors.DIM))
+    print(colored("    • file_categories   - How files are categorized by name/extension", Colors.DIM))
 
     for filepath in yaml_files:
         data, error = load_yaml_file(filepath)
@@ -957,14 +1372,562 @@ def show_summary():
 
         display_file(filepath)
 
+    # Show feature statistics
+    print()
+    print_header("Feature Statistics")
+    _show_feature_stats(yaml_files)
+
     print()
     print_header("Validation")
     validate_files(yaml_files)
 
 
+def _show_feature_stats(yaml_files):
+    """Show statistics about the new YAML features."""
+    stats = {
+        'programs_with_invariants': [],
+        'programs_with_input_priorities': [],
+        'programs_with_keywords': [],
+        'phases_with_priority_when': [],
+    }
+
+    for filepath in yaml_files:
+        data, error = load_yaml_file(filepath)
+        if error:
+            continue
+
+        filename = os.path.basename(filepath).lower()
+
+        if 'program' in filename:
+            # Programs at root level
+            programs = {k: v for k, v in data.items()
+                       if isinstance(v, dict) and (k.startswith('phenix.') or '.' in k)}
+
+            for prog_name, prog_def in programs.items():
+                if prog_def.get('invariants'):
+                    stats['programs_with_invariants'].append(prog_name)
+                if prog_def.get('input_priorities'):
+                    stats['programs_with_input_priorities'].append(prog_name)
+                if prog_def.get('user_advice_keywords'):
+                    stats['programs_with_keywords'].append(prog_name)
+
+        elif 'workflow' in filename:
+            workflows = {k: v for k, v in data.items()
+                        if isinstance(v, dict) and 'phases' in v}
+
+            for wf_name, wf_def in workflows.items():
+                phases = wf_def.get('phases', {})
+                for phase_name, phase_def in phases.items():
+                    programs = phase_def.get('programs', [])
+                    for p in programs:
+                        if isinstance(p, dict) and p.get('priority_when'):
+                            stats['phases_with_priority_when'].append(
+                                "%s.%s.%s" % (wf_name, phase_name, p.get('program', '?'))
+                            )
+
+    print()
+    print(colored("  Programs with invariants: %d" % len(stats['programs_with_invariants']), Colors.CYAN))
+    if stats['programs_with_invariants']:
+        print(colored("    " + ", ".join(stats['programs_with_invariants']), Colors.DIM))
+
+    print(colored("  Programs with input_priorities: %d" % len(stats['programs_with_input_priorities']), Colors.CYAN))
+    if stats['programs_with_input_priorities']:
+        print(colored("    " + ", ".join(stats['programs_with_input_priorities']), Colors.DIM))
+
+    print(colored("  Programs with user_advice_keywords: %d" % len(stats['programs_with_keywords']), Colors.CYAN))
+    if stats['programs_with_keywords']:
+        print(colored("    " + ", ".join(stats['programs_with_keywords']), Colors.DIM))
+
+    print(colored("  Programs with priority_when: %d" % len(stats['phases_with_priority_when']), Colors.CYAN))
+    if stats['phases_with_priority_when']:
+        print(colored("    " + ", ".join(stats['phases_with_priority_when']), Colors.DIM))
+
+
 # =============================================================================
 # MAIN
 # =============================================================================
+
+# =============================================================================
+# TERMS COMMAND - Show all defined terms and their usage
+# =============================================================================
+
+def collect_all_terms(yaml_files):
+    """
+    Collect all terms defined in the YAML system.
+
+    Returns dict with:
+        file_categories: {name: {definition, used_by, description}}
+        strategy_keys: {name: {programs, types, description}}
+        metrics: {name: {definition, description}}
+        workflow_phases: {workflow: {phase: definition}}
+        conditions: {name: {used_in, description}}
+        check_types: {name: {description, example}}
+        fix_types: {name: {description, example}}
+    """
+    terms = {
+        "file_categories": {},
+        "strategy_keys": {},
+        "metrics": {},
+        "workflow_phases": {},
+        "conditions": {},
+        "priority_conditions": {},
+        "check_types": {},
+        "fix_types": {},
+        "user_advice_keywords": {},
+    }
+
+    programs_data = None
+    workflows_data = None
+    metrics_data = None
+    file_categories_data = None
+
+    # Load all YAML files
+    for filepath in yaml_files:
+        data, error = load_yaml_file(filepath)
+        if error:
+            continue
+
+        filename = os.path.basename(filepath).lower()
+
+        if 'program' in filename:
+            programs_data = data
+        elif 'workflow' in filename:
+            workflows_data = data
+        elif 'metric' in filename:
+            metrics_data = data
+        elif 'file_categories' in filename or 'categories' in filename:
+            file_categories_data = data
+
+    # Extract file categories
+    if file_categories_data:
+        for cat_name, cat_def in file_categories_data.items():
+            terms["file_categories"][cat_name] = {
+                "definition": cat_def,
+                "description": cat_def.get("description", ""),
+                "extensions": cat_def.get("extensions", []),
+                "patterns": cat_def.get("patterns", []),
+                "subcategory_of": cat_def.get("subcategory_of"),
+                "used_by": [],  # Will be filled from programs
+            }
+
+    # Extract from programs
+    if programs_data:
+        programs = {k: v for k, v in programs_data.items()
+                   if isinstance(v, dict) and (k.startswith('phenix.') or '.' in k)}
+
+        for prog_name, prog_def in programs.items():
+            # Extract strategy keys
+            for key, key_def in prog_def.get("strategy_flags", {}).items():
+                if key not in terms["strategy_keys"]:
+                    terms["strategy_keys"][key] = {
+                        "programs": [],
+                        "type": key_def.get("type", "unknown"),
+                        "description": key_def.get("hint", ""),
+                    }
+                terms["strategy_keys"][key]["programs"].append(prog_name)
+
+            # Extract input_priorities usage of file categories
+            for input_name, prio_def in prog_def.get("input_priorities", {}).items():
+                for cat in prio_def.get("categories", []):
+                    if cat in terms["file_categories"]:
+                        usage = "%s (%s: preferred)" % (prog_name, input_name)
+                        if usage not in terms["file_categories"][cat]["used_by"]:
+                            terms["file_categories"][cat]["used_by"].append(usage)
+                for cat in prio_def.get("exclude_categories", []):
+                    if cat in terms["file_categories"]:
+                        usage = "%s (%s: excluded)" % (prog_name, input_name)
+                        if usage not in terms["file_categories"][cat]["used_by"]:
+                            terms["file_categories"][cat]["used_by"].append(usage)
+
+            # Extract invariant check/fix types
+            for inv in prog_def.get("invariants", []):
+                check = inv.get("check", {})
+                _extract_check_types(check, terms["check_types"], prog_name)
+
+                fix = inv.get("fix", {})
+                for fix_type in fix.keys():
+                    if fix_type not in terms["fix_types"]:
+                        terms["fix_types"][fix_type] = {
+                            "programs": [],
+                            "description": _get_fix_description(fix_type),
+                        }
+                    if prog_name not in terms["fix_types"][fix_type]["programs"]:
+                        terms["fix_types"][fix_type]["programs"].append(prog_name)
+
+            # Extract user_advice_keywords
+            for kw in prog_def.get("user_advice_keywords", []):
+                if kw not in terms["user_advice_keywords"]:
+                    terms["user_advice_keywords"][kw] = {"programs": []}
+                terms["user_advice_keywords"][kw]["programs"].append(prog_name)
+
+    # Extract from workflows
+    if workflows_data:
+        workflows = {k: v for k, v in workflows_data.items()
+                    if isinstance(v, dict) and 'phases' in v}
+
+        for wf_name, wf_def in workflows.items():
+            terms["workflow_phases"][wf_name] = {}
+
+            for phase_name, phase_def in wf_def.get("phases", {}).items():
+                terms["workflow_phases"][wf_name][phase_name] = {
+                    "description": phase_def.get("description", ""),
+                    "programs": [],
+                }
+
+                for prog_entry in phase_def.get("programs", []):
+                    if isinstance(prog_entry, dict):
+                        prog_name = prog_entry.get("program", "?")
+                        terms["workflow_phases"][wf_name][phase_name]["programs"].append(prog_name)
+
+                        # Extract conditions
+                        for cond in prog_entry.get("conditions", []):
+                            if isinstance(cond, str):
+                                cond_name = cond
+                            elif isinstance(cond, dict):
+                                cond_name = str(cond)
+                            else:
+                                continue
+
+                            if cond_name not in terms["conditions"]:
+                                terms["conditions"][cond_name] = {"used_in": []}
+                            terms["conditions"][cond_name]["used_in"].append(
+                                "%s.%s.%s" % (wf_name, phase_name, prog_name)
+                            )
+
+                        # Extract priority_when
+                        priority_when = prog_entry.get("priority_when")
+                        if priority_when:
+                            if priority_when not in terms["priority_conditions"]:
+                                terms["priority_conditions"][priority_when] = {"used_by": []}
+                            terms["priority_conditions"][priority_when]["used_by"].append(
+                                "%s.%s.%s" % (wf_name, phase_name, prog_name)
+                            )
+                    elif isinstance(prog_entry, str):
+                        terms["workflow_phases"][wf_name][phase_name]["programs"].append(prog_entry)
+
+    # Extract metrics
+    if metrics_data:
+        for metric_name, metric_def in metrics_data.items():
+            if isinstance(metric_def, dict) and ('thresholds' in metric_def or 'direction' in metric_def):
+                terms["metrics"][metric_name] = {
+                    "description": metric_def.get("description", ""),
+                    "direction": metric_def.get("direction", "unknown"),
+                    "thresholds": metric_def.get("thresholds", {}),
+                }
+
+    return terms
+
+
+def _extract_check_types(check, check_types, prog_name):
+    """Recursively extract check types from invariant check structure."""
+    for check_type, value in check.items():
+        if check_type not in check_types:
+            check_types[check_type] = {
+                "programs": [],
+                "description": _get_check_description(check_type),
+            }
+        if prog_name not in check_types[check_type]["programs"]:
+            check_types[check_type]["programs"].append(prog_name)
+
+        # Recurse into any_of / all_of
+        if check_type in ("any_of", "all_of") and isinstance(value, list):
+            for sub_check in value:
+                if isinstance(sub_check, dict):
+                    _extract_check_types(sub_check, check_types, prog_name)
+
+
+def _get_check_description(check_type):
+    """Get description for a check type."""
+    descriptions = {
+        "has_file": "Check if any of the named input slots have files",
+        "has_strategy": "Check if any of the strategy keys are set",
+        "strategy_equals": "Check if a strategy key equals a specific value",
+        "any_of": "True if any sub-check passes",
+        "all_of": "True if all sub-checks pass",
+    }
+    return descriptions.get(check_type, "")
+
+
+def _get_fix_description(fix_type):
+    """Get description for a fix type."""
+    descriptions = {
+        "set_strategy": "Set a strategy key to a specific value",
+        "auto_fill_resolution": "Auto-fill resolution from context",
+        "set_file": "Set a file input",
+        "remove_file": "Remove a file input",
+    }
+    return descriptions.get(fix_type, "")
+
+
+def show_terms(yaml_files, detail_level="simple"):
+    """
+    Show all terms defined in the YAML system.
+
+    Args:
+        yaml_files: List of YAML file paths
+        detail_level: "simple", "normal", or "full"
+    """
+    terms = collect_all_terms(yaml_files)
+
+    print_header("PHENIX AI Agent - Term Reference")
+
+    if detail_level == "simple":
+        _show_terms_simple(terms)
+    elif detail_level == "normal":
+        _show_terms_normal(terms)
+    else:  # full
+        _show_terms_full(terms)
+
+
+def _show_terms_simple(terms):
+    """Show simple list of terms."""
+    print()
+    print(colored("  FILE CATEGORIES", Colors.YELLOW + Colors.BOLD))
+    cats = sorted(terms["file_categories"].keys())
+    print("    " + ", ".join(cats))
+
+    print()
+    print(colored("  STRATEGY KEYS", Colors.YELLOW + Colors.BOLD))
+    keys = sorted(terms["strategy_keys"].keys())
+    print("    " + ", ".join(keys))
+
+    print()
+    print(colored("  METRICS", Colors.YELLOW + Colors.BOLD))
+    metrics = sorted(terms["metrics"].keys())
+    print("    " + ", ".join(metrics))
+
+    print()
+    print(colored("  WORKFLOW PHASES", Colors.YELLOW + Colors.BOLD))
+    for wf_name, phases in terms["workflow_phases"].items():
+        phase_names = sorted(phases.keys())
+        print("    %s: %s" % (colored(wf_name, Colors.CYAN), ", ".join(phase_names)))
+
+    print()
+    print(colored("  CONDITIONS", Colors.YELLOW + Colors.BOLD))
+    conds = sorted(terms["conditions"].keys())
+    print("    " + ", ".join(conds[:10]))
+    if len(conds) > 10:
+        print("    ... and %d more" % (len(conds) - 10))
+
+    print()
+    print(colored("  PRIORITY CONDITIONS", Colors.YELLOW + Colors.BOLD))
+    prio_conds = sorted(terms["priority_conditions"].keys())
+    print("    " + ", ".join(prio_conds) if prio_conds else "    (none)")
+
+    print()
+    print(colored("  INVARIANT CHECK TYPES", Colors.YELLOW + Colors.BOLD))
+    checks = sorted(terms["check_types"].keys())
+    print("    " + ", ".join(checks))
+
+    print()
+    print(colored("  INVARIANT FIX TYPES", Colors.YELLOW + Colors.BOLD))
+    fixes = sorted(terms["fix_types"].keys())
+    print("    " + ", ".join(fixes))
+
+    print()
+    print(colored("  USER ADVICE KEYWORDS", Colors.YELLOW + Colors.BOLD))
+    kws = sorted(terms["user_advice_keywords"].keys())
+    print("    " + ", ".join(kws[:8]))
+    if len(kws) > 8:
+        print("    ... and %d more" % (len(kws) - 8))
+
+
+def _show_terms_normal(terms):
+    """Show terms with descriptions."""
+    # File Categories
+    print()
+    print(colored("=" * 60, Colors.BOLD))
+    print(colored("  FILE CATEGORIES", Colors.YELLOW + Colors.BOLD))
+    print(colored("=" * 60, Colors.BOLD))
+    print(colored("  Categories used in input_priorities and file selection", Colors.DIM))
+    print()
+
+    # Group by parent category
+    primary = []
+    by_parent = {}
+    for cat_name, cat_def in terms["file_categories"].items():
+        parent = cat_def.get("subcategory_of")
+        if parent:
+            if parent not in by_parent:
+                by_parent[parent] = []
+            by_parent[parent].append((cat_name, cat_def))
+        else:
+            primary.append((cat_name, cat_def))
+
+    for cat_name, cat_def in sorted(primary):
+        desc = cat_def.get("description", "")
+        exts = cat_def.get("extensions", [])
+        print("  %s" % colored(cat_name, Colors.CYAN + Colors.BOLD))
+        if desc:
+            print("    %s" % colored(desc, Colors.DIM))
+        if exts:
+            print("    Extensions: %s" % ", ".join(exts))
+
+        # Show subcategories
+        for sub_name, sub_def in sorted(by_parent.get(cat_name, [])):
+            sub_desc = sub_def.get("description", "")
+            print("      %s - %s" % (colored(sub_name, Colors.CYAN), sub_desc))
+        print()
+
+    # Strategy Keys
+    print()
+    print(colored("=" * 60, Colors.BOLD))
+    print(colored("  STRATEGY KEYS", Colors.YELLOW + Colors.BOLD))
+    print(colored("=" * 60, Colors.BOLD))
+    print(colored("  Parameters that can be passed to programs", Colors.DIM))
+    print()
+
+    for key_name, key_def in sorted(terms["strategy_keys"].items()):
+        key_type = key_def.get("type", "unknown")
+        desc = key_def.get("description", "")
+        progs = key_def.get("programs", [])
+
+        print("  %s (%s)" % (colored(key_name, Colors.CYAN + Colors.BOLD), key_type))
+        if desc:
+            print("    %s" % colored(desc, Colors.DIM))
+        print("    Programs: %s" % ", ".join(progs[:4]))
+        if len(progs) > 4:
+            print("              ... and %d more" % (len(progs) - 4))
+        print()
+
+    # Metrics
+    print()
+    print(colored("=" * 60, Colors.BOLD))
+    print(colored("  METRICS", Colors.YELLOW + Colors.BOLD))
+    print(colored("=" * 60, Colors.BOLD))
+    print(colored("  Quality metrics tracked by the agent", Colors.DIM))
+    print()
+
+    for metric_name, metric_def in sorted(terms["metrics"].items()):
+        direction = metric_def.get("direction", "unknown")
+        desc = metric_def.get("description", "")
+        thresholds = metric_def.get("thresholds", {})
+
+        dir_color = Colors.GREEN if direction == "minimize" else Colors.BLUE
+        print("  %s (%s)" % (
+            colored(metric_name, Colors.CYAN + Colors.BOLD),
+            colored(direction, dir_color)
+        ))
+        if desc:
+            print("    %s" % colored(desc, Colors.DIM))
+        if thresholds:
+            thresh_str = ", ".join("%s: %s" % (k, v) for k, v in sorted(thresholds.items()))
+            print("    Thresholds: %s" % thresh_str)
+        print()
+
+    # Invariant Types
+    print()
+    print(colored("=" * 60, Colors.BOLD))
+    print(colored("  INVARIANT CHECK TYPES", Colors.YELLOW + Colors.BOLD))
+    print(colored("=" * 60, Colors.BOLD))
+    print()
+
+    for check_type, check_def in sorted(terms["check_types"].items()):
+        desc = check_def.get("description", "")
+        progs = check_def.get("programs", [])
+        print("  %s" % colored(check_type, Colors.CYAN + Colors.BOLD))
+        if desc:
+            print("    %s" % colored(desc, Colors.DIM))
+        print("    Used by: %s" % ", ".join(progs))
+        print()
+
+    print()
+    print(colored("=" * 60, Colors.BOLD))
+    print(colored("  INVARIANT FIX TYPES", Colors.YELLOW + Colors.BOLD))
+    print(colored("=" * 60, Colors.BOLD))
+    print()
+
+    for fix_type, fix_def in sorted(terms["fix_types"].items()):
+        desc = fix_def.get("description", "")
+        progs = fix_def.get("programs", [])
+        print("  %s" % colored(fix_type, Colors.CYAN + Colors.BOLD))
+        if desc:
+            print("    %s" % colored(desc, Colors.DIM))
+        print("    Used by: %s" % ", ".join(progs))
+        print()
+
+
+def _show_terms_full(terms):
+    """Show full details including cross-references."""
+    # Start with normal output
+    _show_terms_normal(terms)
+
+    # Add cross-reference sections
+    print()
+    print(colored("=" * 60, Colors.BOLD))
+    print(colored("  FILE CATEGORY USAGE (Cross-Reference)", Colors.YELLOW + Colors.BOLD))
+    print(colored("=" * 60, Colors.BOLD))
+    print()
+
+    for cat_name, cat_def in sorted(terms["file_categories"].items()):
+        used_by = cat_def.get("used_by", [])
+        if used_by:
+            print("  %s" % colored(cat_name, Colors.CYAN + Colors.BOLD))
+            for usage in used_by:
+                print("    - %s" % usage)
+            print()
+
+    # Workflow phases with programs
+    print()
+    print(colored("=" * 60, Colors.BOLD))
+    print(colored("  WORKFLOW PHASES (Full Detail)", Colors.YELLOW + Colors.BOLD))
+    print(colored("=" * 60, Colors.BOLD))
+    print()
+
+    for wf_name, phases in terms["workflow_phases"].items():
+        print(colored("  [%s]" % wf_name.upper(), Colors.YELLOW + Colors.BOLD))
+
+        for phase_name, phase_def in phases.items():
+            desc = phase_def.get("description", "")
+            progs = phase_def.get("programs", [])
+
+            print("    %s" % colored(phase_name, Colors.CYAN + Colors.BOLD))
+            if desc:
+                print("      %s" % colored(desc, Colors.DIM))
+            if progs:
+                print("      Programs: %s" % ", ".join(progs))
+        print()
+
+    # Conditions
+    print()
+    print(colored("=" * 60, Colors.BOLD))
+    print(colored("  CONDITIONS (Full Detail)", Colors.YELLOW + Colors.BOLD))
+    print(colored("=" * 60, Colors.BOLD))
+    print()
+
+    for cond_name, cond_def in sorted(terms["conditions"].items()):
+        used_in = cond_def.get("used_in", [])
+        print("  %s" % colored(cond_name, Colors.CYAN + Colors.BOLD))
+        for usage in used_in:
+            print("    - %s" % usage)
+        print()
+
+    # Priority conditions
+    if terms["priority_conditions"]:
+        print()
+        print(colored("=" * 60, Colors.BOLD))
+        print(colored("  PRIORITY CONDITIONS", Colors.YELLOW + Colors.BOLD))
+        print(colored("=" * 60, Colors.BOLD))
+        print()
+
+        for cond_name, cond_def in sorted(terms["priority_conditions"].items()):
+            used_by = cond_def.get("used_by", [])
+            print("  %s" % colored(cond_name, Colors.CYAN + Colors.BOLD))
+            for usage in used_by:
+                print("    - %s" % usage)
+            print()
+
+    # User advice keywords
+    print()
+    print(colored("=" * 60, Colors.BOLD))
+    print(colored("  USER ADVICE KEYWORDS (Full Detail)", Colors.YELLOW + Colors.BOLD))
+    print(colored("=" * 60, Colors.BOLD))
+    print()
+
+    for kw, kw_def in sorted(terms["user_advice_keywords"].items()):
+        progs = kw_def.get("programs", [])
+        print("  %s → %s" % (colored(kw, Colors.CYAN), ", ".join(progs)))
+
 
 def main():
     """Main entry point."""
@@ -972,19 +1935,40 @@ def main():
         description="YAML Tools for PHENIX AI Agent Configuration",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
+Commands:
+  list      List all available YAML configuration files
+  validate  Check YAML files for syntax and structural errors
+  display   Show formatted contents of a YAML file
+  compare   Compare two YAML files or directories
+  summary   Show overview of all configuration files
+  terms     Show all defined terms in the configuration system
+
 Examples:
+  %(prog)s list                        # List all available YAML files
   %(prog)s validate                    # Validate all YAML files
   %(prog)s validate programs.yaml      # Validate specific file
   %(prog)s display programs.yaml       # Show formatted contents
+  %(prog)s display file_categories.yaml
   %(prog)s compare old/ new/           # Compare two directories
   %(prog)s summary                     # Show summary of all files
+  %(prog)s terms                       # Show all defined terms (simple)
+  %(prog)s terms --detail normal       # Show terms with descriptions
+  %(prog)s terms --detail full         # Show full cross-reference
+
+Detail levels for 'terms' command:
+  simple  Just list term names (default)
+  normal  Include descriptions and basic info
+  full    Full cross-reference showing where each term is used
         """
     )
 
-    parser.add_argument('command', choices=['validate', 'display', 'compare', 'summary'],
-                       help='Command to run')
+    parser.add_argument('command', choices=['list', 'validate', 'display', 'compare', 'summary', 'terms'],
+                       help='Command to run (see Commands above)')
     parser.add_argument('paths', nargs='*', help='File or directory paths')
     parser.add_argument('--no-color', action='store_true', help='Disable colored output')
+    parser.add_argument('--detail', choices=['simple', 'normal', 'full'], default='simple',
+                       help='Detail level for terms command: simple (names only), '
+                            'normal (with descriptions), full (cross-reference)')
 
     args = parser.parse_args()
 
@@ -992,7 +1976,10 @@ Examples:
     if args.no_color or not sys.stdout.isatty():
         Colors.disable()
 
-    if args.command == 'validate':
+    if args.command == 'list':
+        list_yaml_files(args.paths)
+
+    elif args.command == 'validate':
         success = validate_files(args.paths)
         sys.exit(0 if success else 1)
 
@@ -1020,6 +2007,10 @@ Examples:
 
     elif args.command == 'summary':
         show_summary()
+
+    elif args.command == 'terms':
+        yaml_files = find_yaml_files(script_dir)
+        show_terms(yaml_files, args.detail)
 
 
 if __name__ == "__main__":

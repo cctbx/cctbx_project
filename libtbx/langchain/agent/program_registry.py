@@ -200,6 +200,60 @@ class ProgramRegistry:
                     required.append(slot_name)
             return required
 
+    def get_input_priorities(self, program_name, input_name):
+        """
+        Get file category priorities for an input slot.
+
+        Returns the priority order of file categories for selecting
+        files for this input, plus any categories to exclude.
+
+        Args:
+            program_name: Name of program
+            input_name: Name of input slot (e.g., "model", "mtz")
+
+        Returns:
+            dict: {
+                "categories": [list of categories in priority order],
+                "exclude_categories": [list of categories to never use]
+            }
+        """
+        if self.use_yaml:
+            prog_def = get_program(program_name)
+            if not prog_def:
+                return {"categories": [], "exclude_categories": []}
+
+            input_priorities = prog_def.get("input_priorities", {})
+            slot_priorities = input_priorities.get(input_name, {})
+
+            return {
+                "categories": slot_priorities.get("categories", []),
+                "exclude_categories": slot_priorities.get("exclude_categories", [])
+            }
+        else:
+            # Legacy JSON doesn't have this feature
+            return {"categories": [], "exclude_categories": []}
+
+    def get_user_advice_keywords(self, program_name):
+        """
+        Get keywords that indicate user wants this program.
+
+        These are keywords in user advice that should cause
+        this program to be preferred when it's valid.
+
+        Args:
+            program_name: Name of program
+
+        Returns:
+            list: Keywords (all lowercase)
+        """
+        if self.use_yaml:
+            prog_def = get_program(program_name)
+            if not prog_def:
+                return []
+            return prog_def.get("user_advice_keywords", [])
+        else:
+            return []
+
     def get_optional_inputs(self, program_name):
         """
         Get optional input file types.

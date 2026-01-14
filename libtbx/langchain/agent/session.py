@@ -8,7 +8,7 @@ This module handles:
 - Generating session summaries
 
 Usage:
-    from libtbx.langchain.agent.session import AgentSession
+    from libtbx.langchain.agent import AgentSession
 
     session = AgentSession(session_dir='./agent_session')
     session.start_cycle(cycle_number=1)

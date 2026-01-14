@@ -172,7 +172,8 @@ class TemplateBuilder(object):
         log("DEBUG: Built command (JSON): %s" % command)
         return command
 
-    def build_command_for_program(self, program, available_files, categorized_files=None, log=None):
+    def build_command_for_program(self, program, available_files, categorized_files=None,
+                                   log=None, context=None):
         """
         THE FALLBACK: Auto-selects files based on extensions and patterns.
 
@@ -181,6 +182,7 @@ class TemplateBuilder(object):
             available_files (list): List of available file paths
             categorized_files (dict): Optional pre-categorized files from workflow_state
             log: Optional logging function
+            context (dict): Optional context for invariant validation (resolution, etc.)
 
         Returns:
             str: Command string, or None if required files not found
@@ -256,7 +258,17 @@ class TemplateBuilder(object):
                 log("DEBUG: Auto-selected '%s' for slot '%s'" % (best_file, slot_name))
 
         try:
-            return self.build_command(program, selected_files, strategy={}, log=log)
+            # Apply invariant validation and fixes (e.g., auto-fill resolution)
+            strategy = {}
+            if context:
+                selected_files, strategy, warnings = self.validate_and_fix(
+                    program, selected_files, strategy,
+                    log=log, context=context
+                )
+                for warning in warnings:
+                    log("FALLBACK: %s" % warning)
+
+            return self.build_command(program, selected_files, strategy, log=log)
         except ValueError as e:
             log("ERROR: Failed to build command: %s" % e)
             return None
@@ -430,7 +442,7 @@ class TemplateBuilder(object):
 
         return self.templates[program].get("hints", [])
 
-    def validate_and_fix(self, program, files, strategy, log=None):
+    def validate_and_fix(self, program, files, strategy, log=None, context=None):
         """
         Validate program invariants and apply fixes if needed.
 
@@ -443,6 +455,7 @@ class TemplateBuilder(object):
             files (dict): Selected files
             strategy (dict): Strategy options
             log: Optional logging function
+            context (dict): Optional context for auto-fills (resolution, etc.)
 
         Returns:
             tuple: (files, strategy, warnings)
@@ -452,6 +465,8 @@ class TemplateBuilder(object):
         """
         if log is None:
             log = lambda x: None
+        if context is None:
+            context = {}
 
         warnings = []
 
@@ -478,7 +493,9 @@ class TemplateBuilder(object):
                 fix = invariant.get("fix", {})
                 message = invariant.get("message", "Invariant '%s' violated, fix applied" % name)
 
-                files, strategy = self._apply_fix(fix, files, strategy)
+                files, strategy, fix_msg = self._apply_fix(fix, files, strategy, context)
+                if fix_msg:
+                    message = fix_msg  # Use more specific message from fix
                 warnings.append(message)
                 log("INVARIANT: %s - %s" % (name, message))
 
@@ -529,6 +546,17 @@ class TemplateBuilder(object):
                     return True
             return False
 
+        # Handle has_strategy - check if strategy key exists and has a value
+        if "has_strategy" in check:
+            strategy_keys = check["has_strategy"]
+            if isinstance(strategy_keys, str):
+                strategy_keys = [strategy_keys]
+            for key in strategy_keys:
+                val = strategy.get(key)
+                if val is not None and val != "":
+                    return True
+            return False
+
         # Handle strategy_equals
         if "strategy_equals" in check:
             for key, expected_value in check["strategy_equals"].items():
@@ -538,7 +566,7 @@ class TemplateBuilder(object):
 
         return True
 
-    def _apply_fix(self, fix, files, strategy):
+    def _apply_fix(self, fix, files, strategy, context=None):
         """
         Apply a fix to files and/or strategy.
 
@@ -546,18 +574,22 @@ class TemplateBuilder(object):
             - set_strategy: {key: value} - Set strategy values
             - set_file: {slot: value} - Set file values
             - remove_file: [list] - Remove file slots
+            - auto_fill_resolution: true - Auto-fill resolution from context
 
         Args:
             fix: Fix definition from YAML
             files: Current files dict
             strategy: Current strategy dict
+            context: Optional context dict with resolution, etc.
 
         Returns:
-            tuple: (files, strategy) - Modified dicts
+            tuple: (files, strategy, message) - Modified dicts and optional message
         """
         # Make copies to avoid mutating originals
         files = dict(files)
         strategy = dict(strategy)
+        message = None
+        context = context or {}
 
         if "set_strategy" in fix:
             for key, value in fix["set_strategy"].items():
@@ -571,7 +603,27 @@ class TemplateBuilder(object):
             for slot in fix["remove_file"]:
                 files.pop(slot, None)
 
-        return files, strategy
+        # Auto-fill resolution from context
+        if fix.get("auto_fill_resolution"):
+            resolution = None
+            source = None
+
+            # Priority order for resolution sources
+            if context.get("session_resolution"):
+                resolution = context["session_resolution"]
+                source = "session"
+            elif context.get("resolution"):
+                resolution = context["resolution"]
+                source = "workflow"
+            elif context.get("workflow_state", {}).get("resolution"):
+                resolution = context["workflow_state"]["resolution"]
+                source = "workflow_state"
+
+            if resolution:
+                strategy["resolution"] = round(float(resolution), 1)
+                message = "Auto-filled resolution=%.1fÅ from %s" % (resolution, source)
+
+        return files, strategy, message
 
 
 # =============================================================================
