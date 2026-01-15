@@ -304,7 +304,11 @@ class PopUpCharts(object):
         sub.set_ylabel("%s axis" % n2).set_fontsize(text_ratio)
 
       for (angle, sub, lim) in [(alpha, sub_alpha, allim), (beta, sub_beta, belim), (gamma, sub_gamma, galim)]:
-        sub.hist(angle, nbins, alpha=0.75, histtype='stepfilled', range=lim)
+        if max(angle)-min(angle) < 1e-3:
+          _nbins = 1
+        else:
+          _nbins = nbins
+        sub.hist(angle, _nbins, alpha=0.75, histtype='stepfilled', range=lim)
         stats = flex.mean_and_variance(angle)
         mean = stats.mean()
         stddev = stats.unweighted_sample_standard_deviation()
