@@ -5,7 +5,8 @@ from six.moves import range
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
 from dials.util import show_mail_on_error
-from libtbx.phil import parse
+from iotbx.phil import parse
+from cctbx import crystal
 
 help_message = """
 Plot a cloud of unit cell dimensions from stills. Provide either a combined.expt
@@ -92,25 +93,28 @@ class Script(object):
     if params.write_gnuplot_cloud:
       gnuplot = open("uccloud.dat", 'w')
 
+    if params and params.move_near.enable and params.move_near.unit_cell is not None:
+      # Create reference symmetry object
+      self.ref_sym = crystal.symmetry(
+        unit_cell=params.move_near.unit_cell,
+        space_group_symbol=str(params.move_near.space_group)
+      )
+
+
     def get_info(experiment, params=None):
       # Get the crystal symmetry
       crystal_sym = experiment.crystal
 
       # Apply move_near transformation if enabled
       if params and params.move_near.enable and params.move_near.unit_cell is not None:
-        from cctbx import crystal
         # Create reference symmetry object
-        ref_sym = crystal.symmetry(
-          unit_cell=params.move_near.unit_cell,
-          space_group_symbol=str(params.move_near.space_group)
-        )
         # Create experiment's symmetry object
         exp_sym = crystal.symmetry(
           unit_cell=crystal_sym.get_unit_cell(),
           space_group_symbol=str(crystal_sym.get_space_group().type().lookup_symbol())
         )
         # Find nearest setting
-        moved_sym = ref_sym.nearest_setting(
+        moved_sym = self.ref_sym.nearest_setting(
           exp_sym,
           length_tolerance=params.move_near.relative_length_tolerance,
           angle_tolerance=params.move_near.absolute_angle_tolerance_deg
