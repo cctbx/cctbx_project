@@ -13,8 +13,6 @@ import matplotlib
 matplotlib.use('TkAgg')
 
 
-counter = 0
-
 class ManualClusterer:
     def __init__(self, data, bandwidths=[0.001, 0.001, 1.0], n_maxima=500,
                  qvals_1=None, qvals_2=None, sb1_callback=None, recon=None,
@@ -43,29 +41,6 @@ class ManualClusterer:
         if n_maxima > 0:
             self.compute_kde_maxima()
         
-#        # Create the three windows with specific sizes
-#        self.fig1, self.ax1 = plt.subplots(num='Step 1: Histogram Selection', figsize=(16, 3))
-#        self.fig2, self.ax2 = plt.subplots(num='Step 2: 2D Selection', figsize=(16, 3))
-#        self.fig3, (self.ax3a, self.ax3b, self.ax3c) = plt.subplots(1, 3, num='Step 3: Final Selection', 
-#                                                                    figsize=(16, 3))
-#
-#        # Set fixed subplot sizes
-#        self.fig3.set_tight_layout(False)
-##        for i, ax in enumerate([self.ax3a, self.ax3b, self.ax3c]):
-##            ax.set_aspect('equal', adjustable='datalim')
-##            # Set a fixed position and size for each subplot
-##            box = ax.get_position()
-##            ax.set_position([0.1 + i*0.3, 0.1, 0.25, 0.25])  # [left, bottom, width, height]
-#
-#        # Initialize the first window
-#        self.show_histogram()
-#
-##        # Arrange windows vertically
-##        self.fig1.canvas.manager.window.move(0, 0)
-##        self.fig2.canvas.manager.window.move(0, 300)
-##        self.fig3.canvas.manager.window.move(0, 600)
-#
-#        plt.show()
 
     def select_qvals(self, title="Select q-value ranges"):
         """

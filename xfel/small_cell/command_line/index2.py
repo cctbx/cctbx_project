@@ -6,6 +6,13 @@ import copy
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 from tqdm import tqdm
+from numba import njit
+from scipy.optimize import minimize_scalar
+from scipy.optimize import minimize
+import itertools
+from cluster2 import ManualClusterer
+from cctbx import uctbx, crystal
+from cctbx.sgtbx.lattice_symmetry import metric_subgroups
 
 class SpotPair:
 
@@ -24,67 +31,6 @@ class SpotPair:
         v2 = self.q2 * np.array([np.cos(self.theta), np.sin(self.theta)])
         return abs(np.cross(v1, v2))
 
-@dataclass
-class GeneratedSpotPair():
-    hkl1: np.ndarray
-    hkl2: np.ndarray
-    q1: np.float64
-    q2: np.float64
-    theta: np.float64
-
-class IndexedSpotPair2d(SpotPair):
-    def initialize_orientation(self, basis_vectors: np.ndarray) -> None:
-        """Initialize orientation by computing angle between calculated and observed vectors."""
-        # Get calculated vectors
-        q1_calc = self.indices1[0]*basis_vectors[0] + self.indices1[1]*basis_vectors[1]
-        q2_calc = self.indices2[0]*basis_vectors[0] + self.indices2[1]*basis_vectors[1]
-
-        # Compute angle of q1_calc from x-axis
-        phi_calc = np.arctan2(q1_calc[1], q1_calc[0])
-
-        # Our observed q1 is along x-axis, so this is our basic rotation
-        self.init_phi = phi_calc
-
-        # Check if we need to flip orientation by comparing second vector
-        q2_obs = self.q2 * np.array([np.cos(self.theta), np.sin(self.theta)])
-        R = np.array([[np.cos(self.init_phi), -np.sin(self.init_phi)],
-                      [np.sin(self.init_phi), np.cos(self.init_phi)]])
-        q2_obs_rot = R @ q2_obs
-
-        # If distance is large, try flipping
-        if np.linalg.norm(q2_obs_rot - q2_calc) > np.linalg.norm(q2_obs_rot + q2_calc):
-            self.init_phi += np.pi
-
-        # Optional: small local optimization to refine this initial guess
-        from scipy.optimize import minimize_scalar
-        result = minimize_scalar(
-            lambda dphi: self.compute_cost(basis_vectors, dphi),
-            bounds=(-0.1, 0.1),  # small range around initial guess
-            method='bounded'
-        )
-        self.init_phi += result.x
-
-    def compute_cost(self, basis_vectors: np.ndarray, delta_phi: float) -> float:
-        """Compute distance between rotated observed and calculated positions."""
-        # Compute vectors from indices (fixed)
-        q1_calc = self.indices1[0]*basis_vectors[0] + self.indices1[1]*basis_vectors[1]
-        q2_calc = self.indices2[0]*basis_vectors[0] + self.indices2[1]*basis_vectors[1]
-
-        # Create observed vectors in standard orientation (q1 along x)
-        q1_obs = np.array([self.q1, 0.0])
-        q2_obs = self.q2 * np.array([np.cos(self.theta), np.sin(self.theta)])
-
-        # Total rotation to apply to observed vectors
-        total_phi = self.init_phi + delta_phi
-        R = np.array([[np.cos(total_phi), -np.sin(total_phi)],
-                     [np.sin(total_phi), np.cos(total_phi)]])
-
-        # Rotate observed vectors to match calculated
-        q1_obs_rot = R @ q1_obs
-        q2_obs_rot = R @ q2_obs
-
-        return (np.linalg.norm(q1_obs_rot - q1_calc) + 
-                np.linalg.norm(q2_obs_rot - q2_calc))
 
 
 class VectorPairMatch:
@@ -92,43 +38,6 @@ class VectorPairMatch:
   def from_pairs(cls, gen_pair, obs_pair):
     return
 
-class PairMatch_ab(VectorPairMatch):
-    """A vector pair where the first vector is indexed in the first basis and
-    the second vector is indexed in the second basis."""
-    def __init__(self, q1, q2, theta_obs, b1, b2, common_axes):
-        qvals_1 = np.linalg.norm(b1.points, axis=1)
-        deltas_1 = np.abs(qvals_1 - q1)
-        i1 = np.argmin(deltas_1)
-        hk1 = b1.point_indices[i1]
-        qvals_2 = np.linalg.norm(b2.points, axis=1)
-        deltas_2 = np.abs(qvals_2 - q2)
-        i2 = np.argmin(deltas_2)
-        hk2 = b2.point_indices[i2]
-
-        self.hk1 = hk1
-        self.hk2 = hk2
-        self.b1 = b1
-        self.b2 = b2
-        self.theta_obs = theta_obs
-        self.common_ax1, self.common_ax2 = common_axes
-
-        #check if one hkl should be inverted
-        vec1 = b1.vec3d_aligned_rotated(hk1, common_axes[0], 0)
-        vec2 = b2.vec3d_aligned_rotated(hk2, common_axes[1], 0)
-        if np.dot(vec1, vec2) < 0:
-            self.hk2 = -1 * self.hk2
-
-    def angle_error(self, rotx_deg):
-        vec1 = self.b1.vec3d_aligned_rotated(
-            self.hk1, self.common_ax1, 0
-        )
-        vec2 = self.b2.vec3d_aligned_rotated(
-            self.hk2, self.common_ax2, rotx_deg
-        )
-        theta_calc = angle_between(vec1, vec2)
-        return abs(theta_calc - self.theta_obs)
-
-    pass
 class PairMatch2d(VectorPairMatch):
     def __init__(self, hkl1, q1, hkl2, q2, theta_rad):
         self.hkl1 = hkl1
@@ -220,48 +129,6 @@ def third_vector(q, v1, v2, theta1, theta2):
     except np.linalg.LinAlgError:
         raise ValueError("No solution exists for these angles")
 
-def find_third_vector(v1: np.ndarray, v2: np.ndarray,
-                     q: float, theta1: float, theta2: float) -> Tuple[np.ndarray, np.ndarray]:
-    """Find a vector v3 given its length and angles with v1 and v2.
-
-    Args:
-        v1, v2: Two known vectors in xy-plane (2D arrays)
-        q: Length of vector to find
-        theta1: Angle between v1 and v3
-        theta2: Angle between v2 and v3
-
-    Returns:
-        Two possible 3D positions for v3 (above/below v1-v2 plane)
-    """
-    # Convert 2D vectors to 3D
-    v1_3d = np.array([v1[0], v1[1], 0.0])
-    v2_3d = np.array([v2[0], v2[1], 0.0])
-
-    # Normalize
-    v1_unit = v1_3d / np.linalg.norm(v1_3d)
-    v2_unit = v2_3d / np.linalg.norm(v2_3d)
-
-    # Get normal to v1-v2 plane (will be along z-axis)
-    n = np.cross(v1_unit, v2_unit)
-    n = n / np.linalg.norm(n)  # should be [0, 0, ±1]
-
-    # Solve for components
-    v1v2 = np.dot(v1_unit, v2_unit)
-    A = np.array([[1, v1v2], [v1v2, 1]])
-    b = q * np.array([np.cos(theta1), np.cos(theta2)])
-    a, b = np.linalg.solve(A, b)
-
-    # Find c from length condition
-    c_sq = q*q - (a*a + b*b + 2*a*b*v1v2)
-    if c_sq < 0:
-        raise ValueError("No solution exists for these constraints")
-    c = np.sqrt(c_sq)
-
-    # Return both possible 3D positions
-    v3_plus = a*v1_unit + b*v2_unit + c*n
-    v3_minus = a*v1_unit + b*v2_unit - c*n
-
-    return v3_plus, v3_minus
 
 def find_best_third_vector(v3_candidates: Tuple[np.ndarray, np.ndarray],
                           sub_basis: np.ndarray) -> np.ndarray:
@@ -932,7 +799,6 @@ class Basis2d(Basis):
 
         if pairs is None:
             pairs = [p[1] for p in self.all_pairs if p[2]=='indexed_2d']
-        from scipy.optimize import minimize
 
         # Initial parameter vector
         a_star = np.linalg.norm(self.vectors[0])
@@ -963,83 +829,6 @@ class Basis2d(Basis):
         # Regenerate points and pairs with new basis
         self.generate_points_and_pairs_fast()
 
-    def basis_in_3d(self, plus_x):
-        """Make a 3x2 matrix that multiplies a point in this basis to give its
-        3d coordinates. Initially the basis should lie in the xy plane with
-        the plus_x vector aligned along 1,0,0.
-
-        Args:
-            plus_x: A 2-element array specifying which vector in the 2D basis
-                   should be aligned with the positive x-axis in 3D.
-                   For example, [1,0] means align the first basis vector.
-
-        Returns:
-            A 3x2 matrix that transforms 2D basis coordinates to 3D coordinates.
-        """
-        # Calculate which vector in the original basis should align with x-axis
-        vector_to_align = plus_x[0] * self.vectors[0] + plus_x[1] * self.vectors[1]
-
-        # Calculate the angle to rotate this vector to align with [1,0]
-        norm = np.linalg.norm(vector_to_align)
-        cos_angle = vector_to_align[0] / norm
-        sin_angle = vector_to_align[1] / norm
-
-        # Create the rotation matrix (clockwise rotation)
-        # This will rotate the vector_to_align to the positive x-axis
-        rotation = np.array([
-            [cos_angle, sin_angle],
-            [-sin_angle, cos_angle]
-        ])
-
-        # Apply rotation to both basis vectors
-        rotated_vectors = rotation @ self.vectors.T
-
-        # Create the 3x2 transformation matrix
-        # The first two rows contain the rotated vectors
-        # The third row contains zeros (since we're in the xy plane)
-        result = np.zeros((3, 2))
-        result[0, :] = rotated_vectors[0, :]  # x components
-        result[1, :] = rotated_vectors[1, :]  # y components
-
-        return result
-
-    def vec3d_aligned_rotated(self, point, plusx, rotx_deg):
-        """Construct the aligned basis from above and compute 3d coordinates for the given point.
-        Apply a rotation around the x-axis and return the transformed coordinates.
-
-        Args:
-            point: A 2-element array representing a point in the 2D basis
-            plusx: Specifies which vector should align with the x-axis
-            rotx_deg: Rotation angle around the x-axis in degrees
-
-        Returns:
-            A 3D point after transformation and rotation
-        """
-        # Step 1: Get the 3D basis that aligns plusx with the x-axis
-        basis_3d = self.basis_in_3d(plusx)
-
-        # Step 2: Transform the 2D point to 3D
-        point_3d = basis_3d @ np.array(point)
-
-        # Step 3: Create the rotation matrix around the x-axis
-        rotx_rad = np.radians(rotx_deg)
-        cos_rx = np.cos(rotx_rad)
-        sin_rx = np.sin(rotx_rad)
-
-        # Rotation matrix around x-axis
-        # [1    0      0   ]
-        # [0  cos(θ) -sin(θ)]
-        # [0  sin(θ)  cos(θ)]
-        rot_x = np.array([
-            [1, 0, 0],
-            [0, cos_rx, -sin_rx],
-            [0, sin_rx, cos_rx]
-        ])
-
-        # Step 4: Apply the rotation
-        rotated_point = rot_x @ point_3d
-
-        return rotated_point
 
 
 
@@ -1368,90 +1157,6 @@ class Basis3d(Basis):
 
         return final_result
 
-    def match_old(self, pair: SpotPair) -> Tuple[Optional[dict], str]:
-        """Find a matching pair in the lattice using vectorized operations."""
-
-        if not hasattr(self, 'q1_values'):
-            self.generate_points_and_pairs_fast()
-
-        # Compute differences with input pair
-        dq1 = np.abs(self.q1_values - pair.q1)
-        dq2 = np.abs(self.q2_values - pair.q2)
-        dtheta = np.abs(self.theta_values - pair.theta)
-
-        # Create mask for matches within tolerance
-        match_dq1 = (self.q1_values > pair.q1-self.q_tolerance) & \
-            (self.q1_values < pair.q1+self.q_tolerance)
-        match_dq2 = (self.q2_values > pair.q2-self.q_tolerance) & \
-            (self.q2_values < pair.q2+self.q_tolerance)
-        match_theta = (self.theta_values > pair.theta-self.theta_tolerance) & \
-            (self.theta_values < pair.theta+self.theta_tolerance)
-        matches = match_dq1 & match_dq2 & match_theta
-        #matches = (dq1 < self.q_tolerance) & (dq2 < self.q_tolerance) & (dtheta < self.theta_tolerance)
-
-        if np.any(matches):
-            # Get the first match (or could find best one later)
-            idx = np.where(matches)[0][0]
-            hkl1 = self.hkl1_values[idx]
-            hkl2 = self.hkl2_values[idx]
-
-            result = PairMatch2d(hkl1, pair.q1, hkl2, pair.q2, pair.theta)
-            return result, 'indexed_3d'
-
-        return None, 'unindexed'
-
-    def match_multiple(self, pairs: List[SpotPair]) -> List[Tuple[Optional[dict], str]]:
-        """Find matching pairs for a batch of input pairs.
-
-        Args:
-            pairs: List of SpotPair objects to match
-
-        Returns:
-            List of (result, status) tuples for each input pair
-        """
-        n_pairs = len(pairs)
-        n_lattice_pairs = len(self.q1_values)
-
-        # Extract arrays from input pairs
-        q1_inputs = np.array([p.q1 for p in pairs])
-        q2_inputs = np.array([p.q2 for p in pairs])
-        theta_inputs = np.array([p.theta for p in pairs])
-
-        # Reshape for broadcasting
-        q1_inputs = q1_inputs.reshape(-1, 1)  # shape: (n_pairs, 1)
-        q2_inputs = q2_inputs.reshape(-1, 1)
-        theta_inputs = theta_inputs.reshape(-1, 1)
-
-        # Compute differences with all lattice pairs
-        # Each row is one input pair, each column is one lattice pair
-        dq1 = np.abs(q1_inputs - self.q1_values)  # shape: (n_pairs, n_lattice_pairs)
-        print(dq1.shape)
-        dq2 = np.abs(q2_inputs - self.q2_values)
-        dtheta = np.abs(theta_inputs - self.theta_values)
-
-        # Find matches within tolerance
-        matches = (dq1 < self.q_tolerance) & (dq2 < self.q_tolerance) & (dtheta < self.theta_tolerance)
-
-        # Prepare results
-        results = []
-
-        # For each input pair
-        for i in range(n_pairs):
-            pair_matches = matches[i]
-
-            if np.any(pair_matches):
-                # Get the first match for this pair
-                idx = np.where(pair_matches)[0][0]
-                hkl1 = self.hkl1_values[idx]
-                hkl2 = self.hkl2_values[idx]
-
-                result = PairMatch2d(hkl1, pairs[i].q1, hkl2, pairs[i].q2, pairs[i].theta)
-                results.append((result, 'indexed_3d'))
-            else:
-                results.append((None, 'unindexed'))
-
-        return results
-
     def compute_pair_cost(self, basis_vectors: np.ndarray, pair: PairMatch2d,
                          q_weight: float = 1.0, theta_weight: float = 111.0, use_outliers=False) -> float:
         """Compute cost for a single indexed pair using Miller indices."""
@@ -1540,7 +1245,6 @@ class Basis3d(Basis):
 
         if pairs is None:
             pairs = [p[1] for p in self.all_pairs if p[2]=='indexed_3d']
-        from scipy.optimize import minimize
 
         # Initial parameter vector from current basis
         a_star = np.linalg.norm(self.vectors[0])
@@ -1940,6 +1644,7 @@ def grid_search_3d_basis(recon, pair1_idx, pair2_idx,
     delta_values = np.linspace(delta_range[0], delta_range[1], steps)
     grid_shape = (steps, steps)
     fom = np.zeros(grid_shape)
+    idx = np.zeros(grid_shape)
 
     # Total number of pairs
     total_pairs = len(recon.all_pairs)
@@ -1966,12 +1671,14 @@ def grid_search_3d_basis(recon, pair1_idx, pair2_idx,
 
                 # Compute percentage
                 fom[i, j] = 100*hits / total_pairs * vol**(1/2)
+                idx[i, j] = 100*hits / total_pairs
 
             except Exception as e:
                 # Failed to generate basis (e.g., no valid solution)
                 fom[i, j] = 0
+                idx[i, j] = 0
 
-    return delta_values, fom
+    return delta_values, fom, idx
 
 # Run grid search for both inv=False and inv=True
 def run_both_grid_searches(recon, pair1_idx, pair2_idx,
@@ -1979,15 +1686,15 @@ def run_both_grid_searches(recon, pair1_idx, pair2_idx,
     print(f"Running grid search for pair indices {pair1_idx} and {pair2_idx}...")
     print(f"Delta range: {delta_range}, steps: {steps}")
 
-    delta_values, results_normal = grid_search_3d_basis(
+    delta_values, fom_normal, idx_normal = grid_search_3d_basis(
         recon, pair1_idx, pair2_idx, delta_range, steps, inv=False
     )
 
-    delta_values, results_inv = grid_search_3d_basis(
+    delta_values, fom_inv, idx_inv = grid_search_3d_basis(
         recon, pair1_idx, pair2_idx, delta_range, steps, inv=True
     )
 
-    return delta_values, results_normal, results_inv
+    return delta_values, (fom_normal, idx_normal), (fom_inv, idx_inv)
 
 # Plot the results as heatmaps
 def plot_grid_search_results(delta_values, results_normal, results_inv):
@@ -2041,24 +1748,29 @@ def plot_grid_search_results(delta_values, results_normal, results_inv):
 
 # Function to run everything and return the best parameters
 def find_best_3d_basis(recon, pair1_idx, pair2_idx,
-                       delta_range=(-2.0, 2.0), steps=21):
+                       delta_range=(-2.0, 2.0), steps=21, plot=True):
     """pair1_idx and pair2_idx are actually pairs"""
     # Run grid searches
     delta_values, results_normal, results_inv = run_both_grid_searches(
         recon, pair1_idx, pair2_idx, delta_range, steps
     )
+    fom_normal, idx_normal = results_normal
+    fom_inv, idx_inv = results_inv
 
     # Plot results
-    fig = plot_grid_search_results(delta_values, results_normal, results_inv)
+    if plot:
+        fig = plot_grid_search_results(delta_values, fom_normal, fom_inv)
+    else:
+        fig = None
 
     # Find best parameters
-    max_normal = np.max(results_normal)
-    max_normal_idx = np.unravel_index(np.argmax(results_normal), results_normal.shape)
+    max_normal = np.max(fom_normal)
+    max_normal_idx = np.unravel_index(np.argmax(fom_normal), fom_normal.shape)
     delta1_normal = delta_values[max_normal_idx[0]]
     delta2_normal = delta_values[max_normal_idx[1]]
 
-    max_inv = np.max(results_inv)
-    max_inv_idx = np.unravel_index(np.argmax(results_inv), results_inv.shape)
+    max_inv = np.max(fom_inv)
+    max_inv_idx = np.unravel_index(np.argmax(fom_inv), fom_inv.shape)
     delta1_inv = delta_values[max_inv_idx[0]]
     delta2_inv = delta_values[max_inv_idx[1]]
 
@@ -2096,172 +1808,6 @@ def find_best_3d_basis(recon, pair1_idx, pair2_idx,
 
     return best_basis, best_params, fig
 
-def common_axis(b1, b2):
-    """For two Basis2d objects, find the closest matching q-value and return
-    the indices in each basis that give the corresponding value.
-    """
-    qvals_1 = np.linalg.norm(b1.points, axis=1)
-    qvals_2 = np.linalg.norm(b2.points, axis=1)
-    delta_best = 999
-    i1_best = -1
-    i2_best = -1
-    for i2, val in enumerate(qvals_2):
-        deltas = np.abs(qvals_1-val)
-        i1 = np.argmin(deltas)
-        if deltas[i1] < delta_best:
-            i1_best = i1
-            i2_best = i2
-            delta_best = deltas[i1]
-    hk1_best = b1.point_indices[i1_best]
-    hk2_best = b2.point_indices[i2_best]
-    print('delta_best: ', delta_best)
-    print('hk1_best: ', hk1_best, qvals_1[i1_best])
-    print('hk2_best: ', hk2_best, qvals_2[i2_best])
-    return hk1_best, hk2_best
-
-def merge_bases(b1, b2, common_axes, angle_deg):
-    """Merge two 2D bases into a single 3D basis.
-
-    Args:
-        b1: First 2D basis
-        b2: Second 2D basis
-        common_axes: Two 2-tuples ((h1,k1), (h2,k2)) where (h1,k1) in the first basis
-                    is equivalent to (h2,k2) in the second basis
-        angle_deg: Rotation angle in degrees around the common axis
-
-    Returns:
-        A Basis3d object representing the merged 3D basis
-    """
-
-    # Extract common axis vectors from the tuples
-    common_axis_b1, common_axis_b2 = common_axes
-
-    # Convert the first basis to 3D, aligning common axis with x-axis
-    basis1_3d = b1.basis_in_3d(common_axis_b1)
-
-    # For the second basis, align with x-axis
-    basis2_3d_aligned = b2.basis_in_3d(common_axis_b2)
-
-    # Create the full 3D basis vectors
-    # First vector: common axis (aligned with x-axis)
-    v1 = np.array([basis1_3d[0, 0], 0, 0])
-
-    # Second vector: from first basis, already aligned
-    v2 = np.array([basis1_3d[0, 1], basis1_3d[1, 1], 0])
-
-    # Third vector: from second basis, rotated around x-axis
-    # Get a vector from the second basis that's not aligned with x-axis
-    # (i.e., the second column of basis2_3d_aligned)
-    v3_pre_rotation = np.array([basis2_3d_aligned[0, 1], basis2_3d_aligned[1, 1], 0])
-
-    # Apply rotation around x-axis
-    rot_rad = np.radians(angle_deg)
-    cos_rx = np.cos(rot_rad)
-    sin_rx = np.sin(rot_rad)
-
-    rot_x = np.array([
-        [1, 0, 0],
-        [0, cos_rx, -sin_rx],
-        [0, sin_rx, cos_rx]
-    ])
-
-    v3 = rot_x @ v3_pre_rotation
-
-    # Combine the vectors into a 3D basis
-    vectors_3d = np.vstack([v1, v2, v3])
-
-    import IPython;IPython.embed()
-    # Create and return a Basis3d object
-    return Basis3d(vectors_3d, qmax=max(b1.qmax, b2.qmax),
-                  q_tolerance=max(b1.q_tolerance, b2.q_tolerance),
-                  theta_tol_degrees=max(np.degrees(b1.theta_tolerance),
-                                       np.degrees(b2.theta_tolerance)))
-
-def merge_bases_brute(b1, b2, common_axes, angle_deg):
-    """Merge two 2D bases into a single 3D basis using a brute force approach.
-    
-    Args:
-        b1: First 2D basis
-        b2: Second 2D basis
-        common_axes: Two 2-tuples ((h1,k1), (h2,k2)) where (h1,k1) in the first basis 
-                    is equivalent to (h2,k2) in the second basis
-        angle_deg: Rotation angle in degrees around the common axis
-    
-    Returns:
-        A Basis3d object representing the merged 3D basis
-    """
-    import numpy as np
-    import itertools
-
-    # Generate all index pairs in a grid (-4 to 4 in each dimension)
-    index_grid = list(itertools.product(range(5), range(5)))
-
-    # Generate 3D points from b1
-    points_3d_b1 = []
-    for hk in index_grid:
-        point_3d = b1.vec3d_aligned_rotated(hk, common_axes[0], 0)
-        points_3d_b1.append(point_3d)
-
-    # Generate 3D points from b2 with rotation
-    points_3d_b2 = []
-    for hk in index_grid:
-        point_3d = b2.vec3d_aligned_rotated(hk, common_axes[1], angle_deg)
-        points_3d_b2.append(point_3d)
-
-    # Generate all pairwise sums, eliminating near-duplicates
-    sum_vectors = []
-    for v1 in points_3d_b1:
-        for v2 in points_3d_b2:
-            sum_vec = v1 + v2
-            length = np.linalg.norm(sum_vec)
-
-            # Skip zero vectors
-            if length < 1e-2:
-                continue
-
-            # Check if this is a near-duplicate of an existing vector
-            is_duplicate = False
-            for existing_vec, _ in sum_vectors:
-                if np.linalg.norm(sum_vec - existing_vec) < 0.01:  # 0.01 Å⁻¹ threshold
-                    is_duplicate = True
-                    break
-
-            # If not a duplicate, add it
-            if not is_duplicate:
-                sum_vectors.append((sum_vec, length))
-
-    # Sort by length
-    sum_vectors.sort(key=lambda x: x[1])
-
-    # Find three non-coplanar vectors
-    basis_vectors = []
-    for vec, _ in sum_vectors:
-        if len(basis_vectors) == 0:
-            basis_vectors.append(vec)
-        elif len(basis_vectors) == 1:
-            # Check if not collinear
-            cross_prod = np.cross(basis_vectors[0], vec)
-            if np.linalg.norm(cross_prod) > 1e-6:
-                basis_vectors.append(vec)
-        elif len(basis_vectors) == 2:
-            # Check if not coplanar
-            v1, v2 = basis_vectors
-            det = np.dot(np.cross(v1, v2), vec)
-            if abs(det) > 1e-6:
-                basis_vectors.append(vec)
-                break
-
-    if len(basis_vectors) < 3:
-        raise ValueError("Could not find three non-coplanar vectors from the combined bases")
-
-    # Stack the vectors into a 3D basis
-    vectors_3d = np.vstack(basis_vectors)
-
-    # Create and return a Basis3d object
-    return Basis3d(vectors_3d, qmax=max(b1.qmax, b2.qmax),
-                  q_tolerance=max(b1.q_tolerance, b2.q_tolerance),
-                  theta_tol_degrees=max(np.degrees(b1.theta_tolerance),
-                                       np.degrees(b2.theta_tolerance)))
 
 def sb1_callback(triplet, recon):
     """
@@ -2290,6 +1836,7 @@ def sb1_callback(triplet, recon):
         sb1.reindex_pairs()
         sb1.flag_outliers()
         sb1.refine()
+    print(f'{sb1}: {sb1.index_percent()}')
 
     # Compute q-values (norms of the basis points)
     qvals = np.linalg.norm(sb1.points, axis=1)
@@ -2304,21 +1851,114 @@ def sb1_callback(triplet, recon):
     return qvals, points
 
 
+# Pre-compute grid once globally
+_I_VALS = np.array([-2, -2, -2, -2, -2, -1, -1, -1, -1, -1, 0, 0, 0, 0,
+                    1, 1, 1, 1, 1, 2, 2, 2, 2, 2])
+_J_VALS = np.array([-2, -1, 0, 1, 2, -2, -1, 0, 1, 2, -2, -1, 1, 2,
+                    -2, -1, 0, 1, 2, -2, -1, 0, 1, 2])
+@njit
+def reduce_2d_cell(a, b, gamma_deg):
+    """
+    Find the reduced setting of a 2D unit cell (Numba JIT version).
+
+    Parameters:
+    a, b: lengths of cell vectors
+    gamma_rad: angle between vectors (in radians)
+
+    Returns:
+    (a_red, b_red, gamma_red): reduced cell parameters
+    """
+    gamma_rad = np.radians(gamma_deg)
+    # Convert to Cartesian coordinates
+    cos_gamma = np.cos(gamma_rad)
+    sin_gamma = np.sin(gamma_rad)
+    v1 = np.array([a, 0.0])
+    v2 = np.array([b * cos_gamma, b * sin_gamma])
+
+    for _ in range(100):
+        # Calculate all lattice vectors
+        n_vecs = len(_I_VALS)
+        vectors = np.zeros((n_vecs, 2))
+        for i in range(n_vecs):
+            vectors[i, 0] = _I_VALS[i] * v1[0] + _J_VALS[i] * v2[0]
+            vectors[i, 1] = _I_VALS[i] * v1[1] + _J_VALS[i] * v2[1]
+
+        # Calculate lengths
+        lengths = np.zeros(n_vecs)
+        for i in range(n_vecs):
+            lengths[i] = np.sqrt(vectors[i, 0]**2 + vectors[i, 1]**2)
+
+        # Sort by length
+        sorted_indices = np.argsort(lengths)
+
+        # Find two shortest non-parallel vectors
+        shortest = vectors[sorted_indices[0]]
+
+        # Find first non-parallel vector
+        second_shortest = None
+        for i in range(1, n_vecs):
+            vec = vectors[sorted_indices[i]]
+            cross = abs(shortest[0] * vec[1] - shortest[1] * vec[0])
+            if cross > 1e-10:
+                second_shortest = vec
+                break
+
+        if second_shortest is None:
+            break
+
+        # Calculate norms
+        new_a_sq = shortest[0]**2 + shortest[1]**2
+        new_b_sq = second_shortest[0]**2 + second_shortest[1]**2
+        new_a = np.sqrt(new_a_sq)
+        new_b = np.sqrt(new_b_sq)
+
+        # Ensure a <= b
+        if new_a > new_b:
+            shortest, second_shortest = second_shortest.copy(), shortest.copy()
+            new_a, new_b = new_b, new_a
+            new_a_sq, new_b_sq = new_b_sq, new_a_sq
+
+        # Check if better
+        v1_len_sq = v1[0]**2 + v1[1]**2
+        v2_len_sq = v2[0]**2 + v2[1]**2
+
+        if new_a_sq < v1_len_sq - 1e-10 or (
+            abs(new_a_sq - v1_len_sq) < 1e-10 and new_b_sq < v2_len_sq - 1e-10
+        ):
+            v1 = shortest.copy()
+            v2 = second_shortest.copy()
+        else:
+            break
+
+    # Calculate reduced parameters
+    a_red = np.sqrt(v1[0]**2 + v1[1]**2)
+    b_red = np.sqrt(v2[0]**2 + v2[1]**2)
+    cos_gamma_red = (v1[0] * v2[0] + v1[1] * v2[1]) / (a_red * b_red)
+    gamma_red = np.arccos(cos_gamma_red)
+
+    # Ensure conventional choice
+    if gamma_red > np.pi / 2:
+        gamma_red = np.pi - gamma_red
+
+    return a_red, b_red, np.degrees(gamma_red)
+
 
 
 def run():
-    QMIN=.05
-    QMAX=.35
+    QMIN=.03
+    QMAX=.5
     recon = LatticeReconstruction(qmax=QMAX)
-#    print('generate')
 
-    from cluster2 import ManualClusterer
     fn1 = sys.argv[1]
     data = np.load(fn1)['triplets'][:,1:4]
     data[:,0] = 1/data[:,0]
     data[:,1] = 1/data[:,1]
     data2 = np.vstack((data[:,1], data[:,0], data[:,2])).transpose()
+    data_orig = data
     data = np.vstack((data, data2))
+    data_red = np.array([reduce_2d_cell(*item) for item in tqdm(data_orig)])
+    data_red2 = np.vstack((data_red[:,1], data_red[:,0], data_red[:,2])).transpose()
+    data_red_all = np.vstack((data_red, data_red2))
 
 
     if len(sys.argv)==3 and False:
@@ -2329,29 +1969,17 @@ def run():
         for val in cl_auto.kde_maxima:
             recon.store_triplet(*val)
 
-#    # Manual select 2d sub bases
     assert sys.argv[2] in ['auto', 'manual']
+    # Manual select 2d sub bases
     if sys.argv[2] == 'manual':
-      cl1 = ManualClusterer(data, n_maxima=0, sb1_callback=sb1_callback, recon=recon, qmin=QMIN, qmax=QMAX)
+      cl1 = ManualClusterer(data_red_all, n_maxima=0, sb1_callback=sb1_callback, recon=recon, qmin=QMIN, qmax=QMAX)
+#      cl1 = ManualClusterer(data, n_maxima=0, sb1_callback=sb1_callback, recon=recon, qmin=QMIN, qmax=QMAX)
       title = "select first sub-basis"
       triplets = cl1.select_triplets(title)
       # Lattice doubling test case: 0.153379 0.125106 40.434691
       triplets = triplets[-1:] # keep the last one
       triplets[0][2] = np.radians(triplets[0][2])
       sb1 = Basis.from_params(*triplets[0])
-
-#    def generate_2d_bases(self, scan_pts=11, scan_range=1, max_axis=40):
-#        scan_range=np.radians(scan_range)
-#        self.basis_candidates_2d = []
-#        for pair in self.all_pairs:
-#            deltas = np.linspace(-scan_range, scan_range, scan_pts)
-#            for d in deltas:
-#                try:
-#                    b = Basis.from_params(pair.q1, pair.q2, pair.theta+d)
-#                    if 1/b.astar() < max_axis and 1/b.bstar() < max_axis:
-#                        self.basis_candidates_2d.append(b)
-#                except Exception:
-#                    pass
 
     else:
       # Auto select 2d sub basis
@@ -2373,14 +2001,6 @@ def run():
           print(i, b[0], round(b[1], 1), round(b[2], 1))
       i_sb1 = int(input('Sub-basis 1? '))
       sb1 = basis_fom1_fom2[i_sb1]
-#      for sb in [sb1]: #sb1, sb2:
-#        basis = sb[0]
-#        basis.match_pairs(recon.all_pairs)
-#        for _ in range(3):
-#          basis.reindex_pairs()
-#          basis.flag_outliers()
-#          basis.plot_costs()
-#          basis.refine()
       sb1 = sb1[0]
 
 
@@ -2410,22 +2030,47 @@ def run():
             sb1.refine()
 
 
-    print('manual selection start')
-    qvals_1 = np.linalg.norm(sb1.points, axis=1)
+    # Manual lattice expansion
+#    print('manual selection start')
+#    import IPython;IPython.embed()
+#    qvals_1 = np.linalg.norm(sb1.points, axis=1)
+#
+#    cl2 = ManualClusterer(data, n_maxima=0, qvals_1=qvals_1, qmin=QMIN, qmax=QMAX)
+#    triplets = cl2.select_triplets(title="Lattice expansion")
+#    assert len(triplets) == 2
+#    pairs = [SpotPair(q1,q2,np.radians(th)) for q1,q2,th in triplets]
+#    matches = [sb1.match(p) for p in pairs]
+#    indexed_pairs = []
+#    for m in matches:
+#        assert m[1] == 'one_vector'
+#        indexed_pairs.append(m[0])
+#    recon.sub_basis = sb1
+#    import IPython;IPython.embed()
+#    best_basis, best_params, fig = find_best_3d_basis(recon, *indexed_pairs, delta_range=(-2,2), steps=11)
+#    plt.show()
 
-    cl2 = ManualClusterer(data, n_maxima=0, qvals_1=qvals_1, qmin=QMIN, qmax=QMAX)
-    triplets = cl2.select_triplets(title="Lattice expansion")
-    # Lattice doubling test case: 0.137211 0.153351 114.522842
-    #                             0.137379 0.166884 110.495585
-    assert len(triplets) == 2
-    pairs = [SpotPair(q1,q2,np.radians(th)) for q1,q2,th in triplets]
-    matches = [sb1.match(p) for p in pairs]
-    indexed_pairs = []
-    for m in matches:
-        assert m[1] == 'one_vector'
-        indexed_pairs.append(m[0])
+    # Auto lattice expansion
     recon.sub_basis = sb1
-    best_basis, best_params, fig = find_best_3d_basis(recon, *indexed_pairs, delta_range=(-2,2), steps=11)
+    one_vec = [x for x in sb1.all_pairs if x[2]=='one_vector']
+    one_vec.sort(key=lambda x:x[1].q2)
+    to_try = []
+    for i in range(len(one_vec)-1):
+        pair1 = one_vec[i][1]
+        pair2 = one_vec[i+1][1]
+        if np.abs(pair1.q2-pair2.q2)<.001 and np.abs(pair1.q1-pair2.q1)>.005:
+            to_try.append((pair1, pair2))
+    results = []
+    for i, pair in enumerate(to_try):
+        try:
+            best_basis, best_params, _ = find_best_3d_basis(
+                recon, *pair, delta_range=(0,0), steps=1, plot=False
+            )
+            results.append((i, best_params['fom']))
+        except Exception:
+            print(i)
+    results.sort(key=lambda x:x[1], reverse=True)
+    i_best = results[0][0]
+    best_basis, best_params, fig = find_best_3d_basis(recon, *to_try[i_best], delta_range=(-2,2), steps=11)
     plt.show()
 
     best_basis.match_pairs(recon.all_pairs)
@@ -2452,8 +2097,6 @@ def run():
             best_basis.refine()
             #best_basis.plot_costs_components()
 
-    from cctbx import uctbx, crystal
-    from cctbx.sgtbx.lattice_symmetry import metric_subgroups
     cell_vals = list(best_basis.compute_direct_cell_params(best_basis.vectors).values())
     uc = uctbx.unit_cell(cell_vals)
     cs = crystal.symmetry(unit_cell=uc, space_group='P1')
@@ -2461,8 +2104,6 @@ def run():
     subsyms = [x['best_subsym'] for x in subgroups.result_groups]
 
     symmetrized_bases = []
-#    for subsym in subsyms:
-#        constr_basis = Basis.from_params(*best0.unit_cell().reciprocal_parameters())
     for i, subsym in enumerate(subsyms):
         print(f"\n======= Test symmetry {i}/{len(subsyms)} =======")
         constr_basis = Basis.from_crystal_symmetry(subsym)
@@ -2480,96 +2121,496 @@ def run():
     final_points_2 = np.vstack((final_basis.q2_values, final_basis.q1_values, final_basis.theta_values*180/np.pi)).T
     final_points = np.vstack((final_points_1, final_points_2))
     final_qvals = np.linalg.norm(final_basis.points, axis=1)
+
+#    final_points_red = np.array([reduce_2d_cell(*item) for item in tqdm(final_points_1)])
+#    final_points_red2 = np.vstack((final_points_red[:,1], final_points_red[:,0], final_points_red[:,2])).transpose()
+#    final_points_red_all = np.vstack((final_points_red, final_points_red2))
+#
+#    cl_final = ManualClusterer(data_red_all, n_maxima=0, qvals_1=final_qvals, qmin=QMIN, qmax=QMAX, points=final_points_red_all)
     cl_final = ManualClusterer(data, n_maxima=0, qvals_1=final_qvals, qmin=QMIN, qmax=QMAX, points=final_points)
     _ = cl_final.select_triplets()
 
     import IPython;IPython.embed()
-    assert len(triplets) == 1
-    triplets[0][2] = np.radians(triplets[0][2])
-    sb2 = Basis.from_params(*triplets[0])
-    sb2.match_pairs(recon.all_pairs)
-    import IPython;IPython.embed()
-    for _ in range(3):
-        sb2.reindex_pairs()
-        sb2.flag_outliers()
-        sb2.plot_costs()
-        sb2.refine()
-
-
-
-    # Manual select ab pairs
-    qvals_1 = np.linalg.norm(sb1.points, axis=1)
-    qvals_2 = np.linalg.norm(sb2.points, axis=1)
-    cl = ManualClusterer(data, n_maxima=0, qvals_1=qvals_1, qvals_2=qvals_2, qmin=.1, qmax=.5)
-    triplets = cl.select_triplets("select a-b pairs")
-    print(triplets)
-    #triplets = [[0.15333570792827658, 0.13718166412632835, 114.6026808444415], [0.1532716587572158, 0.143893922376171, 32.211055684990406], [0.15329187415603598, 0.1836433785315679, 77.80422388061861], [0.1533567548034525, 0.25795800966128574, 50.959598431305984], [0.1667772122979944, 0.1415369213997462, 65.44425336483228], [0.1668435395895667, 0.14401664386592716, 57.66669217209992], [0.16672231651340277, 0.25795198264263536, 30.3907182392463], [0.20049139390604614, 0.1415445237130603, 25.921552407884032], [0.22693602221707057, 0.2580249296609254, 108.14834482578436], [0.27737438425400857, 0.14161107283719673, 52.546032607023136], [0.2774193570666868, 0.14393247301009263, 44.26189630562257], [0.27722723290187934, 0.28328068977243553, 52.552673251938415], [0.3069234169084582, 0.14153689240822068, 89.97024400009249], [0.30674731494727275, 0.14385171337570893, 75.9191414162387], [0.3067820484586015, 0.2578167873779439, 54.49355516464851]]
-    for t in triplets:
-        if t[2]>90:
-            t[2] = 180-t[2]
-
-
-
-    common_axes = common_axis(sb1, sb2)
-    all_errors = []
-    for t in triplets:
-        q1, q2, th = t
-        pair = PairMatch_ab(q1, q2, th, sb1, sb2, common_axes)
-        errors = [pair.angle_error(x) for x in range(361)]
-        all_errors.append(errors)
-    for err in all_errors:
-        plt.plot(range(361), err)
-    plt.show()
-
-    import IPython;IPython.embed()
-    print('using 2d basis: ', best_sb[0], round(best_sb[1],2), round(best_sb[2],2))
-    recon.set_sub_basis(best_sb[0])
-    import IPython;IPython.embed()
-    for _ in range(2):
-        recon.sub_basis.refine(recon.sublattice_indexed)
-        recon.reprocess_all_pairs()
-
-    recon.print_status(verbose=True)
-
-    from cluster2 import ManualClusterer
-    fn2 = sys.argv[2]
-    data = np.load(fn2)['triplets'][:,1:4]
-    data[:,0] = 1/data[:,0]
-    data[:,1] = 1/data[:,1]
-    data2 = np.vstack((data[:,1], data[:,0], data[:,2])).transpose()
-    data = np.vstack((data, data2))
-    sublattice_qvals = np.linalg.norm(recon.sub_basis.points, axis=1)
-    accept = False
-    while not accept:
-        cl = ManualClusterer(data, n_maxima=0, mark_qvals=sublattice_qvals)
-        triplets = cl.select_triplets()
-        assert len(triplets)==2
-        pairs = [SpotPair(q1,q2,np.radians(th)) for q1,q2,th in triplets]
-        match_results = [recon.sub_basis.match(p) for p in pairs]
-        matches_1v = []
-        for m in match_results:
-            assert m[1] == 'one_vector'
-            matches_1v.append(m[0])
-        best_basis, best_params, fig = find_best_3d_basis(recon, *matches_1v, delta_range=(-2.0, 2.0), steps=11)
-        matches = []
-        hits = 0
-        for p in recon.all_pairs:
-            result = best_basis.match(p)
-            if result[1]=='indexed_3d':
-                hits += 1
-                matches.append(result[0])
-
-
-        import IPython;IPython.embed()
-
-
-
-
-    exit()
-        #recon.read_triplet(*[float(x) for x in l.split()])
-    for _ in range(2):
-        recon.sub_basis.refine(recon.sublattice_indexed)
-        recon.reprocess_all_pairs()
 
 if __name__=="__main__":
     run()
+
+
+def junk():
+  return '''
+#def find_third_vector(v1: np.ndarray, v2: np.ndarray,
+#                     q: float, theta1: float, theta2: float) -> Tuple[np.ndarray, np.ndarray]:
+#    """Find a vector v3 given its length and angles with v1 and v2.
+#
+#    Args:
+#        v1, v2: Two known vectors in xy-plane (2D arrays)
+#        q: Length of vector to find
+#        theta1: Angle between v1 and v3
+#        theta2: Angle between v2 and v3
+#
+#    Returns:
+#        Two possible 3D positions for v3 (above/below v1-v2 plane)
+#    """
+#    # Convert 2D vectors to 3D
+#    v1_3d = np.array([v1[0], v1[1], 0.0])
+#    v2_3d = np.array([v2[0], v2[1], 0.0])
+#
+#    # Normalize
+#    v1_unit = v1_3d / np.linalg.norm(v1_3d)
+#    v2_unit = v2_3d / np.linalg.norm(v2_3d)
+#
+#    # Get normal to v1-v2 plane (will be along z-axis)
+#    n = np.cross(v1_unit, v2_unit)
+#    n = n / np.linalg.norm(n)  # should be [0, 0, ±1]
+#
+#    # Solve for components
+#    v1v2 = np.dot(v1_unit, v2_unit)
+#    A = np.array([[1, v1v2], [v1v2, 1]])
+#    b = q * np.array([np.cos(theta1), np.cos(theta2)])
+#    a, b = np.linalg.solve(A, b)
+#
+#    # Find c from length condition
+#    c_sq = q*q - (a*a + b*b + 2*a*b*v1v2)
+#    if c_sq < 0:
+#        raise ValueError("No solution exists for these constraints")
+#    c = np.sqrt(c_sq)
+#
+#    # Return both possible 3D positions
+#    v3_plus = a*v1_unit + b*v2_unit + c*n
+#    v3_minus = a*v1_unit + b*v2_unit - c*n
+#
+#    return v3_plus, v3_minus
+
+#class IndexedSpotPair2d(SpotPair):
+#    def initialize_orientation(self, basis_vectors: np.ndarray) -> None:
+#        """Initialize orientation by computing angle between calculated and observed vectors."""
+#        # Get calculated vectors
+#        q1_calc = self.indices1[0]*basis_vectors[0] + self.indices1[1]*basis_vectors[1]
+#        q2_calc = self.indices2[0]*basis_vectors[0] + self.indices2[1]*basis_vectors[1]
+#
+#        # Compute angle of q1_calc from x-axis
+#        phi_calc = np.arctan2(q1_calc[1], q1_calc[0])
+#
+#        # Our observed q1 is along x-axis, so this is our basic rotation
+#        self.init_phi = phi_calc
+#
+#        # Check if we need to flip orientation by comparing second vector
+#        q2_obs = self.q2 * np.array([np.cos(self.theta), np.sin(self.theta)])
+#        R = np.array([[np.cos(self.init_phi), -np.sin(self.init_phi)],
+#                      [np.sin(self.init_phi), np.cos(self.init_phi)]])
+#        q2_obs_rot = R @ q2_obs
+#
+#        # If distance is large, try flipping
+#        if np.linalg.norm(q2_obs_rot - q2_calc) > np.linalg.norm(q2_obs_rot + q2_calc):
+#            self.init_phi += np.pi
+#
+#        # Optional: small local optimization to refine this initial guess
+#        result = minimize_scalar(
+#            lambda dphi: self.compute_cost(basis_vectors, dphi),
+#            bounds=(-0.1, 0.1),  # small range around initial guess
+#            method='bounded'
+#        )
+#        self.init_phi += result.x
+#
+#    def compute_cost(self, basis_vectors: np.ndarray, delta_phi: float) -> float:
+#        """Compute distance between rotated observed and calculated positions."""
+#        # Compute vectors from indices (fixed)
+#        q1_calc = self.indices1[0]*basis_vectors[0] + self.indices1[1]*basis_vectors[1]
+#        q2_calc = self.indices2[0]*basis_vectors[0] + self.indices2[1]*basis_vectors[1]
+#
+#        # Create observed vectors in standard orientation (q1 along x)
+#        q1_obs = np.array([self.q1, 0.0])
+#        q2_obs = self.q2 * np.array([np.cos(self.theta), np.sin(self.theta)])
+#
+#        # Total rotation to apply to observed vectors
+#        total_phi = self.init_phi + delta_phi
+#        R = np.array([[np.cos(total_phi), -np.sin(total_phi)],
+#                     [np.sin(total_phi), np.cos(total_phi)]])
+#
+#        # Rotate observed vectors to match calculated
+#        q1_obs_rot = R @ q1_obs
+#        q2_obs_rot = R @ q2_obs
+#
+#        return (np.linalg.norm(q1_obs_rot - q1_calc) + 
+#                np.linalg.norm(q2_obs_rot - q2_calc))
+
+    # Methods from Basis2d to support the unused merge_bases approach
+#    def basis_in_3d(self, plus_x):
+#        """Make a 3x2 matrix that multiplies a point in this basis to give its
+#        3d coordinates. Initially the basis should lie in the xy plane with
+#        the plus_x vector aligned along 1,0,0.
+#
+#        Args:
+#            plus_x: A 2-element array specifying which vector in the 2D basis
+#                   should be aligned with the positive x-axis in 3D.
+#                   For example, [1,0] means align the first basis vector.
+#
+#        Returns:
+#            A 3x2 matrix that transforms 2D basis coordinates to 3D coordinates.
+#        """
+#        # Calculate which vector in the original basis should align with x-axis
+#        vector_to_align = plus_x[0] * self.vectors[0] + plus_x[1] * self.vectors[1]
+#
+#        # Calculate the angle to rotate this vector to align with [1,0]
+#        norm = np.linalg.norm(vector_to_align)
+#        cos_angle = vector_to_align[0] / norm
+#        sin_angle = vector_to_align[1] / norm
+#
+#        # Create the rotation matrix (clockwise rotation)
+#        # This will rotate the vector_to_align to the positive x-axis
+#        rotation = np.array([
+#            [cos_angle, sin_angle],
+#            [-sin_angle, cos_angle]
+#        ])
+#
+#        # Apply rotation to both basis vectors
+#        rotated_vectors = rotation @ self.vectors.T
+#
+#        # Create the 3x2 transformation matrix
+#        # The first two rows contain the rotated vectors
+#        # The third row contains zeros (since we're in the xy plane)
+#        result = np.zeros((3, 2))
+#        result[0, :] = rotated_vectors[0, :]  # x components
+#        result[1, :] = rotated_vectors[1, :]  # y components
+#
+#        return result
+#
+#    def vec3d_aligned_rotated(self, point, plusx, rotx_deg):
+#        """Construct the aligned basis from above and compute 3d coordinates for the given point.
+#        Apply a rotation around the x-axis and return the transformed coordinates.
+#
+#        Args:
+#            point: A 2-element array representing a point in the 2D basis
+#            plusx: Specifies which vector should align with the x-axis
+#            rotx_deg: Rotation angle around the x-axis in degrees
+#
+#        Returns:
+#            A 3D point after transformation and rotation
+#        """
+#        # Step 1: Get the 3D basis that aligns plusx with the x-axis
+#        basis_3d = self.basis_in_3d(plusx)
+#
+#        # Step 2: Transform the 2D point to 3D
+#        point_3d = basis_3d @ np.array(point)
+#
+#        # Step 3: Create the rotation matrix around the x-axis
+#        rotx_rad = np.radians(rotx_deg)
+#        cos_rx = np.cos(rotx_rad)
+#        sin_rx = np.sin(rotx_rad)
+#
+#        # Rotation matrix around x-axis
+#        # [1    0      0   ]
+#        # [0  cos(θ) -sin(θ)]
+#        # [0  sin(θ)  cos(θ)]
+#        rot_x = np.array([
+#            [1, 0, 0],
+#            [0, cos_rx, -sin_rx],
+#            [0, sin_rx, cos_rx]
+#        ])
+#
+#        # Step 4: Apply the rotation
+#        rotated_point = rot_x @ point_3d
+#
+#        return rotated_point
+#@dataclass
+#class GeneratedSpotPair():
+#    hkl1: np.ndarray
+#    hkl2: np.ndarray
+#    q1: np.float64
+#    q2: np.float64
+#    theta: np.float64
+
+# Unused functions
+#def common_axis(b1, b2):
+#    """For two Basis2d objects, find the closest matching q-value and return
+#    the indices in each basis that give the corresponding value.
+#    """
+#    qvals_1 = np.linalg.norm(b1.points, axis=1)
+#    qvals_2 = np.linalg.norm(b2.points, axis=1)
+#    delta_best = 999
+#    i1_best = -1
+#    i2_best = -1
+#    for i2, val in enumerate(qvals_2):
+#        deltas = np.abs(qvals_1-val)
+#        i1 = np.argmin(deltas)
+#        if deltas[i1] < delta_best:
+#            i1_best = i1
+#            i2_best = i2
+#            delta_best = deltas[i1]
+#    hk1_best = b1.point_indices[i1_best]
+#    hk2_best = b2.point_indices[i2_best]
+#    print('delta_best: ', delta_best)
+#    print('hk1_best: ', hk1_best, qvals_1[i1_best])
+#    print('hk2_best: ', hk2_best, qvals_2[i2_best])
+#    return hk1_best, hk2_best
+#
+#def merge_bases(b1, b2, common_axes, angle_deg):
+#    """Merge two 2D bases into a single 3D basis.
+#
+#    Args:
+#        b1: First 2D basis
+#        b2: Second 2D basis
+#        common_axes: Two 2-tuples ((h1,k1), (h2,k2)) where (h1,k1) in the first basis
+#                    is equivalent to (h2,k2) in the second basis
+#        angle_deg: Rotation angle in degrees around the common axis
+#
+#    Returns:
+#        A Basis3d object representing the merged 3D basis
+#    """
+#
+#    # Extract common axis vectors from the tuples
+#    common_axis_b1, common_axis_b2 = common_axes
+#
+#    # Convert the first basis to 3D, aligning common axis with x-axis
+#    basis1_3d = b1.basis_in_3d(common_axis_b1)
+#
+#    # For the second basis, align with x-axis
+#    basis2_3d_aligned = b2.basis_in_3d(common_axis_b2)
+#
+#    # Create the full 3D basis vectors
+#    # First vector: common axis (aligned with x-axis)
+#    v1 = np.array([basis1_3d[0, 0], 0, 0])
+#
+#    # Second vector: from first basis, already aligned
+#    v2 = np.array([basis1_3d[0, 1], basis1_3d[1, 1], 0])
+#
+#    # Third vector: from second basis, rotated around x-axis
+#    # Get a vector from the second basis that's not aligned with x-axis
+#    # (i.e., the second column of basis2_3d_aligned)
+#    v3_pre_rotation = np.array([basis2_3d_aligned[0, 1], basis2_3d_aligned[1, 1], 0])
+#
+#    # Apply rotation around x-axis
+#    rot_rad = np.radians(angle_deg)
+#    cos_rx = np.cos(rot_rad)
+#    sin_rx = np.sin(rot_rad)
+#
+#    rot_x = np.array([
+#        [1, 0, 0],
+#        [0, cos_rx, -sin_rx],
+#        [0, sin_rx, cos_rx]
+#    ])
+#
+#    v3 = rot_x @ v3_pre_rotation
+#
+#    # Combine the vectors into a 3D basis
+#    vectors_3d = np.vstack([v1, v2, v3])
+#
+#    import IPython;IPython.embed()
+#    # Create and return a Basis3d object
+#    return Basis3d(vectors_3d, qmax=max(b1.qmax, b2.qmax),
+#                  q_tolerance=max(b1.q_tolerance, b2.q_tolerance),
+#                  theta_tol_degrees=max(np.degrees(b1.theta_tolerance),
+#                                       np.degrees(b2.theta_tolerance)))
+#
+#def merge_bases_brute(b1, b2, common_axes, angle_deg):
+#    """Merge two 2D bases into a single 3D basis using a brute force approach.
+#    
+#    Args:
+#        b1: First 2D basis
+#        b2: Second 2D basis
+#        common_axes: Two 2-tuples ((h1,k1), (h2,k2)) where (h1,k1) in the first basis 
+#                    is equivalent to (h2,k2) in the second basis
+#        angle_deg: Rotation angle in degrees around the common axis
+#    
+#    Returns:
+#        A Basis3d object representing the merged 3D basis
+#    """
+#
+#    # Generate all index pairs in a grid (-4 to 4 in each dimension)
+#    index_grid = list(itertools.product(range(5), range(5)))
+#
+#    # Generate 3D points from b1
+#    points_3d_b1 = []
+#    for hk in index_grid:
+#        point_3d = b1.vec3d_aligned_rotated(hk, common_axes[0], 0)
+#        points_3d_b1.append(point_3d)
+#
+#    # Generate 3D points from b2 with rotation
+#    points_3d_b2 = []
+#    for hk in index_grid:
+#        point_3d = b2.vec3d_aligned_rotated(hk, common_axes[1], angle_deg)
+#        points_3d_b2.append(point_3d)
+#
+#    # Generate all pairwise sums, eliminating near-duplicates
+#    sum_vectors = []
+#    for v1 in points_3d_b1:
+#        for v2 in points_3d_b2:
+#            sum_vec = v1 + v2
+#            length = np.linalg.norm(sum_vec)
+#
+#            # Skip zero vectors
+#            if length < 1e-2:
+#                continue
+#
+#            # Check if this is a near-duplicate of an existing vector
+#            is_duplicate = False
+#            for existing_vec, _ in sum_vectors:
+#                if np.linalg.norm(sum_vec - existing_vec) < 0.01:  # 0.01 Å⁻¹ threshold
+#                    is_duplicate = True
+#                    break
+#
+#            # If not a duplicate, add it
+#            if not is_duplicate:
+#                sum_vectors.append((sum_vec, length))
+#
+#    # Sort by length
+#    sum_vectors.sort(key=lambda x: x[1])
+#
+#    # Find three non-coplanar vectors
+#    basis_vectors = []
+#    for vec, _ in sum_vectors:
+#        if len(basis_vectors) == 0:
+#            basis_vectors.append(vec)
+#        elif len(basis_vectors) == 1:
+#            # Check if not collinear
+#            cross_prod = np.cross(basis_vectors[0], vec)
+#            if np.linalg.norm(cross_prod) > 1e-6:
+#                basis_vectors.append(vec)
+#        elif len(basis_vectors) == 2:
+#            # Check if not coplanar
+#            v1, v2 = basis_vectors
+#            det = np.dot(np.cross(v1, v2), vec)
+#            if abs(det) > 1e-6:
+#                basis_vectors.append(vec)
+#                break
+#
+#    if len(basis_vectors) < 3:
+#        raise ValueError("Could not find three non-coplanar vectors from the combined bases")
+#
+#    # Stack the vectors into a 3D basis
+#    vectors_3d = np.vstack(basis_vectors)
+#
+#    # Create and return a Basis3d object
+#    return Basis3d(vectors_3d, qmax=max(b1.qmax, b2.qmax),
+#                  q_tolerance=max(b1.q_tolerance, b2.q_tolerance),
+#                  theta_tol_degrees=max(np.degrees(b1.theta_tolerance),
+#                                       np.degrees(b2.theta_tolerance)))
+
+#class PairMatch_ab(VectorPairMatch):
+#    """A vector pair where the first vector is indexed in the first basis and
+#    the second vector is indexed in the second basis."""
+#    def __init__(self, q1, q2, theta_obs, b1, b2, common_axes):
+#        qvals_1 = np.linalg.norm(b1.points, axis=1)
+#        deltas_1 = np.abs(qvals_1 - q1)
+#        i1 = np.argmin(deltas_1)
+#        hk1 = b1.point_indices[i1]
+#        qvals_2 = np.linalg.norm(b2.points, axis=1)
+#        deltas_2 = np.abs(qvals_2 - q2)
+#        i2 = np.argmin(deltas_2)
+#        hk2 = b2.point_indices[i2]
+#
+#        self.hk1 = hk1
+#        self.hk2 = hk2
+#        self.b1 = b1
+#        self.b2 = b2
+#        self.theta_obs = theta_obs
+#        self.common_ax1, self.common_ax2 = common_axes
+#
+#        #check if one hkl should be inverted
+#        vec1 = b1.vec3d_aligned_rotated(hk1, common_axes[0], 0)
+#        vec2 = b2.vec3d_aligned_rotated(hk2, common_axes[1], 0)
+#        if np.dot(vec1, vec2) < 0:
+#            self.hk2 = -1 * self.hk2
+#
+#    def angle_error(self, rotx_deg):
+#        vec1 = self.b1.vec3d_aligned_rotated(
+#            self.hk1, self.common_ax1, 0
+#        )
+#        vec2 = self.b2.vec3d_aligned_rotated(
+#            self.hk2, self.common_ax2, rotx_deg
+#        )
+#        theta_calc = angle_between(vec1, vec2)
+#        return abs(theta_calc - self.theta_obs)
+#
+#    pass
+
+
+# Previous attempts from the main run method
+
+#    assert len(triplets) == 1
+#    triplets[0][2] = np.radians(triplets[0][2])
+#    sb2 = Basis.from_params(*triplets[0])
+#    sb2.match_pairs(recon.all_pairs)
+#    import IPython;IPython.embed()
+#    for _ in range(3):
+#        sb2.reindex_pairs()
+#        sb2.flag_outliers()
+#        sb2.plot_costs()
+#        sb2.refine()
+#
+#
+#
+#    # Manual select ab pairs
+#    qvals_1 = np.linalg.norm(sb1.points, axis=1)
+#    qvals_2 = np.linalg.norm(sb2.points, axis=1)
+#    cl = ManualClusterer(data, n_maxima=0, qvals_1=qvals_1, qvals_2=qvals_2, qmin=.1, qmax=.5)
+#    triplets = cl.select_triplets("select a-b pairs")
+#    print(triplets)
+#    #triplets = [[0.15333570792827658, 0.13718166412632835, 114.6026808444415], [0.1532716587572158, 0.143893922376171, 32.211055684990406], [0.15329187415603598, 0.1836433785315679, 77.80422388061861], [0.1533567548034525, 0.25795800966128574, 50.959598431305984], [0.1667772122979944, 0.1415369213997462, 65.44425336483228], [0.1668435395895667, 0.14401664386592716, 57.66669217209992], [0.16672231651340277, 0.25795198264263536, 30.3907182392463], [0.20049139390604614, 0.1415445237130603, 25.921552407884032], [0.22693602221707057, 0.2580249296609254, 108.14834482578436], [0.27737438425400857, 0.14161107283719673, 52.546032607023136], [0.2774193570666868, 0.14393247301009263, 44.26189630562257], [0.27722723290187934, 0.28328068977243553, 52.552673251938415], [0.3069234169084582, 0.14153689240822068, 89.97024400009249], [0.30674731494727275, 0.14385171337570893, 75.9191414162387], [0.3067820484586015, 0.2578167873779439, 54.49355516464851]]
+#    for t in triplets:
+#        if t[2]>90:
+#            t[2] = 180-t[2]
+#
+#
+#
+#    common_axes = common_axis(sb1, sb2)
+#    all_errors = []
+#    for t in triplets:
+#        q1, q2, th = t
+#        pair = PairMatch_ab(q1, q2, th, sb1, sb2, common_axes)
+#        errors = [pair.angle_error(x) for x in range(361)]
+#        all_errors.append(errors)
+#    for err in all_errors:
+#        plt.plot(range(361), err)
+#    plt.show()
+#
+#    import IPython;IPython.embed()
+#    print('using 2d basis: ', best_sb[0], round(best_sb[1],2), round(best_sb[2],2))
+#    recon.set_sub_basis(best_sb[0])
+#    import IPython;IPython.embed()
+#    for _ in range(2):
+#        recon.sub_basis.refine(recon.sublattice_indexed)
+#        recon.reprocess_all_pairs()
+#
+#    recon.print_status(verbose=True)
+#
+#    from cluster2 import ManualClusterer
+#    fn2 = sys.argv[2]
+#    data = np.load(fn2)['triplets'][:,1:4]
+#    data[:,0] = 1/data[:,0]
+#    data[:,1] = 1/data[:,1]
+#    data2 = np.vstack((data[:,1], data[:,0], data[:,2])).transpose()
+#    data = np.vstack((data, data2))
+#    sublattice_qvals = np.linalg.norm(recon.sub_basis.points, axis=1)
+#    accept = False
+#    while not accept:
+#        cl = ManualClusterer(data, n_maxima=0, mark_qvals=sublattice_qvals)
+#        triplets = cl.select_triplets()
+#        assert len(triplets)==2
+#        pairs = [SpotPair(q1,q2,np.radians(th)) for q1,q2,th in triplets]
+#        match_results = [recon.sub_basis.match(p) for p in pairs]
+#        matches_1v = []
+#        for m in match_results:
+#            assert m[1] == 'one_vector'
+#            matches_1v.append(m[0])
+#        best_basis, best_params, fig = find_best_3d_basis(recon, *matches_1v, delta_range=(-2.0, 2.0), steps=11)
+#        matches = []
+#        hits = 0
+#        for p in recon.all_pairs:
+#            result = best_basis.match(p)
+#            if result[1]=='indexed_3d':
+#                hits += 1
+#                matches.append(result[0])
+#
+#
+#        import IPython;IPython.embed()
+#
+#
+#
+#
+#    exit()
+#        #recon.read_triplet(*[float(x) for x in l.split()])
+#    for _ in range(2):
+#        recon.sub_basis.refine(recon.sublattice_indexed)
+#        recon.reprocess_all_pairs()
+'''
