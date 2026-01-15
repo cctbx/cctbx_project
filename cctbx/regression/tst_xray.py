@@ -1564,6 +1564,25 @@ def exercise_truncate_at_pdb_format_precision(d_min=2, n_repeats=1,
     r = flex.sum(flex.abs(fc1-fc2))/flex.sum(flex.abs(fc1+fc2))*2*100
     assert r > 0.1
 
+def exercise_sf_calculation_both_ways_must_be_identical():
+  pdb_str = """
+CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1
+ATOM      1  U   DUM A   1      -9.009   4.612   6.102  1.00  0.00           U
+"""
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  xrs = pdb_inp.xray_structure_simple()
+  fc1 = xrs.structure_factors(
+    d_min     = 4,
+    algorithm = "fft").f_calc()
+  fc2 = fc1.structure_factors_from_scatterers(
+    algorithm      = "fft",
+    xray_structure = xrs).f_calc()
+  def rfactor(fo,fc):
+    o = abs(fo).data()
+    c = abs(fc).data()
+    return flex.sum(flex.abs(o-c))/flex.sum(o)
+  assert approx_equal(rfactor(fo=fc1,fc=fc2), 0.0)
+
 def run():
   exercise_truncate_at_pdb_format_precision()
   exercise_discard_scattering_type_registry()
@@ -1586,6 +1605,7 @@ def run():
   exercise_u_base()
   exercise_select_within()
   exercise_guess_scattering_type_neutron()
+  exercise_sf_calculation_both_ways_must_be_identical()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
 
 if (__name__ == "__main__"):

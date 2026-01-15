@@ -1429,14 +1429,17 @@ class structure(crystal.special_position_settings):
             "xray.structure with anomalous scatterers"
           + " but miller.array is non-anomalous.")
     miller_set = miller.build_set(self, anomalous_flag, d_min)
+    d_min = miller_set.d_min() # Overwrite d_min with the actual value
     return structure_factors.from_scatterers(
       crystal_symmetry=self,
       d_min=d_min,
       cos_sin_table=cos_sin_table,
+      grid_resolution_factor=1/3.,
       quality_factor=quality_factor,
       u_base=u_base,
       b_base=b_base,
-      wing_cutoff=wing_cutoff)(
+      wing_cutoff=wing_cutoff,
+      exp_table_one_over_step_size=None)(
         xray_structure=self,
         miller_set=miller_set,
         algorithm=algorithm,
