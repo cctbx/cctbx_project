@@ -24,7 +24,8 @@ from libtbx.utils import format_float_with_standard_uncertainty \
 import math
 from scitbx import matrix
 import scitbx.cubicle_neighbors
-from cctbx.uctbx.near_minimum import find_near_minimum_settings, cell_distance
+from cctbx.uctbx.near_minimum import find_near_minimum_settings, \
+    find_near_minimum_settings_multiples, cell_distance
 import numpy as np
 cubicles_max_memory_allocation_set(
   number_of_bytes=scitbx.cubicle_neighbors.cubicles_max_memory_allocation_get())
@@ -545,7 +546,7 @@ class symmetry(object):
     if not hasattr(self, '_near_minimum_cache') or \
        getattr(self, '_near_minimum_cache_params', None) != (length_tolerance, angle_tolerance):
       mc_self = self.minimum_cell()
-      settings = find_near_minimum_settings(
+      settings = find_near_minimum_settings_multiples(
         mc_self.unit_cell(),
         length_tolerance=length_tolerance,
         angle_tolerance=angle_tolerance
@@ -578,7 +579,7 @@ class symmetry(object):
     # Convention: P from find_near_minimum_settings satisfies P = inv(cb.c().r())
     # So to construct cb_op, we need to pass P^{-1}
     P = settings[best_idx]['P']
-    P_flat = tuple(int(x) for x in P.ravel())
+    P_flat = tuple(float(x) for x in P.ravel())
 
     rot_mx = sgtbx.rot_mx(P_flat)
     cb_near = sgtbx.change_of_basis_op(sgtbx.rt_mx(rot_mx))

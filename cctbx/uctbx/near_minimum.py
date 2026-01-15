@@ -291,3 +291,119 @@ def find_near_minimum_settings(
     results.sort(key=lambda x: sum(x['cell'][:3]))
 
     return results
+
+
+def find_near_minimum_settings_multiples(
+    cell,
+    length_tolerance=0.03,
+    angle_tolerance=3.0,
+    max_search_index=10,
+):
+    """
+    Find nearly-reduced settings across order-2 super- and subcells.
+
+    This function extends find_near_minimum_settings by searching not only the
+    input cell, but also 7 order-2 supercells and 7 order-2 subcells (14 total
+    additional cells). This helps find alternative settings that might be missed
+    due to reduction boundaries when the true cell might be a multiple or
+    submultiple of the measured cell.
+
+    Parameters
+    ----------
+    cell : tuple or unit_cell
+        (a, b, c, alpha, beta, gamma) - axes in Angstrom, angles in degrees
+    length_tolerance : float
+        Fractional tolerance for length perturbations (e.g., 0.03 = 3%)
+    angle_tolerance : float
+        Tolerance for angle perturbations in degrees
+    max_search_index : int
+        Search lattice vectors up to +/-max_search_index
+
+    Returns
+    -------
+    list of dict
+        Each dict contains:
+        - 'P': transformation matrix (3x3 integer or float array) including
+               the super/subcell transformation
+        - 'cell': transformed cell parameters (tuple of 6 floats)
+        - 'G': transformed metric tensor (3x3 array)
+    """
+    # Handle cctbx unit_cell objects
+    if hasattr(cell, 'parameters'):
+        cell = cell.parameters()
+
+    # Define 7 standard order-2 supercell transformations (det = 2)
+    supercell_transforms = [
+        np.array([[2, 0, 0], [0, 1, 0], [0, 0, 1]]),  # double a
+        np.array([[1, 0, 0], [0, 2, 0], [0, 0, 1]]),  # double b
+        np.array([[1, 0, 0], [0, 1, 0], [0, 0, 2]]),  # double c
+        np.array([[1, 1, 0], [-1, 1, 0], [0, 0, 1]]),  # C-face diagonal
+        np.array([[1, 0, 1], [0, 1, 0], [-1, 0, 1]]),  # B-face diagonal
+        np.array([[1, 0, 0], [0, 1, 1], [0, -1, 1]]),  # A-face diagonal
+        np.array([[1, 1, 1], [-1, 1, 0], [-1, 0, 1]]),  # body diagonal
+    ]
+
+    # Subcell transforms are the inverses of supercell transforms
+    # (det = 1/2, map from original to smaller cell)
+    subcell_transforms = [np.linalg.inv(S) for S in supercell_transforms]
+
+    all_results = []
+
+    # Process original cell
+    original_results = find_near_minimum_settings(
+        cell, length_tolerance, angle_tolerance, max_search_index
+    )
+    all_results.extend(original_results)
+
+    G_original = cell_to_metric_tensor(cell)
+
+    # Process supercells
+    for S in supercell_transforms:
+        # Transform to supercell: G_super = S^T @ G @ S
+        G_super = S.T @ G_original @ S
+        cell_super = metric_tensor_to_cell(G_super)
+
+        # Find near-minimum settings in the supercell
+        super_results = find_near_minimum_settings(
+            cell_super, length_tolerance, angle_tolerance, max_search_index
+        )
+
+        # Compose transformations: P_total = S @ P_super
+        for result in super_results:
+            P_total = S @ result['P']
+            G_total = P_total.T @ G_original @ P_total
+            cell_total = metric_tensor_to_cell(G_total)
+
+            all_results.append({
+                'P': P_total,
+                'cell': cell_total,
+                'G': G_total,
+            })
+
+    # Process subcells
+    for T in subcell_transforms:
+        # Transform to subcell: G_sub = T^T @ G @ T
+        G_sub = T.T @ G_original @ T
+        cell_sub = metric_tensor_to_cell(G_sub)
+
+        # Find near-minimum settings in the subcell
+        sub_results = find_near_minimum_settings(
+            cell_sub, length_tolerance, angle_tolerance, max_search_index
+        )
+
+        # Compose transformations: P_total = T @ P_sub
+        for result in sub_results:
+            P_total = T @ result['P']
+            G_total = P_total.T @ G_original @ P_total
+            cell_total = metric_tensor_to_cell(G_total)
+
+            all_results.append({
+                'P': P_total,
+                'cell': cell_total,
+                'G': G_total,
+            })
+
+    # Sort by sum of basis vector lengths
+    all_results.sort(key=lambda x: sum(x['cell'][:3]))
+
+    return all_results
