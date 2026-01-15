@@ -25,7 +25,7 @@
 #include <scitbx/array_family/boost_python/selections_wrapper.h>
 #include <scitbx/misc/positive_getitem_index.h>
 
-#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 199711L) || __cplusplus >= 199711L) // C++98
+#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201103L) || __cplusplus >= 2021103L) // C++11
   template <typename f_t, typename a_t>
   auto cctbx_compat_bind2nd(const f_t &f, const a_t &a) {
     return std::bind(f, std::placeholders::_1, a);

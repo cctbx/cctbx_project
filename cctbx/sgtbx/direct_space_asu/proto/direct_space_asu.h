@@ -212,8 +212,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
     }
 
     //! Creates asymmetric unit from space group symbol
-    explicit direct_space_asu(const std::string &group_symbol) :  hall_symbol(),
-      faces(NULL)
+    explicit direct_space_asu(const std::string &group_symbol) :  hall_symbol()
     {
       // new(this) direct_space_asu( space_group_type(spgr) );  this fails
       *this =  direct_space_asu( space_group_type(group_symbol) );
