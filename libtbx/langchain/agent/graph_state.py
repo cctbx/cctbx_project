@@ -29,10 +29,13 @@ class AgentState(TypedDict):
     user_advice: str              # User instructions/preferences
     provider: str                 # LLM provider: "google", "openai", or "ollama"
     session_resolution: Optional[float]  # Resolution from session (single source of truth)
+    session_info: Dict            # Session state for sanity checking (experiment_type, etc.)
 
     # === CONFIGURATION ===
     maximum_automation: bool      # If True, use fully automated cryo-EM path
     use_rules_only: bool          # If True, use rules-based selection (no LLM)
+    abort_on_red_flags: bool      # If True, abort on critical sanity check failures
+    abort_on_warnings: bool       # If True, also abort on warning-level issues
 
     # === CURRENT CYCLE DATA ===
     log_text: str                 # Input log for this cycle
@@ -52,8 +55,12 @@ class AgentState(TypedDict):
 
     # === CONTROL FLAGS ===
     stop: bool                    # True if workflow complete
-    stop_reason: Optional[str]    # "success", "stuck", "plateau", etc.
+    stop_reason: Optional[str]    # "success", "stuck", "plateau", "red_flag", etc.
     fallback_used: bool           # True if fallback node was triggered
+
+    # === RED FLAG DETECTION ===
+    red_flag_issues: Optional[List[Dict]]  # Issues from sanity checker
+    abort_message: Optional[str]           # Formatted abort message
 
     # === DEBUG ===
     debug_log: List[str]          # Accumulated debug messages
@@ -69,7 +76,10 @@ def create_initial_state(
     provider="google",
     maximum_automation=True,
     session_resolution=None,
-    use_rules_only=False
+    use_rules_only=False,
+    session_info=None,
+    abort_on_red_flags=True,
+    abort_on_warnings=False
 ):
     """
     Factory function to create a properly initialized AgentState.
@@ -88,6 +98,10 @@ def create_initial_state(
         session_resolution: Resolution value from session (single source of truth)
         use_rules_only: If True, use rules-based selection instead of LLM.
             This runs the agent without calling any external LLM API.
+        session_info: Dict with session state for sanity checking:
+            - experiment_type: Locked experiment type ("xray" or "cryoem")
+        abort_on_red_flags: If True, abort on critical sanity check failures
+        abort_on_warnings: If True, also abort on warning-level issues
 
     Returns:
         AgentState: Properly initialized state dict
@@ -101,10 +115,13 @@ def create_initial_state(
         "user_advice": user_advice,
         "provider": provider,
         "session_resolution": session_resolution,
+        "session_info": session_info if session_info is not None else {},
 
         # Configuration
         "maximum_automation": maximum_automation,
         "use_rules_only": use_rules_only,
+        "abort_on_red_flags": abort_on_red_flags,
+        "abort_on_warnings": abort_on_warnings,
 
         # Current cycle data
         "log_text": log_text,
@@ -126,6 +143,10 @@ def create_initial_state(
         "stop": False,
         "stop_reason": None,
         "fallback_used": False,
+
+        # Red flag detection
+        "red_flag_issues": None,
+        "abort_message": None,
 
         # Debug
         "debug_log": []

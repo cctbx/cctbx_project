@@ -20,6 +20,7 @@ phenix.xtriage:
   description: "Analyze X-ray data quality, detect twinning and anomalous signal"
   category: analysis
   experiment_types: [xray]
+  run_once: true  # Only run once per workflow
 
   inputs:
     required:
@@ -70,6 +71,7 @@ phenix.mtriage:
   description: "Analyze cryo-EM map quality and estimate resolution"
   category: analysis
   experiment_types: [cryoem]
+  run_once: true  # Only run once per workflow - don't re-run after other programs
 
   inputs:
     optional:
@@ -81,6 +83,13 @@ phenix.mtriage:
         extensions: [.mrc, .ccp4, .map]
         flag: "half_map="
         multiple: true
+
+  # IMPORTANT: half_maps must come from the same reconstruction as full_map
+  # Do not mix density-modified maps with original half-maps
+  hints:
+    - "Run once at the start to get resolution"
+    - "Do not re-run after refinement or map optimization"
+    - "Half-maps must match full_map dimensions"
 
   outputs:
     metrics:
@@ -395,6 +404,7 @@ phenix.dock_in_map:
   description: "Dock a model into a cryo-EM map"
   category: model_building
   experiment_types: [cryoem]
+  requires_full_map: true  # Cannot use half-maps - too noisy for docking
 
   inputs:
     required:
@@ -411,12 +421,14 @@ phenix.dock_in_map:
 
   # Input priorities for docking
   # Prefer processed predictions (trimmed for docking) over raw predictions
+  # IMPORTANT: dock_in_map requires a full map, not half-maps
   input_priorities:
     model:
       categories: [processed_predicted, pdb]
       exclude_categories: [predicted]  # Raw predictions should be processed first
     map:
-      categories: [full_map, map]
+      categories: [full_map, optimized_full_map, map]
+      exclude_categories: [half_map]  # Half-maps are too noisy for docking
 
   outputs:
     files:
@@ -445,14 +457,23 @@ phenix.dock_in_map:
         auto_fill_resolution: true
       message: "Resolution required for dock_in_map"
 
+    - name: requires_full_map
+      description: "dock_in_map requires a full map, not half-maps"
+      check:
+        has_file_category: [full_map, optimized_full_map, map]
+        not_has_file_category_only: half_map
+      message: "dock_in_map requires a full map. Run resolve_cryo_em or map_sharpening first to combine half-maps."
+
   hints:
     - "Resolution is REQUIRED - get it from mtriage"
+    - "Requires a FULL map - if only half-maps available, run resolve_cryo_em first"
 
 
 phenix.map_to_model:
   description: "Build atomic model directly into cryo-EM map"
   category: model_building
   experiment_types: [cryoem]
+  requires_full_map: true  # Cannot use half-maps - need clean density for building
 
   inputs:
     required:
@@ -544,11 +565,10 @@ phenix.refine:
         type: model
       - pattern: "*_refine_*.mtz"
         type: mtz
-      # Short prefix format (e.g., output.prefix=001 produces 001_001.pdb)
-      # These patterns match NNN_NNN.ext where N is a digit
-      - pattern: "[0-9][0-9][0-9]_[0-9][0-9][0-9].pdb"
+      # New naming: refine_001_001.pdb, refine_002_001.pdb, etc.
+      - pattern: "refine_[0-9][0-9][0-9]_*.pdb"
         type: model
-      - pattern: "[0-9][0-9][0-9]_[0-9][0-9][0-9].mtz"
+      - pattern: "refine_[0-9][0-9][0-9]_*.mtz"
         type: mtz
     metrics:
       - r_free
@@ -615,6 +635,7 @@ phenix.real_space_refine:
   description: "Refine atomic model against cryo-EM map"
   category: refinement
   experiment_types: [cryoem]
+  requires_full_map: true  # Cannot use half-maps - refinement needs full reconstruction
 
   inputs:
     required:
@@ -641,6 +662,9 @@ phenix.real_space_refine:
   outputs:
     files:
       - pattern: "*_real_space_refined*.pdb"
+        type: model
+      # New naming: rsr_001_real_space_refined_000.pdb, etc.
+      - pattern: "rsr_[0-9][0-9][0-9]_*.pdb"
         type: model
     metrics:
       - map_cc
@@ -894,6 +918,7 @@ phenix.validation_cryoem:
   description: "Validate model against cryo-EM map"
   category: validation
   experiment_types: [cryoem]
+  requires_full_map: true  # Validation metrics need full reconstruction
 
   inputs:
     required:

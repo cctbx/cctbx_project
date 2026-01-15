@@ -28,6 +28,7 @@ from libtbx.langchain.knowledge.yaml_loader import (
     get_workflow_phases,
     get_workflow_targets,
     get_metric_threshold,
+    get_program,
 )
 
 # Import program registry for program info
@@ -465,6 +466,35 @@ class WorkflowEngine:
                 prog_name = prog_entry.get("program")
                 if prog_name and self._check_conditions(prog_entry, context):
                     valid.append(prog_name)
+
+        # Filter out programs that require full_map when only half_maps available
+        has_full_map = context.get("has_full_map", False)
+        has_half_map = context.get("has_half_map", False)
+        only_half_maps = has_half_map and not has_full_map
+
+        if only_half_maps:
+            # Remove programs that require full maps
+            filtered = []
+            for prog in valid:
+                prog_def = get_program(prog)
+                if prog_def and prog_def.get("requires_full_map"):
+                    # Skip this program - needs full map
+                    continue
+                filtered.append(prog)
+            valid = filtered
+
+        # Filter out run_once programs that have already been run
+        filtered = []
+        for prog in valid:
+            prog_def = get_program(prog)
+            if prog_def and prog_def.get("run_once"):
+                # Check if this program has already been run
+                prog_done_key = prog.replace("phenix.", "").replace(".", "_") + "_done"
+                if context.get(prog_done_key):
+                    # Skip - already run
+                    continue
+            filtered.append(prog)
+        valid = filtered
 
         # Add STOP if validation done and at target
         if phase_name == "validate" and context.get("validation_done"):

@@ -51,11 +51,8 @@ refined_mtz:
   subcategory_of: mtz
   patterns:
     - "*refine*"
-    - "*_001*"
-    - "*_002*"
-    - "*_003*"
-    # Short prefix format (e.g., 001_001.mtz from output.prefix=001)
-    - "[0-9][0-9][0-9]_[0-9][0-9][0-9].mtz"
+    # New naming: refine_001_001.mtz, refine_002_001.mtz, etc.
+    - "refine_[0-9][0-9][0-9]_*.mtz"
   notes: "Preferred for subsequent refinement cycles"
 
 # =============================================================================
@@ -76,8 +73,8 @@ refined:
   subcategory_of: pdb
   patterns:
     - "*refine*"
-    # Short prefix format (e.g., 001_001.pdb from output.prefix=001)
-    - "[0-9][0-9][0-9]_[0-9][0-9][0-9].pdb"
+    # New naming: refine_001_001.pdb, refine_002_001.pdb, etc.
+    - "refine_[0-9][0-9][0-9]_*.pdb"
   excludes:
     - "*real_space*"
     - "*rsr*"

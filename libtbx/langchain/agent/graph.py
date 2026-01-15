@@ -8,6 +8,19 @@ from libtbx.langchain.agent.graph_nodes import (
 )
 
 
+def route_after_perceive(state):
+  """
+  Conditional Edge Logic after Perceive node.
+
+  Routes to:
+  - "output": if stop flag set (red flag abort or workflow complete)
+  - "plan": normal continuation
+  """
+  if state.get("stop"):
+    return "output"
+  return "plan"
+
+
 def route_after_validate(state):
   """
   Conditional Edge Logic after Validate node.
@@ -39,15 +52,16 @@ def build_agent_graph():
 
   Graph topology:
 
-    perceive --> plan --> build --> validate --+--> output --> END
-                  ^                            |
-                  |  (retry if attempts < 3)   |
-                  +----------------------------+
-                                               |
-                              (fallback if attempts >= 3)
-                                               |
-                                               v
-                                           fallback --> output --> END
+    perceive --+--> plan --> build --> validate --+--> output --> END
+               |                ^                 |
+               |                |  (retry < 3)    |
+               |                +-----------------+
+               |                                  |
+               |                (fallback >= 3)   |
+               |                                  v
+               |                              fallback --> output --> END
+               |
+               +--> output --> END  (if red flag abort)
 
   Returns:
     Compiled LangGraph application
@@ -62,9 +76,20 @@ def build_agent_graph():
   workflow.add_node("fallback", fallback)
   workflow.add_node("output", output_node)
 
-  # Linear Edges
+  # Entry point
   workflow.set_entry_point("perceive")
-  workflow.add_edge("perceive", "plan")
+
+  # Conditional Edge from Perceive (handles red flag abort)
+  workflow.add_conditional_edges(
+    "perceive",
+    route_after_perceive,
+    {
+      "plan": "plan",
+      "output": "output"
+    }
+  )
+
+  # Linear Edges
   workflow.add_edge("plan", "build")
   workflow.add_edge("build", "validate")
 

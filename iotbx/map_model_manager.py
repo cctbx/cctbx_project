@@ -6268,6 +6268,8 @@ class map_model_manager(object):
   def _get_average_cc_star_list(self, scaling_group_info):
     """Get average cc_star from scaling_info"""
     average_cc_star_list = None
+    if not scaling_group_info.scaling_info_list:
+      return average_cc_star_list
     for si in scaling_group_info.scaling_info_list:
       if average_cc_star_list is None:
         average_cc_star_list = si.cc_list.deep_copy()

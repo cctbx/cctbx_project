@@ -227,6 +227,7 @@ def perceive(state):
     3. Appends current metrics to history
     4. Analyzes trends for plateau detection
     5. Detects workflow state
+    6. Runs sanity checks for red flag detection
     """
     log_text = state.get("log_text", "")
     history = state.get("history", [])
@@ -276,6 +277,14 @@ def perceive(state):
     # 5. Detect workflow state
     use_yaml_workflow = state.get("use_yaml_mode", USE_YAML_WORKFLOW)
 
+    # Debug: check history for mtriage
+    mtriage_in_history = any(
+        "mtriage" in (h.get("program", "") + h.get("command", "")).lower()
+        for h in history if isinstance(h, dict)
+    )
+    state = _log(state, "PERCEIVE: History has %d entries, mtriage_in_history=%s" % (
+        len(history), mtriage_in_history))
+
     workflow_state = detect_workflow_state(
         history=history,
         available_files=available_files,
@@ -298,6 +307,81 @@ def perceive(state):
 
     if metrics_trend.get("should_stop"):
         state = _log(state, "PERCEIVE: Auto-stop recommended: %s" % metrics_trend["reason"])
+
+    # 6. Run sanity checks for red flag detection
+    session_info = state.get("session_info", {})
+    abort_on_red_flags = state.get("abort_on_red_flags", True)
+    abort_on_warnings = state.get("abort_on_warnings", False)
+
+    # Build sanity check context
+    categorized_files = workflow_state.get("categorized_files", {})
+    sanity_context = {
+        "experiment_type": workflow_state.get("experiment_type", experiment_type),
+        "has_model": bool(categorized_files.get("pdb")),
+        "has_mtz": bool(categorized_files.get("mtz")),
+        # Check all map categories for cryo-EM
+        "has_map": bool(
+            categorized_files.get("map") or
+            categorized_files.get("full_map") or
+            categorized_files.get("half_map")
+        ),
+        "state": workflow_state.get("state", ""),
+        "history": history,
+        "metrics_history": metrics_history,
+        "resolution": state.get("session_resolution") or resolution,
+        "categorized_files": categorized_files,
+    }
+
+    # Debug: log key sanity context values
+    state = _log(state, "PERCEIVE: Sanity context: exp_type=%s, session_exp_type=%s, has_model=%s, has_map=%s" % (
+        sanity_context.get("experiment_type"),
+        session_info.get("experiment_type"),
+        sanity_context.get("has_model"),
+        sanity_context.get("has_map"),
+    ))
+
+    # Run sanity checks
+    try:
+        from libtbx.langchain.agent.sanity_checker import SanityChecker
+        checker = SanityChecker()
+    except ImportError:
+        try:
+            from agent.sanity_checker import SanityChecker
+            checker = SanityChecker()
+        except ImportError:
+            checker = None
+
+    if checker:
+        sanity_result = checker.check(
+            sanity_context,
+            session_info,
+            abort_on_red_flags=abort_on_red_flags,
+            abort_on_warnings=abort_on_warnings
+        )
+
+        # Log any warnings
+        for issue in sanity_result.issues:
+            if issue.severity == "warning":
+                state = _log(state, "PERCEIVE: SANITY WARNING [%s]: %s" % (issue.code, issue.message))
+
+        # Handle abort
+        if sanity_result.should_abort:
+            # Log the specific issues
+            for issue in sanity_result.issues:
+                state = _log(state, "PERCEIVE: RED FLAG [%s]: %s" % (issue.code, issue.message))
+            state = _log(state, "PERCEIVE: SANITY ABORT - Stopping due to red flag(s)")
+            return {
+                **state,
+                "log_analysis": analysis or {},
+                "metrics_history": metrics_history,
+                "metrics_trend": metrics_trend,
+                "workflow_state": workflow_state,
+                "command": "STOP",
+                "stop": True,
+                "stop_reason": "red_flag",
+                "red_flag_issues": [i.to_dict() for i in sanity_result.issues],
+                "abort_message": sanity_result.abort_message,
+            }
 
     return {
         **state,
@@ -810,21 +894,29 @@ def build(state):
                 state = _log(state, "BUILD: Adding twin law %s (twinning detected)" % workflow_state["twin_law"])
 
     # === OUTPUT PREFIX (prevent long filename accumulation) ===
-    # Use cycle number as prefix to avoid PHASER.1_refine_001_refine_001_... filenames
+    # Use descriptive prefixes: refine_001, refine_002 for X-ray; rsr_001, rsr_002 for cryo-EM
+    # This makes output progression clear: refine_001_001.pdb → refine_002_001.pdb
     if program in ("phenix.refine", "phenix.real_space_refine"):
         if "output_prefix" not in strategy:
-            history_info = state.get("history_info", {})
-            cycle_number = history_info.get("cycle_number", 1)
-            # Also count from history if cycle_number not set
-            if cycle_number <= 1:
-                history = state.get("history", [])
-                refine_count = sum(1 for h in history
-                                   if isinstance(h, dict) and
-                                   h.get("program") in ("phenix.refine", "phenix.real_space_refine") and
-                                   h.get("result") == "SUCCESS")
-                cycle_number = refine_count + 1
-            strategy["output_prefix"] = "%03d" % cycle_number
-            state = _log(state, "BUILD: Using output_prefix=%03d to avoid long filenames" % cycle_number)
+            history = state.get("history", [])
+
+            # Count successful runs of THIS specific program
+            if program == "phenix.refine":
+                prefix_base = "refine"
+                run_count = sum(1 for h in history
+                               if isinstance(h, dict) and
+                               h.get("program") == "phenix.refine" and
+                               h.get("result") == "SUCCESS")
+            else:  # phenix.real_space_refine
+                prefix_base = "rsr"
+                run_count = sum(1 for h in history
+                               if isinstance(h, dict) and
+                               h.get("program") == "phenix.real_space_refine" and
+                               h.get("result") == "SUCCESS")
+
+            next_number = run_count + 1
+            strategy["output_prefix"] = "%s_%03d" % (prefix_base, next_number)
+            state = _log(state, "BUILD: Using output_prefix=%s_%03d for clear file naming" % (prefix_base, next_number))
 
     # === HIGH RESOLUTION SUGGESTIONS (just log, don't auto-apply) ===
     if program == "phenix.refine" and workflow_state.get("high_res_suggestions"):
@@ -883,9 +975,12 @@ def build(state):
     # Correct file paths from LLM - map basenames to actual paths
     available_files = state.get("available_files", [])
     basename_to_path = {os.path.basename(f): f for f in available_files}
+    available_set = set(available_files) | set(basename_to_path.keys())
 
     llm_files = intent.get("files", {})
     corrected_files = {}
+    rejected_files = []
+
     if llm_files:
         for slot, filepath in llm_files.items():
             if filepath:
@@ -898,8 +993,11 @@ def build(state):
                             basename = os.path.basename(fp)
                             if basename in basename_to_path:
                                 corrected_list.append(basename_to_path[basename])
-                            else:
+                            elif fp in available_set:
                                 corrected_list.append(fp)
+                            else:
+                                # File not in available_files - REJECT
+                                rejected_files.append("%s=%s" % (slot, basename))
                     if corrected_list:
                         corrected_files[slot] = corrected_list
                 else:
@@ -908,9 +1006,18 @@ def build(state):
                     if basename in basename_to_path:
                         # Use the correct path from available_files
                         corrected_files[slot] = basename_to_path[basename]
-                    else:
-                        # Keep original (might still be valid or will fail validation)
+                    elif filepath in available_set:
                         corrected_files[slot] = filepath
+                    else:
+                        # File not in available_files - REJECT
+                        rejected_files.append("%s=%s" % (slot, basename))
+
+    # If LLM tried to use files not in available_files, log and reject
+    if rejected_files:
+        error_msg = "LLM selected files not in available_files: %s" % ", ".join(rejected_files)
+        state = _log(state, "BUILD: FILE REJECTION - %s" % error_msg)
+        # Don't fail completely - let auto-fill try to find alternatives
+        state = _log(state, "BUILD: Will attempt to auto-fill valid files instead")
 
     # === AUTO-FILL MODEL FOR AUTOBUILD ===
     # If LLM selected autobuild but didn't include model, find the best refined model
@@ -1160,6 +1267,9 @@ def validate(state):
     available_files = state.get("available_files", [])
     available_set = set(available_files)
     available_basenames = {os.path.basename(f): f for f in available_set}
+
+    # Debug: log file counts for troubleshooting
+    state = _log(state, "VALIDATE: Checking against %d available files" % len(available_files))
 
     # Extract filenames from command
     file_pattern = r'[\w\-\.\/]+\.(?:pdb|mtz|fa|fasta|seq|cif|mrc|ccp4|map)\b'

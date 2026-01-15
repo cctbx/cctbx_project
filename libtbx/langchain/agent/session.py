@@ -69,6 +69,10 @@ class AgentSession:
             "resolution": None,  # Single source of truth for resolution
             "resolution_source": None,  # Which program/cycle set it (e.g., "mtriage_1")
             "ignored_commands": {},  # Commands that failed due to input errors
+            # Red flag detection settings
+            "experiment_type": None,  # "xray" or "cryoem", locked after first detection
+            "abort_on_red_flags": True,  # Abort on critical sanity check failures
+            "abort_on_warnings": False,  # Also abort on warning-level issues
         }
 
     def load(self):
@@ -151,6 +155,75 @@ class AgentSession:
             return False, None
 
     # =========================================================================
+    # EXPERIMENT TYPE (locked after first detection)
+    # =========================================================================
+
+    def get_experiment_type(self):
+        """
+        Get the locked experiment type.
+
+        Returns:
+            str or None: "xray" or "cryoem", or None if not yet set
+        """
+        return self.data.get("experiment_type")
+
+    def set_experiment_type(self, exp_type):
+        """
+        Set the experiment type (only if not already set).
+
+        The experiment type is locked after first detection to prevent
+        spurious files from changing the workflow mid-session.
+
+        Args:
+            exp_type: "xray" or "cryoem"
+
+        Returns:
+            tuple: (was_set, message)
+        """
+        current = self.data.get("experiment_type")
+
+        if current is None:
+            self.data["experiment_type"] = exp_type
+            self.save()
+            return True, f"Experiment type set to {exp_type}"
+
+        if current == exp_type:
+            return False, None  # Same type, no change needed
+
+        # Type mismatch - this is a red flag situation
+        return False, f"Experiment type already locked as {current} (attempted to set {exp_type})"
+
+    # =========================================================================
+    # SANITY CHECK SETTINGS
+    # =========================================================================
+
+    def get_abort_settings(self):
+        """
+        Get the abort settings for sanity checking.
+
+        Returns:
+            dict: {"abort_on_red_flags": bool, "abort_on_warnings": bool}
+        """
+        return {
+            "abort_on_red_flags": self.data.get("abort_on_red_flags", True),
+            "abort_on_warnings": self.data.get("abort_on_warnings", False),
+        }
+
+    def set_abort_settings(self, abort_on_red_flags=None, abort_on_warnings=None):
+        """
+        Set the abort settings for sanity checking.
+
+        Args:
+            abort_on_red_flags: If True, abort on critical issues
+            abort_on_warnings: If True, also abort on warning-level issues
+        """
+        if abort_on_red_flags is not None:
+            self.data["abort_on_red_flags"] = abort_on_red_flags
+        if abort_on_warnings is not None:
+            self.data["abort_on_warnings"] = abort_on_warnings
+        self.save()
+
+    # =========================================================================
     # IGNORED COMMANDS (Input errors that should not be repeated)
     # =========================================================================
 
@@ -204,7 +277,10 @@ class AgentSession:
 
     def write_history_file(self, output_path=None):
         """
-        Write session history as a job_*.json file for the agent to read.
+        Write session history as a JSON file for the agent to read.
+
+        Writes the full cycle data so the graph can properly analyze
+        what programs have been run.
 
         Args:
             output_path: Path to write to. If None, creates temp file.
@@ -218,51 +294,16 @@ class AgentSession:
             fd, output_path = tempfile.mkstemp(suffix='.json', prefix='session_history_')
             os.close(fd)
 
-        # Build a history record that looks like job_*.json
-        # Include all successful cycles
-        successful_cycles = [
-            c for c in self.data["cycles"]
-            if c.get("result", "").startswith("SUCCESS")
-        ]
-
-        if not successful_cycles:
-            # No successful cycles, write minimal record
-            history = {
-                "job_id": "session_0",
-                "timestamp": self.data.get("session_id", ""),
-                "program": "session",
-                "summary": f"Session started. Project advice: {self.data.get('project_advice', 'None')}",
-                "analysis": "",
-                "error": None,
-                "next_move": None
-            }
-        else:
-            # Build summary from all successful cycles
-            cycle_summaries = []
-            for c in successful_cycles:
-                cycle_summaries.append(
-                    f"Cycle {c['cycle_number']}: {c['program']} - {c['result']}\n"
-                    f"Command: {c['command']}"
-                )
-
-            last_cycle = successful_cycles[-1]
-
-            history = {
-                "job_id": f"session_{len(successful_cycles)}",
-                "timestamp": last_cycle.get("timestamp", ""),
-                "program": last_cycle.get("program", ""),
-                "summary": f"Session history ({len(successful_cycles)} successful cycles):\n" +
-                          "\n\n".join(cycle_summaries),
-                "analysis": self.data.get("summary", ""),
-                "error": None,
-                "next_move": {
-                    "command": last_cycle.get("command", ""),
-                    "program": last_cycle.get("program", "")
-                }
-            }
+        # Write the full session data including all cycles
+        # The graph's history loader will extract the cycles
+        history_data = {
+            "session_id": self.data.get("session_id", ""),
+            "experiment_type": self.data.get("experiment_type"),
+            "cycles": self.data.get("cycles", []),
+        }
 
         with open(output_path, 'w') as f:
-            json.dump(history, f, indent=2)
+            json.dump(history_data, f, indent=2)
 
         return output_path
 

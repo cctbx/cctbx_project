@@ -225,13 +225,38 @@ class ProgramRegistry:
             input_priorities = prog_def.get("input_priorities", {})
             slot_priorities = input_priorities.get(input_name, {})
 
+            categories = slot_priorities.get("categories", [])
+            exclude_categories = list(slot_priorities.get("exclude_categories", []))
+
+            # If program requires_full_map and this is a map input,
+            # automatically exclude half_map
+            if prog_def.get("requires_full_map") and input_name in ("map", "full_map"):
+                if "half_map" not in exclude_categories:
+                    exclude_categories.append("half_map")
+
             return {
-                "categories": slot_priorities.get("categories", []),
-                "exclude_categories": slot_priorities.get("exclude_categories", [])
+                "categories": categories,
+                "exclude_categories": exclude_categories
             }
         else:
             # Legacy JSON doesn't have this feature
             return {"categories": [], "exclude_categories": []}
+
+    def requires_full_map(self, program_name):
+        """
+        Check if a program requires a full map (cannot use half-maps).
+
+        Args:
+            program_name: Name of program
+
+        Returns:
+            bool: True if program requires full map
+        """
+        if self.use_yaml:
+            prog_def = get_program(program_name)
+            if prog_def:
+                return prog_def.get("requires_full_map", False)
+        return False
 
     def get_user_advice_keywords(self, program_name):
         """

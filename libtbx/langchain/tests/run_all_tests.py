@@ -8,6 +8,7 @@ Runs all test suites:
 3. Integration tests
 4. YAML configuration tests
 5. Dry run manager tests
+6. Sanity checker tests
 
 Usage:
     python run_all_tests.py
@@ -16,6 +17,7 @@ Or run individual test files:
     python tests/test_metrics_analyzer.py
     python tests/test_workflow_state.py
     python tests/test_integration.py
+    python tests/test_sanity_checker.py
 """
 
 from __future__ import absolute_import, division, print_function
@@ -66,6 +68,10 @@ def main():
     # Test 5: Dry Run Manager
     from libtbx.langchain.tests import test_dry_run
     results["Dry Run"] = run_test_suite("Dry Run Manager Tests", test_dry_run)
+
+    # Test 6: Sanity Checker
+    from libtbx.langchain.tests import test_sanity_checker
+    results["Sanity Checker"] = run_test_suite("Sanity Checker Tests", test_sanity_checker)
 
     # Summary
     print("\n" + "=" * 70)

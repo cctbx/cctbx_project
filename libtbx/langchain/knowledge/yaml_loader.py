@@ -102,6 +102,17 @@ def load_workflows(force_reload=False):
     return _WORKFLOWS
 
 
+def load_sanity_checks(force_reload=False):
+    """
+    Load sanity check definitions from workflows.yaml.
+
+    Returns:
+        dict: {"critical": [...], "warning": [...]}
+    """
+    workflows = load_workflows(force_reload)
+    return workflows.get("sanity_checks", {"critical": [], "warning": []})
+
+
 def load_metrics(force_reload=False):
     """
     Load metric definitions from metrics.yaml.

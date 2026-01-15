@@ -296,10 +296,26 @@ cryoem:
             - has: predicted_model
             - not_done: process_predicted_model
 
-        # Then dock the processed model into the map
+        # If we only have half-maps, optimize them first before docking
+        - program: phenix.resolve_cryo_em
+          preferred: true
+          conditions:
+            - has: half_map
+            - not_has: full_map
+          hint: "Create optimized full map from half-maps before docking"
+
+        - program: phenix.map_sharpening
+          conditions:
+            - has: half_map
+            - not_has: full_map
+          hint: "Sharpen map before docking"
+
+        # Then dock the processed model into the FULL map (not half-maps)
         - program: phenix.dock_in_map
           conditions:
             - has: processed_model
+            - has: full_map
+          hint: "Requires full map (not half-maps) for accurate docking"
 
       transitions:
         on_complete: check_map
@@ -468,3 +484,52 @@ shared:
     phaser_output:
       - starts_with: "PHASER"
       - contains: "phaser"
+
+
+# =============================================================================
+# SANITY CHECKS
+# =============================================================================
+# These checks detect impossible or nonsensical states.
+# Critical checks cause abort (if abort_on_red_flags=True)
+# Warning checks are logged (and abort if abort_on_warnings=True)
+#
+# Check definitions here are for documentation and potential future
+# YAML-driven evaluation. The actual check logic is in sanity_checker.py.
+
+sanity_checks:
+  critical:
+    - name: experiment_type_stable
+      description: "Experiment type should not change during workflow"
+      message: "Experiment type changed from {initial} to {current}"
+      suggestion: "This usually indicates spurious files were detected. Check for intermediate files in subdirectories like run_mr/. Remove them and restart."
+
+    - name: no_model_for_refine
+      description: "Cannot refine without a model"
+      message: "Refinement requested but no model file available"
+      suggestion: "Ensure molecular replacement or model building completed successfully."
+
+    - name: no_data_for_workflow
+      description: "Cannot proceed without experimental data"
+      message: "No {data_type} found for {experiment_type} workflow"
+      suggestion: "Provide the required data files: MTZ for X-ray, or MRC/CCP4 map for cryo-EM."
+
+    - name: repeated_failures
+      description: "Same program failing repeatedly"
+      message: "Program {program} has failed {count} times with similar error"
+      suggestion: "Check the error message and input files. The program may have a fundamental problem."
+
+  warning:
+    - name: resolution_unknown
+      description: "Resolution should be known before refinement"
+      message: "Entering refinement phase without established resolution"
+      suggestion: "Run xtriage (X-ray) or mtriage (cryo-EM) first to determine resolution."
+
+    - name: r_free_spike
+      description: "R-free should not increase dramatically"
+      message: "R-free jumped from {old} to {new}"
+      suggestion: "Model may be corrupted or wrong data was used. Consider reverting."
+
+    - name: map_cc_drop
+      description: "Map correlation should not drop dramatically"
+      message: "Map CC dropped from {old} to {new}"
+      suggestion: "Model may be displaced from map. Check docking and refinement."
