@@ -1520,7 +1520,7 @@ def atom_image_fast(ff_packed, d_min, n_grid, dist_max, n_sf_grid=2001):
     DistImage  = DistImage,
     NImage     = NImage)
   Distance = [_ * StepImage for _ in range(len(Image))]
-  return Image, Distance
+  return flex.double(Image), flex.double(Distance)
 
 class atom_curves(object):
   """
@@ -1630,7 +1630,7 @@ Fourier image of specified resolution, etc.
             radius_min = 0,
             radius_max = 5.,
             radius_step = 0.001,
-            n_integration_steps = 4,
+            n_integration_steps = 2000,
             compute_derivatives=True,
             fast=False):
     # define radii if not supplied
