@@ -110,7 +110,9 @@ class terminal_tetrahedral_xhn_site(hydrogens):
     uc = reparametrisation.structure.unit_cell()
     for j, ops in reparametrisation.pair_sym_table[self.pivot].items():
       for k, ops in reparametrisation.pair_sym_table[self.pivot].items():
-        if j == k: continue
+        if j == k or (k not in self.constrained_site_indices and\
+                      j not in self.constrained_site_indices):
+          continue
         reparametrisation.fixed_angles.setdefault(
           (j, self.pivot, k), tetrahedral_angle)
     return reparametrisation.add(
