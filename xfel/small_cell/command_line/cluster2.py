@@ -248,7 +248,7 @@ class ManualClusterer:
 
         # Take a random subsample (5%) for evaluation
         n_sample = max(int(len(normalized_data) * 0.05), 100000)  # At least 1000 points
-        n_sample = 200000
+        n_sample = 600000
         n_sample = min(n_sample, len(normalized_data))  # Can't sample more than we have
         print(f'{n_sample=}')
 

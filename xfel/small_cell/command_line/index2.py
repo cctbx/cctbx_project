@@ -914,7 +914,7 @@ class Basis3d(Basis):
         direct = self.compute_direct_cell_params(self.vectors)
 
         return \
-            ','.join( [str(round(direct[x], 3)) for x in ['a','b','c','alpha','beta','gamma']] ) + ' ' + self.centering
+            str(round(1/self.volume(), 2)) + ' ' + ','.join( [str(round(direct[x], 3)) for x in ['a','b','c','alpha','beta','gamma']] ) + ' ' + self.centering
 
 
     def compute_direct_cell_params(self, recip_basis: np.ndarray) -> dict:
@@ -1639,7 +1639,8 @@ class LatticeReconstruction:
 
 # Define grid search parameters
 def grid_search_3d_basis(recon, pair1_idx, pair2_idx,
-                         delta_range=(-2.0, 2.0), steps=21, inv=False):
+                         delta_range=(-2.0, 2.0), steps=21, inv=False,
+                         verbose=True):
     # Create grid of delta theta values
     delta_values = np.linspace(delta_range[0], delta_range[1], steps)
     grid_shape = (steps, steps)
@@ -1649,9 +1650,14 @@ def grid_search_3d_basis(recon, pair1_idx, pair2_idx,
     # Total number of pairs
     total_pairs = len(recon.all_pairs)
 
+    if verbose:
+        display1_fn = display2_fn = tqdm
+    else:
+        display1_fn = lambda x: x
+        display2_fn = lambda x, **_: x
     # Grid search
-    for i, delta1 in tqdm(enumerate(delta_values)):
-        for j, delta2 in tqdm(enumerate(delta_values), leave=False):
+    for i, delta1 in display1_fn(enumerate(delta_values)):
+        for j, delta2 in display2_fn(enumerate(delta_values), leave=False):
             try:
                 # Generate 3D basis with current deltas
                 basis3d = recon.generate_3d_basis_pairs(
@@ -1682,19 +1688,21 @@ def grid_search_3d_basis(recon, pair1_idx, pair2_idx,
 
 # Run grid search for both inv=False and inv=True
 def run_both_grid_searches(recon, pair1_idx, pair2_idx,
-                          delta_range=(-2.0, 2.0), steps=21):
-    print(f"Running grid search for pair indices {pair1_idx} and {pair2_idx}...")
-    print(f"Delta range: {delta_range}, steps: {steps}")
+                          delta_range=(-2.0, 2.0), steps=21, verbose=True):
+  #    print(f"Running grid search for pair indices {pair1_idx} and {pair2_idx}...")
+  #    print(f"Delta range: {delta_range}, steps: {steps}")
 
-    delta_values, fom_normal, idx_normal = grid_search_3d_basis(
-        recon, pair1_idx, pair2_idx, delta_range, steps, inv=False
+    delta_values, fom_normal, pct_normal = grid_search_3d_basis(
+        recon, pair1_idx, pair2_idx, delta_range, steps, inv=False,
+        verbose=verbose
     )
 
-    delta_values, fom_inv, idx_inv = grid_search_3d_basis(
-        recon, pair1_idx, pair2_idx, delta_range, steps, inv=True
+    delta_values, fom_inv, pct_inv = grid_search_3d_basis(
+        recon, pair1_idx, pair2_idx, delta_range, steps, inv=True,
+        verbose=verbose
     )
 
-    return delta_values, (fom_normal, idx_normal), (fom_inv, idx_inv)
+    return delta_values, (fom_normal, pct_normal), (fom_inv, pct_inv)
 
 # Plot the results as heatmaps
 def plot_grid_search_results(delta_values, results_normal, results_inv):
@@ -1748,14 +1756,15 @@ def plot_grid_search_results(delta_values, results_normal, results_inv):
 
 # Function to run everything and return the best parameters
 def find_best_3d_basis(recon, pair1_idx, pair2_idx,
-                       delta_range=(-2.0, 2.0), steps=21, plot=True):
+                       delta_range=(-2.0, 2.0), steps=21, plot=True,
+                       verbose=True):
     """pair1_idx and pair2_idx are actually pairs"""
     # Run grid searches
     delta_values, results_normal, results_inv = run_both_grid_searches(
-        recon, pair1_idx, pair2_idx, delta_range, steps
+        recon, pair1_idx, pair2_idx, delta_range, steps, verbose=verbose
     )
-    fom_normal, idx_normal = results_normal
-    fom_inv, idx_inv = results_inv
+    fom_normal, pct_normal = results_normal
+    fom_inv, pct_inv = results_inv
 
     # Plot results
     if plot:
@@ -1766,11 +1775,13 @@ def find_best_3d_basis(recon, pair1_idx, pair2_idx,
     # Find best parameters
     max_normal = np.max(fom_normal)
     max_normal_idx = np.unravel_index(np.argmax(fom_normal), fom_normal.shape)
+    max_normal_pct = pct_normal[max_normal_idx]
     delta1_normal = delta_values[max_normal_idx[0]]
     delta2_normal = delta_values[max_normal_idx[1]]
 
     max_inv = np.max(fom_inv)
     max_inv_idx = np.unravel_index(np.argmax(fom_inv), fom_inv.shape)
+    max_inv_pct = pct_inv[max_inv_idx]
     delta1_inv = delta_values[max_inv_idx[0]]
     delta2_inv = delta_values[max_inv_idx[1]]
 
@@ -1780,14 +1791,16 @@ def find_best_3d_basis(recon, pair1_idx, pair2_idx,
             'delta_theta_1': delta1_normal,
             'delta_theta_2': delta2_normal,
             'inv': False,
-            'fom': max_normal
+            'fom': max_normal,
+            'pct': max_normal_pct
         }
     else:
         best_params = {
             'delta_theta_1': delta1_inv,
             'delta_theta_2': delta2_inv,
             'inv': True,
-            'fom': max_inv
+            'fom': max_inv,
+            'pct': max_inv_pct
         }
 
     # Generate the best basis
@@ -1799,11 +1812,12 @@ def find_best_3d_basis(recon, pair1_idx, pair2_idx,
     )
 
     idx_pct = best_params['fom']/best_basis.volume()**(1/2)
-    print("\nBest parameters:")
-    print(f"delta_theta_1 = {best_params['delta_theta_1']:.2f} degrees")
-    print(f"delta_theta_2 = {best_params['delta_theta_2']:.2f} degrees")
-    print(f"inv = {best_params['inv']}")
-    print(f"Indexing percentage = {idx_pct:.1f}%")
+    if verbose:
+        print("\nBest parameters:")
+        print(f"delta_theta_1 = {best_params['delta_theta_1']:.2f} degrees")
+        print(f"delta_theta_2 = {best_params['delta_theta_2']:.2f} degrees")
+        print(f"inv = {best_params['inv']}")
+        print(f"Indexing percentage = {idx_pct:.1f}%")
 
 
     return best_basis, best_params, fig
@@ -2062,14 +2076,21 @@ def run():
     results = []
     for i, pair in enumerate(to_try):
         try:
-            best_basis, best_params, _ = find_best_3d_basis(
-                recon, *pair, delta_range=(0,0), steps=1, plot=False
+            basis, params, _ = find_best_3d_basis(
+                recon, *pair, delta_range=(0,0), steps=1, plot=False,
+                verbose=False
             )
-            results.append((i, best_params['fom']))
-        except Exception:
+            results.append((i, basis, params['fom'], params['pct']))
+        except AttributeError:
+            pass
+        except Exception as e:
+            raise
             print(i)
-    results.sort(key=lambda x:x[1], reverse=True)
-    i_best = results[0][0]
+    results.sort(key=lambda x:x[2], reverse=True)
+    for i_results, (i, basis, fom, pct) in enumerate(results[:50]):
+        print(i_results, '\t', pct, '\t', basis)
+    i_results_best = int(input('lattice: [0] ') or 0)
+    i_best = results[i_results_best][0]
     best_basis, best_params, fig = find_best_3d_basis(recon, *to_try[i_best], delta_range=(-2,2), steps=11)
     plt.show()
 
