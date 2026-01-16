@@ -995,7 +995,8 @@ class _():
 
   def as_model_manager(self, crystal_symmetry,
        unit_cell_crystal_symmetry = None,
-       shift_cart = None):
+       shift_cart = None,
+       force_no_crystal_symmetry = False):
     ''' Returns simple version of model object based on this hierarchy
      Expects but does not require crystal_symmetry.
      Optional unit_cell_crystal_symmetry and shift_cart.
@@ -1006,8 +1007,11 @@ class _():
      '''
     import mmtbx.model
 
-    # make up crystal_symmetry if not present
-    crystal_symmetry = self.generate_crystal_symmetry(crystal_symmetry)
+    if (force_no_crystal_symmetry):
+       crystal_symmetry = None
+    else:
+      # make up crystal_symmetry if not present
+      crystal_symmetry = self.generate_crystal_symmetry(crystal_symmetry)
 
     mm = mmtbx.model.manager(
           model_input = None, # REQUIRED
@@ -1477,6 +1481,7 @@ class _():
       occupancy_precision=3,
       b_iso_precision=5,
       u_aniso_precision=5,
+      resolution_precision=2,
       segid_as_auth_segid=False,
       output_break_records=False):
 
@@ -1490,6 +1495,7 @@ class _():
     occ_fmt_str = "%%.%if" %occupancy_precision
     b_iso_fmt_str = "%%.%if" %b_iso_precision
     u_aniso_fmt_str = "%%.%if" %u_aniso_precision
+    resolution_fmt_str = "%%.%if" %resolution_precision
 
     atom_site_header = [
       '_atom_site.group_PDB',
@@ -1507,6 +1513,7 @@ class _():
       '_atom_site.B_iso_or_equiv',
       '_atom_site.type_symbol',
       '_atom_site.pdbx_formal_charge',
+      '_atom_site.phenix_resolution',
       '_atom_site.phenix_scat_dispersion_real',
       '_atom_site.phenix_scat_dispersion_imag',
       '_atom_site.label_asym_id',
@@ -1564,6 +1571,7 @@ class _():
       atom_site_loop['_atom_site.phenix_scat_dispersion_real']
     atom_site_phenix_scat_dispersion_imag = \
       atom_site_loop['_atom_site.phenix_scat_dispersion_imag']
+    atom_site_phenix_resolution = atom_site_loop['_atom_site.phenix_resolution']
     atom_site_label_asym_id = atom_site_loop['_atom_site.label_asym_id']
     atom_site_label_entity_id = atom_site_loop['_atom_site.label_entity_id']
     atom_site_label_seq_id = atom_site_loop['_atom_site.label_seq_id']
@@ -1671,6 +1679,7 @@ class _():
               atom_site_pdbx_formal_charge.append(atom_charge)
               atom_site_phenix_scat_dispersion_real.append(fp)
               atom_site_phenix_scat_dispersion_imag.append(fdp)
+              atom_site_phenix_resolution.append(resolution_fmt_str % atom.resolution)
               atom_site_label_asym_id.append(label_asym_id.strip())
               if label_asym_id.strip() not in struct_asym_ids:
                 struct_asym_ids.append(label_asym_id.strip())
@@ -1708,6 +1717,8 @@ class _():
                 '_atom_site.phenix_scat_dispersion_imag'):
       if atom_site_loop[key].all_eq('.'):
         del atom_site_loop[key]
+    if atom_site_loop['_atom_site.phenix_resolution'].all_eq('0.00'):
+      del atom_site_loop['_atom_site.phenix_resolution']
     h_cif_block.add_loop(atom_site_loop)
     if aniso_loop.size() > 0:
       h_cif_block.add_loop(aniso_loop)

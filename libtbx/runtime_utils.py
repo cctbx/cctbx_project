@@ -67,7 +67,7 @@ class target_with_save_result(object):
 
   def __call__(self):
     if (self.log_file is not None):
-      log = open(self.log_file, "w")
+      log = open(self.log_file, "w", encoding='utf-8')
       new_out = multi_out()
       new_out.register("log", log)
       new_out.register("stdout", sys.stdout)

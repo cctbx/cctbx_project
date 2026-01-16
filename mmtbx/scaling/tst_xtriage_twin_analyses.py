@@ -87,15 +87,15 @@ END
   tps = twin_analyses.detect_pseudo_translations(
     miller_array=fc_twin, out=null_out())
   assert ([tps.mod_h, tps.mod_k, tps.mod_l] == [3,2,3])
-  assert approx_equal(tps.high_peak, 47.152352)
+  assert approx_equal(tps.high_peak, 47.166759)
   assert approx_equal(tps.high_p_value, 0.000103)
   # L test
   fc_norm_acentric = twin_analyses.wilson_normalised_intensities(
     miller_array=fc_twin, normalise=True, out=null_out()).acentric
   ltest = twin_analyses.l_test(miller_array=fc_norm_acentric,
     parity_h=3, parity_l=3)
-  assert approx_equal(ltest.mean_l, 0.498974)
-  assert approx_equal(ltest.mean_l2, 0.371674)
+  assert approx_equal(ltest.mean_l, 0.498975)
+  assert approx_equal(ltest.mean_l2, 0.371786)
   # we need to go through the wrapper class for a lot of these...
   out = StringIO()
   tw = twin_analyses.twin_analyses(miller_array=fc_twin, out=out)
@@ -105,17 +105,17 @@ END
   wm = tw.wilson_moments
   assert ([wm.centric_i_ratio, wm.centric_f_ratio, wm.centric_e_sq_minus_one]
           == [None, None, None])
-  assert approx_equal(wm.acentric_i_ratio, 2.878383)
-  assert approx_equal(wm.acentric_f_ratio, 0.717738)
-  assert approx_equal(wm.acentric_abs_e_sq_minus_one, 0.808899)
+  assert approx_equal(wm.acentric_i_ratio, 2.879350)
+  assert approx_equal(wm.acentric_f_ratio, 0.717636)
+  assert approx_equal(wm.acentric_abs_e_sq_minus_one, 0.808857)
   assert (not wm.centric_present)
   # Overall analyses
   out = StringIO()
   tw.show(out=out)
   assert ("significantly different than is expected" in out.getvalue())
   summary = tw.twin_summary
-  assert approx_equal(summary.l_mean, 0.4989738)
-  assert approx_equal(summary.patterson_height, 47.152352)
+  assert approx_equal(summary.l_mean, 0.4989755)
+  assert approx_equal(summary.patterson_height, 47.166759)
   for k, twin_r_factor in enumerate(summary.r_obs):
     if (k == 6) : assert twin_r_factor < 0.11
     else : assert twin_r_factor > 0.3
@@ -135,9 +135,10 @@ END
   # twin_analyses call above - this seems to be caused by the resolution
   # limits passed here.  Need to confirm these with PHZ.
   result = fc_twin.analyze_intensity_statistics()
-  assert approx_equal(result.maha_l, 27.580674)
+  assert approx_equal(result.maha_l, 27.668608)
   assert approx_equal(result.r_obs,
-    [0.514901, 0.514901, 0.397741, 0.580353, 0.579294, 0.420914, 0.114999])
+    [0.5149651924715607, 0.5149651924715611, 0.3976861902111941, 0.5804124259740656, 
+     0.5793629220385034, 0.42085830012550757, 0.1150241954158031])
   assert approx_equal(result.h_alpha,
     [0.019980, 0.019980, 0.211788, 0.073926, 0.079920, 0.150849, 0.389610])
   assert result.has_twinning()

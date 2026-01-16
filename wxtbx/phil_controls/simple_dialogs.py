@@ -137,7 +137,7 @@ class RTDialog(wx.Dialog):
       "Please enter rotation and translation operations to apply.  All "+
       "values must be defined.")
     szr.Add(txt, 0, wx.ALL, 5)
-    grid = wx.FlexGridSizer(rows=4, cols=4)
+    grid = wx.FlexGridSizer(rows=4, cols=4, vgap=0, hgap=0)
     szr.Add(grid, 0, wx.ALL, 5)
     label1 = wx.StaticText(self, -1, "Rotation:")
     grid.Add(label1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)

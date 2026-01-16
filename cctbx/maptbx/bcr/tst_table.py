@@ -39,9 +39,11 @@ def run():
     tO = qmap.load_table(element="O", table="wk1995")
     tN = qmap.load_table(element="N", table="wk1995")
     tS = qmap.load_table(element="S", table="wk1995")
-    f = "%4s %8.6f %8.6f %8.6f %8.6f %8.6f"
+    tP = qmap.load_table(element="P", table="wk1995")
+    f = "%4s %8.6f %8.6f %8.6f %8.6f %8.6f  %8.6f"
+    kk = "ErrRel"
     for k in tC.keys():
-      print(f%(k, tH[k]['err'], tC[k]['err'], tO[k]['err'], tN[k]['err'], tS[k]['err']))
+      print(f%(k, tH[k][kk], tC[k][kk], tO[k][kk], tN[k][kk], tS[k][kk], tP[k][kk]))
 
 if (__name__ == "__main__"):
   run()

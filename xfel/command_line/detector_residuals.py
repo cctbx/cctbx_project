@@ -182,7 +182,7 @@ plots {
             center of the panel as an origin, plot the reflection displaced   \
             from the center of its panel along its deltaXY vector. The        \
             reflections are colored by their delta psi values.
-  transverse_radial_deltapsi_resolution = True
+  transverse_radial_deltapsi_resolution = False
     .type = bool
     .help = Plot transverse vs. radial displacements, colored by delta psi, \
             binned by resolution.

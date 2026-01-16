@@ -52,11 +52,11 @@ def test_1():
   d_star_sq = 1./flex.pow2(f_obs.d_spacings().data())
 
   assert approx_equal(flex.max(f_calc.data()),6810.19834824)
-  assert approx_equal(flex.min(f_calc.data()),0.019589341727)
-  assert approx_equal(flex.mean(f_calc.data()),76.651506629)
+  assert approx_equal(flex.min(f_calc.data()),0.022356220344)
+  assert approx_equal(flex.mean(f_calc.data()),76.651056901)
   assert approx_equal(flex.max(f_obs.data()),6962.58343229)
-  assert approx_equal(flex.min(f_obs.data()),0.00111552904935)
-  assert approx_equal(flex.mean(f_obs.data()),74.5148786464)
+  assert approx_equal(flex.min(f_obs.data()),0.00212375315445)
+  assert approx_equal(flex.mean(f_obs.data()),74.5145310498)
   assert f_obs.size() == f_calc.size()
 
 # define test set reflections
@@ -86,8 +86,8 @@ def test_1():
   assert alpha.data().size() == f_obs.size()
   assert approx_equal(flex.min(alpha.data()),0.914152454693)
   assert approx_equal(flex.max(alpha.data()),0.914152454693)
-  assert approx_equal(flex.min(beta.data()),818.503411782)
-  assert approx_equal(flex.max(beta.data()),818.503411782)
+  assert approx_equal(flex.min(beta.data()),818.506563785)
+  assert approx_equal(flex.max(beta.data()),818.506563785)
 # *********************************************************TEST = 2
   alpha, beta = maxlik.alpha_beta_est_manager(
     f_obs  = f_obs,
@@ -100,9 +100,9 @@ def test_1():
   assert alpha.data().size() == beta.data().size()
   assert alpha.data().size() == f_obs.size()
   assert approx_equal(flex.min(alpha.data()), 0.910350007113)
-  assert approx_equal(flex.max(alpha.data()), 1.07104387776)
-  assert approx_equal(flex.min(beta.data()), 21.7374310013)
-  assert approx_equal(flex.max(beta.data()), 4222.81104745)
+  assert approx_equal(flex.max(alpha.data()), 1.07105514773)
+  assert approx_equal(flex.min(beta.data()), 21.7338160082)
+  assert approx_equal(flex.max(beta.data()), 4222.90391704)
 # *********************************************************TEST = 3
   alpha, beta = maxlik.alpha_beta_calc(
                     f   = f_obs,

@@ -700,6 +700,7 @@ namespace detail {
       sym_mat3(-1,-1,-1,-1,-1,-1), // siguij
       0, //fp
       0, //fdp
+      0, //resolution
       hetero,
       str5(line_info.data,line_info.size, 6,' '), // serial
       str4(line_info.data,line_info.size,12,' '), // name

@@ -2429,8 +2429,7 @@ def to_unicode(text, codec=None, errors='replace'):
       new_text = text.decode(codec, errors)
     except UnicodeDecodeError: # in case errors='strict'
       raise Sorry('Unable to decode text with %s' % codec)
-    finally:
-      return new_text
+    return new_text
   elif (text is not None):
     return unicode(text)
   else:
@@ -2468,8 +2467,7 @@ def to_bytes(text, codec=None, errors='replace'):
       new_text = text.encode(codec, errors)
     except UnicodeEncodeError: # in case errors='strict'
       raise Sorry('Unable to encode text with %s' % codec)
-    finally:
-      return new_text
+    return new_text
   elif (text is not None):
     return bytes(text)
   else:

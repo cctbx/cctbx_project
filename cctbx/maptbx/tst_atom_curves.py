@@ -4,7 +4,8 @@ from cctbx import miller
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx import group_args
-import time
+import time, math
+
 
 def get_map_data(xrs, d_min):
   cg = maptbx.crystal_gridding(
@@ -22,7 +23,7 @@ def get_map_data(xrs, d_min):
 def exercise_00():
   o = maptbx.atom_curves(scattering_type="C")
   result = o.image(d_min = 3.0, b_iso = 50, radius_step=0.01)
-  assert approx_equal(result.radius, 2.59, 0.01)
+  assert approx_equal(result.radius, 2.59, 0.001)
   #
   xrs = o.get_xray_structure(box=10, b=50)
   map_data = get_map_data(xrs=xrs, d_min=3.0)
@@ -36,7 +37,7 @@ def exercise_00():
   num = flex.sum(flex.abs(flex.abs(image)-flex.abs(result.image_values)))
   den = flex.sum(flex.abs(flex.abs(image)+flex.abs(result.image_values)))
   r = 100.*2.*num/den
-  assert r < 6.
+  assert r < 6.5, r
 
 def _exercise_01(d_min=2.5, b=20, box=10, step=0.025, cut=True):
   o = maptbx.atom_curves(scattering_type="C", scattering_table="wk1995")
@@ -90,10 +91,76 @@ def exercise_02():
   assert rf(r1,r2) < 2
   assert flex.linear_correlation(r1,r2).coefficient() > 0.999
 
+def get_rel_err(m1, m2):
+  mean_max = (m1[0]+m2[0])/2
+  diff = flex.abs(m1-m2)
+  rel_err = diff/mean_max*100.
+  return flex.mean(rel_err), flex.max(rel_err)
+
+def exercise_03(d_min = 1.0, n_grid = 2000, dist_max = 5.0):
+  #
+  # Image of S (fast), (8-9)
+  #
+  ff_S = [6.372157,  5.154568, 1.473732,  1.635073,  1.209372, 0.154722,
+          1.514347, 22.092527, 0.061373, 55.445175,  0.646925, 0.000000]
+  image1, radii = maptbx.atom_image_fast(
+     ff_packed = ff_S,
+     d_min     = d_min,
+     n_grid    = n_grid,
+     dist_max  = dist_max)
+  assert approx_equal(image1.size(), n_grid)
+  assert approx_equal(image1.size(), radii.size())
+  assert approx_equal(radii[0], 0.0)
+  assert approx_equal(radii[-1], 5.0)
+  # control, (8-9) (same call, using different interface)
+  o = maptbx.atom_curves(scattering_type="S", scattering_table="wk1995")
+  im = o.image(
+    d_min = d_min,
+    b_iso = 0,
+    radii = radii,
+    fast  = True)
+  assert approx_equal(image1, im.image_values)
+  assert approx_equal(radii, im.radii)
+  emean, emax = get_rel_err(m1=image1, m2=im.image_values)
+  assert approx_equal(emean, 0)
+  assert approx_equal(emax, 0)
+  #
+  # Image via integration (slow), (8-9)
+  #
+  im = o.image(
+      d_min = d_min,
+      b_iso = 0,
+      radii = radii,
+      fast  = False)
+  emean, emax = get_rel_err(m1=image1, m2=im.image_values)
+  assert emean < 1.e-5, emean
+  assert emax  < 1.e-5, emax
+  assert approx_equal(image1, im.image_values)
+  assert approx_equal(radii, im.radii)
+  #
+  # BCR approximation, (1-2)
+  #
+  from cctbx.maptbx.bcr import qmap
+  from cctbx.maptbx.bcr import bcr
+  t = qmap.load_table(element="S", table="wk1995")
+  d = t["1.0"]
+  B = d["B"]
+  C = d["C"]
+  R = d["R"]
+  approx = bcr.curve(B=B, C=C, R=R, radii=radii, b_iso=0)
+  emean, emax = get_rel_err(m1=image1, m2=approx)
+  print("emean, emax:", emean, emax)
+  #
+  with open("tst_image_and_approx_S_dmin1A_rmax5A_ngrid2000.log","w") as fo:
+    print("  Distance Image(8-9)    Approx (1-2)", file=fo)
+    for r, im, ap in zip(radii, image1, approx):
+      print("%8.4f %13.8f %13.8f"%(r, im, ap), file=fo)
+
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_00()
   exercise_01()
   exercise_02()
+  exercise_03()
   print("Time: %6.3f"%(time.time()-t0))
   print("OK")

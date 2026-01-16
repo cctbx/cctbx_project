@@ -114,7 +114,7 @@ class DirectoryCleanupDialog(wx.Dialog):
       "action once a list of targeted paths has been collected.")
     txt.Wrap(500)
     szr.Add(txt, 0, wx.ALL, 5)
-    grid = wx.FlexGridSizer(cols=2, rows=2)
+    grid = wx.FlexGridSizer(rows=2, cols=2, vgap=0, hgap=0)
     szr.Add(grid, 0, wx.ALL, 5)
     grid.Add(wx.StaticText(self, label="Directory:"), 0, std_sizer_flags, 5)
     self.dir_ctrl = path.PathCtrl(parent=self,

@@ -78,6 +78,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     cart_z = flex.double(self._wrap_loop_if_needed(cif_block, "_atom_site.Cartn_z"))
     occu =   flex.double(self._wrap_loop_if_needed(cif_block, "_atom_site.occupancy"))
     formal_charge = self._wrap_loop_if_needed(cif_block, "_atom_site.pdbx_formal_charge")
+    resolution = self._wrap_loop_if_needed(cif_block, "_atom_site.phenix_resolution")
     # anisotropic b-factors
     # TODO: read esds
     anisotrop_id = self._wrap_loop_if_needed(cif_block, "_atom_site_anisotrop.id")
@@ -220,6 +221,10 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
           charge = int(charge)
           if charge == 0: sign = ""
           atom.set_charge("%i%s" %(charge, sign))
+      if resolution is not None:
+        res = resolution[i_atom]
+        if res not in ("?", "."):
+          atom.resolution=float(res)
       if atom_site_fp is not None:
         fp = atom_site_fp[i_atom]
         if fp not in ("?", "."):

@@ -1,0 +1,303 @@
+{
+  "version": "1.0",
+  "description": "Centralized configuration for PHENIX AI Agent decision-making",
+
+  "tiers": {
+    "tier1_hard_constraints": {
+      "description": "Cannot be overridden under any circumstances",
+      "rules": {
+        "xtriage_before_mr": {
+          "description": "Must run xtriage before molecular replacement for X-ray",
+          "applies_to": "xray"
+        },
+        "mtriage_before_refine": {
+          "description": "Must run mtriage before refinement for cryo-EM",
+          "applies_to": "cryoem"
+        },
+        "phaser_requires_model": {
+          "description": "Phaser requires a search model (.pdb file)",
+          "applies_to": "xray"
+        },
+        "autobuild_requires_phases": {
+          "description": "Autobuild requires phased MTZ (from phaser or refine output)",
+          "applies_to": "xray"
+        },
+        "autobuild_requires_sequence": {
+          "description": "Autobuild requires sequence file",
+          "applies_to": "xray"
+        },
+        "refine_requires_model_and_data": {
+          "description": "Refine requires both model (.pdb/.cif) and data (.mtz)",
+          "applies_to": "xray"
+        },
+        "rsr_requires_model_and_map": {
+          "description": "Real-space refine requires both model and map",
+          "applies_to": "cryoem"
+        },
+        "no_duplicate_commands": {
+          "description": "Cannot run identical command twice in succession",
+          "applies_to": "all"
+        },
+        "ligandfit_requires_ligand": {
+          "description": "Ligandfit requires ligand coordinates file",
+          "applies_to": "all"
+        }
+      }
+    },
+
+    "tier2_strong_defaults": {
+      "description": "Applied automatically; LLM can override but warning is logged",
+      
+      "generate_rfree_flags": {
+        "applies_to": "phenix.refine",
+        "condition": "refine_count == 0",
+        "default_value": true,
+        "reason_template": "First refinement - generating R-free flags",
+        "override_warning": "Overriding R-free flag generation on first refinement"
+      },
+      
+      "use_existing_rfree_flags": {
+        "applies_to": "phenix.refine",
+        "condition": "refine_count > 0",
+        "default_value": false,
+        "key": "generate_rfree_flags",
+        "reason_template": "Not first refinement (cycle {refine_count}) - using existing R-free flags",
+        "override_warning": "Generating new R-free flags after first refinement may corrupt R-free set"
+      },
+      
+      "water_building": {
+        "applies_to": "phenix.refine",
+        "conditions": {
+          "refine_count": {"operator": ">=", "value": 2},
+          "r_free": {"operator": "<", "value": 0.35},
+          "resolution": {"operator": "<=", "value": 3.0}
+        },
+        "default_value": true,
+        "key": "add_waters",
+        "reason_template": "R-free {r_free:.3f} < 0.35, resolution {resolution:.1f}Å ≤ 3.0Å, {refine_count} cycles done",
+        "override_warning": "Skipping water building when conditions are favorable"
+      },
+      
+      "twinning": {
+        "applies_to": "phenix.refine",
+        "conditions": {
+          "has_twinning": {"operator": "==", "value": true},
+          "twin_law": {"operator": "!=", "value": null}
+        },
+        "default_key": "twin_law",
+        "default_value_from": "twin_law",
+        "reason_template": "Twinning detected ({twin_fraction:.0%} twin fraction), applying twin law {twin_law}",
+        "override_warning": "Ignoring detected twinning"
+      },
+      
+      "autobuild_resolution_limit": {
+        "applies_to": "phenix.autobuild",
+        "condition": "resolution < 2.0",
+        "default_value": 2.0,
+        "key": "resolution",
+        "reason_template": "Limiting autobuild to 2.0Å (data is {resolution:.1f}Å) for speed",
+        "override_warning": "Running autobuild at full resolution may be slow"
+      },
+      
+      "autobuild_include_model": {
+        "applies_to": "phenix.autobuild",
+        "condition": "has_refined_model",
+        "default_value": "auto_select_best_refined",
+        "key": "model",
+        "reason_template": "Including refined model for better autobuild results",
+        "override_warning": "Running autobuild without starting model"
+      }
+    },
+
+    "tier3_soft_guidance": {
+      "description": "Suggestions only; LLM decides freely, no warnings logged",
+      "suggestions": [
+        {
+          "id": "stop_on_success",
+          "condition": "r_free < good_model_threshold",
+          "suggestion": "Consider stopping - R-free {r_free:.3f} is below target {good_model_threshold:.3f}"
+        },
+        {
+          "id": "anisotropic_high_res",
+          "condition": "resolution < 1.5",
+          "suggestion": "Consider anisotropic ADP refinement for high resolution ({resolution:.1f}Å) data"
+        },
+        {
+          "id": "hydrogens_very_high_res",
+          "condition": "resolution < 1.2",
+          "suggestion": "Consider adding riding hydrogens for very high resolution ({resolution:.1f}Å) data"
+        },
+        {
+          "id": "validation_at_target",
+          "condition": "r_free < good_model_threshold and not validation_done",
+          "suggestion": "Consider running validation to confirm model quality"
+        },
+        {
+          "id": "validation_after_cycles",
+          "condition": "refine_count >= 3 and not validation_done",
+          "suggestion": "Consider running validation after {refine_count} refinement cycles"
+        },
+        {
+          "id": "autosol_anomalous",
+          "condition": "has_useful_anomalous and not has_model",
+          "suggestion": "Strong anomalous signal detected - consider experimental phasing with autosol"
+        }
+      ]
+    }
+  },
+
+  "thresholds": {
+    "xray": {
+      "resolution_dependent": {
+        "high_resolution": {
+          "range": {"max": 1.5},
+          "autobuild_rfree": 0.25,
+          "good_model_rfree": 0.20,
+          "ligandfit_rfree": 0.28
+        },
+        "medium_resolution": {
+          "range": {"min": 1.5, "max": 2.5},
+          "autobuild_rfree": 0.35,
+          "good_model_rfree": 0.25,
+          "ligandfit_rfree": 0.35
+        },
+        "low_resolution": {
+          "range": {"min": 2.5},
+          "autobuild_rfree": 0.38,
+          "good_model_rfree": 0.30,
+          "ligandfit_rfree": 0.38
+        },
+        "default": {
+          "autobuild_rfree": 0.35,
+          "good_model_rfree": 0.25,
+          "ligandfit_rfree": 0.35
+        }
+      },
+      "success_margin": 0.02,
+      "plateau_improvement_threshold": 0.003,
+      "plateau_cycles_required": 3,
+      "excessive_refine_cycles": 8,
+      "water_building_max_rfree": 0.35,
+      "water_building_max_resolution": 3.0,
+      "water_building_min_cycles": 2,
+      "simulated_annealing_min_rfree": 0.40,
+      "twinning_min_fraction": 0.20,
+      "anomalous_useful_resolution": 4.0,
+      "anomalous_strong_resolution": 2.5,
+      "autobuild_max_resolution": 2.0
+    },
+    "cryoem": {
+      "success_cc": 0.70,
+      "plateau_improvement_threshold": 0.003,
+      "plateau_cycles_required": 3,
+      "excessive_rsr_cycles": 8
+    }
+  },
+
+  "program_rankings": {
+    "xray_initial": {
+      "description": "Before any analysis",
+      "rankings": [
+        {"program": "phenix.xtriage", "priority": 1, "reason": "Must analyze data quality first"}
+      ]
+    },
+    "xray_analyzed": {
+      "description": "After xtriage, need to get model",
+      "rankings": [
+        {"program": "phenix.autosol", "priority": 1, "condition": "has_useful_anomalous and has_sequence", "reason": "Strong anomalous signal detected - experimental phasing (SAD/MAD) recommended"},
+        {"program": "phenix.predict_and_build", "priority": 2, "condition": "has_sequence", "reason": "Get AlphaFold prediction for molecular replacement"},
+        {"program": "phenix.autosol", "priority": 3, "condition": "has_sequence and not has_useful_anomalous", "reason": "Experimental phasing (SAD/MAD) - use if data has anomalous signal"},
+        {"program": "phenix.phaser", "priority": 4, "condition": "has_search_model", "reason": "Molecular replacement with existing model"}
+      ]
+    },
+    "xray_has_prediction": {
+      "description": "Have AlphaFold prediction, need to process",
+      "rankings": [
+        {"program": "phenix.process_predicted_model", "priority": 1, "reason": "Process prediction for MR"}
+      ]
+    },
+    "xray_model_processed": {
+      "description": "Prediction processed, need MR",
+      "rankings": [
+        {"program": "phenix.phaser", "priority": 1, "reason": "Run molecular replacement"}
+      ]
+    },
+    "xray_has_phases": {
+      "description": "After experimental phasing, need to build",
+      "rankings": [
+        {"program": "phenix.autobuild", "priority": 1, "reason": "Build model into experimental phases"}
+      ]
+    },
+    "xray_has_model": {
+      "description": "Have placed model, need refinement",
+      "rankings": [
+        {"program": "phenix.refine", "priority": 1, "reason": "Initial refinement needed"}
+      ]
+    },
+    "xray_refined": {
+      "description": "After refinement, multiple options",
+      "rankings": [
+        {"program": "phenix.ligandfit", "priority": 1, "condition": "has_ligand and not has_ligand_fit and model_is_good", "reason": "Fit ligand into density (model quality good)"},
+        {"program": "phenix.autobuild", "priority": 2, "condition": "r_free_unknown_or_high and has_sequence and has_phases and not autobuild_done", "reason": "Model may benefit from rebuilding"},
+        {"program": "phenix.molprobity", "priority": 3, "condition": "suggest_validation", "reason": "Validate model quality before stopping"},
+        {"program": "phenix.refine", "priority": 4, "condition": "r_free_unknown_or_above_target", "reason": "Continue refinement"},
+        {"program": "phenix.ligandfit", "priority": 5, "condition": "has_ligand and not has_ligand_fit and not model_is_good", "reason": "Fit ligand (improve model first recommended)"},
+        {"program": "STOP", "priority": 6, "condition": "always", "reason": "Stop if satisfied with model"}
+      ]
+    },
+    "xray_has_ligand": {
+      "description": "Ligand fitted, need to combine",
+      "rankings": [
+        {"program": "phenix.pdbtools", "priority": 1, "reason": "Combine protein and ligand models"}
+      ]
+    },
+    "cryoem_initial": {
+      "description": "Before any analysis",
+      "rankings": [
+        {"program": "phenix.mtriage", "priority": 1, "reason": "Must analyze map quality first"}
+      ]
+    },
+    "cryoem_analyzed": {
+      "description": "After mtriage, need model",
+      "rankings": [
+        {"program": "phenix.predict_and_build", "priority": 1, "condition": "has_sequence", "reason": "Get AlphaFold prediction and dock into map"},
+        {"program": "phenix.dock_in_map", "priority": 2, "condition": "has_model", "reason": "Dock existing model into map"}
+      ]
+    },
+    "cryoem_has_model": {
+      "description": "Have model in map, need refinement",
+      "rankings": [
+        {"program": "phenix.real_space_refine", "priority": 1, "reason": "Refine model against map"}
+      ]
+    },
+    "cryoem_refined": {
+      "description": "After refinement, multiple options",
+      "rankings": [
+        {"program": "phenix.ligandfit", "priority": 1, "condition": "has_ligand and not has_ligand_fit", "reason": "Fit ligand into map"},
+        {"program": "phenix.real_space_refine", "priority": 2, "condition": "map_cc < success_cc", "reason": "Continue refinement (CC {map_cc:.3f} < target {success_cc:.2f})"},
+        {"program": "phenix.validation_cryoem", "priority": 3, "condition": "suggest_validation", "reason": "Validate model quality"},
+        {"program": "STOP", "priority": 4, "condition": "map_cc >= success_cc", "reason": "Map-model CC {map_cc:.3f} at or above target - consider stopping"}
+      ]
+    }
+  },
+
+  "validation_criteria": {
+    "molprobity": {
+      "good": {
+        "ramachandran_outliers_max": 0.5,
+        "rotamer_outliers_max": 1.0,
+        "clashscore_max": 4.0,
+        "rms_bonds_max": 0.015,
+        "rms_angles_max": 1.5,
+        "molprobity_score_max": 1.5
+      },
+      "poor_multiplier": 2.0,
+      "description": "Poor is defined as > 2x the good threshold for any metric"
+    },
+    "holton_geometry": {
+      "expected_energy": 67,
+      "energy_sigma": 8.5,
+      "description": "Overall geometry energy should be close to expected value"
+    }
+  }
+}

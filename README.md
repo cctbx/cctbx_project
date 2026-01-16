@@ -65,6 +65,13 @@ Some programs in cctbx require information about geometric restraints for molecu
 ```
 conda install <chem_data package>
 ```
+Alternatively, the latest version of the `chem_data` conda package is available
+on the `chem_data` channel from https://anaconda.org. You can install it with
+```
+conda install -c chem_data chem_data
+```
+Due to space limitations on anaconda.org, we can only keep the latest version
+available.
 The `chem_data` package is built from the [`chem_data`](https://gitlab.com/phenix_project/chem_data) and [`geostd`](https://github.com/phenix-project/geostd) repositories.
 
 <a name="developmentversion"/>

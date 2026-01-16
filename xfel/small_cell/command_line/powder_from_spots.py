@@ -58,6 +58,10 @@ master_phil = parse(
     .type = float
   d_min = 2
     .type = float
+  single_detector = True
+    .type = bool
+    .help = Require all experiments to use identical detector geometry. Set to \
+            False to allow heterogeneous detectors.
   panel = None
     .type = int
     .help = Only use data from the specified panel

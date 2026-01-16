@@ -780,6 +780,10 @@ def reorder_residues(hierarchy, merge_chains = False, chain_id = None):
       cc.append_residue_group(rg)
   return new_hierarchy
 
+def set_segid(hierarchy, segid = ""):
+  for atom in hierarchy.atoms():
+    atom.segid = segid
+
 def set_chain_id(hierarchy, chain_id = None, original_id = None):
   assert chain_id
   for model in hierarchy.models():

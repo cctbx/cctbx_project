@@ -1080,6 +1080,26 @@ ATOM     58  ND2 ASN A  19      21.495  13.232  11.887  1.00  7.24           N
   assert_lines_in_text(cif_txt,
       "C00001 disulf CYS A 12 SG CYS A 2 SG . CYS A 18 SG CYS A 8 SG . 'Comput. Cryst. Newsl. (2015), 6, 13-13.'")
 
+def exercise_resolution():
+  h = iotbx.pdb.input(lines=input_1ab1).construct_hierarchy()
+  resolutions = h.atoms().extract_resolution()
+  for i in range(len(resolutions)):
+    resolutions[i]+=i*0.1
+  h.atoms().set_resolution(resolutions)
+  c_block = h.as_cif_block()
+  res_in_cif = list(c_block['_atom_site.phenix_resolution'])
+  assert res_in_cif == ['0.00', '0.10', '0.20', '0.30', '0.40', '0.50', '0.60', '0.70',
+                        '0.80', '0.90', '1.00', '1.10', '1.20', '1.30', '1.40', '1.50',
+                        '1.60', '1.70', '1.80', '1.90', '2.00', '2.10', '2.20', '2.30',
+                        '2.40', '2.50'], res_in_cif
+  # Let's read them back
+  builder = pdb_hierarchy_builder(c_block)
+  new_h = builder.hierarchy
+  new_res = list(new_h.atoms().extract_resolution())
+  assert new_res == [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+                     1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9,
+                     2.0, 2.1, 2.2, 2.3, 2.4, 2.5], new_res
+
 def run():
   exercise_cif_show()
   exercise_fp_fdp()
@@ -1093,6 +1113,7 @@ def run():
     exercise_struct_conn()
   else:
     print('chem_data not present, skipping exercise_struct_conn')
+  exercise_resolution()
 
 if __name__ == '__main__':
   run()

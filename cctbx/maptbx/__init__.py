@@ -25,6 +25,7 @@ from scitbx import fftpack
 from libtbx.test_utils import approx_equal
 from cctbx import uctbx
 import scitbx.math
+from cctbx.maptbx.bcr import bcr
 
 debug_peak_cluster_analysis = os.environ.get(
   "CCTBX_MAPTBX_DEBUG_PEAK_CLUSTER_ANALYSIS", "")
@@ -328,7 +329,8 @@ def mask(xray_structure,
          mask_value_inside_molecule = 0,
          mask_value_outside_molecule = 1,
          solvent_radius = 0,
-         atom_radius = None):
+         atom_radius = None,
+         wrapping = True):
   xrs_p1 = xray_structure.expand_to_p1(sites_mod_positive = True)
   if(atom_radius is None):
     from cctbx.masks import vdw_radii_from_xray_structure
@@ -341,7 +343,8 @@ def mask(xray_structure,
     n_real                      = n_real,
     mask_value_inside_molecule  = mask_value_inside_molecule,
     mask_value_outside_molecule = mask_value_outside_molecule,
-    radii                       = atom_radii + solvent_radius)
+    radii                       = atom_radii + solvent_radius,
+    wrapping                    = wrapping)
 
 class statistics(ext.statistics):
 
@@ -1440,6 +1443,85 @@ def atom_radius_as_central_peak_width(element, b_iso, d_min, scattering_table):
   assert radius is not None
   return radius
 
+def atom_image_fast(ff_packed, d_min, n_grid, dist_max, n_sf_grid=2001):
+  #
+  # ff_packed is linear array of array_of_a() + c() + array_of_b() + (0,)
+  #
+  # scaled - special mode that produced scaled image on an extended interval
+  #          (used for BCR)
+  #
+  DistImage  = dist_max
+  NImage     = n_grid
+  #
+  def _SFactG(ScatAtom,Resolution,n_sf_grid) :
+    ScatFunc = [0.0 for ig in range(n_sf_grid)]
+    Smax    = 1.0 / Resolution
+    dsstep  = Smax / (n_sf_grid - 1)
+    NGauss  = int(len(ScatAtom) / 2)
+    for isg in range(n_sf_grid) :
+      sg   = dsstep * isg
+      ss24 = sg * sg / 4.0
+      fact = 0.0
+      for ig in range(NGauss) :
+        argexp = ScatAtom[ig + NGauss] * ss24
+        fact  += ScatAtom[ig] * math.exp(-argexp)
+      ScatFunc[isg] = fact
+    return ScatFunc
+  #
+  def _AtomImage(ScatFunc,Resolution,DistImage,NImage) :
+    StepImage  = DistImage / (NImage - 1)
+    NSGrid = len(ScatFunc) - 1
+    Smax   = 1.0 / Resolution
+    SStep  = Smax / NSGrid
+    Image = [0.0 for j in range(NImage)]
+    dx = 2. * math.pi * StepImage
+#   integrate scattering curve
+#   odd points
+    for igs in range(1, NSGrid, 2):
+      ss     = SStep * igs
+      fatoms = ScatFunc[igs] * ss * 4.
+      for ir in range(1,NImage):
+        rr   = dx * ir
+        arg  = rr * ss
+        sarg = math.sin(arg)
+        Image[ir] = Image[ir] + fatoms * sarg
+      Image[0] = Image[0] + fatoms * ss
+#   even points
+    for igs in range(2, NSGrid-1, 2):
+      ss     = SStep * igs
+      fatoms = ScatFunc[igs] * ss * 2.
+      for ir in range(1,NImage):
+        rr   = dx * ir
+        arg  = rr * ss
+        sarg = math.sin(arg)
+        Image[ir] = Image[ir] + fatoms * sarg
+      Image[0] = Image[0] + fatoms * ss
+#   terminal point (point s = 0 gives zero contribution and is ignored)
+    ss     = SStep * NSGrid
+    fatoms = ScatFunc[NSGrid] * ss
+    for ir in range(1,NImage):
+      rr   = dx * ir
+      arg  = rr * ss
+      sarg = math.sin(arg)
+      Image[ir] = Image[ir] + fatoms * sarg
+    Image[0] = Image[0] + fatoms * ss
+# ---- normalisation ----
+    scal = 2.0 * SStep / 3.0
+    for ir in range(1,NImage):
+      rr = ir * StepImage
+      Image[ir] = Image[ir] * scal / rr
+    Image[0] = Image[0] * SStep * 4. * math.pi / 3.
+    return Image, StepImage
+  #
+  ScatFunc = _SFactG(ScatAtom=ff_packed, Resolution=d_min, n_sf_grid=n_sf_grid)
+  Image, StepImage = _AtomImage(
+    ScatFunc   = ScatFunc,
+    Resolution = d_min,
+    DistImage  = DistImage,
+    NImage     = NImage)
+  Distance = [_ * StepImage for _ in range(len(Image))]
+  return flex.double(Image), flex.double(Distance)
+
 class atom_curves(object):
   """
 Class-toolkit to compute various 1-atom 1D curves: exact electron density,
@@ -1476,15 +1558,20 @@ Fourier image of specified resolution, etc.
     return self.scr.gaussian(self.scattering_type).gradient(r = r, t = t, t0 = t0,
       b_iso = b_iso)
 
-  def exact_density(self, b_iso, radius_max = 5., radius_step = 0.001):
-    r = 0.0
+  def exact_density(self, b_iso, radius_max = 5., radius_step = 0.001,
+                    radii = None, norm_to_max = False):
+    if radii is None:
+      radii = flex.double()
+      r = 0
+      while r <= radius_max:
+        radii.append(r)
+        r+= radius_step
     density = flex.double()
-    radii   = flex.double()
     ed = self.scr.gaussian(self.scattering_type)
-    while r < radius_max:
-      density.append(ed.electron_density(r, b_iso))
-      radii.append(r)
-      r+= radius_step
+    for r in radii:
+      val = ed.electron_density(r, b_iso)
+      density.append(val)
+    if norm_to_max: density = density / flex.max(density)
     return group_args(radii = radii, density = density)
 
   def form_factor(self, ss, b_iso):
@@ -1512,7 +1599,7 @@ Fourier image of specified resolution, etc.
                  kprot = 112,
                  ):
     b_iso = 0 # Must always be 0! All image vals below are for b_iso=0 !!!
-    from cctbx.maptbx.bcr import bcr
+
     im = self.image(
       d_min=d_min, b_iso=0, radius_max=radius_max, radius_step=radius_step)
     bpeak, cpeak, rpeak, _,_,_,_ = bcr.get_BCR(
@@ -1527,27 +1614,8 @@ Fourier image of specified resolution, etc.
       kprot = kprot,
       nfmes = None,
       )
-    #
-    bcr_approx_values = flex.double()
-    # FILTER
-    bpeak_, cpeak_, rpeak_ = [],[],[]
-    for bi, ci, ri in zip(bpeak, cpeak, rpeak):
-      if(abs(bi)<1.e-6 or abs(ci)<1.e-6): continue
-      else:
-        bpeak_.append(bi)
-        cpeak_.append(ci)
-        rpeak_.append(ri)
-    bpeak, cpeak, rpeak = bpeak_, cpeak_, rpeak_
-    #
-    for r in im.radii:
-      first = 0
-      second = 0
-      for B, C, R in zip(bpeak, cpeak, rpeak):
-        if(abs(R)<1.e-6):
-          first += bcr.gauss(B=B, C=C, r=r, b_iso=0)
-        else:
-          second += C*bcr.chi(B=B, R=R, r=r, b_iso=0)
-      bcr_approx_values.append(first + second)
+    bcr_approx_values = bcr.curve(
+      B=bpeak, C=cpeak, R=rpeak, radii=im.radii, b_iso=0)
     return group_args(
       radii             = im.radii,
       image_values      = im.image_values,
@@ -1558,50 +1626,78 @@ Fourier image of specified resolution, etc.
             d_min,
             b_iso,
             d_max = None,
+            radii = None,
             radius_min = 0,
             radius_max = 5.,
             radius_step = 0.001,
-            n_integration_steps = 2000):
-    """
-    This can be done nicer. See generate_BCR_atom_22.txt attachment in email
-    from AU received on 12/8/25, 11:02.
-    """
-    r = radius_min
+            n_integration_steps = 2000,
+            compute_derivatives=True,
+            fast=False):
+    # define radii if not supplied
+    if radii is None:
+      radii = flex.double()
+      r = radius_min
+      while r <= radius_max + 1e-10:
+        radii.append(r)
+        r += radius_step
+        if math.isclose(r, radius_max, abs_tol=1e-10):
+            radii.append(radius_max)
+            break
+    if radii.size()%2 != 0: radii.append(radii[-1]+radius_step)
     assert d_max !=  0.
     if(d_max is None): s_min = 0
     else:              s_min = 1./d_max
     assert d_min !=  0.
     s_max = 1./d_min
     image_values = flex.double()
-    radii        = flex.double()
-    while r < radius_max:
-      s = scitbx.math.simpson(
-        f = self.integrand(r, b_iso), a = s_min, b = s_max, n = n_integration_steps)
-      image_values.append(s)
-      radii.append(r)
-      r+= radius_step
+    if not fast: # Use direct integration
+      for r in radii:
+        s = scitbx.math.simpson(
+          f = self.integrand(r, b_iso), a = s_min, b = s_max,
+          n=n_integration_steps)
+        image_values.append(s)
+    else: # use AU's adopted code, limited (see assertions below)
+      assert d_max is None
+      assert abs(b_iso) < 1.e-6
+      v = self.scr.as_type_gaussian_dict()[self.scattering_type]
+      ff_AU_style=tuple(v.array_of_a())+(v.c(),)+tuple(v.array_of_b())+(0,)
+      #
+      # Reason for this is unknown. Values in ff_AU_style do not match
+      # wk1995.ccp -- there is more digits after 6x position. The rounding
+      # below is meant to make these numbers match the wk1995.ccp table
+      # exactly.
+      #
+      ff_AU_style = [round(_,6) for _ in ff_AU_style]
+      image_values, _ = atom_image_fast(
+        ff_packed = ff_AU_style,
+        d_min     = d_min,
+        n_grid    = radii.size(), # Must be even!!!
+        dist_max  = radius_max)
+      image_values = flex.double(image_values)
     # Fine first inflection point
     first_inflection_point = None
     i_first_inflection_point = None
     size = image_values.size()
     second_derivatives = flex.double()
-    for i in range(size):
-      if(i>0 and i<size-1):
-        dxx = image_values[i-1]+image_values[i+1]-2*image_values[i]
-      elif(i == 0):
-        dxx = 2*image_values[i+1]-2*image_values[i]
-      else:
-        dxx = second_derivatives[i-1]*radius_step**2
-      if(first_inflection_point is None and dxx>0):
-        first_inflection_point = (radii[i-1]+radii[i])/2.
-        i_first_inflection_point = i
-      second_derivatives.append(dxx/radius_step**2)
+    if compute_derivatives:
+      for i in range(size):
+        if(i>0 and i<size-1):
+          dxx = image_values[i-1]+image_values[i+1]-2*image_values[i]
+        elif(i == 0):
+          dxx = 2*image_values[i+1]-2*image_values[i]
+        else:
+          dxx = second_derivatives[i-1]*radius_step**2
+        if(first_inflection_point is None and dxx>0):
+          first_inflection_point = (radii[i-1]+radii[i])/2.
+          i_first_inflection_point = i
+        second_derivatives.append(dxx/radius_step**2)
+      first_inflection_point = first_inflection_point*2
     return group_args(
       radii                    = radii,
       image_values             = image_values,
       first_inflection_point   = first_inflection_point,
       i_first_inflection_point = i_first_inflection_point,
-      radius                   = first_inflection_point*2,
+      radius                   = first_inflection_point,
       second_derivatives       = second_derivatives)
 
   def image_from_miller_indices(self, miller_indices, b_iso, uc,

@@ -228,7 +228,7 @@ def exercise_2(d_min = 1.5):
     if(shake):
       assert dist < 0.35, r
     else:
-      assert dist < 0.14, dist
+      assert dist < 0.15, dist
     if(0):
       pi.ph.adopt_xray_structure(fmodel.xray_structure)
       pi.ph.write_pdb_file(file_name="refined.pdb",

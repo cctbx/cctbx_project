@@ -28,6 +28,28 @@ def chi(B, R, r, b_iso):
     e2 = math.exp(mfpsob*(r+R)**2)
     return (4*math.pi*B)**(-0.5) * (1/(r*R)) * (e1-e2)
 
+def curve(B, C, R, radii, b_iso=0):
+  result = flex.double()
+  # FILTER
+  B_, C_, R_ = [],[],[]
+  for bi, ci, ri in zip(B, C, R):
+    if(abs(bi)<1.e-6 or abs(ci)<1.e-6): continue
+    else:
+      B_.append(bi)
+      C_.append(ci)
+      R_.append(ri)
+  #
+  for r in radii:
+    first = 0
+    second = 0
+    for bi, ci, ri in zip(B_, C_, R_):
+      if(abs(ri)<1.e-6):
+        first += gauss(B=bi, C=ci, r=r, b_iso=b_iso)
+      else:
+        second += ci*chi(B=bi, R=ri, r=r, b_iso=b_iso)
+    result.append(first + second)
+  return result
+
 class calculator(object):
 
   def __init__(self, npeak,dens,yc,dist,nfmes, x, mdist,edist,
@@ -1097,11 +1119,6 @@ def InputScat(filedata, Badd):
 #============================
 
 def SFactG(ScatAtom,Resolution,NSgrid) :
-    print(ScatAtom)
-    print(Resolution)
-    print(NSgrid)
-    assert 0
-
     ScatFunc = [0.0 for ig in range(NSgrid+1)]
 
     Smax    = 1.0 / Resolution
@@ -1355,9 +1372,11 @@ def RefinedTable(AtomType,Resolutions,DistMax,Ngrid,Terms_Resol,
 #####################################################
 
 def compute_tables(
+      DistMax,
+      Ngrid, # grid number for atomic images
+      scattering_table,
       MinResolution = 4.0,
       MaxResolution = 4.0,
-      scattering_table = "wk1995",
       TypesAtoms = ["C",]):
 
   fileBCRlog = None #open('BCR.log', 'w')
@@ -1370,7 +1389,6 @@ def compute_tables(
   epsp      = 0.000                # peak limit value with respect to the central value
   kpres     = 1                    # precision to be defined in absolute values
   Badd      = 0.0                  # Badd (normally zero)
-  Ngrid     = 2000                 # grid number for atomic images
   NSgrid    = 2000                 # grid number for scattering function
   Precision = 0.99                 # part of the local max next to the last; to estimate accuracy limit
   MaxTerms  = 50                   # max allowed number of terms
@@ -1378,6 +1396,9 @@ def compute_tables(
 
   Protocols      = [0, 1, 111, 112, 122, 212]              # allowed protocol to be tried
   Nprotocols     = len(Protocols)
+
+  CheckProtAll   = 100
+  CheckProtFast  = 20
 
   RefineFlag = True
 
@@ -1393,7 +1414,7 @@ def compute_tables(
 
   # parameters which may be modified
 
-  DistMax        = 5.0                   # approximation up to DistMax * Resolution
+  DistMax = DistMax                   # approximation up to DistMax * Resolution
 
   #==========================================================================
 
@@ -1414,7 +1435,7 @@ def compute_tables(
   while Resolution <= MaxResolution :
       Resolutions.append(Resolution)
       Resolution += AddRes
-      if Resolution >= UpperBound :
+      if Resolution >= UpperBound * 0.999999 :
          kbound += 1
          if kbound == NumBound : break
          UpperBound = ResBound[kbound]
@@ -1458,7 +1479,7 @@ def compute_tables(
 
   #   generate file name for the coefficients for a given atomic type
 
-      fileBCRname = 'BCR_' + AtomType + '.temp'
+      fileBCRname = 'BCR_%s_'%scattering_table + AtomType + '.temp'
       fileBCRtemp = open(fileBCRname, 'w')
 
       for ires in range(Nresol) :              # MAIN CYCLE OVER RESOLUTIONS
@@ -1479,17 +1500,13 @@ def compute_tables(
   #
   #       Image = AtomImage(ScatFunc,Resolution,DistImage*Resolution,StepImage*Resolution)
 
-         o = maptbx.atom_curves(scattering_type=AtomType, scattering_table=scattering_table)
-         oresult = o.image(
-              d_min=Resolution,
-              b_iso=0,
-              d_max = None,
-              radius_min = 0,
-              radius_max = DistImage*Resolution,
-              radius_step = StepImage*Resolution,
-              n_integration_steps = 2000)
-         Image = oresult.image_values
 
+         o = maptbx.atom_curves(scattering_type=AtomType, scattering_table=scattering_table)
+         v = list(o.scr.as_type_gaussian_dict().values())[0]
+         ff_AU_style = tuple(v.array_of_a()) + (v.c(),) + tuple(v.array_of_b()) + (0,)
+         ff_AU_style = [round(_,6) for _ in ff_AU_style]
+         ScatFunc = SFactG(ff_AU_style,Resolution,NSgrid)
+         Image = AtomImage(ScatFunc,Resolution,DistImage*Resolution,StepImage*Resolution)
 
          NGridImage = len(Image)
          Distance   = [ id * StepImage for id in range(NGridImage)]
@@ -1526,9 +1543,9 @@ def compute_tables(
          Mterms   = [ 0   for iprot in range(Nprotocols) ]
          BCRterms = [ [ [0.0, 0.0, 0.0] for iterm in range(MaxTerms)] for iprot in range(Nprotocols) ]
 
-         if ires == 0 or ires == int(ires/100) * 100:
+         if ires == 0 or ires == int(ires/CheckProtAll) * CheckProtAll:
             NumProt = Nprotocols
-         elif ires == int(ires/20) * 20 :
+         elif ires == int(ires/CheckProtFast) * CheckProtFast :
             NumProt = 4
          else :
             NumProt = 2
@@ -1628,7 +1645,7 @@ def compute_tables(
   #   if required refine the set of coefficients ; create a file with refined coefficients
 
       if RefineFlag :
-         fileBCRname = 'BCR_' + AtomType + '.table'
+         fileBCRname = 'BCR_%s_'%scattering_table + AtomType + '.table'
          fileBCR     = open(fileBCRname, 'w')
 
          results = {}
@@ -1663,16 +1680,8 @@ def compute_tables(
              #
              #Image = AtomImage(ScatFunc,Resolution,DistImage*Resolution,StepImage*Resolution)
 
-             o = maptbx.atom_curves(scattering_type=AtomType, scattering_table=scattering_table)
-             oresult = o.image(
-                  d_min=Resolution,
-                  b_iso=0,
-                  d_max = None,
-                  radius_min = 0,
-                  radius_max = DistImage*Resolution,
-                  radius_step = StepImage*Resolution,
-                  n_integration_steps = 2000)
-             Image = oresult.image_values
+             ScatFunc = SFactG(ff_AU_style,Resolution,NSgrid)
+             Image = AtomImage(ScatFunc,Resolution,DistImage*Resolution,StepImage*Resolution)
 
              NGridImage = len(Image)
              Distance   = [ id * StepImage for id in range(NGridImage)]

@@ -258,7 +258,7 @@ class class_ncs_restraints_group_list(list):
       if iseqs[0] in gr.set_master_iselection:
         # check the rest are in:
         for iseq in iseqs[1:]:
-          assert iseq in gr.set_master_iselection
+          assert iseq in gr.set_master_iselection, "%d, %s" % (iseq, gr.set_master_iselection)
         # now iterate over input iseqs and populate the result
         for i in range(gr.get_number_of_copies()):
           result.append([])
@@ -339,12 +339,14 @@ class class_ncs_restraints_group_list(list):
     """
     def whole_chain_in_ncs(whole_h, master_iselection):
       m_c_id = whole_h.atoms()[master_iselection[0]].parent().parent().parent().id
+      atoms_in_chain = 0
       for chain in ncs_obj.truncated_hierarchy.only_model().chains():
         if chain.id == m_c_id:
-          if chain.atoms_size() <= master_iselection.size():
-            return True
-          else:
-            return False
+          atoms_in_chain += chain.atoms_size()
+      if atoms_in_chain <= master_iselection.size():
+        return True
+      else:
+        return False
     n_gr_to_remove = []
     for i, ncs_gr in enumerate(self):
       if not whole_chain_in_ncs(whole_h, ncs_gr.master_iselection):
