@@ -471,3 +471,147 @@ improvement:
   plateau:
     cycles: 3         # Number of cycles to confirm plateau
     threshold: 0.003  # Less than 0.3% improvement = plateau
+
+
+# =============================================================================
+# BEST FILES SCORING
+# =============================================================================
+# Configuration for the Best Files Tracker scoring system.
+#
+# The tracker maintains knowledge of the highest-quality file of each type
+# throughout a session. Files are scored based on:
+#   - Processing stage (e.g., refined > docked > predicted)
+#   - Quality metrics (e.g., R-free, map_cc, clashscore)
+#
+# Each category defines:
+#   - stage_scores: Points awarded based on processing stage
+#   - metric_scores: Additional points from quality metrics
+#   - special_rules: Category-specific behavior (optional)
+#
+# Formula types:
+#   - linear: Higher value is better (score increases with value)
+#   - linear_inverse: Lower value is better (score increases as value decreases)
+#   - boolean: True gives max_points, False gives 0
+# =============================================================================
+
+best_files_scoring:
+
+  # ---------------------------------------------------------------------------
+  # MODEL SCORING (0-200 points)
+  # ---------------------------------------------------------------------------
+  # Models are scored by refinement stage (0-100) plus metrics (0-100).
+  # A fully refined model with good metrics can score up to 200 points.
+
+  model:
+    stage_scores:
+      refined: 100           # Output from phenix.refine
+      rsr_output: 100        # Output from real_space_refine
+      autobuild_output: 80   # Output from phenix.autobuild
+      docked: 60             # Output from dock_in_map
+      processed_predicted: 50  # Processed AlphaFold model
+      predicted: 40          # Raw AlphaFold prediction
+      phaser_output: 30      # MR solution from Phaser
+      pdb: 10                # Unknown/generic PDB
+      _default: 10           # Fallback for unknown stages
+
+    metric_scores:
+      # R-free: Lower is better. Range 0.20 (best) to 0.40 (worst)
+      # At r_free=0.20 -> 40 pts, r_free=0.30 -> 20 pts, r_free=0.40 -> 0 pts
+      r_free:
+        max_points: 40
+        formula: linear_inverse
+        best_value: 0.20
+        worst_value: 0.40
+
+      # Map-model CC: Higher is better. Range 0.0 to 1.0
+      # At map_cc=1.0 -> 30 pts, map_cc=0.5 -> 15 pts
+      map_cc:
+        max_points: 30
+        formula: linear
+        best_value: 1.0
+        worst_value: 0.0
+
+      # Clashscore: Lower is better. Range 0 (best) to 20 (worst)
+      # At clashscore=0 -> 30 pts, clashscore=10 -> 15 pts, clashscore=20 -> 0 pts
+      clashscore:
+        max_points: 30
+        formula: linear_inverse
+        best_value: 0
+        worst_value: 20
+
+  # ---------------------------------------------------------------------------
+  # MAP SCORING (0-150 points)
+  # ---------------------------------------------------------------------------
+  # Maps are scored by processing stage (0-100) plus resolution (0-30).
+  # Half-maps score low since they shouldn't be used as primary maps.
+
+  map:
+    stage_scores:
+      optimized_full_map: 100  # Output from resolve_cryo_em
+      sharpened: 90            # Output from map_sharpening
+      density_modified: 80     # Density-modified map
+      full_map: 50             # User-provided full map
+      map: 40                  # Generic map
+      half_map: 10             # Half-map (not suitable as primary)
+      _default: 40
+
+    metric_scores:
+      # Resolution: Lower is better (higher resolution). Range 1.0 to 4.0 Å
+      # At resolution=1.0 -> 30 pts, resolution=2.5 -> 15 pts, resolution=4.0 -> 0 pts
+      resolution:
+        max_points: 30
+        formula: linear_inverse
+        best_value: 1.0
+        worst_value: 4.0
+
+  # ---------------------------------------------------------------------------
+  # MTZ SCORING (0-100 points)
+  # ---------------------------------------------------------------------------
+  # MTZ files have a special rule: the first MTZ with R-free flags locks
+  # forever to ensure consistent R-free statistics throughout refinement.
+
+  mtz:
+    stage_scores:
+      refined_mtz: 70    # Output from phenix.refine
+      original: 50       # User-provided data
+      mtz: 40            # Generic MTZ
+      _default: 40
+
+    metric_scores:
+      # Has R-free flags: Boolean - 30 points if true
+      has_rfree_flags:
+        max_points: 30
+        formula: boolean
+
+    special_rules:
+      # Once an MTZ with R-free flags is found, it locks and cannot be replaced
+      lock_on_rfree: true
+
+  # ---------------------------------------------------------------------------
+  # MAP COEFFICIENTS SCORING (0-100 points)
+  # ---------------------------------------------------------------------------
+  # Map coefficients from refinement. Prefer more recent refinement output.
+
+  map_coefficients:
+    stage_scores:
+      refined: 80        # From latest refinement
+      _default: 50
+
+  # ---------------------------------------------------------------------------
+  # SEQUENCE SCORING (0-50 points)
+  # ---------------------------------------------------------------------------
+  # Sequence files are simple - just track that we have one.
+
+  sequence:
+    stage_scores:
+      _default: 50
+
+  # ---------------------------------------------------------------------------
+  # LIGAND CIF SCORING (0-50 points)
+  # ---------------------------------------------------------------------------
+  # Ligand restraint files - prefer user-provided over auto-generated.
+
+  ligand_cif:
+    stage_scores:
+      user_provided: 60
+      _default: 50

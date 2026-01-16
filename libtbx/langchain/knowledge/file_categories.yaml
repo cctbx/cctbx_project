@@ -53,7 +53,25 @@ refined_mtz:
     - "*refine*"
     # New naming: refine_001_001.mtz, refine_002_001.mtz, etc.
     - "refine_[0-9][0-9][0-9]_*.mtz"
-  notes: "Preferred for subsequent refinement cycles"
+    # AutoSol refinement data
+    - "*refinement_data*"
+    - "*aniso_refinement*"
+  excludes:
+    # Phased MTZ files have multiple arrays - not suitable for direct refinement
+    - "*phased*"
+    - "*phases*"
+    - "*hklout_phased*"
+  notes: "Preferred for subsequent refinement cycles - contains R-free flags"
+
+phased_mtz:
+  description: "MTZ files with experimental phases (SAD/MAD/MR)"
+  subcategory_of: mtz
+  patterns:
+    - "*phased*"
+    - "*phases*"
+    - "*hklout_phased*"
+    - "*solve*"
+  notes: "Contains experimental phases - use for map calculation, not direct refinement"
 
 # =============================================================================
 # MODEL (PDB) SUBCATEGORIES
@@ -124,8 +142,10 @@ processed_predicted:
   patterns:
     - "*processed*predict*"
     - "*processed*model*"
+    - "*predict*processed*"
+    - "*model*processed*"
   also_in: [predicted]
-  notes: "Ready for molecular replacement"
+  notes: "Ready for molecular replacement but NOT for refinement (box/symmetry mismatch)"
 
 docked:
   description: "Models docked into cryo-EM maps"

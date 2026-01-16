@@ -173,7 +173,7 @@ class TemplateBuilder(object):
         return command
 
     def build_command_for_program(self, program, available_files, categorized_files=None,
-                                   log=None, context=None):
+                                   log=None, context=None, best_files=None, rfree_mtz=None):
         """
         THE FALLBACK: Auto-selects files based on extensions and patterns.
 
@@ -183,6 +183,10 @@ class TemplateBuilder(object):
             categorized_files (dict): Optional pre-categorized files from workflow_state
             log: Optional logging function
             context (dict): Optional context for invariant validation (resolution, etc.)
+            best_files (dict): Optional best files from BestFilesTracker
+                              Format: {category: path, ...}
+            rfree_mtz (str): Optional locked R-free MTZ path (X-ray only)
+                            When set, this MTZ MUST be used for refinement programs
 
         Returns:
             str: Command string, or None if required files not found
@@ -207,6 +211,21 @@ class TemplateBuilder(object):
         selected_files = {}
         used_files = set()
 
+        # Map slot names to best_files categories
+        # (some slots have different names than best_files categories)
+        slot_to_best_category = {
+            "model": "model",
+            "pdb_file": "model",
+            "map": "map",
+            "full_map": "map",
+            "mtz": "mtz",
+            "hkl_file": "mtz",
+            "map_coefficients": "map_coefficients",
+            "sequence": "sequence",
+            "seq_file": "sequence",
+            "ligand_cif": "ligand_cif",
+        }
+
         for slot_name, slot_def in file_slots.items():
             valid_exts = slot_def.get("extensions", [])
             exclude_patterns = slot_def.get("exclude_patterns", [])
@@ -215,7 +234,44 @@ class TemplateBuilder(object):
             is_multiple = slot_def.get("multiple", False)
             is_required = slot_def.get("required", False)
 
-            # If we have pre-categorized files and this slot has a matching category
+            # PRIORITY 0: Locked R-free MTZ (X-ray refinement only)
+            # Once R-free flags are generated, we MUST use that MTZ for all refinements
+            # This overrides all other MTZ selection logic
+            if rfree_mtz and slot_name in ("mtz", "hkl_file") and not is_multiple:
+                if os.path.exists(rfree_mtz):
+                    # Verify extension matches
+                    if any(rfree_mtz.lower().endswith(ext) for ext in valid_exts):
+                        selected_files[slot_name] = rfree_mtz
+                        used_files.add(rfree_mtz)
+                        log("DEBUG: Using LOCKED R-free MTZ for slot '%s': %s" % (
+                            slot_name, os.path.basename(rfree_mtz)))
+                        continue
+                else:
+                    log("WARNING: Locked R-free MTZ not found: %s" % rfree_mtz)
+
+            # PRIORITY 1: Check best_files for single-file slots
+            if best_files and not is_multiple:
+                best_category = slot_to_best_category.get(slot_name, slot_name)
+                best_path = best_files.get(best_category)
+                if best_path and os.path.exists(best_path):
+                    # Verify extension matches
+                    if any(best_path.lower().endswith(ext) for ext in valid_exts):
+                        # Check exclude_patterns - best_files must also respect exclusions
+                        is_excluded = False
+                        for pattern in exclude_patterns:
+                            if pattern.lower() in best_path.lower():
+                                is_excluded = True
+                                log("DEBUG: Best %s excluded by pattern '%s': %s" % (
+                                    best_category, pattern, os.path.basename(best_path)))
+                                break
+                        if not is_excluded:
+                            selected_files[slot_name] = best_path
+                            used_files.add(best_path)
+                            log("DEBUG: Using best_%s for slot '%s': %s" % (
+                                best_category, slot_name, os.path.basename(best_path)))
+                            continue
+
+            # PRIORITY 2: Use pre-categorized files
             if categorized_files and slot_name in categorized_files:
                 candidates = list(categorized_files[slot_name])
                 log("DEBUG: Using pre-categorized files for slot '%s': %s" % (slot_name, candidates))
@@ -226,7 +282,7 @@ class TemplateBuilder(object):
                         return None
                     continue
             else:
-                # Filter by extension
+                # PRIORITY 3: Filter by extension from available_files
                 candidates = [f for f in available_files
                               if any(f.lower().endswith(ext) for ext in valid_exts)]
 

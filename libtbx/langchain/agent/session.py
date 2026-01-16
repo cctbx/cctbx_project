@@ -23,6 +23,8 @@ import json
 from datetime import datetime
 from langchain_core.prompts import PromptTemplate
 
+from libtbx.langchain.agent.best_files_tracker import BestFilesTracker
+
 
 class AgentSession:
     """
@@ -73,13 +75,22 @@ class AgentSession:
             "experiment_type": None,  # "xray" or "cryoem", locked after first detection
             "abort_on_red_flags": True,  # Abort on critical sanity check failures
             "abort_on_warnings": False,  # Also abort on warning-level issues
+            # R-free MTZ tracking (X-ray only)
+            # Once R-free flags are generated, we must use the same MTZ for all refinements
+            "rfree_mtz": None,  # Path to the locked R-free MTZ
+            "rfree_mtz_locked_at_cycle": None,  # Cycle when it was locked
         }
+        # Initialize best files tracker (not stored in self.data, serialized separately)
+        self.best_files = BestFilesTracker()
 
     def load(self):
         """Load session from file."""
         try:
             with open(self.session_file, 'r') as f:
                 self.data = json.load(f)
+            # Restore best files tracker
+            best_files_data = self.data.get("best_files")
+            self.best_files = BestFilesTracker.from_dict(best_files_data)
         except Exception as e:
             print(f"Warning: Could not load session file: {e}")
             self._init_new_session()
@@ -87,6 +98,9 @@ class AgentSession:
     def save(self):
         """Save session to file."""
         try:
+            # Include best files tracker in saved data
+            self.data["best_files"] = self.best_files.to_dict()
+            self.data["best_files_history"] = [h.to_dict() for h in self.best_files.get_history()]
             with open(self.session_file, 'w') as f:
                 json.dump(self.data, f, indent=2)
         except Exception as e:
@@ -194,6 +208,60 @@ class AgentSession:
         return False, f"Experiment type already locked as {current} (attempted to set {exp_type})"
 
     # =========================================================================
+    # R-FREE MTZ TRACKING (X-ray only)
+    # =========================================================================
+    # In X-ray crystallography, R-free flags are used for cross-validation.
+    # Once generated, the SAME flags must be used for all subsequent refinements.
+    # Using different R-free flags invalidates the R-free statistic.
+    #
+    # This tracking ensures:
+    # 1. First refinement that generates R-free flags locks the MTZ
+    # 2. All subsequent refinements MUST use this locked MTZ
+    # 3. The locked MTZ is visible in session.json for debugging
+
+    def get_rfree_mtz(self):
+        """
+        Get the locked R-free MTZ path.
+
+        Returns:
+            str or None: Path to the MTZ with R-free flags, or None if not yet set
+        """
+        return self.data.get("rfree_mtz")
+
+    def set_rfree_mtz(self, path, cycle):
+        """
+        Lock the R-free MTZ. Can only be set once per session.
+
+        This should be called when phenix.refine first generates or uses
+        R-free flags. Once locked, all subsequent refinements must use
+        this MTZ to maintain valid R-free statistics.
+
+        Args:
+            path: Full path to the MTZ file with R-free flags
+            cycle: Cycle number when the lock occurred
+
+        Returns:
+            tuple: (was_locked, message)
+        """
+        current = self.data.get("rfree_mtz")
+
+        if current is not None:
+            # Already locked - this is expected, not an error
+            if current == path:
+                return False, None  # Same path, no change
+            return False, f"R-free MTZ already locked to {current} (cycle {self.data.get('rfree_mtz_locked_at_cycle')})"
+
+        # Lock it
+        self.data["rfree_mtz"] = path
+        self.data["rfree_mtz_locked_at_cycle"] = cycle
+        self.save()
+        return True, f"R-free MTZ locked to {os.path.basename(path)} at cycle {cycle}"
+
+    def is_rfree_mtz_locked(self):
+        """Check if an R-free MTZ has been locked."""
+        return self.data.get("rfree_mtz") is not None
+
+    # =========================================================================
     # SANITY CHECK SETTINGS
     # =========================================================================
 
@@ -274,6 +342,91 @@ class AgentSession:
         """Clear all ignored commands (use when starting fresh)."""
         self.data["ignored_commands"] = {}
         self.save()
+
+    # =========================================================================
+    # BEST FILES TRACKING
+    # =========================================================================
+
+    def get_best_model(self):
+        """
+        Get the path to the best model file.
+
+        Returns:
+            str or None: Path to best model
+        """
+        return self.best_files.get_best_path("model")
+
+    def get_best_map(self):
+        """
+        Get the path to the best map file.
+
+        Returns:
+            str or None: Path to best map
+        """
+        return self.best_files.get_best_path("map")
+
+    def get_best_mtz(self):
+        """
+        Get the path to the best MTZ file.
+
+        Returns:
+            str or None: Path to best MTZ (with R-free flags if available)
+        """
+        return self.best_files.get_best_path("mtz")
+
+    def get_best_files_dict(self):
+        """
+        Get all best files as a dict of category -> path.
+
+        Returns:
+            dict: {category: path, ...}
+        """
+        return self.best_files.get_best_dict()
+
+    def get_best_files_summary(self):
+        """
+        Get a human-readable summary of best files.
+
+        Returns:
+            str: Multi-line summary
+        """
+        return self.best_files.get_summary()
+
+    def evaluate_file_for_best(self, path, cycle, metrics=None, stage=None):
+        """
+        Manually evaluate a file for the best files tracker.
+
+        Useful for evaluating user-provided input files at session start.
+
+        Args:
+            path: File path
+            cycle: Cycle number (use 0 for input files)
+            metrics: Optional metrics dict
+            stage: Optional stage override
+
+        Returns:
+            bool: True if file became new best
+        """
+        return self.best_files.evaluate_file(path, cycle, metrics, stage)
+
+    def update_best_model_metrics(self, metrics, cycle=None):
+        """
+        Update metrics for the best model and recalculate its score.
+
+        This should be called when validation provides new metrics for
+        the current best model (e.g., after molprobity validation).
+
+        Args:
+            metrics: Dict with model metrics (r_free, map_cc, clashscore, etc.)
+            cycle: Optional cycle number for logging
+
+        Returns:
+            tuple: (was_updated, old_score, new_score)
+        """
+        result = self.best_files.update_best_model_metrics(metrics, cycle)
+        if result[0]:  # was_updated
+            self.save()
+        return result
 
     def write_history_file(self, output_path=None):
         """
@@ -410,7 +563,145 @@ class AgentSession:
                     if current and abs(resolution - current) > 0.5:
                         cycle["resolution_note"] = f"Program reports {resolution:.2f}Å (session: {current:.2f}Å)"
 
+        # Update best files tracker with output files from successful cycles
+        if output_files and "FAILED" not in result.upper():
+            model_stage = self._infer_stage_from_program(program)
+
+            # Check if this is an X-ray refinement program (produces MTZ with R-free flags)
+            is_xray_refinement = (
+                program and
+                "refine" in program.lower() and
+                "real_space" not in program.lower()  # real_space_refine is cryo-EM
+            )
+
+            for f in output_files:
+                # Build file-specific metrics
+                file_metrics = dict(metrics) if metrics else {}
+
+                # Determine stage based on file type
+                # MTZ files from refinement get "refined_mtz" stage
+                # PDB/CIF files get the model stage (e.g., "refined")
+                if f.lower().endswith('.mtz'):
+                    basename = os.path.basename(f).lower()
+
+                    # Check if this MTZ has R-free flags (from refinement or autosol)
+                    # Patterns that indicate R-free flags are present:
+                    # - *refine* (from phenix.refine)
+                    # - *refinement_data* (from autosol)
+                    has_rfree_patterns = (
+                        'refine' in basename or
+                        'refinement_data' in basename
+                    )
+
+                    # Patterns that indicate this is NOT suitable for refinement
+                    # (phased MTZ files have multiple arrays)
+                    is_phased_mtz = (
+                        'phased' in basename or
+                        'phases' in basename or
+                        'solve' in basename
+                    )
+
+                    if has_rfree_patterns and not is_phased_mtz:
+                        file_stage = "refined_mtz"
+                        file_metrics["has_rfree_flags"] = True
+
+                        # Lock the R-free MTZ (first one wins)
+                        was_locked, lock_msg = self.set_rfree_mtz(f, cycle_number)
+                        if was_locked:
+                            cycle["rfree_mtz_locked"] = f
+                            if lock_msg:
+                                cycle["rfree_mtz_note"] = lock_msg
+                    elif is_phased_mtz:
+                        # Phased MTZ - not for direct refinement
+                        file_stage = "phased_mtz"
+                    else:
+                        # Generic MTZ
+                        file_stage = "mtz"
+                else:
+                    file_stage = model_stage  # Use inferred stage for models
+
+                # Evaluate each output file - tracker will classify and score
+                updated = self.best_files.evaluate_file(
+                    path=f,
+                    cycle=cycle_number,
+                    metrics=file_metrics,
+                    stage=file_stage
+                )
+                if updated:
+                    category = self.best_files._classify_category(f)
+                    if category:
+                        cycle.setdefault("best_file_updates", []).append(category)
+
+        # If this was a validation program, update best model metrics
+        # (validation metrics apply to the current best model, not a new file)
+        if metrics and program:
+            program_lower = program.lower()
+            validation_programs = ["molprobity", "validation", "clashscore"]
+            is_validation = any(vp in program_lower for vp in validation_programs)
+
+            if is_validation:
+                # Extract model-relevant metrics
+                model_metrics = {}
+                for key in ["clashscore", "rama_favored", "rama_outliers",
+                           "rotamer_outliers", "cbeta_outliers"]:
+                    if key in metrics:
+                        model_metrics[key] = metrics[key]
+
+                if model_metrics:
+                    was_updated, old_score, new_score = self.best_files.update_best_model_metrics(
+                        model_metrics, cycle_number
+                    )
+                    if was_updated:
+                        cycle["best_model_score_update"] = {
+                            "old": old_score,
+                            "new": new_score,
+                            "reason": "validation metrics"
+                        }
+
         self.save()
+
+    def _infer_stage_from_program(self, program):
+        """
+        Infer output file stage from program name.
+
+        Args:
+            program: Program name (e.g., "phenix.refine", "phenix.real_space_refine")
+
+        Returns:
+            str: Stage name for best files tracker
+        """
+        if not program:
+            return None
+
+        program_lower = program.lower()
+
+        # Model stages
+        if "refine" in program_lower and "real_space" not in program_lower:
+            return "refined"
+        if "real_space_refine" in program_lower:
+            return "rsr_output"
+        if "autobuild" in program_lower:
+            return "autobuild_output"
+        if "dock_in_map" in program_lower:
+            return "docked"
+        if "process_predicted_model" in program_lower:
+            return "processed_predicted"
+        if "phaser" in program_lower:
+            return "phaser_output"
+
+        # Map stages
+        if "resolve_cryo_em" in program_lower:
+            return "optimized_full_map"
+        if "map_sharpening" in program_lower or "local_aniso" in program_lower:
+            return "sharpened"
+        if "density_modification" in program_lower or "dm" in program_lower:
+            return "density_modified"
+
+        # MTZ stages
+        if "xtriage" in program_lower:
+            return "original"  # xtriage doesn't modify data
+
+        return None
 
     def get_cycle(self, cycle_number):
         """Get data for a specific cycle."""

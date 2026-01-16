@@ -29,7 +29,9 @@ class AgentState(TypedDict):
     user_advice: str              # User instructions/preferences
     provider: str                 # LLM provider: "google", "openai", or "ollama"
     session_resolution: Optional[float]  # Resolution from session (single source of truth)
-    session_info: Dict            # Session state for sanity checking (experiment_type, etc.)
+    session_info: Dict            # Session state including:
+                                  #   - experiment_type: "xray" or "cryoem"
+                                  #   - best_files: {category: path} from BestFilesTracker
 
     # === CONFIGURATION ===
     maximum_automation: bool      # If True, use fully automated cryo-EM path
@@ -98,8 +100,9 @@ def create_initial_state(
         session_resolution: Resolution value from session (single source of truth)
         use_rules_only: If True, use rules-based selection instead of LLM.
             This runs the agent without calling any external LLM API.
-        session_info: Dict with session state for sanity checking:
+        session_info: Dict with session state:
             - experiment_type: Locked experiment type ("xray" or "cryoem")
+            - best_files: Dict of {category: path} from BestFilesTracker
         abort_on_red_flags: If True, abort on critical sanity check failures
         abort_on_warnings: If True, also abort on warning-level issues
 

@@ -7,9 +7,10 @@ This document describes the decision logic used by the PHENIX AI Agent.
 2. [YAML Configuration](#yaml-configuration)
 3. [Workflow States](#workflow-states)
 4. [Program Selection](#program-selection)
-5. [Metrics and Stop Conditions](#metrics-and-stop-conditions)
-6. [Operating Modes](#operating-modes)
-7. [Modifying Agent Behavior](#modifying-agent-behavior)
+5. [Best Files Tracking](#best-files-tracking)
+6. [Metrics and Stop Conditions](#metrics-and-stop-conditions)
+7. [Operating Modes](#operating-modes)
+8. [Modifying Agent Behavior](#modifying-agent-behavior)
 
 ---
 
@@ -335,6 +336,233 @@ When using LLM, the agent:
 3. BUILD node applies invariants and defaults
 4. VALIDATE ensures choice is valid
 5. Falls back to rules if LLM fails 3 times
+
+---
+
+## Best Files Tracking
+
+The agent maintains a **Best Files Tracker** that identifies and tracks the highest-quality file of each type throughout a session. This ensures programs always receive optimal inputs without relying on filename patterns or recency alone.
+
+### Configuration
+
+Scoring configuration is defined in `knowledge/metrics.yaml` under the `best_files_scoring` section. This follows the "configuration over code" principle, making scoring adjustable without code changes.
+
+### Categories Tracked
+
+| Category | Description | Example |
+|----------|-------------|---------|
+| `model` | Best atomic model (PDB/mmCIF) | `refine_002_001.pdb` |
+| `map` | Best full cryo-EM map | `denmod_map.ccp4` |
+| `mtz` | Best reflection data | `data_with_rfree.mtz` |
+| `map_coefficients` | Best map coefficients | `refine_001_001.mtz` |
+| `sequence` | Sequence file | `sequence.fa` |
+| `ligand_cif` | Ligand restraints | `LIG.cif` |
+
+### Scoring System
+
+Each file is scored based on **processing stage** and **quality metrics**. Higher scores are better. All scoring parameters are configurable in `knowledge/metrics.yaml`.
+
+#### Formula Types
+
+The YAML configuration supports three formula types for metric scoring:
+
+| Formula | Description | Use Case |
+|---------|-------------|----------|
+| `linear` | Higher value is better | map_cc (correlation) |
+| `linear_inverse` | Lower value is better | r_free, clashscore, resolution |
+| `boolean` | True/False flag | has_rfree_flags |
+
+#### Model Scoring (0-200 points)
+
+**Stage Score (0-100 points):**
+
+| Stage | Score | Description |
+|-------|-------|-------------|
+| `refined` | 100 | Output from phenix.refine |
+| `rsr_output` | 100 | Output from real_space_refine |
+| `autobuild_output` | 80 | Output from phenix.autobuild |
+| `docked` | 60 | Output from dock_in_map |
+| `processed_predicted` | 50 | Processed AlphaFold model |
+| `predicted` | 40 | Raw AlphaFold prediction |
+| `phaser_output` | 30 | MR solution from Phaser |
+| `pdb` | 10 | Unknown/generic PDB |
+
+**Metrics Score (0-100 points):**
+
+| Metric | Max Points | Formula | Best Value | Worst Value |
+|--------|------------|---------|------------|-------------|
+| R-free | 40 | linear_inverse | 0.20 | 0.40 |
+| Map CC | 30 | linear | 1.0 | 0.0 |
+| Clashscore | 30 | linear_inverse | 0 | 20 |
+
+**Example:** A refined model (100) with R-free=0.22 (36), map_cc=0.75 (22.5), clashscore=8 (18) = **176.5 points**
+
+#### Map Scoring (0-150 points)
+
+**Stage Score (0-100 points):**
+
+| Stage | Score | Description |
+|-------|-------|-------------|
+| `optimized_full_map` | 100 | Output from resolve_cryo_em |
+| `sharpened` | 90 | Output from map_sharpening |
+| `density_modified` | 80 | Density-modified map |
+| `full_map` | 50 | User-provided full map |
+| `half_map` | 10 | Half-map (not suitable as primary) |
+
+**Resolution Bonus (0-30 points):** linear_inverse formula with best=1.0Å, worst=4.0Å
+
+#### MTZ Scoring (Special Rules)
+
+MTZ files have a unique rule: **the first MTZ with R-free flags locks forever**. This ensures consistent R-free statistics throughout refinement.
+
+| Stage | Score |
+|-------|-------|
+| `refined_mtz` | 70 |
+| `original` | 50 |
+| Has R-free flags | +30 |
+
+Once an MTZ with R-free flags is identified, no other MTZ can replace it, regardless of score.
+
+### R-free MTZ Locking (X-ray Only)
+
+In X-ray crystallography, R-free flags are used for cross-validation. Once generated, the **same flags must be used for all subsequent refinements**. Using different R-free flags invalidates the R-free statistic.
+
+The agent handles this with explicit R-free MTZ tracking at the session level:
+
+```
+Cycle 5: phenix.refine generates R-free flags
+         → Output: refine_001_data.mtz
+         → Session locks: rfree_mtz = refine_001_data.mtz
+
+Cycle 6+: All refinements MUST use refine_001_data.mtz
+          → Locked MTZ has HIGHEST priority (Priority 0)
+          → Overrides best_files, categorized_files, etc.
+```
+
+This is tracked in `session.json`:
+```json
+{
+  "rfree_mtz": "/path/to/refine_001_data.mtz",
+  "rfree_mtz_locked_at_cycle": 5
+}
+```
+
+### File Selection Priority
+
+When building commands, the agent selects files in this priority order:
+
+0. **Locked R-free MTZ** - For MTZ inputs in X-ray refinement (highest priority)
+1. **Best Files** - From the BestFilesTracker
+2. **Categorized Files** - From workflow_state file categorization
+3. **Extension Matching** - Search available_files by extension
+
+```
+BUILD node file selection for phenix.refine:
+┌─────────────────────────────────────────────────────────┐
+│ Need: mtz input for phenix.refine                       │
+├─────────────────────────────────────────────────────────┤
+│ 0. Check session rfree_mtz (LOCKED)                     │
+│    → /path/to/refine_001_data.mtz ✓ SELECTED           │
+├─────────────────────────────────────────────────────────┤
+│ 1-3. (Skipped - locked MTZ takes precedence)            │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Automatic Updates
+
+The tracker updates automatically in `Session.record_result()`:
+
+1. **After successful cycles**: All output files are evaluated and scored
+2. **After validation**: Validation metrics (clashscore, etc.) update the best model's score
+3. **Stage inference**: The program name determines the output stage
+
+```python
+# Automatic flow in record_result():
+phenix.refine succeeds
+  → Output: refine_001_001.pdb
+  → Stage inferred: "refined" (100 pts)
+  → Metrics extracted: r_free=0.25 (30 pts)
+  → Total score: 130
+  → Becomes best_model (if score > previous)
+
+phenix.molprobity succeeds
+  → Metrics extracted: clashscore=8 (18 pts)
+  → Updates best_model score: 130 → 148
+```
+
+### History Tracking
+
+Every change to "best" is recorded with:
+- Old and new file paths
+- Old and new scores
+- Cycle number when change occurred
+- Reason for the change
+
+```python
+# Example history entry
+BestFileChange(
+    category="model",
+    old_path="/path/to/docked.pdb",
+    new_path="/path/to/refined.pdb",
+    old_score=60.0,
+    new_score=130.0,
+    cycle=3,
+    reason="Higher score (130.0 > 60.0)"
+)
+```
+
+### Session Persistence
+
+Best files state is saved in `session.json` and survives restarts:
+
+```json
+{
+  "best_files": {
+    "best": {
+      "model": {
+        "path": "/path/to/refine_002_001.pdb",
+        "category": "model",
+        "stage": "refined",
+        "score": 165.5,
+        "metrics": {"r_free": 0.22, "clashscore": 8},
+        "cycle": 5,
+        "reason": "Better metrics"
+      },
+      "map": {
+        "path": "/path/to/denmod_map.ccp4",
+        "stage": "optimized_full_map",
+        "score": 125.0,
+        "cycle": 2
+      }
+    },
+    "mtz_with_rfree_locked": true
+  }
+}
+```
+
+### Debug Logging
+
+The PERCEIVE node logs best files status:
+
+```
+PERCEIVE: Best files: model=refine_002_001.pdb, map=denmod_map.ccp4, mtz=data.mtz
+```
+
+The BUILD node logs when best files are used:
+
+```
+BUILD: Using best_model for slot 'model': refine_002_001.pdb
+BUILD: Using best_map for slot 'map': denmod_map.ccp4
+```
+
+### Key Implementation Files
+
+| File | Role |
+|------|------|
+| `agent/best_files_tracker.py` | Core tracker class with scoring |
+| `agent/session.py` | Integration with session persistence |
+| `agent/template_builder.py` | Uses best_files for command building |
+| `agent/graph_nodes.py` | Passes best_files through workflow |
 
 ---
 

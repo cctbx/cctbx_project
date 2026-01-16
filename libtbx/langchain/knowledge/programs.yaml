@@ -355,6 +355,8 @@ phenix.autosol:
     files:
       - pattern: "*overall_best*.pdb"
         type: model
+      - pattern: "*refinement_data*.mtz"
+        type: mtz
     metrics:
       - fom
       - sites_found
@@ -368,6 +370,9 @@ phenix.autosol:
     atom_type:
       flag: "autosol.atom_type={value}"
       type: string
+    resolution:
+      flag: "resolution={value}"
+      type: float
       hint: "Anomalous scatterer: Se, S, Zn, Fe, etc."
     wavelength:
       flag: "autosol.wavelength={value}"
@@ -558,6 +563,7 @@ phenix.refine:
       exclude_categories: [predicted, intermediate_mr]  # Never use raw predictions or intermediate MR files
     mtz:
       categories: [refined_mtz, mtz]  # Prefer MTZ with R-free flags
+      exclude_categories: [phased_mtz]  # Phased MTZ has multiple arrays - not for refinement
 
   outputs:
     files:
@@ -603,6 +609,9 @@ phenix.refine:
       flag: 'refine.adp.individual.anisotropic="not (water or element H)"'
       type: boolean
       hint: "Only at very high resolution (<1.5Å)"
+    resolution:
+      flag: "xray_data.high_resolution={value}"
+      type: float
     resolution_limit:
       flag: "xray_data.high_resolution={value}"
       type: float

@@ -73,6 +73,10 @@ def main():
     from libtbx.langchain.tests import test_sanity_checker
     results["Sanity Checker"] = run_test_suite("Sanity Checker Tests", test_sanity_checker)
 
+    # Test 7: Best Files Tracker
+    from libtbx.langchain.tests import test_best_files_tracker
+    results["Best Files Tracker"] = run_test_suite("Best Files Tracker Tests", test_best_files_tracker)
+
     # Summary
     print("\n" + "=" * 70)
     print("TEST SUMMARY")

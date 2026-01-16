@@ -313,6 +313,14 @@ def perceive(state):
     abort_on_red_flags = state.get("abort_on_red_flags", True)
     abort_on_warnings = state.get("abort_on_warnings", False)
 
+    # Log best_files status
+    best_files = session_info.get("best_files", {})
+    if best_files:
+        best_files_summary = ", ".join([
+            "%s=%s" % (k, os.path.basename(v)) for k, v in best_files.items() if v
+        ])
+        state = _log(state, "PERCEIVE: Best files: %s" % best_files_summary)
+
     # Build sanity check context
     categorized_files = workflow_state.get("categorized_files", {})
     sanity_context = {
@@ -1120,16 +1128,26 @@ def build(state):
             # LLM didn't pick files, use auto-select with categorized files
             workflow_state = state.get("workflow_state", {})
             categorized_files = workflow_state.get("categorized_files", {})
+            # Get best_files and rfree_mtz from session_info
+            session_info = state.get("session_info", {})
+            best_files = session_info.get("best_files", {})
+            rfree_mtz = session_info.get("rfree_mtz")
             command = builder.build_command_for_program(
                 program,
                 available_files,
-                categorized_files=categorized_files
+                categorized_files=categorized_files,
+                best_files=best_files,
+                rfree_mtz=rfree_mtz
             )
             state = _log(state, "BUILD: Auto-selected files for %s" % program)
         else:
             # LLM picked some files - auto-fill any missing required files
             workflow_state = state.get("workflow_state", {})
             categorized_files = workflow_state.get("categorized_files", {})
+            # Get best_files and rfree_mtz from session_info
+            session_info = state.get("session_info", {})
+            best_files = session_info.get("best_files", {})
+            rfree_mtz = session_info.get("rfree_mtz")
 
             # Get required inputs for this program
             try:
@@ -1137,35 +1155,68 @@ def build(state):
             except Exception:
                 required_inputs = []
 
-            # Auto-fill missing required files from categorized_files
-            # Use YAML input_priorities if defined, otherwise simple defaults
+            # Map input names to best_files categories
+            input_to_best_category = {
+                "model": "model",
+                "pdb_file": "model",
+                "map": "map",
+                "full_map": "map",
+                "mtz": "mtz",
+                "hkl_file": "mtz",
+                "sequence": "sequence",
+                "seq_file": "sequence",
+            }
+
+            # Auto-fill missing required files
+            # PRIORITY 0: Locked R-free MTZ (for mtz input, X-ray refinement)
+            # PRIORITY 1: Check best_files first
+            # PRIORITY 2: Use YAML input_priorities
+            # PRIORITY 3: Simple fallback
             for input_name in required_inputs:
                 if input_name not in corrected_files:
                     file_found = None
 
-                    # Try to get priorities from YAML
-                    priorities = builder._registry.get_input_priorities(program, input_name)
-                    priority_categories = priorities.get("categories", [])
-                    exclude_categories = priorities.get("exclude_categories", [])
+                    # PRIORITY 0: Locked R-free MTZ
+                    if input_name in ("mtz", "hkl_file") and rfree_mtz:
+                        if os.path.exists(rfree_mtz):
+                            file_found = rfree_mtz
+                            state = _log(state, "BUILD: Using LOCKED R-free MTZ for %s: %s" % (
+                                input_name, os.path.basename(rfree_mtz)))
 
-                    if priority_categories:
-                        # Use YAML-defined priorities
-                        for cat in priority_categories:
-                            cat_files = categorized_files.get(cat, [])
-                            for f in cat_files:
-                                # Check exclusions
-                                excluded = False
-                                for excl_cat in exclude_categories:
-                                    if f in categorized_files.get(excl_cat, []):
-                                        excluded = True
+                    # PRIORITY 1: Check best_files
+                    if not file_found:
+                        best_category = input_to_best_category.get(input_name, input_name)
+                        best_path = best_files.get(best_category)
+                        if best_path and os.path.exists(best_path):
+                            file_found = best_path
+                            state = _log(state, "BUILD: Using best_%s for %s: %s" % (
+                                best_category, input_name, os.path.basename(best_path)))
+
+                    # PRIORITY 2: Try to get priorities from YAML
+                    if not file_found:
+                        priorities = builder._registry.get_input_priorities(program, input_name)
+                        priority_categories = priorities.get("categories", [])
+                        exclude_categories = priorities.get("exclude_categories", [])
+
+                        if priority_categories:
+                            # Use YAML-defined priorities
+                            for cat in priority_categories:
+                                cat_files = categorized_files.get(cat, [])
+                                for f in cat_files:
+                                    # Check exclusions
+                                    excluded = False
+                                    for excl_cat in exclude_categories:
+                                        if f in categorized_files.get(excl_cat, []):
+                                            excluded = True
+                                            break
+                                    if not excluded:
+                                        file_found = f
                                         break
-                                if not excluded:
-                                    file_found = f
+                                if file_found:
                                     break
-                            if file_found:
-                                break
-                    else:
-                        # Simple fallback for common input types
+
+                    # PRIORITY 3: Simple fallback for common input types
+                    if not file_found:
                         if input_name == "mtz":
                             if categorized_files.get("refined_mtz"):
                                 file_found = categorized_files["refined_mtz"][0]
@@ -1408,15 +1459,24 @@ def fallback(state):
         "workflow_state": workflow_state,
     }
 
+    # Get best_files and rfree_mtz from session_info
+    session_info = state.get("session_info", {})
+    best_files = session_info.get("best_files", {})
+    rfree_mtz = session_info.get("rfree_mtz")
+
     # Try each valid program until one works without duplicating
     for program in runnable:
         # For refine, try with prioritized files (recent outputs first)
         if "refine" in program.lower():
             cmd = builder.build_command_for_program(program, prioritized_files,
-                                                    context=fallback_context)
+                                                    context=fallback_context,
+                                                    best_files=best_files,
+                                                    rfree_mtz=rfree_mtz)
         else:
             cmd = builder.build_command_for_program(program, available_files,
-                                                    context=fallback_context)
+                                                    context=fallback_context,
+                                                    best_files=best_files,
+                                                    rfree_mtz=rfree_mtz)
 
         if cmd and cmd not in previous_commands:
             state = _log(state, "FALLBACK: Built command for %s" % program)
@@ -1435,7 +1495,9 @@ def fallback(state):
     sequence_files = [f for f in available_files if f.endswith(('.fa', '.fasta', '.seq'))]
     if sequence_files and "phenix.autobuild" in valid_programs and "phenix.autobuild" not in runnable:
         cmd = builder.build_command_for_program("phenix.autobuild", available_files,
-                                                context=fallback_context)
+                                                context=fallback_context,
+                                                best_files=best_files,
+                                                rfree_mtz=rfree_mtz)
         if cmd and cmd not in previous_commands:
             state = _log(state, "FALLBACK: Trying autobuild as alternative")
             return {
