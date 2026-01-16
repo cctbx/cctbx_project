@@ -8,24 +8,26 @@ from cctbx.maptbx.bcr import bcr
 
 std_labels = xray_scattering.standard_labels_list()
 
-def chunk_list(original_list):
-    L = len(original_list)
-    # Check if the list is smaller than the minimum required length for meaningful chunks
-    if L < 3:
-      raise ValueError("The length of the list must be at least 3.")
-    chunks = []
-    start_index = 0
-    # Loop until we reach the end of the original list
-    while start_index < L:
-      # Ensure there's enough remaining elements for at least a size of 3
-      end_index = start_index + 3  # Default size of each chunk
-      # Adjust the end_index if there aren't enough elements left
-      if end_index > L:
-        end_index = L
-      chunks.append(original_list[start_index:end_index])
-      # Move the start index forward by the length of the current chunk
-      start_index += 3  # Ensure each chunk has at least 3 items
-    return chunks
+
+def chunk_list(input_list, N=3):
+    """
+    Splits the input list into a list of lists, where each sub-list has at
+    least N elements.
+    Returns: A list of sub-lists, where each sub-list contains at least N
+             elements, except possibly the last one if not enough elements
+            remain.
+    """
+    if N <= 0: raise ValueError("N must be a positive integer.")
+    result = []
+    # Iterate through the list while ensuring we create sub-lists of at least N elements.
+    for i in range(0, len(input_list), N):
+      sub_list = input_list[i:i + N]
+      # Adjust if the last sub-list is smaller than N but not empty
+      if len(sub_list) < N and len(result) > 0:
+        result[-1].extend(sub_list)  # Combine with the last sub-list
+      else:
+        result.append(sub_list)
+    return result
 
 def make_xrs(s):
   cs1 = crystal.symmetry((10, 20, 30, 90, 90, 90), "P 1")
@@ -37,25 +39,30 @@ def make_xrs(s):
 
 def run_one_x(args):
   bcr.compute_tables(
-    MinResolution = 0.996,
-    MaxResolution = 10.1,
+    MinResolution    = 0.996,
+    MaxResolution    = 10.1,
+    DistMax          = 11.0,
+    Ngrid            = 1101,
     scattering_table = "wk1995",
-    TypesAtoms = args)
+    TypesAtoms       = args)
 
 def run_one_e(args):
   bcr.compute_tables(
-    MinResolution = 0.996,
-    MaxResolution = 10.1,
+    MinResolution    = 0.996,
+    MaxResolution    = 10.1,
+    DistMax          = 11.0,
+    Ngrid            = 1101,
     scattering_table = "electron",
-    TypesAtoms = args)
+    TypesAtoms       = args)
 
 def run_one():
    bcr.compute_tables(
-    MinResolution = 0.996,
-    MaxResolution = 1.1,
-    DistMax       = 10.0,
-    scattering_table = "wk1995",
-    TypesAtoms = ["N", "S", "C"])
+     MinResolution   = 0.996,
+     MaxResolution    = 1.1,
+     DistMax          = 11.0,
+     Ngrid            = 1101,
+     scattering_table = "wk1995",
+     TypesAtoms       = ["N", "S", "C"])
 
 def run_all(xray=True, electron=False):
   #
@@ -66,8 +73,8 @@ def run_all(xray=True, electron=False):
     if len(list(r.unassigned_types()))==0:
       e_list.append(l)
   #
-  e_list = chunk_list(original_list=e_list)
-  x_list = chunk_list(original_list=std_labels)
+  e_list = chunk_list(input_list=e_list)
+  x_list = chunk_list(input_list=std_labels)
   #
   NPROC=120
   #
@@ -87,7 +94,6 @@ def run_all(xray=True, electron=False):
   else: # XXX BROKEN
     for args in argss:
       o = run_one(args)
-
 
 if (__name__ == "__main__"):
   if True: run_all()

@@ -1372,10 +1372,11 @@ def RefinedTable(AtomType,Resolutions,DistMax,Ngrid,Terms_Resol,
 #####################################################
 
 def compute_tables(
+      DistMax,
+      Ngrid, # grid number for atomic images
+      scattering_table,
       MinResolution = 4.0,
       MaxResolution = 4.0,
-      DistMax       = 5.0,
-      scattering_table = "wk1995",
       TypesAtoms = ["C",]):
 
   fileBCRlog = None #open('BCR.log', 'w')
@@ -1388,7 +1389,6 @@ def compute_tables(
   epsp      = 0.000                # peak limit value with respect to the central value
   kpres     = 1                    # precision to be defined in absolute values
   Badd      = 0.0                  # Badd (normally zero)
-  Ngrid     = 2000                 # grid number for atomic images
   NSgrid    = 2000                 # grid number for scattering function
   Precision = 0.99                 # part of the local max next to the last; to estimate accuracy limit
   MaxTerms  = 50                   # max allowed number of terms

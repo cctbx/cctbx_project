@@ -122,7 +122,7 @@ def exercise_02():
     map_current = minimized.map_current
     final_error = flex.mean(xrs.distances(other = minimized.xray_structure))
   assert approx_equal(start_error, 0.8, 1.e-3)
-  assert final_error < 1.e-4
+  assert final_error < 0.0002, final_error
 
 def exercise_03():
   """

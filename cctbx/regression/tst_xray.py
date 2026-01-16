@@ -1569,6 +1569,7 @@ def exercise_sf_calculation_both_ways_must_be_identical():
 CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1
 ATOM      1  U   DUM A   1      -9.009   4.612   6.102  1.00  0.00           U
 """
+  import iotbx.pdb
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
   xrs = pdb_inp.xray_structure_simple()
   fc1 = xrs.structure_factors(
