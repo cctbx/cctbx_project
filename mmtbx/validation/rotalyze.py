@@ -277,6 +277,12 @@ class rotalyze(validation):
 #   if self.data_version == '500' : return "< 1%"
     return "< 0.3%"
 
+  def get_favored_fraction_for_model(self, model_id):
+    if (self.n_total_by_model[model_id] != 0):
+      fraction = float(self.n_favored_by_model[model_id]) / self.n_total_by_model[model_id]
+      assert fraction <= 1.0
+      return fraction
+    return 0.
 
   def get_favored_goal(self):
     return "> 98%"
@@ -326,7 +332,9 @@ class rotalyze(validation):
         "num_outliers" : self.n_outliers_by_model[model_id],
         "num_residues" : self.n_total_by_model[model_id],
         "outlier_percentage" : self.get_outliers_fraction_for_model(model_id) * 100,
-        "outlier_goal" : self.get_outliers_goal()
+        "outlier_goal" : self.get_outliers_goal(),
+        "favored_percentage" : self.get_favored_fraction_for_model(model_id) * 100,
+        "favored_goal" : self.get_favored_goal()
       }
     data['summary_results'] = summary_results
     return json.dumps(data, indent=2)

@@ -33,6 +33,7 @@ dependencies:
  - reportlab
  - wxpython
  - pyopengl
+ - mesa-libgl-devel-conda-x86_64
 
  # HDF5 (main libraries come with psana)
  - h5py
@@ -75,7 +76,7 @@ dependencies:
  - PyRTF
 
  # xfel gui
- - mysql
+ - mysql=8
  - mysqlclient
  - pydrive2
 

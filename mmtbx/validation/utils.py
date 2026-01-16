@@ -136,6 +136,154 @@ def molprobity_score(clashscore, rota_out, rama_fav):
     return -1 # FIXME prevents crashing on RNA and None in inputs
   return mpscore
 
+from typing import Dict, Any, Optional
+
+def calculate_overall_residue_quality_score(
+    residue_data: Dict[str, Any],
+    weights: Optional[Dict[str, float]] = None
+) -> Optional[float]:
+    """
+    Calculates an aggregated quality score for a single residue based on various validation metrics.
+
+    Args:
+        residue_data (Dict[str, Any]): A dictionary containing all the extracted
+                                         validation metrics for a single residue.
+                                         Expected keys should match those in ResidueResult,
+                                         e.g., 'ramalyze_category', 'is_cbeta_outlier', etc.
+        weights (Optional[Dict[str, float]]): A dictionary of weights for each validation category.
+                                              If None, default weights will be used.
+
+    Returns:
+        Optional[float]: The aggregated quality score (0-1), or None if no applicable metrics.
+    """
+
+    # --- Default Weights (can be overridden by the 'weights' argument) ---
+    DEFAULT_WEIGHTS = {
+        'RAMA': 0.10,
+        'ROTA': 0.10,
+        'CBETA': 0.10,
+        'CABLAM': 0.20,
+        'OMEGA': 0.20,
+        'RNA_SUITE': 0.35,
+        'RNA_PUCKER': 0.35,
+        'BONDS': 0.05,
+        'ANGLES': 0.05,
+        'CHIRAL': 0.05,
+        'CLASH': 0.15,
+    }
+
+    current_weights = weights if weights is not None else DEFAULT_WEIGHTS
+
+    total_quality_points = 0.0
+    total_possible_points = 0.0
+
+    # --- Helper to safely get data ---
+    def get_data(key, default=None):
+        return residue_data.get(key, default)
+
+    # --- 1. Ramachandran Contribution ---
+    s_rama = 1.0
+    if get_data('ramalyze_category') == 'outlier':
+        s_rama = 0.0
+    elif get_data('ramalyze_category') == 'allowed':
+        s_rama = 0.8
+    if get_data('ramalyze_type') not in ['not_applicable', 'not_evaluated']:
+        total_quality_points += s_rama * current_weights['RAMA']
+        total_possible_points += current_weights['RAMA']
+
+    # --- 2. Rotamer Contribution ---
+    s_rota = 1.0
+    if get_data('rotalyze_category') == 'outlier':
+        s_rota = 0.0
+    elif get_data('rotalyze_category') == 'allowed':
+        s_rota = 0.8
+    if get_data('rotalyze_category') != 'not_evaluated':
+        total_quality_points += s_rota * current_weights['ROTA']
+        total_possible_points += current_weights['ROTA']
+
+    # --- 3. C-beta Deviation Contribution ---
+    s_cbeta = 1.0
+    if get_data('is_cbeta_outlier'):
+        s_cbeta = 0.0
+    if not get_data('is_glycine', False): # Glycine doesn't have a C-beta
+        total_quality_points += s_cbeta * current_weights['CBETA']
+        total_possible_points += current_weights['CBETA']
+
+    # --- 4. CaBLAM Contribution ---
+    s_cablam = 1.0
+    if get_data('cablam_outlier_type') == 'outlier':
+        s_cablam = 0.0
+    elif get_data('cablam_outlier_type') == 'disfavored':
+        s_cablam = 0.5
+    if get_data('cablam_outlier_type') != 'not_evaluated':
+        total_quality_points += s_cablam * current_weights['CABLAM']
+        total_possible_points += current_weights['CABLAM']
+
+    # --- 5. Omega Angle Contribution ---
+    s_omega = 1.0
+    if get_data('omega_type') == 'twisted':
+        s_omega = 0.0
+    elif get_data('omega_type') == 'cis' and not get_data('is_proline'):
+        s_omega = 0.0
+    if get_data('omega_res_type') != 'not_applicable':
+        total_quality_points += s_omega * current_weights['OMEGA']
+        total_possible_points += current_weights['OMEGA']
+
+    # --- 6. RNA Suite Contribution ---
+    s_rna_suite = 1.0
+    if get_data('is_rna_residue', False):
+        if get_data('is_rna_suite_outlier', False):
+            s_rna_suite = 0.1
+        total_quality_points += s_rna_suite * current_weights['RNA_SUITE']
+        total_possible_points += current_weights['RNA_SUITE']
+
+    # --- 7. RNA Pucker Contribution ---
+    s_rna_pucker = 1.0
+    if get_data('is_rna_residue', False):
+        if get_data('is_rna_pucker_outlier', False):
+            s_rna_pucker = 0.1
+        total_quality_points += s_rna_pucker * current_weights['RNA_PUCKER']
+        total_possible_points += current_weights['RNA_PUCKER']
+
+    # --- 8. Bond Lengths Contribution ---
+    s_bonds = 1.0
+    if get_data('num_bond_outliers_res', 0) > 0:
+        s_bonds = 0.0 # Simple penalty for any bond outlier
+    total_quality_points += s_bonds * current_weights['BONDS']
+    total_possible_points += current_weights['BONDS']
+
+    # --- 9. Bond Angles Contribution ---
+    s_angles = 1.0
+    if get_data('num_angle_outliers_res', 0) > 0:
+        s_angles = 0.0 # Simple penalty for any angle outlier
+    total_quality_points += s_angles * current_weights['ANGLES']
+    total_possible_points += current_weights['ANGLES']
+
+    # --- 10. Chirality Contribution ---
+    s_chiral = 1.0
+    if get_data('num_chiral_outliers_res', 0) > 0:
+        s_chiral = 0.0
+    total_quality_points += s_chiral * current_weights['CHIRAL']
+    total_possible_points += current_weights['CHIRAL']
+
+    # --- 11. Steric Clash Contribution ---
+    s_clash = 1.0
+    num_bad_clashes = get_data('num_bad_clashes_res', 0) # Assumes you are still populating this simple count during parsing
+    if num_bad_clashes > 0:
+        s_clash = max(0.0, 1.0 - (0.5 * num_bad_clashes))
+        if num_bad_clashes > 2: s_clash = 0.0 # Critical failure threshold
+    total_quality_points += s_clash * current_weights['CLASH']
+    total_possible_points += current_weights['CLASH']
+
+
+    # --- Final Normalization ---
+    if total_possible_points > 0:
+        final_score = total_quality_points / total_possible_points
+        return round(final_score, 4) # Round for consistency
+    else:
+        # If no metrics were applicable (e.g., a pure ligand without any standard validations)
+        return None # Or 1.0 if you prefer a perfect score for non-evaluated items
+
 def use_segids_in_place_of_chainids(hierarchy, strict=False):
   use_segids = False
   for model in hierarchy.models():

@@ -323,20 +323,34 @@ def warn_if_unexpected_md5_hexdigest(
   print("*"*width, file=out)
   return True
 
-def md5_hexdigest(filename=None, blocksize=256):
-  """ Compute the MD5 hexdigest of the content of the given file,
-      efficiently even for files much larger than the available RAM.
-
-      The file is read by chunks of `blocksize` MB.
+def file_hexdigest(filename=None, algorithm=None, blocksize=256):
+  """
+  Compute the hexdigest in blocksize (MB) chunks
   """
   blocksize *= 1024**2
-  m = hashlib.md5()
+  m = algorithm()
   with open(filename, 'rb') as f:
     buf = f.read(blocksize)
     while buf:
       m.update(buf)
       buf = f.read(blocksize)
   return m.hexdigest()
+
+def md5_hexdigest(filename=None, blocksize=256):
+  """ Compute the MD5 hexdigest of the content of the given file,
+      efficiently even for files much larger than the available RAM.
+
+      The file is read by chunks of `blocksize` MB.
+  """
+  return file_hexdigest(filename=filename, algorithm=hashlib.md5, blocksize=blocksize)
+
+def sha256_hexdigest(filename, blocksize=256):
+  """ Compute the sha256 hexdigest of the content of the given file,
+      efficiently even for files much larger than the available RAM.
+
+      The file is read by chunks of `blocksize` MB.
+  """
+  return file_hexdigest(filename=filename, algorithm=hashlib.sha256, blocksize=blocksize)
 
 def get_memory_from_string(mem_str):
   """
@@ -1047,6 +1061,15 @@ class time_log(object):
     return "time_log: %s: %d %.2f %.3g %.3g" % (
       self.label, self.n, self.accumulation,
       self.delta, self.average())
+
+def human_readable_code(s, extra=False):
+  rc = ''
+  for c in s:
+    if c in ['O', 'I', 'S']:        rc += c.lower()
+    elif c in ['l']:                rc += c.upper()
+    elif extra and c in ['Z', 'B']: rc += c.lower()
+    else:                           rc += c
+  return rc
 
 def human_readable_time(time_in_seconds):
   """

@@ -147,7 +147,7 @@ class manager_mixin(object):
       .gradients_wrt_atomic_parameters(**keyword_args)
 
 sf_and_grads_accuracy_master_params = iotbx.phil.parse("""\
-  algorithm = *fft direct
+  algorithm = *fft direct taam
     .type = choice
   cos_sin_table = False
     .type = bool
@@ -163,10 +163,19 @@ sf_and_grads_accuracy_master_params = iotbx.phil.parse("""\
     .type = float
   exp_table_one_over_step_size = None
     .type = float
-  taam = False
-    .type = bool
-    .help = Use aspherical form-factors (TAAM=Transferable Aspherical Atom Model)
+  extra
+    .help = Extra parameters for additional algorithms, e.g. TAAM using DiSCaMB
+  {
+  }
 """)
+
+if cctbx.xray.structure_factors.pydiscamb_is_installed:
+  sf_and_grads_accuracy_master_params.adopt_scope(
+    iotbx.phil.parse(
+      "extra  { discamb { include scope pydiscamb.cctbx_interface.pydiscamb_master_params } }",
+      process_includes=True,
+    )
+  )
 
 alpha_beta_master_params = iotbx.phil.parse("""\
   include scope mmtbx.max_lik.maxlik.alpha_beta_params
@@ -364,8 +373,6 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
          scale_method="combo",
          origin=None,
          data_type=None):
-    self.pydiscamb = None       # XXX discamb
-    self.discamb_wrapper = None # XXX discamb
     self._origin = origin
     self._data_type = data_type
     self.russ = None
@@ -531,21 +538,6 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         crystal_symmetry = miller_array.crystal_symmetry())
     return result
 
-  def _set_taam_and_compute_f_calc(self, xray_structure):     # XXX discamb
-    assert xray_structure is not None                         # XXX discamb
-    if self.pydiscamb is None:                                # XXX discamb
-      import pydiscamb                                        # XXX discamb
-      self.pydiscamb = pydiscamb                              # XXX discamb
-    self.discamb_wrapper =  self.pydiscamb.DiscambWrapper(
-      xray_structure,
-      method = self.pydiscamb.FCalcMethod.TAAM)               # XXX discamb
-    self.discamb_wrapper.set_indices(self.f_obs().indices())  # XXX discamb
-    data = flex.complex_double(self.discamb_wrapper.f_calc()) # XXX discamb
-    return self.f_obs().array(data = data)                    # XXX discamb
-
-  def is_taam(self):            # XXX discamb
-    return self.sfg_params.taam # XXX discamb
-
   def compute_f_calc(self, miller_array = None, xray_structure=None):
     xrs = xray_structure
     if(xrs is None): xrs = self.xray_structure
@@ -553,10 +545,6 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     p = self.sfg_params
     if(miller_array.indices().size()==0):
       raise RuntimeError("Empty miller_array.")
-
-    if self.sfg_params.taam:                                         # XXX discamb
-      return self._set_taam_and_compute_f_calc(xray_structure = xrs) # XXX discamb
-
     manager = miller_array.structure_factors_from_scatterers(
       xray_structure               = xrs,
       algorithm                    = p.algorithm,
@@ -566,7 +554,9 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       u_base                       = p.u_base,
       b_base                       = p.b_base,
       wing_cutoff                  = p.wing_cutoff,
-      exp_table_one_over_step_size = p.exp_table_one_over_step_size)
+      exp_table_one_over_step_size = p.exp_table_one_over_step_size,
+      extra_params = p.extra
+      )
     m = manager.manager()
     return manager.f_calc()
 

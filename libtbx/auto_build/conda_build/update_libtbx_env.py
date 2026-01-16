@@ -159,6 +159,10 @@ def update_libtbx_env(default_dir=None):
         if module.name == 'boost' and os.path.isdir(os.path.join(path, 'boost_adaptbx')):
           new_paths[1] = env.as_relocatable_path(new_path + '_' + module.mate_suffix)
           break
+        if module.name == 'amber' and os.path.isdir(os.path.join(path, 'amber_adaptbx')):
+          new_paths[0] = None
+          new_paths[1] = env.as_relocatable_path(new_path + '_' + module.mate_suffix)
+          break
         if module.name == 'annlib' and os.path.isdir(os.path.join(path, 'annlib_adaptbx')):
           new_paths[0] = None
           new_paths[1] = env.as_relocatable_path(new_path + '_' + module.mate_suffix)
@@ -184,7 +188,8 @@ def update_libtbx_env(default_dir=None):
 
   # update dispatchers
   env.reset_dispatcher_bookkeeping()
-  env.write_python_and_show_path_duplicates()
+  if 'libtbx' in env.module_dict.keys():
+    env.write_python_and_show_path_duplicates()
   for module in env.module_list:
     module.process_command_line_directories()
 

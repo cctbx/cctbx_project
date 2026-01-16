@@ -6,6 +6,7 @@
 #include <cctbx/xray/scatterer.h>
 #include <cctbx/adptbx.h>
 #include <cctbx/xray/sampling_base.h>
+#include <iotbx/pdb/hierarchy.h>
 
 namespace cctbx { namespace maptbx {
 
@@ -13,13 +14,12 @@ using scitbx::constants::pi;
 using scitbx::constants::four_pi_sq;
 using scitbx::constants::four_pi;
 
-template <typename FloatType=double>
+template <typename FloatType=double,
+          typename XrayScattererType=cctbx::xray::scatterer<> >
 class bcr_scatterer
 {
   public:
-    cctbx::cartesian<> site_cart;
-    FloatType u_iso;
-    FloatType occ;
+    XrayScattererType const& scatterer;
     FloatType radius;
     FloatType resolution;
     af::shared<FloatType> mu;
@@ -28,48 +28,34 @@ class bcr_scatterer
     af::shared<FloatType> musq;
     af::shared<FloatType> kappi;
 
-    bcr_scatterer() {
-      site_cart.fill(0.0);
-      u_iso = 0;
-      occ = 0;
-      radius = 0;
-      resolution = 0;
-      mu.fill(0.0);
-      kappa.fill(0.0);
-      nu.fill(0.0);
-      musq.fill(0.0);
-      kappi.fill(0.0);
-    }
-
     bcr_scatterer(
-      cctbx::cartesian<> const& site_cart_,
-      FloatType u_iso_,
-      FloatType occ_,
+      XrayScattererType const& scatterer_,
       FloatType radius_,
       FloatType resolution_,
-      af::shared<FloatType> const& mu_,
-      af::shared<FloatType> const& kappa_,
-      af::shared<FloatType> const& nu_,
-      af::shared<FloatType> const& musq_,
-      af::shared<FloatType> const& kappi_
+      af::shared<FloatType> mu_,
+      af::shared<FloatType> kappa_,
+      af::shared<FloatType> nu_,
+      af::shared<FloatType> musq_,
+      af::shared<FloatType> kappi_
       )
     :
-      site_cart(site_cart_),
-      u_iso(u_iso_),
-      occ(occ_),
       radius(radius_),
       resolution(resolution_),
       mu(mu_),
       kappa(kappa_),
       nu(nu_),
       musq(musq_),
-      kappi(kappi_)
+      kappi(kappi_),
+      scatterer(scatterer_)
     {
       CCTBX_ASSERT(mu.size()==kappa.size());
       CCTBX_ASSERT(mu.size()==nu.size());
       CCTBX_ASSERT(mu.size()==musq.size());
       CCTBX_ASSERT(mu.size()==kappi.size());
     }
+
+    XrayScattererType const& get_scatterer() const { return scatterer; }
+
 };
 
 template <typename FloatType=double,

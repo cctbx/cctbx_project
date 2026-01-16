@@ -134,8 +134,8 @@ class file_clutter(object):
         sapp("file is empty, should be 0 byte file")
       else:
         sapp("file contains only 'from __future__ import' and should be empty instead")
-    elif self.n_from_future_import_division == 0:
-      sapp("missing 'from __future__ import division'")
+    # elif self.n_from_future_import_division == 0:
+    #   sapp("missing 'from __future__ import division'")
     elif self.n_from_future_import_division > 1:
       sapp("more than one appearance of 'from __future__ import division'")
     if self.flag_absolute_import and not self.file_should_be_empty:

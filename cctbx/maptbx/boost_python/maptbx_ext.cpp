@@ -35,6 +35,21 @@ namespace cctbx { namespace maptbx { namespace boost_python {
   void wrap_coordinate_transformers();
 
   template <typename FloatType, typename GridType>
+  struct map_accumulator2_wrapper
+  {
+    typedef cctbx::maptbx::map_accumulator2<FloatType, GridType> w_t;
+    static void wrap() {
+      using namespace boost::python;
+      class_<w_t>("map_accumulator2", no_init)
+        .def(init<af::int3 const& >((arg("n_real"))))
+        .def("as_median_map", &w_t::as_median_map)
+        .def("add", &w_t::add, (arg("map_data")))
+      ;
+    }
+  };
+
+
+  template <typename FloatType, typename GridType>
   struct map_accumulator_wrapper
   {
     //typedef map_accumulator<FloatType, GridType> w_t; // works too
@@ -86,6 +101,7 @@ namespace {
     using namespace boost::python;
 
     map_accumulator_wrapper<double, af::c_grid<3> >::wrap();
+    map_accumulator2_wrapper<double, af::c_grid<3> >::wrap();
     ft_analytical_1d_point_scatterer_at_origin_wrapper<double>::wrap();
     wrap_grid_indices_around_sites();
     wrap_grid_tags();

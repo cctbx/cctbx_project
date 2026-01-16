@@ -276,6 +276,27 @@ ATOM      2  CA  HIS A   2       9.946  12.171   5.357  1.00 66.55           C
 END
 """
 
+# This is from 8w4m
+raw_records11 = """\
+CRYST1   50.088  147.668   75.198  90.00  90.00  90.00 C 2 2 21
+SCALE1      0.019965  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.006772  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.013298        0.00000
+ATOM     95  CD  LYS A 248      15.037  -4.723   3.065  1.00 44.53           C
+ATOM     96  CE  LYS A 248      14.792  -3.381   2.367  1.00 46.72           C
+ATOM     97  NZ  LYS A 248      15.736  -2.297   2.799  1.00 57.97           N
+ATOM    128  CE  MET A 252      11.439  -3.201   1.842  1.00 42.98           C
+ATOM    153  NH2 ARG A 255      13.587  -4.411  -0.822  1.00 44.82           N
+ATOM   1149  CG  GLU A 380      18.291   1.296   3.869  1.00 48.08           C
+ATOM   1150  CD  GLU A 380      17.617   1.256   2.494  1.00 64.86           C
+ATOM   1151  OE1 GLU A 380      17.277   2.346   1.946  1.00 62.92           O
+ATOM   1152  OE2 GLU A 380      17.458   0.131   1.973  1.00 75.86           O1-
+ATOM   1175  OE2 GLU A 382      16.151   6.047   0.713  1.00 59.11           O1-
+TER
+HETATM 1796 ZN    ZN A 510      15.462   1.176   0.018  1.00115.96          ZN
+END
+"""
+
 
 def make_initial_grm(mon_lib_srv, ener_lib, records):
   processed_pdb_file = monomer_library.pdb_interpretation.process(
@@ -712,6 +733,55 @@ bond pdb=" N   MET A   1 "
   assert approx_equal(list(es.gradients),
     [(45.135801792665134, -708.451544937652, 128.90784991984805), (-45.13580179266516, 708.4515449376522, -128.90784991984813)])
 
+def exercise_add_new_bond_between_same_atoms(mon_lib_srv, ener_lib):
+  """Linking atom with itself, but symmetry-related. There is such example in PDB: 8w4m
+  """
+  from cctbx.geometry_restraints.linking_class import linking_class
+  origin_ids = linking_class()
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=raw_records11)
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.restraints_library.mcl=False
+  model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      log=null_out())
+  model.process(pdb_interpretation_params=params, make_restraints=True)
+  grm = model.get_restraints_manager().geometry
+  simple, asu = grm.get_all_bond_proxies()
+
+  assert (simple.size(), asu.size()) == (5, 0), (simple.size(), asu.size())
+  h = model.get_hierarchy()
+  proxy = geometry_restraints.bond_simple_proxy(
+      i_seqs=(10,10),
+      distance_ideal=2.3,
+      weight=400,
+      origin_id=origin_ids.get_origin_id('hydrogen bonds'))
+  grm.add_new_bond_restraints_in_place(
+      proxies=[proxy],
+      sites_cart=h.atoms().extract_xyz())
+  simple, asu = grm.get_all_bond_proxies()
+  assert (simple.size(), asu.size()) == (5,1), (simple.size(), asu.size())
+
+  sites_cart = h.atoms().extract_xyz()
+  site_labels = model.get_xray_structure().scatterers().extract_labels()
+  pair_proxies = grm.pair_proxies(flags=None, sites_cart=sites_cart)
+
+  out = StringIO()
+  pair_proxies.bond_proxies.show_sorted(
+      by_value="residual",
+      sites_cart=sites_cart,
+      site_labels=site_labels,
+      f=out,
+      prefix="")
+  outtxt = out.getvalue()
+  # print(outtxt)
+  assert_lines_in_text(outtxt, """\
+bond pdb="ZN    ZN A 510 "
+     pdb="ZN    ZN A 510 "
+  ideal  model  delta    sigma   weight residual sym.op.
+  2.300  2.352 -0.052 5.00e-02 4.00e+02 1.09e+00 x,-y,-z
+  """)
+
+
 def exercise():
   mon_lib_srv = None
   ener_lib = None
@@ -732,6 +802,7 @@ def exercise():
     exercise_bond_over_symmetry(mon_lib_srv, ener_lib)
     exercise_bond_over_symmetry_2(mon_lib_srv, ener_lib)
     exercise_add_new_bond_when_long_bond_across_ASU(mon_lib_srv, ener_lib)
+    exercise_add_new_bond_between_same_atoms(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
   exercise()

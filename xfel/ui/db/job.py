@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from xfel.ui import settings_dir
 from xfel.ui.db import db_proxy, get_run_path, write_xtc_locator, get_image_mode
 import os, shutil, copy
+from iotbx.phil import parse
 
 known_job_statuses = ["DONE", "ERR", "PEND", "RUN", "SUSP", "PSUSP", "SSUSP", "UNKWN", "EXIT", "DONE", "ZOMBI", "DELETED", "SUBMIT_FAIL", "SUBMITTED", "HOLD", "TIMEOUT"]
 finished_job_statuses = ["DONE", "EXIT", "DELETED", "UNKWN", "ERR", "SUBMIT_FAIL", "TIMEOUT"]
@@ -115,7 +116,7 @@ class AveragingJob(Job):
     return s
 
   def submit(self, previous_job=None):
-    from xfel.command_line.cxi_mpi_submit import Script as submit_script
+    from xfel.command_line.submit_job import Script as submit_script
     params = copy.deepcopy(self.app.params)
     params.dispatcher = 'dxtbx.image_average'
     configs_dir = os.path.join(settings_dir, "cfgs")
@@ -123,7 +124,7 @@ class AveragingJob(Job):
       os.makedirs(configs_dir)
     identifier_string = self.get_identifier_string()
 
-    # Make an argument list that can be submitted to cxi_mpi_submit.
+    # Make an argument list that can be submitted to cctbx.xfel.submit_job.
     # dxtbx.image_average does not use phil files.
     extra_args = "-a <output_dir>/avg.cbf -m <output_dir>/max.cbf -s <output_dir>/std.cbf"
     if self.skip_images > 0:
@@ -150,11 +151,12 @@ class AveragingJob(Job):
         f'mp.nnodes = {params.mp.nnodes}',
         f'mp.nproc = {params.mp.nproc}',
         f'mp.nproc_per_node = {params.mp.nproc_per_node}',
-        f'mp.queue = {params.mp.queue}',
         f'mp.env_script = {params.mp.env_script[0]}',
         f'mp.wall_time = {params.mp.wall_time}',
         f'mp.htcondor.executable_path = {params.mp.htcondor.executable_path}',
       ]
+      if params.mp.queue:
+        mp_args.append(f'mp.queue = {params.mp.queue}')
       for arg in mp_args:
         self.args.append(arg)
     if params.mp.shifter.shifter_image is not None:
@@ -207,7 +209,6 @@ class IndexingJob(Job):
       orig_phil_scope = load_phil_scope_from_dispatcher(dispatcher)
       if os.path.isfile(dispatcher):
         dispatcher = 'libtbx.python ' + dispatcher
-      from iotbx.phil import parse
       if self.rungroup.two_theta_low is not None or self.rungroup.two_theta_high is not None:
         override_str = """
         radial_average {
@@ -444,7 +445,7 @@ class IndexingJob(Job):
     template.close()
     phil.close()
 
-    from xfel.command_line.cxi_mpi_submit import Script as submit_script
+    from xfel.command_line.submit_job import Script as submit_script
     args = [submit_phil_path]
     if self.app.params.facility.name not in ['lcls']:
       args.append(self.run.path)
@@ -614,9 +615,13 @@ class EnsembleRefinementJob(Job):
       "combine_t%03d_rg%03d_chunk000.out"%(self.trial.trial, self.rungroup.id)) # XXX there can be multiple chunks or multiple clusters
 
   def submit(self, previous_job = None):
-    from xfel.command_line.striping import Script
-    from xfel.command_line.cxi_mpi_submit import get_submission_id
+    from xfel.command_line.time_varying_refinement import Script, phil_scope
+    from xfel.command_line.submit_job import get_submission_id
     from libtbx import easy_run
+
+    if self.task and self.task.parameters and "striping" in self.task.parameters:
+      raise RuntimeError("The striping parameter has been renamed to time_varying_refinement. Edit your ensemble_refinement task (no need to create a new one).")
+
     configs_dir = os.path.join(settings_dir, "cfgs")
     identifier_string = self.get_identifier_string()
     target_phil_path = os.path.join(configs_dir, identifier_string + "_params.phil")
@@ -624,8 +629,17 @@ class EnsembleRefinementJob(Job):
       if self.task.parameters:
         f.write(self.task.parameters)
 
+    pre_split = phil_scope.fetch(parse(self.task.parameters)).extract().time_varying_refinement.pre_split if self.task.parameters else False
+    chunk_size = 2000 if pre_split else 64
+
     path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
     os.mkdir(path)
+
+    if self.app.params.facility.name == 'lcls':
+      import psana
+      psana2_mode = getattr(psana, 'xtc_version', None) == 2
+    else:
+      psana2_mode = False
 
     arguments = """
     mp.queue={}
@@ -648,16 +662,18 @@ class EnsembleRefinementJob(Job):
     mp.shifter.reservation={}
     mp.shifter.constraint={}
     mp.shifter.staging={}
-    striping.results_dir={}
-    striping.trial={}
-    striping.rungroup={}
-    striping.run={}
+    time_varying_refinement.results_dir={}
+    time_varying_refinement.trial={}
+    time_varying_refinement.rungroup={}
+    time_varying_refinement.run={}
     {}
-    striping.chunk_size=64
-    striping.stripe=False
-    striping.dry_run=True
-    striping.output_folder={}
+    time_varying_refinement.chunk_size={}
+    time_varying_refinement.pre_split={}
+    time_varying_refinement.stripe=False
+    time_varying_refinement.dry_run=True
+    time_varying_refinement.output_folder={}
     reintegration.integration.lookup.mask={}
+    reintegration.mp.psana2_mode={}
     mp.local.include_mp_in_command=False
     """.format(self.app.params.mp.queue if len(self.app.params.mp.queue) > 0 else None,
                self.app.params.mp.nnodes_tder or self.app.params.mp.nnodes,
@@ -683,8 +699,11 @@ class EnsembleRefinementJob(Job):
                self.rungroup.id,
                self.run.run,
                target_phil_path,
+               chunk_size,
+               pre_split,
                path,
                self.rungroup.untrusted_pixel_mask_path,
+               psana2_mode,
                ).split('\n')
     arguments = [arg.strip() for arg in arguments]
 
@@ -769,7 +788,7 @@ class ScalingJob(Job):
         phil.write(line.format(**d))
 
   def submit(self, previous_job = None):
-    from xfel.command_line.cxi_mpi_submit import Script as submit_script
+    from xfel.command_line.submit_job import Script as submit_script
 
     output_path = os.path.join(get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task), 'out')
 
@@ -821,7 +840,7 @@ class MergingJob(Job):
     return path, None, None, "%s_v%03d_all.mtz"%(self.dataset.name, self.dataset_version.version), None
 
   def submit(self, previous_job = None):
-    from xfel.command_line.cxi_mpi_submit import do_submit
+    from xfel.command_line.submit_job import do_submit
 
     output_path = self.get_global_path()
     if not os.path.exists(output_path):
@@ -866,8 +885,11 @@ class PhenixJob(Job):
     return "%s_%s%03d_v%03d"%(self.dataset.name, self.task.type, self.task.id, self.dataset_version.version)
 
   def delete(self, output_only=False):
-    job_folder = self.get_global_path()
-    if os.path.exists(job_folder):
+    try:
+      job_folder = self.get_global_path()
+    except AttributeError: # If job fails to submit for example
+      job_folder = None
+    if job_folder and os.path.exists(job_folder):
       print("Deleting job folder for job", self.id)
       shutil.rmtree(job_folder)
     else:
@@ -879,7 +901,7 @@ class PhenixJob(Job):
     return path, None, None, ".mtz", ".pdb"
 
   def submit(self, previous_job = None):
-    from xfel.command_line.cxi_mpi_submit import do_submit
+    from xfel.command_line.submit_job import do_submit
 
     output_path = self.get_global_path()
     if not os.path.exists(output_path):
@@ -909,12 +931,13 @@ class PhenixJob(Job):
       params.nnodes = params.nnodes_merge
     params.use_mpi = False
     params.shifter.staging = None
-    if 'upload' in command or 'evaluate_anom' in command:
-      params.nnodes = 1
-      params.nproc_per_node = 1
-      #params.queue = 'shared'
-    else:
+    if not('upload' in command or 'evaluate_anom' in command):
       params.env_script = params.phenix_script
+      if not params.extra_options:
+        params.extra_options = ""
+      params.extra_options.append("--export=None")
+    params.nnodes = 1
+    params.nproc_per_node = 1
 
     if params.method == 'shifter' and 'upload' not in command:
        import libtbx.load_env
@@ -938,7 +961,9 @@ class _job(object):
     self.dataset_version = dataset_version
 
   def __str__(self):
-    s = "Job: Trial %d, rg %d, run %s"%(self.trial.trial, self.rungroup.id, self.run.run)
+    s = "Job: Trial %s, rg %s, run %s"%(str(self.trial.trial) if self.trial else 'None',
+                                        str(self.rungroup.id) if self.rungroup else 'None',
+                                        self.run.run if self.run else 'None')
     if self.task:
       s += ", task %d %s"%(self.task.id, self.task.type)
     if self.dataset:

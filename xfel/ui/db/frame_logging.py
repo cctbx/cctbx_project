@@ -116,7 +116,7 @@ class DialsProcessorWithLogging(Processor):
         fid = evt.get(psana.EventId).fiducials()
         timestamp += ", fid:" + str(fid)
       return run, timestamp
-    except (ImportError, AttributeError): # General version
+    except (ImportError, AttributeError, TypeError): # General version
       run = self.params.input.run_num
       timestamp = self.tag
       return run, timestamp

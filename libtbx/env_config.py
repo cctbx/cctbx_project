@@ -1208,6 +1208,7 @@ Wait for the command to finish, then try again.""" % vars())
         print('@set LIBTBX_PREFIX=%LIBTBX_PREFIX:~0,-1%', file=f)
         print(r'@for %%F in ("%LIBTBX_PREFIX%") do @set LIBTBX_PREFIX=%%~dpF', file=f)
         print('@set LIBTBX_PREFIX=%LIBTBX_PREFIX:~0,-1%', file=f)
+        print('@set LIBTBX_BUILD=%LIBTBX_PREFIX%\\..\\Library\\share\\cctbx', file=f)
         print('@set LIBTBX_DISPATCHER_NAME=%~nx0', file=f)
         print('@set PATH=%LIBTBX_PREFIX%\\..;%LIBTBX_PREFIX%\\..\\mingw-w64\\bin;%LIBTBX_PREFIX%\\..\\bin;%LIBTBX_PREFIX%\\..\\..\\Scripts;%PATH%', file=f)
         def write_dispatcher_include(where):
@@ -1258,8 +1259,12 @@ Wait for the command to finish, then try again.""" % vars())
           % show_string(self.under_build("dispatcher_include_template.sh")), file=f)
         print('#', file=f)
         print(_SHELLREALPATH_CODE, file=f)
+        print('LC_NUMERIC=C', file=f)
+        print('export LC_NUMERIC', file=f)
         print('LIBTBX_PREFIX="$(shellrealpath "$0" && cd "$(dirname "$RESULT")/.." && pwd)"', file=f)
         print('export LIBTBX_PREFIX', file=f)
+        print('LIBTBX_BUILD=${LIBTBX_PREFIX}/share/cctbx', file=f)
+        print('export LIBTBX_BUILD', file=f)
         print('LIBTBX_PYEXE_BASENAME="%s"' % self.python_exe.basename(), file=f)
         print('export LIBTBX_PYEXE_BASENAME', file=f)
         print('# Set the CCTBX_CONDA_USE_ENVIRONMENT_VARIABLES environment variable', file=f)
@@ -2436,6 +2441,14 @@ class module:
           source_file = self.env.under_build(
             op.join(self.name, "exe", file_name[:-len(ext)]+exe_suffix),
             return_relocatable_path=True)
+          # build and prefix directories are different in installations
+          if self.env.installed:
+            from libtbx.auto_build.conda_build.update_libtbx_env import get_default_dir, get_prefix_dir
+            source_file = op.join(
+              get_default_dir(),
+              self.name, "exe", file_name[:-len(ext)]+exe_suffix)
+            source_file = relocatable_path(
+              absolute_path(get_prefix_dir()), source_file, resolve_symlinks=False)
     if (len(target_files) == 0):
       target_file = self.name.lower() + target_file_name_infix
       if (not file_name_lower.startswith("main.")
@@ -2998,7 +3011,7 @@ def unpickle(build_path=None, env_name="libtbx_env"):
   if build_path is None:
     build_path = os.getenv("LIBTBX_BUILD")
   # try default installed location
-  if not build_path:
+  if not build_path or not os.path.isdir(build_path):
     build_path = get_installed_path()
   set_preferred_sys_prefix_and_sys_executable(build_path=build_path)
   with open(op.join(build_path, env_name), "rb") as libtbx_env:

@@ -13,7 +13,8 @@ types = {
   "% accepted": ("Lattices resolution", 6, 4, 1),
   "Multiplicity": ("Intensity Statistics (all accepted experiments)", 14, 6, 3),
   "Completeness": ("Intensity Statistics (all accepted experiments)", 14, 5, 2),
-  "CC1/2": ("Table of Scaling Results", 6, 5, 2)
+  "CC1/2": ("Table of Scaling Results", 6, 5, 2),
+  "Merged I/sigI": ("Intensity Statistics (all accepted experiments)", 14, 11, 7),
 }
 
 class Scraper(object):
@@ -241,6 +242,33 @@ if __name__ == "__main__":
       scraper = Scraper(folder, '#')
       all_results.append(scraper.scrape())
     scraper.plot_many_results(all_results, sys.argv[1])
+
+    xvals = []
+    all_y = {}
+    for r in all_results:
+      if r is None or '# accepted' not in r or r['# accepted'] is None: continue
+      name, value = r['# accepted'][-1]
+      assert name == 'All'
+      xvals.append(value)
+      key = 'Merged I/sigI'
+      if key in r:
+        for row in r[key]:
+          if 'All' not in row:
+            row_n, d_max, d_min, isigi = row
+            d = (d_max + d_min) / 2
+            if d not in all_y:
+              all_y[d] = []
+            all_y[d].append(isigi)
+    for d in all_y:
+      plt.plot(xvals, all_y[d])
+      if d <= 5:
+        plt.text(xvals[-1], all_y[d][-1], "%.2f"%d)
+      else:
+        plt.text(xvals[-1], all_y[d][-1], "-")
+    plt.xlabel('N images')
+    plt.ylabel('Merged I/sigI')
+    plt.plot([xvals[0], xvals[-1]], [2.0, 2.0], 'k:')
+    plt.show()
   else:
     scraper = Scraper(args[0], '%')
     results = scraper.scrape()

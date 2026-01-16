@@ -1,243 +1,146 @@
 from __future__ import absolute_import, division, print_function
 import math
-import time
+import libtbx
+import os
+import json
 from scitbx.array_family import flex
-import iotbx.map_manager
 from libtbx.test_utils import approx_equal
-import iotbx.pdb
-from cctbx import adptbx
+
+import time
+import math
 
 import boost_adaptbx.boost.python as bp
 ext = bp.import_ext("cctbx_maptbx_bcr_bcr_ext")
 
-# N, Res=2.5
-R = [   # mu
-  0.000000000000000,
-  2.137901575982925,
-  3.573558167112186,
-  4.910453205604299,
-  6.197723641551286,
-  7.463266240825266,
-  8.722743932451982,
-  9.985192083454228,
- 11.231510113425726,
- 12.526176570560663]
-B = [ #sigma
-  72.054181932630286,
-  35.262725859069029,
-  20.965775916519476,
-  14.404958530433785,
-  11.340349195234730,
-   9.713633940197088,
-   8.449135265753416,
-   8.350351017987917,
-   8.441267229500561,
-   8.246840051545909]
-C = [ # kappa
-   20.108947809148834,
-  -19.705151510498212,
-   11.106663690650764,
-   -8.298529895167423,
-    7.221275369283975,
-   -6.725763928844316,
-    6.354013560352876,
-   -6.330524081979416,
-    6.317387204802556,
-   -6.358094541306267]
-_X_mu     = R
-_X_kappa  = C
-ScaleB = 1.0 / (8.0 * math.pi**2)
-_X_nu     = list(flex.double(B)  * ScaleB)
-_X_musq   = list(flex.double(R)*flex.double(R))
-_X_kappi  = flex.double(C)/(math.pi**1.5)
+def load_table(element, table):
+  element = element.strip().upper()
+  assert element in ["C","H","N","O","S"]
+  path=libtbx.env.find_in_repositories("cctbx/maptbx/bcr/tables")
+  file_name = "%s/%s_%s.json"%(path, element, table)
+  assert os.path.isfile(file_name)
+  with open(file_name, 'r') as file:
+    return json.load(file)
 
-# three atoms
-X_mu    = [_X_mu    , _X_mu    , _X_mu    ]
-X_kappa = [_X_kappa , _X_kappa , _X_kappa ]
-X_nu    = [_X_nu    , _X_nu    , _X_nu    ]
-X_musq  = [_X_musq  , _X_musq  , _X_musq  ]
-X_kappi = [_X_kappi , _X_kappi , _X_kappi ]
+class compute(object):
 
-
-######################################################
-#
-#    Calculating Q-Map from an atomic model with local resolution
-#    and calculating respective gradients            by A.G. Urzhumtsev
-#
-######################################################
-
-
-#=====================================
-def GetMNKCoefficients(ModelTypes,RadFact,RadMu) :
-
-#   Array ModelTypes consists of a line per atom.
-#   This line contains :
-
-#   Types contains labels of atomic types, as they found in the list of atoms
-#   ResMin, ResMax contains min and max resolution for the given atomic type
-#   TermsDecomp contains consecutively all decomposition coefficients in the order
-#        of the Types and in the limits (ResMin, ResMax) for each type;
-#        for each atomic type, groups of coefficients are given increasing resolution
-#   PosTerms is the starting position in TermsDecomp of the respective group of terms
-#   ResTerms is the resolution of this group of terms
-#   TypeStart is the position of the respective atomic type in (PosTerms, ResTerms)
-
-#   extract atomic types and resolution limits for each type
-
-    Types,ResMin,ResMax,TermsAtom = FindTypes(ModelTypes)
-
-#   read coefficients for the required atomic types and the resolution ranges
-
-    TermsDecomp,TypeStart,ResTerms,PosTerms = GetDecomposition(Types,ResMin,ResMax)
-
-#   establish references from each atom to respective lines of the global table
-
-    TermsAtom = GetTables(TermsDecomp,TypeStart,ResTerms,PosTerms,RadFact,RadMu,TermsAtom)
-
-    return TermsAtom, TermsDecomp
-
-#============================
-def FindTypes(ModelTypes) :
-
-    Natoms = len(ModelTypes)
-    Ntypes = 0
-    Types, ResMin, ResMax = [], [], []
-
-    TermsAtom = [ [0.0, 0, 0] for ia in range(Natoms)]
-
-#   find atomic types and their resolution bounds
-
-    for iat in range(Natoms) :
-        TypeAtom, ResAtom = ModelTypes[iat]
-        TermsAtom[iat][0] = ResAtom
-        FoundType = False
-        for itype in range(Ntypes) :
-            if TypeAtom == Types[itype] :
-               FoundType = True
-               break
-        if FoundType :
-           if ResMin[itype] > ResAtom : ResMin[itype] = ResAtom
-           if ResMax[itype] < ResAtom : ResMax[itype] = ResAtom
-           TermsAtom[iat][1] = itype
-        else :
-           Types.append(TypeAtom)
-           ResMin.append(ResAtom)
-           ResMax.append(ResAtom)
-           TermsAtom[iat][1] = Ntypes
-           Ntypes            = Ntypes + 1
-    return Types,ResMin,ResMax, TermsAtom
-
-#============================
-def GetDecomposition(Types,ResMin,ResMax) :
-
-    print(Types)
-    print(ResMin)
-    print(ResMax)
-    #STOP()
-
-    Ntypes = len(Types)
-
+  def __init__(self, xray_structure, n_real, resolution=None, resolutions=None,
+            use_exp_table=True, debug=False, RadFact=2.0, RadAdd=0.5,
+            show_BCR=False):
+    table = xray_structure.get_scattering_table()
+    assert table in ["electron", "wk1995"]
+    assert [resolution, resolutions].count(None)==1
+    unit_cell = xray_structure.unit_cell()
+    if resolutions is None:
+      resolutions = [resolution,] * xray_structure.scatterers().size()
+    RadMu   = RadFact + RadAdd
+    arrays = {}
+    for scatterer in xray_structure.scatterers():
+      e = scatterer.scattering_type.strip().upper()
+      d = load_table(element=e, table=table)
+      arrays[e] = d
     ScaleB = 1.0 / (8.0 * math.pi**2)
+    kscale = math.pi**1.5
+    self.bcr_scatterers = []
+    shown = []
+    for r, scatterer in zip(resolutions, xray_structure.scatterers()):
+      e = scatterer.scattering_type.strip().upper()
+      entry = arrays[e]
+      keys = [float(x) for x in entry.keys()]
+      key = str(min(keys, key=lambda x: abs(x - r)))
+      #print("key", key)
+      vals = entry[key]
+      #print(vals)
+      R = flex.double(vals['R'])
+      B = flex.double(vals['B'])
+      C = flex.double(vals['C'])
+      sel = R < (r*RadMu)
+      #print(sel.size(), sel.count(True))
+      R = R.select(sel)
+      B = B.select(sel)
+      C = C.select(sel)
+      if show_BCR and not e in shown:
+        shown.append(e)
+        print("    %s: R B C"%e)
+        for r,b,c in zip(R,B,C):
+          print("%15.9f %15.9f %15.9f"%(r,b,c))
 
-#   read file and save terms for the given types and resolution within bounds
+      mu    = R
+      nu    = B * ScaleB
+      kappa = C
+      musq  = mu * mu
+      kappi = kappa/kscale
 
-    iterm       = 0
-    ilist       = 0
-    TermsDecomp = []
-    ResTerms    = []
-    PosTerms    = []
-    TypeStart   = []
+      bcr_scatterer = ext.bcr_scatterer(
+        scatterer = scatterer,
+        radius    = r*RadFact, # atomic radius = atomic_resolution * RadFact
+        resolution=r,
+        mu        = mu,
+        kappa     = kappa,
+        nu        = nu,
+        musq      = musq,
+        kappi     = kappi)
+      self.bcr_scatterers.append(bcr_scatterer)
+    #
+    self.OmegaMap_py=None
+    if debug:
+      self.OmegaMap_py = CalcOmegaMap(Ncrs=n_real, Scrs=[0,0,0], Nxyz=n_real,
+        unit_cell=unit_cell, bcr_scatterers=self.bcr_scatterers)
+    #
+    start = time.perf_counter()
+    self.ext_vrm = ext.vrm(
+      Ncrs           = n_real,
+      Scrs           = [0,0,0],
+      Nxyz           = n_real,
+      unit_cell      = unit_cell,
+      bcr_scatterers = self.bcr_scatterers,
+      use_exp_table  = use_exp_table)
+    OmegaMap_cpp = self.ext_vrm.compute(compute_gradients=False)
+    self.time_map = time.perf_counter()-start
 
-    for itype in range(Ntypes) :
-        TypeMin = ResMin[itype]
-        TypeMax = ResMax[itype]
-        FileTerms = Types[itype] + '_MNK.tab'
+    OmegaMap_cpp_2 = self.ext_vrm.map  # alternative way to get the map
+    # Re-order
+    nx,ny,nz = n_real
+    mpy  = flex.double(flex.grid(n_real))
+    self.mcpp = flex.double(flex.grid(n_real))
+    for iz in range(0, nz):
+      for iy in range(0, ny):
+        for ix in range(0, nx):
+          if debug:
+            mpy[ix,iy,iz] = self.OmegaMap_py[iz][iy][ix]
+          self.mcpp[ix,iy,iz] = OmegaMap_cpp[iz,iy,ix]
+    #
+    if debug:
+      from cctbx import maptbx
+      cc = flex.linear_correlation(x=self.mcpp.as_1d(), y=mpy.as_1d()).coefficient()
+      assert approx_equal(cc, 1.0)
+      cc = flex.linear_correlation(
+         x=OmegaMap_cpp.as_1d(), y=OmegaMap_cpp_2.as_1d()).coefficient()
+      assert approx_equal(cc, 1.0)
+      for func in [flex.min, flex.max, flex.mean]:
+        assert approx_equal(func(self.mcpp), func(mpy), 1.e-6)
+      #
+      cs = xray_structure.crystal_symmetry()
+      crystal_gridding = maptbx.crystal_gridding(
+        unit_cell        = cs.unit_cell(),
+        space_group_info = cs.space_group_info(),
+        symmetry_flags   = maptbx.use_space_group_symmetry,
+        pre_determined_n_real = n_real
+        )
+      fc = xray_structure.structure_factors(d_min=resolutions[0]).f_calc()
+      fft_map = fc.fft_map(crystal_gridding = crystal_gridding)
+      m_fft = fft_map.real_map_unpadded()
+      cc = flex.linear_correlation(x=self.mcpp.as_1d(), y=m_fft.as_1d()).coefficient()
+      assert cc > 0.99, cc
 
-        nfterms  = open(FileTerms, 'r')
-        TypeStart.append(ilist)
+  def map_data(self): return self.mcpp
 
-        while (True) :
-           Line = nfterms.readline()
-           if not Line : break
+  def target(self):
+    return self.ext_vrm.target
 
-           LineClean = Line.rstrip('\n')
-           LineCut   = LineClean.replace("="," ")
-           LineCont  = LineCut.split()
-           if len(LineCont) == 0 : break
+  def gradients(self, map_data):
+    self.ext_vrm.compute_gradients(map_data = map_data)
+    return self.ext_vrm
 
-           if LineCont[0] == 'Atom' :
-              ResTable = float(LineCont[5])
-              if ResTable > TypeMax : break
-              TakeLine = False
-              if ResTable >= TypeMin :
-                 TakeLine = True
-                 ResTerms.append(ResTable)
-                 PosTerms.append(iterm)
-                 ilist = ilist + 1
-              Line = nfterms.readline()
-
-           else :
-              if TakeLine :
-                 mu, sigma, kappa = float(LineCont[1]), float(LineCont[2]), float(LineCont[3])
-                 print("mu, sigma, kappa", mu, sigma, kappa)
-                 nu    = sigma * ScaleB
-                 musq  = mu * mu
-                 kappi = kappa / math.pi**1.5
-                 TermsDecomp.append([mu,nu,kappa,musq,kappi])
-                 iterm = iterm + 1
-
-        nfterms.close()
-
-
-    return TermsDecomp, TypeStart, ResTerms, PosTerms
-
-#============================
-def GetTables(TermsDecomp, TypeStart, ResTerms, PosTerms,RadFact,RadMu,TermsAtom) :
-
-    Natoms = len(TermsAtom)
-    Ntypes = len(TypeStart)
-    Nlists = len(PosTerms)
-    Nterms = len(TermsDecomp)
-
-    for iatom in range(Natoms) :
-        ResAtom, itype, dummy = TermsAtom[iatom]
-        RadAtom, MuMax        = ResAtom * RadFact , ResAtom * RadMu
-
-#       find the part of the list (PosTerms,ResTerms) corresponding to the given type
-
-        k1 = TypeStart[itype]
-        if itype == Ntypes-1 :
-           k2 = Nlists
-        else :
-           k2 = TypeStart[itype+1]
-
-#       find the line (PosTerms) for the given type and resolution
-
-        for kres in range(k2-1, k1-1, -1) :
-            if ResAtom >= ResTerms[kres] :
-               k0 = kres
-               break
-
-        if k0 < k2-1 :
-           if (ResAtom - ResTerms[k0]) > (ResTerms[k0+1] - ResAtom ) : k0 = k0 + 1
-
-#       select from TermsDecomp all terms within the given maximal distance
-
-        N1 = PosTerms[k0]
-        if k0 == Nlists-1 :
-           NTMax = Nterms
-        else :
-           NTMax = PosTerms[k0+1]
-
-        N2 = NTMax
-        for it in range (N1,NTMax) :
-            if TermsDecomp[it][0] > MuMax :
-               N2 = it
-               break
-
-        TermsAtom[iatom] = [RadAtom, N1, N2]
-
-    return TermsAtom
 
 #-------------------------------------------
 def CalcFuncMap(OmegaMap, ControlMap, Ncrs) :
@@ -266,10 +169,10 @@ def CalcGradMap(OmegaMap ,ControlMap, Ncrs) :
     return GradMap
 
 #=====================================
-def CalcOmegaMap(TermsAtom, Ncrs,
-                 Scrs, Nxyz, unit_cell, bcr_scatterers) :
+def CalcOmegaMap(Ncrs, Scrs, Nxyz, unit_cell, bcr_scatterers) :
 
     acell, bcell, ccell, alpha, beta,  gamma = unit_cell.parameters()
+    alpha, beta,  gamma = math.radians(alpha), math.radians(beta),  math.radians(gamma)
     OrthMatrix  = unit_cell.orthogonalization_matrix()
     DeortMatrix = unit_cell.fractionalization_matrix()
 
@@ -279,12 +182,12 @@ def CalcOmegaMap(TermsAtom, Ncrs,
     Fx, Fy, Fz = Sx + Mx, Sy + My, Sz + Mz
     StepX, StepY, StepZ = 1.0/float(Nx), 1.0/float(Ny), 1.0/float(Nz)
 
-    orthxx, orthxy, orthxz = OrthMatrix[0] , OrthMatrix[3] , OrthMatrix[6]
-    orthyy, orthyz         =                 OrthMatrix[4] , OrthMatrix[7]
+    orthxx, orthxy, orthxz = OrthMatrix[0] , OrthMatrix[1] , OrthMatrix[2]
+    orthyy, orthyz         =                 OrthMatrix[4] , OrthMatrix[5]
     orthzz                 =                                 OrthMatrix[8]
 
-    dortxx, dortxy, dortxz = DeortMatrix[0], DeortMatrix[3], DeortMatrix[6]
-    dortyy, dortyz         =                 DeortMatrix[4], DeortMatrix[7]
+    dortxx, dortxy, dortxz = DeortMatrix[0], DeortMatrix[1], DeortMatrix[2]
+    dortyy, dortyz         =                 DeortMatrix[4], DeortMatrix[5]
     dortzz                 =                                 DeortMatrix[8]
 
     StepXX, StepXY, StepXZ = orthxx * StepX, orthxy * StepY, orthxz * StepZ
@@ -298,7 +201,8 @@ def CalcOmegaMap(TermsAtom, Ncrs,
     StepXXS2, StepYYS2, StepZZS2 = StepXXS * 2, StepYYS * 2, StepZZS * 2
 
     cosalp, cosbet, cosgam = math.cos(alpha), math.cos(beta), math.cos(gamma)
-    vol0 = math.sqrt(1.0 - cosalp*cosalp - cosbet*cosbet - cosgam*cosgam + 2.0*cosalp*cosbet*cosgam)
+    sqrt_arg = 1.0 - cosalp*cosalp - cosbet*cosbet - cosgam*cosgam + 2.0*cosalp*cosbet*cosgam
+    vol0 = math.sqrt(sqrt_arg)
 
     RprojX = math.sin(alpha) / (vol0 * acell)
     RprojY = math.sin(beta)  / (vol0 * bcell)
@@ -309,19 +213,16 @@ def CalcOmegaMap(TermsAtom, Ncrs,
     for iatom in range(len(bcr_scatterers)) :
         bcr_scatterer = bcr_scatterers[iatom]
 
-        #RadAtom, Nterms1, Nterms2 = TermsAtom[iatom]
-        _, Nterms1, Nterms2 = TermsAtom[iatom]
         RadAtom = bcr_scatterer.radius
         RadAtom2  = RadAtom   * RadAtom
         RadAtomX  = RadAtom   * RprojX
         RadAtomY  = RadAtom   * RprojY
         RadAtomZ  = RadAtom   * RprojZ
 
-        #print("RadAtom", RadAtom, bcr_scatterer.radius)
-
-        r = bcr_scatterer.site_cart
+        r = unit_cell.orthogonalize(bcr_scatterer.scatterer.site)
         xat, yat, zat = r[0], r[1], r[2]
-        cat, bat = bcr_scatterer.occ, bcr_scatterer.u_iso
+        cat = bcr_scatterer.scatterer.occupancy
+        bat = bcr_scatterer.scatterer.u_iso
 
 #       get parameters of the box around the atom
 
@@ -331,7 +232,6 @@ def CalcOmegaMap(TermsAtom, Ncrs,
 
         Kx1,Kx2,Ky1,Ky2,Kz1,Kz2,dxf,dyf,dzf  = AtomBox(xfrac, yfrac, zfrac,
                    RadAtomX,RadAtomY,RadAtomZ,StepX,StepY,StepZ,Sx,Sy,Sz,Fx,Fy,Fz)
-
         dx0 = orthxx * dxf + orthxy * dyf + orthxz * dzf
         dy0 =                orthyy * dyf + orthyz * dzf
         dz0 =                               orthzz * dzf
@@ -390,10 +290,7 @@ def CalcOmegaMap(TermsAtom, Ncrs,
         GridValues = [0.0 for i in range(Ngrids)]
         GridValue0 = 0.0
 
-        print("LOOK", Nterms1, Nterms2, bcr_scatterer.mu.size())
-        for iterm in range(Nterms1, Nterms2) :
-            #mu, nu, kappa, musq, kappi = TermsDecomp[iterm]
-            #print("mu, nu, kappa, musq, kappi", mu, nu, kappa, musq, kappi,"RadAtom", RadAtom)
+        for iterm in range(0, bcr_scatterer.mu.size()) :
             mu    = bcr_scatterer.mu[iterm]
             nu    = bcr_scatterer.nu[iterm]
             musq  = bcr_scatterer.musq[iterm]
@@ -431,21 +328,21 @@ def CalcOmegaMap(TermsAtom, Ncrs,
 
         for ig in range(Ngrids) :
             r2zyx,rzyx,rzyx2,ix,iy,iz = AtomGrids[ig]
-            OmegaMap[iz][iy][ix] = GridValues[ig] * cat
+            OmegaMap[iz][iy][ix] += GridValues[ig] * cat
 
         ix0,iy0,iz0 = AtomGrid0
         if ix0 >= 0 :
-           OmegaMap[iz0][iy0][ix0] = GridValue0 * cat
+           OmegaMap[iz0][iy0][ix0] += GridValue0 * cat
 
     return OmegaMap
 
 #=====================================
-def CalcGradAtom(GradMap,TermsDecomp,TermsAtom,
-                 Ncrs, Scrs, Nxyz, unit_cell, bcr_scatterers):
+def CalcGradAtom(GradMap, Ncrs, Scrs, Nxyz, unit_cell, bcr_scatterers):
 
     Natoms = len(bcr_scatterers)
 
     acell, bcell, ccell, alpha, beta,  gamma = unit_cell.parameters()
+    alpha, beta,  gamma = math.radians(alpha), math.radians(beta),  math.radians(gamma)
     OrthMatrix  = unit_cell.orthogonalization_matrix()
     DeortMatrix = unit_cell.fractionalization_matrix()
 
@@ -485,17 +382,16 @@ def CalcGradAtom(GradMap,TermsDecomp,TermsAtom,
     for iatom in range(len(bcr_scatterers)) :
         bcr_scatterer = bcr_scatterers[iatom]
 
-        #RadAtom, Nterms1, Nterms2 = TermsAtom[iatom]
-        _, Nterms1, Nterms2 = TermsAtom[iatom]
         RadAtom = bcr_scatterer.radius
         RadAtom2  = RadAtom   * RadAtom
         RadAtomX  = RadAtom   * RprojX
         RadAtomY  = RadAtom   * RprojY
         RadAtomZ  = RadAtom   * RprojZ
 
-        r = bcr_scatterer.site_cart
+        r = unit_cell.orthogonalize(bcr_scatterer.scatterer.site)
         xat, yat, zat = r[0], r[1], r[2]
-        cat, bat = bcr_scatterer.occ, bcr_scatterer.u_iso
+        cat = bcr_scatterer.scatterer.occupancy
+        bat = bcr_scatterer.scatterer.u_iso
 
 #       get parameters of the box around the atom
 
@@ -570,7 +466,7 @@ def CalcGradAtom(GradMap,TermsDecomp,TermsAtom,
 
 #        Nterms1, Nterms2 = TermsAtom[iatom]
 
-        for iterm in range(Nterms1, Nterms2) :
+        for iterm in range(0, bcr_scatterer.mu.size()) :
             mu    = bcr_scatterer.mu[iterm]
             nu    = bcr_scatterer.nu[iterm]
             musq  = bcr_scatterer.musq[iterm]
@@ -662,159 +558,3 @@ def AtomBox(xfrac,yfrac,zfrac,RadAtomX,RadAtomY,RadAtomZ,StepX,StepY,StepZ,Sx,Sy
     Kx2, Ky2, Kz2 = Kx2 - Sx, Ky2 - Sy, Kz2 - Sz
 
     return Kx1,Kx2,Ky1,Ky2,Kz1,Kz2,dxf,dyf,dzf
-
-
-
-####################################################
-#
-#  MAIN PROGRAM
-
-#==================== input information =====================
-
-time_t01 = time.time()
-
-nflog = open('omega_refine.log', 'w')
-
-FileMap   = 'Map_Orth_d25_B40.mrc'
-RadFact = 2.0
-RadAdd  = 0.5
-RadMu   = RadFact + RadAdd
-FileOut   = 'NewMap.mrc'
-
-print('Read control / experimental map...')
-
-mm = iotbx.map_manager.map_manager(file_name = FileMap)
-Ncrs = mm.map_data().all()
-Scrs = [0,0,0]
-Nxyz = mm.map_data().all()
-unit_cell = mm.crystal_symmetry().unit_cell()
-Uabc = unit_cell.parameters()[:3]
-Uang = unit_cell.parameters()[3:]
-Uang = [it*math.pi/180. for it in Uang]
-
-Mx,My,Mz = Nxyz
-ControlMap = [[[ mm.map_data()[ix,iy,iz] for ix in range(Mx) ] for iy in range(My)] for iz in range(Mz)]
-
-atoms = iotbx.pdb.input(file_name = "Atom2_orth.pdb").construct_hierarchy().atoms()
-sites_cart = atoms.extract_xyz()
-adp_as_u = atoms.extract_b()*adptbx.b_as_u(1.)
-occupancy= atoms.extract_occ()
-
-print('Read atomic model...')
-
-
-ModelValues = []
-ModelTypes = []
-bcr_scatterers = []
-for s, u, o, e in zip(sites_cart, adp_as_u, occupancy, atoms.extract_element()):
-  ModelValues.append([s, u, o])
-  ModelTypes.append([e.upper().strip(), 2.5])
-  print(e)
-  bcr_scatterer = ext.bcr_scatterer(
-     site_cart = s,
-     u_iso     = u,
-     occ       = o,
-     radius    = 5,
-     resolution=2.5,
-     mu        = _X_mu,
-     kappa     = _X_kappa,
-     nu        = _X_nu,
-     musq      = _X_musq,
-     kappi     = _X_kappi)
-  bcr_scatterers.append(bcr_scatterer)
-
-#STOP()
-
-
-#=============== principal part ==========
-
-# INPUR DATA REQUIRED :
-
-# ModelValues,ModelTypes     - both contain a line per atom
-#                              [x, y, z, c, nu] and [scattering_type, atomic_resolution]
-#                              x, y, z - Cartesian coordinates; nu = B / (8*pi*pi)
-#                              scattering_type is C, N, O etc (as that in positions 78-79 PDB)
-# RadFact,RadMu              - atomic radius is calculated as atomic_resolution * RadFact
-#                            - maximal mu values is taken as atomic_resolution * (RadFact+RadMu)
-# ControlMap                 - input (control) map; a map is ALWAYS kept as ;
-#                              columns (fastest index) by x, sections (slowest index) by z
-# Uabc = [acell,bcell,ccell] - unit cell lengths (in Angstorm )
-# Uang = [alpha,beta,gamma]  - unit cell angles (in radians)
-# Ncrs = [Ncol,Nrow,Nsec]    - number of columns, rows and sections;
-# Scrs = [Scol,Srow,Ssec]    - starting values of the indices;
-# Nxyz = [Nx,  Ny,  Nz]      - number of grid intervals by x, y, z
-
-# INTERNAL KEY ARRAYS : (eventually, can be calculated once at the beginning)
-
-# TermsDecomp - a table of decomposition parameters for all required types and resolution)
-# TermsAtoms  - reference from each atom to the respective part of TermsDecomp
-
-# OUTPUT DATA :
-
-# OmegaMam               - map of a limited (variable) resolution calculated from an atomic model
-# GradAtom               - array containing a line per atom of partial derivatives by x,y,z,c,nu ;
-#                          to calculate to the derivative by B, dR/dB = (dR/dnu) / (8*pi*pi)
-
-#-------------- calculation --------
-
-TermsAtom, TermsDecomp = GetMNKCoefficients(ModelTypes,RadFact,RadMu)
-
-
-
-
-
-OmegaMap = CalcOmegaMap(TermsAtom,
-                        Ncrs,Scrs,Nxyz, unit_cell, bcr_scatterers)
-
-FuncMap  = CalcFuncMap(OmegaMap, ControlMap, Ncrs)
-GradMap  = CalcGradMap(OmegaMap, ControlMap, Ncrs)
-
-GradAtom = CalcGradAtom(GradMap,
-                        TermsDecomp,TermsAtom,Ncrs,Scrs,Nxyz,unit_cell, bcr_scatterers)
-
-#=============== output results ======================================
-
-Natoms = len(GradAtom)
-for iatom in range(Natoms) :
-        print('Model',iatom,ModelValues[iatom])
-
-assert approx_equal(GradAtom[0], [0.6210971239199201, -1.2420777490312254, -2.484579744482787, 6.2528792787377645, -7.192527753707328])
-assert approx_equal(GradAtom[1], (0,0,0,0,0), 1.e-4 )
-assert approx_equal(GradAtom[2], (0,0,0,0,0), 1.e-4 )
-
-####
-assert approx_equal(FuncMap, 8.219926081295183)
-#
-nx,ny,nz = Nxyz
-m0 = flex.double(flex.grid(Nxyz))
-for iz in range(0, nz):
-  for iy in range(0, ny):
-    for ix in range(0, nx):
-      v = OmegaMap[iz][iy][ix]
-      m0[ix,iy,iz] = v
-
-print(Nxyz)
-mm = iotbx.map_manager.map_manager(file_name = FileOut)
-m1 = mm.map_data()
-print(m1.all())
-
-diff = flex.abs(m1-m0)
-print("max:", flex.max(diff))
-assert flex.max(diff) < 0.005
-for d in diff:
-  assert d < 0.005
-
-
-#assert approx_equal(m1, m0, 1.e-3)
-#
-mm2 = iotbx.map_manager.map_manager(
-  map_data                   = m1,
-  unit_cell_grid             = m1.all(),
-  unit_cell_crystal_symmetry = mm.crystal_symmetry(),
-  wrapping                   = True)
-
-
-time_t08 = time.time()
-
-print('')
-print('time total                  ...... ',f'{(time_t08-time_t01)/60.:12.2f} min')

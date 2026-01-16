@@ -50,7 +50,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python_version: [3.9, "3.10", 3.11, 3.12, 3.13]
+        python_version: [3.9, "3.10", 3.11, 3.12, 3.13, "3.14"]
 
     name: Compiling (Python ${{ matrix.python_version }})
     runs-on: ubuntu-latest
@@ -61,9 +61,7 @@ jobs:
 
       - uses: conda-incubator/setup-miniconda@v3
         with:
-          activate-environment: test
           miniforge-version: latest
-          python-version: ${{ matrix.python_version }}
 
       - name: Base environment info
         run: |
@@ -71,9 +69,17 @@ jobs:
           conda list
 
       - name: Create conda environment
+        if: ${{ matrix.python_version != '3.14' }}
         run: |
           source ${CONDA}/etc/profile.d/conda.sh
           conda create -y -n syntax -c conda-forge python=${{ matrix.python_version }} six future scons setuptools
+          python --version
+
+      - name: Create conda environment (3.14)
+        if: ${{ matrix.python_version == '3.14' }}
+        run: |
+          source ${CONDA}/etc/profile.d/conda.sh
+          conda create -y -n syntax -c conda-forge -c conda-forge/label/python_rc python=${{ matrix.python_version }} six future scons setuptools
           python --version
 
       - name: Set up cctbx

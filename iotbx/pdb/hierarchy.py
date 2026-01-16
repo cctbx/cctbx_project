@@ -1637,6 +1637,12 @@ class _():
               else:
                 atom_charge = atom_charge.strip()
               if atom_charge == "": atom_charge = "?"
+              # put the '-' in front
+              if len(atom_charge) == 2:
+                if atom_charge[-1] == '-':
+                  atom_charge = atom_charge[1] + atom_charge[0]
+                else:
+                  atom_charge = atom_charge[0]
               fp, fdp = atom.fp, atom.fdp
               if fp == 0 and fdp == 0:
                 fp = '.'

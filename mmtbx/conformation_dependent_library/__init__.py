@@ -149,6 +149,7 @@ def generate_residue_tuples(hierarchy,
     if include_d_amino_acids:
       residue_lookup.append('d_amino_acid')
   if backbone_only:
+    retain_selection+=' or name HNO'
     backbone_asc = hierarchy.atom_selection_cache()
     backbone_sel = backbone_asc.selection(retain_selection)
     backbone_hierarchy = hierarchy.select(backbone_sel)
@@ -384,6 +385,8 @@ def update_restraints(hierarchy,
           # print('cis-PRO EH99  %s %s' % (threes, restraint_values))
         else:
           continue
+      elif threes.enol_group():
+        continue
       else:
         restraint_values = get_restraint_values(threes, interpolate=interpolate)
         # print('CDL %s %s' % (threes, restraint_values))

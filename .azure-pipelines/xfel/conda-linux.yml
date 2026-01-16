@@ -56,7 +56,7 @@ jobs:
     condition: eq('${{ parameters.distribution }}', 'cctbx/centos')
 
   - script: |
-      sudo yum install -y ucx
+      sudo yum install -y rsync ucx
     displayName: Add libucx for Rocky Linux
     condition: eq('${{ parameters.distribution }}', 'cctbx/rockylinux')
 

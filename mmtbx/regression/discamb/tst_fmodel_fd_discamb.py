@@ -6,10 +6,12 @@ from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from cctbx import adptbx
 
-try:                from pydiscamb import DiscambWrapper
+try:
+  from pydiscamb import DiscambWrapper
+  import pydiscamb
 except ImportError: DiscambWrapper = None
 
-debug = False
+debug = True
 
 pdb_str = """
 CRYST1   13.000   16.000   19.000  97.00 110.00  95.00 P 1
@@ -21,7 +23,7 @@ HETATM    2  H2  HOH A3116       4.907   5.843   5.087  1.00  3.03           H
 
 # ------------------------------------------------------------------------------
 
-def get_discamb_grads(xrs, d_target_d_fcalc):
+def get_discamb_grads(xrs, fmodel):
   '''
   Compute analytical gradients using DiSCaMB.
 
@@ -43,6 +45,12 @@ def get_discamb_grads(xrs, d_target_d_fcalc):
   If debug mode is enabled, prints the gradients.
 '''
   w = DiscambWrapper(xrs)
+  w.set_indices(fmodel.f_obs().indices())
+  data = flex.complex_double(w.f_calc())
+  fc = fmodel.f_obs().customized_copy(data = data)
+  fmodel.update(f_calc = fc)
+  tf = fmodel.target_functor()(compute_gradients = True)
+  d_target_d_fcalc = tf.d_target_d_f_calc_work()
   g = w.d_target_d_params(d_target_d_fcalc)
   if debug:
     print("gdiscamb:", [round(_,8) for _ in g])
@@ -78,7 +86,7 @@ def get_cctbx_grads(xrs, tf):
 
 # ------------------------------------------------------------------------------
 
-def get_fd(fmodel_, eps=1.e-5):
+def get_fd(fmodel_, eps=1.e-5, use_discamb=False):
   '''
   Compute numerical gradients via finite differences.
 
@@ -101,6 +109,19 @@ def get_fd(fmodel_, eps=1.e-5):
   central difference to approximate the gradient.
   '''
   fmodel = fmodel_.deep_copy()
+  #
+  def update_fc():
+    if use_discamb:
+      pdw = pydiscamb.DiscambWrapper(
+        fmodel.xray_structure,
+        method = pydiscamb.FCalcMethod.IAM)
+      pdw.set_indices(fmodel.f_obs().indices())
+      data = flex.complex_double(pdw.f_calc())
+      fc = fmodel.f_obs().customized_copy(data = data)
+      fmodel.update(f_calc = fc)
+    else:
+      fmodel.update_xray_structure(update_f_calc=True)
+  #
   target_functor = fmodel.target_functor()
   structure = fmodel.xray_structure
   unit_cell = structure.unit_cell()
@@ -117,7 +138,8 @@ def get_fd(fmodel_, eps=1.e-5):
           site_cart = list(unit_cell.orthogonalize(site_orig))
           site_cart[ix] += signed_eps
           sc.site = unit_cell.fractionalize(site_cart)
-          fmodel.update_xray_structure(update_f_calc=True)
+          #fmodel.update_xray_structure(update_f_calc=True)
+          update_fc()
           ts.append(target_functor().target_work())
         gs.append((ts[0]-ts[1])/(2*eps))
       sc.site = site_orig
@@ -127,7 +149,8 @@ def get_fd(fmodel_, eps=1.e-5):
       ts = []
       for signed_eps in [eps, -eps]:
         sc.u_iso = u_iso_orig+signed_eps
-        fmodel.update_xray_structure(update_f_calc=True)
+        #fmodel.update_xray_structure(update_f_calc=True)
+        update_fc()
         ts.append(target_functor().target_work())
       gs.append((ts[0]-ts[1])/(2*eps))
       sc.u_iso = u_iso_orig
@@ -140,7 +163,8 @@ def get_fd(fmodel_, eps=1.e-5):
           u_cart = list(adptbx.u_star_as_u_cart(unit_cell, u_star_orig))
           u_cart[ix] += signed_eps
           sc.u_star = adptbx.u_cart_as_u_star(unit_cell, u_cart)
-          fmodel.update_xray_structure(update_f_calc=True)
+          #fmodel.update_xray_structure(update_f_calc=True)
+          update_fc()
           ts.append(target_functor().target_work())
         gs.append((ts[0]-ts[1])/(2*eps))
       sc.u_star = u_star_orig
@@ -150,7 +174,8 @@ def get_fd(fmodel_, eps=1.e-5):
       ts = []
       for signed_eps in [eps, -eps]:
         sc.occupancy = occupancy_orig+signed_eps
-        fmodel.update_xray_structure(update_f_calc=True)
+        #fmodel.update_xray_structure(update_f_calc=True)
+        update_fc()
         ts.append(target_functor().target_work())
       gs.append((ts[0]-ts[1])/(2*eps))
       sc.occupancy = occupancy_orig
@@ -158,7 +183,7 @@ def get_fd(fmodel_, eps=1.e-5):
     print("fd:", [round(_,8) for _ in gs])
   return gs
 
-def run(table):
+def run(table, fd_delta = 1.e-5):
   """
   Check packed gradinets CCTBX (IAM) vs DiSCaMB (IAM)
   """
@@ -168,13 +193,15 @@ def run(table):
   xrs.scattering_type_registry(table = table)
   xrs_iso = xrs.deep_copy_scatterers()
   xrs_iso.convert_to_isotropic()
-  f_obs = abs(xrs_iso.structure_factors(d_min=0.5).f_calc())
+  f_obs = abs(xrs_iso.structure_factors(d_min=1.0).f_calc())
   #
   params = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
   params.algorithm = "direct"
+  params.exp_table_one_over_step_size=0
   fmodel = mmtbx.f_model.manager(
     f_obs                        = f_obs,
     xray_structure               = xrs,
+    target_name                  = "ls_wunit_kunit",
     sf_and_grads_accuracy_params = params)
   scatterers = xrs.scatterers()
   tf = fmodel.target_functor()(compute_gradients = True)
@@ -186,10 +213,12 @@ def run(table):
   scatterers.flags_set_grads(state=False)
   scatterers.flags_set_grad_site(iselection = flex.size_t([1]))
   g1 = get_cctbx_grads(xrs, tf)
-  g2 = get_discamb_grads(xrs, d_target_d_fcalc)
-  g3 = get_fd(fmodel, eps=1.e-5)
+  g2 = get_discamb_grads(xrs, fmodel)
+  g3 = get_fd(fmodel, eps=fd_delta)
+  g4 = get_fd(fmodel, eps=fd_delta, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-6)
   assert approx_equal(g1,g3, 1.e-6)
+  assert approx_equal(g1,g4, 1.e-3)
   if debug: print()
   #
   # Now add iso B for H #2
@@ -197,10 +226,12 @@ def run(table):
   print("sites_cart_1 + uiso_2")
   scatterers.flags_set_grad_u_iso(iselection = flex.size_t([2]))
   g1 = get_cctbx_grads(xrs, tf)
-  g2 = get_discamb_grads(xrs, d_target_d_fcalc)
-  g3 = get_fd(fmodel, eps=1.e-5)
-  assert approx_equal(g1,g2, 1.e-5)
-  assert approx_equal(g1,g3, 1.e-5)
+  g2 = get_discamb_grads(xrs, fmodel)
+  g3 = get_fd(fmodel, eps=fd_delta)
+  g4 = get_fd(fmodel, eps=fd_delta, use_discamb=True)
+  assert approx_equal(g1,g2, 1.e-6)
+  assert approx_equal(g1,g3, 1.e-6)
+  assert approx_equal(g1,g4, 1.e-3)
   if debug: print()
   #
   # Now add occupancy of H #0
@@ -208,10 +239,12 @@ def run(table):
   print("sites_cart_1 + uiso_2 + occ_0")
   scatterers.flags_set_grad_occupancy(iselection = flex.size_t([0]))
   g1 = get_cctbx_grads(xrs, tf)
-  g2 = get_discamb_grads(xrs, d_target_d_fcalc)
-  g3 = get_fd(fmodel, eps=1.e-5)
-  assert approx_equal(g1,g2, 1.e-5)
-  assert approx_equal(g1,g3, 1.e-3)
+  g2 = get_discamb_grads(xrs, fmodel)
+  g3 = get_fd(fmodel, eps=fd_delta)
+  g4 = get_fd(fmodel, eps=fd_delta, use_discamb=True)
+  assert approx_equal(g1,g2, 1.e-6)
+  assert approx_equal(g1,g3, 1.e-6)
+  assert approx_equal(g1,g4, 1.e-3)
   if debug: print()
   #
   # Now add aniso ADP of O #1
@@ -219,10 +252,12 @@ def run(table):
   print("sites_cart_1 + uiso_2 + occ_0 + uaniso_1")
   scatterers.flags_set_grad_u_aniso(iselection = flex.size_t([1]))
   g1 = get_cctbx_grads(xrs, tf)
-  g2 = get_discamb_grads(xrs, d_target_d_fcalc)
-  g3 = get_fd(fmodel, eps=1.e-5)
+  g2 = get_discamb_grads(xrs, fmodel)
+  g3 = get_fd(fmodel, eps=fd_delta)
+  g4 = get_fd(fmodel, eps=fd_delta, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-6)
-  assert approx_equal(g1,g3, 1.e-3)
+  assert approx_equal(g1,g3, 1.e-6)
+  assert approx_equal(g1,g4, 1.e-3)
   if debug: print()
   #
   # Now add sites cart of H #2
@@ -230,10 +265,12 @@ def run(table):
   print("sites_cart_1 + uiso_2 + occ_0 + uaniso_1 + sites_cart_2")
   scatterers.flags_set_grad_site(iselection = flex.size_t([2]))
   g1 = get_cctbx_grads(xrs, tf)
-  g2 = get_discamb_grads(xrs, d_target_d_fcalc)
-  g3 = get_fd(fmodel, eps=1.e-5)
+  g2 = get_discamb_grads(xrs, fmodel)
+  g3 = get_fd(fmodel, eps=fd_delta)
+  g4 = get_fd(fmodel, eps=fd_delta, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-6)
-  assert approx_equal(g1,g3, 1.e-3)
+  assert approx_equal(g1,g3, 1.e-6)
+  assert approx_equal(g1,g4, 1.e-3)
   if debug: print()
   #
   # Cancell all
@@ -248,10 +285,12 @@ def run(table):
   scatterers.flags_set_grad_u_aniso(iselection = flex.size_t([1]))
   scatterers.flags_set_grad_u_iso(iselection = flex.size_t([0,2]))
   g1 = get_cctbx_grads(xrs, tf)
-  g2 = get_discamb_grads(xrs, d_target_d_fcalc)
-  g3 = get_fd(fmodel, eps=1.e-5)
+  g2 = get_discamb_grads(xrs, fmodel)
+  g3 = get_fd(fmodel, eps=fd_delta)
+  g4 = get_fd(fmodel, eps=fd_delta, use_discamb=True)
   assert approx_equal(g1,g2, 1.e-6)
-  assert approx_equal(g2,g3, 1.e-5)
+  assert approx_equal(g2,g3, 1.e-6)
+  assert approx_equal(g1,g4, 1.e-2)
   if debug: print()
 
 # ------------------------------------------------------------------------------
@@ -292,4 +331,3 @@ if(__name__ == "__main__"):
       run(table=table)
       print()
   print("OK. Time: %8.3f"%(time.time()-t0))
-

@@ -921,7 +921,7 @@ class UnitCellSentinel(Thread):
     import xfel.ui.components.xfel_gui_plotter as pltr
 
     feature_vectors = {
-      "Triclinic": None,
+      "Triclinic": "a,b,c",
       "Monoclinic": "a,b,c",
       "Orthorhombic": "a,b,c",
       "Tetragonal": "a,c",
@@ -990,7 +990,13 @@ class UnitCellSentinel(Thread):
           params.input.space_group = sg
 
           iterable = ["{a} {b} {c} {alpha} {beta} {gamma} ".format(**c) + sg for c in info_list[0]]
-          params.input.__inject__('iterable', iterable)
+          if hasattr(params.input, "iterable") and params.input.iterable == [None]: # seems to be the case recently, new python issue?
+            del(params.input.iterable[0])
+            params.input.iterable.extend(iterable)
+          elif not hasattr(params.input.iterable):
+            params.input.__inject__('iterable', iterable)
+          else:
+            assert False, 'Iterable already populated'
           params.file_name = None
           params.cluster.dbscan.eps = float(self.parent.run_window.unitcell_tab.plot_eps.eps.GetValue())
           params.show_plot = True
@@ -2124,7 +2130,7 @@ class EnergyTab(BaseTab):
                                style=wx.OK | wx.ICON_ERROR)
         dlg.ShowModal()
         return
-      self.fee_runs.append(run)
+      self.fee_runs.append(int(run))
 
       try:
         energy = float(self.scan_runs_list.GetItem(itemIdx=row, col=1).GetText())

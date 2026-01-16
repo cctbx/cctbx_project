@@ -176,7 +176,7 @@ class bond_simple_proxy_registry(proxy_registry_base):
         if ps: return ps
     return False
 
-  def process(self, source_info, proxy, tolerance=1.e-6):
+  def process(self, source_info, proxy, tolerance=1.e-6, replace_in_place=False):
     result = proxy_registry_process_result()
     proxy = proxy.sort_i_seqs()
     if (proxy.i_seqs[1] not in self.table[proxy.i_seqs[0]]):
@@ -185,6 +185,15 @@ class bond_simple_proxy_registry(proxy_registry_base):
         source_info=source_info,
         proxy=proxy,
         process_result=result)
+    elif replace_in_place:
+      i_list = self.table[proxy.i_seqs[0]][proxy.i_seqs[1]]
+      tabulated_proxy = self.proxies[i_list]
+      for attr in ['distance_ideal',
+                   'limit',
+                   'slack',
+                   'top_out',
+                   'weight']:
+        setattr(tabulated_proxy, attr, getattr(proxy, attr))
     else:
       i_list = self.table[proxy.i_seqs[0]][proxy.i_seqs[1]]
       result.tabulated_proxy = self.proxies[i_list]
@@ -252,7 +261,7 @@ class angle_proxy_registry(proxy_registry_base):
       return True
     return False
 
-  def process(self, source_info, proxy, tolerance=1.e-6):
+  def process(self, source_info, proxy, tolerance=1.e-6, replace_in_place=False):
     result = proxy_registry_process_result()
     proxy = proxy.sort_i_seqs()
     tab_i_seq_1 = self.table.setdefault(proxy.i_seqs[1], {})
@@ -263,6 +272,11 @@ class angle_proxy_registry(proxy_registry_base):
         source_info=source_info,
         proxy=proxy,
         process_result=result)
+    elif replace_in_place:
+      i_list = tab_i_seq_1[i_seqs_0_2]
+      tabulated_proxy = self.proxies[i_list]
+      for attr in ['angle_ideal', 'slack', 'weight']:
+        setattr(tabulated_proxy, attr, getattr(proxy, attr))
     else:
       i_list = tab_i_seq_1[i_seqs_0_2]
       result.tabulated_proxy = self.proxies[i_list]
@@ -338,7 +352,7 @@ class dihedral_proxy_registry(proxy_registry_base):
       return True
     return False
 
-  def process(self, source_info, proxy, tolerance=1.e-6):
+  def process(self, source_info, proxy, tolerance=1.e-6, replace_in_place=False):
     result = proxy_registry_process_result()
     proxy = proxy.sort_i_seqs()
     tab_i_seq_0 = self.table.setdefault(proxy.i_seqs[0], {})
@@ -349,6 +363,17 @@ class dihedral_proxy_registry(proxy_registry_base):
         source_info=source_info,
         proxy=proxy,
         process_result=result)
+    elif replace_in_place:
+      i_list = tab_i_seq_0[i_seqs_1_2_3]
+      tabulated_proxy = self.proxies[i_list]
+      for attr in ['alt_angle_ideals',
+                   'angle_ideal',
+                   'limit',
+                   'periodicity',
+                   'slack',
+                   'top_out',
+                   'weight']:
+        setattr(tabulated_proxy, attr, getattr(proxy, attr))
     else:
       i_list = tab_i_seq_0[i_seqs_1_2_3]
       result.tabulated_proxy = self.proxies[i_list]

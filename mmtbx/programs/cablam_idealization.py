@@ -57,8 +57,24 @@ output {
         log = self.logger)
 
     results = self.cablam_id.get_results()
+
+    flat_cablam_results = [item for sublist in results.cablam_results.values() for item in sublist]
+    print("Rotated residues (angle, chain id, resnum, resname, alpha, beta):", file=self.logger)
+    for cr, angle in flat_cablam_results:
+      a = angle if angle !=360 else 0
+      print(f'{a:3d} {cr.chain_id} {cr.resid} {cr.resname} {cr.feedback.alpha} {cr.feedback.alpha}', file=self.logger)
+      # print(angle, cr)
+
+    print(f"Total number of outliers in starting model: {results.n_initial_cablam_outliers}", file=self.logger)
     print("Total number of tried outliers: %d" % results.n_tried_residues, file=self.logger)
     print("Number of rotated outliers: %d" % results.n_rotated_residues, file=self.logger)
+    # splitting by cablam recommendation:
+    # flatten the info
+    print("Breakdown by type: fixed / total")
+    print(f"  loop : {results.n_fixed_for_loop} / {results.n_fixed_for_loop+results.n_not_fixed_for_loop}")
+    print(f"  alpha: {results.n_fixed_for_alpha} / {results.n_fixed_for_alpha+results.n_not_fixed_for_alpha}")
+    print(f"  beta : {results.n_fixed_for_beta} / {results.n_fixed_for_beta+results.n_not_fixed_for_beta}")
+    print(f"  3-10 : {results.n_fixed_for_threeten} / {results.n_fixed_for_threeten+results.n_not_fixed_for_threeten}")
     # I believe this should go to data_manager. Also not clear how output of
     # two files would affect data_manager.
     for m, fname_base in [

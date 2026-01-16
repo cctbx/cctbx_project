@@ -1035,7 +1035,7 @@ def numpy_map_as_flex_standard_order(np_array=None,
   shape=tuple(np_array_standard_order.shape)
 
   # Flatten it out
-  np_array_standard_order_1d=np_array_standard_order.flatten().tolist()
+  np_array_standard_order_1d=np_array_standard_order.flatten()
 
   # Read in to flex array
   flex_array=flex.float(np_array_standard_order_1d)

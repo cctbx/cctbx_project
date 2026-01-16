@@ -34,7 +34,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "2.12.0"
+version = "2.14.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -101,7 +101,10 @@ stop_on_any_missing_hydrogen = False
   .type = bool
   .short_caption = Emit a Sorry and stop when any hydrogen in the model has insufficient restraints.
   .help = Emit a Sorry and stop when any hydrogen in the model has insufficient restraints. It will always emit when there are one or more residues without restraints.
-
+ignore_missing_restraints = False
+  .type = bool
+  .short_caption = Don't stop if restraints for a residue are missing.
+  .help = Don't stop if restraints for a residue are missing.
 output
   .style = menu_item auto_align
 {
@@ -126,8 +129,8 @@ output
     .short_caption = Print extra atom info
     .help = Print extra atom info
 }
-''' + Helpers.probe_phil_parameters.replace("probe_radius = 0.25", "probe_radius = 0.0")
-# @todo We replace the default probe radius of 0.25 with 0.0 to avoid the issue described in
+''' + Helpers.probe_phil_parameters.replace("bump_weight = 10.0", "bump_weight = 100.0").replace("hydrogen_bond_weight = 4.0", "hydrogen_bond_weight = 40.0")
+# @todo We replace the default weights to avoid the issue described in
 # https://github.com/cctbx/cctbx_project/issues/1072 until we can figure out the appropriate
 # fix.
 
@@ -904,6 +907,17 @@ NOTES:
   Note that the program also takes probe Phil arguments; run with --show_defaults to see
   all Phil arguments.
 
+  As of 7/14/2025, reduce2 is switching to new default parameters for the relative weighting of
+  external contacts (which remains the same) and both hydrogen bonds and collisions (whic are
+  increasing by 10x). This is to work as expected with a radius larger than 0 (it is being switched
+  to 0.25, which matches the probe2 default). The original Reduce had switched to a radius of 0.0
+  and was not considering external contacts; this fixes that without causing hydrogen bonds to be
+  broken. See https://github.com/cctbx/cctbx_project/issues/1072 for details. The defaults for
+  probe2 are not being changed, so its default behavior will be different from reduce2 until the
+  issue can be fully resolved and both set to the same defaults. The probe radius and relative
+  weights can be set in both probe2 and reduce2 using the probe2 Phil parameters if different
+  behavior is desired.
+
   Equivalent PHIL arguments for original Reduce command-line options:
     -quiet: No equivalent; metadata is never written to the model file, it is always
             written to the description file, and progress information is always written
@@ -918,6 +932,7 @@ NOTES:
     -onlya: alt_id=A
     -nuclear: use_neutron_distances=True
     -demandflipallnhqs: add_flip_movers=True
+    -rad0.25: probe.probe_radius=0.25
 '''.format(version)
   datatypes = ['model', 'restraint', 'phil']
   master_phil_str = master_phil_str
@@ -1028,17 +1043,18 @@ NOTES:
       use_neutron_distances=self.params.use_neutron_distances,
       n_terminal_charge=self.params.n_terminal_charge,
       exclude_water=True,
-      stop_for_unknowns=False,
+      stop_for_unknowns=self.params.stop_on_any_missing_hydrogen,
       keep_existing_H=self.params.keep_existing_H
     )
     reduce_add_h_obj.run()
     reduce_add_h_obj.show(self.logger)
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
-    if len(missed_residues) > 0:
-      bad = ""
-      for res in missed_residues:
-        bad += " " + res
-      raise Sorry("Restraints were not found for the following residues:"+bad)
+    if not self.params.ignore_missing_restraints:
+      if len(missed_residues) > 0:
+        bad = ""
+        for res in missed_residues:
+          bad += " " + res
+        raise Sorry("Restraints were not found for the following residues:"+bad)
     insufficient_restraints = list(reduce_add_h_obj.site_labels_no_para)
     if self.params.stop_on_any_missing_hydrogen and len(insufficient_restraints) > 0:
       bad = insufficient_restraints[0]
@@ -1050,6 +1066,11 @@ NOTES:
 
     if not self.model.has_hd():
       raise Sorry("It was not possible to place any H atoms. Is this a single atom model?")
+
+    # We must re-interpret the model when _type_energies is not defined, which happens
+    # for example when running on 8zst.cif.
+    if not hasattr(self.model, '_type_energies'):
+      self._ReinterpretModel(make_restraints=True)
 
 # ------------------------------------------------------------------------------
 
@@ -1067,6 +1088,7 @@ NOTES:
     # by Hydrogen placement will have flipped them, so we don't need to do it again.
     p.pdb_interpretation.flip_symmetric_amino_acids=False
     #p.pdb_interpretation.sort_atoms=True
+    self.model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
     self.model.process(make_restraints=make_restraints, pdb_interpretation_params=p)
 
 # ------------------------------------------------------------------------------
@@ -1156,6 +1178,7 @@ NOTES:
     # Set the default output file name if one has not been given.
     if self.params.output.filename is None:
       inName = self.data_manager.get_default_model_name()
+      if inName is None: raise Sorry('model not found')
       suffix = os.path.splitext(os.path.basename(inName))[1]
       if self.params.add_flip_movers:
         pad = 'FH'
@@ -1206,8 +1229,13 @@ NOTES:
     # Get our model.
     self.model = self.data_manager.get_model()
 
+    self.model = self.model.select(~self.model.selection('element X'))
+
     # Use model function to set crystal symmetry if necessary 2025-03-19 TT
     self.model.add_crystal_symmetry_if_necessary()
+    if self.data_manager.has_restraints():
+      self.model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
+      self.model.process(make_restraints=False)
 
     # If we've been asked to only to a single model index from the file, strip the model down to
     # only that index.
@@ -1260,6 +1288,12 @@ NOTES:
         cliqueOutlineFileName=self.params.output.clique_outline_file_name,
         fillAtomDump = self.params.output.print_atom_info)
       doneOpt = time.time()
+      warnings = opt.getWarnings()
+      # Find the lines from warnings that start with "Warning: " and
+      # concatenate them into a single string.
+      warnings = '\n'.join([line for line in warnings.split('\n') if line.startswith('Warning:')])
+      if len(warnings) > 0:
+        print('\nWarnings during optimization:\n'+warnings, file=self.logger)
       outString += opt.getInfo()
       outString += 'Time to Add Hydrogen = {:.3f} sec'.format(doneAdd-startAdd)+'\n'
       outString += 'Time to Optimize = {:.3f} sec'.format(doneOpt-startOpt)+'\n'

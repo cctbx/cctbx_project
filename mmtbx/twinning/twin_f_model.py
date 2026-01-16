@@ -1001,7 +1001,8 @@ the percentage of R-free reflections).
         b_base                       = self.sfg_params.b_base,
         wing_cutoff                  = self.sfg_params.wing_cutoff,
         exp_table_one_over_step_size =
-                        self.sfg_params.exp_table_one_over_step_size
+                        self.sfg_params.exp_table_one_over_step_size,
+        extra_params                 = self.sfg_params.extra
       )
     else:
       tmp = self.miller_set.structure_factors_from_scatterers(
@@ -1101,7 +1102,8 @@ the percentage of R-free reflections).
            b_base                       = self.sfg_params.b_base,
            wing_cutoff                  = self.sfg_params.wing_cutoff,
            exp_table_one_over_step_size =
-                           self.sfg_params.exp_table_one_over_step_size).f_calc()
+                           self.sfg_params.exp_table_one_over_step_size,
+           extra_params                 = self.sfg_params.extra).f_calc()
        else:
          f_calc = self.miller_set.structure_factors_from_scatterers(
            xray_structure = self.xray_structure).f_calc()

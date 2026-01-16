@@ -181,6 +181,26 @@ master_phil = libtbx.phil.parse("""
             type is not protein it should be set as well.
     .short_caption = Extract unique
 
+  use_cubic_boxing = None
+    .type = bool
+    .help = When boxing map, create a box that is cubic (same number \
+             of grid points in each direction). Can be used with \
+             stay_inside_current_map to keep the box inside the current \
+             map.  Note that if box is bigger than the current map and \
+             wrapping is False, any points outside original \
+             map will be set to zero. Can be used with \
+             extract_unique, mask_select, density_select and default\
+             boxing around molecule.  Incompatible with lower_bounds \
+             and upper_bounds.
+
+  stay_inside_current_map = None
+    .type = bool
+    .help = If True, then when applying boxing, keep the new box inside the \
+             current map.  If False, allow new box to go outside the \
+             current map. Values outside will be zero if wrapping=False \
+             as determined from input map or the parameter wrapping, \
+             and wrapped values if wrapping= True
+
   increase_box_cushion_and_atom_radius_for_soft_mask = True
     .type = bool
     .help = Expand cushion and atom radii by soft_mask_radius
@@ -255,11 +275,6 @@ master_phil = libtbx.phil.parse("""
             values specify bounds_are_absolute = True.
     .short_caption = Bounds are absolute
 
-  zero_outside_original_map = False
-    .type = bool
-    .help = If bounds for new map are outside original map, zero all points\
-             outside of original map
-    .short_caption = Zero outside original map
   keep_map_size = False
     .type = bool
     .help = Keep original map gridding (do not cut anything out). \
@@ -560,6 +575,9 @@ def check_parameters(inputs = None, params = None,
     raise Sorry("Cannot set both keep_map_size and bounds")
   if (params.upper_bounds and not params.lower_bounds):
     raise Sorry("Please set lower_bounds if you set upper_bounds")
+  if (params.lower_bounds and params.use_cubic_boxing):
+    raise Sorry("Cubic boxing is not compatible with "+
+       "setting lower or upper bounds")
   if (params.extract_unique):
     if (not params.resolution):
       raise Sorry("Please set resolution for extract_unique")
@@ -836,6 +854,17 @@ def print_what_will_happen(
     print("Bounds for cut out map are (%s, %s, %s) to (%s, %s, %s)" %(
      tuple(list(params.lower_bounds)+list(params.upper_bounds))), file = log)
 
+  if params.use_cubic_boxing:
+    print("Output boxed map will be a cubic box", file = log)
+    if params.stay_inside_current_map:
+      print("Cubic map will be inside current map")
+    elif params.wrapping:
+      print("Cubic map may go outside current map;"+
+           " values outside will be wrapped")
+    else:
+      print("Cubic map may go outside current map;"+
+           " values outside will be set to zero")
+
 def print_notes(params = None,
     mam = None,
     crystal_symmetry = None,
@@ -887,8 +916,8 @@ def run(args,
   if (log is None): log = sys.stdout
 
 
+  print_default_message(log = log)
   if(len(args)  ==  0 and not pdb_hierarchy):
-    print_default_message(log = log)
     master_phil.show(prefix = "  ")
     return
 
@@ -1019,6 +1048,8 @@ def run(args,
     ignore_symmetry_conflicts = params.ignore_symmetry_conflicts)
   if box:
     mam.box_all_maps_around_model_and_shift_origin(
+      use_cubic_boxing = params.use_cubic_boxing,
+      stay_inside_current_map = params.stay_inside_current_map,
       box_cushion = params.box_cushion)
     if mam.warning_message():
       print (mam.warning_message(), file = log)
@@ -1036,6 +1067,7 @@ def run(args,
 
   if params.lower_bounds and params.upper_bounds:  # Box it
     assert not box # should not have used boxing
+    assert not params.use_cubic_boxing  # not compatible
     from cctbx.maptbx.box import with_bounds
     mam = with_bounds(mam.map_manager(), # actually a box
          params.lower_bounds,
@@ -1053,6 +1085,8 @@ def run(args,
          threshold = params.density_select_threshold,
          get_half_height_width = params.get_half_height_width,
          model = mam.model(),
+         stay_inside_current_map = params.stay_inside_current_map,
+         use_cubic_boxing = params.use_cubic_boxing,
          log = log)
     if mam.warning_message():
       print (mam.warning_message(), file = log)
@@ -1077,6 +1111,8 @@ def run(args,
          mask_as_map_manager = mask_as_map_manager,
          box_cushion = params.box_cushion,
          model = mam.model(),
+         stay_inside_current_map = params.stay_inside_current_map,
+         use_cubic_boxing = params.use_cubic_boxing,
          log = log)
     if mam.warning_message():
       print (mam.warning_message(), file = log)
@@ -1125,8 +1161,6 @@ def run(args,
        original_origin = params.output_origin_grid_units,
        gridding = params.output_unit_cell_grid)
     if mam.map_manager().ncs_object():
-      # mam.map_manager().ncs_object().display_all()
-
       mam.map_manager().ncs_object().set_shift_cart(
         mam.map_manager().shift_cart())
 
@@ -1495,7 +1529,7 @@ def apply_mask_around_edge_of_box(mam, params = None, log = None):
       print("Value outside mask will be set to mean inside", file = log)
 
     mam.map_manager().create_mask_around_edges(
-          soft_mask_radius = params.soft_mask_radius)
+          boundary_radius = params.soft_mask_radius)
     mam.map_manager().soft_mask(soft_mask_radius = params.soft_mask_radius)
     mam.map_manager().apply_mask(
       set_outside_to_mean_inside = params.set_outside_to_mean_inside)
@@ -1522,4 +1556,3 @@ class launcher(runtime_utils.target_with_save_result):
 
 if (__name__  ==  "__main__"):
   run(args = sys.argv[1:])
-

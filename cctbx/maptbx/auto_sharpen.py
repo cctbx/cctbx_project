@@ -827,6 +827,7 @@ def get_map_and_model(params=None,
   acc=None # accessor used to shift map back to original location if desired
   origin_frac=(0,0,0)
   map_labels=None
+  read_map_coeffs = False
   if map_data and crystal_symmetry:
     original_crystal_symmetry=crystal_symmetry
     original_unit_cell_grid=None
@@ -866,6 +867,7 @@ def get_map_and_model(params=None,
     if not map_coeffs:
       raise Sorry("Could not get map coeffs from %s with labels %s" %(
         params.input_files.map_coeffs_file,params.input_files.map_coeffs_labels))
+    read_map_coeffs = True
     print("Map coefficients read from %s with labels %s" %(
          params.input_files.map_coeffs_file,
          str(params.input_files.map_coeffs_labels)), file=out)
@@ -880,8 +882,29 @@ def get_map_and_model(params=None,
       params.crystal_info.resolution=map_coeffs.d_min()
       print("Resolution from map_coeffs is %7.2f A" %(
           params.crystal_info.resolution), file=out)
+
   else:
     raise Sorry("Need ccp4 map or map_coeffs")
+  if params.crystal_info.is_crystal is None:
+    if read_map_coeffs:
+      print("Assuming this is crystallographic data as map coefficients read",
+         file = out)
+      params.crystal_info.is_crystal = True
+    elif (not (crystal_symmetry.space_group().type().number() in [0, 1])):
+      print("Assuming this is crystallographic data as map is not P1",
+         file = out)
+      params.crystal_info.is_crystal = True
+    else:
+      print("Assuming this is cryo-EM data as map read in space group P1",
+         file = out)
+      params.crystal_info.is_crystal = False
+  elif params.crystal_info.is_crystal:
+      print("Assuming this is crystallographic data as is_crystal=True",
+         file = out)
+  else:
+      print("Assuming this is cryo-EM data as is_crystal=False",
+         file = out)
+
 
   if params.input_files.external_map_file and not \
       params.map_modification.auto_sharpen_methods==['external_map_sharpening']:
@@ -1003,6 +1026,9 @@ def run(args=None,params=None,
 
   # get map_data and crystal_symmetry
 
+
+
+
   pdb_hierarchy,map_data,half_map_data_list,ncs_obj,crystal_symmetry,acc,\
        original_crystal_symmetry,original_unit_cell_grid,map_labels=\
         get_map_and_model(
@@ -1016,7 +1042,6 @@ def run(args=None,params=None,
      params=params,out=out)
   # NOTE: map_data is now relative to origin at (0,0,0).
   # Use map_data.reshape(acc) to put it back where it was if acc is not None
-
 
   # auto-sharpen the map
   from cctbx.maptbx.segment_and_split_map import auto_sharpen_map_or_map_coeffs

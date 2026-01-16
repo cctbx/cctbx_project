@@ -52,6 +52,11 @@ class _():""" %(boost_name)
 
   return text
 
+def modify_boost_text(text):
+  boost_names = get_boost_names(text)
+  print("Editing the following boost_names: %s" %(" ".join(boost_names)))
+  text = edit_boost_code_blocks(text, boost_names)
+  return text
 
 def run(args):
   """
@@ -60,10 +65,7 @@ def run(args):
   assert len(args) == 1
   fn = args[0]
   text = open(fn).read()
-  boost_names = get_boost_names(text)
-  print("Editing the following boost_names: %s" %(" ".join(boost_names)))
-  text = edit_boost_code_blocks(text, boost_names)
-
+  text = modify_boost_text(text)
   f = open(fn, 'w')
   print(text, file = f)
   f.close()

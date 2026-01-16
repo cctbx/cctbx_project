@@ -1504,15 +1504,29 @@ Fourier image of specified resolution, etc.
                  d_min,
                  radius_max,
                  radius_step,
-                 mxp=5, epsc=0.001, kpres=1, kprot=3 # BCR params
+                 mxp,
+                 epsc,
+                 epsp  = 0.000,
+                 edist = 1.0E-13,
+                 kpres = 1,
+                 kprot = 112,
                  ):
     b_iso = 0 # Must always be 0! All image vals below are for b_iso=0 !!!
     from cctbx.maptbx.bcr import bcr
     im = self.image(
       d_min=d_min, b_iso=0, radius_max=radius_max, radius_step=radius_step)
     bpeak, cpeak, rpeak, _,_,_,_ = bcr.get_BCR(
-      dens=im.image_values, dist=im.radii, mxp=mxp, epsc=epsc, kpres=kpres,
-      dmax=radius_max)
+      dens  = im.image_values,
+      dist  = im.radii,
+      dmax  = radius_max,
+      mxp   = mxp,
+      epsc  = epsc,
+      epsp  = epsp,
+      edist = edist,
+      kpres = kpres,
+      kprot = kprot,
+      nfmes = None,
+      )
     #
     bcr_approx_values = flex.double()
     # FILTER
@@ -1548,6 +1562,10 @@ Fourier image of specified resolution, etc.
             radius_max = 5.,
             radius_step = 0.001,
             n_integration_steps = 2000):
+    """
+    This can be done nicer. See generate_BCR_atom_22.txt attachment in email
+    from AU received on 12/8/25, 11:02.
+    """
     r = radius_min
     assert d_max !=  0.
     if(d_max is None): s_min = 0

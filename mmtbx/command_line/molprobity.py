@@ -134,6 +134,7 @@ def run(args,
     program_name="phenix.molprobity",
     ignore_missing_modules=False,
     return_input_objects=False) : # for testing
+  print("\n**Starting %s **\n" %(program_name), file = out)
   rotarama_dir = libtbx.env.find_in_repositories(
     relative_path="chem_data/rotarama_data",
     test=os.path.isdir)

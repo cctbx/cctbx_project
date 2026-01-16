@@ -10,11 +10,18 @@ from libtbx import Auto
 
 from mmtbx.geometry_restraints.base_qm_manager import get_internal_coordinate_value
 
-def get_exe():
+def get_exe(verbose=False):
   bin_dir = libtbx.env.under_base('bin')
   exe_path = os.path.join(bin_dir, 'mopac')
   bin_dir = libtbx.env.under_base('Library')
   win_exe_path = os.path.join(bin_dir,"bin", 'mopac.exe')
+  if verbose:
+    print('"'*79)
+    print('  Looking for mopac in env var PHENIX_MOPAC : %s' % os.environ.get('PHENIX_MOPAC', False))
+    print('  Looking for mopac as %s : %s' % (exe_path, os.path.exists(exe_path)))
+    # print(f'  Looking for mopac in directory {bin_dir}s')
+    print('  Looking for win mopac as %s : %s\n' % (win_exe_path, os.path.exists(win_exe_path)))
+    print('"'*79)
   if os.environ.get('PHENIX_MOPAC', False):
     return os.environ['PHENIX_MOPAC']
   elif os.path.exists(exe_path):
@@ -30,13 +37,13 @@ class mopac_manager(base_qm_manager.base_qm_manager):
   def get_log_filename(self):
     return 'mopac_%s.out' % self.preamble
 
-  def _input_header(self):
+  def _input_header(self, gradients_only=False):
     if self.nproc==0:
       nproc_str=''
     else:
       nproc_str='THREADS=%s' % self.nproc
     multiplicity_str=''
-    if self.multiplicity not in [None, Auto]:
+    if self.multiplicity not in [None, Auto, 1]:
       multiplicity_str=[None,
                         'singlet', # - 0 unpaired electrons
                         'doublet', # - 1 unpaired electrons
@@ -45,12 +52,16 @@ class mopac_manager(base_qm_manager.base_qm_manager):
                         'quintet', # - 4 unpaired electrons
                         'sextet', # - 5 unpaired electrons
                         ][self.multiplicity]
-    outl = '%s %s %s %s DISP %s\n%s\n\n' % (
+    additional_options=''
+    if gradients_only:
+      additional_options+=' 1SCF GRAD ANALYT'
+    outl = '%s %s %s %s DISP %s %s\n%s\n\n' % (
      self.method,
      self.basis_set,
      self.solvent_model,
      'CHARGE=%s %s' % (self.charge, nproc_str),
      multiplicity_str,
+     additional_options,
      self.preamble,
      )
     return outl
@@ -121,8 +132,8 @@ class mopac_manager(base_qm_manager.base_qm_manager):
     outl += '\n'
     return outl
 
-  def get_input_lines(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False):
-    outl = self._input_header()
+  def get_input_lines(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False, gradients=False):
+    outl = self._input_header(gradients_only=gradients)
     outl += self.get_coordinate_lines(optimise_ligand=optimise_ligand,
                                       optimise_h=optimise_h,
                                       constrain_torsions=constrain_torsions,

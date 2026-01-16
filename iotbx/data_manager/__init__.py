@@ -165,6 +165,10 @@ def DataManager(datatypes=None, phil=None, custom_options=None,
     importlib.import_module('.common', package='iotbx.data_manager')
     mixin_classes.append(
       getattr(sys.modules['iotbx.data_manager.common'], 'map_mixins'))
+  if 'real_map' in datatypes:
+    importlib.import_module('.common', package='iotbx.data_manager')
+    mixin_classes.append(
+      getattr(sys.modules['iotbx.data_manager.common'], 'real_map_mixins'))
   if 'model' in datatypes and 'real_map' in datatypes:
     importlib.import_module('.common', package='iotbx.data_manager')
     mixin_classes.append(

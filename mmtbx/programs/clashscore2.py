@@ -120,7 +120,7 @@ Example:
       b_factor_cutoff=self.params.b_factor_cutoff,
       do_flips=self.params.do_flips)
     if self.params.json:
-      print(self.results.as_JSON())
+      print(self.results.as_JSON(self.info_json))
     elif self.params.verbose:
       self.results.show_old_output(out=self.logger)
     else:

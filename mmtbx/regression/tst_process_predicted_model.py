@@ -19,7 +19,9 @@ from iotbx.data_manager import DataManager
 from mmtbx.process_predicted_model import split_model_into_compact_units, \
    get_cutoff_b_value, \
    get_b_values_from_plddt, get_rmsd_from_plddt, \
-   process_predicted_model, master_phil_str, get_plddt_from_b
+   process_predicted_model, master_phil_str, get_plddt_from_b, \
+   convert_model_from_plddt_to_b, \
+   convert_model_from_b_to_plddt
 
 from mmtbx.domains_from_pae import parse_pae_file
 master_phil = iotbx.phil.parse(master_phil_str)
@@ -127,6 +129,31 @@ def tst_01(log = sys.stdout):
   model = model_info.model
   model_b_values = model.get_hierarchy().atoms().extract_b()
   assert approx_equal(b_values, model_b_values, eps = 0.02) # come back rounded
+
+  print("\nConverting plddt to B in model in place", file = log)
+  m = model.deep_copy()
+  m.set_b_iso(plddt_values)
+  convert_model_from_plddt_to_b(m)
+  b = m.get_b_iso()
+  assert approx_equal(b, b_values)
+
+  print("\nConverting B to pLDDT in model in place, fractional=False ",
+      file = log)
+  m = model.deep_copy()
+  m.set_b_iso(b_values)
+  convert_model_from_b_to_plddt(m, input_plddt_is_fractional = False)
+  plddt  = m.get_b_iso()
+  assert approx_equal(plddt, plddt_values)
+
+  print("\nConverting B to pLDDT in model in place, fractional=True ",
+      file = log)
+  m = model.deep_copy()
+  m.set_b_iso(b_values)
+  convert_model_from_b_to_plddt(m, input_plddt_is_fractional = True)
+  plddt  = m.get_b_iso()
+  assert approx_equal(plddt, 0.01*plddt_values)
+
+
 
 
   print("\nConverting fractional plddt to B values", file = log)

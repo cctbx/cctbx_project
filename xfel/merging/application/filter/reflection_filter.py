@@ -52,13 +52,11 @@ class reflection_filter(worker):
     else:
       q2_rank = np.zeros(0)
       intensity_rank = np.zeros(0)
-    q2 = self.mpi_helper.comm.gather(q2_rank, root=0)
-    intensity = self.mpi_helper.comm.gather(intensity_rank, root=0)
+    q2 = self.mpi_helper.gather_variable_length_numpy_arrays(q2_rank, root=0)
+    intensity = self.mpi_helper.gather_variable_length_numpy_arrays(intensity_rank, root=0)
     if self.mpi_helper.rank == 0:
       import matplotlib.pyplot as plt
       import os
-      q2 = np.concatenate(q2)
-      intensity = np.concatenate(intensity)
       fig, axes = plt.subplots(1, 1, figsize=(8, 3))
       axes.scatter(q2, intensity, s=1, color=[0, 0, 0], marker='.')
       axes.set_ylabel('Intensity')

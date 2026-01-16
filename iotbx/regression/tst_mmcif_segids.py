@@ -74,7 +74,7 @@ def exercise(prefix="iotbx_tst_mmcif_segids"):
   cif.show(out=out, align_columns=True)
   lines = out.getvalue()
   # print(lines)
-  assert "  ATOM  20  OP2  .  C    B23S  172  ?  77.56000   39.38700  -72.10600  1.000  132.48000  O  1-  B  ?  .  OP2  1" in lines
+  assert "  ATOM  20  OP2  .  C    B23S  172  ?  77.56000   39.38700  -72.10600  1.000  132.48000  O  -1  B  ?  .  OP2  1" in lines
 
 if __name__ == "__main__":
   exercise()

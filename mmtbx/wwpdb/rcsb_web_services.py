@@ -197,7 +197,8 @@ def sequence_search(
         "sort_by": "score",
         "direction": "desc"
       }
-    ]
+    ],
+    "results_verbosity":"minimal"
   }
 }"""
   assert target in ["pdb_protein_sequence", "pdb_dna_sequence", "pdb_rna_sequence"]
@@ -482,3 +483,43 @@ query
   if len(emdb_ids)==0:
     return None
   return emdb_ids
+
+def get_similar_ligands_via_smiles(smiles, match_type='sub-struct-graph-relaxed-stereo', **kwds):
+  # graph-relaxed-stereo
+  # graph-relaxed
+  # fingerprint-similarity
+  # sub-struct-graph-relaxed-stereo
+  # sub-struct-graph-relaxed
+  similar_ligand_query = '''
+{
+  "query": {
+    "type": "terminal",
+    "service": "chemical",
+    "parameters": {
+      "type": "descriptor",
+      "value": "%s",
+      "descriptor_type": "SMILES",
+      "match_type": "%s"
+    }
+  },
+  "return_type": "mol_definition",
+  "request_options": {
+    "results_verbosity":"minimal",
+    "paginate": {
+      "start": 0,
+      "rows": 100
+    },
+    "sort": [
+      {
+        "sort_by": "score",
+        "direction": "desc"
+      }
+    ],
+    "scoring_strategy": "combined"
+  }
+}
+'''
+  assert (3 <= len(smiles)), 'short SMILES "%s" return too many results' % smiles
+  sqr = similar_ligand_query % (smiles, match_type)
+  jsq = json.loads(sqr)
+  return post_query(query_json=jsq, xray_only=False, **kwds)

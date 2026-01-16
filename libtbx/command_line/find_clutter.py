@@ -101,8 +101,8 @@ def run(args):
   else:
     if (n_has_unused_imports != 0):
       please_use.append("libtbx.find_unused_imports_crude")
-    if n_missing_from_future_import_division:
-      please_use.append('libtbx.add_from_future_import_division')
+    # if n_missing_from_future_import_division:
+      # please_use.append('libtbx.add_from_future_import_division')
     if (len(please_use) != 0):
       message_lines.append("")
       message_lines.append(

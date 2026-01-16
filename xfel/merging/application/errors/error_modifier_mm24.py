@@ -649,22 +649,28 @@ class error_modifier_mm24(worker):
     MPI = self.mpi_helper.MPI
     L_bin_rank = flex.double(self.number_of_intensity_bins, 0)
     dL_dsfac_bin_rank = flex.double(self.number_of_intensity_bins, 0)
-    dL_dsadd_bin_rank = [flex.double(self.number_of_intensity_bins, 0) for i in range(3)]
+    dL_dsadd_bin_rank = [flex.double(self.number_of_intensity_bins, 0) for i in range(len(self.sadd))]
     if self.params.merging.error.mm24.tuning_param_opt:
       dL_dnu_bin_rank = flex.double(self.number_of_intensity_bins, 0)
 
     for bin_index, differences in enumerate(self.intensity_bins):
       if len(differences) > 0:
+        if self.cc_key:
+          correlation_i = differences['correlation_i']
+          correlation_j = differences['correlation_j']
+        else:
+          correlation_i = None
+          correlation_j = None
         var_i, dvar_i_dsfac, dvar_i_dsadd2, dsadd2_i_dsaddi = self._get_var_mm24(
           differences['counting_stats_var_i'],
           differences['biased_mean'],
-          differences['correlation_i'],
+          correlation_i,
           return_der=True
           )
         var_j, dvar_j_dsfac, dvar_j_dsadd2, dsadd2_j_dsaddi = self._get_var_mm24(
           differences['counting_stats_var_j'],
           differences['biased_mean'],
-          differences['correlation_j'],
+          correlation_j,
           return_der=True
           )
 
@@ -685,15 +691,15 @@ class error_modifier_mm24(worker):
 
         L_bin_rank[bin_index] = flex.sum(L_in_bin)
         dL_dsfac_bin_rank[bin_index] = flex.sum(dL_dvar_x * (dvar_i_dsfac + dvar_j_dsfac))
-        for degree_index in range(3):
+        for degree_index in range(len(self.sadd)):
           dL_dsadd_bin_rank[degree_index][bin_index] = flex.sum(dL_dvar_x * (
             dvar_i_dsadd2 * dsadd2_i_dsaddi[degree_index] + dvar_j_dsadd2 * dsadd2_j_dsaddi[degree_index]
             ))
 
     L_bin = comm.reduce(L_bin_rank, MPI.SUM, root=0)
     dL_dsfac_bin = comm.reduce(dL_dsfac_bin_rank, MPI.SUM, root=0)
-    dL_dsadd_bin = [None for i in range(3)]
-    for degree_index in range(3):
+    dL_dsadd_bin = [None for i in range(len(self.sadd))]
+    for degree_index in range(len(self.sadd)):
       dL_dsadd_bin[degree_index] = comm.reduce(dL_dsadd_bin_rank[degree_index], MPI.SUM, root=0)
     if self.params.merging.error.mm24.tuning_param_opt:
       dL_dnu_bin = comm.reduce(dL_dnu_bin_rank, MPI.SUM, root=0)
@@ -701,8 +707,8 @@ class error_modifier_mm24(worker):
     if self.mpi_helper.rank == 0:
       self.L = flex.sum(self.bin_weighting * L_bin)
       self.dL_dsfac = flex.sum(self.bin_weighting * dL_dsfac_bin)
-      self.dL_dsadd = [0 for i in range(3)]
-      for degree_index in range(3):
+      self.dL_dsadd = [0 for i in range(len(self.sadd))]
+      for degree_index in range(len(self.sadd)):
         self.dL_dsadd[degree_index] = flex.sum(self.bin_weighting * dL_dsadd_bin[degree_index])
       if self.params.merging.error.mm24.tuning_param_opt:
         self.dL_dnu = flex.sum(self.bin_weighting * dL_dnu_bin)

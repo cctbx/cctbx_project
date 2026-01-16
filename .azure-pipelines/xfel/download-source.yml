@@ -9,6 +9,27 @@ jobs:
 
   steps:
 
+  # free up more disk space
+  - script: |
+      sudo apt update
+      sudo apt install rsync
+      sudo mkdir -p /tmp/empty_dir
+      sudo rsync --stats -a --delete /tmp/empty_dir/ /tmp/host_opt/hostedtoolcache
+      for d in \
+          lib/jvm \
+          local/.ghcup \
+          local/lib/android \
+          local/share/powershell \
+          share/dotnet \
+          share/swift \
+        ; do
+        echo Deleting $d
+        sudo rsync --stats -a --delete /tmp/empty_dir/ /usr/$d
+      done
+      df -h
+    displayName: Clean up host image
+    continueOnError: true
+
   # download sources
   - checkout: self
     path: ./modules/cctbx_project
@@ -17,6 +38,10 @@ jobs:
   # https://docs.microsoft.com/en-us/azure/devops/pipelines/ecosystems/anaconda?view=azure-devops&tabs=ubuntu-16-04#add-conda-to-your-system-path
   - bash: echo "##vso[task.prependpath]$CONDA/bin"
     displayName: Add conda to PATH
+
+  # accept conda tos
+  - script: conda config --set plugins.auto_accept_tos yes
+    displayName: Accept conda TOS
 
   # create environment with earlier version of git
   # https://github.com/git-lfs/git-lfs/issues/5749

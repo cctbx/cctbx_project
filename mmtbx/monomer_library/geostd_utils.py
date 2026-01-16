@@ -1,7 +1,16 @@
 from __future__ import division
 
+import os
+import libtbx.load_env
+
 import iotbx
 from mmtbx.ligands.hierarchy_utils import _new_atom
+
+phenix_repository_dir = os.path.dirname(libtbx.env.dist_path("phenix"))
+geostd_directory = os.path.join(phenix_repository_dir,
+                                "chem_data",
+                                "geostd",
+                                )
 
 def get_as_hierarchy(filename):
   model = iotbx.cif.reader(filename).model()
@@ -71,3 +80,31 @@ def remove_atoms_for_reduce(cif_object):
           return True
     assert 0
 
+def get_geostd_file(code, pH=None, file_format='cif'):
+  assert code
+  if pH: assert file_format=='cif', 'pH=%s only for cif' % pH
+  basename = "%s.%s" % (code.upper(), file_format)
+  if file_format=='cif':
+    basename='data_%s' % basename
+  if pH:
+    basename = basename.replace('.cif', '_pH_%s.cif' % pH)
+  filename = os.path.join(geostd_directory,
+                          code[0].lower(),
+                          basename,
+                          )
+  if os.path.exists(filename):
+    return filename
+  return None
+
+def get_geostd_cif_file(code, pH=None):
+  return get_geostd_file(code, pH=pH, file_format='cif')
+
+def get_cif_list(filename, verbose=False):
+  import iotbx.cif
+  list_cif = os.path.join(geostd_directory,
+                          "list",
+                          filename,
+                          )
+  cif = iotbx.cif.reader(list_cif, strict=False).model()
+  if verbose: print(cif.keys())
+  return cif

@@ -169,7 +169,7 @@ master_phil_str = """
           Default is 0.5 alt_pae_params=False and 4 for alt_pae_params=True
        .short_caption = PAE graph resolution (if PAE matrix supplied)
 
-     alt_pae_params = True
+     alt_pae_params = False
        .type = bool
        .help = If PAE matrix is supplied, use alternative set of defaults \
            (minimum_domain_length=20 minimum_sequential_residues=10 \
@@ -585,7 +585,7 @@ def process_predicted_model(
     chainid_list = []
 
   # Estimate vrms (model error) for each domain
-  vrms_list = get_vrms_list(p, model_list)
+  vrms_list = get_vrms_list(p, model_list, log = log)
   return group_args(
     group_args_type = 'processed predicted model',
     model = new_model,
@@ -630,7 +630,22 @@ def set_defaults(p, pae_matrix = None, log = sys.stdout):
       p.pae_graph_resolution = 0.5
     print("pae_graph_resolution=%s" %(p.pae_graph_resolution), file = log)
 
+def convert_model_from_plddt_to_b(m, input_plddt_is_fractional = None):
+  '''Convert values in B-value field from pLDDT to B values'''
+  plddt_values = m.get_b_iso()
+  b_values = get_b_values_from_plddt(plddt_values)
+  m.set_b_iso(b_values)
+  m.reset_after_changing_hierarchy()
 
+def convert_model_from_b_to_plddt(m, input_plddt_is_fractional = True):
+  ''' Convert values in B-value field from  B values to pLDDT values.
+   If input_plddt_is_fractional is False, multiply by 100 at end'''
+  b_values = m.get_b_iso()
+  plddt_values = get_plddt_from_b(b_values)
+  if (not input_plddt_is_fractional):
+     plddt_values = plddt_values * 100
+  m.set_b_iso(plddt_values)
+  m.reset_after_changing_hierarchy()
 
 def restore_true_except_at_ends(sel1):
   ''' Set all values that are not at ends of sel1 to False (any number
@@ -646,14 +661,27 @@ def restore_true_except_at_ends(sel1):
   for i in range(first_true,last_true):
     sel1[i] = True
 
-def get_vrms_list(p, model_list):
+def get_vrms_list(p, model_list, log = sys.stdout):
   vrms_list = []
   for m in model_list:
     s = m.as_sequence(as_string = True)
     b_values = m.apply_selection_string(
        '(name ca or name P) and not element ca').get_b_iso()
-    rmsd = get_rmsd_from_plddt(get_plddt_from_b(b_values)).min_max_mean().mean
+
+    plddt_values = get_plddt_from_b(b_values)
+    rmsd = get_rmsd_from_plddt(plddt_values).min_max_mean().mean
+    rmsd2 = get_rmsd_from_plddt(get_plddt_from_b(b_values)).min_max_mean().mean
+    assert rmsd == rmsd2
+
+    mean_b = b_values.min_max_mean().mean
+    mean_plddt = plddt_values.min_max_mean().mean
+
+
+
     vrms = rmsd * p.vrms_from_rmsd_slope + p.vrms_from_rmsd_intercept
+    print("VRMS calculation for '%s':" %(m.info().file_name) +
+      "\nMean B: %.1f  pLDDT (0-100) : %.2f RMSD: %.1f A  VRMS: %.1f A" %(
+      mean_b, 100*mean_plddt, rmsd, vrms), file = log)
     vrms_list.append(vrms)
   return vrms_list
 
@@ -1010,8 +1038,9 @@ def split_model_with_pae(
       good_selections.append(selection_string)
     else:
       keep_list.append(False)
-      print("Skipping region with selection '%s' that contains %s residues" %(
-         selection_string,sel.count(True)),
+  if keep_list.count(False) > 0:
+    print("Skipping %s regions that contain fewer than %s residues" %(
+         keep_list.count(False), minimum_domain_length),
         file = log)
 
   region_name_dict, chainid_list = get_region_name_dict(m, unique_regions,

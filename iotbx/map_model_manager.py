@@ -23,25 +23,32 @@ from cctbx import adptbx
 from mmtbx_tls_ext import tlso, uaniso_from_tls_one_group
 
 # Reserved phil scope for MapModelManager
+map_phil_str = '''
+full_map = None
+  .type = path
+  .help = Input full map file
+  .short_caption = Map
+  .style = file_type:ccp4_map input_file
+half_map = None
+  .type = path
+  .multiple = True
+  .help = Input half map files
+  .short_caption = Half map
+  .style = file_type:ccp4_map input_file
+'''
+
+model_phil_str = '''
+model = None
+  .type = path
+  .help = Input model file
+  .style = file_type:pdb input_file
+  .short_caption = Model
+'''
+
 map_model_phil_str = '''
 map_model {
-  full_map = None
-    .type = path
-    .help = Input full map file
-    .short_caption = Map
-    .style = file_type:ccp4_map input_file
-
-  half_map = None
-    .type = path
-    .multiple = True
-    .help = Input half map files
-    .short_caption = Half map
-    .style = file_type:ccp4_map input_file
-  model = None
-    .type = path
-    .help = Input model file
-    .style = file_type:pdb input_file
-    .short_caption = Model
+  include scope iotbx.map_model_manager.map_phil_str
+  include scope iotbx.map_model_manager.model_phil_str
 }
 '''
 
@@ -5704,8 +5711,11 @@ class map_model_manager(object):
     if not os.path.isdir(temp_dir):
       return  # nothing to do
     else:  # remove it
-     from shutil import rmtree
-     rmtree(temp_dir)
+     try:
+       from shutil import rmtree
+       rmtree(temp_dir)
+     except Exception as e:
+       pass # must have been removed another way
 
   def _create_temp_dir(self, temp_dir):
     """Create temporary directory"""
@@ -7707,12 +7717,17 @@ class map_model_manager(object):
   def local_resolution_map(self,
       map_id_1 = 'map_manager_1',
       map_id_2 = 'map_manager_2',
+      map_id = 'map_manager',
+      model_id = 'model',
+      map_id_model_map = 'model_map',
       d_min = None,
       n_bins = 20,
       fsc_cutoff = 0.143,
       smoothing_radius = None,
       smoothing_radius_ratio = 1,
-      smooth_at_end = True):
+      smooth_at_end = True,
+      k_sol = None,
+      b_sol = None,):
 
     """
      Calculate local resolution map by finding resolution where local
@@ -7723,6 +7738,9 @@ class map_model_manager(object):
 
      parameter: map_id_1:  ID of one half-map
      parameter: map_id_2:  ID of other half-map
+     parameter: map_id :  ID of full map , if only one map supplied
+     parameter: model_id :  ID of model, if only one map supplied
+     parameter: map_id_model_map:  ID of model-map, if only one map supplied
      parameter: d_min: Finest resolution at which to calculate correlations
      parameter: n_bins: Number of resolution bins
      parameter: fsc_cutoff : value of correlation corresponding to
@@ -7735,6 +7753,8 @@ class map_model_manager(object):
                                          self.resolution, not to d_min).
                                          Used if smoothing_radius is None.
      parameter: smooth_at_end: smooth final local resolution map
+     parameter: k_sol : k_sol for model map (if model is used)
+     parameter: b_sol : b_sol for model map (if model is used)
     """
 
     from cctbx.maptbx.segment_and_split_map import get_smoothed_cc_map
@@ -7742,7 +7762,24 @@ class map_model_manager(object):
 
     hm1 = self.get_map_manager_by_id(map_id_1)
     hm2 = self.get_map_manager_by_id(map_id_2)
-    assert hm1 and hm2
+    full_map = self.get_map_manager_by_id(map_id)
+    model = self.get_model_by_id(model_id)
+
+    if (hm1 and hm2): # use 2 half maps as is
+      pass
+    elif (full_map and model):  # use full map and map from model
+      hm1 = full_map
+      self.generate_map(model=model,
+       gridding=self.get_any_map_manager().map_data().all(),
+       d_min=d_min,
+       map_id = map_id_model_map,
+       k_sol = k_sol,
+       b_sol = b_sol)
+      hm2 = self.get_map_manager_by_id(map_id_model_map)
+    else:
+      assert (hm1 and hm2) or (full_map and model)
+
+    assert (hm1 and hm2)
     resolution = self.resolution()
     if d_min is None:
       d_min = self._get_d_min_from_resolution(resolution)

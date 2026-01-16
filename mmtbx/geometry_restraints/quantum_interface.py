@@ -18,8 +18,8 @@ def env_exists_exists(env, var, check=True):
 def is_orca_installed(env, var):
   return env_exists_exists(env, var)
 
-def is_mopac_installed(env, var):
-  if mopac_manager.get_exe():
+def is_mopac_installed(env, var, verbose=False):
+  if mopac_manager.get_exe(verbose=verbose):
     return True
   else:
     return env_exists_exists(env, var)
@@ -33,8 +33,7 @@ program_options = {
   'test' : (is_qm_test_installed, 'PHENIX_QM_TEST'),
   }
 
-def get_qm_restraints_scope(validate=True, verbose=False):
-  qm_package_scope = '''
+qm_package_scope = '''
   package
   {
     program = %s
@@ -60,15 +59,12 @@ def get_qm_restraints_scope(validate=True, verbose=False):
   }
 '''
 
-  qm_restraints_scope = '''
-qm_restraints
-  .multiple = True
-{
+qm_selection_specs = '''
   selection = None
     .type = atom_selection
     .help = selection for core of atoms to calculate new restraints via a QM \
             geometry minimisation
-  run_in_macro_cycles = *first_only first_and_last all last_only test
+  run_in_macro_cycles = %sfirst_only first_and_last %sall last_only test
     .type = choice
     .help = the steps of the refinement that the restraints generation is run
   buffer = 3.5
@@ -99,11 +95,38 @@ qm_restraints
     multiplicity = None
       .type = int
   }
+  ignore_lack_of_h_on_ligand = False
+    .type = bool
+    .help = skip check on protonation of ligand for entities such as MgF3
+  capping_groups = True
+    .type = bool
+  cleanup = all *most None
+    .type = choice
+'''
 
+def get_qm_package_scope(validate=True, verbose=False):
+  programs = ''
+  for package, (func, var) in program_options.items():
+    if func(os.environ, var):
+      if package=='mopac':
+        programs += ' *%s' % package
+      else:
+        programs += ' %s' % package
+  if verbose: print(programs)
+  if validate:
+    assert programs, 'Need to set some parameters for QM programs %s' % program_options
+  return qm_package_scope % programs
+
+def get_qm_restraints_scope(validate=True, verbose=False):
+  qm_restraints_scope = '''
+qm_restraints
+  .multiple = True
+{
+  %s
   calculate = *in_situ_opt starting_energy final_energy \
 starting_strain final_strain starting_bound final_bound \
 starting_binding final_binding \
-starting_higher_single_point final_higher_single_point
+gradients
     .type = choice(multi=True)
     .help = Choose QM calculations to run
     .caption = in_situ_optimisation_of_selection \
@@ -112,7 +135,7 @@ starting_higher_single_point final_higher_single_point
       strain_energy_of_final_ligand_geometry \
       starting_energy_of_bound_ligand_cluster \
       starting_binding_energy_of)ligand final_binding_energy_of_ligand \
-      final_energy_of_bound_ligand_cluster not_implemented not_implemented
+      final_energy_of_bound_ligand_cluster gradients
 
   write_files = *restraints pdb_core pdb_buffer pdb_final_core pdb_final_buffer
     .type = choice(multi=True)
@@ -135,16 +158,9 @@ starting_higher_single_point final_higher_single_point
     .type = path
     .style = new_file
     .help = restraints filename is based on model name if not specified
-  cleanup = all *most None
-    .type = choice
   ignore_x_h_distance_protein = False
     .type = bool
     .help = skip check on transfer of proton during QM optimisation
-  ignore_lack_of_h_on_ligand = False
-    .type = bool
-    .help = skip check on protonation of ligand for entities such as MgF3
-  capping_groups = True
-    .type = bool
 
   freeze_specific_atoms
     .optional = True
@@ -180,25 +196,32 @@ starting_higher_single_point final_higher_single_point
   %s
 }
 '''
-  programs = ''
-  for package, (func, var) in program_options.items():
-    if func(os.environ, var):
-      if package=='mopac':
-        programs += ' *%s' % package
-      else:
-        programs += ' %s' % package
-  if verbose: print(programs)
-  if validate:
-    assert programs, 'Need to set some parameters for QM programs %s' % program_options
-  qm_package_scope = qm_package_scope % programs
-  qm_restraints_scope = qm_restraints_scope % qm_package_scope
+  qm_package_scope_filled = get_qm_package_scope(validate=validate ,verbose=verbose)
+  qm_restraints_scope = qm_restraints_scope % (qm_selection_specs % ('*',''),
+                                               qm_package_scope_filled)
   return qm_restraints_scope
 
+def get_qm_gradients_scope(validate=True, verbose=False):
+  qm_gradients_scope = '''
+qm_gradients
+  .multiple = True
+{
+  %s
+  %s
+}
+'''
+  qm_package_scope_filled = get_qm_package_scope(validate=validate, verbose=verbose)
+  qm_gradients_scope = qm_gradients_scope % (qm_selection_specs % ('','*'),
+                                               qm_package_scope_filled)
+  return qm_gradients_scope
+
 master_phil_str = get_qm_restraints_scope()
+# master_phil_str = get_qm_gradients_scope()
 
 def electrons(model,
               specific_atom_charges=None,
               specific_atom_multiplicities=None,
+              return_atom_valences=False,
               log=None):
   from libtbx.utils import Sorry
   from mmtbx.ligands import electrons
@@ -210,6 +233,7 @@ def electrons(model,
     log=log,
     verbose=False,
   )
+  if return_atom_valences: return atom_valences
   rc = atom_valences.validate(ignore_water=True,
                               raise_if_error=False)
   # rc = atom_valences.report(ignore_water)
@@ -358,8 +382,9 @@ def is_any_quantum_package_installed(env):
       .style = hidden
       .caption = not implemented
     %s
+    %s
   }
-''' % get_qm_restraints_scope()
+''' % (get_qm_restraints_scope(), get_qm_gradients_scope())
   return outl
 
 def validate_qm_restraints(qm_restraints, verbose=False):
@@ -394,18 +419,24 @@ def is_quantum_interface_active(params, verbose=False):
   if len(params.qi.qm_restraints):
     if validate_qm_restraints(params.qi.qm_restraints, verbose=verbose):
       return True, 'qm_restraints' # includes restraints and energy
+  elif len(params.qi.qm_gradients):
+    if validate_qm_restraints(params.qi.qm_gradients, verbose=verbose):
+      return True, 'qm_gradients'
   return False
 
 def is_quantum_interface_active_this_macro_cycle(params,
                                                  macro_cycle,
                                                  energy_only=False,
+                                                 gradients_only=False,
                                                  verbose=False):
   from mmtbx.geometry_restraints.quantum_restraints_manager import running_this_macro_cycle
   qi = is_quantum_interface_active(params)
-  if verbose: print('qi',qi,'energy_only',energy_only,'macro_cycle',macro_cycle)
+  if verbose: print('qi',qi,'energy_only',energy_only,'gradients_only',gradients_only,'macro_cycle',macro_cycle)
   if qi:
     rc = []
-    if qi[1]=='qm_restraints':
+    if gradients_only:
+      rc.append(True)
+    elif qi[1]=='qm_restraints':
       number_of_macro_cycles = 1
       if hasattr(params, 'main'):
         number_of_macro_cycles = params.main.number_of_macro_cycles

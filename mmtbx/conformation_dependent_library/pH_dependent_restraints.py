@@ -8,10 +8,12 @@ import time
 from mmtbx.monomer_library import server
 from cctbx import geometry_restraints
 
-def process_bonds(gpr, bond, atom_dict, atom1, atom2, name1, name2, neutron1, neutron2, atoms=None):
+def process_bonds(gpr, bond, atom_dict, atom1, atom2, name1, name2, neutron1, neutron2, atoms=None, verbose=False):
   atoms_added = {}
+  atoms_added_energy = {}
   bond_counters = [0,0]
   i_seqs = [atom1.i_seq, atom2.i_seq]
+  i_seqs.sort()
   k=0
   l=1
   bond_table_entry = gpr.bond_simple.table[i_seqs[k]]
@@ -20,27 +22,19 @@ def process_bonds(gpr, bond, atom_dict, atom1, atom2, name1, name2, neutron1, ne
     k=1
     l=0
     bond_table_entry = gpr.bond_simple.table[i_seqs[k]]
-  print(atom1.quote(), atom2.quote())
-  print(bond_table_entry)
-  # print(atom_dict)
-  # for atom, item in atom_dict.items():
-  #   print('-'*80)
-  #   print(atom, item.show())
-  print('='*80)
-  print(gpr.bond_simple.proxies)
-  # print(dir(gpr.bond_simple.proxies))
-  for i, proxy in enumerate(gpr.bond_simple.proxies):
-    # print(dir(proxy))
-    print(i, proxy.i_seqs)
-  if i_seqs[l] in bond_table_entry:
-    print(i_seqs[l], i_seqs[k])
-    print(atoms[i_seqs[l]].quote())
-    print(atoms[i_seqs[k]].quote())
-    bond_simple = gpr.bond_simple.proxies[i_seqs[k]]
-    bond_simple.distance_ideal = bond.value_dist
-    bond_simple.weight=1/bond.value_dist_esd**2
-    bond_counters[0]+=1 # changed
+  found_proxy=False
+  for i, simple_proxy in enumerate(gpr.bond_simple.proxies):
+    if simple_proxy.i_seqs==tuple(i_seqs):
+      found_proxy=simple_proxy
+      break
+  if found_proxy:
+    diff=abs(simple_proxy.distance_ideal-bond.value_dist)
+    # if verbose: print('DIFF',simple_proxy.distance_ideal,bond.value_dist,diff)
+    simple_proxy.distance_ideal = bond.value_dist
+    simple_proxy.weight=1/bond.value_dist_esd**2
+    if diff>bond.value_dist_esd: bond_counters[0]+=1 # changed
   else:
+    if verbose: print('Adding bond for %s = %s' % (atom1.quote(), atom2.quote()))
     if neutron1 or neutron2:
       proxy = geometry_restraints.bond_simple_proxy(
         i_seqs=i_seqs,
@@ -54,10 +48,11 @@ def process_bonds(gpr, bond, atom_dict, atom1, atom2, name1, name2, neutron1, ne
         weight=1/(bond.value_dist_esd**2),
       )
     gpr.bond_simple.proxies.append(proxy)
-    atoms_added[atom1.i_seq] = atom_dict.get(name1.strip(), None)
-    atoms_added[atom2.i_seq] = atom_dict.get(name2.strip(), None)
+    atoms_added_energy[atom1.i_seq] = atom_dict.get(name1.strip(), None)
+    atoms_added_energy[atom2.i_seq] = atom_dict.get(name2.strip(), None)
+    atoms_added[(atom1.i_seq, atom2.i_seq)] = (atom1, atom2)
     bond_counters[1]+=1
-  return bond_counters, atoms_added
+  return bond_counters, atoms_added_energy, atoms_added
 
 def _get_atom_neutron(ag, name, bondlength=None):
   atom = ag.get_atom(name)
@@ -106,9 +101,37 @@ def _generate_angle_atoms(rg, lookup_name1, lookup_name2, lookup_name3, verbose=
 
       yield atom1, atom2, atom3, name1, name2, name3, neutron1, neutron2, neutron3
 
+def _generate_dihedral_atoms(rg, lookup_name1, lookup_name2, lookup_name3, lookup_name4, verbose=False):
+  for i, ag1 in enumerate(rg.atom_groups()):
+    for j, ag2 in enumerate(rg.atom_groups()):
+      # if j>i: break
+      atom1, name1, neutron1 = _get_atom_neutron(ag1,
+                                                 lookup_name1,
+                                                 bondlength=.5)
+      if atom1 is None: continue
+      if verbose: print('1',atom1.quote(), name1, neutron1)
+      atom4, name4, neutron4 = _get_atom_neutron(ag2,
+                                                 lookup_name4,
+                                                 bondlength=.5)
+      if atom4 is None: continue
+      if verbose: print('4',atom4.quote(), name4, neutron4)
+      for ag in [ag1, ag2]:
+        atom2, name2, neutron2 = _get_atom_neutron(ag,
+                                                   lookup_name2)
+        if atom2: break
+      if atom2 is None: continue
+      if verbose: print('2',atom2.quote(), name2, neutron2)
+
+      for ag in [ag1, ag2]:
+        atom3, name3, neutron3 = _get_atom_neutron(ag,
+                                                   lookup_name3)
+        if atom3: break
+      if atom3 is None: continue
+      if verbose: print('3',atom3.quote(), name3, neutron3)
+
+      yield atom1, atom2, atom3, atom4, name1, name2, name3, name4, neutron1, neutron2, neutron3, neutron4
+
 def adjust_geometry_proxies_registeries(hierarchy,
-                                        #bond_params_table,
-                                        #bond_asu_table,
                                         gpr,
                                         error_i_seqs,
                                         log=None,
@@ -122,6 +145,7 @@ def adjust_geometry_proxies_registeries(hierarchy,
   angle_counters = [0,0]
   checked=[]
   atoms_added={}
+  atoms_added_energy={}
   for i_seq in error_i_seqs:
     atom = pdb_atoms[i_seq]
     ag = atom.parent()
@@ -151,7 +175,7 @@ def adjust_geometry_proxies_registeries(hierarchy,
                                      bondlength=bond.value_dist,
                                      verbose=verbose):
         atom1, atom2, name1, name2, neutron1, neutron2 = rc
-        bc, ad = process_bonds(gpr,
+        bc, ade, ad = process_bonds(gpr,
                                bond,
                                atom_dict,
                                atom1,
@@ -161,9 +185,12 @@ def adjust_geometry_proxies_registeries(hierarchy,
                                neutron1,
                                neutron2,
                                atoms=pdb_atoms,
+                               verbose=verbose,
                                )
         for i in range(2):
           bond_counters[i]+=bc[i]
+        if ade:
+          atoms_added_energy.update(ade)
         if ad:
           atoms_added.update(ad)
     lookup={}
@@ -182,9 +209,11 @@ def adjust_geometry_proxies_registeries(hierarchy,
       if angle_proxy.i_seqs in lookup:
         i_seqs = angle_proxy.i_seqs
         angle = lookup[i_seqs]
+        diff=abs(angle.value_angle-angle_proxy.angle_ideal)
+        if verbose: print('ANG',diff,angle_proxy.angle_ideal, angle.value_angle,angle.value_angle_esd)
         angle_proxy.angle_ideal = angle.value_angle
         angle_proxy.weight = 1/angle.value_angle_esd**2
-        angle_counters[0]+=1
+        if diff>angle.value_angle_esd: angle_counters[0]+=1
         del lookup[i_seqs]
         i_seqs = list(i_seqs)
         i_seqs.reverse()
@@ -212,17 +241,19 @@ def adjust_geometry_proxies_registeries(hierarchy,
     print("    Residues changed", file=log)
     for resname in resnames:
       print("      %s" % resname, file=log)
-    print("    Changed %d bond restraint(s),  added %d bond restraint(s)" % (
+    print("    Changed (significantly) %d bond restraint(s),  added %d bond restraint(s)" % (
       bond_counters[0],
       bond_counters[1],
       ), file=log)
-    print("    Changed %d angle restraint(s), added %d angle restraint(s)\n" % (
+    for i_seqs, atoms in atoms_added.items():
+      print('      New atom/bond %s\n%s%s' % (atoms[0].quote(),' '*20, atoms[1].quote()), file=log)
+    print("    Changed (significantly) %d angle restraint(s), added %d angle restraint(s)\n" % (
       angle_counters[0],
       angle_counters[1],
       ), file=log)
   #else:
   #  print >> log, "  Time to perform restraint checks: %0.1f" % (time.time()-t0)
-  return atoms_added
+  return atoms_added_energy
 
 def adjust_geometry_restraints_manager(hierarchy,
                                        grm,

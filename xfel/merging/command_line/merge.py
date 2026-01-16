@@ -47,7 +47,11 @@ class Script(object):
     self.mpi_logger = mpi_logger()
 
   def __del__(self):
-    self.mpi_helper.finalize()
+    if hasattr(self, 'params'):
+      mpi_finalize = not self.params.mp.psana2_mode
+    else:
+      mpi_finalize = True
+    self.mpi_helper.finalize(mpi_finalize = mpi_finalize)
 
   def parse_input(self, args=None):
     '''Parse input at rank 0 and broadcast the input parameters and options to all ranks'''

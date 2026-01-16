@@ -40,6 +40,7 @@ def run(args):
   ratio_cutoff = 1
 
   app = xfel_db_application(params)
+  jobs = app.get_all_jobs(active=True)
 
   if params.run is None or len(params.run) == 0:
     trial = app.get_trial(trial_number=params.trial)
@@ -86,10 +87,23 @@ def run(args):
     drop_hits = drop_ratios >= ratio_cutoff
     n_drop_hits = drop_hits.count(True)
 
+    for job in jobs:
+      found_it = False
+      if job.run and job.run.run == run_no and job.rungroup and job.rungroup.id == rungroup_id and job.trial.trial == params.trial:
+        found_it = True
+        status = job.status
+        break
+    if not found_it:
+      status = "Not found"
+
+    if status != "DONE":
+      print("% 20s      %s"%(run_no, status))
+      continue
+
     try:
-      print("% 20s      % 7d % 5.1f  % 7d % 5.1f   % 7d % 5.1f    % 7d     % 7d % 5.1f % 5.1f    % 7d " % (run_no, n_drop_hits, 100*n_drop_hits/n_total, n_hit, 100*n_hit/n_total, n_indexed, 100*n_indexed/n_total, n_lattices, n_high_quality, 100*n_high_quality/n_total, 100*n_high_quality/n_indexed, n_total))
+      print("% 20s      % 7d % 5.1f  % 7d % 5.1f   % 7d % 5.1f    % 7d     % 7d % 5.1f % 5.1f    % 7d %s" % (run_no, n_drop_hits, 100*n_drop_hits/n_total, n_hit, 100*n_hit/n_total, n_indexed, 100*n_indexed/n_total, n_lattices, n_high_quality, 100*n_high_quality/n_total, 100*n_high_quality/n_indexed, n_total, status))
     except ZeroDivisionError:
-      print("% 20s      % 7d % 5.1f  % 7d % 5.1f   % 7d % 5.1f    % 7d     % 7d % 5.1f % 5.1f    % 7d " % (run_no, n_drop_hits, 0, n_hit, 0, n_indexed, 0, n_lattices, n_high_quality, 0, 0, n_total))
+      print("% 20s      % 7d % 5.1f  % 7d % 5.1f   % 7d % 5.1f    % 7d     % 7d % 5.1f % 5.1f    % 7d %s" % (run_no, n_drop_hits, 0, n_hit, 0, n_indexed, 0, n_lattices, n_high_quality, 0, 0, n_total, status))
 
     drop_hits_total += n_drop_hits
     hit_total += n_hit

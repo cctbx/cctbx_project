@@ -9,6 +9,12 @@ def exercise_01(prefix="tst_custom_nb_sym_excl"):
   fname = libtbx.env.find_in_repositories(
     relative_path="cctbx_project/mmtbx/regression/pdbs/1yjp_h.pdb",
     test=os.path.isfile)
+
+  import mmtbx
+  from pathlib import Path
+  data_dir = Path(mmtbx.__file__).parent / 'regression' / 'pdbs'
+  fname = str( data_dir / '1yjp_h.pdb')
+
   with open(fname, 'r') as f:
     f_content = f.read()
     f_content = f_content.replace("3.905  1.00 12.26", "3.905  0.33 12.26")

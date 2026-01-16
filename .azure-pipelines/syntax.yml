@@ -8,8 +8,8 @@ jobs:
   strategy:
     maxParallel: 10
     matrix:
-      python2.7:
-        PYTHON_VERSION: 2.7
+      # python2.7:
+      #   PYTHON_VERSION: 2.7
       python3.9:
         PYTHON_VERSION: 3.9
 
@@ -53,6 +53,10 @@ jobs:
   - script: echo "##vso[task.prependpath]$CONDA/bin"
     displayName: Add conda to PATH
 
+  # accept conda tos
+  - script: conda config --set plugins.auto_accept_tos yes
+    displayName: Accept conda TOS
+
   - script: |
       conda create -y -c conda-forge -n py$(PYTHON_VERSION) python=$(PYTHON_VERSION) six future scons setuptools
     displayName: Create conda environment
@@ -62,7 +66,7 @@ jobs:
       cd $(Pipeline.Workspace)/modules/cctbx_project
       for f in `cat .azure-pipelines/py2_syntax_exceptions.txt`; do
         echo Removing $f
-        rm $f; done
+        rm -f $f; done
     displayName: Remove Python 3 only files for Python 2 syntax check
     condition: or(eq(variables['PYTHON_VERSION'], '2.7'), eq(variables['PYTHON_VERSION'], '3.7'))
 

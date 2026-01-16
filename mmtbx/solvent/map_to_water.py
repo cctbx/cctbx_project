@@ -256,6 +256,7 @@ class run(object):
       dist_min                 = self.params.dist_min,
       dist_max                 = self.params.dist_max,
       step                     = self.params.step,
+      water_residues_ratio     = self.params.water_residues_ratio,
       map_threshold_scale      = self.params.map_threshold_scale,
       scc                      = self.params.scc,
       sphericity_filter        = self.params.sphericity_filter,
@@ -288,6 +289,7 @@ class run(object):
         dist_min                 = self.params.dist_min,
         dist_max                 = self.params.dist_max,
         step                     = self.params.step,
+        water_residues_ratio     = self.params.water_residues_ratio,
         map_threshold_scale      = self.params.map_threshold_scale,
         sphericity_filter        = self.params.sphericity_filter,
         cc_mask_filter           = self.params.cc_mask_filter,
@@ -306,7 +308,9 @@ class run(object):
       allow_changes_in_hierarchy = True,
       replace_u_aniso            = False)
     model = models_as_chains(model = self.mmm.model())
-    model = remove_clashing(model = model, dist_min = self.params.dist_min)
+    model = remove_clashing(
+      model    = model,
+      dist_min = self.params.dist_min)
     self.mmm.set_model(model = model)
 
 class run_one(object):
@@ -317,6 +321,7 @@ class run_one(object):
                dist_min=2.0,
                dist_max=3.2,
                step=0.3,
+               water_residues_ratio=1.5,
                map_threshold_scale=1.5,
                sphericity_filter=True,
                cc_mask_filter = False,
@@ -331,6 +336,8 @@ class run_one(object):
                prefix=""):
     # Common parameters / variables
     self.model = map_model_manager.model()
+    self.n_max_water = int(self.model.get_hierarchy().overall_counts().
+                           n_residues*water_residues_ratio)
     map_data = map_model_manager.map_manager().map_data()
     adopt_init_args(self, locals())
     self.total_time = total_time
@@ -361,6 +368,8 @@ class run_one(object):
         self.xrs_water is not None and self.xrs_water.scatterers().size()>0)):
       self._call(self._refine_water_adp     , "Refine ADP")
       self._call(self._filter_by_map_model_cc, "Filter peaks by CC_mask")
+      self._call(self._filter_by_distance  , "Filter peaks by distance")
+      self._call(self._filter_by_map_model_cc_and_maxwater, "Filter peaks by CC_mask and number")
       self._call(self._filter_by_distance  , "Filter peaks by distance")
     self._call(self._append_to_model     , "Add to model and reset internals")
     if(self.debug):
@@ -411,16 +420,7 @@ class run_one(object):
     self.ma.add("  input map dimenstions: %d %d %d"%n_real)
     self.ma.add("  input map grid steps (A): %s %s %s"%(
       ("%6.3f"%sx).strip(), ("%6.3f"%sy).strip(), ("%6.3f"%sz).strip()))
-    if(max(sx, sy, sz) > self.step):
-      n_real_fine = (int(a/self.step), int(b/self.step), int(c/self.step))
-      self.ma.add("  re-sampled map dimenstions: %d %d %d"%n_real_fine)
-      map_fine = flex.double(flex.grid(n_real_fine), 0)
-      maptbx.resample(
-        map_data     = self.map_data,
-        map_data_new = map_fine,
-        unit_cell    = self.unit_cell)
-      self.map_data = map_fine
-      self.ma.add("  input map (min,max,mean): %s"%self._map_mmm_str())
+    self.ma.add("  input map (min,max,mean): %s"%self._map_mmm_str())
     if(self.debug):
       self._write_map(file_name = "resampled.mrc")
     self.map_data_resampled = self.map_data.deep_copy()
@@ -513,7 +513,10 @@ class run_one(object):
     self.ma.add("  final: %d"%self.xrs_water.scatterers().size())
     if(self.debug): self._write_pdb_file(file_name_prefix="hoh_dist")
 
-  def _filter_by_map_model_cc(self):
+  def _filter_by_map_model_cc_and_maxwater(self):
+    self._filter_by_map_model_cc(limit_number_of_water=True)
+
+  def _filter_by_map_model_cc(self, limit_number_of_water=False):
     self.ma.add("  start: %d"%self.xrs_water.scatterers().size())
     # Compute model Fourier map
     m_all = self.model.deep_copy()
@@ -535,18 +538,38 @@ class run_one(object):
       fourier_coefficients = f_calc)
     map_calc = fft_map.real_map_unpadded()
     sites_cart = xrs_all.sites_cart()
+
+    ccs = flex.double()
     # Remove water by CC
     wsel = m_all.selection(string="water")
     for i, s in enumerate(wsel):
-      if not s: continue # XXX
+      if not s: continue
       cc = mmtbx.maps.correlation.from_map_map_atom(
         map_1     = self.map_data_resampled,
         map_2     = map_calc,
         site_cart = sites_cart[i],
         unit_cell = xrs_all.unit_cell(),
         radius    = self.atom_radius)
-      if cc < self.cc_mask_filter_threshold: wsel[i] = False
+      ccs.append(cc)
+
+    if(limit_number_of_water and
+       self.xrs_water.scatterers().size() > self.n_max_water):
+      sel = flex.sort_permutation(ccs, reverse=True)
+      ccs_s = ccs.select(sel)
+      cc_min = max(ccs_s[self.n_max_water], self.cc_mask_filter_threshold)
+      fmt = "  updated cc_mask cutoff (to limit %d water): %6.4f (was: %6.4f)"
+      self.ma.add(fmt%(self.n_max_water, cc_min, self.cc_mask_filter_threshold))
+    else:
+      cc_min = self.cc_mask_filter_threshold
+
+    cntr=0
+    for i, s in enumerate(wsel):
+      if not s: continue
+      cc = ccs[cntr]
+      if cc < cc_min: wsel[i] = False
+      cntr+=1
     self.xrs_water = m_all.select(wsel).get_xray_structure()
+
     # Exclude poor macro-molecule atoms from interaction analysis
     sites_cart = self.model.get_sites_cart()
     for i, s in enumerate(self.interaction_selection):

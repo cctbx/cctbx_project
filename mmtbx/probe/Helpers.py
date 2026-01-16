@@ -379,6 +379,82 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
           for a in ag.atoms():
             extra = probeExt.ExtraAtomInfo()
             try:
+              # Get the first non-blank character of the alternate for this atom.
+              # If there is none, set the value to the empty string.  If there is, set
+              # it to a string with just that character.
+              alt = a.parent().altloc.strip()
+              extra.altLoc = alt
+
+              extra.charge = probeExt.atom_charge(a)
+
+              # For ions, the Richardsons determined in discussion with
+              # Michael Prisant that we want to use the ionic radius rather than the
+              # larger radius for all purposes.
+              # @todo Once the CCTBX radius determination discussion and upgrade is
+              # complete (ongoing as of March 2022), this check might be removed
+              # and we'll just use the CCTBX radius.
+              extra.isIon = a.element_is_ion()
+              if extra.isIon:
+                extra.vdwRadius = model.get_specific_ion_radius(a.i_seq)
+                warnings += ("Using ionic radius for "+a.name.strip()+": "+str(extra.vdwRadius)+
+                              " (rather than "+
+                              str(model.get_specific_vdw_radius(a.i_seq, False))+
+                              ")\n")
+              else:
+                extra.vdwRadius = model.get_specific_vdw_radius(a.i_seq, False)
+
+              # Mark aromatic ring N and C atoms as acceptors as a hack to enable the
+              # ring itself to behave as an acceptor.
+              # @todo Remove this once we have a better way to model the ring itself
+              # as an acceptor, perhaps making it a cylinder or a sphere in the center
+              # of the ring.
+              if a.element in ['C','N']:
+                if AtomTypes.IsAromaticAcceptor(ag.resname, a.name):
+                  extra.isAcceptor = True
+                  warnings += "Marking "+a.name.strip()+" as an aromatic-ring acceptor\n"
+
+              # Mark Nitrogens that do not have an attached Hydrogen as acceptors.
+              # We only do this in HET atoms because CCTBX routines seem to be working
+              # properly in standard residues.
+              # We determine whether it is in a het atom by seeing if the residue name
+              # is in the amino-acid mapping structure.
+              if not a.parent().resname in iotbx.pdb.amino_acid_codes.one_letter_given_three_letter:
+                if a.element == 'N':
+                  # See if the atom has no Hydrogens covalently bonded to it.
+                  found = False
+                  for n in bondedNeighborLists[a]:
+                    if n.element_is_hydrogen():
+                      found = True
+                      break
+                  if not found and not extra.isAcceptor:
+                    extra.isAcceptor = True
+                    warnings += "Marking "+a.parent().resname.strip()+" "+a.name.strip()+" as a non-Hydrogen HET acceptor\n"
+
+              # Mark all Carbonyl's with the Probe radius while the Richardsons and
+              # the CCTBX decide how to handle this.
+              # @todo After 2021, see if the CCTBX has the same values (1.65 and 1.80)
+              # for Carbonyls and remove this if so.  It needs to stay with these values
+              # to avoid spurious collisions per experiments run by the Richardsons in
+              # September 2021.
+              if (a.name.strip().upper() == 'C'
+                  or AtomTypes.IsSpecialAminoAcidCarbonyl(a.parent().resname.strip().upper(),
+                      a.name.upper()) ):
+                expected = 1.65
+                if extra.vdwRadius != expected:
+                  warnings += ("Overriding radius for "+a.name.strip()+": "+str(expected)+
+                                " (was "+str(extra.vdwRadius)+")\n")
+                  extra.vdwRadius = expected
+
+              # If we've been asked to ensure polar hydrogen radius, do so here.
+              if probePhil.set_polar_hydrogen_radius and isPolarHydrogen(a, bondedNeighborLists):
+                if extra.vdwRadius != 1.05:
+                  warnings += ("Overriding radius for "+a.name.strip()+": 1.05 (was "+
+                                str(extra.vdwRadius)+")\n")
+                  extra.vdwRadius = 1.05
+
+              # Find the hydrogen-bond type for this atom.
+              # Do this after the above checks because it can fail for unknown HETs and we want to have
+              # filled in the rest of the information first.
               hb_type = model.get_specific_h_bond_type(a.i_seq)
               if hb_type in ['A', 'B', 'D', 'N', 'H']: #isinstance(hb_type, str):
                 if hb_type == "A" or hb_type == "B":
@@ -386,93 +462,23 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
                 if hb_type == "D" or hb_type == "B":
                   extra.isDonor = True
 
-                # Get the first non-blank character of the alternate for this atom.
-                # If there is none, set the value to the empty string.  If there is, set
-                # it to a string with just that character.
-                alt = a.parent().altloc.strip()
-                extra.altLoc = alt
-
-                extra.charge = probeExt.atom_charge(a)
-
-                # For ions, the Richardsons determined in discussion with
-                # Michael Prisant that we want to use the ionic radius rather than the
-                # larger radius for all purposes.
-                # @todo Once the CCTBX radius determination discussion and upgrade is
-                # complete (ongoing as of March 2022), this check might be removed
-                # and we'll just use the CCTBX radius.
-                extra.isIon = a.element_is_ion()
-                if extra.isIon:
-                  extra.vdwRadius = model.get_specific_ion_radius(a.i_seq)
-                  warnings += ("Using ionic radius for "+a.name.strip()+": "+str(extra.vdwRadius)+
-                               " (rather than "+
-                               str(model.get_specific_vdw_radius(a.i_seq, False))+
-                               ")\n")
-                else:
-                  extra.vdwRadius = model.get_specific_vdw_radius(a.i_seq, False)
-
-                # Mark aromatic ring N and C atoms as acceptors as a hack to enable the
-                # ring itself to behave as an acceptor.
-                # @todo Remove this once we have a better way to model the ring itself
-                # as an acceptor, perhaps making it a cylinder or a sphere in the center
-                # of the ring.
-                if a.element in ['C','N']:
-                  if AtomTypes.IsAromaticAcceptor(ag.resname, a.name):
-                    extra.isAcceptor = True
-                    warnings += "Marking "+a.name.strip()+" as an aromatic-ring acceptor\n"
-
-                # Mark Nitrogens that do not have an attached Hydrogen as acceptors.
-                # We only do this in HET atoms because CCTBX routines seem to be working
-                # properly in standard residues.
-                # We determine whether it is in a het atom by seeing if the residue name
-                # is in the amino-acid mapping structure.
-                if not a.parent().resname in iotbx.pdb.amino_acid_codes.one_letter_given_three_letter:
-                  if a.element == 'N':
-                    # See if the atom has no Hydrogens covalently bonded to it.
-                    found = False
-                    for n in bondedNeighborLists[a]:
-                      if n.element_is_hydrogen():
-                        found = True
-                        break
-                    if not found and not extra.isAcceptor:
-                      extra.isAcceptor = True
-                      warnings += "Marking "+a.parent().resname.strip()+" "+a.name.strip()+" as a non-Hydrogen HET acceptor\n"
-
-                # Mark all Carbonyl's with the Probe radius while the Richardsons and
-                # the CCTBX decide how to handle this.
-                # @todo After 2021, see if the CCTBX has the same values (1.65 and 1.80)
-                # for Carbonyls and remove this if so.  It needs to stay with these values
-                # to avoid spurious collisions per experiments run by the Richardsons in
-                # September 2021.
-                if (a.name.strip().upper() == 'C'
-                    or AtomTypes.IsSpecialAminoAcidCarbonyl(a.parent().resname.strip().upper(),
-                        a.name.upper()) ):
-                  expected = 1.65
-                  if extra.vdwRadius != expected:
-                    warnings += ("Overriding radius for "+a.name.strip()+": "+str(expected)+
-                                 " (was "+str(extra.vdwRadius)+")\n")
-                    extra.vdwRadius = expected
-
-                # If we've been asked to ensure polar hydrogen radius, do so here.
-                if probePhil.set_polar_hydrogen_radius and isPolarHydrogen(a, bondedNeighborLists):
-                  if extra.vdwRadius != 1.05:
-                    warnings += ("Overriding radius for "+a.name.strip()+": 1.05 (was "+
-                                 str(extra.vdwRadius)+")\n")
-                    extra.vdwRadius = 1.05
-
                 extras.setMappingFor(a, extra)
 
               # Did not find hydrogen-bond information for this atom.
               else:
                 fullName = (chain.id + ' ' + a.parent().resname.strip() + ' ' +
                   str(a.parent().parent().resseq_as_int()) + ' ' + a.name.strip())
-                raise Sorry("Unrecognized specific H bond type for "+fullName+", got "+hb_type+"\n")
+                warnings += ("Warning: Unrecognized specific H bond type for "+fullName+", got "+hb_type+
+                             ": keeping default value\n")
+                extras.setMappingFor(a, extra)
 
             except Exception as e:
               fullName = (chain.id + ' ' + a.parent().resname.strip() + ' ' +
                 str(a.parent().parent().resseq_as_int()) + ' ' + a.name.strip())
-              raise Sorry("Could not find atom info for "+fullName+
-                " (perhaps interpretation was not run on the model?)\n"+
-                "  Exception: "+str(e))
+              warnings += ("Warning: Could not find atom info for "+fullName+
+                " (perhaps interpretation was not run on the model?):"+
+                " keeping some default values: "+str(e)+"\n")
+              extras.setMappingFor(a, extra)
 
   return getExtraAtomInfoReturn(extras, warnings)
 

@@ -2,30 +2,12 @@ from __future__ import absolute_import, division, print_function
 import math
 from scipy.optimize import minimize
 from libtbx import adopt_init_args
+from cctbx import maptbx
 
 from cctbx.array_family import flex
 import scitbx.minimizers
 
-# Adapted by Pavel Afonine. This is a verbatim copy of the original code
-# supplied by A. Urzhumtsev on September 12, 2024; dec3D, version 7.6
-
-# the modification are :
-#- removing data-iinput routines
-#- including first line till 'PreciseData'
-#- modification of the minimizer's call in 'RefineBCR'
-#- inserted that all prints are under condition : 'nfmes is not None'
-
-######################################################
-#
-#    decomposition of oscillating curves
-#    (atomic images at a given resolution)
-#                                by A.Urzhumtsev, L.Urzhumtseva, 2021
-#
-#    python remake of the respective fortran program
-#
-#    input curves are obtained by 'image-atom.py'
-#
-######################################################
+import json
 
 def gauss(B, C, r, b_iso):
   assert B>0
@@ -64,8 +46,9 @@ class calculator(object):
     return FuncFit(self.x, self.npeak, self.dens, self.yc, self.dist,
       self.mdist,self.edist, self.nfmes)
 
-#============================
-def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=3,nfmes=None):
+#=================================================================
+def get_BCR(dens,dist,dmax,mxp,epsc,epsp,edist,kpres,kprot,nfmes):
+
 
 #    dens   - array of the curve values,
 #             in in creasing order of the argument starting from 0
@@ -85,20 +68,20 @@ def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=3,nfm
 #             1.0E-13 ie recommended;
 #    kpres  - defines if the precision is given in absolute values (=1) or as a part of
 #             peak in the origin, dens[0]
-#    kprot  - type of the peak analysis processing; kprot = 3 is recommended
-#             1 - only one iteration; refinement at the end
-#             2 - only one iteration; refinement of each term instantly
-#             3 - several iterations allowed; refinement at the end of each iteration
-#             4 - several iterations allowed; refinement at the end of each iteration
-#                 except for the first peak (supposed to be that in the origin)
-#             5 - several iterations allowed; refinement of each term instantly
+#    kprot  - type of the peak analysis processing
+#             111 - single iteration; refinement at the end
+#             112 - single iteration; refinement at the end; pre-refinement of the first term
+#             122 - single iteration; instant refinement of each term
+#             211 - multiple iterations; refinement at the end
+#             212 - multiple iterations; refinement at the end; pre-refinement of the first term
+#             222 - multiple iterations; instant refinement of each term at the first iteration
 
-    #if (nfmes is not None) :
-    #   print('',file=nfmes)
-    #   print(30*'=',' NEW CURVE IN PROCESS ',30*'=',file=nfmes)
-    #
-    #   print('')
-    #   print(30*'=',' NEW CURVE IN PROCESS ',30*'=')
+    if nfmes is not None:
+      print('',file=nfmes)
+      print(30*'=',' NEW CURVE IN PROCESS ',30*'=',file=nfmes)
+
+      print('')
+      print(30*'=',' NEW CURVE IN PROCESS ',30*'=')
 
     bpeak  = [ 0 for i in range(2*mxp+2) ]
     cpeak  = [ 0 for i in range(2*mxp+2) ]
@@ -132,12 +115,14 @@ def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=3,nfm
            bpeak,cpeak,rpeak,npeak,kdist,kpeak = PeakBCR(curres,dist,mdist,ceps,kneg,kpeak,
                                             bpeak,cpeak,rpeak,npeak,epsp,bmin,cmin,rmin,mxp,nfmes)
 
-           if npeak == mxp or kprot == 2 or kprot == 5 or (kprot == 4 and npeak == 0):
+           if npeak == mxp or (kprot == 122 or kprot == 222) or \
+              (kprot == 112 and npeak == 0) or (kprot == 212 and npeak == 0) :
 
-#             if the last (mxp) peak found or
-#             if the accurate accurate search protocol applied :
-#             refine parameters in the extended interval
-#                    and remove contribution
+#             if the last (mxp) peak found                       or
+#             if each term refined instantly                     or
+#             if this is the first peak to be refined instantly
+#             - refine parameters in the extended interval
+#             - and remove contribution
 
               bpeak,cpeak,rpeak =        \
                     RefineBCR(dens,dist,mdist,edist,bpeak,cpeak,rpeak,npeak,bmin,cmin,rmin,nfmes)
@@ -147,10 +132,10 @@ def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=3,nfm
         else :
 
 #          no more peaks ; the whole interval has been analysed
-#          refine estimated parameters in the required interval
-#          remove the contribution of the modeled peaks and update start search point
+#          - refine estimated parameters, all together, in the required interval
+#          - remove the contribution of the modeled peaks and update start search point
 
-           if kprot == 1 or kprot == 3 or kprot == 4 :
+           if kprot == 111 or kprot == 112 or kprot == 211 or kprot == 212 :
 
               bpeak,cpeak,rpeak =        \
                     RefineBCR(dens,dist,mdist,edist,bpeak,cpeak,rpeak,npeak,bmin,cmin,rmin,nfmes)
@@ -158,10 +143,10 @@ def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=3,nfm
               curres,curve,epsres = \
                                CurveDiff(dens,dist,mdist,edist,nfmes,bpeak,cpeak,rpeak,npeak,mxp)
 
-           if kprot == 1 or kprot == 2 :
+           if kprot == 111 or kprot == 112 or kprot == 122 :
               break
-           elif kprot == 5 :
-              kprot = 3
+           elif kprot == 222 :
+              kprot = 211
 
            kpeak = 0
 #
@@ -203,55 +188,60 @@ def RefineBCR(dens,dist,mdist,edist,bpeak,cpeak,rpeak,npeak,bmin,cmin,rmin,nfmes
            bcrbounds[i3+1] = (-1000.,-cmin)
 
 #   minimization
+    if nfmes is not None:
+      print('')
+      print(' L-BFGS-B refinement in progress ; parameters before refinement : ')
+    for i in range(npeak+1):
+       if nfmes is not None:
+         print(f'{i+1:6}{rpeak[i]:16.10f}{bpeak[i]:16.10f}{cpeak[i]:11.5f}')
 
-    for it in range(1,3):
-      if it > 1:
+    if 0: # lbfgsb from cctbx
+      #for it in range(1,10):
+      #for it in range(1,2):
+      for it in [0,]:
+        lbound = []
+        ubound = []
+        for b in bcrbounds:
+          lbound.append(b[0])
+          ubound.append(b[1])
+        CALC = calculator(npeak,dens,yc,dist,nfmes, xc, mdist,edist,
+          bound_flags = flex.int(len(xc), 2),
+          lower_bound = lbound,
+          upper_bound = ubound)
+        res = scitbx.minimizers.lbfgs(
+             mode='lbfgsb', max_iterations=500, calculator=CALC)
+        res.x = list(res.x)
         xc = res.x
-      lbound = []
-      ubound = []
-      for b in bcrbounds:
-        lbound.append(b[0])
-        ubound.append(b[1])
+        if 1: # mix
+          res = minimize(FuncFit,xc,args=(npeak,dens,yc,dist,ndist,edist,nfmes),
+               method='L-BFGS-B',jac=GradFit, bounds = bcrbounds)
+          xc = res.x
 
-      CALC = calculator(npeak,dens,yc,dist,nfmes, xc, mdist,edist,
-        bound_flags = flex.int(len(xc), 2),
-        lower_bound = lbound,
-        upper_bound = ubound)
-
-      res = scitbx.minimizers.lbfgs(
-           mode='lbfgsb', max_iterations=500, calculator=CALC)
-
-    res.x = list(res.x)
-
-    if 0: # SciPy analogue. Works with Python 3 only.
-      res = minimize(FuncFit,xc,args=(npeak,dens,yc,dist,ndist,nfmes),
-                 method='L-BFGS-B',jac=GradFit, bounds = bcrbounds)
-
-#!!!!!!!!!!! end of the insertion
+    else: # SciPy analogue. Works with Python 3 only.
+      res = minimize(FuncFit,xc,args=(npeak,dens,yc,dist,ndist,edist,nfmes),
+               method='L-BFGS-B',jac=GradFit, bounds = bcrbounds)
 
 #   recover refined values
+    if nfmes is not None:
+      print('',file=nfmes)
+      print(' parameters before and after their refinement:'     ,file=nfmes)
+      print(' Nterm    R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',5*' ',
+                     'R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',file=nfmes)
 
-    #if (nfmes is not None) :
-    #   print('',file=nfmes)
-    #   print(' parameters before and after their refinement:'     ,file=nfmes)
-    #   print(' Nterm    R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',5*' ',
-    #                  'R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',file=nfmes)
-    #
-    #   print('')
-    #   print(' parameters before and after their refinement:')
-    #   print(' Nterm    R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',5*' ',
-    #                   'R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ')
+      print('')
+      print(' parameters before and after their refinement:')
+      print(' Nterm    R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',5*' ',
+                     'R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ')
 
     for i in range(npeak+1):
         i3 = i*3
         b0 , c0, r0 = res.x[i3] , res.x[i3+1] , res.x[i3+2]
+        if nfmes is not None:
+          print(f'{i+1:6}{rpeak[i]:16.10f}{bpeak[i]:16.10f}{cpeak[i]:11.5f}   ',
+                f'{r0:16.10f}{b0:16.10f}{c0:11.5f}',file=nfmes)
 
-        #if (nfmes is not None) :
-        #   print(f'{i+1:6}{rpeak[i]:16.10f}{bpeak[i]:16.10f}{cpeak[i]:11.5f}   ',
-        #         f'{r0:16.10f}{b0:16.10f}{c0:11.5f}',file=nfmes)
-        #
-        #   print(f'{i+1:6}{rpeak[i]:16.10f}{bpeak[i]:16.10f}{cpeak[i]:11.5f}   ',
-        #         f'{r0:16.10f}{b0:16.10f}{c0:11.5f}')
+          print(f'{i+1:6}{rpeak[i]:16.10f}{bpeak[i]:16.10f}{cpeak[i]:11.5f}   ',
+                f'{r0:16.10f}{b0:16.10f}{c0:11.5f}')
 
         bpeak[i] , cpeak[i] , rpeak[i] = b0 , c0 , r0
 
@@ -283,14 +273,14 @@ def PreciseData(kpres,epsc,epsp,edist,dmax,peak,dist,nfmes):
     if dist[ndist] < dmax :
        if nfmes is not None:
          print('*** warning : curve interval is defined for x <= ',dist[ndist])
-         print('              shrter that the required distance  ',dmax)
+         print('              shorter that the required distance  ',dmax)
     else :
        for ix in range(ndist+1) :
            if dist[ix] > dmax :
               mdist = ix - 1
               break
 
-#   estimates for a regular grid with step = dist(1) - dist(0)
+#   estimates for a regular grid with step = dist[1] - dist[0]
 
     dstep = dist[1]
     ndrop = 2.
@@ -298,19 +288,20 @@ def PreciseData(kpres,epsc,epsp,edist,dmax,peak,dist,nfmes):
     cmin  = ceps*(bmin**1.5)/64.
     rmin  = 0.0
 
-    #print ('',file=nfmes)
-    #print (' INTERNAL DECOMPOSITION PARAMETERS ',file=nfmes)
-    #print ('',file=nfmes)
-    #print (' absolute max allowed error     ',f'{ceps:13.5e}' ,file=nfmes)
-    #print (' drop to estimate the peak width',f'{epsp:13.5e}' ,file=nfmes)
-    #if edist > 0.0 :
-    #   print (' term extension limit           ',f'{edist:13.5e}',file=nfmes)
-    #else :
-    #   print (' term extension limit :            no limit applied',file=nfmes)
-    #print (' estimated accuracy parameters :',file=nfmes)
-    #print ('    bmin                        ',f'{bmin:13.5e}' ,file=nfmes)
-    #print ('    cmin                        ',f'{cmin:13.5e}' ,file=nfmes)
-    #print ('---------------------------',file=nfmes)
+    if nfmes is not None:
+      print ('',file=nfmes)
+      print (' INTERNAL DECOMPOSITION PARAMETERS ',file=nfmes)
+      print ('',file=nfmes)
+      print (' absolute max allowed error     ',f'{ceps:13.5e}' ,file=nfmes)
+      print (' drop to estimate the peak width',f'{epsp:13.5e}' ,file=nfmes)
+      if edist > 0.0 :
+         print (' term extension limit           ',f'{edist:13.5e}',file=nfmes)
+      else :
+         print (' term extension limit :            no limit applied',file=nfmes)
+      print (' estimated accuracy parameters :',file=nfmes)
+      print ('    bmin                        ',f'{bmin:13.5e}' ,file=nfmes)
+      print ('    cmin                        ',f'{cmin:13.5e}' ,file=nfmes)
+      print ('---------------------------',file=nfmes)
 
     return ceps,bmin,cmin,rmin,edist,mdist
 
@@ -573,17 +564,17 @@ def CurveDiff(dens,dist,mdist,edist,nfmes,bpeak,cpeak,rpeak,npeak,mxp):
          if curabs > totres:
             totres = curabs
 
-    #if (nfmes is not None) :
-    #   space = 23*' '
-    #   print('',file=nfmes)
-    #   print(f' with {npeak+1:4} terms max residual peaks are',file=nfmes)
-    #   print(space,' inside the interval of modeling',f'{epsres:12.7f}',file=nfmes)
-    #   print(space,' in the whole range of distances',f'{totres:12.7f}',file=nfmes)
-    #
-    #   print('')
-    #   print(f' with {npeak+1:4} terms max residual peaks are')
-    #   print(space,' inside the interval of modeling',f'{epsres:12.7f}')
-    #   print(space,' in the whole range of distances',f'{totres:12.7f}')
+    if nfmes is not None:
+      space = 23*' '
+      print('',file=nfmes)
+      print(f' with {npeak+1:4} terms max residual peaks are',file=nfmes)
+      print(space,' inside the interval of modeling',f'{epsres:12.7f}',file=nfmes)
+      print(space,' in the whole range of distances',f'{totres:12.7f}',file=nfmes)
+
+      print('')
+      print(f' with {npeak+1:4} terms max residual peaks are')
+      print(space,' inside the interval of modeling',f'{epsres:12.7f}')
+      print(space,' in the whole range of distances',f'{totres:12.7f}')
 
     return curres,curve,epsres
 
@@ -679,35 +670,6 @@ def CurveRipple(dist,edist,b0,c0,r0):
               break
 
     return curve
-
-#============================
-def OutCurves(dens,dist,curres,curve,filecurve):
-
-    if filecurve == 'none' :
-       return
-
-    nfcurv = open(filecurve, 'w')
-
-    ndist = len(dist) - 1
-
-#    print(f'   dist   curve   modeled   resid    cmp=  0',
-#          ''.join(f'{ip:9}' for ip in range(1,npeak+1)),file=nfcurv)
-#    for i in range(ndist+1):
-#        densum = dens[i]-curres[i]
-#        print(f'{dist[i]:7.3f}{dens[i]:9.5f}{densum:9.5f}{curres[i]:9.5f}',
-#              ''.join(f'{curve[i][ip]:9.5f}' for ip in range(npeak+1)),file=nfcurv)
-
-    #print(f'    dist       curve         modeled         resid        max.error',file=nfcurv)
-
-    resmax = 0.0
-    for i in range(ndist+1):
-        curabs = abs(curres[i])
-        if curabs > resmax:
-           resmax = curabs
-        densum = dens[i]-curres[i]
-        #print(f'{dist[i]:8.3f}{dens[i]:15.8f}{densum:15.8f}{curres[i]:15.8f}{resmax:15.8f}',
-        #                                                                         file=nfcurv)
-    return
 
 #============================
 def PeakBCR(curres,dist,mdist,ceps,kneg,kpeak,bpeak,cpeak,rpeak,npeak,       \
@@ -895,8 +857,6 @@ def GradX(xc,npeak,yc,gy,dist,mdist,edist,nfmes):
 
        gx[i3] , gx[i3+1] , gx[i3+2]  = gb , gc , gr
 
-#    exit()
-
     return gx
 
 #============================
@@ -1017,44 +977,6 @@ def GradGauss(yc,gy,dist,mdist,edist,b0,c0):
 
     return gb,gc
 
-#================================
-def CheckLow(bpeak,cpeak,rpeak,npeak,ceps,nfmes):
-
-    pi4    = 4.0 * math.pi
-    pisq16 = pi4 * pi4
-
-    bpeakc, cpeakc, rpeakc = [], [], []
-
-    #if (nfmes is not None) :
-    #
-    #   print('',file=nfmes)
-    #   print(' Check term values in the points r = r0 :',file=nfmes)
-    #   print(' Nterm    R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',7*' ','value',file=nfmes)
-    #
-    #   print('')
-    #   print(' Check term values in the points r = r0 :')
-    #   print(' Nterm    R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',7*' ','value')
-
-    for ip in range (npeak+1):
-        b0 = bpeak[ip]
-        c0 = cpeak[ip]
-        r0 = rpeak[ip]
-        if r0 == 0.0 :
-           fval = c0 * (pi4/b0)**1.5
-        else :
-           fval = c0 * (1.0 - math.exp(-pisq16*r0**2/b0)) / (math.sqrt(pi4*b0) * r0**2)
-
-        #if (nfmes is not None) :
-        #   print(f'{ip+1:6}{r0:16.10f}{b0:16.10f}{c0:11.5f}   {fval:12.7f}',file=nfmes)
-        #   print(f'{ip+1:6}{r0:16.10f}{b0:16.10f}{c0:11.5f}   {fval:12.7f}')
-
-        if abs(fval) >= ceps :
-           bpeakc.append(b0)
-           cpeakc.append(c0)
-           rpeakc.append(r0)
-
-    return bpeakc, cpeakc, rpeakc
-
 #============================
 def FilterWeak(dens,curve,curres,dist,mdist,edist,epsres,bpeak,cpeak,rpeak,npeak,mxp,  \
                                  bmin,cmin,rmin,nfmes,ceps):
@@ -1067,11 +989,11 @@ def FilterWeak(dens,curve,curres,dist,mdist,edist,epsres,bpeak,cpeak,rpeak,npeak
 
 #      small contributions found; check the result after removing these terms
 
-       bpeakc,cpeakc,rpeakc =        \
-                    RefineBCR(dens,dist,mdist,edist,bpeakc,cpeakc,rpeakc,mpeak,bmin,cmin,rmin,nfmes)
+       bpeakc,cpeakc,rpeakc = \
+         RefineBCR(dens,dist,mdist,edist,bpeakc,cpeakc,rpeakc,mpeak,bmin,cmin,rmin,nfmes)
 
        curres,curve,epsres = \
-                               CurveDiff(dens,dist,mdist,edist,nfmes,bpeakc,cpeakc,rpeakc,mpeak,mxp)
+          CurveDiff(dens,dist,mdist,edist,nfmes,bpeakc,cpeakc,rpeakc,mpeak,mxp)
 
 #      removing small contributions makes the residual error above the limit;
 #      include these terms back
@@ -1084,6 +1006,700 @@ def FilterWeak(dens,curve,curres,dist,mdist,edist,epsres,bpeak,cpeak,rpeak,npeak
           rpeakc = [ rpeak[ip] for ip in range(npeak+1)]
 
           curres,curve,epsres = \
-                               CurveDiff(dens,dist,mdist,edist,nfmes,bpeakc,cpeakc,rpeakc,mpeak,mxp)
+            CurveDiff(dens,dist,mdist,edist,nfmes,bpeakc,cpeakc,rpeakc,mpeak,mxp)
 
     return bpeakc,cpeakc,rpeakc,mpeak,curve,curres,epsres
+
+#================================
+def CheckLow(bpeak,cpeak,rpeak,npeak,ceps,nfmes):
+
+    pi4    = 4.0 * math.pi
+    pisq16 = pi4 * pi4
+
+    bpeakc, cpeakc, rpeakc = [], [], []
+
+    if nfmes is not None:
+      print('',file=nfmes)
+      print(' Check term values in the points r = r0 :',file=nfmes)
+      print(' Nterm    R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',7*' ','value',file=nfmes)
+
+      print('')
+      print(' Check term values in the points r = r0 :')
+      print(' Nterm    R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',7*' ','value')
+
+    for ip in range (npeak+1):
+        b0 = bpeak[ip]
+        c0 = cpeak[ip]
+        r0 = rpeak[ip]
+        if r0 == 0.0 :
+           fval = c0 * (pi4/b0)**1.5
+        else :
+           fval = c0 * (1.0 - math.exp(-pisq16*r0**2/b0)) / (math.sqrt(pi4*b0) * r0**2)
+
+        if nfmes is not None:
+          print(f'{ip+1:6}{r0:16.10f}{b0:16.10f}{c0:11.5f}   {fval:12.7f}',file=nfmes)
+          print(f'{ip+1:6}{r0:16.10f}{b0:16.10f}{c0:11.5f}   {fval:12.7f}')
+
+        if abs(fval) >= ceps :
+           bpeakc.append(b0)
+           cpeakc.append(c0)
+           rpeakc.append(r0)
+
+    return bpeakc, cpeakc, rpeakc
+
+#=== INDEPENDNT COMPUTATIONAL PART STOPS HERE ===
+
+#==================================================================================
+
+def InputScat(filedata, Badd):
+
+    NGauss = 6
+
+    nfdat = open(filedata, 'r')
+    Coefs = nfdat.readlines()
+    NTypes = int(len(Coefs) / 3)
+
+    TypesAtoms = ['' for itype in range(NTypes)]
+    ScatAtoms  = [[0.0 for ig in range(2 * NGauss)] for itype in range(NTypes)]
+
+    Iblock  = 0
+    NGauss1 = NGauss - 1
+    for itype in range(NTypes) :
+       Line1 = Coefs[itype*3]
+       Line2 = Line1.replace('{', ' ')
+       Line3 = Line2.replace('}', ' ')
+       Line4 = Line3.replace(',', ' ')
+       Line5 = Line4.replace('"', ' ')
+       Line6 = Line5.split()
+       AtomType = Line6[0]
+       for ig in range(NGauss1) : ScatAtoms[itype][ig] = float(Line6[ig+1])
+
+       Line1 = Coefs[itype*3 + 1]
+       Line2 = Line1.replace('{', ' ')
+       Line3 = Line2.replace('}', ' ')
+       Line4 = Line3.replace(',', ' ')
+       Line5 = Line4.replace('"', ' ')
+       Line6 = Line5.split()
+       for ig in range(NGauss1) : ScatAtoms[itype][ig + NGauss] = float(Line6[ig]) + Badd
+
+       Line1 = Coefs[itype*3 + 2]
+       Line2 = Line1.replace('{', ' ')
+       Line3 = Line2.replace('}', ' ')
+       Line4 = Line3.replace(',', ' ')
+       Line5 = Line4.replace('"', ' ')
+       Line6 = Line5.split()
+       ScatAtoms[itype][NGauss1]          = float(Line6[0])
+       ScatAtoms[itype][NGauss1 + NGauss] = Badd
+
+       TypesAtoms[itype] = AtomType
+    return ScatAtoms, TypesAtoms
+
+#============================
+
+def SFactG(ScatAtom,Resolution,NSgrid) :
+    print(ScatAtom)
+    print(Resolution)
+    print(NSgrid)
+    assert 0
+
+    ScatFunc = [0.0 for ig in range(NSgrid+1)]
+
+    Smax    = 1.0 / Resolution
+    dsstep  = Smax / NSgrid
+    NGauss  = int(len(ScatAtom) / 2)
+
+    for isg in range(NSgrid+1) :
+
+        sg   = dsstep * isg
+        ss24 = sg * sg / 4.0
+        fact = 0.0
+
+        for ig in range(NGauss) :
+            argexp = ScatAtom[ig + NGauss] * ss24
+            fact  += ScatAtom[ig] * math.exp(-argexp)
+
+        ScatFunc[isg] = fact
+
+    return ScatFunc
+
+#============================
+
+def AtomImage(ScatFunc,Resolution,DistImage,StepImage) :
+
+    NImage = int(DistImage/StepImage) + 1
+    NSGrid = len(ScatFunc) - 1
+    Smax   = 1.0 / Resolution
+    SStep  = Smax / NSGrid
+
+    Image = [0.0 for j in range(NImage+1)]
+
+    dx = 2. * math.pi * StepImage
+
+#   integrate scattering curve
+
+#   odd points
+
+    for igs in range(1, NSGrid, 2):
+        ss     = SStep * igs
+        fatoms = ScatFunc[igs] * ss * 4.
+
+        for ir in range(1,NImage):
+            rr   = dx * ir
+            arg  = rr * ss
+            sarg = math.sin(arg)
+            Image[ir] = Image[ir] + fatoms * sarg
+
+        Image[0] = Image[0] + fatoms * ss
+
+#   even points
+
+    for igs in range(2, NSGrid-1, 2):
+        ss     = SStep * igs
+        fatoms = ScatFunc[igs] * ss * 2.
+
+        for ir in range(1,NImage):
+            rr   = dx * ir
+            arg  = rr * ss
+            sarg = math.sin(arg)
+            Image[ir] = Image[ir] + fatoms * sarg
+
+        Image[0] = Image[0] + fatoms * ss
+
+#   terminal point (point s = 0 gives zero contribution and is ignored)
+
+    ss     = SStep * NSGrid
+    fatoms = ScatFunc[NSGrid] * ss
+
+    for ir in range(1,NImage):
+        rr   = dx * ir
+        arg  = rr * ss
+        sarg = math.sin(arg)
+        Image[ir] = Image[ir] + fatoms * sarg
+
+    Image[0] = Image[0] + fatoms * ss
+
+# ---- normalisation ----
+
+    scal = 2.0 * SStep / 3.0
+    for ir in range(1,NImage):
+        rr = ir * StepImage
+        Image[ir] = Image[ir] * scal / rr
+
+    Image[0] = Image[0] * SStep * 4. * math.pi / 3.
+
+    return Image
+
+#============================
+
+def GetPrecision(Image, StepImage, DistMax) :
+
+    NMax = int(DistMax/StepImage)
+    NImage  = len(Image)
+
+    for ig in range(NMax,NImage) :
+        AbsImageValue = abs(Image[ig])
+        if AbsImageValue >= abs(Image[ig-1]) and AbsImageValue > abs(Image[ig+1]) :
+           LastMax = AbsImageValue
+           break
+
+    return LastMax
+
+#============================
+
+def CompleteTable(AtomType,Resolution,DistMax,Ngrid,NumTerms,
+                  ErrorMin,BCR_Atom,ImageScale,Protocol,fileBCR) :
+
+    ScaleD = Resolution
+    ScaleR = Resolution
+    ScaleB = Resolution * Resolution
+    ScaleC = Resolution * ScaleB * ImageScale
+
+    print(f'Atom {AtomType:4} Res {Resolution:8.4f} RhoMax {abs(ImageScale):9.4f} ',
+          f'Dist {DistMax*ScaleD:8.4f} Ngrid {Ngrid:5} Nterms {NumTerms:2} ',
+          f'ErrRel {ErrorMin:8.5f} ErrAbs {ErrorMin*ImageScale:8.5f} Prot {Protocol:3}',
+          file = fileBCR)
+
+    for iterms in range(NumTerms) :
+        print(f'{iterms:3}{BCR_Atom[iterms][0]*ScaleR:16.10f}',
+              f'{BCR_Atom[iterms][1]*ScaleB:16.10f}',
+              f'{BCR_Atom[iterms][2]*ScaleC:16.10f}', file = fileBCR)
+
+    return
+
+#============================
+
+def UpdatedBCR(BCR_Save_itype,Terms_itype) :
+
+    rpeak = [BCR_Save_itype[iterms][0] for iterms in range(Terms_itype)]
+    bpeak = [BCR_Save_itype[iterms][1] for iterms in range(Terms_itype)]
+    cpeak = [BCR_Save_itype[iterms][2] for iterms in range(Terms_itype)]
+
+    mpeak = Terms_itype - 1
+
+    return rpeak, bpeak, cpeak, mpeak
+
+#============================
+
+def ext_BCR(kpres,epsc,epsp,edist,DistMax,Image,Distance,MaxTerms,
+            BCR_Prev,Terms_Prev,Current,Start,fileBCRlog) :
+
+#   there was no previous trial
+    if Current <= Start :
+       epsres = 1.0
+       mpeak  = -1
+       curres = Image
+       curve  = Image
+       bpeak, cpeak, rpeak  = [], [], []
+
+#   use the BCR values updated from the previous resolution or from the previous atom
+    else :
+
+       ImageMax = 1.0
+
+       rpeak, bpeak, cpeak, mpeak = UpdatedBCR(BCR_Prev,Terms_Prev)
+
+       ceps,bmin,cmin,rmin,edist,mdist = \
+            PreciseData(kpres,epsc,epsp,edist,DistMax,ImageMax,Distance,fileBCRlog)
+
+       bpeak,cpeak,rpeak =               \
+            RefineBCR(Image,Distance,mdist,edist,bpeak,cpeak,rpeak,mpeak,bmin,cmin,rmin,fileBCRlog)
+
+       curres,curve,epsres =             \
+            CurveDiff(Image,Distance,mdist,edist,fileBCRlog,bpeak,cpeak,rpeak,mpeak,MaxTerms)
+
+    return bpeak,cpeak,rpeak,mpeak,curve,curres,epsres
+
+
+#============================
+
+def add_entry(results, d_min,
+                       scattering_table,
+                       RhoMax,
+                       dist,
+                       Ngrid,
+                       Nterms,
+                       ErrRel,
+                       ErrAbs,
+                       Prot,
+                       B,C,R):
+  results[str(d_min)] = {
+      "scattering_table": scattering_table,
+      "RhoMax"          : RhoMax          ,
+      "dist"            : dist            ,
+      "Ngrid "          : Ngrid           ,
+      "Nterms"          : Nterms          ,
+      "ErrRel"          : ErrRel          ,
+      "ErrAbs"          : ErrAbs          ,
+      "Prot"            : Prot            ,
+      "R": R,
+      "B": B,
+      "C": C
+  }
+
+def RefinedTable(AtomType,Resolutions,DistMax,Ngrid,Terms_Resol,
+                  ErrorMins,BCR_Resol,ImageMaxs,Protocol,fileBCR,
+                  results=None, scattering_table=None) :
+
+    Nresol = len(Resolutions)
+
+    for ires in range(Nresol) :
+
+        Resolution = Resolutions[ires]
+        ImageScale = ImageMaxs[ires]
+        NumTerms   = Terms_Resol[ires]
+        ErrorMin   = ErrorMins[ires]
+
+        ScaleD = Resolution
+        ScaleR = Resolution
+        ScaleB = Resolution * Resolution
+        ScaleC = Resolution * ScaleB * ImageScale
+
+        print(f'Atom {AtomType:4} Res {Resolution:8.4f} RhoMax {abs(ImageScale):9.4f} ',
+            f'Dist {DistMax*ScaleD:8.4f} Ngrid {Ngrid:5} Nterms {NumTerms:2} ',
+            f'ErrRel {ErrorMin:8.5f} ErrAbs {ErrorMin*ImageScale:8.5f} Prot {Protocol:3}',
+            file = fileBCR)
+
+        d_min  = Resolution
+        RhoMax = abs(ImageScale)
+        dist   = DistMax*ScaleD
+        Ngrid  = Ngrid
+        Nterms = NumTerms
+        ErrRel = ErrorMin
+        ErrAbs = ErrorMin*ImageScale
+        Prot   = Protocol
+        B,C,R  = [],[],[]
+
+        for iterms in range(NumTerms) :
+            R.append(BCR_Resol[ires][iterms][0]*ScaleR)
+            B.append(BCR_Resol[ires][iterms][1]*ScaleB)
+            C.append(BCR_Resol[ires][iterms][2]*ScaleC)
+            print(f'{iterms:3}{BCR_Resol[ires][iterms][0]*ScaleR:16.10f}',
+                f'{BCR_Resol[ires][iterms][1]*ScaleB:16.10f}',
+                f'{BCR_Resol[ires][iterms][2]*ScaleC:16.10f}', file = fileBCR)
+        if results is not None:
+          add_entry(
+            results          = results,
+            d_min            = d_min,
+            scattering_table = scattering_table,
+            RhoMax           = RhoMax,
+            dist             = dist,
+            Ngrid            = Ngrid,
+            Nterms           = Nterms,
+            ErrRel           = ErrRel,
+            ErrAbs           = ErrAbs,
+            Prot             = Prot,
+            B=B,C=C,R=R)
+
+    return
+
+#####################################################
+
+def compute_tables(
+      MinResolution = 4.0,
+      MaxResolution = 4.0,
+      scattering_table = "wk1995",
+      TypesAtoms = ["C",]):
+
+  fileBCRlog = None #open('BCR.log', 'w')
+  #                                        file to save residual curves when decomposition fails
+  fileCurves = None #open('DiffBCR.curve', 'w')
+
+  # parameters eventually NOT to be modified
+
+  edist     = 1.0E-13              # term contribution limit value
+  epsp      = 0.000                # peak limit value with respect to the central value
+  kpres     = 1                    # precision to be defined in absolute values
+  Badd      = 0.0                  # Badd (normally zero)
+  Ngrid     = 2000                 # grid number for atomic images
+  NSgrid    = 2000                 # grid number for scattering function
+  Precision = 0.99                 # part of the local max next to the last; to estimate accuracy limit
+  MaxTerms  = 50                   # max allowed number of terms
+  validate  = 0.0010               # validation indictor : ErrorMax / ImageMax < validate is OK
+
+  Protocols      = [0, 1, 111, 112, 122, 212]              # allowed protocol to be tried
+  Nprotocols     = len(Protocols)
+
+  RefineFlag = True
+
+  # resolution bounds defining resolution increment for the resolution tables
+
+  ResBound  = [ 0.6   , 0.8   , 1.0   , 2.0   , 100.0  ]
+  AddArray  = [ 0.0020, 0.0025, 0.0040, 0.0050, 0.0100 ]
+
+
+  #====================================================================================================
+
+  #  MAIN PROGRAM
+
+  # parameters which may be modified
+
+  DistMax        = 5.0                   # approximation up to DistMax * Resolution
+
+  #==========================================================================
+
+  #   define resolutions
+
+  NumBound   = len(ResBound)
+  Resolution = MinResolution
+  if MaxResolution > ResBound[NumBound-1] : MaxResolution = ResBound[NumBound-1]
+
+  for kbound in range(NumBound) :
+      if MinResolution < ResBound[kbound] :
+         UpperBound    = ResBound[kbound]
+         AddRes        = AddArray[kbound]
+         break
+
+  Resolutions = []
+  Resolution  = MinResolution
+  while Resolution <= MaxResolution :
+      Resolutions.append(Resolution)
+      Resolution += AddRes
+      if Resolution >= UpperBound :
+         kbound += 1
+         if kbound == NumBound : break
+         UpperBound = ResBound[kbound]
+         AddRes     = AddArray[kbound]
+
+  Nresol = len(Resolutions)
+
+  #================== define common parameters
+
+  BCR_Save    = [ [ [0.0, 0.0, 0.0] for iterm in range(MaxTerms)] for ires in range(Nresol) ]
+  Terms_Save  = [ 0 for ires in range(Nresol) ]
+
+  BCR_Resol    = [ [0.0, 0.0, 0.0] for ires in range(-1, Nresol) ]
+  Terms_Resol  = [ 0   for ires in range(-1, Nresol) ]
+  ErrorMins    = [ 0   for ires in range(Nresol) ]
+  ImageMaxs    = [ 0.0 for ires in range(Nresol) ]
+
+  #   atomic image will be generated up to the distance limit higher than that for the decomposition
+  #   to eventually use an approximation also to the ripple(s) next beyond the distance limit
+  #   atomic images are normalized by its value (max = 1.0) and by distance (resolution -> 1A)
+
+  DistImage  = DistMax + 1.0
+  StepImage  = DistMax / Ngrid
+
+  #============== read table of multiGaussian approximation to scattering factors
+
+  Type_Start = 0
+  Ntypes     = len(TypesAtoms)
+  Type_Final = Ntypes
+
+  #==========================================================================
+
+  for itype in range(Type_Start, Type_Final) :      #  INTERMEDIATE CYCLE OVER ATOMS
+
+      AtomType = TypesAtoms[itype]
+
+      print('')
+      print('##############################################################################')
+      print('')
+      print(f'Calculations started for atom ',AtomType)
+
+  #   generate file name for the coefficients for a given atomic type
+
+      fileBCRname = 'BCR_' + AtomType + '.temp'
+      fileBCRtemp = open(fileBCRname, 'w')
+
+      for ires in range(Nresol) :              # MAIN CYCLE OVER RESOLUTIONS
+
+         Resolution = Resolutions[ires]
+
+         print('')
+         print('&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&')
+         print('')
+         print(f'Calculations started at resolution {Resolution:8.4f} for atom ',AtomType)
+
+  ##      prepare scattering factors on a grid up to the chosen resolution limit
+  #
+  #       ScatFunc = SFactG(ScatAtoms[itype],Resolution,NSgrid)
+  #
+  ##      calculate atomic image and its maximal absolute value (expected to be at the origin)
+  ##      scale Image to its max value to avoid optimization problems
+  #
+  #       Image = AtomImage(ScatFunc,Resolution,DistImage*Resolution,StepImage*Resolution)
+
+         o = maptbx.atom_curves(scattering_type=AtomType, scattering_table=scattering_table)
+         oresult = o.image(
+              d_min=Resolution,
+              b_iso=0,
+              d_max = None,
+              radius_min = 0,
+              radius_max = DistImage*Resolution,
+              radius_step = StepImage*Resolution,
+              n_integration_steps = 2000)
+         Image = oresult.image_values
+
+
+         NGridImage = len(Image)
+         Distance   = [ id * StepImage for id in range(NGridImage)]
+         DiffImage  = [ [ 0.0 for id in range(NGridImage)] for iprot in range(Nprotocols)]
+
+         ImageScale = abs(Image[0])
+         if Image[0] >= 0.0 :
+            ImageSign = 1.0
+         else :
+            ImageSign = -1.0
+
+         for id in range(NGridImage) :
+             if ImageScale < abs(Image[id]) :
+                ImageScale = abs(Image[id])
+                if Image[id] >= 0.0 :
+                   ImageSign  = 1.0
+                else :
+                   ImageSign  = -1.0
+         ImageScale      = ImageScale * ImageSign
+         ImageMaxs[ires] = ImageScale
+
+         for id in range(NGridImage) :
+             Image[id] = Image[id] / ImageScale
+
+  #      find the value of the last extremum and define the decomposition precision
+
+         LastMax  = GetPrecision(Image, StepImage, DistMax)
+         epsc     = LastMax * Precision
+         ErrorMin = 1.0
+
+  #      define arrays
+
+         ErrorMax = [ 0.0 for iprot in range(Nprotocols) ]
+         Mterms   = [ 0   for iprot in range(Nprotocols) ]
+         BCRterms = [ [ [0.0, 0.0, 0.0] for iterm in range(MaxTerms)] for iprot in range(Nprotocols) ]
+
+         if ires == 0 or ires == int(ires/100) * 100:
+            NumProt = Nprotocols
+         elif ires == int(ires/20) * 20 :
+            NumProt = 4
+         else :
+            NumProt = 2
+
+         for iprot in range(NumProt) :            #      INNER CYCLE OVER PROTOCOLS
+
+             kprot = Protocols[iprot]
+
+             print('')
+             print('---------------------------------')
+             print('')
+             print(f'Resolution {Resolution:8.4f} Atom',AtomType,'Trying protocol',iprot,
+                   f'( = ',kprot,') from',Nprotocols)
+
+  #          try BCR from the previous atom at the same resolution
+
+             if kprot == 0 :
+                bpeak,cpeak,rpeak,mpeak,curve,curres,epsres = \
+                    ext_BCR(kpres,epsc,epsp,edist,DistMax,Image,Distance,MaxTerms,
+                            BCR_Save[ires],Terms_Save[ires],itype,Type_Start,fileBCRlog)
+
+  #          try BCR from the previous resolution for the same atom
+
+             elif kprot == 1 :
+
+                bpeak,cpeak,rpeak,mpeak,curve,curres,epsres = \
+                    ext_BCR(kpres,epsc,epsp,edist,DistMax,Image,Distance,MaxTerms,
+                            BCR_Resol[ires-1],Terms_Resol[ires-1],ires,0,fileBCRlog)
+
+  #          search for new values from scratch trying kprot > 100 protocols
+
+             else :
+                 bpeak,cpeak,rpeak,mpeak,curve,curres,epsres = \
+                    get_BCR(Image,Distance,DistMax,MaxTerms,epsc,epsp,edist,kpres,kprot,fileBCRlog)
+
+  #          save the error value, the number of terms, BCR coefficients and the difference curve;
+  #          BCR subroutines count the BCR-triplets from 0 to mpeak including
+
+             ErrorMax[iprot] = epsres
+             Mterms[iprot]   = mpeak + 1
+
+             for iterm in range(mpeak+1) :
+                 BCRterms[iprot][iterm] = [ rpeak[iterm] , bpeak[iterm], cpeak[iterm] ]
+
+             for id in range(NGridImage) :
+                 DiffImage[iprot][id]  = curres[id]
+
+  #          identify the best decomposition coefficients among the generated ones
+
+             if ErrorMin > epsres  :
+                ErrorMin = epsres
+                mprot    = iprot
+
+  #          if the multi-iteration protocol was required : test-run option ??
+
+             if kprot > 200 :
+                if fileCurves is not None:
+                  print('atom, res, ImageMax, ErrorMin, ErrorRel',
+                       f'{AtomType:4}{Resolution:5.2f}{ImageMax*ImageScale:12.4f}',
+                       f'{ErrorMin*ImageScale:8.5f}{ErrorMin:8.5f}', file = fileCurves)
+                  for id in range(NGridImage) :
+                       print(f'{id:6}{Distance[id]*Resolution:9.5f}{Image[id]*ImageScale:10.5f}',
+                             f'{DiffImage[nprot][id]*ImageScale:9.5f}',
+                             f'{DiffImage[iprot][id]*ImageScale:9.5f}', file = fileCurves)
+
+  #          all single-run protocols applied; check if the multi-iteration protocol is required
+  #          (if it is in the list - supposed to be the last one)
+
+             elif (Protocols[Nprotocols-1] > 200) and (iprot == (Nprotocols-2)) \
+                                                   or (iprot == (Nprotocols-1)) :
+                if ErrorMin <= validate:
+                   break
+                else :
+                   print('insufficient accuracy : atom, res, ImageMax, ErrorMin, ErrorRel',
+                         f'{AtomType:4}{Resolution:7.4f}{ImageMax*ImageScale:12.4f}',
+                         f'{ErrorMin*ImageScale:8.5f}{ErrorMin:8.5f}')
+                   nprot = mprot
+
+  #      add the coefficients to the Table (write to the file)
+
+         CompleteTable(AtomType,Resolution,DistMax,Ngrid,Mterms[mprot],
+                   ErrorMin,BCRterms[mprot],ImageScale,Protocols[mprot],fileBCRtemp)
+
+  #      save coefficients for a trial with the next resolution
+
+         BCR_Save[ires]    = BCRterms[mprot]
+         Terms_Save[ires]  = Mterms[mprot]
+
+         BCR_Resol[ires]   = BCRterms[mprot]
+         Terms_Resol[ires] = Mterms[mprot]
+         ErrorMins[ires]   = ErrorMin
+
+      fileBCRtemp.close()
+
+  #==== END OF THE CYCLE OVER RESOLUTIONS =========
+
+  #   if required refine the set of coefficients ; create a file with refined coefficients
+
+      if RefineFlag :
+         fileBCRname = 'BCR_' + AtomType + '.table'
+         fileBCR     = open(fileBCRname, 'w')
+
+         results = {}
+
+         ErrorMin = ErrorMins[0]
+         mres     = 0
+         for ires in range(Nresol) :
+             if ErrorMin >= ErrorMins[ires] :
+                ErrorMin  = ErrorMins[ires]
+                mres = ires
+
+         print('')
+         print('---------------------------------')
+         print('')
+         print(f'Minimal error {ErrorMin:9.6f} for the resolution {Resolutions[mres]:8.4f}')
+
+         Protocol = 1
+
+         for ires in range(mres-1, -1, -1) :
+
+  #      refine backward on the resolution starting from the best set
+
+             Resolution = Resolutions[ires]
+             ImageScale = ImageMaxs[ires]
+
+             print('')
+             print('---------------------------------')
+             print('')
+             print(f'Refine BCR : Resolution {Resolution:8.4f} Atom',AtomType)
+
+             #ScatFunc = SFactG(ScatAtoms[itype],Resolution,NSgrid)
+             #
+             #Image = AtomImage(ScatFunc,Resolution,DistImage*Resolution,StepImage*Resolution)
+
+             o = maptbx.atom_curves(scattering_type=AtomType, scattering_table=scattering_table)
+             oresult = o.image(
+                  d_min=Resolution,
+                  b_iso=0,
+                  d_max = None,
+                  radius_min = 0,
+                  radius_max = DistImage*Resolution,
+                  radius_step = StepImage*Resolution,
+                  n_integration_steps = 2000)
+             Image = oresult.image_values
+
+             NGridImage = len(Image)
+             Distance   = [ id * StepImage for id in range(NGridImage)]
+
+             for id in range(NGridImage) :
+                 Image[id] = Image[id] / ImageScale
+
+             bpeak,cpeak,rpeak,mpeak,curve,curres,epsres = \
+                  ext_BCR(kpres,epsc,epsp,edist,DistMax,Image,Distance,MaxTerms,
+                          BCR_Resol[ires+1],Terms_Resol[ires+1],ires,-1,fileBCRlog)
+
+             if epsres < ErrorMins[ires] :
+                ErrorMins[ires]   = epsres
+                Terms_Resol[ires] = mpeak + 1
+                for iterm in range(mpeak+1) :
+                    BCR_Resol[ires][iterm] = [ rpeak[iterm] , bpeak[iterm], cpeak[iterm] ]
+             else :
+                print('Resolution',ires,Resolution,'not improved',epsres,ErrorMins[ires])
+
+         RefinedTable(AtomType,Resolutions,DistMax,Ngrid,Terms_Resol,
+                ErrorMins,BCR_Resol,ImageMaxs,Protocol,fileBCR,
+                results, scattering_table)
+
+         fileBCR.close()
+         with open("%s_%s.json"%(AtomType, scattering_table), "w") as f:
+           json.dump(results, f, indent=2)
+
+  #   ALL RESOLUTION HAVE BEEN PROCESSED FOR THE GIVEN ATOM; SWITCH TO THE NEXT ATOM
+
+  print('finish')

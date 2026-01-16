@@ -45,11 +45,12 @@ steps:
     bash $(Pipeline.Workspace)/miniforge/Miniforge3-$(CONDA)-x86_64.sh -b -u -p $(Pipeline.Workspace)/miniforge
   displayName: Install miniforge
 
-- script: |
-    set -xe
-    source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
-    conda update -y -n base -c conda-forge conda
-  displayName: Update to latest conda
+# Disable conda update due to a problem with the most recent conda ASB - 08/10/25
+#- script: |
+#    set -xe
+#    source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
+#    conda update -y -n base -c conda-forge conda
+#  displayName: Update to latest conda
 
 - script: |
     set -xe

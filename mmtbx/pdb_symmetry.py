@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 import libtbx.load_env
 from libtbx import easy_pickle
 from libtbx import group_args
+from libtbx.utils import to_str
 from math import sqrt
 import operator
 import os
@@ -28,7 +29,7 @@ def parse_database(file_name):
       pdb_id = fields[0]
       try :
         uc = uctbx.unit_cell([ float(x.replace(",","")) for x in fields[2:8] ])
-      except RuntimeError as e :
+      except (RuntimeError, ValueError) as e :
         print("Unit cell error:")
         print(line)
         continue
@@ -115,9 +116,8 @@ def download_crystal_db():
     relative_path="chem_data/pdb",
     test=os.path.isdir)
   dest_file = os.path.join(dest_dir, "crystal.idx")
-  f = open(dest_file, "w")
-  f.write(data.read())
-  f.close()
+  with open(dest_file, "w") as f:
+    f.write(to_str(data.read()))
   print("Wrote %s" % dest_file)
 
 if (__name__ == "__main__"):

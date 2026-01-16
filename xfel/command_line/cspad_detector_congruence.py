@@ -158,7 +158,7 @@ def detector_plot_dict(params, detector, data, title, units_str, show=True, reve
   ax.set_ylim((-max_dim,max_dim))
   ax.set_xlabel("mm")
   ax.set_ylabel("mm")
-  fig.colorbar(sm)
+  fig.colorbar(sm, ax=ax)
   plt.title(title)
   if show:
     plt.show()

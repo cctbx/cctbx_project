@@ -44,9 +44,7 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
     if list(filter(_is_cis, omegas)): return True
     return False
 
-  def get_omega_value(self,
-                      omega_cdl=False,
-                     ):
+  def get_omega_value(self, omega_cdl=False):
     #
     # this is very poor! there needs to be a better way to check for cis-
     #

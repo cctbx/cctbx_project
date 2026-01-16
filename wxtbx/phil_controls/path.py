@@ -136,7 +136,7 @@ class PathCtrl(wx.Panel, phil_controls.PhilCtrl):
   def OnBrowse(self, event):
     flags = 0
     if (self._path_style & WXTBX_PHIL_PATH_SAVE):
-      flags |= wx.FD_SAVE|wx.OVERWRITE_PROMPT
+      flags |= wx.FD_SAVE|wx.FD_OVERWRITE_PROMPT
     else :
       flags |= wx.FD_OPEN
     path_manager = self.GetPathManager()

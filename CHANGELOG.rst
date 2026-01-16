@@ -1,3 +1,38 @@
+2025.11
+=======
+
+* Print additional information from DiSCaMB
+* More developments in QM restraints
+
+2025.10
+=======
+
+* Added mmtbx.reduce_cryoem_resolution for creating lower resolution maps
+  from existing maps
+* Initial support for Python 3.14
+* General wxPython syntax updates in wxtbx
+
+2025.9
+======
+
+* Added tool for finding restraint files in installation
+  (mmtbx.where_is_that_cif_file)
+* Improvements to variable resolution map calculation
+
+2025.8
+======
+
+* Added function to find similar ligands via SMILES with RCSB web services
+* Improvements to ligand validation tool (work in progress)
+* Initial integration of aspherical structure factors from DiSCaMB
+
+2025.7
+======
+
+* Added _atom_site.auth_atom_id to mmCIF output
+* Added calculation of a variable resolution map
+* CCTBParser: updated --diff-params to report any incompatible PHIL as unused
+
 2025.6
 ======
 

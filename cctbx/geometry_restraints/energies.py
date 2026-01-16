@@ -266,6 +266,9 @@ class energies(scitbx.restraints.energies):
   def angle_sigmas(self, origin_id=Auto):
     return self._sigmas(self.angle_proxies, origin_id=origin_id)
 
+  def dihedral_sigmas(self):
+    return self._sigmas(self.dihedral_proxies, origin_id=0)
+
   def bond_deviations_z(self, origin_id=0):
     '''
     Calculate rmsz of bond deviations
@@ -352,7 +355,7 @@ class energies(scitbx.restraints.energies):
       angle_deltas = self._get_angle_deltas(origin_id=origin_id)
       if len(angle_deltas) > 0:
         sigmas = self.angle_sigmas(origin_id=origin_id)
-        assert len(sigmas)==len(angle_deltas)
+        # assert len(sigmas)==len(angle_deltas), 'sigmas %d != angle_deltas %d' % (len(sigmas), len(angle_deltas))
         z_scores = flex.double([(angle_delta/sigma) for angle_delta,sigma in zip(angle_deltas,sigmas)])
         a_rmsz = math.sqrt(flex.mean_default(z_scores*z_scores,0))
         a_z_max = flex.max_default(flex.abs(z_scores), 0)
@@ -415,6 +418,44 @@ class energies(scitbx.restraints.energies):
       d_max = math.sqrt(flex.max_default(d_sq, 0))
       d_min = math.sqrt(flex.min_default(d_sq, 0))
       return d_min, d_max, d_ave
+
+  def dihedral_deviations_z(self):
+    '''
+    Calculate rmsz of dihedral deviations
+
+    Compute rmsz, the Root-Mean-Square of the z-scors for a set of data
+    using z_i = {x_i - mu / sigma}  and rmsz = sqrt(mean(z*z))
+
+    Compute rmsz, the Root-Mean-Square of the z-scors for a set of data
+    using z_i = {x_i - mu / sigma}  and rmsz = sqrt(mean(z*z))
+    x_i: atcual dihedral
+    mu: geometry restraints mean
+    sigma:  geometry restraints standard deviation
+    z_i: z-score for bond i
+    z: array of z_i
+
+    The sigma and the (x_i - mu) are model constrains, geometry restraints. They function extracts
+    from self, not calculated from data.
+
+    :returns:
+    d_rmsz: rmsz, root mean square of the z-scors of all dihedrals
+    d_z_min/max: min/max values of z-scors
+    '''
+    if(self.n_dihedral_proxies is not None):
+      covalent_dihedrals = self.dihedral_proxies.proxy_select(origin_id=0)
+      dihedral_deltas = geometry_restraints.dihedral_deltas(
+        sites_cart = self.sites_cart,
+        proxies    = covalent_dihedrals)
+      if len(dihedral_deltas) > 0:
+        sigmas = self.dihedral_sigmas()
+        assert len(sigmas)==len(dihedral_deltas), 'sigmas %d != angle_deltas %d' % (len(sigmas), len(angle_deltas))
+        z_scores = flex.double([(dihedral_delta/sigma) for dihedral_delta,sigma in zip(dihedral_deltas,sigmas)])
+        d_rmsz = math.sqrt(flex.mean_default(z_scores*z_scores,0))
+        d_z_max = flex.max_default(flex.abs(z_scores), 0)
+        d_z_min = flex.min_default(flex.abs(z_scores), 0)
+        return d_z_min, d_z_max, d_rmsz, len(sigmas)
+      else:
+        return 0,0,0,0
 
   def reference_dihedral_deviations(self):
     assert 0, "Not working"

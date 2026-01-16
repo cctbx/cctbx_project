@@ -23,7 +23,6 @@ from libtbx import adopt_init_args, slots_getstate_setstate
 from libtbx.str_utils import format_value, make_header
 from libtbx import runtime_utils
 from libtbx import easy_mp
-import libtbx.load_env
 from six.moves import cStringIO as StringIO
 from six.moves import cPickle as pickle
 import random
@@ -1807,10 +1806,12 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
 
   if er_params.electron_density_maps.apply_default_maps != False\
     or len(er_params.electron_density_maps.map_coefficients) == 0:
-    maps_par = libtbx.env.find_in_repositories(
-      relative_path=\
-        "cctbx_project/mmtbx/refinement/ensemble_refinement/maps.params",
-      test=os.path.isfile)
+
+    from pathlib import Path
+    data_dir =  Path(mmtbx.__file__).parent / "refinement" / "ensemble_refinement"
+
+    maps_par = str(data_dir / "maps.params")
+
     maps_par_phil = iotbx.phil.parse(file_name=maps_par)
     working_params = mmtbx.refinement.ensemble_refinement.master_params.fetch(
                         sources = [working_phil]+[maps_par_phil])
