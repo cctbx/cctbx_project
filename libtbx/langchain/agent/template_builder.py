@@ -233,6 +233,9 @@ class TemplateBuilder(object):
             priority_patterns = slot_def.get("priority_patterns", [])
             is_multiple = slot_def.get("multiple", False)
             is_required = slot_def.get("required", False)
+            # Category-based filtering
+            exclude_categories = slot_def.get("exclude_categories", [])
+            preferred_categories = slot_def.get("preferred_categories", [])
 
             # PRIORITY 0: Locked R-free MTZ (X-ray refinement only)
             # Once R-free flags are generated, we MUST use that MTZ for all refinements
@@ -264,6 +267,15 @@ class TemplateBuilder(object):
                                 log("DEBUG: Best %s excluded by pattern '%s': %s" % (
                                     best_category, pattern, os.path.basename(best_path)))
                                 break
+
+                        # Check exclude_categories - best_files must respect category exclusions
+                        if not is_excluded and exclude_categories:
+                            file_stage = self._get_file_stage(best_path)
+                            if file_stage in exclude_categories:
+                                is_excluded = True
+                                log("DEBUG: Best %s excluded by category '%s': %s" % (
+                                    best_category, file_stage, os.path.basename(best_path)))
+
                         if not is_excluded:
                             selected_files[slot_name] = best_path
                             used_files.add(best_path)
@@ -292,6 +304,18 @@ class TemplateBuilder(object):
             # Apply exclude patterns
             for pattern in exclude_patterns:
                 candidates = [f for f in candidates if pattern.lower() not in f.lower()]
+
+            # Apply exclude_categories - filter out files in excluded categories
+            if exclude_categories:
+                filtered_candidates = []
+                for f in candidates:
+                    file_stage = self._get_file_stage(f)
+                    if file_stage in exclude_categories:
+                        log("DEBUG: Candidate excluded by category '%s': %s" % (
+                            file_stage, os.path.basename(f)))
+                    else:
+                        filtered_candidates.append(f)
+                candidates = filtered_candidates
 
             if not candidates:
                 if is_required:
@@ -333,9 +357,13 @@ class TemplateBuilder(object):
         """Convert YAML inputs format to JSON file_slots format."""
         slots = {}
         inputs = prog_def.get("inputs", {})
+        input_priorities = prog_def.get("input_priorities", {})
 
         for section, is_required in [("required", True), ("optional", False)]:
             for slot_name, slot_def in inputs.get(section, {}).items():
+                # Get input priorities for this slot
+                slot_priorities = input_priorities.get(slot_name, {})
+
                 slots[slot_name] = {
                     "extensions": slot_def.get("extensions", []),
                     "flag": slot_def.get("flag", ""),
@@ -344,9 +372,63 @@ class TemplateBuilder(object):
                     "exclude_patterns": slot_def.get("exclude_patterns", []),
                     "prefer_patterns": slot_def.get("prefer_patterns", []),
                     "priority_patterns": slot_def.get("priority_patterns", []),
+                    # Add category-based filtering
+                    "preferred_categories": slot_priorities.get("categories", []),
+                    "exclude_categories": slot_priorities.get("exclude_categories", []),
                 }
 
         return slots
+
+    def _get_file_stage(self, path):
+        """
+        Determine the processing stage of a file from its filename.
+
+        This mirrors the logic in BestFilesTracker._classify_stage.
+
+        Args:
+            path: File path
+
+        Returns:
+            str: Stage name (refined, predicted, phaser_output, etc.)
+        """
+        basename = os.path.basename(path).lower()
+        ext = os.path.splitext(basename)[1]
+
+        # Model files
+        if ext in ['.pdb', '.cif']:
+            if 'refine' in basename and 'real_space' not in basename:
+                return "refined"
+            if 'real_space_refined' in basename or 'rsr_' in basename:
+                return "rsr_output"
+            if 'overall_best' in basename or 'autobuild' in basename:
+                return "autobuild_output"
+            if 'placed' in basename or 'dock' in basename:
+                return "docked"
+            if 'processed' in basename:
+                return "processed_predicted"
+            if 'predict' in basename or 'alphafold' in basename:
+                return "predicted"
+            if 'phaser' in basename:
+                return "phaser_output"
+            return "pdb"
+
+        # MTZ files
+        elif ext in ['.mtz', '.sca', '.hkl']:
+            if 'refine' in basename:
+                return "refined_mtz"
+            return "mtz"
+
+        # Map files
+        elif ext in ['.mrc', '.ccp4', '.map']:
+            if 'denmod' in basename or 'density_mod' in basename:
+                return "optimized_full_map"
+            if 'sharp' in basename:
+                return "sharpened"
+            if re.search(r'[_-][12ab]\.', basename) or 'half' in basename:
+                return "half_map"
+            return "full_map"
+
+        return "unknown"
 
     def _score_file(self, f, priority_patterns, prefer_patterns):
         """Score a file for selection."""
@@ -368,13 +450,26 @@ class TemplateBuilder(object):
             score += 50
         if "_refine_" in basename:
             score += 40
+        if "real_space_refined" in basename or "rsr_" in basename:
+            score += 40
         if "phaser" in basename:
             score += 30
 
-        # Prefer higher cycle numbers
+        # Prefer higher cycle numbers (for iterative refinement outputs)
+        # Matches: refine_001_001.pdb, refine_002_001.pdb, etc.
         cycle_match = re.search(r'refine[_.]?(\d+)', basename)
         if cycle_match:
             score += int(cycle_match.group(1)) * 5
+        
+        # Matches: rsr_001_real_space_refined_001.pdb, etc.
+        # Use the LAST number in the filename as the iteration number
+        rsr_numbers = re.findall(r'(\d+)', basename)
+        if rsr_numbers and ('rsr' in basename or 'real_space' in basename):
+            # Last number is typically the iteration (000, 001, 002)
+            score += int(rsr_numbers[-1]) * 5
+            # Also add bonus for the cycle number (first number typically)
+            if len(rsr_numbers) > 1:
+                score += int(rsr_numbers[0]) * 2
 
         # Prefer longer names
         score += len(basename) * 0.1
@@ -678,6 +773,16 @@ class TemplateBuilder(object):
             if resolution:
                 strategy["resolution"] = round(float(resolution), 1)
                 message = "Auto-filled resolution=%.1fÅ from %s" % (resolution, source)
+
+        # Auto-fill output prefix based on cycle number
+        if fix.get("auto_fill_output_prefix"):
+            if "output_prefix" not in strategy or not strategy.get("output_prefix"):
+                cycle = context.get("cycle_number", 1)
+                prefix_base = fix.get("auto_fill_output_prefix")
+                if prefix_base is True:
+                    prefix_base = "output"
+                strategy["output_prefix"] = "%s_%03d" % (prefix_base, cycle)
+                message = "Auto-filled output_prefix=%s" % strategy["output_prefix"]
 
         return files, strategy, message
 

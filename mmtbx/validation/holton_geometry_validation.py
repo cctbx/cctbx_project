@@ -641,6 +641,12 @@ def analyze_geometry_values(info, randomize = False):
 def randomize_result(info, result):
   if result.name == 'CLASH':  # just get about nres/1000 clashes
     randomize_clash(info, result)
+  elif result.name in ['NONBOND','FULL_NONBOND']:  # use 0.1
+    approx_sd = 0.1
+    for v in result.value_list:
+       x = random.gauss(0,approx_sd)
+       r = x**2
+       v.residual = r
   else: # usual
     for v in result.value_list:
        x = random.gauss(0,1)
@@ -919,15 +925,19 @@ def get_geometry_results(info):
           return_result = True)
     # Calculate residual from Lennard-Jones potential
     if result:
+      f = open('nb.txt','w')
+      print("NB START", file = f)
       for v in result.value_list:
         v.residual = lj(v.model,v.ideal,
              dist_that_yields_zero = info.lj_dist_that_yields_zero,
               round_numbers = info.round_numbers)
+        print(v.residual, file = f)
         v.delta = v.ideal - v.model
         v.group_args_type += " residual is LJ(model, ideal)"
         v.as_string = "NONBOND: Energy = %.6f dev = %.3f A  obs = %.3f target = %.3f\n   Atom 1:  %s\n   Atom 2:  %s" %(
           v.residual, v.delta, v.model, v.ideal,
            v.labels[0].as_string(), v.labels[1].as_string())
+      f = open('nb.txt','w')
       for proxy_name in proxy_name_list:
         geometry_results[proxy_name].value_list += result.value_list
 

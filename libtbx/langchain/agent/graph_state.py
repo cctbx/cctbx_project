@@ -103,6 +103,7 @@ def create_initial_state(
         session_info: Dict with session state:
             - experiment_type: Locked experiment type ("xray" or "cryoem")
             - best_files: Dict of {category: path} from BestFilesTracker
+            - rfree_mtz: Path to locked R-free MTZ file (X-ray only)
         abort_on_red_flags: If True, abort on critical sanity check failures
         abort_on_warnings: If True, also abort on warning-level issues
 

@@ -11,10 +11,39 @@ The PHENIX AI Agent automates crystallographic and cryo-EM structure determinati
 3. **Workflow State Machine** - Enforced valid program sequences for X-ray and cryo-EM
 4. **Rules-Only Mode** - Fully deterministic operation without LLM
 5. **Dry Run Testing** - Test workflows without running actual PHENIX programs
+6. **V2 JSON API** - Clean client-server protocol with unified transport
+7. **Local & Remote Agents** - Identical behavior whether running locally or via server
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         Client Side                              │
+├─────────────────────────────────────────────────────────────────┤
+│  ai_agent.py → LocalAgent / RemoteAgent                         │
+│                      │                                           │
+│                      ▼                                           │
+│  transport.prepare_request() → sanitize → JSON → encode         │
+│                      │                                           │
+│     LocalAgent: decode locally    RemoteAgent: send to server   │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                         Server Side                              │
+├─────────────────────────────────────────────────────────────────┤
+│  run_ai_agent.py                                                 │
+│       │                                                          │
+│       ▼                                                          │
+│  transport.process_request() → decode → parse → execute graph   │
+│       │                                                          │
+│       ▼                                                          │
+│  transport.prepare_response() → sanitize → JSON → encode        │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ## Configuration Files
 
-The agent uses four YAML configuration files in `knowledge/`:
+The agent uses YAML configuration files in `knowledge/`:
 
 | File | Purpose |
 |------|---------|
@@ -22,6 +51,8 @@ The agent uses four YAML configuration files in `knowledge/`:
 | `workflows.yaml` | Workflow state machines (phases, transitions, conditions) |
 | `metrics.yaml` | Quality metrics and thresholds |
 | `file_categories.yaml` | File categorization rules (extensions, patterns) |
+| `api_schema.py` | V2 API request/response schema |
+| `transport.yaml` | Transport encoding and sanitization settings |
 
 ### Key Configuration Features
 
@@ -46,12 +77,16 @@ improved_agent_v2/
 │   ├── metric_evaluator.py    # YAML-based quality assessment
 │   ├── metrics_analyzer.py    # Metrics trend analysis
 │   ├── dry_run_manager.py     # Test scenario management
-│   └── session.py             # Session management
+│   ├── session.py             # Session management
+│   ├── api_client.py          # V2 API request/response building
+│   └── transport.py           # Unified transport encoding/decoding
 ├── knowledge/
 │   ├── programs.yaml          # Program definitions
 │   ├── workflows.yaml         # Workflow state machines
 │   ├── metrics.yaml           # Metric thresholds
 │   ├── file_categories.yaml   # File categorization rules
+│   ├── api_schema.py          # V2 API schema definitions
+│   ├── transport.yaml         # Transport configuration
 │   ├── yaml_loader.py         # YAML access functions
 │   └── prompts_hybrid.py      # LLM prompt templates
 ├── tests/
@@ -60,12 +95,21 @@ improved_agent_v2/
 │   ├── test_integration.py    # Integration tests
 │   ├── test_metrics_analyzer.py
 │   ├── test_dry_run.py
+│   ├── test_transport.py      # Transport module tests (71 tests)
 │   └── scenarios/             # Dry run test scenarios
-├── yaml_tools.py              # YAML validation & inspection utility
+├── docs/
+│   ├── README.md              # Docs overview
+│   ├── ARCHITECTURE.md        # System architecture
+│   ├── API_DOCUMENTATION.md   # V2 API reference
+│   ├── TRANSPORT_REFACTORING_PLAN.md  # Transport design
+│   └── ...
+├── local_agent.py             # Local execution agent
+├── remote_agent.py            # Remote server agent
+├── ai_agent.py                # Main AI agent class
+├── run_ai_agent.py            # Server-side entry point
+├── yaml_tools.py              # YAML validation & inspection
 ├── log_parsers.py             # Program output parsing
-├── run_all_tests.py           # Master test runner
-├── README.md                  # This file
-└── AGENT_LOGIC.md             # Detailed decision-making logic
+└── run_all_tests.py           # Master test runner
 ```
 
 ## YAML Tools
@@ -320,4 +364,77 @@ python yaml_tools.py terms --detail full
 | Document | Description |
 |----------|-------------|
 | `README.md` | This file - overview and quick start |
-| `AGENT_LOGIC.md` | Detailed decision-making logic and architecture |
+| `docs/ARCHITECTURE.md` | System architecture and component details |
+| `docs/API_DOCUMENTATION.md` | V2 API request/response reference |
+| `docs/TRANSPORT_REFACTORING_PLAN.md` | Transport layer design and implementation |
+| `docs/RED_FLAG_DETECTION_PLAN.md` | Sanity checking and abort logic |
+| `docs/YAML_SCORING_PLAN.md` | YAML-based program scoring |
+
+## V2 API Quick Reference
+
+### Request Format
+```json
+{
+  "api_version": "2.0",
+  "cycle_number": 1,
+  "files": ["/path/to/data.mtz", "/path/to/model.pdb"],
+  "log_content": "Previous program output...",
+  "session_state": {
+    "experiment_type": "xray",
+    "resolution": 2.5,
+    "rfree_mtz": "/path/to/rfree.mtz"
+  },
+  "history": [...],
+  "user_advice": "Focus on ligand fitting",
+  "settings": {
+    "provider": "google",
+    "abort_on_red_flags": true
+  }
+}
+```
+
+### Response Format
+```json
+{
+  "api_version": "2.0",
+  "decision": {
+    "program": "phenix.refine",
+    "command": "phenix.refine model.pdb data.mtz",
+    "reasoning": "Continuing refinement..."
+  },
+  "stop_reason": null,
+  "history_record": {...},
+  "metadata": {
+    "warnings": [],
+    "red_flags": []
+  }
+}
+```
+
+## Transport Layer
+
+The transport layer ensures reliable client-server communication:
+
+```python
+from agent.transport import (
+    prepare_request_for_transport,
+    process_request_from_transport,
+    verify_roundtrip,
+)
+
+# Prepare request (sanitize + JSON + encode)
+encoded, original = prepare_request_for_transport(request, do_encode=True)
+
+# Process received request (decode + parse)
+decoded = process_request_from_transport(encoded, was_encoded=True)
+
+# Verify roundtrip integrity
+success, message, details = verify_roundtrip(request)
+```
+
+### Sanitization Features
+- Removes ZZxxZZ REST encoding markers from logs
+- Truncates long quoted strings (e.g., pdb70_text data dumps)
+- Replaces tabs with spaces
+- Removes control characters
+- Configurable via `knowledge/transport.yaml`

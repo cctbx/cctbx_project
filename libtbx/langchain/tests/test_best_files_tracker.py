@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agent.best_files_tracker import BestFilesTracker
 
+
 # =============================================================================
 # TEST HELPERS
 # =============================================================================

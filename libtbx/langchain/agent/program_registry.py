@@ -421,45 +421,81 @@ class ProgramRegistry:
         if not prog:
             raise ValueError("Unknown program: %s" % program_name)
 
-        cmd_parts = [program_name]
-
-        # Get input definitions
+        # Start with command template from YAML if available
         if self.use_yaml:
+            cmd_template = prog.get("command", program_name)
+            
+            # Get input definitions to check for flags and multiple
             inputs = prog.get("inputs", {})
             all_inputs = {}
             all_inputs.update(inputs.get("required", {}))
             all_inputs.update(inputs.get("optional", {}))
+            
+            # Substitute file placeholders
+            cmd = cmd_template
+            for slot_name, file_path in files.items():
+                placeholder = "{%s}" % slot_name
+                if placeholder in cmd:
+                    # Get the flag for this input
+                    slot_def = all_inputs.get(slot_name, {})
+                    flag = slot_def.get("flag", "")
+                    is_multiple = slot_def.get("multiple", False)
+                    
+                    if is_multiple and isinstance(file_path, list):
+                        # Multiple files - add flag prefix to each
+                        if flag:
+                            replacement = " ".join("%s%s" % (flag, fp) for fp in file_path)
+                        else:
+                            replacement = " ".join(file_path)
+                    else:
+                        # Single file
+                        if isinstance(file_path, list):
+                            file_path = file_path[0] if file_path else ""
+                        # Apply flag if defined
+                        if flag:
+                            replacement = "%s%s" % (flag, file_path)
+                        else:
+                            replacement = str(file_path)
+                    
+                    cmd = cmd.replace(placeholder, replacement)
+            
+            # Remove any unfilled placeholders (optional files not provided)
+            import re
+            cmd = re.sub(r'\{[a-z_]+\}', '', cmd)
+            cmd = ' '.join(cmd.split())  # Clean up extra spaces
+            
+            cmd_parts = cmd.split()
         else:
+            # Legacy JSON path - build from scratch
+            cmd_parts = [program_name]
+            
+            # Get input definitions
             all_inputs = prog.get("file_slots", {})
 
-        # Add files
-        for slot_name, slot_def in all_inputs.items():
-            file_path = files.get(slot_name)
+            # Add files
+            for slot_name, slot_def in all_inputs.items():
+                file_path = files.get(slot_name)
 
-            if not file_path:
-                if self.use_yaml:
-                    is_required = slot_name in prog.get("inputs", {}).get("required", {})
-                else:
+                if not file_path:
                     is_required = slot_def.get("required", False)
+                    if is_required:
+                        raise ValueError("Missing required file '%s' for %s" % (slot_name, program_name))
+                    continue
 
-                if is_required:
-                    raise ValueError("Missing required file '%s' for %s" % (slot_name, program_name))
-                continue
+                flag = slot_def.get("flag", "")
+                is_multiple = slot_def.get("multiple", False)
 
-            flag = slot_def.get("flag", "")
-            is_multiple = slot_def.get("multiple", False)
-
-            if is_multiple and isinstance(file_path, list):
-                for fp in file_path:
-                    if flag and not flag.endswith("="):
-                        cmd_parts.append("%s %s" % (flag, fp))
-                    else:
-                        cmd_parts.append("%s%s" % (flag, fp))
-            else:
-                if flag and not flag.endswith("="):
-                    cmd_parts.append("%s %s" % (flag, file_path))
+                if is_multiple and isinstance(file_path, list):
+                    for fp in file_path:
+                        if flag and not flag.endswith("="):
+                            cmd_parts.append("%s %s" % (flag, fp))
+                        else:
+                            cmd_parts.append("%s%s" % (flag, fp))
                 else:
-                    cmd_parts.append("%s%s" % (flag, file_path))
+                    if flag and not flag.endswith("="):
+                        cmd_parts.append("%s %s" % (flag, file_path))
+                    else:
+                        cmd_parts.append("%s%s" % (flag, file_path))
 
         # Handle defaults (can be overridden by strategy)
         defaults = dict(self.get_defaults(program_name))

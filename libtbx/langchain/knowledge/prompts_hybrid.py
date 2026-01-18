@@ -591,9 +591,26 @@ YOU MUST FIX THIS. Try a DIFFERENT approach:
     # === RUNTIME ERROR CONTEXT ===
     runtime_error_msg = ""
     if last_error and not previous_attempts:
-        is_phil_error = any(x in last_error.lower() for x in [
+        last_error_lower = last_error.lower()
+
+        # Check for specific error types
+        is_phil_error = any(x in last_error_lower for x in [
             "phil parameter", "unknown parameter", "unrecognized", "invalid keyword",
             "not a valid", "syntax error", "unexpected"
+        ])
+
+        is_rfree_error = any(x in last_error_lower for x in [
+            "r-free", "rfree", "r_free", "free_flags", "test set",
+            "no test reflections", "fraction of test"
+        ])
+
+        is_resolution_error = any(x in last_error_lower for x in [
+            "resolution", "d_min", "high_resolution"
+        ])
+
+        is_file_error = any(x in last_error_lower for x in [
+            "file not found", "no such file", "cannot open", "does not exist",
+            "missing file", "input file"
         ])
 
         if is_phil_error:
@@ -605,6 +622,38 @@ Error: "%s"
 THIS IS A SYNTAX ERROR - DO NOT SWITCH PROGRAMS!
 Retry with corrected parameter names.
 """ % (last_failed_program or "unknown", last_error[:200])
+
+        elif is_rfree_error:
+            runtime_error_msg = """
+!!! PREVIOUS CYCLE FAILED - R-FREE FLAG ISSUE !!!
+Program: %s
+Error: "%s"
+
+THIS IS AN R-FREE FLAG ERROR - DO NOT SWITCH PROGRAMS!
+The refinement command already includes xray_data.r_free_flags.generate=True
+which should auto-generate R-free flags. Retry refinement - it should work now.
+If using a different MTZ file, ensure it has reflection data.
+""" % (last_failed_program or "unknown", last_error[:200])
+
+        elif is_resolution_error:
+            runtime_error_msg = """
+!!! PREVIOUS CYCLE FAILED - RESOLUTION ISSUE !!!
+Program: %s
+Error: "%s"
+
+THIS IS A RESOLUTION ERROR - DO NOT SWITCH PROGRAMS!
+Add or fix the resolution parameter in strategy.
+""" % (last_failed_program or "unknown", last_error[:200])
+
+        elif is_file_error:
+            runtime_error_msg = """
+!!! PREVIOUS CYCLE FAILED - FILE NOT FOUND !!!
+Program: %s
+Error: "%s"
+
+A required file was not found. Check the FILE INVENTORY and use only files that exist.
+""" % (last_failed_program or "unknown", last_error[:200])
+
         else:
             runtime_error_msg = """
 !!! PREVIOUS CYCLE FAILED !!!

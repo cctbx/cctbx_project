@@ -231,7 +231,7 @@ class BestFilesTracker:
             if phenix_path:
                 possible_paths.insert(0, os.path.join(
                     phenix_path, "langchain", "knowledge", "metrics.yaml"))
-        except Exception as e:
+        except Exception:
             pass
 
         for path in possible_paths:

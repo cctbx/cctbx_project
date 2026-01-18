@@ -226,6 +226,7 @@ class WorkflowEngine:
         "dock_model": "cryoem_has_prediction",
         "check_map": "cryoem_has_model",
         "optimize_map": "cryoem_has_model",
+        "ready_to_refine": "cryoem_docked",  # Model docked, ready for first refinement
         "refine": "cryoem_refined",
         "validate": "cryoem_refined",  # Validation is part of refined state
         "complete": "complete",
@@ -359,7 +360,12 @@ class WorkflowEngine:
             return self._make_phase_result(phases, "optimize_map",
                 "Have model but only half-maps, need full map for refinement")
 
-        # Phase 3: Refinement
+        # Phase 3a: Have docked model but not yet refined
+        if context["has_placed_model"] and not context["has_refined_model"]:
+            return self._make_phase_result(phases, "ready_to_refine",
+                "Model docked in map, ready for refinement")
+
+        # Phase 3b: Refinement in progress
         if not context["has_refined_model"]:
             return self._make_phase_result(phases, "refine",
                 "Have model and map, need refinement")

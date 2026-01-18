@@ -30,6 +30,48 @@ from libtbx.langchain.knowledge.prompts_hybrid import get_planning_prompt
 from libtbx.langchain.agent.rules_selector import select_action_by_rules
 
 
+def _get_most_recent_file(file_list):
+    """
+    Get the most recent file from a list based on modification time.
+    
+    For files with numbered suffixes (e.g., rsr_001_real_space_refined_002.pdb),
+    prefers higher numbers. Falls back to modification time.
+    
+    Args:
+        file_list: List of file paths
+        
+    Returns:
+        str: Most recent file path, or None if list is empty
+    """
+    if not file_list:
+        return None
+    if len(file_list) == 1:
+        return file_list[0]
+    
+    # Try to sort by numbered suffix in filename
+    # Pattern matches things like: rsr_001_real_space_refined_002.pdb -> extracts 002
+    # or refine_001_001.pdb -> extracts the last number
+    def get_file_number(path):
+        basename = os.path.basename(path)
+        # Find all numbers in the filename
+        numbers = re.findall(r'(\d+)', basename)
+        if numbers:
+            # Return the last number as tiebreaker (usually the iteration number)
+            return int(numbers[-1])
+        return 0
+    
+    # Sort by file number (descending), then by mtime (descending)
+    def sort_key(path):
+        try:
+            mtime = os.path.getmtime(path) if os.path.exists(path) else 0
+        except OSError:
+            mtime = 0
+        return (get_file_number(path), mtime)
+    
+    sorted_files = sorted(file_list, key=sort_key, reverse=True)
+    return sorted_files[0]
+
+
 # =============================================================================
 # YAML MODE CONFIGURATION
 # =============================================================================
@@ -293,6 +335,14 @@ def perceive(state):
         use_yaml_engine=use_yaml_workflow
     )
 
+    # Override detected experiment_type with locked session experiment_type if available
+    session_info = state.get("session_info", {})
+    session_experiment_type = session_info.get("experiment_type")
+    if session_experiment_type:
+        state = _log(state, "PERCEIVE: Using locked experiment_type from session: %s (detected was: %s)" % (
+            session_experiment_type, workflow_state.get("experiment_type")))
+        workflow_state["experiment_type"] = session_experiment_type
+
     # Log the results
     if analysis:
         metrics_str = ", ".join([
@@ -313,6 +363,14 @@ def perceive(state):
     abort_on_red_flags = state.get("abort_on_red_flags", True)
     abort_on_warnings = state.get("abort_on_warnings", False)
 
+    # Use session_info experiment_type (locked) first, then workflow_state, then detected
+    session_experiment_type = session_info.get("experiment_type")
+    effective_experiment_type = (
+        session_experiment_type or
+        workflow_state.get("experiment_type") or
+        experiment_type
+    )
+
     # Log best_files status
     best_files = session_info.get("best_files", {})
     if best_files:
@@ -324,7 +382,7 @@ def perceive(state):
     # Build sanity check context
     categorized_files = workflow_state.get("categorized_files", {})
     sanity_context = {
-        "experiment_type": workflow_state.get("experiment_type", experiment_type),
+        "experiment_type": effective_experiment_type,
         "has_model": bool(categorized_files.get("pdb")),
         "has_mtz": bool(categorized_files.get("mtz")),
         # Check all map categories for cryo-EM
@@ -911,20 +969,28 @@ def build(state):
             # Count successful runs of THIS specific program
             if program == "phenix.refine":
                 prefix_base = "refine"
-                run_count = sum(1 for h in history
+                matching_runs = [h for h in history
                                if isinstance(h, dict) and
                                h.get("program") == "phenix.refine" and
-                               h.get("result") == "SUCCESS")
+                               str(h.get("result", "")).startswith("SUCCESS")]
             else:  # phenix.real_space_refine
                 prefix_base = "rsr"
-                run_count = sum(1 for h in history
+                matching_runs = [h for h in history
                                if isinstance(h, dict) and
                                h.get("program") == "phenix.real_space_refine" and
-                               h.get("result") == "SUCCESS")
+                               str(h.get("result", "")).startswith("SUCCESS")]
+            
+            run_count = len(matching_runs)
+            
+            # Debug: show which cycles were counted
+            if matching_runs:
+                cycle_nums = [str(h.get("cycle_number", "?")) for h in matching_runs]
+                state = _log(state, "BUILD: Found %d previous %s runs in cycles: %s" % (
+                    run_count, program, ", ".join(cycle_nums)))
 
             next_number = run_count + 1
             strategy["output_prefix"] = "%s_%03d" % (prefix_base, next_number)
-            state = _log(state, "BUILD: Using output_prefix=%s_%03d for clear file naming" % (prefix_base, next_number))
+            state = _log(state, "BUILD: output_prefix=%s_%03d" % (prefix_base, next_number))
 
     # === HIGH RESOLUTION SUGGESTIONS (just log, don't auto-apply) ===
     if program == "phenix.refine" and workflow_state.get("high_res_suggestions"):
@@ -988,6 +1054,14 @@ def build(state):
     llm_files = intent.get("files", {})
     corrected_files = {}
     rejected_files = []
+
+    # DEBUG: Log what the LLM actually returned in its files dict
+    if llm_files:
+        llm_files_summary = ", ".join("%s=%s" % (k, os.path.basename(str(v)) if v else "None") 
+                                       for k, v in llm_files.items())
+        state = _log(state, "BUILD: LLM requested files: {%s}" % llm_files_summary)
+    else:
+        state = _log(state, "BUILD: LLM returned empty files dict - will auto-select")
 
     if llm_files:
         for slot, filepath in llm_files.items():
@@ -1216,22 +1290,23 @@ def build(state):
                                     break
 
                     # PRIORITY 3: Simple fallback for common input types
+                    # Use _get_most_recent_file to prefer the latest file when multiple match
                     if not file_found:
                         if input_name == "mtz":
                             if categorized_files.get("refined_mtz"):
-                                file_found = categorized_files["refined_mtz"][0]
+                                file_found = _get_most_recent_file(categorized_files["refined_mtz"])
                             elif categorized_files.get("mtz"):
-                                file_found = categorized_files["mtz"][0]
+                                file_found = _get_most_recent_file(categorized_files["mtz"])
                         elif input_name == "model":
-                            for cat in ["refined", "phaser_output", "rsr_output",
+                            for cat in ["refined", "rsr_output", "phaser_output",
                                        "processed_predicted", "pdb"]:
                                 if categorized_files.get(cat):
-                                    file_found = categorized_files[cat][0]
+                                    file_found = _get_most_recent_file(categorized_files[cat])
                                     break
                         elif input_name == "sequence" and categorized_files.get("sequence"):
-                            file_found = categorized_files["sequence"][0]
+                            file_found = _get_most_recent_file(categorized_files["sequence"])
                         elif input_name == "map" and categorized_files.get("full_map"):
-                            file_found = categorized_files["full_map"][0]
+                            file_found = _get_most_recent_file(categorized_files["full_map"])
 
                     if file_found:
                         corrected_files[input_name] = file_found
@@ -1255,6 +1330,12 @@ def build(state):
             )
             for warning in warnings:
                 state = _log(state, "BUILD: %s" % warning)
+
+            # DEBUG: Log final file selection before building command
+            if corrected_files:
+                final_files_summary = ", ".join("%s=%s" % (k, os.path.basename(str(v)) if v else "None")
+                                                 for k, v in corrected_files.items())
+                state = _log(state, "BUILD: Final files for command: {%s}" % final_files_summary)
 
             command = builder.build_command(
                 program,

@@ -71,7 +71,9 @@ phased_mtz:
     - "*phases*"
     - "*hklout_phased*"
     - "*solve*"
-  notes: "Contains experimental phases - use for map calculation, not direct refinement"
+    - "PHASER*.mtz"
+    - "phaser*.mtz"
+  notes: "Contains experimental phases - use for map calculation, not direct refinement. Phaser MTZ lacks R-free flags."
 
 # =============================================================================
 # MODEL (PDB) SUBCATEGORIES

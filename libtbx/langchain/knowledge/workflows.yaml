@@ -343,7 +343,7 @@ cryoem:
       transitions:
         if_has_full_map: refine
         if_needs_optimization: optimize_map
-        else: refine
+        else: ready_to_refine
 
     # Phase 2d: Optimize map
     optimize_map:
@@ -355,6 +355,23 @@ cryoem:
         - program: phenix.resolve_cryo_em
           preferred: true
         - program: phenix.map_sharpening
+
+      transitions:
+        on_complete: ready_to_refine
+
+    # Phase 2e: Ready to refine (model docked, not yet refined)
+    ready_to_refine:
+      description: "Model docked in map, ready for first refinement"
+      goal: "Begin real-space refinement of docked model"
+
+      requires:
+        - resolution  # Must have resolution from mtriage
+        - full_map    # Must have full map (not half-maps)
+        - placed_model  # Must have docked model
+
+      programs:
+        - program: phenix.real_space_refine
+          requires_resolution: true
 
       transitions:
         on_complete: refine

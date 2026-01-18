@@ -1,103 +1,186 @@
 #!/usr/bin/env python
 """
-Master test runner for PHENIX AI Agent v2.
-
-Runs all test suites:
-1. Metrics analyzer tests
-2. Workflow state tests
-3. Integration tests
-4. YAML configuration tests
-5. Dry run manager tests
-6. Sanity checker tests
+Run all tests for the PHENIX AI Agent.
 
 Usage:
-    python run_all_tests.py
-
-Or run individual test files:
-    python tests/test_metrics_analyzer.py
-    python tests/test_workflow_state.py
-    python tests/test_integration.py
-    python tests/test_sanity_checker.py
+    python tests/run_all_tests.py
+    python tests/run_all_tests.py --verbose
+    python tests/run_all_tests.py --quick  # Skip slow integration tests
 """
 
 from __future__ import absolute_import, division, print_function
+
+import os
 import sys
+import time
+import argparse
 import traceback
 
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-def run_test_suite(name, test_module):
-    """Run a test suite and report results."""
-    print("\n" + "=" * 70)
-    print("RUNNING: %s" % name)
-    print("=" * 70 + "\n")
+
+def run_test_module(module_name, run_func, verbose=False):
+    """
+    Run a test module and return success status.
+
+    Args:
+        module_name: Name of the test module
+        run_func: Function to call to run tests
+        verbose: If True, show full output
+
+    Returns:
+        tuple: (success, elapsed_time)
+    """
+    print(f"\n{'='*60}")
+    print(f"Running: {module_name}")
+    print('='*60)
+
+    start_time = time.time()
 
     try:
-        test_module.run_all_tests()
-        return True
+        run_func()
+        elapsed = time.time() - start_time
+        print(f"\n✅ {module_name} PASSED ({elapsed:.2f}s)")
+        return True, elapsed
     except Exception as e:
-        print("\n!!! TEST SUITE FAILED !!!")
-        print("Error: %s" % str(e))
-        traceback.print_exc()
-        return False
+        elapsed = time.time() - start_time
+        print(f"\n❌ {module_name} FAILED ({elapsed:.2f}s)")
+        if verbose:
+            traceback.print_exc()
+        else:
+            print(f"   Error: {e}")
+        return False, elapsed
 
 
 def main():
-    """Run all test suites."""
-    print("=" * 70)
-    print("PHENIX AI AGENT V2 - TEST SUITE")
-    print("=" * 70)
+    parser = argparse.ArgumentParser(description="Run all AI Agent tests")
+    parser.add_argument("--verbose", "-v", action="store_true",
+                        help="Show verbose output including tracebacks")
+    parser.add_argument("--quick", "-q", action="store_true",
+                        help="Skip slow integration tests")
+    args = parser.parse_args()
 
-    results = {}
+    print("="*60)
+    print("PHENIX AI AGENT - TEST SUITE")
+    print("="*60)
 
-    # Test 1: Metrics Analyzer
-    from libtbx.langchain.tests import test_metrics_analyzer
-    results["Metrics Analyzer"] = run_test_suite("Metrics Analyzer Tests", test_metrics_analyzer)
+    results = []
+    total_start = time.time()
 
-    # Test 2: Workflow State
-    from libtbx.langchain.tests import test_workflow_state
-    results["Workflow State"] = run_test_suite("Workflow State Tests", test_workflow_state)
+    # --- API Schema Tests ---
+    try:
+        from tests.test_api_schema import run_all_tests as run_api_schema_tests
+        success, elapsed = run_test_module(
+            "test_api_schema", run_api_schema_tests, args.verbose)
+        results.append(("API Schema", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_api_schema: {e}")
+        results.append(("API Schema", False, 0))
 
-    # Test 3: Integration
-    from libtbx.langchain.tests import test_integration
-    results["Integration"] = run_test_suite("Integration Tests", test_integration)
+    # --- Best Files Tracker Tests ---
+    try:
+        from tests.test_best_files_tracker import run_all_tests as run_best_files_tests
+        success, elapsed = run_test_module(
+            "test_best_files_tracker", run_best_files_tests, args.verbose)
+        results.append(("Best Files Tracker", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_best_files_tracker: {e}")
+        results.append(("Best Files Tracker", False, 0))
 
-    # Test 4: YAML Configuration
-    from libtbx.langchain.tests import test_yaml_config
-    results["YAML Config"] = run_test_suite("YAML Configuration Tests", test_yaml_config)
+    # --- Workflow State Tests ---
+    try:
+        from tests.test_workflow_state import run_all_tests as run_workflow_tests
+        success, elapsed = run_test_module(
+            "test_workflow_state", run_workflow_tests, args.verbose)
+        results.append(("Workflow State", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_workflow_state: {e}")
+        results.append(("Workflow State", False, 0))
 
-    # Test 5: Dry Run Manager
-    from libtbx.langchain.tests import test_dry_run
-    results["Dry Run"] = run_test_suite("Dry Run Manager Tests", test_dry_run)
+    # --- YAML Config Tests ---
+    try:
+        from tests.test_yaml_config import run_all_tests as run_yaml_tests
+        success, elapsed = run_test_module(
+            "test_yaml_config", run_yaml_tests, args.verbose)
+        results.append(("YAML Config", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_yaml_config: {e}")
+        results.append(("YAML Config", False, 0))
 
-    # Test 6: Sanity Checker
-    from libtbx.langchain.tests import test_sanity_checker
-    results["Sanity Checker"] = run_test_suite("Sanity Checker Tests", test_sanity_checker)
+    # --- Sanity Checker Tests ---
+    try:
+        from tests.test_sanity_checker import run_all_tests as run_sanity_tests
+        success, elapsed = run_test_module(
+            "test_sanity_checker", run_sanity_tests, args.verbose)
+        results.append(("Sanity Checker", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_sanity_checker: {e}")
+        results.append(("Sanity Checker", False, 0))
 
-    # Test 7: Best Files Tracker
-    from libtbx.langchain.tests import test_best_files_tracker
-    results["Best Files Tracker"] = run_test_suite("Best Files Tracker Tests", test_best_files_tracker)
+    # --- Metrics Analyzer Tests ---
+    try:
+        from tests.test_metrics_analyzer import run_all_tests as run_metrics_tests
+        success, elapsed = run_test_module(
+            "test_metrics_analyzer", run_metrics_tests, args.verbose)
+        results.append(("Metrics Analyzer", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_metrics_analyzer: {e}")
+        results.append(("Metrics Analyzer", False, 0))
 
-    # Summary
-    print("\n" + "=" * 70)
-    print("TEST SUMMARY")
-    print("=" * 70)
+    # --- Dry Run Tests ---
+    try:
+        from tests.test_dry_run import run_all_tests as run_dry_run_tests
+        success, elapsed = run_test_module(
+            "test_dry_run", run_dry_run_tests, args.verbose)
+        results.append(("Dry Run", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_dry_run: {e}")
+        results.append(("Dry Run", False, 0))
 
-    all_passed = True
-    for suite, passed in results.items():
-        status = "PASSED" if passed else "FAILED"
-        print("  %s: %s" % (suite, status))
-        if not passed:
-            all_passed = False
-
-    print("=" * 70)
-
-    if all_passed:
-        print("\n*** ALL TESTS PASSED ***\n")
-        return 0
+    # --- Integration Tests (slow, skip with --quick) ---
+    if not args.quick:
+        try:
+            from tests.test_integration import run_all_tests as run_integration_tests
+            success, elapsed = run_test_module(
+                "test_integration", run_integration_tests, args.verbose)
+            results.append(("Integration", success, elapsed))
+        except ImportError as e:
+            print(f"⚠️  Could not import test_integration: {e}")
+            results.append(("Integration", False, 0))
     else:
-        print("\n*** SOME TESTS FAILED ***\n")
-        return 1
+        print("\n⏭️  Skipping integration tests (--quick mode)")
+
+    # --- Summary ---
+    total_elapsed = time.time() - total_start
+
+    print("\n")
+    print("="*60)
+    print("TEST SUMMARY")
+    print("="*60)
+
+    passed = 0
+    failed = 0
+
+    for name, success, elapsed in results:
+        status = "✅ PASSED" if success else "❌ FAILED"
+        print(f"  {name:25s} {status} ({elapsed:.2f}s)")
+        if success:
+            passed += 1
+        else:
+            failed += 1
+
+    print("-"*60)
+    print(f"  Total: {passed} passed, {failed} failed ({total_elapsed:.2f}s)")
+    print("="*60)
+
+    if failed > 0:
+        print("\n❌ SOME TESTS FAILED")
+        sys.exit(1)
+    else:
+        print("\n✅ ALL TESTS PASSED")
+        sys.exit(0)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

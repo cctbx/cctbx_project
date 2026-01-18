@@ -582,17 +582,13 @@ phenix.refine:
       - bonds_rmsd
       - angles_rmsd
 
-  command: "phenix.refine {model} {mtz}"
+  command: "phenix.refine {model} {mtz} xray_data.r_free_flags.generate=True"
 
   strategy_flags:
     output_prefix:
       flag: "output.prefix={value}"
       type: string
       hint: "Use short prefix to avoid long filenames (e.g., refine_001)"
-    generate_rfree_flags:
-      flag: "xray_data.r_free_flags.generate={value}"
-      type: boolean
-      hint: "ONLY use on first refinement after phaser"
     simulated_annealing:
       flag: "main.simulated_annealing={value}"
       type: boolean
@@ -639,6 +635,15 @@ phenix.refine:
     - "Add waters only after 2+ cycles AND R-free < 0.35"
     - "If TWINNING detected, include twin_law"
 
+  invariants:
+    - name: requires_unique_output_prefix
+      description: "Output prefix should be unique per cycle to avoid overwriting"
+      check:
+        has_strategy: output_prefix
+      fix:
+        auto_fill_output_prefix: "refine"
+      message: "Auto-generating unique output prefix"
+
 
 phenix.real_space_refine:
   description: "Refine atomic model against cryo-EM map"
@@ -655,10 +660,6 @@ phenix.real_space_refine:
         extensions: [.mrc, .ccp4, .map]
         flag: ""
         exclude_patterns: [half, _1, _2, _a, _b]
-    optional:
-      resolution:
-        from_session: true
-        flag: "resolution="
 
   # Input priorities for cryo-EM refinement
   # Note: predicted and processed_predicted are excluded - must be docked first
@@ -679,7 +680,7 @@ phenix.real_space_refine:
       - map_cc
       - clashscore
 
-  command: "phenix.real_space_refine {model} {map} resolution={resolution}"
+  command: "phenix.real_space_refine {model} {map}"
 
   strategy_flags:
     output_prefix:
@@ -707,6 +708,14 @@ phenix.real_space_refine:
       fix:
         auto_fill_resolution: true
       message: "Resolution required for real_space_refine"
+
+    - name: requires_unique_output_prefix
+      description: "Output prefix should be unique per cycle to avoid overwriting"
+      check:
+        has_strategy: output_prefix
+      fix:
+        auto_fill_output_prefix: "rsr"
+      message: "Auto-generating unique output prefix"
 
   log_parsing:
     map_cc:
