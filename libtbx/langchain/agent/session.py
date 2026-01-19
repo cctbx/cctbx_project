@@ -1368,9 +1368,17 @@ FINAL REPORT:"""
 
         # Program-specific key metrics
         if "xtriage" in program.lower():
-            match = re.search(r'Resolution[:\s=]+([0-9.]+)', result, re.IGNORECASE)
+            # Look for high-resolution limit (d_min) with specific patterns
+            # Try "High resolution limit" first (most specific)
+            match = re.search(r'High.?resolution.?limit[:\s=]+([0-9.]+)', result, re.IGNORECASE)
             if match:
                 return f"Resolution: {match.group(1)} Å"
+            # Try generic "Resolution" but filter out d_max values (> 15 Å)
+            match = re.search(r'Resolution[:\s=]+([0-9.]+)', result, re.IGNORECASE)
+            if match:
+                res = float(match.group(1))
+                if res < 15:  # d_min is typically < 10 Å, d_max is typically > 20 Å
+                    return f"Resolution: {match.group(1)} Å"
             match = re.search(r'Completeness[:\s=]+([0-9.]+)', result, re.IGNORECASE)
             if match:
                 return f"Completeness: {match.group(1)}%"
@@ -1564,10 +1572,18 @@ FINAL REPORT:"""
             result = str(cycle.get("result", ""))
 
             if "xtriage" in program:
-                # Resolution
-                match = re.search(r'Resolution[:\s=]+([0-9.]+)', result, re.IGNORECASE)
+                # Resolution - look for d_min (high-resolution limit)
+                # Try "High resolution limit" first (most specific)
+                match = re.search(r'High.?resolution.?limit[:\s=]+([0-9.]+)', result, re.IGNORECASE)
                 if match:
                     quality["resolution"] = float(match.group(1))
+                else:
+                    # Fallback to generic "Resolution" but filter out d_max values
+                    match = re.search(r'Resolution[:\s=]+([0-9.]+)', result, re.IGNORECASE)
+                    if match:
+                        res = float(match.group(1))
+                        if res < 15:  # d_min is typically < 10 Å
+                            quality["resolution"] = res
 
                 # Completeness
                 match = re.search(r'Completeness[:\s=]+([0-9.]+)', result, re.IGNORECASE)
