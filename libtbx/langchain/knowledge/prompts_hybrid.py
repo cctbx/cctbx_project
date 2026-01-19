@@ -713,3 +713,40 @@ Output JSON only.
     )
 
     return SYSTEM_PROMPT, user_msg
+
+
+# =============================================================================
+# AGENT SESSION ASSESSMENT PROMPT
+# =============================================================================
+
+AGENT_SESSION_ASSESSMENT_PROMPT = """You are a senior crystallographer reviewing the results of an automated structure determination workflow.
+
+Analyze the session summary below and provide a brief assessment covering:
+
+1. **Input Data Quality**: What is the quality of the input data? (resolution, completeness, any issues)
+
+2. **Goal and Strategy**: What was the user's goal and what strategy did the agent use to achieve it?
+
+3. **Strategy Assessment**: Was the strategy appropriate for the data and goal? Was the goal achieved?
+
+4. **Current Status**: What is the current state of the structure? Is it ready for further analysis or deposition?
+
+5. **Next Steps**: What are appropriate next steps? (e.g., more refinement, ligand fitting, validation, deposition)
+
+Keep your assessment concise (3-5 sentences per section). Focus on practical insights.
+
+=== SESSION SUMMARY ===
+{session_summary}
+=== END SESSION SUMMARY ===
+
+Provide your assessment in Markdown format with the headers above."""
+
+
+def get_agent_session_assessment_prompt():
+    """
+    Get the prompt template for assessing an agent session.
+
+    Returns:
+        str: The assessment prompt template
+    """
+    return AGENT_SESSION_ASSESSMENT_PROMPT

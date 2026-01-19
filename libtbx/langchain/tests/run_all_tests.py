@@ -15,6 +15,7 @@ Test Suites:
   10. State Serialization - State packaging/unpackaging
   11. Command Builder - Unified command generation
   12. File Categorization - File classification logic
+  13. Session Summary - Agent session summary generation
 
 Usage:
     python tests/run_all_tests.py
@@ -204,6 +205,16 @@ def main():
     except ImportError as e:
         print(f"⚠️  Could not import test_file_categorization: {e}")
         results.append(("File Categorization", False, 0))
+
+    # --- Session Summary Tests ---
+    try:
+        from tests.test_session_summary import run_all_tests as run_session_summary_tests
+        success, elapsed = run_test_module(
+            "test_session_summary", run_session_summary_tests, args.verbose)
+        results.append(("Session Summary", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_session_summary: {e}")
+        results.append(("Session Summary", False, 0))
 
     # --- Summary ---
     total_elapsed = time.time() - total_start

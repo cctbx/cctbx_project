@@ -444,3 +444,54 @@ if USE_NEW_COMMAND_BUILDER:
 # _build_with_new_builder creates CommandContext from state
 # and delegates to CommandBuilder.build()
 ```
+
+## Session Summary Generation
+
+The agent generates structured summaries of completed sessions with optional LLM assessment.
+
+### Summary Components
+
+1. **Input Section**: Files, user advice, experiment type, resolution
+2. **Input Data Quality**: Metrics from xtriage/mtriage (resolution, completeness, twinning)
+3. **Workflow Path**: High-level description of strategy taken
+4. **Steps Performed**: Table of all cycles with key metrics
+5. **Final Quality**: Final metrics with quality assessments
+6. **Output Files**: Key output files from the session
+7. **Assessment** (optional): LLM-generated evaluation
+
+### Quality Assessments
+
+Metrics are automatically assessed based on resolution-dependent thresholds:
+
+| Metric | Good | Acceptable | Needs Improvement |
+|--------|------|------------|-------------------|
+| R-free (2.5Å) | ≤0.25 | ≤0.30 | >0.30 |
+| Map CC | ≥0.80 | ≥0.70 | <0.70 |
+| Clashscore | ≤5 | ≤10 | >20 |
+
+### LLM Assessment Prompt
+
+When enabled, the LLM evaluates:
+1. **Input Data Quality**: Resolution, completeness, issues
+2. **Goal and Strategy**: User's goal and agent's approach
+3. **Strategy Assessment**: Was it appropriate? Goal achieved?
+4. **Current Status**: Ready for deposition?
+5. **Next Steps**: Recommendations
+
+### Usage
+
+```python
+# Generate summary without LLM
+result = session.generate_agent_session_summary(include_llm_assessment=False)
+print(result["markdown"])
+
+# Get concise summary for LLM assessment
+llm_input = session.get_summary_for_llm_assessment()
+```
+
+### Files
+
+- `agent/session.py`: `generate_agent_session_summary()`, `get_summary_for_llm_assessment()`
+- `analysis/agent_session_analyzer.py`: LLM assessment integration
+- `phenix_ai/run_ai_analysis.py`: `run_agent_session_analysis()`
+- `knowledge/prompts_hybrid.py`: Assessment prompt template

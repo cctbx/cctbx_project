@@ -19,6 +19,7 @@ Usage:
 from __future__ import absolute_import, division, print_function
 
 import os
+import re
 import json
 from datetime import datetime
 from langchain_core.prompts import PromptTemplate
@@ -1224,3 +1225,537 @@ FINAL REPORT:"""
         """Reset the session (start fresh)."""
         self._init_new_session()
         self.save()
+
+    # =========================================================================
+    # AGENT SESSION SUMMARY
+    # =========================================================================
+
+    def generate_agent_session_summary(self, include_llm_assessment=True):
+        """
+        Generate a structured summary of the agent session.
+
+        This produces a clean Markdown summary with:
+        - Input files and user advice
+        - Workflow path taken
+        - Steps performed with key metrics
+        - Final quality assessment
+        - Output files
+
+        Args:
+            include_llm_assessment: If True, include placeholder for LLM assessment
+
+        Returns:
+            dict with:
+                - markdown: The formatted Markdown summary
+                - data: Structured data for LLM assessment
+        """
+        # Extract all structured data
+        summary_data = self._extract_summary_data()
+
+        # Generate Markdown
+        markdown = self._format_summary_markdown(summary_data, include_llm_assessment)
+
+        return {
+            "markdown": markdown,
+            "data": summary_data,
+        }
+
+    def _extract_summary_data(self):
+        """
+        Extract structured summary data from the session.
+
+        Returns:
+            dict with all summary components
+        """
+        cycles = self.data.get("cycles", [])
+        original_files = self.data.get("original_files", [])
+
+        # Detect experiment type
+        experiment_type = self.data.get("experiment_type")
+        if not experiment_type:
+            experiment_type = self._detect_experiment_type_for_summary(original_files)
+
+        # Determine workflow path
+        workflow_path = self._determine_workflow_path(cycles, experiment_type)
+
+        # Extract steps with metrics
+        steps = self._extract_steps(cycles)
+
+        # Get final metrics (from last successful refinement or analysis)
+        final_metrics = self._extract_final_metrics(cycles, experiment_type)
+
+        # Get final output files
+        final_files = self._get_final_output_files(cycles)
+
+        # Get input data quality metrics (from xtriage/mtriage)
+        input_quality = self._extract_input_quality(cycles, experiment_type)
+
+        return {
+            "session_id": self.data.get("session_id", "unknown"),
+            "experiment_type": experiment_type,
+            "original_files": [os.path.basename(f) for f in original_files],
+            "user_advice": self.data.get("project_advice", "None provided"),
+            "resolution": self.data.get("resolution"),
+            "workflow_path": workflow_path,
+            "steps": steps,
+            "final_metrics": final_metrics,
+            "final_files": final_files,
+            "input_quality": input_quality,
+            "total_cycles": len(cycles),
+            "successful_cycles": sum(1 for c in cycles if "SUCCESS" in str(c.get("result", ""))),
+        }
+
+    def _determine_workflow_path(self, cycles, experiment_type):
+        """Determine the workflow path taken."""
+        programs = [c.get("program", "") for c in cycles if c.get("program")]
+
+        if experiment_type == "cryoem" or "Cryo-EM" in str(experiment_type):
+            if "phenix.predict_and_build" in programs:
+                return "Cryo-EM model building with AlphaFold prediction"
+            elif "phenix.dock_in_map" in programs:
+                return "Cryo-EM docking of existing model"
+            else:
+                return "Cryo-EM refinement"
+        else:
+            # X-ray
+            if "phenix.autosol" in programs:
+                return "X-ray experimental phasing (SAD/MAD)"
+            elif "phenix.predict_and_build" in programs and "phenix.phaser" in programs:
+                return "X-ray molecular replacement with AlphaFold prediction"
+            elif "phenix.phaser" in programs:
+                return "X-ray molecular replacement"
+            elif "phenix.autobuild" in programs:
+                return "X-ray automated model building"
+            else:
+                return "X-ray structure determination"
+
+    def _extract_steps(self, cycles):
+        """Extract step-by-step summary."""
+        steps = []
+        for cycle in cycles:
+            program = cycle.get("program", "unknown")
+            if program in ["STOP", None, "unknown"]:
+                continue
+
+            result = cycle.get("result", "")
+            success = "SUCCESS" in str(result)
+
+            # Extract key metric for this step
+            key_metric = self._get_key_metric_for_step(cycle, program)
+
+            # Get brief decision (first sentence)
+            decision = cycle.get("decision", "")
+            if decision:
+                decision_brief = decision.split(".")[0] + "."
+                if len(decision_brief) > 100:
+                    decision_brief = decision_brief[:97] + "..."
+            else:
+                decision_brief = ""
+
+            steps.append({
+                "cycle": cycle.get("cycle_number", "?"),
+                "program": program,
+                "success": success,
+                "key_metric": key_metric,
+                "decision_brief": decision_brief,
+            })
+
+        return steps
+
+    def _get_key_metric_for_step(self, cycle, program):
+        """Get the most important metric for a given step."""
+        result = str(cycle.get("result", ""))
+
+        # Program-specific key metrics
+        if "xtriage" in program.lower():
+            match = re.search(r'Resolution[:\s=]+([0-9.]+)', result, re.IGNORECASE)
+            if match:
+                return f"Resolution: {match.group(1)} Å"
+            match = re.search(r'Completeness[:\s=]+([0-9.]+)', result, re.IGNORECASE)
+            if match:
+                return f"Completeness: {match.group(1)}%"
+
+        elif "mtriage" in program.lower():
+            match = re.search(r'd_fsc[:\s=]+([0-9.]+)', result, re.IGNORECASE)
+            if match:
+                return f"Resolution (FSC): {match.group(1)} Å"
+
+        elif "predict_and_build" in program.lower():
+            match = re.search(r'[Pp]lddt[:\s=]+([0-9.]+)', result, re.IGNORECASE)
+            if match:
+                return f"pLDDT: {match.group(1)}"
+
+        elif "phaser" in program.lower():
+            match = re.search(r'TFZ[:\s=]+([0-9.]+)', result, re.IGNORECASE)
+            if match:
+                return f"TFZ: {match.group(1)}"
+            # Fallback to space group if TFZ not found
+            # Match space group like "P 32 2 1" - letters, numbers, and spaces but stop at newline
+            match = re.search(r'Space.?Group[:\s=]+([A-Z][A-Z0-9 ]*)', result, re.IGNORECASE)
+            if match:
+                sg = match.group(1).strip()
+                # Clean up - only keep the space group designation
+                sg = sg.split('\n')[0].strip()
+                return f"SG: {sg}"
+
+        elif "refine" in program.lower():
+            match = re.search(r'R.?[Ff]ree[:\s=]+([0-9.]+)', result)
+            if match:
+                return f"R-free: {match.group(1)}"
+
+        elif "real_space_refine" in program.lower():
+            match = re.search(r'[Mm]ap.?[Cc][Cc][:\s=]+([0-9.]+)', result)
+            if match:
+                return f"Map CC: {match.group(1)}"
+
+        elif "autobuild" in program.lower():
+            match = re.search(r'R.?[Ff]ree[:\s=]+([0-9.]+)', result)
+            if match:
+                return f"R-free: {match.group(1)}"
+
+        elif "molprobity" in program.lower():
+            # Try clashscore first
+            match = re.search(r'[Cc]lashscore[:\s=]+([0-9.]+)', result)
+            if match:
+                clashscore = match.group(1)
+                # Also try to get Ramachandran outliers
+                rama_match = re.search(r'[Rr]amachandran.?[Oo]utliers?[:\s=]+([0-9.]+)', result)
+                if rama_match:
+                    return f"Clash: {clashscore}, Rama: {rama_match.group(1)}%"
+                return f"Clashscore: {clashscore}"
+            # Fallback to Ramachandran
+            match = re.search(r'[Rr]amachandran.?[Oo]utliers?[:\s=]+([0-9.]+)', result)
+            if match:
+                return f"Rama outliers: {match.group(1)}%"
+
+        return ""
+
+    def _extract_final_metrics(self, cycles, experiment_type):
+        """Extract final quality metrics from the last relevant cycles."""
+        metrics = {}
+
+        # Work backwards through cycles to get most recent values
+        for cycle in reversed(cycles):
+            result = str(cycle.get("result", ""))
+            program = cycle.get("program", "").lower()
+
+            # R-factors (X-ray)
+            if "r_free" not in metrics:
+                match = re.search(r'R.?[Ff]ree[:\s=]+([0-9.]+)', result)
+                if match:
+                    metrics["r_free"] = float(match.group(1))
+
+            if "r_work" not in metrics:
+                match = re.search(r'R.?[Ww]ork[:\s=]+([0-9.]+)', result)
+                if match:
+                    metrics["r_work"] = float(match.group(1))
+
+            # Map CC (Cryo-EM)
+            if "map_cc" not in metrics:
+                match = re.search(r'[Mm]ap.?[Cc][Cc][:\s=]+([0-9.]+)', result)
+                if match:
+                    metrics["map_cc"] = float(match.group(1))
+
+            # Geometry
+            if "clashscore" not in metrics:
+                match = re.search(r'[Cc]lashscore[:\s=]+([0-9.]+)', result)
+                if match:
+                    metrics["clashscore"] = float(match.group(1))
+
+            if "bonds_rmsd" not in metrics:
+                match = re.search(r'[Bb]onds.?[Rr]msd[:\s=]+([0-9.]+)', result)
+                if match:
+                    metrics["bonds_rmsd"] = float(match.group(1))
+
+            if "angles_rmsd" not in metrics:
+                match = re.search(r'[Aa]ngles.?[Rr]msd[:\s=]+([0-9.]+)', result)
+                if match:
+                    metrics["angles_rmsd"] = float(match.group(1))
+
+        # Add quality assessments
+        if "r_free" in metrics:
+            metrics["r_free_assessment"] = self._assess_r_free(
+                metrics["r_free"], self.data.get("resolution"))
+
+        if "map_cc" in metrics:
+            metrics["map_cc_assessment"] = self._assess_map_cc(metrics["map_cc"])
+
+        if "clashscore" in metrics:
+            metrics["clashscore_assessment"] = self._assess_clashscore(metrics["clashscore"])
+
+        return metrics
+
+    def _assess_r_free(self, r_free, resolution):
+        """Assess R-free quality based on resolution."""
+        if resolution is None:
+            resolution = 2.5  # Default assumption
+
+        # Resolution-dependent thresholds
+        if resolution < 1.5:
+            good, acceptable = 0.20, 0.25
+        elif resolution < 2.5:
+            good, acceptable = 0.25, 0.30
+        elif resolution < 3.5:
+            good, acceptable = 0.30, 0.35
+        else:
+            good, acceptable = 0.35, 0.40
+
+        if r_free <= good:
+            return "Good"
+        elif r_free <= acceptable:
+            return "Acceptable"
+        else:
+            return "Needs improvement"
+
+    def _assess_map_cc(self, map_cc):
+        """Assess map-model correlation."""
+        if map_cc >= 0.80:
+            return "Good"
+        elif map_cc >= 0.70:
+            return "Acceptable"
+        else:
+            return "Needs improvement"
+
+    def _assess_clashscore(self, clashscore):
+        """Assess geometry clashscore."""
+        if clashscore <= 5:
+            return "Excellent"
+        elif clashscore <= 10:
+            return "Good"
+        elif clashscore <= 20:
+            return "Acceptable"
+        else:
+            return "Needs improvement"
+
+    def _get_final_output_files(self, cycles):
+        """Get the most relevant final output files."""
+        final_files = []
+
+        # Work backwards to find the last cycle with output files
+        for cycle in reversed(cycles):
+            output_files = cycle.get("output_files", [])
+            if output_files:
+                # Prioritize certain file types
+                for f in output_files:
+                    basename = os.path.basename(f)
+                    # Prioritize refined models and data
+                    if any(x in basename.lower() for x in
+                           ["refine", "overall_best", "real_space_refined"]):
+                        if basename.endswith(".pdb"):
+                            final_files.insert(0, {"name": basename, "type": "model"})
+                        elif basename.endswith(".mtz"):
+                            final_files.append({"name": basename, "type": "data"})
+                    elif basename.endswith(".pdb") and len(final_files) < 5:
+                        final_files.append({"name": basename, "type": "model"})
+                    elif basename.endswith(".mtz") and len(final_files) < 5:
+                        final_files.append({"name": basename, "type": "data"})
+
+                if final_files:
+                    break
+
+        return final_files[:5]  # Limit to 5 files
+
+    def _extract_input_quality(self, cycles, experiment_type):
+        """Extract input data quality metrics from xtriage/mtriage."""
+        quality = {}
+
+        for cycle in cycles:
+            program = cycle.get("program", "").lower()
+            result = str(cycle.get("result", ""))
+
+            if "xtriage" in program:
+                # Resolution
+                match = re.search(r'Resolution[:\s=]+([0-9.]+)', result, re.IGNORECASE)
+                if match:
+                    quality["resolution"] = float(match.group(1))
+
+                # Completeness
+                match = re.search(r'Completeness[:\s=]+([0-9.]+)', result, re.IGNORECASE)
+                if match:
+                    quality["completeness"] = float(match.group(1))
+
+                # Twinning
+                if "No Twinning" in result or "twin" not in result.lower():
+                    quality["twinning"] = "None detected"
+                else:
+                    match = re.search(r'Twin.?Fraction[:\s=]+([0-9.]+)', result, re.IGNORECASE)
+                    if match and float(match.group(1)) > 0.1:
+                        quality["twinning"] = f"Possible (fraction: {match.group(1)})"
+                    else:
+                        quality["twinning"] = "None detected"
+
+                break  # Only need first xtriage
+
+            elif "mtriage" in program:
+                # FSC resolution
+                match = re.search(r'd_fsc[:\s=]+([0-9.]+)', result, re.IGNORECASE)
+                if match:
+                    quality["resolution"] = float(match.group(1))
+
+                # d99
+                match = re.search(r'd99[:\s=]+([0-9.]+)', result, re.IGNORECASE)
+                if match:
+                    quality["d99"] = float(match.group(1))
+
+                break  # Only need first mtriage
+
+        return quality
+
+    def _format_summary_markdown(self, data, include_llm_assessment):
+        """Format the summary data as Markdown."""
+        lines = []
+
+        # Header - extract date from session_id (format: YYYY-MM-DD_HH-MM-SS)
+        session_id = data['session_id']
+        # Try to extract just the date part
+        if '_' in session_id:
+            date_part = session_id.split('_')[0]  # e.g., "2026-01-19"
+        else:
+            date_part = session_id
+
+        lines.append(f"# Phenix AI Agent Run {date_part}")
+        lines.append("")
+        lines.append(f"**Session ID:** {session_id}")
+        lines.append(f"**Total Cycles:** {data['total_cycles']} ({data['successful_cycles']} successful)")
+        if include_llm_assessment:
+            lines.append("")
+            lines.append("_[STATUS_PLACEHOLDER]_")
+        lines.append("")
+
+        # Input Section
+        lines.append("## Input")
+        lines.append("")
+        lines.append(f"- **Files:** {', '.join(data['original_files'])}")
+        lines.append(f"- **User Advice:** {data['user_advice']}")
+        lines.append(f"- **Experiment Type:** {data['experiment_type']}")
+        if data.get("resolution"):
+            lines.append(f"- **Resolution:** {data['resolution']:.2f} Å")
+        lines.append("")
+
+        # Input Data Quality
+        if data.get("input_quality"):
+            lines.append("## Input Data Quality")
+            lines.append("")
+            iq = data["input_quality"]
+            if "resolution" in iq:
+                lines.append(f"- **Resolution:** {iq['resolution']:.2f} Å")
+            if "completeness" in iq:
+                lines.append(f"- **Completeness:** {iq['completeness']:.1f}%")
+            if "twinning" in iq:
+                lines.append(f"- **Twinning:** {iq['twinning']}")
+            if "d99" in iq:
+                lines.append(f"- **d99:** {iq['d99']:.2f} Å")
+            lines.append("")
+
+        # Workflow Path
+        lines.append("## Workflow Path")
+        lines.append("")
+        lines.append(data["workflow_path"])
+        lines.append("")
+
+        # Steps Performed
+        lines.append("## Steps Performed")
+        lines.append("")
+        lines.append("| Cycle | Program | Result | Key Metric |")
+        lines.append("|-------|---------|--------|------------|")
+        for step in data["steps"]:
+            result_symbol = "✓" if step["success"] else "✗"
+            program_short = step["program"].replace("phenix.", "")
+            lines.append(f"| {step['cycle']} | {program_short} | {result_symbol} | {step['key_metric']} |")
+        lines.append("")
+
+        # Final Quality
+        if data.get("final_metrics"):
+            lines.append("## Final Quality")
+            lines.append("")
+            lines.append("| Metric | Value | Assessment |")
+            lines.append("|--------|-------|------------|")
+            fm = data["final_metrics"]
+            if "r_free" in fm:
+                lines.append(f"| R-free | {fm['r_free']:.4f} | {fm.get('r_free_assessment', '')} |")
+            if "r_work" in fm:
+                lines.append(f"| R-work | {fm['r_work']:.4f} | |")
+            if "map_cc" in fm:
+                lines.append(f"| Map CC | {fm['map_cc']:.3f} | {fm.get('map_cc_assessment', '')} |")
+            if "clashscore" in fm:
+                lines.append(f"| Clashscore | {fm['clashscore']:.2f} | {fm.get('clashscore_assessment', '')} |")
+            if "bonds_rmsd" in fm:
+                lines.append(f"| Bonds RMSD | {fm['bonds_rmsd']:.4f} | |")
+            if "angles_rmsd" in fm:
+                lines.append(f"| Angles RMSD | {fm['angles_rmsd']:.3f} | |")
+            lines.append("")
+
+        # Output Files
+        if data.get("final_files"):
+            lines.append("## Output Files")
+            lines.append("")
+            for f in data["final_files"]:
+                lines.append(f"- {f['name']} ({f['type']})")
+            lines.append("")
+
+        # LLM Assessment placeholder
+        if include_llm_assessment:
+            lines.append("## Assessment")
+            lines.append("")
+            lines.append("_[LLM assessment will be inserted here]_")
+            lines.append("")
+
+        return "\n".join(lines)
+
+    def get_summary_for_llm_assessment(self):
+        """
+        Get a concise summary suitable for LLM assessment.
+
+        Returns a text block with key information for the LLM to evaluate:
+        - Input data quality
+        - Goal/strategy
+        - Steps taken
+        - Current status
+        """
+        data = self._extract_summary_data()
+
+        lines = []
+        lines.append("=== AGENT SESSION FOR ASSESSMENT ===")
+        lines.append("")
+
+        # Input
+        lines.append(f"EXPERIMENT TYPE: {data['experiment_type']}")
+        lines.append(f"INPUT FILES: {', '.join(data['original_files'])}")
+        lines.append(f"USER GOAL: {data['user_advice']}")
+        lines.append("")
+
+        # Input quality
+        if data.get("input_quality"):
+            lines.append("INPUT DATA QUALITY:")
+            for k, v in data["input_quality"].items():
+                lines.append(f"  {k}: {v}")
+            lines.append("")
+
+        # Workflow
+        lines.append(f"WORKFLOW PATH: {data['workflow_path']}")
+        lines.append("")
+
+        # Steps (brief)
+        lines.append("STEPS TAKEN:")
+        for step in data["steps"]:
+            status = "OK" if step["success"] else "FAILED"
+            lines.append(f"  {step['cycle']}. {step['program']} - {status} {step['key_metric']}")
+        lines.append("")
+
+        # Final metrics
+        if data.get("final_metrics"):
+            lines.append("FINAL METRICS:")
+            fm = data["final_metrics"]
+            if "r_free" in fm:
+                lines.append(f"  R-free: {fm['r_free']:.4f} ({fm.get('r_free_assessment', '')})")
+            if "r_work" in fm:
+                lines.append(f"  R-work: {fm['r_work']:.4f}")
+            if "map_cc" in fm:
+                lines.append(f"  Map CC: {fm['map_cc']:.3f} ({fm.get('map_cc_assessment', '')})")
+            if "clashscore" in fm:
+                lines.append(f"  Clashscore: {fm['clashscore']:.2f} ({fm.get('clashscore_assessment', '')})")
+            lines.append("")
+
+        lines.append(f"TOTAL CYCLES: {data['total_cycles']} ({data['successful_cycles']} successful)")
+
+        return "\n".join(lines)
