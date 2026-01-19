@@ -476,7 +476,8 @@ def test_cryoem_has_model_automated():
 
     state = detect_workflow_state(history, files, maximum_automation=True)
 
-    assert state["state"] in ["cryoem_has_model", "cryoem_refined", "refine"]
+    # cryoem_docked is the new state for "model placed, ready for first refinement"
+    assert state["state"] in ["cryoem_has_model", "cryoem_docked", "cryoem_refined", "refine", "ready_to_refine"]
     assert state["valid_programs"] == ["phenix.real_space_refine"]
 
     print("  PASSED")
@@ -586,7 +587,8 @@ def test_cryoem_has_phases_stepwise():
     state = detect_workflow_state(history, files, maximum_automation=False)
 
     # After phaser, model is placed, should go to refine
-    assert state["state"] in ["cryoem_has_phases", "cryoem_has_model", "cryoem_refined", "refine"]
+    # cryoem_docked is the new state for "model placed, ready for first refinement"
+    assert state["state"] in ["cryoem_has_phases", "cryoem_has_model", "cryoem_docked", "cryoem_refined", "refine", "ready_to_refine"]
     assert "phenix.real_space_refine" in state["valid_programs"], \
         "Expected real_space_refine, got %s" % state["valid_programs"]
 

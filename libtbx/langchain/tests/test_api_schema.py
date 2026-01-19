@@ -263,8 +263,11 @@ def test_apply_request_defaults_nested():
 
     # Check nested defaults
     assert_equal(result["session_state"]["resolution"], 2.5)
-    assert_is_none(result["session_state"]["experiment_type"])
-    assert_is_none(result["session_state"]["rfree_mtz"])
+    # Note: experiment_type and rfree_mtz have None defaults, so they're NOT added
+    # (the function deliberately skips None defaults to avoid adding unnecessary keys)
+    assert "experiment_type" not in result["session_state"]
+    assert "rfree_mtz" not in result["session_state"]
+    # best_files has {} default, so it IS added
     assert_equal(result["session_state"]["best_files"], {})
 
     assert_equal(result["settings"]["provider"], "anthropic")

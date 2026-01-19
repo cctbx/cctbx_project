@@ -8,6 +8,8 @@ Nodes:
 - validate: Validate command (files, workflow state, duplicates)
 - fallback: Mechanical auto-selection when LLM fails
 - output_node: Prepare response for client
+
+NEW: Set USE_NEW_COMMAND_BUILDER = True to use unified CommandBuilder.
 """
 
 from __future__ import absolute_import, division, print_function
@@ -29,17 +31,28 @@ from libtbx.langchain.agent.workflow_state import (
 from libtbx.langchain.knowledge.prompts_hybrid import get_planning_prompt
 from libtbx.langchain.agent.rules_selector import select_action_by_rules
 
+# Feature flag: Set to True to use new CommandBuilder
+USE_NEW_COMMAND_BUILDER = True
+
+def _get_command_builder():
+    """Lazy-load CommandBuilder and CommandContext classes to avoid circular imports."""
+    try:
+        from agent.command_builder import CommandBuilder, CommandContext
+    except ImportError:
+        from libtbx.langchain.agent.command_builder import CommandBuilder, CommandContext
+    return CommandBuilder, CommandContext
+
 
 def _get_most_recent_file(file_list):
     """
     Get the most recent file from a list based on modification time.
-    
+
     For files with numbered suffixes (e.g., rsr_001_real_space_refined_002.pdb),
     prefers higher numbers. Falls back to modification time.
-    
+
     Args:
         file_list: List of file paths
-        
+
     Returns:
         str: Most recent file path, or None if list is empty
     """
@@ -47,7 +60,7 @@ def _get_most_recent_file(file_list):
         return None
     if len(file_list) == 1:
         return file_list[0]
-    
+
     # Try to sort by numbered suffix in filename
     # Pattern matches things like: rsr_001_real_space_refined_002.pdb -> extracts 002
     # or refine_001_001.pdb -> extracts the last number
@@ -59,7 +72,7 @@ def _get_most_recent_file(file_list):
             # Return the last number as tiebreaker (usually the iteration number)
             return int(numbers[-1])
         return 0
-    
+
     # Sort by file number (descending), then by mtime (descending)
     def sort_key(path):
         try:
@@ -67,7 +80,7 @@ def _get_most_recent_file(file_list):
         except OSError:
             mtime = 0
         return (get_file_number(path), mtime)
-    
+
     sorted_files = sorted(file_list, key=sort_key, reverse=True)
     return sorted_files[0]
 
@@ -871,6 +884,102 @@ def _extract_history_info(state):
 # NODE: BUILD
 # =============================================================================
 
+def _build_with_new_builder(state):
+    """
+    Build command using the new unified CommandBuilder.
+
+    This is a simpler implementation that delegates all complexity
+    to CommandBuilder, which handles:
+    - File selection (with priorities)
+    - Strategy building (with output_prefix)
+    - Invariant application (resolution, R-free flags, etc.)
+    - Command assembly
+    """
+    intent = state.get("intent", {})
+
+    if intent.get("stop"):
+        state = _log(state, "BUILD: Stop requested, no command needed")
+        return {**state, "command": "STOP"}
+
+    program = intent.get("program", "phenix.refine")
+    available_files = state.get("available_files", [])
+
+    # Get the CommandBuilder and CommandContext classes
+    CommandBuilder, CommandContext = _get_command_builder()
+
+    # Sanitize LLM strategy
+    raw_strategy = intent.get("strategy", {})
+    if not isinstance(raw_strategy, dict):
+        state = _log(state, "BUILD: LLM returned invalid strategy type, using empty dict")
+        raw_strategy = {}
+
+    # Correct LLM file paths (map basenames to actual paths)
+    llm_files = intent.get("files", {})
+    corrected_files = {}
+    basename_to_path = {os.path.basename(f): f for f in available_files}
+
+    if llm_files:
+        for slot, filepath in llm_files.items():
+            if filepath:
+                if isinstance(filepath, list):
+                    corrected = []
+                    for fp in filepath:
+                        basename = os.path.basename(fp) if fp else ""
+                        if basename in basename_to_path:
+                            corrected.append(basename_to_path[basename])
+                    if corrected:
+                        corrected_files[slot] = corrected
+                else:
+                    basename = os.path.basename(filepath)
+                    if basename in basename_to_path:
+                        corrected_files[slot] = basename_to_path[basename]
+
+    # Build context from state
+    session_info = state.get("session_info", {})
+    workflow_state = state.get("workflow_state", {})
+
+    # Handle stepwise cryo-EM
+    strategy = dict(raw_strategy)
+    if (workflow_state.get("automation_path") == "stepwise" and
+        program == "phenix.predict_and_build" and
+        workflow_state.get("state") == "cryoem_analyzed"):
+        strategy["stop_after_predict"] = True
+        state = _log(state, "BUILD: Forcing stop_after_predict=True for stepwise cryo-EM")
+
+    # Create CommandContext
+    context = CommandContext(
+        cycle_number=state.get("cycle_number", 1),
+        experiment_type=session_info.get("experiment_type", ""),
+        resolution=state.get("session_resolution") or workflow_state.get("resolution"),
+        best_files=session_info.get("best_files", {}),
+        rfree_mtz=session_info.get("rfree_mtz"),
+        categorized_files=workflow_state.get("categorized_files", {}),
+        workflow_state=workflow_state.get("state", ""),
+        history=state.get("history", []),
+        llm_files=corrected_files if corrected_files else None,
+        llm_strategy=strategy if strategy else None,
+        log=lambda msg: None,  # We'll log separately
+    )
+
+    # Build command
+    builder = CommandBuilder()
+    command = builder.build(program, available_files, context)
+
+    if not command:
+        state = _log(state, "BUILD: Failed to build command for %s" % program)
+        return {**state, "command": "", "validation_error": "Failed to build command"}
+
+    state = _log(state, "BUILD: Generated command: %s" % command[:150])
+
+    return {
+        **state,
+        "command": command,
+        "program": program,
+        "corrected_files": corrected_files,
+        "strategy": strategy,
+    }
+
+
 def build(state):
     """
     Node C: Build Command from Intent using Templates.
@@ -879,7 +988,13 @@ def build(state):
     The template builder guarantees correct syntax.
 
     Applies Tier 2 defaults from workflow_state and logs any overrides.
+
+    NEW: If USE_NEW_COMMAND_BUILDER is True, delegates to _build_with_new_builder.
     """
+    # Optionally use new unified builder
+    if USE_NEW_COMMAND_BUILDER:
+        return _build_with_new_builder(state)
+
     intent = state.get("intent", {})
 
     if intent.get("stop"):
@@ -979,9 +1094,9 @@ def build(state):
                                if isinstance(h, dict) and
                                h.get("program") == "phenix.real_space_refine" and
                                str(h.get("result", "")).startswith("SUCCESS")]
-            
+
             run_count = len(matching_runs)
-            
+
             # Debug: show which cycles were counted
             if matching_runs:
                 cycle_nums = [str(h.get("cycle_number", "?")) for h in matching_runs]
@@ -1057,7 +1172,7 @@ def build(state):
 
     # DEBUG: Log what the LLM actually returned in its files dict
     if llm_files:
-        llm_files_summary = ", ".join("%s=%s" % (k, os.path.basename(str(v)) if v else "None") 
+        llm_files_summary = ", ".join("%s=%s" % (k, os.path.basename(str(v)) if v else "None")
                                        for k, v in llm_files.items())
         state = _log(state, "BUILD: LLM requested files: {%s}" % llm_files_summary)
     else:
@@ -1453,6 +1568,91 @@ def validate(state):
 # NODE: FALLBACK
 # =============================================================================
 
+def _fallback_with_new_builder(state):
+    """
+    Fallback using the new unified CommandBuilder.
+
+    Simpler implementation that delegates to CommandBuilder.
+    """
+    state = _log(state, "FALLBACK: Using mechanical auto-selection (new builder)")
+
+    # Get CommandBuilder and CommandContext
+    CommandBuilder, CommandContext = _get_command_builder()
+
+    # Get previous commands to avoid duplicates
+    previous_commands = set()
+    for hist in state.get("history", []):
+        if isinstance(hist, dict) and hist.get("command"):
+            previous_commands.add(hist["command"])
+
+    # Use workflow state to get valid programs
+    workflow_state = state.get("workflow_state", {})
+    valid_programs = workflow_state.get("valid_programs", [])
+
+    # Filter out STOP unless it's the only option
+    runnable = [p for p in valid_programs if p != "STOP"]
+
+    if not runnable:
+        state = _log(state, "FALLBACK: No valid programs, stopping")
+        return {
+            **state,
+            "command": "STOP",
+            "stop": True,
+            "stop_reason": "no_valid_programs",
+            "validation_error": None,
+            "fallback_used": True
+        }
+
+    # Get available files
+    available_files = list(state.get("available_files", []))
+    session_info = state.get("session_info", {})
+
+    # Create CommandContext (no LLM hints - pure rule-based)
+    context = CommandContext(
+        cycle_number=state.get("cycle_number", 1),
+        experiment_type=session_info.get("experiment_type", ""),
+        resolution=state.get("session_resolution") or workflow_state.get("resolution"),
+        best_files=session_info.get("best_files", {}),
+        rfree_mtz=session_info.get("rfree_mtz"),
+        categorized_files=workflow_state.get("categorized_files", {}),
+        workflow_state=workflow_state.get("state", ""),
+        history=state.get("history", []),
+        llm_files=None,  # No LLM hints
+        llm_strategy=None,  # No LLM hints
+        log=lambda msg: None,
+    )
+
+    builder = CommandBuilder()
+
+    # Try each valid program until one works without duplicating
+    for program in runnable:
+        cmd = builder.build(program, available_files, context)
+
+        if cmd and cmd not in previous_commands:
+            state = _log(state, "FALLBACK: Built command for %s" % program)
+            return {
+                **state,
+                "command": cmd,
+                "validation_error": None,
+                "fallback_used": True
+            }
+        elif cmd:
+            state = _log(state, "FALLBACK: %s would duplicate, trying next" % program)
+        else:
+            state = _log(state, "FALLBACK: %s failed to build, trying next" % program)
+
+    # Last resort - stop
+    state = _log(state, "FALLBACK: Cannot find non-duplicate command, stopping")
+    return {
+        **state,
+        "command": "STOP",
+        "stop": True,
+        "stop_reason": "all_commands_duplicate",
+        "validation_error": None,
+        "fallback_used": True
+    }
+
+
 def fallback(state):
     """
     Node E: Mechanical Fallback.
@@ -1465,7 +1665,13 @@ def fallback(state):
     2. Checking recently run programs (not just commands)
     3. Trying alternative programs if first choice would duplicate
     4. For refine, preferring output files from previous cycles
+
+    NEW: If USE_NEW_COMMAND_BUILDER is True, delegates to _fallback_with_new_builder.
     """
+    # Optionally use new unified builder
+    if USE_NEW_COMMAND_BUILDER:
+        return _fallback_with_new_builder(state)
+
     state = _log(state, "FALLBACK: Using mechanical auto-selection")
 
     # Get previous commands to avoid duplicates

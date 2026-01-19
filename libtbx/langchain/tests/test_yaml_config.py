@@ -669,7 +669,7 @@ def test_invariants_validate_and_fix():
 
     # Test when resolution already set - should not override
     files = {"model": "test.pdb", "map": "test.mrc"}
-    strategy = {"resolution": 2.8}
+    strategy = {"resolution": 2.8, "output_prefix": "rsr_001"}  # Both required
     context = {"resolution": 3.5}
 
     files3, strategy3, warnings3 = builder.validate_and_fix(
@@ -677,7 +677,8 @@ def test_invariants_validate_and_fix():
     )
 
     assert strategy3["resolution"] == 2.8, "Should not override existing resolution"
-    assert len(warnings3) == 0, "Should have no warnings when invariant satisfied"
+    assert strategy3["output_prefix"] == "rsr_001", "Should not override existing output_prefix"
+    assert len(warnings3) == 0, "Should have no warnings when all invariants satisfied"
 
     print("  PASSED")
 

@@ -1,5 +1,29 @@
 # Command Builder Refactoring Plan
 
+## Status
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| Phase 1: Create New Module | ✅ COMPLETE | `command_builder.py` created with CommandBuilder class |
+| Phase 2: Add Compatibility Layer | ✅ COMPLETE | TemplateBuilder.USE_NEW_BUILDER flag added |
+| Phase 3: Update Graph Nodes | ✅ COMPLETE | graph_nodes.USE_NEW_COMMAND_BUILDER flag added |
+| Phase 4: Remove Old Code | ⏸️ DEFERRED | Will remove after production testing |
+| Phase 5: Testing & Documentation | 🔄 IN PROGRESS | Basic tests done, more needed |
+
+### How to Enable New Builder
+
+```python
+# Option 1: Enable globally in graph_nodes.py
+from agent import graph_nodes
+graph_nodes.USE_NEW_COMMAND_BUILDER = True
+
+# Option 2: Enable in template_builder.py (for fallback path)
+from agent.template_builder import TemplateBuilder
+TemplateBuilder.USE_NEW_BUILDER = True
+```
+
+---
+
 ## Executive Summary
 
 Consolidate the current fragmented command generation system (4 entry points across 2 overlapping modules) into a single, clean `CommandBuilder` class with one entry point and a clear pipeline.
@@ -391,35 +415,32 @@ def fallback_build_node(state):
     return {**state, "command": "", "validation_error": "No valid command found"}
 ```
 
-### Phase 4: Remove Old Code
+### Phase 4: Remove Old Code (DEFERRED)
+
+**Status**: DEFERRED until new CommandBuilder is tested in production.
+
+**Rationale**: The feature flag approach (`USE_NEW_COMMAND_BUILDER`) allows safe testing
+of the new builder alongside existing code. Old code will be removed once:
+1. New builder has been tested with real workflows
+2. No regressions are found
+3. Feature flag has been enabled in production for a reasonable period
 
 **Goal**: Delete deprecated modules and clean up.
 
-#### Step 4.1: Remove template_builder.py methods
+#### Step 4.1: Remove template_builder.py methods (DEFERRED)
 
-- Delete `build_command()` (replaced by CommandBuilder.build)
-- Delete `build_command_for_program()` (replaced by CommandBuilder.build)
-- Delete `validate_and_fix()` (moved to CommandBuilder._apply_invariants)
-- Keep `_yaml_inputs_to_slots()` if needed, or move to command_builder
+Methods marked as deprecated but NOT yet deleted:
+- `build_command()` - DEPRECATED, use CommandBuilder.build()
+- `build_command_for_program()` - DEPRECATED, use CommandBuilder.build()
+- `validate_and_fix()` - Keep for backward compatibility (used by tests)
 
-#### Step 4.2: Simplify program_registry.py
+#### Step 4.2: Simplify program_registry.py (DEFERRED)
 
-Keep only YAML/data access methods:
-- `get_program()`
-- `get_programs()`
-- `get_strategy_flags()`
-- `get_defaults()`
-- `get_invariants()`
-- `get_required_inputs()`
-- `get_log_patterns()`
+Keep all methods for now. Will remove `build_command()` after migration complete.
 
-Delete:
-- `build_command()` (moved to CommandBuilder)
-- Top-level `build_command()` function
+#### Step 4.3: Update imports (DEFERRED)
 
-#### Step 4.3: Update imports
-
-Search and replace all imports of old functions.
+Will update imports after old code is removed.
 
 ### Phase 5: Testing & Documentation
 

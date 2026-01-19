@@ -2,6 +2,20 @@
 """
 Run all tests for the PHENIX AI Agent.
 
+Test Suites:
+  1. API Schema - Request/response validation
+  2. Best Files Tracker - File tracking and scoring
+  3. Workflow State - State detection and transitions
+  4. YAML Config - YAML configuration validation
+  5. Sanity Checker - Sanity check logic
+  6. Metrics Analyzer - Metric extraction and trends
+  7. Dry Run - Dry run manager functionality
+  8. Integration - End-to-end workflow tests
+  9. Transport - Encoding/decoding round-trips
+  10. State Serialization - State packaging/unpackaging
+  11. Command Builder - Unified command generation
+  12. File Categorization - File classification logic
+
 Usage:
     python tests/run_all_tests.py
     python tests/run_all_tests.py --verbose
@@ -150,6 +164,46 @@ def main():
             results.append(("Integration", False, 0))
     else:
         print("\n⏭️  Skipping integration tests (--quick mode)")
+
+    # --- Transport Tests ---
+    try:
+        from tests.test_transport import run_all_tests as run_transport_tests
+        success, elapsed = run_test_module(
+            "test_transport", run_transport_tests, args.verbose)
+        results.append(("Transport", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_transport: {e}")
+        results.append(("Transport", False, 0))
+
+    # --- State Serialization Tests ---
+    try:
+        from tests.test_state_serialization import run_all_tests as run_serialization_tests
+        success, elapsed = run_test_module(
+            "test_state_serialization", run_serialization_tests, args.verbose)
+        results.append(("State Serialization", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_state_serialization: {e}")
+        results.append(("State Serialization", False, 0))
+
+    # --- Command Builder Tests ---
+    try:
+        from tests.test_command_builder import run_all_tests as run_command_builder_tests
+        success, elapsed = run_test_module(
+            "test_command_builder", run_command_builder_tests, args.verbose)
+        results.append(("Command Builder", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_command_builder: {e}")
+        results.append(("Command Builder", False, 0))
+
+    # --- File Categorization Tests ---
+    try:
+        from tests.test_file_categorization import run_all_tests as run_file_categorization_tests
+        success, elapsed = run_test_module(
+            "test_file_categorization", run_file_categorization_tests, args.verbose)
+        results.append(("File Categorization", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_file_categorization: {e}")
+        results.append(("File Categorization", False, 0))
 
     # --- Summary ---
     total_elapsed = time.time() - total_start

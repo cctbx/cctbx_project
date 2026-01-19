@@ -401,6 +401,25 @@ class ProgramRegistry:
             prog = self._json_templates.get(program_name, {})
             return prog.get("defaults", {})
 
+    def get_invariants(self, program_name):
+        """
+        Get program invariants (validation rules and auto-fills).
+
+        Args:
+            program_name: Name of program
+
+        Returns:
+            list: List of invariant definitions
+        """
+        if self.use_yaml:
+            prog = get_program(program_name)
+            if prog:
+                return prog.get("invariants", [])
+            return []
+        else:
+            # JSON templates don't have invariants
+            return []
+
     def build_command(self, program_name, files, strategy=None, log=None):
         """
         Build a command string.

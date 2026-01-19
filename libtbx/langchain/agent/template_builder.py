@@ -7,6 +7,9 @@ This module now supports two backends:
 1. YAML-driven ProgramRegistry (preferred)
 2. Legacy JSON command_templates.json (fallback)
 
+NEW: Can delegate to CommandBuilder for unified command generation.
+Set TemplateBuilder.USE_NEW_BUILDER = True to enable.
+
 Usage:
     builder = TemplateBuilder()
     cmd = builder.build_command("phenix.refine", {"model": "x.pdb", "mtz": "x.mtz"})
@@ -29,7 +32,12 @@ class TemplateBuilder(object):
     Converts abstract IntentJSON into concrete CLI strings.
 
     Uses YAML-driven ProgramRegistry.
+    
+    NEW: Set USE_NEW_BUILDER = True to delegate to CommandBuilder.
     """
+    
+    # Feature flag: Set to True to use new CommandBuilder
+    USE_NEW_BUILDER = False
 
     def __init__(self, template_path=TEMPLATE_PATH, use_yaml=True):
         """
@@ -43,11 +51,22 @@ class TemplateBuilder(object):
         self._registry = None
         self._json_templates = None
         self._template_path = template_path
+        self._command_builder = None  # Lazy-loaded CommandBuilder
 
         if self.use_yaml:
             self._registry = ProgramRegistry(use_yaml=True)
         else:
             self._load_json_templates()
+
+    def _get_command_builder(self):
+        """Get or create CommandBuilder instance (lazy loading)."""
+        if self._command_builder is None:
+            try:
+                from agent.command_builder import CommandBuilder
+            except ImportError:
+                from libtbx.langchain.agent.command_builder import CommandBuilder
+            self._command_builder = CommandBuilder()
+        return self._command_builder
 
     def _load_json_templates(self):
         """Load legacy JSON templates."""
@@ -176,6 +195,9 @@ class TemplateBuilder(object):
                                    log=None, context=None, best_files=None, rfree_mtz=None):
         """
         THE FALLBACK: Auto-selects files based on extensions and patterns.
+        
+        DEPRECATED: This method will be replaced by CommandBuilder.build().
+        Set TemplateBuilder.USE_NEW_BUILDER = True to use the new implementation.
 
         Args:
             program (str): The program to build a command for
@@ -193,6 +215,13 @@ class TemplateBuilder(object):
         """
         if log is None:
             log = lambda x: None
+
+        # NEW: Optionally delegate to CommandBuilder
+        if self.USE_NEW_BUILDER:
+            return self._build_via_command_builder(
+                program, available_files, categorized_files,
+                log, context, best_files, rfree_mtz
+            )
 
         # Get template (from YAML or JSON)
         if self.use_yaml:
@@ -352,6 +381,36 @@ class TemplateBuilder(object):
         except ValueError as e:
             log("ERROR: Failed to build command: %s" % e)
             return None
+
+    def _build_via_command_builder(self, program, available_files, categorized_files,
+                                    log, context, best_files, rfree_mtz):
+        """
+        Delegate command building to the new CommandBuilder.
+        
+        This is the compatibility bridge between the old API and new CommandBuilder.
+        """
+        try:
+            from agent.command_builder import CommandContext
+        except ImportError:
+            from libtbx.langchain.agent.command_builder import CommandContext
+        
+        # Build CommandContext from the scattered parameters
+        cmd_context = CommandContext(
+            cycle_number=context.get("cycle_number", 1) if context else 1,
+            experiment_type=context.get("experiment_type", "") if context else "",
+            resolution=context.get("session_resolution") or context.get("resolution") if context else None,
+            best_files=best_files or {},
+            rfree_mtz=rfree_mtz,
+            categorized_files=categorized_files or {},
+            workflow_state=context.get("workflow_state", {}).get("state", "") if context else "",
+            history=context.get("history", []) if context else [],
+            llm_files=None,  # build_command_for_program doesn't receive LLM hints
+            llm_strategy=None,
+            log=log,
+        )
+        
+        builder = self._get_command_builder()
+        return builder.build(program, available_files, cmd_context)
 
     def _yaml_inputs_to_slots(self, prog_def):
         """Convert YAML inputs format to JSON file_slots format."""

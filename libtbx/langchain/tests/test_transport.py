@@ -695,5 +695,38 @@ class TestVerifyRoundtrip(unittest.TestCase):
         self.assertTrue(success, f"Roundtrip failed: {message}")
 
 
+def run_all_tests():
+    """Run all transport tests (for run_all_tests.py compatibility)."""
+    # Create a test suite
+    loader = unittest.TestLoader()
+    suite = unittest.TestSuite()
+    
+    # Add all test classes
+    suite.addTests(loader.loadTestsFromTestCase(TestRemoveMarkers))
+    suite.addTests(loader.loadTestsFromTestCase(TestTruncateQuotedStrings))
+    suite.addTests(loader.loadTestsFromTestCase(TestReplaceTabs))
+    suite.addTests(loader.loadTestsFromTestCase(TestRemoveControlChars))
+    suite.addTests(loader.loadTestsFromTestCase(TestTruncateString))
+    suite.addTests(loader.loadTestsFromTestCase(TestSanitizeString))
+    suite.addTests(loader.loadTestsFromTestCase(TestSanitizeForTransport))
+    suite.addTests(loader.loadTestsFromTestCase(TestSanitizeDictRecursive))
+    suite.addTests(loader.loadTestsFromTestCase(TestEncodeDecodeRoundtrip))
+    suite.addTests(loader.loadTestsFromTestCase(TestEdgeCases))
+    suite.addTests(loader.loadTestsFromTestCase(TestConfigLoading))
+    suite.addTests(loader.loadTestsFromTestCase(TestSanitizeField))
+    suite.addTests(loader.loadTestsFromTestCase(TestSanitizeRequest))
+    suite.addTests(loader.loadTestsFromTestCase(TestSanitizeResponse))
+    suite.addTests(loader.loadTestsFromTestCase(TestUnifiedTransport))
+    suite.addTests(loader.loadTestsFromTestCase(TestVerifyRoundtrip))
+    
+    # Run with verbosity
+    runner = unittest.TextTestRunner(verbosity=1)
+    result = runner.run(suite)
+    
+    # Raise exception if any tests failed (for run_all_tests.py)
+    if not result.wasSuccessful():
+        raise Exception(f"{len(result.failures)} test(s) failed, {len(result.errors)} error(s)")
+
+
 if __name__ == '__main__':
     unittest.main()
