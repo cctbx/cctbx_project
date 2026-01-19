@@ -172,9 +172,10 @@ PERCEIVE ─▶ PLAN ─▶ BUILD ─▶ VALIDATE ─▶ OUTPUT
 
 #### Knowledge Layer
 
-**YAML Programs** (`knowledge/programs/`):
+**YAML Programs** (`knowledge/programs.yaml`):
 - Program definitions
 - Input/output specifications
+- Invariants (rules that must be satisfied)
 - Scoring rules
 
 **Rules Selector** (`rules_selector.py`):
@@ -182,10 +183,20 @@ PERCEIVE ─▶ PLAN ─▶ BUILD ─▶ VALIDATE ─▶ OUTPUT
 - Filters by experiment type
 - Applies priority rules
 
+**Command Builder** (`command_builder.py`):
+- **Single entry point** for all command generation
+- 4-stage pipeline:
+  1. `_select_files()` - Priority-based file selection
+  2. `_build_strategy()` - Strategy with output_prefix
+  3. `_apply_invariants()` - Auto-fill resolution, R-free flags
+  4. `_assemble_command()` - Final command string
+- Uses `CommandContext` dataclass for all parameters
+- Replaces fragmented logic from template_builder and graph_nodes
+
 **Template Builder** (`template_builder.py`):
-- Constructs commands from templates
-- Resolves file paths
-- Applies strategy options
+- Legacy interface (delegates to CommandBuilder)
+- YAML-to-slot mapping
+- Invariant checking
 
 **Workflow State** (`workflow_state.py`):
 - Determines current workflow position
@@ -366,3 +377,70 @@ def _get_graph():
 - Graph invocation: ~1-5 seconds
 - LLM calls: ~2-10 seconds (if used)
 - Rules-only mode: <1 second
+
+## Command Builder Architecture
+
+The CommandBuilder provides a unified, single-entry-point system for generating
+PHENIX commands. It replaces the previous fragmented approach spread across
+multiple modules.
+
+### Pipeline
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         CommandBuilder.build()                           │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────┐ │
+│  │ _select_     │──▶│ _build_      │──▶│ _apply_      │──▶│_assemble_│ │
+│  │   files()    │   │  strategy()  │   │ invariants() │   │command() │ │
+│  └──────────────┘   └──────────────┘   └──────────────┘   └──────────┘ │
+│        │                  │                   │                 │       │
+│        ▼                  ▼                   ▼                 ▼       │
+│  Priority order:     Auto-fill:          Auto-fill:       Final cmd    │
+│  1. LLM hints       - output_prefix     - resolution      string       │
+│  2. Locked rfree    - from history      - R-free flags                 │
+│  3. Best files                          - twin_law                     │
+│  4. Categories                                                          │
+│  5. Extensions                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### CommandContext
+
+All parameters are passed via a `CommandContext` dataclass:
+
+```python
+@dataclass
+class CommandContext:
+    cycle_number: int = 1
+    experiment_type: str = ""
+    resolution: float = None
+    best_files: Dict[str, str] = None
+    rfree_mtz: str = None
+    categorized_files: Dict[str, List[str]] = None
+    workflow_state: str = ""
+    history: List[Dict] = None
+    llm_files: Dict[str, str] = None      # Optional LLM hints
+    llm_strategy: Dict[str, Any] = None   # Optional LLM hints
+    log: Callable = None
+```
+
+### File Selection Priority
+
+1. **LLM hints** - If LLM specified files and they exist
+2. **Locked R-free MTZ** - For MTZ slots in X-ray refinement
+3. **Best files** - From BestFilesTracker (quality-scored)
+4. **Categories** - From `input_priorities` in YAML
+5. **Extension fallback** - Most recent file with matching extension
+
+### Integration with Graph Nodes
+
+```python
+# In graph_nodes.py build() function:
+if USE_NEW_COMMAND_BUILDER:
+    return _build_with_new_builder(state)
+
+# _build_with_new_builder creates CommandContext from state
+# and delegates to CommandBuilder.build()
+```

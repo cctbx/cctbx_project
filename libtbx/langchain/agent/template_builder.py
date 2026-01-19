@@ -32,10 +32,10 @@ class TemplateBuilder(object):
     Converts abstract IntentJSON into concrete CLI strings.
 
     Uses YAML-driven ProgramRegistry.
-    
+
     NEW: Set USE_NEW_BUILDER = True to delegate to CommandBuilder.
     """
-    
+
     # Feature flag: Set to True to use new CommandBuilder
     USE_NEW_BUILDER = False
 
@@ -195,7 +195,7 @@ class TemplateBuilder(object):
                                    log=None, context=None, best_files=None, rfree_mtz=None):
         """
         THE FALLBACK: Auto-selects files based on extensions and patterns.
-        
+
         DEPRECATED: This method will be replaced by CommandBuilder.build().
         Set TemplateBuilder.USE_NEW_BUILDER = True to use the new implementation.
 
@@ -386,14 +386,14 @@ class TemplateBuilder(object):
                                     log, context, best_files, rfree_mtz):
         """
         Delegate command building to the new CommandBuilder.
-        
+
         This is the compatibility bridge between the old API and new CommandBuilder.
         """
         try:
             from agent.command_builder import CommandContext
         except ImportError:
             from libtbx.langchain.agent.command_builder import CommandContext
-        
+
         # Build CommandContext from the scattered parameters
         cmd_context = CommandContext(
             cycle_number=context.get("cycle_number", 1) if context else 1,
@@ -408,7 +408,7 @@ class TemplateBuilder(object):
             llm_strategy=None,
             log=log,
         )
-        
+
         builder = self._get_command_builder()
         return builder.build(program, available_files, cmd_context)
 
@@ -519,7 +519,7 @@ class TemplateBuilder(object):
         cycle_match = re.search(r'refine[_.]?(\d+)', basename)
         if cycle_match:
             score += int(cycle_match.group(1)) * 5
-        
+
         # Matches: rsr_001_real_space_refined_001.pdb, etc.
         # Use the LAST number in the filename as the iteration number
         rsr_numbers = re.findall(r'(\d+)', basename)

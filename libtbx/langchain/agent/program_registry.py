@@ -443,13 +443,13 @@ class ProgramRegistry:
         # Start with command template from YAML if available
         if self.use_yaml:
             cmd_template = prog.get("command", program_name)
-            
+
             # Get input definitions to check for flags and multiple
             inputs = prog.get("inputs", {})
             all_inputs = {}
             all_inputs.update(inputs.get("required", {}))
             all_inputs.update(inputs.get("optional", {}))
-            
+
             # Substitute file placeholders
             cmd = cmd_template
             for slot_name, file_path in files.items():
@@ -459,7 +459,7 @@ class ProgramRegistry:
                     slot_def = all_inputs.get(slot_name, {})
                     flag = slot_def.get("flag", "")
                     is_multiple = slot_def.get("multiple", False)
-                    
+
                     if is_multiple and isinstance(file_path, list):
                         # Multiple files - add flag prefix to each
                         if flag:
@@ -475,19 +475,19 @@ class ProgramRegistry:
                             replacement = "%s%s" % (flag, file_path)
                         else:
                             replacement = str(file_path)
-                    
+
                     cmd = cmd.replace(placeholder, replacement)
-            
+
             # Remove any unfilled placeholders (optional files not provided)
             import re
             cmd = re.sub(r'\{[a-z_]+\}', '', cmd)
             cmd = ' '.join(cmd.split())  # Clean up extra spaces
-            
+
             cmd_parts = cmd.split()
         else:
             # Legacy JSON path - build from scratch
             cmd_parts = [program_name]
-            
+
             # Get input definitions
             all_inputs = prog.get("file_slots", {})
 

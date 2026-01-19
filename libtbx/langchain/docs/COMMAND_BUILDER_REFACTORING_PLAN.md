@@ -6,20 +6,24 @@
 |-------|--------|-------|
 | Phase 1: Create New Module | ✅ COMPLETE | `command_builder.py` created with CommandBuilder class |
 | Phase 2: Add Compatibility Layer | ✅ COMPLETE | TemplateBuilder.USE_NEW_BUILDER flag added |
-| Phase 3: Update Graph Nodes | ✅ COMPLETE | graph_nodes.USE_NEW_COMMAND_BUILDER flag added |
-| Phase 4: Remove Old Code | ⏸️ DEFERRED | Will remove after production testing |
-| Phase 5: Testing & Documentation | 🔄 IN PROGRESS | Basic tests done, more needed |
+| Phase 3: Update Graph Nodes | ✅ COMPLETE | graph_nodes.USE_NEW_COMMAND_BUILDER enabled by default |
+| Phase 4: Remove Old Code | ⏸️ DEFERRED | Old code kept for rollback capability |
+| Phase 5: Testing & Documentation | ✅ COMPLETE | 12 test suites, all passing |
 
-### How to Enable New Builder
+### Current State (January 2025)
+
+The new CommandBuilder is now **enabled by default**. The old code paths remain available
+for rollback if needed by setting `USE_NEW_COMMAND_BUILDER = False`.
+
+### How to Disable New Builder (Rollback)
 
 ```python
-# Option 1: Enable globally in graph_nodes.py
-from agent import graph_nodes
-graph_nodes.USE_NEW_COMMAND_BUILDER = True
+# In graph_nodes.py, change:
+USE_NEW_COMMAND_BUILDER = False
 
-# Option 2: Enable in template_builder.py (for fallback path)
-from agent.template_builder import TemplateBuilder
-TemplateBuilder.USE_NEW_BUILDER = True
+# Or at runtime:
+from agent import graph_nodes
+graph_nodes.USE_NEW_COMMAND_BUILDER = False
 ```
 
 ---

@@ -28,7 +28,6 @@ sys.modules['libtbx.langchain'] = libtbx.langchain
 sys.modules['libtbx.langchain.agent'] = libtbx.langchain.agent
 sys.modules['libtbx.langchain.knowledge'] = libtbx.langchain.knowledge
 
-from knowledge.yaml_loader import get_program
 import knowledge.yaml_loader
 libtbx.langchain.knowledge.yaml_loader = knowledge.yaml_loader
 sys.modules['libtbx.langchain.knowledge.yaml_loader'] = knowledge.yaml_loader
@@ -68,7 +67,7 @@ def assert_not_in(item, container, msg=""):
 def test_pdb_file_detection():
     """Test detection of PDB/model files."""
     print("Test: pdb_file_detection")
-    
+
     # Various PDB file patterns that should be recognized
     pdb_files = [
         "/path/to/model.pdb",
@@ -78,67 +77,67 @@ def test_pdb_file_detection():
         "/path/to/refine_001_001.pdb",
         "/path/to/rsr_001_real_space_refined_000.pdb",
     ]
-    
+
     for f in pdb_files:
         ext = os.path.splitext(f)[1].lower()
         assert_in(ext, ['.pdb', '.cif'], "Should recognize as model: %s" % f)
-    
+
     print("  PASSED")
 
 
 def test_mtz_file_detection():
     """Test detection of MTZ/reflection files."""
     print("Test: mtz_file_detection")
-    
+
     mtz_files = [
         "/path/to/data.mtz",
         "/path/to/refine_001_001.mtz",
         "/path/to/scaled_data.mtz",
     ]
-    
+
     for f in mtz_files:
         ext = os.path.splitext(f)[1].lower()
         assert_equal(ext, '.mtz', "Should recognize as MTZ: %s" % f)
-    
+
     print("  PASSED")
 
 
 def test_map_file_detection():
     """Test detection of map files."""
     print("Test: map_file_detection")
-    
+
     map_files = [
         "/path/to/map.mrc",
         "/path/to/map.ccp4",
         "/path/to/density.map",
         "/path/to/emd_12345.map",
     ]
-    
+
     map_extensions = ['.mrc', '.ccp4', '.map']
-    
+
     for f in map_files:
         ext = os.path.splitext(f)[1].lower()
         assert_in(ext, map_extensions, "Should recognize as map: %s" % f)
-    
+
     print("  PASSED")
 
 
 def test_sequence_file_detection():
     """Test detection of sequence files."""
     print("Test: sequence_file_detection")
-    
+
     seq_files = [
         "/path/to/sequence.fa",
         "/path/to/protein.fasta",
         "/path/to/seq.seq",
     ]
-    
+
     seq_extensions = ['.fa', '.fasta', '.seq']
-    
+
     for f in seq_files:
         ext = os.path.splitext(f)[1].lower()
         assert_in(ext, seq_extensions, "Should recognize as sequence: %s" % f)
-    
+
     print("  PASSED")
 
 
@@ -149,9 +148,9 @@ def test_sequence_file_detection():
 def test_refined_model_detection():
     """Test detection of refined model files."""
     print("Test: refined_model_detection")
-    
+
     tracker = BestFilesTracker()
-    
+
     # Files that should be classified as "refined"
     refined_patterns = [
         "refine_001_001.pdb",
@@ -159,20 +158,20 @@ def test_refined_model_detection():
         "refined_model.pdb",
         "model_refined.pdb",
     ]
-    
+
     for filename in refined_patterns:
         stage = tracker._classify_stage("/path/to/" + filename, "model")
         assert_equal(stage, "refined", "Should classify as refined: %s (got %s)" % (filename, stage))
-    
+
     print("  PASSED")
 
 
 def test_rsr_output_detection():
     """Test detection of real_space_refine output files."""
     print("Test: rsr_output_detection")
-    
+
     tracker = BestFilesTracker()
-    
+
     # Files that should be classified as "rsr_output"
     rsr_patterns = [
         "rsr_001_real_space_refined_000.pdb",
@@ -180,71 +179,71 @@ def test_rsr_output_detection():
         "rsr_002_real_space_refined_000.pdb",
         "model_real_space_refined.pdb",
     ]
-    
+
     for filename in rsr_patterns:
         stage = tracker._classify_stage("/path/to/" + filename, "model")
         assert_equal(stage, "rsr_output", "Should classify as rsr_output: %s (got %s)" % (filename, stage))
-    
+
     print("  PASSED")
 
 
 def test_phaser_output_detection():
     """Test detection of phaser output files."""
     print("Test: phaser_output_detection")
-    
+
     tracker = BestFilesTracker()
-    
+
     # Files that should be classified as "phaser_output"
     phaser_patterns = [
         "PHASER.1.pdb",
         "PHASER.2.pdb",
         "phaser_output.pdb",
     ]
-    
+
     for filename in phaser_patterns:
         stage = tracker._classify_stage("/path/to/" + filename, "model")
         assert_equal(stage, "phaser_output", "Should classify as phaser_output: %s (got %s)" % (filename, stage))
-    
+
     print("  PASSED")
 
 
 def test_predicted_model_detection():
     """Test detection of predicted model files."""
     print("Test: predicted_model_detection")
-    
+
     tracker = BestFilesTracker()
-    
+
     # Files that should be classified as "predicted"
     predicted_patterns = [
         "predicted_model.pdb",
         "alphafold_prediction.pdb",
     ]
-    
+
     for filename in predicted_patterns:
         stage = tracker._classify_stage("/path/to/" + filename, "model")
-        assert_equal(stage, "predicted", 
+        assert_equal(stage, "predicted",
                   "Should classify as predicted: %s (got %s)" % (filename, stage))
-    
+
     print("  PASSED")
 
 
 def test_autobuild_output_detection():
     """Test detection of autobuild output files."""
     print("Test: autobuild_output_detection")
-    
+
     tracker = BestFilesTracker()
-    
+
     # Files that should be classified as "autobuild_output"
     autobuild_patterns = [
         "overall_best.pdb",
         "autobuild_output.pdb",
     ]
-    
+
     for filename in autobuild_patterns:
         stage = tracker._classify_stage("/path/to/" + filename, "model")
         assert_equal(stage, "autobuild_output",
                   "Should classify as autobuild_output: %s (got %s)" % (filename, stage))
-    
+
     print("  PASSED")
 
 
@@ -255,56 +254,56 @@ def test_autobuild_output_detection():
 def test_best_model_selection_prefers_refined():
     """Test that best model selection prefers refined over input."""
     print("Test: best_model_selection_prefers_refined")
-    
+
     tracker = BestFilesTracker()
-    
+
     # Add files in order: input, then refined
     tracker.evaluate_file("/path/to/input_model.pdb", cycle=1, category="model")
     tracker.evaluate_file("/path/to/refine_001_001.pdb", cycle=2, category="model")
-    
+
     best = tracker.get_best_path("model")
     assert_true(best is not None, "Should have a best model")
     assert_in("refine", best.lower(), "Should prefer refined model: %s" % best)
-    
+
     print("  PASSED")
 
 
 def test_best_model_selection_prefers_recent():
     """Test that best model selection prefers more recent refined models."""
     print("Test: best_model_selection_prefers_recent")
-    
+
     tracker = BestFilesTracker()
-    
+
     # Add multiple refined models
     tracker.evaluate_file("/path/to/refine_001_001.pdb", cycle=1, category="model")
     tracker.evaluate_file("/path/to/refine_002_001.pdb", cycle=2, category="model")
     tracker.evaluate_file("/path/to/refine_003_001.pdb", cycle=3, category="model")
-    
+
     best = tracker.get_best_path("model")
     assert_true(best is not None, "Should have a best model")
     # Should prefer the most recent (refine_003)
     assert_in("003", best, "Should prefer most recent refined model: %s" % best)
-    
+
     print("  PASSED")
 
 
 def test_best_mtz_locked():
     """Test that best MTZ respects R-free locking."""
     print("Test: best_mtz_locked")
-    
+
     tracker = BestFilesTracker()
-    
+
     # Add MTZ files
     tracker.evaluate_file("/path/to/data.mtz", cycle=1, category="mtz")
     tracker.evaluate_file("/path/to/refine_001_001.mtz", cycle=2, category="mtz")
-    
+
     # Lock the original MTZ (simulates R-free flag generation)
     tracker._locked_mtz = "/path/to/data.mtz"
-    
+
     # Best MTZ should still be the locked one
     best = tracker.get_best_path("mtz")
     assert_equal(best, "/path/to/data.mtz", "Should use locked R-free MTZ")
-    
+
     print("  PASSED")
 
 
@@ -315,7 +314,7 @@ def test_best_mtz_locked():
 def test_half_map_detection():
     """Test detection of half-map files."""
     print("Test: half_map_detection")
-    
+
     # Half-map patterns that should be excluded from full map selection
     half_map_patterns = [
         "half_map_1.mrc",
@@ -325,24 +324,24 @@ def test_half_map_detection():
         "emd_12345_half_map_1.map",
         "emd_12345_half_map_2.map",
     ]
-    
+
     for filename in half_map_patterns:
         basename = filename.lower()
         is_half = ("half" in basename or "_1" in basename or "_2" in basename)
         assert_true(is_half, "Should detect as half-map: %s" % filename)
-    
+
     # Full map patterns that should NOT be excluded
     full_map_patterns = [
         "full_map.mrc",
         "density.ccp4",
         "denmod_map.ccp4",
     ]
-    
+
     for filename in full_map_patterns:
         basename = filename.lower()
         is_half = ("half" in basename)
         assert_true(not is_half, "Should NOT detect as half-map: %s" % filename)
-    
+
     print("  PASSED")
 
 
@@ -353,16 +352,16 @@ def test_half_map_detection():
 def test_file_number_extraction():
     """Test extraction of numbers from filenames for sorting."""
     print("Test: file_number_extraction")
-    
+
     import re
-    
+
     def get_file_number(path):
         basename = os.path.basename(path)
         numbers = re.findall(r'(\d+)', basename)
         if numbers:
             return int(numbers[-1])
         return 0
-    
+
     # Test various filename patterns
     test_cases = [
         ("rsr_001_real_space_refined_000.pdb", 0),
@@ -373,40 +372,40 @@ def test_file_number_extraction():
         ("refine_002_003.pdb", 3),
         ("model.pdb", 0),
     ]
-    
+
     for filename, expected in test_cases:
         result = get_file_number(filename)
         assert_equal(result, expected, "Number extraction for %s" % filename)
-    
+
     print("  PASSED")
 
 
 def test_file_sorting_by_number():
     """Test that files are sorted correctly by number."""
     print("Test: file_sorting_by_number")
-    
+
     import re
-    
+
     def get_file_number(path):
         basename = os.path.basename(path)
         numbers = re.findall(r'(\d+)', basename)
         if numbers:
             return int(numbers[-1])
         return 0
-    
+
     files = [
         "/path/to/rsr_001_real_space_refined_000.pdb",
         "/path/to/rsr_001_real_space_refined_002.pdb",
         "/path/to/rsr_001_real_space_refined_001.pdb",
     ]
-    
+
     # Sort by number descending (most recent first)
     sorted_files = sorted(files, key=get_file_number, reverse=True)
-    
+
     assert_in("002", sorted_files[0], "First should be 002")
     assert_in("001", sorted_files[1], "Second should be 001")
     assert_in("000", sorted_files[2], "Third should be 000")
-    
+
     print("  PASSED")
 
 
@@ -417,35 +416,35 @@ def test_file_sorting_by_number():
 def test_predicted_excluded_from_refinement():
     """Test that predicted models are excluded from refinement input."""
     print("Test: predicted_excluded_from_refinement")
-    
+
     # The input_priorities for real_space_refine should exclude predicted
     from agent.program_registry import ProgramRegistry
-    
+
     registry = ProgramRegistry()
     priorities = registry.get_input_priorities("phenix.real_space_refine", "model")
-    
+
     exclude_cats = priorities.get("exclude_categories", [])
-    assert_in("predicted", exclude_cats, 
+    assert_in("predicted", exclude_cats,
               "predicted should be excluded from RSR model input")
     assert_in("processed_predicted", exclude_cats,
               "processed_predicted should be excluded from RSR model input")
-    
+
     print("  PASSED")
 
 
 def test_intermediate_mr_excluded():
     """Test that intermediate MR files are excluded."""
     print("Test: intermediate_mr_excluded")
-    
+
     from agent.program_registry import ProgramRegistry
-    
+
     registry = ProgramRegistry()
     priorities = registry.get_input_priorities("phenix.real_space_refine", "model")
-    
+
     exclude_cats = priorities.get("exclude_categories", [])
     assert_in("intermediate_mr", exclude_cats,
               "intermediate_mr should be excluded from RSR model input")
-    
+
     print("  PASSED")
 
 
@@ -456,9 +455,9 @@ def test_intermediate_mr_excluded():
 def test_cryo_em_file_selection_workflow():
     """Test file selection for a typical cryo-EM workflow."""
     print("Test: cryo_em_file_selection_workflow")
-    
+
     tracker = BestFilesTracker()
-    
+
     # Test that stage classification is correct for cryo-EM files
     stages = {
         "/data/predicted_model.pdb": "predicted",
@@ -466,29 +465,29 @@ def test_cryo_em_file_selection_workflow():
         "/data/rsr_001_real_space_refined_000.pdb": "rsr_output",
         "/data/rsr_001_real_space_refined_001.pdb": "rsr_output",
     }
-    
+
     for path, expected_stage in stages.items():
         stage = tracker._classify_stage(path, "model")
         assert_equal(stage, expected_stage, "Stage for %s" % path)
-    
+
     # Verify RSR outputs are tracked correctly when evaluated
     tracker.evaluate_file("/data/rsr_001_real_space_refined_000.pdb", cycle=4, category="model")
     tracker.evaluate_file("/data/rsr_001_real_space_refined_001.pdb", cycle=5, category="model")
-    
+
     best = tracker.get_best_path("model")
     assert_true(best is not None, "Should have a best model")
     # Most recent RSR output should win
     assert_in("001", best, "Should prefer most recent RSR output: %s" % best)
-    
+
     print("  PASSED")
 
 
 def test_xray_file_selection_workflow():
     """Test file selection for a typical X-ray workflow."""
     print("Test: xray_file_selection_workflow")
-    
+
     tracker = BestFilesTracker()
-    
+
     # Test that stage classification is correct for X-ray files
     stages = {
         "/data/model.pdb": "pdb",
@@ -497,27 +496,27 @@ def test_xray_file_selection_workflow():
         "/data/data.mtz": "original",
         "/data/refine_001_001.mtz": "refined_mtz",
     }
-    
+
     for path, expected_stage in stages.items():
         category = "model" if path.endswith(".pdb") else "mtz"
         stage = tracker._classify_stage(path, category)
         assert_equal(stage, expected_stage, "Stage for %s" % path)
-    
+
     # Verify refined models are tracked correctly
     tracker.evaluate_file("/data/refine_001_001.pdb", cycle=2, category="model")
     tracker.evaluate_file("/data/refine_002_001.pdb", cycle=3, category="model")
-    
+
     best_model = tracker.get_best_path("model")
     assert_in("refine_002", best_model, "Should use most recent refined model: %s" % best_model)
-    
+
     # Test MTZ locking
     tracker.evaluate_file("/data/data.mtz", cycle=1, category="mtz")
     tracker._locked_mtz = "/data/data.mtz"
     tracker.evaluate_file("/data/refine_001_001.mtz", cycle=2, category="mtz")
-    
+
     best_mtz = tracker.get_best_path("mtz")
     assert_equal(best_mtz, "/data/data.mtz", "Should use locked R-free MTZ")
-    
+
     print("  PASSED")
 
 
@@ -530,40 +529,40 @@ def run_all_tests():
     print("=" * 70)
     print("FILE CATEGORIZATION TESTS")
     print("=" * 70)
-    
+
     print("\n--- File Extension Tests ---\n")
     test_pdb_file_detection()
     test_mtz_file_detection()
     test_map_file_detection()
     test_sequence_file_detection()
-    
+
     print("\n--- File Stage Classification Tests ---\n")
     test_refined_model_detection()
     test_rsr_output_detection()
     test_phaser_output_detection()
     test_predicted_model_detection()
     test_autobuild_output_detection()
-    
+
     print("\n--- Best File Selection Tests ---\n")
     test_best_model_selection_prefers_refined()
     test_best_model_selection_prefers_recent()
     test_best_mtz_locked()
-    
+
     print("\n--- Half-Map Detection Tests ---\n")
     test_half_map_detection()
-    
+
     print("\n--- File Number Extraction Tests ---\n")
     test_file_number_extraction()
     test_file_sorting_by_number()
-    
+
     print("\n--- Category Exclusion Tests ---\n")
     test_predicted_excluded_from_refinement()
     test_intermediate_mr_excluded()
-    
+
     print("\n--- Integration Tests ---\n")
     test_cryo_em_file_selection_workflow()
     test_xray_file_selection_workflow()
-    
+
     print("\n" + "=" * 70)
     print("ALL FILE CATEGORIZATION TESTS PASSED!")
     print("=" * 70)

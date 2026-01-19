@@ -69,10 +69,10 @@ except ImportError:
             if max_len and len(s) > max_len:
                 s = s[:max_len] + "... [truncated]"
             return s
-        
+
         def sanitize_for_transport(s, max_len=None, truncate_quotes=False, quote_max_len=500):
             return sanitize_string(s, max_len)
-        
+
         def sanitize_dict_recursive(obj, max_len_per_string=500, depth=0, max_depth=10):
             if depth > max_depth:
                 return obj
@@ -83,17 +83,22 @@ except ImportError:
             elif isinstance(obj, str):
                 return sanitize_string(obj, max_len_per_string)
             return obj
-        
+
         def sanitize_request(request, config=None):
             # Fallback - no-op
             return request
-        
+
         def sanitize_response(response, config=None):
             # Fallback - no-op
             return response
-        
+
         def get_transport_config():
             return {}
+
+# Silence unused import warnings - these are used conditionally
+assert sanitize_request is not None
+assert sanitize_response is not None
+assert get_transport_config is not None
 
 
 # =============================================================================
@@ -144,21 +149,21 @@ def build_request_v2(
 
     # Normalize history using transport sanitization
     normalized_history = []
-    
+
     for h in (history or []):
         if isinstance(h, dict):
             # Sanitize metrics recursively
             raw_metrics = h.get("metrics", {})
             sanitized_metrics = sanitize_dict_recursive(raw_metrics, max_len_per_string=500)
-            
+
             normalized_history.append({
                 "cycle": h.get("cycle_number", h.get("cycle", len(normalized_history) + 1)),
                 "program": sanitize_string(h.get("program", ""), max_len=100),
                 "command": sanitize_string(h.get("command", ""), max_len=1000),
                 "result": sanitize_for_transport(
-                    h.get("result", ""), 
-                    max_len=500, 
-                    truncate_quotes=True, 
+                    h.get("result", ""),
+                    max_len=500,
+                    truncate_quotes=True,
                     quote_max_len=200
                 ),
                 "output_files": h.get("output_files", []),
@@ -187,12 +192,12 @@ def build_request_v2(
     # Sanitize log_content with quoted string truncation
     # This handles large data dumps like pdb70_text='...'
     sanitized_log_content = sanitize_for_transport(
-        log_content or "", 
-        max_len=50000, 
-        truncate_quotes=True, 
+        log_content or "",
+        max_len=50000,
+        truncate_quotes=True,
         quote_max_len=500
     )
-    
+
     # Also sanitize user_advice (user could input tabs)
     sanitized_user_advice = sanitize_string(user_advice or "", max_len=10000)
 
