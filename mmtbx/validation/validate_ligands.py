@@ -20,7 +20,10 @@ validate_ligands {
 
 nproc = 1
   .type = int
-
+model_fn_reduce2 = None
+  .type = path
+run_qmr = False
+  .type = bool
 }
 """
 
@@ -59,7 +62,8 @@ class manager(list):
         model       = self.model,
         fmodel      = self.fmodel,
         ligand_isel = ligand_isel,
-        sel_str     = sel_str)
+        sel_str     = sel_str,
+        params      = self.params)
       ligand_results.append(lr)
       for attr, func in lr._result_attrs.items():
         funcs.append([lr, func])
@@ -288,11 +292,13 @@ class ligand_result(object):
                model,
                fmodel,
                ligand_isel,
-               sel_str):
+               sel_str,
+               params):
     self.model       = model
     self.fmodel      = fmodel
     self.ligand_isel = ligand_isel
     self.sel_str     = sel_str
+    self.params      = params
 
     # results
     self._result_attrs = {
@@ -304,6 +310,7 @@ class ligand_result(object):
       '_ccs'           : 'get_ccs',
       '_is_suspicious' : 'check_if_suspicious',
       '_map_values'    : 'get_map_values',
+      '_qmr'           : 'get_qmr',
       #'_polder_ccs'  : 'get_polder_ccs',
     }
 
@@ -544,6 +551,67 @@ class ligand_result(object):
     #self._xrs_ligand_noH = \
     #  self.model.select(self.ligand_isel_noH).get_xray_structure()
     self._atoms_ligand_noH = self._ph.select(self.ligand_isel_noH).atoms()
+
+  # ----------------------------------------------------------------------------
+
+  def get_qmr(self):
+    if self._qmr is not None:
+      return self._qmr
+    if not self.params.run_qmr:
+      return
+
+    skip=True
+    for exclude in ['SO4', 'PO4', 'GOL']:
+      if self.sel_str.find(' %s '%exclude)>-1: break
+    else:
+      skip=False
+    if skip: return
+
+    from libtbx.utils import null_out
+    from mmtbx.geometry_restraints.quantum_interface import get_qm_restraints_scope
+    qi_phil_string = get_qm_restraints_scope()
+    replacements={' selection = None' : ' selection = "%s"' % self.sel_str,
+      'read_output_to_skip_opt_if_available = False' : 'read_output_to_skip_opt_if_available = True',
+      'capping_groups = False' : 'capping_groups = True',
+      ' starting_strain' : ' *starting_strain',
+      'ignore_x_h_distance_protein = False' : 'ignore_x_h_distance_protein = True',
+      ' pdb_final_buffer' : ' *pdb_final_buffer',
+      ' pdb_buffer' : ' *pdb_buffer',
+      }
+    for s1, s2 in replacements.items():
+      qi_phil_string=qi_phil_string.replace(s1, s2)
+
+    outl ='qi {'
+    for line in qi_phil_string.splitlines():
+      if line.strip().startswith('.'): continue
+      outl += '%s\n' % line
+    outl+='}\n'
+    qi_phil_string=outl
+
+    pf = 'qmr_validation_%s.phil' % (self.sel_str.replace(' ','_'))
+    f=open(pf, 'w')
+    f.write(qi_phil_string)
+    del f
+
+    from mmtbx.programs import quantum_interface
+    from iotbx.cli_parser import run_program
+
+    args = [self.params.model_fn_reduce2, pf, 'run_qmr=True']
+    results=run_program(program_class=quantum_interface.Program,
+                        args=args,
+                        logger=null_out())
+    print('results',results)
+
+    r = results[0][1]
+    rmsd = r.rmsds[0][0]
+    print('ligand rmsd of %s after QM minimization' % rmsd)
+    print(r.rmsds)
+
+    self._qmr = group_args(
+      rmsd = rmsd
+      )
+
+    return self._qmr
 
   # ----------------------------------------------------------------------------
 

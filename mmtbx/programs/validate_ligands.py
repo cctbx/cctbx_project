@@ -111,6 +111,7 @@ electron density values/CC.
 
     self.data_manager.add_model(model_fn_reduce2, model_reduce2)
     self.working_model_fn = model_fn_reduce2
+    self.params.validate_ligands.model_fn_reduce2 = model_fn_reduce2
     self.working_model = model_reduce2
 
   # ---------------------------------------------------------------------------
