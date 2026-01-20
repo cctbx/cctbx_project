@@ -2265,21 +2265,16 @@ class CCTBXBuilder(CCIBuilder):
 
   def _add_git(self, module, parameters, destination=None):
     super(CCTBXBuilder, self)._add_git(module, parameters, destination)
-    # select dials-3.5 branch
+    # select dials-3.22 branch
     if (module == 'dials' or module == 'dxtbx' or module == 'xia2') and self.python3:
       workdir = ['modules', module]
       if module == 'dxtbx':
         self.add_step(self.shell(command=['git', 'remote', 'set-url', 'origin', 'https://github.com/dials/dxtbx.git'], workdir=workdir))
         self.add_step(self.shell(command=['git', 'fetch', 'origin'], workdir=workdir))
-      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.5'], workdir=workdir))
+      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.22'], workdir=workdir))
       self.add_step(self.shell(
-        command=['git', 'branch', '--set-upstream-to=origin/dials-3.5', 'dials-3.5'],
+        command=['git', 'branch', '--set-upstream-to=origin/dials-3.22', 'dials-3.22'],
         workdir=workdir))
-    # switch eigen to 3.3.9 for CentOS 6
-    if module == 'eigen':
-      if sys.platform.startswith('linux') and '.el6.' in platform.platform():
-        workdir = ['modules', module]
-        self.add_step(self.shell(command=['git', 'checkout', '3.3.9'], workdir=workdir))
 
 class DIALSBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['dials', 'iota', 'xia2', 'kokkos', 'kokkos-kernels']
