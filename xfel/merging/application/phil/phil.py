@@ -734,6 +734,10 @@ statistics {
       d_max = 20
         .type = float
     }
+    group_by_identifier_prefix = False
+      .type = bool
+    identifier_prefix_length = 3
+      .type = int
   }
 
 }

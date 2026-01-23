@@ -20,6 +20,33 @@ class smx_statistics(worker):
   def run(self, experiments, reflections):
     self.logger.log_step_time("SMX_STATISTICS")
 
+    if self.params.statistics.smx.group_by_identifier_prefix:
+      prefix_length = self.params.statistics.smx.identifier_prefix_length
+      prefixes = list(set([e.identifier[:prefix_length] for e in experiments]))
+      all_prefixes_gathered = self.mpi_helper.comm.gather(prefixes, 0)
+      if self.mpi_helper.rank == 0:
+        all_prefixes = set(sum(all_prefixes_gathered, []))
+      else:
+        all_prefixes = None
+      all_prefixes = self.mpi_helper.comm.bcast(all_prefixes, 0)
+
+      root_prefix = self.params.output.prefix
+      for prefix in sorted(all_prefixes):
+        group_expts = ExperimentList()
+        sel = flex.bool(len(reflections), False)
+        for expt_id, expt in enumerate(experiments):
+          if expt.identifier[prefix_length] == prefix:
+            group_expts.append(expt)
+            sel |= reflections['id'] == expt_id
+        self.params.output.prefix = root_prefix + "_" + prefix
+        self.save_group(group_expts, reflections.select(sel))
+      self.params.output.prefix = root_prefix
+    else:
+      self.save_group(experiments, reflections)
+
+    return experiments, reflections
+
+  def save_group(self, experiments, reflections):
     if self.params.statistics.smx.save_combined or self.params.statistics.smx.save_powder_from_spots:
       all_experiments_gathered = self.mpi_helper.comm.gather(experiments, 0)
       all_reflections_gathered = self.mpi_helper.comm.gather(reflections, 0)
@@ -49,9 +76,6 @@ class smx_statistics(worker):
         triplets = np.vstack(all_triplets)
         fname = self.params.output.prefix + "_triplets.npz"
         np.savez(fname, triplets=triplets)
-
-    return experiments, reflections
-
 
 class TripletData:
   """Generate and store triplets of spots with their geometric relationships
