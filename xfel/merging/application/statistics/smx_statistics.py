@@ -2,6 +2,12 @@ from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
 from dials.array_family import flex
 import numpy as np
+from dxtbx import flumpy
+from dxtbx.model.experiment_list import ExperimentList
+import os
+from xfel.small_cell.command_line.powder_from_spots import phil_scope as pfs_phil_scope
+from xfel.small_cell.powder_util import Spotfinder_radial_average
+from iotbx.phil import parse
 
 class smx_statistics(worker):
 
@@ -14,13 +20,35 @@ class smx_statistics(worker):
   def run(self, experiments, reflections):
     self.logger.log_step_time("SMX_STATISTICS")
 
-    
-    triplet_data = TripletData(experiments, reflections, self.params.statistics.smx)
-    all_triplets = self.mpi_helper.comm.gather(triplet_data.triplets, 0)
-    if self.mpi_helper.rank == 0:
-      all_triplets = np.vstack(all_triplets)
-      fname = self.params.output.prefix + "_triplets.csv"
-      np.savetxt(fname, all_triplets, delimiter=',', fmt='%.6f')
+    if self.params.statistics.smx.save_combined or self.params.statistics.smx.save_powder_from_spots:
+      all_experiments_gathered = self.mpi_helper.comm.gather(experiments, 0)
+      all_reflections_gathered = self.mpi_helper.comm.gather(reflections, 0)
+
+      if self.mpi_helper.rank == 0:
+        all_experiments = ExperimentList()
+        for expts in all_experiments_gathered:
+          if expts:
+            all_experiments.extend(expts)
+        all_reflections = flex.reflection_table.concat(all_reflections_gathered)
+
+        all_experiments.as_file(os.path.join(self.params.output.output_dir, self.params.output.prefix + "_combined.expt"))
+        all_reflections.as_file(os.path.join(self.params.output.output_dir, self.params.output.prefix + "_combined.refl"))
+
+    if self.params.statistics.smx.save_powder_from_spots:
+      if self.mpi_helper.rank == 0:
+        overrides = "output.plot_file=%s\nplot.interactive=False"%(os.path.join(self.params.output.output_dir, self.params.output.prefix + "_powder.png"))
+        pfs_params = pfs_phil_scope.fetch(parse(overrides)).extract()
+        averager = Spotfinder_radial_average(all_experiments, all_reflections, pfs_params)
+        averager.calculate()
+        averager.plot()
+
+    if self.params.statistics.smx.save_triplets:
+      triplet_data = TripletData(experiments, reflections, self.params.statistics.smx)
+      all_triplets = self.mpi_helper.comm.gather(triplet_data.triplets, 0)
+      if self.mpi_helper.rank == 0:
+        triplets = np.vstack(all_triplets)
+        fname = self.params.output.prefix + "_triplets.npz"
+        np.savez(fname, triplets=triplets)
 
     return experiments, reflections
 
@@ -45,7 +73,6 @@ class TripletData:
     if self.triplets is not None:
       return
 
-    print(f"Computing triplets with d_min = {self.params.triplets.d_min}")
 
     triplets = []
 

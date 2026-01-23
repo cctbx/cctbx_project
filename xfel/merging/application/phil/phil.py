@@ -722,8 +722,18 @@ statistics {
   smx
   .help = Parameters to prepare for small-molecule unit cell determination.
   {
-    save_triplets = True
+    save_combined = False
       .type = bool
+    save_powder_from_spots = False
+      .type = bool
+    save_triplets = False
+      .type = bool
+    triplets {
+      d_min = 2
+        .type = float
+      d_max = 20
+        .type = float
+    }
   }
 
 }
