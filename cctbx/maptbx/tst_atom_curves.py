@@ -4,7 +4,7 @@ from cctbx import miller
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx import group_args
-import time, math
+import time
 
 
 def get_map_data(xrs, d_min):
