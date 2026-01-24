@@ -80,6 +80,9 @@ class AgentSession:
             # Once R-free flags are generated, we must use the same MTZ for all refinements
             "rfree_mtz": None,  # Path to the locked R-free MTZ
             "rfree_mtz_locked_at_cycle": None,  # Cycle when it was locked
+            # User directives extracted from project_advice
+            "directives": {},  # Structured directives from user advice
+            "directives_extracted": False,  # Whether extraction has been attempted
         }
         # Initialize best files tracker (not stored in self.data, serialized separately)
         self.best_files = BestFilesTracker()
@@ -116,7 +119,303 @@ class AgentSession:
                 self.data["original_files"] = original_files.split()
             else:
                 self.data["original_files"] = list(original_files)
+
+        # Store run_name if not already set (compute it once on the client)
+        if not self.data.get("run_name"):
+            self.data["run_name"] = self._get_run_name()
+
         self.save()
+
+    # =========================================================================
+    # USER DIRECTIVES
+    # =========================================================================
+
+    def extract_directives(self, provider="google", model=None, log_func=None):
+        """
+        Extract structured directives from project_advice using LLM.
+
+        This should be called once at the start of a session, after
+        set_project_info() has been called with the user's advice.
+
+        Args:
+            provider: LLM provider ("google", "openai", "anthropic")
+            model: Specific model to use (optional)
+            log_func: Optional logging function
+
+        Returns:
+            dict: Extracted directives
+        """
+        def log(msg):
+            if log_func:
+                log_func(msg)
+            else:
+                print(msg)
+
+        # Don't re-extract if already done
+        if self.data.get("directives_extracted"):
+            log("DIRECTIVES: Already extracted, skipping")
+            return self.data.get("directives", {})
+
+        project_advice = self.data.get("project_advice", "")
+
+        if not project_advice or project_advice.strip().lower() in ("", "none", "none provided"):
+            log("DIRECTIVES: No project advice to extract from")
+            self.data["directives_extracted"] = True
+            self.data["directives"] = {}
+            self.save()
+            return {}
+
+        try:
+            from libtbx.langchain.agent.directive_extractor import (
+                extract_directives,
+                extract_directives_simple,
+                format_directives_for_display,
+                merge_directives
+            )
+
+            # Try LLM extraction first
+            log("DIRECTIVES: Extracting from project advice...")
+            llm_directives = extract_directives(
+                user_advice=project_advice,
+                provider=provider,
+                model=model,
+                log_func=log
+            )
+
+            # Also run simple extraction - it's more reliable for specific patterns
+            simple_directives = extract_directives_simple(project_advice)
+
+            # Merge results: simple extraction takes precedence for stop_conditions
+            # because it's more reliable for tutorial/procedure detection
+            if llm_directives and simple_directives:
+                # If simple found an after_program but LLM got it wrong, use simple
+                simple_stop = simple_directives.get("stop_conditions", {})
+                llm_stop = llm_directives.get("stop_conditions", {})
+
+                if simple_stop.get("after_program") and not llm_stop.get("after_program"):
+                    # Simple found program target, LLM missed it - use simple
+                    log("DIRECTIVES: Simple extraction found after_program=%s, merging" %
+                        simple_stop["after_program"])
+                    llm_directives = merge_directives(llm_directives, simple_directives)
+                elif simple_stop.get("after_program") and llm_stop.get("after_cycle"):
+                    # LLM got after_cycle but simple found after_program - simple is probably right
+                    log("DIRECTIVES: LLM got after_cycle but simple found after_program=%s, using simple" %
+                        simple_stop["after_program"])
+                    # Replace LLM stop_conditions with simple's
+                    llm_directives["stop_conditions"] = simple_stop
+
+                directives = llm_directives
+            elif llm_directives:
+                directives = llm_directives
+            elif simple_directives:
+                log("DIRECTIVES: LLM extraction returned empty, using simple patterns")
+                directives = simple_directives
+            else:
+                directives = {}
+
+            # Store and log results
+            self.data["directives"] = directives
+            self.data["directives_extracted"] = True
+            self.save()
+
+            if directives:
+                log(format_directives_for_display(directives))
+            else:
+                log("DIRECTIVES: No actionable directives found")
+
+            return directives
+
+        except ImportError as e:
+            log("DIRECTIVES: Could not import directive_extractor: %s" % str(e))
+            # Try simple extraction as fallback
+            try:
+                from libtbx.langchain.agent.directive_extractor import extract_directives_simple
+                directives = extract_directives_simple(project_advice)
+                self.data["directives"] = directives
+                self.data["directives_extracted"] = True
+                self.save()
+                return directives
+            except ImportError:
+                pass
+
+            self.data["directives_extracted"] = True
+            self.data["directives"] = {}
+            self.save()
+            return {}
+
+        except Exception as e:
+            log("DIRECTIVES: Extraction failed: %s" % str(e))
+            self.data["directives_extracted"] = True
+            self.data["directives"] = {}
+            self.save()
+            return {}
+
+    def get_directives(self):
+        """
+        Get the extracted directives.
+
+        Returns:
+            dict: Directives dict, or empty dict if not extracted
+        """
+        return self.data.get("directives", {})
+
+    def get_program_directive_settings(self, program_name):
+        """
+        Get directive settings for a specific program.
+
+        Merges default settings with program-specific settings.
+
+        Args:
+            program_name: Name of program (e.g., "phenix.refine")
+
+        Returns:
+            dict: Settings for the program
+        """
+        directives = self.get_directives()
+        if not directives:
+            return {}
+
+        try:
+            from libtbx.langchain.agent.directive_extractor import get_program_settings
+            return get_program_settings(directives, program_name)
+        except ImportError:
+            # Manual implementation if import fails
+            prog_settings = directives.get("program_settings", {})
+            default = dict(prog_settings.get("default", {}))
+            specific = prog_settings.get(program_name, {})
+            return {**default, **specific}
+
+    def check_directive_stop_conditions(self, cycle_number, last_program, metrics=None):
+        """
+        Check if any directive stop conditions are met.
+
+        Args:
+            cycle_number: Current cycle number
+            last_program: Last program that was run
+            metrics: Optional dict with r_free, map_cc, etc.
+
+        Returns:
+            tuple: (should_stop: bool, reason: str or None)
+        """
+        directives = self.get_directives()
+        if not directives:
+            return False, None
+
+        try:
+            from libtbx.langchain.agent.directive_extractor import check_stop_conditions
+            return check_stop_conditions(directives, cycle_number, last_program, metrics)
+        except ImportError:
+            # Manual implementation if import fails
+            stop_cond = directives.get("stop_conditions", {})
+            if not stop_cond:
+                return False, None
+
+            # Check after_cycle
+            if "after_cycle" in stop_cond:
+                if cycle_number >= stop_cond["after_cycle"]:
+                    return True, "Reached cycle %d (directive)" % cycle_number
+
+            # Check after_program - normalize names for comparison
+            if "after_program" in stop_cond:
+                target_program = stop_cond["after_program"]
+                # Normalize: remove "phenix." prefix for comparison
+                target_normalized = target_program.replace("phenix.", "")
+                last_normalized = last_program.replace("phenix.", "") if last_program else ""
+
+                if last_normalized == target_normalized or last_program == target_program:
+                    return True, "Completed %s (directive)" % target_program
+
+            return False, None
+
+    def should_skip_validation(self):
+        """
+        Check if directives say to skip validation before stopping.
+
+        Returns:
+            bool: True if validation should be skipped
+        """
+        directives = self.get_directives()
+        stop_cond = directives.get("stop_conditions", {})
+        return stop_cond.get("skip_validation", False)
+
+    def should_allow_stop(self):
+        """
+        Check if STOP should be added to valid_programs based on directives.
+
+        This is used by workflow_engine to determine if the user's directives
+        allow stopping without completing the normal workflow.
+
+        Returns:
+            bool: True if STOP should be allowed in valid_programs
+        """
+        directives = self.get_directives()
+        if not directives:
+            return False  # No directives, use normal workflow
+
+        stop_cond = directives.get("stop_conditions", {})
+        return stop_cond.get("skip_validation", False)
+
+    def get_directive_required_programs(self):
+        """
+        Get programs that must be in valid_programs due to directives.
+
+        This is used by workflow_engine to ensure tutorial targets are runnable.
+        For example, if the user says "stop after resolve_cryo_em", that program
+        must be available even if workflow conditions wouldn't normally include it.
+
+        Returns:
+            list: Program names that directives require to be available
+        """
+        directives = self.get_directives()
+        if not directives:
+            return []
+
+        required = []
+        stop_cond = directives.get("stop_conditions", {})
+
+        # If after_program is set, that program must be runnable
+        after_program = stop_cond.get("after_program")
+        if after_program:
+            required.append(after_program)
+
+        return required
+
+    def count_program_runs(self, program_name):
+        """
+        Count how many times a program has been run.
+
+        Args:
+            program_name: Name of program to count
+
+        Returns:
+            int: Number of times the program has run
+        """
+        count = 0
+        for cycle in self.data.get("cycles", []):
+            if cycle.get("program") == program_name:
+                count += 1
+        return count
+
+    def check_max_program_cycles(self, program_name):
+        """
+        Check if max cycles for a program have been reached per directives.
+
+        Args:
+            program_name: Name of program to check
+
+        Returns:
+            tuple: (limit_reached: bool, current_count: int, max_allowed: int or None)
+        """
+        directives = self.get_directives()
+        stop_cond = directives.get("stop_conditions", {})
+
+        # Check for program-specific max
+        if program_name == "phenix.refine" and "max_refine_cycles" in stop_cond:
+            max_allowed = stop_cond["max_refine_cycles"]
+            current = self.count_program_runs(program_name)
+            return current >= max_allowed, current, max_allowed
+
+        return False, self.count_program_runs(program_name), None
 
     def get_resolution(self):
         """
@@ -606,12 +905,27 @@ class AgentSession:
                         file_stage = "refined_mtz"
                         file_metrics["has_rfree_flags"] = True
 
-                        # Lock the R-free MTZ (first one wins)
-                        was_locked, lock_msg = self.set_rfree_mtz(f, cycle_number)
-                        if was_locked:
-                            cycle["rfree_mtz_locked"] = f
-                            if lock_msg:
-                                cycle["rfree_mtz_note"] = lock_msg
+                        # Check if this refinement was resolution-limited
+                        # If so, the R-free flags only cover that resolution range
+                        # and we should NOT lock this MTZ for future use
+                        command = cycle.get("command", "")
+                        is_resolution_limited = (
+                            "high_resolution=" in command or
+                            "d_min=" in command or
+                            "xray_data.high_resolution=" in command
+                        )
+
+                        if is_resolution_limited:
+                            # Don't lock this MTZ - it has incomplete R-free flags
+                            cycle["rfree_mtz_note"] = "R-free flags limited to refinement resolution - not locking"
+                            file_metrics["rfree_resolution_limited"] = True
+                        else:
+                            # Lock the R-free MTZ (first one wins)
+                            was_locked, lock_msg = self.set_rfree_mtz(f, cycle_number)
+                            if was_locked:
+                                cycle["rfree_mtz_locked"] = f
+                                if lock_msg:
+                                    cycle["rfree_mtz_note"] = lock_msg
                     elif is_phased_mtz:
                         # Phased MTZ - not for direct refinement
                         file_stage = "phased_mtz"
@@ -1086,39 +1400,82 @@ class AgentSession:
             return "Unknown"
 
     def _extract_metrics_from_result(self, result_text, program):
-        """Extract key metrics from result text."""
+        """Extract key metrics from result text using YAML patterns."""
         import re
         metrics = {}
 
         if not result_text:
             return metrics
 
-        # Common metric patterns
+        # =====================================================================
+        # Use YAML-based extraction (centralized patterns)
+        # =====================================================================
+        from libtbx.langchain.knowledge.metric_patterns import extract_metrics_for_program
+        yaml_metrics = extract_metrics_for_program(result_text, program)
+        metrics.update(yaml_metrics)
+
+        # =====================================================================
+        # Fall back to hardcoded patterns for metrics not found via YAML
+        # This provides backward compatibility and catches cases where
+        # the YAML patterns might not be complete
+        # =====================================================================
         # IMPORTANT: Use lowercase keys to match workflow_state expectations
-        patterns = {
+
+        # Metrics that should use LAST match (can appear multiple times in refinement logs)
+        # R-free and R-work appear after each macro cycle - we want the final values
+        last_match_patterns = {
             'r_free': r'R.?free[:\s=]+([0-9.]+)',
             'r_work': r'R.?work[:\s=]+([0-9.]+)',
+        }
+
+        for name, pattern in last_match_patterns.items():
+            if name in metrics:
+                continue  # Already extracted from YAML
+            matches = re.findall(pattern, result_text, re.IGNORECASE)
+            if matches:
+                try:
+                    # Use the LAST match (final value from refinement)
+                    metrics[name] = float(matches[-1])
+                except ValueError:
+                    pass
+
+        # Metrics that use first match (typically appear once or first occurrence is correct)
+        first_match_patterns = {
             'resolution': r'[Rr]esolution[:\s=]+([0-9.]+)',
             'clashscore': r'[Cc]lashscore[:\s=]+([0-9.]+)',
             'bonds_rmsd': r'bonds.?rmsd[:\s=]+([0-9.]+)',
             'angles_rmsd': r'angles.?rmsd[:\s=]+([0-9.]+)',
             'tfz': r'TFZ[:\s=]+([0-9.]+)',
             'llg': r'LLG[:\s=]+([0-9.]+)',
-            'map_cc': r'(?:map.?model.?)?CC[:\s=]+([0-9.]+)',
+            # CC_mask is the primary format from real_space_refine
+            'map_cc': r'(?:CC_mask|[Mm]ap[-_\s]?CC|[Mm]odel[-_\s]?vs[-_\s]?map\s+CC)\s*[:=]?\s*([0-9.]+)',
             'completeness': r'[Cc]ompleteness[:\s=]+([0-9.]+)',
+            # NCS metrics from map_symmetry
+            'ncs_cc': r'[Nn]cs\s*[Cc][Cc][:\s=]+([0-9.]+)',
+            'ncs_copies': r'[Nn]cs\s*[Cc]opies[:\s=]+(\d+)',
         }
 
-        for name, pattern in patterns.items():
+        for name, pattern in first_match_patterns.items():
+            if name in metrics:
+                continue  # Already extracted from YAML
             match = re.search(pattern, result_text, re.IGNORECASE)
             if match:
                 try:
-                    value = float(match.group(1))
+                    value = float(match.group(1)) if name != 'ncs_copies' else int(match.group(1))
                     # Skip obviously wrong values
                     if name == 'resolution' and value > 10:
                         continue  # Likely wrong (e.g., 47.31 is not resolution)
                     metrics[name] = value
                 except ValueError:
                     pass
+
+        # Symmetry type (string, not float) - only if not already extracted
+        if 'symmetry_type' not in metrics:
+            sym_match = re.search(r'[Ss]ymmetry\s*[Tt]ype[:\s=]+([A-Z0-9]+(?:\s*\([a-z]\))?)', result_text)
+            if sym_match:
+                metrics['symmetry_type'] = sym_match.group(1).strip()
+            elif re.search(r'No.?[Ss]ymmetry|[Ss]ymmetry.?[Tt]ype[:\s=]+None', result_text, re.IGNORECASE):
+                metrics['symmetry_type'] = "None"
 
         return metrics
 
@@ -1166,7 +1523,28 @@ FINAL REPORT:"""
         prompt = prompt_template.format(log_text=log_text)
 
         try:
-            response = llm.invoke(prompt)
+            # Try to use rate limit handler
+            try:
+                from libtbx.langchain.agent.rate_limit_handler import RateLimitHandler
+            except ImportError:
+                RateLimitHandler = None
+
+            if RateLimitHandler:
+                handler = RateLimitHandler.get_handler(
+                    "session_summary_api",
+                    max_retries=3,
+                    base_delay=2.0,
+                    max_delay=60.0,
+                    decay_time=300.0
+                )
+
+                def make_call():
+                    return llm.invoke(prompt)
+
+                response = handler.call_with_retry(make_call, lambda msg: print(msg))
+            else:
+                response = llm.invoke(prompt)
+
             summary = response.content.strip()
             self.data["summary"] = summary
             self.save()
@@ -1290,6 +1668,18 @@ FINAL REPORT:"""
         # Get input data quality metrics (from xtriage/mtriage)
         input_quality = self._extract_input_quality(cycles, experiment_type)
 
+        # Get run name - use stored value first (set on client), fall back to computing it
+        run_name = self.data.get("run_name") or self._get_run_name()
+
+        # Check if this is a tutorial/focused task
+        directives = self.get_directives()
+        is_tutorial = False
+        if directives:
+            stop_cond = directives.get("stop_conditions", {})
+            # It's a tutorial if there's an after_program stop condition with skip_validation
+            if stop_cond.get("after_program") and stop_cond.get("skip_validation"):
+                is_tutorial = True
+
         return {
             "session_id": self.data.get("session_id", "unknown"),
             "experiment_type": experiment_type,
@@ -1303,7 +1693,37 @@ FINAL REPORT:"""
             "input_quality": input_quality,
             "total_cycles": len(cycles),
             "successful_cycles": sum(1 for c in cycles if "SUCCESS" in str(c.get("result", ""))),
+            "run_name": run_name,
+            "is_tutorial": is_tutorial,
         }
+
+    def _get_run_name(self):
+        """Get a descriptive name for this run based on directory.
+
+        Returns the directory name where the session is running, which is
+        typically descriptive (e.g., 'p9-xtriage', 'lysozyme-sad').
+        """
+        # Try input_directory first (from README location)
+        input_dir = self.data.get("input_directory")
+        if input_dir:
+            # Convert to absolute path to handle "." properly
+            abs_input_dir = os.path.abspath(input_dir)
+            if os.path.isdir(abs_input_dir):
+                return os.path.basename(abs_input_dir)
+
+        # Try to get from session file path
+        if hasattr(self, 'session_file') and self.session_file:
+            session_dir = os.path.dirname(os.path.abspath(self.session_file))
+            # Go up one level if we're in an 'agent_session' subdirectory
+            dir_name = os.path.basename(session_dir)
+            if dir_name in ['agent_session', 'session', '.phenix_ai', 'ai_agent_directory']:
+                parent_dir = os.path.dirname(session_dir)
+                if parent_dir:
+                    return os.path.basename(parent_dir)
+            return dir_name
+
+        # Fall back to current working directory (use abspath to get actual name)
+        return os.path.basename(os.path.abspath(os.getcwd()))
 
     def _determine_workflow_path(self, cycles, experiment_type):
         """Determine the workflow path taken."""
@@ -1363,80 +1783,23 @@ FINAL REPORT:"""
         return steps
 
     def _get_key_metric_for_step(self, cycle, program):
-        """Get the most important metric for a given step."""
+        """
+        Get the most important metric for a given step.
+
+        Uses YAML configuration from metrics.yaml to determine what metric
+        to display for each program type.
+        """
         result = str(cycle.get("result", ""))
 
-        # Program-specific key metrics
-        if "xtriage" in program.lower():
-            # Look for high-resolution limit (d_min) with specific patterns
-            # Try "High resolution limit" first (most specific)
-            match = re.search(r'High.?resolution.?limit[:\s=]+([0-9.]+)', result, re.IGNORECASE)
-            if match:
-                return f"Resolution: {match.group(1)} Å"
-            # Try generic "Resolution" but filter out d_max values (> 15 Å)
-            match = re.search(r'Resolution[:\s=]+([0-9.]+)', result, re.IGNORECASE)
-            if match:
-                res = float(match.group(1))
-                if res < 15:  # d_min is typically < 10 Å, d_max is typically > 20 Å
-                    return f"Resolution: {match.group(1)} Å"
-            match = re.search(r'Completeness[:\s=]+([0-9.]+)', result, re.IGNORECASE)
-            if match:
-                return f"Completeness: {match.group(1)}%"
+        from libtbx.langchain.knowledge.summary_display import format_step_metric
+        from libtbx.langchain.knowledge.metric_patterns import extract_metrics_for_program
 
-        elif "mtriage" in program.lower():
-            match = re.search(r'd_fsc[:\s=]+([0-9.]+)', result, re.IGNORECASE)
-            if match:
-                return f"Resolution (FSC): {match.group(1)} Å"
+        # Extract metrics from result using YAML patterns
+        metrics = extract_metrics_for_program(result, program)
 
-        elif "predict_and_build" in program.lower():
-            match = re.search(r'[Pp]lddt[:\s=]+([0-9.]+)', result, re.IGNORECASE)
-            if match:
-                return f"pLDDT: {match.group(1)}"
-
-        elif "phaser" in program.lower():
-            match = re.search(r'TFZ[:\s=]+([0-9.]+)', result, re.IGNORECASE)
-            if match:
-                return f"TFZ: {match.group(1)}"
-            # Fallback to space group if TFZ not found
-            # Match space group like "P 32 2 1" - letters, numbers, and spaces but stop at newline
-            match = re.search(r'Space.?Group[:\s=]+([A-Z][A-Z0-9 ]*)', result, re.IGNORECASE)
-            if match:
-                sg = match.group(1).strip()
-                # Clean up - only keep the space group designation
-                sg = sg.split('\n')[0].strip()
-                return f"SG: {sg}"
-
-        elif "refine" in program.lower():
-            match = re.search(r'R.?[Ff]ree[:\s=]+([0-9.]+)', result)
-            if match:
-                return f"R-free: {match.group(1)}"
-
-        elif "real_space_refine" in program.lower():
-            match = re.search(r'[Mm]ap.?[Cc][Cc][:\s=]+([0-9.]+)', result)
-            if match:
-                return f"Map CC: {match.group(1)}"
-
-        elif "autobuild" in program.lower():
-            match = re.search(r'R.?[Ff]ree[:\s=]+([0-9.]+)', result)
-            if match:
-                return f"R-free: {match.group(1)}"
-
-        elif "molprobity" in program.lower():
-            # Try clashscore first
-            match = re.search(r'[Cc]lashscore[:\s=]+([0-9.]+)', result)
-            if match:
-                clashscore = match.group(1)
-                # Also try to get Ramachandran outliers
-                rama_match = re.search(r'[Rr]amachandran.?[Oo]utliers?[:\s=]+([0-9.]+)', result)
-                if rama_match:
-                    return f"Clash: {clashscore}, Rama: {rama_match.group(1)}%"
-                return f"Clashscore: {clashscore}"
-            # Fallback to Ramachandran
-            match = re.search(r'[Rr]amachandran.?[Oo]utliers?[:\s=]+([0-9.]+)', result)
-            if match:
-                return f"Rama outliers: {match.group(1)}%"
-
-        return ""
+        # Format using YAML config
+        formatted = format_step_metric(program, metrics)
+        return formatted if formatted else ""
 
     def _extract_final_metrics(self, cycles, experiment_type):
         """Extract final quality metrics from the last relevant cycles."""
@@ -1446,29 +1809,39 @@ FINAL REPORT:"""
         for cycle in reversed(cycles):
             result = str(cycle.get("result", ""))
             program = cycle.get("program", "").lower()
+            # Also check pre-parsed metrics stored in cycle
+            cycle_metrics = cycle.get("metrics", {})
 
             # R-factors (X-ray)
             if "r_free" not in metrics:
                 match = re.search(r'R.?[Ff]ree[:\s=]+([0-9.]+)', result)
                 if match:
                     metrics["r_free"] = float(match.group(1))
+                elif cycle_metrics.get("r_free"):
+                    metrics["r_free"] = float(cycle_metrics["r_free"])
 
             if "r_work" not in metrics:
                 match = re.search(r'R.?[Ww]ork[:\s=]+([0-9.]+)', result)
                 if match:
                     metrics["r_work"] = float(match.group(1))
+                elif cycle_metrics.get("r_work"):
+                    metrics["r_work"] = float(cycle_metrics["r_work"])
 
             # Map CC (Cryo-EM)
             if "map_cc" not in metrics:
                 match = re.search(r'[Mm]ap.?[Cc][Cc][:\s=]+([0-9.]+)', result)
                 if match:
                     metrics["map_cc"] = float(match.group(1))
+                elif cycle_metrics.get("map_cc"):
+                    metrics["map_cc"] = float(cycle_metrics["map_cc"])
 
             # Geometry
             if "clashscore" not in metrics:
                 match = re.search(r'[Cc]lashscore[:\s=]+([0-9.]+)', result)
                 if match:
                     metrics["clashscore"] = float(match.group(1))
+                elif cycle_metrics.get("clashscore"):
+                    metrics["clashscore"] = float(cycle_metrics["clashscore"])
 
             if "bonds_rmsd" not in metrics:
                 match = re.search(r'[Bb]onds.?[Rr]msd[:\s=]+([0-9.]+)', result)
@@ -1479,6 +1852,30 @@ FINAL REPORT:"""
                 match = re.search(r'[Aa]ngles.?[Rr]msd[:\s=]+([0-9.]+)', result)
                 if match:
                     metrics["angles_rmsd"] = float(match.group(1))
+
+            # Symmetry (from map_symmetry) - check both result text and pre-parsed metrics
+            if "symmetry_type" not in metrics:
+                match = re.search(r'[Ss]ymmetry\s*[Tt]ype[:\s=]+([A-Z0-9]+(?:\s*\([a-z]\))?)', result)
+                if match:
+                    metrics["symmetry_type"] = match.group(1).strip()
+                elif re.search(r'No.?[Ss]ymmetry|[Ss]ymmetry.?[Tt]ype[:\s=]+None', result, re.IGNORECASE):
+                    metrics["symmetry_type"] = "None"
+                elif cycle_metrics.get("symmetry_type"):
+                    metrics["symmetry_type"] = cycle_metrics["symmetry_type"]
+
+            if "ncs_copies" not in metrics:
+                match = re.search(r'[Nn]cs\s*[Cc]opies[:\s=]+(\d+)', result)
+                if match:
+                    metrics["ncs_copies"] = int(match.group(1))
+                elif cycle_metrics.get("ncs_copies"):
+                    metrics["ncs_copies"] = int(cycle_metrics["ncs_copies"])
+
+            if "ncs_cc" not in metrics:
+                match = re.search(r'[Nn]cs\s*[Cc][Cc][:\s=]+([0-9.]+)', result)
+                if match:
+                    metrics["ncs_cc"] = float(match.group(1))
+                elif cycle_metrics.get("ncs_cc"):
+                    metrics["ncs_cc"] = float(cycle_metrics["ncs_cc"])
 
         # Add quality assessments
         if "r_free" in metrics:
@@ -1557,6 +1954,9 @@ FINAL REPORT:"""
                         final_files.append({"name": basename, "type": "model"})
                     elif basename.endswith(".mtz") and len(final_files) < 5:
                         final_files.append({"name": basename, "type": "data"})
+                    # Add ncs_spec files from map_symmetry
+                    elif basename.endswith(".ncs_spec") and len(final_files) < 5:
+                        final_files.append({"name": basename, "type": "symmetry"})
 
                 if final_files:
                     break
@@ -1564,54 +1964,109 @@ FINAL REPORT:"""
         return final_files[:5]  # Limit to 5 files
 
     def _extract_input_quality(self, cycles, experiment_type):
-        """Extract input data quality metrics from xtriage/mtriage."""
+        """Extract input data quality metrics from xtriage/mtriage.
+
+        Uses the pre-parsed metrics stored in cycle["metrics"] from the log parsers,
+        falling back to parsing the result string if metrics are not available.
+        """
         quality = {}
 
         for cycle in cycles:
             program = cycle.get("program", "").lower()
+            metrics = cycle.get("metrics", {})
             result = str(cycle.get("result", ""))
 
             if "xtriage" in program:
-                # Resolution - look for d_min (high-resolution limit)
-                # Try "High resolution limit" first (most specific)
-                match = re.search(r'High.?resolution.?limit[:\s=]+([0-9.]+)', result, re.IGNORECASE)
-                if match:
-                    quality["resolution"] = float(match.group(1))
-                else:
-                    # Fallback to generic "Resolution" but filter out d_max values
+                # First try pre-parsed metrics (from log_parsers._extract_xtriage_metrics)
+                if metrics.get("resolution"):
+                    quality["resolution"] = metrics["resolution"]
+
+                # Completeness - handle both string "88.7%" and float formats
+                if metrics.get("completeness"):
+                    comp = metrics["completeness"]
+                    if isinstance(comp, str):
+                        # Parse "88.7%" format
+                        comp_match = re.match(r'([\d.]+)', comp)
+                        if comp_match:
+                            quality["completeness"] = float(comp_match.group(1))
+                    else:
+                        quality["completeness"] = float(comp)
+
+                # Twin fraction and twinning detection
+                if metrics.get("twin_fraction") is not None:
+                    tf = metrics["twin_fraction"]
+                    if tf > 0.1:
+                        quality["twinning"] = f"Possible (fraction: {tf:.3f})"
+                    else:
+                        quality["twinning"] = f"Low (fraction: {tf:.3f})"
+                    quality["twin_fraction"] = tf
+                elif metrics.get("twinning"):
+                    quality["twinning"] = metrics["twinning"]
+                elif metrics.get("no_twinning_suspected"):
+                    quality["twinning"] = "None detected"
+
+                # Twin law
+                if metrics.get("twin_law"):
+                    quality["twin_law"] = metrics["twin_law"]
+
+                # Wilson B-factor
+                if metrics.get("wilson_b"):
+                    quality["wilson_b"] = metrics["wilson_b"]
+
+                # I/sigI
+                if metrics.get("i_over_sigma"):
+                    quality["i_over_sigma"] = metrics["i_over_sigma"]
+
+                # Anomalous signal info
+                if metrics.get("anomalous_measurability"):
+                    quality["anomalous_measurability"] = metrics["anomalous_measurability"]
+                if metrics.get("has_anomalous"):
+                    quality["has_anomalous"] = True
+                if metrics.get("anomalous_resolution"):
+                    quality["anomalous_resolution"] = metrics["anomalous_resolution"]
+
+                # Fallback to parsing result string if metrics not found
+                if not quality.get("resolution"):
                     match = re.search(r'Resolution[:\s=]+([0-9.]+)', result, re.IGNORECASE)
                     if match:
                         res = float(match.group(1))
                         if res < 15:  # d_min is typically < 10 Å
                             quality["resolution"] = res
 
-                # Completeness
-                match = re.search(r'Completeness[:\s=]+([0-9.]+)', result, re.IGNORECASE)
-                if match:
-                    quality["completeness"] = float(match.group(1))
+                if not quality.get("completeness"):
+                    match = re.search(r'Completeness[:\s=]+([0-9.]+)', result, re.IGNORECASE)
+                    if match:
+                        quality["completeness"] = float(match.group(1))
 
-                # Twinning
-                if "No Twinning" in result or "twin" not in result.lower():
-                    quality["twinning"] = "None detected"
-                else:
-                    match = re.search(r'Twin.?Fraction[:\s=]+([0-9.]+)', result, re.IGNORECASE)
-                    if match and float(match.group(1)) > 0.1:
-                        quality["twinning"] = f"Possible (fraction: {match.group(1)})"
-                    else:
+                if not quality.get("twinning"):
+                    if "No Twinning" in result or "twin" not in result.lower():
                         quality["twinning"] = "None detected"
 
                 break  # Only need first xtriage
 
             elif "mtriage" in program:
-                # FSC resolution
-                match = re.search(r'd_fsc[:\s=]+([0-9.]+)', result, re.IGNORECASE)
-                if match:
-                    quality["resolution"] = float(match.group(1))
+                # First try pre-parsed metrics
+                if metrics.get("d_fsc"):
+                    quality["resolution"] = metrics["d_fsc"]
+                elif metrics.get("resolution"):
+                    quality["resolution"] = metrics["resolution"]
 
-                # d99
-                match = re.search(r'd99[:\s=]+([0-9.]+)', result, re.IGNORECASE)
-                if match:
-                    quality["d99"] = float(match.group(1))
+                if metrics.get("d99"):
+                    quality["d99"] = metrics["d99"]
+
+                if metrics.get("map_cc"):
+                    quality["map_cc"] = metrics["map_cc"]
+
+                # Fallback to parsing result string
+                if not quality.get("resolution"):
+                    match = re.search(r'd_fsc[:\s=]+([0-9.]+)', result, re.IGNORECASE)
+                    if match:
+                        quality["resolution"] = float(match.group(1))
+
+                if not quality.get("d99"):
+                    match = re.search(r'd99[:\s=]+([0-9.]+)', result, re.IGNORECASE)
+                    if match:
+                        quality["d99"] = float(match.group(1))
 
                 break  # Only need first mtriage
 
@@ -1621,18 +2076,24 @@ FINAL REPORT:"""
         """Format the summary data as Markdown."""
         lines = []
 
-        # Header - extract date from session_id (format: YYYY-MM-DD_HH-MM-SS)
-        session_id = data['session_id']
-        # Try to extract just the date part
-        if '_' in session_id:
-            date_part = session_id.split('_')[0]  # e.g., "2026-01-19"
-        else:
-            date_part = session_id
+        # Header - create descriptive title based on run type and directory
+        run_name = data.get('run_name', 'unknown')
+        is_tutorial = data.get('is_tutorial', False)
 
-        lines.append(f"# Phenix AI Agent Run {date_part}")
+        if is_tutorial:
+            # Tutorial/focused task header
+            title = f"Phenix AI Tutorial: {run_name}"
+        else:
+            # Regular run header
+            title = f"Phenix AI Run: {run_name}"
+
+        # Use h2 (##) instead of h1 (#) for smaller header
+        lines.append(f"## {title}")
         lines.append("")
-        lines.append(f"**Session ID:** {session_id}")
-        lines.append(f"**Total Cycles:** {data['total_cycles']} ({data['successful_cycles']} successful)")
+
+        # Session info line
+        session_id = data['session_id']
+        lines.append(f"**Session:** {session_id} | **Cycles:** {data['total_cycles']} ({data['successful_cycles']} successful)")
         if include_llm_assessment:
             lines.append("")
             lines.append("_[STATUS_PLACEHOLDER]_")
@@ -1646,6 +2107,20 @@ FINAL REPORT:"""
         lines.append(f"- **Experiment Type:** {data['experiment_type']}")
         if data.get("resolution"):
             lines.append(f"- **Resolution:** {data['resolution']:.2f} Å")
+
+        # Add stop condition info if this is a focused task/tutorial
+        directives = self.get_directives()
+        if directives:
+            stop_cond = directives.get("stop_conditions", {})
+            if stop_cond:
+                stop_parts = []
+                if stop_cond.get("after_program"):
+                    stop_parts.append(f"stop after {stop_cond['after_program']}")
+                if stop_cond.get("after_cycle"):
+                    stop_parts.append(f"stop after cycle {stop_cond['after_cycle']}")
+                if stop_parts:
+                    lines.append(f"- **Stop Condition (Focused Task):** {', '.join(stop_parts)}")
+
         lines.append("")
 
         # Input Data Quality
@@ -1657,10 +2132,27 @@ FINAL REPORT:"""
                 lines.append(f"- **Resolution:** {iq['resolution']:.2f} Å")
             if "completeness" in iq:
                 lines.append(f"- **Completeness:** {iq['completeness']:.1f}%")
+            if "i_over_sigma" in iq:
+                lines.append(f"- **I/σ(I):** {iq['i_over_sigma']:.1f}")
+            if "wilson_b" in iq:
+                lines.append(f"- **Wilson B-factor:** {iq['wilson_b']:.1f} Å²")
             if "twinning" in iq:
                 lines.append(f"- **Twinning:** {iq['twinning']}")
+            if "twin_law" in iq:
+                lines.append(f"- **Twin Law:** {iq['twin_law']}")
+            if "twin_fraction" in iq:
+                lines.append(f"- **Twin Fraction:** {iq['twin_fraction']:.4f}")
+            if iq.get("has_anomalous"):
+                anom_info = "Yes"
+                if "anomalous_measurability" in iq:
+                    anom_info += f" (measurability: {iq['anomalous_measurability']:.3f})"
+                if "anomalous_resolution" in iq:
+                    anom_info += f", extends to {iq['anomalous_resolution']:.2f} Å"
+                lines.append(f"- **Anomalous Signal:** {anom_info}")
             if "d99" in iq:
                 lines.append(f"- **d99:** {iq['d99']:.2f} Å")
+            if "map_cc" in iq:
+                lines.append(f"- **Map CC:** {iq['map_cc']:.3f}")
             lines.append("")
 
         # Workflow Path
@@ -1687,18 +2179,13 @@ FINAL REPORT:"""
             lines.append("| Metric | Value | Assessment |")
             lines.append("|--------|-------|------------|")
             fm = data["final_metrics"]
-            if "r_free" in fm:
-                lines.append(f"| R-free | {fm['r_free']:.4f} | {fm.get('r_free_assessment', '')} |")
-            if "r_work" in fm:
-                lines.append(f"| R-work | {fm['r_work']:.4f} | |")
-            if "map_cc" in fm:
-                lines.append(f"| Map CC | {fm['map_cc']:.3f} | {fm.get('map_cc_assessment', '')} |")
-            if "clashscore" in fm:
-                lines.append(f"| Clashscore | {fm['clashscore']:.2f} | {fm.get('clashscore_assessment', '')} |")
-            if "bonds_rmsd" in fm:
-                lines.append(f"| Bonds RMSD | {fm['bonds_rmsd']:.4f} | |")
-            if "angles_rmsd" in fm:
-                lines.append(f"| Angles RMSD | {fm['angles_rmsd']:.3f} | |")
+
+            # Use YAML-based formatting from metrics.yaml
+            from libtbx.langchain.knowledge.summary_display import format_quality_table_rows
+
+            rows = format_quality_table_rows(fm, data.get('experiment_type'))
+            for row in rows:
+                lines.append(f"| {row['label']} | {row['value']} | {row['detail']} |")
             lines.append("")
 
         # Output Files
@@ -1731,7 +2218,12 @@ FINAL REPORT:"""
         data = self._extract_summary_data()
 
         lines = []
-        lines.append("=== AGENT SESSION FOR ASSESSMENT ===")
+
+        # Header with run context
+        run_name = data.get('run_name', 'unknown')
+        is_tutorial = data.get('is_tutorial', False)
+        run_type = "TUTORIAL/FOCUSED TASK" if is_tutorial else "STRUCTURE DETERMINATION"
+        lines.append(f"=== AGENT SESSION: {run_name} ({run_type}) ===")
         lines.append("")
 
         # Input
@@ -1739,6 +2231,21 @@ FINAL REPORT:"""
         lines.append(f"INPUT FILES: {', '.join(data['original_files'])}")
         lines.append(f"USER GOAL: {data['user_advice']}")
         lines.append("")
+
+        # Stop condition / tutorial detection
+        directives = self.get_directives()
+        if directives:
+            stop_cond = directives.get("stop_conditions", {})
+            if stop_cond:
+                lines.append("STOP CONDITION (FOCUSED TASK):")
+                if stop_cond.get("after_program"):
+                    lines.append(f"  Stop after: {stop_cond['after_program']}")
+                if stop_cond.get("after_cycle"):
+                    lines.append(f"  Stop after cycle: {stop_cond['after_cycle']}")
+                if stop_cond.get("skip_validation"):
+                    lines.append("  Skip validation: Yes (user-directed stop)")
+                lines.append("  NOTE: This was a FOCUSED TASK/TUTORIAL, not full structure determination.")
+                lines.append("")
 
         # Input quality
         if data.get("input_quality"):

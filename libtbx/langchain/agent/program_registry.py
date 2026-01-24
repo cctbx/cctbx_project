@@ -11,7 +11,7 @@ The registry provides:
 - Log parsing patterns
 
 Usage:
-    from agent.program_registry import ProgramRegistry
+    from libtbx.langchain.agent.program_registry import ProgramRegistry
 
     registry = ProgramRegistry()
 
@@ -214,18 +214,23 @@ class ProgramRegistry:
         Returns:
             dict: {
                 "categories": [list of categories in priority order],
+                "prefer_subcategories": [list of subcategories to prefer within parent],
+                "fallback_categories": [list of fallback categories if primary not found],
                 "exclude_categories": [list of categories to never use]
             }
         """
         if self.use_yaml:
             prog_def = get_program(program_name)
             if not prog_def:
-                return {"categories": [], "exclude_categories": []}
+                return {"categories": [], "prefer_subcategories": [],
+                        "fallback_categories": [], "exclude_categories": []}
 
             input_priorities = prog_def.get("input_priorities", {})
             slot_priorities = input_priorities.get(input_name, {})
 
             categories = slot_priorities.get("categories", [])
+            prefer_subcategories = slot_priorities.get("prefer_subcategories", [])
+            fallback_categories = slot_priorities.get("fallback_categories", [])
             exclude_categories = list(slot_priorities.get("exclude_categories", []))
 
             # If program requires_full_map and this is a map input,
@@ -236,11 +241,14 @@ class ProgramRegistry:
 
             return {
                 "categories": categories,
+                "prefer_subcategories": prefer_subcategories,
+                "fallback_categories": fallback_categories,
                 "exclude_categories": exclude_categories
             }
         else:
             # Legacy JSON doesn't have this feature
-            return {"categories": [], "exclude_categories": []}
+            return {"categories": [], "prefer_subcategories": [],
+                    "fallback_categories": [], "exclude_categories": []}
 
     def requires_full_map(self, program_name):
         """
@@ -440,6 +448,10 @@ class ProgramRegistry:
         if not prog:
             raise ValueError("Unknown program: %s" % program_name)
 
+        # Special handling for Phaser multi-ensemble mode
+        if prog.get("multi_ensemble") and program_name == "phenix.phaser":
+            return self._build_phaser_command(prog, files, strategy, log)
+
         # Start with command template from YAML if available
         if self.use_yaml:
             cmd_template = prog.get("command", program_name)
@@ -552,6 +564,87 @@ class ProgramRegistry:
                 for default_key in list(defaults.keys()):
                     if key in default_key.lower():
                         del defaults[default_key]
+
+        # Add remaining defaults
+        for key, val in defaults.items():
+            cmd_parts.append("%s=%s" % (key, val))
+
+        return " ".join(cmd_parts)
+
+    def _build_phaser_command(self, prog, files, strategy, log):
+        """
+        Build command for phenix.phaser.
+
+        Args:
+            prog: Program definition from YAML
+            files: Dict with mtz, model, sequence (optional)
+            strategy: Optional strategy dict
+            log: Logging function
+
+        Returns:
+            str: Complete command string
+        """
+        import os
+
+        cmd_parts = ["phenix.phaser"]
+
+        # Get the reflection data file
+        mtz = files.get("mtz")
+        if not mtz:
+            raise ValueError("Missing required MTZ file for phenix.phaser")
+        cmd_parts.append(str(mtz))
+
+        # Get model
+        model = files.get("model")
+        if isinstance(model, list):
+            model = model[0] if model else None
+        if not model:
+            raise ValueError("Missing required model file for phenix.phaser")
+        cmd_parts.append(model)
+
+        # Get sequence - try to match to model name
+        sequences = files.get("sequence", [])
+        if isinstance(sequences, str):
+            sequences = [sequences]
+
+        if sequences:
+            # Try to find a sequence that matches the model name
+            model_base = os.path.splitext(os.path.basename(model))[0].lower()
+            matched_seq = None
+
+            for seq in sequences:
+                seq_base = os.path.splitext(os.path.basename(seq))[0].lower()
+                if seq_base == model_base or model_base in seq_base or seq_base in model_base:
+                    matched_seq = seq
+                    break
+
+            if matched_seq:
+                cmd_parts.append(matched_seq)
+                log("DEBUG: Using matching sequence %s for model %s" % (matched_seq, model))
+            else:
+                # No match found - use first sequence
+                cmd_parts.append(sequences[0])
+                log("DEBUG: No matching sequence found for %s, using %s" % (model, sequences[0]))
+
+        # Add defaults
+        defaults = dict(prog.get("defaults", {}))
+
+        # Handle strategy flags
+        if strategy:
+            strategy_defs = prog.get("strategy_flags", {})
+            for key, value in strategy.items():
+                if key in strategy_defs:
+                    flag_def = strategy_defs[key]
+                    flag_template = flag_def.get("flag", "")
+                    if "{value}" in flag_template:
+                        cmd_parts.append(flag_template.replace("{value}", str(value)))
+                    elif value:
+                        cmd_parts.append(flag_template)
+
+                    # Remove overridden defaults
+                    for default_key in list(defaults.keys()):
+                        if key in default_key.lower():
+                            del defaults[default_key]
 
         # Add remaining defaults
         for key, val in defaults.items():

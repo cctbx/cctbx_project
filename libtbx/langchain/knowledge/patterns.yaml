@@ -1,0 +1,449 @@
+# =============================================================================
+# PHENIX AI Agent - Centralized Pattern Definitions
+# =============================================================================
+#
+# This file defines all regex patterns used throughout the agent codebase.
+# Patterns are organized into sections:
+#   - primitives: Atomic building blocks (FLOAT, INT, etc.)
+#   - system: Infrastructure patterns (filenames, directories)
+#   - metrics: Scientific metric extraction patterns
+#
+# Pattern Interpolation:
+#   Patterns can reference primitives using {NAME} syntax.
+#   Example: "R-free{OPT_WS}={OPT_WS}({FLOAT})"
+#   The PatternManager will replace {FLOAT} and {OPT_WS} with actual regex.
+#
+# Each pattern can have:
+#   - regex: The pattern string (with optional {PRIMITIVE} placeholders)
+#   - compiled: Pre-compiled regex (optional, for complex patterns)
+#   - description: Human-readable explanation
+#   - examples: Test cases with expected matches
+#   - groups: Named description of capture groups
+#
+# =============================================================================
+
+# =============================================================================
+# PRIMITIVES - Atomic building blocks for complex patterns
+# =============================================================================
+primitives:
+  # Numbers
+  FLOAT:
+    regex: "[-+]?(?:\\d+\\.\\d*|\\d*\\.\\d+|\\d+)"
+    description: "Floating point number (1.0, -0.5, 10, .5, 10.)"
+    test_matches: ["1.0", "-0.5", "10", "0.123", "10.", ".5", "+3.14"]
+    test_non_matches: ["abc", ".", "+-1"]
+  
+  FLOAT_POSITIVE:
+    regex: "(?:\\d+\\.?\\d*|\\d*\\.\\d+)"
+    description: "Positive float only (no sign) - non-capturing"
+    test_matches: ["1.0", "0.5", "10", "10.", ".5"]
+    test_non_matches: ["-1.0", "+1.0"]
+  
+  INT:
+    regex: "\\d+"
+    description: "Positive integer (one or more digits)"
+    test_matches: ["1", "123", "0", "99999"]
+    test_non_matches: ["-1", "1.5", "abc"]
+  
+  INT_PADDED_2:
+    regex: "\\d{1,2}"
+    description: "1-2 digit integer"
+  
+  INT_PADDED_3:
+    regex: "\\d{1,3}"
+    description: "1-3 digit integer (for cycle numbers)"
+  
+  # Whitespace
+  WS:
+    regex: "\\s+"
+    description: "One or more whitespace characters"
+  
+  OPT_WS:
+    regex: "\\s*"
+    description: "Optional whitespace (zero or more)"
+  
+  # Common tokens
+  EQUALS:
+    regex: "[=:]"
+    description: "Equals sign or colon separator"
+  
+  SEPARATOR:
+    regex: "[=:\\s]+"
+    description: "Flexible separator (equals, colon, and/or whitespace)"
+  
+  ANGSTROM:
+    regex: "(?:Å|A|Angstrom|ang\\.?)"
+    description: "Angstrom unit symbol (various forms)"
+
+
+# =============================================================================
+# SYSTEM PATTERNS - Used by Python engine for file/directory handling
+# =============================================================================
+system:
+  # -------------------------------------------------------------------------
+  # Cycle/Job Number Extraction - UNIFIED LOGIC
+  # -------------------------------------------------------------------------
+  # IMPORTANT: All code that extracts cycle numbers should use these patterns
+  # to ensure consistent behavior across Planner, CommandBuilder, and GraphNodes
+  
+  cycle_from_prefix:
+    regex: "(?i)(?:rsr|refine|real_space_refine|phaser)[._-](\\d+)"
+    description: "Extract cycle from standard program output prefix (PRIMARY, case-insensitive)"
+    examples:
+      - input: "refine_003_model.pdb"
+        group_1: "003"
+      - input: "rsr_5_output.pdb"
+        group_1: "5"
+      - input: "refine_001_002.pdb"
+        group_1: "001"
+      - input: "PHASER.1.pdb"
+        group_1: "1"
+      - input: "phaser.2.pdb"
+        group_1: "2"
+    groups:
+      1: cycle_number
+    priority: 1  # Check this FIRST
+  
+  cycle_from_run_dir:
+    regex: "run[_-]?(\\d+)"
+    description: "Extract cycle from run directory name"
+    examples:
+      - input: "run_001"
+        group_1: "001"
+      - input: "run-5"
+        group_1: "5"
+      - input: "run12"
+        group_1: "12"
+    groups:
+      1: cycle_number
+    priority: 2  # Check SECOND
+  
+  cycle_from_suffix:
+    regex: "[_-](\\d+)(?:\\.pdb|\\.cif|\\.mrc|\\.map)?$"
+    description: "Extract cycle from trailing number (FALLBACK)"
+    examples:
+      - input: "model_001.pdb"
+        group_1: "001"
+      - input: "output-5.pdb"
+        group_1: "5"
+    groups:
+      1: cycle_number
+    priority: 3  # Check LAST (fallback)
+
+  # -------------------------------------------------------------------------
+  # Refinement Output Files
+  # -------------------------------------------------------------------------
+  refine_output:
+    regex: "refine[_-]?(\\d+)[_-]?(\\d+)?\\.pdb"
+    description: "Standard phenix.refine output naming"
+    examples:
+      - input: "refine_001_001.pdb"
+        group_1: "001"
+        group_2: "001"
+      - input: "refine_002.pdb"
+        group_1: "002"
+    groups:
+      1: macro_cycle
+      2: micro_cycle
+  
+  rsr_output:
+    regex: "(?:real_space_refine|rsr)[_\\w]*?(\\d+)"
+    description: "Real-space refinement output"
+    examples:
+      - input: "model_real_space_refined_001.pdb"
+        group_1: "001"
+      - input: "rsr_5_output.pdb"
+        group_1: "5"
+      - input: "rsr_cycle_5.pdb"
+        group_1: "5"
+  
+  # DEPRECATED - use cycle_from_prefix instead
+  refine_prefix:
+    regex: "(?:rsr|refine)[_-](\\d+)"
+    description: "DEPRECATED: Use cycle_from_prefix instead"
+    examples:
+      - input: "refine_003_model.pdb"
+        group_1: "003"
+  
+  # -------------------------------------------------------------------------
+  # Phaser Output Files
+  # -------------------------------------------------------------------------
+  phaser_output:
+    regex: "PHASER\\.(\\d+)\\.pdb"
+    description: "Phaser molecular replacement output"
+    examples:
+      - input: "PHASER.1.pdb"
+        group_1: "1"
+      - input: "PHASER.2.pdb"
+        group_1: "2"
+    groups:
+      1: solution_number
+  
+  # -------------------------------------------------------------------------
+  # Map Files
+  # -------------------------------------------------------------------------
+  half_map:
+    regex: "(?:half[_-]?map|[_-]half[12ab]|map[_-][12ab]\\.|map[_-]h[12]\\.|[_-]h[12](?:\\.mrc|\\.map|\\.ccp4)$)"
+    description: "Detect half-map files (various naming conventions, specific to cryo-EM)"
+    examples:
+      - input: "map_half1.mrc"
+      - input: "emd_1234_half_map_1.mrc"
+      - input: "map-1.mrc"
+      - input: "map_h1.mrc"
+      - input: "volume_halfa.mrc"
+    test_non_matches:
+      - "full_map.mrc"
+      - "final_map.mrc"
+      - "half_life.txt"
+      - "model_chain_A.pdb"
+      - "final_map.mrc"
+  
+  # -------------------------------------------------------------------------
+  # Error Detection
+  # -------------------------------------------------------------------------
+  python_traceback:
+    regex: "Traceback \\(most recent call last\\):"
+    description: "Python exception traceback marker"
+  
+  phenix_error:
+    regex: "(?:^|\\n)(?:Error|ERROR|Sorry)[:\\s]"
+    description: "PHENIX error message prefix"
+  
+  phenix_failed:
+    regex: "FAILED[:\\s]+(.+?)(?:\\n|$)"
+    description: "PHENIX failure message with reason"
+    groups:
+      1: failure_reason
+  
+  phenix_sorry:
+    regex: "Sorry[:\\s]+(.+?)(?:\\n|$)"
+    description: "PHENIX sorry message with reason"
+    groups:
+      1: sorry_reason
+
+
+# =============================================================================
+# METRIC PATTERNS - For extracting values from program logs
+# =============================================================================
+metrics:
+  # -------------------------------------------------------------------------
+  # R-factors (X-ray Crystallography)
+  # -------------------------------------------------------------------------
+  r_free:
+    regex: "R-?free{OPT_WS}{EQUALS}{OPT_WS}({FLOAT_POSITIVE})"
+    description: "R-free value from refinement"
+    examples:
+      - input: "R-free = 0.2534"
+        group_1: "0.2534"
+      - input: "Rfree: 0.25"
+        group_1: "0.25"
+      - input: "R-free=0.30"
+        group_1: "0.30"
+  
+  r_free_final:
+    regex: "Final{WS}R-?free{OPT_WS}{EQUALS}{OPT_WS}({FLOAT_POSITIVE})"
+    description: "Final R-free from refinement summary"
+    examples:
+      - input: "Final R-free = 0.2534"
+        group_1: "0.2534"
+  
+  r_work:
+    regex: "R-?work{OPT_WS}{EQUALS}{OPT_WS}({FLOAT_POSITIVE})"
+    description: "R-work value from refinement"
+    examples:
+      - input: "R-work = 0.2100"
+        group_1: "0.2100"
+      - input: "Rwork: 0.21"
+        group_1: "0.21"
+  
+  r_factor_pair:
+    regex: "R-?work{OPT_WS}{EQUALS}{OPT_WS}({FLOAT_POSITIVE}){OPT_WS},?{OPT_WS}R-?free{OPT_WS}{EQUALS}{OPT_WS}({FLOAT_POSITIVE})"
+    description: "R-work and R-free on same line"
+    examples:
+      - input: "R-work = 0.21, R-free = 0.25"
+        group_1: "0.21"
+        group_2: "0.25"
+    groups:
+      1: r_work
+      2: r_free
+  
+  # -------------------------------------------------------------------------
+  # Resolution
+  # -------------------------------------------------------------------------
+  resolution:
+    regex: "(?:[Rr]esolution|d_min){OPT_WS}{EQUALS}{OPT_WS}({FLOAT_POSITIVE}){OPT_WS}{ANGSTROM}?"
+    description: "Resolution in Angstroms"
+    examples:
+      - input: "Resolution = 2.5 Å"
+        group_1: "2.5"
+      - input: "resolution: 1.8"
+        group_1: "1.8"
+      - input: "d_min = 2.0 A"
+        group_1: "2.0"
+  
+  resolution_range:
+    regex: "({FLOAT_POSITIVE}){OPT_WS}-{OPT_WS}({FLOAT_POSITIVE}){OPT_WS}{ANGSTROM}"
+    description: "Resolution range (low - high)"
+    examples:
+      - input: "50.0 - 2.5 Å"
+        group_1: "50.0"
+        group_2: "2.5"
+    groups:
+      1: low_resolution
+      2: high_resolution
+  
+  resolution_from_range:
+    regex: "[Rr]esolution{OPT_WS}:{OPT_WS}{FLOAT_POSITIVE}{OPT_WS}-{OPT_WS}({FLOAT_POSITIVE})"
+    description: "Extract high resolution from range"
+    examples:
+      - input: "Resolution : 50.00 - 2.50"
+        group_1: "2.50"
+      - input: "resolution: 20.0 - 1.8"
+        group_1: "1.8"
+  
+  # -------------------------------------------------------------------------
+  # Cryo-EM Metrics
+  # -------------------------------------------------------------------------
+  map_cc:
+    regex: "(?:map_model_cc|Map-model CC|CC_mask|CC){OPT_WS}{EQUALS}{OPT_WS}({FLOAT_POSITIVE})"
+    description: "Map-model correlation coefficient"
+    examples:
+      - input: "map_model_cc = 0.85"
+        group_1: "0.85"
+      - input: "CC_mask: 0.78"
+        group_1: "0.78"
+  
+  fsc_resolution:
+    regex: "FSC{OPT_WS}(?:0\\.143|=0\\.5)?{OPT_WS}{EQUALS}?{OPT_WS}({FLOAT_POSITIVE}){OPT_WS}{ANGSTROM}?"
+    description: "FSC-based resolution estimate"
+    examples:
+      - input: "FSC 0.143 = 3.2 Å"
+        group_1: "3.2"
+  
+  # -------------------------------------------------------------------------
+  # Geometry Metrics (MolProbity)
+  # -------------------------------------------------------------------------
+  clashscore:
+    regex: "(?:[Cc]lashscore){OPT_WS}{EQUALS}{OPT_WS}({FLOAT_POSITIVE})"
+    description: "MolProbity clashscore"
+    examples:
+      - input: "Clashscore = 5.2"
+        group_1: "5.2"
+      - input: "clashscore: 3.1"
+        group_1: "3.1"
+  
+  ramachandran_outliers:
+    regex: "[Rr]amachandran{OPT_WS}outliers{OPT_WS}{EQUALS}{OPT_WS}({FLOAT_POSITIVE}){OPT_WS}%?"
+    description: "Percentage of Ramachandran outliers"
+    examples:
+      - input: "Ramachandran outliers = 0.5 %"
+        group_1: "0.5"
+      - input: "Ramachandran outliers: 1.2%"
+        group_1: "1.2"
+  
+  ramachandran_favored:
+    regex: "[Rr]amachandran{OPT_WS}favored{OPT_WS}{EQUALS}{OPT_WS}({FLOAT_POSITIVE}){OPT_WS}%?"
+    description: "Percentage in Ramachandran favored region"
+    examples:
+      - input: "Ramachandran favored = 96.5 %"
+        group_1: "96.5"
+  
+  rotamer_outliers:
+    regex: "[Rr]otamer{OPT_WS}outliers{OPT_WS}{EQUALS}{OPT_WS}({FLOAT_POSITIVE}){OPT_WS}%?"
+    description: "Percentage of rotamer outliers"
+    examples:
+      - input: "Rotamer outliers = 1.2 %"
+        group_1: "1.2"
+  
+  # -------------------------------------------------------------------------
+  # Molecular Replacement (Phaser)
+  # -------------------------------------------------------------------------
+  tfz_score:
+    regex: "TFZ{OPT_WS}(?:==?|[Ss]core{OPT_WS}[=:]?)?{OPT_WS}({FLOAT_POSITIVE})"
+    description: "Phaser translation function Z-score"
+    examples:
+      - input: "TFZ==24.5"
+        group_1: "24.5"
+      - input: "TFZ = 15.3"
+        group_1: "15.3"
+      - input: "TFZ score: 20"
+        group_1: "20"
+      - input: "TFZ Score = 18.5"
+        group_1: "18.5"
+  
+  llg:
+    regex: "LLG{OPT_WS}{EQUALS}{OPT_WS}({FLOAT})"
+    description: "Log-likelihood gain from Phaser"
+    examples:
+      - input: "LLG=1500.5"
+        group_1: "1500.5"
+      - input: "LLG = 2000"
+        group_1: "2000"
+  
+  phaser_solu_set:
+    regex: "SOLU SET{OPT_WS}(.+)"
+    description: "Phaser solution set line"
+    groups:
+      1: solution_info
+  
+  # -------------------------------------------------------------------------
+  # Anomalous Signal (SAD/MAD)
+  # -------------------------------------------------------------------------
+  anomalous_measurability:
+    regex: "(?:[Aa]nomalous{OPT_WS})?[Mm]easurability{OPT_WS}{EQUALS}{OPT_WS}({FLOAT_POSITIVE})"
+    description: "Anomalous signal measurability"
+    examples:
+      - input: "Anomalous measurability = 0.15"
+        group_1: "0.15"
+  
+  anomalous_signal:
+    regex: "[Aa]nomalous{OPT_WS}signal{OPT_WS}{EQUALS}{OPT_WS}({FLOAT_POSITIVE})"
+    description: "Anomalous signal strength"
+  
+  # -------------------------------------------------------------------------
+  # Twinning
+  # -------------------------------------------------------------------------
+  twin_fraction:
+    regex: "[Tt]win{OPT_WS}fraction{OPT_WS}{EQUALS}{OPT_WS}({FLOAT_POSITIVE})"
+    description: "Twin fraction from xtriage"
+    examples:
+      - input: "Twin fraction = 0.45"
+        group_1: "0.45"
+
+
+# =============================================================================
+# DIRECTIVE PATTERNS - For parsing user instructions
+# =============================================================================
+directives:
+  stop_after_cycle:
+    regex: "stop{OPT_WS}(?:after|at){OPT_WS}cycle{OPT_WS}({INT})"
+    description: "User directive to stop after N cycles"
+    examples:
+      - input: "stop after cycle 3"
+        group_1: "3"
+      - input: "stop at cycle 5"
+        group_1: "5"
+  
+  stop_after_first_refine:
+    regex: "stop{OPT_WS}after{OPT_WS}(?:the{OPT_WS})?(?:first|one|1){OPT_WS}refine"
+    description: "User directive to stop after first refinement"
+    examples:
+      - input: "stop after first refine"
+      - input: "stop after the first refinement"
+      - input: "stop after 1 refine"
+  
+  skip_validation:
+    regex: "(?:skip|no|don'?t){OPT_WS}validat"
+    description: "User directive to skip validation"
+    examples:
+      - input: "skip validation"
+      - input: "no validation"
+      - input: "don't validate"
+  
+  experiment_type_cryoem:
+    regex: "cryo-?em|half.?map|\\.mrc|\\.map|full.?map|mtriage"
+    description: "Indicators of cryo-EM experiment"
+  
+  experiment_type_xray:
+    regex: "x-?ray|\\.mtz|\\.hkl|xtriage|phaser|autosol|sad|mad|molecular.?replacement"
+    description: "Indicators of X-ray experiment"

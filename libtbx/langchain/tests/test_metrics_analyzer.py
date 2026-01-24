@@ -10,13 +10,26 @@ Tests:
 
 from __future__ import absolute_import, division, print_function
 
-from libtbx.langchain.agent.metrics_analyzer import (
-    derive_metrics_from_history,
-    analyze_metrics_trend,
-    get_latest_resolution,
-    get_best_r_free,
-    format_trend_for_prompt
-)
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+try:
+    from libtbx.langchain.agent.metrics_analyzer import (
+        derive_metrics_from_history,
+        analyze_metrics_trend,
+        get_latest_resolution,
+        get_best_r_free,
+        format_trend_for_prompt
+    )
+except ImportError:
+    from agent.metrics_analyzer import (
+        derive_metrics_from_history,
+        analyze_metrics_trend,
+        get_latest_resolution,
+        get_best_r_free,
+        format_trend_for_prompt
+    )
 
 
 def test_empty_history():

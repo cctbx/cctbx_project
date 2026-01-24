@@ -214,13 +214,14 @@ def test_predicted_model_detection():
     tracker = BestFilesTracker()
 
     # Files that should be classified as "predicted"
+    # Note: With semantic categories, predicted is a subcategory of search_model
     predicted_patterns = [
         "predicted_model.pdb",
         "alphafold_prediction.pdb",
     ]
 
     for filename in predicted_patterns:
-        stage = tracker._classify_stage("/path/to/" + filename, "model")
+        stage = tracker._classify_stage("/path/to/" + filename, "search_model")
         assert_equal(stage, "predicted",
                   "Should classify as predicted: %s (got %s)" % (filename, stage))
 
@@ -345,6 +346,49 @@ def test_half_map_detection():
     print("  PASSED")
 
 
+def test_single_half_map_promoted_to_full_map():
+    """Test that a single half-map is promoted to full_map for usability."""
+    print("Test: single_half_map_promoted_to_full_map")
+
+    # Use _categorize_files which applies post-processing for half-map promotion
+    from agent.workflow_state import _categorize_files
+
+    # Case 1: Single file with half-map naming should be treated as full_map
+    files_single_half = ["/path/to/emd-20026_auto_sharpen_A.ccp4"]
+    result = _categorize_files(files_single_half)
+
+    assert_in("/path/to/emd-20026_auto_sharpen_A.ccp4", result["full_map"],
+              "Single map with _A suffix should be promoted to full_map")
+    assert_equal(len(result["half_map"]), 0,
+                 "half_map should be empty when single map is promoted")
+
+    # Case 2: Two half-maps should remain as half-maps
+    files_two_halves = [
+        "/path/to/map_half_1.mrc",
+        "/path/to/map_half_2.mrc",
+    ]
+    result = _categorize_files(files_two_halves)
+
+    assert_equal(len(result["half_map"]), 2,
+                 "Two half-maps should stay as half_maps")
+    assert_equal(len(result["full_map"]), 0,
+                 "full_map should be empty when we have two half-maps")
+
+    # Case 3: One full map and one half-map - half-map stays as half-map
+    files_mixed = [
+        "/path/to/full_density.mrc",
+        "/path/to/half_map_1.mrc",
+    ]
+    result = _categorize_files(files_mixed)
+
+    assert_equal(len(result["full_map"]), 1,
+                 "Full map should be detected")
+    assert_equal(len(result["half_map"]), 1,
+                 "Single half-map with full map present should stay as half_map")
+
+    print("  PASSED")
+
+
 # =============================================================================
 # FILE NUMBER EXTRACTION TESTS
 # =============================================================================
@@ -459,16 +503,20 @@ def test_cryo_em_file_selection_workflow():
     tracker = BestFilesTracker()
 
     # Test that stage classification is correct for cryo-EM files
-    stages = {
-        "/data/predicted_model.pdb": "predicted",
+    # Note: predicted_model.pdb should use search_model category
+    model_stages = {
         "/data/PHASER.1.pdb": "phaser_output",
         "/data/rsr_001_real_space_refined_000.pdb": "rsr_output",
         "/data/rsr_001_real_space_refined_001.pdb": "rsr_output",
     }
 
-    for path, expected_stage in stages.items():
+    for path, expected_stage in model_stages.items():
         stage = tracker._classify_stage(path, "model")
         assert_equal(stage, expected_stage, "Stage for %s" % path)
+
+    # Predicted model uses search_model category
+    stage = tracker._classify_stage("/data/predicted_model.pdb", "search_model")
+    assert_equal(stage, "predicted", "Stage for predicted_model.pdb")
 
     # Verify RSR outputs are tracked correctly when evaluated
     tracker.evaluate_file("/data/rsr_001_real_space_refined_000.pdb", cycle=4, category="model")
@@ -489,17 +537,27 @@ def test_xray_file_selection_workflow():
     tracker = BestFilesTracker()
 
     # Test that stage classification is correct for X-ray files
-    stages = {
-        "/data/model.pdb": "pdb",
+    # Note: With semantic categories, generic model.pdb gets 'model' as default stage
+    model_stages = {
         "/data/refine_001_001.pdb": "refined",
         "/data/refine_002_001.pdb": "refined",
+    }
+
+    for path, expected_stage in model_stages.items():
+        stage = tracker._classify_stage(path, "model")
+        assert_equal(stage, expected_stage, "Stage for %s" % path)
+
+    # Generic model.pdb gets default 'model' stage
+    stage = tracker._classify_stage("/data/model.pdb", "model")
+    assert_equal(stage, "model", "Stage for generic model.pdb")
+
+    mtz_stages = {
         "/data/data.mtz": "original",
         "/data/refine_001_001.mtz": "refined_mtz",
     }
 
-    for path, expected_stage in stages.items():
-        category = "model" if path.endswith(".pdb") else "mtz"
-        stage = tracker._classify_stage(path, category)
+    for path, expected_stage in mtz_stages.items():
+        stage = tracker._classify_stage(path, "mtz")
         assert_equal(stage, expected_stage, "Stage for %s" % path)
 
     # Verify refined models are tracked correctly
@@ -550,6 +608,7 @@ def run_all_tests():
 
     print("\n--- Half-Map Detection Tests ---\n")
     test_half_map_detection()
+    test_single_half_map_promoted_to_full_map()
 
     print("\n--- File Number Extraction Tests ---\n")
     test_file_number_extraction()

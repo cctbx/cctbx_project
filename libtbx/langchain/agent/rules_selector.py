@@ -11,7 +11,7 @@ The selector can:
 4. Provide clear reasoning for each decision
 
 Usage:
-    from agent.rules_selector import RulesSelector
+    from libtbx.langchain.agent.rules_selector import RulesSelector
 
     selector = RulesSelector()
     intent = selector.select_next_action(
@@ -251,12 +251,20 @@ class RulesSelector:
         Prioritize among multiple valid programs.
 
         Priority rules:
+        0. Forced program from after_program directive (highest priority)
         1. Programs with priority_when conditions met (from workflow YAML)
         2. Validation programs when metrics are good
         3. Refinement programs when model needs improvement
         4. Building programs when model is missing
         5. Analysis programs at start
         """
+        # Check for forced program from directives (after_program)
+        # The workflow_engine puts this at the front of valid_programs
+        # We check if it's in candidates and select it immediately
+        forced_program = workflow_state.get("forced_program")
+        if forced_program and forced_program in candidates:
+            return forced_program, "User directive: run %s before stopping" % forced_program
+
         # First check for programs with priority_when conditions met
         # These are defined in workflows.yaml and checked by workflow_engine
         program_priorities = workflow_state.get("program_priorities", [])
@@ -341,37 +349,61 @@ class RulesSelector:
         Filters valid_programs based on user preferences. Does not add programs
         that aren't already valid - the workflow state machine controls validity.
 
+        IMPORTANT: This function should only filter when the user gives a SPECIFIC
+        IMMEDIATE instruction (e.g., "run refine now", "use phaser"). For multi-step
+        workflows (e.g., "refine, fit ligand, then refine again"), the directives
+        system handles the sequencing - we should NOT filter here.
+
         Keywords are now defined in programs.yaml under user_advice_keywords.
         """
         advice_lower = user_advice.lower()
 
         # Check for specific program mentions (e.g., "use phaser", "run refine")
-        for prog in valid_programs:
-            prog_name = prog.replace("phenix.", "").replace("_", " ")
-            if prog_name in advice_lower or prog.lower() in advice_lower:
-                return [prog]  # User specifically wants this
+        # BUT only if it looks like an immediate instruction, not a workflow description
+        # Workflow descriptions contain sequencing words like "then", "after", "first"
+        sequencing_words = ["then", "after", "first", "next", "finally", "before", "followed by"]
+        is_multi_step = any(word in advice_lower for word in sequencing_words)
 
-        # Check each valid program's keywords from YAML
-        for prog in valid_programs:
-            keywords = self.program_registry.get_user_advice_keywords(prog)
-            if keywords:
-                for kw in keywords:
-                    if kw.lower() in advice_lower:
-                        return [prog]
+        if not is_multi_step:
+            # Single-step instruction - check for specific program mention
+            for prog in valid_programs:
+                prog_name = prog.replace("phenix.", "").replace("_", " ")
+                # Skip STOP - we handle it specially later to avoid matching "stop" in "stop after..."
+                if prog == "STOP":
+                    continue
+                if prog_name in advice_lower or prog.lower() in advice_lower:
+                    return [prog]  # User specifically wants this
 
-        # Generic keyword fallbacks for common cases
-        if "refine" in advice_lower:
-            refined = [p for p in valid_programs if "refine" in p]
-            if refined:
-                return refined
+            # Check each valid program's keywords from YAML
+            for prog in valid_programs:
+                keywords = self.program_registry.get_user_advice_keywords(prog)
+                if keywords:
+                    for kw in keywords:
+                        if kw.lower() in advice_lower:
+                            return [prog]
 
-        if "valid" in advice_lower or "check" in advice_lower:
-            validated = [p for p in valid_programs if "molprobity" in p or "model_vs_data" in p]
-            if validated:
-                return validated
+        # NOTE: Removed aggressive generic keyword fallbacks (e.g., "refine" -> only refine programs)
+        # These caused problems with multi-step workflows like "refine, fit ligand, refine"
+        # The directives system and LLM handle complex advice better than simple keyword matching.
 
+        # Only treat "stop" as an immediate stop request if it's at the start
+        # or clearly indicates immediate stop (not "stop after X")
+        # Words like "stop after", "stop when", "stop condition" are conditions, not requests
         if "stop" in advice_lower:
-            return ["STOP"] if "STOP" in valid_programs else valid_programs
+            # Check if it's a stop condition vs an immediate stop request
+            stop_condition_patterns = [
+                "stop after",
+                "stop when",
+                "stop once",
+                "stop if",
+                "stop condition",
+                "stop at",
+            ]
+            is_stop_condition = any(pattern in advice_lower for pattern in stop_condition_patterns)
+
+            if not is_stop_condition:
+                # Looks like an immediate stop request (e.g., "please stop", "stop now")
+                return ["STOP"] if "STOP" in valid_programs else valid_programs
 
         return valid_programs
 

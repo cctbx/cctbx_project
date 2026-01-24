@@ -11,13 +11,28 @@ Tests:
 
 from __future__ import absolute_import, division, print_function
 
-from libtbx.langchain.agent.workflow_state import (
-    detect_workflow_state,
-    validate_program_choice,
-    format_workflow_for_prompt,
-    _categorize_files,
-    _analyze_history
-)
+import os
+import sys
+
+# Add parent directory to path for standalone imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+try:
+    from libtbx.langchain.agent.workflow_state import (
+        detect_workflow_state,
+        validate_program_choice,
+        format_workflow_for_prompt,
+        _categorize_files,
+        _analyze_history
+    )
+except ImportError:
+    from agent.workflow_state import (
+        detect_workflow_state,
+        validate_program_choice,
+        format_workflow_for_prompt,
+        _categorize_files,
+        _analyze_history
+    )
 
 
 # =============================================================================
@@ -439,7 +454,8 @@ def test_cryoem_initial():
 
     assert state["state"] in ["cryoem_initial", "analyze"]
     assert state["experiment_type"] == "cryoem"
-    assert state["valid_programs"] == ["phenix.mtriage"]
+    # mtriage is required, map_symmetry is optional
+    assert "phenix.mtriage" in state["valid_programs"]
     assert state["automation_path"] == "automated"
 
     print("  PASSED")
@@ -715,7 +731,7 @@ def test_file_categorization():
     assert "PHASER.1.pdb" in categorized["phaser_output"]
     assert "model_refine_001.pdb" in categorized["refined"]
     assert "protein_with_ligand.pdb" in categorized["with_ligand"]
-    assert "ligand_fit_1.pdb" in categorized["ligand_fit"]
+    assert "ligand_fit_1.pdb" in categorized["ligand_fit_output"]  # Updated category name
     assert "ligand.cif" in categorized["ligand_cif"]
     assert "lig.pdb" in categorized["ligand_pdb"]
     assert "sequence.fa" in categorized["sequence"]
@@ -758,23 +774,26 @@ def test_file_categorization_edge_cases():
     cat5 = _categorize_files(files5)
     assert "dock_in_map_001.pdb" in cat5["docked"]
 
-    # Test 6: processed predicted model should be in BOTH predicted and processed
+    # Test 6: processed predicted model should be in processed_predicted and search_model
+    # Note: With semantic categories, processed_predicted is distinct from predicted
     files6 = ["processed_predicted_model.pdb"]
     cat6 = _categorize_files(files6)
-    assert "processed_predicted_model.pdb" in cat6["predicted"]
     assert "processed_predicted_model.pdb" in cat6["processed_predicted"]
+    assert "processed_predicted_model.pdb" in cat6["search_model"]  # Parent category
 
     # Test 7: CIF files - distinguish model CIF from ligand CIF
-    files7 = ["ligand.cif", "ATP.cif", "refine_001.cif", "PHASER.1_refine.cif"]
+    # Note: Ligand CIFs need to match ligand patterns (lig*, ligand*, restraint*, etc.)
+    # Generic 3-letter codes like ATP.cif don't auto-classify as ligand
+    files7 = ["ligand.cif", "lig_ATP.cif", "refine_001.cif", "PHASER.1_refine.cif"]
     cat7 = _categorize_files(files7)
-    # Ligand CIFs
+    # Ligand CIFs (explicitly named)
     assert "ligand.cif" in cat7["ligand_cif"]
-    assert "ATP.cif" in cat7["ligand_cif"]
-    # Model CIFs (from refinement) should be in pdb/refined, NOT ligand_cif
-    assert "refine_001.cif" in cat7["pdb"]
+    assert "lig_ATP.cif" in cat7["ligand_cif"]
+    # Model CIFs (from refinement) should be in model, NOT ligand_cif
+    assert "refine_001.cif" in cat7["model"]
     assert "refine_001.cif" in cat7["refined"]
     assert "refine_001.cif" not in cat7["ligand_cif"]
-    assert "PHASER.1_refine.cif" in cat7["pdb"]
+    assert "PHASER.1_refine.cif" in cat7["model"]
 
     print("  PASSED")
 

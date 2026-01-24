@@ -59,30 +59,53 @@ def assert_not_none(value, message=""):
 # =============================================================================
 
 def test_model_stage_scoring():
-    """Test that refined models score higher than predicted."""
+    """Test that refined models score higher than docked/phaser_output."""
     print("Test: model_stage_scoring")
 
     tracker = BestFilesTracker()
 
-    # Add predicted model
-    tracker.evaluate_file("/path/predicted.pdb", cycle=1, stage="predicted")
+    # Add phaser_output model (positioned via MR)
+    tracker.evaluate_file("/path/PHASER.1.pdb", cycle=1, stage="phaser_output")
     best = tracker.get_best("model")
     assert_not_none(best, "Should have best model")
-    predicted_score = best.score
+    phaser_score = best.score
 
-    # Add docked model - should become best
+    # Add docked model - should NOT become best (phaser_output has higher score)
     tracker.evaluate_file("/path/docked.pdb", cycle=2, stage="docked")
     best = tracker.get_best("model")
-    assert_equal(best.stage, "docked", "Docked should be best")
-    docked_score = best.score
-    assert_true(docked_score > predicted_score, "Docked should score higher than predicted")
+    # Note: phaser_output (70) > docked (60) in the new scoring
+    docked_score = tracker._get_stage_score("model", "docked")
+    assert_true(phaser_score >= docked_score, "Phaser output should score >= docked")
 
     # Add refined model - should become best
     tracker.evaluate_file("/path/refined.pdb", cycle=3, stage="refined")
     best = tracker.get_best("model")
     assert_equal(best.stage, "refined", "Refined should be best")
     refined_score = best.score
-    assert_true(refined_score > docked_score, "Refined should score higher than docked")
+    assert_true(refined_score > phaser_score, "Refined should score higher than phaser_output")
+
+    print("  PASSED")
+
+
+def test_search_model_stage_scoring():
+    """Test that processed_predicted scores higher than predicted."""
+    print("Test: search_model_stage_scoring")
+
+    tracker = BestFilesTracker()
+
+    # Add raw predicted model
+    tracker.evaluate_file("/path/predicted.pdb", cycle=1, stage="predicted")
+    best = tracker.get_best("search_model")
+    assert_not_none(best, "Should have best search_model")
+    predicted_score = best.score
+
+    # Add processed predicted - should become best
+    tracker.evaluate_file("/path/processed.pdb", cycle=2, stage="processed_predicted")
+    best = tracker.get_best("search_model")
+    assert_equal(best.stage, "processed_predicted", "Processed should be best")
+    processed_score = best.score
+    assert_true(processed_score > predicted_score,
+                "Processed predicted should score higher than raw predicted")
 
     print("  PASSED")
 
@@ -241,18 +264,18 @@ def test_history_tracking():
     # Initial - no history
     assert_equal(len(tracker.get_history()), 0, "Should start with no history")
 
-    # First file - no change recorded (no previous)
-    tracker.evaluate_file("/path/model1.pdb", cycle=1, stage="predicted")
+    # First file - no history (no previous)
+    tracker.evaluate_file("/path/PHASER.1.pdb", cycle=1, stage="phaser_output")
     assert_equal(len(tracker.get_history()), 0, "First file shouldn't create history")
 
     # Second file replaces first - should record
-    tracker.evaluate_file("/path/model2.pdb", cycle=2, stage="docked")
+    tracker.evaluate_file("/path/refine_001.pdb", cycle=2, stage="refined")
     assert_equal(len(tracker.get_history()), 1, "Change should be recorded")
 
     # Check history entry
     change = tracker.get_history()[0]
-    assert_equal(change.old_path, "/path/model1.pdb")
-    assert_equal(change.new_path, "/path/model2.pdb")
+    assert_equal(change.old_path, "/path/PHASER.1.pdb")
+    assert_equal(change.new_path, "/path/refine_001.pdb")
     assert_equal(change.cycle, 2)
 
     print("  PASSED")
@@ -265,8 +288,8 @@ def test_history_filter_by_category():
     tracker = BestFilesTracker()
 
     # Create model changes
-    tracker.evaluate_file("/path/model1.pdb", cycle=1, stage="predicted")
-    tracker.evaluate_file("/path/model2.pdb", cycle=2, stage="refined")
+    tracker.evaluate_file("/path/PHASER.1.pdb", cycle=1, stage="phaser_output")
+    tracker.evaluate_file("/path/refine_001.pdb", cycle=2, stage="refined")
 
     # Create map changes
     tracker.evaluate_file("/path/map1.ccp4", cycle=1, stage="half_map")
@@ -319,22 +342,35 @@ def test_stage_classification_from_filename():
 
     tracker = BestFilesTracker()
 
-    # Test various filename patterns
-    test_cases = [
-        ("predicted_model.pdb", "predicted"),
+    # Test MODEL filename patterns (positioned, ready for refinement)
+    model_cases = [
         ("placed_model.pdb", "docked"),
         ("refine_001_001.pdb", "refined"),
         ("rsr_001_real_space_refined_000.pdb", "rsr_output"),
         ("overall_best_1.pdb", "autobuild_output"),
         ("PHASER.1.pdb", "phaser_output"),
-        ("processed_predicted.pdb", "processed_predicted"),
     ]
 
-    for filename, expected_stage in test_cases:
+    for filename, expected_stage in model_cases:
         tracker2 = BestFilesTracker()  # Fresh tracker
         tracker2.evaluate_file(f"/path/{filename}", cycle=1)
         best = tracker2.get_best("model")
-        assert_not_none(best, f"Should classify {filename}")
+        assert_not_none(best, f"Should classify {filename} as model")
+        assert_equal(best.stage, expected_stage,
+                    f"Stage for {filename} should be {expected_stage}")
+
+    # Test SEARCH_MODEL filename patterns (templates, NOT positioned)
+    search_model_cases = [
+        ("predicted_model.pdb", "predicted"),
+        ("processed_predicted.pdb", "processed_predicted"),
+        ("alphafold_model.pdb", "predicted"),
+    ]
+
+    for filename, expected_stage in search_model_cases:
+        tracker2 = BestFilesTracker()  # Fresh tracker
+        tracker2.evaluate_file(f"/path/{filename}", cycle=1)
+        best = tracker2.get_best("search_model")
+        assert_not_none(best, f"Should classify {filename} as search_model")
         assert_equal(best.stage, expected_stage,
                     f"Stage for {filename} should be {expected_stage}")
 
@@ -376,10 +412,11 @@ def test_serialization_roundtrip():
 
     tracker = BestFilesTracker()
 
-    # Add some data
-    tracker.evaluate_file("/path/model1.pdb", cycle=1, stage="predicted")
-    tracker.evaluate_file("/path/model2.pdb", cycle=2, stage="refined",
+    # Add some data - use semantic categories properly
+    tracker.evaluate_file("/path/PHASER.1.pdb", cycle=1, stage="phaser_output")
+    tracker.evaluate_file("/path/refine_001.pdb", cycle=2, stage="refined",
                          metrics={"r_free": 0.25})
+    tracker.evaluate_file("/path/predicted.pdb", cycle=1, stage="predicted")  # -> search_model
     tracker.evaluate_file("/path/map.ccp4", cycle=1, stage="full_map")
     tracker.evaluate_file("/path/data.mtz", cycle=1, stage="original",
                          metrics={"has_rfree_flags": True})
@@ -395,8 +432,10 @@ def test_serialization_roundtrip():
     assert_equal(len(tracker2.history), len(tracker.history), "Same history length")
 
     # Check specific values
-    assert_equal(tracker2.get_best("model").path, "/path/model2.pdb")
+    assert_equal(tracker2.get_best("model").path, "/path/refine_001.pdb")
     assert_equal(tracker2.get_best("model").stage, "refined")
+    assert_equal(tracker2.get_best("search_model").path, "/path/predicted.pdb")
+    assert_equal(tracker2.get_best("search_model").stage, "predicted")
     assert_equal(tracker2.get_best("map").path, "/path/map.ccp4")
     assert_equal(tracker2.get_best("mtz").path, "/path/data.mtz")
 
@@ -462,14 +501,14 @@ def test_worse_file_doesnt_replace():
     tracker = BestFilesTracker()
 
     # Good refined model
-    tracker.evaluate_file("/path/refined.pdb", cycle=1, stage="refined",
+    tracker.evaluate_file("/path/refine_002.pdb", cycle=2, stage="refined",
                          metrics={"r_free": 0.22})
     original_best = tracker.get_best("model").path
 
-    # Try to add worse model (predicted, even more recent)
-    tracker.evaluate_file("/path/predicted.pdb", cycle=10, stage="predicted")
+    # Try to add worse model (phaser_output, even more recent but lower stage score)
+    tracker.evaluate_file("/path/PHASER.1.pdb", cycle=10, stage="phaser_output")
 
-    # Should not have changed
+    # Should not have changed (refined 100 + metrics > phaser_output 70)
     assert_equal(tracker.get_best("model").path, original_best,
                 "Worse file shouldn't replace better")
 
@@ -781,11 +820,16 @@ def test_yaml_stage_scores():
 
     tracker = BestFilesTracker()
 
-    # Check model stage scores
+    # Check model stage scores (positioned models)
     assert_equal(tracker._get_stage_score("model", "refined"), 100)
+    assert_equal(tracker._get_stage_score("model", "phaser_output"), 70)
     assert_equal(tracker._get_stage_score("model", "docked"), 60)
-    assert_equal(tracker._get_stage_score("model", "predicted"), 40)
-    assert_equal(tracker._get_stage_score("model", "unknown_stage"), 10)  # _default
+    assert_equal(tracker._get_stage_score("model", "unknown_stage"), 50)  # _default
+
+    # Check search_model stage scores (templates, NOT positioned)
+    assert_equal(tracker._get_stage_score("search_model", "processed_predicted"), 70)
+    assert_equal(tracker._get_stage_score("search_model", "predicted"), 50)
+    assert_equal(tracker._get_stage_score("search_model", "pdb_template"), 60)
 
     # Check map stage scores
     assert_equal(tracker._get_stage_score("map", "optimized_full_map"), 100)
@@ -1150,6 +1194,7 @@ def run_all_tests():
     # Model scoring tests
     print("--- Model Scoring Tests ---")
     test_model_stage_scoring()
+    test_search_model_stage_scoring()
     test_model_metrics_improve_score()
     test_model_stage_beats_metrics()
 

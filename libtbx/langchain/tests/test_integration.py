@@ -10,9 +10,16 @@ Tests the full pipeline:
 """
 
 from __future__ import absolute_import, division, print_function
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from libtbx.langchain.agent.graph_state import create_initial_state
-from libtbx.langchain.agent.graph_nodes import perceive, plan, build, validate, fallback
+try:
+    from libtbx.langchain.agent.graph_state import create_initial_state
+    from libtbx.langchain.agent.graph_nodes import perceive, plan, build, validate, fallback
+except ImportError:
+    from agent.graph_state import create_initial_state
+    from agent.graph_nodes import perceive, plan, build, validate, fallback
 
 
 def test_perceive_builds_metrics():

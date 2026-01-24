@@ -32,6 +32,7 @@ class AgentState(TypedDict):
     session_info: Dict            # Session state including:
                                   #   - experiment_type: "xray" or "cryoem"
                                   #   - best_files: {category: path} from BestFilesTracker
+    directives: Dict              # User directives extracted from advice
 
     # === CONFIGURATION ===
     maximum_automation: bool      # If True, use fully automated cryo-EM path
@@ -81,7 +82,8 @@ def create_initial_state(
     use_rules_only=False,
     session_info=None,
     abort_on_red_flags=True,
-    abort_on_warnings=False
+    abort_on_warnings=False,
+    directives=None
 ):
     """
     Factory function to create a properly initialized AgentState.
@@ -106,6 +108,7 @@ def create_initial_state(
             - rfree_mtz: Path to locked R-free MTZ file (X-ray only)
         abort_on_red_flags: If True, abort on critical sanity check failures
         abort_on_warnings: If True, also abort on warning-level issues
+        directives: Dict of user directives extracted from advice
 
     Returns:
         AgentState: Properly initialized state dict
@@ -120,6 +123,7 @@ def create_initial_state(
         "provider": provider,
         "session_resolution": session_resolution,
         "session_info": session_info if session_info is not None else {},
+        "directives": directives if directives is not None else {},
 
         # Configuration
         "maximum_automation": maximum_automation,

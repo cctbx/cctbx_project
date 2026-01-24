@@ -17,18 +17,32 @@ import json
 import re
 import os
 
+# Centralized pattern utilities
+from libtbx.langchain.agent.pattern_manager import (
+    patterns,
+    extract_cycle_number,
+    extract_all_numbers,
+)
+
+# Event logging for transparency
+from libtbx.langchain.agent.event_log import EventType
+
 # Import from libtbx.langchain
 from libtbx.langchain.agent.template_builder import TemplateBuilder
+
 from libtbx.langchain.agent.metrics_analyzer import (
     derive_metrics_from_history,
     analyze_metrics_trend,
     get_latest_resolution,
 )
+
 from libtbx.langchain.agent.workflow_state import (
     detect_workflow_state,
     validate_program_choice
 )
+
 from libtbx.langchain.knowledge.prompts_hybrid import get_planning_prompt
+
 from libtbx.langchain.agent.rules_selector import select_action_by_rules
 
 # Feature flag: Set to True to use new CommandBuilder
@@ -36,19 +50,20 @@ USE_NEW_COMMAND_BUILDER = True
 
 def _get_command_builder():
     """Lazy-load CommandBuilder and CommandContext classes to avoid circular imports."""
-    try:
-        from agent.command_builder import CommandBuilder, CommandContext
-    except ImportError:
-        from libtbx.langchain.agent.command_builder import CommandBuilder, CommandContext
+    from libtbx.langchain.agent.command_builder import CommandBuilder, CommandContext
     return CommandBuilder, CommandContext
 
 
 def _get_most_recent_file(file_list):
     """
-    Get the most recent file from a list based on modification time.
+    Get the most recent file from a list based on cycle numbering.
 
-    For files with numbered suffixes (e.g., rsr_001_real_space_refined_002.pdb),
-    prefers higher numbers. Falls back to modification time.
+    For files with numbered suffixes (e.g., rsr_011_real_space_refined_000.pdb),
+    prefers higher cycle numbers (the first number, e.g., 011).
+    Falls back to modification time.
+
+    Uses centralized cycle extraction from pattern_manager for consistency
+    across all parts of the agent.
 
     Args:
         file_list: List of file paths
@@ -61,25 +76,17 @@ def _get_most_recent_file(file_list):
     if len(file_list) == 1:
         return file_list[0]
 
-    # Try to sort by numbered suffix in filename
-    # Pattern matches things like: rsr_001_real_space_refined_002.pdb -> extracts 002
-    # or refine_001_001.pdb -> extracts the last number
-    def get_file_number(path):
-        basename = os.path.basename(path)
-        # Find all numbers in the filename
-        numbers = re.findall(r'(\d+)', basename)
-        if numbers:
-            # Return the last number as tiebreaker (usually the iteration number)
-            return int(numbers[-1])
-        return 0
-
-    # Sort by file number (descending), then by mtime (descending)
+    # Sort by cycle number (descending), then all numbers, then mtime
     def sort_key(path):
+        # Primary: cycle number (for cross-cycle comparison)
+        cycle = extract_cycle_number(path, default=0)
+        # Secondary: all numbers as tuple (for within-cycle comparison)
+        all_nums = extract_all_numbers(path)
         try:
             mtime = os.path.getmtime(path) if os.path.exists(path) else 0
         except OSError:
             mtime = 0
-        return (get_file_number(path), mtime)
+        return (cycle, all_nums, mtime)
 
     sorted_files = sorted(file_list, key=sort_key, reverse=True)
     return sorted_files[0]
@@ -246,10 +253,38 @@ def get_planning_llm(provider=None):
 # =============================================================================
 
 def _log(state, msg):
-    """Helper to add debug message to state."""
+    """
+    Helper to add debug message to state.
+
+    Writes to both:
+    - debug_log (list of strings) for backward compatibility
+    - events (list of dicts) for new event system
+    """
     debug_log = list(state.get("debug_log", []))
     debug_log.append(msg)
-    return {**state, "debug_log": debug_log}
+
+    # Also emit as DEBUG event for new system
+    events = list(state.get("events", []))
+    events.append({"type": EventType.DEBUG, "message": msg})
+
+    return {**state, "debug_log": debug_log, "events": events}
+
+
+def _emit(state, event_type, **kwargs):
+    """
+    Helper to emit a structured event to state.
+
+    Args:
+        state: Current state dict
+        event_type: EventType constant
+        **kwargs: Event-specific data
+
+    Returns:
+        Updated state with new event
+    """
+    events = list(state.get("events", []))
+    events.append({"type": event_type, **kwargs})
+    return {**state, "events": events}
 
 
 def _increment_attempt(state):
@@ -284,6 +319,14 @@ def perceive(state):
     5. Detects workflow state
     6. Runs sanity checks for red flag detection
     """
+    # Initialize events list if not present
+    if "events" not in state:
+        state = {**state, "events": []}
+
+    # Emit CYCLE_START event
+    cycle_number = state.get("cycle_number", 1)
+    state = _emit(state, EventType.CYCLE_START, cycle_number=cycle_number)
+
     log_text = state.get("log_text", "")
     history = state.get("history", [])
 
@@ -297,6 +340,26 @@ def perceive(state):
     except ImportError:
         # Fallback if log_parsers not available
         analysis = _fallback_extract_metrics(log_text)
+
+    # 2b. CRITICAL: Ensure we have the LAST r_free/r_work values
+    # Refinement logs contain multiple R-free values (one per macro cycle).
+    # Some extractors return the FIRST match, but we need the FINAL value.
+    # Always re-extract using our robust last-match method to be safe.
+    if log_text:
+        last_r_free = patterns.extract_last_float("metrics.r_free", log_text, flags=re.IGNORECASE)
+        last_r_work = patterns.extract_last_float("metrics.r_work", log_text, flags=re.IGNORECASE)
+
+        if last_r_free is not None:
+            # Only override if we found a value and it differs
+            # (the last value should be <= first value after refinement converges)
+            if analysis is None:
+                analysis = {}
+            analysis["r_free"] = last_r_free
+
+        if last_r_work is not None:
+            if analysis is None:
+                analysis = {}
+            analysis["r_work"] = last_r_work
 
     # 3. Append current cycle metrics if we have useful data
     if analysis and any(v is not None for k, v in analysis.items() if k != "program"):
@@ -315,11 +378,24 @@ def perceive(state):
     # 4. Analyze metrics trend
     resolution = get_latest_resolution(metrics_history)
 
-    # Detect experiment type for proper trend analysis
+    # Get available_files first (needed for both experiment type detection and workflow state)
     available_files = state.get("available_files", [])
-    has_map = any(f.lower().endswith(('.mrc', '.ccp4', '.map')) for f in available_files)
-    has_mtz = any(f.lower().endswith('.mtz') for f in available_files)
-    experiment_type = "cryoem" if has_map and not has_mtz else "xray"
+
+    # Detect experiment type for proper trend analysis
+    # PRIORITY: Use session's locked experiment_type first, then detect from files
+    session_info = state.get("session_info", {})
+    session_experiment_type = session_info.get("experiment_type")
+
+    if session_experiment_type:
+        # Use session's locked experiment type (already validated)
+        experiment_type = session_experiment_type
+        if experiment_type == "cryoEM":  # Normalize case
+            experiment_type = "cryoem"
+    else:
+        # Fall back to file-based detection
+        has_map = any(f.lower().endswith(('.mrc', '.ccp4', '.map')) for f in available_files)
+        has_mtz = any(f.lower().endswith(('.mtz', '.sca', '.hkl')) for f in available_files)
+        experiment_type = "cryoem" if has_map and not has_mtz else "xray"
 
     # Check for YAML mode (from state or global setting)
     use_yaml = state.get("use_yaml_mode", USE_YAML_METRICS)
@@ -345,7 +421,8 @@ def perceive(state):
         available_files=available_files,
         analysis=analysis,
         maximum_automation=state.get("maximum_automation", True),
-        use_yaml_engine=use_yaml_workflow
+        use_yaml_engine=use_yaml_workflow,
+        directives=state.get("directives", {})
     )
 
     # Override detected experiment_type with locked session experiment_type if available
@@ -355,6 +432,27 @@ def perceive(state):
         state = _log(state, "PERCEIVE: Using locked experiment_type from session: %s (detected was: %s)" % (
             session_experiment_type, workflow_state.get("experiment_type")))
         workflow_state["experiment_type"] = session_experiment_type
+
+    # === EMIT STATE_DETECTED EVENT ===
+    state = _emit(state, EventType.STATE_DETECTED,
+        workflow_state=workflow_state.get("state", "unknown"),
+        experiment_type=workflow_state.get("experiment_type", experiment_type),
+        reason=workflow_state.get("reason", ""),
+        valid_programs=workflow_state.get("valid_programs", []))
+
+    # === EMIT METRICS_EXTRACTED EVENT ===
+    # Get previous metrics for comparison
+    prev_metrics = metrics_history[-2] if len(metrics_history) >= 2 else None
+    metrics_event_data = {}
+    if analysis:
+        for key in ["r_free", "r_work", "resolution", "map_cc", "tfz", "llg", "clashscore"]:
+            if analysis.get(key) is not None:
+                metrics_event_data[key] = analysis[key]
+                # Add previous value if available
+                if prev_metrics and prev_metrics.get(key) is not None:
+                    metrics_event_data[key + "_prev"] = prev_metrics[key]
+    if metrics_event_data:
+        state = _emit(state, EventType.METRICS_EXTRACTED, **metrics_event_data)
 
     # Log the results
     if analysis:
@@ -368,8 +466,48 @@ def perceive(state):
 
     state = _log(state, "PERCEIVE: Workflow state: %s" % workflow_state["state"])
 
+    # Log valid_programs for debugging
+    valid_progs = workflow_state.get("valid_programs", [])
+    state = _log(state, "PERCEIVE: Valid programs: %s" % ", ".join(valid_progs))
+
+    # Log forced_program if set
+    forced_prog = workflow_state.get("forced_program")
+    if forced_prog:
+        state = _log(state, "PERCEIVE: Forced program (after_program directive): %s" % forced_prog)
+
+    # Log file categorization for debugging
+    categorized = workflow_state.get("categorized_files", {})
+    if categorized:
+        cat_summary = ", ".join([
+            "%s=%d" % (k, len(v) if isinstance(v, list) else 1)
+            for k, v in categorized.items() if v
+        ])
+        state = _log(state, "PERCEIVE: Categorized files: %s" % cat_summary)
+    state = _log(state, "PERCEIVE: Available files count: %d" % len(available_files))
+
+    # Log metrics trend details for debugging
+    consecutive_rsr = metrics_trend.get("consecutive_rsr", 0)
+    consecutive_refines = metrics_trend.get("consecutive_refines", 0)
+    if consecutive_rsr > 0:
+        state = _log(state, "PERCEIVE: Consecutive RSR cycles: %d (stop at 8)" % consecutive_rsr)
+    if consecutive_refines > 0:
+        state = _log(state, "PERCEIVE: Consecutive refine cycles: %d (stop at 8)" % consecutive_refines)
+
+    trend_summary = metrics_trend.get("trend_summary", "")
+    if trend_summary:
+        state = _log(state, "PERCEIVE: Metrics trend: %s" % trend_summary)
+
     if metrics_trend.get("should_stop"):
         state = _log(state, "PERCEIVE: Auto-stop recommended: %s" % metrics_trend["reason"])
+
+    # === EMIT METRICS_TREND EVENT ===
+    state = _emit(state, EventType.METRICS_TREND,
+        improving=metrics_trend.get("improving", False),
+        plateau=metrics_trend.get("plateau_detected", metrics_trend.get("should_stop", False)),
+        cycles_analyzed=len(metrics_history),
+        trend_summary=trend_summary,
+        should_stop=metrics_trend.get("should_stop", False),
+        stop_reason=metrics_trend.get("reason", ""))
 
     # 6. Run sanity checks for red flag detection
     session_info = state.get("session_info", {})
@@ -396,7 +534,10 @@ def perceive(state):
     categorized_files = workflow_state.get("categorized_files", {})
     sanity_context = {
         "experiment_type": effective_experiment_type,
-        "has_model": bool(categorized_files.get("pdb")),
+        # SEMANTIC: 'model' = positioned models (phaser_output, refined, docked)
+        # SEMANTIC: 'search_model' = templates NOT yet positioned (predicted, pdb_template)
+        "has_model": bool(categorized_files.get("model")),
+        "has_search_model": bool(categorized_files.get("search_model")),
         "has_mtz": bool(categorized_files.get("mtz")),
         # Check all map categories for cryo-EM
         "has_map": bool(
@@ -412,10 +553,12 @@ def perceive(state):
     }
 
     # Debug: log key sanity context values
-    state = _log(state, "PERCEIVE: Sanity context: exp_type=%s, session_exp_type=%s, has_model=%s, has_map=%s" % (
+    state = _log(state, "PERCEIVE: Sanity context: exp_type=%s, session_exp_type=%s, has_mtz=%s, has_model=%s, has_search_model=%s, has_map=%s" % (
         sanity_context.get("experiment_type"),
         session_info.get("experiment_type"),
+        sanity_context.get("has_mtz"),
         sanity_context.get("has_model"),
+        sanity_context.get("has_search_model"),
         sanity_context.get("has_map"),
     ))
 
@@ -424,11 +567,7 @@ def perceive(state):
         from libtbx.langchain.agent.sanity_checker import SanityChecker
         checker = SanityChecker()
     except ImportError:
-        try:
-            from agent.sanity_checker import SanityChecker
-            checker = SanityChecker()
-        except ImportError:
-            checker = None
+        checker = None
 
     if checker:
         sanity_result = checker.check(
@@ -437,6 +576,14 @@ def perceive(state):
             abort_on_red_flags=abort_on_red_flags,
             abort_on_warnings=abort_on_warnings
         )
+
+        # === EMIT SANITY_CHECK EVENT ===
+        red_flags = [i.message for i in sanity_result.issues if i.severity == "red_flag"]
+        warnings = [i.message for i in sanity_result.issues if i.severity == "warning"]
+        state = _emit(state, EventType.SANITY_CHECK,
+            passed=not sanity_result.should_abort,
+            red_flags=red_flags,
+            warnings=warnings)
 
         # Log any warnings
         for issue in sanity_result.issues:
@@ -449,6 +596,27 @@ def perceive(state):
             for issue in sanity_result.issues:
                 state = _log(state, "PERCEIVE: RED FLAG [%s]: %s" % (issue.code, issue.message))
             state = _log(state, "PERCEIVE: SANITY ABORT - Stopping due to red flag(s)")
+
+            # Build detailed abort message with diagnostic info
+            abort_msg = sanity_result.abort_message
+            diag_info = []
+            diag_info.append("Diagnostic info:")
+            diag_info.append("  - Available files: %d" % len(state.get("available_files", [])))
+            diag_info.append("  - has_mtz: %s" % sanity_context.get("has_mtz"))
+            diag_info.append("  - has_model: %s" % sanity_context.get("has_model"))
+            diag_info.append("  - has_map: %s" % sanity_context.get("has_map"))
+            diag_info.append("  - experiment_type: %s" % sanity_context.get("experiment_type"))
+            diag_info.append("  - workflow_state: %s" % sanity_context.get("state"))
+            cat_files = sanity_context.get("categorized_files", {})
+            if cat_files:
+                diag_info.append("  - categorized: %s" % ", ".join([
+                    "%s=%d" % (k, len(v) if isinstance(v, list) else 1)
+                    for k, v in cat_files.items() if v
+                ]))
+            else:
+                diag_info.append("  - categorized: (empty)")
+            abort_msg = abort_msg + "\n\n" + "\n".join(diag_info)
+
             return {
                 **state,
                 "log_analysis": analysis or {},
@@ -459,7 +627,7 @@ def perceive(state):
                 "stop": True,
                 "stop_reason": "red_flag",
                 "red_flag_issues": [i.to_dict() for i in sanity_result.issues],
-                "abort_message": sanity_result.abort_message,
+                "abort_message": abort_msg,
             }
 
     return {
@@ -472,70 +640,64 @@ def perceive(state):
 
 
 def _fallback_extract_metrics(log_text):
-    """Fallback metric extraction if log_parsers module not available."""
+    """
+    Fallback metric extraction using centralized patterns.
+
+    This is used when the full log_parsers module is not available.
+    It uses the PatternManager for consistent regex patterns.
+
+    NOTE: This is a FALLBACK. The primary extraction should use
+    phenix.phenix_ai.log_parsers.extract_all_metrics() which has
+    program-specific parsing logic.
+    """
     analysis = {}
 
     if not log_text:
         return analysis
 
-    def safe_float(match):
-        if match:
-            value = match.group(1).rstrip('.')
-            try:
-                return float(value)
-            except ValueError:
-                return None
-        return None
+    # Use centralized patterns for metric extraction
+    # patterns is imported at module level
 
-    # Basic metrics
-    rfree_match = re.search(r'R-free\s*[:=]\s*([\d\.]+)', log_text, re.IGNORECASE)
-    if rfree_match:
-        val = safe_float(rfree_match)
-        if val is not None:
-            analysis["r_free"] = val
+    # R-free and R-work: Use extract_last_float because refinement logs
+    # contain multiple values (one per macro cycle) and we want the FINAL one
+    r_free = patterns.extract_last_float("metrics.r_free", log_text, flags=re.IGNORECASE)
+    if r_free is not None:
+        analysis["r_free"] = r_free
 
-    rwork_match = re.search(r'R-work\s*[:=]\s*([\d\.]+)', log_text, re.IGNORECASE)
-    if rwork_match:
-        val = safe_float(rwork_match)
-        if val is not None:
-            analysis["r_work"] = val
+    r_work = patterns.extract_last_float("metrics.r_work", log_text, flags=re.IGNORECASE)
+    if r_work is not None:
+        analysis["r_work"] = r_work
 
-    # TFZ/LLG from SOLU SET (Phaser)
-    solu_set_match = re.search(r'SOLU SET\s+(.+)', log_text)
-    if solu_set_match:
-        solu_line = solu_set_match.group(1)
-        tfz_matches = re.findall(r'TFZ==?([\d\.]+)', solu_line)
-        if tfz_matches:
-            analysis["tfz"] = float(tfz_matches[-1])
-        llg_matches = re.findall(r'LLG=([\d\.]+)', solu_line)
-        if llg_matches:
-            analysis["llg"] = float(llg_matches[-1])
+    tfz = patterns.extract_float("metrics.tfz_score", log_text)
+    if tfz is not None:
+        analysis["tfz"] = tfz
 
-    # Map-model CC (for cryo-EM)
-    cc_match = re.search(r'(?:CC_mask|map.model.CC|CC)\s*[:=]\s*([\d\.]+)', log_text, re.IGNORECASE)
-    if cc_match:
-        val = safe_float(cc_match)
-        if val is not None:
-            analysis["map_cc"] = val
+    llg = patterns.extract_float("metrics.llg", log_text)
+    if llg is not None:
+        analysis["llg"] = llg
 
-    # Resolution
-    res_match = re.search(r'Resolution\s*:\s*[\d\.]+\s*-\s*([\d\.]+)', log_text, re.IGNORECASE)
-    if res_match:
-        val = safe_float(res_match)
-        if val is not None:
-            analysis["resolution"] = val
+    map_cc = patterns.extract_float("metrics.map_cc", log_text, flags=re.IGNORECASE)
+    if map_cc is not None:
+        analysis["map_cc"] = map_cc
 
-    # Error detection
-    if "FAILED:" in log_text:
-        fail_match = re.search(r'FAILED:[:\s]+(.+?)(?:\n|$)', log_text)
-        if fail_match:
-            analysis["error"] = fail_match.group(1).strip()
-    elif "Sorry:" in log_text:
-        sorry_match = re.search(r'Sorry[:\s]+(.+?)(?:\n|$)', log_text)
+    resolution = patterns.extract_float("metrics.resolution_from_range", log_text, flags=re.IGNORECASE)
+    if resolution is None:
+        resolution = patterns.extract_float("metrics.resolution", log_text, flags=re.IGNORECASE)
+    if resolution is not None:
+        analysis["resolution"] = resolution
+
+    # Error detection using patterns
+    if patterns.has_pattern("system.phenix_failed"):
+        error_match = patterns.search("system.phenix_failed", log_text)
+        if error_match:
+            analysis["error"] = error_match.group(1).strip()
+
+    if "error" not in analysis and patterns.has_pattern("system.phenix_sorry"):
+        sorry_match = patterns.search("system.phenix_sorry", log_text)
         if sorry_match:
             analysis["error"] = sorry_match.group(1).strip()
 
-    # Program detection
+    # Program detection (simple string matching, not regex-dependent)
     log_lower = log_text.lower()
     if "phenix.real_space_refine" in log_lower:
         analysis["program"] = "phenix.real_space_refine"
@@ -605,6 +767,7 @@ def plan(state):
 
     This node:
     1. Checks for auto-stop conditions (plateau, success)
+       BUT: Suppresses auto-stop if there's an after_program directive that hasn't been fulfilled
     2. Optionally uses rules-only mode (no LLM)
     3. Constructs prompt with workflow state and metrics trend
     4. Calls LLM to decide next action
@@ -615,23 +778,70 @@ def plan(state):
 
     if metrics_trend.get("should_stop"):
         reason = metrics_trend.get("reason", "Metrics indicate completion")
-        state = _log(state, "PLAN: AUTO-STOP triggered: %s" % reason)
 
-        return {
-            **state,
-            "intent": {
-                "program": None,
+        # BUT: Check if there's an after_program directive that hasn't been fulfilled
+        # In that case, we should NOT auto-stop until that program runs
+        directives = state.get("directives", {})
+        stop_cond = directives.get("stop_conditions", {})
+        after_program = stop_cond.get("after_program")
+
+        if after_program:
+            # Check if the after_program has been run in history
+            history = state.get("history", [])
+            after_program_done = any(
+                after_program.replace("phenix.", "") in
+                (h.get("program", "") + h.get("command", "")).lower().replace("phenix.", "")
+                for h in history if isinstance(h, dict)
+            )
+
+            if not after_program_done:
+                # Suppress auto-stop - user wants a specific program to run first
+                state = _log(state, "PLAN: Suppressing AUTO-STOP because after_program=%s hasn't run yet" % after_program)
+                # Continue to LLM planning instead of stopping
+            else:
+                # after_program has run, allow auto-stop
+                state = _log(state, "PLAN: AUTO-STOP triggered: %s" % reason)
+                # Emit STOP_DECISION event
+                state = _emit(state, EventType.STOP_DECISION,
+                    stop=True,
+                    reason=reason)
+                return {
+                    **state,
+                    "intent": {
+                        "program": None,
+                        "stop": True,
+                        "stop_reason": reason,
+                        "reasoning": "Automatically stopping: %s. %s" % (
+                            reason, metrics_trend.get("trend_summary", "")
+                        ),
+                        "files": {},
+                        "strategy": {},
+                    },
+                    "stop": True,
+                    "stop_reason": reason,
+                }
+        else:
+            # No after_program directive, allow auto-stop
+            state = _log(state, "PLAN: AUTO-STOP triggered: %s" % reason)
+            # Emit STOP_DECISION event
+            state = _emit(state, EventType.STOP_DECISION,
+                stop=True,
+                reason=reason)
+            return {
+                **state,
+                "intent": {
+                    "program": None,
+                    "stop": True,
+                    "stop_reason": reason,
+                    "reasoning": "Automatically stopping: %s. %s" % (
+                        reason, metrics_trend.get("trend_summary", "")
+                    ),
+                    "files": {},
+                    "strategy": {},
+                },
                 "stop": True,
                 "stop_reason": reason,
-                "reasoning": "Automatically stopping: %s. %s" % (
-                    reason, metrics_trend.get("trend_summary", "")
-                ),
-                "files": {},
-                "strategy": {},
-            },
-            "stop": True,
-            "stop_reason": reason,
-        }
+            }
 
     # 2. Check for rules-only mode (no LLM)
     use_rules_only = state.get("use_rules_only", False) or state.get("use_yaml_mode", USE_RULES_SELECTOR)
@@ -662,6 +872,13 @@ def plan(state):
             workflow_state = dict(workflow_state)
             workflow_state["valid_programs"] = filtered_programs
 
+    # Get directives from state
+    directives = state.get("directives", {})
+
+    # Get best_files from session_info
+    session_info = state.get("session_info", {})
+    best_files = session_info.get("best_files", {})
+
     system_msg, user_msg = get_planning_prompt(
         history=state.get("history", []),
         analysis=state.get("log_analysis", {}),
@@ -669,7 +886,9 @@ def plan(state):
         previous_attempts=state.get("previous_attempts", []),
         user_advice=user_advice,
         metrics_trend=metrics_trend,
-        workflow_state=workflow_state
+        workflow_state=workflow_state,
+        directives=directives,
+        best_files=best_files
     )
 
     # 4. Get LLM (with validation)
@@ -680,7 +899,7 @@ def plan(state):
         state = _log(state, "PLAN: Falling back to mock planner")
         return _mock_plan(state)
 
-    # 5. Call LLM
+    # 5. Call LLM with rate limit handling
     try:
         state = _log(state, "PLAN: Calling LLM (provider=%s)..." % provider)
 
@@ -691,7 +910,40 @@ def plan(state):
             HumanMessage(content=user_msg)
         ]
 
-        response = llm.invoke(messages)
+        # Try to use rate limit handler
+        try:
+            from libtbx.langchain.agent.rate_limit_handler import RateLimitHandler
+        except ImportError:
+            RateLimitHandler = None
+
+        if RateLimitHandler:
+            # Use provider-specific handler
+            handler_name = "%s_api" % provider if provider else "default_api"
+            handler = RateLimitHandler.get_handler(
+                handler_name,
+                max_retries=3,
+                base_delay=2.0,
+                max_delay=60.0,
+                decay_time=300.0
+            )
+
+            # Create a list to capture state updates from log wrapper
+            log_messages = []
+            def log_wrapper(msg):
+                log_messages.append(msg)
+
+            def make_call():
+                return llm.invoke(messages)
+
+            response = handler.call_with_retry(make_call, log_wrapper)
+
+            # Add any rate limit log messages to state
+            for msg in log_messages:
+                state = _log(state, "PLAN: %s" % msg)
+        else:
+            # No rate limit handler available, call directly
+            response = llm.invoke(messages)
+
         content = response.content
 
         state = _log(state, "PLAN: LLM response received (%d chars)" % len(content))
@@ -707,32 +959,153 @@ def plan(state):
         chosen_program = intent.get("program")
         state = _log(state, "PLAN: LLM selected program=%s" % chosen_program)
 
+        # === VALIDATE INTENT AGAINST USER DIRECTIVES ===
+        directives = state.get("directives", {})
+        if directives:
+            try:
+                from libtbx.langchain.agent.directive_validator import validate_intent
+
+                cycle_number = state.get("cycle_number", 1)
+                history = state.get("history", [])
+
+                validation_result = validate_intent(
+                    intent=intent,
+                    directives=directives,
+                    cycle_number=cycle_number,
+                    history=history,
+                    log_func=lambda msg: None  # Suppress internal logs, we'll log summary
+                )
+
+                # Apply validated intent
+                intent = validation_result["validated_intent"]
+
+                # Log modifications
+                for mod in validation_result.get("modifications", []):
+                    state = _log(state, "PLAN: DIRECTIVE - %s" % mod)
+
+                # Log warnings
+                for warn in validation_result.get("warnings", []):
+                    state = _log(state, "PLAN: DIRECTIVE WARNING - %s" % warn)
+
+                # NOTE: Stop condition checking removed from here.
+                # Stop conditions are checked post-execution in ai_agent._run_single_cycle()
+
+                # Update chosen_program in case it was modified
+                chosen_program = intent.get("program")
+
+            except ImportError:
+                state = _log(state, "PLAN: directive_validator not available, skipping validation")
+            except Exception as e:
+                state = _log(state, "PLAN: Directive validation error: %s" % str(e))
+
         # === VALIDATE LLM CHOICE AGAINST VALID_PROGRAMS ===
+        # This is a simple check - all directive logic is handled upstream
+        # by workflow_engine._apply_directives() which modifies valid_programs
         valid_programs = workflow_state.get("valid_programs", [])
 
-        # Check if LLM is trying to STOP when STOP is not allowed
-        if intent.get("stop") or chosen_program is None or chosen_program == "STOP":
-            if "STOP" not in valid_programs:
-                # LLM tried to stop but STOP is not allowed (e.g., validation required)
-                state = _log(state, "PLAN: LLM tried to STOP but STOP not in valid_programs: %s" % valid_programs)
-                state = _log(state, "PLAN: Overriding LLM choice - validation required before stopping")
+        # Normalize: treat STOP request same as choosing "STOP" program
+        # BUT: Only if the LLM didn't select a valid non-STOP program
+        # This prevents cases where LLM says {program: "phenix.autosol", stop: true}
+        # from incorrectly stopping instead of running the program
+        if chosen_program == "STOP" or (intent.get("stop") and chosen_program not in valid_programs):
+            chosen_program = "STOP"
+            intent["program"] = "STOP"
+        elif intent.get("stop") and chosen_program in valid_programs and chosen_program != "STOP":
+            # LLM chose a valid program but also set stop=true
+            # Trust the program choice - the stop might have been set for "after this program"
+            state = _log(state, "PLAN: LLM set stop=true but also chose valid program %s, running program" % chosen_program)
+            intent["stop"] = False  # Clear the stop flag since we have a valid program to run
 
-                # Find the highest priority valid program (should be molprobity)
-                override_program = valid_programs[0] if valid_programs else "phenix.refine"
+        # Simple validation: is the chosen program in valid_programs?
+        if chosen_program is None or chosen_program not in valid_programs:
+            if valid_programs:
+                # Override to first valid program (or first non-STOP if available)
+                override_program = next((p for p in valid_programs if p != "STOP"), valid_programs[0])
+                original_reasoning = intent.get("reasoning", "")
+
+                state = _log(state, "PLAN: LLM choice '%s' not in valid_programs: %s" % (
+                    chosen_program or "none", valid_programs))
+                state = _log(state, "PLAN: Selecting %s instead" % override_program)
+
+                # Check if this was a user-requested program (from user_advice)
+                user_advice = state.get("user_advice", "")
+                user_requested = False
+                if chosen_program and user_advice:
+                    # Check if user explicitly mentioned this program
+                    if chosen_program.lower() in user_advice.lower():
+                        user_requested = True
+                    # Also check for partial matches like "run refine" -> "phenix.refine"
+                    program_short = chosen_program.replace("phenix.", "")
+                    if program_short.lower() in user_advice.lower():
+                        user_requested = True
+
+                # Emit USER_REQUEST_INVALID event if user asked for this
+                if user_requested:
+                    # Determine why it's invalid
+                    all_known_programs = [
+                        "phenix.xtriage", "phenix.mtriage", "phenix.predict_and_build",
+                        "phenix.phaser", "phenix.refine", "phenix.real_space_refine",
+                        "phenix.ligandfit", "phenix.pdbtools", "phenix.dock_in_map",
+                        "phenix.autobuild", "phenix.autosol", "phenix.process_predicted_model",
+                        "phenix.molprobity", "phenix.resolve_cryo_em", "phenix.map_sharpening",
+                        "phenix.map_to_model", "phenix.map_symmetry", "phenix.validation_cryoem",
+                    ]
+
+                    if chosen_program in all_known_programs:
+                        reason = "Not valid in current workflow state '%s'" % workflow_state.get("state", "unknown")
+                        suggestion = "This program requires different conditions. %s" % workflow_state.get("reason", "")
+                    else:
+                        reason = "Unknown program (not supported by PHENIX AI Agent)"
+                        suggestion = "Check the program name or use one of the available programs"
+
+                    state = _emit(state, EventType.USER_REQUEST_INVALID,
+                        requested_program=chosen_program,
+                        reason=reason,
+                        selected_instead=override_program,
+                        valid_programs=valid_programs,
+                        suggestion=suggestion)
+
                 intent["program"] = override_program
                 intent["stop"] = False
                 intent["stop_reason"] = None
-                intent["reasoning"] = "Override: %s (validation required before stopping)" % override_program
-                state = _log(state, "PLAN: Overriding to %s" % override_program)
+                intent["reasoning"] = "Selected %s ('%s' not available). [Original: %s]" % (
+                    override_program,
+                    chosen_program or "no choice",
+                    original_reasoning[:200] if original_reasoning else "none"
+                )
+            else:
+                # No valid programs - shouldn't happen but handle gracefully
+                state = _log(state, "PLAN: ERROR - no valid programs available")
+                intent["stop"] = True
+                intent["stop_reason"] = "No valid programs available"
 
-        # Also check if chosen program is in valid_programs
-        elif chosen_program and chosen_program not in valid_programs and chosen_program != "STOP":
-            state = _log(state, "PLAN: LLM chose invalid program %s, valid are: %s" % (chosen_program, valid_programs))
-            # Use first valid program instead
-            if valid_programs:
-                override_program = next((p for p in valid_programs if p != "STOP"), valid_programs[0])
-                intent["program"] = override_program
-                state = _log(state, "PLAN: Overriding to %s" % override_program)
+        # If STOP is the chosen program and it's valid, set stop flags
+        elif chosen_program == "STOP":
+            state = _log(state, "PLAN: STOP is valid, allowing stop")
+            intent["stop"] = True
+            if not intent.get("stop_reason"):
+                intent["stop_reason"] = "Agent decided to stop"
+
+        # === EMIT PROGRAM_SELECTED EVENT ===
+        final_program = intent.get("program")
+        state = _emit(state, EventType.PROGRAM_SELECTED,
+            program=final_program,
+            reasoning=intent.get("reasoning", ""),
+            source="llm",
+            provider=provider)
+
+        # Check if program was modified from LLM choice
+        if chosen_program != final_program and chosen_program is not None:
+            state = _emit(state, EventType.PROGRAM_MODIFIED,
+                original=chosen_program,
+                selected=final_program,
+                reason="Not in valid_programs")
+
+        # Emit STOP_DECISION if stopping
+        if intent.get("stop"):
+            state = _emit(state, EventType.STOP_DECISION,
+                stop=True,
+                reason=intent.get("stop_reason", "Agent decided to stop"))
 
         return {
             **state,
@@ -790,6 +1163,17 @@ def _mock_plan(state):
 
         state = _log(state, "PLAN: RulesSelector chose %s" % intent.get("program"))
 
+        # === EMIT PROGRAM_SELECTED EVENT ===
+        state = _emit(state, EventType.PROGRAM_SELECTED,
+            program=intent.get("program"),
+            reasoning=intent.get("reasoning", ""),
+            source="rules")
+
+        if intent.get("stop"):
+            state = _emit(state, EventType.STOP_DECISION,
+                stop=True,
+                reason=intent.get("stop_reason", "Rules-based decision"))
+
         return {
             **state,
             "intent": intent,
@@ -841,6 +1225,18 @@ def _mock_plan(state):
             "stop": False,
             "stop_reason": None
         }
+
+    # === EMIT PROGRAM_SELECTED EVENT ===
+    final_program = mock_intent.get("program")
+    state = _emit(state, EventType.PROGRAM_SELECTED,
+        program=final_program,
+        reasoning=mock_intent.get("reasoning", ""),
+        source="rules" if "RulesSelector" in str(state.get("debug_log", [])) else "fallback")
+
+    if mock_intent.get("stop"):
+        state = _emit(state, EventType.STOP_DECISION,
+            stop=True,
+            reason=mock_intent.get("stop_reason", "Fallback decision"))
 
     return {
         **state,
@@ -913,6 +1309,13 @@ def _build_with_new_builder(state):
         state = _log(state, "BUILD: LLM returned invalid strategy type, using empty dict")
         raw_strategy = {}
 
+    # Log strategy for debugging
+    if raw_strategy:
+        strategy_summary = ", ".join(["%s=%s" % (k, v) for k, v in raw_strategy.items()])
+        state = _log(state, "BUILD: Strategy from intent: {%s}" % strategy_summary)
+    else:
+        state = _log(state, "BUILD: No strategy in intent")
+
     # Correct LLM file paths (map basenames to actual paths)
     llm_files = intent.get("files", {})
     corrected_files = {}
@@ -933,6 +1336,9 @@ def _build_with_new_builder(state):
                     basename = os.path.basename(filepath)
                     if basename in basename_to_path:
                         corrected_files[slot] = basename_to_path[basename]
+
+    # NOTE: Half-map vs full-map categorization is handled by _categorize_files()
+    # in workflow_state.py. If a single map was promoted to full_map, trust that decision.
 
     # Build context from state
     session_info = state.get("session_info", {})
@@ -967,9 +1373,18 @@ def _build_with_new_builder(state):
 
     if not command:
         state = _log(state, "BUILD: Failed to build command for %s" % program)
+        state = _emit(state, EventType.ERROR, message="Failed to build command", details=program)
         return {**state, "command": "", "validation_error": "Failed to build command"}
 
     state = _log(state, "BUILD: Generated command: %s" % command[:150])
+
+    # === EMIT FILES_SELECTED EVENT (verbose level) ===
+    selection_details = builder.get_selection_details()
+    if selection_details:
+        state = _emit(state, EventType.FILES_SELECTED, selections=selection_details)
+
+    # === EMIT COMMAND_BUILT EVENT ===
+    state = _emit(state, EventType.COMMAND_BUILT, command=command, program=program)
 
     return {
         **state,
@@ -1215,6 +1630,9 @@ def build(state):
         state = _log(state, "BUILD: FILE REJECTION - %s" % error_msg)
         # Don't fail completely - let auto-fill try to find alternatives
         state = _log(state, "BUILD: Will attempt to auto-fill valid files instead")
+
+    # NOTE: Half-map vs full-map categorization is handled by _categorize_files()
+    # in workflow_state.py. If a single map was promoted to full_map, trust that decision.
 
     # === AUTO-FILL MODEL FOR AUTOBUILD ===
     # If LLM selected autobuild but didn't include model, find the best refined model
@@ -1462,13 +1880,21 @@ def build(state):
         if not command:
             error_msg = "Builder returned empty command for %s" % program
             state = _log(state, "BUILD: Failed - %s" % error_msg)
+            state = _emit(state, EventType.ERROR, message=error_msg)
             return {**state, "command": "", "validation_error": error_msg}
 
     except Exception as e:
         state = _log(state, "BUILD: Exception - %s" % str(e))
+        state = _emit(state, EventType.ERROR, message="Build exception", details=str(e))
         return {**state, "command": "", "validation_error": str(e)}
 
     state = _log(state, "BUILD: Command = %s" % command[:80])
+
+    # === EMIT COMMAND_BUILT EVENT ===
+    state = _emit(state, EventType.COMMAND_BUILT,
+        command=command,
+        program=program)
+
     return {**state, "command": command, "validation_error": None}
 
 

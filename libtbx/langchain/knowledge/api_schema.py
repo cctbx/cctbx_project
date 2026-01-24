@@ -11,7 +11,7 @@ Design Principles:
 4. Self-Documenting: Schema serves as API documentation
 
 Usage:
-    from knowledge.api_schema import (
+    from libtbx.langchain.knowledge.api_schema import (
         RequestV2, ResponseV2,
         validate_request, validate_response,
         apply_request_defaults, apply_response_defaults
@@ -94,6 +94,11 @@ REQUEST_V2_SCHEMA = {
                 "type": dict,
                 "default": {},
                 "description": "Current best files by category",
+            },
+            "directives": {
+                "type": dict,
+                "default": {},
+                "description": "Structured user directives extracted from advice",
             },
         },
     },
@@ -281,6 +286,13 @@ RESPONSE_V2_SCHEMA = {
         "type": str,
         "default": None,
         "description": "Error message if request failed",
+    },
+
+    # Event log for transparency (new in v2.1)
+    "events": {
+        "type": list,
+        "default": [],
+        "description": "Structured event log for agent transparency",
     },
 }
 
@@ -546,6 +558,7 @@ def create_response(
     debug_log=None,
     error=None,
     server_version=None,
+    events=None,
 ):
     """
     Create a v2 response with proper defaults.
@@ -564,6 +577,7 @@ def create_response(
         debug_log: List of debug messages
         error: Error message if failed
         server_version: Server version string
+        events: List of structured event dicts (for transparency)
 
     Returns:
         dict: A valid v2 response
@@ -592,6 +606,7 @@ def create_response(
             "timing_ms": None,
         },
         "error": error,
+        "events": list(events) if events else [],
     }
 
     return apply_response_defaults(response)
@@ -625,6 +640,7 @@ def create_stop_response(
     final_metrics=None,
     debug_log=None,
     server_version=None,
+    events=None,
 ):
     """
     Create a v2 stop response.
@@ -635,6 +651,7 @@ def create_stop_response(
         final_metrics: Final quality metrics
         debug_log: Debug messages
         server_version: Server version
+        events: List of structured event dicts
 
     Returns:
         dict: A v2 response indicating stop
@@ -647,6 +664,7 @@ def create_stop_response(
         stop_reason=stop_reason,
         debug_log=debug_log,
         server_version=server_version,
+        events=events,
     )
 
     if final_metrics:

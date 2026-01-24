@@ -121,16 +121,17 @@ xray:
             - has: ligand_file
             - not_done: ligandfit
             - r_free: "< 0.35"
+            - refine_count: "> 0"  # Requires refinement first (ligandfit needs map coefficients from refined MTZ)
           hint: "Fit ligand when model is good enough"
 
       repeat:
-        max_cycles: 8
+        max_cycles: 4
         until:
           any:
             - r_free: "< target_r_free"
             - condition: plateau
-              cycles: 3
-              threshold: 0.003  # Less than 0.3% improvement
+              cycles: 2
+              threshold: 0.005  # Less than 0.5% improvement
 
       transitions:
         on_ligandfit: combine_ligand
@@ -236,6 +237,10 @@ cryoem:
 
       programs:
         - phenix.mtriage
+        - program: phenix.map_symmetry
+          conditions:
+            - not_done: map_symmetry
+          hint: "Run when user wants to find symmetry in the map"
 
       transitions:
         on_complete: obtain_model
@@ -394,6 +399,7 @@ cryoem:
             - has: ligand_file
             - not_done: ligandfit
             - map_cc: "> 0.6"
+            - rsr_count: "> 0"  # Requires RSR first (ligandfit needs refined model)
 
       repeat:
         max_cycles: 8
@@ -501,7 +507,6 @@ shared:
     phaser_output:
       - starts_with: "PHASER"
       - contains: "phaser"
-
 
 # =============================================================================
 # SANITY CHECKS

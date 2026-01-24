@@ -92,7 +92,15 @@ def derive_metrics_from_history(history):
             if not metrics["llg"]:
                 metrics["llg"] = _extract_float(result_text, r"LLG[=:\s]+([0-9.]+)")
             if not metrics["map_cc"]:
-                metrics["map_cc"] = _extract_float(result_text, r"(?:map.model.CC|CC_mask|CC)[:\s=]+([0-9.]+)")
+                # Try multiple patterns for map_cc extraction
+                # Pattern 1: CC_mask (the actual format from real_space_refine)
+                metrics["map_cc"] = _extract_float(result_text, r"CC_mask\s*[:=]\s*([0-9.]+)")
+                # Pattern 2: Map-CC or map_CC
+                if not metrics["map_cc"]:
+                    metrics["map_cc"] = _extract_float(result_text, r"[Mm]ap[-_\s]?CC\s*[:=]\s*([0-9.]+)")
+                # Pattern 3: Model-vs-map CC
+                if not metrics["map_cc"]:
+                    metrics["map_cc"] = _extract_float(result_text, r"[Mm]odel[-_\s]?vs[-_\s]?map\s+CC\s*[:=]?\s*([0-9.]+)")
 
             # Detect program from command if not in entry
             if metrics["program"] == "unknown":

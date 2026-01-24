@@ -150,6 +150,7 @@ success, msg, details = verify_roundtrip(request)
 | `experiment_type` | string | null | "xray" or "cryoem" |
 | `rfree_mtz` | string | null | Path to locked R-free MTZ |
 | `best_files` | object | {} | Best files by category |
+| `directives` | object | {} | Structured user directives (see [USER_DIRECTIVES.md](../guides/USER_DIRECTIVES.md)) |
 
 ### Settings Fields
 

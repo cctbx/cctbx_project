@@ -385,6 +385,9 @@ def _validate_programs(data):
         'invariants',           # Step 1: Auto-fix rules
         'input_priorities',     # Step 2: File category priorities
         'user_advice_keywords', # Step 3: Keywords for user advice matching
+        # Additional program-level fields
+        'run_once',             # Only run this program once per workflow
+        'requires_full_map',    # Program needs full map, not half-maps
     }
 
     # Valid fields for input definitions
@@ -401,7 +404,11 @@ def _validate_programs(data):
 
     # Valid fields for log_parsing
     valid_log_parsing_fields = {
-        'pattern', 'type', 'group', 'default', 'fallback_pattern', 'extract'
+        'pattern', 'type', 'group', 'default', 'fallback_pattern', 'extract',
+        # Display/formatting fields used by summary_display.py
+        'display_name', 'summary_format',
+        # No-match handling fields used by metric_patterns.py
+        'no_match_pattern', 'no_match_value'
     }
 
     # Valid fields for invariants (Step 1)
@@ -411,12 +418,14 @@ def _validate_programs(data):
 
     # Valid fields for invariant checks
     valid_check_fields = {
-        'has_file', 'has_strategy', 'strategy_equals', 'any_of', 'all_of'
+        'has_file', 'has_strategy', 'strategy_equals', 'any_of', 'all_of',
+        'has_file_category', 'not_has_file_category_only'  # File category checks
     }
 
     # Valid fields for invariant fixes
     valid_fix_fields = {
-        'set_strategy', 'set_file', 'remove_file', 'auto_fill_resolution'
+        'set_strategy', 'set_file', 'remove_file', 'auto_fill_resolution',
+        'auto_fill_output_prefix'  # Auto-generate output prefix
     }
 
     # Valid fields for input_priorities (Step 2)
@@ -1039,6 +1048,20 @@ def display_metrics(data):
 
 def display_file(filepath):
     """Display a YAML file's contents in formatted way."""
+    # If file doesn't exist, try to find it in the knowledge directory
+    if not os.path.exists(filepath):
+        # Try in knowledge subdirectory
+        knowledge_path = os.path.join(script_dir, "knowledge", filepath)
+        if os.path.exists(knowledge_path):
+            filepath = knowledge_path
+        else:
+            # Try to find by basename in knowledge directory
+            yaml_files = find_yaml_files(script_dir)
+            for yf in yaml_files:
+                if os.path.basename(yf) == filepath or os.path.basename(yf) == os.path.basename(filepath):
+                    filepath = yf
+                    break
+
     data, error = load_yaml_file(filepath)
 
     if error:

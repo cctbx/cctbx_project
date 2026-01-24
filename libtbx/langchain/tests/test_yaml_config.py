@@ -6,13 +6,31 @@ Tests:
 2. Program registry works with YAML
 3. Metrics can be extracted from logs
 4. Workflow phases are defined correctly
+
+Note: These tests require the full PHENIX environment (libtbx).
 """
 
 from __future__ import absolute_import, division, print_function
 
 
+# Check if libtbx is available - these tests require PHENIX
+try:
+    import libtbx
+    assert libtbx is not None  # Silence unused import warning
+    LIBTBX_AVAILABLE = True
+except ImportError:
+    LIBTBX_AVAILABLE = False
+
+
+def _skip_if_no_libtbx():
+    """Raise an error if libtbx is not available."""
+    if not LIBTBX_AVAILABLE:
+        raise ImportError("These tests require PHENIX (libtbx not available)")
+
+
 def test_yaml_loading():
     """Test that all YAML files load correctly."""
+    _skip_if_no_libtbx()
     print("Test: yaml_loading")
 
     from libtbx.langchain.knowledge.yaml_loader import (
@@ -756,7 +774,10 @@ def test_input_priorities_yaml_structure():
     assert "input_priorities" in rsr, "real_space_refine should have input_priorities"
 
     rsr_model = rsr["input_priorities"]["model"]
-    assert "rsr_output" in rsr_model["categories"], "RSR should prefer rsr_output"
+    # RSR uses parent category 'model' with prefer_subcategories for ordering
+    assert "model" in rsr_model["categories"], "RSR should have model in categories"
+    assert "rsr_output" in rsr_model.get("prefer_subcategories", []), \
+        "RSR should prefer rsr_output subcategory"
     assert "processed_predicted" in rsr_model["exclude_categories"], \
         "RSR should exclude processed_predicted"
 
@@ -782,7 +803,10 @@ def test_input_priorities_registry():
 
     # Test real_space_refine priorities
     rsr_model = registry.get_input_priorities("phenix.real_space_refine", "model")
-    assert "rsr_output" in rsr_model["categories"], "RSR should prefer rsr_output"
+    # RSR uses parent category 'model' with prefer_subcategories
+    assert "model" in rsr_model["categories"], "RSR should have model in categories"
+    assert "rsr_output" in rsr_model.get("prefer_subcategories", []), \
+        "RSR should prefer rsr_output subcategory"
 
     # Test program without priorities
     xtriage = registry.get_input_priorities("phenix.xtriage", "model")

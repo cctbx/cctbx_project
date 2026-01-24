@@ -5,27 +5,92 @@
 #   1. File selection in input_priorities (programs.yaml)
 #   2. Workflow state detection
 #   3. Determining which programs can run
+#   4. Best file tracking (separate tracking for model vs search_model)
+#
+# SEMANTIC PARENT CATEGORIES:
+#   - model: Positioned coordinates ready for refinement
+#   - search_model: Templates for MR/docking (NOT positioned)
+#   - ligand: Small molecule coordinates/restraints
+#   - intermediate: Temporary files (never use as input)
 #
 # Each category has:
 #   - description: Human-readable explanation
 #   - extensions: File extensions that match this category (primary matching)
 #   - patterns: Filename patterns that match (for subcategorization)
 #   - excludes: Patterns that prevent matching even if other patterns match
-#   - subcategory_of: Parent category (file will be in both)
+#   - parent_category: Semantic parent (model, search_model, ligand, intermediate)
+#   - also_in: Additional categories this file belongs to (for dual membership)
+#   - valid_for: What this category can be used for
+#   - invalid_for: What this category CANNOT be used for
 
 # =============================================================================
-# PRIMARY FILE TYPES (by extension)
+# SEMANTIC PARENT CATEGORIES
+# =============================================================================
+# These define WHAT a file can be used for, not just what it is.
+
+model:
+  description: "Atomic coordinates positioned in experimental reference frame"
+  # NOTE: No extensions here - this is a SEMANTIC parent category
+  # Files are assigned to 'model' only by bubbling up from subcategories
+  # (refined, phaser_output, docked, etc.) that have explicit patterns
+  is_semantic_parent: true
+  valid_for:
+    - refinement
+    - validation
+    - ligand_fitting
+    - analysis
+  notes: |
+    Models are coordinate files that EXPLAIN experimental data.
+    They are positioned in the correct reference frame:
+    - X-ray: placed in the crystallographic unit cell
+    - Cryo-EM: placed in the map box with correct origin
+    Can be directly used for refinement.
+
+search_model:
+  description: "Coordinate templates not yet positioned in experimental frame"
+  # NOTE: No extensions here - this is a SEMANTIC parent category
+  # Files are assigned to 'search_model' by bubbling up from subcategories
+  # (predicted, processed_predicted, pdb_template, unclassified_pdb)
+  is_semantic_parent: true
+  valid_for:
+    - molecular_replacement
+    - docking
+    - model_processing
+  invalid_for:
+    - refinement  # CRITICAL: Cannot refine an unpositioned model
+  notes: |
+    Search models are templates used to FIND the correct position.
+    They have NOT been placed in the experimental reference frame.
+    Must go through Phaser (X-ray) or dock_in_map (cryo-EM) first.
+
+ligand:
+  description: "Small molecule coordinates and restraints"
+  extensions: [".pdb", ".cif"]
+  is_semantic_parent: true
+  valid_for:
+    - ligand_fitting
+    - restraint_generation
+  invalid_for:
+    - refinement  # Not a macromolecular model
+  notes: "For ligandfit, not macromolecular refinement"
+
+intermediate:
+  description: "Intermediate processing files - never use as input"
+  extensions: [".pdb"]
+  is_semantic_parent: true
+  valid_for: []  # Nothing!
+  invalid_for:
+    - all
+  notes: "Temporary byproducts - NEVER use as program inputs"
+
+# =============================================================================
+# NON-PDB PRIMARY FILE TYPES
 # =============================================================================
 
 mtz:
   description: "X-ray reflection data files"
   extensions: [".mtz", ".sca", ".hkl", ".sdf"]
   notes: "PHENIX can read multiple X-ray data formats"
-
-pdb:
-  description: "Atomic model coordinate files"
-  extensions: [".pdb"]
-  notes: "PDB files are further subcategorized by origin/purpose"
 
 sequence:
   description: "Protein/nucleic acid sequence files"
@@ -37,10 +102,12 @@ map:
   extensions: [".mrc", ".ccp4", ".map"]
   notes: "Parent category for full_map and half_map"
 
-cif:
-  description: "Crystallographic Information Files"
-  extensions: [".cif"]
-  notes: "Can be ligand restraints or model coordinates"
+ncs_spec:
+  description: "NCS symmetry operators file"
+  extensions: [".ncs_spec"]
+  patterns:
+    - "*.ncs_spec"
+  notes: "Symmetry operators from map_symmetry, used by map_to_model, resolve_cryo_em, predict_and_build"
 
 # =============================================================================
 # MTZ SUBCATEGORIES
@@ -51,13 +118,10 @@ refined_mtz:
   subcategory_of: mtz
   patterns:
     - "*refine*"
-    # New naming: refine_001_001.mtz, refine_002_001.mtz, etc.
     - "refine_[0-9][0-9][0-9]_*.mtz"
-    # AutoSol refinement data
     - "*refinement_data*"
     - "*aniso_refinement*"
   excludes:
-    # Phased MTZ files have multiple arrays - not suitable for direct refinement
     - "*phased*"
     - "*phases*"
     - "*hklout_phased*"
@@ -76,127 +140,245 @@ phased_mtz:
   notes: "Contains experimental phases - use for map calculation, not direct refinement. Phaser MTZ lacks R-free flags."
 
 # =============================================================================
-# MODEL (PDB) SUBCATEGORIES
+# MODEL SUBCATEGORIES (children of 'model')
 # =============================================================================
-
-phaser_output:
-  description: "Models from molecular replacement (Phaser)"
-  subcategory_of: pdb
-  patterns:
-    - "phaser*"
-    - "PHASER*"
-    - "*phaser*"
-  notes: "Positioned in unit cell, ready for refinement"
+# These are all POSITIONED models ready for refinement.
 
 refined:
   description: "X-ray refined models"
-  subcategory_of: pdb
+  parent_category: model
   patterns:
     - "*refine*"
-    # New naming: refine_001_001.pdb, refine_002_001.pdb, etc.
     - "refine_[0-9][0-9][0-9]_*.pdb"
   excludes:
     - "*real_space*"
     - "*rsr*"
-  notes: "Output from phenix.refine, NOT real_space_refine"
+    - "*predict*"
+  notes: "Output from phenix.refine - highest quality X-ray model"
 
 rsr_output:
   description: "Real-space refined models (cryo-EM)"
-  subcategory_of: pdb
+  parent_category: model
   patterns:
     - "*real_space_refined*"
     - "*rsr_*"
     - "*_rsr*"
     - "*_rsr_*"
-  notes: "Output from phenix.real_space_refine"
+  notes: "Output from phenix.real_space_refine - highest quality cryo-EM model"
+
+phaser_output:
+  description: "Models from molecular replacement (Phaser)"
+  parent_category: model
+  patterns:
+    - "PHASER*"
+    - "phaser*"
+    - "*_MR_*.pdb"
+  excludes:
+    - "*predict*"  # predict_and_build paths contain 'phaser' but intermediate files aren't MR output
+  notes: "Positioned in unit cell via MR, ready for refinement"
 
 autobuild_output:
   description: "Models from automated building"
-  subcategory_of: pdb
+  parent_category: model
   patterns:
     - "*autobuild*"
     - "*auto_build*"
     - "*AutoBuild*"
     - "*overall_best*"
-    - "*build*"
     - "*built*"
     - "*buccaneer*"
     - "*arp_warp*"
     - "*shelxe*trace*"
   excludes:
     - "*predict*"
-  notes: "Output from phenix.autobuild or similar programs"
+    - "*AutoBuild_run_*"  # Intermediate directory
+  notes: "Output from phenix.autobuild - built into density"
+
+docked:
+  description: "Models docked into cryo-EM maps"
+  parent_category: model
+  patterns:
+    - "*dock*map*"
+    - "*docked*"
+    - "placed_model*"
+    - "*_placed*"
+  excludes:
+    - "*run_mr*"  # Intermediate MR files from dock_in_map
+  notes: "Output from phenix.dock_in_map - positioned in map"
+
+with_ligand:
+  description: "Models that include fitted ligands"
+  parent_category: model
+  patterns:
+    - "*with_ligand*"
+    - "*_liganded*"
+    - "*plus_lig*"
+  also_in: [refined]  # Preserve refined status - this is a TAG not a replacement
+  notes: "Combined protein + ligand models - still a refined model"
+
+ligand_fit_output:
+  description: "Ligand fitting output models (protein + ligand)"
+  parent_category: model
+  patterns:
+    - "*ligand_fit*"
+    - "*ligandfit*"
+  also_in: [with_ligand]
+  notes: "Output from phenix.ligandfit - model now contains ligand"
+
+# =============================================================================
+# SEARCH_MODEL SUBCATEGORIES (children of 'search_model')
+# =============================================================================
+# These are templates for MR/docking - NOT yet positioned.
 
 predicted:
-  description: "AI-predicted models (AlphaFold, etc.)"
-  subcategory_of: pdb
+  description: "AI-predicted models (AlphaFold, ESMFold, etc.)"
+  parent_category: search_model
   patterns:
     - "*predict*"
     - "*alphafold*"
     - "*colabfold*"
     - "*AF-*"
     - "*ESMFold*"
-  notes: "Raw predictions, may need processing before MR"
+  excludes:
+    - "*processed*"
+    - "*PHASER*"
+    - "*phaser*"
+    - "*refine*"
+    - "*CarryOn*"  # Intermediate directory
+  notes: "Raw predictions - need processing before MR. NOT positioned."
 
 processed_predicted:
   description: "Processed predicted models (trimmed, B-factors adjusted)"
-  subcategory_of: pdb
+  parent_category: search_model
   patterns:
     - "*processed*predict*"
     - "*processed*model*"
     - "*predict*processed*"
     - "*model*processed*"
-  also_in: [predicted]
-  notes: "Ready for molecular replacement but NOT for refinement (box/symmetry mismatch)"
+    - "*_processed.pdb"
+  excludes:
+    - "*PHASER*"
+    - "*phaser*"
+    - "*refine*"
+  notes: "Ready for MR but NOT for refinement - still not positioned in unit cell"
 
-docked:
-  description: "Models docked into cryo-EM maps"
-  subcategory_of: pdb
+pdb_template:
+  description: "Homologous structure from PDB for molecular replacement"
+  parent_category: search_model
   patterns:
-    - "*dock*map*"
-    - "*docked*"
-    - "placed_model*"
-    - "*_placed*"
-  notes: "Output from phenix.dock_in_map"
+    - "*template*"
+    - "*homolog*"
+    - "*sculptor*"
+    - "*chainsaw*"
+    - "*search_model*"
+    - "*search*model*"
+  notes: "PDB homolog for MR - consider running Sculptor for chain editing"
 
-intermediate_mr:
-  description: "Intermediate MR files (should not be used directly)"
-  subcategory_of: pdb
+# Default category for unclassified PDB files
+# If a PDB file doesn't match any specific pattern, treat it as a potential search model
+# This is safer than assuming it's positioned (which could lead to invalid refinement)
+unclassified_pdb:
+  description: "PDB files that don't match any specific pattern"
+  parent_category: search_model  # Safer default - can be used for MR/docking
+  extensions: [".pdb"]
   patterns:
-    - "run_mr*"
-    - "*mr.[0-9]*"
-    - "*_mr_*temp*"
-  notes: "Intermediate files from dock_in_map internal MR - never use for refinement"
-
-with_ligand:
-  description: "Models that include fitted ligands"
-  subcategory_of: pdb
-  patterns:
+    - "*model*"  # Generic model files
+    - "*"  # Catch-all for any PDB
+  excludes:
+    # Exclude everything that should be in a more specific category
+    - "*refine*"
+    - "*rsr*"
+    - "*real_space*"
+    - "*phaser*"
+    - "*autobuild*"
+    - "*overall_best*"
+    - "*dock*"
+    - "*placed*"
     - "*with_ligand*"
-    - "*_liganded*"
-  notes: "Combined protein + ligand models"
-
-ligand_fit:
-  description: "Ligand fitting output models"
-  subcategory_of: pdb
-  patterns:
     - "*ligand_fit*"
     - "*ligandfit*"
-  notes: "Output from phenix.ligandfit"
+    - "*predict*"
+    - "*alphafold*"
+    - "*colabfold*"
+    - "*processed*"
+    - "*template*"
+    - "*homolog*"
+    - "lig*"
+    - "*ligand*"
+  notes: "Default category for generic PDB files - treated as potential search models"
+
+# =============================================================================
+# LIGAND SUBCATEGORIES (children of 'ligand')
+# =============================================================================
 
 ligand_pdb:
   description: "Standalone ligand coordinate files"
-  subcategory_of: pdb
+  parent_category: ligand
   patterns:
-    - "lig*.pdb"
-    - "ligand*.pdb"
-    - "LIG*.pdb"
+    - "lig.pdb"
+    - "lig_*.pdb"
+    - "ligand.pdb"
+    - "ligand_*.pdb"
+    - "LIG.pdb"
+    - "LIG_*.pdb"
   excludes:
     - "*ligand_fit*"
     - "*ligandfit*"
     - "*with_ligand*"
   max_basename_length: 20
   notes: "Small molecule coordinates for fitting"
+
+ligand_cif:
+  description: "Ligand restraint/geometry files"
+  parent_category: ligand
+  extensions: [".cif"]
+  patterns:
+    - "*restraint*"
+    - "*constraint*"
+    - "lig.cif"
+    - "lig_*.cif"
+    - "ligand.cif"
+    - "ligand_*.cif"
+    - "LIG.cif"
+    - "LIG_*.cif"
+  excludes:
+    - "*refine*"
+    - "*model*"
+    - "*coord*"
+  notes: "Chemical restraints for ligand refinement"
+
+# =============================================================================
+# INTERMEDIATE SUBCATEGORIES (children of 'intermediate')
+# =============================================================================
+# These should NEVER be used as inputs to any program.
+
+intermediate_mr:
+  description: "Intermediate MR files from dock_in_map"
+  parent_category: intermediate
+  patterns:
+    - "run_mr*"
+    - "*mr.[0-9]*"
+    - "*_mr_*temp*"
+    - "*/run_mr/*"
+  notes: "NEVER use - temporary files from internal MR"
+
+autobuild_temp:
+  description: "Temporary AutoBuild files"
+  parent_category: intermediate
+  patterns:
+    - "*AutoBuild_run_*"
+    - "*_temp_trace*"
+    - "*_temp_build*"
+  notes: "NEVER use - intermediate AutoBuild files"
+
+carryover_temp:
+  description: "CarryOn directory intermediate files"
+  parent_category: intermediate
+  patterns:
+    - "*CarryOn*"
+    - "*_CarryOn/*"
+    - "*/CarryOn/*"
+  notes: "NEVER use - predict_and_build intermediate files"
 
 # =============================================================================
 # MAP SUBCATEGORIES
@@ -231,22 +413,52 @@ half_map:
   notes: "Usually come in pairs, used for resolution estimation"
 
 # =============================================================================
-# CIF SUBCATEGORIES
+# CIF SPECIAL HANDLING
 # =============================================================================
-
-ligand_cif:
-  description: "Ligand restraint/geometry files"
-  subcategory_of: cif
-  patterns:
-    - "*"
-  excludes:
-    - "*refine*"
-  notes: "Chemical restraints for ligand refinement"
+# CIF files can be either ligand restraints OR model coordinates.
+# Classification is done by content/naming, not just extension.
 
 model_cif:
   description: "Model coordinate files in mmCIF format"
-  subcategory_of: cif
+  parent_category: model
+  extensions: [".cif"]
   patterns:
-    - "*refine*"
-  also_in: [pdb, refined]
+    - "*refine*.cif"
+    - "*coord*.cif"
+  excludes:
+    - "*ligand*"
+    - "*restraint*"
+    - "*constraint*"
+    - "lig_*"
+    - "LIG_*"
+  also_in: [refined]
   notes: "mmCIF format model files from refinement"
+
+# =============================================================================
+# BACKWARD COMPATIBILITY
+# =============================================================================
+# These aliases maintain compatibility with existing code.
+
+pdb:
+  description: "[DEPRECATED] Use 'model' or 'search_model' instead"
+  extensions: [".pdb"]
+  is_deprecated: true
+  notes: "Kept for backward compatibility - prefer semantic categories"
+
+cif:
+  description: "[DEPRECATED] Use 'ligand_cif' or 'model_cif' instead"
+  extensions: [".cif"]
+  is_deprecated: true
+  notes: "Kept for backward compatibility - prefer semantic categories"
+
+ligand_file:
+  description: "[DEPRECATED] Use 'ligand' category instead"
+  extensions: [".cif", ".pdb"]
+  patterns:
+    - "*ligand*"
+    - "lig.*"
+    - "LIG.*"
+    - "*restraints*"
+  is_deprecated: true
+  redirect_to: ligand
+  notes: "Kept for backward compatibility"

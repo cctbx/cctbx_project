@@ -29,8 +29,10 @@ Usage:
 from __future__ import absolute_import, division, print_function
 
 import os
-import re
 from datetime import datetime
+
+# Centralized pattern utilities
+from libtbx.langchain.agent.pattern_manager import is_half_map
 
 
 # =============================================================================
@@ -156,15 +158,20 @@ class BestFileChange:
 
 class BestFilesTracker:
     """
-    Tracks the best file of each category throughout a session.
+    Tracks the best file of each SEMANTIC category throughout a session.
 
     Categories tracked:
-        - model: Best atomic model (PDB/mmCIF)
+        - model: Best POSITIONED atomic model (ready for refinement)
+        - search_model: Best template for MR/docking (NOT yet positioned)
         - map: Best full cryo-EM map
         - mtz: Best reflection data (with R-free flags)
         - map_coefficients: Best map coefficients
         - sequence: Sequence file
-        - ligand_cif: Ligand restraints
+        - ligand: Best ligand file (coordinates or restraints)
+
+    IMPORTANT DISTINCTION:
+        - 'model' = Positioned in experimental reference frame, ready for refinement
+        - 'search_model' = Template that needs to be placed via Phaser or dock_in_map
 
     The tracker uses a scoring system based on:
         - Processing stage (refined > docked > predicted, etc.)
@@ -174,15 +181,40 @@ class BestFilesTracker:
     Scoring configuration is loaded from knowledge/metrics.yaml.
     """
 
-    # Categories we track
+    # Semantic categories we track
     CATEGORIES = [
-        "model",
+        "model",           # Positioned models for refinement
+        "search_model",    # Templates for MR/docking (NOT positioned)
         "map",
         "mtz",
         "map_coefficients",
         "sequence",
-        "ligand_cif",
+        "ligand",          # Small molecule coordinates/restraints
     ]
+
+    # Mapping from subcategory/stage to parent semantic category
+    STAGE_TO_PARENT = {
+        # model subcategories (positioned, ready for refinement)
+        "refined": "model",
+        "rsr_output": "model",
+        "phaser_output": "model",
+        "autobuild_output": "model",
+        "docked": "model",
+        "with_ligand": "model",
+        "ligand_fit_output": "model",
+        "model_cif": "model",
+        # search_model subcategories (templates, NOT positioned)
+        "predicted": "search_model",
+        "processed_predicted": "search_model",
+        "pdb_template": "search_model",
+        # ligand subcategories
+        "ligand_pdb": "ligand",
+        "ligand_cif": "ligand",
+        # intermediate - NOT tracked (returns None)
+        "intermediate_mr": None,
+        "autobuild_temp": None,
+        "carryover_temp": None,
+    }
 
     def __init__(self):
         """Initialize empty tracker."""
@@ -243,17 +275,18 @@ class BestFilesTracker:
     def _get_default_scoring(self):
         """Return hardcoded default scoring as fallback."""
         return {
+            # MODEL: Positioned coordinates ready for refinement
             "model": {
                 "stage_scores": {
                     "refined": 100,
                     "rsr_output": 100,
+                    "with_ligand": 100,      # Tag, same score as refined
+                    "ligand_fit_output": 90,
                     "autobuild_output": 80,
-                    "docked": 60,
-                    "processed_predicted": 50,
-                    "predicted": 40,
-                    "phaser_output": 30,
-                    "pdb": 10,
-                    "_default": 10,
+                    "phaser_output": 70,      # MR output - positioned in unit cell
+                    "docked": 60,             # Docked into map
+                    "model_cif": 100,         # mmCIF model from refinement
+                    "_default": 50,           # Unknown model type
                 },
                 "metric_scores": {
                     "r_free": {
@@ -274,6 +307,31 @@ class BestFilesTracker:
                         "best_value": 0,
                         "worst_value": 20,
                     },
+                },
+            },
+            # SEARCH_MODEL: Templates for MR/docking - NOT yet positioned
+            "search_model": {
+                "stage_scores": {
+                    "processed_predicted": 70,  # Best for MR - trimmed
+                    "pdb_template": 60,         # PDB homolog - may need sculptor
+                    "predicted": 50,            # Raw prediction - needs processing
+                    "_default": 40,
+                },
+                "metric_scores": {
+                    "plddt_mean": {
+                        "max_points": 30,
+                        "formula": "linear",
+                        "best_value": 90,
+                        "worst_value": 50,
+                    },
+                },
+            },
+            # LIGAND: Small molecule coordinates/restraints
+            "ligand": {
+                "stage_scores": {
+                    "ligand_cif": 60,   # Restraints - preferred
+                    "ligand_pdb": 50,   # Coordinates only
+                    "_default": 40,
                 },
             },
             "map": {
@@ -323,6 +381,7 @@ class BestFilesTracker:
                     "_default": 50,
                 },
             },
+            # Backward compatibility alias
             "ligand_cif": {
                 "stage_scores": {
                     "user_provided": 60,
@@ -414,10 +473,11 @@ class BestFilesTracker:
             path: Full path to the file
             cycle: Current cycle number
             metrics: Quality metrics dict (r_free, map_cc, clashscore, etc.)
-            stage: Processing stage (e.g., "refined", "docked")
+            stage: Processing stage (e.g., "refined", "docked", "predicted")
                    If None, will be inferred from filename
-            category: File category (e.g., "model", "map")
-                      If None, will be inferred from extension
+            category: File category (e.g., "model", "search_model", "map")
+                      If None, will be inferred from extension/filename
+                      or from stage if stage is provided
 
         Returns:
             bool: True if this file became the new best
@@ -425,21 +485,33 @@ class BestFilesTracker:
         if not path or not os.path.basename(path):
             return False
 
-        # Classify file if category/stage not provided
+        # Skip intermediate/temporary files first
+        if self._is_intermediate_file(path):
+            return False
+
+        # If stage is provided but category is not, try to infer category from stage
+        if category is None and stage is not None:
+            category = self.STAGE_TO_PARENT.get(stage)
+
+        # Classify file if category still not known
         if category is None:
             category = self._classify_category(path)
         if category is None:
             return False  # Unknown file type
 
+        # Classify stage if not provided
         if stage is None:
             stage = self._classify_stage(path, category)
 
-        # Skip intermediate/temporary files
-        if self._is_intermediate_file(path):
-            return False
-
         # Calculate score
         score = self._calculate_score(path, category, stage, metrics)
+
+        # DEBUG: Log evaluation details
+        basename = os.path.basename(path)
+        current = self.best.get(category)
+        current_score = current.score if current else None
+        current_path = os.path.basename(current.path) if current else None
+        print(f"DEBUG best_files.evaluate_file: {basename} category={category} stage={stage} score={score:.1f} current_best={current_path} current_score={current_score}")
 
         # Special handling for MTZ: earliest with R-free flags wins forever
         if category == "mtz":
@@ -657,6 +729,19 @@ class BestFilesTracker:
         Returns:
             float: Score (higher is better)
         """
+        # SAFETY: If stage wasn't determined but filename clearly indicates refinement,
+        # override stage. This handles cases where program context was lost.
+        if category == "model" and stage in (None, "model", "_default"):
+            basename = os.path.basename(path).lower()
+            if 'refine' in basename and 'real_space' not in basename:
+                stage = "refined"
+            elif 'rsr_' in basename or '_rsr' in basename or 'real_space_refined' in basename:
+                stage = "rsr_output"
+            elif 'phaser' in basename:
+                stage = "phaser_output"
+            elif 'autobuild' in basename or 'overall_best' in basename:
+                stage = "autobuild_output"
+
         # Get stage score from config
         stage_score = self._get_stage_score(category, stage)
 
@@ -771,71 +856,246 @@ class BestFilesTracker:
 
     def _classify_category(self, path):
         """
-        Determine file category from extension.
+        Determine file's SEMANTIC parent category.
+
+        This returns the high-level category (model, search_model, ligand, etc.)
+        based on what the file CAN BE USED FOR, not just its extension.
 
         Args:
             path: File path
 
         Returns:
-            str or None: Category name
+            str or None: Semantic category name (model, search_model, map, etc.)
         """
         if not path:
             return None
 
         lower = path.lower()
+        basename = os.path.basename(lower)
 
-        if lower.endswith('.pdb') or lower.endswith('.cif') and 'refine' in lower:
-            return "model"
-        elif lower.endswith('.mtz'):
+        # Skip intermediate files entirely
+        if self._is_intermediate_file(path):
+            return None
+
+        # PDB/CIF files need semantic classification
+        if lower.endswith('.pdb') or lower.endswith('.cif'):
+            return self._classify_pdb_cif_category(path)
+
+        # Other file types
+        if lower.endswith('.mtz'):
             return "mtz"
         elif lower.endswith(('.mrc', '.ccp4', '.map')):
-            # Distinguish maps from map coefficients (which are MTZ)
             return "map"
         elif lower.endswith(('.fa', '.fasta', '.seq', '.dat')):
             return "sequence"
-        elif lower.endswith('.cif') and ('lig' in lower or len(os.path.basename(lower)) < 10):
-            return "ligand_cif"
 
         return None
 
-    def _classify_stage(self, path, category):
+    def _classify_pdb_cif_category(self, path):
         """
-        Determine processing stage from filename.
+        Classify a PDB/CIF file into its semantic parent category.
+
+        This is the key method that determines whether a coordinate file
+        is a 'model' (positioned, ready for refinement) or a 'search_model'
+        (template that needs to be placed first).
 
         Args:
             path: File path
-            category: File category
 
         Returns:
-            str: Stage name
+            str: "model", "search_model", or "ligand"
+        """
+        basename = os.path.basename(path).lower()
+        lower = path.lower()
+
+        # First check for ligands (small molecules)
+        if self._is_ligand_file(basename):
+            return "ligand"
+
+        # Check for SEARCH_MODEL indicators FIRST (templates, NOT positioned)
+        # These take priority because we don't want to accidentally send
+        # an unpositioned model to refinement
+        search_model_indicators = [
+            'predict',          # AlphaFold/ESMFold prediction
+            'alphafold',
+            'colabfold',
+            'esmfold',
+            'af-',              # AlphaFold ID prefix
+            'template',         # PDB template
+            'homolog',          # Homologous structure
+            'sculptor',         # Sculptor output (still a template)
+            'chainsaw',         # Chainsaw output (still a template)
+        ]
+
+        # Also check for "processed" + "model" pattern (common for processed predictions)
+        if 'processed' in basename and ('model' in basename or 'predict' in basename):
+            # But NOT if it also has phaser/refine
+            if 'phaser' not in basename and 'refine' not in basename:
+                return "search_model"
+
+        # Exclusions for search_model (these indicate a POSITIONED model)
+        positioned_indicators = [
+            'phaser',           # PHASER output is positioned
+            'refine',           # Refined is positioned
+            '_rsr',             # RSR output is positioned
+            'rsr_',             # RSR output is positioned
+            'placed',           # Docked/placed is positioned
+            'dock',             # dock_in_map output is positioned
+            'autobuild',        # AutoBuild output is positioned
+            'overall_best',     # AutoBuild best is positioned
+            'built',            # Built model is positioned
+        ]
+
+        # Check search_model indicators
+        for indicator in search_model_indicators:
+            if indicator in basename:
+                # Check if any positioned indicator overrides
+                if any(pos in basename for pos in positioned_indicators):
+                    return "model"
+                return "search_model"
+
+        # Check for MODEL indicators (positioned, ready for refinement)
+        model_indicators = [
+            'refine',           # Output from phenix.refine
+            'rsr_',             # Real-space refined
+            'real_space_refined',
+            'phaser',           # PHASER output (positioned via MR)
+            'placed',           # Docked/placed model
+            'dock',             # dock_in_map output
+            'autobuild',        # AutoBuild output
+            'auto_build',
+            'overall_best',     # AutoBuild best model
+            'built',            # Built model
+            'buccaneer',        # Buccaneer output
+            'shelxe',           # SHELXE output
+            'with_ligand',      # Model with ligand added
+            '_liganded',        # Model with ligand added
+            'ligand_fit',       # LigandFit output
+            'ligandfit',        # LigandFit output
+        ]
+
+        for indicator in model_indicators:
+            if indicator in basename:
+                return "model"
+
+        # CIF files: check if it's a model or ligand restraints
+        if path.lower().endswith('.cif'):
+            return self._classify_cif_content(path, basename)
+
+        # Default: assume it's a model (conservative - better to try refinement)
+        return "model"
+
+    def _is_ligand_file(self, basename):
+        """Check if file is a ligand (small molecule)."""
+        ligand_patterns = ['lig.pdb', 'lig.cif', 'ligand.pdb', 'ligand.cif',
+                          'lig_', 'ligand_', 'restraint', 'constraint']
+        not_ligand = ['ligand_fit', 'ligandfit', 'with_ligand', '_liganded']
+
+        is_ligand = any(p in basename for p in ligand_patterns)
+        is_excluded = any(p in basename for p in not_ligand)
+        is_small_name = len(basename) < 20
+
+        return is_ligand and not is_excluded and is_small_name
+
+    def _classify_cif_content(self, path, basename):
+        """
+        Classify CIF file based on naming or content.
+
+        Args:
+            path: Full file path
+            basename: Lowercase basename
+
+        Returns:
+            str: "model", "ligand", or default
+        """
+        # Naming conventions first (fast)
+        if any(p in basename for p in ['restraint', 'constraint', 'lig_']):
+            return "ligand"
+        if any(p in basename for p in ['refine', 'model', 'coord']):
+            return "model"
+
+        # Content detection (slower but accurate)
+        try:
+            with open(path, 'r') as f:
+                content = f.read(4096)  # Read first 4KB
+                if '_atom_site.' in content or '_atom_site_' in content:
+                    return "model"
+                if '_chem_comp.' in content or 'data_comp_' in content:
+                    return "ligand"
+        except Exception:
+            pass
+
+        # Default based on file size (restraints are usually small)
+        try:
+            if os.path.getsize(path) < 50000:  # < 50KB
+                return "ligand"
+        except Exception:
+            pass
+
+        return "model"  # Default to model
+
+    def _classify_stage(self, path, category):
+        """
+        Determine processing stage/subcategory from filename.
+
+        For PDB files, this returns the specific subcategory within the
+        semantic parent (e.g., "refined" within "model", "predicted" within "search_model").
+
+        Args:
+            path: File path
+            category: Semantic parent category (model, search_model, ligand, etc.)
+
+        Returns:
+            str: Stage/subcategory name
         """
         basename = os.path.basename(path).lower()
 
         if category == "model":
-            # Check for refined models
+            # Model subcategories (positioned, ready for refinement)
+            # Check more specific patterns first!
+            if 'with_ligand' in basename or '_liganded' in basename:
+                return "with_ligand"
+            if 'ligand_fit' in basename or 'ligandfit' in basename:
+                return "ligand_fit_output"
+            if 'real_space_refined' in basename or 'rsr_' in basename or '_rsr' in basename:
+                return "rsr_output"
             if 'refine' in basename and 'real_space' not in basename:
                 return "refined"
-            if 'real_space_refined' in basename or 'rsr_' in basename:
-                return "rsr_output"
             if 'overall_best' in basename or 'autobuild' in basename:
                 return "autobuild_output"
             if 'placed' in basename or 'dock' in basename:
                 return "docked"
-            if 'processed' in basename:
-                return "processed_predicted"
-            if 'predict' in basename or 'alphafold' in basename:
-                return "predicted"
             if 'phaser' in basename:
                 return "phaser_output"
-            return "pdb"
+            if basename.endswith('.cif') and 'refine' in basename:
+                return "model_cif"
+            # Default for unknown model type
+            return "model"
+
+        elif category == "search_model":
+            # Search model subcategories (templates, NOT positioned)
+            if 'processed' in basename:
+                return "processed_predicted"
+            if 'template' in basename or 'homolog' in basename:
+                return "pdb_template"
+            if 'sculptor' in basename or 'chainsaw' in basename:
+                return "pdb_template"
+            # Default for predictions
+            return "predicted"
+
+        elif category == "ligand":
+            # Ligand subcategories
+            if basename.endswith('.cif'):
+                return "ligand_cif"
+            return "ligand_pdb"
 
         elif category == "map":
             if 'denmod' in basename or 'density_mod' in basename:
                 return "optimized_full_map"
             if 'sharp' in basename:
                 return "sharpened"
-            # Check for half-maps
-            if re.search(r'[_-][12ab]\.', basename) or 'half' in basename:
+            # Check for half-maps using centralized pattern
+            if is_half_map(basename):
                 return "half_map"
             return "full_map"
 
@@ -866,6 +1126,8 @@ class BestFilesTracker:
             '/temp/',             # Temporary directories
             '/tmp/',
             '.tmp.',
+            '/CarryOn/',          # predict_and_build intermediate directory
+            '_CarryOn/',          # predict_and_build intermediate directory (alt)
         ]
 
         path_check = path.lower()

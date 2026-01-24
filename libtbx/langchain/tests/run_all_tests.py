@@ -2,25 +2,37 @@
 """
 Run all tests for the PHENIX AI Agent.
 
-Test Suites:
+Test Suites (standalone - no PHENIX required):
   1. API Schema - Request/response validation
   2. Best Files Tracker - File tracking and scoring
-  3. Workflow State - State detection and transitions
-  4. YAML Config - YAML configuration validation
-  5. Sanity Checker - Sanity check logic
-  6. Metrics Analyzer - Metric extraction and trends
-  7. Dry Run - Dry run manager functionality
-  8. Integration - End-to-end workflow tests
-  9. Transport - Encoding/decoding round-trips
-  10. State Serialization - State packaging/unpackaging
-  11. Command Builder - Unified command generation
-  12. File Categorization - File classification logic
-  13. Session Summary - Agent session summary generation
+  3. Transport - Encoding/decoding round-trips
+  4. State Serialization - State packaging/unpackaging
+  5. Command Builder - Unified command generation
+  6. File Categorization - File classification logic
+  7. Session Summary - Agent session summary generation
+  8. Advice Preprocessing - README discovery, advice processing, change detection
+  9. Directive Extractor - LLM-based directive extraction from user advice
+  10. Directive Validator - Validation of LLM decisions against directives
+  11. Session Directives - Session directive storage and retrieval
+  12. YAML Tools - YAML configuration validation and inspection
+  13. Session Tools - Session management utilities
+  14. Docs Tools - Documentation generation
+
+Test Suites (require PHENIX environment):
+  15. Workflow State - State detection and transitions
+  16. YAML Config - YAML configuration validation
+  17. Sanity Checker - Sanity check logic
+  18. Metrics Analyzer - Metric extraction and trends
+  19. Dry Run - Dry run manager functionality
+  20. Integration - End-to-end workflow tests
+  21. Directives Integration - End-to-end directive system tests
 
 Usage:
     python tests/run_all_tests.py
     python tests/run_all_tests.py --verbose
     python tests/run_all_tests.py --quick  # Skip slow integration tests
+
+Note: Tests requiring PHENIX will be skipped with a warning if libtbx is not available.
 """
 
 from __future__ import absolute_import, division, print_function
@@ -215,6 +227,139 @@ def main():
     except ImportError as e:
         print(f"⚠️  Could not import test_session_summary: {e}")
         results.append(("Session Summary", False, 0))
+
+    # --- Advice Preprocessing Tests ---
+    try:
+        from tests.test_advice_preprocessing import run_all_tests as run_advice_preprocessing_tests
+        success, elapsed = run_test_module(
+            "test_advice_preprocessing", run_advice_preprocessing_tests, args.verbose)
+        results.append(("Advice Preprocessing", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_advice_preprocessing: {e}")
+        results.append(("Advice Preprocessing", False, 0))
+
+    # --- Directive Extractor Tests ---
+    try:
+        from tests.test_directive_extractor import run_all_tests as run_directive_extractor_tests
+        success, elapsed = run_test_module(
+            "test_directive_extractor", run_directive_extractor_tests, args.verbose)
+        results.append(("Directive Extractor", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_directive_extractor: {e}")
+        results.append(("Directive Extractor", False, 0))
+
+    # --- Directive Validator Tests ---
+    try:
+        from tests.test_directive_validator import run_all_tests as run_directive_validator_tests
+        success, elapsed = run_test_module(
+            "test_directive_validator", run_directive_validator_tests, args.verbose)
+        results.append(("Directive Validator", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_directive_validator: {e}")
+        results.append(("Directive Validator", False, 0))
+
+    # --- Session Directives Tests ---
+    try:
+        from tests.test_session_directives import run_all_tests as run_session_directives_tests
+        success, elapsed = run_test_module(
+            "test_session_directives", run_session_directives_tests, args.verbose)
+        results.append(("Session Directives", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_session_directives: {e}")
+        results.append(("Session Directives", False, 0))
+
+    # --- YAML Tools Tests ---
+    try:
+        from tests.test_yaml_tools import run_all_tests as run_yaml_tools_tests
+        success, elapsed = run_test_module(
+            "test_yaml_tools", run_yaml_tools_tests, args.verbose)
+        results.append(("YAML Tools", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_yaml_tools: {e}")
+        results.append(("YAML Tools", False, 0))
+
+    # --- Session Tools Tests ---
+    try:
+        from tests.test_session_tools import run_all_tests as run_session_tools_tests
+        success, elapsed = run_test_module(
+            "test_session_tools", run_session_tools_tests, args.verbose)
+        results.append(("Session Tools", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_session_tools: {e}")
+        results.append(("Session Tools", False, 0))
+
+    # --- Docs Tools Tests ---
+    try:
+        from tests.test_docs_tools import run_all_tests as run_docs_tools_tests
+        success, elapsed = run_test_module(
+            "test_docs_tools", run_docs_tools_tests, args.verbose)
+        results.append(("Docs Tools", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_docs_tools: {e}")
+        results.append(("Docs Tools", False, 0))
+
+    # --- Metric Patterns Tests ---
+    try:
+        from tests.test_metric_patterns import run_all_tests as run_metric_patterns_tests
+        success, elapsed = run_test_module(
+            "test_metric_patterns", run_metric_patterns_tests, args.verbose)
+        results.append(("Metric Patterns", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_metric_patterns: {e}")
+        results.append(("Metric Patterns", False, 0))
+
+    # --- Pattern Manager Tests ---
+    try:
+        from tests.test_pattern_manager import run_all_tests as run_pattern_manager_tests
+        success, elapsed = run_test_module(
+            "test_pattern_manager", run_pattern_manager_tests, args.verbose)
+        results.append(("Pattern Manager", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_pattern_manager: {e}")
+        results.append(("Pattern Manager", False, 0))
+
+    # --- Event System Tests ---
+    try:
+        from tests.test_event_system import run_all_tests as run_event_system_tests
+        success, elapsed = run_test_module(
+            "test_event_system", run_event_system_tests, args.verbose)
+        results.append(("Event System", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_event_system: {e}")
+        results.append(("Event System", False, 0))
+
+    # --- Program Registration Tests ---
+    try:
+        from tests.test_program_registration import run_all_tests as run_program_registration_tests
+        success, elapsed = run_test_module(
+            "test_program_registration", run_program_registration_tests, args.verbose)
+        results.append(("Program Registration", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_program_registration: {e}")
+        results.append(("Program Registration", False, 0))
+
+    # --- Summary Display Tests ---
+    try:
+        from tests.test_summary_display import run_all_tests as run_summary_display_tests
+        success, elapsed = run_test_module(
+            "test_summary_display", run_summary_display_tests, args.verbose)
+        results.append(("Summary Display", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_summary_display: {e}")
+        results.append(("Summary Display", False, 0))
+
+    # --- Directives Integration Tests (can be slow) ---
+    if not args.quick:
+        try:
+            from tests.test_directives_integration import run_all_tests as run_directives_integration_tests
+            success, elapsed = run_test_module(
+                "test_directives_integration", run_directives_integration_tests, args.verbose)
+            results.append(("Directives Integration", success, elapsed))
+        except ImportError as e:
+            print(f"⚠️  Could not import test_directives_integration: {e}")
+            results.append(("Directives Integration", False, 0))
+    else:
+        print("\n⏭️  Skipping directives integration tests (--quick mode)")
 
     # --- Summary ---
     total_elapsed = time.time() - total_start

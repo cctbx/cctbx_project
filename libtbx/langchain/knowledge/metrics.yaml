@@ -499,24 +499,27 @@ best_files_scoring:
   # ---------------------------------------------------------------------------
   # MODEL SCORING (0-200 points)
   # ---------------------------------------------------------------------------
-  # Models are scored by refinement stage (0-100) plus metrics (0-100).
-  # A fully refined model with good metrics can score up to 200 points.
+  # Models are POSITIONED coordinate files ready for refinement.
+  # They are scored by refinement stage (0-100) plus quality metrics (0-100).
+  # A fully refined model with excellent metrics can score up to 200 points.
+  #
+  # IMPORTANT: Only files in the 'model' parent category compete here.
+  # search_model files (predicted, processed_predicted) are tracked separately.
 
   model:
     stage_scores:
-      refined: 100           # Output from phenix.refine
-      rsr_output: 100        # Output from real_space_refine
-      autobuild_output: 80   # Output from phenix.autobuild
-      docked: 60             # Output from dock_in_map
-      processed_predicted: 50  # Processed AlphaFold model
-      predicted: 40          # Raw AlphaFold prediction
-      phaser_output: 30      # MR solution from Phaser
-      pdb: 10                # Unknown/generic PDB
-      _default: 10           # Fallback for unknown stages
+      refined: 100           # Output from phenix.refine - highest quality
+      rsr_output: 100        # Output from real_space_refine - highest for cryo-EM
+      autobuild_output: 80   # Output from phenix.autobuild - built into density
+      with_ligand: 100       # Refined model with ligand (also tagged as refined)
+      ligand_fit_output: 90  # Output from ligandfit (also tagged as with_ligand)
+      phaser_output: 70      # MR solution - positioned in unit cell, ready for refinement
+      docked: 60             # Output from dock_in_map - positioned in map
+      model_cif: 100         # mmCIF model from refinement (also tagged as refined)
+      _default: 50           # Unknown model type - assume positioned
 
     metric_scores:
       # R-free: Lower is better. Range 0.20 (best) to 0.40 (worst)
-      # At r_free=0.20 -> 40 pts, r_free=0.30 -> 20 pts, r_free=0.40 -> 0 pts
       r_free:
         max_points: 40
         formula: linear_inverse
@@ -524,7 +527,6 @@ best_files_scoring:
         worst_value: 0.40
 
       # Map-model CC: Higher is better. Range 0.0 to 1.0
-      # At map_cc=1.0 -> 30 pts, map_cc=0.5 -> 15 pts
       map_cc:
         max_points: 30
         formula: linear
@@ -532,12 +534,48 @@ best_files_scoring:
         worst_value: 0.0
 
       # Clashscore: Lower is better. Range 0 (best) to 20 (worst)
-      # At clashscore=0 -> 30 pts, clashscore=10 -> 15 pts, clashscore=20 -> 0 pts
       clashscore:
         max_points: 30
         formula: linear_inverse
         best_value: 0
         worst_value: 20
+
+  # ---------------------------------------------------------------------------
+  # SEARCH_MODEL SCORING (0-100 points)
+  # ---------------------------------------------------------------------------
+  # Search models are templates for MR/docking - NOT yet positioned.
+  # They CANNOT be used for refinement until placed via Phaser or dock_in_map.
+  #
+  # These are tracked separately from 'model' to ensure refinement programs
+  # never accidentally select an unpositioned template.
+
+  search_model:
+    stage_scores:
+      processed_predicted: 70  # Trimmed and ready for MR - best for MR
+      pdb_template: 60         # Homolog from PDB - may need sculptor
+      predicted: 50            # Raw AlphaFold/ESMFold - needs processing
+      _default: 40             # Unknown search template
+
+    metric_scores:
+      # pLDDT mean: Higher is better (AlphaFold confidence)
+      # At plddt=90 -> 30 pts, plddt=70 -> 15 pts, plddt=50 -> 0 pts
+      plddt_mean:
+        max_points: 30
+        formula: linear
+        best_value: 90
+        worst_value: 50
+
+  # ---------------------------------------------------------------------------
+  # LIGAND SCORING (0-60 points)
+  # ---------------------------------------------------------------------------
+  # Ligand files - coordinates and restraints for small molecules.
+  # Tracked separately from macromolecular models.
+
+  ligand:
+    stage_scores:
+      ligand_cif: 60         # Restraints file - preferred
+      ligand_pdb: 50         # Coordinates only
+      _default: 40
 
   # ---------------------------------------------------------------------------
   # MAP SCORING (0-150 points)
@@ -615,3 +653,162 @@ best_files_scoring:
     stage_scores:
       user_provided: 60
       _default: 50
+
+
+# =============================================================================
+# SUMMARY DISPLAY CONFIGURATION
+# =============================================================================
+# Configuration for how metrics appear in session summaries.
+#
+# This allows adding new metrics to summaries without code changes.
+# Two main sections:
+#   - quality_table: Rows in the Final Quality section
+#   - step_metrics: Per-program metrics shown in the Steps table
+# =============================================================================
+
+summary_display:
+
+  # ---------------------------------------------------------------------------
+  # FINAL QUALITY TABLE
+  # ---------------------------------------------------------------------------
+  # Each entry becomes a row in the Final Quality Metrics table.
+  # Rows only appear if their required metrics are present.
+
+  quality_table:
+    # X-ray refinement metrics
+    - metrics: [r_free]
+      label: "R-free"
+      format: "{r_free:.4f}"
+      experiment_types: [xray]
+      assessment: true  # Include quality assessment
+
+    - metrics: [r_work]
+      label: "R-work"
+      format: "{r_work:.4f}"
+      experiment_types: [xray]
+
+    # Cryo-EM refinement metrics
+    - metrics: [map_cc]
+      label: "Map CC"
+      format: "{map_cc:.3f}"
+      experiment_types: [cryoem]
+      assessment: true
+
+    # Symmetry (cryo-EM)
+    - metrics: [symmetry_type]
+      label: "Symmetry"
+      format: "{symmetry_type}"
+      optional_format: " ({ncs_copies} copies)"
+      optional_metrics: [ncs_copies]
+      detail_format: "CC: {ncs_cc:.2f}"
+      detail_metrics: [ncs_cc]
+      experiment_types: [cryoem]
+
+    # Geometry metrics (both X-ray and cryo-EM)
+    - metrics: [clashscore]
+      label: "Clashscore"
+      format: "{clashscore:.1f}"
+      assessment: true
+
+    - metrics: [ramachandran_outliers]
+      label: "Rama Outliers"
+      format: "{ramachandran_outliers:.1f}%"
+      assessment: true
+
+    - metrics: [rotamer_outliers]
+      label: "Rotamer Outliers"
+      format: "{rotamer_outliers:.1f}%"
+
+    # Resolution (both types)
+    - metrics: [resolution]
+      label: "Resolution"
+      format: "{resolution:.2f} Å"
+
+  # ---------------------------------------------------------------------------
+  # STEP METRICS (per-cycle display in Steps table)
+  # ---------------------------------------------------------------------------
+  # Defines what metric to show for each program in the workflow steps table.
+  # The format string uses metrics extracted from that step's result.
+
+  step_metrics:
+    # Analysis programs
+    phenix.xtriage:
+      format: "Res: {resolution:.2f}Å"
+      metrics: [resolution]
+      fallback_format: "Analyzed"
+
+    phenix.mtriage:
+      format: "Res: {resolution:.2f}Å"
+      metrics: [resolution]
+      fallback_format: "Analyzed"
+
+    phenix.map_symmetry:
+      format: "Symmetry: {symmetry_type}"
+      metrics: [symmetry_type]
+      optional_format: " ({ncs_copies} copies)"
+      optional_metrics: [ncs_copies]
+      fallback_format: "Analyzed"
+
+    # Model building programs
+    phenix.phaser:
+      format: "TFZ: {tfz:.1f}"
+      metrics: [tfz]
+      fallback_format: "Completed"
+
+    phenix.predict_and_build:
+      format: "Built model"
+      metrics: []
+
+    phenix.autobuild:
+      format: "R-free: {r_free:.3f}"
+      metrics: [r_free]
+      fallback_format: "Built model"
+
+    phenix.autosol:
+      format: "R-free: {r_free:.3f}"
+      metrics: [r_free]
+      fallback_format: "Phased"
+
+    phenix.dock_in_map:
+      format: "Docked model"
+      metrics: []
+
+    # Refinement programs
+    phenix.refine:
+      format: "R-free: {r_free:.4f}"
+      metrics: [r_free]
+      fallback_format: "Refined"
+
+    phenix.real_space_refine:
+      format: "CC: {map_cc:.3f}"
+      metrics: [map_cc]
+      fallback_format: "Refined"
+
+    # Validation programs
+    phenix.molprobity:
+      format: "Clashscore: {clashscore:.1f}"
+      metrics: [clashscore]
+      fallback_format: "Validated"
+
+    phenix.validation_cryoem:
+      format: "Validated"
+      metrics: []
+
+    # Map optimization
+    phenix.resolve_cryo_em:
+      format: "Map optimized"
+      metrics: []
+
+    phenix.map_sharpening:
+      format: "Map sharpened"
+      metrics: []
+
+    # Ligand programs
+    phenix.ligandfit:
+      format: "Ligand fitted"
+      metrics: []
+
+    # Default for unknown programs
+    _default:
+      format: "Completed"
+      metrics: []

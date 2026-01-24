@@ -4,7 +4,7 @@ Command Builder - Unified Command Generation for PHENIX AI Agent.
 This module consolidates all command generation logic into a single entry point.
 
 Usage:
-    from agent.command_builder import CommandBuilder, CommandContext
+    from libtbx.langchain.agent.command_builder import CommandBuilder, CommandContext
 
     builder = CommandBuilder()
     context = CommandContext.from_state(state)
@@ -20,18 +20,17 @@ Pipeline:
 from __future__ import absolute_import, division, print_function
 
 import os
-import re
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any, Tuple
+
+# Centralized pattern utilities
+from libtbx.langchain.agent.pattern_manager import extract_cycle_number, extract_all_numbers
 
 # Silence unused import warning - Tuple is used in type hints
 assert Tuple is not None
 
 # Import registry for YAML access
-try:
-    from agent.program_registry import ProgramRegistry
-except ImportError:
-    from libtbx.langchain.agent.program_registry import ProgramRegistry
+from libtbx.langchain.agent.program_registry import ProgramRegistry
 
 
 # =============================================================================
@@ -128,6 +127,9 @@ class CommandBuilder:
         builder = CommandBuilder()
         context = CommandContext.from_state(state)
         command = builder.build("phenix.refine", available_files, context)
+
+        # Get file selection details (for event logging)
+        selections = builder.get_selection_details()
     """
 
     # Map input slot names to best_files categories
@@ -149,6 +151,30 @@ class CommandBuilder:
     def __init__(self):
         """Initialize builder with program registry."""
         self._registry = ProgramRegistry()
+        # Track file selection details for event logging
+        self._selection_details = {}
+
+    def get_selection_details(self):
+        """
+        Get details about file selections made during last build().
+
+        Returns:
+            Dict mapping input slot names to selection details:
+            {
+                "model": {"selected": "/path/to/file.pdb", "reason": "best_files", ...},
+                "mtz": {"selected": "/path/to/data.mtz", "reason": "rfree_locked", ...},
+            }
+        """
+        return self._selection_details
+
+    def _record_selection(self, slot, filepath, reason, **kwargs):
+        """Record a file selection for later retrieval."""
+        self._selection_details[slot] = {
+            "selected": os.path.basename(filepath) if filepath else None,
+            "path": filepath,
+            "reason": reason,
+            **kwargs
+        }
 
     def build(self, program: str, available_files: List[str],
               context: CommandContext) -> Optional[str]:
@@ -165,6 +191,9 @@ class CommandBuilder:
         Returns:
             Command string, or None if command cannot be built
         """
+        # Clear previous selection details
+        self._selection_details = {}
+
         self._log(context, "BUILD: Starting command generation for %s" % program)
 
         # 1. Select files
@@ -237,7 +266,24 @@ class CommandBuilder:
 
         selected_files = {}
 
-        # Process LLM hints first (if any)
+        # For refinement programs, best_files should take priority over LLM suggestions
+        # This prevents the LLM from selecting the original input model instead of
+        # the latest refined model
+        is_refinement_program = program in ("phenix.refine", "phenix.real_space_refine")
+
+        # Pre-populate with best_files for refinement (can be overridden by explicit LLM choices)
+        if is_refinement_program and context.best_files:
+            # Model slot
+            if context.best_files.get("model") and os.path.exists(context.best_files["model"]):
+                for slot in ["model", "pdb", "pdb_file"]:
+                    if slot in all_inputs:
+                        selected_files[slot] = context.best_files["model"]
+                        self._record_selection(slot, context.best_files["model"], "best_files")
+                        self._log(context, "BUILD: Using best_model for %s: %s" % (
+                            slot, os.path.basename(context.best_files["model"])))
+                        break
+
+        # Process LLM hints (if any)
         if context.llm_files:
             llm_summary = ", ".join("%s=%s" % (k, os.path.basename(str(v)) if v else "None")
                                     for k, v in context.llm_files.items())
@@ -248,7 +294,22 @@ class CommandBuilder:
                     # Validate and correct path
                     corrected = self._correct_file_path(filepath, basename_to_path, available_files)
                     if corrected:
+                        # Handle list case (multiple files)
+                        corrected_str = corrected[0] if isinstance(corrected, list) else corrected
+
+                        # For refinement, check if LLM is trying to use a non-best model
+                        if is_refinement_program and slot in ("model", "pdb", "pdb_file"):
+                            best_model = context.best_files.get("model")
+                            if best_model and corrected_str != best_model and os.path.exists(best_model):
+                                # LLM chose a different model - log and keep best_model
+                                self._log(context, "BUILD: LLM suggested %s=%s but using best_model=%s instead" % (
+                                    slot, os.path.basename(corrected_str), os.path.basename(best_model)))
+                                self._record_selection(slot, best_model, "best_files_override",
+                                    llm_suggested=os.path.basename(corrected_str))
+                                continue  # Skip LLM's choice, keep best_model
+
                         selected_files[slot] = corrected
+                        self._record_selection(slot, corrected_str, "llm_selected")
                     else:
                         self._log(context, "BUILD: LLM file rejected (not found): %s=%s" % (
                             slot, os.path.basename(str(filepath))))
@@ -268,8 +329,14 @@ class CommandBuilder:
 
             if file_found:
                 selected_files[input_name] = file_found
-                self._log(context, "BUILD: Auto-filled %s=%s" % (
-                    input_name, os.path.basename(file_found)))
+                # Handle both single files and lists of files
+                if isinstance(file_found, list):
+                    basenames = [os.path.basename(f) for f in file_found]
+                    self._log(context, "BUILD: Auto-filled %s=%s" % (
+                        input_name, ", ".join(basenames)))
+                else:
+                    self._log(context, "BUILD: Auto-filled %s=%s" % (
+                        input_name, os.path.basename(file_found)))
 
         # Check all required inputs are filled
         missing = [inp for inp in required_inputs if inp not in selected_files]
@@ -290,6 +357,13 @@ class CommandBuilder:
 
             if file_found:
                 selected_files[input_name] = file_found
+
+        # Record all selections for event logging
+        for slot, filepath in selected_files.items():
+            if isinstance(filepath, list):
+                self._record_selection(slot, filepath[0] if filepath else None, "auto_selected")
+            else:
+                self._record_selection(slot, filepath, "auto_selected")
 
         return selected_files
 
@@ -338,38 +412,108 @@ class CommandBuilder:
         if input_name in ("mtz", "hkl_file", "data") and context.rfree_mtz:
             if os.path.exists(context.rfree_mtz):
                 self._log(context, "BUILD: Using LOCKED R-free MTZ for %s" % input_name)
+                self._record_selection(input_name, context.rfree_mtz, "rfree_locked")
                 return context.rfree_mtz
 
-        # PRIORITY 2: Best files
+        # PRIORITY 2: Best files (but respect exclude_categories)
         best_category = self.SLOT_TO_BEST_CATEGORY.get(input_name, input_name)
         best_path = context.best_files.get(best_category)
         if best_path and os.path.exists(best_path):
             # Verify extension matches
             if any(best_path.lower().endswith(ext) for ext in extensions):
-                self._log(context, "BUILD: Using best_%s for %s" % (best_category, input_name))
-                return best_path
+                # Check if best file is in an excluded category
+                priorities = self._registry.get_input_priorities(program, input_name)
+                exclude_categories = priorities.get("exclude_categories", [])
+                excluded = any(best_path in context.categorized_files.get(exc, [])
+                               for exc in exclude_categories)
+                if not excluded:
+                    self._log(context, "BUILD: Using best_%s for %s" % (best_category, input_name))
+                    self._record_selection(input_name, best_path, "best_files")
+                    return best_path
+                else:
+                    self._log(context, "BUILD: Skipping best_%s (in excluded category)" % best_category)
 
         # PRIORITY 3: Category-based selection (from input_priorities)
+        #
+        # This supports semantic parent categories with subcategory preferences:
+        #   categories: [model]  - Request by parent category
+        #   prefer_subcategories: [refined, phaser_output]  - Preference order within parent
+        #   fallback_categories: [search_model]  - Try these if primary is empty
+        #   exclude_categories: [ligand]  - Never use these
         priorities = self._registry.get_input_priorities(program, input_name)
         priority_categories = priorities.get("categories", [])
+        prefer_subcategories = priorities.get("prefer_subcategories", [])
+        fallback_categories = priorities.get("fallback_categories", [])
         exclude_categories = priorities.get("exclude_categories", [])
 
-        if priority_categories:
-            for cat in priority_categories:
+        def is_excluded(f):
+            """Check if file is in any excluded category."""
+            return any(f in context.categorized_files.get(exc, [])
+                      for exc in exclude_categories)
+
+        def find_in_categories(categories, prefer_subs=None):
+            """
+            Find best file from given categories.
+            If prefer_subs is provided, check those subcategories first (in order),
+            then fall back to the full category.
+            """
+            # If subcategory preferences are specified, check those first
+            if prefer_subs:
+                for subcat in prefer_subs:
+                    subcat_files = context.categorized_files.get(subcat, [])
+                    valid_files = [f for f in subcat_files
+                                  if not is_excluded(f)
+                                  and any(f.lower().endswith(ext) for ext in extensions)]
+                    if valid_files:
+                        self._log(context, "BUILD: Found file in preferred subcategory '%s'" % subcat)
+                        return self._get_most_recent_file(valid_files)
+
+            # Then check the parent categories
+            for cat in categories:
                 cat_files = context.categorized_files.get(cat, [])
-                for f in cat_files:
-                    # Check exclusions
-                    excluded = any(f in context.categorized_files.get(exc, [])
-                                   for exc in exclude_categories)
-                    if not excluded and any(f.lower().endswith(ext) for ext in extensions):
-                        return self._get_most_recent_file([f] + [
-                            cf for cf in cat_files
-                            if cf != f and any(cf.lower().endswith(ext) for ext in extensions)
-                        ])
+                valid_files = [f for f in cat_files
+                              if not is_excluded(f)
+                              and any(f.lower().endswith(ext) for ext in extensions)]
+                if valid_files:
+                    self._log(context, "BUILD: Found file in category '%s'" % cat)
+                    return self._get_most_recent_file(valid_files)
+
+            return None
+
+        if priority_categories:
+            # Try primary categories with subcategory preferences
+            result = find_in_categories(priority_categories, prefer_subcategories)
+            if result:
+                return result
+
+            # Try fallback categories if specified
+            if fallback_categories:
+                self._log(context, "BUILD: No files in primary categories, trying fallback")
+                result = find_in_categories(fallback_categories)
+                if result:
+                    return result
 
         # PRIORITY 4: Extension-based fallback with recency preference
+        # SPECIAL: For half_map slot, only use files explicitly categorized as half-maps
+        # Don't fall back to extension matching - this prevents the same file from being
+        # used as both full_map and half_map
+        if input_name == "half_map":
+            half_map_files = context.categorized_files.get("half_map", [])
+            if half_map_files:
+                if is_multiple:
+                    return half_map_files
+                return self._get_most_recent_file(half_map_files)
+            return None  # No half-maps available
+
         candidates = [f for f in available_files
                       if any(f.lower().endswith(ext) for ext in extensions)]
+
+        # Apply exclude_categories from input_priorities (same as PRIORITY 3)
+        # This prevents ligand files from being selected as search models, etc.
+        if exclude_categories:
+            candidates = [f for f in candidates
+                         if not any(f in context.categorized_files.get(exc, [])
+                                   for exc in exclude_categories)]
 
         # Apply exclude patterns from input_def
         exclude_patterns = input_def.get("exclude_patterns", [])
@@ -377,6 +521,10 @@ class CommandBuilder:
             candidates = [f for f in candidates
                           if not any(pat.lower() in os.path.basename(f).lower()
                                     for pat in exclude_patterns)]
+
+        # NOTE: Half-map vs full-map categorization is handled by _categorize_files()
+        # in workflow_state.py. If a single map was promoted to full_map, trust that decision.
+        # We no longer filter out half-map-named files here.
 
         if candidates:
             if is_multiple:
@@ -387,29 +535,30 @@ class CommandBuilder:
 
     def _get_most_recent_file(self, file_list: List[str]) -> Optional[str]:
         """
-        Get the most recent file from a list based on filename numbering.
+        Get the most recent file from a list based on cycle numbering.
 
-        For files with numbered suffixes (e.g., rsr_001_real_space_refined_002.pdb),
-        prefers higher numbers.
+        Uses centralized cycle extraction from pattern_manager for consistency
+        with graph_nodes and other parts of the agent.
+
+        For files with numbered suffixes (e.g., rsr_011_real_space_refined_002.pdb),
+        first sorts by primary cycle number, then by all numbers to handle
+        within-cycle variants (rsr_001_..._002.pdb > rsr_001_..._001.pdb).
         """
         if not file_list:
             return None
         if len(file_list) == 1:
             return file_list[0]
 
-        def get_file_number(path):
-            basename = os.path.basename(path)
-            numbers = re.findall(r'(\d+)', basename)
-            if numbers:
-                return int(numbers[-1])
-            return 0
-
         def sort_key(path):
+            # Primary: cycle number (for cross-cycle comparison)
+            cycle = extract_cycle_number(path, default=0)
+            # Secondary: all numbers as tuple (for within-cycle comparison)
+            all_nums = extract_all_numbers(path)
             try:
                 mtime = os.path.getmtime(path) if os.path.exists(path) else 0
             except OSError:
                 mtime = 0
-            return (get_file_number(path), mtime)
+            return (cycle, all_nums, mtime)
 
         sorted_files = sorted(file_list, key=sort_key, reverse=True)
         return sorted_files[0]

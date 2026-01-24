@@ -7,7 +7,7 @@ This module provides functions to:
 3. Serialize/deserialize for transport
 
 Usage:
-    from agent.api_client import (
+    from libtbx.langchain.agent.api_client import (
         build_request_v2,
         parse_response_v2,
         serialize_request,
@@ -21,79 +21,22 @@ import json
 import os
 
 # Import schema definitions
-try:
-    from knowledge.api_schema import (
-        create_request,
-        apply_request_defaults,
-        apply_response_defaults,
-    )
-except ImportError:
-    # Fallback for different import contexts
-    from libtbx.langchain.knowledge.api_schema import (
-        create_request,
-        apply_request_defaults,
-        apply_response_defaults,
-    )
+from libtbx.langchain.knowledge.api_schema import (
+    create_request,
+    apply_request_defaults,
+    apply_response_defaults,
+)
 
 # Import transport functions for sanitization
-try:
-    from agent.transport import (
-        sanitize_string,
-        sanitize_for_transport,
-        sanitize_dict_recursive,
-        sanitize_request,
-        sanitize_response,
-        get_transport_config,
-    )
-    TRANSPORT_AVAILABLE = True
-except ImportError:
-    try:
-        from libtbx.langchain.agent.transport import (
-            sanitize_string,
-            sanitize_for_transport,
-            sanitize_dict_recursive,
-            sanitize_request,
-            sanitize_response,
-            get_transport_config,
-        )
-        TRANSPORT_AVAILABLE = True
-    except ImportError:
-        TRANSPORT_AVAILABLE = False
-        # Fallback - define minimal versions if transport not available
-        def sanitize_string(s, max_len=None):
-            if not isinstance(s, str):
-                return str(s) if s else ""
-            import re
-            s = re.sub(r'ZZ[A-Z]{2}ZZ', '', s)
-            s = s.replace('\t', ' ')
-            if max_len and len(s) > max_len:
-                s = s[:max_len] + "... [truncated]"
-            return s
-
-        def sanitize_for_transport(s, max_len=None, truncate_quotes=False, quote_max_len=500):
-            return sanitize_string(s, max_len)
-
-        def sanitize_dict_recursive(obj, max_len_per_string=500, depth=0, max_depth=10):
-            if depth > max_depth:
-                return obj
-            if isinstance(obj, dict):
-                return {k: sanitize_dict_recursive(v, max_len_per_string, depth+1) for k, v in obj.items()}
-            elif isinstance(obj, list):
-                return [sanitize_dict_recursive(i, max_len_per_string, depth+1) for i in obj]
-            elif isinstance(obj, str):
-                return sanitize_string(obj, max_len_per_string)
-            return obj
-
-        def sanitize_request(request, config=None):
-            # Fallback - no-op
-            return request
-
-        def sanitize_response(response, config=None):
-            # Fallback - no-op
-            return response
-
-        def get_transport_config():
-            return {}
+from libtbx.langchain.agent.transport import (
+    sanitize_string,
+    sanitize_for_transport,
+    sanitize_dict_recursive,
+    sanitize_request,
+    sanitize_response,
+    get_transport_config,
+)
+TRANSPORT_AVAILABLE = True
 
 # Silence unused import warnings - these are used conditionally
 assert sanitize_request is not None
@@ -132,6 +75,7 @@ def build_request_v2(
             - experiment_type: str ("xray" or "cryoem")
             - rfree_mtz: str (path to locked MTZ)
             - best_files: dict (category -> path)
+            - directives: dict (extracted user directives)
         user_advice: User instructions/guidelines
         provider: LLM provider name
         abort_on_red_flags: Whether to abort on critical issues
@@ -181,6 +125,8 @@ def build_request_v2(
             normalized_session_state["rfree_mtz"] = session_state["rfree_mtz"]
         if session_state.get("best_files"):
             normalized_session_state["best_files"] = dict(session_state["best_files"])
+        if session_state.get("directives"):
+            normalized_session_state["directives"] = dict(session_state["directives"])
 
     # Build settings
     settings = {
@@ -260,6 +206,8 @@ def build_request_from_params(params, session=None, log_content="", history=None
             session_state["rfree_mtz"] = session.get_rfree_mtz()
         if hasattr(session, 'get_best_files_dict'):
             session_state["best_files"] = session.get_best_files_dict()
+        if hasattr(session, 'get_directives') and session.get_directives():
+            session_state["directives"] = session.get_directives()
 
     # Extract abort settings
     abort_on_red_flags = True
@@ -355,6 +303,7 @@ def parse_response_v2(response):
         },
         "next_move": next_move,
         "debug_log": debug.get("log", []),
+        "events": response.get("events", []),  # Include events
         "experiment_type": metadata.get("experiment_type"),
         "workflow_state": metadata.get("workflow_state"),
         "stop": response.get("stop", False),
@@ -375,6 +324,7 @@ def parse_response_v2(response):
         "command": command,
         "history_record": history_record,
         "debug_log": debug.get("log", []),
+        "events": response.get("events", []),  # Include events
         "error": response.get("error"),
     }
 
@@ -400,6 +350,7 @@ def parse_response_to_group_args(response):
         next_move=parsed["next_move"],
         history_record=parsed["history_record"],
         debug_log=parsed["debug_log"],
+        events=parsed.get("events", []),  # Include events
         summary=parsed["history_record"].get("summary", ""),
         analysis=parsed["history_record"].get("analysis", ""),
         error=parsed["error"],
@@ -528,3 +479,107 @@ def is_v2_response(data):
         bool: True if this is a v2 response
     """
     return is_v2_request(data)  # Same logic
+
+
+# =============================================================================
+# SIMPLE LLM CALLS
+# =============================================================================
+
+def call_llm_simple(prompt, provider="google", model=None, temperature=0.1, max_tokens=2000):
+    """
+    Make a simple LLM call without the full agent infrastructure.
+
+    This is used for one-off tasks like directive extraction where we don't
+    need the full graph/session machinery.
+
+    Args:
+        prompt: The prompt text to send
+        provider: LLM provider ("google", "openai", "anthropic")
+        model: Model name (uses provider default if None)
+        temperature: Sampling temperature (default 0.1 for consistency)
+        max_tokens: Maximum tokens in response
+
+    Returns:
+        str: The LLM response text, or None on failure
+    """
+    if provider == "google":
+        return _call_google_llm(prompt, model, temperature, max_tokens)
+    elif provider == "openai":
+        return _call_openai_llm(prompt, model, temperature, max_tokens)
+    elif provider == "anthropic":
+        return _call_anthropic_llm(prompt, model, temperature, max_tokens)
+    else:
+        raise ValueError(f"Unknown provider: {provider}")
+
+
+def _call_google_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
+    """Call Google's Gemini API."""
+    api_key = os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        raise ValueError("GOOGLE_API_KEY environment variable not set")
+
+    # Try new google.genai package first
+    try:
+        from google import genai
+        from google.genai import types
+
+        model_name = model or "gemini-2.0-flash"
+        client = genai.Client(api_key=api_key)
+
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=temperature,
+                max_output_tokens=max_tokens
+            )
+        )
+        return response.text
+
+    except ImportError:
+        # Fall back to deprecated google.generativeai
+        import google.generativeai as genai_old
+
+        genai_old.configure(api_key=api_key)
+        model_name = model or "gemini-2.0-flash"
+        gen_model = genai_old.GenerativeModel(model_name)
+
+        response = gen_model.generate_content(
+            prompt,
+            generation_config=genai_old.types.GenerationConfig(
+                temperature=temperature,
+                max_output_tokens=max_tokens
+            )
+        )
+        return response.text
+
+
+def _call_openai_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
+    """Call OpenAI's API."""
+    import openai
+
+    model_name = model or "gpt-4o-mini"
+    client = openai.OpenAI()  # Uses OPENAI_API_KEY env var
+
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=temperature,
+        max_tokens=max_tokens
+    )
+    return response.choices[0].message.content
+
+
+def _call_anthropic_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
+    """Call Anthropic's API."""
+    import anthropic
+
+    model_name = model or "claude-sonnet-4-20250514"
+    client = anthropic.Anthropic()  # Uses ANTHROPIC_API_KEY env var
+
+    response = client.messages.create(
+        model=model_name,
+        max_tokens=max_tokens,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return response.content[0].text

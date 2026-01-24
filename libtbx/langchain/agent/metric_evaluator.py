@@ -10,7 +10,7 @@ This module provides YAML-driven metrics evaluation:
 Reads definitions from metrics.yaml instead of hardcoding thresholds.
 
 Usage:
-    from agent.metric_evaluator import MetricEvaluator
+    from libtbx.langchain.agent.metric_evaluator import MetricEvaluator
 
     evaluator = MetricEvaluator()
 

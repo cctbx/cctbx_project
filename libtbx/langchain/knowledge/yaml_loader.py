@@ -7,7 +7,7 @@ This module loads the YAML configuration files that define:
 - metrics.yaml: Quality metrics and thresholds
 
 Usage:
-    from knowledge.yaml_loader import (
+    from libtbx.langchain.knowledge.yaml_loader import (
         load_programs,
         load_workflows,
         load_metrics,
@@ -137,6 +137,23 @@ def load_file_categories(force_reload=False):
     if _FILE_CATEGORIES is None or force_reload:
         _FILE_CATEGORIES = _load_yaml_file("file_categories.yaml")
     return _FILE_CATEGORIES
+
+
+def reload_all_configs():
+    """
+    Force reload all YAML configuration files.
+
+    Call this at the start of a new agent session or when configs may have changed.
+    This ensures the server picks up any changes to:
+    - programs.yaml
+    - workflows.yaml
+    - metrics.yaml
+    - file_categories.yaml
+    """
+    load_programs(force_reload=True)
+    load_workflows(force_reload=True)
+    load_metrics(force_reload=True)
+    load_file_categories(force_reload=True)
 
 
 def get_file_category(category_name):

@@ -48,21 +48,35 @@ phenix.xtriage:
     resolution:
       pattern: 'High resolution limit\s*[=:]\s*([0-9.]+)'
       type: float
+      display_name: "Resolution"
+      summary_format: "{value:.2f} Å"
     completeness:
       pattern: '[Cc]ompleteness\s*[=:]\s*([0-9.]+)'
       type: float
+      display_name: "Completeness"
+      summary_format: "{value:.1f}%"
     twin_fraction:
+      # Note: Primary extraction is done by log_parsers.py table parsing
+      # This pattern is a fallback for simple cases
       pattern: '(?:Britton alpha|Twin fraction)[:\s=]+([0-9.]+)'
       type: float
+      display_name: "Twin Fraction"
+      summary_format: "{value:.4f}"
     twin_law:
-      pattern: 'Twin law\s*[=:]\s*([^\n]+)'
+      # Note: Primary extraction is done by log_parsers.py table parsing
+      # which finds the operator with the highest Britton alpha
+      # This pattern is a fallback only
+      pattern: "Twin law\\s*[=:]\\s*([hkl0-9,/\\*+-]+)"
       type: string
+      display_name: "Twin Law"
     space_group:
       pattern: 'Space group\s*[=:]\s*([^\n]+)'
       type: string
+      display_name: "Space Group"
     no_twinning_suspected:
       pattern: 'No twinning suspected'
       type: boolean
+      display_name: "No Twinning"
     # Note: anomalous_measurability is extracted by log_parsers.py
     # using table parsing, not a simple regex pattern
 
@@ -103,9 +117,87 @@ phenix.mtriage:
       pattern: 'd_fsc_model(?:_05|_0.5)?[=:\s]+([0-9.]+)'
       type: float
       fallback_pattern: 'd99[=:\s]+([0-9.]+)'
+      display_name: "Resolution"
+      summary_format: "{value:.2f} Å"
     map_cc:
       pattern: 'CC_mask\s*[=:]\s*([0-9.]+)'
       type: float
+      display_name: "Map CC"
+      summary_format: "{value:.3f}"
+
+
+phenix.map_symmetry:
+  description: "Find point-group symmetry in cryo-EM map"
+  category: analysis
+  experiment_types: [cryoem]
+  run_once: true  # Only run once - symmetry doesn't change
+
+  inputs:
+    required:
+      map:
+        extensions: [.mrc, .ccp4, .map]
+        flag: ""
+
+  # Prefer full map over half-maps for symmetry detection
+  input_priorities:
+    map:
+      categories: [full_map, optimized_full_map, map]
+      exclude_categories: [half_map]
+
+  outputs:
+    files:
+      - pattern: "*.ncs_spec"
+        type: ncs_spec
+    metrics:
+      - symmetry_type
+
+  command: "phenix.map_symmetry {map}"
+
+  strategy_flags:
+    resolution:
+      flag: "resolution={value}"
+      type: float
+    ncs_type:
+      flag: "ncs_type={value}"
+      type: string
+      hint: "Expected symmetry type (e.g., C2, D2, C3, etc.)"
+
+  log_parsing:
+    symmetry_type:
+      # Match "NCS type: D7 (a)" or "D7 (a)  Best NCS type"
+      pattern: 'NCS\s+type[:\s]+([A-Z]\d+(?:\s*\([a-z]\))?)|([A-Z]\d+(?:\s*\([a-z]\))?)\s+Best\s+NCS'
+      type: string
+      display_name: "Symmetry Type"
+      summary_format: "{value}"
+      no_match_pattern: 'No suitable symmetry found|No symmetry found'
+      no_match_value: "None"
+    ncs_copies:
+      # Match "Copies: 14" or "OPERATORS" column value
+      pattern: 'Copies[:\s]+(\d+)|OPERATORS\s+SYMMETRY\s+[\d.]+\s+[\d.]+\s+(\d+)'
+      type: int
+      display_name: "NCS Copies"
+      summary_format: "{value} copies"
+    ncs_cc:
+      # Match "Correlation of symmetry-related regions: 0.93" or CC column
+      pattern: 'Correlation[^:]*:\s*([0-9.]+)|CC\s+OPERATORS\s+[\d.]+\s+([0-9.]+)'
+      type: float
+      display_name: "NCS CC"
+      summary_format: "CC: {value:.2f}"
+
+  hints:
+    - "Run on full map to detect point-group symmetry"
+    - "Output .ncs_spec file can be used by map_to_model, resolve_cryo_em, predict_and_build"
+    - "Optional: specify expected ncs_type if known (C2, D2, C3, etc.)"
+
+  user_advice_keywords:
+    - "symmetry"
+    - "symmetric"
+    - "oligomer"
+    - "dimer"
+    - "trimer"
+    - "tetramer"
+    - "ncs"
+    - "non-crystallographic"
 
 
 # -----------------------------------------------------------------------------
@@ -133,6 +225,9 @@ phenix.predict_and_build:
         extensions: [.mrc, .ccp4, .map]
         flag: "map_model.half_map="
         multiple: true
+      ncs_spec:
+        extensions: [.ncs_spec]
+        flag: "map_model.ncs_file="
 
   outputs:
     files:
@@ -147,7 +242,7 @@ phenix.predict_and_build:
       - r_work
       - map_cc
 
-  command: "phenix.predict_and_build {sequence} {mtz} {full_map} {half_map}"
+  command: "phenix.predict_and_build {sequence} {mtz} {full_map} {half_map} {ncs_spec}"
 
   defaults:
     control.nproc: 4
@@ -222,13 +317,23 @@ phenix.phaser:
       sequence:
         extensions: [.fa, .fasta, .seq, .dat]
         flag: ""
+        multiple: true  # Multiple sequences allowed for composition
 
   # Input priorities for molecular replacement
-  # For search model: prefer processed predictions, then any PDB
+  # 
+  # IMPORTANT: Phaser uses SEARCH MODELS (templates) to find the position
+  # These are NOT yet positioned in the unit cell - that's what Phaser does!
+  # The output PHASER.*.pdb IS a positioned model (category: model)
   input_priorities:
     model:
-      categories: [processed_predicted, pdb]
-      exclude_categories: [predicted]  # Raw predictions should be processed first
+      # Use semantic parent category - MR needs SEARCH MODELS (templates)
+      categories: [search_model]
+      # Subcategory preference: processed_predicted > pdb_template > predicted
+      prefer_subcategories: [processed_predicted, pdb_template, predicted]
+      # Can also accept positioned models as templates (less common but valid)
+      fallback_categories: [model]
+      # Exclude ligands - they are NOT search models!
+      exclude_categories: [ligand, ligand_pdb, ligand_cif, ligand_fit]
     mtz:
       categories: [mtz]  # Original data, not refined MTZ
 
@@ -252,6 +357,10 @@ phenix.phaser:
     component_copies:
       flag: "phaser.ensemble.copies={value}"
       type: int
+    output_root:
+      flag: "phaser.root={value}"
+      type: string
+      hint: "Output filename prefix (default: PHASER)."
 
   # Keywords in user advice that indicate this program should be preferred
   user_advice_keywords:
@@ -265,16 +374,23 @@ phenix.phaser:
       pattern: 'TFZ==?([0-9.]+)'
       type: float
       extract: last  # Take the last value (final refined TFZ)
+      display_name: "TFZ Score"
+      summary_format: "TFZ: {value:.1f}"
     llg:
       pattern: 'LLG=([0-9.]+)'
       type: float
       extract: last
+      display_name: "LLG"
+      summary_format: "LLG: {value:.0f}"
     rfz:
       pattern: 'RFZ=([0-9.]+)'
       type: float
+      display_name: "RFZ Score"
+      summary_format: "RFZ: {value:.1f}"
     space_group:
       pattern: 'SOLU SPAC\s+(.+?)(?:\n|$)'
       type: string
+      display_name: "Space Group"
 
 
 phenix.autobuild:
@@ -337,6 +453,57 @@ phenix.autobuild:
     - "If a refined model exists, include it for better results"
 
 
+# X-ray density modification using autobuild in maps_only mode
+phenix.autobuild_denmod:
+  description: "Density modification for X-ray data (map improvement without model building)"
+  category: map_improvement
+  experiment_types: [xray]
+
+  inputs:
+    required:
+      mtz:
+        extensions: [.mtz]
+        flag: "data="
+        priority_patterns: [refine, PHASER]  # Need phased MTZ
+      sequence:
+        extensions: [.fa, .fasta, .seq, .dat]
+        flag: "seq_file="
+    optional:
+      model:
+        extensions: [.pdb]
+        flag: "model="
+        priority_patterns: [refine, PHASER]
+
+  input_priorities:
+    mtz:
+      categories: [refined_mtz, mtz]
+
+  outputs:
+    files:
+      - pattern: "*overall_best_denmod_map_coeffs.mtz"
+        type: mtz
+    metrics: []
+
+  command: "phenix.autobuild {mtz} {sequence} {model} maps_only=True"
+
+  defaults:
+    nproc: 4
+
+  strategy_flags:
+    nproc:
+      flag: "nproc={value}"
+      type: int
+    resolution:
+      flag: "resolution={value}"
+      type: float
+
+  hints:
+    - "Runs density modification only - no model building"
+    - "REQUIRES phased MTZ (from phaser or refine output)"
+    - "Output is overall_best_denmod_map_coeffs.mtz"
+    - "Use for map improvement before manual model building"
+
+
 phenix.autosol:
   description: "Experimental phasing (SAD/MAD) for when data has anomalous signal"
   category: model_building
@@ -370,16 +537,22 @@ phenix.autosol:
     atom_type:
       flag: "autosol.atom_type={value}"
       type: string
+      hint: "Primary anomalous scatterer: Se, S, Zn, Fe, etc. (single atom type only)"
+    additional_atom_types:
+      flag: "mad_ha_add_list={value}"
+      type: string
+      hint: "Additional atom types to search for (e.g., S for sulfur in addition to Se)"
     resolution:
       flag: "resolution={value}"
       type: float
-      hint: "Anomalous scatterer: Se, S, Zn, Fe, etc."
     wavelength:
-      flag: "autosol.wavelength={value}"
+      flag: "autosol.lambda={value}"
       type: float
+      hint: "X-ray wavelength in Angstroms"
     sites:
       flag: "autosol.sites={value}"
       type: int
+      hint: "Expected number of anomalous sites"
     quick:
       flag: "quick={value}"
       type: boolean
@@ -425,12 +598,18 @@ phenix.dock_in_map:
         flag: ""
 
   # Input priorities for docking
-  # Prefer processed predictions (trimmed for docking) over raw predictions
-  # IMPORTANT: dock_in_map requires a full map, not half-maps
+  # 
+  # IMPORTANT: dock_in_map uses SEARCH MODELS (templates) to find the position
+  # These are NOT yet positioned in the map box - that's what docking does!
+  # The output placed_model.pdb IS a positioned model (category: model)
   input_priorities:
     model:
-      categories: [processed_predicted, pdb]
-      exclude_categories: [predicted]  # Raw predictions should be processed first
+      # Use semantic parent category - docking needs SEARCH MODELS (templates)
+      categories: [search_model]
+      # Subcategory preference: processed_predicted > pdb_template > predicted
+      prefer_subcategories: [processed_predicted, pdb_template, predicted]
+      # Exclude ligands and intermediates
+      exclude_categories: [ligand, ligand_pdb, ligand_cif, intermediate_mr]
     map:
       categories: [full_map, optimized_full_map, map]
       exclude_categories: [half_map]  # Half-maps are too noisy for docking
@@ -478,27 +657,45 @@ phenix.map_to_model:
   description: "Build atomic model directly into cryo-EM map"
   category: model_building
   experiment_types: [cryoem]
-  requires_full_map: true  # Cannot use half-maps - need clean density for building
 
   inputs:
     required:
-      map:
-        extensions: [.mrc, .ccp4, .map]
-        flag: ""
       sequence:
         extensions: [.fa, .fasta, .seq, .dat]
         flag: "seq_file="
     optional:
+      full_map:
+        extensions: [.mrc, .ccp4, .map]
+        flag: ""
+      half_map:
+        extensions: [.mrc, .ccp4, .map]
+        flag: ""
+        multiple: true
       model:
         extensions: [.pdb]
         flag: "model="
+      ncs_spec:
+        extensions: [.ncs_spec]
+        flag: "ncs_file="
+
+  # Must have either full_map or half_maps
+  input_priorities:
+    full_map:
+      categories: [full_map, optimized_full_map, map]
+      exclude_categories: [half_map]
+    half_map:
+      categories: [half_map]
 
   outputs:
     files:
+      - pattern: "map_to_model*.pdb"
+        type: model
       - pattern: "*.pdb"
         type: model
+    metrics:
+      - map_cc
 
-  command: "phenix.map_to_model {map} {sequence} {model}"
+  command: "phenix.map_to_model {full_map} {half_map} {sequence} {model} {ncs_spec}"
 
   defaults:
     nproc: 4
@@ -510,6 +707,28 @@ phenix.map_to_model:
     nproc:
       flag: "nproc={value}"
       type: int
+
+  invariants:
+    - name: requires_map_input
+      description: "Requires either a full map or half-maps"
+      check:
+        any_of:
+          - has_file: full_map
+          - has_file: half_map
+      message: "map_to_model requires either a full map or half-maps"
+
+    - name: requires_resolution
+      description: "Resolution parameter is required for map_to_model"
+      check:
+        has_strategy: resolution
+      fix:
+        auto_fill_resolution: true
+      message: "Resolution required for map_to_model"
+
+  hints:
+    - "Can use full map OR two half-maps (half-maps provide better weighting)"
+    - "Resolution is REQUIRED - get it from mtriage"
+    - "Optional: provide ncs_spec file from map_symmetry for symmetric structures"
 
 
 phenix.process_predicted_model:
@@ -557,10 +776,17 @@ phenix.refine:
 
   # Input priorities: which file categories to prefer for each input
   # Categories are checked in order; first match wins
+  # 
+  # IMPORTANT: Refinement requires POSITIONED models (category: model)
+  # It CANNOT use search_model (unpositioned templates like predictions)
   input_priorities:
     model:
-      categories: [with_ligand, refined, phaser_output, autobuild_output, pdb]
-      exclude_categories: [predicted, intermediate_mr]  # Never use raw predictions or intermediate MR files
+      # Use semantic parent category - refinement needs POSITIONED models only
+      categories: [model]
+      # Subcategory preference within 'model': with_ligand > refined > phaser_output > autobuild > docked
+      prefer_subcategories: [with_ligand, refined, phaser_output, autobuild_output, docked]
+      # Explicitly exclude search_model and intermediates - they are NOT positioned
+      exclude_categories: [search_model, predicted, processed_predicted, intermediate_mr, ligand_pdb, ligand]
     mtz:
       categories: [refined_mtz, mtz]  # Prefer MTZ with R-free flags
       exclude_categories: [phased_mtz]  # Phased MTZ has multiple arrays - not for refinement
@@ -589,6 +815,14 @@ phenix.refine:
       flag: "output.prefix={value}"
       type: string
       hint: "Use short prefix to avoid long filenames (e.g., refine_001)"
+    cycles:
+      flag: "main.number_of_macro_cycles={value}"
+      type: int
+      hint: "Number of refinement macro-cycles (default is 3)"
+    macro_cycles:
+      flag: "main.number_of_macro_cycles={value}"
+      type: int
+      hint: "Alias for cycles - number of refinement macro-cycles"
     simulated_annealing:
       flag: "main.simulated_annealing={value}"
       type: boolean
@@ -619,15 +853,23 @@ phenix.refine:
     r_free:
       pattern: 'R-free\s*[=:]\s*([0-9.]+)'
       type: float
+      display_name: "R-free"
+      summary_format: "{value:.4f}"
     r_work:
       pattern: 'R-work\s*[=:]\s*([0-9.]+)'
       type: float
+      display_name: "R-work"
+      summary_format: "{value:.4f}"
     bonds_rmsd:
       pattern: '[Bb]onds?\s*(?:RMSD)?\s*[=:]\s*([0-9.]+)'
       type: float
+      display_name: "Bonds RMSD"
+      summary_format: "{value:.4f}"
     angles_rmsd:
       pattern: '[Aa]ngles?\s*(?:RMSD)?\s*[=:]\s*([0-9.]+)'
       type: float
+      display_name: "Angles RMSD"
+      summary_format: "{value:.3f}"
 
   hints:
     - "FIRST refinement after phaser: use generate_rfree_flags=True"
@@ -662,12 +904,21 @@ phenix.real_space_refine:
         exclude_patterns: [half, _1, _2, _a, _b]
 
   # Input priorities for cryo-EM refinement
-  # Note: predicted and processed_predicted are excluded - must be docked first
-  # Note: intermediate_mr files are internal MR outputs from dock_in_map - never use
+  # 
+  # IMPORTANT: Refinement requires POSITIONED models (category: model)
+  # It CANNOT use search_model (unpositioned templates like predictions)
+  # Templates must first be docked via phenix.dock_in_map
   input_priorities:
     model:
-      categories: [rsr_output, docked, with_ligand, autobuild_output, pdb]
-      exclude_categories: [predicted, processed_predicted, intermediate_mr]
+      # Use semantic parent category - refinement needs POSITIONED models only
+      categories: [model]
+      # Subcategory preference within 'model': rsr_output > docked > with_ligand > autobuild
+      prefer_subcategories: [rsr_output, docked, with_ligand, autobuild_output]
+      # Explicitly exclude search_model and intermediates - they are NOT positioned
+      exclude_categories: [search_model, predicted, processed_predicted, intermediate_mr, ligand]
+    map:
+      categories: [full_map, optimized_full_map, map]
+      exclude_categories: [half_map]  # Half-maps too noisy for refinement
 
   outputs:
     files:
@@ -721,6 +972,8 @@ phenix.real_space_refine:
     map_cc:
       pattern: 'CC_mask\s*[=:]\s*([0-9.]+)'
       type: float
+      display_name: "Map CC"
+      summary_format: "{value:.3f}"
 
   hints:
     - "Resolution is REQUIRED - get it from mtriage"
@@ -749,6 +1002,20 @@ phenix.ligandfit:
         extensions: [.pdb, .cif]
         flag: "ligand="
         prefer_patterns: [lig, ligand]
+
+  # Input priorities: ligandfit needs map coefficients from refined MTZ
+  input_priorities:
+    model:
+      categories: [model]
+      prefer_subcategories: [refined, with_ligand, phaser_output]
+      exclude_categories: [search_model, predicted, ligand, ligand_pdb]
+    mtz:
+      # CRITICAL: Must use refined_mtz which has map coefficients (2FOFCWT/PH2FOFCWT)
+      # Use the subcategory directly - refined_mtz files exist in their own category
+      categories: [refined_mtz]
+      # Don't exclude 'mtz' parent since refined_mtz also exists there due to bubbling
+      # The categories:[refined_mtz] ensures we only look in that specific subcategory
+      exclude_categories: [phased_mtz]
 
   outputs:
     files:
@@ -816,6 +1083,9 @@ phenix.resolve_cryo_em:
       sequence:
         extensions: [.fa, .fasta, .seq, .dat]
         flag: "seq_file="
+      ncs_spec:
+        extensions: [.ncs_spec]
+        flag: "ncs_file="
 
   outputs:
     files:
@@ -824,11 +1094,12 @@ phenix.resolve_cryo_em:
       - pattern: "*_sharpened*.mrc"
         type: map
 
-  command: "phenix.resolve_cryo_em {half_map} {sequence}"
+  command: "phenix.resolve_cryo_em {half_map} {sequence} {ncs_spec}"
 
   hints:
     - "Produces optimized full map from half-maps"
     - "Try this first for map improvement"
+    - "Optional: provide ncs_spec file from map_symmetry for symmetric structures"
 
 
 phenix.map_sharpening:
@@ -890,18 +1161,28 @@ phenix.molprobity:
     clashscore:
       pattern: '[Cc]lashscore\s*[=:]\s*([0-9.]+)'
       type: float
+      display_name: "Clashscore"
+      summary_format: "{value:.2f}"
     ramachandran_favored:
       pattern: '[Rr]amachandran.*?favou?red\s*[=:]\s*([0-9.]+)'
       type: float
+      display_name: "Ramachandran Favored"
+      summary_format: "{value:.1f}%"
     ramachandran_outliers:
       pattern: '[Rr]amachandran.*?outliers?\s*[=:]\s*([0-9.]+)'
       type: float
+      display_name: "Ramachandran Outliers"
+      summary_format: "{value:.1f}%"
     rotamer_outliers:
       pattern: '[Rr]otamer.*?outliers?\s*[=:]\s*([0-9.]+)'
       type: float
+      display_name: "Rotamer Outliers"
+      summary_format: "{value:.1f}%"
     molprobity_score:
       pattern: 'MolProbity score\s*[=:]\s*([0-9.]+)'
       type: float
+      display_name: "MolProbity Score"
+      summary_format: "{value:.2f}"
 
   hints:
     - "Good values: clashscore <4, Ramachandran outliers <0.5%"

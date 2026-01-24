@@ -8,10 +8,16 @@ verifying that it correctly loads scenarios and returns dummy data.
 
 from __future__ import absolute_import, division, print_function
 import os
+import sys
 import tempfile
 import shutil
 
-from libtbx.langchain.agent.dry_run_manager import DryRunManager, list_scenarios, get_scenario_info
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+try:
+    from libtbx.langchain.agent.dry_run_manager import DryRunManager, list_scenarios, get_scenario_info
+except ImportError:
+    from agent.dry_run_manager import DryRunManager, list_scenarios, get_scenario_info
 
 
 def test_list_scenarios():

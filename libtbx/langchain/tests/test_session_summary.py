@@ -8,33 +8,10 @@ from __future__ import absolute_import, division, print_function
 import os
 import sys
 import tempfile
+import types
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# Mock libtbx imports
-import types
-libtbx = types.ModuleType('libtbx')
-libtbx.langchain = types.ModuleType('libtbx.langchain')
-libtbx.langchain.agent = types.ModuleType('libtbx.langchain.agent')
-libtbx.langchain.knowledge = types.ModuleType('libtbx.langchain.knowledge')
-libtbx.langchain.analysis = types.ModuleType('libtbx.langchain.analysis')
-sys.modules['libtbx'] = libtbx
-sys.modules['libtbx.langchain'] = libtbx.langchain
-sys.modules['libtbx.langchain.agent'] = libtbx.langchain.agent
-sys.modules['libtbx.langchain.knowledge'] = libtbx.langchain.knowledge
-sys.modules['libtbx.langchain.analysis'] = libtbx.langchain.analysis
-
-# Mock group_args
-def group_args(**kwargs):
-    class GA:
-        def __init__(self, **kw):
-            for k, v in kw.items():
-                setattr(self, k, v)
-    return GA(**kwargs)
-
-libtbx.group_args = group_args
-sys.modules['libtbx'].group_args = group_args
 
 # Mock langchain_core
 langchain_core = types.ModuleType('langchain_core')
@@ -54,11 +31,6 @@ class MockBestFilesTracker:
         pass
     def get_best_path(self, *args, **kwargs):
         return None
-
-import agent.best_files_tracker as bft_module
-bft_module.BestFilesTracker = MockBestFilesTracker
-libtbx.langchain.agent.best_files_tracker = bft_module
-sys.modules['libtbx.langchain.agent.best_files_tracker'] = bft_module
 
 # Now import session
 from agent.session import AgentSession
@@ -217,8 +189,8 @@ def test_markdown_generation():
 
     markdown = result["markdown"]
 
-    # Check structure
-    assert "# Phenix AI Agent Run" in markdown
+    # Check structure - header uses ## now for smaller text
+    assert "## Phenix AI" in markdown  # Either "Phenix AI Run:" or "Phenix AI Tutorial:"
     assert "## Input" in markdown
     assert "## Workflow Path" in markdown
     assert "## Steps Performed" in markdown
@@ -312,7 +284,7 @@ def test_empty_session():
     result = session.generate_agent_session_summary(include_llm_assessment=False)
 
     assert result["markdown"] is not None
-    assert "# Phenix AI Agent Run" in result["markdown"]
+    assert "## Phenix AI" in result["markdown"]  # Header uses ## now
     assert result["data"]["total_cycles"] == 0
 
     # Cleanup

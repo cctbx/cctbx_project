@@ -9,7 +9,7 @@ The checker evaluates two categories of issues:
 - Warning: Potential problems worth noting (e.g., resolution unknown)
 
 Usage:
-    from agent.sanity_checker import SanityChecker
+    from libtbx.langchain.agent.sanity_checker import SanityChecker
 
     checker = SanityChecker()
     result = checker.check(context, session_info)
@@ -90,7 +90,7 @@ class SanityChecker:
                 parent_dir = os.path.dirname(script_dir)
                 if parent_dir not in sys.path:
                     sys.path.insert(0, parent_dir)
-                from knowledge.yaml_loader import load_sanity_checks
+                from libtbx.langchain.knowledge.yaml_loader import load_sanity_checks
                 self._checks = load_sanity_checks()
             except (ImportError, Exception):
                 # Use defaults if YAML not available
@@ -201,19 +201,86 @@ class SanityChecker:
         return None
 
     def _check_model_for_refine(self, context: Dict) -> Optional[SanityIssue]:
-        """Check that model exists when entering refine state."""
-        state = context.get("state", "")
-        has_model = context.get("has_model", False)
+        """
+        Check that a POSITIONED model exists when entering refine state.
 
-        # Check if we're in a refinement state without a model
-        if "refine" in state.lower() and not has_model:
-            return SanityIssue(
-                severity="critical",
-                code="no_model_for_refine",
-                message="Refinement requested but no model file available",
-                suggestion="Ensure molecular replacement or model building completed successfully. "
-                          "Check that output PDB files from previous steps exist.",
-            )
+        With semantic categories:
+        - 'model' = positioned models (phaser_output, refined, docked, etc.)
+        - 'search_model' = templates NOT yet positioned (predicted, pdb_template)
+
+        If user has only search_model but requests refinement, give a specific
+        error explaining they need to run Phaser/docking first.
+        """
+        state = context.get("state", "")
+
+        # Only check if we're in a refinement state
+        if "refine" not in state.lower():
+            return None
+
+        # Check semantic categories
+        has_model = context.get("has_model", False)
+        has_search_model = context.get("has_search_model", False)
+
+        # Also check categorized_files for more detail
+        categorized = context.get("categorized_files", {})
+        model_files = categorized.get("model", [])
+        search_model_files = categorized.get("search_model", [])
+
+        # Update has_model/has_search_model from categorized_files if available
+        if categorized:
+            has_model = len(model_files) > 0
+            has_search_model = len(search_model_files) > 0
+
+        if not has_model:
+            if has_search_model:
+                # User has templates but no positioned model - common mistake!
+                exp_type = context.get("experiment_type", "unknown")
+
+                if exp_type == "xray":
+                    suggestion = (
+                        "You have a search model (predicted structure or template) but no positioned model. "
+                        "For X-ray crystallography, you must first run molecular replacement (Phaser) "
+                        "to position the model in the unit cell before refinement. "
+                        "The search model will be used as input for Phaser."
+                    )
+                elif exp_type == "cryoem":
+                    suggestion = (
+                        "You have a search model (predicted structure or template) but no positioned model. "
+                        "For cryo-EM, you must first run docking (dock_in_map) to position the model "
+                        "in the map before refinement. "
+                        "The search model will be used as input for docking."
+                    )
+                else:
+                    suggestion = (
+                        "You have a search model (predicted structure or template) but no positioned model. "
+                        "You must first run molecular replacement (X-ray) or docking (cryo-EM) "
+                        "to position the model before refinement."
+                    )
+
+                return SanityIssue(
+                    severity="critical",
+                    code="search_model_not_positioned",
+                    message="Cannot refine: search model found but not yet positioned",
+                    suggestion=suggestion,
+                    details={
+                        "search_model_files": [f.split('/')[-1] for f in search_model_files[:3]],
+                        "experiment_type": exp_type,
+                        "has_search_model": True,
+                        "has_model": False,
+                    }
+                )
+            else:
+                # No model at all
+                return SanityIssue(
+                    severity="critical",
+                    code="no_model_for_refine",
+                    message="Refinement requested but no model file available",
+                    suggestion="Ensure molecular replacement or model building completed successfully. "
+                              "Check that output PDB files from previous steps exist. "
+                              "For X-ray, you may need to run predict_and_build or Phaser first. "
+                              "For cryo-EM, you may need to run predict_and_build or dock_in_map first.",
+                )
+
         return None
 
     def _check_data_exists(self, context: Dict) -> Optional[SanityIssue]:
@@ -229,9 +296,9 @@ class SanityChecker:
             return SanityIssue(
                 severity="critical",
                 code="no_data_for_workflow",
-                message="No MTZ file found for X-ray workflow",
-                suggestion="Provide an MTZ file containing diffraction data.",
-                details={"experiment_type": exp_type, "missing": "mtz"}
+                message="No reflection data file found for X-ray workflow",
+                suggestion="Provide a reflection data file (MTZ, SCA, or HKL format).",
+                details={"experiment_type": exp_type, "missing": "reflection_data"}
             )
 
         if exp_type == "cryoem" and not context.get("has_map"):

@@ -61,10 +61,7 @@ class TemplateBuilder(object):
     def _get_command_builder(self):
         """Get or create CommandBuilder instance (lazy loading)."""
         if self._command_builder is None:
-            try:
-                from agent.command_builder import CommandBuilder
-            except ImportError:
-                from libtbx.langchain.agent.command_builder import CommandBuilder
+            from libtbx.langchain.agent.command_builder import CommandBuilder
             self._command_builder = CommandBuilder()
         return self._command_builder
 
@@ -389,10 +386,7 @@ class TemplateBuilder(object):
 
         This is the compatibility bridge between the old API and new CommandBuilder.
         """
-        try:
-            from agent.command_builder import CommandContext
-        except ImportError:
-            from libtbx.langchain.agent.command_builder import CommandContext
+        from libtbx.langchain.agent.command_builder import CommandContext
 
         # Build CommandContext from the scattered parameters
         cmd_context = CommandContext(

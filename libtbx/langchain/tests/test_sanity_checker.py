@@ -12,11 +12,22 @@ Tests:
 
 from __future__ import absolute_import, division, print_function
 
-from libtbx.langchain.agent.sanity_checker import (
-    SanityChecker,
-    SanityIssue,
-    SanityResult,
-)
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+try:
+    from libtbx.langchain.agent.sanity_checker import (
+        SanityChecker,
+        SanityIssue,
+        SanityResult,
+    )
+except ImportError:
+    from agent.sanity_checker import (
+        SanityChecker,
+        SanityIssue,
+        SanityResult,
+    )
 
 
 # =============================================================================

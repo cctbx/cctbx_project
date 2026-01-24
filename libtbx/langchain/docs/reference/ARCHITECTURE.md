@@ -127,6 +127,14 @@ Persists workflow state across cycles:
 - Resolution
 - R-free MTZ path
 - Cycle history
+- **User Directives** (extracted structured instructions)
+
+#### Directive System
+Extracts and enforces user instructions:
+- `directive_extractor.py`: Parses natural language → structured JSON
+- `directive_validator.py`: Validates LLM decisions against directives
+- Integrated into graph nodes for consistent enforcement
+- See [USER_DIRECTIVES.md](../guides/USER_DIRECTIVES.md) for details
 
 #### BestFilesTracker (best_files_tracker.py)
 Tracks highest-quality files:
@@ -143,11 +151,90 @@ Both agents use identical interface, v2 JSON format, **and transport encoding**:
 - Transport module: `agent/transport.py`
 - Configuration: `knowledge/transport.yaml`
 
-#### Log Parsers (log_parsers.py)
-Extracts metrics from program output:
-- R-factors, resolution, clashscore
-- Output file paths
-- Success/failure status
+#### Log Parsers (phenix_ai/log_parsers.py)
+Extracts metrics and output files from program log output:
+
+**Key functions:**
+- `extract_all_metrics(log_text, program)`: Main entry point for metric extraction
+- `detect_program(log_text)`: Identifies which program generated a log
+- `extract_output_files(log_text, working_dir)`: Finds output file paths
+- `format_metrics_report(metrics)`: Generates "FINAL QUALITY METRICS REPORT"
+
+**Note**: Metric extraction patterns are defined in `programs.yaml` and loaded via `metric_patterns.py`. Hardcoded extractors in log_parsers.py only handle complex cases (tables, multi-line context) that YAML patterns can't express.
+
+**Adding new program support:**
+See [ADDING_PROGRAMS.md](../guides/ADDING_PROGRAMS.md) for the complete guide.
+
+### Centralized Configuration Modules
+
+The agent uses a centralized YAML-driven architecture that reduces program configuration from 7 files to 2-3 files.
+
+#### Metric Patterns (knowledge/metric_patterns.py)
+Centralizes metric extraction patterns from programs.yaml:
+
+```
+programs.yaml          metric_patterns.py
+     │                        │
+     ▼                        ▼
+log_parsing: ────────▶ extract_metrics_for_program()
+  pattern:                    │
+  type:              ┌────────┴────────┐
+  display_name:      ▼                 ▼
+                log_parsers.py    session.py
+```
+
+**Key functions:**
+- `get_all_metric_patterns()`: Load all patterns from YAML (cached)
+- `extract_metrics_for_program(log_text, program)`: Extract metrics using YAML patterns
+- `format_metric_value(program, metric, value)`: Format using YAML config
+
+#### Program Registration (knowledge/program_registration.py)
+Auto-generates tracking flags from `run_once: true` programs:
+
+```
+programs.yaml           program_registration.py
+     │                          │
+     ▼                          ▼
+run_once: true ────────▶ get_trackable_programs()
+                                │
+                     ┌──────────┴──────────┐
+                     ▼                     ▼
+            workflow_state.py      workflow_engine.py
+            (done flags)           (context building)
+```
+
+**Key functions:**
+- `get_trackable_programs()`: Get programs with `run_once: true`
+- `get_initial_history_flags()`: Get initial `{program}_done: False` flags
+- `detect_programs_in_history()`: Detect completed programs in history
+
+#### Summary Display (knowledge/summary_display.py)
+Configures session summary display from metrics.yaml:
+
+```
+metrics.yaml           summary_display.py
+     │                        │
+     ▼                        ▼
+summary_display: ─────▶ format_quality_table_rows()
+  quality_table:              │
+  step_metrics:        ┌──────┴──────┐
+                       ▼             ▼
+                session.py     session.py
+             (Final Quality)  (Steps table)
+```
+
+**Key functions:**
+- `get_quality_table_config()`: Load quality table row configs
+- `get_step_metrics_config()`: Load per-program step metric configs
+- `format_quality_table_rows()`: Format Final Quality table
+- `format_step_metric()`: Format a step's key metric
+
+#### Program Validator (agent/program_validator.py)
+Validates that programs are fully configured:
+```bash
+python agent/program_validator.py phenix.map_symmetry  # Check one program
+python agent/program_validator.py --all                 # Check all programs
+```
 
 ### Decision Engine Components
 
@@ -169,6 +256,81 @@ PERCEIVE ─▶ PLAN ─▶ BUILD ─▶ VALIDATE ─▶ OUTPUT
  Analyze   Select   Build    Validate    Format
  inputs    program  command  response   decision
 ```
+
+#### Decision Flow Architecture
+
+The decision flow follows a clean, layered architecture where each component has a single responsibility:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     SESSION START                                │
+│  directive_extractor.py extracts structured directives          │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                 LAYER 1: WORKFLOW ENGINE                         │
+│  workflow_engine.py determines valid_programs                    │
+│                                                                  │
+│  Input: phase, context, directives                              │
+│  Output: valid_programs list (includes STOP if appropriate)     │
+│                                                                  │
+│  Responsibilities:                                               │
+│  - Get programs from workflow phase definition                   │
+│  - Add directive-required programs (after_program target)        │
+│  - Add STOP if skip_validation=true                             │
+│  - Apply workflow preferences (skip/prefer)                      │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                 LAYER 2: LLM DECISION (PLAN)                     │
+│  graph_nodes.py plan() function                                  │
+│                                                                  │
+│  Input: valid_programs, context, history                        │
+│  Output: chosen program (must be in valid_programs)             │
+│                                                                  │
+│  Responsibilities:                                               │
+│  - LLM selects best program from valid_programs                 │
+│  - Simple validation: is choice in valid_programs?              │
+│  - If invalid choice, use first valid program                   │
+│                                                                  │
+│  NOT responsible for:                                            │
+│  - Directive logic (already handled in Layer 1)                 │
+│  - Stop condition evaluation (handled in Layer 4)               │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                 LAYER 3: BUILD & EXECUTE                         │
+│  graph_nodes.py build(), ai_agent.py execute                    │
+│                                                                  │
+│  Input: chosen program, files, context                          │
+│  Output: command result, output files                           │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                 LAYER 4: POST-EXECUTION CHECK                    │
+│  ai_agent.py _run_single_cycle() - SINGLE PLACE                 │
+│                                                                  │
+│  Input: completed program, cycle number, directives             │
+│  Output: should_stop (bool), stop_reason                        │
+│                                                                  │
+│  Responsibilities:                                               │
+│  - Check if after_program condition met                         │
+│  - Check if after_cycle condition met                           │
+│  - Check if metric targets met (r_free, map_cc)                 │
+│  - This is the ONLY place stop conditions are evaluated         │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Key Design Principles:**
+
+1. **Single Responsibility**: Each layer handles one aspect of decision-making
+2. **Clear Data Flow**: Directives flow from extraction → workflow engine → validated programs
+3. **Post-Execution Stop**: Stop conditions are only checked after program execution, not during planning
+4. **Simple Validation Gate**: The plan() function validates that LLM choice is in valid_programs list
 
 #### Knowledge Layer
 
@@ -495,3 +657,198 @@ llm_input = session.get_summary_for_llm_assessment()
 - `analysis/agent_session_analyzer.py`: LLM assessment integration
 - `phenix_ai/run_ai_analysis.py`: `run_agent_session_analysis()`
 - `knowledge/prompts_hybrid.py`: Assessment prompt template
+
+---
+
+## Advice Preprocessing
+
+The agent preprocesses user input to create structured, actionable guidance, with
+built-in protection against prompt injection attacks and automatic change detection
+for mid-session updates.
+
+### Components
+
+| Component | File | Function |
+|-----------|------|----------|
+| README discovery | `agent/advice_preprocessor.py` | `find_readme_file()` |
+| README reading | `agent/advice_preprocessor.py` | `read_readme_file()` |
+| Advice gathering | `agent/advice_preprocessor.py` | `gather_raw_advice()` |
+| Input sanitization | `agent/advice_preprocessor.py` | `sanitize_advice()` |
+| LLM preprocessing | `agent/advice_preprocessor.py` | `preprocess_advice()` |
+| Change detection | `programs/ai_agent.py` | `_preprocess_user_advice()` |
+| Server routing | `phenix_ai/run_ai_analysis.py` | `run_advice_preprocessing()` |
+
+### Sources
+
+1. **Direct advice**: `project_advice` PHIL parameter
+2. **README files**: Found in `input_directory` if specified
+
+### Process
+
+1. **Gather**: Collect advice from all sources
+2. **Hash**: Compute MD5 hash of raw advice for change detection
+3. **Compare**: Check if advice changed from previous run
+4. **Sanitize**: Remove potential prompt injection patterns
+5. **Combine**: Merge with clear labeling
+6. **Preprocess**: Use LLM to structure (optional)
+7. **Store**: Save raw, processed, and hash in session
+
+### Advice Change Detection
+
+The agent detects when advice has changed between runs and automatically reprocesses:
+
+- **Same hash** → reuse cached processed advice
+- **Different hash** → reprocess advice AND re-extract directives
+- **No new advice** → reuse cached version
+
+This enables mid-session advice updates - users can provide new instructions
+(like "stop" or "focus on the ligand") and have them take effect immediately.
+
+### Input Sanitization
+
+The `sanitize_advice()` function removes potentially malicious patterns:
+
+- Instruction override attempts ("ignore all previous instructions")
+- System prompt manipulation (`<system>`, `[system]`)
+- Role manipulation ("you are now a...", "act as a...")
+- Hidden text (null bytes, control characters)
+- Excessive repetition (potential buffer overflow)
+
+```python
+from agent.advice_preprocessor import sanitize_advice, is_suspicious
+
+# Check if input contains suspicious patterns
+if is_suspicious(user_input):
+    clean_input = sanitize_advice(user_input)
+```
+
+### README Discovery
+
+Searches for these files (case-insensitive):
+- `README`, `README.txt`, `README.dat`, `README.md`
+- `notes.txt`, `NOTES.txt`
+
+Files are truncated at `max_readme_chars` (default: 5000).
+
+### LLM Preprocessing
+
+When `preprocess_advice=True` (default), the LLM extracts:
+
+1. **Input Files Found**: Data files mentioned in the text
+2. **Experiment Type**: SAD, MAD, MR, cryo-EM, etc.
+3. **Primary Goal**: What the user wants to accomplish
+4. **Key Parameters**: Wavelength, resolution, sites, heavy atom type
+5. **Special Instructions**: Ligands, quality targets, etc.
+
+### PHIL Parameters
+
+```phil
+input_directory = None
+  .type = path
+  .help = Directory containing input files and optional README
+
+preprocess_advice = True
+  .type = bool
+  .help = Use LLM to preprocess and clarify user advice
+
+readme_file_patterns = README README.txt README.dat README.md notes.txt
+  .type = strings
+  .help = Filenames to look for when extracting advice
+
+max_readme_chars = 5000
+  .type = int
+  .help = Truncate README files longer than this
+```
+
+### Usage
+
+```bash
+# With direct advice
+phenix.ai_agent data.mtz seq.fa project_advice="Solve by MR, R-free < 0.25"
+
+# With README in directory
+phenix.ai_agent input_directory=/data/project/
+
+# Both combined
+phenix.ai_agent input_directory=/data/project/ project_advice="Prioritize geometry"
+
+# Update advice mid-session (on restart)
+phenix.ai_agent session_file=session.json project_advice="stop"
+```
+
+### Testing
+
+```bash
+python tests/test_advice_preprocessing.py
+```
+
+Tests cover sanitization, README discovery, advice combination, file extraction,
+and change detection logic.
+
+---
+
+## Event System
+
+The agent uses a structured event system for transparent decision logging.
+
+### Event Flow
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                        Graph Nodes                              │
+│  perceive() → plan() → build() → validate()                    │
+│       │          │         │          │                        │
+│       ▼          ▼         ▼          ▼                        │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │               state["events"] (list of dicts)            │  │
+│  └──────────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌────────────────────────────────────────────────────────────────┐
+│              Response Building (run_ai_agent.py)               │
+│  response["events"] = state["events"]                          │
+│  response["events_as_simple_string"] = json.dumps(events)      │
+└────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌────────────────────────────────────────────────────────────────┐
+│                    Display (ai_agent.py)                        │
+│  formatter = EventFormatter(verbosity=params.verbosity)        │
+│  output = formatter.format_cycle(events, cycle_number)         │
+│  print(output, file=self.logger)                               │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### Event Types
+
+| Type | Level | Description |
+|------|-------|-------------|
+| `cycle_start` | quiet | Cycle beginning |
+| `state_detected` | normal | Workflow state determined |
+| `metrics_extracted` | normal | R-free, CC, resolution |
+| `program_selected` | normal | Decision with reasoning |
+| `user_request_invalid` | quiet | User request unavailable |
+| `files_selected` | verbose | File selection details |
+| `command_built` | normal | Final command |
+| `error` | quiet | Error occurred |
+
+### Verbosity Levels
+
+```phil
+verbosity = normal
+  .type = choice(quiet, normal, verbose, debug)
+```
+
+- **quiet**: Errors, warnings, cycle summaries only
+- **normal**: Key decisions and metrics (default)
+- **verbose**: File selection details
+- **debug**: Full internal state
+
+### Implementation Files
+
+- `agent/event_log.py` - EventType, Verbosity, EventLog class
+- `agent/event_formatter.py` - EventFormatter class
+- `agent/graph_nodes.py` - Event emission (`_emit()` helper)
+
+See [TRANSPARENCY_LOGGING.md](../project/TRANSPARENCY_LOGGING.md) for full details.

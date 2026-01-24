@@ -26,21 +26,8 @@ import fnmatch
 
 def _load_category_rules():
     """Load file category rules from YAML."""
-    try:
-        from libtbx.langchain.knowledge.yaml_loader import load_file_categories
-        return load_file_categories()
-    except ImportError:
-        # Fallback if not in libtbx environment
-        try:
-            import sys
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            parent_dir = os.path.dirname(script_dir)
-            if parent_dir not in sys.path:
-                sys.path.insert(0, parent_dir)
-            from knowledge.yaml_loader import load_file_categories
-            return load_file_categories()
-        except ImportError:
-            return None
+    from libtbx.langchain.knowledge.yaml_loader import load_file_categories
+    return load_file_categories()
 
 
 def _match_pattern(filename, pattern):
@@ -55,29 +42,168 @@ def _categorize_files(available_files):
 
     Uses rules from knowledge/file_categories.yaml.
 
-    Returns dict with keys:
-        mtz, pdb, sequence, map, ligand_cif, ligand_pdb,
-        phaser_output, refined, rsr_output, with_ligand, ligand_fit, predicted,
-        full_map, half_map (for cryo-EM half-maps), etc.
+    Returns dict with keys for BOTH:
+    - Subcategories: refined, phaser_output, predicted, etc.
+    - Parent categories: model, search_model, ligand, map, mtz, sequence
+
+    Files in subcategories are automatically "bubbled up" to their parent
+    semantic categories. For example:
+        - refined -> also in model
+        - phaser_output -> also in model
+        - predicted -> also in search_model
+        - processed_predicted -> also in search_model
     """
     # Try to load YAML rules
     category_rules = _load_category_rules()
 
     if category_rules:
-        return _categorize_files_yaml(available_files, category_rules)
+        files = _categorize_files_yaml(available_files, category_rules)
     else:
         # Fallback to hardcoded rules if YAML not available
-        return _categorize_files_hardcoded(available_files)
+        files = _categorize_files_hardcoded(available_files)
+
+    # Bubble up subcategories to their parent semantic categories
+    files = _bubble_up_to_parents(files, category_rules)
+
+    # Post-processing: If we have exactly one half-map and no full maps,
+    # treat it as a full map. Half-maps only make sense in pairs for FSC.
+    # A user providing a single map (even if named like a half-map) wants to use it.
+    if "half_map" in files and "full_map" in files:
+        if len(files["half_map"]) == 1 and len(files["full_map"]) == 0:
+            files["full_map"].append(files["half_map"][0])
+            files["half_map"] = []
+
+    return files
+
+
+# Mapping from subcategory to parent semantic category
+# This is the source of truth for bubbling up
+SUBCATEGORY_TO_PARENT = {
+    # Model subcategories (positioned, ready for refinement)
+    "refined": "model",
+    "rsr_output": "model",
+    "phaser_output": "model",
+    "autobuild_output": "model",
+    "docked": "model",
+    "with_ligand": "model",
+    "ligand_fit_output": "model",  # Updated from ligand_fit
+    "model_cif": "model",
+    "unclassified_pdb": "model",  # Default for generic PDB files - assume positioned model
+
+    # Search model subcategories (templates, NOT positioned)
+    "predicted": "search_model",
+    "processed_predicted": "search_model",
+    "pdb_template": "search_model",
+
+    # Ligand subcategories
+    "ligand_pdb": "ligand",
+    "ligand_cif": "ligand",
+
+    # Map subcategories
+    "full_map": "map",
+    "half_map": "map",
+    "optimized_full_map": "map",
+    "sharpened": "map",
+
+    # MTZ subcategories
+    "refined_mtz": "mtz",
+    "phased_mtz": "mtz",
+
+    # Intermediate - these should NOT be bubbled up or tracked
+    # Set to "intermediate" parent so they're excluded from model/search_model
+    "intermediate_mr": "intermediate",
+    "autobuild_temp": "intermediate",
+    "carryover_temp": "intermediate",
+}
+
+
+def _bubble_up_to_parents(files, category_rules=None):
+    """
+    Ensure files in subcategories also appear in their parent semantic categories.
+
+    This enables programs to request by parent category (e.g., "model")
+    while files are categorized into specific subcategories (e.g., "refined").
+
+    Args:
+        files: Dict of category -> list of files
+        category_rules: Optional YAML rules (for dynamic parent lookup)
+
+    Returns:
+        Updated files dict with parent categories populated
+    """
+    # Ensure parent categories exist
+    for parent in ["model", "search_model", "ligand", "intermediate", "map", "mtz", "sequence"]:
+        if parent not in files:
+            files[parent] = []
+
+    # Build parent mapping from YAML if available
+    parent_map = dict(SUBCATEGORY_TO_PARENT)  # Start with hardcoded
+
+    if category_rules:
+        for cat_name, cat_def in category_rules.items():
+            parent = cat_def.get("parent_category")
+            if parent:
+                parent_map[cat_name] = parent
+
+    # Bubble up each subcategory to its parent
+    for subcat, parent in parent_map.items():
+        if parent is None:
+            continue  # Don't bubble up if no parent
+        if subcat not in files:
+            continue
+        if parent not in files:
+            files[parent] = []
+
+        for f in files[subcat]:
+            if f not in files[parent]:
+                files[parent].append(f)
+
+    # Also ensure backward compatibility: "pdb" category contains all model and search_model
+    if "pdb" not in files:
+        files["pdb"] = []
+    for f in files.get("model", []):
+        if f not in files["pdb"]:
+            files["pdb"].append(f)
+    for f in files.get("search_model", []):
+        if f not in files["pdb"]:
+            files["pdb"].append(f)
+
+    return files
 
 
 def _categorize_files_yaml(available_files, rules):
-    """Categorize files using YAML-defined rules."""
+    """
+    Categorize files using YAML-defined rules.
+
+    This handles two types of categories:
+    1. Extension-based primary categories (mtz, map, sequence)
+    2. Pattern-based subcategories with semantic parents (refined->model, predicted->search_model)
+
+    Files are first matched to subcategories by patterns, then bubbled up to parent categories.
+    """
     # Initialize all categories from YAML
     files = {cat: [] for cat in rules.keys()}
 
+    # Ensure semantic parent categories exist
+    for parent in ["model", "search_model", "ligand", "map", "mtz", "sequence", "intermediate"]:
+        if parent not in files:
+            files[parent] = []
+
+    # Also ensure pdb exists for backward compatibility
+    if "pdb" not in files:
+        files["pdb"] = []
+
     # Group categories by extension for primary matching
+    # Only include categories that are PURELY extension-based (no patterns)
+    # Categories with patterns are handled in Step 2
     ext_to_categories = {}
     for cat_name, cat_def in rules.items():
+        # Skip semantic parent categories - they don't match by extension
+        if cat_def.get("is_semantic_parent"):
+            continue
+        # Skip categories that have patterns - they need pattern matching in Step 2
+        if cat_def.get("patterns"):
+            continue
         for ext in cat_def.get("extensions", []):
             if ext not in ext_to_categories:
                 ext_to_categories[ext] = []
@@ -88,22 +214,36 @@ def _categorize_files_yaml(available_files, rules):
         basename = os.path.basename(f_lower)
         _, ext = os.path.splitext(f_lower)
 
-        # Step 1: Primary categorization by extension
+        # Step 1: Primary categorization by extension (for non-PDB files)
         primary_categories = ext_to_categories.get(ext, [])
-
         for cat in primary_categories:
-            files[cat].append(f)
+            if f not in files[cat]:
+                files[cat].append(f)
 
         # Step 2: Subcategorization by patterns
+        # This is where we match PDB files to specific subcategories like "refined", "predicted"
         for cat_name, cat_def in rules.items():
-            # Skip if this is a primary category (already handled)
-            if "extensions" in cat_def and not cat_def.get("subcategory_of"):
+            # Skip semantic parent categories
+            if cat_def.get("is_semantic_parent"):
                 continue
 
-            # Check if parent category matches
-            parent = cat_def.get("subcategory_of")
-            if parent and f not in files.get(parent, []):
+            # Skip deprecated categories
+            if cat_def.get("is_deprecated"):
                 continue
+
+            # Check if this category uses subcategory_of (old style) or parent_category (new semantic style)
+            old_parent = cat_def.get("subcategory_of")  # e.g., refined -> pdb
+            semantic_parent = cat_def.get("parent_category")  # e.g., refined -> model
+
+            # For old-style subcategories, check if file is in parent
+            if old_parent and f not in files.get(old_parent, []):
+                continue
+
+            # For new-style semantic subcategories with extension requirements
+            if semantic_parent and "extensions" in cat_def:
+                cat_extensions = cat_def.get("extensions", [])
+                if not any(f_lower.endswith(e) for e in cat_extensions):
+                    continue
 
             # Check patterns
             patterns = cat_def.get("patterns", [])
@@ -126,14 +266,18 @@ def _categorize_files_yaml(available_files, rules):
 
             # Check patterns
             matched = False
-            for pattern in patterns:
-                if pattern == "*":
-                    # Wildcard matches all (used with excludes)
-                    matched = True
-                    break
-                if _match_pattern(basename, pattern):
-                    matched = True
-                    break
+            if not patterns and semantic_parent:
+                # No patterns = use extension matching only (already checked above)
+                matched = any(f_lower.endswith(e) for e in cat_def.get("extensions", []))
+            else:
+                for pattern in patterns:
+                    if pattern == "*":
+                        # Wildcard matches all (used with excludes)
+                        matched = True
+                        break
+                    if _match_pattern(basename, pattern):
+                        matched = True
+                        break
 
             if matched and f not in files[cat_name]:
                 files[cat_name].append(f)
@@ -309,18 +453,26 @@ def _analyze_history(history):
     Extract information about what has been done from history.
 
     Returns dict with program completion flags and counts.
+
+    Note: Simple done flags for programs with run_once: true are auto-generated
+    from programs.yaml via program_registration. Complex flags (counts, success
+    conditions) are still handled manually below.
     """
+    # =========================================================================
+    # Initialize flags - combine auto-generated and manual flags
+    # =========================================================================
     info = {
         "programs_run": set(),
-        "xtriage_done": False,
-        "mtriage_done": False,
+        # Complex flags that need special logic (not auto-generated)
         "phaser_done": False,
+        "phaser_count": 0,
         "phaser_success": False,
         "predict_done": False,
         "predict_full_done": False,
         "process_predicted_done": False,
         "autobuild_done": False,
         "autosol_done": False,
+        "autosol_success": False,
         "refine_done": False,
         "refine_count": 0,
         "rsr_done": False,
@@ -332,6 +484,7 @@ def _analyze_history(history):
         "last_program": None,
         "last_r_free": None,
         "last_map_cc": None,
+        "last_clashscore": None,
         "last_tfz": None,
         "resolution": None,
         "anomalous_resolution": None,
@@ -341,9 +494,24 @@ def _analyze_history(history):
         "twin_fraction": None,
     }
 
+    # Add auto-generated done flags for run_once programs from programs.yaml
+    from libtbx.langchain.knowledge.program_registration import get_initial_history_flags
+    auto_flags = get_initial_history_flags()
+    info.update(auto_flags)
+
     if not history:
         return info
 
+    # =========================================================================
+    # Detect auto-registered programs (run_once: true)
+    # =========================================================================
+    from libtbx.langchain.knowledge.program_registration import detect_programs_in_history
+    auto_detected = detect_programs_in_history(history, info)
+    info.update(auto_detected)
+
+    # =========================================================================
+    # Process history for complex flags and metrics
+    # =========================================================================
     for entry in history:
         prog = ""
         cmd = ""
@@ -362,6 +530,8 @@ def _analyze_history(history):
                     info["last_r_free"] = analysis["r_free"]
                 if analysis.get("map_cc"):
                     info["last_map_cc"] = analysis["map_cc"]
+                if analysis.get("clashscore"):
+                    info["last_clashscore"] = analysis["clashscore"]
                 if analysis.get("tfz"):
                     info["last_tfz"] = analysis["tfz"]
                 if analysis.get("resolution"):
@@ -393,15 +563,15 @@ def _analyze_history(history):
         info["programs_run"].add(prog)
         info["last_program"] = prog
 
-        # Program completion flags
-        if "xtriage" in combined:
-            info["xtriage_done"] = True
-        if "mtriage" in combined:
-            info["mtriage_done"] = True
+        # =====================================================================
+        # Complex program flags (counts, success conditions, etc.)
+        # These require special logic beyond simple "was it run" detection
+        # =====================================================================
         if "validation" in combined or "molprobity" in combined or "holton_geometry" in combined:
             info["validation_done"] = True
         if "phaser" in combined and "real_space" not in combined:
             info["phaser_done"] = True
+            info["phaser_count"] = info.get("phaser_count", 0) + 1
             if info["last_tfz"] and info["last_tfz"] > 8:
                 info["phaser_success"] = True
         if "predict_and_build" in combined:
@@ -413,7 +583,14 @@ def _analyze_history(history):
         if "autobuild" in combined:
             info["autobuild_done"] = True
         if "autosol" in combined:
-            info["autosol_done"] = True
+            # Only mark autosol as done if it succeeded
+            # Check the result field for success indicators
+            result = entry.get("result", "") if isinstance(entry, dict) else ""
+            result_upper = result.upper() if result else ""
+            if "FAIL" not in result_upper and "SORRY" not in result_upper and "ERROR" not in result_upper:
+                info["autosol_done"] = True
+                info["autosol_success"] = True
+            # If autosol failed, don't mark it as done so agent can retry
         if "refine" in combined and "real_space" not in combined:
             info["refine_done"] = True
             info["refine_count"] += 1
@@ -434,12 +611,9 @@ def _analyze_history(history):
 # WORKFLOW STATE DETECTION
 # =============================================================================
 
-# Import workflow engine for YAML-driven detection
-from libtbx.langchain.agent.workflow_engine import WorkflowEngine
-
 
 def detect_workflow_state(history, available_files, analysis=None, maximum_automation=True,
-                         use_yaml_engine=True):
+                         use_yaml_engine=True, directives=None):
     """
     Determine current workflow state based on history and files.
 
@@ -451,6 +625,7 @@ def detect_workflow_state(history, available_files, analysis=None, maximum_autom
         analysis: Current log analysis dict (optional)
         maximum_automation: If True, use fully automated cryo-EM path
         use_yaml_engine: If True, use YAML-driven WorkflowEngine (default: True)
+        directives: Optional user directives dict
 
     Returns:
         dict: {
@@ -475,8 +650,12 @@ def detect_workflow_state(history, available_files, analysis=None, maximum_autom
     # Use YAML-driven workflow engine
     if use_yaml_engine:
         try:
+            # Lazy import to avoid circular dependencies
+            from libtbx.langchain.agent.workflow_engine import WorkflowEngine
+
             engine = WorkflowEngine()
-            state = engine.get_workflow_state(experiment_type, files, history_info, analysis)
+            state = engine.get_workflow_state(experiment_type, files, history_info, analysis, directives)
+
             state["categorized_files"] = files
             # Set automation_path for both experiment types
             state["automation_path"] = "automated" if maximum_automation else "stepwise"

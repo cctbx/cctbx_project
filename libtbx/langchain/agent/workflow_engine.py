@@ -11,7 +11,7 @@ The engine provides a higher-level abstraction than the hardcoded
 state detection in workflow_state.py.
 
 Usage:
-    from agent.workflow_engine import WorkflowEngine
+    from libtbx.langchain.agent.workflow_engine import WorkflowEngine
 
     engine = WorkflowEngine()
     phase_info = engine.get_current_phase("xray", context)
@@ -51,7 +51,7 @@ class WorkflowEngine:
     # CONTEXT BUILDING
     # =========================================================================
 
-    def build_context(self, files, history_info, analysis=None):
+    def build_context(self, files, history_info, analysis=None, directives=None):
         """
         Build a context dict from files, history, and analysis.
 
@@ -61,35 +61,38 @@ class WorkflowEngine:
             files: Categorized files dict
             history_info: Analyzed history dict
             analysis: Current log analysis dict
+            directives: Optional user directives dict
 
         Returns:
             dict: Context for condition evaluation
         """
         context = {
-            # File availability
+            # File availability - using semantic categories
             "has_mtz": bool(files.get("mtz")),
             "has_sequence": bool(files.get("sequence")),
-            "has_model": bool(files.get("pdb")),
+            # SEMANTIC: 'model' = positioned models (phaser_output, refined, docked)
+            # SEMANTIC: 'search_model' = templates NOT yet positioned (predicted, pdb_template)
+            "has_model": bool(files.get("model")),  # Positioned models only
+            "has_search_model": bool(files.get("search_model")),  # Templates/predictions
             "has_full_map": bool(files.get("full_map")),
             "has_half_map": len(files.get("half_map", [])) >= 2,
             "has_map": bool(files.get("map") or files.get("full_map")),
-            "has_ligand": bool(files.get("ligand_cif") or files.get("ligand_pdb")),
-            "has_search_model": self._has_search_model(files),
+            "has_ligand": bool(files.get("ligand") or files.get("ligand_cif") or files.get("ligand_pdb")),
+            "has_ligand_file": bool(files.get("ligand") or files.get("ligand_cif") or files.get("ligand_pdb")),  # Alias for workflow conditions
             "has_predicted_model": bool(files.get("predicted")) or history_info.get("predict_done", False),
             "has_processed_model": bool(files.get("processed_predicted")) or history_info.get("process_predicted_done", False),
-            "has_placed_model": self._has_placed_model(files, history_info),
+            "has_placed_model": self._has_placed_model(files, history_info, directives),
             "has_refined_model": self._has_refined_model(files, history_info),
             "has_ligand_fit": bool(files.get("ligand_fit")) or history_info.get("ligandfit_done", False),
             "has_optimized_full_map": self._has_optimized_map(files, history_info),
 
-            # Program completion
-            "xtriage_done": history_info.get("xtriage_done", False),
-            "mtriage_done": history_info.get("mtriage_done", False),
+            # Complex program flags (need special logic beyond simple detection)
             "phaser_done": history_info.get("phaser_done", False),
             "predict_done": history_info.get("predict_done", False),
             "predict_full_done": history_info.get("predict_full_done", False),
             "autobuild_done": history_info.get("autobuild_done", False),
             "autosol_done": history_info.get("autosol_done", False),
+            "autosol_success": history_info.get("autosol_success", False),
             "refine_done": history_info.get("refine_done", False),
             "rsr_done": history_info.get("rsr_done", False),
             "validation_done": history_info.get("validation_done", False),
@@ -106,6 +109,7 @@ class WorkflowEngine:
             "r_free": self._get_metric(analysis, history_info, "r_free", "last_r_free"),
             "r_work": self._get_metric(analysis, history_info, "r_work", "last_r_work"),
             "map_cc": self._get_metric(analysis, history_info, "map_cc", "last_map_cc"),
+            "clashscore": self._get_metric(analysis, history_info, "clashscore", "last_clashscore"),
             "resolution": self._get_metric(analysis, history_info, "resolution", "resolution"),
             "tfz": self._get_metric(analysis, history_info, "tfz", "last_tfz"),
 
@@ -118,6 +122,17 @@ class WorkflowEngine:
             "twin_fraction": self._get_metric(analysis, history_info, "twin_fraction", "twin_fraction"),
             "anomalous_resolution": self._get_metric(analysis, history_info, "anomalous_resolution", "anomalous_resolution"),
         }
+
+        # =====================================================================
+        # Auto-include done flags from program_registration
+        # This automatically adds flags for all programs with run_once: true
+        # =====================================================================
+        from libtbx.langchain.knowledge.program_registration import get_all_done_flags
+
+        for flag_name in get_all_done_flags():
+            # Only add if not already in context (don't override complex flags)
+            if flag_name not in context:
+                context[flag_name] = history_info.get(flag_name, False)
 
         # Derive has_twinning from twin_fraction if not explicitly set
         if not context["has_twinning"] and context.get("twin_fraction"):
@@ -149,25 +164,71 @@ class WorkflowEngine:
         return history_info.get(key, False)
 
     def _has_search_model(self, files):
-        """Check if there's a search model (not from refinement/prediction)."""
-        for f in files.get("pdb", []):
-            basename = os.path.basename(f).lower()
-            if not any(x in basename for x in ['refine', 'ligand', 'phaser', 'autobuild', 'predicted', 'processed']):
-                return True
-        return False
+        """
+        Check if there's a search model (template for MR/docking).
 
-    def _has_placed_model(self, files, history_info):
-        """Check if model is placed (after MR/building)."""
-        return bool(
-            files.get("phaser_output") or
-            files.get("refined") or
-            files.get("autobuild_output") or
-            files.get("docked") or
-            history_info.get("phaser_done") or
+        With semantic categories, this simply checks the 'search_model' category
+        which contains: predicted, processed_predicted, pdb_template
+        """
+        return bool(files.get("search_model"))
+
+    def _has_placed_model(self, files, history_info, directives=None):
+        """
+        Check if model is placed (after MR/building) or is ready-to-refine.
+
+        With semantic categories, this is simplified:
+        - 'model' category = positioned models (phaser_output, refined, docked, autobuild)
+
+        A model is considered "placed" if:
+        1. There's a file in the 'model' category
+        2. History shows MR or building was done
+
+        NOTE: Directives like "after_program: phenix.ligandfit" do NOT imply the model
+        is already placed - they describe what to do, not the current state.
+        """
+        # SEMANTIC: Simply check if we have any positioned models
+        if files.get("model"):
+            return True
+
+        # Check history flags as backup
+        if (history_info.get("phaser_done") or
             history_info.get("autobuild_done") or
             history_info.get("dock_done") or
-            history_info.get("predict_full_done")
-        )
+            history_info.get("predict_full_done")):
+            return True
+
+        # Check directives ONLY for skip_programs that explicitly indicate
+        # the user is providing an already-positioned model
+        # NOTE: We no longer infer "placed" from after_program directives
+        # because those describe workflow goals, not current state
+        if directives:
+            workflow_prefs = directives.get("workflow_preferences", {})
+            skip_programs = workflow_prefs.get("skip_programs", [])
+
+            # If skip_programs includes phaser or autosol, user expects model to be ready
+            # AND has provided a non-predicted, non-ligand PDB file
+            if any(p in skip_programs for p in ["phenix.phaser", "phenix.autosol"]):
+                # Must have a file in the 'model' category (positioned models)
+                # NOT just search_model (which are templates/predictions)
+                if files.get("model"):
+                    return True
+                # Or check for a non-template, non-ligand PDB that's not in search_model
+                for f in files.get("pdb", []):
+                    # Skip if it's a search model (template/prediction)
+                    if f in files.get("search_model", []):
+                        continue
+                    # Skip ligand files
+                    basename = os.path.basename(f).lower()
+                    is_ligand = (
+                        basename.startswith('lig') or
+                        basename.startswith('ligand') or
+                        f in files.get("ligand_pdb", []) or
+                        f in files.get("ligand_file", [])
+                    )
+                    if not is_ligand:
+                        return True
+
+        return False
 
     def _has_refined_model(self, files, history_info):
         """Check if model has been refined."""
@@ -308,6 +369,20 @@ class WorkflowEngine:
             return self._make_phase_result(phases, "refine",
                 "Have model, need initial refinement")
 
+        # CRITICAL: Stay in "refine" phase if ligand fitting is possible
+        # This allows ligandfit to be offered as a valid program
+        # Conditions: have ligand file, r_free is good enough, not already done, AND refinement done
+        # (ligandfit requires map coefficients from refined MTZ)
+        if (context.get("has_ligand_file") and
+            not context.get("ligandfit_done") and
+            not context.get("has_ligand_fit") and
+            context.get("refine_count", 0) > 0):  # Must have refined first
+            # Check r_free threshold for ligandfit (< 0.35)
+            r_free = context.get("r_free")
+            if r_free is not None and r_free < 0.35:
+                return self._make_phase_result(phases, "refine",
+                    "Model refined, ligand fitting available")
+
         # Check if validation is needed
         validation_needed = self._needs_validation(context, "xray")
         if validation_needed and not context["validation_done"]:
@@ -427,19 +502,41 @@ class WorkflowEngine:
                 target = get_metric_threshold("r_free", "acceptable", resolution)
                 if target and r_free <= target:
                     return True
+
+            # Also check clashscore - if it's good, we're likely done
+            clashscore = context.get("clashscore")
+            if clashscore is not None and clashscore < 10:
+                return True
+
+            # Hard limit: if we've done 5+ refine cycles, consider it at target
+            refine_count = context.get("refine_count", 0)
+            if refine_count >= 5:
+                return True
         else:
+            # Cryo-EM: check map_cc OR clashscore OR max cycles
             map_cc = context.get("map_cc")
             if map_cc is not None:
                 target = get_metric_threshold("map_cc", "acceptable")
                 if target and map_cc >= target:
                     return True
+
+            # Also check clashscore - if it's good, we're done
+            clashscore = context.get("clashscore")
+            if clashscore is not None and clashscore < 12:
+                return True
+
+            # Hard limit: if we've done 5+ RSR cycles, consider it at target
+            rsr_count = context.get("rsr_count", 0)
+            if rsr_count >= 5:
+                return True
+
         return False
 
     # =========================================================================
     # PROGRAM SELECTION
     # =========================================================================
 
-    def get_valid_programs(self, experiment_type, phase_info, context):
+    def get_valid_programs(self, experiment_type, phase_info, context, directives=None):
         """
         Get valid programs for current phase.
 
@@ -447,6 +544,7 @@ class WorkflowEngine:
             experiment_type: "xray" or "cryoem"
             phase_info: Output from detect_phase()
             context: Context dict
+            directives: Optional user directives dict
 
         Returns:
             list: Valid program names
@@ -502,36 +600,192 @@ class WorkflowEngine:
             filtered.append(prog)
         valid = filtered
 
+        # === APPLY USER DIRECTIVES ===
+        # This is the SINGLE PLACE where directives affect valid_programs
+        if directives:
+            valid = self._apply_directives(valid, directives, phase_name, context)
+
         # Add STOP if validation done and at target
         if phase_name == "validate" and context.get("validation_done"):
-            valid.append("STOP")
+            if "STOP" not in valid:
+                valid.append("STOP")
 
         # Special: also allow refinement during validate phase (user can choose more refinement)
+        # BUT respect max_refine_cycles directive
         if phase_name == "validate":
-            if experiment_type == "xray":
-                if "phenix.refine" not in valid:
-                    valid.append("phenix.refine")
-            elif experiment_type == "cryoem":
-                if "phenix.real_space_refine" not in valid:
-                    valid.append("phenix.real_space_refine")
+            max_refine = directives.get("stop_conditions", {}).get("max_refine_cycles") if directives else None
+            refine_count = context.get("refine_count", 0)
+            refine_allowed = (max_refine is None) or (refine_count < max_refine)
 
-        # Special: always allow refinement to continue
+            if refine_allowed:
+                if experiment_type == "xray":
+                    if "phenix.refine" not in valid:
+                        valid.append("phenix.refine")
+                elif experiment_type == "cryoem":
+                    if "phenix.real_space_refine" not in valid:
+                        valid.append("phenix.real_space_refine")
+
+        # Special: always allow refinement to continue (unless max_refine_cycles reached)
         if phase_name == "refine":
-            if experiment_type == "xray" and "phenix.refine" not in valid:
-                valid.append("phenix.refine")
-            elif experiment_type == "cryoem" and "phenix.real_space_refine" not in valid:
-                valid.append("phenix.real_space_refine")
+            max_refine = directives.get("stop_conditions", {}).get("max_refine_cycles") if directives else None
+            refine_count = context.get("refine_count", 0)
+            refine_allowed = (max_refine is None) or (refine_count < max_refine)
+
+            if refine_allowed:
+                if experiment_type == "xray" and "phenix.refine" not in valid:
+                    valid.append("phenix.refine")
+                elif experiment_type == "cryoem" and "phenix.real_space_refine" not in valid:
+                    valid.append("phenix.real_space_refine")
 
             # Add STOP if at target and validated
             if context.get("validation_done") and self._is_at_target(context, experiment_type):
                 if "STOP" not in valid:
                     valid.append("STOP")
 
+        # NOTE: skip_validation STOP handling is now in _apply_directives()
+        # No duplicate check needed here
+
         # If no valid programs available, return STOP (stuck state)
         if not valid:
             return ["STOP"]
 
         return valid
+
+    def _apply_directives(self, valid_programs, directives, phase_name, context=None):
+        """
+        Apply user directives to modify valid programs list.
+
+        This is the SINGLE PLACE where directives affect what programs are available.
+        All directive-related valid_programs logic should be here.
+
+        Handles:
+        - Adding STOP when skip_validation=true (allows stopping without validation)
+        - Adding after_program target (ensures the tutorial target is runnable)
+        - PRIORITIZING after_program (move to front of list so LLM chooses it)
+        - Workflow preferences: skip_programs, prefer_programs
+        - REMOVING refinement programs when max_refine_cycles reached
+
+        Args:
+            valid_programs: List of valid program names from workflow phase
+            directives: User directives dict from directive_extractor
+            phase_name: Current workflow phase name
+            context: Workflow context dict (contains refine_count, etc.)
+
+        Returns:
+            list: Modified valid programs list
+        """
+        if not directives:
+            return valid_programs
+
+        result = list(valid_programs)
+        modifications = []  # Track what we changed for logging
+
+        # Get stop_conditions
+        stop_cond = directives.get("stop_conditions", {})
+
+        # 0. Check max_refine_cycles - REMOVE refinement programs if limit reached
+        max_refine_cycles = stop_cond.get("max_refine_cycles")
+        if max_refine_cycles is not None and context:
+            refine_count = context.get("refine_count", 0)
+            if refine_count >= max_refine_cycles:
+                # Remove refinement programs from valid list
+                refine_programs = ["phenix.refine", "phenix.real_space_refine"]
+                before_count = len(result)
+                result = [p for p in result if p not in refine_programs]
+                if len(result) < before_count:
+                    modifications.append(
+                        "Removed refinement (max_refine_cycles=%d reached, count=%d)" % (
+                            max_refine_cycles, refine_count))
+                # Also add STOP since we can't refine anymore
+                if "STOP" not in result:
+                    result.append("STOP")
+                    modifications.append("Added STOP (max_refine_cycles reached)")
+
+        # 1. If skip_validation is set, add STOP to valid programs
+        #    This allows the user to stop even without completing validation
+        if stop_cond.get("skip_validation"):
+            if "STOP" not in result:
+                result.append("STOP")
+                modifications.append("Added STOP (skip_validation directive)")
+
+        # 2. If after_program is set, ensure that program is available AND prioritized
+        #    This handles tutorial cases where the user wants to run a specific
+        #    program. We move it to the front so the LLM is more likely to choose it.
+        #    BUT: Don't add programs if prerequisites aren't met!
+        after_program = stop_cond.get("after_program")
+        if after_program:
+            # Check if we should actually add this program
+            should_add = True
+
+            # Don't add refinement programs if we're in an early phase without a model
+            if after_program in ("phenix.refine", "phenix.real_space_refine"):
+                # Check if we have a refined model or are in refine/validate phase
+                has_model_to_refine = (
+                    context and (
+                        context.get("refine_count", 0) > 0 or
+                        context.get("has_refined_model") or
+                        context.get("has_placed_model") or
+                        phase_name in ("refine", "validate")
+                    )
+                )
+                if not has_model_to_refine:
+                    # Don't add refinement to early phases - let workflow proceed normally
+                    should_add = False
+                    modifications.append(
+                        "Skipped adding %s (no model to refine yet)" % after_program)
+
+            # Don't add ligandfit if refinement hasn't been done yet
+            # (ligandfit requires map coefficients from refined MTZ)
+            if after_program == "phenix.ligandfit":
+                has_refined = (
+                    context and (
+                        context.get("refine_count", 0) > 0 or
+                        context.get("rsr_count", 0) > 0 or
+                        context.get("has_refined_model")
+                    )
+                )
+                if not has_refined:
+                    # Don't add ligandfit until refinement is done
+                    should_add = False
+                    modifications.append(
+                        "Skipped adding %s (requires refinement first for map coefficients)" % after_program)
+
+            if should_add:
+                if after_program in result:
+                    # Already in list - move to front to prioritize
+                    result.remove(after_program)
+                    result.insert(0, after_program)
+                    modifications.append("Prioritized %s (after_program directive)" % after_program)
+                else:
+                    # Not in list - add at front
+                    result.insert(0, after_program)
+                    modifications.append("Added %s (after_program directive)" % after_program)
+
+        # 3. Apply workflow preferences
+        workflow_prefs = directives.get("workflow_preferences", {})
+
+        # Remove skipped programs
+        skip_programs = workflow_prefs.get("skip_programs", [])
+        if skip_programs:
+            before_count = len(result)
+            result = [p for p in result if p not in skip_programs]
+            if len(result) < before_count:
+                modifications.append("Removed skipped programs: %s" % skip_programs)
+
+        # Reorder to prefer certain programs (move to front)
+        prefer_programs = workflow_prefs.get("prefer_programs", [])
+        if prefer_programs:
+            preferred = [p for p in prefer_programs if p in result]
+            others = [p for p in result if p not in prefer_programs]
+            if preferred:
+                result = preferred + others
+                modifications.append("Prioritized: %s" % preferred)
+
+        # Log modifications (these will show up in debug output)
+        # Store modifications in a class-level list so caller can retrieve them
+        self._last_directive_modifications = modifications
+
+        return result
 
     def _check_conditions(self, prog_entry, context):
         """Check if program conditions are met."""
@@ -632,7 +886,7 @@ class WorkflowEngine:
     # HIGH-LEVEL API
     # =========================================================================
 
-    def get_workflow_state(self, experiment_type, files, history_info, analysis=None):
+    def get_workflow_state(self, experiment_type, files, history_info, analysis=None, directives=None):
         """
         Get complete workflow state (compatible with workflow_state.py output).
 
@@ -641,13 +895,14 @@ class WorkflowEngine:
             files: Categorized files dict
             history_info: Analyzed history dict
             analysis: Current log analysis
+            directives: Optional user directives dict
 
         Returns:
             dict: Workflow state compatible with existing code
         """
-        context = self.build_context(files, history_info, analysis)
+        context = self.build_context(files, history_info, analysis, directives)
         phase_info = self.detect_phase(experiment_type, context)
-        valid_programs = self.get_valid_programs(experiment_type, phase_info, context)
+        valid_programs = self.get_valid_programs(experiment_type, phase_info, context, directives)
 
         # Get priority_when info for each valid program
         program_priorities = self._get_program_priorities(experiment_type, phase_info, context)
@@ -675,11 +930,20 @@ class WorkflowEngine:
             else:
                 reason += " - Upload a sequence (.fa) or model (.pdb)"
 
+        # Check for forced_program from directives (after_program)
+        forced_program = None
+        if directives:
+            stop_cond = directives.get("stop_conditions", {})
+            after_program = stop_cond.get("after_program")
+            if after_program and after_program in valid_programs:
+                forced_program = after_program
+
         return {
             "state": state_name,  # Use mapped state name
             "experiment_type": experiment_type,
             "valid_programs": valid_programs,
             "program_priorities": program_priorities,  # NEW: priority_when triggers
+            "forced_program": forced_program,  # NEW: from after_program directive
             "reason": reason,
             "conditions": {},
             "phase_info": phase_info,

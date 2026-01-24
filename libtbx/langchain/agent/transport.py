@@ -11,7 +11,7 @@ Sanitization Order (important!):
 4. Apply max length truncation
 
 Usage:
-    from agent.transport import sanitize_string, sanitize_for_transport
+    from libtbx.langchain.agent.transport import sanitize_string, sanitize_for_transport
 
     # Sanitize a single string
     clean = sanitize_string(text, max_len=500)

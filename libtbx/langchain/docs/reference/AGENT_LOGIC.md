@@ -68,6 +68,20 @@ PERCEIVE → PLAN → BUILD → VALIDATE → EXECUTE → (loop or stop)
 2. **LLM Optional** - Can run fully deterministically with rules-based selection
 3. **Backward Compatible** - Falls back to hardcoded logic if YAML fails
 4. **Testable** - Dry run mode allows full workflow testing without PHENIX
+5. **Layered Decision Flow** - Clear separation between workflow engine, LLM planning, and stop conditions
+
+### Decision Flow Layers
+
+The agent uses a clean, layered architecture for decision-making:
+
+| Layer | Component | Responsibility |
+|-------|-----------|----------------|
+| 1 | Workflow Engine | Determine valid_programs, apply directives |
+| 2 | LLM/Rules Plan | Select program from valid_programs |
+| 3 | Build & Execute | Build command, run program |
+| 4 | Post-Execution | Check stop conditions (ONLY place) |
+
+**Key principle**: Stop conditions are only evaluated AFTER program execution, not during planning.
 
 ---
 
@@ -635,6 +649,10 @@ phenix.ai_agent dry_run=True dry_run_scenario=xray_basic use_rules_only=True
 
 ### To Add a New Program
 
+Adding a new program requires only **2-3 files**. See [ADDING_PROGRAMS.md](../guides/ADDING_PROGRAMS.md) for the complete guide.
+
+**Minimal example:**
+
 Edit `knowledge/programs.yaml`:
 
 ```yaml
@@ -642,6 +660,7 @@ phenix.my_program:
   description: "What it does"
   category: analysis
   experiment_types: [xray]
+  run_once: true  # Auto-creates my_program_done flag
 
   inputs:
     required:
@@ -649,27 +668,28 @@ phenix.my_program:
         extensions: [.mtz]
         flag: ""
 
-  outputs:
-    metrics: [my_metric]
-
   command: "phenix.my_program {data}"
 
-  # Optional features:
-  invariants:
-    - name: requires_resolution
-      check:
-        has_strategy: [resolution]
-      fix:
-        auto_fill_resolution: true
-
-  input_priorities:
-    model:
-      categories: [refined]
-      exclude_categories: [predicted]
-
-  user_advice_keywords:
-    - "my special analysis"
+  # Metric extraction patterns (used by log_parsers.py and session.py)
+  log_parsing:
+    my_metric:
+      pattern: 'My Metric[:\s]+([0-9.]+)'
+      type: float
 ```
+
+Edit `knowledge/workflows.yaml`:
+
+```yaml
+xray:
+  phases:
+    analyze:
+      programs:
+        - program: phenix.my_program
+          conditions:
+            - not_done: my_program
+```
+
+The system automatically handles metric extraction, tracking flags, and summary display.
 
 ### To Change Workflow Logic
 
@@ -714,9 +734,9 @@ my_output:
 ### To Validate Changes
 
 ```bash
-python yaml_tools.py validate
-python yaml_tools.py terms --detail full
-python yaml_tools.py summary
+python agent/yaml_tools.py validate
+python agent/yaml_tools.py terms --detail full
+python agent/yaml_tools.py summary
 ```
 
 ---
@@ -730,14 +750,20 @@ python yaml_tools.py summary
 | `knowledge/metrics.yaml` | Metric thresholds |
 | `knowledge/file_categories.yaml` | File categorization rules |
 | `agent/rules_selector.py` | Deterministic program selection |
-| `agent/workflow_engine.py` | YAML workflow interpreter |
+| `agent/workflow_engine.py` | YAML workflow interpreter, `_apply_directives()` |
 | `agent/workflow_state.py` | File categorization, state detection |
 | `agent/metric_evaluator.py` | YAML-based quality assessment |
 | `agent/template_builder.py` | Command construction with invariants |
 | `agent/program_registry.py` | Program info access |
 | `agent/dry_run_manager.py` | Test scenario management |
-| `log_parsers.py` | Program output parsing |
-| `yaml_tools.py` | YAML validation and inspection |
+| `agent/directive_extractor.py` | Extract directives from user advice |
+| `agent/directive_validator.py` | Apply program settings to intent |
+| `agent/graph_nodes.py` | LangGraph nodes including `plan()` |
+| `programs/ai_agent.py` | Main agent, post-execution stop check |
+| `phenix_ai/log_parsers.py` | Program output parsing |
+| `agent/yaml_tools.py` | YAML validation and inspection |
+| `agent/session_tools.py` | Session management CLI |
+| `agent/docs_tools.py` | Documentation generation |
 
 ---
 
@@ -758,6 +784,9 @@ python run_all_tests.py
 | `test_integration.py` | Full workflow paths |
 | `test_metrics_analyzer.py` | Quality assessment logic |
 | `test_dry_run.py` | Scenario-based testing |
+| `test_decision_flow.py` | Decision flow architecture, directive application |
+| `test_directive_extractor.py` | Directive extraction from user advice |
+| `test_directive_validator.py` | Program settings application |
 
 ### Add Test Scenario
 
@@ -780,23 +809,23 @@ my_scenario/
 
 ```bash
 # List available YAML files
-python yaml_tools.py list
+python agent/yaml_tools.py list
 
 # Validate all configuration
-python yaml_tools.py validate
+python agent/yaml_tools.py validate
 
 # Display formatted contents
-python yaml_tools.py display knowledge/programs.yaml
-python yaml_tools.py display knowledge/file_categories.yaml
+python agent/yaml_tools.py display knowledge/programs.yaml
+python agent/yaml_tools.py display knowledge/file_categories.yaml
 
 # Show all defined terms
-python yaml_tools.py terms                  # Simple list
-python yaml_tools.py terms --detail normal  # With descriptions
-python yaml_tools.py terms --detail full    # Full cross-reference
+python agent/yaml_tools.py terms                  # Simple list
+python agent/yaml_tools.py terms --detail normal  # With descriptions
+python agent/yaml_tools.py terms --detail full    # Full cross-reference
 
 # Show configuration summary
-python yaml_tools.py summary
+python agent/yaml_tools.py summary
 
 # Compare configurations
-python yaml_tools.py compare old_config/ new_config/
+python agent/yaml_tools.py compare old_config/ new_config/
 ```
