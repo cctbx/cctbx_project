@@ -756,8 +756,13 @@ summary_display:
       fallback_format: "Completed"
 
     phenix.predict_and_build:
-      format: "Built model"
-      metrics: []
+      # predict_and_build can produce different outputs:
+      # - Full run: builds model into map (map_cc available)
+      # - stop_after_predict=True: only predicts (no map_cc)
+      # The code checks command for stop_after_predict to determine which
+      format: "Map CC: {map_cc:.2f}"
+      metrics: [map_cc]
+      fallback_format: "Predicted model"
 
     phenix.autobuild:
       format: "R-free: {r_free:.3f}"

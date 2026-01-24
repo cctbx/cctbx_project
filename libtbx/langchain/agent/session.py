@@ -1791,6 +1791,17 @@ FINAL REPORT:"""
         """
         result = str(cycle.get("result", ""))
 
+        # Check for failed runs FIRST - don't show misleading metrics
+        if "FAILED" in result.upper() or "IGNORED" in result.upper():
+            # Extract the error message if possible
+            if ":" in result:
+                error_part = result.split(":", 1)[1].strip()
+                # Truncate long error messages
+                if len(error_part) > 40:
+                    error_part = error_part[:37] + "..."
+                return f"FAILED: {error_part}"
+            return "FAILED"
+
         from libtbx.langchain.knowledge.summary_display import format_step_metric
         from libtbx.langchain.knowledge.metric_patterns import extract_metrics_for_program
 
