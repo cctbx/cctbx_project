@@ -49,6 +49,7 @@ xray:
           preferred: true
           conditions:
             - has: sequence
+          # Note: If resolution not known, command builder adds stop_after_predict=True
           strategy:
             stop_after_predict: false
 
@@ -260,6 +261,7 @@ cryoem:
           conditions:
             - has: sequence
             - has_any: [full_map, half_map]
+          # Note: If resolution not known, command builder adds stop_after_predict=True
           strategy_depends_on: automation_path
 
         - program: phenix.dock_in_map

@@ -750,6 +750,22 @@ class WorkflowEngine:
                     modifications.append(
                         "Skipped adding %s (requires refinement first for map coefficients)" % after_program)
 
+            # For predict_and_build without resolution: allow it but note it will be prediction-only
+            # Resolution is only needed for the building step, not prediction
+            # The command builder will add stop_after_predict=True if resolution isn't available
+            if after_program == "phenix.predict_and_build":
+                has_resolution = (
+                    context and (
+                        context.get("mtriage_done") or
+                        context.get("xtriage_done") or
+                        context.get("resolution") is not None
+                    )
+                )
+                if not has_resolution:
+                    # Still allow it, but note that it will be prediction-only
+                    modifications.append(
+                        "Note: %s will run prediction-only (no resolution yet)" % after_program)
+
             if should_add:
                 if after_program in result:
                     # Already in list - move to front to prioritize

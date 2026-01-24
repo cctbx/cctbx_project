@@ -532,6 +532,7 @@ def perceive(state):
 
     # Build sanity check context
     categorized_files = workflow_state.get("categorized_files", {})
+    session_resolution = state.get("session_resolution") or resolution
     sanity_context = {
         "experiment_type": effective_experiment_type,
         # SEMANTIC: 'model' = positioned models (phaser_output, refined, docked)
@@ -545,10 +546,12 @@ def perceive(state):
             categorized_files.get("full_map") or
             categorized_files.get("half_map")
         ),
+        # Resolution is known if we have a value from mtriage/xtriage
+        "has_resolution": session_resolution is not None,
         "state": workflow_state.get("state", ""),
         "history": history,
         "metrics_history": metrics_history,
-        "resolution": state.get("session_resolution") or resolution,
+        "resolution": session_resolution,
         "categorized_files": categorized_files,
     }
 

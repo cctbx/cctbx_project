@@ -674,6 +674,13 @@ class CommandBuilder:
                     strategy["generate_rfree_flags"] = True
                     self._log(context, "BUILD: First refinement - will generate R-free flags")
 
+        # predict_and_build: if no resolution, must use stop_after_predict=True
+        # Resolution is required for the building step, but not for prediction
+        if program == "phenix.predict_and_build":
+            if not context.resolution and "stop_after_predict" not in strategy:
+                strategy["stop_after_predict"] = True
+                self._log(context, "BUILD: No resolution available - setting stop_after_predict=True (prediction only)")
+
         return files, strategy
 
     # =========================================================================

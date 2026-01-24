@@ -506,13 +506,6 @@ class BestFilesTracker:
         # Calculate score
         score = self._calculate_score(path, category, stage, metrics)
 
-        # DEBUG: Log evaluation details
-        basename = os.path.basename(path)
-        current = self.best.get(category)
-        current_score = current.score if current else None
-        current_path = os.path.basename(current.path) if current else None
-        print(f"DEBUG best_files.evaluate_file: {basename} category={category} stage={stage} score={score:.1f} current_best={current_path} current_score={current_score}")
-
         # Special handling for MTZ: earliest with R-free flags wins forever
         if category == "mtz":
             return self._evaluate_mtz(path, cycle, metrics, stage, score)
