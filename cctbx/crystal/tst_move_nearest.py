@@ -336,31 +336,41 @@ def test_change_of_basis_op_to_nearest_setting():
     # Test case 2: Simple axis swap
     # ref: (5, 6, 7, 90, 90, 90)
     # test: (6, 5, 7, 90, 90, 90) - a and b swapped
-    # Expected cb_op: y,x,-z (or similar permutation)
+    # There are 4 equally valid cb_ops that all have det=1 and transform
+    # test to match ref. The algorithm cycles through them deterministically.
     cs_ref2 = symmetry(unit_cell=(5, 6, 7, 90, 90, 90), space_group='P1')
     cs_test2 = symmetry(unit_cell=(6, 5, 7, 90, 90, 90), space_group='P1')
 
-    cb_op2 = cs_ref2.change_of_basis_op_to_nearest_setting(cs_test2)
-    xyz_str2 = cb_op2.as_xyz()
+    # Collect the cb_ops from multiple calls to see the cycling behavior
+    valid_cb_ops = ["-y,-x,-z", "-y,x,z", "y,-x,z", "y,x,-z"]
+    observed_cb_ops = []
+
+    for i in range(4):
+        cb_op2 = cs_ref2.change_of_basis_op_to_nearest_setting(cs_test2)
+        xyz_str2 = cb_op2.as_xyz()
+        observed_cb_ops.append(xyz_str2)
+
+        # Each should be one of the valid options
+        assert xyz_str2 in valid_cb_ops, \
+            f"Iteration {i}: Expected one of {valid_cb_ops}, got '{xyz_str2}'"
+
+        # Verify transformation works correctly
+        transformed_uc2 = cs_test2.unit_cell().change_basis(cb_op2)
+        cs_nearest2 = cs_ref2.nearest_setting(cs_test2)
+        nearest_uc2 = cs_nearest2.unit_cell()
+
+        np.testing.assert_allclose(
+            transformed_uc2.parameters(),
+            nearest_uc2.parameters(),
+            rtol=1e-6
+        )
 
     print(f"\nTest case 2 - axis swap:")
     print(f"  Reference: {cs_ref2.unit_cell().parameters()[:3]}")
     print(f"  Test:      {cs_test2.unit_cell().parameters()[:3]}")
-    print(f"  Change-of-basis operator as_xyz(): {xyz_str2}")
-
-    # Verify transformation works correctly
-    # Apply operator directly to test (not to minimum cell)
-    transformed_uc2 = cs_test2.unit_cell().change_basis(cb_op2)
-    cs_nearest2 = cs_ref2.nearest_setting(cs_test2)
-    nearest_uc2 = cs_nearest2.unit_cell()
-
-    print(f"  Transformed via cb_op: {transformed_uc2.parameters()}")
-    print(f"  Transformed via nearest_setting: {nearest_uc2.parameters()}")
-    np.testing.assert_allclose(
-        transformed_uc2.parameters(),
-        nearest_uc2.parameters(),
-        rtol=1e-6
-    )
+    print(f"  Valid cb_ops (all det=1): {valid_cb_ops}")
+    print(f"  Observed cycling: {observed_cb_ops}")
+    print(f"  All transformations verified!")
 
     print("\nAll change_of_basis_op_to_nearest_setting tests passed!")
 
