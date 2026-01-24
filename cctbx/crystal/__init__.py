@@ -566,34 +566,79 @@ class symmetry(object):
     best_dist = min(distances)
     tolerance = 1e-7
     tied_indices = [i for i, d in enumerate(distances) if abs(d - best_dist) <= tolerance]
-    # If there are multiple best settings and we are handling multiple cells,
-    # then we want all best settings to be represented; but we want to do it
-    # deterministically for testing purposes.
-    if not hasattr(self, 'nearest_setting_count'):
-      self.nearest_setting_count = 0
-    best_idx = tied_indices[self.nearest_setting_count % len(tied_indices)]
-    self.nearest_setting_count += 1
-
-    # Get the transformation matrix and invert it for change_of_basis_op
-    # Convention: P from find_near_minimum_settings satisfies P = inv(cb.c().r())
-    # So to construct cb_op, we need to pass P^{-1}
-    P = settings[best_idx]['P']
-
-    # Convert matrix to rational representation for rot_mx
-    # rot_mx requires integer matrix elements and a denominator
-    fractions = [Fraction(x).limit_denominator(10) for x in P.ravel()]
-    denominators = [f.denominator for f in fractions]
-    common_denominator = int(reduce(np.lcm, denominators))
-    P_int = tuple(int(f * common_denominator) for f in fractions)
-    rot_mx = sgtbx.rot_mx(P_int, common_denominator)
-
-    cb_near = sgtbx.change_of_basis_op(sgtbx.rt_mx(rot_mx).as_xyz())
 
     # Get the transformation from other to its minimum cell
     cb_other_to_min = other.change_of_basis_op_to_minimum_cell()
 
-    # Return the composed transformation: other -> other_minimum -> near-reduced -> self's original setting
-    return cbi_self * cb_near * cb_other_to_min
+    # Helper function to build change-of-basis operator from a setting index
+    def build_cb_op(idx):
+      P = settings[idx]['P']
+      fractions = [Fraction(x).limit_denominator(10) for x in P.ravel()]
+      denominators = [f.denominator for f in fractions]
+      common_denominator = int(reduce(np.lcm, denominators))
+      P_int = tuple(int(f * common_denominator) for f in fractions)
+      rot_mx = sgtbx.rot_mx(P_int, common_denominator)
+      cb_near = sgtbx.change_of_basis_op(sgtbx.rt_mx(rot_mx).as_xyz())
+      return cbi_self * cb_near * cb_other_to_min
+
+    # Check if any of the tied settings results in an identity operator
+    # If so, prefer it to avoid unnecessary reindexing
+    identity_idx = None
+    for idx in tied_indices:
+      cb_op = build_cb_op(idx)
+      if cb_op.is_identity_op():
+        identity_idx = idx
+        break
+
+    if identity_idx is not None:
+      # Prefer identity to avoid unnecessary reindexing
+      best_idx = identity_idx
+    else:
+      # If there are multiple best settings and we are handling multiple cells,
+      # then we want all best settings to be represented; but we want to do it
+      # deterministically for testing purposes.
+      if not hasattr(self, 'nearest_setting_count'):
+        self.nearest_setting_count = 0
+      best_idx = tied_indices[self.nearest_setting_count % len(tied_indices)]
+      self.nearest_setting_count += 1
+
+    # Return the composed transformation for the chosen setting
+    return build_cb_op(best_idx)
+
+  def has_nearer_setting(self, other,
+                         length_tolerance=0.03,
+                         angle_tolerance=3.0,
+                         test_multiples=False):
+    """
+    Check if 'other' has a setting that is nearer to self than its current setting.
+
+    This is useful for determining whether an indexed crystal is in a
+    non-optimal setting compared to a reference crystal and needs reindexing.
+
+    Parameters
+    ----------
+    other : symmetry
+        The crystal symmetry to check
+    length_tolerance : float
+        Fractional tolerance for length perturbations (default 0.03 = 3%)
+    angle_tolerance : float
+        Tolerance for angle perturbations in degrees (default 3.0)
+    test_multiples : bool
+        Whether to test multiples of the unit cell (default False)
+
+    Returns
+    -------
+    bool
+        True if a nearer setting exists (change-of-basis operator is not identity)
+    """
+    cb_op = self.change_of_basis_op_to_nearest_setting(
+      other,
+      length_tolerance=length_tolerance,
+      angle_tolerance=angle_tolerance,
+      test_multiples=test_multiples
+    )
+    # Check if the operator is identity (x,y,z)
+    return not cb_op.is_identity_op()
 
   def nearest_setting(self, other,
                       length_tolerance=0.03,

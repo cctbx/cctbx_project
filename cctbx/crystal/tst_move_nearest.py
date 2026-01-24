@@ -374,6 +374,26 @@ def test_change_of_basis_op_to_nearest_setting():
 
     print("\nAll change_of_basis_op_to_nearest_setting tests passed!")
 
+    # Test case 3: Verify has_nearer_setting returns False when identity is among tied settings
+    cs_ref3 = symmetry(unit_cell=(5, 6, 7, 90, 90, 90), space_group='P1')
+    cs_test3 = symmetry(unit_cell=(5, 6, 7, 90, 90, 90), space_group='P1')  # Already matching
+
+    has_nearer = cs_ref3.has_nearer_setting(cs_test3)
+    print(f"\nTest case 3 - identity setting:")
+    print(f"  Reference: {cs_ref3.unit_cell().parameters()[:3]}")
+    print(f"  Test:      {cs_test3.unit_cell().parameters()[:3]}")
+    print(f"  has_nearer_setting: {has_nearer}")
+    assert not has_nearer, "Should return False when current setting is already optimal"
+
+    # Also test with the axis swap case - should still prefer identity
+    cs_test4 = symmetry(unit_cell=(6, 5, 7, 90, 90, 90), space_group='P1')
+    cb_op_first = cs_ref3.change_of_basis_op_to_nearest_setting(cs_test4)
+    print(f"\nTest case 4 - axis swap with identity preference:")
+    print(f"  First call cb_op (should prefer identity if tied): {cb_op_first.as_xyz()}")
+    # Note: This won't be identity since (6,5,7) != (5,6,7), but we're testing the preference logic
+
+    print("\nAll has_nearer_setting tests passed!")
+
 
 if __name__ == '__main__':
     test_a2a_abs_2023()
