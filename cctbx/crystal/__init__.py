@@ -536,7 +536,7 @@ class symmetry(object):
     -------
     sgtbx.change_of_basis_op
         The change-of-basis operator to transform 'other' to the nearest
-        setting of self. Apply this to other's minimum cell.
+        setting of self. Apply this directly to 'other' (not to its minimum cell).
     """
 
     # Get or compute cached nearly-reduced settings for self
@@ -589,9 +589,11 @@ class symmetry(object):
 
     cb_near = sgtbx.change_of_basis_op(sgtbx.rt_mx(rot_mx).as_xyz())
 
-    # Return the composed transformation: near-reduced -> self's original setting
-    # This should be applied to other's minimum cell
-    return cbi_self * cb_near
+    # Get the transformation from other to its minimum cell
+    cb_other_to_min = other.change_of_basis_op_to_minimum_cell()
+
+    # Return the composed transformation: other -> other_minimum -> near-reduced -> self's original setting
+    return cbi_self * cb_near * cb_other_to_min
 
   def nearest_setting(self, other,
                       length_tolerance=0.03,
@@ -636,9 +638,8 @@ class symmetry(object):
       test_multiples=test_multiples
     )
 
-    # Apply transformation to other's minimum cell
-    mc_other = other.minimum_cell()
-    result_uc = mc_other.unit_cell().change_basis(cb_op)
+    # Apply transformation to other (the operator now includes the full transformation)
+    result_uc = other.unit_cell().change_basis(cb_op)
 
     # Create result space group with same centering as self but no rotational symmetry
     self_centring = self.space_group().conventional_centring_type_symbol()
