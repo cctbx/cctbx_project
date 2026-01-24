@@ -510,37 +510,33 @@ class symmetry(object):
   def is_incomplete(self):
     return self.unit_cell() is None or self.space_group() is None
 
-  def nearest_setting(self, other,
-                      length_tolerance=0.03,
-                      angle_tolerance=3.0,
-                      test_multiples=False):
+  def change_of_basis_op_to_nearest_setting(self, other,
+                                             length_tolerance=0.03,
+                                             angle_tolerance=3.0,
+                                             test_multiples=False):
     """
-    Find the setting of 'other' that is nearest to self.
+    Compute the change-of-basis operator that transforms 'other' to the
+    setting nearest to self.
 
-    This method is useful for comparing unit cells that may lie near
-    reduction boundaries, where small measurement errors can cause
-    different reduction paths and make similar cells appear different.
-
-    The algorithm:
-    1. Convert self to minimum cell and find all nearly-reduced settings
-    2. Convert other to minimum cell
-    3. Find which nearly-reduced setting of self best matches other
-    4. Apply the corresponding transformation to other
+    This method is useful for transforming indexed crystals (with Miller
+    indices, reflections, etc.) to match the setting of a reference crystal.
 
     Parameters
     ----------
     other : symmetry
-        The crystal symmetry to transform
+        The crystal symmetry to find the transformation for
     length_tolerance : float
         Fractional tolerance for length perturbations (default 0.03 = 3%)
     angle_tolerance : float
         Tolerance for angle perturbations in degrees (default 3.0)
+    test_multiples : bool
+        Whether to test multiples of the unit cell (default False)
 
     Returns
     -------
-    symmetry
-        A new symmetry object representing 'other' in the setting
-        that best matches self
+    sgtbx.change_of_basis_op
+        The change-of-basis operator to transform 'other' to the nearest
+        setting of self. Apply this to other's minimum cell.
     """
 
     # Get or compute cached nearly-reduced settings for self
@@ -591,11 +587,58 @@ class symmetry(object):
     P_int = tuple(int(f * common_denominator) for f in fractions)
     rot_mx = sgtbx.rot_mx(P_int, common_denominator)
 
-
     cb_near = sgtbx.change_of_basis_op(sgtbx.rt_mx(rot_mx).as_xyz())
 
-    # Apply transformations: other_minimum -> near-reduced -> self's original setting
-    result_uc = mc_other.unit_cell().change_basis(cb_near).change_basis(cbi_self)
+    # Return the composed transformation: near-reduced -> self's original setting
+    # This should be applied to other's minimum cell
+    return cbi_self * cb_near
+
+  def nearest_setting(self, other,
+                      length_tolerance=0.03,
+                      angle_tolerance=3.0,
+                      test_multiples=False):
+    """
+    Find the setting of 'other' that is nearest to self.
+
+    This method is useful for comparing unit cells that may lie near
+    reduction boundaries, where small measurement errors can cause
+    different reduction paths and make similar cells appear different.
+
+    The algorithm:
+    1. Convert self to minimum cell and find all nearly-reduced settings
+    2. Convert other to minimum cell
+    3. Find which nearly-reduced setting of self best matches other
+    4. Apply the corresponding transformation to other
+
+    Parameters
+    ----------
+    other : symmetry
+        The crystal symmetry to transform
+    length_tolerance : float
+        Fractional tolerance for length perturbations (default 0.03 = 3%)
+    angle_tolerance : float
+        Tolerance for angle perturbations in degrees (default 3.0)
+    test_multiples : bool
+        Whether to test multiples of the unit cell (default False)
+
+    Returns
+    -------
+    symmetry
+        A new symmetry object representing 'other' in the setting
+        that best matches self
+    """
+
+    # Get the change-of-basis operator
+    cb_op = self.change_of_basis_op_to_nearest_setting(
+      other,
+      length_tolerance=length_tolerance,
+      angle_tolerance=angle_tolerance,
+      test_multiples=test_multiples
+    )
+
+    # Apply transformation to other's minimum cell
+    mc_other = other.minimum_cell()
+    result_uc = mc_other.unit_cell().change_basis(cb_op)
 
     # Create result space group with same centering as self but no rotational symmetry
     self_centring = self.space_group().conventional_centring_type_symbol()
