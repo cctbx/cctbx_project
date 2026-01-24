@@ -281,9 +281,98 @@ def test_cell_multiples():
     print("\nAll cell multiple tests completed successfully")
 
 
+def test_change_of_basis_op_to_nearest_setting():
+    """
+    Test the new change_of_basis_op_to_nearest_setting method.
+
+    This test verifies that:
+    1. The method returns a valid change-of-basis operator
+    2. The operator can be inspected via as_xyz()
+    3. Applying the operator gives the same result as nearest_setting()
+    """
+    # Use a simple example from the A2A test
+    cells = [
+        [39.741, 183.767, 140.649, 90.0, 90.0, 90.0],
+        [40.160, 142.899, 92.417, 90.0, 102.480, 90.0],
+    ]
+    sgs = ['C2', 'P2']
+
+    cs_ref = symmetry(unit_cell=cells[0], space_group=sgs[0])
+    cs_test = symmetry(unit_cell=cells[1], space_group=sgs[1])
+
+    # Get the change-of-basis operator
+    cb_op = cs_ref.change_of_basis_op_to_nearest_setting(cs_test)
+
+    # Check that we got a change-of-basis operator
+    assert cb_op is not None
+
+    # Inspect the operator via as_xyz()
+    xyz_str = cb_op.as_xyz()
+    print(f"\nChange-of-basis operator as_xyz(): {xyz_str}")
+
+    # Verify it's a valid transformation (should be a string with commas)
+    assert isinstance(xyz_str, str)
+    assert ',' in xyz_str
+
+    # Apply the operator manually and compare to nearest_setting()
+    mc_test = cs_test.minimum_cell()
+    transformed_uc = mc_test.unit_cell().change_basis(cb_op)
+
+    # Get the result from nearest_setting for comparison
+    cs_nearest = cs_ref.nearest_setting(cs_test)
+    nearest_uc = cs_nearest.unit_cell()
+
+    # The unit cells should match
+    print(f"Transformed via cb_op: {transformed_uc.parameters()}")
+    print(f"Transformed via nearest_setting: {nearest_uc.parameters()}")
+    np.testing.assert_allclose(
+        transformed_uc.parameters(),
+        nearest_uc.parameters(),
+        rtol=1e-6
+    )
+
+    print("change_of_basis_op_to_nearest_setting test passed!")
+
+    # Test case 2: Simple axis swap
+    # ref: (5, 6, 7, 90, 90, 90)
+    # test: (6, 5, 7, 90, 90, 90) - a and b swapped
+    # Expected cb_op: y,x,-z
+    cs_ref2 = symmetry(unit_cell=(5, 6, 7, 90, 90, 90), space_group='P1')
+    cs_test2 = symmetry(unit_cell=(6, 5, 7, 90, 90, 90), space_group='P1')
+
+    cb_op2 = cs_ref2.change_of_basis_op_to_nearest_setting(cs_test2)
+    xyz_str2 = cb_op2.as_xyz()
+
+    print(f"\nTest case 2 - axis swap:")
+    print(f"  Reference: {cs_ref2.unit_cell().parameters()[:3]}")
+    print(f"  Test:      {cs_test2.unit_cell().parameters()[:3]}")
+    print(f"  Change-of-basis operator as_xyz(): {xyz_str2}")
+    print(f"  Expected: y,x,-z")
+
+    # Verify the operator matches expected
+    assert xyz_str2 == "y,x,-z", f"Expected 'y,x,-z' but got '{xyz_str2}'"
+
+    # Verify transformation works correctly
+    mc_test2 = cs_test2.minimum_cell()
+    transformed_uc2 = mc_test2.unit_cell().change_basis(cb_op2)
+    cs_nearest2 = cs_ref2.nearest_setting(cs_test2)
+    nearest_uc2 = cs_nearest2.unit_cell()
+
+    print(f"  Transformed via cb_op: {transformed_uc2.parameters()}")
+    print(f"  Transformed via nearest_setting: {nearest_uc2.parameters()}")
+    np.testing.assert_allclose(
+        transformed_uc2.parameters(),
+        nearest_uc2.parameters(),
+        rtol=1e-6
+    )
+
+    print("\nAll change_of_basis_op_to_nearest_setting tests passed!")
+
+
 if __name__ == '__main__':
     test_a2a_abs_2023()
     test_pla2_abs_2023()
     test_table11_database()
     test_cell_multiples()
+    test_change_of_basis_op_to_nearest_setting()
     print("ok")
