@@ -117,7 +117,8 @@ class Script(object):
         moved_sym = self.ref_sym.nearest_setting(
           exp_sym,
           length_tolerance=params.move_near.relative_length_tolerance,
-          angle_tolerance=params.move_near.absolute_angle_tolerance_deg
+          angle_tolerance=params.move_near.absolute_angle_tolerance_deg,
+          test_multiples=True
         )
         a, b, c, alpha, beta, gamma = moved_sym.unit_cell().parameters()
       else:

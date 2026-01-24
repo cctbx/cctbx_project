@@ -24,9 +24,10 @@ from libtbx.utils import format_float_with_standard_uncertainty \
 import math
 from scitbx import matrix
 import scitbx.cubicle_neighbors
-from cctbx.uctbx.near_minimum import find_near_minimum_settings, \
-    find_near_minimum_settings_multiples, cell_distance
+from cctbx.uctbx.near_minimum import find_near_minimum_settings, cell_distance
 import numpy as np
+from fractions import Fraction
+from functools import reduce
 cubicles_max_memory_allocation_set(
   number_of_bytes=scitbx.cubicle_neighbors.cubicles_max_memory_allocation_get())
 
@@ -511,7 +512,8 @@ class symmetry(object):
 
   def nearest_setting(self, other,
                       length_tolerance=0.03,
-                      angle_tolerance=3.0):
+                      angle_tolerance=3.0,
+                      test_multiples=False):
     """
     Find the setting of 'other' that is nearest to self.
 
@@ -544,15 +546,16 @@ class symmetry(object):
     # Get or compute cached nearly-reduced settings for self
     cache_key = ('_near_minimum_cache', length_tolerance, angle_tolerance)
     if not hasattr(self, '_near_minimum_cache') or \
-       getattr(self, '_near_minimum_cache_params', None) != (length_tolerance, angle_tolerance):
+       getattr(self, '_near_minimum_cache_params', None) != (length_tolerance, angle_tolerance, test_multiples):
       mc_self = self.minimum_cell()
-      settings = find_near_minimum_settings_multiples(
+      settings = find_near_minimum_settings(
         mc_self.unit_cell(),
         length_tolerance=length_tolerance,
-        angle_tolerance=angle_tolerance
+        angle_tolerance=angle_tolerance,
+        test_multiples=test_multiples
       )
       self._near_minimum_cache = settings
-      self._near_minimum_cache_params = (length_tolerance, angle_tolerance)
+      self._near_minimum_cache_params = (length_tolerance, angle_tolerance, test_multiples)
       self._near_minimum_cbi_self = self.change_of_basis_op_to_minimum_cell().inverse()
 
     settings = self._near_minimum_cache
@@ -579,10 +582,17 @@ class symmetry(object):
     # Convention: P from find_near_minimum_settings satisfies P = inv(cb.c().r())
     # So to construct cb_op, we need to pass P^{-1}
     P = settings[best_idx]['P']
-    P_flat = tuple(float(x) for x in P.ravel())
 
-    rot_mx = sgtbx.rot_mx(P_flat)
-    cb_near = sgtbx.change_of_basis_op(sgtbx.rt_mx(rot_mx))
+    # Convert matrix to rational representation for rot_mx
+    # rot_mx requires integer matrix elements and a denominator
+    fractions = [Fraction(x).limit_denominator(10) for x in P.ravel()]
+    denominators = [f.denominator for f in fractions]
+    common_denominator = int(reduce(np.lcm, denominators))
+    P_int = tuple(int(f * common_denominator) for f in fractions)
+    rot_mx = sgtbx.rot_mx(P_int, common_denominator)
+
+
+    cb_near = sgtbx.change_of_basis_op(sgtbx.rt_mx(rot_mx).as_xyz())
 
     # Apply transformations: other_minimum -> near-reduced -> self's original setting
     result_uc = mc_other.unit_cell().change_basis(cb_near).change_basis(cbi_self)
