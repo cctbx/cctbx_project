@@ -23,6 +23,10 @@ $ cctbx.xfel.powder_refine_geometry spots.expt spots.refl
 $ cctbx.xfel.powder_refine_geometry spots.expt spots.refl \\
     reference_d_spacings=3.135,1.920,1.637,1.357
 
+# Or use unit cell and space group instead
+$ cctbx.xfel.powder_refine_geometry spots.expt spots.refl \\
+    unit_cell=4.156,4.156,4.156,90,90,90 space_group=Pm-3m
+
 # Refine only XY shift (fix distance and tilt)
 $ cctbx.xfel.powder_refine_geometry spots.expt spots.refl \\
     refine.distance=False refine.tilt=False
@@ -48,7 +52,18 @@ phil_scope = parse(
     """
 reference_d_spacings = 4.156 2.939 2.399 2.078 1.858
   .type = floats
-  .help = Reference d-spacings in Angstroms. Default: first 5 LaB6 peaks.
+  .help = Reference d-spacings in Angstroms. Default: first 5 LaB6 peaks. \
+          Either use this OR specify unit_cell and space_group.
+
+unit_cell = None
+  .type = unit_cell
+  .help = Unit cell to generate reference d-spacings (use with space_group). \
+          If specified, this overrides reference_d_spacings.
+
+space_group = None
+  .type = space_group
+  .help = Space group to generate reference d-spacings (use with unit_cell). \
+          If specified, this overrides reference_d_spacings.
 
 d_min = 1.5
   .type = float
@@ -112,7 +127,12 @@ class Script(object):
 
         print(f"\nLoaded {len(experiments)} experiments with "
               f"{len(reflections)} reflections")
-        print(f"Reference d-spacings: {params.reference_d_spacings}")
+
+        if params.unit_cell is not None and params.space_group is not None:
+            print(f"Using unit_cell: {params.unit_cell}")
+            print(f"Using space_group: {params.space_group.info()}")
+        else:
+            print(f"Reference d-spacings: {params.reference_d_spacings}")
 
         # Create and run refiner
         refiner = PowderGeometryRefiner(experiments, reflections, params)

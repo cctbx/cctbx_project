@@ -3,7 +3,7 @@ import numpy as np
 import copy
 
 from dials.array_family import flex
-from cctbx import uctbx
+from cctbx import uctbx, miller
 from scitbx import matrix
 from scipy.optimize import minimize
 
@@ -26,7 +26,34 @@ class PowderGeometryRefiner:
         self.experiments = experiments
         self.reflections = reflections
         self.params = params
-        self.reference_d = np.array(params.reference_d_spacings)
+
+        # Compute reference d-spacings from unit_cell and space_group if provided
+        if params.unit_cell is not None and params.space_group is not None:
+            print(f"Computing d-spacings from unit_cell={params.unit_cell} "
+                  f"and space_group={params.space_group.info()}")
+
+            # Get beam and detector for resolution calculation
+            beam = experiments[0].beam
+            detector = experiments[0].detector
+            d_min = params.d_min
+            d_max = params.d_max
+
+            # Average unit cell over space group
+            unit_cell = params.space_group.average_unit_cell(params.unit_cell)
+
+            # Generate Miller indices within resolution range
+            generator = miller.index_generator(unit_cell, params.space_group.type(), False, d_min)
+            indices = generator.to_array()
+
+            # Compute d-spacings and filter by resolution range
+            all_spacings = unit_cell.d(indices)
+            spacings_in_range = flex.sorted([d for d in all_spacings if d_min <= d <= d_max])
+
+            self.reference_d = np.array(spacings_in_range)
+            print(f"Generated {len(self.reference_d)} reference d-spacings in range "
+                  f"[{d_min:.3f}, {d_max:.3f}] A")
+        else:
+            self.reference_d = np.array(params.reference_d_spacings)
 
         # Store initial detector state
         self.detector = experiments[0].detector
