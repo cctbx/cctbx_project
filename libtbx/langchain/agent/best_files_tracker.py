@@ -31,8 +31,11 @@ from __future__ import absolute_import, division, print_function
 import os
 from datetime import datetime
 
-# Centralized pattern utilities
-from libtbx.langchain.agent.pattern_manager import is_half_map
+# Centralized pattern utilities - handle both PHENIX and standalone imports
+try:
+    from libtbx.langchain.agent.pattern_manager import is_half_map
+except ImportError:
+    from agent.pattern_manager import is_half_map
 
 
 # =============================================================================

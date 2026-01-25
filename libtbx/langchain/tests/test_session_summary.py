@@ -13,24 +13,19 @@ import types
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Mock langchain_core
-langchain_core = types.ModuleType('langchain_core')
-langchain_core.prompts = types.ModuleType('langchain_core.prompts')
-class MockPromptTemplate:
-    def __init__(self, *args, **kwargs):
-        pass
-langchain_core.prompts.PromptTemplate = MockPromptTemplate
-sys.modules['langchain_core'] = langchain_core
-sys.modules['langchain_core.prompts'] = langchain_core.prompts
-
-# Mock best_files_tracker
-class MockBestFilesTracker:
-    def __init__(self):
-        pass
-    def evaluate_file(self, *args, **kwargs):
-        pass
-    def get_best_path(self, *args, **kwargs):
-        return None
+# Mock langchain_core only if not available
+try:
+    from langchain_core.prompts import PromptTemplate as _PromptTemplate  # noqa: F401
+    del _PromptTemplate  # Not used directly, just checking availability
+except ImportError:
+    langchain_core = types.ModuleType('langchain_core')
+    langchain_core.prompts = types.ModuleType('langchain_core.prompts')
+    class MockPromptTemplate:
+        def __init__(self, *args, **kwargs):
+            pass
+    langchain_core.prompts.PromptTemplate = MockPromptTemplate
+    sys.modules['langchain_core'] = langchain_core
+    sys.modules['langchain_core.prompts'] = langchain_core.prompts
 
 # Now import session
 from agent.session import AgentSession

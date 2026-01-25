@@ -520,7 +520,7 @@ def _analyze_history(history):
             prog = entry.lower()
             cmd = entry.lower()
         elif isinstance(entry, dict):
-            prog = entry.get("program", "").lower()
+            prog = (entry.get("program") or "").lower()
             cmd = entry.get("command", "").lower()
 
             # Extract metrics

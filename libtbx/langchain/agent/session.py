@@ -22,9 +22,17 @@ import os
 import re
 import json
 from datetime import datetime
-from langchain_core.prompts import PromptTemplate
 
-from libtbx.langchain.agent.best_files_tracker import BestFilesTracker
+# Handle both PHENIX and standalone imports
+try:
+    from langchain_core.prompts import PromptTemplate
+except Exception:
+    PromptTemplate = None  # Will be mocked if needed
+
+try:
+    from libtbx.langchain.agent.best_files_tracker import BestFilesTracker
+except Exception:
+    from agent.best_files_tracker import BestFilesTracker
 
 
 class AgentSession:
@@ -166,12 +174,20 @@ class AgentSession:
             return {}
 
         try:
-            from libtbx.langchain.agent.directive_extractor import (
-                extract_directives,
-                extract_directives_simple,
-                format_directives_for_display,
-                merge_directives
-            )
+            try:
+                from libtbx.langchain.agent.directive_extractor import (
+                    extract_directives,
+                    extract_directives_simple,
+                    format_directives_for_display,
+                    merge_directives
+                )
+            except ImportError:
+                from agent.directive_extractor import (
+                    extract_directives,
+                    extract_directives_simple,
+                    format_directives_for_display,
+                    merge_directives
+                )
 
             # Try LLM extraction first
             log("DIRECTIVES: Extracting from project advice...")
@@ -1372,7 +1388,7 @@ class AgentSession:
         """
         # Check if mtriage or real_space_refine was run (definitive cryo-EM indicators)
         for cycle in self.data.get("cycles", []):
-            program = cycle.get("program", "").lower()
+            program = (cycle.get("program") or "").lower()
             if "mtriage" in program or "real_space_refine" in program:
                 return "Cryo-EM"
 
@@ -1410,7 +1426,10 @@ class AgentSession:
         # =====================================================================
         # Use YAML-based extraction (centralized patterns)
         # =====================================================================
-        from libtbx.langchain.knowledge.metric_patterns import extract_metrics_for_program
+        try:
+            from libtbx.langchain.knowledge.metric_patterns import extract_metrics_for_program
+        except Exception:
+            from knowledge.metric_patterns import extract_metrics_for_program
         yaml_metrics = extract_metrics_for_program(result_text, program)
         metrics.update(yaml_metrics)
 
@@ -1802,8 +1821,14 @@ FINAL REPORT:"""
                 return f"FAILED: {error_part}"
             return "FAILED"
 
-        from libtbx.langchain.knowledge.summary_display import format_step_metric
-        from libtbx.langchain.knowledge.metric_patterns import extract_metrics_for_program
+        try:
+            from libtbx.langchain.knowledge.summary_display import format_step_metric
+        except Exception:
+            from knowledge.summary_display import format_step_metric
+        try:
+            from libtbx.langchain.knowledge.metric_patterns import extract_metrics_for_program
+        except Exception:
+            from knowledge.metric_patterns import extract_metrics_for_program
 
         # Extract metrics from result using YAML patterns
         metrics = extract_metrics_for_program(result, program)
@@ -1819,7 +1844,7 @@ FINAL REPORT:"""
         # Work backwards through cycles to get most recent values
         for cycle in reversed(cycles):
             result = str(cycle.get("result", ""))
-            program = cycle.get("program", "").lower()
+            program = (cycle.get("program") or "").lower()
             # Also check pre-parsed metrics stored in cycle
             cycle_metrics = cycle.get("metrics", {})
 
@@ -1983,7 +2008,7 @@ FINAL REPORT:"""
         quality = {}
 
         for cycle in cycles:
-            program = cycle.get("program", "").lower()
+            program = (cycle.get("program") or "").lower()
             metrics = cycle.get("metrics", {})
             result = str(cycle.get("result", ""))
 
@@ -2192,7 +2217,10 @@ FINAL REPORT:"""
             fm = data["final_metrics"]
 
             # Use YAML-based formatting from metrics.yaml
-            from libtbx.langchain.knowledge.summary_display import format_quality_table_rows
+            try:
+                from libtbx.langchain.knowledge.summary_display import format_quality_table_rows
+            except Exception:
+                from knowledge.summary_display import format_quality_table_rows
 
             rows = format_quality_table_rows(fm, data.get('experiment_type'))
             for row in rows:

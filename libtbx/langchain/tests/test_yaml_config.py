@@ -796,7 +796,8 @@ def test_input_priorities_registry():
     refine_model = registry.get_input_priorities("phenix.refine", "model")
     assert "categories" in refine_model, "Should have categories"
     assert len(refine_model["categories"]) > 0, "Should have at least one category"
-    assert "with_ligand" in refine_model["categories"], "Should include with_ligand"
+    # with_ligand is in prefer_subcategories, not categories
+    assert "with_ligand" in refine_model.get("prefer_subcategories", []), "Should include with_ligand in prefer_subcategories"
 
     refine_mtz = registry.get_input_priorities("phenix.refine", "mtz")
     assert "refined_mtz" in refine_mtz["categories"], "Should prefer refined_mtz"

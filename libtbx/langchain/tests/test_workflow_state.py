@@ -367,9 +367,10 @@ def test_autobuild_priority_over_ligandfit():
     state2 = detect_workflow_state(history, files, analysis={"r_free": 0.25})
     assert "phenix.autobuild" not in state2["valid_programs"], \
         "autobuild should not be offered for good R-free 0.25"
-    # Validation should be suggested for good model
-    assert "phenix.molprobity" in state2["valid_programs"], \
-        "Expected validation for good model, got %s" % state2["valid_programs"]
+    # With ligand file available and good R-free, ligandfit should be offered
+    # (Validation comes AFTER ligandfit is done)
+    assert "phenix.ligandfit" in state2["valid_programs"], \
+        "Expected ligandfit for good model with ligand file, got %s" % state2["valid_programs"]
 
     print("  PASSED")
 

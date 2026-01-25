@@ -393,6 +393,12 @@ def perceive(state):
             experiment_type = "cryoem"
     else:
         # Fall back to file-based detection
+        # DEFENSIVE: Filter out None values from available_files
+        available_files_clean = [f for f in available_files if f is not None]
+        if len(available_files_clean) != len(available_files):
+            state = _log(state, "PERCEIVE: WARNING - Filtered %d None values from available_files" %
+                        (len(available_files) - len(available_files_clean)))
+            available_files = available_files_clean
         has_map = any(f.lower().endswith(('.mrc', '.ccp4', '.map')) for f in available_files)
         has_mtz = any(f.lower().endswith(('.mtz', '.sca', '.hkl')) for f in available_files)
         experiment_type = "cryoem" if has_map and not has_mtz else "xray"
@@ -1262,7 +1268,7 @@ def _extract_history_info(state):
 
     for entry in history:
         if isinstance(entry, dict):
-            prog = entry.get("program", "").lower()
+            prog = (entry.get("program") or "").lower()
             if "refine" in prog and "real_space" not in prog:
                 history_info["refine_count"] += 1
             elif "real_space" in prog:

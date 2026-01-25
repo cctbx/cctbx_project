@@ -411,6 +411,7 @@ python3 tests/test_event_system.py    # Single suite
 
 | Version | Key Changes |
 |---------|-------------|
+| v40 | Fixes 12-21: Ligandfit MTZ exclusion, stop condition on failed runs, summary display for failed/prediction runs, predict_and_build resolution handling, None program value handling, test import fixes |
 | v40 | USER_REQUEST_INVALID event for invalid program requests |
 | v39 | Event system plumbing fixes for single-shot mode |
 | v38 | Event system Phase 4: display integration |

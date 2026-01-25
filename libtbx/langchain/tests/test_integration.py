@@ -126,7 +126,8 @@ def test_workflow_validation_blocks_invalid():
     state = validate(state)
 
     # Should have validation error about workflow
-    assert state["validation_error"] is not None
+    assert state["validation_error"] is not None, \
+        "Expected validation error for phenix.refine in xray_initial state"
     assert "not valid" in state["validation_error"].lower()
     assert state["attempt_number"] == 1
 

@@ -289,7 +289,7 @@ def _analyze_xray_trend(metrics_history, resolution, result):
     # Also count 'unknown' as potentially refine if it has r_free
     consecutive = 0
     for m in reversed(metrics_history):
-        prog = m.get("program", "").lower()
+        prog = (m.get("program") or "").lower()
         has_r_free = m.get("r_free") is not None
         if "refine" in prog and "real_space" not in prog:
             consecutive += 1
@@ -302,12 +302,12 @@ def _analyze_xray_trend(metrics_history, resolution, result):
 
     # Extract R-free values from refine cycles (or unknown with r_free in refine context)
     # First, identify if we're in a refine-dominated workflow
-    refine_count = sum(1 for m in metrics_history if "refine" in m.get("program", "").lower())
+    refine_count = sum(1 for m in metrics_history if "refine" in (m.get("program") or "").lower())
     in_refine_context = refine_count > 0
 
     r_free_values = []
     for m in metrics_history:
-        prog = m.get("program", "").lower()
+        prog = (m.get("program") or "").lower()
         r_free = m.get("r_free")
         if r_free is None:
             continue
@@ -442,7 +442,7 @@ def _analyze_cryoem_trend(metrics_history, result):
     # Count consecutive real_space_refine at end of history
     consecutive = 0
     for m in reversed(metrics_history):
-        prog = m.get("program", "").lower()
+        prog = (m.get("program") or "").lower()
         if "real_space" in prog:
             consecutive += 1
         else:
@@ -452,7 +452,7 @@ def _analyze_cryoem_trend(metrics_history, result):
     # Extract CC values from real_space_refine cycles
     rsr_metrics = [
         m for m in metrics_history
-        if "real_space" in m.get("program", "").lower()
+        if "real_space" in (m.get("program") or "").lower()
     ]
     cc_values = [m["map_cc"] for m in rsr_metrics if m.get("map_cc") is not None]
     result["map_cc_trend"] = cc_values[-5:]

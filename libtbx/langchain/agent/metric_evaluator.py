@@ -336,7 +336,7 @@ class MetricEvaluator:
         # Count consecutive refines
         consecutive = 0
         for m in reversed(metrics_history):
-            prog = m.get("program", "").lower()
+            prog = (m.get("program") or "").lower()
             has_r_free = m.get("r_free") is not None
             if "refine" in prog and "real_space" not in prog:
                 consecutive += 1
@@ -351,7 +351,7 @@ class MetricEvaluator:
         for m in metrics_history:
             r_free = m.get("r_free")
             if r_free is not None:
-                prog = m.get("program", "").lower()
+                prog = (m.get("program") or "").lower()
                 if "refine" in prog or prog == "unknown":
                     r_free_values.append(r_free)
 
@@ -438,7 +438,7 @@ class MetricEvaluator:
         # Count consecutive RSR
         consecutive = 0
         for m in reversed(metrics_history):
-            prog = m.get("program", "").lower()
+            prog = (m.get("program") or "").lower()
             if "real_space" in prog:
                 consecutive += 1
             else:
@@ -450,7 +450,7 @@ class MetricEvaluator:
         for m in metrics_history:
             cc = m.get("map_cc")
             if cc is not None:
-                prog = m.get("program", "").lower()
+                prog = (m.get("program") or "").lower()
                 if "real_space" in prog:
                     cc_values.append(cc)
 
