@@ -39,7 +39,7 @@ class ManualClusterer:
         
         # Compute KDE maxima
         if n_maxima > 0:
-            self.compute_kde_maxima()
+            self.compute_slice_maxima()
         
 
     def select_qvals(self, title="Select q-value ranges"):
@@ -330,6 +330,282 @@ class ManualClusterer:
 
 
         print(f"Found {len(self.kde_maxima)} KDE maxima from {n_sample} sampled points")
+
+    def compute_slice_maxima(self, n_q1_peaks=30, min_q1=0.10, max_q1=0.35,
+                             slice_width=0.002, max_peaks_per_slice=100,
+                             max_peaks=500, verbose=True):
+        """
+        Find cluster centers using slice-based 2D KDE approach.
+
+        This method finds q1 peaks using 1D KDE, then performs 2D KDE
+        peak finding within each q1 slice, followed by 3D refinement.
+
+        Final peaks are selected by score / sqrt(q1 * q2) to prioritize
+        low-q peaks which are most valuable for unit cell determination.
+
+        Parameters
+        ----------
+        n_q1_peaks : int
+            Maximum number of q1 slices to process
+        min_q1, max_q1 : float
+            Range for q1 peak detection
+        slice_width : float
+            Width of each q1 slice
+        max_peaks_per_slice : int
+            Maximum peaks to find per slice
+        verbose : bool
+            Print progress
+        """
+        from scipy.ndimage import maximum_filter
+        from scipy.optimize import minimize_scalar
+        from scipy.spatial import cKDTree
+
+        data = self.data
+        bandwidths_3d = self.bandwidths
+        bandwidths_2d = np.array([bandwidths_3d[1], bandwidths_3d[2]])
+
+        # Step 1: Find q1 peaks using 1D Gaussian KDE
+        if verbose:
+            print("Finding q1 peaks...")
+
+        q1_data = data[:, 0]
+        q1_mask = (q1_data >= min_q1) & (q1_data <= max_q1)
+        q1_filtered = q1_data[q1_mask]
+
+        # Subsample for KDE
+        np.random.seed(42)
+        n_sample = min(1000000, len(q1_filtered))
+        sample_idx = np.random.choice(len(q1_filtered), n_sample, replace=False)
+        q1_sample = q1_filtered[sample_idx].reshape(-1, 1)
+
+        # Fit 1D KDE
+        kde_1d = KernelDensity(bandwidth=0.0002, kernel='cosine')
+        kde_1d.fit(q1_sample)
+
+        # Find peaks on fine grid
+        n_eval = 10000
+        q1_grid = np.linspace(min_q1, max_q1, n_eval)
+        density_1d = np.exp(kde_1d.score_samples(q1_grid.reshape(-1, 1)))
+
+        footprint = np.ones(5)
+        local_max = maximum_filter(density_1d, footprint=footprint)
+        peaks_mask = (density_1d == local_max) & (density_1d > np.percentile(density_1d, 50))
+        peak_q1s_raw = q1_grid[np.where(peaks_mask)[0]]
+
+        # Refine peak positions
+        def neg_density(q1):
+            return -kde_1d.score_samples([[q1]])[0]
+
+        refined_q1s = []
+        for q1 in peak_q1s_raw:
+            result = minimize_scalar(neg_density, bounds=(q1-0.0005, q1+0.0005), method='bounded')
+            refined_q1s.append(result.x)
+        refined_q1s = np.array(refined_q1s)
+
+        # Score and select with spacing
+        peak_densities = np.exp(kde_1d.score_samples(refined_q1s.reshape(-1, 1)))
+        scores = peak_densities / (refined_q1s ** 0.5)
+        sort_idx = np.argsort(scores)[::-1]
+        q1s_sorted = refined_q1s[sort_idx]
+
+        min_spacing = 0.002
+        q1_centers = []
+        for q1 in q1s_sorted:
+            if len(q1_centers) >= n_q1_peaks:
+                break
+            if all(abs(q1 - s) >= min_spacing for s in q1_centers):
+                q1_centers.append(q1)
+        q1_centers = np.sort(q1_centers)
+
+        if verbose:
+            print(f"Found {len(q1_centers)} q1 peaks")
+
+        # Step 2: Process each q1 slice
+        all_peaks = []
+        all_scores = []
+
+        for i, q1_center in enumerate(q1_centers):
+            q1_min = q1_center - slice_width / 2
+            q1_max = q1_center + slice_width / 2
+
+            slice_mask = (data[:, 0] >= q1_min) & (data[:, 0] <= q1_max)
+            slice_data = data[slice_mask]
+
+            if len(slice_data) < 50:
+                continue
+
+            if verbose:
+                print(f"Slice {i+1}/{len(q1_centers)}: q1=[{q1_min:.4f}, {q1_max:.4f}], {len(slice_data)} points", end="")
+
+            # Filter diagonal and theta
+            diag_threshold = 2.0
+            theta_range = (8, 160)
+            q_diff_norm = np.abs(slice_data[:, 0] - slice_data[:, 1]) / bandwidths_3d[0]
+            off_diag_mask = q_diff_norm >= diag_threshold
+            theta_mask = (slice_data[:, 2] >= theta_range[0]) & (slice_data[:, 2] <= theta_range[1])
+            slice_data_filtered = slice_data[off_diag_mask & theta_mask]
+
+            if len(slice_data_filtered) < 50:
+                if verbose:
+                    print(" -> 0 peaks (filtered)")
+                continue
+
+            # 3D KDE and tree on full slice
+            normalized_3d = slice_data / bandwidths_3d
+            kde_3d = KernelDensity(bandwidth=1, kernel='cosine')
+            kde_3d.fit(normalized_3d)
+            tree_3d = cKDTree(normalized_3d)
+
+            # 2D KDE on filtered subsample
+            max_sample_2d = 30000
+            if len(slice_data_filtered) > max_sample_2d:
+                sample_idx_2d = np.random.choice(len(slice_data_filtered), max_sample_2d, replace=False)
+                slice_2d_sample = slice_data_filtered[sample_idx_2d, 1:3]
+            else:
+                slice_2d_sample = slice_data_filtered[:, 1:3]
+
+            normalized_2d_sample = slice_2d_sample / bandwidths_2d
+            kde_2d = KernelDensity(bandwidth=1, kernel='cosine')
+            kde_2d.fit(normalized_2d_sample)
+            scores_2d = kde_2d.score_samples(normalized_2d_sample)
+            tree_2d = cKDTree(normalized_2d_sample)
+
+            # Find 2D peaks
+            def refine_2d(point_norm):
+                current = point_norm.copy()
+                for _ in range(5):
+                    idx = tree_2d.query_ball_point(current, r=1.5)
+                    if len(idx) < 5:
+                        break
+                    nearby = normalized_2d_sample[idx]
+                    nearby_scores = scores_2d[idx]
+                    weights = np.exp(nearby_scores - nearby_scores.max())
+                    new_pos = np.average(nearby, axis=0, weights=weights)
+                    if np.linalg.norm(new_pos - current) < 0.01:
+                        break
+                    current = new_pos
+                return current
+
+            top_k = min(5000, len(slice_2d_sample))
+            top_idx = np.argsort(scores_2d)[-top_k:]
+
+            min_distance_2d = 3.0
+            peaks_2d_norm = []
+            for idx in np.argsort(scores_2d[top_idx])[::-1]:
+                point_idx = top_idx[idx]
+                refined = refine_2d(normalized_2d_sample[point_idx])
+                is_close = any(np.linalg.norm(refined - ex) < min_distance_2d for ex in peaks_2d_norm)
+                if not is_close:
+                    peaks_2d_norm.append(refined)
+                if len(peaks_2d_norm) >= max_peaks_per_slice:
+                    break
+
+            # Refine in 3D
+            def refine_3d(point_3d, max_neighbors=300):
+                current = point_3d.copy() / bandwidths_3d
+                for _ in range(10):
+                    idx = tree_3d.query_ball_point(current, r=2.0)
+                    if len(idx) < 5:
+                        break
+                    idx = np.array(idx)
+                    if len(idx) > max_neighbors:
+                        idx = idx[np.random.choice(len(idx), max_neighbors, replace=False)]
+                    nearby = normalized_3d[idx]
+                    nearby_scores = kde_3d.score_samples(nearby)
+                    weights = np.exp(nearby_scores - nearby_scores.max())
+                    new_pos = np.average(nearby, axis=0, weights=weights)
+                    if np.linalg.norm(new_pos - current) < 0.01:
+                        break
+                    current = new_pos
+                return current * bandwidths_3d
+
+            min_distance_3d = 3.0
+            slice_peaks = []
+            slice_scores = []
+
+            for p2d_norm in peaks_2d_norm:
+                p2d = p2d_norm * bandwidths_2d
+                dq2 = np.abs(slice_data[:, 1] - p2d[0])
+                dtheta = np.abs(slice_data[:, 2] - p2d[1])
+                nearby_mask = (dq2 < 0.003) & (dtheta < 4.0)
+
+                if nearby_mask.sum() < 5:
+                    continue
+
+                nearby_scores_3d = kde_3d.score_samples(normalized_3d[nearby_mask])
+                best_nearby = slice_data[nearby_mask][np.argmax(nearby_scores_3d)]
+
+                refined_3d = refine_3d(best_nearby)
+                refined_norm = refined_3d / bandwidths_3d
+
+                # Check theta range
+                if refined_3d[2] < theta_range[0] or refined_3d[2] > theta_range[1]:
+                    continue
+
+                # Check distance to existing peaks
+                is_close = any(np.linalg.norm(refined_norm - (ex / bandwidths_3d)) < min_distance_3d
+                              for ex in slice_peaks)
+                if is_close:
+                    continue
+
+                refined_score = kde_3d.score_samples(refined_norm.reshape(1, -1))[0]
+                slice_peaks.append(refined_3d)
+                slice_scores.append(refined_score)
+
+            all_peaks.extend(slice_peaks)
+            all_scores.extend(slice_scores)
+
+            if verbose:
+                print(f" -> {len(slice_peaks)} peaks")
+
+        # Deduplicate across slices
+        if len(all_peaks) > 0:
+            all_peaks = np.array(all_peaks)
+            all_scores = np.array(all_scores)
+
+            sort_idx = np.argsort(all_scores)[::-1]
+            all_peaks = all_peaks[sort_idx]
+            all_scores = all_scores[sort_idx]
+
+            unique_peaks = []
+            unique_scores = []
+            q_tol, theta_tol = 0.0005, 2.0
+
+            for p, s in zip(all_peaks, all_scores):
+                is_dup = any(
+                    abs(p[0] - u[0]) < q_tol and
+                    abs(p[1] - u[1]) < q_tol and
+                    abs(p[2] - u[2]) < theta_tol
+                    for u in unique_peaks
+                )
+                if not is_dup:
+                    unique_peaks.append(p)
+                    unique_scores.append(s)
+
+            unique_peaks = np.array(unique_peaks)
+            unique_scores = np.array(unique_scores)
+
+            # Select top peaks prioritizing low q1*q2 (log-space adjustment)
+            if max_peaks is not None and len(unique_peaks) > max_peaks:
+                q1_vals = unique_peaks[:, 0]
+                q2_vals = unique_peaks[:, 1]
+                # score - 0.5*log(q1*q2) is the log-space equivalent of score/sqrt(q1*q2)
+                selection_scores = unique_scores - 0.5 * np.log(q1_vals * q2_vals)
+                top_idx = np.argsort(selection_scores)[-max_peaks:]
+                unique_peaks = unique_peaks[top_idx]
+                unique_scores = unique_scores[top_idx]
+
+                if verbose:
+                    print(f"Selected top {max_peaks} peaks (prioritizing low-q)")
+
+            self.kde_maxima = unique_peaks
+            self.kde_values = unique_scores
+        else:
+            self.kde_maxima = np.array([]).reshape(0, 3)
+            self.kde_values = np.array([])
+
+        if verbose:
+            print(f"Final: {len(self.kde_maxima)} maxima")
 
     def show_histogram(self, title=None):
         self.ax1.clear()

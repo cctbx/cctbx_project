@@ -1986,8 +1986,8 @@ def run():
     assert sys.argv[2] in ['auto', 'manual']
     # Manual select 2d sub bases
     if sys.argv[2] == 'manual':
-      cl1 = ManualClusterer(data_red_all, n_maxima=0, sb1_callback=sb1_callback, recon=recon, qmin=QMIN, qmax=QMAX)
-#      cl1 = ManualClusterer(data, n_maxima=0, sb1_callback=sb1_callback, recon=recon, qmin=QMIN, qmax=QMAX)
+#      cl1 = ManualClusterer(data_red_all, n_maxima=0, sb1_callback=sb1_callback, recon=recon, qmin=QMIN, qmax=QMAX)
+      cl1 = ManualClusterer(data, n_maxima=0, sb1_callback=sb1_callback, recon=recon, qmin=QMIN, qmax=QMAX)
       title = "select first sub-basis"
       triplets = cl1.select_triplets(title)
       # Lattice doubling test case: 0.153379 0.125106 40.434691
