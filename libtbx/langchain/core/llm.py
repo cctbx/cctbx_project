@@ -129,7 +129,9 @@ def get_llm_and_embeddings(
         if llm_model_name is None:
             llm_model_name = "gemini-2.5-flash-lite"
         if embedding_model_name is None:
-            embedding_model_name = "models/embedding-001"
+            # gemini-embedding-001 is the current stable model (released July 2025)
+            # Note: text-embedding-004 is legacy and being deprecated
+            embedding_model_name = "gemini-embedding-001"
 
         llm = ChatGoogleGenerativeAI(
             model=llm_model_name,

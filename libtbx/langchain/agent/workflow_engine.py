@@ -973,6 +973,89 @@ class WorkflowEngine:
 
         return True
 
+    def explain_unavailable_program(self, experiment_type, program, context):
+        """
+        Explain why a specific program is not available.
+
+        Args:
+            experiment_type: "xray" or "cryoem"
+            program: Program name to check
+            context: Context dict
+
+        Returns:
+            str: Explanation of why the program is unavailable, or None if it's available
+        """
+        phases = get_workflow_phases(experiment_type)
+        reasons = []
+        found_program = False
+
+        # Find the program in any phase
+        for phase_name, phase_def in phases.items():
+            if not isinstance(phase_def, dict):
+                continue
+            phase_programs = phase_def.get("programs", [])
+
+            for prog_entry in phase_programs:
+                prog_name = None
+                conditions = []
+
+                if isinstance(prog_entry, str):
+                    prog_name = prog_entry
+                elif isinstance(prog_entry, dict):
+                    prog_name = prog_entry.get("program")
+                    conditions = prog_entry.get("conditions", [])
+
+                if prog_name != program:
+                    continue
+
+                found_program = True
+
+                # Found the program - check each condition
+                for cond in conditions:
+                    if isinstance(cond, dict):
+                        # Check "has" condition
+                        if "has" in cond:
+                            key = "has_" + cond["has"]
+                            if not context.get(key):
+                                reasons.append("missing required file: %s" % cond["has"])
+
+                        # Check "not_done" condition
+                        if "not_done" in cond:
+                            key = cond["not_done"] + "_done"
+                            if context.get(key):
+                                reasons.append("already completed: %s" % cond["not_done"])
+
+                        # Check metric conditions
+                        for metric in ["r_free", "map_cc", "refine_count", "rsr_count"]:
+                            if metric in cond:
+                                value = context.get(metric)
+                                condition_str = cond[metric]
+                                # Only report failure if we have a value and it doesn't satisfy
+                                # (matching the actual _check_metric_condition which allows None)
+                                if value is not None:
+                                    if not self._check_metric_condition(context, metric, condition_str):
+                                        reasons.append("%s=%s does not satisfy condition '%s'" % (
+                                            metric, value, condition_str))
+                                elif metric == "refine_count":
+                                    # Special case: refine_count=0 means no successful refinements
+                                    # Report this as a reason since it's a common issue
+                                    reasons.append("%s=0 does not satisfy condition '%s'" % (metric, condition_str))
+
+        # If program not found in any phase, it's not relevant for this experiment type
+        if not found_program:
+            return None  # Not a program for this workflow
+
+        # Check run_once
+        prog_def = get_program(program)
+        if prog_def and prog_def.get("run_once"):
+            prog_done_key = program.replace("phenix.", "").replace(".", "_") + "_done"
+            if context.get(prog_done_key):
+                reasons.append("run_once program already executed")
+
+        if reasons:
+            return "; ".join(reasons)
+        return None
+
     def _check_metric_condition(self, context, metric, condition):
         """Check a metric condition like "> 0.35" or "< target_r_free"."""
         value = context.get(metric)
@@ -1098,6 +1181,17 @@ class WorkflowEngine:
             if after_program and after_program in valid_programs:
                 forced_program = after_program
 
+        # Check for common programs that users might expect but aren't available
+        # This helps explain why certain programs can't be run
+        unavailable_explanations = {}
+        common_programs = ["phenix.ligandfit", "phenix.autobuild", "phenix.phaser",
+                          "phenix.predict_and_build", "phenix.dock_in_map"]
+        for prog in common_programs:
+            if prog not in valid_programs:
+                explanation = self.explain_unavailable_program(experiment_type, prog, context)
+                if explanation:
+                    unavailable_explanations[prog] = explanation
+
         return {
             "state": state_name,  # Use mapped state name
             "experiment_type": experiment_type,
@@ -1109,6 +1203,7 @@ class WorkflowEngine:
             "phase_info": phase_info,
             "context": context,
             "resolution": context.get("resolution"),
+            "unavailable_explanations": unavailable_explanations,  # NEW: why programs aren't available
         }
 
     def _get_program_priorities(self, experiment_type, phase_info, context):

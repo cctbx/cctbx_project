@@ -1,5 +1,34 @@
 # PHENIX AI Agent - Changelog
 
+## Version 94 (January 2025)
+
+### New Feature: Explain Why Programs Are Unavailable
+
+When a program like `phenix.ligandfit` is not available, the debug output now explains WHY:
+
+```
+PERCEIVE: Valid programs: phenix.refine, phenix.polder, STOP
+PERCEIVE: phenix.ligandfit unavailable: missing required file: ligand_file
+```
+
+This helps diagnose issues when expected programs aren't offered.
+
+### Possible Explanations
+
+- `missing required file: ligand_file` - No ligand file (.pdb/.cif) detected
+- `missing required file: sequence` - No sequence file (.fa/.seq) detected
+- `already completed: ligandfit` - Program already ran (not_done condition failed)
+- `r_free=0.40 does not satisfy condition '< 0.35'` - Metric threshold not met
+- `refine_count=0 does not satisfy condition '> 0'` - Needs refinement first
+- `run_once program already executed` - Program like xtriage already ran
+
+### Files Changed
+
+- `agent/workflow_engine.py` - Added `explain_unavailable_program()` method, added `unavailable_explanations` to workflow state
+- `agent/graph_nodes.py` - Added debug logging for unavailable programs
+
+---
+
 ## Version 93 (January 2025)
 
 ### New Feature: Density Modification Workflow for X-ray

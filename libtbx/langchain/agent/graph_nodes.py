@@ -485,6 +485,12 @@ def perceive(state):
     valid_progs = workflow_state.get("valid_programs", [])
     state = _log(state, "PERCEIVE: Valid programs: %s" % ", ".join(valid_progs))
 
+    # Log why common programs are NOT available (helps diagnose issues)
+    unavailable = workflow_state.get("unavailable_explanations", {})
+    if unavailable:
+        for prog, reason in unavailable.items():
+            state = _log(state, "PERCEIVE: %s unavailable: %s" % (prog, reason))
+
     # Log forced_program if set
     forced_prog = workflow_state.get("forced_program")
     if forced_prog:
@@ -499,6 +505,14 @@ def perceive(state):
         ])
         state = _log(state, "PERCEIVE: Categorized files: %s" % cat_summary)
     state = _log(state, "PERCEIVE: Available files count: %d" % len(available_files))
+
+    # Log key context values for debugging ligandfit availability
+    context = workflow_state.get("context", {})
+    refine_count = context.get("refine_count", 0)
+    r_free = context.get("r_free")
+    has_ligand = context.get("has_ligand_file", False)
+    state = _log(state, "PERCEIVE: Context: refine_count=%d, r_free=%s, has_ligand_file=%s" % (
+        refine_count, r_free, has_ligand))
 
     # Log metrics trend details for debugging
     consecutive_rsr = metrics_trend.get("consecutive_rsr", 0)
