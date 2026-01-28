@@ -582,6 +582,13 @@ def _analyze_history(history):
             info["predict_done"] = True
             if "stop_after_predict=true" not in combined and "stop_after_predict=True" not in combined:
                 info["predict_full_done"] = True
+                # Full predict_and_build includes refinement cycles and produces map coefficients
+                # So count it as a refinement for downstream programs like ligandfit
+                result = entry.get("result", "") if isinstance(entry, dict) else ""
+                result_upper = result.upper() if result else ""
+                if "FAIL" not in result_upper and "SORRY" not in result_upper and "ERROR" not in result_upper:
+                    info["refine_done"] = True
+                    info["refine_count"] += 1
         if "process_predicted_model" in combined:
             info["process_predicted_done"] = True
         if "autobuild" in combined:

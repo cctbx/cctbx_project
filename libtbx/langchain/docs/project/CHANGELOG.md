@@ -1,5 +1,24 @@
 # PHENIX AI Agent - Changelog
 
+## Version 98 (January 2025)
+
+### Bug Fix: predict_and_build Counts as Refinement for ligandfit
+
+**Problem**: After running `phenix.predict_and_build`, `phenix.ligandfit` was unavailable because `refine_count=0`:
+```
+PERCEIVE: phenix.ligandfit unavailable: refine_count=0 does not satisfy condition '> 0'
+```
+
+But predict_and_build includes internal refinement cycles and produces the same outputs (map coefficients) that ligandfit needs.
+
+**Solution**: When a full `predict_and_build` run completes (not stopped early), increment `refine_count` so downstream programs like `ligandfit` know there's a refined model with map coefficients.
+
+### Files Changed
+
+- `agent/workflow_state.py` - Increment `refine_count` for successful full predict_and_build runs
+
+---
+
 ## Version 97 (January 2025)
 
 ### Bug Fix: PredictAndBuild Output Categorized as Model (Not Search Model)
