@@ -242,6 +242,12 @@ xray:
       programs:
         - program: phenix.refine
           preferred: true
+        - program: phenix.autobuild_denmod
+          conditions:
+            - has: ligand_file
+            - has: sequence
+            - not_done: autobuild_denmod
+          hint: "Run density modification before ligand fitting"
         - program: phenix.ligandfit
           conditions:
             - has: ligand_file
@@ -286,6 +292,7 @@ Programs can specify `not_done: <flag>` to prevent re-runs:
 | `phaser` | phaser | Molecular replacement completed |
 | `dock` | dock_in_map | Model docked in map |
 | `autobuild` | autobuild | Model building completed |
+| `autobuild_denmod` | autobuild_denmod | Density modification completed |
 | `autosol` | autosol | Experimental phasing completed |
 | `ligandfit` | ligandfit | Ligand fitted |
 | `resolve_cryo_em` | resolve_cryo_em | Map optimization completed |

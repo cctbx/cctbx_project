@@ -8,12 +8,12 @@ all failures. This makes it easy to identify and debug issues.
 
 Test Suites (standalone - no PHENIX required):
   1. API Schema - Request/response validation
-  2. Best Files Tracker - File tracking and scoring
+  2. Best Files Tracker - File tracking, scoring, and model stage detection
   3. Transport - Encoding/decoding round-trips
   4. State Serialization - State packaging/unpackaging
   5. Command Builder - Unified command generation
   6. File Categorization - File classification logic
-  7. Session Summary - Agent session summary generation
+  7. Session Summary - Agent session summary generation (cycle counting)
   8. Advice Preprocessing - README discovery, advice processing, change detection
   9. Directive Extractor - LLM-based directive extraction from user advice
   10. Directive Validator - Pre-validation of user requests against capabilities
@@ -29,15 +29,21 @@ Test Suites (standalone - no PHENIX required):
   20. Pattern Manager - Pattern management
   21. Program Registration - Program registry tests
   22. Summary Display - Summary formatting
+  23. New Programs - YAML config for new programs (polder, map_sharpening, autobuild_denmod)
 
 Test Suites (require PHENIX environment):
-  23. Workflow State - State detection and transitions
-  24. YAML Config - YAML configuration validation
-  25. Sanity Checker - Sanity check logic
-  26. Metrics Analyzer - Metric extraction and trends
-  27. Dry Run - Dry run manager functionality
-  28. Integration - End-to-end workflow tests
-  29. Directives Integration - End-to-end directive system tests
+  24. Workflow State - State detection, transitions, done flags
+  25. YAML Config - YAML configuration validation
+  26. Sanity Checker - Sanity check logic
+  27. Metrics Analyzer - Metric extraction and trends
+  28. Dry Run - Dry run manager functionality
+  29. Integration - End-to-end workflow tests
+  30. Directives Integration - End-to-end directive system tests
+
+Key Tests for Recent Fixes:
+  - test_best_files_tracker: Model scoring, predicted model exclusion
+  - test_session_summary: STOP cycle exclusion from counts
+  - test_workflow_state: Done flags (refine_count, cryo-EM done flags)
 
 Usage:
     python tests/run_all_tests.py

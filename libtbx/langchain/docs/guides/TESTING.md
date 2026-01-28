@@ -136,20 +136,30 @@ The `run_tests_with_fail_fast()` function automatically discovers tests:
 | `test_directive_extractor.py` | 61 | Directive extraction and validation |
 | `test_directive_validator.py` | 48 | Intent validation and modification |
 | `test_transport.py` | 66 | REST transport sanitization |
-| `test_new_programs.py` | 44 | YAML config for new programs |
+| `test_new_programs.py` | 44 | YAML config for new programs (polder, map_sharpening, autobuild_denmod) |
 | `test_error_analyzer.py` | 34 | Error recovery system |
 | `test_decision_flow.py` | 20 | Directive flow architecture |
 | `test_directives_integration.py` | 16 | End-to-end directive tests |
 | `test_session_directives.py` | 12 | Session-level directive handling |
-| `test_best_files_tracker.py` | 45 | File tracking and selection |
-| `test_file_categorization.py` | ~30 | File type detection |
+| `test_best_files_tracker.py` | 45 | File tracking, scoring, model stage detection |
+| `test_file_categorization.py` | ~30 | File type detection (including denmod_mtz) |
 | `test_event_system.py` | ~40 | Event logging system |
 | `test_yaml_tools.py` | ~20 | YAML validation |
 | `test_metric_patterns.py` | ~50 | Log parsing patterns |
-| `test_workflow_state.py` | ~60 | Workflow state detection and done flags |
-| `test_session_summary.py` | ~20 | Session summary generation |
+| `test_workflow_state.py` | ~65 | Workflow state detection, done flags, refine counting |
+| `test_session_summary.py` | ~25 | Session summary generation, STOP cycle exclusion |
 
-Total: **350+ tests**
+Total: **400+ tests**
+
+### Key Tests for Recent Fixes
+
+| Test | File | What It Verifies |
+|------|------|------------------|
+| `test_stop_cycle_excluded_from_count` | test_session_summary.py | STOP cycles not counted in total_cycles |
+| `test_cryoem_done_flags` | test_workflow_state.py | cryo-EM done flags (resolve_cryo_em, map_sharpening, etc.) |
+| `test_failed_refine_not_counted` | test_workflow_state.py | Failed refinements don't increment refine_count |
+| `test_model_scoring_prefers_refined` | test_best_files_tracker.py | Refined models scored higher than MR output |
+| `test_predicted_model_exclusion` | test_best_files_tracker.py | Predicted models excluded from model category |
 
 ## Writing New Tests
 

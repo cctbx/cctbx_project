@@ -260,10 +260,18 @@ You must output a SINGLE JSON object matching this schema:
   IMPORTANT: Set resolution if building (get from xtriage/mtriage)
   NOTE: By default (stop_after_predict=False), this runs the FULL workflow: prediction → molecular replacement → model building
   NOTE: Only set stop_after_predict=True for cryo-EM stepwise workflow where you want just the predicted model
+  WARNING: This is NOT a density modification tool! Do NOT use for "density modification" - use phenix.autobuild_denmod instead
   For cryo-EM maps:
     - If you have a FULL MAP: use full_map=filename.ccp4
     - If you ONLY have HALF MAPS: use half_map=file1.ccp4 half_map=file2.ccp4 (NO full_map!)
     - NEVER use a half-map as full_map - half-maps have names like _1.ccp4, _2.ccp4, half1, half2
+
+**phenix.autobuild_denmod** - X-ray density modification (map improvement)
+  Files: {data: .mtz (refined MTZ with phases), sequence: .fa/.seq, model: .pdb (optional)}
+  Output: overall_best_denmod_map_coeffs.mtz with FWT/PHFWT map coefficients
+  Use: Before ligand fitting to improve map quality
+  NOTE: This runs autobuild with maps_only=True (no model building, just map improvement)
+  NOTE: For ligandfit using this output, set file_info.input_labels="FWT PHFWT"
 
 **phenix.process_predicted_model** - Prepare AlphaFold model for MR
   Files: {model: .pdb}

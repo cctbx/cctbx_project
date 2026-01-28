@@ -471,6 +471,7 @@ def _analyze_history(history):
         "predict_full_done": False,
         "process_predicted_done": False,
         "autobuild_done": False,
+        "autobuild_denmod_done": False,
         "autosol_done": False,
         "autosol_success": False,
         "refine_done": False,
@@ -590,6 +591,12 @@ def _analyze_history(history):
             if "FAIL" not in result_upper and "SORRY" not in result_upper and "ERROR" not in result_upper:
                 info["autobuild_done"] = True
             # If autobuild failed, don't mark it as done so agent can try alternatives
+        if "autobuild_denmod" in combined or ("autobuild" in combined and "maps_only" in combined):
+            # Density modification mode of autobuild
+            result = entry.get("result", "") if isinstance(entry, dict) else ""
+            result_upper = result.upper() if result else ""
+            if "FAIL" not in result_upper and "SORRY" not in result_upper and "ERROR" not in result_upper:
+                info["autobuild_denmod_done"] = True
         if "autosol" in combined:
             # Only mark autosol as done if it succeeded
             # Check the result field for success indicators

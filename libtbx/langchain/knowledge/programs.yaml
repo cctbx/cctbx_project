@@ -1012,11 +1012,10 @@ phenix.ligandfit:
       prefer_subcategories: [refined, with_ligand, phaser_output]
       exclude_categories: [search_model, predicted, ligand, ligand_pdb]
     mtz:
-      # CRITICAL: Must use refined_mtz which has map coefficients (2FOFCWT/PH2FOFCWT)
-      # Use the subcategory directly - refined_mtz files exist in their own category
-      categories: [refined_mtz]
-      # Don't exclude 'mtz' parent since refined_mtz also exists there due to bubbling
-      # The categories:[refined_mtz] ensures we only look in that specific subcategory
+      # Ligandfit needs map coefficients
+      # PREFER denmod_mtz (from autobuild maps_only) which has better maps
+      # FALLBACK to refined_mtz (from refine) which has 2FOFCWT/PH2FOFCWT
+      categories: [denmod_mtz, refined_mtz]
       exclude_categories: [phased_mtz]
 
   outputs:
@@ -1029,6 +1028,18 @@ phenix.ligandfit:
   defaults:
     file_info.input_labels: '"2FOFCWT PH2FOFCWT"'
     general.nproc: 4
+
+  # Invariant to switch labels when using denmod MTZ
+  invariants:
+    - name: denmod_labels
+      description: "Use FWT/PHFWT labels when using density-modified MTZ"
+      check:
+        file_matches:
+          mtz: ["*denmod*"]
+      fix:
+        set_strategy:
+          file_info.input_labels: '"FWT PHFWT"'
+      message: "Using density-modified MTZ - switching to FWT/PHFWT labels"
 
   strategy_flags:
     nproc:

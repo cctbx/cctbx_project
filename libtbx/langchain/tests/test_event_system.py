@@ -42,15 +42,14 @@ def test_verbosity_constants():
     """Test that Verbosity constants are defined."""
     print("Test: Verbosity constants")
 
+    # There are 3 verbosity levels (no DEBUG level - DEBUG events use VERBOSE)
     assert Verbosity.QUIET == "quiet"
     assert Verbosity.NORMAL == "normal"
     assert Verbosity.VERBOSE == "verbose"
-    assert Verbosity.DEBUG == "debug"
 
     # Test ordering
     assert verbosity_index(Verbosity.QUIET) < verbosity_index(Verbosity.NORMAL)
     assert verbosity_index(Verbosity.NORMAL) < verbosity_index(Verbosity.VERBOSE)
-    assert verbosity_index(Verbosity.VERBOSE) < verbosity_index(Verbosity.DEBUG)
 
     print("  PASSED")
 
@@ -107,7 +106,7 @@ def test_event_log_filtering():
     log.emit(EventType.CYCLE_START, cycle=1)  # QUIET level
     log.emit(EventType.STATE_DETECTED, state="test")  # NORMAL level
     log.emit(EventType.FILES_SELECTED, files=[])  # VERBOSE level
-    log.emit(EventType.DEBUG, message="debug")  # DEBUG level
+    log.emit(EventType.DEBUG, message="debug")  # VERBOSE level (DEBUG events are at VERBOSE)
 
     # Filter by type
     state_events = log.get_events(event_type=EventType.STATE_DETECTED)
@@ -121,10 +120,7 @@ def test_event_log_filtering():
     assert len(normal_events) == 2  # CYCLE_START + STATE_DETECTED
 
     verbose_events = log.get_events(max_verbosity=Verbosity.VERBOSE)
-    assert len(verbose_events) == 3  # + FILES_SELECTED
-
-    debug_events = log.get_events(max_verbosity=Verbosity.DEBUG)
-    assert len(debug_events) == 4  # All events
+    assert len(verbose_events) == 4  # All events (FILES_SELECTED and DEBUG are both VERBOSE)
 
     print("  PASSED")
 

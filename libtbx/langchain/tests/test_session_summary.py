@@ -291,7 +291,7 @@ def test_empty_session():
 
 def test_stop_cycle_excluded_from_count():
     """Test that STOP cycles are excluded from cycle counts.
-    
+
     STOP is a termination signal, not a real program run.
     The summary should report only actual program cycles.
     """
@@ -338,7 +338,7 @@ def test_stop_cycle_excluded_from_count():
     # Should count only real programs (3), not STOP
     assert data["total_cycles"] == 3, \
         f"Expected 3 cycles (excluding STOP), got {data['total_cycles']}"
-    
+
     # Should count only successful real programs (2)
     assert data["successful_cycles"] == 2, \
         f"Expected 2 successful cycles, got {data['successful_cycles']}"

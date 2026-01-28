@@ -1282,7 +1282,7 @@ def test_cryoem_done_flags():
     except ImportError:
         print("  SKIPPED - requires PHENIX environment")
         return
-        
+
     assert info.get("resolve_cryo_em_done") == True, \
         "resolve_cryo_em_done should be True after phenix.resolve_cryo_em"
 

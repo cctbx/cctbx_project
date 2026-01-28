@@ -1,5 +1,49 @@
 # PHENIX AI Agent - Changelog
 
+## Version 93 (January 2025)
+
+### New Feature: Density Modification Workflow for X-ray
+
+- **Added `phenix.autobuild_denmod` to X-ray workflow**: Before ligand fitting, the agent can now run density modification using `phenix.autobuild maps_only=True`. This creates improved map coefficients (`overall_best_denmod_map_coeffs.mtz` with FWT/PHFWT labels) for better ligand fitting.
+
+### Workflow Changes
+
+The X-ray refine phase now includes:
+1. `phenix.refine` (preferred) - standard refinement
+2. `phenix.autobuild` - when R-free stuck above threshold
+3. **`phenix.autobuild_denmod`** (NEW) - density modification before ligandfit
+4. `phenix.ligandfit` - fit ligand when model is good enough
+5. `phenix.polder` - omit map calculation
+
+### Technical Changes
+
+- **Prompt clarification**: Added warning that `predict_and_build` is NOT for density modification
+- **New file category**: `denmod_mtz` for density-modified MTZ files
+- **Ligandfit label switching**: Automatically uses `FWT PHFWT` labels when denmod MTZ is selected
+- **Done flag tracking**: Added `autobuild_denmod_done` flag
+
+### Documentation Updates
+
+- **docs/OVERVIEW.md**: Updated workflow example with autobuild_denmod, updated done flags table
+- **docs/guides/ADDING_PROGRAMS.md**: Added autobuild_denmod_done to flags table, added note about refine_count/rsr_count
+- **docs/guides/TESTING.md**: Updated test table with counts and added "Key Tests for Recent Fixes" section
+- **tests/run_all_tests.py**: Updated docstring with current test list and key tests
+
+### Files Changed
+
+- `knowledge/workflows.yaml` - Added autobuild_denmod to refine phase
+- `knowledge/programs.yaml` - Added denmod_labels invariant to ligandfit
+- `knowledge/file_categories.yaml` - Added denmod_mtz category
+- `knowledge/prompts_hybrid.py` - Added autobuild_denmod description, warned about predict_and_build
+- `agent/workflow_state.py` - Added autobuild_denmod_done flag and detection
+- `agent/command_builder.py` - Added file_matches invariant handling
+- `docs/OVERVIEW.md` - Updated workflow examples and done flags
+- `docs/guides/ADDING_PROGRAMS.md` - Updated done flags table
+- `docs/guides/TESTING.md` - Updated test descriptions
+- `tests/run_all_tests.py` - Updated docstring
+
+---
+
 ## Version 72 (January 2025)
 
 ### Bug Fixes

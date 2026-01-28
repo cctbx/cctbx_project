@@ -191,13 +191,18 @@ For other programs, these flags are manually tracked in `workflow_state.py`:
 | `phaser_done` | phaser completes MR | X-ray workflow |
 | `dock_done` | dock_in_map completes | cryo-EM workflow |
 | `autobuild_done` | autobuild succeeds | X-ray workflow |
+| `autobuild_denmod_done` | autobuild maps_only completes | X-ray workflow (before ligandfit) |
 | `autosol_done` | autosol succeeds | X-ray workflow |
 | `ligandfit_done` | ligandfit completes | Both workflows |
 | `refine_done` | refine completes (any) | Internal tracking |
+| `refine_count` | Count of successful refinements | Workflow conditions |
 | `rsr_done` | real_space_refine completes | Internal tracking |
+| `rsr_count` | Count of successful RSR runs | Workflow conditions |
 | `resolve_cryo_em_done` | resolve_cryo_em completes | cryo-EM workflow |
 | `map_sharpening_done` | map_sharpening completes | cryo-EM workflow |
 | `map_to_model_done` | map_to_model completes | cryo-EM workflow |
+
+**Note:** `refine_count` and `rsr_count` only count SUCCESSFUL runs (not failed ones).
 
 ---
 

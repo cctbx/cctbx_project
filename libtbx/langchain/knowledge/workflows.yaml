@@ -120,6 +120,16 @@ xray:
             - not_done: autobuild
           hint: "Try if R-free stuck above 0.35"
 
+        # Density modification before ligand fitting
+        # Creates improved map coefficients (FWT/PHFWT) for ligandfit
+        - program: phenix.autobuild_denmod
+          conditions:
+            - has: ligand_file
+            - has: sequence
+            - not_done: autobuild_denmod
+            - refine_count: "> 0"
+          hint: "Run density modification to improve map before ligand fitting"
+
         - program: phenix.ligandfit
           conditions:
             - has: ligand_file

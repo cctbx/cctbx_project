@@ -809,7 +809,32 @@ class CommandBuilder:
 
         for inv in invariants:
             name = inv.get("name", "unnamed")
+            check = inv.get("check", {})
             fix = inv.get("fix", {})
+
+            # Check file_matches condition (e.g., for denmod MTZ labels)
+            file_matches = check.get("file_matches", {})
+            if file_matches:
+                match_found = False
+                for slot, patterns in file_matches.items():
+                    selected_file = files.get(slot, "")
+                    if selected_file:
+                        basename = os.path.basename(selected_file).lower()
+                        for pattern in patterns:
+                            # Convert glob pattern to simple substring match
+                            pattern_clean = pattern.lower().replace("*", "")
+                            if pattern_clean in basename:
+                                match_found = True
+                                break
+                    if match_found:
+                        break
+
+                if match_found:
+                    # Apply the fix
+                    set_strategy = fix.get("set_strategy", {})
+                    for key, value in set_strategy.items():
+                        strategy[key] = value
+                        self._log(context, "BUILD: Invariant '%s' - set %s=%s" % (name, key, value))
 
             # Auto-fill resolution
             if fix.get("auto_fill_resolution") and "resolution" not in strategy:

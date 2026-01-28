@@ -125,7 +125,17 @@ refined_mtz:
     - "*phased*"
     - "*phases*"
     - "*hklout_phased*"
+    - "*denmod*"
   notes: "Preferred for subsequent refinement cycles - contains R-free flags"
+
+denmod_mtz:
+  description: "Density-modified MTZ files from autobuild maps_only (contain FWT/PHFWT)"
+  subcategory_of: mtz
+  patterns:
+    - "*denmod_map_coeffs*"
+    - "*denmod*.mtz"
+    - "*density_modified*.mtz"
+  notes: "Output from phenix.autobuild maps_only=True. Use with file_info.input_labels='FWT PHFWT' for ligandfit"
 
 phased_mtz:
   description: "MTZ files with experimental phases (SAD/MAD/MR)"
