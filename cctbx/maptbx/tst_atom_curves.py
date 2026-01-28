@@ -108,10 +108,10 @@ def exercise_03(d_min = 1.0, n_grid = 2000, dist_max = 5.0):
      d_min     = d_min,
      n_grid    = n_grid,
      dist_max  = dist_max)
-  assert approx_equal(image1.size(), n_grid)
   assert approx_equal(image1.size(), radii.size())
   assert approx_equal(radii[0], 0.0)
   assert approx_equal(radii[-1], 5.0)
+  assert approx_equal(image1.size(), n_grid+1)
   # control, (8-9) (same call, using different interface)
   o = maptbx.atom_curves(scattering_type="S", scattering_table="wk1995")
   im = o.image(
@@ -128,10 +128,10 @@ def exercise_03(d_min = 1.0, n_grid = 2000, dist_max = 5.0):
   # Image via integration (slow), (8-9)
   #
   im = o.image(
-      d_min = d_min,
-      b_iso = 0,
-      radii = radii,
-      fast  = False)
+    d_min = d_min,
+    b_iso = 0,
+    radii = radii,
+    fast  = False)
   emean, emax = get_rel_err(m1=image1, m2=im.image_values)
   assert emean < 1.e-5, emean
   assert emax  < 1.e-5, emax
@@ -150,11 +150,6 @@ def exercise_03(d_min = 1.0, n_grid = 2000, dist_max = 5.0):
   approx = bcr.curve(B=B, C=C, R=R, radii=radii, b_iso=0)
   emean, emax = get_rel_err(m1=image1, m2=approx)
   print("emean, emax:", emean, emax)
-  #
-  with open("tst_image_and_approx_S_dmin1A_rmax5A_ngrid2000.log","w") as fo:
-    print("  Distance Image(8-9)    Approx (1-2)", file=fo)
-    for r, im, ap in zip(radii, image1, approx):
-      print("%8.4f %13.8f %13.8f"%(r, im, ap), file=fo)
 
 if (__name__ == "__main__"):
   t0 = time.time()
