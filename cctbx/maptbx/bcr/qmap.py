@@ -15,7 +15,6 @@ ext = bp.import_ext("cctbx_maptbx_bcr_bcr_ext")
 def load_table(element=None, table=None, file_name=None):
   if file_name is None:
     element = element.strip().upper()
-    assert element in ["C","H","N","O","S","P"]
     path=libtbx.env.find_in_repositories("cctbx/maptbx/bcr/tables")
     file_name = "%s/%s_%s.json"%(path, element, table)
   assert os.path.isfile(file_name)
@@ -26,7 +25,8 @@ class compute(object):
 
   def __init__(self, xray_structure, n_real, resolution=None, resolutions=None,
             use_exp_table=True, debug=False, RadFact=2.0, RadAdd=0.5,
-            show_BCR=False):
+            show_BCR=False, timing=False):
+    start_init = time.perf_counter()
     table = xray_structure.get_scattering_table()
     assert table in ["electron", "wk1995"]
     assert [resolution, resolutions].count(None)==1
@@ -35,8 +35,9 @@ class compute(object):
       resolutions = [resolution,] * xray_structure.scatterers().size()
     RadMu   = RadFact + RadAdd
     arrays = {}
-    for scatterer in xray_structure.scatterers():
-      e = scatterer.scattering_type.strip().upper()
+    element_types = list(
+      xray_structure.scattering_type_registry().type_count_dict().keys())
+    for e in element_types:
       d = load_table(element=e, table=table)
       arrays[e] = d
     ScaleB = 1.0 / (8.0 * math.pi**2)
@@ -81,6 +82,7 @@ class compute(object):
         musq      = musq,
         kappi     = kappi)
       self.bcr_scatterers.append(bcr_scatterer)
+    self.time_init = time.perf_counter()-start_init
     #
     self.OmegaMap_py=None
     if debug:
@@ -96,7 +98,7 @@ class compute(object):
       bcr_scatterers = self.bcr_scatterers,
       use_exp_table  = use_exp_table)
     OmegaMap_cpp = self.ext_vrm.compute(compute_gradients=False)
-    self.time_map = time.perf_counter()-start
+    self.time_vrm = time.perf_counter()-start
 
     OmegaMap_cpp_2 = self.ext_vrm.map  # alternative way to get the map
     # Re-order
@@ -119,7 +121,10 @@ class compute(object):
       assert approx_equal(cc, 1.0)
       for func in [flex.min, flex.max, flex.mean]:
         assert approx_equal(func(self.mcpp), func(mpy), 1.e-6)
-      #
+    #
+    self.time_fft = None
+    if timing or debug:
+      from cctbx import maptbx
       cs = xray_structure.crystal_symmetry()
       crystal_gridding = maptbx.crystal_gridding(
         unit_cell        = cs.unit_cell(),
@@ -127,9 +132,12 @@ class compute(object):
         symmetry_flags   = maptbx.use_space_group_symmetry,
         pre_determined_n_real = n_real
         )
+      start = time.perf_counter()
       fc = xray_structure.structure_factors(d_min=resolutions[0]).f_calc()
       fft_map = fc.fft_map(crystal_gridding = crystal_gridding)
       m_fft = fft_map.real_map_unpadded()
+      self.time_fft = time.perf_counter()-start
+    if debug:
       cc = flex.linear_correlation(x=self.mcpp.as_1d(), y=m_fft.as_1d()).coefficient()
       assert cc > 0.99, cc
 
