@@ -1453,13 +1453,17 @@ def _build_with_new_builder(state):
     session_info = state.get("session_info", {})
     workflow_state = state.get("workflow_state", {})
 
-    # Handle stepwise cryo-EM
+    # Handle stepwise mode (maximum_automation=False)
+    # Forces stop_after_predict=True for predict_and_build in both cryo-EM and X-ray
     strategy = dict(raw_strategy)
     if (workflow_state.get("automation_path") == "stepwise" and
-        program == "phenix.predict_and_build" and
-        workflow_state.get("state") == "cryoem_analyzed"):
-        strategy["stop_after_predict"] = True
-        state = _log(state, "BUILD: Forcing stop_after_predict=True for stepwise cryo-EM")
+        program == "phenix.predict_and_build"):
+        current_state = workflow_state.get("state", "")
+        # Apply to early workflow states where predict_and_build would run
+        stepwise_states = ["cryoem_analyzed", "xray_initial", "xray_placed"]
+        if current_state in stepwise_states:
+            strategy["stop_after_predict"] = True
+            state = _log(state, "BUILD: Forcing stop_after_predict=True for stepwise mode")
 
     # Debug: log recovery strategies if present
     recovery_strategies = session_info.get("recovery_strategies", {})
@@ -1552,12 +1556,15 @@ def build(state):
 
     workflow_state = state.get("workflow_state", {})
 
+    # Handle stepwise mode (maximum_automation=False)
+    # Forces stop_after_predict=True for predict_and_build in both cryo-EM and X-ray
     if (workflow_state.get("automation_path") == "stepwise" and
-        program == "phenix.predict_and_build" and
-        workflow_state.get("state") == "cryoem_analyzed"):
-        # Force stop_after_predict for stepwise mode
-        strategy["stop_after_predict"] = True
-        state = _log(state, "BUILD: Forcing stop_after_predict=True for stepwise cryo-EM")
+        program == "phenix.predict_and_build"):
+        current_state = workflow_state.get("state", "")
+        stepwise_states = ["cryoem_analyzed", "xray_initial", "xray_placed"]
+        if current_state in stepwise_states:
+            strategy["stop_after_predict"] = True
+            state = _log(state, "BUILD: Forcing stop_after_predict=True for stepwise mode")
 
     # === APPLY TIER 2 DEFAULTS AND LOG OVERRIDES ===
     recommended_strategy = workflow_state.get("recommended_strategy", {})

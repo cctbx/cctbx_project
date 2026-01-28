@@ -1,5 +1,38 @@
 # PHENIX AI Agent - Changelog
 
+## Version 99 (January 2025)
+
+### Feature: maximum_automation=False Now Works for X-ray
+
+**Previously**: `maximum_automation=False` (stepwise mode) only affected cryo-EM workflows, forcing `stop_after_predict=True` for `predict_and_build`.
+
+**Now**: Stepwise mode also applies to X-ray workflows. When `maximum_automation=False`:
+- `predict_and_build` will use `stop_after_predict=True` in states: `xray_initial`, `xray_placed`
+- This gives users more control over the workflow with intermediate checkpoints
+- User can then run `process_predicted_model` → `phaser` → `refine` separately
+
+### Workflow Comparison
+
+**Automated (maximum_automation=True)**:
+```
+xray_initial → xtriage → predict_and_build(full) → xray_refined
+```
+
+**Stepwise (maximum_automation=False)**:
+```
+xray_initial → xtriage → predict_and_build(stop_after_predict)
+                              ↓
+              process_predicted_model → phaser → refine → xray_refined
+```
+
+### Files Changed
+
+- `agent/graph_nodes.py` - Extended stepwise mode handling to X-ray states
+- `agent/docs_tools.py` - Updated workflow documentation
+- `agent/workflow_state.py` - Updated stepwise hint message
+
+---
+
 ## Version 98 (January 2025)
 
 ### Bug Fix: predict_and_build Counts as Refinement for ligandfit

@@ -804,11 +804,11 @@ def format_workflow_for_prompt(workflow_state):
         for prog, condition in workflow_state["conditions"].items():
             lines.append("  - %s: requires %s" % (prog, condition))
 
-    if (workflow_state["experiment_type"] == "cryoem" and
-        workflow_state.get("automation_path") == "stepwise"):
-
-        if workflow_state["state"] == "cryoem_analyzed":
+    # Show stepwise mode hint for both cryo-EM and X-ray
+    if workflow_state.get("automation_path") == "stepwise":
+        stepwise_states = ["cryoem_analyzed", "xray_initial", "xray_placed"]
+        if workflow_state["state"] in stepwise_states:
             lines.append("")
-            lines.append("NOTE (Stepwise mode): Use predict_and_build with strategy: {\"stop_after_predict\": true}")
+            lines.append("NOTE (Stepwise mode): predict_and_build will use stop_after_predict=true")
 
     return "\n".join(lines)
