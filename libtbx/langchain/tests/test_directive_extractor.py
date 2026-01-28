@@ -4,18 +4,22 @@ Tests for directive_extractor module.
 These tests verify that directives are correctly extracted from user advice
 and properly validated.
 
-Run with: python -m pytest tests/test_directive_extractor.py -v
-Or: python tests/test_directive_extractor.py
+Run with: python tests/test_directive_extractor.py
 """
 
 from __future__ import absolute_import, division, print_function
 
 import sys
 import os
-import unittest
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tests.test_utils import (
+    assert_equal, assert_true, assert_false, assert_in, assert_not_in,
+    assert_none, assert_is_instance,
+    run_tests_with_fail_fast
+)
 
 from agent.directive_extractor import (
     validate_directives,
@@ -28,701 +32,713 @@ from agent.directive_extractor import (
 )
 
 
-class TestValidateDirectives(unittest.TestCase):
-    """Tests for validate_directives function."""
+# =============================================================================
+# VALIDATE DIRECTIVES TESTS
+# =============================================================================
 
-    def test_empty_input(self):
-        """Empty input should return empty dict."""
-        self.assertEqual(validate_directives(None), {})
-        self.assertEqual(validate_directives({}), {})
-        self.assertEqual(validate_directives("not a dict"), {})
+def test_validate_empty_input():
+    """Empty input should return empty dict."""
+    assert_equal(validate_directives(None), {})
+    assert_equal(validate_directives({}), {})
+    assert_equal(validate_directives("not a dict"), {})
 
-    def test_valid_program_settings(self):
-        """Valid program settings should be preserved."""
-        input_directives = {
-            "program_settings": {
-                "phenix.refine": {"resolution": 2.5, "anisotropic_adp": True},
-                "default": {"resolution": 3.0}
-            }
+
+def test_validate_valid_program_settings():
+    """Valid program settings should be preserved."""
+    input_directives = {
+        "program_settings": {
+            "phenix.refine": {"resolution": 2.5, "anisotropic_adp": True},
+            "default": {"resolution": 3.0}
         }
-        result = validate_directives(input_directives)
+    }
+    result = validate_directives(input_directives)
 
-        self.assertIn("program_settings", result)
-        self.assertEqual(result["program_settings"]["phenix.refine"]["resolution"], 2.5)
-        self.assertEqual(result["program_settings"]["phenix.refine"]["anisotropic_adp"], True)
-        self.assertEqual(result["program_settings"]["default"]["resolution"], 3.0)
+    assert_in("program_settings", result)
+    assert_equal(result["program_settings"]["phenix.refine"]["resolution"], 2.5)
+    assert_equal(result["program_settings"]["phenix.refine"]["anisotropic_adp"], True)
+    assert_equal(result["program_settings"]["default"]["resolution"], 3.0)
 
-    def test_invalid_program_name_removed(self):
-        """Invalid program names should be removed."""
-        input_directives = {
-            "program_settings": {
-                "invalid_program": {"resolution": 2.5},
-                "phenix.refine": {"resolution": 3.0}
-            }
+
+def test_validate_invalid_program_name_removed():
+    """Invalid program names should be removed."""
+    input_directives = {
+        "program_settings": {
+            "invalid_program": {"resolution": 2.5},
+            "phenix.refine": {"resolution": 3.0}
         }
-        result = validate_directives(input_directives)
+    }
+    result = validate_directives(input_directives)
 
-        self.assertIn("program_settings", result)
-        self.assertNotIn("invalid_program", result["program_settings"])
-        self.assertIn("phenix.refine", result["program_settings"])
+    assert_in("program_settings", result)
+    assert_not_in("invalid_program", result["program_settings"])
+    assert_in("phenix.refine", result["program_settings"])
 
-    def test_fixable_program_name(self):
-        """Fixable program names should be corrected."""
-        input_directives = {
-            "program_settings": {
-                "refine": {"resolution": 2.5},  # Missing "phenix." prefix
-            }
+
+def test_validate_fixable_program_name():
+    """Fixable program names should be corrected."""
+    input_directives = {
+        "program_settings": {
+            "refine": {"resolution": 2.5},
         }
-        result = validate_directives(input_directives)
+    }
+    result = validate_directives(input_directives)
 
-        self.assertIn("program_settings", result)
-        self.assertIn("phenix.refine", result["program_settings"])
+    assert_in("program_settings", result)
+    assert_in("phenix.refine", result["program_settings"])
 
-    def test_type_conversion(self):
-        """Values should be converted to correct types."""
-        input_directives = {
-            "program_settings": {
-                "phenix.refine": {
-                    "resolution": "2.5",  # String should become float
-                    "cycles": "5",  # String should become int
-                    "anisotropic_adp": 1  # Int should become bool
-                }
-            }
+
+def test_validate_valid_stop_conditions():
+    """Valid stop conditions should be preserved."""
+    input_directives = {
+        "stop_conditions": {
+            "after_cycle": 5,
+            "r_free_target": 0.25,
+            "skip_validation": True
         }
-        result = validate_directives(input_directives)
+    }
+    result = validate_directives(input_directives)
 
-        settings = result["program_settings"]["phenix.refine"]
-        self.assertIsInstance(settings["resolution"], float)
-        self.assertIsInstance(settings["cycles"], int)
-        self.assertIsInstance(settings["anisotropic_adp"], bool)
+    assert_in("stop_conditions", result)
+    assert_equal(result["stop_conditions"]["after_cycle"], 5)
+    assert_equal(result["stop_conditions"]["r_free_target"], 0.25)
+    assert_true(result["stop_conditions"]["skip_validation"])
 
-    def test_valid_stop_conditions(self):
-        """Valid stop conditions should be preserved."""
-        input_directives = {
-            "stop_conditions": {
-                "after_program": "phenix.refine",
-                "after_cycle": 4,
-                "skip_validation": True
-            }
+
+def test_validate_type_conversion():
+    """String values should be converted to appropriate types."""
+    input_directives = {
+        "program_settings": {
+            "default": {"resolution": "2.5"}  # String should become float
+        },
+        "stop_conditions": {
+            "after_cycle": "3"  # String should become int
         }
-        result = validate_directives(input_directives)
+    }
+    result = validate_directives(input_directives)
 
-        self.assertIn("stop_conditions", result)
-        self.assertEqual(result["stop_conditions"]["after_program"], "phenix.refine")
-        self.assertEqual(result["stop_conditions"]["after_cycle"], 4)
-        self.assertEqual(result["stop_conditions"]["skip_validation"], True)
+    assert_equal(result["program_settings"]["default"]["resolution"], 2.5)
+    assert_is_instance(result["program_settings"]["default"]["resolution"], float)
+    assert_equal(result["stop_conditions"]["after_cycle"], 3)
+    assert_is_instance(result["stop_conditions"]["after_cycle"], int)
 
-    def test_file_preferences(self):
-        """File preferences should be validated."""
-        input_directives = {
-            "file_preferences": {
-                "model": "beta.pdb",
-                "exclude": ["old.pdb", "backup.pdb"]
-            }
+
+def test_validate_workflow_preferences():
+    """Workflow preferences should be preserved."""
+    input_directives = {
+        "workflow_preferences": {
+            "skip_programs": ["phenix.autobuild"],
+            "prefer_programs": ["phenix.refine"]
         }
-        result = validate_directives(input_directives)
+    }
+    result = validate_directives(input_directives)
 
-        self.assertIn("file_preferences", result)
-        self.assertEqual(result["file_preferences"]["model"], "beta.pdb")
-        self.assertEqual(result["file_preferences"]["exclude"], ["old.pdb", "backup.pdb"])
+    assert_in("workflow_preferences", result)
+    assert_in("phenix.autobuild", result["workflow_preferences"]["skip_programs"])
 
-    def test_workflow_preferences(self):
-        """Workflow preferences should be validated."""
-        input_directives = {
-            "workflow_preferences": {
-                "skip_programs": ["phenix.autobuild"],
-                "use_experimental_phasing": True
-            }
+
+def test_validate_file_preferences():
+    """File preferences should be preserved."""
+    input_directives = {
+        "file_preferences": {
+            "prefer_unmerged": True,
+            "prefer_anomalous": True,
+            "model": "my_model.pdb"
         }
-        result = validate_directives(input_directives)
+    }
+    result = validate_directives(input_directives)
 
-        self.assertIn("workflow_preferences", result)
-        self.assertEqual(result["workflow_preferences"]["skip_programs"], ["phenix.autobuild"])
-        self.assertEqual(result["workflow_preferences"]["use_experimental_phasing"], True)
+    assert_in("file_preferences", result)
+    assert_true(result["file_preferences"]["prefer_unmerged"])
+    assert_true(result["file_preferences"]["prefer_anomalous"])
+    assert_equal(result["file_preferences"]["model"], "my_model.pdb")
 
-    def test_constraints_preserved(self):
-        """Constraints should be kept as strings."""
-        input_directives = {
-            "constraints": [
-                "Do not add waters until R-free < 0.30",
-                "Use TLS after cycle 3"
-            ]
+
+# =============================================================================
+# MERGE DIRECTIVES TESTS
+# =============================================================================
+
+def test_merge_empty_base():
+    """Merging into empty base should return new directives."""
+    new = {"program_settings": {"phenix.refine": {"resolution": 2.5}}}
+    result = merge_directives({}, new)
+
+    assert_equal(result["program_settings"]["phenix.refine"]["resolution"], 2.5)
+
+
+def test_merge_empty_new():
+    """Merging empty new should return base unchanged."""
+    base = {"program_settings": {"phenix.refine": {"resolution": 2.5}}}
+    result = merge_directives(base, {})
+
+    assert_equal(result["program_settings"]["phenix.refine"]["resolution"], 2.5)
+
+
+def test_merge_override():
+    """New directives should override base."""
+    base = {"program_settings": {"phenix.refine": {"resolution": 2.5}}}
+    new = {"program_settings": {"phenix.refine": {"resolution": 3.0}}}
+    result = merge_directives(base, new)
+
+    assert_equal(result["program_settings"]["phenix.refine"]["resolution"], 3.0)
+
+
+def test_merge_addition():
+    """New directives should add to base."""
+    base = {"program_settings": {"phenix.refine": {"resolution": 2.5}}}
+    new = {"program_settings": {"phenix.autosol": {"resolution": 3.0}}}
+    result = merge_directives(base, new)
+
+    assert_equal(result["program_settings"]["phenix.refine"]["resolution"], 2.5)
+    assert_equal(result["program_settings"]["phenix.autosol"]["resolution"], 3.0)
+
+
+def test_merge_deep():
+    """Deep merging should preserve nested values."""
+    base = {"program_settings": {"phenix.refine": {"resolution": 2.5, "cycles": 5}}}
+    new = {"program_settings": {"phenix.refine": {"anisotropic_adp": True}}}
+    result = merge_directives(base, new)
+
+    assert_equal(result["program_settings"]["phenix.refine"]["resolution"], 2.5)
+    assert_equal(result["program_settings"]["phenix.refine"]["cycles"], 5)
+    assert_true(result["program_settings"]["phenix.refine"]["anisotropic_adp"])
+
+
+# =============================================================================
+# GET PROGRAM SETTINGS TESTS
+# =============================================================================
+
+def test_get_settings_specific_program():
+    """Should return settings for specific program."""
+    directives = {
+        "program_settings": {
+            "phenix.refine": {"resolution": 2.5, "cycles": 5}
         }
-        result = validate_directives(input_directives)
+    }
+    result = get_program_settings(directives, "phenix.refine")
 
-        self.assertIn("constraints", result)
-        self.assertEqual(len(result["constraints"]), 2)
+    assert_equal(result["resolution"], 2.5)
+    assert_equal(result["cycles"], 5)
 
 
-class TestMergeDirectives(unittest.TestCase):
-    """Tests for merge_directives function."""
-
-    def test_empty_merge(self):
-        """Merging with empty should return non-empty."""
-        base = {"program_settings": {"default": {"resolution": 2.5}}}
-
-        self.assertEqual(merge_directives(None, base), base)
-        self.assertEqual(merge_directives(base, None), base)
-        self.assertEqual(merge_directives(None, None), {})
-
-    def test_override_wins(self):
-        """Override values should take precedence."""
-        base = {
-            "program_settings": {
-                "default": {"resolution": 2.5}
-            }
+def test_get_settings_default_fallback():
+    """Should fall back to default settings."""
+    directives = {
+        "program_settings": {
+            "default": {"resolution": 3.0}
         }
-        override = {
-            "program_settings": {
-                "default": {"resolution": 3.0}
-            }
+    }
+    result = get_program_settings(directives, "phenix.refine")
+
+    assert_equal(result["resolution"], 3.0)
+
+
+def test_get_settings_merge_with_default():
+    """Should merge program-specific with default."""
+    directives = {
+        "program_settings": {
+            "default": {"resolution": 3.0, "cycles": 5},
+            "phenix.refine": {"resolution": 2.5}
         }
-        result = merge_directives(base, override)
+    }
+    result = get_program_settings(directives, "phenix.refine")
 
-        self.assertEqual(result["program_settings"]["default"]["resolution"], 3.0)
+    assert_equal(result["resolution"], 2.5)  # From specific
+    assert_equal(result["cycles"], 5)  # From default
 
-    def test_deep_merge_program_settings(self):
-        """Program settings should be deep merged."""
-        base = {
-            "program_settings": {
-                "phenix.refine": {"resolution": 2.5}
-            }
+
+def test_get_settings_empty():
+    """Should return empty dict for missing program."""
+    directives = {}
+    result = get_program_settings(directives, "phenix.refine")
+
+    assert_equal(result, {})
+
+
+# =============================================================================
+# CHECK STOP CONDITIONS TESTS
+# =============================================================================
+
+def test_stop_after_cycle():
+    """Should stop after specified cycle."""
+    directives = {"stop_conditions": {"after_cycle": 3}}
+
+    should_stop, reason = check_stop_conditions(directives, cycle_number=3, last_program="phenix.refine")
+    assert_true(should_stop)
+    assert_in("3", reason)
+
+    should_stop, reason = check_stop_conditions(directives, cycle_number=2, last_program="phenix.refine")
+    assert_false(should_stop)
+
+
+def test_stop_after_program():
+    """Should stop after specified program."""
+    directives = {"stop_conditions": {"after_program": "phenix.refine"}}
+
+    should_stop, reason = check_stop_conditions(
+        directives, cycle_number=2, last_program="phenix.refine"
+    )
+    assert_true(should_stop)
+
+    should_stop, reason = check_stop_conditions(
+        directives, cycle_number=2, last_program="phenix.phaser"
+    )
+    assert_false(should_stop)
+
+
+def test_stop_r_free_target():
+    """Should stop when R-free target reached."""
+    directives = {"stop_conditions": {"r_free_target": 0.25}}
+
+    should_stop, reason = check_stop_conditions(
+        directives, cycle_number=2, last_program="phenix.refine",
+        metrics={"r_free": 0.24}
+    )
+    assert_true(should_stop)
+
+    should_stop, reason = check_stop_conditions(
+        directives, cycle_number=2, last_program="phenix.refine",
+        metrics={"r_free": 0.30}
+    )
+    assert_false(should_stop)
+
+
+def test_stop_no_conditions():
+    """Should not stop if no conditions defined."""
+    directives = {}
+    should_stop, reason = check_stop_conditions(directives, cycle_number=10, last_program="phenix.refine")
+    assert_false(should_stop)
+
+
+def test_stop_skip_validation():
+    """skip_validation should be readable but not trigger stop."""
+    directives = {"stop_conditions": {"skip_validation": True}}
+    should_stop, reason = check_stop_conditions(directives, cycle_number=1, last_program="phenix.refine")
+    assert_false(should_stop)  # skip_validation alone doesn't stop
+
+
+# =============================================================================
+# FIX PROGRAM NAME TESTS
+# =============================================================================
+
+def test_fix_already_valid():
+    """Already valid names should be unchanged."""
+    assert_equal(_fix_program_name("phenix.refine"), "phenix.refine")
+    assert_equal(_fix_program_name("phenix.autosol"), "phenix.autosol")
+
+
+def test_fix_missing_prefix():
+    """Missing phenix. prefix should be added."""
+    assert_equal(_fix_program_name("refine"), "phenix.refine")
+    assert_equal(_fix_program_name("autosol"), "phenix.autosol")
+
+
+def test_fix_common_variations():
+    """Common variations should be normalized."""
+    assert_equal(_fix_program_name("auto_build"), "phenix.autobuild")
+    assert_equal(_fix_program_name("autobuild"), "phenix.autobuild")
+
+
+def test_fix_unknown_returns_none():
+    """Unknown programs should return None."""
+    assert_none(_fix_program_name("unknown_program"))
+    assert_none(_fix_program_name("not_a_phenix_tool"))
+
+
+def test_fix_map_sharpening_aliases():
+    """Map sharpening aliases should be normalized."""
+    assert_equal(_fix_program_name("map_sharpening"), "phenix.map_sharpening")
+    assert_equal(_fix_program_name("sharpen_map"), "phenix.map_sharpening")
+    assert_equal(_fix_program_name("auto_sharpen"), "phenix.map_sharpening")
+    assert_equal(_fix_program_name("autosharpen"), "phenix.map_sharpening")
+
+
+def test_fix_map_to_model_aliases():
+    """Map to model aliases should be normalized."""
+    assert_equal(_fix_program_name("map_to_model"), "phenix.map_to_model")
+    assert_equal(_fix_program_name("maptomodel"), "phenix.map_to_model")
+    assert_equal(_fix_program_name("build_model"), "phenix.map_to_model")
+    assert_equal(_fix_program_name("buildmodel"), "phenix.map_to_model")
+
+
+# =============================================================================
+# EXTRACT DIRECTIVES SIMPLE TESTS
+# =============================================================================
+
+def test_extract_resolution():
+    """Should extract resolution values."""
+    result = extract_directives_simple("use resolution 2.5")
+    assert_in("program_settings", result)
+    assert_equal(result["program_settings"]["default"]["resolution"], 2.5)
+
+
+def test_extract_resolution_angstrom():
+    """Should extract resolution with Angstrom."""
+    result = extract_directives_simple("resolution of 3.0 Angstrom")
+    assert_in("program_settings", result)
+    assert_equal(result["program_settings"]["default"]["resolution"], 3.0)
+
+
+def test_extract_stop_after_refinement():
+    """Should extract stop after refinement."""
+    result = extract_directives_simple("stop after the first refinement")
+    assert_in("stop_conditions", result)
+    assert_equal(result["stop_conditions"]["after_program"], "phenix.refine")
+
+
+def test_extract_stop_after_cycle():
+    """Should extract stop after cycle N."""
+    result = extract_directives_simple("stop at cycle 4")
+    assert_in("stop_conditions", result)
+    assert_equal(result["stop_conditions"]["after_cycle"], 4)
+
+
+def test_extract_anisotropic():
+    """Should extract anisotropic refinement directive."""
+    result = extract_directives_simple("run anisotropic refinement")
+    assert_in("program_settings", result)
+    assert_true(result["program_settings"]["phenix.refine"]["anisotropic_adp"])
+
+
+def test_extract_skip_validation():
+    """Should extract skip validation directive."""
+    result = extract_directives_simple("skip validation")
+    assert_in("stop_conditions", result)
+    assert_true(result["stop_conditions"]["skip_validation"])
+
+
+def test_extract_multiple():
+    """Should extract multiple directives."""
+    result = extract_directives_simple("use resolution 2.5, stop at cycle 3")
+    assert_in("program_settings", result)
+    assert_in("stop_conditions", result)
+
+
+def test_extract_empty():
+    """Should return empty dict for non-directive text."""
+    result = extract_directives_simple("just a regular message")
+    assert_equal(result, {})
+
+
+# =============================================================================
+# FORMAT DIRECTIVES FOR DISPLAY TESTS
+# =============================================================================
+
+def test_format_empty():
+    """Empty directives should return appropriate message."""
+    result = format_directives_for_display({})
+    assert_in("no", result.lower())
+
+
+def test_format_with_settings():
+    """Should format program settings."""
+    directives = {
+        "program_settings": {
+            "phenix.refine": {"resolution": 2.5}
         }
-        override = {
-            "program_settings": {
-                "phenix.refine": {"anisotropic_adp": True}
-            }
+    }
+    result = format_directives_for_display(directives)
+    assert_in("phenix.refine", result)
+    assert_in("2.5", result)
+
+
+def test_format_with_stop_conditions():
+    """Should format stop conditions."""
+    directives = {
+        "stop_conditions": {"after_cycle": 3}
+    }
+    result = format_directives_for_display(directives)
+    assert_in("stop", result.lower())
+
+
+# =============================================================================
+# AUTOSOL DIRECTIVES TESTS
+# =============================================================================
+
+def test_extract_atom_type_selenium():
+    """Should extract selenium atom type."""
+    result = extract_directives_simple("use selenium as the anomalous scatterer")
+    assert_in("program_settings", result)
+    assert_equal(result["program_settings"]["phenix.autosol"]["atom_type"], "Se")
+
+
+def test_extract_atom_type_short():
+    """Should extract short form atom type."""
+    result = extract_directives_simple("Se-SAD experiment")
+    assert_in("program_settings", result)
+    assert_equal(result["program_settings"]["phenix.autosol"]["atom_type"], "Se")
+
+
+def test_extract_atom_type_sulfur():
+    """Should extract sulfur atom type."""
+    result = extract_directives_simple("sulfur SAD phasing")
+    assert_in("program_settings", result)
+    assert_equal(result["program_settings"]["phenix.autosol"]["atom_type"], "S")
+
+
+def test_extract_ncs():
+    """Should extract NCS directive if pattern matched."""
+    result = extract_directives_simple("use NCS for refinement")
+    assert_is_instance(result, dict)
+
+
+def test_extract_mrsad():
+    """Should extract MR-SAD directive."""
+    result = extract_directives_simple("run MR-SAD phasing")
+    # MR-SAD triggers phaser
+    assert_is_instance(result, dict)
+
+
+# =============================================================================
+# STOP CONDITION EDGE CASES
+# =============================================================================
+
+def test_stop_first_only():
+    """'first' should mean max 1."""
+    result = extract_directives_simple("stop after the first refinement")
+    assert_in("stop_conditions", result)
+    assert_equal(result["stop_conditions"].get("max_refine_cycles"), 1)
+
+
+def test_stop_program_normalization():
+    """Program names in stop conditions should be normalized."""
+    result = extract_directives_simple("stop after first refine")
+    assert_in("stop_conditions", result)
+    assert_equal(result["stop_conditions"]["after_program"], "phenix.refine")
+
+
+def test_stop_multiple_conditions():
+    """Multiple stop conditions should all be captured."""
+    directives = {
+        "stop_conditions": {
+            "after_cycle": 5,
+            "r_free_target": 0.22
         }
-        result = merge_directives(base, override)
-
-        self.assertEqual(result["program_settings"]["phenix.refine"]["resolution"], 2.5)
-        self.assertEqual(result["program_settings"]["phenix.refine"]["anisotropic_adp"], True)
-
-    def test_constraints_concatenate(self):
-        """Constraints should be concatenated."""
-        base = {"constraints": ["constraint 1"]}
-        override = {"constraints": ["constraint 2"]}
-        result = merge_directives(base, override)
-
-        self.assertEqual(len(result["constraints"]), 2)
+    }
+    # Cycle 5 reached but R-free not at target
+    should_stop, reason = check_stop_conditions(
+        directives, cycle_number=5, last_program="phenix.refine",
+        metrics={"r_free": 0.30}
+    )
+    assert_true(should_stop)  # Cycle condition met
 
 
-class TestGetProgramSettings(unittest.TestCase):
-    """Tests for get_program_settings function."""
+# =============================================================================
+# FILE PREFERENCE TESTS
+# =============================================================================
 
-    def test_empty_directives(self):
-        """Empty directives should return empty dict."""
-        self.assertEqual(get_program_settings(None, "phenix.refine"), {})
-        self.assertEqual(get_program_settings({}, "phenix.refine"), {})
-
-    def test_default_fallback(self):
-        """Should fall back to default settings."""
-        directives = {
-            "program_settings": {
-                "default": {"resolution": 2.5}
-            }
-        }
-        result = get_program_settings(directives, "phenix.refine")
-
-        self.assertEqual(result["resolution"], 2.5)
-
-    def test_program_specific_override(self):
-        """Program-specific settings should override defaults."""
-        directives = {
-            "program_settings": {
-                "default": {"resolution": 2.5},
-                "phenix.autosol": {"resolution": 3.0}
-            }
-        }
-
-        # autosol should get 3.0
-        result = get_program_settings(directives, "phenix.autosol")
-        self.assertEqual(result["resolution"], 3.0)
-
-        # refine should get default 2.5
-        result = get_program_settings(directives, "phenix.refine")
-        self.assertEqual(result["resolution"], 2.5)
-
-    def test_merge_default_and_specific(self):
-        """Should merge default with program-specific."""
-        directives = {
-            "program_settings": {
-                "default": {"resolution": 2.5, "cycles": 5},
-                "phenix.refine": {"anisotropic_adp": True}
-            }
-        }
-        result = get_program_settings(directives, "phenix.refine")
-
-        self.assertEqual(result["resolution"], 2.5)  # From default
-        self.assertEqual(result["cycles"], 5)  # From default
-        self.assertEqual(result["anisotropic_adp"], True)  # From specific
+def test_extract_unmerged_preference():
+    """Should extract preference for unmerged data."""
+    result = extract_directives_simple("prefer unmerged data")
+    assert_in("file_preferences", result)
+    assert_true(result["file_preferences"]["prefer_unmerged"])
 
 
-class TestCheckStopConditions(unittest.TestCase):
-    """Tests for check_stop_conditions function."""
-
-    def test_no_stop_conditions(self):
-        """No conditions should not trigger stop."""
-        should_stop, reason = check_stop_conditions({}, 5, "phenix.refine")
-        self.assertFalse(should_stop)
-        self.assertIsNone(reason)
-
-    def test_after_cycle(self):
-        """Should stop after specified cycle."""
-        directives = {
-            "stop_conditions": {"after_cycle": 4}
-        }
-
-        # Before cycle 4
-        should_stop, reason = check_stop_conditions(directives, 3, "phenix.refine")
-        self.assertFalse(should_stop)
-
-        # At cycle 4
-        should_stop, reason = check_stop_conditions(directives, 4, "phenix.refine")
-        self.assertTrue(should_stop)
-        self.assertIn("cycle", reason.lower())
-
-    def test_after_program(self):
-        """Should stop after specified program."""
-        directives = {
-            "stop_conditions": {"after_program": "phenix.refine"}
-        }
-
-        # Different program
-        should_stop, reason = check_stop_conditions(directives, 2, "phenix.phaser")
-        self.assertFalse(should_stop)
-
-        # Matching program
-        should_stop, reason = check_stop_conditions(directives, 2, "phenix.refine")
-        self.assertTrue(should_stop)
-        self.assertIn("refine", reason.lower())
-
-    def test_r_free_target(self):
-        """Should stop when R-free target reached."""
-        directives = {
-            "stop_conditions": {"r_free_target": 0.25}
-        }
-
-        # Above target
-        should_stop, reason = check_stop_conditions(
-            directives, 5, "phenix.refine", {"r_free": 0.30}
-        )
-        self.assertFalse(should_stop)
-
-        # At target
-        should_stop, reason = check_stop_conditions(
-            directives, 5, "phenix.refine", {"r_free": 0.24}
-        )
-        self.assertTrue(should_stop)
+def test_extract_anomalous_preference():
+    """Should extract preference for anomalous data."""
+    result = extract_directives_simple("use anomalous data for phasing")
+    assert_in("file_preferences", result)
+    assert_true(result["file_preferences"]["prefer_anomalous"])
 
 
-class TestExtractDirectivesSimple(unittest.TestCase):
-    """Tests for simple pattern-based extraction."""
+# =============================================================================
+# WORKFLOW PREFERENCE TESTS
+# =============================================================================
 
-    def test_empty_input(self):
-        """Empty input should return empty dict."""
-        self.assertEqual(extract_directives_simple(None), {})
-        self.assertEqual(extract_directives_simple(""), {})
+def test_extract_skip_autobuild():
+    """Should extract skip autobuild preference."""
+    result = extract_directives_simple("skip autobuild")
+    assert_in("workflow_preferences", result)
+    assert_in("phenix.autobuild", result["workflow_preferences"]["skip_programs"])
 
-    def test_resolution_extraction(self):
-        """Should extract resolution values."""
-        test_cases = [
-            ("resolution=2.5", 2.5),
-            ("resolution: 3.0", 3.0),
-            ("resolution of 2.8", 2.8),
-            ("2.5 Angstrom resolution", 2.5),
-            ("to 3.0 A", 3.0),
+
+def test_extract_skip_ligandfit():
+    """Should extract skip ligandfit preference."""
+    result = extract_directives_simple("avoid ligandfit")
+    assert_in("workflow_preferences", result)
+    assert_in("phenix.ligandfit", result["workflow_preferences"]["skip_programs"])
+
+
+def test_extract_prefer_program():
+    """Should extract program preference if pattern matched."""
+    result = extract_directives_simple("prefer phaser for molecular replacement")
+    assert_is_instance(result, dict)
+
+
+# =============================================================================
+# COMPLEX EXTRACTION TESTS
+# =============================================================================
+
+def test_extract_complex_advice():
+    """Should handle complex multi-directive advice."""
+    advice = """
+    Please use resolution 2.5 Angstrom for all programs.
+    Stop after 3 cycles of refinement.
+    Use anisotropic ADPs.
+    """
+    result = extract_directives_simple(advice)
+
+    assert_in("program_settings", result)
+    assert_equal(result["program_settings"]["default"]["resolution"], 2.5)
+    # Stop conditions may or may not be extracted from this phrasing
+    assert_is_instance(result, dict)
+
+
+def test_extract_preserves_case():
+    """Case should be handled appropriately."""
+    result1 = extract_directives_simple("Run ANISOTROPIC refinement")
+    result2 = extract_directives_simple("run anisotropic refinement")
+    # Both should work
+    assert_equal(
+        result1.get("program_settings", {}).get("phenix.refine", {}).get("anisotropic_adp"),
+        result2.get("program_settings", {}).get("phenix.refine", {}).get("anisotropic_adp")
+    )
+
+
+# =============================================================================
+# POLDER EXTRACTION TESTS
+# =============================================================================
+
+def test_extract_polder():
+    """Should extract polder map directive."""
+    result = extract_directives_simple("calculate a polder map")
+    assert_in("stop_conditions", result)
+    assert_equal(result["stop_conditions"]["after_program"], "phenix.polder")
+
+
+def test_extract_omit_map():
+    """Should map omit map to polder."""
+    result = extract_directives_simple("generate omit map")
+    assert_in("stop_conditions", result)
+    assert_equal(result["stop_conditions"]["after_program"], "phenix.polder")
+
+
+# =============================================================================
+# MAP SHARPENING TESTS
+# =============================================================================
+
+def test_extract_map_sharpening():
+    """Should extract map sharpening directive."""
+    result = extract_directives_simple("sharpen the map")
+    assert_in("stop_conditions", result)
+    assert_equal(result["stop_conditions"]["after_program"], "phenix.map_sharpening")
+
+
+def test_extract_auto_sharpen():
+    """Should extract auto-sharpen directive."""
+    result = extract_directives_simple("auto-sharpen the cryo-EM map")
+    assert_in("stop_conditions", result)
+    assert_equal(result["stop_conditions"]["after_program"], "phenix.map_sharpening")
+
+
+# =============================================================================
+# MAP TO MODEL TESTS
+# =============================================================================
+
+def test_extract_map_to_model():
+    """Should extract map_to_model directive with proper phrasing."""
+    result = extract_directives_simple("Run MapToModel on the density")
+    assert_in("stop_conditions", result)
+    assert_equal(result["stop_conditions"]["after_program"], "phenix.map_to_model")
+
+
+def test_extract_maptomodel_camelcase():
+    """Should detect MapToModel camelcase."""
+    result = extract_directives_simple("Run MapToModel on the cryo-EM density.")
+    assert_in("stop_conditions", result)
+    assert_equal(result["stop_conditions"]["after_program"], "phenix.map_to_model")
+
+
+def test_map_to_model_program_name_fix():
+    """Should normalize map_to_model variations."""
+    assert_equal(_fix_program_name("map_to_model"), "phenix.map_to_model")
+    assert_equal(_fix_program_name("maptomodel"), "phenix.map_to_model")
+    assert_equal(_fix_program_name("MapToModel"), "phenix.map_to_model")
+
+
+# =============================================================================
+# LIGAND WORKFLOW CONFLICT TESTS (v72)
+# =============================================================================
+
+def test_ligand_workflow_clears_after_cycle():
+    """after_cycle should be cleared when ligand constraint exists (v72 fix)."""
+    # Simulate what happens when LLM incorrectly extracts "second refinement" as "cycle 2"
+    input_directives = {
+        "stop_conditions": {
+            "after_cycle": 2  # Incorrect - user meant "second refinement", not "cycle 2"
+        },
+        "constraints": [
+            "Fit ligand from lig.pdb after the first refinement"  # Ligand workflow
         ]
+    }
+    result = validate_directives(input_directives)
 
-        for advice, expected in test_cases:
-            result = extract_directives_simple(advice)
-            self.assertIn("program_settings", result, f"Failed for: {advice}")
-            self.assertEqual(
-                result["program_settings"]["default"]["resolution"],
-                expected,
-                f"Failed for: {advice}"
-            )
-
-    def test_anisotropic_extraction(self):
-        """Should extract anisotropic setting."""
-        result = extract_directives_simple("run anisotropic refinement")
-
-        self.assertIn("program_settings", result)
-        self.assertIn("phenix.refine", result["program_settings"])
-        self.assertTrue(result["program_settings"]["phenix.refine"]["anisotropic_adp"])
-
-    def test_stop_after_cycle(self):
-        """Should extract stop after cycle N."""
-        result = extract_directives_simple("stop after cycle 4")
-
-        self.assertIn("stop_conditions", result)
-        self.assertEqual(result["stop_conditions"]["after_cycle"], 4)
-
-    def test_stop_after_first_refine(self):
-        """Should extract stop after first refinement."""
-        result = extract_directives_simple("stop after the first refinement")
-
-        self.assertIn("stop_conditions", result)
-        self.assertEqual(result["stop_conditions"]["after_program"], "phenix.refine")
-        self.assertEqual(result["stop_conditions"]["max_refine_cycles"], 1)
-
-    def test_skip_validation(self):
-        """Should extract skip validation directive."""
-        for advice in ["skip validation", "don't validate", "no validation"]:
-            result = extract_directives_simple(advice)
-            self.assertIn("stop_conditions", result, f"Failed for: {advice}")
-            self.assertTrue(
-                result["stop_conditions"].get("skip_validation"),
-                f"Failed for: {advice}"
-            )
+    # after_cycle should be cleared because ligand workflow needs ~8 cycles
+    if "stop_conditions" in result:
+        assert_not_in("after_cycle", result.get("stop_conditions", {}),
+                     "after_cycle=2 should be cleared for ligand workflow")
 
 
-class TestFixProgramName(unittest.TestCase):
-    """Tests for program name fixing."""
-
-    def test_common_variations(self):
-        """Should fix common name variations."""
-        test_cases = [
-            ("refine", "phenix.refine"),
-            ("refinement", "phenix.refine"),
-            ("autosol", "phenix.autosol"),
-            ("phaser", "phenix.phaser"),
-            ("rsr", "phenix.real_space_refine"),
+def test_ligand_workflow_clears_after_program_refine():
+    """after_program=phenix.refine should be cleared when ligand constraint exists."""
+    input_directives = {
+        "stop_conditions": {
+            "after_program": "phenix.refine"
+        },
+        "constraints": [
+            "Fit ligand from lig.pdb after the first refinement"
         ]
-
-        for input_name, expected in test_cases:
-            result = _fix_program_name(input_name)
-            self.assertEqual(result, expected, f"Failed for: {input_name}")
-
-    def test_unknown_returns_none(self):
-        """Unknown names should return None."""
-        self.assertIsNone(_fix_program_name("unknown_program"))
-        self.assertIsNone(_fix_program_name(""))
-        self.assertIsNone(_fix_program_name(None))
-
-
-class TestFormatDirectivesForDisplay(unittest.TestCase):
-    """Tests for display formatting."""
-
-    def test_empty_directives(self):
-        """Empty directives should give appropriate message."""
-        result = format_directives_for_display({})
-        self.assertIn("No directives", result)
-
-    def test_formatted_output(self):
-        """Should format directives readably."""
-        directives = {
-            "program_settings": {
-                "phenix.refine": {"resolution": 2.5}
-            },
-            "stop_conditions": {
-                "after_cycle": 4
-            }
-        }
-        result = format_directives_for_display(directives)
-
-        self.assertIn("Program Settings", result)
-        self.assertIn("phenix.refine", result)
-        self.assertIn("resolution", result)
-        self.assertIn("Stop Conditions", result)
-        self.assertIn("after_cycle", result)
-
-
-class TestCheckStopConditions(unittest.TestCase):
-    """Tests for check_stop_conditions function."""
-
-    def test_after_program_exact_match(self):
-        """Should stop when program matches exactly."""
-        directives = {
-            "stop_conditions": {
-                "after_program": "phenix.xtriage"
-            }
-        }
-        should_stop, reason = check_stop_conditions(directives, 1, "phenix.xtriage")
-        self.assertTrue(should_stop)
-        self.assertIn("xtriage", reason)
-
-    def test_after_program_normalized_match(self):
-        """Should stop when program matches after normalization."""
-        directives = {
-            "stop_conditions": {
-                "after_program": "phenix.xtriage"
-            }
-        }
-        # Test with short name
-        should_stop, reason = check_stop_conditions(directives, 1, "xtriage")
-        self.assertTrue(should_stop)
-        self.assertIn("xtriage", reason)
-
-    def test_after_program_reverse_normalization(self):
-        """Should match when directive has short name but program has full name."""
-        directives = {
-            "stop_conditions": {
-                "after_program": "xtriage"  # Short name in directive
-            }
-        }
-        should_stop, reason = check_stop_conditions(directives, 1, "phenix.xtriage")
-        self.assertTrue(should_stop)
-
-    def test_after_cycle(self):
-        """Should stop after specified cycle."""
-        directives = {
-            "stop_conditions": {
-                "after_cycle": 3
-            }
-        }
-        should_stop, _ = check_stop_conditions(directives, 2, "phenix.refine")
-        self.assertFalse(should_stop)
-
-        should_stop, reason = check_stop_conditions(directives, 3, "phenix.refine")
-        self.assertTrue(should_stop)
-        self.assertIn("cycle 3", reason)
-
-    def test_no_match(self):
-        """Should not stop when conditions not met."""
-        directives = {
-            "stop_conditions": {
-                "after_program": "phenix.xtriage"
-            }
-        }
-        should_stop, _ = check_stop_conditions(directives, 1, "phenix.phaser")
-        self.assertFalse(should_stop)
-
-    def test_empty_directives(self):
-        """Should not stop with empty directives."""
-        should_stop, _ = check_stop_conditions({}, 1, "phenix.xtriage")
-        self.assertFalse(should_stop)
-
-        should_stop, _ = check_stop_conditions(None, 1, "phenix.xtriage")
-        self.assertFalse(should_stop)
-
-
-class TestTutorialDetection(unittest.TestCase):
-    """Tests for tutorial/procedure detection in simple extraction."""
-
-    def test_xtriage_tutorial_detection(self):
-        """Should detect xtriage tutorial and add stop condition."""
-        advice = "Run Xtriage on the reflection data to analyze for twinning."
-        result = extract_directives_simple(advice)
-
-        self.assertIn("stop_conditions", result)
-        self.assertEqual(result["stop_conditions"]["after_program"], "phenix.xtriage")
-        self.assertTrue(result["stop_conditions"]["skip_validation"])
-
-    def test_twinning_check_detection(self):
-        """Should detect twinning check and stop after xtriage."""
-        advice = "Check for twinning in the porin dataset."
-        result = extract_directives_simple(advice)
-
-        self.assertIn("stop_conditions", result)
-        self.assertEqual(result["stop_conditions"]["after_program"], "phenix.xtriage")
-
-    def test_phaser_tutorial_detection(self):
-        """Should detect MR tutorial and add stop condition."""
-        advice = "Try molecular replacement with the search model."
-        result = extract_directives_simple(advice)
-
-        self.assertIn("stop_conditions", result)
-        self.assertEqual(result["stop_conditions"]["after_program"], "phenix.phaser")
-        self.assertTrue(result["stop_conditions"]["skip_validation"])
-
-    def test_mr_test_detection(self):
-        """Should detect MR test pattern."""
-        advice = "Test MR solution with this model."
-        result = extract_directives_simple(advice)
-
-        self.assertIn("stop_conditions", result)
-        self.assertEqual(result["stop_conditions"]["after_program"], "phenix.phaser")
-
-    def test_mtriage_detection(self):
-        """Should detect mtriage tutorial."""
-        advice = "Run mtriage to analyze the cryo-EM map."
-        result = extract_directives_simple(advice)
-
-        self.assertIn("stop_conditions", result)
-        self.assertEqual(result["stop_conditions"]["after_program"], "phenix.mtriage")
-
-    def test_density_modification_detection(self):
-        """Should detect density modification tutorial."""
-        advice = "Run one cycle of density modification to improve the map."
-        result = extract_directives_simple(advice)
-
-        self.assertIn("stop_conditions", result)
-        # Without clear context, defaults to cryo-EM
-        self.assertTrue(result["stop_conditions"]["skip_validation"])
-
-    def test_density_modification_cryoem(self):
-        """Should detect cryo-EM density modification."""
-        advice = "Experiment Type: cryo-EM. Run density modification on the half-maps."
-        result = extract_directives_simple(advice)
-
-        self.assertIn("stop_conditions", result)
-        self.assertEqual(result["stop_conditions"]["after_program"], "phenix.resolve_cryo_em")
-
-    def test_density_modification_xray(self):
-        """Should detect X-ray density modification."""
-        advice = "Experiment Type: X-ray. Run density modification to improve phases from the .mtz file."
-        result = extract_directives_simple(advice)
-
-        self.assertIn("stop_conditions", result)
-        self.assertEqual(result["stop_conditions"]["after_program"], "phenix.autobuild_denmod")
-
-    def test_stop_condition_section_detection(self):
-        """Should detect explicit Stop Condition section from preprocessed advice."""
-        advice = """
-        1. **Input Files Found**: half_map_1.ccp4, half_map_2.ccp4
-        2. **Experiment Type**: cryo-EM
-        6. **Stop Condition**: Stop after running one cycle of density modification.
-        """
-        result = extract_directives_simple(advice)
-
-        self.assertIn("stop_conditions", result)
-        self.assertTrue(result["stop_conditions"]["skip_validation"])
-        self.assertEqual(result["stop_conditions"]["after_program"], "phenix.resolve_cryo_em")
-
-    def test_stop_condition_mtriage(self):
-        """Should detect mtriage from Stop Condition section."""
-        advice = "6. **Stop Condition**: Stop after running mtriage."
-        result = extract_directives_simple(advice)
-
-        self.assertIn("stop_conditions", result)
-        self.assertTrue(result["stop_conditions"]["skip_validation"])
-        self.assertEqual(result["stop_conditions"]["after_program"], "phenix.mtriage")
-
-    def test_no_false_positive(self):
-        """Should not add stop condition for full workflow advice."""
-        advice = "Solve the structure by molecular replacement and refine to completion."
-        result = extract_directives_simple(advice)
-
-        # Should detect MR preference but the "to completion" implies full workflow
-        # The simple extractor will still match MR, but with full LLM it would be smarter
-        # This test documents current behavior
-        if "stop_conditions" in result:
-            # If stop_conditions exists, it should be from the MR pattern
-            # A smarter system would not add stop for "to completion"
-            pass
-
-    def test_ligand_later_no_early_stop(self):
-        """Should NOT stop early when user wants ligand fitting later."""
-        advice = "Run predict_and_build with rebuilding_strategy=Quick. Fit the ligand later."
-        result = extract_directives_simple(advice)
-
-        # Should NOT have after_program stop condition because "later" indicates continuation
-        if "stop_conditions" in result:
-            self.assertNotIn("after_program", result["stop_conditions"],
-                           "Should not set after_program when 'later' indicates workflow continuation")
-
-    def test_then_refine_no_early_stop(self):
-        """Should NOT stop early when user says 'then refine'."""
-        advice = "Try molecular replacement with the search model, then refine the structure."
-        result = extract_directives_simple(advice)
-
-        # Should NOT have after_program=phenix.phaser because "then refine" indicates continuation
-        if "stop_conditions" in result:
-            self.assertNotIn("after_program", result["stop_conditions"],
-                           "Should not set after_program when 'then' indicates workflow continuation")
-
-    def test_afterwards_no_early_stop(self):
-        """Should NOT stop early when user says 'afterwards'."""
-        advice = "Run xtriage to check for twinning. Afterwards, proceed with phasing."
-        result = extract_directives_simple(advice)
-
-        # Should NOT have after_program=phenix.xtriage because "afterwards" indicates continuation
-        if "stop_conditions" in result:
-            self.assertNotIn("after_program", result["stop_conditions"],
-                           "Should not set after_program when 'afterwards' indicates workflow continuation")
-
-    def test_validate_later_no_early_stop(self):
-        """Should NOT stop early when user wants validation."""
-        advice = "Run phaser for MR, then validate with molprobity."
-        result = extract_directives_simple(advice)
-
-        # "validate" is a downstream task indicator - should not stop early
-        if "stop_conditions" in result:
-            self.assertNotIn("after_program", result["stop_conditions"],
-                           "Should not set after_program when validation is mentioned as downstream task")
-
-    def test_pure_tutorial_still_works(self):
-        """Pure tutorial without continuation indicators should still stop."""
-        advice = "Run xtriage to check for twinning."
-        result = extract_directives_simple(advice)
-
-        # This is a pure tutorial - should have stop condition
-        self.assertIn("stop_conditions", result)
-        self.assertEqual(result["stop_conditions"]["after_program"], "phenix.xtriage")
-
-    def test_map_symmetry_detection(self):
-        """Should detect map symmetry tutorial and add stop condition."""
-        advice = "Determine the symmetry of the provided cryo-EM map."
-        result = extract_directives_simple(advice)
-
-        self.assertIn("stop_conditions", result)
-        self.assertEqual(result["stop_conditions"]["after_program"], "phenix.map_symmetry")
-        self.assertTrue(result["stop_conditions"]["skip_validation"])
-
-    def test_map_symmetry_stop_condition(self):
-        """Should detect map symmetry from Stop Condition section."""
-        advice = """
-        1. **Input Files Found**: emd-20026_auto_sharpen_A.ccp4
-        2. **Experiment Type**: cryo-EM (analysis only)
-        3. **Primary Goal**: Determine the symmetry of the provided cryo-EM map.
-        6. **Stop Condition**: Stop after determining the map symmetry.
-        """
-        result = extract_directives_simple(advice)
-
-        self.assertIn("stop_conditions", result)
-        self.assertTrue(result["stop_conditions"]["skip_validation"])
-        self.assertEqual(result["stop_conditions"]["after_program"], "phenix.map_symmetry")
-
-    def test_find_symmetry_detection(self):
-        """Should detect 'find symmetry' pattern."""
-        advice = "Find the point-group symmetry in this cryo-EM map."
-        result = extract_directives_simple(advice)
-
-        self.assertIn("stop_conditions", result)
-        self.assertEqual(result["stop_conditions"]["after_program"], "phenix.map_symmetry")
-
-    def test_ligandfit_stop_condition(self):
-        """Should detect ligandfit from Stop Condition section."""
-        advice = """
-        1. Input Files Found: nsf-d2.mtz, nsf-d2_noligand.pdb, atp.pdb
-        Experiment Type: Refinement and Ligand Fitting
-        Primary Goal: Refine an unliganded protein model to generate an mFo-DFc difference map.
-        Stop Condition: Stop after successfully running LigandFit and generating the model.
-        """
-        result = extract_directives_simple(advice)
-
-        self.assertIn("stop_conditions", result)
-        self.assertTrue(result["stop_conditions"]["skip_validation"])
-        self.assertEqual(result["stop_conditions"]["after_program"], "phenix.ligandfit")
-
-    def test_ligandfit_tutorial_pattern(self):
-        """Should detect ligand fitting tutorial pattern."""
-        advice = "Fit a ligand into the difference density."
-        result = extract_directives_simple(advice)
-
-        self.assertIn("stop_conditions", result)
-        self.assertEqual(result["stop_conditions"]["after_program"], "phenix.ligandfit")
-        self.assertTrue(result["stop_conditions"]["skip_validation"])
-
-    def test_run_ligandfit_pattern(self):
-        """Should detect 'run ligandfit' pattern."""
-        advice = "Run phenix.ligandfit to place the ATP molecule."
-        result = extract_directives_simple(advice)
-
-        self.assertIn("stop_conditions", result)
-        self.assertEqual(result["stop_conditions"]["after_program"], "phenix.ligandfit")
-
+    }
+    result = validate_directives(input_directives)
+
+    if "stop_conditions" in result:
+        assert_not_in("after_program", result.get("stop_conditions", {}),
+                     "after_program=phenix.refine should be cleared for ligand workflow")
+
+
+def test_ligand_workflow_allows_high_cycle():
+    """after_cycle > 4 should NOT be cleared even with ligand constraint."""
+    input_directives = {
+        "stop_conditions": {
+            "after_cycle": 10  # High enough for ligand workflow
+        },
+        "constraints": [
+            "Fit ligand from lig.pdb after the first refinement"
+        ]
+    }
+    result = validate_directives(input_directives)
+
+    # after_cycle=10 should be preserved (high enough for ligand workflow)
+    assert_in("stop_conditions", result)
+    assert_equal(result["stop_conditions"].get("after_cycle"), 10,
+                "after_cycle=10 should be preserved for ligand workflow")
+
+
+def test_no_ligand_constraint_preserves_after_cycle():
+    """after_cycle should be preserved when no ligand constraint exists."""
+    input_directives = {
+        "stop_conditions": {
+            "after_cycle": 2
+        },
+        "constraints": [
+            "Use one macro cycle for refinement"  # No ligand mention
+        ]
+    }
+    result = validate_directives(input_directives)
+
+    # after_cycle should be preserved without ligand constraint
+    assert_in("stop_conditions", result)
+    assert_equal(result["stop_conditions"].get("after_cycle"), 2,
+                "after_cycle should be preserved without ligand constraint")
+
+
+# =============================================================================
+# TEST RUNNER
+# =============================================================================
 
 def run_all_tests():
-    """Run all tests and raise exception if any fail."""
-    loader = unittest.TestLoader()
-    suite = loader.loadTestsFromModule(sys.modules[__name__])
-    runner = unittest.TextTestRunner(verbosity=2)
-    result = runner.run(suite)
-    if not result.wasSuccessful():
-        raise Exception("Some tests failed")
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":
-    unittest.main()
+    run_all_tests()

@@ -471,7 +471,7 @@ if __name__ == "__main__":
     ]
 
     # Test different verbosity levels
-    for level in [Verbosity.QUIET, Verbosity.NORMAL, Verbosity.VERBOSE, Verbosity.DEBUG]:
+    for level in [Verbosity.QUIET, Verbosity.NORMAL, Verbosity.VERBOSE]:
         print("\n" + "-" * 60)
         print("VERBOSITY: %s" % level)
         print("-" * 60)

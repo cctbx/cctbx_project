@@ -79,11 +79,17 @@ class EventType:
 # =============================================================================
 
 class Verbosity:
-    """Verbosity level constants."""
+    """
+    Verbosity level constants.
+
+    Three levels:
+      QUIET:   Errors, warnings, and final result only
+      NORMAL:  Key decisions, metrics, reasoning (default)
+      VERBOSE: Full detail including file selection and internal state
+    """
     QUIET = "quiet"      # Errors and final result only
     NORMAL = "normal"    # Key decisions and metrics
-    VERBOSE = "verbose"  # + File selection details
-    DEBUG = "debug"      # + All internal state, traces
+    VERBOSE = "verbose"  # Full detail including file selection, internal state
 
 
 # Event type to minimum verbosity level mapping
@@ -105,12 +111,12 @@ EVENT_VERBOSITY = {
     EventType.COMMAND_BUILT: Verbosity.NORMAL,
     EventType.ERROR: Verbosity.QUIET,
     EventType.WARNING: Verbosity.NORMAL,
-    EventType.DEBUG: Verbosity.DEBUG,
-    EventType.THOUGHT: Verbosity.DEBUG,
+    EventType.DEBUG: Verbosity.VERBOSE,    # DEBUG events shown at VERBOSE level
+    EventType.THOUGHT: Verbosity.VERBOSE,  # THOUGHT events shown at VERBOSE level
 }
 
 # Verbosity level ordering (for filtering)
-VERBOSITY_ORDER = [Verbosity.QUIET, Verbosity.NORMAL, Verbosity.VERBOSE, Verbosity.DEBUG]
+VERBOSITY_ORDER = [Verbosity.QUIET, Verbosity.NORMAL, Verbosity.VERBOSE]
 
 
 def verbosity_index(level):
@@ -414,7 +420,6 @@ if __name__ == "__main__":
     print(f"  Has errors: {log.has_errors()}")
     print(f"  Events at NORMAL verbosity: {len(log.get_events(max_verbosity=Verbosity.NORMAL))}")
     print(f"  Events at VERBOSE verbosity: {len(log.get_events(max_verbosity=Verbosity.VERBOSE))}")
-    print(f"  Events at DEBUG verbosity: {len(log.get_events(max_verbosity=Verbosity.DEBUG))}")
 
     # Test helper functions
     print("\nHelper function test:")

@@ -290,22 +290,9 @@ def test_empty_session():
 
 
 def run_all_tests():
-    """Run all session summary tests."""
-    print("=" * 60)
-    print("AGENT SESSION SUMMARY TESTS")
-    print("=" * 60)
-
-    test_extract_summary_data()
-    test_input_quality_extraction()
-    test_workflow_path_detection()
-    test_markdown_generation()
-    test_llm_summary_input()
-    test_quality_assessments()
-    test_empty_session()
-
-    print("\n" + "=" * 60)
-    print("ALL TESTS PASSED!")
-    print("=" * 60)
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":

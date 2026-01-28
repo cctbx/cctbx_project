@@ -44,6 +44,8 @@ phenix.ai_agent verbosity=verbose original_files="data.mtz sequence.fa"
 | [reference/ARCHITECTURE.md](reference/ARCHITECTURE.md) | Deep-dive into components and transport |
 | [reference/API_REFERENCE.md](reference/API_REFERENCE.md) | V2 JSON API specification |
 | [guides/ADDING_PROGRAMS.md](guides/ADDING_PROGRAMS.md) | How to add new PHENIX programs |
+| [guides/TESTING.md](guides/TESTING.md) | Testing guide and conventions |
+| [SAFETY_CHECKS.md](SAFETY_CHECKS.md) | Auto-generated list of all safety validations |
 
 ### Implementation Details
 
@@ -52,6 +54,7 @@ phenix.ai_agent verbosity=verbose original_files="data.mtz sequence.fa"
 | [project/TRANSPARENCY_LOGGING.md](project/TRANSPARENCY_LOGGING.md) | Event system design and implementation |
 | [project/THOUGHT_EXPERIMENT.md](project/THOUGHT_EXPERIMENT.md) | Example workflow traces |
 | [project/CHANGELOG.md](project/CHANGELOG.md) | Version history |
+| [implementation/PROGRAM_CONFIG_ROBUSTNESS.md](implementation/PROGRAM_CONFIG_ROBUSTNESS.md) | Plan for robust program configuration |
 
 ---
 
@@ -102,10 +105,24 @@ The agent explains every decision at configurable verbosity:
 |-------|-------|
 | `quiet` | Errors only, one-line cycle summaries |
 | `normal` | Key decisions, metrics, commands (default) |
-| `verbose` | + File selection details with scores |
-| `debug` | + Full internal state, LLM traces |
+| `verbose` | Full details: file selection, LLM traces, debug info |
 
-### 5. User Feedback
+Note: `debug` is an alias for `verbose` (3 levels total).
+
+### 5. Safety Checks
+
+The agent includes 70+ safety checks across multiple layers:
+
+| Category | Count | Examples |
+|----------|-------|----------|
+| Sanity Checks | 20 | No data for workflow, model not positioned |
+| Directive Validation | 7 | Invalid program names, conflicting stops |
+| Workflow Validation | 8 | Wrong phase, invalid transitions |
+| Post-Processing | 4 | Ligand workflow conflict resolution |
+
+See [SAFETY_CHECKS.md](SAFETY_CHECKS.md) for the complete auto-generated list.
+
+### 6. User Feedback
 
 When the agent can't fulfill a request, it explains why:
 
@@ -142,10 +159,13 @@ When the agent can't fulfill a request, it explains why:
 
 ```
 1. phenix.mtriage           → Analyze map, determine resolution
-2. phenix.predict_and_build → AlphaFold prediction + docking
-3. phenix.real_space_refine → Iterative refinement (4-8 cycles)
-4. phenix.molprobity        → Geometry validation
-5. STOP                     → Target achieved or plateau detected
+2. phenix.resolve_cryo_em   → Density modification (if half-maps provided)
+3. phenix.predict_and_build → AlphaFold prediction
+4. phenix.process_predicted_model → Prepare model for docking
+5. phenix.dock_in_map       → Dock model into density-modified map
+6. phenix.real_space_refine → Iterative refinement (3-6 cycles)
+7. phenix.molprobity        → Geometry validation
+8. STOP                     → Target achieved or plateau detected
 ```
 
 ---
@@ -163,17 +183,29 @@ When the agent can't fulfill a request, it explains why:
 
 ## Testing
 
+The test suite uses **cctbx-style testing** with plain functions and fail-fast behavior.
+
 ```bash
-# Run all tests (20 test suites)
+# Run all tests (300+ tests across 12+ files)
 cd improved_agent_v2v1
-python3 tests/run_all_tests.py
+python tests/run_all_tests.py
 
 # Quick mode (standalone tests only, no PHENIX required)
-python3 tests/run_all_tests.py --quick
+python tests/run_all_tests.py --quick
 
-# Individual test suite
-python3 tests/test_event_system.py
+# Individual test file
+python tests/test_directive_extractor.py
+
+# Tests matching a pattern
+python tests/run_all_tests.py --pattern "directive"
 ```
+
+Key features:
+- **Fail-fast**: First assertion failure stops with full traceback
+- **Plain functions**: No `unittest.TestCase` classes needed
+- **Assert helpers**: `assert_equal()`, `assert_in()`, etc. from `test_utils.py`
+
+See [guides/TESTING.md](guides/TESTING.md) for full documentation.
 
 ---
 
@@ -226,7 +258,7 @@ improved_agent_v2/
 │   └── run_ai_agent.py       # Decision engine
 ├── programs/                 # PHENIX program integration
 │   └── ai_agent.py           # Main entry point
-├── tests/                    # Test suites (20 total)
+├── tests/                    # Test suites (~700 tests total)
 │   ├── run_all_tests.py      # Test runner
 │   └── scenarios/            # Dry-run test scenarios
 └── docs/                     # This documentation

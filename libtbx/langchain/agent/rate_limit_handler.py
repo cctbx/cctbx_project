@@ -261,9 +261,9 @@ def get_google_handler():
     """Get handler configured for Google APIs."""
     return RateLimitHandler.get_handler(
         "google_api",
-        max_retries=3,
+        max_retries=5,
         base_delay=2.0,
-        max_delay=60.0,
+        max_delay=120.0,  # Up to 2 minutes
         decay_time=300.0  # 5 minutes
     )
 
@@ -272,9 +272,9 @@ def get_openai_handler():
     """Get handler configured for OpenAI APIs."""
     return RateLimitHandler.get_handler(
         "openai_api",
-        max_retries=3,
+        max_retries=5,
         base_delay=1.0,
-        max_delay=30.0,
+        max_delay=120.0,  # Up to 2 minutes
         decay_time=300.0
     )
 
@@ -283,8 +283,8 @@ def get_anthropic_handler():
     """Get handler configured for Anthropic APIs."""
     return RateLimitHandler.get_handler(
         "anthropic_api",
-        max_retries=3,
+        max_retries=5,
         base_delay=1.0,
-        max_delay=30.0,
+        max_delay=120.0,  # Up to 2 minutes
         decay_time=300.0
     )

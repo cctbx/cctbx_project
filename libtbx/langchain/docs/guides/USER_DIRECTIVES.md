@@ -105,6 +105,7 @@ User Advice (natural language)
 
   "stop_conditions": {
     "after_program": "phenix.refine",
+    "start_with_program": "phenix.polder",
     "after_cycle": 4,
     "max_refine_cycles": 2,
     "skip_validation": true,
@@ -132,6 +133,43 @@ User Advice (natural language)
 }
 ```
 
+### Stop Condition Fields
+
+| Field | Description |
+|-------|-------------|
+| `after_program` | Stop after this program completes (final goal) |
+| `start_with_program` | Run this program first, then continue workflow |
+| `after_cycle` | Stop after this cycle number |
+| `max_refine_cycles` | Maximum refinement cycles to run |
+| `skip_validation` | Skip molprobity validation at end |
+| `r_free_target` | Stop when R-free reaches this value |
+| `map_cc_target` | Stop when map CC reaches this value |
+
+**Note**: `start_with_program` vs `after_program`:
+- `start_with_program`: "Run this first, then continue with normal workflow"
+- `after_program`: "Run until this completes, then stop"
+
+### Program Settings Enable Programs
+
+When you specify `program_settings` for a program, that program is automatically added to the list of valid programs (if prerequisites are met). This allows you to run earlier-phase programs even when the workflow state has progressed past that phase.
+
+**Example**: If you have a model file but want to run predict_and_build anyway:
+
+```json
+{
+  "program_settings": {
+    "phenix.predict_and_build": {"rebuilding_strategy": "Quick"}
+  }
+}
+```
+
+The agent will add `phenix.predict_and_build` to valid programs even if the workflow state is `xray_refined` (because a model already exists).
+
+**Prerequisites are still checked:**
+- `phenix.refine` / `phenix.real_space_refine`: Requires a model to refine
+- `phenix.ligandfit`: Requires prior refinement (for map coefficients)
+- `phenix.predict_and_build`: Always allowed (worst case: prediction-only)
+
 ## Files
 
 ### Core Directive System Files
@@ -147,8 +185,8 @@ User Advice (natural language)
 
 | File | Description |
 |------|-------------|
-| `tests/test_directive_extractor.py` | 31 unit tests for extraction |
-| `tests/test_directive_validator.py` | 26 unit tests for validation |
+| `tests/test_directive_extractor.py` | 73 unit tests for extraction |
+| `tests/test_directive_validator.py` | 53 unit tests for validation |
 | `tests/test_session_directives.py` | 12 unit tests for session methods |
 | `tests/test_directives_integration.py` | 16 integration tests |
 | `tests/test_decision_flow.py` | Decision flow architecture tests |
@@ -241,6 +279,38 @@ but refine to 2.5 Angstroms.
 - Cycle 2 (refine): LLM forgets → Validator adds resolution=2.5 ✓
 - Cycle 3 (refine): LLM uses 3.0 → Validator overrides to 2.5, logs warning ✓
 
+### Directive Override Behavior (Attempt-Based)
+
+When LLM and directive values differ, the system uses an attempt-based strategy:
+
+| Attempt | Behavior | Rationale |
+|---------|----------|-----------|
+| 0 (first) | Use directive value | Honor user's explicit request |
+| 1+ (retry) | Use LLM's value | LLM may be correcting syntax errors |
+
+**Example:** User provides invalid selection syntax
+
+```
+User advice: selection=solvent molecule MES 88  (invalid Phenix syntax)
+
+Attempt 0:
+  - Directive says: selection=solvent molecule MES 88
+  - LLM interprets: selection=resname MES and resseq 88
+  - Decision: Use directive value (first attempt)
+  - Result: FAILS (invalid syntax)
+
+Attempt 1:
+  - Directive says: selection=solvent molecule MES 88
+  - LLM interprets: selection=resname MES and resseq 88
+  - Decision: Use LLM value (retry - let it fix syntax)
+  - Result: SUCCEEDS
+```
+
+This approach:
+1. Respects user's explicit request first
+2. Allows recovery from user syntax mistakes
+3. Logs warnings so user knows what happened
+
 ### Example 2: Stop After First Refinement
 
 **User Advice:**
@@ -321,8 +391,8 @@ Run all directive-related tests:
 cd improved_agent_v2
 
 # Unit tests
-python tests/test_directive_extractor.py      # 31 tests
-python tests/test_directive_validator.py      # 26 tests
+python tests/test_directive_extractor.py      # 73 tests
+python tests/test_directive_validator.py      # 53 tests
 python tests/test_session_directives.py       # 12 tests
 
 # Integration tests
@@ -395,3 +465,36 @@ The directive extractor recognizes these tutorial patterns and adds stop conditi
 | "run phaser", "test MR", "try molecular replacement" | phenix.phaser |
 | "run mtriage", "analyze map" | phenix.mtriage |
 | "run one refinement", "quick refinement test" | phenix.refine (1 cycle) |
+| "run polder", "polder map", "omit map" | phenix.polder |
+| "dock in map", "fit model to map" | phenix.dock_in_map |
+| "map to model", "build model into map" | phenix.map_to_model |
+
+### Example 6: Multi-Step Workflow (Polder then Refine)
+
+**User Advice:**
+```
+Calculate a polder map for ligand MES 88 and then run refinement.
+```
+
+**Extracted Directives:**
+```json
+{
+  "program_settings": {
+    "phenix.polder": {
+      "selection": "resname MES and resseq 88"
+    }
+  },
+  "stop_conditions": {
+    "start_with_program": "phenix.polder"
+  }
+}
+```
+
+**Behavior:**
+- `start_with_program` is added to valid_programs list
+- Cycle 1: Agent runs phenix.polder first
+- Cycle 2+: Normal workflow continues (refinement, etc.)
+
+**Note:** When user says "X then Y", the extractor sets:
+- `start_with_program: X` (run this first)
+- Does NOT set `after_program` (allows workflow to continue)

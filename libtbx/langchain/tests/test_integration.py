@@ -421,27 +421,9 @@ def test_file_path_validation():
 
 
 def run_all_tests():
-    """Run all integration tests."""
-    print("=" * 60)
-    print("INTEGRATION TESTS")
-    print("=" * 60)
-
-    test_perceive_builds_metrics()
-    test_auto_stop_on_plateau()
-    test_workflow_validation_blocks_invalid()
-    test_mock_plan_uses_workflow()
-    test_fallback_uses_workflow()
-    test_cryoem_workflow_detection()
-    test_cryoem_stepwise_forces_stop_after_predict()
-    test_success_detection()
-    test_full_xray_cycle()
-    test_consecutive_refine_tracking()
-    test_validation_error_increments_attempt()
-    test_file_path_validation()
-
-    print("=" * 60)
-    print("ALL INTEGRATION TESTS PASSED!")
-    print("=" * 60)
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":

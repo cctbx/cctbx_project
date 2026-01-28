@@ -690,69 +690,9 @@ def test_response_with_metadata():
 # =============================================================================
 
 def run_all_tests():
-    print("=" * 60)
-    print("API SCHEMA AND CLIENT ADAPTER TESTS")
-    print("=" * 60)
-
-    # Schema tests
-    print("\n--- Schema Tests ---")
-    test_api_version()
-    test_parse_version()
-    test_is_version_supported()
-
-    # Request validation tests
-    print("\n--- Request Validation Tests ---")
-    test_validate_request_minimal()
-    test_validate_request_missing_required()
-    test_validate_request_wrong_types()
-    test_validate_request_ignores_unknown()
-    test_validate_request_strict_mode()
-
-    # Response validation tests
-    print("\n--- Response Validation Tests ---")
-    test_validate_response_minimal()
-
-    # Default application tests
-    print("\n--- Default Application Tests ---")
-    test_apply_request_defaults()
-    test_apply_request_defaults_nested()
-
-    # Creation helper tests
-    print("\n--- Creation Helper Tests ---")
-    test_create_request()
-    test_create_response()
-    test_create_stop_response()
-    test_create_error_response()
-
-    # Client adapter tests
-    print("\n--- Client Adapter Tests ---")
-    test_build_request_v2()
-    test_parse_response_v2()
-    test_parse_response_v2_stop()
-
-    # Serialization tests
-    print("\n--- Serialization Tests ---")
-    test_serialize_deserialize_request()
-    test_serialize_deserialize_response()
-
-    # Version detection tests
-    print("\n--- Version Detection Tests ---")
-    test_detect_api_version()
-    test_is_v2_request()
-
-    # Backwards compatibility tests
-    print("\n--- Backwards Compatibility Tests ---")
-    test_backwards_compatibility_empty_session_state()
-    test_backwards_compatibility_unknown_fields()
-
-    # Session state tests
-    print("\n--- Session State Tests ---")
-    test_session_state_full()
-    test_response_with_metadata()
-
-    print("\n" + "=" * 60)
-    print("ALL API SCHEMA TESTS PASSED")
-    print("=" * 60)
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":

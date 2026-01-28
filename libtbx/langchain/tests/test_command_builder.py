@@ -380,25 +380,9 @@ def test_graph_nodes_feature_flag():
 
 
 def run_all_tests():
-    """Run all tests."""
-    print("=" * 60)
-    print("Running command_builder tests")
-    print("=" * 60)
-
-    test_context_from_state()
-    test_output_prefix_generation()
-    test_most_recent_file()
-    test_strategy_building()
-    test_invariants_resolution()
-    test_invariants_rfree()
-    test_singleton()
-    test_compatibility_with_template_builder()
-    test_template_builder_delegation()
-    test_graph_nodes_feature_flag()
-
-    print("=" * 60)
-    print("All tests PASSED!")
-    print("=" * 60)
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":

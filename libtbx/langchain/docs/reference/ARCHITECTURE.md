@@ -278,6 +278,7 @@ The decision flow follows a clean, layered architecture where each component has
 │  Responsibilities:                                               │
 │  - Get programs from workflow phase definition                   │
 │  - Add directive-required programs (after_program target)        │
+│  - Add start_with_program to front of list (multi-step flows)   │
 │  - Add STOP if skip_validation=true                             │
 │  - Apply workflow preferences (skip/prefer)                      │
 └─────────────────────────────────────────────────────────────────┘
@@ -837,13 +838,14 @@ The agent uses a structured event system for transparent decision logging.
 
 ```phil
 verbosity = normal
-  .type = choice(quiet, normal, verbose, debug)
+  .type = choice(quiet, normal, verbose)
 ```
 
 - **quiet**: Errors, warnings, cycle summaries only
 - **normal**: Key decisions and metrics (default)
-- **verbose**: File selection details
-- **debug**: Full internal state
+- **verbose**: Full details including file selection, LLM traces, debug info
+
+Note: `debug` is accepted as an alias for `verbose` (3 levels total).
 
 ### Implementation Files
 

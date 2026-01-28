@@ -93,6 +93,29 @@ def show_session(data, detailed=False):
         print("  %d. %s" % (i, f))
     print("Total: %d files" % len(all_files))
 
+    # Show best files tracking
+    best_files_data = data.get("best_files", {})
+    if best_files_data:
+        print("\n" + "="*60)
+        print("BEST FILES TRACKING")
+        print("="*60)
+        best_entries = best_files_data.get("best", {})
+        if best_entries:
+            for category, entry in best_entries.items():
+                if entry:
+                    path = entry.get("path", "N/A")
+                    stage = entry.get("stage", "")
+                    cycle = entry.get("cycle", "?")
+                    reason = entry.get("reason", "")
+                    print("  %s: %s" % (category, os.path.basename(path)))
+                    if detailed:
+                        print("      Path: %s" % path)
+                        print("      Stage: %s, Cycle: %s" % (stage, cycle))
+                        if reason:
+                            print("      Reason: %s" % reason)
+        else:
+            print("  (no best files tracked)")
+
     # Show summary if present
     if data.get("summary"):
         print("\n" + "="*60)
@@ -234,7 +257,7 @@ def get_available_files_from_data(data):
 
 
 def remove_last_cycles(data, n, session_dir=None):
-    """Remove last N cycles from session and update active_files.json."""
+    """Remove last N cycles from session and update active_files.json and best_files."""
     original_count = len(data.get("cycles", []))
     if n <= 0:
         print("Nothing to remove (n=%d)" % n)
@@ -262,6 +285,9 @@ def remove_last_cycles(data, n, session_dir=None):
     # This ensures any code reading active_files.json stays in sync
     if session_dir:
         rebuild_active_files(data, session_dir)
+
+    # Rebuild best_files tracking from remaining cycles
+    rebuild_best_files(data)
 
     return data, removed
 
@@ -307,6 +333,162 @@ def rebuild_active_files(data, session_dir):
         print("Warning: Could not write active_files.json: %s" % e)
 
 
+def rebuild_best_files(data):
+    """
+    Rebuild best_files tracking from remaining cycles.
+
+    After removing cycles, the best_files may reference files from
+    removed cycles. This function rebuilds the tracking by replaying
+    the remaining cycles through the BestFilesTracker.
+
+    NOTE: This is a simplified version for session_tools. The full
+    implementation is in Session._rebuild_best_files_from_cycles().
+    """
+    try:
+        from libtbx.langchain.agent.best_files_tracker import BestFilesTracker
+    except ImportError:
+        try:
+            from agent.best_files_tracker import BestFilesTracker
+        except ImportError:
+            print("Warning: Could not import BestFilesTracker, skipping best_files rebuild")
+            return
+
+    # Create a fresh tracker
+    tracker = BestFilesTracker()
+
+    # Helper to infer stage from program
+    def infer_stage(program):
+        program_lower = program.lower() if program else ""
+        if "refine" in program_lower and "real_space" not in program_lower:
+            return "refined"
+        elif "real_space_refine" in program_lower:
+            return "rsr_output"
+        elif "phaser" in program_lower:
+            return "phaser_output"
+        elif "predict_and_build" in program_lower:
+            return "predicted"
+        elif "autobuild" in program_lower:
+            return "autobuild_output"
+        elif "dock_in_map" in program_lower:
+            return "docked"
+        elif "ligandfit" in program_lower:
+            return "ligand_fit_output"
+        elif "pdbtools" in program_lower:
+            return "with_ligand"
+        else:
+            return None
+
+    # First, evaluate original input files (cycle 0)
+    print(f"  Evaluating {len(data.get('original_files', []))} original files (cycle 0):")
+    for f in data.get("original_files", []):
+        if f and os.path.exists(f):
+            updated = tracker.evaluate_file(
+                path=f,
+                cycle=0,
+                metrics=None,
+                stage=None
+            )
+            if updated:
+                basename = os.path.basename(f)
+                category = tracker._classify_category(f)
+                print(f"    -> {basename}: became best {category}")
+
+    # Replay each remaining cycle's output files through the tracker
+    for cycle in data.get("cycles", []):
+        cycle_num = cycle.get("cycle_number", 1)
+        program = cycle.get("program", "")
+        result = cycle.get("result", "")
+        metrics = cycle.get("metrics", {})
+        output_files = cycle.get("output_files", [])
+
+        # Skip failed cycles
+        if "FAILED" in result.upper():
+            print(f"  Cycle {cycle_num} ({program}): SKIPPED (failed)")
+            continue
+
+        # Determine stage from program name
+        stage = infer_stage(program)
+
+        print(f"  Cycle {cycle_num} ({program}): stage={stage}, files={len(output_files)}, metrics={list(metrics.keys()) if metrics else []}")
+
+        # Debug: show all output files
+        for f in output_files:
+            exists = os.path.exists(f) if f else False
+            print(f"    File: {os.path.basename(f) if f else 'None'} (exists={exists})")
+
+        for f in output_files:
+            if f and os.path.exists(f):
+                # Build file-specific metrics
+                file_metrics = dict(metrics) if metrics else {}
+
+                # Determine file-specific stage based on file AND program
+                # Only apply program-specific stage to files that match expected output patterns
+                file_stage = None  # Default: let tracker infer from filename
+                basename = os.path.basename(f).lower()
+
+                if f.lower().endswith('.mtz'):
+                    if 'refine' in basename or 'refinement_data' in basename:
+                        file_stage = "refined_mtz"
+                        file_metrics["has_rfree_flags"] = True
+                elif f.lower().endswith('.pdb') or f.lower().endswith('.cif'):
+                    # Only apply program stage if file basename matches expected output
+                    if stage == "refined" and 'refine' in basename:
+                        file_stage = "refined"
+                    elif stage == "phaser_output" and ('phaser' in basename or basename.startswith('mr_')):
+                        file_stage = "phaser_output"
+                    elif stage == "predicted" and ('predict' in basename or 'alphafold' in basename):
+                        file_stage = "predicted"
+                    elif stage == "docked" and ('dock' in basename or 'placed' in basename):
+                        file_stage = "docked"
+                    elif stage == "ligand_fit_output" and ('ligand_fit' in basename or 'lig_fit' in basename):
+                        file_stage = "ligand_fit_output"
+                    elif stage == "with_ligand" and 'with_ligand' in basename:
+                        file_stage = "with_ligand"
+                    elif stage == "rsr_output" and ('real_space' in basename or 'rsr_' in basename):
+                        file_stage = "rsr_output"
+                    # else: file_stage stays None, tracker will infer from filename
+
+                updated = tracker.evaluate_file(f, cycle=cycle_num, metrics=file_metrics, stage=file_stage)
+                if updated:
+                    print(f"    -> Updated best: {os.path.basename(f)} (stage={file_stage})")
+
+    # Update the session data with the rebuilt tracker
+    data["best_files"] = tracker.to_dict()
+    data["best_files_history"] = [h.to_dict() for h in tracker.get_history()]
+
+    # Log what we rebuilt
+    best_dict = tracker.get_best_dict()
+    if best_dict:
+        best_summary = ", ".join(["%s=%s" % (k, os.path.basename(v)) for k, v in best_dict.items() if v])
+        print("Rebuilt best_files: %s" % best_summary)
+    else:
+        print("Rebuilt best_files: (empty)")
+
+
+def _program_to_stage(program):
+    """Map program name to a stage identifier for best_files tracking."""
+    program_lower = program.lower() if program else ""
+
+    if "refine" in program_lower:
+        return "refined"
+    elif "phaser" in program_lower:
+        return "phaser_output"
+    elif "predict_and_build" in program_lower:
+        return "predicted"
+    elif "autobuild" in program_lower:
+        return "autobuild"
+    elif "autosol" in program_lower:
+        return "autosol"
+    elif "xtriage" in program_lower or "mtriage" in program_lower:
+        return "analysis"
+    elif "dock_in_map" in program_lower:
+        return "docked"
+    elif "ligandfit" in program_lower:
+        return "ligand_fitted"
+    else:
+        return "unknown"
+
+
 def reset_session(data, session_dir=None):
     """Reset session to empty state."""
     num_cycles = len(data.get("cycles", []))
@@ -318,6 +500,20 @@ def reset_session(data, session_dir=None):
         del data["resolution"]
     if "resolution_source" in data:
         del data["resolution_source"]
+
+    # Clear best_files tracking
+    if "best_files" in data:
+        del data["best_files"]
+    if "best_files_history" in data:
+        del data["best_files_history"]
+
+    # Clear recovery state
+    if "recovery_strategies" in data:
+        del data["recovery_strategies"]
+    if "recovery_attempts" in data:
+        del data["recovery_attempts"]
+    if "force_retry_program" in data:
+        del data["force_retry_program"]
 
     print("Session reset. Removed %d cycles." % num_cycles)
 

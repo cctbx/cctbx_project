@@ -345,6 +345,7 @@ class BestFilesTracker:
                     "full_map": 50,
                     "map": 40,
                     "half_map": 10,
+                    "intermediate_map": 5,  # resolve_cryo_em initial_map - not for downstream use
                     "_default": 40,
                 },
                 "metric_scores": {
@@ -788,24 +789,39 @@ class BestFilesTracker:
         Once we have an MTZ with R-free flags, we lock to it and never change.
         This ensures consistent R-free statistics throughout refinement.
 
+        IMPORTANT: Resolution-limited R-free flags are NOT locked, as they
+        only cover a subset of the resolution range and would cause problems
+        for programs like polder that need full-resolution R-free flags.
+
         Returns:
             bool: True if this file became the new best
         """
         category = "mtz"
         current = self.best.get(category)
         has_rfree = metrics and metrics.get("has_rfree_flags")
+        is_resolution_limited = metrics and metrics.get("rfree_resolution_limited")
 
         # If we've locked to an MTZ with R-free, never change
         if self._mtz_with_rfree_locked:
             return False
 
-        # If this MTZ has R-free flags, lock to it
-        if has_rfree:
+        # If this MTZ has R-free flags AND is not resolution-limited, lock to it
+        if has_rfree and not is_resolution_limited:
             reason = "First MTZ with R-free flags (locked)"
             self._update_best(path, category, stage, score, metrics, cycle, reason,
                             old_entry=current)
             self._mtz_with_rfree_locked = True
             return True
+
+        # If MTZ has R-free flags but is resolution-limited, record but don't lock
+        if has_rfree and is_resolution_limited:
+            if current is None:
+                reason = "MTZ with resolution-limited R-free flags (NOT locked - needs full resolution)"
+                self._update_best(path, category, stage, score, metrics, cycle, reason,
+                                old_entry=None)
+                return True
+            # If we already have a non-locked MTZ, don't replace with a limited one
+            return False
 
         # No R-free flags - use standard evaluation if we don't have anything yet
         if current is None:
@@ -1086,6 +1102,9 @@ class BestFilesTracker:
             return "ligand_pdb"
 
         elif category == "map":
+            # Skip intermediate maps that shouldn't be used as primary outputs
+            if 'initial_map' in basename or 'initial' in basename:
+                return "intermediate_map"  # Low priority, won't be selected as best
             if 'denmod' in basename or 'density_mod' in basename:
                 return "optimized_full_map"
             if 'sharp' in basename:
@@ -1112,6 +1131,19 @@ class BestFilesTracker:
         Returns:
             bool: True if intermediate/temporary
         """
+        basename = os.path.basename(path)
+
+        # Patterns that indicate VALUABLE output files (never skip these)
+        valuable_patterns = [
+            '_predicted_model',  # predict_and_build main output
+            'overall_best',      # predict_and_build best model
+            '_processed',        # processed predicted model
+        ]
+
+        # Check if this is a valuable output first
+        if any(pat in basename for pat in valuable_patterns):
+            return False  # Not intermediate - track it!
+
         # Patterns for intermediate files
         intermediate_patterns = [
             '/run_mr/',           # dock_in_map intermediate directory
@@ -1124,6 +1156,7 @@ class BestFilesTracker:
             '.tmp.',
             '/CarryOn/',          # predict_and_build intermediate directory
             '_CarryOn/',          # predict_and_build intermediate directory (alt)
+            '_data.mtz',          # refine input data copy (no map coefficients)
         ]
 
         path_check = path.lower()
@@ -1191,7 +1224,7 @@ if __name__ == "__main__":
                          metrics={"has_rfree_flags": True})
     print(f"   Best MTZ: {tracker.get_best('mtz')}")
 
-    print("\n7. Try to change MTZ (should fail - locked):")
+    print("\n7. Try to change MTZ with _data.mtz (should be skipped - intermediate file):")
     result = tracker.evaluate_file("/path/to/refine_001_data.mtz", cycle=3,
                                    stage="refined_mtz",
                                    metrics={"has_rfree_flags": True})

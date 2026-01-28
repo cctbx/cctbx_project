@@ -537,7 +537,14 @@ class ProgramRegistry:
 
             for key, value in strategy.items():
                 if key not in strategy_defs:
-                    log("WARNING: Unknown strategy '%s' for %s" % (key, program_name))
+                    # Check if this looks like a PHENIX parameter (contains dots)
+                    # These can be passed through directly for error recovery
+                    if '.' in key or '=' in key:
+                        # Pass through as key=value
+                        cmd_parts.append("%s=%s" % (key, value))
+                        log("PASSTHROUGH: Adding %s=%s (not in strategy_defs)" % (key, value))
+                    else:
+                        log("WARNING: Unknown strategy '%s' for %s" % (key, program_name))
                     continue
 
                 flag_def = strategy_defs[key]

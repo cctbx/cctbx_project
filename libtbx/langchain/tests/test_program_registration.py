@@ -225,24 +225,9 @@ def test_workflow_state_integration():
 
 
 def run_all_tests():
-    """Run all tests."""
-    print("\nRunning program_registration tests...")
-
-    test_trackable_programs()
-    test_done_flag_format()
-    test_initial_flags()
-    test_detect_xtriage()
-    test_detect_mtriage()
-    test_detect_map_symmetry()
-    test_detect_multiple()
-    test_detection_patterns()
-    test_empty_history()
-    test_get_all_done_flags()
-    test_is_program_trackable()
-    test_get_done_flag_for_program()
-    test_workflow_state_integration()
-
-    print("\nAll program_registration tests PASSED!")
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":

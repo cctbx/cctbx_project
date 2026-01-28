@@ -304,6 +304,7 @@ phenix.phaser:
   description: "Molecular replacement to place a search model"
   category: model_building
   experiment_types: [xray]
+  multi_ensemble: true  # Supports multiple search models as ensembles
 
   inputs:
     required:
@@ -313,6 +314,7 @@ phenix.phaser:
       model:
         extensions: [.pdb]
         flag: ""
+        multiple: true  # Multiple search models allowed
     optional:
       sequence:
         extensions: [.fa, .fasta, .seq, .dat]
@@ -1051,12 +1053,28 @@ phenix.pdbtools:
         flag: ""
         prefer_patterns: [ligand_fit, lig]
 
+  # Input priorities for category-based file selection
+  input_priorities:
+    protein:
+      categories: [model]
+      prefer_subcategories: [refined, with_ligand]
+      exclude_categories: [ligand, search_model, ligand_fit_output]
+    ligand:
+      categories: [ligand_fit_output, ligand]
+      exclude_categories: [model, refined, search_model]
+
   outputs:
     files:
       - pattern: "*with_ligand*.pdb"
         type: model
 
   command: "phenix.pdbtools {protein} {ligand}"
+  
+  # Set output filename to include 'with_ligand' for proper categorization
+  fixes:
+    output_name:
+      source: auto
+      format: "{protein_base}_with_ligand.pdb"
 
   strategy_flags:
     output_name:
@@ -1089,9 +1107,13 @@ phenix.resolve_cryo_em:
 
   outputs:
     files:
-      - pattern: "*_sharpened*.ccp4"
+      - pattern: "*denmod_map*.ccp4"
         type: map
-      - pattern: "*_sharpened*.mrc"
+      - pattern: "*denmod_map*.mrc"
+        type: map
+      - pattern: "*density_modified*.ccp4"
+        type: map
+      - pattern: "*density_modified*.mrc"
         type: map
 
   command: "phenix.resolve_cryo_em {half_map} {sequence} {ncs_spec}"
@@ -1103,20 +1125,40 @@ phenix.resolve_cryo_em:
 
 
 phenix.map_sharpening:
-  description: "Sharpen cryo-EM map to improve clarity"
+  description: "Sharpen cryo-EM map using half-maps (FSC-based) or model-based sharpening"
   category: map_optimization
   experiment_types: [cryoem]
 
+  # Two modes of operation:
+  # Mode 1 (half-maps): Provide two half-maps - uses FSC for sharpening
+  # Mode 2 (model-based): Provide map + model + resolution - uses model for sharpening
+  
   inputs:
     required:
-      half_map:
+      # For half-map mode: provide two half-maps
+      # For model-based mode: provide single map
+      map:
         extensions: [.mrc, .ccp4, .map]
         flag: ""
-        multiple: true
+        multiple: true  # Can be 1 map (model-based) or 2 half-maps
     optional:
+      model:
+        extensions: [.pdb, .cif]
+        flag: "model="
+        description: "Model for model-based sharpening (alternative to half-maps)"
       sequence:
         extensions: [.fa, .fasta, .seq, .dat]
         flag: "seq_file="
+
+  strategy_flags:
+    resolution:
+      flag: "resolution={value}"
+      type: float
+      description: "Resolution limit in Angstroms (required for model-based sharpening)"
+    sharpening_method:
+      flag: "sharpening_method={value}"
+      type: str
+      description: "Sharpening method: b-factor, model_sharpening, half_map_sharpening, etc."
 
   outputs:
     files:
@@ -1124,11 +1166,95 @@ phenix.map_sharpening:
         type: map
       - pattern: "*_sharpened*.mrc"
         type: map
+      - pattern: "*sharpened*.ccp4"
+        type: map
+      - pattern: "*sharpened*.mrc"
+        type: map
 
-  command: "phenix.map_sharpening {half_map} {sequence}"
+  command: "phenix.map_sharpening {map} {model} {sequence}"
 
   hints:
-    - "Alternative to resolve_cryo_em for map optimization"
+    - "Two modes: (1) half-maps for FSC-based sharpening, (2) map+model for model-based sharpening"
+    - "Model-based mode requires: single map, model, and resolution"
+    - "Half-map mode: provide two half-maps (no model needed)"
+
+
+# -----------------------------------------------------------------------------
+# MAP ANALYSIS PROGRAMS
+# -----------------------------------------------------------------------------
+
+phenix.polder:
+  description: "Calculate Polder omit maps to evaluate ligand/residue placement in density"
+  category: map_analysis
+  experiment_types: [xray]
+  
+  # IMPORTANT: Polder requires R-free flags in the MTZ. If R-free flags were
+  # generated at a limited resolution (e.g., 3Å), polder MUST use the same
+  # resolution limit, otherwise it will crash with mismatched data sizes.
+
+  inputs:
+    required:
+      mtz:
+        extensions: [.mtz]
+        flag: ""
+        description: "MTZ file with reflection data (Free-R flags recommended)"
+      model:
+        extensions: [.pdb, .cif]
+        flag: ""
+        description: "Model file containing the atoms to evaluate"
+
+  strategy_flags:
+    selection:
+      flag: 'selection="{value}"'
+      type: str
+      description: "Atom selection for polder calculation (e.g., 'chain A and resseq 88')"
+    high_resolution:
+      flag: 'high_resolution={value}'
+      type: float
+      description: "High resolution limit in Angstroms (must match R-free flag resolution if limited)"
+
+  # Auto-fill resolution if R-free flags have a resolution limit
+  fixes:
+    auto_fill_rfree_resolution: true
+
+  outputs:
+    files:
+      - pattern: "*_polder_map_coeffs.mtz"
+        type: mtz
+        description: "MTZ file with polder map coefficients"
+    metrics:
+      - cc_1_3
+      - polder_conclusion
+
+  command: "phenix.polder {mtz} {model} {selection}"
+
+  log_parsing:
+    cc_1_3:
+      pattern: 'CC\(1,3\):\s*([0-9.]+)'
+      type: float
+      display_name: "CC(calc_with_ligand, observed)"
+      summary_format: "{value:.4f}"
+    cc_1_2:
+      pattern: 'CC\(1,2\):\s*([0-9.]+)'
+      type: float
+      display_name: "CC(calc_with_ligand, calc_without)"
+      summary_format: "{value:.4f}"
+    cc_2_3:
+      pattern: 'CC\(2,3\):\s*([0-9.]+)'
+      type: float
+      display_name: "CC(calc_without_ligand, observed)"
+      summary_format: "{value:.4f}"
+    polder_conclusion:
+      pattern: 'The polder map is (likely to show the omitted atoms|inconclusive|unlikely to show)'
+      type: str
+      display_name: "Polder Conclusion"
+      summary_format: "{value}"
+
+  hints:
+    - "Use to verify ligand or residue placement in electron density"
+    - "High CC(1,3) and conclusion 'likely to show' indicates good placement"
+    - "Selection syntax: 'chain X and resseq N' or 'resname LIG'"
+    - "Requires MTZ with Fobs data; Free-R flags recommended but not required"
 
 
 # -----------------------------------------------------------------------------
@@ -1190,7 +1316,7 @@ phenix.molprobity:
 
 
 phenix.model_vs_data:
-  description: "Validate model against X-ray data"
+  description: "Quick check of model-data agreement to verify model placement"
   category: validation
   experiment_types: [xray]
 
@@ -1199,18 +1325,33 @@ phenix.model_vs_data:
       model:
         extensions: [.pdb, .cif]
         flag: ""
-        priority_patterns: [refine]
       mtz:
         extensions: [.mtz, .sca, .hkl, .sdf]
         flag: ""
 
   outputs:
     metrics:
-      - r_free
       - r_work
-      - map_cc
+      - r_free
 
   command: "phenix.model_vs_data {model} {mtz}"
+
+  log_parsing:
+    r_work:
+      pattern: '^\s*r_work:\s*([0-9.]+)'
+      type: float
+      display_name: "R-work"
+      summary_format: "{value:.4f}"
+    r_free:
+      pattern: '^\s*r_free:\s*([0-9.]+|None)'
+      type: str
+      display_name: "R-free"
+      summary_format: "{value}"
+
+  hints:
+    - "Quick way to check if model is already placed in unit cell"
+    - "R-work < 0.5 indicates model is positioned correctly"
+    - "Use before deciding whether to run Phaser"
 
 
 phenix.validation_cryoem:

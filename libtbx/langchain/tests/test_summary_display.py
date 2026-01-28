@@ -240,23 +240,9 @@ def test_get_metric_assessment():
 
 
 def run_all_tests():
-    """Run all tests."""
-    print("\nRunning summary_display tests...")
-
-    test_quality_table_config_loading()
-    test_step_metrics_config_loading()
-    test_format_quality_table_xray()
-    test_format_quality_table_cryoem()
-    test_format_quality_table_missing_metrics()
-    test_format_step_metric_refine()
-    test_format_step_metric_rsr()
-    test_format_step_metric_map_symmetry()
-    test_format_step_metric_fallback()
-    test_format_step_metric_unknown_program()
-    test_experiment_type_filtering()
-    test_get_metric_assessment()
-
-    print("\nAll summary_display tests PASSED!")
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":

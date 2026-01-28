@@ -95,19 +95,9 @@ def test_yaml_config():
 
 
 def run_all_tests():
-    """Run all phaser multi-model tests."""
-    print("=" * 60)
-    print("PHASER MULTI-MODEL TESTS")
-    print("=" * 60)
-
-    test_single_model_command()
-    test_multi_model_command()
-    test_yaml_config()
-
-    print()
-    print("=" * 60)
-    print("ALL PHASER MULTI-MODEL TESTS PASSED!")
-    print("=" * 60)
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":

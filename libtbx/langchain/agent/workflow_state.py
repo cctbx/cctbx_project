@@ -581,7 +581,12 @@ def _analyze_history(history):
         if "process_predicted_model" in combined:
             info["process_predicted_done"] = True
         if "autobuild" in combined:
-            info["autobuild_done"] = True
+            # Only mark autobuild as done if it succeeded
+            result = entry.get("result", "") if isinstance(entry, dict) else ""
+            result_upper = result.upper() if result else ""
+            if "FAIL" not in result_upper and "SORRY" not in result_upper and "ERROR" not in result_upper:
+                info["autobuild_done"] = True
+            # If autobuild failed, don't mark it as done so agent can try alternatives
         if "autosol" in combined:
             # Only mark autosol as done if it succeeded
             # Check the result field for success indicators

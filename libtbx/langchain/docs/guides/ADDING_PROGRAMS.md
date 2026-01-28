@@ -95,9 +95,11 @@ phenix.new_program:
         flag: "optional_flag="
 
   # Control which file categories are preferred for each input
+  # IMPORTANT: Without this, the agent may select wrong files!
   input_priorities:
     input_name:
       categories: [preferred_category, fallback_category]
+      prefer_subcategories: [refined, with_ligand]  # Within category, prefer these
       exclude_categories: [excluded_category]
 
   outputs:
@@ -463,3 +465,44 @@ python agent/program_validator.py --list
 4. **Command built incorrectly?**
    - Check `programs.yaml` input definitions
    - Verify `input_priorities` categories match file categorization
+
+5. **Wrong file selected for input?**
+   - Add explicit `input_priorities` with `exclude_categories`
+   - Common mistake: protein input picks ligand file → add `exclude_categories: [ligand, ligand_fit_output]`
+   - Common mistake: protein input picks search model → add `exclude_categories: [search_model, predicted]`
+
+---
+
+## Common Mistakes to Avoid
+
+| Mistake | Symptom | Fix |
+|---------|---------|-----|
+| Missing `input_priorities` | Wrong file selected | Add explicit priorities with excludes |
+| No `exclude_categories` for protein/model input | Picks ligand or predicted model | Add `exclude_categories: [ligand, search_model]` |
+| Forgetting `run_once: true` | Program runs multiple times | Add `run_once: true` |
+| Wrong `experiment_types` | Program offered for wrong data | Set `[xray]`, `[cryoem]`, or both |
+| Missing workflow entry | Program never offered | Add to appropriate phase in `workflows.yaml` |
+
+### Example: Proper input_priorities for a refinement program
+
+```yaml
+phenix.my_refine:
+  inputs:
+    required:
+      model:
+        extensions: [.pdb, .cif]
+        flag: ""
+      mtz:
+        extensions: [.mtz]
+        flag: ""
+  
+  # CRITICAL: Prevent selecting wrong files
+  input_priorities:
+    model:
+      categories: [model]
+      prefer_subcategories: [refined, with_ligand, phaser_output]
+      exclude_categories: [ligand, search_model, ligand_fit_output, predicted]
+    mtz:
+      categories: [mtz]
+      prefer_subcategories: [refined_mtz]
+```

@@ -48,7 +48,7 @@ Extract structured directives from this user advice. Be precise and extract ONLY
 Output a JSON object with these sections. Include ONLY sections that have relevant content from the user advice:
 
 1. "program_settings": Program-specific parameters
-   - Use exact program names: "phenix.refine", "phenix.autosol", "phenix.autobuild", "phenix.phaser", "phenix.molprobity", "phenix.predict_and_build", "phenix.process_predicted_model", "phenix.real_space_refine", "phenix.dock_in_map", "phenix.xtriage", "phenix.mtriage", "phenix.map_symmetry", "phenix.ligandfit"
+   - Use exact program names: "phenix.refine", "phenix.autosol", "phenix.autobuild", "phenix.phaser", "phenix.molprobity", "phenix.predict_and_build", "phenix.process_predicted_model", "phenix.real_space_refine", "phenix.dock_in_map", "phenix.map_to_model", "phenix.map_sharpening", "phenix.polder", "phenix.xtriage", "phenix.mtriage", "phenix.map_symmetry", "phenix.ligandfit", "phenix.resolve_cryo_em"
    - Use "default" for settings that apply to all programs unless overridden
    - Common parameters and their types:
      * resolution: float (e.g., 2.5)
@@ -61,9 +61,14 @@ Output a JSON object with these sections. Include ONLY sections that have releva
      * sites: int (number of anomalous sites)
      * twin_law: string (e.g., "-h,-k,l")
      * riding_hydrogens: bool
+   - For phenix.map_sharpening specifically:
+     * resolution: float (required for model-based sharpening)
+     * sharpening_method: string (e.g., "b-factor", "model_sharpening")
+   - For phenix.polder specifically:
+     * selection: string (atom selection, e.g., "chain A and resseq 88", "resname LIG")
 
 2. "stop_conditions": When to stop the workflow
-   - "after_program": string - Stop after this program completes (e.g., "phenix.xtriage", "phenix.refine", "phenix.phaser", "phenix.ligandfit")
+   - "after_program": string - Stop after this program completes (e.g., "phenix.xtriage", "phenix.refine", "phenix.phaser", "phenix.ligandfit", "phenix.map_to_model", "phenix.dock_in_map", "phenix.map_sharpening", "phenix.polder")
    - "after_cycle": int - Stop after this cycle number
    - "max_refine_cycles": int - Maximum number of refinement cycles to run
    - "skip_validation": bool - If true, allow stopping without running molprobity
@@ -118,10 +123,16 @@ If the advice describes a SPECIFIC LIMITED TASK rather than full structure deter
 - "check data quality", "analyze reflection data" → after_program="phenix.xtriage", skip_validation=true
 - "run mtriage", "analyze map quality" → after_program="phenix.mtriage", skip_validation=true
 - "map symmetry", "determine symmetry", "find symmetry" → after_program="phenix.map_symmetry", skip_validation=true
-- For cryo-EM: "density modification", "improve map", "denmod" → after_program="phenix.resolve_cryo_em", skip_validation=true
+- "map sharpening", "sharpen the map", "sharpen map", "automatic sharpening" → after_program="phenix.map_sharpening", skip_validation=true
+  (Note: phenix.map_sharpening is the dedicated map sharpening tool - use this for sharpening requests)
+- For cryo-EM density modification (NOT sharpening): "density modification", "denmod", "resolve_cryo_em" → after_program="phenix.resolve_cryo_em", skip_validation=true
+  (Note: phenix.resolve_cryo_em is for density modification, NOT for map sharpening - use phenix.map_sharpening for sharpening)
 - For X-ray: "density modification", "improve phases", "denmod" → after_program="phenix.autobuild_denmod", skip_validation=true
   (Note: X-ray density modification uses phenix.autobuild with maps_only=True)
 - "dock in map", "fit model to map" → after_program="phenix.dock_in_map", skip_validation=true
+- "map to model", "MapToModel", "build model into map", "automated model building" → after_program="phenix.map_to_model", skip_validation=true
+- "polder", "polder map", "omit map", "evaluate ligand placement" → after_program="phenix.polder", skip_validation=true
+  (Note: phenix.polder calculates polder omit maps to evaluate ligand/residue placement in density)
 - "fit ligand", "ligandfit", "place ligand" → after_program="phenix.ligandfit", skip_validation=true
 - Any procedure that ends with a specific analysis step should stop after that step.
 - If the stop condition mentions generating a specific output file, set skip_validation=true.
@@ -136,19 +147,29 @@ Do NOT set after_program stop conditions if the user indicates they want additio
 - If user mentions a downstream task (ligand fitting, validation, additional refinement), do NOT set early stop
 - Put downstream tasks in "constraints" instead so the agent knows to do them
 
+**CRITICAL: LIGAND FITTING WORKFLOWS**:
+When user mentions ligand fitting as part of the workflow:
+- "refine, fit ligand, then refine again" → Do NOT set after_program, let workflow complete naturally
+- "stop after second refinement" (when ligand fitting is mentioned) → The second refine is AFTER ligandfit, so do NOT set after_program="phenix.refine"
+- "one refinement, ligandfit, final refinement" → Do NOT set after_program, this is a complete workflow
+- If ligand fitting is mentioned AND refinement after it, the workflow should be: refine → ligandfit → refine → stop
+- Put "Fit ligand after first refinement" or similar in constraints, NOT in stop_conditions
+
 Examples of what NOT to do:
 - User says "run predict_and_build and fit ligand later" → Do NOT set after_program="phenix.predict_and_build"
 - User says "try MR then refine" → Do NOT set after_program="phenix.phaser"
+- User says "refine, fit ligand, refine again" → Do NOT set after_program="phenix.refine" (this would stop before ligandfit!)
+- User says "stop after the second refinement" (with ligand workflow) → Do NOT set after_program="phenix.refine"
 
-Output ONLY valid JSON. No explanation, no markdown code blocks, just the JSON object.
-"""
+Output ONLY valid JSON. No explanation, no markdown code blocks, just the JSON object."""
 
 
 # =============================================================================
 # EXTRACTION FUNCTION
 # =============================================================================
 
-def extract_directives(user_advice, provider="google", model=None, log_func=None):
+def extract_directives(user_advice, provider="google", model=None, log_func=None,
+                       use_rules_only=False):
     """
     Extract structured directives from user advice using LLM.
 
@@ -157,6 +178,7 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
         provider: LLM provider ("google", "openai", "anthropic")
         model: Specific model to use (optional, uses default for provider)
         log_func: Optional logging function
+        use_rules_only: If True, skip LLM and use simple pattern extraction
 
     Returns:
         dict: Extracted directives, or empty dict if extraction fails
@@ -188,6 +210,11 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
         log("DIRECTIVES: User advice too short for directive extraction")
         return {}
 
+    # Skip LLM if use_rules_only is set
+    if use_rules_only:
+        log("DIRECTIVES: Skipping LLM (use_rules_only=True), using simple patterns")
+        return extract_directives_simple(user_advice)
+
     # Build the prompt
     prompt = DIRECTIVE_EXTRACTION_PROMPT.format(user_advice=user_advice)
 
@@ -216,20 +243,56 @@ def _call_llm(prompt, provider, model, log):
     """
     Call the LLM to extract directives.
 
-    Uses the same LLM infrastructure as the main agent.
+    Uses the same LLM infrastructure as the main agent with rate limit handling.
     """
     try:
         # Try to use the existing API client infrastructure
         from libtbx.langchain.agent.api_client import call_llm_simple
 
-        response = call_llm_simple(
-            prompt=prompt,
-            provider=provider,
-            model=model,
-            temperature=0.1,  # Low temperature for consistent extraction
-            max_tokens=2000
-        )
-        return response
+        # Import rate limit handler - try multiple paths
+        handler = None
+        try:
+            from libtbx.langchain.agent.rate_limit_handler import (
+                get_google_handler, get_openai_handler, get_anthropic_handler
+            )
+
+            # Select handler based on provider
+            if provider == "google":
+                handler = get_google_handler()
+            elif provider == "openai":
+                handler = get_openai_handler()
+            elif provider == "anthropic":
+                handler = get_anthropic_handler()
+        except ImportError:
+            try:
+                from agent.rate_limit_handler import (
+                    get_google_handler, get_openai_handler, get_anthropic_handler
+                )
+                if provider == "google":
+                    handler = get_google_handler()
+                elif provider == "openai":
+                    handler = get_openai_handler()
+                elif provider == "anthropic":
+                    handler = get_anthropic_handler()
+            except ImportError:
+                pass  # No retry logic available
+
+        def log_wrapper(msg):
+            log("DIRECTIVES: %s" % msg)
+
+        def make_call():
+            return call_llm_simple(
+                prompt=prompt,
+                provider=provider,
+                model=model,
+                temperature=0.1,  # Low temperature for consistent extraction
+                max_tokens=2000
+            )
+
+        if handler:
+            return handler.call_with_retry(make_call, log_wrapper)
+        else:
+            return make_call()
 
     except ImportError:
         # Fallback: try direct provider calls
@@ -242,16 +305,23 @@ def _call_llm_fallback(prompt, provider, model, log):
     Fallback LLM call when main infrastructure not available.
     Includes retry logic for rate limit errors with exponential backoff and decay.
     """
-    # Import rate limit handler
+    # Import rate limit handler - try multiple paths
+    get_google_handler = None
+    get_openai_handler = None
+    get_anthropic_handler = None
+
     try:
         from libtbx.langchain.agent.rate_limit_handler import (
             get_google_handler, get_openai_handler, get_anthropic_handler
         )
     except ImportError:
-        # Fallback: no retry logic available
-        get_google_handler = None
-        get_openai_handler = None
-        get_anthropic_handler = None
+        try:
+            # Try relative import for standalone testing
+            from agent.rate_limit_handler import (
+                get_google_handler, get_openai_handler, get_anthropic_handler
+            )
+        except ImportError:
+            pass  # No retry logic available
 
     def log_wrapper(msg):
         log("DIRECTIVES: %s" % msg)
@@ -432,6 +502,10 @@ VALID_PROGRAMS = {
     "phenix.process_predicted_model",
     "phenix.real_space_refine",
     "phenix.dock_in_map",
+    "phenix.map_to_model",
+    "phenix.map_sharpening",
+    "phenix.resolve_cryo_em",
+    "phenix.polder",
     "phenix.ligandfit",
     "phenix.model_vs_data",
     "phenix.xtriage",
@@ -455,6 +529,8 @@ VALID_SETTINGS = {
     "stop_after_predict": bool,
     "ncs": bool,
     "tls": bool,
+    "sharpening_method": str,
+    "selection": str,
 }
 
 # Valid stop condition keys
@@ -565,11 +641,16 @@ def validate_directives(directives, log=None):
 
             for key, value in file_prefs.items():
                 if key in ("model", "sequence", "mtz", "map"):
+                    # File path preferences
                     if isinstance(value, str) and value:
                         valid_prefs[key] = value
                 elif key == "exclude":
+                    # Exclusion list
                     if isinstance(value, list):
                         valid_prefs[key] = [str(v) for v in value if v]
+                elif key in ("prefer_anomalous", "prefer_unmerged", "prefer_merged"):
+                    # Boolean data type preferences
+                    valid_prefs[key] = bool(value)
 
             if valid_prefs:
                 validated["file_preferences"] = valid_prefs
@@ -608,7 +689,77 @@ def validate_directives(directives, log=None):
             if valid_constraints:
                 validated["constraints"] = valid_constraints
 
+    # POST-PROCESSING: Check for conflicting directives
+    # If constraints mention ligand fitting AND stop_conditions has after_program=phenix.refine,
+    # this is likely wrong - the user wants the full ligand workflow, not to stop at first refine
+    validated = _fix_ligand_workflow_conflict(validated, _log)
+
     return validated
+
+
+def _fix_ligand_workflow_conflict(directives, log):
+    """
+    Fix conflicting directives when ligand fitting workflow is detected.
+
+    If user wants ligand fitting after refinement, we should NOT stop at phenix.refine
+    or at a low cycle number, because that would stop before the ligand fitting happens.
+
+    A typical ligand workflow is:
+      1. xtriage
+      2. predict_and_build
+      3. process_predicted_model (maybe)
+      4. phaser
+      5. refine (first)
+      6. ligandfit
+      7. pdbtools (combine)
+      8. refine (second) <- stop here
+
+    So "stop after second refinement" needs at least 8 cycles, not 2.
+    """
+    constraints = directives.get("constraints", [])
+    stop_conditions = directives.get("stop_conditions", {})
+
+    if not stop_conditions:
+        return directives
+
+    after_program = stop_conditions.get("after_program", "")
+    after_cycle = stop_conditions.get("after_cycle")
+
+    # Check if constraints mention ligand fitting
+    ligand_keywords = ["ligand", "ligandfit", "fit ligand", "place ligand", "lig.pdb"]
+    has_ligand_constraint = any(
+        any(kw in c.lower() for kw in ligand_keywords)
+        for c in constraints
+    ) if constraints else False
+
+    # If we have ligand constraints AND after_program is phenix.refine,
+    # this is likely a conflict - user wants ligand workflow to complete
+    if has_ligand_constraint and after_program == "phenix.refine":
+        log("DIRECTIVES: Clearing after_program=phenix.refine due to ligand workflow in constraints")
+        log("DIRECTIVES: (User wants full ligand fitting workflow, not to stop at first refinement)")
+
+        # Remove the conflicting after_program
+        del directives["stop_conditions"]["after_program"]
+
+        # If stop_conditions is now empty, remove it
+        if not directives["stop_conditions"]:
+            del directives["stop_conditions"]
+
+    # If we have ligand constraints AND after_cycle is too low (<=4),
+    # the LLM probably misinterpreted "second refinement" as "cycle 2"
+    # A ligand workflow needs at least 6-8 cycles to complete
+    if has_ligand_constraint and after_cycle is not None and after_cycle <= 4:
+        log(f"DIRECTIVES: Clearing after_cycle={after_cycle} due to ligand workflow in constraints")
+        log("DIRECTIVES: (Ligand workflow needs ~8 cycles; 'second refinement' != 'cycle 2')")
+
+        # Remove the conflicting after_cycle
+        del directives["stop_conditions"]["after_cycle"]
+
+        # If stop_conditions is now empty, remove it
+        if not directives["stop_conditions"]:
+            del directives["stop_conditions"]
+
+    return directives
 
 
 def _fix_program_name(name):
@@ -630,28 +781,85 @@ def _fix_program_name(name):
     if name_lower.startswith("phenix."):
         name_lower = name_lower[7:]
 
-    # Common mappings
+    # Common mappings - include various case/format variations
     mappings = {
+        # Refinement
         "refine": "phenix.refine",
         "refinement": "phenix.refine",
+
+        # Phasing
         "autosol": "phenix.autosol",
-        "autobuild": "phenix.autobuild",
         "phaser": "phenix.phaser",
-        "molprobity": "phenix.molprobity",
-        "predict_and_build": "phenix.predict_and_build",
-        "predictandbuild": "phenix.predict_and_build",
-        "process_predicted_model": "phenix.process_predicted_model",
-        "real_space_refine": "phenix.real_space_refine",
-        "realspacerefine": "phenix.real_space_refine",
-        "rsr": "phenix.real_space_refine",
+
+        # Model building - X-ray
+        "autobuild": "phenix.autobuild",
+        "auto_build": "phenix.autobuild",
+
+        # Model building - Cryo-EM
+        "map_to_model": "phenix.map_to_model",
+        "maptomodel": "phenix.map_to_model",
+        "map-to-model": "phenix.map_to_model",
+        "build_model": "phenix.map_to_model",  # Common alternative phrasing
+        "buildmodel": "phenix.map_to_model",
+
+        # Docking
         "dock_in_map": "phenix.dock_in_map",
         "dockinmap": "phenix.dock_in_map",
-        "ligandfit": "phenix.ligandfit",
-        "xtriage": "phenix.xtriage",
-        "mtriage": "phenix.mtriage",
-        "model_vs_data": "phenix.model_vs_data",
+        "dock-in-map": "phenix.dock_in_map",
+
+        # AlphaFold/prediction
+        "predict_and_build": "phenix.predict_and_build",
+        "predictandbuild": "phenix.predict_and_build",
+        "predict-and-build": "phenix.predict_and_build",
+        "process_predicted_model": "phenix.process_predicted_model",
+        "processpredictedmodel": "phenix.process_predicted_model",
+
+        # Real space refinement
+        "real_space_refine": "phenix.real_space_refine",
+        "realspacerefine": "phenix.real_space_refine",
+        "real-space-refine": "phenix.real_space_refine",
+        "rsr": "phenix.real_space_refine",
+
+        # Density modification
+        "resolve_cryo_em": "phenix.resolve_cryo_em",
+        "resolvecryoem": "phenix.resolve_cryo_em",
+        "resolve-cryo-em": "phenix.resolve_cryo_em",
+        "autobuild_denmod": "phenix.autobuild_denmod",
+
+        # Map tools
+        "map_sharpening": "phenix.map_sharpening",
+        "mapsharpening": "phenix.map_sharpening",
+        "sharpen_map": "phenix.map_sharpening",  # Alternative phrasing
+        "sharpenmap": "phenix.map_sharpening",
+        "auto_sharpen": "phenix.map_sharpening",  # Alternative name
+        "autosharpen": "phenix.map_sharpening",
         "map_symmetry": "phenix.map_symmetry",
         "mapsymmetry": "phenix.map_symmetry",
+
+        # Validation
+        "molprobity": "phenix.molprobity",
+        "model_vs_data": "phenix.model_vs_data",
+        "modelvsdata": "phenix.model_vs_data",
+        "validation_cryoem": "phenix.validation_cryoem",
+        "validationcryoem": "phenix.validation_cryoem",
+        "holton_geometry_validation": "phenix.holton_geometry_validation",
+
+        # Map analysis
+        "polder": "phenix.polder",
+        "polder_map": "phenix.polder",
+        "omit_map": "phenix.polder",
+
+        # Ligand fitting
+        "ligandfit": "phenix.ligandfit",
+        "ligand_fit": "phenix.ligandfit",
+
+        # Analysis
+        "xtriage": "phenix.xtriage",
+        "mtriage": "phenix.mtriage",
+
+        # PDB tools
+        "pdbtools": "phenix.pdbtools",
+        "pdb_tools": "phenix.pdbtools",
     }
 
     return mappings.get(name_lower)
@@ -885,9 +1093,11 @@ def extract_directives_simple(user_advice):
     # Extract resolution
     res_patterns = [
         r'resolution\s*[=:]\s*([0-9.]+)',
-        r'resolution\s+of?\s*([0-9.]+)',
+        r'resolution\s+(?:of\s+)?([0-9.]+)',  # "resolution 3.0" or "resolution of 3.0"
+        r'resolution\s+limit\s*[=:]?\s*([0-9.]+)',
         r'([0-9.]+)\s*(?:angstrom|Å|A)\s*resolution',
         r'to\s+([0-9.]+)\s*(?:angstrom|Å|A)',
+        r'([0-9.]+)\s*(?:angstrom|Å|A)\b',  # Standalone "3.0 Å"
     ]
 
     for pattern in res_patterns:
@@ -911,6 +1121,68 @@ def extract_directives_simple(user_advice):
             directives["program_settings"]["phenix.refine"] = {}
         directives["program_settings"]["phenix.refine"]["anisotropic_adp"] = True
 
+    # ==========================================================================
+    # ATOM TYPE EXTRACTION (for autosol)
+    # ==========================================================================
+    atom_type_patterns = [
+        # "use selenium" or "selenium anomalous scatterer"
+        (r'\bselenium\b|se[- ]?sad|se[- ]?met|\bse\s+as\b', 'Se'),
+        # "use sulfur" or "sulfur SAD"
+        (r'\bsulfur\b|s[- ]?sad|\bs\s+as\b', 'S'),
+        # "use bromine" or "Br SAD"
+        (r'\bbromine\b|br[- ]?sad|\bbr\s+as\b', 'Br'),
+        # "use iodine"
+        (r'\biodine\b|i[- ]?sad|\bi\s+as\b', 'I'),
+        # "use zinc"
+        (r'\bzinc\b|zn[- ]?sad|\bzn\s+as\b', 'Zn'),
+        # "use iron"
+        (r'\biron\b|fe[- ]?sad|\bfe\s+as\b', 'Fe'),
+    ]
+
+    for pattern, atom_type in atom_type_patterns:
+        if re.search(pattern, advice_lower, re.IGNORECASE):
+            if "program_settings" not in directives:
+                directives["program_settings"] = {}
+            if "phenix.autosol" not in directives["program_settings"]:
+                directives["program_settings"]["phenix.autosol"] = {}
+            directives["program_settings"]["phenix.autosol"]["atom_type"] = atom_type
+            break
+
+    # ==========================================================================
+    # FILE PREFERENCES EXTRACTION
+    # ==========================================================================
+    # Check for anomalous data preference
+    if re.search(r'(?:use|prefer|keep)\s+(?:the\s+)?anomalous|anomalous\s+(?:data|signal)', advice_lower):
+        if "file_preferences" not in directives:
+            directives["file_preferences"] = {}
+        directives["file_preferences"]["prefer_anomalous"] = True
+
+    # Check for unmerged data preference
+    if re.search(r'(?:use|prefer|keep)\s+(?:the\s+)?unmerged|unmerged\s+data', advice_lower):
+        if "file_preferences" not in directives:
+            directives["file_preferences"] = {}
+        directives["file_preferences"]["prefer_unmerged"] = True
+
+    # ==========================================================================
+    # WORKFLOW PREFERENCES EXTRACTION
+    # ==========================================================================
+    # Check for skip program patterns
+    skip_program_patterns = [
+        (r'(?:skip|no|avoid|don\'?t\s+(?:run|use))\s+(?:the\s+)?autobuild', 'phenix.autobuild'),
+        (r'(?:skip|no|avoid|don\'?t\s+(?:run|use))\s+(?:the\s+)?ligand\s*fit', 'phenix.ligandfit'),
+        (r'(?:skip|no|avoid|don\'?t\s+(?:run|use))\s+(?:the\s+)?molprobity', 'phenix.molprobity'),
+        (r'(?:skip|no|avoid|don\'?t\s+(?:run|use))\s+(?:the\s+)?phaser', 'phenix.phaser'),
+    ]
+
+    for pattern, program in skip_program_patterns:
+        if re.search(pattern, advice_lower, re.IGNORECASE):
+            if "workflow_preferences" not in directives:
+                directives["workflow_preferences"] = {"skip_programs": []}
+            if "skip_programs" not in directives["workflow_preferences"]:
+                directives["workflow_preferences"]["skip_programs"] = []
+            if program not in directives["workflow_preferences"]["skip_programs"]:
+                directives["workflow_preferences"]["skip_programs"].append(program)
+
     # Check for stop conditions
     if "stop" in advice_lower or "skip" in advice_lower or "don't" in advice_lower or "no valid" in advice_lower:
         if "stop_conditions" not in directives:
@@ -921,10 +1193,12 @@ def extract_directives_simple(user_advice):
         if cycle_match:
             directives["stop_conditions"]["after_cycle"] = int(cycle_match.group(1))
 
-        # "stop after first/one refinement"
-        if re.search(r'stop\s+after\s+(?:the\s+)?(?:first|one|1)\s+refine', advice_lower):
+        # "stop after first/one refinement" - also accept "stop after refinement"
+        if re.search(r'stop\s+after\s+(?:the\s+)?(?:first|one|1|a\s+single)?\s*refine', advice_lower):
             directives["stop_conditions"]["after_program"] = "phenix.refine"
-            directives["stop_conditions"]["max_refine_cycles"] = 1
+            # Only set max_refine_cycles=1 if explicitly "first" or "one"
+            if re.search(r'(?:first|one|1|single)\s*refine', advice_lower):
+                directives["stop_conditions"]["max_refine_cycles"] = 1
 
         # "skip validation" or "don't validate" or "no validation"
         if re.search(r"(?:skip|no|don'?t)\s+validat", advice_lower):
@@ -951,6 +1225,7 @@ def extract_directives_simple(user_advice):
         if stop_match:
             stop_text = stop_match.group(1).strip()
             # Map common phrases to programs
+            # NOTE: Order matters - more specific patterns should come first
             program_mappings = [
                 (r'mtriage', 'phenix.mtriage'),
                 (r'xtriage', 'phenix.xtriage'),
@@ -960,7 +1235,14 @@ def extract_directives_simple(user_advice):
                 (r'fit.*ligand', 'phenix.ligandfit'),
                 (r'refine', 'phenix.refine'),
                 (r'autobuild', 'phenix.autobuild'),
-                (r'dock', 'phenix.dock_in_map'),
+                # map_to_model patterns (check BEFORE dock_in_map since "map" appears in both)
+                (r'map\s*to\s*model', 'phenix.map_to_model'),
+                (r'maptomodel', 'phenix.map_to_model'),
+                (r'build.*model.*(?:into|in)\s*(?:the\s*)?map', 'phenix.map_to_model'),
+                (r'(?:automated?\s+)?model\s+building.*(?:into|in)\s*(?:the\s*)?map', 'phenix.map_to_model'),
+                # dock_in_map patterns (more specific than just "dock")
+                (r'dock.*(?:in|into)\s*(?:the\s*)?map', 'phenix.dock_in_map'),
+                (r'fit.*model.*(?:to|into)\s*(?:the\s*)?map', 'phenix.dock_in_map'),
                 (r'map\s*symmetry', 'phenix.map_symmetry'),
                 (r'(?:determin|find|detect).*symmetry', 'phenix.map_symmetry'),
                 (r'symmetry.*(?:map|cryo)', 'phenix.map_symmetry'),
@@ -1011,10 +1293,28 @@ def extract_directives_simple(user_advice):
     has_continuation = any(re.search(p, advice_lower) for p in continuation_indicators)
     has_downstream_task = any(re.search(p, advice_lower) for p in downstream_tasks)
 
-    # If there are continuation indicators or downstream tasks, don't set tutorial stop conditions
+    # If there are continuation indicators or downstream tasks, extract the FIRST program
+    # as start_with_program - this tells the workflow to run this program first
     if has_continuation or has_downstream_task:
-        # Don't apply tutorial patterns - this is a multi-step workflow
-        pass
+        # This is a multi-step workflow - extract the first program to start with
+        # Common patterns: "run X then Y", "calculate X and then refine"
+        first_program_patterns = [
+            (r'(?:calculate|run|compute)\s+(?:a\s+)?polder', 'phenix.polder'),
+            (r'polder\s+(?:map|omit)', 'phenix.polder'),
+            (r'(?:run|do)\s+xtriage', 'phenix.xtriage'),
+            (r'(?:run|try)\s+phaser', 'phenix.phaser'),
+            (r'(?:run|do)\s+mtriage', 'phenix.mtriage'),
+            (r'dock.*(?:in|into)\s+(?:the\s+)?map', 'phenix.dock_in_map'),
+            (r'map\s*to\s*model', 'phenix.map_to_model'),
+        ]
+
+        for pattern, program in first_program_patterns:
+            if re.search(pattern, advice_lower, re.IGNORECASE):
+                if "stop_conditions" not in directives:
+                    directives["stop_conditions"] = {}
+                # Set as start_with_program - workflow should run this first
+                directives["stop_conditions"]["start_with_program"] = program
+                break  # Only extract the first matching program
     else:
         # Detect tutorial/procedure patterns that imply stop after specific program
         tutorial_patterns = [
@@ -1031,9 +1331,26 @@ def extract_directives_simple(user_advice):
             # Map symmetry analysis
             (r'(?:run|check|find|determine|detect).*(?:map\s*symmetry|symmetry)', 'phenix.map_symmetry'),
             (r'(?:symmetry|ncs).*(?:map|cryo)', 'phenix.map_symmetry'),
-            # Dock in map
+            # Map to model (automated model building into cryo-EM maps)
+            # Check BEFORE dock_in_map patterns
+            (r'map\s*to\s*model', 'phenix.map_to_model'),
+            (r'maptomodel', 'phenix.map_to_model'),
+            (r'(?:use|run|try).*map\s*to\s*model', 'phenix.map_to_model'),
+            (r'(?:automated?\s+)?model\s+building.*(?:into|in)\s*(?:the\s*)?(?:cryo[- ]?em\s+)?(?:density\s+)?map', 'phenix.map_to_model'),
+            (r'build.*model.*(?:into|in)\s*(?:the\s*)?(?:density\s+)?map', 'phenix.map_to_model'),
+            # Map sharpening
+            (r'map\s*sharpening', 'phenix.map_sharpening'),
+            (r'sharpen.*(?:the\s+)?map', 'phenix.map_sharpening'),
+            (r'(?:run|use|try).*map\s*sharpening', 'phenix.map_sharpening'),
+            # Polder omit maps
+            (r'polder', 'phenix.polder'),
+            (r'polder\s*map', 'phenix.polder'),
+            (r'omit\s*map', 'phenix.polder'),
+            (r'(?:evaluate|check|verify).*ligand.*(?:placement|density)', 'phenix.polder'),
+            (r'(?:evaluate|check|verify).*(?:placement|density).*ligand', 'phenix.polder'),
+            # Dock in map (rigid body fitting)
             (r'dock.*(?:in|into)\s+map', 'phenix.dock_in_map'),
-            (r'fit.*model.*(?:to|into)\s+map', 'phenix.dock_in_map'),
+            (r'(?:rigid\s+body\s+)?fit.*model.*(?:to|into)\s+map', 'phenix.dock_in_map'),
             # Ligand fitting
             (r'(?:run|try).*ligand\s*fit', 'phenix.ligandfit'),
             (r'(?:fit|place|add).*ligand', 'phenix.ligandfit'),
@@ -1044,7 +1361,7 @@ def extract_directives_simple(user_advice):
         denmod_patterns = [
             r'density\s+modif',
             r'denmod',
-            r'(?:improve|sharpen).*(?:map|phases)',
+            r'(?:improve).*(?:map|phases)',  # Removed 'sharpen' - now goes to map_sharpening
             r'one\s+cycle.*(?:density|denmod|map\s+improv)',
         ]
 

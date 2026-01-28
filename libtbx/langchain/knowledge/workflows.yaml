@@ -125,6 +125,12 @@ xray:
             - refine_count: "> 0"  # Requires refinement first (ligandfit needs map coefficients from refined MTZ)
           hint: "Fit ligand when model is good enough"
 
+        - program: phenix.polder
+          conditions:
+            - has: model
+            - has: mtz
+          hint: "Calculate polder omit map to verify ligand/residue placement in density"
+
       repeat:
         max_cycles: 4
         until:
@@ -162,6 +168,12 @@ xray:
 
         - program: phenix.model_vs_data
           optional: true
+
+        - program: phenix.polder
+          conditions:
+            - has: model
+            - has: mtz
+          hint: "Verify ligand/residue placement with polder omit maps"
 
       transitions:
         if_quality_acceptable: complete

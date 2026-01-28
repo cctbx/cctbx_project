@@ -8,9 +8,16 @@ Tests:
 4. Workflow phases are defined correctly
 
 Note: These tests require the full PHENIX environment (libtbx).
+Some tests additionally require phenix.phenix_ai and will be skipped if not available.
 """
 
 from __future__ import absolute_import, division, print_function
+
+import os
+import sys
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 # Check if libtbx is available - these tests require PHENIX
@@ -20,6 +27,14 @@ try:
     LIBTBX_AVAILABLE = True
 except ImportError:
     LIBTBX_AVAILABLE = False
+
+# Check if phenix.phenix_ai is available - some tests need this
+try:
+    from phenix.phenix_ai.log_parsers import parse_xtriage_log
+    PHENIX_AI_AVAILABLE = True
+except ImportError:
+    PHENIX_AI_AVAILABLE = False
+    parse_xtriage_log = None
 
 
 def _skip_if_no_libtbx():
@@ -182,7 +197,9 @@ def test_measurability_parsing():
     """Test anomalous measurability parsing from xtriage logs."""
     print("Test: measurability_parsing")
 
-    from phenix.phenix_ai.log_parsers import parse_xtriage_log
+    if not PHENIX_AI_AVAILABLE:
+        print("  SKIPPED (phenix.phenix_ai not available)")
+        return
 
     # Test with actual anomalous data (should have measurability)
     xtriage_log_anomalous = """
@@ -237,7 +254,9 @@ def test_measurability_sanity_check():
     """Test that measurability values are sanity-checked (0-0.5 range)."""
     print("Test: measurability_sanity_check")
 
-    from phenix.phenix_ai.log_parsers import parse_xtriage_log
+    if not PHENIX_AI_AVAILABLE:
+        print("  SKIPPED (phenix.phenix_ai not available)")
+        return
 
     # Log with a table that looks like measurability but has 1.0 values
     # (this is actually a completeness table, not measurability)
@@ -1093,62 +1112,9 @@ def test_priority_when_rules_selector():
 
 
 def run_all_tests():
-    """Run all YAML infrastructure tests."""
-    print("=" * 60)
-    print("YAML INFRASTRUCTURE TESTS")
-    print("=" * 60)
-
-    test_yaml_loading()
-    test_program_registry()
-    test_experiment_type_filtering()
-    test_metric_thresholds()
-    test_log_pattern_extraction()
-    test_measurability_parsing()
-    test_measurability_sanity_check()
-    test_workflow_phases()
-    test_command_with_strategy()
-    test_workflow_engine()
-    test_workflow_engine_refined_state()
-    test_yaml_workflow_state_detection()
-    test_metric_evaluator()
-    test_metric_evaluator_trend()
-    test_metrics_analyzer_yaml_mode()
-    test_rules_selector()
-    test_rules_selector_stop()
-
-    # Step 1: Invariants tests
-    print()
-    print("-" * 60)
-    print("STEP 1: INVARIANTS TESTS")
-    print("-" * 60)
-    test_invariants_yaml_structure()
-    test_invariants_validate_and_fix()
-    test_invariants_check_types()
-
-    # Step 2: Input priorities tests
-    print()
-    print("-" * 60)
-    print("STEP 2: INPUT PRIORITIES TESTS")
-    print("-" * 60)
-    test_input_priorities_yaml_structure()
-    test_input_priorities_registry()
-    test_input_priorities_selection()
-
-    # Step 3: User advice keywords and priority_when tests
-    print()
-    print("-" * 60)
-    print("STEP 3: USER ADVICE & PRIORITY_WHEN TESTS")
-    print("-" * 60)
-    test_user_advice_keywords_yaml_structure()
-    test_user_advice_keywords_registry()
-    test_user_advice_keyword_matching()
-    test_priority_when_yaml_structure()
-    test_priority_when_workflow_engine()
-    test_priority_when_rules_selector()
-
-    print("=" * 60)
-    print("ALL YAML TESTS PASSED!")
-    print("=" * 60)
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":

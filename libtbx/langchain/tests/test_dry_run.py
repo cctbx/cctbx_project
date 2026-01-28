@@ -299,26 +299,10 @@ def test_cryoem_scenario():
 
 
 def run_all_tests():
-    """Run all dry run tests."""
-    print("=" * 60)
-    print("DRY RUN MANAGER TESTS")
-    print("=" * 60)
-    print()
-
-    test_list_scenarios()
-    test_load_scenario()
-    test_get_initial_files()
-    test_get_dummy_result_xtriage()
-    test_get_dummy_result_refine_multiple()
-    test_scenario_info()
-    test_full_scenario_walkthrough()
-    test_cryoem_scenario()
-
-    print()
-    print("=" * 60)
-    print("ALL DRY RUN TESTS PASSED!")
-    print("=" * 60)
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run_all_tests()

@@ -675,8 +675,8 @@ class RulesSelector:
                 strategy["stop_after_predict"] = True
 
         elif program == "phenix.refine":
-            # Use cycle number as output prefix to avoid long filename accumulation
-            strategy["output_prefix"] = "%03d" % cycle_number
+            # Use descriptive prefix: refine_001, refine_002, etc.
+            strategy["output_prefix"] = "refine_%03d" % cycle_number
 
             # Check for twinning
             if history_info.get("twin_law"):
@@ -692,8 +692,8 @@ class RulesSelector:
                 strategy["ordered_solvent"] = True
 
         elif program == "phenix.real_space_refine":
-            # Use cycle number as output prefix to avoid long filename accumulation
-            strategy["output_prefix"] = "%03d" % cycle_number
+            # Use descriptive prefix: rsr_001, rsr_002, etc.
+            strategy["output_prefix"] = "rsr_%03d" % cycle_number
 
             # Run longer in later cycles
             rsr_count = history_info.get("rsr_count", 0)

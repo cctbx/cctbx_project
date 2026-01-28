@@ -431,6 +431,15 @@ def perceive(state):
         directives=state.get("directives", {})
     )
 
+    # Debug categorization (helps diagnose model vs search_model issues)
+    categorized = workflow_state.get("categorized_files", {})
+    model_files = categorized.get("model", [])
+    search_model_files = categorized.get("search_model", [])
+    if search_model_files and not model_files:
+        state = _log(state, "PERCEIVE: Has search_model but no model - sanity check may trigger")
+        for f in search_model_files[:3]:
+            state = _log(state, "PERCEIVE:   search_model: %s" % os.path.basename(f))
+
     # Override detected experiment_type with locked session experiment_type if available
     session_info = state.get("session_info", {})
     session_experiment_type = session_info.get("experiment_type")
@@ -528,13 +537,44 @@ def perceive(state):
         experiment_type
     )
 
-    # Log best_files status
+    # Log best_files status and validate against available files
     best_files = session_info.get("best_files", {})
     if best_files:
         best_files_summary = ", ".join([
             "%s=%s" % (k, os.path.basename(v)) for k, v in best_files.items() if v
         ])
         state = _log(state, "PERCEIVE: Best files: %s" % best_files_summary)
+
+    # VALIDATION: Check if best_files seem stale compared to available files
+    # If we have a refined model in available_files but best_files shows phaser output,
+    # we need to recalculate best_files on-the-fly
+    if best_files:
+        current_best_model = best_files.get("model")
+        if current_best_model:
+            current_best_basename = os.path.basename(current_best_model).lower()
+            # Check if best model is a phaser/early-stage model
+            if 'phaser' in current_best_basename or 'mr_' in current_best_basename:
+                # Check if we have refined models in available_files
+                for f in available_files:
+                    basename = os.path.basename(f).lower()
+                    # If we find a refined model, best_files is stale
+                    if 'refine' in basename and basename.endswith('.pdb'):
+                        state = _log(state, "PERCEIVE: WARNING - best_files may be stale (has phaser but refined exists: %s)" % os.path.basename(f))
+                        # Recalculate best_files on the fly
+                        try:
+                            from libtbx.langchain.agent.best_files_tracker import BestFilesTracker
+                            temp_tracker = BestFilesTracker()
+                            for avail_f in available_files:
+                                temp_tracker.evaluate_file(avail_f, cycle=1, metrics=None, stage=None)
+                            new_best = temp_tracker.get_best_dict()
+                            if new_best.get("model") != current_best_model:
+                                state = _log(state, "PERCEIVE: Recalculated best_files: model=%s" % os.path.basename(new_best.get("model", "none")))
+                                # Update session_info with recalculated best_files
+                                session_info["best_files"] = new_best
+                                state = {**state, "session_info": session_info}
+                        except Exception as e:
+                            state = _log(state, "PERCEIVE: Could not recalculate best_files: %s" % str(e))
+                        break
 
     # Build sanity check context
     categorized_files = workflow_state.get("categorized_files", {})
@@ -775,6 +815,7 @@ def plan(state):
     Node B: Decide Intent (LLM), with auto-stop on plateau.
 
     This node:
+    0. Checks for forced retry (from error recovery) - bypasses all other logic
     1. Checks for auto-stop conditions (plateau, success)
        BUT: Suppresses auto-stop if there's an after_program directive that hasn't been fulfilled
     2. Optionally uses rules-only mode (no LLM)
@@ -782,6 +823,38 @@ def plan(state):
     4. Calls LLM to decide next action
     5. Falls back to rules selector if LLM unavailable
     """
+    # 0. Check for forced retry (from error recovery)
+    # This takes priority over everything else - when recovery is triggered,
+    # we want to immediately retry the failed program with recovery flags
+    session_info = state.get("session_info", {})
+    force_retry = session_info.get("force_retry_program")
+
+    # Debug: log what we received
+    if session_info.get("recovery_strategies"):
+        state = _log(state, f"PLAN: Recovery strategies present for files: {list(session_info['recovery_strategies'].keys())}")
+
+    if force_retry:
+        state = _log(state, f"PLAN: Forced retry of {force_retry} (error recovery)")
+
+        # Emit event for transparency
+        state = _emit(state, EventType.PROGRAM_SELECTED,
+                      program=force_retry,
+                      reason="error_recovery_retry",
+                      forced=True)
+
+        return {
+            **state,
+            "intent": {
+                "program": force_retry,
+                "reasoning": "Retrying with recovery flags after recoverable error",
+                "strategy": {},  # Strategy will be merged from recovery_strategies in BUILD
+                "files": {},
+                "forced_retry": True
+            },
+            # Signal to clear the flag after this cycle
+            "clear_force_retry": True
+        }
+
     # 1. Check for auto-stop from metrics trend
     metrics_trend = state.get("metrics_trend", {})
 
@@ -919,23 +992,34 @@ def plan(state):
             HumanMessage(content=user_msg)
         ]
 
-        # Try to use rate limit handler
+        # Try to use rate limit handler with pre-configured settings
+        handler = None
         try:
-            from libtbx.langchain.agent.rate_limit_handler import RateLimitHandler
-        except ImportError:
-            RateLimitHandler = None
-
-        if RateLimitHandler:
-            # Use provider-specific handler
-            handler_name = "%s_api" % provider if provider else "default_api"
-            handler = RateLimitHandler.get_handler(
-                handler_name,
-                max_retries=3,
-                base_delay=2.0,
-                max_delay=60.0,
-                decay_time=300.0
+            from libtbx.langchain.agent.rate_limit_handler import (
+                get_google_handler, get_openai_handler, get_anthropic_handler
             )
+            if provider == "google":
+                handler = get_google_handler()
+            elif provider == "openai":
+                handler = get_openai_handler()
+            elif provider == "anthropic":
+                handler = get_anthropic_handler()
+        except ImportError:
+            try:
+                # Try relative import for standalone testing
+                from agent.rate_limit_handler import (
+                    get_google_handler, get_openai_handler, get_anthropic_handler
+                )
+                if provider == "google":
+                    handler = get_google_handler()
+                elif provider == "openai":
+                    handler = get_openai_handler()
+                elif provider == "anthropic":
+                    handler = get_anthropic_handler()
+            except ImportError:
+                pass  # No rate limit handler available
 
+        if handler:
             # Create a list to capture state updates from log wrapper
             log_messages = []
             def log_wrapper(msg):
@@ -976,12 +1060,14 @@ def plan(state):
 
                 cycle_number = state.get("cycle_number", 1)
                 history = state.get("history", [])
+                attempt_number = state.get("attempt_number", 0)
 
                 validation_result = validate_intent(
                     intent=intent,
                     directives=directives,
                     cycle_number=cycle_number,
                     history=history,
+                    attempt_number=attempt_number,
                     log_func=lambda msg: None  # Suppress internal logs, we'll log summary
                 )
 
@@ -1361,6 +1447,16 @@ def _build_with_new_builder(state):
         strategy["stop_after_predict"] = True
         state = _log(state, "BUILD: Forcing stop_after_predict=True for stepwise cryo-EM")
 
+    # Debug: log recovery strategies if present
+    recovery_strategies = session_info.get("recovery_strategies", {})
+    if recovery_strategies:
+        state = _log(state, f"BUILD: Recovery strategies available for: {list(recovery_strategies.keys())}")
+
+    # Create log wrapper that updates state
+    build_logs = []
+    def log_wrapper(msg):
+        build_logs.append(msg)
+
     # Create CommandContext
     context = CommandContext(
         cycle_number=state.get("cycle_number", 1),
@@ -1373,12 +1469,17 @@ def _build_with_new_builder(state):
         history=state.get("history", []),
         llm_files=corrected_files if corrected_files else None,
         llm_strategy=strategy if strategy else None,
-        log=lambda msg: None,  # We'll log separately
+        recovery_strategies=recovery_strategies,
+        log=log_wrapper,
     )
 
     # Build command
     builder = CommandBuilder()
     command = builder.build(program, available_files, context)
+
+    # Add builder logs to state
+    for log_msg in build_logs:
+        state = _log(state, log_msg)
 
     if not command:
         state = _log(state, "BUILD: Failed to build command for %s" % program)
@@ -2038,6 +2139,15 @@ def _fallback_with_new_builder(state):
             "fallback_used": True
         }
 
+    # Respect start_with_program directive - prioritize it
+    directives = state.get("directives", {})
+    stop_cond = directives.get("stop_conditions", {})
+    start_with = stop_cond.get("start_with_program")
+    if start_with and start_with in runnable:
+        # Move start_with_program to front of list
+        runnable = [start_with] + [p for p in runnable if p != start_with]
+        state = _log(state, "FALLBACK: Prioritizing start_with_program: %s" % start_with)
+
     # Get available files
     available_files = list(state.get("available_files", []))
     session_info = state.get("session_info", {})
@@ -2143,6 +2253,15 @@ def fallback(state):
 
         if runnable_deprioritized:
             state = _log(state, "FALLBACK: Deprioritized recently run: %s" % runnable_deprioritized)
+
+    # Respect start_with_program directive - prioritize it (overrides recent program logic)
+    directives = state.get("directives", {})
+    stop_cond = directives.get("stop_conditions", {})
+    start_with = stop_cond.get("start_with_program")
+    if start_with and start_with in runnable:
+        # Move start_with_program to front of list
+        runnable = [start_with] + [p for p in runnable if p != start_with]
+        state = _log(state, "FALLBACK: Prioritizing start_with_program: %s" % start_with)
 
     if not runnable:
         state = _log(state, "FALLBACK: No valid programs, stopping")

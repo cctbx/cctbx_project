@@ -88,9 +88,17 @@ class AgentSession:
             # Once R-free flags are generated, we must use the same MTZ for all refinements
             "rfree_mtz": None,  # Path to the locked R-free MTZ
             "rfree_mtz_locked_at_cycle": None,  # Cycle when it was locked
+            "rfree_resolution": None,  # Resolution at which R-free flags were generated (if limited)
             # User directives extracted from project_advice
             "directives": {},  # Structured directives from user advice
             "directives_extracted": False,  # Whether extraction has been attempted
+            # Error recovery tracking
+            # Tracks retry attempts per error type to prevent infinite loops
+            "recovery_attempts": {},  # {error_type: {count: N, files_tried: {...}}}
+            # File-keyed recovery strategies (persist across cycles)
+            "recovery_strategies": {},  # {file_path: {flags: {...}, program_scope: [...], reason: "..."}}
+            # Force the planner to retry a specific program (cleared after use)
+            "force_retry_program": None,
         }
         # Initialize best files tracker (not stored in self.data, serialized separately)
         self.best_files = BestFilesTracker()
@@ -100,12 +108,120 @@ class AgentSession:
         try:
             with open(self.session_file, 'r') as f:
                 self.data = json.load(f)
-            # Restore best files tracker
-            best_files_data = self.data.get("best_files")
-            self.best_files = BestFilesTracker.from_dict(best_files_data)
+            # ALWAYS rebuild best_files from cycle history on load
+            # This ensures consistency after cycle removal or external modification
+            # The persisted best_files is just a cache that may be stale
+            self._rebuild_best_files_from_cycles()
         except Exception as e:
             print(f"Warning: Could not load session file: {e}")
             self._init_new_session()
+
+    def _rebuild_best_files_from_cycles(self):
+        """
+        Rebuild best_files tracker from cycle history.
+
+        This is the single source of truth - we replay all successful cycles
+        through the tracker to determine the current best files.
+        """
+        # Create fresh tracker
+        self.best_files = BestFilesTracker()
+
+        # First, evaluate original input files (cycle 0)
+        for f in self.data.get("original_files", []):
+            if f and os.path.exists(f):
+                self.best_files.evaluate_file(
+                    path=f,
+                    cycle=0,
+                    metrics=None,
+                    stage=None
+                )
+
+        # Replay each cycle's output files with their metrics
+        for cycle in self.data.get("cycles", []):
+            cycle_num = cycle.get("cycle_number", 1)
+            program = cycle.get("program", "")
+            result = cycle.get("result", "")
+            metrics = cycle.get("metrics", {})
+            output_files = cycle.get("output_files", [])
+
+            # Skip failed cycles
+            if "FAILED" in result.upper():
+                continue
+
+            # Determine stage from program
+            stage = self._infer_stage_from_program(program)
+
+            for f in output_files:
+                if f and os.path.exists(f):
+                    # Build file-specific metrics
+                    file_metrics = dict(metrics) if metrics else {}
+
+                    # Determine file-specific stage based on file AND program
+                    # Only apply program-specific stage to files that match expected output patterns
+                    file_stage = None  # Default: let tracker infer from filename
+                    basename = os.path.basename(f).lower()
+
+                    if f.lower().endswith('.mtz'):
+                        # Check for R-free patterns
+                        has_rfree_patterns = (
+                            'refine' in basename or
+                            'refinement_data' in basename
+                        )
+                        # Check for phased MTZ (not suitable for refinement)
+                        is_phased_mtz = (
+                            'phased' in basename or
+                            'phases' in basename or
+                            'solve' in basename
+                        )
+
+                        if has_rfree_patterns and not is_phased_mtz:
+                            file_stage = "refined_mtz"
+                            file_metrics["has_rfree_flags"] = True
+                        elif is_phased_mtz:
+                            file_stage = "phased_mtz"
+                        else:
+                            file_stage = "mtz"  # Generic MTZ
+
+                    elif f.lower().endswith(('.ccp4', '.mrc', '.map')):
+                        # Map files - apply stage based on filename patterns
+                        if 'initial' in basename:
+                            file_stage = "intermediate_map"
+                        elif 'denmod' in basename or 'density_mod' in basename:
+                            file_stage = "optimized_full_map"
+                        elif 'sharp' in basename:
+                            file_stage = "sharpened"
+                        elif 'half' in basename or any(p in basename for p in ['_1.', '_2.', '_a.', '_b.']):
+                            file_stage = "half_map"
+                        # else: file_stage stays None, tracker will infer
+
+                    elif f.lower().endswith('.pdb') or f.lower().endswith('.cif'):
+                        # Only apply program stage if file basename matches expected output
+                        if stage == "refined" and 'refine' in basename:
+                            file_stage = "refined"
+                        elif stage == "phaser_output" and ('phaser' in basename or basename.startswith('mr_')):
+                            file_stage = "phaser_output"
+                        elif stage == "predicted" and ('predict' in basename or 'alphafold' in basename):
+                            file_stage = "predicted"
+                        elif stage == "processed_predicted" and ('processed' in basename or 'trimmed' in basename):
+                            file_stage = "processed_predicted"
+                        elif stage == "docked" and ('dock' in basename or 'placed' in basename):
+                            file_stage = "docked"
+                        elif stage == "autobuild_output" and ('autobuild' in basename or 'overall_best' in basename):
+                            file_stage = "autobuild_output"
+                        elif stage == "ligand_fit_output" and ('ligand_fit' in basename or 'lig_fit' in basename):
+                            file_stage = "ligand_fit_output"
+                        elif stage == "with_ligand" and 'with_ligand' in basename:
+                            file_stage = "with_ligand"
+                        elif stage == "rsr_output" and ('real_space' in basename or 'rsr_' in basename):
+                            file_stage = "rsr_output"
+                        # else: file_stage stays None, tracker will infer from filename
+
+                    self.best_files.evaluate_file(
+                        path=f,
+                        cycle=cycle_num,
+                        metrics=file_metrics,
+                        stage=file_stage
+                    )
 
     def save(self):
         """Save session to file."""
@@ -115,6 +231,9 @@ class AgentSession:
             self.data["best_files_history"] = [h.to_dict() for h in self.best_files.get_history()]
             with open(self.session_file, 'w') as f:
                 json.dump(self.data, f, indent=2)
+                f.flush()
+                import os
+                os.fsync(f.fileno())  # Ensure data is written to disk
         except Exception as e:
             print(f"Warning: Could not save session file: {e}")
 
@@ -239,6 +358,19 @@ class AgentSession:
             else:
                 log("DIRECTIVES: No actionable directives found")
 
+            # Validate directives against available capabilities
+            validation_result = self._validate_directives(project_advice, directives, log)
+
+            if not validation_result.get("valid", True):
+                # Store validation issues for later reference
+                self.data["directive_validation"] = validation_result
+                self.save()
+                log("\n" + "=" * 60)
+                log("DIRECTIVE VALIDATION FAILED")
+                log("=" * 60)
+                log(validation_result.get("message", "Unknown validation error"))
+                log("=" * 60 + "\n")
+
             return directives
 
         except ImportError as e:
@@ -274,6 +406,71 @@ class AgentSession:
             dict: Directives dict, or empty dict if not extracted
         """
         return self.data.get("directives", {})
+
+    def _validate_directives(self, user_advice, directives, log_func=None):
+        """
+        Validate directives against available capabilities.
+
+        Checks if the user is requesting programs or parameters that
+        the agent cannot deliver.
+
+        Args:
+            user_advice: Raw user advice text
+            directives: Extracted directives dict
+            log_func: Optional logging function
+
+        Returns:
+            dict: Validation result with 'valid', 'message', 'issues', 'warnings'
+        """
+        def log(msg):
+            if log_func:
+                log_func(msg)
+
+        try:
+            try:
+                from libtbx.langchain.agent.directive_validator import validate_directives
+            except ImportError:
+                from agent.directive_validator import validate_directives
+
+            result = validate_directives(user_advice, directives)
+
+            # Convert dataclass to dict for JSON serialization
+            return {
+                "valid": result.valid,
+                "message": result.message,
+                "issues": result.issues,
+                "warnings": result.warnings,
+                "unavailable_programs": result.unavailable_programs,
+                "unsupported_parameters": result.unsupported_parameters,
+            }
+
+        except ImportError as e:
+            log("DIRECTIVES: Could not import directive_validator: %s" % str(e))
+            return {"valid": True, "message": "Validation skipped (module not available)"}
+        except Exception as e:
+            log("DIRECTIVES: Validation failed: %s" % str(e))
+            return {"valid": True, "message": "Validation skipped (error: %s)" % str(e)}
+
+    def get_directive_validation(self):
+        """
+        Get the directive validation result.
+
+        Returns:
+            dict: Validation result, or None if not validated
+        """
+        return self.data.get("directive_validation")
+
+    def has_directive_validation_issues(self):
+        """
+        Check if there are blocking validation issues.
+
+        Returns:
+            bool: True if there are issues that should prevent workflow execution
+        """
+        validation = self.get_directive_validation()
+        if validation is None:
+            return False
+        return not validation.get("valid", True)
 
     def get_program_directive_settings(self, program_name):
         """
@@ -544,6 +741,19 @@ class AgentSession:
         """
         return self.data.get("rfree_mtz")
 
+    def get_rfree_resolution(self):
+        """
+        Get the resolution at which R-free flags were generated (if limited).
+
+        When refinement is run at a limited resolution (e.g., 3Å), the R-free
+        flags are only valid for that resolution range. Programs like polder
+        must either match this resolution or generate new R-free flags.
+
+        Returns:
+            float or None: Resolution limit in Angstroms, or None if not limited
+        """
+        return self.data.get("rfree_resolution")
+
     def set_rfree_mtz(self, path, cycle):
         """
         Lock the R-free MTZ. Can only be set once per session.
@@ -576,6 +786,136 @@ class AgentSession:
     def is_rfree_mtz_locked(self):
         """Check if an R-free MTZ has been locked."""
         return self.data.get("rfree_mtz") is not None
+
+    # =========================================================================
+    # ERROR RECOVERY TRACKING
+    # =========================================================================
+    # The agent can automatically recover from certain well-defined errors.
+    # These methods manage recovery state:
+    # - recovery_strategies: File-keyed flags to add to commands
+    # - force_retry_program: Forces the planner to retry a specific program
+    # - recovery_attempts: Tracks retries to prevent infinite loops
+
+    def set_recovery_strategy(self, file_path, flags, program, reason):
+        """
+        Set a recovery strategy for a specific file.
+
+        When the CommandBuilder sees this file being used, it will add
+        the specified flags to the command.
+
+        Args:
+            file_path: Path to the file that triggered the error
+            flags: Dict of parameter flags to add (e.g., {"obs_labels": "I(+)"})
+            program: Program that triggered the error
+            reason: Human-readable explanation
+
+        Example:
+            session.set_recovery_strategy(
+                "/path/to/data.mtz",
+                {"scaling.input.xray_data.obs_labels": "I_CuKa(+)"},
+                "phenix.autosol",
+                "Selected anomalous data for MRSAD workflow"
+            )
+        """
+        strategies = self.data.setdefault("recovery_strategies", {})
+        strategies[file_path] = {
+            "flags": flags,
+            "program_scope": [program],  # Can be extended to other programs
+            "reason": reason
+        }
+        self.save()
+
+    def get_recovery_strategy(self, file_path):
+        """
+        Get recovery strategy for a specific file.
+
+        Args:
+            file_path: Path to check for recovery strategy
+
+        Returns:
+            dict or None: {flags: {...}, program_scope: [...], reason: "..."}
+        """
+        return self.data.get("recovery_strategies", {}).get(file_path)
+
+    def get_all_recovery_strategies(self):
+        """
+        Get all recovery strategies.
+
+        Returns:
+            dict: {file_path: {flags, program_scope, reason}, ...}
+        """
+        return self.data.get("recovery_strategies", {})
+
+    def clear_recovery_strategy(self, file_path):
+        """
+        Clear recovery strategy for a specific file.
+
+        Typically called after successful recovery or when starting fresh.
+        """
+        strategies = self.data.get("recovery_strategies", {})
+        if file_path in strategies:
+            del strategies[file_path]
+            self.save()
+
+    def set_force_retry_program(self, program):
+        """
+        Set the program to force-retry on next cycle.
+
+        This bypasses normal planning - the planner will immediately
+        select this program without consulting the LLM.
+
+        Args:
+            program: Program name (e.g., "phenix.autosol")
+        """
+        self.data["force_retry_program"] = program
+        self.save()
+
+    def get_force_retry_program(self):
+        """
+        Get the force-retry program (if any).
+
+        Returns:
+            str or None: Program name to force, or None
+        """
+        return self.data.get("force_retry_program")
+
+    def clear_force_retry_program(self):
+        """
+        Clear and return the force-retry program.
+
+        This should be called by the planner after handling the forced retry.
+
+        Returns:
+            str or None: The program that was set, or None
+        """
+        return self.data.pop("force_retry_program", None)
+
+    def get_recovery_attempts(self, error_type=None):
+        """
+        Get recovery attempt tracking info.
+
+        Args:
+            error_type: Specific error type to query, or None for all
+
+        Returns:
+            dict: Attempt info for the error type(s)
+        """
+        attempts = self.data.get("recovery_attempts", {})
+        if error_type:
+            return attempts.get(error_type, {"count": 0, "files_tried": {}})
+        return attempts
+
+    def clear_recovery_state(self):
+        """
+        Clear all recovery state.
+
+        Useful when starting a completely new workflow or after
+        user intervention has resolved the underlying issue.
+        """
+        self.data["recovery_attempts"] = {}
+        self.data["recovery_strategies"] = {}
+        self.data["force_retry_program"] = None
+        self.save()
 
     # =========================================================================
     # SANITY CHECK SETTINGS
@@ -932,8 +1272,26 @@ class AgentSession:
                         )
 
                         if is_resolution_limited:
-                            # Don't lock this MTZ - it has incomplete R-free flags
-                            cycle["rfree_mtz_note"] = "R-free flags limited to refinement resolution - not locking"
+                            # Extract the resolution value from command
+                            import re
+                            res_match = re.search(
+                                r'(?:high_resolution|d_min|xray_data\.high_resolution)\s*=\s*([\d.]+)',
+                                command
+                            )
+                            if res_match:
+                                rfree_resolution = float(res_match.group(1))
+                                file_metrics["rfree_resolution"] = rfree_resolution
+                                # Store in session for use by command builder
+                                if self.data.get("rfree_resolution") is None:
+                                    self.data["rfree_resolution"] = rfree_resolution
+                                cycle["rfree_mtz_note"] = (
+                                    f"R-free flags limited to {rfree_resolution}Å - "
+                                    "programs using this MTZ must match this resolution"
+                                )
+                            else:
+                                cycle["rfree_mtz_note"] = (
+                                    "R-free flags limited to refinement resolution - not locking"
+                                )
                             file_metrics["rfree_resolution_limited"] = True
                         else:
                             # Lock the R-free MTZ (first one wins)
@@ -948,8 +1306,26 @@ class AgentSession:
                     else:
                         # Generic MTZ
                         file_stage = "mtz"
+                elif f.lower().endswith(('.ccp4', '.mrc', '.map')):
+                    # Map files - apply stage only to matching patterns
+                    basename = os.path.basename(f).lower()
+
+                    # Check for intermediate maps (should be deprioritized)
+                    if 'initial' in basename:
+                        file_stage = "intermediate_map"
+                    # Check for optimized/density-modified maps
+                    elif 'denmod' in basename or 'density_mod' in basename:
+                        file_stage = "optimized_full_map"
+                    elif 'sharp' in basename:
+                        file_stage = "sharpened"
+                    # Check for half-maps
+                    elif 'half' in basename or any(p in basename for p in ['_1.', '_2.', '_a.', '_b.']):
+                        file_stage = "half_map"
+                    else:
+                        # Generic map - let tracker infer
+                        file_stage = None
                 else:
-                    file_stage = model_stage  # Use inferred stage for models
+                    file_stage = model_stage  # Use inferred stage for models (PDB/CIF)
 
                 # Evaluate each output file - tracker will classify and score
                 updated = self.best_files.evaluate_file(
@@ -1498,17 +1874,22 @@ class AgentSession:
 
         return metrics
 
-    def generate_summary(self, llm):
+    def generate_summary(self, llm, use_rules_only=False):
         """
         Use LLM to generate a summary of the session (synchronous version).
 
         Args:
             llm: Language model to use
+            use_rules_only: If True, skip LLM and return basic summary
 
         Returns:
             str: Generated summary
         """
         log_text = self.generate_log_for_summary()
+
+        # Skip LLM if use_rules_only is set
+        if use_rules_only:
+            return "Summary generation skipped (use_rules_only=True). See session log for details."
 
 
         # Define the template using a standard string
@@ -1522,10 +1903,28 @@ IMPORTANT FORMATTING RULES:
 - Use a clean format without excessive duplication
 
 Include these sections:
+
 1. **Summary**: What was accomplished in 2-3 sentences
-2. **Final Model Quality**: Key metrics (R-free, R-work, resolution, clashscore) - ONE set of values only
-3. **Key Output Files**: The most important final files (refined model, MTZ)
-4. **Status**: Whether the workflow completed successfully
+
+2. **Key Metrics**: List the most important FINAL metrics with their values. Format as a simple list:
+   - For X-ray: R-work, R-free, Resolution, Clashscore
+   - For Cryo-EM: Map-model CC, Resolution, Clashscore
+   - Include any other relevant quality metrics (Ramachandran outliers, bonds/angles RMSD)
+   Example format:
+   - R-work: 0.182
+   - R-free: 0.215
+   - Resolution: 2.1 Å
+   - Clashscore: 3.2
+
+3. **Key Output Files**: List the most important output files with brief descriptions:
+   - Final refined model (PDB filename)
+   - Final data file with phases (MTZ filename)
+   - Any other key outputs (maps, ligand files, etc.)
+   Example format:
+   - model_refine_001.pdb - Final refined atomic model
+   - model_refine_001.mtz - Structure factors with R-free flags and map coefficients
+
+4. **Status**: Whether the workflow completed successfully and any recommendations
 
 SESSION LOG:
 <session_log>
@@ -1544,19 +1943,16 @@ FINAL REPORT:"""
         try:
             # Try to use rate limit handler
             try:
-                from libtbx.langchain.agent.rate_limit_handler import RateLimitHandler
+                from libtbx.langchain.agent.rate_limit_handler import get_google_handler
+                handler = get_google_handler()
             except ImportError:
-                RateLimitHandler = None
+                try:
+                    from agent.rate_limit_handler import get_google_handler
+                    handler = get_google_handler()
+                except ImportError:
+                    handler = None
 
-            if RateLimitHandler:
-                handler = RateLimitHandler.get_handler(
-                    "session_summary_api",
-                    max_retries=3,
-                    base_delay=2.0,
-                    max_delay=60.0,
-                    decay_time=300.0
-                )
-
+            if handler:
                 def make_call():
                     return llm.invoke(prompt)
 
@@ -1888,6 +2284,40 @@ FINAL REPORT:"""
                 match = re.search(r'[Aa]ngles.?[Rr]msd[:\s=]+([0-9.]+)', result)
                 if match:
                     metrics["angles_rmsd"] = float(match.group(1))
+                elif cycle_metrics.get("angles_rmsd"):
+                    metrics["angles_rmsd"] = float(cycle_metrics["angles_rmsd"])
+
+            # Ramachandran statistics
+            if "ramachandran_outliers" not in metrics:
+                # Try common patterns: "Ramachandran outliers: 0.12%" or "rama_outliers=0.12"
+                match = re.search(r'[Rr]ama(?:chandran)?.?[Oo]utliers?[:\s=]+([0-9.]+)', result)
+                if match:
+                    metrics["ramachandran_outliers"] = float(match.group(1))
+                elif cycle_metrics.get("ramachandran_outliers"):
+                    metrics["ramachandran_outliers"] = float(cycle_metrics["ramachandran_outliers"])
+
+            if "ramachandran_favored" not in metrics:
+                match = re.search(r'[Rr]ama(?:chandran)?.?[Ff]avore?d?[:\s=]+([0-9.]+)', result)
+                if match:
+                    metrics["ramachandran_favored"] = float(match.group(1))
+                elif cycle_metrics.get("ramachandran_favored"):
+                    metrics["ramachandran_favored"] = float(cycle_metrics["ramachandran_favored"])
+
+            # Rotamer outliers
+            if "rotamer_outliers" not in metrics:
+                match = re.search(r'[Rr]otamer.?[Oo]utliers?[:\s=]+([0-9.]+)', result)
+                if match:
+                    metrics["rotamer_outliers"] = float(match.group(1))
+                elif cycle_metrics.get("rotamer_outliers"):
+                    metrics["rotamer_outliers"] = float(cycle_metrics["rotamer_outliers"])
+
+            # MolProbity score
+            if "molprobity_score" not in metrics:
+                match = re.search(r'[Mm]ol[Pp]robity.?[Ss]core[:\s=]+([0-9.]+)', result)
+                if match:
+                    metrics["molprobity_score"] = float(match.group(1))
+                elif cycle_metrics.get("molprobity_score"):
+                    metrics["molprobity_score"] = float(cycle_metrics["molprobity_score"])
 
             # Symmetry (from map_symmetry) - check both result text and pre-parsed metrics
             if "symmetry_type" not in metrics:
@@ -1969,35 +2399,198 @@ FINAL REPORT:"""
             return "Needs improvement"
 
     def _get_final_output_files(self, cycles):
-        """Get the most relevant final output files."""
+        """Get the most relevant final output files with descriptions."""
         final_files = []
+
+        # Track which program produced each file
+        file_sources = {}
+
+        # Work through all cycles to understand file sources
+        for cycle in cycles:
+            program = cycle.get("program", "")
+            output_files = cycle.get("output_files", [])
+            for f in output_files:
+                basename = os.path.basename(f)
+                file_sources[basename] = program
 
         # Work backwards to find the last cycle with output files
         for cycle in reversed(cycles):
             output_files = cycle.get("output_files", [])
+            program = cycle.get("program", "")
+
             if output_files:
-                # Prioritize certain file types
                 for f in output_files:
                     basename = os.path.basename(f)
-                    # Prioritize refined models and data
-                    if any(x in basename.lower() for x in
-                           ["refine", "overall_best", "real_space_refined"]):
-                        if basename.endswith(".pdb"):
-                            final_files.insert(0, {"name": basename, "type": "model"})
-                        elif basename.endswith(".mtz"):
-                            final_files.append({"name": basename, "type": "data"})
-                    elif basename.endswith(".pdb") and len(final_files) < 5:
-                        final_files.append({"name": basename, "type": "model"})
-                    elif basename.endswith(".mtz") and len(final_files) < 5:
-                        final_files.append({"name": basename, "type": "data"})
-                    # Add ncs_spec files from map_symmetry
-                    elif basename.endswith(".ncs_spec") and len(final_files) < 5:
-                        final_files.append({"name": basename, "type": "symmetry"})
+                    basename_lower = basename.lower()
+
+                    # Determine file type and description
+                    file_info = self._describe_output_file(basename, program)
+
+                    if file_info and len(final_files) < 8:
+                        # Check for duplicates
+                        if not any(existing["name"] == basename for existing in final_files):
+                            # Prioritize refined models at the top
+                            if file_info.get("priority"):
+                                final_files.insert(0, file_info)
+                            else:
+                                final_files.append(file_info)
 
                 if final_files:
                     break
 
-        return final_files[:5]  # Limit to 5 files
+        return final_files[:8]  # Limit to 8 files
+
+    def _describe_output_file(self, basename, program):
+        """
+        Generate a description for an output file based on its name and source program.
+
+        Returns dict with name, type, and description, or None if file should be skipped.
+        """
+        basename_lower = basename.lower()
+
+        # Skip intermediate/temporary files
+        skip_patterns = ["_debug", "_check", ".geo", ".eff", ".def", ".log"]
+        if any(pat in basename_lower for pat in skip_patterns):
+            return None
+
+        # PDB files
+        if basename.endswith(".pdb") or basename.endswith(".cif"):
+            if "refine" in basename_lower and "real_space" not in basename_lower:
+                return {
+                    "name": basename,
+                    "type": "model",
+                    "description": "Refined atomic model (X-ray)",
+                    "priority": True
+                }
+            elif "real_space_refined" in basename_lower or "rsr" in basename_lower:
+                return {
+                    "name": basename,
+                    "type": "model",
+                    "description": "Refined atomic model (cryo-EM)",
+                    "priority": True
+                }
+            elif "overall_best" in basename_lower or "autobuild" in basename_lower:
+                return {
+                    "name": basename,
+                    "type": "model",
+                    "description": "Best model from automated building",
+                    "priority": True
+                }
+            elif "phaser" in basename_lower:
+                return {
+                    "name": basename,
+                    "type": "model",
+                    "description": "Molecular replacement solution"
+                }
+            elif "autosol" in basename_lower:
+                return {
+                    "name": basename,
+                    "type": "model",
+                    "description": "Experimental phasing solution"
+                }
+            elif "predict" in basename_lower:
+                return {
+                    "name": basename,
+                    "type": "model",
+                    "description": "AlphaFold predicted model"
+                }
+            elif "dock" in basename_lower or "placed" in basename_lower:
+                return {
+                    "name": basename,
+                    "type": "model",
+                    "description": "Docked model in map"
+                }
+            elif "with_ligand" in basename_lower:
+                return {
+                    "name": basename,
+                    "type": "model",
+                    "description": "Model with fitted ligand"
+                }
+            elif "ligand_fit" in basename_lower:
+                return {
+                    "name": basename,
+                    "type": "model",
+                    "description": "Fitted ligand coordinates"
+                }
+            else:
+                return {
+                    "name": basename,
+                    "type": "model",
+                    "description": "Atomic model"
+                }
+
+        # MTZ files
+        elif basename.endswith(".mtz"):
+            if "refine" in basename_lower:
+                return {
+                    "name": basename,
+                    "type": "data",
+                    "description": "Refined structure factors with R-free flags and map coefficients",
+                    "priority": True
+                }
+            elif "phaser" in basename_lower:
+                return {
+                    "name": basename,
+                    "type": "data",
+                    "description": "Phased data from molecular replacement"
+                }
+            elif "autosol" in basename_lower:
+                return {
+                    "name": basename,
+                    "type": "data",
+                    "description": "Phased data from experimental phasing"
+                }
+            elif "polder" in basename_lower:
+                return {
+                    "name": basename,
+                    "type": "data",
+                    "description": "Polder omit map coefficients"
+                }
+            else:
+                return {
+                    "name": basename,
+                    "type": "data",
+                    "description": "Reflection data"
+                }
+
+        # Map files
+        elif basename.endswith((".mrc", ".ccp4", ".map")):
+            if "sharpened" in basename_lower:
+                return {
+                    "name": basename,
+                    "type": "map",
+                    "description": "Sharpened/optimized cryo-EM map"
+                }
+            elif "polder" in basename_lower:
+                return {
+                    "name": basename,
+                    "type": "map",
+                    "description": "Polder omit map"
+                }
+            else:
+                return {
+                    "name": basename,
+                    "type": "map",
+                    "description": "Electron density map"
+                }
+
+        # NCS spec files
+        elif basename.endswith(".ncs_spec"):
+            return {
+                "name": basename,
+                "type": "symmetry",
+                "description": "NCS operators for map symmetry"
+            }
+
+        # CIF restraint files
+        elif basename.endswith(".cif") and "ligand" in basename_lower:
+            return {
+                "name": basename,
+                "type": "restraints",
+                "description": "Ligand restraint dictionary"
+            }
+
+        return None
 
     def _extract_input_quality(self, cycles, experiment_type):
         """Extract input data quality metrics from xtriage/mtriage.
@@ -2229,10 +2822,15 @@ FINAL REPORT:"""
 
         # Output Files
         if data.get("final_files"):
-            lines.append("## Output Files")
+            lines.append("## Key Output Files")
             lines.append("")
+            lines.append("| File | Type | Description |")
+            lines.append("|------|------|-------------|")
             for f in data["final_files"]:
-                lines.append(f"- {f['name']} ({f['type']})")
+                file_type = f.get('type', 'file')
+                description = f.get('description', '')
+                lines.append(f"| {f['name']} | {file_type} | {description} |")
+            lines.append("")
             lines.append("")
 
         # LLM Assessment placeholder
@@ -2316,6 +2914,20 @@ FINAL REPORT:"""
                 lines.append(f"  Map CC: {fm['map_cc']:.3f} ({fm.get('map_cc_assessment', '')})")
             if "clashscore" in fm:
                 lines.append(f"  Clashscore: {fm['clashscore']:.2f} ({fm.get('clashscore_assessment', '')})")
+            if "bonds_rmsd" in fm:
+                lines.append(f"  Bonds RMSD: {fm['bonds_rmsd']:.4f}")
+            if "angles_rmsd" in fm:
+                lines.append(f"  Angles RMSD: {fm['angles_rmsd']:.3f}")
+            if "ramachandran_outliers" in fm:
+                lines.append(f"  Ramachandran outliers: {fm['ramachandran_outliers']:.2f}%")
+            lines.append("")
+
+        # Key output files
+        if data.get("final_files"):
+            lines.append("KEY OUTPUT FILES:")
+            for f in data["final_files"]:
+                desc = f.get('description', f.get('type', 'file'))
+                lines.append(f"  {f['name']} - {desc}")
             lines.append("")
 
         lines.append(f"TOTAL CYCLES: {data['total_cycles']} ({data['successful_cycles']} successful)")

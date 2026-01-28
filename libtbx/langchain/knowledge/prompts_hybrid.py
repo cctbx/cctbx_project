@@ -342,6 +342,14 @@ You must output a SINGLE JSON object matching this schema:
   Files: {model: .pdb}
   Overall geometry energy should be close to expected (~67)
 
+**phenix.polder** - Calculate Polder omit maps to evaluate ligand/residue placement
+  Files: {model: .pdb, data: .mtz}
+  Strategy: {selection: "chain A and resseq 88"} (REQUIRED - specify atoms to evaluate)
+  IMPORTANT: Polder works with STANDARD MTZ data (Fobs + R-free flags). It does NOT need
+  pre-calculated map coefficients or phases - it calculates the omit maps internally.
+  Use: Verify ligand placement by checking if density exists for the omitted atoms.
+  Output: CC values and conclusion ("likely to show", "inconclusive", "unlikely to show")
+
 ### STOP CONDITIONS
 
 Set "stop": true when:

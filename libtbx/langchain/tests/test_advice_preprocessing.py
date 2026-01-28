@@ -573,26 +573,9 @@ def test_readme_change_triggers_reprocess():
 # =============================================================================
 
 def run_all_tests():
-    print("=" * 60)
-    print("ADVICE PREPROCESSING TESTS")
-    print("=" * 60)
-
-    test_sanitize_advice()
-    test_is_suspicious()
-    test_find_readme_file()
-    test_read_readme_file()
-    test_combine_raw_advice()
-    test_gather_raw_advice()
-    test_get_preprocessing_prompt()
-    test_extract_files_from_processed_advice()
-    test_advice_change_detection()
-    test_advice_session_update_logic()
-    test_readme_change_triggers_reprocess()
-
-    print()
-    print("=" * 60)
-    print("ALL TESTS PASSED!")
-    print("=" * 60)
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":

@@ -679,58 +679,9 @@ def test_multiple_issues():
 # =============================================================================
 
 def run_all_tests():
-    """Run all sanity checker tests."""
-    print("\n" + "=" * 60)
-    print("SANITY CHECKER TESTS")
-    print("=" * 60 + "\n")
-
-    # Critical check tests
-    print("\n--- Critical Check Tests ---")
-    test_experiment_type_stable_no_change()
-    test_experiment_type_changed()
-    test_experiment_type_not_set_yet()
-    test_no_model_for_refine()
-    test_model_exists_for_refine()
-    test_no_model_non_refine_state()
-    test_no_mtz_for_xray()
-    test_no_map_for_cryoem()
-    test_repeated_failures()
-    test_no_repeated_failures_different_errors()
-    test_no_repeated_failures_two_times()
-    test_no_repeated_failures_success_with_errors_word()
-
-    # Warning check tests
-    print("\n--- Warning Check Tests ---")
-    test_resolution_unknown_warning()
-    test_r_free_spike_warning()
-    test_no_r_free_spike_normal_change()
-    test_map_cc_drop_warning()
-
-    # Abort settings tests
-    print("\n--- Abort Settings Tests ---")
-    test_abort_on_red_flags_true()
-    test_abort_on_red_flags_false()
-    test_abort_on_warnings_false()
-    test_abort_on_warnings_true()
-
-    # Message formatting tests
-    print("\n--- Message Formatting Tests ---")
-    test_abort_message_formatting()
-    test_abort_message_includes_suggestions()
-
-    # Edge cases
-    print("\n--- Edge Case Tests ---")
-    test_empty_context()
-    test_empty_history()
-    test_empty_metrics_history()
-    test_single_metrics_entry()
-    test_sanity_issue_to_dict()
-    test_sanity_result_to_dict()
-    test_multiple_issues()
-
-    print("\n" + "=" * 60)
-    print("ALL SANITY CHECKER TESTS PASSED")
-    print("=" * 60 + "\n")
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":

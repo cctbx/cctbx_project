@@ -20,7 +20,7 @@ The event system provides structured, transparent logging of the agent's decisio
 
 1. **Transparency** - Show what decisions are made and why at each step
 2. **Consistency** - Same output format for local and remote execution
-3. **Controllability** - Support quiet, normal, verbose, and debug verbosity levels
+3. **Controllability** - Support quiet, normal, and verbose verbosity levels
 4. **Full Reasoning** - Show complete LLM reasoning without truncation
 5. **User Feedback** - Prominently warn when user requests can't be fulfilled
 
@@ -99,7 +99,7 @@ class Verbosity:
 **PHIL Parameter:**
 ```phil
 verbosity = normal
-  .type = choice(quiet, normal, verbose, debug)
+  .type = choice(quiet, normal, verbose)
   .help = Controls how much detail is shown in agent output.
 ```
 

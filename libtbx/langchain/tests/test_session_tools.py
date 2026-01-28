@@ -222,23 +222,9 @@ def test_reset_session():
 
 
 def run_all_tests():
-    """Run all session_tools tests."""
-    print("=" * 60)
-    print("SESSION TOOLS TESTS")
-    print("=" * 60)
-
-    test_load_session()
-    test_load_session_missing()
-    test_save_session()
-    test_show_session()
-    test_remove_cycles()
-    test_remove_cycles_all()
-    test_reset_session()
-
-    print()
-    print("=" * 60)
-    print("ALL SESSION TOOLS TESTS PASSED!")
-    print("=" * 60)
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":

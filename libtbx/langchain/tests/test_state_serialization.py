@@ -668,32 +668,9 @@ def test_verify_roundtrip_function():
 # =============================================================================
 
 def run_all_tests():
-    """Run all state serialization tests."""
-    print("=" * 70)
-    print("STATE SERIALIZATION AND LOCAL/SERVER EQUIVALENCE TESTS")
-    print("=" * 70)
-
-    print("\n--- Test 1: State Round-Trip Serialization ---\n")
-    test_request_round_trip()
-    test_response_round_trip()
-    test_history_round_trip()
-    test_transport_sanitization_round_trip()
-    test_session_state_preservation()
-
-    print("\n--- Test 2: Local vs Server Equivalence ---\n")
-    test_request_format_equivalence()
-    test_response_format_equivalence()
-    test_history_record_format()
-    test_graph_state_to_request_conversion()
-    test_response_to_graph_state_conversion()
-
-    print("\n--- Test 3: Full Transport Round-Trip ---\n")
-    test_full_transport_round_trip()
-    test_verify_roundtrip_function()
-
-    print("\n" + "=" * 70)
-    print("ALL TESTS PASSED!")
-    print("=" * 70)
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":

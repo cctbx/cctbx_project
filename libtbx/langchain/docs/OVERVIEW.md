@@ -145,6 +145,25 @@ Parses natural language guidance from `project_advice`:
 - **Workflow preferences**: "skip autobuild", "use SAD phasing"
 - **Task focus**: "focus on ligand fitting"
 
+### 8. Safety Checks (`agent/sanity_checker.py`, `agent/directive_extractor.py`)
+
+Multiple layers of validation to prevent errors:
+
+| Layer | Location | Examples |
+|-------|----------|----------|
+| **Sanity Checks** | Pre-execution | No data for workflow, model not positioned, repeated failures |
+| **Directive Validation** | Post-LLM | Invalid program names, conflicting stop conditions |
+| **Workflow Validation** | State machine | Invalid phase transitions, wrong experiment type |
+| **Post-Processing** | After extraction | Ligand workflow conflict resolution |
+
+Key sanity issues that trigger abort:
+- `no_data_for_workflow` - Missing MTZ (X-ray) or map (cryo-EM)
+- `search_model_not_positioned` - Trying to refine before MR/docking
+- `no_model_for_refine` - No model available for refinement
+- `repeated_failures` - Same error 3+ times
+
+See `docs/SAFETY_CHECKS.md` for the complete auto-generated list.
+
 ---
 
 ## Configuration Files

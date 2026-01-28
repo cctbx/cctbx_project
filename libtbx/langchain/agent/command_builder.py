@@ -56,6 +56,7 @@ class CommandContext:
     # File tracking
     best_files: Dict[str, str] = field(default_factory=dict)
     rfree_mtz: Optional[str] = None  # Locked R-free MTZ (X-ray only)
+    rfree_resolution: Optional[float] = None  # Resolution at which R-free flags were generated (if limited)
     categorized_files: Dict[str, List[str]] = field(default_factory=dict)
 
     # Workflow info
@@ -65,6 +66,10 @@ class CommandContext:
     # LLM suggestions (optional - used when LLM provides hints)
     llm_files: Optional[Dict[str, Any]] = None  # {slot: path} from LLM
     llm_strategy: Optional[Dict[str, Any]] = None  # {flag: value} from LLM
+
+    # Error recovery strategies (file-keyed)
+    # Format: {file_path: {flags: {...}, program_scope: [...], reason: "..."}}
+    recovery_strategies: Dict[str, Dict] = field(default_factory=dict)
 
     # Logging callback
     log: Any = None  # Callable for logging, or None
@@ -96,11 +101,13 @@ class CommandContext:
             resolution=resolution,
             best_files=session_info.get("best_files", {}),
             rfree_mtz=session_info.get("rfree_mtz"),
+            rfree_resolution=session_info.get("rfree_resolution"),
             categorized_files=workflow_state.get("categorized_files", {}),
             workflow_state=workflow_state.get("state", ""),
             history=state.get("history", []),
             llm_files=state.get("corrected_files"),  # From LLM after path correction
             llm_strategy=state.get("strategy"),  # From LLM
+            recovery_strategies=session_info.get("recovery_strategies", {}),
         )
 
     def _log(self, msg: str):
@@ -205,6 +212,10 @@ class CommandBuilder:
         # 2. Build strategy
         strategy = self._build_strategy(program, context)
 
+        # 2.5. Apply file-specific recovery strategies
+        # This adds flags from error recovery (e.g., obs_labels for ambiguous data)
+        strategy = self._apply_recovery_strategies(program, files, strategy, context)
+
         # 3. Apply invariants (may modify files and strategy)
         files, strategy = self._apply_invariants(program, files, strategy, context)
 
@@ -296,6 +307,16 @@ class CommandBuilder:
                     if corrected:
                         # Handle list case (multiple files)
                         corrected_str = corrected[0] if isinstance(corrected, list) else corrected
+
+                        # Validate extension matches slot requirements
+                        slot_def = inputs.get("required", {}).get(slot) or inputs.get("optional", {}).get(slot)
+                        if slot_def:
+                            slot_extensions = slot_def.get("extensions", [])
+                            if slot_extensions:
+                                if not any(corrected_str.lower().endswith(ext) for ext in slot_extensions):
+                                    self._log(context, "BUILD: LLM file rejected (wrong extension): %s=%s (expected %s)" % (
+                                        slot, os.path.basename(corrected_str), slot_extensions))
+                                    continue  # Skip this file
 
                         # For refinement, check if LLM is trying to use a non-best model
                         if is_refinement_program and slot in ("model", "pdb", "pdb_file"):
@@ -415,23 +436,38 @@ class CommandBuilder:
                 self._record_selection(input_name, context.rfree_mtz, "rfree_locked")
                 return context.rfree_mtz
 
-        # PRIORITY 2: Best files (but respect exclude_categories)
-        best_category = self.SLOT_TO_BEST_CATEGORY.get(input_name, input_name)
-        best_path = context.best_files.get(best_category)
-        if best_path and os.path.exists(best_path):
-            # Verify extension matches
-            if any(best_path.lower().endswith(ext) for ext in extensions):
-                # Check if best file is in an excluded category
-                priorities = self._registry.get_input_priorities(program, input_name)
-                exclude_categories = priorities.get("exclude_categories", [])
-                excluded = any(best_path in context.categorized_files.get(exc, [])
-                               for exc in exclude_categories)
-                if not excluded:
-                    self._log(context, "BUILD: Using best_%s for %s" % (best_category, input_name))
-                    self._record_selection(input_name, best_path, "best_files")
-                    return best_path
-                else:
-                    self._log(context, "BUILD: Skipping best_%s (in excluded category)" % best_category)
+        # Check if input_priorities specifies a specific subcategory
+        # If so, skip generic best_files and use category-based selection instead
+        priorities = self._registry.get_input_priorities(program, input_name)
+        priority_categories = priorities.get("categories", [])
+
+        # Subcategories that are more specific than generic best_files
+        # These indicate the program needs a specific type of file, not just any "best" file
+        specific_subcategories = {"refined_mtz", "phased_mtz", "half_map", "full_map",
+                                  "optimized_full_map", "intermediate_map",
+                                  "ligand_fit_output", "with_ligand", "processed_predicted"}
+        uses_specific_subcategory = any(cat in specific_subcategories for cat in priority_categories)
+
+        # PRIORITY 2: Best files (but respect exclude_categories and skip if specific subcategory needed)
+        if not uses_specific_subcategory:
+            best_category = self.SLOT_TO_BEST_CATEGORY.get(input_name, input_name)
+            best_path = context.best_files.get(best_category)
+            if best_path and os.path.exists(best_path):
+                # Verify extension matches
+                if any(best_path.lower().endswith(ext) for ext in extensions):
+                    # Check if best file is in an excluded category
+                    exclude_categories = priorities.get("exclude_categories", [])
+                    excluded = any(best_path in context.categorized_files.get(exc, [])
+                                   for exc in exclude_categories)
+                    if not excluded:
+                        self._log(context, "BUILD: Using best_%s for %s" % (best_category, input_name))
+                        self._record_selection(input_name, best_path, "best_files")
+                        return best_path
+                    else:
+                        self._log(context, "BUILD: Skipping best_%s (in excluded category)" % best_category)
+        else:
+            self._log(context, "BUILD: Skipping best_files for %s (program needs specific subcategory: %s)" %
+                     (input_name, priority_categories))
 
         # PRIORITY 3: Category-based selection (from input_priorities)
         #
@@ -440,8 +476,6 @@ class CommandBuilder:
         #   prefer_subcategories: [refined, phaser_output]  - Preference order within parent
         #   fallback_categories: [search_model]  - Try these if primary is empty
         #   exclude_categories: [ligand]  - Never use these
-        priorities = self._registry.get_input_priorities(program, input_name)
-        priority_categories = priorities.get("categories", [])
         prefer_subcategories = priorities.get("prefer_subcategories", [])
         fallback_categories = priorities.get("fallback_categories", [])
         exclude_categories = priorities.get("exclude_categories", [])
@@ -521,6 +555,26 @@ class CommandBuilder:
             candidates = [f for f in candidates
                           if not any(pat.lower() in os.path.basename(f).lower()
                                     for pat in exclude_patterns)]
+
+        # Apply priority_patterns from input_def (prefer files matching these patterns)
+        priority_patterns = input_def.get("priority_patterns", [])
+        if priority_patterns and candidates:
+            prioritized = [f for f in candidates
+                          if any(pat.lower() in os.path.basename(f).lower()
+                                for pat in priority_patterns)]
+            if prioritized:
+                self._log(context, "BUILD: Prioritizing files matching patterns: %s" % priority_patterns)
+                candidates = prioritized
+
+        # Apply prefer_patterns from input_def (prefer files matching these patterns)
+        prefer_patterns = input_def.get("prefer_patterns", [])
+        if prefer_patterns and candidates:
+            preferred = [f for f in candidates
+                        if any(pat.lower() in os.path.basename(f).lower()
+                              for pat in prefer_patterns)]
+            if preferred:
+                self._log(context, "BUILD: Preferring files matching patterns: %s" % prefer_patterns)
+                candidates = preferred
 
         # NOTE: Half-map vs full-map categorization is handled by _categorize_files()
         # in workflow_state.py. If a single map was promoted to full_map, trust that decision.
@@ -620,6 +674,106 @@ class CommandBuilder:
         return prefix
 
     # =========================================================================
+    # STEP 2.5: APPLY RECOVERY STRATEGIES
+    # =========================================================================
+
+    def _apply_recovery_strategies(self, program: str, files: Dict[str, Any],
+                                   strategy: Dict[str, Any],
+                                   context: CommandContext) -> Dict[str, Any]:
+        """
+        Merge recovery strategies for files being used.
+
+        When a recoverable error occurred (e.g., ambiguous data labels),
+        the ErrorAnalyzer stored a recovery strategy keyed by file path.
+        This method checks if any of our selected files have recovery
+        strategies and merges their flags into the command strategy.
+
+        Args:
+            program: Program name being built
+            files: Dict of selected files {slot: path}
+            strategy: Current strategy dict
+            context: CommandContext with recovery_strategies
+
+        Returns:
+            Updated strategy dict with recovery flags merged in
+        """
+        if not context.recovery_strategies:
+            return strategy
+
+        # Debug: log what we're working with
+        self._log(context,
+                  f"BUILD: Recovery strategies for: {list(context.recovery_strategies.keys())}")
+        self._log(context,
+                  f"BUILD: Selected files: {files}")
+
+        # Build a robust set of identifiers for selected files
+        # Include raw paths, absolute paths, and basenames
+        selected_identifiers = set()
+        for slot, value in files.items():
+            if isinstance(value, str):
+                selected_identifiers.add(value)                       # Raw path
+                selected_identifiers.add(os.path.abspath(value))      # Absolute
+                selected_identifiers.add(os.path.basename(value))     # Basename
+            elif isinstance(value, list):
+                for v in value:
+                    if isinstance(v, str):
+                        selected_identifiers.add(v)
+                        selected_identifiers.add(os.path.abspath(v))
+                        selected_identifiers.add(os.path.basename(v))
+
+        self._log(context, f"BUILD: File identifiers: {selected_identifiers}")
+
+        # Check each recovery strategy
+        for recovery_file, recovery in context.recovery_strategies.items():
+            # Robust matching: Check if ANY identifier matches
+            recovery_abs = os.path.abspath(recovery_file)
+            recovery_base = os.path.basename(recovery_file)
+
+            file_match = (
+                recovery_file in selected_identifiers or
+                recovery_abs in selected_identifiers or
+                recovery_base in selected_identifiers
+            )
+
+            self._log(context,
+                      f"BUILD: Checking {recovery_base}: match={file_match}")
+
+            if file_match:
+                # Check program scope (if specified)
+                scope = recovery.get("program_scope", [])
+                if scope and program not in scope:
+                    # This recovery is scoped to different programs
+                    self._log(context,
+                              f"BUILD: Skipping recovery for {recovery_base} "
+                              f"(scoped to {scope}, current is {program})")
+                    continue
+
+                # Merge flags into strategy
+                flags = recovery.get("flags", {})
+                if flags:
+                    # Recovery flags take precedence over existing strategy
+                    for key, value in flags.items():
+                        if key in strategy:
+                            self._log(context,
+                                      f"BUILD: Recovery flag {key}={value} "
+                                      f"overrides existing {strategy[key]}")
+                        strategy[key] = value
+
+                    self._log(context,
+                              f"BUILD: Applied recovery flags for "
+                              f"{recovery_base}: {flags}")
+
+                    # Log the reason for transparency
+                    reason = recovery.get("reason", "")
+                    if reason:
+                        self._log(context, f"BUILD: Recovery reason: {reason}")
+            else:
+                self._log(context,
+                          f"BUILD: No match for {recovery_base} in selected files")
+
+        return strategy
+
+    # =========================================================================
     # STEP 3: APPLY INVARIANTS
     # =========================================================================
 
@@ -662,6 +816,41 @@ class CommandBuilder:
                 prefix = fix.get("auto_fill_output_prefix")
                 if isinstance(prefix, str):
                     strategy["output_prefix"] = self._generate_output_prefix(program, context)
+
+        # Check for programs that need R-free resolution matching
+        # If R-free flags were generated at a limited resolution, certain programs
+        # (like polder) MUST use the same resolution limit or they will crash
+        program_def = self._registry.get_program(program)
+        if program_def:
+            fixes = program_def.get("fixes", {})
+            if fixes.get("auto_fill_rfree_resolution") and context.rfree_resolution:
+                if "high_resolution" not in strategy:
+                    strategy["high_resolution"] = context.rfree_resolution
+                    self._log(context,
+                        "BUILD: R-free flags limited to %.1fÅ - setting high_resolution=%.1f for %s" %
+                        (context.rfree_resolution, context.rfree_resolution, program))
+
+            # Auto-fill output_name with format string (e.g., for pdbtools)
+            # This allows specifying output filenames like "{protein_base}_with_ligand.pdb"
+            if "output_name" in fixes and "output_name" not in strategy:
+                output_fix = fixes["output_name"]
+                if isinstance(output_fix, dict) and output_fix.get("source") == "auto":
+                    format_str = output_fix.get("format", "")
+                    if format_str:
+                        # Build substitution dict from files
+                        subs = {}
+                        for slot, filepath in files.items():
+                            if filepath:
+                                basename = os.path.basename(filepath)
+                                name_no_ext = os.path.splitext(basename)[0]
+                                subs[slot] = basename
+                                subs[slot + "_base"] = name_no_ext
+                        try:
+                            output_name = format_str.format(**subs)
+                            strategy["output_name"] = output_name
+                            self._log(context, "BUILD: Auto-set output_name=%s" % output_name)
+                        except KeyError as e:
+                            self._log(context, "BUILD: Warning - could not format output_name: %s" % e)
 
         # X-ray specific: R-free flags on first refinement
         if program == "phenix.refine" and context.experiment_type == "xray":

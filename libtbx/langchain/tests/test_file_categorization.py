@@ -60,6 +60,11 @@ def assert_not_in(item, container, msg=""):
         raise AssertionError("%s: %r should not be in %r" % (msg, item, container) if msg else "%r should not be in %r" % (item, container))
 
 
+def assert_not_none(value, msg=""):
+    if value is None:
+        raise AssertionError(msg if msg else "Expected non-None value")
+
+
 # =============================================================================
 # FILE EXTENSION TESTS
 # =============================================================================
@@ -578,53 +583,99 @@ def test_xray_file_selection_workflow():
     print("  PASSED")
 
 
+def test_cryo_em_map_categorization():
+    """Test categorization of cryo-EM maps including resolve_cryo_em outputs (v74)."""
+    print("Test: cryo_em_map_categorization")
+
+    from agent.best_files_tracker import BestFilesTracker
+
+    tracker = BestFilesTracker()
+
+    # Test map classification via _classify_stage
+    map_stages = {
+        # Optimized maps from resolve_cryo_em
+        "/path/rcm_0/denmod_map.ccp4": "optimized_full_map",
+        "/path/density_modified_map.mrc": "optimized_full_map",
+        "/path/sharpened_map.ccp4": "sharpened",
+
+        # Intermediate maps (should be deprioritized)
+        "/path/rcm_0/initial_map.ccp4": "intermediate_map",
+        "/path/initial.mrc": "intermediate_map",
+
+        # Regular full maps
+        "/path/reconstruction.mrc": "full_map",
+        "/path/full_map.ccp4": "full_map",
+
+        # Half maps (use realistic naming conventions)
+        "/path/map_half1.mrc": "half_map",
+        "/path/emd_1234_half_map_1.mrc": "half_map",
+    }
+
+    for path, expected_stage in map_stages.items():
+        stage = tracker._classify_stage(path, "map")
+        assert_equal(stage, expected_stage, "Stage for %s" % os.path.basename(path))
+
+    print("  PASSED")
+
+
+def test_optimized_full_map_preferred():
+    """Test that optimized_full_map is preferred over initial_map."""
+    print("Test: optimized_full_map_preferred")
+
+    from agent.best_files_tracker import BestFilesTracker
+
+    tracker = BestFilesTracker()
+
+    # Add intermediate map first
+    tracker.evaluate_file("/path/rcm_0/initial_map.ccp4", cycle=1, stage="intermediate_map")
+
+    # Add optimized map
+    tracker.evaluate_file("/path/rcm_0/denmod_map.ccp4", cycle=1, stage="optimized_full_map")
+
+    best = tracker.get_best("map")
+    assert_not_none(best, "Should have best map")
+    assert_in("denmod", best.path, "Should prefer denmod_map over initial_map")
+
+    print("  PASSED")
+
+
+def test_docked_model_bubbles_to_model():
+    """Test that docked models bubble up to the model category."""
+    print("Test: docked_model_bubbles_to_model")
+
+    from agent.workflow_state import _categorize_files
+
+    # Test file list with docked model
+    files = [
+        "/path/sequence.fa",
+        "/path/map.mrc",
+        "/path/placed_model.pdb",
+        "/path/predicted.pdb",
+    ]
+
+    categorized = _categorize_files(files)
+
+    # placed_model should be in docked category
+    assert_in("docked", categorized, "Should have docked category")
+    assert_true(any("placed_model" in f for f in categorized.get("docked", [])),
+               "placed_model.pdb should be in docked category")
+
+    # placed_model should also bubble up to model category
+    assert_in("model", categorized, "Should have model category")
+    assert_true(any("placed_model" in f for f in categorized.get("model", [])),
+               "placed_model.pdb should bubble up to model category")
+
+    print("  PASSED")
+
+
 # =============================================================================
 # RUN ALL TESTS
 # =============================================================================
 
 def run_all_tests():
-    """Run all file categorization tests."""
-    print("=" * 70)
-    print("FILE CATEGORIZATION TESTS")
-    print("=" * 70)
-
-    print("\n--- File Extension Tests ---\n")
-    test_pdb_file_detection()
-    test_mtz_file_detection()
-    test_map_file_detection()
-    test_sequence_file_detection()
-
-    print("\n--- File Stage Classification Tests ---\n")
-    test_refined_model_detection()
-    test_rsr_output_detection()
-    test_phaser_output_detection()
-    test_predicted_model_detection()
-    test_autobuild_output_detection()
-
-    print("\n--- Best File Selection Tests ---\n")
-    test_best_model_selection_prefers_refined()
-    test_best_model_selection_prefers_recent()
-    test_best_mtz_locked()
-
-    print("\n--- Half-Map Detection Tests ---\n")
-    test_half_map_detection()
-    test_single_half_map_promoted_to_full_map()
-
-    print("\n--- File Number Extraction Tests ---\n")
-    test_file_number_extraction()
-    test_file_sorting_by_number()
-
-    print("\n--- Category Exclusion Tests ---\n")
-    test_predicted_excluded_from_refinement()
-    test_intermediate_mr_excluded()
-
-    print("\n--- Integration Tests ---\n")
-    test_cryo_em_file_selection_workflow()
-    test_xray_file_selection_workflow()
-
-    print("\n" + "=" * 70)
-    print("ALL FILE CATEGORIZATION TESTS PASSED!")
-    print("=" * 70)
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":

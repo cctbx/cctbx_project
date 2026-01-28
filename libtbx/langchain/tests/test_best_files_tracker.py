@@ -1051,17 +1051,49 @@ def test_mtz_rfree_flag_locking():
     assert_equal(tracker.get_best_path("mtz"), "/path/to/original.mtz")
 
     # Second MTZ WITH R-free flags - should become best and lock
-    tracker.evaluate_file("/path/to/refine_001_data.mtz", cycle=2, stage="refined_mtz",
+    # Note: using refine_001.mtz (not _data.mtz which is skipped as intermediate)
+    tracker.evaluate_file("/path/to/refine_001.mtz", cycle=2, stage="refined_mtz",
                          metrics={"has_rfree_flags": True})
-    assert_equal(tracker.get_best_path("mtz"), "/path/to/refine_001_data.mtz")
+    assert_equal(tracker.get_best_path("mtz"), "/path/to/refine_001.mtz")
 
     # Third MTZ also with R-free flags - should NOT replace (locked)
-    result = tracker.evaluate_file("/path/to/refine_002_data.mtz", cycle=3,
+    result = tracker.evaluate_file("/path/to/refine_002.mtz", cycle=3,
                                    stage="refined_mtz",
                                    metrics={"has_rfree_flags": True})
     assert_false(result, "Should not replace locked MTZ")
-    assert_equal(tracker.get_best_path("mtz"), "/path/to/refine_001_data.mtz",
+    assert_equal(tracker.get_best_path("mtz"), "/path/to/refine_001.mtz",
                 "Locked MTZ should remain")
+
+    print("  PASSED")
+
+
+def test_data_mtz_skipped_as_intermediate():
+    """Test that refine_*_data.mtz files are skipped as intermediate files."""
+    print("Test: data_mtz_skipped_as_intermediate")
+
+    tracker = BestFilesTracker()
+
+    # First, add a regular MTZ
+    tracker.evaluate_file("/path/to/original.mtz", cycle=1, stage="original",
+                         metrics={})
+    assert_equal(tracker.get_best_path("mtz"), "/path/to/original.mtz")
+
+    # Try to add a _data.mtz file - should be skipped as intermediate
+    result = tracker.evaluate_file("/path/to/refine_001_data.mtz", cycle=2,
+                                   stage="refined_mtz",
+                                   metrics={"has_rfree_flags": True})
+    # The _data.mtz should be skipped, so original.mtz should still be best
+    # (unless the tracker returns False for intermediate files)
+    best_mtz = tracker.get_best_path("mtz")
+    assert_equal(best_mtz, "/path/to/original.mtz",
+                "_data.mtz should be skipped as intermediate")
+
+    # Now add the actual refined MTZ (not _data.mtz) - this should work
+    tracker.evaluate_file("/path/to/refine_001_001.mtz", cycle=2,
+                         stage="refined_mtz",
+                         metrics={"has_rfree_flags": True})
+    assert_equal(tracker.get_best_path("mtz"), "/path/to/refine_001_001.mtz",
+                "refine_001_001.mtz should become best (has R-free, not intermediate)")
 
     print("  PASSED")
 
@@ -1182,86 +1214,110 @@ def test_rfree_mtz_pattern_detection():
 
 
 # =============================================================================
+# MAP CLASSIFICATION TESTS (v74)
+# =============================================================================
+
+def test_optimized_map_scoring():
+    """Test that optimized_full_map scores higher than full_map."""
+    print("Test: optimized_map_scoring")
+
+    tracker = BestFilesTracker()
+
+    # Add a regular full_map
+    tracker.evaluate_file("/path/initial_map.ccp4", cycle=1, stage="full_map")
+    best = tracker.get_best("map")
+    assert_not_none(best, "Should have best map")
+    full_map_score = best.score
+
+    # Add an optimized map - should become best (higher score)
+    tracker.evaluate_file("/path/denmod_map.ccp4", cycle=2, stage="optimized_full_map")
+    best = tracker.get_best("map")
+    assert_equal(os.path.basename(best.path), "denmod_map.ccp4",
+                "Optimized map should be selected")
+    assert_true(best.score > full_map_score,
+               "Optimized map should score higher than full_map")
+
+    print("  PASSED")
+
+
+def test_intermediate_map_scoring():
+    """Test that intermediate_map scores very low."""
+    print("Test: intermediate_map_scoring")
+
+    tracker = BestFilesTracker()
+
+    # Add an intermediate map
+    tracker.evaluate_file("/path/rcm_0/initial_map.ccp4", cycle=1, stage="intermediate_map")
+    best = tracker.get_best("map")
+    assert_not_none(best, "Should have best map")
+    intermediate_score = best.score
+
+    # Add a regular full_map - should become best
+    tracker.evaluate_file("/path/full_reconstruction.ccp4", cycle=2, stage="full_map")
+    best = tracker.get_best("map")
+    assert_equal(os.path.basename(best.path), "full_reconstruction.ccp4",
+                "Full map should replace intermediate map")
+    assert_true(best.score > intermediate_score,
+               "Full map should score higher than intermediate")
+
+    print("  PASSED")
+
+
+def test_denmod_map_classification():
+    """Test that denmod_map is classified as optimized_full_map."""
+    print("Test: denmod_map_classification")
+
+    tracker = BestFilesTracker()
+
+    # Test _classify_stage for various map names
+    stage = tracker._classify_stage("/path/denmod_map.ccp4", "map")
+    assert_equal(stage, "optimized_full_map", "denmod_map should be optimized_full_map")
+
+    stage = tracker._classify_stage("/path/density_modified.mrc", "map")
+    assert_equal(stage, "optimized_full_map", "density_modified should be optimized_full_map")
+
+    stage = tracker._classify_stage("/path/sharpened_map.ccp4", "map")
+    assert_equal(stage, "sharpened", "sharpened_map should be sharpened")
+
+    # Test initial_map is classified as intermediate
+    stage = tracker._classify_stage("/path/rcm_0/initial_map.ccp4", "map")
+    assert_equal(stage, "intermediate_map", "initial_map should be intermediate_map")
+
+    print("  PASSED")
+
+
+def test_smart_stage_assignment():
+    """Test that stage is only applied to matching file patterns (v71 fix)."""
+    print("Test: smart_stage_assignment")
+
+    tracker = BestFilesTracker()
+
+    # Scenario: refinement cycle has PHASER.1.pdb in output_files
+    # Stage should NOT be 'refined' for PHASER.1.pdb
+
+    # Add phaser output first
+    tracker.evaluate_file("/path/PHASER.1.pdb", cycle=1, stage="phaser_output")
+    phaser_entry = tracker.get_best("model")
+    assert_equal(phaser_entry.stage, "phaser_output", "Phaser should be phaser_output")
+
+    # Add refined model
+    tracker.evaluate_file("/path/refine_001_001.pdb", cycle=2, stage="refined")
+    best = tracker.get_best("model")
+    assert_equal(os.path.basename(best.path), "refine_001_001.pdb",
+                "Refined model should be selected")
+    assert_equal(best.stage, "refined", "Stage should be refined")
+
+    print("  PASSED")
+
+
+# =============================================================================
 # TEST RUNNER
 # =============================================================================
 
 def run_all_tests():
-    """Run all tests."""
-    print("\n" + "=" * 60)
-    print("BEST FILES TRACKER TESTS")
-    print("=" * 60 + "\n")
-
-    # Model scoring tests
-    print("--- Model Scoring Tests ---")
-    test_model_stage_scoring()
-    test_search_model_stage_scoring()
-    test_model_metrics_improve_score()
-    test_model_stage_beats_metrics()
-
-    # Map scoring tests
-    print("\n--- Map Scoring Tests ---")
-    test_map_stage_scoring()
-    test_map_resolution_bonus()
-
-    # MTZ scoring tests
-    print("\n--- MTZ Scoring Tests ---")
-    test_mtz_rfree_locks()
-    test_mtz_without_rfree_can_change()
-
-    # History tests
-    print("\n--- History Tests ---")
-    test_history_tracking()
-    test_history_filter_by_category()
-
-    # Classification tests
-    print("\n--- Classification Tests ---")
-    test_file_classification_by_extension()
-    test_stage_classification_from_filename()
-    test_intermediate_files_ignored()
-
-    # Serialization tests
-    print("\n--- Serialization Tests ---")
-    test_serialization_roundtrip()
-    test_empty_serialization()
-    test_from_dict_none()
-
-    # Edge case tests
-    print("\n--- Edge Case Tests ---")
-    test_recency_tiebreaker()
-    test_worse_file_doesnt_replace()
-    test_get_best_dict()
-
-    # Session integration tests
-    print("\n--- Session Integration Tests ---")
-    test_session_integration_simulation()
-    test_session_persistence_simulation()
-    test_template_builder_best_files_priority()
-
-    # Metrics update tests
-    print("\n--- Metrics Update Tests ---")
-    test_update_metrics()
-    test_update_metrics_no_change()
-    test_update_metrics_history()
-    test_validation_workflow_simulation()
-
-    # YAML configuration tests
-    print("\n--- YAML Configuration Tests ---")
-    test_yaml_scoring_loads()
-    test_yaml_stage_scores()
-    test_yaml_linear_formula()
-    test_yaml_linear_inverse_formula()
-    test_yaml_boolean_formula()
-    test_yaml_model_scoring_integrated()
-    test_yaml_mtz_scoring_integrated()
-    test_yaml_fallback_to_defaults()
-    test_best_files_respects_exclude_patterns()
-    test_mtz_rfree_flag_locking()
-    test_session_rfree_mtz_locking()
-    test_rfree_mtz_pattern_detection()
-
-    print("\n" + "=" * 60)
-    print("ALL BEST FILES TRACKER TESTS PASSED")
-    print("=" * 60 + "\n")
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":

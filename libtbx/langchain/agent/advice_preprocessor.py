@@ -464,7 +464,7 @@ def extract_files_from_processed_advice(processed_advice):
 # =============================================================================
 
 def preprocess_advice(raw_advice, experiment_type=None, file_list=None,
-                      llm=None, timeout=60, out=sys.stdout):
+                      llm=None, timeout=60, out=sys.stdout, use_rules_only=False):
     """
     Preprocess raw advice using LLM.
 
@@ -478,12 +478,17 @@ def preprocess_advice(raw_advice, experiment_type=None, file_list=None,
         llm: Language model instance
         timeout: LLM timeout in seconds
         out: Output stream
+        use_rules_only: If True, skip LLM and return raw advice
 
     Returns:
         str: Processed advice, or original if processing fails
     """
     if not raw_advice or not raw_advice.strip():
         return ""
+
+    if use_rules_only:
+        print("Skipping LLM preprocessing (use_rules_only=True), using raw advice", file=out)
+        return raw_advice
 
     if not llm:
         print("No LLM available, using raw advice", file=out)
@@ -492,21 +497,19 @@ def preprocess_advice(raw_advice, experiment_type=None, file_list=None,
     try:
         prompt = get_preprocessing_prompt(raw_advice, experiment_type, file_list)
 
-        # Try to use rate limit handler
+        # Try to use rate limit handler with pre-configured settings
+        handler = None
         try:
-            from libtbx.langchain.agent.rate_limit_handler import RateLimitHandler
+            from libtbx.langchain.agent.rate_limit_handler import get_google_handler
+            handler = get_google_handler()  # Advice preprocessing uses Google by default
         except ImportError:
-            RateLimitHandler = None
+            try:
+                from agent.rate_limit_handler import get_google_handler
+                handler = get_google_handler()
+            except ImportError:
+                pass  # No rate limit handler available
 
-        if RateLimitHandler:
-            handler = RateLimitHandler.get_handler(
-                "advice_preprocessing_api",
-                max_retries=3,
-                base_delay=2.0,
-                max_delay=60.0,
-                decay_time=300.0
-            )
-
+        if handler:
             def make_call():
                 return llm.invoke(prompt)
 

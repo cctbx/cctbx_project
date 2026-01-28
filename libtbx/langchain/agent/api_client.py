@@ -127,6 +127,11 @@ def build_request_v2(
             normalized_session_state["best_files"] = dict(session_state["best_files"])
         if session_state.get("directives"):
             normalized_session_state["directives"] = dict(session_state["directives"])
+        # Error recovery state
+        if session_state.get("force_retry_program"):
+            normalized_session_state["force_retry_program"] = session_state["force_retry_program"]
+        if session_state.get("recovery_strategies"):
+            normalized_session_state["recovery_strategies"] = dict(session_state["recovery_strategies"])
 
     # Build settings
     settings = {

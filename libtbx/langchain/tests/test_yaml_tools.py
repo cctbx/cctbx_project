@@ -212,25 +212,9 @@ def test_extract_terms():
 
 
 def run_all_tests():
-    """Run all yaml_tools tests."""
-    print("=" * 60)
-    print("YAML TOOLS TESTS")
-    print("=" * 60)
-
-    test_find_yaml_files()
-    test_load_yaml_file()
-    test_load_yaml_file_invalid()
-    test_validate_programs_yaml()
-    test_validate_workflows_yaml()
-    test_validate_metrics_yaml()
-    test_validate_file_categories_yaml()
-    test_validate_all_files()
-    test_extract_terms()
-
-    print()
-    print("=" * 60)
-    print("ALL YAML TOOLS TESTS PASSED!")
-    print("=" * 60)
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":

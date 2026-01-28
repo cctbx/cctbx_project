@@ -182,13 +182,64 @@ class WorkflowEngine:
         A model is considered "placed" if:
         1. There's a file in the 'model' category
         2. History shows MR or building was done
+        3. User explicitly requests refinement/validation (implying model is ready)
 
         NOTE: Directives like "after_program: phenix.ligandfit" do NOT imply the model
         is already placed - they describe what to do, not the current state.
+
+        IMPORTANT: If directives indicate user wants to run predict_and_build,
+        we should NOT assume a generic PDB is positioned - the user wants to
+        generate a new model from sequence.
         """
-        # SEMANTIC: Simply check if we have any positioned models
+        # Check if directives indicate user wants prediction
+        # If so, don't assume a generic model PDB is positioned
+        wants_prediction = False
+        if directives:
+            # Check constraints for predict_and_build mentions
+            constraints = directives.get("constraints", [])
+            for c in constraints:
+                c_lower = c.lower() if isinstance(c, str) else ""
+                if "predict" in c_lower or "alphafold" in c_lower:
+                    wants_prediction = True
+                    break
+
+            # Check program_settings for predict_and_build
+            program_settings = directives.get("program_settings", {})
+            if "phenix.predict_and_build" in program_settings:
+                wants_prediction = True
+
+            # Check if stop_conditions mention prediction
+            stop_conditions = directives.get("stop_conditions", {})
+            after_program = stop_conditions.get("after_program", "")
+            if "predict" in after_program.lower():
+                wants_prediction = True
+
+        # SEMANTIC: Check if we have any positioned models
+        # But if user wants prediction, only trust explicitly positioned models
+        # (not generic PDBs that default to "model" category)
         if files.get("model"):
-            return True
+            if wants_prediction:
+                # Only trust this if history confirms positioning, or if the model
+                # has explicit positioning indicators in its filename
+                model_files = files.get("model", [])
+                has_explicit_positioned = False
+                for f in model_files:
+                    basename = os.path.basename(f).lower()
+                    explicit_indicators = [
+                        'phaser', 'refine', 'rsr_', 'placed', 'dock',
+                        'autobuild', 'overall_best', 'built', 'buccaneer', 'shelxe'
+                    ]
+                    if any(ind in basename for ind in explicit_indicators):
+                        has_explicit_positioned = True
+                        break
+
+                if not has_explicit_positioned:
+                    # Generic model file + user wants prediction = don't assume placed
+                    pass  # Fall through to history check
+                else:
+                    return True
+            else:
+                return True
 
         # Check history flags as backup
         if (history_info.get("phaser_done") or
@@ -197,10 +248,7 @@ class WorkflowEngine:
             history_info.get("predict_full_done")):
             return True
 
-        # Check directives ONLY for skip_programs that explicitly indicate
-        # the user is providing an already-positioned model
-        # NOTE: We no longer infer "placed" from after_program directives
-        # because those describe workflow goals, not current state
+        # Check directives for explicit skip_programs or programs that imply placement
         if directives:
             workflow_prefs = directives.get("workflow_preferences", {})
             skip_programs = workflow_prefs.get("skip_programs", [])
@@ -227,6 +275,46 @@ class WorkflowEngine:
                     )
                     if not is_ligand:
                         return True
+
+            # NEW: If user's after_program implies model is already placed, treat it as such
+            # Programs like polder, refine, model_vs_data, ligandfit all require a positioned model
+            stop_conditions = directives.get("stop_conditions", {})
+            after_program = stop_conditions.get("after_program", "")
+
+            programs_requiring_placed_model = [
+                "phenix.refine",
+                "phenix.polder",
+                "phenix.model_vs_data",
+                "phenix.ligandfit",
+                "phenix.molprobity",
+                "phenix.real_space_refine",
+            ]
+
+            if after_program in programs_requiring_placed_model:
+                # User is requesting a program that requires placed model
+                # If we have a positioned model PDB file, assume it's placed
+                # But NOT if the only PDBs are search_models (templates/predictions)
+                for f in files.get("pdb", []):
+                    basename = os.path.basename(f).lower()
+                    # Skip ligand files
+                    is_ligand = (
+                        basename.startswith('lig') or
+                        basename.startswith('ligand') or
+                        f in files.get("ligand_pdb", []) or
+                        f in files.get("ligand_file", [])
+                    )
+                    if is_ligand:
+                        continue
+                    # Skip search models (templates/predictions) - they're NOT placed
+                    if f in files.get("search_model", []):
+                        continue
+                    # Skip predicted models specifically
+                    if f in files.get("predicted", []):
+                        continue
+                    if f in files.get("processed_predicted", []):
+                        continue
+                    # This is a real positioned model
+                    return True
 
         return False
 
@@ -664,6 +752,7 @@ class WorkflowEngine:
         - PRIORITIZING after_program (move to front of list so LLM chooses it)
         - Workflow preferences: skip_programs, prefer_programs
         - REMOVING refinement programs when max_refine_cycles reached
+        - Adding programs mentioned in program_settings (user wants to configure them)
 
         Args:
             valid_programs: List of valid program names from workflow phase
@@ -708,63 +797,26 @@ class WorkflowEngine:
                 result.append("STOP")
                 modifications.append("Added STOP (skip_validation directive)")
 
+        # 1b. Check for programs mentioned in program_settings
+        #     If user provided settings for a program, they likely want to run it
+        program_settings = directives.get("program_settings", {})
+        for prog_name in program_settings.keys():
+            if prog_name == "default":
+                continue  # Skip default settings
+            if prog_name not in result:
+                # Check if we should add this program based on prerequisites
+                should_add = self._check_program_prerequisites(prog_name, context, phase_name)
+                if should_add:
+                    result.insert(0, prog_name)
+                    modifications.append("Added %s (has program_settings)" % prog_name)
+
         # 2. If after_program is set, ensure that program is available AND prioritized
         #    This handles tutorial cases where the user wants to run a specific
         #    program. We move it to the front so the LLM is more likely to choose it.
         #    BUT: Don't add programs if prerequisites aren't met!
         after_program = stop_cond.get("after_program")
         if after_program:
-            # Check if we should actually add this program
-            should_add = True
-
-            # Don't add refinement programs if we're in an early phase without a model
-            if after_program in ("phenix.refine", "phenix.real_space_refine"):
-                # Check if we have a refined model or are in refine/validate phase
-                has_model_to_refine = (
-                    context and (
-                        context.get("refine_count", 0) > 0 or
-                        context.get("has_refined_model") or
-                        context.get("has_placed_model") or
-                        phase_name in ("refine", "validate")
-                    )
-                )
-                if not has_model_to_refine:
-                    # Don't add refinement to early phases - let workflow proceed normally
-                    should_add = False
-                    modifications.append(
-                        "Skipped adding %s (no model to refine yet)" % after_program)
-
-            # Don't add ligandfit if refinement hasn't been done yet
-            # (ligandfit requires map coefficients from refined MTZ)
-            if after_program == "phenix.ligandfit":
-                has_refined = (
-                    context and (
-                        context.get("refine_count", 0) > 0 or
-                        context.get("rsr_count", 0) > 0 or
-                        context.get("has_refined_model")
-                    )
-                )
-                if not has_refined:
-                    # Don't add ligandfit until refinement is done
-                    should_add = False
-                    modifications.append(
-                        "Skipped adding %s (requires refinement first for map coefficients)" % after_program)
-
-            # For predict_and_build without resolution: allow it but note it will be prediction-only
-            # Resolution is only needed for the building step, not prediction
-            # The command builder will add stop_after_predict=True if resolution isn't available
-            if after_program == "phenix.predict_and_build":
-                has_resolution = (
-                    context and (
-                        context.get("mtriage_done") or
-                        context.get("xtriage_done") or
-                        context.get("resolution") is not None
-                    )
-                )
-                if not has_resolution:
-                    # Still allow it, but note that it will be prediction-only
-                    modifications.append(
-                        "Note: %s will run prediction-only (no resolution yet)" % after_program)
+            should_add = self._check_program_prerequisites(after_program, context, phase_name)
 
             if should_add:
                 if after_program in result:
@@ -776,9 +828,19 @@ class WorkflowEngine:
                     # Not in list - add at front
                     result.insert(0, after_program)
                     modifications.append("Added %s (after_program directive)" % after_program)
+            else:
+                modifications.append("Skipped adding %s (prerequisites not met)" % after_program)
 
         # 3. Apply workflow preferences
         workflow_prefs = directives.get("workflow_preferences", {})
+
+        # Handle start_with_program - add to valid programs if user explicitly requested it
+        # This is for multi-step requests like "run polder then refine"
+        stop_cond = directives.get("stop_conditions", {})
+        start_with = stop_cond.get("start_with_program")
+        if start_with and start_with not in result:
+            result.insert(0, start_with)
+            modifications.append("Added start_with_program: %s" % start_with)
 
         # Remove skipped programs
         skip_programs = workflow_prefs.get("skip_programs", [])
@@ -802,6 +864,52 @@ class WorkflowEngine:
         self._last_directive_modifications = modifications
 
         return result
+
+    def _check_program_prerequisites(self, program, context, phase_name):
+        """
+        Check if a program's prerequisites are met.
+
+        Args:
+            program: Program name to check
+            context: Workflow context dict
+            phase_name: Current workflow phase name
+
+        Returns:
+            bool: True if program can be added
+        """
+        if not context:
+            return True  # No context to check against
+
+        # Don't add refinement programs if we're in an early phase without a model
+        if program in ("phenix.refine", "phenix.real_space_refine"):
+            has_model_to_refine = (
+                context.get("refine_count", 0) > 0 or
+                context.get("has_refined_model") or
+                context.get("has_placed_model") or
+                phase_name in ("refine", "validate")
+            )
+            if not has_model_to_refine:
+                return False
+
+        # Don't add ligandfit if refinement hasn't been done yet
+        # (ligandfit requires map coefficients from refined MTZ)
+        if program == "phenix.ligandfit":
+            has_refined = (
+                context.get("refine_count", 0) > 0 or
+                context.get("rsr_count", 0) > 0 or
+                context.get("has_refined_model")
+            )
+            if not has_refined:
+                return False
+
+        # predict_and_build can always be added if resolution is available
+        # (or even without - it will do prediction-only)
+        if program == "phenix.predict_and_build":
+            # Always allow - worst case it does prediction-only
+            return True
+
+        # Default: allow
+        return True
 
     def _check_conditions(self, prog_entry, context):
         """Check if program conditions are met."""

@@ -400,31 +400,57 @@ def sanitize_string(text, max_len=None):
     return text
 
 
-def sanitize_for_transport(text, max_len=None, truncate_quotes=False, quote_max_len=500):
+def sanitize_for_transport(value, max_len=None, truncate_quotes=False, quote_max_len=500):
     """
-    Full sanitization for transport, including quoted string truncation.
+    Unified sanitization for transport - handles strings, dicts, lists, and scalars.
 
-    This is the main entry point for sanitizing text that will be sent
-    through the REST transport layer.
+    This is the main entry point for sanitizing any data that will be sent
+    through the REST transport layer. It automatically detects the input type
+    and applies appropriate sanitization.
 
-    Sanitization order:
+    For strings, sanitization order:
     1. Remove ZZxxZZ markers (before truncation to avoid splitting)
     2. Truncate long quoted strings (if enabled)
     3. Replace tabs with spaces
     4. Remove control characters
     5. Truncate to max_len
 
+    For dicts/lists, recursively sanitizes all string values.
+
     Args:
-        text: String to sanitize
-        max_len: Maximum total length (None for no limit)
+        value: Value to sanitize (string, dict, list, or scalar)
+        max_len: Maximum length for strings (None for no limit)
         truncate_quotes: Whether to truncate long quoted strings
         quote_max_len: Max length for quoted string content (default 500)
 
     Returns:
-        Sanitized string ready for transport
+        Sanitized value with same type as input (strings sanitized,
+        dicts/lists preserved with sanitized string values, scalars unchanged)
     """
-    if not isinstance(text, str):
-        return str(text) if text else ""
+    # Handle None
+    if value is None:
+        return None
+
+    # Handle dicts - recursively sanitize
+    if isinstance(value, dict):
+        return {
+            k: sanitize_for_transport(v, max_len, truncate_quotes, quote_max_len)
+            for k, v in value.items()
+        }
+
+    # Handle lists - recursively sanitize
+    if isinstance(value, list):
+        return [
+            sanitize_for_transport(item, max_len, truncate_quotes, quote_max_len)
+            for item in value
+        ]
+
+    # Handle non-string scalars (int, float, bool) - pass through unchanged
+    if not isinstance(value, str):
+        return value
+
+    # Handle strings - full sanitization
+    text = value
 
     # Step 1: Remove ZZxxZZ markers FIRST (before any truncation)
     text = remove_markers(text)
@@ -656,35 +682,23 @@ def encode_for_rest(text):
     to ensure consistent encoding.
 
     Args:
-        text: String to encode (typically JSON)
+        text: String to encode (typically JSON). If a dict/list is passed,
+              it will be JSON-encoded first.
 
     Returns:
         Encoded string safe for REST transport
     """
-    # Import here to avoid circular imports and allow standalone testing
-    try:
-        from phenix.rest import text_as_simple_string
-        return text_as_simple_string(text)
-    except ImportError:
-        # Fallback for testing without PHENIX
-        # This mimics the basic behavior
-        replacements = [
-            ('\n', 'ZZCRZZ'),
-            ('{', 'ZZLBZZ'),
-            ('}', 'ZZRBZZ'),
-            (';', 'ZZSCZZ'),
-            ('#', 'ZZHAZZ'),
-            ('\t', 'ZZTAZZ'),
-            ('"', 'ZZDQZZ'),
-            ("'", 'ZZSQZZ'),
-            ('`', 'ZZSRZZ'),
-            ('!', 'ZZEXZZ'),
-            ('$', 'ZZDSZZ'),
-        ]
-        result = text
-        for char, marker in replacements:
-            result = result.replace(char, marker)
-        return result
+    # Handle non-string input by JSON encoding it first
+    if not isinstance(text, str):
+        if text is None:
+            text = ""
+        else:
+            import json
+            text = json.dumps(text)
+
+    # Import from our local module (avoids phenix dependency)
+    from libtbx.langchain.agent.utils import text_as_simple_string
+    return text_as_simple_string(text)
 
 
 def decode_from_rest(encoded):
@@ -700,29 +714,9 @@ def decode_from_rest(encoded):
     Returns:
         Decoded original string
     """
-    # Import here to avoid circular imports and allow standalone testing
-    try:
-        from phenix.rest import simple_string_as_text
-        return simple_string_as_text(encoded)
-    except ImportError:
-        # Fallback for testing without PHENIX
-        replacements = [
-            ('ZZCRZZ', '\n'),
-            ('ZZLBZZ', '{'),
-            ('ZZRBZZ', '}'),
-            ('ZZSCZZ', ';'),
-            ('ZZHAZZ', '#'),
-            ('ZZTAZZ', '\t'),
-            ('ZZDQZZ', '"'),
-            ('ZZSQZZ', "'"),
-            ('ZZSRZZ', '`'),
-            ('ZZEXZZ', '!'),
-            ('ZZDSZZ', '$'),
-        ]
-        result = encoded
-        for marker, char in replacements:
-            result = result.replace(marker, char)
-        return result
+    # Import from our local module (avoids phenix dependency)
+    from libtbx.langchain.agent.utils import simple_string_as_text
+    return simple_string_as_text(encoded)
 
 
 # =============================================================================

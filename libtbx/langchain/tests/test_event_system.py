@@ -318,28 +318,9 @@ def test_user_request_invalid_event():
 
 
 def run_all_tests():
-    """Run all tests."""
-    print("=" * 60)
-    print("Event System Tests")
-    print("=" * 60)
-
-    test_event_type_constants()
-    test_verbosity_constants()
-    test_event_log_emit()
-    test_event_log_convenience_methods()
-    test_event_log_filtering()
-    test_get_event_log_helper()
-    test_emit_event_helper()
-    test_migrate_debug_log()
-    test_formatter_normal_verbosity()
-    test_formatter_quiet_verbosity()
-    test_formatter_verbose_includes_files()
-    test_formatter_full_reasoning()
-    test_user_request_invalid_event()
-
-    print("=" * 60)
-    print("All tests PASSED!")
-    print("=" * 60)
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":

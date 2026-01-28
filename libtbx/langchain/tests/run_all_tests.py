@@ -2,6 +2,10 @@
 """
 Run all tests for the PHENIX AI Agent.
 
+Tests use cctbx-style fail-fast behavior: the first assertion failure
+raises an uncaught exception with full traceback, rather than collecting
+all failures. This makes it easy to identify and debug issues.
+
 Test Suites (standalone - no PHENIX required):
   1. API Schema - Request/response validation
   2. Best Files Tracker - File tracking and scoring
@@ -12,20 +16,28 @@ Test Suites (standalone - no PHENIX required):
   7. Session Summary - Agent session summary generation
   8. Advice Preprocessing - README discovery, advice processing, change detection
   9. Directive Extractor - LLM-based directive extraction from user advice
-  10. Directive Validator - Validation of LLM decisions against directives
+  10. Directive Validator - Pre-validation of user requests against capabilities
   11. Session Directives - Session directive storage and retrieval
   12. YAML Tools - YAML configuration validation and inspection
   13. Session Tools - Session management utilities
   14. Docs Tools - Documentation generation
+  15. Error Analyzer - Error detection and recovery strategies
+  16. Decision Flow - Decision flow logic testing
+  17. Phaser Multimodel - Phaser multi-model handling
+  18. Event System - Event logging and tracking
+  19. Metric Patterns - Metric extraction patterns
+  20. Pattern Manager - Pattern management
+  21. Program Registration - Program registry tests
+  22. Summary Display - Summary formatting
 
 Test Suites (require PHENIX environment):
-  15. Workflow State - State detection and transitions
-  16. YAML Config - YAML configuration validation
-  17. Sanity Checker - Sanity check logic
-  18. Metrics Analyzer - Metric extraction and trends
-  19. Dry Run - Dry run manager functionality
-  20. Integration - End-to-end workflow tests
-  21. Directives Integration - End-to-end directive system tests
+  23. Workflow State - State detection and transitions
+  24. YAML Config - YAML configuration validation
+  25. Sanity Checker - Sanity check logic
+  26. Metrics Analyzer - Metric extraction and trends
+  27. Dry Run - Dry run manager functionality
+  28. Integration - End-to-end workflow tests
+  29. Directives Integration - End-to-end directive system tests
 
 Usage:
     python tests/run_all_tests.py
@@ -360,6 +372,46 @@ def main():
             results.append(("Directives Integration", False, 0))
     else:
         print("\n⏭️  Skipping directives integration tests (--quick mode)")
+
+    # --- Error Analyzer Tests ---
+    try:
+        from tests.test_error_analyzer import run_all_tests as run_error_analyzer_tests
+        success, elapsed = run_test_module(
+            "test_error_analyzer", run_error_analyzer_tests, args.verbose)
+        results.append(("Error Analyzer", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_error_analyzer: {e}")
+        results.append(("Error Analyzer", False, 0))
+
+    # --- Decision Flow Tests ---
+    try:
+        from tests.test_decision_flow import run_all_tests as run_decision_flow_tests
+        success, elapsed = run_test_module(
+            "test_decision_flow", run_decision_flow_tests, args.verbose)
+        results.append(("Decision Flow", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_decision_flow: {e}")
+        results.append(("Decision Flow", False, 0))
+
+    # --- Phaser Multimodel Tests ---
+    try:
+        from tests.test_phaser_multimodel import run_all_tests as run_phaser_multimodel_tests
+        success, elapsed = run_test_module(
+            "test_phaser_multimodel", run_phaser_multimodel_tests, args.verbose)
+        results.append(("Phaser Multimodel", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_phaser_multimodel: {e}")
+        results.append(("Phaser Multimodel", False, 0))
+
+    # --- New Programs Tests (polder, map_sharpening, etc.) ---
+    try:
+        from tests.test_new_programs import run_all_tests as run_new_programs_tests
+        success, elapsed = run_test_module(
+            "test_new_programs", run_new_programs_tests, args.verbose)
+        results.append(("New Programs", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_new_programs: {e}")
+        results.append(("New Programs", False, 0))
 
     # --- Summary ---
     total_elapsed = time.time() - total_start

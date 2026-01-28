@@ -209,22 +209,9 @@ def test_unknown_program():
 
 
 def run_all_tests():
-    """Run all tests."""
-    print("\nRunning metric_patterns tests...")
-
-    test_pattern_loading()
-    test_map_symmetry_extraction()
-    test_no_symmetry_extraction()
-    test_refine_extraction()
-    test_mtriage_extraction()
-    test_molprobity_extraction()
-    test_phaser_extraction()
-    test_format_metric_value()
-    test_display_config()
-    test_empty_log()
-    test_unknown_program()
-
-    print("\nAll metric_patterns tests PASSED!")
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":

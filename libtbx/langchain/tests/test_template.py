@@ -118,26 +118,9 @@ def test_checking_dict_contents():
 # =============================================================================
 
 def run_all_tests():
-    """Run all tests in this module.
-
-    This function is called by tests/run_all_tests.py.
-    It should call all test_* functions and raise an exception if any fail.
-    """
-    print("=" * 60)
-    print("TEMPLATE TESTS")  # Change this to match your test module
-    print("=" * 60)
-
-    # Call all test functions
-    test_basic_functionality()
-    test_with_expected_exception()
-    test_with_setup_and_teardown()
-    test_checking_list_contents()
-    test_checking_dict_contents()
-
-    print()
-    print("=" * 60)
-    print("ALL TEMPLATE TESTS PASSED!")  # Change this too
-    print("=" * 60)
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":

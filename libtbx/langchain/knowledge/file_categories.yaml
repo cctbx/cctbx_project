@@ -279,7 +279,7 @@ pdb_template:
 # This is safer than assuming it's positioned (which could lead to invalid refinement)
 unclassified_pdb:
   description: "PDB files that don't match any specific pattern"
-  parent_category: search_model  # Safer default - can be used for MR/docking
+  parent_category: model  # Default to positioned model - user can provide model directly
   extensions: [".pdb"]
   patterns:
     - "*model*"  # Generic model files
@@ -303,9 +303,12 @@ unclassified_pdb:
     - "*processed*"
     - "*template*"
     - "*homolog*"
+    - "*search*"  # Search models for MR
+    - "*sculptor*"  # Sculptor output (processed search models)
+    - "*chainsaw*"  # Chainsaw output (processed search models)
     - "lig*"
     - "*ligand*"
-  notes: "Default category for generic PDB files - treated as potential search models"
+  notes: "Default category for generic PDB files - assume positioned model ready for refinement"
 
 # =============================================================================
 # LIGAND SUBCATEGORIES (children of 'ligand')
@@ -397,7 +400,23 @@ full_map:
     - "*_b.*"
     - "*-1.*"
     - "*-2.*"
+    - "*initial_map*"   # resolve_cryo_em intermediate - not the final output
+    - "*_before_*"       # Pre-processing intermediate
   notes: "Combined map from all data"
+
+optimized_full_map:
+  description: "Density-modified or sharpened maps from resolve_cryo_em"
+  subcategory_of: map
+  patterns:
+    - "*denmod_map*"
+    - "*denmod*"
+    - "*sharpened*"
+    - "*density_modified*"
+    - "*optimized*"
+  excludes:
+    - "*initial*"
+    - "*before*"
+  notes: "Output from resolve_cryo_em - preferred for docking and refinement"
 
 half_map:
   description: "Cryo-EM half-maps (for FSC calculation)"

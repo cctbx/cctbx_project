@@ -13,19 +13,32 @@ import sys
 import os
 import tempfile
 import shutil
-import unittest
+import json
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tests.test_utils import (
+    assert_equal, assert_true, assert_false, assert_none,
+    assert_not_none,
+    run_tests_with_fail_fast
+)
 
 # Create a mock BestFilesTracker class that we'll inject
 class MockBestFilesTracker:
     def __init__(self):
         self._history = []
+        self.best = {}
     def to_dict(self):
-        return {}
+        return {"best": {}, "history": []}
     def get_history(self):
         return self._history
+    def get_best_dict(self):
+        return {}
+    def get_best_path(self, category):
+        return None
+    def evaluate_file(self, path, cycle, metrics=None, stage=None):
+        return False
     @classmethod
     def from_dict(cls, data):
         return cls()
@@ -49,95 +62,133 @@ sys.modules['libtbx.langchain.agent.best_files_tracker'] = _mock_best_files_modu
 from agent.session import AgentSession
 
 
-class TestSessionDirectives(unittest.TestCase):
-    """Tests for session directive methods."""
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
 
-    def setUp(self):
-        """Create a temporary directory for session files."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.session = AgentSession(session_dir=self.temp_dir)
+def create_test_session():
+    """Create a temporary session for testing."""
+    temp_dir = tempfile.mkdtemp()
+    session = AgentSession(session_dir=temp_dir)
+    return session, temp_dir
 
-    def tearDown(self):
-        """Clean up temporary directory."""
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    def test_initial_directives_empty(self):
-        """New session should have empty directives."""
-        self.assertEqual(self.session.get_directives(), {})
-        self.assertFalse(self.session.data.get("directives_extracted"))
+def cleanup_test_session(temp_dir):
+    """Clean up temporary session directory."""
+    shutil.rmtree(temp_dir, ignore_errors=True)
 
-    def test_get_program_directive_settings_empty(self):
-        """Empty directives should return empty settings."""
-        settings = self.session.get_program_directive_settings("phenix.refine")
-        self.assertEqual(settings, {})
 
-    def test_check_directive_stop_conditions_empty(self):
-        """Empty directives should not trigger stop."""
-        should_stop, reason = self.session.check_directive_stop_conditions(
+# =============================================================================
+# TESTS
+# =============================================================================
+
+def test_initial_directives_empty():
+    """New session should have empty directives."""
+    session, temp_dir = create_test_session()
+    try:
+        assert_equal(session.get_directives(), {})
+        assert_false(session.data.get("directives_extracted"))
+    finally:
+        cleanup_test_session(temp_dir)
+
+
+def test_get_program_directive_settings_empty():
+    """Empty directives should return empty settings."""
+    session, temp_dir = create_test_session()
+    try:
+        settings = session.get_program_directive_settings("phenix.refine")
+        assert_equal(settings, {})
+    finally:
+        cleanup_test_session(temp_dir)
+
+
+def test_check_directive_stop_conditions_empty():
+    """Empty directives should not trigger stop."""
+    session, temp_dir = create_test_session()
+    try:
+        should_stop, reason = session.check_directive_stop_conditions(
             cycle_number=5, last_program="phenix.refine"
         )
-        self.assertFalse(should_stop)
-        self.assertIsNone(reason)
+        assert_false(should_stop)
+        assert_none(reason)
+    finally:
+        cleanup_test_session(temp_dir)
 
-    def test_should_skip_validation_default(self):
-        """Default should be to not skip validation."""
-        self.assertFalse(self.session.should_skip_validation())
 
-    def test_directives_persist_after_save_load(self):
-        """Directives should persist across save/load."""
-        import json
+def test_should_skip_validation_default():
+    """Default should be to not skip validation."""
+    session, temp_dir = create_test_session()
+    try:
+        assert_false(session.should_skip_validation())
+    finally:
+        cleanup_test_session(temp_dir)
 
+
+def test_directives_persist_after_save_load():
+    """Directives should persist across save/load."""
+    session, temp_dir = create_test_session()
+    try:
         # Manually set directives
-        self.session.data["directives"] = {
+        session.data["directives"] = {
             "program_settings": {
                 "phenix.refine": {"resolution": 2.5}
             }
         }
-        self.session.data["directives_extracted"] = True
+        session.data["directives_extracted"] = True
 
         # Ensure best_files has the mock methods we need
-        if not hasattr(self.session.best_files, 'to_dict') or \
-           not callable(getattr(self.session.best_files, 'to_dict', None)):
-            self.session.best_files = MockBestFilesTracker()
+        if not hasattr(session.best_files, 'to_dict') or \
+           not callable(getattr(session.best_files, 'to_dict', None)):
+            session.best_files = MockBestFilesTracker()
 
         # Save manually to bypass any mock issues
-        session_file = os.path.join(self.temp_dir, "agent_session.json")
-        self.session.data["best_files"] = {}
-        self.session.data["best_files_history"] = []
+        session_file = os.path.join(temp_dir, "agent_session.json")
+        session.data["best_files"] = {}
+        session.data["best_files_history"] = []
         with open(session_file, 'w') as f:
-            json.dump(self.session.data, f, indent=2)
+            json.dump(session.data, f, indent=2)
 
         # Verify file was saved
-        self.assertTrue(os.path.exists(session_file),
+        assert_true(os.path.exists(session_file),
             f"Session file should exist at {session_file}")
 
         # Load manually and verify directives
         with open(session_file, 'r') as f:
             loaded_data = json.load(f)
 
-        self.assertEqual(
+        assert_equal(
             loaded_data.get("directives"),
             {"program_settings": {"phenix.refine": {"resolution": 2.5}}}
         )
+    finally:
+        cleanup_test_session(temp_dir)
 
-    def test_get_program_directive_settings_with_default(self):
-        """Should merge default with program-specific settings."""
-        self.session.data["directives"] = {
+
+def test_get_program_directive_settings_with_default():
+    """Should merge default with program-specific settings."""
+    session, temp_dir = create_test_session()
+    try:
+        session.data["directives"] = {
             "program_settings": {
                 "default": {"resolution": 2.5, "cycles": 5},
                 "phenix.refine": {"anisotropic_adp": True}
             }
         }
 
-        settings = self.session.get_program_directive_settings("phenix.refine")
+        settings = session.get_program_directive_settings("phenix.refine")
 
-        self.assertEqual(settings.get("resolution"), 2.5)  # From default
-        self.assertEqual(settings.get("cycles"), 5)  # From default
-        self.assertEqual(settings.get("anisotropic_adp"), True)  # From specific
+        assert_equal(settings.get("resolution"), 2.5)  # From default
+        assert_equal(settings.get("cycles"), 5)  # From default
+        assert_equal(settings.get("anisotropic_adp"), True)  # From specific
+    finally:
+        cleanup_test_session(temp_dir)
 
-    def test_get_program_directive_settings_specific_override(self):
-        """Program-specific settings should override defaults."""
-        self.session.data["directives"] = {
+
+def test_get_program_directive_settings_specific_override():
+    """Program-specific settings should override defaults."""
+    session, temp_dir = create_test_session()
+    try:
+        session.data["directives"] = {
             "program_settings": {
                 "default": {"resolution": 2.5},
                 "phenix.autosol": {"resolution": 3.0}
@@ -145,60 +196,80 @@ class TestSessionDirectives(unittest.TestCase):
         }
 
         # autosol should get 3.0
-        settings = self.session.get_program_directive_settings("phenix.autosol")
-        self.assertEqual(settings.get("resolution"), 3.0)
+        settings = session.get_program_directive_settings("phenix.autosol")
+        assert_equal(settings.get("resolution"), 3.0)
 
         # refine should get default 2.5
-        settings = self.session.get_program_directive_settings("phenix.refine")
-        self.assertEqual(settings.get("resolution"), 2.5)
+        settings = session.get_program_directive_settings("phenix.refine")
+        assert_equal(settings.get("resolution"), 2.5)
+    finally:
+        cleanup_test_session(temp_dir)
 
-    def test_check_directive_stop_after_cycle(self):
-        """Should stop after specified cycle."""
-        self.session.data["directives"] = {
+
+def test_check_directive_stop_after_cycle():
+    """Should stop after specified cycle."""
+    session, temp_dir = create_test_session()
+    try:
+        session.data["directives"] = {
             "stop_conditions": {"after_cycle": 4}
         }
 
         # Before cycle 4
-        should_stop, reason = self.session.check_directive_stop_conditions(
+        should_stop, reason = session.check_directive_stop_conditions(
             cycle_number=3, last_program="phenix.refine"
         )
-        self.assertFalse(should_stop)
+        assert_false(should_stop)
 
         # At cycle 4
-        should_stop, reason = self.session.check_directive_stop_conditions(
+        should_stop, reason = session.check_directive_stop_conditions(
             cycle_number=4, last_program="phenix.refine"
         )
-        self.assertTrue(should_stop)
-        self.assertIsNotNone(reason)
+        assert_true(should_stop)
+        assert_not_none(reason)
+    finally:
+        cleanup_test_session(temp_dir)
 
-    def test_check_directive_stop_after_program(self):
-        """Should stop after specified program."""
-        self.session.data["directives"] = {
+
+def test_check_directive_stop_after_program():
+    """Should stop after specified program."""
+    session, temp_dir = create_test_session()
+    try:
+        session.data["directives"] = {
             "stop_conditions": {"after_program": "phenix.refine"}
         }
 
         # Different program
-        should_stop, reason = self.session.check_directive_stop_conditions(
+        should_stop, reason = session.check_directive_stop_conditions(
             cycle_number=2, last_program="phenix.phaser"
         )
-        self.assertFalse(should_stop)
+        assert_false(should_stop)
 
         # Matching program
-        should_stop, reason = self.session.check_directive_stop_conditions(
+        should_stop, reason = session.check_directive_stop_conditions(
             cycle_number=2, last_program="phenix.refine"
         )
-        self.assertTrue(should_stop)
+        assert_true(should_stop)
+    finally:
+        cleanup_test_session(temp_dir)
 
-    def test_should_skip_validation_true(self):
-        """Should return True when skip_validation is set."""
-        self.session.data["directives"] = {
+
+def test_should_skip_validation_true():
+    """Should return True when skip_validation is set."""
+    session, temp_dir = create_test_session()
+    try:
+        session.data["directives"] = {
             "stop_conditions": {"skip_validation": True}
         }
-        self.assertTrue(self.session.should_skip_validation())
+        assert_true(session.should_skip_validation())
+    finally:
+        cleanup_test_session(temp_dir)
 
-    def test_count_program_runs(self):
-        """Should correctly count program runs."""
-        self.session.data["cycles"] = [
+
+def test_count_program_runs():
+    """Should correctly count program runs."""
+    session, temp_dir = create_test_session()
+    try:
+        session.data["cycles"] = [
             {"program": "phenix.xtriage"},
             {"program": "phenix.phaser"},
             {"program": "phenix.refine"},
@@ -206,44 +277,50 @@ class TestSessionDirectives(unittest.TestCase):
             {"program": "phenix.molprobity"},
         ]
 
-        self.assertEqual(self.session.count_program_runs("phenix.refine"), 2)
-        self.assertEqual(self.session.count_program_runs("phenix.phaser"), 1)
-        self.assertEqual(self.session.count_program_runs("phenix.autobuild"), 0)
+        assert_equal(session.count_program_runs("phenix.refine"), 2)
+        assert_equal(session.count_program_runs("phenix.phaser"), 1)
+        assert_equal(session.count_program_runs("phenix.autobuild"), 0)
+    finally:
+        cleanup_test_session(temp_dir)
 
-    def test_check_max_program_cycles(self):
-        """Should check max refine cycles from directives."""
-        self.session.data["directives"] = {
+
+def test_check_max_program_cycles():
+    """Should check max refine cycles from directives."""
+    session, temp_dir = create_test_session()
+    try:
+        session.data["directives"] = {
             "stop_conditions": {"max_refine_cycles": 2}
         }
-        self.session.data["cycles"] = [
+        session.data["cycles"] = [
             {"program": "phenix.phaser"},
             {"program": "phenix.refine"},
         ]
 
         # After 1 refine, should not be at limit
-        limit_reached, count, max_allowed = self.session.check_max_program_cycles("phenix.refine")
-        self.assertFalse(limit_reached)
-        self.assertEqual(count, 1)
-        self.assertEqual(max_allowed, 2)
+        limit_reached, count, max_allowed = session.check_max_program_cycles("phenix.refine")
+        assert_false(limit_reached)
+        assert_equal(count, 1)
+        assert_equal(max_allowed, 2)
 
         # Add another refine
-        self.session.data["cycles"].append({"program": "phenix.refine"})
+        session.data["cycles"].append({"program": "phenix.refine"})
 
         # Now at limit
-        limit_reached, count, max_allowed = self.session.check_max_program_cycles("phenix.refine")
-        self.assertTrue(limit_reached)
-        self.assertEqual(count, 2)
+        limit_reached, count, max_allowed = session.check_max_program_cycles("phenix.refine")
+        assert_true(limit_reached)
+        assert_equal(count, 2)
+    finally:
+        cleanup_test_session(temp_dir)
 
+
+# =============================================================================
+# TEST RUNNER
+# =============================================================================
 
 def run_all_tests():
-    """Run all tests and raise exception if any fail."""
-    loader = unittest.TestLoader()
-    suite = loader.loadTestsFromModule(sys.modules[__name__])
-    runner = unittest.TextTestRunner(verbosity=2)
-    result = runner.run(suite)
-    if not result.wasSuccessful():
-        raise Exception("Some tests failed")
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":
-    unittest.main()
+    run_all_tests()

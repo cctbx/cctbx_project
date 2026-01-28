@@ -18,6 +18,39 @@ from __future__ import absolute_import, division, print_function
 import os
 
 
+# Global verbosity setting for LLM module
+# Can be set via set_llm_verbosity() or LLM_VERBOSITY environment variable
+_llm_verbosity = None
+
+
+def set_llm_verbosity(level):
+    """Set the verbosity level for LLM-related messages.
+
+    Args:
+        level: One of 'quiet', 'normal', 'verbose', 'debug'
+    """
+    global _llm_verbosity
+    _llm_verbosity = level
+
+
+def get_llm_verbosity():
+    """Get the current verbosity level."""
+    global _llm_verbosity
+    if _llm_verbosity is not None:
+        return _llm_verbosity
+    return os.getenv("LLM_VERBOSITY", "normal")
+
+
+def _llm_log(msg, level='normal'):
+    """Print message if verbosity level permits."""
+    levels = ['quiet', 'normal', 'verbose', 'debug']
+    current = get_llm_verbosity()
+    current_idx = levels.index(current) if current in levels else 1
+    msg_idx = levels.index(level) if level in levels else 1
+    if msg_idx <= current_idx:
+        print(msg)
+
+
 def get_llm_and_embeddings(
     provider: str = None,
     llm_model_name: str = None,
@@ -86,8 +119,8 @@ def get_llm_and_embeddings(
             base_url=ollama_base_url,
         )
         mode_str = " (JSON mode)" if json_mode else ""
-        print(f"Using Ollama at {ollama_base_url}{mode_str}")
-        print(f"  LLM: {llm_model_name}, Embeddings: {embedding_model_name}")
+        _llm_log(f"Using Ollama at {ollama_base_url}{mode_str}", level='verbose')
+        _llm_log(f"  LLM: {llm_model_name}, Embeddings: {embedding_model_name}", level='verbose')
 
 
     elif provider == "google":
@@ -110,7 +143,7 @@ def get_llm_and_embeddings(
             batch_size=batch_size,
             google_api_key=os.getenv("GOOGLE_API_KEY")
         )
-        print(f"Using Google Gemini: {llm_model_name}")
+        _llm_log(f"Using Google Gemini: {llm_model_name}", level='verbose')
 
     elif provider == "openai":
         from langchain_openai import ChatOpenAI, OpenAIEmbeddings
@@ -130,7 +163,7 @@ def get_llm_and_embeddings(
             model=embedding_model_name,
             chunk_size=batch_size
         )
-        print(f"Using OpenAI: {llm_model_name}")
+        _llm_log(f"Using OpenAI: {llm_model_name}", level='verbose')
 
     else:
         raise ValueError(f"Unsupported provider: '{provider}'. Choose 'ollama', 'google', or 'openai'.")
@@ -144,16 +177,16 @@ def get_expensive_llm(provider = None, timeout = None, json_mode=False):
         if provider == "google":
           expensive_llm, embeddings = get_llm_and_embeddings(
             provider=provider, timeout=timeout, llm_model_name='gemini-2.5-pro')
-          print(f"Using expensive model for analysis: {expensive_llm.model}")
+          _llm_log(f"Using expensive model for analysis: {expensive_llm.model}", level='verbose')
         elif provider == "openai":
           expensive_llm, embeddings = get_llm_and_embeddings(
             provider=provider, timeout=timeout, llm_model_name='gpt-5')
-          print(f"Using expensive model for analysis: {expensive_llm.model_name}")
+          _llm_log(f"Using expensive model for analysis: {expensive_llm.model_name}", level='verbose')
         elif provider == "ollama":
           expensive_llm, embeddings = get_llm_and_embeddings(
             provider=provider, timeout=timeout, llm_model_name='qwen3:32b', #'llama3.1:70b',# 'qwen2.5:72b',# 'llama3.1:405b', #'qwen2.5:72b', #llm_model_name='llama3.1:70b',
              json_mode=json_mode)
-          print(f"Using expensive model for analysis: {expensive_llm.model}")
+          _llm_log(f"Using expensive model for analysis: {expensive_llm.model}", level='verbose')
         else:
           raise ValueError("Sorry, unable to set up LLM. Check llm provider (%s)" %provider)
       except Exception as e:
@@ -173,10 +206,10 @@ def get_cheap_llm(provider=None, timeout=None):
 
         # Handle different attribute names across providers
         model_name = getattr(cheap_llm, 'model', None) or getattr(cheap_llm, 'model_name', 'unknown')
-        print(f"Using cheap/fast model for summarization: {model_name}")
+        _llm_log(f"Using cheap/fast model for summarization: {model_name}", level='verbose')
 
         return cheap_llm
 
     except ValueError as e:
-        print(e)
+        _llm_log(str(e), level='quiet')
         raise ValueError("Sorry, unable to set up LLM (%s). Check API keys." % provider)

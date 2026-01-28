@@ -354,52 +354,9 @@ def test_empty_text():
 # =============================================================================
 
 def run_all_tests():
-    """Run all pattern manager tests."""
-    print("=" * 60)
-    print("PATTERN MANAGER TESTS")
-    print("=" * 60)
-
-    # Primitive tests
-    print("\n--- Primitive Tests ---")
-    test_primitives_loaded()
-    test_primitive_interpolation()
-
-    # Loading tests
-    print("\n--- Loading Tests ---")
-    test_patterns_loaded()
-    test_pattern_description()
-
-    # Matching tests
-    print("\n--- Matching Tests ---")
-    test_match_refine_output()
-    test_search_r_free()
-    test_search_case_insensitive()
-    test_findall()
-
-    # Extraction tests
-    print("\n--- Extraction Tests ---")
-    test_extract_string()
-    test_extract_float()
-    test_extract_int()
-
-    # Metric extraction tests
-    print("\n--- Metric Extraction Tests ---")
-    test_extract_metrics_from_log()
-    test_extract_phaser_metrics()
-
-    # Validation tests
-    print("\n--- Validation Tests ---")
-    test_validate_pattern()
-    test_validate_all()
-
-    # Edge case tests
-    print("\n--- Edge Case Tests ---")
-    test_unknown_pattern()
-    test_empty_text()
-
-    print("\n" + "=" * 60)
-    print("ALL PATTERN MANAGER TESTS PASSED")
-    print("=" * 60)
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":

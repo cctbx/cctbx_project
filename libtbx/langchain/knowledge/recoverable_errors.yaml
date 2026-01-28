@@ -1,0 +1,192 @@
+# =============================================================================
+# PHENIX AI Agent - Recoverable Error Definitions
+# =============================================================================
+#
+# This file defines error patterns that can be automatically recovered from.
+# Each error type includes:
+#   - detection_patterns: Patterns to identify the error in log output
+#   - keyword_extraction: Regex to extract the parameter name from error
+#   - choice_extraction: Regex to extract available options
+#   - resolution: Strategy for resolving the error
+#   - max_retries: Maximum recovery attempts before giving up
+#
+# =============================================================================
+
+# =============================================================================
+# RECOVERABLE ERRORS
+# =============================================================================
+
+errors:
+  # ---------------------------------------------------------------------------
+  # Ambiguous Data Labels
+  # ---------------------------------------------------------------------------
+  # Occurs when an MTZ file contains multiple suitable data arrays
+  # (e.g., both merged intensities and anomalous pairs)
+  #
+  # Example error:
+  #   Multiple equally suitable arrays of observed xray data found.
+  #   Possible choices:
+  #     /path/data.mtz:IMEAN_CuKa,SIGIMEAN_CuKa
+  #     /path/data.mtz:I_CuKa(+),SIGI_CuKa(+),I_CuKa(-),SIGI_CuKa(-)
+  #   Please use scaling.input.xray_data.obs_labels
+  #   to specify an unambiguous substring of the target label.
+  # ---------------------------------------------------------------------------
+  ambiguous_data_labels:
+    description: "MTZ file contains multiple suitable data arrays"
+    max_retries: 3
+    
+    # Patterns to detect this error (any match triggers detection)
+    # These are searched case-insensitively
+    detection_patterns:
+      - "Multiple equally suitable arrays"
+      - "multiple.*suitable.*arrays"
+      - "Please use.*to specify an unambiguous substring"
+      - "Ambiguous.*data.*label"
+    
+    # Regex to extract the parameter name from error message
+    # Captures the keyword like "scaling.input.xray_data.obs_labels"
+    # Note: The keyword may appear on its own line
+    keyword_extraction: 'Please use\s+(\S+)\s*\n?\s*to specify'
+    
+    # Regex to extract available choices (applied line-by-line)
+    # Matches lines like: /path/to/data.mtz:IMEAN,SIGIMEAN
+    # Group 1: file path, Group 2: label string
+    choice_extraction: '^\s*(\S+\.mtz):(.+)$'
+    
+    # Resolution strategy
+    resolution: context_based_label_selection
+
+
+# =============================================================================
+# LABEL CLASSIFICATION PATTERNS
+# =============================================================================
+# Used to classify data labels as anomalous or merged
+
+label_patterns:
+  # Patterns indicating anomalous (Bijvoet pairs) data
+  # If any pattern matches, the label is considered anomalous
+  anomalous_indicators:
+    - '\(\+\)'       # I(+), F(+), SIGI(+)
+    - '\(-\)'        # I(-), F(-), SIGI(-)
+    - 'anom'         # I_anom, F_anom, DANO
+    - 'DANO'         # Anomalous difference
+    - 'SIGDANO'      # Sigma of anomalous difference
+    - "f['\"]"       # f', f'' (anomalous scattering)
+    - 'bijvoet'      # Bijvoet pairs
+    - 'PANO'         # Phased anomalous
+    - 'FAN'          # Anomalous structure factor
+    
+  # Patterns indicating merged (averaged) data
+  # If any pattern matches (and no anomalous pattern), label is merged
+  merged_indicators:
+    - 'IMEAN'        # Mean intensity
+    - 'FMEAN'        # Mean amplitude  
+    - 'F_obs'        # Observed F (typically merged)
+    - 'I_obs'        # Observed I (typically merged)
+    - '^F,'          # Simple F at start of label string
+    - '^I,'          # Simple I at start of label string
+    - ',merged'      # Explicitly marked as merged
+    - '_merged'      # Explicitly marked as merged
+    - 'FP,'          # Native F
+    - 'IP,'          # Native I
+    - 'SIGFP'        # Sigma for native F
+
+
+# =============================================================================
+# PROGRAM DATA PREFERENCES
+# =============================================================================
+# Which programs need anomalous vs merged data
+
+program_data_preferences:
+  # Programs that REQUIRE anomalous data (SAD/MAD phasing)
+  # These programs use Bijvoet differences for phase determination
+  anomalous:
+    - phenix.autosol      # SAD/MAD/MR-SAD phasing
+    - phenix.hyss         # Heavy atom substructure search
+    - phenix.phaser_ep    # Phaser experimental phasing mode
+    - phenix.emma         # Heavy atom site comparison
+    - phenix.solve        # Legacy SAD/MAD solver
+    
+  # Programs that PREFER merged data
+  # Using anomalous data would be wasteful or incorrect
+  merged:
+    - phenix.refine       # Reciprocal space refinement
+    - phenix.phaser       # Molecular replacement (default mode)
+    - phenix.molrep       # Molecular replacement
+    - phenix.mr_rosetta   # MR with Rosetta rebuilding
+    - phenix.morph_model  # Model morphing
+    - phenix.den_refine   # DEN refinement
+    
+  # Programs that can use either (merged preferred for efficiency)
+  either:
+    - phenix.xtriage      # Data quality analysis
+    - phenix.maps         # Map calculation
+    - phenix.get_cc_mtz_pdb  # Correlation calculation
+    - phenix.model_vs_data   # Model quality assessment
+    - phenix.fobs_minus_fobs_map  # Difference maps
+
+
+# =============================================================================
+# CONTEXT KEYWORDS
+# =============================================================================
+# Keywords in project_advice that indicate workflow type
+
+context_keywords:
+  # Keywords that indicate anomalous data is needed
+  anomalous_workflow:
+    - "sad"
+    - "mad"
+    - "mrsad"
+    - "mr-sad"
+    - "anomalous"
+    - "phasing"
+    - "heavy atom"
+    - "selenium"
+    - "se-met"
+    - "sulfur sad"
+    - "native sad"
+    - "experimental phasing"
+    
+  # Keywords that indicate merged data is preferred
+  merged_workflow:
+    - "molecular replacement"
+    - "mr "  # Note the space to avoid matching "mrsad"
+    - "refinement only"
+    - "refine only"
+    - "no phasing"
+
+
+# =============================================================================
+# FUTURE RECOVERABLE ERRORS (Not Yet Implemented)
+# =============================================================================
+# These are candidates for future implementation
+
+# future_errors:
+#   missing_resolution:
+#     description: "Resolution not specified and cannot be determined"
+#     detection_patterns:
+#       - "Please set the resolution"
+#       - "Resolution.*not.*specified"
+#     recovery: "Run xtriage/mtriage first to determine resolution"
+#     
+#   space_group_mismatch:
+#     description: "Space group mismatch between files"
+#     detection_patterns:
+#       - "Space group.*does not match"
+#       - "Incompatible space groups"
+#     recovery: "May require user intervention"
+#     
+#   missing_sequence:
+#     description: "Sequence file required but not provided"
+#     detection_patterns:
+#       - "No sequence provided"
+#       - "Sequence.*required"
+#     recovery: "Search for .fa/.fasta files in working directory"
+#     
+#   out_of_memory:
+#     description: "Program ran out of memory"
+#     detection_patterns:
+#       - "Out of memory"
+#       - "MemoryError"
+#       - "Cannot allocate memory"
+#     recovery: "Reduce nproc, add memory-saving flags"

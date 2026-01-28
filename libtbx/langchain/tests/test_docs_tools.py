@@ -174,24 +174,9 @@ def test_full_generation():
 
 
 def run_all_tests():
-    """Run all docs_tools tests."""
-    print("=" * 60)
-    print("DOCS TOOLS TESTS")
-    print("=" * 60)
-
-    test_load_command_templates()
-    test_load_decision_config()
-    test_extract_workflow_states()
-    test_extract_stop_conditions()
-    test_extract_file_categorization()
-    test_extract_key_thresholds()
-    test_generate_markdown()
-    test_full_generation()
-
-    print()
-    print("=" * 60)
-    print("ALL DOCS TOOLS TESTS PASSED!")
-    print("=" * 60)
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":

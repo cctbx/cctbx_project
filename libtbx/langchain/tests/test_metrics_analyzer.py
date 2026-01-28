@@ -459,34 +459,9 @@ def test_autobuild_rfree_extraction():
 
 
 def run_all_tests():
-    """Run all tests."""
-    print("=" * 60)
-    print("METRICS ANALYZER TESTS")
-    print("=" * 60)
-
-    test_empty_history()
-    test_derive_metrics_dict_format()
-    test_derive_metrics_string_format()
-    test_derive_metrics_fallback_to_result()
-    test_trend_improving()
-    test_trend_plateau()
-    test_trend_success()
-    test_trend_borderline()
-    test_trend_excessive_refines()
-    test_trend_worsening()
-    test_trend_non_monotonic()
-    test_trend_mixed_programs()
-    test_trend_cryoem()
-    test_dynamic_resolution_target()
-    test_get_latest_resolution()
-    test_get_best_r_free()
-    test_format_trend_for_prompt()
-    test_first_refinement()
-    test_autobuild_rfree_extraction()
-
-    print("=" * 60)
-    print("ALL METRICS ANALYZER TESTS PASSED!")
-    print("=" * 60)
+    """Run all tests with fail-fast behavior (cctbx style)."""
+    from tests.test_utils import run_tests_with_fail_fast
+    run_tests_with_fail_fast()
 
 
 if __name__ == "__main__":
