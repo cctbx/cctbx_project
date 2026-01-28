@@ -64,7 +64,7 @@ def run_one():
      scattering_table = "wk1995",
      TypesAtoms       = ["N", "S", "C"])
 
-def run_all(xray=True, electron=False):
+def run_all(xray=True, electron=True):
   #
   e_list = []
   for l in std_labels:
