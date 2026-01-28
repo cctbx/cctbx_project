@@ -154,6 +154,18 @@ phased_mtz:
 # =============================================================================
 # These are all POSITIONED models ready for refinement.
 
+# NOTE: predict_and_build_output must come FIRST because other categories
+# exclude "*predict*" patterns. PredictAndBuild outputs are legitimate
+# built/refined models, not search models.
+predict_and_build_output:
+  description: "Models from predict_and_build (AlphaFold + MR + building)"
+  parent_category: model
+  patterns:
+    - "PredictAndBuild_*_overall_best*.pdb"
+    - "*predict*build*overall_best*.pdb"
+    - "*PredictAndBuild*overall_best*.pdb"
+  notes: "Output from phenix.predict_and_build - fully built model from prediction workflow"
+
 refined:
   description: "X-ray refined models"
   parent_category: model
@@ -255,6 +267,8 @@ predicted:
     - "*phaser*"
     - "*refine*"
     - "*CarryOn*"  # Intermediate directory
+    - "*overall_best*"  # predict_and_build outputs are built models, not search models
+    - "*PredictAndBuild*overall*"
   notes: "Raw predictions - need processing before MR. NOT positioned."
 
 processed_predicted:

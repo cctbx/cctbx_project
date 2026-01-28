@@ -155,6 +155,20 @@ class CommandBuilder:
         "ligand": "ligand_cif",
     }
 
+    # Slot name aliases - maps common LLM names to canonical program input names
+    # When the LLM uses "data", we should match it to the "mtz" input slot
+    SLOT_ALIASES = {
+        "data": "mtz",
+        "hkl_file": "mtz",
+        "pdb": "model",
+        "pdb_file": "model",
+        "seq_file": "sequence",
+        "ligand": "ligand_cif",
+        "ligand_file": "ligand",
+        "map_file": "map",
+        "full_map": "map",
+    }
+
     def __init__(self):
         """Initialize builder with program registry."""
         self._registry = ProgramRegistry()
@@ -300,40 +314,60 @@ class CommandBuilder:
                                     for k, v in context.llm_files.items())
             self._log(context, "BUILD: LLM requested files: {%s}" % llm_summary)
 
-            for slot, filepath in context.llm_files.items():
-                if filepath and slot in all_inputs:
-                    # Validate and correct path
-                    corrected = self._correct_file_path(filepath, basename_to_path, available_files)
-                    if corrected:
-                        # Handle list case (multiple files)
-                        corrected_str = corrected[0] if isinstance(corrected, list) else corrected
+            for llm_slot, filepath in context.llm_files.items():
+                if not filepath:
+                    continue
 
-                        # Validate extension matches slot requirements
-                        slot_def = inputs.get("required", {}).get(slot) or inputs.get("optional", {}).get(slot)
-                        if slot_def:
-                            slot_extensions = slot_def.get("extensions", [])
-                            if slot_extensions:
-                                if not any(corrected_str.lower().endswith(ext) for ext in slot_extensions):
-                                    self._log(context, "BUILD: LLM file rejected (wrong extension): %s=%s (expected %s)" % (
-                                        slot, os.path.basename(corrected_str), slot_extensions))
-                                    continue  # Skip this file
+                # Map LLM slot name to canonical input slot name
+                # e.g., "data" -> "mtz", "pdb" -> "model"
+                canonical_slot = self.SLOT_ALIASES.get(llm_slot, llm_slot)
 
-                        # For refinement, check if LLM is trying to use a non-best model
-                        if is_refinement_program and slot in ("model", "pdb", "pdb_file"):
-                            best_model = context.best_files.get("model")
-                            if best_model and corrected_str != best_model and os.path.exists(best_model):
-                                # LLM chose a different model - log and keep best_model
-                                self._log(context, "BUILD: LLM suggested %s=%s but using best_model=%s instead" % (
-                                    slot, os.path.basename(corrected_str), os.path.basename(best_model)))
-                                self._record_selection(slot, best_model, "best_files_override",
-                                    llm_suggested=os.path.basename(corrected_str))
-                                continue  # Skip LLM's choice, keep best_model
-
-                        selected_files[slot] = corrected
-                        self._record_selection(slot, corrected_str, "llm_selected")
+                # Check if canonical slot exists in program inputs
+                if canonical_slot not in all_inputs:
+                    # Try the original slot name as fallback
+                    if llm_slot in all_inputs:
+                        canonical_slot = llm_slot
                     else:
-                        self._log(context, "BUILD: LLM file rejected (not found): %s=%s" % (
-                            slot, os.path.basename(str(filepath))))
+                        self._log(context, "BUILD: LLM slot '%s' not found in program inputs (tried alias '%s')" % (
+                            llm_slot, canonical_slot))
+                        continue
+
+                # Validate and correct path
+                corrected = self._correct_file_path(filepath, basename_to_path, available_files)
+                if corrected:
+                    # Handle list case (multiple files)
+                    corrected_str = corrected[0] if isinstance(corrected, list) else corrected
+
+                    # Validate extension matches slot requirements
+                    slot_def = inputs.get("required", {}).get(canonical_slot) or inputs.get("optional", {}).get(canonical_slot)
+                    if slot_def:
+                        slot_extensions = slot_def.get("extensions", [])
+                        if slot_extensions:
+                            if not any(corrected_str.lower().endswith(ext) for ext in slot_extensions):
+                                self._log(context, "BUILD: LLM file rejected (wrong extension): %s=%s (expected %s)" % (
+                                    canonical_slot, os.path.basename(corrected_str), slot_extensions))
+                                continue  # Skip this file
+
+                    # For refinement, check if LLM is trying to use a non-best model
+                    if is_refinement_program and canonical_slot in ("model", "pdb", "pdb_file"):
+                        best_model = context.best_files.get("model")
+                        if best_model and corrected_str != best_model and os.path.exists(best_model):
+                            # LLM chose a different model - log and keep best_model
+                            self._log(context, "BUILD: LLM suggested %s=%s but using best_model=%s instead" % (
+                                canonical_slot, os.path.basename(corrected_str), os.path.basename(best_model)))
+                            self._record_selection(canonical_slot, best_model, "best_files_override",
+                                llm_suggested=os.path.basename(corrected_str))
+                            continue  # Skip LLM's choice, keep best_model
+
+                    # Log if we're using an alias
+                    if llm_slot != canonical_slot:
+                        self._log(context, "BUILD: Mapped LLM slot '%s' to '%s'" % (llm_slot, canonical_slot))
+
+                    selected_files[canonical_slot] = corrected
+                    self._record_selection(canonical_slot, corrected_str, "llm_selected")
+                else:
+                    self._log(context, "BUILD: LLM file rejected (not found): %s=%s" % (
+                        llm_slot, os.path.basename(str(filepath))))
         else:
             self._log(context, "BUILD: No LLM file hints, will auto-select")
 

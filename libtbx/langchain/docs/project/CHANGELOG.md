@@ -1,5 +1,63 @@
 # PHENIX AI Agent - Changelog
 
+## Version 97 (January 2025)
+
+### Bug Fix: PredictAndBuild Output Categorized as Model (Not Search Model)
+
+**Problem**: Files like `PredictAndBuild_0_overall_best.pdb` were incorrectly categorized as `search_model` instead of `model`. This happened because:
+1. The file contains "predict" in the name
+2. Multiple categories had `excludes: ["*predict*"]`
+3. The file fell through to the `predicted` category (parent: `search_model`)
+
+This caused the sanity check to fail with:
+```
+PERCEIVE: RED FLAG [search_model_not_positioned]: Cannot refine: search model found but not yet positioned
+```
+
+**Solution**: Added new `predict_and_build_output` category that specifically matches `PredictAndBuild_*_overall_best*.pdb` files and categorizes them as `model` (positioned, ready for refinement).
+
+Also added exclusions to the `predicted` category to ensure these files don't get double-categorized.
+
+### Files Changed
+
+- `knowledge/file_categories.yaml` - Added `predict_and_build_output` category, added exclusions to `predicted`
+- `tests/test_file_categorization.py` - Added test for PredictAndBuild output categorization
+
+---
+
+## Version 96 (January 2025)
+
+### Bug Fix: LLM Slot Alias Mapping for MTZ Files
+
+**Problem**: When the LLM requested an MTZ file using the slot name `data` (e.g., `data=PredictAndBuild_0_overall_best_refinement.mtz`), but the program defined the input slot as `mtz`, the LLM's file choice was ignored and the wrong file was auto-selected.
+
+**Example Debug Output (Before)**:
+```
+BUILD: LLM requested files: {model=..., data=PredictAndBuild_0_overall_best_refinement.mtz}
+BUILD: Skipping best_files for mtz (program needs specific subcategory)
+BUILD: Auto-filled mtz=PredictAndBuild_0_refinement_cycle_2.extended_r_free.mtz  # WRONG!
+```
+
+**Solution**: Added `SLOT_ALIASES` mapping that translates common LLM slot names to canonical program input names:
+- `data` → `mtz`
+- `pdb` → `model`
+- `seq_file` → `sequence`
+- etc.
+
+**Example Debug Output (After)**:
+```
+BUILD: LLM requested files: {model=..., data=PredictAndBuild_0_overall_best_refinement.mtz}
+BUILD: Mapped LLM slot 'data' to 'mtz'
+BUILD: Using LLM-selected file for mtz
+```
+
+### Files Changed
+
+- `agent/command_builder.py` - Added `SLOT_ALIASES` dict and updated LLM file processing to use aliases
+- `tests/test_command_builder.py` - Added tests for slot alias mapping
+
+---
+
 ## Version 94 (January 2025)
 
 ### New Feature: Explain Why Programs Are Unavailable

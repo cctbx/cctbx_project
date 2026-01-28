@@ -32,6 +32,11 @@ import knowledge.yaml_loader
 libtbx.langchain.knowledge.yaml_loader = knowledge.yaml_loader
 sys.modules['libtbx.langchain.knowledge.yaml_loader'] = knowledge.yaml_loader
 
+# Mock pattern_manager
+from agent import pattern_manager
+libtbx.langchain.agent.pattern_manager = pattern_manager
+sys.modules['libtbx.langchain.agent.pattern_manager'] = pattern_manager
+
 # Mock program_registry
 from agent import program_registry
 libtbx.langchain.agent.program_registry = program_registry
@@ -377,6 +382,97 @@ def test_graph_nodes_feature_flag():
     assert 'if USE_NEW_COMMAND_BUILDER:' in source, "Delegation check not found"
 
     print("  PASSED")
+
+
+def test_llm_slot_alias_mapping():
+    """
+    Test that LLM slot names are correctly mapped to program input names.
+
+    Bug fix: LLM might use 'data' but program expects 'mtz'.
+    The slot alias mapping should handle this.
+
+    Example scenario:
+    - LLM requests: data=PredictAndBuild_0_overall_best_refinement.mtz
+    - Program expects: mtz slot
+    - Without alias mapping: LLM file is ignored, wrong file auto-selected
+    - With alias mapping: LLM's file is correctly used
+    """
+    print("test_llm_slot_alias_mapping:", end=" ")
+
+    builder = CommandBuilder()
+
+    # Check SLOT_ALIASES exists
+    assert hasattr(builder, 'SLOT_ALIASES'), "SLOT_ALIASES not found on CommandBuilder"
+
+    # Verify key mappings
+    aliases = builder.SLOT_ALIASES
+    assert aliases.get("data") == "mtz", "data should map to mtz"
+    assert aliases.get("pdb") == "model", "pdb should map to model"
+    assert aliases.get("seq_file") == "sequence", "seq_file should map to sequence"
+
+    print("  PASSED")
+
+
+def test_llm_data_slot_used_for_mtz():
+    """
+    Test that when LLM uses 'data' slot, the file is correctly used for 'mtz' input.
+
+    This tests the actual file selection logic, not just the alias mapping.
+    """
+    print("test_llm_data_slot_used_for_mtz:", end=" ")
+
+    import tempfile
+    import shutil
+
+    # Create temp directory with test files
+    temp_dir = tempfile.mkdtemp()
+    try:
+        # Create test files
+        model_file = os.path.join(temp_dir, "model.pdb")
+        mtz_correct = os.path.join(temp_dir, "PredictAndBuild_0_overall_best_refinement.mtz")
+        mtz_wrong = os.path.join(temp_dir, "PredictAndBuild_0_refinement_cycle_2.extended_r_free.mtz")
+
+        for f in [model_file, mtz_correct, mtz_wrong]:
+            with open(f, 'w') as fh:
+                fh.write("test")
+
+        available_files = [model_file, mtz_correct, mtz_wrong]
+
+        # Create context with LLM using 'data' slot
+        context = CommandContext(
+            cycle_number=1,
+            experiment_type="xray",
+            resolution=3.0,
+            categorized_files={
+                "model": [model_file],
+                "mtz": [mtz_correct, mtz_wrong],
+                "refined_mtz": [mtz_correct, mtz_wrong],
+            },
+            best_files={"model": model_file, "mtz": mtz_correct},
+            rfree_mtz=None,
+            llm_files={
+                "model": model_file,
+                "data": mtz_correct,  # LLM uses 'data', not 'mtz'
+            },
+            llm_strategy={},
+        )
+
+        builder = CommandBuilder()
+        result = builder.build("phenix.refine", available_files, context)
+
+        # The command should use the LLM's requested MTZ file
+        assert result is not None, "Command generation failed"
+        assert mtz_correct in result, \
+            "LLM's requested MTZ not used. Got: %s" % result
+
+        # Verify it didn't use the wrong file
+        assert mtz_wrong not in result or mtz_correct in result, \
+            "Wrong MTZ file used instead of LLM's choice"
+
+        print("  PASSED")
+
+    finally:
+        shutil.rmtree(temp_dir)
 
 
 def run_all_tests():

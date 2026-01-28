@@ -668,6 +668,53 @@ def test_docked_model_bubbles_to_model():
     print("  PASSED")
 
 
+def test_predict_and_build_output_is_model():
+    """
+    Test that PredictAndBuild output files are categorized as model, not search_model.
+
+    Bug fix: PredictAndBuild_0_overall_best.pdb was incorrectly being categorized
+    as search_model (because it contains "predict") instead of model.
+
+    These are fully built/refined models, not search models for MR.
+    """
+    print("test_predict_and_build_output_is_model:", end=" ")
+
+    from agent.workflow_state import _categorize_files
+
+    files = [
+        "/path/PredictAndBuild_0_overall_best.pdb",
+        "/path/PredictAndBuild_0_overall_best_superposed_predicted_models.pdb",
+        "/path/PredictAndBuild_0_superposed_predicted_untrimmed_cycle_1.pdb",
+        "/path/7qz0.fa",
+        "/path/7qz0.mtz",
+    ]
+
+    categorized = _categorize_files(files)
+
+    # PredictAndBuild_0_overall_best.pdb should be in model category (not just search_model)
+    assert_in("model", categorized, "Should have model category")
+    model_files = categorized.get("model", [])
+    assert_true(any("overall_best.pdb" in f for f in model_files),
+               "PredictAndBuild_0_overall_best.pdb should be in model category, got: %s" % model_files)
+
+    # It should also be in predict_and_build_output subcategory
+    assert_in("predict_and_build_output", categorized, "Should have predict_and_build_output category")
+    pab_files = categorized.get("predict_and_build_output", [])
+    assert_true(any("overall_best.pdb" in f for f in pab_files),
+               "PredictAndBuild_0_overall_best.pdb should be in predict_and_build_output category")
+
+    # The intermediate predicted models should still be in search_model
+    search_files = categorized.get("search_model", [])
+    assert_true(any("superposed_predicted_untrimmed" in f for f in search_files),
+               "Intermediate predicted models should still be in search_model")
+
+    # Critically: overall_best should NOT be in search_model
+    assert_true(not any("overall_best.pdb" in f for f in search_files),
+               "overall_best.pdb should NOT be in search_model, but found in: %s" % search_files)
+
+    print("  PASSED")
+
+
 # =============================================================================
 # RUN ALL TESTS
 # =============================================================================
