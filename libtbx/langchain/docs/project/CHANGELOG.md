@@ -1,5 +1,249 @@
 # PHENIX AI Agent - Changelog
 
+## Version 72 (January 2025)
+
+### Bug Fixes
+
+- **Fixed cycle count to exclude STOP cycles (v92)**: The session summary was reporting "Cycles: 5 (4 successful)" when 4 programs ran and cycle 5 was just STOP. Now STOP cycles are excluded from the count, so it correctly reports "Cycles: 4 (4 successful)".
+
+### Tests Added
+
+- `test_stop_cycle_excluded_from_count` - Verifies STOP cycles are excluded from total_cycles and successful_cycles
+- `test_cryoem_done_flags` - Verifies done flags are set for cryo-EM programs (resolve_cryo_em_done, map_sharpening_done, map_to_model_done, dock_done)
+
+### Documentation Updated
+
+- `docs/OVERVIEW.md` - Added "Program Execution Controls" section documenting `not_done` conditions and `run_once` flags with complete table of done flags
+- `docs/guides/ADDING_PROGRAMS.md` - Added "Available done flags" table showing all manually-tracked done flags
+- `docs/guides/TESTING.md` - Updated test count table with new test files
+
+### Files Changed
+
+- `agent/session.py` - Exclude STOP/None/unknown from total_cycles and successful_cycles
+- `agent/session_tools.py` - Exclude STOP cycles from print_session_summary()
+- `tests/test_session_summary.py` - Added test_stop_cycle_excluded_from_count
+- `tests/test_workflow_state.py` - Added test_cryoem_done_flags
+
+---
+
+## Version 71 (January 2025)
+
+### Bug Fixes
+
+- **Fixed predict_and_build running without resolution for X-ray (v91)**: When user provides `program_settings` for predict_and_build (e.g., `rebuilding_strategy=Quick`), the program was being added to valid_programs even before xtriage ran. This caused predict_and_build to run without resolution, forcing `stop_after_predict=True` (prediction only). Now `_check_program_prerequisites` requires xtriage_done (X-ray) or mtriage_done (cryo-EM) before adding predict_and_build from program_settings.
+
+- **Fixed resolution requirement for predict_and_build full workflow**: The command builder now correctly requires resolution for BOTH X-ray and cryo-EM when `stop_after_predict=False`. If resolution is not available, it forces `stop_after_predict=True` with a message suggesting to run xtriage/mtriage first.
+
+### Root Cause
+
+The workflow engine's `_apply_directives` was adding `predict_and_build` to valid_programs whenever the user had `program_settings` for it:
+
+```python
+# Before: Always allowed predict_and_build
+if program == "phenix.predict_and_build":
+    return True  # Always allow - worst case it does prediction-only
+```
+
+This bypassed the normal workflow phase ordering (xtriage → obtain_model).
+
+### The Fix
+
+```python
+# After: Require xtriage/mtriage to be done first
+if program == "phenix.predict_and_build":
+    if phase_name in ("obtain_model", "molecular_replacement", "dock_model"):
+        return True  # Let the phase conditions handle it
+    if context.get("xtriage_done") or context.get("mtriage_done"):
+        return True
+    return False  # Don't add to early phases
+```
+
+### Correct Workflow Now
+
+1. xtriage runs first → extracts resolution
+2. predict_and_build runs with resolution → full workflow (prediction + MR + building)
+
+### Files Changed
+
+- `agent/workflow_engine.py` - Fixed `_check_program_prerequisites` to require xtriage/mtriage
+- `agent/command_builder.py` - Fixed `_apply_invariants` to require resolution for full workflow
+
+---
+
+## Version 70 (January 2025)
+
+### Bug Fixes
+
+- **Fixed programs running repeatedly without stopping (v90)**: Multiple programs were missing `not_done` conditions in their workflow definitions, allowing the LLM to choose them repeatedly even after successful completion. Added protection to all one-time-run programs.
+
+### Programs Now Protected from Re-runs
+
+**X-ray workflow:**
+- `phenix.predict_and_build` - `not_done: predict_full`
+- `phenix.phaser` - `not_done: phaser` (in both obtain_model and molecular_replacement phases)
+
+**Cryo-EM workflow:**
+- `phenix.predict_and_build` - `not_done: predict`
+- `phenix.dock_in_map` - `not_done: dock`
+- `phenix.map_to_model` - `not_done: map_to_model`
+- `phenix.resolve_cryo_em` - `not_done: resolve_cryo_em` (in all 4 phases where it appears)
+- `phenix.map_sharpening` - `not_done: map_sharpening` (in all 4 phases where it appears)
+
+**Previously protected (unchanged):**
+- `phenix.autobuild`, `phenix.autosol`, `phenix.ligandfit`, `phenix.map_symmetry`, `phenix.process_predicted_model`
+
+### Programs Intentionally Without Protection (run multiple times)
+
+- `phenix.refine` / `phenix.real_space_refine` - Iterative refinement
+- `phenix.molprobity` / `phenix.model_vs_data` / `phenix.validation_cryoem` - Validation after each cycle
+- `phenix.polder` - May run for different sites
+- `phenix.pdbtools` - May add multiple ligands
+- `phenix.xtriage` / `phenix.mtriage` - Already have `run_once: true` in programs.yaml
+
+### Files Changed
+
+- `knowledge/workflows.yaml` - Added `not_done` conditions to 11 program entries
+- `agent/workflow_state.py` - Added done flags for `map_to_model`, `resolve_cryo_em`, `map_sharpening`
+
+---
+
+## Version 69 (January 2025)
+
+### Bug Fixes
+
+- **Fixed predict_and_build forcing `stop_after_predict=True` for X-ray (v89)**: The command builder was forcing `stop_after_predict=True` whenever resolution wasn't in the context, even for X-ray where predict_and_build can read resolution directly from the MTZ file. This caused predict_and_build to run in prediction-only mode repeatedly (3 retry cycles due to duplicate detection). Now `stop_after_predict=True` is only forced for cryo-EM without resolution.
+
+### Root Cause
+
+The command builder had this logic:
+```python
+if program == "phenix.predict_and_build":
+    if not context.resolution and "stop_after_predict" not in strategy:
+        strategy["stop_after_predict"] = True
+```
+
+This applied to BOTH X-ray and cryo-EM, but:
+- For X-ray: predict_and_build can determine resolution from the MTZ automatically
+- For cryo-EM: mtriage should run first to get resolution
+
+The fix restricts this to cryo-EM only:
+```python
+if context.experiment_type == "cryoem":
+    if not context.resolution and "stop_after_predict" not in strategy:
+        strategy["stop_after_predict"] = True
+```
+
+### Why 3 LLM Calls Were Happening
+
+1. LLM chose predict_and_build
+2. Command builder forced `stop_after_predict=True` (same as previous run)
+3. Validate detected duplicate command → `validation_error`
+4. Graph looped back to Plan (retry 1)
+5. Same result → retry 2
+6. Same result → retry 3 → fallback
+
+### Files Changed
+
+- `agent/command_builder.py` - Only force `stop_after_predict=True` for cryo-EM
+
+---
+
+## Version 68 (January 2025)
+
+### Bug Fixes
+
+- **Fixed ligandfit using input MTZ instead of refined MTZ (v88)**: When ligandfit requires `refined_mtz` (an MTZ with map coefficients), and no refined MTZ exists (because refinement failed), the code was falling back to extension-based matching and selecting the input MTZ. Now when a program requires a specific subcategory (like `refined_mtz`), extension-based fallback is disabled.
+
+- **Fixed refine_count incrementing for failed refinements (v88)**: Previously, `refine_count` was incremented regardless of whether refinement succeeded or failed. This caused workflow conditions like `refine_count > 0` (used by ligandfit) to pass even when no successful refinement had occurred. Now only successful refinements increment the count.
+
+- **Fixed rsr_count incrementing for failed RSR (v88)**: Same fix applied to `rsr_count` for `phenix.real_space_refine`.
+
+### Root Cause
+
+The session showed:
+```
+Categorized files: model=1, search_model=15, mtz=1, sequence=10, ...
+```
+No `refined_mtz` category because refinement failed. But `refine_count` was 2 (from failed attempts), so ligandfit was allowed. Then command_builder fell back to extension matching and selected the input MTZ.
+
+### Files Changed
+
+- `agent/command_builder.py` - Added check to prevent extension-based fallback when specific subcategory required
+- `agent/workflow_state.py` - Added success checking for refine_count and rsr_count in `_analyze_history()`
+- `tests/test_workflow_state.py` - Added `test_failed_refine_not_counted`
+
+---
+
+## Version 67 (January 2025)
+
+### Bug Fixes
+
+- **Fixed stop_after_predict=True being suggested for X-ray (v87)**: The prompt was incorrectly telling the LLM to use `stop_after_predict=True` for ANY stepwise workflow, but this should only apply to cryo-EM stepwise workflows. For X-ray, `predict_and_build` should run the full workflow (prediction → MR → building). Added experiment_type check so the guidance only appears for cryo-EM.
+
+- **Clarified predict_and_build documentation in prompts**: Added explicit notes explaining that by default `predict_and_build` runs the FULL workflow, and `stop_after_predict=True` should only be used for cryo-EM stepwise.
+
+### Root Cause
+
+When user says "stop after PredictAndBuild", the LLM was confusing:
+- "Stop the agent workflow after predict_and_build completes" (correct interpretation)
+- "Set stop_after_predict=True" (incorrect - this only runs prediction, skipping MR and building)
+
+The prompt was adding `NOTE: Use predict_and_build with strategy: {"stop_after_predict": true}` for stepwise workflows without checking if it's cryo-EM or X-ray.
+
+### Files Changed
+
+- `knowledge/prompts_hybrid.py` - Added experiment_type check for stop_after_predict guidance; clarified predict_and_build documentation
+
+---
+
+## Version 66 (January 2025)
+
+### Critical Bug Fixes
+
+- **Fixed predicted model incorrectly becoming best model after refinement (v85)**: When `phenix.refine` runs, the directory scan picks up ALL files (including pre-existing ones like `PredictAndBuild_0_predicted_model_processed.pdb`). Previously, `record_result()` blindly applied `stage="refined"` to ALL PDB files in `output_files`, causing the predicted model to get a higher score than the actual refined model. Now `record_result()` only applies the program stage to files whose basename matches expected output patterns (e.g., only files containing "refine" get `stage="refined"`).
+
+- **Fixed PHASER models getting inflated scores from refinement metrics**: Similar to above - `PHASER.1.pdb` in refinement's `output_files` was getting `stage="refined"` and metrics from phenix.refine, inflating its score from 70 to 132. Now handled by the same pattern matching fix.
+
+- **Fixed STOP not available after user's workflow completes (v84)**: When user directives specify `after_program` (e.g., "stop after refinement"), STOP is now added to valid_programs after that program completes. Previously STOP was only available after validation, forcing unwanted extra cycles.
+
+### Consistency Fixes (v86)
+
+- **Synchronized pattern matching across all three locations**:
+  - `session.py:_rebuild_best_files_from_cycles()` - Rebuild from saved session
+  - `session.py:record_result()` - Real-time recording
+  - `session_tools.py:rebuild_best_files()` - Manual rebuild tool
+
+- **Added missing program-to-stage mappings**:
+  - `session.py:_infer_stage_from_program()` - Added `predict_and_build`, `ligandfit`, `pdbtools`
+  - `session_tools.py:infer_stage()` - Added `process_predicted_model`
+
+- **Added missing filename patterns**:
+  - `session_tools.py` - Added `processed_predicted` and `autobuild_output` patterns
+
+### Bug Details
+
+**The predicted model bug (v85)**:
+- Root cause: `output_files` from directory scanning includes ALL files in the working directory, not just files created by the program
+- `record_result()` was giving ALL PDB files the program's stage (e.g., "refined" for phenix.refine)
+- This caused `PredictAndBuild_0_predicted_model_processed.pdb` to get `stage="refined"` with the refinement metrics, giving it score 133 vs PHASER.1.pdb's score 132
+- Fix: Pattern matching in `record_result()` now matches `_rebuild_best_files_from_cycles()` - only files with matching basenames get the program stage
+
+### Testing
+
+- Added test `test_predicted_model_not_promoted_by_refine` to verify predicted models don't get wrongly promoted when they appear in refine's output_files
+- Added test `test_phaser_model_not_promoted_by_refine_metrics` to verify PHASER models don't get refinement metrics
+- Added test `test_stop_added_after_after_program_completes` to verify STOP is available after after_program completes
+
+### Files Changed
+
+- `agent/session.py` - Fixed `record_result()` to pattern-match PDB filenames before applying stage; added missing programs to `_infer_stage_from_program()`
+- `agent/session_tools.py` - Added `process_predicted_model` to `infer_stage()`; added `processed_predicted` and `autobuild_output` filename patterns
+- `agent/workflow_engine.py` - Added after_program completion check in `_apply_directives()`
+- `tests/test_best_files_tracker.py` - Added predicted model and PHASER model promotion tests
+- `tests/test_workflow_state.py` - Added STOP after after_program test
+
+---
+
 ## Version 65 (January 2025)
 
 ### Major Bug Fixes

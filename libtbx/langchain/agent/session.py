@@ -1324,8 +1324,37 @@ class AgentSession:
                     else:
                         # Generic map - let tracker infer
                         file_stage = None
+                elif f.lower().endswith('.pdb') or f.lower().endswith('.cif'):
+                    # PDB/CIF files - only apply program stage if filename matches expected output
+                    # This prevents unrelated files in output_files from getting wrong stage
+                    basename = os.path.basename(f).lower()
+
+                    if model_stage == "refined" and 'refine' in basename:
+                        file_stage = "refined"
+                    elif model_stage == "phaser_output" and ('phaser' in basename or basename.startswith('mr_')):
+                        file_stage = "phaser_output"
+                    elif model_stage == "predicted" and ('predict' in basename or 'alphafold' in basename):
+                        file_stage = "predicted"
+                    elif model_stage == "processed_predicted" and ('processed' in basename or 'trimmed' in basename):
+                        file_stage = "processed_predicted"
+                    elif model_stage == "docked" and ('dock' in basename or 'placed' in basename):
+                        file_stage = "docked"
+                    elif model_stage == "autobuild_output" and ('autobuild' in basename or 'overall_best' in basename):
+                        file_stage = "autobuild_output"
+                    elif model_stage == "ligand_fit_output" and ('ligand_fit' in basename or 'lig_fit' in basename):
+                        file_stage = "ligand_fit_output"
+                    elif model_stage == "with_ligand" and 'with_ligand' in basename:
+                        file_stage = "with_ligand"
+                    elif model_stage == "rsr_output" and ('real_space' in basename or 'rsr_' in basename):
+                        file_stage = "rsr_output"
+                    else:
+                        # Filename doesn't match program output pattern - let tracker infer
+                        # This prevents PredictAndBuild_0_predicted_model_processed.pdb from
+                        # getting stage="refined" just because it was in refine's output_files
+                        file_stage = None
                 else:
-                    file_stage = model_stage  # Use inferred stage for models (PDB/CIF)
+                    # Unknown file type - let tracker handle
+                    file_stage = None
 
                 # Evaluate each output file - tracker will classify and score
                 updated = self.best_files.evaluate_file(
@@ -1382,7 +1411,7 @@ class AgentSession:
 
         program_lower = program.lower()
 
-        # Model stages
+        # Model stages - order matters for patterns that overlap
         if "refine" in program_lower and "real_space" not in program_lower:
             return "refined"
         if "real_space_refine" in program_lower:
@@ -1393,8 +1422,14 @@ class AgentSession:
             return "docked"
         if "process_predicted_model" in program_lower:
             return "processed_predicted"
+        if "predict_and_build" in program_lower:
+            return "predicted"
         if "phaser" in program_lower:
             return "phaser_output"
+        if "ligandfit" in program_lower:
+            return "ligand_fit_output"
+        if "pdbtools" in program_lower:
+            return "with_ligand"
 
         # Map stages
         if "resolve_cryo_em" in program_lower:
@@ -1627,7 +1662,7 @@ class AgentSession:
             f"{'#'*60}",
             f"Session ID: {self.data.get('session_id', 'N/A')}",
             f"Project Advice: {self.data.get('project_advice', 'None')}",
-            f"Total Cycles: {len(self.data['cycles'])}",
+            f"Total Cycles: {sum(1 for c in self.data['cycles'] if c.get('program') not in ['STOP', None, 'unknown'])}",
         ]
 
         for i in range(1, len(self.data["cycles"]) + 1):
@@ -1664,7 +1699,7 @@ class AgentSession:
             f"Experiment Type: {experiment_type}",
             f"Project Advice: {self.data.get('project_advice', 'None')}",
             f"Original Files: {', '.join(original_files)}",
-            f"Total Cycles: {len(self.data['cycles'])}",
+            f"Total Cycles: {sum(1 for c in self.data['cycles'] if c.get('program') not in ['STOP', None, 'unknown'])}",
         ]
 
         # Add resolution if set
@@ -2106,8 +2141,11 @@ FINAL REPORT:"""
             "final_metrics": final_metrics,
             "final_files": final_files,
             "input_quality": input_quality,
-            "total_cycles": len(cycles),
-            "successful_cycles": sum(1 for c in cycles if "SUCCESS" in str(c.get("result", ""))),
+            # Exclude STOP cycles from counts - STOP is a decision, not a real program run
+            "total_cycles": sum(1 for c in cycles if c.get("program") not in ["STOP", None, "unknown"]),
+            "successful_cycles": sum(1 for c in cycles
+                                    if c.get("program") not in ["STOP", None, "unknown"]
+                                    and "SUCCESS" in str(c.get("result", ""))),
             "run_name": run_name,
             "is_tutorial": is_tutorial,
         }

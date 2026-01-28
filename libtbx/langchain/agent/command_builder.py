@@ -539,6 +539,14 @@ class CommandBuilder:
                 return self._get_most_recent_file(half_map_files)
             return None  # No half-maps available
 
+        # SPECIAL: If program requires a specific subcategory (like refined_mtz),
+        # don't fall back to generic extension matching.
+        # This prevents ligandfit from using input MTZ when it needs refined MTZ with map coefficients.
+        if uses_specific_subcategory:
+            self._log(context, "BUILD: No files found for required subcategory %s, skipping extension fallback" %
+                     priority_categories)
+            return None
+
         candidates = [f for f in available_files
                       if any(f.lower().endswith(ext) for ext in extensions)]
 
@@ -863,12 +871,16 @@ class CommandBuilder:
                     strategy["generate_rfree_flags"] = True
                     self._log(context, "BUILD: First refinement - will generate R-free flags")
 
-        # predict_and_build: if no resolution, must use stop_after_predict=True
-        # Resolution is required for the building step, but not for prediction
+        # predict_and_build: resolution is required for building (stop_after_predict=False)
+        # If no resolution available, must use stop_after_predict=True (prediction only)
         if program == "phenix.predict_and_build":
-            if not context.resolution and "stop_after_predict" not in strategy:
+            # Check if we're trying to run the full workflow (building, not just prediction)
+            wants_full_workflow = strategy.get("stop_after_predict") is False or "stop_after_predict" not in strategy
+
+            if wants_full_workflow and not context.resolution:
+                # No resolution available - must use prediction-only mode
                 strategy["stop_after_predict"] = True
-                self._log(context, "BUILD: No resolution available - setting stop_after_predict=True (prediction only)")
+                self._log(context, "BUILD: No resolution available - setting stop_after_predict=True (prediction only). Run xtriage/mtriage first to get resolution for full workflow.")
 
         return files, strategy
 

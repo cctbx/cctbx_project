@@ -49,6 +49,7 @@ xray:
           preferred: true
           conditions:
             - has: sequence
+            - not_done: predict_full  # Don't re-run if full workflow completed
           # Note: If resolution not known, command builder adds stop_after_predict=True
           strategy:
             stop_after_predict: false
@@ -56,6 +57,7 @@ xray:
         - program: phenix.phaser
           conditions:
             - has: search_model
+            - not_done: phaser  # MR should only run once
 
         - program: phenix.autosol
           conditions:
@@ -86,6 +88,7 @@ xray:
         - program: phenix.phaser
           conditions:
             - has: processed_model
+            - not_done: phaser  # MR should only run once
 
       transitions:
         on_complete: refine
@@ -273,6 +276,7 @@ cryoem:
           conditions:
             - has: sequence
             - has_any: [full_map, half_map]
+            - not_done: predict  # Don't re-run if already predicted
           # Note: If resolution not known, command builder adds stop_after_predict=True
           strategy_depends_on: automation_path
 
@@ -280,23 +284,27 @@ cryoem:
           conditions:
             - has: search_model
             - has: full_map
+            - not_done: dock  # Docking should only run once
 
         - program: phenix.map_to_model
           conditions:
             - has: sequence
             - has: full_map
+            - not_done: map_to_model  # Model building should only run once
 
         # Map optimization when only half-maps available
         - program: phenix.resolve_cryo_em
           conditions:
             - has: half_map
             - not_has: full_map
+            - not_done: resolve_cryo_em  # Map optimization should only run once
           hint: "Create optimized map from half-maps"
 
         - program: phenix.map_sharpening
           conditions:
             - has: half_map
             - not_has: full_map
+            - not_done: map_sharpening  # Sharpening should only run once
           hint: "Sharpen map from half-maps"
 
       transitions:
@@ -321,12 +329,14 @@ cryoem:
           conditions:
             - has: half_map
             - not_has: full_map
+            - not_done: resolve_cryo_em
           hint: "Create optimized full map from half-maps before docking"
 
         - program: phenix.map_sharpening
           conditions:
             - has: half_map
             - not_has: full_map
+            - not_done: map_sharpening
           hint: "Sharpen map before docking"
 
         # Then dock the processed model into the FULL map (not half-maps)
@@ -334,6 +344,7 @@ cryoem:
           conditions:
             - has: processed_model
             - has: full_map
+            - not_done: dock
           hint: "Requires full map (not half-maps) for accurate docking"
 
       transitions:
@@ -354,10 +365,12 @@ cryoem:
           preferred: true
           conditions:
             - has: half_map
+            - not_done: resolve_cryo_em
 
         - program: phenix.map_sharpening
           conditions:
             - has: half_map
+            - not_done: map_sharpening
 
       transitions:
         if_has_full_map: refine
@@ -373,7 +386,11 @@ cryoem:
       programs:
         - program: phenix.resolve_cryo_em
           preferred: true
+          conditions:
+            - not_done: resolve_cryo_em
         - program: phenix.map_sharpening
+          conditions:
+            - not_done: map_sharpening
 
       transitions:
         on_complete: ready_to_refine

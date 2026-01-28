@@ -1310,6 +1310,96 @@ def test_smart_stage_assignment():
     print("  PASSED")
 
 
+def test_predicted_model_not_promoted_by_refine():
+    """
+    Test that predicted models in refine output_files don't get wrongly promoted.
+
+    This tests the bug where PredictAndBuild_0_predicted_model_processed.pdb
+    was in phenix.refine's output_files and incorrectly got stage="refined",
+    causing it to beat the actual PHASER output.
+    """
+    print("Test: predicted_model_not_promoted_by_refine")
+
+    tracker = BestFilesTracker()
+
+    # Simulate the workflow:
+    # 1. predict_and_build creates predicted model
+    tracker.evaluate_file("/path/PredictAndBuild_0_predicted_model_processed.pdb",
+                         cycle=3, stage="processed_predicted")
+
+    # 2. phaser places the model
+    tracker.evaluate_file("/path/PHASER.1.pdb", cycle=4, stage="phaser_output")
+
+    # Check that PHASER is the best model
+    best = tracker.get_best("model")
+    assert_equal(os.path.basename(best.path), "PHASER.1.pdb",
+                "PHASER output should be best model")
+
+    # 3. refine runs - the predicted model might be in output_files
+    #    but it should NOT get stage="refined"!
+    tracker.evaluate_file("/path/refine_001_001.pdb", cycle=5, stage="refined",
+                         metrics={"r_free": 0.32})
+
+    # The predicted model should be ignored if evaluated without explicit stage
+    # (which is what happens when record_result applies pattern matching)
+    tracker.evaluate_file("/path/PredictAndBuild_0_predicted_model_processed.pdb",
+                         cycle=5, stage=None, metrics={"r_free": 0.32})
+
+    # Check that the refined model is best (not the predicted model)
+    best = tracker.get_best("model")
+    assert_equal(os.path.basename(best.path), "refine_001_001.pdb",
+                "Refined model should be best model, not predicted model")
+    assert_equal(best.stage, "refined", "Stage should be refined")
+
+    # The predicted model should still be the best search_model
+    search_best = tracker.get_best("search_model")
+    assert_equal(os.path.basename(search_best.path),
+                "PredictAndBuild_0_predicted_model_processed.pdb",
+                "Predicted model should remain best search_model")
+
+    print("  PASSED")
+
+
+def test_phaser_model_not_promoted_by_refine_metrics():
+    """
+    Test that PHASER models in refine output_files don't get wrongly promoted.
+
+    Similar to the predicted model bug - PHASER.1.pdb was in phenix.refine's
+    output_files and incorrectly got stage="refined" with refinement metrics,
+    bumping its score from 70 to 132.
+    """
+    print("Test: phaser_model_not_promoted_by_refine_metrics")
+
+    tracker = BestFilesTracker()
+
+    # 1. phaser places the model (score ~70 for phaser_output)
+    tracker.evaluate_file("/path/PHASER.1.pdb", cycle=4, stage="phaser_output")
+
+    phaser_entry = tracker.get_best("model")
+    assert_equal(os.path.basename(phaser_entry.path), "PHASER.1.pdb")
+    initial_score = phaser_entry.score
+
+    # 2. refine runs - PHASER.1.pdb might be in output_files
+    #    but it should NOT get stage="refined" or the refine metrics!
+    tracker.evaluate_file("/path/refine_001_001.pdb", cycle=5, stage="refined",
+                         metrics={"r_free": 0.32})
+
+    # PHASER.1.pdb should be ignored if evaluated without explicit stage
+    tracker.evaluate_file("/path/PHASER.1.pdb", cycle=5, stage=None,
+                         metrics={"r_free": 0.32})
+
+    # Check that the refined model is best
+    best = tracker.get_best("model")
+    assert_equal(os.path.basename(best.path), "refine_001_001.pdb",
+                "Refined model should be best model")
+
+    # Also verify PHASER.1.pdb didn't get its score inflated
+    # (we can't easily check this with the current API, but the test above
+    # verifies the right model won)
+
+    print("  PASSED")
+
+
 # =============================================================================
 # TEST RUNNER
 # =============================================================================

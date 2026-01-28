@@ -141,13 +141,15 @@ The `run_tests_with_fail_fast()` function automatically discovers tests:
 | `test_decision_flow.py` | 20 | Directive flow architecture |
 | `test_directives_integration.py` | 16 | End-to-end directive tests |
 | `test_session_directives.py` | 12 | Session-level directive handling |
-| `test_best_files_tracker.py` | 39 | File tracking and selection |
+| `test_best_files_tracker.py` | 45 | File tracking and selection |
 | `test_file_categorization.py` | ~30 | File type detection |
 | `test_event_system.py` | ~40 | Event logging system |
 | `test_yaml_tools.py` | ~20 | YAML validation |
 | `test_metric_patterns.py` | ~50 | Log parsing patterns |
+| `test_workflow_state.py` | ~60 | Workflow state detection and done flags |
+| `test_session_summary.py` | ~20 | Session summary generation |
 
-Total: **300+ tests**
+Total: **350+ tests**
 
 ## Writing New Tests
 

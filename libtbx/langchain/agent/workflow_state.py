@@ -480,6 +480,9 @@ def _analyze_history(history):
         "ligandfit_done": False,
         "pdbtools_done": False,
         "dock_done": False,
+        "map_to_model_done": False,
+        "resolve_cryo_em_done": False,
+        "map_sharpening_done": False,
         "validation_done": False,
         "last_program": None,
         "last_r_free": None,
@@ -597,17 +600,36 @@ def _analyze_history(history):
                 info["autosol_success"] = True
             # If autosol failed, don't mark it as done so agent can retry
         if "refine" in combined and "real_space" not in combined:
-            info["refine_done"] = True
-            info["refine_count"] += 1
+            # Only count successful refinements
+            # Failed refinements don't produce map coefficients needed by downstream programs
+            result = entry.get("result", "") if isinstance(entry, dict) else ""
+            result_upper = result.upper() if result else ""
+            if "FAIL" not in result_upper and "SORRY" not in result_upper and "ERROR" not in result_upper:
+                info["refine_done"] = True
+                info["refine_count"] += 1
+                info["refine_success"] = True
+            # If refinement failed, don't increment count
         if "real_space_refine" in combined:
-            info["rsr_done"] = True
-            info["rsr_count"] += 1
+            # Only count successful RSR runs
+            result = entry.get("result", "") if isinstance(entry, dict) else ""
+            result_upper = result.upper() if result else ""
+            if "FAIL" not in result_upper and "SORRY" not in result_upper and "ERROR" not in result_upper:
+                info["rsr_done"] = True
+                info["rsr_count"] += 1
+                info["rsr_success"] = True
+            # If RSR failed, don't increment count
         if "ligandfit" in combined:
             info["ligandfit_done"] = True
         if "pdbtools" in combined:
             info["pdbtools_done"] = True
         if "dock_in_map" in combined:
             info["dock_done"] = True
+        if "map_to_model" in combined:
+            info["map_to_model_done"] = True
+        if "resolve_cryo_em" in combined:
+            info["resolve_cryo_em_done"] = True
+        if "map_sharpening" in combined or "local_aniso" in combined:
+            info["map_sharpening_done"] = True
 
     return info
 

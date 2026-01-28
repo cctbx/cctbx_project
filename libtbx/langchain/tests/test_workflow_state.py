@@ -1178,6 +1178,144 @@ def test_default_program_settings_ignored():
     print("  PASSED")
 
 
+def test_stop_added_after_after_program_completes():
+    """
+    Test that STOP is added to valid_programs after the after_program has completed.
+
+    When user says "stop after refinement" and refinement has been done,
+    STOP should be available.
+    """
+    print("Test: stop_added_after_after_program_completes")
+
+    # Scenario: User wants to stop after refine, and refine has been done
+    files = ["data.mtz", "model.pdb", "refine_001.pdb"]
+    history = [
+        {"program": "phenix.xtriage", "result": "SUCCESS"},
+        {"program": "phenix.refine", "result": "SUCCESS", "metrics": {"r_free": 0.28}}
+    ]
+
+    directives = {
+        "stop_conditions": {
+            "after_program": "phenix.refine"
+        }
+    }
+
+    state = detect_workflow_state(history, files, directives=directives)
+
+    # STOP should be in valid_programs because after_program (refine) has been completed
+    assert "STOP" in state["valid_programs"], \
+        "STOP should be added when after_program has completed"
+
+    print("  PASSED")
+
+
+def test_failed_refine_not_counted():
+    """
+    Test that failed refinement doesn't increment refine_count.
+
+    This is critical because refine_count > 0 is used to allow ligandfit,
+    which requires map coefficients from successful refinement.
+    """
+    print("Test: failed_refine_not_counted")
+
+    # Import _analyze_history directly for testing
+    try:
+        from libtbx.langchain.agent.workflow_state import _analyze_history
+    except ImportError:
+        from agent.workflow_state import _analyze_history
+
+    # Successful refinement should increment count
+    history_success = [
+        {"program": "phenix.xtriage", "result": "SUCCESS"},
+        {"program": "phenix.refine", "result": "SUCCESS: R-free=0.28"}
+    ]
+    info_success = _analyze_history(history_success)
+    assert info_success.get("refine_count", 0) == 1, \
+        "Successful refinement should increment refine_count"
+
+    # Failed refinement should NOT increment count
+    history_failed = [
+        {"program": "phenix.xtriage", "result": "SUCCESS"},
+        {"program": "phenix.refine", "result": "FAILED: Space group mismatch"}
+    ]
+    info_failed = _analyze_history(history_failed)
+    assert info_failed.get("refine_count", 0) == 0, \
+        "Failed refinement should NOT increment refine_count"
+
+    # SORRY error should NOT increment count
+    history_sorry = [
+        {"program": "phenix.xtriage", "result": "SUCCESS"},
+        {"program": "phenix.refine", "result": "Sorry: Model has no atoms"}
+    ]
+    info_sorry = _analyze_history(history_sorry)
+    assert info_sorry.get("refine_count", 0) == 0, \
+        "Refinement with SORRY error should NOT increment refine_count"
+
+    print("  PASSED")
+
+
+def test_cryoem_done_flags():
+    """
+    Test that cryo-EM program done flags are correctly set.
+
+    These flags are used by not_done conditions in workflows.yaml to prevent
+    programs from running repeatedly.
+    """
+    print("Test: cryoem_done_flags")
+
+    try:
+        from libtbx.langchain.agent.workflow_state import _analyze_history
+    except ImportError:
+        try:
+            from agent.workflow_state import _analyze_history
+        except ImportError:
+            print("  SKIPPED - requires PHENIX environment")
+            return
+
+    # Test resolve_cryo_em_done
+    history_resolve = [
+        {"program": "phenix.mtriage", "result": "SUCCESS"},
+        {"program": "phenix.resolve_cryo_em", "result": "SUCCESS: Map optimized"}
+    ]
+    try:
+        info = _analyze_history(history_resolve)
+    except ImportError:
+        print("  SKIPPED - requires PHENIX environment")
+        return
+        
+    assert info.get("resolve_cryo_em_done") == True, \
+        "resolve_cryo_em_done should be True after phenix.resolve_cryo_em"
+
+    # Test map_sharpening_done
+    history_sharpen = [
+        {"program": "phenix.mtriage", "result": "SUCCESS"},
+        {"program": "phenix.map_sharpening", "result": "SUCCESS: Map sharpened"}
+    ]
+    info = _analyze_history(history_sharpen)
+    assert info.get("map_sharpening_done") == True, \
+        "map_sharpening_done should be True after phenix.map_sharpening"
+
+    # Test map_to_model_done
+    history_m2m = [
+        {"program": "phenix.mtriage", "result": "SUCCESS"},
+        {"program": "phenix.map_to_model", "result": "SUCCESS: Model built"}
+    ]
+    info = _analyze_history(history_m2m)
+    assert info.get("map_to_model_done") == True, \
+        "map_to_model_done should be True after phenix.map_to_model"
+
+    # Test dock_done
+    history_dock = [
+        {"program": "phenix.mtriage", "result": "SUCCESS"},
+        {"program": "phenix.dock_in_map", "result": "SUCCESS: Model docked"}
+    ]
+    info = _analyze_history(history_dock)
+    assert info.get("dock_done") == True, \
+        "dock_done should be True after phenix.dock_in_map"
+
+    print("  PASSED")
+
+
 def run_all_tests():
     """Run all tests with fail-fast behavior (cctbx style)."""
     from tests.test_utils import run_tests_with_fail_fast

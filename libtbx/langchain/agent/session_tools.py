@@ -50,7 +50,9 @@ def show_session(data, detailed=False):
     print("="*60)
     print("Session ID: %s" % data.get("session_id", "N/A"))
     print("Project Advice: %s" % (data.get("project_advice", "None") or "None"))
-    print("Total Cycles: %d" % len(data.get("cycles", [])))
+    # Exclude STOP cycles from count - STOP is a decision, not a real program run
+    real_cycles = [c for c in data.get("cycles", []) if c.get("program") not in ["STOP", None, "unknown"]]
+    print("Total Cycles: %d" % len(real_cycles))
     print("-"*60)
 
     # Show original files
@@ -365,6 +367,8 @@ def rebuild_best_files(data):
             return "rsr_output"
         elif "phaser" in program_lower:
             return "phaser_output"
+        elif "process_predicted_model" in program_lower:
+            return "processed_predicted"
         elif "predict_and_build" in program_lower:
             return "predicted"
         elif "autobuild" in program_lower:
@@ -438,8 +442,12 @@ def rebuild_best_files(data):
                         file_stage = "phaser_output"
                     elif stage == "predicted" and ('predict' in basename or 'alphafold' in basename):
                         file_stage = "predicted"
+                    elif stage == "processed_predicted" and ('processed' in basename or 'trimmed' in basename):
+                        file_stage = "processed_predicted"
                     elif stage == "docked" and ('dock' in basename or 'placed' in basename):
                         file_stage = "docked"
+                    elif stage == "autobuild_output" and ('autobuild' in basename or 'overall_best' in basename):
+                        file_stage = "autobuild_output"
                     elif stage == "ligand_fit_output" and ('ligand_fit' in basename or 'lig_fit' in basename):
                         file_stage = "ligand_fit_output"
                     elif stage == "with_ligand" and 'with_ligand' in basename:

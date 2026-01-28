@@ -289,6 +289,67 @@ def test_empty_session():
     print("  PASSED")
 
 
+def test_stop_cycle_excluded_from_count():
+    """Test that STOP cycles are excluded from cycle counts.
+    
+    STOP is a termination signal, not a real program run.
+    The summary should report only actual program cycles.
+    """
+    print("Test: stop_cycle_excluded_from_count")
+
+    temp_dir = tempfile.mkdtemp()
+    session = AgentSession(session_dir=temp_dir)
+
+    # Set up minimal session data
+    session.data["project_advice"] = "test"
+    session.data["original_files"] = ["/data/test.mtz"]
+    session.data["experiment_type"] = "xray"
+
+    # Add 3 real cycles + 1 STOP cycle
+    session.data["cycles"] = [
+        {
+            "cycle_number": 1,
+            "program": "phenix.xtriage",
+            "command": "phenix.xtriage test.mtz",
+            "result": "SUCCESS: completed",
+        },
+        {
+            "cycle_number": 2,
+            "program": "phenix.refine",
+            "command": "phenix.refine ...",
+            "result": "SUCCESS: R-free=0.30",
+        },
+        {
+            "cycle_number": 3,
+            "program": "phenix.refine",
+            "command": "phenix.refine ...",
+            "result": "FAILED: error occurred",
+        },
+        {
+            "cycle_number": 4,
+            "program": "STOP",
+            "command": "STOP",
+            "result": "Workflow complete",
+        },
+    ]
+
+    data = session._extract_summary_data()
+
+    # Should count only real programs (3), not STOP
+    assert data["total_cycles"] == 3, \
+        f"Expected 3 cycles (excluding STOP), got {data['total_cycles']}"
+    
+    # Should count only successful real programs (2)
+    assert data["successful_cycles"] == 2, \
+        f"Expected 2 successful cycles, got {data['successful_cycles']}"
+
+    # Cleanup
+    import shutil
+    shutil.rmtree(temp_dir)
+
+    print("  PASSED")
+
+
 def run_all_tests():
     """Run all tests with fail-fast behavior (cctbx style)."""
     from tests.test_utils import run_tests_with_fail_fast

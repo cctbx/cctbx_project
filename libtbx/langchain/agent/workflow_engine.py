@@ -814,22 +814,47 @@ class WorkflowEngine:
         #    This handles tutorial cases where the user wants to run a specific
         #    program. We move it to the front so the LLM is more likely to choose it.
         #    BUT: Don't add programs if prerequisites aren't met!
+        #    ALSO: If after_program has already been run, add STOP to valid programs
         after_program = stop_cond.get("after_program")
         if after_program:
-            should_add = self._check_program_prerequisites(after_program, context, phase_name)
+            # Check if after_program has already been completed
+            # If so, the user's workflow is done - add STOP
+            after_program_done = context.get("last_program") == after_program if context else False
 
-            if should_add:
-                if after_program in result:
-                    # Already in list - move to front to prioritize
-                    result.remove(after_program)
-                    result.insert(0, after_program)
-                    modifications.append("Prioritized %s (after_program directive)" % after_program)
-                else:
-                    # Not in list - add at front
-                    result.insert(0, after_program)
-                    modifications.append("Added %s (after_program directive)" % after_program)
+            # Also check program-specific done flags
+            if not after_program_done and context:
+                prog_key = after_program.replace("phenix.", "").replace(".", "_")
+                # Check for programs that have been run (e.g., refine_count > 0 for phenix.refine)
+                if after_program == "phenix.refine" and context.get("refine_count", 0) > 0:
+                    after_program_done = True
+                elif after_program == "phenix.real_space_refine" and context.get("rsr_count", 0) > 0:
+                    after_program_done = True
+                elif after_program == "phenix.ligandfit" and context.get("ligandfit_done"):
+                    after_program_done = True
+                elif after_program == "phenix.polder" and context.get("polder_done"):
+                    after_program_done = True
+
+            if after_program_done:
+                # User's workflow is complete - add STOP
+                if "STOP" not in result:
+                    result.append("STOP")
+                    modifications.append("Added STOP (after_program %s completed)" % after_program)
             else:
-                modifications.append("Skipped adding %s (prerequisites not met)" % after_program)
+                # after_program not yet run - add it to valid programs
+                should_add = self._check_program_prerequisites(after_program, context, phase_name)
+
+                if should_add:
+                    if after_program in result:
+                        # Already in list - move to front to prioritize
+                        result.remove(after_program)
+                        result.insert(0, after_program)
+                        modifications.append("Prioritized %s (after_program directive)" % after_program)
+                    else:
+                        # Not in list - add at front
+                        result.insert(0, after_program)
+                        modifications.append("Added %s (after_program directive)" % after_program)
+                else:
+                    modifications.append("Skipped adding %s (prerequisites not met)" % after_program)
 
         # 3. Apply workflow preferences
         workflow_prefs = directives.get("workflow_preferences", {})
@@ -902,11 +927,22 @@ class WorkflowEngine:
             if not has_refined:
                 return False
 
-        # predict_and_build can always be added if resolution is available
-        # (or even without - it will do prediction-only)
+        # predict_and_build: for X-ray, only add if xtriage has been run (we need resolution)
+        # for cryo-EM, only add if mtriage has been run (we need resolution)
+        # Exception: always allow if we're in a phase that includes predict_and_build
         if program == "phenix.predict_and_build":
-            # Always allow - worst case it does prediction-only
-            return True
+            # Check if we're already in a phase that includes predict_and_build
+            if phase_name in ("obtain_model", "molecular_replacement", "dock_model"):
+                return True  # Let the phase conditions handle it
+
+            # For X-ray, require xtriage to be done (to get resolution for building)
+            # For cryo-EM, require mtriage to be done
+            if context.get("xtriage_done") or context.get("mtriage_done"):
+                return True
+
+            # Allow prediction-only if explicitly requested, but warn
+            # (This case is handled by command builder forcing stop_after_predict=True)
+            return False  # Don't add to early phases - let workflow proceed normally
 
         # Default: allow
         return True

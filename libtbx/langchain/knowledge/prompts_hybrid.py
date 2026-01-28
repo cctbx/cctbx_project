@@ -254,10 +254,12 @@ You must output a SINGLE JSON object matching this schema:
   Use: Alternative to resolve_cryo_em for map sharpening
   Output: *_sharpened.ccp4 (full map suitable for real_space_refine)
 
-**phenix.predict_and_build** - AlphaFold prediction + building
+**phenix.predict_and_build** - AlphaFold prediction + MR + building
   Files: {sequence: .fa/.seq/.dat, data: .mtz/.sca (X-ray), full_map: .mrc/.ccp4 (cryo-EM), half_map: [.mrc, .mrc] (cryo-EM)}
-  Strategy: {resolution: N, stop_after_predict: true/false}
+  Strategy: {resolution: N, stop_after_predict: true/false, rebuilding_strategy: "Quick"/"Standard"}
   IMPORTANT: Set resolution if building (get from xtriage/mtriage)
+  NOTE: By default (stop_after_predict=False), this runs the FULL workflow: prediction → molecular replacement → model building
+  NOTE: Only set stop_after_predict=True for cryo-EM stepwise workflow where you want just the predicted model
   For cryo-EM maps:
     - If you have a FULL MAP: use full_map=filename.ccp4
     - If you ONLY have HALF MAPS: use half_map=file1.ccp4 half_map=file2.ccp4 (NO full_map!)
@@ -624,9 +626,13 @@ You MUST choose from the valid programs above, or set "stop": true.
         if workflow_state.get("automation_path"):
             workflow_section += "\nAutomation path: %s\n" % workflow_state["automation_path"]
 
-            if workflow_state["automation_path"] == "stepwise":
-                if "predict_and_build" in valid_list:
-                    workflow_section += "NOTE: Use predict_and_build with strategy: {\"stop_after_predict\": true}\n"
+            # Only show stop_after_predict guidance for cryo-EM stepwise workflow
+            # For X-ray, predict_and_build should run the full workflow (prediction + MR + building)
+            experiment_type = workflow_state.get("experiment_type", "")
+            if (workflow_state["automation_path"] == "stepwise" and
+                experiment_type == "cryoem" and
+                "predict_and_build" in valid_list):
+                workflow_section += "NOTE: Use predict_and_build with strategy: {\"stop_after_predict\": true}\n"
 
         # Add recommendations section if available
         recommendations = format_recommendations_for_prompt(workflow_state)

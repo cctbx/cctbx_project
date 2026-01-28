@@ -229,9 +229,11 @@ xray:
           preferred: true
           conditions:
             - has: sequence
+            - not_done: predict_full  # Don't re-run after full workflow completes
         - program: phenix.phaser
           conditions:
             - has: search_model
+            - not_done: phaser  # MR should only run once
       transitions:
         on_complete: refine
     
@@ -244,6 +246,7 @@ xray:
           conditions:
             - has: ligand_file
             - r_free: "< 0.35"
+            - not_done: ligandfit
       repeat:
         max_cycles: 4
         until:
@@ -267,6 +270,36 @@ xray:
         - range: [2.5, 3.5]
           value: 0.30
 ```
+
+#### Program Execution Controls
+
+The workflow uses two mechanisms to prevent programs from running repeatedly:
+
+**1. `not_done` conditions** (in workflows.yaml)
+
+Programs can specify `not_done: <flag>` to prevent re-runs:
+
+| Flag | Program | Meaning |
+|------|---------|---------|
+| `predict_full` | predict_and_build (X-ray) | Full workflow (prediction+MR+building) completed |
+| `predict` | predict_and_build (cryo-EM) | Any prediction completed |
+| `phaser` | phaser | Molecular replacement completed |
+| `dock` | dock_in_map | Model docked in map |
+| `autobuild` | autobuild | Model building completed |
+| `autosol` | autosol | Experimental phasing completed |
+| `ligandfit` | ligandfit | Ligand fitted |
+| `resolve_cryo_em` | resolve_cryo_em | Map optimization completed |
+| `map_sharpening` | map_sharpening | Map sharpening completed |
+| `map_to_model` | map_to_model | De novo model building completed |
+
+**2. `run_once: true`** (in programs.yaml)
+
+Programs like `phenix.xtriage` and `phenix.mtriage` have `run_once: true`, which automatically prevents re-running in a session.
+
+**Programs that run multiple times** (intentionally):
+- `phenix.refine` / `phenix.real_space_refine` - Iterative refinement
+- `phenix.molprobity` - Validation after each cycle
+- `phenix.polder` - Can run for different sites
 
 ### metrics.yaml
 

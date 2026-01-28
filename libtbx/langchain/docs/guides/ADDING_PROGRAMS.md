@@ -178,6 +178,27 @@ xray:  # or cryoem
 - `not_done: <program>` - Program hasn't been run yet (auto-generated for `run_once: true` programs)
 - `not_has: <file_type>` - File type is NOT present
 
+**Available done flags:**
+
+For programs with `run_once: true`, flags are auto-generated (e.g., `xtriage_done`, `mtriage_done`).
+
+For other programs, these flags are manually tracked in `workflow_state.py`:
+
+| Flag | Set When | Used By |
+|------|----------|---------|
+| `predict_done` | predict_and_build runs (any mode) | cryo-EM workflow |
+| `predict_full_done` | predict_and_build completes full workflow | X-ray workflow |
+| `phaser_done` | phaser completes MR | X-ray workflow |
+| `dock_done` | dock_in_map completes | cryo-EM workflow |
+| `autobuild_done` | autobuild succeeds | X-ray workflow |
+| `autosol_done` | autosol succeeds | X-ray workflow |
+| `ligandfit_done` | ligandfit completes | Both workflows |
+| `refine_done` | refine completes (any) | Internal tracking |
+| `rsr_done` | real_space_refine completes | Internal tracking |
+| `resolve_cryo_em_done` | resolve_cryo_em completes | cryo-EM workflow |
+| `map_sharpening_done` | map_sharpening completes | cryo-EM workflow |
+| `map_to_model_done` | map_to_model completes | cryo-EM workflow |
+
 ---
 
 ## Step 3: Add Output File Types (if needed)
