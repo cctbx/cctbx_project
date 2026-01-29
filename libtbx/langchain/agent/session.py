@@ -2539,10 +2539,9 @@ FINAL REPORT:"""
                     # Skip intermediate files
                     if self._is_intermediate_file(basename):
                         continue
-                    # Check file still exists (important for modified sessions)
-                    # Only check if it's an absolute path
-                    if os.path.isabs(filepath) and not os.path.exists(filepath):
-                        continue
+                    # Note: We don't check file existence here because:
+                    # 1. The session may have been created on a different machine
+                    # 2. The paths in best_files are from the client's filesystem
                     final_files.append({
                         "name": basename,
                         "type": display_type,
