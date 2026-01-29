@@ -2274,6 +2274,7 @@ def _fallback_with_new_builder(state):
             return {
                 **state,
                 "command": cmd,
+                "program": program,  # Important: track which program fallback chose
                 "validation_error": None,
                 "fallback_used": True
             }
@@ -2420,6 +2421,7 @@ def fallback(state):
             return {
                 **state,
                 "command": cmd,
+                "program": program,  # Important: track which program fallback chose
                 "validation_error": None,
                 "fallback_used": True
             }
@@ -2440,6 +2442,7 @@ def fallback(state):
             return {
                 **state,
                 "command": cmd,
+                "program": "phenix.autobuild",  # Important: track which program fallback chose
                 "validation_error": None,
                 "fallback_used": True
             }
@@ -2455,6 +2458,7 @@ def fallback(state):
                 return {
                     **state,
                     "command": cmd,
+                    "program": "phenix.molprobity",  # Important: track which program fallback chose
                     "validation_error": None,
                     "fallback_used": True
                 }
@@ -2473,6 +2477,7 @@ def fallback(state):
                 return {
                     **state,
                     "command": cmd,
+                    "program": "phenix.refine",  # Important: track which program fallback chose
                     "validation_error": None,
                     "fallback_used": True
                 }
