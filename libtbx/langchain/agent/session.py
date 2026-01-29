@@ -2483,81 +2483,115 @@ FINAL REPORT:"""
         """
         Get the most relevant final output files with descriptions.
 
-        Prioritizes best_files from the session (the actual best file for each
-        category) over listing all output files from cycles.
+        Shows ONLY the best files for each category - the actual deliverables
+        the user should use. Not all intermediate outputs.
         """
         final_files = []
+        seen_types = set()  # Track which types we've added
 
-        # FIRST: Use best_files from session - these are the definitive outputs
-        best_files = self.data.get("best_files", {})
+        # Use best_files from session - these are the definitive outputs
+        # Handle both old format (best_files.category) and new format (best_files.best.category)
+        best_files_raw = self.data.get("best_files", {})
+        if "best" in best_files_raw:
+            # New format: best_files.best.category.path
+            best_files = {}
+            for category, info in best_files_raw.get("best", {}).items():
+                if isinstance(info, dict) and "path" in info:
+                    best_files[category] = info["path"]
+        else:
+            # Old format: best_files.category = path
+            best_files = best_files_raw
+
         if best_files:
-            # Priority order for displaying best files
-            priority_order = ["model", "data_mtz", "map_coeffs_mtz", "map", "sequence"]
+            # Define what we want to show and in what order
+            # Each entry: (category, display_type, description_template)
+            categories_to_show = [
+                ("model", "model", "Best refined model"),
+                ("data_mtz", "data", "Reflection data with R-free flags"),
+                ("map_coeffs_mtz", "map_coeffs", "Map coefficients for visualization"),
+                ("map", "map", "Best electron density map"),
+                ("full_map", "map", "Full reconstructed map"),
+                ("ligand_fit_output", "ligand", "Fitted ligand coordinates"),
+            ]
 
-            for file_type in priority_order:
-                filepath = best_files.get(file_type)
+            for category, display_type, description in categories_to_show:
+                filepath = best_files.get(category)
                 if filepath:
                     basename = os.path.basename(filepath)
-                    file_info = self._describe_output_file(basename, "best_files")
-                    if file_info:
-                        # Mark as priority and add type context
-                        file_info["priority"] = True
-                        if not file_info.get("description"):
-                            file_info["description"] = f"Best {file_type} file"
-                        final_files.append(file_info)
+                    # Skip intermediate files
+                    if self._is_intermediate_file(basename):
+                        continue
+                    # Check file still exists (important for modified sessions)
+                    # Only check if it's an absolute path
+                    if os.path.isabs(filepath) and not os.path.exists(filepath):
+                        continue
+                    final_files.append({
+                        "name": basename,
+                        "type": display_type,
+                        "description": description,
+                    })
+                    seen_types.add(display_type)
 
-            # Add search_model if different from model
-            search_model = best_files.get("search_model")
-            model = best_files.get("model")
-            if search_model and search_model != model:
-                basename = os.path.basename(search_model)
-                if not any(f["name"] == basename for f in final_files):
-                    file_info = self._describe_output_file(basename, "best_files")
-                    if file_info:
-                        final_files.append(file_info)
+            # If we have best files, return them
+            if final_files:
+                return final_files
 
-        # If we already have good coverage from best_files, return those
-        if len(final_files) >= 3:
-            return final_files[:8]
+        # FALLBACK: If no best_files in session, scan all cycle outputs
+        # Collect best file for each type from remaining cycles
+        best_by_type = {}  # type -> (basename, file_info, cycle_num)
 
-        # FALLBACK: Work through cycle output files if best_files not available
-        # Track which program produced each file
-        file_sources = {}
-
-        # Work through all cycles to understand file sources
-        for cycle in cycles:
-            program = cycle.get("program", "")
+        for i, cycle in enumerate(cycles):
+            if cycle.get("status") != "completed":
+                continue
             output_files = cycle.get("output_files", [])
+            program = cycle.get("program", "")
+
             for f in output_files:
                 basename = os.path.basename(f)
-                file_sources[basename] = program
+                if self._is_intermediate_file(basename):
+                    continue
 
-        # Work backwards to find the last cycle with output files
-        for cycle in reversed(cycles):
-            output_files = cycle.get("output_files", [])
-            program = cycle.get("program", "")
+                file_info = self._describe_output_file(basename, program)
+                if file_info:
+                    file_type = file_info.get("type", "file")
+                    # Keep the latest (highest cycle number) for each type
+                    if file_type not in best_by_type or i > best_by_type[file_type][2]:
+                        best_by_type[file_type] = (basename, file_info, i)
 
-            if output_files:
-                for f in output_files:
-                    basename = os.path.basename(f)
-                    basename_lower = basename.lower()
+        # Build final list from best_by_type, prioritizing certain types
+        priority_order = ["model", "data", "map_coeffs", "map", "ligand"]
+        for ptype in priority_order:
+            if ptype in best_by_type:
+                _, file_info, _ = best_by_type[ptype]
+                if not any(existing["name"] == file_info["name"] for existing in final_files):
+                    final_files.append(file_info)
 
-                    # Determine file type and description
-                    file_info = self._describe_output_file(basename, program)
+        # Add any remaining types not in priority order
+        for ftype, (basename, file_info, _) in best_by_type.items():
+            if ftype not in priority_order:
+                if not any(existing["name"] == file_info["name"] for existing in final_files):
+                    final_files.append(file_info)
 
-                    if file_info and len(final_files) < 8:
-                        # Check for duplicates
-                        if not any(existing["name"] == basename for existing in final_files):
-                            # Prioritize refined models at the top
-                            if file_info.get("priority"):
-                                final_files.insert(0, file_info)
-                            else:
-                                final_files.append(file_info)
+        return final_files[:5]  # Limit to 5 files
 
-                if final_files:
-                    break
+    def _is_intermediate_file(self, basename):
+        """Check if a file is an intermediate/temporary file that shouldn't be shown."""
+        basename_lower = basename.lower()
 
-        return final_files[:8]  # Limit to 8 files
+        # Skip patterns - intermediate or debug files
+        skip_patterns = [
+            "_debug", "_check", ".geo", ".eff", ".def", ".log",
+            "superposed_predicted", "untrimmed", "intermediate",
+            "_cycle_", "carryOn", "CarryOn",
+        ]
+        if any(pat in basename_lower for pat in skip_patterns):
+            return True
+
+        # Skip files that end with specific intermediate suffixes
+        if basename_lower.endswith(("_check.pdb", "_debug.pdb")):
+            return True
+
+        return False
 
     def _describe_output_file(self, basename, program):
         """
