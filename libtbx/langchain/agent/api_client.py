@@ -499,7 +499,7 @@ def call_llm_simple(prompt, provider="google", model=None, temperature=0.1, max_
 
     Args:
         prompt: The prompt text to send
-        provider: LLM provider ("google", "openai", "anthropic")
+        provider: LLM provider ("google", "openai", "anthropic", "ollama")
         model: Model name (uses provider default if None)
         temperature: Sampling temperature (default 0.1 for consistency)
         max_tokens: Maximum tokens in response
@@ -513,6 +513,8 @@ def call_llm_simple(prompt, provider="google", model=None, temperature=0.1, max_
         return _call_openai_llm(prompt, model, temperature, max_tokens)
     elif provider == "anthropic":
         return _call_anthropic_llm(prompt, model, temperature, max_tokens)
+    elif provider == "ollama":
+        return _call_ollama_llm(prompt, model, temperature, max_tokens)
     else:
         raise ValueError(f"Unknown provider: {provider}")
 
@@ -588,3 +590,24 @@ def _call_anthropic_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
         messages=[{"role": "user", "content": prompt}]
     )
     return response.content[0].text
+
+
+def _call_ollama_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
+    """Call Ollama API (OpenAI-compatible)."""
+    import openai
+
+    model_name = model or "llama3.2"
+    base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+
+    client = openai.OpenAI(
+        base_url=base_url,
+        api_key="ollama"  # Ollama doesn't require a real API key
+    )
+
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=temperature,
+        max_tokens=max_tokens
+    )
+    return response.choices[0].message.content

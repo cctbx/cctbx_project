@@ -223,13 +223,44 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
         response = _call_llm(prompt, provider, model, log)
         if not response:
             log("DIRECTIVES: No response from LLM")
+            # For ollama, fall back to simple extraction since local models
+            # may struggle with complex JSON extraction tasks
+            if provider == "ollama":
+                log("DIRECTIVES: Falling back to simple pattern extraction for ollama")
+                return extract_directives_simple(user_advice)
             return {}
+
+        # Log response length for debugging
+        log("DIRECTIVES: Got response from %s (%d chars)" % (provider, len(response)))
 
         # Parse JSON response
         directives = _parse_json_response(response, log)
 
+        # Log what was parsed
+        if not directives:
+            log("DIRECTIVES: Parsed to empty dict - LLM may not have found actionable directives")
+            # Show first part of response for debugging
+            log("DIRECTIVES: Response preview: %s" % response[:300].replace('\n', ' '))
+            # For ollama, try simple extraction as fallback since smaller models
+            # may not follow JSON formatting instructions well
+            if provider == "ollama":
+                log("DIRECTIVES: Trying simple pattern extraction as ollama fallback")
+                simple_directives = extract_directives_simple(user_advice)
+                if simple_directives:
+                    log("DIRECTIVES: Simple extraction found: %s" % list(simple_directives.keys()))
+                    return simple_directives
+        else:
+            log("DIRECTIVES: Parsed sections: %s" % list(directives.keys()))
+
         # Validate and clean directives
         directives = validate_directives(directives, log)
+
+        # If validation stripped everything for ollama, try simple extraction
+        if not directives and provider == "ollama":
+            log("DIRECTIVES: Validation emptied directives, trying simple extraction")
+            simple_directives = extract_directives_simple(user_advice)
+            if simple_directives:
+                return simple_directives
 
         log("DIRECTIVES: Extracted %d directive sections" % len(directives))
         return directives
@@ -443,6 +474,35 @@ def _call_llm_fallback(prompt, provider, model, log):
 
         except Exception as e:
             log("DIRECTIVES: Anthropic API call failed - %s" % str(e))
+            return None
+
+    elif provider == "ollama":
+        try:
+            # Ollama uses OpenAI-compatible API
+            import openai
+
+            model_name = model or "llama3.2"
+            base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+
+            client = openai.OpenAI(
+                base_url=base_url,
+                api_key="ollama"  # Ollama doesn't need a real API key
+            )
+
+            def make_call():
+                response = client.chat.completions.create(
+                    model=model_name,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.1,
+                    max_tokens=2000
+                )
+                return response.choices[0].message.content
+
+            # No rate limit handler for ollama (local model)
+            return make_call()
+
+        except Exception as e:
+            log("DIRECTIVES: Ollama API call failed - %s" % str(e))
             return None
 
     else:
@@ -1166,6 +1226,25 @@ def extract_directives_simple(user_advice):
     # ==========================================================================
     # WORKFLOW PREFERENCES EXTRACTION
     # ==========================================================================
+    # Check for prefer program patterns (include, use, run)
+    prefer_program_patterns = [
+        (r'(?:include|use|run|do|perform|add)\s+(?:the\s+)?ligand\s*(?:fit|fitting)', 'phenix.ligandfit'),
+        (r'(?:fit|place|add)\s+(?:the\s+)?ligand', 'phenix.ligandfit'),
+        (r'with\s+ligand\s*(?:fit|fitting)', 'phenix.ligandfit'),
+        (r'ligand\s+(?:should\s+be\s+)?(?:fit|fitted|placed)', 'phenix.ligandfit'),
+        (r'(?:include|use|run|do|perform)\s+(?:the\s+)?polder', 'phenix.polder'),
+        (r'(?:calculate|compute|generate)\s+polder\s+map', 'phenix.polder'),
+    ]
+
+    for pattern, program in prefer_program_patterns:
+        if re.search(pattern, advice_lower, re.IGNORECASE):
+            if "workflow_preferences" not in directives:
+                directives["workflow_preferences"] = {"prefer_programs": []}
+            if "prefer_programs" not in directives["workflow_preferences"]:
+                directives["workflow_preferences"]["prefer_programs"] = []
+            if program not in directives["workflow_preferences"]["prefer_programs"]:
+                directives["workflow_preferences"]["prefer_programs"].append(program)
+
     # Check for skip program patterns
     skip_program_patterns = [
         (r'(?:skip|no|avoid|don\'?t\s+(?:run|use))\s+(?:the\s+)?autobuild', 'phenix.autobuild'),

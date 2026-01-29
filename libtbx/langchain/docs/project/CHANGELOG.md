@@ -1,5 +1,49 @@
 # PHENIX AI Agent - Changelog
 
+## Version 109 (January 2025)
+
+### Bug Fix: Empty Directives When Using Ollama Provider
+
+**Problem**: When running with `provider=ollama`, directive extraction returned empty `{}` even when the user's advice clearly specified workflow instructions like "include ligand fitting".
+
+**Root Cause**: Smaller local models (like llama3.2) may not follow complex JSON extraction prompts as reliably as GPT-4 or Gemini. The LLM might return:
+- Empty JSON `{}`
+- Malformed JSON that fails to parse
+- Valid JSON but with content that gets filtered during validation
+
+**Solution**: Multiple improvements for ollama reliability:
+
+1. **Fallback to simple pattern extraction**: When ollama's LLM returns empty or fails, automatically fall back to `extract_directives_simple()` which uses regex patterns
+
+2. **Added prefer_programs patterns**: New patterns to detect workflow preferences like:
+   - "include ligand fitting" → `prefer_programs: [phenix.ligandfit]`
+   - "fit the ligand" → `prefer_programs: [phenix.ligandfit]`
+   - "with ligand fitting" → `prefer_programs: [phenix.ligandfit]`
+   - "calculate polder map" → `prefer_programs: [phenix.polder]`
+
+3. **Better logging**: Added debug logging to show:
+   - What provider is being used
+   - Response length from LLM
+   - What sections were parsed
+   - Preview of response when parsing fails
+
+**Behavior with ollama**:
+```
+DIRECTIVES: Got response from ollama (500 chars)
+DIRECTIVES: Parsed to empty dict - LLM may not have found actionable directives
+DIRECTIVES: Trying simple pattern extraction as ollama fallback
+DIRECTIVES: Simple extraction found: ['workflow_preferences']
+```
+
+### Files Changed
+
+- `agent/directive_extractor.py`:
+  - Added ollama fallback to `extract_directives()` 
+  - Added `prefer_program_patterns` to `extract_directives_simple()`
+  - Improved logging throughout
+
+---
+
 ## Version 108 (January 2025)
 
 ### Multiple Summary and Advice Filtering Fixes
@@ -21,11 +65,18 @@
   - Added sequencing words: "with", "including", "include", "plus", "also", "workflow", "sequence", "steps", "primary goal", "goal:"
   - Added check for multiple programs mentioned (if 2+ programs mentioned, don't filter)
 
+**Issue 4: Empty directives when using ollama provider**
+
+- Problem: Directive extraction returned `{}` with ollama because the server doesn't support ollama
+- Root cause: Even though `run_on_server=False` was set for ollama, the code fell through to server execution when no local RAG database was found
+- Fix: Added explicit check in `run_job_on_server_or_locally()` to honor `run_on_server=False` for directive_extraction mode, bypassing the database check since directive extraction only needs the LLM, not the RAG database
+
 ### Files Changed
 
 - `knowledge/metrics.yaml` - Fixed predict_and_build step metrics
 - `agent/session.py` - Modified `_get_final_output_files()` to use best_files first
 - `agent/rules_selector.py` - Extended multi-step detection in `_apply_user_advice()`
+- `programs/ai_analysis.py` - Added directive_extraction bypass for local-only mode
 
 ---
 
