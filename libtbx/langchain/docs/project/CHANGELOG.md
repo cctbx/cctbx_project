@@ -1,5 +1,28 @@
 # PHENIX AI Agent - Changelog
 
+## Version 106 (January 2025)
+
+### Bug Fix: Informational Program Mentions Don't Block Workflow
+
+**Problem**: When the LLM's processed advice mentioned programs like `phenix.elbow` or `phenix.ready_set` as suggestions (e.g., "if not provided, generate a CIF restraints file with phenix.elbow"), the directive validator treated these as explicit program requests and blocked the workflow with:
+
+```
+DIRECTIVE VALIDATION FAILED
+Program 'phenix.elbow' exists in PHENIX but is not available in the AI agent workflow.
+```
+
+**Solution**: Program mentions in user advice text are now converted to warnings instead of blocking issues. Only programs explicitly requested in the directives structure (program_settings, stop_conditions.after_program, etc.) will block the workflow.
+
+**Behavior Change**:
+- Before: Any mention of unavailable program → VALIDATION FAILED
+- After: Text mentions → Warning only, workflow continues
+
+### Files Changed
+
+- `agent/directive_validator.py` - Section 1 (user advice program check) now produces warnings not issues
+
+---
+
 ## Version 105 (January 2025)
 
 ### Bug Fix: Failed Programs Don't Count as Done

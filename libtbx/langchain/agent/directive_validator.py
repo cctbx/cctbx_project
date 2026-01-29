@@ -539,8 +539,10 @@ def validate_directives(
     all_phenix = _get_all_phenix_programs()
 
     # =================================================================
-    # 1. CHECK PROGRAM REFERENCES IN USER ADVICE
+    # 1. CHECK PROGRAM REFERENCES IN USER ADVICE (WARNINGS ONLY)
     # =================================================================
+    # Programs mentioned in text are informational - don't block workflow.
+    # Only programs in directives structure should block.
 
     referenced_programs = _extract_program_references(user_advice)
 
@@ -550,29 +552,25 @@ def validate_directives(
             continue
         elif prog in all_phenix:
             # Program exists but isn't in agent workflow
+            # This is just a mention in text - warn but don't block
             unavailable_programs.append(prog)
-            issues.append(
-                f"Program '{prog}' exists in PHENIX but is not available in the AI agent workflow. "
-                f"You can run it manually with: {prog} <input_files>"
+            warnings.append(
+                f"Note: '{prog}' mentioned in advice exists in PHENIX but is not available in the AI agent. "
+                f"You can run it manually if needed: {prog} <input_files>"
             )
         else:
-            # Program not recognized at all
+            # Program not recognized - might be a typo, just warn
             unavailable_programs.append(prog)
-            # Suggest similar programs
             suggestions = _suggest_similar_programs(prog, available_set)
             if suggestions:
-                issues.append(
-                    f"Program '{prog}' is not recognized. "
+                warnings.append(
+                    f"Note: '{prog}' mentioned in advice is not recognized. "
                     f"Did you mean: {', '.join(suggestions)}?"
                 )
-            else:
-                issues.append(
-                    f"Program '{prog}' is not recognized. "
-                    f"Available programs include: {', '.join(sorted(available_set)[:5])}, etc."
-                )
+            # Don't warn about completely unknown programs - might be non-phenix tools
 
     # =================================================================
-    # 2. CHECK DIRECTIVES FOR PROGRAM REFERENCES
+    # 2. CHECK DIRECTIVES FOR PROGRAM REFERENCES (BLOCKING)
     # =================================================================
 
     if directives:
