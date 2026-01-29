@@ -21,6 +21,10 @@ phenix.ai_agent original_files="data.mtz model.pdb ligand.pdb" \
 phenix.ai_agent original_files="data.mtz seq.fa" \
     project_advice="Stop after one refinement job"
 
+# Stepwise mode - more control with intermediate checkpoints
+# Forces predict_and_build to stop after prediction (both X-ray and cryo-EM)
+phenix.ai_agent maximum_automation=False original_files="data.mtz sequence.fa"
+
 # Rules-only mode (deterministic, no LLM)
 phenix.ai_agent use_rules_only=True original_files="data.mtz sequence.fa"
 
@@ -80,7 +84,28 @@ The agent automatically:
 - **Monitors quality metrics** (R-free, map CC) and detects convergence
 - **Stops automatically** when targets reached or improvement plateaus
 
-### 3. User Directives
+### 3. Automation Modes
+
+Control workflow granularity with `maximum_automation`:
+
+| Mode | Setting | Behavior |
+|------|---------|----------|
+| **Automated** | `maximum_automation=True` (default) | Full automation - `predict_and_build` runs the complete workflow |
+| **Stepwise** | `maximum_automation=False` | More control - `predict_and_build` stops after prediction |
+
+**Automated workflow (X-ray):**
+```
+xtriage → predict_and_build(full) → xray_refined → refine cycles → STOP
+```
+
+**Stepwise workflow (X-ray):**
+```
+xtriage → predict_and_build(stop_after_predict) → process_predicted_model → phaser → refine → ...
+```
+
+Stepwise mode gives you checkpoints to inspect intermediate results before proceeding.
+
+### 4. User Directives
 
 Natural language guidance for the workflow:
 
@@ -97,7 +122,7 @@ project_advice="Use SAD phasing instead of molecular replacement"
 project_advice="Focus on ligand fitting"
 ```
 
-### 4. Transparent Decision Making
+### 5. Transparent Decision Making
 
 The agent explains every decision at configurable verbosity:
 
@@ -109,7 +134,7 @@ The agent explains every decision at configurable verbosity:
 
 Note: `debug` is an alias for `verbose` (3 levels total).
 
-### 5. Safety Checks
+### 6. Safety Checks
 
 The agent includes 70+ safety checks across multiple layers:
 
@@ -122,7 +147,7 @@ The agent includes 70+ safety checks across multiple layers:
 
 See [SAFETY_CHECKS.md](SAFETY_CHECKS.md) for the complete auto-generated list.
 
-### 6. User Feedback
+### 7. User Feedback
 
 When the agent can't fulfill a request, it explains why:
 

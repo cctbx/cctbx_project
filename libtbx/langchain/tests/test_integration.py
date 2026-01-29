@@ -238,6 +238,55 @@ def test_cryoem_stepwise_forces_stop_after_predict():
     print("  PASSED (or check debug_log for strategy modification)")
 
 
+def test_xray_stepwise_forces_stop_after_predict():
+    """Test that stepwise X-ray forces stop_after_predict in build.
+
+    This tests the v99 feature where maximum_automation=False now also
+    applies to X-ray workflows, not just cryo-EM.
+    """
+    print("Test: xray_stepwise_forces_stop_after_predict")
+
+    state = create_initial_state(
+        available_files=["data.mtz", "sequence.fa"],
+        history=[{"program": "phenix.xtriage", "result": "SUCCESS"}],
+        maximum_automation=False  # Stepwise mode
+    )
+
+    state = perceive(state)
+
+    # Check stepwise path detected
+    assert state["workflow_state"]["automation_path"] == "stepwise", \
+        "Expected stepwise automation_path, got: %s" % state["workflow_state"].get("automation_path")
+
+    # Verify we're in an X-ray state
+    assert state["workflow_state"]["experiment_type"] == "xray", \
+        "Expected xray experiment_type"
+
+    # Simulate intent for predict_and_build
+    state["intent"] = {
+        "program": "phenix.predict_and_build",
+        "files": {"sequence": "sequence.fa", "mtz": "data.mtz"},
+        "strategy": {}  # No stop_after_predict specified
+    }
+
+    state = build(state)
+
+    # Build should have added stop_after_predict=True
+    # Check either the command or the debug log
+    command = state.get("command", "")
+    debug_log = state.get("debug_log", [])
+
+    has_stop_after_predict = (
+        "stop_after_predict" in command.lower() or
+        any("stop_after_predict" in str(log) for log in debug_log)
+    )
+
+    assert has_stop_after_predict, \
+        "Stepwise X-ray should force stop_after_predict=True. Command: %s" % command
+
+    print("  PASSED")
+
+
 def test_success_detection():
     """Test R-free success detection."""
     print("Test: success_detection")

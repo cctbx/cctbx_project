@@ -613,6 +613,89 @@ def test_cryoem_has_phases_stepwise():
 
 
 # =============================================================================
+# X-RAY STEPWISE TESTS (v99)
+# =============================================================================
+
+def test_xray_initial_stepwise():
+    """Test X-ray initial state with stepwise mode (maximum_automation=False).
+
+    v99 feature: stepwise mode now applies to X-ray, not just cryo-EM.
+    """
+    print("Test: xray_initial_stepwise")
+
+    files = ["data.mtz", "sequence.fa"]
+    history = [
+        {"program": "phenix.xtriage", "result": "SUCCESS"}
+    ]
+
+    state = detect_workflow_state(history, files, maximum_automation=False)
+
+    # Should be in stepwise mode
+    assert state["automation_path"] == "stepwise", \
+        "Expected stepwise automation_path, got: %s" % state.get("automation_path")
+
+    # Should be X-ray experiment
+    assert state["experiment_type"] == "xray", \
+        "Expected xray experiment_type"
+
+    # predict_and_build should be valid (stepwise enforcement happens at build time)
+    assert "phenix.predict_and_build" in state["valid_programs"], \
+        "Expected predict_and_build in valid programs, got: %s" % state["valid_programs"]
+
+    print("  PASSED")
+
+
+def test_xray_has_prediction_stepwise():
+    """Test X-ray stepwise mode after predict with stop_after_predict."""
+    print("Test: xray_has_prediction_stepwise")
+
+    files = ["data.mtz", "sequence.fa", "predicted_model.pdb"]
+    history = [
+        {"program": "phenix.xtriage", "result": "SUCCESS"},
+        {"program": "phenix.predict_and_build", "result": "SUCCESS",
+         "command": "phenix.predict_and_build stop_after_predict=True"}
+    ]
+
+    state = detect_workflow_state(history, files, maximum_automation=False)
+
+    # Should still be in stepwise mode
+    assert state["automation_path"] == "stepwise", \
+        "Expected stepwise automation_path"
+
+    # After prediction only, should need to process and then run phaser
+    # Valid programs should include process_predicted_model or phaser
+    valid = state["valid_programs"]
+    has_next_step = (
+        "phenix.process_predicted_model" in valid or
+        "phenix.phaser" in valid
+    )
+    assert has_next_step, \
+        "Expected process_predicted_model or phaser in valid programs, got: %s" % valid
+
+    print("  PASSED")
+
+
+def test_xray_stepwise_automation_path_set():
+    """Test that automation_path is correctly set for X-ray with maximum_automation=False."""
+    print("Test: xray_stepwise_automation_path_set")
+
+    files = ["data.mtz"]
+    history = []
+
+    # With maximum_automation=True (default)
+    state_auto = detect_workflow_state(history, files, maximum_automation=True)
+    assert state_auto["automation_path"] == "automated", \
+        "Expected automated path with maximum_automation=True"
+
+    # With maximum_automation=False
+    state_step = detect_workflow_state(history, files, maximum_automation=False)
+    assert state_step["automation_path"] == "stepwise", \
+        "Expected stepwise path with maximum_automation=False"
+
+    print("  PASSED")
+
+
+# =============================================================================
 # VALIDATION TESTS
 # =============================================================================
 

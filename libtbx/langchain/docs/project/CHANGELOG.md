@@ -11,9 +11,16 @@
 - This gives users more control over the workflow with intermediate checkpoints
 - User can then run `process_predicted_model` → `phaser` → `refine` separately
 
+### Usage
+
+```bash
+# Stepwise mode - more control with intermediate checkpoints
+phenix.ai_agent maximum_automation=False original_files="data.mtz sequence.fa"
+```
+
 ### Workflow Comparison
 
-**Automated (maximum_automation=True)**:
+**Automated (maximum_automation=True, default)**:
 ```
 xray_initial → xtriage → predict_and_build(full) → xray_refined
 ```
@@ -28,8 +35,11 @@ xray_initial → xtriage → predict_and_build(stop_after_predict)
 ### Files Changed
 
 - `agent/graph_nodes.py` - Extended stepwise mode handling to X-ray states
-- `agent/docs_tools.py` - Updated workflow documentation
+- `agent/docs_tools.py` - Updated workflow documentation diagrams
 - `agent/workflow_state.py` - Updated stepwise hint message
+- `docs/README.md` - Added automation modes section and quick start example
+- `tests/test_integration.py` - Added `test_xray_stepwise_forces_stop_after_predict`
+- `tests/test_workflow_state.py` - Added X-ray stepwise tests
 
 ---
 
