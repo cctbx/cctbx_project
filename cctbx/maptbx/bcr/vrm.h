@@ -400,7 +400,6 @@ public:
           FloatType r2zyx = dx * dx + r2zy;
           FloatType cx    = dx * StepXX2 + StepXXS;
           for (int ix = Kx1; ix < Kx2; ++ix) {
-              //if(r2zyx == 0.0) {
               if(std::abs(r2zyx)<1.e-4) {
                  AtomGrid0 = af::tiny<int, 3>(ix,iy,iz);
                  ix0       = ix;
