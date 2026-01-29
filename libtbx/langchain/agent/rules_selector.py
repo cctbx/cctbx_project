@@ -360,9 +360,24 @@ class RulesSelector:
 
         # Check for specific program mentions (e.g., "use phaser", "run refine")
         # BUT only if it looks like an immediate instruction, not a workflow description
-        # Workflow descriptions contain sequencing words like "then", "after", "first"
-        sequencing_words = ["then", "after", "first", "next", "finally", "before", "followed by"]
+        # Workflow descriptions contain sequencing words or multiple program mentions
+        sequencing_words = [
+            "then", "after", "first", "next", "finally", "before", "followed by",
+            "with", "and then", "including", "include", "plus", "also",
+            "workflow", "sequence", "steps", "primary goal", "goal:",
+        ]
         is_multi_step = any(word in advice_lower for word in sequencing_words)
+
+        # Also check if multiple programs are mentioned - that's a multi-step workflow
+        programs_mentioned = 0
+        for prog in valid_programs:
+            if prog == "STOP":
+                continue
+            prog_name = prog.replace("phenix.", "").replace("_", " ").lower()
+            if prog_name in advice_lower or prog.lower() in advice_lower:
+                programs_mentioned += 1
+        if programs_mentioned > 1:
+            is_multi_step = True
 
         if not is_multi_step:
             # Single-step instruction - check for specific program mention

@@ -1,5 +1,68 @@
 # PHENIX AI Agent - Changelog
 
+## Version 108 (January 2025)
+
+### Multiple Summary and Advice Filtering Fixes
+
+**Issue 1: "Predicted model" shown for predict_and_build output**
+
+- Problem: Step metric showed "Predicted model" instead of refinement metrics for full predict_and_build runs
+- Fix: Changed `metrics.yaml` step_metrics for predict_and_build to use `r_free` as primary metric with "Built model" fallback
+
+**Issue 2: Key Output Files shows all files instead of best files**
+
+- Problem: Summary listed many files from last cycle instead of the actual best files
+- Fix: Modified `_get_final_output_files()` in `session.py` to prioritize `best_files` from session (model, mtz, map, sequence) before falling back to cycle outputs
+
+**Issue 3: Ligandfit filtered out by user advice**
+
+- Problem: User advice like "refinement with ligand fitting" was filtering programs to only `phenix.refine` because it contained "refine"
+- Fix: Extended multi-step workflow detection in `_apply_user_advice()`:
+  - Added sequencing words: "with", "including", "include", "plus", "also", "workflow", "sequence", "steps", "primary goal", "goal:"
+  - Added check for multiple programs mentioned (if 2+ programs mentioned, don't filter)
+
+### Files Changed
+
+- `knowledge/metrics.yaml` - Fixed predict_and_build step metrics
+- `agent/session.py` - Modified `_get_final_output_files()` to use best_files first
+- `agent/rules_selector.py` - Extended multi-step detection in `_apply_user_advice()`
+
+---
+
+## Version 107 (January 2025)
+
+### Feature: Graceful Stop on Persistent LLM Failures
+
+**Problem**: When the LLM service was unavailable (rate limited, overloaded, API errors), the agent would silently fall back to rules-only mode without informing the user. This could lead to unexpected behavior.
+
+**Solution**: After 3 consecutive LLM failures, the agent now stops gracefully with a helpful message:
+
+```
+The LLM service (google) is currently unavailable after 3 attempts.
+Last error: 503 UNAVAILABLE - The model is overloaded
+
+Options:
+  1. Wait and try again later
+  2. Run with --use_rules_only=True to continue without LLM
+  3. Check your API key and network connection
+```
+
+**Behavior**:
+- Failures 1-2: Fall back to rules-based planning for that cycle, continue workflow
+- Failure 3+: Stop gracefully with helpful message
+- On success: Reset failure counter
+
+**Implementation**:
+- Added `_handle_llm_failure()` function in `graph_nodes.py`
+- Tracks `llm_consecutive_failures` in state
+- Emits `STOP_DECISION` event with `llm_unavailable=True` flag
+
+### Files Changed
+
+- `agent/graph_nodes.py` - Added `_handle_llm_failure()`, failure tracking, graceful stop
+
+---
+
 ## Version 106 (January 2025)
 
 ### Bug Fix: Informational Program Mentions Don't Block Workflow

@@ -992,8 +992,7 @@ def plan(state):
 
     if llm is None:
         state = _log(state, "PLAN: LLM error - %s" % error)
-        state = _log(state, "PLAN: Falling back to mock planner")
-        return _mock_plan(state)
+        return _handle_llm_failure(state, error)
 
     # 5. Call LLM with rate limit handling
     try:
@@ -1055,9 +1054,13 @@ def plan(state):
 
         state = _log(state, "PLAN: LLM response received (%d chars)" % len(content))
 
+        # Reset failure counter on success
+        state = {**state, "llm_consecutive_failures": 0}
+
     except Exception as e:
-        state = _log(state, "PLAN: LLM call failed - %s" % str(e))
-        return _mock_plan(state)
+        error_msg = str(e)
+        state = _log(state, "PLAN: LLM call failed - %s" % error_msg)
+        return _handle_llm_failure(state, error_msg)
 
     # 6. Parse Response
     try:
@@ -1230,6 +1233,71 @@ def plan(state):
             **state,
             "validation_error": "LLM JSON Parse Error: %s" % str(e)
         }
+
+
+def _handle_llm_failure(state, error_msg):
+    """
+    Handle LLM failures with tracking and graceful degradation.
+
+    After MAX_LLM_FAILURES consecutive failures, stops the workflow
+    with a helpful message instead of silently falling back to rules-only mode.
+
+    Args:
+        state: Current graph state
+        error_msg: Error message from the LLM failure
+
+    Returns:
+        Updated state - either with graceful stop or fallback to rules
+    """
+    MAX_LLM_FAILURES = 3  # Stop after this many consecutive failures
+
+    # Track consecutive failures
+    failures = state.get("llm_consecutive_failures", 0) + 1
+    state = {**state, "llm_consecutive_failures": failures}
+
+    state = _log(state, "PLAN: LLM failure %d/%d" % (failures, MAX_LLM_FAILURES))
+
+    # Check if we should stop gracefully
+    if failures >= MAX_LLM_FAILURES:
+        state = _log(state, "PLAN: LLM unavailable after %d attempts" % failures)
+
+        # Build helpful message for user
+        provider = state.get("provider", "unknown")
+        stop_message = (
+            "The LLM service (%s) is currently unavailable after %d attempts. "
+            "Last error: %s\n\n"
+            "Options:\n"
+            "  1. Wait and try again later\n"
+            "  2. Run with --use_rules_only=True to continue without LLM\n"
+            "  3. Check your API key and network connection"
+        ) % (provider, failures, error_msg[:200])
+
+        state = _log(state, "PLAN: Stopping - %s" % stop_message)
+
+        # Return a STOP intent
+        intent = {
+            "program": "STOP",
+            "stop": True,
+            "stop_reason": stop_message,
+            "reasoning": "LLM service unavailable after multiple attempts",
+            "llm_unavailable": True,  # Flag for special handling
+        }
+
+        # Emit events
+        state = _emit(state, EventType.STOP_DECISION,
+            stop=True,
+            reason="LLM service unavailable",
+            llm_failures=failures,
+            last_error=error_msg[:200])
+
+        return {
+            **state,
+            "intent": intent
+        }
+
+    # Not at max failures yet - fall back to rules-based planning for this cycle
+    state = _log(state, "PLAN: Falling back to rules-based planning for this cycle")
+    return _mock_plan(state)
 
 
 def _mock_plan(state):

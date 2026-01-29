@@ -2437,9 +2437,47 @@ FINAL REPORT:"""
             return "Needs improvement"
 
     def _get_final_output_files(self, cycles):
-        """Get the most relevant final output files with descriptions."""
+        """
+        Get the most relevant final output files with descriptions.
+
+        Prioritizes best_files from the session (the actual best file for each
+        category) over listing all output files from cycles.
+        """
         final_files = []
 
+        # FIRST: Use best_files from session - these are the definitive outputs
+        best_files = self.data.get("best_files", {})
+        if best_files:
+            # Priority order for displaying best files
+            priority_order = ["model", "mtz", "map", "sequence"]
+
+            for file_type in priority_order:
+                filepath = best_files.get(file_type)
+                if filepath:
+                    basename = os.path.basename(filepath)
+                    file_info = self._describe_output_file(basename, "best_files")
+                    if file_info:
+                        # Mark as priority and add type context
+                        file_info["priority"] = True
+                        if not file_info.get("description"):
+                            file_info["description"] = f"Best {file_type} file"
+                        final_files.append(file_info)
+
+            # Add search_model if different from model
+            search_model = best_files.get("search_model")
+            model = best_files.get("model")
+            if search_model and search_model != model:
+                basename = os.path.basename(search_model)
+                if not any(f["name"] == basename for f in final_files):
+                    file_info = self._describe_output_file(basename, "best_files")
+                    if file_info:
+                        final_files.append(file_info)
+
+        # If we already have good coverage from best_files, return those
+        if len(final_files) >= 3:
+            return final_files[:8]
+
+        # FALLBACK: Work through cycle output files if best_files not available
         # Track which program produced each file
         file_sources = {}
 
