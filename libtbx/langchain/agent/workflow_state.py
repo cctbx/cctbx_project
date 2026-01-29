@@ -570,27 +570,42 @@ def _analyze_history(history):
         # =====================================================================
         # Complex program flags (counts, success conditions, etc.)
         # These require special logic beyond simple "was it run" detection
+        # NOTE: All programs only count as "done" if they succeeded.
+        # Failed runs don't prevent retry.
         # =====================================================================
         if "validation" in combined or "molprobity" in combined or "holton_geometry" in combined:
-            info["validation_done"] = True
+            # Only mark validation as done if it succeeded
+            result = entry.get("result", "") if isinstance(entry, dict) else ""
+            result_upper = result.upper() if result else ""
+            if "FAIL" not in result_upper and "SORRY" not in result_upper and "ERROR" not in result_upper:
+                info["validation_done"] = True
         if "phaser" in combined and "real_space" not in combined:
-            info["phaser_done"] = True
-            info["phaser_count"] = info.get("phaser_count", 0) + 1
-            if info["last_tfz"] and info["last_tfz"] > 8:
-                info["phaser_success"] = True
+            # Only mark phaser as done if it succeeded
+            result = entry.get("result", "") if isinstance(entry, dict) else ""
+            result_upper = result.upper() if result else ""
+            if "FAIL" not in result_upper and "SORRY" not in result_upper and "ERROR" not in result_upper:
+                info["phaser_done"] = True
+                info["phaser_count"] = info.get("phaser_count", 0) + 1
+                if info["last_tfz"] and info["last_tfz"] > 8:
+                    info["phaser_success"] = True
         if "predict_and_build" in combined:
-            info["predict_done"] = True
-            if "stop_after_predict=true" not in combined and "stop_after_predict=True" not in combined:
-                info["predict_full_done"] = True
-                # Full predict_and_build includes refinement cycles and produces map coefficients
-                # So count it as a refinement for downstream programs like ligandfit
-                result = entry.get("result", "") if isinstance(entry, dict) else ""
-                result_upper = result.upper() if result else ""
-                if "FAIL" not in result_upper and "SORRY" not in result_upper and "ERROR" not in result_upper:
+            # Only mark predict as done if it succeeded
+            result = entry.get("result", "") if isinstance(entry, dict) else ""
+            result_upper = result.upper() if result else ""
+            if "FAIL" not in result_upper and "SORRY" not in result_upper and "ERROR" not in result_upper:
+                info["predict_done"] = True
+                if "stop_after_predict=true" not in combined and "stop_after_predict=True" not in combined:
+                    info["predict_full_done"] = True
+                    # Full predict_and_build includes refinement cycles and produces map coefficients
+                    # So count it as a refinement for downstream programs like ligandfit
                     info["refine_done"] = True
                     info["refine_count"] += 1
         if "process_predicted_model" in combined:
-            info["process_predicted_done"] = True
+            # Only mark process_predicted as done if it succeeded
+            result = entry.get("result", "") if isinstance(entry, dict) else ""
+            result_upper = result.upper() if result else ""
+            if "FAIL" not in result_upper and "SORRY" not in result_upper and "ERROR" not in result_upper:
+                info["process_predicted_done"] = True
         if "autobuild" in combined:
             # Only mark autobuild as done if it succeeded
             result = entry.get("result", "") if isinstance(entry, dict) else ""
@@ -633,17 +648,42 @@ def _analyze_history(history):
                 info["rsr_success"] = True
             # If RSR failed, don't increment count
         if "ligandfit" in combined:
-            info["ligandfit_done"] = True
+            # Only mark ligandfit as done if it succeeded
+            result = entry.get("result", "") if isinstance(entry, dict) else ""
+            result_upper = result.upper() if result else ""
+            if "FAIL" not in result_upper and "SORRY" not in result_upper and "ERROR" not in result_upper:
+                info["ligandfit_done"] = True
+            # If ligandfit failed, don't mark as done so agent can retry
         if "pdbtools" in combined:
-            info["pdbtools_done"] = True
+            # Only mark pdbtools as done if it succeeded
+            result = entry.get("result", "") if isinstance(entry, dict) else ""
+            result_upper = result.upper() if result else ""
+            if "FAIL" not in result_upper and "SORRY" not in result_upper and "ERROR" not in result_upper:
+                info["pdbtools_done"] = True
         if "dock_in_map" in combined:
-            info["dock_done"] = True
+            # Only mark dock_in_map as done if it succeeded
+            result = entry.get("result", "") if isinstance(entry, dict) else ""
+            result_upper = result.upper() if result else ""
+            if "FAIL" not in result_upper and "SORRY" not in result_upper and "ERROR" not in result_upper:
+                info["dock_done"] = True
         if "map_to_model" in combined:
-            info["map_to_model_done"] = True
+            # Only mark map_to_model as done if it succeeded
+            result = entry.get("result", "") if isinstance(entry, dict) else ""
+            result_upper = result.upper() if result else ""
+            if "FAIL" not in result_upper and "SORRY" not in result_upper and "ERROR" not in result_upper:
+                info["map_to_model_done"] = True
         if "resolve_cryo_em" in combined:
-            info["resolve_cryo_em_done"] = True
+            # Only mark resolve_cryo_em as done if it succeeded
+            result = entry.get("result", "") if isinstance(entry, dict) else ""
+            result_upper = result.upper() if result else ""
+            if "FAIL" not in result_upper and "SORRY" not in result_upper and "ERROR" not in result_upper:
+                info["resolve_cryo_em_done"] = True
         if "map_sharpening" in combined or "local_aniso" in combined:
-            info["map_sharpening_done"] = True
+            # Only mark map_sharpening as done if it succeeded
+            result = entry.get("result", "") if isinstance(entry, dict) else ""
+            result_upper = result.upper() if result else ""
+            if "FAIL" not in result_upper and "SORRY" not in result_upper and "ERROR" not in result_upper:
+                info["map_sharpening_done"] = True
 
     return info
 

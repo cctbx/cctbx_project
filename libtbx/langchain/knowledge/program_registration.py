@@ -86,10 +86,13 @@ def get_initial_history_flags():
 
 def detect_programs_in_history(history, existing_flags=None):
   """
-  Detect which trackable programs have been run in history.
+  Detect which trackable programs have been run SUCCESSFULLY in history.
+
+  Only marks programs as done if they completed without errors.
+  Failed runs don't count - the program can be retried.
 
   Args:
-      history: List of history entries (dicts with 'program', 'command', etc.)
+      history: List of history entries (dicts with 'program', 'command', 'result', etc.)
       existing_flags: Optional existing flags dict to update
 
   Returns:
@@ -109,12 +112,20 @@ def detect_programs_in_history(history, existing_flags=None):
     # Extract text to search in
     if isinstance(entry, str):
       combined = entry.lower()
+      result = ""
     elif isinstance(entry, dict):
       prog = entry.get('program', '')
       cmd = entry.get('command', '')
       combined = f"{prog} {cmd}".lower()
+      result = str(entry.get('result', '')).upper()
     else:
       continue
+
+    # Check if this run FAILED - if so, don't mark as done
+    # This allows the program to be retried
+    is_failed = any(fail_indicator in result for fail_indicator in ['FAIL', 'SORRY', 'ERROR'])
+    if is_failed:
+      continue  # Skip failed runs - program can be retried
 
     # Remove special characters for matching
     combined_clean = combined.replace('_', '').replace('.', '').replace('-', '')

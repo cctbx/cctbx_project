@@ -1027,30 +1027,36 @@ phenix.ligandfit:
   command: "phenix.ligandfit {model} {mtz} {ligand}"
 
   defaults:
-    file_info.input_labels: '"2FOFCWT PH2FOFCWT"'
     general.nproc: 4
 
-  # Invariants to switch labels based on MTZ source
-  invariants:
-    - name: denmod_labels
-      description: "Use FWT/PHFWT labels when using density-modified MTZ"
-      check:
-        file_matches:
-          mtz: ["*denmod*"]
-      fix:
-        set_strategy:
-          file_info.input_labels: '"FWT PHFWT"'
-      message: "Using density-modified MTZ - switching to FWT/PHFWT labels"
-
-    - name: predict_and_build_labels
-      description: "Use FP/PHIFP labels when using predict_and_build map coefficients"
-      check:
-        file_matches:
-          mtz: ["*map_coeffs*"]
-      fix:
-        set_strategy:
-          file_info.input_labels: '"FP PHIFP"'
-      message: "Using predict_and_build map coefficients - switching to FP/PHIFP labels"
+  # NOTE: Label specification removed in v104 - ligandfit auto-detects labels
+  # which is safer than trying to infer them from filename patterns.
+  # To restore label handling, uncomment the defaults and invariants below:
+  #
+  # defaults:
+  #   file_info.input_labels: '"2FOFCWT PH2FOFCWT"'
+  #   general.nproc: 4
+  #
+  # invariants:
+  #   - name: denmod_labels
+  #     description: "Use FWT/PHFWT labels when using density-modified MTZ"
+  #     check:
+  #       file_matches:
+  #         mtz: ["*denmod*"]
+  #     fix:
+  #       set_strategy:
+  #         file_info.input_labels: '"FWT PHFWT"'
+  #     message: "Using density-modified MTZ - switching to FWT/PHFWT labels"
+  #
+  #   - name: predict_and_build_labels
+  #     description: "Use FP/PHIFP labels when using predict_and_build map coefficients"
+  #     check:
+  #       file_matches:
+  #         mtz: ["*map_coeffs*"]
+  #     fix:
+  #       set_strategy:
+  #         file_info.input_labels: '"FP PHIFP"'
+  #     message: "Using predict_and_build map coefficients - switching to FP/PHIFP labels"
 
   strategy_flags:
     nproc:

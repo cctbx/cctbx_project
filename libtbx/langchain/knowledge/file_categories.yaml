@@ -78,6 +78,19 @@ intermediate:
   description: "Intermediate processing files - never use as input"
   extensions: [".pdb"]
   is_semantic_parent: true
+  patterns:
+    - "*reference*"       # Reference/template files used during building
+    - "*EDITED*"          # Edited intermediate files
+    - "*TEMP*"            # Temporary files
+    - "*/TEMP*/*"         # Files in TEMP directories
+    - "*superposed_predicted_models*"  # Alignment intermediates from predict_and_build
+    - "*superposed_predicted_untrimmed*"  # Intermediate predictions
+    - "*_cycle_*"         # Intermediate cycle files (but not final)
+    - "*intermediate*"
+  excludes:
+    - "*overall_best*"    # These ARE final outputs
+    - "*final*"           # Final outputs
+    - "*refine_[0-9][0-9][0-9]*"  # Standard refinement outputs
   valid_for: []  # Nothing!
   invalid_for:
     - all
@@ -185,6 +198,9 @@ refined:
     - "*real_space*"
     - "*rsr*"
     - "*predict*"
+    - "*EDITED*"      # Edited intermediates
+    - "*reference*"   # Reference models
+    - "*TEMP*"        # Temporary files
   notes: "Output from phenix.refine - highest quality X-ray model"
 
 rsr_output:
@@ -278,6 +294,8 @@ predicted:
     - "*CarryOn*"  # Intermediate directory
     - "*overall_best*"  # predict_and_build outputs are built models, not search models
     - "*PredictAndBuild*overall*"
+    - "*superposed_predicted_models*"  # These are intermediate alignment files, not search models
+    - "*PredictAndBuild*overall*"
   notes: "Raw predictions - need processing before MR. NOT positioned."
 
 processed_predicted:
@@ -363,6 +381,10 @@ ligand_pdb:
     - "*ligand_fit*"
     - "*ligandfit*"
     - "*with_ligand*"
+    - "*ELBOW*"        # Elbow geometry-optimized ligands are not fitted
+    - "*elbow*"
+    - "*TEMP*"         # Temporary/intermediate files
+    - "*/TEMP*/*"
   max_basename_length: 30
   notes: "Small molecule coordinates for fitting"
 

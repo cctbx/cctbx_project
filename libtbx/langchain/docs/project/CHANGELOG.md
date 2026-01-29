@@ -1,5 +1,107 @@
 # PHENIX AI Agent - Changelog
 
+## Version 105 (January 2025)
+
+### Bug Fix: Failed Programs Don't Count as Done
+
+**Problem**: Programs marked with `run_once: true` were being marked as "done" even when they failed, preventing retry attempts.
+
+**Solution**: All `*_done` flags now only get set if the program completed successfully. Failed runs (containing "FAIL", "SORRY", or "ERROR" in the result) are skipped.
+
+**Programs Fixed**:
+
+In `knowledge/program_registration.py` (auto-detected `run_once` programs):
+- `detect_programs_in_history()` now checks result for failure indicators
+
+In `agent/workflow_state.py` (manually tracked programs):
+- `validation_done` - molprobity, holton_geometry
+- `phaser_done` - phenix.phaser
+- `predict_done`, `predict_full_done` - phenix.predict_and_build
+- `process_predicted_done` - phenix.process_predicted_model
+- `ligandfit_done` - phenix.ligandfit
+- `pdbtools_done` - phenix.pdbtools
+- `dock_done` - phenix.dock_in_map
+- `map_to_model_done` - phenix.map_to_model
+- `resolve_cryo_em_done` - phenix.resolve_cryo_em
+- `map_sharpening_done` - phenix.map_sharpening, local_aniso
+
+**Behavior Change**:
+- Before: `ligandfit` fails → `ligandfit_done=True` → Cannot retry
+- After: `ligandfit` fails → `ligandfit_done=False` → Can retry
+
+### Files Changed
+
+- `knowledge/program_registration.py` - Added success check to `detect_programs_in_history()`
+- `agent/workflow_state.py` - Added success checks to all manual `*_done` flag assignments
+
+---
+
+## Version 104 (January 2025)
+
+### Change: Remove Ligandfit Label Specification
+
+**Rationale**: `phenix.ligandfit` can auto-detect map coefficient labels from the MTZ file. Manually specifying labels based on filename patterns was error-prone and could cause failures when the patterns didn't match the actual MTZ contents.
+
+**Changes**:
+- Removed `file_info.input_labels` from ligandfit defaults
+- Removed label-switching invariants (`denmod_labels`, `predict_and_build_labels`)
+- Kept commented-out code in programs.yaml for future restoration if needed
+
+**Before**:
+```
+phenix.ligandfit model=... data=... ligand=... file_info.input_labels="FP PHIFP" general.nproc=4
+```
+
+**After**:
+```
+phenix.ligandfit model=... data=... ligand=... general.nproc=4
+```
+
+### Files Changed
+
+- `knowledge/programs.yaml` - Removed labels from defaults, commented out invariants
+
+---
+
+## Version 103 (January 2025)
+
+### Bug Fix: Intermediate File Handling
+
+Fixed several issues where intermediate/temporary files were incorrectly used as inputs or tracked as best files.
+
+**Issues Fixed:**
+
+1. **Elbow ligand files used instead of fitted ligands**
+   - `LIG_lig_ELBOW.*.pdb` files are geometry-optimized ligands, not fitted ligands
+   - Added `*ELBOW*` and `*/TEMP*/*` exclusions to `ligand_pdb` category
+
+2. **Superposed predicted models used as best model**
+   - `*superposed_predicted_models*` files are alignment intermediates
+   - Added exclusion to `predicted` category
+   - Added to intermediate patterns in `best_files_tracker.py`
+
+3. **Reference and EDITED files used as final outputs**
+   - `*reference*` files are intermediate templates
+   - `*EDITED*` files are intermediate edits
+   - Added exclusions to `refined` category
+   - Added to intermediate patterns in `best_files_tracker.py`
+
+4. **with_ligand models now preserved**
+   - Added `with_ligand` to valuable_patterns so combined protein+ligand models are tracked
+
+### Files Changed
+
+- `knowledge/file_categories.yaml`:
+  - Added ELBOW/TEMP exclusions to `ligand_pdb`
+  - Added `superposed_predicted_models` exclusion to `predicted`
+  - Added patterns to `intermediate` category
+  - Added exclusions to `refined` category
+- `agent/best_files_tracker.py`:
+  - Extended `_is_intermediate_file()` with more patterns
+  - Added `with_ligand` to valuable patterns
+
+---
+
 ## Version 102 (January 2025)
 
 ### Bug Fix: Retry on Model Overload (503 UNAVAILABLE)

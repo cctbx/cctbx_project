@@ -1138,6 +1138,7 @@ class BestFilesTracker:
             '_predicted_model',  # predict_and_build main output
             'overall_best',      # predict_and_build best model
             '_processed',        # processed predicted model
+            'with_ligand',       # Model combined with ligand
         ]
 
         # Check if this is a valuable output first
@@ -1153,15 +1154,26 @@ class BestFilesTracker:
             'mask.ccp4',          # mtriage mask output
             '/temp/',             # Temporary directories
             '/tmp/',
+            '/TEMP/',             # LigandFit temp directory
+            '/TEMP0/',            # LigandFit temp subdirectory
             '.tmp.',
             '/CarryOn/',          # predict_and_build intermediate directory
             '_CarryOn/',          # predict_and_build intermediate directory (alt)
             '_data.mtz',          # refine input data copy (no map coefficients)
+            'reference',          # Reference/template files
+            'EDITED',             # Edited intermediate files
+            'superposed_predicted_models',  # Alignment intermediates
+            'superposed_predicted_untrimmed',  # Intermediate predictions
+            '_ELBOW.',            # Elbow geometry files (not fitted ligands)
+            'ELBOW.',             # Elbow geometry files
         ]
 
         path_check = path.lower()
+        basename_check = basename.lower()
+
         for pattern in intermediate_patterns:
-            if pattern.lower() in path_check:
+            pattern_lower = pattern.lower()
+            if pattern_lower in path_check or pattern_lower in basename_check:
                 return True
 
         return False
