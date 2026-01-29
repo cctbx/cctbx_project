@@ -941,8 +941,16 @@ class WorkflowEngine:
         # for cryo-EM, only add if mtriage has been run (we need resolution)
         # Exception: always allow if we're in a phase that includes predict_and_build
         if program == "phenix.predict_and_build":
+            # In STEPWISE mode, after prediction is done, don't allow predict_and_build again
+            # The workflow should go: predict(stop_after) -> process_predicted -> phaser -> refine
+            # NOT: predict(stop_after) -> predict(full)
+            automation_path = context.get("automation_path", "automated")
+            if automation_path == "stepwise" and context.get("predict_done"):
+                return False  # Force stepwise path through process_predicted -> phaser
+
             # Check if we're already in a phase that includes predict_and_build
-            if phase_name in ("obtain_model", "molecular_replacement", "dock_model"):
+            # Note: molecular_replacement is NOT included - that phase is for stepwise path only
+            if phase_name in ("obtain_model", "dock_model"):
                 return True  # Let the phase conditions handle it
 
             # For X-ray, require xtriage to be done (to get resolution for building)
@@ -1139,7 +1147,8 @@ class WorkflowEngine:
     # HIGH-LEVEL API
     # =========================================================================
 
-    def get_workflow_state(self, experiment_type, files, history_info, analysis=None, directives=None):
+    def get_workflow_state(self, experiment_type, files, history_info, analysis=None,
+                           directives=None, maximum_automation=True):
         """
         Get complete workflow state (compatible with workflow_state.py output).
 
@@ -1149,11 +1158,16 @@ class WorkflowEngine:
             history_info: Analyzed history dict
             analysis: Current log analysis
             directives: Optional user directives dict
+            maximum_automation: If False, use stepwise path (process_predicted -> phaser)
 
         Returns:
             dict: Workflow state compatible with existing code
         """
         context = self.build_context(files, history_info, analysis, directives)
+
+        # Add automation_path to context for program filtering
+        context["automation_path"] = "automated" if maximum_automation else "stepwise"
+
         phase_info = self.detect_phase(experiment_type, context)
         valid_programs = self.get_valid_programs(experiment_type, phase_info, context, directives)
 

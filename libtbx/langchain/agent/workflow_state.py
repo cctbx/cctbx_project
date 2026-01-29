@@ -764,7 +764,8 @@ def detect_workflow_state(history, available_files, analysis=None, maximum_autom
             from libtbx.langchain.agent.workflow_engine import WorkflowEngine
 
             engine = WorkflowEngine()
-            state = engine.get_workflow_state(experiment_type, files, history_info, analysis, directives)
+            state = engine.get_workflow_state(experiment_type, files, history_info, analysis,
+                                             directives, maximum_automation)
 
             state["categorized_files"] = files
             # Set automation_path for both experiment types
