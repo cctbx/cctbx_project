@@ -715,6 +715,83 @@ def test_predict_and_build_output_is_model():
     print("  PASSED")
 
 
+def test_ligand_file_patterns():
+    """
+    Test that various ligand file naming patterns are correctly detected.
+
+    Bug fix: 7qz0_ligand.pdb wasn't being detected as a ligand file because
+    the pattern was ligand_*.pdb (ligand at start) but not *_ligand.pdb.
+    """
+    print("test_ligand_file_patterns:", end=" ")
+
+    from agent.workflow_state import _categorize_files
+
+    files = [
+        "/path/lig.pdb",           # Standard short name
+        "/path/ligand.pdb",        # Standard name
+        "/path/ligand_001.pdb",    # Numbered ligand
+        "/path/7qz0_ligand.pdb",   # Protein code + ligand suffix
+        "/path/abc_lig.pdb",       # Protein code + lig suffix
+        "/path/model.pdb",         # NOT a ligand
+    ]
+
+    categorized = _categorize_files(files)
+
+    # Check ligand category exists
+    assert_in("ligand", categorized, "Should have ligand category")
+    ligand_files = categorized.get("ligand", [])
+
+    # All ligand patterns should be detected
+    assert_true(any("lig.pdb" in f for f in ligand_files),
+               "lig.pdb should be in ligand category")
+    assert_true(any("ligand.pdb" in f for f in ligand_files),
+               "ligand.pdb should be in ligand category")
+    assert_true(any("7qz0_ligand.pdb" in f for f in ligand_files),
+               "7qz0_ligand.pdb should be in ligand category, got: %s" % ligand_files)
+    assert_true(any("abc_lig.pdb" in f for f in ligand_files),
+               "abc_lig.pdb should be in ligand category")
+
+    # model.pdb should NOT be in ligand
+    assert_true(not any("model.pdb" in f for f in ligand_files),
+               "model.pdb should NOT be in ligand category")
+
+    print("  PASSED")
+
+
+def test_predict_and_build_mtz_detection():
+    """
+    Test that predict_and_build map coefficient files are correctly categorized.
+
+    Bug fix: PredictAndBuild_0_overall_best_map_coeffs.mtz was not being
+    recognized for ligandfit. The _refinement.mtz doesn't have map coefficients.
+    """
+    print("test_predict_and_build_mtz_detection:", end=" ")
+
+    from agent.workflow_state import _categorize_files
+
+    files = [
+        "/path/PredictAndBuild_0_overall_best_map_coeffs.mtz",  # Has FP/PHIFP
+        "/path/PredictAndBuild_0_overall_best_refinement.mtz", # Has data, NOT map coeffs
+        "/path/refine_001_001.mtz",  # Standard refined MTZ
+    ]
+
+    categorized = _categorize_files(files)
+
+    # Check predict_and_build_mtz category exists
+    assert_in("predict_and_build_mtz", categorized,
+             "Should have predict_and_build_mtz category, got: %s" % list(categorized.keys()))
+
+    pab_mtz = categorized.get("predict_and_build_mtz", [])
+    assert_true(any("map_coeffs" in f for f in pab_mtz),
+               "map_coeffs.mtz should be in predict_and_build_mtz category")
+
+    # The _refinement.mtz should NOT be in predict_and_build_mtz
+    assert_true(not any("refinement.mtz" in f for f in pab_mtz),
+               "_refinement.mtz should NOT be in predict_and_build_mtz")
+
+    print("  PASSED")
+
+
 # =============================================================================
 # RUN ALL TESTS
 # =============================================================================

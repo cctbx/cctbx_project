@@ -2836,7 +2836,17 @@ FINAL REPORT:"""
         for step in data["steps"]:
             result_symbol = "✓" if step["success"] else "✗"
             program_short = step["program"].replace("phenix.", "")
-            lines.append(f"| {step['cycle']} | {program_short} | {result_symbol} | {step['key_metric']} |")
+            # Sanitize key_metric for markdown table:
+            # - Replace newlines with spaces
+            # - Replace pipe characters with dashes
+            # - Truncate if too long
+            key_metric = step['key_metric']
+            key_metric = key_metric.replace('\n', ' ').replace('\r', ' ')
+            key_metric = key_metric.replace('|', '-')
+            key_metric = ' '.join(key_metric.split())  # Collapse multiple spaces
+            if len(key_metric) > 60:
+                key_metric = key_metric[:57] + "..."
+            lines.append(f"| {step['cycle']} | {program_short} | {result_symbol} | {key_metric} |")
         lines.append("")
 
         # Final Quality

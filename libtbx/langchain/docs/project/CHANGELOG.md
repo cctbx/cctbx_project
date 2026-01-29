@@ -1,5 +1,92 @@
 # PHENIX AI Agent - Changelog
 
+## Version 102 (January 2025)
+
+### Bug Fix: Retry on Model Overload (503 UNAVAILABLE)
+
+**Problem**: When Gemini returns a 503 UNAVAILABLE error ("The model is overloaded"), the summarization would fail immediately without retrying.
+
+**Solution**: 
+1. Added "503" and "unavailable" to rate limit indicators in `rate_limit_handler.py`
+2. Added retry logic to `summarize_log()` with exponential backoff (2s, 4s, 8s) for rate limit and overload errors
+
+### Behavior
+
+When model is overloaded:
+```
+Summarizing log file (using cheap model)...
+Model overloaded/rate limited, waiting 2s before retry...
+Summarization retry 2/3...
+Model overloaded/rate limited, waiting 4s before retry...
+Summarization retry 3/3...
+[success or final error]
+```
+
+### Files Changed
+
+- `agent/rate_limit_handler.py` - Added "503" and "unavailable" to rate limit indicators
+- `phenix_ai/run_ai_analysis.py` - Added retry logic to `summarize_log()` with exponential backoff
+
+---
+
+## Version 101 (January 2025)
+
+### Bug Fix: HTML Summary Table Formatting After Failed Steps
+
+**Problem**: When a step failed, the error message in the "Key Metric" column could contain newlines or pipe characters, breaking the markdown table formatting for all subsequent rows.
+
+Example broken output:
+```
+| 3 | ligandfit | ✗ | FAILED: Sorry: Sorry LigandFit failed
+Please... | | 4 | pdbtools | ✓ | Completed |
+```
+
+**Solution**: Sanitize the `key_metric` field before adding to table:
+- Replace newlines with spaces
+- Replace pipe characters (`|`) with dashes
+- Collapse multiple spaces
+- Truncate to 60 characters max
+
+### Files Changed
+
+- `agent/session.py` - Sanitize key_metric in `_format_summary_as_markdown()`
+
+---
+
+## Version 100 (January 2025)
+
+### Bug Fix: Ligand File Detection Pattern
+
+**Problem**: `7qz0_ligand.pdb` wasn't detected as a ligand file because patterns only matched `ligand_*.pdb` (ligand at start), not `*_ligand.pdb` (ligand at end).
+
+**Solution**: Added patterns `*_ligand.pdb` and `*_lig.pdb` to `ligand_pdb` category.
+
+### Bug Fix: predict_and_build Map Coefficients for Ligandfit
+
+**Problem**: After `predict_and_build`, ligandfit was using `*_refinement.mtz` which doesn't contain map coefficients. The correct file is `*_map_coeffs.mtz` with labels `FP PHIFP`.
+
+**Solution**:
+1. Added new `predict_and_build_mtz` category for `*map_coeffs*.mtz` files
+2. Updated ligandfit input priorities to include `predict_and_build_mtz`
+3. Added `denmod_mtz` and `predict_and_build_mtz` to `specific_subcategories` in command builder so category-based selection takes priority over `best_files`
+4. Added invariant to switch labels to `"FP PHIFP"` when using map_coeffs files
+
+### Files Changed
+
+- `knowledge/file_categories.yaml`:
+  - Added `*_ligand.pdb` and `*_lig.pdb` patterns to `ligand_pdb`
+  - Added `predict_and_build_mtz` category for map coefficient files
+- `knowledge/programs.yaml`:
+  - Updated ligandfit mtz priorities: `[denmod_mtz, predict_and_build_mtz, refined_mtz]`
+  - Added invariant for predict_and_build labels (`FP PHIFP`)
+- `agent/command_builder.py`:
+  - Added `denmod_mtz` and `predict_and_build_mtz` to `specific_subcategories`
+- `tests/test_file_categorization.py`:
+  - Added `test_ligand_file_patterns`
+  - Added `test_predict_and_build_mtz_detection`
+
+---
+
 ## Version 99 (January 2025)
 
 ### Feature: maximum_automation=False Now Works for X-ray

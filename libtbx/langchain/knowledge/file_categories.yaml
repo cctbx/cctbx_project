@@ -137,6 +137,15 @@ denmod_mtz:
     - "*density_modified*.mtz"
   notes: "Output from phenix.autobuild maps_only=True. Use with file_info.input_labels='FWT PHFWT' for ligandfit"
 
+predict_and_build_mtz:
+  description: "Map coefficient MTZ from predict_and_build (contains FP/PHIFP)"
+  subcategory_of: mtz
+  patterns:
+    - "*PredictAndBuild*map_coeffs*.mtz"
+    - "*predict*build*map_coeffs*.mtz"
+    - "*overall_best_map_coeffs*.mtz"
+  notes: "Output from phenix.predict_and_build. Use with file_info.input_labels='FP PHIFP' for ligandfit"
+
 phased_mtz:
   description: "MTZ files with experimental phases (SAD/MAD/MR)"
   subcategory_of: mtz
@@ -346,13 +355,15 @@ ligand_pdb:
     - "lig_*.pdb"
     - "ligand.pdb"
     - "ligand_*.pdb"
+    - "*_ligand.pdb"
+    - "*_lig.pdb"
     - "LIG.pdb"
     - "LIG_*.pdb"
   excludes:
     - "*ligand_fit*"
     - "*ligandfit*"
     - "*with_ligand*"
-  max_basename_length: 20
+  max_basename_length: 30
   notes: "Small molecule coordinates for fitting"
 
 ligand_cif:

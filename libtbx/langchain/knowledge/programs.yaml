@@ -1009,13 +1009,14 @@ phenix.ligandfit:
   input_priorities:
     model:
       categories: [model]
-      prefer_subcategories: [refined, with_ligand, phaser_output]
+      prefer_subcategories: [refined, with_ligand, phaser_output, predict_and_build_output]
       exclude_categories: [search_model, predicted, ligand, ligand_pdb]
     mtz:
       # Ligandfit needs map coefficients
       # PREFER denmod_mtz (from autobuild maps_only) which has better maps
+      # ALSO check predict_and_build_mtz (from predict_and_build) which has FP/PHIFP
       # FALLBACK to refined_mtz (from refine) which has 2FOFCWT/PH2FOFCWT
-      categories: [denmod_mtz, refined_mtz]
+      categories: [denmod_mtz, predict_and_build_mtz, refined_mtz]
       exclude_categories: [phased_mtz]
 
   outputs:
@@ -1029,7 +1030,7 @@ phenix.ligandfit:
     file_info.input_labels: '"2FOFCWT PH2FOFCWT"'
     general.nproc: 4
 
-  # Invariant to switch labels when using denmod MTZ
+  # Invariants to switch labels based on MTZ source
   invariants:
     - name: denmod_labels
       description: "Use FWT/PHFWT labels when using density-modified MTZ"
@@ -1040,6 +1041,16 @@ phenix.ligandfit:
         set_strategy:
           file_info.input_labels: '"FWT PHFWT"'
       message: "Using density-modified MTZ - switching to FWT/PHFWT labels"
+
+    - name: predict_and_build_labels
+      description: "Use FP/PHIFP labels when using predict_and_build map coefficients"
+      check:
+        file_matches:
+          mtz: ["*map_coeffs*"]
+      fix:
+        set_strategy:
+          file_info.input_labels: '"FP PHIFP"'
+      message: "Using predict_and_build map coefficients - switching to FP/PHIFP labels"
 
   strategy_flags:
     nproc:

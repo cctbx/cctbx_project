@@ -479,7 +479,8 @@ class CommandBuilder:
         # These indicate the program needs a specific type of file, not just any "best" file
         specific_subcategories = {"refined_mtz", "phased_mtz", "half_map", "full_map",
                                   "optimized_full_map", "intermediate_map",
-                                  "ligand_fit_output", "with_ligand", "processed_predicted"}
+                                  "ligand_fit_output", "with_ligand", "processed_predicted",
+                                  "denmod_mtz", "predict_and_build_mtz"}  # Map coefficient MTZ types
         uses_specific_subcategory = any(cat in specific_subcategories for cat in priority_categories)
 
         # PRIORITY 2: Best files (but respect exclude_categories and skip if specific subcategory needed)
