@@ -6,24 +6,25 @@
 
 **Problem**: Programs marked with `run_once: true` were being marked as "done" even when they failed, preventing retry attempts.
 
-**Solution**: All `*_done` flags now only get set if the program completed successfully. Failed runs (containing "FAIL", "SORRY", or "ERROR" in the result) are skipped.
+**Solution**: All `*_done` flags now only get set if the program completed successfully. Failed runs are skipped.
+
+**Failure Detection**: Uses specific patterns to avoid false positives:
+- `FAILED`, `SORRY:`, `SORRY `, `ERROR:`, `ERROR `, `: ERROR`, `TRACEBACK`, `EXCEPTION`
+- Does NOT match "No ERROR detected" or similar success messages
 
 **Programs Fixed**:
 
 In `knowledge/program_registration.py` (auto-detected `run_once` programs):
-- `detect_programs_in_history()` now checks result for failure indicators
+- `detect_programs_in_history()` now checks result for failure patterns
 
 In `agent/workflow_state.py` (manually tracked programs):
-- `validation_done` - molprobity, holton_geometry
-- `phaser_done` - phenix.phaser
-- `predict_done`, `predict_full_done` - phenix.predict_and_build
-- `process_predicted_done` - phenix.process_predicted_model
-- `ligandfit_done` - phenix.ligandfit
-- `pdbtools_done` - phenix.pdbtools
-- `dock_done` - phenix.dock_in_map
-- `map_to_model_done` - phenix.map_to_model
-- `resolve_cryo_em_done` - phenix.resolve_cryo_em
-- `map_sharpening_done` - phenix.map_sharpening, local_aniso
+- Added `_is_failed_result()` helper function
+- All `*_done` flag assignments now use this helper:
+  - `validation_done`, `phaser_done`, `predict_done`, `predict_full_done`
+  - `process_predicted_done`, `autobuild_done`, `autobuild_denmod_done`
+  - `autosol_done`, `refine_done`, `rsr_done`, `ligandfit_done`
+  - `pdbtools_done`, `dock_done`, `map_to_model_done`
+  - `resolve_cryo_em_done`, `map_sharpening_done`
 
 **Behavior Change**:
 - Before: `ligandfit` fails → `ligandfit_done=True` → Cannot retry
@@ -31,8 +32,8 @@ In `agent/workflow_state.py` (manually tracked programs):
 
 ### Files Changed
 
-- `knowledge/program_registration.py` - Added success check to `detect_programs_in_history()`
-- `agent/workflow_state.py` - Added success checks to all manual `*_done` flag assignments
+- `knowledge/program_registration.py` - Added specific failure patterns to `detect_programs_in_history()`
+- `agent/workflow_state.py` - Added `_is_failed_result()` helper, refactored all done flag checks
 
 ---
 

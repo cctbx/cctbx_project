@@ -123,7 +123,18 @@ def detect_programs_in_history(history, existing_flags=None):
 
     # Check if this run FAILED - if so, don't mark as done
     # This allows the program to be retried
-    is_failed = any(fail_indicator in result for fail_indicator in ['FAIL', 'SORRY', 'ERROR'])
+    # Look for failure PATTERNS, not just the word (avoid matching "No ERROR detected")
+    failure_patterns = [
+      'FAILED',           # Common failure indicator
+      'SORRY:',           # Phenix error prefix
+      'SORRY ',           # Phenix error prefix with space
+      'ERROR:',           # Error with colon
+      'ERROR ',           # Error as prefix
+      ': ERROR',          # Error after colon
+      'TRACEBACK',        # Python exception
+      'EXCEPTION',        # Exception indicator
+    ]
+    is_failed = any(pattern in result for pattern in failure_patterns)
     if is_failed:
       continue  # Skip failed runs - program can be retried
 
