@@ -68,7 +68,8 @@ class WorkflowEngine:
         """
         context = {
             # File availability - using semantic categories
-            "has_mtz": bool(files.get("mtz")),
+            "has_data_mtz": bool(files.get("data_mtz")),
+            "has_map_coeffs_mtz": bool(files.get("map_coeffs_mtz")),
             "has_sequence": bool(files.get("sequence")),
             # SEMANTIC: 'model' = positioned models (phaser_output, refined, docked)
             # SEMANTIC: 'search_model' = templates NOT yet positioned (predicted, pdb_template)
@@ -1287,7 +1288,7 @@ if __name__ == "__main__":
     engine = WorkflowEngine()
 
     # Test X-ray initial state
-    files = {"mtz": ["data.mtz"], "sequence": ["seq.fa"]}
+    files = {"data_mtz": ["data.mtz"], "sequence": ["seq.fa"]}
     history = {}
     context = engine.build_context(files, history)
     phase = engine.detect_phase("xray", context)

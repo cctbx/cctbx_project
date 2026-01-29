@@ -141,7 +141,7 @@ xray:
         - program: phenix.polder
           conditions:
             - has: model
-            - has: mtz
+            - has: data_mtz
           hint: "Calculate polder omit map to verify ligand/residue placement in density"
 
       repeat:
@@ -185,7 +185,7 @@ xray:
         - program: phenix.polder
           conditions:
             - has: model
-            - has: mtz
+            - has: data_mtz
           hint: "Verify ligand/residue placement with polder omit maps"
 
       transitions:

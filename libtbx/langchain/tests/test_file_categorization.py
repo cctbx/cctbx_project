@@ -294,21 +294,21 @@ def test_best_model_selection_prefers_recent():
 
 
 def test_best_mtz_locked():
-    """Test that best MTZ respects R-free locking."""
+    """Test that best data_mtz respects R-free locking."""
     print("Test: best_mtz_locked")
 
     tracker = BestFilesTracker()
 
-    # Add MTZ files
-    tracker.evaluate_file("/path/to/data.mtz", cycle=1, category="mtz")
-    tracker.evaluate_file("/path/to/refine_001_001.mtz", cycle=2, category="mtz")
+    # Add data_mtz files - data.mtz should lock on R-free
+    tracker.evaluate_file("/path/to/data.mtz", cycle=1, category="data_mtz",
+                          metrics={"has_rfree_flags": True})
+    # This should NOT replace because data_mtz locks on R-free
+    tracker.evaluate_file("/path/to/refine_001_data.mtz", cycle=2, category="data_mtz",
+                          metrics={"has_rfree_flags": True})
 
-    # Lock the original MTZ (simulates R-free flag generation)
-    tracker._locked_mtz = "/path/to/data.mtz"
-
-    # Best MTZ should still be the locked one
-    best = tracker.get_best_path("mtz")
-    assert_equal(best, "/path/to/data.mtz", "Should use locked R-free MTZ")
+    # Best data_mtz should be the locked one (first with R-free)
+    best = tracker.get_best_path("data_mtz")
+    assert_equal(best, "/path/to/data.mtz", "Should use locked R-free data_mtz")
 
     print("  PASSED")
 
@@ -556,13 +556,24 @@ def test_xray_file_selection_workflow():
     stage = tracker._classify_stage("/data/model.pdb", "model")
     assert_equal(stage, "model", "Stage for generic model.pdb")
 
-    mtz_stages = {
-        "/data/data.mtz": "original",
-        "/data/refine_001_001.mtz": "refined_mtz",
+    # Test data_mtz stages
+    data_mtz_stages = {
+        "/data/data.mtz": "data_mtz",           # Generic goes to data_mtz
+        "/data/refine_001_data.mtz": "original_data_mtz",  # Data output
     }
 
-    for path, expected_stage in mtz_stages.items():
-        stage = tracker._classify_stage(path, "mtz")
+    for path, expected_stage in data_mtz_stages.items():
+        stage = tracker._classify_stage(path, "data_mtz")
+        assert_equal(stage, expected_stage, "Stage for %s" % path)
+
+    # Test map_coeffs_mtz stages
+    coeffs_stages = {
+        "/data/refine_001_001.mtz": "refine_map_coeffs",
+        "/data/denmod_map_coeffs.mtz": "denmod_map_coeffs",
+    }
+
+    for path, expected_stage in coeffs_stages.items():
+        stage = tracker._classify_stage(path, "map_coeffs_mtz")
         assert_equal(stage, expected_stage, "Stage for %s" % path)
 
     # Verify refined models are tracked correctly
@@ -572,13 +583,14 @@ def test_xray_file_selection_workflow():
     best_model = tracker.get_best_path("model")
     assert_in("refine_002", best_model, "Should use most recent refined model: %s" % best_model)
 
-    # Test MTZ locking
-    tracker.evaluate_file("/data/data.mtz", cycle=1, category="mtz")
-    tracker._locked_mtz = "/data/data.mtz"
-    tracker.evaluate_file("/data/refine_001_001.mtz", cycle=2, category="mtz")
+    # Test data_mtz R-free locking
+    tracker.evaluate_file("/data/data.mtz", cycle=1, category="data_mtz",
+                          metrics={"has_rfree_flags": True})
+    tracker.evaluate_file("/data/refine_001_data.mtz", cycle=2, category="data_mtz",
+                          metrics={"has_rfree_flags": True})
 
-    best_mtz = tracker.get_best_path("mtz")
-    assert_equal(best_mtz, "/data/data.mtz", "Should use locked R-free MTZ")
+    best_mtz = tracker.get_best_path("data_mtz")
+    assert_equal(best_mtz, "/data/data.mtz", "Should use locked R-free data_mtz")
 
     print("  PASSED")
 
@@ -772,22 +784,28 @@ def test_predict_and_build_mtz_detection():
     files = [
         "/path/PredictAndBuild_0_overall_best_map_coeffs.mtz",  # Has FP/PHIFP
         "/path/PredictAndBuild_0_overall_best_refinement.mtz", # Has data, NOT map coeffs
-        "/path/refine_001_001.mtz",  # Standard refined MTZ
+        "/path/refine_001_001.mtz",  # Standard refined MTZ (map coefficients)
     ]
 
     categorized = _categorize_files(files)
 
-    # Check predict_and_build_mtz category exists
-    assert_in("predict_and_build_mtz", categorized,
-             "Should have predict_and_build_mtz category, got: %s" % list(categorized.keys()))
+    # Check predict_build_map_coeffs category exists (renamed from predict_and_build_mtz)
+    assert_in("predict_build_map_coeffs", categorized,
+             "Should have predict_build_map_coeffs category, got: %s" % list(categorized.keys()))
 
-    pab_mtz = categorized.get("predict_and_build_mtz", [])
+    pab_mtz = categorized.get("predict_build_map_coeffs", [])
     assert_true(any("map_coeffs" in f for f in pab_mtz),
-               "map_coeffs.mtz should be in predict_and_build_mtz category")
+               "map_coeffs.mtz should be in predict_build_map_coeffs category")
 
-    # The _refinement.mtz should NOT be in predict_and_build_mtz
+    # The _refinement.mtz should NOT be in predict_build_map_coeffs (it's data, not map coeffs)
     assert_true(not any("refinement.mtz" in f for f in pab_mtz),
-               "_refinement.mtz should NOT be in predict_and_build_mtz")
+               "_refinement.mtz should NOT be in predict_build_map_coeffs")
+
+    # The _refinement.mtz should be in data_mtz (via original_data_mtz)
+    assert_in("data_mtz", categorized)
+    data_mtz = categorized.get("data_mtz", [])
+    assert_true(any("refinement.mtz" in f for f in data_mtz),
+               "_refinement.mtz should be in data_mtz")
 
     print("  PASSED")
 

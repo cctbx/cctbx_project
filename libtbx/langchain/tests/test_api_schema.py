@@ -626,7 +626,7 @@ def test_session_state_full():
             "rfree_mtz": "/path/to/refine_001_data.mtz",
             "best_files": {
                 "model": "/path/to/refine_001_001.pdb",
-                "mtz": "/path/to/refine_001_data.mtz",
+                "data_mtz": "/path/to/refine_001_data.mtz",
             },
         },
         user_advice="Solve the structure",

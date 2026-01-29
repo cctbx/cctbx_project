@@ -169,7 +169,7 @@ def create_sample_session_state():
         "rfree_mtz": "/path/to/rfree_data.mtz",
         "best_files": {
             "model": "/path/to/refine_002_001.pdb",
-            "mtz": "/path/to/rfree_data.mtz",
+            "data_mtz": "/path/to/rfree_data.mtz",
         },
     }
 
@@ -231,7 +231,7 @@ def create_sample_response():
             "rfree_mtz": "/path/to/rfree_data.mtz",
             "best_files": {
                 "model": "/path/to/refine_002_001.pdb",
-                "mtz": "/path/to/rfree_data.mtz",
+                "data_mtz": "/path/to/rfree_data.mtz",
             },
         },
         "debug_log": [
@@ -392,7 +392,7 @@ def test_session_state_preservation():
         "rfree_mtz": "/path/to/rfree.mtz",
         "best_files": {
             "model": "/path/to/model.pdb",
-            "mtz": "/path/to/data.mtz",
+            "data_mtz": "/path/to/data.mtz",
         },
     }
 

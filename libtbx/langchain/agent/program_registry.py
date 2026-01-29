@@ -596,10 +596,10 @@ class ProgramRegistry:
         cmd_parts = ["phenix.phaser"]
 
         # Get the reflection data file
-        mtz = files.get("mtz")
-        if not mtz:
-            raise ValueError("Missing required MTZ file for phenix.phaser")
-        cmd_parts.append(str(mtz))
+        data_mtz = files.get("data_mtz") or files.get("mtz")  # Backward compat
+        if not data_mtz:
+            raise ValueError("Missing required data_mtz file for phenix.phaser")
+        cmd_parts.append(str(data_mtz))
 
         # Get model
         model = files.get("model")
@@ -871,7 +871,7 @@ if __name__ == "__main__":
 
     # Test command building
     print("Command building test:")
-    files = {"model": "test.pdb", "mtz": "test.mtz"}
+    files = {"model": "test.pdb", "data_mtz": "test.mtz"}
     try:
         cmd = registry.build_command("phenix.refine", files)
         print("  Command:", cmd)

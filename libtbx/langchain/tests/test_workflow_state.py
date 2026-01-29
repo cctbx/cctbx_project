@@ -76,7 +76,7 @@ def test_scalepack_file_recognition():
     files = ["p9.sca", "sequence.fa"]
     categories = _categorize_files(files)
 
-    assert "p9.sca" in categories["mtz"], "Scalepack file should be in 'mtz' category"
+    assert "p9.sca" in categories["data_mtz"], "Scalepack file should be in 'mtz' category"
     assert categories["sequence"] == ["sequence.fa"]
 
     print("  PASSED")
@@ -89,7 +89,7 @@ def test_hkl_file_recognition():
     files = ["data.hkl", "model.pdb"]
     categories = _categorize_files(files)
 
-    assert "data.hkl" in categories["mtz"], "HKL file should be in 'mtz' category"
+    assert "data.hkl" in categories["data_mtz"], "HKL file should be in 'mtz' category"
 
     print("  PASSED")
 
@@ -811,7 +811,7 @@ def test_file_categorization():
 
     categorized = _categorize_files(files)
 
-    assert "data.mtz" in categorized["mtz"]
+    assert "data.mtz" in categorized["data_mtz"]
     assert "PHASER.1.pdb" in categorized["phaser_output"]
     assert "model_refine_001.pdb" in categorized["refined"]
     assert "protein_with_ligand.pdb" in categorized["with_ligand"]

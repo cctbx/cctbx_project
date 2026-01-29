@@ -34,14 +34,14 @@ except ImportError:
 # TEST FIXTURES
 # =============================================================================
 
-def make_context(experiment_type="xray", has_model=True, has_mtz=True,
+def make_context(experiment_type="xray", has_model=True, has_data_mtz=True,
                  has_map=False, state="xray_refine", history=None,
                  metrics_history=None, resolution=2.5):
     """Create a test context dict."""
     return {
         "experiment_type": experiment_type,
         "has_model": has_model,
-        "has_mtz": has_mtz,
+        "has_data_mtz": has_data_mtz,
         "has_map": has_map,
         "state": state,
         "history": history or [],
@@ -81,7 +81,7 @@ def test_experiment_type_changed():
     print("Test: experiment_type_changed")
 
     checker = SanityChecker()
-    context = make_context(experiment_type="cryoem", has_mtz=False, has_map=True)
+    context = make_context(experiment_type="cryoem", has_data_mtz=False, has_map=True)
     session_info = make_session_info(experiment_type="xray")
 
     result = checker.check(context, session_info, abort_on_red_flags=True)
@@ -167,7 +167,7 @@ def test_no_mtz_for_xray():
     print("Test: no_mtz_for_xray")
 
     checker = SanityChecker()
-    context = make_context(experiment_type="xray", has_mtz=False, state="xray_refine")
+    context = make_context(experiment_type="xray", has_data_mtz=False, state="xray_refine")
     session_info = make_session_info(experiment_type="xray")
 
     result = checker.check(context, session_info)
@@ -185,7 +185,7 @@ def test_no_map_for_cryoem():
     checker = SanityChecker()
     context = make_context(
         experiment_type="cryoem",
-        has_mtz=False,
+        has_data_mtz=False,
         has_map=False,
         state="cryoem_refine"
     )
@@ -379,7 +379,7 @@ def test_map_cc_drop_warning():
 
     context = make_context(
         experiment_type="cryoem",
-        has_mtz=False,
+        has_data_mtz=False,
         has_map=True,
         metrics_history=metrics_history
     )
@@ -404,7 +404,7 @@ def test_abort_on_red_flags_true():
     print("Test: abort_on_red_flags_true")
 
     checker = SanityChecker()
-    context = make_context(experiment_type="cryoem", has_mtz=False, has_map=True)
+    context = make_context(experiment_type="cryoem", has_data_mtz=False, has_map=True)
     session_info = make_session_info(experiment_type="xray")
 
     result = checker.check(context, session_info, abort_on_red_flags=True)
@@ -419,7 +419,7 @@ def test_abort_on_red_flags_false():
     print("Test: abort_on_red_flags_false")
 
     checker = SanityChecker()
-    context = make_context(experiment_type="cryoem", has_mtz=False, has_map=True)
+    context = make_context(experiment_type="cryoem", has_data_mtz=False, has_map=True)
     session_info = make_session_info(experiment_type="xray")
 
     result = checker.check(context, session_info, abort_on_red_flags=False)
@@ -487,7 +487,7 @@ def test_abort_message_formatting():
     print("Test: abort_message_formatting")
 
     checker = SanityChecker()
-    context = make_context(experiment_type="cryoem", has_mtz=False, has_map=True)
+    context = make_context(experiment_type="cryoem", has_data_mtz=False, has_map=True)
     session_info = make_session_info(experiment_type="xray")
 
     result = checker.check(context, session_info, abort_on_red_flags=True)
@@ -656,7 +656,7 @@ def test_multiple_issues():
 
     context = make_context(
         experiment_type="cryoem",
-        has_mtz=False,
+        has_data_mtz=False,
         has_map=True,
         state="cryoem_refine",
         resolution=None,  # Resolution unknown

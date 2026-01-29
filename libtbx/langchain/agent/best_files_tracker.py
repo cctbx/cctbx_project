@@ -167,19 +167,22 @@ class BestFilesTracker:
         - model: Best POSITIONED atomic model (ready for refinement)
         - search_model: Best template for MR/docking (NOT yet positioned)
         - map: Best full cryo-EM map
-        - mtz: Best reflection data (with R-free flags)
-        - map_coefficients: Best map coefficients
+        - data_mtz: Best reflection data with Fobs/R-free (for refinement)
+        - map_coeffs_mtz: Best map coefficients (for ligand fitting/visualization)
         - sequence: Sequence file
         - ligand: Best ligand file (coordinates or restraints)
 
-    IMPORTANT DISTINCTION:
+    IMPORTANT DISTINCTIONS:
         - 'model' = Positioned in experimental reference frame, ready for refinement
         - 'search_model' = Template that needs to be placed via Phaser or dock_in_map
+        - 'data_mtz' = Measured structure factors (Fobs, R-free) - for refinement
+        - 'map_coeffs_mtz' = Calculated map coefficients (phases) - for ligand fitting
 
     The tracker uses a scoring system based on:
         - Processing stage (refined > docked > predicted, etc.)
         - Quality metrics (R-free, map_cc, clashscore)
-        - Special rules (MTZ: earliest with R-free flags wins forever)
+        - Special rules (data_mtz: earliest with R-free flags wins forever)
+        - Special rules (map_coeffs_mtz: most recent wins - maps improve)
 
     Scoring configuration is loaded from knowledge/metrics.yaml.
     """
@@ -189,8 +192,8 @@ class BestFilesTracker:
         "model",           # Positioned models for refinement
         "search_model",    # Templates for MR/docking (NOT positioned)
         "map",
-        "mtz",
-        "map_coefficients",
+        "data_mtz",        # Reflection data with Fobs/R-free (for refinement)
+        "map_coeffs_mtz",  # Calculated map coefficients (for ligand fitting)
         "sequence",
         "ligand",          # Small molecule coordinates/restraints
     ]
@@ -223,7 +226,7 @@ class BestFilesTracker:
         """Initialize empty tracker."""
         self.best = {}  # category -> BestFileEntry
         self.history = []  # List of BestFileChange
-        self._mtz_with_rfree_locked = False  # Special flag for MTZ handling
+        self._data_mtz_with_rfree_locked = False  # Special flag for data_mtz handling
         self._scoring_config = None  # Loaded from YAML
         self._load_scoring_config()
 
@@ -374,6 +377,37 @@ class BestFilesTracker:
                     "lock_on_rfree": True,
                 },
             },
+            # DATA_MTZ: Measured structure factors (Fobs, R-free) for refinement
+            "data_mtz": {
+                "stage_scores": {
+                    "original_data_mtz": 70,    # Input data preserved with R-free
+                    "phased_data_mtz": 60,      # Has phases but may lack R-free
+                    "data_mtz": 50,             # Generic data MTZ
+                    "_default": 40,
+                },
+                "metric_scores": {
+                    "has_rfree_flags": {
+                        "max_points": 30,
+                        "formula": "boolean",
+                    },
+                },
+                "special_rules": {
+                    "lock_on_rfree": True,      # Earliest with R-free wins forever
+                },
+            },
+            # MAP_COEFFS_MTZ: Calculated map coefficients for ligand fitting
+            "map_coeffs_mtz": {
+                "stage_scores": {
+                    "refine_map_coeffs": 80,        # Best quality maps from refine
+                    "denmod_map_coeffs": 70,        # Density-modified - excellent for ligand
+                    "predict_build_map_coeffs": 60, # From predict_and_build
+                    "map_coeffs_mtz": 50,           # Generic
+                    "_default": 40,
+                },
+                "special_rules": {
+                    "prefer_recent": True,      # Most recent wins - maps improve
+                },
+            },
             "map_coefficients": {
                 "stage_scores": {
                     "refined": 80,
@@ -510,9 +544,13 @@ class BestFilesTracker:
         # Calculate score
         score = self._calculate_score(path, category, stage, metrics)
 
-        # Special handling for MTZ: earliest with R-free flags wins forever
-        if category == "mtz":
-            return self._evaluate_mtz(path, cycle, metrics, stage, score)
+        # Special handling for data_mtz: earliest with R-free flags wins forever
+        if category == "data_mtz":
+            return self._evaluate_data_mtz(path, cycle, metrics, stage, score)
+
+        # Special handling for map_coeffs_mtz: most recent wins (maps improve)
+        if category == "map_coeffs_mtz":
+            return self._evaluate_map_coeffs_mtz(path, cycle, metrics, stage, score)
 
         # For other categories: higher score wins, with recency as tiebreaker
         return self._evaluate_standard(path, category, cycle, metrics, stage, score)
@@ -671,7 +709,7 @@ class BestFilesTracker:
         return {
             "best": {cat: entry.to_dict() for cat, entry in self.best.items()},
             "history": [h.to_dict() for h in self.history],
-            "mtz_with_rfree_locked": self._mtz_with_rfree_locked,
+            "data_mtz_with_rfree_locked": self._data_mtz_with_rfree_locked,
         }
 
     @classmethod
@@ -704,8 +742,11 @@ class BestFilesTracker:
             if change:
                 tracker.history.append(change)
 
-        # Restore MTZ lock flag
-        tracker._mtz_with_rfree_locked = data.get("mtz_with_rfree_locked", False)
+        # Restore data_mtz lock flag (with backward compat for old mtz_with_rfree_locked)
+        tracker._data_mtz_with_rfree_locked = data.get(
+            "data_mtz_with_rfree_locked",
+            data.get("mtz_with_rfree_locked", False)  # Backward compat
+        )
 
         return tracker
 
@@ -782,11 +823,11 @@ class BestFilesTracker:
 
         return False
 
-    def _evaluate_mtz(self, path, cycle, metrics, stage, score):
+    def _evaluate_data_mtz(self, path, cycle, metrics, stage, score):
         """
-        Special MTZ evaluation: earliest with R-free flags wins forever.
+        Special data_mtz evaluation: earliest with R-free flags wins forever.
 
-        Once we have an MTZ with R-free flags, we lock to it and never change.
+        Once we have a data MTZ with R-free flags, we lock to it and never change.
         This ensures consistent R-free statistics throughout refinement.
 
         IMPORTANT: Resolution-limited R-free flags are NOT locked, as they
@@ -796,27 +837,27 @@ class BestFilesTracker:
         Returns:
             bool: True if this file became the new best
         """
-        category = "mtz"
+        category = "data_mtz"
         current = self.best.get(category)
         has_rfree = metrics and metrics.get("has_rfree_flags")
         is_resolution_limited = metrics and metrics.get("rfree_resolution_limited")
 
-        # If we've locked to an MTZ with R-free, never change
-        if self._mtz_with_rfree_locked:
+        # If we've locked to a data_mtz with R-free, never change
+        if self._data_mtz_with_rfree_locked:
             return False
 
         # If this MTZ has R-free flags AND is not resolution-limited, lock to it
         if has_rfree and not is_resolution_limited:
-            reason = "First MTZ with R-free flags (locked)"
+            reason = "First data MTZ with R-free flags (locked)"
             self._update_best(path, category, stage, score, metrics, cycle, reason,
                             old_entry=current)
-            self._mtz_with_rfree_locked = True
+            self._data_mtz_with_rfree_locked = True
             return True
 
         # If MTZ has R-free flags but is resolution-limited, record but don't lock
         if has_rfree and is_resolution_limited:
             if current is None:
-                reason = "MTZ with resolution-limited R-free flags (NOT locked - needs full resolution)"
+                reason = "Data MTZ with resolution-limited R-free flags (NOT locked - needs full resolution)"
                 self._update_best(path, category, stage, score, metrics, cycle, reason,
                                 old_entry=None)
                 return True
@@ -825,9 +866,45 @@ class BestFilesTracker:
 
         # No R-free flags - use standard evaluation if we don't have anything yet
         if current is None:
-            reason = "First MTZ file (no R-free flags yet)"
+            reason = "First data MTZ file (no R-free flags yet)"
             self._update_best(path, category, stage, score, metrics, cycle, reason,
                             old_entry=None)
+            return True
+
+        return False
+
+    def _evaluate_map_coeffs_mtz(self, path, cycle, metrics, stage, score):
+        """
+        Special map_coeffs_mtz evaluation: most recent wins.
+
+        Map coefficients improve as refinement progresses, so we always
+        prefer the most recent one (higher cycle number).
+
+        Returns:
+            bool: True if this file became the new best
+        """
+        category = "map_coeffs_mtz"
+        current = self.best.get(category)
+
+        # If no current best, this becomes best
+        if current is None:
+            reason = f"First map coefficients MTZ (cycle {cycle})"
+            self._update_best(path, category, stage, score, metrics, cycle, reason,
+                            old_entry=None)
+            return True
+
+        # Prefer more recent (higher cycle) - maps improve with refinement
+        if cycle > current.cycle:
+            reason = f"More recent map coefficients (cycle {cycle} > {current.cycle})"
+            self._update_best(path, category, stage, score, metrics, cycle, reason,
+                            old_entry=current)
+            return True
+
+        # Same cycle: prefer higher score (better stage)
+        if cycle == current.cycle and score > current.score:
+            reason = f"Better map coefficients at cycle {cycle} (score {score:.1f} > {current.score:.1f})"
+            self._update_best(path, category, stage, score, metrics, cycle, reason,
+                            old_entry=current)
             return True
 
         return False
@@ -895,13 +972,61 @@ class BestFilesTracker:
 
         # Other file types
         if lower.endswith('.mtz'):
-            return "mtz"
+            # Classify MTZ as data_mtz or map_coeffs_mtz based on filename
+            return self._classify_mtz_type(path)
         elif lower.endswith(('.mrc', '.ccp4', '.map')):
             return "map"
         elif lower.endswith(('.fa', '.fasta', '.seq', '.dat')):
             return "sequence"
 
         return None
+
+    def _classify_mtz_type(self, path):
+        """
+        Classify MTZ as data_mtz or map_coeffs_mtz based on filename patterns.
+
+        Map coefficients patterns (calculated phases for visualization):
+            - refine_*_001.mtz (standard refine output with maps)
+            - *map_coeffs*.mtz
+            - *denmod*.mtz (density-modified)
+
+        Data MTZ patterns (measured Fobs for refinement):
+            - *_data.mtz (refine copies input here)
+            - *_refinement.mtz (predict_and_build data output)
+            - Original input files
+
+        Args:
+            path: File path
+
+        Returns:
+            str: "data_mtz" or "map_coeffs_mtz"
+        """
+        basename = os.path.basename(path).lower()
+
+        # Map coefficients patterns - files with calculated phases
+        map_coeffs_patterns = [
+            'map_coeffs',         # Explicit map coefficients
+            'denmod',             # Density-modified maps
+            'density_modified',
+        ]
+
+        # Check for refine_*_001.mtz pattern (map coefficients output)
+        # But NOT _data.mtz which is the input data copy
+        import re
+        if re.match(r'refine_\d+_001\.mtz$', basename):
+            return "map_coeffs_mtz"
+        if re.match(r'.*_refine_\d+\.mtz$', basename) and '_data' not in basename:
+            # Old naming like model_refine_001.mtz - check if it has _001 style
+            if '_001.' in basename or '_002.' in basename or '_003.' in basename:
+                return "map_coeffs_mtz"
+
+        for pattern in map_coeffs_patterns:
+            if pattern in basename:
+                return "map_coeffs_mtz"
+
+        # Data MTZ patterns (or default) - measured structure factors
+        # Everything else is assumed to be data MTZ (Fobs, R-free)
+        return "data_mtz"
 
     def _classify_pdb_cif_category(self, path):
         """
@@ -1114,10 +1239,26 @@ class BestFilesTracker:
                 return "half_map"
             return "full_map"
 
-        elif category == "mtz":
-            if 'refine' in basename:
-                return "refined_mtz"
-            return "original"
+        elif category == "data_mtz":
+            # Data MTZ subcategories (measured Fobs, R-free)
+            if '_data.mtz' in basename:
+                return "original_data_mtz"
+            if '_refinement.mtz' in basename or 'refinement_data' in basename:
+                return "original_data_mtz"
+            if 'phased' in basename or 'phases' in basename or 'phaser' in basename:
+                return "phased_data_mtz"
+            return "data_mtz"
+
+        elif category == "map_coeffs_mtz":
+            # Map coefficients MTZ subcategories (calculated phases)
+            if 'denmod' in basename or 'density_mod' in basename:
+                return "denmod_map_coeffs"
+            if 'map_coeffs' in basename and 'predict' in basename:
+                return "predict_build_map_coeffs"
+            if 'overall_best_map_coeffs' in basename:
+                return "predict_build_map_coeffs"
+            # Default for refine output
+            return "refine_map_coeffs"
 
         return "unknown"
 
@@ -1159,7 +1300,6 @@ class BestFilesTracker:
             '.tmp.',
             '/CarryOn/',          # predict_and_build intermediate directory
             '_CarryOn/',          # predict_and_build intermediate directory (alt)
-            '_data.mtz',          # refine input data copy (no map coefficients)
             'reference',          # Reference/template files
             'EDITED',             # Edited intermediate files
             'superposed_predicted_models',  # Alignment intermediates
@@ -1230,18 +1370,32 @@ if __name__ == "__main__":
                          metrics={"resolution": 2.5})
     print(f"   Best map after denmod: {tracker.get_best('map')}")
 
-    print("\n6. MTZ with R-free flags (should lock):")
+    print("\n6. Data MTZ with R-free flags (should lock):")
     tracker.evaluate_file("/path/to/data.mtz", cycle=1,
-                         stage="original",
+                         category="data_mtz",
+                         stage="original_data_mtz",
                          metrics={"has_rfree_flags": True})
-    print(f"   Best MTZ: {tracker.get_best('mtz')}")
+    print(f"   Best data_mtz: {tracker.get_best('data_mtz')}")
 
-    print("\n7. Try to change MTZ with _data.mtz (should be skipped - intermediate file):")
+    print("\n7. Another data MTZ (should NOT change - locked):")
     result = tracker.evaluate_file("/path/to/refine_001_data.mtz", cycle=3,
-                                   stage="refined_mtz",
+                                   category="data_mtz",
+                                   stage="original_data_mtz",
                                    metrics={"has_rfree_flags": True})
     print(f"   Changed: {result}")
-    print(f"   Best MTZ: {tracker.get_best('mtz')}")
+    print(f"   Best data_mtz: {tracker.get_best('data_mtz')}")
+
+    print("\n8. Map coefficients MTZ (should track):")
+    tracker.evaluate_file("/path/to/refine_001_001.mtz", cycle=2,
+                         category="map_coeffs_mtz",
+                         stage="refine_map_coeffs")
+    print(f"   Best map_coeffs_mtz: {tracker.get_best('map_coeffs_mtz')}")
+
+    print("\n9. Newer map coefficients MTZ (should update - prefer recent):")
+    tracker.evaluate_file("/path/to/refine_002_001.mtz", cycle=3,
+                         category="map_coeffs_mtz",
+                         stage="refine_map_coeffs")
+    print(f"   Best map_coeffs_mtz: {tracker.get_best('map_coeffs_mtz')}")
 
     print("\n" + "=" * 50)
     print(tracker.get_summary())

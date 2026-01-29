@@ -94,17 +94,17 @@ def test_program_registry():
     # Check required inputs
     required = registry.get_required_inputs("phenix.refine")
     assert "model" in required, "model not in required inputs"
-    assert "mtz" in required, "mtz not in required inputs"
+    assert "data_mtz" in required, "mtz not in required inputs"
 
     # Check command building
-    files = {"model": "test.pdb", "mtz": "test.mtz"}
+    files = {"model": "test.pdb", "data_mtz": "test.mtz"}
     cmd = registry.build_command("phenix.refine", files)
     assert "phenix.refine" in cmd, "Command doesn't start with program name"
     assert "test.pdb" in cmd, "Model file not in command"
     assert "test.mtz" in cmd, "MTZ file not in command"
 
     # Check strategy flags
-    files = {"model": "test.pdb", "mtz": "test.mtz"}
+    files = {"model": "test.pdb", "data_mtz": "test.mtz"}
     strategy = {"generate_rfree_flags": True}
     cmd = registry.build_command("phenix.refine", files, strategy)
     assert "r_free_flags.generate" in cmd, "Strategy flag not in command"
@@ -311,7 +311,7 @@ def test_command_with_strategy():
     registry = ProgramRegistry(use_yaml=True)
 
     # Test predict_and_build with stop_after_predict
-    files = {"sequence": "seq.fa", "mtz": "data.mtz"}
+    files = {"sequence": "seq.fa", "data_mtz": "data.mtz"}
     strategy = {"stop_after_predict": True, "resolution": 2.5}
     cmd = registry.build_command("phenix.predict_and_build", files, strategy)
 
@@ -319,7 +319,7 @@ def test_command_with_strategy():
     assert "resolution" in cmd or "2.5" in cmd, "resolution not in command"
 
     # Test refine with twin law
-    files = {"model": "model.pdb", "mtz": "data.mtz"}
+    files = {"model": "model.pdb", "data_mtz": "data.mtz"}
     strategy = {"twin_law": "-h,-k,l"}
     cmd = registry.build_command("phenix.refine", files, strategy)
 
@@ -337,7 +337,7 @@ def test_workflow_engine():
     engine = WorkflowEngine()
 
     # Test X-ray initial state
-    files = {"mtz": ["data.mtz"], "sequence": ["seq.fa"]}
+    files = {"data_mtz": ["data.mtz"], "sequence": ["seq.fa"]}
     history = {}
     context = engine.build_context(files, history)
     phase = engine.detect_phase("xray", context)
@@ -381,7 +381,7 @@ def test_workflow_engine_refined_state():
 
     # Test X-ray refined state with good R-free
     files = {
-        "mtz": ["data.mtz"],
+        "data_mtz": ["data.mtz"],
         "sequence": ["seq.fa"],
         "pdb": ["model.pdb"],
         "refined": ["model_refine_001.pdb"],
@@ -579,7 +579,7 @@ def test_rules_selector():
         "valid_programs": ["phenix.xtriage"],
         "resolution": 2.0,
     }
-    files = {"mtz": ["data.mtz"], "sequence": ["seq.fa"]}
+    files = {"data_mtz": ["data.mtz"], "sequence": ["seq.fa"]}
 
     intent = selector.select_next_action(workflow_state, files)
 
@@ -595,7 +595,7 @@ def test_rules_selector():
         "valid_programs": ["phenix.refine", "phenix.molprobity", "STOP"],
         "resolution": 2.0,
     }
-    files = {"mtz": ["data.mtz"], "pdb": ["model.pdb"]}
+    files = {"data_mtz": ["data.mtz"], "pdb": ["model.pdb"]}
     metrics_trend = {
         "r_free_trend": [0.30, 0.27, 0.25],
         "should_stop": False,
@@ -729,7 +729,7 @@ def test_invariants_check_types():
     builder = TemplateBuilder()
 
     # Test has_file check
-    files_with_mtz = {"mtz": "test.mtz", "sequence": "test.seq"}
+    files_with_mtz = {"data_mtz": "test.mtz", "sequence": "test.seq"}
     files_no_mtz = {"sequence": "test.seq"}
     strategy = {}
 
@@ -780,7 +780,7 @@ def test_input_priorities_yaml_structure():
 
     priorities = refine["input_priorities"]
     assert "model" in priorities, "Should have model priorities"
-    assert "mtz" in priorities, "Should have mtz priorities"
+    assert "data_mtz" in priorities, "Should have mtz priorities"
 
     model_prio = priorities["model"]
     assert "categories" in model_prio, "model should have categories"
@@ -818,8 +818,8 @@ def test_input_priorities_registry():
     # with_ligand is in prefer_subcategories, not categories
     assert "with_ligand" in refine_model.get("prefer_subcategories", []), "Should include with_ligand in prefer_subcategories"
 
-    refine_mtz = registry.get_input_priorities("phenix.refine", "mtz")
-    assert "refined_mtz" in refine_mtz["categories"], "Should prefer refined_mtz"
+    refine_mtz = registry.get_input_priorities("phenix.refine", "data_mtz")
+    assert "original_data_mtz" in refine_mtz["categories"], "Should prefer original_data_mtz"
 
     # Test real_space_refine priorities
     rsr_model = registry.get_input_priorities("phenix.real_space_refine", "model")
@@ -850,7 +850,7 @@ def test_input_priorities_selection():
         "rsr_output": ["model_real_space_refined.pdb"],
         "predicted": ["predicted_model.pdb"],
         "processed_predicted": ["processed_model.pdb"],
-        "mtz": ["data.mtz"],
+        "data_mtz": ["data.mtz"],
         "refined_mtz": ["refine_001.mtz"],
         "sequence": ["seq.fa"],
         "full_map": ["map.mrc"],
@@ -962,7 +962,7 @@ def test_user_advice_keyword_matching():
         "experiment_type": "xray",
         "valid_programs": ["phenix.predict_and_build", "phenix.phaser", "phenix.autosol"],
         "categorized_files": {
-            "mtz": ["data.mtz"],
+            "data_mtz": ["data.mtz"],
             "sequence": ["seq.fa"],
         },
     }
@@ -1034,7 +1034,7 @@ def test_priority_when_workflow_engine():
     # Build context with strong anomalous signal
     # Need xtriage_done=True to be in obtain_model phase where autosol is valid
     files = {
-        "mtz": ["data.mtz"],
+        "data_mtz": ["data.mtz"],
         "sequence": ["seq.fa"],
     }
     history_info = {
@@ -1080,7 +1080,7 @@ def test_priority_when_rules_selector():
         "valid_programs": ["phenix.predict_and_build", "phenix.phaser", "phenix.autosol"],
         "program_priorities": ["phenix.autosol"],  # From priority_when
         "categorized_files": {
-            "mtz": ["data.mtz"],
+            "data_mtz": ["data.mtz"],
             "sequence": ["seq.fa"],
         },
     }
@@ -1097,7 +1097,7 @@ def test_priority_when_rules_selector():
         "valid_programs": ["phenix.predict_and_build", "phenix.phaser", "phenix.autosol"],
         "program_priorities": [],  # No priority
         "categorized_files": {
-            "mtz": ["data.mtz"],
+            "data_mtz": ["data.mtz"],
             "sequence": ["seq.fa"],
         },
     }

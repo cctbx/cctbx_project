@@ -495,7 +495,7 @@ class RulesSelector:
             program == "phenix.predict_and_build" and
             automation_path == "stepwise"
         )
-        data_inputs = {"mtz", "full_map", "half_map", "map", "data"}
+        data_inputs = {"data_mtz", "map_coeffs_mtz", "full_map", "half_map", "map", "data"}
 
         # Get required inputs from registry
         required = self.program_registry.get_required_inputs(program)
@@ -589,13 +589,24 @@ class RulesSelector:
                         model_files.append(f)
             return model_files
 
-        # Default MTZ priority
-        if input_name in ("mtz", "data"):
-            mtz_files = list(files.get("refined_mtz", []))
-            for f in files.get("mtz", []):
+        # Default data_mtz priority (for refinement)
+        if input_name in ("data_mtz", "data"):
+            mtz_files = list(files.get("original_data_mtz", []))
+            for f in files.get("data_mtz", []):
                 if f not in mtz_files:
                     mtz_files.append(f)
             return mtz_files
+
+        # Map coefficients MTZ priority (for ligand fitting)
+        if input_name == "map_coeffs_mtz":
+            coeffs_files = list(files.get("refine_map_coeffs", []))
+            for f in files.get("denmod_map_coeffs", []):
+                if f not in coeffs_files:
+                    coeffs_files.append(f)
+            for f in files.get("map_coeffs_mtz", []):
+                if f not in coeffs_files:
+                    coeffs_files.append(f)
+            return coeffs_files
 
         # Simple mappings for other input types
         mapping = {
@@ -799,7 +810,7 @@ if __name__ == "__main__":
         "valid_programs": ["phenix.xtriage"],
         "resolution": 2.0,
     }
-    files = {"mtz": ["data.mtz"], "sequence": ["seq.fa"]}
+    files = {"data_mtz": ["data.mtz"], "sequence": ["seq.fa"]}
 
     intent = selector.select_next_action(workflow_state, files)
     print("X-ray initial:")
@@ -814,7 +825,7 @@ if __name__ == "__main__":
         "valid_programs": ["phenix.refine", "phenix.molprobity", "STOP"],
         "resolution": 2.0,
     }
-    files = {"mtz": ["data.mtz"], "pdb": ["model.pdb"], "refined": ["model_refine_001.pdb"]}
+    files = {"data_mtz": ["data.mtz"], "pdb": ["model.pdb"], "refined": ["model_refine_001.pdb"]}
     metrics_trend = {
         "r_free_trend": [0.30, 0.28, 0.26],
         "improvement_rate": 7.0,

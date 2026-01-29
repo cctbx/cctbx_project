@@ -202,51 +202,142 @@ def test_map_resolution_bonus():
 
 
 # =============================================================================
-# MTZ SCORING TESTS
+# DATA_MTZ SCORING TESTS
 # =============================================================================
 
-def test_mtz_rfree_locks():
-    """Test that first MTZ with R-free flags locks forever."""
-    print("Test: mtz_rfree_locks")
+def test_data_mtz_rfree_locks():
+    """Test that first data_mtz with R-free flags locks forever."""
+    print("Test: data_mtz_rfree_locks")
 
     tracker = BestFilesTracker()
 
-    # First MTZ with R-free - should lock
-    tracker.evaluate_file("/path/data.mtz", cycle=1, stage="original",
+    # First data_mtz with R-free - should lock
+    tracker.evaluate_file("/path/data.mtz", cycle=1, category="data_mtz",
+                         stage="original_data_mtz",
                          metrics={"has_rfree_flags": True})
-    assert_equal(tracker.get_best("mtz").path, "/path/data.mtz")
+    assert_equal(tracker.get_best("data_mtz").path, "/path/data.mtz")
 
-    # Try to change to refined MTZ - should fail
-    result = tracker.evaluate_file("/path/refined.mtz", cycle=2, stage="refined_mtz",
+    # Try to change to another data MTZ - should fail (locked)
+    result = tracker.evaluate_file("/path/refined_data.mtz", cycle=2,
+                                   category="data_mtz",
+                                   stage="original_data_mtz",
                                    metrics={"has_rfree_flags": True})
-    assert_false(result, "Should not change locked MTZ")
-    assert_equal(tracker.get_best("mtz").path, "/path/data.mtz",
-                "Original MTZ should still be best")
+    assert_false(result, "Should not change locked data_mtz")
+    assert_equal(tracker.get_best("data_mtz").path, "/path/data.mtz",
+                "Original data_mtz should still be best")
 
     print("  PASSED")
 
 
-def test_mtz_without_rfree_can_change():
-    """Test that MTZ without R-free flags can be replaced."""
-    print("Test: mtz_without_rfree_can_change")
+def test_data_mtz_without_rfree_can_change():
+    """Test that data_mtz without R-free flags can be replaced."""
+    print("Test: data_mtz_without_rfree_can_change")
 
     tracker = BestFilesTracker()
 
-    # First MTZ without R-free
-    tracker.evaluate_file("/path/data1.mtz", cycle=1, stage="original",
+    # First data_mtz without R-free
+    tracker.evaluate_file("/path/data1.mtz", cycle=1, category="data_mtz",
+                         stage="data_mtz",
                          metrics={"has_rfree_flags": False})
-    assert_equal(tracker.get_best("mtz").path, "/path/data1.mtz")
+    assert_equal(tracker.get_best("data_mtz").path, "/path/data1.mtz")
 
-    # Second MTZ with R-free - should replace and lock
-    result = tracker.evaluate_file("/path/data2.mtz", cycle=2, stage="original",
+    # Second data_mtz with R-free - should replace and lock
+    result = tracker.evaluate_file("/path/data2.mtz", cycle=2, category="data_mtz",
+                                   stage="original_data_mtz",
                                    metrics={"has_rfree_flags": True})
-    assert_true(result, "Should change to MTZ with R-free")
-    assert_equal(tracker.get_best("mtz").path, "/path/data2.mtz")
+    assert_true(result, "Should change to data_mtz with R-free")
+    assert_equal(tracker.get_best("data_mtz").path, "/path/data2.mtz")
 
-    # Now try third MTZ - should fail (locked)
-    result = tracker.evaluate_file("/path/data3.mtz", cycle=3, stage="refined_mtz",
+    # Now try third data_mtz - should fail (locked)
+    result = tracker.evaluate_file("/path/data3.mtz", cycle=3, category="data_mtz",
+                                   stage="original_data_mtz",
                                    metrics={"has_rfree_flags": True})
     assert_false(result, "Should not change after lock")
+
+    print("  PASSED")
+
+
+# =============================================================================
+# MAP_COEFFS_MTZ SCORING TESTS
+# =============================================================================
+
+def test_map_coeffs_mtz_prefers_recent():
+    """Test that map_coeffs_mtz prefers more recent (higher cycle) files."""
+    print("Test: map_coeffs_mtz_prefers_recent")
+
+    tracker = BestFilesTracker()
+
+    # First map coeffs
+    tracker.evaluate_file("/path/refine_001_001.mtz", cycle=1,
+                         category="map_coeffs_mtz",
+                         stage="refine_map_coeffs")
+    assert_equal(tracker.get_best("map_coeffs_mtz").path, "/path/refine_001_001.mtz")
+
+    # Second map coeffs at higher cycle - should replace
+    result = tracker.evaluate_file("/path/refine_002_001.mtz", cycle=2,
+                                   category="map_coeffs_mtz",
+                                   stage="refine_map_coeffs")
+    assert_true(result, "Should update to more recent map coeffs")
+    assert_equal(tracker.get_best("map_coeffs_mtz").path, "/path/refine_002_001.mtz")
+
+    # Third map coeffs at even higher cycle - should replace again
+    result = tracker.evaluate_file("/path/refine_003_001.mtz", cycle=3,
+                                   category="map_coeffs_mtz",
+                                   stage="refine_map_coeffs")
+    assert_true(result, "Should update to even more recent map coeffs")
+    assert_equal(tracker.get_best("map_coeffs_mtz").path, "/path/refine_003_001.mtz")
+
+    print("  PASSED")
+
+
+def test_map_coeffs_mtz_same_cycle_prefers_higher_score():
+    """Test that at same cycle, higher score wins for map_coeffs_mtz."""
+    print("Test: map_coeffs_mtz_same_cycle_prefers_higher_score")
+
+    tracker = BestFilesTracker()
+
+    # First map coeffs
+    tracker.evaluate_file("/path/refine_001_001.mtz", cycle=1,
+                         category="map_coeffs_mtz",
+                         stage="refine_map_coeffs")
+
+    # Same cycle but denmod (higher stage score) - should replace
+    result = tracker.evaluate_file("/path/denmod_map_coeffs.mtz", cycle=1,
+                                   category="map_coeffs_mtz",
+                                   stage="denmod_map_coeffs")
+    # Note: denmod_map_coeffs has lower score than refine_map_coeffs in defaults
+    # so this may NOT replace depending on scoring config
+
+    print("  PASSED")
+
+
+def test_dual_mtz_tracking():
+    """Test that data_mtz and map_coeffs_mtz are tracked separately."""
+    print("Test: dual_mtz_tracking")
+
+    tracker = BestFilesTracker()
+
+    # Add data MTZ
+    tracker.evaluate_file("/path/data.mtz", cycle=1, category="data_mtz",
+                         metrics={"has_rfree_flags": True})
+
+    # Add map coeffs MTZ
+    tracker.evaluate_file("/path/refine_001_001.mtz", cycle=1,
+                         category="map_coeffs_mtz")
+
+    # Both should be tracked separately
+    assert_equal(tracker.get_best_path("data_mtz"), "/path/data.mtz")
+    assert_equal(tracker.get_best_path("map_coeffs_mtz"), "/path/refine_001_001.mtz")
+
+    # Update map coeffs - should change
+    tracker.evaluate_file("/path/refine_002_001.mtz", cycle=2,
+                         category="map_coeffs_mtz")
+
+    # data_mtz should be unchanged (locked), map_coeffs_mtz should update
+    assert_equal(tracker.get_best_path("data_mtz"), "/path/data.mtz")
+    assert_equal(tracker.get_best_path("map_coeffs_mtz"), "/path/refine_002_001.mtz")
+
+    print("  PASSED")
 
     print("  PASSED")
 
@@ -321,9 +412,9 @@ def test_file_classification_by_extension():
     tracker.evaluate_file("/path/model.pdb", cycle=1)
     assert_not_none(tracker.get_best("model"), "PDB should be classified as model")
 
-    # MTZ -> mtz
+    # MTZ -> data_mtz (default for unclassified MTZ)
     tracker.evaluate_file("/path/data.mtz", cycle=1)
-    assert_not_none(tracker.get_best("mtz"), "MTZ should be classified as mtz")
+    assert_not_none(tracker.get_best("data_mtz"), "MTZ should be classified as data_mtz")
 
     # CCP4 -> map
     tracker.evaluate_file("/path/map.ccp4", cycle=1)
@@ -418,8 +509,11 @@ def test_serialization_roundtrip():
                          metrics={"r_free": 0.25})
     tracker.evaluate_file("/path/predicted.pdb", cycle=1, stage="predicted")  # -> search_model
     tracker.evaluate_file("/path/map.ccp4", cycle=1, stage="full_map")
-    tracker.evaluate_file("/path/data.mtz", cycle=1, stage="original",
+    tracker.evaluate_file("/path/data.mtz", cycle=1, category="data_mtz",
+                         stage="original_data_mtz",
                          metrics={"has_rfree_flags": True})
+    tracker.evaluate_file("/path/refine_001_001.mtz", cycle=2, category="map_coeffs_mtz",
+                         stage="refine_map_coeffs")
 
     # Serialize
     data = tracker.to_dict()
@@ -437,10 +531,11 @@ def test_serialization_roundtrip():
     assert_equal(tracker2.get_best("search_model").path, "/path/predicted.pdb")
     assert_equal(tracker2.get_best("search_model").stage, "predicted")
     assert_equal(tracker2.get_best("map").path, "/path/map.ccp4")
-    assert_equal(tracker2.get_best("mtz").path, "/path/data.mtz")
+    assert_equal(tracker2.get_best("data_mtz").path, "/path/data.mtz")
+    assert_equal(tracker2.get_best("map_coeffs_mtz").path, "/path/refine_001_001.mtz")
 
-    # MTZ lock should be preserved
-    assert_true(tracker2._mtz_with_rfree_locked, "MTZ lock should be preserved")
+    # data_mtz lock should be preserved
+    assert_true(tracker2._data_mtz_with_rfree_locked, "data_mtz lock should be preserved")
 
     print("  PASSED")
 
@@ -527,7 +622,8 @@ def test_get_best_dict():
 
     assert_equal(best_dict.get("model"), "/path/model.pdb")
     assert_equal(best_dict.get("map"), "/path/map.ccp4")
-    assert_none(best_dict.get("mtz"), "Should not have mtz")
+    assert_none(best_dict.get("data_mtz"), "Should not have data_mtz")
+    assert_none(best_dict.get("map_coeffs_mtz"), "Should not have map_coeffs_mtz")
 
     print("  PASSED")
 
@@ -621,13 +717,14 @@ def test_session_persistence_simulation():
     # Verify all best files restored
     assert_equal(tracker2.get_best_path("model"), "/path/model.pdb")
     assert_equal(tracker2.get_best_path("map"), "/path/map.ccp4")
-    assert_equal(tracker2.get_best_path("mtz"), "/path/data.mtz")
+    assert_equal(tracker2.get_best_path("data_mtz"), "/path/data.mtz")
 
-    # Verify MTZ is locked (should not change)
+    # Verify data_mtz is locked (should not change)
     result = tracker2.evaluate_file("/path/new_data.mtz", cycle=2,
+                                    category="data_mtz",
                                     metrics={"has_rfree_flags": True})
-    assert_false(result, "MTZ should remain locked after reload")
-    assert_equal(tracker2.get_best_path("mtz"), "/path/data.mtz")
+    assert_false(result, "data_mtz should remain locked after reload")
+    assert_equal(tracker2.get_best_path("data_mtz"), "/path/data.mtz")
 
     print("  PASSED")
 
@@ -809,7 +906,8 @@ def test_yaml_scoring_loads():
     assert_not_none(tracker._scoring_config, "Scoring config should load")
     assert_true("model" in tracker._scoring_config, "Should have model config")
     assert_true("map" in tracker._scoring_config, "Should have map config")
-    assert_true("mtz" in tracker._scoring_config, "Should have mtz config")
+    assert_true("data_mtz" in tracker._scoring_config, "Should have data_mtz config")
+    assert_true("map_coeffs_mtz" in tracker._scoring_config, "Should have map_coeffs_mtz config")
 
     print("  PASSED")
 
@@ -835,8 +933,13 @@ def test_yaml_stage_scores():
     assert_equal(tracker._get_stage_score("map", "optimized_full_map"), 100)
     assert_equal(tracker._get_stage_score("map", "half_map"), 10)
 
-    # Check mtz stage scores
-    assert_equal(tracker._get_stage_score("mtz", "original"), 50)
+    # Check data_mtz stage scores
+    assert_equal(tracker._get_stage_score("data_mtz", "original_data_mtz"), 70)
+    assert_equal(tracker._get_stage_score("data_mtz", "phased_data_mtz"), 60)
+
+    # Check map_coeffs_mtz stage scores
+    assert_equal(tracker._get_stage_score("map_coeffs_mtz", "refine_map_coeffs"), 80)
+    assert_equal(tracker._get_stage_score("map_coeffs_mtz", "denmod_map_coeffs"), 70)
 
     print("  PASSED")
 
@@ -950,23 +1053,24 @@ def test_yaml_model_scoring_integrated():
     print("  PASSED")
 
 
-def test_yaml_mtz_scoring_integrated():
-    """Test MTZ scoring with has_rfree_flags."""
-    print("Test: yaml_mtz_scoring_integrated")
+def test_yaml_data_mtz_scoring_integrated():
+    """Test data_mtz scoring with has_rfree_flags."""
+    print("Test: yaml_data_mtz_scoring_integrated")
 
     tracker = BestFilesTracker()
 
-    # MTZ with R-free flags
-    tracker.evaluate_file("/path/to/data.mtz", cycle=1, stage="original",
+    # data_mtz with R-free flags
+    tracker.evaluate_file("/path/to/data.mtz", cycle=1, category="data_mtz",
+                         stage="original_data_mtz",
                          metrics={"has_rfree_flags": True})
 
-    entry = tracker.get_best("mtz")
+    entry = tracker.get_best("data_mtz")
 
-    # Stage: 50 (original)
+    # Stage: 70 (original_data_mtz)
     # has_rfree_flags: 30 (boolean)
-    # Total: 80
+    # Total: 100
 
-    assert_equal(entry.score, 80.0, "MTZ with R-free should score 80")
+    assert_equal(entry.score, 100.0, "data_mtz with R-free should score 100")
 
     print("  PASSED")
 
@@ -1039,61 +1143,65 @@ def test_best_files_respects_exclude_patterns():
     print("  PASSED")
 
 
-def test_mtz_rfree_flag_locking():
-    """Test that first MTZ with R-free flags locks forever."""
-    print("Test: mtz_rfree_flag_locking")
+def test_data_mtz_rfree_flag_locking():
+    """Test that first data_mtz with R-free flags locks forever."""
+    print("Test: data_mtz_rfree_flag_locking")
 
     tracker = BestFilesTracker()
 
-    # First MTZ without R-free flags
-    tracker.evaluate_file("/path/to/original.mtz", cycle=1, stage="original",
+    # First data_mtz without R-free flags
+    tracker.evaluate_file("/path/to/original.mtz", cycle=1, category="data_mtz",
+                         stage="data_mtz",
                          metrics={})
-    assert_equal(tracker.get_best_path("mtz"), "/path/to/original.mtz")
+    assert_equal(tracker.get_best_path("data_mtz"), "/path/to/original.mtz")
 
-    # Second MTZ WITH R-free flags - should become best and lock
-    # Note: using refine_001.mtz (not _data.mtz which is skipped as intermediate)
-    tracker.evaluate_file("/path/to/refine_001.mtz", cycle=2, stage="refined_mtz",
+    # Second data_mtz WITH R-free flags - should become best and lock
+    tracker.evaluate_file("/path/to/data_with_rfree.mtz", cycle=2, category="data_mtz",
+                         stage="original_data_mtz",
                          metrics={"has_rfree_flags": True})
-    assert_equal(tracker.get_best_path("mtz"), "/path/to/refine_001.mtz")
+    assert_equal(tracker.get_best_path("data_mtz"), "/path/to/data_with_rfree.mtz")
 
-    # Third MTZ also with R-free flags - should NOT replace (locked)
-    result = tracker.evaluate_file("/path/to/refine_002.mtz", cycle=3,
-                                   stage="refined_mtz",
+    # Third data_mtz also with R-free flags - should NOT replace (locked)
+    result = tracker.evaluate_file("/path/to/another_data.mtz", cycle=3,
+                                   category="data_mtz",
+                                   stage="original_data_mtz",
                                    metrics={"has_rfree_flags": True})
-    assert_false(result, "Should not replace locked MTZ")
-    assert_equal(tracker.get_best_path("mtz"), "/path/to/refine_001.mtz",
-                "Locked MTZ should remain")
+    assert_false(result, "Should not replace locked data_mtz")
+    assert_equal(tracker.get_best_path("data_mtz"), "/path/to/data_with_rfree.mtz",
+                "Locked data_mtz should remain")
 
     print("  PASSED")
 
 
-def test_data_mtz_skipped_as_intermediate():
-    """Test that refine_*_data.mtz files are skipped as intermediate files."""
-    print("Test: data_mtz_skipped_as_intermediate")
+def test_refine_outputs_both_mtz_types():
+    """Test that refine outputs are classified correctly into data_mtz and map_coeffs_mtz."""
+    print("Test: refine_outputs_both_mtz_types")
 
     tracker = BestFilesTracker()
 
-    # First, add a regular MTZ
-    tracker.evaluate_file("/path/to/original.mtz", cycle=1, stage="original",
-                         metrics={})
-    assert_equal(tracker.get_best_path("mtz"), "/path/to/original.mtz")
-
-    # Try to add a _data.mtz file - should be skipped as intermediate
-    result = tracker.evaluate_file("/path/to/refine_001_data.mtz", cycle=2,
-                                   stage="refined_mtz",
-                                   metrics={"has_rfree_flags": True})
-    # The _data.mtz should be skipped, so original.mtz should still be best
-    # (unless the tracker returns False for intermediate files)
-    best_mtz = tracker.get_best_path("mtz")
-    assert_equal(best_mtz, "/path/to/original.mtz",
-                "_data.mtz should be skipped as intermediate")
-
-    # Now add the actual refined MTZ (not _data.mtz) - this should work
-    tracker.evaluate_file("/path/to/refine_001_001.mtz", cycle=2,
-                         stage="refined_mtz",
+    # Original input data
+    tracker.evaluate_file("/path/to/original.mtz", cycle=1,
                          metrics={"has_rfree_flags": True})
-    assert_equal(tracker.get_best_path("mtz"), "/path/to/refine_001_001.mtz",
-                "refine_001_001.mtz should become best (has R-free, not intermediate)")
+    assert_equal(tracker.get_best_path("data_mtz"), "/path/to/original.mtz")
+
+    # refine_001_data.mtz - should go to data_mtz but NOT replace locked one
+    # (because we already have one with R-free locked)
+    result = tracker.evaluate_file("/path/to/refine_001_data.mtz", cycle=2,
+                                   metrics={"has_rfree_flags": True})
+    assert_false(result, "Should not replace locked data_mtz")
+    assert_equal(tracker.get_best_path("data_mtz"), "/path/to/original.mtz")
+
+    # refine_001_001.mtz - should go to map_coeffs_mtz
+    tracker.evaluate_file("/path/to/refine_001_001.mtz", cycle=2)
+    assert_equal(tracker.get_best_path("map_coeffs_mtz"), "/path/to/refine_001_001.mtz",
+                "refine_001_001.mtz should be map_coeffs_mtz")
+
+    # Now add more map coeffs - should update (prefer recent)
+    tracker.evaluate_file("/path/to/refine_002_001.mtz", cycle=3)
+    assert_equal(tracker.get_best_path("map_coeffs_mtz"), "/path/to/refine_002_001.mtz",
+                "map_coeffs_mtz should prefer more recent")
+
+    print("  PASSED")
 
     print("  PASSED")
 

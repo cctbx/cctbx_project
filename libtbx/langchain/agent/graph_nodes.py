@@ -599,7 +599,8 @@ def perceive(state):
         # SEMANTIC: 'search_model' = templates NOT yet positioned (predicted, pdb_template)
         "has_model": bool(categorized_files.get("model")),
         "has_search_model": bool(categorized_files.get("search_model")),
-        "has_mtz": bool(categorized_files.get("mtz")),
+        "has_data_mtz": bool(categorized_files.get("data_mtz")),
+        "has_map_coeffs_mtz": bool(categorized_files.get("map_coeffs_mtz")),
         # Check all map categories for cryo-EM
         "has_map": bool(
             categorized_files.get("map") or
@@ -616,10 +617,10 @@ def perceive(state):
     }
 
     # Debug: log key sanity context values
-    state = _log(state, "PERCEIVE: Sanity context: exp_type=%s, session_exp_type=%s, has_mtz=%s, has_model=%s, has_search_model=%s, has_map=%s" % (
+    state = _log(state, "PERCEIVE: Sanity context: exp_type=%s, session_exp_type=%s, has_data_mtz=%s, has_model=%s, has_search_model=%s, has_map=%s" % (
         sanity_context.get("experiment_type"),
         session_info.get("experiment_type"),
-        sanity_context.get("has_mtz"),
+        sanity_context.get("has_data_mtz"),
         sanity_context.get("has_model"),
         sanity_context.get("has_search_model"),
         sanity_context.get("has_map"),
@@ -665,7 +666,7 @@ def perceive(state):
             diag_info = []
             diag_info.append("Diagnostic info:")
             diag_info.append("  - Available files: %d" % len(state.get("available_files", [])))
-            diag_info.append("  - has_mtz: %s" % sanity_context.get("has_mtz"))
+            diag_info.append("  - has_data_mtz: %s" % sanity_context.get("has_data_mtz"))
             diag_info.append("  - has_model: %s" % sanity_context.get("has_model"))
             diag_info.append("  - has_map: %s" % sanity_context.get("has_map"))
             diag_info.append("  - experiment_type: %s" % sanity_context.get("experiment_type"))
@@ -1528,7 +1529,7 @@ def _build_with_new_builder(state):
         program == "phenix.predict_and_build"):
         current_state = workflow_state.get("state", "")
         # Apply to early workflow states where predict_and_build would run
-        stepwise_states = ["cryoem_analyzed", "xray_initial", "xray_placed"]
+        stepwise_states = ["cryoem_analyzed", "xray_initial", "xray_analyzed", "xray_placed"]
         if current_state in stepwise_states:
             strategy["stop_after_predict"] = True
             state = _log(state, "BUILD: Forcing stop_after_predict=True for stepwise mode")
@@ -1629,7 +1630,7 @@ def build(state):
     if (workflow_state.get("automation_path") == "stepwise" and
         program == "phenix.predict_and_build"):
         current_state = workflow_state.get("state", "")
-        stepwise_states = ["cryoem_analyzed", "xray_initial", "xray_placed"]
+        stepwise_states = ["cryoem_analyzed", "xray_initial", "xray_analyzed", "xray_placed"]
         if current_state in stepwise_states:
             strategy["stop_after_predict"] = True
             state = _log(state, "BUILD: Forcing stop_after_predict=True for stepwise mode")
@@ -1967,14 +1968,15 @@ def build(state):
                 "pdb_file": "model",
                 "map": "map",
                 "full_map": "map",
-                "mtz": "mtz",
-                "hkl_file": "mtz",
+                "data_mtz": "data_mtz",
+                "map_coeffs_mtz": "map_coeffs_mtz",
+                "hkl_file": "data_mtz",
                 "sequence": "sequence",
                 "seq_file": "sequence",
             }
 
             # Auto-fill missing required files
-            # PRIORITY 0: Locked R-free MTZ (for mtz input, X-ray refinement)
+            # PRIORITY 0: Locked R-free data_mtz (for data_mtz input, X-ray refinement)
             # PRIORITY 1: Check best_files first
             # PRIORITY 2: Use YAML input_priorities
             # PRIORITY 3: Simple fallback
@@ -1982,11 +1984,11 @@ def build(state):
                 if input_name not in corrected_files:
                     file_found = None
 
-                    # PRIORITY 0: Locked R-free MTZ
-                    if input_name in ("mtz", "hkl_file") and rfree_mtz:
+                    # PRIORITY 0: Locked R-free data_mtz
+                    if input_name in ("data_mtz", "hkl_file") and rfree_mtz:
                         if os.path.exists(rfree_mtz):
                             file_found = rfree_mtz
-                            state = _log(state, "BUILD: Using LOCKED R-free MTZ for %s: %s" % (
+                            state = _log(state, "BUILD: Using LOCKED R-free data_mtz for %s: %s" % (
                                 input_name, os.path.basename(rfree_mtz)))
 
                     # PRIORITY 1: Check best_files
@@ -2024,11 +2026,16 @@ def build(state):
                     # PRIORITY 3: Simple fallback for common input types
                     # Use _get_most_recent_file to prefer the latest file when multiple match
                     if not file_found:
-                        if input_name == "mtz":
-                            if categorized_files.get("refined_mtz"):
-                                file_found = _get_most_recent_file(categorized_files["refined_mtz"])
-                            elif categorized_files.get("mtz"):
-                                file_found = _get_most_recent_file(categorized_files["mtz"])
+                        if input_name == "data_mtz":
+                            if categorized_files.get("original_data_mtz"):
+                                file_found = _get_most_recent_file(categorized_files["original_data_mtz"])
+                            elif categorized_files.get("data_mtz"):
+                                file_found = _get_most_recent_file(categorized_files["data_mtz"])
+                        elif input_name == "map_coeffs_mtz":
+                            if categorized_files.get("refine_map_coeffs"):
+                                file_found = _get_most_recent_file(categorized_files["refine_map_coeffs"])
+                            elif categorized_files.get("map_coeffs_mtz"):
+                                file_found = _get_most_recent_file(categorized_files["map_coeffs_mtz"])
                         elif input_name == "model":
                             for cat in ["refined", "rsr_output", "phaser_output",
                                        "processed_predicted", "pdb"]:

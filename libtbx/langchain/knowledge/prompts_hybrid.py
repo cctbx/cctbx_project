@@ -600,8 +600,10 @@ def get_planning_prompt(history, analysis, available_files, previous_attempts=No
         recommended = []
         if best_files.get("model"):
             recommended.append("**USE THIS MODEL:** %s" % os.path.basename(best_files["model"]))
-        if best_files.get("mtz"):
-            recommended.append("**USE THIS DATA:** %s" % os.path.basename(best_files["mtz"]))
+        if best_files.get("data_mtz"):
+            recommended.append("**USE THIS DATA:** %s" % os.path.basename(best_files["data_mtz"]))
+        if best_files.get("map_coeffs_mtz"):
+            recommended.append("**USE FOR MAPS/LIGANDFIT:** %s" % os.path.basename(best_files["map_coeffs_mtz"]))
         if best_files.get("map"):
             recommended.append("**USE THIS MAP:** %s" % os.path.basename(best_files["map"]))
 

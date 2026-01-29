@@ -78,10 +78,10 @@ def test_polder_experiment_types():
 
 
 def test_polder_required_inputs():
-    """phenix.polder should require mtz and model."""
+    """phenix.polder should require data_mtz and model."""
     polder = PROGRAMS["phenix.polder"]
     required = polder.get("inputs", {}).get("required", {})
-    assert_in("mtz", required)
+    assert_in("data_mtz", required)
     assert_in("model", required)
 
 
@@ -98,7 +98,7 @@ def test_polder_command_template():
     polder = PROGRAMS["phenix.polder"]
     command = polder.get("command", "")
     assert_in("phenix.polder", command)
-    assert_in("{mtz}", command)
+    assert_in("{data_mtz}", command)
     assert_in("{model}", command)
     assert_in("{selection}", command)
 
@@ -165,10 +165,10 @@ def test_model_vs_data_exists():
 
 
 def test_model_vs_data_required_inputs():
-    """phenix.model_vs_data should require mtz and model."""
+    """phenix.model_vs_data should require data_mtz and model."""
     prog = PROGRAMS["phenix.model_vs_data"]
     required = prog.get("inputs", {}).get("required", {})
-    assert_in("mtz", required)
+    assert_in("data_mtz", required)
     assert_in("model", required)
 
 
@@ -325,7 +325,7 @@ def test_polder_specifies_mtz_input():
     polder_idx = prompt_lower.find("polder")
     if polder_idx > -1:
         context = prompt_lower[polder_idx:polder_idx+300]
-        assert_true("mtz" in context or "reflection" in context)
+        assert_true("mtz" in context or "data_mtz" in context or "reflection" in context)
 
 
 def test_polder_specifies_model_input():

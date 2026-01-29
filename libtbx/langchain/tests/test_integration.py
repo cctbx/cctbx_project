@@ -265,7 +265,7 @@ def test_xray_stepwise_forces_stop_after_predict():
     # Simulate intent for predict_and_build
     state["intent"] = {
         "program": "phenix.predict_and_build",
-        "files": {"sequence": "sequence.fa", "mtz": "data.mtz"},
+        "files": {"sequence": "sequence.fa", "data_mtz": "data.mtz"},
         "strategy": {}  # No stop_after_predict specified
     }
 

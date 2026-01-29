@@ -24,9 +24,10 @@ phenix.xtriage:
 
   inputs:
     required:
-      mtz:
+      data_mtz:
         extensions: [.mtz, .sca, .hkl, .sdf]
         flag: ""
+        description: "Reflection data with Fobs for analysis"
     optional:
       sequence:
         extensions: [.fa, .fasta, .seq, .dat]
@@ -42,7 +43,7 @@ phenix.xtriage:
       - anomalous_measurability
       - space_group
 
-  command: "phenix.xtriage {mtz}"
+  command: "phenix.xtriage {data_mtz}"
 
   log_parsing:
     resolution:
@@ -215,9 +216,10 @@ phenix.predict_and_build:
         extensions: [.fa, .fasta, .seq, .dat]
         flag: "input_files.seq_file="
     optional:
-      mtz:
+      data_mtz:
         extensions: [.mtz, .sca, .hkl, .sdf]
         flag: "input_files.xray_data_file="
+        description: "Reflection data with Fobs for X-ray workflows"
       full_map:
         extensions: [.mrc, .ccp4, .map]
         flag: "map_model.full_map="
@@ -237,12 +239,18 @@ phenix.predict_and_build:
         type: model
       - pattern: "*_map.ccp4"
         type: map
+      - pattern: "*_refinement.mtz"
+        type: data_mtz
+        description: "Reflection data with R-free flags"
+      - pattern: "*_map_coeffs.mtz"
+        type: map_coeffs_mtz
+        description: "Map coefficients (FP/PHIFP)"
     metrics:
       - r_free
       - r_work
       - map_cc
 
-  command: "phenix.predict_and_build {sequence} {mtz} {full_map} {half_map} {ncs_spec}"
+  command: "phenix.predict_and_build {sequence} {data_mtz} {full_map} {half_map} {ncs_spec}"
 
   defaults:
     control.nproc: 4
@@ -270,7 +278,7 @@ phenix.predict_and_build:
       description: "Must have data file OR stop_after_predict=True"
       check:
         any_of:
-          - has_file: [mtz, full_map, half_map]
+          - has_file: [data_mtz, full_map, half_map]
           - strategy_equals: {stop_after_predict: true}
       fix:
         set_strategy: {stop_after_predict: true}
@@ -308,9 +316,10 @@ phenix.phaser:
 
   inputs:
     required:
-      mtz:
+      data_mtz:
         extensions: [.mtz, .sca, .hkl, .sdf]
         flag: ""
+        description: "Reflection data with Fobs for MR"
       model:
         extensions: [.pdb]
         flag: ""
@@ -336,21 +345,22 @@ phenix.phaser:
       fallback_categories: [model]
       # Exclude ligands - they are NOT search models!
       exclude_categories: [ligand, ligand_pdb, ligand_cif, ligand_fit]
-    mtz:
-      categories: [mtz]  # Original data, not refined MTZ
+    data_mtz:
+      categories: [data_mtz]  # Original data with Fobs
 
   outputs:
     files:
       - pattern: "PHASER.*.pdb"
         type: model
       - pattern: "PHASER.*.mtz"
-        type: mtz
+        type: data_mtz
+        description: "Phased data (has Fobs + experimental phases, may lack R-free)"
     metrics:
       - tfz
       - llg
       - rfz
 
-  command: "phenix.phaser {mtz} {model} {sequence}"
+  command: "phenix.phaser {data_mtz} {model} {sequence}"
 
   defaults:
     phaser.mode: "MR_AUTO"
@@ -402,10 +412,10 @@ phenix.autobuild:
 
   inputs:
     required:
-      mtz:
+      data_mtz:
         extensions: [.mtz, .sca, .hkl, .sdf]
         flag: "data="
-        priority_patterns: [refine]  # Prefer refined MTZ with phases
+        description: "Reflection data - prefer phased MTZ from phaser/refine"
       sequence:
         extensions: [.fa, .fasta, .seq, .dat]
         flag: "seq_file="
@@ -420,20 +430,20 @@ phenix.autobuild:
     model:
       categories: [refined, phaser_output, autobuild_output, pdb]
       exclude_categories: [predicted]  # Raw predictions not suitable
-    mtz:
-      categories: [refined_mtz, mtz]  # Prefer MTZ with phases/R-free
+    data_mtz:
+      categories: [phased_data_mtz, original_data_mtz, data_mtz]  # Prefer phased data
 
   outputs:
     files:
       - pattern: "*overall_best*.pdb"
         type: model
       - pattern: "*overall_best*.mtz"
-        type: mtz
+        type: data_mtz
     metrics:
       - r_free
       - r_work
 
-  command: "phenix.autobuild {mtz} {sequence} {model}"
+  command: "phenix.autobuild {data_mtz} {sequence} {model}"
 
   defaults:
     nproc: 4
@@ -463,10 +473,10 @@ phenix.autobuild_denmod:
 
   inputs:
     required:
-      mtz:
+      data_mtz:
         extensions: [.mtz]
         flag: "data="
-        priority_patterns: [refine, PHASER]  # Need phased MTZ
+        description: "Reflection data - need phased MTZ from phaser/refine"
       sequence:
         extensions: [.fa, .fasta, .seq, .dat]
         flag: "seq_file="
@@ -477,16 +487,17 @@ phenix.autobuild_denmod:
         priority_patterns: [refine, PHASER]
 
   input_priorities:
-    mtz:
-      categories: [refined_mtz, mtz]
+    data_mtz:
+      categories: [phased_data_mtz, original_data_mtz, data_mtz]
 
   outputs:
     files:
       - pattern: "*overall_best_denmod_map_coeffs.mtz"
-        type: mtz
+        type: map_coeffs_mtz
+        description: "Density-modified map coefficients (FWT/PHFWT)"
     metrics: []
 
-  command: "phenix.autobuild {mtz} {sequence} {model} maps_only=True"
+  command: "phenix.autobuild {data_mtz} {sequence} {model} maps_only=True"
 
   defaults:
     nproc: 4
@@ -513,9 +524,10 @@ phenix.autosol:
 
   inputs:
     required:
-      mtz:
+      data_mtz:
         extensions: [.mtz, .sca, .hkl, .sdf]
         flag: "autosol.data="
+        description: "Reflection data with anomalous signal"
       sequence:
         extensions: [.fa, .fasta, .seq, .dat]
         flag: "seq_file="
@@ -525,12 +537,13 @@ phenix.autosol:
       - pattern: "*overall_best*.pdb"
         type: model
       - pattern: "*refinement_data*.mtz"
-        type: mtz
+        type: data_mtz
+        description: "Phased data with Fobs"
     metrics:
       - fom
       - sites_found
 
-  command: "phenix.autosol {mtz} {sequence}"
+  command: "phenix.autosol {data_mtz} {sequence}"
 
   defaults:
     nproc: 4
@@ -772,9 +785,10 @@ phenix.refine:
       model:
         extensions: [.pdb, .cif]
         flag: ""
-      mtz:
+      data_mtz:
         extensions: [.mtz, .sca, .hkl, .sdf]
         flag: ""
+        description: "Reflection data with Fobs and R-free flags"
 
   # Input priorities: which file categories to prefer for each input
   # Categories are checked in order; first match wins
@@ -789,28 +803,36 @@ phenix.refine:
       prefer_subcategories: [with_ligand, refined, phaser_output, autobuild_output, docked]
       # Explicitly exclude search_model and intermediates - they are NOT positioned
       exclude_categories: [search_model, predicted, processed_predicted, intermediate_mr, ligand_pdb, ligand]
-    mtz:
-      categories: [refined_mtz, mtz]  # Prefer MTZ with R-free flags
-      exclude_categories: [phased_mtz]  # Phased MTZ has multiple arrays - not for refinement
+    data_mtz:
+      categories: [original_data_mtz, data_mtz]  # Prefer MTZ with R-free flags
+      exclude_categories: [map_coeffs_mtz]  # Never refine against map coefficients!
 
   outputs:
     files:
       - pattern: "*_refine_*.pdb"
         type: model
-      - pattern: "*_refine_*.mtz"
-        type: mtz
       # New naming: refine_001_001.pdb, refine_002_001.pdb, etc.
       - pattern: "refine_[0-9][0-9][0-9]_*.pdb"
         type: model
-      - pattern: "refine_[0-9][0-9][0-9]_*.mtz"
-        type: mtz
+      # Data MTZ outputs (copy of input with R-free preserved)
+      - pattern: "*_data.mtz"
+        type: data_mtz
+        description: "Input data preserved with R-free flags"
+      - pattern: "refine_*_data.mtz"
+        type: data_mtz
+      # Map coefficients outputs (2mFo-DFc, Fo-Fc)
+      - pattern: "refine_*_001.mtz"
+        type: map_coeffs_mtz
+        description: "Map coefficients (2mFo-DFc, Fo-Fc)"
+      - pattern: "*_refine_*.mtz"
+        type: map_coeffs_mtz
     metrics:
       - r_free
       - r_work
       - bonds_rmsd
       - angles_rmsd
 
-  command: "phenix.refine {model} {mtz} xray_data.r_free_flags.generate=True"
+  command: "phenix.refine {model} {data_mtz} xray_data.r_free_flags.generate=True"
 
   strategy_flags:
     output_prefix:
@@ -997,71 +1019,52 @@ phenix.ligandfit:
         extensions: [.pdb]
         flag: "model="
         exclude_patterns: [ligand, lig.pdb, ligand_fit]
-      mtz:
-        extensions: [.mtz, .sca, .hkl, .sdf]
+      map_coeffs_mtz:
+        extensions: [.mtz]
         flag: "data="
+        description: "MTZ with map coefficients (2mFo-DFc phases) - NOT raw Fobs!"
       ligand:
         extensions: [.pdb, .cif]
         flag: "ligand="
         prefer_patterns: [lig, ligand]
 
-  # Input priorities: ligandfit needs map coefficients from refined MTZ
+  # Input priorities: ligandfit REQUIRES map coefficients with calculated phases
+  # It CANNOT work with data_mtz (which only has Fobs, no phases)
   input_priorities:
     model:
       categories: [model]
       prefer_subcategories: [refined, with_ligand, phaser_output, predict_and_build_output]
       exclude_categories: [search_model, predicted, ligand, ligand_pdb]
-    mtz:
-      # Ligandfit needs map coefficients
-      # PREFER denmod_mtz (from autobuild maps_only) which has better maps
-      # ALSO check predict_and_build_mtz (from predict_and_build) which has FP/PHIFP
-      # FALLBACK to refined_mtz (from refine) which has 2FOFCWT/PH2FOFCWT
-      categories: [denmod_mtz, predict_and_build_mtz, refined_mtz]
-      exclude_categories: [phased_mtz]
+    map_coeffs_mtz:
+      # Ligandfit needs map coefficients - explicitly require map_coeffs_mtz!
+      # PREFER denmod_map_coeffs (from autobuild maps_only) which has better maps
+      # ALSO check predict_build_map_coeffs (from predict_and_build) which has FP/PHIFP
+      # FALLBACK to refine_map_coeffs (from refine) which has 2FOFCWT/PH2FOFCWT
+      categories: [denmod_map_coeffs, predict_build_map_coeffs, refine_map_coeffs, map_coeffs_mtz]
+      exclude_categories: [data_mtz]  # Never use raw Fobs - ligandfit needs phases!
 
   outputs:
     files:
       - pattern: "*ligand_fit*.pdb"
         type: model
 
-  command: "phenix.ligandfit {model} {mtz} {ligand}"
+  command: "phenix.ligandfit {model} {map_coeffs_mtz} {ligand}"
 
   defaults:
     general.nproc: 4
 
   # NOTE: Label specification removed in v104 - ligandfit auto-detects labels
   # which is safer than trying to infer them from filename patterns.
-  # To restore label handling, uncomment the defaults and invariants below:
-  #
-  # defaults:
-  #   file_info.input_labels: '"2FOFCWT PH2FOFCWT"'
-  #   general.nproc: 4
-  #
-  # invariants:
-  #   - name: denmod_labels
-  #     description: "Use FWT/PHFWT labels when using density-modified MTZ"
-  #     check:
-  #       file_matches:
-  #         mtz: ["*denmod*"]
-  #     fix:
-  #       set_strategy:
-  #         file_info.input_labels: '"FWT PHFWT"'
-  #     message: "Using density-modified MTZ - switching to FWT/PHFWT labels"
-  #
-  #   - name: predict_and_build_labels
-  #     description: "Use FP/PHIFP labels when using predict_and_build map coefficients"
-  #     check:
-  #       file_matches:
-  #         mtz: ["*map_coeffs*"]
-  #     fix:
-  #       set_strategy:
-  #         file_info.input_labels: '"FP PHIFP"'
-  #     message: "Using predict_and_build map coefficients - switching to FP/PHIFP labels"
 
   strategy_flags:
     nproc:
       flag: "general.nproc={value}"
       type: int
+
+  hints:
+    - "REQUIRES MTZ with map coefficients (calculated phases)"
+    - "Run phenix.refine first if you only have measured Fobs data"
+    - "Use output *_001.mtz from refine, NOT *_data.mtz"
 
 
 phenix.pdbtools:
@@ -1219,13 +1222,16 @@ phenix.polder:
   # IMPORTANT: Polder requires R-free flags in the MTZ. If R-free flags were
   # generated at a limited resolution (e.g., 3Å), polder MUST use the same
   # resolution limit, otherwise it will crash with mismatched data sizes.
+  #
+  # NOTE: Polder only needs Fobs (data_mtz), NOT map coefficients!
+  # It calculates its own phases internally.
 
   inputs:
     required:
-      mtz:
+      data_mtz:
         extensions: [.mtz]
         flag: ""
-        description: "MTZ file with reflection data (Free-R flags recommended)"
+        description: "MTZ file with Fobs data (R-free flags recommended) - NOT map coefficients"
       model:
         extensions: [.pdb, .cif]
         flag: ""
@@ -1248,13 +1254,13 @@ phenix.polder:
   outputs:
     files:
       - pattern: "*_polder_map_coeffs.mtz"
-        type: mtz
+        type: map_coeffs_mtz
         description: "MTZ file with polder map coefficients"
     metrics:
       - cc_1_3
       - polder_conclusion
 
-  command: "phenix.polder {mtz} {model} {selection}"
+  command: "phenix.polder {data_mtz} {model} {selection}"
 
   log_parsing:
     cc_1_3:
@@ -1282,7 +1288,8 @@ phenix.polder:
     - "Use to verify ligand or residue placement in electron density"
     - "High CC(1,3) and conclusion 'likely to show' indicates good placement"
     - "Selection syntax: 'chain X and resseq N' or 'resname LIG'"
-    - "Requires MTZ with Fobs data; Free-R flags recommended but not required"
+    - "Requires MTZ with Fobs data (data_mtz), NOT map coefficients"
+    - "Polder calculates its own phases internally - it only needs measured Fobs"
 
 
 # -----------------------------------------------------------------------------
@@ -1353,16 +1360,17 @@ phenix.model_vs_data:
       model:
         extensions: [.pdb, .cif]
         flag: ""
-      mtz:
+      data_mtz:
         extensions: [.mtz, .sca, .hkl, .sdf]
         flag: ""
+        description: "Reflection data with Fobs for R-factor calculation"
 
   outputs:
     metrics:
       - r_work
       - r_free
 
-  command: "phenix.model_vs_data {model} {mtz}"
+  command: "phenix.model_vs_data {model} {data_mtz}"
 
   log_parsing:
     r_work:

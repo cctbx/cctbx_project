@@ -105,9 +105,14 @@ SUBCATEGORY_TO_PARENT = {
     "optimized_full_map": "map",
     "sharpened": "map",
 
-    # MTZ subcategories
-    "refined_mtz": "mtz",
-    "phased_mtz": "mtz",
+    # Data MTZ subcategories (measured Fobs, R-free)
+    "original_data_mtz": "data_mtz",
+    "phased_data_mtz": "data_mtz",
+
+    # Map coefficients MTZ subcategories (calculated phases)
+    "refine_map_coeffs": "map_coeffs_mtz",
+    "denmod_map_coeffs": "map_coeffs_mtz",
+    "predict_build_map_coeffs": "map_coeffs_mtz",
 
     # Intermediate - these should NOT be bubbled up or tracked
     # Set to "intermediate" parent so they're excluded from model/search_model
@@ -132,7 +137,7 @@ def _bubble_up_to_parents(files, category_rules=None):
         Updated files dict with parent categories populated
     """
     # Ensure parent categories exist
-    for parent in ["model", "search_model", "ligand", "intermediate", "map", "mtz", "sequence"]:
+    for parent in ["model", "search_model", "ligand", "intermediate", "map", "data_mtz", "map_coeffs_mtz", "sequence"]:
         if parent not in files:
             files[parent] = []
 
@@ -176,7 +181,7 @@ def _categorize_files_yaml(available_files, rules):
     Categorize files using YAML-defined rules.
 
     This handles two types of categories:
-    1. Extension-based primary categories (mtz, map, sequence)
+    1. Extension-based primary categories (data_mtz, map_coeffs_mtz, map, sequence)
     2. Pattern-based subcategories with semantic parents (refined->model, predicted->search_model)
 
     Files are first matched to subcategories by patterns, then bubbled up to parent categories.
@@ -185,7 +190,7 @@ def _categorize_files_yaml(available_files, rules):
     files = {cat: [] for cat in rules.keys()}
 
     # Ensure semantic parent categories exist
-    for parent in ["model", "search_model", "ligand", "map", "mtz", "sequence", "intermediate"]:
+    for parent in ["model", "search_model", "ligand", "map", "data_mtz", "map_coeffs_mtz", "sequence", "intermediate"]:
         if parent not in files:
             files[parent] = []
 
@@ -197,6 +202,7 @@ def _categorize_files_yaml(available_files, rules):
     # Only include categories that are PURELY extension-based (no patterns)
     # Categories with patterns are handled in Step 2
     ext_to_categories = {}
+    ext_to_excludes = {}  # Track excludes for each category
     for cat_name, cat_def in rules.items():
         # Skip semantic parent categories - they don't match by extension
         if cat_def.get("is_semantic_parent"):
@@ -208,6 +214,9 @@ def _categorize_files_yaml(available_files, rules):
             if ext not in ext_to_categories:
                 ext_to_categories[ext] = []
             ext_to_categories[ext].append(cat_name)
+            # Store excludes for this category
+            if cat_def.get("excludes"):
+                ext_to_excludes[cat_name] = cat_def.get("excludes", [])
 
     for f in available_files:
         f_lower = f.lower()
@@ -217,7 +226,14 @@ def _categorize_files_yaml(available_files, rules):
         # Step 1: Primary categorization by extension (for non-PDB files)
         primary_categories = ext_to_categories.get(ext, [])
         for cat in primary_categories:
-            if f not in files[cat]:
+            # Check excludes before adding
+            excludes = ext_to_excludes.get(cat, [])
+            excluded = False
+            for exc_pattern in excludes:
+                if _match_pattern(basename, exc_pattern):
+                    excluded = True
+                    break
+            if not excluded and f not in files[cat]:
                 files[cat].append(f)
 
         # Step 2: Subcategorization by patterns
@@ -295,13 +311,13 @@ def _categorize_files_hardcoded(available_files):
     Categorize files by type and purpose.
 
     Returns dict with keys:
-        mtz, pdb, sequence, map, ligand_cif, ligand_pdb,
+        data_mtz, map_coeffs_mtz, pdb, sequence, map, ligand_cif, ligand_pdb,
         phaser_output, refined, rsr_output, with_ligand, ligand_fit, predicted,
         full_map, half_map (for cryo-EM half-maps)
     """
     files = {
-        "mtz": [],  # Also includes other X-ray data formats (.sca, .hkl, etc.)
-        "refined_mtz": [],  # MTZ files output from refinement (have R-free flags)
+        "data_mtz": [],  # Reflection data with Fobs, R-free (for refinement)
+        "map_coeffs_mtz": [],  # Map coefficients with phases (for ligand fitting)
         "pdb": [],
         "sequence": [],
         "map": [],  # All map files (for backward compatibility)
@@ -338,17 +354,27 @@ def _categorize_files_hardcoded(available_files):
 
         return False
 
+    def classify_mtz_type(basename):
+        """Classify MTZ as data_mtz or map_coeffs_mtz based on filename."""
+        # Map coefficients patterns
+        if re.match(r'refine_\d+_001\.mtz$', basename):
+            return "map_coeffs_mtz"
+        if 'map_coeffs' in basename:
+            return "map_coeffs_mtz"
+        if 'denmod' in basename:
+            return "map_coeffs_mtz"
+        # Default to data_mtz
+        return "data_mtz"
+
     for f in available_files:
         f_lower = f.lower()
         basename = os.path.basename(f_lower)
 
         # Primary type categorization
         if f_lower.endswith(xray_data_extensions):
-            files["mtz"].append(f)
-            # Also categorize refined MTZ files (output from phenix.refine)
-            # These have R-free flags and should be preferred for subsequent refinement
-            if 'refine' in basename or '_001' in basename or '_002' in basename:
-                files["refined_mtz"].append(f)
+            # Classify into data_mtz or map_coeffs_mtz
+            mtz_type = classify_mtz_type(basename)
+            files[mtz_type].append(f)
         elif f_lower.endswith('.pdb'):
             files["pdb"].append(f)
 
@@ -435,10 +461,10 @@ def _detect_experiment_type(files, history_info=None):
     if history_info and history_info.get("rsr_done"):
         return "cryoem"
 
-    has_mtz = bool(files["mtz"])
-    has_map = bool(files["map"]) or bool(files["full_map"]) or bool(files["half_map"])
+    has_data_mtz = bool(files.get("data_mtz")) or bool(files.get("map_coeffs_mtz"))
+    has_map = bool(files.get("map")) or bool(files.get("full_map")) or bool(files.get("half_map"))
 
-    if has_map and not has_mtz:
+    if has_map and not has_data_mtz:
         return "cryoem"
     else:
         return "xray"

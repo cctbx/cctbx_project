@@ -121,7 +121,8 @@ Semantic file classification using rules from `file_categories.yaml`:
 
 | Category | Description | Examples |
 |----------|-------------|----------|
-| `mtz` | Reflection data | data.mtz, scaled.mtz |
+| `data_mtz` | Reflection data (Fobs, R-free) | data.mtz, refine_001_data.mtz |
+| `map_coeffs_mtz` | Map coefficients (calculated phases) | refine_001_001.mtz, denmod_map_coeffs.mtz |
 | `sequence` | Sequence files | seq.fa, protein.fasta |
 | `model` | **Positioned** models | refine_001.pdb, phaser_output.pdb |
 | `search_model` | Templates/predictions | template.pdb, alphafold.pdb |
@@ -135,8 +136,10 @@ Semantic file classification using rules from `file_categories.yaml`:
 
 Tracks the best file of each type across cycles:
 - Scores files based on metrics (R-free, resolution, cycle number)
-- **Locks R-free MTZ** after first refinement for consistency
-- Provides `best_files["model"]`, `best_files["mtz"]` to CommandBuilder
+- **Dual MTZ tracking**:
+  - `data_mtz`: Locks after first R-free flags generated (consistency for refinement)
+  - `map_coeffs_mtz`: Always prefers most recent (maps improve with refinement)
+- Provides `best_files["model"]`, `best_files["data_mtz"]`, `best_files["map_coeffs_mtz"]` to CommandBuilder
 
 ### 7. User Directives (`agent/directive_extractor.py`)
 
@@ -157,7 +160,7 @@ Multiple layers of validation to prevent errors:
 | **Post-Processing** | After extraction | Ligand workflow conflict resolution |
 
 Key sanity issues that trigger abort:
-- `no_data_for_workflow` - Missing MTZ (X-ray) or map (cryo-EM)
+- `no_data_for_workflow` - Missing data_mtz (X-ray) or map (cryo-EM)
 - `search_model_not_positioned` - Trying to refine before MR/docking
 - `no_model_for_refine` - No model available for refinement
 - `repeated_failures` - Same error 3+ times

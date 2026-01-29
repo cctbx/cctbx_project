@@ -145,10 +145,10 @@ class CommandBuilder:
         "pdb_file": "model",
         "map": "map",
         "full_map": "map",
-        "mtz": "mtz",
-        "hkl_file": "mtz",
-        "data": "mtz",
-        "map_coefficients": "map_coefficients",
+        "data_mtz": "data_mtz",
+        "map_coeffs_mtz": "map_coeffs_mtz",
+        "hkl_file": "data_mtz",
+        "data": "data_mtz",
         "sequence": "sequence",
         "seq_file": "sequence",
         "ligand_cif": "ligand_cif",
@@ -156,10 +156,11 @@ class CommandBuilder:
     }
 
     # Slot name aliases - maps common LLM names to canonical program input names
-    # When the LLM uses "data", we should match it to the "mtz" input slot
+    # When the LLM uses "data", we should match it to the "data_mtz" input slot
     SLOT_ALIASES = {
-        "data": "mtz",
-        "hkl_file": "mtz",
+        "data": "data_mtz",
+        "hkl_file": "data_mtz",
+        "mtz": "data_mtz",          # Old name maps to new
         "pdb": "model",
         "pdb_file": "model",
         "seq_file": "sequence",
@@ -183,7 +184,7 @@ class CommandBuilder:
             Dict mapping input slot names to selection details:
             {
                 "model": {"selected": "/path/to/file.pdb", "reason": "best_files", ...},
-                "mtz": {"selected": "/path/to/data.mtz", "reason": "rfree_locked", ...},
+                "data_mtz": {"selected": "/path/to/data.mtz", "reason": "rfree_locked", ...},
             }
         """
         return self._selection_details
@@ -463,10 +464,10 @@ class CommandBuilder:
         extensions = input_def.get("extensions", [])
         is_multiple = input_def.get("multiple", False)
 
-        # PRIORITY 1: Locked R-free MTZ (X-ray refinement only)
-        if input_name in ("mtz", "hkl_file", "data") and context.rfree_mtz:
+        # PRIORITY 1: Locked R-free data_mtz (X-ray refinement only)
+        if input_name in ("data_mtz", "hkl_file", "data") and context.rfree_mtz:
             if os.path.exists(context.rfree_mtz):
-                self._log(context, "BUILD: Using LOCKED R-free MTZ for %s" % input_name)
+                self._log(context, "BUILD: Using LOCKED R-free data_mtz for %s" % input_name)
                 self._record_selection(input_name, context.rfree_mtz, "rfree_locked")
                 return context.rfree_mtz
 
@@ -477,10 +478,10 @@ class CommandBuilder:
 
         # Subcategories that are more specific than generic best_files
         # These indicate the program needs a specific type of file, not just any "best" file
-        specific_subcategories = {"refined_mtz", "phased_mtz", "half_map", "full_map",
+        specific_subcategories = {"original_data_mtz", "phased_data_mtz", "half_map", "full_map",
                                   "optimized_full_map", "intermediate_map",
                                   "ligand_fit_output", "with_ligand", "processed_predicted",
-                                  "denmod_mtz", "predict_and_build_mtz"}  # Map coefficient MTZ types
+                                  "refine_map_coeffs", "denmod_map_coeffs", "predict_build_map_coeffs"}
         uses_specific_subcategory = any(cat in specific_subcategories for cat in priority_categories)
 
         # PRIORITY 2: Best files (but respect exclude_categories and skip if specific subcategory needed)

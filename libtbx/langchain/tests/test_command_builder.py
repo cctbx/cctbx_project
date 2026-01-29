@@ -393,7 +393,7 @@ def test_llm_slot_alias_mapping():
 
     Example scenario:
     - LLM requests: data=PredictAndBuild_0_overall_best_refinement.mtz
-    - Program expects: mtz slot
+    - Program expects: data_mtz slot
     - Without alias mapping: LLM file is ignored, wrong file auto-selected
     - With alias mapping: LLM's file is correctly used
     """
@@ -406,7 +406,8 @@ def test_llm_slot_alias_mapping():
 
     # Verify key mappings
     aliases = builder.SLOT_ALIASES
-    assert aliases.get("data") == "mtz", "data should map to mtz"
+    assert aliases.get("data") == "data_mtz", "data should map to data_mtz"
+    assert aliases.get("mtz") == "data_mtz", "mtz should map to data_mtz"
     assert aliases.get("pdb") == "model", "pdb should map to model"
     assert aliases.get("seq_file") == "sequence", "seq_file should map to sequence"
 
@@ -445,14 +446,14 @@ def test_llm_data_slot_used_for_mtz():
             resolution=3.0,
             categorized_files={
                 "model": [model_file],
-                "mtz": [mtz_correct, mtz_wrong],
-                "refined_mtz": [mtz_correct, mtz_wrong],
+                "data_mtz": [mtz_correct, mtz_wrong],
+                "original_data_mtz": [mtz_correct, mtz_wrong],
             },
-            best_files={"model": model_file, "mtz": mtz_correct},
+            best_files={"model": model_file, "data_mtz": mtz_correct},
             rfree_mtz=None,
             llm_files={
                 "model": model_file,
-                "data": mtz_correct,  # LLM uses 'data', not 'mtz'
+                "data": mtz_correct,  # LLM uses 'data', maps to data_mtz
             },
             llm_strategy={},
         )

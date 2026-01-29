@@ -78,7 +78,8 @@ Output a JSON object with these sections. Include ONLY sections that have releva
 3. "file_preferences": Specific files to use or avoid
    - "model": string - Preferred model file name
    - "sequence": string - Preferred sequence file name
-   - "mtz": string - Preferred reflection data file
+   - "data_mtz": string - Preferred reflection data file (Fobs for refinement)
+   - "map_coeffs_mtz": string - Preferred map coefficients file (for ligand fitting)
    - "exclude": list of strings - Files to avoid using
 
 4. "workflow_preferences": High-level workflow choices
@@ -700,10 +701,14 @@ def validate_directives(directives, log=None):
             valid_prefs = {}
 
             for key, value in file_prefs.items():
-                if key in ("model", "sequence", "mtz", "map"):
+                if key in ("model", "sequence", "data_mtz", "map_coeffs_mtz", "map"):
                     # File path preferences
                     if isinstance(value, str) and value:
                         valid_prefs[key] = value
+                elif key == "mtz":
+                    # Backward compat: "mtz" -> "data_mtz"
+                    if isinstance(value, str) and value:
+                        valid_prefs["data_mtz"] = value
                 elif key == "exclude":
                     # Exclusion list
                     if isinstance(value, list):

@@ -106,7 +106,8 @@ class SanityChecker:
             context: Dict with workflow context including:
                 - experiment_type: Current detected type ("xray" or "cryoem")
                 - has_model: Whether model files exist
-                - has_mtz: Whether MTZ files exist
+                - has_data_mtz: Whether data MTZ files exist (for X-ray)
+                - has_map_coeffs_mtz: Whether map coefficients MTZ files exist
                 - has_map: Whether map files exist
                 - state: Current workflow state name
                 - history: List of cycle history dicts
@@ -288,11 +289,12 @@ class SanityChecker:
         exp_type = context.get("experiment_type")
         state = context.get("state", "")
 
-        # Only check after initial state
-        if state in ("initial", "unknown", ""):
+        # Only check after initial state - skip all initial states
+        # This check is for cases where data is lost mid-workflow
+        if state in ("initial", "unknown", "") or state.endswith("_initial"):
             return None
 
-        if exp_type == "xray" and not context.get("has_mtz"):
+        if exp_type == "xray" and not context.get("has_data_mtz"):
             return SanityIssue(
                 severity="critical",
                 code="no_data_for_workflow",

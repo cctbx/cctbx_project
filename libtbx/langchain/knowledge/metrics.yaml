@@ -603,16 +603,17 @@ best_files_scoring:
         worst_value: 4.0
 
   # ---------------------------------------------------------------------------
-  # MTZ SCORING (0-100 points)
+  # DATA_MTZ SCORING (0-100 points)
   # ---------------------------------------------------------------------------
-  # MTZ files have a special rule: the first MTZ with R-free flags locks
-  # forever to ensure consistent R-free statistics throughout refinement.
+  # Data MTZ files contain measured structure factors (Fobs, R-free flags).
+  # These are used for REFINEMENT - programs like phenix.refine, phenix.phaser.
+  # Special rule: first MTZ with R-free flags locks forever for consistency.
 
-  mtz:
+  data_mtz:
     stage_scores:
-      refined_mtz: 70    # Output from phenix.refine
-      original: 50       # User-provided data
-      mtz: 40            # Generic MTZ
+      original_data_mtz: 70    # Input data preserved with R-free flags
+      phased_data_mtz: 60      # Has experimental phases, may lack R-free
+      data_mtz: 50             # Generic data MTZ
       _default: 40
 
     metric_scores:
@@ -622,18 +623,27 @@ best_files_scoring:
         formula: boolean
 
     special_rules:
-      # Once an MTZ with R-free flags is found, it locks and cannot be replaced
+      # Once a data_mtz with R-free flags is found, it locks and cannot be replaced
       lock_on_rfree: true
 
   # ---------------------------------------------------------------------------
-  # MAP COEFFICIENTS SCORING (0-100 points)
+  # MAP_COEFFS_MTZ SCORING (0-100 points)
   # ---------------------------------------------------------------------------
-  # Map coefficients from refinement. Prefer more recent refinement output.
+  # Map coefficients MTZ files contain calculated phases (2mFo-DFc, Fo-Fc).
+  # These are used for VISUALIZATION and LIGAND FITTING - programs like phenix.ligandfit.
+  # Special rule: prefer most recent (maps improve with refinement).
 
-  map_coefficients:
+  map_coeffs_mtz:
     stage_scores:
-      refined: 80        # From latest refinement
-      _default: 50
+      refine_map_coeffs: 80        # From phenix.refine - best quality
+      denmod_map_coeffs: 70        # From density modification
+      predict_build_map_coeffs: 60 # From predict_and_build
+      map_coeffs_mtz: 50           # Generic
+      _default: 40
+
+    special_rules:
+      # Map coefficients improve with refinement, so prefer more recent
+      prefer_recent: true
 
   # ---------------------------------------------------------------------------
   # SEQUENCE SCORING (0-50 points)

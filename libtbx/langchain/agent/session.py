@@ -174,13 +174,26 @@ class AgentSession:
                             'solve' in basename
                         )
 
-                        if has_rfree_patterns and not is_phased_mtz:
-                            file_stage = "refined_mtz"
+                        # Classify as data_mtz or map_coeffs_mtz
+                        is_map_coeffs = (
+                            'map_coeffs' in basename or
+                            'denmod' in basename or
+                            re.match(r'refine_\d+_001\.mtz$', basename)
+                        )
+
+                        if is_map_coeffs:
+                            # Map coefficients - for visualization/ligand fitting
+                            if 'denmod' in basename:
+                                file_stage = "denmod_map_coeffs"
+                            else:
+                                file_stage = "refine_map_coeffs"
+                        elif has_rfree_patterns and not is_phased_mtz:
+                            file_stage = "original_data_mtz"
                             file_metrics["has_rfree_flags"] = True
                         elif is_phased_mtz:
-                            file_stage = "phased_mtz"
+                            file_stage = "phased_data_mtz"
                         else:
-                            file_stage = "mtz"  # Generic MTZ
+                            file_stage = "data_mtz"  # Generic data MTZ
 
                     elif f.lower().endswith(('.ccp4', '.mrc', '.map')):
                         # Map files - apply stage based on filename patterns
@@ -1021,14 +1034,32 @@ class AgentSession:
         """
         return self.best_files.get_best_path("map")
 
-    def get_best_mtz(self):
+    def get_best_data_mtz(self):
         """
-        Get the path to the best MTZ file.
+        Get the path to the best data MTZ file.
 
         Returns:
-            str or None: Path to best MTZ (with R-free flags if available)
+            str or None: Path to best data MTZ (with Fobs/R-free flags)
         """
-        return self.best_files.get_best_path("mtz")
+        return self.best_files.get_best_path("data_mtz")
+
+    def get_best_map_coeffs_mtz(self):
+        """
+        Get the path to the best map coefficients MTZ file.
+
+        Returns:
+            str or None: Path to best map coefficients MTZ (for ligand fitting)
+        """
+        return self.best_files.get_best_path("map_coeffs_mtz")
+
+    def get_best_mtz(self):
+        """
+        Get the path to the best MTZ file (alias for get_best_data_mtz).
+
+        Returns:
+            str or None: Path to best data MTZ (with R-free flags if available)
+        """
+        return self.best_files.get_best_path("data_mtz")
 
     def get_best_files_dict(self):
         """
@@ -1257,8 +1288,21 @@ class AgentSession:
                         'solve' in basename
                     )
 
-                    if has_rfree_patterns and not is_phased_mtz:
-                        file_stage = "refined_mtz"
+                    # Check if this is map coefficients (for visualization/ligand fitting)
+                    is_map_coeffs = (
+                        'map_coeffs' in basename or
+                        'denmod' in basename or
+                        re.match(r'refine_\d+_001\.mtz$', basename)
+                    )
+
+                    if is_map_coeffs:
+                        # Map coefficients - for visualization/ligand fitting
+                        if 'denmod' in basename:
+                            file_stage = "denmod_map_coeffs"
+                        else:
+                            file_stage = "refine_map_coeffs"
+                    elif has_rfree_patterns and not is_phased_mtz:
+                        file_stage = "original_data_mtz"
                         file_metrics["has_rfree_flags"] = True
 
                         # Check if this refinement was resolution-limited
@@ -1273,7 +1317,6 @@ class AgentSession:
 
                         if is_resolution_limited:
                             # Extract the resolution value from command
-                            import re
                             res_match = re.search(
                                 r'(?:high_resolution|d_min|xray_data\.high_resolution)\s*=\s*([\d.]+)',
                                 command
@@ -1301,11 +1344,11 @@ class AgentSession:
                                 if lock_msg:
                                     cycle["rfree_mtz_note"] = lock_msg
                     elif is_phased_mtz:
-                        # Phased MTZ - not for direct refinement
-                        file_stage = "phased_mtz"
+                        # Phased data MTZ - has experimental phases
+                        file_stage = "phased_data_mtz"
                     else:
-                        # Generic MTZ
-                        file_stage = "mtz"
+                        # Generic data MTZ
+                        file_stage = "data_mtz"
                 elif f.lower().endswith(('.ccp4', '.mrc', '.map')):
                     # Map files - apply stage only to matching patterns
                     basename = os.path.basename(f).lower()
@@ -2449,7 +2492,7 @@ FINAL REPORT:"""
         best_files = self.data.get("best_files", {})
         if best_files:
             # Priority order for displaying best files
-            priority_order = ["model", "mtz", "map", "sequence"]
+            priority_order = ["model", "data_mtz", "map_coeffs_mtz", "map", "sequence"]
 
             for file_type in priority_order:
                 filepath = best_files.get(file_type)

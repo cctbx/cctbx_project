@@ -1,5 +1,73 @@
 # PHENIX AI Agent - Changelog
 
+## Version 110 (January 2025)
+
+### Major Feature: Dual MTZ Tracking
+
+**Problem**: The codebase treated all MTZ files as a single category, but there are fundamentally two types:
+- **Data MTZ**: Contains measured Fobs and R-free flags (for refinement)
+- **Map Coefficients MTZ**: Contains calculated phases (for ligand fitting, visualization)
+
+This caused issues with programs like `phenix.ligandfit` potentially receiving data MTZ instead of map coefficients.
+
+**Solution**: Split MTZ tracking into two explicit categories with different update behaviors:
+
+| Category | Update Rule | Use Case |
+|----------|-------------|----------|
+| `data_mtz` | First with R-free **locks forever** | Consistent R-free flags across refinement |
+| `map_coeffs_mtz` | **Most recent wins** | Maps improve with refinement, use latest |
+
+### Key Changes
+
+**New Categories** (`knowledge/file_categories.yaml`):
+- `data_mtz` (parent): original_data_mtz, phased_data_mtz
+- `map_coeffs_mtz` (parent): refine_map_coeffs, denmod_map_coeffs, predict_build_map_coeffs
+
+**Updated Programs** (`knowledge/programs.yaml`):
+| Program | MTZ Input | Purpose |
+|---------|-----------|---------|
+| `phenix.xtriage` | `data_mtz` | Analyze Fobs |
+| `phenix.phaser` | `data_mtz` | Molecular replacement |
+| `phenix.refine` | `data_mtz` | Refine against Fobs |
+| `phenix.polder` | `data_mtz` | Calculate omit maps |
+| `phenix.ligandfit` | `map_coeffs_mtz` | Fit ligands (needs calculated phases) |
+
+**BestFilesTracker** (`agent/best_files_tracker.py`):
+- Added `_evaluate_data_mtz()`: Locks on first R-free flags
+- Added `_evaluate_map_coeffs_mtz()`: Prefers most recent cycle
+- Added `_classify_mtz_type()`: Auto-classifies by filename pattern
+
+### MTZ Classification Patterns
+
+| Pattern | Category | Stage |
+|---------|----------|-------|
+| `refine_*_001.mtz` | map_coeffs_mtz | refine_map_coeffs |
+| `*map_coeffs*.mtz` | map_coeffs_mtz | varies |
+| `*denmod*.mtz` | map_coeffs_mtz | denmod_map_coeffs |
+| `*_data.mtz` | data_mtz | original_data_mtz |
+| Everything else | data_mtz | data_mtz |
+
+### Files Changed
+
+- `knowledge/file_categories.yaml`: New data_mtz and map_coeffs_mtz hierarchies
+- `knowledge/programs.yaml`: All 10 programs updated
+- `knowledge/metrics.yaml`: Scoring config for both MTZ types
+- `knowledge/workflows.yaml`: Updated polder conditions
+- `agent/best_files_tracker.py`: New evaluation methods
+- `agent/workflow_state.py`: Updated parent categories
+- `agent/command_builder.py`: Updated slot mappings
+- `agent/graph_nodes.py`: Updated sanity context
+- `agent/workflow_engine.py`: Updated context builder
+- `agent/rules_selector.py`: Updated file selection
+- `agent/session.py`: New get_best_data_mtz(), get_best_map_coeffs_mtz()
+- `agent/template_builder.py`: Updated category detection
+- `agent/program_registry.py`: Updated phaser command
+- `agent/directive_extractor.py`: Updated file preferences
+- `knowledge/prompts_hybrid.py`: Updated recommended files display
+- `tests/test_best_files_tracker.py`: All 48 tests updated and passing
+
+---
+
 ## Version 109 (January 2025)
 
 ### Bug Fix: Empty Directives When Using Ollama Provider

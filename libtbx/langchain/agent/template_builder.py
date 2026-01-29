@@ -12,7 +12,7 @@ Set TemplateBuilder.USE_NEW_BUILDER = True to enable.
 
 Usage:
     builder = TemplateBuilder()
-    cmd = builder.build_command("phenix.refine", {"model": "x.pdb", "mtz": "x.mtz"})
+    cmd = builder.build_command("phenix.refine", {"model": "x.pdb", "data_mtz": "x.mtz"})
 """
 
 from __future__ import absolute_import, division, print_function
@@ -92,7 +92,7 @@ class TemplateBuilder(object):
 
         Args:
             program (str): e.g., "phenix.refine"
-            files (dict): e.g., {"model": "file.pdb", "mtz": "file.mtz"}
+            files (dict): e.g., {"model": "file.pdb", "data_mtz": "file.mtz"}
                           For multiple files: {"half_map": ["map_1.ccp4", "map_2.ccp4"]}
             strategy (dict): e.g., {"simulated_annealing": True, "nproc": 8}
             log: Optional logging function
@@ -244,9 +244,9 @@ class TemplateBuilder(object):
             "pdb_file": "model",
             "map": "map",
             "full_map": "map",
-            "mtz": "mtz",
-            "hkl_file": "mtz",
-            "map_coefficients": "map_coefficients",
+            "data_mtz": "data_mtz",
+            "map_coeffs_mtz": "map_coeffs_mtz",
+            "hkl_file": "data_mtz",
             "sequence": "sequence",
             "seq_file": "sequence",
             "ligand_cif": "ligand_cif",
@@ -263,20 +263,20 @@ class TemplateBuilder(object):
             exclude_categories = slot_def.get("exclude_categories", [])
             preferred_categories = slot_def.get("preferred_categories", [])
 
-            # PRIORITY 0: Locked R-free MTZ (X-ray refinement only)
+            # PRIORITY 0: Locked R-free data_mtz (X-ray refinement only)
             # Once R-free flags are generated, we MUST use that MTZ for all refinements
             # This overrides all other MTZ selection logic
-            if rfree_mtz and slot_name in ("mtz", "hkl_file") and not is_multiple:
+            if rfree_mtz and slot_name in ("data_mtz", "hkl_file") and not is_multiple:
                 if os.path.exists(rfree_mtz):
                     # Verify extension matches
                     if any(rfree_mtz.lower().endswith(ext) for ext in valid_exts):
                         selected_files[slot_name] = rfree_mtz
                         used_files.add(rfree_mtz)
-                        log("DEBUG: Using LOCKED R-free MTZ for slot '%s': %s" % (
+                        log("DEBUG: Using LOCKED R-free data_mtz for slot '%s': %s" % (
                             slot_name, os.path.basename(rfree_mtz)))
                         continue
                 else:
-                    log("WARNING: Locked R-free MTZ not found: %s" % rfree_mtz)
+                    log("WARNING: Locked R-free data_mtz not found: %s" % rfree_mtz)
 
             # PRIORITY 1: Check best_files for single-file slots
             if best_files and not is_multiple:
@@ -465,11 +465,17 @@ class TemplateBuilder(object):
                 return "phaser_output"
             return "pdb"
 
-        # MTZ files
+        # MTZ files - classify as data_mtz or map_coeffs_mtz
         elif ext in ['.mtz', '.sca', '.hkl']:
-            if 'refine' in basename:
-                return "refined_mtz"
-            return "mtz"
+            # Map coefficients patterns
+            if 'map_coeffs' in basename or 'denmod' in basename:
+                return "map_coeffs_mtz"
+            if re.match(r'refine_\d+_001\.mtz$', basename):
+                return "map_coeffs_mtz"
+            # Data MTZ patterns (default)
+            if '_data.mtz' in basename or 'refinement_data' in basename:
+                return "original_data_mtz"
+            return "data_mtz"
 
         # Map files
         elif ext in ['.mrc', '.ccp4', '.map']:
@@ -859,7 +865,7 @@ if __name__ == "__main__":
 
     # Test build_command
     print("Testing build_command for phenix.refine:")
-    files = {"model": "test.pdb", "mtz": "test.mtz"}
+    files = {"model": "test.pdb", "data_mtz": "test.mtz"}
     try:
         cmd = builder.build_command("phenix.refine", files)
         print("  Command:", cmd)
@@ -869,7 +875,7 @@ if __name__ == "__main__":
 
     # Test with strategy
     print("Testing with strategy:")
-    files = {"model": "test.pdb", "mtz": "test.mtz"}
+    files = {"model": "test.pdb", "data_mtz": "test.mtz"}
     strategy = {"generate_rfree_flags": True}
     try:
         cmd = builder.build_command("phenix.refine", files, strategy)

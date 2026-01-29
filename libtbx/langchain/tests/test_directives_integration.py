@@ -226,7 +226,7 @@ def test_empty_directives_passthrough():
     intent = {
         "program": "phenix.refine",
         "strategy": {"resolution": 2.5},
-        "files": {"mtz": "data.mtz"}
+        "files": {"data_mtz": "data.mtz"}
     }
 
     result = validate_intent(intent, {}, cycle_number=1)

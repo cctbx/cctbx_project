@@ -24,10 +24,10 @@ def test_single_model_command():
     # This test documents expected behavior
     # Single model: phenix.phaser data.mtz model.pdb phaser.mode=MR_AUTO
 
-    files = {"mtz": "data.mtz", "model": "beta.pdb"}
+    files = {"data_mtz": "data.mtz", "model": "beta.pdb"}
 
     # Verify file structure
-    assert files["mtz"] == "data.mtz"
+    assert files["data_mtz"] == "data.mtz"
     assert files["model"] == "beta.pdb"
 
     print("  PASSED")
@@ -47,7 +47,7 @@ def test_multi_model_command():
     #   phaser.mode=MR_AUTO
 
     files = {
-        "mtz": "data.mtz",
+        "data_mtz": "data.mtz",
         "model": ["beta.pdb", "blip.pdb"],
         "sequence": ["beta.seq", "blip.seq"]
     }
