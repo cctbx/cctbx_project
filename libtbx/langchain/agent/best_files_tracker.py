@@ -288,7 +288,7 @@ class BestFilesTracker:
                     "rsr_output": 100,
                     "with_ligand": 100,      # Tag, same score as refined
                     "ligand_fit_output": 90,
-                    "autobuild_output": 80,
+                    "autobuild_output": 100,  # AutoBuild does internal refinement
                     "phaser_output": 70,      # MR output - positioned in unit cell
                     "docked": 60,             # Docked into map
                     "model_cif": 100,         # mmCIF model from refinement
