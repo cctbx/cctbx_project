@@ -1565,14 +1565,32 @@ class AgentSession:
 
         norm_new = " ".join(command.strip().split())
 
+        # Extract program name from new command
+        new_program = norm_new.split()[0] if norm_new else ""
+
         for cycle_num, norm_cmd in self.get_all_commands():
             # Skip if this cycle had no real command
             if not norm_cmd:
                 continue
 
+            # Extract program name from old command
+            old_program = norm_cmd.split()[0] if norm_cmd else ""
+
+            # Different programs are never duplicates
+            if os.path.basename(new_program) != os.path.basename(old_program):
+                continue
+
             # Exact match
             if norm_cmd == norm_new:
                 return True, cycle_num
+
+            # For predict_and_build, stop_after_predict is a critical parameter
+            # Commands with different stop_after_predict values are NOT duplicates
+            if "predict_and_build" in new_program:
+                new_has_stop = "stop_after_predict" in norm_new
+                old_has_stop = "stop_after_predict" in norm_cmd
+                if new_has_stop != old_has_stop:
+                    continue  # Different mode, not a duplicate
 
             # Check if same program with same core parameters
             # (ignore path differences)

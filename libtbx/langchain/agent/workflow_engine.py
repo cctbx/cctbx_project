@@ -226,11 +226,20 @@ class WorkflowEngine:
                 has_explicit_positioned = False
                 for f in model_files:
                     basename = os.path.basename(f).lower()
+                    # These indicate a POSITIONED model (after MR, building, docking)
+                    # Note: 'overall_best' alone is NOT enough - need to exclude predictions
                     explicit_indicators = [
                         'phaser', 'refine', 'rsr_', 'placed', 'dock',
-                        'autobuild', 'overall_best', 'built', 'buccaneer', 'shelxe'
+                        'autobuild', 'built', 'buccaneer', 'shelxe'
                     ]
-                    if any(ind in basename for ind in explicit_indicators):
+                    # Exclude if it's a predicted model (not positioned)
+                    is_prediction = 'predicted_model' in basename or 'predict' in basename
+                    if any(ind in basename for ind in explicit_indicators) and not is_prediction:
+                        has_explicit_positioned = True
+                        break
+                    # Special case: overall_best without predicted_model IS positioned
+                    # (from full predict_and_build run)
+                    if 'overall_best' in basename and 'predicted_model' not in basename:
                         has_explicit_positioned = True
                         break
 
