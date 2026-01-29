@@ -202,6 +202,7 @@ def is_rate_limit_error(error):
     # Check for common rate limit indicators
     rate_limit_indicators = [
         "429",
+        "503",  # Service unavailable / overloaded
         "rate limit",
         "rate_limit",
         "ratelimit",
@@ -217,6 +218,7 @@ def is_rate_limit_error(error):
         "slow down",
         "capacity",
         "overloaded",
+        "unavailable",  # Model unavailable / overloaded
     ]
 
     for indicator in rate_limit_indicators:
