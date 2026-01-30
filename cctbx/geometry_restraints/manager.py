@@ -900,6 +900,8 @@ class manager(Base_geometry):
   def remove_secondary_structure_restraints(self, sites_cart):
     bp_origin_id = origin_ids.get_origin_id('hydrogen bonds')
     bonds_to_remove = []
+    self.reset_internals()
+    self.pair_proxies(sites_cart=sites_cart)
     for proxy_type in self.get_all_bond_proxies():
       for proxy in proxy_type:
         if proxy.origin_id == bp_origin_id:
