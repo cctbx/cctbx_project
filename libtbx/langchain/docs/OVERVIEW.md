@@ -473,6 +473,7 @@ python3 tests/test_event_system.py    # Single suite
 
 | Version | Key Changes |
 |---------|-------------|
+| v110 | **Stepwise mode**: automation_path controls predict_and_build behavior; fallback program tracking; autobuild scoring equals refined; best files in summary fix |
 | v40 | Fixes 12-21: Ligandfit MTZ exclusion, stop condition on failed runs, summary display for failed/prediction runs, predict_and_build resolution handling, None program value handling, test import fixes |
 | v40 | USER_REQUEST_INVALID event for invalid program requests |
 | v39 | Event system plumbing fixes for single-shot mode |
@@ -480,3 +481,32 @@ python3 tests/test_event_system.py    # Single suite
 | v36-37 | Event system Phases 2-3: instrumentation and transport |
 | v34 | Event system Phase 1: EventLog and EventFormatter |
 | v30-33 | YAML centralization, BestFilesTracker, CommandBuilder unification |
+
+---
+
+## Automation Modes
+
+The agent supports two automation modes controlled by `maximum_automation`:
+
+### Automated Mode (default)
+
+```bash
+phenix.ai_agent maximum_automation=True original_files="data.mtz sequence.fa"
+```
+
+- `predict_and_build` runs the complete workflow (prediction → MR → building)
+- Fewer checkpoints, faster end-to-end processing
+- Best for well-understood datasets
+
+### Stepwise Mode
+
+```bash
+phenix.ai_agent maximum_automation=False original_files="data.mtz sequence.fa"
+```
+
+- `predict_and_build` stops after prediction only (`stop_after_predict=True`)
+- User can inspect predicted model before proceeding
+- Workflow continues: `process_predicted_model` → `phaser` → `refine`
+- Best for troubleshooting or when intermediate inspection is needed
+
+The `automation_path` is set in workflow_state and propagated to all decision-making components to ensure consistent behavior throughout the pipeline.

@@ -155,6 +155,10 @@ Total: **400+ tests**
 
 | Test | File | What It Verifies |
 |------|------|------------------|
+| `test_automation_path_in_workflow_state` | test_workflow_state.py | automation_path correctly set in state |
+| `test_stepwise_mode_blocks_predict_and_build_after_prediction` | test_workflow_state.py | predict_and_build blocked in stepwise mode after prediction |
+| `test_autobuild_beats_earlier_refine_with_better_metrics` | test_best_files_tracker.py | Autobuild with better R-free becomes best model |
+| `test_yaml_stage_scores` | test_best_files_tracker.py | autobuild_output has same score as refined (100) |
 | `test_stop_cycle_excluded_from_count` | test_session_summary.py | STOP cycles not counted in total_cycles |
 | `test_cryoem_done_flags` | test_workflow_state.py | cryo-EM done flags (resolve_cryo_em, map_sharpening, etc.) |
 | `test_failed_refine_not_counted` | test_workflow_state.py | Failed refinements don't increment refine_count |

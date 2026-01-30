@@ -510,7 +510,7 @@ best_files_scoring:
     stage_scores:
       refined: 100           # Output from phenix.refine - highest quality
       rsr_output: 100        # Output from real_space_refine - highest for cryo-EM
-      autobuild_output: 80   # Output from phenix.autobuild - built into density
+      autobuild_output: 100  # Output from phenix.autobuild - does internal refinement
       with_ligand: 100       # Refined model with ligand (also tagged as refined)
       ligand_fit_output: 90  # Output from ligandfit (also tagged as with_ligand)
       phaser_output: 70      # MR solution - positioned in unit cell, ready for refinement

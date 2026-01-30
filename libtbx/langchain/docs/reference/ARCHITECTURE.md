@@ -495,6 +495,44 @@ improved_agent_v2/
 - State passed between nodes
 - Easy to add/modify nodes
 
+### 6. Automation Modes
+
+**Rationale**: Different users need different levels of control over the workflow.
+
+**Implementation**:
+Two modes controlled by `maximum_automation` parameter:
+
+| Mode | Setting | `predict_and_build` Behavior |
+|------|---------|------------------------------|
+| **Automated** | `maximum_automation=True` (default) | Runs complete workflow (prediction → MR → building) |
+| **Stepwise** | `maximum_automation=False` | Stops after prediction only |
+
+The `automation_path` is set in workflow state and propagated to all decision points:
+
+```python
+# workflow_engine.py
+context["automation_path"] = "automated" if maximum_automation else "stepwise"
+
+# workflow_engine.py (_check_program_prerequisites)
+if automation_path == "stepwise" and context.get("predict_done"):
+    # Block predict_and_build after prediction is complete
+    return False
+```
+
+**Stepwise workflow example**:
+```
+xtriage → predict_and_build(stop_after_predict) → process_predicted_model → phaser → refine
+```
+
+### 7. Fallback Program Tracking
+
+**Rationale**: When LLM planning fails 3 times, the fallback mechanism must correctly report which program it selected.
+
+**Implementation**:
+- Fallback node now sets `state["program"]` when returning a command
+- Response builder uses `state["program"]` if available, falls back to `intent["program"]`
+- Prevents mismatch where PLAN shows one program but command is different
+
 ## Extension Points
 
 ### Adding a New Program

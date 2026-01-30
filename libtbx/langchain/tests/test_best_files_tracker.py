@@ -920,6 +920,7 @@ def test_yaml_stage_scores():
 
     # Check model stage scores (positioned models)
     assert_equal(tracker._get_stage_score("model", "refined"), 100)
+    assert_equal(tracker._get_stage_score("model", "autobuild_output"), 100)  # AutoBuild does internal refinement
     assert_equal(tracker._get_stage_score("model", "phaser_output"), 70)
     assert_equal(tracker._get_stage_score("model", "docked"), 60)
     assert_equal(tracker._get_stage_score("model", "unknown_stage"), 50)  # _default
@@ -940,6 +941,66 @@ def test_yaml_stage_scores():
     # Check map_coeffs_mtz stage scores
     assert_equal(tracker._get_stage_score("map_coeffs_mtz", "refine_map_coeffs"), 80)
     assert_equal(tracker._get_stage_score("map_coeffs_mtz", "denmod_map_coeffs"), 70)
+
+    print("  PASSED")
+
+
+def test_autobuild_beats_earlier_refine_with_better_metrics():
+    """Test that autobuild output with better R-free beats earlier refine."""
+    print("Test: autobuild_beats_earlier_refine_with_better_metrics")
+
+    tracker = BestFilesTracker()
+
+    # Add initial refine with R-free 0.35
+    tracker.evaluate_file(
+        "/path/refine_001_001.pdb",
+        cycle=1,
+        metrics={"r_free": 0.35},
+        stage="refined"
+    )
+    first_best = tracker.get_best_path("model")
+    assert "refine_001_001.pdb" in first_best, "First best should be refine model"
+
+    # Add autobuild with better R-free 0.28
+    tracker.evaluate_file(
+        "/path/AutoBuild_run_1_/overall_best.pdb",
+        cycle=2,
+        metrics={"r_free": 0.28},
+        stage="autobuild_output"
+    )
+    second_best = tracker.get_best_path("model")
+    assert "overall_best.pdb" in second_best, \
+        "Autobuild with better R-free should become best model"
+
+    print("  PASSED")
+
+
+def test_refine_beats_autobuild_with_better_metrics():
+    """Test that refine with better metrics beats earlier autobuild."""
+    print("Test: refine_beats_autobuild_with_better_metrics")
+
+    tracker = BestFilesTracker()
+
+    # Add autobuild with R-free 0.30
+    tracker.evaluate_file(
+        "/path/AutoBuild_run_1_/overall_best.pdb",
+        cycle=1,
+        metrics={"r_free": 0.30},
+        stage="autobuild_output"
+    )
+    first_best = tracker.get_best_path("model")
+    assert "overall_best.pdb" in first_best, "First best should be autobuild model"
+
+    # Add refine with better R-free 0.25
+    tracker.evaluate_file(
+        "/path/refine_002_001.pdb",
+        cycle=2,
+        metrics={"r_free": 0.25},
+        stage="refined"
+    )
+    second_best = tracker.get_best_path("model")
+    assert "refine_002_001.pdb" in second_best, \
+        "Refine with better R-free should become best model"
 
     print("  PASSED")
 

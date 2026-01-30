@@ -32,7 +32,7 @@ Test Suites (standalone - no PHENIX required):
   23. New Programs - YAML config for new programs (polder, map_sharpening, autobuild_denmod)
 
 Test Suites (require PHENIX environment):
-  24. Workflow State - State detection, transitions, done flags
+  24. Workflow State - State detection, transitions, done flags, stepwise mode
   25. YAML Config - YAML configuration validation
   26. Sanity Checker - Sanity check logic
   27. Metrics Analyzer - Metric extraction and trends
@@ -40,10 +40,11 @@ Test Suites (require PHENIX environment):
   29. Integration - End-to-end workflow tests
   30. Directives Integration - End-to-end directive system tests
 
-Key Tests for Recent Fixes:
-  - test_best_files_tracker: Model scoring, predicted model exclusion
+Key Tests for Recent Fixes (v110):
+  - test_best_files_tracker: Model scoring, autobuild_output same score as refined
+  - test_workflow_state: Stepwise mode (automation_path), predict_and_build blocking
+  - test_file_categorization: predict_and_build output file categorization
   - test_session_summary: STOP cycle exclusion from counts
-  - test_workflow_state: Done flags (refine_count, cryo-EM done flags)
 
 Usage:
     python tests/run_all_tests.py

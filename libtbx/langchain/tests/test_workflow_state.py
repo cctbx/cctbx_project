@@ -1399,6 +1399,86 @@ def test_cryoem_done_flags():
     print("  PASSED")
 
 
+# =============================================================================
+# STEPWISE MODE / AUTOMATION PATH TESTS
+# =============================================================================
+
+def test_automation_path_in_workflow_state():
+    """Test that automation_path is correctly set in workflow state."""
+    print("Test: automation_path_in_workflow_state")
+
+    files = ["data.mtz", "sequence.fa"]
+    history = [{"program": "phenix.xtriage", "result": "SUCCESS"}]
+
+    # Test maximum_automation=True (default)
+    state_auto = detect_workflow_state(history, files, maximum_automation=True)
+    assert state_auto.get("automation_path") == "automated", \
+        "automation_path should be 'automated' when maximum_automation=True"
+
+    # Test maximum_automation=False
+    state_stepwise = detect_workflow_state(history, files, maximum_automation=False)
+    assert state_stepwise.get("automation_path") == "stepwise", \
+        "automation_path should be 'stepwise' when maximum_automation=False"
+
+    print("  PASSED")
+
+
+def test_stepwise_mode_blocks_predict_and_build_after_prediction():
+    """Test that predict_and_build is blocked in stepwise mode after prediction."""
+    print("Test: stepwise_mode_blocks_predict_and_build_after_prediction")
+
+    files = [
+        "data.mtz",
+        "sequence.fa",
+        "PredictAndBuild_0_predicted_model.pdb"  # Prediction already done
+    ]
+    history = [
+        {"program": "phenix.xtriage", "result": "SUCCESS"},
+        {"program": "phenix.predict_and_build", "result": "SUCCESS",
+         "output_files": ["PredictAndBuild_0_predicted_model.pdb"]}
+    ]
+
+    # In stepwise mode, after prediction, should NOT have predict_and_build
+    state_stepwise = detect_workflow_state(history, files, maximum_automation=False)
+
+    # Debug output
+    print(f"  State: {state_stepwise.get('state')}")
+    print(f"  Valid programs: {state_stepwise['valid_programs']}")
+    print(f"  automation_path: {state_stepwise.get('automation_path')}")
+
+    assert "phenix.predict_and_build" not in state_stepwise["valid_programs"], \
+        "predict_and_build should NOT be valid in stepwise mode after prediction"
+
+    # Should have MR pathway programs OR refine/autobuild (if model was placed)
+    # The exact programs depend on file categorization
+    has_valid_next_step = (
+        "phenix.process_predicted_model" in state_stepwise["valid_programs"] or
+        "phenix.phaser" in state_stepwise["valid_programs"] or
+        "phenix.refine" in state_stepwise["valid_programs"] or
+        "phenix.autobuild" in state_stepwise["valid_programs"] or
+        "STOP" in state_stepwise["valid_programs"]
+    )
+    assert has_valid_next_step, \
+        f"Should have valid next step programs, got: {state_stepwise['valid_programs']}"
+
+    print("  PASSED")
+
+
+def test_automated_mode_allows_full_predict_and_build():
+    """Test that full predict_and_build is allowed in automated mode."""
+    print("Test: automated_mode_allows_full_predict_and_build")
+
+    files = ["data.mtz", "sequence.fa"]
+    history = [{"program": "phenix.xtriage", "result": "SUCCESS"}]
+
+    # In automated mode, predict_and_build should be available
+    state_auto = detect_workflow_state(history, files, maximum_automation=True)
+    assert "phenix.predict_and_build" in state_auto["valid_programs"], \
+        "predict_and_build should be valid in automated mode before prediction"
+
+    print("  PASSED")
+
+
 def run_all_tests():
     """Run all tests with fail-fast behavior (cctbx style)."""
     from tests.test_utils import run_tests_with_fail_fast

@@ -37,6 +37,29 @@ This caused issues with programs like `phenix.ligandfit` potentially receiving d
 - Added `_evaluate_map_coeffs_mtz()`: Prefers most recent cycle
 - Added `_classify_mtz_type()`: Auto-classifies by filename pattern
 
+### Additional Fixes in v110
+
+**Stepwise Mode / Automation Path**:
+- Added `automation_path` to workflow state ("automated" or "stepwise")
+- In stepwise mode, `predict_and_build` stops after prediction
+- User then proceeds with `process_predicted_model` → `phaser` → `refine`
+- Prevents duplicate predict_and_build runs
+
+**Fallback Program Tracking**:
+- Fallback node now correctly sets `program` field in state
+- Fixes mismatch where PLAN showed one program but command was different
+- Response builder uses `state["program"]` over `intent["program"]` when fallback used
+
+**AutoBuild Scoring**:
+- `autobuild_output` stage score increased to 100 (same as `refined`)
+- AutoBuild runs internal refinement, so outputs are effectively refined models
+- AutoBuild with better R-free now correctly beats earlier refine outputs
+
+**Session Summary Best Files**:
+- Removed file existence check in `_get_final_output_files()`
+- Files created on client machine don't exist on server
+- Now correctly shows best files in markdown summaries
+
 ### MTZ Classification Patterns
 
 | Pattern | Category | Stage |
@@ -51,20 +74,22 @@ This caused issues with programs like `phenix.ligandfit` potentially receiving d
 
 - `knowledge/file_categories.yaml`: New data_mtz and map_coeffs_mtz hierarchies
 - `knowledge/programs.yaml`: All 10 programs updated
-- `knowledge/metrics.yaml`: Scoring config for both MTZ types
+- `knowledge/metrics.yaml`: Scoring config for both MTZ types, autobuild_output score
 - `knowledge/workflows.yaml`: Updated polder conditions
-- `agent/best_files_tracker.py`: New evaluation methods
-- `agent/workflow_state.py`: Updated parent categories
+- `agent/best_files_tracker.py`: New evaluation methods, autobuild scoring
+- `agent/workflow_state.py`: Updated parent categories, automation_path
+- `agent/workflow_engine.py`: automation_path in context, stepwise mode handling
 - `agent/command_builder.py`: Updated slot mappings
-- `agent/graph_nodes.py`: Updated sanity context
-- `agent/workflow_engine.py`: Updated context builder
+- `agent/graph_nodes.py`: Updated sanity context, fallback program tracking
 - `agent/rules_selector.py`: Updated file selection
-- `agent/session.py`: New get_best_data_mtz(), get_best_map_coeffs_mtz()
+- `agent/session.py`: New get_best_data_mtz(), get_best_map_coeffs_mtz(), fixed best files display
 - `agent/template_builder.py`: Updated category detection
 - `agent/program_registry.py`: Updated phaser command
 - `agent/directive_extractor.py`: Updated file preferences
 - `knowledge/prompts_hybrid.py`: Updated recommended files display
-- `tests/test_best_files_tracker.py`: All 48 tests updated and passing
+- `phenix_ai/run_ai_agent.py`: Use state["program"] for response
+- `tests/test_best_files_tracker.py`: All 48 tests updated + autobuild scoring tests
+- `tests/test_workflow_state.py`: Added stepwise mode tests
 
 ---
 
