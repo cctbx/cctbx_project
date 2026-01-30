@@ -23,11 +23,6 @@ from six.moves import range
 
 master_phil_str = '''
 cablam_idealization {
-  enabled = True
-    .type = bool
-  nproc = 1
-    .type = int
-    .help = Parallelization is not implemented
   rotation_angle = 30
     .type = int
     .help = angle to rotate the oxygen while searching for better conformation
@@ -37,7 +32,13 @@ cablam_idealization {
   do_gm = False
     .type = bool
     .help = Run geometry minimization after rotation
-  find_ss_after_fixes = True
+  verbose = 0
+    .type = int
+    .help = Verbosity levels: \
+      0: Absolutely no output \
+      1: Essential info and errors \
+      2: Everything
+  find_ss_after_fixes = False
     .type = bool
     .help = re-evaluate SS after fixing Cablam outliers. May be helpful to \
       identify new or extend previous SS elements
@@ -68,24 +69,25 @@ class cablam_idealization(object):
     self.cablam_fixed_minimized = None
     self.cablam_results = {}
 
-    if not self.params.enabled:
-      return
+    if not self.model.processed():
+      self.model.process(make_restraints=True)
 
-    self.model.process(make_restraints=True)
-
-    print("CaBLAM idealization", file=self.log)
+    if self.params.verbose > 1:
+      print("CaBLAM idealization", file=self.log)
 
     if self.model.get_hierarchy().models_size() > 1:
       raise Sorry("Multi-model files are not supported")
 
-    self.model.search_for_ncs()
+    log_for_ncs = None
+    if self.params.verbose == 0:
+      log_for_ncs = null_out()
+    self.model.search_for_ncs(log=log_for_ncs)
     ncs_obj = self.model.get_ncs_obj()
     nrgl = ncs_obj.get_ncs_restraints_group_list()
-    if nrgl.get_n_groups() > 0:
+    if nrgl.get_n_groups() > 0 and self.params.verbose > 1:
       print(self.model.get_ncs_obj().show_phil_format(), file=self.log)
 
     self.outliers_by_chain = self.identify_outliers()
-
     # idealization
     # TODO: verify if outliers by chain is dict
     for chain, outliers in six.iteritems(self.outliers_by_chain):
@@ -97,7 +99,8 @@ class cablam_idealization(object):
         rotated_angle = self.fix_cablam_outlier(chain, outlier)
         if rotated_angle is not None:
           self.cablam_results[chain].append((outlier[-1], rotated_angle))
-    print("*"*80, file=self.log)
+    if self.params.verbose > 1:
+      print("*"*80, file=self.log)
 
     if self.params.find_ss_after_fixes:
       ss_manager = ss_manager_class(
@@ -106,7 +109,7 @@ class cablam_idealization(object):
           sec_str_from_pdb_file=None,
           params=None,
           mon_lib_srv=self.model.get_mon_lib_srv(),
-          verbose=-1,
+          verbose=self.params.verbose-1,
           log=self.log)
       self.model.get_restraints_manager().geometry.set_secondary_structure_restraints(
           ss_manager=ss_manager,
@@ -148,7 +151,8 @@ class cablam_idealization(object):
       curresseq_int = outlier[-1].residue.resseq_as_int()
       prevresseq_int = outlier[-1].prevres.residue.resseq_as_int()
     else:
-      print("Don't know how to deal with more than 2 outliers in a row yet. Skipping.", file=self.log)
+      if self.params.verbose > 0:
+        print("Don't know how to deal with more than 2 outliers in a row yet. Skipping.", file=self.log)
       return
     # h =  self.model.get_hierarchy()
     # s =  self.model.selection("chain %s and name CA and resid %s" % (chain, prevresid))
@@ -158,11 +162,11 @@ class cablam_idealization(object):
     # This is slightly faster, but poorer code. We'll see if it is needed.
     a1 = self._get_ca_atom(chain, prevresid)
     a2 = self._get_ca_atom(chain, curresid)
-
-    print("*"*80, file=self.log)
-    print("Atoms for rotation:", chain, prevresid, curresid, file=self.log)
-    print(f"Cablam evaluation: {self.decode_feedback(outlier[-1].feedback)}", file=self.log)
-    print("*"*80, file=self.log)
+    if self.params.verbose > 1:
+      print("*"*80, file=self.log)
+      print("Atoms for rotation:", chain, prevresid, curresid, file=self.log)
+      print(f"Cablam evaluation: {self.decode_feedback(outlier[-1].feedback)}", file=self.log)
+      print("*"*80, file=self.log)
 
     around_str_sel = "chain %s and resid %d:%d" % (chain, prevresseq_int-2, curresseq_int+2)
     chain_around = self.model.select(self.model.selection(around_str_sel))
@@ -176,7 +180,8 @@ class cablam_idealization(object):
       O_atom, N_atom, C_atom = self._rotate_cablam(self.model, chain,
           prevresid, curresid, a1, a2, angle=angle)
       if [O_atom, N_atom, C_atom].count(None) > 0:
-        print("Residues are missing essential atom: O, N or C. Skipping.", file=self.log)
+        if self.params.verbose > 0:
+          print("Residues are missing essential atom: O, N or C. Skipping.", file=self.log)
         return
       self._rotate_cablam(chain_around, chain,
           prevresid, curresid, a1, a2, angle=angle)
@@ -187,19 +192,24 @@ class cablam_idealization(object):
       # Score contains tuple of :
       # angle, N Rama outliers, N Cablam outliers, hbonds
       scores.append(self._score_conformation(O_atom, C_atom, N_atom, chain_around, angle*(i+1)))
-    print("angle, rama outliers, cablam outliers, hbonds (type, length, angle)", file=self.log)
+    if self.params.verbose > 1:
+      print("angle, rama outliers, cablam outliers, hbonds (type, length, angle)", file=self.log)
     for s in scores:
-      print(s[0], s[1], s[2], end=' ', file=self.log)
+      if self.params.verbose > 1:
+        print(s[0], s[1], s[2], end=' ', file=self.log)
       if len(s[3]) > 0:
         for e in s[3]:
-          print("| %s -- > %s, %.2f, %.2f|" % (e[0], e[3].id_str(), e[1], e[2]), end=' ', file=self.log)
+          if self.params.verbose > 1:
+            print("| %s -- > %s, %.2f, %.2f|" % (e[0], e[3].id_str(), e[1], e[2]), end=' ', file=self.log)
+    if self.params.verbose > 1:
       print(file=self.log)
     rot_angle = self._pick_rotation_angle(scores, self.params.require_h_bond)
     # rotate
     self.n_tried_residues += 1
     if rot_angle != 360:
       self.n_rotated_residues += 1
-      print("ROTATING by", rot_angle, file=self.log)
+      if self.params.verbose > 1:
+        print("ROTATING by", rot_angle, file=self.log)
       self._rotate_cablam(self.model, chain,
           prevresid, curresid, a1, a2, angle=rot_angle)
     return rot_angle
@@ -232,7 +242,6 @@ class cablam_idealization(object):
               C_atom = atom
 
         model.set_sites_cart_from_hierarchy(multiply_ncs=True)
-
         return O_atom, N_atom, C_atom
 
 
@@ -266,8 +275,9 @@ class cablam_idealization(object):
     i -= 1
     middle_pos = (best_position + i) // 2
     # print('lenlenlen', len(scores))
-    print('cluster positions:', best_position, i, middle_pos, file=self.log)
-    print('cluster angles:', scores[best_position][0], scores[i][0], scores[middle_pos][0], file=self.log)
+    if self.params.verbose > 1:
+      print('cluster positions:', best_position, i, middle_pos, file=self.log)
+      print('cluster angles:', scores[best_position][0], scores[i][0], scores[middle_pos][0], file=self.log)
     return scores[middle_pos][0]
 
   def _minimize(self):
@@ -402,7 +412,8 @@ class cablam_idealization(object):
       comb = []
       for i in g:
         if i.altloc.strip() != '':
-          print("  ", i, "<--- SKIPPING, alternative conformations.", file=self.log)
+          if self.params.verbose > 1:
+            print("  ", i, "<--- SKIPPING, alternative conformations.", file=self.log)
           continue
         if len(comb) == 0:
           comb = [i]
@@ -413,7 +424,8 @@ class cablam_idealization(object):
           else:
             outliers_by_chain[k].append(comb)
             comb = [i]
-        print("  ", i, file=self.log)
+        if self.params.verbose > 1:
+          print("  ", i, file=self.log)
       # comb here is combination of adjacent outliers. If outlier is isolated - it
       # is included as a single one.
       outliers_by_chain[k].append(comb)
