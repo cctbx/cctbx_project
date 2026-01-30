@@ -2351,12 +2351,14 @@ class manager(object):
     g = self.get_ncs_groups()
     return g is not None and len(g)>0
 
-  def search_for_ncs(self, params=None, show_groups=False, ncs_phil_groups=None):
+  def search_for_ncs(self, params=None, show_groups=False, ncs_phil_groups=None, log=None):
+    if log == None:
+      log = self.log
     self._ncs_obj = iotbx.ncs.input(
       hierarchy       = self.get_hierarchy(),
       ncs_phil_groups = ncs_phil_groups,
       params          = params,
-      log             = self.log)
+      log             = log)
     if(self._ncs_obj is not None):
       self._ncs_groups = self.get_ncs_obj().get_ncs_restraints_group_list()
     self._update_master_sel()
