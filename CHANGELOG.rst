@@ -1,3 +1,10 @@
+2026.1
+======
+
+* Improvements to variable resolution map calculation
+* Fix bug in counting atoms split across chains with the same chain ID
+* Fix bug in reading MRC files with 16-bit floats
+
 2025.12
 =======
 
