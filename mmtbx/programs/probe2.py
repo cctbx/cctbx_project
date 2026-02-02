@@ -28,7 +28,7 @@ from mmtbx.probe import Helpers
 from iotbx import pdb
 from iotbx.pdb import common_residue_names_get_class
 
-version = "4.11.0"
+version = "4.12.0"
 
 master_phil_str = '''
 profile = False
@@ -1161,7 +1161,7 @@ Note:
             ret += ', "src": {{"chainID": "{}", "resID": {}, "iCode": "{}", "resName": "{}", "atomName": "{}", "alt": "{}"}}'.format(
               chainID, resID, iCode.strip(), resName, a.name, alt.strip())
           else:
-            ret += "{:>2s}{:>4s}{}{} {}{:1s}:".format(chainID, resID, iCode, resName.strip(), a.name, alt)
+            ret += "{:>2s}{:>4s}{}{:>3s} {:<3s}{:1s}:".format(chainID, resID, iCode, resName.strip(), a.name, alt)
 
           # Describe the target atom, if it exists
           t = node.target
@@ -1180,7 +1180,7 @@ Note:
               ret += ', "target": {{"chainID": "{}", "resID": {}, "iCode": "{}", "resName": "{}", "atomName": "{}", "alt": "{}"}}'.format(
                 chainID, resID, iCode.strip(), resName, t.name, alt.strip())
             else:
-              ret += "{:>2s}{:>4s}{}{} {:<3s}{:1s}:".format(chainID, resID, iCode, resName.strip(), t.name, alt)
+              ret += "{:>2s}{:>4s}{}{:>3s} {:<3s}{:1s}:".format(chainID, resID, iCode, resName.strip(), t.name, alt)
 
             r1 = self._extraAtomInfo.getMappingFor(a).vdwRadius
             r2 = self._extraAtomInfo.getMappingFor(t).vdwRadius

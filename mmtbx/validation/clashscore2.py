@@ -665,16 +665,15 @@ def check_and_add_hydrogen(
     # mmCIF files, so we always do it for safety.
     data_manager_model.get_hierarchy().sort_atoms_in_place()
     data_manager_model.get_hierarchy().atoms().reset_serial()
-    p = mmtbx.model.manager.get_default_pdb_interpretation_params()
-    p.pdb_interpretation.allow_polymer_cross_special_position=True
-    p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
-    p.pdb_interpretation.use_neutron_distances = nuclear
-    p.pdb_interpretation.proceed_with_excessive_length_bonds=True
-    p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check=True
+    p = reduce_hydrogen.get_reduce_pdb_interpretation_params(nuclear)
     # We need to turn this on because without it 1zz0.txt kept flipping the ring
     # in A TYR 214 every time we re-interpreted. The original interpretation done
     # by Hydrogen placement will have flipped them, so we don't need to do it again.
     p.pdb_interpretation.flip_symmetric_amino_acids=False
+    p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check=True
+    p.pdb_interpretation.allow_polymer_cross_special_position=True
+    p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+    p.pdb_interpretation.proceed_with_excessive_length_bonds=True
     #p.pdb_interpretation.sort_atoms=True
     data_manager_model.process(make_restraints=False, pdb_interpretation_params=p)
 
