@@ -190,13 +190,15 @@ def run_one(args):
       mtz_dataset.add_miller_array(
         miller_array      = best_flags,
         column_root_label = "R-free-flags")
+      mtz_object = mtz_dataset.mtz_object()
+      mtz_object.write(file_name = "%s.mtz"%code)
   #
   except Exception as e:
     of = open("%s.log"%code, "w")
     traceback.print_exc(file=of)
     of.close()
 
-def run(cmdargs, NPROC=100):
+def run(cmdargs, NPROC=120):
   #
   processed = []
   for f in os.listdir("."):
