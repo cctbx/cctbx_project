@@ -42,8 +42,9 @@ def get_hkl_files_dict(path):
   sizes      = flex.double()
   cntr = 0
   for l in ifn.readlines():
-    cntr += 1
     l = l.strip()
+    if not l.endswith(".gz"): continue
+    cntr += 1
     code = l[-13:-9]
     #
     # FOR DEBUGGING
