@@ -50,7 +50,7 @@ def get_hkl_files_dict(path):
     #
     #if code != "6a1o": continue
     #if code != "6a1q": continue
-    if(cntr==1000): break
+    #if(cntr==1000): break
     #
     file_name = "/".join([path,l])
     #assert os.path.isfile(file_name) # Terribly runtime expensive
@@ -168,7 +168,7 @@ def run_one(args):
     for f_obs in data:
       for r_free_flags in flags:
         r_free_flags_dc = equalize_anom_flags(
-          r_free_flags = r_free_flags, 
+          r_free_flags = r_free_flags,
           f_obs        = f_obs)
         f_obs_dc, r_free_flags_dc = f_obs.common_sets(r_free_flags_dc)
         fmodel = mmtbx.f_model.manager(
@@ -196,7 +196,7 @@ def run_one(args):
     traceback.print_exc(file=of)
     of.close()
 
-def run(cmdargs, NPROC=1):
+def run(cmdargs, NPROC=100):
   #
   processed = []
   for f in os.listdir("."):
