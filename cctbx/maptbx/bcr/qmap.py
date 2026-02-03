@@ -17,7 +17,7 @@ def load_table(element=None, table=None, file_name=None):
   if file_name is None:
     element = element.strip().upper()
     path=libtbx.env.find_in_repositories("cctbx/maptbx/bcr/tables")
-    file_name = "%s/%s_%s.json"%(path, element, table)
+    file_name = "%s/%s_%s.json.gz"%(path, element, table)
   assert os.path.isfile(file_name)
   with gzip.open(file_name, "rt", encoding="utf-8") as f:
     return json.load(f)
