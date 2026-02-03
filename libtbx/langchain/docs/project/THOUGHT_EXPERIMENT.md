@@ -2,14 +2,17 @@
 
 This document traces through how the PHENIX AI Agent would handle standard crystallography cases, based on the YAML configurations and workflow engine logic.
 
+**Updated for v110** - Includes dual MTZ tracking, stepwise mode, and error recovery.
+
 ---
 
-## Scenario 1: X-ray Structure Solution from Scratch
+## Scenario 1: X-ray Structure Solution from Scratch (Automated Mode)
 
 **Input:**
-- `raster.mtz` - reflection data
+- `raster.mtz` - reflection data (classified as `data_mtz`)
 - `raster.fa` - sequence file
 - User directive: "solve the structure"
+- Mode: `maximum_automation=True` (default)
 
 **Assumptions:**
 - Normal metrics throughout (no anomalous issues, no twinning)
@@ -21,7 +24,7 @@ This document traces through how the PHENIX AI Agent would handle standard cryst
 #### Cycle 1: Data Analysis
 
 **State Detection:**
-- `_categorize_files()` → `{mtz: [raster.mtz], sequence: [raster.fa]}`
+- `_categorize_files()` → `{data_mtz: [raster.mtz], sequence: [raster.fa]}`
 - `_detect_experiment_type()` → `xray` (has MTZ, no maps)
 - `detect_phase()`:
   - `xtriage_done` = False (no history)
@@ -38,7 +41,10 @@ phenix.xtriage raster.mtz
 ```
 
 **Output Files:** (none - analysis only)  
-**Metrics Extracted:** resolution=2.0, no twinning detected
+**Metrics Extracted:** resolution=2.0, no twinning detected, no anomalous signal
+
+**Best Files Tracker:**
+- `data_mtz` locked to `raster.mtz` (first MTZ with R-free flags)
 
 ---
 
@@ -48,6 +54,7 @@ phenix.xtriage raster.mtz
 - `xtriage_done` = True (from history)
 - `has_placed_model` = False
 - `has_predicted_model` = False
+- `automation_path` = "automated" (from `maximum_automation=True`)
 - → **Phase: `obtain_model`**
 - **State: `xray_analyzed`**
 - **Valid programs:** `[phenix.predict_and_build, phenix.phaser, phenix.autosol]`
@@ -55,23 +62,31 @@ phenix.xtriage raster.mtz
 **Conditions:**
 - `phenix.predict_and_build`: requires sequence ✓
 - `phenix.phaser`: requires search_model ✗
-- `phenix.autosol`: requires sequence + anomalous ✗
+- `phenix.autosol`: requires sequence + has_anomalous ✗ (no anomalous signal)
 
 **Program Selection:**
-- `phenix.predict_and_build` is preferred (first in list)
-- Has sequence, has MTZ data
+- `phenix.predict_and_build` is preferred (first in list, has sequence)
 - **`phenix.predict_and_build`** selected
 
 **Strategy from workflows.yaml:**
-- `stop_after_predict: false` (default for X-ray automated path)
+- `stop_after_predict: false` (automated mode runs full workflow)
 
 **Command Built:**
 ```
-phenix.predict_and_build input_files.seq_file=raster.fa input_files.xray_data_file=raster.mtz crystal_info.resolution=2.0
+phenix.predict_and_build input_files.seq_file=raster.fa \
+    input_files.data_file=raster.mtz \
+    crystal_info.resolution=2.0
 ```
 
-**Output Files:** `predict_and_build_001_overall_best_model.pdb`  
+**Output Files:** 
+- `overall_best_model.pdb` (placed model)
+- `overall_best_map_coeffs.mtz` (map coefficients)
+
 **Metrics Extracted:** r_free=0.45, r_work=0.40
+
+**Best Files Tracker:**
+- `model` = `overall_best_model.pdb` (score: 100, predict_build_output)
+- `map_coeffs_mtz` = `overall_best_map_coeffs.mtz` (most recent wins)
 
 ---
 
@@ -80,84 +95,65 @@ phenix.predict_and_build input_files.seq_file=raster.fa input_files.xray_data_fi
 **State Detection:**
 - `has_placed_model` = True (overall_best_model.pdb categorized as `model`)
 - `has_refined_model` = False
-- → **Phase: `refine`**
-- **State: `xray_refined`** (misleading name - means "refining state")
-- **Valid programs:** `[phenix.refine, phenix.autobuild, phenix.ligandfit]`
+- → **Phase: `improve_model`**
+- **Valid programs:** `[phenix.refine, phenix.autobuild, phenix.ligandfit, phenix.polder]`
 
 **Conditions:**
 - `phenix.autobuild`: r_free > 0.35 ✓, has sequence ✓, not_done ✓
 - `phenix.ligandfit`: has ligand_file ✗
+- `phenix.polder`: has ligand_file ✗
 
 **Program Selection:**
-- R-free is 0.45 (high), could try autobuild
-- But `phenix.refine` is preferred
-- **`phenix.refine`** selected (standard approach first)
+- R-free is 0.45 (high), autobuild is available
+- But `phenix.refine` is preferred for initial refinement
+- **`phenix.refine`** selected
+
+**File Selection (dual MTZ tracking):**
+- Model: `overall_best_model.pdb` (best model)
+- Data: `raster.mtz` (locked `data_mtz` - original with R-free flags)
+- NOT `overall_best_map_coeffs.mtz` (that's map coefficients, not data)
 
 **Command Built:**
 ```
-phenix.refine predict_and_build_001_overall_best_model.pdb raster.mtz output.prefix=refine_001
+phenix.refine overall_best_model.pdb raster.mtz output.prefix=refine_001
 ```
 
-**Output Files:** `refine_001_001.pdb`, `refine_001_001.mtz`  
+**Output Files:** 
+- `refine_001_001.pdb` (refined model)
+- `refine_001_001.mtz` (map coefficients)
+- `refine_001_data.mtz` (copy of input data)
+
 **Metrics Extracted:** r_free=0.35, r_work=0.30
 
----
-
-#### Cycle 4: Second Refinement
-
-**State Detection:**
-- `has_refined_model` = True (refine_001_001.pdb exists)
-- `r_free` = 0.35
-- Not at target (target ~0.25 for 2.0 Å)
-- → **Phase: `refine`**
-- **Valid programs:** `[phenix.refine, phenix.autobuild, phenix.ligandfit]`
-
-**Program Selection:**
-- R-free still above autobuild threshold (0.35)
-- Could try autobuild, but let's say LLM chooses to continue refine
-- **`phenix.refine`** selected
-
-**Command Built:**
-```
-phenix.refine refine_001_001.pdb raster.mtz output.prefix=refine_002
-```
-
-**Output Files:** `refine_002_001.pdb`  
-**Metrics Extracted:** r_free=0.28, r_work=0.24
+**Best Files Tracker:**
+- `model` = `refine_001_001.pdb` (score: 100, refined)
+- `map_coeffs_mtz` = `refine_001_001.mtz` (most recent, better maps)
 
 ---
 
-#### Cycle 5: Third Refinement
+#### Cycles 4-6: Continue Refinement
 
-**State Detection:**
-- R-free = 0.28, improving
-- Not at target yet
-- → **Phase: `refine`**
+Each cycle:
+- Uses best model from previous cycle
+- Uses locked `data_mtz` (raster.mtz) - NOT refined MTZ outputs
+- Updates `map_coeffs_mtz` to most recent refine output
 
-**Program Selection:**
-- Autobuild now excluded (r_free < 0.35)
-- **`phenix.refine`** selected
-
-**Metrics after:** r_free=0.25
-
----
-
-#### Cycle 6: Fourth Refinement
-
-**Metrics after:** r_free=0.24 (plateauing)
+**Metrics progression:**
+- Cycle 4: r_free=0.28
+- Cycle 5: r_free=0.25
+- Cycle 6: r_free=0.24 (plateauing)
 
 ---
 
-#### Cycle 7: Target Reached → Validation
+#### Cycle 7: Validation
 
 **State Detection:**
 - R-free = 0.24 (at or below target for 2.0 Å resolution)
 - `validation_done` = False
 - → **Phase: `validate`**
-- **Valid programs:** `[phenix.molprobity, phenix.model_vs_data]`
+- **Valid programs:** `[phenix.molprobity]`
 
 **Program Selection:**
-- `phenix.molprobity` is required
 - **`phenix.molprobity`** selected
 
 **Output:** clashscore=3.2, Ramachandran outliers=0.3%
@@ -175,24 +171,106 @@ phenix.refine refine_001_001.pdb raster.mtz output.prefix=refine_002
 
 ---
 
-### Summary: Scenario 1
+### Summary: Scenario 1 (Automated)
 
-| Cycle | State | Program | R-free |
-|-------|-------|---------|--------|
-| 1 | xray_initial | phenix.xtriage | - |
-| 2 | xray_analyzed | phenix.predict_and_build | 0.45 |
-| 3 | xray_refined | phenix.refine | 0.35 |
-| 4 | xray_refined | phenix.refine | 0.28 |
-| 5 | xray_refined | phenix.refine | 0.25 |
-| 6 | xray_refined | phenix.refine | 0.24 |
-| 7 | xray_refined | phenix.molprobity | - |
-| 8 | complete | STOP | - |
+| Cycle | Phase | Program | R-free | Best Model |
+|-------|-------|---------|--------|------------|
+| 1 | analyze | phenix.xtriage | - | - |
+| 2 | obtain_model | phenix.predict_and_build | 0.45 | overall_best_model.pdb |
+| 3 | improve_model | phenix.refine | 0.35 | refine_001_001.pdb |
+| 4 | improve_model | phenix.refine | 0.28 | refine_002_001.pdb |
+| 5 | improve_model | phenix.refine | 0.25 | refine_003_001.pdb |
+| 6 | improve_model | phenix.refine | 0.24 | refine_004_001.pdb |
+| 7 | validate | phenix.molprobity | - | - |
+| 8 | complete | STOP | - | - |
 
 **Total: 8 cycles**
 
 ---
 
-## Scenario 2: X-ray with Ligand Fitting
+## Scenario 2: X-ray with Stepwise Mode
+
+**Input:** Same as Scenario 1
+- Mode: `maximum_automation=False` (stepwise)
+
+**Key Difference:** `predict_and_build` stops after prediction, giving user a checkpoint.
+
+### Cycle-by-Cycle Trace
+
+#### Cycle 1: Data Analysis (same as Scenario 1)
+
+#### Cycle 2: Prediction Only
+
+**State Detection:**
+- `automation_path` = "stepwise"
+- → Strategy includes `stop_after_predict: true`
+
+**Command Built:**
+```
+phenix.predict_and_build input_files.seq_file=raster.fa \
+    input_files.data_file=raster.mtz \
+    stop_after_predict=true
+```
+
+**Output Files:**
+- `predicted_model.pdb` (AlphaFold prediction, NOT placed)
+
+**Note:** Model is predicted but not yet placed into density.
+
+---
+
+#### Cycle 3: Process Predicted Model
+
+**State Detection:**
+- `predict_done` = True
+- `predict_full_done` = False (stopped after predict)
+- `process_predicted_done` = False
+- → **Valid programs:** `[phenix.process_predicted_model]`
+
+**Command Built:**
+```
+phenix.process_predicted_model predicted_model.pdb
+```
+
+**Output:** Processed model ready for molecular replacement
+
+---
+
+#### Cycle 4: Molecular Replacement
+
+**State Detection:**
+- `process_predicted_done` = True
+- `phaser_done` = False
+- → **Valid programs:** `[phenix.phaser]`
+
+**Command Built:**
+```
+phenix.phaser processed_model.pdb raster.mtz
+```
+
+**Output:** Placed model with initial phases
+
+---
+
+#### Cycles 5+: Refinement (same as Scenario 1)
+
+### Summary: Scenario 2 (Stepwise)
+
+| Cycle | Phase | Program | Notes |
+|-------|-------|---------|-------|
+| 1 | analyze | phenix.xtriage | |
+| 2 | obtain_model | phenix.predict_and_build | stop_after_predict=true |
+| 3 | obtain_model | phenix.process_predicted_model | Prepare for MR |
+| 4 | obtain_model | phenix.phaser | Place model |
+| 5+ | improve_model | phenix.refine | Multiple cycles |
+| N | validate | phenix.molprobity | |
+| N+1 | complete | STOP | |
+
+**Total: ~10-12 cycles** (more granular control)
+
+---
+
+## Scenario 3: X-ray with Ligand Fitting
 
 **Input:**
 - `raster.mtz` - reflection data
@@ -200,127 +278,168 @@ phenix.refine refine_001_001.pdb raster.mtz output.prefix=refine_002
 - `m29lig.pdb` - ligand structure
 - User directive: "solve the structure and fit the ligand"
 
-**Key Difference:** Agent needs to recognize the ligand file and fit it after refinement reaches acceptable quality.
+### Key Decision Points
+
+#### When is ligandfit triggered?
+
+From `workflows.yaml`:
+```yaml
+phenix.ligandfit:
+  conditions:
+    has: ligand
+    not_done: ligandfit
+    metric: r_free
+    less_than: 0.35
+```
+
+Ligand fitting waits until:
+- R-free < 0.35 (model quality threshold)
+- Ligand file is present
+- ligandfit hasn't been run yet
+
+This prevents fitting ligand into poor density.
+
+#### File Selection for ligandfit
+
+**Critical:** `phenix.ligandfit` needs map coefficients (phases), not data!
+
+From `programs.yaml`:
+```yaml
+phenix.ligandfit:
+  input_files:
+    required:
+      - name: map_coeffs_mtz   # Uses map_coeffs_mtz category
+        slot: map_coeffs_file
+      - name: model
+        slot: model_file
+      - name: ligand
+        slot: ligand_file
+```
+
+**Best Files Tracker provides:**
+- `model` = `refine_002_001.pdb` (best refined model)
+- `map_coeffs_mtz` = `refine_002_001.mtz` (latest map coefficients)
+- `ligand` = `m29lig.pdb`
+
+**Command Built:**
+```
+phenix.ligandfit model=refine_002_001.pdb \
+    map_coeffs_file=refine_002_001.mtz \
+    ligand=m29lig.pdb
+```
+
+### Summary: Scenario 3
+
+| Cycle | Phase | Program | Notes |
+|-------|-------|---------|-------|
+| 1 | analyze | phenix.xtriage | |
+| 2 | obtain_model | phenix.predict_and_build | |
+| 3 | improve_model | phenix.refine | R-free 0.45→0.35 |
+| 4 | improve_model | phenix.refine | R-free 0.35→0.28 |
+| 5 | improve_model | phenix.ligandfit | R-free < 0.35, fit ligand |
+| 6 | improve_model | phenix.pdbtools | Combine protein + ligand |
+| 7 | improve_model | phenix.refine | Refine combined |
+| 8+ | improve_model | phenix.refine | Continue to convergence |
+| N | validate | phenix.molprobity | |
+| N+1 | complete | STOP | |
+
+---
+
+## Scenario 4: SAD Phasing with Anomalous Data
+
+**Input:**
+- `sad_data.mtz` - reflection data with anomalous signal
+- `sequence.fa` - sequence file
+- User directive: "use experimental phasing" OR anomalous signal detected
 
 ### Cycle-by-Cycle Trace
 
-#### Cycles 1-5: Same as Scenario 1
+#### Cycle 1: Data Analysis
 
-The workflow proceeds identically until the model is reasonably refined (R-free ~0.28).
+**Metrics Extracted from xtriage:**
+```
+anomalous_measurability: 0.15
+anomalous_resolution: 3.5
+has_anomalous: true
+```
 
-#### Cycle 6: Ligand Fitting (when R-free < 0.35)
+**Best Files Tracker:**
+- Stores anomalous metrics in session
+
+---
+
+#### Cycle 2: Experimental Phasing
 
 **State Detection:**
-- `has_refined_model` = True
-- `has_ligand_file` = True (m29lig.pdb categorized as `ligand`)
-- R-free = 0.28 (below 0.35 threshold)
-- `ligandfit_done` = False
-- → **Phase: `refine`**
-- **Valid programs:** `[phenix.refine, phenix.ligandfit]`
+- `has_anomalous` = True (from xtriage metrics)
+- `has_sequence` = True
+- `autosol_done` = False
+- → **Valid programs include:** `phenix.autosol`
 
-**Conditions:**
-- `phenix.ligandfit`: has ligand_file ✓, not_done ✓, r_free < 0.35 ✓
+**Directive Priority:**
+If user said "use experimental phasing":
+- `autosol` moved to front of valid programs list
+- `predict_and_build` moved to end
 
 **Program Selection:**
-- LLM sees user advice "fit the ligand"
-- `phenix.ligandfit` conditions are met
-- **`phenix.ligandfit`** selected
-
-**File Selection:**
-- `model`: refine_002_001.pdb (best refined model)
-- `mtz`: raster.mtz (original data with R-free flags)
-- `ligand`: m29lig.pdb
+- **`phenix.autosol`** selected (anomalous data + directive)
 
 **Command Built:**
 ```
-phenix.ligandfit model=refine_002_001.pdb data=raster.mtz ligand=m29lig.pdb
-```
-
-**Output Files:** `ligand_fit_001.pdb`
-
----
-
-#### Cycle 7: Combine Ligand with Protein
-
-**State Detection:**
-- `has_ligand_fit` = True (ligand_fit_001.pdb exists)
-- `pdbtools_done` = False
-- → **Phase: `combine_ligand`**
-- **Valid programs:** `[phenix.pdbtools]`
-
-**Program Selection:**
-- **`phenix.pdbtools`** selected
-
-**File Selection:**
-- `protein`: refine_002_001.pdb (refined protein, NOT ligand file)
-- `ligand`: ligand_fit_001.pdb (fitted ligand coordinates)
-
-**Command Built:**
-```
-phenix.pdbtools refine_002_001.pdb ligand_fit_001.pdb output.file_name=protein_with_ligand.pdb
-```
-
-**Output Files:** `protein_with_ligand.pdb`
-
----
-
-#### Cycle 8: Refine with Ligand
-
-**State Detection:**
-- `pdbtools_done` = True
-- Back to refine phase with combined model
-- → **Phase: `refine`**
-
-**Program Selection:**
-- **`phenix.refine`** selected
-
-**File Selection:**
-- `model`: protein_with_ligand.pdb (combined model)
-- `mtz`: raster.mtz
-
-**Command Built:**
-```
-phenix.refine protein_with_ligand.pdb raster.mtz output.prefix=refine_003
+phenix.autosol data=sad_data.mtz seq_file=sequence.fa
 ```
 
 ---
 
-#### Cycles 9-10: Continue Refinement
+#### Potential Error Recovery
 
-Continue until R-free plateaus (~0.22 with ligand)
+If MTZ has both merged and anomalous arrays:
+
+**Cycle 2 Attempt 1:** autosol fails
+```
+Multiple equally suitable arrays of observed xray data found.
+Choices: IMEAN, I(+)/I(-)
+```
+
+**Error Recovery:**
+1. ErrorAnalyzer detects ambiguous data error
+2. Context: program=autosol, has_anomalous=true
+3. Selection: `I(+)/I(-)` (anomalous needed for SAD)
+4. Saves recovery strategy to session
+
+**Cycle 3:** autosol retries with fix
+```
+phenix.autosol data=sad_data.mtz seq_file=sequence.fa \
+    scaling.input.xray_data.obs_labels="I(+)"
+```
+→ SUCCESS
 
 ---
 
-#### Cycle 11: Validation
+## Scenario 5: Session Restart After Partial Workflow
 
-**Program:** `phenix.molprobity`
+**Situation:** User ran xtriage, detected anomalous signal, then stopped. Now restarting.
 
----
+### Key: Metrics Preserved Across Restart
 
-#### Cycle 12: Complete
+When session loads:
+1. `get_history_for_agent()` returns previous cycles
+2. Each cycle includes `analysis` dict with stored metrics
+3. `_analyze_history()` extracts `has_anomalous=True` from xtriage cycle
 
-**STOP** with reason: "R-free target achieved, ligand fitted, model quality acceptable"
+**State on Restart:**
+```python
+history_info = {
+    "xtriage_done": True,
+    "has_anomalous": True,
+    "anomalous_measurability": 0.15,
+    "strong_anomalous": True,  # measurability > 0.10
+}
+```
 
----
-
-### Summary: Scenario 2
-
-| Cycle | State | Program | Notes |
-|-------|-------|---------|-------|
-| 1 | xray_initial | phenix.xtriage | Data analysis |
-| 2 | xray_analyzed | phenix.predict_and_build | AlphaFold + build |
-| 3 | xray_refined | phenix.refine | R-free 0.45→0.35 |
-| 4 | xray_refined | phenix.refine | R-free 0.35→0.28 |
-| 5 | xray_refined | phenix.refine | R-free 0.28→0.26 |
-| 6 | xray_refined | phenix.ligandfit | Fit ligand |
-| 7 | xray_combined | phenix.pdbtools | Combine P+L |
-| 8 | xray_refined | phenix.refine | Refine combined |
-| 9 | xray_refined | phenix.refine | R-free 0.24→0.22 |
-| 10 | xray_refined | phenix.refine | Plateau |
-| 11 | xray_refined | phenix.molprobity | Validation |
-| 12 | complete | STOP | Done |
-
-**Total: 12 cycles**
+**Valid Programs:**
+- `phenix.autosol` is available (has_anomalous=True, has_sequence=True)
+- Even though xtriage isn't re-run, its metrics persist
 
 ---
 
@@ -332,25 +451,32 @@ Based on file categories:
 - Has `.mtz` + no maps → **X-ray**
 - Has `.mrc`/`.ccp4` maps → **Cryo-EM**
 
-### 2. Model Building Strategy
+### 2. Dual MTZ Tracking (v110)
 
-For X-ray with sequence only (no search model):
-- **`phenix.predict_and_build`** is the default choice
-- AlphaFold predicts structure, then places it via internal phaser
+| Category | Update Rule | Used By |
+|----------|-------------|---------|
+| `data_mtz` | First with R-free **locks forever** | phenix.refine, phenix.phaser |
+| `map_coeffs_mtz` | **Most recent wins** | phenix.ligandfit |
 
-For X-ray with template PDB:
-- **`phenix.phaser`** for molecular replacement
+This prevents refinement from using its own output maps as input data.
 
-### 3. Ligand Fitting Timing
+### 3. Automation Path (v110)
 
-The agent waits until:
-- R-free < 0.35 (model quality threshold)
-- Ligand file is present
-- ligandfit hasn't been run yet
+| Mode | `maximum_automation` | predict_and_build Behavior |
+|------|---------------------|---------------------------|
+| Automated | True (default) | Runs full workflow |
+| Stepwise | False | Stops after prediction |
 
-This prevents fitting ligand into poor density.
+### 4. Anomalous Workflow Triggering
 
-### 4. Plateau Detection
+`phenix.autosol` becomes available when:
+- `has_anomalous` = True (from xtriage or history)
+- `has_sequence` = True
+- `autosol_done` = False
+
+The `use_experimental_phasing` directive prioritizes autosol over predict_and_build.
+
+### 5. Plateau Detection
 
 From `workflows.yaml`:
 ```yaml
@@ -361,25 +487,23 @@ repeat:
       - r_free: "< target_r_free"
       - condition: plateau
         cycles: 2
-        threshold: 0.005  # Less than 0.5% improvement
+        threshold: 0.005
 ```
 
 Agent stops refinement when:
 - Target R-free reached, OR
 - 2 consecutive cycles with < 0.005 improvement
 
-### 5. File Selection Logic
-
-From `command_builder.py` and `file_categorization.py`:
+### 6. File Selection Logic
 
 **Best model selection:**
 1. Check `best_files["model"]` from BestFilesTracker
-2. Fall back to category-based selection (prefer `refined` > `model` > `pdb`)
-3. Exclude ligand files when selecting protein
+2. Prefer by stage score: refined (100) > autobuild_output (100) > predict_build_output (90)
+3. Among equal scores, prefer better R-free
 
-**MTZ selection for refinement:**
-1. Use locked R-free MTZ if set
-2. Otherwise use original data MTZ (not refined outputs)
+**MTZ selection:**
+- For refinement: Use locked `data_mtz` (original with R-free flags)
+- For ligandfit: Use `map_coeffs_mtz` (latest calculated phases)
 
 ---
 
@@ -389,20 +513,28 @@ From `command_builder.py` and `file_categorization.py`:
 
 The agent would:
 1. See error in log
-2. Try alternative: `phenix.phaser` if a template becomes available
-3. Or `phenix.autosol` if anomalous signal is strong
+2. If anomalous signal detected: try `phenix.autosol`
+3. If template available: try `phenix.phaser`
 4. Eventually STOP with error if no path forward
 
 ### What if user provides a pre-built model?
 
 If `model.pdb` is provided alongside `data.mtz`:
-- File categorization puts it in `search_model` (if looks like template) or `model` (if looks refined)
-- If `model` category: skip to refinement phase
-- If `search_model` category: use phaser to place it
+- File categorization checks filename patterns
+- If looks refined: skip to refinement phase
+- If looks like template: use phaser to place it
+
+### What if ambiguous data arrays?
+
+Error recovery system:
+1. Detects "Multiple equally suitable arrays" error
+2. Selects appropriate array based on context (merged vs anomalous)
+3. Retries program with explicit label selection
+4. Max 3 retries before giving up
 
 ### What if ligand file is named ambiguously?
 
-The agent uses patterns from `programs.yaml`:
+From `file_categories.yaml`:
 ```yaml
 ligand:
   extensions: [.pdb, .cif]

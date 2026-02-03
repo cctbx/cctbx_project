@@ -1425,31 +1425,28 @@ def _mock_plan(state):
 
 
 def _extract_history_info(state):
-    """Extract history info from state for rules selector."""
-    history = state.get("history", [])
+    """
+    Extract history info from state for rules selector.
+
+    This function extracts the subset of history info needed by the rules
+    selector from the workflow_state context, which is already computed
+    by detect_workflow_state() in the PERCEIVE node.
+
+    Previously this duplicated history analysis logic. Now it simply
+    extracts the relevant fields from the pre-computed workflow context.
+    """
+    # Get the pre-computed context from workflow_state
+    workflow_state = state.get("workflow_state", {})
+    context = workflow_state.get("context", {})
+
+    # Extract the fields that rules_selector needs
     history_info = {
-        "refine_count": 0,
-        "rsr_count": 0,
-        "twin_law": None,
-        "has_ncs": False,
+        "refine_count": context.get("refine_count", 0),
+        "rsr_count": context.get("rsr_count", 0),
+        "twin_law": context.get("twin_law"),
+        "has_ncs": context.get("has_ncs", False),
         "cycle_number": state.get("cycle_number", 1),
     }
-
-    for entry in history:
-        if isinstance(entry, dict):
-            prog = (entry.get("program") or "").lower()
-            if "refine" in prog and "real_space" not in prog:
-                history_info["refine_count"] += 1
-            elif "real_space" in prog:
-                history_info["rsr_count"] += 1
-
-            # Check for twin law in analysis
-            analysis = entry.get("analysis", {})
-            if isinstance(analysis, dict):
-                if analysis.get("twin_law"):
-                    history_info["twin_law"] = analysis["twin_law"]
-                if analysis.get("ncs_found"):
-                    history_info["has_ncs"] = True
 
     return history_info
 

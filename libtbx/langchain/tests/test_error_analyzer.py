@@ -582,6 +582,156 @@ def test_create_error_recovery():
 
 
 # =============================================================================
+# EXPERIMENTAL PHASES TESTS
+# =============================================================================
+
+def test_detect_ambiguous_experimental_phases():
+    """Test detection of ambiguous experimental phases error."""
+    analyzer = create_analyzer()
+    log = """
+    Multiple equally suitable arrays of experimental phases found.
+
+    Possible choices:
+      /Users/terwill/unix/run_examples/nsf-d2-sad/AutoSol_run_1_/overall_best_refine_data.mtz:HLAM,HLBM,HLCM,HLDM
+      /Users/terwill/unix/run_examples/nsf-d2-sad/AutoSol_run_1_/overall_best_refine_data.mtz:HLanomA,HLanomB,HLanomC,HLanomD
+
+    Please use miller_array.labels.name.
+    to specify an unambiguous substring of the target label.
+
+    Sorry: Multiple equally suitable arrays of experimental phases found.
+    """
+
+    error_type = analyzer._detect_error_type(log)
+    assert_equal(error_type, "ambiguous_experimental_phases")
+
+
+def test_extract_experimental_phases_choices():
+    """Test extraction of HL coefficient choices."""
+    analyzer = create_analyzer()
+    log = """
+    Multiple equally suitable arrays of experimental phases found.
+
+    Possible choices:
+      /path/to/data.mtz:HLAM,HLBM,HLCM,HLDM
+      /path/to/data.mtz:HLanomA,HLanomB,HLanomC,HLanomD
+
+    Please use miller_array.labels.name.
+    to specify an unambiguous substring of the target label.
+    """
+
+    error_def = get_error_def(analyzer, "ambiguous_experimental_phases")
+    error_info = analyzer._extract_ambiguous_labels_info(log, error_def, "ambiguous_experimental_phases")
+
+    assert_not_none(error_info)
+    assert_equal(len(error_info["choices"]), 2)
+    assert_in("HLAM,HLBM,HLCM,HLDM", error_info["choices"])
+    assert_in("HLanomA,HLanomB,HLanomC,HLanomD", error_info["choices"])
+
+
+def test_extract_experimental_phases_keyword():
+    """Test extraction of miller_array.labels.name keyword."""
+    analyzer = create_analyzer()
+    log = """
+    Multiple equally suitable arrays of experimental phases found.
+
+    Possible choices:
+      /path/to/data.mtz:HLAM,HLBM,HLCM,HLDM
+
+    Please use miller_array.labels.name.
+    to specify an unambiguous substring of the target label.
+    """
+
+    error_def = get_error_def(analyzer, "ambiguous_experimental_phases")
+    error_info = analyzer._extract_ambiguous_labels_info(log, error_def, "ambiguous_experimental_phases")
+
+    assert_not_none(error_info)
+    assert_equal(error_info["keyword"], "miller_array.labels.name")
+
+
+def test_resolve_experimental_phases_for_refine():
+    """Test that phenix.refine selects standard (non-anomalous) HL coefficients."""
+    analyzer = create_analyzer()
+
+    error_info = {
+        "keyword": "miller_array.labels.name",
+        "choices": ["HLAM,HLBM,HLCM,HLDM", "HLanomA,HLanomB,HLanomC,HLanomD"],
+        "affected_file": "/path/to/data.mtz"
+    }
+
+    recovery = analyzer._resolve_ambiguous_phases(
+        error_info,
+        program="phenix.refine",
+        context={}
+    )
+
+    assert_not_none(recovery)
+    assert_equal(recovery.error_type, "ambiguous_experimental_phases")
+    assert_equal(recovery.flags["miller_array.labels.name"], "HLAM")
+    assert_in("standard", recovery.reason.lower())
+
+
+def test_resolve_experimental_phases_for_autosol():
+    """Test that phenix.autosol selects anomalous HL coefficients."""
+    analyzer = create_analyzer()
+
+    error_info = {
+        "keyword": "miller_array.labels.name",
+        "choices": ["HLAM,HLBM,HLCM,HLDM", "HLanomA,HLanomB,HLanomC,HLanomD"],
+        "affected_file": "/path/to/data.mtz"
+    }
+
+    recovery = analyzer._resolve_ambiguous_phases(
+        error_info,
+        program="phenix.autosol",
+        context={}
+    )
+
+    assert_not_none(recovery)
+    assert_equal(recovery.flags["miller_array.labels.name"], "HLanomA")
+    assert_in("anomalous", recovery.reason.lower())
+
+
+def test_is_anomalous_hl():
+    """Test anomalous HL coefficient detection."""
+    analyzer = create_analyzer()
+
+    assert_true(analyzer._is_anomalous_hl("HLanomA,HLanomB,HLanomC,HLanomD"))
+    assert_true(analyzer._is_anomalous_hl("HLanom"))
+    assert_false(analyzer._is_anomalous_hl("HLAM,HLBM,HLCM,HLDM"))
+    assert_false(analyzer._is_anomalous_hl("HLA,HLB,HLC,HLD"))
+
+
+def test_full_experimental_phases_recovery():
+    """Test full recovery flow for experimental phases error."""
+    analyzer = create_analyzer()
+    session = MockSession()
+
+    log = """
+    Multiple equally suitable arrays of experimental phases found.
+
+    Possible choices:
+      /path/to/data.mtz:HLAM,HLBM,HLCM,HLDM
+      /path/to/data.mtz:HLanomA,HLanomB,HLanomC,HLanomD
+
+    Please use miller_array.labels.name.
+    to specify an unambiguous substring of the target label.
+    """
+
+    recovery = analyzer.analyze(
+        log_text=log,
+        program="phenix.refine",
+        context={},
+        session=session
+    )
+
+    assert_not_none(recovery)
+    assert_equal(recovery.error_type, "ambiguous_experimental_phases")
+    assert_equal(recovery.retry_program, "phenix.refine")
+    assert_equal(recovery.flags["miller_array.labels.name"], "HLAM")
+    assert_equal(recovery.affected_file, "/path/to/data.mtz")
+
+
+# =============================================================================
 # TEST RUNNER
 # =============================================================================
 

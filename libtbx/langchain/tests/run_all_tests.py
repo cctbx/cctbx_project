@@ -30,21 +30,25 @@ Test Suites (standalone - no PHENIX required):
   21. Program Registration - Program registry tests
   22. Summary Display - Summary formatting
   23. New Programs - YAML config for new programs (polder, map_sharpening, autobuild_denmod)
+  24. History Analysis - History analysis, anomalous workflow support (v110)
+  25. File Utils - Shared file classification utilities (v110)
 
 Test Suites (require PHENIX environment):
-  24. Workflow State - State detection, transitions, done flags, stepwise mode
-  25. YAML Config - YAML configuration validation
-  26. Sanity Checker - Sanity check logic
-  27. Metrics Analyzer - Metric extraction and trends
-  28. Dry Run - Dry run manager functionality
-  29. Integration - End-to-end workflow tests
-  30. Directives Integration - End-to-end directive system tests
+  26. Workflow State - State detection, transitions, done flags, stepwise mode
+  27. YAML Config - YAML configuration validation
+  28. Sanity Checker - Sanity check logic
+  29. Metrics Analyzer - Metric extraction and trends
+  30. Dry Run - Dry run manager functionality
+  31. Integration - End-to-end workflow tests
+  32. Directives Integration - End-to-end directive system tests
 
 Key Tests for Recent Fixes (v110):
   - test_best_files_tracker: Model scoring, autobuild_output same score as refined
   - test_workflow_state: Stepwise mode (automation_path), predict_and_build blocking
   - test_file_categorization: predict_and_build output file categorization
   - test_session_summary: STOP cycle exclusion from counts
+  - test_history_analysis: Anomalous workflow, analysis/metrics key handling
+  - test_file_utils: Shared MTZ classification (consolidation fix)
 
 Usage:
     python tests/run_all_tests.py
@@ -419,6 +423,26 @@ def main():
     except ImportError as e:
         print(f"⚠️  Could not import test_new_programs: {e}")
         results.append(("New Programs", False, 0))
+
+    # --- History Analysis Tests (v110 - anomalous workflow support) ---
+    try:
+        from tests.test_history_analysis import run_all_tests as run_history_analysis_tests
+        success, elapsed = run_test_module(
+            "test_history_analysis", run_history_analysis_tests, args.verbose)
+        results.append(("History Analysis", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_history_analysis: {e}")
+        results.append(("History Analysis", False, 0))
+
+    # --- File Utils Tests (v110 - shared file classification) ---
+    try:
+        from tests.test_file_utils import run_all_tests as run_file_utils_tests
+        success, elapsed = run_test_module(
+            "test_file_utils", run_file_utils_tests, args.verbose)
+        results.append(("File Utils", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import test_file_utils: {e}")
+        results.append(("File Utils", False, 0))
 
     # --- Summary ---
     total_elapsed = time.time() - total_start

@@ -1968,6 +1968,44 @@ class AgentSession:
             elif re.search(r'No.?[Ss]ymmetry|[Ss]ymmetry.?[Tt]ype[:\s=]+None', result_text, re.IGNORECASE):
                 metrics['symmetry_type'] = "None"
 
+        # Anomalous signal metrics (important for SAD/MAD workflow detection)
+        # Pattern for anomalous measurability from xtriage output
+        if 'anomalous_measurability' not in metrics:
+            anom_match = re.search(r'[Aa]nomalous\s*[Mm]easurability[:\s=]+([0-9.]+)', result_text)
+            if anom_match:
+                try:
+                    metrics['anomalous_measurability'] = float(anom_match.group(1))
+                except ValueError:
+                    pass
+
+        # Anomalous resolution
+        if 'anomalous_resolution' not in metrics:
+            # Match both "Anomalous Resolution: 3.50" and "anomalous signal extends to 3.5 A"
+            anom_res_match = re.search(
+                r'[Aa]nomalous\s+(?:signal.*?(?:extends?\s+to|usable\s+to)\s+(?:about\s+)?)?[Rr]esolution[:\s=]+([0-9.]+)',
+                result_text, re.IGNORECASE)
+            if anom_res_match:
+                try:
+                    metrics['anomalous_resolution'] = float(anom_res_match.group(1))
+                except ValueError:
+                    pass
+
+        # has_anomalous flag - check multiple patterns
+        if 'has_anomalous' not in metrics:
+            # Pattern 1: "Has Anomalous: True" from metrics report
+            has_anom_match = re.search(r'[Hh]as\s+[Aa]nomalous[:\s=]+([Tt]rue|[Yy]es|1)', result_text)
+            if has_anom_match:
+                metrics['has_anomalous'] = True
+            # Pattern 2: Strong measurability indicates usable anomalous signal
+            elif metrics.get('anomalous_measurability', 0) > 0.05:
+                metrics['has_anomalous'] = True
+            # Pattern 3: Explicit statements in the output
+            elif re.search(r'[Aa]nomalous\s+(?:data|signal).*?(?:present|significant|usable)', result_text, re.IGNORECASE):
+                metrics['has_anomalous'] = True
+            # Pattern 4: Has anomalous resolution implies usable anomalous
+            elif metrics.get('anomalous_resolution'):
+                metrics['has_anomalous'] = True
+
         return metrics
 
     def generate_summary(self, llm, use_rules_only=False):

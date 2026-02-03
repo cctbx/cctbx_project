@@ -122,6 +122,7 @@ class WorkflowEngine:
             "twin_law": self._get_metric(analysis, history_info, "twin_law", "twin_law"),
             "twin_fraction": self._get_metric(analysis, history_info, "twin_fraction", "twin_fraction"),
             "anomalous_resolution": self._get_metric(analysis, history_info, "anomalous_resolution", "anomalous_resolution"),
+            "has_ncs": self._get_bool(analysis, history_info, "has_ncs"),
         }
 
         # =====================================================================
@@ -868,6 +869,36 @@ class WorkflowEngine:
 
         # 3. Apply workflow preferences
         workflow_prefs = directives.get("workflow_preferences", {})
+
+        # Handle use_experimental_phasing - prioritize autosol over predict_and_build
+        if workflow_prefs.get("use_experimental_phasing"):
+            # Move autosol to front if it's in the list
+            if "phenix.autosol" in result:
+                result.remove("phenix.autosol")
+                result.insert(0, "phenix.autosol")
+                modifications.append("Prioritized phenix.autosol (use_experimental_phasing)")
+            # Also deprioritize predict_and_build (move to end)
+            if "phenix.predict_and_build" in result:
+                result.remove("phenix.predict_and_build")
+                result.append("phenix.predict_and_build")
+                modifications.append("Deprioritized phenix.predict_and_build (use_experimental_phasing)")
+
+        # Handle use_molecular_replacement - prioritize phaser/predict_and_build over autosol
+        if workflow_prefs.get("use_molecular_replacement"):
+            # Deprioritize autosol (move to end)
+            if "phenix.autosol" in result:
+                result.remove("phenix.autosol")
+                result.append("phenix.autosol")
+                modifications.append("Deprioritized phenix.autosol (use_molecular_replacement)")
+            # Prioritize predict_and_build or phaser
+            if "phenix.predict_and_build" in result:
+                result.remove("phenix.predict_and_build")
+                result.insert(0, "phenix.predict_and_build")
+                modifications.append("Prioritized phenix.predict_and_build (use_molecular_replacement)")
+            elif "phenix.phaser" in result:
+                result.remove("phenix.phaser")
+                result.insert(0, "phenix.phaser")
+                modifications.append("Prioritized phenix.phaser (use_molecular_replacement)")
 
         # Handle start_with_program - add to valid programs if user explicitly requested it
         # This is for multi-step requests like "run polder then refine"

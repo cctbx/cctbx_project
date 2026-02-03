@@ -467,15 +467,20 @@ class TemplateBuilder(object):
 
         # MTZ files - classify as data_mtz or map_coeffs_mtz
         elif ext in ['.mtz', '.sca', '.hkl']:
-            # Map coefficients patterns
-            if 'map_coeffs' in basename or 'denmod' in basename:
-                return "map_coeffs_mtz"
-            if re.match(r'refine_\d+_001\.mtz$', basename):
-                return "map_coeffs_mtz"
-            # Data MTZ patterns (default)
-            if '_data.mtz' in basename or 'refinement_data' in basename:
-                return "original_data_mtz"
-            return "data_mtz"
+            try:
+                from libtbx.langchain.agent.file_utils import classify_mtz_type
+            except ImportError:
+                from agent.file_utils import classify_mtz_type
+            mtz_category = classify_mtz_type(filepath)
+            # For .sca and .hkl, always data
+            if ext in ['.sca', '.hkl']:
+                return "data_mtz"
+            # Return more specific stage for data_mtz
+            if mtz_category == "data_mtz":
+                if '_data.mtz' in basename or 'refinement_data' in basename:
+                    return "original_data_mtz"
+                return "data_mtz"
+            return mtz_category
 
         # Map files
         elif ext in ['.mrc', '.ccp4', '.map']:

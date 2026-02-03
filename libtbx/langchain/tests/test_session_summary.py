@@ -350,6 +350,102 @@ def test_stop_cycle_excluded_from_count():
     print("  PASSED")
 
 
+def test_extract_metrics_includes_anomalous():
+    """Test that _extract_metrics_from_result extracts anomalous metrics."""
+    print("Test: extract_metrics_includes_anomalous")
+
+    temp_dir = tempfile.mkdtemp()
+    session = AgentSession(session_dir=temp_dir)
+
+    # Simulate xtriage result text with anomalous metrics
+    result_text = """SUCCESS: Command completed without errors
+
+**************************************************
+FINAL QUALITY METRICS REPORT:
+--------------------------------------------------
+Anomalous Measurability: 0.1500
+Anomalous Resolution: 3.50
+Completeness: 98.50
+Has Anomalous: True
+Resolution: 2.50
+**************************************************
+"""
+
+    try:
+        metrics = session._extract_metrics_from_result(result_text, "phenix.xtriage")
+    except Exception as e:
+        # May fail without libtbx, but we can still test the regex patterns
+        if "libtbx" in str(e):
+            print("  SKIPPED (requires libtbx)")
+            import shutil
+            shutil.rmtree(temp_dir)
+            return
+        raise
+
+    # Check that anomalous metrics were extracted
+    assert metrics.get("anomalous_measurability") == 0.15, \
+        f"Expected anomalous_measurability=0.15, got {metrics.get('anomalous_measurability')}"
+
+    assert metrics.get("anomalous_resolution") == 3.50, \
+        f"Expected anomalous_resolution=3.50, got {metrics.get('anomalous_resolution')}"
+
+    assert metrics.get("has_anomalous") == True, \
+        f"Expected has_anomalous=True, got {metrics.get('has_anomalous')}"
+
+    # Cleanup
+    import shutil
+    shutil.rmtree(temp_dir)
+
+    print("  PASSED")
+
+
+def test_history_preserves_anomalous_across_restart():
+    """Test that anomalous metrics are available in history after restart."""
+    print("Test: history_preserves_anomalous_across_restart")
+
+    temp_dir = tempfile.mkdtemp()
+    session = AgentSession(session_dir=temp_dir)
+
+    # Simulate a session with xtriage that found anomalous signal
+    session.data["cycles"] = [
+        {
+            "cycle_number": 1,
+            "program": "phenix.xtriage",
+            "command": "phenix.xtriage data.mtz",
+            "result": "SUCCESS: Command completed without errors",
+            "metrics": {
+                "resolution": 2.5,
+                "anomalous_measurability": 0.15,
+                "anomalous_resolution": 3.5,
+                "has_anomalous": True
+            }
+        }
+    ]
+    session.save()
+
+    # Reload the session (simulating restart)
+    session2 = AgentSession(session_dir=temp_dir)
+
+    # Get history as the agent would see it
+    history = session2.get_history_for_agent()
+
+    # Check that history has the anomalous metrics
+    assert len(history) == 1, f"Expected 1 history entry, got {len(history)}"
+    analysis = history[0].get("analysis", {})
+
+    assert analysis.get("has_anomalous") == True, \
+        f"Expected has_anomalous=True in history, got {analysis.get('has_anomalous')}"
+
+    assert analysis.get("anomalous_measurability") == 0.15, \
+        f"Expected anomalous_measurability=0.15 in history, got {analysis.get('anomalous_measurability')}"
+
+    # Cleanup
+    import shutil
+    shutil.rmtree(temp_dir)
+
+    print("  PASSED")
+
+
 def run_all_tests():
     """Run all tests with fail-fast behavior (cctbx style)."""
     from tests.test_utils import run_tests_with_fail_fast

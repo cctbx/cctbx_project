@@ -34,27 +34,61 @@ errors:
   ambiguous_data_labels:
     description: "MTZ file contains multiple suitable data arrays"
     max_retries: 3
-    
+
     # Patterns to detect this error (any match triggers detection)
     # These are searched case-insensitively
     detection_patterns:
-      - "Multiple equally suitable arrays"
-      - "multiple.*suitable.*arrays"
-      - "Please use.*to specify an unambiguous substring"
-      - "Ambiguous.*data.*label"
-    
+      - "Multiple equally suitable arrays of observed"
+      - "multiple.*suitable.*arrays.*observed"
+      - "Please use.*obs_labels"
+      - "Please use.*xray_data.*labels"
+
     # Regex to extract the parameter name from error message
     # Captures the keyword like "scaling.input.xray_data.obs_labels"
     # Note: The keyword may appear on its own line
     keyword_extraction: 'Please use\s+(\S+)\s*\n?\s*to specify'
-    
+
     # Regex to extract available choices (applied line-by-line)
     # Matches lines like: /path/to/data.mtz:IMEAN,SIGIMEAN
     # Group 1: file path, Group 2: label string
     choice_extraction: '^\s*(\S+\.mtz):(.+)$'
-    
+
     # Resolution strategy
     resolution: context_based_label_selection
+
+  # ---------------------------------------------------------------------------
+  # Ambiguous Experimental Phases
+  # ---------------------------------------------------------------------------
+  # Occurs when an MTZ file contains multiple suitable phase arrays
+  # (e.g., both standard HL coefficients and anomalous HL coefficients)
+  #
+  # Example error:
+  #   Multiple equally suitable arrays of experimental phases found.
+  #   Possible choices:
+  #     /path/data.mtz:HLAM,HLBM,HLCM,HLDM
+  #     /path/data.mtz:HLanomA,HLanomB,HLanomC,HLanomD
+  #   Please use miller_array.labels.name.
+  #   to specify an unambiguous substring of the target label.
+  # ---------------------------------------------------------------------------
+  ambiguous_experimental_phases:
+    description: "MTZ file contains multiple suitable experimental phase arrays"
+    max_retries: 3
+
+    # Patterns to detect this error
+    detection_patterns:
+      - "Multiple equally suitable arrays of experimental phases"
+      - "multiple.*suitable.*arrays.*experimental phases"
+      - "Please use miller_array.labels"
+
+    # Regex to extract the parameter name from error message
+    # Note: The keyword has a trailing period in the error message
+    keyword_extraction: 'Please use\s+(\S+?)\.?\s*\n?\s*to specify'
+
+    # Regex to extract available choices (same as data labels)
+    choice_extraction: '^\s*(\S+\.mtz):(.+)$'
+
+    # Resolution strategy - prefer non-anomalous HL coefficients for refinement
+    resolution: context_based_phase_selection
 
 
 # =============================================================================
@@ -68,19 +102,19 @@ label_patterns:
   anomalous_indicators:
     - '\(\+\)'       # I(+), F(+), SIGI(+)
     - '\(-\)'        # I(-), F(-), SIGI(-)
-    - 'anom'         # I_anom, F_anom, DANO
+    - 'anom'         # I_anom, F_anom, DANO, HLanom
     - 'DANO'         # Anomalous difference
     - 'SIGDANO'      # Sigma of anomalous difference
     - "f['\"]"       # f', f'' (anomalous scattering)
     - 'bijvoet'      # Bijvoet pairs
     - 'PANO'         # Phased anomalous
     - 'FAN'          # Anomalous structure factor
-    
+
   # Patterns indicating merged (averaged) data
   # If any pattern matches (and no anomalous pattern), label is merged
   merged_indicators:
     - 'IMEAN'        # Mean intensity
-    - 'FMEAN'        # Mean amplitude  
+    - 'FMEAN'        # Mean amplitude
     - 'F_obs'        # Observed F (typically merged)
     - 'I_obs'        # Observed I (typically merged)
     - '^F,'          # Simple F at start of label string
@@ -90,6 +124,19 @@ label_patterns:
     - 'FP,'          # Native F
     - 'IP,'          # Native I
     - 'SIGFP'        # Sigma for native F
+
+  # Patterns for Hendrickson-Lattman phase coefficients
+  # Standard HL coefficients (from density modification, refinement)
+  standard_hl_indicators:
+    - '^HLA,'        # Standard HLA,HLB,HLC,HLD
+    - '^HLAM,'       # Modified HLA
+    - 'HLA,HLB'      # Standard HL set
+
+  # Anomalous HL coefficients (from SAD/MAD phasing)
+  anomalous_hl_indicators:
+    - 'HLanom'       # Anomalous HL coefficients
+    - 'HLanomA'      # Anomalous HLA
+    - '_anom'        # Any anomalous suffix
 
 
 # =============================================================================

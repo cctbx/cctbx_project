@@ -736,32 +736,29 @@ class ProgramRegistry:
         return metrics
 
     def _detect_program(self, log_text):
-        """Detect which program generated a log."""
-        log_lower = log_text.lower()
+        """
+        Detect which program generated a log.
 
-        # Order matters - more specific first
-        if "phenix.real_space_refine" in log_lower:
-            return "phenix.real_space_refine"
-        elif "phenix.refine" in log_lower:
-            return "phenix.refine"
-        elif "phenix.phaser" in log_lower or "SOLU SET" in log_text:
-            return "phenix.phaser"
-        elif "phenix.xtriage" in log_lower:
-            return "phenix.xtriage"
-        elif "phenix.mtriage" in log_lower:
-            return "phenix.mtriage"
-        elif "predict_and_build" in log_lower:
-            return "phenix.predict_and_build"
-        elif "phenix.autosol" in log_lower:
-            return "phenix.autosol"
-        elif "phenix.autobuild" in log_lower:
-            return "phenix.autobuild"
-        elif "ligandfit" in log_lower:
-            return "phenix.ligandfit"
-        elif "molprobity" in log_lower:
-            return "phenix.molprobity"
-
-        return None
+        Delegates to phenix_ai.log_parsers.detect_program() for consistency.
+        """
+        try:
+            from phenix_ai.log_parsers import detect_program
+        except ImportError:
+            # Fallback for standalone testing
+            try:
+                from libtbx.phenix_ai.log_parsers import detect_program
+            except ImportError:
+                # Last resort - define inline
+                def detect_program(log_text):
+                    if not log_text:
+                        return None
+                    log_lower = log_text.lower()
+                    if "phenix.refine" in log_lower:
+                        return "phenix.refine"
+                    elif "phenix.phaser" in log_lower:
+                        return "phenix.phaser"
+                    return None
+        return detect_program(log_text)
 
     # =========================================================================
     # PROMPT GENERATION

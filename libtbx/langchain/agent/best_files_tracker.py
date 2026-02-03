@@ -985,15 +985,7 @@ class BestFilesTracker:
         """
         Classify MTZ as data_mtz or map_coeffs_mtz based on filename patterns.
 
-        Map coefficients patterns (calculated phases for visualization):
-            - refine_*_001.mtz (standard refine output with maps)
-            - *map_coeffs*.mtz
-            - *denmod*.mtz (density-modified)
-
-        Data MTZ patterns (measured Fobs for refinement):
-            - *_data.mtz (refine copies input here)
-            - *_refinement.mtz (predict_and_build data output)
-            - Original input files
+        Delegates to shared file_utils.classify_mtz_type() for consistency.
 
         Args:
             path: File path
@@ -1001,32 +993,11 @@ class BestFilesTracker:
         Returns:
             str: "data_mtz" or "map_coeffs_mtz"
         """
-        basename = os.path.basename(path).lower()
-
-        # Map coefficients patterns - files with calculated phases
-        map_coeffs_patterns = [
-            'map_coeffs',         # Explicit map coefficients
-            'denmod',             # Density-modified maps
-            'density_modified',
-        ]
-
-        # Check for refine_*_001.mtz pattern (map coefficients output)
-        # But NOT _data.mtz which is the input data copy
-        import re
-        if re.match(r'refine_\d+_001\.mtz$', basename):
-            return "map_coeffs_mtz"
-        if re.match(r'.*_refine_\d+\.mtz$', basename) and '_data' not in basename:
-            # Old naming like model_refine_001.mtz - check if it has _001 style
-            if '_001.' in basename or '_002.' in basename or '_003.' in basename:
-                return "map_coeffs_mtz"
-
-        for pattern in map_coeffs_patterns:
-            if pattern in basename:
-                return "map_coeffs_mtz"
-
-        # Data MTZ patterns (or default) - measured structure factors
-        # Everything else is assumed to be data MTZ (Fobs, R-free)
-        return "data_mtz"
+        try:
+            from libtbx.langchain.agent.file_utils import classify_mtz_type
+        except ImportError:
+            from agent.file_utils import classify_mtz_type
+        return classify_mtz_type(path)
 
     def _classify_pdb_cif_category(self, path):
         """

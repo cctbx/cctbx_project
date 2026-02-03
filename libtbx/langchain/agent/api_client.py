@@ -45,6 +45,49 @@ assert get_transport_config is not None
 
 
 # =============================================================================
+# SESSION STATE BUILDING
+# =============================================================================
+
+def build_session_state(session_info, session_resolution=None):
+    """
+    Build session_state dict from session_info.
+
+    Used by both LocalAgent and RemoteAgent to avoid code duplication.
+    The session_state is passed to build_request_v2 and transmitted to the server.
+
+    Args:
+        session_info: Dict with session state fields:
+            - experiment_type: Locked experiment type
+            - rfree_mtz: Locked R-free MTZ path
+            - best_files: Current best files dict
+            - directives: Extracted user directives
+            - force_retry_program: Program to force retry (error recovery)
+            - recovery_strategies: Dict of recovery strategies per file
+        session_resolution: Optional resolution value
+
+    Returns:
+        dict: Session state ready for build_request_v2
+    """
+    session_state = {}
+
+    if session_resolution is not None:
+        session_state["resolution"] = session_resolution
+
+    if session_info:
+        # Standard session fields
+        for key in ["experiment_type", "rfree_mtz", "best_files", "directives"]:
+            if session_info.get(key):
+                session_state[key] = session_info[key]
+
+        # Error recovery fields
+        for key in ["force_retry_program", "recovery_strategies"]:
+            if session_info.get(key):
+                session_state[key] = session_info[key]
+
+    return session_state
+
+
+# =============================================================================
 # REQUEST BUILDING (Client -> Server)
 # =============================================================================
 
@@ -97,7 +140,8 @@ def build_request_v2(
     for h in (history or []):
         if isinstance(h, dict):
             # Sanitize metrics recursively
-            raw_metrics = h.get("metrics", {})
+            # NOTE: get_history_for_agent returns 'analysis' key, but we store as 'metrics'
+            raw_metrics = h.get("analysis", h.get("metrics", {}))
             sanitized_metrics = sanitize_dict_recursive(raw_metrics, max_len_per_string=500)
 
             normalized_history.append({

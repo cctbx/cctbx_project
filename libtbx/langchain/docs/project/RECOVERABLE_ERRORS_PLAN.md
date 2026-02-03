@@ -597,6 +597,14 @@ Candidates for future implementation:
 | Missing sequence | "No sequence provided" | Check for .fa/.fasta files |
 | Memory error | "Out of memory" | Reduce nproc, add memory flags |
 
+**Implemented in v110:**
+
+| Error | Detection | Recovery |
+|-------|-----------|----------|
+| Ambiguous experimental phases | "Multiple equally suitable arrays of experimental phases" | Select standard vs anomalous HL coefficients |
+
+The experimental phases error occurs when an MTZ has both standard HL coefficients (HLAM,HLBM,HLCM,HLDM) and anomalous HL coefficients (HLanomA,HLanomB,HLanomC,HLanomD). For refinement, standard HL is preferred; for SAD phasing programs, anomalous HL is preferred.
+
 ### Phase 3: Enhanced Features (Future)
 
 - User notification of recovery actions

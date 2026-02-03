@@ -354,17 +354,11 @@ def _categorize_files_hardcoded(available_files):
 
         return False
 
-    def classify_mtz_type(basename):
-        """Classify MTZ as data_mtz or map_coeffs_mtz based on filename."""
-        # Map coefficients patterns
-        if re.match(r'refine_\d+_001\.mtz$', basename):
-            return "map_coeffs_mtz"
-        if 'map_coeffs' in basename:
-            return "map_coeffs_mtz"
-        if 'denmod' in basename:
-            return "map_coeffs_mtz"
-        # Default to data_mtz
-        return "data_mtz"
+    # Import shared MTZ classification
+    try:
+        from libtbx.langchain.agent.file_utils import classify_mtz_type
+    except ImportError:
+        from agent.file_utils import classify_mtz_type
 
     for f in available_files:
         f_lower = f.lower()
@@ -373,7 +367,7 @@ def _categorize_files_hardcoded(available_files):
         # Primary type categorization
         if f_lower.endswith(xray_data_extensions):
             # Classify into data_mtz or map_coeffs_mtz
-            mtz_type = classify_mtz_type(basename)
+            mtz_type = classify_mtz_type(f)  # Pass full path
             files[mtz_type].append(f)
         elif f_lower.endswith('.pdb'):
             files["pdb"].append(f)
@@ -550,10 +544,13 @@ def _analyze_history(history):
         "last_tfz": None,
         "resolution": None,
         "anomalous_resolution": None,
+        "anomalous_measurability": None,
         "has_anomalous": False,
+        "strong_anomalous": False,
         "has_twinning": False,
         "twin_law": None,
         "twin_fraction": None,
+        "has_ncs": False,  # NCS detected in data
     }
 
     # Add auto-generated done flags for run_once programs from programs.yaml
@@ -586,7 +583,8 @@ def _analyze_history(history):
             cmd = entry.get("command", "").lower()
 
             # Extract metrics
-            analysis = entry.get("analysis", {})
+            # NOTE: history from session has 'analysis' key, but after transport has 'metrics'
+            analysis = entry.get("analysis", entry.get("metrics", {}))
             if isinstance(analysis, dict):
                 if analysis.get("r_free"):
                     info["last_r_free"] = analysis["r_free"]
@@ -617,6 +615,9 @@ def _analyze_history(history):
                         info["has_twinning"] = True
                         info["twin_law"] = analysis["twin_law"]
                         info["twin_fraction"] = twin_frac
+                # NCS detection (from map_symmetry or similar)
+                if analysis.get("ncs_found") or analysis.get("has_ncs"):
+                    info["has_ncs"] = True
         else:
             continue
 

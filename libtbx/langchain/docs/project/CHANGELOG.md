@@ -2,6 +2,144 @@
 
 ## Version 110 (January 2025)
 
+### Major Feature: Experimental Phasing (SAD/MAD) Workflow Support
+
+**Problem**: After xtriage detected anomalous signal, the agent would correctly run `phenix.autosol` on a straight-through workflow. But if the session was restarted (after removing autosol run), the agent would fall back to `phenix.predict_and_build` instead of re-running autosol, even though:
+1. The session had `use_experimental_phasing: True` directive
+2. The xtriage cycle showed `has_anomalous: True` in its metrics
+
+**Root Cause**: A key mismatch in the transport layer:
+- `session.get_history_for_agent()` returned history entries with `"analysis"` key
+- `build_request_v2()` looked for `"metrics"` key, so it got empty `{}`
+- After transport, history had empty metrics
+- `_analyze_history()` looked for `"analysis"` key but found `"metrics"` (now empty)
+
+Result: The anomalous flags (`has_anomalous`, `anomalous_measurability`) were lost during session restart, so autosol's condition `has: anomalous` was not met.
+
+**Solution**:
+
+1. **Fixed key mismatch** (`agent/api_client.py`):
+   - `build_request_v2()` now checks both keys: `h.get("analysis", h.get("metrics", {}))`
+
+2. **Fixed history analysis** (`agent/workflow_state.py`):
+   - `_analyze_history()` now checks both keys: `entry.get("analysis", entry.get("metrics", {}))`
+
+3. **Added anomalous metrics extraction** (`agent/session.py`):
+   - `_extract_metrics_from_result()` now extracts anomalous info from result text
+   - Patterns for: "Anomalous Measurability: 0.15", "Has Anomalous: True", etc.
+
+### Code Consolidation: History Analysis
+
+**Problem**: Two overlapping functions were analyzing history:
+- `_extract_history_info()` in `graph_nodes.py` - used by rules selector
+- `_analyze_history()` in `workflow_state.py` - used by workflow engine
+
+This duplication led to inconsistencies and the key mismatch bug.
+
+**Solution**: Consolidated to single source of truth:
+
+1. **`_analyze_history()` is authoritative** - extracts all metrics from history
+2. **`build_context()` includes all info** - passes to workflow_state
+3. **`_extract_history_info()` delegates** - now just extracts from pre-computed context
+
+Before (duplicated computation):
+```
+History → _extract_history_info() → (recompute from history)
+History → _analyze_history() → (compute from history)
+```
+
+After (single computation):
+```
+History → _analyze_history() → history_info
+                                    ↓
+                            build_context() → context
+                                    ↓
+                            workflow_state (includes context)
+                                    ↓
+                            _extract_history_info() ← pulls from context
+```
+
+### New Context Fields
+
+Added to workflow context for SAD/MAD workflows and refinement strategy:
+
+| Field | Source | Purpose |
+|-------|--------|---------|
+| `has_anomalous` | xtriage analysis | Enable autosol in obtain_model phase |
+| `strong_anomalous` | measurability > 0.10 | Priority boost for autosol |
+| `anomalous_measurability` | xtriage | Quantify anomalous signal strength |
+| `anomalous_resolution` | xtriage | Anomalous signal extent |
+| `has_ncs` | map_symmetry analysis | Enable NCS constraints in refinement |
+
+### New Tests
+
+Added `tests/test_history_analysis.py` with tests for:
+- Transport analysis/metrics key handling
+- History analysis from both key types
+- NCS extraction
+- Weak vs strong anomalous signal
+- Session metrics extraction
+- Graph nodes context extraction
+- Integration: anomalous workflow enablement
+
+### Code Consolidation: Duplicate Code Removal
+
+**Problem**: Several functions were duplicated across the codebase:
+1. Session state building - identical code in LocalAgent and RemoteAgent
+2. MTZ classification - triplicated logic in workflow_state, template_builder, best_files_tracker
+3. Program detection - similar functions in log_parsers and program_registry
+
+**Solution**: Created shared utilities and delegated to canonical implementations:
+
+**1. Session State Building** (`agent/api_client.py`):
+```python
+def build_session_state(session_info, session_resolution=None):
+    """Build session_state dict from session_info. Used by both agents."""
+```
+- LocalAgent and RemoteAgent now call this shared function
+- Reduced ~30 lines of duplicated code
+
+**2. MTZ Classification** (`agent/file_utils.py` - NEW):
+```python
+def classify_mtz_type(filepath):
+    """Classify MTZ as data_mtz or map_coeffs_mtz."""
+
+def get_mtz_stage(filepath, category):
+    """Get specific stage like refine_map_coeffs, denmod_map_coeffs."""
+```
+- Single source of truth for MTZ classification patterns
+- workflow_state.py, template_builder.py, best_files_tracker.py now delegate to this
+- Also includes is_mtz_file(), is_model_file(), is_map_file(), is_sequence_file()
+
+**3. Program Detection** (`phenix_ai/log_parsers.py`):
+- Made detect_program() the canonical implementation
+- program_registry._detect_program() now delegates to it
+- Added molprobity and polder detection to the canonical function
+
+### New Test Suites
+
+- `tests/test_file_utils.py`: 12 tests for MTZ classification and file type detection
+
+### Files Changed
+
+- `agent/api_client.py`: Added build_session_state(), fixed analysis/metrics key lookup
+- `agent/file_utils.py`: NEW - shared file classification utilities
+- `agent/workflow_state.py`: Uses shared classify_mtz_type, fixed key lookup, added has_ncs/strong_anomalous
+- `agent/workflow_engine.py`: Added has_ncs to context
+- `agent/template_builder.py`: Uses shared classify_mtz_type
+- `agent/best_files_tracker.py`: Uses shared classify_mtz_type
+- `agent/program_registry.py`: Delegates to log_parsers.detect_program
+- `agent/session.py`: Added anomalous metrics extraction
+- `agent/graph_nodes.py`: Simplified _extract_history_info to use context
+- `phenix_ai/local_agent.py`: Uses build_session_state
+- `phenix_ai/remote_agent.py`: Uses build_session_state
+- `phenix_ai/log_parsers.py`: Added molprobity and polder detection
+- `tests/test_history_analysis.py`: New test file
+- `tests/test_file_utils.py`: New test file
+- `tests/run_all_tests.py`: Added History Analysis and File Utils test suites
+
+---
+
 ### Major Feature: Dual MTZ Tracking
 
 **Problem**: The codebase treated all MTZ files as a single category, but there are fundamentally two types:
@@ -966,7 +1104,7 @@ The prompt was adding `NOTE: Use predict_and_build with strategy: {"stop_after_p
 
 ### New Features
 
-- **Automatic Safety Documentation Generator** (`generate_safety_docs.py`): Script that scans the codebase and generates a comprehensive table of all safety checks, validations, and post-processing corrections. Run with `python generate_safety_docs.py > docs/SAFETY_CHECKS.md`.
+- **Automatic Safety Documentation Generator** (`agent/generate_safety_docs.py`): Script that scans the codebase and generates a comprehensive table of all safety checks, validations, and post-processing corrections. Run with `python agent/generate_safety_docs.py > docs/SAFETY_CHECKS.md`.
 
 - **Simplified Verbosity Levels**: Reduced from 4 levels to 3 levels (quiet/normal/verbose). The `debug` level has been removed; `verbose` now includes all detailed output including file selection, LLM traces, and internal state. For backwards compatibility, `debug` is accepted as input but treated as `verbose`.
 
@@ -997,7 +1135,7 @@ The prompt was adding `NOTE: Use predict_and_build with strategy: {"stop_after_p
 - `agent/session.py` - Added fsync to save()
 - `phenix_ai/log_parsers.py` - Added file existence retry in resolve_file_path()
 - `knowledge/programs.yaml` - Added input_priorities for pdbtools
-- `generate_safety_docs.py` - New documentation generator
+- `agent/generate_safety_docs.py` - Safety documentation generator
 - `docs/SAFETY_CHECKS.md` - New auto-generated safety documentation
 - `docs/implementation/PROGRAM_CONFIG_ROBUSTNESS.md` - New implementation plan
 

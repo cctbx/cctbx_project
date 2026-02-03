@@ -434,6 +434,35 @@ def test_normal_workflow_no_directives():
     assert_false(should_stop)
 
 
+def test_use_experimental_phasing_prioritizes_autosol():
+    """Test that use_experimental_phasing prioritizes autosol over predict_and_build."""
+    print("Test: use_experimental_phasing_prioritizes_autosol")
+
+    if not HAS_WORKFLOW_ENGINE:
+        print("  SKIPPED (requires workflow_engine)")
+        return
+
+    engine = WorkflowEngine()
+
+    # Simulate obtain_model phase with both programs available
+    valid_programs = ["phenix.predict_and_build", "phenix.autosol", "phenix.phaser"]
+
+    directives = {
+        "workflow_preferences": {
+            "use_experimental_phasing": True
+        }
+    }
+
+    result = engine._apply_directives(valid_programs, directives, "obtain_model")
+
+    # autosol should be first (prioritized)
+    assert_equal(result[0], "phenix.autosol")
+    # predict_and_build should be last (deprioritized)
+    assert_equal(result[-1], "phenix.predict_and_build")
+
+    print("  PASSED")
+
+
 # =============================================================================
 # TEST RUNNER
 # =============================================================================

@@ -255,7 +255,8 @@ class ErrorAnalyzer:
             patterns = error_def.get("detection_patterns", [])
             for pattern in patterns:
                 try:
-                    if re.search(pattern, log_text, re.IGNORECASE):
+                    # Use DOTALL so .* matches newlines (for multi-line patterns)
+                    if re.search(pattern, log_text, re.IGNORECASE | re.DOTALL):
                         return error_type
                 except re.error:
                     # Invalid regex pattern in config
@@ -277,13 +278,16 @@ class ErrorAnalyzer:
         error_def = self._config.get("errors", {}).get(error_type, {})
 
         if error_type == "ambiguous_data_labels":
-            return self._extract_ambiguous_labels_info(log_text, error_def)
+            return self._extract_ambiguous_labels_info(log_text, error_def, error_type)
+        elif error_type == "ambiguous_experimental_phases":
+            return self._extract_ambiguous_labels_info(log_text, error_def, error_type)
 
         # Future error types would be handled here
         return None
 
     def _extract_ambiguous_labels_info(self, log_text: str,
-                                       error_def: dict) -> Optional[Dict[str, Any]]:
+                                       error_def: dict,
+                                       error_type: str = "ambiguous_data_labels") -> Optional[Dict[str, Any]]:
         """
         Extract keyword and choices from ambiguous data labels error.
 
@@ -317,7 +321,9 @@ class ErrorAnalyzer:
             # Check for common keywords in the text
             common_keywords = [
                 "scaling.input.xray_data.obs_labels",
+                "miller_array.labels.name",
                 "obs_labels",
+                "labels.name",
                 "labels",
             ]
             for kw in common_keywords:
@@ -346,9 +352,12 @@ class ErrorAnalyzer:
         if not result["choices"]:
             return None
 
-        # Default keyword if still not found
+        # Default keyword if still not found - depends on error type
         if not result["keyword"]:
-            result["keyword"] = "obs_labels"
+            if error_type == "ambiguous_experimental_phases":
+                result["keyword"] = "miller_array.labels.name"
+            else:
+                result["keyword"] = "obs_labels"
 
         return result
 
@@ -363,6 +372,8 @@ class ErrorAnalyzer:
         """
         if error_type == "ambiguous_data_labels":
             return self._resolve_ambiguous_labels(error_info, program, context)
+        elif error_type == "ambiguous_experimental_phases":
+            return self._resolve_ambiguous_phases(error_info, program, context)
 
         # Future error types would be handled here
         return None
@@ -427,6 +438,86 @@ class ErrorAnalyzer:
             selected_choice=selected,
             all_choices=choices
         )
+
+    def _resolve_ambiguous_phases(self, error_info: Dict[str, Any],
+                                  program: str,
+                                  context: Dict[str, Any]) -> Optional[ErrorRecovery]:
+        """
+        Resolve ambiguous experimental phase labels by selecting appropriate HL coefficients.
+
+        For phenix.refine and other refinement programs, we typically want the
+        standard HL coefficients (HLAM,HLBM,HLCM,HLDM) not the anomalous ones
+        (HLanomA,HLanomB,HLanomC,HLanomD).
+
+        Selection logic:
+        1. Check if this is a phasing program that needs anomalous HL
+        2. Otherwise prefer standard (non-anomalous) HL coefficients
+        """
+        choices = error_info.get("choices", [])
+        keyword = error_info.get("keyword")
+        affected_file = error_info.get("affected_file", "unknown")
+
+        if not choices or not keyword:
+            return None
+
+        # Classify HL coefficient choices
+        standard_hl = []
+        anomalous_hl = []
+
+        for choice in choices:
+            if self._is_anomalous_hl(choice):
+                anomalous_hl.append(choice)
+            else:
+                standard_hl.append(choice)
+
+        # Determine if we need anomalous phases
+        needs_anomalous = self._needs_anomalous_data(program, context)
+
+        # Select appropriate choice
+        if needs_anomalous:
+            if anomalous_hl:
+                selected = anomalous_hl[0]
+                reason = f"Selected anomalous HL coefficients for {program} (phasing workflow)"
+            elif standard_hl:
+                selected = standard_hl[0]
+                reason = f"Using standard HL coefficients for {program} (no anomalous available)"
+            else:
+                selected = choices[0]
+                reason = f"Using first available HL coefficients for {program}"
+        else:
+            # For refinement, prefer standard (non-anomalous) HL coefficients
+            if standard_hl:
+                selected = standard_hl[0]
+                reason = f"Selected standard HL coefficients for {program}"
+            elif anomalous_hl:
+                selected = anomalous_hl[0]
+                reason = f"Using anomalous HL coefficients for {program} (only option available)"
+            else:
+                selected = choices[0]
+                reason = f"Using first available HL coefficients for {program}"
+
+        # Extract the main label for the flag value
+        label_value = self._extract_main_label(selected)
+
+        return ErrorRecovery(
+            error_type="ambiguous_experimental_phases",
+            affected_file=affected_file,
+            flags={keyword: label_value},
+            reason=reason,
+            retry_program=program,
+            selected_choice=selected,
+            all_choices=choices
+        )
+
+    def _is_anomalous_hl(self, label: str) -> bool:
+        """
+        Check if HL coefficient label indicates anomalous phases.
+
+        Anomalous HL typically have 'anom' in the name:
+        - HLanomA, HLanomB, HLanomC, HLanomD
+        """
+        label_lower = label.lower()
+        return 'anom' in label_lower
 
     # =========================================================================
     # LABEL CLASSIFICATION
