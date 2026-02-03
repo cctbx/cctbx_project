@@ -5,6 +5,7 @@ import os
 import json
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
+import gzip
 
 import time
 import math
@@ -18,8 +19,8 @@ def load_table(element=None, table=None, file_name=None):
     path=libtbx.env.find_in_repositories("cctbx/maptbx/bcr/tables")
     file_name = "%s/%s_%s.json"%(path, element, table)
   assert os.path.isfile(file_name)
-  with open(file_name, 'r') as file:
-    return json.load(file)
+  with gzip.open(file_name, "rt", encoding="utf-8") as f:
+    return json.load(f)
 
 class compute(object):
 
