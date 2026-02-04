@@ -3703,7 +3703,7 @@ class manager(object):
     if(sizes.size()==0): return 0
     return sizes.count(1)*100./sizes.size()
 
-  def select(self, selection):
+  def select(self, selection, exclude_flags=False):
     # what about 3 types of NCS and self._master_sel?
     # XXX ignores IAS
     if isinstance(selection, flex.size_t) or isinstance(selection, flex.int):
@@ -3711,7 +3711,7 @@ class manager(object):
     new_pdb_hierarchy = self._pdb_hierarchy.select(selection, copy_atoms=True)
     sdi = self.scattering_dict_info
     new_refinement_flags = None
-    if(self.refinement_flags is not None):
+    if(self.refinement_flags is not None and not exclude_flags):
       new_refinement_flags = self.refinement_flags.select_detached(
         selection = selection)
     new_restraints_manager = None
@@ -4266,7 +4266,7 @@ class manager(object):
       if(self.riding_h_manager is not None or
          scattering_table in ["n_gaussian","wk1995", "it1992", "electron"]):
         not_hd_sel = ~hd_selection
-        m = m.select(not_hd_sel)
+        m = m.select(not_hd_sel, exclude_flags=True)
     return mmtbx.model.statistics.geometry(
       model           = m,
       fast_clash      = fast_clash,

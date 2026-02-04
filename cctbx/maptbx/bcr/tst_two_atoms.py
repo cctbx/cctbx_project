@@ -8,6 +8,7 @@ from itertools import combinations
 from cctbx.maptbx.bcr import bcr
 from libtbx import group_args
 import bisect
+import libtbx
 
 def get_xrs_and_cg(sites_cart, b_iso, occ, uc_params, n_real, table = "wk1995"):
   cs = crystal.symmetry(uc_params, "P 1")
@@ -176,7 +177,8 @@ def interpolate(x_values, y_values, x):
 def get_image_AU():
   image_AU = flex.double()
   radii_AU = flex.double()
-  with open("CNOPSFeAu-6_1A_dist21.tab", "r") as fo:
+  path=libtbx.env.find_in_repositories("cctbx/maptbx/bcr")
+  with open(path+"/CNOPSFeAu-6_1A_dist21.tab", "r") as fo:
     start_reading = False
     for l in fo.readlines():
       if '     N     dist       C              N' in l:
