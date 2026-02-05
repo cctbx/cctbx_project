@@ -374,6 +374,11 @@ if (sys.platform == "win32" or
         ENV=os.environ, MSVC_VERSION="14.4", TARGET_ARCH=target_arch, tools=['msvc','mslink', 'mslib'])
       env_etc.have_manifest_tool = True
       env_etc.msvc_version = 17
+    elif visual_studio_version.startswith("19.5"):
+      env_base = Environment(
+        ENV=os.environ, MSVC_VERSION="14.5", TARGET_ARCH=target_arch, tools=['msvc','mslink', 'mslib'])
+      env_etc.have_manifest_tool = True
+      env_etc.msvc_version = 17
     else:
       raise RuntimeError("""\
 Unknown or unsupported cl.exe version.
