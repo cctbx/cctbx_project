@@ -223,13 +223,35 @@
   },
 
   "phenix.map_sharpening": {
-    "description": "Sharpen cryo-EM map to improve clarity. Alternative to resolve_cryo_em for map optimization.",
+    "description": "Sharpen cryo-EM map. Three modes: (1) map+model, (2) full map only, (3) two half maps.",
     "file_slots": {
-      "half_map": { "flag": "", "required": true, "multiple": true, "extensions": [".mrc", ".ccp4", ".map"] },
+      "map": { "flag": "", "required": false, "extensions": [".mrc", ".ccp4", ".map"] },
+      "half_map": { "flag": "half_map=", "required": false, "multiple": true, "extensions": [".mrc", ".ccp4", ".map"] },
+      "model": { "flag": "model=", "required": false, "extensions": [".pdb", ".cif"] },
       "sequence": { "flag": "seq_file=", "required": false, "extensions": [".fa", ".fasta", ".seq", ".dat"] }
     },
     "defaults": {},
-    "strategy_flags": {}
+    "strategy_flags": {
+      "resolution": {
+        "format": "resolution={}"
+      },
+      "sharpening_method": {
+        "format": "sharpening_method={}"
+      },
+      "model_sharpen": {
+        "true": "model_sharpen=True",
+        "false": ""
+      }
+    },
+    "hints": [
+      "THREE MODES of operation:",
+      "Mode 1 (map+model): phenix.map_sharpening map.ccp4 seq_file=seq.dat model=model.pdb sharpening_method=shells model_sharpen=True",
+      "Mode 2 (full map only): phenix.map_sharpening map.ccp4 resolution=2.9 sharpening_method=b-factor seq_file=seq.dat",
+      "Mode 3 (two half maps): phenix.map_sharpening half_map=half_1.map half_map=half_2.map seq_file=seq.dat",
+      "When a model is available, use sharpening_method=shells and model_sharpen=True (NOT sharpening_method=model_sharpening)",
+      "When only a full map is available, resolution= is REQUIRED and use sharpening_method=b-factor",
+      "When half maps are available, use half_map= for EACH map file (not bare positional args)"
+    ]
   },
 
   "phenix.dock_in_map": {
@@ -282,8 +304,7 @@
     "description": "Build atomic model directly into cryo-EM map.",
     "file_slots": {
       "map": { "flag": "", "required": true, "extensions": [".mrc", ".ccp4", ".map"] },
-      "sequence": { "flag": "seq_file=", "required": true, "extensions": [".fa", ".fasta", ".seq", ".dat"] },
-      "model": { "flag": "model=", "required": false, "extensions": [".pdb"] }
+      "sequence": { "flag": "seq_file=", "required": true, "extensions": [".fa", ".fasta", ".seq", ".dat"] }
     },
     "defaults": {
       "nproc": 4
@@ -298,7 +319,8 @@
     },
     "hints": [
       "Use when you have a cryo-EM map and sequence but no model",
-      "Alternative to docking a predicted model"
+      "Alternative to docking a predicted model",
+      "A partial model is NOT normally needed. If one is provided, use input_files.partial_model= (not model=)"
     ]
   },
 

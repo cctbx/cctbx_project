@@ -16,8 +16,8 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tests.test_utils import (
-    assert_equal, assert_true, assert_false, assert_in, assert_not_in,
-    assert_none, assert_is_instance,
+    assert_equal, assert_not_equal, assert_true, assert_false, assert_in,
+    assert_not_in, assert_none, assert_is_instance,
     run_tests_with_fail_fast
 )
 
@@ -732,8 +732,121 @@ def test_no_ligand_constraint_preserves_after_cycle():
 
 
 # =============================================================================
+# MULTI-STEP WORKFLOW TESTS (prevent premature after_program stops)
+# =============================================================================
+
+def test_multi_step_cryoem_no_early_stop():
+    """Multi-step cryo-EM pipeline should NOT set after_program for intermediate steps."""
+    advice = ("Auto-sharpen the map. Extract the unique part of the map. "
+              "Build a model into the unique part. "
+              "Apply NCS to generate the full 24-mer complex.")
+    result = extract_directives_simple(advice)
+    stop_cond = result.get("stop_conditions", {})
+    # Should NOT have after_program=phenix.map_symmetry or phenix.map_sharpening
+    after_prog = stop_cond.get("after_program", "")
+    assert_not_equal(after_prog, "phenix.map_symmetry",
+                     "Multi-step workflow should not stop at map_symmetry")
+    assert_not_equal(after_prog, "phenix.map_sharpening",
+                     "Multi-step workflow should not stop at map_sharpening")
+
+
+def test_multi_step_sharpen_then_build():
+    """Sharpen map then build model should not stop after sharpening."""
+    advice = "Sharpen the map, then build a model into the map"
+    result = extract_directives_simple(advice)
+    stop_cond = result.get("stop_conditions", {})
+    after_prog = stop_cond.get("after_program", "")
+    assert_not_equal(after_prog, "phenix.map_sharpening",
+                     "Should not stop at sharpening when building is planned")
+
+
+def test_multi_step_symmetry_then_build():
+    """Find symmetry then build model should not stop after symmetry."""
+    advice = "Determine symmetry of the map and build a model"
+    result = extract_directives_simple(advice)
+    stop_cond = result.get("stop_conditions", {})
+    after_prog = stop_cond.get("after_program", "")
+    assert_not_equal(after_prog, "phenix.map_symmetry",
+                     "Should not stop at symmetry when building is planned")
+
+
+def test_single_step_still_works():
+    """Single-step 'sharpen the map' should still set after_program."""
+    result = extract_directives_simple("sharpen the map")
+    assert_in("stop_conditions", result)
+    assert_equal(result["stop_conditions"]["after_program"], "phenix.map_sharpening")
+
+
+def test_single_step_symmetry_still_works():
+    """Single-step 'find symmetry' should still set after_program."""
+    result = extract_directives_simple("determine map symmetry")
+    assert_in("stop_conditions", result)
+    assert_equal(result["stop_conditions"]["after_program"], "phenix.map_symmetry")
+
+
+# =============================================================================
 # TEST RUNNER
 # =============================================================================
+
+def test_validate_clears_after_program_with_downstream_constraints():
+    """validate_directives should clear after_program when constraints have downstream work.
+
+    This catches the LLM extraction path (not just simple extraction).
+    The exact user scenario: LLM sets after_program=phenix.map_symmetry but
+    constraints say 'Build a model into the unique part'.
+    """
+    directives = {
+        "stop_conditions": {
+            "after_program": "phenix.map_symmetry",
+            "skip_validation": True,
+        },
+        "constraints": [
+            "Auto-sharpen the map",
+            "Extract the unique part of the map",
+            "Build a model into the unique part",
+            "Apply NCS to generate the full 24-mer complex",
+        ]
+    }
+    result = validate_directives(directives)
+    stop_cond = result.get("stop_conditions", {})
+    assert_not_in("after_program", stop_cond,
+                  "after_program should be cleared when constraints describe downstream work")
+
+
+def test_validate_preserves_after_program_without_downstream():
+    """validate_directives should keep after_program when no downstream constraints exist."""
+    directives = {
+        "stop_conditions": {
+            "after_program": "phenix.map_symmetry",
+            "skip_validation": True,
+        },
+        "constraints": [
+            "Use resolution 2.9",
+        ]
+    }
+    result = validate_directives(directives)
+    stop_cond = result.get("stop_conditions", {})
+    assert_equal(stop_cond.get("after_program"), "phenix.map_symmetry",
+                 "after_program should be preserved with no downstream constraints")
+
+
+def test_validate_clears_sharpening_with_build_constraint():
+    """after_program=map_sharpening should be cleared when constraints say to build."""
+    directives = {
+        "stop_conditions": {
+            "after_program": "phenix.map_sharpening",
+            "skip_validation": True,
+        },
+        "constraints": [
+            "Sharpen the map",
+            "Build a model into the density",
+        ]
+    }
+    result = validate_directives(directives)
+    stop_cond = result.get("stop_conditions", {})
+    assert_not_in("after_program", stop_cond,
+                  "after_program=map_sharpening should be cleared when build is planned")
+
 
 def run_all_tests():
     """Run all tests with fail-fast behavior (cctbx style)."""

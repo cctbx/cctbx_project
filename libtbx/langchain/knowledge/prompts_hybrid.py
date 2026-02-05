@@ -254,6 +254,12 @@ You must output a SINGLE JSON object matching this schema:
   Use: Alternative to resolve_cryo_em for map sharpening
   Output: *_sharpened.ccp4 (full map suitable for real_space_refine)
 
+**phenix.map_symmetry** - Detect point-group symmetry in cryo-EM map
+  Files: {map: .mrc/.ccp4}
+  Strategy: {resolution: N (optional)}
+  Output: symmetry_from_map.ncs_spec (use with map_to_model, resolve_cryo_em)
+  Use: Run BEFORE map_to_model for symmetric structures to enable NCS-constrained building
+
 **phenix.predict_and_build** - AlphaFold prediction + MR + building
   Files: {sequence: .fa/.seq/.dat, data: .mtz/.sca (X-ray), full_map: .mrc/.ccp4 (cryo-EM), half_map: [.mrc, .mrc] (cryo-EM)}
   Strategy: {resolution: N, stop_after_predict: true/false, rebuilding_strategy: "Quick"/"Standard"}
@@ -329,6 +335,14 @@ You must output a SINGLE JSON object matching this schema:
 
 **phenix.dock_in_map** - Dock model into cryo-EM map
   Files: {model: .pdb, map: .mrc}
+
+**phenix.map_to_model** - De novo model building into cryo-EM map
+  Files: {full_map: .mrc/.ccp4, sequence: .fa/.seq/.dat}
+  Optional: {ncs_spec: .ncs_spec (from map_symmetry)}
+  Strategy: {resolution: N} (REQUIRED - get from mtriage)
+  CRITICAL: Do NOT include model= parameter. This builds a model from scratch.
+  NOTE: Use this when no predicted model is available, or for de novo building
+  For symmetric structures: run map_symmetry first, then include the .ncs_spec file
 
 **phenix.autobuild** - Build model into electron density
   Files: {data: .mtz (PHASED), sequence: .fa/.seq/.dat, model: .pdb (RECOMMENDED)}

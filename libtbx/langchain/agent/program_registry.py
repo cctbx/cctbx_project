@@ -428,7 +428,8 @@ class ProgramRegistry:
             # JSON templates don't have invariants
             return []
 
-    def build_command(self, program_name, files, strategy=None, log=None):
+    def build_command(self, program_name, files, strategy=None, log=None,
+                      file_sources=None, strategy_sources=None):
         """
         Build a command string.
 
@@ -437,12 +438,20 @@ class ProgramRegistry:
             files: Dict mapping slot names to file paths
             strategy: Optional dict of strategy flags
             log: Optional logging function
+            file_sources: Optional dict mapping slot names to source strings
+                         (e.g., {"model": "llm_selected", "data_mtz": "best_files"})
+            strategy_sources: Optional dict mapping strategy keys to source strings
+                             (e.g., {"resolution": "invariant", "nproc": "llm_strategy"})
 
         Returns:
             str: Complete command string
         """
         if log is None:
             log = lambda x: None
+        if file_sources is None:
+            file_sources = {}
+        if strategy_sources is None:
+            strategy_sources = {}
 
         prog = self.get_program(program_name)
         if not prog:
@@ -573,10 +582,48 @@ class ProgramRegistry:
                         del defaults[default_key]
 
         # Add remaining defaults
+        default_keys_used = []
         for key, val in defaults.items():
             cmd_parts.append("%s=%s" % (key, val))
+            default_keys_used.append(key)
 
-        return " ".join(cmd_parts)
+        # --- Provenance summary ---
+        # Log where each piece of the command came from
+        command_str = " ".join(cmd_parts)
+        log("BUILD_PROVENANCE: --- Command provenance for %s ---" % program_name)
+        log("BUILD_PROVENANCE: Command: %s" % command_str)
+
+        # File provenance
+        for slot_name, file_path in files.items():
+            if isinstance(file_path, list):
+                basename = ", ".join(os.path.basename(f) for f in file_path)
+            else:
+                basename = os.path.basename(str(file_path))
+            source = file_sources.get(slot_name, "unknown")
+            # Get the flag used
+            inputs_def = prog.get("inputs", {}) if self.use_yaml else {}
+            all_inp = {}
+            all_inp.update(inputs_def.get("required", {}))
+            all_inp.update(inputs_def.get("optional", {}))
+            slot_def = all_inp.get(slot_name, prog.get("file_slots", {}).get(slot_name, {}))
+            flag = slot_def.get("flag", "(positional)")
+            log("BUILD_PROVENANCE:   file %-20s = %-30s [source: %s, flag: %s]" % (
+                slot_name, basename, source, flag or "(positional)"))
+
+        # Strategy provenance
+        if strategy:
+            for key, value in strategy.items():
+                source = strategy_sources.get(key, "unknown")
+                log("BUILD_PROVENANCE:   strat %-19s = %-30s [source: %s]" % (key, value, source))
+
+        # Default provenance
+        for key in default_keys_used:
+            log("BUILD_PROVENANCE:   default %-17s = %-30s [source: yaml_default]" % (
+                key, defaults.get(key, "?")))
+
+        log("BUILD_PROVENANCE: --- end ---")
+
+        return command_str
 
     def _build_phaser_command(self, prog, files, strategy, log):
         """

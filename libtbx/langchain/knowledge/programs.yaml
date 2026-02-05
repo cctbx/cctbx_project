@@ -686,9 +686,11 @@ phenix.map_to_model:
         extensions: [.mrc, .ccp4, .map]
         flag: ""
         multiple: true
-      model:
+      partial_model:
         extensions: [.pdb]
-        flag: "model="
+        flag: "input_files.partial_model="
+        description: "Partial model to extend (rarely needed)"
+        auto_fill: false
       ncs_spec:
         extensions: [.ncs_spec]
         flag: "ncs_file="
@@ -710,7 +712,7 @@ phenix.map_to_model:
     metrics:
       - map_cc
 
-  command: "phenix.map_to_model {full_map} {half_map} {sequence} {model} {ncs_spec}"
+  command: "phenix.map_to_model {full_map} {half_map} {sequence} {partial_model} {ncs_spec}"
 
   defaults:
     nproc: 4
@@ -744,6 +746,8 @@ phenix.map_to_model:
     - "Can use full map OR two half-maps (half-maps provide better weighting)"
     - "Resolution is REQUIRED - get it from mtriage"
     - "Optional: provide ncs_spec file from map_symmetry for symmetric structures"
+    - "Do NOT use model= parameter. This is de novo model building - no input model needed"
+    - "If a partial model is provided, use input_files.partial_model= (very rare)"
 
 
 phenix.process_predicted_model:
@@ -1156,40 +1160,56 @@ phenix.resolve_cryo_em:
 
 
 phenix.map_sharpening:
-  description: "Sharpen cryo-EM map using half-maps (FSC-based) or model-based sharpening"
+  description: "Sharpen cryo-EM map. Three modes: map+model, full map only, or two half maps"
   category: map_optimization
   experiment_types: [cryoem]
 
-  # Two modes of operation:
-  # Mode 1 (half-maps): Provide two half-maps - uses FSC for sharpening
-  # Mode 2 (model-based): Provide map + model + resolution - uses model for sharpening
-  
+  # Three modes of operation:
+  # Mode 1 (map+model): map.ccp4 model=model.pdb seq_file=seq.dat sharpening_method=shells model_sharpen=True
+  # Mode 2 (full map only): map.ccp4 resolution=2.9 sharpening_method=b-factor seq_file=seq.dat
+  # Mode 3 (two half maps): half_map=half_1.map half_map=half_2.map seq_file=seq.dat
+
   inputs:
-    required:
-      # For half-map mode: provide two half-maps
-      # For model-based mode: provide single map
-      map:
+    required: {}
+      # At least one of: full_map, or two half_maps
+    optional:
+      full_map:
         extensions: [.mrc, .ccp4, .map]
         flag: ""
-        multiple: true  # Can be 1 map (model-based) or 2 half-maps
-    optional:
+        description: "Full map (bare positional arg) - for modes 1 and 2"
+      half_map:
+        extensions: [.mrc, .ccp4, .map]
+        flag: "half_map="
+        multiple: true
+        description: "Two half maps - for mode 3"
       model:
         extensions: [.pdb, .cif]
         flag: "model="
-        description: "Model for model-based sharpening (alternative to half-maps)"
+        description: "Model for model-based sharpening (mode 1)"
       sequence:
         extensions: [.fa, .fasta, .seq, .dat]
         flag: "seq_file="
+
+  input_priorities:
+    full_map:
+      categories: [full_map, optimized_full_map, map]
+      exclude_categories: [half_map]
+    half_map:
+      categories: [half_map]
 
   strategy_flags:
     resolution:
       flag: "resolution={value}"
       type: float
-      description: "Resolution limit in Angstroms (required for model-based sharpening)"
+      description: "Resolution limit (REQUIRED for mode 2, full map without model)"
     sharpening_method:
       flag: "sharpening_method={value}"
       type: str
-      description: "Sharpening method: b-factor, model_sharpening, half_map_sharpening, etc."
+      description: "shells (with model), b-factor (full map only), or omit for half maps"
+    model_sharpen:
+      flag: "model_sharpen={value}"
+      type: bool
+      description: "Set True when using model-based sharpening (mode 1)"
 
   outputs:
     files:
@@ -1202,10 +1222,12 @@ phenix.map_sharpening:
       - pattern: "*sharpened*.mrc"
         type: map
 
-  command: "phenix.map_sharpening {map} {model} {sequence}"
+  command: "phenix.map_sharpening {full_map} {half_map} {model} {sequence}"
 
   hints:
-    - "Two modes: (1) half-maps for FSC-based sharpening, (2) map+model for model-based sharpening"
+    - "When model is available: sharpening_method=shells model_sharpen=True (NOT model_sharpening)"
+    - "When only full map: resolution= is REQUIRED, use sharpening_method=b-factor"
+    - "When half maps: use half_map= for each file, no resolution needed"
     - "Model-based mode requires: single map, model, and resolution"
     - "Half-map mode: provide two half-maps (no model needed)"
 

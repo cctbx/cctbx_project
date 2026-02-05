@@ -127,10 +127,13 @@ def test_map_sharpening_experiment_types():
 
 
 def test_map_sharpening_required_inputs():
-    """phenix.map_sharpening should require map."""
+    """phenix.map_sharpening has no hard required inputs (3 modes with different files)."""
     prog = PROGRAMS["phenix.map_sharpening"]
-    required = prog.get("inputs", {}).get("required", {})
-    assert_in("map", required)
+    optional = prog.get("inputs", {}).get("optional", {})
+    # All three input types should be in optional
+    assert_in("full_map", optional)
+    assert_in("half_map", optional)
+    assert_in("model", optional)
 
 
 def test_map_sharpening_optional_inputs():
@@ -148,11 +151,13 @@ def test_map_sharpening_strategy_flags():
 
 
 def test_map_sharpening_command_template():
-    """phenix.map_sharpening command should include placeholders."""
+    """phenix.map_sharpening should have hints covering all three modes."""
     prog = PROGRAMS["phenix.map_sharpening"]
-    command = prog.get("command", "")
-    assert_in("phenix.map_sharpening", command)
-    assert_in("{map}", command)
+    hints = prog.get("hints", [])
+    hints_text = " ".join(hints)
+    assert_in("shells", hints_text)
+    assert_in("b-factor", hints_text)
+    assert_in("half_map", hints_text)
 
 
 # =============================================================================

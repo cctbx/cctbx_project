@@ -1570,6 +1570,27 @@ def _build_with_new_builder(state):
         state = _emit(state, EventType.ERROR, message="Failed to build command", details=program)
         return {**state, "command": "", "validation_error": "Failed to build command"}
 
+    # Apply parameter fixes as safety net (catches model= in map_to_model, etc.)
+    try:
+        from libtbx.langchain.agent.planner import fix_program_parameters
+        original_command = command
+        command = fix_program_parameters(command, program)
+        if command != original_command:
+            state = _log(state, "BUILD_PROVENANCE: parameter_fixes.json removed/changed parameters:")
+            state = _log(state, "BUILD_PROVENANCE:   before: %s" % original_command[:200])
+            state = _log(state, "BUILD_PROVENANCE:   after:  %s" % command[:200])
+    except ImportError:
+        try:
+            from agent.planner import fix_program_parameters
+            original_command = command
+            command = fix_program_parameters(command, program)
+            if command != original_command:
+                state = _log(state, "BUILD_PROVENANCE: parameter_fixes.json removed/changed parameters:")
+                state = _log(state, "BUILD_PROVENANCE:   before: %s" % original_command[:200])
+                state = _log(state, "BUILD_PROVENANCE:   after:  %s" % command[:200])
+        except ImportError:
+            pass  # No fix_program_parameters available
+
     state = _log(state, "BUILD: Generated command: %s" % command[:150])
 
     # === EMIT FILES_SELECTED EVENT (verbose level) ===
@@ -2265,6 +2286,18 @@ def _fallback_with_new_builder(state):
     # Try each valid program until one works without duplicating
     for program in runnable:
         cmd = builder.build(program, available_files, context)
+
+        # Apply parameter fixes as safety net
+        if cmd:
+            try:
+                from libtbx.langchain.agent.planner import fix_program_parameters
+                cmd = fix_program_parameters(cmd, program)
+            except ImportError:
+                try:
+                    from agent.planner import fix_program_parameters
+                    cmd = fix_program_parameters(cmd, program)
+                except ImportError:
+                    pass
 
         if cmd and cmd not in previous_commands:
             state = _log(state, "FALLBACK: Built command for %s" % program)

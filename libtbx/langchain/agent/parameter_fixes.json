@@ -28,5 +28,10 @@
   
   "phenix.xtriage": {
     "nproc": null
+  },
+
+  "phenix.map_to_model": {
+    "_comment": "model= should never be auto-added; partial_model is rarely needed and must be explicitly requested",
+    "model": null
   }
 }

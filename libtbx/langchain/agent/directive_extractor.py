@@ -759,6 +759,10 @@ def validate_directives(directives, log=None):
     # this is likely wrong - the user wants the full ligand workflow, not to stop at first refine
     validated = _fix_ligand_workflow_conflict(validated, _log)
 
+    # If constraints describe steps beyond the after_program target, clear it
+    # e.g., after_program=phenix.map_symmetry but constraints say "build a model" → don't stop
+    validated = _fix_multi_step_workflow_conflict(validated, _log)
+
     return validated
 
 
@@ -821,6 +825,110 @@ def _fix_ligand_workflow_conflict(directives, log):
         del directives["stop_conditions"]["after_cycle"]
 
         # If stop_conditions is now empty, remove it
+        if not directives["stop_conditions"]:
+            del directives["stop_conditions"]
+
+    return directives
+
+
+def _fix_multi_step_workflow_conflict(directives, log):
+    """
+    Fix conflicting directives when constraints describe a multi-step workflow
+    but after_program would stop at an intermediate step.
+
+    For example:
+    - after_program=phenix.map_symmetry but constraints say "build a model" → clear after_program
+    - after_program=phenix.map_sharpening but constraints say "apply NCS" → clear after_program
+
+    This catches cases where the LLM extraction sets after_program for an intermediate
+    step even though the user's constraints describe a longer pipeline.
+    """
+    constraints = directives.get("constraints", [])
+    stop_conditions = directives.get("stop_conditions", {})
+
+    if not stop_conditions or not constraints:
+        return directives
+
+    after_program = stop_conditions.get("after_program", "")
+    if not after_program:
+        return directives
+
+    constraints_text = " ".join(str(c).lower() for c in constraints if c)
+
+    # Define which programs are "intermediate" and what downstream keywords indicate
+    # the workflow should continue past them
+    intermediate_programs = {
+        "phenix.map_symmetry": [
+            r'build\s+(?:a\s+)?model',
+            r'model\s+building',
+            r'map[\s_]to[\s_]model',
+            r'dock.*(?:in|into)',
+            r'refine',
+            r'sharpen',
+            r'density\s+modif',
+            r'resolve_cryo_em',
+            r'apply\s+(?:ncs|symmetry)',
+            r'generate.*(?:complex|assembly|full|complete)',
+            r'extract\s+(?:the\s+)?(?:unique|asymmetric)',
+        ],
+        "phenix.map_sharpening": [
+            r'build\s+(?:a\s+)?model',
+            r'model\s+building',
+            r'map[\s_]to[\s_]model',
+            r'dock.*(?:in|into)',
+            r'refine',
+            r'(?:find|determine|detect)\s+symmetry',
+            r'map[\s_]symmetry',
+            r'apply\s+(?:ncs|symmetry)',
+            r'generate.*(?:complex|assembly|full|complete)',
+        ],
+        "phenix.mtriage": [
+            r'build\s+(?:a\s+)?model',
+            r'refine',
+            r'dock.*(?:in|into)',
+            r'sharpen',
+            r'density\s+modif',
+            r'resolve_cryo_em',
+            r'map[\s_]to[\s_]model',
+        ],
+        "phenix.xtriage": [
+            r'phaser',
+            r'molecular\s+replacement',
+            r'refine',
+            r'build',
+            r'ligand',
+        ],
+        "phenix.phaser": [
+            r'refine',
+            r'ligand',
+            r'build',
+            r'validate',
+        ],
+    }
+
+    downstream_patterns = intermediate_programs.get(after_program, [])
+    if not downstream_patterns:
+        return directives
+
+    has_downstream = any(
+        re.search(pattern, constraints_text, re.IGNORECASE)
+        for pattern in downstream_patterns
+    )
+
+    if has_downstream:
+        log("DIRECTIVES: Clearing after_program=%s because constraints describe downstream work" %
+            after_program)
+        log("DIRECTIVES: Constraints: %s" % constraints_text[:200])
+
+        del directives["stop_conditions"]["after_program"]
+
+        # If stop_conditions is now empty (or only has skip_validation), clean up
+        remaining = {k: v for k, v in directives["stop_conditions"].items()
+                     if k != "skip_validation"}
+        if not remaining:
+            # Remove skip_validation too since there's no stop to validate
+            if "skip_validation" in directives["stop_conditions"]:
+                del directives["stop_conditions"]["skip_validation"]
         if not directives["stop_conditions"]:
             del directives["stop_conditions"]
 
@@ -1372,14 +1480,41 @@ def extract_directives_simple(user_advice):
         r'refine.*(?:further|more|additional)',
         r'additional\s+refine',
         r'water\s+(?:pick|add|place)',
+        # Cryo-EM downstream tasks (indicate steps AFTER an earlier program)
+        r'build\s+(?:a\s+)?model',
+        r'model\s+building',
+        r'map[\s_]to[\s_]model',
+        r'apply\s+(?:ncs|symmetry)',
+        r'generate\s+(?:the\s+)?(?:full|complete)',
+        r'(?:full|complete)\s+(?:complex|assembly|oligomer|multimer)',
+        r'(?:real[- ]space\s+)?refine.*(?:model|structure)',
+        r'extract\s+(?:the\s+)?(?:unique|asymmetric)',
     ]
 
     has_continuation = any(re.search(p, advice_lower) for p in continuation_indicators)
     has_downstream_task = any(re.search(p, advice_lower) for p in downstream_tasks)
 
-    # If there are continuation indicators or downstream tasks, extract the FIRST program
-    # as start_with_program - this tells the workflow to run this program first
-    if has_continuation or has_downstream_task:
+    # Also detect multi-step workflows by counting distinct program mentions
+    # If multiple programs are referenced, this is a pipeline, not a single-step task
+    multi_program_patterns = [
+        (r'(?:auto[- ]?sharpen|map[\s_]sharpening|sharpen\s+(?:the\s+)?map)', 'sharpening'),
+        (r'(?:map[\s_]symmetry|find\s+symmetry|determine\s+symmetry|ncs\s+(?:from|in))', 'symmetry'),
+        (r'(?:map[\s_]to[\s_]model|build.*model.*(?:into|in)\s+(?:the\s+)?map)', 'build'),
+        (r'(?:dock.*(?:in|into)\s+map|fit\s+model\s+to\s+map)', 'dock'),
+        (r'(?:refine|refinement)', 'refine'),
+        (r'(?:ligand\s*fit|fit.*ligand|place.*ligand)', 'ligand'),
+        (r'(?:density\s+modif|resolve_cryo_em)', 'denmod'),
+        (r'(?:apply\s+(?:ncs|symmetry)|generate.*(?:complex|assembly))', 'apply_ncs'),
+    ]
+    distinct_steps = set()
+    for pattern, step_name in multi_program_patterns:
+        if re.search(pattern, advice_lower, re.IGNORECASE):
+            distinct_steps.add(step_name)
+    has_multi_step = len(distinct_steps) >= 2
+
+    # If there are continuation indicators, downstream tasks, or multiple distinct
+    # program steps, this is a multi-step workflow - don't set after_program
+    if has_continuation or has_downstream_task or has_multi_step:
         # This is a multi-step workflow - extract the first program to start with
         # Common patterns: "run X then Y", "calculate X and then refine"
         first_program_patterns = [

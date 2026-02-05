@@ -224,15 +224,38 @@ class CommandBuilder:
             self._log(context, "BUILD: Failed to select required files")
             return None
 
-        # 2. Build strategy
+        # 2. Build strategy (and track sources)
         strategy = self._build_strategy(program, context)
+        strategy_sources = {}
+        if context.llm_strategy:
+            for k in context.llm_strategy:
+                if k in strategy:
+                    strategy_sources[k] = "llm_strategy"
+        # Track auto-generated keys
+        for k in strategy:
+            if k not in strategy_sources:
+                strategy_sources[k] = "auto_generated"
 
         # 2.5. Apply file-specific recovery strategies
         # This adds flags from error recovery (e.g., obs_labels for ambiguous data)
+        pre_recovery_keys = set(strategy.keys())
         strategy = self._apply_recovery_strategies(program, files, strategy, context)
+        for k in strategy:
+            if k not in pre_recovery_keys:
+                strategy_sources[k] = "recovery"
 
         # 3. Apply invariants (may modify files and strategy)
+        pre_invariant_keys = set(strategy.keys())
         files, strategy = self._apply_invariants(program, files, strategy, context)
+        for k in strategy:
+            if k not in pre_invariant_keys:
+                strategy_sources[k] = "invariant"
+
+        # Build file provenance dict from _selection_details
+        file_sources = {}
+        for slot in (files or {}):
+            detail = self._selection_details.get(slot, {})
+            file_sources[slot] = detail.get("reason", "unknown")
 
         # Log final selections
         if files:
@@ -240,11 +263,22 @@ class CommandBuilder:
                                       for k, v in files.items())
             self._log(context, "BUILD: Final files: {%s}" % files_summary)
 
-        # 4. Assemble final command
-        command = self._assemble_command(program, files, strategy)
+        # 4. Assemble final command (provenance is logged inside registry.build_command)
+        command = self._assemble_command(program, files, strategy,
+                                         context=context,
+                                         file_sources=file_sources,
+                                         strategy_sources=strategy_sources)
 
         if command:
             self._log(context, "BUILD: Command = %s" % command[:100])
+
+        # 5. Log any LLM file requests that were rejected
+        if context.llm_files:
+            rejected = ["%s=%s" % (s, os.path.basename(str(p)))
+                        for s, p in context.llm_files.items()
+                        if p and s not in (files or {})]
+            if rejected:
+                self._log(context, "BUILD: REJECTED LLM file requests: %s" % ", ".join(rejected))
 
         return command
 
@@ -329,9 +363,29 @@ class CommandBuilder:
                     if llm_slot in all_inputs:
                         canonical_slot = llm_slot
                     else:
-                        self._log(context, "BUILD: LLM slot '%s' not found in program inputs (tried alias '%s')" % (
-                            llm_slot, canonical_slot))
-                        continue
+                        # Fuzzy match: try input names containing or contained by the LLM slot
+                        # e.g., LLM says "map" -> match "full_map"; LLM says "model" -> match "partial_model"
+                        fuzzy_match = None
+                        for inp_name in all_inputs:
+                            # Match "map" to "full_map", "half_map", etc.
+                            if (llm_slot in inp_name or inp_name in llm_slot) and llm_slot != inp_name:
+                                # Skip slots that explicitly disable auto-fill
+                                inp_def = (inputs.get("required", {}).get(inp_name) or
+                                          inputs.get("optional", {}).get(inp_name) or {})
+                                if inp_def.get("auto_fill") is False:
+                                    self._log(context, "BUILD: Fuzzy match '%s'->'%s' skipped (auto_fill=false)" % (
+                                        llm_slot, inp_name))
+                                    continue
+                                fuzzy_match = inp_name
+                                break
+                        if fuzzy_match:
+                            self._log(context, "BUILD: Fuzzy-matched LLM slot '%s' to '%s'" % (
+                                llm_slot, fuzzy_match))
+                            canonical_slot = fuzzy_match
+                        else:
+                            self._log(context, "BUILD: LLM slot '%s' not found in program inputs (tried alias '%s')" % (
+                                llm_slot, canonical_slot))
+                            continue
 
                 # Validate and correct path
                 corrected = self._correct_file_path(filepath, basename_to_path, available_files)
@@ -406,6 +460,11 @@ class CommandBuilder:
                 continue
 
             input_def = inputs["optional"][input_name]
+
+            # Skip auto-fill if input explicitly disables it (e.g., partial_model)
+            if input_def.get("auto_fill") is False:
+                continue
+
             file_found = self._find_file_for_slot(
                 program, input_name, input_def,
                 available_files, context, basename_to_path
@@ -414,12 +473,14 @@ class CommandBuilder:
             if file_found:
                 selected_files[input_name] = file_found
 
-        # Record all selections for event logging
+        # Record any selections not already tracked
+        # (Don't overwrite provenance from LLM/best_files/rfree_locked/etc.)
         for slot, filepath in selected_files.items():
-            if isinstance(filepath, list):
-                self._record_selection(slot, filepath[0] if filepath else None, "auto_selected")
-            else:
-                self._record_selection(slot, filepath, "auto_selected")
+            if slot not in self._selection_details:
+                if isinstance(filepath, list):
+                    self._record_selection(slot, filepath[0] if filepath else None, "auto_selected")
+                else:
+                    self._record_selection(slot, filepath, "auto_selected")
 
         return selected_files
 
@@ -950,7 +1011,10 @@ class CommandBuilder:
     # =========================================================================
 
     def _assemble_command(self, program: str, files: Dict[str, Any],
-                          strategy: Dict[str, Any]) -> Optional[str]:
+                          strategy: Dict[str, Any],
+                          context: Optional[CommandContext] = None,
+                          file_sources: Optional[Dict[str, str]] = None,
+                          strategy_sources: Optional[Dict[str, str]] = None) -> Optional[str]:
         """
         Assemble the final command string.
 
@@ -963,12 +1027,20 @@ class CommandBuilder:
             program: Program name
             files: Selected files
             strategy: Strategy flags
+            context: CommandContext (for logging)
+            file_sources: Dict mapping slot names to provenance strings
+            strategy_sources: Dict mapping strategy keys to provenance strings
 
         Returns:
             Command string
         """
+        log_fn = context._log if context else lambda x: None
         try:
-            return self._registry.build_command(program, files, strategy)
+            return self._registry.build_command(
+                program, files, strategy,
+                log=log_fn,
+                file_sources=file_sources,
+                strategy_sources=strategy_sources)
         except Exception as e:
             return None
 

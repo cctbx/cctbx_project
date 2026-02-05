@@ -476,6 +476,123 @@ def test_llm_data_slot_used_for_mtz():
         shutil.rmtree(temp_dir)
 
 
+def test_auto_fill_false_prevents_model_injection():
+    """
+    Test that auto_fill: false prevents map_to_model from getting a model auto-added.
+
+    Bug: map_to_model is de novo model building - it should NOT auto-fill a model
+    from available PDB files. The partial_model input has auto_fill: false.
+    """
+    print("test_auto_fill_false_prevents_model_injection:", end=" ")
+
+    import tempfile
+    import shutil
+
+    temp_dir = tempfile.mkdtemp()
+    try:
+        # Create test files including a PDB that should NOT be auto-added
+        map_file = os.path.join(temp_dir, "map.ccp4")
+        seq_file = os.path.join(temp_dir, "seq.dat")
+        pdb_file = os.path.join(temp_dir, "model.pdb")
+        for f in [map_file, seq_file, pdb_file]:
+            open(f, 'w').close()
+
+        available = [map_file, seq_file, pdb_file]
+        builder = CommandBuilder()
+
+        state = {
+            "cycle_number": 1,
+            "session_info": {
+                "experiment_type": "cryoem",
+                "best_files": {},
+                "rfree_mtz": None,
+            },
+            "workflow_state": {
+                "resolution": 2.9,
+                "categorized_files": {
+                    "full_map": [map_file],
+                    "sequence": [seq_file],
+                    "model": [pdb_file],
+                },
+                "state": "cryoem_initial",
+            },
+            "history": [],
+            "corrected_files": {},
+            "strategy": {"resolution": 2.9},
+        }
+
+        context = CommandContext.from_state(state)
+        command = builder.build("phenix.map_to_model", available, context)
+
+        assert command is not None, "Command should be generated"
+        assert "model=" not in command and "partial_model=" not in command, \
+            "map_to_model should NOT include model= or partial_model= (got: %s)" % command
+
+    finally:
+        shutil.rmtree(temp_dir)
+
+    print("  PASSED")
+
+
+def test_fuzzy_slot_match_map_to_full_map():
+    """
+    Test that LLM's 'map' slot fuzzy-matches to 'full_map' for map_to_model.
+
+    Bug: LLM requests map=file.ccp4 but map_to_model has 'full_map' slot.
+    Without fuzzy matching, the file is rejected and auto-selection takes over.
+    """
+    print("test_fuzzy_slot_match_map_to_full_map:", end=" ")
+
+    import tempfile
+    import shutil
+
+    temp_dir = tempfile.mkdtemp()
+    try:
+        map_file = os.path.join(temp_dir, "map.ccp4")
+        seq_file = os.path.join(temp_dir, "seq.dat")
+        for f in [map_file, seq_file]:
+            open(f, 'w').close()
+
+        available = [map_file, seq_file]
+        builder = CommandBuilder()
+
+        state = {
+            "cycle_number": 1,
+            "session_info": {
+                "experiment_type": "cryoem",
+                "best_files": {},
+                "rfree_mtz": None,
+            },
+            "workflow_state": {
+                "resolution": 2.9,
+                "categorized_files": {
+                    "full_map": [map_file],
+                    "sequence": [seq_file],
+                },
+                "state": "cryoem_initial",
+            },
+            "history": [],
+            "corrected_files": {
+                "map": map_file,    # LLM requested "map"
+                "sequence": seq_file,
+            },
+            "strategy": {"resolution": 2.9},
+        }
+
+        context = CommandContext.from_state(state)
+        command = builder.build("phenix.map_to_model", available, context)
+
+        assert command is not None, "Command should be generated"
+        # The map file should be in the command (as bare positional since flag is "")
+        assert "map.ccp4" in command, \
+            "map.ccp4 should be in command via fuzzy match (got: %s)" % command
+
+    finally:
+        shutil.rmtree(temp_dir)
+
+    print("  PASSED")
+
+
 def run_all_tests():
     """Run all tests with fail-fast behavior (cctbx style)."""
     from tests.test_utils import run_tests_with_fail_fast
