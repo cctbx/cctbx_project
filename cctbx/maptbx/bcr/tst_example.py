@@ -85,7 +85,7 @@ cmd.show("spheres"   ,"ph")
 #color blue, ph
 
 #
-# ﻿unbond (resname D8U and name D), (name O4')
+#  unbond (resname D8U and name D), (name O4')
 #  unbond (resname D8U and name D), (resi 46 and name OE2)
 #
 
