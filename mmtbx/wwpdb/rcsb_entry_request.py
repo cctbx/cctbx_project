@@ -11,6 +11,7 @@ from __future__ import absolute_import, division, print_function
 
 import json
 import requests
+from requests.adapters import HTTPAdapter, Retry
 from mmtbx.wwpdb.rcsb_web_services import report_base_url
 from libtbx.utils import Sorry
 
@@ -538,7 +539,13 @@ def get_info(pdb_ids):
   """
   pdb_ids_string = "%s" % pdb_ids
   pdb_ids_string = pdb_ids_string.replace("'", '"')
-  r = requests.post(report_base_url, json={"query":full_page_request % pdb_ids_string})
+  s = requests.Session()
+  retries = Retry(
+      total=5,
+      backoff_factor=0.1,
+      status_forcelist=[ 500, 502, 503, 504 ])
+  s.mount('https://', HTTPAdapter(max_retries=retries))
+  r = s.post(report_base_url, json={"query":full_page_request % pdb_ids_string})
   data_entries = r.json()['data']['entries']
   # print(json.dumps(r.json(), indent=4))
 

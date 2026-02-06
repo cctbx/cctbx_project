@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 import libtbx.utils
 import json
 import requests
+from requests.adapters import HTTPAdapter, Retry
 
 search_base_url = "https://search.rcsb.org/rcsbsearch/v2/query?json="
 report_base_url = "https://data.rcsb.org/graphql"
@@ -144,7 +145,13 @@ def post_query(query_json=None, xray_only=True, d_max=None, d_min=None,
     query_json["request_options"]["results_verbosity"] = "compact"
   print("  executing HTTP request...", file=log)
   # print(json.dumps(query_json, indent=4))
-  r = requests.post(search_base_url, json=query_json)
+  s = requests.Session()
+  retries = Retry(
+      total=5,
+      backoff_factor=0.1,
+      status_forcelist=[ 500, 502, 503, 504 ])
+  s.mount('https://', HTTPAdapter(max_retries=retries))
+  r = s.post(search_base_url, json=query_json)
   res_ids = []
   # print('r.status_code', r.status_code)
   if r.status_code == 200:
