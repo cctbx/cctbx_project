@@ -1,6 +1,6 @@
 
 """
-All-atom contact analysis.  Calls mmtbx.reduce and mmtbx.probe.
+All-atom contact analysis.  Calls mmtbx.reduce functions and mmtbx.probe2 program.
 This is a rewrite of the original clashscore that used stand-alone
 external reduce and probe programs.
 """
@@ -138,6 +138,8 @@ class clashscore2(validation):
         restraint_objects = None,
         log               = None)
 
+      if verbose:
+        print("\nFinding clashes with mmtbx.probe2...\n")
       self.probe_clashscore_manager = probe_clashscore_manager(
         nuclear=nuclear,
         fast=self.fast,
@@ -257,8 +259,8 @@ class probe_line_info(object): # this is parent
 
   def as_clash_obj(self, use_segids):
     assert self.overlap_value is not None
-    atom1 = decode_atom_string(self.srcAtom,  use_segids, self.model_id)
-    atom2 = decode_atom_string(self.targAtom, use_segids, self.model_id)
+    atom1 = self.srcAtom
+    atom2 = self.targAtom
     if (self.srcAtom < self.targAtom):
       atoms = [ atom1, atom2 ]
     else:
@@ -272,39 +274,53 @@ class probe_line_info(object): # this is parent
       xyz=(self.x,self.y,self.z))
     return clash_obj
 
-class condensed_probe_line_info(probe_line_info):
-  def __init__(self, line, model_id=""):
-    super(condensed_probe_line_info, self).__init__(line, model_id)
-    # What is in line:
-    # name:pat:type:srcAtom:targAtom:dot-count:mingap:gap:spX:spY:spZ:spikeLen:score:stype:ttype:x:y:z:sBval:tBval:
-    sp = line.split(":")
-    self.type = sp[2]
-    self.srcAtom = sp[3]
-    self.targAtom = sp[4]
-    self.min_gap = float(sp[6])
-    self.gap = float(sp[7])
-    self.x = float(sp[-5])
-    self.y = float(sp[-4])
-    self.z = float(sp[-3])
-    self.sBval = float(sp[-2])
-    self.tBval = float(sp[-1])
-    self.overlap_value = self.gap
+def encode_atom_info(json_dict, model_id):
+  return atom_info(
+    model_id=model_id,
+    chain_id=json_dict['chainID'],
+    resseq=json_dict['resID'],
+    icode=json_dict['iCode'],
+    resname=json_dict['resName'],
+    altloc=json_dict['alt'],
+    name=json_dict['atomName']
+    )
 
-class raw_probe_line_info(probe_line_info):
-  def __init__(self, line, model_id=""):
-    super(raw_probe_line_info, self).__init__(line, model_id)
-    self.name, self.pat, self.type, self.srcAtom, self.targAtom, self.min_gap, \
-    self.gap, self.kissEdge2BullsEye, self.dot2BE, self.dot2SC, self.spike, \
-    self.score, self.stype, self.ttype, self.x, self.y, self.z, self.sBval, \
-    self.tBval = line.split(":")
-    self.gap = float(self.gap)
-    self.x = float(self.x)
-    self.y = float(self.y)
-    self.z = float(self.z)
-    self.sBval = float(self.sBval)
-    self.tBval = float(self.tBval)
-    self.overlap_value = self.gap
+def atom_info_to_string(info):
+  return "%2s%4s%1s%3s%4s%1s" % (
+    info.chain_id,
+    info.resseq,
+    info.icode,
+    info.resname,
+    info.name,
+    info.altloc)
 
+class json_probe_line_info(probe_line_info):
+  def __init__(self, line, model_id=""):
+    super(json_probe_line_info, self).__init__(line, model_id)
+    self.name = line['master']
+    self.pat = line['group']
+    self.type = line['type']
+    self.stype = line['srcClass']
+    self.ttype = line['targetClass']
+    self.sBval = line['srcBFactor']
+    self.tBval = line['targetBFactor']
+    self.srcAtom = encode_atom_info(line['src'], model_id)
+    if 'target' in line:
+      self.targAtom = encode_atom_info(line['target'], model_id)
+      self.min_gap = line['gap']
+      self.x = line['loc'][0]
+      self.y = line['loc'][1]
+      self.z = line['loc'][2]
+      if 'dotCount' in line:    # Present in condensed output
+        self.dotCount = line['dotCount']
+        # Replace the values with condensed output values
+        self.gap = self.min_gap
+      else:      # Not present in condensed output but present in full output
+        self.gap = line['dotGap']
+        self.spike = line['spike']
+        self.spikeLen = line['spikeLen']
+        self.score = line['scoreOverDensity']
+      self.overlap_value = self.gap
 
 class probe_clashscore_manager(object):
   def __init__(self,
@@ -343,9 +359,11 @@ class probe_clashscore_manager(object):
     self.nuclear = nuclear
 
   def put_group_into_dict(self, line_info, clash_hash, hbond_hash):
-    key = line_info.targAtom+line_info.srcAtom
-    if (line_info.srcAtom < line_info.targAtom):
-      key = line_info.srcAtom+line_info.targAtom
+    srcString = atom_info_to_string(line_info.srcAtom)
+    targString = atom_info_to_string(line_info.targAtom)
+    key = targString+srcString
+    if (srcString < targString):
+      key = srcString+targString
     if line_info.type == "bo":
       if (line_info.overlap_value <= -0.4):
         if (key in clash_hash):
@@ -370,23 +388,25 @@ class probe_clashscore_manager(object):
         temp.append(v.as_clash_obj(self.use_segids))
     return temp
 
-  def process_raw_probe_output(self, probe_unformatted):
+  def process_json_probe_output(self, probe_json):
     new_clash_hash = {}
     new_hbond_hash = {}
+    # Parse the json string into a Python object
+    data = json.loads(probe_json)["flat_results"]
     if self.condensed_probe:
-      for line in probe_unformatted:
+      for line in data:
         try:
-          line_storage = condensed_probe_line_info(line, self.model_id)
+          line_storage = json_probe_line_info(line, self.model_id)
         except KeyboardInterrupt: raise
         except ValueError:
           continue # something else (different from expected) got into output
         self.put_group_into_dict(line_storage, new_clash_hash, new_hbond_hash)
     else: # not condensed
       previous_line = None
-      for line in probe_unformatted:
+      for line in data:
         processed=False
         try:
-          line_storage = raw_probe_line_info(line, self.model_id)
+          line_storage = json_probe_line_info(line, self.model_id)
         except KeyboardInterrupt: raise
         except ValueError:
           continue # something else (different from expected) got into output
@@ -406,30 +426,26 @@ class probe_clashscore_manager(object):
         self.put_group_into_dict(previous_line, new_clash_hash, new_hbond_hash)
     return self.filter_dicts(new_clash_hash, new_hbond_hash)
 
-  def get_condensed_clashes(self, lines):
-    # Standalone faster parsing of output when only clashscore is needed.
-    def parse_line(line):
-      sp = line.split(':')
-      return sp[3], sp[4], float(sp[7])
-    def parse_h_line(line):
-      sp = line.split(':')
-      return sp[3], sp[4]
-
+  def get_condensed_clashes(self, probe_json):
     clashes = set() # [(src, targ), (src, targ)]
     hbonds = [] # (src, targ), (targ, src)
+    lines = json.loads(probe_json)["flat_results"]
     for l in lines:
-      rtype = l[6:8]
-      if rtype == 'bo':
-        srcAtom, targAtom, gap = parse_line(l)
+      info = json_probe_line_info(l, self.model_id)
+      if info.type == 'bo':
+        gap = info.gap
         if gap <= -0.4:
-          # print l[:43], "good gap, saving", gap
-          if (srcAtom, targAtom) not in clashes and (targAtom, srcAtom) not in clashes:
-            clashes.add((srcAtom, targAtom))
+          # print "good gap, saving", gap
+          srcString = atom_info_to_string(info.srcAtom)
+          targString = atom_info_to_string(info.targAtom)
+          if (srcString, targString) not in clashes and (targString, srcString) not in clashes:
+            clashes.add((srcString, targString))
             # print (srcAtom, targAtom)
-      elif rtype == 'hb':
-        srcAtom, targAtom = parse_h_line(l)
-        hbonds.append((srcAtom, targAtom))
-        hbonds.append((targAtom, srcAtom))
+      elif info.type == 'hb':
+        srcString = atom_info_to_string(info.srcAtom)
+        targString = atom_info_to_string(info.targAtom)
+        hbonds.append((srcString, targString))
+        hbonds.append((targString, srcString))
         prev_line = l
     hbonds_set = set(hbonds)
     n_clashes = 0
@@ -464,7 +480,7 @@ class probe_clashscore_manager(object):
       "use_neutron_distances={}".format(self.nuclear),
       "approach=once",
       "output.filename='{}'".format(tempName),
-      "output.format=raw",
+      "output.format=json",
       "output.condensed={}".format(self.condensed_probe),
       "output.report_vdws=False",
       "ignore_lack_of_explicit_hydrogens=True",
@@ -474,7 +490,7 @@ class probe_clashscore_manager(object):
                        master_phil=parser.master_phil, logger=null_out())
     p2.overrideModel(hydrogenated_model)
     dots, output = p2.run()
-    probe_unformatted = output.splitlines()
+    probe_json = output
     os.unlink(tempName)
 
     # Debugging facility, do not remove!
@@ -488,10 +504,10 @@ class probe_clashscore_manager(object):
     # with open(tempdir + os.sep + 'model.pdb', 'w') as f:
     #   f.write(pdb_string)
     # with open(tempdir + os.sep + 'probe_out.txt', 'w') as f:
-    #   f.write('\n'.join(probe_unformatted))
+    #   f.write('\n'.join(probe_json))
 
     if not self.fast:
-      temp = self.process_raw_probe_output(probe_unformatted)
+      temp = self.process_json_probe_output(probe_json)
       self.n_clashes = len(temp)
 
       # If we're not running fast, call probe2 again to get non-condensed output
@@ -506,7 +522,7 @@ class probe_clashscore_manager(object):
         "use_neutron_distances={}".format(self.nuclear),
         "approach=once",
         "output.filename='{}'".format(tempName),
-        "output.format=raw",
+        "output.format=json",
         "ignore_lack_of_explicit_hydrogens=True",
       ]
       parser.parse_args(args)
@@ -514,10 +530,10 @@ class probe_clashscore_manager(object):
                          master_phil=parser.master_phil, logger=null_out())
       p2.overrideModel(hydrogenated_model)
       dots, output = p2.run()
-      self.probe_unformatted = "\n".join(output.splitlines())
+      self.probe_json = output
       os.unlink(tempName)
     else:
-      self.n_clashes = self.get_condensed_clashes(probe_unformatted)
+      self.n_clashes = self.get_condensed_clashes(probe_json)
 
     # Find the number of non-water atoms that pass the occupancy test
     # and then use it to compute the clashscore.
@@ -561,28 +577,6 @@ class probe_clashscore_manager(object):
       else :
         self.clashscore_b_cutoff = \
           (self.n_clashes_b_cutoff*1000) / self.natoms_b_cutoff
-
-def decode_atom_string(atom_str, use_segids=False, model_id=""):
-  # Example:
-  # ' A  49 LEU HD11B'
-  if (not use_segids) or (len(atom_str) == 16):
-    return atom_info(
-      model_id=model_id,
-      chain_id=atom_str[0:2],
-      resseq=atom_str[2:6],
-      icode=atom_str[6],
-      resname=atom_str[7:10],
-      altloc=atom_str[15],
-      name=atom_str[11:15])
-  else:
-    return atom_info(
-      model_id=model_id,
-      chain_id=atom_str[0:4],
-      resseq=atom_str[4:8],
-      icode=atom_str[8],
-      resname=atom_str[9:12],
-      altloc=atom_str[17],
-      name=atom_str[13:17])
 
 def check_and_add_hydrogen(
         probe_parameters=None,
@@ -655,7 +649,7 @@ def check_and_add_hydrogen(
 
     # Optimize H atoms with mmtbx.reduce
     if verbose:
-      print("\nOptimizing H atoms with mmtbx.reduce...\n")
+      print("\nOptimizing H atoms with mmtbx.reduce2:Optimizer...\n")
     opt = Optimizers.Optimizer(probe_parameters, do_flips, data_manager_model, modelIndex=None,
       fillAtomDump = False)
 

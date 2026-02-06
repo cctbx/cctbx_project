@@ -28,7 +28,7 @@ from mmtbx.probe import Helpers
 from iotbx import pdb
 from iotbx.pdb import common_residue_names_get_class
 
-version = "4.12.0"
+version = "4.13.0"
 
 master_phil_str = '''
 profile = False
@@ -1226,12 +1226,8 @@ Note:
             tBVal = ""
 
           if writeJSON:
-            if self.params.output.condensed:
-              # Don't write elements that are not needed for condensed output
-              ret += ', "srcClass": "{}", "targetClass": "{}"'.format(self._atomClasses[a], tName)
-            else:
-              ret += ', "srcClass": "{}", "targetClass": "{}", "loc": [{:.3f},{:.3f},{:.3f}]'.format(
-                self._atomClasses[a], tName, node.loc[0], node.loc[1], node.loc[2])
+            ret += ', "srcClass": "{}", "targetClass": "{}", "loc": [{:.3f},{:.3f},{:.3f}]'.format(
+              self._atomClasses[a], tName, node.loc[0], node.loc[1], node.loc[2])
           else:
             ret += ":{}:{}:{:.3f}:{:.3f}:{:.3f}".format(self._atomClasses[a], tName,
               node.loc[0], node.loc[1], node.loc[2])
