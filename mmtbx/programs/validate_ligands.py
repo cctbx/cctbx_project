@@ -42,13 +42,14 @@ verbose = False
 class Program(ProgramTemplate):
 
   description = '''
-mmtbx.validate_ligands model.pdb data.mtz LIGAND_CODE [...]
+mmtbx.development.validate_ligands model.pdb data.mtz
+mmtbx.development.validate_ligands model.pdb
 
 Print out basic statistics for residue(s) with the given code(s), including
-electron density values/CC.
+RSCC.
 '''
 
-  datatypes = ['model', 'phil', 'miller_array']
+  datatypes = ['model', 'phil', 'miller_array', 'real_map']
 
   master_phil_str = master_phil_str
   data_manager_options = ['model_skip_expand_with_mtrix',
@@ -58,10 +59,15 @@ electron density values/CC.
 
   def validate(self):
     print('Validating inputs...\n', file=self.logger)
+    #
+    # allow only one model
     self.data_manager.has_models(
       raise_sorry = True,
       expected_n  = 1,
       exact_count = True)
+    #
+    has_miller = self.data_manager.has_miller_arrays()
+    has_map = self.data_manager.has_real_maps()
 
   # ---------------------------------------------------------------------------
 
@@ -143,28 +149,37 @@ electron density values/CC.
   # ---------------------------------------------------------------------------
 
   def run(self):
-    has_data = False
+    has_miller = False
+    has_map = False
     fmodel = None
+    map_manager = None
     self.additional_ro = []
     self.working_model_fn = None
     self.ligand_manager = None
     model_fn = self.data_manager.get_default_model_name()
     data_fn = self.data_manager.get_default_miller_array_name()
+    map_fn = self.data_manager.get_default_real_map_name()
+    #print(model_fn, data_fn, map_fn)
+
     print('Using model file:', model_fn, file=self.logger)
     if data_fn is not None:
       print('Using reflection file:', data_fn, file=self.logger)
-      has_data = True
+      has_miller = True
+    if map_fn is not None:
+      print('Using map file', map_fn, file=self.logger)
+      has_map = True
 
     m = self.data_manager.get_model()
-    #
+
     if(len(m.get_hierarchy().models())>1):
       raise Sorry('Multi-model files currently not supported.')
-    #
+
     self.check_ligands(model = m)
     if not self.has_ligands:
       print('No ligands found. Exiting.', file=self.logger)
       return
-    #
+
+    # hack to get rid of element X
     if ' X' in m.get_hierarchy().atoms().extract_element():
       m = m.select(~m.selection('element X'))
       basename = os.path.splitext(os.path.basename(model_fn))[0]
@@ -179,11 +194,20 @@ electron density values/CC.
       self.add_hydrogens(model_fn = model_fn)
     else:
       self.working_model_fn = model_fn
-      m = self.data_manager.get_model()
+      m = self.data_manager.get_model(model_fn)
       self.working_model = m
 
     if self.working_model is None:
       raise Sorry('Could not create model object')
+
+
+    if has_map:
+      mmm = self.data_manager.get_map_model_manager(model_file = self.working_model_fn
+                                                    )
+      map_manager = mmm.map_manager()
+      self.working_model = mmm.model()
+      self.working_model.setup_scattering_dictionaries(scattering_table='electron')
+
     self.working_model.set_log(log = null_out())
     if self.additional_ro:
       ro = self.working_model.get_restraint_objects()
@@ -202,8 +226,9 @@ electron density values/CC.
       print('Could not process model to create restraints.')
       return
 
-    # get fmodel object
-    if has_data:
+
+    # get fmodel object if reflection data were provided
+    if has_miller:
       make_sub_header(' Creating fmodel object ', out=self.logger)
       fmodel_params = self.data_manager.get_fmodel_params()
       fmodel_params.xray_data.r_free_flags.required = False
@@ -218,10 +243,15 @@ electron density values/CC.
       print ("r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(), fmodel.r_free()),
         file=self.logger)
 
+    #self.data_manager.write_real_map_file(map_manager,filename="my_map.map")
+    #self.data_manager.write_model_file(self.working_model,filename="my_model.pdb")
+
+
     #t0 = time.time()
     ligand_manager = validate_ligands.manager(
       model = self.working_model,
       fmodel = fmodel,
+      map_manager = map_manager,
       params = self.params.validate_ligands,
       log   = self.logger)
     ligand_manager.run()

@@ -17,7 +17,8 @@ import mmtbx.maps.correlation
 
 master_params_str = """
 validate_ligands {
-
+resolution = None
+  .type = float
 nproc = 1
   .type = int
 model_fn_reduce2 = None
@@ -39,12 +40,14 @@ class manager(list):
   def __init__(self,
                model,
                fmodel,
+               map_manager,
                params,
                log=None):
     self.model = model
     self.params = params
     self.log   = log
     self.fmodel = fmodel
+    self.map_manager = map_manager
 
   # ----------------------------------------------------------------------------
 
@@ -61,6 +64,7 @@ class manager(list):
       lr = ligand_result(
         model       = self.model,
         fmodel      = self.fmodel,
+        map_manager = self.map_manager,
         ligand_isel = ligand_isel,
         sel_str     = sel_str,
         params      = self.params)
@@ -169,16 +173,20 @@ class manager(list):
         if is_suspicious: check='***'
         else:             check =''
 
-        #line = [lr.id_str,check, ccs.cc_2fofc, clashes.n_clashes,
+        #line = [lr.id_str,check, ccs.rscc, clashes.n_clashes,
         #  round(adps.b_min,1), round(adps.b_max,1), round(adps.b_mean,1)]
         #print(table_str.format(*line), file=self.log)
 
         val_id      = f"{lr.id_str:^14}"
         val_check   = f"{check:^12}"
-        val_cc      = f"{ccs.cc_2fofc:^9.2f}" if ccs is not None else f"{'':^9}"
+        val_cc      = f"{ccs.rscc:^9.2f}" if ccs is not None else f"{'':^9}"
         val_mapvals = f"{round((map_vals.fofc_map_values<=-3).count(True)/n_atoms, 2):^12}" if map_vals is not None else f"{'':^12}"
-        val_clash   = f"{clashes.n_clashes:^9}" if clashes.n_clashes != 0 else f"{'-':^9}"
-        val_hbonds  = f"{clashes.n_hbonds:^9}" if clashes.n_hbonds != 0 else f"{'-':^9}"
+        if clashes is not None:
+          val_clash   = f"{clashes.n_clashes:^9}" if clashes.n_clashes != 0 else f"{'-':^9}"
+          val_hbonds  = f"{clashes.n_hbonds:^9}" if clashes.n_hbonds != 0 else f"{'-':^9}"
+        else:
+          val_clash   = f"{'NA':^9}"
+          val_hbonds  = f"{'NA':^9}"
         val_b_min   = f"{round(adps.b_min,1):^7}"
         val_b_max   = f"{round(adps.b_max,1):^7}"
         val_b_mean  = f"{round(adps.b_mean,1):^7}"
@@ -291,11 +299,13 @@ class ligand_result(object):
   def __init__(self,
                model,
                fmodel,
+               map_manager,
                ligand_isel,
                sel_str,
                params):
     self.model       = model
     self.fmodel      = fmodel
+    self.map_manager = map_manager
     self.ligand_isel = ligand_isel
     self.sel_str     = sel_str
     self.params      = params
@@ -353,15 +363,16 @@ class ligand_result(object):
       map_vals = self.get_map_values()
     # apply criteria for metrics
     if ccs is not None:
-      if ccs.cc_2fofc < 0.5:
+      if ccs.rscc < 0.5:
         self._is_suspicious = True
     if adps.b_mean_within is not None:
       if adps.b_mean > 4 * adps.b_mean_within:
         self._is_suspicious = True
     if occs.occ_mean == 0.:
       self._is_suspicious = True
-    if clashes.n_clashes > 0.5 * n_atoms:
-      self._is_suspicious = True
+    if clashes is not None:
+      if clashes.n_clashes > 0.5 * n_atoms:
+        self._is_suspicious = True
     if map_vals is not None:
       if (map_vals.fofc_map_values<-3).count(True) >= 0.5 * n_atoms:
         self._is_suspicious = True
@@ -652,10 +663,71 @@ class ligand_result(object):
   # ----------------------------------------------------------------------------
 
   def get_ccs(self):
-    if self.fmodel is None:
+    if self.fmodel is None and self.map_manager is None:
       return
+
     if self._ccs is not None:
       return self._ccs
+
+    if self.fmodel is not None:
+      cc = self.get_ccs_miller()
+    if self.map_manager is not None:
+      cc = self.get_ccs_map()
+
+    if cc is None:
+      return None
+
+    self._ccs = group_args(
+      rscc = cc,
+       )
+    return self._ccs
+
+  # ----------------------------------------------------------------------------
+
+  def get_ccs_map(self):
+    sele = self.model.selection(string=self.sel_str)
+    cs = self.map_manager.crystal_symmetry()
+    # experimental map
+    m1 = self.map_manager.map_data()
+
+    crystal_gridding = maptbx.crystal_gridding(
+     unit_cell             = self.map_manager.unit_cell(),
+     space_group_info      = cs.space_group_info(),
+     pre_determined_n_real = m1.accessor().all())
+
+    # model map including ligand
+    f_calc = self._xrs.structure_factors(d_min=self.params.resolution).f_calc()
+    fft_map = miller.fft_map(
+      crystal_gridding     = crystal_gridding,
+      fourier_coefficients = f_calc)
+    del f_calc
+    fft_map.apply_sigma_scaling()
+    m2 = fft_map.real_map_unpadded()
+
+    maptbx.assert_same_gridding(m1, m2)
+
+    sites_cart = self.model.get_sites_cart().select(sele)
+    sel = maptbx.grid_indices_around_sites(
+      unit_cell  = cs.unit_cell(),
+      fft_n_real = m1.focus(),
+      fft_m_real = m1.all(),
+      sites_cart = sites_cart,
+      site_radii = flex.double(sites_cart.size(), 1.0))
+    #m1 = m1.set_selected(m1<0, 0)
+    #m2 = m2.set_selected(m1<0, 0)
+    cc = flex.linear_correlation(
+      x=m1.select(sel).as_1d(),
+      y=m2.select(sel).as_1d()).coefficient()
+
+    return cc
+
+  # ----------------------------------------------------------------------------
+
+  def get_ccs_miller(self):
+    #if self.fmodel is None:
+    #  return
+    #if self._ccs is not None:
+    #  return self._ccs
 
     cs = self.fmodel.f_obs().crystal_symmetry()
     crystal_gridding = maptbx.crystal_gridding(
@@ -700,10 +772,7 @@ class ligand_result(object):
       x=m1.select(sel).as_1d(),
       y=m2.select(sel).as_1d()).coefficient()
 
-    self._ccs = group_args(
-      cc_2fofc = cc,
-       )
-    return self._ccs
+    return cc
 
   # ----------------------------------------------------------------------------
 

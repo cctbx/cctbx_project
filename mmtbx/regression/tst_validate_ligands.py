@@ -205,7 +205,7 @@ def run_test3():
     clashes_result = lr.get_overlaps()
     #
     if (id_str.strip() == 'NAG A 600'):
-      assert approx_equal(ccs.cc_2fofc, 0.87, eps=0.03)
+      assert approx_equal(ccs.rscc, 0.87, eps=0.03)
       #
       assert approx_equal(occs.occ_min, 0, eps=0.01)
       assert approx_equal(occs.occ_max, 1, eps=0.01)
@@ -223,7 +223,7 @@ def run_test3():
       assert approx_equal(clashes_result.clashscore, 9.4, eps=0.5)
       #
     if (id_str.strip() == 'BTN A 400'):
-      assert approx_equal(ccs.cc_2fofc, 0.94, eps=0.03)
+      assert approx_equal(ccs.rscc, 0.94, eps=0.03)
       #
       assert approx_equal(occs.occ_mean, 1, eps=0.01)
       #
@@ -250,7 +250,7 @@ def run_test3():
       assert approx_equal(rmsd_result.planarity_rmsd, 0.02, eps=0.05)
       #
     if (id_str.strip() == 'BTN B 401'):
-      assert approx_equal(ccs.cc_2fofc, 0.95, eps=0.03)
+      assert approx_equal(ccs.rscc, 0.95, eps=0.03)
       #
       assert approx_equal(occs.occ_mean, 1, eps=0.01)
       #
