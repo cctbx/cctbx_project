@@ -71,7 +71,8 @@ def add_nodes_to_query_if_needed_in_place(query_json):
 def post_query(query_json=None, xray_only=True, d_max=None, d_min=None,
     protein_only=False, data_only=False, log=None,
     sort_by_resolution=False, clashscore_range=None,
-    rama_outliers_range=None, rota_outliers_range=None):
+    rama_outliers_range=None, rota_outliers_range=None,
+    n_retries_on_no_results=2):
   """  Make request to RCSB search API and return list of PDB ids, optionally with
   chain IDs. If query_json is not supplied, generic one will be used which
   searches for everything in PDB. It will be enhanced according to other parameters.
@@ -145,19 +146,22 @@ def post_query(query_json=None, xray_only=True, d_max=None, d_min=None,
     query_json["request_options"]["results_verbosity"] = "compact"
   print("  executing HTTP request...", file=log)
   # print(json.dumps(query_json, indent=4))
-  s = requests.Session()
-  retries = Retry(
-      total=5,
-      backoff_factor=0.1,
-      status_forcelist=[ 500, 502, 503, 504 ])
-  s.mount('https://', HTTPAdapter(max_retries=retries))
-  r = s.post(search_base_url, json=query_json)
   res_ids = []
-  # print('r.status_code', r.status_code)
-  if r.status_code == 200:
-    r_json = r.json()
-    # print(json.dumps(r_json, indent=4))
-    res_ids = r_json["result_set"]
+  attempt_number = 0
+  while len(res_ids) == 0 and attempt_number < n_retries_on_no_results:
+    s = requests.Session()
+    retries = Retry(
+        total=5,
+        backoff_factor=0.1,
+        status_forcelist=[ 500, 502, 503, 504 ])
+    s.mount('https://', HTTPAdapter(max_retries=retries))
+    r = s.post(search_base_url, json=query_json)
+    # print('r.status_code', r.status_code)
+    if r.status_code == 200:
+      r_json = r.json()
+      # print(json.dumps(r_json, indent=4))
+      res_ids = r_json["result_set"]
+    attempt_number += 1
   return res_ids
 
 def sequence_search(
