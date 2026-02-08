@@ -32,7 +32,7 @@ namespace cctbx { namespace symmetry_search { namespace boost_python {
       class_<wt>(name, no_init)
         .def(init<sgtbx::space_group const &,
                   af::const_ref<miller::index<> > const &,
-                  miller::f_calc_map<real_type> &,
+                  miller::f_calc_map<real_type> const &,
                   vector_type const &,
                   bool>
              ((arg("space_group"), arg("indices"), arg("f_c"),

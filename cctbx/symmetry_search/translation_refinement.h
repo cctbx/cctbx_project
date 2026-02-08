@@ -45,7 +45,7 @@ struct symmetrised_shifted_structure_factors
   symmetrised_shifted_structure_factors(sgtbx::space_group const &space_group,
                                         af::const_ref<miller::index<> > const
                                         &indices,
-                                        miller::f_calc_map<real_type> &f_c,
+                                        miller::f_calc_map<real_type> const &f_c,
                                         vector_type const &x,
                                         bool compute_gradient)
   {
@@ -56,7 +56,7 @@ struct symmetrised_shifted_structure_factors
 
     int n = indices.size();
 
-    f_x.reserve(n);
+    this->f_x.reserve(n);
 
     math::cos_sin_exact<real_type> exp_i_2pi;
     for (int k=0; k<indices.size(); ++k) {
