@@ -44,7 +44,8 @@ The PHENIX AI Agent is an intelligent automation system for macromolecular struc
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                         phenix_ai/run_ai_agent.py                            │
 │  • Build LangGraph state                                                     │
-│  • Execute graph nodes (perceive → plan → build → validate)                 │
+│  • Execute graph nodes (perceive → plan → build → validate → output)        │
+│  • Retry loop with fallback on persistent validation failures               │
 │  • Build response with events                                                │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
@@ -54,12 +55,21 @@ The PHENIX AI Agent is an intelligent automation system for macromolecular struc
 │  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐                  │
 │  │ perceive │ → │   plan   │ → │  build   │ → │ validate │                  │
 │  └────┬─────┘   └────┬─────┘   └────┬─────┘   └────┬─────┘                  │
+│       │              │   ▲          │              │                         │
+│       │              │   └──────────│──────────────┘ (retry < 3)            │
 │       │              │              │              │                         │
-│       ▼              ▼              ▼              ▼                         │
+│       │              │              │         ┌────┴─────┐                   │
+│       │              │              │         │ fallback │ (retry >= 3)      │
+│       │              │              │         └────┬─────┘                   │
+│       │              │              │              │                         │
+│       │              ▼              ▼              ▼                         │
 │  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                       ┌──────────┐                                  │    │
+│  │                       │  output  │ → END                            │    │
+│  │                       └──────────┘                                  │    │
 │  │                      state["events"] (list)                          │    │
 │  │  • STATE_DETECTED, METRICS_EXTRACTED, METRICS_TREND                 │    │
-│  │  • PROGRAM_SELECTED, USER_REQUEST_INVALID (if applicable)          │    │
+│  │  • PROGRAM_SELECTED, USER_REQUEST_INVALID, DIRECTIVE_APPLIED        │    │
 │  │  • FILES_SELECTED, COMMAND_BUILT, STOP_DECISION                    │    │
 │  └─────────────────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -71,21 +81,23 @@ The PHENIX AI Agent is an intelligent automation system for macromolecular struc
 
 ### 1. Graph Nodes (`agent/graph_nodes.py`)
 
-The agent uses a LangGraph pipeline with four main nodes:
+The agent uses a LangGraph pipeline with six nodes:
 
 | Node | Purpose | Key Actions |
 |------|---------|-------------|
 | **perceive** | Understand current state | Categorize files, detect workflow state, extract metrics, analyze trends |
 | **plan** | Decide next action | Call LLM or rules engine, validate against workflow, check user directives |
 | **build** | Generate command | Select files using BestFilesTracker, build command string |
-| **validate** | Check output | Sanity checks, red flag detection |
+| **validate** | Check output | Sanity checks, red flag detection; retry up to 3× on failure |
+| **fallback** | Last resort | If validate fails 3×, use mechanical/rules-based program selection |
+| **output** | Format response | Package decision, events, and command into response |
 
-Each node emits structured events that capture its decision-making process.
+The graph has conditional routing: perceive can skip to output (on red flag abort), validate can loop back to plan (retry) or route to fallback (max retries exceeded).
 
 ### 2. Workflow Engine (`agent/workflow_engine.py`)
 
 Interprets `workflows.yaml` to determine:
-- **Current phase**: analyze, obtain_model, refine, validate, complete
+- **Current phase**: X-ray has 8 phases (analyze, obtain_model, molecular_replacement, build_from_phases, refine, combine_ligand, validate, complete); cryo-EM has 9 phases (analyze, obtain_model, dock_model, check_map, optimize_map, ready_to_refine, refine, validate, complete)
 - **Valid programs** for current phase
 - **Transition conditions**
 - **Stop criteria** (target reached, plateau detected)
@@ -105,17 +117,25 @@ Structured logging for transparency:
 | Event Type | Verbosity | Description |
 |------------|-----------|-------------|
 | `cycle_start` | quiet | New cycle beginning |
+| `cycle_complete` | quiet | Cycle finished |
 | `state_detected` | normal | Workflow state determined |
 | `metrics_extracted` | normal | R-free, CC, resolution parsed |
 | `metrics_trend` | normal | Improvement/plateau analysis |
+| `sanity_check` | normal | Red flag or warning detected |
 | `program_selected` | normal | Decision with full reasoning |
+| `program_modified` | normal | Program changed by rules/validation |
+| `stop_decision` | normal | Whether to continue |
+| `directive_applied` | normal | User directive enforced |
 | `user_request_invalid` | quiet | User requested unavailable program |
 | `files_selected` | verbose | File selection with reasons |
+| `file_scored` | verbose | Individual file scoring detail |
 | `command_built` | normal | Final command |
-| `stop_decision` | normal | Whether to continue |
+| `thought` | verbose | LLM chain-of-thought/reasoning traces |
 | `error` | quiet | Error occurred |
+| `warning` | quiet | Non-fatal warning |
+| `debug` | verbose | Internal debug information |
 
-### 5. File Categorization (`agent/file_categorization.py`)
+### 5. File Categorization (`agent/graph_nodes.py`, `knowledge/file_categories.yaml`)
 
 Semantic file classification using rules from `file_categories.yaml`:
 
@@ -180,7 +200,6 @@ phenix.refine:
   description: "Crystallographic refinement"
   category: refinement
   experiment_types: [xray]
-  run_once: false
   
   inputs:
     required:
@@ -188,27 +207,41 @@ phenix.refine:
         extensions: [.pdb, .cif]
         flag: ""
         priority_patterns: [refine]  # Prefer refined models
-      mtz:
-        extensions: [.mtz]
+      data_mtz:
+        extensions: [.mtz, .sca, .hkl, .sdf]
         flag: ""
-    optional:
-      sequence:
-        extensions: [.fa, .fasta]
-        flag: "input.xray_data.labels.seq_file="
   
   outputs:
     files:
       - pattern: "*_refine_*.pdb"
         type: model
+      - pattern: "*_data.mtz"
+        type: data_mtz
+      - pattern: "*_refine_*.mtz"
+        type: map_coeffs_mtz
     metrics:
       - r_free
       - r_work
+      - bonds_rmsd
+      - angles_rmsd
   
   log_parsing:
     r_free:
       pattern: 'R-free\s*[=:]\s*([0-9.]+)'
       type: float
       display_name: "R-free"
+    r_work:
+      pattern: 'R-work\s*[=:]\s*([0-9.]+)'
+      type: float
+      display_name: "R-work"
+    bonds_rmsd:
+      pattern: '[Bb]onds?\s*(?:RMSD)?\s*[=:]\s*([0-9.]+)'
+      type: float
+      display_name: "Bonds RMSD"
+    angles_rmsd:
+      pattern: '[Aa]ngles?\s*(?:RMSD)?\s*[=:]\s*([0-9.]+)'
+      type: float
+      display_name: "Angles RMSD"
 ```
 
 ### workflows.yaml
@@ -237,25 +270,41 @@ xray:
           conditions:
             - has: search_model
             - not_done: phaser  # MR should only run once
+        - program: phenix.autosol
+          conditions:
+            - has: sequence
+            - has: anomalous        # Requires anomalous signal detected by xtriage
+            - not_done: autosol
       transitions:
         on_complete: refine
+        if_predict_only: molecular_replacement  # Stepwise mode
     
     refine:
       description: "Improve model"
       programs:
         - program: phenix.refine
-          preferred: true
+        - program: phenix.autobuild
+          conditions:
+            - r_free: "> autobuild_threshold"
+            - has: sequence
+            - not_done: autobuild
         - program: phenix.autobuild_denmod
           conditions:
             - has: ligand_file
             - has: sequence
             - not_done: autobuild_denmod
+            - refine_count: "> 0"    # Must refine first
           hint: "Run density modification before ligand fitting"
         - program: phenix.ligandfit
           conditions:
             - has: ligand_file
-            - r_free: "< 0.35"
             - not_done: ligandfit
+            - r_free: "< 0.35"
+            - refine_count: "> 0"    # Must refine first
+        - program: phenix.polder
+          conditions:
+            - has: model
+            - has: data_mtz
       repeat:
         max_cycles: 4
         until:
@@ -265,8 +314,10 @@ xray:
               cycles: 2
               threshold: 0.005
       transitions:
+        on_ligandfit: combine_ligand
         on_target_reached: validate
         on_plateau: validate
+        on_max_cycles: validate
 
   targets:
     r_free:
@@ -292,6 +343,7 @@ Programs can specify `not_done: <flag>` to prevent re-runs:
 |------|---------|---------|
 | `predict_full` | predict_and_build (X-ray) | Full workflow (prediction+MR+building) completed |
 | `predict` | predict_and_build (cryo-EM) | Any prediction completed |
+| `process_predicted_model` | process_predicted_model | Model processed for MR |
 | `phaser` | phaser | Molecular replacement completed |
 | `dock` | dock_in_map | Model docked in map |
 | `autobuild` | autobuild | Model building completed |
@@ -301,10 +353,11 @@ Programs can specify `not_done: <flag>` to prevent re-runs:
 | `resolve_cryo_em` | resolve_cryo_em | Map optimization completed |
 | `map_sharpening` | map_sharpening | Map sharpening completed |
 | `map_to_model` | map_to_model | De novo model building completed |
+| `map_symmetry` | map_symmetry | Map symmetry analysis completed |
 
 **2. `run_once: true`** (in programs.yaml)
 
-Programs like `phenix.xtriage` and `phenix.mtriage` have `run_once: true`, which automatically prevents re-running in a session.
+Programs like `phenix.xtriage`, `phenix.mtriage`, and `phenix.map_symmetry` have `run_once: true`, which automatically prevents re-running in a session.
 
 **Programs that run multiple times** (intentionally):
 - `phenix.refine` / `phenix.real_space_refine` - Iterative refinement
@@ -446,18 +499,24 @@ Red flags that indicate problems:
 
 ## Testing
 
-### Test Suites (20 total)
+### Test Suites (34 files, 32 in runner)
 
-**Standalone (no PHENIX required):**
-- Event System, Transport, Command Builder
-- File Categorization, Best Files Tracker
-- Directive Extractor/Validator
-- Metric Patterns, Program Registration
-- Summary Display
+**Standalone (no PHENIX required, 25 in runner):**
+- API Schema, Best Files Tracker, Transport, State Serialization
+- Command Builder, File Categorization, File Utils
+- Session Summary, Session Directives, Session Tools
+- Advice Preprocessing, Directive Extractor, Directive Validator, Directives Integration
+- Event System, Metric Patterns, Pattern Manager
+- Program Registration, Summary Display, New Programs
+- Error Analyzer, Decision Flow, Phaser Multimodel
+- History Analysis, Docs Tools, YAML Tools
 
-**PHENIX-dependent:**
-- Workflow State, Sanity Checker
-- Metrics Analyzer, Dry Run, Integration
+**PHENIX-dependent (7 in runner):**
+- Workflow State, YAML Config, Sanity Checker
+- Metrics Analyzer, Dry Run, Integration, Directives Integration
+
+**Additional test files (not in run_all_tests.py):**
+- test_template.py (template builder), test_utils.py (assert helpers)
 
 ### Running Tests
 
@@ -473,9 +532,10 @@ python3 tests/test_event_system.py    # Single suite
 
 | Version | Key Changes |
 |---------|-------------|
+| v112 | **Steps table metrics**: cycle metrics as primary source; benign warning metrics extraction; ligand typing fix; case-sensitive pattern fix; autobuild_denmod detection; YAML log_parsing for 8 programs |
+| v111 | **Summary output fixes**: predict_and_build R-free extraction; ligandfit output in final file list; fallback cycle status check fix |
 | v110 | **Stepwise mode**: automation_path controls predict_and_build behavior; fallback program tracking; autobuild scoring equals refined; best files in summary fix |
-| v40 | Fixes 12-21: Ligandfit MTZ exclusion, stop condition on failed runs, summary display for failed/prediction runs, predict_and_build resolution handling, None program value handling, test import fixes |
-| v40 | USER_REQUEST_INVALID event for invalid program requests |
+| v40 | Fixes 12-21: Ligandfit MTZ exclusion, stop condition on failed runs, summary display, predict_and_build resolution handling; USER_REQUEST_INVALID event |
 | v39 | Event system plumbing fixes for single-shot mode |
 | v38 | Event system Phase 4: display integration |
 | v36-37 | Event system Phases 2-3: instrumentation and transport |

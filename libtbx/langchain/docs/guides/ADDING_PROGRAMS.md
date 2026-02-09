@@ -173,10 +173,12 @@ xray:  # or cryoem
 ```
 
 **Common conditions:**
-- `has: <file_type>` - Requires file (sequence, model, full_map, etc.)
+- `has: <file_type>` - Requires file (sequence, model, full_map, half_map, ligand_file, anomalous, etc.)
 - `has_any: [type1, type2]` - Requires at least one of these files
 - `not_done: <program>` - Program hasn't been run yet (auto-generated for `run_once: true` programs)
 - `not_has: <file_type>` - File type is NOT present
+- `r_free: "< 0.35"` - R-free below threshold (also supports `"> autobuild_threshold"`, `"< target_r_free"`)
+- `refine_count: "> 0"` - At least one successful refinement completed (also `rsr_count`)
 
 **Available done flags:**
 
@@ -188,12 +190,15 @@ For other programs, these flags are manually tracked in `workflow_state.py`:
 |------|----------|---------|
 | `predict_done` | predict_and_build runs (any mode) | cryo-EM workflow |
 | `predict_full_done` | predict_and_build completes full workflow | X-ray workflow |
+| `process_predicted_done` | process_predicted_model succeeds | cryo-EM workflow |
 | `phaser_done` | phaser completes MR | X-ray workflow |
+| `phaser_count` | Count of successful phaser runs | Internal tracking |
 | `dock_done` | dock_in_map completes | cryo-EM workflow |
 | `autobuild_done` | autobuild succeeds | X-ray workflow |
 | `autobuild_denmod_done` | autobuild maps_only completes | X-ray workflow (before ligandfit) |
 | `autosol_done` | autosol succeeds | X-ray workflow |
 | `ligandfit_done` | ligandfit completes | Both workflows |
+| `pdbtools_done` | pdbtools completes | X-ray workflow (combine_ligand) |
 | `refine_done` | refine completes (any) | Internal tracking |
 | `refine_count` | Count of successful refinements | Workflow conditions |
 | `rsr_done` | real_space_refine completes | Internal tracking |
@@ -201,6 +206,7 @@ For other programs, these flags are manually tracked in `workflow_state.py`:
 | `resolve_cryo_em_done` | resolve_cryo_em completes | cryo-EM workflow |
 | `map_sharpening_done` | map_sharpening completes | cryo-EM workflow |
 | `map_to_model_done` | map_to_model completes | cryo-EM workflow |
+| `validation_done` | molprobity/validation completes | Internal tracking |
 
 **Note:** `refine_count` and `rsr_count` only count SUCCESSFUL runs (not failed ones).
 
@@ -518,7 +524,7 @@ phenix.my_refine:
       model:
         extensions: [.pdb, .cif]
         flag: ""
-      mtz:
+      data_mtz:
         extensions: [.mtz]
         flag: ""
   
@@ -528,7 +534,6 @@ phenix.my_refine:
       categories: [model]
       prefer_subcategories: [refined, with_ligand, phaser_output]
       exclude_categories: [ligand, search_model, ligand_fit_output, predicted]
-    mtz:
-      categories: [mtz]
-      prefer_subcategories: [refined_mtz]
+    data_mtz:
+      categories: [data_mtz]
 ```

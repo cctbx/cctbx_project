@@ -133,23 +133,42 @@ The `run_tests_with_fail_fast()` function automatically discovers tests:
 
 | File | Tests | Description |
 |------|-------|-------------|
-| `test_directive_extractor.py` | 61 | Directive extraction and validation |
-| `test_directive_validator.py` | 48 | Intent validation and modification |
+| `test_directive_extractor.py` | 73 | Directive extraction and validation |
 | `test_transport.py` | 66 | REST transport sanitization |
+| `test_workflow_state.py` | 57 | Workflow state detection, done flags, refine counting |
+| `test_best_files_tracker.py` | 50 | File tracking, scoring, model stage detection |
+| `test_directive_validator.py` | 48 | Intent validation and modification |
 | `test_new_programs.py` | 44 | YAML config for new programs (polder, map_sharpening, autobuild_denmod) |
-| `test_error_analyzer.py` | 34 | Error recovery system |
-| `test_decision_flow.py` | 20 | Directive flow architecture |
+| `test_error_analyzer.py` | 41 | Error recovery system |
+| `test_sanity_checker.py` | 29 | Sanity check logic |
+| `test_yaml_config.py` | 29 | YAML configuration validation |
+| `test_file_categorization.py` | 26 | File type detection (including denmod_mtz) |
+| `test_api_schema.py` | 26 | API request/response validation |
+| `test_decision_flow.py` | 21 | Directive flow architecture |
+| `test_metrics_analyzer.py` | 19 | Metric extraction and trends |
+| `test_pattern_manager.py` | 17 | Pattern management |
 | `test_directives_integration.py` | 16 | End-to-end directive tests |
+| `test_command_builder.py` | 14 | Unified command generation |
+| `test_event_system.py` | 13 | Event logging system |
+| `test_program_registration.py` | 13 | Program registry tests |
+| `test_integration.py` | 13 | End-to-end workflow tests |
+| `test_file_utils.py` | 12 | Shared file classification utilities |
 | `test_session_directives.py` | 12 | Session-level directive handling |
-| `test_best_files_tracker.py` | 45 | File tracking, scoring, model stage detection |
-| `test_file_categorization.py` | ~30 | File type detection (including denmod_mtz) |
-| `test_event_system.py` | ~40 | Event logging system |
-| `test_yaml_tools.py` | ~20 | YAML validation |
-| `test_metric_patterns.py` | ~50 | Log parsing patterns |
-| `test_workflow_state.py` | ~65 | Workflow state detection, done flags, refine counting |
-| `test_session_summary.py` | ~25 | Session summary generation, STOP cycle exclusion |
+| `test_state_serialization.py` | 12 | State packaging/unpackaging |
+| `test_summary_display.py` | 12 | Summary formatting |
+| `test_advice_preprocessing.py` | 11 | README discovery, advice processing |
+| `test_metric_patterns.py` | 11 | Log parsing patterns |
+| `test_history_analysis.py` | 10 | History analysis, anomalous workflow support |
+| `test_session_summary.py` | 10 | Session summary generation, STOP cycle exclusion |
+| `test_yaml_tools.py` | 9 | YAML validation and inspection |
+| `test_docs_tools.py` | 8 | Documentation generation |
+| `test_dry_run.py` | 8 | Dry run manager functionality |
+| `test_session_tools.py` | 7 | Session management utilities |
+| `test_template.py` | 5 | Template builder |
+| `test_phaser_multimodel.py` | 3 | Phaser multi-model handling |
+| `test_utils.py` | 2 | Assert helpers |
 
-Total: **400+ tests**
+Total: **747 tests across 34 files**
 
 ### Key Tests for Recent Fixes
 

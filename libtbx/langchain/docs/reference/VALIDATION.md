@@ -70,12 +70,18 @@ from agent.sanity_checker import SanityChecker
 checker = SanityChecker()
 
 # Run all checks
-result = checker.check_state(
-    workflow_state="xray_refined",
-    experiment_type="xray",
-    available_files=[...],
-    history=[...],
-    session_info={...}
+result = checker.check(
+    context={
+        "experiment_type": "xray",
+        "state": "xray_refined",
+        "has_model": True,
+        "has_data_mtz": True,
+        "history": [...],
+        "metrics_history": [...],
+    },
+    session_info={...},
+    abort_on_red_flags=True,
+    abort_on_warnings=False
 )
 
 if result.red_flags:

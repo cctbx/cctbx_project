@@ -37,10 +37,10 @@ phenix.xtriage:
     metrics:
       - resolution
       - completeness
-      - twinning
+      - twinning  # Extracted by hardcoded table parser in log_parsers.py
       - twin_fraction
       - twin_law
-      - anomalous_measurability
+      - anomalous_measurability  # Extracted by hardcoded table parser in log_parsers.py
       - space_group
 
   command: "phenix.xtriage {data_mtz}"
@@ -187,7 +187,7 @@ phenix.map_symmetry:
 
   hints:
     - "Run on full map to detect point-group symmetry"
-    - "Output .ncs_spec file can be used by map_to_model, resolve_cryo_em, predict_and_build"
+    - "Output .ncs_spec file can be used by resolve_cryo_em, predict_and_build, or apply_ncs"
     - "Optional: specify expected ncs_type if known (C2, D2, C3, etc.)"
 
   user_advice_keywords:
@@ -306,6 +306,25 @@ phenix.predict_and_build:
     - "If stop_after_predict=False (default), resolution is REQUIRED"
     - "Resolution can be found in xtriage/mtriage output"
     - "For cryo-EM: use full_map or half_map (or both)"
+
+  log_parsing:
+    r_free:
+      pattern: 'R-free\s*[=:]\s*([0-9.]+)'
+      type: float
+      extract: last  # predict_and_build runs internal refinement; take final value
+      display_name: "R-free"
+      summary_format: "R-free: {value:.4f}"
+    r_work:
+      pattern: 'R-work\s*[=:]\s*([0-9.]+)'
+      type: float
+      extract: last
+      display_name: "R-work"
+      summary_format: "R-work: {value:.4f}"
+    map_cc:
+      pattern: '(?:CC_mask|[Mm]ap[-_\s]?CC|[Mm]odel[-_\s]?vs[-_\s]?map\s+CC)\s*[:=]?\s*([0-9.]+)'
+      type: float
+      extract: last
+      display_name: "Map CC"
 
 
 phenix.phaser:
@@ -464,6 +483,23 @@ phenix.autobuild:
     - "Will not work with raw F/SIGF data"
     - "If a refined model exists, include it for better results"
 
+  log_parsing:
+    r_free:
+      pattern: 'R-free\s*[=:]\s*([0-9.]+)'
+      type: float
+      extract: last
+      display_name: "R-free"
+    r_work:
+      pattern: 'R-work\s*[=:]\s*([0-9.]+)'
+      type: float
+      extract: last
+      display_name: "R-work"
+    residues_built:
+      pattern: '(\d+)\s+residues?\s+built'
+      type: int
+      extract: last
+      display_name: "Residues built"
+
 
 # X-ray density modification using autobuild in maps_only mode
 phenix.autobuild_denmod:
@@ -592,6 +628,23 @@ phenix.autosol:
     - "Requires anomalous data (F+/F- or I+/I-)"
     - "Set atom_type to the anomalous scatterer"
 
+  log_parsing:
+    fom:
+      pattern: '[Ff]igure\s+of\s+[Mm]erit\s*[=:]\s*([0-9.]+)'
+      type: float
+      extract: last
+      display_name: "Figure of merit"
+    sites_found:
+      pattern: '(\d+)\s+(?:heavy\s+atom\s+)?sites?\s+found'
+      type: int
+      extract: last
+      display_name: "Sites found"
+    bayes_cc:
+      pattern: 'BAYES-CC\s*[=:]\s*([0-9.]+)'
+      type: float
+      extract: last
+      display_name: "BAYES-CC"
+
 
 phenix.dock_in_map:
   description: "Dock a model into a cryo-EM map"
@@ -667,6 +720,13 @@ phenix.dock_in_map:
     - "Resolution is REQUIRED - get it from mtriage"
     - "Requires a FULL map - if only half-maps available, run resolve_cryo_em first"
 
+  log_parsing:
+    map_cc:
+      pattern: '(?:CC_mask|[Mm]ap[-_\s]?CC|[Mm]odel[-_\s]?vs[-_\s]?map\s+CC)\s*[:=]?\s*([0-9.]+)'
+      type: float
+      extract: last
+      display_name: "Map CC"
+
 
 phenix.map_to_model:
   description: "Build atomic model directly into cryo-EM map"
@@ -691,9 +751,6 @@ phenix.map_to_model:
         flag: "input_files.partial_model="
         description: "Partial model to extend (rarely needed)"
         auto_fill: false
-      ncs_spec:
-        extensions: [.ncs_spec]
-        flag: "ncs_file="
 
   # Must have either full_map or half_maps
   input_priorities:
@@ -712,7 +769,7 @@ phenix.map_to_model:
     metrics:
       - map_cc
 
-  command: "phenix.map_to_model {full_map} {half_map} {sequence} {partial_model} {ncs_spec}"
+  command: "phenix.map_to_model {full_map} {half_map} {sequence} {partial_model}"
 
   defaults:
     nproc: 4
@@ -745,9 +802,16 @@ phenix.map_to_model:
   hints:
     - "Can use full map OR two half-maps (half-maps provide better weighting)"
     - "Resolution is REQUIRED - get it from mtriage"
-    - "Optional: provide ncs_spec file from map_symmetry for symmetric structures"
+    - "NCS symmetry (ncs_spec) is NOT used here - apply it later with apply_ncs if needed"
     - "Do NOT use model= parameter. This is de novo model building - no input model needed"
     - "If a partial model is provided, use input_files.partial_model= (very rare)"
+
+  log_parsing:
+    map_cc:
+      pattern: '(?:CC_mask|[Mm]ap[-_\s]?CC|[Mm]odel[-_\s]?vs[-_\s]?map\s+CC)\s*[:=]?\s*([0-9.]+)'
+      type: float
+      extract: last
+      display_name: "Map CC"
 
 
 phenix.process_predicted_model:
@@ -1002,6 +1066,11 @@ phenix.real_space_refine:
       type: float
       display_name: "Map CC"
       summary_format: "{value:.3f}"
+    clashscore:
+      pattern: '[Cc]lashscore\s*[=:]\s*([0-9.]+)'
+      type: float
+      extract: last
+      display_name: "Clashscore"
 
   hints:
     - "Resolution is REQUIRED - get it from mtriage"
@@ -1050,7 +1119,17 @@ phenix.ligandfit:
   outputs:
     files:
       - pattern: "*ligand_fit*.pdb"
-        type: model
+        type: ligand
+
+  log_parsing:
+    ligand_cc:
+      pattern: '[Cc]orrelation\s+[Cc]oefficient\s*[:=]\s*([\d.]+)'
+      type: float
+      display_name: "Ligand CC"
+    ligand_rsr:
+      pattern: '[Rr]eal[-_\s]?[Ss]pace\s+R\s*[:=]\s*([\d.]+)'
+      type: float
+      display_name: "Ligand RSR"
 
   command: "phenix.ligandfit {model} {map_coeffs_mtz} {ligand}"
 
@@ -1439,6 +1518,13 @@ phenix.validation_cryoem:
       flag: "resolution={value}"
       type: float
 
+  log_parsing:
+    map_cc:
+      pattern: '(?:CC_mask|[Mm]ap[-_\s]?CC|[Mm]odel[-_\s]?vs[-_\s]?map\s+CC)\s*[:=]?\s*([0-9.]+)'
+      type: float
+      extract: last
+      display_name: "Map CC"
+
 
 phenix.holton_geometry_validation:
   description: "Detailed geometry validation with energy scoring"
@@ -1457,6 +1543,13 @@ phenix.holton_geometry_validation:
       - geometry_energy
 
   command: "phenix.holton_geometry_validation {model}"
+
+  log_parsing:
+    geometry_energy:
+      pattern: '(?:[Gg]eometry\s+)?[Ee]nergy\s*[:=]\s*([0-9.]+)'
+      type: float
+      extract: last
+      display_name: "Geometry energy"
 
   hints:
     - "Overall geometry energy should be close to ~67 for ideal model"

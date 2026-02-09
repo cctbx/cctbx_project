@@ -2363,8 +2363,20 @@ FINAL REPORT:"""
         except Exception:
             from knowledge.metric_patterns import extract_metrics_for_program
 
-        # Extract metrics from result using YAML patterns
-        metrics = extract_metrics_for_program(result, program)
+        # Use pre-parsed cycle metrics as primary source.
+        # These are extracted by record_result -> _extract_metrics_from_result
+        # using flexible hardcoded patterns that match both raw log output and
+        # the reformatted metrics report (e.g., "R Free: 0.258" from
+        # format_metrics_report). YAML patterns only match raw log format
+        # (e.g., "R-free = 0.258") and fail on the reformatted text.
+        metrics = dict(cycle.get("metrics", {}))
+
+        # Supplement with YAML pattern extraction from result text
+        # (catches anything the hardcoded patterns missed)
+        yaml_metrics = extract_metrics_for_program(result, program)
+        for k, v in yaml_metrics.items():
+            if k not in metrics:
+                metrics[k] = v
 
         # Format using YAML config
         formatted = format_step_metric(program, metrics)
@@ -2567,7 +2579,9 @@ FINAL REPORT:"""
                 ("map_coeffs_mtz", "map_coeffs", "Map coefficients for visualization"),
                 ("map", "map", "Best electron density map"),
                 ("full_map", "map", "Full reconstructed map"),
-                ("ligand_fit_output", "ligand", "Fitted ligand coordinates"),
+                # Note: ligandfit output is found via cycle-scanning below,
+                # because "ligand_fit_output" is a stage under "model" in
+                # best_files, not a separate top-level category key.
             ]
 
             for category, display_type, description in categories_to_show:
@@ -2582,10 +2596,51 @@ FINAL REPORT:"""
                     # 2. The paths in best_files are from the client's filesystem
                     final_files.append({
                         "name": basename,
+                        "path": filepath,
                         "type": display_type,
                         "description": description,
                     })
                     seen_types.add(display_type)
+
+            # Ligandfit outputs need special handling:
+            # ligand_fit_output is a subcategory/stage under "model" in best_files,
+            # NOT a separate top-level key. Since the ligandfit output PDB scores
+            # lower than a refined model, it won't be the best "model" entry.
+            # Scan cycles to find ligandfit output files.
+            if "ligand" not in seen_types:
+                for cycle in reversed(cycles):
+                    program = (cycle.get("program") or "").lower()
+                    result = str(cycle.get("result", ""))
+                    if "ligandfit" in program and "SUCCESS" in result:
+                        # First pass: look for ligand_fit pattern files
+                        ligand_file = None
+                        ligand_path = None
+                        fallback_pdb = None
+                        fallback_path = None
+                        for f in cycle.get("output_files", []):
+                            basename = os.path.basename(f)
+                            if self._is_intermediate_file(basename):
+                                continue
+                            if basename.endswith('.pdb'):
+                                if 'ligand_fit' in basename or 'lig_fit' in basename:
+                                    ligand_file = basename
+                                    ligand_path = f
+                                    break
+                                elif fallback_pdb is None:
+                                    fallback_pdb = basename
+                                    fallback_path = f
+                        chosen = ligand_file or fallback_pdb
+                        chosen_path = ligand_path or fallback_path
+                        if chosen:
+                            final_files.append({
+                                "name": chosen,
+                                "path": chosen_path,
+                                "type": "ligand",
+                                "description": "Fitted ligand coordinates",
+                            })
+                            seen_types.add("ligand")
+                        if "ligand" in seen_types:
+                            break
 
             # If we have best files, return them
             if final_files:
@@ -2596,7 +2651,8 @@ FINAL REPORT:"""
         best_by_type = {}  # type -> (basename, file_info, cycle_num)
 
         for i, cycle in enumerate(cycles):
-            if cycle.get("status") != "completed":
+            result = str(cycle.get("result", ""))
+            if "SUCCESS" not in result:
                 continue
             output_files = cycle.get("output_files", [])
             program = cycle.get("program", "")
@@ -2608,6 +2664,7 @@ FINAL REPORT:"""
 
                 file_info = self._describe_output_file(basename, program)
                 if file_info:
+                    file_info["path"] = f  # Store full path
                     file_type = file_info.get("type", "file")
                     # Keep the latest (highest cycle number) for each type
                     if file_type not in best_by_type or i > best_by_type[file_type][2]:
@@ -2634,10 +2691,11 @@ FINAL REPORT:"""
         basename_lower = basename.lower()
 
         # Skip patterns - intermediate or debug files
+        # NOTE: All patterns must be lowercase since they're matched against basename_lower
         skip_patterns = [
             "_debug", "_check", ".geo", ".eff", ".def", ".log",
             "superposed_predicted", "untrimmed", "intermediate",
-            "_cycle_", "carryOn", "CarryOn",
+            "_cycle_", "carryon",
         ]
         if any(pat in basename_lower for pat in skip_patterns):
             return True
@@ -2647,6 +2705,59 @@ FINAL REPORT:"""
             return True
 
         return False
+
+    def _get_working_directory_path(self):
+        """
+        Get the absolute path of the working directory where the agent was run.
+
+        Uses input_directory from session data, or infers from session file path.
+        Falls back to current working directory.
+        """
+        # Try input_directory first (set when agent starts)
+        input_dir = self.data.get("input_directory")
+        if input_dir:
+            abs_dir = os.path.abspath(input_dir)
+            if os.path.isdir(abs_dir):
+                return abs_dir
+
+        # Infer from session file path
+        if hasattr(self, 'session_file') and self.session_file:
+            session_dir = os.path.dirname(os.path.abspath(self.session_file))
+            dir_name = os.path.basename(session_dir)
+            if dir_name in ['agent_session', 'session', '.phenix_ai',
+                            'ai_agent_directory']:
+                parent_dir = os.path.dirname(session_dir)
+                if parent_dir:
+                    return parent_dir
+            return session_dir
+
+        return os.path.abspath(os.getcwd())
+
+    def _get_display_path(self, file_entry):
+        """
+        Get a display path for a file entry that is relative to the working
+        directory, so the user can type it directly at the command line.
+
+        Args:
+            file_entry: dict with 'name' (basename) and optional 'path' (full path)
+
+        Returns:
+            str: Relative path from working directory, or basename as fallback
+        """
+        full_path = file_entry.get("path")
+        if not full_path:
+            return file_entry.get("name", "unknown")
+
+        try:
+            working_dir = self._get_working_directory_path()
+            rel_path = os.path.relpath(full_path, working_dir)
+            # Sanity check: if relpath starts with many "../" it's not useful
+            if rel_path.count("..") > 3:
+                return file_entry.get("name", "unknown")
+            return rel_path
+        except (ValueError, TypeError):
+            # os.path.relpath can fail on Windows with different drives
+            return file_entry.get("name", "unknown")
 
     def _describe_output_file(self, basename, program):
         """
@@ -2717,7 +2828,7 @@ FINAL REPORT:"""
             elif "ligand_fit" in basename_lower:
                 return {
                     "name": basename,
-                    "type": "model",
+                    "type": "ligand",
                     "description": "Fitted ligand coordinates"
                 }
             else:
@@ -3047,7 +3158,8 @@ FINAL REPORT:"""
             for f in data["final_files"]:
                 file_type = f.get('type', 'file')
                 description = f.get('description', '')
-                lines.append(f"| {f['name']} | {file_type} | {description} |")
+                display_path = self._get_display_path(f)
+                lines.append(f"| {display_path} | {file_type} | {description} |")
             lines.append("")
             lines.append("")
 
@@ -3145,7 +3257,8 @@ FINAL REPORT:"""
             lines.append("KEY OUTPUT FILES:")
             for f in data["final_files"]:
                 desc = f.get('description', f.get('type', 'file'))
-                lines.append(f"  {f['name']} - {desc}")
+                display_path = self._get_display_path(f)
+                lines.append(f"  {display_path} - {desc}")
             lines.append("")
 
         lines.append(f"TOTAL CYCLES: {data['total_cycles']} ({data['successful_cycles']} successful)")

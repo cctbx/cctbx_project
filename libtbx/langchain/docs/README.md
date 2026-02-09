@@ -59,7 +59,7 @@ phenix.ai_agent verbosity=verbose original_files="data.mtz sequence.fa"
 | Document | Description |
 |----------|-------------|
 | [project/CHANGELOG.md](project/CHANGELOG.md) | Version history and release notes |
-| [project/THOUGHT_EXPERIMENT.md](project/THOUGHT_EXPERIMENT.md) | Example workflow traces (v110 updated) |
+| [project/THOUGHT_EXPERIMENT.md](project/THOUGHT_EXPERIMENT.md) | Example workflow traces (v110, updated through v112) |
 | [project/TRANSPARENCY_LOGGING.md](project/TRANSPARENCY_LOGGING.md) | Event system design and implementation |
 | [implementation/PROGRAM_CONFIG_ROBUSTNESS.md](implementation/PROGRAM_CONFIG_ROBUSTNESS.md) | Plan for robust program configuration |
 
@@ -87,6 +87,8 @@ All domain knowledge is externalized to editable YAML files:
 | `knowledge/metrics.yaml` | Quality thresholds, display formats |
 | `knowledge/file_categories.yaml` | File type categorization rules |
 | `knowledge/patterns.yaml` | Regex patterns for metric extraction |
+| `knowledge/recoverable_errors.yaml` | Error patterns and recovery strategies |
+| `knowledge/transport.yaml` | Sanitization rules for API transport |
 
 ### 2. Intelligent Workflow Management
 
@@ -140,21 +142,22 @@ The agent explains every decision at configurable verbosity:
 
 | Level | Shows |
 |-------|-------|
-| `quiet` | Errors only, one-line cycle summaries |
+| `quiet` | Errors, warnings, one-line cycle summaries |
 | `normal` | Key decisions, metrics, commands (default) |
-| `verbose` | Full details: file selection, LLM traces, debug info |
-
-Note: `debug` is an alias for `verbose` (3 levels total).
+| `verbose` | Full details: file selection, LLM traces, debug events |
 
 ### 6. Safety Checks
 
-The agent includes 70+ safety checks across multiple layers:
+The agent includes 75+ safety checks across multiple layers:
 
 | Category | Count | Examples |
 |----------|-------|----------|
 | Sanity Checks | 20 | No data for workflow, model not positioned |
-| Directive Validation | 7 | Invalid program names, conflicting stops |
+| Input Validation | 29 | Command syntax, API schema, pattern validation |
 | Workflow Validation | 8 | Wrong phase, invalid transitions |
+| Directive Validation | 7 | Invalid program names, conflicting stops |
+| File Validation | 4 | Intermediate file filtering, YAML validation |
+| Command Building | 3 | Invariant checks, file existence |
 | Post-Processing | 4 | Ligand workflow conflict resolution |
 
 See [SAFETY_CHECKS.md](SAFETY_CHECKS.md) for the complete auto-generated list.
@@ -196,13 +199,15 @@ When the agent can't fulfill a request, it explains why:
 
 ```
 1. phenix.mtriage           → Analyze map, determine resolution
-2. phenix.resolve_cryo_em   → Density modification (if half-maps provided)
-3. phenix.predict_and_build → AlphaFold prediction
-4. phenix.process_predicted_model → Prepare model for docking
-5. phenix.dock_in_map       → Dock model into density-modified map
-6. phenix.real_space_refine → Iterative refinement (3-6 cycles)
-7. phenix.molprobity        → Geometry validation
-8. STOP                     → Target achieved or plateau detected
+2. phenix.map_symmetry      → Detect point-group symmetry (if applicable)
+3. phenix.resolve_cryo_em   → Density modification (if half-maps provided)
+4. phenix.predict_and_build → AlphaFold prediction
+5. phenix.process_predicted_model → Prepare model for docking
+6. phenix.dock_in_map       → Dock model into density-modified map
+7. phenix.real_space_refine → Iterative refinement (3-6 cycles)
+8. phenix.ligandfit         → Fit ligand (if provided)
+9. phenix.molprobity        → Geometry validation
+10. STOP                    → Target achieved or plateau detected
 ```
 
 ---
@@ -223,7 +228,7 @@ When the agent can't fulfill a request, it explains why:
 The test suite uses **cctbx-style testing** with plain functions and fail-fast behavior.
 
 ```bash
-# Run all tests (300+ tests across 12+ files)
+# Run all tests (745+ tests across 34 suites)
 cd improved_agent_v2v1
 python tests/run_all_tests.py
 
@@ -478,8 +483,8 @@ improved_agent_v2/
 ├── run_inspect_db.py           # CLI: Inspect RAG database contents
 ├── run_query_docs.py           # CLI: Query PHENIX documentation
 ├── tst_langchain_tools.py      # Unit tests for external modules
-├── tests/                      # Test suites (~350+ tests)
-│   ├── run_all_tests.py        # Test runner
+├── tests/                      # Test suites (~745+ tests)
+│   ├── run_all_tests.py        # Test runner (32 registered suites)
 │   ├── test_utils.py           # Assert helpers (cctbx-style)
 │   └── scenarios/              # Dry-run test scenarios
 └── docs/                       # Documentation

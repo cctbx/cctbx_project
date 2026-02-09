@@ -82,7 +82,9 @@ The event system provides structured, transparent logging of the agent's decisio
 | `directive_applied` | normal | User directive triggered | `directive`, `action` |
 | `error` | quiet | Error occurred | `message`, `details` |
 | `warning` | normal | Warning issued | `message` |
-| `debug` | debug | Debug trace | `message` |
+| `thought` | verbose | LLM chain-of-thought/reasoning traces | `message` |
+| `file_scored` | verbose | Individual file scoring | `file`, `score`, `reason` |
+| `debug` | verbose | Debug trace | `message` |
 
 ---
 
@@ -92,9 +94,10 @@ The event system provides structured, transparent logging of the agent's decisio
 class Verbosity:
     QUIET = "quiet"    # Errors, warnings, and cycle summaries
     NORMAL = "normal"  # Key decisions and metrics (default)
-    VERBOSE = "verbose"  # Includes file selection details
-    DEBUG = "debug"    # Full internal state and traces
+    VERBOSE = "verbose"  # Full detail including file selection, internal state
 ```
+
+Note: `debug` is an event type (not a verbosity level). Events of type `debug` are shown at `verbose` verbosity.
 
 **PHIL Parameter:**
 ```phil

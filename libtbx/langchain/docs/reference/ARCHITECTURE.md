@@ -39,7 +39,13 @@ The PHENIX AI Agent is an automated crystallographic workflow system that:
 │  │  │                      LangGraph                                  │││
 │  │  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌───────┐│││
 │  │  │  │PERCEIVE │─▶│  PLAN   │─▶│  BUILD  │─▶│VALIDATE │─▶│OUTPUT ││││
-│  │  │  └─────────┘  └─────────┘  └─────────┘  └─────────┘  └───────┘│││
+│  │  │  └─────────┘  └────┬────┘  └─────────┘  └────┬────┘  └───────┘│││
+│  │  │                    ▲                          │                │││
+│  │  │                    └──────── retry < 3 ───────┤                │││
+│  │  │                                               ▼                │││
+│  │  │                                          ┌──────────┐          │││
+│  │  │                                          │ FALLBACK │──▶OUTPUT │││
+│  │  │                                          └──────────┘          │││
 │  │  └─────────────────────────────────────────────────────────────────┘││
 │  └─────────────────────────────────────────────────────────────────────┘│
 │                                                                          │
@@ -250,11 +256,18 @@ Single entry point for all requests:
 Decision-making workflow:
 
 ```
-PERCEIVE ─▶ PLAN ─▶ BUILD ─▶ VALIDATE ─▶ OUTPUT
-    │         │        │         │          │
-    │         │        │         │          │
- Analyze   Select   Build    Validate    Format
- inputs    program  command  response   decision
+PERCEIVE ──┬──▶ PLAN ─▶ BUILD ─▶ VALIDATE ──┬──▶ OUTPUT ─▶ END
+           │     │        │         │    │    │
+           │     │        │         │    │    │
+        Analyze Select   Build   Validate │  Format
+        inputs  program  command response │  decision
+           │                        │     │
+           │               retry <3 │     │ retry >=3
+           │                   ┌────┘     │
+           │                   ▼          ▼
+           │                  PLAN     FALLBACK ─▶ OUTPUT ─▶ END
+           │
+           └──▶ OUTPUT ─▶ END  (if red flag abort)
 ```
 
 #### Decision Flow Architecture
@@ -411,41 +424,17 @@ command = history_record["command"]
 
 ## File Organization
 
-```
-improved_agent_v2/
-├── ai_agent.py              # Main client orchestrator
-├── local_agent.py           # Local agent (142 lines)
-├── remote_agent.py          # Remote agent (211 lines)
-├── run_ai_agent.py          # Decision engine entry point (328 lines)
-├── session.py               # Session state tracking
-├── utilities.py             # Shared utilities
-├── log_parsers.py           # Log parsing functions
-│
-├── agent/
-│   ├── api_client.py        # v2 request/response adapters
-│   ├── graph.py             # LangGraph definition
-│   ├── graph_state.py       # Graph state schema
-│   ├── graph_nodes.py       # Graph node implementations
-│   ├── rules_selector.py    # Program selection rules
-│   ├── template_builder.py  # Command template builder
-│   └── workflow_state.py    # Workflow state detection
-│
-├── knowledge/
-│   ├── api_schema.py        # v2 API schema definitions
-│   ├── best_files_config.yaml
-│   ├── programs/            # YAML program definitions
-│   └── workflows/           # Workflow configurations
-│
-├── tests/
-│   ├── run_all_tests.py     # Unified test runner
-│   ├── test_api_schema.py   # API tests (25 tests)
-│   └── test_best_files_tracker.py  # Tracker tests (37 tests)
-│
-└── docs/
-    ├── README.md
-    ├── API_DOCUMENTATION.md
-    └── ARCHITECTURE.md
-```
+See the [README.md](../README.md#directory-structure) for the complete directory tree.
+
+Key directories:
+- `agent/` — Core agent logic (session, graph nodes, command builder, workflow engine, etc.)
+- `knowledge/` — YAML configuration files and supporting Python modules
+- `phenix_ai/` — Runtime entry points (local/remote agent, log parsers)
+- `programs/` — PHENIX program integration (main entry point `ai_agent.py`)
+- `analysis/` — Post-run log analysis and session evaluation
+- `core/` — LLM provider abstraction
+- `validation/` — Command validation framework
+- `tests/` — 34 test files with 747+ tests
 
 ## Key Design Decisions
 
@@ -537,9 +526,12 @@ xtriage → predict_and_build(stop_after_predict) → process_predicted_model �
 
 ### Adding a New Program
 
-1. Create YAML definition in `knowledge/programs/`
-2. Add to workflow transitions if needed
-3. Add log parser if output format is unique
+See [ADDING_PROGRAMS.md](../guides/ADDING_PROGRAMS.md) for the complete guide. In summary:
+
+1. Add program definition to `knowledge/programs.yaml` (inputs, outputs, log_parsing)
+2. Add to appropriate workflow phase in `knowledge/workflows.yaml`
+3. Add file categories to `knowledge/file_categories.yaml` (if new file types)
+4. Add hardcoded extractor to `phenix_ai/log_parsers.py` (only if YAML patterns insufficient)
 
 ### Adding a New Workflow
 
@@ -837,6 +829,11 @@ The agent uses a structured event system for transparent decision logging.
 │                        Graph Nodes                              │
 │  perceive() → plan() → build() → validate()                    │
 │       │          │         │          │                        │
+│       │          │         │     ┌────┴─────┐                  │
+│       │          │         │     │fallback()│                  │
+│       │          │         │     └────┬─────┘                  │
+│       │          │         │          │                        │
+│       │          │         │     output_node()                  │
 │       ▼          ▼         ▼          ▼                        │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │               state["events"] (list of dicts)            │  │
@@ -864,13 +861,23 @@ The agent uses a structured event system for transparent decision logging.
 | Type | Level | Description |
 |------|-------|-------------|
 | `cycle_start` | quiet | Cycle beginning |
+| `cycle_complete` | quiet | Cycle finished |
 | `state_detected` | normal | Workflow state determined |
 | `metrics_extracted` | normal | R-free, CC, resolution |
+| `metrics_trend` | normal | Improvement/plateau analysis |
+| `sanity_check` | normal | Red flag or warning detected |
 | `program_selected` | normal | Decision with reasoning |
+| `program_modified` | normal | Program changed by rules/validation |
+| `stop_decision` | normal | Whether to continue |
+| `directive_applied` | normal | User directive enforced |
 | `user_request_invalid` | quiet | User request unavailable |
 | `files_selected` | verbose | File selection details |
+| `file_scored` | verbose | Individual file scoring detail |
 | `command_built` | normal | Final command |
+| `thought` | verbose | LLM chain-of-thought/reasoning |
 | `error` | quiet | Error occurred |
+| `warning` | quiet | Non-fatal warning |
+| `debug` | verbose | Internal debug information |
 
 ### Verbosity Levels
 

@@ -257,8 +257,8 @@ You must output a SINGLE JSON object matching this schema:
 **phenix.map_symmetry** - Detect point-group symmetry in cryo-EM map
   Files: {map: .mrc/.ccp4}
   Strategy: {resolution: N (optional)}
-  Output: symmetry_from_map.ncs_spec (use with map_to_model, resolve_cryo_em)
-  Use: Run BEFORE map_to_model for symmetric structures to enable NCS-constrained building
+  Output: symmetry_from_map.ncs_spec (use with resolve_cryo_em, apply_ncs)
+  Use: Run BEFORE resolve_cryo_em for symmetric structures; ncs_spec can also be used later with apply_ncs
 
 **phenix.predict_and_build** - AlphaFold prediction + MR + building
   Files: {sequence: .fa/.seq/.dat, data: .mtz/.sca (X-ray), full_map: .mrc/.ccp4 (cryo-EM), half_map: [.mrc, .mrc] (cryo-EM)}

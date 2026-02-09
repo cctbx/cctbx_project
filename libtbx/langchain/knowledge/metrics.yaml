@@ -774,6 +774,11 @@ summary_display:
       # If r_free not available but map_cc is, show that
       fallback_format: "Built model"
 
+    phenix.autobuild_denmod:
+      format: "Map improved"
+      metrics: []
+      fallback_format: "Map improved"
+
     phenix.autobuild:
       format: "R-free: {r_free:.3f}"
       metrics: [r_free]
@@ -820,8 +825,9 @@ summary_display:
 
     # Ligand programs
     phenix.ligandfit:
-      format: "Ligand fitted"
-      metrics: []
+      format: "CC: {ligand_cc:.3f}"
+      metrics: [ligand_cc]
+      fallback_format: "Ligand fitted"
 
     # Default for unknown programs
     _default:

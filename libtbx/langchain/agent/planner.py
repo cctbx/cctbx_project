@@ -397,11 +397,24 @@ def get_required_params(program, input_files, original_files):
 
 # Load parameter fixes from JSON
 def load_parameter_fixes():
-    """Load program-specific parameter fixes from JSON."""
+    """Load program-specific parameter fixes from JSON.
+
+    The file lives in knowledge/ (PHENIX domain config), not agent/.
+    """
     fixes = {}
 
-    # JSON file is in same directory as this script
-    path = os.path.join(os.path.dirname(__file__), 'parameter_fixes.json')
+    # Look in knowledge/ directory (sibling of agent/)
+    agent_dir = os.path.dirname(__file__)
+    knowledge_dir = os.path.join(os.path.dirname(agent_dir), 'knowledge')
+    path = os.path.join(knowledge_dir, 'parameter_fixes.json')
+
+    # Fallback: try libtbx path for installed PHENIX
+    if not os.path.exists(path):
+        try:
+            from libtbx.langchain.knowledge import __file__ as kfile
+            path = os.path.join(os.path.dirname(kfile), 'parameter_fixes.json')
+        except Exception:
+            pass
 
     if os.path.exists(path):
         try:
@@ -411,7 +424,7 @@ def load_parameter_fixes():
         except Exception as e:
             print(f"Warning: Could not load parameter fixes from {path}: {e}")
     else:
-        print(f"Warning: parameter_fixes.json not found at {path}")
+        print(f"Warning: parameter_fixes.json not found")
 
     return fixes
 

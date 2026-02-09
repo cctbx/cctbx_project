@@ -1,5 +1,80 @@
 # PHENIX AI Agent - Changelog
 
+## Version 112 (February 2025)
+
+### Summary Quality Improvements: Steps Table Metrics & Consistency Fixes
+
+Seven issues identified and fixed through codebase-wide audit:
+
+**Fix 1 - Steps Performed table shows actual metrics (HIGH IMPACT)**
+- `_get_key_metric_for_step()` now uses pre-parsed `cycle["metrics"]` as primary source
+- YAML patterns only match raw log format (e.g., `R-free =`) but result text has reformatted
+  metrics (e.g., `R Free:`) — caused all YAML pattern extraction to fail silently
+- Steps table now shows "R-free: 0.258" instead of fallback text like "Analyzed" or "Built model"
+- Files: `agent/session.py`
+
+**Fix 2 - Benign warnings no longer drop metrics (MODERATE)**
+- `extract_metrics_from_log()` now called for ALL success paths, not just clean success
+- Previously, benign warnings (e.g., "No array of R-free flags found") triggered a code path
+  that skipped metrics extraction entirely
+- First refinement run (which often recreates R-free flags) could lose all R-factor metrics
+- Files: `programs/ai_agent.py`
+
+**Fix 3 - Ligandfit output typed as "ligand" not "model" (MINOR)**
+- `_describe_output_file()` now returns `type: "ligand"` for `ligand_fit_*.pdb` files
+- Previously typed as "model", so `best_by_type["ligand"]` was never populated in fallback path
+- Files: `agent/session.py`
+
+**Fix 4 - Removed dead `ligand_fit_output` from `categories_to_show` (COSMETIC)**
+- `ligand_fit_output` is a stage under `"model"` in best_files, not a top-level category key
+- Entry could never match anything; ligandfit output found via cycle-scanning (added in v111)
+- Files: `agent/session.py`
+
+**Fix 5 - `_is_intermediate_file` case-sensitive patterns fixed (MINOR)**
+- `"carryOn"` and `"CarryOn"` compared against `basename_lower` could never match
+- Replaced with lowercase `"carryon"`
+- Files: `agent/session.py`
+
+**Fix 6 - `detect_program` distinguishes `autobuild_denmod` (MINOR)**
+- Added `autobuild_denmod` / `maps_only` detection before generic `autobuild` match
+- Also added separate branch in `extract_all_metrics` to prevent autobuild_denmod from
+  running autobuild's metrics extractor (which would report misleading R-factors)
+- Files: `phenix_ai/log_parsers.py`
+
+**Fix 7 - Added missing YAML `log_parsing` sections (TECH DEBT)**
+- Six programs declared `outputs.metrics` but had no `log_parsing` patterns:
+  autobuild, autosol, dock_in_map, map_to_model, validation_cryoem, holton_geometry_validation
+- Two programs had partial coverage: predict_and_build (missing map_cc),
+  real_space_refine (missing clashscore)
+- All now have matching YAML patterns, same type of gap that caused v111's predict_and_build issue
+- Files: `knowledge/programs.yaml`
+
+
+## Version 111 (February 2025)
+
+### Summary Output Fixes: Missing R-free Statistics & Ligandfit Files
+
+**Problem 1 - Missing Final Quality Statistics**
+- predict_and_build runs internal refinement but R-free/R-work were not extracted from its logs
+- `_extract_predict_and_build_metrics()` only extracted pLDDT, map_cc, residues_built
+- Added: calls `_extract_refine_metrics()` to also capture R-factors
+- Added: `log_parsing` section in `programs.yaml` for predict_and_build
+- Added: `autobuild_denmod` entry in `metrics.yaml` step_metrics to prevent it from
+  matching generic autobuild config
+
+**Problem 2 - Missing Ligandfit Output in Key Files**
+- `ligand_fit_output` is a subcategory under parent `"model"` in best_files_tracker,
+  not a top-level key — `best_files.get("ligand_fit_output")` always returned None
+- Ligandfit scores 90 vs refined model's 100, so never becomes best "model" entry
+- Added: cycle-scanning logic to find ligandfit output files from successful cycles
+
+**Bonus - Fixed fallback cycle filtering**
+- `cycle.get("status") != "completed"` checked a field that never exists
+- Changed to `"SUCCESS" not in result` to match how success is tracked everywhere else
+
+Files: `phenix_ai/log_parsers.py`, `knowledge/programs.yaml`, `knowledge/metrics.yaml`, `agent/session.py`
+
+
 ## Version 110 (January 2025)
 
 ### Major Feature: Experimental Phasing (SAD/MAD) Workflow Support
