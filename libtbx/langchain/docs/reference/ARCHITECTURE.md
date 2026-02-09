@@ -638,6 +638,51 @@ if USE_NEW_COMMAND_BUILDER:
 # and delegates to CommandBuilder.build()
 ```
 
+## Automatic Error Recovery
+
+When a PHENIX program fails with a recognized error pattern, the agent can automatically
+recover and retry with corrected parameters. This is handled by `agent/error_analyzer.py`
+with patterns defined in `knowledge/recoverable_errors.yaml`.
+
+### How It Works
+
+1. **Detection**: After a program fails, the error output is matched against
+   `detection_patterns` in `recoverable_errors.yaml`
+2. **Extraction**: Regex patterns extract the parameter name and available choices
+   from the error message
+3. **Resolution**: A strategy selects the best choice based on program type and
+   workflow context (e.g., anomalous vs merged data)
+4. **Retry**: The command is rebuilt with the corrected parameter and re-executed
+
+### Currently Handled Errors
+
+- **`ambiguous_data_labels`**: MTZ file contains multiple data arrays (e.g., both
+  merged intensities and anomalous pairs). The agent picks the right array based on
+  whether the program needs anomalous or merged data.
+- **`ambiguous_experimental_phases`**: MTZ file contains multiple phase arrays.
+  The agent selects standard vs anomalous HL coefficients based on context.
+
+### Configuration
+
+`knowledge/recoverable_errors.yaml` defines:
+- **`errors`**: Detection patterns, extraction regexes, resolution strategies, max retries
+- **`label_patterns`**: How to classify data labels as anomalous or merged
+- **`program_data_preferences`**: Which programs need anomalous vs merged data
+- **`context_keywords`**: Workflow hints from user advice (e.g., "SAD" → anomalous)
+
+### Adding a New Recoverable Error
+
+1. Add an entry under `errors:` in `recoverable_errors.yaml` with detection patterns
+   and extraction regexes
+2. Add a resolution handler in `error_analyzer.py` (`resolve_error()` method)
+3. The fallback node in the graph will automatically use the new pattern
+
+### Key Files
+
+- `knowledge/recoverable_errors.yaml` — Error patterns and resolution config
+- `agent/error_analyzer.py` — Detection, extraction, and resolution logic
+- `agent/graph_nodes.py` — Fallback node triggers error analysis on failure
+
 ## Session Summary Generation
 
 The agent generates structured summaries of completed sessions with optional LLM assessment.

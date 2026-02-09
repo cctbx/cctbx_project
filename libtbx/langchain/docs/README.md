@@ -69,8 +69,7 @@ These documents describe the design and implementation of features that are now 
 
 | Document | Description |
 |----------|-------------|
-| [project/RECOVERABLE_ERRORS_PLAN.md](project/RECOVERABLE_ERRORS_PLAN.md) | Original error recovery design (implemented) |
-| [project/RECOVERABLE_ERRORS_IMPLEMENTATION.md](project/RECOVERABLE_ERRORS_IMPLEMENTATION.md) | Detailed implementation steps (complete) |
+
 
 ---
 
