@@ -522,6 +522,145 @@ xtriage → predict_and_build(stop_after_predict) → process_predicted_model �
 - Response builder uses `state["program"]` if available, falls back to `intent["program"]`
 - Prevents mismatch where PLAN shows one program but command is different
 
+## Workflow States
+
+### X-ray Crystallography Workflow
+
+```
+xray_initial → xtriage → xray_analyzed
+                              │
+              ┌───────────────┼───────────────┐
+              ↓               ↓               ↓
+       predict_and_build    phaser         autosol†
+              ↓               │               ↓
+    xray_has_prediction       │        xray_has_phases
+              ↓               │               ↓
+  process_predicted_model     │          autobuild
+              ↓               │               │
+    xray_model_processed ─────┘               │
+              ↓                               │
+           phaser ────────────────────────────┘
+              ↓
+       xray_has_model
+              ↓
+         refine (loop) ←──────────────────────┐
+              ↓                               │
+       xray_refined                           │
+         ↓    ↓    ↓                          │
+    molprobity refine STOP                    │
+              │                               │
+              ↓                               │
+       [if ligand] ligandfit → pdbtools ──────┘
+```
+
+† Prioritized when strong anomalous signal detected (measurability > 0.10)
+
+| State | Description | Valid Programs |
+|-------|-------------|----------------|
+| `xray_initial` | Starting point | xtriage |
+| `xray_analyzed` | After data analysis | predict_and_build, phaser, autosol |
+| `xray_has_prediction` | Have AlphaFold model | process_predicted_model |
+| `xray_has_phases` | After experimental phasing | autobuild |
+| `xray_has_model` | Have placed model | refine |
+| `xray_refined` | After refinement | refine, molprobity, autobuild, STOP |
+
+### Cryo-EM Workflow
+
+```
+cryoem_initial → mtriage → cryoem_analyzed
+                                │
+                ┌───────────────┼───────────────┐
+                ↓               ↓               ↓
+      predict_and_build    dock_in_map    [half-maps only]
+                │               │               ↓
+                └───────┬───────┘         resolve_cryo_em
+                        ↓                       ↓
+                cryoem_has_model          map_sharpening
+                        ↓                       │
+              real_space_refine (loop) ←────────┘
+                        ↓
+                 cryoem_refined
+                   ↓    ↓    ↓
+              molprobity RSR  STOP
+```
+
+| State | Description | Valid Programs |
+|-------|-------------|----------------|
+| `cryoem_initial` | Starting point | mtriage |
+| `cryoem_analyzed` | After map analysis | predict_and_build, dock_in_map |
+| `cryoem_has_model` | Model in map | real_space_refine |
+| `cryoem_refined` | After refinement | real_space_refine, molprobity, STOP |
+
+## Best Files Tracking
+
+The agent maintains a **Best Files Tracker** that identifies and tracks the highest-quality file of each type throughout a session, ensuring programs always receive optimal inputs.
+
+### Categories Tracked
+
+| Category | Description | Example |
+|----------|-------------|---------|
+| `model` | Best atomic model (PDB/mmCIF) | `refine_002_001.pdb` |
+| `map` | Best full cryo-EM map | `denmod_map.ccp4` |
+| `mtz` | Best reflection data | `data_with_rfree.mtz` |
+| `map_coefficients` | Best map coefficients | `refine_001_001.mtz` |
+| `sequence` | Sequence file | `sequence.fa` |
+| `ligand_cif` | Ligand restraints | `LIG.cif` |
+
+### Scoring System
+
+Each file is scored based on **processing stage** (0-100 points) and **quality metrics** (0-100 points). All scoring parameters are configurable in `knowledge/metrics.yaml` under `best_files_scoring`.
+
+**Model stage scores:** refined=100, rsr_output=100, autobuild_output=80, docked=60, processed_predicted=50, predicted=40, phaser_output=30, pdb=10
+
+**Model metric scores:** R-free (40 pts, linear_inverse), Map CC (30 pts, linear), Clashscore (30 pts, linear_inverse)
+
+**Map stage scores:** optimized_full_map=100, sharpened=90, density_modified=80, full_map=50, half_map=10. Plus resolution bonus (0-30 pts).
+
+### R-free MTZ Locking (X-ray Only)
+
+Once an MTZ with R-free flags is identified, it is **locked for the entire session**. This ensures consistent cross-validation statistics throughout refinement. The locked MTZ has absolute priority (Priority 0) over all other file selection mechanisms.
+
+### File Selection Priority
+
+When building commands, files are selected in this order:
+
+0. **Locked R-free MTZ** — For MTZ inputs in X-ray refinement (highest priority)
+1. **Best Files** — From the BestFilesTracker scoring system
+2. **Categorized Files** — From workflow_state file categorization
+3. **Extension Matching** — Search available_files by extension
+
+### Key Files
+
+| File | Role |
+|------|------|
+| `agent/best_files_tracker.py` | Core tracker class with scoring |
+| `agent/session.py` | Integration with session persistence |
+| `agent/template_builder.py` | Uses best_files for command building |
+| `knowledge/metrics.yaml` | Scoring configuration (best_files_scoring section) |
+
+## Metrics and Stop Conditions
+
+### Quality Assessment
+
+Metrics are evaluated against YAML-defined thresholds:
+
+| Quality | R-free (2.0Å) | Map CC | Anomalous Measurability |
+|---------|---------------|--------|-------------------------|
+| Good | < 0.25 | > 0.80 | > 0.10 |
+| Acceptable | < 0.30 | > 0.70 | > 0.05 |
+| Poor | ≥ 0.30 | ≤ 0.70 | ≤ 0.05 |
+
+### Stop Conditions
+
+The workflow stops when:
+
+1. **Success**: Quality metrics reach targets AND validation done
+2. **Plateau**: < 0.5% improvement for 2+ consecutive cycles
+3. **Excessive**: Too many refinement cycles (default: 5)
+4. **Validation Gate**: Must run molprobity before stopping if R-free is good
+
+The validation gate prevents stopping without validation: if R-free is below the success threshold or 3+ refinement cycles have completed, STOP is removed from valid_programs until validation runs.
+
 ## Extension Points
 
 ### Adding a New Program

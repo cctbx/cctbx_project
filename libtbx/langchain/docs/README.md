@@ -39,7 +39,6 @@ phenix.ai_agent verbosity=verbose original_files="data.mtz sequence.fa"
 | Document | Description |
 |----------|-------------|
 | [guides/USER_DIRECTIVES.md](guides/USER_DIRECTIVES.md) | How to guide the agent with natural language |
-| [guides/ERROR_RECOVERY.md](guides/ERROR_RECOVERY.md) | Automatic error recovery system |
 
 ### For Developers
 
@@ -48,7 +47,6 @@ phenix.ai_agent verbosity=verbose original_files="data.mtz sequence.fa"
 | [OVERVIEW.md](OVERVIEW.md) | Technical overview, architecture, data flow |
 | [reference/ARCHITECTURE.md](reference/ARCHITECTURE.md) | Deep-dive into components and transport |
 | [reference/API_REFERENCE.md](reference/API_REFERENCE.md) | V2 JSON API specification |
-| [reference/AGENT_LOGIC.md](reference/AGENT_LOGIC.md) | Auto-generated program and workflow reference |
 | [reference/VALIDATION.md](reference/VALIDATION.md) | Validation system documentation |
 | [guides/ADDING_PROGRAMS.md](guides/ADDING_PROGRAMS.md) | How to add new PHENIX programs |
 | [guides/TESTING.md](guides/TESTING.md) | Testing guide and conventions |
@@ -61,14 +59,6 @@ phenix.ai_agent verbosity=verbose original_files="data.mtz sequence.fa"
 | [project/CHANGELOG.md](project/CHANGELOG.md) | Version history and release notes |
 | [project/THOUGHT_EXPERIMENT.md](project/THOUGHT_EXPERIMENT.md) | Example workflow traces (v110, updated through v112) |
 | [project/TRANSPARENCY_LOGGING.md](project/TRANSPARENCY_LOGGING.md) | Event system design and implementation |
-| [implementation/PROGRAM_CONFIG_ROBUSTNESS.md](implementation/PROGRAM_CONFIG_ROBUSTNESS.md) | Plan for robust program configuration |
-
-### Historical Design Documents
-
-These documents describe the design and implementation of features that are now complete:
-
-| Document | Description |
-|----------|-------------|
 
 
 ---
@@ -303,17 +293,8 @@ python3 agent/session_tools.py --dir /path/to/session --show
 ### Documentation Generation
 
 ```bash
-# Generate agent logic reference (programs, workflows, rules)
-python3 agent/docs_tools.py > docs/reference/AGENT_LOGIC.md
-python3 agent/docs_tools.py --format text          # Plain text output
-python3 agent/docs_tools.py --output AGENT_LOGIC.md # Write to file
-
 # Generate safety checks documentation
 python3 agent/generate_safety_docs.py > docs/SAFETY_CHECKS.md
-
-# Generate decision logic documentation (from JSON configs)
-python3 agent/generate_logic_doc.py > AGENT_LOGIC.md
-python3 agent/generate_logic_doc.py --format text  # Plain text output
 ```
 
 ### RAG Documentation Database
@@ -492,20 +473,16 @@ improved_agent_v2/
     ├── SAFETY_CHECKS.md        # Auto-generated safety checks
     ├── guides/                 # How-to guides
     │   ├── USER_DIRECTIVES.md  # Natural language guidance
-    │   ├── ERROR_RECOVERY.md   # Automatic error recovery
     │   ├── ADDING_PROGRAMS.md  # Adding new PHENIX programs
     │   └── TESTING.md          # Testing guide
     ├── reference/              # API and logic reference
     │   ├── ARCHITECTURE.md     # Component deep-dive
     │   ├── API_REFERENCE.md    # V2 JSON API spec
-    │   ├── AGENT_LOGIC.md      # Auto-generated program/workflow ref
     │   └── VALIDATION.md       # Validation system
     ├── project/                # Design history and changelog
     │   ├── CHANGELOG.md        # Version history
     │   ├── THOUGHT_EXPERIMENT.md # Example workflow traces
     │   └── TRANSPARENCY_LOGGING.md # Event system design
-    └── implementation/         # Implementation plans
-        └── PROGRAM_CONFIG_ROBUSTNESS.md
 ```
 
 ---
