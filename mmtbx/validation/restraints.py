@@ -57,6 +57,9 @@ class restraint(atoms):
     if callable(getattr(self, "outlier_type", None)):
       slots_as_dict["outlier_type"] = self.outlier_type()
     slots_as_dict["atoms_info"] = atom_info_list
+    # Add top-level model_id for consistency with other validation tools
+    if self.atoms_info:
+      slots_as_dict['model_id'] = getattr(self.atoms_info[0], 'model_id', '')
     #res_type_index = slots_as_dict['res_type']
     #slots_as_dict['res_type'] = res_types[res_type_index]
     #slots_as_dict['res_type_label'] = res_type_labels[res_type_index]
