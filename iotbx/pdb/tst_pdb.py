@@ -777,9 +777,102 @@ AUTHOR   2 JEYABALAN,C.A.SCHIFFER
   ['KING.M.N', 'A.E.NALIVAIKA', 'B.P.WIGERNICK', 'PRABU-JEYABALAN',
    'A.C.SCHIFFER']
 
+def exercise_missing_atoms():
+  pdb_str = """
+CRYST1   31.395   16.417   23.217  90.00  90.00  90.00 P 1
+SCALE1      0.031852  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.060912  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.043072        0.00000
+ATOM      1  N   GLN A   1      17.191   7.640  11.852  1.00 10.38           N
+ATOM      2  CA  GLN A   1      18.307   8.180  12.621  1.00 11.39           C
+ATOM      3  C   GLN A   1      19.631   7.587  12.153  1.00 11.52           C
+ATOM      4  O   GLN A   1      19.805   6.365  12.035  1.00 12.05           O
+ATOM      5  CB  GLN A   1      18.093   8.002  14.128  1.00 11.96           C
+ATOM      6  CG  GLN A   1      16.866   8.769  14.628  1.00 10.81           C
+remark ATOM      7  CD  GLN A   1      16.381   8.233  15.935  1.00 13.10           C
+ATOM      8  OE1 GLN A   1      15.811   7.144  15.983  1.00 10.65           O
+ATOM      9  NE2 GLN A   1      16.586   9.006  17.020  1.00 12.30           N
+ATOM     10  H1  GLN A   1      17.464   7.449  11.027  1.00 10.38           H
+ATOM     11  H2  GLN A   1      16.891   6.900  12.244  1.00 10.38           H
+ATOM     12  H3  GLN A   1      16.537   8.242  11.816  1.00 10.38           H
+ATOM     13  HA  GLN A   1      18.358   9.137  12.474  1.00 11.39           H
+ATOM     14  HB2 GLN A   1      18.872   8.333  14.602  1.00 11.96           H
+ATOM     15  HB3 GLN A   1      17.962   7.061  14.322  1.00 11.96           H
+remark ATOM     16  HG2 GLN A   1      17.098   9.703  14.748  1.00 10.81           H
+ATOM     17  HG3 GLN A   1      16.150   8.686  13.979  1.00 10.81           H
+ATOM     18 HE21 GLN A   1      16.324   8.739  17.794  1.00 12.30           H
+ATOM     19 HE22 GLN A   1      16.979   9.767  16.938  1.00 12.30           H
+ATOM     20  N   ASN A   2      20.551   8.483  11.837  1.00 11.99           N
+remark ATOM     21  CA  ASN A   2      21.868   8.129  11.299  1.00 12.30           C
+ATOM     22  C   ASN A   2      22.891   8.580  12.305  1.00 13.40           C
+ATOM     23  O   ASN A   2      23.256   9.762  12.355  1.00 13.92           O
+ATOM     24  CB  ASN A   2      22.102   8.835   9.974  1.00 12.13           C
+ATOM     25  CG  ASN A   2      20.998   8.554   8.984  1.00 12.77           C
+ATOM     26  OD1 ASN A   2      20.835   7.423   8.532  1.00 14.27           O
+ATOM     27  ND2 ASN A   2      20.232   9.566   8.660  1.00 10.07           N
+ATOM     28  H   ASN A   2      20.440   9.331  11.925  1.00 11.99           H
+ATOM     29  HA  ASN A   2      21.943   7.176  11.133  1.00 12.30           H
+ATOM     30  HB2 ASN A   2      22.138   9.793  10.124  1.00 12.13           H
+ATOM     31  HB3 ASN A   2      22.939   8.527   9.591  1.00 12.13           H
+ATOM     32 HD21 ASN A   2      19.589   9.456   8.100  1.00 10.07           H
+ATOM     33 HD22 ASN A   2      20.372  10.340   9.008  1.00 10.07           H
+ATOM     34  N   TYR A   3      23.329   7.636  13.128  1.00 14.70           N
+ATOM     35  CA  TYR A   3      24.196   7.963  14.280  1.00 15.18           C
+ATOM     36  C   TYR A   3      25.640   8.150  13.866  1.00 15.91           C
+ATOM     37  O   TYR A   3      26.078   7.630  12.836  1.00 15.76           O
+ATOM     38  CB  TYR A   3      24.098   6.884  15.350  1.00 15.35           C
+ATOM     39  CG  TYR A   3      22.702   6.748  15.883  1.00 14.45           C
+ATOM     40  CD1 TYR A   3      22.247   7.575  16.901  1.00 14.80           C
+ATOM     41  CD2 TYR A   3      21.808   5.840  15.308  1.00 15.68           C
+ATOM     42  CE1 TYR A   3      20.941   7.468  17.397  1.00 14.33           C
+ATOM     43  CE2 TYR A   3      20.517   5.725  15.777  1.00 13.46           C
+ATOM     44  CZ  TYR A   3      20.084   6.548  16.812  1.00 15.09           C
+ATOM     45  OH  TYR A   3      18.803   6.408  17.272  1.00 14.39           O
+ATOM     46  OXT TYR A   3      26.395   8.818  14.593  1.00 17.49           O
+ATOM     47  H   TYR A   3      23.145   6.799  13.051  1.00 14.70           H
+remark ATOM     48  HA  TYR A   3      23.890   8.801  14.661  1.00 15.18           H
+ATOM     49  HB2 TYR A   3      24.684   7.113  16.088  1.00 15.35           H
+ATOM     50  HB3 TYR A   3      24.362   6.032  14.969  1.00 15.35           H
+ATOM     51  HD1 TYR A   3      22.820   8.213  17.261  1.00 14.80           H
+ATOM     52  HD2 TYR A   3      22.088   5.306  14.600  1.00 15.68           H
+ATOM     53  HE1 TYR A   3      20.655   8.002  18.103  1.00 14.33           H
+ATOM     54  HE2 TYR A   3      19.938   5.100  15.403  1.00 13.46           H
+ATOM     55  HH  TYR A   3      18.433   7.160  17.325  1.00 14.39           H
+TER
+END
+"""
+  try:
+    import mmtbx.monomer_library.server
+    mon_lib_srv = mmtbx.monomer_library.server.server()
+  except: # intentional
+    print("Can not initialize monomer_library, skipping test.")
+    return
+  pdb_inp = iotbx.pdb.input(file_name = "m.pdb")
+  h = pdb_inp.construct_hierarchy()
+  for m in h.models():
+    for c in m.chains():
+      for r in c.residues():
+        r1 = r.missing_atoms(mon_lib_srv=mon_lib_srv, mode="all")
+        r2 = r.missing_atoms(mon_lib_srv=mon_lib_srv, mode="non_h")
+        r3 = r.missing_atoms(mon_lib_srv=mon_lib_srv, mode="h_only")
+        print(r.resseq, r.resname, r1, r2, r3)
+        if int(r.resseq)==1:
+          assert r1 == ['HG2', 'CD']
+          assert r2 == ['CD']
+          assert r3 == ['HG2']
+        elif int(r.resseq)==2:
+          r1 == ['CA']
+          r2 == ['CA']
+          r3 == []
+        elif int(r.resseq)==3:
+          assert r1 == ['HA']
+          assert r2 == []
+          assert r3 == ['HA']
+        else: assert 0
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
+  exercise_missing_atoms()
   exercise_extract_authors()
   exercise_pdb_input_error_handling()
   exercise_systematic_chain_ids()

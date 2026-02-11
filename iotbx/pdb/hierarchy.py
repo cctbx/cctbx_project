@@ -3663,6 +3663,64 @@ class _():
     assert self.atoms_size() == 1
     return self.atoms()[0]
 
+  def missing_atoms(self, mon_lib_srv, mode="non_h"):
+    """
+    Returns atoms missing in the residue (self).
+    LIMITED: may not be aware of modifications, terminals and
+             similar peculiarities.
+    EXTEND coverage as needed, and add tests to exercise_missing_atoms() in
+           iotbx/pdb/tst_pdb.py
+    """
+    assert mode in ["all", "non_h", "h_only"]
+    def _mon_lib_query(residue, mon_lib_srv):
+      get_func = getattr(mon_lib_srv, "get_comp_comp_id", None)
+      if (get_func is not None): return get_func(comp_id=residue)
+      return mon_lib_srv.get_comp_comp_id_direct(comp_id=residue)
+    atom_list = []
+    for atom in self.atoms():
+      atom_list.append(atom.name.strip().upper())
+    mlq = _mon_lib_query(self.resname.strip().upper(), mon_lib_srv)
+    assert mlq is not None
+    reference_list = []
+    atom_dict = mlq.atom_dict()
+    alla = [at for at in mlq.atom_dict()]
+    nonH = [non.atom_id.strip().upper() for non in mlq.non_hydrogen_atoms()]
+    if  (mode == "all"):   reference_list = alla
+    elif(mode == "non_h"): reference_list = nonH
+    else:                  reference_list = list(set(alla) - set(nonH))
+    if(mode != "non_h"):
+      alternative_names = [
+        ('HA1', 'HA2', 'HA3'),
+        ('HB1', 'HB2', 'HB3'),
+        ('HG1', 'HG2', 'HG3'),
+        ('HD1', 'HD2', 'HD3'),
+        ('HE1', 'HE2', 'HE3'),
+        ('HG11', 'HG12', 'HG13')
+        ]
+      for alts in alternative_names:
+        if (alts[0] in reference_list and alts[1] in reference_list):
+          if (atom_dict[alts[0]].type_energy == 'HCH2' and
+              atom_dict[alts[1]].type_energy == 'HCH2'):
+            reference_list.append(alts[2])
+            reference_list.remove(alts[0])
+    missing=[]
+    for atom in reference_list:
+      if atom not in atom_list:
+        atom_temp = atom.replace("*", "'")
+        if atom.upper() == "O1P":
+          atom_temp = "OP1"
+        elif atom.upper() == "O2P":
+          atom_temp = "OP2"
+        if atom_temp not in atom_list:
+          missing.append(atom)
+    # Handle N terminal, if aa
+    if(mode != "non_h"):
+      aa_alikes = ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']
+      if(common_residue_names_get_class(name=self.resname) in aa_alikes):
+        if(not self.link_to_previous):
+          if('H' in missing): missing.remove('H')
+    return missing
+
   def residue_name_plus_atom_names_interpreter(self,
         translate_cns_dna_rna_residue_names=None,
         return_mon_lib_dna_name=False):
@@ -3674,7 +3732,6 @@ class _():
       atom_names=[atom.name for atom in self.atoms()],
       translate_cns_dna_rna_residue_names=translate_cns_dna_rna_residue_names,
       return_mon_lib_dna_name=return_mon_lib_dna_name)
-
 
 @bp.inject_into(ext.atom_with_labels)
 class _():
