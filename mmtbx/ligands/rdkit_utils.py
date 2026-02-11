@@ -18,6 +18,41 @@ Functions:
   match_mol_indices: Match atom indices of different mols
 """
 
+def get_rdkit_bond_type(cif_order):
+  """
+  Maps CCTBX CIF bond orders to RDKit BondType enum.
+  """
+  if not cif_order: return Chem.BondType.SINGLE
+  order = cif_order.lower()
+  if 'sing' in order: return Chem.BondType.SINGLE
+  if 'doub' in order: return Chem.BondType.DOUBLE
+  if 'trip' in order: return Chem.BondType.TRIPLE
+  if 'deloc' in order or 'arom' in order: return Chem.BondType.AROMATIC
+  return Chem.BondType.SINGLE
+
+def is_amide_bond(mol, bond):
+  """
+  Checks if a bond is a C-N amide bond to prevent cutting peptides.
+  """
+  a1 = bond.GetBeginAtom()
+  a2 = bond.GetEndAtom()
+
+  c_atom, n_atom = None, None
+  if a1.GetSymbol() == 'C' and a2.GetSymbol() == 'N':
+    c_atom, n_atom = a1, a2
+  elif a2.GetSymbol() == 'C' and a1.GetSymbol() == 'N':
+    c_atom, n_atom = a2, a1
+
+  if c_atom is None: return False
+
+  for nbr in c_atom.GetNeighbors():
+    if nbr.GetIdx() == n_atom.GetIdx(): continue
+    if nbr.GetSymbol() == 'O':
+      bond_to_o = mol.GetBondBetweenAtoms(c_atom.GetIdx(), nbr.GetIdx())
+      if bond_to_o is not None and bond_to_o.GetBondType() == Chem.BondType.DOUBLE:
+        return True
+  return False
+
 def get_prop_safe(rd_obj, prop):
   if prop not in rd_obj.GetPropNames(): return False
   return rd_obj.GetProp(prop)
