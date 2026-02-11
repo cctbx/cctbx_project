@@ -1,5 +1,39 @@
 # PHENIX AI Agent - Changelog
 
+## Version 112.2 (February 2025)
+
+### Cohere → FlashRank Migration
+
+**Dependency removal - Replace Cohere API with local FlashRank reranker**
+- Replaced `CohereRerank` (cloud API) with `FlashrankRerank` (local cross-encoder)
+- Model: `ms-marco-MiniLM-L-12-v2` (~34MB, runs on CPU, no API key needed)
+- Same `ContextualCompressionRetriever` pattern — callers unchanged
+- Removed `COHERE_API_KEY` environment variable requirement
+- Removed `CohereApiError` exception handling (local inference has no API errors)
+- Updated privacy disclaimers (Cohere no longer contacted)
+- Files: `rag/retriever.py`, `analysis/analyzer.py`, `utils/run_utils.py`,
+  `programs/ai_agent.py`, `programs/ai_analysis.py`
+- Install: `pip install flashrank` (replaces `cohere` + `langchain-cohere`)
+- Migration plan: `docs/project/COHERE_TO_FLASHRANK.md`
+
+### Test Infrastructure Fixes
+
+**Fix - Unconditional mock modules breaking PHENIX environment tests**
+- Five test files unconditionally overwrote real `libtbx` modules with mocks
+- Added `if 'libtbx' not in sys.modules` guards to all mock blocks
+- Set `__path__` on mock modules pointing to actual local directories so
+  submodule imports (e.g. `libtbx.langchain.agent.utils`) resolve automatically
+- Files: `tst_state_serialization.py`, `tst_command_builder.py`,
+  `tst_file_categorization.py`, `tst_session_directives.py`
+
+**Fix - `tst_advice_preprocessing.py` import failure in PHENIX**
+- `sys.path.insert` was inside `except ImportError` block, so `from tests.tst_utils`
+  was unfindable when libtbx imports succeeded
+- Moved to top level
+
+**Cleanup - Stale docstring run instructions**
+- Updated `Run with: python tests/test_...` → `tst_...` across 21 files
+
 ## Version 112.1 (February 2025)
 
 ### Cryo-EM State Fix & MR-SAD Workflow Support

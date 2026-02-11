@@ -18,7 +18,6 @@ from __future__ import absolute_import, division, print_function
 from concurrent.futures import TimeoutError
 
 from langchain_core.prompts import PromptTemplate
-from cohere.core.api_error import ApiError as CohereApiError
 from google.api_core import exceptions as google_exceptions
 
 from libtbx import group_args
@@ -173,21 +172,6 @@ async def analyze_log_summary(log_info, llm, embeddings,
             "ERROR: Google AI API quota exceeded. "
             f"Details: {e}"
         )
-        print(error_message)
-        return group_args(
-            group_args_type='answer',
-            analysis=None,
-            error=error_message
-        )
-
-    except CohereApiError as e:
-        if hasattr(e, 'http_status') and e.http_status == 401:
-            error_message = "Invalid Cohere API key.\n"
-        elif str(e).find("invalid api token") > -1:
-            error_message = "Cohere API key is invalid"
-        else:
-            error_message = f"ERROR: A Cohere API error occurred. Details: {e}"
-
         print(error_message)
         return group_args(
             group_args_type='answer',

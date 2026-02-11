@@ -3,7 +3,7 @@ RAG (Retrieval-Augmented Generation) retriever and chain functions.
 
 This module handles:
 - Loading persisted vector databases
-- Creating reranking retrievers (using Cohere)
+- Creating reranking retrievers (using FlashRank, a local cross-encoder)
 - Building RAG chains for various purposes
 
 Usage:
@@ -16,8 +16,6 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-import cohere
-from langchain_cohere import CohereRerank
 from langchain_classic.retrievers import ContextualCompressionRetriever
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import PromptTemplate
@@ -51,14 +49,17 @@ def load_persistent_db(embeddings, db_dir: str = "./docs_db", collection_name: s
 # Retriever Creation
 # =============================================================================
 
-def create_reranking_retriever(vectorstore, llm, timeout: int = 60, top_n: int = 8):
+def create_reranking_retriever(vectorstore, llm, timeout=60, top_n=8):
     """
-    Creates a retriever with Cohere reranking for improved relevance.
+    Creates a retriever with FlashRank reranking for improved relevance.
+
+    Uses a local cross-encoder model (ms-marco-MiniLM-L-12-v2, ~34MB) to
+    rerank documents. Runs on CPU, no API key required.
 
     Args:
         vectorstore: Chroma vector store to retrieve from
-        llm: Language model (not directly used, but kept for API compatibility)
-        timeout: Timeout in seconds for Cohere API
+        llm: Language model (not directly used, kept for API compatibility)
+        timeout: Unused, kept for backward compatibility
         top_n: Number of top results to return after reranking
 
     Returns:
@@ -70,12 +71,13 @@ def create_reranking_retriever(vectorstore, llm, timeout: int = 60, top_n: int =
     """
     base_retriever = vectorstore.as_retriever(search_kwargs={"k": 20})
 
-    cohere_client = cohere.ClientV2(
-        api_key=os.getenv("COHERE_API_KEY"),
-        timeout=timeout
-    )
+    # Lazy import: only needed when actually reranking (not on client in server mode)
+    from langchain_community.document_compressors import FlashrankRerank
 
-    reranker = CohereRerank(client=cohere_client, model="rerank-english-v3.0", top_n=top_n)
+    reranker = FlashrankRerank(
+        model="ms-marco-MiniLM-L-12-v2",
+        top_n=top_n,
+    )
 
     compression_retriever = ContextualCompressionRetriever(
         base_compressor=reranker, base_retriever=base_retriever
