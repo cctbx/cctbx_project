@@ -21,10 +21,12 @@ def normalize(x):
 def run():
   run_test_01()
   run_test_02()
+  run_test_03()
 
 # ------------------------------------------------------------------------------
 
 def run_test_01():
+  print('test01...')
   pdb_inp = iotbx.pdb.input(lines=pdb_str_01.split("\n"), source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
@@ -47,14 +49,26 @@ def run_test_01():
 # ------------------------------------------------------------------------------
 
 def run_test_02():
-  pdb_inp = iotbx.pdb.input(lines=pdb_str_02.split("\n"), source_info=None)
+  print('test02...')
+  compute_fragments(pdb_str_02, 'resname NAG', 3)
+
+# ------------------------------------------------------------------------------
+
+def run_test_03():
+  print('test03...')
+  compute_fragments(pdb_str_03, 'resname BNL', 2)
+
+# ------------------------------------------------------------------------------
+
+def compute_fragments(pdb_str, sel_str, expected):
+  pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
     log         = null_out())
   model.process(make_restraints=True)
-  ligand_isel = model.iselection('resname NAG')
+  ligand_isel = model.iselection(sel_str)
   rigid_comps_isels = run_fragmentation(ligand_isel, model)
-  assert len(rigid_comps_isels) == 3
+  assert len(rigid_comps_isels) == expected
 
 #  ph =  model.get_hierarchy()
 #  atoms = ph.atoms()
@@ -64,13 +78,9 @@ def run_test_02():
 #    for idx in rigid_comp:
 #      print(atoms[idx].name)
 
-# ------------------------------------------------------------------------------
+def get_mol_from_iselection(iselection, mon_lib_srv, atoms):
 
-def run_fragmentation(ligand_isel, model):
-  ph =  model.get_hierarchy()
-  atoms = ph.atoms()
-  ph_ligand = ph.select(ligand_isel)
-  atoms_ligand = ph_ligand.atoms()
+  atoms_ligand = atoms.select(iselection)
   resname = atoms_ligand[0].parent().resname
 
   # Mappings
@@ -87,7 +97,7 @@ def run_fragmentation(ligand_isel, model):
   # We assume the selection belongs to one residue type.
 
   # --- 1. Build RDKit Nodes (Atoms) ---
-  for i, atom_idx in enumerate(ligand_isel):
+  for i, atom_idx in enumerate(iselection):
     cctbx_atom = atoms[atom_idx]
 
     # Handle Element
@@ -107,7 +117,6 @@ def run_fragmentation(ligand_isel, model):
     name_to_rdkit[cctbx_atom.name.strip()] = rd_idx
 
   # 2. Build Bonds from CIF (Primary source)
-  mon_lib_srv = model.get_mon_lib_srv()
   cif_object, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
     residue_name=resname, atom_names=atoms_ligand.extract_name())
 
@@ -130,7 +139,21 @@ def run_fragmentation(ligand_isel, model):
   except ValueError:
     mol.UpdatePropertyCache(strict=False)
 
-  # 5. Identify Rotatable Bonds
+  return mol, rdkit_to_cctbx
+
+# ------------------------------------------------------------------------------
+
+def run_fragmentation(ligand_isel, model):
+  ph =  model.get_hierarchy()
+  atoms = ph.atoms()
+  #ph_ligand = ph.select(ligand_isel)
+  #atoms_ligand = ph_ligand.atoms()
+  #resname = atoms_ligand[0].parent().resname
+
+  mon_lib_srv = model.get_mon_lib_srv()
+  mol, rdkit_to_cctbx = get_mol_from_iselection(ligand_isel, mon_lib_srv, atoms)
+
+  # Identify Rotatable Bonds
   rotatable_pattern = Lipinski.RotatableBondSmarts
   matches = mol.GetSubstructMatches(rotatable_pattern)
 
@@ -141,7 +164,7 @@ def run_fragmentation(ligand_isel, model):
     bond = mol.GetBondBetweenAtoms(u, v)
     if bond is None: continue
 
-    # Filter 1: Protect Amides
+    # Filter: Protect Amides
     if rdkit_utils.is_amide_bond(mol, bond): continue
 
     bidx = bond.GetIdx()
@@ -150,13 +173,13 @@ def run_fragmentation(ligand_isel, model):
     test_mol = rdmolops.FragmentOnBonds(mol, [bidx], addDummies=False)
     frags = Chem.GetMolFrags(test_mol, asMols=True, sanitizeFrags=False)
 
-    # Count heavy atoms in each fragment
+    # Count heavy atoms in each test fragment
     heavy_counts = [
       sum(1 for a in frag.GetAtoms() if a.GetAtomicNum() > 1)
       for frag in frags
     ]
 
-    # Keep bond only if BOTH sides are "real" fragments
+    # Keep bond to cut only if BOTH sides are "real" fragments
     if all(hc >= min_heavy_atoms for hc in heavy_counts):
       bonds_to_cut.append(bidx)
       rotatable_bonds.append((u, v, bidx))
@@ -254,6 +277,35 @@ HETATM   27  HO1 NAG A   1       7.112   8.194   5.000  1.00 20.00           H
 HETATM   28  HO3 NAG A   1       7.377  10.385  10.737  1.00 20.00           H
 HETATM   29  HO4 NAG A   1       8.832   7.992  10.763  1.00 20.00           H
 HETATM   30  HO6 NAG A   1       5.839   5.379   8.392  1.00 20.00           H
+END
+'''
+
+pdb_str_03 = '''
+REMARK BIPHENYL BNL
+REMARK This compound has one rotatable bond
+CRYST1   15.143   14.093   17.907  90.00  90.00  90.00 P 1
+HETATM    1  C1  BNL A   1       8.751   6.093   8.064  1.00 20.00           C
+HETATM    2  C12 BNL A   1       5.584   8.353  10.905  1.00 20.00           C
+HETATM    3  C13 BNL A   1       5.991   7.741  12.073  1.00 20.00           C
+HETATM    4  C14 BNL A   1       6.847   6.659  12.019  1.00 20.00           C
+HETATM    5  C15 BNL A   1       7.297   6.188  10.791  1.00 20.00           C
+HETATM    6  C16 BNL A   1       6.895   6.790   9.597  1.00 20.00           C
+HETATM    7  C17 BNL A   1       6.034   7.887   9.676  1.00 20.00           C
+HETATM    8  C2  BNL A   1       7.386   6.284   8.287  1.00 20.00           C
+HETATM    9  C3  BNL A   1       6.506   5.976   7.246  1.00 20.00           C
+HETATM   10  C4  BNL A   1       6.977   5.502   6.028  1.00 20.00           C
+HETATM   11  C5  BNL A   1       8.330   5.323   5.829  1.00 20.00           C
+HETATM   12  C6  BNL A   1       9.217   5.617   6.844  1.00 20.00           C
+HETATM   13  H1  BNL A   1       9.366   6.292   8.753  1.00 20.00           H
+HETATM   14  H3  BNL A   1       5.577   6.095   7.372  1.00 20.00           H
+HETATM   15  H12 BNL A   1       5.000   9.093  10.940  1.00 20.00           H
+HETATM   16  H13 BNL A   1       5.685   8.060  12.907  1.00 20.00           H
+HETATM   17  H14 BNL A   1       7.127   6.238  12.815  1.00 20.00           H
+HETATM   18  H15 BNL A   1       7.883   5.447  10.762  1.00 20.00           H
+HETATM   19  H17 BNL A   1       5.748   8.312   8.881  1.00 20.00           H
+HETATM   20  H4  BNL A   1       6.368   5.302   5.336  1.00 20.00           H
+HETATM   21  H5  BNL A   1       8.648   5.000   5.000  1.00 20.00           H
+HETATM   22  H6  BNL A   1      10.143   5.496   6.711  1.00 20.00           H
 END
 '''
 
