@@ -12,7 +12,7 @@ Tests cover:
 
 Requires: libtbx (PHENIX environment) + langchain_core
 
-Run with: phenix.python tests/test_langchain_tools.py
+Run with: phenix.python tests/tst_langchain_tools.py
 Or: python tests/run_all_tests.py (included automatically)
 """
 from __future__ import division
@@ -447,12 +447,16 @@ class TestIntegration(unittest.TestCase):
 def run_all_tests():
     """Run all tests using unittest runner, compatible with run_all_tests.py."""
     if _SKIP_REASON:
-        print("WARNING: Skipping test_langchain_tools: %s" % _SKIP_REASON)
+        print("WARNING: Skipping tst_langchain_tools: %s" % _SKIP_REASON)
         print("0 tests passed (all skipped).")
         return
 
     loader = unittest.TestLoader()
-    suite = loader.loadTestsFromModule(sys.modules[__name__])
+    suite = unittest.TestSuite()
+    for cls in [TestCoreModule, TestAnalysisModule, TestRAGModule,
+                TestValidationModule, TestKnowledgeModule, TestAgentModule,
+                TestUtilsModule, TestIntegration]:
+        suite.addTests(loader.loadTestsFromTestCase(cls))
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
 
