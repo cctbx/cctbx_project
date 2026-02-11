@@ -18,7 +18,6 @@ Or: python tests/run_all_tests.py (included automatically)
 from __future__ import division
 import unittest
 import os
-import sys
 import tempfile
 
 # These tests require langchain_core and libtbx (PHENIX environment).
