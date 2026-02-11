@@ -276,6 +276,8 @@ class reference_model(object):
       msg = "Reference selection '%s' selected 0 atoms in %s.\n" % (ref_selection_str, fn) +\
           "Please check if the selection provided is correct."
       raise Sorry(msg)
+    if ref_h.models_size() > 1:
+      raise Sorry("Reference model '%s' is multi-model file, which is not supported." % fn)
     for chain in ref_h.only_model().chains():
       chain.id +="ref"
     combined_h.transfer_chains_from_other(ref_h)
