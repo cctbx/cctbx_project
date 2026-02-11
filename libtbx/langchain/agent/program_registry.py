@@ -560,14 +560,24 @@ class ProgramRegistry:
         defaults = dict(self.get_defaults(program_name))
 
         # Handle strategy flags
+        # Known PHIL parameter short names that are safe to pass through
+        # even without the full dotted path (e.g., 'unit_cell' instead of
+        # 'xray_data.unit_cell'). These commonly appear in directives and
+        # LLM strategies without their full PHIL scope prefix.
+        KNOWN_PHIL_SHORT_NAMES = {
+            'unit_cell', 'space_group', 'resolution', 'nproc', 'ncopies',
+            'high_resolution', 'low_resolution', 'labels', 'twin_law',
+            'generate', 'stop_after_predict', 'job_title',
+        }
+
         if strategy:
             strategy_defs = self.get_strategy_flags(program_name)
 
             for key, value in strategy.items():
                 if key not in strategy_defs:
                     # Check if this looks like a PHENIX parameter (contains dots)
-                    # These can be passed through directly for error recovery
-                    if '.' in key or '=' in key:
+                    # or is a known short PHIL name from directives/LLM
+                    if '.' in key or '=' in key or key in KNOWN_PHIL_SHORT_NAMES:
                         # Pass through as key=value
                         cmd_parts.append("%s=%s" % (key, value))
                         log("PASSTHROUGH: Adding %s=%s (not in strategy_defs)" % (key, value))

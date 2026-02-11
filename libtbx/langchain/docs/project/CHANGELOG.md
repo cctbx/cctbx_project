@@ -34,6 +34,16 @@
 - Now produces `unit_cell="114 114 32.5 90 90 90"` and `space_group="P 2 21 21"`
 - Also handles prefixed forms like `xray_data.unit_cell=...`
 
+**Fix - Strategy passthrough dropping known PHIL short names (HIGH IMPACT)**
+- `unit_cell`, `space_group`, etc. from directives were silently dropped
+  in `program_registry.py` because the passthrough required a dot in the key
+- Server LLM returned `unit_cell=...` (no prefix) vs local returning
+  `xray_data.unit_cell=...`, so the bug only manifested on the server
+- Added `KNOWN_PHIL_SHORT_NAMES` set to the passthrough check so common
+  parameters like `unit_cell`, `space_group`, `resolution`, `nproc`,
+  `ncopies`, `twin_law` are accepted without their full PHIL scope prefix
+- File: `agent/program_registry.py`
+
 ### Test Infrastructure Fixes
 
 **Fix - Unconditional mock modules breaking PHENIX environment tests**
