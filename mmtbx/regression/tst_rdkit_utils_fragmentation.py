@@ -34,21 +34,26 @@ def run_test_01():
   print('test01...')
   rigid_comps_isels = compute_fragments(pdb_str_01, 'resname EPE', 3)
 
-#  expected = [
-#    [0, 30, 31],
-#    [1, 2, 3, 4, 8, 9, 15, 16, 17, 18, 19, 20, 21, 22],
-#    [5, 23, 24],
-#    [6, 13, 25, 26, 29],
-#    [7, 27, 28],
-#    [10, 11, 12, 14]
-#    ]
-
   expected = [
     [0, 10, 11, 12, 14, 30, 31],
     [1, 2, 3, 4, 5, 7, 8, 9, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 27, 28],
     [6, 13, 25, 26, 29]
     ]
 
+  assert normalize(to_py(rigid_comps_isels)) == normalize(expected)
+
+  # again without filtering for lone linkers
+
+  rigid_comps_isels = compute_fragments(pdb_str_01, 'resname EPE', 6, filter_lone_linkers=False)
+
+  expected = [
+    [0, 30, 31],
+    [1, 2, 3, 4, 8, 9, 15, 16, 17, 18, 19, 20, 21, 22],
+    [5, 23, 24],
+    [6, 13, 25, 26, 29],
+    [7, 27, 28],
+    [10, 11, 12, 14]
+    ]
   assert normalize(to_py(rigid_comps_isels)) == normalize(expected)
 
 #  ph =  model.get_hierarchy()
@@ -92,14 +97,14 @@ def run_test_05():
 
 # ------------------------------------------------------------------------------
 
-def compute_fragments(pdb_str, sel_str, expected):
+def compute_fragments(pdb_str, sel_str, expected, filter_lone_linkers=True):
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
     log         = null_out())
   model.process(make_restraints=True)
   ligand_isel = model.iselection(sel_str)
-  rigid_comps_isels = run_fragmentation(ligand_isel, model)
+  rigid_comps_isels = run_fragmentation(ligand_isel, model, filter_lone_linkers)
   print(len(rigid_comps_isels))
   assert len(rigid_comps_isels) == expected
 
@@ -133,7 +138,7 @@ def get_mol_from_iselection(iselection, mon_lib_srv, atoms):
   # To find the CIF, we need the residue name.
   # We assume the selection belongs to one residue type.
 
-  # --- 1. Build RDKit Nodes (Atoms) ---
+  # --- Build RDKit Nodes (Atoms) ---
   for i, atom_idx in enumerate(iselection):
     cctbx_atom = atoms[atom_idx]
 
@@ -153,7 +158,7 @@ def get_mol_from_iselection(iselection, mon_lib_srv, atoms):
     # Clean name for dictionary lookup (e.g. " C1 " -> "C1")
     name_to_rdkit[cctbx_atom.name.strip()] = rd_idx
 
-  # 2. Build Bonds from CIF (Primary source)
+  # Build Bonds from CIF (Primary source)
   cif_object, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
     residue_name=resname, atom_names=atoms_ligand.extract_name())
 
@@ -170,7 +175,7 @@ def get_mol_from_iselection(iselection, mon_lib_srv, atoms):
         if mol.GetBondBetweenAtoms(rd_i, rd_j) is None:
           mol.AddBond(rd_i, rd_j, rdkit_utils.get_rdkit_bond_type(order_str))
 
-  # 4. Sanitize (Important for implicit valence calculation)
+  # Sanitize (Important for implicit valence calculation)
   try:
     Chem.SanitizeMol(mol)
   except ValueError:
@@ -180,7 +185,7 @@ def get_mol_from_iselection(iselection, mon_lib_srv, atoms):
 
 # ------------------------------------------------------------------------------
 
-def run_fragmentation(ligand_isel, model):
+def run_fragmentation(ligand_isel, model, filter_lone_linkers=True):
   ph =  model.get_hierarchy()
   atoms = ph.atoms()
   #ph_ligand = ph.select(ligand_isel)
@@ -242,6 +247,36 @@ def run_fragmentation(ligand_isel, model):
       for atom_idx, size in current_cut_sizes.items():
         fragment_size_map[(bidx, atom_idx)] = size
 
+  bonds_to_skip = set()
+  if filter_lone_linkers:
+    bonds_to_skip = _linker_isolation_filter(candidate_cut_bonds, mol, fragment_size_map)
+
+  # Finalize the list
+  final_bonds_to_cut = [b for b in candidate_cut_bonds if b not in bonds_to_skip]
+
+  # Fragment
+  if not final_bonds_to_cut:
+    return [flex.size_t(iselection)]
+
+  fragmented_mol = Chem.FragmentOnBonds(mol, final_bonds_to_cut, addDummies=False)
+  raw_fragments = Chem.GetMolFrags(fragmented_mol, asMols=False) #maybe: sanitizeFrags=False?
+  #frags = Chem.GetMolFrags(fragmented_mol, asMols=True, sanitizeFrags=False)
+
+  # Convert to CCTBX format
+  cctbx_rigid_components = []
+
+  merged_fragments = raw_fragments
+  for frag in merged_fragments:
+    component_indices = flex.size_t()
+    for rd_idx in frag:
+      global_idx = rdkit_to_cctbx[rd_idx]
+      component_indices.append(global_idx)
+    cctbx_rigid_components.append(component_indices)
+
+  return cctbx_rigid_components
+
+
+def _linker_isolation_filter(candidate_cut_bonds, mol, fragment_size_map):
   # 2. Filter Candidates to Prevent Linker Isolation
   cuts_per_atom = defaultdict(list)
   for bidx in candidate_cut_bonds:
@@ -298,29 +333,8 @@ def run_fragmentation(ligand_isel, model):
       if best_bond_to_save != -1:
         bonds_to_skip.add(best_bond_to_save)
 
-  # Finalize the list
-  final_bonds_to_cut = [b for b in candidate_cut_bonds if b not in bonds_to_skip]
+  return bonds_to_skip
 
-  # Fragment
-  if not final_bonds_to_cut:
-    return [flex.size_t(iselection)]
-
-  fragmented_mol = Chem.FragmentOnBonds(mol, final_bonds_to_cut, addDummies=False)
-  raw_fragments = Chem.GetMolFrags(fragmented_mol, asMols=False) #maybe: sanitizeFrags=False?
-  #frags = Chem.GetMolFrags(fragmented_mol, asMols=True, sanitizeFrags=False)
-
-  # Convert to CCTBX format
-  cctbx_rigid_components = []
-
-  merged_fragments = raw_fragments
-  for frag in merged_fragments:
-    component_indices = flex.size_t()
-    for rd_idx in frag:
-      global_idx = rdkit_to_cctbx[rd_idx]
-      component_indices.append(global_idx)
-    cctbx_rigid_components.append(component_indices)
-
-  return cctbx_rigid_components
 
 # ------------------------------------------------------------------------------
 
@@ -499,7 +513,6 @@ HETATM   67 H542 STI A   1       5.923   5.000  20.091  1.00 20.00           H
 HETATM   68 H543 STI A   1       5.084   5.979  19.163  1.00 20.00           H
 END
 '''
-
 
 pdb_str_05 = '''
 CRYST1   12.668   16.763   14.843  90.00  90.00  90.00 P 1
