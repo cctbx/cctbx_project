@@ -20,6 +20,7 @@ def normalize(x):
 
 def run():
   run_test_01()
+  run_test_02()
 
 # ------------------------------------------------------------------------------
 
@@ -45,13 +46,32 @@ def run_test_01():
 
 # ------------------------------------------------------------------------------
 
+def run_test_02():
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_02.split("\n"), source_info=None)
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    log         = null_out())
+  model.process(make_restraints=True)
+  ligand_isel = model.iselection('resname NAG')
+  rigid_comps_isels = run_fragmentation(ligand_isel, model)
+  assert len(rigid_comps_isels) == 3
+
+#  ph =  model.get_hierarchy()
+#  atoms = ph.atoms()
+#  for rigid_comp in rigid_comps_isels:
+#    print('fragment')
+#    print(list(rigid_comp))
+#    for idx in rigid_comp:
+#      print(atoms[idx].name)
+
+# ------------------------------------------------------------------------------
+
 def run_fragmentation(ligand_isel, model):
   ph =  model.get_hierarchy()
   atoms = ph.atoms()
   ph_ligand = ph.select(ligand_isel)
   atoms_ligand = ph_ligand.atoms()
   resname = atoms_ligand[0].parent().resname
-  #print(resname)
 
   # Mappings
   # cctbx_idx -> rdkit_idx
@@ -65,7 +85,6 @@ def run_fragmentation(ligand_isel, model):
 
   # To find the CIF, we need the residue name.
   # We assume the selection belongs to one residue type.
-  #resname = None
 
   # --- 1. Build RDKit Nodes (Atoms) ---
   for i, atom_idx in enumerate(ligand_isel):
@@ -162,13 +181,6 @@ def run_fragmentation(ligand_isel, model):
       component_indices.append(global_idx)
     cctbx_rigid_components.append(component_indices)
 
-#  for rigid_comp in cctbx_rigid_components:
-#    print('fragment')
-#    print(list(rigid_comp))
-#    print(dir(rigid_comp))
-#    for idx in rigid_comp:
-#      print(atoms[idx].name)
-
   return cctbx_rigid_components
 
 # ------------------------------------------------------------------------------
@@ -207,6 +219,41 @@ HETATM   29  H92 EPE A 501       5.173   6.111   7.873  1.00 35.27           H
 HETATM   30  HO8 EPE A 501       7.233  13.215   6.594  1.00 38.77           H
 HETATM   31 H101 EPE A 501       6.504   7.190   9.811  1.00 37.96           H
 HETATM   32 H102 EPE A 501       6.308   5.637   9.719  1.00 37.96           H
+END
+'''
+
+pdb_str_02 = '''
+CRYST1   13.832   18.833   15.877  90.00  90.00  90.00 P 1
+HETATM    1  C1  NAG A   1       7.363   8.528   6.805  1.00 20.00           C
+HETATM    2  C2  NAG A   1       6.856   9.616   7.755  1.00 20.00           C
+HETATM    3  C3  NAG A   1       7.487   9.443   9.135  1.00 20.00           C
+HETATM    4  C4  NAG A   1       7.302   8.019   9.648  1.00 20.00           C
+HETATM    5  C5  NAG A   1       7.837   7.027   8.616  1.00 20.00           C
+HETATM    6  C6  NAG A   1       7.615   5.580   9.000  1.00 20.00           C
+HETATM    7  C7  NAG A   1       6.197  11.818   6.804  1.00 20.00           C
+HETATM    8  C8  NAG A   1       6.694  13.155   6.337  1.00 20.00           C
+HETATM    9  N2  NAG A   1       7.121  10.952   7.253  1.00 20.00           N
+HETATM   10  O1  NAG A   1       6.686   8.627   5.590  1.00 20.00           O
+HETATM   11  O3  NAG A   1       6.915  10.382  10.035  1.00 20.00           O
+HETATM   12  O4  NAG A   1       8.008   7.862  10.877  1.00 20.00           O
+HETATM   13  O5  NAG A   1       7.166   7.233   7.355  1.00 20.00           O
+HETATM   14  O6  NAG A   1       6.228   5.274   9.138  1.00 20.00           O
+HETATM   15  O7  NAG A   1       5.000  11.544   6.771  1.00 20.00           O
+HETATM   16  H1  NAG A   1       8.325   8.669   6.646  1.00 20.00           H
+HETATM   17  H2  NAG A   1       5.884   9.484   7.863  1.00 20.00           H
+HETATM   18  H3  NAG A   1       8.458   9.627   9.053  1.00 20.00           H
+HETATM   19  H4  NAG A   1       6.339   7.846   9.801  1.00 20.00           H
+HETATM   20  H5  NAG A   1       8.805   7.184   8.494  1.00 20.00           H
+HETATM   21  H61 NAG A   1       8.072   5.394   9.847  1.00 20.00           H
+HETATM   22  H62 NAG A   1       8.005   5.000   8.313  1.00 20.00           H
+HETATM   23  H81 NAG A   1       7.658  13.134   6.224  1.00 20.00           H
+HETATM   24  H82 NAG A   1       6.462  13.833   6.992  1.00 20.00           H
+HETATM   25  H83 NAG A   1       6.278  13.375   5.488  1.00 20.00           H
+HETATM   26  HN2 NAG A   1       7.957  11.213   7.247  1.00 20.00           H
+HETATM   27  HO1 NAG A   1       7.112   8.194   5.000  1.00 20.00           H
+HETATM   28  HO3 NAG A   1       7.377  10.385  10.737  1.00 20.00           H
+HETATM   29  HO4 NAG A   1       8.832   7.992  10.763  1.00 20.00           H
+HETATM   30  HO6 NAG A   1       5.839   5.379   8.392  1.00 20.00           H
 END
 '''
 
