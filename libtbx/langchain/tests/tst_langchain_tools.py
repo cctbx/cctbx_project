@@ -35,8 +35,10 @@ except ImportError as e:
 
 try:
     import libtbx  # noqa: F401
-except ImportError as e:
-    _SKIP_REASON = "libtbx not available: %s" % e
+    # Also verify libtbx.langchain is a proper package (not shadowed)
+    import libtbx.langchain.core  # noqa: F401
+except (ImportError, ModuleNotFoundError) as e:
+    _SKIP_REASON = "libtbx.langchain not available: %s" % e
 
 
 def _skip_if_deps_missing(cls):
