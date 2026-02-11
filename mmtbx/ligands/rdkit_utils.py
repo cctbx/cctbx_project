@@ -5,6 +5,7 @@ from libtbx.utils import Sorry
 from rdkit import Chem
 from rdkit.Chem import rdDistGeom
 from rdkit.Chem import rdFMCS
+from collections import defaultdict
 
 """
 Utility functions to work with rdkit
@@ -52,6 +53,73 @@ def is_amide_bond(mol, bond):
       if bond_to_o is not None and bond_to_o.GetBondType() == Chem.BondType.DOUBLE:
         return True
   return False
+
+def _filter_isolated_linkers(candidate_cut_bonds, mol, fragment_size_map):
+  """
+  Helper function for ligand fragmentation
+  If bonds are cut when there is a rotational degree of freedom, the number of
+  logical fragments may be too large. An example is HEX, which has 5 such bonds.
+  However, one can consider HEX as two fragments - with 3 carbons each - fused
+  together. Accordingly, this filter will cut HEX into two fragments.
+  The filter is optional in case one really wants to split at all applicable
+  bonds.
+  """
+  cuts_per_atom = defaultdict(list)
+  for bidx in candidate_cut_bonds:
+    bond = mol.GetBondWithIdx(bidx)
+    cuts_per_atom[bond.GetBeginAtomIdx()].append(bidx)
+    cuts_per_atom[bond.GetEndAtomIdx()].append(bidx)
+
+  bonds_to_skip = set()
+
+  for atom_idx, bond_indices in cuts_per_atom.items():
+    # Only process atoms being cut from multiple sides
+    if len(bond_indices) < 2: continue
+
+    atom = mol.GetAtomWithIdx(atom_idx)
+
+    heavy_neighbors = [n for n in atom.GetNeighbors() if n.GetAtomicNum() > 1]
+    heavy_degree = len(heavy_neighbors)
+
+    # If we are about to completely isolate this linker atom
+    if heavy_degree >= 2 and len(bond_indices) == heavy_degree:
+
+      best_bond_to_save = -1
+      # Initialize with a very low number
+      best_neighbor_score = -999999
+
+      for bidx in bond_indices:
+        bond = mol.GetBondWithIdx(bidx)
+        neighbor = bond.GetOtherAtom(atom)
+        neighbor_idx = neighbor.GetIdx()
+
+        score = 0
+
+        # --- CRITERIA 1: RINGS (Highest Priority) ---
+        # Always stick to the ring if possible.
+        if neighbor.IsInRing():
+          score += 10000
+
+        # --- CRITERIA 2: FRAGMENT SIZE (Symmetry Breaker) ---
+        # Look up the size of the fragment the neighbor would belong to
+        # if we proceeded with this cut.
+        # We prefer saving bonds to SMALLER fragments (ends of chains).
+        # We subtract the size, so smaller size = higher score.
+        if (bidx, neighbor_idx) in fragment_size_map:
+          frag_size = fragment_size_map[(bidx, neighbor_idx)]
+          score -= (frag_size * 100)
+
+        # --- CRITERIA 3: ATOM PROPERTIES (Tie Breaker) ---
+        score += neighbor.GetAtomicNum()
+
+        if score > best_neighbor_score:
+          best_neighbor_score = score
+          best_bond_to_save = bidx
+
+      if best_bond_to_save != -1:
+        bonds_to_skip.add(best_bond_to_save)
+
+  return bonds_to_skip
 
 def get_prop_safe(rd_obj, prop):
   if prop not in rd_obj.GetPropNames(): return False

@@ -7,7 +7,6 @@ from rdkit import Chem
 from rdkit.Chem import Lipinski
 from scitbx.array_family import flex
 import mmtbx.ligands.rdkit_utils as rdkit_utils
-from collections import defaultdict
 
 # ------------------------------------------------------------------------------
 # Helper functions
@@ -134,10 +133,10 @@ def compute_fragments(pdb_str, sel_str, expected, filter_lone_linkers=True):
 
 # ------------------------------------------------------------------------------
 
-def get_mol_from_iselection(iselection, mon_lib_srv, atoms):
+def get_rdkit_mol_from_residue_and_cif_obj(residue, cif_object):
 
-  atoms_ligand = atoms.select(iselection)
-  resname = atoms_ligand[0].parent().resname
+  atoms_ligand = residue.atoms()
+  resname = residue.resname
 
   # Mappings
   # cctbx_idx -> rdkit_idx
@@ -149,13 +148,10 @@ def get_mol_from_iselection(iselection, mon_lib_srv, atoms):
 
   mol = Chem.RWMol()
 
-  # To find the CIF, we need the residue name.
-  # We assume the selection belongs to one residue type.
-
   # --- Build RDKit Nodes (Atoms) ---
-  for i, atom_idx in enumerate(iselection):
-    cctbx_atom = atoms[atom_idx]
+  for cctbx_atom in atoms_ligand:
 
+    atom_idx = cctbx_atom.i_seq
     # Handle Element
     element = cctbx_atom.element.strip().capitalize()
     #if not element: element = cctbx_atom.name.strip()[0:1]
@@ -173,9 +169,6 @@ def get_mol_from_iselection(iselection, mon_lib_srv, atoms):
     name_to_rdkit[cctbx_atom.name.strip()] = rd_idx
 
   # Build Bonds from CIF (Primary source)
-  cif_object, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
-    residue_name=resname, atom_names=atoms_ligand.extract_name())
-
   if cif_object and hasattr(cif_object, "bond_list"):
     for bond in cif_object.bond_list:
       atom_1 = bond.atom_id_1
@@ -201,13 +194,27 @@ def get_mol_from_iselection(iselection, mon_lib_srv, atoms):
 
 def run_fragmentation(ligand_isel, model, filter_lone_linkers=True):
   ph =  model.get_hierarchy()
-  atoms = ph.atoms()
-  #ph_ligand = ph.select(ligand_isel)
-  #atoms_ligand = ph_ligand.atoms()
-  #resname = atoms_ligand[0].parent().resname
+  atoms_ligand = ph.select(ligand_isel).atoms()
+  residue = atoms_ligand[0].parent()
 
   mon_lib_srv = model.get_mon_lib_srv()
-  mol, rdkit_to_cctbx = get_mol_from_iselection(ligand_isel, mon_lib_srv, atoms)
+  cif_object, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
+    residue_name=residue.resname, atom_names=residue.atoms().extract_name())
+
+  mol, rdkit_to_cctbx = get_rdkit_mol_from_residue_and_cif_obj(
+    residue = residue,
+    cif_object = cif_object)
+
+  cctbx_rigid_components = get_cctbx_isel_for_rigid_components(
+    mol, rdkit_to_cctbx, filter_lone_linkers)
+
+  return cctbx_rigid_components
+
+# ------------------------------------------------------------------------------
+
+def get_cctbx_isel_for_rigid_components(mol,
+                                        rdkit_to_cctbx,
+                                        filter_lone_linkers=True):
 
   # Identify Rotatable Bonds
   rotatable_pattern = Lipinski.RotatableBondSmarts
@@ -218,7 +225,8 @@ def run_fragmentation(ligand_isel, model, filter_lone_linkers=True):
   candidate_cut_bonds = []
   min_heavy_atoms = 2
 
- # Map: (bond_index, atom_index) -> Size of the fragment this atom ends up in if bond is cut
+ # Map: (bond_index, atom_index) -> Size of the fragment this atom ends up in
+ # if bond is cut
   fragment_size_map = {}
 
   for u, v in matches:
@@ -232,7 +240,8 @@ def run_fragmentation(ligand_isel, model, filter_lone_linkers=True):
     # Cut this bond alone
     test_mol = Chem.FragmentOnBonds(mol, [bidx], addDummies=False)
 
-    # Get indices of atoms in fragments (asMols=False returns tuple of tuples of indices)
+    # Get indices of atoms in fragments
+    # (asMols=False returns tuple of tuples of indices)
     frag_indices_tuples = Chem.GetMolFrags(test_mol, asMols=False)
 
     heavy_counts = []
@@ -263,7 +272,7 @@ def run_fragmentation(ligand_isel, model, filter_lone_linkers=True):
 
   bonds_to_skip = set()
   if filter_lone_linkers:
-    bonds_to_skip = _linker_isolation_filter(candidate_cut_bonds, mol, fragment_size_map)
+    bonds_to_skip = rdkit_utils._filter_isolated_linkers(candidate_cut_bonds, mol, fragment_size_map)
 
   # Finalize the list
   final_bonds_to_cut = [b for b in candidate_cut_bonds if b not in bonds_to_skip]
@@ -274,7 +283,6 @@ def run_fragmentation(ligand_isel, model, filter_lone_linkers=True):
 
   fragmented_mol = Chem.FragmentOnBonds(mol, final_bonds_to_cut, addDummies=False)
   raw_fragments = Chem.GetMolFrags(fragmented_mol, asMols=False) #maybe: sanitizeFrags=False?
-  #frags = Chem.GetMolFrags(fragmented_mol, asMols=True, sanitizeFrags=False)
 
   # Convert to CCTBX format
   cctbx_rigid_components = []
@@ -288,67 +296,6 @@ def run_fragmentation(ligand_isel, model, filter_lone_linkers=True):
     cctbx_rigid_components.append(component_indices)
 
   return cctbx_rigid_components
-
-
-def _linker_isolation_filter(candidate_cut_bonds, mol, fragment_size_map):
-  # 2. Filter Candidates to Prevent Linker Isolation
-  cuts_per_atom = defaultdict(list)
-  for bidx in candidate_cut_bonds:
-    bond = mol.GetBondWithIdx(bidx)
-    cuts_per_atom[bond.GetBeginAtomIdx()].append(bidx)
-    cuts_per_atom[bond.GetEndAtomIdx()].append(bidx)
-
-  bonds_to_skip = set()
-
-  for atom_idx, bond_indices in cuts_per_atom.items():
-    # Only process atoms being cut from multiple sides
-    if len(bond_indices) < 2: continue
-
-    atom = mol.GetAtomWithIdx(atom_idx)
-
-    heavy_neighbors = [n for n in atom.GetNeighbors() if n.GetAtomicNum() > 1]
-    heavy_degree = len(heavy_neighbors)
-
-    # If we are about to completely isolate this linker atom
-    if heavy_degree >= 2 and len(bond_indices) == heavy_degree:
-
-      best_bond_to_save = -1
-      # Initialize with a very low number
-      best_neighbor_score = -999999
-
-      for bidx in bond_indices:
-        bond = mol.GetBondWithIdx(bidx)
-        neighbor = bond.GetOtherAtom(atom)
-        neighbor_idx = neighbor.GetIdx()
-
-        score = 0
-
-        # --- CRITERIA 1: RINGS (Highest Priority) ---
-        # Always stick to the ring if possible.
-        if neighbor.IsInRing():
-          score += 10000
-
-        # --- CRITERIA 2: FRAGMENT SIZE (Symmetry Breaker) ---
-        # Look up the size of the fragment the neighbor would belong to
-        # if we proceeded with this cut.
-        # We prefer saving bonds to SMALLER fragments (ends of chains).
-        # We subtract the size, so smaller size = higher score.
-        if (bidx, neighbor_idx) in fragment_size_map:
-          frag_size = fragment_size_map[(bidx, neighbor_idx)]
-          score -= (frag_size * 100)
-
-        # --- CRITERIA 3: ATOM PROPERTIES (Tie Breaker) ---
-        score += neighbor.GetAtomicNum()
-
-        if score > best_neighbor_score:
-          best_neighbor_score = score
-          best_bond_to_save = bidx
-
-      if best_bond_to_save != -1:
-        bonds_to_skip.add(best_bond_to_save)
-
-  return bonds_to_skip
-
 
 # ------------------------------------------------------------------------------
 
