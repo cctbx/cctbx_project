@@ -3685,6 +3685,16 @@ class _():
     atom_dict = mlq.atom_dict()
     alla = [at for at in mlq.atom_dict()]
     nonH = [non.atom_id.strip().upper() for non in mlq.non_hydrogen_atoms()]
+    # Handle N terminal, if this is aa
+    aa_alikes = ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']
+    if(common_residue_names_get_class(name=self.resname) in aa_alikes):
+      if(not self.link_to_previous):
+        alla.remove('H')
+        for h in ["H1","H2","H3"]:
+          if not h in alla: alla.append(h)
+      else:
+        assert 'H' in alla
+    #
     if  (mode == "all"):   reference_list = alla
     elif(mode == "non_h"): reference_list = nonH
     else:                  reference_list = list(set(alla) - set(nonH))
@@ -3713,12 +3723,6 @@ class _():
           atom_temp = "OP2"
         if atom_temp not in atom_list:
           missing.append(atom)
-    # Handle N terminal, if aa
-    if(mode != "non_h"):
-      aa_alikes = ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']
-      if(common_residue_names_get_class(name=self.resname) in aa_alikes):
-        if(not self.link_to_previous):
-          if('H' in missing): missing.remove('H')
     return missing
 
   def residue_name_plus_atom_names_interpreter(self,

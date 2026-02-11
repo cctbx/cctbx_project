@@ -793,7 +793,7 @@ remark ATOM      7  CD  GLN A   1      16.381   8.233  15.935  1.00 13.10       
 ATOM      8  OE1 GLN A   1      15.811   7.144  15.983  1.00 10.65           O
 ATOM      9  NE2 GLN A   1      16.586   9.006  17.020  1.00 12.30           N
 ATOM     10  H1  GLN A   1      17.464   7.449  11.027  1.00 10.38           H
-ATOM     11  H2  GLN A   1      16.891   6.900  12.244  1.00 10.38           H
+remark ATOM     11  H2  GLN A   1      16.891   6.900  12.244  1.00 10.38           H
 ATOM     12  H3  GLN A   1      16.537   8.242  11.816  1.00 10.38           H
 ATOM     13  HA  GLN A   1      18.358   9.137  12.474  1.00 11.39           H
 ATOM     14  HB2 GLN A   1      18.872   8.333  14.602  1.00 11.96           H
@@ -847,7 +847,7 @@ END
   except: # intentional
     print("Can not initialize monomer_library, skipping test.")
     return
-  pdb_inp = iotbx.pdb.input(file_name = "m.pdb")
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
   h = pdb_inp.construct_hierarchy()
   for m in h.models():
     for c in m.chains():
@@ -855,11 +855,10 @@ END
         r1 = r.missing_atoms(mon_lib_srv=mon_lib_srv, mode="all")
         r2 = r.missing_atoms(mon_lib_srv=mon_lib_srv, mode="non_h")
         r3 = r.missing_atoms(mon_lib_srv=mon_lib_srv, mode="h_only")
-        print(r.resseq, r.resname, r1, r2, r3)
         if int(r.resseq)==1:
-          assert r1 == ['HG2', 'CD']
+          assert r1 == ['HG2', 'CD', "H2"]
           assert r2 == ['CD']
-          assert r3 == ['HG2']
+          assert r3 == ['H2', 'HG2']
         elif int(r.resseq)==2:
           r1 == ['CA']
           r2 == ['CA']
