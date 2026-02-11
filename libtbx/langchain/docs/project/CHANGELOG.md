@@ -16,6 +16,11 @@
 - Install: `pip install flashrank` (replaces `cohere` + `langchain-cohere`)
 - Migration plan: `docs/project/COHERE_TO_FLASHRANK.md`
 
+**Script cleanup**
+- `run_inspect_db.py`: Removed debug print and hardcoded scratch path
+- `run_query_docs.py`: Replaced duplicated API key validation with shared
+  `validate_api_keys()` from `utils/run_utils.py`
+
 ### Test Infrastructure Fixes
 
 **Fix - Unconditional mock modules breaking PHENIX environment tests**
