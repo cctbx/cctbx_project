@@ -485,6 +485,50 @@ def fix_program_parameters(command, program):
 
     return command
 
+
+def fix_multiword_parameters(command):
+    """
+    Quote PHIL parameters whose values contain spaces.
+
+    Handles cases like:
+      unit_cell=114 114 32.5 90 90 90  → unit_cell="114 114 32.5 90 90 90"
+      space_group=P 2 21 21            → space_group="P 2 21 21"
+
+    Without quoting, the shell (or PHIL parser) treats trailing tokens as
+    separate arguments, causing crashes.
+
+    Args:
+        command: The command string to fix
+
+    Returns:
+        Fixed command string
+    """
+    # unit_cell: key=number followed by 5 more numbers (a b c alpha beta gamma)
+    # Match any parameter ending in unit_cell (e.g., xray_data.unit_cell, unit_cell)
+    command = re.sub(
+        r'(\S*unit_cell)='
+        r'(\d+\.?\d*)\s+'
+        r'(\d+\.?\d*)\s+'
+        r'(\d+\.?\d*)\s+'
+        r'(\d+\.?\d*)\s+'
+        r'(\d+\.?\d*)\s+'
+        r'(\d+\.?\d*)',
+        r'\1="\2 \3 \4 \5 \6 \7"',
+        command
+    )
+
+    # space_group: key=letter(s) followed by more tokens that are part of the
+    # space group symbol (e.g., P 2 21 21, P 1 21 1, C 1 2 1)
+    # Match: space_group=<letter><rest> where <rest> contains space-separated
+    # short tokens (1-3 chars each, letters/digits) that aren't key=value pairs
+    command = re.sub(
+        r'(\S*space_group)=([A-Za-z]\S*(?:\s+[A-Za-z0-9]{1,3})+)(?=\s+\S+=|\s*$)',
+        lambda m: '%s="%s"' % (m.group(1), m.group(2)),
+        command
+    )
+
+    return command
+
 def extract_clean_command(raw_output):
     """
     Extract the actual Phenix command from model output that may contain
@@ -1135,6 +1179,8 @@ async def generate_next_move(
             if mechanical_command:
                 log(f"DEBUG: Agent command: {agent_command}")
                 log(f"DEBUG: Backup mechanical command: {mechanical_command}")
+                mechanical_command = fix_program_parameters(mechanical_command, program)
+                mechanical_command = fix_multiword_parameters(mechanical_command)
 
             # Use agent's command first (don't override)
             # mechanical_command will be used as fallback if agent's command fails
@@ -1144,6 +1190,12 @@ async def generate_next_move(
             command = fix_program_parameters(command, program)
             if command != original_command:
                 log(f"DEBUG: Fixed parameters: {original_command} -> {command}")
+
+            # NEW: Quote multi-word parameter values (unit_cell, space_group)
+            original_command = command
+            command = fix_multiword_parameters(command)
+            if command != original_command:
+                log(f"DEBUG: Fixed multi-word params: {original_command} -> {command}")
 
 
             # --- FIX BASENAME-ONLY REFERENCES ---

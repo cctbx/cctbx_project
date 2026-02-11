@@ -609,6 +609,22 @@ class ProgramRegistry:
         # --- Provenance summary ---
         # Log where each piece of the command came from
         command_str = " ".join(cmd_parts)
+
+        # Quote multi-word parameter values (unit_cell, space_group)
+        # Without quoting, space-separated values are misinterpreted as separate args
+        command_str = re.sub(
+            r'(\S*unit_cell)='
+            r'(\d+\.?\d*)\s+(\d+\.?\d*)\s+(\d+\.?\d*)\s+'
+            r'(\d+\.?\d*)\s+(\d+\.?\d*)\s+(\d+\.?\d*)',
+            r'\1="\2 \3 \4 \5 \6 \7"',
+            command_str
+        )
+        command_str = re.sub(
+            r'(\S*space_group)=([A-Za-z]\S*(?:\s+[A-Za-z0-9]{1,3})+)(?=\s+\S+=|\s*$)',
+            lambda m: '%s="%s"' % (m.group(1), m.group(2)),
+            command_str
+        )
+
         log("BUILD_PROVENANCE: --- Command provenance for %s ---" % program_name)
         log("BUILD_PROVENANCE: Command: %s" % command_str)
 

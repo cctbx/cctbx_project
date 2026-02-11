@@ -20,6 +20,20 @@
 - `run_query_docs.py`: Replaced duplicated API key validation with shared
   `validate_api_keys()` from `utils/run_utils.py`
 
+**Usability - Early exit when no inputs provided**
+- Agent now stops with a helpful message if launched with no original_files,
+  no project_advice, and no README in the input_directory
+- Skipped when resuming an existing session (has previous cycles)
+- File: `programs/ai_agent.py`
+
+**Fix - Quote multi-word PHIL parameter values in commands**
+- `unit_cell=114 114 32.5 90 90 90` was passed unquoted, causing shell/PHIL
+  to split the values into separate arguments → crash
+- Added `fix_multiword_parameters()` in `agent/planner.py` (LLM command path)
+  and inline regex in `agent/program_registry.py` (registry command path)
+- Now produces `unit_cell="114 114 32.5 90 90 90"` and `space_group="P 2 21 21"`
+- Also handles prefixed forms like `xray_data.unit_cell=...`
+
 ### Test Infrastructure Fixes
 
 **Fix - Unconditional mock modules breaking PHENIX environment tests**
