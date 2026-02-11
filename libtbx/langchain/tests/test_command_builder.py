@@ -593,6 +593,293 @@ def test_fuzzy_slot_match_map_to_full_map():
     print("  PASSED")
 
 
+# =============================================================================
+# RECOVERY LABEL TRANSLATION TESTS
+# =============================================================================
+
+def test_recovery_label_translation_xtriage():
+    """Test recovery translates label for xtriage."""
+    print("Test: recovery label translation for xtriage")
+
+    builder = CommandBuilder()
+    ctx = CommandContext(
+        recovery_strategies={
+            '/path/toxd.mtz': {
+                'flags': {'scaling.input.xray_data.obs_labels': 'FTOXD3'},
+                'program_scope': [],
+                'reason': 'test',
+                'selected_label': 'FTOXD3',
+                'selected_label_pair': 'FTOXD3,SIGFTOXD3',
+            }
+        }
+    )
+
+    strategy = {}
+    files = {'data_mtz': '/path/toxd.mtz'}
+    result = builder._apply_recovery_strategies('phenix.xtriage', files, strategy, ctx)
+
+    assert result.get('scaling.input.xray_data.obs_labels') == 'FTOXD3', \
+        "xtriage should get scaling.input.xray_data.obs_labels=FTOXD3, got: %s" % result
+
+    print("  PASSED")
+
+
+def test_recovery_label_translation_refine():
+    """Test recovery translates label for refine using miller_array.labels.name."""
+    print("Test: recovery label translation for refine")
+
+    builder = CommandBuilder()
+    ctx = CommandContext(
+        recovery_strategies={
+            '/path/toxd.mtz': {
+                'flags': {'scaling.input.xray_data.obs_labels': 'FTOXD3'},
+                'program_scope': [],
+                'reason': 'test',
+                'selected_label': 'FTOXD3',
+                'selected_label_pair': 'FTOXD3,SIGFTOXD3',
+            }
+        }
+    )
+
+    strategy = {}
+    files = {'data_mtz': '/path/toxd.mtz'}
+    result = builder._apply_recovery_strategies('phenix.refine', files, strategy, ctx)
+
+    assert result.get('miller_array.labels.name') == 'FTOXD3', \
+        "refine should get miller_array.labels.name=FTOXD3, got: %s" % result
+    # Should NOT have the xtriage-specific parameter
+    assert 'scaling.input.xray_data.obs_labels' not in result, \
+        "refine should NOT get xtriage parameter"
+
+    print("  PASSED")
+
+
+def test_recovery_label_translation_unknown_program():
+    """Test recovery uses default parameter for unknown programs."""
+    print("Test: recovery label translation for unknown program")
+
+    builder = CommandBuilder()
+    ctx = CommandContext(
+        recovery_strategies={
+            '/path/toxd.mtz': {
+                'flags': {'scaling.input.xray_data.obs_labels': 'FTOXD3'},
+                'program_scope': [],
+                'reason': 'test',
+                'selected_label': 'FTOXD3',
+                'selected_label_pair': 'FTOXD3,SIGFTOXD3',
+            }
+        }
+    )
+
+    strategy = {}
+    files = {'data_mtz': '/path/toxd.mtz'}
+    result = builder._apply_recovery_strategies('phenix.some_new_program', files, strategy, ctx)
+
+    assert result.get('obs_labels') == 'FTOXD3', \
+        "unknown program should get obs_labels=FTOXD3, got: %s" % result
+
+    print("  PASSED")
+
+
+def test_recovery_label_always_uses_main_label():
+    """Test that recovery always uses main label, not the pair."""
+    print("Test: recovery uses main label only (not pair)")
+
+    builder = CommandBuilder()
+    ctx = CommandContext(
+        recovery_strategies={
+            '/path/data.mtz': {
+                'flags': {},
+                'program_scope': [],
+                'reason': 'test',
+                'selected_label': 'I_CuKa',
+                'selected_label_pair': 'I_CuKa,SIGI_CuKa,I_CuKa_minus,SIGI_CuKa_minus',
+            }
+        }
+    )
+
+    strategy = {}
+    files = {'data_mtz': '/path/data.mtz'}
+
+    # For refine - should use main label, not pair
+    result = builder._apply_recovery_strategies('phenix.refine', files, strategy, ctx)
+    assert result.get('miller_array.labels.name') == 'I_CuKa', \
+        "Should use main label only, got: %s" % result
+
+    print("  PASSED")
+
+
+def test_recovery_empty_scope_applies_to_all():
+    """Test that empty program_scope applies recovery to all programs."""
+    print("Test: empty program_scope applies to all programs")
+
+    builder = CommandBuilder()
+    ctx = CommandContext(
+        recovery_strategies={
+            '/path/toxd.mtz': {
+                'flags': {},
+                'program_scope': [],
+                'reason': 'test',
+                'selected_label': 'FTOXD3',
+                'selected_label_pair': 'FTOXD3,SIGFTOXD3',
+            }
+        }
+    )
+
+    files = {'data_mtz': '/path/toxd.mtz'}
+
+    for prog in ['phenix.xtriage', 'phenix.refine', 'phenix.autobuild']:
+        strategy = {}
+        result = builder._apply_recovery_strategies(prog, files, strategy, ctx)
+        assert len(result) > 0, "Recovery should apply to %s" % prog
+
+    print("  PASSED")
+
+
+def test_recovery_scoped_programs_respected():
+    """Test that non-empty program_scope limits recovery to listed programs."""
+    print("Test: program_scope limits recovery")
+
+    builder = CommandBuilder()
+    ctx = CommandContext(
+        recovery_strategies={
+            '/path/toxd.mtz': {
+                'flags': {},
+                'program_scope': ['phenix.xtriage'],
+                'reason': 'test',
+                'selected_label': 'FTOXD3',
+                'selected_label_pair': 'FTOXD3,SIGFTOXD3',
+            }
+        }
+    )
+
+    files = {'data_mtz': '/path/toxd.mtz'}
+
+    # Should apply to xtriage
+    result1 = builder._apply_recovery_strategies('phenix.xtriage', files, {}, ctx)
+    assert len(result1) > 0, "Should apply to xtriage"
+
+    # Should NOT apply to refine
+    result2 = builder._apply_recovery_strategies('phenix.refine', files, {}, ctx)
+    assert len(result2) == 0, "Should NOT apply to refine when scoped to xtriage"
+
+    print("  PASSED")
+
+
+def test_invariant_blocks_missing_resolution():
+    """Test that step 3.5 blocks command when required resolution is missing."""
+    print("Test: invariant blocks missing resolution")
+
+    import tempfile
+    import shutil
+
+    temp_dir = tempfile.mkdtemp()
+    try:
+        # Create minimal files
+        map_file = os.path.join(temp_dir, "map.ccp4")
+        seq_file = os.path.join(temp_dir, "seq.dat")
+        with open(map_file, 'w') as f:
+            f.write("mock")
+        with open(seq_file, 'w') as f:
+            f.write("mock")
+
+        builder = CommandBuilder()
+        available = [map_file, seq_file]
+
+        # No resolution in context
+        state = {
+            "session_info": {
+                "experiment_type": "cryoem",
+                "best_files": {"map": map_file, "sequence": seq_file},
+            },
+            "workflow_state": {
+                "state": "cryoem_has_model",
+                "categorized_files": {
+                    "full_map": [map_file],
+                    "sequence": [seq_file],
+                },
+            },
+            "session_resolution": None,
+            "history": [],
+        }
+
+        context = CommandContext.from_state(state)
+        command = builder.build("phenix.map_to_model", available, context)
+
+        assert command is None, \
+            "Command should be blocked when resolution is missing, got: %s" % command
+    finally:
+        shutil.rmtree(temp_dir)
+
+    print("  PASSED")
+
+
+def test_autosol_partpdb_file_in_command():
+    """
+    Test that autosol command includes partpdb_file= for MR-SAD workflow.
+
+    Bug: partial_model was selected correctly (Final files shows it) but
+    build_command dropped it because the command template only had
+    {data_mtz} and {sequence} placeholders - no {partial_model}.
+    Files without placeholders in the template must still be appended
+    using their flag from the YAML definition.
+    """
+    print("test_autosol_partpdb_file_in_command:", end=" ")
+
+    import tempfile
+    import shutil
+
+    temp_dir = tempfile.mkdtemp()
+    try:
+        mtz_file = os.path.join(temp_dir, "7lw7.mtz")
+        seq_file = os.path.join(temp_dir, "exoV_construct.seq")
+        phaser_pdb = os.path.join(temp_dir, "PHASER.1.pdb")
+
+        for f in [mtz_file, seq_file, phaser_pdb]:
+            with open(f, 'w') as fh:
+                fh.write("test")
+
+        available_files = [mtz_file, seq_file, phaser_pdb]
+
+        context = CommandContext(
+            cycle_number=3,
+            experiment_type="xray",
+            resolution=2.5,
+            categorized_files={
+                "data_mtz": [mtz_file],
+                "sequence": [seq_file],
+                "phaser_output": [phaser_pdb],
+                "model": [phaser_pdb],
+            },
+            best_files={"data_mtz": mtz_file, "model": phaser_pdb},
+            rfree_mtz=None,
+            llm_files={
+                "data": mtz_file,
+                "model": phaser_pdb,
+                "sequence": seq_file,
+            },
+            llm_strategy={"atom_type": "Fe", "sites": 4},
+        )
+
+        builder = CommandBuilder()
+        result = builder.build("phenix.autosol", available_files, context)
+
+        assert result is not None, "Command generation failed"
+        assert "partpdb_file=" in result, \
+            "autosol command missing partpdb_file= for MR-SAD. Got: %s" % result
+        assert "PHASER.1.pdb" in result, \
+            "autosol command missing PHASER.1.pdb. Got: %s" % result
+        assert "autosol.data=" in result, \
+            "autosol command missing data. Got: %s" % result
+        assert "seq_file=" in result, \
+            "autosol command missing sequence. Got: %s" % result
+
+        print("  PASSED")
+
+    finally:
+        shutil.rmtree(temp_dir)
+
+
 def run_all_tests():
     """Run all tests with fail-fast behavior (cctbx style)."""
     from tests.test_utils import run_tests_with_fail_fast

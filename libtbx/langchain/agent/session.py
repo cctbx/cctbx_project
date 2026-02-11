@@ -96,7 +96,7 @@ class AgentSession:
             # Tracks retry attempts per error type to prevent infinite loops
             "recovery_attempts": {},  # {error_type: {count: N, files_tried: {...}}}
             # File-keyed recovery strategies (persist across cycles)
-            "recovery_strategies": {},  # {file_path: {flags: {...}, program_scope: [...], reason: "..."}}
+            "recovery_strategies": {},  # {file_path: {flags, program_scope, reason, selected_label, selected_label_pair}}
             # Force the planner to retry a specific program (cleared after use)
             "force_retry_program": None,
         }
@@ -809,7 +809,8 @@ class AgentSession:
     # - force_retry_program: Forces the planner to retry a specific program
     # - recovery_attempts: Tracks retries to prevent infinite loops
 
-    def set_recovery_strategy(self, file_path, flags, program, reason):
+    def set_recovery_strategy(self, file_path, flags, program, reason,
+                              selected_label="", selected_label_pair=""):
         """
         Set a recovery strategy for a specific file.
 
@@ -821,6 +822,8 @@ class AgentSession:
             flags: Dict of parameter flags to add (e.g., {"obs_labels": "I(+)"})
             program: Program that triggered the error
             reason: Human-readable explanation
+            selected_label: The main label (e.g., "FTOXD3")
+            selected_label_pair: Full label pair (e.g., "FTOXD3,SIGFTOXD3")
 
         Example:
             session.set_recovery_strategy(
@@ -833,8 +836,10 @@ class AgentSession:
         strategies = self.data.setdefault("recovery_strategies", {})
         strategies[file_path] = {
             "flags": flags,
-            "program_scope": [program],  # Can be extended to other programs
-            "reason": reason
+            "program_scope": [],  # Empty = applies to all programs
+            "reason": reason,
+            "selected_label": selected_label,
+            "selected_label_pair": selected_label_pair
         }
         self.save()
 

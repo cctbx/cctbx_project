@@ -499,6 +499,25 @@ class ProgramRegistry:
 
                     cmd = cmd.replace(placeholder, replacement)
 
+            # Append files that weren't matched to any placeholder in the template.
+            # This handles optional inputs (e.g., partial_model for autosol MR-SAD)
+            # that have a flag defined in YAML but no placeholder in the command template.
+            for slot_name, file_path in files.items():
+                placeholder = "{%s}" % slot_name
+                if placeholder not in cmd_template:
+                    # This file had no placeholder - append it using its flag
+                    slot_def = all_inputs.get(slot_name, {})
+                    flag = slot_def.get("flag", "")
+                    if flag and file_path:
+                        is_multiple = slot_def.get("multiple", False)
+                        if is_multiple and isinstance(file_path, list):
+                            for fp in file_path:
+                                cmd += " %s%s" % (flag, fp)
+                        else:
+                            if isinstance(file_path, list):
+                                file_path = file_path[0] if file_path else ""
+                            cmd += " %s%s" % (flag, file_path)
+
             # Remove any unfilled placeholders (optional files not provided)
             import re
             cmd = re.sub(r'\{[a-z_]+\}', '', cmd)

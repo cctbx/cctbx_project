@@ -135,11 +135,11 @@ The `run_tests_with_fail_fast()` function automatically discovers tests:
 |------|-------|-------------|
 | `test_directive_extractor.py` | 73 | Directive extraction and validation |
 | `test_transport.py` | 66 | REST transport sanitization |
-| `test_workflow_state.py` | 57 | Workflow state detection, done flags, refine counting |
+| `test_workflow_state.py` | 66 | Workflow state detection, done flags, refine counting, MR-SAD |
 | `test_best_files_tracker.py` | 50 | File tracking, scoring, model stage detection |
 | `test_directive_validator.py` | 48 | Intent validation and modification |
 | `test_new_programs.py` | 44 | YAML config for new programs (polder, map_sharpening, autobuild_denmod) |
-| `test_error_analyzer.py` | 41 | Error recovery system |
+| `test_error_analyzer.py` | 43 | Error recovery system |
 | `test_sanity_checker.py` | 29 | Sanity check logic |
 | `test_yaml_config.py` | 29 | YAML configuration validation |
 | `test_file_categorization.py` | 26 | File type detection (including denmod_mtz) |
@@ -148,7 +148,7 @@ The `run_tests_with_fail_fast()` function automatically discovers tests:
 | `test_metrics_analyzer.py` | 19 | Metric extraction and trends |
 | `test_pattern_manager.py` | 17 | Pattern management |
 | `test_directives_integration.py` | 16 | End-to-end directive tests |
-| `test_command_builder.py` | 14 | Unified command generation |
+| `test_command_builder.py` | 22 | Unified command generation, MR-SAD partpdb_file |
 | `test_event_system.py` | 13 | Event logging system |
 | `test_program_registration.py` | 13 | Program registry tests |
 | `test_integration.py` | 13 | End-to-end workflow tests |
@@ -168,7 +168,7 @@ The `run_tests_with_fail_fast()` function automatically discovers tests:
 | `test_phaser_multimodel.py` | 3 | Phaser multi-model handling |
 | `test_utils.py` | 2 | Assert helpers |
 
-Total: **747 tests across 34 files**
+Total: **767 tests across 34 files**
 
 ### Key Tests for Recent Fixes
 
@@ -181,6 +181,16 @@ Total: **747 tests across 34 files**
 | `test_stop_cycle_excluded_from_count` | test_session_summary.py | STOP cycles not counted in total_cycles |
 | `test_cryoem_done_flags` | test_workflow_state.py | cryo-EM done flags (resolve_cryo_em, map_sharpening, etc.) |
 | `test_failed_refine_not_counted` | test_workflow_state.py | Failed refinements don't increment refine_count |
+| `test_mr_sad_after_phaser_with_anomalous` | test_workflow_state.py | MR-SAD state after phaser + anomalous data |
+| `test_mr_sad_not_triggered_without_anomalous` | test_workflow_state.py | MR-SAD not triggered without anomalous signal |
+| `test_mr_sad_not_triggered_when_autosol_done` | test_workflow_state.py | MR-SAD skipped if autosol already ran |
+| `test_mr_sad_directive_prioritizes_phaser` | test_workflow_state.py | use_mr_sad prioritizes phaser, removes autosol from obtain_model |
+| `test_normal_sad_still_works` | test_workflow_state.py | Normal SAD workflow unaffected by MR-SAD changes |
+| `test_autosol_has_partial_model_config` | test_workflow_state.py | autosol YAML has partpdb_file optional input |
+| `test_mr_sad_directive_overrides_no_anomalous` | test_workflow_state.py | use_mr_sad triggers MR-SAD even without has_anomalous |
+| `test_experimental_phasing_yaml_structure` | test_workflow_state.py | workflows.yaml experimental_phasing phase structure |
+| `test_predict_and_build_blocked_after_full_completion` | test_workflow_state.py | predict_and_build not re-offered after full run, even with directives |
+| `test_autosol_partpdb_file_in_command` | test_command_builder.py | autosol MR-SAD command includes partpdb_file=PHASER.1.pdb |
 | `test_model_scoring_prefers_refined` | test_best_files_tracker.py | Refined models scored higher than MR output |
 | `test_predicted_model_exclusion` | test_best_files_tracker.py | Predicted models excluded from model category |
 

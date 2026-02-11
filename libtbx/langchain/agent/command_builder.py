@@ -68,7 +68,8 @@ class CommandContext:
     llm_strategy: Optional[Dict[str, Any]] = None  # {flag: value} from LLM
 
     # Error recovery strategies (file-keyed)
-    # Format: {file_path: {flags: {...}, program_scope: [...], reason: "..."}}
+    # Format: {file_path: {flags: {...}, program_scope: [...], reason: "...",
+    #                       selected_label: "...", selected_label_pair: "..."}}
     recovery_strategies: Dict[str, Dict] = field(default_factory=dict)
 
     # Logging callback
@@ -170,6 +171,37 @@ class CommandBuilder:
         "full_map": "map",
     }
 
+    # Parameter name each program uses for specifying data labels from an MTZ file.
+    # When a recovery strategy identifies the correct label (e.g., "FTOXD3"),
+    # we need to know which parameter to set for the current program.
+    #
+    # All PHENIX programs follow the pattern: <scope>.input.xray_data.obs_labels
+    # The parameter always takes just the main label name (e.g., "FTOXD3"),
+    # not the F,SIGF pair. PHENIX finds the sigma column automatically.
+    #
+    # Canonical reference: knowledge/recoverable_errors.yaml data_label_parameters
+    DATA_LABEL_PARAMETERS = {
+        "phenix.xtriage": {
+            "parameter": "scaling.input.xray_data.obs_labels",
+        },
+        "phenix.refine": {
+            "parameter": "miller_array.labels.name",
+        },
+        "phenix.phaser": {
+            "parameter": "phaser.hklin.labin",
+        },
+        "phenix.autosol": {
+            "parameter": "autosol.input.xray_data.obs_labels",
+        },
+        "phenix.autobuild": {
+            "parameter": "autobuild.input.xray_data.obs_labels",
+        },
+        "phenix.maps": {
+            "parameter": "maps.input.xray_data.obs_labels",
+        },
+    }
+    DATA_LABEL_DEFAULT_PARAMETER = "obs_labels"
+
     def __init__(self):
         """Initialize builder with program registry."""
         self._registry = ProgramRegistry()
@@ -251,6 +283,17 @@ class CommandBuilder:
             if k not in pre_invariant_keys:
                 strategy_sources[k] = "invariant"
 
+        # 3.5 Check required strategies (e.g., resolution for map_to_model)
+        # If an invariant declares has_strategy and auto-fill couldn't provide it,
+        # the command cannot succeed — block it now rather than let it fail at runtime
+        invariants = self._registry.get_invariants(program)
+        for inv in invariants:
+            required_key = inv.get("check", {}).get("has_strategy")
+            if required_key and required_key not in strategy:
+                msg = inv.get("message", "%s required" % required_key)
+                self._log(context, "BUILD: BLOCKED - %s (not in strategy or context)" % msg)
+                return None
+
         # Build file provenance dict from _selection_details
         file_sources = {}
         for slot in (files or {}):
@@ -272,11 +315,20 @@ class CommandBuilder:
         if command:
             self._log(context, "BUILD: Command = %s" % command[:100])
 
-        # 5. Log any LLM file requests that were rejected
+        # 5. Log any LLM file requests that were truly rejected
         if context.llm_files:
-            rejected = ["%s=%s" % (s, os.path.basename(str(p)))
-                        for s, p in context.llm_files.items()
-                        if p and s not in (files or {})]
+            files_dict = files or {}
+            rejected = []
+            for s, p in context.llm_files.items():
+                if not p:
+                    continue
+                # Check original slot name AND its canonical alias
+                canonical = self.SLOT_ALIASES.get(s, s)
+                if s not in files_dict and canonical not in files_dict:
+                    # Also check fuzzy matches (e.g., "map" matched to "full_map")
+                    fuzzy_matched = any(s in k or k in s for k in files_dict)
+                    if not fuzzy_matched:
+                        rejected.append("%s=%s" % (s, os.path.basename(str(p))))
             if rejected:
                 self._log(context, "BUILD: REJECTED LLM file requests: %s" % ", ".join(rejected))
 
@@ -566,6 +618,22 @@ class CommandBuilder:
             self._log(context, "BUILD: Skipping best_files for %s (program needs specific subcategory: %s)" %
                      (input_name, priority_categories))
 
+        # PRIORITY 2.5: Files with recovery strategies
+        # When a recoverable error identified the correct labels for a file,
+        # prefer that file over others (prevents auto-fill from picking a
+        # different MTZ during forced retry).
+        if context.recovery_strategies and extensions:
+            for recovery_file in context.recovery_strategies:
+                recovery_base = os.path.basename(recovery_file)
+                # Check if this recovery file is available and has the right extension
+                for avail in available_files:
+                    if (os.path.basename(avail) == recovery_base and
+                            any(avail.lower().endswith(ext) for ext in extensions)):
+                        self._log(context, "BUILD: Using file with recovery strategy for %s: %s" %
+                                 (input_name, recovery_base))
+                        self._record_selection(input_name, avail, "recovery_preferred")
+                        return avail
+
         # PRIORITY 3: Category-based selection (from input_priorities)
         #
         # This supports semantic parent categories with subcategory preferences:
@@ -793,6 +861,10 @@ class CommandBuilder:
         This method checks if any of our selected files have recovery
         strategies and merges their flags into the command strategy.
 
+        For data label recovery, the parameter name is translated per-program
+        using DATA_LABEL_PARAMETERS (e.g., xtriage uses
+        scaling.input.xray_data.obs_labels, refine uses xray_data.labels).
+
         Args:
             program: Program name being built
             files: Dict of selected files {slot: path}
@@ -844,7 +916,7 @@ class CommandBuilder:
                       f"BUILD: Checking {recovery_base}: match={file_match}")
 
             if file_match:
-                # Check program scope (if specified)
+                # Check program scope (if specified and non-empty)
                 scope = recovery.get("program_scope", [])
                 if scope and program not in scope:
                     # This recovery is scoped to different programs
@@ -853,25 +925,48 @@ class CommandBuilder:
                               f"(scoped to {scope}, current is {program})")
                     continue
 
-                # Merge flags into strategy
-                flags = recovery.get("flags", {})
-                if flags:
-                    # Recovery flags take precedence over existing strategy
-                    for key, value in flags.items():
-                        if key in strategy:
-                            self._log(context,
-                                      f"BUILD: Recovery flag {key}={value} "
-                                      f"overrides existing {strategy[key]}")
-                        strategy[key] = value
+                # If recovery has a selected_label, translate the parameter
+                # name for the current program instead of using stored flags
+                selected_label = recovery.get("selected_label", "")
+
+                if selected_label:
+                    # Use program-specific parameter name
+                    # All PHENIX programs just need the main label (e.g., "FTOXD3")
+                    # PHENIX finds the sigma column automatically
+                    label_config = self.DATA_LABEL_PARAMETERS.get(program)
+                    if label_config:
+                        param_name = label_config["parameter"]
+                    else:
+                        param_name = self.DATA_LABEL_DEFAULT_PARAMETER
+
+                    if param_name in strategy:
+                        self._log(context,
+                                  f"BUILD: Recovery label {param_name}={selected_label} "
+                                  f"overrides existing {strategy[param_name]}")
+                    strategy[param_name] = selected_label
 
                     self._log(context,
-                              f"BUILD: Applied recovery flags for "
-                              f"{recovery_base}: {flags}")
+                              f"BUILD: Applied data label for {program}: "
+                              f"{param_name}={selected_label}")
+                else:
+                    # No selected_label - fall back to raw flags
+                    flags = recovery.get("flags", {})
+                    if flags:
+                        for key, value in flags.items():
+                            if key in strategy:
+                                self._log(context,
+                                          f"BUILD: Recovery flag {key}={value} "
+                                          f"overrides existing {strategy[key]}")
+                            strategy[key] = value
 
-                    # Log the reason for transparency
-                    reason = recovery.get("reason", "")
-                    if reason:
-                        self._log(context, f"BUILD: Recovery reason: {reason}")
+                        self._log(context,
+                                  f"BUILD: Applied recovery flags for "
+                                  f"{recovery_base}: {flags}")
+
+                # Log the reason for transparency
+                reason = recovery.get("reason", "")
+                if reason:
+                    self._log(context, f"BUILD: Recovery reason: {reason}")
             else:
                 self._log(context,
                           f"BUILD: No match for {recovery_base} in selected files")
@@ -940,6 +1035,9 @@ class CommandBuilder:
                     strategy["resolution"] = round(context.resolution, 1)
                     self._log(context, "BUILD: Auto-filled resolution=%.1f from context" %
                               context.resolution)
+                else:
+                    self._log(context, "BUILD: WARNING - resolution required for %s "
+                              "but not available in session" % program)
 
             # Auto-fill output_prefix (if not already set)
             if fix.get("auto_fill_output_prefix") and "output_prefix" not in strategy:

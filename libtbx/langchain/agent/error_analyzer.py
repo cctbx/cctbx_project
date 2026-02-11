@@ -73,6 +73,8 @@ class ErrorRecovery:
         retry_program: Program to force-retry
         selected_choice: The option that was selected
         all_choices: All available options
+        selected_label: The main label extracted (e.g., "FTOXD3")
+        selected_label_pair: The full label pair (e.g., "FTOXD3,SIGFTOXD3")
     """
     error_type: str
     affected_file: str
@@ -81,6 +83,8 @@ class ErrorRecovery:
     retry_program: str
     selected_choice: str
     all_choices: List[str] = field(default_factory=list)
+    selected_label: str = ""
+    selected_label_pair: str = ""
 
 
 # =============================================================================
@@ -436,7 +440,9 @@ class ErrorAnalyzer:
             reason=reason,
             retry_program=program,
             selected_choice=selected,
-            all_choices=choices
+            all_choices=choices,
+            selected_label=label_value,
+            selected_label_pair=selected
         )
 
     def _resolve_ambiguous_phases(self, error_info: Dict[str, Any],
@@ -506,7 +512,9 @@ class ErrorAnalyzer:
             reason=reason,
             retry_program=program,
             selected_choice=selected,
-            all_choices=choices
+            all_choices=choices,
+            selected_label=label_value,
+            selected_label_pair=selected
         )
 
     def _is_anomalous_hl(self, label: str) -> bool:

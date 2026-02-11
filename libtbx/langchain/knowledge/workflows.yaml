@@ -104,6 +104,20 @@ xray:
       transitions:
         on_complete: refine
 
+    # Phase 2d: MR-SAD experimental phasing (phaser placed model, now use anomalous signal)
+    experimental_phasing:
+      description: "MR-SAD: use anomalous signal with placed model from phaser"
+      goal: "Improve phases by combining MR solution with anomalous differences"
+
+      programs:
+        - program: phenix.autosol
+          conditions:
+            - not_done: autosol
+          hint: "MR-SAD: phaser has placed the model, autosol uses it as partpdb_file"
+
+      transitions:
+        on_complete: build_from_phases
+
     # Phase 3: Refine the model
     refine:
       description: "Improve model against diffraction data"

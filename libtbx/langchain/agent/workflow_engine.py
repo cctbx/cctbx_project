@@ -151,6 +151,13 @@ class WorkflowEngine:
         # Compute derived conditions
         context["model_is_good"] = self._is_model_good(context)
 
+        # Propagate MR-SAD workflow preference from directives
+        if directives:
+            workflow_prefs = directives.get("workflow_preferences", {})
+            context["use_mr_sad"] = workflow_prefs.get("use_mr_sad", False)
+        else:
+            context["use_mr_sad"] = False
+
         return context
 
     def _get_metric(self, analysis, history_info, analysis_key, history_key):
@@ -374,6 +381,7 @@ class WorkflowEngine:
         "obtain_model": "xray_analyzed",
         "molecular_replacement": "xray_has_prediction",
         "build_from_phases": "xray_has_phases",
+        "experimental_phasing": "xray_mr_sad",
         "refine": "xray_refined",
         "combine_ligand": "xray_combined",
         "validate": "xray_refined",  # Validation is part of refined state
@@ -453,6 +461,16 @@ class WorkflowEngine:
             return self._make_phase_result(phases, "build_from_phases",
                 "Experimental phasing complete, need autobuild")
 
+        # Phase 2d: MR-SAD - phaser placed model, anomalous data needs autosol
+        # When phaser has run AND we have anomalous signal, autosol should run
+        # using the phaser output as a partial model (partpdb_file) for MR-SAD.
+        # Also triggered if user explicitly requested MR-SAD workflow.
+        if (context["phaser_done"] and
+            (context.get("has_anomalous") or context.get("use_mr_sad")) and
+            not context["autosol_done"]):
+            return self._make_phase_result(phases, "experimental_phasing",
+                "Model placed by phaser, anomalous data detected - MR-SAD with autosol")
+
         # Phase 2: Need model
         if not context["has_placed_model"]:
             return self._make_phase_result(phases, "obtain_model",
@@ -506,7 +524,16 @@ class WorkflowEngine:
         """Detect phase in cryo-EM workflow."""
 
         # Phase 1: Need analysis
-        if not context["mtriage_done"]:
+        # mtriage is preferred, but if other cryo-EM programs have already run
+        # (e.g., resolve_cryo_em, dock_in_map), we're clearly past analysis.
+        # This handles tutorials that skip mtriage.
+        past_analysis = (
+            context["mtriage_done"] or
+            context.get("resolve_cryo_em_done", False) or
+            context.get("dock_done", False) or
+            context.get("rsr_done", False)
+        )
+        if not past_analysis:
             return self._make_phase_result(phases, "analyze",
                 "Need to analyze map quality first")
 
@@ -870,8 +897,21 @@ class WorkflowEngine:
         # 3. Apply workflow preferences
         workflow_prefs = directives.get("workflow_preferences", {})
 
+        # Handle use_mr_sad - phaser first, then autosol (handled by experimental_phasing phase)
+        # In obtain_model phase: prioritize phaser (need to place model first)
+        # In experimental_phasing phase: autosol is already the only option
+        if workflow_prefs.get("use_mr_sad"):
+            if "phenix.phaser" in result:
+                result.remove("phenix.phaser")
+                result.insert(0, "phenix.phaser")
+                modifications.append("Prioritized phenix.phaser (use_mr_sad: place model first)")
+            # Don't run autosol in obtain_model phase - it runs later in experimental_phasing
+            if phase_name == "obtain_model" and "phenix.autosol" in result:
+                result.remove("phenix.autosol")
+                modifications.append("Removed phenix.autosol from obtain_model (use_mr_sad: runs after phaser)")
+
         # Handle use_experimental_phasing - prioritize autosol over predict_and_build
-        if workflow_prefs.get("use_experimental_phasing"):
+        if workflow_prefs.get("use_experimental_phasing") and not workflow_prefs.get("use_mr_sad"):
             # Move autosol to front if it's in the list
             if "phenix.autosol" in result:
                 result.remove("phenix.autosol")
@@ -972,6 +1012,10 @@ class WorkflowEngine:
         # for cryo-EM, only add if mtriage has been run (we need resolution)
         # Exception: always allow if we're in a phase that includes predict_and_build
         if program == "phenix.predict_and_build":
+            # Don't re-run if the full workflow already completed
+            if context.get("predict_full_done"):
+                return False
+
             # In STEPWISE mode, after prediction is done, don't allow predict_and_build again
             # The workflow should go: predict(stop_after) -> process_predicted -> phaser -> refine
             # NOT: predict(stop_after) -> predict(full)

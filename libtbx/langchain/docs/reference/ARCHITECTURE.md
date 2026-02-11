@@ -503,8 +503,11 @@ The `automation_path` is set in workflow state and propagated to all decision po
 context["automation_path"] = "automated" if maximum_automation else "stepwise"
 
 # workflow_engine.py (_check_program_prerequisites)
+# Block after full workflow has completed (both automated and stepwise)
+if context.get("predict_full_done"):
+    return False
+# Block in stepwise mode after prediction-only step
 if automation_path == "stepwise" and context.get("predict_done"):
-    # Block predict_and_build after prediction is complete
     return False
 ```
 
@@ -540,26 +543,36 @@ xray_initial → xtriage → xray_analyzed
     xray_model_processed ─────┘               │
               ↓                               │
            phaser ────────────────────────────┘
-              ↓
-       xray_has_model
-              ↓
-         refine (loop) ←──────────────────────┐
+              │
+              ├── [anomalous data] → xray_mr_sad
+              │                         ↓
+              │                 autosol (partpdb_file=PHASER.pdb)
+              │                         ↓
+              │                  xray_has_phases
+              │                         ↓
+              │                    autobuild ──┐
               ↓                               │
-       xray_refined                           │
-         ↓    ↓    ↓                          │
-    molprobity refine STOP                    │
-              │                               │
+       xray_has_model                         │
               ↓                               │
-       [if ligand] ligandfit → pdbtools ──────┘
+         refine (loop) ←──────────────────────┘
+              ↓
+       xray_refined
+         ↓    ↓    ↓
+    molprobity refine STOP
+              │
+              ↓
+       [if ligand] ligandfit → pdbtools → refine
 ```
 
 † Prioritized when strong anomalous signal detected (measurability > 0.10)
+‡ MR-SAD: phaser places model first, then autosol uses it as partpdb_file
 
 | State | Description | Valid Programs |
 |-------|-------------|----------------|
 | `xray_initial` | Starting point | xtriage |
 | `xray_analyzed` | After data analysis | predict_and_build, phaser, autosol |
 | `xray_has_prediction` | Have AlphaFold model | process_predicted_model |
+| `xray_mr_sad` | After phaser + anomalous data (MR-SAD) | autosol (with partpdb_file) |
 | `xray_has_phases` | After experimental phasing | autobuild |
 | `xray_has_model` | Have placed model | refine |
 | `xray_refined` | After refinement | refine, molprobity, autobuild, STOP |

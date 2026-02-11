@@ -87,6 +87,7 @@ Output a JSON object with these sections. Include ONLY sections that have releva
    - "prefer_programs": list of strings - Programs to prefer when multiple options exist
    - "use_experimental_phasing": bool - Prefer SAD/MAD over molecular replacement
    - "use_molecular_replacement": bool - Prefer MR over experimental phasing
+   - "use_mr_sad": bool - MR-SAD workflow: run phaser first to place model, then autosol with placed model
 
 5. "constraints": list of strings - Other instructions that don't fit above categories
    - Keep these as clear, actionable statements
@@ -116,6 +117,33 @@ and doesn't need automatic validation before stopping. Examples:
 - "Stop after density modification" → skip_validation=true
 - "Stop Condition: Stop after generating the improved map" → skip_validation=true
 
+**CRITICAL: CRYO-EM vs X-RAY PROGRAM SELECTION**:
+Different programs are used for cryo-EM and X-ray experiments. Choose correctly based on the experiment type:
+
+Cryo-EM ONLY programs:
+- phenix.mtriage: Analyze cryo-EM map quality (NOT phenix.xtriage)
+- phenix.map_to_model: Build/rebuild atomic model into cryo-EM map (NOT phenix.autobuild)
+- phenix.dock_in_map: Dock existing model into cryo-EM map
+- phenix.resolve_cryo_em: Cryo-EM density modification
+- phenix.map_sharpening: Sharpen cryo-EM map
+- phenix.map_symmetry: Find symmetry in cryo-EM map
+- phenix.real_space_refine: Refine model against cryo-EM map (NOT phenix.refine)
+- phenix.validation_cryoem: Validate cryo-EM model
+
+X-ray ONLY programs:
+- phenix.xtriage: Analyze X-ray data quality (NOT phenix.mtriage)
+- phenix.autobuild: Build/rebuild model for X-ray (NOT for cryo-EM)
+- phenix.phaser: Molecular replacement
+- phenix.autosol: Experimental phasing (SAD/MAD)
+- phenix.refine: Reciprocal-space refinement (NOT for cryo-EM)
+- phenix.polder: Polder omit maps (X-ray only)
+
+If the advice mentions cryo-EM, maps (.mrc/.ccp4), or real-space methods:
+- "model building" or "rebuild model" → phenix.map_to_model (NOT phenix.autobuild)
+- "refinement" → phenix.real_space_refine (NOT phenix.refine)
+- "data analysis" → phenix.mtriage (NOT phenix.xtriage)
+- "density modification" → phenix.resolve_cryo_em (NOT phenix.autobuild_denmod)
+
 **TUTORIAL/PROCEDURE DETECTION**:
 If the advice describes a SPECIFIC LIMITED TASK rather than full structure determination, automatically add appropriate stop_conditions:
 - "run xtriage", "check for twinning", "analyze data" → after_program="phenix.xtriage", skip_validation=true
@@ -130,8 +158,10 @@ If the advice describes a SPECIFIC LIMITED TASK rather than full structure deter
   (Note: phenix.resolve_cryo_em is for density modification, NOT for map sharpening - use phenix.map_sharpening for sharpening)
 - For X-ray: "density modification", "improve phases", "denmod" → after_program="phenix.autobuild_denmod", skip_validation=true
   (Note: X-ray density modification uses phenix.autobuild with maps_only=True)
+- "MR-SAD", "MR SAD", "MRSAD", "molecular replacement SAD" → Set use_mr_sad=true in workflow_preferences AND use_experimental_phasing=true. Do NOT set after_program="phenix.autosol" because phaser must run first to place the model. The workflow is: phaser → autosol with the phaser output as partpdb_file.
+  If user says "stop after autosol" or similar, set after_program="phenix.autosol" AND skip_validation=true.
 - "dock in map", "fit model to map" → after_program="phenix.dock_in_map", skip_validation=true
-- "map to model", "MapToModel", "build model into map", "automated model building" → after_program="phenix.map_to_model", skip_validation=true
+- "map to model", "MapToModel", "build model into map", "automated model building", "rebuild model", "model rebuilding" → after_program="phenix.map_to_model", skip_validation=true
 - "polder", "polder map", "omit map", "evaluate ligand placement" → after_program="phenix.polder", skip_validation=true
   (Note: phenix.polder calculates polder omit maps to evaluate ligand/residue placement in density)
 - "fit ligand", "ligandfit", "place ligand" → after_program="phenix.ligandfit", skip_validation=true

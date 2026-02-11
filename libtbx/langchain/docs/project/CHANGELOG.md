@@ -1,5 +1,42 @@
 # PHENIX AI Agent - Changelog
 
+## Version 112.1 (February 2025)
+
+### Cryo-EM State Fix & MR-SAD Workflow Support
+
+**Fix 1 - Cryo-EM workflow stuck at cryoem_initial (HIGH IMPACT)**
+- `_detect_cryoem_phase()` gated all progress behind `mtriage_done` check
+- Tutorials that skip mtriage (going straight to resolve_cryo_em) got permanently stuck
+- Fix: "past analysis" check now also considers `resolve_cryo_em_done`, `dock_done`, `rsr_done`
+- Files: `agent/workflow_engine.py`
+
+**Feature 1 - MR-SAD experimental phasing workflow (NEW)**
+- Added `experimental_phasing` phase to X-ray workflow for MR-SAD
+- Workflow: xtriage → phaser (place model) → autosol (with partpdb_file=PHASER.pdb) → autobuild
+- Added `partpdb_file` optional input to autosol (auto-filled from phaser_output category)
+- Added `xray_mr_sad` state mapping and detection in workflow engine
+- Phase detection: triggered when `phaser_done AND (has_anomalous OR use_mr_sad)`
+- Added `use_mr_sad` directive to workflow_preferences
+- Directive extractor: "MR-SAD" keywords set `use_mr_sad=true`, do NOT set `after_program=autosol`
+- In obtain_model phase with use_mr_sad: phaser prioritized, autosol removed
+- Files: `agent/workflow_engine.py`, `knowledge/programs.yaml`, `knowledge/workflows.yaml`,
+  `agent/decision_config.json`, `agent/directive_extractor.py`
+
+**Tests: 765 total (+8 new)**
+- `test_mr_sad_after_phaser_with_anomalous` - MR-SAD state detection
+- `test_mr_sad_not_triggered_without_anomalous` - No false positives
+- `test_mr_sad_not_triggered_when_autosol_done` - Skip if already done
+- `test_mr_sad_directive_prioritizes_phaser` - Directive removes autosol from obtain_model
+- `test_normal_sad_still_works` - Normal SAD pathway unaffected
+- `test_autosol_has_partial_model_config` - YAML config correctness
+- `test_mr_sad_directive_overrides_no_anomalous` - Directive triggers without has_anomalous
+- `test_experimental_phasing_yaml_structure` - YAML phase structure validation
+
+**Documentation updated:**
+- ARCHITECTURE.md: State diagram with MR-SAD path, state table
+- USER_DIRECTIVES.md: use_mr_sad field, MR-SAD example (Example 5)
+- TESTING.md: Test counts (757→765)
+
 ## Version 112 (February 2025)
 
 ### Summary Quality Improvements: Steps Table Metrics & Consistency Fixes

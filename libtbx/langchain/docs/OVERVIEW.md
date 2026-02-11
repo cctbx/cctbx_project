@@ -97,7 +97,7 @@ The graph has conditional routing: perceive can skip to output (on red flag abor
 ### 2. Workflow Engine (`agent/workflow_engine.py`)
 
 Interprets `workflows.yaml` to determine:
-- **Current phase**: X-ray has 8 phases (analyze, obtain_model, molecular_replacement, build_from_phases, refine, combine_ligand, validate, complete); cryo-EM has 9 phases (analyze, obtain_model, dock_model, check_map, optimize_map, ready_to_refine, refine, validate, complete)
+- **Current phase**: X-ray has 9 phases (analyze, obtain_model, molecular_replacement, experimental_phasing, build_from_phases, refine, combine_ligand, validate, complete); cryo-EM has 9 phases (analyze, obtain_model, dock_model, check_map, optimize_map, ready_to_refine, refine, validate, complete)
 - **Valid programs** for current phase
 - **Transition conditions**
 - **Stop criteria** (target reached, plateau detected)
@@ -278,6 +278,16 @@ xray:
       transitions:
         on_complete: refine
         if_predict_only: molecular_replacement  # Stepwise mode
+    
+    # MR-SAD: after phaser places model, use anomalous signal with autosol
+    experimental_phasing:
+      description: "MR-SAD phasing with placed model"
+      programs:
+        - program: phenix.autosol
+          conditions:
+            - not_done: autosol
+      transitions:
+        on_complete: build_from_phases
     
     refine:
       description: "Improve model"

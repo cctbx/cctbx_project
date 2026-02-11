@@ -228,6 +228,12 @@
         {"program": "phenix.autobuild", "priority": 1, "reason": "Build model into experimental phases"}
       ]
     },
+    "xray_mr_sad": {
+      "description": "MR-SAD: phaser placed model, need autosol with anomalous data",
+      "rankings": [
+        {"program": "phenix.autosol", "priority": 1, "reason": "MR-SAD: use phaser model as partial model with anomalous signal"}
+      ]
+    },
     "xray_has_model": {
       "description": "Have placed model, need refinement",
       "rankings": [

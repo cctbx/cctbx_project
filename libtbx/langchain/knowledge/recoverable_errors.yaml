@@ -204,6 +204,33 @@ context_keywords:
 
 
 # =============================================================================
+# DATA LABEL PARAMETER NAMES BY PROGRAM
+# =============================================================================
+# Different PHENIX programs use different PHIL parameter paths to specify which
+# data labels to use from an MTZ file. All follow the pattern:
+#   <program_scope>.input.xray_data.obs_labels
+#
+# The value is always just the main label name (e.g., "FTOXD3").
+# PHENIX automatically finds the corresponding sigma column (SIGFTOXD3).
+
+data_label_parameters:
+  phenix.xtriage:
+    parameter: "scaling.input.xray_data.obs_labels"
+  phenix.refine:
+    parameter: "miller_array.labels.name"
+  phenix.phaser:
+    parameter: "phaser.hklin.labin"
+  phenix.autosol:
+    parameter: "autosol.input.xray_data.obs_labels"
+  phenix.autobuild:
+    parameter: "autobuild.input.xray_data.obs_labels"
+  phenix.maps:
+    parameter: "maps.input.xray_data.obs_labels"
+  default:
+    parameter: "obs_labels"
+
+
+# =============================================================================
 # FUTURE RECOVERABLE ERRORS (Not Yet Implemented)
 # =============================================================================
 # These are candidates for future implementation

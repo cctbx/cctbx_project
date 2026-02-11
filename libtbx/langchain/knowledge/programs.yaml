@@ -567,6 +567,16 @@ phenix.autosol:
       sequence:
         extensions: [.fa, .fasta, .seq, .dat]
         flag: "seq_file="
+    optional:
+      partial_model:
+        extensions: [.pdb]
+        flag: "partpdb_file="
+        description: "Placed model from MR for MR-SAD (run phaser first)"
+
+  # Input priorities for partial_model - ONLY use phaser output (not generic models)
+  input_priorities:
+    partial_model:
+      categories: [phaser_output]
 
   outputs:
     files:
@@ -622,11 +632,16 @@ phenix.autosol:
     - "selenomethionine"
     - "sulfur sad"
     - "s-sad"
+    - "mr-sad"
+    - "mr sad"
+    - "mrsad"
 
   hints:
     - "Use for SAD/MAD when data has anomalous signal"
     - "Requires anomalous data (F+/F- or I+/I-)"
     - "Set atom_type to the anomalous scatterer"
+    - "For MR-SAD: run phenix.phaser FIRST to place the model, then pass placed model via partpdb_file="
+    - "MR-SAD improves phasing by combining MR phases with anomalous signal"
 
   log_parsing:
     fom:
@@ -735,13 +750,13 @@ phenix.map_to_model:
 
   inputs:
     required:
+      full_map:
+        extensions: [.mrc, .ccp4, .map]
+        flag: ""
       sequence:
         extensions: [.fa, .fasta, .seq, .dat]
         flag: "seq_file="
     optional:
-      full_map:
-        extensions: [.mrc, .ccp4, .map]
-        flag: ""
       half_map:
         extensions: [.mrc, .ccp4, .map]
         flag: ""
@@ -752,7 +767,7 @@ phenix.map_to_model:
         description: "Partial model to extend (rarely needed)"
         auto_fill: false
 
-  # Must have either full_map or half_maps
+  # Prefer optimized/full maps; half_maps are bonus
   input_priorities:
     full_map:
       categories: [full_map, optimized_full_map, map]

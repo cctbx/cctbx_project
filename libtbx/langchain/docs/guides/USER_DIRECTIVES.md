@@ -123,7 +123,8 @@ User Advice (natural language)
     "skip_programs": ["phenix.autobuild"],
     "prefer_programs": ["phenix.phaser"],
     "use_experimental_phasing": true,
-    "use_molecular_replacement": false
+    "use_molecular_replacement": false,
+    "use_mr_sad": false
   },
 
   "constraints": [
@@ -382,6 +383,42 @@ Skip autobuild - I want to build the model manually.
 - phenix.phaser removed from valid programs
 - phenix.autobuild removed from valid programs
 - Agent prefers phenix.autosol pathway
+
+### Example 5: MR-SAD Workflow
+
+**User Advice:**
+```
+Run MR-SAD. Use the AlphaFold model for molecular replacement first,
+then use the placed model for SAD phasing to locate Fe sites.
+atom_type=Fe, sites=4, wavelength=1.1158
+```
+
+**Extracted Directives:**
+```json
+{
+  "program_settings": {
+    "phenix.autosol": {
+      "atom_type": "Fe",
+      "sites": 4,
+      "wavelength": 1.1158
+    }
+  },
+  "workflow_preferences": {
+    "use_mr_sad": true,
+    "use_experimental_phasing": true
+  },
+  "stop_conditions": {
+    "after_program": "phenix.autosol",
+    "skip_validation": true
+  }
+}
+```
+
+**Behavior:**
+- In `obtain_model` phase: phaser prioritized, autosol removed (phaser must run first)
+- After phaser: workflow enters `xray_mr_sad` state (experimental_phasing phase)
+- autosol runs with `partpdb_file=PHASER.1.pdb` (auto-filled from phaser output)
+- Workflow: xtriage → phaser → autosol (with partpdb_file) → STOP
 
 ## Testing
 

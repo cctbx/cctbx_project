@@ -573,12 +573,56 @@ def test_create_error_recovery():
         reason="Selected anomalous data",
         retry_program="phenix.autosol",
         selected_choice="I(+),SIGI(+)",
-        all_choices=["IMEAN,SIGIMEAN", "I(+),SIGI(+)"]
+        all_choices=["IMEAN,SIGIMEAN", "I(+),SIGI(+)"],
+        selected_label="I(+)",
+        selected_label_pair="I(+),SIGI(+)"
     )
 
     assert_equal(recovery.error_type, "ambiguous_data_labels")
     assert_equal(recovery.flags["obs_labels"], "I(+)")
     assert_equal(len(recovery.all_choices), 2)
+    assert_equal(recovery.selected_label, "I(+)")
+    assert_equal(recovery.selected_label_pair, "I(+),SIGI(+)")
+
+
+def test_error_recovery_label_fields_default_empty():
+    """Test that selected_label fields default to empty strings."""
+    recovery = ErrorRecovery(
+        error_type="ambiguous_data_labels",
+        affected_file="/path/to/data.mtz",
+        flags={"obs_labels": "I(+)"},
+        reason="test",
+        retry_program="phenix.refine",
+        selected_choice="I(+),SIGI(+)",
+    )
+    assert_equal(recovery.selected_label, "")
+    assert_equal(recovery.selected_label_pair, "")
+
+
+def test_full_analyze_populates_label_fields():
+    """Test that analyze() populates selected_label and selected_label_pair."""
+    analyzer = create_analyzer()
+    log = """
+    Multiple equally suitable arrays found.
+
+    Possible choices:
+      /data/toxd.mtz:FTOXD3,SIGFTOXD3
+      /data/toxd.mtz:FAU20,SIGFAU20
+
+    Please use scaling.input.xray_data.obs_labels to specify.
+    """
+
+    session = MockSession({})
+    recovery = analyzer.analyze(
+        log_text=log,
+        program="phenix.xtriage",
+        context={},
+        session=session
+    )
+
+    assert_not_none(recovery)
+    assert_equal(recovery.selected_label, "FTOXD3")
+    assert_equal(recovery.selected_label_pair, "FTOXD3,SIGFTOXD3")
 
 
 # =============================================================================

@@ -1479,6 +1479,272 @@ def test_automated_mode_allows_full_predict_and_build():
     print("  PASSED")
 
 
+# =============================================================================
+# MR-SAD WORKFLOW TESTS
+# =============================================================================
+
+def test_mr_sad_after_phaser_with_anomalous():
+    """Test MR-SAD: after phaser + anomalous data → experimental_phasing state."""
+    print("Test: mr_sad_after_phaser_with_anomalous")
+
+    files = ["data.mtz", "search_model.pdb", "sequence.fa"]
+    history = [
+        {"program": "phenix.xtriage", "result": "SUCCESS",
+         "analysis": {"has_anomalous": True, "anomalous_measurability": 0.15}},
+        {"program": "phenix.phaser", "result": "SUCCESS",
+         "output_files": ["PHASER.1.pdb"]},
+    ]
+
+    state = detect_workflow_state(history, files)
+
+    assert state["state"] == "xray_mr_sad", \
+        "Expected xray_mr_sad, got %s" % state["state"]
+    assert "phenix.autosol" in state["valid_programs"], \
+        "autosol should be valid for MR-SAD, got %s" % state["valid_programs"]
+
+    print("  PASSED")
+
+
+def test_mr_sad_not_triggered_without_anomalous():
+    """Test that MR-SAD is NOT triggered when there's no anomalous signal."""
+    print("Test: mr_sad_not_triggered_without_anomalous")
+
+    files = ["data.mtz", "search_model.pdb", "sequence.fa", "PHASER.1.pdb"]
+    history = [
+        {"program": "phenix.xtriage", "result": "SUCCESS",
+         "analysis": {"resolution": 2.0}},
+        {"program": "phenix.phaser", "result": "SUCCESS",
+         "output_files": ["PHASER.1.pdb"]},
+    ]
+
+    state = detect_workflow_state(history, files)
+
+    # Without anomalous data, should go to refine (not mr_sad)
+    assert state["state"] != "xray_mr_sad", \
+        "Should NOT be xray_mr_sad without anomalous data, got %s" % state["state"]
+
+    print("  PASSED")
+
+
+def test_mr_sad_not_triggered_when_autosol_done():
+    """Test that MR-SAD phase is skipped if autosol already ran."""
+    print("Test: mr_sad_not_triggered_when_autosol_done")
+
+    files = ["data.mtz", "search_model.pdb", "sequence.fa", "PHASER.1.pdb",
+             "overall_best.pdb"]
+    history = [
+        {"program": "phenix.xtriage", "result": "SUCCESS",
+         "analysis": {"has_anomalous": True, "anomalous_measurability": 0.15}},
+        {"program": "phenix.phaser", "result": "SUCCESS",
+         "output_files": ["PHASER.1.pdb"]},
+        {"program": "phenix.autosol", "result": "SUCCESS",
+         "output_files": ["overall_best.pdb"]},
+    ]
+
+    state = detect_workflow_state(history, files)
+
+    # After autosol → should go to build_from_phases or refine, NOT mr_sad
+    assert state["state"] != "xray_mr_sad", \
+        "Should NOT be xray_mr_sad after autosol, got %s" % state["state"]
+
+    print("  PASSED")
+
+
+def test_mr_sad_directive_prioritizes_phaser():
+    """Test that use_mr_sad directive prioritizes phaser in obtain_model phase."""
+    print("Test: mr_sad_directive_prioritizes_phaser")
+
+    files = ["data.mtz", "search_model.pdb", "sequence.fa"]
+    history = [
+        {"program": "phenix.xtriage", "result": "SUCCESS",
+         "analysis": {"has_anomalous": True, "anomalous_measurability": 0.15}},
+    ]
+
+    directives = {
+        "workflow_preferences": {
+            "use_mr_sad": True,
+            "use_experimental_phasing": True,
+        }
+    }
+
+    state = detect_workflow_state(history, files, directives=directives)
+
+    # Should be in obtain_model phase, with phaser prioritized and autosol removed
+    assert "phenix.phaser" in state["valid_programs"], \
+        "phaser should be valid for MR-SAD, got %s" % state["valid_programs"]
+    assert "phenix.autosol" not in state["valid_programs"], \
+        "autosol should NOT be in obtain_model for MR-SAD, got %s" % state["valid_programs"]
+
+    print("  PASSED")
+
+
+def test_normal_sad_still_works():
+    """Test that normal SAD (no phaser) still goes through obtain_model with autosol."""
+    print("Test: normal_sad_still_works")
+
+    files = ["data.mtz", "sequence.fa"]
+    history = [
+        {"program": "phenix.xtriage", "result": "SUCCESS",
+         "analysis": {"has_anomalous": True, "anomalous_measurability": 0.20}},
+    ]
+
+    directives = {
+        "workflow_preferences": {
+            "use_experimental_phasing": True,
+        }
+    }
+
+    state = detect_workflow_state(history, files, directives=directives)
+
+    # Should be in obtain_model with autosol prioritized
+    assert "phenix.autosol" in state["valid_programs"], \
+        "autosol should be valid for normal SAD, got %s" % state["valid_programs"]
+
+    print("  PASSED")
+
+
+def test_autosol_has_partial_model_config():
+    """Test that autosol config includes partial_model optional input."""
+    print("Test: autosol_has_partial_model_config")
+
+    import yaml
+    yaml_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                             "knowledge", "programs.yaml")
+    with open(yaml_path) as f:
+        programs = yaml.safe_load(f)
+
+    autosol = programs["phenix.autosol"]
+    optional = autosol["inputs"].get("optional", {})
+
+    assert "partial_model" in optional, \
+        "autosol should have partial_model in optional inputs"
+    assert optional["partial_model"]["flag"] == "partpdb_file=", \
+        "partial_model flag should be partpdb_file=, got %s" % optional["partial_model"]["flag"]
+
+    # Check input_priorities
+    priorities = autosol.get("input_priorities", {})
+    assert "partial_model" in priorities, \
+        "autosol should have input_priorities for partial_model"
+    assert "phaser_output" in priorities["partial_model"]["categories"], \
+        "partial_model should prefer phaser_output category"
+
+    print("  PASSED")
+
+
+def test_mr_sad_directive_overrides_no_anomalous():
+    """Test that use_mr_sad directive triggers MR-SAD even without has_anomalous from xtriage."""
+    print("Test: mr_sad_directive_overrides_no_anomalous")
+
+    files = ["data.mtz", "search_model.pdb", "sequence.fa", "PHASER.1.pdb"]
+    history = [
+        {"program": "phenix.xtriage", "result": "SUCCESS",
+         "analysis": {"resolution": 2.0}},  # No anomalous detected
+        {"program": "phenix.phaser", "result": "SUCCESS",
+         "output_files": ["PHASER.1.pdb"]},
+    ]
+
+    # User explicitly requests MR-SAD
+    directives = {
+        "workflow_preferences": {
+            "use_mr_sad": True,
+            "use_experimental_phasing": True,
+        }
+    }
+
+    state = detect_workflow_state(history, files, directives=directives)
+
+    assert state["state"] == "xray_mr_sad", \
+        "use_mr_sad directive should trigger MR-SAD even without has_anomalous, got %s" % state["state"]
+    assert "phenix.autosol" in state["valid_programs"], \
+        "autosol should be valid for MR-SAD with directive, got %s" % state["valid_programs"]
+
+    print("  PASSED")
+
+
+def test_experimental_phasing_yaml_structure():
+    """Test that workflows.yaml has correct experimental_phasing phase definition."""
+    print("Test: experimental_phasing_yaml_structure")
+
+    import yaml
+    yaml_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                             "knowledge", "workflows.yaml")
+    with open(yaml_path) as f:
+        workflows = yaml.safe_load(f)
+
+    phases = workflows["xray"]["phases"]
+
+    # experimental_phasing phase should exist
+    assert "experimental_phasing" in phases, \
+        "experimental_phasing phase should exist in xray workflow"
+
+    ep = phases["experimental_phasing"]
+
+    # Should have autosol as the program
+    programs = ep.get("programs", [])
+    assert len(programs) > 0, "experimental_phasing should have programs"
+    prog = programs[0]
+    assert isinstance(prog, dict), "Program entry should be a dict with conditions"
+    assert prog["program"] == "phenix.autosol", \
+        "experimental_phasing should use autosol, got %s" % prog.get("program")
+
+    # Should transition to build_from_phases
+    transitions = ep.get("transitions", {})
+    assert transitions.get("on_complete") == "build_from_phases", \
+        "experimental_phasing should transition to build_from_phases, got %s" % transitions
+
+    print("  PASSED")
+
+
+def test_predict_and_build_blocked_after_full_completion():
+    """Test that predict_and_build is NOT offered after it has fully completed.
+
+    Bug: After predict_and_build ran successfully (predict_full_done=True),
+    followed by autobuild and refinement, the agent would re-offer
+    predict_and_build because _check_program_prerequisites only blocked
+    re-runs in stepwise mode. Directives (program_settings) could inject
+    it back into valid_programs even in the refine phase.
+    """
+    print("Test: predict_and_build_blocked_after_full_completion")
+
+    files = [
+        "data.mtz", "sequence.fa",
+        "PredictAndBuild_0_overall_best.pdb",   # predict_and_build output
+        "overall_best_final_refine_001.pdb",     # refined model
+        "refine_001_001.mtz",                    # refined data
+    ]
+    history = [
+        {"program": "phenix.xtriage", "result": "SUCCESS",
+         "analysis": {"resolution": 2.1}},
+        {"program": "phenix.predict_and_build", "result": "SUCCESS",
+         "output_files": ["PredictAndBuild_0_overall_best.pdb"]},
+        {"program": "phenix.autobuild", "result": "SUCCESS",
+         "output_files": ["overall_best_final_refine_001.pdb"]},
+        {"program": "phenix.refine", "result": "SUCCESS",
+         "output_files": ["refine_001_001.pdb", "refine_001_001.mtz"],
+         "analysis": {"r_free": 0.28}},
+    ]
+
+    # Without directives - predict_and_build should not be offered
+    state = detect_workflow_state(history, files)
+    assert state["state"] == "xray_refined", \
+        "Expected xray_refined, got %s" % state["state"]
+    assert "phenix.predict_and_build" not in state["valid_programs"], \
+        "predict_and_build should NOT be valid after full completion, got %s" % state["valid_programs"]
+
+    # With directives that mention predict_and_build in program_settings -
+    # it should STILL not be offered
+    directives = {
+        "program_settings": {
+            "phenix.predict_and_build": {"rebuilding_strategy": "Quick"},
+        }
+    }
+    state2 = detect_workflow_state(history, files, directives=directives)
+    assert "phenix.predict_and_build" not in state2["valid_programs"], \
+        "predict_and_build should NOT be re-added by directives after full completion, got %s" % state2["valid_programs"]
+
+    print("  PASSED")
+
+
 def run_all_tests():
     """Run all tests with fail-fast behavior (cctbx style)."""
     from tests.test_utils import run_tests_with_fail_fast
