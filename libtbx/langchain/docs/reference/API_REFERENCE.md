@@ -380,4 +380,4 @@ except Exception as e:
 | `run_ai_agent.py` | 328 | Entry point, parses JSON, runs graph |
 | `knowledge/api_schema.py` | ~450 | Schema definitions, validation, defaults |
 | `agent/api_client.py` | ~450 | Request building, response parsing |
-| `tests/test_api_schema.py` | ~760 | API tests |
+| `tests/tst_api_schema.py` | ~760 | API tests |

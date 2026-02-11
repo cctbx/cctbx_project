@@ -186,11 +186,11 @@ The agent will add `phenix.predict_and_build` to valid programs even if the work
 
 | File | Description |
 |------|-------------|
-| `tests/test_directive_extractor.py` | 73 unit tests for extraction |
-| `tests/test_directive_validator.py` | 53 unit tests for validation |
-| `tests/test_session_directives.py` | 12 unit tests for session methods |
-| `tests/test_directives_integration.py` | 16 integration tests |
-| `tests/test_decision_flow.py` | Decision flow architecture tests |
+| `tests/tst_directive_extractor.py` | 73 unit tests for extraction |
+| `tests/tst_directive_validator.py` | 53 unit tests for validation |
+| `tests/tst_session_directives.py` | 12 unit tests for session methods |
+| `tests/tst_directives_integration.py` | 16 integration tests |
+| `tests/tst_decision_flow.py` | Decision flow architecture tests |
 
 ### Modified Files
 
@@ -428,15 +428,15 @@ Run all directive-related tests:
 cd improved_agent_v2
 
 # Unit tests
-python tests/test_directive_extractor.py      # 73 tests
-python tests/test_directive_validator.py      # 53 tests
-python tests/test_session_directives.py       # 12 tests
+python tests/tst_directive_extractor.py      # 73 tests
+python tests/tst_directive_validator.py      # 53 tests
+python tests/tst_session_directives.py       # 12 tests
 
 # Integration tests
-python tests/test_directives_integration.py   # 16 tests
+python tests/tst_directives_integration.py   # 16 tests
 
 # All tests
-python -m pytest tests/test_directive*.py tests/test_session_directives.py -v
+python -m pytest tests/tst_directive*.py tests/tst_session_directives.py -v
 ```
 
 ## Rollback Plan

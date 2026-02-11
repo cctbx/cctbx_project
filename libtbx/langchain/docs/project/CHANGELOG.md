@@ -185,7 +185,7 @@ Added to workflow context for SAD/MAD workflows and refinement strategy:
 
 ### New Tests
 
-Added `tests/test_history_analysis.py` with tests for:
+Added `tests/tst_history_analysis.py` with tests for:
 - Transport analysis/metrics key handling
 - History analysis from both key types
 - NCS extraction
@@ -230,7 +230,7 @@ def get_mtz_stage(filepath, category):
 
 ### New Test Suites
 
-- `tests/test_file_utils.py`: 12 tests for MTZ classification and file type detection
+- `tests/tst_file_utils.py`: 12 tests for MTZ classification and file type detection
 
 ### Files Changed
 
@@ -246,8 +246,8 @@ def get_mtz_stage(filepath, category):
 - `phenix_ai/local_agent.py`: Uses build_session_state
 - `phenix_ai/remote_agent.py`: Uses build_session_state
 - `phenix_ai/log_parsers.py`: Added molprobity and polder detection
-- `tests/test_history_analysis.py`: New test file
-- `tests/test_file_utils.py`: New test file
+- `tests/tst_history_analysis.py`: New test file
+- `tests/tst_file_utils.py`: New test file
 - `tests/run_all_tests.py`: Added History Analysis and File Utils test suites
 
 ---
@@ -338,8 +338,8 @@ This caused issues with programs like `phenix.ligandfit` potentially receiving d
 - `agent/directive_extractor.py`: Updated file preferences
 - `knowledge/prompts_hybrid.py`: Updated recommended files display
 - `phenix_ai/run_ai_agent.py`: Use state["program"] for response
-- `tests/test_best_files_tracker.py`: All 48 tests updated + autobuild scoring tests
-- `tests/test_workflow_state.py`: Added stepwise mode tests
+- `tests/tst_best_files_tracker.py`: All 48 tests updated + autobuild scoring tests
+- `tests/tst_workflow_state.py`: Added stepwise mode tests
 
 ---
 
@@ -664,7 +664,7 @@ Please... | | 4 | pdbtools | ✓ | Completed |
   - Added invariant for predict_and_build labels (`FP PHIFP`)
 - `agent/command_builder.py`:
   - Added `denmod_mtz` and `predict_and_build_mtz` to `specific_subcategories`
-- `tests/test_file_categorization.py`:
+- `tests/tst_file_categorization.py`:
   - Added `test_ligand_file_patterns`
   - Added `test_predict_and_build_mtz_detection`
 
@@ -708,8 +708,8 @@ xray_initial → xtriage → predict_and_build(stop_after_predict)
 - `agent/docs_tools.py` - Updated workflow documentation diagrams
 - `agent/workflow_state.py` - Updated stepwise hint message
 - `docs/README.md` - Added automation modes section and quick start example
-- `tests/test_integration.py` - Added `test_xray_stepwise_forces_stop_after_predict`
-- `tests/test_workflow_state.py` - Added X-ray stepwise tests
+- `tests/tst_integration.py` - Added `test_xray_stepwise_forces_stop_after_predict`
+- `tests/tst_workflow_state.py` - Added X-ray stepwise tests
 
 ---
 
@@ -753,7 +753,7 @@ Also added exclusions to the `predicted` category to ensure these files don't ge
 ### Files Changed
 
 - `knowledge/file_categories.yaml` - Added `predict_and_build_output` category, added exclusions to `predicted`
-- `tests/test_file_categorization.py` - Added test for PredictAndBuild output categorization
+- `tests/tst_file_categorization.py` - Added test for PredictAndBuild output categorization
 
 ---
 
@@ -786,7 +786,7 @@ BUILD: Using LLM-selected file for mtz
 ### Files Changed
 
 - `agent/command_builder.py` - Added `SLOT_ALIASES` dict and updated LLM file processing to use aliases
-- `tests/test_command_builder.py` - Added tests for slot alias mapping
+- `tests/tst_command_builder.py` - Added tests for slot alias mapping
 
 ---
 
@@ -884,8 +884,8 @@ The X-ray refine phase now includes:
 
 - `agent/session.py` - Exclude STOP/None/unknown from total_cycles and successful_cycles
 - `agent/session_tools.py` - Exclude STOP cycles from print_session_summary()
-- `tests/test_session_summary.py` - Added test_stop_cycle_excluded_from_count
-- `tests/test_workflow_state.py` - Added test_cryoem_done_flags
+- `tests/tst_session_summary.py` - Added test_stop_cycle_excluded_from_count
+- `tests/tst_workflow_state.py` - Added test_cryoem_done_flags
 
 ---
 
@@ -1033,7 +1033,7 @@ No `refined_mtz` category because refinement failed. But `refine_count` was 2 (f
 
 - `agent/command_builder.py` - Added check to prevent extension-based fallback when specific subcategory required
 - `agent/workflow_state.py` - Added success checking for refine_count and rsr_count in `_analyze_history()`
-- `tests/test_workflow_state.py` - Added `test_failed_refine_not_counted`
+- `tests/tst_workflow_state.py` - Added `test_failed_refine_not_counted`
 
 ---
 
@@ -1102,8 +1102,8 @@ The prompt was adding `NOTE: Use predict_and_build with strategy: {"stop_after_p
 - `agent/session.py` - Fixed `record_result()` to pattern-match PDB filenames before applying stage; added missing programs to `_infer_stage_from_program()`
 - `agent/session_tools.py` - Added `process_predicted_model` to `infer_stage()`; added `processed_predicted` and `autobuild_output` filename patterns
 - `agent/workflow_engine.py` - Added after_program completion check in `_apply_directives()`
-- `tests/test_best_files_tracker.py` - Added predicted model and PHASER model promotion tests
-- `tests/test_workflow_state.py` - Added STOP after after_program test
+- `tests/tst_best_files_tracker.py` - Added predicted model and PHASER model promotion tests
+- `tests/tst_workflow_state.py` - Added STOP after after_program test
 
 ---
 
@@ -1136,7 +1136,7 @@ The prompt was adding `NOTE: Use predict_and_build with strategy: {"stop_after_p
 
 ### Testing
 
-- Added tests for directive-based program addition in test_workflow_state.py:
+- Added tests for directive-based program addition in tst_workflow_state.py:
   - `test_program_settings_adds_program_to_valid`
   - `test_program_settings_prioritizes_program`
   - `test_program_settings_respects_prerequisites`
@@ -1148,7 +1148,7 @@ The prompt was adding `NOTE: Use predict_and_build with strategy: {"stop_after_p
 - `agent/workflow_state.py` - Fixed autobuild_done to check for success
 - `agent/session.py` - Fixed map file stage assignment, complete rebuild function
 - `agent/command_builder.py` - Added LLM file extension validation
-- `tests/test_workflow_state.py` - Added directive program tests
+- `tests/tst_workflow_state.py` - Added directive program tests
 
 ---
 
@@ -1196,9 +1196,9 @@ The prompt was adding `NOTE: Use predict_and_build with strategy: {"stop_after_p
 - `knowledge/file_categories.yaml` - Added `optimized_full_map`, `intermediate_map` categories
 - `knowledge/programs.yaml` - Updated resolve_cryo_em outputs, pdbtools output naming
 - `programs/ai_agent.py` - Added `placed_model`/`docked` to valuable_output_patterns
-- `tests/test_best_files_tracker.py` - New map scoring tests
-- `tests/test_directive_extractor.py` - New ligand workflow tests
-- `tests/test_file_categorization.py` - New cryo-EM map categorization tests
+- `tests/tst_best_files_tracker.py` - New map scoring tests
+- `tests/tst_directive_extractor.py` - New ligand workflow tests
+- `tests/tst_file_categorization.py` - New cryo-EM map categorization tests
 
 ---
 
@@ -1262,7 +1262,7 @@ The prompt was adding `NOTE: Use predict_and_build with strategy: {"stop_after_p
   - First assertion failure stops with full traceback
   - Simpler syntax without class wrappers
 
-- **New test utilities module** (`tests/test_utils.py`):
+- **New test utilities module** (`tests/tst_utils.py`):
   - 20+ assert helper functions (`assert_equal`, `assert_in`, `assert_true`, etc.)
   - `run_tests_with_fail_fast()` for cctbx-style test execution
   - Supports both plain functions and TestCase classes for gradual migration
@@ -1299,8 +1299,8 @@ The prompt was adding `NOTE: Use predict_and_build with strategy: {"stop_after_p
 
 - `agent/transport.py` - Fixed `sanitize_for_transport()` and `encode_for_rest()`
 - `agent/directive_extractor.py` - Added new patterns, fixed `validate_directives()`, expanded `_fix_program_name()`
-- `tests/test_utils.py` - New assert helpers and test runner
-- `tests/test_*.py` - Converted to cctbx-style (8 files)
+- `tests/tst_utils.py` - New assert helpers and test runner
+- `tests/tst_*.py` - Converted to cctbx-style (8 files)
 - `docs/guides/TESTING.md` - New testing documentation
 - `docs/README.md` - Updated testing section
 
@@ -1367,8 +1367,8 @@ The prompt was adding `NOTE: Use predict_and_build with strategy: {"stop_after_p
 - `agent/directive_validator.py` - Added attempt-based override behavior, `validate_intent()` now accepts `attempt_number`
 - `agent/workflow_engine.py` - Added `start_with_program` handling in `_apply_directives()`
 - `agent/graph_nodes.py` - Pass `attempt_number` to `validate_intent()`, fallback respects `start_with_program`
-- `tests/test_new_programs.py` - Added TestPolderWorkflowConfig, TestPolderLLMPrompt, TestUnclassifiedPDBCategorization
-- `tests/test_workflow_state.py` - Fixed test_dock_in_map_option to use clear search model filename
+- `tests/tst_new_programs.py` - Added TestPolderWorkflowConfig, TestPolderLLMPrompt, TestUnclassifiedPDBCategorization
+- `tests/tst_workflow_state.py` - Fixed test_dock_in_map_option to use clear search model filename
 - `docs/guides/USER_DIRECTIVES.md` - Added `start_with_program` docs, attempt-based override docs, multi-step example
 
 ---

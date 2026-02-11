@@ -138,7 +138,7 @@ When validation issues are detected, they appear in the response:
 Run sanity checker tests:
 
 ```bash
-python tests/test_sanity_checker.py
+python tests/tst_sanity_checker.py
 ```
 
 Test scenarios include:

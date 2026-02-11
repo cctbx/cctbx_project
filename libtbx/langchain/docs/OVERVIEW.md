@@ -526,14 +526,14 @@ Red flags that indicate problems:
 - Metrics Analyzer, Dry Run, Integration, Directives Integration
 
 **Additional test files (not in run_all_tests.py):**
-- test_template.py (template builder), test_utils.py (assert helpers)
+- tst_template.py (template builder), tst_utils.py (assert helpers)
 
 ### Running Tests
 
 ```bash
 python3 tests/run_all_tests.py        # All tests
 python3 tests/run_all_tests.py --quick  # Standalone only
-python3 tests/test_event_system.py    # Single suite
+python3 tests/tst_event_system.py    # Single suite
 ```
 
 ---

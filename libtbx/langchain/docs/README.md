@@ -225,7 +225,7 @@ python tests/run_all_tests.py
 python tests/run_all_tests.py --quick
 
 # Individual test file
-python tests/test_directive_extractor.py
+python tests/tst_directive_extractor.py
 
 # Tests matching a pattern
 python tests/run_all_tests.py --pattern "directive"
@@ -234,7 +234,7 @@ python tests/run_all_tests.py --pattern "directive"
 Key features:
 - **Fail-fast**: First assertion failure stops with full traceback
 - **Plain functions**: No `unittest.TestCase` classes needed
-- **Assert helpers**: `assert_equal()`, `assert_in()`, etc. from `test_utils.py`
+- **Assert helpers**: `assert_equal()`, `assert_in()`, etc. from `tst_utils.py`
 
 See [guides/TESTING.md](guides/TESTING.md) for full documentation.
 
@@ -350,7 +350,7 @@ python3 tests/run_all_tests.py
 python3 tests/run_all_tests.py --verbose
 
 # Individual test file
-python3 tests/test_file_utils.py
+python3 tests/tst_file_utils.py
 
 # Tests matching a pattern
 python3 tests/run_all_tests.py --pattern "directive"
@@ -465,7 +465,7 @@ improved_agent_v2/
 ├── tst_langchain_tools.py      # Unit tests for external modules
 ├── tests/                      # Test suites (~745+ tests)
 │   ├── run_all_tests.py        # Test runner (32 registered suites)
-│   ├── test_utils.py           # Assert helpers (cctbx-style)
+│   ├── tst_utils.py           # Assert helpers (cctbx-style)
 │   └── scenarios/              # Dry-run test scenarios
 └── docs/                       # Documentation
     ├── README.md               # This file

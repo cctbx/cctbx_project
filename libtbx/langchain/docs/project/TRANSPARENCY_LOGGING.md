@@ -248,7 +248,7 @@ The CommandBuilder records WHY each file was selected:
 
 ```bash
 # Run event system tests
-python3 tests/test_event_system.py
+python3 tests/tst_event_system.py
 
 # Test coverage includes:
 # - EventType and Verbosity constants

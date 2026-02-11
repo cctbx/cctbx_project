@@ -1007,7 +1007,7 @@ phenix.ai_agent session_file=session.json project_advice="stop"
 ### Testing
 
 ```bash
-python tests/test_advice_preprocessing.py
+python tests/tst_advice_preprocessing.py
 ```
 
 Tests cover sanitization, README discovery, advice combination, file extraction,

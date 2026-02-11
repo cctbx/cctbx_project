@@ -42,13 +42,15 @@ Test Suites (require PHENIX environment):
   31. Integration - End-to-end workflow tests
   32. Directives Integration - End-to-end directive system tests
 
+  33. Langchain Tools - Legacy module tests (core, analysis, RAG, validation, prompts, memory)
+
 Key Tests for Recent Fixes (v110):
-  - test_best_files_tracker: Model scoring, autobuild_output same score as refined
-  - test_workflow_state: Stepwise mode (automation_path), predict_and_build blocking
-  - test_file_categorization: predict_and_build output file categorization
-  - test_session_summary: STOP cycle exclusion from counts
-  - test_history_analysis: Anomalous workflow, analysis/metrics key handling
-  - test_file_utils: Shared MTZ classification (consolidation fix)
+  - tst_best_files_tracker: Model scoring, autobuild_output same score as refined
+  - tst_workflow_state: Stepwise mode (automation_path), predict_and_build blocking
+  - tst_file_categorization: predict_and_build output file categorization
+  - tst_session_summary: STOP cycle exclusion from counts
+  - tst_history_analysis: Anomalous workflow, analysis/metrics key handling
+  - tst_file_utils: Shared MTZ classification (consolidation fix)
 
 Usage:
     python tests/run_all_tests.py
@@ -120,329 +122,339 @@ def main():
 
     # --- API Schema Tests ---
     try:
-        from tests.test_api_schema import run_all_tests as run_api_schema_tests
+        from tests.tst_api_schema import run_all_tests as run_api_schema_tests
         success, elapsed = run_test_module(
-            "test_api_schema", run_api_schema_tests, args.verbose)
+            "tst_api_schema", run_api_schema_tests, args.verbose)
         results.append(("API Schema", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_api_schema: {e}")
+        print(f"⚠️  Could not import tst_api_schema: {e}")
         results.append(("API Schema", False, 0))
 
     # --- Best Files Tracker Tests ---
     try:
-        from tests.test_best_files_tracker import run_all_tests as run_best_files_tests
+        from tests.tst_best_files_tracker import run_all_tests as run_best_files_tests
         success, elapsed = run_test_module(
-            "test_best_files_tracker", run_best_files_tests, args.verbose)
+            "tst_best_files_tracker", run_best_files_tests, args.verbose)
         results.append(("Best Files Tracker", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_best_files_tracker: {e}")
+        print(f"⚠️  Could not import tst_best_files_tracker: {e}")
         results.append(("Best Files Tracker", False, 0))
 
     # --- Workflow State Tests ---
     try:
-        from tests.test_workflow_state import run_all_tests as run_workflow_tests
+        from tests.tst_workflow_state import run_all_tests as run_workflow_tests
         success, elapsed = run_test_module(
-            "test_workflow_state", run_workflow_tests, args.verbose)
+            "tst_workflow_state", run_workflow_tests, args.verbose)
         results.append(("Workflow State", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_workflow_state: {e}")
+        print(f"⚠️  Could not import tst_workflow_state: {e}")
         results.append(("Workflow State", False, 0))
 
     # --- YAML Config Tests ---
     try:
-        from tests.test_yaml_config import run_all_tests as run_yaml_tests
+        from tests.tst_yaml_config import run_all_tests as run_yaml_tests
         success, elapsed = run_test_module(
-            "test_yaml_config", run_yaml_tests, args.verbose)
+            "tst_yaml_config", run_yaml_tests, args.verbose)
         results.append(("YAML Config", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_yaml_config: {e}")
+        print(f"⚠️  Could not import tst_yaml_config: {e}")
         results.append(("YAML Config", False, 0))
 
     # --- Sanity Checker Tests ---
     try:
-        from tests.test_sanity_checker import run_all_tests as run_sanity_tests
+        from tests.tst_sanity_checker import run_all_tests as run_sanity_tests
         success, elapsed = run_test_module(
-            "test_sanity_checker", run_sanity_tests, args.verbose)
+            "tst_sanity_checker", run_sanity_tests, args.verbose)
         results.append(("Sanity Checker", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_sanity_checker: {e}")
+        print(f"⚠️  Could not import tst_sanity_checker: {e}")
         results.append(("Sanity Checker", False, 0))
 
     # --- Metrics Analyzer Tests ---
     try:
-        from tests.test_metrics_analyzer import run_all_tests as run_metrics_tests
+        from tests.tst_metrics_analyzer import run_all_tests as run_metrics_tests
         success, elapsed = run_test_module(
-            "test_metrics_analyzer", run_metrics_tests, args.verbose)
+            "tst_metrics_analyzer", run_metrics_tests, args.verbose)
         results.append(("Metrics Analyzer", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_metrics_analyzer: {e}")
+        print(f"⚠️  Could not import tst_metrics_analyzer: {e}")
         results.append(("Metrics Analyzer", False, 0))
 
     # --- Dry Run Tests ---
     try:
-        from tests.test_dry_run import run_all_tests as run_dry_run_tests
+        from tests.tst_dry_run import run_all_tests as run_dry_run_tests
         success, elapsed = run_test_module(
-            "test_dry_run", run_dry_run_tests, args.verbose)
+            "tst_dry_run", run_dry_run_tests, args.verbose)
         results.append(("Dry Run", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_dry_run: {e}")
+        print(f"⚠️  Could not import tst_dry_run: {e}")
         results.append(("Dry Run", False, 0))
 
     # --- Integration Tests (slow, skip with --quick) ---
     if not args.quick:
         try:
-            from tests.test_integration import run_all_tests as run_integration_tests
+            from tests.tst_integration import run_all_tests as run_integration_tests
             success, elapsed = run_test_module(
-                "test_integration", run_integration_tests, args.verbose)
+                "tst_integration", run_integration_tests, args.verbose)
             results.append(("Integration", success, elapsed))
         except ImportError as e:
-            print(f"⚠️  Could not import test_integration: {e}")
+            print(f"⚠️  Could not import tst_integration: {e}")
             results.append(("Integration", False, 0))
     else:
         print("\n⏭️  Skipping integration tests (--quick mode)")
 
     # --- Transport Tests ---
     try:
-        from tests.test_transport import run_all_tests as run_transport_tests
+        from tests.tst_transport import run_all_tests as run_transport_tests
         success, elapsed = run_test_module(
-            "test_transport", run_transport_tests, args.verbose)
+            "tst_transport", run_transport_tests, args.verbose)
         results.append(("Transport", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_transport: {e}")
+        print(f"⚠️  Could not import tst_transport: {e}")
         results.append(("Transport", False, 0))
 
     # --- State Serialization Tests ---
     try:
-        from tests.test_state_serialization import run_all_tests as run_serialization_tests
+        from tests.tst_state_serialization import run_all_tests as run_serialization_tests
         success, elapsed = run_test_module(
-            "test_state_serialization", run_serialization_tests, args.verbose)
+            "tst_state_serialization", run_serialization_tests, args.verbose)
         results.append(("State Serialization", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_state_serialization: {e}")
+        print(f"⚠️  Could not import tst_state_serialization: {e}")
         results.append(("State Serialization", False, 0))
 
     # --- Command Builder Tests ---
     try:
-        from tests.test_command_builder import run_all_tests as run_command_builder_tests
+        from tests.tst_command_builder import run_all_tests as run_command_builder_tests
         success, elapsed = run_test_module(
-            "test_command_builder", run_command_builder_tests, args.verbose)
+            "tst_command_builder", run_command_builder_tests, args.verbose)
         results.append(("Command Builder", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_command_builder: {e}")
+        print(f"⚠️  Could not import tst_command_builder: {e}")
         results.append(("Command Builder", False, 0))
 
     # --- File Categorization Tests ---
     try:
-        from tests.test_file_categorization import run_all_tests as run_file_categorization_tests
+        from tests.tst_file_categorization import run_all_tests as run_file_categorization_tests
         success, elapsed = run_test_module(
-            "test_file_categorization", run_file_categorization_tests, args.verbose)
+            "tst_file_categorization", run_file_categorization_tests, args.verbose)
         results.append(("File Categorization", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_file_categorization: {e}")
+        print(f"⚠️  Could not import tst_file_categorization: {e}")
         results.append(("File Categorization", False, 0))
 
     # --- Session Summary Tests ---
     try:
-        from tests.test_session_summary import run_all_tests as run_session_summary_tests
+        from tests.tst_session_summary import run_all_tests as run_session_summary_tests
         success, elapsed = run_test_module(
-            "test_session_summary", run_session_summary_tests, args.verbose)
+            "tst_session_summary", run_session_summary_tests, args.verbose)
         results.append(("Session Summary", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_session_summary: {e}")
+        print(f"⚠️  Could not import tst_session_summary: {e}")
         results.append(("Session Summary", False, 0))
 
     # --- Advice Preprocessing Tests ---
     try:
-        from tests.test_advice_preprocessing import run_all_tests as run_advice_preprocessing_tests
+        from tests.tst_advice_preprocessing import run_all_tests as run_advice_preprocessing_tests
         success, elapsed = run_test_module(
-            "test_advice_preprocessing", run_advice_preprocessing_tests, args.verbose)
+            "tst_advice_preprocessing", run_advice_preprocessing_tests, args.verbose)
         results.append(("Advice Preprocessing", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_advice_preprocessing: {e}")
+        print(f"⚠️  Could not import tst_advice_preprocessing: {e}")
         results.append(("Advice Preprocessing", False, 0))
 
     # --- Directive Extractor Tests ---
     try:
-        from tests.test_directive_extractor import run_all_tests as run_directive_extractor_tests
+        from tests.tst_directive_extractor import run_all_tests as run_directive_extractor_tests
         success, elapsed = run_test_module(
-            "test_directive_extractor", run_directive_extractor_tests, args.verbose)
+            "tst_directive_extractor", run_directive_extractor_tests, args.verbose)
         results.append(("Directive Extractor", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_directive_extractor: {e}")
+        print(f"⚠️  Could not import tst_directive_extractor: {e}")
         results.append(("Directive Extractor", False, 0))
 
     # --- Directive Validator Tests ---
     try:
-        from tests.test_directive_validator import run_all_tests as run_directive_validator_tests
+        from tests.tst_directive_validator import run_all_tests as run_directive_validator_tests
         success, elapsed = run_test_module(
-            "test_directive_validator", run_directive_validator_tests, args.verbose)
+            "tst_directive_validator", run_directive_validator_tests, args.verbose)
         results.append(("Directive Validator", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_directive_validator: {e}")
+        print(f"⚠️  Could not import tst_directive_validator: {e}")
         results.append(("Directive Validator", False, 0))
 
     # --- Session Directives Tests ---
     try:
-        from tests.test_session_directives import run_all_tests as run_session_directives_tests
+        from tests.tst_session_directives import run_all_tests as run_session_directives_tests
         success, elapsed = run_test_module(
-            "test_session_directives", run_session_directives_tests, args.verbose)
+            "tst_session_directives", run_session_directives_tests, args.verbose)
         results.append(("Session Directives", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_session_directives: {e}")
+        print(f"⚠️  Could not import tst_session_directives: {e}")
         results.append(("Session Directives", False, 0))
 
     # --- YAML Tools Tests ---
     try:
-        from tests.test_yaml_tools import run_all_tests as run_yaml_tools_tests
+        from tests.tst_yaml_tools import run_all_tests as run_yaml_tools_tests
         success, elapsed = run_test_module(
-            "test_yaml_tools", run_yaml_tools_tests, args.verbose)
+            "tst_yaml_tools", run_yaml_tools_tests, args.verbose)
         results.append(("YAML Tools", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_yaml_tools: {e}")
+        print(f"⚠️  Could not import tst_yaml_tools: {e}")
         results.append(("YAML Tools", False, 0))
 
     # --- Session Tools Tests ---
     try:
-        from tests.test_session_tools import run_all_tests as run_session_tools_tests
+        from tests.tst_session_tools import run_all_tests as run_session_tools_tests
         success, elapsed = run_test_module(
-            "test_session_tools", run_session_tools_tests, args.verbose)
+            "tst_session_tools", run_session_tools_tests, args.verbose)
         results.append(("Session Tools", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_session_tools: {e}")
+        print(f"⚠️  Could not import tst_session_tools: {e}")
         results.append(("Session Tools", False, 0))
 
     # --- Docs Tools Tests ---
     try:
-        from tests.test_docs_tools import run_all_tests as run_docs_tools_tests
+        from tests.tst_docs_tools import run_all_tests as run_docs_tools_tests
         success, elapsed = run_test_module(
-            "test_docs_tools", run_docs_tools_tests, args.verbose)
+            "tst_docs_tools", run_docs_tools_tests, args.verbose)
         results.append(("Docs Tools", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_docs_tools: {e}")
+        print(f"⚠️  Could not import tst_docs_tools: {e}")
         results.append(("Docs Tools", False, 0))
 
     # --- Metric Patterns Tests ---
     try:
-        from tests.test_metric_patterns import run_all_tests as run_metric_patterns_tests
+        from tests.tst_metric_patterns import run_all_tests as run_metric_patterns_tests
         success, elapsed = run_test_module(
-            "test_metric_patterns", run_metric_patterns_tests, args.verbose)
+            "tst_metric_patterns", run_metric_patterns_tests, args.verbose)
         results.append(("Metric Patterns", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_metric_patterns: {e}")
+        print(f"⚠️  Could not import tst_metric_patterns: {e}")
         results.append(("Metric Patterns", False, 0))
 
     # --- Pattern Manager Tests ---
     try:
-        from tests.test_pattern_manager import run_all_tests as run_pattern_manager_tests
+        from tests.tst_pattern_manager import run_all_tests as run_pattern_manager_tests
         success, elapsed = run_test_module(
-            "test_pattern_manager", run_pattern_manager_tests, args.verbose)
+            "tst_pattern_manager", run_pattern_manager_tests, args.verbose)
         results.append(("Pattern Manager", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_pattern_manager: {e}")
+        print(f"⚠️  Could not import tst_pattern_manager: {e}")
         results.append(("Pattern Manager", False, 0))
 
     # --- Event System Tests ---
     try:
-        from tests.test_event_system import run_all_tests as run_event_system_tests
+        from tests.tst_event_system import run_all_tests as run_event_system_tests
         success, elapsed = run_test_module(
-            "test_event_system", run_event_system_tests, args.verbose)
+            "tst_event_system", run_event_system_tests, args.verbose)
         results.append(("Event System", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_event_system: {e}")
+        print(f"⚠️  Could not import tst_event_system: {e}")
         results.append(("Event System", False, 0))
 
     # --- Program Registration Tests ---
     try:
-        from tests.test_program_registration import run_all_tests as run_program_registration_tests
+        from tests.tst_program_registration import run_all_tests as run_program_registration_tests
         success, elapsed = run_test_module(
-            "test_program_registration", run_program_registration_tests, args.verbose)
+            "tst_program_registration", run_program_registration_tests, args.verbose)
         results.append(("Program Registration", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_program_registration: {e}")
+        print(f"⚠️  Could not import tst_program_registration: {e}")
         results.append(("Program Registration", False, 0))
 
     # --- Summary Display Tests ---
     try:
-        from tests.test_summary_display import run_all_tests as run_summary_display_tests
+        from tests.tst_summary_display import run_all_tests as run_summary_display_tests
         success, elapsed = run_test_module(
-            "test_summary_display", run_summary_display_tests, args.verbose)
+            "tst_summary_display", run_summary_display_tests, args.verbose)
         results.append(("Summary Display", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_summary_display: {e}")
+        print(f"⚠️  Could not import tst_summary_display: {e}")
         results.append(("Summary Display", False, 0))
 
     # --- Directives Integration Tests (can be slow) ---
     if not args.quick:
         try:
-            from tests.test_directives_integration import run_all_tests as run_directives_integration_tests
+            from tests.tst_directives_integration import run_all_tests as run_directives_integration_tests
             success, elapsed = run_test_module(
-                "test_directives_integration", run_directives_integration_tests, args.verbose)
+                "tst_directives_integration", run_directives_integration_tests, args.verbose)
             results.append(("Directives Integration", success, elapsed))
         except ImportError as e:
-            print(f"⚠️  Could not import test_directives_integration: {e}")
+            print(f"⚠️  Could not import tst_directives_integration: {e}")
             results.append(("Directives Integration", False, 0))
     else:
         print("\n⏭️  Skipping directives integration tests (--quick mode)")
 
     # --- Error Analyzer Tests ---
     try:
-        from tests.test_error_analyzer import run_all_tests as run_error_analyzer_tests
+        from tests.tst_error_analyzer import run_all_tests as run_error_analyzer_tests
         success, elapsed = run_test_module(
-            "test_error_analyzer", run_error_analyzer_tests, args.verbose)
+            "tst_error_analyzer", run_error_analyzer_tests, args.verbose)
         results.append(("Error Analyzer", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_error_analyzer: {e}")
+        print(f"⚠️  Could not import tst_error_analyzer: {e}")
         results.append(("Error Analyzer", False, 0))
 
     # --- Decision Flow Tests ---
     try:
-        from tests.test_decision_flow import run_all_tests as run_decision_flow_tests
+        from tests.tst_decision_flow import run_all_tests as run_decision_flow_tests
         success, elapsed = run_test_module(
-            "test_decision_flow", run_decision_flow_tests, args.verbose)
+            "tst_decision_flow", run_decision_flow_tests, args.verbose)
         results.append(("Decision Flow", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_decision_flow: {e}")
+        print(f"⚠️  Could not import tst_decision_flow: {e}")
         results.append(("Decision Flow", False, 0))
 
     # --- Phaser Multimodel Tests ---
     try:
-        from tests.test_phaser_multimodel import run_all_tests as run_phaser_multimodel_tests
+        from tests.tst_phaser_multimodel import run_all_tests as run_phaser_multimodel_tests
         success, elapsed = run_test_module(
-            "test_phaser_multimodel", run_phaser_multimodel_tests, args.verbose)
+            "tst_phaser_multimodel", run_phaser_multimodel_tests, args.verbose)
         results.append(("Phaser Multimodel", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_phaser_multimodel: {e}")
+        print(f"⚠️  Could not import tst_phaser_multimodel: {e}")
         results.append(("Phaser Multimodel", False, 0))
 
     # --- New Programs Tests (polder, map_sharpening, etc.) ---
     try:
-        from tests.test_new_programs import run_all_tests as run_new_programs_tests
+        from tests.tst_new_programs import run_all_tests as run_new_programs_tests
         success, elapsed = run_test_module(
-            "test_new_programs", run_new_programs_tests, args.verbose)
+            "tst_new_programs", run_new_programs_tests, args.verbose)
         results.append(("New Programs", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_new_programs: {e}")
+        print(f"⚠️  Could not import tst_new_programs: {e}")
         results.append(("New Programs", False, 0))
 
     # --- History Analysis Tests (v110 - anomalous workflow support) ---
     try:
-        from tests.test_history_analysis import run_all_tests as run_history_analysis_tests
+        from tests.tst_history_analysis import run_all_tests as run_history_analysis_tests
         success, elapsed = run_test_module(
-            "test_history_analysis", run_history_analysis_tests, args.verbose)
+            "tst_history_analysis", run_history_analysis_tests, args.verbose)
         results.append(("History Analysis", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_history_analysis: {e}")
+        print(f"⚠️  Could not import tst_history_analysis: {e}")
         results.append(("History Analysis", False, 0))
 
     # --- File Utils Tests (v110 - shared file classification) ---
     try:
-        from tests.test_file_utils import run_all_tests as run_file_utils_tests
+        from tests.tst_file_utils import run_all_tests as run_file_utils_tests
         success, elapsed = run_test_module(
-            "test_file_utils", run_file_utils_tests, args.verbose)
+            "tst_file_utils", run_file_utils_tests, args.verbose)
         results.append(("File Utils", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import test_file_utils: {e}")
+        print(f"⚠️  Could not import tst_file_utils: {e}")
         results.append(("File Utils", False, 0))
+
+    # --- Langchain Tools Tests (require PHENIX + langchain_core) ---
+    try:
+        from tests.tst_langchain_tools import run_all_tests as run_langchain_tools_tests
+        success, elapsed = run_test_module(
+            "tst_langchain_tools", run_langchain_tools_tests, args.verbose)
+        results.append(("Langchain Tools", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_langchain_tools: {e}")
+        results.append(("Langchain Tools", False, 0))
 
     # --- Summary ---
     total_elapsed = time.time() - total_start

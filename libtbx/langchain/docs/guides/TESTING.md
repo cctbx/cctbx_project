@@ -17,7 +17,7 @@ python tests/run_all_tests.py
 python tests/run_all_tests.py --quick
 
 # Run a single test file
-python tests/test_directive_extractor.py
+python tests/tst_directive_extractor.py
 
 # Run tests matching a pattern
 python tests/run_all_tests.py --pattern "directive"
@@ -39,7 +39,7 @@ This provides immediate feedback with full tracebacks, making debugging faster.
 
 ### Assert Helper Functions
 
-All tests use helper functions from `tests/test_utils.py` instead of `unittest.TestCase` assertions:
+All tests use helper functions from `tests/tst_utils.py` instead of `unittest.TestCase` assertions:
 
 | Function | Purpose |
 |----------|---------|
@@ -72,7 +72,7 @@ Each test file follows this structure:
 """
 Tests for module_name.
 
-Run with: python tests/test_module_name.py
+Run with: python tests/tst_module_name.py
 """
 
 from __future__ import absolute_import, division, print_function
@@ -83,7 +83,7 @@ import os
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tests.test_utils import (
+from tests.tst_utils import (
     assert_equal, assert_true, assert_false, assert_in,
     run_tests_with_fail_fast
 )
@@ -133,73 +133,74 @@ The `run_tests_with_fail_fast()` function automatically discovers tests:
 
 | File | Tests | Description |
 |------|-------|-------------|
-| `test_directive_extractor.py` | 73 | Directive extraction and validation |
-| `test_transport.py` | 66 | REST transport sanitization |
-| `test_workflow_state.py` | 66 | Workflow state detection, done flags, refine counting, MR-SAD |
-| `test_best_files_tracker.py` | 50 | File tracking, scoring, model stage detection |
-| `test_directive_validator.py` | 48 | Intent validation and modification |
-| `test_new_programs.py` | 44 | YAML config for new programs (polder, map_sharpening, autobuild_denmod) |
-| `test_error_analyzer.py` | 43 | Error recovery system |
-| `test_sanity_checker.py` | 29 | Sanity check logic |
-| `test_yaml_config.py` | 29 | YAML configuration validation |
-| `test_file_categorization.py` | 26 | File type detection (including denmod_mtz) |
-| `test_api_schema.py` | 26 | API request/response validation |
-| `test_decision_flow.py` | 21 | Directive flow architecture |
-| `test_metrics_analyzer.py` | 19 | Metric extraction and trends |
-| `test_pattern_manager.py` | 17 | Pattern management |
-| `test_directives_integration.py` | 16 | End-to-end directive tests |
-| `test_command_builder.py` | 22 | Unified command generation, MR-SAD partpdb_file |
-| `test_event_system.py` | 13 | Event logging system |
-| `test_program_registration.py` | 13 | Program registry tests |
-| `test_integration.py` | 13 | End-to-end workflow tests |
-| `test_file_utils.py` | 12 | Shared file classification utilities |
-| `test_session_directives.py` | 12 | Session-level directive handling |
-| `test_state_serialization.py` | 12 | State packaging/unpackaging |
-| `test_summary_display.py` | 12 | Summary formatting |
-| `test_advice_preprocessing.py` | 11 | README discovery, advice processing |
-| `test_metric_patterns.py` | 11 | Log parsing patterns |
-| `test_history_analysis.py` | 10 | History analysis, anomalous workflow support |
-| `test_session_summary.py` | 10 | Session summary generation, STOP cycle exclusion |
-| `test_yaml_tools.py` | 9 | YAML validation and inspection |
-| `test_docs_tools.py` | 8 | Documentation generation |
-| `test_dry_run.py` | 8 | Dry run manager functionality |
-| `test_session_tools.py` | 7 | Session management utilities |
-| `test_template.py` | 5 | Template builder |
-| `test_phaser_multimodel.py` | 3 | Phaser multi-model handling |
-| `test_utils.py` | 2 | Assert helpers |
+| `tst_directive_extractor.py` | 73 | Directive extraction and validation |
+| `tst_transport.py` | 66 | REST transport sanitization |
+| `tst_workflow_state.py` | 66 | Workflow state detection, done flags, refine counting, MR-SAD |
+| `tst_best_files_tracker.py` | 50 | File tracking, scoring, model stage detection |
+| `tst_directive_validator.py` | 48 | Intent validation and modification |
+| `tst_new_programs.py` | 44 | YAML config for new programs (polder, map_sharpening, autobuild_denmod) |
+| `tst_error_analyzer.py` | 43 | Error recovery system |
+| `tst_langchain_tools.py` | 34 | Legacy module tests (core, analysis, RAG, validation, prompts, memory) |
+| `tst_sanity_checker.py` | 29 | Sanity check logic |
+| `tst_yaml_config.py` | 29 | YAML configuration validation |
+| `tst_file_categorization.py` | 26 | File type detection (including denmod_mtz) |
+| `tst_api_schema.py` | 26 | API request/response validation |
+| `tst_decision_flow.py` | 21 | Directive flow architecture |
+| `tst_metrics_analyzer.py` | 19 | Metric extraction and trends |
+| `tst_pattern_manager.py` | 17 | Pattern management |
+| `tst_directives_integration.py` | 16 | End-to-end directive tests |
+| `tst_command_builder.py` | 22 | Unified command generation, MR-SAD partpdb_file |
+| `tst_event_system.py` | 13 | Event logging system |
+| `tst_program_registration.py` | 13 | Program registry tests |
+| `tst_integration.py` | 13 | End-to-end workflow tests |
+| `tst_file_utils.py` | 12 | Shared file classification utilities |
+| `tst_session_directives.py` | 12 | Session-level directive handling |
+| `tst_state_serialization.py` | 12 | State packaging/unpackaging |
+| `tst_summary_display.py` | 12 | Summary formatting |
+| `tst_advice_preprocessing.py` | 11 | README discovery, advice processing |
+| `tst_metric_patterns.py` | 11 | Log parsing patterns |
+| `tst_history_analysis.py` | 10 | History analysis, anomalous workflow support |
+| `tst_session_summary.py` | 10 | Session summary generation, STOP cycle exclusion |
+| `tst_yaml_tools.py` | 9 | YAML validation and inspection |
+| `tst_docs_tools.py` | 8 | Documentation generation |
+| `tst_dry_run.py` | 8 | Dry run manager functionality |
+| `tst_session_tools.py` | 7 | Session management utilities |
+| `tst_template.py` | 5 | Template builder |
+| `tst_phaser_multimodel.py` | 3 | Phaser multi-model handling |
+| `tst_utils.py` | 2 | Assert helpers |
 
-Total: **767 tests across 34 files**
+Total: **800 tests across 35 files**
 
 ### Key Tests for Recent Fixes
 
 | Test | File | What It Verifies |
 |------|------|------------------|
-| `test_automation_path_in_workflow_state` | test_workflow_state.py | automation_path correctly set in state |
-| `test_stepwise_mode_blocks_predict_and_build_after_prediction` | test_workflow_state.py | predict_and_build blocked in stepwise mode after prediction |
-| `test_autobuild_beats_earlier_refine_with_better_metrics` | test_best_files_tracker.py | Autobuild with better R-free becomes best model |
-| `test_yaml_stage_scores` | test_best_files_tracker.py | autobuild_output has same score as refined (100) |
-| `test_stop_cycle_excluded_from_count` | test_session_summary.py | STOP cycles not counted in total_cycles |
-| `test_cryoem_done_flags` | test_workflow_state.py | cryo-EM done flags (resolve_cryo_em, map_sharpening, etc.) |
-| `test_failed_refine_not_counted` | test_workflow_state.py | Failed refinements don't increment refine_count |
-| `test_mr_sad_after_phaser_with_anomalous` | test_workflow_state.py | MR-SAD state after phaser + anomalous data |
-| `test_mr_sad_not_triggered_without_anomalous` | test_workflow_state.py | MR-SAD not triggered without anomalous signal |
-| `test_mr_sad_not_triggered_when_autosol_done` | test_workflow_state.py | MR-SAD skipped if autosol already ran |
-| `test_mr_sad_directive_prioritizes_phaser` | test_workflow_state.py | use_mr_sad prioritizes phaser, removes autosol from obtain_model |
-| `test_normal_sad_still_works` | test_workflow_state.py | Normal SAD workflow unaffected by MR-SAD changes |
-| `test_autosol_has_partial_model_config` | test_workflow_state.py | autosol YAML has partpdb_file optional input |
-| `test_mr_sad_directive_overrides_no_anomalous` | test_workflow_state.py | use_mr_sad triggers MR-SAD even without has_anomalous |
-| `test_experimental_phasing_yaml_structure` | test_workflow_state.py | workflows.yaml experimental_phasing phase structure |
-| `test_predict_and_build_blocked_after_full_completion` | test_workflow_state.py | predict_and_build not re-offered after full run, even with directives |
-| `test_autosol_partpdb_file_in_command` | test_command_builder.py | autosol MR-SAD command includes partpdb_file=PHASER.1.pdb |
-| `test_model_scoring_prefers_refined` | test_best_files_tracker.py | Refined models scored higher than MR output |
-| `test_predicted_model_exclusion` | test_best_files_tracker.py | Predicted models excluded from model category |
+| `tst_automation_path_in_workflow_state` | tst_workflow_state.py | automation_path correctly set in state |
+| `tst_stepwise_mode_blocks_predict_and_build_after_prediction` | tst_workflow_state.py | predict_and_build blocked in stepwise mode after prediction |
+| `tst_autobuild_beats_earlier_refine_with_better_metrics` | tst_best_files_tracker.py | Autobuild with better R-free becomes best model |
+| `tst_yaml_stage_scores` | tst_best_files_tracker.py | autobuild_output has same score as refined (100) |
+| `tst_stop_cycle_excluded_from_count` | tst_session_summary.py | STOP cycles not counted in total_cycles |
+| `tst_cryoem_done_flags` | tst_workflow_state.py | cryo-EM done flags (resolve_cryo_em, map_sharpening, etc.) |
+| `tst_failed_refine_not_counted` | tst_workflow_state.py | Failed refinements don't increment refine_count |
+| `tst_mr_sad_after_phaser_with_anomalous` | tst_workflow_state.py | MR-SAD state after phaser + anomalous data |
+| `tst_mr_sad_not_triggered_without_anomalous` | tst_workflow_state.py | MR-SAD not triggered without anomalous signal |
+| `tst_mr_sad_not_triggered_when_autosol_done` | tst_workflow_state.py | MR-SAD skipped if autosol already ran |
+| `tst_mr_sad_directive_prioritizes_phaser` | tst_workflow_state.py | use_mr_sad prioritizes phaser, removes autosol from obtain_model |
+| `tst_normal_sad_still_works` | tst_workflow_state.py | Normal SAD workflow unaffected by MR-SAD changes |
+| `tst_autosol_has_partial_model_config` | tst_workflow_state.py | autosol YAML has partpdb_file optional input |
+| `tst_mr_sad_directive_overrides_no_anomalous` | tst_workflow_state.py | use_mr_sad triggers MR-SAD even without has_anomalous |
+| `tst_experimental_phasing_yaml_structure` | tst_workflow_state.py | workflows.yaml experimental_phasing phase structure |
+| `tst_predict_and_build_blocked_after_full_completion` | tst_workflow_state.py | predict_and_build not re-offered after full run, even with directives |
+| `tst_autosol_partpdb_file_in_command` | tst_command_builder.py | autosol MR-SAD command includes partpdb_file=PHASER.1.pdb |
+| `tst_model_scoring_prefers_refined` | tst_best_files_tracker.py | Refined models scored higher than MR output |
+| `tst_predicted_model_exclusion` | tst_best_files_tracker.py | Predicted models excluded from model category |
 
 ## Writing New Tests
 
 ### 1. Create Test File
 
 ```bash
-touch tests/test_my_feature.py
+touch tests/tst_my_feature.py
 ```
 
 ### 2. Add Boilerplate
@@ -208,7 +209,7 @@ touch tests/test_my_feature.py
 """
 Tests for my_feature module.
 
-Run with: python tests/test_my_feature.py
+Run with: python tests/tst_my_feature.py
 """
 
 from __future__ import absolute_import, division, print_function
@@ -218,7 +219,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tests.test_utils import (
+from tests.tst_utils import (
     assert_equal, assert_true, assert_in,
     run_tests_with_fail_fast
 )
@@ -252,7 +253,7 @@ if __name__ == "__main__":
 ### 3. Run Tests
 
 ```bash
-python tests/test_my_feature.py
+python tests/tst_my_feature.py
 ```
 
 ## Handling Optional Dependencies
@@ -285,16 +286,16 @@ def test_workflow_engine_feature():
 ### Unit Tests (No External Dependencies)
 
 These test individual functions in isolation:
-- `test_directive_extractor.py`
-- `test_transport.py`
-- `test_best_files_tracker.py`
+- `tst_directive_extractor.py`
+- `tst_transport.py`
+- `tst_best_files_tracker.py`
 
 ### Integration Tests (May Need PHENIX)
 
 These test component interactions:
-- `test_directives_integration.py`
-- `test_decision_flow.py`
-- `test_session_directives.py`
+- `tst_directives_integration.py`
+- `tst_decision_flow.py`
+- `tst_session_directives.py`
 
 ### Scenario Tests (Full Workflows)
 
@@ -325,13 +326,13 @@ When a test fails, you get a full traceback:
 ```
   test_something ... FAIL
 Traceback (most recent call last):
-  File "tests/test_module.py", line 42, in <module>
+  File "tests/tst_module.py", line 42, in <module>
     run_all_tests()
-  File "tests/test_utils.py", line 357, in run_tests_with_fail_fast
+  File "tests/tst_utils.py", line 357, in run_tests_with_fail_fast
     func()
-  File "tests/test_module.py", line 25, in test_something
+  File "tests/tst_module.py", line 25, in test_something
     assert_equal(result, expected)
-  File "tests/test_utils.py", line 47, in assert_equal
+  File "tests/tst_utils.py", line 47, in assert_equal
     raise AssertionError(msg)
 AssertionError: expected 'foo', got 'bar'
 ```
