@@ -6,7 +6,7 @@ These tests verify that:
 2. Validation gate is a simple "in list?" check (graph_nodes)
 3. Stop conditions are checked only post-execution (ai_agent)
 
-Run with: python tests/test_decision_flow.py
+Run with: python tests/tst_decision_flow.py
 """
 
 from __future__ import absolute_import, division, print_function

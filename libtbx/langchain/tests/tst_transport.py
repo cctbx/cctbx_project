@@ -1,7 +1,7 @@
 """
 Unit tests for the transport module.
 
-Run with: python tests/test_transport.py
+Run with: python tests/tst_transport.py
 """
 
 from __future__ import absolute_import, division, print_function

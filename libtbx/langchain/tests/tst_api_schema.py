@@ -1,7 +1,7 @@
 """
 Tests for API Schema and Client Adapter.
 
-Run with: python tests/test_api_schema.py
+Run with: python tests/tst_api_schema.py
 """
 
 from __future__ import absolute_import, division, print_function

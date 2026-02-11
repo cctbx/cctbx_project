@@ -5,7 +5,7 @@ Test phenix.phaser multi-model command building.
 This test verifies that the command builder correctly generates
 multi-ensemble syntax when multiple models are provided.
 
-Run with: python tests/test_phaser_multimodel.py
+Run with: python tests/tst_phaser_multimodel.py
 """
 
 from __future__ import absolute_import, division, print_function

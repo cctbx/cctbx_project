@@ -4,7 +4,7 @@ Tests for session.py directive methods.
 These tests verify that directives are correctly stored and retrieved
 in the session.
 
-Run with: python tests/test_session_directives.py
+Run with: python tests/tst_session_directives.py
 """
 
 from __future__ import absolute_import, division, print_function
@@ -52,12 +52,14 @@ _mock_libtbx = MagicMock()
 _mock_best_files_module = MagicMock()
 _mock_best_files_module.BestFilesTracker = MockBestFilesTracker
 
-sys.modules['langchain_core'] = _mock_langchain_core
-sys.modules['langchain_core.prompts'] = _mock_langchain_core.prompts
-sys.modules['libtbx'] = _mock_libtbx
-sys.modules['libtbx.langchain'] = _mock_libtbx.langchain
-sys.modules['libtbx.langchain.agent'] = _mock_libtbx.langchain.agent
-sys.modules['libtbx.langchain.agent.best_files_tracker'] = _mock_best_files_module
+if 'langchain_core' not in sys.modules:
+    sys.modules['langchain_core'] = _mock_langchain_core
+    sys.modules['langchain_core.prompts'] = _mock_langchain_core.prompts
+if 'libtbx' not in sys.modules:
+    sys.modules['libtbx'] = _mock_libtbx
+    sys.modules['libtbx.langchain'] = _mock_libtbx.langchain
+    sys.modules['libtbx.langchain.agent'] = _mock_libtbx.langchain.agent
+    sys.modules['libtbx.langchain.agent.best_files_tracker'] = _mock_best_files_module
 
 from agent.session import AgentSession
 

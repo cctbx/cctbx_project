@@ -3,7 +3,7 @@ Unit tests for the file_utils module.
 
 Tests the shared file classification utilities used across the codebase.
 
-Run with: python tests/test_file_utils.py
+Run with: python tests/tst_file_utils.py
 """
 
 from __future__ import absolute_import, division, print_function

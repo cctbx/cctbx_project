@@ -12,7 +12,7 @@ Key principles:
 4. run_all_tests() calls all test functions
 5. Can be run standalone or via run_all_tests.py
 
-Run with: python tests/test_template.py
+Run with: python tests/tst_template.py
 """
 
 from __future__ import absolute_import, division, print_function

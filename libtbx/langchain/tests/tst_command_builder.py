@@ -17,40 +17,46 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Mock libtbx imports - must be done BEFORE importing our modules
-import types
-libtbx = types.ModuleType('libtbx')
-libtbx.langchain = types.ModuleType('libtbx.langchain')
-libtbx.langchain.agent = types.ModuleType('libtbx.langchain.agent')
-libtbx.langchain.knowledge = types.ModuleType('libtbx.langchain.knowledge')
-sys.modules['libtbx'] = libtbx
-sys.modules['libtbx.langchain'] = libtbx.langchain
-sys.modules['libtbx.langchain.agent'] = libtbx.langchain.agent
-sys.modules['libtbx.langchain.knowledge'] = libtbx.langchain.knowledge
+if 'libtbx' not in sys.modules:
+    import types
+    _base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    libtbx = types.ModuleType('libtbx')
+    libtbx.__path__ = [_base_dir]
+    libtbx.langchain = types.ModuleType('libtbx.langchain')
+    libtbx.langchain.__path__ = [_base_dir]
+    libtbx.langchain.agent = types.ModuleType('libtbx.langchain.agent')
+    libtbx.langchain.agent.__path__ = [os.path.join(_base_dir, 'agent')]
+    libtbx.langchain.knowledge = types.ModuleType('libtbx.langchain.knowledge')
+    libtbx.langchain.knowledge.__path__ = [os.path.join(_base_dir, 'knowledge')]
+    sys.modules['libtbx'] = libtbx
+    sys.modules['libtbx.langchain'] = libtbx.langchain
+    sys.modules['libtbx.langchain.agent'] = libtbx.langchain.agent
+    sys.modules['libtbx.langchain.knowledge'] = libtbx.langchain.knowledge
 
 # First mock yaml_loader
 import knowledge.yaml_loader
-libtbx.langchain.knowledge.yaml_loader = knowledge.yaml_loader
-sys.modules['libtbx.langchain.knowledge.yaml_loader'] = knowledge.yaml_loader
+if 'libtbx.langchain.knowledge.yaml_loader' not in sys.modules:
+    sys.modules['libtbx.langchain.knowledge.yaml_loader'] = knowledge.yaml_loader
 
 # Mock pattern_manager
 from agent import pattern_manager
-libtbx.langchain.agent.pattern_manager = pattern_manager
-sys.modules['libtbx.langchain.agent.pattern_manager'] = pattern_manager
+if 'libtbx.langchain.agent.pattern_manager' not in sys.modules:
+    sys.modules['libtbx.langchain.agent.pattern_manager'] = pattern_manager
 
 # Mock program_registry
 from agent import program_registry
-libtbx.langchain.agent.program_registry = program_registry
-sys.modules['libtbx.langchain.agent.program_registry'] = program_registry
+if 'libtbx.langchain.agent.program_registry' not in sys.modules:
+    sys.modules['libtbx.langchain.agent.program_registry'] = program_registry
 
 # Mock command_builder
 from agent import command_builder
-libtbx.langchain.agent.command_builder = command_builder
-sys.modules['libtbx.langchain.agent.command_builder'] = command_builder
+if 'libtbx.langchain.agent.command_builder' not in sys.modules:
+    sys.modules['libtbx.langchain.agent.command_builder'] = command_builder
 
 # Mock template_builder
 from agent import template_builder
-libtbx.langchain.agent.template_builder = template_builder
-sys.modules['libtbx.langchain.agent.template_builder'] = template_builder
+if 'libtbx.langchain.agent.template_builder' not in sys.modules:
+    sys.modules['libtbx.langchain.agent.template_builder'] = template_builder
 
 # Import command_builder classes for tests
 from agent.command_builder import CommandBuilder, CommandContext, get_command_builder

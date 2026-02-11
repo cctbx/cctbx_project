@@ -5,7 +5,7 @@ Tests for directive_validator module.
 These tests verify that user directives are correctly validated against
 available capabilities BEFORE the workflow starts.
 
-Run with: python tests/test_directive_validator.py
+Run with: python tests/tst_directive_validator.py
 """
 
 from __future__ import absolute_import, division, print_function

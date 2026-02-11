@@ -1,7 +1,7 @@
 """
 Tests for Agent Session Summary generation.
 
-Run with: python tests/test_session_summary.py
+Run with: python tests/tst_session_summary.py
 """
 from __future__ import absolute_import, division, print_function
 

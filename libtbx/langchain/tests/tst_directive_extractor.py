@@ -4,7 +4,7 @@ Tests for directive_extractor module.
 These tests verify that directives are correctly extracted from user advice
 and properly validated.
 
-Run with: python tests/test_directive_extractor.py
+Run with: python tests/tst_directive_extractor.py
 """
 
 from __future__ import absolute_import, division, print_function

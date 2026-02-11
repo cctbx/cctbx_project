@@ -7,7 +7,7 @@ These tests verify:
 3. History info extraction from workflow_state context
 4. Autosol availability when anomalous signal is detected
 
-Run with: python tests/test_history_analysis.py
+Run with: python tests/tst_history_analysis.py
 """
 
 from __future__ import absolute_import, division, print_function

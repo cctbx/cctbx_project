@@ -5,7 +5,7 @@ This module tests the automatic error recovery system that detects
 structured errors in PHENIX output and determines appropriate recovery
 strategies.
 
-Run with: python tests/test_error_analyzer.py
+Run with: python tests/tst_error_analyzer.py
 """
 
 from __future__ import absolute_import, division, print_function

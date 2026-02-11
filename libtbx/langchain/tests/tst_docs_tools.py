@@ -2,7 +2,7 @@
 """
 Tests for docs_tools.py - Documentation generation tool.
 
-Run with: python tests/test_docs_tools.py
+Run with: python tests/tst_docs_tools.py
 """
 
 from __future__ import absolute_import, division, print_function

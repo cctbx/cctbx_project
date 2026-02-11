@@ -1,7 +1,7 @@
 """
 Tests for Advice Preprocessing.
 
-Run with: python tests/test_advice_preprocessing.py
+Run with: python tests/tst_advice_preprocessing.py
 """
 from __future__ import absolute_import, division, print_function
 
@@ -9,6 +9,9 @@ import os
 import sys
 import tempfile
 import shutil
+
+# Always add parent directory so tests.tst_utils is importable
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Try PHENIX import path first, fall back to local path
 try:
@@ -22,8 +25,6 @@ try:
         is_suspicious,
     )
 except ImportError:
-    # Add parent directory to path for standalone imports
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from agent.advice_preprocessor import (
         find_readme_file,
         read_readme_file,

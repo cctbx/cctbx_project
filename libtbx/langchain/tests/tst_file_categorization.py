@@ -6,7 +6,7 @@ This tests the critical file categorization that determines:
 - Which files are refined, predicted, phaser output, etc.
 - Priority ordering for file selection
 
-Run with: python tests/test_file_categorization.py
+Run with: python tests/tst_file_categorization.py
 """
 
 from __future__ import absolute_import, division, print_function
@@ -18,19 +18,25 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Mock libtbx imports
-import types
-libtbx = types.ModuleType('libtbx')
-libtbx.langchain = types.ModuleType('libtbx.langchain')
-libtbx.langchain.agent = types.ModuleType('libtbx.langchain.agent')
-libtbx.langchain.knowledge = types.ModuleType('libtbx.langchain.knowledge')
-sys.modules['libtbx'] = libtbx
-sys.modules['libtbx.langchain'] = libtbx.langchain
-sys.modules['libtbx.langchain.agent'] = libtbx.langchain.agent
-sys.modules['libtbx.langchain.knowledge'] = libtbx.langchain.knowledge
+if 'libtbx' not in sys.modules:
+    import types
+    _base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    libtbx = types.ModuleType('libtbx')
+    libtbx.__path__ = [_base_dir]
+    libtbx.langchain = types.ModuleType('libtbx.langchain')
+    libtbx.langchain.__path__ = [_base_dir]
+    libtbx.langchain.agent = types.ModuleType('libtbx.langchain.agent')
+    libtbx.langchain.agent.__path__ = [os.path.join(_base_dir, 'agent')]
+    libtbx.langchain.knowledge = types.ModuleType('libtbx.langchain.knowledge')
+    libtbx.langchain.knowledge.__path__ = [os.path.join(_base_dir, 'knowledge')]
+    sys.modules['libtbx'] = libtbx
+    sys.modules['libtbx.langchain'] = libtbx.langchain
+    sys.modules['libtbx.langchain.agent'] = libtbx.langchain.agent
+    sys.modules['libtbx.langchain.knowledge'] = libtbx.langchain.knowledge
 
 import knowledge.yaml_loader
-libtbx.langchain.knowledge.yaml_loader = knowledge.yaml_loader
-sys.modules['libtbx.langchain.knowledge.yaml_loader'] = knowledge.yaml_loader
+if 'libtbx.langchain.knowledge.yaml_loader' not in sys.modules:
+    sys.modules['libtbx.langchain.knowledge.yaml_loader'] = knowledge.yaml_loader
 
 # Import file categorization
 from agent.best_files_tracker import BestFilesTracker

@@ -4,7 +4,7 @@ Integration tests for the complete directives system.
 These tests verify that directives flow correctly through the entire system,
 from extraction to validation to workflow state modification.
 
-Run with: python tests/test_directives_integration.py
+Run with: python tests/tst_directives_integration.py
 """
 
 from __future__ import absolute_import, division, print_function

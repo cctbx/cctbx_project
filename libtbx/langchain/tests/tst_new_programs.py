@@ -6,7 +6,7 @@ These tests verify:
 2. Directive extraction works
 3. Program name normalization works
 
-Run with: python tests/test_new_programs.py
+Run with: python tests/tst_new_programs.py
 """
 
 from __future__ import absolute_import, division, print_function

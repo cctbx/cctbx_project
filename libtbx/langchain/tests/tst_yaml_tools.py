@@ -2,7 +2,7 @@
 """
 Tests for yaml_tools.py - YAML configuration management tool.
 
-Run with: python tests/test_yaml_tools.py
+Run with: python tests/tst_yaml_tools.py
 """
 
 from __future__ import absolute_import, division, print_function

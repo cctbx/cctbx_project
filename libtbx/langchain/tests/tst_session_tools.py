@@ -2,7 +2,7 @@
 """
 Tests for session_tools.py - Session management tool.
 
-Run with: python tests/test_session_tools.py
+Run with: python tests/tst_session_tools.py
 """
 
 from __future__ import absolute_import, division, print_function

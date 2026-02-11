@@ -1,7 +1,7 @@
 """
 Unit tests for BestFilesTracker.
 
-Run with: python tests/test_best_files_tracker.py
+Run with: python tests/tst_best_files_tracker.py
 """
 
 from __future__ import absolute_import, division, print_function
