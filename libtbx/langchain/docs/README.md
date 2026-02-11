@@ -63,6 +63,26 @@ phenix.ai_agent verbosity=verbose original_files="data.mtz sequence.fa"
 
 ---
 
+## Dependencies
+
+The AI agent requires the following Python packages beyond the standard PHENIX
+installation. Install via `phenix.python -m pip install <package>` or via the
+`install_ai_tools.csh` script.
+
+| Package | Purpose | Required on |
+|---------|---------|-------------|
+| `langchain`, `langchain-core`, `langchain-community`, `langchain-classic` | LLM orchestration and RAG pipeline | Server and local |
+| `langchain-google-genai` | Google Gemini LLM provider | Server and local |
+| `langchain-openai` | OpenAI LLM provider | Server and local |
+| `langchain-chroma` | Chroma vector store for document retrieval | Server and local |
+| `flashrank` | Local cross-encoder reranking (no API key needed) | Server, or local if `run_on_server=False` |
+| `markdown-it-py` | HTML rendering of analysis output | Server and local |
+
+**Note:** `flashrank` downloads its model (~34MB) automatically on first use.
+No Cohere API key is required — reranking runs entirely locally.
+
+---
+
 ## Key Features
 
 ### 1. YAML-Driven Configuration
@@ -299,6 +319,11 @@ python3 agent/generate_safety_docs.py > docs/SAFETY_CHECKS.md
 
 ### RAG Documentation Database
 
+The agent uses a Retrieval-Augmented Generation pipeline to ground LLM
+responses in PHENIX documentation. Documents are stored in a Chroma vector
+database and retrieved with FlashRank cross-encoder reranking (top 8 of 20
+candidates). See OVERVIEW.md §9 for architecture details.
+
 ```bash
 # Build vector database from PHENIX documentation
 python3 run_build_db.py
@@ -450,7 +475,7 @@ improved_agent_v2/
 │   └── registry.py             # Validator auto-discovery and lookup
 ├── rag/                        # RAG (Retrieval-Augmented Generation)
 │   ├── document_loader.py      # Document loading and chunking
-│   ├── retriever.py            # Vector DB retrieval with reranking
+│   ├── retriever.py            # Vector DB retrieval with FlashRank reranking
 │   └── vector_store.py         # Chroma vector store creation
 ├── utils/                      # General utilities
 │   ├── query.py                # Documentation query interface

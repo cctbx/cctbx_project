@@ -187,6 +187,27 @@ Key sanity issues that trigger abort:
 
 See `docs/SAFETY_CHECKS.md` for the complete auto-generated list.
 
+### 9. RAG Pipeline (`rag/`, `utils/query.py`, `analysis/analyzer.py`)
+
+The agent uses Retrieval-Augmented Generation to ground LLM responses in
+PHENIX documentation. The pipeline has three stages:
+
+1. **Retrieval**: A Chroma vector store (built from PHENIX docs via
+   `run_build_db.py`) returns the top 20 candidate documents using
+   embedding similarity.
+
+2. **Reranking**: FlashRank, a local cross-encoder model
+   (`ms-marco-MiniLM-L-12-v2`, ~34MB), reranks the 20 candidates and
+   selects the top 8 most relevant. This runs on CPU with no API key —
+   the `flashrank` package must be installed where analysis runs locally.
+
+3. **Generation**: The reranked documents are passed as context to the
+   LLM (Google or OpenAI) which generates the final response.
+
+The reranking retriever is created in `rag/retriever.py` via
+`create_reranking_retriever()` and used by both log analysis
+(`analysis/analyzer.py`) and documentation queries (`utils/query.py`).
+
 ---
 
 ## Configuration Files

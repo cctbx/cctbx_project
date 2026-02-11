@@ -14,7 +14,6 @@
 - Files: `rag/retriever.py`, `analysis/analyzer.py`, `utils/run_utils.py`,
   `programs/ai_agent.py`, `programs/ai_analysis.py`
 - Install: `pip install flashrank` (replaces `cohere` + `langchain-cohere`)
-- Migration plan: `docs/project/COHERE_TO_FLASHRANK.md`
 
 **Script cleanup**
 - `run_inspect_db.py`: Removed debug print and hardcoded scratch path
