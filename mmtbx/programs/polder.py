@@ -136,6 +136,8 @@ Optional output:
 
     if (self.params.polder.resolution_factor < 0.0):
       raise Sorry('Use a positive value for the resolution gridding factor.')
+    if (self.params.polder.resolution_factor > 0.5):
+      raise Sorry('Use a value < 0.5 for the resolution gridding factor.')
 
     self.fmodel = None
     try:
