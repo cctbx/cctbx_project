@@ -14,7 +14,7 @@ from cctbx import miller
 from libtbx.str_utils import make_sub_header
 import mmtbx.maps.polder
 import mmtbx.maps.correlation
-#import mmtbx.ligands.rdkit_utils as rdkit_utils
+import mmtbx.ligands.rdkit_utils as rdkit_utils
 
 master_params_str = """
 validate_ligands {
@@ -563,6 +563,20 @@ class ligand_result(object):
     #self._xrs_ligand_noH = \
     #  self.model.select(self.ligand_isel_noH).get_xray_structure()
     self._atoms_ligand_noH = self._ph.select(self.ligand_isel_noH).atoms()
+
+    # fragmented ligand
+    print('Fragmenting ligand %s...' % self.resname)
+    ag_ligand = self._atoms_ligand[0].parent()
+    mon_lib_srv = self.model.get_mon_lib_srv()
+    cif_object, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
+      residue_name=ag_ligand.resname, atom_names=ag_ligand.atoms().extract_name())
+    ligand_rigid_components_isels = rdkit_utils.get_cctbx_isel_for_rigid_components(
+      atom_group = ag_ligand,
+      cif_object = cif_object)
+    #for rigid_comp in ligand_rigid_components_isels:
+    #  print('fragment')
+    #  print(list(rigid_comp))
+    #  print(", ".join(self._ph.atoms()[idx].name for idx in rigid_comp))
 
   # ----------------------------------------------------------------------------
 

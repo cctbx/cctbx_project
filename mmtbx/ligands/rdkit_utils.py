@@ -191,7 +191,7 @@ def get_rigid_components(mol,
 
   # Fragment
   if not final_bonds_to_cut:
-    return [flex.size_t(iselection)]
+    return [flex.size_t(list(rdkit_to_cctbx.values()))]
 
   fragmented_mol = Chem.FragmentOnBonds(mol, final_bonds_to_cut, addDummies=False)
   raw_fragments = Chem.GetMolFrags(fragmented_mol, asMols=False) #maybe: sanitizeFrags=False?

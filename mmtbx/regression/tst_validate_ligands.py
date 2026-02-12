@@ -85,6 +85,7 @@ def run_test2():
      logger = null_out())
   except Exception as e:
     msg = traceback.format_exc()
+    print(msg)
 
   vl_manager = result.ligand_manager
   tst_occupancies(vl_manager = vl_manager)
