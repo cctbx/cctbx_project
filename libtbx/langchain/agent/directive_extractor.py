@@ -102,6 +102,11 @@ IMPORTANT GUIDELINES:
 - Program-specific settings override default settings
 - If no directives can be extracted, return empty object: {{}}
 
+**CRITICAL: Do NOT confuse wavelength with resolution**
+- Wavelength (in Angstroms) is the X-ray beam wavelength, typically 0.5-2.5 Å. Extract as wavelength, NEVER as resolution.
+- Resolution is the diffraction limit (d_min), typically 1.5-4.0 Å. Only extract as resolution if explicitly stated as resolution/d_min.
+- If the text says "Resolution limit: Not mentioned" or similar, do NOT extract a resolution value from anywhere else in the text.
+
 **CRITICAL: max_refine_cycles vs after_program**
 - max_refine_cycles=N: Limits the NUMBER of refinement jobs to N. The workflow continues normally until refinement, then stops after N refinement jobs.
 - after_program="X": FORCES program X to be run IMMEDIATELY, bypassing normal workflow. Only use when user wants to skip directly to a specific program.
@@ -153,6 +158,12 @@ If the advice describes a SPECIFIC LIMITED TASK rather than full structure deter
 - "run mtriage", "analyze map quality" → after_program="phenix.mtriage", skip_validation=true
 - "map symmetry", "determine symmetry", "find symmetry" → after_program="phenix.map_symmetry", skip_validation=true
 - "map sharpening", "sharpen the map", "sharpen map", "automatic sharpening" → after_program="phenix.map_sharpening", skip_validation=true
+
+**CRITICAL: MR-SAD workflow**
+- For MR-SAD experiments, set use_mr_sad=true in workflow_preferences. Do NOT set after_program="phenix.autosol".
+- MR-SAD requires phaser to run FIRST to place the model, THEN autosol runs with the placed model.
+- Setting after_program="phenix.autosol" would skip phaser, which breaks MR-SAD.
+- Only set after_program="phenix.autosol" if the user explicitly says to skip molecular replacement and run autosol standalone.
   (Note: phenix.map_sharpening is the dedicated map sharpening tool - use this for sharpening requests)
 - For cryo-EM density modification (NOT sharpening): "density modification", "denmod", "resolve_cryo_em" → after_program="phenix.resolve_cryo_em", skip_validation=true
   (Note: phenix.resolve_cryo_em is for density modification, NOT for map sharpening - use phenix.map_sharpening for sharpening)
@@ -695,6 +706,45 @@ def validate_directives(directives, log=None):
 
             if valid_prog_settings:
                 validated["program_settings"] = valid_prog_settings
+
+        # --- Sanity check: resolution vs wavelength confusion ---
+        # X-ray wavelengths (0.5-2.5 Å) can be confused with resolution.
+        # Collect all wavelength values across all programs first.
+        if "program_settings" in validated:
+            all_wavelengths = set()
+            for prog, settings in validated["program_settings"].items():
+                wl = settings.get("wavelength")
+                if wl is not None:
+                    all_wavelengths.add(wl)
+
+            for prog, settings in list(validated["program_settings"].items()):
+                res = settings.get("resolution")
+                if res is not None:
+                    remove = False
+                    reason = ""
+                    # Check if resolution matches any wavelength
+                    for wl in all_wavelengths:
+                        if abs(res - wl) < 0.01:
+                            remove = True
+                            reason = ("matches wavelength=%.4f" % wl)
+                            break
+                    # Resolution < 1.2 Å is almost certainly a wavelength
+                    # (very few structures resolve below 1.2 Å)
+                    if not remove and res < 1.2:
+                        remove = True
+                        reason = ("%.4f Å is in X-ray wavelength range, "
+                                  "not a plausible resolution" % res)
+                    if remove:
+                        _log("DIRECTIVES: Removing resolution=%.4f from %s "
+                             "(%s)" % (res, prog, reason))
+                        del settings["resolution"]
+
+            # Clean up empty settings dicts
+            validated["program_settings"] = {
+                prog: s for prog, s in validated["program_settings"].items() if s
+            }
+            if not validated["program_settings"]:
+                del validated["program_settings"]
 
     # Validate stop_conditions
     if "stop_conditions" in directives:
@@ -1299,16 +1349,28 @@ def extract_directives_simple(user_advice):
         r'resolution\s+(?:of\s+)?([0-9.]+)',  # "resolution 3.0" or "resolution of 3.0"
         r'resolution\s+limit\s*[=:]?\s*([0-9.]+)',
         r'([0-9.]+)\s*(?:angstrom|Å|A)\s*resolution',
-        r'to\s+([0-9.]+)\s*(?:angstrom|Å|A)',
-        r'([0-9.]+)\s*(?:angstrom|Å|A)\b',  # Standalone "3.0 Å"
     ]
+    # Note: removed overly broad patterns like "to X Å" and "X Å" standalone
+    # which match wavelengths and other Angstrom values
+
+    # Also extract wavelength so we can check for confusion
+    wavelength = None
+    wl_match = re.search(r'wavelength\s*[=:]\s*([0-9.]+)', user_advice, re.IGNORECASE)
+    if wl_match:
+        try:
+            wavelength = float(wl_match.group(1))
+        except ValueError:
+            pass
 
     for pattern in res_patterns:
         match = re.search(pattern, user_advice, re.IGNORECASE)
         if match:
             try:
                 res = float(match.group(1))
-                if 0.5 <= res <= 20:
+                if 1.0 <= res <= 20:
+                    # Skip if it matches the wavelength (likely confused)
+                    if wavelength and abs(res - wavelength) < 0.01:
+                        continue
                     if "program_settings" not in directives:
                         directives["program_settings"] = {}
                     directives["program_settings"]["default"] = {"resolution": res}

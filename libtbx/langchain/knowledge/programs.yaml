@@ -54,16 +54,18 @@ phenix.xtriage:
       flag: "xray_data.space_group={value}"
       type: string
       hint: "Space group name or number"
-    atom_type:
-      flag: "scaling.input.asu_contents.n_residues.atom_type={value}"
-      type: string
-      hint: "Heavy atom type for anomalous analysis (e.g., Se)"
 
   log_parsing:
     resolution:
-      pattern: 'High resolution limit\s*[=:]\s*([0-9.]+)'
+      pattern: '(?<!nomalous )(?<!nomalous  )Resolution[:\s=]+([0-9.]+)\s*(?:Å|A|\s|$)'
       type: float
+      extract: last
       display_name: "Resolution"
+      summary_format: "{value:.2f} Å"
+    anomalous_resolution:
+      pattern: '[Aa]nomalous\s+[Rr]esolution[:\s=]+([0-9.]+)'
+      type: float
+      display_name: "Anomalous Resolution"
       summary_format: "{value:.2f} Å"
     completeness:
       pattern: '[Cc]ompleteness\s*[=:]\s*([0-9.]+)'
@@ -587,8 +589,15 @@ phenix.autosol:
         flag: "partpdb_file="
         description: "Placed model from MR for MR-SAD (run phaser first)"
 
-  # Input priorities for partial_model - ONLY use phaser output (not generic models)
+  # Input priorities:
+  # - data_mtz: AutoSol needs ORIGINAL data with anomalous signal, NOT phaser output
+  #   or rfree-locked MTZ. PHASER.1.mtz loses anomalous pairs.
+  # - partial_model: Only use phaser output (the positioned MR model).
   input_priorities:
+    data_mtz:
+      categories: [original_data_mtz, data_mtz]
+      exclude_categories: [phased_data_mtz]
+      skip_rfree_lock: true
     partial_model:
       categories: [phaser_output]
 
@@ -1349,12 +1358,9 @@ phenix.polder:
   category: map_analysis
   experiment_types: [xray]
   
-  # IMPORTANT: Polder requires R-free flags in the MTZ. If R-free flags were
-  # generated at a limited resolution (e.g., 3Å), polder MUST use the same
-  # resolution limit, otherwise it will crash with mismatched data sizes.
-  #
   # NOTE: Polder only needs Fobs (data_mtz), NOT map coefficients!
   # It calculates its own phases internally.
+  # Polder has NO resolution keyword.
 
   inputs:
     required:
@@ -1372,14 +1378,17 @@ phenix.polder:
       flag: 'selection="{value}"'
       type: str
       description: "Atom selection for polder calculation (e.g., 'chain A and resseq 88')"
-    high_resolution:
-      flag: 'high_resolution={value}'
-      type: float
-      description: "High resolution limit in Angstroms (must match R-free flag resolution if limited)"
 
-  # Auto-fill resolution if R-free flags have a resolution limit
-  fixes:
-    auto_fill_rfree_resolution: true
+  invariants:
+    - name: requires_selection
+      description: "Polder requires an atom selection to calculate the omit map around"
+      check:
+        has_strategy: selection
+      message: "selection is REQUIRED for polder (e.g., selection='chain A and resseq 88'). Specify the atoms to evaluate."
+
+  hints:
+    - "selection is REQUIRED - specify atoms to evaluate (e.g., 'chain A and resseq 88')"
+    - "Polder has NO resolution keyword - do not add resolution to the command"
 
   outputs:
     files:

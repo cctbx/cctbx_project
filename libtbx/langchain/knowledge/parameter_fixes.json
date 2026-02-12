@@ -1,37 +1,47 @@
 {
-  "_comment": "Maps wrong parameter names to correct ones. null means remove entirely. Empty string means keep the value but remove the parameter name and equals sign",
-  
-  "phenix.ligandfit": {
-    "map_coeffs": "data",
-    "input_labels": "file_info.input_labels",
-    "nproc": "general.nproc"
-  },
-  
-  "phenix.phaser": {
-    "data":"",
-    "model":"",
-    "nproc": "phaser.keywords.general.jobs",
-    "search.copies": null,
-    "ensemble.pdb": "phaser.ensemble.coordinates"
-  },
-  
-  "phenix.predict_and_build": {
-    "data_file": "xray_data_file",
-    "input_files.data_file": "input_files.xray_data_file",
-    "control.nproc": null,
-    "prediction.nproc": null
-  },
-  
-  "phenix.refine": {
-    "nproc": "main.nproc"
-  },
-  
-  "phenix.xtriage": {
-    "nproc": null
-  },
-
-  "phenix.map_to_model": {
-    "_comment": "model= should never be auto-added; partial_model is rarely needed and must be explicitly requested",
-    "model": null
-  }
+    "_comment": "Maps wrong parameter names to correct ones. null means remove entirely. Empty string means keep the value but remove the parameter name and equals sign",
+    "phenix.ligandfit": {
+        "map_coeffs": "data",
+        "input_labels": "file_info.input_labels",
+        "nproc": "general.nproc"
+    },
+    "phenix.phaser": {
+        "data": "",
+        "model": "",
+        "nproc": "phaser.keywords.general.jobs",
+        "search.copies": null,
+        "ensemble.pdb": "phaser.ensemble.coordinates"
+    },
+    "phenix.predict_and_build": {
+        "data_file": "xray_data_file",
+        "input_files.data_file": "input_files.xray_data_file",
+        "control.nproc": null,
+        "prediction.nproc": null
+    },
+    "phenix.refine": {
+        "nproc": "main.nproc"
+    },
+    "phenix.xtriage": {
+        "nproc": null,
+        "atom_type": null,
+        "scaling.input.asu_contents.n_residues.atom_type": null
+    },
+    "phenix.map_to_model": {
+        "_comment": "model= should never be auto-added; partial_model is rarely needed and must be explicitly requested",
+        "model": null
+    },
+    "phenix.polder": {
+        "_comment": "Polder has NO resolution keyword of any kind",
+        "resolution": null,
+        "high_resolution": null,
+        "low_resolution": null,
+        "d_min": null
+    },
+    "phenix.autosol": {
+        "_comment": "AutoSol handles labels internally - do not pass obs_labels",
+        "autosol.input.xray_data.obs_labels": null,
+        "scaling.input.xray_data.obs_labels": null,
+        "obs_labels": null,
+        "input_labels": null
+    }
 }

@@ -202,7 +202,7 @@ def extract_metrics_from_result(result_text):
     patterns = {
         'R-free': r'R.?free[:\s=]+([0-9.]+)',
         'R-work': r'R.?work[:\s=]+([0-9.]+)',
-        'Resolution': r'resolution[:\s=]+([0-9.]+)\s*[AÅ]?',
+        'Resolution': r'(?<!nomalous )(?<!nomalous  )resolution[:\s=]+([0-9.]+)\s*[AÅ]?',
         'Clashscore': r'clashscore[:\s=]+([0-9.]+)',
         'Ramachandran favored': r'ramachandran.{0,20}favored[:\s=]+([0-9.]+)',
         'Ramachandran outliers': r'ramachandran.{0,20}outliers?[:\s=]+([0-9.]+)',

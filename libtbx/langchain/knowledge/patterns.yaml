@@ -271,8 +271,8 @@ metrics:
   # Resolution
   # -------------------------------------------------------------------------
   resolution:
-    regex: "(?:[Rr]esolution|d_min){OPT_WS}{EQUALS}{OPT_WS}({FLOAT_POSITIVE}){OPT_WS}{ANGSTROM}?"
-    description: "Resolution in Angstroms"
+    regex: "(?<!nomalous )(?<!nomalous  )(?:[Rr]esolution|d_min){OPT_WS}{EQUALS}{OPT_WS}({FLOAT_POSITIVE}){OPT_WS}{ANGSTROM}?"
+    description: "Resolution in Angstroms (excludes Anomalous Resolution)"
     examples:
       - input: "Resolution = 2.5 Å"
         group_1: "2.5"

@@ -190,9 +190,7 @@ class CommandBuilder:
         "phenix.phaser": {
             "parameter": "phaser.hklin.labin",
         },
-        "phenix.autosol": {
-            "parameter": "autosol.input.xray_data.obs_labels",
-        },
+        # NOTE: phenix.autosol intentionally excluded - it handles labels internally
         "phenix.autobuild": {
             "parameter": "autobuild.input.xray_data.obs_labels",
         },
@@ -470,6 +468,27 @@ class CommandBuilder:
                     if llm_slot != canonical_slot:
                         self._log(context, "BUILD: Mapped LLM slot '%s' to '%s'" % (llm_slot, canonical_slot))
 
+                    # Validate against input_priorities exclude_categories
+                    # This prevents the LLM from choosing e.g. PHASER.1.mtz for autosol
+                    # when autosol needs original data (not phased MTZ)
+                    priorities = self._registry.get_input_priorities(program, canonical_slot)
+                    exclude_cats = priorities.get("exclude_categories", [])
+                    if exclude_cats and context.categorized_files:
+                        corrected_base = os.path.basename(corrected_str)
+                        excluded = False
+                        for exc in exclude_cats:
+                            cat_files = context.categorized_files.get(exc, [])
+                            # Check both full path and basename for robustness
+                            cat_basenames = [os.path.basename(f) for f in cat_files]
+                            if corrected_str in cat_files or corrected_base in cat_basenames:
+                                excluded = True
+                                self._log(context,
+                                    "BUILD: LLM file rejected (in excluded category '%s'): %s=%s" % (
+                                        exc, canonical_slot, corrected_base))
+                                break
+                        if excluded:
+                            continue  # Skip this file, let auto-fill find the right one
+
                     selected_files[canonical_slot] = corrected
                     self._record_selection(canonical_slot, corrected_str, "llm_selected")
                 else:
@@ -578,7 +597,10 @@ class CommandBuilder:
         is_multiple = input_def.get("multiple", False)
 
         # PRIORITY 1: Locked R-free data_mtz (X-ray refinement only)
-        if input_name in ("data_mtz", "hkl_file", "data") and context.rfree_mtz:
+        # Some programs (e.g., autosol) need original data, not rfree-locked MTZ
+        priorities = self._registry.get_input_priorities(program, input_name)
+        skip_rfree = priorities.get("skip_rfree_lock", False)
+        if not skip_rfree and input_name in ("data_mtz", "hkl_file", "data") and context.rfree_mtz:
             if os.path.exists(context.rfree_mtz):
                 self._log(context, "BUILD: Using LOCKED R-free data_mtz for %s" % input_name)
                 self._record_selection(input_name, context.rfree_mtz, "rfree_locked")
@@ -586,7 +608,6 @@ class CommandBuilder:
 
         # Check if input_priorities specifies a specific subcategory
         # If so, skip generic best_files and use category-based selection instead
-        priorities = self._registry.get_input_priorities(program, input_name)
         priority_categories = priorities.get("categories", [])
 
         # Subcategories that are more specific than generic best_files
@@ -937,7 +958,12 @@ class CommandBuilder:
                     if label_config:
                         param_name = label_config["parameter"]
                     else:
-                        param_name = self.DATA_LABEL_DEFAULT_PARAMETER
+                        # Program not in DATA_LABEL_PARAMETERS — it handles
+                        # labels internally (e.g., autosol). Skip label recovery.
+                        self._log(context,
+                                  f"BUILD: Skipping label recovery for {program} "
+                                  f"(not in DATA_LABEL_PARAMETERS, handles labels internally)")
+                        continue
 
                     if param_name in strategy:
                         self._log(context,

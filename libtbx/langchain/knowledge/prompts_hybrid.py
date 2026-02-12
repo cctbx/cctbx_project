@@ -626,6 +626,7 @@ def get_planning_prompt(history, analysis, available_files, previous_attempts=No
             file_summary.append(">>> RECOMMENDED FILES FOR NEXT STEP <<<")
             file_summary.extend(recommended)
             file_summary.append("(These are the latest/best files from previous cycles - always use these for refinement!)")
+            file_summary.append("**EXCEPTION:** phenix.autosol MUST use the ORIGINAL input data file (not PHASER output). PHASER.1.mtz loses anomalous signal needed for SAD phasing.")
 
     # === WORKFLOW STATE SECTION ===
     workflow_section = ""

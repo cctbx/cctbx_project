@@ -565,10 +565,15 @@ class ProgramRegistry:
         # 'xray_data.unit_cell'). These commonly appear in directives and
         # LLM strategies without their full PHIL scope prefix.
         KNOWN_PHIL_SHORT_NAMES = {
-            'unit_cell', 'space_group', 'resolution', 'nproc', 'ncopies',
-            'high_resolution', 'low_resolution', 'labels', 'twin_law',
+            'unit_cell', 'space_group', 'nproc', 'ncopies',
+            'labels', 'twin_law',
             'generate', 'stop_after_predict', 'job_title',
         }
+        # NOTE: 'resolution', 'high_resolution', 'low_resolution' are
+        # intentionally NOT here. They are defined in strategy_flags for
+        # programs that support them. Passing them through blindly would
+        # add resolution keywords to programs that don't accept them
+        # (e.g., polder).
 
         if strategy:
             strategy_defs = self.get_strategy_flags(program_name)

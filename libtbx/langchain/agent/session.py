@@ -1937,7 +1937,7 @@ class AgentSession:
 
         # Metrics that use first match (typically appear once or first occurrence is correct)
         first_match_patterns = {
-            'resolution': r'[Rr]esolution[:\s=]+([0-9.]+)',
+            'resolution': r'(?<!nomalous )(?<!nomalous  )[Rr]esolution[:\s=]+([0-9.]+)',
             'clashscore': r'[Cc]lashscore[:\s=]+([0-9.]+)',
             'bonds_rmsd': r'bonds.?rmsd[:\s=]+([0-9.]+)',
             'angles_rmsd': r'angles.?rmsd[:\s=]+([0-9.]+)',
@@ -2980,7 +2980,7 @@ FINAL REPORT:"""
 
                 # Fallback to parsing result string if metrics not found
                 if not quality.get("resolution"):
-                    match = re.search(r'Resolution[:\s=]+([0-9.]+)', result, re.IGNORECASE)
+                    match = re.search(r'(?<!nomalous )(?<!nomalous  )Resolution[:\s=]+([0-9.]+)', result, re.IGNORECASE)
                     if match:
                         res = float(match.group(1))
                         if res < 15:  # d_min is typically < 10 Å

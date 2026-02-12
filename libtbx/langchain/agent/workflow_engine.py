@@ -726,6 +726,17 @@ class WorkflowEngine:
             filtered.append(prog)
         valid = filtered
 
+        # MR-SAD guard: When we have BOTH a search model AND anomalous data,
+        # phaser must run first to place the model. AutoSol will be available
+        # later in the experimental_phasing phase (after phaser completes).
+        # This prevents autosol from running standalone when MR-SAD is appropriate.
+        if (context and
+            context.get("has_search_model") and
+            (context.get("has_anomalous") or context.get("use_mr_sad")) and
+            not context.get("phaser_done") and
+            "phenix.autosol" in valid):
+            valid.remove("phenix.autosol")
+
         # === APPLY USER DIRECTIVES ===
         # This is the SINGLE PLACE where directives affect valid_programs
         if directives:
@@ -905,10 +916,12 @@ class WorkflowEngine:
                 result.remove("phenix.phaser")
                 result.insert(0, "phenix.phaser")
                 modifications.append("Prioritized phenix.phaser (use_mr_sad: place model first)")
-            # Don't run autosol in obtain_model phase - it runs later in experimental_phasing
-            if phase_name == "obtain_model" and "phenix.autosol" in result:
+            # Don't run autosol until phaser has placed the model
+            # This applies to ALL phases before experimental_phasing
+            phaser_done = context.get("phaser_done", False) if context else False
+            if not phaser_done and "phenix.autosol" in result:
                 result.remove("phenix.autosol")
-                modifications.append("Removed phenix.autosol from obtain_model (use_mr_sad: runs after phaser)")
+                modifications.append("Removed phenix.autosol (use_mr_sad: phaser must run first)")
 
         # Handle use_experimental_phasing - prioritize autosol over predict_and_build
         if workflow_prefs.get("use_experimental_phasing") and not workflow_prefs.get("use_mr_sad"):
@@ -1038,6 +1051,21 @@ class WorkflowEngine:
             return False  # Don't add to early phases - let workflow proceed normally
 
         # Default: allow
+        # phenix.autosol prerequisites:
+        # - Always needs xtriage first (to detect anomalous signal, resolution)
+        # - For MR-SAD (explicit or implicit), needs phaser to place model first
+        #   Implicit MR-SAD: user has search model + anomalous data
+        if program == "phenix.autosol":
+            if not context.get("xtriage_done"):
+                return False
+            # MR-SAD: phaser must run before autosol when we have a search model
+            # and anomalous data (whether or not use_mr_sad directive is set)
+            needs_phaser_first = (
+                context.get("use_mr_sad") or
+                (context.get("has_search_model") and context.get("has_anomalous"))
+            )
+            if needs_phaser_first and not context.get("phaser_done"):
+                return False
         return True
 
     def _check_conditions(self, prog_entry, context):
@@ -1144,6 +1172,15 @@ class WorkflowEngine:
             prog_done_key = program.replace("phenix.", "").replace(".", "_") + "_done"
             if context.get(prog_done_key):
                 reasons.append("run_once program already executed")
+
+        # Check MR-SAD guard (autosol blocked when search model + anomalous + no phaser)
+        if program == "phenix.autosol":
+            if not context.get("xtriage_done"):
+                reasons.append("xtriage must run first")
+            elif (context.get("has_search_model") and
+                  (context.get("has_anomalous") or context.get("use_mr_sad")) and
+                  not context.get("phaser_done")):
+                reasons.append("MR-SAD: phaser must place model before autosol runs")
 
         if reasons:
             return "; ".join(reasons)
@@ -1284,7 +1321,8 @@ class WorkflowEngine:
         # This helps explain why certain programs can't be run
         unavailable_explanations = {}
         common_programs = ["phenix.ligandfit", "phenix.autobuild", "phenix.phaser",
-                          "phenix.predict_and_build", "phenix.dock_in_map"]
+                          "phenix.predict_and_build", "phenix.dock_in_map",
+                          "phenix.autosol"]
         for prog in common_programs:
             if prog not in valid_programs:
                 explanation = self.explain_unavailable_program(experiment_type, prog, context)

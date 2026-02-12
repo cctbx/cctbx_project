@@ -44,6 +44,93 @@
   `ncopies`, `twin_law` are accepted without their full PHIL scope prefix
 - File: `agent/program_registry.py`
 
+**Fix - Polder has no resolution keyword**
+- Polder has no resolution keyword of any kind
+- Removed `high_resolution` and `resolution` strategy flags and the
+  `auto_fill_rfree_resolution` fix from polder's YAML
+- Removed `resolution` (and `high_resolution`, `low_resolution`) from
+  `KNOWN_PHIL_SHORT_NAMES` passthrough set in `program_registry.py` —
+  these should only go through explicit strategy_flags, not blindly
+  passed through to programs that don't support them
+- Added polder entry to `parameter_fixes.json` to strip resolution/
+  high_resolution/low_resolution/d_min as a safety net
+- Added `has_strategy: selection` invariant to block polder if no
+  selection is provided, forcing LLM retry
+- Added hints telling LLM that selection is required and no resolution
+  exists
+- Files: `knowledge/programs.yaml`, `agent/program_registry.py`,
+  `knowledge/parameter_fixes.json`
+
+**Fix - Anomalous Resolution incorrectly reported as Resolution**
+- In xtriage logs with anomalous data, "Anomalous Resolution: 9.80" was
+  matched by the generic resolution regex before "Resolution: 2.50"
+- Added negative lookbehind `(?<!nomalous )` to all resolution patterns:
+  `agent/session.py` (hardcoded fallback), `agent/session_tools.py`,
+  `knowledge/patterns.yaml` (centralized pattern)
+- Updated xtriage YAML `log_parsing` to use `extract: last` so the summary
+  "Resolution: 2.50" at the end of the log is preferred over earlier matches
+- Added explicit `anomalous_resolution` pattern to xtriage YAML log_parsing
+- Files: `agent/session.py`, `agent/session_tools.py`,
+  `knowledge/programs.yaml`, `knowledge/patterns.yaml`
+
+**Fix - AutoSol using Phaser output data instead of original data**
+- After Phaser MR, `best_files['data_mtz']` was set to PHASER.1.mtz which
+  has lost anomalous signal — useless for SAD phasing
+- Added `input_priorities` for `data_mtz` in autosol YAML:
+  `categories: [original_data_mtz, data_mtz]`,
+  `exclude_categories: [phased_data_mtz]`,
+  `skip_rfree_lock: true`
+- AutoSol doesn't need rfree handling — added `skip_rfree_lock` support
+  to `command_builder.py` PRIORITY 1 so autosol gets original data
+- CRITICAL: LLM file choices were bypassing input_priorities entirely.
+  Added `exclude_categories` check to the LLM hint acceptance path in
+  `_select_files()` — now rejects LLM-chosen files in excluded categories
+  (with both full-path and basename matching for robustness)
+- Added prompt guidance telling LLM that autosol needs original data
+- Files: `knowledge/programs.yaml`, `agent/command_builder.py`,
+  `knowledge/prompts_hybrid.py`
+
+**Fix - Wavelength mistakenly extracted as resolution in directives**
+- Text like "data collected far from the iron edge (1.1158 Å)" was being
+  extracted as `resolution=1.1158` by the directive extractor LLM
+- Three fixes applied:
+  1. LLM prompt: Added explicit "Do NOT confuse wavelength with resolution"
+     warning with guidelines for distinguishing them
+  2. Validation: Added post-extraction check that removes resolution values
+     < 1.2 Å (wavelength range) or matching any extracted wavelength value
+  3. Simple extractor: Removed overly broad patterns like "X Å" standalone;
+     added wavelength cross-check; raised minimum from 0.5 to 1.0
+- File: `agent/directive_extractor.py`
+
+**Fix - AutoSol getting obs_labels from recovery strategy**
+- Recovery strategy from xtriage was applying `autosol.input.xray_data.obs_labels=I(+)`
+  to autosol commands — autosol handles labels internally
+- Removed autosol from `DATA_LABEL_PARAMETERS` in command_builder.py
+- Changed fallback behavior: programs NOT in `DATA_LABEL_PARAMETERS` now skip
+  label recovery entirely (instead of using default `obs_labels` parameter)
+- Safety net in `parameter_fixes.json` also strips obs_labels from autosol
+- Files: `agent/command_builder.py`, `knowledge/parameter_fixes.json`,
+  `tests/tst_command_builder.py`
+
+**Fix - MR-SAD workflow skipping phaser and going straight to autosol**
+- `after_program=phenix.autosol` directive was forcing autosol immediately,
+  even before xtriage or phaser had run
+- Root cause TWO-FOLD:
+  1. `use_mr_sad` handling only removed autosol from `obtain_model` phase
+  2. AutoSol was in YAML `obtain_model` phase with `has: anomalous` condition,
+     entering valid_programs through the base path BEFORE `_apply_directives`
+- Four fixes:
+  1. `get_valid_programs()`: Added MR-SAD guard that removes autosol when
+     has_search_model + has_anomalous + not phaser_done — runs BEFORE
+     `_apply_directives` so autosol can't leak through the YAML path
+  2. `_check_program_prerequisites()`: autosol requires xtriage_done, and
+     for implicit MR-SAD (has_search_model + has_anomalous), also phaser_done
+  3. `_apply_directives()`: use_mr_sad now removes autosol from ALL phases
+     when phaser hasn't run (not just obtain_model)
+  4. Directive extraction prompt: Added "CRITICAL: MR-SAD workflow" guidance
+- Standalone SAD (no search model) unaffected by the guard
+- Files: `agent/workflow_engine.py`, `agent/directive_extractor.py`
+
 ### Test Infrastructure Fixes
 
 **Fix - Unconditional mock modules breaking PHENIX environment tests**

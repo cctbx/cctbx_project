@@ -661,8 +661,8 @@ def test_recovery_label_translation_refine():
 
 
 def test_recovery_label_translation_unknown_program():
-    """Test recovery uses default parameter for unknown programs."""
-    print("Test: recovery label translation for unknown program")
+    """Test recovery skips label for programs not in DATA_LABEL_PARAMETERS."""
+    print("Test: recovery label skipped for unknown program")
 
     builder = CommandBuilder()
     ctx = CommandContext(
@@ -681,8 +681,10 @@ def test_recovery_label_translation_unknown_program():
     files = {'data_mtz': '/path/toxd.mtz'}
     result = builder._apply_recovery_strategies('phenix.some_new_program', files, strategy, ctx)
 
-    assert result.get('obs_labels') == 'FTOXD3', \
-        "unknown program should get obs_labels=FTOXD3, got: %s" % result
+    # Programs not in DATA_LABEL_PARAMETERS should NOT get labels
+    # (they handle labels internally, like autosol)
+    assert 'obs_labels' not in result, \
+        "unknown program should NOT get obs_labels (handles labels internally), got: %s" % result
 
     print("  PASSED")
 
