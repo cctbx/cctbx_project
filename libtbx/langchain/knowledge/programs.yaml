@@ -45,6 +45,20 @@ phenix.xtriage:
 
   command: "phenix.xtriage {data_mtz}"
 
+  strategy_flags:
+    unit_cell:
+      flag: "xray_data.unit_cell={value}"
+      type: string
+      hint: "Unit cell parameters (a b c alpha beta gamma)"
+    space_group:
+      flag: "xray_data.space_group={value}"
+      type: string
+      hint: "Space group name or number"
+    atom_type:
+      flag: "scaling.input.asu_contents.n_residues.atom_type={value}"
+      type: string
+      hint: "Heavy atom type for anomalous analysis (e.g., Se)"
+
   log_parsing:
     resolution:
       pattern: 'High resolution limit\s*[=:]\s*([0-9.]+)'
