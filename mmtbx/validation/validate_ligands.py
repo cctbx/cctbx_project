@@ -14,6 +14,7 @@ from cctbx import miller
 from libtbx.str_utils import make_sub_header
 import mmtbx.maps.polder
 import mmtbx.maps.correlation
+#import mmtbx.ligands.rdkit_utils as rdkit_utils
 
 master_params_str = """
 validate_ligands {
@@ -712,7 +713,7 @@ class ligand_result(object):
       fft_n_real = m1.focus(),
       fft_m_real = m1.all(),
       sites_cart = sites_cart,
-      site_radii = flex.double(sites_cart.size(), 1.0))
+      site_radii = flex.double(sites_cart.size(), 2.0))
     #m1 = m1.set_selected(m1<0, 0)
     #m2 = m2.set_selected(m1<0, 0)
     cc = flex.linear_correlation(
@@ -735,6 +736,7 @@ class ligand_result(object):
       space_group_info = cs.space_group_info(),
       symmetry_flags   = maptbx.use_space_group_symmetry,
       step             = 0.6)
+    # 0.6 comes from bulk solvent mask https://journals.iucr.org/a/issues/2024/02/00/pl5035/index.html
 
     # Dfmodel map including ligand
     #fmodel.update_xray_structure(
@@ -747,10 +749,10 @@ class ligand_result(object):
       map_type         = "DFmodel")
 
     fmodel = self.fmodel.deep_copy()
-    sel = self.model.selection(string=self.sel_str)
+    bool_sel = self.model.selection(string=self.sel_str)
     # 2mFo-DFc map without ligand
     fmodel.update_xray_structure(
-      xray_structure = fmodel.xray_structure.select(~sel),
+      xray_structure = fmodel.xray_structure.select(~bool_sel),
       update_f_calc=True
     )
     #fmodel.show_short(show_k_mask=True, log=None, prefix="")
@@ -759,13 +761,17 @@ class ligand_result(object):
       crystal_gridding = crystal_gridding,
       map_type         = "2mFo-DFc")
 
-    sites_cart = self.model.get_sites_cart().select(sel)
+    sites_cart = self.model.get_sites_cart().select(bool_sel)
+    # site radii: depend on resolution and B-factors
+    # but ad-hoc value is probably OK. Use 1.0 because H atoms are included.
     sel = maptbx.grid_indices_around_sites(
       unit_cell  = cs.unit_cell(),
       fft_n_real = m1.focus(),
       fft_m_real = m1.all(),
       sites_cart = sites_cart,
       site_radii = flex.double(sites_cart.size(), 1.0))
+    # below selection maybe not necessary?
+    # maybe to prevent that particular grid points ruin the overall cc
     m1 = m1.set_selected(m1<0, 0)
     m2 = m2.set_selected(m1<0, 0)
     cc = flex.linear_correlation(
