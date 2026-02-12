@@ -6,6 +6,8 @@ from rdkit import Chem
 from rdkit.Chem import rdDistGeom
 from rdkit.Chem import rdFMCS
 from collections import defaultdict
+from rdkit.Chem import Lipinski
+from scitbx.array_family import flex
 
 """
 Utility functions to work with rdkit
@@ -53,6 +55,159 @@ def is_amide_bond(mol, bond):
       if bond_to_o is not None and bond_to_o.GetBondType() == Chem.BondType.DOUBLE:
         return True
   return False
+
+def get_rdkit_mol_from_atom_group_and_cif_obj(atom_group, cif_object):
+
+  atoms_ligand = atom_group.atoms()
+  resname = atom_group.resname
+
+  # Mappings
+  # cctbx_idx -> rdkit_idx
+  # rdkit_idx -> cctbx_idx
+  # atom_name -> rdkit_idx (For CIF lookup)
+  cctbx_to_rdkit = {}
+  rdkit_to_cctbx = {}
+  name_to_rdkit = {}
+
+  mol = Chem.RWMol()
+
+  # --- Build RDKit Nodes (Atoms) ---
+  for cctbx_atom in atoms_ligand:
+
+    atom_idx = cctbx_atom.i_seq
+    # Handle Element
+    element = cctbx_atom.element.strip().capitalize()
+    #if not element: element = cctbx_atom.name.strip()[0:1]
+
+    rd_atom = Chem.Atom(element)
+    # Store name for debugging and potential mapping checks
+    rd_atom.SetProp("_Name", cctbx_atom.name)
+
+    rd_idx = mol.AddAtom(rd_atom)
+
+    cctbx_to_rdkit[atom_idx] = rd_idx
+    rdkit_to_cctbx[rd_idx] = atom_idx
+
+    # Clean name for dictionary lookup (e.g. " C1 " -> "C1")
+    name_to_rdkit[cctbx_atom.name.strip()] = rd_idx
+
+  # Build Bonds from CIF (Primary source)
+  if cif_object and hasattr(cif_object, "bond_list"):
+    for bond in cif_object.bond_list:
+      atom_1 = bond.atom_id_1
+      atom_2 = bond.atom_id_2
+      order_str = bond.type
+
+      if atom_1 in name_to_rdkit and atom_2 in name_to_rdkit:
+        rd_i = name_to_rdkit[atom_1]
+        rd_j = name_to_rdkit[atom_2]
+        # Check existing to prevent duplicates
+        if mol.GetBondBetweenAtoms(rd_i, rd_j) is None:
+          mol.AddBond(rd_i, rd_j, get_rdkit_bond_type(order_str))
+
+  # Sanitize (Important for implicit valence calculation)
+  try:
+    Chem.SanitizeMol(mol)
+  except ValueError:
+    mol.UpdatePropertyCache(strict=False)
+
+  return mol, rdkit_to_cctbx
+
+def get_cctbx_isel_for_rigid_components(atom_group,
+                                        cif_object,
+                                        filter_lone_linkers=True):
+  mol, rdkit_to_cctbx = get_rdkit_mol_from_atom_group_and_cif_obj(
+    atom_group = atom_group,
+    cif_object = cif_object)
+  cctbx_rigid_components = get_rigid_components(
+    mol, rdkit_to_cctbx, filter_lone_linkers)
+
+  return cctbx_rigid_components
+
+def get_rigid_components(mol,
+                         rdkit_to_cctbx,
+                         filter_lone_linkers=True):
+
+  # Identify Rotatable Bonds
+  rotatable_pattern = Lipinski.RotatableBondSmarts
+  matches = mol.GetSubstructMatches(rotatable_pattern)
+
+  #bonds_to_cut = []
+  #rotatable_bonds = []
+  candidate_cut_bonds = []
+  min_heavy_atoms = 2
+
+ # Map: (bond_index, atom_index) -> Size of the fragment this atom ends up in
+ # if bond is cut
+  fragment_size_map = {}
+
+  for u, v in matches:
+    bond = mol.GetBondBetweenAtoms(u, v)
+    if bond is None: continue
+
+    if is_amide_bond(mol, bond): continue
+
+    bidx = bond.GetIdx()
+
+    # Cut this bond alone
+    test_mol = Chem.FragmentOnBonds(mol, [bidx], addDummies=False)
+
+    # Get indices of atoms in fragments
+    # (asMols=False returns tuple of tuples of indices)
+    frag_indices_tuples = Chem.GetMolFrags(test_mol, asMols=False)
+
+    heavy_counts = []
+    is_valid_cut = True
+
+    # Calculate heavy atom counts for this specific cut
+    current_cut_sizes = {} # map atom_idx -> size
+
+    for frag_tuple in frag_indices_tuples:
+      # Count heavy atoms in this fragment
+      h_count = 0
+      for atom_idx in frag_tuple:
+        if mol.GetAtomWithIdx(atom_idx).GetAtomicNum() > 1:
+          h_count += 1
+
+      heavy_counts.append(h_count)
+
+      # Store the size for every atom in this fragment
+      for atom_idx in frag_tuple:
+        current_cut_sizes[atom_idx] = h_count
+
+    # Check validity
+    if all(hc >= min_heavy_atoms for hc in heavy_counts):
+      candidate_cut_bonds.append(bidx)
+      # Save the size map for this bond index
+      for atom_idx, size in current_cut_sizes.items():
+        fragment_size_map[(bidx, atom_idx)] = size
+
+  bonds_to_skip = set()
+  if filter_lone_linkers:
+    bonds_to_skip = _filter_isolated_linkers(candidate_cut_bonds, mol, fragment_size_map)
+
+  # Finalize the list
+  final_bonds_to_cut = [b for b in candidate_cut_bonds if b not in bonds_to_skip]
+
+  # Fragment
+  if not final_bonds_to_cut:
+    return [flex.size_t(iselection)]
+
+  fragmented_mol = Chem.FragmentOnBonds(mol, final_bonds_to_cut, addDummies=False)
+  raw_fragments = Chem.GetMolFrags(fragmented_mol, asMols=False) #maybe: sanitizeFrags=False?
+
+  # Convert to CCTBX format
+  cctbx_rigid_components = []
+
+  merged_fragments = raw_fragments
+  for frag in merged_fragments:
+    component_indices = flex.size_t()
+    for rd_idx in frag:
+      global_idx = rdkit_to_cctbx[rd_idx]
+      component_indices.append(global_idx)
+    cctbx_rigid_components.append(component_indices)
+
+  return cctbx_rigid_components
 
 def _filter_isolated_linkers(candidate_cut_bonds, mol, fragment_size_map):
   """
