@@ -147,74 +147,84 @@ class manager(list):
   # ----------------------------------------------------------------------------
 
   def show_table(self, out):
-      '''
-      Print summary table
-      '''
-      lab_row1 =  ['','','', '% bad', '','', '', '', '', '']
-      lab_row2 =  ['','','CC', 'map values', '','', 'ADPs', 'occupancies',
-        'bond', 'angle']
-      lab_row3 =  ['ligand', 'suspicious', '2Fo-Fc', 'Fo-Fc','clashes','H-bonds',\
-        'min   max   mean   owab', 'min   max   mean', ' rmsz  outliers ',
-        ' rmsz  outliers ']
-      lab1_str = '{:^14}|{:^12}|{:^9}|{:^12}|{:^9}|{:^9}|{:^28}|{:^21}|{:^17}|{:^17}|'
-      print('\n' + lab1_str.format(*lab_row1), file=out)
-      print(lab1_str.format(*lab_row2), file=out)
-      print(lab1_str.format(*lab_row3), file=out)
-      print('-'*157, file=out)
-      for lr in self:
-        ccs     = lr.get_ccs()
-        clashes = lr.get_overlaps()
-        adps    = lr.get_adps()
-        owab    = lr.get_owab()
-        occs    = lr.get_occupancies()
-        map_vals = lr.get_map_values()
-        rmsds   = lr.get_rmsds()
-        is_suspicious = lr.check_if_suspicious()
-        n_atoms = lr._atoms_ligand_noH.size()
-        if is_suspicious: check='***'
-        else:             check =''
+    '''
+    Print a summary table.
+    '''
+    ph = self.model.get_hierarchy()
 
-        #line = [lr.id_str,check, ccs.rscc, clashes.n_clashes,
-        #  round(adps.b_min,1), round(adps.b_max,1), round(adps.b_mean,1)]
-        #print(table_str.format(*line), file=self.log)
+    # Define the table structure.
+    columns = [
+      {'headers': ['', '', 'ligand'], 'width': 14,
+       'data_fn': lambda lr: lr.id_str},
+      {'headers': ['', '', ''], 'width': 3,
+       'data_fn': lambda lr: '*' if lr.check_if_suspicious() else ''},
 
-        val_id      = f"{lr.id_str:^14}"
-        val_check   = f"{check:^12}"
-        val_cc      = f"{ccs.rscc:^9.2f}" if ccs is not None else f"{'':^9}"
-        val_mapvals = f"{round((map_vals.fofc_map_values<=-3).count(True)/n_atoms, 2):^12}" if map_vals is not None else f"{'':^12}"
-        if clashes is not None:
-          val_clash   = f"{clashes.n_clashes:^9}" if clashes.n_clashes != 0 else f"{'-':^9}"
-          val_hbonds  = f"{clashes.n_hbonds:^9}" if clashes.n_hbonds != 0 else f"{'-':^9}"
-        else:
-          val_clash   = f"{'NA':^9}"
-          val_hbonds  = f"{'NA':^9}"
-        val_b_min   = f"{round(adps.b_min,1):^7}"
-        val_b_max   = f"{round(adps.b_max,1):^7}"
-        val_b_mean  = f"{round(adps.b_mean,1):^7}"
-        val_owab    = f"{round(owab,1):^7}"
-        val_o_min   = f"{round(occs.occ_min,1):^7}" if occs.occ_min != occs.occ_mean else f"{'':^7}"
-        val_o_max   = f"{round(occs.occ_max,1):^7}" if occs.occ_max != occs.occ_mean else f"{'':^7}"
-        val_o_mean  = f"{round(occs.occ_mean,1):^7}"
-        val_bond_str = str(round(rmsds.bond_rmsz,2)) + '  ' + str(rmsds.bond_n_outliers) + \
-          '(' + str(rmsds.bond_n) + ')'
-        val_bond  = f"{val_bond_str:^17}"
-        val_angle_str = str(round(rmsds.angle_rmsz,2)) + '  ' + str(rmsds.angle_n_outliers) + \
-          '(' + str(rmsds.angle_n) + ')'
-        val_angle  = f"{val_angle_str:^17}"
+      {'headers': ['', 'CC', '(fragments)'], 'width': 40,
+       'data_fn': lambda lr: (
+           'NA' if not lr.get_ccs() else
+           f"{lr.get_ccs().rscc:.2f}" + (
+               f" ({', '.join(f'{cc:.2f}' for cc in lr.get_ccs().frag_ccs.values())})"
+               if lr.get_ccs().frag_ccs else ''
+           )
+       )},
 
-        row = f"{val_id}|{val_check}|{val_cc}|{val_mapvals}|{val_clash}|\
-{val_hbonds}|{val_b_min}{val_b_max}{val_b_mean}{val_owab}|\
-{val_o_min}{val_o_max}{val_o_mean}|{val_bond}|{val_angle}|"
-        print(row, file=out)
-        #
-        val_sites = f"{'sites':^14}"
-        _b_min_within = f"{round(adps.b_min_within,1):^7}" if adps.b_min_within is not None else f"{'':^7}"
-        _b_max_within = f"{round(adps.b_max_within,1):^7}" if adps.b_max_within is not None else f"{'':^7}"
-        _b_mean_within = f"{round(adps.b_mean_within,1):^7}" if adps.b_mean_within is not None else f"{'':^7}"
-        sites_row = f"{val_sites}|{'':^12}|{'':^9}|{'':^12}|{'':^9}|{'':^9}|\
-{_b_min_within}{_b_max_within}{_b_mean_within}\
-{'':^7}|{'':^7}{'':^7}{'':^7}|"
-        print(sites_row, file=out)
+      {'headers': ['% bad', 'map values', 'Fo-Fc'], 'width': 12,
+       'data_fn': lambda lr: f"{round((lr.get_map_values().fofc_map_values <= -3).count(True) / lr._atoms_ligand_noH.size(), 2)}" if lr.get_map_values() else 'NA'},
+      {'headers': ['', '', 'clashes'], 'width': 9,
+       'data_fn': lambda lr: f"{lr.get_overlaps().n_clashes}" if lr.get_overlaps() and lr.get_overlaps().n_clashes != 0 else '-'},
+      {'headers': ['', '', 'H-bonds'], 'width': 9,
+       'data_fn': lambda lr: f"{lr.get_overlaps().n_hbonds}" if lr.get_overlaps() and lr.get_overlaps().n_hbonds != 0 else '-'},
+      {'headers': ['', 'ADPs', 'min   max   mean'], 'width': 21,
+       'data_fn': lambda lr: f"{lr.get_adps().b_min:^7.1f}{lr.get_adps().b_max:^7.1f}{lr.get_adps().b_mean:^7.1f}"},
+      {'headers': ['', 'occupancies', 'min   max   mean'], 'width': 21,
+       'data_fn': lambda lr: f"{lr.get_occupancies().occ_min:^7.1f}{lr.get_occupancies().occ_max:^7.1f}{lr.get_occupancies().occ_mean:^7.1f}"},
+      {'headers': ['bond', 'rmsz', 'outliers'], 'width': 17,
+       'data_fn': lambda lr: f"{lr.get_rmsds().bond_rmsz:.2f}  {lr.get_rmsds().bond_n_outliers}({lr.get_rmsds().bond_n})"},
+      {'headers': ['angle', 'rmsz', 'outliers'], 'width': 17,
+       'data_fn': lambda lr: f"{lr.get_rmsds().angle_rmsz:.2f}  {lr.get_rmsds().angle_n_outliers}({lr.get_rmsds().angle_n})"},
+      {'headers': ['dihedral', 'rmsz', 'outliers'], 'width': 17,
+       'data_fn': lambda lr: f"{lr.get_rmsds().dihedral_rmsz:.2f}  {lr.get_rmsds().dihedral_n_outliers}({lr.get_rmsds().dihedral_n})"},
+    ]
+
+    # --- From here, the code is generic and builds the table from the config above ---
+
+    # Calculate total width and create separator line
+    total_width = sum(c['width'] for c in columns) + len(columns) - 1
+    separator = '-' * total_width
+
+    # Print headers
+    num_header_rows = len(columns[0]['headers'])
+    print("", file=out) # Add a newline for spacing
+    for i in range(num_header_rows):
+      header_line = "|".join([f"{c['headers'][i]:^{c['width']}}" for c in columns])
+      print(header_line, file=out)
+    print(separator, file=out)
+
+    # Print data rows
+    for lr in self:
+      # Build and print the main data row for the ligand
+      data_cells = [f"{c['data_fn'](lr):^{c['width']}}" for c in columns]
+      print("|".join(data_cells), file=out)
+
+      # Print the 'sites' ADP info if available
+      adps = lr.get_adps()
+      if adps and adps.b_min_within is not None:
+        sites_b_str = f"{adps.b_min_within:^7.1f}{adps.b_max_within:^7.1f}{adps.b_mean_within:^7.1f}"
+
+        # Build the sites row cell by cell to guarantee alignment
+        sites_row_cells = []
+        for i, col in enumerate(columns):
+          if i == 0:
+            sites_row_cells.append(f"{'sites':^{col['width']}}")
+          elif i == 6: # The ADPs column
+            sites_row_cells.append(f"{sites_b_str:^{col['width']}}")
+          else:
+            sites_row_cells.append(f"{'':^{col['width']}}")
+        print("|".join(sites_row_cells), file=out)
+
+      print(separator, file=out)
+
+  # ----------------------------------------------------------------------------
 
   # def show_adps(self):
   #   '''
@@ -295,7 +305,7 @@ class manager(list):
 
 class ligand_result(object):
   '''
-  Class that stores validation info per ligand
+  Class storing validation info per ligand
   '''
   def __init__(self,
                model,
@@ -364,10 +374,10 @@ class ligand_result(object):
       map_vals = self.get_map_values()
     # apply criteria for metrics
     if ccs is not None:
-      if ccs.rscc < 0.5:
+      if ccs.rscc < 0.8:
         self._is_suspicious = True
     if adps.b_mean_within is not None:
-      if adps.b_mean > 4 * adps.b_mean_within:
+      if adps.b_mean > 3 * adps.b_mean_within:
         self._is_suspicious = True
     if occs.occ_mean == 0.:
       self._is_suspicious = True
@@ -570,7 +580,7 @@ class ligand_result(object):
     mon_lib_srv = self.model.get_mon_lib_srv()
     cif_object, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
       residue_name=ag_ligand.resname, atom_names=ag_ligand.atoms().extract_name())
-    ligand_rigid_components_isels = rdkit_utils.get_cctbx_isel_for_rigid_components(
+    self.ligand_rigid_components_isels = rdkit_utils.get_cctbx_isel_for_rigid_components(
       atom_group = ag_ligand,
       cif_object = cif_object)
     #for rigid_comp in ligand_rigid_components_isels:
@@ -685,16 +695,15 @@ class ligand_result(object):
       return self._ccs
 
     if self.fmodel is not None:
-      cc = self.get_ccs_miller()
+      ccs = self.get_ccs_miller()
     if self.map_manager is not None:
-      cc = self.get_ccs_map()
+      ccs = self.get_ccs_map()
 
-    if cc is None:
+    if ccs is None:
       return None
 
-    self._ccs = group_args(
-      rscc = cc,
-       )
+    self._ccs = ccs
+
     return self._ccs
 
   # ----------------------------------------------------------------------------
@@ -734,7 +743,11 @@ class ligand_result(object):
       x=m1.select(sel).as_1d(),
       y=m2.select(sel).as_1d()).coefficient()
 
-    return cc
+    ccs = group_args(
+          rscc = cc,
+       )
+
+    return ccs
 
   # ----------------------------------------------------------------------------
 
@@ -775,7 +788,27 @@ class ligand_result(object):
       crystal_gridding = crystal_gridding,
       map_type         = "2mFo-DFc")
 
-    sites_cart = self.model.get_sites_cart().select(bool_sel)
+    sc = self.model.get_sites_cart()
+    sites_cart = sc.select(bool_sel)
+
+    cc = self.compute_cc(m1, m2, cs, sites_cart)
+
+    frag_ccs = {}
+    for isel in self.ligand_rigid_components_isels:
+      sites_cart = sc.select(isel)
+      cc = self.compute_cc(m1, m2, cs, sites_cart)
+      frag_ccs[isel] = cc
+
+    ccs = group_args(
+          rscc = cc,
+          frag_ccs = frag_ccs
+       )
+
+    return ccs
+
+  # ----------------------------------------------------------------------------
+
+  def compute_cc(self, m1, m2, cs, sites_cart):
     # site radii: depend on resolution and B-factors
     # but ad-hoc value is probably OK. Use 1.0 because H atoms are included.
     sel = maptbx.grid_indices_around_sites(
@@ -816,26 +849,6 @@ class ligand_result(object):
     if self._map_values is not None:
       return self._map_values
 
-    fofc_map_values = flex.double()
-
-#   # get map coefficients
-#    mc = map_tools.electron_density_map(fmodel = self.fmodel).map_coefficients(
-#        map_type         = "mFo-DFc",
-#        isotropize       = True,
-#        fill_missing     = False)
-#    # TODO d_min and cg should be accessible in class
-#    d_min = self.fmodel.f_obs().d_min()
-#    cg = self.fmodel.f_obs().crystal_gridding(
-#      d_min             = d_min,
-#      symmetry_flags    = maptbx.use_space_group_symmetry,
-#      resolution_factor = 0.25)
-#    # get map_data
-#    map_fo = miller.fft_map(
-#        crystal_gridding     = cg,
-#        fourier_coefficients = mc)
-#    map_fo.apply_sigma_scaling()
-#    map_data_fofc = map_fo.real_map_unpadded()
-
     # could make crystal gridding class attribute?
     cs = self.fmodel.f_obs().crystal_symmetry()
     crystal_gridding = maptbx.crystal_gridding(
@@ -843,15 +856,17 @@ class ligand_result(object):
       space_group_info = cs.space_group_info(),
       symmetry_flags   = maptbx.use_space_group_symmetry,
       step             = 0.6)
-    # mFo-DFc map with ligand present
+    # mFo-DFc map with ligand present: unmodelled peaks or errors
     m_fofc = self.compute_maps(
       fmodel           = self.fmodel,
       crystal_gridding = crystal_gridding,
-      map_type         = "2mFo-DFc")
+      map_type         = "mFo-DFc")
 
-    # get fo-fc map values at atom centers: fo-fc
+    # compute mFo-DFc map values at atom centers
     unit_cell = self.model.crystal_symmetry().unit_cell()
-    for site_cart, _a in zip(self._atoms_ligand_noH.extract_xyz(), self._atoms_ligand_noH):
+    fofc_map_values = flex.double()
+    for site_cart, _a in zip(self._atoms_ligand_noH.extract_xyz(),
+                             self._atoms_ligand_noH):
       site_frac = unit_cell.fractionalize(site_cart)
       map_val = m_fofc.eight_point_interpolation(site_frac)
       #print(_a.id_str(), map_val)
