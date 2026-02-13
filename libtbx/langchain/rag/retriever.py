@@ -16,7 +16,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from langchain_classic.retrievers import ContextualCompressionRetriever
+from langchain.retrievers import ContextualCompressionRetriever
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import PromptTemplate
 from langchain_chroma import Chroma

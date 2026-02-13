@@ -131,6 +131,29 @@
 - Standalone SAD (no search model) unaffected by the guard
 - Files: `agent/workflow_engine.py`, `agent/directive_extractor.py`
 
+### Dependency Cleanup
+
+**Fix - Directive extractor inferring use_experimental_phasing from data**
+- LLM was setting `use_experimental_phasing: True` before xtriage ran,
+  based on data characteristics (wavelength, atom types) rather than
+  explicit user request
+- This caused `predict_and_build` to be deprioritized even when the case
+  needed AlphaFold to generate a model
+- Added CRITICAL guidance to LLM prompt: only set `use_experimental_phasing`
+  and `use_mr_sad` when user EXPLICITLY requests SAD/MAD/experimental phasing
+- The system already auto-detects anomalous signal via xtriage and adjusts
+  the workflow through the `has_anomalous` context flag
+- File: `agent/directive_extractor.py`
+
+**Removed langchain-classic dependency**
+- Replaced `langchain_classic.retrievers.ContextualCompressionRetriever` with
+  `langchain.retrievers.ContextualCompressionRetriever` in `rag/retriever.py`
+- Replaced `langchain_classic.chains.combine_documents.create_stuff_documents_chain`
+  with `langchain.chains.combine_documents.create_stuff_documents_chain`
+  in `analysis/summarizer.py`
+- Removed from README dependencies table
+- `langchain-classic` package can now be uninstalled
+
 ### Test Infrastructure Fixes
 
 **Fix - Unconditional mock modules breaking PHENIX environment tests**

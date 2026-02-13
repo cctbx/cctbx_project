@@ -89,6 +89,14 @@ Output a JSON object with these sections. Include ONLY sections that have releva
    - "use_molecular_replacement": bool - Prefer MR over experimental phasing
    - "use_mr_sad": bool - MR-SAD workflow: run phaser first to place model, then autosol with placed model
 
+**CRITICAL: use_experimental_phasing and use_mr_sad**
+- ONLY set these if the user EXPLICITLY requests SAD, MAD, experimental phasing, anomalous phasing, or MR-SAD.
+- Do NOT infer phasing method from the data files, wavelength values, or atom types.
+- The system automatically detects anomalous signal via xtriage and adjusts the workflow accordingly.
+- If the user just provides data + sequence/model without mentioning phasing method, leave these unset.
+- Examples of when to set: "use SAD phasing", "run MR-SAD", "experimental phasing with Fe", "anomalous phasing"
+- Examples of when NOT to set: user provides wavelength/atom_type but doesn't mention SAD/phasing method
+
 5. "constraints": list of strings - Other instructions that don't fit above categories
    - Keep these as clear, actionable statements
    - Examples: "Do not add waters until R-free < 0.30", "Use TLS after initial refinement"

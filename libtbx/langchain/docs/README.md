@@ -71,7 +71,7 @@ installation. Install via `phenix.python -m pip install <package>` or via the
 
 | Package | Purpose | Required on |
 |---------|---------|-------------|
-| `langchain`, `langchain-core`, `langchain-community`, `langchain-classic` | LLM orchestration and RAG pipeline | Server and local |
+| `langchain`, `langchain-core`, `langchain-community` | LLM orchestration and RAG pipeline | Server and local |
 | `langchain-google-genai` | Google Gemini LLM provider | Server and local |
 | `langchain-openai` | OpenAI LLM provider | Server and local |
 | `langchain-chroma` | Chroma vector store for document retrieval | Server and local |

@@ -1691,8 +1691,8 @@ class AgentSession:
 
         # Truncate long reasoning
         reasoning = cycle.get('reasoning', 'N/A')
-        if len(reasoning) > 300:
-            reasoning = reasoning[:300] + "..."
+        if len(reasoning) > 600:
+            reasoning = reasoning[:600] + "..."
         lines.append(f"Reasoning: {reasoning}")
 
         lines.extend([

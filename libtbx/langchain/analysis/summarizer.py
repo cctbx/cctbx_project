@@ -17,7 +17,7 @@ import os
 
 from langchain_core.documents import Document
 from langchain_core.prompts import PromptTemplate
-from langchain_classic.chains.combine_documents import create_stuff_documents_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from libtbx import group_args
