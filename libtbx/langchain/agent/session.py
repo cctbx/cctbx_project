@@ -1937,7 +1937,7 @@ class AgentSession:
 
         # Metrics that use first match (typically appear once or first occurrence is correct)
         first_match_patterns = {
-            'resolution': r'(?<!nomalous )(?<!nomalous  )[Rr]esolution[:\s=]+([0-9.]+)',
+            'resolution': r'(?<!nomalous )(?<!nomalous  )[Rr]esolution\s*[=:]\s*([0-9.]+)',
             'clashscore': r'[Cc]lashscore[:\s=]+([0-9.]+)',
             'bonds_rmsd': r'bonds.?rmsd[:\s=]+([0-9.]+)',
             'angles_rmsd': r'angles.?rmsd[:\s=]+([0-9.]+)',

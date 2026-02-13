@@ -94,6 +94,12 @@ def get_all_metric_patterns():
             metric_def['fallback_pattern'], re.IGNORECASE
           )
 
+        # Value range filters (reject obviously wrong values)
+        if 'max_value' in metric_def:
+          config['max_value'] = float(metric_def['max_value'])
+        if 'min_value' in metric_def:
+          config['min_value'] = float(metric_def['min_value'])
+
         prog_patterns[metric_name] = config
 
       except re.error as e:
@@ -207,6 +213,12 @@ def extract_metrics_for_program(log_text, program_name):
       # If no_match_pattern matched, value was already set
 
     if value is not None:
+      # Apply value range filters (reject obviously wrong values)
+      if isinstance(value, (int, float)):
+        if 'max_value' in config and value > config['max_value']:
+          continue  # Skip this metric - value too high
+        if 'min_value' in config and value < config['min_value']:
+          continue  # Skip this metric - value too low
       metrics[metric_name] = value
 
   return metrics

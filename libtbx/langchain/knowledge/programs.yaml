@@ -57,9 +57,13 @@ phenix.xtriage:
 
   log_parsing:
     resolution:
-      pattern: '(?<!nomalous )(?<!nomalous  )Resolution[:\s=]+([0-9.]+)\s*(?:Å|A|\s|$)'
+      # Match "Resolution: 2.10" or "Resolution = 2.10" but NOT "Resolution range: ..." 
+      # Requires [=:] delimiter to avoid matching low-res values from whitespace-only lines
+      # max_value rejects low-resolution limits (e.g., 47.3 from "Resolution: 47.3 2.1")
+      pattern: '(?<!nomalous )(?<!nomalous  )Resolution\s*[=:]\s*([0-9.]+)\s*(?:Å|A|\s|$)'
       type: float
       extract: last
+      max_value: 15.0
       display_name: "Resolution"
       summary_format: "{value:.2f} Å"
     anomalous_resolution:

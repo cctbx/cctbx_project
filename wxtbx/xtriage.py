@@ -178,7 +178,7 @@ class wx_output_base(mmtbx.scaling.xtriage_output):
     graph = wxtbx.plots.iotbx_data_plot_base(
       parent=self._current_panel,
       tables=[table],
-      size=(TEXT_WIDTH - 40, min(500, TEXT_WIDTH * 0.75)))
+      size=(TEXT_WIDTH - 40, min(500,  int(min(500, TEXT_WIDTH * 0.75)) )))
     graph.set_plot(table.only_plot())
     self._graphs.append((graph, table.title))
     self._current_sizer.Add(graph, 0, wx.ALL|wx.EXPAND, 5)
@@ -186,8 +186,8 @@ class wx_output_base(mmtbx.scaling.xtriage_output):
   def show_plots_row(self, tables):
     szr = wx.BoxSizer(wx.HORIZONTAL)
     self._current_sizer.Add(szr, 0, wx.EXPAND)
-    plot_w = (TEXT_WIDTH / 3) - 10
-    plot_dimensions = (plot_w, min(360, plot_w * 0.9))
+    plot_w = (TEXT_WIDTH // 3) - 10
+    plot_dimensions = (plot_w, min(360, int(min(360, plot_w * 0.9)) ))
     for table in tables :
       graph = wxtbx.plots.small_plot(
         parent=self._current_panel,

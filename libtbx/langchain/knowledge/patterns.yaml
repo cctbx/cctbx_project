@@ -294,12 +294,23 @@ metrics:
   
   resolution_from_range:
     regex: "[Rr]esolution{OPT_WS}:{OPT_WS}{FLOAT_POSITIVE}{OPT_WS}-{OPT_WS}({FLOAT_POSITIVE})"
-    description: "Extract high resolution from range"
+    description: "Extract high resolution from dash-separated range"
     examples:
       - input: "Resolution : 50.00 - 2.50"
         group_1: "2.50"
       - input: "resolution: 20.0 - 1.8"
         group_1: "1.8"
+  
+  resolution_from_range_space:
+    regex: "[Rr]esolution{WS}range{OPT_WS}:{OPT_WS}({FLOAT_POSITIVE}){WS}({FLOAT_POSITIVE})"
+    description: "Extract both values from space-separated resolution range (take min)"
+    examples:
+      - input: "Resolution range: 47.3135 2.10001"
+        group_1: "47.3135"
+        group_2: "2.10001"
+    groups:
+      1: low_resolution
+      2: high_resolution
   
   # -------------------------------------------------------------------------
   # Cryo-EM Metrics

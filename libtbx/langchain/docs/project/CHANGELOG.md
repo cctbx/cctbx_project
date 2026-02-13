@@ -1,5 +1,104 @@
 # PHENIX AI Agent - Changelog
 
+## Version 112.3 (February 2025)
+
+### Removed langchain-classic dependency
+
+**Direct implementation replaces deprecated langchain chains/retrievers**
+- Replaced `create_stuff_documents_chain` (from `langchain.chains`) with 4-line
+  direct implementation: concatenate docs → format prompt → call LLM
+- Replaced `ContextualCompressionRetriever` (from `langchain.retrievers`) with
+  minimal `_CompressionRetriever(BaseRetriever)` class using `langchain_core`
+- Zero `from langchain.` imports remain; all code uses `langchain_core`,
+  `langchain_community`, and provider-specific packages only
+- Files: `analysis/summarizer.py`, `rag/retriever.py`, `docs/README.md`
+
+### Added phenix.map_correlations support
+
+**New program in YAML registry with multi-mode input support**
+- Supports 5 input modes: model+map, model+mtz, map+map, mtz+mtz, map+mtz
+- Uses flag-based file assignment (`input_files.model=`, `input_files.map_in_1=`, etc.)
+- `map2` and `map_coeffs_2` slots set `auto_fill: false` to prevent the command
+  builder from duplicating the same file into both map slots
+- Log parsing extracts: `cc_mask`, `cc_volume`, `cc_peaks`, `cc_box`, `map_map_cc`
+- Added to both xray and cryoem `validate` phases in `workflows.yaml`
+- Added step_metrics entry (`CC_mask: {cc_mask:.3f}`) in `metrics.yaml`
+- Added quality_table row with CC_volume detail and assessment in `metrics.yaml`
+- Added `cc_mask_assessment` using same thresholds as `map_cc_assessment`
+- Files: `knowledge/programs.yaml`, `knowledge/workflows.yaml`,
+  `knowledge/metrics.yaml`, `agent/session.py`
+
+### Explicit program request handling
+
+**Hard stop for unregistered `phenix.X` requests, graceful fallback for bare names**
+- When user writes `phenix.some_program` explicitly and the program is not in
+  the YAML registry, raise Sorry with a clear message
+- When a bare name match (e.g., "anomalous signal" matching
+  `phenix.anomalous_signal`) refers to an unregistered program, silently ignore
+  the match — it's likely a false positive from natural language, not a deliberate
+  program request. The agent proceeds with its normal workflow.
+- File: `programs/ai_agent.py`
+
+**Explicit program injection into valid_programs**
+- Registered explicit programs are injected into `valid_programs` regardless of
+  workflow phase, so the LLM can select them even in early phases (e.g.,
+  `map_correlations` during `cryoem_initial`)
+- File: `agent/graph_nodes.py`
+
+**STOP override for unfulfilled explicit requests**
+- If the LLM chooses STOP but the user's explicitly requested program hasn't
+  run yet, the plan step overrides STOP and forces the explicit program
+- Checks `session_info["explicit_program"]` against history of programs run
+- File: `agent/graph_nodes.py`
+
+### Transport pipeline: explicit_program passthrough
+
+**Added `explicit_program` to three transport whitelists**
+- `build_session_state()` in `agent/api_client.py`
+- `build_request_v2()` normalization in `agent/api_client.py`
+- `session_state → session_info` mapping in `phenix_ai/run_ai_agent.py`
+- Without these, `explicit_program` was silently dropped during transport
+  from client to server, preventing injection and STOP override from working
+
+### Program name resolution fixes
+
+**Bare name ↔ `phenix.` prefix lookup fallback**
+- `get_program()` in `yaml_loader.py` now tries `phenix.` + bare_name if
+  the initial lookup returns None
+- `_resolve_program_patterns()` helper in `metric_patterns.py` does the same
+  for metric pattern lookups (used by all 3 lookup functions)
+- Root cause: `ai_agent.py` strips the prefix at line 2077
+  (`command.split()[0].replace("phenix.", "")`) before passing to metric
+  extraction, so lookups against YAML keys (which use full names) failed
+- Files: `knowledge/yaml_loader.py`, `knowledge/metric_patterns.py`
+
+### Metric display pattern fixes
+
+**Regex patterns match both raw log and reformatted report formats**
+- `format_metrics_report()` transforms `cc_mask` → `Cc Mask` via
+  `.replace("_", " ").title()`, so result text stored in cycles uses
+  the reformatted form
+- Updated all CC patterns in `_extract_final_metrics()` to use
+  `CC[_ ]?mask` with `re.IGNORECASE` to match both formats
+- Updated `map_cc` pattern in `_extract_metrics_from_result()` similarly
+- File: `agent/session.py`
+
+### Minor fixes
+
+**Reasoning truncation increased**
+- Main reasoning: 500 → 1000 chars
+- Session summary reasoning: 300 → 600 chars
+- Files: `programs/ai_agent.py`, `agent/session.py`
+
+**False input_directory warning fixed**
+- When user supplies `original_files` directly, no longer warns
+  "No input_directory to look for files" if files already present
+- File: `programs/ai_agent.py`
+
+**Unused import removed**
+- Removed `from langchain_core.documents import Document as LCDocument`
+  from `rag/retriever.py`
+
 ## Version 112.2 (February 2025)
 
 ### Cohere → FlashRank Migration

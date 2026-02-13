@@ -2,7 +2,7 @@
 
 This document traces through how the PHENIX AI Agent would handle standard crystallography cases, based on the YAML configurations and workflow engine logic.
 
-**Updated for v110** - Includes dual MTZ tracking, stepwise mode, and error recovery. Code-level improvements in v111-v112 (metrics extraction, summary display) do not change workflow traces.
+**Updated for v110** - Includes dual MTZ tracking, stepwise mode, and error recovery. Code-level improvements in v111-v112.3 (metrics extraction, summary display, map_correlations, explicit program handling) do not change workflow traces.
 
 ---
 

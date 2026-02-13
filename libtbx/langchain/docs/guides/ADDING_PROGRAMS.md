@@ -93,6 +93,13 @@ phenix.new_program:
       optional_input:
         extensions: [.ext]
         flag: "optional_flag="
+        # Set auto_fill: false to prevent the command builder from
+        # automatically filling this slot with a matching file.
+        # Use when a slot should only be filled if the LLM or user
+        # explicitly assigns a file to it (e.g., a second map for
+        # map-map correlation — without this, both map slots would
+        # get the same file).
+        auto_fill: false  # Default is true
 
   # Control which file categories are preferred for each input
   # IMPORTANT: Without this, the agent may select wrong files!
@@ -413,6 +420,105 @@ summary_display:
 ```
 
 That's it - **only 3 files modified**, and most of the content is in programs.yaml!
+
+---
+
+## Example: Adding phenix.map_correlations (Multi-Mode Inputs)
+
+This example demonstrates a program with multiple input modes (model+map, map+map,
+mtz+mtz) where `auto_fill: false` prevents the command builder from duplicating files.
+
+### programs.yaml
+
+```yaml
+phenix.map_correlations:
+  description: "Compute map-model or map-map correlation coefficients"
+  category: validation
+  experiment_types: [xray, cryoem]
+
+  inputs:
+    # All inputs are optional — different modes use different combinations
+    optional:
+      model:
+        extensions: [.pdb, .cif]
+        description: "Model file"
+        flag: "input_files.model="
+      full_map:
+        extensions: [.ccp4, .mrc, .map]
+        description: "Map 1"
+        flag: "input_files.map_in_1="
+      map2:
+        extensions: [.ccp4, .mrc, .map]
+        description: "Map 2 for map-map CC"
+        flag: "input_files.map_in_2="
+        auto_fill: false  # CRITICAL: prevents same map filling both slots
+      data_mtz:
+        extensions: [.mtz]
+        description: "Map coefficients 1"
+        flag: "input_files.map_coeffs_1="
+      map_coeffs_2:
+        extensions: [.mtz]
+        description: "Map coefficients 2"
+        flag: "input_files.map_coeffs_2="
+        auto_fill: false  # Same reason as map2
+
+  command: "phenix.map_correlations"  # Files appended via flags
+
+  log_parsing:
+    cc_mask:
+      pattern: "CC_mask\\s*[=:]\\s*([0-9.]+)"
+      type: float
+      display_name: "CC_mask"
+      summary_format: "{value:.3f}"
+    cc_volume:
+      pattern: "CC_volume\\s*[=:]\\s*([0-9.]+)"
+      type: float
+      display_name: "CC_volume"
+      summary_format: "{value:.3f}"
+    # ... additional metrics
+```
+
+**Key design decisions:**
+
+1. **All inputs optional:** Different modes need different combinations. The command
+   builder appends only the slots that have files assigned.
+
+2. **`auto_fill: false` on secondary slots:** Without this, if the user provides one
+   `.ccp4` map, the builder would auto-fill both `full_map` AND `map2` with the same
+   file, producing a meaningless self-correlation command.
+
+3. **Flag-based append:** No `{placeholder}` in the command template. Files are
+   appended as `flag + filepath` (e.g., `input_files.model=/path/to/model.pdb`).
+
+### metrics.yaml additions
+
+```yaml
+# In summary_display.step_metrics:
+phenix.map_correlations:
+  format: "CC_mask: {cc_mask:.3f}"
+  metrics: [cc_mask]
+  fallback_format: "Computed correlations"
+
+# In summary_display.quality_table:
+- metrics: [cc_mask]
+  label: "CC_mask"
+  format: "{cc_mask:.3f}"
+  detail_format: "CC_volume: {cc_volume:.3f}"
+  detail_metrics: [cc_volume]
+  assessment: true
+```
+
+### Important: Pattern matching for reformatted metrics
+
+The `format_metrics_report()` function transforms metric keys via
+`.replace("_", " ").title()`, so `cc_mask` becomes `Cc Mask` in the result text
+stored in cycle records. Any hardcoded regex patterns in `session.py` must match
+both forms:
+
+```python
+# Matches both "CC_mask  : 0.849" (raw log) and "Cc Mask: 0.849" (report)
+r'CC[_ ]?mask\s*[=:]\s*([0-9.]+)'  # with re.IGNORECASE
+```
 
 ---
 

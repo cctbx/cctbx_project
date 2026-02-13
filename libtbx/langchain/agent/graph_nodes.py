@@ -757,6 +757,17 @@ def _fallback_extract_metrics(log_text):
 
     resolution = patterns.extract_float("metrics.resolution_from_range", log_text, flags=re.IGNORECASE)
     if resolution is None:
+        # Try space-separated range: "Resolution range: 47.3135 2.10001"
+        if patterns.has_pattern("metrics.resolution_from_range_space"):
+            range_match = patterns.search("metrics.resolution_from_range_space", log_text, flags=re.IGNORECASE)
+            if range_match:
+                try:
+                    val1 = float(range_match.group(1))
+                    val2 = float(range_match.group(2))
+                    resolution = min(val1, val2)
+                except (ValueError, IndexError):
+                    pass
+    if resolution is None:
         resolution = patterns.extract_float("metrics.resolution", log_text, flags=re.IGNORECASE)
     if resolution is not None:
         analysis["resolution"] = resolution

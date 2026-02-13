@@ -30,6 +30,10 @@ phenix.ai_agent use_rules_only=True original_files="data.mtz sequence.fa"
 
 # Control output verbosity
 phenix.ai_agent verbosity=verbose original_files="data.mtz sequence.fa"
+
+# Run a specific program
+phenix.ai_agent original_files="model.pdb map.ccp4" \
+    project_advice="Run phenix.map_correlations"
 ```
 
 ## Documentation Index
@@ -71,7 +75,7 @@ installation. Install via `phenix.python -m pip install <package>` or via the
 
 | Package | Purpose | Required on |
 |---------|---------|-------------|
-| `langchain`, `langchain-core`, `langchain-community` | LLM orchestration and RAG pipeline | Server and local |
+| `langchain-core`, `langchain-community` | LLM orchestration core and community integrations | Server and local |
 | `langchain-google-genai` | Google Gemini LLM provider | Server and local |
 | `langchain-openai` | OpenAI LLM provider | Server and local |
 | `langchain-chroma` | Chroma vector store for document retrieval | Server and local |
@@ -80,6 +84,11 @@ installation. Install via `phenix.python -m pip install <package>` or via the
 
 **Note:** `flashrank` downloads its model (~34MB) automatically on first use.
 No Cohere API key is required — reranking runs entirely locally.
+
+**Note:** The `langchain-classic` package is **not required**. The agent implements
+document chain and compression retriever functionality directly using `langchain-core`
+base classes, avoiding the deprecated `langchain.chains` and `langchain.retrievers`
+modules.
 
 ---
 
@@ -186,6 +195,29 @@ When the agent can't fulfill a request, it explains why:
   Suggestion: This program requires different conditions.
 ============================================================
 ```
+
+### 8. Explicit Program Requests
+
+Users can request a specific program via `project_advice`:
+
+```bash
+# Explicit request with phenix. prefix (unambiguous)
+project_advice="Run phenix.map_correlations"
+
+# The agent will:
+# 1. Verify the program exists in the registry
+# 2. Inject it into valid_programs (bypassing workflow phase restrictions)
+# 3. Override STOP if the program hasn't run yet
+# 4. Relax red-flag checking (user knows what files they have)
+```
+
+**Behavior for unregistered programs:**
+
+| Request Form | In Registry? | Behavior |
+|-------------|-------------|----------|
+| `phenix.X` in advice | Yes | Run it (injected, STOP override) |
+| `phenix.X` in advice | No | Sorry error (user clearly named it) |
+| Bare name match (e.g., "anomalous signal") | No | Silently ignored (likely false positive) |
 
 ---
 
