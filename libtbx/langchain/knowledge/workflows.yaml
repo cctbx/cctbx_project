@@ -196,6 +196,9 @@ xray:
         - program: phenix.model_vs_data
           optional: true
 
+        - program: phenix.map_correlations
+          optional: true
+
         - program: phenix.polder
           conditions:
             - has: model
@@ -480,6 +483,9 @@ cryoem:
           required: true
 
         - program: phenix.validation_cryoem
+          optional: true
+
+        - program: phenix.map_correlations
           optional: true
 
       transitions:

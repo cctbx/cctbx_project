@@ -1489,6 +1489,83 @@ phenix.molprobity:
     - "Run after refinement to check model quality"
 
 
+phenix.map_correlations:
+  description: "Compute map-model or map-map correlation"
+  category: validation
+  experiment_types: [xray, cryoem]
+  run_once: false
+
+  # All inputs are optional because the program supports multiple modes:
+  #   Mode 1: model + map → map-model CC (cryo-EM)
+  #   Mode 2: model + map_coefficients → map-model CC (X-ray)
+  #   Mode 3: two maps → map-map CC
+  #   Mode 4: two map_coefficients → map-map CC
+  #   Mode 5: map + map_coefficients → map-map CC
+  inputs:
+    optional:
+      model:
+        extensions: [.pdb, .cif]
+        description: "Atomic model (for map-model CC)"
+        flag: "input_files.model="
+      full_map:
+        extensions: [.ccp4, .mrc, .map]
+        description: "Map 1 (CCP4/MRC format)"
+        flag: "input_files.map_in_1="
+      map2:
+        extensions: [.ccp4, .mrc, .map]
+        description: "Map 2 for map-map CC"
+        flag: "input_files.map_in_2="
+      data_mtz:
+        extensions: [.mtz]
+        description: "Map coefficients 1 (MTZ format)"
+        flag: "input_files.map_coeffs_1="
+      map_coeffs_2:
+        extensions: [.mtz]
+        description: "Map coefficients 2 for map-map CC"
+        flag: "input_files.map_coeffs_2="
+
+  # Prefer original maps for correlation, not half-maps
+  input_priorities:
+    full_map:
+      categories: [full_map, optimized_full_map, map]
+      exclude_categories: [half_map]
+
+  outputs:
+    log: true
+    description: "Map-model correlation (CC_mask, CC_volume) or map-map CC"
+
+  command: "phenix.map_correlations"
+
+  strategy_flags:
+    resolution:
+      flag: "resolution={value}"
+      type: float
+
+  log_parsing:
+    metrics:
+      cc_mask:
+        pattern: "CC_mask\\s*[=:]\\s*([0-9.]+)"
+        type: float
+        display_name: "CC_mask"
+        summary_format: "{value:.3f}"
+      cc_volume:
+        pattern: "CC_volume\\s*[=:]\\s*([0-9.]+)"
+        type: float
+        display_name: "CC_volume"
+        summary_format: "{value:.3f}"
+      map_map_cc:
+        pattern: "map-map CC\\s*[=:]\\s*([0-9.]+)"
+        type: float
+        display_name: "Map-Map CC"
+        summary_format: "{value:.3f}"
+
+  hints:
+    - "Use to assess map-model agreement or map-map similarity"
+    - "For map-model CC: provide a model + one map or map coefficients"
+    - "For map-map CC: provide two maps or two sets of map coefficients (no model)"
+    - "For cryo-EM: use full_map (.ccp4/.mrc). For X-ray: use data_mtz (.mtz)"
+
+
 phenix.model_vs_data:
   description: "Quick check of model-data agreement to verify model placement"
   category: validation

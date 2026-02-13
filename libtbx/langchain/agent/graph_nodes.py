@@ -431,6 +431,17 @@ def perceive(state):
         directives=state.get("directives", {})
     )
 
+    # If user explicitly requested a program, inject it into valid_programs
+    # regardless of workflow phase (the user knows what they want)
+    session_info = state.get("session_info", {})
+    explicit_prog = session_info.get("explicit_program")
+    if explicit_prog:
+        valid_progs = workflow_state.get("valid_programs", [])
+        if explicit_prog not in valid_progs:
+            valid_progs.append(explicit_prog)
+            workflow_state["valid_programs"] = valid_progs
+            state = _log(state, "PERCEIVE: Injected explicit program request: %s" % explicit_prog)
+
     # Debug categorization (helps diagnose model vs search_model issues)
     categorized = workflow_state.get("categorized_files", {})
     model_files = categorized.get("model", [])
