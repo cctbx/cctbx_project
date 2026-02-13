@@ -54,8 +54,8 @@ jobs:
   - script: |
       set -xe
       cd $(Pipeline.Workspace)/modules/dxtbx
-      git checkout dials-3.22
-    displayName: Select dxtbx 3.22 branch
+      git checkout dials-3.24
+    displayName: Select dxtbx 3.24 branch
 
   # change optimization level (linux, macOS)
   - script: |
