@@ -20,6 +20,9 @@ master_params_str = """
 validate_ligands {
 resolution = None
   .type = float
+ligand_code = None
+  .type = str
+  .multiple = True
 nproc = 1
   .type = int
 model_fn_reduce2 = None
@@ -124,13 +127,15 @@ class manager(list):
           for conformer in rg.conformers():
             residue = conformer.only_residue()
             resname = residue.resname
+            if self.params.ligand_code:
+              if resname.strip() not in self.params.ligand_code:
+                continue
             if (not get_class(name=resname) in exclude):
               iselection = residue.atoms().extract_i_seq()
               sel_str = 'chain %s and resseq %s and resname %s ' % (chain.id,
                 rg.resseq_as_int(), resname)
               if conformer.altloc:
                 sel_str = sel_str + ' and altloc %s' % conformer.altloc
-              #print(sel_str)
               yield iselection, sel_str
 
   # ----------------------------------------------------------------------------

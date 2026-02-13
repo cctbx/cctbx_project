@@ -18,9 +18,6 @@ from libtbx import group_args
 
 master_phil_str = """
 include scope mmtbx.validation.validate_ligands.master_params
-ligand_code = None
-  .type = str
-  .multiple = True
 scattering_table = *n_gaussian wk1995 it1992 neutron electron
   .type = choice
   .short_caption = Scattering table
@@ -179,6 +176,11 @@ RSCC.
       print('No ligands found. Exiting.', file=self.logger)
       return
 
+    if self.params.validate_ligands.ligand_code:
+      print('\nFocusing on the following ligands only:', file=self.logger)
+      for lc in self.params.validate_ligands.ligand_code:
+        print('\t', lc, file=self.logger)
+
     # hack to get rid of element X
     if ' X' in m.get_hierarchy().atoms().extract_element():
       m = m.select(~m.selection('element X'))
@@ -246,7 +248,6 @@ RSCC.
     #self.data_manager.write_real_map_file(map_manager,filename="my_map.map")
     #self.data_manager.write_model_file(self.working_model,filename="my_model.pdb")
 
-
     #t0 = time.time()
     ligand_manager = validate_ligands.manager(
       model = self.working_model,
@@ -258,10 +259,6 @@ RSCC.
     ligand_manager.show_ligand_counts()
     ligand_manager.show_sites_within()
     ligand_manager.show_table(out=self.logger)
-    # ligand_manager.show_ligand_occupancies()
-    # ligand_manager.show_adps()
-    # ligand_manager.show_ccs()
-    # ligand_manager.show_nonbonded_overlaps()
 
     self.ligand_manager = ligand_manager
     #print('time running manager: ', time.time()-t0)
