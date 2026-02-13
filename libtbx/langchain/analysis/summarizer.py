@@ -17,7 +17,6 @@ import os
 
 from langchain_core.documents import Document
 from langchain_core.prompts import PromptTemplate
-from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from libtbx import group_args
@@ -686,8 +685,15 @@ async def summarize_log_text(
     debug_print("COMBINE PROMPT TEMPLATE:")
     debug_print(combine_prompt.template[:500] + "...")
 
-    reduce_chain = create_stuff_documents_chain(llm, combine_prompt)
-    final_output = reduce_chain.invoke({"context": summary_docs})
+    # Combine summary documents and invoke LLM
+    # (replaces langchain create_stuff_documents_chain which was removed in langchain 1.0)
+    combined_text = "\n\n".join(
+        doc.page_content for doc in summary_docs if hasattr(doc, 'page_content')
+    )
+    from langchain_core.messages import HumanMessage
+    prompt_text = combine_prompt.format(context=combined_text)
+    response = llm.invoke([HumanMessage(content=prompt_text)])
+    final_output = response.content if hasattr(response, 'content') else str(response)
 
     debug_print(f"\n--- FINAL OUTPUT ({len(final_output)} chars) ---")
     debug_print("=" * 60)

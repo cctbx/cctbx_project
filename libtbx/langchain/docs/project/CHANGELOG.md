@@ -146,11 +146,18 @@
 - File: `agent/directive_extractor.py`
 
 **Removed langchain-classic dependency**
-- Replaced `langchain_classic.retrievers.ContextualCompressionRetriever` with
-  `langchain.retrievers.ContextualCompressionRetriever` in `rag/retriever.py`
-- Replaced `langchain_classic.chains.combine_documents.create_stuff_documents_chain`
-  with `langchain.chains.combine_documents.create_stuff_documents_chain`
-  in `analysis/summarizer.py`
+- In langchain 1.0+, `langchain.chains` and `langchain.retrievers` were
+  removed and moved to `langchain_classic`. Rather than depending on the
+  legacy package, implemented the functionality directly:
+- `analysis/summarizer.py`: Replaced `create_stuff_documents_chain` with
+  direct document concatenation + LLM invoke (the function just joins
+  document text and passes it through a prompt template)
+- `rag/retriever.py`: Replaced `ContextualCompressionRetriever` with
+  `_CompressionRetriever`, a minimal `BaseRetriever` subclass that
+  retrieves docs then reranks via the compressor — uses `langchain_core`
+  which is still maintained
+- All `from langchain.` imports eliminated — code now only uses
+  `langchain_core`, `langchain_community`, and provider packages
 - Removed from README dependencies table
 - `langchain-classic` package can now be uninstalled
 

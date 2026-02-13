@@ -16,11 +16,33 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from langchain.retrievers import ContextualCompressionRetriever
+from langchain_core.retrievers import BaseRetriever
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import PromptTemplate
 from langchain_chroma import Chroma
 assert PromptTemplate is not None
+
+
+class _CompressionRetriever(BaseRetriever):
+    """Minimal replacement for langchain ContextualCompressionRetriever.
+
+    Retrieves documents from a base retriever then reranks/compresses them
+    using a document compressor. Implements BaseRetriever so it works in
+    LCEL chains (e.g., retriever | format_docs | llm).
+
+    This replaces langchain.retrievers.ContextualCompressionRetriever which
+    was removed in langchain 1.0 (moved to langchain_classic).
+    """
+    base_compressor: object  # BaseDocumentCompressor
+    base_retriever: object   # BaseRetriever
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    def _get_relevant_documents(self, query, *, run_manager=None):
+        docs = self.base_retriever.invoke(query)
+        compressed = self.base_compressor.compress_documents(docs, query)
+        return list(compressed)
 
 
 # =============================================================================
@@ -63,7 +85,7 @@ def create_reranking_retriever(vectorstore, llm, timeout=60, top_n=8):
         top_n: Number of top results to return after reranking
 
     Returns:
-        ContextualCompressionRetriever: Retriever with reranking
+        BaseRetriever: Retriever with reranking
 
     Example:
         retriever = create_reranking_retriever(vectorstore, llm, top_n=5)
@@ -79,7 +101,7 @@ def create_reranking_retriever(vectorstore, llm, timeout=60, top_n=8):
         top_n=top_n,
     )
 
-    compression_retriever = ContextualCompressionRetriever(
+    compression_retriever = _CompressionRetriever(
         base_compressor=reranker, base_retriever=base_retriever
     )
 
