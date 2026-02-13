@@ -704,6 +704,14 @@ summary_display:
       experiment_types: [cryoem]
       assessment: true
 
+    # Map-model correlation (from map_correlations)
+    - metrics: [cc_mask]
+      label: "CC_mask"
+      format: "{cc_mask:.3f}"
+      detail_format: "CC_volume: {cc_volume:.3f}"
+      detail_metrics: [cc_volume]
+      assessment: true
+
     # Symmetry (cryo-EM)
     - metrics: [symmetry_type]
       label: "Symmetry"
@@ -813,6 +821,11 @@ summary_display:
     phenix.validation_cryoem:
       format: "Validated"
       metrics: []
+
+    phenix.map_correlations:
+      format: "CC_mask: {cc_mask:.3f}"
+      metrics: [cc_mask]
+      fallback_format: "Computed correlations"
 
     # Map optimization
     phenix.resolve_cryo_em:

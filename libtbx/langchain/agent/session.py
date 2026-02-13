@@ -1944,7 +1944,8 @@ class AgentSession:
             'tfz': r'TFZ[:\s=]+([0-9.]+)',
             'llg': r'LLG[:\s=]+([0-9.]+)',
             # CC_mask is the primary format from real_space_refine
-            'map_cc': r'(?:CC_mask|[Mm]ap[-_\s]?CC|[Mm]odel[-_\s]?vs[-_\s]?map\s+CC)\s*[:=]?\s*([0-9.]+)',
+            # Also matches report format "Cc Mask" (from format_metrics_report)
+            'map_cc': r'(?:CC[_ ]?mask|[Mm]ap[-_\s]?CC|[Mm]odel[-_\s]?vs[-_\s]?map\s+CC)\s*[:=]?\s*([0-9.]+)',
             'completeness': r'[Cc]ompleteness[:\s=]+([0-9.]+)',
             # NCS metrics from map_symmetry
             'ncs_cc': r'[Nn]cs\s*[Cc][Cc][:\s=]+([0-9.]+)',
@@ -2421,6 +2422,36 @@ FINAL REPORT:"""
                 elif cycle_metrics.get("map_cc"):
                     metrics["map_cc"] = float(cycle_metrics["map_cc"])
 
+            # Map-model correlations (from phenix.map_correlations)
+            # Matches both raw log "CC_mask  : 0.849" and report "Cc Mask: 0.849"
+            if "cc_mask" not in metrics:
+                match = re.search(r'CC[_ ]?mask\s*[=:]\s*([0-9.]+)', result, re.IGNORECASE)
+                if match:
+                    metrics["cc_mask"] = float(match.group(1))
+                elif cycle_metrics.get("cc_mask"):
+                    metrics["cc_mask"] = float(cycle_metrics["cc_mask"])
+
+            if "cc_volume" not in metrics:
+                match = re.search(r'CC[_ ]?volume\s*[=:]\s*([0-9.]+)', result, re.IGNORECASE)
+                if match:
+                    metrics["cc_volume"] = float(match.group(1))
+                elif cycle_metrics.get("cc_volume"):
+                    metrics["cc_volume"] = float(cycle_metrics["cc_volume"])
+
+            if "cc_peaks" not in metrics:
+                match = re.search(r'CC[_ ]?peaks\s*[=:]\s*([0-9.]+)', result, re.IGNORECASE)
+                if match:
+                    metrics["cc_peaks"] = float(match.group(1))
+                elif cycle_metrics.get("cc_peaks"):
+                    metrics["cc_peaks"] = float(cycle_metrics["cc_peaks"])
+
+            if "cc_box" not in metrics:
+                match = re.search(r'CC[_ ]?box\s*[=:]\s*([0-9.]+)', result, re.IGNORECASE)
+                if match:
+                    metrics["cc_box"] = float(match.group(1))
+                elif cycle_metrics.get("cc_box"):
+                    metrics["cc_box"] = float(cycle_metrics["cc_box"])
+
             # Geometry
             if "clashscore" not in metrics:
                 match = re.search(r'[Cc]lashscore[:\s=]+([0-9.]+)', result)
@@ -2504,6 +2535,9 @@ FINAL REPORT:"""
 
         if "map_cc" in metrics:
             metrics["map_cc_assessment"] = self._assess_map_cc(metrics["map_cc"])
+
+        if "cc_mask" in metrics:
+            metrics["cc_mask_assessment"] = self._assess_map_cc(metrics["cc_mask"])
 
         if "clashscore" in metrics:
             metrics["clashscore_assessment"] = self._assess_clashscore(metrics["clashscore"])

@@ -136,6 +136,14 @@ def _convert_value(value_str, value_type):
     return value_str
 
 
+def _resolve_program_patterns(all_patterns, program_name):
+  """Look up patterns trying both bare name and phenix.-prefixed name."""
+  prog_patterns = all_patterns.get(program_name, {})
+  if not prog_patterns and program_name and not program_name.startswith("phenix."):
+    prog_patterns = all_patterns.get("phenix." + program_name, {})
+  return prog_patterns
+
+
 def extract_metrics_for_program(log_text, program_name):
   """
   Extract metrics for a specific program using YAML patterns.
@@ -151,7 +159,7 @@ def extract_metrics_for_program(log_text, program_name):
     return {}
 
   all_patterns = get_all_metric_patterns()
-  prog_patterns = all_patterns.get(program_name, {})
+  prog_patterns = _resolve_program_patterns(all_patterns, program_name)
 
   if not prog_patterns:
     return {}
@@ -216,7 +224,7 @@ def get_metric_display_config(program_name, metric_name):
       dict with display_name, summary_format, etc. or empty dict
   """
   all_patterns = get_all_metric_patterns()
-  prog_patterns = all_patterns.get(program_name, {})
+  prog_patterns = _resolve_program_patterns(all_patterns, program_name)
   return prog_patterns.get(metric_name, {})
 
 
@@ -231,7 +239,7 @@ def get_program_metrics(program_name):
       list of metric names
   """
   all_patterns = get_all_metric_patterns()
-  prog_patterns = all_patterns.get(program_name, {})
+  prog_patterns = _resolve_program_patterns(all_patterns, program_name)
   return list(prog_patterns.keys())
 
 

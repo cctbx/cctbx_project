@@ -1140,6 +1140,19 @@ def plan(state):
             state = _log(state, "PLAN: LLM set stop=true but also chose valid program %s, running program" % chosen_program)
             intent["stop"] = False  # Clear the stop flag since we have a valid program to run
 
+        # Override STOP if user explicitly requested a program that hasn't run yet
+        if chosen_program == "STOP":
+            explicit_prog = session_info.get("explicit_program")
+            if explicit_prog and explicit_prog in valid_programs:
+                history = state.get("history", [])
+                programs_run = {h.get("program") for h in history if isinstance(h, dict)}
+                if explicit_prog not in programs_run:
+                    state = _log(state, "PLAN: Overriding STOP - user explicitly requested %s which hasn't run yet" % explicit_prog)
+                    chosen_program = explicit_prog
+                    intent["program"] = explicit_prog
+                    intent["stop"] = False
+                    intent["reasoning"] = "Running user-requested program: %s" % explicit_prog
+
         # Simple validation: is the chosen program in valid_programs?
         if chosen_program is None or chosen_program not in valid_programs:
             if valid_programs:

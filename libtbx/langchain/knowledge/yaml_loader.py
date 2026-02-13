@@ -195,7 +195,11 @@ def get_program(program_name):
         dict: Program definition or None if not found
     """
     programs = load_programs()
-    return programs.get(program_name)
+    result = programs.get(program_name)
+    # Try with phenix. prefix if bare name didn't match
+    if result is None and program_name and not program_name.startswith("phenix."):
+        result = programs.get("phenix." + program_name)
+    return result
 
 
 def get_all_programs():

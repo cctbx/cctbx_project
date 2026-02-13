@@ -84,6 +84,10 @@ def build_session_state(session_info, session_resolution=None):
             if session_info.get(key):
                 session_state[key] = session_info[key]
 
+        # Explicit program request (from user advice)
+        if session_info.get("explicit_program"):
+            session_state["explicit_program"] = session_info["explicit_program"]
+
     return session_state
 
 
@@ -176,6 +180,9 @@ def build_request_v2(
             normalized_session_state["force_retry_program"] = session_state["force_retry_program"]
         if session_state.get("recovery_strategies"):
             normalized_session_state["recovery_strategies"] = dict(session_state["recovery_strategies"])
+        # Explicit program request
+        if session_state.get("explicit_program"):
+            normalized_session_state["explicit_program"] = session_state["explicit_program"]
 
     # Build settings
     settings = {

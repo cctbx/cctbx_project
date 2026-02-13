@@ -1515,6 +1515,7 @@ phenix.map_correlations:
         extensions: [.ccp4, .mrc, .map]
         description: "Map 2 for map-map CC"
         flag: "input_files.map_in_2="
+        auto_fill: false
       data_mtz:
         extensions: [.mtz]
         description: "Map coefficients 1 (MTZ format)"
@@ -1523,6 +1524,7 @@ phenix.map_correlations:
         extensions: [.mtz]
         description: "Map coefficients 2 for map-map CC"
         flag: "input_files.map_coeffs_2="
+        auto_fill: false
 
   # Prefer original maps for correlation, not half-maps
   input_priorities:
@@ -1542,22 +1544,31 @@ phenix.map_correlations:
       type: float
 
   log_parsing:
-    metrics:
-      cc_mask:
-        pattern: "CC_mask\\s*[=:]\\s*([0-9.]+)"
-        type: float
-        display_name: "CC_mask"
-        summary_format: "{value:.3f}"
-      cc_volume:
-        pattern: "CC_volume\\s*[=:]\\s*([0-9.]+)"
-        type: float
-        display_name: "CC_volume"
-        summary_format: "{value:.3f}"
-      map_map_cc:
-        pattern: "map-map CC\\s*[=:]\\s*([0-9.]+)"
-        type: float
-        display_name: "Map-Map CC"
-        summary_format: "{value:.3f}"
+    cc_mask:
+      pattern: "CC_mask\\s*[=:]\\s*([0-9.]+)"
+      type: float
+      display_name: "CC_mask"
+      summary_format: "{value:.3f}"
+    cc_volume:
+      pattern: "CC_volume\\s*[=:]\\s*([0-9.]+)"
+      type: float
+      display_name: "CC_volume"
+      summary_format: "{value:.3f}"
+    cc_peaks:
+      pattern: "CC_peaks\\s*[=:]\\s*([0-9.]+)"
+      type: float
+      display_name: "CC_peaks"
+      summary_format: "{value:.3f}"
+    cc_box:
+      pattern: "CC_box\\s*[=:]\\s*([0-9.]+)"
+      type: float
+      display_name: "CC_box"
+      summary_format: "{value:.3f}"
+    map_map_cc:
+      pattern: "map-map CC\\s*[=:]\\s*([0-9.]+)"
+      type: float
+      display_name: "Map-Map CC"
+      summary_format: "{value:.3f}"
 
   hints:
     - "Use to assess map-model agreement or map-map similarity"
