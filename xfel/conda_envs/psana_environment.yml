@@ -76,7 +76,7 @@ dependencies:
  - PyRTF
 
  # xfel gui
- - mysql=8
+ - mysql
  - mysqlclient
  - pydrive2
 

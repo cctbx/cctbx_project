@@ -14,7 +14,7 @@ SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='TRADITIONAL,ALLOW_INVALID_DATES';
 -- -----------------------------------------------------
 -- Schema mydb
 -- -----------------------------------------------------
-CREATE SCHEMA IF NOT EXISTS `mydb` DEFAULT CHARACTER SET utf8 ;
+CREATE SCHEMA IF NOT EXISTS `mydb` DEFAULT CHARACTER SET utf8mb4 ;
 USE `mydb` ;
 
 -- -----------------------------------------------------
@@ -170,6 +170,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`event` (
   `two_theta_low` DOUBLE NULL,
   `two_theta_high` DOUBLE NULL,
   PRIMARY KEY (`id`, `run_id`, `trial_id`, `rungroup_id`),
+  UNIQUE INDEX `id_run_id_UNIQUE` (`id` ASC, `run_id` ASC),
   INDEX `fk_event_run1_idx` (`run_id` ASC),
   INDEX `fk_event_trial1_idx` (`trial_id` ASC),
   INDEX `fk_event_rungroup1_idx` (`rungroup_id` ASC),
@@ -199,6 +200,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`isoform` (
   `name` VARCHAR(45) NOT NULL,
   `trial_id` INT NOT NULL,
   PRIMARY KEY (`id`, `trial_id`),
+  UNIQUE INDEX `id_UNIQUE` (`id` ASC),
   INDEX `fk_isoform_trial1_idx` (`trial_id` ASC),
   CONSTRAINT `fk_isoform_trial1`
     FOREIGN KEY (`trial_id`)
@@ -261,6 +263,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`bin` (
   `total_hkl` INT NULL,
   `cell_id` INT NOT NULL,
   PRIMARY KEY (`id`, `cell_id`),
+  UNIQUE INDEX `id_UNIQUE` (`id` ASC),
   INDEX `fk_bin_cell1_idx` (`cell_id` ASC),
   CONSTRAINT `fk_bin_cell1`
     FOREIGN KEY (`cell_id`)
@@ -289,6 +292,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`crystal` (
   `ewald_proximal_volume` DOUBLE NULL,
   `cell_id` INT NOT NULL,
   PRIMARY KEY (`id`, `cell_id`),
+  UNIQUE INDEX `id_UNIQUE` (`id` ASC),
   INDEX `fk_crystal_cell1_idx` (`cell_id` ASC),
   CONSTRAINT `fk_crystal_cell1`
     FOREIGN KEY (`cell_id`)
@@ -492,6 +496,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`dataset_version` (
   `dataset_id` INT NOT NULL,
   `version` INT NOT NULL,
   PRIMARY KEY (`id`, `dataset_id`),
+  UNIQUE INDEX `id_UNIQUE` (`id` ASC),
   INDEX `fk_dataset_version_dataset1_idx` (`dataset_id` ASC),
   CONSTRAINT `fk_dataset_version_dataset1`
     FOREIGN KEY (`dataset_id`)
