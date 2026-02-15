@@ -325,7 +325,7 @@ cryoem:
             - has: half_map
             - not_has: full_map
             - not_done: resolve_cryo_em  # Map optimization should only run once
-          hint: "Create optimized map from half-maps"
+          hint: "Density modification to create optimized map from half-maps (NOT model building)"
 
         - program: phenix.map_sharpening
           conditions:
@@ -357,7 +357,7 @@ cryoem:
             - has: half_map
             - not_has: full_map
             - not_done: resolve_cryo_em
-          hint: "Create optimized full map from half-maps before docking"
+          hint: "Density modification: create optimized full map from half-maps before docking (NOT model building)"
 
         - program: phenix.map_sharpening
           conditions:

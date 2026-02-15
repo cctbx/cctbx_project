@@ -659,6 +659,25 @@ You MUST choose from the valid programs above, or set "stop": true.
                 "predict_and_build" in valid_list):
                 workflow_section += "NOTE: Use predict_and_build with strategy: {\"stop_after_predict\": true}\n"
 
+        # Add program descriptions so LLM understands each program's purpose
+        try:
+            from libtbx.langchain.knowledge.yaml_loader import get_program
+        except ImportError:
+            try:
+                from knowledge.yaml_loader import get_program
+            except ImportError:
+                get_program = None
+        if get_program:
+            desc_lines = []
+            for prog in workflow_state.get("valid_programs", []):
+                if prog == "STOP":
+                    continue
+                prog_def = get_program(prog)
+                if prog_def and prog_def.get("description"):
+                    desc_lines.append("  - %s: %s" % (prog, prog_def["description"]))
+            if desc_lines:
+                workflow_section += "\nProgram descriptions:\n" + "\n".join(desc_lines) + "\n"
+
         # Add recommendations section if available
         recommendations = format_recommendations_for_prompt(workflow_state)
         if recommendations:

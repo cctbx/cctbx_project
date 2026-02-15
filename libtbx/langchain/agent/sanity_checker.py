@@ -211,6 +211,10 @@ class SanityChecker:
 
         If user has only search_model but requests refinement, give a specific
         error explaining they need to run Phaser/docking first.
+
+        EXCEPTION: If Phaser/dock_in_map haven't run yet, this is a normal
+        workflow progression — the agent should be allowed to proceed so it
+        can choose the positioning program.
         """
         state = context.get("state", "")
 
@@ -234,9 +238,25 @@ class SanityChecker:
 
         if not has_model:
             if has_search_model:
-                # User has templates but no positioned model - common mistake!
+                # Check if model-positioning programs haven't been attempted yet.
+                # If so, this is normal workflow progression — the agent should
+                # be allowed to proceed and choose Phaser/dock_in_map.
+                history = context.get("history", [])
+                programs_run = {h.get("program", "").lower() for h in history if isinstance(h, dict)}
                 exp_type = context.get("experiment_type", "unknown")
 
+                positioning_programs = {"phenix.phaser"} if exp_type == "xray" else {"phenix.dock_in_map"}
+                positioning_attempted = any(
+                    any(pos_prog in prog for pos_prog in positioning_programs)
+                    for prog in programs_run
+                )
+
+                if not positioning_attempted:
+                    # Model positioning hasn't been tried yet — let the agent proceed
+                    # so it can choose the appropriate positioning program
+                    return None
+
+                # Positioning was attempted but model still not placed
                 if exp_type == "xray":
                     suggestion = (
                         "You have a search model (predicted structure or template) but no positioned model. "

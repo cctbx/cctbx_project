@@ -1277,6 +1277,8 @@ class BestFilesTracker:
             'superposed_predicted_untrimmed',  # Intermediate predictions
             '_ELBOW.',            # Elbow geometry files (not fitted ligands)
             'ELBOW.',             # Elbow geometry files
+            '/tnb/',              # trace_and_build intermediate directory
+            '/trace_and_build/',  # trace_and_build intermediate directory
         ]
 
         path_check = path.lower()
@@ -1286,6 +1288,11 @@ class BestFilesTracker:
             pattern_lower = pattern.lower()
             if pattern_lower in path_check or pattern_lower in basename_check:
                 return True
+
+        # Basename-specific patterns (regex)
+        import re
+        if re.match(r'path_\d+\.pdb$', basename_check):
+            return True  # trace-and-build fragment files
 
         return False
 

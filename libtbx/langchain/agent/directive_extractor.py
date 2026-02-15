@@ -115,12 +115,15 @@ IMPORTANT GUIDELINES:
 - Resolution is the diffraction limit (d_min), typically 1.5-4.0 Å. Only extract as resolution if explicitly stated as resolution/d_min.
 - If the text says "Resolution limit: Not mentioned" or similar, do NOT extract a resolution value from anywhere else in the text.
 
-**CRITICAL: max_refine_cycles vs after_program**
+**CRITICAL: max_refine_cycles vs after_program vs after_cycle**
 - max_refine_cycles=N: Limits the NUMBER of refinement jobs to N. The workflow continues normally until refinement, then stops after N refinement jobs.
 - after_program="X": FORCES program X to be run IMMEDIATELY, bypassing normal workflow. Only use when user wants to skip directly to a specific program.
+- after_cycle=N: Stops after N AGENT CYCLES (each cycle = one program execution). ONLY use when user says "stop after N cycles" with an explicit number.
 - "maximum of one refinement" or "at most one refinement" → ONLY set max_refine_cycles=1, do NOT set after_program
 - "solve the structure with one refinement" → max_refine_cycles=1 (workflow proceeds normally: xtriage → model → refine)
+- "stop after refinement" or "stop after one refinement" → max_refine_cycles=1, skip_validation=true
 - "just run refinement" or "only refinement" → after_program="phenix.refine" (skip to refinement immediately)
+- Do NOT use after_cycle for "stop after refinement" — that would stop after the first agent cycle (e.g., xtriage), not after refinement.
 
 **CRITICAL: skip_validation RULE**
 If the user specifies ANY explicit stop condition (like "stop after X" or "Stop Condition: ..."),
@@ -851,6 +854,10 @@ def validate_directives(directives, log=None):
     # e.g., after_program=phenix.map_symmetry but constraints say "build a model" → don't stop
     validated = _fix_multi_step_workflow_conflict(validated, _log)
 
+    # Fix after_cycle=1 when max_refine_cycles is set
+    # LLM often confuses "one refinement cycle" with "one agent cycle"
+    validated = _fix_after_cycle_refinement_conflict(validated, _log)
+
     return validated
 
 
@@ -1019,6 +1026,47 @@ def _fix_multi_step_workflow_conflict(directives, log):
                 del directives["stop_conditions"]["skip_validation"]
         if not directives["stop_conditions"]:
             del directives["stop_conditions"]
+
+    return directives
+
+
+def _fix_after_cycle_refinement_conflict(directives, log):
+    """
+    Fix conflict where LLM sets after_cycle=1 alongside max_refine_cycles.
+
+    When user says "stop after refinement" or "one refinement cycle", the LLM
+    sometimes produces both max_refine_cycles=1 AND after_cycle=1. The after_cycle=1
+    is wrong — it would stop after the first agent cycle (e.g., xtriage), not after
+    the refinement program completes.
+
+    Rules:
+    - after_cycle=1 + max_refine_cycles=N → remove after_cycle (keep max_refine_cycles)
+    - after_cycle=1 alone (no max_refine_cycles, no after_program) → suspicious,
+      only keep if no workflow programs would run before refinement
+    """
+    stop_conditions = directives.get("stop_conditions", {})
+    if not stop_conditions:
+        return directives
+
+    after_cycle = stop_conditions.get("after_cycle")
+    max_refine = stop_conditions.get("max_refine_cycles")
+    after_program = stop_conditions.get("after_program")
+
+    # Case 1: after_cycle + max_refine_cycles — the after_cycle is redundant/wrong
+    if after_cycle is not None and max_refine is not None:
+        log("DIRECTIVES: Removing after_cycle=%d (conflicts with max_refine_cycles=%d)" %
+            (after_cycle, max_refine))
+        log("DIRECTIVES: (LLM confused 'one refinement' with 'one agent cycle')")
+        del directives["stop_conditions"]["after_cycle"]
+
+    # Case 2: after_cycle=1 alone (no after_program, no max_refine)
+    # This almost always means the LLM misinterpreted "stop after refinement"
+    # as "stop after 1 cycle". Convert to max_refine_cycles=1.
+    elif after_cycle == 1 and after_program is None and max_refine is None:
+        log("DIRECTIVES: Converting after_cycle=1 → max_refine_cycles=1")
+        log("DIRECTIVES: (after_cycle=1 would stop after xtriage, not after refinement)")
+        del directives["stop_conditions"]["after_cycle"]
+        directives["stop_conditions"]["max_refine_cycles"] = 1
 
     return directives
 

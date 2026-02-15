@@ -876,7 +876,7 @@ phenix.process_predicted_model:
   outputs:
     files:
       - pattern: "*processed*.pdb"
-        type: model
+        type: processed_predicted  # NOT 'model' - this is still a search model
 
   command: "phenix.process_predicted_model {model}"
 
@@ -1243,7 +1243,7 @@ phenix.pdbtools:
 # -----------------------------------------------------------------------------
 
 phenix.resolve_cryo_em:
-  description: "Optimize cryo-EM map using density modification"
+  description: "Density modification of cryo-EM map (map optimization, NOT model building)"
   category: map_optimization
   experiment_types: [cryoem]
 

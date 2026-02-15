@@ -337,10 +337,14 @@ class WorkflowEngine:
         return False
 
     def _has_refined_model(self, files, history_info):
-        """Check if model has been refined."""
+        """Check if model has been refined IN THIS SESSION.
+
+        IMPORTANT: Only trust history-based evidence, not file names.
+        User-provided input files may start with 'refine_' (e.g., refine_001_model.pdb)
+        without any actual refinement having been done in this session. Relying on
+        files.get('refined') would incorrectly skip to validation/STOP.
+        """
         return bool(
-            files.get("refined") or
-            files.get("rsr_output") or
             history_info.get("refine_count", 0) > 0 or
             history_info.get("rsr_count", 0) > 0
         )

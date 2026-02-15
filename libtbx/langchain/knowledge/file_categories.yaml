@@ -428,6 +428,9 @@ unclassified_pdb:
     - "*chainsaw*"  # Chainsaw output (processed search models)
     - "lig*"
     - "*ligand*"
+    - "path_[0-9]*.pdb"    # trace-and-build fragments (intermediate)
+    - "*TEMP*"              # Temporary files (intermediate)
+    - "*reference*"         # Reference models (intermediate)
   notes: "Default category for generic PDB files - assume positioned model ready for refinement"
 
 # =============================================================================
@@ -508,6 +511,14 @@ carryover_temp:
     - "*_CarryOn/*"
     - "*/CarryOn/*"
   notes: "NEVER use - predict_and_build intermediate files"
+
+trace_fragment:
+  description: "Trace-and-build fragment files from predict_and_build"
+  parent_category: intermediate
+  extensions: [".pdb"]
+  patterns:
+    - "path_[0-9]*.pdb"    # trace_and_build path fragments (path_1.pdb, path_54.pdb, etc.)
+  notes: "NEVER use - these are intermediate trace fragments, not complete models"
 
 # =============================================================================
 # MAP SUBCATEGORIES
