@@ -8,6 +8,7 @@ This guide documents the process for adding a new PHENIX program to the AI Agent
 |------|-------------|-----------|
 | `knowledge/programs.yaml` | Complete program definition with metrics | ✅ Yes |
 | `knowledge/workflows.yaml` | Add to appropriate workflow phase(s) | ✅ Yes |
+| `knowledge/program_registration.py` | Done flag mapping (if not `run_once`) | If manually tracked |
 | `knowledge/file_categories.yaml` | New output file types (if any) | If new file types |
 | `knowledge/metrics.yaml` | Custom summary display (quality table, step metrics) | Usually not needed |
 | `agent/directive_extractor.py` | Tutorial/procedure patterns | Optional |
@@ -20,6 +21,10 @@ The system automatically handles:
 - ✅ `<program>_done` tracking flags (via `run_once: true`)
 - ✅ Session summary display (default formatting works for most metrics)
 - ✅ Workflow context building (automatic from programs.yaml)
+- ✅ Prerequisite auto-execution (e.g., mtriage for resolution)
+- ✅ skip_programs → workflow phase advancement (done flags auto-set)
+- ✅ LLM hallucination sanitization (resolution stripped if unverified)
+- ✅ .eff file generation with short-form PHIL resolution
 
 ---
 
@@ -216,6 +221,48 @@ For other programs, these flags are manually tracked in `workflow_state.py`:
 | `validation_done` | molprobity/validation completes | Internal tracking |
 
 **Note:** `refine_count` and `rsr_count` only count SUCCESSFUL runs (not failed ones).
+
+---
+
+## Step 2.5: Register Done Flag (if not `run_once`)
+
+Location: `knowledge/program_registration.py`
+
+**Skip this step if** your program has `run_once: true` in programs.yaml — its done flag is auto-generated.
+
+For programs that can run multiple times but still need a done flag for workflow
+phase detection (e.g., `phenix.refine` → `refine_done`), add the mapping to
+`_MANUAL_DONE_FLAGS` in `get_program_done_flag_map()`:
+
+```python
+_MANUAL_DONE_FLAGS = {
+    "phenix.phaser":            "phaser_done",
+    "phenix.refine":            "refine_done",
+    # ... existing entries ...
+    "phenix.new_program":       "new_program_done",  # ← Add your program
+}
+```
+
+**Why this matters:** The agent uses `get_program_done_flag_map()` to:
+1. Determine which context flags to check during phase detection
+2. Mark skipped programs as "done" so the workflow can advance past their phases
+
+If your program gates a workflow phase (e.g., xtriage gates the "analyze" phase)
+and a user skips it via `skip_programs`, the workflow will get stuck unless the
+done flag is registered here.
+
+**Also ensure** the done flag is set in `build_context()` in `agent/workflow_engine.py`
+(the manually-tracked flags are populated from `history_info`):
+
+```python
+context = {
+    # ... existing flags ...
+    "new_program_done": history_info.get("new_program_done", False),
+}
+```
+
+And in `_analyze_history()` in `agent/workflow_state.py`, detect when the program
+has been run and set the flag in `history_info`.
 
 ---
 
@@ -519,6 +566,89 @@ both forms:
 # Matches both "CC_mask  : 0.849" (raw log) and "Cc Mask: 0.849" (report)
 r'CC[_ ]?mask\s*[=:]\s*([0-9.]+)'  # with re.IGNORECASE
 ```
+
+---
+
+## Key Design Patterns
+
+### Prerequisites (Auto-Run Dependencies)
+
+If your program requires a value that must come from another program (e.g.,
+resolution from mtriage), declare a `prerequisite` on the invariant:
+
+```yaml
+phenix.new_program:
+  invariants:
+    resolution:
+      required_key: resolution
+      source: session
+      prerequisite: phenix.mtriage   # ← Auto-runs mtriage if resolution missing
+```
+
+When the command builder detects the invariant can't be satisfied, it
+automatically builds and runs the prerequisite program first. The original
+program runs on the next cycle with the newly-available value.
+
+**Important:** The prerequisite program must be able to produce the required
+value. The build node checks `skip_programs` directives — if the user skipped
+the prerequisite, a clear error is returned instead of silently failing.
+
+### File Selection: exclude_categories for Map Inputs
+
+When a program accepts maps, always exclude half-maps from the full_map slot.
+Half-maps bubble up to the parent `map` category, so without exclusion, a
+half-map can be selected as a full_map via the category fallback:
+
+```yaml
+input_priorities:
+  full_map:
+    categories: [full_map, optimized_full_map, map]
+    exclude_categories: [half_map]   # ← Prevents half-map selection
+```
+
+### Intermediate File Exclusions
+
+If your program writes intermediate files to subdirectories, ensure they don't
+get tracked as outputs. Add exclusions in three places:
+
+1. **`phenix_ai/log_parsers.py`** — `extract_output_files()`: Add path/basename
+   patterns to the exclusion checks
+2. **`phenix_ai/utilities.py`** — `scan_log_for_files()`: Same exclusion patterns
+3. **`programs/ai_agent.py`** — `_track_output_files()`: Add to
+   `intermediate_patterns` list and/or `intermediate_basename_prefixes`
+
+Example for predict_and_build's internal docking intermediates:
+```python
+intermediate_patterns = [
+    '/local_dock_and_rebuild',   # predict_and_build intermediates
+    '/local_rebuild',
+]
+intermediate_basename_prefixes = [
+    'working_model',              # Never a valid output
+]
+```
+
+Also update `knowledge/file_categories.yaml` to exclude intermediates from
+semantic categories (e.g., add `working_model*` to the `docked` category's
+`excludes` list).
+
+### LLM Strategy Sanitization
+
+If your program has parameters where the LLM commonly hallucinates values,
+add sanitization in `_build_strategy()` in `agent/command_builder.py`.
+
+Current sanitizations:
+- **resolution**: Stripped from LLM strategy when no verified source exists
+  (prevents hallucinated resolution values from bypassing the mtriage prerequisite)
+- **atom_type** (autosol): Multi-atom values like "Se, S" are split — first atom
+  stays in `atom_type`, extras move to `additional_atom_types`
+
+### .eff File Generation
+
+Programs that use old-style master_phil (like phenix.refine) have their .eff
+files generated via `command_line_argument_interpreter()` which resolves
+short-form PHIL paths to full scope paths. This is handled in
+`_generate_eff_file()` in `programs/ai_agent.py` (Attempt 3).
 
 ---
 

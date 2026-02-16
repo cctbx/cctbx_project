@@ -1,5 +1,109 @@
 # PHENIX AI Agent - Changelog
 
+## Version 112.8 (February 2025)
+
+### Prerequisite mechanism for resolution-dependent programs
+
+**Programs that need resolution (RSR, dock_in_map, map_to_model) now auto-trigger mtriage**
+- When a program's resolution invariant can't be satisfied, the command builder
+  detects a `prerequisite: phenix.mtriage` declaration and automatically builds
+  the mtriage command instead
+- Next cycle: resolution is available from mtriage output → original program
+  builds successfully
+- Respects `skip_programs`: if user skipped mtriage, returns clear error instead
+  of silently failing
+- Files: `knowledge/programs.yaml` (prerequisite declarations),
+  `agent/command_builder.py` (prerequisite tracking),
+  `agent/graph_nodes.py` (prerequisite build logic)
+
+### LLM resolution hallucination guard
+
+**Strip unverified resolution values from LLM strategy**
+- LLMs frequently hallucinate resolution values (e.g., "resolution": 3.1)
+  which bypassed the prerequisite mechanism
+- `_build_strategy()` now checks whether resolution came from the LLM AND
+  whether `context.resolution` (verified source) is None — if so, strips it
+- Log: `BUILD: Stripped LLM-hallucinated resolution=3.1 (no verified source)`
+- File: `agent/command_builder.py`
+
+### Fixed false exclude_pattern matches in file selection
+
+**`_2` pattern in exclude_patterns matched PDB codes like `_23883`**
+- Changed mtriage and RSR exclude_patterns from `[half, _1, _2, _a, _b]` to
+  `[half_1, half_2, half1, half2, _half]`
+- Added `input_priorities` to mtriage for category-based file selection
+  (bypasses extension fallback entirely)
+- File: `knowledge/programs.yaml`
+
+### Fixed half-map misuse as full_map in mtriage
+
+**Two half maps → one used as full_map → wrong resolution**
+- Root cause: half-maps bubbled up to `map` parent category, then selected for
+  `full_map` slot via category fallback. Post-selection validation then deleted
+  the legitimate half_maps as "redundant"
+- Fix 1: Added `exclude_categories: [half_map]` to mtriage's full_map priorities
+- Fix 2: Post-selection validation now checks if the "full_map" is actually a
+  categorized half-map — if so, removes the mis-selected full_map instead
+- Files: `knowledge/programs.yaml`, `agent/command_builder.py`
+
+### Fixed autosol atom_type crash from multi-atom values
+
+**`atom_type="Se, S"` → bare `S` on command line → crash**
+- LLMs put multiple atom types in `atom_type` field (e.g., "Se, S") even when
+  `additional_atom_types` is correctly set separately
+- `_build_strategy()` now sanitizes: splits on comma/space, keeps first atom in
+  `atom_type`, moves extras to `additional_atom_types` (if not already set)
+- File: `agent/command_builder.py`
+
+### Fixed predict_and_build intermediate file tracking
+
+**Internal `working_model_full_docked.pdb` was tracked as valid output**
+- Root cause: `docked` in filename matched `valuable_output_patterns` which
+  overrode all intermediate exclusions
+- Removed overly broad `(\S*docked\S*\.pdb)` from log parser known_patterns
+- Added exclusions for `/local_dock_and_rebuild`, `/local_rebuild` paths
+- Added `intermediate_basename_prefixes` for `working_model` (always excluded,
+  even if matching a "valuable" pattern)
+- Added `working_model*` to `docked` category excludes in file_categories.yaml
+- Files: `phenix_ai/log_parsers.py`, `phenix_ai/utilities.py`,
+  `programs/ai_agent.py`, `knowledge/file_categories.yaml`
+
+### Fixed .eff file generation for old-style programs
+
+**phenix.refine .eff had `generate=False` despite command saying `generate=True`**
+- Root cause: `master_phil.fetch()` requires exact scope paths, but agent uses
+  short-form like `xray_data.r_free_flags.generate=True` (full path is
+  `refinement.input.xray_data.r_free_flags.generate`)
+- Fix: Use `master_phil.command_line_argument_interpreter()` to resolve short
+  paths before `fetch()` — same mechanism phenix.refine's own CLI uses
+- File: `programs/ai_agent.py`
+
+### Fixed skip_programs causing workflow deadlock
+
+**Skipping xtriage → stuck in "analyze" phase → STOP**
+- Root cause: Phase detection checked `xtriage_done` before allowing progression;
+  `_apply_directives` removed xtriage from programs but couldn't change the phase
+- Fix: Skipped programs are treated as "done" in `build_context()` — their done
+  flags are set before phase detection runs
+- Done flag mapping now auto-generated via `get_program_done_flag_map()` in
+  `program_registration.py` (combines run_once auto-flags with manual mappings)
+- Files: `agent/workflow_engine.py`, `knowledge/program_registration.py`
+
+### RSR GUI reload crash fix
+
+**TypeError on `get_output_dir()` after successful RSR execution**
+- Status mismatch: native execution returns "complete" but guard checked for
+  "success" / "completed" — pkl_path never sent to GUI
+- Added "complete" to status check, plus pkl validation before sending
+- File: `programs/ai_agent.py`
+
+### Bare command rejection
+
+**`phenix.mtriage` with no arguments hung waiting for input**
+- Added explicit bare command check after assembly: commands with fewer than
+  2 parts (just the program name) are rejected
+- File: `agent/command_builder.py`
+
 ## Version 112.3 (February 2025)
 
 ### Removed langchain-classic dependency

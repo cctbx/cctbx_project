@@ -195,6 +195,53 @@ def get_done_flag_for_program(program_name):
   return prog_info['done_flag'] if prog_info else None
 
 
+def get_program_done_flag_map():
+  """
+  Get a mapping of ALL program names to their workflow done flags.
+
+  Combines:
+  1. Auto-generated flags from run_once programs (e.g., phenix.xtriage → xtriage_done)
+  2. Manually-tracked flags for programs with irregular naming or non-run_once programs
+
+  This is the SINGLE SOURCE OF TRUTH for program→done_flag mapping.
+  Used by workflow_engine.py to treat skipped programs as done.
+
+  When adding a new program:
+  - If it has run_once: true in programs.yaml, it's auto-included here
+  - If it needs a done flag but ISN'T run_once, add to _MANUAL_DONE_FLAGS below
+
+  Returns:
+      dict: {program_name: done_flag_name}
+  """
+  # Start with auto-generated flags from run_once programs
+  result = {}
+  trackable = get_trackable_programs()
+  for prog_name, info in trackable.items():
+    result[prog_name] = info['done_flag']
+
+  # Add manually-tracked programs (not run_once but have done flags in build_context)
+  # These have irregular naming that can't be derived automatically
+  _MANUAL_DONE_FLAGS = {
+    "phenix.phaser":                "phaser_done",
+    "phenix.autosol":               "autosol_done",
+    "phenix.autobuild":             "autobuild_done",
+    "phenix.predict_and_build":     "predict_done",
+    "phenix.dock_in_map":           "dock_done",
+    "phenix.ligandfit":             "ligandfit_done",
+    "phenix.pdbtools":              "pdbtools_done",
+    "phenix.refine":                "refine_done",
+    "phenix.real_space_refine":     "rsr_done",
+    "phenix.molprobity":            "validation_done",
+    "phenix.process_predicted_model": "process_predicted_model_done",
+  }
+
+  for prog, flag in _MANUAL_DONE_FLAGS.items():
+    if prog not in result:  # Don't override auto-generated
+      result[prog] = flag
+
+  return result
+
+
 # =============================================================================
 # Testing / CLI
 # =============================================================================

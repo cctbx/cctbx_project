@@ -383,6 +383,10 @@ Skip autobuild - I want to build the model manually.
 - phenix.phaser removed from valid programs
 - phenix.autobuild removed from valid programs
 - Agent prefers phenix.autosol pathway
+- **Phase advancement:** Skipped programs are treated as "done" for workflow
+  phase detection. Without this, skipping a phase-gating program (like xtriage
+  which gates the "analyze" phase) would deadlock the workflow — the phase
+  would only offer the skipped program, leaving no valid programs.
 
 ### Example 5: MR-SAD Workflow
 

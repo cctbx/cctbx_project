@@ -163,19 +163,12 @@ class WorkflowEngine:
             # before allowing progression to later phases.
             skip_programs = workflow_prefs.get("skip_programs", [])
             if skip_programs:
-                # Map program names to their _done context flags
-                program_to_done_flag = {
-                    "phenix.xtriage": "xtriage_done",
-                    "phenix.mtriage": "mtriage_done",
-                    "phenix.map_symmetry": "map_symmetry_done",
-                    "phenix.molprobity": "validation_done",
-                    "phenix.phaser": "phaser_done",
-                    "phenix.autosol": "autosol_done",
-                    "phenix.autobuild": "autobuild_done",
-                    "phenix.predict_and_build": "predict_done",
-                    "phenix.dock_in_map": "dock_done",
-                    "phenix.ligandfit": "ligandfit_done",
-                }
+                from libtbx.langchain.knowledge.program_registration import get_program_done_flag_map
+                program_to_done_flag = get_program_done_flag_map()
+                for prog in skip_programs:
+                    done_flag = program_to_done_flag.get(prog)
+                    if done_flag and not context.get(done_flag):
+                        context[done_flag] = True
                 for prog in skip_programs:
                     done_flag = program_to_done_flag.get(prog)
                     if done_flag and not context.get(done_flag):
