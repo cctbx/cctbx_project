@@ -320,6 +320,7 @@ docked:
     - "*_placed*"
   excludes:
     - "*run_mr*"  # Intermediate MR files from dock_in_map
+    - "working_model*"  # predict_and_build internal intermediates
   notes: "Output from phenix.dock_in_map - positioned in map"
 
 with_ligand:

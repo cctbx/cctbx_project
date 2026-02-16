@@ -123,6 +123,7 @@ phenix.mtriage:
   input_priorities:
     full_map:
       categories: [full_map, map]
+      exclude_categories: [half_map]  # Never use a half-map as full_map
     half_map:
       categories: [half_map]
 
