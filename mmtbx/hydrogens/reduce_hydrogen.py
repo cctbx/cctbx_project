@@ -475,6 +475,18 @@ class place_hydrogens():
     # end TODO
     pdb_hierarchy = self.model.get_hierarchy()
     mon_lib_srv = self.model.get_mon_lib_srv()
+    # Load any user-provided restraint CIF objects into the server so that
+    # mon_lib_query() finds them and does not generate auto_* CIF objects
+    # with empty type_energy values that would overwrite the user entries.
+    ro = self.model.get_restraint_objects()
+    if ro:
+      for fname, cif_obj in ro:
+        if cif_obj is not None:
+          try:
+            mon_lib_srv.process_cif_object(
+              cif_object=cif_obj, file_name=fname)
+          except Exception:
+            pass
     #XXX This breaks for 1jxt, residue 2, TYR
     for m in pdb_hierarchy.models():
       for chain in m.chains():

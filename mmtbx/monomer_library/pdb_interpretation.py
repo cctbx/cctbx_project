@@ -1403,6 +1403,16 @@ class monomer_mapping(slots_getstate_setstate):
               auto_synomyms.append(atom_name[1:] + atom_name[0])
             elif (atom_name[-1] in string.digits):
               auto_synomyms.append(atom_name[-1] + atom_name[0:-1])
+        else:
+          # Even when replace_primes is False (e.g. mixed '/* naming after
+          # reduce adds H atoms), try '↔* conversion as synonyms so that
+          # atoms like C6' can match C6* in the monomer atom_dict.
+          prime_to_star = atom_name.replace("'", "*")
+          if prime_to_star != atom_name and prime_to_star not in auto_synomyms:
+            auto_synomyms.append(prime_to_star)
+          star_to_prime = atom_name.replace("*", "'")
+          if star_to_prime != atom_name and star_to_prime not in auto_synomyms:
+            auto_synomyms.append(star_to_prime)
         for atom_name in auto_synomyms:
           if (atom_name in atom_dict): break
         else:

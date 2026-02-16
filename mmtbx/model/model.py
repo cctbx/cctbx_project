@@ -3738,6 +3738,7 @@ class manager(object):
       crystal_symmetry           = self._crystal_symmetry,
       restraint_objects          = self._restraint_objects,
       monomer_parameters         = self._monomer_parameters,
+      stop_for_unknowns          = self._stop_for_unknowns,
       expand_with_mtrix          = False,
       pdb_hierarchy              = new_pdb_hierarchy,
       log                        = self.log)

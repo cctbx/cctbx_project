@@ -103,12 +103,13 @@ class clashscore2(validation):
     # First we must rebuild the model from the new hierarchy so that the copy can succeed.
     # Make a copy of the original model to use for submodel processing, we'll trim atoms out
     # of it for each submodel.
+    ro = data_manager_model.get_restraint_objects()
     data_manager_model = mmtbx.model.manager(
       model_input       = None,
       pdb_hierarchy     = data_manager_model.get_hierarchy(),
       stop_for_unknowns = False,
       crystal_symmetry  = data_manager_model.crystal_symmetry(),
-      restraint_objects = None,
+      restraint_objects = ro,
       log               = None)
     original_model = data_manager_model.deep_copy()
 
@@ -135,7 +136,7 @@ class clashscore2(validation):
         pdb_hierarchy     = r,
         stop_for_unknowns = False,
         crystal_symmetry  = submodel.crystal_symmetry(),
-        restraint_objects = None,
+        restraint_objects = ro,
         log               = None)
 
       if verbose:
