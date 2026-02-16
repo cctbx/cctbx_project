@@ -72,6 +72,9 @@ class CommandContext:
     #                       selected_label: "...", selected_label_pair: "..."}}
     recovery_strategies: Dict[str, Dict] = field(default_factory=dict)
 
+    # User directives (program_settings, constraints, etc.)
+    directives: Dict[str, Any] = field(default_factory=dict)
+
     # Logging callback
     log: Any = None  # Callable for logging, or None
 
@@ -109,6 +112,7 @@ class CommandContext:
             llm_files=state.get("corrected_files"),  # From LLM after path correction
             llm_strategy=state.get("strategy"),  # From LLM
             recovery_strategies=session_info.get("recovery_strategies", {}),
+            directives=state.get("directives", {}),
         )
 
     def _log(self, msg: str):
@@ -205,6 +209,18 @@ class CommandBuilder:
         self._registry = ProgramRegistry()
         # Track file selection details for event logging
         self._selection_details = {}
+        # Track prerequisite program needed (set when build blocked by missing input)
+        self._prerequisite_program = None
+        self._prerequisite_reason = None
+
+    def get_prerequisite(self):
+        """
+        Get prerequisite program needed before the requested program can run.
+
+        Returns:
+            tuple: (program_name, reason) or (None, None) if no prerequisite needed
+        """
+        return self._prerequisite_program, self._prerequisite_reason
 
     def get_selection_details(self):
         """
@@ -243,8 +259,10 @@ class CommandBuilder:
         Returns:
             Command string, or None if command cannot be built
         """
-        # Clear previous selection details
+        # Clear previous selection details and prerequisite
         self._selection_details = {}
+        self._prerequisite_program = None
+        self._prerequisite_reason = None
 
         self._log(context, "BUILD: Starting command generation for %s" % program)
 
@@ -284,13 +302,22 @@ class CommandBuilder:
         # 3.5 Check required strategies (e.g., resolution for map_to_model)
         # If an invariant declares has_strategy and auto-fill couldn't provide it,
         # the command cannot succeed — block it now rather than let it fail at runtime
+        # Exception: invariants with prerequisite=X signal that program X should run first
         invariants = self._registry.get_invariants(program)
         for inv in invariants:
             required_key = inv.get("check", {}).get("has_strategy")
             if required_key and required_key not in strategy:
                 msg = inv.get("message", "%s required" % required_key)
-                self._log(context, "BUILD: BLOCKED - %s (not in strategy or context)" % msg)
-                return None
+                prerequisite = inv.get("prerequisite")
+                if prerequisite:
+                    # This invariant can be satisfied by running a prerequisite program first
+                    self._log(context, "BUILD: BLOCKED - %s (prerequisite: %s)" % (msg, prerequisite))
+                    self._prerequisite_program = prerequisite
+                    self._prerequisite_reason = msg
+                    return None
+                else:
+                    self._log(context, "BUILD: BLOCKED - %s (not in strategy or context)" % msg)
+                    return None
 
         # Build file provenance dict from _selection_details
         file_sources = {}
@@ -309,6 +336,21 @@ class CommandBuilder:
                                          context=context,
                                          file_sources=file_sources,
                                          strategy_sources=strategy_sources)
+
+        # Post-assembly validation: reject commands with no input files
+        # (e.g., "phenix.mtriage" with no map is useless and may hang)
+        if command:
+            has_any_file = bool(files) and any(v for v in files.values() if v)
+            if not has_any_file:
+                self._log(context, "BUILD: Rejected command with no input files: %s" % command[:80])
+                return None
+
+            # Also reject commands that are just the program name with no arguments
+            # (can happen when optional file placeholders are all stripped)
+            cmd_parts = command.strip().split()
+            if len(cmd_parts) < 2:
+                self._log(context, "BUILD: Rejected bare command '%s' (no arguments)" % command)
+                return None
 
         if command:
             self._log(context, "BUILD: Command = %s" % command[:100])
@@ -489,6 +531,28 @@ class CommandBuilder:
                         if excluded:
                             continue  # Skip this file, let auto-fill find the right one
 
+                    # Universal safety check: reject any file in intermediate categories
+                    # These are NEVER valid inputs regardless of program
+                    if context.categorized_files:
+                        corrected_base = os.path.basename(corrected_str) if isinstance(corrected_str, str) else corrected_str
+                        intermediate_cats = [
+                            "intermediate", "map_to_model_intermediate",
+                            "intermediate_mr", "autobuild_temp",
+                            "carryover_temp", "trace_fragment"
+                        ]
+                        is_intermediate = False
+                        for icat in intermediate_cats:
+                            cat_files = context.categorized_files.get(icat, [])
+                            cat_basenames = [os.path.basename(f) for f in cat_files]
+                            if corrected_str in cat_files or corrected_base in cat_basenames:
+                                is_intermediate = True
+                                self._log(context,
+                                    "BUILD: LLM file rejected (intermediate '%s'): %s=%s" % (
+                                        icat, canonical_slot, corrected_base))
+                                break
+                        if is_intermediate:
+                            continue  # Skip intermediate file
+
                     selected_files[canonical_slot] = corrected
                     self._record_selection(canonical_slot, corrected_str, "llm_selected")
                 else:
@@ -552,6 +616,38 @@ class CommandBuilder:
                     self._record_selection(slot, filepath[0] if filepath else None, "auto_selected")
                 else:
                     self._record_selection(slot, filepath, "auto_selected")
+
+        # POST-SELECTION VALIDATION: Remove redundant half_map if full_map is present
+        # Programs like map_to_model and resolve_cryo_em only need half-maps when
+        # no full map is available. Having both causes confusion.
+        if "full_map" in selected_files and "half_map" in selected_files:
+            self._log(context, "BUILD: Removing redundant half_map (full_map already selected)")
+            del selected_files["half_map"]
+
+        # Also check for programs with requires_full_map that shouldn't get any half-maps
+        prog_def = self._registry.get_program(program)
+        if prog_def and prog_def.get("requires_full_map"):
+            # Check if any selected file is actually a half-map
+            for slot in list(selected_files.keys()):
+                filepath = selected_files[slot]
+                if isinstance(filepath, str):
+                    check_files = [filepath]
+                elif isinstance(filepath, list):
+                    check_files = filepath
+                else:
+                    continue
+                for f in check_files:
+                    if f in context.categorized_files.get("half_map", []):
+                        self._log(context, "BUILD: Removing %s=%s (half-map in requires_full_map program)" %
+                                  (slot, os.path.basename(f)))
+                        del selected_files[slot]
+                        break
+
+        # Final check: if program has no required inputs, at least one optional
+        # input must be filled (prevents useless commands like "phenix.mtriage" alone)
+        if not required_inputs and not selected_files:
+            self._log(context, "BUILD: No files selected for %s (all inputs optional but none available)" % program)
+            return None
 
         return selected_files
 
@@ -817,20 +913,49 @@ class CommandBuilder:
 
     def _build_strategy(self, program: str, context: CommandContext) -> Dict[str, Any]:
         """
-        Build strategy flags from context and LLM hints.
+        Build strategy flags from context, LLM hints, AND user directives.
 
-        Args:
-            program: Program name
-            context: CommandContext
-
-        Returns:
-            Dict of strategy flags
+        Priority (highest wins):
+        1. User directives (program_settings) - explicit user request
+        2. LLM suggestions - from planning step
+        3. Auto-generated defaults (output_prefix, etc.)
         """
         strategy = {}
 
         # Start with LLM suggestions if provided
         if context.llm_strategy:
             strategy.update(context.llm_strategy)
+
+        # Override with user directive program_settings (higher priority)
+        if context.directives:
+            prog_settings = context.directives.get("program_settings", {})
+
+            # Track which normalized keys we've already set (prevents duplicates
+            # when both "cycles" and "macro_cycles" map to the same key)
+            directive_keys_set = set()
+
+            # Check for program-specific settings first, then default
+            for settings_key in [program, "default"]:
+                settings = prog_settings.get(settings_key, {})
+                if isinstance(settings, dict):
+                    for key, value in settings.items():
+                        # Map common aliases
+                        # "cycles" and "macro_cycles" both mean the same thing
+                        normalized_key = key
+                        if key == "cycles":
+                            # For real_space_refine, "cycles" means "macro_cycles"
+                            if program == "phenix.real_space_refine":
+                                normalized_key = "macro_cycles"
+                            # For phenix.refine, "cycles" maps to strategy_flags "cycles"
+
+                        # Skip if we've already set this normalized key
+                        if normalized_key in directive_keys_set:
+                            continue
+                        directive_keys_set.add(normalized_key)
+
+                        strategy[normalized_key] = value
+                        self._log(context, "BUILD: Directive override: %s=%s (from %s)" %
+                                  (normalized_key, value, settings_key))
 
         # Auto-fill output_prefix for refinement programs
         if program in ("phenix.refine", "phenix.real_space_refine"):

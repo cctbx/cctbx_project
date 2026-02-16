@@ -1279,6 +1279,9 @@ class BestFilesTracker:
             'ELBOW.',             # Elbow geometry files
             '/tnb/',              # trace_and_build intermediate directory
             '/trace_and_build/',  # trace_and_build intermediate directory
+            'unrefined_model',    # map_to_model intermediate output
+            'box_au_map',         # map_to_model intermediate (boxed model)
+            'map_shifted',        # map_to_model coordinate-shifted intermediate
         ]
 
         path_check = path.lower()

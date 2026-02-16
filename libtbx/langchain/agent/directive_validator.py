@@ -622,15 +622,10 @@ def validate_directives(
     for param, context in param_refs:
         canonical_param = param_aliases.get(param, param)
 
-        # Special case: macro_cycles - we handle this via max_refine_cycles
+        # macro_cycles IS directly controllable via program_settings directives
+        # (applied by command_builder._build_strategy)
         if param in ["macro_cycles", "macro-cycles", "macrocycles"]:
-            unsupported_parameters.append(("phenix.refine", param))
-            warnings.append(
-                f"Parameter '{param}' is not directly controllable. "
-                f"The agent manages refinement iterations automatically. "
-                f"To limit refinement jobs, use 'max_refine_cycles' directive."
-            )
-            continue
+            continue  # Supported - no warning needed
 
         # Check if parameter is supported by relevant programs
         if context == "refinement" and canonical_param != "resolution":
@@ -857,6 +852,16 @@ def _apply_program_settings(intent, directives, program, attempt_number=0, log_f
         intent["strategy"] = {}
 
     # Apply settings
+    # First normalize: for RSR, "cycles" and "macro_cycles" are the same thing
+    # Deduplicate to avoid logging the same override twice
+    if program == "phenix.real_space_refine":
+        if "cycles" in combined_settings and "macro_cycles" in combined_settings:
+            # Both present — keep only macro_cycles (the canonical name for RSR)
+            del combined_settings["cycles"]
+        elif "cycles" in combined_settings:
+            combined_settings["macro_cycles"] = combined_settings.pop("cycles")
+
+    applied_normalized = set()  # Track normalized keys to avoid duplicates
     for key, value in combined_settings.items():
         existing = intent["strategy"].get(key)
 

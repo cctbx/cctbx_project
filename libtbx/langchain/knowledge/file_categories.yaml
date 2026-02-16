@@ -431,6 +431,9 @@ unclassified_pdb:
     - "path_[0-9]*.pdb"    # trace-and-build fragments (intermediate)
     - "*TEMP*"              # Temporary files (intermediate)
     - "*reference*"         # Reference models (intermediate)
+    - "unrefined_model*"    # map_to_model intermediate
+    - "*box_au_map*"        # map_to_model intermediate
+    - "*map_shifted*"       # map_to_model intermediate
   notes: "Default category for generic PDB files - assume positioned model ready for refinement"
 
 # =============================================================================
@@ -519,6 +522,16 @@ trace_fragment:
   patterns:
     - "path_[0-9]*.pdb"    # trace_and_build path fragments (path_1.pdb, path_54.pdb, etc.)
   notes: "NEVER use - these are intermediate trace fragments, not complete models"
+
+map_to_model_intermediate:
+  description: "Intermediate files from map_to_model processing"
+  parent_category: intermediate
+  extensions: [".pdb"]
+  patterns:
+    - "unrefined_model*"     # Unrefined intermediate model
+    - "*box_au_map*"         # Box/asymmetric unit shifted intermediates
+    - "*map_shifted*"        # Coordinate-shifted intermediates
+  notes: "NEVER use - these are map_to_model intermediates, not the final output"
 
 # =============================================================================
 # MAP SUBCATEGORIES

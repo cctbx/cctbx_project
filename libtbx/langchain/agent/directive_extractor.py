@@ -133,6 +133,15 @@ and doesn't need automatic validation before stopping. Examples:
 - "Stop after density modification" → skip_validation=true
 - "Stop Condition: Stop after generating the improved map" → skip_validation=true
 
+**CRITICAL: "don't run X" vs after_program**
+If the user says "don't run X" or "skip X", NEVER set after_program to that program.
+The after_program must be a program the user WANTS to run, not one they want to skip.
+Instead, set after_program to the LAST program the user DOES want to run.
+Example: "Run real_space_refine, don't run mtriage" → after_program="phenix.real_space_refine", skip_programs=["phenix.mtriage"]
+Example: "Do one refinement, skip validation" → max_refine_cycles=1, skip_validation=true
+Example: "Stop after refinement, do not run mtriage" → max_refine_cycles=1, skip_programs=["phenix.mtriage"]
+WRONG: "Stop after refinement, do not run mtriage" → after_program="phenix.mtriage" (NEVER do this!)
+
 **CRITICAL: CRYO-EM vs X-RAY PROGRAM SELECTION**:
 Different programs are used for cryo-EM and X-ray experiments. Choose correctly based on the experiment type:
 
@@ -858,6 +867,10 @@ def validate_directives(directives, log=None):
     # LLM often confuses "one refinement cycle" with "one agent cycle"
     validated = _fix_after_cycle_refinement_conflict(validated, _log)
 
+    # Fix contradiction: after_program set to a program that's in skip_programs
+    # e.g., "don't run mtriage" but stop_conditions.after_program=phenix.mtriage
+    validated = _fix_skip_after_program_conflict(validated, _log)
+
     return validated
 
 
@@ -1067,6 +1080,128 @@ def _fix_after_cycle_refinement_conflict(directives, log):
         log("DIRECTIVES: (after_cycle=1 would stop after xtriage, not after refinement)")
         del directives["stop_conditions"]["after_cycle"]
         directives["stop_conditions"]["max_refine_cycles"] = 1
+
+    return directives
+
+
+def _fix_skip_after_program_conflict(directives, log):
+    """
+    Fix contradiction where after_program is set to a program the user wants skipped.
+
+    This catches two cases:
+    1. after_program is in skip_programs (explicit)
+    2. constraints say "do not run X" or "skip X" and after_program references X
+
+    When user says "don't run mtriage" but the LLM sets after_program=phenix.mtriage,
+    this is clearly wrong. The LLM saw "mtriage" mentioned and associated it with the
+    stop condition, ignoring the negation.
+
+    Fix: Remove after_program if it conflicts, and try to infer the correct stop
+    based on what the user actually wants.
+    """
+    stop_conditions = directives.get("stop_conditions", {})
+    workflow_prefs = directives.get("workflow_preferences", {})
+    constraints = directives.get("constraints", [])
+
+    after_program = stop_conditions.get("after_program", "")
+    skip_programs = workflow_prefs.get("skip_programs", [])
+
+    if not after_program:
+        return directives
+
+    after_normalized = after_program.replace("phenix.", "")
+
+    # Check 1: after_program in skip_programs
+    is_skipped = False
+    for skip_prog in skip_programs:
+        skip_normalized = skip_prog.replace("phenix.", "")
+        if after_normalized == skip_normalized:
+            is_skipped = True
+            break
+
+    # Check 2: constraints mention "do not run X", "skip X", "don't run X"
+    if not is_skipped and constraints:
+        import re
+        skip_patterns = [
+            r"(?:do\s+not|don't|skip|no|never|avoid)\s+(?:run(?:ning)?|use|execute)\s+(?:phenix\.)?(\w+)",
+            r"(?:phenix\.)?(\w+)\s+(?:should\s+)?(?:not\s+be|is\s+not)\s+(?:run|used|needed)",
+        ]
+        for constraint in constraints:
+            constraint_lower = constraint.lower()
+            for pattern in skip_patterns:
+                m = re.search(pattern, constraint_lower)
+                if m:
+                    skipped_prog = m.group(1).replace("phenix.", "")
+                    if skipped_prog == after_normalized:
+                        is_skipped = True
+                        log("DIRECTIVES: Constraint '%s' contradicts after_program=%s" %
+                            (constraint, after_program))
+                        break
+            if is_skipped:
+                break
+
+    if is_skipped:
+        log("DIRECTIVES: CONFLICT - after_program=%s contradicts skip/constraint!" % after_program)
+        log("DIRECTIVES: Removing after_program (user explicitly said don't run this program)")
+
+        del directives["stop_conditions"]["after_program"]
+
+        # Try to infer correct stop: if user wanted refinement, set max_refine_cycles
+        # Look for refinement-related terms in constraints, program_settings, or
+        # the removed after_program's context
+        if "max_refine_cycles" not in stop_conditions:
+            inferred = False
+            prog_settings = directives.get("program_settings", {})
+            rsr_settings = prog_settings.get("phenix.real_space_refine", {})
+            refine_settings = prog_settings.get("phenix.refine", {})
+
+            # Check program_settings for cycle count
+            if rsr_settings.get("cycles") or rsr_settings.get("macro_cycles"):
+                log("DIRECTIVES: Inferring max_refine_cycles=1 from RSR settings")
+                directives["stop_conditions"]["max_refine_cycles"] = 1
+                inferred = True
+            elif refine_settings.get("cycles") or refine_settings.get("macro_cycles"):
+                log("DIRECTIVES: Inferring max_refine_cycles=1 from refine settings")
+                directives["stop_conditions"]["max_refine_cycles"] = 1
+                inferred = True
+
+            # Check constraints for refinement-related stop language
+            if not inferred and constraints:
+                import re
+                refine_stop_patterns = [
+                    r'stop\s+after\s+(?:the\s+)?(?:single\s+)?(?:macro[- ]?cycle|refinement|refine)',
+                    r'(?:one|single|1)\s+(?:macro[- ]?cycle|refinement)',
+                    r'(?:only|just)\s+(?:one|a\s+single)\s+(?:refinement|refine)',
+                ]
+                for constraint in constraints:
+                    for pattern in refine_stop_patterns:
+                        if re.search(pattern, constraint.lower()):
+                            log("DIRECTIVES: Inferring max_refine_cycles=1 from constraint: '%s'" % constraint)
+                            directives["stop_conditions"]["max_refine_cycles"] = 1
+                            inferred = True
+                            break
+                    if inferred:
+                        break
+
+            # If the removed program was a validation/analysis tool (not refinement),
+            # the user likely wanted to stop after refinement completes
+            if not inferred:
+                removed_normalized = after_normalized
+                analysis_programs = {"mtriage", "xtriage", "molprobity", "validation_cryoem"}
+                if removed_normalized in analysis_programs:
+                    log("DIRECTIVES: Removed after_program was analysis tool (%s)" % after_program)
+                    log("DIRECTIVES: Inferring max_refine_cycles=1 (stop after refinement)")
+                    directives["stop_conditions"]["max_refine_cycles"] = 1
+
+        # If stop_conditions is now empty (except maybe skip_validation), clean up
+        remaining = {k: v for k, v in directives["stop_conditions"].items()
+                     if k != "skip_validation"}
+        if not remaining:
+            # Keep skip_validation if it was set
+            if directives["stop_conditions"].get("skip_validation"):
+                pass  # Keep the dict with just skip_validation
+            else:
+                del directives["stop_conditions"]
 
     return directives
 
@@ -1442,6 +1577,29 @@ def extract_directives_simple(user_advice):
             directives["program_settings"]["phenix.refine"] = {}
         directives["program_settings"]["phenix.refine"]["anisotropic_adp"] = True
 
+    # Check for macro_cycles / number of refinement cycles
+    cycle_patterns = [
+        r'(\d+)\s*(?:macro[- ]?)?cycle',  # "1 macro cycle", "3 cycles"
+        r'(?:macro[- ]?)?cycles?\s*[=:]\s*(\d+)',  # "macro_cycles=1", "cycles: 3"
+        r'number[_ ]of[_ ]macro[_ ]cycles\s*[=:]\s*(\d+)',  # "number_of_macro_cycles=1"
+    ]
+    for pattern in cycle_patterns:
+        match = re.search(pattern, advice_lower)
+        if match:
+            try:
+                n_cycles = int(match.group(1))
+                if 1 <= n_cycles <= 50:
+                    if "program_settings" not in directives:
+                        directives["program_settings"] = {}
+                    # Apply to both refine and real_space_refine
+                    for prog in ("phenix.refine", "phenix.real_space_refine"):
+                        if prog not in directives["program_settings"]:
+                            directives["program_settings"][prog] = {}
+                        directives["program_settings"][prog]["macro_cycles"] = n_cycles
+                    break
+            except ValueError:
+                pass
+
     # ==========================================================================
     # ATOM TYPE EXTRACTION (for autosol)
     # ==========================================================================
@@ -1508,10 +1666,16 @@ def extract_directives_simple(user_advice):
 
     # Check for skip program patterns
     skip_program_patterns = [
-        (r'(?:skip|no|avoid|don\'?t\s+(?:run|use))\s+(?:the\s+)?autobuild', 'phenix.autobuild'),
-        (r'(?:skip|no|avoid|don\'?t\s+(?:run|use))\s+(?:the\s+)?ligand\s*fit', 'phenix.ligandfit'),
-        (r'(?:skip|no|avoid|don\'?t\s+(?:run|use))\s+(?:the\s+)?molprobity', 'phenix.molprobity'),
-        (r'(?:skip|no|avoid|don\'?t\s+(?:run|use))\s+(?:the\s+)?phaser', 'phenix.phaser'),
+        (r'(?:skip|no|avoid|(?:don\'?t|do\s+not)\s+(?:run|use))\s+(?:the\s+)?autobuild', 'phenix.autobuild'),
+        (r'(?:skip|no|avoid|(?:don\'?t|do\s+not)\s+(?:run|use))\s+(?:the\s+)?ligand\s*fit', 'phenix.ligandfit'),
+        (r'(?:skip|no|avoid|(?:don\'?t|do\s+not)\s+(?:run|use))\s+(?:the\s+)?molprobity', 'phenix.molprobity'),
+        (r'(?:skip|no|avoid|(?:don\'?t|do\s+not)\s+(?:run|use))\s+(?:the\s+)?phaser', 'phenix.phaser'),
+        (r'(?:skip|no|avoid|(?:don\'?t|do\s+not)\s+(?:run|use))\s+(?:the\s+)?mtriage', 'phenix.mtriage'),
+        (r'(?:skip|no|avoid|(?:don\'?t|do\s+not)\s+(?:run|use))\s+(?:the\s+)?xtriage', 'phenix.xtriage'),
+        (r'(?:skip|no|avoid|(?:don\'?t|do\s+not)\s+(?:run|use))\s+(?:the\s+)?(?:real.?space.?)?refine', 'phenix.real_space_refine'),
+        (r'(?:skip|no|avoid|(?:don\'?t|do\s+not)\s+(?:run|use))\s+(?:the\s+)?validation', 'phenix.molprobity'),
+        (r'(?:skip|no|avoid|(?:don\'?t|do\s+not)\s+(?:run|use))\s+(?:the\s+)?map.?sharpening', 'phenix.map_sharpening'),
+        (r'(?:skip|no|avoid|(?:don\'?t|do\s+not)\s+(?:run|use))\s+(?:the\s+)?resolve', 'phenix.resolve_cryo_em'),
     ]
 
     for pattern, program in skip_program_patterns:

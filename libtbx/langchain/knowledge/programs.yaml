@@ -113,11 +113,18 @@ phenix.mtriage:
       full_map:
         extensions: [.mrc, .ccp4, .map]
         flag: "full_map="
-        exclude_patterns: [half, _1, _2, _a, _b]
+        exclude_patterns: [half_1, half_2, half1, half2, _half]
       half_map:
         extensions: [.mrc, .ccp4, .map]
         flag: "half_map="
         multiple: true
+
+  # Use categorized files for reliable selection (avoids false exclude_pattern matches)
+  input_priorities:
+    full_map:
+      categories: [full_map, map]
+    half_map:
+      categories: [half_map]
 
   # IMPORTANT: half_maps must come from the same reconstruction as full_map
   # Do not mix density-modified maps with original half-maps
@@ -750,6 +757,7 @@ phenix.dock_in_map:
       fix:
         auto_fill_resolution: true
       message: "Resolution required for dock_in_map"
+      prerequisite: phenix.mtriage  # Run mtriage first to get resolution
 
     - name: requires_full_map
       description: "dock_in_map requires a full map, not half-maps"
@@ -788,6 +796,8 @@ phenix.map_to_model:
         extensions: [.mrc, .ccp4, .map]
         flag: ""
         multiple: true
+        auto_fill: false  # Do NOT auto-fill - only include if user/LLM explicitly requests
+        description: "Optional half-maps for local filtering (only if no full map available)"
       partial_model:
         extensions: [.pdb]
         flag: "input_files.partial_model="
@@ -806,8 +816,9 @@ phenix.map_to_model:
     files:
       - pattern: "map_to_model*.pdb"
         type: model
-      - pattern: "*.pdb"
-        type: model
+      # NOTE: Do NOT use "*.pdb" catch-all here - map_to_model produces many
+      # intermediate PDB files (unrefined_model_box_au_map_shifted.pdb, etc.)
+      # that should NOT be treated as the final positioned model.
     metrics:
       - map_cc
 
@@ -840,6 +851,7 @@ phenix.map_to_model:
       fix:
         auto_fill_resolution: true
       message: "Resolution required for map_to_model"
+      prerequisite: phenix.mtriage  # Run mtriage first to get resolution
 
   hints:
     - "Can use full map OR two half-maps (half-maps provide better weighting)"
@@ -912,7 +924,7 @@ phenix.refine:
       # Subcategory preference within 'model': with_ligand > refined > phaser_output > autobuild > docked
       prefer_subcategories: [with_ligand, refined, phaser_output, autobuild_output, docked]
       # Explicitly exclude search_model and intermediates - they are NOT positioned
-      exclude_categories: [search_model, predicted, processed_predicted, intermediate_mr, ligand_pdb, ligand]
+      exclude_categories: [search_model, predicted, processed_predicted, intermediate_mr, intermediate, map_to_model_intermediate, ligand_pdb, ligand]
     data_mtz:
       categories: [original_data_mtz, data_mtz]  # Prefer MTZ with R-free flags
       exclude_categories: [map_coeffs_mtz]  # Never refine against map coefficients!
@@ -1035,7 +1047,7 @@ phenix.real_space_refine:
       map:
         extensions: [.mrc, .ccp4, .map]
         flag: ""
-        exclude_patterns: [half, _1, _2, _a, _b]
+        exclude_patterns: [half_1, half_2, half1, half2, _half]
 
   # Input priorities for cryo-EM refinement
   # 
@@ -1049,7 +1061,7 @@ phenix.real_space_refine:
       # Subcategory preference within 'model': rsr_output > docked > with_ligand > autobuild
       prefer_subcategories: [rsr_output, docked, with_ligand, autobuild_output]
       # Explicitly exclude search_model and intermediates - they are NOT positioned
-      exclude_categories: [search_model, predicted, processed_predicted, intermediate_mr, ligand]
+      exclude_categories: [search_model, predicted, processed_predicted, intermediate_mr, intermediate, map_to_model_intermediate, ligand]
     map:
       categories: [full_map, optimized_full_map, map]
       exclude_categories: [half_map]  # Half-maps too noisy for refinement
@@ -1093,6 +1105,7 @@ phenix.real_space_refine:
       fix:
         auto_fill_resolution: true
       message: "Resolution required for real_space_refine"
+      prerequisite: phenix.mtriage  # Run mtriage first to get resolution
 
     - name: requires_unique_output_prefix
       description: "Output prefix should be unique per cycle to avoid overwriting"

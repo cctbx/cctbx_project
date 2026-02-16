@@ -965,7 +965,14 @@ def plan(state):
     # 2. Check for rules-only mode (no LLM)
     use_rules_only = state.get("use_rules_only", False) or state.get("use_yaml_mode", USE_RULES_SELECTOR)
     if use_rules_only:
-        state = _log(state, "PLAN: Rules-only mode enabled, skipping LLM")
+        state = _log(state, "")
+        state = _log(state, "=" * 60)
+        state = _log(state, "NOTE: Running WITHOUT LLM (rules-only mode)")
+        state = _log(state, "Program selection uses workflow rules only.")
+        state = _log(state, "Set use_llm=True and configure an LLM provider")
+        state = _log(state, "for smarter decision-making.")
+        state = _log(state, "=" * 60)
+        state = _log(state, "")
         return _mock_plan(state)
 
     # 3. Get provider from state
@@ -1271,12 +1278,62 @@ def plan(state):
         }
 
 
+def _check_fatal_llm_error(error_msg):
+    """
+    Check if an LLM error is fatal (won't resolve by retrying).
+
+    Returns a user-friendly message if fatal, None if retryable.
+    """
+    import re
+
+    error_lower = error_msg.lower() if error_msg else ""
+
+    # Google API key IP address restriction
+    if "ip address restriction" in error_lower or "API_KEY_IP_ADDRESS_BLOCKED" in error_msg:
+        # Extract the IP address if present
+        ip_match = re.search(r'originating IP address.*?(\d+\.\d+\.\d+\.\d+)', error_msg)
+        ip_addr = ip_match.group(1) if ip_match else "unknown"
+        return (
+            "Your Google API key has an IP address restriction. "
+            "Your current IP address (%s) is not in the allowed list.\n\n"
+            "To fix this:\n"
+            "  1. Go to https://console.cloud.google.com/apis/credentials\n"
+            "  2. Edit your API key's IP restrictions\n"
+            "  3. Add your IP address (%s) to the allowed list\n"
+            "  4. Or remove IP restrictions entirely for testing\n\n"
+            "Alternatively, run with use_llm=False for rules-only mode."
+        ) % (ip_addr, ip_addr)
+
+    # Invalid API key
+    if "api_key_invalid" in error_lower or "api key not valid" in error_lower:
+        return (
+            "Your API key is not valid. Please check that you have copied it correctly.\n\n"
+            "To fix this:\n"
+            "  1. Verify your GOOGLE_API_KEY environment variable\n"
+            "  2. Generate a new key at https://console.cloud.google.com/apis/credentials\n\n"
+            "Alternatively, run with use_llm=False for rules-only mode."
+        )
+
+    # Quota exceeded (not really fatal but user needs to know)
+    if "quota" in error_lower and "exceeded" in error_lower:
+        return (
+            "Your API quota has been exceeded. You may need to wait or upgrade your plan.\n\n"
+            "In the meantime, you can run with use_llm=False for rules-only mode."
+        )
+
+    return None  # Retryable error
+
+
 def _handle_llm_failure(state, error_msg):
     """
     Handle LLM failures with tracking and graceful degradation.
 
     After MAX_LLM_FAILURES consecutive failures, stops the workflow
     with a helpful message instead of silently falling back to rules-only mode.
+
+    Special cases that stop IMMEDIATELY (no retries):
+    - API key IP address restriction (won't resolve by retrying)
+    - Invalid API key (won't resolve by retrying)
 
     Args:
         state: Current graph state
@@ -1286,6 +1343,29 @@ def _handle_llm_failure(state, error_msg):
         Updated state - either with graceful stop or fallback to rules
     """
     MAX_LLM_FAILURES = 3  # Stop after this many consecutive failures
+
+    # Check for FATAL errors that won't resolve by retrying
+    fatal_error = _check_fatal_llm_error(error_msg)
+    if fatal_error:
+        state = _log(state, "PLAN: FATAL LLM error - %s" % fatal_error)
+
+        intent = {
+            "program": "STOP",
+            "stop": True,
+            "stop_reason": fatal_error,
+            "reasoning": "Fatal LLM configuration error",
+            "llm_unavailable": True,
+        }
+
+        state = _emit(state, EventType.STOP_DECISION,
+            stop=True,
+            reason="Fatal LLM error",
+            last_error=error_msg[:200])
+
+        return {
+            **state,
+            "intent": intent
+        }
 
     # Track consecutive failures
     failures = state.get("llm_consecutive_failures", 0) + 1
@@ -1589,6 +1669,7 @@ def _build_with_new_builder(state):
         llm_files=corrected_files if corrected_files else None,
         llm_strategy=strategy if strategy else None,
         recovery_strategies=recovery_strategies,
+        directives=state.get("directives", {}),
         log=log_wrapper,
     )
 
@@ -1601,6 +1682,88 @@ def _build_with_new_builder(state):
         state = _log(state, log_msg)
 
     if not command:
+        # Check if a prerequisite program is needed (e.g., mtriage for resolution)
+        prereq_program, prereq_reason = builder.get_prerequisite()
+        if prereq_program:
+            state = _log(state, "BUILD: %s needs prerequisite: %s (%s)" % (
+                program, prereq_program, prereq_reason))
+
+            # Check skip_programs - if user said "don't run mtriage" we can't use it
+            directives = state.get("directives", {})
+            skip_programs = directives.get("workflow_preferences", {}).get("skip_programs", [])
+            skip_normalized = [p.replace("phenix.", "") for p in skip_programs]
+            prereq_normalized = prereq_program.replace("phenix.", "")
+
+            if prereq_normalized in skip_normalized:
+                state = _log(state, "BUILD: Prerequisite %s is in skip_programs - cannot satisfy requirement" %
+                             prereq_program)
+                state = _log(state, "BUILD: User requested %s but also asked to skip %s which provides %s" % (
+                    program, prereq_program, prereq_reason.lower()))
+                state = _emit(state, EventType.ERROR,
+                    message="Cannot run %s: requires %s (skipped by user)" % (program, prereq_program),
+                    details=prereq_reason)
+                return {**state, "command": "", "validation_error":
+                    "Cannot run %s: it requires resolution from %s, but %s is in skip_programs. "
+                    "Either provide resolution= in your advice or allow %s to run." % (
+                        program, prereq_program, prereq_program, prereq_program)}
+            else:
+                # Build the prerequisite command instead
+                state = _log(state, "BUILD: Building prerequisite %s to get %s" % (
+                    prereq_program, prereq_reason.lower()))
+
+                prereq_build_logs = []
+                def prereq_log_wrapper(msg):
+                    prereq_build_logs.append(msg)
+
+                prereq_context = CommandContext(
+                    cycle_number=context.cycle_number,
+                    experiment_type=context.experiment_type,
+                    resolution=context.resolution,
+                    best_files=context.best_files,
+                    rfree_mtz=context.rfree_mtz,
+                    categorized_files=context.categorized_files,
+                    workflow_state=context.workflow_state,
+                    history=context.history,
+                    llm_files=None,  # Auto-select files for prerequisite
+                    llm_strategy=None,
+                    directives=context.directives,
+                    log=prereq_log_wrapper,
+                )
+
+                prereq_builder = CommandBuilder()
+                prereq_command = prereq_builder.build(prereq_program, available_files, prereq_context)
+
+                # Add prereq builder logs to state
+                for log_msg in prereq_build_logs:
+                    state = _log(state, log_msg)
+
+                if prereq_command:
+                    state = _log(state, "BUILD: Running %s as prerequisite for %s" % (
+                        prereq_program, program))
+
+                    # Update intent to reflect what we're actually running
+                    original_intent = state.get("intent", {})
+                    prereq_intent = {
+                        **original_intent,
+                        "program": prereq_program,
+                        "reasoning": (
+                            "Prerequisite: %s requires resolution, which is not yet available. "
+                            "Running %s first to determine resolution. "
+                            "%s will be run on the next cycle."
+                        ) % (program, prereq_program, program),
+                        "original_program": program,  # Remember what user actually wanted
+                    }
+
+                    return {
+                        **state,
+                        "command": prereq_command,
+                        "program": prereq_program,
+                        "intent": prereq_intent,
+                        "prerequisite_for": program,  # Signal to next cycle
+                    }
+                else:
+                    state = _log(state, "BUILD: Failed to build prerequisite %s" % prereq_program)
+
         state = _log(state, "BUILD: Failed to build command for %s" % program)
         state = _emit(state, EventType.ERROR, message="Failed to build command", details=program)
         return {**state, "command": "", "validation_error": "Failed to build command"}
@@ -2184,14 +2347,19 @@ def validate(state):
     chosen_program = intent.get("program")
 
     # === 1. WORKFLOW STATE VALIDATION (STRICT) ===
+    # Exempt prerequisite programs (e.g., mtriage run to get resolution for RSR)
+    is_prerequisite = bool(state.get("prerequisite_for"))
     workflow_state = state.get("workflow_state", {})
 
-    if workflow_state and chosen_program:
+    if workflow_state and chosen_program and not is_prerequisite:
         is_valid, error = validate_program_choice(chosen_program, workflow_state)
         if not is_valid:
             state = _log(state, "VALIDATE: WORKFLOW VIOLATION - %s" % error)
             state = {**state, "validation_error": error}
             return _increment_attempt(state)
+    elif is_prerequisite:
+        state = _log(state, "VALIDATE: Skipping workflow check for prerequisite %s (needed for %s)" % (
+            chosen_program, state.get("prerequisite_for")))
 
     # === 2. FILE VALIDATION ===
     # On the server, we only have the file list passed from client - no filesystem access
@@ -2313,6 +2481,7 @@ def _fallback_with_new_builder(state):
         history=state.get("history", []),
         llm_files=None,  # No LLM hints
         llm_strategy=None,  # No LLM hints
+        directives=state.get("directives", {}),
         log=lambda msg: None,
     )
 
@@ -2336,16 +2505,77 @@ def _fallback_with_new_builder(state):
 
         if cmd and cmd not in previous_commands:
             state = _log(state, "FALLBACK: Built command for %s" % program)
+
+            # Update reasoning if fallback chose a different program than planned
+            original_program = state.get("intent", {}).get("program", "")
+            original_reasoning = state.get("intent", {}).get("reasoning", "")
+            if original_program and original_program != program and original_program != "STOP":
+                prev_attempts = state.get("previous_attempts", [])
+                errors = [a.get("error", "") for a in prev_attempts if a.get("error")]
+                error_summary = "; ".join(errors[:2]) if errors else "build failed"
+                fallback_reasoning = (
+                    "Fallback: %s could not be built (%s). "
+                    "Running %s instead as next available program."
+                ) % (original_program, error_summary, program)
+            else:
+                fallback_reasoning = original_reasoning
+
             return {
                 **state,
                 "command": cmd,
-                "program": program,  # Important: track which program fallback chose
+                "program": program,
+                "intent": {
+                    **(state.get("intent") or {}),
+                    "program": program,
+                    "reasoning": fallback_reasoning,
+                },
                 "validation_error": None,
                 "fallback_used": True
             }
         elif cmd:
             state = _log(state, "FALLBACK: %s would duplicate, trying next" % program)
         else:
+            # Build failed - check if a prerequisite was identified
+            prereq_program, prereq_reason = builder.get_prerequisite()
+            if prereq_program:
+                state = _log(state, "FALLBACK: %s needs prerequisite %s (%s)" % (
+                    program, prereq_program, prereq_reason))
+
+                # Check skip_programs
+                skip_programs = directives.get("workflow_preferences", {}).get("skip_programs", [])
+                skip_normalized = [p.replace("phenix.", "") for p in skip_programs]
+                prereq_normalized = prereq_program.replace("phenix.", "")
+
+                if prereq_normalized not in skip_normalized:
+                    # Try building the prerequisite with fresh builder
+                    prereq_builder = CommandBuilder()
+                    prereq_cmd = prereq_builder.build(prereq_program, available_files, context)
+                    if prereq_cmd and prereq_cmd not in previous_commands:
+                        state = _log(state, "FALLBACK: Running prerequisite %s for %s" % (
+                            prereq_program, program))
+                        return {
+                            **state,
+                            "command": prereq_cmd,
+                            "program": prereq_program,
+                            "intent": {
+                                **(state.get("intent") or {}),
+                                "program": prereq_program,
+                                "reasoning": (
+                                    "Prerequisite: %s requires %s. "
+                                    "Running %s first to obtain it. "
+                                    "%s will run on the next cycle."
+                                ) % (program, prereq_reason.lower(), prereq_program, program),
+                                "original_program": program,
+                            },
+                            "prerequisite_for": program,
+                            "validation_error": None,
+                            "fallback_used": True
+                        }
+                    else:
+                        state = _log(state, "FALLBACK: Prerequisite %s also failed to build" % prereq_program)
+                else:
+                    state = _log(state, "FALLBACK: Prerequisite %s is in skip_programs" % prereq_program)
+
             state = _log(state, "FALLBACK: %s failed to build, trying next" % program)
 
     # Last resort - stop
