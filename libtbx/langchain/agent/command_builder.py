@@ -620,9 +620,24 @@ class CommandBuilder:
         # POST-SELECTION VALIDATION: Remove redundant half_map if full_map is present
         # Programs like map_to_model and resolve_cryo_em only need half-maps when
         # no full map is available. Having both causes confusion.
+        # EXCEPTION: If the "full_map" is actually a categorized half_map (mis-selected
+        # via generic 'map' category fallback), remove it instead and keep the half_maps.
         if "full_map" in selected_files and "half_map" in selected_files:
-            self._log(context, "BUILD: Removing redundant half_map (full_map already selected)")
-            del selected_files["half_map"]
+            full_map_path = selected_files["full_map"]
+            if isinstance(full_map_path, list):
+                full_map_path = full_map_path[0] if full_map_path else ""
+            # Check if this "full_map" is actually a half map
+            half_map_files = context.categorized_files.get("half_map", [])
+            full_map_files = context.categorized_files.get("full_map", [])
+            if full_map_path in half_map_files and full_map_path not in full_map_files:
+                # The "full_map" is a mis-selected half map — remove it, keep half_maps
+                self._log(context, "BUILD: Removing mis-selected full_map=%s (it's actually a half-map)" %
+                          os.path.basename(str(full_map_path)))
+                del selected_files["full_map"]
+            else:
+                # Genuine full_map — remove redundant half_maps
+                self._log(context, "BUILD: Removing redundant half_map (full_map already selected)")
+                del selected_files["half_map"]
 
         # Also check for programs with requires_full_map that shouldn't get any half-maps
         prog_def = self._registry.get_program(program)
@@ -926,6 +941,18 @@ class CommandBuilder:
         if context.llm_strategy:
             strategy.update(context.llm_strategy)
 
+        # CRITICAL: Resolution must come from verified sources (mtriage, xtriage, log analysis),
+        # NOT from LLM guessing. The LLM often hallucinate resolution values.
+        # Strip LLM-provided resolution if there's no verified source to confirm it.
+        if "resolution" in strategy and context.llm_strategy and "resolution" in context.llm_strategy:
+            # Check if we have a verified resolution from context
+            verified_resolution = context.resolution  # From session_resolution or workflow_state
+            if verified_resolution is None:
+                # No verified source — LLM made this up
+                hallucinated = strategy.pop("resolution")
+                self._log(context, "BUILD: Stripped LLM-hallucinated resolution=%.1f "
+                          "(no verified source — must run mtriage first)" % float(hallucinated))
+
         # Override with user directive program_settings (higher priority)
         if context.directives:
             prog_settings = context.directives.get("program_settings", {})
@@ -961,6 +988,35 @@ class CommandBuilder:
         if program in ("phenix.refine", "phenix.real_space_refine"):
             if "output_prefix" not in strategy:
                 strategy["output_prefix"] = self._generate_output_prefix(program, context)
+
+        # Sanitize autosol atom_type: LLM often puts multiple atoms in one field
+        # e.g. "Se, S" or "Se S" instead of atom_type="Se" + additional_atom_types="S"
+        # The space/comma causes command-line splitting: "autosol.atom_type=Se," "S" → crash
+        if program == "phenix.autosol" and "atom_type" in strategy:
+            raw = str(strategy["atom_type"]).strip()
+            # Split on comma, space, semicolon, slash, "and", "or"
+            import re as _re
+            parts = [p.strip().rstrip(",") for p in _re.split(r'[,;\s/]+|(?:\band\b)|(?:\bor\b)', raw) if p.strip()]
+            # Filter to valid atom symbols (1-2 chars, capitalized)
+            valid_atoms = []
+            for p in parts:
+                cleaned = p.strip().rstrip(",").strip()
+                if cleaned and 1 <= len(cleaned) <= 2 and cleaned[0].isupper():
+                    valid_atoms.append(cleaned)
+            if valid_atoms:
+                strategy["atom_type"] = valid_atoms[0]
+                if len(valid_atoms) > 1:
+                    # Move extras to additional_atom_types
+                    extras = ",".join(valid_atoms[1:])
+                    if "additional_atom_types" not in strategy:
+                        strategy["additional_atom_types"] = extras
+                        self._log(context, "BUILD: Split atom_type '%s' → atom_type=%s, additional_atom_types=%s" %
+                                  (raw, valid_atoms[0], extras))
+                    else:
+                        self._log(context, "BUILD: Trimmed atom_type '%s' → atom_type=%s (additional_atom_types already set)" %
+                                  (raw, valid_atoms[0]))
+                elif raw != valid_atoms[0]:
+                    self._log(context, "BUILD: Cleaned atom_type '%s' → '%s'" % (raw, valid_atoms[0]))
 
         return strategy
 
