@@ -136,8 +136,9 @@ data_mtz:
   # IMPORTANT: Exclude map coefficients patterns so they don't end up here
   excludes:
     - "*_refine_???.mtz"       # Map coefficients: 7qz0_refine_001.mtz
-    - "refine_*_001.mtz"       # Map coefficients: refine_001_001.mtz
-    - "*_refine_*_001.mtz"     # Map coefficients: 7qz0_refine_001_001.mtz
+    - "refine_???.mtz"         # Map coefficients: refine_001.mtz (bare prefix)
+    - "refine_*_???.mtz"       # Map coefficients: refine_001_001.mtz
+    - "*_refine_*_???.mtz"     # Map coefficients: 7qz0_refine_001_001.mtz
     - "*map_coeffs*"           # Explicit map coefficients
     - "*denmod*.mtz"           # Density-modified coefficients
   valid_for:
@@ -208,12 +209,11 @@ refine_map_coeffs:
   extensions: [".mtz"]
   patterns:
     - "*_refine_???.mtz"      # Standard: 7qz0_refine_001.mtz (<input>_refine_NNN.mtz)
-    - "refine_*_001.mtz"      # Bare input: refine_001_001.mtz
-    - "*_refine_*_001.mtz"    # Two-level serial: 7qz0_refine_001_001.mtz
+    - "refine_???.mtz"        # Bare prefix: refine_001.mtz (output.prefix=refine_001)
+    - "refine_*_???.mtz"      # Compound prefix: refine_001_001.mtz, refine_7qz0_001.mtz
+    - "*_refine_*_???.mtz"    # Two-level serial: 7qz0_refine_001_001.mtz
   excludes:
     - "*_data.mtz"
-    - "*_002.mtz"             # Secondary outputs
-    - "*_003.mtz"
   notes: "Contains 2mFo-DFc (2FOFCWT/PH2FOFCWT) and Fo-Fc (FOFCWT/PHFOFCWT) map coefficients"
 
 denmod_map_coeffs:

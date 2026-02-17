@@ -86,9 +86,10 @@ SUBCATEGORY_TO_PARENT = {
     "autobuild_output": "model",
     "docked": "model",
     "with_ligand": "model",
-    "ligand_fit_output": "model",  # Updated from ligand_fit
+    "ligand_fit_output": "ligand",  # Ligand fragment from ligandfit, not a full model
     "model_cif": "model",
-    "unclassified_pdb": "model",  # Default for generic PDB files - assume positioned model
+    "unclassified_pdb": "model",  # Generic PDB files bubble to model category
+                                  # but _has_placed_model checks subcategories to determine placement
 
     # Search model subcategories (templates, NOT positioned)
     "predicted": "search_model",

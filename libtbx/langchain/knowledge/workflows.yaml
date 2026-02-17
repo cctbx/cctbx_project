@@ -63,7 +63,10 @@ xray:
 
         - program: phenix.phaser
           conditions:
-            - has: search_model
+            # In obtain_model phase, any model file is a search model candidate.
+            # We only reach this phase when has_placed_model is False, so a PDB
+            # in the model category must be an unpositioned search model.
+            - has: model
             - not_done: phaser  # MR should only run once
 
         - program: phenix.autosol
@@ -619,7 +622,8 @@ shared:
       molecular_replacement: obtain_model
 
   # Maximum refinement cycles before forcing stop
-  max_refine_cycles: 8
+  # Hard limit in _is_at_target is 3; this caps directive-based overrides
+  max_refine_cycles: 5
 
   # Improvement threshold (percentage) - below this is "plateau"
   plateau_threshold: 0.3

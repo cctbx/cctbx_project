@@ -73,7 +73,7 @@ class WorkflowEngine:
             "has_sequence": bool(files.get("sequence")),
             # SEMANTIC: 'model' = positioned models (phaser_output, refined, docked)
             # SEMANTIC: 'search_model' = templates NOT yet positioned (predicted, pdb_template)
-            "has_model": bool(files.get("model")),  # Positioned models only
+            "has_model": bool(files.get("model")),  # Any model file (positioned or generic PDB)
             "has_search_model": bool(files.get("search_model")),  # Templates/predictions
             "has_full_map": bool(files.get("full_map")),
             "has_half_map": len(files.get("half_map", [])) >= 2,
@@ -204,26 +204,41 @@ class WorkflowEngine:
         """
         Check if model is placed (after MR/building) or is ready-to-refine.
 
-        With semantic categories, this is simplified:
-        - 'model' category = positioned models (phaser_output, refined, docked, autobuild)
-
         A model is considered "placed" if:
-        1. There's a file in the 'model' category
-        2. History shows MR or building was done
-        3. User explicitly requests refinement/validation (implying model is ready)
+        1. History shows MR, building, or prediction was done
+        2. There's a file in a SPECIFIC positioned subcategory (refined,
+           phaser_output, autobuild_output, docked, with_ligand, rsr_output)
+        3. User explicitly requests refinement/validation via directives
 
-        NOTE: Directives like "after_program: phenix.ligandfit" do NOT imply the model
-        is already placed - they describe what to do, not the current state.
-
-        IMPORTANT: If directives indicate user wants to run predict_and_build,
-        we should NOT assume a generic PDB is positioned - the user wants to
-        generate a new model from sequence.
+        IMPORTANT: An unclassified PDB (generic file like "1abc.pdb") in the
+        'model' parent category is NOT sufficient to be "placed". It could be
+        a search model for MR. Only PDBs in explicit positioned subcategories
+        count, unless history or directives confirm placement.
         """
-        # Check if directives indicate user wants prediction
-        # If so, don't assume a generic model PDB is positioned
-        wants_prediction = False
+        # ---- 1. History-based: definitive evidence of placement ----
+        if (history_info.get("phaser_done") or
+            history_info.get("autobuild_done") or
+            history_info.get("dock_done") or
+            history_info.get("predict_full_done") or
+            history_info.get("refine_done")):
+            return True
+
+        # ---- 2. File-based: check for POSITIONED subcategories ----
+        # These subcategories indicate the model has been positioned in the
+        # unit cell (not just a template/search model).
+        positioned_subcategories = [
+            "refined", "phaser_output", "autobuild_output", "docked",
+            "with_ligand", "rsr_output", "ligand_fit_output",
+        ]
+        for subcat in positioned_subcategories:
+            if files.get(subcat):
+                return True
+
+        # ---- 3. Directive-based: user explicitly says model is ready ----
         if directives:
-            # Check constraints for predict_and_build mentions
+            # Check if directives indicate user wants prediction
+            # If so, don't assume a generic PDB is positioned
+            wants_prediction = False
             constraints = directives.get("constraints", [])
             for c in constraints:
                 c_lower = c.lower() if isinstance(c, str) else ""
@@ -231,127 +246,46 @@ class WorkflowEngine:
                     wants_prediction = True
                     break
 
-            # Check program_settings for predict_and_build
             program_settings = directives.get("program_settings", {})
             if "phenix.predict_and_build" in program_settings:
                 wants_prediction = True
 
-            # Check if stop_conditions mention prediction
             stop_conditions = directives.get("stop_conditions", {})
             after_program = stop_conditions.get("after_program", "")
             if "predict" in after_program.lower():
                 wants_prediction = True
 
-        # SEMANTIC: Check if we have any positioned models
-        # But if user wants prediction, only trust explicitly positioned models
-        # (not generic PDBs that default to "model" category)
-        if files.get("model"):
-            if wants_prediction:
-                # Only trust this if history confirms positioning, or if the model
-                # has explicit positioning indicators in its filename
-                model_files = files.get("model", [])
-                has_explicit_positioned = False
-                for f in model_files:
-                    basename = os.path.basename(f).lower()
-                    # These indicate a POSITIONED model (after MR, building, docking)
-                    # Note: 'overall_best' alone is NOT enough - need to exclude predictions
-                    explicit_indicators = [
-                        'phaser', 'refine', 'rsr_', 'placed', 'dock',
-                        'autobuild', 'built', 'buccaneer', 'shelxe'
-                    ]
-                    # Exclude if it's a predicted model (not positioned)
-                    is_prediction = 'predicted_model' in basename or 'predict' in basename
-                    if any(ind in basename for ind in explicit_indicators) and not is_prediction:
-                        has_explicit_positioned = True
-                        break
-                    # Special case: overall_best without predicted_model IS positioned
-                    # (from full predict_and_build run)
-                    if 'overall_best' in basename and 'predicted_model' not in basename:
-                        has_explicit_positioned = True
-                        break
+            if not wants_prediction:
+                workflow_prefs = directives.get("workflow_preferences", {})
+                skip_programs = workflow_prefs.get("skip_programs", [])
 
-                if not has_explicit_positioned:
-                    # Generic model file + user wants prediction = don't assume placed
-                    pass  # Fall through to history check
-                else:
-                    return True
-            else:
-                return True
-
-        # Check history flags as backup
-        if (history_info.get("phaser_done") or
-            history_info.get("autobuild_done") or
-            history_info.get("dock_done") or
-            history_info.get("predict_full_done")):
-            return True
-
-        # Check directives for explicit skip_programs or programs that imply placement
-        if directives:
-            workflow_prefs = directives.get("workflow_preferences", {})
-            skip_programs = workflow_prefs.get("skip_programs", [])
-
-            # If skip_programs includes phaser or autosol, user expects model to be ready
-            # AND has provided a non-predicted, non-ligand PDB file
-            if any(p in skip_programs for p in ["phenix.phaser", "phenix.autosol"]):
-                # Must have a file in the 'model' category (positioned models)
-                # NOT just search_model (which are templates/predictions)
-                if files.get("model"):
-                    return True
-                # Or check for a non-template, non-ligand PDB that's not in search_model
-                for f in files.get("pdb", []):
-                    # Skip if it's a search model (template/prediction)
-                    if f in files.get("search_model", []):
-                        continue
-                    # Skip ligand files
-                    basename = os.path.basename(f).lower()
-                    is_ligand = (
-                        basename.startswith('lig') or
-                        basename.startswith('ligand') or
-                        f in files.get("ligand_pdb", []) or
-                        f in files.get("ligand_file", [])
-                    )
-                    if not is_ligand:
+                # If skip_programs includes phaser/autosol, user says model is ready
+                if any(p in skip_programs for p in ["phenix.phaser", "phenix.autosol"]):
+                    if files.get("model"):
                         return True
 
-            # NEW: If user's after_program implies model is already placed, treat it as such
-            # Programs like polder, refine, model_vs_data, ligandfit all require a positioned model
-            stop_conditions = directives.get("stop_conditions", {})
-            after_program = stop_conditions.get("after_program", "")
-
-            programs_requiring_placed_model = [
-                "phenix.refine",
-                "phenix.polder",
-                "phenix.model_vs_data",
-                "phenix.ligandfit",
-                "phenix.molprobity",
-                "phenix.real_space_refine",
-            ]
-
-            if after_program in programs_requiring_placed_model:
-                # User is requesting a program that requires placed model
-                # If we have a positioned model PDB file, assume it's placed
-                # But NOT if the only PDBs are search_models (templates/predictions)
-                for f in files.get("pdb", []):
-                    basename = os.path.basename(f).lower()
-                    # Skip ligand files
-                    is_ligand = (
-                        basename.startswith('lig') or
-                        basename.startswith('ligand') or
-                        f in files.get("ligand_pdb", []) or
-                        f in files.get("ligand_file", [])
-                    )
-                    if is_ligand:
-                        continue
-                    # Skip search models (templates/predictions) - they're NOT placed
-                    if f in files.get("search_model", []):
-                        continue
-                    # Skip predicted models specifically
-                    if f in files.get("predicted", []):
-                        continue
-                    if f in files.get("processed_predicted", []):
-                        continue
-                    # This is a real positioned model
-                    return True
+                # If after_program implies a placed model is needed, AND we
+                # have a non-search-model, non-ligand PDB, trust the user
+                programs_requiring_placed = [
+                    "phenix.refine", "phenix.polder", "phenix.model_vs_data",
+                    "phenix.ligandfit", "phenix.molprobity",
+                    "phenix.real_space_refine",
+                ]
+                if after_program in programs_requiring_placed:
+                    for f in files.get("pdb", []):
+                        basename = os.path.basename(f).lower()
+                        is_ligand = (
+                            basename.startswith('lig') or
+                            f in files.get("ligand_pdb", []) or
+                            f in files.get("ligand", [])
+                        )
+                        is_search = (
+                            f in files.get("search_model", []) or
+                            f in files.get("predicted", []) or
+                            f in files.get("processed_predicted", [])
+                        )
+                        if not is_ligand and not is_search:
+                            return True
 
         return False
 
@@ -655,9 +589,18 @@ class WorkflowEngine:
         if experiment_type == "xray":
             r_free = context.get("r_free")
             resolution = context.get("resolution")
+            refine_count = context.get("refine_count", 0)
+
             if r_free is not None:
                 target = get_metric_threshold("r_free", "acceptable", resolution)
                 if target and r_free <= target:
+                    return True
+
+                # Bail out on hopeless R-free: if R-free > 0.5 after at least
+                # one refinement, something is fundamentally wrong (wrong model,
+                # wrong space group, severe data issues). Further refinement
+                # won't help — stop and let the user investigate.
+                if r_free > 0.50 and refine_count >= 1:
                     return True
 
             # Also check clashscore - if it's good, we're likely done
@@ -665,9 +608,10 @@ class WorkflowEngine:
             if clashscore is not None and clashscore < 10:
                 return True
 
-            # Hard limit: if we've done 5+ refine cycles, consider it at target
-            refine_count = context.get("refine_count", 0)
-            if refine_count >= 5:
+            # Hard limit: if we've done 3+ refine cycles, consider it at target.
+            # This prevents unbounded refinement when R-free plateaus above
+            # the target. The LLM may still request more if it sees improvement.
+            if refine_count >= 3:
                 return True
         else:
             # Cryo-EM: check map_cc OR clashscore OR max cycles
@@ -682,9 +626,9 @@ class WorkflowEngine:
             if clashscore is not None and clashscore < 12:
                 return True
 
-            # Hard limit: if we've done 5+ RSR cycles, consider it at target
+            # Hard limit: if we've done 3+ RSR cycles, consider it at target
             rsr_count = context.get("rsr_count", 0)
-            if rsr_count >= 5:
+            if rsr_count >= 3:
                 return True
 
         return False
