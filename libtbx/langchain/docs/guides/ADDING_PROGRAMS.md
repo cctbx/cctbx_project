@@ -39,7 +39,7 @@ phenix.new_analysis:
   experiment_types: [xray, cryoem]
   done_tracking:
     flag: "new_analysis_done"
-    run_once: true
+    strategy: "run_once"
   
   inputs:
     required:
@@ -86,12 +86,16 @@ phenix.new_program:
   category: analysis|phasing|building|refinement|validation
   experiment_types: [xray, cryoem]  # or just one
   
-  # Done tracking: controls workflow done flags and run_once behavior
+  # Done tracking: controls workflow done flags and strategy behavior
   done_tracking:
     flag: "new_program_done"   # Flag name set in workflow context
-    run_once: true             # Only run once per session (optional, default false)
-    history_detection:         # Optional: auto-set done flag from history
-      markers: ["new_program"] # Strings to match in program+command text
+    strategy: "run_once"       # "set_flag" (default) | "run_once" | "count"
+    # count_field: "new_count" # Required when strategy: "count"
+    history_detection:         # Auto-set done flag from history
+      markers: ["new_program"] # Strings to match (substring, OR logic)
+      # exclude_markers: ["other_thing"]  # Reject match if present (checked FIRST)
+      # alt_markers: ["alt_name"]  # Alt match (with alt_requires, AND logic)
+      # alt_requires: ["special_flag"]
 
   # GUI app_id: maps to wxGUI2 window for project History (optional)
   gui_app_id: "NewProgram"           # From wxGUI2/Programs/__init__.params
@@ -168,8 +172,9 @@ phenix.new_program:
 | Field | Effect |
 |-------|--------|
 | `done_tracking.flag` | Names the workflow done flag (e.g., `xtriage_done`) |
-| `done_tracking.run_once` | If true, program is filtered out after first successful run |
-| `done_tracking.history_detection` | YAML-driven simple done-flag setting (markers, alt_markers, success_flag) |
+| `done_tracking.strategy` | `"set_flag"` (default), `"run_once"` (filter after first run), or `"count"` (increment counter) |
+| `done_tracking.count_field` | Counter name for `strategy: "count"` (e.g., `"refine_count"`) — must be in ALLOWED_COUNT_FIELDS |
+| `done_tracking.history_detection` | YAML-driven done-flag setting (markers, exclude_markers, alt_markers, success_flag) |
 | `gui_app_id` | wxGUI2 app_id for project History (fallback when PHIL unavailable) |
 | `gui_app_id_cryoem` | Cryo-EM variant app_id if the program uses a different GUI window |
 | `stop_directive_patterns` | Regex patterns for matching user stop-condition directives |
@@ -252,17 +257,25 @@ phenix.new_program:
   # ... other fields ...
   done_tracking:
     flag: "new_program_done"    # Flag name in workflow context
-    run_once: true              # Optional: filter out after first run
-    history_detection:          # Optional: YAML-driven done-flag setting
+    strategy: "run_once"        # "set_flag" | "run_once" | "count"
+    history_detection:          # YAML-driven done-flag detection
       markers: ["new_program"]  # Match any of these in history (OR logic)
+      # exclude_markers: [...]  # Reject match if present (checked FIRST)
       # alt_markers: ["other_name"]  # Alternative markers (with alt_requires)
       # alt_requires: ["some_flag"]  # ALL must match alongside alt_markers
       # success_flag: "new_program_success"  # Extra flag set on success
 ```
 
-**`history_detection`** replaces simple if/elif blocks in `_analyze_history()`.
+**Strategies:**
+- `"set_flag"` (default): Set done flag on success. Most programs use this.
+- `"run_once"`: Set done flag + filter program from valid list after first run.
+  Use for analysis programs that should never re-run (xtriage, mtriage).
+- `"count"`: Set done flag + increment a counter. Requires `count_field`.
+  Use for programs that can run multiple times (refine, rsr).
+
+**`history_detection`** replaces if/elif blocks in `_analyze_history()`.
 Use it when your program only needs a boolean done flag set on success.
-Do NOT use it if your program needs counts, cascading flags (like
+Do NOT use it if your program needs cascading flags (like
 predict_and_build → refine_done), or exclusion logic (like refine excluding
 real_space).
 
@@ -283,7 +296,8 @@ patterns match before shorter ones.
 **When to add `done_tracking`:**
 - Your program gates a workflow phase (e.g., xtriage gates "analyze")
 - Users might skip it via `skip_programs` (the flag must be set for phase advancement)
-- You want `run_once` behavior (program filtered from valid list after completion)
+- You want `strategy: "run_once"` behavior (program filtered from valid list after completion)
+- You need to track how many times a program ran (`strategy: "count"`)
 
 **When to skip:** Validation programs like `phenix.map_correlations` that don't
 gate any phase and can run freely don't need `done_tracking`.
@@ -420,7 +434,9 @@ phenix.map_symmetry:
   experiment_types: [cryoem]
   done_tracking:
     flag: "map_symmetry_done"
-    run_once: true
+    strategy: "run_once"
+    history_detection:
+      markers: ["map_symmetry"]
 
   inputs:
     required:
@@ -703,7 +719,7 @@ short-form PHIL paths to full scope paths. This is handled in
 2. **Program Registration** (`knowledge/program_registration.py`)
    - Reads `done_tracking` blocks from programs.yaml
    - Provides `get_program_done_flag_map()` (all programs → done flags)
-   - Provides `get_trackable_programs()` (run_once programs only)
+   - Provides `get_trackable_programs()` (strategy: "run_once" programs only)
 
 3. **Summary Display** (`knowledge/summary_display.py`)
    - Reads `summary_display` from metrics.yaml
@@ -786,7 +802,7 @@ python agent/program_validator.py --list
 |---------|---------|-----|
 | Missing `input_priorities` | Wrong file selected | Add explicit priorities with excludes |
 | No `exclude_categories` for protein/model input | Picks ligand or predicted model | Add `exclude_categories: [ligand, search_model]` |
-| Forgetting `done_tracking` with `run_once: true` | Program runs multiple times | Add `done_tracking: {flag: ..., run_once: true}` |
+| Forgetting `done_tracking` with `strategy: "run_once"` | Program runs multiple times | Add `done_tracking: {flag: ..., strategy: "run_once"}` |
 | Wrong `experiment_types` | Program offered for wrong data | Set `[xray]`, `[cryoem]`, or both |
 | Missing workflow entry | Program never offered | Add to appropriate phase in `workflows.yaml` |
 

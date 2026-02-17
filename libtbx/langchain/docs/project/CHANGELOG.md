@@ -1,5 +1,33 @@
 # PHENIX AI Agent - Changelog
 
+## Version 112.12 (February 2025)
+
+### Done-tracking strategy enum (Fix 10C)
+
+**Replaced `run_once: true` with `strategy` enum; unified detection to one system**
+
+- Added `strategy: "set_flag" | "run_once" | "count"` to done_tracking in
+  programs.yaml. `set_flag` is the default (simple done flag), `run_once`
+  replaces the old boolean, `count` handles programs that need run counting.
+- Added `count_field` and `exclude_markers` to history_detection schema.
+  `count_field` specifies the counter name (e.g., "refine_count");
+  `exclude_markers` rejects matches (checked BEFORE markers).
+- Moved 4 remaining Python-only blocks to YAML: validation (4 programs
+  share one flag via markers), phaser (count), refine (count + exclude),
+  real_space_refine (count). Only predict_and_build cascade stays in Python.
+- Added `ALLOWED_COUNT_FIELDS` whitelist validated at load time — prevents
+  typos in YAML count_field from silently creating garbage attributes.
+- Removed 3 dead success flags: `refine_success`, `rsr_success`,
+  `phaser_success` (set but never read anywhere).
+- Unified `_set_simple_done_flags()` → `_set_done_flags()` handling all
+  strategies. Removed redundant `detect_programs_in_history()` calls.
+- Counter fields initialized dynamically from YAML configs (single source
+  of truth) instead of hardcoded in info dict.
+- 36 conformance tests passing (was 33): added test_strategy_enum_values,
+  test_count_field_validation, test_exclude_markers_prevent_false_matches.
+- Files: `knowledge/programs.yaml`, `agent/workflow_state.py`,
+  `knowledge/program_registration.py`, `tests/tst_hardcoded_cleanup.py`
+
 ## Version 112.11 (February 2025)
 
 ### Phase 3: Final hardcoded cleanup (Fixes 6, 8, 10B)

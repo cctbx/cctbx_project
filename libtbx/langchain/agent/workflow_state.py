@@ -500,24 +500,34 @@ def _is_failed_result(result):
     return any(pattern in result_upper for pattern in failure_patterns)
 
 
-# Cache for history detection config loaded from YAML
-_HISTORY_DETECTION_CACHE = None
+# Cache for done tracking config loaded from YAML
+_DONE_TRACKING_CACHE = None
+
+# Allowed count_field values — rejects typos at load time
+ALLOWED_COUNT_FIELDS = {"refine_count", "rsr_count", "phaser_count"}
 
 
-def _load_history_detection_config():
-    """Load history_detection configuration from programs.yaml.
+def _load_done_tracking_configs():
+    """Load done_tracking configuration from programs.yaml.
 
-    Returns list of dicts, each with:
+    Returns list of dicts for all programs with history_detection, each with:
       - flag: done flag name (e.g., 'dock_done')
-      - markers: list of strings to match in combined text (OR logic)
+      - strategy: 'set_flag' (default), 'run_once', or 'count'
+      - count_field: counter name for strategy='count' (e.g., 'refine_count')
+      - markers: list of strings to match in combined text (OR logic,
+                 substring matching)
+      - exclude_markers: list of strings that reject a match (checked FIRST)
       - alt_markers: optional list of alternate marker strings
       - alt_requires: optional list of strings that must ALL be present
                       alongside alt_markers (AND logic)
       - success_flag: optional additional flag set on success
+
+    Validates count_field against ALLOWED_COUNT_FIELDS at load time to
+    prevent typos from silently creating garbage attributes.
     """
-    global _HISTORY_DETECTION_CACHE
-    if _HISTORY_DETECTION_CACHE is not None:
-        return _HISTORY_DETECTION_CACHE
+    global _DONE_TRACKING_CACHE
+    if _DONE_TRACKING_CACHE is not None:
+        return _DONE_TRACKING_CACHE
 
     configs = []
     try:
@@ -533,30 +543,46 @@ def _load_history_detection_config():
             detection = tracking.get("history_detection")
             if not detection or not isinstance(detection, dict):
                 continue
+
+            strategy = tracking.get("strategy", "set_flag")
+            count_field = tracking.get("count_field")
+
+            # Validate count_field at load time
+            if strategy == "count":
+                if not count_field:
+                    print("  [workflow_state] Warning: %s has strategy='count' "
+                          "but no count_field" % name)
+                    continue
+                if count_field not in ALLOWED_COUNT_FIELDS:
+                    raise ValueError(
+                        "Unknown count_field %r in done_tracking for %s. "
+                        "Allowed: %s" % (count_field, name, ALLOWED_COUNT_FIELDS))
+
             configs.append({
+                "program": name,
                 "flag": tracking.get("flag"),
+                "strategy": strategy,
+                "count_field": count_field,
                 "markers": detection.get("markers", []),
+                "exclude_markers": detection.get("exclude_markers", []),
                 "alt_markers": detection.get("alt_markers", []),
                 "alt_requires": detection.get("alt_requires", []),
                 "success_flag": detection.get("success_flag"),
             })
     except Exception as e:
-        print("  [workflow_state] Warning: could not load history_detection "
+        print("  [workflow_state] Warning: could not load done_tracking "
               "from programs.yaml: %s" % str(e))
 
-    _HISTORY_DETECTION_CACHE = configs
+    _DONE_TRACKING_CACHE = configs
     return configs
 
 
-def _set_simple_done_flags(info, combined, result):
-    """Set done flags from YAML history_detection for simple cases.
+def _set_done_flags(info, combined, result):
+    """Set done flags from YAML history_detection for all strategies.
 
-    Simple cases: set a boolean flag (and optional success_flag) when
-    a marker string is found in the combined program+command string
-    and the run succeeded.
-
-    Complex cases (counts, cascading flags, exclusion logic) remain
-    as explicit code in _analyze_history().
+    Handles: set_flag, run_once, and count strategies.
+    The run_once filtering itself happens in program_registration;
+    here we just set the flag and increment counts.
 
     Args:
         info: The info dict being built by _analyze_history
@@ -564,16 +590,20 @@ def _set_simple_done_flags(info, combined, result):
         result: Result string from history entry
     """
     if _is_failed_result(result):
-        return  # All simple cases require success
+        return  # All strategies require success
 
-    configs = _load_history_detection_config()
+    configs = _load_done_tracking_configs()
 
     for config in configs:
         flag = config["flag"]
         if not flag:
             continue
 
-        # Check primary markers (OR logic)
+        # Exclude markers take precedence — checked FIRST
+        if any(m in combined for m in config["exclude_markers"]):
+            continue
+
+        # Check primary markers (OR logic, substring matching)
         matched = any(m in combined for m in config["markers"])
 
         # Check alt_markers with alt_requires (AND logic)
@@ -584,6 +614,12 @@ def _set_simple_done_flags(info, combined, result):
 
         if matched:
             info[flag] = True
+
+            # Count strategy: increment count field
+            if config["strategy"] == "count" and config["count_field"]:
+                info[config["count_field"]] = info.get(config["count_field"], 0) + 1
+
+            # Optional success flag
             if config["success_flag"]:
                 info[config["success_flag"]] = True
 
@@ -599,32 +635,14 @@ def _analyze_history(history):
     conditions) are still handled manually below.
     """
     # =========================================================================
-    # Initialize flags - combine auto-generated and manual flags
+    # Initialize flags from YAML done_tracking configs
     # =========================================================================
     info = {
         "programs_run": set(),
-        # Complex flags that need special logic (not auto-generated)
-        "phaser_done": False,
-        "phaser_count": 0,
-        "phaser_success": False,
+        # predict_and_build flags — no history_detection (Python-only cascade)
         "predict_done": False,
         "predict_full_done": False,
-        "process_predicted_done": False,
-        "autobuild_done": False,
-        "autobuild_denmod_done": False,
-        "autosol_done": False,
-        "autosol_success": False,
-        "refine_done": False,
-        "refine_count": 0,
-        "rsr_done": False,
-        "rsr_count": 0,
-        "ligandfit_done": False,
-        "pdbtools_done": False,
-        "dock_done": False,
-        "map_to_model_done": False,
-        "resolve_cryo_em_done": False,
-        "map_sharpening_done": False,
-        "validation_done": False,
+        # Metrics extracted from history
         "last_program": None,
         "last_r_free": None,
         "last_map_cc": None,
@@ -641,29 +659,21 @@ def _analyze_history(history):
         "has_ncs": False,  # NCS detected in data
     }
 
-    # Add auto-generated done flags for run_once programs from programs.yaml
-    try:
-        from libtbx.langchain.knowledge.program_registration import get_initial_history_flags
-    except ImportError:
-        from knowledge.program_registration import get_initial_history_flags
-    auto_flags = get_initial_history_flags()
-    info.update(auto_flags)
+    # Initialize done flags and count fields from YAML (single source of truth)
+    configs = _load_done_tracking_configs()
+    for config in configs:
+        if config["flag"]:
+            info[config["flag"]] = False
+        if config["strategy"] == "count" and config["count_field"]:
+            info[config["count_field"]] = 0
+        if config.get("success_flag"):
+            info[config["success_flag"]] = False
 
     if not history:
         return info
 
     # =========================================================================
-    # Detect auto-registered programs (run_once: true)
-    # =========================================================================
-    try:
-        from libtbx.langchain.knowledge.program_registration import detect_programs_in_history
-    except ImportError:
-        from knowledge.program_registration import detect_programs_in_history
-    auto_detected = detect_programs_in_history(history, info)
-    info.update(auto_detected)
-
-    # =========================================================================
-    # Process history for complex flags and metrics
+    # Process history for flags and metrics
     # =========================================================================
     for entry in history:
         prog = ""
@@ -721,53 +731,23 @@ def _analyze_history(history):
         info["last_program"] = prog
 
         # =====================================================================
-        # Program done flags
+        # Program done flags — YAML-driven detection for all strategies
         # =====================================================================
         result = entry.get("result", "") if isinstance(entry, dict) else ""
 
-        # --- YAML-driven simple flag detection ---
-        # Sets done flags for programs with history_detection in programs.yaml.
-        # Handles: process_predicted_model, autobuild, autobuild_denmod,
-        # autosol, ligandfit, pdbtools, dock_in_map, map_to_model,
-        # resolve_cryo_em, map_sharpening
-        _set_simple_done_flags(info, combined, result)
+        # Handles: set_flag, run_once, and count strategies.
+        # Covers all programs with history_detection in programs.yaml.
+        _set_done_flags(info, combined, result)
 
-        # --- Complex cases (counts, cascading flags, exclusions) ---
-        # These require special logic beyond simple "was it run" detection.
-        # All programs only count as "done" if they succeeded.
-
-        if "validation" in combined or "molprobity" in combined or "holton_geometry" in combined:
-            # 3 programs share one flag
-            if not _is_failed_result(result):
-                info["validation_done"] = True
-        if "phaser" in combined and "real_space" not in combined:
-            # Count + TFZ-based success check
-            if not _is_failed_result(result):
-                info["phaser_done"] = True
-                info["phaser_count"] = info.get("phaser_count", 0) + 1
-                if info["last_tfz"] and info["last_tfz"] > 8:
-                    info["phaser_success"] = True
+        # The ONE remaining Python-only case: predict_and_build cascade.
+        # When predict runs fully, it also sets refine_done + refine_count.
         if "predict_and_build" in combined:
-            # Conditional cascade: predict_full_done → refine_done
             if not _is_failed_result(result):
                 info["predict_done"] = True
                 if "stop_after_predict=true" not in combined and "stop_after_predict=True" not in combined:
                     info["predict_full_done"] = True
-                    # Full predict_and_build includes refinement cycles
                     info["refine_done"] = True
                     info["refine_count"] += 1
-        if "refine" in combined and "real_space" not in combined:
-            # Count + success flag; excludes real_space_refine
-            if not _is_failed_result(result):
-                info["refine_done"] = True
-                info["refine_count"] += 1
-                info["refine_success"] = True
-        if "real_space_refine" in combined:
-            # Count + success flag
-            if not _is_failed_result(result):
-                info["rsr_done"] = True
-                info["rsr_count"] += 1
-                info["rsr_success"] = True
 
     return info
 

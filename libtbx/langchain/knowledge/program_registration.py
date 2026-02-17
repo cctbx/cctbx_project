@@ -28,7 +28,7 @@ assert lru_cache is not None
 @lru_cache(maxsize=1)
 def get_trackable_programs():
   """
-  Get all programs with run_once: true (from done_tracking block).
+  Get all programs with strategy: "run_once" (from done_tracking block).
 
   Returns:
       dict: program_name -> {
@@ -54,7 +54,7 @@ def get_trackable_programs():
 
     # Read from done_tracking block (single source of truth)
     tracking = prog_def.get('done_tracking', {})
-    if not tracking.get('run_once', False):
+    if tracking.get('strategy') != 'run_once':
       continue
 
     # Use explicit flag name from YAML
@@ -177,7 +177,7 @@ def get_all_done_flags():
 
 def is_program_trackable(program_name):
   """
-  Check if a program is auto-trackable (has done_tracking.run_once: true).
+  Check if a program is auto-trackable (has done_tracking.strategy: "run_once").
 
   Args:
       program_name: Full program name (e.g., 'phenix.map_symmetry')

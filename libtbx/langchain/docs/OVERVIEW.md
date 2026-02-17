@@ -388,7 +388,13 @@ Programs can specify `not_done: <flag>` to prevent re-runs:
 
 **2. `done_tracking` blocks** (in programs.yaml)
 
-Each program's `done_tracking` block defines its workflow done flag and optional `run_once` behavior. Programs like `phenix.xtriage`, `phenix.mtriage`, and `phenix.map_symmetry` have `done_tracking.run_once: true`, which automatically prevents re-running in a session.
+Each program's `done_tracking` block defines its workflow done flag and tracking strategy:
+
+- **`strategy: "set_flag"`** (default) — sets a boolean done flag on success. Most programs use this.
+- **`strategy: "run_once"`** — sets the done flag AND filters the program from the valid list after first successful run. Used by `phenix.xtriage`, `phenix.mtriage`, and `phenix.map_symmetry`.
+- **`strategy: "count"`** — sets the done flag AND increments a counter (e.g., `refine_count`). Used by `phenix.refine`, `phenix.real_space_refine`, and `phenix.phaser`.
+
+All detection is driven by `history_detection.markers` (substring matching). Programs like `phenix.refine` use `exclude_markers: ["real_space"]` to prevent false matches with `phenix.real_space_refine`. The only program requiring Python-only tracking is `phenix.predict_and_build`, which cascades flags across programs.
 
 **Programs that run multiple times** (intentionally):
 - `phenix.refine` / `phenix.real_space_refine` - Iterative refinement

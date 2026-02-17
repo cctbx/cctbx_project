@@ -14,8 +14,8 @@
 # To add a new program, copy an existing entry and modify it.
 #
 # DESIGN NOTE (done_tracking):
-#   Currently done_tracking uses run_once: true/false as a boolean.
-#   A cleaner design would be strategy: "run_once" | "count" | "success_gate"
+#   done_tracking uses strategy: "set_flag" | "run_once" | "count" to control
+#   tracking behavior. Programs with strategy: "count" also specify count_field.
 #   which would generalize tracking behavior. Fix 10A already has run_once
 #   correctly nested inside done_tracking, so this works fine — the strategy
 #   enum is a future consideration if more tracking modes are needed.
@@ -33,7 +33,9 @@ phenix.xtriage:
     markers: ["phenix.xtriage", "xtriage"]
   done_tracking:
     flag: "xtriage_done"
-    run_once: true
+    strategy: "run_once"
+    history_detection:
+      markers: ['xtriage']
 
   gui_app_id: "Xtriage"
   stop_directive_patterns:
@@ -127,7 +129,9 @@ phenix.mtriage:
     markers: ["phenix.mtriage", "mtriage"]
   done_tracking:
     flag: "mtriage_done"
-    run_once: true
+    strategy: "run_once"
+    history_detection:
+      markers: ['mtriage']
 
   gui_app_id: "Mtriage"
   stop_directive_patterns:
@@ -188,7 +192,9 @@ phenix.map_symmetry:
     markers: ["map_symmetry"]
   done_tracking:
     flag: "map_symmetry_done"
-    run_once: true
+    strategy: "run_once"
+    history_detection:
+      markers: ['map_symmetry']
 
   gui_app_id: "MapSymmetry"
   stop_directive_patterns:
@@ -406,6 +412,11 @@ phenix.phaser:
     case_sensitive_markers: ["SOLU SET"]
   done_tracking:
     flag: "phaser_done"
+    strategy: "count"
+    count_field: "phaser_count"
+    history_detection:
+      markers: ['phaser']
+      exclude_markers: ['real_space']
 
   gui_app_id: "PhaserEP"
   stop_directive_patterns:
@@ -1017,6 +1028,11 @@ phenix.refine:
     priority: 20  # After real_space_refine
   done_tracking:
     flag: "refine_done"
+    strategy: "count"
+    count_field: "refine_count"
+    history_detection:
+      markers: ['refine']
+      exclude_markers: ['real_space']
 
   gui_app_id: "Refine"
   stop_directive_patterns:
@@ -1163,6 +1179,10 @@ phenix.real_space_refine:
     priority: 5  # Before refine
   done_tracking:
     flag: "rsr_done"
+    strategy: "count"
+    count_field: "rsr_count"
+    history_detection:
+      markers: ['real_space_refine']
 
   gui_app_id: "RealSpaceRefine"
   inputs:
@@ -1541,6 +1561,8 @@ phenix.polder:
     markers: ["polder"]
   done_tracking:
     flag: "polder_done"
+    history_detection:
+      markers: ['polder']
 
   gui_app_id: "Polder"
   inputs:
@@ -1624,6 +1646,8 @@ phenix.molprobity:
     markers: ["molprobity"]
   done_tracking:
     flag: "validation_done"
+    history_detection:
+      markers: ['molprobity', 'validation']
 
   gui_app_id: "MolProbity"
   inputs:
@@ -1774,6 +1798,8 @@ phenix.model_vs_data:
     markers: ["model_vs_data"]
   done_tracking:
     flag: "validation_done"
+    history_detection:
+      markers: ['model_vs_data']
 
   inputs:
     required:
@@ -1819,6 +1845,8 @@ phenix.validation_cryoem:
     markers: ["validation_cryoem"]
   done_tracking:
     flag: "validation_done"
+    history_detection:
+      markers: ['validation_cryoem']
 
   gui_app_id: "ValidationCryoEM"
   inputs:
@@ -1858,6 +1886,8 @@ phenix.holton_geometry_validation:
     markers: ["holton_geometry_validation"]
   done_tracking:
     flag: "validation_done"
+    history_detection:
+      markers: ['holton_geometry']
 
   inputs:
     required:

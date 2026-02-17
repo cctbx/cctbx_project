@@ -994,14 +994,15 @@ def test_history_detection_coverage():
 
 
 def test_history_detection_behavioral():
-    """Verify _set_simple_done_flags produces correct flags for each program."""
+    """Verify _set_done_flags produces correct flags for each program."""
     try:
-        from libtbx.langchain.agent.workflow_state import _set_simple_done_flags
+        from libtbx.langchain.agent.workflow_state import _set_done_flags
     except ImportError:
-        from agent.workflow_state import _set_simple_done_flags
+        from agent.workflow_state import _set_done_flags
 
     test_cases = [
         # (combined_text, result, flag, expected_value)
+        # --- Simple set_flag programs ---
         ("phenix.dock_in_map model.pdb map.mrc", "SUCCESS", "dock_done", True),
         ("phenix.dock_in_map model.pdb map.mrc", "FAILED", "dock_done", False),
         ("phenix.autobuild data.mtz seq.fa", "SUCCESS", "autobuild_done", True),
@@ -1017,18 +1018,34 @@ def test_history_detection_behavioral():
         ("phenix.resolve_cryo_em half1.mrc", "SUCCESS", "resolve_cryo_em_done", True),
         ("phenix.pdbtools model.pdb", "SUCCESS", "pdbtools_done", True),
         ("phenix.process_predicted_model pred.pdb", "SUCCESS", "process_predicted_done", True),
+        ("phenix.polder model.pdb data.mtz", "SUCCESS", "polder_done", True),
+        # --- Counted programs (strategy: count) ---
+        ("phenix.refine model.pdb data.mtz", "SUCCESS", "refine_done", True),
+        ("phenix.refine model.pdb data.mtz", "SUCCESS", "refine_count", 1),
+        ("phenix.real_space_refine m.pdb map.mrc", "SUCCESS", "rsr_done", True),
+        ("phenix.real_space_refine m.pdb map.mrc", "SUCCESS", "rsr_count", 1),
+        ("phenix.phaser data.mtz", "SUCCESS", "phaser_done", True),
+        ("phenix.phaser data.mtz", "SUCCESS", "phaser_count", 1),
+        # --- Exclude markers: real_space_refine must NOT trigger refine ---
+        ("phenix.real_space_refine m.pdb map.mrc", "SUCCESS", "refine_done", False),
+        ("phenix.real_space_refine m.pdb map.mrc", "SUCCESS", "refine_count", 0),
+        # --- Validation: shared flag from multiple programs ---
+        ("phenix.molprobity model.pdb", "SUCCESS", "validation_done", True),
+        ("phenix.holton_geometry_validation m.pdb", "SUCCESS", "validation_done", True),
+        ("phenix.validation_cryoem model.pdb", "SUCCESS", "validation_done", True),
     ]
 
     failures = []
     for combined, result, flag, expected in test_cases:
         info = {}
-        _set_simple_done_flags(info, combined.lower(), result)
-        actual = info.get(flag, False)
+        _set_done_flags(info, combined.lower(), result)
+        default = 0 if isinstance(expected, int) else False
+        actual = info.get(flag, default)
         if actual != expected:
             failures.append(f"  '{combined}' result={result}: {flag}={actual}, expected {expected}")
 
     assert not failures, (
-        "Behavioral mismatches in _set_simple_done_flags:\n"
+        "Behavioral mismatches in _set_done_flags:\n"
         + "\n".join(failures)
     )
     print("  test_history_detection_behavioral PASSED")
@@ -1038,14 +1055,15 @@ def test_no_simple_done_flags_in_analyze_history():
     """_analyze_history must not have simple if-blocks for programs
     that have history_detection in their done_tracking YAML config.
 
-    After Fix 10B, these programs are handled by _set_simple_done_flags()
+    After Fix 10B, these programs are handled by _set_done_flags()
     and should not appear as standalone if-blocks in _analyze_history.
     """
     source = _read("agent/workflow_state.py")
 
     # These simple flag assignments should NOT appear in _analyze_history
-    # because they're now handled by _set_simple_done_flags
+    # because they're now handled by _set_done_flags
     removed_patterns = [
+        # Simple flag programs (YAML history_detection since Fix 10B)
         'info["process_predicted_done"] = True',
         'info["autobuild_done"] = True',
         'info["autobuild_denmod_done"] = True',
@@ -1057,6 +1075,14 @@ def test_no_simple_done_flags_in_analyze_history():
         'info["map_to_model_done"] = True',
         'info["resolve_cryo_em_done"] = True',
         'info["map_sharpening_done"] = True',
+        # Counted/shared programs (YAML strategy since strategy enum)
+        'info["validation_done"] = True',
+        'info["phaser_done"] = True',
+        'info["rsr_done"] = True',
+        # Dead flags removed
+        'info["refine_success"] = True',
+        'info["rsr_success"] = True',
+        'info["phaser_success"] = True',
     ]
 
     found = [p for p in removed_patterns if p in source]
@@ -1066,12 +1092,89 @@ def test_no_simple_done_flags_in_analyze_history():
         + "\n  ".join(found)
     )
 
-    # But complex flags SHOULD still be present
-    assert 'info["refine_count"]' in source, "refine_count should stay in Python (complex)"
-    assert 'info["phaser_count"]' in source, "phaser_count should stay in Python (complex)"
-    assert 'info["rsr_count"]' in source, "rsr_count should stay in Python (complex)"
+    # The predict_and_build cascade should still be in Python
+    assert 'info["predict_done"]' in source, "predict_done should stay in Python (cascade)"
+    assert 'info["refine_count"]' in source, "refine_count should stay in Python (predict cascade)"
+
+    # Count fields should be in ALLOWED_COUNT_FIELDS (YAML-driven validation)
+    assert "ALLOWED_COUNT_FIELDS" in source, "ALLOWED_COUNT_FIELDS whitelist should exist"
 
     print("  test_no_simple_done_flags_in_analyze_history PASSED")
+
+
+def test_strategy_enum_values():
+    """Strategy values in YAML must be valid enum members."""
+    programs = _program_defs()
+
+    VALID_STRATEGIES = {"set_flag", "run_once", "count"}
+
+    bad = []
+    for name, defn in programs.items():
+        tracking = defn.get("done_tracking", {})
+        strategy = tracking.get("strategy")
+        if strategy and strategy not in VALID_STRATEGIES:
+            bad.append(f"{name}: strategy={strategy!r}")
+
+    assert not bad, (
+        "Invalid strategy values in programs.yaml:\n  "
+        + "\n  ".join(bad)
+        + f"\nAllowed: {VALID_STRATEGIES}"
+    )
+    print("  test_strategy_enum_values PASSED")
+
+
+def test_count_field_validation():
+    """Programs with strategy='count' must have a valid count_field."""
+    programs = _program_defs()
+
+    try:
+        from libtbx.langchain.agent.workflow_state import ALLOWED_COUNT_FIELDS
+    except ImportError:
+        from agent.workflow_state import ALLOWED_COUNT_FIELDS
+
+    errors = []
+    for name, defn in programs.items():
+        tracking = defn.get("done_tracking", {})
+        if tracking.get("strategy") != "count":
+            continue
+
+        cf = tracking.get("count_field")
+        if not cf:
+            errors.append(f"{name}: strategy='count' but no count_field")
+        elif cf not in ALLOWED_COUNT_FIELDS:
+            errors.append(f"{name}: count_field={cf!r} not in ALLOWED_COUNT_FIELDS")
+
+        hd = tracking.get("history_detection", {})
+        if not hd.get("markers"):
+            errors.append(f"{name}: strategy='count' but no history_detection markers")
+
+    assert not errors, (
+        "Count field validation errors:\n  "
+        + "\n  ".join(errors)
+    )
+    print("  test_count_field_validation PASSED")
+
+
+def test_exclude_markers_prevent_false_matches():
+    """Programs with exclude_markers must not match excluded text.
+
+    Critical case: refine must not match real_space_refine.
+    """
+    try:
+        from libtbx.langchain.agent.workflow_state import _set_done_flags
+    except ImportError:
+        from agent.workflow_state import _set_done_flags
+
+    # real_space_refine should set rsr flags but NOT refine flags
+    info = {}
+    _set_done_flags(info, "phenix.real_space_refine model.pdb map.mrc", "SUCCESS")
+
+    assert info.get("rsr_done") is True, "rsr_done should be True"
+    assert info.get("rsr_count", 0) == 1, "rsr_count should be 1"
+    assert info.get("refine_done") is not True, "refine_done must NOT be set by real_space_refine"
+    assert info.get("refine_count", 0) == 0, "refine_count must stay 0 for real_space_refine"
+
+    print("  test_exclude_markers_prevent_false_matches PASSED")
 
 
 # ===================================================================

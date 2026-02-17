@@ -202,19 +202,17 @@ programs.yaml             program_registration.py
      │                            │
      ▼                            ▼
 done_tracking:           get_program_done_flag_map()  ← ALL programs
-  flag: "xxx_done"       get_trackable_programs()     ← run_once only
-  run_once: true                  │
-                       ┌──────────┴──────────┐
-                       ▼                     ▼
-              workflow_state.py      workflow_engine.py
-              (done flags)           (context building)
+  flag: "xxx_done"       get_trackable_programs()     ← strategy: "run_once"
+  strategy: "run_once"            │
+  # or "count"           ┌────────┴────────┐
+  # or "set_flag"        ▼                 ▼
+                 workflow_state.py   workflow_engine.py
+                 (_set_done_flags)   (context building)
 ```
 
 **Key functions:**
 - `get_program_done_flag_map()`: All programs → done flag names (from YAML)
-- `get_trackable_programs()`: Programs with `done_tracking.run_once: true`
-- `get_initial_history_flags()`: Get initial `{program}_done: False` flags
-- `detect_programs_in_history()`: Detect completed programs in history
+- `get_trackable_programs()`: Programs with `strategy: "run_once"` (filtered from valid list after completion)
 
 #### Summary Display (knowledge/summary_display.py)
 Configures session summary display from metrics.yaml:
