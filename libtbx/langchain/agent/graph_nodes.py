@@ -1337,24 +1337,8 @@ def _handle_llm_failure(state, error_msg):
     fatal_error = _check_fatal_llm_error(error_msg)
     if fatal_error:
         state = _log(state, "PLAN: FATAL LLM error - %s" % fatal_error)
-
-        intent = {
-            "program": "STOP",
-            "stop": True,
-            "stop_reason": fatal_error,
-            "reasoning": "Fatal LLM configuration error",
-            "llm_unavailable": True,
-        }
-
-        state = _emit(state, EventType.STOP_DECISION,
-            stop=True,
-            reason="Fatal LLM error",
-            last_error=error_msg[:200])
-
-        return {
-            **state,
-            "intent": intent
-        }
+        from libtbx.utils import Sorry
+        raise Sorry("AI Agent cannot continue: %s" % fatal_error)
 
     # Track consecutive failures
     failures = state.get("llm_consecutive_failures", 0) + 1
