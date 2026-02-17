@@ -329,7 +329,7 @@ def _categorize_files_hardcoded(available_files):
         "refined": [],  # X-ray refinement output
         "rsr_output": [],  # real_space_refine output (cryo-EM)
         "with_ligand": [],
-        "ligand_fit": [],
+        "ligand_fit_output": [],
         "predicted": [],
         "processed_predicted": [],
         "autobuild_output": [],
@@ -387,7 +387,7 @@ def _categorize_files_hardcoded(available_files):
             if 'with_ligand' in basename:
                 files["with_ligand"].append(f)
             if 'ligand_fit' in basename or 'ligandfit' in basename:
-                files["ligand_fit"].append(f)
+                files["ligand_fit_output"].append(f)
 
             if 'predict' in basename or 'alphafold' in basename or 'colabfold' in basename:
                 files["predicted"].append(f)

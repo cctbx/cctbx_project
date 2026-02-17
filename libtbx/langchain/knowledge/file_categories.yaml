@@ -300,6 +300,7 @@ phaser_output:
 autobuild_output:
   description: "Models from automated building"
   parent_category: model
+  extensions: [".pdb", ".cif"]
   patterns:
     - "*autobuild*"
     - "*auto_build*"
@@ -338,13 +339,12 @@ with_ligand:
   notes: "Combined protein + ligand models - still a refined model"
 
 ligand_fit_output:
-  description: "Ligand fitting output models (protein + ligand)"
-  parent_category: model
+  description: "Fitted ligand coordinates from ligandfit (ligand fragment only, NOT full model)"
+  parent_category: ligand
   patterns:
     - "*ligand_fit*"
     - "*ligandfit*"
-  also_in: [with_ligand]
-  notes: "Output from phenix.ligandfit - model now contains ligand"
+  notes: "Output from phenix.ligandfit - just the placed ligand. Combined with model by pdbtools."
 
 # =============================================================================
 # SEARCH_MODEL SUBCATEGORIES (children of 'search_model')

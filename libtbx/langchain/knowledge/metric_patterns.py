@@ -100,6 +100,11 @@ def get_all_metric_patterns():
         if 'min_value' in metric_def:
           config['min_value'] = float(metric_def['min_value'])
 
+        # pick_min: when multiple matches exist, use the minimum value
+        # (e.g., resolution should be the high-res limit, not low-res limit)
+        if metric_def.get('pick_min'):
+          config['pick_min'] = True
+
         prog_patterns[metric_name] = config
 
       except re.error as e:
@@ -180,17 +185,32 @@ def extract_metrics_for_program(log_text, program_name):
     matches = list(pattern.finditer(log_text))
 
     if matches:
-      # Handle extract: first vs last
-      if config.get('extract') == 'last':
-        match = matches[-1]
+      # pick_min: extract values from ALL matches and take the minimum
+      # Used for resolution where multiple values appear (d_max, d_min)
+      # and we always want the smaller (higher-resolution) value.
+      if config.get('pick_min') and config['type'] == 'float':
+        all_values = []
+        for m in matches:
+          for group in m.groups():
+            if group is not None:
+              v = _convert_value(group, config['type'])
+              if isinstance(v, (int, float)):
+                all_values.append(v)
+              break
+        if all_values:
+          value = min(all_values)
       else:
-        match = matches[0]
+        # Handle extract: first vs last
+        if config.get('extract') == 'last':
+          match = matches[-1]
+        else:
+          match = matches[0]
 
-      # Get first non-None group (patterns may have alternation)
-      for group in match.groups():
-        if group is not None:
-          value = _convert_value(group, config['type'])
-          break
+        # Get first non-None group (patterns may have alternation)
+        for group in match.groups():
+          if group is not None:
+            value = _convert_value(group, config['type'])
+            break
 
     # Try fallback pattern if primary didn't match
     if value is None and 'fallback_pattern' in config:

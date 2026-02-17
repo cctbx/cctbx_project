@@ -84,7 +84,7 @@ class WorkflowEngine:
             "has_processed_model": bool(files.get("processed_predicted")) or history_info.get("process_predicted_done", False),
             "has_placed_model": self._has_placed_model(files, history_info, directives),
             "has_refined_model": self._has_refined_model(files, history_info),
-            "has_ligand_fit": bool(files.get("ligand_fit")) or history_info.get("ligandfit_done", False),
+            "has_ligand_fit": bool(files.get("ligand_fit_output")) or history_info.get("ligandfit_done", False),
             "has_optimized_full_map": self._has_optimized_map(files, history_info),
 
             # Complex program flags (need special logic beyond simple detection)

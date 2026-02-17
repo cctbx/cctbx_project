@@ -76,12 +76,13 @@ phenix.xtriage:
 
   log_parsing:
     resolution:
-      # Match "Resolution: 2.10" or "Resolution = 2.10" but NOT "Resolution range: ..." 
-      # Requires [=:] delimiter to avoid matching low-res values from whitespace-only lines
-      # max_value rejects low-resolution limits (e.g., 47.3 from "Resolution: 47.3 2.1")
-      pattern: '(?<!nomalous )(?<!nomalous  )Resolution\s*[=:]\s*([0-9.]+)\s*(?:Å|A|\s|$)'
+      # Match "Resolution: 2.10" or "Resolution range: 14.94 3.00"
+      # For range lines, (?:[0-9.]+\s+)? skips the low-res limit and captures the high-res value.
+      # pick_min ensures we always get the highest resolution (smallest d-spacing)
+      # across all matching lines, since xtriage may report both d_max and d_min.
+      pattern: '(?<!nomalous )(?<!nomalous  )Resolution\s*(?:range)?\s*[=:]\s*(?:[0-9.]+\s+)?([0-9.]+)\s*(?:Å|A|\s|$)'
       type: float
-      extract: last
+      pick_min: true
       max_value: 15.0
       display_name: "Resolution"
       summary_format: "{value:.2f} Å"
@@ -1047,6 +1048,7 @@ phenix.refine:
       model:
         extensions: [.pdb, .cif]
         flag: ""
+        exclude_patterns: [ligand, lig.pdb, ligand_fit]
       data_mtz:
         extensions: [.mtz, .sca, .hkl, .sdf]
         flag: ""
@@ -1063,8 +1065,8 @@ phenix.refine:
       categories: [model]
       # Subcategory preference within 'model': with_ligand > refined > phaser_output > autobuild > docked
       prefer_subcategories: [with_ligand, refined, phaser_output, autobuild_output, docked]
-      # Explicitly exclude search_model and intermediates - they are NOT positioned
-      exclude_categories: [search_model, predicted, processed_predicted, intermediate_mr, intermediate, map_to_model_intermediate, ligand_pdb, ligand]
+      # Explicitly exclude search_model, intermediates, and ligand fragments
+      exclude_categories: [search_model, predicted, processed_predicted, intermediate_mr, intermediate, map_to_model_intermediate, ligand_pdb, ligand, ligand_fit_output]
     data_mtz:
       categories: [original_data_mtz, data_mtz]  # Prefer MTZ with R-free flags
       exclude_categories: [map_coeffs_mtz]  # Never refine against map coefficients!
