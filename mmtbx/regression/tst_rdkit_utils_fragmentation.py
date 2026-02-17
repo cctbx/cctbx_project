@@ -5,6 +5,10 @@ import mmtbx.model
 import iotbx.pdb
 import mmtbx.ligands.rdkit_utils as rdkit_utils
 
+from rdkit import RDLogger
+lg = RDLogger.logger()
+lg.setLevel(RDLogger.CRITICAL) # Only show critical errors
+
 # ------------------------------------------------------------------------------
 # Helper functions
 
@@ -25,6 +29,7 @@ def run():
   run_test_05()
   run_test_06()
   run_test_07()
+  run_test_08()
 
 # ------------------------------------------------------------------------------
 
@@ -76,11 +81,12 @@ def run_test_04():
 
 def run_test_05():
   print('test05...')
-  rigid_comps_isels = compute_fragments(pdb_str_05, 'resname HEX', 2)
+  rigid_comps_isels = compute_fragments(pdb_str_05, 'resname HEX', 3)
 
   expected = [
-    [0, 1, 2, 6, 7, 8, 9, 10, 11, 12],
-    [3, 4, 5, 13, 14, 15, 16, 17, 18, 19]
+    [0, 1, 6, 7, 8, 9, 10],
+    [2, 3, 11, 12, 13, 14],
+    [4, 5, 15, 16, 17, 18, 19]
     ]
 
   assert normalize(to_py(rigid_comps_isels)) == normalize(expected)
@@ -112,7 +118,7 @@ def run_test_06():
     atom_group = atom_group,
     cif_object = cif_object)
 
-  print(len(cctbx_rigid_components))
+  #print(len(cctbx_rigid_components))
   assert len(cctbx_rigid_components) == 4
 
 # ------------------------------------------------------------------------------
@@ -120,6 +126,12 @@ def run_test_06():
 def run_test_07():
   print('test07...')
   rigid_comps_isels = compute_fragments(pdb_str_07, 'resname SO4', 1)
+
+# ------------------------------------------------------------------------------
+
+def run_test_08():
+  print('test08...')
+  rigid_comps_isels = compute_fragments(pdb_str_08, 'resname SPD', 5)
 
 # ------------------------------------------------------------------------------
 
@@ -145,16 +157,17 @@ def compute_fragments(pdb_str, sel_str, expected, filter_lone_linkers=True):
     cif_object = cif_object,
     filter_lone_linkers = filter_lone_linkers)
 
-  print(len(cctbx_rigid_components))
-  assert len(cctbx_rigid_components) == expected
+  #print(len(cctbx_rigid_components))
 
 #  ph =  model.get_hierarchy()
 #  atoms = ph.atoms()
-#  for rigid_comp in rigid_comps_isels:
+#  for rigid_comp in cctbx_rigid_components:
 #    print('fragment')
 #    print(list(rigid_comp))
 #    for idx in rigid_comp:
 #      print(atoms[idx].name)
+
+  assert len(cctbx_rigid_components) == expected
 
   return cctbx_rigid_components
 
@@ -685,6 +698,39 @@ HETATM    3  O3  SO4 A   1       5.000   6.797   5.000  1.00 20.00           O
 HETATM    4  O4  SO4 A   1       5.633   5.000   6.373  1.00 20.00           O
 HETATM    5  S   SO4 A   1       5.980   6.328   5.942  1.00 20.00           S
 END
+'''
+
+pdb_str_08 = '''
+CRYST1   16.647   16.603   16.211  90.00  90.00  90.00 P 1
+HETATM    1  C2  SPD A   1      10.803  10.249   6.261  1.00 20.00           C
+HETATM    2  C3  SPD A   1      10.578   8.750   6.122  1.00 20.00           C
+HETATM    3  C4  SPD A   1       9.140   8.363   5.808  1.00 20.00           C
+HETATM    4  C5  SPD A   1       8.169   8.681   6.937  1.00 20.00           C
+HETATM    5  C7  SPD A   1       8.142   6.527   8.171  1.00 20.00           C
+HETATM    6  C8  SPD A   1       8.065   5.966   9.578  1.00 20.00           C
+HETATM    7  C9  SPD A   1       6.752   6.217  10.268  1.00 20.00           C
+HETATM    8  N1  SPD A   1      10.849  10.731   7.645  1.00 20.00           N
+HETATM    9  N10 SPD A   1       5.650   5.462   9.663  1.00 20.00           N
+HETATM   10  N6  SPD A   1       8.482   7.953   8.168  1.00 20.00           N
+HETATM   11  H21 SPD A   1      11.647  10.478   5.822  1.00 20.00           H
+HETATM   12  H22 SPD A   1      10.086  10.720   5.789  1.00 20.00           H
+HETATM   13  H31 SPD A   1      10.852   8.315   6.957  1.00 20.00           H
+HETATM   14  H32 SPD A   1      11.159   8.414   5.406  1.00 20.00           H
+HETATM   15  H41 SPD A   1       9.104   7.401   5.619  1.00 20.00           H
+HETATM   16  H42 SPD A   1       8.852   8.838   5.000  1.00 20.00           H
+HETATM   17  H51 SPD A   1       7.260   8.454   6.648  1.00 20.00           H
+HETATM   18  H52 SPD A   1       8.189   9.643   7.118  1.00 20.00           H
+HETATM   19  H71 SPD A   1       8.821   6.034   7.665  1.00 20.00           H
+HETATM   20  H72 SPD A   1       7.281   6.395   7.722  1.00 20.00           H
+HETATM   21  H81 SPD A   1       8.784   6.359  10.113  1.00 20.00           H
+HETATM   22  H82 SPD A   1       8.224   5.000   9.540  1.00 20.00           H
+HETATM   23  H91 SPD A   1       6.540   7.172  10.229  1.00 20.00           H
+HETATM   24  H92 SPD A   1       6.827   5.964  11.211  1.00 20.00           H
+HETATM   25  HN6 SPD A   1       8.049   8.364   8.842  1.00 20.00           H
+HETATM   26 H101 SPD A   1       5.000   5.325  10.251  1.00 20.00           H
+HETATM   27 H102 SPD A   1       5.298   5.909   8.981  1.00 20.00           H
+HETATM   28 HN11 SPD A   1      11.011  11.603   7.670  1.00 20.00           H
+HETATM   29 HN12 SPD A   1      11.499  10.329   8.097  1.00 20.00           H
 '''
 
 # ------------------------------------------------------------------------------

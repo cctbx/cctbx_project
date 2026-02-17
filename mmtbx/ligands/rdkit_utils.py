@@ -132,13 +132,11 @@ def get_rigid_components(mol,
   rotatable_pattern = Lipinski.RotatableBondSmarts
   matches = mol.GetSubstructMatches(rotatable_pattern)
 
-  #bonds_to_cut = []
-  #rotatable_bonds = []
   candidate_cut_bonds = []
   min_heavy_atoms = 2
 
- # Map: (bond_index, atom_index) -> Size of the fragment this atom ends up in
- # if bond is cut
+  # Map: (bond_index, atom_index) -> Size of the fragment this atom ends up in
+  # if bond is cut
   fragment_size_map = {}
 
   for u, v in matches:
@@ -153,11 +151,9 @@ def get_rigid_components(mol,
     test_mol = Chem.FragmentOnBonds(mol, [bidx], addDummies=False)
 
     # Get indices of atoms in fragments
-    # (asMols=False returns tuple of tuples of indices)
     frag_indices_tuples = Chem.GetMolFrags(test_mol, asMols=False)
 
     heavy_counts = []
-    is_valid_cut = True
 
     # Calculate heavy atom counts for this specific cut
     current_cut_sizes = {} # map atom_idx -> size
@@ -194,7 +190,7 @@ def get_rigid_components(mol,
     return [flex.size_t(list(rdkit_to_cctbx.values()))]
 
   fragmented_mol = Chem.FragmentOnBonds(mol, final_bonds_to_cut, addDummies=False)
-  raw_fragments = Chem.GetMolFrags(fragmented_mol, asMols=False) #maybe: sanitizeFrags=False?
+  raw_fragments = Chem.GetMolFrags(fragmented_mol, asMols=False)
 
   # Convert to CCTBX format
   cctbx_rigid_components = []
@@ -210,69 +206,89 @@ def get_rigid_components(mol,
   return cctbx_rigid_components
 
 def _filter_isolated_linkers(candidate_cut_bonds, mol, fragment_size_map):
-  """
-  Helper function for ligand fragmentation
-  If bonds are cut when there is a rotational degree of freedom, the number of
-  logical fragments may be too large. An example is HEX, which has 5 such bonds.
-  However, one can consider HEX as two fragments - with 3 carbons each - fused
-  together. Accordingly, this filter will cut HEX into two fragments.
-  The filter is optional in case one really wants to split at all applicable
-  bonds.
-  """
+  # 1. Map bonds to atoms
   cuts_per_atom = defaultdict(list)
   for bidx in candidate_cut_bonds:
     bond = mol.GetBondWithIdx(bidx)
     cuts_per_atom[bond.GetBeginAtomIdx()].append(bidx)
     cuts_per_atom[bond.GetEndAtomIdx()].append(bidx)
 
-  bonds_to_skip = set()
+  # 2. Identify Safe vs Unsafe atoms
+  safe_atoms = set()
+  unsafe_atoms = []
 
-  for atom_idx, bond_indices in cuts_per_atom.items():
-    # Only process atoms being cut from multiple sides
-    if len(bond_indices) < 2: continue
+  for atom in mol.GetAtoms():
+    if atom.GetAtomicNum() <= 1: continue
 
-    atom = mol.GetAtomWithIdx(atom_idx)
-
+    idx = atom.GetIdx()
     heavy_neighbors = [n for n in atom.GetNeighbors() if n.GetAtomicNum() > 1]
     heavy_degree = len(heavy_neighbors)
+    num_cuts = len(cuts_per_atom[idx])
 
-    # If we are about to completely isolate this linker atom
-    if heavy_degree >= 2 and len(bond_indices) == heavy_degree:
+    if num_cuts < heavy_degree:
+      safe_atoms.add(idx)
+    else:
+      unsafe_atoms.append(idx)
 
-      best_bond_to_save = -1
-      # Initialize with a very low number
-      best_neighbor_score = -999999
+  # --- SORTING ORDER ---
+  # Process atoms adjacent to rings FIRST.
+  # Otherwise, a chain neighbor might "steal" the linker before it attaches to
+  # the ring.
+  def priority_sort_key(atom_idx):
+      atom = mol.GetAtomWithIdx(atom_idx)
+      has_ring_neighbor = any(n.IsInRing() for n in atom.GetNeighbors())
+      # Python sorts False (0) before True (1). We want True first, so we invert.
+      return (not has_ring_neighbor, atom_idx)
 
-      for bidx in bond_indices:
-        bond = mol.GetBondWithIdx(bidx)
-        neighbor = bond.GetOtherAtom(atom)
-        neighbor_idx = neighbor.GetIdx()
+  unsafe_atoms.sort(key=priority_sort_key)
+  # ------------------------------
 
-        score = 0
+  bonds_to_skip = set()
 
-        # --- CRITERIA 1: RINGS (Highest Priority) ---
-        # Always stick to the ring if possible.
-        if neighbor.IsInRing():
-          score += 10000
+  # 3. Rescue Unsafe Atoms
+  for atom_idx in unsafe_atoms:
+    if atom_idx in safe_atoms: continue
 
-        # --- CRITERIA 2: FRAGMENT SIZE (Symmetry Breaker) ---
-        # Look up the size of the fragment the neighbor would belong to
-        # if we proceeded with this cut.
-        # We prefer saving bonds to SMALLER fragments (ends of chains).
-        # We subtract the size, so smaller size = higher score.
-        if (bidx, neighbor_idx) in fragment_size_map:
-          frag_size = fragment_size_map[(bidx, neighbor_idx)]
-          score -= (frag_size * 100)
+    atom = mol.GetAtomWithIdx(atom_idx)
+    possible_bonds = cuts_per_atom[atom_idx]
+    if not possible_bonds: continue
 
-        # --- CRITERIA 3: ATOM PROPERTIES (Tie Breaker) ---
-        score += neighbor.GetAtomicNum()
+    best_bond_to_save = -1
+    best_score = -float('inf')
 
-        if score > best_neighbor_score:
-          best_neighbor_score = score
-          best_bond_to_save = bidx
+    for bidx in possible_bonds:
+      bond = mol.GetBondWithIdx(bidx)
+      neighbor = bond.GetOtherAtom(atom)
+      n_idx = neighbor.GetIdx()
 
-      if best_bond_to_save != -1:
-        bonds_to_skip.add(best_bond_to_save)
+      score = 0
+
+      # CRITERIA 1: Ring Priority
+      if neighbor.IsInRing(): score += 1000
+
+      # CRITERIA 2: Pair Unsafe Atoms
+      if n_idx not in safe_atoms:
+        score += 50
+      else:
+        score -= 10
+
+      # CRITERIA 3: Fragment Size
+      if (bidx, n_idx) in fragment_size_map:
+        score -= fragment_size_map[(bidx, n_idx)]
+
+      # CRITERIA 4: Atomic Num (Tie-breaker)
+      score += (0.1 * neighbor.GetAtomicNum())
+
+      if score > best_score:
+        best_score = score
+        best_bond_to_save = bidx
+
+    if best_bond_to_save != -1:
+      bonds_to_skip.add(best_bond_to_save)
+      safe_atoms.add(atom_idx)
+      # Also mark neighbor as safe (connection established)
+      bond = mol.GetBondWithIdx(best_bond_to_save)
+      safe_atoms.add(bond.GetOtherAtom(atom).GetIdx())
 
   return bonds_to_skip
 
