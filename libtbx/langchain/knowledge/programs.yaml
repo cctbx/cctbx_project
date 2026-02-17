@@ -543,13 +543,13 @@ phenix.autobuild:
       model:
         extensions: [.pdb]
         flag: "model="
-        priority_patterns: [refine, PHASER]
+        exclude_patterns: [ligand, lig.pdb, ligand_fit]
 
   # Input priorities for autobuild
   input_priorities:
     model:
       categories: [refined, phaser_output, autobuild_output, pdb]
-      exclude_categories: [predicted]  # Raw predictions not suitable
+      exclude_categories: [predicted, ligand, ligand_pdb]
     data_mtz:
       categories: [phased_data_mtz, original_data_mtz, data_mtz]  # Prefer phased data
 
@@ -630,11 +630,15 @@ phenix.autobuild_denmod:
       model:
         extensions: [.pdb]
         flag: "model="
-        priority_patterns: [refine, PHASER]
+        exclude_patterns: [ligand, lig.pdb, ligand_fit]
 
   input_priorities:
     data_mtz:
       categories: [phased_data_mtz, original_data_mtz, data_mtz]
+    model:
+      categories: [model]
+      prefer_subcategories: [refined, phaser_output, autobuild_output]
+      exclude_categories: [ligand, ligand_pdb, search_model, predicted]
 
   outputs:
     files:
@@ -1575,6 +1579,13 @@ phenix.polder:
         extensions: [.pdb, .cif]
         flag: ""
         description: "Model file containing the atoms to evaluate"
+        exclude_patterns: [ligand, lig.pdb, ligand_fit]
+
+  input_priorities:
+    model:
+      categories: [model]
+      prefer_subcategories: [with_ligand, refined, phaser_output]
+      exclude_categories: [ligand, ligand_pdb, search_model, predicted]
 
   strategy_flags:
     selection:
