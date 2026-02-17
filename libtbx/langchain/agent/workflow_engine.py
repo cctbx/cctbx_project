@@ -75,6 +75,7 @@ class WorkflowEngine:
             # SEMANTIC: 'search_model' = templates NOT yet positioned (predicted, pdb_template)
             "has_model": bool(files.get("model")),  # Any model file (positioned or generic PDB)
             "has_search_model": bool(files.get("search_model")),  # Templates/predictions
+            "has_model_for_mr": bool(files.get("model") or files.get("search_model")),  # Either works for phaser
             "has_full_map": bool(files.get("full_map")),
             "has_half_map": len(files.get("half_map", [])) >= 2,
             "has_map": bool(files.get("map") or files.get("full_map")),
@@ -208,13 +209,33 @@ class WorkflowEngine:
         1. History shows MR, building, or prediction was done
         2. There's a file in a SPECIFIC positioned subcategory (refined,
            phaser_output, autobuild_output, docked, with_ligand, rsr_output)
-        3. User explicitly requests refinement/validation via directives
+        3. User explicitly says model is placed (model_is_placed directive)
+        4. User's constraints imply model is placed (e.g., "refine", "fit ligand")
+        5. User explicitly requests refinement/validation via directives
 
         IMPORTANT: An unclassified PDB (generic file like "1abc.pdb") in the
         'model' parent category is NOT sufficient to be "placed". It could be
         a search model for MR. Only PDBs in explicit positioned subcategories
         count, unless history or directives confirm placement.
         """
+        # ---- 0. Directive: user explicitly says model is placed ----
+        if directives and files.get("model"):
+            workflow_prefs = directives.get("workflow_preferences", {})
+            if workflow_prefs.get("model_is_placed"):
+                return True
+
+            # Infer from constraints: if user's goal implies a placed model
+            # (e.g., "refine the model", "fit a ligand"), trust that inference
+            constraints = directives.get("constraints", [])
+            placement_keywords = [
+                "refine", "refinement", "ligandfit", "fit ligand",
+                "fit a ligand", "polder", "validate", "molprobity",
+            ]
+            for c in constraints:
+                c_lower = c.lower() if isinstance(c, str) else ""
+                if any(kw in c_lower for kw in placement_keywords):
+                    return True
+
         # ---- 1. History-based: definitive evidence of placement ----
         if (history_info.get("phaser_done") or
             history_info.get("autobuild_done") or
@@ -725,13 +746,14 @@ class WorkflowEngine:
                 valid.append("STOP")
 
         # Special: also allow refinement during validate phase (user can choose more refinement)
-        # BUT respect max_refine_cycles directive
+        # BUT respect max_refine_cycles directive AND _is_at_target (e.g., hopeless R-free)
         if phase_name == "validate":
             max_refine = directives.get("stop_conditions", {}).get("max_refine_cycles") if directives else None
             refine_count = context.get("refine_count", 0)
             refine_allowed = (max_refine is None) or (refine_count < max_refine)
+            at_target = self._is_at_target(context, experiment_type)
 
-            if refine_allowed:
+            if refine_allowed and not at_target:
                 if experiment_type == "xray":
                     if "phenix.refine" not in valid:
                         valid.append("phenix.refine")
@@ -739,20 +761,21 @@ class WorkflowEngine:
                     if "phenix.real_space_refine" not in valid:
                         valid.append("phenix.real_space_refine")
 
-        # Special: always allow refinement to continue (unless max_refine_cycles reached)
+        # Special: always allow refinement to continue (unless max_refine_cycles reached or at target)
         if phase_name == "refine":
             max_refine = directives.get("stop_conditions", {}).get("max_refine_cycles") if directives else None
             refine_count = context.get("refine_count", 0)
             refine_allowed = (max_refine is None) or (refine_count < max_refine)
+            at_target = self._is_at_target(context, experiment_type)
 
-            if refine_allowed:
+            if refine_allowed and not at_target:
                 if experiment_type == "xray" and "phenix.refine" not in valid:
                     valid.append("phenix.refine")
                 elif experiment_type == "cryoem" and "phenix.real_space_refine" not in valid:
                     valid.append("phenix.real_space_refine")
 
-            # Add STOP if at target and validated
-            if context.get("validation_done") and self._is_at_target(context, experiment_type):
+            # Add STOP if at target (covers hopeless R-free, hard limit, good metrics)
+            if at_target:
                 if "STOP" not in valid:
                     valid.append("STOP")
 

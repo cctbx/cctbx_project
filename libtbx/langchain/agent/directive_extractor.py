@@ -162,6 +162,7 @@ Output a JSON object with these sections. Include ONLY sections that have releva
    - "use_experimental_phasing": bool - Prefer SAD/MAD over molecular replacement
    - "use_molecular_replacement": bool - Prefer MR over experimental phasing
    - "use_mr_sad": bool - MR-SAD workflow: run phaser first to place model, then autosol with placed model
+   - "model_is_placed": bool - The user's model is already positioned in the unit cell (skip MR)
 
 **CRITICAL: use_experimental_phasing and use_mr_sad**
 - ONLY set these if the user EXPLICITLY requests SAD, MAD, experimental phasing, anomalous phasing, or MR-SAD.
@@ -252,6 +253,21 @@ If the advice describes a SPECIFIC LIMITED TASK rather than full structure deter
 - "run mtriage", "analyze map quality" → after_program="phenix.mtriage", skip_validation=true
 - "map symmetry", "determine symmetry", "find symmetry" → after_program="phenix.map_symmetry", skip_validation=true
 - "map sharpening", "sharpen the map", "sharpen map", "automatic sharpening" → after_program="phenix.map_sharpening", skip_validation=true
+
+**CRITICAL: model_is_placed — detecting when the model is already positioned**
+If the user's goal implies their model is already in the unit cell (NOT a template for MR), set model_is_placed=true in workflow_preferences. This tells the agent to skip molecular replacement.
+Set model_is_placed=true when:
+- User says "refine this model", "run refinement", "refine the structure"
+- User says "fit a ligand", "ligandfit", "place ligand into density"
+- User says "run polder", "evaluate ligand", "validate model"
+- User says "the model is already placed" or "skip molecular replacement"
+- User's goal clearly implies the model is ready for refinement (not MR)
+- User provides a model + ligand + data and wants ligand fitting
+Do NOT set model_is_placed=true when:
+- User says "solve the structure" (might need MR)
+- User says "molecular replacement" or "run phaser"
+- User provides only a search model / template
+- Goal is ambiguous about whether MR is needed
 
 **CRITICAL: MR-SAD workflow**
 - For MR-SAD experiments, set use_mr_sad=true in workflow_preferences. Do NOT set after_program="phenix.autosol".
@@ -914,7 +930,8 @@ def validate_directives(directives, log=None):
                                     valid_list.append(fixed)
                         if valid_list:
                             valid_wf[key] = valid_list
-                elif key in ("use_experimental_phasing", "use_molecular_replacement"):
+                elif key in ("use_experimental_phasing", "use_molecular_replacement",
+                             "use_mr_sad", "model_is_placed"):
                     valid_wf[key] = bool(value)
 
             if valid_wf:

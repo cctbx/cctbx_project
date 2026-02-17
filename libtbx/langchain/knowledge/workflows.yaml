@@ -63,10 +63,10 @@ xray:
 
         - program: phenix.phaser
           conditions:
-            # In obtain_model phase, any model file is a search model candidate.
+            # In obtain_model phase, any model or search_model file can be used.
             # We only reach this phase when has_placed_model is False, so a PDB
-            # in the model category must be an unpositioned search model.
-            - has: model
+            # here is an unpositioned model suitable for MR.
+            - has: model_for_mr
             - not_done: phaser  # MR should only run once
 
         - program: phenix.autosol
