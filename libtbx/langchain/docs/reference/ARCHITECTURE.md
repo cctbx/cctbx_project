@@ -379,6 +379,75 @@ The decision flow follows a clean, layered architecture where each component has
 - Categorizes available files
 - Detects experiment type
 
+## LLM Provider Architecture
+
+The agent supports three LLM providers: **google**, **openai**, and **ollama**. The
+provider is set via `params.communication.provider` (or the `LLM_PROVIDER` env var)
+and flows consistently through every LLM call point — there is no cross-provider
+fallback.
+
+### LLM Call Points
+
+The system uses three distinct LLM roles, each with provider-specific model defaults:
+
+| Activity | Function | ollama | google | openai |
+|---|---|---|---|---|
+| **Agent decisions** (PLAN node) | `get_planning_llm()` → `get_expensive_llm()` | qwen3:32b (json_mode) | gemini-2.5-pro | gpt-5 |
+| **Log summarization** | `get_cheap_llm()` | qwen2.5:7b | gemini-2.5-flash-lite | gpt-5-nano |
+| **RAG analysis** | `get_expensive_llm()` | qwen3:32b | gemini-2.5-pro | gpt-5 |
+| **Directive extraction** | `call_llm_simple()` | direct ollama HTTP | gemini-2.0-flash | (provider default) |
+
+### Provider Flow
+
+```
+params.communication.provider = "<provider>"
+         │
+         ├─► LocalAgent.decide_next_step()
+         │       └─► request["settings"]["provider"] = "<provider>"
+         │            └─► run_ai_agent.py: create_initial_state(provider=...)
+         │                 └─► graph_nodes.py PLAN: get_planning_llm(provider)
+         │                      └─► get_expensive_llm(provider)
+         │
+         ├─► _extract_directives()
+         │       ├─► ollama: forces run_on_server=False (local ollama not on server)
+         │       └─► run_directive_extraction(provider=...)
+         │            └─► call_llm_simple(provider=...)
+         │
+         └─► run_ai_analysis.run() [summarization + RAG]
+                 └─► setup_llms(provider=...)
+                      ├─► expensive_llm = get_expensive_llm(provider)
+                      ├─► cheap_llm = get_cheap_llm(provider)
+                      └─► embeddings = provider-specific embeddings
+```
+
+### Key Files
+
+| File | Role |
+|------|------|
+| `core/llm.py` | `get_llm_and_embeddings()`, `get_expensive_llm()`, `get_cheap_llm()` — model creation |
+| `agent/graph_nodes.py` | `get_planning_llm()` — cached LLM for PLAN node decisions |
+| `agent/api_client.py` | `call_llm_simple()` — lightweight direct calls (directive extraction) |
+| `utils/run_utils.py` | `setup_llms()` — creates all three LLM roles for analysis |
+| `phenix_ai/local_agent.py` | Reads provider from `params.communication.provider`, passes to request |
+| `phenix_ai/run_ai_agent.py` | Reads provider from settings, passes to `create_initial_state()` |
+
+### Ollama-Specific Behavior
+
+- **Directive extraction** forces `run_on_server=False` because the Phenix REST
+  server doesn't have access to the user's local ollama service
+- **Planning LLM** uses `json_mode=True` (sets `format="json"` in ChatOllama)
+  because ollama models need explicit JSON formatting; Google and OpenAI handle
+  structured output without this flag
+- **GPU requirement**: `rest_server.requires_gpu = True` is set for ollama to
+  ensure server dispatch targets GPU-capable machines
+
+### Adding a New Provider
+
+1. Add provider case to `get_llm_and_embeddings()` in `core/llm.py`
+2. Add validation check in `validate_provider()` in `agent/graph_nodes.py`
+3. Add `_call_<provider>_llm()` function in `agent/api_client.py`
+4. Add rate limit handler in `agent/rate_limit_handler.py` (optional)
+
 ## Data Flow
 
 ### Request Building (Client)
