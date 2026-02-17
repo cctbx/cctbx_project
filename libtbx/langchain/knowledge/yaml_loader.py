@@ -36,6 +36,7 @@ _PROGRAMS = None
 _WORKFLOWS = None
 _METRICS = None
 _FILE_CATEGORIES = None
+_RECOVERABLE_ERRORS = None
 
 
 # =============================================================================
@@ -139,6 +140,19 @@ def load_file_categories(force_reload=False):
     return _FILE_CATEGORIES
 
 
+def load_recoverable_errors(force_reload=False):
+    """
+    Load recoverable error definitions from recoverable_errors.yaml.
+
+    Returns:
+        dict: Error type -> error definition, plus data_label_parameters
+    """
+    global _RECOVERABLE_ERRORS
+    if _RECOVERABLE_ERRORS is None or force_reload:
+        _RECOVERABLE_ERRORS = _load_yaml_file("recoverable_errors.yaml")
+    return _RECOVERABLE_ERRORS
+
+
 def reload_all_configs():
     """
     Force reload all YAML configuration files.
@@ -149,10 +163,13 @@ def reload_all_configs():
     - workflows.yaml
     - metrics.yaml
     - file_categories.yaml
+    - recoverable_errors.yaml
     """
     load_programs(force_reload=True)
     load_workflows(force_reload=True)
     load_metrics(force_reload=True)
+    load_file_categories(force_reload=True)
+    load_recoverable_errors(force_reload=True)
     load_file_categories(force_reload=True)
 
 

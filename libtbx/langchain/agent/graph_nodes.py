@@ -783,22 +783,14 @@ def _fallback_extract_metrics(log_text):
         if sorry_match:
             analysis["error"] = sorry_match.group(1).strip()
 
-    # Program detection (simple string matching, not regex-dependent)
-    log_lower = log_text.lower()
-    if "phenix.real_space_refine" in log_lower:
-        analysis["program"] = "phenix.real_space_refine"
-    elif "phenix.refine" in log_lower:
-        analysis["program"] = "phenix.refine"
-    elif "phenix.phaser" in log_lower or "SOLU SET" in log_text:
-        analysis["program"] = "phenix.phaser"
-    elif "phenix.xtriage" in log_lower:
-        analysis["program"] = "phenix.xtriage"
-    elif "phenix.mtriage" in log_lower:
-        analysis["program"] = "phenix.mtriage"
-    elif "predict_and_build" in log_lower:
-        analysis["program"] = "phenix.predict_and_build"
-    elif "phenix.ligandfit" in log_lower:
-        analysis["program"] = "phenix.ligandfit"
+    # Program detection - delegate to canonical detect_program()
+    try:
+        from phenix.phenix_ai.log_parsers import detect_program
+        detected = detect_program(log_text)
+    except ImportError:
+        detected = None
+    if detected:
+        analysis["program"] = detected
 
     return analysis
 
@@ -1197,14 +1189,11 @@ def plan(state):
                 # Emit USER_REQUEST_INVALID event if user asked for this
                 if user_requested:
                     # Determine why it's invalid
-                    all_known_programs = [
-                        "phenix.xtriage", "phenix.mtriage", "phenix.predict_and_build",
-                        "phenix.phaser", "phenix.refine", "phenix.real_space_refine",
-                        "phenix.ligandfit", "phenix.pdbtools", "phenix.dock_in_map",
-                        "phenix.autobuild", "phenix.autosol", "phenix.process_predicted_model",
-                        "phenix.molprobity", "phenix.resolve_cryo_em", "phenix.map_sharpening",
-                        "phenix.map_to_model", "phenix.map_symmetry", "phenix.validation_cryoem",
-                    ]
+                    try:
+                        from libtbx.langchain.knowledge.yaml_loader import get_all_programs
+                        all_known_programs = get_all_programs()
+                    except Exception:
+                        all_known_programs = []  # Graceful degradation
 
                     if chosen_program in all_known_programs:
                         reason = "Not valid in current workflow state '%s'" % workflow_state.get("state", "unknown")

@@ -31,6 +31,80 @@ from __future__ import absolute_import, division, print_function
 import json
 import os
 import re
+import warnings
+
+
+# =============================================================================
+# Stop-condition program pattern loader
+# =============================================================================
+
+_STOP_DIRECTIVE_PATTERNS_CACHE = None
+
+def _get_stop_directive_patterns():
+    """Load program name mappings for stop-condition parsing from YAML.
+
+    Returns list of (pattern, program_name) tuples, sorted by pattern
+    length descending so more specific patterns match first (e.g.,
+    "map_to_model" before "dock_in_map", "real_space_refine" before "refine").
+
+    Falls back to hardcoded patterns with DeprecationWarning if YAML fails.
+    """
+    global _STOP_DIRECTIVE_PATTERNS_CACHE
+    if _STOP_DIRECTIVE_PATTERNS_CACHE is not None:
+        return _STOP_DIRECTIVE_PATTERNS_CACHE
+
+    entries = []
+    try:
+        try:
+            from libtbx.langchain.knowledge.yaml_loader import load_programs
+        except ImportError:
+            from knowledge.yaml_loader import load_programs
+        programs = load_programs()
+        for name, defn in programs.items():
+            if not isinstance(defn, dict):
+                continue
+            pats = defn.get("stop_directive_patterns")
+            if not pats or not isinstance(pats, list):
+                continue
+            for pat in pats:
+                entries.append((pat, name))
+    except Exception:
+        pass
+
+    if not entries:
+        warnings.warn(
+            "Could not load stop_directive_patterns from programs.yaml; "
+            "using hardcoded fallback. Add stop_directive_patterns to "
+            "programs.yaml to silence this warning.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        entries = [
+            (r'mtriage', 'phenix.mtriage'),
+            (r'xtriage', 'phenix.xtriage'),
+            (r'phaser', 'phenix.phaser'),
+            (r'molecular\s+replacement', 'phenix.phaser'),
+            (r'ligand\s*fit', 'phenix.ligandfit'),
+            (r'fit.*ligand', 'phenix.ligandfit'),
+            (r'refine', 'phenix.refine'),
+            (r'autobuild', 'phenix.autobuild'),
+            (r'map\s*to\s*model', 'phenix.map_to_model'),
+            (r'maptomodel', 'phenix.map_to_model'),
+            (r'build.*model.*(?:into|in)\s*(?:the\s*)?map', 'phenix.map_to_model'),
+            (r'(?:automated?\s+)?model\s+building.*(?:into|in)\s*(?:the\s*)?map',
+             'phenix.map_to_model'),
+            (r'dock.*(?:in|into)\s*(?:the\s*)?map', 'phenix.dock_in_map'),
+            (r'fit.*model.*(?:to|into)\s*(?:the\s*)?map', 'phenix.dock_in_map'),
+            (r'map\s*symmetry', 'phenix.map_symmetry'),
+            (r'(?:determin|find|detect).*symmetry', 'phenix.map_symmetry'),
+            (r'symmetry.*(?:map|cryo)', 'phenix.map_symmetry'),
+        ]
+
+    # Sort by pattern length descending — longer (more specific) patterns
+    # are checked first, handling cases like map_to_model vs dock_in_map.
+    entries.sort(key=lambda x: len(x[0]), reverse=True)
+    _STOP_DIRECTIVE_PATTERNS_CACHE = entries
+    return entries
 
 
 # =============================================================================
@@ -1728,29 +1802,9 @@ def extract_directives_simple(user_advice):
         stop_match = re.search(r'stop\s+condition\s*:\s*stop\s+after\s+(?:running\s+)?(.+?)(?:\.|$)', advice_lower, re.IGNORECASE)
         if stop_match:
             stop_text = stop_match.group(1).strip()
-            # Map common phrases to programs
-            # NOTE: Order matters - more specific patterns should come first
-            program_mappings = [
-                (r'mtriage', 'phenix.mtriage'),
-                (r'xtriage', 'phenix.xtriage'),
-                (r'phaser', 'phenix.phaser'),
-                (r'molecular\s+replacement', 'phenix.phaser'),
-                (r'ligand\s*fit', 'phenix.ligandfit'),
-                (r'fit.*ligand', 'phenix.ligandfit'),
-                (r'refine', 'phenix.refine'),
-                (r'autobuild', 'phenix.autobuild'),
-                # map_to_model patterns (check BEFORE dock_in_map since "map" appears in both)
-                (r'map\s*to\s*model', 'phenix.map_to_model'),
-                (r'maptomodel', 'phenix.map_to_model'),
-                (r'build.*model.*(?:into|in)\s*(?:the\s*)?map', 'phenix.map_to_model'),
-                (r'(?:automated?\s+)?model\s+building.*(?:into|in)\s*(?:the\s*)?map', 'phenix.map_to_model'),
-                # dock_in_map patterns (more specific than just "dock")
-                (r'dock.*(?:in|into)\s*(?:the\s*)?map', 'phenix.dock_in_map'),
-                (r'fit.*model.*(?:to|into)\s*(?:the\s*)?map', 'phenix.dock_in_map'),
-                (r'map\s*symmetry', 'phenix.map_symmetry'),
-                (r'(?:determin|find|detect).*symmetry', 'phenix.map_symmetry'),
-                (r'symmetry.*(?:map|cryo)', 'phenix.map_symmetry'),
-            ]
+            # Map common phrases to programs using YAML-driven patterns
+            # (sorted by length descending — more specific patterns first)
+            program_mappings = _get_stop_directive_patterns()
             for pattern, program in program_mappings:
                 if re.search(pattern, stop_text, re.IGNORECASE):
                     if "after_program" not in directives["stop_conditions"]:

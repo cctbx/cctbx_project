@@ -183,26 +183,39 @@ class CommandBuilder:
     # The parameter always takes just the main label name (e.g., "FTOXD3"),
     # not the F,SIGF pair. PHENIX finds the sigma column automatically.
     #
-    # Canonical reference: knowledge/recoverable_errors.yaml data_label_parameters
-    DATA_LABEL_PARAMETERS = {
-        "phenix.xtriage": {
-            "parameter": "scaling.input.xray_data.obs_labels",
-        },
-        "phenix.refine": {
-            "parameter": "miller_array.labels.name",
-        },
-        "phenix.phaser": {
-            "parameter": "phaser.hklin.labin",
-        },
-        # NOTE: phenix.autosol intentionally excluded - it handles labels internally
-        "phenix.autobuild": {
-            "parameter": "autobuild.input.xray_data.obs_labels",
-        },
-        "phenix.maps": {
-            "parameter": "maps.input.xray_data.obs_labels",
-        },
-    }
-    DATA_LABEL_DEFAULT_PARAMETER = "obs_labels"
+    # Loaded from: knowledge/recoverable_errors.yaml data_label_parameters
+    _data_label_cache = None
+
+    @classmethod
+    def _get_data_label_parameters(cls):
+        """Load data label parameters from YAML (cached)."""
+        if cls._data_label_cache is None:
+            try:
+                try:
+                    from libtbx.langchain.knowledge.yaml_loader import load_recoverable_errors
+                except ImportError:
+                    from knowledge.yaml_loader import load_recoverable_errors
+                config = load_recoverable_errors()
+                dlp = config.get("data_label_parameters", {})
+                # Extract default parameter without mutating the cached YAML
+                cls._data_label_default = dlp.get("default", {}).get("parameter", "obs_labels")
+                cls._data_label_cache = {k: v for k, v in dlp.items() if k != "default"}
+            except Exception:
+                import warnings
+                warnings.warn(
+                    "Could not load data_label_parameters from YAML. "
+                    "Using hardcoded fallback — this data may be stale.",
+                    DeprecationWarning, stacklevel=2
+                )
+                cls._data_label_cache = {
+                    "phenix.xtriage": {"parameter": "scaling.input.xray_data.obs_labels"},
+                    "phenix.refine": {"parameter": "miller_array.labels.name"},
+                    "phenix.phaser": {"parameter": "phaser.hklin.labin"},
+                    "phenix.autobuild": {"parameter": "autobuild.input.xray_data.obs_labels"},
+                    "phenix.maps": {"parameter": "maps.input.xray_data.obs_labels"},
+                }
+                cls._data_label_default = "obs_labels"
+        return cls._data_label_cache
 
     def __init__(self):
         """Initialize builder with program registry."""
@@ -1064,7 +1077,7 @@ class CommandBuilder:
         strategies and merges their flags into the command strategy.
 
         For data label recovery, the parameter name is translated per-program
-        using DATA_LABEL_PARAMETERS (e.g., xtriage uses
+        using data_label_parameters from recoverable_errors.yaml (e.g., xtriage uses
         scaling.input.xray_data.obs_labels, refine uses xray_data.labels).
 
         Args:
@@ -1135,15 +1148,15 @@ class CommandBuilder:
                     # Use program-specific parameter name
                     # All PHENIX programs just need the main label (e.g., "FTOXD3")
                     # PHENIX finds the sigma column automatically
-                    label_config = self.DATA_LABEL_PARAMETERS.get(program)
+                    label_config = self._get_data_label_parameters().get(program)
                     if label_config:
                         param_name = label_config["parameter"]
                     else:
-                        # Program not in DATA_LABEL_PARAMETERS — it handles
+                        # Program not in data_label_parameters — it handles
                         # labels internally (e.g., autosol). Skip label recovery.
                         self._log(context,
                                   f"BUILD: Skipping label recovery for {program} "
-                                  f"(not in DATA_LABEL_PARAMETERS, handles labels internally)")
+                                  f"(not in data_label_parameters, handles labels internally)")
                         continue
 
                     if param_name in strategy:

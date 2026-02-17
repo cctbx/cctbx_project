@@ -8,8 +8,17 @@
 #   - What it produces (outputs)
 #   - How to build the command (command template)
 #   - How to extract metrics from its log (log_parsing)
+#   - How to track completion (done_tracking)
+#   - How to match stop directives (stop_directive_patterns)
 #
 # To add a new program, copy an existing entry and modify it.
+#
+# DESIGN NOTE (done_tracking):
+#   Currently done_tracking uses run_once: true/false as a boolean.
+#   A cleaner design would be strategy: "run_once" | "count" | "success_gate"
+#   which would generalize tracking behavior. Fix 10A already has run_once
+#   correctly nested inside done_tracking, so this works fine — the strategy
+#   enum is a future consideration if more tracking modes are needed.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -20,7 +29,15 @@ phenix.xtriage:
   description: "Analyze X-ray data quality, detect twinning and anomalous signal"
   category: analysis
   experiment_types: [xray]
-  run_once: true  # Only run once per workflow
+  log_detection:
+    markers: ["phenix.xtriage", "xtriage"]
+  done_tracking:
+    flag: "xtriage_done"
+    run_once: true
+
+  gui_app_id: "Xtriage"
+  stop_directive_patterns:
+    - 'xtriage'
 
   inputs:
     required:
@@ -106,7 +123,15 @@ phenix.mtriage:
   description: "Analyze cryo-EM map quality and estimate resolution"
   category: analysis
   experiment_types: [cryoem]
-  run_once: true  # Only run once per workflow - don't re-run after other programs
+  log_detection:
+    markers: ["phenix.mtriage", "mtriage"]
+  done_tracking:
+    flag: "mtriage_done"
+    run_once: true
+
+  gui_app_id: "Mtriage"
+  stop_directive_patterns:
+    - 'mtriage'
 
   inputs:
     optional:
@@ -159,7 +184,17 @@ phenix.map_symmetry:
   description: "Find point-group symmetry in cryo-EM map"
   category: analysis
   experiment_types: [cryoem]
-  run_once: true  # Only run once - symmetry doesn't change
+  log_detection:
+    markers: ["map_symmetry"]
+  done_tracking:
+    flag: "map_symmetry_done"
+    run_once: true
+
+  gui_app_id: "MapSymmetry"
+  stop_directive_patterns:
+    - 'map\s*symmetry'
+    - '(?:determin|find|detect).*symmetry'
+    - 'symmetry.*(?:map|cryo)'
 
   inputs:
     required:
@@ -237,7 +272,13 @@ phenix.predict_and_build:
   description: "AlphaFold prediction and automatic model building"
   category: model_building
   experiment_types: [xray, cryoem]
+  log_detection:
+    markers: ["predict_and_build"]
+  done_tracking:
+    flag: "predict_done"
 
+  gui_app_id: "PredictAndBuildXray"
+  gui_app_id_cryoem: "PredictAndBuildCryoEM"
   inputs:
     required:
       sequence:
@@ -360,6 +401,16 @@ phenix.phaser:
   category: model_building
   experiment_types: [xray]
   multi_ensemble: true  # Supports multiple search models as ensembles
+  log_detection:
+    markers: ["phenix.phaser", "phaser."]
+    case_sensitive_markers: ["SOLU SET"]
+  done_tracking:
+    flag: "phaser_done"
+
+  gui_app_id: "PhaserEP"
+  stop_directive_patterns:
+    - 'phaser'
+    - 'molecular\s+replacement'
 
   inputs:
     required:
@@ -456,6 +507,17 @@ phenix.autobuild:
   description: "Iterative model building and refinement"
   category: model_building
   experiment_types: [xray]
+  log_detection:
+    markers: ["phenix.autobuild", "autobuild"]
+    priority: 20  # After autobuild_denmod
+  done_tracking:
+    flag: "autobuild_done"
+    history_detection:
+      markers: ["autobuild"]
+
+  gui_app_id: "AutoBuildDM"
+  stop_directive_patterns:
+    - 'autobuild'
 
   inputs:
     required:
@@ -534,6 +596,15 @@ phenix.autobuild_denmod:
   description: "Density modification for X-ray data (map improvement without model building)"
   category: map_improvement
   experiment_types: [xray]
+  log_detection:
+    markers: ["autobuild_denmod", "maps_only"]
+    priority: 5  # Before autobuild
+  done_tracking:
+    flag: "autobuild_denmod_done"
+    history_detection:
+      markers: ["autobuild_denmod"]
+      alt_markers: ["autobuild"]
+      alt_requires: ["maps_only"]
 
   inputs:
     required:
@@ -585,7 +656,15 @@ phenix.autosol:
   description: "Experimental phasing (SAD/MAD) for when data has anomalous signal"
   category: model_building
   experiment_types: [xray]
+  log_detection:
+    markers: ["phenix.autosol", "autosol"]
+  done_tracking:
+    flag: "autosol_done"
+    history_detection:
+      markers: ["autosol"]
+      success_flag: "autosol_success"
 
+  gui_app_id: "AutoSol"
   inputs:
     required:
       data_mtz:
@@ -701,6 +780,17 @@ phenix.dock_in_map:
   category: model_building
   experiment_types: [cryoem]
   requires_full_map: true  # Cannot use half-maps - too noisy for docking
+  log_detection:
+    markers: ["dock_in_map"]
+  done_tracking:
+    flag: "dock_done"
+    history_detection:
+      markers: ["dock_in_map"]
+
+  gui_app_id: "DockInMap"
+  stop_directive_patterns:
+    - 'dock.*(?:in|into)\s*(?:the\s*)?map'
+    - 'fit.*model.*(?:to|into)\s*(?:the\s*)?map'
 
   inputs:
     required:
@@ -783,6 +873,19 @@ phenix.map_to_model:
   description: "Build atomic model directly into cryo-EM map"
   category: model_building
   experiment_types: [cryoem]
+  log_detection:
+    markers: ["map_to_model"]
+  done_tracking:
+    flag: "map_to_model_done"
+    history_detection:
+      markers: ["map_to_model"]
+
+  gui_app_id: "MapToModel"
+  stop_directive_patterns:
+    - 'map\s*to\s*model'
+    - 'maptomodel'
+    - 'build.*model.*(?:into|in)\s*(?:the\s*)?map'
+    - '(?:automated?\s+)?model\s+building.*(?:into|in)\s*(?:the\s*)?map'
 
   inputs:
     required:
@@ -873,7 +976,14 @@ phenix.process_predicted_model:
   description: "Process AlphaFold model for molecular replacement"
   category: model_building
   experiment_types: [xray]
+  log_detection:
+    markers: ["process_predicted_model"]
+  done_tracking:
+    flag: "process_predicted_done"
+    history_detection:
+      markers: ["process_predicted_model"]
 
+  gui_app_id: "ProcessPredictedModel"
   inputs:
     required:
       model:
@@ -902,6 +1012,15 @@ phenix.refine:
   description: "Refine atomic model against X-ray diffraction data"
   category: refinement
   experiment_types: [xray]
+  log_detection:
+    markers: ["phenix.refine"]
+    priority: 20  # After real_space_refine
+  done_tracking:
+    flag: "refine_done"
+
+  gui_app_id: "Refine"
+  stop_directive_patterns:
+    - 'refine'
 
   inputs:
     required:
@@ -1039,7 +1158,13 @@ phenix.real_space_refine:
   category: refinement
   experiment_types: [cryoem]
   requires_full_map: true  # Cannot use half-maps - refinement needs full reconstruction
+  log_detection:
+    markers: ["phenix.real_space_refine", "real_space_refine"]
+    priority: 5  # Before refine
+  done_tracking:
+    flag: "rsr_done"
 
+  gui_app_id: "RealSpaceRefine"
   inputs:
     required:
       model:
@@ -1141,6 +1266,17 @@ phenix.ligandfit:
   description: "Fit a ligand into difference density"
   category: ligand
   experiment_types: [xray, cryoem]
+  log_detection:
+    markers: ["ligandfit"]
+  done_tracking:
+    flag: "ligandfit_done"
+    history_detection:
+      markers: ["ligandfit"]
+
+  gui_app_id: "LigandFit"
+  stop_directive_patterns:
+    - 'ligand\s*fit'
+    - 'fit.*ligand'
 
   inputs:
     required:
@@ -1210,7 +1346,14 @@ phenix.pdbtools:
   description: "Combine PDB files (e.g., protein + ligand)"
   category: utility
   experiment_types: [xray, cryoem]
+  log_detection:
+    markers: ["pdbtools"]
+  done_tracking:
+    flag: "pdbtools_done"
+    history_detection:
+      markers: ["pdbtools"]
 
+  gui_app_id: "PDBTools"
   inputs:
     required:
       protein:
@@ -1260,7 +1403,14 @@ phenix.resolve_cryo_em:
   description: "Density modification of cryo-EM map (map optimization, NOT model building)"
   category: map_optimization
   experiment_types: [cryoem]
+  log_detection:
+    markers: ["resolve_cryo_em"]
+  done_tracking:
+    flag: "resolve_cryo_em_done"
+    history_detection:
+      markers: ["resolve_cryo_em"]
 
+  gui_app_id: "ResolveCryoEM"
   inputs:
     required:
       half_map:
@@ -1298,7 +1448,15 @@ phenix.map_sharpening:
   description: "Sharpen cryo-EM map. Three modes: map+model, full map only, or two half maps"
   category: map_optimization
   experiment_types: [cryoem]
+  log_detection:
+    markers: ["map_sharpening", "local_aniso"]
+  done_tracking:
+    flag: "map_sharpening_done"
+    history_detection:
+      markers: ["map_sharpening", "local_aniso"]
 
+  gui_app_id: "MapSharpening"
+  gui_app_id_cryoem: "MapSharpeningCryoEM"
   # Three modes of operation:
   # Mode 1 (map+model): map.ccp4 model=model.pdb seq_file=seq.dat sharpening_method=shells model_sharpen=True
   # Mode 2 (full map only): map.ccp4 resolution=2.9 sharpening_method=b-factor seq_file=seq.dat
@@ -1379,7 +1537,12 @@ phenix.polder:
   # NOTE: Polder only needs Fobs (data_mtz), NOT map coefficients!
   # It calculates its own phases internally.
   # Polder has NO resolution keyword.
+  log_detection:
+    markers: ["polder"]
+  done_tracking:
+    flag: "polder_done"
 
+  gui_app_id: "Polder"
   inputs:
     required:
       data_mtz:
@@ -1457,7 +1620,12 @@ phenix.molprobity:
   description: "Comprehensive model validation (geometry, clashes, Ramachandran)"
   category: validation
   experiment_types: [xray, cryoem]
+  log_detection:
+    markers: ["molprobity"]
+  done_tracking:
+    flag: "validation_done"
 
+  gui_app_id: "MolProbity"
   inputs:
     required:
       model:
@@ -1511,7 +1679,10 @@ phenix.map_correlations:
   description: "Compute map-model or map-map correlation"
   category: validation
   experiment_types: [xray, cryoem]
-  run_once: false
+  log_detection:
+    markers: ["map_correlations"]
+  gui_app_id: "MapCorrelations"
+  gui_app_id_cryoem: "MapCorrelationsCryoEM"
 
   # All inputs are optional because the program supports multiple modes:
   #   Mode 1: model + map → map-model CC (cryo-EM)
@@ -1599,6 +1770,10 @@ phenix.model_vs_data:
   description: "Quick check of model-data agreement to verify model placement"
   category: validation
   experiment_types: [xray]
+  log_detection:
+    markers: ["model_vs_data"]
+  done_tracking:
+    flag: "validation_done"
 
   inputs:
     required:
@@ -1640,7 +1815,12 @@ phenix.validation_cryoem:
   category: validation
   experiment_types: [cryoem]
   requires_full_map: true  # Validation metrics need full reconstruction
+  log_detection:
+    markers: ["validation_cryoem"]
+  done_tracking:
+    flag: "validation_done"
 
+  gui_app_id: "ValidationCryoEM"
   inputs:
     required:
       model:
@@ -1674,6 +1854,10 @@ phenix.holton_geometry_validation:
   description: "Detailed geometry validation with energy scoring"
   category: validation
   experiment_types: [xray, cryoem]
+  log_detection:
+    markers: ["holton_geometry_validation"]
+  done_tracking:
+    flag: "validation_done"
 
   inputs:
     required:

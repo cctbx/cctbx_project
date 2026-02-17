@@ -739,12 +739,14 @@ class WorkflowEngine:
         filtered = []
         for prog in valid:
             prog_def = get_program(prog)
-            if prog_def and prog_def.get("run_once"):
-                # Check if this program has already been run
-                prog_done_key = prog.replace("phenix.", "").replace(".", "_") + "_done"
-                if context.get(prog_done_key):
-                    # Skip - already run
-                    continue
+            if prog_def:
+                tracking = prog_def.get("done_tracking", {})
+                if tracking.get("run_once"):
+                    # Check if this program has already been run
+                    prog_done_key = tracking.get("flag", "")
+                    if prog_done_key and context.get(prog_done_key):
+                        # Skip - already run
+                        continue
             filtered.append(prog)
         valid = filtered
 
@@ -1190,10 +1192,12 @@ class WorkflowEngine:
 
         # Check run_once
         prog_def = get_program(program)
-        if prog_def and prog_def.get("run_once"):
-            prog_done_key = program.replace("phenix.", "").replace(".", "_") + "_done"
-            if context.get(prog_done_key):
-                reasons.append("run_once program already executed")
+        if prog_def:
+            tracking = prog_def.get("done_tracking", {})
+            if tracking.get("run_once"):
+                prog_done_key = tracking.get("flag", "")
+                if prog_done_key and context.get(prog_done_key):
+                    reasons.append("run_once program already executed")
 
         # Check MR-SAD guard (autosol blocked when search model + anomalous + no phaser)
         if program == "phenix.autosol":

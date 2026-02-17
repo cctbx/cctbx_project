@@ -1,5 +1,93 @@
 # PHENIX AI Agent - Changelog
 
+## Version 112.11 (February 2025)
+
+### Phase 3: Final hardcoded cleanup (Fixes 6, 8, 10B)
+
+#### Stop-directive patterns → YAML (Fix 8)
+
+**Moved 18 regex patterns from `directive_extractor.py` to `programs.yaml`**
+- 9 programs now have `stop_directive_patterns` in YAML (phenix.mtriage,
+  xtriage, phaser, ligandfit, refine, autobuild, map_to_model, dock_in_map,
+  map_symmetry)
+- `_get_stop_directive_patterns()` loads from YAML with length-based sorting
+  (longest patterns match first — handles map_to_model vs dock_in_map safely)
+- Density modification branching stays in Python (requires experiment-type context)
+- Hardcoded fallback with DeprecationWarning if YAML unavailable
+- Files: `knowledge/programs.yaml`, `agent/directive_extractor.py`
+
+#### Rules-selector priority lists → YAML (Fix 6)
+
+**Moved 5 priority lists from `rules_selector.py` to `workflows.yaml`**
+- `shared/rules_config` section has `default_priority`, `ligand_priority`,
+  and `state_aliases`
+- Per-phase `rules_priority` lists in workflow phase definitions
+- `_load_rules_config()` and `_get_phase_rules_priority()` load from YAML
+- r_free/map_cc validation logic stays in Python (behavioral, not config)
+- Files: `knowledge/workflows.yaml`, `agent/rules_selector.py`
+
+#### Simple done-flag detection → YAML (Fix 10B)
+
+**Moved 10 simple if/elif blocks from `_analyze_history()` to YAML**
+- 10 programs now have `history_detection` in `done_tracking` with markers,
+  alt_markers/alt_requires (AND logic), and optional success_flag
+- Programs: process_predicted_model, autobuild, autobuild_denmod, autosol,
+  ligandfit, pdbtools, dock_in_map, map_to_model, resolve_cryo_em, map_sharpening
+- New `_set_simple_done_flags()` replaces ~40 lines of if/elif blocks
+- Complex cases stay in Python: validation (3 programs share flag), phaser
+  (count + TFZ check), predict_and_build (cascade), refine/rsr (counts)
+- Fixed process_predicted_model flag name: YAML now uses `process_predicted_done`
+  to match actual usage in workflow_engine.py
+- Added design note in programs.yaml: `strategy: "run_once" | "count" | "success_gate"`
+  is a cleaner generalization of the current `run_once: true` boolean — noted as
+  future consideration, not required now since Fix 10A already nests run_once
+  correctly inside done_tracking
+- Files: `knowledge/programs.yaml`, `agent/workflow_state.py`
+
+### Test coverage
+
+- 33 conformance tests in tst_hardcoded_cleanup.py (was 30)
+- New tests: test_history_detection_coverage, test_history_detection_behavioral,
+  test_no_simple_done_flags_in_analyze_history
+
+## Version 112.10 (February 2025)
+
+### Dead code removal in planner.py (Fix 7)
+
+**Removed ~1300 lines of dead code from `agent/planner.py`**
+- Investigation confirmed `generate_next_move()`, `construct_command_mechanically()`,
+  `get_required_params()`, `extract_clean_command()`, `get_relative_path()`,
+  `get_program_keywords()`, and `fix_multiword_parameters()` are never called externally
+- All were superseded by the YAML-driven CommandBuilder + rules_selector pipeline
+- Retained only `fix_program_parameters()` (called by graph_nodes.py) and
+  `extract_output_files()` (called by run_ai_analysis.py)
+- Removed heavy imports: langchain_core, phenix_knowledge, validation, memory
+- File: `agent/planner.py` (1436 → ~130 lines)
+
+### GUI app_id fallback in programs.yaml (Fix 9)
+
+**Added `gui_app_id` fields to programs.yaml as fallback for headless environments**
+- 20 programs now have `gui_app_id` in YAML (3 without GUI windows excluded)
+- 3 programs have `gui_app_id_cryoem` for cryo-EM variant windows:
+  predict_and_build, map_correlations, map_sharpening
+- `_build_program_to_app_id()` falls back to YAML when GUI PHIL is unavailable
+- `get_app_id_for_program()` cryo variants now loaded from YAML (with hardcoded baseline)
+- Added `gui_app_id`, `gui_app_id_cryoem` to yaml_tools valid fields
+- Files: `knowledge/programs.yaml`, `programs/ai_agent.py`, `agent/yaml_tools.py`
+
+### Unified done flag tracking in programs.yaml (Fix 10 Step A)
+
+**Eliminated `_MANUAL_DONE_FLAGS` dict and top-level `run_once` field**
+- All done flags now defined in `done_tracking` blocks in programs.yaml
+- `run_once` moved from top-level field into `done_tracking.run_once`
+- `get_program_done_flag_map()` reads directly from YAML — no hardcoded dict
+- Added `done_tracking` to 4 previously missing programs (holton_geometry_validation,
+  model_vs_data, validation_cryoem, map_correlations removed stale `run_once: false`)
+- `workflow_engine.py` now reads `done_tracking.flag` instead of deriving flag names
+- Updated ADDING_PROGRAMS.md, ARCHITECTURE.md, OVERVIEW.md docs
+- Files: `knowledge/programs.yaml`, `knowledge/program_registration.py`,
+  `agent/workflow_engine.py`, `agent/yaml_tools.py`
+
 ## Version 112.8 (February 2025)
 
 ### Prerequisite mechanism for resolution-dependent programs

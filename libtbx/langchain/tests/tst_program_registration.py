@@ -41,7 +41,11 @@ def test_done_flag_format():
         # Check done_flag
         assert 'done_flag' in info, f"{prog_name} should have done_flag"
         assert info['done_flag'].endswith('_done'), f"done_flag should end with '_done'"
-        assert info['done_flag'] == f"{info['short_name']}_done", f"done_flag format mismatch"
+        assert info['done_flag'] == f"{info['short_name']}_done", \
+            f"done_flag format mismatch for {prog_name}: {info['done_flag']} != {info['short_name']}_done"
+        # Note: This holds for current run_once programs (xtriage, mtriage,
+        # map_symmetry) but the flag name actually comes from YAML
+        # done_tracking.flag, so irregular names are supported.
 
     print("  test_done_flag_format PASSED")
 

@@ -167,7 +167,19 @@ def _load_programs_from_yaml_directly():
 
 
 def _get_fallback_programs():
-    """Minimal fallback list if all else fails."""
+    """Minimal fallback list if all else fails.
+
+    WARNING: This is a maintenance risk — if you add a new program, it won't
+    appear here. This fallback should only be reached if programs.yaml is
+    missing or unreadable, which would indicate a broken installation.
+    """
+    import warnings
+    warnings.warn(
+        "Using hardcoded program fallback in directive_validator — "
+        "programs.yaml could not be loaded. This data may be stale.",
+        DeprecationWarning,
+        stacklevel=2
+    )
     return {
         "phenix.xtriage": {"strategy_flags": [], "description": "Data analysis"},
         "phenix.mtriage": {"strategy_flags": ["resolution"], "description": "Map analysis"},

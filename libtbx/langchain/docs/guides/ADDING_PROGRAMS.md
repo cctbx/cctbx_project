@@ -8,7 +8,6 @@ This guide documents the process for adding a new PHENIX program to the AI Agent
 |------|-------------|-----------|
 | `knowledge/programs.yaml` | Complete program definition with metrics | ✅ Yes |
 | `knowledge/workflows.yaml` | Add to appropriate workflow phase(s) | ✅ Yes |
-| `knowledge/program_registration.py` | Done flag mapping (if not `run_once`) | If manually tracked |
 | `knowledge/file_categories.yaml` | New output file types (if any) | If new file types |
 | `knowledge/metrics.yaml` | Custom summary display (quality table, step metrics) | Usually not needed |
 | `agent/directive_extractor.py` | Tutorial/procedure patterns | Optional |
@@ -18,7 +17,7 @@ This guide documents the process for adding a new PHENIX program to the AI Agent
 
 The system automatically handles:
 - ✅ Metric extraction from logs (via `log_parsing` in programs.yaml)
-- ✅ `<program>_done` tracking flags (via `run_once: true`)
+- ✅ `<program>_done` tracking flags (via `done_tracking` in programs.yaml)
 - ✅ Session summary display (default formatting works for most metrics)
 - ✅ Workflow context building (automatic from programs.yaml)
 - ✅ Prerequisite auto-execution (e.g., mtriage for resolution)
@@ -38,7 +37,9 @@ phenix.new_analysis:
   description: "Analyze something in the data"
   category: analysis
   experiment_types: [xray, cryoem]
-  run_once: true  # Auto-creates new_analysis_done flag
+  done_tracking:
+    flag: "new_analysis_done"
+    run_once: true
   
   inputs:
     required:
@@ -85,9 +86,20 @@ phenix.new_program:
   category: analysis|phasing|building|refinement|validation
   experiment_types: [xray, cryoem]  # or just one
   
-  # Set run_once: true for programs that should only run once per session
-  # This automatically creates <program>_done tracking flags
-  run_once: true
+  # Done tracking: controls workflow done flags and run_once behavior
+  done_tracking:
+    flag: "new_program_done"   # Flag name set in workflow context
+    run_once: true             # Only run once per session (optional, default false)
+    history_detection:         # Optional: auto-set done flag from history
+      markers: ["new_program"] # Strings to match in program+command text
+
+  # GUI app_id: maps to wxGUI2 window for project History (optional)
+  gui_app_id: "NewProgram"           # From wxGUI2/Programs/__init__.params
+  # gui_app_id_cryoem: "NewProgramCryoEM"  # If cryo-EM uses a different window
+
+  # Stop directive patterns: regex for user stop conditions (optional)
+  # stop_directive_patterns:
+  #   - 'new_program'
 
   inputs:
     required:
@@ -155,7 +167,12 @@ phenix.new_program:
 
 | Field | Effect |
 |-------|--------|
-| `run_once: true` | Automatically creates `<program>_done` flag in workflow_state.py |
+| `done_tracking.flag` | Names the workflow done flag (e.g., `xtriage_done`) |
+| `done_tracking.run_once` | If true, program is filtered out after first successful run |
+| `done_tracking.history_detection` | YAML-driven simple done-flag setting (markers, alt_markers, success_flag) |
+| `gui_app_id` | wxGUI2 app_id for project History (fallback when PHIL unavailable) |
+| `gui_app_id_cryoem` | Cryo-EM variant app_id if the program uses a different GUI window |
+| `stop_directive_patterns` | Regex patterns for matching user stop-condition directives |
 | `log_parsing:` | Patterns used by log_parsers.py AND session.py for metric extraction |
 | `log_parsing.*.display_name` | Used in session summary display |
 | `log_parsing.*.summary_format` | Format string for summary display |
@@ -187,16 +204,14 @@ xray:  # or cryoem
 **Common conditions:**
 - `has: <file_type>` - Requires file (sequence, model, full_map, half_map, ligand_file, anomalous, etc.)
 - `has_any: [type1, type2]` - Requires at least one of these files
-- `not_done: <program>` - Program hasn't been run yet (auto-generated for `run_once: true` programs)
+- `not_done: <program>` - Program hasn't been run yet (flag name from `done_tracking.flag`)
 - `not_has: <file_type>` - File type is NOT present
 - `r_free: "< 0.35"` - R-free below threshold (also supports `"> autobuild_threshold"`, `"< target_r_free"`)
 - `refine_count: "> 0"` - At least one successful refinement completed (also `rsr_count`)
 
 **Available done flags:**
 
-For programs with `run_once: true`, flags are auto-generated (e.g., `xtriage_done`, `mtriage_done`).
-
-For other programs, these flags are manually tracked in `workflow_state.py`:
+All done flags are defined in programs.yaml under `done_tracking.flag`. Common flags:
 
 | Flag | Set When | Used By |
 |------|----------|---------|
@@ -224,35 +239,57 @@ For other programs, these flags are manually tracked in `workflow_state.py`:
 
 ---
 
-## Step 2.5: Register Done Flag (if not `run_once`)
+## Step 2.5: Add Done Tracking (if needed)
 
-Location: `knowledge/program_registration.py`
+Location: `knowledge/programs.yaml` (same file as Step 1)
 
-**Skip this step if** your program has `run_once: true` in programs.yaml — its done flag is auto-generated.
+**All done flags are defined in the `done_tracking` block** in programs.yaml.
+No Python file edits are needed — `get_program_done_flag_map()` reads directly
+from YAML.
 
-For programs that can run multiple times but still need a done flag for workflow
-phase detection (e.g., `phenix.refine` → `refine_done`), add the mapping to
-`_MANUAL_DONE_FLAGS` in `get_program_done_flag_map()`:
-
-```python
-_MANUAL_DONE_FLAGS = {
-    "phenix.phaser":            "phaser_done",
-    "phenix.refine":            "refine_done",
-    # ... existing entries ...
-    "phenix.new_program":       "new_program_done",  # ← Add your program
-}
+```yaml
+phenix.new_program:
+  # ... other fields ...
+  done_tracking:
+    flag: "new_program_done"    # Flag name in workflow context
+    run_once: true              # Optional: filter out after first run
+    history_detection:          # Optional: YAML-driven done-flag setting
+      markers: ["new_program"]  # Match any of these in history (OR logic)
+      # alt_markers: ["other_name"]  # Alternative markers (with alt_requires)
+      # alt_requires: ["some_flag"]  # ALL must match alongside alt_markers
+      # success_flag: "new_program_success"  # Extra flag set on success
 ```
 
-**Why this matters:** The agent uses `get_program_done_flag_map()` to:
-1. Determine which context flags to check during phase detection
-2. Mark skipped programs as "done" so the workflow can advance past their phases
+**`history_detection`** replaces simple if/elif blocks in `_analyze_history()`.
+Use it when your program only needs a boolean done flag set on success.
+Do NOT use it if your program needs counts, cascading flags (like
+predict_and_build → refine_done), or exclusion logic (like refine excluding
+real_space).
 
-If your program gates a workflow phase (e.g., xtriage gates the "analyze" phase)
-and a user skips it via `skip_programs`, the workflow will get stuck unless the
-done flag is registered here.
+**`stop_directive_patterns`** (optional, top-level): If users may reference your
+program in stop conditions (e.g., "stop after running new_program"), add regex
+patterns:
+
+```yaml
+phenix.new_program:
+  stop_directive_patterns:
+    - 'new_program'
+    - 'new\\s+program'
+```
+
+Patterns are sorted by length at load time (longest first) so more specific
+patterns match before shorter ones.
+
+**When to add `done_tracking`:**
+- Your program gates a workflow phase (e.g., xtriage gates "analyze")
+- Users might skip it via `skip_programs` (the flag must be set for phase advancement)
+- You want `run_once` behavior (program filtered from valid list after completion)
+
+**When to skip:** Validation programs like `phenix.map_correlations` that don't
+gate any phase and can run freely don't need `done_tracking`.
 
 **Also ensure** the done flag is set in `build_context()` in `agent/workflow_engine.py`
-(the manually-tracked flags are populated from `history_info`):
+(the flags are populated from `history_info`):
 
 ```python
 context = {
@@ -381,7 +418,9 @@ phenix.map_symmetry:
   description: "Find point-group symmetry in cryo-EM map"
   category: analysis
   experiment_types: [cryoem]
-  run_once: true  # Creates map_symmetry_done flag automatically
+  done_tracking:
+    flag: "map_symmetry_done"
+    run_once: true
 
   inputs:
     required:
@@ -662,9 +701,9 @@ short-form PHIL paths to full scope paths. This is handled in
    - Used by both `log_parsers.py` and `session.py`
 
 2. **Program Registration** (`knowledge/program_registration.py`)
-   - Reads programs with `run_once: true`
-   - Auto-generates `<program>_done` flags
-   - Updates `workflow_state.py` and `workflow_engine.py` automatically
+   - Reads `done_tracking` blocks from programs.yaml
+   - Provides `get_program_done_flag_map()` (all programs → done flags)
+   - Provides `get_trackable_programs()` (run_once programs only)
 
 3. **Summary Display** (`knowledge/summary_display.py`)
    - Reads `summary_display` from metrics.yaml
@@ -747,7 +786,7 @@ python agent/program_validator.py --list
 |---------|---------|-----|
 | Missing `input_priorities` | Wrong file selected | Add explicit priorities with excludes |
 | No `exclude_categories` for protein/model input | Picks ligand or predicted model | Add `exclude_categories: [ligand, search_model]` |
-| Forgetting `run_once: true` | Program runs multiple times | Add `run_once: true` |
+| Forgetting `done_tracking` with `run_once: true` | Program runs multiple times | Add `done_tracking: {flag: ..., run_once: true}` |
 | Wrong `experiment_types` | Program offered for wrong data | Set `[xray]`, `[cryoem]`, or both |
 | Missing workflow entry | Program never offered | Add to appropriate phase in `workflows.yaml` |
 

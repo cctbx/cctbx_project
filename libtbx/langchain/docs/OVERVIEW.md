@@ -386,9 +386,9 @@ Programs can specify `not_done: <flag>` to prevent re-runs:
 | `map_to_model` | map_to_model | De novo model building completed |
 | `map_symmetry` | map_symmetry | Map symmetry analysis completed |
 
-**2. `run_once: true`** (in programs.yaml)
+**2. `done_tracking` blocks** (in programs.yaml)
 
-Programs like `phenix.xtriage`, `phenix.mtriage`, and `phenix.map_symmetry` have `run_once: true`, which automatically prevents re-running in a session.
+Each program's `done_tracking` block defines its workflow done flag and optional `run_once` behavior. Programs like `phenix.xtriage`, `phenix.mtriage`, and `phenix.map_symmetry` have `done_tracking.run_once: true`, which automatically prevents re-running in a session.
 
 **Programs that run multiple times** (intentionally):
 - `phenix.refine` / `phenix.real_space_refine` - Iterative refinement

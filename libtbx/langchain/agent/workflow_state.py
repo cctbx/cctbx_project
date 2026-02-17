@@ -500,6 +500,94 @@ def _is_failed_result(result):
     return any(pattern in result_upper for pattern in failure_patterns)
 
 
+# Cache for history detection config loaded from YAML
+_HISTORY_DETECTION_CACHE = None
+
+
+def _load_history_detection_config():
+    """Load history_detection configuration from programs.yaml.
+
+    Returns list of dicts, each with:
+      - flag: done flag name (e.g., 'dock_done')
+      - markers: list of strings to match in combined text (OR logic)
+      - alt_markers: optional list of alternate marker strings
+      - alt_requires: optional list of strings that must ALL be present
+                      alongside alt_markers (AND logic)
+      - success_flag: optional additional flag set on success
+    """
+    global _HISTORY_DETECTION_CACHE
+    if _HISTORY_DETECTION_CACHE is not None:
+        return _HISTORY_DETECTION_CACHE
+
+    configs = []
+    try:
+        try:
+            from libtbx.langchain.knowledge.yaml_loader import load_programs
+        except ImportError:
+            from knowledge.yaml_loader import load_programs
+        programs = load_programs()
+        for name, defn in programs.items():
+            if not isinstance(defn, dict):
+                continue
+            tracking = defn.get("done_tracking", {})
+            detection = tracking.get("history_detection")
+            if not detection or not isinstance(detection, dict):
+                continue
+            configs.append({
+                "flag": tracking.get("flag"),
+                "markers": detection.get("markers", []),
+                "alt_markers": detection.get("alt_markers", []),
+                "alt_requires": detection.get("alt_requires", []),
+                "success_flag": detection.get("success_flag"),
+            })
+    except Exception as e:
+        print("  [workflow_state] Warning: could not load history_detection "
+              "from programs.yaml: %s" % str(e))
+
+    _HISTORY_DETECTION_CACHE = configs
+    return configs
+
+
+def _set_simple_done_flags(info, combined, result):
+    """Set done flags from YAML history_detection for simple cases.
+
+    Simple cases: set a boolean flag (and optional success_flag) when
+    a marker string is found in the combined program+command string
+    and the run succeeded.
+
+    Complex cases (counts, cascading flags, exclusion logic) remain
+    as explicit code in _analyze_history().
+
+    Args:
+        info: The info dict being built by _analyze_history
+        combined: Lowercase string of program + command
+        result: Result string from history entry
+    """
+    if _is_failed_result(result):
+        return  # All simple cases require success
+
+    configs = _load_history_detection_config()
+
+    for config in configs:
+        flag = config["flag"]
+        if not flag:
+            continue
+
+        # Check primary markers (OR logic)
+        matched = any(m in combined for m in config["markers"])
+
+        # Check alt_markers with alt_requires (AND logic)
+        if not matched and config["alt_markers"] and config["alt_requires"]:
+            if (any(m in combined for m in config["alt_markers"]) and
+                    all(r in combined for r in config["alt_requires"])):
+                matched = True
+
+        if matched:
+            info[flag] = True
+            if config["success_flag"]:
+                info[config["success_flag"]] = True
+
+
 def _analyze_history(history):
     """
     Extract information about what has been done from history.
@@ -554,7 +642,10 @@ def _analyze_history(history):
     }
 
     # Add auto-generated done flags for run_once programs from programs.yaml
-    from libtbx.langchain.knowledge.program_registration import get_initial_history_flags
+    try:
+        from libtbx.langchain.knowledge.program_registration import get_initial_history_flags
+    except ImportError:
+        from knowledge.program_registration import get_initial_history_flags
     auto_flags = get_initial_history_flags()
     info.update(auto_flags)
 
@@ -564,7 +655,10 @@ def _analyze_history(history):
     # =========================================================================
     # Detect auto-registered programs (run_once: true)
     # =========================================================================
-    from libtbx.langchain.knowledge.program_registration import detect_programs_in_history
+    try:
+        from libtbx.langchain.knowledge.program_registration import detect_programs_in_history
+    except ImportError:
+        from knowledge.program_registration import detect_programs_in_history
     auto_detected = detect_programs_in_history(history, info)
     info.update(auto_detected)
 
@@ -627,93 +721,53 @@ def _analyze_history(history):
         info["last_program"] = prog
 
         # =====================================================================
-        # Complex program flags (counts, success conditions, etc.)
-        # These require special logic beyond simple "was it run" detection
-        # NOTE: All programs only count as "done" if they succeeded.
-        # Failed runs don't prevent retry.
+        # Program done flags
         # =====================================================================
         result = entry.get("result", "") if isinstance(entry, dict) else ""
 
+        # --- YAML-driven simple flag detection ---
+        # Sets done flags for programs with history_detection in programs.yaml.
+        # Handles: process_predicted_model, autobuild, autobuild_denmod,
+        # autosol, ligandfit, pdbtools, dock_in_map, map_to_model,
+        # resolve_cryo_em, map_sharpening
+        _set_simple_done_flags(info, combined, result)
+
+        # --- Complex cases (counts, cascading flags, exclusions) ---
+        # These require special logic beyond simple "was it run" detection.
+        # All programs only count as "done" if they succeeded.
+
         if "validation" in combined or "molprobity" in combined or "holton_geometry" in combined:
-            # Only mark validation as done if it succeeded
+            # 3 programs share one flag
             if not _is_failed_result(result):
                 info["validation_done"] = True
         if "phaser" in combined and "real_space" not in combined:
-            # Only mark phaser as done if it succeeded
+            # Count + TFZ-based success check
             if not _is_failed_result(result):
                 info["phaser_done"] = True
                 info["phaser_count"] = info.get("phaser_count", 0) + 1
                 if info["last_tfz"] and info["last_tfz"] > 8:
                     info["phaser_success"] = True
         if "predict_and_build" in combined:
-            # Only mark predict as done if it succeeded
+            # Conditional cascade: predict_full_done → refine_done
             if not _is_failed_result(result):
                 info["predict_done"] = True
                 if "stop_after_predict=true" not in combined and "stop_after_predict=True" not in combined:
                     info["predict_full_done"] = True
-                    # Full predict_and_build includes refinement cycles and produces map coefficients
-                    # So count it as a refinement for downstream programs like ligandfit
+                    # Full predict_and_build includes refinement cycles
                     info["refine_done"] = True
                     info["refine_count"] += 1
-        if "process_predicted_model" in combined:
-            # Only mark process_predicted as done if it succeeded
-            if not _is_failed_result(result):
-                info["process_predicted_done"] = True
-        if "autobuild" in combined:
-            # Only mark autobuild as done if it succeeded
-            if not _is_failed_result(result):
-                info["autobuild_done"] = True
-            # If autobuild failed, don't mark it as done so agent can try alternatives
-        if "autobuild_denmod" in combined or ("autobuild" in combined and "maps_only" in combined):
-            # Density modification mode of autobuild
-            if not _is_failed_result(result):
-                info["autobuild_denmod_done"] = True
-        if "autosol" in combined:
-            # Only mark autosol as done if it succeeded
-            if not _is_failed_result(result):
-                info["autosol_done"] = True
-                info["autosol_success"] = True
-            # If autosol failed, don't mark it as done so agent can retry
         if "refine" in combined and "real_space" not in combined:
-            # Only count successful refinements
-            # Failed refinements don't produce map coefficients needed by downstream programs
+            # Count + success flag; excludes real_space_refine
             if not _is_failed_result(result):
                 info["refine_done"] = True
                 info["refine_count"] += 1
                 info["refine_success"] = True
-            # If refinement failed, don't increment count
         if "real_space_refine" in combined:
-            # Only count successful RSR runs
+            # Count + success flag
             if not _is_failed_result(result):
                 info["rsr_done"] = True
                 info["rsr_count"] += 1
                 info["rsr_success"] = True
-            # If RSR failed, don't increment count
-        if "ligandfit" in combined:
-            # Only mark ligandfit as done if it succeeded
-            if not _is_failed_result(result):
-                info["ligandfit_done"] = True
-            # If ligandfit failed, don't mark as done so agent can retry
-        if "pdbtools" in combined:
-            # Only mark pdbtools as done if it succeeded
-            if not _is_failed_result(result):
-                info["pdbtools_done"] = True
-        if "dock_in_map" in combined:
-            # Only mark dock_in_map as done if it succeeded
-            if not _is_failed_result(result):
-                info["dock_done"] = True
-        if "map_to_model" in combined:
-            # Only mark map_to_model as done if it succeeded
-            if not _is_failed_result(result):
-                info["map_to_model_done"] = True
-        if "resolve_cryo_em" in combined:
-            # Only mark resolve_cryo_em as done if it succeeded
-            if not _is_failed_result(result):
-                info["resolve_cryo_em_done"] = True
-        if "map_sharpening" in combined or "local_aniso" in combined:
-            # Only mark map_sharpening as done if it succeeded
-            if not _is_failed_result(result):
-                info["map_sharpening_done"] = True
 
     return info
 
@@ -814,13 +868,11 @@ def validate_program_choice(chosen_program, workflow_state):
     if chosen_program in valid:
         return True, None
 
-    all_known_programs = [
-        "phenix.xtriage", "phenix.mtriage", "phenix.predict_and_build",
-        "phenix.phaser", "phenix.refine", "phenix.real_space_refine",
-        "phenix.ligandfit", "phenix.pdbtools", "phenix.dock_in_map",
-        "phenix.autobuild", "phenix.autosol", "phenix.process_predicted_model",
-        "phenix.molprobity", "phenix.resolve_cryo_em", "phenix.map_sharpening",
-    ]
+    try:
+        from libtbx.langchain.knowledge.yaml_loader import get_all_programs
+        all_known_programs = get_all_programs()
+    except Exception:
+        all_known_programs = []  # Graceful degradation
 
     if chosen_program in all_known_programs:
         error = (

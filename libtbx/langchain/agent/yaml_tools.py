@@ -386,7 +386,10 @@ def _validate_programs(data):
         'input_priorities',     # Step 2: File category priorities
         'user_advice_keywords', # Step 3: Keywords for user advice matching
         # Additional program-level fields
-        'run_once',             # Only run this program once per workflow
+        'done_tracking',        # Done flag configuration (flag name, run_once, etc.)
+        'gui_app_id',           # wxGUI2 app_id for project History (fallback)
+        'gui_app_id_cryoem',    # Cryo-EM variant app_id (if different from gui_app_id)
+        'stop_directive_patterns',  # Regex patterns for stop-condition parsing
         'requires_full_map',    # Program needs full map, not half-maps
     }
 

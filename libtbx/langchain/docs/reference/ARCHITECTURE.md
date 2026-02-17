@@ -195,22 +195,24 @@ log_parsing: ────────▶ extract_metrics_for_program()
 - `format_metric_value(program, metric, value)`: Format using YAML config
 
 #### Program Registration (knowledge/program_registration.py)
-Auto-generates tracking flags from `run_once: true` programs:
+Reads `done_tracking` blocks from programs.yaml for workflow done flags:
 
 ```
-programs.yaml           program_registration.py
-     │                          │
-     ▼                          ▼
-run_once: true ────────▶ get_trackable_programs()
-                                │
-                     ┌──────────┴──────────┐
-                     ▼                     ▼
-            workflow_state.py      workflow_engine.py
-            (done flags)           (context building)
+programs.yaml             program_registration.py
+     │                            │
+     ▼                            ▼
+done_tracking:           get_program_done_flag_map()  ← ALL programs
+  flag: "xxx_done"       get_trackable_programs()     ← run_once only
+  run_once: true                  │
+                       ┌──────────┴──────────┐
+                       ▼                     ▼
+              workflow_state.py      workflow_engine.py
+              (done flags)           (context building)
 ```
 
 **Key functions:**
-- `get_trackable_programs()`: Get programs with `run_once: true`
+- `get_program_done_flag_map()`: All programs → done flag names (from YAML)
+- `get_trackable_programs()`: Programs with `done_tracking.run_once: true`
 - `get_initial_history_flags()`: Get initial `{program}_done: False` flags
 - `detect_programs_in_history()`: Detect completed programs in history
 

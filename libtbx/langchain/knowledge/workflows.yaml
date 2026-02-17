@@ -38,6 +38,13 @@ xray:
         - twinning
         - anomalous_measurability
 
+      # Priority ordering for rules-only mode program selection
+      rules_priority:
+        - phenix.xtriage
+        - phenix.mtriage
+        - phenix.predict_and_build
+        - phenix.phaser
+
     # Phase 2: Get an initial model
     obtain_model:
       description: "Obtain an initial atomic model"
@@ -73,6 +80,18 @@ xray:
 
         # Special case: if predict_and_build made prediction only
         if_predict_only: molecular_replacement
+
+      # Priority ordering for rules-only mode (conditional)
+      rules_priority:
+        default:
+          - phenix.phaser
+          - phenix.dock_in_map
+          - phenix.predict_and_build
+          - phenix.autobuild
+        when_sequence_only:
+          - phenix.predict_and_build
+          - phenix.phaser
+          - phenix.autobuild
 
     # Phase 2b: Place predicted model (if needed)
     molecular_replacement:
@@ -173,6 +192,13 @@ xray:
         on_plateau: validate
         on_max_cycles: validate
 
+      # Priority ordering for rules-only mode
+      rules_priority:
+        - phenix.refine
+        - phenix.real_space_refine
+        - phenix.molprobity
+        - phenix.model_vs_data
+
     # Phase 3b: Combine ligand with protein
     combine_ligand:
       description: "Combine fitted ligand with protein model"
@@ -208,6 +234,13 @@ xray:
       transitions:
         if_quality_acceptable: complete
         if_quality_poor: refine
+
+      # Priority ordering for rules-only mode
+      rules_priority:
+        - phenix.molprobity
+        - phenix.model_vs_data
+        - phenix.refine
+        - phenix.real_space_refine
 
     # Phase 5: Done
     complete:
@@ -292,6 +325,13 @@ cryoem:
         - resolution
         - map_cc
 
+      # Priority ordering for rules-only mode
+      rules_priority:
+        - phenix.xtriage
+        - phenix.mtriage
+        - phenix.predict_and_build
+        - phenix.phaser
+
     # Phase 2: Get a model
     obtain_model:
       description: "Obtain initial model"
@@ -337,6 +377,18 @@ cryoem:
       transitions:
         on_complete: check_map
         if_predict_only: dock_model  # For stepwise path
+
+      # Priority ordering for rules-only mode (conditional)
+      rules_priority:
+        default:
+          - phenix.phaser
+          - phenix.dock_in_map
+          - phenix.predict_and_build
+          - phenix.autobuild
+        when_sequence_only:
+          - phenix.predict_and_build
+          - phenix.phaser
+          - phenix.autobuild
 
     # Phase 2b: Dock predicted model (stepwise path)
     dock_model:
@@ -473,6 +525,13 @@ cryoem:
         on_plateau: validate
         on_max_cycles: validate
 
+      # Priority ordering for rules-only mode
+      rules_priority:
+        - phenix.refine
+        - phenix.real_space_refine
+        - phenix.molprobity
+        - phenix.model_vs_data
+
     # Phase 4: Validate
     validate:
       description: "Check model quality"
@@ -491,6 +550,13 @@ cryoem:
       transitions:
         if_quality_acceptable: complete
         if_quality_poor: refine
+
+      # Priority ordering for rules-only mode
+      rules_priority:
+        - phenix.molprobity
+        - phenix.model_vs_data
+        - phenix.refine
+        - phenix.real_space_refine
 
     # Phase 5: Done
     complete:
@@ -528,6 +594,30 @@ cryoem:
 # -----------------------------------------------------------------------------
 
 shared:
+  # Rules-only mode configuration
+  rules_config:
+    # Default priority when no phase-specific rules_priority matches
+    default_priority:
+      - phenix.refine
+      - phenix.real_space_refine
+      - phenix.molprobity
+      - phenix.autobuild
+      - phenix.predict_and_build
+      - phenix.phaser
+
+    # Ligand-related phases (matched by substring in state name)
+    ligand_priority:
+      - phenix.ligandfit
+      - phenix.elbow
+      - phenix.pdbtools
+      - phenix.refine
+
+    # State name aliases (rules_selector state → workflow phase name)
+    state_aliases:
+      xray_initial: analyze
+      cryoem_initial: analyze
+      molecular_replacement: obtain_model
+
   # Maximum refinement cycles before forcing stop
   max_refine_cycles: 8
 

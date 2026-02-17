@@ -175,31 +175,20 @@ def _extract_autobuild_rfree(text):
 
 
 def _detect_program_from_command(cmd):
-    """Detect program name from command string."""
+    """Detect program name from command string.
+
+    Delegates to log_parsers.detect_program() which uses YAML-configured
+    markers. Command strings contain program names (e.g., "phenix.refine")
+    so the same markers work for both log and command detection.
+    """
     if not cmd:
         return "unknown"
-    cmd_lower = cmd.lower()
-
-    programs = [
-        "phenix.real_space_refine",  # Check before refine
-        "phenix.refine",
-        "phenix.phaser",
-        "phenix.xtriage",
-        "phenix.mtriage",
-        "phenix.predict_and_build",
-        "phenix.ligandfit",
-        "phenix.pdbtools",
-        "phenix.autobuild",
-        "phenix.autosol",
-        "phenix.dock_in_map",
-        "phenix.process_predicted_model",
-    ]
-
-    for prog in programs:
-        if prog in cmd_lower:
-            return prog
-
-    return "unknown"
+    try:
+        from phenix.phenix_ai.log_parsers import detect_program
+        result = detect_program(cmd)
+    except ImportError:
+        result = None
+    return result or "unknown"
 
 
 def _parse_metrics_from_string(text):

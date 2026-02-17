@@ -43,6 +43,7 @@ Test Suites (require PHENIX environment):
   32. Directives Integration - End-to-end directive system tests
 
   33. Langchain Tools - Legacy module tests (core, analysis, RAG, validation, prompts, memory)
+  34. Hardcoded Cleanup - Conformance guards for YAML-driven architecture (v112.10)
 
 Key Tests for Recent Fixes (v110):
   - tst_best_files_tracker: Model scoring, autobuild_output same score as refined
@@ -455,6 +456,16 @@ def main():
     except ImportError as e:
         print(f"⚠️  Could not import tst_langchain_tools: {e}")
         results.append(("Langchain Tools", False, 0))
+
+    # --- Hardcoded Cleanup Conformance Tests ---
+    try:
+        from tests.tst_hardcoded_cleanup import run_all_tests as run_hardcoded_cleanup_tests
+        success, elapsed = run_test_module(
+            "tst_hardcoded_cleanup", run_hardcoded_cleanup_tests, args.verbose)
+        results.append(("Hardcoded Cleanup", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_hardcoded_cleanup: {e}")
+        results.append(("Hardcoded Cleanup", False, 0))
 
     # --- Summary ---
     total_elapsed = time.time() - total_start

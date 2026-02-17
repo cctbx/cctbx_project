@@ -27,11 +27,115 @@ This enables fully automated workflows without LLM involvement.
 from __future__ import absolute_import, division, print_function
 
 import os
+import warnings
 
 # Import dependencies
 from libtbx.langchain.agent.workflow_engine import WorkflowEngine
 from libtbx.langchain.agent.metric_evaluator import MetricEvaluator
 from libtbx.langchain.agent.program_registry import ProgramRegistry
+
+
+# =============================================================================
+# Rules priority loader
+# =============================================================================
+
+_RULES_CONFIG_CACHE = None
+
+def _load_rules_config():
+    """Load rules_config from workflows.yaml shared section.
+
+    Returns dict with keys: default_priority, ligand_priority, state_aliases.
+    Falls back to hardcoded config with DeprecationWarning if YAML fails.
+    """
+    global _RULES_CONFIG_CACHE
+    if _RULES_CONFIG_CACHE is not None:
+        return _RULES_CONFIG_CACHE
+
+    try:
+        try:
+            from libtbx.langchain.knowledge.yaml_loader import load_workflows
+        except ImportError:
+            from knowledge.yaml_loader import load_workflows
+        workflows = load_workflows()
+        config = workflows.get("shared", {}).get("rules_config", {})
+        if config:
+            _RULES_CONFIG_CACHE = config
+            return config
+    except Exception:
+        pass
+
+    warnings.warn(
+        "Could not load rules_config from workflows.yaml; "
+        "using hardcoded fallback.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    _RULES_CONFIG_CACHE = {
+        "default_priority": [
+            "phenix.refine", "phenix.real_space_refine",
+            "phenix.molprobity", "phenix.autobuild",
+            "phenix.predict_and_build", "phenix.phaser",
+        ],
+        "ligand_priority": [
+            "phenix.ligandfit", "phenix.elbow",
+            "phenix.pdbtools", "phenix.refine",
+        ],
+        "state_aliases": {
+            "xray_initial": "analyze",
+            "cryoem_initial": "analyze",
+            "molecular_replacement": "obtain_model",
+        },
+    }
+    return _RULES_CONFIG_CACHE
+
+
+def _get_phase_rules_priority(experiment_type, state_name, files=None):
+    """Load rules_priority for a workflow phase from YAML.
+
+    Args:
+        experiment_type: 'xray' or 'cryoem'
+        state_name: Current workflow state/phase name
+        files: Dict of categorized files (for conditional priorities)
+
+    Returns:
+        List of program names in priority order, or empty list.
+    """
+    config = _load_rules_config()
+
+    # Handle ligand substring match (not a specific phase)
+    if "ligand" in state_name.lower():
+        return config.get("ligand_priority", [])
+
+    # Resolve state aliases
+    aliases = config.get("state_aliases", {})
+    phase_name = aliases.get(state_name, state_name)
+
+    # Try to load from the specific workflow phase
+    try:
+        try:
+            from libtbx.langchain.knowledge.yaml_loader import load_workflows
+        except ImportError:
+            from knowledge.yaml_loader import load_workflows
+        workflows = load_workflows()
+        wf = workflows.get(experiment_type, {})
+        phases = wf.get("phases", {})
+        phase = phases.get(phase_name, {})
+        priority = phase.get("rules_priority")
+
+        if priority is not None:
+            # Handle conditional priority (dict with default/when_* keys)
+            if isinstance(priority, dict):
+                if "when_sequence_only" in priority and files:
+                    if files.get("sequence") and not files.get("pdb"):
+                        return priority["when_sequence_only"]
+                return priority.get("default", [])
+            elif isinstance(priority, list):
+                return priority
+    except Exception:
+        pass
+
+    # Fall back to default priority
+    return config.get("default_priority", [])
 
 
 class RulesSelector:
@@ -272,22 +376,10 @@ class RulesSelector:
             if prog in candidates:
                 return prog, "Priority condition met (from workflow)"
 
-        # Define priority order by context
-        if state_name in ("analyze", "xray_initial", "cryoem_initial"):
-            # At start: prefer analysis
-            priority = [
-                "phenix.xtriage", "phenix.mtriage",
-                "phenix.predict_and_build", "phenix.phaser",
-            ]
-
-        elif state_name in ("validate",):
-            # Validation phase: prefer validation tools
-            priority = [
-                "phenix.molprobity", "phenix.model_vs_data",
-                "phenix.refine", "phenix.real_space_refine",
-            ]
-
-        elif state_name in ("refine",):
+        # Define priority order by context (loaded from workflows.yaml)
+        # Conditional validation logic stays in Python — it's behavioral,
+        # not configuration.
+        if state_name in ("refine",):
             # Refinement: check if we should validate first
             r_free = metrics_trend.get("r_free_trend", [None])[-1] if metrics_trend.get("r_free_trend") else None
             map_cc = metrics_trend.get("map_cc_trend", [None])[-1] if metrics_trend.get("map_cc_trend") else None
@@ -300,40 +392,8 @@ class RulesSelector:
                 if "phenix.molprobity" in candidates:
                     return "phenix.molprobity", "Quality good (CC=%.3f), validating" % map_cc
 
-            # Otherwise continue refinement
-            priority = [
-                "phenix.refine", "phenix.real_space_refine",
-                "phenix.molprobity", "phenix.model_vs_data",
-            ]
-
-        elif state_name in ("obtain_model", "molecular_replacement"):
-            # Model building priority
-            # Note: strong_anomalous check is now handled by program_priorities above
-            if files.get("sequence") and not files.get("pdb"):
-                priority = [
-                    "phenix.predict_and_build",
-                    "phenix.phaser", "phenix.autobuild",
-                ]
-            else:
-                priority = [
-                    "phenix.phaser", "phenix.dock_in_map",
-                    "phenix.predict_and_build", "phenix.autobuild",
-                ]
-
-        elif "ligand" in state_name.lower():
-            # Ligand work
-            priority = [
-                "phenix.ligandfit", "phenix.elbow",
-                "phenix.pdbtools", "phenix.refine",
-            ]
-
-        else:
-            # Default priority
-            priority = [
-                "phenix.refine", "phenix.real_space_refine",
-                "phenix.molprobity", "phenix.autobuild",
-                "phenix.predict_and_build", "phenix.phaser",
-            ]
+        priority = _get_phase_rules_priority(
+            experiment_type, state_name, files)
 
         # Find first candidate in priority list
         for prog in priority:
