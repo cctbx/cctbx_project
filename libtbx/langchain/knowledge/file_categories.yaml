@@ -135,8 +135,9 @@ data_mtz:
   # Files that don't match any subcategory pattern still need to land here by extension
   # IMPORTANT: Exclude map coefficients patterns so they don't end up here
   excludes:
-    - "refine_*_001.mtz"       # Map coefficients from refine
-    - "*_refine_*_001.mtz"     # Old naming
+    - "*_refine_???.mtz"       # Map coefficients: 7qz0_refine_001.mtz
+    - "refine_*_001.mtz"       # Map coefficients: refine_001_001.mtz
+    - "*_refine_*_001.mtz"     # Map coefficients: 7qz0_refine_001_001.mtz
     - "*map_coeffs*"           # Explicit map coefficients
     - "*denmod*.mtz"           # Density-modified coefficients
   valid_for:
@@ -206,8 +207,9 @@ refine_map_coeffs:
   parent_category: map_coeffs_mtz
   extensions: [".mtz"]
   patterns:
-    - "refine_*_001.mtz"      # Standard refine output: refine_001_001.mtz
-    - "*_refine_*_001.mtz"    # Old naming: model_refine_001.mtz
+    - "*_refine_???.mtz"      # Standard: 7qz0_refine_001.mtz (<input>_refine_NNN.mtz)
+    - "refine_*_001.mtz"      # Bare input: refine_001_001.mtz
+    - "*_refine_*_001.mtz"    # Two-level serial: 7qz0_refine_001_001.mtz
   excludes:
     - "*_data.mtz"
     - "*_002.mtz"             # Secondary outputs
@@ -260,6 +262,7 @@ predict_and_build_output:
 refined:
   description: "X-ray refined models"
   parent_category: model
+  extensions: [".pdb", ".cif"]
   patterns:
     - "*refine*"
     - "refine_[0-9][0-9][0-9]_*.pdb"
@@ -270,6 +273,7 @@ refined:
     - "*EDITED*"      # Edited intermediates
     - "*reference*"   # Reference models
     - "*TEMP*"        # Temporary files
+    - "*_data.mtz"    # Data MTZ from refine output
   notes: "Output from phenix.refine - highest quality X-ray model"
 
 rsr_output:

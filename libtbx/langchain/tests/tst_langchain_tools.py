@@ -291,9 +291,9 @@ class TestAgentModule(unittest.TestCase):
 
     def test_imports(self):
         """Test that agent module imports work."""
-        from libtbx.langchain.agent.planner import generate_next_move
+        from libtbx.langchain.agent.planner import extract_output_files
         from libtbx.langchain.agent.memory import load_learned_memory
-        self.assertIsNotNone(generate_next_move)
+        self.assertIsNotNone(extract_output_files)
         self.assertIsNotNone(load_learned_memory)
 
     def test_get_memory_file_path(self):
