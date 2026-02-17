@@ -99,6 +99,7 @@ class WorkflowEngine:
             "validation_done": history_info.get("validation_done", False),
             "ligandfit_done": history_info.get("ligandfit_done", False),
             "pdbtools_done": history_info.get("pdbtools_done", False),
+            "needs_post_ligandfit_refine": history_info.get("needs_post_ligandfit_refine", False),
             "dock_done": history_info.get("dock_done", False),
             "process_predicted_model_done": history_info.get("process_predicted_done", False),
 
@@ -503,6 +504,14 @@ class WorkflowEngine:
             return self._make_phase_result(phases, "combine_ligand",
                 "Ligand fitted, need to combine")
 
+        # Phase 3c: Ligand combined, need refinement of model+ligand complex.
+        # After ligandfit adds a ligand, the complex always needs re-refinement.
+        # This takes priority over "has_refined_model" because the model has
+        # changed since the last refinement.
+        if context.get("needs_post_ligandfit_refine"):
+            return self._make_phase_result(phases, "refine",
+                "Ligand fitted, need refinement of model+ligand complex")
+
         # Phase 3: Has model, may need refinement
         if not context["has_refined_model"]:
             return self._make_phase_result(phases, "refine",
@@ -846,8 +855,11 @@ class WorkflowEngine:
         stop_cond = directives.get("stop_conditions", {})
 
         # 0. Check max_refine_cycles - REMOVE refinement programs if limit reached
+        # Exception: post-ligandfit refinement is always allowed because the model
+        # changed (ligand added) and must be re-refined for scientific validity.
         max_refine_cycles = stop_cond.get("max_refine_cycles")
-        if max_refine_cycles is not None and context:
+        needs_post_ligandfit = context.get("needs_post_ligandfit_refine", False) if context else False
+        if max_refine_cycles is not None and context and not needs_post_ligandfit:
             refine_count = context.get("refine_count", 0)
             if refine_count >= max_refine_cycles:
                 # Remove refinement programs from valid list

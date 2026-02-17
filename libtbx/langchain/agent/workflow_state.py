@@ -642,6 +642,8 @@ def _analyze_history(history):
         # predict_and_build flags — no history_detection (Python-only cascade)
         "predict_done": False,
         "predict_full_done": False,
+        # Post-ligandfit refinement tracking
+        "needs_post_ligandfit_refine": False,
         # Metrics extracted from history
         "last_program": None,
         "last_r_free": None,
@@ -748,6 +750,15 @@ def _analyze_history(history):
                     info["predict_full_done"] = True
                     info["refine_done"] = True
                     info["refine_count"] += 1
+
+        # Track whether refinement is needed after ligandfit.
+        # After ligandfit adds a ligand, the complex always needs re-refinement.
+        # This flag is True when ligandfit succeeded but no refine happened after.
+        if not _is_failed_result(result):
+            if "ligandfit" in combined:
+                info["needs_post_ligandfit_refine"] = True
+            elif "refine" in combined and "real_space" not in combined:
+                info["needs_post_ligandfit_refine"] = False
 
     return info
 
