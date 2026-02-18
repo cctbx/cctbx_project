@@ -303,6 +303,63 @@ def _increment_attempt(state):
     }
 
 
+def _discover_companion_files(available_files):
+    """
+    Discover expected companion files that the client may not have tracked.
+
+    Some clients only track a subset of output files (e.g., only _data.mtz
+    and .cif from refinement, but not the map coefficients .mtz or .pdb).
+    This function looks for expected companion files on disk.
+
+    Args:
+        available_files: List of file paths
+
+    Returns:
+        list: Updated file list with any discovered companions added
+    """
+    import glob
+
+    seen = {os.path.basename(f) for f in available_files if f}
+    new_files = []
+
+    for f in available_files:
+        if not f:
+            continue
+        basename = os.path.basename(f)
+
+        # Pattern: refine_NNN_data.mtz -> look for refine_NNN.mtz, refine_NNN.pdb
+        if basename.endswith("_data.mtz") and "refine" in basename.lower():
+            prefix = basename[:-9]  # Strip "_data.mtz"
+            output_dir = os.path.dirname(os.path.abspath(f))
+
+            # Look for map coefficients MTZ
+            for companion in [prefix + ".mtz", prefix + "_001.mtz"]:
+                full_path = os.path.join(output_dir, companion)
+                if companion not in seen and os.path.exists(full_path):
+                    new_files.append(full_path)
+                    seen.add(companion)
+                    break
+
+            # Look for refined model PDB
+            for companion in [prefix + ".pdb", prefix + "_001.pdb"]:
+                full_path = os.path.join(output_dir, companion)
+                if companion not in seen and os.path.exists(full_path):
+                    new_files.append(full_path)
+                    seen.add(companion)
+                    break
+
+            # Scan for any other non-data MTZ from this prefix
+            for mtz in glob.glob(os.path.join(output_dir, prefix + "*.mtz")):
+                bn = os.path.basename(mtz)
+                if bn not in seen and not bn.endswith("_data.mtz"):
+                    new_files.append(mtz)
+                    seen.add(bn)
+
+    if new_files:
+        return list(available_files) + new_files
+    return available_files
+
+
 # =============================================================================
 # NODE: PERCEIVE
 # =============================================================================
@@ -380,6 +437,17 @@ def perceive(state):
 
     # Get available_files first (needed for both experiment type detection and workflow state)
     available_files = state.get("available_files", [])
+
+    # Supplement: discover expected companion files that the client may have missed.
+    # E.g., if refine_001_data.mtz is tracked but refine_001.mtz (map coefficients)
+    # and refine_001.pdb (refined model) are not, look for them on disk.
+    original_count = len(available_files)
+    available_files = _discover_companion_files(available_files)
+    if len(available_files) > original_count:
+        new_count = len(available_files) - original_count
+        new_files = available_files[original_count:]
+        state = _log(state, "PERCEIVE: Discovered %d companion file(s): %s" % (
+            new_count, ", ".join(os.path.basename(f) for f in new_files)))
 
     # Detect experiment type for proper trend analysis
     # PRIORITY: Use session's locked experiment_type first, then detect from files
