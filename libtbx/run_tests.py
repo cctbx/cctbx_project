@@ -50,6 +50,8 @@ try:
     # Only run these tests if langchain is available
     from langchain_core.documents import Document
     from langchain_core.prompts import PromptTemplate
+    assert Document is not None
+    assert PromptTemplate is not None
     tst_list_base += [
       "$D/langchain/tests/tst_hardcoded_cleanup.py",
       "$D/langchain/tests/tst_advice_preprocessing.py",
