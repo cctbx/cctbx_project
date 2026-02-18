@@ -433,6 +433,8 @@ unclassified_pdb:
     - "*chainsaw*"  # Chainsaw output (processed search models)
     - "lig*"
     - "*ligand*"
+    - "EDITED*"          # Intermediate files from ligandfit processing
+    - "TEMP*"            # Temporary files
     - "path_[0-9]*.pdb"    # trace-and-build fragments (intermediate)
     - "*TEMP*"              # Temporary files (intermediate)
     - "*reference*"         # Reference models (intermediate)

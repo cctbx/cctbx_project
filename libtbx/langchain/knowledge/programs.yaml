@@ -1385,8 +1385,8 @@ phenix.pdbtools:
       protein:
         extensions: [.pdb]
         flag: ""
-        exclude_patterns: [ligand_fit, lig.pdb, with_ligand]
-        priority_patterns: [refine]
+        exclude_patterns: [ligand_fit, lig.pdb, with_ligand, EDITED]
+        priority_patterns: [refine, overall_best]
       ligand:
         extensions: [.pdb]
         flag: ""
@@ -1396,7 +1396,7 @@ phenix.pdbtools:
   input_priorities:
     protein:
       categories: [model]
-      prefer_subcategories: [refined, with_ligand]
+      prefer_subcategories: [refined, autobuild_output, with_ligand]
       exclude_categories: [ligand, search_model, ligand_fit_output]
     ligand:
       categories: [ligand_fit_output, ligand]
