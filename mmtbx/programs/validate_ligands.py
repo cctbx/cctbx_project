@@ -257,6 +257,7 @@ RSCC.
       log   = self.logger)
     ligand_manager.run()
     ligand_manager.show_ligand_counts()
+    ligand_manager.show_fragmentation()
     ligand_manager.show_sites_within()
     ligand_manager.show_table(out=self.logger)
 

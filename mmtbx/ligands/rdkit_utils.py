@@ -27,10 +27,21 @@ def get_rdkit_bond_type(cif_order):
   """
   if not cif_order: return Chem.BondType.SINGLE
   order = cif_order.lower()
+
   if 'sing' in order: return Chem.BondType.SINGLE
   if 'doub' in order: return Chem.BondType.DOUBLE
   if 'trip' in order: return Chem.BondType.TRIPLE
-  if 'deloc' in order or 'arom' in order: return Chem.BondType.AROMATIC
+
+  # Only map to AROMATIC if the CIF explicitly says 'arom'.
+  # This usually implies the atom is part of a ring.
+  if 'arom' in order: return Chem.BondType.AROMATIC
+
+  # Map 'deloc' to ONEANDAHALF.
+  # This handles Carboxylates (SIN), Nitro groups, Amidiniums, etc.
+  # It effectively counts as 1.5 valence, satisfying the Carbon octet (1.5 + 1.5 + 1 = 4)
+  # without triggering RDKit's ring-check errors.
+  if 'deloc' in order: return Chem.BondType.ONEANDAHALF
+
   return Chem.BondType.SINGLE
 
 def is_amide_bond(mol, bond):
@@ -105,6 +116,15 @@ def get_rdkit_mol_from_atom_group_and_cif_obj(atom_group, cif_object):
         if mol.GetBondBetweenAtoms(rd_i, rd_j) is None:
           mol.AddBond(rd_i, rd_j, get_rdkit_bond_type(order_str))
 
+  mol = fix_nitrogen_charges(mol)
+
+  #a0 = mol.GetAtomWithIdx(0)
+  #print("Atom0:", a0.GetSymbol(), a0.GetProp("_Name") if a0.HasProp("_Name") else "")
+  #print("Atom0 aromatic?", a0.GetIsAromatic(), "in ring?", a0.IsInRing())
+  #for b in a0.GetBonds():
+  #    print("  bond", b.GetIdx(), b.GetBondType(), "aromatic?", b.GetIsAromatic(),
+  #          "to", b.GetOtherAtom(a0).GetIdx(), b.GetOtherAtom(a0).GetSymbol())
+
   # Sanitize (Important for implicit valence calculation)
   try:
     Chem.SanitizeMol(mol)
@@ -112,6 +132,17 @@ def get_rdkit_mol_from_atom_group_and_cif_obj(atom_group, cif_object):
     mol.UpdatePropertyCache(strict=False)
 
   return mol, rdkit_to_cctbx
+
+def fix_nitrogen_charges(mol):
+  mol.UpdatePropertyCache(strict=False)
+  for atom in mol.GetAtoms():
+    # If Nitrogen (7) has 4 neighbors and Charge is 0
+    if atom.GetAtomicNum() == 7:
+      explicit_valence = atom.GetValence(Chem.ValenceType.EXPLICIT)
+      if explicit_valence == 4 and atom.GetFormalCharge() == 0:
+        atom.SetFormalCharge(1)
+        print(f"Modified Charge: Atom {atom.GetIdx()} (N) set to +1")
+  return mol
 
 def get_cctbx_isel_for_rigid_components(atom_group,
                                         cif_object,

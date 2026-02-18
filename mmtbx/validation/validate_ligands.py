@@ -306,6 +306,15 @@ class manager(list):
         for c in rg.conformers():
           print('    ' + c.only_residue().id_str().split('"')[1], file=self.log)
 
+  def show_fragmentation(self):
+    make_sub_header(' Fragments', out=self.log)
+    for lr in self:
+      frag_isels = lr.ligand_rigid_components_isels
+      print('\n', file=self.log)
+      print(lr.id_str, file=self.log)
+      for i, rigid_comp in enumerate(frag_isels, start=1):
+        print('  fragment %s:\t' % i, ", ".join(lr._ph.atoms()[idx].name for idx in rigid_comp), file=self.log)
+
 # =============================================================================
 
 class ligand_result(object):
@@ -581,8 +590,9 @@ class ligand_result(object):
     #  self.model.select(self.ligand_isel_noH).get_xray_structure()
     self._atoms_ligand_noH = self._ph.select(self.ligand_isel_noH).atoms()
 
+  # ----------------------------------------------------------------------------
+
   def _fragment(self):
-    print('Fragmenting ligand %s...' % self.resname)
     ag_ligand = self._atoms_ligand[0].parent()
     mon_lib_srv = self.model.get_mon_lib_srv()
     cif_object, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
