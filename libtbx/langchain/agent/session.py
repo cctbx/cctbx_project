@@ -2152,7 +2152,103 @@ FINAL REPORT:"""
                         files.append(abs_path)
                         seen.add(basename)
 
+            # Supplement: look for expected outputs that client may have missed
+            supplemental = self._find_missing_outputs(cycle, seen)
+            for f in supplemental:
+                abs_path = os.path.abspath(f) if not os.path.isabs(f) else f
+                basename = os.path.basename(abs_path)
+                if basename not in seen and os.path.exists(abs_path):
+                    files.append(abs_path)
+                    seen.add(basename)
+
         return files
+
+    def _find_missing_outputs(self, cycle, already_seen):
+        """
+        Find expected output files that the client may not have tracked.
+
+        Some clients don't discover all output files (e.g., map coefficients
+        MTZ from refinement). This method uses program knowledge to look for
+        expected outputs in the output directory.
+
+        Args:
+            cycle: Cycle dict with program, output_files, etc.
+            already_seen: Set of basenames already tracked
+
+        Returns:
+            list: Additional file paths found on disk
+        """
+        import glob
+
+        program = cycle.get("program", "")
+        output_files = cycle.get("output_files", [])
+        result = cycle.get("result", "")
+
+        # Only supplement successful cycles
+        if not output_files or "FAILED" in result.upper():
+            return []
+
+        found = []
+
+        # --- phenix.refine: look for map coefficients and refined model ---
+        if "refine" in program.lower() and "real_space" not in program.lower():
+            # Derive output prefix from _data.mtz file
+            # e.g., refine_001_data.mtz -> prefix = refine_001
+            for f in output_files:
+                basename = os.path.basename(f)
+                if basename.endswith("_data.mtz"):
+                    prefix = basename[:-9]  # Strip "_data.mtz"
+                    output_dir = os.path.dirname(os.path.abspath(f))
+
+                    # Look for map coefficients MTZ: prefix.mtz or prefix_NNN.mtz
+                    map_coeffs_patterns = [
+                        os.path.join(output_dir, prefix + ".mtz"),
+                        os.path.join(output_dir, prefix + "_001.mtz"),
+                    ]
+                    for pattern in map_coeffs_patterns:
+                        if os.path.exists(pattern):
+                            bn = os.path.basename(pattern)
+                            if bn not in already_seen:
+                                found.append(pattern)
+                                break  # Only need one
+
+                    # Look for refined model PDB: prefix.pdb or prefix_NNN.pdb
+                    model_patterns = [
+                        os.path.join(output_dir, prefix + ".pdb"),
+                        os.path.join(output_dir, prefix + "_001.pdb"),
+                    ]
+                    for pattern in model_patterns:
+                        if os.path.exists(pattern):
+                            bn = os.path.basename(pattern)
+                            if bn not in already_seen:
+                                found.append(pattern)
+                                break
+
+                    # Also scan for any MTZ that's not _data.mtz
+                    # (handles unexpected naming like prefix_002.mtz)
+                    found_basenames = {os.path.basename(x) for x in found}
+                    for mtz in glob.glob(os.path.join(output_dir, prefix + "*.mtz")):
+                        bn = os.path.basename(mtz)
+                        if (bn not in already_seen and
+                            bn not in found_basenames and
+                            not bn.endswith("_data.mtz")):
+                            found.append(mtz)
+
+                    break  # Only process one _data.mtz
+
+        # --- phenix.autobuild: look for overall_best model and map ---
+        elif "autobuild" in program.lower() and "denmod" not in program.lower():
+            for f in output_files:
+                output_dir = os.path.dirname(os.path.abspath(f))
+                # Look for overall_best files
+                for pattern in ["overall_best*.pdb", "overall_best*.mtz"]:
+                    for match in glob.glob(os.path.join(output_dir, pattern)):
+                        bn = os.path.basename(match)
+                        if bn not in already_seen:
+                            found.append(match)
+                break  # Only process first output file for directory
+
+        return found
 
     def reset(self):
         """Reset the session (start fresh)."""

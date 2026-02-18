@@ -342,10 +342,18 @@ Additional context:
 Please analyze this input and extract actionable information for the AI agent.
 
 **IMPORTANT**: Look for any input data files mentioned in the text. These are typically:
-- Reflection data files: .mtz, .sca, .hkl, .cif (structure factors)
+- Reflection data files: .mtz, .sca, .hkl, .cif (structure factors) — these indicate X-ray crystallography
 - Sequence files: .fa, .fasta, .seq, .dat (containing protein sequence)
 - Model files: .pdb, .cif (coordinates)
-- Map files: .map, .mrc, .ccp4
+- Map files: .map, .mrc, .ccp4 — these indicate cryo-EM
+
+**EXPERIMENT TYPE INFERENCE from files**:
+- If files include .mtz/.sca/.hkl data → X-ray crystallography (MR, SAD, MAD, or refinement)
+- If files include .map/.mrc/.ccp4 maps → cryo-EM
+- If files include half-maps (e.g., *_1.ccp4 and *_2.ccp4, or *half1*/*half2*) → cryo-EM
+- If only .pdb + .mtz → likely X-ray refinement or MR
+- If only .pdb + .map/.mrc/.ccp4 → likely cryo-EM refinement
+- Use the file extensions as the primary signal when the text does not specify experiment type
 
 **TUTORIAL/PROCEDURE DETECTION**: If the input describes a specific procedure or tutorial
 (e.g., "run xtriage to check for twinning", "analyze data quality", "test molecular replacement"),
