@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <boost/python/numpy.hpp>
 #include <boost/python.hpp>
+#include <boost/python/converter/registry.hpp>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/flex_grid.h>
 #include <boost_adaptbx/type_id_eq.h>
@@ -229,5 +230,106 @@ namespace scitbx { namespace af { namespace boost_python {
 #endif
 
 #undef SCITBX_LOC
+
+// Workaround for https://github.com/boostorg/python/issues/511
+// NumPy 2.0 scalar types (e.g. np.float32, np.int32) no longer subclass
+// Python's built-in float/int, so Boost.Python's rvalue converters
+// (which use PyFloat_Check/PyLong_Check) fail to convert them.
+// Register custom converters that use PyNumber_Float/PyNumber_Long instead.
+
+namespace {
+
+  // Converter for numpy scalar -> C++ floating point types
+  template <typename CppType>
+  struct numpy_scalar_to_floating {
+    static void* convertible(PyObject* obj) {
+#if defined(SCITBX_HAVE_NUMPY_INCLUDE)
+      if (PyArray_IsScalar(obj, Number) && !PyArray_IsScalar(obj, ComplexFloating)) {
+        return obj;
+      }
+#endif
+      return nullptr;
+    }
+
+    static void construct(
+        PyObject* obj,
+        boost::python::converter::rvalue_from_python_stage1_data* data)
+    {
+      void* storage = reinterpret_cast<
+        boost::python::converter::rvalue_from_python_storage<CppType>*>(
+          data)->storage.bytes;
+      PyObject* as_float = PyNumber_Float(obj);
+      if (!as_float) boost::python::throw_error_already_set();
+      CppType value = static_cast<CppType>(PyFloat_AsDouble(as_float));
+      if (value == static_cast<CppType>(-1.0) && PyErr_Occurred()) {
+        Py_DECREF(as_float);
+        boost::python::throw_error_already_set();
+      }
+      Py_DECREF(as_float);
+      new (storage) CppType(value);
+      data->convertible = storage;
+    }
+  };
+
+  // Converter for numpy scalar -> C++ integer types
+  template <typename CppType>
+  struct numpy_scalar_to_integer {
+    static void* convertible(PyObject* obj) {
+#if defined(SCITBX_HAVE_NUMPY_INCLUDE)
+      if (PyArray_IsScalar(obj, Integer)) {
+        return obj;
+      }
+#endif
+      return nullptr;
+    }
+
+    static void construct(
+        PyObject* obj,
+        boost::python::converter::rvalue_from_python_stage1_data* data)
+    {
+      void* storage = reinterpret_cast<
+        boost::python::converter::rvalue_from_python_storage<CppType>*>(
+          data)->storage.bytes;
+      PyObject* as_long = PyNumber_Long(obj);
+      if (!as_long) boost::python::throw_error_already_set();
+      CppType value = static_cast<CppType>(PyLong_AsLong(as_long));
+      if (value == static_cast<CppType>(-1) && PyErr_Occurred()) {
+        Py_DECREF(as_long);
+        boost::python::throw_error_already_set();
+      }
+      Py_DECREF(as_long);
+      new (storage) CppType(value);
+      data->convertible = storage;
+    }
+  };
+
+} // anonymous namespace
+
+  void register_numpy_scalar_converters()
+  {
+#if defined(SCITBX_HAVE_NUMPY_INCLUDE)
+    using namespace boost::python;
+
+    // Floating point converters
+    converter::registry::push_back(
+      &numpy_scalar_to_floating<double>::convertible,
+      &numpy_scalar_to_floating<double>::construct,
+      type_id<double>());
+    converter::registry::push_back(
+      &numpy_scalar_to_floating<float>::convertible,
+      &numpy_scalar_to_floating<float>::construct,
+      type_id<float>());
+
+    // Integer converters
+    converter::registry::push_back(
+      &numpy_scalar_to_integer<int>::convertible,
+      &numpy_scalar_to_integer<int>::construct,
+      type_id<int>());
+    converter::registry::push_back(
+      &numpy_scalar_to_integer<long>::convertible,
+      &numpy_scalar_to_integer<long>::construct,
+      type_id<long>());
+#endif
+  }
 
 }}} // namespace scitbx::af::boost_python
