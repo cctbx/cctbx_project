@@ -3,6 +3,8 @@ from libtbx import test_utils
 import sys
 import libtbx.load_env
 
+
+
 tst_list_base = [
   "$D/langchain/tests/tst_hardcoded_cleanup.py",
   "$D/langchain/tests/tst_advice_preprocessing.py",
@@ -78,6 +80,53 @@ tst_list_base = [
   "$D/tst_version.py",
   '$D/tst_easy_mp_multicore.py',
   ]
+
+try:
+    # Only run these tests if langchain is available
+    from langchain_core.documents import Document
+    from langchain_core.prompts import PromptTemplate
+    tst_list_base += [
+      "$D/langchain/tests/tst_hardcoded_cleanup.py",
+      "$D/langchain/tests/tst_advice_preprocessing.py",
+      "$D/langchain/tests/tst_api_schema.py",
+      "$D/langchain/tests/tst_best_files_tracker.py",
+      "$D/langchain/tests/tst_command_builder.py",
+      "$D/langchain/tests/tst_decision_flow.py",
+      "$D/langchain/tests/tst_directive_extractor.py",
+      "$D/langchain/tests/tst_directive_validator.py",
+      "$D/langchain/tests/tst_directives_integration.py",
+      "$D/langchain/tests/tst_docs_tools.py",
+      "$D/langchain/tests/tst_dry_run.py",
+      "$D/langchain/tests/tst_error_analyzer.py",
+      "$D/langchain/tests/tst_event_system.py",
+      "$D/langchain/tests/tst_file_categorization.py",
+      "$D/langchain/tests/tst_file_utils.py",
+      "$D/langchain/tests/tst_history_analysis.py",
+      "$D/langchain/tests/tst_integration.py",
+      "$D/langchain/tests/tst_metric_patterns.py",
+      "$D/langchain/tests/tst_metrics_analyzer.py",
+      "$D/langchain/tests/tst_new_programs.py",
+      "$D/langchain/tests/tst_pattern_manager.py",
+      "$D/langchain/tests/tst_phaser_multimodel.py",
+      "$D/langchain/tests/tst_program_registration.py",
+      "$D/langchain/tests/tst_sanity_checker.py",
+      "$D/langchain/tests/tst_session_directives.py",
+      "$D/langchain/tests/tst_session_summary.py",
+      "$D/langchain/tests/tst_session_tools.py",
+      "$D/langchain/tests/tst_state_serialization.py",
+      "$D/langchain/tests/tst_summary_display.py",
+      "$D/langchain/tests/tst_template.py",
+      "$D/langchain/tests/tst_transport.py",
+      "$D/langchain/tests/tst_utils.py",
+      "$D/langchain/tests/tst_workflow_state.py",
+      "$D/langchain/tests/tst_yaml_config.py",
+      "$D/langchain/tests/tst_yaml_tools.py",
+     ]
+
+except ImportError as e:
+    pass
+
+
 
 # generally failing tests
 tst_list_fail = [
