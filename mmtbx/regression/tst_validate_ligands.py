@@ -8,6 +8,10 @@ from libtbx.test_utils import approx_equal
 from iotbx.cli_parser import run_program
 from mmtbx.programs import validate_ligands as val_lig
 
+from rdkit import RDLogger
+lg = RDLogger.logger()
+lg.setLevel(RDLogger.CRITICAL) # Only show critical errors
+
 # ------------------------------------------------------------------------------
 
 def run():
@@ -203,6 +207,7 @@ def run_test3():
     id_str = lr.id_str
     adps = lr.get_adps()
     ccs = lr.get_ccs()
+    print(ccs.rscc)
     clashes_result = lr.get_overlaps()
     #
     if (id_str.strip() == 'NAG A 600'):

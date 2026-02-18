@@ -341,6 +341,7 @@ class ligand_result(object):
     }
 
     self._set_internals()
+    self._fragment()
 
     for attr, func in self._result_attrs.items():
       setattr(self, attr, None)
@@ -572,14 +573,15 @@ class ligand_result(object):
     self.id_str = " ".join(_id_str[1:]).strip()
     #
     _noH = ' and not (element H or element D)'
-    self.ligand_isel_noH = self.model.iselection(self.sel_str + _noH)
+    self.sel_str_noH = self.sel_str + _noH
+    self.ligand_isel_noH = self.model.iselection(self.sel_str_noH)
 
     self._xrs_ligand_noH = self._xrs.select(self.ligand_isel_noH)
     #self._xrs_ligand_noH = \
     #  self.model.select(self.ligand_isel_noH).get_xray_structure()
     self._atoms_ligand_noH = self._ph.select(self.ligand_isel_noH).atoms()
 
-    # fragmented ligand
+  def _fragment(self):
     print('Fragmenting ligand %s...' % self.resname)
     ag_ligand = self._atoms_ligand[0].parent()
     mon_lib_srv = self.model.get_mon_lib_srv()
@@ -768,6 +770,12 @@ class ligand_result(object):
       space_group_info = cs.space_group_info(),
       symmetry_flags   = maptbx.use_space_group_symmetry,
       step             = 0.6)
+    #d_min = self.fmodel.f_obs().d_min()
+    #crystal_gridding = maptbx.crystal_gridding(
+    #  unit_cell = cs.unit_cell(),
+    #  d_min=d_min,
+    #  resolution_factor=0.25,
+    #  space_group_info=cs.space_group_info())
     # 0.6 comes from bulk solvent mask https://journals.iucr.org/a/issues/2024/02/00/pl5035/index.html
 
     # Dfmodel map including ligand
@@ -794,9 +802,9 @@ class ligand_result(object):
       map_type         = "2mFo-DFc")
 
     sc = self.model.get_sites_cart()
-    sites_cart = sc.select(bool_sel)
+    sites_cart = sc.select(self.ligand_isel)
 
-    cc = self.compute_cc(m1, m2, cs, sites_cart)
+    cc_total = self.compute_cc(m1, m2, cs, sites_cart)
 
     frag_ccs = {}
     for isel in self.ligand_rigid_components_isels:
@@ -805,7 +813,7 @@ class ligand_result(object):
       frag_ccs[isel] = cc
 
     ccs = group_args(
-          rscc = cc,
+          rscc = cc_total,
           frag_ccs = frag_ccs
        )
 
