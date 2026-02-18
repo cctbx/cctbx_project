@@ -21,9 +21,23 @@ Functions:
   match_mol_indices: Match atom indices of different mols
 """
 
-def get_rdkit_bond_type(cif_order):
+#def get_rdkit_bond_type(cif_order):
+#  """
+#  Maps CCTBX CIF bond orders to RDKit BondType enum.
+#  """
+#  if not cif_order: return Chem.BondType.SINGLE
+#  order = cif_order.lower()
+#  if 'sing' in order: return Chem.BondType.SINGLE
+#  if 'doub' in order: return Chem.BondType.DOUBLE
+#  if 'trip' in order: return Chem.BondType.TRIPLE
+#  if 'deloc' in order or 'arom' in order: return Chem.BondType.AROMATIC
+#  return Chem.BondType.SINGLE
+
+
+def get_rdkit_bond_type(cif_order, elements=None):
   """
   Maps CCTBX CIF bond orders to RDKit BondType enum.
+  elements: A set/list of the two element symbols involved, e.g. {'C', 'O'}
   """
   if not cif_order: return Chem.BondType.SINGLE
   order = cif_order.lower()
@@ -31,16 +45,15 @@ def get_rdkit_bond_type(cif_order):
   if 'sing' in order: return Chem.BondType.SINGLE
   if 'doub' in order: return Chem.BondType.DOUBLE
   if 'trip' in order: return Chem.BondType.TRIPLE
-
-  # Only map to AROMATIC if the CIF explicitly says 'arom'.
-  # This usually implies the atom is part of a ring.
   if 'arom' in order: return Chem.BondType.AROMATIC
 
-  # Map 'deloc' to ONEANDAHALF.
-  # This handles Carboxylates (SIN), Nitro groups, Amidiniums, etc.
-  # It effectively counts as 1.5 valence, satisfying the Carbon octet (1.5 + 1.5 + 1 = 4)
-  # without triggering RDKit's ring-check errors.
-  if 'deloc' in order: return Chem.BondType.ONEANDAHALF
+  if 'deloc' in order:
+    # Special handling for P and S to avoid valence errors (e.g. Valence 6 on P)
+    if elements and any(e in elements for e in ['P', 'S', 'CL']):
+        return Chem.BondType.SINGLE
+
+    # For Carbon (Carboxylates), 1.5 is safe and correct
+    return Chem.BondType.ONEANDAHALF
 
   return Chem.BondType.SINGLE
 
@@ -68,30 +81,29 @@ def is_amide_bond(mol, bond):
   return False
 
 def get_rdkit_mol_from_atom_group_and_cif_obj(atom_group, cif_object):
-
   atoms_ligand = atom_group.atoms()
-  resname = atom_group.resname
 
   # Mappings
-  # cctbx_idx -> rdkit_idx
-  # rdkit_idx -> cctbx_idx
-  # atom_name -> rdkit_idx (For CIF lookup)
   cctbx_to_rdkit = {}
   rdkit_to_cctbx = {}
   name_to_rdkit = {}
+
+  # NEW: Map atom names to element strings (e.g., "CA" -> "C")
+  name_to_element = {}
 
   mol = Chem.RWMol()
 
   # --- Build RDKit Nodes (Atoms) ---
   for cctbx_atom in atoms_ligand:
-
     atom_idx = cctbx_atom.i_seq
-    # Handle Element
-    element = cctbx_atom.element.strip().capitalize()
-    #if not element: element = cctbx_atom.name.strip()[0:1]
 
-    rd_atom = Chem.Atom(element)
-    # Store name for debugging and potential mapping checks
+    # Get Element string (e.g., "C", "N", "P")
+    element_str = cctbx_atom.element.strip().capitalize()
+    if not element_str:
+        # Fallback if element is empty
+        element_str = cctbx_atom.name.strip()[0:1].capitalize()
+
+    rd_atom = Chem.Atom(element_str)
     rd_atom.SetProp("_Name", cctbx_atom.name)
 
     rd_idx = mol.AddAtom(rd_atom)
@@ -99,49 +111,64 @@ def get_rdkit_mol_from_atom_group_and_cif_obj(atom_group, cif_object):
     cctbx_to_rdkit[atom_idx] = rd_idx
     rdkit_to_cctbx[rd_idx] = atom_idx
 
-    # Clean name for dictionary lookup (e.g. " C1 " -> "C1")
-    name_to_rdkit[cctbx_atom.name.strip()] = rd_idx
+    # Store mappings
+    clean_name = cctbx_atom.name.strip()
+    name_to_rdkit[clean_name] = rd_idx
+    name_to_element[clean_name] = element_str.upper() # Store as "C", "P", etc.
 
-  # Build Bonds from CIF (Primary source)
+  # --- Build Bonds from CIF ---
   if cif_object and hasattr(cif_object, "bond_list"):
     for bond in cif_object.bond_list:
-      atom_1 = bond.atom_id_1
-      atom_2 = bond.atom_id_2
-      order_str = bond.type
+      # These are STRINGS (names)
+      atom_name_1 = bond.atom_id_1.strip()
+      atom_name_2 = bond.atom_id_2.strip()
 
-      if atom_1 in name_to_rdkit and atom_2 in name_to_rdkit:
-        rd_i = name_to_rdkit[atom_1]
-        rd_j = name_to_rdkit[atom_2]
-        # Check existing to prevent duplicates
+      # Use .type if available, otherwise assume single
+      order_str = getattr(bond, 'type', 'sing')
+
+      if atom_name_1 in name_to_rdkit and atom_name_2 in name_to_rdkit:
+        rd_i = name_to_rdkit[atom_name_1]
+        rd_j = name_to_rdkit[atom_name_2]
+
         if mol.GetBondBetweenAtoms(rd_i, rd_j) is None:
-          mol.AddBond(rd_i, rd_j, get_rdkit_bond_type(order_str))
+          # LOOKUP ELEMENTS from the map we built
+          el1 = name_to_element.get(atom_name_1, 'C')
+          el2 = name_to_element.get(atom_name_2, 'C')
 
-  mol = fix_nitrogen_charges(mol)
+          # Pass element set to the helper
+          r_type = get_rdkit_bond_type(order_str, elements={el1, el2})
 
-  #a0 = mol.GetAtomWithIdx(0)
-  #print("Atom0:", a0.GetSymbol(), a0.GetProp("_Name") if a0.HasProp("_Name") else "")
-  #print("Atom0 aromatic?", a0.GetIsAromatic(), "in ring?", a0.IsInRing())
-  #for b in a0.GetBonds():
-  #    print("  bond", b.GetIdx(), b.GetBondType(), "aromatic?", b.GetIsAromatic(),
-  #          "to", b.GetOtherAtom(a0).GetIdx(), b.GetOtherAtom(a0).GetSymbol())
+          mol.AddBond(rd_i, rd_j, r_type)
 
-  # Sanitize (Important for implicit valence calculation)
+  # Apply charge fixes
+  mol = fix_charges(mol)
+
   try:
     Chem.SanitizeMol(mol)
   except ValueError:
+    print("Warning: Sanitization failed. Proceeding with unsanitized molecule.")
     mol.UpdatePropertyCache(strict=False)
 
   return mol, rdkit_to_cctbx
 
-def fix_nitrogen_charges(mol):
+def fix_charges(mol):
   mol.UpdatePropertyCache(strict=False)
   for atom in mol.GetAtoms():
-    # If Nitrogen (7) has 4 neighbors and Charge is 0
-    if atom.GetAtomicNum() == 7:
-      explicit_valence = atom.GetValence(Chem.ValenceType.EXPLICIT)
-      if explicit_valence == 4 and atom.GetFormalCharge() == 0:
-        atom.SetFormalCharge(1)
-        print(f"Modified Charge: Atom {atom.GetIdx()} (N) set to +1")
+    anum = atom.GetAtomicNum()
+    # GetValence(Explicit) replaces GetExplicitValence()
+    val = atom.GetValence(Chem.ValenceType.EXPLICIT)
+    charge = atom.GetFormalCharge()
+
+    # Fix Nitrogen: 4 bonds, neutral -> +1
+    if anum == 7 and val == 4 and charge == 0:
+      atom.SetFormalCharge(1)
+
+    # Fix Phosphorus/Sulfur:
+    # Since we mapped 'deloc' -> SINGLE, we might have P with 4 single bonds.
+    # Neutral P cannot have 4 bonds. P+ can.
+    if anum == 15 and val == 4 and charge == 0:
+      atom.SetFormalCharge(1)
+
   return mol
 
 def get_cctbx_isel_for_rigid_components(atom_group,
