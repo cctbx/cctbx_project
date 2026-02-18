@@ -65,7 +65,7 @@ dependencies:
  - dials-data
  - pint
  - nxmx
- - gemmi
+ # - gemmi  # add this separately with --no-deps due to a solver problem
  - hatchling
 
  # xia2
