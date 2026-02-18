@@ -1,5 +1,99 @@
 # PHENIX AI Agent - Changelog
 
+## Version 112.13 (February 2025)
+
+### File discovery and filtering (Fixes 14-15)
+
+**Companion file discovery** (`graph_nodes._discover_companion_files`)
+- After `phenix.refine`: discovers map coefficients (`refine_NNN.mtz`) and
+  refined model (`refine_NNN.pdb`) from `_data.mtz` prefix. Handles both
+  bare (`refine_001.mtz`) and `_001` (`refine_001_001.mtz`) naming.
+- After `phenix.autobuild`: discovers `overall_best.pdb` when only
+  `overall_best_refine_data.mtz` is tracked by the client.
+- After `phenix.pdbtools`: scans sibling `sub_*_pdbtools/` directories in
+  the agent directory for `*_with_ligand.pdb` output files.
+- Defense-in-depth: also added `session._find_missing_outputs()` as a
+  second discovery layer for session-tracked output files.
+
+**Intermediate file filtering** (`graph_nodes._filter_intermediate_files`)
+- Filters files from ligandfit's internal `TEMP0/` directories and files
+  with `EDITED_` or `TEMP_` prefixes before categorization.
+- Prevents intermediate files from being selected as model inputs.
+- Also added `EDITED*` and `TEMP*` exclusions to `unclassified_pdb`
+  category in `file_categories.yaml`.
+- Files: `agent/graph_nodes.py`, `agent/session.py`,
+  `knowledge/file_categories.yaml`
+
+### Refinement loop enforcement (Fix 13)
+
+**At-target actively removes refine from valid programs**
+- When `_is_at_target` returns True (hopeless R-free > 0.50 after 1+ cycles,
+  or hard limit of 3+ cycles), `phenix.refine` and `phenix.real_space_refine`
+  are now explicitly **removed** from valid programs in both `validate` and
+  `refine` phases. Previously only prevented adding as supplement.
+- `STOP` added to valid programs when at target.
+- Exception: `needs_post_ligandfit_refine` always allows refinement (model
+  changed after ligand fitting, re-refinement is scientifically required).
+- Files: `agent/workflow_engine.py`
+
+### Command validation fix (Fix 15)
+
+**Output file arguments excluded from input validation**
+- `output.file_name=X.pdb`, `output.prefix=Y`, etc. are now stripped from
+  commands before extracting file references for validation. Previously
+  `output.file_name=model_with_ligand.pdb` was treated as an input file
+  reference and rejected as "not found in available_files".
+- Files: `agent/graph_nodes.py`
+
+### best_files excluded category check (Fix 16)
+
+**Prevents ligand fragments from being used as refine model input**
+- `best_files["model"]` is now checked against the program's
+  `exclude_categories` before being applied as a model override. If the
+  best model (e.g., `ligand_fit_1.pdb`) is in an excluded category
+  (e.g., `ligand_fit_output` → `ligand`), it is skipped with a log message.
+- Applied to both pre-population and LLM override paths in
+  `command_builder.py`.
+- Files: `agent/command_builder.py`
+
+### MR-SAD phaser condition (Fix 11)
+
+**Composite `has_model_for_mr` context key**
+- Added `has_model_for_mr` in `workflow_engine.py` that checks both `model`
+  and `search_model` file categories. Phaser condition in `workflows.yaml`
+  changed from `has: model` to `has: model_for_mr`.
+- Ensures phaser is available when user provides a dedicated search model
+  (`search_model.pdb`) that categorizes as `search_model`, not `model`.
+- Files: `agent/workflow_engine.py`, `knowledge/workflows.yaml`
+
+### Cryo-EM experiment type inference (Fix 12)
+
+**Advice preprocessor now infers experiment type from file extensions**
+- Added experiment type inference rules to the advice preprocessing LLM
+  prompt: `.mtz/.sca/.hkl` → X-ray, `.map/.mrc/.ccp4` → cryo-EM,
+  half-maps → cryo-EM, `.pdb + .map` → cryo-EM refinement.
+- Cosmetic fix only: actual workflow engine already correctly detected
+  cryo-EM from file categories. This fixes the user-facing advice text.
+- Files: `agent/advice_preprocessor.py`
+
+### Input priority improvements
+
+- `phenix.pdbtools` protein: added `autobuild_output` to
+  `prefer_subcategories`, `EDITED` to `exclude_patterns`,
+  `overall_best` to `priority_patterns`.
+- `phenix.refine` model: `with_ligand` is first in `prefer_subcategories`,
+  ensuring the combined protein+ligand model is selected for post-pdbtools
+  refinement.
+- Files: `knowledge/programs.yaml`
+
+### Test coverage
+
+- 26 new tests in `tests/tst_v112_13_fixes.py` covering companion file
+  discovery (5), intermediate filtering (3), file categorization (5),
+  phaser model_for_mr (3), output validation (3), program priorities (4),
+  end-to-end post-pdbtools selection (2), combine_ligand phase (1).
+- Total: 29/35 passing (6 pre-existing libtbx import failures).
+
 ## Version 112.12 (February 2025)
 
 ### Done-tracking strategy enum (Fix 10C)

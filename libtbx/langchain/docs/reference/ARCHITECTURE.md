@@ -718,6 +718,50 @@ When building commands, files are selected in this order:
 | `agent/best_files_tracker.py` | Core tracker class with scoring |
 | `agent/session.py` | Integration with session persistence |
 | `agent/template_builder.py` | Uses best_files for command building |
+
+### Companion File Discovery
+
+Some clients only track a subset of program output files. The agent discovers
+missing companion files in two layers:
+
+**Layer 1: `graph_nodes._discover_companion_files()`** — Runs in the perceive
+node before file categorization. Triggered by file patterns in available_files:
+
+| Trigger Pattern | Companions Discovered |
+|----------------|-----------------------|
+| `refine_NNN_data.mtz` | `refine_NNN.mtz` (map coefficients), `refine_NNN.pdb` (model) |
+| `overall_best_*.mtz` | `overall_best.pdb` (autobuild model) |
+| Files in `sub_NN_*/` dirs | Scans `sub_*_pdbtools/` for `*_with_ligand.pdb` |
+
+All discovered files are checked with `os.path.exists()` and deduplicated.
+
+**Layer 2: `session._find_missing_outputs()`** — Runs in `get_available_files()`
+to supplement cycle output_files from session data.
+
+### Intermediate File Filtering
+
+`graph_nodes._filter_intermediate_files()` removes temporary/intermediate files
+before categorization. Runs after companion discovery in the perceive node.
+
+**Filtered patterns:**
+- Files in `/TEMP`, `/temp`, `/TEMP0/`, `/scratch/` directories
+- Files with `EDITED_` or `TEMP_` prefixes
+
+These are internal working files from programs like ligandfit that should never
+be used as inputs to other programs.
+
+### Best Files Exclusion Check
+
+When `best_files["model"]` is applied as a model override for refinement
+programs, it is first checked against the program's `exclude_categories`. If
+the best model is in an excluded category (e.g., `ligand_fit_1.pdb` in
+`ligand_fit_output` → parent `ligand`), it is skipped and category-based
+selection runs instead. This prevents ligand fragments from being used as the
+protein model for refinement.
+
+Applied in `command_builder.py` at two points: (1) pre-population of the model
+slot from best_files, and (2) LLM override where best_files would normally
+take precedence over the LLM's model choice.
 | `knowledge/metrics.yaml` | Scoring configuration (best_files_scoring section) |
 
 ## Metrics and Stop Conditions
@@ -738,8 +782,21 @@ The workflow stops when:
 
 1. **Success**: Quality metrics reach targets AND validation done
 2. **Plateau**: < 0.5% improvement for 2+ consecutive cycles
-3. **Excessive**: Too many refinement cycles (default: 5)
-4. **Validation Gate**: Must run molprobity before stopping if R-free is good
+3. **Hopeless bailout**: R-free > 0.50 after 1+ refinement cycle
+4. **Hard limit**: 3+ refinement cycles regardless of R-free
+5. **Validation Gate**: Must run molprobity before stopping if R-free is good
+
+### Refinement Loop Enforcement
+
+When `_is_at_target()` returns True (conditions 2-4 above),
+`get_valid_programs()` actively **removes** `phenix.refine` and
+`phenix.real_space_refine` from valid programs in both `validate` and
+`refine` phases, and adds `STOP`. This prevents the LLM from selecting
+refinement even when it appears as a phase-preferred program.
+
+**Exception:** `needs_post_ligandfit_refine` always allows refinement.
+After ligand fitting changes the model, re-refinement is scientifically
+required regardless of the current cycle count or R-free value.
 
 The validation gate prevents stopping without validation: if R-free is below the success threshold or 3+ refinement cycles have completed, STOP is removed from valid_programs until validation runs.
 
@@ -847,6 +904,18 @@ class CommandContext:
 3. **Best files** - From BestFilesTracker (quality-scored)
 4. **Categories** - From `input_priorities` in YAML
 5. **Extension fallback** - Most recent file with matching extension
+
+**Best files exclusion:** Before applying `best_files["model"]` as a model
+override, the system checks if the file is in a program's `exclude_categories`.
+E.g., `ligand_fit_1.pdb` (in `ligand_fit_output` → `ligand`) is excluded from
+refine's model slot, falling through to category-based selection.
+
+### Command Validation
+
+The `validate` graph node checks that all file references in a generated command
+exist in `available_files`. Output arguments (`output.file_name=X.pdb`,
+`output.prefix=Y`) are stripped before extraction since they reference files
+that don't exist yet. Duplicate commands and empty commands are also rejected.
 
 ### Integration with Graph Nodes
 

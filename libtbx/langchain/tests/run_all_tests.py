@@ -467,6 +467,16 @@ def main():
         print(f"⚠️  Could not import tst_hardcoded_cleanup: {e}")
         results.append(("Hardcoded Cleanup", False, 0))
 
+    # --- v112.13 Fix Tests ---
+    try:
+        from tests.tst_v112_13_fixes import run_all_tests as run_v112_13_tests
+        success, elapsed = run_test_module(
+            "tst_v112_13_fixes", run_v112_13_tests, args.verbose)
+        results.append(("v112.13 Fixes", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_v112_13_fixes: {e}")
+        results.append(("v112.13 Fixes", False, 0))
+
     # --- Summary ---
     total_elapsed = time.time() - total_start
 
