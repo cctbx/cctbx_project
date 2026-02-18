@@ -76,13 +76,20 @@ phenix.xtriage:
 
   log_parsing:
     resolution:
-      # Match "Resolution: 2.10" or "Resolution range: 14.94 3.00"
-      # For range lines, (?:[0-9.]+\s+)? skips the low-res limit and captures the high-res value.
-      # pick_min ensures we always get the highest resolution (smallest d-spacing)
-      # across all matching lines, since xtriage may report both d_max and d_min.
-      pattern: '(?<!nomalous )(?<!nomalous  )Resolution\s*(?:range)?\s*[=:]\s*(?:[0-9.]+\s+)?([0-9.]+)\s*(?:Å|A|\s|$)'
+      # Match "Resolution: 2.10" or "Resolution range: 14.94 3.00" when Resolution
+      # appears at the START of a line (possibly indented).  This prevents the
+      # "Completeness in resolution range: 1" line from matching — the pattern
+      # previously used re.IGNORECASE and had no line-anchor, so it matched the
+      # embedded "resolution" in that sentence and pick_min selected 1.0 instead
+      # of the real high-resolution limit.
+      #
+      # For range lines, (?:[0-9.]+\s+)? skips the low-res limit and captures the
+      # high-res value.  pick_min takes the smallest value across all matching
+      # lines (in case xtriage reports resolution in multiple places).
+      pattern: '^\s*(?<!nomalous )(?<!nomalous  )Resolution\s*(?:range)?\s*[=:]\s*(?:[0-9.]+\s+)?([0-9.]+)'
       type: float
       pick_min: true
+      min_value: 0.5
       max_value: 15.0
       display_name: "Resolution"
       summary_format: "{value:.2f} Å"
