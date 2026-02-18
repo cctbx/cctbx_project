@@ -17,11 +17,9 @@ from collections import defaultdict
 from dials.array_family import flex
 from dials.util.options import ArgumentParser
 from dxtbx.model.experiment_list import ExperimentList
-import glob
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 import numpy as np
-import os
 import sys
 
 
@@ -100,7 +98,7 @@ def run(args=None):
         epilog=help_str,
     )
     params, options = parser.parse_args(args, show_diff_phil=True)
-    
+
     if not params.input.experiments:
         print("No Experiments found in the input")
         parser.print_help()
