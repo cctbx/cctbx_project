@@ -349,15 +349,64 @@ def _discover_companion_files(available_files):
                     break
 
             # Scan for any other non-data MTZ from this prefix
+            found_basenames = {os.path.basename(x) for x in new_files}
             for mtz in glob.glob(os.path.join(output_dir, prefix + "*.mtz")):
                 bn = os.path.basename(mtz)
-                if bn not in seen and not bn.endswith("_data.mtz"):
+                if (bn not in seen and
+                    bn not in found_basenames and
+                    not bn.endswith("_data.mtz")):
                     new_files.append(mtz)
                     seen.add(bn)
+
+        # Pattern: overall_best_refine_data.mtz -> look for overall_best.pdb
+        elif "overall_best" in basename.lower() and basename.endswith(".mtz"):
+            output_dir = os.path.dirname(os.path.abspath(f))
+            for companion in ["overall_best.pdb", "overall_best_refine_001.pdb"]:
+                full_path = os.path.join(output_dir, companion)
+                if companion not in seen and os.path.exists(full_path):
+                    new_files.append(full_path)
+                    seen.add(companion)
+                    break
 
     if new_files:
         return list(available_files) + new_files
     return available_files
+
+
+def _filter_intermediate_files(available_files):
+    """
+    Filter out intermediate/temporary files that should not be used by the agent.
+
+    Some clients track files from program-internal directories (e.g., TEMP0/
+    inside ligandfit output). These intermediate files should not be available
+    for command building.
+
+    Args:
+        available_files: List of file paths
+
+    Returns:
+        list: Filtered file list
+    """
+    # Directory components that indicate intermediate/temporary files
+    temp_dir_markers = ("/TEMP", "/temp", "/TEMP0/", "/scratch/")
+
+    # Filename prefixes for intermediate files
+    temp_file_prefixes = ("EDITED_", "TEMP_")
+
+    filtered = []
+    for f in available_files:
+        if not f:
+            continue
+        # Skip files in temporary directories
+        if any(marker in f for marker in temp_dir_markers):
+            continue
+        # Skip files with intermediate prefixes
+        basename = os.path.basename(f)
+        if any(basename.startswith(prefix) for prefix in temp_file_prefixes):
+            continue
+        filtered.append(f)
+
+    return filtered
 
 
 # =============================================================================
@@ -448,6 +497,18 @@ def perceive(state):
         new_files = available_files[original_count:]
         state = _log(state, "PERCEIVE: Discovered %d companion file(s): %s" % (
             new_count, ", ".join(os.path.basename(f) for f in new_files)))
+
+    # Filter out intermediate/temporary files (e.g., TEMP0/ from ligandfit)
+    pre_filter_count = len(available_files)
+    available_files = _filter_intermediate_files(available_files)
+    if len(available_files) < pre_filter_count:
+        removed_count = pre_filter_count - len(available_files)
+        state = _log(state, "PERCEIVE: Filtered %d intermediate/temp file(s)" % removed_count)
+
+    # CRITICAL: Store updated file list back in state so downstream nodes
+    # (build, validate) see the discovered/filtered files too.
+    if available_files is not state.get("available_files"):
+        state = {**state, "available_files": available_files}
 
     # Detect experiment type for proper trend analysis
     # PRIORITY: Use session's locked experiment_type first, then detect from files
@@ -2412,9 +2473,15 @@ def validate(state):
     # Debug: log file counts for troubleshooting
     state = _log(state, "VALIDATE: Checking against %d available files" % len(available_files))
 
-    # Extract filenames from command
+    # Extract filenames from command, excluding output file arguments
+    # Output flags like output.file_name=X.pdb, output.prefix=X are NEW files
+    # that don't exist yet, not input files that need to be available.
+    # First, strip output arguments from the command before extracting files
+    output_pattern = r'output\.\w+=\S+'
+    command_for_validation = re.sub(output_pattern, '', command)
+
     file_pattern = r'[\w\-\.\/]+\.(?:pdb|mtz|fa|fasta|seq|cif|mrc|ccp4|map)\b'
-    referenced_files = re.findall(file_pattern, command, re.IGNORECASE)
+    referenced_files = re.findall(file_pattern, command_for_validation, re.IGNORECASE)
 
     missing = []
     for f in referenced_files:
