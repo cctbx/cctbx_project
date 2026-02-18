@@ -455,10 +455,10 @@ def test_json():
 
   run_program(
     program_class=testProgram,
-    args=['--quiet', '--overwrite', '--json', model_1yjp]
+    args=['--quiet', '--overwrite', '--json', 'output.prefix=1yjp', 'output.serial=123', model_1yjp]
   )
 
-  expected_filename = 'tst_cli_parser_result.json'
+  expected_filename = '1yjp_123.json'
   assert os.path.exists(expected_filename)
   with open(expected_filename, 'r') as f:
     result = json.loads(f.read())

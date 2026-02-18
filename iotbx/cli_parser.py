@@ -138,9 +138,6 @@ class CCTBXParser(ParserBase):
     self.modified_filename = self.prefix + '_modified.eff'
     self.all_filename = self.prefix + '_all.eff'
 
-    # JSON filename
-    self.json_filename = self.prefix + '_result.json'
-
     # terminal width
     self.text_width = 79
 
@@ -264,9 +261,8 @@ class CCTBXParser(ParserBase):
     self.add_argument(
       '--json', action='store_true',
       help='''\
-writes or overwrites the JSON output for the program to file (%s).
-Use --json-filename to specify a different filename for the output.''' %
-      self.json_filename,
+writes or overwrites the JSON output for the program to file. The default
+filename is determined by the program, but can be set using --json-filename.'''
     )
 
     # --json-filename
@@ -1010,7 +1006,7 @@ def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arg
   if namespace.json or namespace.json_filename:
     result = task.get_results_as_JSON()
     if result is not None:
-      json_filename = parser.json_filename
+      json_filename = '.'.join([task.get_default_output_filename(), 'json'])
       if namespace.json_filename is not None:
         json_filename = namespace.json_filename
         if not json_filename.endswith('.json'):
