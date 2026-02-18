@@ -760,22 +760,32 @@ class WorkflowEngine:
                 elif experiment_type == "cryoem":
                     if "phenix.real_space_refine" not in valid:
                         valid.append("phenix.real_space_refine")
+            elif at_target:
+                # Remove refinement programs — further refinement won't help
+                for prog in ["phenix.refine", "phenix.real_space_refine"]:
+                    if prog in valid:
+                        valid.remove(prog)
+                # Add STOP — model is at target or hopeless
+                if "STOP" not in valid:
+                    valid.append("STOP")
 
-        # Special: always allow refinement to continue (unless max_refine_cycles reached or at target)
+        # Refinement phase: remove refinement when at target or max cycles reached
+        # Exception: post-ligandfit refinement is always allowed (model changed)
         if phase_name == "refine":
+            needs_post_ligandfit = context.get("needs_post_ligandfit_refine", False)
             max_refine = directives.get("stop_conditions", {}).get("max_refine_cycles") if directives else None
             refine_count = context.get("refine_count", 0)
             refine_allowed = (max_refine is None) or (refine_count < max_refine)
             at_target = self._is_at_target(context, experiment_type)
 
-            if refine_allowed and not at_target:
-                if experiment_type == "xray" and "phenix.refine" not in valid:
-                    valid.append("phenix.refine")
-                elif experiment_type == "cryoem" and "phenix.real_space_refine" not in valid:
-                    valid.append("phenix.real_space_refine")
+            if (not refine_allowed or at_target) and not needs_post_ligandfit:
+                # Remove refinement programs from the phase's own list
+                for prog in ["phenix.refine", "phenix.real_space_refine"]:
+                    if prog in valid:
+                        valid.remove(prog)
 
-            # Add STOP if at target (covers hopeless R-free, hard limit, good metrics)
-            if at_target:
+            # Add STOP if at target AND not in post-ligandfit refinement
+            if at_target and not needs_post_ligandfit:
                 if "STOP" not in valid:
                     valid.append("STOP")
 
