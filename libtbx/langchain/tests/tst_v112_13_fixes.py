@@ -800,6 +800,229 @@ def test_combine_ligand_phase_exists():
 
 
 # =============================================================================
+# 9. SHARPENED MAP CATEGORIZATION
+# =============================================================================
+
+def test_sharpened_half_map_not_in_half_map():
+    """Sharpened maps with 'half' in name should NOT be in half_map category."""
+    print("Test: sharpened_half_map_not_in_half_map")
+
+    from agent.workflow_state import _categorize_files_yaml, _bubble_up_to_parents
+
+    rules = _load_categories()
+    files = [
+        "/p/emd_20026_half_map_2_box_sharpened.ccp4",  # Sharpened output
+        "/p/emd_20026_half_map_1.ccp4",                 # Original half map 1
+        "/p/emd_20026_half_map_2.ccp4",                 # Original half map 2
+    ]
+
+    cats = _categorize_files_yaml(files, rules)
+    cats = _bubble_up_to_parents(cats, rules)
+
+    half_basenames = [os.path.basename(f) for f in cats.get("half_map", [])]
+    map_basenames = [os.path.basename(f) for f in cats.get("map", [])]
+
+    # Sharpened file should NOT be in half_map
+    assert_true("emd_20026_half_map_2_box_sharpened.ccp4" not in half_basenames,
+               "Sharpened map should NOT be in half_map")
+
+    # But it should be in map
+    assert_in("emd_20026_half_map_2_box_sharpened.ccp4", map_basenames,
+             "Sharpened map should be in map category")
+
+    # Original half maps should still be in half_map
+    assert_in("emd_20026_half_map_1.ccp4", half_basenames,
+             "Original half map 1 should be in half_map")
+    assert_in("emd_20026_half_map_2.ccp4", half_basenames,
+             "Original half map 2 should be in half_map")
+
+    print("  PASSED")
+
+
+def test_mtriage_finds_sharpened_map_as_full_map():
+    """mtriage input priorities should pick sharpened map for full_map slot."""
+    print("Test: mtriage_finds_sharpened_map_as_full_map")
+
+    from agent.workflow_state import _categorize_files_yaml, _bubble_up_to_parents
+
+    rules = _load_categories()
+    programs = _load_programs()
+
+    files = [
+        "/p/emd_20026_half_map_2_box_sharpened.ccp4",
+        "/p/emd_20026_half_map_1.ccp4",
+        "/p/emd_20026_half_map_2.ccp4",
+    ]
+
+    cats = _categorize_files_yaml(files, rules)
+    cats = _bubble_up_to_parents(cats, rules)
+
+    # Simulate mtriage full_map input selection
+    mtriage = programs["phenix.mtriage"]
+    full_map_prio = mtriage["input_priorities"]["full_map"]
+    search_cats = full_map_prio["categories"]      # [full_map, map]
+    exclude_cats = full_map_prio["exclude_categories"]  # [half_map]
+
+    # Build excluded file set
+    excluded = set()
+    for ecat in exclude_cats:
+        for f in cats.get(ecat, []):
+            excluded.add(f)
+
+    # Search through categories in priority order
+    selected = None
+    for cat in search_cats:
+        for f in cats.get(cat, []):
+            if f not in excluded:
+                selected = f
+                break
+        if selected:
+            break
+
+    assert_true(selected is not None, "Should find a map for full_map slot")
+    assert_equal(os.path.basename(selected), "emd_20026_half_map_2_box_sharpened.ccp4",
+                "mtriage should select sharpened map for full_map, got: %s" %
+                (os.path.basename(selected) if selected else "None"))
+
+    print("  PASSED")
+
+
+# =============================================================================
+# 10. DIRECTIVE DONE-FLAG CHECKS (YAML CONFIG)
+# =============================================================================
+
+def test_run_once_programs_have_done_flags():
+    """All run_once programs should have a flag defined for done checking."""
+    print("Test: run_once_programs_have_done_flags")
+
+    programs = _load_programs()
+
+    for prog_name, prog_def in programs.items():
+        tracking = prog_def.get("done_tracking", {})
+        if tracking.get("run_once") or tracking.get("strategy") == "run_once":
+            flag = tracking.get("flag", "")
+            assert_true(bool(flag),
+                       "%s has run_once but no flag defined" % prog_name)
+
+    print("  PASSED")
+
+
+def test_start_with_program_respects_done_flags_config():
+    """The start_with_program directive path should be able to detect done programs.
+    Verify that map_symmetry has the necessary done_tracking config."""
+    print("Test: start_with_program_respects_done_flags_config")
+
+    programs = _load_programs()
+
+    # These programs can be requested via start_with_program directive
+    # and should have run_once tracking to prevent re-running
+    run_once_programs = ["phenix.map_symmetry", "phenix.mtriage",
+                        "phenix.xtriage"]
+
+    for prog_name in run_once_programs:
+        prog_def = programs.get(prog_name, {})
+        tracking = prog_def.get("done_tracking", {})
+        has_run_once = (tracking.get("run_once") or
+                       tracking.get("strategy") == "run_once")
+        flag = tracking.get("flag", "")
+
+        assert_true(has_run_once,
+                   "%s should have run_once tracking" % prog_name)
+        assert_true(bool(flag),
+                   "%s should have a done flag" % prog_name)
+        assert_true(flag.endswith("_done"),
+                   "%s done flag should end with '_done', got '%s'" % (prog_name, flag))
+
+    print("  PASSED")
+
+
+# =============================================================================
+# 11. MAP_SYMMETRY REQUIRES NON-HALF MAP
+# =============================================================================
+
+def test_map_symmetry_requires_non_half_map():
+    """map_symmetry in workflows.yaml should require has: non_half_map."""
+    print("Test: map_symmetry_requires_non_half_map")
+
+    workflows = _load_workflows()
+    cryoem = workflows.get("cryoem", {})
+    phases = cryoem.get("phases", {})
+
+    # Find map_symmetry in any phase
+    found_condition = False
+    for phase_name, phase_def in phases.items():
+        programs = phase_def.get("programs", [])
+        for prog in programs:
+            if isinstance(prog, dict) and prog.get("program") == "phenix.map_symmetry":
+                conditions = prog.get("conditions", [])
+                for cond in conditions:
+                    if isinstance(cond, dict) and cond.get("has") == "non_half_map":
+                        found_condition = True
+
+    assert_true(found_condition,
+               "map_symmetry should have 'has: non_half_map' condition in workflows.yaml")
+
+    print("  PASSED")
+
+
+def test_non_half_map_with_only_half_maps():
+    """has_non_half_map should be False when only half maps are available."""
+    print("Test: non_half_map_with_only_half_maps")
+
+    from agent.workflow_state import _categorize_files_yaml, _bubble_up_to_parents
+
+    rules = _load_categories()
+    files = [
+        "/p/emd_20026_half_map_1_box.ccp4",
+        "/p/emd_20026_half_map_2_box.ccp4",
+    ]
+
+    cats = _categorize_files_yaml(files, rules)
+    cats = _bubble_up_to_parents(cats, rules)
+
+    map_set = set(cats.get("map", []))
+    half_set = set(cats.get("half_map", []))
+    has_non_half = bool(map_set - half_set)
+
+    assert_true(not has_non_half,
+               "has_non_half_map should be False with only half maps")
+
+    print("  PASSED")
+
+
+def test_non_half_map_with_sharpened_map():
+    """has_non_half_map should be True when a sharpened map is available."""
+    print("Test: non_half_map_with_sharpened_map")
+
+    from agent.workflow_state import _categorize_files_yaml, _bubble_up_to_parents
+
+    rules = _load_categories()
+    files = [
+        "/p/emd_20026_half_map_1_box.ccp4",
+        "/p/emd_20026_half_map_2_box.ccp4",
+        "/p/emd_20026_half_map_2_box_sharpened.ccp4",  # Sharpened output
+    ]
+
+    cats = _categorize_files_yaml(files, rules)
+    cats = _bubble_up_to_parents(cats, rules)
+
+    map_set = set(cats.get("map", []))
+    half_set = set(cats.get("half_map", []))
+    has_non_half = bool(map_set - half_set)
+
+    assert_true(has_non_half,
+               "has_non_half_map should be True when sharpened map is present")
+
+    # Verify the sharpened file is what makes the difference
+    non_half = map_set - half_set
+    non_half_basenames = [os.path.basename(f) for f in non_half]
+    assert_in("emd_20026_half_map_2_box_sharpened.ccp4", non_half_basenames,
+             "Sharpened map should be the non-half map")
+
+    print("  PASSED")
+
+
+# =============================================================================
 # RUN ALL TESTS
 # =============================================================================
 

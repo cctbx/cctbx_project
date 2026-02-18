@@ -586,7 +586,12 @@ half_map:
     - "*_b.*"
     - "*-1.*"
     - "*-2.*"
-  notes: "Usually come in pairs, used for resolution estimation"
+  excludes:
+    - "*sharpened*"
+    - "*sharpen*"
+    - "*optimized*"
+  notes: "Usually come in pairs, used for resolution estimation. Sharpened maps are excluded
+    because map_sharpening output is a processed map for analysis, not a raw half map."
 
 # =============================================================================
 # CIF SPECIAL HANDLING

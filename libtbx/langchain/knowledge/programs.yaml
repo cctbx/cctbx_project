@@ -1464,6 +1464,14 @@ phenix.resolve_cryo_em:
 
   command: "phenix.resolve_cryo_em {half_map} {sequence} {ncs_spec}"
 
+  input_priorities:
+    half_map:
+      categories:
+        - half_map
+      exclude_categories:
+        - full_map
+        - optimized_full_map
+
   hints:
     - "Produces optimized full map from half-maps"
     - "Try this first for map improvement"

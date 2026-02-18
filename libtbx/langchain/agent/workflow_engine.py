@@ -79,6 +79,12 @@ class WorkflowEngine:
             "has_full_map": bool(files.get("full_map")),
             "has_half_map": len(files.get("half_map", [])) >= 2,
             "has_map": bool(files.get("map") or files.get("full_map")),
+            # Composite: has a map that is NOT a half map (full, sharpened, optimized, etc.)
+            # Used by map_symmetry which needs a full map but can accept processed maps
+            # that may not be in the strict full_map subcategory
+            "has_non_half_map": bool(
+                set(files.get("map", [])) - set(files.get("half_map", []))
+            ),
             "has_ligand": bool(files.get("ligand") or files.get("ligand_cif") or files.get("ligand_pdb")),
             "has_ligand_file": bool(files.get("ligand") or files.get("ligand_cif") or files.get("ligand_pdb")),  # Alias for workflow conditions
             "has_predicted_model": bool(files.get("predicted")) or history_info.get("predict_done", False),
@@ -523,6 +529,19 @@ class WorkflowEngine:
             return self._make_phase_result(phases, "analyze",
                 "Need to analyze map quality first")
 
+        # Phase 1.5: Create full map from half-maps before model building.
+        # When we have half-maps but no full map and resolve_cryo_em hasn't run,
+        # go to optimize_map first.  Without this, phase detection falls through
+        # to obtain_model and picks predict_and_build (listed first) even though
+        # resolve_cryo_em is the correct next step for the tutorial workflow
+        # mtriage → resolve_cryo_em → map_symmetry.
+        if (context.get("has_half_map") and not context.get("has_full_map") and
+                not context.get("resolve_cryo_em_done") and
+                not context.get("map_sharpening_done")):
+            return self._make_phase_result(phases, "optimize_map",
+                "Have half-maps but no full map; creating optimized full map "
+                "with resolve_cryo_em before model building")
+
         # Phase 2b: Stepwise - have prediction, need to dock it
         # This handles the case where predict_and_build ran with stop_after_predict=True
         if context["has_predicted_model"] and not context["has_placed_model"]:
@@ -715,7 +734,7 @@ class WorkflowEngine:
             prog_def = get_program(prog)
             if prog_def:
                 tracking = prog_def.get("done_tracking", {})
-                if tracking.get("run_once"):
+                if tracking.get("strategy") == "run_once" or tracking.get("run_once"):
                     # Check if this program has already been run
                     prog_done_key = tracking.get("flag", "")
                     if prog_done_key and context.get(prog_done_key):
@@ -866,6 +885,10 @@ class WorkflowEngine:
             if prog_name == "default":
                 continue  # Skip default settings
             if prog_name not in result:
+                # Don't re-add run_once programs that have already completed
+                if self._is_program_already_done(prog_name, context):
+                    modifications.append("Skipped %s from program_settings (already completed)" % prog_name)
+                    continue
                 # Check if we should add this program based on prerequisites
                 should_add = self._check_program_prerequisites(prog_name, context, phase_name)
                 if should_add:
@@ -895,12 +918,23 @@ class WorkflowEngine:
                     after_program_done = True
                 elif after_program == "phenix.polder" and context.get("polder_done"):
                     after_program_done = True
+                # General fallback: check run_once done flags from YAML
+                elif self._is_program_already_done(after_program, context):
+                    after_program_done = True
 
             if after_program_done:
-                # User's workflow is complete - add STOP
-                if "STOP" not in result:
-                    result.append("STOP")
-                    modifications.append("Added STOP (after_program %s completed)" % after_program)
+                # User's workflow is complete — replace the entire valid_programs
+                # list with just STOP.  Simply appending STOP is not enough: the
+                # phase detector may have already added programs like
+                # predict_and_build to 'result', and the LLM (or fallback) will
+                # pick those instead of stopping.
+                non_stop = [p for p in result if p != "STOP"]
+                if non_stop:
+                    modifications.append(
+                        "Cleared programs %s (after_program %s completed, workflow done)" % (
+                        non_stop, after_program))
+                result[:] = ["STOP"]
+                modifications.append("Set valid_programs=[STOP] (after_program %s completed)" % after_program)
             else:
                 # after_program not yet run - add it to valid programs
                 should_add = self._check_program_prerequisites(after_program, context, phase_name)
@@ -971,8 +1005,11 @@ class WorkflowEngine:
         stop_cond = directives.get("stop_conditions", {})
         start_with = stop_cond.get("start_with_program")
         if start_with and start_with not in result:
-            result.insert(0, start_with)
-            modifications.append("Added start_with_program: %s" % start_with)
+            if self._is_program_already_done(start_with, context):
+                modifications.append("Skipped start_with %s (already completed)" % start_with)
+            else:
+                result.insert(0, start_with)
+                modifications.append("Added start_with_program: %s" % start_with)
 
         # Remove skipped programs
         skip_programs = workflow_prefs.get("skip_programs", [])
@@ -996,6 +1033,33 @@ class WorkflowEngine:
         self._last_directive_modifications = modifications
 
         return result
+
+    def _is_program_already_done(self, program, context):
+        """Check if a run_once program has already been completed.
+
+        Returns True if the program has a run_once done_tracking strategy
+        and its done flag is set in the context. This prevents directives
+        from re-adding programs that the run_once filter already removed.
+
+        Args:
+            program: Program name (e.g., 'phenix.map_symmetry')
+            context: Workflow context dict with done flags
+
+        Returns:
+            bool: True if program is done and should not be re-run
+        """
+        if not context:
+            return False
+        prog_def = get_program(program)
+        if not prog_def:
+            return False
+        tracking = prog_def.get("done_tracking", {})
+        if not (tracking.get("strategy") == "run_once" or tracking.get("run_once")):
+            return False
+        done_key = tracking.get("flag", "")
+        if done_key and context.get(done_key):
+            return True
+        return False
 
     def _check_program_prerequisites(self, program, context, phase_name):
         """
@@ -1093,6 +1157,13 @@ class WorkflowEngine:
                     if not context.get(key):
                         return False
 
+                # Condition like {"has_any": ["full_map", "optimized_full_map"]}
+                # True if ANY of the listed keys is present in context
+                if "has_any" in cond:
+                    keys = ["has_" + k for k in cond["has_any"]]
+                    if not any(context.get(k) for k in keys):
+                        return False
+
                 # Condition like {"not_done": "autobuild"}
                 if "not_done" in cond:
                     key = cond["not_done"] + "_done"
@@ -1183,7 +1254,7 @@ class WorkflowEngine:
         prog_def = get_program(program)
         if prog_def:
             tracking = prog_def.get("done_tracking", {})
-            if tracking.get("run_once"):
+            if tracking.get("strategy") == "run_once" or tracking.get("run_once"):
                 prog_done_key = tracking.get("flag", "")
                 if prog_done_key and context.get(prog_done_key):
                     reasons.append("run_once program already executed")
@@ -1330,7 +1401,14 @@ class WorkflowEngine:
             stop_cond = directives.get("stop_conditions", {})
             after_program = stop_cond.get("after_program")
             if after_program and after_program in valid_programs:
-                forced_program = after_program
+                # Only force after_program when it is the last meaningful program
+                # remaining. If other programs (e.g. phenix.mtriage) are still
+                # available they should run first; forcing after_program here would
+                # skip them entirely.
+                other_valid = [p for p in valid_programs
+                               if p != after_program and p != "STOP"]
+                if not other_valid:
+                    forced_program = after_program
 
         # Check for common programs that users might expect but aren't available
         # This helps explain why certain programs can't be run

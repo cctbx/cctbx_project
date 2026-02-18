@@ -588,14 +588,21 @@ def perceive(state):
 
     # If user explicitly requested a program, inject it into valid_programs
     # regardless of workflow phase (the user knows what they want)
+    # BUT: Don't inject if a forced_program is set from directives — the
+    # directive system (after_program) understands multi-step ordering while
+    # explicit_program is a simple text scan that would conflict.
     session_info = state.get("session_info", {})
     explicit_prog = session_info.get("explicit_program")
-    if explicit_prog:
+    forced_prog = workflow_state.get("forced_program")
+    if explicit_prog and not forced_prog:
         valid_progs = workflow_state.get("valid_programs", [])
         if explicit_prog not in valid_progs:
             valid_progs.append(explicit_prog)
             workflow_state["valid_programs"] = valid_progs
             state = _log(state, "PERCEIVE: Injected explicit program request: %s" % explicit_prog)
+    elif explicit_prog and forced_prog and explicit_prog != forced_prog:
+        state = _log(state, "PERCEIVE: Skipped explicit_program %s (forced_program %s takes precedence)" % (
+            explicit_prog, forced_prog))
 
     # Debug categorization (helps diagnose model vs search_model issues)
     categorized = workflow_state.get("categorized_files", {})
@@ -1292,6 +1299,26 @@ def plan(state):
         # by workflow_engine._apply_directives() which modifies valid_programs
         valid_programs = workflow_state.get("valid_programs", [])
 
+        # === ENFORCE FORCED PROGRAM ===
+        # When workflow directives specify a forced_program (e.g., from
+        # after_program in a multi-step workflow), override the LLM's choice.
+        # This takes precedence over explicit_program injection because the
+        # directive system understands workflow ordering while explicit_program
+        # is a simple text scan of user advice.
+        forced_program = workflow_state.get("forced_program")
+        if (forced_program and
+                forced_program in valid_programs and
+                chosen_program != forced_program and
+                chosen_program != "STOP"):
+            state = _log(state, "PLAN: Overriding LLM choice '%s' with forced_program '%s' "
+                        "(from after_program directive)" % (chosen_program, forced_program))
+            chosen_program = forced_program
+            intent["program"] = forced_program
+            intent["reasoning"] = (
+                "Running %s (workflow directive). [LLM suggested: %s]"
+                % (forced_program, intent.get("reasoning", "")[:200])
+            )
+
         # Normalize: treat STOP request same as choosing "STOP" program
         # BUT: Only if the LLM didn't select a valid non-STOP program
         # This prevents cases where LLM says {program: "phenix.autosol", stop: true}
@@ -1321,6 +1348,27 @@ def plan(state):
         # Simple validation: is the chosen program in valid_programs?
         if chosen_program is None or chosen_program not in valid_programs:
             if valid_programs:
+                # If the LLM chose the after_program target but it's not yet in
+                # valid_programs, do NOT fall through to an arbitrary program —
+                # that would silently skip the user-requested sequence step.
+                # Instead, log a clear warning and stop so the configuration
+                # problem surfaces rather than the workflow running off-script.
+                after_prog = (state.get("directives", {})
+                              .get("stop_conditions", {})
+                              .get("after_program"))
+                if chosen_program and after_prog and chosen_program == after_prog:
+                    state = _log(state, "PLAN: LLM chose after_program '%s' but it is not in "
+                        "valid_programs %s — stopping to avoid running off-script. "
+                        "Check phase/workflow YAML to ensure %s is listed for this workflow state." % (
+                        chosen_program, valid_programs, chosen_program))
+                    return {
+                        **state,
+                        "command": "STOP",
+                        "stop": True,
+                        "stop_reason": "after_program_not_available",
+                        "validation_error": None,
+                    }
+
                 # Override to first valid program (or first non-STOP if available)
                 override_program = next((p for p in valid_programs if p != "STOP"), valid_programs[0])
                 original_reasoning = intent.get("reasoning", "")
@@ -2831,16 +2879,23 @@ def fallback(state):
     best_files = session_info.get("best_files", {})
     rfree_mtz = session_info.get("rfree_mtz")
 
+    # Pass categorized_files so multi-file slots (e.g. half_map for mtriage)
+    # are filled correctly via the higher-priority categorized-files path.
+    # Without this, the extension-only fallback only picks one half_map file.
+    categorized_files = workflow_state.get("categorized_files", {})
+
     # Try each valid program until one works without duplicating
     for program in runnable:
         # For refine, try with prioritized files (recent outputs first)
         if "refine" in program.lower():
             cmd = builder.build_command_for_program(program, prioritized_files,
+                                                    categorized_files=categorized_files,
                                                     context=fallback_context,
                                                     best_files=best_files,
                                                     rfree_mtz=rfree_mtz)
         else:
             cmd = builder.build_command_for_program(program, available_files,
+                                                    categorized_files=categorized_files,
                                                     context=fallback_context,
                                                     best_files=best_files,
                                                     rfree_mtz=rfree_mtz)

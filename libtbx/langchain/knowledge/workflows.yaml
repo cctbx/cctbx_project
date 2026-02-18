@@ -319,6 +319,7 @@ cryoem:
         - program: phenix.map_symmetry
           conditions:
             - not_done: map_symmetry
+            - has: non_half_map  # Needs a full/processed map, not just half maps
           hint: "Run when user wants to find symmetry in the map"
 
       transitions:
@@ -341,6 +342,12 @@ cryoem:
       goal: "Get coordinates to refine against map"
 
       programs:
+        - program: phenix.map_symmetry
+          conditions:
+            - has_any: [full_map, optimized_full_map]
+            - not_done: map_symmetry
+          hint: "Find point-group symmetry before model building"
+
         - program: phenix.predict_and_build
           preferred: true
           conditions:
@@ -473,6 +480,11 @@ cryoem:
         - program: phenix.map_sharpening
           conditions:
             - not_done: map_sharpening
+        - program: phenix.map_symmetry
+          conditions:
+            - has_any: [full_map, optimized_full_map]
+            - not_done: map_symmetry
+          hint: "Find point-group symmetry after map optimization"
 
       transitions:
         on_complete: ready_to_refine

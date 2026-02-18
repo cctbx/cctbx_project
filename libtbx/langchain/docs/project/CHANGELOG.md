@@ -2,6 +2,95 @@
 
 ## Version 112.13 (February 2025)
 
+### Explicit program injection overrides multi-step directives (Fix 19)
+
+**`_detect_explicit_program_request` hijacks multi-step workflows**
+- When user says "run mtriage, resolve_cryo_em, map_symmetry", the
+  directive system correctly parses ordering (start_with_program,
+  after_program). But `_detect_explicit_program_request` scans the raw
+  text, returns ONE program (e.g., map_symmetry), and injects
+  "**IMPORTANT: run phenix.map_symmetry**" into guidelines — overriding
+  the directive ordering. The LLM then picks map_symmetry instead of
+  resolve_cryo_em (the correct next step).
+- This cascades: map_symmetry fails (no full_map, only half maps),
+  then resolve_cryo_em runs as a fallback without LLM-guided parameters.
+- Fix: Skip explicit program injection when directives contain
+  multi-step workflow info (`start_with_program`, `after_program`, or
+  `prefer_programs` with 2+ entries). Applied to both the main
+  `_query_agent_for_command` path and the retry/duplicate handler.
+- Files: `programs/ai_agent.py`
+
+### resolve_cryo_em missing input_priorities (Fix 19b)
+
+**Category-based file selection for half_map slot**
+- `phenix.resolve_cryo_em` had empty `input_priorities`, forcing the
+  command builder to use extension-only matching for the `half_map`
+  slot. This could select sharpened or optimized maps instead of actual
+  half maps when multiple .ccp4 files are available.
+- Added `input_priorities.half_map` with `categories: [half_map]` and
+  `exclude_categories: [full_map, optimized_full_map]`.
+- Files: `knowledge/programs.yaml`
+
+### run_once strategy check fix (Fix 17)
+
+**Three broken `tracking.get("run_once")` checks in workflow_engine.py**
+- The YAML uses `strategy: "run_once"` but all three checks in
+  `workflow_engine.py` used `tracking.get("run_once")` which always
+  returned None. This meant run_once programs (map_symmetry, mtriage,
+  xtriage) were never filtered from valid_programs.
+- Fixed all three locations to check
+  `tracking.get("strategy") == "run_once" or tracking.get("run_once")`
+  for backward compatibility.
+- Additionally, `_apply_directives` could re-add already-done programs
+  via `start_with_program`, `program_settings`, and `after_program`
+  directives. Added `_is_program_already_done()` helper that checks
+  the YAML done_tracking config. All three directive paths now skip
+  programs whose done flag is already set.
+- Files: `agent/workflow_engine.py`
+
+### Sharpened map mis-categorized as half_map (Fix 18)
+
+**half_map excludes for sharpened/optimized maps**
+- `emd_XXXXX_half_map_N_box_sharpened.ccp4` (output of map_sharpening)
+  matched `half_map` pattern `*half*`, causing mtriage to use it as
+  `half_map=` instead of `full_map=`.
+- Added excludes `*sharpened*`, `*sharpen*`, `*optimized*` to the
+  `half_map` category in `file_categories.yaml`. Sharpened maps now
+  fall through to `full_map` via the map parent category, where
+  mtriage's `input_priorities.full_map.categories: [full_map, map]`
+  picks them up correctly.
+- Files: `knowledge/file_categories.yaml`
+
+### forced_program not enforced in plan node (Fix 19)
+
+**LLM could override multi-step workflow ordering**
+- `workflow_engine` sets `forced_program` from `after_program` directive
+  (e.g., for "run mtriage, resolve_cryo_em, and map_symmetry"), but the
+  plan node never enforced it. The LLM could freely pick any valid
+  program, ignoring the directive ordering.
+- Added forced_program enforcement block in plan node: when
+  `forced_program` is set and valid, the LLM's choice is overridden.
+- Also fixed explicit_program injection in perceive: when
+  `forced_program` is set from directives, `explicit_program` (from
+  `_detect_explicit_program_request` text scanning) is no longer
+  injected into valid_programs, preventing conflicting LLM hints.
+- Files: `agent/graph_nodes.py`
+
+### map_symmetry offered without full map (Fix 20)
+
+**map_symmetry should not be valid when only half maps exist**
+- map_symmetry's input_priorities exclude half_map from the map slot,
+  so it always fails to build when only half maps are available. But
+  its workflow condition only checked `not_done: map_symmetry`, so it
+  appeared in valid_programs and the LLM would pick it.
+- Added `has: non_half_map` condition to map_symmetry in workflows.yaml.
+- Added composite context key `has_non_half_map` in workflow_engine.py
+  that checks `set(map files) - set(half_map files)`. This correctly
+  becomes True after map_sharpening produces a sharpened map (which is
+  in `map` but not `half_map`), even though the sharpened filename
+  contains "half" and doesn't match `full_map`.
+- Files: `agent/workflow_engine.py`, `knowledge/workflows.yaml`
+
 ### File discovery and filtering (Fixes 14-15)
 
 **Companion file discovery** (`graph_nodes._discover_companion_files`)
@@ -88,10 +177,12 @@
 
 ### Test coverage
 
-- 26 new tests in `tests/tst_v112_13_fixes.py` covering companion file
+- 33 new tests in `tests/tst_v112_13_fixes.py` covering companion file
   discovery (5), intermediate filtering (3), file categorization (5),
   phaser model_for_mr (3), output validation (3), program priorities (4),
-  end-to-end post-pdbtools selection (2), combine_ligand phase (1).
+  end-to-end post-pdbtools selection (2), combine_ligand phase (1),
+  sharpened map categorization (2), run_once done-flag config (2),
+  map_symmetry condition (1), non_half_map context key (2).
 - Total: 29/35 passing (6 pre-existing libtbx import failures).
 
 ## Version 112.12 (February 2025)

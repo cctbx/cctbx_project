@@ -365,13 +365,24 @@ def test_single_half_map_promoted_to_full_map():
     from agent.workflow_state import _categorize_files
 
     # Case 1: Single file with half-map naming should be treated as full_map
-    files_single_half = ["/path/to/emd-20026_auto_sharpen_A.ccp4"]
+    # Note: use a non-sharpened file - sharpened files are excluded from half_map
+    # entirely (they are processed maps, not raw half maps)
+    files_single_half = ["/path/to/emd-20026_A.ccp4"]
     result = _categorize_files(files_single_half)
 
-    assert_in("/path/to/emd-20026_auto_sharpen_A.ccp4", result["full_map"],
+    assert_in("/path/to/emd-20026_A.ccp4", result["full_map"],
               "Single map with _A suffix should be promoted to full_map")
     assert_equal(len(result["half_map"]), 0,
                  "half_map should be empty when single map is promoted")
+
+    # Case 1b: Sharpened maps are NOT half-maps, so they go to map (not half_map)
+    # and are findable by mtriage via the map category in input_priorities
+    files_sharpened = ["/path/to/emd-20026_auto_sharpen_A.ccp4"]
+    result = _categorize_files(files_sharpened)
+    assert_equal(len(result["half_map"]), 0,
+                 "Sharpened map should NOT be in half_map")
+    assert_in("/path/to/emd-20026_auto_sharpen_A.ccp4", result["map"],
+              "Sharpened map should be in map category")
 
     # Case 2: Two half-maps should remain as half-maps
     files_two_halves = [

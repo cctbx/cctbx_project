@@ -857,10 +857,29 @@ class CommandBuilder:
             return None
 
         if priority_categories:
-            # Try primary categories with subcategory preferences
-            result = find_in_categories(priority_categories, prefer_subcategories)
-            if result:
-                return result
+            if is_multiple:
+                # For multiple-file slots (e.g. half_map for resolve_cryo_em / mtriage),
+                # collect ALL valid files from every priority category — not just the
+                # most-recent one.  find_in_categories() always returns a single file so
+                # it must not be used for is_multiple slots.
+                all_valid = []
+                seen = set()
+                for cat in priority_categories:
+                    cat_files = context.categorized_files.get(cat, [])
+                    for f in cat_files:
+                        if f not in seen and not is_excluded(f) and                                 any(f.lower().endswith(ext) for ext in extensions):
+                            all_valid.append(f)
+                            seen.add(f)
+                if all_valid:
+                    self._log(context, "BUILD: Found %d files for multiple slot '%s' in categories %s" % (
+                        len(all_valid), input_name, priority_categories))
+                    self._record_selection(input_name, all_valid, "category_multiple")
+                    return all_valid
+            else:
+                # Try primary categories with subcategory preferences
+                result = find_in_categories(priority_categories, prefer_subcategories)
+                if result:
+                    return result
 
             # Try fallback categories if specified
             if fallback_categories:
