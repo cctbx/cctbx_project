@@ -34,8 +34,10 @@ except ImportError as e:
 
 try:
     import libtbx  # noqa: F401
+    assert libtbx is not None
     # Also verify libtbx.langchain is a proper package (not shadowed)
     import libtbx.langchain.core  # noqa: F401
+    assert libtbx.langchain.core is not None
 except (ImportError, ModuleNotFoundError) as e:
     _SKIP_REASON = "libtbx.langchain not available: %s" % e
 

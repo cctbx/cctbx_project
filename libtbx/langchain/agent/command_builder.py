@@ -438,15 +438,33 @@ class CommandBuilder:
 
         # Pre-populate with best_files for refinement (can be overridden by explicit LLM choices)
         if is_refinement_program and context.best_files:
-            # Model slot
-            if context.best_files.get("model") and os.path.exists(context.best_files["model"]):
-                for slot in ["model", "pdb", "pdb_file"]:
-                    if slot in all_inputs:
-                        selected_files[slot] = context.best_files["model"]
-                        self._record_selection(slot, context.best_files["model"], "best_files")
-                        self._log(context, "BUILD: Using best_model for %s: %s" % (
-                            slot, os.path.basename(context.best_files["model"])))
-                        break
+            # Model slot - verify best_model isn't in an excluded category
+            best_model_path = context.best_files.get("model")
+            if best_model_path and os.path.exists(best_model_path):
+                best_model_excluded = False
+                # Check against program's exclude_categories for model slot
+                priorities = self._registry.get_input_priorities(program, "model")
+                if priorities:
+                    exclude_cats = priorities.get("exclude_categories", [])
+                    if exclude_cats and context.categorized_files:
+                        best_bn = os.path.basename(best_model_path)
+                        for cat in exclude_cats:
+                            cat_files = context.categorized_files.get(cat, [])
+                            if any(os.path.basename(f) == best_bn for f in cat_files):
+                                self._log(context,
+                                    "BUILD: best_model %s is in excluded category '%s', skipping" % (
+                                    best_bn, cat))
+                                best_model_excluded = True
+                                break
+
+                if not best_model_excluded:
+                    for slot in ["model", "pdb", "pdb_file"]:
+                        if slot in all_inputs:
+                            selected_files[slot] = best_model_path
+                            self._record_selection(slot, best_model_path, "best_files")
+                            self._log(context, "BUILD: Using best_model for %s: %s" % (
+                                slot, os.path.basename(best_model_path)))
+                            break
 
         # Process LLM hints (if any)
         if context.llm_files:
@@ -512,12 +530,26 @@ class CommandBuilder:
                     if is_refinement_program and canonical_slot in ("model", "pdb", "pdb_file"):
                         best_model = context.best_files.get("model")
                         if best_model and corrected_str != best_model and os.path.exists(best_model):
-                            # LLM chose a different model - log and keep best_model
-                            self._log(context, "BUILD: LLM suggested %s=%s but using best_model=%s instead" % (
-                                canonical_slot, os.path.basename(corrected_str), os.path.basename(best_model)))
-                            self._record_selection(canonical_slot, best_model, "best_files_override",
-                                llm_suggested=os.path.basename(corrected_str))
-                            continue  # Skip LLM's choice, keep best_model
+                            # Check if best_model is in an excluded category
+                            best_model_ok = True
+                            priorities = self._registry.get_input_priorities(program, "model")
+                            if priorities:
+                                exclude_cats = priorities.get("exclude_categories", [])
+                                if exclude_cats and context.categorized_files:
+                                    best_bn = os.path.basename(best_model)
+                                    for cat in exclude_cats:
+                                        if any(os.path.basename(f) == best_bn
+                                               for f in context.categorized_files.get(cat, [])):
+                                            best_model_ok = False
+                                            break
+
+                            if best_model_ok:
+                                # LLM chose a different model - log and keep best_model
+                                self._log(context, "BUILD: LLM suggested %s=%s but using best_model=%s instead" % (
+                                    canonical_slot, os.path.basename(corrected_str), os.path.basename(best_model)))
+                                self._record_selection(canonical_slot, best_model, "best_files_override",
+                                    llm_suggested=os.path.basename(corrected_str))
+                                continue  # Skip LLM's choice, keep best_model
 
                     # Log if we're using an alias
                     if llm_slot != canonical_slot:

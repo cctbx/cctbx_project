@@ -368,6 +368,32 @@ def _discover_companion_files(available_files):
                     seen.add(companion)
                     break
 
+    # Pattern: look for pdbtools output (*_with_ligand.pdb) in agent directory
+    # Derive agent_directory from available file paths containing sub_NN_ dirs
+    agent_dirs = set()
+    for f in available_files:
+        if not f:
+            continue
+        # Look for paths containing /sub_NN_program/ pattern
+        abs_f = os.path.abspath(f)
+        parts = abs_f.replace("\\", "/").split("/")
+        for i, part in enumerate(parts):
+            if part.startswith("sub_") and "_" in part[4:]:
+                agent_dir = os.sep.join(parts[:i])
+                if os.path.isdir(agent_dir):
+                    agent_dirs.add(agent_dir)
+                break
+
+    # Scan agent directories for pdbtools output
+    for agent_dir in agent_dirs:
+        for entry in glob.glob(os.path.join(agent_dir, "sub_*_pdbtools")):
+            if os.path.isdir(entry):
+                for pdb in glob.glob(os.path.join(entry, "*_with_ligand.pdb")):
+                    bn = os.path.basename(pdb)
+                    if bn not in seen:
+                        new_files.append(pdb)
+                        seen.add(bn)
+
     if new_files:
         return list(available_files) + new_files
     return available_files
