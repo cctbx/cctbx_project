@@ -14,7 +14,7 @@ SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='TRADITIONAL,ALLOW_INVALID_DATES';
 -- -----------------------------------------------------
 -- Schema mydb
 -- -----------------------------------------------------
-CREATE SCHEMA IF NOT EXISTS `mydb` DEFAULT CHARACTER SET utf8 ;
+CREATE SCHEMA IF NOT EXISTS `mydb` DEFAULT CHARACTER SET utf8mb4 ;
 USE `mydb` ;
 
 -- -----------------------------------------------------
@@ -147,6 +147,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`hkls` (
   `l` INT NOT NULL,
   `isoforms_isoform_id` INT NOT NULL,
   PRIMARY KEY (`hkl_id`, `isoforms_isoform_id`),
+  UNIQUE INDEX `hkl_id_UNIQUE` (`hkl_id` ASC),
   INDEX `fk_hkls_isoforms1_idx` (`isoforms_isoform_id` ASC),
   CONSTRAINT `fk_hkls_isoforms1`
     FOREIGN KEY (`isoforms_isoform_id`)
@@ -192,6 +193,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`frames` (
   `isoforms_isoform_id` INT NOT NULL,
   `runs_run_id` INT NOT NULL,
   PRIMARY KEY (`frame_id`, `rungroups_id`, `trials_id`, `isoforms_isoform_id`, `runs_run_id`),
+  UNIQUE INDEX `frame_id_rungroups_trials_UNIQUE` (`frame_id` ASC, `rungroups_id` ASC, `trials_id` ASC),
   INDEX `fk_frames_rungroups1_idx` (`rungroups_id` ASC),
   INDEX `fk_frames_trials1_idx` (`trials_id` ASC),
   INDEX `fk_frames_isoforms1_idx` (`isoforms_isoform_id` ASC),
