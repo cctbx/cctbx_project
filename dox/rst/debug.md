@@ -29,6 +29,7 @@ $ curl -LO  https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/
 $ conda activate base
 $ conda install mamba -c conda-forge -y
 $ mamba env create -f psana_environment.yml -p $PWD/conda_base
+$ conda install -c conda-forge --no-deps -p $PWD/conda_base gemmi
 $ conda activate $PWD/conda_base
 $ python bootstrap.py \
    --builder=xfel \
