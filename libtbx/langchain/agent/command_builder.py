@@ -562,26 +562,45 @@ class CommandBuilder:
                     if is_refinement_program and canonical_slot in ("model", "pdb", "pdb_file"):
                         best_model = self._best_path(context.best_files.get("model"))
                         if best_model and corrected_str != best_model and os.path.exists(best_model):
-                            # Check if best_model is in an excluded category
-                            best_model_ok = True
-                            priorities = self._registry.get_input_priorities(program, "model")
-                            if priorities:
-                                exclude_cats = priorities.get("exclude_categories", [])
-                                if exclude_cats and context.categorized_files:
-                                    best_bn = os.path.basename(best_model)
-                                    for cat in exclude_cats:
-                                        if any(os.path.basename(f) == best_bn
-                                               for f in context.categorized_files.get(cat, [])):
-                                            best_model_ok = False
-                                            break
+                            # If the LLM chose a with_ligand file, trust it — it's the
+                            # model-with-ligand that should be refined after ligandfit.
+                            # The tracker may still point to the old ligand-free model
+                            # because pdbtools-combined files have no R-free metrics yet.
+                            llm_categories = []
+                            if context.categorized_files:
+                                llm_bn = os.path.basename(corrected_str)
+                                for cat, files in context.categorized_files.items():
+                                    if any(os.path.basename(f) == llm_bn for f in files):
+                                        llm_categories.append(cat)
+                            llm_is_with_ligand = any(
+                                c in ("with_ligand", "ligand_fit_output")
+                                for c in llm_categories
+                            )
+                            if llm_is_with_ligand:
+                                self._log(context, "BUILD: LLM chose with_ligand model=%s — trusting LLM (contains ligand)" %
+                                          os.path.basename(corrected_str))
+                                # Fall through: LLM's choice will be used as-is
+                            else:
+                                # Check if best_model is in an excluded category
+                                best_model_ok = True
+                                priorities = self._registry.get_input_priorities(program, "model")
+                                if priorities:
+                                    exclude_cats = priorities.get("exclude_categories", [])
+                                    if exclude_cats and context.categorized_files:
+                                        best_bn = os.path.basename(best_model)
+                                        for cat in exclude_cats:
+                                            if any(os.path.basename(f) == best_bn
+                                                   for f in context.categorized_files.get(cat, [])):
+                                                best_model_ok = False
+                                                break
 
-                            if best_model_ok:
-                                # LLM chose a different model - log and keep best_model
-                                self._log(context, "BUILD: LLM suggested %s=%s but using best_model=%s instead" % (
-                                    canonical_slot, os.path.basename(corrected_str), os.path.basename(best_model)))
-                                self._record_selection(canonical_slot, best_model, "best_files_override",
-                                    llm_suggested=os.path.basename(corrected_str))
-                                continue  # Skip LLM's choice, keep best_model
+                                if best_model_ok:
+                                    # LLM chose a different model - log and keep best_model
+                                    self._log(context, "BUILD: LLM suggested %s=%s but using best_model=%s instead" % (
+                                        canonical_slot, os.path.basename(corrected_str), os.path.basename(best_model)))
+                                    self._record_selection(canonical_slot, best_model, "best_files_override",
+                                        llm_suggested=os.path.basename(corrected_str))
+                                    continue  # Skip LLM's choice, keep best_model
 
                     # Log if we're using an alias
                     if llm_slot != canonical_slot:

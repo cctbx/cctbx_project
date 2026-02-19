@@ -34,8 +34,28 @@ _MAP_EXTENSIONS    = frozenset(['.ccp4', '.mrc', '.map'])
 _MODEL_EXTENSIONS  = frozenset(['.pdb', '.cif'])
 # Records that must start the first non-blank line of a valid PDB/CIF file
 _PDB_VALID_RECORDS = frozenset([
-    'CRYST1', 'ATOM  ', 'HETATM', 'REMARK', 'HEADER', 'TITLE ',
-    'MODEL ', 'SEQRES', 'SCALE1', 'ORIGX1',
+    # Title / citation section
+    'HEADER', 'OBSLTE', 'TITLE ', 'SPLIT ', 'CAVEAT', 'COMPND', 'SOURCE',
+    'KEYWDS', 'EXPDTA', 'NUMMDL', 'MDLTYP', 'AUTHOR', 'REVDAT', 'SPRSDE',
+    'JRNL  ', 'REMARK',
+    # Primary structure
+    'DBREF ', 'DBREF1', 'DBREF2', 'SEQADV', 'SEQRES', 'MODRES',
+    # Heterogen (ligands, small molecules)
+    'HET   ', 'HETNAM', 'HETSYN', 'FORMUL',
+    # Secondary structure
+    'HELIX ', 'SHEET ',
+    # Connectivity annotation
+    'SSBOND', 'LINK  ', 'CISPEP',
+    # Miscellaneous features
+    'SITE  ',
+    # Crystallographic transformation
+    'CRYST1', 'ORIGX1', 'ORIGX2', 'ORIGX3',
+    'SCALE1', 'SCALE2', 'SCALE3',
+    'MTRIX1', 'MTRIX2', 'MTRIX3',
+    # Coordinate records (the most common first lines for small-molecule files)
+    'MODEL ', 'ATOM  ', 'ANISOU', 'TER   ', 'HETATM', 'ENDMDL',
+    # Bookkeeping
+    'CONECT', 'MASTER', 'END   ',
 ])
 _CIF_VALID_STARTS  = ('data_', '_', 'loop_', '#')
 
@@ -103,25 +123,33 @@ def _is_valid_file(path):
         except (OSError, IOError):
             return False
 
-    # Layer 3: PDB/CIF first-record check
+    # Layer 3: PDB/CIF structural validity check
     elif ext in _MODEL_EXTENSIONS:
         try:
             with open(path, 'r', errors='replace') as fh:
-                for line in fh:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    if ext == '.cif':
-                        if not line.startswith(_CIF_VALID_STARTS):
-                            print("WARNING: %s does not start with a valid mmCIF record "
-                                  "— excluded from categorization" % path)
-                            return False
-                    else:  # .pdb
-                        if len(line) >= 6 and line[:6].upper() not in _PDB_VALID_RECORDS:
-                            print("WARNING: %s does not start with a valid PDB record "
-                                  "— excluded from categorization" % path)
-                            return False
-                    break  # Only check the first non-blank line
+                content = fh.read()
+            if ext == '.cif':
+                # CIF must have at least one data_ block or loop
+                first_line = next(
+                    (l.strip() for l in content.splitlines() if l.strip()), '')
+                if not first_line.startswith(_CIF_VALID_STARTS):
+                    print("WARNING: %s does not start with a valid mmCIF record "
+                          "— excluded from categorization" % path)
+                    return False
+            else:  # .pdb
+                # PDB must contain at least one ATOM or HETATM record.
+                # We scan up to 500 lines rather than checking only the first
+                # line, because ligand files often start with COMPND/REMARK/etc.
+                # before the coordinate records.
+                lines = content.splitlines()
+                has_coords = any(
+                    len(l) >= 6 and l[:6].upper() in ('ATOM  ', 'HETATM')
+                    for l in lines[:500]
+                )
+                if not has_coords:
+                    print("WARNING: %s contains no ATOM/HETATM records "
+                          "— excluded from categorization" % path)
+                    return False
         except (OSError, IOError):
             return False
 

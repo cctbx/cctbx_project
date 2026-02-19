@@ -286,8 +286,8 @@ class BestFilesTracker:
                 "stage_scores": {
                     "refined": 100,
                     "rsr_output": 100,
-                    "with_ligand": 100,      # Tag, same score as refined
-                    "ligand_fit_output": 90,
+                    "with_ligand": 110,      # Model with ligand — beats plain refined (no metrics yet)
+                    "ligand_fit_output": 105,  # LigandFit output before pdbtools combination
                     "autobuild_output": 100,  # AutoBuild does internal refinement
                     "phaser_output": 70,      # MR output - positioned in unit cell
                     "docked": 60,             # Docked into map
@@ -552,6 +552,17 @@ class BestFilesTracker:
         if category == "map_coeffs_mtz":
             return self._evaluate_map_coeffs_mtz(path, cycle, metrics, stage, score)
 
+        # Special handling for with_ligand models: inherit metrics from the
+        # current best model so the ligand-combined file isn't penalized for
+        # lacking R-free metrics. A with_ligand model is always derived from
+        # the current best refined model, so it deserves the same quality score.
+        if category == "model" and stage == "with_ligand" and not metrics:
+            current = self.best.get(category)
+            if current and current.metrics:
+                inherited_metrics = dict(current.metrics)
+                inherited_score = self._calculate_score(path, category, stage, inherited_metrics)
+                return self._evaluate_standard(path, category, cycle, inherited_metrics, stage, inherited_score)
+
         # For other categories: higher score wins, with recency as tiebreaker
         return self._evaluate_standard(path, category, cycle, metrics, stage, score)
 
@@ -767,11 +778,16 @@ class BestFilesTracker:
         Returns:
             float: Score (higher is better)
         """
-        # SAFETY: If stage wasn't determined but filename clearly indicates refinement,
+        # SAFETY: If stage wasn't determined but filename clearly indicates a type,
         # override stage. This handles cases where program context was lost.
+        # IMPORTANT: Check with_ligand BEFORE refine — filenames like
+        # overall_best_final_refine_001_with_ligand.pdb contain both 'refine'
+        # and 'with_ligand', and must be treated as with_ligand (higher priority).
         if category == "model" and stage in (None, "model", "_default"):
             basename = os.path.basename(path).lower()
-            if 'refine' in basename and 'real_space' not in basename:
+            if 'with_ligand' in basename or '_liganded' in basename:
+                stage = "with_ligand"         # Must come before 'refine' check
+            elif 'refine' in basename and 'real_space' not in basename:
                 stage = "refined"
             elif 'rsr_' in basename or '_rsr' in basename or 'real_space_refined' in basename:
                 stage = "rsr_output"
