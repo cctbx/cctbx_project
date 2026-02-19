@@ -264,39 +264,3 @@ data_label_parameters:
 #       - "MemoryError"
 #       - "Cannot allocate memory"
 #     recovery: "Reduce nproc, add memory-saving flags"
-
-
-# =============================================================================
-# HARD-STOP ERRORS
-# =============================================================================
-# These errors cannot be recovered automatically and require user action.
-# The agent raises Sorry with a clear message so the user knows what to supply.
-
-hard_stop_errors:
-
-  # ---------------------------------------------------------------------------
-  # resolve_cryo_em: Missing mass/solvent information
-  # ---------------------------------------------------------------------------
-  # Occurs when phenix.resolve_cryo_em cannot determine the protein mask
-  # because no sequence, molecular mass, solvent content, or
-  # fraction_of_max_mask_threshold was provided.
-  #
-  # Example error:
-  #   Need solvent_content, molecular mass, a sequence file, or
-  #   fraction_of_max_mask_threshold to identify the mask for your molecule.
-  # ---------------------------------------------------------------------------
-  resolve_cryo_em_missing_mass:
-    description: "resolve_cryo_em cannot determine protein mask — sequence/mass missing"
-    programs:
-      - phenix.resolve_cryo_em
-    detection_patterns:
-      - "Need solvent_content, molecular mass, a sequence file"
-      - "fraction_of_max_mask_threshold.*identify the mask"
-      - "Need.*solvent_content.*molecular mass.*sequence"
-    message: |
-      phenix.resolve_cryo_em requires information to identify the protein
-      region of your map.  Please provide one of the following and restart:
-        • A sequence file (.fa / .fasta)  — recommended
-        • Molecular mass in Daltons        — e.g. project_advice="mass=50000"
-        • Solvent content (0–1)            — e.g. project_advice="solvent_content=0.5"
-      Restart the AI Agent with your sequence file included in the input files.

@@ -44,12 +44,6 @@ import re
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any, Tuple
 
-try:
-    from libtbx.utils import Sorry
-except ImportError:
-    class Sorry(Exception):
-        pass
-
 # Silence unused import warnings (these are used in type hints)
 assert Optional is not None
 assert Any is not None
@@ -176,10 +170,6 @@ class ErrorAnalyzer:
         """
         if not log_text:
             return None
-
-        # 0. Check for hard-stop errors first — these raise Sorry immediately
-        #    and cannot be auto-recovered.
-        self._check_hard_stop_errors(log_text, program)
 
         # 1. Detect error type
         error_type = self._detect_error_type(log_text)
@@ -378,41 +368,6 @@ class ErrorAnalyzer:
     # =========================================================================
     # RESOLUTION
     # =========================================================================
-
-    def _check_hard_stop_errors(self, log_text: str, program: str) -> None:
-        """
-        Check for hard-stop errors that cannot be auto-recovered.
-
-        These are errors that require user action (e.g. supplying a missing
-        sequence file). We raise Sorry immediately with a clear actionable
-        message rather than silently failing or looping.
-
-        Args:
-            log_text: Log/error text from the failed program
-            program: Program name that failed
-
-        Raises:
-            Sorry: If a hard-stop error is detected
-        """
-        hard_stops = self._config.get("hard_stop_errors", {})
-
-        for error_name, error_def in hard_stops.items():
-            # Check program filter (if specified, only match listed programs)
-            allowed_programs = error_def.get("programs", [])
-            if allowed_programs and program not in allowed_programs:
-                continue
-
-            # Check detection patterns
-            patterns = error_def.get("detection_patterns", [])
-            for pattern in patterns:
-                if re.search(pattern, log_text, re.IGNORECASE | re.DOTALL):
-                    message = error_def.get("message", "").strip()
-                    raise Sorry(
-                        "\n\n[AI Agent] Hard stop: %s\n\n%s" % (
-                            error_def.get("description", error_name),
-                            message
-                        )
-                    )
 
     def _determine_recovery(self, error_type: str, error_info: Dict[str, Any],
                            program: str, context: Dict[str, Any]) -> Optional[ErrorRecovery]:

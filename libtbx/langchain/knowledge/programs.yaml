@@ -1471,10 +1471,11 @@ phenix.resolve_cryo_em:
         extensions: [.mrc, .ccp4, .map]
         flag: ""
         multiple: true
-    optional:
       sequence:
         extensions: [.fa, .fasta, .seq, .dat]
         flag: "seq_file="
+        description: "Sequence file required to define protein mass for masking"
+    optional:
       ncs_spec:
         extensions: [.ncs_spec]
         flag: "ncs_file="
