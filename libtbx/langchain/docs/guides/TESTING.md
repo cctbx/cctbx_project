@@ -168,8 +168,10 @@ The `run_tests_with_fail_fast()` function automatically discovers tests:
 | `tst_template.py` | 5 | Template builder |
 | `tst_phaser_multimodel.py` | 3 | Phaser multi-model handling |
 | `tst_utils.py` | 2 | Assert helpers |
+| `tst_v112_13_fixes.py` | — | Companion files, intermediate filtering, file categorisation (v112.13) |
+| `tst_audit_fixes.py` | 21 | Audit regressions: `_is_failed_result`, zombie state, xtriage resolution, RSR map_cc, max_refine_cycles landing (v112.14) |
 
-Total: **800 tests across 35 files**
+Total: **825+ tests across 37 files**
 
 ### Key Tests for Recent Fixes
 
@@ -194,6 +196,15 @@ Total: **800 tests across 35 files**
 | `tst_autosol_partpdb_file_in_command` | tst_command_builder.py | autosol MR-SAD command includes partpdb_file=PHASER.1.pdb |
 | `tst_model_scoring_prefers_refined` | tst_best_files_tracker.py | Refined models scored higher than MR output |
 | `tst_predicted_model_exclusion` | tst_best_files_tracker.py | Predicted models excluded from model category |
+| `test_j2_is_failed_result_false_positives_eliminated` | tst_audit_fixes.py | "No ERROR detected" and similar must not suppress done flags |
+| `test_j5_zombie_cleared_when_output_missing` | tst_audit_fixes.py | resolve_cryo_em_done cleared when denmod_map.ccp4 missing |
+| `test_j5_refine_zombie_decrements_count` | tst_audit_fixes.py | refine_done zombie decrements refine_count (not just clears flag) |
+| `test_e1_e2_xtriage_resolution_dash_separator` | tst_audit_fixes.py | "50.00 - 2.30" format extracts 2.30 (not 50.0) |
+| `test_e2_xtriage_resolution_anchor_blocks_completeness_line` | tst_audit_fixes.py | "Completeness in resolution range: 1" must not match resolution pattern |
+| `test_e1_rsr_map_cc_uses_last_cycle` | tst_audit_fixes.py | RSR map_cc returns final macro-cycle value |
+| `test_i1_max_refine_cycles_xray_controlled_landing` | tst_audit_fixes.py | Hitting max_refine_cycles injects validate + STOP, not bare STOP |
+| `test_i1_max_refine_cycles_cryoem_uses_rsr_count` | tst_audit_fixes.py | Cryo-EM limit uses rsr_count, not refine_count |
+| `test_i2_after_program_beats_quality_gate` | tst_audit_fixes.py | after_program → STOP only (no validate injection) |
 
 ## Writing New Tests
 

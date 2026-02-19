@@ -548,12 +548,19 @@ def perceive(state):
             experiment_type = "cryoem"
     else:
         # Fall back to file-based detection
-        # DEFENSIVE: Filter out None values from available_files
-        available_files_clean = [f for f in available_files if f is not None]
+        # DEFENSIVE: Flatten and filter available_files — clients occasionally send
+        # nested lists (e.g. half-map pairs as [map1, map2] instead of two strings).
+        available_files_clean = []
+        for f in available_files:
+            if isinstance(f, list):
+                available_files_clean.extend(x for x in f if x and isinstance(x, str))
+            elif f is not None and isinstance(f, str):
+                available_files_clean.append(f)
         if len(available_files_clean) != len(available_files):
-            state = _log(state, "PERCEIVE: WARNING - Filtered %d None values from available_files" %
-                        (len(available_files) - len(available_files_clean)))
+            state = _log(state, "PERCEIVE: WARNING - Normalized available_files: %d -> %d entries (flattened lists / removed None)" %
+                        (len(available_files), len(available_files_clean)))
             available_files = available_files_clean
+            state = {**state, "available_files": available_files}
         has_map = any(f.lower().endswith(('.mrc', '.ccp4', '.map')) for f in available_files)
         has_mtz = any(f.lower().endswith(('.mtz', '.sca', '.hkl')) for f in available_files)
         experiment_type = "cryoem" if has_map and not has_mtz else "xray"
@@ -603,6 +610,11 @@ def perceive(state):
     elif explicit_prog and forced_prog and explicit_prog != forced_prog:
         state = _log(state, "PERCEIVE: Skipped explicit_program %s (forced_program %s takes precedence)" % (
             explicit_prog, forced_prog))
+
+    # J5: Log zombie state corrections so users know why a previously-run
+    # program is being offered again (helps debug crash/restart scenarios).
+    for diag in workflow_state.get("zombie_diagnostics", []):
+        state = _log(state, "PERCEIVE: ZOMBIE STATE — " + diag)
 
     # Debug categorization (helps diagnose model vs search_model issues)
     categorized = workflow_state.get("categorized_files", {})
@@ -657,6 +669,95 @@ def perceive(state):
     # Log valid_programs for debugging
     valid_progs = workflow_state.get("valid_programs", [])
     state = _log(state, "PERCEIVE: Valid programs: %s" % ", ".join(valid_progs))
+
+    # ── B9: Loop / stuck detection ────────────────────────────────────────────
+    # B9a: If the set of non-STOP valid_programs is identical for N consecutive
+    #      PERCEIVE cycles, the workflow is stuck.  Halt with a rich diagnostic
+    #      so the user (or developer) understands WHY nothing can advance.
+    # B9b: Dead-end check — flag any program whose done-flag is already True
+    #      (indicates a mismatch between condition logic and done_tracking).
+    #
+    # We compare *sorted* program lists so that ordering changes don't reset
+    # the counter, and we exclude STOP because a stuck-with-STOP state is
+    # already handled by the directive system.
+    _STUCK_THRESHOLD = 3  # consecutive identical cycles before halting
+
+    actionable_progs = sorted(p for p in valid_progs if p != "STOP")
+    prev_actionable  = sorted(
+        p for p in state.get("_prev_valid_programs", []) if p != "STOP"
+    )
+    if actionable_progs and actionable_progs == prev_actionable:
+        stuck_count = state.get("_stuck_count", 0) + 1
+    else:
+        stuck_count = 0  # reset on any change
+
+    state = {**state,
+             "_prev_valid_programs": list(valid_progs),
+             "_stuck_count": stuck_count}
+
+    # B9b: Dead-end detection
+    context_for_loop = workflow_state.get("context", {})
+    for prog in actionable_progs:
+        # Build the canonical done-flag for this program
+        short = prog.replace("phenix.", "").replace(".", "_")
+        done_key = short + "_done"
+        if context_for_loop.get(done_key):
+            state = _log(state,
+                "PERCEIVE: LOOP WARNING — %s is in valid_programs but %s=True. "
+                "Condition logic and done_tracking may be inconsistent." % (prog, done_key))
+
+    # B9c: Halt with diagnostic if stuck too long
+    if stuck_count >= _STUCK_THRESHOLD and actionable_progs:
+        diag_lines = [
+            "PERCEIVE: STUCK LOOP DETECTED — valid_programs has been %r for %d "
+            "consecutive cycles. Stopping to prevent infinite loop." % (
+                actionable_progs, stuck_count),
+            "PERCEIVE: STUCK DIAGNOSTIC — workflow phase: %s" % (
+                workflow_state.get("state", "unknown")),
+            "PERCEIVE: STUCK DIAGNOSTIC — phase reason: %s" % (
+                workflow_state.get("reason", "unknown")),
+        ]
+        # Log why each candidate program is blocked
+        try:
+            engine = workflow_state.get("_engine")  # injected by detect_workflow_state if available
+            exp_type = workflow_state.get("experiment_type", "unknown")
+            for prog in actionable_progs:
+                if engine:
+                    reason = engine.explain_unavailable_program(exp_type, prog, context_for_loop)
+                    if reason:
+                        diag_lines.append("PERCEIVE: STUCK DIAGNOSTIC — %s blocked: %s" % (prog, reason))
+        except Exception:
+            pass
+        # Key context flags for the diagnostic
+        key_flags = [k for k in sorted(context_for_loop.keys())
+                     if k.endswith("_done") or k.startswith("has_")]
+        flag_vals = {k: context_for_loop[k] for k in key_flags if context_for_loop.get(k)}
+        diag_lines.append("PERCEIVE: STUCK DIAGNOSTIC — truthy context flags: %s" % flag_vals)
+
+        for line in diag_lines:
+            state = _log(state, line)
+
+        return {
+            **state,
+            "log_analysis": analysis or {},
+            "metrics_history": metrics_history,
+            "metrics_trend": metrics_trend,
+            "workflow_state": workflow_state,
+            "command": "STOP",
+            "stop": True,
+            "stop_reason": "stuck_loop",
+            "abort_message": (
+                "Workflow is stuck: valid_programs=%r has not changed for %d cycles.\n"
+                "Phase: %s\nReason: %s\n\n"
+                "This usually means a done flag, file category, or condition is "
+                "preventing the workflow from advancing. Check the PERCEIVE log above "
+                "for 'STUCK DIAGNOSTIC' entries." % (
+                    actionable_progs, stuck_count,
+                    workflow_state.get("state", "unknown"),
+                    workflow_state.get("reason", "unknown"))
+            ),
+        }
+    # ── end B9 ───────────────────────────────────────────────────────────────
 
     # Log why common programs are NOT available (helps diagnose issues)
     unavailable = workflow_state.get("unavailable_explanations", {})
@@ -728,7 +829,8 @@ def perceive(state):
     best_files = session_info.get("best_files", {})
     if best_files:
         best_files_summary = ", ".join([
-            "%s=%s" % (k, os.path.basename(v)) for k, v in best_files.items() if v
+            "%s=%s" % (k, os.path.basename(v[0] if isinstance(v, list) else v))
+            for k, v in best_files.items() if v
         ])
         state = _log(state, "PERCEIVE: Best files: %s" % best_files_summary)
 
@@ -2553,6 +2655,11 @@ def validate(state):
     # First, strip output arguments from the command before extracting files
     output_pattern = r'output\.\w+=\S+'
     command_for_validation = re.sub(output_pattern, '', command)
+
+    # C7: Strip shell quotes before filename extraction so that quoted paths
+    # (e.g. '/data/My Files/model.pdb') are findable by basename matching.
+    # We replace quote chars with spaces to avoid fusing adjacent tokens.
+    command_for_validation = command_for_validation.replace("'", " ").replace('"', " ")
 
     file_pattern = r'[\w\-\.\/]+\.(?:pdb|mtz|fa|fasta|seq|cif|mrc|ccp4|map)\b'
     referenced_files = re.findall(file_pattern, command_for_validation, re.IGNORECASE)

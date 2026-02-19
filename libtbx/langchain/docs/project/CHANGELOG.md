@@ -1,6 +1,152 @@
 # PHENIX AI Agent - Changelog
 
-## Version 112.13 (February 2025)
+## Version 112.14 (Systematic Audit — Categories I, J, E, G, H)
+
+### I1: max_refine_cycles produces bare STOP instead of controlled landing (Fix 21)
+
+**`_apply_directives` returned `["STOP"]` when refinement limit reached**
+- When `max_refine_cycles` was reached, the workflow engine stripped
+  refinement programs and returned `["STOP"]`, terminating the workflow
+  without validation. This left the user with no quality report.
+- Fix: After removing refinement programs, `_apply_directives` now
+  injects the validate-phase programs appropriate to the experiment type
+  (`phenix.molprobity`, `phenix.model_vs_data`, `phenix.map_correlations`
+  for X-ray; `phenix.molprobity`, `phenix.validation_cryoem`,
+  `phenix.map_correlations` for cryo-EM), then appends STOP so the user
+  can still exit immediately if desired.
+- Also fixed: cryoem path was reading `context["refine_count"]` to check
+  the limit, but cryo-EM refinement is counted in `context["rsr_count"]`.
+  Now uses `rsr_count` for cryoem, `refine_count` for xray.
+- Design note: `after_program` continues to produce STOP only (it is an
+  explicit, unconditional stop). The validate-injection only applies to
+  `max_refine_cycles` (a "limit" directive, not a "stop here" directive).
+- Files: `agent/workflow_engine.py`
+
+### J2: `_is_failed_result` false-positives on bare ERROR variants (Fix 22)
+
+**Patterns `'ERROR '`, `': ERROR'`, `'ERROR:'` matched non-fatal log text**
+- Phenix logs routinely contain strings like "Error model parameter",
+  "Expected errors: 0", "No ERROR detected". All of these matched the
+  broad `ERROR ` / `ERROR:` / `: ERROR` patterns, causing legitimate
+  runs to be classified as failed and their done flags suppressed.
+- Priority order for failure detection (per spec J2):
+  1. Exit code (handled at the shell layer, before `_is_failed_result`)
+  2. Output file check
+  3. Log text with specific Phenix terminal phrases
+- Fix: Removed the three generic `ERROR` patterns. Retained the seven
+  Phenix-specific terminal failure signatures: `FAILED`, `SORRY:`,
+  `SORRY `, `*** ERROR`, `FATAL:`, `TRACEBACK`, `EXCEPTION`.
+  These cover all real Phenix failure modes without matching non-fatal text.
+- Files: `agent/workflow_state.py`
+
+### J5: Zombie state detection — stale done flags block re-execution (Fix 23)
+
+**Missing output files left done flags True, preventing re-run**
+- When the agent crashed mid-cycle or the user deleted output files, the
+  history record retained `done_flag=True`. The phase detector saw
+  `done=True` and skipped the program, but file-based flags
+  (`has_full_map`, `has_placed_model`) were False because no file was
+  found. The workflow became stuck.
+- Fix: `_clear_zombie_done_flags(history_info, available_files)` checks
+  each done flag against its expected output file pattern. If the flag
+  is True but no matching file exists in `available_files`, it clears
+  the flag (and associated file flags) in-memory without modifying
+  history. Diagnostic messages are emitted to PERCEIVE.
+- Programs covered:
+  - `resolve_cryo_em_done` → `denmod_map.ccp4` → also clears `has_full_map`
+  - `predict_full_done` → `*_overall_best.pdb` → also clears `has_placed_model`
+  - `dock_done` → `*_docked.pdb` → also clears `has_placed_model`
+  - `refine_done` → `*_refine_001.pdb` → decrements `refine_count`
+  - `rsr_done` → `*_real_space_refined*.pdb` → decrements `rsr_count`
+- Files: `agent/workflow_state.py`
+
+### E1: xtriage resolution regex extracts 50.0 instead of 2.3 (Fix 24)
+
+**Dash separator in "50.00 - 2.30" format not handled by skip group**
+- The pattern `(?:[0-9.]+\s+)?` was designed to skip the low-resolution
+  limit and capture the high-resolution limit. But xtriage formats the
+  range as `50.00 - 2.30` (space-dash-space), not `50.00 2.30` (space
+  only). With the dash present the optional skip group backtracks, and
+  the capture group then matches `50.00` — the wrong value. `pick_min`
+  across all lines then returned 50.0 instead of 2.3.
+- Fix: Changed `(?:[0-9.]+\s+)?` to `(?:[0-9.]+\s*[-]\s*)?`. The skip
+  group now explicitly handles the dash separator. The pattern still
+  handles `Resolution: 1.80` (no range, skip group does not fire).
+  The negative lookbehind anchors prevent "Completeness in resolution
+  range: 1" from matching (J2-era fix retained).
+- Files: `knowledge/programs.yaml` (`phenix.xtriage` `resolution` pattern)
+
+### E1: real_space_refine map_cc returns first cycle instead of final (Fix 25)
+
+**`extract: first` (default) captured the initial, worst map_cc value**
+- RSR emits one `CC_mask =` line per macro-cycle. With `extract: first`
+  the initial (lowest) map_cc was reported rather than the final (best).
+  This caused the agent to incorrectly judge model quality as poor and
+  over-refine.
+- Also fixed: the pattern `CC_mask\s*[=:]\s*([0-9.]+)` was narrower
+  than the standard map_cc pattern used by all other programs. Broadened
+  to `(?:CC_mask|Map-CC|Model vs map CC)\s*[:=]?\s*([0-9.]+)` for
+  consistency.
+- Files: `knowledge/programs.yaml` (`phenix.real_space_refine` `map_cc` spec)
+
+### G1: holton_geometry_validation defined but not in any workflow phase (Verified)
+
+`phenix.holton_geometry_validation` is registered in `programs.yaml`
+with `done_tracking` but deliberately not in any `workflows.yaml` phase.
+Added an audit comment to clarify the intentional status and document
+how to activate it (add to the validate phase in `workflows.yaml`).
+Files: `knowledge/programs.yaml`
+
+### H1/H3: STATE_MAP comments clarified (Documentation)
+
+- `cryoem_has_model`: The state string assigned to `check_map` and
+  `optimize_map` is a legacy misnomer — no model exists at that point.
+  No behavioral code gates on this string; `phase_info["phase"]` is
+  used for all internal decisions. Comment added.
+- `validate` shares state string with `refine` (`xray_refined` /
+  `cryoem_refined`): This is intentional for external API compatibility.
+  Internal code always uses `phase_info["phase"]` to distinguish them.
+  Comment added.
+- Files: `agent/workflow_engine.py`
+
+### J5d: Zombie state diagnostics silently discarded (Fix 26)
+
+**`_clear_zombie_done_flags()` return value was ignored**
+- `detect_workflow_state()` called `_clear_zombie_done_flags()` but did not
+  capture the return value. The done-flag clearing worked correctly (in-memory
+  modification), but the diagnostic messages explaining *why* a previously
+  "done" program reappeared in `valid_programs` were silently lost.
+- Without these diagnostics, users and developers had no way to know that a
+  zombie state was detected and resolved — making crash/restart scenarios very
+  confusing to debug.
+- Fix: captured the return value as `zombie_diagnostics` and added it to the
+  state dict under key `"zombie_diagnostics"` (present only when non-empty).
+  The PERCEIVE node now logs each diagnostic prefixed with
+  `"PERCEIVE: ZOMBIE STATE — "`.
+- Files: `agent/workflow_state.py`, `agent/graph_nodes.py`
+
+### Regression tests added: `tests/tst_audit_fixes.py`
+
+27 tests covering all bugs found and fixed in this audit session:
+
+- **J2** (3 tests): `_is_failed_result` true positives, false positive
+  elimination, done-flag blocking on failure
+- **J5** (5 tests): Zombie detection for resolve_cryo_em, refine, dock;
+  preservation when output exists; rsr_count decrement
+- **E1/E2** (6 tests): xtriage resolution dash-separator, completeness
+  anchor, simple format, multiple ranges; RSR map_cc last-cycle and
+  pattern variants
+- **I1** (2 tests): X-ray controlled landing (validate + STOP injected);
+  cryo-EM rsr_count used (not refine_count)
+- **I2** (1 test): after_program → STOP only (no validate injection)
+- **I1b** (2 tests): xray and cryoem complete phase → [STOP] after validation_done=True (clean-termination path)
+- **J5 zombie surfacing** (2 tests): `zombie_diagnostics` present in state when zombie cleared; absent for clean state
+- **YAML spec** (4 tests): xtriage pick_min, RSR map_cc extract:last,
+  RSR clashscore extract:last, polder requires_selection invariant
+
+Tests registered in `tests/run_all_tests.py` as "Audit Fix Regressions".
+
+
 
 ### Explicit program injection overrides multi-step directives (Fix 19)
 

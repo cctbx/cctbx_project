@@ -83,10 +83,11 @@ phenix.xtriage:
       # embedded "resolution" in that sentence and pick_min selected 1.0 instead
       # of the real high-resolution limit.
       #
-      # For range lines, (?:[0-9.]+\s+)? skips the low-res limit and captures the
-      # high-res value.  pick_min takes the smallest value across all matching
-      # lines (in case xtriage reports resolution in multiple places).
-      pattern: '^\s*(?<!nomalous )(?<!nomalous  )Resolution\s*(?:range)?\s*[=:]\s*(?:[0-9.]+\s+)?([0-9.]+)'
+      # For range lines, (?:[0-9.]+\s*[-]\s*)? skips the low-res limit and its
+      # dash separator (e.g. "50.00 - ") and captures the high-res value ("2.30").
+      # Also handles "Resolution: 2.30" (no range, no skip group fires).
+      # pick_min takes the smallest value across all matching lines.
+      pattern: '^\s*(?<!nomalous )(?<!nomalous  )Resolution\s*(?:range)?\s*[=:]\s*(?:[0-9.]+\s*[-]\s*)?([0-9.]+)'
       type: float
       pick_min: true
       min_value: 0.5
@@ -176,6 +177,8 @@ phenix.mtriage:
       - resolution
       - map_cc
 
+  # Half-maps provide FSC-based resolution; keep them even when full_map is also provided
+  keep_half_maps_with_full_map: true
   command: "phenix.mtriage {half_map} {full_map}"
 
   log_parsing:
@@ -242,23 +245,33 @@ phenix.map_symmetry:
 
   log_parsing:
     symmetry_type:
-      # Match "NCS type: D7 (a)" or "D7 (a)  Best NCS type"
-      pattern: 'NCS\s+type[:\s]+([A-Z]\d+(?:\s*\([a-z]\))?)|([A-Z]\d+(?:\s*\([a-z]\))?)\s+Best\s+NCS'
+      # Anchor to "Final symmetry obtained:" section at end of log.
+      # "NCS type: O (a)" appears there exactly once after the best is chosen.
+      # extract: last guards against intermediate "NCS type:" lines earlier in the log.
+      # Fallback catches the table line "O (a)  Best NCS type" if the final section
+      # is absent (older phenix versions).
+      pattern: 'NCS\s+type:\s+([A-Z]\d*(?:\s*\([a-z]\))?)'
+      fallback_pattern: '([A-Z]\d*(?:\s*\([a-z]\))?)\s+Best\s+NCS\s+type'
       type: string
+      extract: last
       display_name: "Symmetry Type"
       summary_format: "{value}"
       no_match_pattern: 'No suitable symmetry found|No symmetry found'
       no_match_value: "None"
     ncs_copies:
-      # Match "Copies: 14" or "OPERATORS" column value
-      pattern: 'Copies[:\s]+(\d+)|OPERATORS\s+SYMMETRY\s+[\d.]+\s+[\d.]+\s+(\d+)'
+      # "Copies: 24" appears in the "Final symmetry obtained:" section.
+      # extract: last skips intermediate table rows that may show wrong operator counts.
+      pattern: 'Copies:\s+(\d+)'
       type: int
+      extract: last
       display_name: "NCS Copies"
       summary_format: "{value} copies"
     ncs_cc:
-      # Match "Correlation of symmetry-related regions: 0.93" or CC column
-      pattern: 'Correlation[^:]*:\s*([0-9.]+)|CC\s+OPERATORS\s+[\d.]+\s+([0-9.]+)'
+      # "Correlation of symmetry-related regions: 1.00" in final section.
+      # extract: last skips CC values from intermediate candidate table rows.
+      pattern: 'Correlation of symmetry-related regions:\s*([0-9.]+)'
       type: float
+      extract: last
       display_name: "NCS CC"
       summary_format: "CC: {value:.2f}"
 
@@ -333,6 +346,8 @@ phenix.predict_and_build:
       - r_work
       - map_cc
 
+  # Half-maps are used for density modification alongside the full map
+  keep_half_maps_with_full_map: true
   command: "phenix.predict_and_build {sequence} {data_mtz} {full_map} {half_map} {ncs_spec}"
 
   defaults:
@@ -949,6 +964,8 @@ phenix.map_to_model:
     metrics:
       - map_cc
 
+  # Half-maps enable FSC-based filtering in map_to_model
+  keep_half_maps_with_full_map: true
   command: "phenix.map_to_model {full_map} {half_map} {sequence} {partial_model}"
 
   defaults:
@@ -1276,8 +1293,12 @@ phenix.real_space_refine:
 
   log_parsing:
     map_cc:
-      pattern: 'CC_mask\s*[=:]\s*([0-9.]+)'
+      # E1/E2 fix: RSR emits one CC_mask line per macro-cycle; extract:last
+      # gives the final (best) value rather than the first (initial) value.
+      # Pattern broadened to also catch "Map-CC" and "Model vs map CC" variants.
+      pattern: '(?:CC_mask|[Mm]ap[-_\s]?CC|[Mm]odel[-_\s]?vs[-_\s]?map\s+CC)\s*[:=]?\s*([0-9.]+)'
       type: float
+      extract: last
       display_name: "Map CC"
       summary_format: "{value:.3f}"
     clashscore:
@@ -1906,6 +1927,12 @@ phenix.validation_cryoem:
       display_name: "Map CC"
 
 
+
+# G1 audit note: phenix.holton_geometry_validation is registered here but is NOT
+# listed in any workflow phase (workflows.yaml).  This is intentional: the program
+# is recorded for future use and its done_tracking is harmless (the flag 'validation_done'
+# will never be set from history since the program never runs via the agent workflow).
+# To activate it: add it as an optional program in the validate phase of workflows.yaml.
 phenix.holton_geometry_validation:
   description: "Detailed geometry validation with energy scoring"
   category: validation

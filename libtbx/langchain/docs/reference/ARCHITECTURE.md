@@ -168,6 +168,18 @@ Extracts metrics and output files from program log output:
 
 **Note**: Metric extraction patterns are defined in `programs.yaml` and loaded via `metric_patterns.py`. Hardcoded extractors in log_parsers.py only handle complex cases (tables, multi-line context) that YAML patterns can't express.
 
+**YAML `log_parsing` pattern conventions** (see `programs.yaml`):
+
+| Field | Values | Usage |
+|-------|--------|-------|
+| `extract` | `first` (default), `last` | `last` required when a program emits one metric line per cycle (RSR, autobuild, phaser) |
+| `pick_min` | `true` | After collecting all matches, take the minimum value. Used for xtriage `resolution` (multiple lines; smallest value = highest resolution) |
+| `type` | `float`, `int`, `string`, `boolean` | Controls return type |
+
+**Important audited patterns** (fixes applied in v112.14):
+- `phenix.xtriage` `resolution`: uses `pick_min: true`. Pattern anchored with `^\s*` and negative lookbehind to prevent "Completeness in resolution range: 1" from matching. Skip group `(?:[0-9.]+\s*[-]\s*)?` handles "50.00 - 2.30" format.
+- `phenix.real_space_refine` `map_cc`: uses `extract: last`. RSR emits one CC_mask line per macro-cycle; `last` gives the final value.
+
 **Adding new program support:**
 See [ADDING_PROGRAMS.md](../guides/ADDING_PROGRAMS.md) for the complete guide.
 
@@ -468,9 +480,21 @@ request = build_request_v2(
     history=cycle_history,
     session_state=session_state,
     user_advice=guidelines,
-    ...
-)
+    ...\n)
 ```
+
+**`best_files` value type contract:** Most entries are plain strings (`category → path`). However, multi-file entries such as `half_map` may be stored as a list:
+
+```python
+"best_files": {
+    "model":    "/path/to/model.pdb",       # single file → str
+    "half_map": ["/path/map1.mrc", "/path/map2.mrc"],  # two files → list
+}
+```
+
+All server-side code that reads `best_files` values must handle both types. Use `CommandBuilder._best_path(value)` to safely extract a single path from either a string or a list. Do **not** pass `best_files` values directly to `os.path` functions — this caused a cycle=2 crash (`TypeError: expected str, bytes or os.PathLike, not list`) that only surfaced when `session_state` was re-sent from a client that stored `half_map` as a list.
+
+**Programs that need both `full_map` and `half_map` simultaneously:** Several programs (`phenix.mtriage`, `phenix.predict_and_build`, `phenix.map_to_model`) accept both a full map AND half maps at once — the half maps are not redundant, they enable FSC-based resolution calculation or density modification. These programs are marked `keep_half_maps_with_full_map: true` in `programs.yaml`. The post-selection validation in `CommandBuilder._select_files()` checks this flag before removing half maps. When adding a new program that needs both simultaneously, add this flag to its YAML entry.
 
 ### Request Processing (Server)
 
@@ -644,7 +668,7 @@ xray_initial → xtriage → xray_analyzed
 | `xray_mr_sad` | After phaser + anomalous data (MR-SAD) | autosol (with partpdb_file) |
 | `xray_has_phases` | After experimental phasing | autobuild |
 | `xray_has_model` | Have placed model | refine |
-| `xray_refined` | After refinement | refine, molprobity, autobuild, STOP |
+| `xray_refined` | After refinement **or** validation (`refine` and `validate` phases share this external state; internal `phase_info["phase"]` distinguishes them) | refine, molprobity, autobuild, STOP |
 
 ### Cryo-EM Workflow
 
@@ -670,8 +694,68 @@ cryoem_initial → mtriage → cryoem_analyzed
 |-------|-------------|----------------|
 | `cryoem_initial` | Starting point | mtriage |
 | `cryoem_analyzed` | After map analysis | predict_and_build, dock_in_map |
-| `cryoem_has_model` | Model in map | real_space_refine |
-| `cryoem_refined` | After refinement | real_space_refine, molprobity, STOP |
+| `cryoem_has_model` | Half-map optimisation / model check (legacy name — no model yet; `check_map` and `optimize_map` phases) | resolve_cryo_em, map_sharpening |
+| `cryoem_docked` | Model docked, ready for first real-space refinement (`ready_to_refine` phase) | real_space_refine |
+| `cryoem_refined` | After refinement **or** validation (`refine` and `validate` phases share this external state; internal `phase_info["phase"]` distinguishes them) | real_space_refine, molprobity, STOP |
+
+## Workflow History and Done Flags
+
+`workflow_state.py` maintains two complementary systems for tracking
+completed programs:
+
+### _analyze_history: done flag extraction
+
+`_analyze_history(history)` reads the history list and sets done flags
+(`refine_done`, `resolve_cryo_em_done`, …) based on marker strings in
+each record's `result` field. Key invariants:
+
+- **Failure blocks flags**: `_is_failed_result(result)` is checked
+  first. If the result is a failure, all done-flag extraction for that
+  record is skipped. Failure signals (in priority order):
+  1. Shell exit code (caught at the subprocess layer before this function)
+  2. Specific Phenix terminal phrases: `FAILED`, `SORRY:`, `SORRY `,
+     `*** ERROR`, `FATAL:`, `TRACEBACK`, `EXCEPTION`
+  - Generic `ERROR` words without those prefixes are **not** failure
+    signals — Phenix logs contain "Error model parameter", "Expected
+    errors: 0", etc. and these must not suppress done flags.
+
+- **predict_and_build cascade**: `predict_full_done` additionally sets
+  `refine_done=True` and increments `refine_count` (Python-only; no
+  YAML `history_detection` entry) because a full `predict_and_build`
+  run includes refinement internally.
+
+### _clear_zombie_done_flags: crash recovery
+
+After `_analyze_history`, `detect_workflow_state` calls
+`_clear_zombie_done_flags(history_info, available_files)`.
+
+A **zombie state** occurs when the agent crashed mid-cycle or the user
+deleted output files: history records `done_flag=True`, but the output
+file is missing from disk. The phase detector sees `done=True` and
+skips the program; the workflow becomes stuck.
+
+The function checks each crashable done flag against its expected
+output filename pattern:
+
+| Done flag | Expected output | Also clears | Any-PDB fallback |
+|-----------|----------------|-------------|-----------------|
+| `resolve_cryo_em_done` | `denmod*.ccp4/mrc` | `has_full_map` | No |
+| `predict_full_done` | `*_overall_best.pdb` | `has_placed_model` | Yes |
+| `dock_done` | `*docked*.pdb`, `*dock*map*.pdb`, `placed_model*.pdb`, `*_placed*.pdb` | `has_placed_model` | Yes |
+| `refine_done` | `*_refine_NNN.pdb` | decrements `refine_count` | Yes |
+| `rsr_done` | `*_real_space_refined*.pdb` | decrements `rsr_count` | Yes |
+
+**Any-PDB fallback**: when `True`, the presence of any `.pdb` file on disk suppresses
+zombie detection even if the pattern doesn't match. Used for model-producing programs
+where output may be renamed. `resolve_cryo_em_done` uses `False` because `denmod_map.ccp4`
+is referenced by name downstream.
+
+Flags are cleared **in-memory only** — history is never rewritten.
+The function returns a `zombie_diagnostics` list which `detect_workflow_state`
+attaches to the state dict under the key `"zombie_diagnostics"`. The PERCEIVE
+node logs each entry prefixed `"PERCEIVE: ZOMBIE STATE — "`. This makes
+crash/restart re-runs self-explaining: the user can see exactly which done flag
+was cleared and why the program appears again.
 
 ## Best Files Tracking
 

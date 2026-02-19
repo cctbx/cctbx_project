@@ -44,6 +44,10 @@ Test Suites (require PHENIX environment):
 
   33. Langchain Tools - Legacy module tests (core, analysis, RAG, validation, prompts, memory)
   34. Hardcoded Cleanup - Conformance guards for YAML-driven architecture (v112.10)
+  35. v112.13 Fixes - Companion files, intermediate filtering, file categorisation
+  36. Audit Fix Regressions - Categories I/J/E/G/H: max_refine_cycles landing, zombie
+      state detection, _is_failed_result false-positives, xtriage resolution regex,
+      real_space_refine map_cc extract strategy (v112 systematic audit)
 
 Key Tests for Recent Fixes (v110):
   - tst_best_files_tracker: Model scoring, autobuild_output same score as refined
@@ -52,6 +56,7 @@ Key Tests for Recent Fixes (v110):
   - tst_session_summary: STOP cycle exclusion from counts
   - tst_history_analysis: Anomalous workflow, analysis/metrics key handling
   - tst_file_utils: Shared MTZ classification (consolidation fix)
+  - tst_audit_fixes: Systematic audit regressions (v112 Categories I/J/E/G/H)
 
 Usage:
     python tests/run_all_tests.py
@@ -476,6 +481,16 @@ def main():
     except ImportError as e:
         print(f"⚠️  Could not import tst_v112_13_fixes: {e}")
         results.append(("v112.13 Fixes", False, 0))
+
+    # --- Audit Fix Regression Tests (Categories I, J, E, G, H) ---
+    try:
+        from tests.tst_audit_fixes import run_all_tests as run_audit_fixes_tests
+        success, elapsed = run_test_module(
+            "tst_audit_fixes", run_audit_fixes_tests, args.verbose)
+        results.append(("Audit Fix Regressions", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_audit_fixes: {e}")
+        results.append(("Audit Fix Regressions", False, 0))
 
     # --- Summary ---
     total_elapsed = time.time() - total_start

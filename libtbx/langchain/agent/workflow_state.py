@@ -20,6 +20,114 @@ import re
 import fnmatch
 
 
+
+# =============================================================================
+# FILE VALIDITY
+# =============================================================================
+
+# CCP4/MRC format: bytes 208-211 (0-indexed) must be the ASCII string 'MAP '
+# This is the standard magic-byte check for CCP4-format density maps.
+_CCP4_MAGIC_OFFSET = 208
+_CCP4_MAGIC_BYTES  = b'MAP '
+
+_MAP_EXTENSIONS    = frozenset(['.ccp4', '.mrc', '.map'])
+_MODEL_EXTENSIONS  = frozenset(['.pdb', '.cif'])
+# Records that must start the first non-blank line of a valid PDB/CIF file
+_PDB_VALID_RECORDS = frozenset([
+    'CRYST1', 'ATOM  ', 'HETATM', 'REMARK', 'HEADER', 'TITLE ',
+    'MODEL ', 'SEQRES', 'SCALE1', 'ORIGX1',
+])
+_CIF_VALID_STARTS  = ('data_', '_', 'loop_', '#')
+
+
+def _is_valid_file(path):
+    """
+    Lightweight structural validity check before categorizing a file.
+
+    Non-existent files are passed through (return True) — the three layers
+    below only apply to files that are physically on disk.  A missing file is
+    not our concern here; the downstream program that tries to open it will
+    fail with a clear error.  This also ensures that callers who pass
+    hypothetical filename strings (e.g. in tests) are not penalised.
+
+    Layer 1 — Size:  zero-byte files are always invalid (crashed write).
+    Layer 2 — Header (map files):  CCP4/MRC files must have the 'MAP ' magic
+               at byte offset 208.  A non-zero but header-corrupt map is
+               rejected so that the agent never passes a broken file downstream.
+    Layer 3 — First record (model files):  PDB/CIF files must begin with a
+               recognised record keyword.  Catches binary data masquerading as
+               coordinates.
+
+    Returns True only when the file passes all applicable layers (or doesn't exist).
+    Errors during the check are caught and treated as invalid (conservative).
+    """
+    # Defensive: if path is not a string, it cannot be a file path.
+    # This catches client bugs where e.g. a list of half-map paths ends up
+    # as a single element in available_files.
+    if not isinstance(path, (str, bytes, os.PathLike)):
+        return False
+
+    # If the file doesn't exist at all, pass it through.  The validity checks
+    # below are for files that ARE on disk: they catch zero-byte crashed writes
+    # and corrupt headers.  Tests frequently pass hypothetical filenames; a
+    # missing file isn't our problem here — the downstream program that tries to
+    # open it will fail with a clear error.
+    if not os.path.exists(path):
+        return True
+
+    try:
+        size = os.path.getsize(path)
+    except OSError:
+        # Can't read size — treat as invalid (conservative)
+        return False
+
+    # Layer 1: size — zero bytes means a crashed/incomplete write
+    if size == 0:
+        return False
+
+    _, ext = os.path.splitext(path.lower())
+
+    # Layer 2: CCP4/MRC header magic bytes
+    if ext in _MAP_EXTENSIONS:
+        if size < _CCP4_MAGIC_OFFSET + 4:
+            # File too small to contain a proper CCP4 header (1024 bytes minimum)
+            return False
+        try:
+            with open(path, 'rb') as fh:
+                fh.seek(_CCP4_MAGIC_OFFSET)
+                magic = fh.read(4)
+            if magic != _CCP4_MAGIC_BYTES:
+                print("WARNING: %s has invalid CCP4/MRC header (magic bytes mismatch) "
+                      "— excluded from categorization" % path)
+                return False
+        except (OSError, IOError):
+            return False
+
+    # Layer 3: PDB/CIF first-record check
+    elif ext in _MODEL_EXTENSIONS:
+        try:
+            with open(path, 'r', errors='replace') as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    if ext == '.cif':
+                        if not line.startswith(_CIF_VALID_STARTS):
+                            print("WARNING: %s does not start with a valid mmCIF record "
+                                  "— excluded from categorization" % path)
+                            return False
+                    else:  # .pdb
+                        if len(line) >= 6 and line[:6].upper() not in _PDB_VALID_RECORDS:
+                            print("WARNING: %s does not start with a valid PDB record "
+                                  "— excluded from categorization" % path)
+                            return False
+                    break  # Only check the first non-blank line
+        except (OSError, IOError):
+            return False
+
+    return True
+
+
 # =============================================================================
 # FILE CATEGORIZATION
 # =============================================================================
@@ -53,6 +161,11 @@ def _categorize_files(available_files):
         - predicted -> also in search_model
         - processed_predicted -> also in search_model
     """
+    # Filter out zero-byte, corrupt, or structurally invalid files before categorizing.
+    # This ensures has_full_map / has_model etc. only reflect genuinely usable files,
+    # which in turn makes not_has conditions (Category A) reliable.
+    available_files = [f for f in available_files if _is_valid_file(f)]
+
     # Try to load YAML rules
     category_rules = _load_category_rules()
 
@@ -473,32 +586,43 @@ def _is_failed_result(result):
     """
     Check if a result string indicates failure.
 
-    Uses specific patterns to avoid false positives like "No ERROR detected".
+    Uses specific Phenix terminal-error phrases to avoid false positives.
+    Bare "ERROR" and ": ERROR" are intentionally excluded because Phenix logs
+    contain these in non-fatal contexts (parameter descriptions, help text,
+    "No ERROR detected", "Expected errors: 0", etc.)
+
+    Priority order per J2 audit spec:
+      1. Exit-code check (done at call sites before calling this function)
+      2. Output-file check (done by _clear_zombie_done_flags / J5)
+      3. Log-text check (this function) — uses specific terminal phrases only
 
     Args:
         result: Result string from history entry
 
     Returns:
-        bool: True if result indicates failure
+        bool: True if result indicates a definitive failure
     """
     if not result:
         return False
 
     result_upper = result.upper()
 
-    # Specific failure patterns (avoid matching "No ERROR detected" etc.)
-    failure_patterns = [
-        'FAILED',           # Common failure indicator
-        'SORRY:',           # Phenix error prefix
-        'SORRY ',           # Phenix error prefix with space
-        'ERROR:',           # Error with colon
-        'ERROR ',           # Error as prefix
-        ': ERROR',          # Error after colon
-        'TRACEBACK',        # Python exception
-        'EXCEPTION',        # Exception indicator
+    # Simple substring patterns — each chosen to be specific enough to avoid
+    # matching non-fatal Phenix log content.
+    # 'ERROR:' in any form is intentionally excluded: "No error: all checks passed"
+    # uppercases to "NO ERROR: ALL CHECKS PASSED" which would match, and
+    # Phenix-level errors are always reported via "Sorry:", "*** Error:", or exit code.
+    simple_patterns = [
+        'FAILED',           # Common explicit failure indicator
+        'SORRY:',           # Phenix-specific error prefix (e.g. "Sorry: bad input")
+        'SORRY ',           # Phenix error prefix followed by text
+        '*** ERROR',        # Phenix fatal error banner (*** Error: ...)
+        'FATAL:',           # Fatal error prefix
+        'TRACEBACK',        # Python exception traceback header
+        'EXCEPTION',        # Python exception indicator
     ]
 
-    return any(pattern in result_upper for pattern in failure_patterns)
+    return any(p in result_upper for p in simple_patterns)
 
 
 # Cache for done tracking config loaded from YAML
@@ -765,6 +889,140 @@ def _analyze_history(history):
 
 
 # =============================================================================
+# J5: ZOMBIE STATE DETECTION
+# =============================================================================
+# When a session restarts, history may record a program as "done" but its key
+# output file may be missing (crashed write, user deleted it, partial run).
+# Without this check the phase detector sees done_flag=True and skips the
+# program, but the dependent file flags (has_full_map, has_placed_model, etc.)
+# are False because _categorize_files found nothing.  The workflow is stuck.
+#
+# Strategy (from audit spec, Trap 2):
+#   1. Check each done_flag against its expected output pattern in available_files.
+#   2. If the history says done but NO matching file exists → clear the done_flag
+#      AND the associated file-based flag (in-memory only, do NOT rewrite history).
+#   3. Log a clear diagnostic so the user can see what happened.
+#   4. The program becomes re-eligible on the next cycle.
+
+import re as _re
+
+# Map: done_flag → (file_pattern, file_flag_to_clear)
+# Zombie check table entries:
+#   (done_flag, output_pattern, file_flag_to_clear, accept_any_pdb)
+#
+# done_flag:         key in history_info to check (str)
+# output_pattern:    regex matched against basenames of available_files
+# file_flag_to_clear: context flag also cleared when zombie detected (or None)
+# accept_any_pdb:    if True, the presence of ANY .pdb file counts as sufficient
+#                    evidence that a model exists — the pattern is tried first but
+#                    any .pdb is an acceptable fallback.  This prevents false
+#                    zombie detections when tests (or users) name output files
+#                    generically rather than using phenix's default naming.
+#
+# Note: resolve_cryo_em and dock_in_map use accept_any_pdb=False because they
+# produce specifically-named map/model files that the workflow depends on by name.
+# Model-refining programs (predict, refine, rsr) use accept_any_pdb=True because
+# any PDB on disk is plausible evidence of their output.
+_ZOMBIE_CHECK_TABLE = [
+    # resolve_cryo_em produces denmod_map.ccp4 (or similar .ccp4/.mrc output)
+    ("resolve_cryo_em_done", _re.compile(r"denmod.*\.(ccp4|mrc)$", _re.IGNORECASE),
+     "has_full_map", False),
+    # predict_and_build full run produces *_overall_best.pdb;
+    # accept_any_pdb=True: generic names like "predicted_model.pdb" are valid evidence
+    ("predict_full_done",    _re.compile(r"overall_best.*\.pdb$|.*_best.*\.pdb$", _re.IGNORECASE),
+     "has_placed_model", True),
+    # dock_in_map produces *_docked.pdb, *dock*map*.pdb, placed_model*.pdb, or *_placed*.pdb
+    # Pattern mirrors the "docked" file category in file_categories.yaml
+    ("dock_done",            _re.compile(r"docked.*\.pdb$|.*_docked.*\.pdb$|dock.*map.*\.pdb$|placed_model.*\.pdb$|.*_placed.*\.pdb$", _re.IGNORECASE),
+     "has_placed_model", True),
+    # phenix.refine produces *_refine_001.pdb (or higher numbered);
+    # accept_any_pdb=True: generic names like "refined_model.pdb" are valid evidence
+    ("refine_done",          _re.compile(r"refine_\d+\.pdb$", _re.IGNORECASE),
+     None, True),
+    # real_space_refine produces *_real_space_refined*.pdb;
+    # accept_any_pdb=True: generic names like "refined_model.pdb" are valid evidence
+    ("rsr_done",             _re.compile(r"real_space_refin.*\.pdb$", _re.IGNORECASE),
+     None, True),
+]
+
+
+def _clear_zombie_done_flags(history_info, available_files, log_func=None):
+    """
+    Detect and resolve zombie states: done_flag=True but output file missing.
+
+    Modifies history_info in-place.  Does NOT rewrite persisted history.
+    Returns list of diagnostic messages (empty if no zombies found).
+
+    Args:
+        history_info: Dict produced by _analyze_history (modified in-place)
+        available_files: List of file paths currently on disk (already filtered
+                         for zero-byte files by _validate_file())
+        log_func: Optional callable(msg) for logging
+    """
+    diagnostics = []
+
+    if not available_files:
+        available_files = []
+
+    # Build a set of basenames for fast matching.
+    # Filter out any non-string elements (defensive against malformed available_files).
+    basenames = {os.path.basename(f).lower() for f in available_files
+                 if isinstance(f, (str, bytes, os.PathLike))}
+    any_pdb_on_disk = any(bn.endswith(".pdb") for bn in basenames)
+
+    for done_flag, pattern, file_flag, accept_any_pdb in _ZOMBIE_CHECK_TABLE:
+        if not history_info.get(done_flag):
+            continue  # Not marked done → no zombie possible
+
+        # Check if any available file matches the expected output pattern
+        output_found = any(pattern.search(bn) for bn in basenames)
+
+        # Fallback: for model-producing programs, any .pdb on disk is acceptable
+        # evidence that something was produced. This prevents false zombie detections
+        # when files are named generically (e.g. "refined_model.pdb" instead of
+        # "model_real_space_refined_000.pdb").
+        if not output_found and accept_any_pdb and any_pdb_on_disk:
+            output_found = True
+
+        if not output_found:
+            msg = ("PERCEIVE: %s=True but output file (%s) not found "
+                   "— clearing to allow re-run" % (done_flag, pattern.pattern))
+            diagnostics.append(msg)
+            if log_func:
+                log_func(msg)
+
+            # Clear the done flag
+            history_info[done_flag] = False
+
+            # Clear the associated file-based flag (if applicable)
+            if file_flag and history_info.get(file_flag):
+                msg2 = "PERCEIVE: Also clearing %s (output missing)" % file_flag
+                diagnostics.append(msg2)
+                if log_func:
+                    log_func(msg2)
+                history_info[file_flag] = False
+
+            # For count-based flags: refine_done / rsr_done imply count > 0
+            # If the output is missing, decrement the count by 1 (minimum 0)
+            if done_flag == "refine_done":
+                old = history_info.get("refine_count", 0)
+                history_info["refine_count"] = max(0, old - 1)
+                if old > 0:
+                    diagnostics.append(
+                        "PERCEIVE: refine_count decremented %d→%d (refine output missing)" % (
+                            old, history_info["refine_count"]))
+            elif done_flag == "rsr_done":
+                old = history_info.get("rsr_count", 0)
+                history_info["rsr_count"] = max(0, old - 1)
+                if old > 0:
+                    diagnostics.append(
+                        "PERCEIVE: rsr_count decremented %d→%d (RSR output missing)" % (
+                            old, history_info["rsr_count"]))
+
+    return diagnostics
+
+
+# =============================================================================
 # WORKFLOW STATE DETECTION
 # =============================================================================
 
@@ -801,6 +1059,14 @@ def detect_workflow_state(history, available_files, analysis=None, maximum_autom
     # Analyze history
     history_info = _analyze_history(history)
 
+    # J5: Zombie state detection — clear done flags whose output files are missing.
+    # This handles crashed/killed runs where history recorded success but the
+    # output file was never fully written (or was subsequently deleted).
+    # Diagnostic messages are passed back via the state dict so PERCEIVE can log
+    # them; silently discarding them would make re-runs confusing ("why did that
+    # program run again?").
+    zombie_diagnostics = _clear_zombie_done_flags(history_info, available_files)
+
     # Determine experiment type
     experiment_type = _detect_experiment_type(files, history_info)
 
@@ -817,6 +1083,9 @@ def detect_workflow_state(history, available_files, analysis=None, maximum_autom
             state["categorized_files"] = files
             # Set automation_path for both experiment types
             state["automation_path"] = "automated" if maximum_automation else "stepwise"
+            # Surface zombie diagnostics for PERCEIVE logging (non-empty only)
+            if zombie_diagnostics:
+                state["zombie_diagnostics"] = zombie_diagnostics
             return state
         except Exception as e:
             import sys

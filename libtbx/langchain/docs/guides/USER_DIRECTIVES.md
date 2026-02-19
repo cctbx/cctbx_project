@@ -138,17 +138,27 @@ User Advice (natural language)
 
 | Field | Description |
 |-------|-------------|
-| `after_program` | Stop after this program completes (final goal) |
+| `after_program` | Stop after this program completes (final goal, unconditional) |
 | `start_with_program` | Run this program first, then continue workflow |
 | `after_cycle` | Stop after this cycle number |
-| `max_refine_cycles` | Maximum refinement cycles to run |
+| `max_refine_cycles` | Limit refinement to N cycles, then proceed to validation (controlled landing) |
 | `skip_validation` | Skip molprobity validation at end |
 | `r_free_target` | Stop when R-free reaches this value |
 | `map_cc_target` | Stop when map CC reaches this value |
 
-**Note**: `start_with_program` vs `after_program`:
-- `start_with_program`: "Run this first, then continue with normal workflow"
-- `after_program`: "Run until this completes, then stop"
+**`max_refine_cycles` vs `after_program`** — these are fundamentally different:
+
+- **`max_refine_cycles: N`** — "Run at most N refinement cycles, then
+  proceed to validation." When the limit is reached the engine removes
+  refinement from the valid-program list and injects the validate-phase
+  programs (`phenix.molprobity`, `phenix.model_vs_data` for X-ray;
+  `phenix.molprobity`, `phenix.validation_cryoem` for cryo-EM) plus
+  `STOP`. The user gets a quality report before finishing.
+
+- **`after_program: "phenix.refine"`** — "Run until this program
+  completes, then stop unconditionally." No validation programs are
+  injected; `STOP` is the only option after the named program finishes.
+  Use when you want to check MR worked before committing to a full run.
 
 ### Program Settings Enable Programs
 
@@ -334,7 +344,11 @@ Don't bother with validation.
 **Behavior:**
 - Cycle 1 (phaser): Runs normally
 - Cycle 2 (refine): Runs normally
-- Cycle 3: Validator detects stop condition → STOP (no molprobity required)
+- Cycle 3: `max_refine_cycles=1` limit fires → refinement removed from
+  valid programs. Because `skip_validation: true` is also set, the
+  engine adds STOP only (no molprobity injected). Workflow ends.
+- Without `skip_validation`, molprobity would be injected for a
+  controlled landing before STOP.
 
 ### Example 3: Complex SAD Workflow
 

@@ -134,13 +134,22 @@ class WorkflowEngine:
         }
 
         # =====================================================================
-        # Auto-include done flags from program_registration
-        # This automatically adds flags for all programs with run_once: true
+        # Auto-include done flags from program_registration.
+        #
+        # Uses get_program_done_flag_map() (all strategies) rather than the
+        # old get_all_done_flags() (only strategy: run_once, 3 programs).
+        # The old approach silently dropped resolve_cryo_em_done,
+        # map_sharpening_done, map_to_model_done, autobuild_denmod_done,
+        # and polder_done — those flags were set correctly by _analyze_history()
+        # but never transferred into context.
+        #
+        # The "don't override" guard is intentional: flags that are already
+        # set explicitly above (e.g., autobuild_done, phaser_done) keep their
+        # values; this loop only fills gaps for flags not yet in context.
         # =====================================================================
-        from libtbx.langchain.knowledge.program_registration import get_all_done_flags
+        from libtbx.langchain.knowledge.program_registration import get_program_done_flag_map
 
-        for flag_name in get_all_done_flags():
-            # Only add if not already in context (don't override complex flags)
+        for flag_name in set(get_program_done_flag_map().values()):
             if flag_name not in context:
                 context[flag_name] = history_info.get(flag_name, False)
 
@@ -171,12 +180,8 @@ class WorkflowEngine:
             # before allowing progression to later phases.
             skip_programs = workflow_prefs.get("skip_programs", [])
             if skip_programs:
-                from libtbx.langchain.knowledge.program_registration import get_program_done_flag_map
+                # get_program_done_flag_map already imported above
                 program_to_done_flag = get_program_done_flag_map()
-                for prog in skip_programs:
-                    done_flag = program_to_done_flag.get(prog)
-                    if done_flag and not context.get(done_flag):
-                        context[done_flag] = True
                 for prog in skip_programs:
                     done_flag = program_to_done_flag.get(prog)
                     if done_flag and not context.get(done_flag):
@@ -363,12 +368,14 @@ class WorkflowEngine:
     XRAY_STATE_MAP = {
         "analyze": "xray_initial",
         "obtain_model": "xray_analyzed",
-        "molecular_replacement": "xray_has_prediction",
+        "molecular_replacement": "xray_has_prediction",   # H2: distinct from xray_initial
         "build_from_phases": "xray_has_phases",
-        "experimental_phasing": "xray_mr_sad",
+        "experimental_phasing": "xray_mr_sad",            # H2: distinct from xray_initial
         "refine": "xray_refined",
         "combine_ligand": "xray_combined",
-        "validate": "xray_refined",  # Validation is part of refined state
+        # H3: validate intentionally maps to the same string as refine for external API
+        # compatibility. Internal code uses phase_info["phase"] to distinguish them.
+        "validate": "xray_refined",
         "complete": "complete",
     }
 
@@ -376,11 +383,16 @@ class WorkflowEngine:
         "analyze": "cryoem_initial",
         "obtain_model": "cryoem_analyzed",
         "dock_model": "cryoem_has_prediction",
+        # H1: check_map and optimize_map deal with half-map → full-map conversion;
+        # no model exists yet at this stage. The name "cryoem_has_model" is a legacy
+        # misnomer kept for external API compatibility. No behavioral code gates on it.
         "check_map": "cryoem_has_model",
         "optimize_map": "cryoem_has_model",
-        "ready_to_refine": "cryoem_docked",  # Model docked, ready for first refinement
+        "ready_to_refine": "cryoem_docked",   # Model docked, ready for first refinement
         "refine": "cryoem_refined",
-        "validate": "cryoem_refined",  # Validation is part of refined state
+        # H3: validate intentionally maps to the same string as refine for external API
+        # compatibility. Internal code uses phase_info["phase"] to distinguish them.
+        "validate": "cryoem_refined",
         "complete": "complete",
     }
 
@@ -757,7 +769,8 @@ class WorkflowEngine:
         # === APPLY USER DIRECTIVES ===
         # This is the SINGLE PLACE where directives affect valid_programs
         if directives:
-            valid = self._apply_directives(valid, directives, phase_name, context)
+            valid = self._apply_directives(valid, directives, phase_name, context,
+                                           experiment_type=experiment_type)
 
         # Add STOP if validation done and at target
         if phase_name == "validate" and context.get("validation_done"):
@@ -768,7 +781,11 @@ class WorkflowEngine:
         # BUT respect max_refine_cycles directive AND _is_at_target (e.g., hopeless R-free)
         if phase_name == "validate":
             max_refine = directives.get("stop_conditions", {}).get("max_refine_cycles") if directives else None
-            refine_count = context.get("refine_count", 0)
+            # I1 fix: use rsr_count for cryoem, refine_count for xray
+            if experiment_type == "cryoem":
+                refine_count = context.get("rsr_count", 0)
+            else:
+                refine_count = context.get("refine_count", 0)
             refine_allowed = (max_refine is None) or (refine_count < max_refine)
             at_target = self._is_at_target(context, experiment_type)
 
@@ -793,7 +810,11 @@ class WorkflowEngine:
         if phase_name == "refine":
             needs_post_ligandfit = context.get("needs_post_ligandfit_refine", False)
             max_refine = directives.get("stop_conditions", {}).get("max_refine_cycles") if directives else None
-            refine_count = context.get("refine_count", 0)
+            # I1 fix: use rsr_count for cryoem, refine_count for xray
+            if experiment_type == "cryoem":
+                refine_count = context.get("rsr_count", 0)
+            else:
+                refine_count = context.get("refine_count", 0)
             refine_allowed = (max_refine is None) or (refine_count < max_refine)
             at_target = self._is_at_target(context, experiment_type)
 
@@ -817,7 +838,8 @@ class WorkflowEngine:
 
         return valid
 
-    def _apply_directives(self, valid_programs, directives, phase_name, context=None):
+    def _apply_directives(self, valid_programs, directives, phase_name, context=None,
+                          experiment_type="xray"):
         """
         Apply user directives to modify valid programs list.
 
@@ -856,7 +878,11 @@ class WorkflowEngine:
         max_refine_cycles = stop_cond.get("max_refine_cycles")
         needs_post_ligandfit = context.get("needs_post_ligandfit_refine", False) if context else False
         if max_refine_cycles is not None and context and not needs_post_ligandfit:
-            refine_count = context.get("refine_count", 0)
+            # I1 fix: use rsr_count for cryoem, refine_count for xray
+            if experiment_type == "cryoem":
+                refine_count = context.get("rsr_count", 0)
+            else:
+                refine_count = context.get("refine_count", 0)
             if refine_count >= max_refine_cycles:
                 # Remove refinement programs from valid list
                 refine_programs = ["phenix.refine", "phenix.real_space_refine"]
@@ -866,7 +892,28 @@ class WorkflowEngine:
                     modifications.append(
                         "Removed refinement (max_refine_cycles=%d reached, count=%d)" % (
                             max_refine_cycles, refine_count))
-                # Also add STOP since we can't refine anymore
+                # I1 fix: controlled landing — inject validate programs rather
+                # than bare STOP.  max_refine_cycles means "stop refining and
+                # proceed to validation", NOT "abort immediately".
+                # Only inject if we're currently in refine phase AND validation
+                # has not yet been done.
+                if (phase_name in ("refine", "ready_to_refine") and
+                        not (context.get("validation_done"))):
+                    validate_progs_xray  = ["phenix.molprobity", "phenix.model_vs_data",
+                                            "phenix.map_correlations"]
+                    validate_progs_cryoem = ["phenix.molprobity", "phenix.validation_cryoem",
+                                             "phenix.map_correlations"]
+                    vprogs = (validate_progs_cryoem if experiment_type == "cryoem"
+                              else validate_progs_xray)
+                    added = []
+                    for vp in vprogs:
+                        if vp not in result:
+                            result.append(vp)
+                            added.append(vp)
+                    if added:
+                        modifications.append(
+                            "Added validate programs %s (max_refine_cycles landed)" % added)
+                # Always allow STOP (user can choose to stop without validating)
                 if "STOP" not in result:
                     result.append("STOP")
                     modifications.append("Added STOP (max_refine_cycles reached)")
@@ -1145,36 +1192,88 @@ class WorkflowEngine:
                 return False
         return True
 
+    # All condition keywords recognized by _check_conditions.
+    # Any keyword in workflows.yaml NOT in this set is a bug — see A6 guard below.
+    _KNOWN_CONDITION_KEYS = frozenset([
+        "has",          # {"has": "sequence"}         → context["has_sequence"] is truthy
+        "has_any",      # {"has_any": ["a", "b"]}     → any(context["has_a"], context["has_b"])
+        "not_has",      # {"not_has": "full_map"}      → not context["has_full_map"]
+        "not_done",     # {"not_done": "autobuild"}    → not context["autobuild_done"]
+        "r_free",       # {"r_free": "> 0.35"}         → metric comparison
+        "map_cc",       # {"map_cc": "> 0.6"}          → metric comparison
+        "refine_count", # {"refine_count": "> 0"}      → metric comparison
+        "rsr_count",    # {"rsr_count": "> 0"}         → metric comparison
+    ])
+
     def _check_conditions(self, prog_entry, context):
-        """Check if program conditions are met."""
+        """Check if program conditions are met.
+
+        Each condition in prog_entry["conditions"] is a single-key dict.  All
+        keys are processed independently (implicit AND — all must pass).
+
+        Returns True only if every condition is satisfied.
+        """
         conditions = prog_entry.get("conditions", [])
 
         for cond in conditions:
-            if isinstance(cond, dict):
-                # Condition like {"has": "sequence"}
-                if "has" in cond:
-                    key = "has_" + cond["has"]
-                    if not context.get(key):
-                        return False
+            if not isinstance(cond, dict):
+                continue
 
-                # Condition like {"has_any": ["full_map", "optimized_full_map"]}
-                # True if ANY of the listed keys is present in context
-                if "has_any" in cond:
-                    keys = ["has_" + k for k in cond["has_any"]]
-                    if not any(context.get(k) for k in keys):
-                        return False
+            # ── A6 guard: catch unknown keywords early ─────────────────────
+            unknown = set(cond.keys()) - self._KNOWN_CONDITION_KEYS
+            if unknown:
+                msg = (
+                    "Unknown condition keyword(s) %s in program entry %r — "
+                    "add a handler to _check_conditions() or fix the YAML. "
+                    "Condition is being SKIPPED (treated as satisfied)."
+                    % (sorted(unknown), prog_entry.get("program", "?"))
+                )
+                if os.environ.get("PHENIX_AGENT_STRICT"):
+                    raise ValueError(msg)
+                else:
+                    # Use print for now; callers may not pass a logger.
+                    # Deliberately loud so it isn't buried in INFO spam.
+                    print("ERROR: " + msg)
+                # Skip the unknown keys but continue evaluating known ones.
 
-                # Condition like {"not_done": "autobuild"}
-                if "not_done" in cond:
-                    key = cond["not_done"] + "_done"
-                    if context.get(key):
-                        return False
+            # ── has ────────────────────────────────────────────────────────
+            # {"has": "sequence"} → context["has_sequence"] must be truthy
+            if "has" in cond:
+                key = "has_" + cond["has"]
+                if not context.get(key):
+                    return False
 
-                # Condition like {"r_free": "> 0.35"}
-                for metric in ["r_free", "map_cc", "refine_count"]:
-                    if metric in cond:
-                        if not self._check_metric_condition(context, metric, cond[metric]):
-                            return False
+            # ── has_any ───────────────────────────────────────────────────
+            # {"has_any": ["full_map", "optimized_full_map"]}
+            # → at least one of context["has_full_map"] / context["has_optimized_full_map"]
+            if "has_any" in cond:
+                keys = ["has_" + k for k in cond["has_any"]]
+                if not any(context.get(k) for k in keys):
+                    return False
+
+            # ── not_has ───────────────────────────────────────────────────
+            # {"not_has": "full_map"} → context["has_full_map"] must be falsy
+            # Relies on _categorize_files() already excluding zero-byte/corrupt
+            # files so that has_full_map reflects genuine usable file presence.
+            if "not_has" in cond:
+                key = "has_" + cond["not_has"]
+                if context.get(key):
+                    return False
+
+            # ── not_done ──────────────────────────────────────────────────
+            # {"not_done": "autobuild"} → context["autobuild_done"] must be falsy
+            if "not_done" in cond:
+                key = cond["not_done"] + "_done"
+                if context.get(key):
+                    return False
+
+            # ── metric comparisons ────────────────────────────────────────
+            # {"r_free": "> 0.35"}, {"map_cc": "> 0.6"},
+            # {"refine_count": "> 0"}, {"rsr_count": "> 0"}
+            for metric in ("r_free", "map_cc", "refine_count", "rsr_count"):
+                if metric in cond:
+                    if not self._check_metric_condition(context, metric, cond[metric]):
+                        return False
 
         return True
 
@@ -1223,6 +1322,14 @@ class WorkflowEngine:
                             key = "has_" + cond["has"]
                             if not context.get(key):
                                 reasons.append("missing required file: %s" % cond["has"])
+
+                        # Check "not_has" condition
+                        if "not_has" in cond:
+                            key = "has_" + cond["not_has"]
+                            if context.get(key):
+                                reasons.append(
+                                    "file already present: %s (program only runs without it)"
+                                    % cond["not_has"])
 
                         # Check "not_done" condition
                         if "not_done" in cond:

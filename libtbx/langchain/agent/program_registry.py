@@ -43,6 +43,28 @@ from libtbx.langchain.knowledge.yaml_loader import (
 )
 
 
+
+def _quote_if_needed(path):
+    """Quote a file path if it contains spaces (for shell-safe command assembly).
+
+    PHENIX commands are ultimately passed through shlex.split() by easy_run
+    when use_shell_in_subprocess=False. Unquoted paths with spaces would be
+    tokenized incorrectly.  We only add quoting when actually needed to keep
+    commands readable in logs.
+
+    Args:
+        path: File path string (or anything coercible to str)
+
+    Returns:
+        str: Path wrapped in single quotes if it contains spaces, else unchanged.
+    """
+    s = str(path)
+    if ' ' in s:
+        import shlex
+        return shlex.quote(s)
+    return s
+
+
 class ProgramRegistry:
     """
     Registry providing program information from YAML or JSON templates.
@@ -484,18 +506,18 @@ class ProgramRegistry:
                     if is_multiple and isinstance(file_path, list):
                         # Multiple files - add flag prefix to each
                         if flag:
-                            replacement = " ".join("%s%s" % (flag, fp) for fp in file_path)
+                            replacement = " ".join("%s%s" % (flag, _quote_if_needed(fp)) for fp in file_path)
                         else:
-                            replacement = " ".join(file_path)
+                            replacement = " ".join(_quote_if_needed(fp) for fp in file_path)
                     else:
                         # Single file
                         if isinstance(file_path, list):
                             file_path = file_path[0] if file_path else ""
                         # Apply flag if defined
                         if flag:
-                            replacement = "%s%s" % (flag, file_path)
+                            replacement = "%s%s" % (flag, _quote_if_needed(file_path))
                         else:
-                            replacement = str(file_path)
+                            replacement = _quote_if_needed(file_path)
 
                     cmd = cmd.replace(placeholder, replacement)
 
@@ -512,11 +534,11 @@ class ProgramRegistry:
                         is_multiple = slot_def.get("multiple", False)
                         if is_multiple and isinstance(file_path, list):
                             for fp in file_path:
-                                cmd += " %s%s" % (flag, fp)
+                                cmd += " %s%s" % (flag, _quote_if_needed(fp))
                         else:
                             if isinstance(file_path, list):
                                 file_path = file_path[0] if file_path else ""
-                            cmd += " %s%s" % (flag, file_path)
+                            cmd += " %s%s" % (flag, _quote_if_needed(file_path))
 
             # Remove any unfilled placeholders (optional files not provided)
             import re
@@ -547,14 +569,14 @@ class ProgramRegistry:
                 if is_multiple and isinstance(file_path, list):
                     for fp in file_path:
                         if flag and not flag.endswith("="):
-                            cmd_parts.append("%s %s" % (flag, fp))
+                            cmd_parts.append("%s %s" % (flag, _quote_if_needed(fp)))
                         else:
-                            cmd_parts.append("%s%s" % (flag, fp))
+                            cmd_parts.append("%s%s" % (flag, _quote_if_needed(fp)))
                 else:
                     if flag and not flag.endswith("="):
-                        cmd_parts.append("%s %s" % (flag, file_path))
+                        cmd_parts.append("%s %s" % (flag, _quote_if_needed(file_path)))
                     else:
-                        cmd_parts.append("%s%s" % (flag, file_path))
+                        cmd_parts.append("%s%s" % (flag, _quote_if_needed(file_path)))
 
         # Handle defaults (can be overridden by strategy)
         defaults = dict(self.get_defaults(program_name))
@@ -696,7 +718,7 @@ class ProgramRegistry:
         data_mtz = files.get("data_mtz") or files.get("mtz")  # Backward compat
         if not data_mtz:
             raise ValueError("Missing required data_mtz file for phenix.phaser")
-        cmd_parts.append(str(data_mtz))
+        cmd_parts.append(_quote_if_needed(data_mtz))
 
         # Get model
         model = files.get("model")
@@ -704,7 +726,7 @@ class ProgramRegistry:
             model = model[0] if model else None
         if not model:
             raise ValueError("Missing required model file for phenix.phaser")
-        cmd_parts.append(model)
+        cmd_parts.append(_quote_if_needed(model))
 
         # Get sequence - try to match to model name
         sequences = files.get("sequence", [])
@@ -723,11 +745,11 @@ class ProgramRegistry:
                     break
 
             if matched_seq:
-                cmd_parts.append(matched_seq)
+                cmd_parts.append(_quote_if_needed(matched_seq))
                 log("DEBUG: Using matching sequence %s for model %s" % (matched_seq, model))
             else:
                 # No match found - use first sequence
-                cmd_parts.append(sequences[0])
+                cmd_parts.append(_quote_if_needed(sequences[0]))
                 log("DEBUG: No matching sequence found for %s, using %s" % (model, sequences[0]))
 
         # Add defaults

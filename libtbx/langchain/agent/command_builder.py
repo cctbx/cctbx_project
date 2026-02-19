@@ -78,6 +78,14 @@ class CommandContext:
     # Logging callback
     log: Any = None  # Callable for logging, or None
 
+    def file_preferences(self) -> Dict[str, Any]:
+        """Return directives.file_preferences dict (empty dict if not set)."""
+        return self.directives.get("file_preferences", {}) if self.directives else {}
+
+    def excluded_files(self) -> List[str]:
+        """Return list of basenames/paths explicitly excluded by the user."""
+        return self.file_preferences().get("exclude", [])
+
     @classmethod
     def from_state(cls, state: dict) -> 'CommandContext':
         """
@@ -143,6 +151,25 @@ class CommandBuilder:
         # Get file selection details (for event logging)
         selections = builder.get_selection_details()
     """
+
+    @staticmethod
+    def _best_path(value):
+        """
+        Safely extract a single path string from a best_files value.
+
+        best_files values are normally strings, but a client may store
+        multi-file entries (e.g. half_map) as a list.  All single-file
+        slots should use only the first element in that case; multi-file
+        slots (half_map) bypass best_files lookup entirely via the
+        specific_subcategories guard, so they never reach this helper.
+
+        Returns None if value is falsy or an empty list.
+        """
+        if not value:
+            return None
+        if isinstance(value, list):
+            return value[0] if value else None
+        return value
 
     # Map input slot names to best_files categories
     SLOT_TO_BEST_CATEGORY = {
@@ -250,8 +277,13 @@ class CommandBuilder:
 
     def _record_selection(self, slot, filepath, reason, **kwargs):
         """Record a file selection for later retrieval."""
+        # filepath may be a list for multiple-file slots (e.g. half_map)
+        display = None
+        if filepath:
+            first = filepath[0] if isinstance(filepath, list) else filepath
+            display = os.path.basename(first) if first else None
         self._selection_details[slot] = {
-            "selected": os.path.basename(filepath) if filepath else None,
+            "selected": display,
             "path": filepath,
             "reason": reason,
             **kwargs
@@ -439,7 +471,7 @@ class CommandBuilder:
         # Pre-populate with best_files for refinement (can be overridden by explicit LLM choices)
         if is_refinement_program and context.best_files:
             # Model slot - verify best_model isn't in an excluded category
-            best_model_path = context.best_files.get("model")
+            best_model_path = self._best_path(context.best_files.get("model"))
             if best_model_path and os.path.exists(best_model_path):
                 best_model_excluded = False
                 # Check against program's exclude_categories for model slot
@@ -528,7 +560,7 @@ class CommandBuilder:
 
                     # For refinement, check if LLM is trying to use a non-best model
                     if is_refinement_program and canonical_slot in ("model", "pdb", "pdb_file"):
-                        best_model = context.best_files.get("model")
+                        best_model = self._best_path(context.best_files.get("model"))
                         if best_model and corrected_str != best_model and os.path.exists(best_model):
                             # Check if best_model is in an excluded category
                             best_model_ok = True
@@ -606,6 +638,35 @@ class CommandBuilder:
         else:
             self._log(context, "BUILD: No LLM file hints, will auto-select")
 
+        # Apply file_preferences from user directives (D1 fix)
+        # Lower priority than LLM hints but higher than auto-fill.
+        # Keys: model, sequence, data_mtz, map_coeffs_mtz. 'exclude' handled in _find_file_for_slot.
+        file_prefs = context.file_preferences() if callable(getattr(context, 'file_preferences', None)) else {}
+        PREF_SLOT_MAP = {
+            "model":          ["model", "pdb_file", "pdb"],
+            "sequence":       ["sequence", "seq_file"],
+            "data_mtz":       ["data_mtz", "hkl_file"],
+            "map_coeffs_mtz": ["map_coeffs_mtz"],
+        }
+        for pref_key, candidate_slots in PREF_SLOT_MAP.items():
+            pref_val = file_prefs.get(pref_key)
+            if not pref_val:
+                continue
+            for slot in candidate_slots:
+                if slot not in all_inputs or slot in selected_files:
+                    continue
+                corrected = self._correct_file_path(pref_val, basename_to_path, available_files)
+                if corrected:
+                    corrected_str = corrected[0] if isinstance(corrected, list) else corrected
+                    selected_files[slot] = corrected_str
+                    self._record_selection(slot, corrected_str, "file_preference")
+                    self._log(context, "BUILD: file_preference %s=%s" % (
+                        slot, os.path.basename(corrected_str)))
+                else:
+                    self._log(context, "BUILD: file_preference %s=%s not found in available files" % (
+                        pref_key, os.path.basename(str(pref_val))))
+                break  # Try only the first matching slot for this preference key
+
         # Auto-fill missing required inputs
         for input_name in required_inputs:
             if input_name in selected_files:
@@ -665,24 +726,36 @@ class CommandBuilder:
         # POST-SELECTION VALIDATION: Remove redundant half_map if full_map is present
         # Programs like map_to_model and resolve_cryo_em only need half-maps when
         # no full map is available. Having both causes confusion.
-        # EXCEPTION: If the "full_map" is actually a categorized half_map (mis-selected
+        # EXCEPTION 1: If the "full_map" is actually a categorized half_map (mis-selected
         # via generic 'map' category fallback), remove it instead and keep the half_maps.
+        # EXCEPTION 2: Programs with keep_half_maps_with_full_map: true (e.g. mtriage,
+        # predict_and_build, map_to_model) genuinely need both simultaneously.
         if "full_map" in selected_files and "half_map" in selected_files:
-            full_map_path = selected_files["full_map"]
-            if isinstance(full_map_path, list):
-                full_map_path = full_map_path[0] if full_map_path else ""
-            # Check if this "full_map" is actually a half map
-            half_map_files = context.categorized_files.get("half_map", [])
-            full_map_files = context.categorized_files.get("full_map", [])
-            if full_map_path in half_map_files and full_map_path not in full_map_files:
-                # The "full_map" is a mis-selected half map — remove it, keep half_maps
-                self._log(context, "BUILD: Removing mis-selected full_map=%s (it's actually a half-map)" %
-                          os.path.basename(str(full_map_path)))
-                del selected_files["full_map"]
+            prog_def = self._registry.get_program(program)
+            if prog_def and prog_def.get("keep_half_maps_with_full_map"):
+                # Program explicitly needs both — don't remove either
+                self._log(context, "BUILD: Keeping half_maps alongside full_map (%s uses both)" % program)
             else:
-                # Genuine full_map — remove redundant half_maps
-                self._log(context, "BUILD: Removing redundant half_map (full_map already selected)")
-                del selected_files["half_map"]
+                full_map_path = selected_files["full_map"]
+                if isinstance(full_map_path, list):
+                    full_map_path = full_map_path[0] if full_map_path else ""
+                # Check if this "full_map" is actually a half map.
+                # A genuine full map is in full_map OR optimized_full_map category;
+                # a mis-selected half map is in half_map and NOT in either full_map category.
+                half_map_files = context.categorized_files.get("half_map", [])
+                genuine_full_map_files = (
+                    context.categorized_files.get("full_map", []) +
+                    context.categorized_files.get("optimized_full_map", [])
+                )
+                if full_map_path in half_map_files and full_map_path not in genuine_full_map_files:
+                    # The "full_map" is a mis-selected half map — remove it, keep half_maps
+                    self._log(context, "BUILD: Removing mis-selected full_map=%s (it's actually a half-map)" %
+                              os.path.basename(str(full_map_path)))
+                    del selected_files["full_map"]
+                else:
+                    # Genuine full_map — remove redundant half_maps
+                    self._log(context, "BUILD: Removing redundant half_map (full_map already selected)")
+                    del selected_files["half_map"]
 
         # Also check for programs with requires_full_map that shouldn't get any half-maps
         prog_def = self._registry.get_program(program)
@@ -777,7 +850,7 @@ class CommandBuilder:
         # PRIORITY 2: Best files (but respect exclude_categories and skip if specific subcategory needed)
         if not uses_specific_subcategory:
             best_category = self.SLOT_TO_BEST_CATEGORY.get(input_name, input_name)
-            best_path = context.best_files.get(best_category)
+            best_path = self._best_path(context.best_files.get(best_category))
             if best_path and os.path.exists(best_path):
                 # Verify extension matches
                 if any(best_path.lower().endswith(ext) for ext in extensions):
@@ -823,9 +896,18 @@ class CommandBuilder:
         exclude_categories = priorities.get("exclude_categories", [])
 
         def is_excluded(f):
-            """Check if file is in any excluded category."""
-            return any(f in context.categorized_files.get(exc, [])
-                      for exc in exclude_categories)
+            """Check if file is in any excluded category OR is user-excluded via file_preferences."""
+            if any(f in context.categorized_files.get(exc, [])
+                   for exc in exclude_categories):
+                return True
+            # D1: user-specified exclude list (basename comparison)
+            user_excl = context.excluded_files() if callable(getattr(context, 'excluded_files', None)) else []
+            if user_excl:
+                fbn = os.path.basename(f).lower()
+                if any(os.path.basename(e).lower() == fbn for e in user_excl):
+                    self._log(context, "BUILD: file_preference exclude removed (cat): %s" % os.path.basename(f))
+                    return True
+            return False
 
         def find_in_categories(categories, prefer_subs=None):
             """
@@ -910,6 +992,18 @@ class CommandBuilder:
 
         candidates = [f for f in available_files
                       if any(f.lower().endswith(ext) for ext in extensions)]
+
+        # Apply user file_preferences.exclude (D1 fix)
+        # User can say "exclude: [bad_model.pdb, old_data.mtz]" to block specific files
+        user_exclude = context.excluded_files() if callable(getattr(context, 'excluded_files', None)) else []
+        if user_exclude:
+            user_exclude_bns = {os.path.basename(e).lower() for e in user_exclude}
+            filtered = [f for f in candidates
+                        if os.path.basename(f).lower() not in user_exclude_bns]
+            if len(filtered) < len(candidates):
+                excluded_names = [os.path.basename(f) for f in candidates if f not in filtered]
+                self._log(context, "BUILD: file_preference exclude removed: %s" % excluded_names)
+            candidates = filtered
 
         # Apply exclude_categories from input_priorities (same as PRIORITY 3)
         # This prevents ligand files from being selected as search models, etc.

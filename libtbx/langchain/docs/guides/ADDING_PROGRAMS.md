@@ -409,7 +409,7 @@ Verify your program works correctly:
 # Validate program configuration
 python agent/program_validator.py phenix.new_program
 
-# Run all tests
+# Run all tests — including the integration suite
 python tests/run_all_tests.py --quick
 ```
 
@@ -418,6 +418,135 @@ The validator checks:
 - ✅ Added to workflows.yaml
 - ✅ Log parsing patterns defined
 - ✅ Summary display configured (if applicable)
+
+### Run the full suite, not just your new tests
+
+`workflow_state.py` is the integration boundary. When adding new behavior there
+(zombie checks, file validation, diagnostic surfacing), it should be treated as a
+refactor of the public API — requiring a full suite run, not just the feature's own
+tests. Any PR touching `detect_workflow_state()` must show passing results for
+`tst_workflow_state.py` and `tst_integration.py` before merging.
+
+The reason this matters: the pre-existing tests in those files use hypothetical
+filename strings (e.g. `"data.mtz"`, `"refined_model.pdb"`) without creating real
+files on disk, and use generic output names rather than phenix naming conventions.
+New features that inspect files or match output patterns by name can break these
+tests invisibly — passing their own unit tests while silently breaking all callers.
+
+---
+
+## Step 6.5: Zombie State Checker (if your program produces a model or map)
+
+If your program produces a **model file** (`.pdb`, `.cif`) or **map file**
+(`.mrc`, `.ccp4`) and uses `strategy: "set_flag"` or `strategy: "count"`, you
+should add an entry to `_ZOMBIE_CHECK_TABLE` in `agent/workflow_state.py`.
+
+### What is a zombie state?
+
+A zombie state occurs when the agent crashes mid-cycle or output files are
+deleted after the fact. History records `done_flag=True`, but the output file
+is no longer on disk. The phase detector sees `done=True` and skips the
+program — the workflow becomes stuck.
+
+The zombie checker (`_clear_zombie_done_flags`) runs every PERCEIVE cycle. It
+checks each done flag against an expected output file pattern. If the output is
+missing, it clears the done flag so the program can re-run.
+
+### When to add a zombie check entry
+
+Add an entry when **all** of the following are true:
+- The program produces an output file that later steps depend on
+- The done flag is used to gate a workflow phase (e.g., `has_placed_model`,
+  `has_refined_model`, or a count like `refine_count`)
+- A crash or cleanup that removes the output would leave the workflow stuck
+
+You **do not** need an entry for:
+- Analysis programs (xtriage, mtriage) — their outputs are metrics, not files
+- Programs with `strategy: "run_once"` for analysis — they don't gate file-dependent phases
+- Programs where the done flag is advisory only (e.g., `validation_done`)
+
+### How to add the entry
+
+In `agent/workflow_state.py`, find `_ZOMBIE_CHECK_TABLE` and add a tuple:
+
+```python
+_ZOMBIE_CHECK_TABLE = [
+    # ... existing entries ...
+
+    # Your new program
+    ("new_program_done",
+     _re.compile(r"<output_pattern>.*\.pdb$", _re.IGNORECASE),
+     "has_placed_model",   # context flag to also clear (or None)
+     True),                # accept_any_pdb (see below)
+]
+```
+
+**Fields:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `done_flag` | str | Key in `history_info` to check (e.g., `"dock_done"`) |
+| `output_pattern` | regex | Matched against basenames of available files |
+| `file_flag_to_clear` | str or None | Context flag also cleared when zombie detected (e.g., `"has_placed_model"`) |
+| `accept_any_pdb` | bool | If True, any `.pdb` on disk suppresses zombie detection as a fallback |
+
+### Pattern alignment with file_categories.yaml
+
+The `output_pattern` regex should be consistent with the patterns in
+`knowledge/file_categories.yaml` for the same output type. If the file category
+uses `*dock*map*` as a pattern, the zombie regex should also match `dock.*map.*\.pdb`.
+
+**Always check:** does the zombie regex match the filenames phenix actually produces,
+as well as what the file category accepts? They must agree.
+
+```bash
+# Quick check: test your pattern against real phenix output names
+python3 -c "
+import re
+pat = re.compile(r'your_pattern_here', re.IGNORECASE)
+names = ['expected_output_001.pdb', 'alternate_name.pdb']
+for n in names: print(n, bool(pat.search(n)))
+"
+```
+
+### The `accept_any_pdb` flag
+
+| Value | Use when |
+|-------|----------|
+| `True` | Program produces a **model** file (`.pdb`/`.cif`). Any PDB on disk is plausible evidence of success, preventing false zombie clears when files are renamed or tests use generic names. |
+| `False` | Program produces a **specifically-named** file that downstream steps reference by name (e.g., `denmod_map.ccp4` from `resolve_cryo_em`). Pattern match must be exact. |
+
+**Trade-off:** `accept_any_pdb=True` weakens zombie detection in the edge case
+where an older model file from a *different* program is on disk when the newer
+program's output was deleted. This is an acceptable heuristic — zombie detection
+is best-effort, not a guarantee. Document this choice in a comment.
+
+### Example: dock_in_map
+
+```python
+# dock_in_map produces *_docked.pdb, *dock*map*.pdb, placed_model*.pdb, or *_placed*.pdb
+# Pattern mirrors the "docked" file category in file_categories.yaml.
+# accept_any_pdb=True: any PDB is acceptable fallback (model renamed or test proxy)
+("dock_done",
+ _re.compile(r"docked.*\.pdb$|.*_docked.*\.pdb$|dock.*map.*\.pdb$|placed_model.*\.pdb$|.*_placed.*\.pdb$",
+             _re.IGNORECASE),
+ "has_placed_model", True),
+```
+
+### Count-based programs
+
+For programs with `strategy: "count"` (refine, rsr), the zombie checker
+automatically decrements the count when it clears the done flag:
+
+```python
+("refine_done",
+ _re.compile(r"refine_\d+\.pdb$", _re.IGNORECASE),
+ None,   # No separate context flag — refine_count is decremented automatically
+ True),
+```
+
+The decrement logic is built into `_clear_zombie_done_flags`. You don't need to
+add code for it — just set `file_flag_to_clear=None` and the function handles
+`refine_count` and `rsr_count` automatically.
 
 ---
 
