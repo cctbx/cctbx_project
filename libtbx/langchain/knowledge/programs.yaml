@@ -323,6 +323,8 @@ phenix.predict_and_build:
         extensions: [.mrc, .ccp4, .map]
         flag: "map_model.half_map="
         multiple: true
+        auto_fill: false
+        description: "Only used when no full map is available; prefer full_map when present"
       ncs_spec:
         extensions: [.ncs_spec]
         flag: "map_model.ncs_file="
@@ -347,7 +349,6 @@ phenix.predict_and_build:
       - map_cc
 
   # Half-maps are used for density modification alongside the full map
-  keep_half_maps_with_full_map: true
   command: "phenix.predict_and_build {sequence} {data_mtz} {full_map} {half_map} {ncs_spec}"
 
   defaults:
@@ -965,7 +966,7 @@ phenix.map_to_model:
       - map_cc
 
   # Half-maps enable FSC-based filtering in map_to_model
-  keep_half_maps_with_full_map: true
+  keep_half_maps_with_full_map: true  # map_to_model can use full_map + half_maps together for local filtering
   command: "phenix.map_to_model {full_map} {half_map} {sequence} {partial_model}"
 
   defaults:

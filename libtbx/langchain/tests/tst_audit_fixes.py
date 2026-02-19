@@ -997,9 +997,10 @@ def test_k2_mtriage_keeps_half_maps_with_full_map():
     like mtriage the half maps are NOT redundant — they provide FSC-based resolution
     measurement that full-map-only mode cannot.
 
-    Fix: keep_half_maps_with_full_map: true in programs.yaml for mtriage,
-    predict_and_build, and map_to_model.  The post-selection block now checks this
-    flag before removing half_maps.
+    Fix: keep_half_maps_with_full_map: true in programs.yaml for mtriage and
+    map_to_model. Both genuinely use full_map + half_maps together.
+    predict_and_build takes EITHER 2 half-maps OR 1 full map — not both —
+    so it does NOT have this flag and must drop half_maps when full_map is present.
     """
     print("Test: k2_mtriage_keeps_half_maps_with_full_map")
     try:
@@ -1395,6 +1396,175 @@ def test_m1_command_builder_with_ligand_not_overridden():
     assert not llm_is_with_ligand2, (
         "LLM choice of some_other_model.pdb should NOT be detected as with_ligand. "
         "Got categories: %s" % cats2
+    )
+    print("  PASSED")
+
+
+
+# =============================================================================
+# N1: predict_and_build must not receive both full_map and half_maps
+# =============================================================================
+
+def test_n1_predict_and_build_uses_only_full_map_when_denmod_present():
+    """
+    After resolve_cryo_em runs, we have an optimized_full_map (denmod_map.ccp4)
+    plus the original half maps. predict_and_build takes EITHER 2 half-maps OR
+    1 full map — not both. The command builder must select the full map and drop
+    the half maps.
+
+    Previously keep_half_maps_with_full_map: true was set on predict_and_build
+    (added in K2), which prevented the post-selection deconfliction from removing
+    the redundant half_maps, resulting in a command with full_map= AND 4x half_map=.
+    """
+    print("Test: n1_predict_and_build_uses_only_full_map_when_denmod_present")
+    try:
+        from agent.command_builder import CommandBuilder, CommandContext
+    except ImportError:
+        print("  SKIP (command_builder unavailable)")
+        return
+
+    denmod = "/data/denmod_map.ccp4"
+    half1  = "/data/half_map_1.ccp4"
+    half2  = "/data/half_map_2.ccp4"
+    seq    = "/data/seq.fa"
+
+    ctx = CommandContext(
+        cycle_number=3,
+        experiment_type="cryoem",
+        resolution=2.9,
+        best_files={"map": denmod, "sequence": seq},
+        rfree_mtz=None,
+        categorized_files={
+            "optimized_full_map": [denmod],
+            "full_map":           [denmod],
+            "map":                [denmod, half1, half2],
+            "half_map":           [half1, half2],
+            "sequence":           [seq],
+        },
+        workflow_state="cryoem_initial",
+        history=[],
+        llm_files=None,
+        llm_strategy=None,
+        directives={},
+        log=lambda msg: None,
+    )
+
+    cb = CommandBuilder()
+    available = [denmod, half1, half2, seq]
+    cmd = cb.build("phenix.predict_and_build", available, ctx)
+
+    assert cmd is not None, "predict_and_build must produce a command"
+    assert "half_map=" not in cmd, (
+        "predict_and_build command must NOT include half_map= when a full_map is available.\n"
+        "Got: %s\n"
+        "predict_and_build takes EITHER 2 half-maps OR 1 full map, not both." % cmd
+    )
+    assert denmod in cmd or "denmod" in cmd, (
+        "predict_and_build command must include the density-modified full map.\n"
+        "Got: %s" % cmd
+    )
+    print("  PASSED")
+
+
+def test_n1_predict_and_build_uses_half_maps_when_no_full_map():
+    """
+    When only half maps are available (no density-modified full map yet),
+    predict_and_build must use the half maps, not fail with no map input.
+    """
+    print("Test: n1_predict_and_build_uses_half_maps_when_no_full_map")
+    try:
+        from agent.command_builder import CommandBuilder, CommandContext
+    except ImportError:
+        print("  SKIP (command_builder unavailable)")
+        return
+
+    half1 = "/data/half_map_1.ccp4"
+    half2 = "/data/half_map_2.ccp4"
+    seq   = "/data/seq.fa"
+
+    ctx = CommandContext(
+        cycle_number=1,
+        experiment_type="cryoem",
+        resolution=2.9,
+        best_files={"sequence": seq},
+        rfree_mtz=None,
+        categorized_files={
+            "half_map":  [half1, half2],
+            "map":       [half1, half2],
+            "sequence":  [seq],
+        },
+        workflow_state="cryoem_initial",
+        history=[],
+        llm_files={"half_map": [half1, half2]},  # LLM explicitly requests half maps
+        llm_strategy=None,
+        directives={},
+        log=lambda msg: None,
+    )
+
+    cb = CommandBuilder()
+    available = [half1, half2, seq]
+    cmd = cb.build("phenix.predict_and_build", available, ctx)
+
+    assert cmd is not None, "predict_and_build must produce a command with half maps"
+    assert "half_map=" in cmd, (
+        "predict_and_build command must include half_map= when no full map is available.\n"
+        "Got: %s" % cmd
+    )
+    print("  PASSED")
+
+
+
+def test_n1_map_to_model_keeps_half_maps_with_full_map():
+    """
+    map_to_model can take full_map + half_maps simultaneously (for local filtering).
+    Unlike predict_and_build, it should NOT drop half_maps when a full_map is present.
+    """
+    print("Test: n1_map_to_model_keeps_half_maps_with_full_map")
+    try:
+        from agent.command_builder import CommandBuilder, CommandContext
+    except ImportError:
+        print("  SKIP (command_builder unavailable)")
+        return
+
+    full_map = "/data/denmod_map.ccp4"
+    half1    = "/data/half_map_1.ccp4"
+    half2    = "/data/half_map_2.ccp4"
+    seq      = "/data/seq.fa"
+
+    ctx = CommandContext(
+        cycle_number=3,
+        experiment_type="cryoem",
+        resolution=2.9,
+        best_files={"map": full_map, "sequence": seq},
+        rfree_mtz=None,
+        categorized_files={
+            "optimized_full_map": [full_map],
+            "full_map":           [full_map],
+            "map":                [full_map, half1, half2],
+            "half_map":           [half1, half2],
+            "sequence":           [seq],
+        },
+        workflow_state="cryoem_initial",
+        history=[],
+        llm_files={"full_map": full_map, "half_map": [half1, half2]},
+        llm_strategy=None,
+        directives={},
+        log=lambda msg: None,
+    )
+
+    cb = CommandBuilder()
+    available = [full_map, half1, half2, seq]
+    cmd = cb.build("phenix.map_to_model", available, ctx)
+
+    assert cmd is not None, "map_to_model must produce a command"
+    assert full_map in cmd or "denmod" in cmd, (
+        "map_to_model command must include the full map. Got: %s" % cmd
+    )
+    # map_to_model uses positional (no-flag) syntax for both full_map and half_map,
+    # so we check for the half map paths directly rather than the half_map= keyword.
+    assert half1 in cmd and half2 in cmd, (
+        "map_to_model command must include the half map paths alongside full_map "
+        "(map_to_model can use all three for local filtering).\nGot: %s" % cmd
     )
     print("  PASSED")
 
