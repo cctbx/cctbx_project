@@ -27,10 +27,11 @@ def run(args):
     roots=pdb_hierarchies)
   output_file_name = "symmetry_copies.pdb"
   print("Writing file:", output_file_name)
-  print("""\
+  with open(output_file_name, "w") as f:
+    print("""\
 REMARK input file name: %s
 REMARK original space group: %s
-REMARK using two-character chain ids""" % (args[0], str(cs.space_group_info())), file=open(output_file_name, "w"))
+REMARK using two-character chain ids""" % (args[0], str(cs.space_group_info())), file=f)
   from cctbx import sgtbx
   combined_pdb_hierarchies.write_pdb_or_mmcif_file(
     target_filename=output_file_name,
