@@ -2441,9 +2441,9 @@ class PhenixBuilder(CCIBuilder):
     super(PhenixBuilder, self)._add_git(module, parameters, destination)
     if (module == 'dials' or module == 'dxtbx' or module == 'xia2'):
       workdir = ['modules', module]
-      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.22'], workdir=workdir))
+      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.24'], workdir=workdir))
       self.add_step(self.shell(
-        command=['git', 'branch', '--set-upstream-to=origin/dials-3.22', 'dials-3.22'],
+        command=['git', 'branch', '--set-upstream-to=origin/dials-3.24', 'dials-3.24'],
         workdir=workdir))
 
   def add_module(self, module, workdir=None, module_directory=None):
