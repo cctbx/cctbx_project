@@ -1609,17 +1609,6 @@ class Builder(object):
       method, geostd_parameters = action[0], action[1:]
       self._add_git('geostd', geostd_parameters, destination=self.opjoin('modules', 'chem_data', 'geostd'))
 
-    # Use dials-2.2 branches for Python 2
-    if (module == 'dials' or module == 'dxtbx' or module == 'xia2') and not self.python3:
-      workdir = ['modules', module]
-      if module == 'dxtbx':
-        self.add_step(self.shell(command=['git', 'remote', 'set-url', 'origin', 'https://github.com/dials/dxtbx.git'], workdir=workdir))
-        self.add_step(self.shell(command=['git', 'fetch', 'origin'], workdir=workdir))
-      self.add_step(self.shell(command=['git', 'checkout', 'dials-2.2'], workdir=workdir))
-      self.add_step(self.shell(
-        command=['git', 'branch', '--set-upstream-to=origin/dials-2.2', 'dials-2.2'],
-        workdir=workdir))
-
     # pick a specific commit for cbflib
     if module == 'cbflib':
       self.add_step(self.shell(command=['git', 'checkout', 'a9f39aff00580bb24d6dacb9ffa1bd2df1dedc31'],
@@ -2174,14 +2163,6 @@ class PhaserTNGBuilder(PhaserBuilder):
 
   def get_libtbx_configure(self):
     configlst = super(PhaserTNGBuilder, self).get_libtbx_configure()
-    if '--enable_cxx11' in configlst:
-      configlst.remove('--enable_cxx11')
-    set_std = ['cxxstd' in conf for conf in configlst]
-    if set_std.count(True) == 0:
-      if platform.mac_ver()[-1] == 'arm64':
-        configlst.append('--cxxstd=c++14')
-      else:
-        configlst.append('--cxxstd=c++11')
     if not self.isPlatformMacOSX():
       configlst.append("--enable_openmp_if_possible=True")
     return configlst
@@ -2268,12 +2249,9 @@ class CCTBXBuilder(CCIBuilder):
     # select dials-3.22 branch
     if (module == 'dials' or module == 'dxtbx' or module == 'xia2') and self.python3:
       workdir = ['modules', module]
-      if module == 'dxtbx':
-        self.add_step(self.shell(command=['git', 'remote', 'set-url', 'origin', 'https://github.com/dials/dxtbx.git'], workdir=workdir))
-        self.add_step(self.shell(command=['git', 'fetch', 'origin'], workdir=workdir))
-      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.22'], workdir=workdir))
+      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.24'], workdir=workdir))
       self.add_step(self.shell(
-        command=['git', 'branch', '--set-upstream-to=origin/dials-3.22', 'dials-3.22'],
+        command=['git', 'branch', '--set-upstream-to=origin/dials-3.24', 'dials-3.24'],
         workdir=workdir))
 
 class DIALSBuilder(CCIBuilder):
@@ -2458,23 +2436,14 @@ class PhenixBuilder(CCIBuilder):
     # 'prime',
   ]
 
-  # select dials-3.8 branch
+  # select DIALS
   def _add_git(self, module, parameters, destination=None):
     super(PhenixBuilder, self)._add_git(module, parameters, destination)
-    if module == 'boost':
+    if (module == 'dials' or module == 'dxtbx' or module == 'xia2'):
       workdir = ['modules', module]
-      if self.category == 'phenix_discamb':
-        self.add_step(self.shell(command=['git', 'checkout', '1.86'], workdir=workdir))
-      else:
-        self.add_step(self.shell(command=['git', 'checkout', '1.74'], workdir=workdir))
-    elif (module == 'dials' or module == 'dxtbx' or module == 'xia2') and self.python3:
-      workdir = ['modules', module]
-      if module == 'dxtbx':
-        self.add_step(self.shell(command=['git', 'remote', 'set-url', 'origin', 'https://github.com/dials/dxtbx.git'], workdir=workdir))
-        self.add_step(self.shell(command=['git', 'fetch', 'origin'], workdir=workdir))
-      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.8'], workdir=workdir))
+      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.22'], workdir=workdir))
       self.add_step(self.shell(
-        command=['git', 'branch', '--set-upstream-to=origin/dials-3.8', 'dials-3.8'],
+        command=['git', 'branch', '--set-upstream-to=origin/dials-3.22', 'dials-3.22'],
         workdir=workdir))
 
   def add_module(self, module, workdir=None, module_directory=None):
@@ -2571,12 +2540,6 @@ in your path. """)
     configlst = super(PhenixBuilder, self).get_libtbx_configure()
     if '--enable_cxx11' in configlst:
       configlst.remove('--enable_cxx11')
-    set_std = ['cxxstd' in conf for conf in configlst]
-    if set_std.count(True) == 0:
-      if platform.mac_ver()[-1] == 'arm64':
-        configlst.append('--cxxstd=c++14')
-      else:
-        configlst.append('--cxxstd=c++11')
     if not self.isPlatformMacOSX():
       configlst.append("--enable_openmp_if_possible=True")
     return configlst
@@ -2908,29 +2871,6 @@ def set_builder_defaults(options):
   '''
   Updates defaults for specific builders
   '''
-  if options.builder == 'phenix_voyager':
-    if not options.no_boost_src:
-      options.no_boost_src = True
-      # restore default for CentOS 7
-      if sys.platform.startswith('linux') and '.el7.' in platform.platform():
-        options.no_boost_src = False
-  if options.builder == 'phenix' \
-    or options.builder == 'phenix_discamb' \
-    or options.builder == 'phenix_molstar' \
-    or options.builder == 'phenix_voyager' \
-    or options.builder == 'molprobity':
-    # Apple Silicon uses Boost 1.78 in environment, Python 3.9
-    if platform.mac_ver()[-1] == 'arm64':
-      options.no_boost_src = True
-      options.python = '39'
-    if not options.no_boost_src:
-      options.no_boost_src = True
-      if sys.platform.startswith('linux') and '.el7.' in platform.platform():
-        options.no_boost_src = False
-    if options.use_conda is None:
-      options.use_conda = ''
-    if options.builder == 'phenix_discamb':
-      options.python = '39'
 
   return options
 
@@ -3056,8 +2996,8 @@ def run(root=None):
                     default=False)
   python_args = parser.add_mutually_exclusive_group(required=False)
   python_args.add_argument('--python',
-                    default='37', type=str, nargs='?', const='37',
-                    choices=['27', '37', '38', '39', '310', '311', '312', '313'],
+                    default='311', type=str, nargs='?', const='311',
+                    choices=['39', '310', '311', '312', '313', '314'],
                     help="""When set, a specific Python version of the
 conda environment will be used. This only affects environments selected with
 the --builder flag. For non-conda dependencies, any Python 3 implies
@@ -3079,16 +3019,17 @@ building, $CONDA_PREFIX should be the argument for this flag. Otherwise, a new
 environment will be created. The --python flag will be ignored when there is
 an argument for this flag. Specifying an environment is for developers that
 maintain their own conda environment.""",
-                    default=None, nargs='?', const='')
+                    default='', nargs='?', const='')
   parser.add_argument("--no-boost-src", "--no_boost_src",
                       dest="no_boost_src",
                       help="""When set, the reduced Boost source code is not
 downloaded into the modules directory. This enables the usage of an existing
 installation of Boost in the same directory as the Python for configuration.
 For example, this flag should be used if the conda package for Boost is
-available. This flag only affects the "update" step.""",
+available. This flag only affects the "update" step. DEPRECATED: the Boost
+installation in the conda environment should be used.""",
                       action="store_true",
-                      default=False)
+                      default=True)
   parser.add_argument("--build-dir",
                      dest="build_dir",
                      help="directory where the build will be. Should be at the same level as modules! default is 'build'",
