@@ -9,6 +9,9 @@ from collections import defaultdict
 from rdkit.Chem import Lipinski
 from scitbx.array_family import flex
 
+from rdkit.Chem import AllChem
+from rdkit.Chem.Draw import rdMolDraw2D
+
 """
 Utility functions to work with rdkit
 
@@ -20,19 +23,7 @@ Functions:
   mol_from_smiles: Generate rdkit mol from smiles string
   match_mol_indices: Match atom indices of different mols
 """
-
-#def get_rdkit_bond_type(cif_order):
-#  """
-#  Maps CCTBX CIF bond orders to RDKit BondType enum.
-#  """
-#  if not cif_order: return Chem.BondType.SINGLE
-#  order = cif_order.lower()
-#  if 'sing' in order: return Chem.BondType.SINGLE
-#  if 'doub' in order: return Chem.BondType.DOUBLE
-#  if 'trip' in order: return Chem.BondType.TRIPLE
-#  if 'deloc' in order or 'arom' in order: return Chem.BondType.AROMATIC
-#  return Chem.BondType.SINGLE
-
+# ------------------------------------------------------------------------------
 
 def get_rdkit_bond_type(cif_order, elements=None):
   """
@@ -57,6 +48,8 @@ def get_rdkit_bond_type(cif_order, elements=None):
 
   return Chem.BondType.SINGLE
 
+# ------------------------------------------------------------------------------
+
 def is_amide_bond(mol, bond):
   """
   Checks if a bond is a C-N amide bond to prevent cutting peptides.
@@ -79,6 +72,8 @@ def is_amide_bond(mol, bond):
       if bond_to_o is not None and bond_to_o.GetBondType() == Chem.BondType.DOUBLE:
         return True
   return False
+
+# ------------------------------------------------------------------------------
 
 def get_rdkit_mol_from_atom_group_and_cif_obj(atom_group, cif_object):
   atoms_ligand = atom_group.atoms()
@@ -171,20 +166,26 @@ def fix_charges(mol):
 
   return mol
 
+# ------------------------------------------------------------------------------
+
 def get_cctbx_isel_for_rigid_components(atom_group,
                                         cif_object,
-                                        filter_lone_linkers=True):
+                                        filter_lone_linkers=True,
+                                        filename=None):
   mol, rdkit_to_cctbx = get_rdkit_mol_from_atom_group_and_cif_obj(
     atom_group = atom_group,
     cif_object = cif_object)
   cctbx_rigid_components = get_rigid_components(
-    mol, rdkit_to_cctbx, filter_lone_linkers)
+    mol, rdkit_to_cctbx, filter_lone_linkers, filename)
 
   return cctbx_rigid_components
 
+# ------------------------------------------------------------------------------
+
 def get_rigid_components(mol,
                          rdkit_to_cctbx,
-                         filter_lone_linkers=True):
+                         filter_lone_linkers=True,
+                         filename=None):
 
   # Identify Rotatable Bonds
   rotatable_pattern = Lipinski.RotatableBondSmarts
@@ -245,6 +246,7 @@ def get_rigid_components(mol,
 
   # Fragment
   if not final_bonds_to_cut:
+    draw_colored_fragments(mol, Chem.GetMolFrags(mol, asMols=False), filename=filename)
     return [flex.size_t(list(rdkit_to_cctbx.values()))]
 
   fragmented_mol = Chem.FragmentOnBonds(mol, final_bonds_to_cut, addDummies=False)
@@ -261,7 +263,11 @@ def get_rigid_components(mol,
       component_indices.append(global_idx)
     cctbx_rigid_components.append(component_indices)
 
+  draw_colored_fragments(mol, raw_fragments, filename=filename)
+
   return cctbx_rigid_components
+
+# ------------------------------------------------------------------------------
 
 def _filter_isolated_linkers(candidate_cut_bonds, mol, fragment_size_map):
   # 1. Map bonds to atoms
@@ -349,6 +355,104 @@ def _filter_isolated_linkers(candidate_cut_bonds, mol, fragment_size_map):
       safe_atoms.add(bond.GetOtherAtom(atom).GetIdx())
 
   return bonds_to_skip
+
+# ------------------------------------------------------------------------------
+
+def draw_colored_fragments(mol, rdkit_frags, filename):
+  """
+  1. Removes all H atoms.
+  2. Strips all charges and implicit H properties (forces clean drawing).
+  3. Maps colors from the original fragmented indices to the new clean molecule.
+  """
+  if filename is None: return
+  # 1. Work on a copy
+  mol_viz = Chem.Mol(mol)
+
+  # 2. Tag atoms with their original index so we can trace them back to rdkit_frags
+  for atom in mol_viz.GetAtoms():
+    atom.SetIntProp("orig_idx", atom.GetIdx())
+
+  # 3. Remove Hydrogens
+  # implicitOnly=False ensures we remove the explicit H atoms
+  mol_viz = Chem.RemoveHs(mol_viz, implicitOnly=False)
+
+  # 4. Cleanup Loop
+  # This prevents the "OH" or "S+" labels. Force RDKit to draw atoms as-is.
+  for atom in mol_viz.GetAtoms():
+    # Force RDKit to believe there are no implicit Hydrogens
+    atom.SetNoImplicit(True)
+    # Force explicit H count to 0
+    atom.SetNumExplicitHs(0)
+    # Optional: Remove formal charges (e.g. make S+ look like S)
+    atom.SetFormalCharge(0)
+    # Update property cache to accept these "weird" valences
+    atom.UpdatePropertyCache(strict=False)
+
+  # 5. Coordinate Generation
+  AllChem.Compute2DCoords(mol_viz)
+
+  # 6. Color Mapping Logic
+  palette = [
+    (1.0, 0.6, 0.6), (0.6, 0.8, 1.0), (0.6, 1.0, 0.6),
+    (1.0, 0.8, 0.4), (0.8, 0.6, 1.0), (1.0, 1.0, 0.6),
+    (0.4, 0.8, 0.8), (0.8, 0.8, 0.8)
+  ]
+
+  # Map: Original_Index -> Fragment_ID
+  old_idx_to_frag_id = {}
+  for frag_idx, frag_atoms in enumerate(rdkit_frags):
+    for old_idx in frag_atoms:
+      old_idx_to_frag_id[old_idx] = frag_idx
+
+  # Map: New_Atom_Index -> Color
+  new_atom_highlights = {}
+  new_bond_highlights = {}
+  new_idx_to_frag_id = {}
+
+  for atom in mol_viz.GetAtoms():
+    if atom.HasProp("orig_idx"):
+      old_idx = atom.GetIntProp("orig_idx")
+
+      if old_idx in old_idx_to_frag_id:
+        frag_id = old_idx_to_frag_id[old_idx]
+        color = palette[frag_id % len(palette)]
+
+        new_idx = atom.GetIdx()
+        new_atom_highlights[new_idx] = color
+        new_idx_to_frag_id[new_idx] = frag_id
+
+  # 7. Highlight Bonds
+  for bond in mol_viz.GetBonds():
+    a1 = bond.GetBeginAtomIdx()
+    a2 = bond.GetEndAtomIdx()
+
+    if a1 in new_idx_to_frag_id and a2 in new_idx_to_frag_id:
+      if new_idx_to_frag_id[a1] == new_idx_to_frag_id[a2]:
+        new_bond_highlights[bond.GetIdx()] = new_atom_highlights[a1]
+
+  # 8. Draw
+  width, height = 500, 500
+  drawer = rdMolDraw2D.MolDraw2DCairo(width, height)
+
+  opts = drawer.drawOptions()
+  opts.fillHighlights = True
+
+  drawer.DrawMolecule(
+    mol_viz,
+    highlightAtoms=list(new_atom_highlights.keys()),
+    highlightAtomColors=new_atom_highlights,
+    highlightBonds=list(new_bond_highlights.keys()),
+    highlightBondColors=new_bond_highlights
+  )
+  drawer.FinishDrawing()
+
+  # 9. Save
+  with open(filename, 'wb') as f:
+    f.write(drawer.GetDrawingText())
+
+  print(f"PNG saved to {filename}")
+
+# ------------------------------------------------------------------------------
 
 def get_prop_safe(rd_obj, prop):
   if prop not in rd_obj.GetPropNames(): return False
