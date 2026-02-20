@@ -43,14 +43,6 @@ jobs:
   - script: conda config --set plugins.auto_accept_tos yes
     displayName: Accept conda TOS
 
-  # create environment with earlier version of git
-  # https://github.com/git-lfs/git-lfs/issues/5749
-  - script: |
-      set -xe
-      conda create -n git -c conda-forge -y git=2.44
-    displayName: Create environment with git
-    retryCountOnTaskFailure: 3
-
   - script: |
       cd $(Pipeline.Workspace)
       ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
@@ -59,9 +51,8 @@ jobs:
   - script: |
       set -xe
       source $(CONDA)/etc/profile.d/conda.sh
-      conda activate git
       cd $(Pipeline.Workspace)
-      python bootstrap.py hot update --builder=xfel --python=311 --no-boost-src
+      python bootstrap.py hot update --builder=xfel --no-boost-src
       cd modules
       git clone https://github.com/nksauter/LS49.git
       git clone https://gitlab.com/cctbx/ls49_big_data.git

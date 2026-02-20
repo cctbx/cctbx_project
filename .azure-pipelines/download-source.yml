@@ -24,7 +24,7 @@ jobs:
 
   - script: |
       cd $(Pipeline.Workspace)
-      python bootstrap.py hot update --builder=cctbx --python=38 ${{ parameters.flags }}
+      python bootstrap.py hot update --builder=cctbx ${{ parameters.flags }}
     displayName: Download sources
 
   - script: |
@@ -50,12 +50,6 @@ jobs:
       git submodule init
       git submodule update
     displayName: Download pyDiSCaMB
-
-  - script: |
-      set -xe
-      cd $(Pipeline.Workspace)/modules/dxtbx
-      git checkout dials-3.24
-    displayName: Select dxtbx 3.24 branch
 
   # change optimization level (linux, macOS)
   - script: |
