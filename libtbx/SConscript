@@ -538,7 +538,7 @@ libtbx.scons: Warning: compiling with /MDd:
       "-DMS_WIN64"]
     env_etc.cxxflags_base = ["-DMS_WIN64"]
     # XXX feature duplication, see env.build_options.enable_cxx11
-    if (env_etc.gcc_version >= 40400 and determine_cpp0x_flag()):
+    if (env_etc.gcc_version is not None and env_etc.gcc_version >= 40400 and determine_cpp0x_flag()):
       env_etc.cxxflags_base.append("-std=c++0x")
       env_etc.cxx11_is_available = True
     if (libtbx.env.build_options.warning_level == 0):
@@ -551,7 +551,7 @@ libtbx.scons: Warning: compiling with /MDd:
     env_etc.ccflags_base.extend(warn_options)
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O3", "-ffast-math"]
-      if (env_etc.gcc_version >= 40100 and is_64bit_architecture):
+      if (env_etc.gcc_version is not None and env_etc.gcc_version >= 40100 and is_64bit_architecture):
         opts.insert(2, "-funroll-loops")
     else:
       opts = ["-O0", "-fno-inline"]
@@ -653,7 +653,7 @@ else:
       "-fno-strict-aliasing"]
     env_etc.cxxflags_base = []
     # XXX feature duplication, see env.build_options.enable_cxx11
-    if (env_etc.gcc_version >= 40400 and determine_cpp0x_flag()):
+    if (env_etc.gcc_version is not None and env_etc.gcc_version >= 40400 and determine_cpp0x_flag()):
       env_etc.cxxflags_base.append("-std=c++0x")
       env_etc.cxx11_is_available = True
     if (libtbx.env.build_options.warning_level == 0):
@@ -666,9 +666,9 @@ else:
     env_etc.ccflags_base.extend(warn_options)
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O3"]
-      if (env_etc.gcc_version < 11000):
+      if (env_etc.gcc_version is not None and env_etc.gcc_version < 11000):
         opts.append("-ffast-math")
-      if (env_etc.gcc_version >= 40100 and is_64bit_architecture):
+      if (env_etc.gcc_version is not None and env_etc.gcc_version >= 40100 and is_64bit_architecture):
         opts.append("-funroll-loops")
     else:
       opts = ["-O0", "-fno-inline"]
@@ -1020,12 +1020,12 @@ int main() {
       env_etc.ccflags_base.extend(warn_options)
     if cxx == "c++" and env_etc.clang_version is None:
       env_etc.ccflags_base.extend(["-no-cpp-precomp"])
-      if (env_etc.gcc_version < 40201):
+      if (env_etc.gcc_version is not None and env_etc.gcc_version < 40201):
         env_etc.ccflags_base.append("-Wno-long-double")
 
     env_etc.cxxflags_base = base_macos_flags
 
-    if env_etc.clang_version is None and env_etc.gcc_version < 40000:
+    if env_etc.clang_version is None and env_etc.gcc_version is not None and env_etc.gcc_version < 40000:
       env_etc.cxxflags_base.append("-fcoalesce-templates")
     env_etc.cxxflags_base.append("-DBOOST_ALL_NO_LIB")
     if (libtbx.env.build_options.optimization):
