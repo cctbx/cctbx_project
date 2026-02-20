@@ -30,18 +30,6 @@ jobs:
   - script: |
       set -xe
       cd $(Pipeline.Workspace)/modules
-      rm -fr scons*
-    displayName: Remove packaged SCons
-
-  - script: |
-      set -xe
-      cd $(Pipeline.Workspace)/modules/boost
-      git checkout 1.86
-    displayName: Select Boost 1.86
-
-  - script: |
-      set -xe
-      cd $(Pipeline.Workspace)/modules
       git clone https://github.com/discamb-project/pyDiSCaMB.git
       cd pyDiSCaMB
       git checkout 1c036bbb1eb7da23f473b865552bd64fc6645f6b
