@@ -391,28 +391,44 @@ def five_number_summary(data):
   Returns the Tukey five number summary (min, lower hinge, median, upper hinge,
   max) for a sequence of observations. This function gives the same results
   as R's fivenum function.
+
+  Optimized with numpy.partition (O(N)) instead of full sort (O(N log N)).
   """
+  import numpy as np
   try:
-    sorts = flex.sorted(data)
+    arr = data.as_numpy_array()
   except AttributeError:
-    sorts = sorted(data)
-  n = len(sorts)
+    arr = np.asarray(data, dtype=float)
+  n = len(arr)
+  half = n // 2
+  # Determine lower half length and upper half base index (mirrors original slicing)
+  if n % 2:  # odd N: lower = arr[:half+1], upper = arr[half:]
+    m = half + 1
+    upper_base = half
+  else:       # even N: lower = arr[:half],   upper = arr[half:]
+    m = half
+    upper_base = half
+  # Median indices into full sorted array
   if n % 2:
-    med = sorts[n // 2]
-    lower = sorts[:((n // 2) + 1)]
-    upper = sorts[(n // 2):]
+    med_idx = [half]
   else:
-    med = (sorts[n//2] + sorts[n//2 - 1]) / 2
-    lower = sorts[:(n // 2)]
-    upper = sorts[(n // 2):]
-  n = len(lower)
-  if n % 2:
-    lhinge = lower[n // 2]
-    uhinge = upper[n // 2]
+    med_idx = [half - 1, half]
+  # Hinge indices: median of lower half (length m), then median of upper half
+  if m % 2:
+    lo_idx = [m // 2]
+    hi_idx = [upper_base + m // 2]
   else:
-    lhinge = (lower[n//2] + lower[n//2 - 1]) / 2
-    uhinge = (upper[n//2] + upper[n//2 - 1]) / 2
-  return sorts[0], lhinge, med, uhinge, sorts[-1]
+    lo_idx = [m // 2 - 1, m // 2]
+    hi_idx = [upper_base + m // 2 - 1, upper_base + m // 2]
+  # Gather all needed indices for a single numpy.partition call
+  needed = sorted(set([0, n - 1] + med_idx + lo_idx + hi_idx))
+  p = np.partition(arr, needed)
+  mn = p[0]
+  mx = p[n - 1]
+  med = p[med_idx[0]] if len(med_idx) == 1 else (p[med_idx[0]] + p[med_idx[1]]) / 2.0
+  lhinge = p[lo_idx[0]] if len(lo_idx) == 1 else (p[lo_idx[0]] + p[lo_idx[1]]) / 2.0
+  uhinge = p[hi_idx[0]] if len(hi_idx) == 1 else (p[hi_idx[0]] + p[hi_idx[1]]) / 2.0
+  return float(mn), float(lhinge), float(med), float(uhinge), float(mx)
 
 class sin_cos_table(object):
   """
