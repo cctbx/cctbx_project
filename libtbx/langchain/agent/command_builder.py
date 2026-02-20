@@ -1486,7 +1486,156 @@ class CommandBuilder:
                 strategy["stop_after_predict"] = True
                 self._log(context, "BUILD: No resolution available - setting stop_after_predict=True (prediction only). Run xtriage/mtriage first to get resolution for full workflow.")
 
+        # polder: validate/fix the selection string
+        # The LLM often writes invalid bare words like selection=ligand or selection=heteroatom.
+        # Valid selections are PHENIX atom selection syntax, e.g. "hetero", "chain B",
+        # "chain B and resseq 100", "resname ATP", etc.
+        if program == "phenix.polder" and "selection" in strategy:
+            strategy["selection"] = self._sanitize_polder_selection(
+                strategy["selection"], files, context
+            )
+
         return files, strategy
+
+    # -------------------------------------------------------------------------
+    # Polder selection helper
+    # -------------------------------------------------------------------------
+
+    # Bare words that the LLM writes but are NOT valid PHENIX selection syntax.
+    # Any selection matching these will be replaced with an inferred/default value.
+    _INVALID_POLDER_SELECTIONS = frozenset([
+        "ligand", "lig", "het", "hetatm", "heteroatom", "hetero_atom",
+        "ligands", "hets", "small_molecule", "smallmolecule",
+    ])
+
+    def _sanitize_polder_selection(self, selection: str,
+                                   files: Dict[str, Any],
+                                   context: "CommandContext") -> str:
+        """
+        Validate and fix a polder selection string.
+
+        Rules (in priority order):
+        1. If the user explicitly supplied a selection via directives/project_advice,
+           pass it through unchanged (they know what they want).
+        2. If selection is a known-invalid bare word (e.g. "ligand"), replace it:
+           a. Try to infer a real selection from HETATM records in the model file.
+           b. Fall back to "hetero" (valid PHENIX keyword for all non-water HETATM).
+        3. Otherwise, pass the LLM selection through unchanged (it may be valid).
+
+        Args:
+            selection: The selection string from strategy
+            files: Selected input files for this command
+            context: CommandContext with directives and available file info
+
+        Returns:
+            A valid (or best-effort) PHENIX selection string
+        """
+        selection_stripped = selection.strip().strip("'\"").lower()
+
+        # 1. User directive → pass through unchanged
+        if context.directives:
+            prog_settings = context.directives.get("program_settings", {})
+            user_sel = (prog_settings.get("phenix.polder", {}) or {}).get("selection")
+            if user_sel:
+                self._log(context, "BUILD: Polder selection from user directive: '%s'" % user_sel)
+                return user_sel
+
+        # 2. Invalid bare word → infer from model or default to "hetero"
+        if selection_stripped in self._INVALID_POLDER_SELECTIONS:
+            inferred = self._infer_polder_selection_from_model(files, context)
+            self._log(context,
+                "BUILD: Polder selection '%s' is not valid PHENIX syntax — "
+                "replaced with '%s'" % (selection, inferred))
+            return inferred
+
+        # 3. Pass through (may be valid, e.g. "chain B", "resname ATP", "hetero")
+        return selection
+
+    def _infer_polder_selection_from_model(self, files: Dict[str, Any],
+                                           context: "CommandContext") -> str:
+        """
+        Scan the model PDB file for HETATM records to build a precise selection.
+
+        Looks for non-water HETATM residues and returns a selection like:
+          "chain B and resseq 100"         (single unique residue)
+          "chain B and resseq 100:105"     (residue range in one chain)
+          "hetero"                          (fallback when model unreadable or complex)
+
+        Args:
+            files: Selected files dict (expects "model" key)
+            context: CommandContext for logging
+
+        Returns:
+            A PHENIX atom selection string
+        """
+        model_path = files.get("model")
+        if isinstance(model_path, list):
+            model_path = model_path[0] if model_path else None
+
+        if not model_path or not os.path.exists(str(model_path)):
+            return "hetero"
+
+        # Collect unique (chain, resname, resseq) tuples from HETATM records,
+        # excluding water (HOH, WAT, DOD, H2O).
+        WATER_RESNAMES = frozenset(["HOH", "WAT", "DOD", "H2O", "SOL"])
+        hetatm_residues = {}  # (chain, resseq) -> resname (ordered by first seen)
+
+        try:
+            with open(str(model_path), 'r', errors='replace') as fh:
+                for line in fh:
+                    if not line.startswith("HETATM"):
+                        continue
+                    if len(line) < 26:
+                        continue
+                    resname = line[17:20].strip()
+                    chain   = line[21:22].strip()
+                    resseq  = line[22:26].strip()
+                    if resname in WATER_RESNAMES:
+                        continue
+                    key = (chain, resseq)
+                    if key not in hetatm_residues:
+                        hetatm_residues[key] = resname
+        except Exception as e:
+            self._log(context, "BUILD: Could not read model for polder selection (%s)" % e)
+            return "hetero"
+
+        if not hetatm_residues:
+            # No non-water HETATM — fall back to hetero
+            return "hetero"
+
+        # Group by chain
+        chains = {}
+        for (chain, resseq), resname in hetatm_residues.items():
+            chains.setdefault(chain, []).append((int(resseq) if resseq.isdigit() else resseq, resname))
+
+        if len(chains) == 1:
+            chain = list(chains.keys())[0]
+            residues = sorted(chains[chain], key=lambda x: x[0] if isinstance(x[0], int) else 0)
+            resname = residues[0][1]
+
+            if len(residues) == 1:
+                # Single ligand residue
+                resseq_val = residues[0][0]
+                sel = "chain %s and resseq %s" % (chain, resseq_val)
+                self._log(context,
+                    "BUILD: Polder selection inferred from HETATM: '%s' (resname %s)" %
+                    (sel, resname))
+                return sel
+            else:
+                # Multiple residues in same chain — use resname if consistent, else chain
+                resnames = set(r[1] for r in residues)
+                if len(resnames) == 1:
+                    sel = "resname %s" % list(resnames)[0]
+                else:
+                    sel = "chain %s and hetero" % chain
+                self._log(context,
+                    "BUILD: Polder selection inferred (multiple HETATM): '%s'" % sel)
+                return sel
+        else:
+            # Multiple chains with ligands — use hetero as safe fallback
+            self._log(context,
+                "BUILD: Polder selection: multiple chains with HETATM, using 'hetero'")
+            return "hetero"
 
     # =========================================================================
     # STEP 4: ASSEMBLE COMMAND

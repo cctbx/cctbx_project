@@ -169,9 +169,9 @@ The `run_tests_with_fail_fast()` function automatically discovers tests:
 | `tst_phaser_multimodel.py` | 3 | Phaser multi-model handling |
 | `tst_utils.py` | 2 | Assert helpers |
 | `tst_v112_13_fixes.py` | — | Companion files, intermediate filtering, file categorisation (v112.13) |
-| `tst_audit_fixes.py` | 21 | Audit regressions: `_is_failed_result`, zombie state, xtriage resolution, RSR map_cc, max_refine_cycles landing (v112.14) |
+| `tst_audit_fixes.py` | 74 | Audit regressions: `_is_failed_result`, zombie state, xtriage resolution, RSR map_cc, max_refine_cycles landing (v112.14); session management keywords, `get_results()` safety, restart_mode auto-set (v112.31 P1/P3/P4); completed-workflow extension via `advice_changed` phase step-back (v112.31 Q1) |
 
-Total: **825+ tests across 37 files**
+Total: **878+ tests across 37 files**
 
 ### Key Tests for Recent Fixes
 
@@ -205,6 +205,17 @@ Total: **825+ tests across 37 files**
 | `test_i1_max_refine_cycles_xray_controlled_landing` | tst_audit_fixes.py | Hitting max_refine_cycles injects validate + STOP, not bare STOP |
 | `test_i1_max_refine_cycles_cryoem_uses_rsr_count` | tst_audit_fixes.py | Cryo-EM limit uses rsr_count, not refine_count |
 | `test_i2_after_program_beats_quality_gate` | tst_audit_fixes.py | after_program → STOP only (no validate injection) |
+| `test_p1_handle_session_management_display_sets_result` | tst_audit_fixes.py | `display_and_stop` populates `self.result` via `_finalize_session(skip_summary=True)` |
+| `test_p2_remove_last_n_saves_and_populates_result` | tst_audit_fixes.py | `remove_last_n` saves to disk AND updates `result.session_data` |
+| `test_p3_get_results_safe_before_run` | tst_audit_fixes.py | `get_results()` on fresh instance returns None, not AttributeError |
+| `test_p4_restart_mode_set_to_resume_for_display` | tst_audit_fixes.py | `display_and_stop` auto-sets `restart_mode=resume` before `set_defaults()` |
+| `test_q1_complete_phase_has_only_stop` | tst_audit_fixes.py | Baseline: completed workflow → `valid_programs=['STOP']` (no Q1 fix applied) |
+| `test_q1_advice_changed_steps_back_to_validate` | tst_audit_fixes.py | Core logic: `advice_changed` + `phase=complete` → validate-phase programs incl. polder |
+| `test_q1_no_step_back_when_advice_unchanged` | tst_audit_fixes.py | Unchanged advice leaves `complete` phase as-is (no spurious step-back) |
+| `test_q1_cryoem_complete_phase_steps_back` | tst_audit_fixes.py | Same step-back logic works for cryo-EM `complete` phase |
+| `test_q1_polder_reruns_allowed_when_already_done` | tst_audit_fixes.py | `polder_done=True` does NOT block polder re-run (no `run_once` strategy) |
+| `test_q1_advice_cleared_after_one_cycle` | tst_audit_fixes.py | `advice_changed` flag cleared after one successful cycle; next cycle terminates normally |
+| `test_q1_step_back_does_not_apply_outside_complete` | tst_audit_fixes.py | Guard fires only on `complete` phase; `refine`, `validate`, `obtain_model` untouched |
 
 ## Writing New Tests
 

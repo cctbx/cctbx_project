@@ -1154,6 +1154,119 @@ The agent detects when advice has changed between runs and automatically reproce
 This enables mid-session advice updates - users can provide new instructions
 (like "stop" or "focus on the ligand") and have them take effect immediately.
 
+### Advice Change Detection
+
+The agent detects when advice has changed between runs and automatically reprocesses:
+
+- **Same hash** → reuse cached processed advice
+- **Different hash** → reprocess advice AND re-extract directives
+- **No new advice** → reuse cached version
+
+This enables mid-session advice updates - users can provide new instructions
+(like "stop" or "focus on the ligand") and have them take effect immediately.
+
+#### Extending a Completed Workflow (Q1)
+
+A special case arises when the workflow has already reached the `complete` phase
+and the user resumes with new advice. Two independent mechanisms both need to be
+active to allow follow-up work:
+
+**Wall 1 — AUTO-STOP in PLAN (pre-existing):**
+When `metrics_trend.should_stop` is True, the PLAN node normally terminates
+immediately. The `advice_changed` flag suppresses this for exactly one cycle,
+letting the LLM plan before reverting to normal termination.
+
+**Wall 2 — `valid_programs = ['STOP']` in PERCEIVE (Q1 fix):**
+The `complete` phase returns `['STOP']` from `get_valid_programs`. Even with
+Wall 1 down, the LLM is presented with a menu of only STOP and cannot select
+any follow-up program. Fix: when `advice_changed=True` AND `phase=='complete'`,
+PERCEIVE steps back to the `validate` phase, which contains:
+
+```
+['phenix.polder', 'phenix.molprobity', 'phenix.model_vs_data',
+ 'phenix.map_correlations', 'STOP']
+```
+
+After one successful cycle, `advice_changed` is cleared in the post-execution
+check and normal termination logic resumes on the next cycle.
+
+**Complete flow on resume with new advice:**
+
+```
+_preprocess_user_advice()
+  ↓ new hash ≠ stored hash → session.data["advice_changed"] = True
+
+PERCEIVE (graph_nodes.py)
+  ↓ phase == 'complete' AND advice_changed
+  ↓ valid_programs ← get_valid_programs(exp, {"phase":"validate"}, ctx)
+  ↓ phase_info ← {"phase": "validate", "reason": "advice_changed: stepped back"}
+
+PLAN (graph_nodes.py)
+  ↓ metrics_trend.should_stop AND advice_changed → skip AUTO-STOP this cycle
+  ↓ LLM: sees new advice + validate-phase program menu → chooses phenix.polder
+
+BUILD / VALIDATE / OUTPUT → polder command executed
+
+Post-execution (iterate_agent.py)
+  ↓ session.data["advice_changed"] = False
+  ↓ next cycle: normal AUTO-STOP and complete-phase logic resume
+```
+
+**Usage:**
+```bash
+# Completed workflow: xtriage → phaser → refine ×3 → ligandfit → molprobity
+phenix.ai_agent \
+    log_directory=AIAgent_run1 \
+    restart_mode=resume \
+    project_advice="also run polder on chain B residue 100"
+```
+
+**Key design note:** `phenix.polder` intentionally has no `run_once` strategy
+in `programs.yaml`. Different residues and ligands may each require a separate
+omit map, so `polder_done=True` does not gate polder out of `valid_programs`.
+
+### Session Management Keywords
+
+Two Phil parameters allow inspecting and modifying an existing session without
+running new crystallographic cycles.
+
+#### `display_and_stop`
+
+```bash
+phenix.ai_agent log_directory=AIAgent_run1 display_and_stop=basic
+phenix.ai_agent log_directory=AIAgent_run1 display_and_stop=detailed
+```
+
+Prints the session history (`basic`: one line per cycle; `detailed`: full
+reasoning + command), then exits. Populates `self.result` via
+`_finalize_session(skip_summary=True)` so `get_results()` / `get_results_as_JSON()`
+work identically to a normal run.
+
+#### `remove_last_n`
+
+```bash
+phenix.ai_agent log_directory=AIAgent_run1 remove_last_n=2
+```
+
+Removes the last N cycles from the session JSON, clears the stale AI summary
+(since the cycle set has changed), rebuilds `active_files.json` and `best_files`
+from the remaining history, then saves and exits. Useful for pruning a failed
+refinement run before re-running.
+
+#### Auto-set `restart_mode=resume`
+
+Both parameters operate on an existing session directory and therefore always
+require resume semantics. `run()` automatically forces `restart_mode='resume'`
+before `set_defaults()` when either parameter is set, so the user does not need
+to remember the flag.
+
+#### `get_results()` safety
+
+`run()` sets `self.result = None` as its very first statement. `get_results()`
+uses `getattr(self, 'result', None)` as a defensive fallback. This prevents
+`AttributeError` on any early-exit path (session management, red-flag abort,
+bad parameters) that would otherwise bypass the normal result-assignment code.
+
 ### Input Sanitization
 
 The `sanitize_advice()` function removes potentially malicious patterns:

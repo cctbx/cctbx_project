@@ -553,3 +553,95 @@ Calculate a polder map for ligand MES 88 and then run refinement.
 **Note:** When user says "X then Y", the extractor sets:
 - `start_with_program: X` (run this first)
 - Does NOT set `after_program` (allows workflow to continue)
+
+---
+
+## Extending a Completed Workflow
+
+Sometimes you want to run an additional program after the agent has already
+declared the workflow complete (R-free at target, molprobity done). Rather
+than starting over, you can resume the session with new advice.
+
+### How It Works
+
+When the agent resumes with advice whose hash differs from the stored value,
+it sets an internal `advice_changed` flag. On the next cycle this flag:
+
+1. **Steps the workflow back from `complete` to `validate` phase** (Q1 fix),
+   giving the LLM access to post-refinement programs:
+   `phenix.polder`, `phenix.molprobity`, `phenix.model_vs_data`,
+   `phenix.map_correlations`
+2. **Suppresses the AUTO-STOP check** that would otherwise terminate
+   before the LLM even gets to plan
+
+After one successful cycle the flag is cleared and the normal completion
+logic resumes.
+
+### Example 7: Polder Map on a Ligand After Completion
+
+**Scenario:** A ligand-protein structure has been fully solved and validated.
+You want an omit map to confirm the ligand density.
+
+**Command:**
+```bash
+phenix.ai_agent \
+    log_directory=AIAgent_42 \
+    restart_mode=resume \
+    project_advice="also run polder on the MES ligand in chain B residue 100"
+```
+
+**What happens:**
+- Agent detects new advice hash → `advice_changed = True`
+- PERCEIVE: steps back from `complete` to `validate` phase →
+  `phenix.polder` appears in the program menu
+- PLAN: AUTO-STOP suppressed for this cycle
+- LLM sees new advice + polder in menu → selects `phenix.polder`
+  with `selection=resname MES and resseq 100`
+- Polder runs; omit map coefficients saved in session
+- `advice_changed` cleared; next cycle would stop normally
+
+**Note:** You do not need to specify `selection` in the advice — the LLM
+will infer it. For better precision, include the PHENIX selection syntax:
+
+```bash
+project_advice="run polder selection='chain B and resname MES and resseq 100'"
+```
+
+### Example 8: Additional Validation After Completion
+
+```bash
+phenix.ai_agent \
+    log_directory=AIAgent_42 \
+    restart_mode=resume \
+    project_advice="run model_vs_data to get a comprehensive validation report"
+```
+
+The LLM will select `phenix.model_vs_data` from the validate-phase menu.
+
+### Programs Available for Follow-Up
+
+The validate phase program menu available after step-back:
+
+| Program | Purpose |
+|---------|---------|
+| `phenix.polder` | Ligand/residue omit maps (OMIT electron density) |
+| `phenix.molprobity` | Geometry validation (re-run if you refined more) |
+| `phenix.model_vs_data` | Comprehensive model-vs-data statistics |
+| `phenix.map_correlations` | Map-model correlation analysis |
+
+### One Step at a Time
+
+Each resume with new advice triggers **one additional cycle**. For multiple
+follow-up programs, run multiple resumes (each with different advice) or
+use a multi-step directive:
+
+```bash
+# Two programs in sequence: polder then map_correlations
+phenix.ai_agent \
+    log_directory=AIAgent_42 \
+    restart_mode=resume \
+    project_advice="run polder on the MES ligand, then run map_correlations"
+```
+
+The directive extractor will recognise the multi-step request and set
+`start_with_program: phenix.polder` with normal workflow continuation.

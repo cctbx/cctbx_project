@@ -1629,20 +1629,22 @@ phenix.polder:
 
   strategy_flags:
     selection:
-      flag: 'selection="{value}"'
+      flag: "selection='{value}'"
       type: str
-      description: "Atom selection for polder calculation (e.g., 'chain A and resseq 88')"
+      default: "hetero and not water"
+      description: "Atom selection for polder. Default 'hetero and not water' selects all ligands/cofactors safely without assuming a residue name."
 
   invariants:
     - name: requires_selection
       description: "Polder requires an atom selection to calculate the omit map around"
       check:
         has_strategy: selection
-      message: "selection is REQUIRED for polder (e.g., selection='chain A and resseq 88'). Specify the atoms to evaluate."
+      message: "selection is REQUIRED for polder. Use selection='hetero and not water' to evaluate all ligands."
 
   hints:
-    - "selection is REQUIRED - specify atoms to evaluate (e.g., 'chain A and resseq 88')"
+    - "selection is REQUIRED - default is selection='hetero and not water' (safe for any ligand name)"
     - "Polder has NO resolution keyword - do not add resolution to the command"
+    - "IMPORTANT: always use single quotes around the selection value on the command line"
 
   outputs:
     files:
@@ -1653,7 +1655,7 @@ phenix.polder:
       - cc_1_3
       - polder_conclusion
 
-  command: "phenix.polder {data_mtz} {model} {selection}"
+  command: "phenix.polder {data_mtz} {model}"
 
   log_parsing:
     cc_1_3:

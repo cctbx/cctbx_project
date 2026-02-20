@@ -534,6 +534,58 @@ Red flags that indicate problems:
 
 ---
 
+## Session Management
+
+The agent provides two mechanisms for inspecting and modifying an existing session
+**without running new crystallographic cycles**.
+
+### Viewing a Session
+
+```bash
+phenix.ai_agent log_directory=AIAgent_run1 display_and_stop=basic
+phenix.ai_agent log_directory=AIAgent_run1 display_and_stop=detailed
+```
+
+`basic` prints a one-line-per-cycle summary table (program, R-free, result).
+`detailed` prints full reasoning and command for every cycle.
+Both modes populate `self.result` identically to a normal run so GUI calls
+(`get_results()`, `get_results_as_JSON()`) work without special cases.
+
+`restart_mode=resume` is automatically set when either session management
+parameter is active — no manual flag required.
+
+### Removing Cycles
+
+```bash
+phenix.ai_agent log_directory=AIAgent_run1 remove_last_n=2
+```
+
+Removes the last N cycles from the session, clears the stale AI summary,
+rebuilds `active_files.json` and `best_files` from remaining history,
+and saves. Useful for pruning a failed run before re-running.
+
+### Extending a Completed Workflow with New Advice
+
+When a workflow has fully completed, resuming with new `project_advice`
+triggers follow-up programs via the Q1 mechanism:
+
+```bash
+phenix.ai_agent \
+    log_directory=AIAgent_run1 \
+    restart_mode=resume \
+    project_advice="also run polder on chain B residue 100"
+```
+
+1. New advice hash detected → `advice_changed=True`
+2. PERCEIVE steps `complete` phase back to `validate` (adds polder, molprobity, etc.)
+3. PLAN suppresses AUTO-STOP for one cycle
+4. LLM acts on the new advice; after success, normal termination resumes
+
+See [USER_DIRECTIVES.md](guides/USER_DIRECTIVES.md#extending-a-completed-workflow)
+and [ARCHITECTURE.md](reference/ARCHITECTURE.md#advice-change-detection) for details.
+
+---
+
 ## Testing
 
 ### Test Suites (34 files, 32 in runner)
@@ -541,7 +593,7 @@ Red flags that indicate problems:
 **Standalone (no PHENIX required, 25 in runner):**
 - API Schema, Best Files Tracker, Transport, State Serialization
 - Command Builder, File Categorization, File Utils
-- Session Summary, Session Directives, Session Tools
+- Session Summary, Session Directives, Session Tools, Audit Fix Regressions
 - Advice Preprocessing, Directive Extractor, Directive Validator, Directives Integration
 - Event System, Metric Patterns, Pattern Manager
 - Program Registration, Summary Display, New Programs
@@ -569,6 +621,7 @@ python3 tests/tst_event_system.py    # Single suite
 
 | Version | Key Changes |
 |---------|-------------|
+| v112.31 | **Session management**: `display_and_stop` / `remove_last_n` populate `self.result`; `get_results()` safe before `run()`; `restart_mode` auto-set; **Q1**: resuming with new advice after workflow completion steps back from `complete` to `validate` phase, enabling follow-up programs (polder etc.) |
 | v112 | **Steps table metrics**: cycle metrics as primary source; benign warning metrics extraction; ligand typing fix; case-sensitive pattern fix; autobuild_denmod detection; YAML log_parsing for 8 programs |
 | v111 | **Summary output fixes**: predict_and_build R-free extraction; ligandfit output in final file list; fallback cycle status check fix |
 | v110 | **Stepwise mode**: automation_path controls predict_and_build behavior; fallback program tracking; autobuild scoring equals refined; best files in summary fix |

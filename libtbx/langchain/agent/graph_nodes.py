@@ -593,12 +593,48 @@ def perceive(state):
         directives=state.get("directives", {})
     )
 
+    # Q1: When the user provides new advice on resume and the workflow is
+    # already in the 'complete' phase, the valid_programs list is just
+    # ["STOP"], which means the LLM never gets to act on the new advice.
+    # Step back to 'validate' phase instead — it contains polder,
+    # molprobity, model_vs_data, and refine, giving the LLM the right
+    # menu to respond to follow-up instructions.
+    session_info = state.get("session_info", {})
+    # Q1 step-back: fire on advice_changed (new/different advice this resume)
+    # OR simply on any non-empty user_advice.  The latter covers stale sessions
+    # where the hash was already stored before this fix, and the general rule
+    # that "complete + user instructions" should never hard-STOP.
+    _user_advice = (state.get("user_advice") or "").strip()
+    if (workflow_state.get("phase_info", {}).get("phase") == "complete" and
+            (session_info.get("advice_changed") or _user_advice)):
+        try:
+            from libtbx.langchain.agent.workflow_engine import WorkflowEngine as _WE
+            _eng = _WE()
+            _validate_phase = {"phase": "validate"}
+            _ctx = workflow_state.get("context", {})
+            _exp = workflow_state.get("experiment_type", "xray")
+            _dir = state.get("directives", {})
+            _new_valid = _eng.get_valid_programs(_exp, _validate_phase, _ctx, _dir)
+            workflow_state = dict(workflow_state)
+            workflow_state["valid_programs"] = _new_valid
+            workflow_state["phase_info"] = {
+                "phase": "validate",
+                "reason": "advice_changed: stepped back from complete phase",
+            }
+            _trigger = "advice_changed" if session_info.get("advice_changed") else "user_advice present"
+            state = _log(state,
+                "PERCEIVE: %s — stepped back from 'complete' to 'validate' "
+                "phase. valid_programs: %s" % (_trigger, _new_valid))
+        except Exception as _qe:
+            state = _log(state,
+                "PERCEIVE: complete-phase step-back failed (%s) — "
+                "valid_programs unchanged" % _qe)
+
     # If user explicitly requested a program, inject it into valid_programs
     # regardless of workflow phase (the user knows what they want)
     # BUT: Don't inject if a forced_program is set from directives — the
     # directive system (after_program) understands multi-step ordering while
     # explicit_program is a simple text scan that would conflict.
-    session_info = state.get("session_info", {})
     explicit_prog = session_info.get("explicit_program")
     forced_prog = workflow_state.get("forced_program")
     if explicit_prog and not forced_prog:
@@ -1154,13 +1190,21 @@ def plan(state):
     if metrics_trend.get("should_stop"):
         reason = metrics_trend.get("reason", "Metrics indicate completion")
 
-        # BUT: Check if there's an after_program directive that hasn't been fulfilled
-        # In that case, we should NOT auto-stop until that program runs
-        directives = state.get("directives", {})
-        stop_cond = directives.get("stop_conditions", {})
-        after_program = stop_cond.get("after_program")
+        # Suppress AUTO-STOP when the user provided new advice on resume.
+        # New advice may request additional work (e.g. polder after a completed
+        # ligand-fit workflow) that the original completion check couldn't anticipate.
+        # We let the LLM plan for one cycle; if nothing new is needed it will stop again.
+        if session_info.get("advice_changed"):
+            state = _log(state, "PLAN: AUTO-STOP suppressed — new advice provided on resume (%s)" % reason)
+            # Clear the flag so the next cycle isn't also force-continued.
+            # The session-level flag is cleared after the cycle in iterate_agent.
+            session_info = {**session_info, "advice_changed": False}
+            state = {**state, "session_info": session_info}
+            # Fall through to normal LLM planning below
 
-        if after_program:
+        # Check if there's an after_program directive that hasn't been fulfilled
+        # In that case, we should NOT auto-stop until that program runs
+        elif after_program := state.get("directives", {}).get("stop_conditions", {}).get("after_program"):
             # Check if the after_program has been run in history
             history = state.get("history", [])
             after_program_done = any(

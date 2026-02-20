@@ -1,5 +1,133 @@
 # PHENIX AI Agent - Changelog
 
+## Version 112.31 (Session Management, Resume Enhancement, Completed-Workflow Extension)
+
+### P1: Session management keywords populate `self.result` (Fix 27)
+
+**`display_and_stop` / `remove_last_n` left `self.result` unset — GUI calls failed**
+- When the agent exited via `_handle_session_management()`, it returned without
+  populating `self.result`. Any downstream call to `get_results()` or
+  `get_results_as_JSON()` raised `AttributeError`.
+- Fix: After session_tools operations complete, `_handle_session_management()`
+  now loads the `AgentSession`, calls `_finalize_session(skip_summary=True)`,
+  and builds a standard `group_args` result identical to a normal run's result.
+  The GUI receives session history, cycle count, and summary with no special cases.
+- `_finalize_session` gained a `skip_summary` kwarg (default `False`) that
+  suppresses the `_generate_ai_summary()` LLM call — unnecessary since no new
+  cycles ran during a display/remove operation.
+- Files: `programs/ai_agent.py`
+
+### P3: `get_results()` safe before `run()` (Fix 28)
+
+**`AttributeError: 'Program' object has no attribute 'result'`**
+- Any code path that called `get_results()` before `run()` completed — or on
+  any early-exit path that bypassed result assignment — raised AttributeError.
+- Fix: `run()` assigns `self.result = None` as its very first statement;
+  `get_results()` uses `getattr(self, 'result', None)` as a defensive fallback.
+- Files: `programs/ai_agent.py`
+
+### P4: `restart_mode` auto-set on session management params (Fix 29)
+
+**`display_and_stop` / `remove_last_n` required explicit `restart_mode=resume`**
+- Both session management parameters operate on an existing session directory,
+  which requires resume semantics. Forgetting `restart_mode=resume` silently
+  cleared the session's log_directory instead of reusing it.
+- Fix: At the start of `run()`, before `set_defaults()`, if either parameter
+  is set, `restart_mode` is automatically forced to `'resume'`. The
+  `display_and_stop` Phil choice default `'None'` (string) is handled
+  correctly — the guard checks `!= 'None'` rather than Python truthiness.
+- Files: `programs/ai_agent.py`
+
+### Q1: Extending a completed workflow with new `project_advice` (Fix 30)
+
+**Resuming after workflow completion with new advice was silently ignored**
+
+**Scenario:** Agent finishes a ligand-protein complex (xtriage → phaser → refine ×3 →
+ligandfit → pdbtools → molprobity). User resumes with
+`project_advice="also run polder on the ligand chain B residue 100"`.
+Previously the agent replied "workflow complete, nothing to do" and stopped
+immediately — the new advice was never acted on.
+
+**Root cause — two walls:**
+1. **Wall 1 — AUTO-STOP in PLAN** (already fixed before this version):
+   `metrics_trend.should_stop` would terminate before the LLM planned.
+   The `advice_changed` flag (set by `_preprocess_user_advice` on hash
+   mismatch) suppressed this for one cycle.
+2. **Wall 2 — `valid_programs = ['STOP']` in PERCEIVE** (this fix):
+   Once the workflow phase was `complete`, `detect_phase` returned the
+   terminal phase, and `get_valid_programs` immediately returned `['STOP']`
+   before Wall 1's suppression logic ran. The LLM was handed a program
+   menu that only said STOP, so it couldn't choose polder even with
+   Wall 1 down.
+
+**Fix** (`agent/graph_nodes.py`, PERCEIVE node — 20 lines):
+```python
+# When advice_changed=True and phase='complete', step back to 'validate'
+if (session_info.get("advice_changed") and
+        workflow_state.get("phase_info", {}).get("phase") == "complete"):
+    _new_valid = engine.get_valid_programs(exp, {"phase": "validate"}, ctx)
+    workflow_state["valid_programs"] = _new_valid
+    workflow_state["phase_info"] = {"phase": "validate", "reason": "advice_changed"}
+```
+
+The `validate` phase contains exactly the right program menu for
+post-completion follow-up: `phenix.polder`, `phenix.molprobity`,
+`phenix.model_vs_data`, `phenix.map_correlations`, plus `STOP` so the
+LLM can still exit if the advice requires no action. After one successful
+cycle, `advice_changed` is cleared and normal AUTO-STOP behaviour resumes.
+
+**Complete event flow on resume with new advice:**
+```
+1. _preprocess_user_advice()
+     new hash ≠ stored hash → session.data["advice_changed"] = True
+
+2. PERCEIVE (Q1 fix)
+     phase == 'complete' AND advice_changed
+     → valid_programs = ['phenix.polder', 'phenix.molprobity',
+                         'phenix.model_vs_data', 'phenix.map_correlations',
+                         'STOP']
+     → phase_info['phase'] set to 'validate'
+
+3. PLAN (Wall 1 fix, pre-existing)
+     metrics_trend.should_stop AND advice_changed
+     → AUTO-STOP suppressed for this cycle
+
+4. LLM
+     sees new advice + validate-phase program menu → chooses phenix.polder
+
+5. Post-cycle cleanup
+     advice_changed = False
+     → next cycle: normal termination logic resumes
+```
+
+**Notable behaviour:** `phenix.polder` intentionally lacks `strategy: run_once`
+in `programs.yaml` — different residues and ligands may each need separate
+omit maps. `polder_done=True` therefore does NOT block polder from reappearing
+in `valid_programs`, allowing additional selections on subsequent resumes.
+
+- Files: `agent/graph_nodes.py`
+
+### Tests added (`tests/tst_audit_fixes.py`)
+
+**P1/P3/P4 tests (20 tests)** covering session_tools functions, real method
+extraction via `_build_agent_stub`, `get_results()` safety, and restart_mode
+auto-set. See previous session-management context for full list.
+
+**Q1 tests (9 tests):**
+- `test_q1_complete_phase_has_only_stop`: baseline — `complete` phase → `['STOP']`
+- `test_q1_validate_phase_includes_polder`: validate phase contains `phenix.polder`
+- `test_q1_advice_changed_steps_back_to_validate`: core logic — step-back adds polder
+- `test_q1_no_step_back_when_advice_unchanged`: unchanged advice keeps `complete` phase
+- `test_q1_polder_reruns_allowed_when_already_done`: `polder_done=True` does NOT block re-run
+- `test_q1_cryoem_complete_phase_steps_back`: logic is experiment-type agnostic
+- `test_q1_graph_nodes_perceive_mutates_state`: end-to-end state mutation test
+- `test_q1_advice_cleared_after_one_cycle`: `advice_changed` clears after one cycle
+- `test_q1_step_back_does_not_apply_outside_complete`: guard only fires on `complete` phase
+
+**Total tests: 74 (was 65 in v112_30)**
+
+---
+
 ## Version 112.14 (Systematic Audit — Categories I, J, E, G, H)
 
 ### I1: max_refine_cycles produces bare STOP instead of controlled landing (Fix 21)

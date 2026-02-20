@@ -597,6 +597,32 @@ class ProgramRegistry:
         # add resolution keywords to programs that don't accept them
         # (e.g., polder).
 
+        # Apply strategy_flag defaults for flags not already in strategy.
+        # E.g. polder's selection defaults to 'hetero and not water'.
+        if self.use_yaml:
+            strategy_defs_for_defaults = self.get_strategy_flags(program_name)
+            strategy = dict(strategy) if strategy else {}
+
+            # polder: always use the safe default selection regardless of what
+            # the LLM suggested.  The LLM cannot reliably know the residue name
+            # (it guesses "LIG", "LGD", etc.) and 'hetero and not water'
+            # works correctly for any ligand without assuming a name.
+            if program_name == "phenix.polder" and "selection" in strategy:
+                llm_sel = strategy["selection"]
+                safe_sel = (strategy_defs_for_defaults
+                            .get("selection", {})
+                            .get("default", "hetero and not water"))
+                if llm_sel != safe_sel:
+                    strategy["selection"] = safe_sel
+                    log("OVERRIDE: polder selection reset from LLM value %r to "
+                        "safe default %r" % (llm_sel, safe_sel))
+
+            for flag_key, flag_def in strategy_defs_for_defaults.items():
+                if flag_key not in strategy and "default" in flag_def:
+                    strategy[flag_key] = flag_def["default"]
+                    log("DEFAULT: %s %s=%s (from strategy_flags default)" % (
+                        program_name, flag_key, flag_def["default"]))
+
         if strategy:
             strategy_defs = self.get_strategy_flags(program_name)
 
@@ -605,9 +631,14 @@ class ProgramRegistry:
                     # Check if this looks like a PHENIX parameter (contains dots)
                     # or is a known short PHIL name from directives/LLM
                     if '.' in key or '=' in key or key in KNOWN_PHIL_SHORT_NAMES:
-                        # Pass through as key=value
-                        cmd_parts.append("%s=%s" % (key, value))
-                        log("PASSTHROUGH: Adding %s=%s (not in strategy_defs)" % (key, value))
+                        # Pass through as key=value.  If the value contains
+                        # spaces (e.g. selection expressions) wrap it in single
+                        # quotes so the shell sees it as one argument.
+                        val_str = str(value)
+                        if ' ' in val_str and not (val_str.startswith("'") or val_str.startswith('"')):
+                            val_str = "'%s'" % val_str
+                        cmd_parts.append("%s=%s" % (key, val_str))
+                        log("PASSTHROUGH: Adding %s=%s (not in strategy_defs)" % (key, val_str))
                     else:
                         log("WARNING: Unknown strategy '%s' for %s" % (key, program_name))
                     continue

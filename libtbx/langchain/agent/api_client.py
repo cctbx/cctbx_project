@@ -88,6 +88,11 @@ def build_session_state(session_info, session_resolution=None):
         if session_info.get("explicit_program"):
             session_state["explicit_program"] = session_info["explicit_program"]
 
+        # Resume flag: new advice provided on a completed workflow — suppresses
+        # AUTO-STOP and steps back from 'complete' to 'validate' phase (Q1 fix)
+        if session_info.get("advice_changed"):
+            session_state["advice_changed"] = True
+
     return session_state
 
 

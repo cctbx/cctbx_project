@@ -100,7 +100,19 @@ def test_polder_command_template():
     assert_in("phenix.polder", command)
     assert_in("{data_mtz}", command)
     assert_in("{model}", command)
-    assert_in("{selection}", command)
+    # selection is appended automatically via strategy_flags (not a command template
+    # placeholder) so it must NOT appear as {selection} in the template.
+    # Instead verify it exists as a strategy_flag with the safe default.
+    assert "{selection}" not in command, (
+        "polder command template must NOT contain {selection} — "
+        "selection is appended via strategy_flags to avoid double-substitution"
+    )
+    sel_flag = polder.get("strategy_flags", {}).get("selection", {})
+    assert sel_flag, "polder must have a 'selection' strategy_flag"
+    assert "hetero" in sel_flag.get("default", ""), (
+        "polder selection default must use 'hetero and not water', got: %s"
+        % sel_flag.get("default", "")
+    )
 
 
 def test_polder_log_parsing():
