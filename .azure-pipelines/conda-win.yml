@@ -76,12 +76,6 @@ jobs:
     displayName: Extract modules tarball
 
   - script: |
-      cd $(Pipeline.Workspace)\modules
-      rmdir /S /Q boost
-    displayName: Remove subset of Boost sources
-    condition: ne(variables['PYTHON_VERSION'], 'py27')
-
-  - script: |
       cd $(Pipeline.Workspace)
       copy modules\cctbx_project\libtbx\auto_build\bootstrap.py .
     displayName: Copy bootstrap.py
