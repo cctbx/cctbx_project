@@ -123,8 +123,10 @@ def run(cmdargs, NPROC=120):
   for code in hkls.keys():
     if(code in processed): continue
     hkl,size = hkls[code]
-    cif = cifs[code]
-    argss.append([cif, hkl, code])
+    try:
+      cif = cifs[code]
+      argss.append([cif, hkl, code])
+    except: pass # intentional
   print("NEW FILES TO PROCESS:", len(argss))
   if(NPROC>1):
     stdout_and_results = easy_mp.pool_map(
