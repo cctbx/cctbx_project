@@ -46,7 +46,7 @@ def get_mtz_dict(path):
     #
     #if code != "6a1o": continue
     #if code != "6a1q": continue
-    if(cntr==10): break
+    #if(cntr==10): break
     #
     file_name = "/".join([path,l])
     #assert os.path.isfile(file_name) # Terribly runtime expensive
