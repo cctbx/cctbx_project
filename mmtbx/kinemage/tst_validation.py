@@ -108,8 +108,8 @@ ATOM     22  SG  CYS A   4       5.120   8.380   2.100  1.00 10.00           S
 END
 """
 
-# PDB with hets (SO4 ligand), ions (ZN), and waters (HOH + WAT)
-# to test het/ion/water handling
+# PDB with hets (SO4 ligand), ions (ZN), waters (HOH + WAT),
+# and a single-atom SO4 (like in 1nxb) to test het/ion/water handling
 pdb_het_str = """\
 CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
 ATOM      1  N   ALA A   1       1.000   1.000   1.000  1.00 10.00           N
@@ -125,6 +125,7 @@ HETATM   10  O3  SO4 A 200      14.800  13.800  15.800  1.00 20.00           O
 HETATM   11  O4  SO4 A 200      15.300  15.200  13.600  1.00 20.00           O
 HETATM   12  O   HOH A 301      20.000  20.000  20.000  1.00 25.00           O
 HETATM   13  O   WAT A 302      22.000  22.000  22.000  1.00 25.00           O
+HETATM   14  S   SO4 A 400      25.000  25.000  25.000  1.00 20.00           S
 END
 """
 
@@ -668,6 +669,20 @@ def exercise_het_ion_water():
           het_section += line + "\n"
       assert "wat" not in het_section.lower(), \
         "WAT should be drawn as water ball, not as het bonds"
+
+      # Single-atom SO4 (res 400) should appear as a sphere in the ion list,
+      # not be invisible. This tests the fix for structures like 1nxb where
+      # SO4 has only an S atom.
+      ion_section = ""
+      in_ion = False
+      for line in kin_out.splitlines():
+        if "@spherelist {het M}" in line:
+          in_ion = True
+        if in_ion:
+          ion_section += line + "\n"
+      # The single-atom SO4 should be in the ion spherelist alongside ZN
+      assert " s  " in ion_section.lower() or "so4" in ion_section.lower(), \
+        "Single-atom SO4 should appear in ion spherelist"
 
   print("  exercise_het_ion_water: OK")
 
