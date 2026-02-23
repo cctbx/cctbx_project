@@ -433,7 +433,7 @@ def exercise_ribbon_rendering():
     assert "@subgroup" in ribbon_out
     assert "@colorset" in ribbon_out
     # Should contain ribbon list content
-    assert "master= {ribbon}" in ribbon_out
+    assert "master= {protein ribbon}" in ribbon_out
 
   print("  exercise_ribbon_rendering: OK")
 
@@ -457,8 +457,10 @@ def exercise_ribbon_in_kinemage():
   # Check that header and footer have ribbon master controls
   header = get_default_header()
   footer = get_footer()
-  assert "@master {ribbon} indent" in header, "Missing ribbon master in header"
-  assert "@master {ribbon} off" in footer, "Missing ribbon master in footer"
+  assert "@master {protein ribbon} indent" in header, "Missing protein ribbon master in header"
+  assert "@master {NA ribbon} indent" in header, "Missing NA ribbon master in header"
+  assert "@master {protein ribbon} off" in footer, "Missing protein ribbon master in footer"
+  assert "@master {NA ribbon} off" in footer, "Missing NA ribbon master in footer"
 
   # Build full kinemage from the 8-residue PDB with SS records
   pdb_io = pdb.input(source_info=None, lines=pdb_ribbon_str)
@@ -504,7 +506,7 @@ def exercise_ribbon_in_kinemage():
       ss_annotation=annotation)
 
   # Ribbon content should be present
-  assert "master= {ribbon}" in kin_out, "No ribbon content in kinemage output"
+  assert "master= {protein ribbon}" in kin_out, "No ribbon content in kinemage output"
   assert "@subgroup {ribbon" in kin_out, "Missing ribbon subgroup"
   assert "@colorset" in kin_out, "Missing ribbon colorset"
 
@@ -1013,7 +1015,7 @@ def exercise_make_multikin_with_ribbons():
       content = f.read()
 
     # Ribbon content should be present in the output
-    assert "master= {ribbon}" in content, "No ribbon content in make_multikin output"
+    assert "master= {protein ribbon}" in content, "No ribbon content in make_multikin output"
     assert "@subgroup {ribbon" in content, "Missing ribbon subgroup"
 
     # Should also have standard kinemage elements
@@ -1021,8 +1023,8 @@ def exercise_make_multikin_with_ribbons():
     assert "@group {ribbon_mk}" in content
 
     # Ribbon master controls
-    assert "@master {ribbon} indent" in content, "Missing ribbon master in header"
-    assert "@master {ribbon} off" in content, "Missing ribbon master off in footer"
+    assert "@master {protein ribbon} indent" in content, "Missing protein ribbon master in header"
+    assert "@master {protein ribbon} off" in content, "Missing protein ribbon master off in footer"
   finally:
     if os.path.exists(outfile):
       os.remove(outfile)

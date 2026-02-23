@@ -868,7 +868,8 @@ def get_default_header():
 @master {H's} indent
 @pointmaster 'H' {H's}
 @master {water} indent
-@master {ribbon} indent
+@master {protein ribbon} indent
+@master {NA ribbon} indent
 """
   return header
 
@@ -890,7 +891,8 @@ def get_footer():
 @master {Cbeta dev} on
 @master {base-P perp} on
 @master {hets} on
-@master {ribbon} off
+@master {protein ribbon} off
+@master {NA ribbon} off
 """
   return footer
 
