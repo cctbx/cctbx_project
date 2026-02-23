@@ -756,13 +756,15 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0,
           elif res_class == "common_element":
             ion_list += "{%s} %.3f %.3f %.3f\n" % (
               key, atom.xyz[0], atom.xyz[1], atom.xyz[2])
-          elif res_class == "other" and len(residue.atoms()) == 1:
-            ion_list += "{%s} %.3f %.3f %.3f\n" % (
-              key, atom.xyz[0], atom.xyz[1], atom.xyz[2])
           elif res_class == "common_water":
             if atom.name == ' O  ':
               water_list += "{%s} P %.3f %.3f %.3f\n" % (
                 key, atom.xyz[0], atom.xyz[1], atom.xyz[2])
+          elif len(residue.atoms()) == 1:
+            # Single-atom non-polymer residue (e.g., lone S from SO4,
+            # unknown ligand with one atom) — draw as a sphere
+            ion_list += "{%s} %.3f %.3f %.3f\n" % (
+              key, atom.xyz[0], atom.xyz[1], atom.xyz[2])
           else:
             het_hash[atom.name.strip()] = [key, atom.xyz]
 
