@@ -800,6 +800,7 @@ def get_default_header():
 @master {H's} indent
 @pointmaster 'H' {H's}
 @master {water} indent
+@master {ribbon} indent
 """
   return header
 
@@ -821,6 +822,7 @@ def get_footer():
 @master {Cbeta dev} on
 @master {base-P perp} on
 @master {hets} on
+@master {ribbon} off
 """
   return footer
 
@@ -884,7 +886,8 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
                     omega_result=None, rna_puckers_result=None,
                     cablam_result=None,
                     probe_dots_kin=None,
-                    ss_bonds=None, sites_cart=None):
+                    ss_bonds=None, sites_cart=None,
+                    ss_annotation=None):
   """Shared logic for building the kinemage string.
 
   Args:
@@ -906,6 +909,7 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
       Pass "" to suppress probe dots entirely.
     ss_bonds: list of (i_seq_0, i_seq_1) tuples for disulfide bonds
     sites_cart: Cartesian coordinates for all atoms
+    ss_annotation: iotbx.pdb.secondary_structure.annotation object, or None
   """
   kin_out = get_default_header()
   altid_controls = get_altid_controls(hierarchy=hierarchy)
@@ -955,6 +959,34 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
     cablam_result.out = None
     kin_out += cablam_result.as_kinemage()
     cablam_result.out = saved_out
+  # Ribbon rendering (off by default via footer master toggle)
+  try:
+    from mmtbx.kinemage.ribbon_rendering import (
+        build_secondary_structure_map, consolidate_sheets,
+        generate_chain_ribbons)
+    from mmtbx.kinemage.ribbons import chain_has_DNA, chain_has_RNA
+
+    ss_map = build_secondary_structure_map(hierarchy, annotation=ss_annotation)
+    consolidate_sheets(ss_map)
+
+    ribbon_kin = ""
+    ribbon_counter = 0
+    for model in hierarchy.models():
+      has_dna = any(chain_has_DNA(c) for c in model.chains())
+      has_rna = any(chain_has_RNA(c) for c in model.chains())
+      for chain in model.chains():
+        chain_color = get_chain_color(ribbon_counter)
+        ribbon_kin += generate_chain_ribbons(
+            chain=chain, secondary_structure=ss_map,
+            chain_id=chain.id, chain_color=chain_color,
+            has_dna=has_dna, has_rna=has_rna)
+        ribbon_counter += 1
+
+    if ribbon_kin:
+      kin_out += ribbon_kin
+  except Exception as e:
+    import sys
+    print("Warning: ribbon rendering failed: %s" % str(e), file=sys.stderr)
   if probe_dots_kin is not None:
     kin_out += probe_dots_kin
   else:
@@ -1013,6 +1045,27 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
     ignore_hd=True,
     outliers_only=True)
 
+  # Compute secondary structure annotation for ribbon rendering
+  try:
+    import mmtbx.secondary_structure
+    sec_str_from_pdb_file = None
+    if hasattr(processed_pdb_file, 'all_chain_proxies'):
+      pdb_inp = processed_pdb_file.all_chain_proxies.pdb_inp
+      if hasattr(pdb_inp, 'extract_secondary_structure'):
+        sec_str_from_pdb_file = pdb_inp.extract_secondary_structure()
+    ss_params = mmtbx.secondary_structure.manager.get_default_ss_params()
+    ss_params.secondary_structure.protein.search_method = "from_ca"
+    ss_params = ss_params.secondary_structure
+    from libtbx.utils import null_out
+    ss_manager = mmtbx.secondary_structure.manager(
+        hierarchy,
+        params=ss_params,
+        sec_str_from_pdb_file=sec_str_from_pdb_file,
+        log=null_out())
+    ss_annotation = ss_manager.actual_sec_str
+  except Exception:
+    ss_annotation = None
+
   kin_out = _build_kinemage(
     hierarchy=hierarchy,
     bond_hash=quick_bond_hash,
@@ -1027,7 +1080,8 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
     rna_puckers_result=rna_puckers_result,
     cablam_result=cablam_result,
     ss_bonds=ss_bonds,
-    sites_cart=sites_cart)
+    sites_cart=sites_cart,
+    ss_annotation=ss_annotation)
 
   outfile = open(f, 'w')
   outfile.write(kin_out)
@@ -1124,7 +1178,8 @@ def export_molprobity_result_as_kinemage(
     probe_file,
     keep_hydrogens=False,
     pdbID="PDB",
-    cablam_result=None):
+    cablam_result=None,
+    ss_annotation=None):
   assert (result.restraints is not None)
   i_seq_name_hash = build_name_hash(pdb_hierarchy=pdb_hierarchy)
   sites_cart = pdb_hierarchy.atoms().extract_xyz()
@@ -1154,4 +1209,5 @@ def export_molprobity_result_as_kinemage(
     rna_puckers_result=rna_puckers_result,
     cablam_result=cablam_result,
     ss_bonds=ss_bonds,
-    sites_cart=sites_cart)
+    sites_cart=sites_cart,
+    ss_annotation=ss_annotation)
