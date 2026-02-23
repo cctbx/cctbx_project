@@ -54,7 +54,15 @@ def get_master_phil():
 def build_name_hash(pdb_hierarchy):
   i_seq_name_hash = dict()
   for atom in pdb_hierarchy.atoms():
-    i_seq_name_hash[atom.i_seq]=atom.pdb_label_columns()
+    labels = atom.fetch_labels()
+    i_seq_name_hash[atom.i_seq] = {
+      'name':     labels.name,
+      'altloc':   labels.altloc,
+      'resname':  labels.resname,
+      'chain_id': labels.chain_id,
+      'resseq':   labels.resseq,
+      'icode':    labels.icode,
+    }
   return i_seq_name_hash
 
 
@@ -376,7 +384,13 @@ def pperp_outliers(hierarchy, chain):
       if (ra1.problems is not None): continue
       if (not ra1.is_rna): continue
       try:
-        key = residue.find_atom_by(name=" C1'").pdb_label_columns()[4:]
+        c1_atom = residue.find_atom_by(name=" C1'")
+        labels = c1_atom.fetch_labels()
+        # Build key matching rna_puckers id_str() format:
+        # "%2s%4s%1s%1s%3s" % (chain_id, resseq, icode, altloc, resname)
+        key = "%2s%4s%1s%1s%3s" % (
+          labels.chain_id, labels.resseq, labels.icode,
+          labels.altloc, labels.resname)
       except Exception:
         continue
       if key in outlier_key_list:
@@ -396,23 +410,26 @@ def pperp_outliers(hierarchy, chain):
             pucker_text = " 2'?"
           else:
             pucker_text = " 3'?"
-        key = key[0:4].lower()+key[4:]
-        key += pucker_text
-        kin_out += kin_vec(key, perp_xyz[0], key, perp_xyz[1])
+        # Build display key: chain_id(lower) + resseq + icode + altloc + resname + pucker
+        display_key = "%s%s%s%s%s" % (
+          labels.chain_id.lower(), labels.resseq, labels.icode,
+          labels.altloc, labels.resname)
+        display_key += pucker_text
+        kin_out += kin_vec(display_key, perp_xyz[0], display_key, perp_xyz[1])
         a = matrix.col(perp_xyz[1])
         b = matrix.col(residue.find_atom_by(name=" C1'").xyz)
         c = (a-b).normalize()
         new = a-(c*.8)
-        kin_out += kin_vec(key, perp_xyz[1], key, tuple(new), 4)
+        kin_out += kin_vec(display_key, perp_xyz[1], display_key, tuple(new), 4)
         new = a+(c*.4)
-        kin_out += kin_vec(key, perp_xyz[1], key, tuple(new), 4)
+        kin_out += kin_vec(display_key, perp_xyz[1], display_key, tuple(new), 4)
         r_vec = matrix.col(perp_xyz[1]) - matrix.col(perp_xyz[0])
         r = r_vec.axis_and_angle_as_r3_rotation_matrix(angle=90, deg=True)
         new = r*(new-a)+a
-        kin_out += kin_vec(key, perp_xyz[1], key, tuple(new), 4)
+        kin_out += kin_vec(display_key, perp_xyz[1], display_key, tuple(new), 4)
         r = r_vec.axis_and_angle_as_r3_rotation_matrix(angle=180, deg=True)
         new = r*(new-a)+a
-        kin_out += kin_vec(key, perp_xyz[1], key, tuple(new), 4)
+        kin_out += kin_vec(display_key, perp_xyz[1], display_key, tuple(new), 4)
   return kin_out
 
 def rama_outliers(chain, pdbID, ram_outliers):
@@ -581,12 +598,10 @@ def _draw_residue_bonds(residue, bond_hash, i_seq_name_hash, key_hash,
     if cur_bonds is None:
       continue
     for bond in cur_bonds:
-      atom_1 = i_seq_name_hash.get(atom.i_seq)
-      if atom_1 is not None:
-        atom_1 = atom_1[0:4].strip()
-      atom_2 = i_seq_name_hash.get(bond)
-      if atom_2 is not None:
-        atom_2 = atom_2[0:4].strip()
+      info_1 = i_seq_name_hash.get(atom.i_seq)
+      atom_1 = info_1['name'].strip() if info_1 is not None else None
+      info_2 = i_seq_name_hash.get(bond)
+      atom_2 = info_2['name'].strip() if info_2 is not None else None
       if atom_1 is None or atom_2 is None:
         continue
       # handle altlocs
@@ -796,8 +811,8 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0,
     # Collect i_seqs involved in SS bonds for this chain
     ss_i_seqs = set()
     for i_seq_0, i_seq_1 in ss_bonds:
-      name_0 = i_seq_name_hash.get(i_seq_0)
-      if name_0 is not None and name_0[8:10].strip() == chain.id:
+      info_0 = i_seq_name_hash.get(i_seq_0)
+      if info_0 is not None and info_0['chain_id'] == chain.id:
         ss_i_seqs.add(i_seq_0)
         ss_i_seqs.add(i_seq_1)
     # Build B-factor lookup for just the SS atoms we need
@@ -806,21 +821,21 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0,
       for atom in chain.parent().parent().atoms():
         if atom.i_seq in ss_i_seqs:
           b_hash[atom.i_seq] = atom.b
-    def _ss_key(name, i_seq):
-      return "%s%s%s %s%s  B%.2f %s" % (
-        name[0:4].lower(), name[4:5].lower(), name[5:8].lower(),
-        name[8:10].strip(), name[10:15], b_hash.get(i_seq, 0.0), pdbID)
+    def _ss_key(info, i_seq):
+      return "%s%s%s %s%s%s  B%.2f %s" % (
+        info['name'].lower(), info['altloc'].lower(), info['resname'].lower(),
+        info['chain_id'], info['resseq'], info['icode'],
+        b_hash.get(i_seq, 0.0), pdbID)
     for i_seq_0, i_seq_1 in ss_bonds:
-      name_0 = i_seq_name_hash.get(i_seq_0)
-      name_1 = i_seq_name_hash.get(i_seq_1)
-      if name_0 is None or name_1 is None:
+      info_0 = i_seq_name_hash.get(i_seq_0)
+      info_1 = i_seq_name_hash.get(i_seq_1)
+      if info_0 is None or info_1 is None:
         continue
       # Only draw when the first atom belongs to this chain (avoid duplicates)
-      # pdb_label_columns format: name(4) altloc(1) resname(3) chain(2) resseq(4) icode(1)
-      if name_0[8:10].strip() != chain.id:
+      if info_0['chain_id'] != chain.id:
         continue
-      key_0 = _ss_key(name_0, i_seq_0)
-      key_1 = _ss_key(name_1, i_seq_1)
+      key_0 = _ss_key(info_0, i_seq_0)
+      key_1 = _ss_key(info_1, i_seq_1)
       ss_veclist += kin_vec(key_0, sites_cart[i_seq_0],
                             key_1, sites_cart[i_seq_1])
     if len(ss_veclist.splitlines()) > 1:
@@ -900,28 +915,28 @@ def _build_ss_bond_list(bond_proxies, i_seq_name_hash):
   Returns a list of (i_seq_0, i_seq_1) tuples for each SS bond."""
   ss_bonds = []
   for bp in bond_proxies.simple:
-    name_0 = i_seq_name_hash.get(bp.i_seqs[0])
-    name_1 = i_seq_name_hash.get(bp.i_seqs[1])
-    if name_0 is None or name_1 is None:
+    info_0 = i_seq_name_hash.get(bp.i_seqs[0])
+    info_1 = i_seq_name_hash.get(bp.i_seqs[1])
+    if info_0 is None or info_1 is None:
       continue
-    # pdb_label_columns: [0:4] atom name, [4:8] altloc+resname, [8:14] resname+chain+resseq
-    # atom name " SG " at [0:4], resname "CYS" at [5:8] (or check [4:8] for " CYS"/"ACYS" etc.)
-    atom_name_0 = name_0[0:4].strip()
-    atom_name_1 = name_1[0:4].strip()
-    resname_0 = name_0[5:8].strip()
-    resname_1 = name_1[5:8].strip()
-    if (atom_name_0 == "SG" and atom_name_1 == "SG" and
-        resname_0 == "CYS" and resname_1 == "CYS"):
+    if (info_0['name'].strip() == "SG" and info_1['name'].strip() == "SG" and
+        info_0['resname'].strip() == "CYS" and info_1['resname'].strip() == "CYS"):
       ss_bonds.append((bp.i_seqs[0], bp.i_seqs[1]))
   return ss_bonds
+
+def _same_residue(info_a, info_b):
+  """Check whether two atom info dicts belong to the same residue."""
+  return (info_a['chain_id'] == info_b['chain_id'] and
+          info_a['resseq'] == info_b['resseq'] and
+          info_a['icode'] == info_b['icode'])
 
 def _build_bond_hash(bond_proxies, i_seq_name_hash):
   """Build a hash mapping atom i_seq to bonded atom i_seqs within the same
   residue. Shared by make_multikin and export_molprobity_result_as_kinemage."""
   quick_bond_hash = {}
   for bp in bond_proxies.simple:
-    if (i_seq_name_hash[bp.i_seqs[0]][9:14] ==
-        i_seq_name_hash[bp.i_seqs[1]][9:14]):
+    if _same_residue(i_seq_name_hash[bp.i_seqs[0]],
+                     i_seq_name_hash[bp.i_seqs[1]]):
       if quick_bond_hash.get(bp.i_seqs[0]) is None:
         quick_bond_hash[bp.i_seqs[0]] = []
       quick_bond_hash[bp.i_seqs[0]].append(bp.i_seqs[1])

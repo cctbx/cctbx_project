@@ -1455,7 +1455,7 @@ class cablamalyze(validation):
     #Pdb-to-kinemage printing has been hijacked from mmtbx.kinemage.validation
     #  That code was not meant to be used outside its original context, so this
     #  may be fragile.
-    from mmtbx.kinemage.validation import get_kin_lots, build_name_hash
+    from mmtbx.kinemage.validation import get_kin_lots, build_name_hash, _build_bond_hash
     from mmtbx import monomer_library
     from mmtbx.monomer_library import pdb_interpretation
     i_seq_name_hash = build_name_hash(pdb_hierarchy=self.pdb_hierarchy)
@@ -1473,12 +1473,7 @@ class cablamalyze(validation):
     #angle_proxies = geometry.angle_proxies
     pair_proxies = geometry.pair_proxies(flags=flags, sites_cart=sites_cart)
     bond_proxies = pair_proxies.bond_proxies
-    quick_bond_hash = {}
-    for bp in bond_proxies.simple:
-      if (i_seq_name_hash[bp.i_seqs[0]][9:14] == i_seq_name_hash[bp.i_seqs[1]][9:14]):
-        if quick_bond_hash.get(bp.i_seqs[0]) is None:
-          quick_bond_hash[bp.i_seqs[0]] = []
-        quick_bond_hash[bp.i_seqs[0]].append(bp.i_seqs[1])
+    quick_bond_hash = _build_bond_hash(bond_proxies, i_seq_name_hash)
 
     for model in self.pdb_hierarchy.models():
       for chain in model.chains():
