@@ -584,9 +584,15 @@ def default_probe_phil():
     reduce2.master_phil_str, process_includes=True).extract().probe
 
 def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
-      keep_existing_H=False, probe_phil=None, stop_for_unknowns=False, log=None):
+      keep_existing_H=False, probe_phil=None, stop_for_unknowns=False,
+      raise_on_missing=True, log=None):
   """Add H with reduce2 in-process: place_hydrogens then Optimizers.Optimizer.
-  Mirrors mmtbx.validation.clashscore2.check_and_add_hydrogen."""
+  Mirrors mmtbx.validation.clashscore2.check_and_add_hydrogen.
+
+  :param raise_on_missing: When True (default), raise Sorry if restraints were
+    not found for some residues (no H placed there). Set False for best-effort
+    callers (e.g. the MolProbity kinemage view) that prefer to produce results
+    for the rest of the structure rather than fail on a few problem residues."""
   from mmtbx.hydrogens import reduce_hydrogen
   from mmtbx.reduce import Optimizers
   if log is None: log = sys.stdout
@@ -603,7 +609,7 @@ def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
   o.run()
   o.show(log)
   missed = set(o.no_H_placed_mlq)
-  if len(missed) > 0:
+  if len(missed) > 0 and raise_on_missing:
     raise Sorry("Restraints were not found for the following residues:" +
                 "".join(" " + r for r in missed))
   model = o.get_model()
