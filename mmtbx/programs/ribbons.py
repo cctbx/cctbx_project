@@ -12,7 +12,7 @@ from mmtbx.kinemage.ribbons import untwist_ribbon, swap_edge_and_face, _FindName
 from mmtbx.kinemage.ribbons import chain_has_DNA, chain_has_RNA
 from mmtbx.kinemage.nrubs import Triple, NRUBS
 
-version = "1.2.1"
+version = "1.3.0"
 
 master_phil_str = '''
 do_protein = True
@@ -690,8 +690,8 @@ Output:
                 outString += self.printFancyRibbon(guidepoints, 2, 2.2,
                       "color= {alph"+chain.id+"} master= {protein} master= {ribbon} master= {alpha}",
                       "color= {beta"+chain.id+"} master= {protein} master= {ribbon} master= {beta}",
-                      "width= 4 fore color= {coil"+chain.id+"} master= {protein} master= {ribbon} master= {coil}",
-                      "width= 6 rear color= deadblack master= {protein} master= {ribbon} master= {coil}",
+                      "width= 4 color= {coil"+chain.id+"} master= {protein} master= {ribbon} master= {coil}",
+                      "width= 6 color= deadblack master= {protein} master= {ribbon} master= {coil}",
                       self.params.color_by == "rainbow")
 
         if self.params.do_nucleic_acid:
