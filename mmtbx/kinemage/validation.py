@@ -571,7 +571,8 @@ def _draw_residue_bonds(residue, bond_hash, i_seq_name_hash, key_hash,
         drawn_bonds.append(drawn_key)
   return result
 
-def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hydrogen=True):
+def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0,
+                 show_hydrogen=True, ss_bonds=None, sites_cart=None):
   mc_atoms = ["N", "CA", "C", "O", "OXT",
               "P", "OP1", "OP2", "OP3", "O5'", "C5'", "C4'", "O4'", "C1'",
               "C3'", "O3'", "C2'", "O2'"]
@@ -730,6 +731,41 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
     kin_out += sc_veclist
   if len(sc_h_veclist.splitlines()) > 1:
     kin_out += sc_h_veclist
+  # Draw disulfide bonds for this chain
+  if ss_bonds and sites_cart is not None:
+    ss_veclist = "@vectorlist {SS} color= yellow  master= {sidechain}\n"
+    # Collect i_seqs involved in SS bonds for this chain
+    ss_i_seqs = set()
+    for i_seq_0, i_seq_1 in ss_bonds:
+      name_0 = i_seq_name_hash.get(i_seq_0)
+      if name_0 is not None and name_0[8:10].strip() == chain.id:
+        ss_i_seqs.add(i_seq_0)
+        ss_i_seqs.add(i_seq_1)
+    # Build B-factor lookup for just the SS atoms we need
+    b_hash = {}
+    if ss_i_seqs:
+      for atom in chain.parent().parent().atoms():
+        if atom.i_seq in ss_i_seqs:
+          b_hash[atom.i_seq] = atom.b
+    def _ss_key(name, i_seq):
+      return "%s%s%s %s%s  B%.2f %s" % (
+        name[0:4].lower(), name[4:5].lower(), name[5:8].lower(),
+        name[8:10].strip(), name[10:15], b_hash.get(i_seq, 0.0), pdbID)
+    for i_seq_0, i_seq_1 in ss_bonds:
+      name_0 = i_seq_name_hash.get(i_seq_0)
+      name_1 = i_seq_name_hash.get(i_seq_1)
+      if name_0 is None or name_1 is None:
+        continue
+      # Only draw when the first atom belongs to this chain (avoid duplicates)
+      # pdb_label_columns format: name(4) altloc(1) resname(3) chain(2) resseq(4) icode(1)
+      if name_0[8:10].strip() != chain.id:
+        continue
+      key_0 = _ss_key(name_0, i_seq_0)
+      key_1 = _ss_key(name_1, i_seq_1)
+      ss_veclist += kin_vec(key_0, sites_cart[i_seq_0],
+                            key_1, sites_cart[i_seq_1])
+    if len(ss_veclist.splitlines()) > 1:
+      kin_out += ss_veclist
   if len(water_list.splitlines()) > 1:
     kin_out += water_list
   if len(virtual_bb.splitlines()) > 1:
@@ -799,6 +835,27 @@ def get_altid_controls(hierarchy):
       altid_controls += "off\n"
   return altid_controls
 
+def _build_ss_bond_list(bond_proxies, i_seq_name_hash):
+  """Find disulfide bonds (CYS SG-SG pairs) from geometry restraints.
+
+  Returns a list of (i_seq_0, i_seq_1) tuples for each SS bond."""
+  ss_bonds = []
+  for bp in bond_proxies.simple:
+    name_0 = i_seq_name_hash.get(bp.i_seqs[0])
+    name_1 = i_seq_name_hash.get(bp.i_seqs[1])
+    if name_0 is None or name_1 is None:
+      continue
+    # pdb_label_columns: [0:4] atom name, [4:8] altloc+resname, [8:14] resname+chain+resseq
+    # atom name " SG " at [0:4], resname "CYS" at [5:8] (or check [4:8] for " CYS"/"ACYS" etc.)
+    atom_name_0 = name_0[0:4].strip()
+    atom_name_1 = name_1[0:4].strip()
+    resname_0 = name_0[5:8].strip()
+    resname_1 = name_1[5:8].strip()
+    if (atom_name_0 == "SG" and atom_name_1 == "SG" and
+        resname_0 == "CYS" and resname_1 == "CYS"):
+      ss_bonds.append((bp.i_seqs[0], bp.i_seqs[1]))
+  return ss_bonds
+
 def _build_bond_hash(bond_proxies, i_seq_name_hash):
   """Build a hash mapping atom i_seq to bonded atom i_seqs within the same
   residue. Shared by make_multikin and export_molprobity_result_as_kinemage."""
@@ -816,7 +873,8 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
                     restraints_result, keep_hydrogens,
                     omega_result=None, rna_puckers_result=None,
                     cablam_result=None,
-                    probe_dots_kin=None):
+                    probe_dots_kin=None,
+                    ss_bonds=None, sites_cart=None):
   """Shared logic for building the kinemage string.
 
   Args:
@@ -835,6 +893,8 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
     probe_dots_kin: pre-computed probe dots kinemage string, or None.
       If provided, this is used instead of calling make_probe_dots().
       Pass "" to suppress probe dots entirely.
+    ss_bonds: list of (i_seq_0, i_seq_1) tuples for disulfide bonds
+    sites_cart: Cartesian coordinates for all atoms
   """
   kin_out = get_default_header()
   altid_controls = get_altid_controls(hierarchy=hierarchy)
@@ -855,7 +915,9 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
                               bond_hash=bond_hash,
                               i_seq_name_hash=i_seq_name_hash,
                               pdbID=pdbID,
-                              index=counter)
+                              index=counter,
+                              ss_bonds=ss_bonds,
+                              sites_cart=sites_cart)
       # Validation overlays filter by chain_id, so they only need to be
       # emitted once per unique chain ID (not once per chain segment).
       if chain.id not in validated_chains:
@@ -901,6 +963,7 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
                                        sites_cart=sites_cart)
   bond_proxies = pair_proxies.bond_proxies
   quick_bond_hash = _build_bond_hash(bond_proxies, i_seq_name_hash)
+  ss_bonds = _build_ss_bond_list(bond_proxies, i_seq_name_hash)
 
   # Run validators
   rot_outliers = rotalyze(pdb_hierarchy=hierarchy, outliers_only=True)
@@ -951,7 +1014,9 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
     keep_hydrogens=keep_hydrogens,
     omega_result=omega,
     rna_puckers_result=rna_puckers_result,
-    cablam_result=cablam_result)
+    cablam_result=cablam_result,
+    ss_bonds=ss_bonds,
+    sites_cart=sites_cart)
 
   outfile = open(f, 'w')
   outfile.write(kin_out)
@@ -1063,6 +1128,7 @@ def export_molprobity_result_as_kinemage(
   omega_result = None
   if hasattr(result, 'omegalyze'):
     omega_result = result.omegalyze
+  ss_bonds = _build_ss_bond_list(bond_proxies, i_seq_name_hash)
   return _build_kinemage(
     hierarchy=pdb_hierarchy,
     bond_hash=quick_bond_hash,
@@ -1075,4 +1141,6 @@ def export_molprobity_result_as_kinemage(
     keep_hydrogens=keep_hydrogens,
     omega_result=omega_result,
     rna_puckers_result=rna_puckers_result,
-    cablam_result=cablam_result)
+    cablam_result=cablam_result,
+    ss_bonds=ss_bonds,
+    sites_cart=sites_cart)
