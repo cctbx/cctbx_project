@@ -384,7 +384,7 @@ def render_fancy_ribbon(guides, secondary_structure, n_intervals=4,
     if rib_element.type is None:
       rib_element.like(curr_ss)
 
-    if i == 0 or not rib_element.same_sse(curr_ss):
+    if not rib_element.same_sse(curr_ss):
       if curr_ss.type == 'HELIX' or curr_ss.type == 'SHEET':
         rib_element.end = n_intervals * i + 1
         rib_element = RibbonElement(curr_ss)
@@ -694,18 +694,18 @@ def generate_chain_ribbons(chain, secondary_structure, chain_id,
           out += render_fancy_ribbon(
               guidepoints, secondary_structure,
               width_alpha=2.0, width_beta=2.2, width_coil=coil_width,
-              list_alpha="color= {alph" + chain_id + "} master= {protein} master= {ribbon} master= {alpha}",
-              list_beta="color= {beta" + chain_id + "} master= {protein} master= {ribbon} master= {beta}",
-              list_coil="width= 4 color= {coil" + chain_id + "} master= {protein} master= {ribbon} master= {coil}",
+              list_alpha="color= {alph" + chain_id + "} master= {protein ribbon} master= {alpha}",
+              list_beta="color= {beta" + chain_id + "} master= {protein ribbon} master= {beta}",
+              list_coil="width= 4 color= {coil" + chain_id + "} master= {protein ribbon} master= {coil}",
               do_rainbow=do_rainbow, dna_style=dna_style)
         else:
           out += render_fancy_ribbon(
               guidepoints, secondary_structure,
               width_alpha=2.0, width_beta=2.2, width_coil=coil_width,
-              list_alpha="color= {alph" + chain_id + "} master= {protein} master= {ribbon} master= {alpha}",
-              list_beta="color= {beta" + chain_id + "} master= {protein} master= {ribbon} master= {beta}",
-              list_coil="width= 4 fore color= {coil" + chain_id + "} master= {protein} master= {ribbon} master= {coil}",
-              list_coil_outline="width= 6 rear color= deadblack master= {protein} master= {ribbon} master= {coil}",
+              list_alpha="color= {alph" + chain_id + "} master= {protein ribbon} master= {alpha}",
+              list_beta="color= {beta" + chain_id + "} master= {protein ribbon} master= {beta}",
+              list_coil="width= 4 fore color= {coil" + chain_id + "} master= {protein ribbon} master= {coil}",
+              list_coil_outline="width= 6 rear color= deadblack master= {protein ribbon} master= {coil}",
               do_rainbow=do_rainbow, dna_style=dna_style)
 
   # --- Nucleic acid ribbons ---
@@ -732,9 +732,9 @@ def generate_chain_ribbons(chain, secondary_structure, chain_id,
         out += render_fancy_ribbon(
             guidepoints, secondary_structure,
             width_alpha=3.0, width_beta=3.0, width_coil=coil_width,
-            list_alpha="color= {nucl" + chain_id + "} master= {nucleic acid} master= {ribbon} master= {RNA helix?}",
-            list_beta="color= {nucl" + chain_id + "} master= {nucleic acid} master= {ribbon} master= {A-form}",
-            list_coil="width= 4 color= {ncoi" + chain_id + "} master= {nucleic acid} master= {ribbon} master= {coil}",
+            list_alpha="color= {nucl" + chain_id + "} master= {NA ribbon} master= {RNA helix?}",
+            list_beta="color= {nucl" + chain_id + "} master= {NA ribbon} master= {A-form}",
+            list_coil="width= 4 color= {ncoi" + chain_id + "} master= {NA ribbon} master= {coil}",
             do_rainbow=do_rainbow, dna_style=use_dna_style)
 
   return out

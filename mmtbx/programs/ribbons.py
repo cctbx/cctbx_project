@@ -212,17 +212,17 @@ Output:
               if self.params.do_plain_coils:
                 outString += render_fancy_ribbon(guidepoints, self.secondaryStructure,
                       width_alpha=2, width_beta=2.2,
-                      list_alpha="color= {alph"+chain.id+"} master= {protein} master= {ribbon} master= {alpha}",
-                      list_beta="color= {beta"+chain.id+"} master= {protein} master= {ribbon} master= {beta}",
-                      list_coil="width= 4 color= {coil"+chain.id+"} master= {protein} master= {ribbon} master= {coil}",
+                      list_alpha="color= {alph"+chain.id+"} master= {protein ribbon} master= {alpha}",
+                      list_beta="color= {beta"+chain.id+"} master= {protein ribbon} master= {beta}",
+                      list_coil="width= 4 color= {coil"+chain.id+"} master= {protein ribbon} master= {coil}",
                       do_rainbow=self.params.color_by == "rainbow")
               else:
                 outString += render_fancy_ribbon(guidepoints, self.secondaryStructure,
                       width_alpha=2, width_beta=2.2,
-                      list_alpha="color= {alph"+chain.id+"} master= {protein} master= {ribbon} master= {alpha}",
-                      list_beta="color= {beta"+chain.id+"} master= {protein} master= {ribbon} master= {beta}",
-                      list_coil="width= 4 fore color= {coil"+chain.id+"} master= {protein} master= {ribbon} master= {coil}",
-                      list_coil_outline="width= 6 rear color= deadblack master= {protein} master= {ribbon} master= {coil}",
+                      list_alpha="color= {alph"+chain.id+"} master= {protein ribbon} master= {alpha}",
+                      list_beta="color= {beta"+chain.id+"} master= {protein ribbon} master= {beta}",
+                      list_coil="width= 4 fore color= {coil"+chain.id+"} master= {protein ribbon} master= {coil}",
+                      list_coil_outline="width= 6 rear color= deadblack master= {protein ribbon} master= {coil}",
                       do_rainbow=self.params.color_by == "rainbow")
 
         if self.params.do_nucleic_acid:
@@ -259,9 +259,9 @@ Output:
 
               outString += render_fancy_ribbon(guidepoints, self.secondaryStructure,
                     width_alpha=3.0, width_beta=3.0,
-                    list_alpha="color= {nucl"+chain.id+"} master= {nucleic acid} master= {ribbon} master= {RNA helix?}",
-                    list_beta="color= {nucl"+chain.id+"} master= {nucleic acid} master= {ribbon} master= {A-form}",
-                    list_coil="width= 4 color= {ncoi"+chain.id+"} master= {nucleic acid} master= {ribbon} master= {coil}",
+                    list_alpha="color= {nucl"+chain.id+"} master= {NA ribbon} master= {RNA helix?}",
+                    list_beta="color= {nucl"+chain.id+"} master= {NA ribbon} master= {A-form}",
+                    list_coil="width= 4 color= {ncoi"+chain.id+"} master= {NA ribbon} master= {coil}",
                     do_rainbow=self.params.color_by == "rainbow")
 
     # Write the output to the specified file.
