@@ -30,15 +30,24 @@ def extract_panel_data(experiments, reflections):
     """
     panel_data = defaultdict(lambda: {'d': [], 'azi': []})
     for expts, refls in zip(experiments, reflections):
+        # Pre-group reflections by experiment id using numpy argsort
+        id_arr = refls['id'].as_numpy_array()
+        order = np.argsort(id_arr, kind='mergesort')
+        sorted_ids = id_arr[order]
+        splits = np.nonzero(np.diff(sorted_ids))[0] + 1
+        group_indices = np.split(order, splits)
+        unique_ids = sorted_ids[np.concatenate([[0], splits])]
+        id_groups = {int(uid): idx for uid, idx in zip(unique_ids, group_indices)}
+
         for expt_id, expt in enumerate(expts):
-            subset = refls.select(refls['id'] == expt_id)
-            if len(subset) == 0:
+            if expt_id not in id_groups:
                 continue
+            subset = refls.select(flex.size_t(id_groups[expt_id].astype(int).tolist()))
             det = expt.detector
-            for panel_id, panel in enumerate(det):
+            panels_present = set(subset['panel'])
+            for panel_id in panels_present:
+                panel = det[panel_id]
                 r = subset.select(subset['panel'] == panel_id)
-                if len(r) == 0:
-                    continue
                 x_, y_, _ = r['xyzobs.px.value'].parts()
                 pix = panel.pixel_to_millimeter(flex.vec2_double(x_, y_))
                 xyz = panel.get_lab_coord(pix)
