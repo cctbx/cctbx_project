@@ -60,7 +60,7 @@ jobs:
   - script: |
       sudo yum install -y rsync ucx which
       sudo echo '#!/bin/bash' > /usr/local/bin/fi_info
-      sudo chmod +x /usr/local/bin/fi_info && \
+      sudo chmod +x /usr/local/bin/fi_info
     displayName: Add system basics for Rocky Linux
     condition: eq('${{ parameters.distribution }}', 'cctbx/rockylinux')
 
