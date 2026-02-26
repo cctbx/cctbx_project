@@ -17,6 +17,28 @@ from cctbx.maptbx.box import shift_and_box_model
 ext = bp.import_ext("cctbx_geometry_restraints_ext")
 get_class = iotbx.pdb.common_residue_names_get_class
 
+# Reverse mapping: monomer library atom name -> PDB reference atom name
+# for RNA/DNA residues.  The monomer library uses old-convention names
+# (e.g. H4*, C5*, O1P) but we want to emit new-convention names
+# (e.g. H4', C5', OP1) when placing hydrogens.
+_mon_lib_to_pdb_ref = {}
+for _ref, _ml in iotbx.pdb.rna_dna_atom_names_reference_to_mon_lib_translation_dict.items():
+  _mon_lib_to_pdb_ref[_ml] = _ref.strip()
+# Special cases not in the forward dict (see comment at line 177 of iotbx/pdb/__init__.py)
+_mon_lib_to_pdb_ref["H2*"] = "H2'"    # RNA
+_mon_lib_to_pdb_ref["H2*1"] = "H2'"   # DNA
+
+def _translate_na_atom_name(name):
+  """Translate a monomer library RNA/DNA atom name to PDB v3 convention.
+  Uses the explicit mapping for standard atoms, then falls back to
+  replacing * with ' for modified nucleotide atoms not in the table."""
+  new = _mon_lib_to_pdb_ref.get(name)
+  if new is not None:
+    return new
+  if '*' in name:
+    return name.replace('*', "'")
+  return name
+
 # ==============================================================================
 
 def get_h_restraints(resname, strict=True):
@@ -525,9 +547,10 @@ class place_hydrogens():
             #
             # don't add polymer H atoms. Terminal H atoms added elsewhere
             #
+            is_na = mlq.test_for_rna_dna(atom_dict)
             if mlq.test_for_peptide(atom_dict):
               atom_dict = _remove_atoms(atom_dict, ['H2', 'HXT'])
-            elif mlq.test_for_rna_dna(atom_dict):
+            elif is_na:
               atom_dict = _remove_atoms(atom_dict, ["HO3'", 'HO3*'])
             for k, v in six.iteritems(atom_dict):
               if(v.type_symbol=="H"):
@@ -547,6 +570,10 @@ class place_hydrogens():
                     expected_h.append(altname[2])
                     expected_h.remove(altname[0])
                     #print('renamed %s to %s' % (altname[0], altname[2]))
+            # Translate monomer library names (* convention) to PDB v3 reference
+            # names (' convention) for RNA/DNA residues.
+            if is_na:
+              expected_h = [_translate_na_atom_name(n) for n in expected_h]
             # TODO end
             missing_h = list(set(expected_h).difference(set(actual)))
             if 0: print(ag.resname, missing_h)
