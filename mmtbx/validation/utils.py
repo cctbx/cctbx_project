@@ -136,134 +136,190 @@ def molprobity_score(clashscore, rota_out, rama_fav):
     return -1 # FIXME prevents crashing on RNA and None in inputs
   return mpscore
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
+
+def _clash_severity(abs_overlap, num_clashes):
+    """Map clash overlap magnitude and count to a continuous severity.
+
+    Uses the worst overlap as the primary signal, scaled linearly from
+    the 0.4 A outlier threshold.  Additional clashes beyond the first
+    add a small increment each (0.5 per extra clash) so that a single
+    severe clash always dominates over many minor ones.
+
+    Severity scale (approximate):
+      0.4 A overlap -> 1.5    (minor)
+      0.5 A         -> 3.0    (moderate)
+      0.7 A         -> 6.0    (severe)
+      0.9 A         -> 9.0    (very severe)
+    """
+    severity = max(0.0, (abs_overlap - 0.1) * 10.0)
+    if num_clashes > 1:
+        severity += (num_clashes - 1) * 0.5
+    return severity
+
+def _cbeta_severity(deviation):
+    """Map C-beta deviation to a continuous severity.
+
+    Outlier threshold is 0.25 A.  Scales linearly so that:
+      0.25 A -> 1.0
+      0.50 A -> 4.0
+      0.75 A -> 7.0
+    """
+    return max(0.0, (deviation - 0.13) * 12.0)
+
+def _bond_angle_severity(num_outliers, worst_sigma):
+    """Map bond/angle outlier count and worst sigma to a continuous severity.
+
+    Uses worst deviation in sigma units as primary signal.  The 4-sigma
+    outlier threshold is the floor.
+
+    Severity scale (approximate):
+      4 sigma  -> 1.0
+      6 sigma  -> 2.0
+      10 sigma -> 4.0
+    Additional outliers beyond the first add 0.5 each.
+    """
+    if worst_sigma is None or worst_sigma == 0:
+        # Fall back to count-based if no sigma available
+        return 1.0 + max(0, num_outliers - 1) * 0.5
+    severity = max(0.0, (abs(worst_sigma) - 2.0) * 0.5)
+    if num_outliers > 1:
+        severity += (num_outliers - 1) * 0.5
+    return severity
 
 def calculate_overall_residue_quality_score(
     residue_data: Dict[str, Any],
-    weights: Optional[Dict[str, float]] = None
 ) -> Optional[float]:
     """
-    Calculates a penalty score for a single residue based on validation outliers.
+    Calculates a triage priority score for a single residue based on
+    validation outliers.
 
-    The score starts at 0 (no issues) and increases with each outlier found.
-    More severe outliers contribute larger penalties. The score is the sum of
-    all applicable tiered penalties.
+    The score is designed to rank residues by how urgently they need
+    attention: higher scores indicate problems that are more likely to
+    be genuine modeling errors.  The combination rule ensures that a
+    single severe problem (e.g. a twisted peptide) always outranks an
+    accumulation of minor issues.
+
+    Combination rule:
+      score = worst_severity + 0.25 * sum(remaining_severities)
+
+    Where possible, continuous values (clash overlap in A, C-beta
+    deviation in A, bond/angle deviation in sigma) are used rather
+    than discrete outlier/not-outlier bins.
 
     Args:
-        residue_data (Dict[str, Any]): A dictionary containing all the extracted
-                                         validation metrics for a single residue.
-        weights: Unused, kept for API compatibility.
+        residue_data: Dictionary of validation metrics for one residue.
+            Recognized keys:
+              num_bad_clashes_res (int), worst_clash_overlap (float, negative),
+              ramalyze_type (str), ramalyze_category (str),
+              rotalyze_category (str),
+              is_glycine (bool), is_cbeta_outlier (bool), cbeta_deviation (float),
+              cablam_outlier_type (str),
+              omega_type (str), is_proline (bool),
+              num_bond_outliers_res (int), worst_bond_sigma (float),
+              num_angle_outliers_res (int), worst_angle_sigma (float),
+              num_chiral_outliers_res (int),
+              is_rna_residue (bool), is_rna_suite_outlier (bool),
+              is_rna_pucker_outlier (bool).
 
     Returns:
-        Optional[float]: The penalty score (0 = no issues, higher = worse),
-                         or None if no applicable metrics.
+        The triage score rounded to 1 decimal place (0.0 = no issues,
+        higher = worse), or None if no applicable metrics were found.
     """
 
-    penalty = 0.0
+    severities: List[float] = []
     has_any_metric = False
 
-    # --- Helper to safely get data ---
-    def get_data(key, default=None):
+    def get(key, default=None):
         return residue_data.get(key, default)
 
-    # --- 1. Steric Clash Penalty ---
-    num_bad_clashes = get_data('num_bad_clashes_res', 0)
+    # --- 1. Steric Clashes ---
+    num_bad_clashes = get('num_bad_clashes_res', 0)
     if num_bad_clashes > 0:
         has_any_metric = True
-        worst_overlap = get_data('worst_clash_overlap', 0.0)
-        # Tier based on worst overlap magnitude (values are negative)
-        abs_overlap = abs(worst_overlap) if worst_overlap else 0.0
-        if abs_overlap > 0.7:
-            penalty += 3  # Severe clash
-        elif abs_overlap > 0.5:
-            penalty += 2  # Moderate clash
-        else:
-            penalty += 1  # Minor clash (0.4-0.5 range)
-        # Additional clashes beyond the first
-        if num_bad_clashes > 1:
-            penalty += (num_bad_clashes - 1)
+        worst_overlap = get('worst_clash_overlap', 0.0)
+        abs_overlap = abs(worst_overlap) if worst_overlap else 0.4
+        severities.append(_clash_severity(abs_overlap, num_bad_clashes))
 
-    # --- 2. Ramachandran Penalty ---
-    if get_data('ramalyze_type') not in ['not_applicable', 'not_evaluated']:
+    # --- 2. Ramachandran ---
+    if get('ramalyze_type') not in ['not_applicable', 'not_evaluated']:
         has_any_metric = True
-        if get_data('ramalyze_category') == 'outlier':
-            penalty += 3
+        if get('ramalyze_category') == 'outlier':
+            severities.append(5.0)
 
-    # --- 3. Rotamer Penalty ---
-    if get_data('rotalyze_category') not in ['not_evaluated', None]:
+    # --- 3. Rotamer ---
+    if get('rotalyze_category') not in ['not_evaluated', None]:
         has_any_metric = True
-        if get_data('rotalyze_category') == 'outlier':
-            penalty += 2
+        if get('rotalyze_category') == 'outlier':
+            severities.append(3.0)
 
-    # --- 4. C-beta Deviation Penalty ---
-    if not get_data('is_glycine', False):
+    # --- 4. C-beta Deviation ---
+    if not get('is_glycine', False):
         has_any_metric = True
-        if get_data('is_cbeta_outlier'):
-            deviation = get_data('cbeta_deviation', 0.0) or 0.0
-            if deviation > 0.5:
-                penalty += 2  # Severe distortion
-            else:
-                penalty += 1  # Standard outlier (>0.25)
+        if get('is_cbeta_outlier'):
+            deviation = get('cbeta_deviation', 0.0) or 0.0
+            severities.append(_cbeta_severity(deviation))
 
-    # --- 5. CaBLAM Penalty ---
-    cablam_type = get_data('cablam_outlier_type')
+    # --- 5. CaBLAM ---
+    cablam_type = get('cablam_outlier_type')
     if cablam_type not in ['not_evaluated', None]:
         has_any_metric = True
-        if cablam_type == 'outlier':
-            penalty += 2
-        elif cablam_type == 'ca_geom_outlier':
-            penalty += 2
+        if cablam_type in ('outlier', 'ca_geom_outlier'):
+            severities.append(3.0)
         elif cablam_type == 'disfavored':
-            penalty += 1
+            severities.append(1.0)
 
-    # --- 6. Omega Angle Penalty ---
-    omega_type = get_data('omega_type')
+    # --- 6. Omega Angle ---
+    omega_type = get('omega_type')
     if omega_type not in ['not_applicable', 'not_evaluated', None]:
         has_any_metric = True
         if omega_type == 'twisted':
-            penalty += 3
-        elif omega_type == 'cis' and not get_data('is_proline'):
-            penalty += 3  # Cis non-proline
+            severities.append(10.0)
+        elif omega_type == 'cis' and not get('is_proline'):
+            severities.append(8.0)
 
-    # --- 7. Bond Length Penalty ---
-    num_bond_outliers = get_data('num_bond_outliers_res', 0)
+    # --- 7. Bond Lengths ---
+    num_bond_outliers = get('num_bond_outliers_res', 0)
     if num_bond_outliers > 0:
         has_any_metric = True
-        if num_bond_outliers >= 2:
-            penalty += 2
-        else:
-            penalty += 1
+        worst_bond = get('worst_bond_sigma')
+        severities.append(_bond_angle_severity(num_bond_outliers, worst_bond))
 
-    # --- 8. Bond Angle Penalty ---
-    num_angle_outliers = get_data('num_angle_outliers_res', 0)
+    # --- 8. Bond Angles ---
+    num_angle_outliers = get('num_angle_outliers_res', 0)
     if num_angle_outliers > 0:
         has_any_metric = True
-        if num_angle_outliers >= 2:
-            penalty += 2
-        else:
-            penalty += 1
+        worst_angle = get('worst_angle_sigma')
+        severities.append(_bond_angle_severity(num_angle_outliers, worst_angle))
 
-    # --- 9. Chirality Penalty ---
-    if get_data('num_chiral_outliers_res', 0) > 0:
+    # --- 9. Chirality ---
+    if get('num_chiral_outliers_res', 0) > 0:
         has_any_metric = True
-        penalty += 3
+        severities.append(10.0)
 
-    # --- 10. RNA Suite Penalty ---
-    if get_data('is_rna_residue', False):
+    # --- 10. RNA Suite ---
+    if get('is_rna_residue', False):
         has_any_metric = True
-        if get_data('is_rna_suite_outlier', False):
-            penalty += 2
+        if get('is_rna_suite_outlier', False):
+            severities.append(3.0)
 
-    # --- 11. RNA Pucker Penalty ---
-    if get_data('is_rna_residue', False):
+    # --- 11. RNA Pucker ---
+    if get('is_rna_residue', False):
         has_any_metric = True
-        if get_data('is_rna_pucker_outlier', False):
-            penalty += 2
+        if get('is_rna_pucker_outlier', False):
+            severities.append(3.0)
 
-    if has_any_metric:
-        return penalty
-    else:
+    if not has_any_metric:
         return None
+    if not severities:
+        return 0.0
+
+    # Combination rule: worst finding dominates, additional findings
+    # contribute at 25% so accumulation of minor issues cannot outrank
+    # a single severe problem.
+    severities.sort(reverse=True)
+    score = severities[0] + 0.25 * sum(severities[1:])
+    return round(score, 1)
 
 def use_segids_in_place_of_chainids(hierarchy, strict=False):
   use_segids = False
