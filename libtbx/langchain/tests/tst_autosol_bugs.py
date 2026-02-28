@@ -1008,81 +1008,43 @@ def test_bug5_track_output_files_accepts_working_dir():
 
 # ── Bug 6: Daily usage limit not raised as Sorry ───────────────────────
 
-def test_bug6_tee_stream_captures_output():
-    """_TeeStream must write to both primary and secondary streams."""
-    import io
-    primary = io.StringIO()
-    secondary = io.StringIO()
-
-    # Minimal _TeeStream implementation test
-    class _TeeStream:
-        def __init__(self, p, s):
-            self.primary = p
-            self.secondary = s
-        def write(self, data):
-            self.primary.write(data)
-            self.secondary.write(data)
-        def flush(self):
-            self.primary.flush()
-            self.secondary.flush()
-
-    tee = _TeeStream(primary, secondary)
-    tee.write("hello")
-    tee.flush()
-
-    assert_equal(primary.getvalue(), "hello",
-                 "Primary stream must receive write")
-    assert_equal(secondary.getvalue(), "hello",
-                 "Secondary stream must receive write")
-
-
-def test_bug6_fatal_server_errors_defined():
-    """_FATAL_SERVER_ERRORS must include daily_usage_reached pattern."""
-    ai_agent_path = os.path.join(
+def test_bug6_rest_init_raises_sorry_on_daily_limit():
+    """rest/__init__.py must raise Sorry on daily_usage_reached."""
+    rest_init_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "programs", "ai_agent.py")
-    with open(ai_agent_path, 'r') as f:
+        "rest", "__init__.py")
+    with open(rest_init_path, 'r') as f:
         source = f.read()
 
-    assert_in("daily_usage_reached", source,
-              "Must detect daily_usage_reached server error")
-    assert_in("_FATAL_SERVER_ERRORS", source,
-              "Must define _FATAL_SERVER_ERRORS list")
-    assert_in("_call_agent_with_error_check", source,
-              "Must define _call_agent_with_error_check wrapper")
+    import re
+    sorry_raises = re.findall(
+        r"daily_usage_reached.*?raise Sorry", source, re.DOTALL)
+    assert_true(len(sorry_raises) >= 2,
+                "Both daily_usage_reached detection points must raise Sorry "
+                "(found %d)" % len(sorry_raises))
 
 
-def test_bug6_decide_next_step_wrapped():
-    """decide_next_step must be called through the error-check wrapper."""
-    ai_agent_path = os.path.join(
+def test_bug6_remote_agent_reraises_sorry():
+    """RemoteAgent must re-raise Sorry instead of swallowing it.
+
+    The generic `except Exception` around _send_request caught Sorry
+    (which inherits from Exception), logged it, and returned None.
+    Fix: add `except Sorry: raise` before the generic handler.
+    """
+    remote_agent_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "programs", "ai_agent.py")
-    with open(ai_agent_path, 'r') as f:
+        "phenix_ai", "remote_agent.py")
+    with open(remote_agent_path, 'r') as f:
         source = f.read()
 
-    # The wrapper must be called instead of direct decide_next_step
-    assert_in("self._call_agent_with_error_check(", source,
-              "_query_agent_for_command must use the error-check wrapper")
+    assert_in("except Sorry:", source,
+              "RemoteAgent must catch Sorry separately")
+    assert_in("raise  # Fatal server errors", source,
+              "RemoteAgent must re-raise Sorry")
 
-    # The wrapper must raise Sorry for fatal errors
-    assert_in("raise Sorry(message)", source,
-              "Wrapper must raise Sorry for fatal server errors")
-
-
-def test_bug6_tee_stream_class_exists():
-    """_TeeStream helper class must exist for stdout capture."""
-    ai_agent_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "programs", "ai_agent.py")
-    with open(ai_agent_path, 'r') as f:
-        source = f.read()
-
-    assert_in("class _TeeStream", source,
-              "_TeeStream class must be defined")
-    assert_in("self.primary.write(data)", source,
-              "_TeeStream must write to primary")
-    assert_in("self.secondary.write(data)", source,
-              "_TeeStream must write to secondary")
+    # Sorry must be imported
+    assert_in("from libtbx.utils import Sorry", source,
+              "RemoteAgent must import Sorry")
 
 
 def run_all_tests():

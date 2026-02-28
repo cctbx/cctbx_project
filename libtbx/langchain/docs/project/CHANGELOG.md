@@ -53,35 +53,39 @@ output files (working_dir bug); `>0 entries` → MTZ classification mismatch.
 | `programs/ai_agent.py` | Diagnostic: show entry count, differentiate two failure modes |
 | `tests/tst_autosol_bugs.py` | +4 tests (Bug 5), total 48 |
 
-### Problem 2 — Daily usage limit spins until max_cycles
+### Problem 2 — Daily usage limit not raised as Sorry
 
-When the server returns `daily_usage_reached`, `rest/__init__.py` prints
-"Skipping..." and returns `success=False` with the message in
-`server_message`.  RemoteAgent treats this as "no response" and returns
-None.  The cycle loop sees None as "no command generated" and keeps
-trying until `max_cycles`, wasting time and producing a confusing summary
-that says xtriage "failed."
+When the server returns `daily_usage_reached`, `rest/__init__.py` printed
+"Skipping..." and returned `success=False`.  RemoteAgent treated this as
+"no response" and returned None.  The cycle loop saw None as "no command
+generated" and ended silently, producing a confusing summary that said
+xtriage "failed."
 
-### Fix
+Even after `rest/__init__.py` was fixed to raise Sorry, RemoteAgent's
+generic `except Exception` around `_send_request()` caught it (Sorry
+inherits from Exception), logged it as `"Error calling server: ..."`,
+and returned None — swallowing the fatal error.
 
-Raise `Sorry` directly in `rest/__init__.py` at both detection points
-(lines ~784 and ~1115) instead of silently returning.  This is consistent
-with how other auth failures are already handled in the same file
-(invalid token, missing URL, server not available).
+### Fix — three files
 
-The Sorry propagates cleanly through RemoteAgent → ai_agent.py → GUI,
-giving the user an immediate clear error message.
+**`rest/__init__.py`:** Raise `Sorry` on `daily_usage_reached` at both
+detection points (~lines 784 and 1133) instead of silently returning.
+Consistent with how other auth failures are already handled.
 
-Initial approach (stdout-capture wrapper in ai_agent.py) was reverted
-because RemoteAgent prints to `self.logger`, not `sys.stdout`.
+**`phenix_ai/remote_agent.py`:** Add `except Sorry: raise` before the
+generic `except Exception` handler around `_send_request()`.  This lets
+Sorry propagate while still catching transient network errors.
+
+**`programs/ai_agent.py`:** No changes needed — Sorry propagates
+naturally up from `decide_next_step()` through the cycle loop.
 
 ### Additional files changed
 
 | File | Change |
 |------|--------|
-| `rest/__init__.py` | `start_rest_server_job`: raise Sorry on `daily_usage_reached` (was silent return) |
-| `rest/__init__.py` | `run_job_on_server`: raise Sorry on `daily_usage_reached` (was `not_authorized` break) |
-| `tests/tst_autosol_bugs.py` | +3 tests (Bug 6), total 51 |
+| `rest/__init__.py` | Both `daily_usage_reached` paths: raise Sorry (was silent return/break) |
+| `phenix_ai/remote_agent.py` | `except Sorry: raise` before generic handler + import Sorry |
+| `tests/tst_autosol_bugs.py` | +2 tests (Bug 6), total 50 |
 
 ## Version 112.77 (Autobuild rebuild_in_place stripped by Rule D)
 
