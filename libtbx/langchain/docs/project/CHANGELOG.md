@@ -55,36 +55,33 @@ output files (working_dir bug); `>0 entries` → MTZ classification mismatch.
 
 ### Problem 2 — Daily usage limit spins until max_cycles
 
-When the server returns `daily_usage_reached`, the RemoteAgent prints a
-message and returns None.  `_query_agent_for_command` treats None as "no
-command generated" and the cycle loop keeps trying until `max_cycles`,
-wasting time and printing confusing output.  The user never sees a clear
-error telling them to stop.
+When the server returns `daily_usage_reached`, `rest/__init__.py` prints
+"Skipping..." and returns `success=False` with the message in
+`server_message`.  RemoteAgent treats this as "no response" and returns
+None.  The cycle loop sees None as "no command generated" and keeps
+trying until `max_cycles`, wasting time and producing a confusing summary
+that says xtriage "failed."
 
 ### Fix
 
-**Wrapper with stdout capture:** New `_call_agent_with_error_check` method
-wraps `decide_next_step()`.  Uses `_TeeStream` to capture stdout in real
-time (user still sees messages) and checks for fatal patterns after the
-call returns None.  If a fatal pattern is detected, raises `Sorry` with
-a clear user-facing message.
+Raise `Sorry` directly in `rest/__init__.py` at both detection points
+(lines ~784 and ~1115) instead of silently returning.  This is consistent
+with how other auth failures are already handled in the same file
+(invalid token, missing URL, server not available).
 
-Fatal patterns detected: `daily_usage_reached`, `account_suspended`,
-`invalid_api_key`, `authentication_failed`.  New patterns can be added to
-`_FATAL_SERVER_ERRORS` without touching the wrapper logic.
+The Sorry propagates cleanly through RemoteAgent → ai_agent.py → GUI,
+giving the user an immediate clear error message.
 
-**Does NOT modify RemoteAgent** — works with any version by inspecting
-its stdout output.
+Initial approach (stdout-capture wrapper in ai_agent.py) was reverted
+because RemoteAgent prints to `self.logger`, not `sys.stdout`.
 
 ### Additional files changed
 
 | File | Change |
 |------|--------|
-| `programs/ai_agent.py` | `_TeeStream` helper class for stdout capture |
-| `programs/ai_agent.py` | `_FATAL_SERVER_ERRORS` pattern list |
-| `programs/ai_agent.py` | `_call_agent_with_error_check` wrapper method |
-| `programs/ai_agent.py` | `_query_agent_for_command`: call wrapper instead of direct `decide_next_step` |
-| `tests/tst_autosol_bugs.py` | +4 tests (Bug 6), total 52 |
+| `rest/__init__.py` | `start_rest_server_job`: raise Sorry on `daily_usage_reached` (was silent return) |
+| `rest/__init__.py` | `run_job_on_server`: raise Sorry on `daily_usage_reached` (was `not_authorized` break) |
+| `tests/tst_autosol_bugs.py` | +3 tests (Bug 6), total 51 |
 
 ## Version 112.77 (Autobuild rebuild_in_place stripped by Rule D)
 

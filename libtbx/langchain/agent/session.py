@@ -4139,12 +4139,20 @@ FINAL REPORT:"""
         lines.append(f"## {title}")
         lines.append("")
 
-        # Session info line
+        # Session info line — format date and time separately
         session_id = data['session_id']
-        lines.append(f"**Session:** {session_id} | **Cycles:** {data['total_cycles']} ({data['successful_cycles']} successful)")
-        # Working directory (item 4) — always show so the user knows where output went
+        # session_id is typically "YYYY-MM-DD_HH-MM-SS"
+        if '_' in session_id:
+            date_part, time_part = session_id.split('_', 1)
+            time_display = time_part.replace('-', ':')
+            session_display = f"{date_part} {time_display}"
+        else:
+            session_display = session_id
+        lines.append(f"**Session:** {session_display} | **Cycles:** {data['total_cycles']} ({data['successful_cycles']} successful)")
+        # Working directory — blank line above so markdown renders it as a new paragraph
         working_dir = data.get("working_dir")
         if working_dir:
+            lines.append("")
             lines.append(f"**Working directory:** `{working_dir}`")
         if include_llm_assessment:
             lines.append("")
