@@ -218,7 +218,9 @@ def calculate_overall_residue_quality_score(
               omega_type (str), is_proline (bool),
               num_bond_outliers_res (int), worst_bond_sigma (float),
               num_angle_outliers_res (int), worst_angle_sigma (float),
-              num_chiral_outliers_res (int),
+              num_chiral_handedness_res (int), num_chiral_tetrahedral_res (int),
+              num_chiral_pseudochiral_res (int),
+              num_chiral_outliers_res (int, fallback if typed counts unavailable),
               is_rna_residue (bool), is_rna_suite_outlier (bool),
               is_rna_pucker_outlier (bool).
 
@@ -293,9 +295,27 @@ def calculate_overall_residue_quality_score(
         severities.append(_bond_angle_severity(num_angle_outliers, worst_angle))
 
     # --- 9. Chirality ---
-    if get('num_chiral_outliers_res', 0) > 0:
+    # Three distinct types with very different implications:
+    #   - Handedness swap: true chirality inversion (e.g. L->D), serious error
+    #   - Tetrahedral geometry: distorted geometry, needs attention
+    #   - Pseudochiral naming: swapped names on chemically identical atoms
+    #     (e.g. VAL CG1/CG2), cosmetic fix only
+    n_handedness = get('num_chiral_handedness_res', 0)
+    n_tetrahedral = get('num_chiral_tetrahedral_res', 0)
+    n_pseudochiral = get('num_chiral_pseudochiral_res', 0)
+    n_chiral_total = n_handedness + n_tetrahedral + n_pseudochiral
+    if n_chiral_total > 0:
         has_any_metric = True
-        severities.append(10.0)
+        if n_handedness > 0:
+            severities.append(10.0)
+        if n_tetrahedral > 0:
+            severities.append(5.0)
+        if n_pseudochiral > 0:
+            severities.append(1.5)
+    elif get('num_chiral_outliers_res', 0) > 0:
+        # Fallback if only total count is available
+        has_any_metric = True
+        severities.append(5.0)
 
     # --- 10. RNA Suite ---
     if get('is_rna_residue', False):
