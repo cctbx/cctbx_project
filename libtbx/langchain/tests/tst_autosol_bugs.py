@@ -1047,6 +1047,237 @@ def test_bug6_remote_agent_reraises_sorry():
               "RemoteAgent must import Sorry")
 
 
+# ── Bug 7: after_program premature stop on multi-goal requests ──────────
+
+def test_bug7_after_program_not_hard_stop():
+    """check_directive_stop must NOT stop when after_program's target completes.
+
+    after_program is now a minimum-run guarantee (enforced in PLAN), not a
+    hard stop (was in PERCEIVE).  The LLM decides when all goals are met.
+    """
+    sys.path.insert(0, os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "agent"))
+    from perceive_checks import check_directive_stop
+
+    directives = {"stop_conditions": {"after_program": "phenix.map_symmetry"}}
+    history = [
+        {"program": "phenix.mtriage", "command": "phenix.mtriage ...", "result": "SUCCESS"},
+        {"program": "phenix.map_symmetry", "command": "phenix.map_symmetry ...", "result": "SUCCESS"},
+    ]
+
+    should_stop, reason = check_directive_stop(directives, history, cycle_number=3)
+    assert_true(should_stop is False,
+                "after_program must NOT hard-stop in PERCEIVE "
+                "(got should_stop=%s, reason=%s)" % (should_stop, reason))
+
+
+def test_bug7_after_cycle_still_hard_stops():
+    """after_cycle must still work as a hard stop (regression guard)."""
+    sys.path.insert(0, os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "agent"))
+    from perceive_checks import check_directive_stop
+
+    directives = {"stop_conditions": {"after_cycle": 2}}
+    history = [
+        {"program": "phenix.mtriage", "result": "SUCCESS"},
+        {"program": "phenix.map_symmetry", "result": "SUCCESS"},
+    ]
+
+    should_stop, reason = check_directive_stop(directives, history, cycle_number=3)
+    assert_true(should_stop is True,
+                "after_cycle must still hard-stop (got should_stop=%s)" % should_stop)
+    assert_in("after_cycle", reason,
+              "Reason must mention after_cycle")
+
+
+def test_bug7_metrics_targets_still_hard_stop():
+    """r_free_target and map_cc_target must still work as hard stops."""
+    sys.path.insert(0, os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "agent"))
+    from perceive_checks import check_directive_stop
+
+    # r_free target met
+    directives = {"stop_conditions": {"r_free_target": 0.25}}
+    history = [{"program": "phenix.refine", "result": "SUCCESS"}]
+    metrics = {"r_free": 0.22}
+
+    should_stop, reason = check_directive_stop(
+        directives, history, cycle_number=2, current_metrics=metrics)
+    assert_true(should_stop is True,
+                "r_free_target must still hard-stop (got %s)" % should_stop)
+    assert_in("R-free", reason, "Reason must mention R-free")
+
+    # map_cc target met
+    directives = {"stop_conditions": {"map_cc_target": 0.80}}
+    metrics = {"map_cc": 0.85}
+    should_stop, reason = check_directive_stop(
+        directives, history, cycle_number=2, current_metrics=metrics)
+    assert_true(should_stop is True,
+                "map_cc_target must still hard-stop (got %s)" % should_stop)
+    assert_in("Map CC", reason, "Reason must mention Map CC")
+
+
+def test_bug7_source_no_after_program_return_true():
+    """perceive_checks.py must not contain after_program hard-stop logic."""
+    checks_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "agent", "perceive_checks.py")
+    with open(checks_path, 'r') as f:
+        source = f.read()
+
+    # The old pattern that returned True on after_program match must be gone
+    assert_true(
+        'return True, "Completed %s (directive: after_program)"' not in source,
+        "Old after_program hard-stop return must be removed")
+
+    # The comment explaining WHY it was removed must exist
+    assert_in("intentionally NOT a hard stop", source,
+              "Must document why after_program is not a hard stop")
+
+
+def test_bug7_session_fallback_no_after_program_stop():
+    """session.py fallback check_directive_stop_conditions must not hard-stop
+    on after_program either.
+
+    This is a parallel implementation used when directive_extractor can't
+    be imported.  Must match perceive_checks.py semantics.
+    """
+    session_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "agent", "session.py")
+    with open(session_path, 'r') as f:
+        source = f.read()
+
+    # The old pattern that set should_stop=True on after_program match
+    assert_true(
+        'reason = "Completed %s (directive)" % target_program' not in source,
+        "session.py fallback must not hard-stop on after_program")
+
+    # Should have the same "intentionally NOT a hard stop" note
+    assert_in("intentionally NOT a hard stop", source,
+              "session.py must document after_program is not a hard stop")
+
+
+def test_bug7_no_dead_last_command_in_perceive_checks():
+    """perceive_checks.py should not have unused last_command variable.
+
+    last_command was only used by the after_program block that was removed.
+    """
+    checks_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "agent", "perceive_checks.py")
+    with open(checks_path, 'r') as f:
+        source = f.read()
+
+    assert_true(
+        "last_command" not in source,
+        "last_command is dead code after after_program removal")
+
+
+def test_bug7_directive_extractor_no_after_program_stop():
+    """directive_extractor.check_stop_conditions must not hard-stop on
+    after_program.
+
+    This is the server-side implementation called by session.py.  Must
+    match perceive_checks.py semantics.
+    """
+    extractor_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "agent", "directive_extractor.py")
+    with open(extractor_path, 'r') as f:
+        source = f.read()
+
+    assert_true(
+        'return True, "Completed %s (directive: after_program)" % target_program'
+        not in source,
+        "directive_extractor must not hard-stop on after_program")
+
+    assert_in("intentionally NOT a hard stop", source,
+              "directive_extractor must document why after_program is not a hard stop")
+
+
+# ===================================================================
+# WINDOWS COMPATIBILITY TESTS
+# ===================================================================
+
+
+def test_win_filter_intermediate_normalizes_separators():
+    """_filter_intermediate_files must normalize path separators before
+    checking temp dir markers.
+
+    On Windows, paths use backslashes (C:\\Users\\...\\TEMP0\\file.pdb).
+    The forward-slash markers (/TEMP, /TEMP0/) only match if the path
+    is normalized first.
+    """
+    nodes_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "agent", "graph_nodes.py")
+    with open(nodes_path, 'r') as f:
+        source = f.read()
+
+    # The function must normalize backslashes before matching markers
+    assert_in('replace("\\\\", "/")', source,
+              "_filter_intermediate_files must normalize \\\\ to / before "
+              "checking temp_dir_markers")
+
+
+def test_win_popen_create_no_window():
+    """_run_command_tracked should use CREATE_NO_WINDOW on Windows.
+
+    Source-level check: the Popen call must include creationflags for
+    os.name == 'nt' to prevent console windows flashing in GUI mode.
+    """
+    agent_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "programs", "ai_agent.py")
+    with open(agent_path, 'r') as f:
+        source = f.read()
+
+    assert_in("CREATE_NO_WINDOW", source,
+              "Popen must use CREATE_NO_WINDOW on Windows")
+    assert_in("os.name == 'nt'", source,
+              "CREATE_NO_WINDOW must be conditional on Windows")
+
+
+def test_win_abort_detection_comment():
+    """Abort detection must document Windows return code behavior.
+
+    On Unix, killed processes have return_code < 0.  On Windows,
+    taskkill /F produces return_code >= 0.  STOPWIZARD is the reliable
+    cross-platform indicator.
+    """
+    agent_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "programs", "ai_agent.py")
+    with open(agent_path, 'r') as f:
+        source = f.read()
+
+    assert_in("taskkill", source,
+              "Must document Windows taskkill behavior")
+    assert_in("cross-platform", source,
+              "Must note STOPWIZARD as cross-platform indicator")
+
+
+def test_win_session_utf8_encoding():
+    """session.py must use explicit UTF-8 encoding for file I/O.
+
+    On Windows, the default locale encoding (e.g. cp1252) can fail on
+    non-ASCII characters in paths or user advice.
+    """
+    session_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "agent", "session.py")
+    with open(session_path, 'r') as f:
+        source = f.read()
+
+    # All three open() calls for session JSON should use encoding='utf-8'
+    import re
+    open_calls = re.findall(r"open\([^)]*session_file[^)]*\)", source)
+    for call in open_calls:
+        assert_in("encoding='utf-8'", call,
+                   "session_file open() must specify UTF-8: %s" % call)
+
+
 def run_all_tests():
     """Run all autosol bugs tests."""
     run_tests_with_fail_fast()

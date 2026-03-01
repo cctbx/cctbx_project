@@ -173,7 +173,7 @@ class AgentSession:
     def load(self):
         """Load session from file."""
         try:
-            with open(self.session_file, 'r') as f:
+            with open(self.session_file, 'r', encoding='utf-8') as f:
                 self.data = json.load(f)
             # ALWAYS rebuild best_files from cycle history on load
             # This ensures consistency after cycle removal or external modification
@@ -471,7 +471,7 @@ class AgentSession:
             # Include best files tracker in saved data
             self.data["best_files"] = self.best_files.to_dict()
             self.data["best_files_history"] = [h.to_dict() for h in self.best_files.get_history()]
-            with open(self.session_file, 'w') as f:
+            with open(self.session_file, 'w', encoding='utf-8') as f:
                 json.dump(self.data, f, indent=2)
                 f.flush()
                 import os
@@ -906,30 +906,13 @@ class AgentSession:
                     should_stop = True
                     reason = "Reached cycle %d (directive)" % cycle_number
 
-            # Check after_program - normalize names for comparison
-            if not should_stop and "after_program" in stop_cond:
-                target_program = stop_cond["after_program"]
-                # Normalize: remove "phenix." prefix for comparison
-                target_normalized = target_program.replace("phenix.", "")
-                last_normalized = last_program.replace("phenix.", "") if last_program else ""
-
-                if last_normalized == target_normalized or last_program == target_program:
-                    should_stop = True
-                    reason = "Completed %s (directive)" % target_program
+            # after_program — intentionally NOT a hard stop (v112.78, Bug 7)
+            # See perceive_checks.py for full rationale.  after_program is
+            # now a minimum-run guarantee used by PLAN to suppress auto-stop,
+            # not a trigger to force-stop.  The LLM decides when to stop.
 
         if not should_stop:
             return False, None
-
-        # ── Guard: predict_and_build with stop_after_predict ─────────────
-        # If the after_program matched predict_and_build, check whether
-        # the actual command used stop_after_predict=True.  In that case,
-        # only the AlphaFold prediction ran — the full workflow (MR +
-        # build + refine) still needs to continue.  Suppress the stop.
-        if (last_program and "predict_and_build" in last_program and
-                reason and "predict_and_build" in reason):
-            last_command = self._get_last_cycle_command()
-            if last_command and "stop_after_predict" in last_command.lower():
-                return False, None
 
         return should_stop, reason
 
@@ -1566,7 +1549,7 @@ class AgentSession:
             "cycles": self.data.get("cycles", []),
         }
 
-        with open(output_path, 'w') as f:
+        with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(history_data, f, indent=2)
 
         return output_path

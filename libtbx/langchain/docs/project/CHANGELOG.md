@@ -1,6 +1,6 @@
 # PHENIX AI Agent - Changelog
 
-## Version 112.78 (GUI mode: map_coeffs_mtz empty after refine; daily usage Sorry)
+## Version 112.78 (GUI mode: map_coeffs_mtz empty after refine; daily usage Sorry; after_program premature stop)
 
 ### Problem 1 — map_coeffs_mtz empty after refine
 
@@ -86,6 +86,54 @@ naturally up from `decide_next_step()` through the cycle loop.
 | `rest/__init__.py` | Both `daily_usage_reached` paths: raise Sorry (was silent return/break) |
 | `phenix_ai/remote_agent.py` | `except Sorry: raise` before generic handler + import Sorry |
 | `tests/tst_autosol_bugs.py` | +2 tests (Bug 6), total 50 |
+
+### Problem 3 — `after_program` premature stop on multi-goal requests
+
+When user advice contains multiple goals (e.g., *"improve a map, get symmetry
+and map correlation"*), the directive extractor sets `after_program` to a
+single program (whichever it recognizes last).  `check_directive_stop()` in
+**PERCEIVE** fired immediately when that program completed — before the LLM
+ran — short-circuiting the entire cycle and preventing the remaining goals.
+
+Example: mtriage (correlation) ✓ → map_symmetry (symmetry) ✓ → **STOP** ✗
+(map improvement never ran).
+
+### Fix
+
+Removed `after_program` hard stop from `check_directive_stop()` in
+`agent/perceive_checks.py` (12 lines).  `after_program` is now only used in
+the **PLAN** node as a minimum-run guarantee: *"don't auto-stop until at
+least this program has run."*  The LLM always runs and decides whether
+all goals are met.
+
+`after_cycle` and metrics targets (`r_free_target`, `map_cc_target`) remain
+as hard stops — those are explicit numeric limits, not inferred from advice.
+
+**Trade-off:** Single-goal focused tasks ("evaluate these data") now use one
+extra LLM call (the LLM runs on the next cycle and decides to stop itself).
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `agent/perceive_checks.py` | Removed `after_program` hard stop block + dead `last_command` variable, added explanatory comment |
+| `agent/session.py` | Removed parallel `after_program` hard stop from `check_directive_stop_conditions` fallback |
+| `agent/directive_extractor.py` | Removed `after_program` hard stop from `check_stop_conditions` (server-side) |
+| `agent/graph_nodes.py` | Improved PLAN log message when `after_program` completed + auto-stop |
+| `tests/tst_autosol_bugs.py` | +7 tests (Bug 7): functional + regression guards + all 3 parallel implementations + dead code, total 57 |
+
+### Windows compatibility (v112.78)
+
+Four cross-platform issues identified and fixed:
+
+| Issue | File | Fix |
+|-------|------|-----|
+| Temp-dir filter missed backslash paths | `agent/graph_nodes.py` | Normalize `\\` → `/` before matching `/TEMP`, `/TEMP0/`, `/scratch/` markers |
+| Console window flash in GUI | `programs/ai_agent.py` | `CREATE_NO_WINDOW` creationflag on `Popen` when `os.name == 'nt'` |
+| Abort detection assumed negative return codes | `programs/ai_agent.py` | Documented that `return_code < 0` is Unix-only; STOPWIZARD is the cross-platform indicator |
+| Session JSON used locale encoding | `agent/session.py` | All 3 `open()` calls now specify `encoding='utf-8'` |
+
++4 Windows tests, total 61.
 
 ## Version 112.77 (Autobuild rebuild_in_place stripped by Rule D)
 

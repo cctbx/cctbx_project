@@ -203,6 +203,22 @@ Parses natural language guidance from `project_advice`:
 - **Workflow preferences**: "skip autobuild", "use SAD phasing"
 - **Task focus**: "focus on ligand fitting"
 
+**Stop condition semantics:**
+
+| Condition | Type | Where checked | Behavior |
+|-----------|------|---------------|----------|
+| `after_cycle` | Hard stop | PERCEIVE | Immediately stops at cycle N |
+| `r_free_target` | Hard stop | PERCEIVE | Immediately stops when R-free ≤ target |
+| `map_cc_target` | Hard stop | PERCEIVE | Immediately stops when map CC ≥ target |
+| `after_program` | Minimum-run guarantee | PLAN | Suppresses auto-stop until target program has run, but the **LLM decides** when to actually stop |
+
+**Why `after_program` is not a hard stop (v112.78):** The directive extractor
+can only name one program in `after_program`.  For multi-goal requests like
+"improve map, get symmetry and map correlation," it picks one program (e.g.,
+`map_symmetry`) and goals beyond that point would be silently dropped if
+`after_program` triggered an immediate stop.  By letting the LLM decide, all
+goals in the user's advice are honored.
+
 ### 8. Safety Checks (`agent/sanity_checker.py`, `agent/directive_extractor.py`)
 
 Multiple layers of validation to prevent errors:
@@ -589,6 +605,27 @@ Red flags that indicate problems:
 - **No model** available for refinement → abort
 - **Resolution unknown** before refinement → warning
 
+### Server Error Propagation (v112.78)
+
+Fatal server errors (e.g., daily API usage limit) are raised as `Sorry` in
+`rest/__init__.py`.  `RemoteAgent` has a dedicated `except Sorry: raise` handler
+before its generic `except Exception` to ensure these propagate cleanly through
+to the GUI instead of being silently swallowed as a None result.
+
+### Cross-Platform (Windows) Considerations (v112.78)
+
+The agent runs on macOS, Linux, and Windows. Key platform-specific handling:
+
+| Area | Unix/macOS | Windows |
+|------|-----------|---------|
+| Process tree kill | `psutil` recursive walk → `SIGTERM`; fallback `os.killpg` | `taskkill /F /T /PID` |
+| Abort detection | `return_code < 0` (signal) + STOPWIZARD file | STOPWIZARD file only (taskkill returns positive codes) |
+| Subprocess GUI | No special handling needed | `CREATE_NO_WINDOW` creationflag prevents console flash |
+| Path separators | Forward slash native | Backslash native; normalize to `/` before marker matching |
+| Path quoting | `shlex.quote()` (POSIX single-quotes) | Double-quote with escaped inner `"` |
+| File encoding | UTF-8 default on modern systems | Locale-dependent; explicit `encoding='utf-8'` on all `open()` |
+| `os.path.relpath` | Always works | `ValueError` across drives; caught with `try/except` |
+
 ---
 
 ## Session Management
@@ -678,6 +715,7 @@ python3 tests/tst_event_system.py    # Single suite
 
 | Version | Key Changes |
 |---------|-------------|
+| v112.78 | **GUI mode map_coeffs_mtz + daily usage Sorry + after_program fix + Windows compat**: GUI mode `_record_command_result` and `_track_output_files` used `os.getcwd()` which pointed to parent after CWD restore — now accept explicit `working_dir`; `rest/__init__.py` raises `Sorry` on `daily_usage_reached` and `RemoteAgent` re-raises it; `after_program` changed from hard stop to minimum-run guarantee; Windows: `_filter_intermediate_files` normalizes backslash paths, `Popen` uses `CREATE_NO_WINDOW`, session JSON uses explicit UTF-8 encoding |
 | v112.77 | **Autobuild rebuild_in_place**: Rule D stripped `rebuild_in_place=False` because it wasn't in strategy_flags; added `rebuild_in_place`, `n_cycle_build_max`, `maps_only` to autobuild allowlist; recovery hint for sequence mismatch errors |
 | v112.76 | **Catch-all injection blacklist + deterministic atom_type**: heavier-atom-wins rule swaps `atom_type`/`mad_ha_add_list` when primary has lower Z (27-element table); catch-all streak tracker blacklists injected params after 2 consecutive same-error failures (`return_injected` kwarg, `_update_inject_fail_streak`); recovery retries excluded |
 | v112.75 | **Autosol/autobuild process bugs**: strategy-flag alias awareness in `inject_user_params` (wavelength→lambda dedup); `bad_inject_params` learning expanded to PHIL boolean-type errors; autosol atom_type/mad_ha_add_list same-value dedup; `_is_program_already_done` extended to non-count programs (prevents `_apply_directives` re-adding completed autosol from program_settings); improved atom_type hint in programs.yaml |

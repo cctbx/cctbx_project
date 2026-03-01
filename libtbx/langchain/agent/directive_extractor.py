@@ -1707,21 +1707,18 @@ def check_stop_conditions(directives, cycle_number, last_program, metrics=None):
                 cycle_number, stop_cond["after_cycle"]
             )
 
-    # Check after_program - normalize names for comparison
-    if "after_program" in stop_cond:
-        target_program = stop_cond["after_program"]
-        # Normalize: remove "phenix." prefix for comparison
-        target_normalized = target_program.replace("phenix.", "")
-        last_normalized = last_program.replace("phenix.", "") if last_program else ""
-
-        if last_normalized == target_normalized or last_program == target_program:
-            # SPECIAL CASE: predict_and_build with stop_after_predict is only
-            # the prediction step.  The user wants the full workflow (MR + build
-            # + refine), so do NOT treat the prediction-only run as completion.
-            # The caller (Session.check_directive_stop_conditions) handles this
-            # by inspecting the actual command; here we can only match by name,
-            # so we let the caller override if needed.
-            return True, "Completed %s (directive: after_program)" % target_program
+    # after_program — intentionally NOT a hard stop (v112.78, Bug 7)
+    # ─────────────────────────────────────────────────────────────────
+    # Previously, after_program caused an immediate stop when the target
+    # program completed.  This broke multi-goal requests: the directive
+    # extractor can only name one program, so goals beyond that program
+    # were silently dropped.
+    #
+    # Now after_program is a *minimum-run guarantee* — the PLAN node uses
+    # it to suppress auto-stop until the target program has run, but the
+    # LLM decides when to actually stop.
+    #
+    # Hard stops that remain: after_cycle and metrics targets.
 
     # Check max_refine_cycles
     if "max_refine_cycles" in stop_cond and last_program == "phenix.refine":

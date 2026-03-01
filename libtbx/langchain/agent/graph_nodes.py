@@ -452,8 +452,10 @@ def _filter_intermediate_files(available_files):
     for f in available_files:
         if not f:
             continue
+        # Normalise separators so markers match on both Unix and Windows
+        f_normalized = f.replace("\\", "/")
         # Skip files in temporary directories
-        if any(marker in f for marker in temp_dir_markers):
+        if any(marker in f_normalized for marker in temp_dir_markers):
             continue
         # Skip files with intermediate prefixes
         basename = os.path.basename(f)
@@ -1465,8 +1467,10 @@ def plan(state):
                 state = _log(state, "PLAN: Suppressing AUTO-STOP because after_program=%s hasn't run yet" % after_program)
                 # Continue to LLM planning instead of stopping
             else:
-                # after_program has run, allow auto-stop
-                state = _log(state, "PLAN: AUTO-STOP triggered: %s" % reason)
+                # after_program has run AND metrics say stop — allow auto-stop.
+                # (after_program alone no longer triggers PERCEIVE hard stop
+                # as of v112.78 Bug 7; only PLAN auto-stop respects it.)
+                state = _log(state, "PLAN: AUTO-STOP triggered: %s (after_program=%s completed)" % (reason, after_program))
                 # Emit STOP_DECISION event
                 state = _emit(state, EventType.STOP_DECISION,
                     stop=True,

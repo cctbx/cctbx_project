@@ -33,7 +33,6 @@ def check_directive_stop(directives, history, cycle_number,
 
     last_entry = history[-1]
     last_program = last_entry.get("program", "")
-    last_command = last_entry.get("command", "")
     completed_cycles = cycle_number - 1
 
     # after_cycle
@@ -42,18 +41,20 @@ def check_directive_stop(directives, history, cycle_number,
         return True, ("Reached cycle %d (directive: after_cycle=%d)"
                        % (completed_cycles, ac))
 
-    # after_program
-    ap = stop_cond.get("after_program")
-    if ap and last_program:
-        ap_norm = ap.replace("phenix.", "")
-        lp_norm = last_program.replace("phenix.", "")
-        if lp_norm == ap_norm or last_program == ap:
-            # Guard: predict_and_build with stop_after_predict
-            if ("predict_and_build" in last_program
-                    and last_command
-                    and "stop_after_predict" in last_command.lower()):
-                return False, None
-            return True, "Completed %s (directive: after_program)" % ap
+    # after_program — intentionally NOT a hard stop (v112.78, Bug 7)
+    # ─────────────────────────────────────────────────────────────────
+    # Previously, after_program caused PERCEIVE to short-circuit to STOP
+    # before the LLM ran.  This broke multi-goal requests: the directive
+    # extractor can only name one program, so goals beyond that program
+    # were silently dropped.
+    #
+    # Now after_program is a *minimum-run guarantee* — the PLAN node uses
+    # it to suppress auto-stop until the target program has run, but the
+    # LLM decides when to actually stop.  This lets the LLM honor all of
+    # the user's goals, not just the one the extractor happened to pick.
+    #
+    # Hard stops that remain: after_cycle (explicit numeric limit) and
+    # metrics targets (explicit r_free/map_cc thresholds).
 
     # metrics targets
     if current_metrics:

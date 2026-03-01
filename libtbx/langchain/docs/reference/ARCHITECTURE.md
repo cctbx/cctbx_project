@@ -131,7 +131,7 @@ Main entry point and execution loop:
 
 **Not responsible for** (moved to graph in v112.66–112.69):
 - Command sanitization, user param injection, crystal symmetry injection (→ BUILD)
-- Stop decisions: directive stops, consecutive-program cap (→ PERCEIVE)
+- Stop decisions: hard stops (after_cycle, metrics targets) in PERCEIVE; after_program minimum-run guarantee in PLAN; consecutive-program cap (→ PERCEIVE)
 - Duplicate retries bypass (deleted `_retry_duplicate`, now uses graph)
 
 **GUI mode execution caveat (v112.78):** In GUI mode, `_execute_sub_job_for_gui`
@@ -253,6 +253,12 @@ Both agents use identical interface, v2 JSON format, **and transport encoding**:
 - Same `history_record` response format
 - Transport module: `agent/transport.py`
 - Configuration: `knowledge/transport.yaml`
+
+**Error propagation (v112.78):** `RemoteAgent._send_request()` is wrapped in a
+generic `except Exception` handler.  Since `Sorry` inherits from `Exception`,
+fatal server errors (e.g., daily usage limit from `rest/__init__.py`) were
+silently caught, logged, and returned as `None`.  Fix: `except Sorry: raise`
+before the generic handler lets fatal errors propagate to the GUI.
 
 #### Log Parsers (phenix_ai/log_parsers.py)
 Extracts metrics and output files from program log output:
@@ -452,10 +458,16 @@ The decision flow follows a clean, layered architecture where each component has
 │  Output: should_stop (bool), stop_reason                        │
 │                                                                  │
 │  Responsibilities:                                               │
-│  - Check if after_program condition met                         │
-│  - Check if after_cycle condition met                           │
-│  - Check if metric targets met (r_free, map_cc)                 │
-│  - This is the ONLY place stop conditions are evaluated         │
+│  - Check if after_cycle condition met (hard stop)               │
+│  - Check if metric targets met — r_free, map_cc (hard stop)    │
+│  - This is the ONLY place hard stop conditions are evaluated    │
+│                                                                  │
+│  NOTE (v112.78): after_program is intentionally NOT a hard      │
+│  stop here.  It is a minimum-run guarantee: PLAN suppresses     │
+│  auto-stop until the target program has run, but the LLM        │
+│  decides when to actually stop.  This prevents premature        │
+│  termination on multi-goal requests where the directive          │
+│  extractor can only name one program.                           │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
