@@ -560,6 +560,7 @@ phenix.autobuild:
         extensions: [.mtz, .sca, .hkl, .sdf]
         flag: "data="
         description: "Reflection data - prefer phased MTZ from phaser/refine"
+        exclude_patterns: [map_coeffs, denmod_map]
       sequence:
         extensions: [.fa, .fasta, .seq, .dat]
         flag: "seq_file="
@@ -568,6 +569,11 @@ phenix.autobuild:
         extensions: [.pdb]
         flag: "model="
         exclude_patterns: [ligand, lig.pdb, ligand_fit]
+      map_coeffs:
+        extensions: [.mtz]
+        flag: "map_file="
+        prefer_patterns: [map_coeffs, denmod_map]
+        description: "MTZ with map coefficients for phase information"
 
   # Input priorities for autobuild
   input_priorities:
@@ -587,7 +593,7 @@ phenix.autobuild:
       - r_free
       - r_work
 
-  command: "phenix.autobuild {data_mtz} {sequence} {model}"
+  command: "phenix.autobuild {data_mtz} {sequence} {model} {map_coeffs}"
 
   defaults:
     nproc: 4

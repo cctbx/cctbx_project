@@ -175,9 +175,10 @@
   "phenix.autobuild": {
     "description": "Iterative model building and refinement.",
     "file_slots": {
-      "data": { "flag": "data=", "required": true, "extensions": [".mtz", ".sca", ".hkl", ".sdf"], "priority_patterns": ["refine"] },
+      "data": { "flag": "data=", "required": true, "extensions": [".mtz", ".sca", ".hkl", ".sdf"], "priority_patterns": ["refine"], "exclude_patterns": ["map_coeffs", "denmod_map"] },
       "model": { "flag": "model=", "required": false, "extensions": [".pdb"], "priority_patterns": ["refine", "PHASER"] },
-      "sequence": { "flag": "seq_file=", "required": true, "extensions": [".fa", ".fasta", ".seq", ".dat"] }
+      "sequence": { "flag": "seq_file=", "required": true, "extensions": [".fa", ".fasta", ".seq", ".dat"] },
+      "map_coeffs": { "flag": "map_file=", "required": false, "extensions": [".mtz"], "prefer_patterns": ["map_coeffs", "denmod_map"] }
     },
     "defaults": {
       "nproc": 4
@@ -196,8 +197,9 @@
     },
     "hints": [
       "REQUIRES phased MTZ (from phaser or refine output) - will not work with raw F/SIGF data",
+      "data= should be the REFINE output MTZ (has Fobs + HL phases), NOT the map_coeffs MTZ",
+      "map_file= can provide map coefficients (denmod_map_coeffs.mtz) for additional phase info",
       "If resolution is better than 2.0Å, set resolution=2.0 to speed up building",
-      "Use the refined MTZ (with map coefficients) not the original data MTZ",
       "IMPORTANT: If a refined model exists, include it with model= for better results"
     ]
   },
