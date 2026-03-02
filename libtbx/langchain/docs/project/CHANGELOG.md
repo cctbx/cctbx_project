@@ -1,5 +1,63 @@
 # PHENIX AI Agent - Changelog
 
+## Version 112.80 (Block bare wavelength= on autosol commands)
+
+### Problem
+
+For MAD experiments, autosol commands were generated with bare
+`wavelength=0.9000 wavelength=0.9794 wavelength=0.9797` instead
+of the correct PHIL form `autosol.lambda=0.9792`.  Multiple
+issues:
+
+1. `wavelength` is not a valid PHIL parameter for autosol — PHIL
+   interprets it as `autosol.wavelength.added_wavelength`
+   (a boolean), causing a type-mismatch crash
+2. Three values were injected (peak, inflection, high-remote)
+   when only the peak wavelength should be used
+3. The strategy system correctly maps `wavelength` →
+   `autosol.lambda={value}`, but `inject_user_params` could
+   re-inject bare `wavelength=xxx` from user advice, and
+   `sanitize_command` allowed it through
+
+### Root cause
+
+`_load_prog_allowlist()` added both the strategy key name AND
+the PHIL leaf to the command-line allowlist.  For aliases where
+the key differs from the leaf (e.g. `wavelength` → `lambda`),
+the bare alias was incorrectly whitelisted, allowing it to
+survive sanitization and be injected from user advice.
+
+### Fix
+
+1. **`_load_prog_allowlist()`** (command_postprocessor.py) —
+   When a strategy_flags key maps to a different PHIL leaf,
+   only add the PHIL leaf to the allowlist.  The bare alias
+   is no longer whitelisted.  Affects all programs with
+   aliased strategy flags (autosol, refine, phaser, etc.)
+
+2. **`_build_strategy()`** (command_builder.py) — For autosol,
+   if the LLM provides wavelength as a list (multiple MAD
+   wavelengths), keep only the first (peak) value.
+
+### Tests
+
+- `test_bug1a_wavelength_not_in_allowlist` — verifies bare
+  `wavelength` is excluded from the allowlist
+- `test_bug1a_sanitize_strips_bare_wavelength` — verifies
+  `sanitize_command` strips all bare `wavelength=xxx` tokens
+- `test_bug1a_inject_skips_wavelength_without_lambda` —
+  verifies `inject_user_params` won't inject `wavelength=xxx`
+  even when `autosol.lambda` is absent from command
+
+### Files changed
+
+- `agent/command_postprocessor.py` — `_load_prog_allowlist()`
+  alias-aware allowlist logic
+- `agent/command_builder.py` — `_build_strategy()` autosol
+  wavelength list sanitization
+- `tests/tst_autosol_bugs.py` — 3 new regression tests
+- `docs/project/CHANGELOG.md` — This entry
+
 ## Version 112.79 (Remove directory scanning from graph perceive node)
 
 ### Problem
