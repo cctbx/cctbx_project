@@ -12,7 +12,6 @@ Tests for v112.13 fixes:
 from __future__ import absolute_import, division, print_function
 import os
 import sys
-import glob
 import shutil
 import tempfile
 import re
@@ -47,80 +46,6 @@ def _load_workflows():
 # ---- Inline reimplementations of tested functions ----
 # (graph_nodes.py can't be imported without libtbx)
 
-def _discover_companion_files(available_files):
-    """Inline copy of graph_nodes._discover_companion_files for testing."""
-    seen = {os.path.basename(f) for f in available_files if f}
-    new_files = []
-
-    for f in available_files:
-        if not f:
-            continue
-        basename = os.path.basename(f)
-
-        if basename.endswith("_data.mtz") and "refine" in basename.lower():
-            prefix = basename[:-9]
-            output_dir = os.path.dirname(os.path.abspath(f))
-
-            for companion in [prefix + ".mtz", prefix + "_001.mtz"]:
-                full_path = os.path.join(output_dir, companion)
-                if companion not in seen and os.path.exists(full_path):
-                    new_files.append(full_path)
-                    seen.add(companion)
-                    break
-
-            for companion in [prefix + ".pdb", prefix + "_001.pdb"]:
-                full_path = os.path.join(output_dir, companion)
-                if companion not in seen and os.path.exists(full_path):
-                    new_files.append(full_path)
-                    seen.add(companion)
-                    break
-
-            found_basenames = {os.path.basename(x) for x in new_files}
-            for mtz in glob.glob(os.path.join(output_dir, prefix + "*.mtz")):
-                bn = os.path.basename(mtz)
-                if (bn not in seen and
-                    bn not in found_basenames and
-                    not bn.endswith("_data.mtz")):
-                    new_files.append(mtz)
-                    seen.add(bn)
-
-        elif "overall_best" in basename.lower() and basename.endswith(".mtz"):
-            output_dir = os.path.dirname(os.path.abspath(f))
-            for companion in ["overall_best.pdb", "overall_best_refine_001.pdb"]:
-                full_path = os.path.join(output_dir, companion)
-                if companion not in seen and os.path.exists(full_path):
-                    new_files.append(full_path)
-                    seen.add(companion)
-                    break
-
-    # pdbtools output discovery
-    agent_dirs = set()
-    for f in available_files:
-        if not f:
-            continue
-        abs_f = os.path.abspath(f)
-        parts = abs_f.replace("\\", "/").split("/")
-        for i, part in enumerate(parts):
-            if part.startswith("sub_") and "_" in part[4:]:
-                agent_dir = os.sep.join(parts[:i])
-                if os.path.isdir(agent_dir):
-                    agent_dirs.add(agent_dir)
-                break
-
-    for agent_dir in agent_dirs:
-        for entry in glob.glob(os.path.join(agent_dir, "sub_*_pdbtools")):
-            if os.path.isdir(entry):
-                for pdb in glob.glob(os.path.join(entry, "*_with_ligand.pdb")):
-                    bn = os.path.basename(pdb)
-                    if bn not in seen:
-                        new_files.append(pdb)
-                        seen.add(bn)
-
-    if new_files:
-        return list(available_files) + new_files
-    return available_files
-
-
 def _filter_intermediate_files(available_files):
     """Inline copy of graph_nodes._filter_intermediate_files for testing."""
     temp_dir_markers = ("/TEMP", "/temp", "/TEMP0/", "/scratch/")
@@ -141,155 +66,143 @@ def _filter_intermediate_files(available_files):
 
 
 # =============================================================================
-# 1. COMPANION FILE DISCOVERY
+# 1. PERCEIVE DOES NOT SCAN INPUT DIRECTORIES (v112.79)
 # =============================================================================
 
-def test_discover_refine_companions():
-    """After refinement, map coefficients MTZ and refined PDB should be discovered
-    even if the client only tracked _data.mtz and .cif."""
-    print("Test: discover_refine_companions")
+def test_perceive_no_input_dir_scanning():
+  """Verify that the perceive node's file pipeline does NOT scan
+  directories of user-supplied files.
 
-    tmpdir = tempfile.mkdtemp()
-    try:
-        refine_dir = os.path.join(tmpdir, "sub_02_refine")
-        os.makedirs(refine_dir)
+  The old _discover_companion_files() would look in the directory of
+  every available file.  If a user supplied /data/project/data.mtz,
+  and /data/project/ also contained mask.ccp4, the agent could pick
+  up mask.ccp4 even though the user never supplied it.
 
-        for name in ["refine_001.pdb", "refine_001.mtz",
-                     "refine_001_data.mtz", "refine_001_001.cif"]:
-            with open(os.path.join(refine_dir, name), "w") as f:
-                f.write("test")
+  After v112.79, the perceive node only:
+    - Injects output files from history entries
+    - Filters intermediate/temp files
+  No directory scanning occurs in the graph pipeline.  Companion
+  file discovery is handled on the client side by
+  session.get_available_files().
+  """
+  print("Test: perceive_no_input_dir_scanning")
 
-        available = [
-            os.path.join(refine_dir, "refine_001_data.mtz"),
-            os.path.join(refine_dir, "refine_001_001.cif"),
-        ]
+  tmpdir = tempfile.mkdtemp()
+  try:
+    # Create a user input directory with extra files the agent
+    # should NOT discover
+    user_dir = os.path.join(tmpdir, "user_data")
+    os.makedirs(user_dir)
 
-        result = _discover_companion_files(available)
-        basenames = [os.path.basename(f) for f in result]
+    # User-supplied file
+    data_mtz = os.path.join(user_dir, "data.mtz")
+    with open(data_mtz, "w") as f:
+      f.write("test")
 
-        assert_in("refine_001.mtz", basenames,
-                  "Map coefficients MTZ should be discovered")
-        assert_in("refine_001.pdb", basenames,
-                  "Refined model PDB should be discovered")
-        assert_equal(len(result), 4,
-                    "Should have 4 files total (2 original + 2 discovered)")
-    finally:
-        shutil.rmtree(tmpdir)
+    # Extra files in the same directory — NOT supplied by user
+    for extra in ["mask.ccp4", "old_model.pdb",
+                  "refine_001.mtz", "refine_001_data.mtz"]:
+      with open(os.path.join(user_dir, extra), "w") as f:
+        f.write("test")
 
-    print("  PASSED")
+    # Simulate what perceive does: start with available_files,
+    # inject from history, then filter intermediates.
+    # NO directory scanning should occur.
+    available_files = [data_mtz]
 
+    # Simulate history injection (as perceive does)
+    history = [
+      {"output_files": [
+        os.path.join(tmpdir, "sub_01_xtriage", "xtriage.log")
+      ]},
+    ]
+    seen_basenames = {
+      os.path.basename(f) for f in available_files if f
+    }
+    for hist_entry in history:
+      if isinstance(hist_entry, dict):
+        for f in hist_entry.get("output_files", []):
+          if f:
+            bn = os.path.basename(f)
+            if bn not in seen_basenames:
+              available_files = list(available_files) + [f]
+              seen_basenames.add(bn)
 
-def test_discover_refine_001_format():
-    """Discover companion files with _001 naming (refine_001_001.mtz format)."""
-    print("Test: discover_refine_001_format")
+    # Apply intermediate file filter (as perceive does)
+    available_files = _filter_intermediate_files(available_files)
 
-    tmpdir = tempfile.mkdtemp()
-    try:
-        refine_dir = os.path.join(tmpdir, "sub_02_refine")
-        os.makedirs(refine_dir)
+    # Verify: only user-supplied + history files are present
+    basenames = {os.path.basename(f) for f in available_files}
+    assert_true(
+      "data.mtz" in basenames,
+      "User-supplied file should be present")
+    assert_true(
+      "xtriage.log" in basenames,
+      "History output file should be present")
 
-        for name in ["refine_001_001.pdb", "refine_001_001.mtz",
-                     "refine_001_data.mtz"]:
-            with open(os.path.join(refine_dir, name), "w") as f:
-                f.write("test")
+    # The key assertion: files from the input directory that
+    # were NOT supplied or in history must NOT appear
+    assert_true(
+      "mask.ccp4" not in basenames,
+      "mask.ccp4 from input dir should NOT be discovered")
+    assert_true(
+      "old_model.pdb" not in basenames,
+      "old_model.pdb from input dir should NOT be discovered")
+    assert_true(
+      "refine_001.mtz" not in basenames,
+      "refine_001.mtz from input dir should NOT be discovered")
+    assert_true(
+      "refine_001_data.mtz" not in basenames,
+      "refine_001_data.mtz from input dir should NOT "
+      "be discovered")
+    assert_equal(
+      len(available_files), 2,
+      "Should have exactly 2 files (1 user + 1 history)")
+  finally:
+    shutil.rmtree(tmpdir)
 
-        available = [os.path.join(refine_dir, "refine_001_data.mtz")]
-        result = _discover_companion_files(available)
-        basenames = [os.path.basename(f) for f in result]
-
-        assert_in("refine_001_001.mtz", basenames,
-                  "_001 format map coefficients should be discovered")
-        assert_in("refine_001_001.pdb", basenames,
-                  "_001 format model should be discovered")
-    finally:
-        shutil.rmtree(tmpdir)
-
-    print("  PASSED")
-
-
-def test_discover_autobuild_model():
-    """Discover overall_best.pdb when only autobuild MTZ files are tracked."""
-    print("Test: discover_autobuild_model")
-
-    tmpdir = tempfile.mkdtemp()
-    try:
-        ab_dir = os.path.join(tmpdir, "AutoBuild_run_1_")
-        os.makedirs(ab_dir)
-
-        for name in ["overall_best.pdb", "overall_best_refine_data.mtz",
-                     "overall_best_denmod_map_coeffs.mtz"]:
-            with open(os.path.join(ab_dir, name), "w") as f:
-                f.write("test")
-
-        available = [
-            os.path.join(ab_dir, "overall_best_refine_data.mtz"),
-            os.path.join(ab_dir, "overall_best_denmod_map_coeffs.mtz"),
-        ]
-
-        result = _discover_companion_files(available)
-        basenames = [os.path.basename(f) for f in result]
-        assert_in("overall_best.pdb", basenames,
-                  "Autobuild model PDB should be discovered")
-    finally:
-        shutil.rmtree(tmpdir)
-
-    print("  PASSED")
-
-
-def test_discover_pdbtools_output():
-    """Discover *_with_ligand.pdb from pdbtools output directory."""
-    print("Test: discover_pdbtools_output")
-
-    tmpdir = tempfile.mkdtemp()
-    try:
-        agent_dir = os.path.join(tmpdir, "ai_agent_directory")
-        refine_dir = os.path.join(agent_dir, "sub_02_refine")
-        pdbtools_dir = os.path.join(agent_dir, "sub_04_pdbtools")
-        os.makedirs(refine_dir)
-        os.makedirs(pdbtools_dir)
-
-        with open(os.path.join(refine_dir, "refine_001_data.mtz"), "w") as f:
-            f.write("test")
-        with open(os.path.join(pdbtools_dir, "refine_001_001_with_ligand.pdb"), "w") as f:
-            f.write("test")
-
-        available = [os.path.join(refine_dir, "refine_001_data.mtz")]
-        result = _discover_companion_files(available)
-
-        basenames = [os.path.basename(f) for f in result]
-        assert_in("refine_001_001_with_ligand.pdb", basenames,
-                  "pdbtools with_ligand output should be discovered")
-    finally:
-        shutil.rmtree(tmpdir)
-
-    print("  PASSED")
+  print("  PASSED")
 
 
-def test_discover_no_duplicates():
-    """Discovery should not add files that are already in the list."""
-    print("Test: discover_no_duplicates")
+def test_history_injection_still_works():
+  """Verify that output files from history entries are still
+  injected into available_files by the perceive pipeline."""
+  print("Test: history_injection_still_works")
 
-    tmpdir = tempfile.mkdtemp()
-    try:
-        refine_dir = os.path.join(tmpdir, "sub_02_refine")
-        os.makedirs(refine_dir)
+  # Simulate perceive's history injection logic
+  available_files = ["/p/data.mtz", "/p/sequence.fa"]
+  history = [
+    {"output_files": []},  # xtriage: no output files
+    {"output_files": [     # refine: has outputs
+      "/p/sub_02_refine/refine_001.pdb",
+      "/p/sub_02_refine/refine_001_data.mtz",
+    ]},
+  ]
 
-        for name in ["refine_001.pdb", "refine_001.mtz", "refine_001_data.mtz"]:
-            with open(os.path.join(refine_dir, name), "w") as f:
-                f.write("test")
+  seen_basenames = {
+    os.path.basename(f) for f in available_files if f
+  }
+  history_additions = []
+  for hist_entry in history:
+    if isinstance(hist_entry, dict):
+      for f in hist_entry.get("output_files", []):
+        if f:
+          bn = os.path.basename(f)
+          if bn not in seen_basenames:
+            history_additions.append(f)
+            seen_basenames.add(bn)
+  if history_additions:
+    available_files = list(available_files) + history_additions
 
-        available = [
-            os.path.join(refine_dir, "refine_001_data.mtz"),
-            os.path.join(refine_dir, "refine_001.mtz"),
-            os.path.join(refine_dir, "refine_001.pdb"),
-        ]
+  basenames = {os.path.basename(f) for f in available_files}
+  assert_equal(len(available_files), 4,
+    "Should have 4 files (2 original + 2 from history)")
+  assert_in("refine_001.pdb", basenames,
+    "Refine model should be injected from history")
+  assert_in("refine_001_data.mtz", basenames,
+    "Refine data MTZ should be injected from history")
 
-        result = _discover_companion_files(available)
-        assert_equal(len(result), 3, "No new files should be added")
-    finally:
-        shutil.rmtree(tmpdir)
-
-    print("  PASSED")
+  print("  PASSED")
 
 
 # =============================================================================

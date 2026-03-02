@@ -1,5 +1,70 @@
 # PHENIX AI Agent - Changelog
 
+## Version 112.79 (Remove directory scanning from graph perceive node)
+
+### Problem
+
+The `perceive()` node in `graph_nodes.py` called
+`_discover_companion_files()`, which scanned the directories of ALL
+files in `available_files` — including user-supplied input files —
+to look for companion outputs (e.g., map coefficients MTZ alongside
+a `_data.mtz`).  This meant the agent could pick up unintended files
+from user input directories without being told to.
+
+### Root cause
+
+`_discover_companion_files()` was introduced when the session did not
+have comprehensive output file discovery.  Since then,
+`session.get_available_files()` gained three layers of output
+discovery:
+
+1. `_discover_cycle_outputs()` — tries stored paths, then scans the
+   expected `sub_NN_program/` output directory
+2. `_find_missing_outputs()` — finds companion refine/autobuild files
+   from known output paths
+3. Step 3 catch-all — scans agent sub-directories for any missed
+   output files
+
+These session-side mechanisms are scoped to agent output directories
+only, making the graph-side `_discover_companion_files()` both
+redundant and overly broad.
+
+### Fix
+
+Removed the `_discover_companion_files()` function from
+`graph_nodes.py` entirely.  The `perceive()` node no longer performs
+any directory scanning.  It still:
+- Injects output files from history entries
+- Filters intermediate/temp files via `_filter_intermediate_files()`
+
+### Tests
+
+- Removed 5 companion file discovery tests (tested the deleted
+  function)
+- Added `test_perceive_no_input_dir_scanning` — verifies the
+  perceive pipeline does NOT pick up files from user input
+  directories
+- Added `test_history_injection_still_works` — verifies output
+  files from history entries are still injected
+
+### Documentation
+
+- Updated `ARCHITECTURE.md` companion file discovery layers:
+  removed Layer 1 (`_discover_companion_files`), renumbered
+  Layers 2-6 to 1-5
+- Updated intermediate file filtering description
+
+### Files changed
+
+- `agent/graph_nodes.py` — Removed `_discover_companion_files`
+  function and its call from `perceive()`
+- `tests/tst_v112_13_fixes.py` — Replaced companion file tests
+  with perceive-pipeline tests
+- `docs/reference/ARCHITECTURE.md` — Updated layer numbering
+- `docs/project/CHANGELOG.md` — This entry
+
+---
+
 ## Version 112.78 (GUI mode: map_coeffs_mtz empty after refine; daily usage Sorry; after_program premature stop)
 
 ### Problem 1 — map_coeffs_mtz empty after refine
@@ -2783,7 +2848,12 @@ Tests registered in `tests/run_all_tests.py` as "Audit Fix Regressions".
 
 ### File discovery and filtering (Fixes 14-15)
 
-**Companion file discovery** (`graph_nodes._discover_companion_files`)
+**Companion file discovery** (REMOVED in v112.79)
+*`graph_nodes._discover_companion_files` was removed because it
+scanned directories of user-supplied files, picking up unintended
+files.  All companion discovery is now handled by the session layer
+(`_find_missing_outputs` and `get_available_files` Step 3 scan),
+which is scoped to agent output directories only.*
 - After `phenix.refine`: discovers map coefficients (`refine_NNN.mtz`) and
   refined model (`refine_NNN.pdb`) from `_data.mtz` prefix. Handles both
   bare (`refine_001.mtz`) and `_001` (`refine_001_001.mtz`) naming.
@@ -2867,12 +2937,14 @@ Tests registered in `tests/run_all_tests.py` as "Audit Fix Regressions".
 
 ### Test coverage
 
-- 33 new tests in `tests/tst_v112_13_fixes.py` covering companion file
-  discovery (5), intermediate filtering (3), file categorization (5),
-  phaser model_for_mr (3), output validation (3), program priorities (4),
-  end-to-end post-pdbtools selection (2), combine_ligand phase (1),
-  sharpened map categorization (2), run_once done-flag config (2),
-  map_symmetry condition (1), non_half_map context key (2).
+- 30 tests in `tests/tst_v112_13_fixes.py` covering perceive
+  pipeline safety (2, v112.79), intermediate filtering (3),
+  file categorization (5), phaser model_for_mr (3), output
+  validation (3), program priorities (4), end-to-end
+  post-pdbtools selection (2), combine_ligand phase (1),
+  sharpened map categorization (2), run_once done-flag
+  config (2), map_symmetry condition (1),
+  non_half_map context key (2).
 - Total: 29/35 passing (6 pre-existing libtbx import failures).
 
 ## Version 112.12 (February 2025)

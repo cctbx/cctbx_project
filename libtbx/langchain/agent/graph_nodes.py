@@ -327,107 +327,6 @@ def _files_are_local(available_files, sample_size=3):
     return False
 
 
-def _discover_companion_files(available_files, skip_disk=False):
-    """
-    Discover expected companion files that the client may not have tracked.
-
-    Some clients only track a subset of output files (e.g., only _data.mtz
-    and .cif from refinement, but not the map coefficients .mtz or .pdb).
-    This function looks for expected companion files on disk.
-
-    Args:
-        available_files: List of file paths
-        skip_disk: If True, skip all disk I/O (server mode where client
-            files are not on the local filesystem)
-
-    Returns:
-        list: Updated file list with any discovered companions added
-    """
-    if skip_disk:
-        return available_files
-
-    import glob
-
-    seen = {os.path.basename(f) for f in available_files if f}
-    new_files = []
-
-    for f in available_files:
-        if not f:
-            continue
-        basename = os.path.basename(f)
-
-        # Pattern: refine_NNN_data.mtz -> look for refine_NNN.mtz, refine_NNN.pdb
-        if basename.endswith("_data.mtz") and "refine" in basename.lower():
-            prefix = basename[:-9]  # Strip "_data.mtz"
-            output_dir = os.path.dirname(os.path.abspath(f))
-
-            # Look for map coefficients MTZ
-            for companion in [prefix + ".mtz", prefix + "_001.mtz"]:
-                full_path = os.path.join(output_dir, companion)
-                if companion not in seen and os.path.exists(full_path):
-                    new_files.append(full_path)
-                    seen.add(companion)
-                    break
-
-            # Look for refined model PDB
-            for companion in [prefix + ".pdb", prefix + "_001.pdb"]:
-                full_path = os.path.join(output_dir, companion)
-                if companion not in seen and os.path.exists(full_path):
-                    new_files.append(full_path)
-                    seen.add(companion)
-                    break
-
-            # Scan for any other non-data MTZ from this prefix
-            found_basenames = {os.path.basename(x) for x in new_files}
-            for mtz in glob.glob(os.path.join(output_dir, prefix + "*.mtz")):
-                bn = os.path.basename(mtz)
-                if (bn not in seen and
-                    bn not in found_basenames and
-                    not bn.endswith("_data.mtz")):
-                    new_files.append(mtz)
-                    seen.add(bn)
-
-        # Pattern: overall_best_refine_data.mtz -> look for overall_best.pdb
-        elif "overall_best" in basename.lower() and basename.endswith(".mtz"):
-            output_dir = os.path.dirname(os.path.abspath(f))
-            for companion in ["overall_best.pdb", "overall_best_refine_001.pdb"]:
-                full_path = os.path.join(output_dir, companion)
-                if companion not in seen and os.path.exists(full_path):
-                    new_files.append(full_path)
-                    seen.add(companion)
-                    break
-
-    # Pattern: look for pdbtools output (*_with_ligand.pdb) in agent directory
-    # Derive agent_directory from available file paths containing sub_NN_ dirs
-    agent_dirs = set()
-    for f in available_files:
-        if not f:
-            continue
-        # Look for paths containing /sub_NN_program/ pattern
-        abs_f = os.path.abspath(f)
-        parts = abs_f.replace("\\", "/").split("/")
-        for i, part in enumerate(parts):
-            if part.startswith("sub_") and "_" in part[4:]:
-                agent_dir = os.sep.join(parts[:i])
-                if os.path.isdir(agent_dir):
-                    agent_dirs.add(agent_dir)
-                break
-
-    # Scan agent directories for pdbtools output
-    for agent_dir in agent_dirs:
-        for entry in glob.glob(os.path.join(agent_dir, "sub_*_pdbtools")):
-            if os.path.isdir(entry):
-                for pdb in glob.glob(os.path.join(entry, "*_with_ligand.pdb")):
-                    bn = os.path.basename(pdb)
-                    if bn not in seen:
-                        new_files.append(pdb)
-                        seen.add(bn)
-
-    if new_files:
-        return list(available_files) + new_files
-    return available_files
-
-
 def _filter_intermediate_files(available_files):
     """
     Filter out intermediate/temporary files that should not be used by the agent.
@@ -630,25 +529,26 @@ def perceive(state):
     # (os.path.exists, glob, open) would fail silently.  Skip it entirely.
     files_local = _files_are_local(available_files)
     if not files_local:
-        state = _log(state, "PERCEIVE: Files not on local disk (server mode) — skipping disk I/O")
+        state = _log(state,
+          "PERCEIVE: Files not on local disk "
+          "(server mode) — skipping disk I/O")
 
-    # Supplement: discover expected companion files that the client may have missed.
-    # E.g., if refine_001_data.mtz is tracked but refine_001.mtz (map coefficients)
-    # and refine_001.pdb (refined model) are not, look for them on disk.
-    original_count = len(available_files)
-    available_files = _discover_companion_files(available_files, skip_disk=not files_local)
-    if len(available_files) > original_count:
-        new_count = len(available_files) - original_count
-        new_files = available_files[original_count:]
-        state = _log(state, "PERCEIVE: Discovered %d companion file(s): %s" % (
-            new_count, ", ".join(os.path.basename(f) for f in new_files)))
+    # NOTE: Companion file discovery (scanning directories of known files
+    # to find related outputs like map coefficients MTZ from refine) is
+    # handled on the CLIENT side by session.get_available_files(), which
+    # calls _find_missing_outputs() and scans agent sub-directories.
+    # We deliberately do NOT scan directories here in the graph because
+    # it can pick up unintended files from user input directories.
 
-    # Filter out intermediate/temporary files (e.g., TEMP0/ from ligandfit)
+    # Filter out intermediate/temporary files (e.g., TEMP0/ from
+    # ligandfit)
     pre_filter_count = len(available_files)
     available_files = _filter_intermediate_files(available_files)
     if len(available_files) < pre_filter_count:
         removed_count = pre_filter_count - len(available_files)
-        state = _log(state, "PERCEIVE: Filtered %d intermediate/temp file(s)" % removed_count)
+        state = _log(state,
+          "PERCEIVE: Filtered %d intermediate/temp "
+          "file(s)" % removed_count)
 
     # CRITICAL: Store updated file list back in state so downstream nodes
     # (build, validate) see the discovered/filtered files too.

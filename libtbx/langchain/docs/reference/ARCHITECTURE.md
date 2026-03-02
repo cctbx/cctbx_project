@@ -1177,34 +1177,27 @@ Without this layer, all downstream recovery (categorization safety nets,
 best_files tracking, etc.) is irrelevant because the files were never in the
 working set.
 
-**Layer 1: `graph_nodes._discover_companion_files()`** — Runs in the perceive
-node before file categorization. Triggered by file patterns in available_files:
+**Layer 1: `session._find_missing_outputs()`** — Runs in
+`get_available_files()` after Layer 0.  Derives companion files from
+known output file names (e.g., if `refine_001_data.mtz` is found,
+looks for `refine_001.mtz`).  Supplements Layer 0's directory scan
+with pattern-based inference.
 
-| Trigger Pattern | Companions Discovered |
-|----------------|-----------------------|
-| `refine_NNN_data.mtz` | `refine_NNN.mtz` (map coefficients), `refine_NNN.pdb` (model) |
-| `overall_best_*.mtz` | `overall_best.pdb` (autobuild model) |
-| Files in `sub_NN_*/` dirs | Scans `sub_*_pdbtools/` for `*_with_ligand.pdb` |
+**Layer 2: Best files evaluation (v112.70)** — Both
+`_rebuild_best_files_from_cycles` (session load) and `record_result`
+(live cycle completion) call `_find_missing_outputs` and evaluate
+supplemental files through the best_files tracker. This ensures
+`best_files["map_coeffs_mtz"]` is populated even when the client
+only tracked `refine_001_data.mtz` in `output_files`. Without this
+layer, programs with `require_best_files_only: true` (like
+ligandfit's map_coeffs_mtz slot) would fail to build because the
+map coefficients MTZ was never evaluated.
 
-All discovered files are checked with `os.path.exists()` and deduplicated.
-
-**Layer 2: `session._find_missing_outputs()`** — Runs in `get_available_files()`
-after Layer 0.  Derives companion files from known output file names (e.g.,
-if `refine_001_data.mtz` is found, looks for `refine_001.mtz`).  Supplements
-Layer 0's directory scan with pattern-based inference.
-
-**Layer 3: Best files evaluation (v112.70)** — Both `_rebuild_best_files_from_cycles`
-(session load) and `record_result` (live cycle completion) call
-`_find_missing_outputs` and evaluate supplemental files through the best_files
-tracker. This ensures `best_files["map_coeffs_mtz"]` is populated even when the
-client only tracked `refine_001_data.mtz` in `output_files`. Without this layer,
-programs with `require_best_files_only: true` (like ligandfit's map_coeffs_mtz
-slot) would fail to build because the map coefficients MTZ was never evaluated.
-
-**Layer 4: MTZ categorization safety net (v112.71)** — Runs at the end of
-`_categorize_files()` after both YAML and hardcoded categorization paths.
-Cross-checks every MTZ file against the authoritative `classify_mtz_type()` regex
-and corrects three types of misclassification:
+**Layer 3: MTZ categorization safety net (v112.71)** — Runs at the
+end of `_categorize_files()` after both YAML and hardcoded
+categorization paths. Cross-checks every MTZ file against the
+authoritative `classify_mtz_type()` regex and corrects three types
+of misclassification:
 
 | Failure Mode | Detection | Correction |
 |---|---|---|
@@ -1214,7 +1207,7 @@ and corrects three types of misclassification:
 
 All corrections are logged at `WARNING` level via Python's logging module.
 
-**Layer 5: Self-contained MTZ classification (v112.73)** — The Layer 4 safety
+**Layer 4: Self-contained MTZ classification (v112.73)** — The Layer 3 safety
 net depends on `classify_mtz_type()` from `file_utils.py`.  Three deployment
 failures can disable it: (a) `get_mtz_stage` not deployed (joint import kills
 `classify_mtz_type` too), (b) `file_utils.py` entirely missing, (c) YAML
@@ -1223,11 +1216,11 @@ returning working functions**.  It tries importing from `file_utils.py` first,
 then falls back to inline implementations that embed the refine-output regex
 directly in `workflow_state.py`.  No external dependency can break it.
 
-**Layer 6: Principled exclusion rule (v112.73)** — Defense-in-depth in the
+**Layer 5: Principled exclusion rule (v112.73)** — Defense-in-depth in the
 command builder for dual-categorization (file in both `data_mtz` and
 `map_coeffs_mtz`).  `_should_exclude()` implements the rule: **exclude only
 if the file is in an excluded category AND NOT in any desired category**.
-With Layer 5 working, dual-categorization is cleaned up before it reaches the
+With Layer 4 working, dual-categorization is cleaned up before it reaches the
 command builder.  This layer catches partial failures where the safety net adds
 a file to `map_coeffs_mtz` but doesn't remove it from `data_mtz`.
 
@@ -1245,8 +1238,9 @@ Two logging points help diagnose map_coeffs_mtz failures:
 
 ### Intermediate File Filtering
 
-`graph_nodes._filter_intermediate_files()` removes temporary/intermediate files
-before categorization. Runs after companion discovery in the perceive node.
+`graph_nodes._filter_intermediate_files()` removes
+temporary/intermediate files before categorization.  Runs in the
+perceive node after history injection.
 
 **Filtered patterns:**
 - Files in `/TEMP`, `/temp`, `/TEMP0/`, `/scratch/` directories
