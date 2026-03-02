@@ -375,6 +375,7 @@ general_tests = [
   "$D/regression/tst_model_map.py",
   #
   "$D/regression/tst_validate_ligands.py",
+  "$D/regression/tst_rdkit_utils_fragmentation.py",
   #
   "$D/regression/tst_cis_trans_peptide_link.py",
   "$D/regression/tst_apply_cif_restraints.py",
