@@ -781,7 +781,7 @@ phenix.autosol:
     wavelength:
       flag: "autosol.lambda={value}"
       type: float
-      hint: "X-ray wavelength in Angstroms"
+      hint: "Peak X-ray wavelength in Angstroms. For MAD data provide ONLY the peak wavelength (single value), not inflection or high-remote. AutoSol reads wavelengths from the data files."
     sites:
       flag: "autosol.sites={value}"
       type: int

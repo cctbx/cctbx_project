@@ -39,6 +39,10 @@ survive sanitization and be injected from user advice.
    if the LLM provides wavelength as a list (multiple MAD
    wavelengths), keep only the first (peak) value.
 
+3. **wavelength hint** (programs.yaml) — Updated to tell the
+   LLM to provide only the peak wavelength for MAD data,
+   not inflection or high-remote values.
+
 ### Tests
 
 - `test_bug1a_wavelength_not_in_allowlist` — verifies bare
@@ -55,6 +59,8 @@ survive sanitization and be injected from user advice.
   alias-aware allowlist logic
 - `agent/command_builder.py` — `_build_strategy()` autosol
   wavelength list sanitization
+- `knowledge/programs.yaml` — improved wavelength hint to
+  guide LLM toward single peak value
 - `tests/tst_autosol_bugs.py` — 3 new regression tests
 - `docs/project/CHANGELOG.md` — This entry
 
