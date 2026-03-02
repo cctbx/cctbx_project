@@ -132,7 +132,7 @@
     },
     "defaults": {
       "file_info.input_labels": "\"2FOFCWT PH2FOFCWT\"",
-      "general.nproc": 4
+      "general.nproc": 5
     },
     "strategy_flags": {
       "nproc": {

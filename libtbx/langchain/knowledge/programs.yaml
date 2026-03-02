@@ -1414,7 +1414,7 @@ phenix.ligandfit:
   command: "phenix.ligandfit {model} {map_coeffs_mtz} {ligand}"
 
   defaults:
-    general.nproc: 4
+    general.nproc: 5
 
   # NOTE: Label specification removed in v104 - ligandfit auto-detects labels
   # which is safer than trying to infer them from filename patterns.
