@@ -91,7 +91,7 @@ def RunProbeTests(inFileName):
         geometry.get_all_bond_proxies(sites_cart = sites_cart)
   except Exception as e:
     raise Exception("Could not get bonding information for input file: " + str(e))
-  bondedNeighbors = Helpers.getBondedNeighborLists(atoms, bond_proxies_simple)
+  bondedNeighbors = Helpers.getBondedNeighborLists(atoms, bond_proxies_simple, asu)
 
   # Traverse the hierarchy and look up the extra data to be filled in.
   class philLike:

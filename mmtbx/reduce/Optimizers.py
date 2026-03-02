@@ -259,14 +259,14 @@ class Optimizer(object):
     for a in model.get_atoms():
       carts.append(a.xyz)
     self._infoString += _ReportTiming(self._verbosity, "get coordinates")
-    bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+    bondProxies, asuProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)
     self._infoString += _ReportTiming(self._verbosity, "compute bond proxies")
 
     ################################################################################
     # Get the bonded neighbor lists for all of the atoms in the model, so we don't get
     # failures when we look up an atom from another in Helpers.getExtraAtomInfo().
     # We won't get bonds between atoms in different conformations.
-    bondedNeighborLists = Helpers.getBondedNeighborLists(model.get_atoms(), bondProxies)
+    bondedNeighborLists = Helpers.getBondedNeighborLists(model.get_atoms(), bondProxies, asuProxies)
     self._infoString += _ReportTiming(self._verbosity, "compute bonded neighbor lists")
 
     ################################################################################
@@ -1741,8 +1741,8 @@ END
 
   # Get the bond proxies for the atoms in the model and conformation we're using and
   # use them to determine the bonded neighbor lists.
-  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
-  bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
+  bondProxies, asuProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)
+  bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies, asuProxies)
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
   probePhil = _philLike()
@@ -1865,8 +1865,8 @@ END
 
   # Get the bond proxies for the atoms in the model and conformation we're using and
   # use them to determine the bonded neighbor lists.
-  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
-  bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
+  bondProxies, asuProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)
+  bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies, asuProxies)
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
   probePhil = _philLike()
@@ -1969,8 +1969,8 @@ END
 
   # Get the bond proxies for the atoms in the model and conformation we're using and
   # use them to determine the bonded neighbor lists.
-  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
-  bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
+  bondProxies, asuProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)
+  bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies, asuProxies)
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
   probePhil = _philLike()

@@ -161,7 +161,7 @@ def createDotScorer(extraAtomInfo, probePhil):
 ##################################################################################
 # Other helper functions.
 
-def getBondedNeighborLists(atoms, bondProxies):
+def getBondedNeighborLists(atoms, bondProxies, asuBondProxies=None):
   """
     Helper function to produce a dictionary of lists that contain all bonded
     neighbors for each atom in a set of atoms.
@@ -174,6 +174,10 @@ def getBondedNeighborLists(atoms, bondProxies):
     it should be a flex array of atom positions for the atoms that are in the first parameter.
     It can include atoms that are not in the first parameter, but they will not be added
     to the lists.
+    :param asuBondProxies: Optional flex array of ASU bond proxies (the second return value
+    from get_all_bond_proxies).  When atoms sit near crystallographic symmetry elements,
+    some covalent bonds may only appear here rather than in the simple bond proxies.
+    Only proxies with j_sym == 0 (same asymmetric unit) are processed.
     :returns a dictionary with one entry for each atom, indexed by i_seq, that contains a
     list of all of the atoms (within the atoms list) that are bonded to it.
   """
@@ -194,6 +198,18 @@ def getBondedNeighborLists(atoms, bondProxies):
       # When an atom is bonded to an atom is not in our atom list (in a different conformer or not
       # in our selection) we just ignore it.
       pass
+  if asuBondProxies is not None:
+    for bp in asuBondProxies:
+      if bp.j_sym == 0:
+        try:
+          first = atomDict[bp.i_seq]
+          second = atomDict[bp.j_seq]
+          if second not in bondedNeighbors[first]:
+            bondedNeighbors[first].append(second)
+          if first not in bondedNeighbors[second]:
+            bondedNeighbors[second].append(first)
+        except Exception:
+          pass
   return bondedNeighbors
 
 def addIonicBonds(bondedNeighborLists, atoms, spatialQuery, extraAtomInfo):
@@ -967,8 +983,8 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
 
     # Get the bond proxies for the atoms in the model and conformation we're using and
     # use them to determine the bonded neighbor lists.
-    bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
-    bondedNeighborLists = getBondedNeighborLists(atoms, bondProxies)
+    bondProxies, asuProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)
+    bondedNeighborLists = getBondedNeighborLists(atoms, bondProxies, asuProxies)
 
     # Get the extra atom information for the model using default parameters.
     # Make a PHIL-like structure to hold the parameters.
@@ -1120,8 +1136,8 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
     carts.append(a.xyz)
 
   # Get the bond proxies for the atoms and use them to determine the bonded neighbor lists.
-  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
-  bondedNeighborLists = getBondedNeighborLists(atoms, bondProxies)
+  bondProxies, asuProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)
+  bondedNeighborLists = getBondedNeighborLists(atoms, bondProxies, asuProxies)
 
   # Check the counts in the neighbor lists to make sure they match what we expect
   neighborCounts = {"N": 1, "CA": 3, "C": 2, "O": 1, "CB": 2,
@@ -1173,8 +1189,8 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
 
   # Get the bond proxies for the atoms and
   # use them to determine the bonded neighbor lists.
-  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
-  bondedNeighborLists = getBondedNeighborLists(atoms, bondProxies)
+  bondProxies, asuProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)
+  bondedNeighborLists = getBondedNeighborLists(atoms, bondProxies, asuProxies)
 
   model = dm.get_model()
 

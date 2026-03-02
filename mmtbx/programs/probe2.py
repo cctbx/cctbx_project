@@ -1940,7 +1940,7 @@ Note:
 
     ################################################################################
     # Get the bonding information we'll need to exclude our bonded neighbors.
-    self._allBondedNeighborLists = Helpers.getBondedNeighborLists(allAtoms, bondProxies)
+    self._allBondedNeighborLists = Helpers.getBondedNeighborLists(allAtoms, bondProxies, asu)
 
     ################################################################################
     # Get the extra atom information needed to score all of the atoms in the model.
@@ -2119,7 +2119,7 @@ Note:
       make_sub_header('Sorting atoms', out=self.logger)
       all_selected_atoms = sorted(source_atoms.union(target_atoms), key=lambda x:atomID(x))
       make_sub_header('Getting bonded-neighbor lists', out=self.logger)
-      bondedNeighborLists = Helpers.getBondedNeighborLists(all_selected_atoms, bondProxies)
+      bondedNeighborLists = Helpers.getBondedNeighborLists(all_selected_atoms, bondProxies, asu)
 
       ################################################################################
       # Build a spatial-query structure that tells which atoms are nearby.

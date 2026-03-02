@@ -1485,8 +1485,8 @@ NOTES:
         carts = flex.vec3_double()
         for a in self.model.get_atoms():
           carts.append(a.xyz)
-        bondProxies = self.model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
-        bondedNeighborLists = Helpers.getBondedNeighborLists(self.model.get_atoms(), bondProxies)
+        bondProxies, asuProxies = self.model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)
+        bondedNeighborLists = Helpers.getBondedNeighborLists(self.model.get_atoms(), bondProxies, asuProxies)
 
         # Get the other characteristics we need to know about each atom to do our work.
         inWater, inHet, inMainChain, inSideChain = self._GetAtomCharacteristics(bondedNeighborLists)
@@ -1557,8 +1557,8 @@ NOTES:
           carts = flex.vec3_double()
           for a in self.model.get_atoms():
             carts.append(a.xyz)
-          bondProxies = self.model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
-          bondedNeighborLists = Helpers.getBondedNeighborLists(self.model.get_atoms(), bondProxies)
+          bondProxies, asuProxies = self.model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)
+          bondedNeighborLists = Helpers.getBondedNeighborLists(self.model.get_atoms(), bondProxies, asuProxies)
           inWater, inHet, inMainChain, inSideChain = self._GetAtomCharacteristics(bondedNeighborLists)
 
           # Write the updates to the Flipkin for this configuration, showing the
@@ -1605,8 +1605,8 @@ NOTES:
         carts = flex.vec3_double()
         for a in self.model.get_atoms():
           carts.append(a.xyz)
-        bondProxies = self.model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
-        bondedNeighborLists = Helpers.getBondedNeighborLists(self.model.get_atoms(), bondProxies)
+        bondProxies, asuProxies = self.model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)
+        bondedNeighborLists = Helpers.getBondedNeighborLists(self.model.get_atoms(), bondProxies, asuProxies)
 
         # Get the other characteristics we need to know about each atom to do our work.
         inWater, inHet, inMainChain, inSideChain = self._GetAtomCharacteristics(bondedNeighborLists)
@@ -1677,8 +1677,8 @@ NOTES:
           carts = flex.vec3_double()
           for a in self.model.get_atoms():
             carts.append(a.xyz)
-          bondProxies = self.model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
-          bondedNeighborLists = Helpers.getBondedNeighborLists(self.model.get_atoms(), bondProxies)
+          bondProxies, asuProxies = self.model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)
+          bondedNeighborLists = Helpers.getBondedNeighborLists(self.model.get_atoms(), bondProxies, asuProxies)
           inWater, inHet, inMainChain, inSideChain = self._GetAtomCharacteristics(bondedNeighborLists)
 
           # Write the updates to the Flipkin for this configuration, showing the
