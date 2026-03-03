@@ -136,7 +136,8 @@ class manager(list):
               sel_str = 'chain %s and resseq %s and resname %s ' % (chain.id,
                 rg.resseq_as_int(), resname)
               if conformer.altloc:
-                sel_str = sel_str + ' and altloc %s' % conformer.altloc
+                sel_str = sel_str + ' and (altloc %s or altloc " ")' % conformer.altloc
+              #print(list(iselection), sel_str)
               yield iselection, sel_str
 
   # ----------------------------------------------------------------------------
