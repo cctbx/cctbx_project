@@ -161,8 +161,8 @@ class manager(list):
 
     # Define the table structure.
     columns = [
-      {'headers': ['', '', 'ligand'], 'width': 14,
-       'data_fn': lambda lr: lr.id_str},
+      {'headers': ['', '', 'ligand'], 'width': 16,
+       'data_fn': lambda lr: f"{lr.id_str} {lr.altloc}"},
 
       # CC column is now split into two separate columns
       {'headers': ['', 'RSCC', 'overall'], 'width': 9,
@@ -574,6 +574,7 @@ class ligand_result(object):
     for rg in self._ph.select(self.ligand_isel).residue_groups():
       for c in rg.conformers():
         _resname = c.only_residue().resname
+        self.altloc = c.altloc
 
     self.resname = _resname.strip()
 
