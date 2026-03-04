@@ -24,15 +24,6 @@ Your role is to analyze the latest program output and provide \
 strategic guidance. You are NOT running programs yourself — you \
 are advising the automated agent on what to do next.
 
-CRITICAL: Check file provenance across cycles. The RECENT HISTORY \
-section shows which files were used as input and produced as output \
-for each step. Verify that each step uses the correct output from \
-the previous step. Common errors include:
-- Refinement using an old model instead of the latest combined \
-  model (e.g. after pdbtools merges protein + ligand)
-- Programs receiving data files instead of map coefficient files
-- Output files from one step being ignored in favor of older files
-
 IMPORTANT: Present evidence and reasoning. Do NOT issue commands \
 or parameter settings directly. The planning agent will make the \
 final decision based on your analysis.
@@ -81,6 +72,8 @@ def build_thinking_prompt(context, strategy_memory_dict=None):
       - metrics: dict (latest metrics)
       - user_advice: str (original user advice)
       - history_summary: str (brief history)
+      - validation_report: str (Phase A, optional)
+      - r_free_trend: list of float (Phase A, optional)
     strategy_memory_dict: Dict from StrategyMemory.to_dict()
       or None.
 
@@ -93,7 +86,9 @@ def build_thinking_prompt(context, strategy_memory_dict=None):
   cycle = context.get("cycle_number", "?")
   exp = context.get("experiment_type", "unknown")
   wf = context.get("workflow_state", "unknown")
-  parts.append("CYCLE %s | %s | workflow: %s" % (cycle, exp, wf))
+  parts.append(
+    "CYCLE %s | %s | workflow: %s" % (cycle, exp, wf)
+  )
 
   # Program and metrics
   program = context.get("program_name", "")
@@ -105,17 +100,69 @@ def build_thinking_prompt(context, strategy_memory_dict=None):
     if metrics_str:
       parts.append("Current metrics: %s" % metrics_str)
 
+  # Structural validation report (Phase A)
+  validation_report = context.get(
+    "validation_report", ""
+  )
+  if validation_report:
+    parts.append("\n" + validation_report)
+
+  # R-free trend (Phase A)
+  r_free_trend = context.get("r_free_trend", [])
+  if r_free_trend and len(r_free_trend) >= 2:
+    try:
+      from libtbx.langchain.agent.format_validation \
+        import format_validation_trend
+    except ImportError:
+      try:
+        from agent.format_validation import (
+          format_validation_trend,
+        )
+      except ImportError:
+        format_validation_trend = None
+    if format_validation_trend is not None:
+      trend_str = format_validation_trend(r_free_trend)
+      if trend_str:
+        parts.append(trend_str)
+
+  # File metadata summary (Phase C)
+  file_metadata = context.get("file_metadata", {})
+  if file_metadata:
+    try:
+      try:
+        from libtbx.langchain.agent.file_metadata \
+          import format_file_metadata_block
+      except ImportError:
+        from agent.file_metadata \
+          import format_file_metadata_block
+      fm_block = format_file_metadata_block(
+        file_metadata
+      )
+      if fm_block:
+        parts.append("\n" + fm_block)
+    except ImportError:
+      pass
+
+  # Expert knowledge base rules (Phase D)
+  kb_rules_text = context.get("kb_rules_text", "")
+  if kb_rules_text:
+    parts.append("\n" + kb_rules_text)
+
   # Strategy memory summary
-  if strategy_memory_dict and isinstance(strategy_memory_dict, dict):
+  if strategy_memory_dict \
+     and isinstance(strategy_memory_dict, dict):
     mem_summary = _format_memory(strategy_memory_dict)
     if mem_summary:
-      parts.append("\nStrategy memory: %s" % mem_summary)
+      parts.append(
+        "\nStrategy memory: %s" % mem_summary
+      )
 
-  # History summary (includes file provenance per cycle)
+  # History summary
   history_summary = context.get("history_summary", "")
   if history_summary:
-    parts.append("\n--- RECENT HISTORY (files used/produced) ---")
-    parts.append(history_summary[:1200])
+    parts.append(
+      "\nHistory: %s" % history_summary[:300]
+    )
 
   # User advice (brief excerpt)
   user_advice = context.get("user_advice", "")
@@ -134,28 +181,50 @@ def build_thinking_prompt(context, strategy_memory_dict=None):
     parts.append("\n(No program output available)")
 
   # Assemble
-  parts.append("\nProvide your expert assessment as JSON.")
+  parts.append(
+    "\nProvide your expert assessment as JSON."
+  )
 
   user_msg = "\n".join(parts)
   return (SYSTEM_PROMPT, user_msg)
 
 
 def _format_metrics(metrics):
-  """Format metrics dict into a brief string."""
+  """Format metrics dict into a brief string.
+
+  The metrics dict may come directly from log_analysis
+  (flat dict with extra keys like 'program'). We filter
+  to only numeric/meaningful metrics.
+  """
   if not metrics:
     return ""
+
+  # Keys to skip — not metrics, just metadata
+  _SKIP = frozenset([
+    "program", "error_type", "error_message",
+    "warning", "output_files", "status",
+    "macro_cycles", "detected_program",
+  ])
+
   items = []
   # Prioritize key metrics
-  for key in ["r_free", "r_work", "map_cc", "TFZ", "LLG",
-               "FOM", "completeness", "resolution"]:
+  _PRIORITY = [
+    "r_free", "r_work", "map_cc", "TFZ", "LLG",
+    "FOM", "completeness", "resolution",
+    "bonds_rmsd", "angles_rmsd", "clashscore",
+  ]
+  for key in _PRIORITY:
     val = metrics.get(key)
     if val is not None:
       items.append("%s=%s" % (key, val))
-  # Add any remaining
+  # Add any remaining numeric values
+  priority_set = set(_PRIORITY)
   for key, val in sorted(metrics.items()):
-    if key not in ["r_free", "r_work", "map_cc", "TFZ", "LLG",
-                    "FOM", "completeness", "resolution"]:
-      if val is not None and len(items) < 8:
+    if key in priority_set or key in _SKIP:
+      continue
+    if val is not None and len(items) < 10:
+      # Only include numeric values
+      if isinstance(val, (int, float)):
         items.append("%s=%s" % (key, val))
   return ", ".join(items)
 
@@ -240,255 +309,5 @@ def parse_assessment(llm_output):
       pass
 
   # Couldn't parse JSON — use the raw text as analysis
-  defaults["analysis"] = text[:500]
-  return defaults
-
-
-# =========================================================================
-# Stop-review prompt -- expert reviews a STOP decision
-# =========================================================================
-
-STOP_REVIEW_SYSTEM = """\
-You are an expert crystallographer reviewing an automated \
-structure determination workflow's decision to STOP.
-
-The planning agent has decided to stop the workflow. \
-Your job is to evaluate whether stopping is the right call, \
-or whether there is a viable path forward that was missed.
-
-Consider:
-- Is the stated reason valid and insurmountable?
-- Are there workarounds or alternative approaches?
-- Could different parameters, programs, or strategies help?
-- Is the data quality sufficient to continue?
-
-Respond with a JSON object (no markdown fences):
-
-{
-  "agree_with_stop": true or false,
-  "analysis": "2-3 sentence assessment of the stop decision",
-  "alternatives": ["list of alternative approaches if any"],
-  "guidance": "1-2 sentence recommendation for the user"
-}
-"""
-
-
-def build_stop_review_prompt(
-    stop_reasoning, history_summary, user_advice,
-    available_files_summary, metrics_summary=""):
-  """Build (system_msg, user_msg) for reviewing a STOP decision.
-
-  Args:
-    stop_reasoning: The planning agent's reason for stopping.
-    history_summary: Brief summary of cycle history.
-    user_advice: Original user instructions.
-    available_files_summary: Brief list of available files.
-    metrics_summary: Current metrics if any.
-
-  Returns:
-    (system_msg, user_msg) tuple.
-  """
-  parts = []
-  parts.append("The planning agent has decided to STOP.")
-  parts.append("")
-  parts.append("STOP REASONING:")
-  parts.append(str(stop_reasoning)[:600])
-
-  if history_summary:
-    parts.append("")
-    parts.append("WORKFLOW HISTORY:")
-    parts.append(str(history_summary)[:400])
-
-  if metrics_summary:
-    parts.append("")
-    parts.append("CURRENT METRICS: %s" % str(metrics_summary)[:200])
-
-  if user_advice:
-    parts.append("")
-    parts.append("USER INSTRUCTIONS:")
-    parts.append(str(user_advice)[:300])
-
-  if available_files_summary:
-    parts.append("")
-    parts.append("AVAILABLE FILES:")
-    parts.append(str(available_files_summary)[:400])
-
-  parts.append("")
-  parts.append(
-    "Should the workflow stop? Evaluate and respond as JSON.")
-
-  return (STOP_REVIEW_SYSTEM, "\n".join(parts))
-
-
-def parse_stop_review(llm_output):
-  """Parse the stop-review LLM response.
-
-  Returns dict with 'agree_with_stop', 'analysis',
-  'alternatives', 'guidance'.
-  """
-  defaults = {
-    "agree_with_stop": True,
-    "analysis": "",
-    "alternatives": [],
-    "guidance": "",
-  }
-
-  if not llm_output or not isinstance(llm_output, str):
-    return defaults
-
-  # Strip markdown fences
-  text = llm_output.strip()
-  if text.startswith("```"):
-    lines = text.split("\n")
-    if lines[0].startswith("```"):
-      lines = lines[1:]
-    if lines and lines[-1].strip() == "```":
-      lines = lines[:-1]
-    text = "\n".join(lines)
-
-  start = text.find("{")
-  end = text.rfind("}")
-  if start >= 0 and end > start:
-    try:
-      parsed = json.loads(text[start:end + 1])
-      if isinstance(parsed, dict):
-        result = dict(defaults)
-        result.update(parsed)
-        # Ensure boolean
-        result["agree_with_stop"] = bool(
-          result.get("agree_with_stop", True))
-        return result
-    except (json.JSONDecodeError, ValueError):
-      pass
-
-  defaults["analysis"] = text[:500]
-  return defaults
-
-
-# =========================================================================
-# Pre-flight readiness check -- before cycle 1
-# =========================================================================
-
-PREFLIGHT_SYSTEM = """\
-You are an expert crystallographer reviewing the inputs for an \
-automated structure determination workflow BEFORE it begins.
-
-Your job is to check whether all the necessary files and \
-information are present to accomplish the user's stated goal. \
-Catch problems early so the workflow does not waste cycles \
-running programs that will eventually fail due to missing inputs.
-
-Common requirements by goal:
-- Molecular replacement: needs reflection data (.mtz), search model (.pdb)
-- SAD/MAD phasing: needs reflection data (.mtz), sequence (.fa/.seq), \
-possibly heavy atom sites
-- Ligand fitting: needs reflection data (.mtz), model (.pdb), AND a \
-ligand definition file (.cif or ligand .pdb with HETATM records)
-- Refinement: needs reflection data (.mtz) and model (.pdb)
-- Cryo-EM model building: needs map (.mrc/.ccp4), possibly model (.pdb)
-
-Respond with a JSON object (no markdown fences):
-
-{
-  "ready": true or false,
-  "analysis": "Brief assessment of readiness",
-  "missing_files": ["list of missing file types, if any"],
-  "warnings": ["list of potential issues"],
-  "recommendation": "What the user should do if not ready"
-}
-"""
-
-
-def build_preflight_prompt(
-    user_advice, available_files, experiment_type=""):
-  """Build (system_msg, user_msg) for the pre-flight readiness check.
-
-  Args:
-    user_advice: User instructions/goal.
-    available_files: List of file paths.
-    experiment_type: Known experiment type if any.
-
-  Returns:
-    (system_msg, user_msg) tuple.
-  """
-  import os
-
-  parts = []
-  parts.append("PRE-FLIGHT READINESS CHECK")
-  parts.append("")
-
-  if user_advice:
-    parts.append("USER GOAL:")
-    parts.append(str(user_advice)[:500])
-  else:
-    parts.append("USER GOAL: (not specified)")
-
-  if experiment_type:
-    parts.append("")
-    parts.append("EXPERIMENT TYPE: %s" % experiment_type)
-
-  parts.append("")
-  parts.append("AVAILABLE FILES:")
-  if available_files:
-    for f in available_files[:30]:
-      basename = os.path.basename(f)
-      # Include extension info
-      ext = os.path.splitext(basename)[1].lower()
-      parts.append("  - %s  [%s]" % (basename, ext or "no extension"))
-    if len(available_files) > 30:
-      parts.append("  ... and %d more files" % (
-        len(available_files) - 30))
-  else:
-    parts.append("  (no files provided)")
-
-  parts.append("")
-  parts.append(
-    "Does the workflow have everything needed to accomplish "
-    "the user's goal? Check for missing files and respond "
-    "as JSON.")
-
-  return (PREFLIGHT_SYSTEM, "\n".join(parts))
-
-
-def parse_preflight(llm_output):
-  """Parse the pre-flight check LLM response.
-
-  Returns dict with 'ready', 'analysis', 'missing_files',
-  'warnings', 'recommendation'.
-  """
-  defaults = {
-    "ready": True,
-    "analysis": "",
-    "missing_files": [],
-    "warnings": [],
-    "recommendation": "",
-  }
-
-  if not llm_output or not isinstance(llm_output, str):
-    return defaults
-
-  # Strip markdown fences
-  text = llm_output.strip()
-  if text.startswith("```"):
-    lines = text.split("\n")
-    if lines[0].startswith("```"):
-      lines = lines[1:]
-    if lines and lines[-1].strip() == "```":
-      lines = lines[:-1]
-    text = "\n".join(lines)
-
-  start = text.find("{")
-  end = text.rfind("}")
-  if start >= 0 and end > start:
-    try:
-      parsed = json.loads(text[start:end + 1])
-      if isinstance(parsed, dict):
-        result = dict(defaults)
-        result.update(parsed)
-        result["ready"] = bool(result.get("ready", True))
-        return result
-    except (json.JSONDecodeError, ValueError):
-      pass
-
   defaults["analysis"] = text[:500]
   return defaults

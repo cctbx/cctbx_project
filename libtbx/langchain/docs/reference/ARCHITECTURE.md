@@ -884,17 +884,17 @@ strategic guidance that PLAN can incorporate.
 **Implementation**:
 
 The THINK node sits between PERCEIVE and PLAN. It is optional and off
-by default, controlled by `use_thinking_agent` (GUI checkbox: "Use
-expert crystallographer reasoning").
+by default, controlled by `thinking_level` (PHIL choice parameter:
+`none`/`basic`/`advanced`). Backward compatible:
+`use_thinking_agent=True` maps to `thinking_level=basic`.
 
 ```
 PERCEIVE → THINK → PLAN → BUILD → VALIDATE → OUTPUT
                │
-               ├─ Disabled? → pass-through (return state unchanged)
-               ├─ Not strategic? → skip (routine refine, mtriage, etc.)
-               └─ Strategic? → extract log sections → build prompt
-                               → call LLM → parse assessment
-                               → enrich state for PLAN
+               ├─ thinking_level=none? → pass-through
+               ├─ Not strategic? → skip (routine refine, mtriage)
+               ├─ thinking_level=basic? → log analysis + LLM
+               └─ thinking_level=advanced? → validation + KB + metadata + LLM
 ```
 
 **When THINK engages** (`should_think()` in `agent/thinking_agent.py`):
@@ -902,12 +902,33 @@ PERCEIVE → THINK → PLAN → BUILD → VALIDATE → OUTPUT
 | Condition | Rationale |
 |-----------|-----------|
 | After xtriage, phaser, autosol, autobuild | Key scientific decision points |
+| After refine, ligandfit | Convergence and ligand assessment |
 | After real_space_refine, map_to_model, predict_and_build | Cryo-EM strategic programs |
 | After any failure | May need strategy change |
 | R-free stalled 3+ cycles | Convergence problem |
 
 THINK does NOT engage on the first cycle (no program output yet), routine
-refinement steps, or mtriage.
+mtriage steps, or when `thinking_level=none`.
+
+**Three-tier thinking_level** (v113.10):
+
+| Level | Behavior |
+|-------|----------|
+| `none` (default) | No expert reasoning. Pass-through. |
+| `basic` | LLM reasoning with log analysis, strategy memory, R-free trend. |
+| `advanced` | Full pipeline: basic + structural validation + file metadata + expert KB lookup. |
+
+**Advanced mode adds** (v113.10):
+
+- Structural validation via `agent/validation_inspector.py` — Ramachandran,
+  rotamer outliers, clashscore, bonds/angles, model contents (chains, ligands,
+  waters, ions)
+- Expert knowledge base (`knowledge/expert_knowledge_base_v2.yaml`) — 56
+  focused entries with IDF-weighted tag matching via `knowledge/kb_loader.py`
+  and `agent/kb_tags.py`
+- File metadata tracking via `agent/file_metadata.py` — content-aware model
+  queries (`find_best_model()`, `find_latest_model_with_ligand()`)
+- User-facing Expert Assessment display in event formatter at NORMAL verbosity
 
 **Log section extraction** (`agent/log_section_extractor.py`):
 
@@ -966,22 +987,79 @@ a thinking failure.
 
 | File | Purpose |
 |------|---------|
-| `agent/thinking_agent.py` | Core module: `should_think()`, `run_think_node()`, context assembly, LLM call |
+| `agent/thinking_agent.py` | Core module: `should_think()`, `run_think_node()`, context assembly, LLM call, validation/KB/metadata integration |
 | `agent/strategy_memory.py` | `StrategyMemory` class with serialization, `metrics_stalled()` |
 | `agent/log_section_extractor.py` | `extract_sections()` with per-program keyword tables |
+| `agent/validation_inspector.py` | Headless structural validation (v113.10) |
+| `agent/format_validation.py` | Compact text formatter for validation results (v113.10) |
+| `agent/file_metadata.py` | Per-file metadata tracking and queries (v113.10) |
+| `agent/kb_tags.py` | Context tag derivation for KB lookup (v113.10) |
 | `knowledge/thinking_prompts.py` | Prompt builder: `build_thinking_prompt()`, `parse_assessment()` |
+| `knowledge/kb_loader.py` | YAML KB loader with IDF-weighted tag matching (v113.10) |
+| `knowledge/expert_knowledge_base_v2.yaml` | 56 expert-reviewed entries (v113.10) |
 
 **Data flow**:
 
 ```
-GUI checkbox → params.ai_analysis.use_thinking_agent
-  → LocalAgent/RemoteAgent → request["settings"]["use_thinking_agent"]
-  → run_ai_agent.py → create_initial_state(use_thinking_agent=..., strategy_memory=...)
+GUI/CLI → params.ai_analysis.thinking_level (or use_thinking_agent for compat)
+  → LocalAgent/RemoteAgent → request["settings"]["thinking_level"]
+  → run_ai_agent.py → create_initial_state(thinking_level=...)
   → graph: perceive → think → plan → build → validate → output
   → response["metadata"]["strategy_memory"] + response["metadata"]["expert_assessment"]
   → ai_agent.py → session.data["strategy_memory"] (persisted)
-  → GUI progress panel: "[Expert] ..." display
+  → event_formatter: Expert Assessment block at NORMAL verbosity
 ```
+
+**Advanced mode prompt example** (v113.10):
+
+```
+CYCLE 5 | xray | workflow: refinement
+Last program: phenix.refine
+Current metrics: R-free=0.248, R-work=0.219
+
+=== VALIDATION (cycle 5: phenix.refine) ===
+R-work=0.219 R-free=0.248 (prev: 0.295, start: 0.421)
+Bonds=0.0060 Angles=0.82
+Rama: 97.2% fav, 0.0% outlier  Clashscore: 3.2
+Ligands: ATP (A/301)  Waters: 187
+R-free trend: 0.421 -> 0.295 -> 0.248 (3 cycles)
+
+=== FILE METADATA ===
+Best model: model_005.pdb (A,B; 1x ATP; 187 waters; R-free=0.248)
+
+=== RELEVANT EXPERT RULES ===
+[stop_001] R-free plateau after 3 cycles...
+
+Strategy memory: [cycles 1-3: R-free 0.42 -> 0.30]
+--- PROGRAM OUTPUT ---
+[extracted log sections...]
+```
+
+Context budget: ~2550 chars total (~350 validation, ~50 trend, ~1200 KB
+rules, ~150 metadata, ~600 memory, ~200 context), leaving ~950 headroom
+under the 3500-char limit.
+
+**Follow-up items** (v113.10):
+
+| ID | What | Priority |
+|----|------|----------|
+| F4 | Real-structure test suite (10-20 structures) | 1 — Highest |
+| F1 | Ligand RSCC computation (stub in place) | 2 |
+| F2 | Difference density peak search (stub in place) | 3 |
+| F3 | Filename → metadata file selection migration | 4 |
+| F5 | KB tag derivation tuning after test suite | 5 |
+| F6 | Persist validation reports in session state | Optional |
+| F7 | Add validation_result/file_metadata to TypedDict | Optional |
+
+**Risk register** (v113.10):
+
+| Risk | Mitigation |
+|------|------------|
+| Validation is slow | Runs only in advanced mode |
+| Validation crashes | Never-raises pattern throughout |
+| KB entries are wrong | 56 focused entries, 45 high-confidence |
+| Context window too full | ~2550 chars, 950 headroom |
+| Advanced mode untested on real structures | Needs F4 test suite |
 
 ## Workflow States
 

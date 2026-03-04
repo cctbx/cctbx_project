@@ -1255,15 +1255,15 @@ def parse_intent_json(llm_output):
 
 def think(state):
   """
-  Node: Expert Crystallographer Reasoning (v113).
+  Node: Expert Crystallographer Reasoning (v113+).
 
-  When use_thinking_agent is enabled, this node invokes a
-  second LLM call that analyzes program logs with domain
-  expertise and provides strategic guidance to the plan node.
-
-  When disabled (default), this is a pure pass-through.
+  Controlled by thinking_level in state:
+    None: Pure pass-through (default).
+    "basic": LLM reasoning with log analysis.
+    "advanced": Full pipeline with structural
+      validation, file metadata, and expert KB.
   """
-  if not state.get("use_thinking_agent"):
+  if not state.get("thinking_level"):
     return state
   try:
     try:

@@ -1,5 +1,96 @@
 # PHENIX AI Agent - Changelog
 
+## Version 113.10 (Thinking Level Parameter, Validation, Expert KB)
+
+### Summary
+
+Replaces the boolean `use_thinking_agent=True/False` with a three-level
+`thinking_level` choice parameter (`none`/`basic`/`advanced`). Adds
+structural validation, file metadata tracking, expert knowledge base
+lookup, and user-facing display of expert assessments.
+
+Backward compatible: `use_thinking_agent=True` maps to
+`thinking_level=basic` automatically.
+
+### New capabilities (advanced mode)
+
+- **Structural validation:** headless Ramachandran, rotamer, clashscore,
+  bonds/angles, model contents (chains, ligands, waters, ions)
+- **Expert knowledge base:** 56 focused entries addressing specific LLM
+  mistakes about PHENIX, with IDF-weighted tag matching
+- **File metadata:** content-aware model queries (`find_best_model()`,
+  `find_latest_model_with_ligand()`) replacing filename pattern matching
+- **R-free trend tracking:** multi-cycle trajectory visible to the expert
+- **User-facing display:** Expert Assessment block in event formatter at
+  NORMAL verbosity showing validation, analysis, guidance, and concerns;
+  stop events visible even at QUIET verbosity
+
+### New files (7)
+
+| File | Purpose |
+|------|---------|
+| `agent/validation_inspector.py` | Headless structural validation (never raises) |
+| `agent/format_validation.py` | Compact text formatter for validation results |
+| `agent/file_metadata.py` | Per-file metadata tracking and queries |
+| `agent/kb_tags.py` | Context tag derivation for KB lookup |
+| `agent/tst_agent_enhancements.py` | 25 integration tests |
+| `knowledge/kb_loader.py` | YAML-based KB loader with IDF-weighted matching |
+| `knowledge/expert_knowledge_base_v2.yaml` | 56 expert-reviewed entries |
+
+### Modified files (10)
+
+| File | Changes |
+|------|---------|
+| `agent/thinking_agent.py` | `thinking_level` dispatch, validation/KB/metadata integration, enriched event emission, stop_decision event for expert stops |
+| `agent/graph_state.py` | `thinking_level` in TypedDict + `create_initial_state()`, backward compat |
+| `agent/graph_nodes.py` | `think()` checks `thinking_level` instead of `use_thinking_agent` |
+| `agent/event_formatter.py` | `_format_expert_assessment()` method, expert stop in quiet mode |
+| `knowledge/thinking_prompts.py` | Validation, KB, metadata, R-free trend in prompt |
+| `programs/ai_agent.py` | `thinking_level` PHIL parameter |
+| `phenix_ai/local_agent.py` | `thinking_level` in request settings |
+| `phenix_ai/remote_agent.py` | `thinking_level` in request settings |
+| `phenix_ai/run_ai_agent.py` | `thinking_level` state creation |
+| `agent/event_log.py` | `EXPERT_ASSESSMENT` event type (already present from 113.00) |
+
+### User-facing display
+
+At NORMAL verbosity, each expert assessment shows:
+
+```
+Expert Assessment (high confidence)
+  Structural validation:
+    R-work=0.210 R-free=0.248 (prev: 0.265, start: 0.421)
+    Bonds=0.0065 Angles=1.12
+    Rama: 97.2% fav, 0.3% outlier
+    Clashscore: 4.1
+    Ligands: ATP (A/501)
+    Waters: 187
+  R-free trend: 0.421 -> 0.350 -> 0.295 -> 0.248
+  Analysis: R-free continues to improve with good geometry...
+  Guidance: Enable ordered solvent in next refinement cycle.
+  Concerns: Rotamer outliers slightly elevated at 3.2%
+  [mode=advanced, KB rules consulted]
+```
+
+At QUIET verbosity, expert stops show:
+`CYCLE 8: STOP (expert: R-free stuck at 0.52 for 5 cycles...)`
+
+### Usage
+
+```bash
+phenix.ai_agent data.mtz model.pdb thinking_level=advanced
+phenix.ai_agent data.mtz model.pdb thinking_level=basic
+phenix.ai_agent data.mtz model.pdb use_thinking_agent=True  # backward compat
+```
+
+### Testing
+
+25 passed, 0 failed, 1 skipped (real validation requires PHENIX).
+
+```bash
+libtbx.python libtbx/langchain/agent/tst_agent_enhancements.py
+```
+
 ## Version 113.00 (Thinking Agent — Expert Crystallographer Reasoning)
 
 ### Summary

@@ -124,6 +124,8 @@ class EventFormatter:
         program = None
         error = None
         user_request_invalid = None
+        expert_stop = None
+        stop_reason = None
 
         for e in events:
             etype = e.get("type")
@@ -133,6 +135,12 @@ class EventFormatter:
                 error = e.get("message", "error")
             elif etype == EventType.USER_REQUEST_INVALID:
                 user_request_invalid = e
+            elif etype == EventType.EXPERT_ASSESSMENT:
+                if e.get("action") == "stop":
+                    expert_stop = e
+            elif etype == EventType.STOP_DECISION:
+                if e.get("stop"):
+                    stop_reason = e.get("reason", "")
 
         lines = []
 
@@ -142,6 +150,24 @@ class EventFormatter:
 
         if error:
             lines.append("CYCLE %s: ERROR - %s" % (cycle_number or "?", error))
+        elif expert_stop:
+            # Expert recommended stopping — always show.
+            # Use the analysis text directly (stop_reason
+            # has an "expert:" prefix which would double up).
+            reason = (
+                expert_stop.get("analysis", "")[:80]
+                or stop_reason
+                or "expert recommendation"
+            )
+            lines.append(
+                "CYCLE %s: STOP (expert: %s)"
+                % (cycle_number or "?", reason)
+            )
+        elif stop_reason:
+            lines.append(
+                "CYCLE %s: STOP (%s)"
+                % (cycle_number or "?", stop_reason)
+            )
         elif program:
             lines.append("CYCLE %s: %s" % (cycle_number or "?", program))
 
@@ -160,6 +186,7 @@ class EventFormatter:
             EventType.PROGRAM_SELECTED: self._format_program_selected,
             EventType.PROGRAM_MODIFIED: self._format_program_modified,
             EventType.USER_REQUEST_INVALID: self._format_user_request_invalid,
+            EventType.EXPERT_ASSESSMENT: self._format_expert_assessment,
             EventType.FILES_SELECTED: self._format_files_selected,
             EventType.FILE_SCORED: self._format_file_scored,
             EventType.COMMAND_BUILT: self._format_command_built,
@@ -257,6 +284,82 @@ class EventFormatter:
             lines.append("  [WARNING] %s" % warning)
 
         return "\n".join(lines) if len(lines) > 1 else None
+
+    def _format_expert_assessment(self, event):
+        """Format expert assessment event (thinking agent output).
+
+        Shown at NORMAL verbosity. Presents the expert's
+        analysis alongside any structural validation data
+        so the user understands what the agent saw and why
+        it made its decision.
+        """
+        action = event.get("action", "let_run")
+        confidence = event.get("confidence", "medium")
+        thinking_level = event.get("thinking_level", "")
+        analysis = event.get("analysis", "")
+        guidance = event.get("guidance", "")
+        concerns = event.get("concerns", [])
+        validation = event.get("validation_summary", "")
+        rfree_trend = event.get("rfree_trend", "")
+        kb_matched = event.get("kb_rules_matched", False)
+
+        # --- Header ---
+        header = "Expert Assessment"
+        if confidence:
+            header += " (%s confidence)" % confidence
+        if action == "stop":
+            header += " -- STOP RECOMMENDED"
+        lines = ["", header]
+
+        # --- Structural validation (advanced mode) ---
+        if validation:
+            lines.append("  Structural validation:")
+            for vline in validation.split("\n"):
+                vline = vline.strip()
+                if vline:
+                    lines.append("    %s" % vline)
+
+        # --- R-free trend ---
+        if rfree_trend:
+            lines.append("  R-free trend: %s" % rfree_trend)
+
+        # --- Analysis ---
+        if analysis:
+            wrapped = self._wrap_text(
+                str(analysis), width=72, indent="    ")
+            lines.append("  Analysis: %s" % wrapped)
+
+        # --- Guidance ---
+        if guidance:
+            label = "Recommendation" if action == "stop" \
+                else "Guidance"
+            wrapped = self._wrap_text(
+                str(guidance), width=72, indent="    ")
+            lines.append("  %s: %s" % (label, wrapped))
+
+        # --- Concerns ---
+        if concerns and isinstance(concerns, list):
+            shown = [str(c) for c in concerns[:3] if c]
+            if shown:
+                lines.append(
+                    "  Concerns: %s" % "; ".join(shown))
+
+        # --- Mode indicator (subtle) ---
+        extras = []
+        if thinking_level:
+            extras.append("mode=%s" % thinking_level)
+        if kb_matched:
+            extras.append("KB rules consulted")
+        if extras:
+            lines.append("  [%s]" % ", ".join(extras))
+
+        # If we only have the header (LLM parse failure
+        # or missing fields), add a minimal note so the
+        # user knows the expert was consulted.
+        if len(lines) <= 2 and not analysis:
+            lines.append("  (no detailed assessment available)")
+
+        return "\n".join(lines)
 
     def _format_program_selected(self, event):
         """Format program selection event."""

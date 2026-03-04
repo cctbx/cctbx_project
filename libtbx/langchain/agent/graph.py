@@ -63,9 +63,10 @@ def build_agent_graph():
                |
                +--> output --> END  (if red flag abort)
 
-  The think node is a no-op pass-through when use_thinking_agent
-  is False (default). When enabled, it provides expert
-  crystallographer reasoning to guide the plan node.
+  The think node is a no-op pass-through when thinking_level
+  is None (default). When set to "basic" or "advanced", it
+  provides expert crystallographer reasoning to guide the plan
+  node.
 
   Returns:
     Compiled LangGraph application

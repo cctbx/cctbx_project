@@ -40,7 +40,7 @@ class AgentState(TypedDict):
     use_rules_only: bool          # If True, use rules-based selection (no LLM)
     abort_on_red_flags: bool      # If True, abort on critical sanity check failures
     abort_on_warnings: bool       # If True, also abort on warning-level issues
-    use_thinking_agent: bool      # If True, enable expert crystallographer reasoning
+    thinking_level: Optional[str] # None, "basic", or "advanced"
 
     # === THINKING AGENT (v113) ===
     expert_assessment: Dict       # Output of think node (expert analysis)
@@ -91,7 +91,7 @@ def create_initial_state(
     abort_on_warnings=False,
     directives=None,
     bad_inject_params=None,
-    use_thinking_agent=False,
+    thinking_level=None,
     strategy_memory=None
 ):
     """
@@ -118,13 +118,23 @@ def create_initial_state(
         abort_on_red_flags: If True, abort on critical sanity check failures
         abort_on_warnings: If True, also abort on warning-level issues
         directives: Dict of user directives extracted from advice
-        use_thinking_agent: If True, enable expert crystallographer reasoning
+        thinking_level: Controls expert reasoning depth.
+            None: No thinking (default, pass-through).
+            "basic": LLM reasoning with log analysis and strategy
+            memory. No structural validation or knowledge base.
+            "advanced": Full pipeline with structural validation,
+            file metadata tracking, and expert knowledge base.
         strategy_memory: Dict of accumulated scientific understanding from
             previous cycles. Passed through session_info for persistence.
 
     Returns:
         AgentState: Properly initialized state dict
     """
+    # Validate thinking_level
+    if thinking_level is not None:
+      thinking_level = str(thinking_level).lower()
+      if thinking_level not in ("basic", "advanced"):
+        thinking_level = None
     return {
         # Session context
         "history": list(history) if history is not None else [],
@@ -143,7 +153,7 @@ def create_initial_state(
         "use_rules_only": use_rules_only,
         "abort_on_red_flags": abort_on_red_flags,
         "abort_on_warnings": abort_on_warnings,
-        "use_thinking_agent": use_thinking_agent,
+        "thinking_level": thinking_level,
 
         # Thinking agent (v113)
         "expert_assessment": {},

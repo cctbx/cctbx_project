@@ -40,6 +40,8 @@ HAS_GRAPH_NODES = False
 try:
   from agent.graph import (
     route_after_perceive, route_after_validate)
+  import agent.graph_nodes
+  assert agent.graph_nodes is not None
   HAS_GRAPH_NODES = True
 except ImportError:
   # Define routing function contracts locally for standalone testing.
@@ -84,7 +86,7 @@ def test_A02_all_required_fields_present():
     "directives", "bad_inject_params",
     "maximum_automation", "use_rules_only",
     "abort_on_red_flags", "abort_on_warnings",
-    "use_thinking_agent",
+    "thinking_level",
     "expert_assessment", "strategy_memory",
     "log_text", "log_analysis",
     "intent", "command", "validation_error",
@@ -116,7 +118,7 @@ def test_A03_default_values_correct():
   assert_equal(state["bad_inject_params"], {})
   assert_true(state["maximum_automation"])
   assert_false(state["use_rules_only"])
-  assert_false(state["use_thinking_agent"])
+  assert_none(state["thinking_level"])
   assert_equal(state["expert_assessment"], {})
   assert_equal(state["strategy_memory"], {})
   assert_true(state["abort_on_red_flags"])
@@ -177,7 +179,7 @@ def test_A05_create_initial_state_signature_stable():
     "maximum_automation", "session_resolution", "use_rules_only",
     "session_info", "abort_on_red_flags", "abort_on_warnings",
     "directives", "bad_inject_params",
-    "use_thinking_agent", "strategy_memory",
+    "thinking_level", "strategy_memory",
   ]
   for name in expected:
     assert_in(name, param_names,
@@ -332,14 +334,14 @@ def test_C04_extra_session_info_keys_survive():
   info = {
     "experiment_type": "xray",
     "strategy_memory": {"data_quality": "good"},
-    "use_thinking_agent": True,
+    "thinking_level": "advanced",
     "totally_new_key": [1, 2, 3],
   }
   state = create_initial_state(
     available_files=["data.mtz"],
     session_info=info)
   assert_in("strategy_memory", state["session_info"])
-  assert_in("use_thinking_agent", state["session_info"])
+  assert_in("thinking_level", state["session_info"])
   assert_in("totally_new_key", state["session_info"])
   assert_equal(
     state["session_info"]["strategy_memory"]["data_quality"],
@@ -373,13 +375,13 @@ def test_C06_extra_state_keys_preserved():
   """Adding extra keys to state dict doesn't break it."""
   print("Test: C06_extra_state_keys_preserved")
   state = create_initial_state(available_files=["data.mtz"])
-  state["use_thinking_agent"] = True
+  state["thinking_level"] = "advanced"
   state["expert_assessment"] = {"analysis": "test"}
   state["strategy_memory"] = {"quality": "good"}
   # These survive json round-trip
   text = json.dumps(state)
   restored = json.loads(text)
-  assert_equal(restored["use_thinking_agent"], True)
+  assert_equal(restored["thinking_level"], "advanced")
   assert_equal(
     restored["expert_assessment"]["analysis"], "test")
   assert_equal(
@@ -535,7 +537,7 @@ def test_F02_conditional_noop_pattern():
   """The think stub pattern works as a no-op."""
   print("Test: F02_conditional_noop_pattern")
   def think_stub(state):
-    if not state.get("use_thinking_agent"):
+    if not state.get("thinking_level"):
       return state
     # Would do thinking here
     return state
@@ -576,7 +578,7 @@ def test_F04_noop_chain_equivalent():
   """Chaining no-ops doesn't change state."""
   print("Test: F04_noop_chain_equivalent")
   def noop(state):
-    if not state.get("use_thinking_agent"):
+    if not state.get("thinking_level"):
       return state
     return state
 
@@ -678,7 +680,7 @@ def test_H01_graph_state_has_thinking_fields():
     "agent", "graph_state.py")
   with open(state_path) as f:
     source = f.read()
-  assert_in("use_thinking_agent", source)
+  assert_in("thinking_level", source)
   assert_in("expert_assessment", source)
   assert_in("strategy_memory", source)
   print("  PASSED")
@@ -702,7 +704,7 @@ def test_H03_create_initial_state_param_count():
   """create_initial_state has expected parameter count."""
   print("Test: H03_create_initial_state_param_count")
   sig = inspect.signature(create_initial_state)
-  # Current: 17 parameters (15 original + use_thinking_agent, strategy_memory)
+  # Current: 17 parameters (15 original + thinking_level, strategy_memory)
   expected = 17
   actual = len(sig.parameters)
   assert_equal(actual, expected,
@@ -726,8 +728,8 @@ def test_I01_graph_nodes_has_think_function():
     source = f.read()
   assert_in("def think(state)", source,
     "think() should exist after Phase A2")
-  # Verify it's a no-op when disabled
-  assert_in("use_thinking_agent", source)
+  # Verify it checks thinking_level
+  assert_in("thinking_level", source)
   print("  PASSED")
 
 
@@ -823,15 +825,15 @@ def test_J02_ai_agent_has_thinking_plumbing():
 # =========================================================================
 
 def test_K01_gui_has_thinking_checkbox():
-  """AIAgent.py GUI has thinking checkbox (added in Phase A6)."""
+  """AIAgent.py GUI has thinking_level control (Phase A6)."""
   print("Test: K01_gui_has_thinking_checkbox")
   gui_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "wxGUI2", "Programs", "AIAgent.py")
   with open(gui_path, errors='ignore') as f:
     source = f.read()
-  assert_in("use_thinking_agent", source,
-    "use_thinking_agent should be in GUI after Phase A6")
+  assert_in("thinking_level", source,
+    "thinking_level should be in GUI settings")
   print("  PASSED")
 
 
@@ -878,7 +880,7 @@ def test_L01_thinking_agent_py_exists():
     "thinking_agent.py should exist after Phase B4")
   from agent.thinking_agent import run_think_node
   # Disabled state passes through
-  result = run_think_node({"use_thinking_agent": False})
+  result = run_think_node({"thinking_level": None})
   assert_false(result.get("stop"))
   print("  PASSED")
 

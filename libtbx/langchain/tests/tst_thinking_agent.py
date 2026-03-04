@@ -23,7 +23,7 @@ from knowledge.thinking_prompts import parse_assessment
 def _make_state(**overrides):
   """Build a minimal valid state for testing."""
   state = {
-    "use_thinking_agent": True,
+    "thinking_level": "basic",
     "history": [],
     "log_text": "",
     "log_analysis": {},
@@ -83,7 +83,8 @@ def test_should_think_after_autobuild():
 
 def test_should_think_routine_refine():
   print("Test: should_think_routine_refine")
-  state = {"history": [{"program": "phenix.refine", "status": "OK"}]}
+  # mtriage is a routine step that doesn't trigger thinking
+  state = {"history": [{"program": "phenix.mtriage", "status": "OK"}]}
   assert should_think(state) == False
   print("  PASSED")
 
@@ -108,7 +109,7 @@ def test_should_think_stalled_rfree():
 def test_should_think_improving_rfree():
   print("Test: should_think_improving_rfree")
   state = {
-    "history": [{"program": "phenix.refine", "status": "OK"}],
+    "history": [{"program": "phenix.mtriage", "status": "OK"}],
     "strategy_memory": {"r_free_history": [0.30, 0.28, 0.26]},
   }
   assert should_think(state) == False
@@ -121,7 +122,7 @@ def test_should_think_improving_rfree():
 
 def test_disabled_passthrough():
   print("Test: disabled_passthrough")
-  state = _make_state(use_thinking_agent=False)
+  state = _make_state(thinking_level=None)
   result = run_think_node(state)
   assert result is state
   print("  PASSED")
@@ -143,7 +144,7 @@ def test_enabled_no_llm_graceful():
 def test_routine_step_skipped():
   print("Test: routine_step_skipped")
   state = _make_state(
-    history=[{"program": "phenix.refine", "status": "OK"}])
+    history=[{"program": "phenix.mtriage", "status": "OK"}])
   result = run_think_node(state)
   debug = result.get("debug_log", [])
   assert any("Skipping" in str(d) for d in debug)
