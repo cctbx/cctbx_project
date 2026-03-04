@@ -676,6 +676,46 @@ class CommandBuilder:
               continue
 
         # Validate and correct path
+        # Special handling for ligand slot: phenix.ligandfit
+        # accepts either a file path (atp.pdb, atp.cif) or a
+        # 3-letter residue code (ATP, HEM, NAG).  The code
+        # path is not a file and won't be in available_files.
+        # Note: SLOT_ALIASES maps "ligand" → "ligand_cif",
+        # so canonical_slot may be either name.
+        if canonical_slot in ("ligand", "ligand_cif"):
+          filepath_str = str(filepath).strip()
+          # Use the program's actual input name, not the alias
+          _actual_slot = ("ligand"
+            if "ligand" in all_inputs else canonical_slot)
+          # Case 1: 2-4 letter residue code (no path sep, no dots
+          # or a dot followed by 3-letter ext only)
+          is_residue_code = (
+            len(filepath_str) <= 4
+            and filepath_str.replace("_", "").isalnum()
+            and os.sep not in filepath_str
+            and "/" not in filepath_str
+            and "." not in filepath_str
+          )
+          if is_residue_code:
+            selected_files[_actual_slot] = filepath_str
+            self._log(context,
+              "BUILD: Accepted ligand residue code: %s"
+              % filepath_str)
+            self._record_selection(
+              _actual_slot, filepath_str,
+              "llm_selected_code")
+            continue
+          # Case 2: file exists on disk but not in available_files
+          if os.path.isfile(filepath_str):
+            selected_files[_actual_slot] = filepath_str
+            self._log(context,
+              "BUILD: Accepted ligand file (on disk): %s"
+              % os.path.basename(filepath_str))
+            self._record_selection(
+              _actual_slot, filepath_str,
+              "llm_selected_disk")
+            continue
+
         corrected = self._correct_file_path(filepath, basename_to_path, available_files)
         if corrected:
           # Handle list case (multiple files)
@@ -896,7 +936,33 @@ class CommandBuilder:
             input_name, os.path.basename(file_found)))
 
     # Check all required inputs are filled
+    # Special case: the 'ligand' slot for phenix.ligandfit can be
+    # satisfied by a residue code in the strategy dict (e.g.
+    # strategy={ligand: "ATP"}) instead of a file path.
     missing = [inp for inp in required_inputs if inp not in selected_files]
+    if missing and "ligand" in missing and context.llm_strategy:
+      ligand_val = context.llm_strategy.get("ligand", "")
+      if ligand_val:
+        ligand_str = str(ligand_val).strip()
+        # Accept 2-4 letter residue codes or file paths on disk
+        is_code = (
+          len(ligand_str) <= 4
+          and ligand_str.replace("_", "").isalnum()
+          and "." not in ligand_str
+        )
+        if is_code or os.path.isfile(ligand_str):
+          selected_files["ligand"] = ligand_str
+          self._log(context,
+            "BUILD: Accepted ligand from strategy: %s"
+            % ligand_str)
+          missing.remove("ligand")
+    # Also check if ligand_cif alias was filled but
+    # "ligand" is the actual required input name
+    if missing and "ligand" in missing:
+      if "ligand_cif" in selected_files:
+        selected_files["ligand"] = selected_files.pop(
+          "ligand_cif")
+        missing.remove("ligand")
     if missing:
       self._log(context, "BUILD: Missing required inputs: %s" % ", ".join(missing))
       self._last_missing_slots = missing

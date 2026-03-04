@@ -2168,10 +2168,76 @@ def _build_with_new_builder(state):
     if recovery_strategies:
         state = _log(state, f"BUILD: Recovery strategies available for: {list(recovery_strategies.keys())}")
 
+    # === AUTOBUILD REBUILD_IN_PLACE ===
+    # When autobuild runs after refinement (rebuilding, not initial
+    # building from phasing), set rebuild_in_place=False so it builds
+    # a new model from the density rather than adjusting the input.
+    if program == "phenix.autobuild":
+        if "rebuild_in_place" not in strategy:
+            history = state.get("history", [])
+            has_refined = any(
+                "refine" in str(h.get("program", "")).lower()
+                for h in history
+            )
+            if has_refined:
+                strategy["rebuild_in_place"] = False
+                state = _log(state,
+                    "BUILD: Set rebuild_in_place=False"
+                    " (rebuilding after refinement)")
+
     # Create log wrapper that updates state
     build_logs = []
     def log_wrapper(msg):
         build_logs.append(msg)
+
+    # === AUTO-FILL LIGAND CODE FOR LIGANDFIT ===
+    # When the LLM selects ligandfit but doesn't put the ligand
+    # code in the files dict, extract it from user advice.
+    # Common patterns: "fit ATP", "ligand is ATP", "ligand ATP",
+    # "The ligand to be fit is ATP".
+    if (program == "phenix.ligandfit"
+        and "ligand" not in corrected_files):
+      import re as _re_lig
+      user_advice = state.get("user_advice", "")
+      # Also check strategy from LLM
+      _lig_from_strategy = strategy.get("ligand", "")
+      if _lig_from_strategy:
+        _ls = str(_lig_from_strategy).strip()
+        if (len(_ls) <= 4 and _ls.replace("_", "").isalnum()
+            and "." not in _ls):
+          corrected_files["ligand"] = _ls
+          state = _log(state,
+            "BUILD: Ligand code '%s' from LLM strategy"
+            % _ls)
+      if "ligand" not in corrected_files and user_advice:
+        # Try several patterns to extract a 3-letter code.
+        # Standard ligand residue codes are exactly 3 chars.
+        _lig_patterns = [
+          r'\bligand\s+(?:is|to\s+be\s+fit\s+is|code'
+            r'|type|=)\s*[:\s]*([A-Z][A-Z0-9]{2})\b',
+          r'\bligand[_\s]*(?:type|code|=)\s*'
+            r'([A-Z][A-Z0-9]{2})\b',
+          r'(?:fit|place|dock)\s+(?:the\s+)?(?:ligand\s+)?'
+            r'([A-Z][A-Z0-9]{2})\b',
+          r'\b([A-Z][A-Z0-9]{2})\s+(?:ligand|into)',
+        ]
+        _SKIP = frozenset({"THE", "AND", "FOR", "FIT",
+                     "RUN", "USE", "ADD", "ALL",
+                     "NOT", "BUT", "HAS", "ARE",
+                     "WAS", "CAN", "MAY", "SET",
+                     "PDB", "MTZ", "CIF", "MAP",
+                     "LOG", "SEQ", "YES"})
+        for pat in _lig_patterns:
+          m = _re_lig.search(pat, user_advice,
+                             _re_lig.IGNORECASE)
+          if m:
+            code = m.group(1).upper()
+            if code not in _SKIP:
+              corrected_files["ligand"] = code
+              state = _log(state,
+                "BUILD: Extracted ligand code '%s'"
+                " from user advice" % code)
+              break
 
     # Create CommandContext
     context = CommandContext(
@@ -2358,6 +2424,55 @@ def _build_with_new_builder(state):
             state = _log(state, "BUILD_POSTPROCESS: ERROR: %s (client-side fallback active)" % _pp_err)
 
     state = _log(state, "BUILD: Generated command: %s" % command[:150])
+
+    # === LAST-RESORT LIGAND CODE INJECTION ===
+    # If we built a ligandfit command but it has no ligand=,
+    # the ligand code was lost in the pipeline. Extract it
+    # from user_advice and append it directly.
+    if (program == "phenix.ligandfit"
+        and command
+        and "ligand=" not in command):
+      import re as _re_lig2
+      _advice = state.get("user_advice", "")
+      _lig_code = None
+      # Check corrected_files first (extraction may have
+      # put it there but the builder dropped it)
+      _cf_lig = corrected_files.get("ligand", "")
+      if _cf_lig and len(_cf_lig) <= 4 and _cf_lig.isalnum():
+        _lig_code = _cf_lig
+      # Check strategy
+      if not _lig_code:
+        _sl = strategy.get("ligand", "")
+        if _sl and len(str(_sl)) <= 4 and str(_sl).isalnum():
+          _lig_code = str(_sl)
+      # Extract from advice text
+      if not _lig_code and _advice:
+        _lig_pats = [
+          r'\bligand\s+(?:is|to\s+be\s+fit\s+is|code'
+            r'|type|=)\s*[:\s]*([A-Z][A-Z0-9]{2})\b',
+          r'(?:fit|place|dock)\s+(?:the\s+)?'
+            r'(?:ligand\s+)?([A-Z][A-Z0-9]{2})\b',
+          r'\b([A-Z][A-Z0-9]{2})\s+(?:ligand|into)',
+        ]
+        _SKIP_WORDS = frozenset({
+          "THE", "AND", "FOR", "FIT", "RUN", "USE",
+          "ADD", "ALL", "NOT", "BUT", "HAS", "ARE",
+          "WAS", "CAN", "MAY", "SET", "PDB", "MTZ",
+          "CIF", "MAP", "LOG", "SEQ", "YES"})
+        for _pat in _lig_pats:
+          _m = _re_lig2.search(_pat, _advice,
+                               _re_lig2.IGNORECASE)
+          if _m:
+            _candidate = _m.group(1).upper()
+            if _candidate not in _SKIP_WORDS:
+              _lig_code = _candidate
+              break
+      if _lig_code:
+        command = command + " ligand=%s" % _lig_code
+        state = _log(state,
+          "BUILD: Appended ligand=%s to ligandfit"
+          " command (last-resort extraction)"
+          % _lig_code)
 
     # === EMIT FILES_SELECTED EVENT (verbose level) ===
     selection_details = builder.get_selection_details()
@@ -2631,6 +2746,30 @@ def build(state):
                         corrected_files[slot] = basename_to_path[basename]
                     elif filepath in available_set:
                         corrected_files[slot] = filepath
+                    elif slot == "ligand":
+                        # phenix.ligandfit accepts either a file path
+                        # or a 3-letter residue code (ATP, HEM, NAG).
+                        fp_str = str(filepath).strip()
+                        is_code = (
+                            len(fp_str) <= 4
+                            and fp_str.replace("_", "").isalnum()
+                            and os.sep not in fp_str
+                            and "/" not in fp_str
+                            and "." not in fp_str
+                        )
+                        if is_code:
+                            corrected_files[slot] = fp_str
+                            state = _log(state,
+                                "BUILD: Accepted ligand residue"
+                                " code: %s" % fp_str)
+                        elif os.path.isfile(fp_str):
+                            corrected_files[slot] = fp_str
+                            state = _log(state,
+                                "BUILD: Accepted ligand file"
+                                " (on disk): %s" % basename)
+                        else:
+                            rejected_files.append(
+                                "%s=%s" % (slot, basename))
                     else:
                         # File not in available_files - REJECT
                         rejected_files.append("%s=%s" % (slot, basename))
@@ -2910,6 +3049,37 @@ def build(state):
         return {**state, "command": "", "validation_error": str(e)}
 
     state = _log(state, "BUILD: Command = %s" % command[:80])
+
+    # === LAST-RESORT LIGAND CODE INJECTION (old path) ===
+    if (program == "phenix.ligandfit"
+        and command
+        and "ligand=" not in command):
+      import re as _re_lig3
+      _advice = state.get("user_advice", "")
+      _lig_code = None
+      if _advice:
+        _lig_pats = [
+          r'\bligand\s+(?:is|to\s+be\s+fit\s+is|code'
+            r'|type|=)\s*[:\s]*([A-Z][A-Z0-9]{2})\b',
+          r'(?:fit|place|dock)\s+(?:the\s+)?'
+            r'(?:ligand\s+)?([A-Z][A-Z0-9]{2})\b',
+        ]
+        _SKIP3 = frozenset({
+          "THE", "AND", "FOR", "FIT", "RUN", "USE",
+          "ADD", "ALL", "NOT", "PDB", "MTZ", "CIF"})
+        for _pat in _lig_pats:
+          _m = _re_lig3.search(_pat, _advice,
+                               _re_lig3.IGNORECASE)
+          if _m:
+            _candidate = _m.group(1).upper()
+            if _candidate not in _SKIP3:
+              _lig_code = _candidate
+              break
+      if _lig_code:
+        command = command + " ligand=%s" % _lig_code
+        state = _log(state,
+          "BUILD: Appended ligand=%s (last-resort)"
+          % _lig_code)
 
     # === EMIT COMMAND_BUILT EVENT ===
     state = _emit(state, EventType.COMMAND_BUILT,
