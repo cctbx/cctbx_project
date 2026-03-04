@@ -452,6 +452,8 @@ def rebuild_best_files(data):
                         file_stage = "ligand_fit_output"
                     elif stage == "with_ligand" and 'with_ligand' in basename:
                         file_stage = "with_ligand"
+                    elif stage == "with_ligand" and '_modified' in basename:
+                        file_stage = "with_ligand"
                     elif stage == "rsr_output" and ('real_space' in basename or 'rsr_' in basename):
                         file_stage = "rsr_output"
                     # else: file_stage stays None, tracker will infer from filename

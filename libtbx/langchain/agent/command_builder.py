@@ -709,6 +709,12 @@ class CommandBuilder:
                 c in ("with_ligand", "ligand_fit_output")
                 for c in llm_categories
               )
+              # Also recognize pdbtools output (*_modified.pdb) — this is
+              # the default naming when combining model + ligand
+              if not llm_is_with_ligand:
+                llm_bn_lower = os.path.basename(corrected_str).lower()
+                if '_modified' in llm_bn_lower and llm_bn_lower.endswith('.pdb'):
+                  llm_is_with_ligand = True
               if llm_is_with_ligand:
                 self._log(context, "BUILD: LLM chose with_ligand model=%s — trusting LLM (contains ligand)" %
                      os.path.basename(corrected_str))

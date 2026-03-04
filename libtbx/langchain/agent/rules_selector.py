@@ -702,7 +702,8 @@ class RulesSelector:
                 basename = os.path.basename(f).lower()
 
                 # Category scores (higher = better)
-                if 'with_ligand' in basename:
+                if 'with_ligand' in basename or (
+                    '_modified' in basename and basename.endswith('.pdb')):
                     category_score = 7000
                 elif '_refine_' in basename or 'refined' in basename:
                     category_score = 6000

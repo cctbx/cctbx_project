@@ -422,6 +422,8 @@ class AgentSession:
                             file_stage = "ligand_fit_output"
                         elif stage == "with_ligand" and 'with_ligand' in basename:
                             file_stage = "with_ligand"
+                        elif stage == "with_ligand" and '_modified' in basename:
+                            file_stage = "with_ligand"
                         elif stage == "rsr_output" and ('real_space' in basename or 'rsr_' in basename):
                             file_stage = "rsr_output"
                         # else: file_stage stays None, tracker will infer from filename
@@ -1806,6 +1808,11 @@ class AgentSession:
                     elif model_stage == "ligand_fit_output" and ('ligand_fit' in basename or 'lig_fit' in basename):
                         file_stage = "ligand_fit_output"
                     elif model_stage == "with_ligand" and 'with_ligand' in basename:
+                        file_stage = "with_ligand"
+                    elif model_stage == "with_ligand" and '_modified' in basename:
+                        # pdbtools default output: {input}_modified.pdb
+                        # This IS a with_ligand model even though the
+                        # filename doesn't contain "with_ligand"
                         file_stage = "with_ligand"
                     elif model_stage == "rsr_output" and ('real_space' in basename or 'rsr_' in basename):
                         file_stage = "rsr_output"
@@ -3263,6 +3270,26 @@ FINAL REPORT:"""
             if stop_cond.get("after_program") and stop_cond.get("skip_validation"):
                 is_tutorial = True
 
+        # Get preflight check results (v113)
+        preflight_check = self.data.get("preflight_check", {})
+
+        # Get stop info (captured during _extract_steps above)
+        stop_info = getattr(self, '_last_stop_info', None)
+
+        # Collect expert assessments across all steps
+        expert_assessments = []
+        for step in steps:
+            ea = step.get("expert_assessment", {})
+            if ea and isinstance(ea, dict) and ea.get("analysis"):
+                expert_assessments.append({
+                    "cycle": step["cycle"],
+                    "program": step["program"],
+                    "action": ea.get("action", ""),
+                    "confidence": ea.get("confidence", ""),
+                    "analysis": ea.get("analysis", ""),
+                    "guidance": ea.get("guidance", ""),
+                })
+
         return {
             "session_id": self.data.get("session_id", "unknown"),
             "experiment_type": experiment_type,
@@ -3284,6 +3311,10 @@ FINAL REPORT:"""
             # Job context
             "working_dir": self._get_working_directory_path(),
             "failure_diagnosis_path": self.data.get("failure_diagnosis_path"),
+            # v113: thinking agent data
+            "preflight_check": preflight_check,
+            "stop_info": stop_info,
+            "expert_assessments": expert_assessments,
         }
 
     def _get_run_name(self):
@@ -3342,11 +3373,24 @@ FINAL REPORT:"""
                 return "X-ray structure determination"
 
     def _extract_steps(self, cycles):
-        """Extract step-by-step summary."""
+        """Extract step-by-step summary including reasoning and expert."""
         steps = []
+        stop_info = None
         for cycle in cycles:
             program = cycle.get("program", "unknown")
-            if program in ["STOP", None, "unknown"]:
+
+            # Capture STOP cycle separately
+            if program == "STOP":
+                stop_info = {
+                    "cycle": cycle.get("cycle_number", "?"),
+                    "reasoning": cycle.get("reasoning", ""),
+                    "explanation": cycle.get("explanation", ""),
+                    "expert_assessment": cycle.get(
+                        "expert_assessment", {}),
+                }
+                continue
+
+            if program in [None, "unknown"]:
                 continue
 
             result = cycle.get("result", "")
@@ -3355,14 +3399,20 @@ FINAL REPORT:"""
             # Extract key metric for this step
             key_metric = self._get_key_metric_for_step(cycle, program)
 
-            # Get brief decision (first sentence)
+            # Get reasoning (full, not just first sentence)
+            reasoning = cycle.get("reasoning", "")
             decision = cycle.get("decision", "")
+
+            # Get brief decision (first sentence) for table
             if decision:
                 decision_brief = decision.split(".")[0] + "."
                 if len(decision_brief) > 100:
                     decision_brief = decision_brief[:97] + "..."
             else:
                 decision_brief = ""
+
+            # Expert assessment
+            expert = cycle.get("expert_assessment", {})
 
             fc = cycle.get("failure_context") or {}
             steps.append({
@@ -3371,8 +3421,15 @@ FINAL REPORT:"""
                 "success": success,
                 "key_metric": key_metric,
                 "decision_brief": decision_brief,
+                "reasoning": reasoning,
+                "expert_assessment": expert if isinstance(
+                    expert, dict) else {},
                 "superseded_by": fc.get("superseded_by"),
             })
+
+        # Attach stop_info to the data (will be picked up by
+        # _extract_summary_data)
+        self._last_stop_info = stop_info
 
         return steps
 
@@ -3902,7 +3959,9 @@ FINAL REPORT:"""
                     "type": "model",
                     "description": "Docked model in map"
                 }
-            elif "with_ligand" in basename_lower:
+            elif "with_ligand" in basename_lower or (
+                    "_modified" in basename_lower and
+                    basename_lower.endswith(".pdb")):
                 return {
                     "name": basename,
                     "type": "model",
@@ -4104,158 +4163,349 @@ FINAL REPORT:"""
         return quality
 
     def _format_summary_markdown(self, data, include_llm_assessment):
-        """Format the summary data as Markdown."""
+        """Format the summary data as Markdown.
+
+        Produces a structured report including:
+        - Input files, experiment type, user goal
+        - Pre-flight check results (if thinking agent was active)
+        - Input data quality metrics
+        - Workflow path and detailed step-by-step narrative
+        - Expert crystallographer assessments (if thinking agent)
+        - Stop decision rationale (if workflow stopped early)
+        - Final quality metrics
+        - Output files
+        - LLM assessment placeholder (optional)
+        """
         lines = []
 
-        # Header - create descriptive title based on run type and directory
+        # Header
         run_name = data.get('run_name', 'unknown')
         is_tutorial = data.get('is_tutorial', False)
-
         if is_tutorial:
-            # Tutorial/focused task header
-            title = f"Phenix AI Tutorial: {run_name}"
+            title = "Phenix AI Tutorial: %s" % run_name
         else:
-            # Regular run header
-            title = f"Phenix AI Run: {run_name}"
-
-        # Use h2 (##) instead of h1 (#) for smaller header
-        lines.append(f"## {title}")
+            title = "Phenix AI Run: %s" % run_name
+        lines.append("## %s" % title)
         lines.append("")
 
-        # Session info line — format date and time separately
+        # Session info
         session_id = data['session_id']
-        # session_id is typically "YYYY-MM-DD_HH-MM-SS"
         if '_' in session_id:
             date_part, time_part = session_id.split('_', 1)
             time_display = time_part.replace('-', ':')
-            session_display = f"{date_part} {time_display}"
+            session_display = "%s %s" % (date_part, time_display)
         else:
             session_display = session_id
-        lines.append(f"**Session:** {session_display} | **Cycles:** {data['total_cycles']} ({data['successful_cycles']} successful)")
-        # Working directory — blank line above so markdown renders it as a new paragraph
+        lines.append(
+            "**Session:** %s | **Cycles:** %d (%d successful)"
+            % (session_display, data['total_cycles'],
+               data['successful_cycles']))
         working_dir = data.get("working_dir")
         if working_dir:
             lines.append("")
-            lines.append(f"**Working directory:** `{working_dir}`")
+            lines.append("**Working directory:** `%s`" % working_dir)
         if include_llm_assessment:
             lines.append("")
             lines.append("_[STATUS_PLACEHOLDER]_")
         lines.append("")
 
-        # Input Section
+        # ── 1. Input ────────────────────────────────────────────
         lines.append("## Input")
         lines.append("")
-        lines.append(f"- **Files:** {', '.join(data['original_files'])}")
-        lines.append(f"- **User Advice:** {data['user_advice']}")
-        lines.append(f"- **Experiment Type:** {data['experiment_type']}")
+        lines.append(
+            "- **Files:** %s" % ', '.join(data['original_files']))
+        lines.append("- **User Advice:** %s" % data['user_advice'])
+        lines.append(
+            "- **Experiment Type:** %s" % data['experiment_type'])
         if data.get("resolution"):
-            lines.append(f"- **Resolution:** {data['resolution']:.2f} Å")
+            lines.append(
+                "- **Resolution:** %.2f \u00C5" % data['resolution'])
 
-        # Add stop condition info if this is a focused task/tutorial
         directives = self.get_directives()
         if directives:
             stop_cond = directives.get("stop_conditions", {})
             if stop_cond:
                 stop_parts = []
                 if stop_cond.get("after_program"):
-                    stop_parts.append(f"stop after {stop_cond['after_program']}")
+                    stop_parts.append(
+                        "stop after %s" % stop_cond['after_program'])
                 if stop_cond.get("after_cycle"):
-                    stop_parts.append(f"stop after cycle {stop_cond['after_cycle']}")
+                    stop_parts.append(
+                        "stop after cycle %s" % stop_cond['after_cycle'])
                 if stop_parts:
-                    lines.append(f"- **Stop Condition (Focused Task):** {', '.join(stop_parts)}")
-
+                    lines.append(
+                        "- **Stop Condition (Focused Task):** %s"
+                        % ', '.join(stop_parts))
         lines.append("")
 
-        # Input Data Quality
+        # ── 2. Pre-flight Check ─────────────────────────────────
+        preflight = data.get("preflight_check", {})
+        if preflight and isinstance(preflight, dict):
+            pf_ready = preflight.get("ready", True)
+            pf_analysis = preflight.get("analysis", "")
+            pf_missing = preflight.get("missing_files", [])
+            pf_warnings = preflight.get("warnings", [])
+            pf_recommendation = preflight.get("recommendation", "")
+
+            if not pf_ready or pf_missing or pf_warnings:
+                if not pf_ready:
+                    lines.append(
+                        "## \u26D4 Pre-flight Check: Missing Inputs")
+                else:
+                    lines.append(
+                        "## \u26A0 Pre-flight Check: Warnings")
+                lines.append("")
+                if pf_analysis:
+                    lines.append(pf_analysis.strip())
+                    lines.append("")
+                if pf_missing:
+                    lines.append("**Missing files:**")
+                    for m in pf_missing[:5]:
+                        lines.append("- %s" % str(m))
+                    lines.append("")
+                if pf_warnings:
+                    for w in pf_warnings[:3]:
+                        lines.append("> **Note:** %s" % str(w))
+                    lines.append("")
+                if pf_recommendation:
+                    lines.append(
+                        "**Recommendation:** %s"
+                        % pf_recommendation.strip())
+                    lines.append("")
+                if not pf_ready:
+                    lines.append(
+                        "*The workflow was stopped because "
+                        "required input files are missing.*")
+                    lines.append("")
+
+        # ── 3. Input Data Quality ───────────────────────────────
         if data.get("input_quality"):
             lines.append("## Input Data Quality")
             lines.append("")
             iq = data["input_quality"]
             if "resolution" in iq:
-                lines.append(f"- **Resolution:** {iq['resolution']:.2f} Å")
+                lines.append(
+                    "- **Resolution:** %.2f \u00C5" % iq['resolution'])
             if "completeness" in iq:
-                lines.append(f"- **Completeness:** {iq['completeness']:.1f}%")
+                lines.append(
+                    "- **Completeness:** %.1f%%" % iq['completeness'])
             if "i_over_sigma" in iq:
-                lines.append(f"- **I/σ(I):** {iq['i_over_sigma']:.1f}")
+                lines.append(
+                    "- **I/\u03C3(I):** %.1f" % iq['i_over_sigma'])
             if "wilson_b" in iq:
-                lines.append(f"- **Wilson B-factor:** {iq['wilson_b']:.1f} Å²")
+                lines.append(
+                    "- **Wilson B-factor:** %.1f \u00C5\u00B2"
+                    % iq['wilson_b'])
             if "twinning" in iq:
-                lines.append(f"- **Twinning:** {iq['twinning']}")
+                lines.append(
+                    "- **Twinning:** %s" % iq['twinning'])
             if "twin_law" in iq:
-                lines.append(f"- **Twin Law:** {iq['twin_law']}")
+                lines.append(
+                    "- **Twin Law:** %s" % iq['twin_law'])
             if "twin_fraction" in iq:
-                lines.append(f"- **Twin Fraction:** {iq['twin_fraction']:.4f}")
+                lines.append(
+                    "- **Twin Fraction:** %.4f" % iq['twin_fraction'])
             if iq.get("has_anomalous"):
                 anom_info = "Yes"
                 if "anomalous_measurability" in iq:
-                    anom_info += f" (measurability: {iq['anomalous_measurability']:.3f})"
+                    anom_info += (
+                        " (measurability: %.3f)"
+                        % iq['anomalous_measurability'])
                 if "anomalous_resolution" in iq:
-                    anom_info += f", extends to {iq['anomalous_resolution']:.2f} Å"
-                lines.append(f"- **Anomalous Signal:** {anom_info}")
+                    anom_info += (
+                        ", extends to %.2f \u00C5"
+                        % iq['anomalous_resolution'])
+                lines.append(
+                    "- **Anomalous Signal:** %s" % anom_info)
             if "d99" in iq:
-                lines.append(f"- **d99:** {iq['d99']:.2f} Å")
+                lines.append("- **d99:** %.2f \u00C5" % iq['d99'])
             if "map_cc" in iq:
-                lines.append(f"- **Map CC:** {iq['map_cc']:.3f}")
+                lines.append(
+                    "- **Map CC:** %.3f" % iq['map_cc'])
             lines.append("")
 
-        # Workflow Path
+        # ── 4. Workflow ─────────────────────────────────────────
         lines.append("## Workflow Path")
         lines.append("")
         lines.append(data["workflow_path"])
         lines.append("")
 
-        # Steps Performed
+        # ── 5. Steps Performed (detailed) ───────────────────────
         lines.append("## Steps Performed")
         lines.append("")
+
         _has_superseded_step = any(
             step.get("superseded_by") for step in data["steps"])
+
+        # Summary table first
         lines.append("| Cycle | Program | Result | Key Metric |")
         lines.append("|-------|---------|--------|------------|")
         for step in data["steps"]:
             if step["success"]:
-                result_symbol = "✓"
+                result_symbol = "\u2713"
             elif step.get("superseded_by"):
-                result_symbol = "✗*"   # failed but resolved by a later step
+                result_symbol = "\u2717*"
             else:
-                result_symbol = "✗"
+                result_symbol = "\u2717"
             program_short = step["program"].replace("phenix.", "")
-            # Sanitize key_metric for markdown table:
-            # - Replace newlines with spaces
-            # - Replace pipe characters with dashes
-            # - Truncate if too long
             key_metric = step['key_metric']
-            key_metric = key_metric.replace('\n', ' ').replace('\r', ' ')
+            key_metric = key_metric.replace('\n', ' ').replace(
+                '\r', ' ')
             key_metric = key_metric.replace('|', '-')
-            key_metric = ' '.join(key_metric.split())  # Collapse multiple spaces
+            key_metric = ' '.join(key_metric.split())
             if len(key_metric) > 60:
                 key_metric = key_metric[:57] + "..."
-            lines.append(f"| {step['cycle']} | {program_short} | {result_symbol} | {key_metric} |")
+            lines.append(
+                "| %s | %s | %s | %s |"
+                % (step['cycle'], program_short,
+                   result_symbol, key_metric))
         if _has_superseded_step:
             lines.append("")
-            lines.append("_\\* Failure resolved by a later successful step — "
-                         "does not affect the final result._")
+            lines.append(
+                "_\\* Failure resolved by a later successful "
+                "step \u2014 does not affect the final result._")
         lines.append("")
 
-        # Final Quality
-        if data.get("final_metrics"):
-            lines.append("## Final Quality")
+        # Detailed narrative per step (reasoning + expert)
+        _has_detail = any(
+            step.get("reasoning") or step.get("expert_assessment")
+            for step in data["steps"])
+        if _has_detail:
+            lines.append("### Step Details")
             lines.append("")
-            lines.append("| Metric | Value | Assessment |")
-            lines.append("|--------|-------|------------|")
+            for step in data["steps"]:
+                program_short = step["program"].replace("phenix.", "")
+                if step["success"]:
+                    status_str = "\u2713"
+                else:
+                    status_str = "\u2717"
+                lines.append(
+                    "**Cycle %s: %s** %s"
+                    % (step['cycle'], program_short, status_str))
+                lines.append("")
+
+                # Expert assessment (shown before reasoning since
+                # it evaluates the PREVIOUS step's output)
+                ea = step.get("expert_assessment", {})
+                if ea and isinstance(ea, dict):
+                    analysis = ea.get("analysis", "").strip()
+                    guidance = ea.get("guidance", "").strip()
+                    action = ea.get("action", "")
+                    confidence = ea.get("confidence", "")
+                    if analysis:
+                        tag = ""
+                        if action and confidence:
+                            tag = " (%s, %s)" % (action, confidence)
+                        lines.append(
+                            "> **Expert Assessment%s:** %s" % (
+                                tag, analysis[:600]))
+                        if guidance:
+                            lines.append(">")
+                            lines.append(
+                                "> **Guidance:** %s"
+                                % guidance[:300])
+                        lines.append("")
+
+                # Agent reasoning
+                reasoning = step.get("reasoning", "").strip()
+                if reasoning:
+                    display_reasoning = reasoning
+                    if len(display_reasoning) > 500:
+                        display_reasoning = (
+                            display_reasoning[:497] + "...")
+                    lines.append(
+                        "**Reasoning:** %s" % display_reasoning)
+                    lines.append("")
+
+        # ── 6. Stop Decision ────────────────────────────────────
+        stop_info = data.get("stop_info")
+        if stop_info and isinstance(stop_info, dict):
+            lines.append("## Stop Decision")
+            lines.append("")
+            stop_reasoning = (
+                stop_info.get("reasoning")
+                or stop_info.get("explanation", "")).strip()
+            if stop_reasoning:
+                if len(stop_reasoning) > 600:
+                    stop_reasoning = stop_reasoning[:597] + "..."
+                lines.append(
+                    "**Why the workflow stopped:** %s"
+                    % stop_reasoning)
+                lines.append("")
+
+            # Expert stop review
+            stop_expert = stop_info.get("expert_assessment", {})
+            if stop_expert and isinstance(stop_expert, dict):
+                stop_review = stop_expert.get("stop_review", {})
+                stop_analysis = stop_expert.get(
+                    "analysis", "").strip()
+
+                if stop_analysis:
+                    lines.append(
+                        "> **Expert analysis of stop:** %s"
+                        % stop_analysis[:500])
+                    lines.append("")
+
+                if stop_review and isinstance(stop_review, dict):
+                    agrees = stop_review.get(
+                        "agree_with_stop", True)
+                    review_analysis = stop_review.get(
+                        "analysis", "").strip()
+                    alternatives = stop_review.get(
+                        "alternatives", [])
+                    review_guidance = stop_review.get(
+                        "guidance", "").strip()
+
+                    if agrees:
+                        verdict = "\u2705 Expert **agrees** " \
+                                  "with stopping."
+                    else:
+                        verdict = "\u26A0 Expert **disagrees** " \
+                                  "with stopping."
+                    lines.append(verdict)
+                    lines.append("")
+
+                    if review_analysis:
+                        lines.append(review_analysis[:500])
+                        lines.append("")
+                    if alternatives:
+                        lines.append("**Suggested alternatives:**")
+                        for alt in alternatives[:4]:
+                            lines.append(
+                                "- %s" % str(alt)[:120])
+                        lines.append("")
+                    if review_guidance:
+                        lines.append(
+                            "**Guidance:** %s"
+                            % review_guidance[:300])
+                        lines.append("")
+
+        # ── 7. Final Quality ────────────────────────────────────
+        if data.get("final_metrics"):
             fm = data["final_metrics"]
 
-            # Use YAML-based formatting from metrics.yaml
             try:
-                from libtbx.langchain.knowledge.summary_display import format_quality_table_rows
+                from libtbx.langchain.knowledge.summary_display \
+                    import format_quality_table_rows
             except Exception:
-                from knowledge.summary_display import format_quality_table_rows
+                from knowledge.summary_display \
+                    import format_quality_table_rows
 
-            rows = format_quality_table_rows(fm, data.get('experiment_type'))
-            for row in rows:
-                lines.append(f"| {row['label']} | {row['value']} | {row['detail']} |")
-            lines.append("")
+            rows = format_quality_table_rows(
+                fm, data.get('experiment_type'))
+            if rows:
+                lines.append("## Final Quality")
+                lines.append("")
+                lines.append("| Metric | Value | Assessment |")
+                lines.append("|--------|-------|------------|")
+                for row in rows:
+                    lines.append(
+                        "| %s | %s | %s |"
+                        % (row['label'], row['value'],
+                           row['detail']))
+                lines.append("")
 
-        # Output Files
+        # ── 8. Output Files ─────────────────────────────────────
         if data.get("final_files"):
             lines.append("## Key Output Files")
             lines.append("")
@@ -4265,21 +4515,24 @@ FINAL REPORT:"""
                 file_type = f.get('type', 'file')
                 description = f.get('description', '')
                 display_path = self._get_display_path(f)
-                lines.append(f"| {display_path} | {file_type} | {description} |")
+                lines.append(
+                    "| %s | %s | %s |"
+                    % (display_path, file_type, description))
             lines.append("")
             lines.append("")
 
-        # Failure Diagnosis reference (item 5) — only shown when a diagnosis was generated
+        # ── 9. Failure Diagnosis ───────────────────────────────
         failure_diagnosis_path = data.get("failure_diagnosis_path")
         if failure_diagnosis_path:
             lines.append("## Failure Diagnosis")
             lines.append("")
-            lines.append("A terminal error was encountered during this run. "
-                         "An AI-generated diagnosis report was saved:")
-            lines.append(f"`{failure_diagnosis_path}`")
+            lines.append(
+                "A terminal error was encountered during this "
+                "run. An AI-generated diagnosis report was saved:")
+            lines.append("`%s`" % failure_diagnosis_path)
             lines.append("")
 
-        # LLM Assessment placeholder
+        # ── 10. LLM Assessment ──────────────────────────────────
         if include_llm_assessment:
             lines.append("## Assessment")
             lines.append("")
@@ -4295,7 +4548,9 @@ FINAL REPORT:"""
         Returns a text block with key information for the LLM to evaluate:
         - Input data quality
         - Goal/strategy
-        - Steps taken
+        - Pre-flight check results
+        - Steps taken with reasoning and expert assessments
+        - Stop decision with expert review
         - Current status
         """
         data = self._extract_summary_data()
@@ -4305,14 +4560,19 @@ FINAL REPORT:"""
         # Header with run context
         run_name = data.get('run_name', 'unknown')
         is_tutorial = data.get('is_tutorial', False)
-        run_type = "TUTORIAL/FOCUSED TASK" if is_tutorial else "STRUCTURE DETERMINATION"
-        lines.append(f"=== AGENT SESSION: {run_name} ({run_type}) ===")
+        run_type = ("TUTORIAL/FOCUSED TASK"
+                    if is_tutorial else "STRUCTURE DETERMINATION")
+        lines.append(
+            "=== AGENT SESSION: %s (%s) ==="
+            % (run_name, run_type))
         lines.append("")
 
         # Input
-        lines.append(f"EXPERIMENT TYPE: {data['experiment_type']}")
-        lines.append(f"INPUT FILES: {', '.join(data['original_files'])}")
-        lines.append(f"USER GOAL: {data['user_advice']}")
+        lines.append(
+            "EXPERIMENT TYPE: %s" % data['experiment_type'])
+        lines.append(
+            "INPUT FILES: %s" % ', '.join(data['original_files']))
+        lines.append("USER GOAL: %s" % data['user_advice'])
         lines.append("")
 
         # Stop condition / tutorial detection
@@ -4322,27 +4582,50 @@ FINAL REPORT:"""
             if stop_cond:
                 lines.append("STOP CONDITION (FOCUSED TASK):")
                 if stop_cond.get("after_program"):
-                    lines.append(f"  Stop after: {stop_cond['after_program']}")
+                    lines.append(
+                        "  Stop after: %s"
+                        % stop_cond['after_program'])
                 if stop_cond.get("after_cycle"):
-                    lines.append(f"  Stop after cycle: {stop_cond['after_cycle']}")
+                    lines.append(
+                        "  Stop after cycle: %s"
+                        % stop_cond['after_cycle'])
                 if stop_cond.get("skip_validation"):
-                    lines.append("  Skip validation: Yes (user-directed stop)")
-                lines.append("  NOTE: This was a FOCUSED TASK/TUTORIAL, not full structure determination.")
+                    lines.append(
+                        "  Skip validation: Yes (user-directed stop)")
+                lines.append(
+                    "  NOTE: This was a FOCUSED TASK/TUTORIAL, "
+                    "not full structure determination.")
+                lines.append("")
+
+        # Pre-flight check (v113)
+        preflight = data.get("preflight_check", {})
+        if preflight and isinstance(preflight, dict):
+            pf_ready = preflight.get("ready", True)
+            pf_analysis = preflight.get("analysis", "")
+            pf_missing = preflight.get("missing_files", [])
+            if not pf_ready or pf_missing:
+                lines.append("PRE-FLIGHT CHECK: NOT READY")
+                if pf_analysis:
+                    lines.append("  %s" % pf_analysis.strip()[:300])
+                if pf_missing:
+                    lines.append(
+                        "  Missing: %s" % ", ".join(
+                            str(m) for m in pf_missing[:5]))
                 lines.append("")
 
         # Input quality
         if data.get("input_quality"):
             lines.append("INPUT DATA QUALITY:")
             for k, v in data["input_quality"].items():
-                lines.append(f"  {k}: {v}")
+                lines.append("  %s: %s" % (k, v))
             lines.append("")
 
         # Workflow
-        lines.append(f"WORKFLOW PATH: {data['workflow_path']}")
+        lines.append(
+            "WORKFLOW PATH: %s" % data['workflow_path'])
         lines.append("")
 
-        # Steps (brief) — annotate superseded failures with [SUPERSEDED] tag
-        # Build a lookup from cycle_number to failure_context for O(1) access
+        # Steps — annotate superseded failures
         raw_cycles = self.data.get("cycles", [])
         _fc_by_cycle = {}
         for _rc in raw_cycles:
@@ -4352,13 +4635,13 @@ FINAL REPORT:"""
                 _fc_by_cycle[_cn] = _fc
 
         _any_superseded = any(
-            fc.get("superseded_by") for fc in _fc_by_cycle.values()
+            fc.get("superseded_by")
+            for fc in _fc_by_cycle.values()
         )
         if _any_superseded:
             lines.append(
-                "NOTE: Steps marked [SUPERSEDED] failed but were resolved by "
-                "later successful steps. They do not indicate problems with the "
-                "final result.")
+                "NOTE: Steps marked [SUPERSEDED] failed but "
+                "were resolved by later successful steps.")
             lines.append("")
 
         lines.append("STEPS TAKEN:")
@@ -4369,28 +4652,86 @@ FINAL REPORT:"""
                 tag = " [SUPERSEDED by %s]" % fc["superseded_by"]
             else:
                 tag = ""
-            lines.append(f"  {step['cycle']}. {step['program']} - "
-                         f"{status}{tag} {step['key_metric']}")
+            lines.append(
+                "  %s. %s - %s%s %s"
+                % (step['cycle'], step['program'],
+                   status, tag, step['key_metric']))
+
+            # Include expert assessment for LLM context (v113)
+            ea = step.get("expert_assessment", {})
+            if ea and isinstance(ea, dict):
+                ea_analysis = ea.get("analysis", "").strip()
+                if ea_analysis:
+                    if len(ea_analysis) > 200:
+                        ea_analysis = ea_analysis[:197] + "..."
+                    lines.append(
+                        "     [Expert: %s] %s"
+                        % (ea.get("action", ""), ea_analysis))
         lines.append("")
+
+        # Stop decision (v113)
+        stop_info = data.get("stop_info")
+        if stop_info and isinstance(stop_info, dict):
+            stop_reasoning = (
+                stop_info.get("reasoning")
+                or stop_info.get("explanation", "")).strip()
+            if stop_reasoning:
+                if len(stop_reasoning) > 400:
+                    stop_reasoning = stop_reasoning[:397] + "..."
+                lines.append(
+                    "STOP DECISION: %s" % stop_reasoning)
+
+            stop_expert = stop_info.get("expert_assessment", {})
+            if stop_expert and isinstance(stop_expert, dict):
+                stop_review = stop_expert.get("stop_review", {})
+                if stop_review:
+                    agrees = stop_review.get(
+                        "agree_with_stop", True)
+                    lines.append(
+                        "  Expert %s with stopping."
+                        % ("agrees" if agrees else "DISAGREES"))
+                    ra = stop_review.get("analysis", "").strip()
+                    if ra:
+                        lines.append("  %s" % ra[:200])
+                    alts = stop_review.get("alternatives", [])
+                    if alts:
+                        lines.append(
+                            "  Alternatives: %s" % "; ".join(
+                                str(a)[:60] for a in alts[:3]))
+            lines.append("")
 
         # Final metrics
         if data.get("final_metrics"):
             lines.append("FINAL METRICS:")
             fm = data["final_metrics"]
             if "r_free" in fm:
-                lines.append(f"  R-free: {fm['r_free']:.4f} ({fm.get('r_free_assessment', '')})")
+                lines.append(
+                    "  R-free: %.4f (%s)"
+                    % (fm['r_free'],
+                       fm.get('r_free_assessment', '')))
             if "r_work" in fm:
-                lines.append(f"  R-work: {fm['r_work']:.4f}")
+                lines.append(
+                    "  R-work: %.4f" % fm['r_work'])
             if "map_cc" in fm:
-                lines.append(f"  Map CC: {fm['map_cc']:.3f} ({fm.get('map_cc_assessment', '')})")
+                lines.append(
+                    "  Map CC: %.3f (%s)"
+                    % (fm['map_cc'],
+                       fm.get('map_cc_assessment', '')))
             if "clashscore" in fm:
-                lines.append(f"  Clashscore: {fm['clashscore']:.2f} ({fm.get('clashscore_assessment', '')})")
+                lines.append(
+                    "  Clashscore: %.2f (%s)"
+                    % (fm['clashscore'],
+                       fm.get('clashscore_assessment', '')))
             if "bonds_rmsd" in fm:
-                lines.append(f"  Bonds RMSD: {fm['bonds_rmsd']:.4f}")
+                lines.append(
+                    "  Bonds RMSD: %.4f" % fm['bonds_rmsd'])
             if "angles_rmsd" in fm:
-                lines.append(f"  Angles RMSD: {fm['angles_rmsd']:.3f}")
+                lines.append(
+                    "  Angles RMSD: %.3f" % fm['angles_rmsd'])
             if "ramachandran_outliers" in fm:
-                lines.append(f"  Ramachandran outliers: {fm['ramachandran_outliers']:.2f}%")
+                lines.append(
+                    "  Ramachandran outliers: %.2f%%"
+                    % fm['ramachandran_outliers'])
             lines.append("")
 
         # Key output files
@@ -4399,9 +4740,11 @@ FINAL REPORT:"""
             for f in data["final_files"]:
                 desc = f.get('description', f.get('type', 'file'))
                 display_path = self._get_display_path(f)
-                lines.append(f"  {display_path} - {desc}")
+                lines.append("  %s - %s" % (display_path, desc))
             lines.append("")
 
-        lines.append(f"TOTAL CYCLES: {data['total_cycles']} ({data['successful_cycles']} successful)")
+        lines.append(
+            "TOTAL CYCLES: %d (%d successful)"
+            % (data['total_cycles'], data['successful_cycles']))
 
         return "\n".join(lines)

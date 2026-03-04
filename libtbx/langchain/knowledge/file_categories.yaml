@@ -335,6 +335,7 @@ with_ligand:
     - "*with_ligand*"
     - "*_liganded*"
     - "*plus_lig*"
+    - "*_modified.pdb"
   also_in: [refined]  # Preserve refined status - this is a TAG not a replacement
   notes: "Combined protein + ligand models - still a refined model"
 

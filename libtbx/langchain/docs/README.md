@@ -31,6 +31,10 @@ phenix.ai_agent use_rules_only=True original_files="data.mtz sequence.fa"
 # Control output verbosity
 phenix.ai_agent verbosity=verbose original_files="data.mtz sequence.fa"
 
+# Enable expert crystallographer reasoning (second LLM for strategic guidance)
+phenix.ai_agent ai_analysis.use_thinking_agent=True \
+    original_files="data.mtz sequence.fa"
+
 # Run a specific program
 phenix.ai_agent original_files="model.pdb map.ccp4" \
     project_advice="Run phenix.map_correlations"
@@ -63,6 +67,8 @@ phenix.ai_agent original_files="model.pdb map.ccp4" \
 | [project/CHANGELOG.md](project/CHANGELOG.md) | Version history and release notes |
 | [project/THOUGHT_EXPERIMENT.md](project/THOUGHT_EXPERIMENT.md) | Example workflow traces (v110, updated through v112) |
 | [project/TRANSPARENCY_LOGGING.md](project/TRANSPARENCY_LOGGING.md) | Event system design and implementation |
+| [project/thinking_agent_plan.md](project/thinking_agent_plan.md) | v113 Thinking Agent design and step plan |
+| [project/log_section_extractor_spec.md](project/log_section_extractor_spec.md) | Per-program keyword table specification |
 
 
 ---

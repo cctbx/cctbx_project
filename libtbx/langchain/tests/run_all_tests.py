@@ -51,6 +51,7 @@ Test Suites (require PHENIX environment):
   37. Autosol Bugs - Wavelength duplication, atom_type swap, autosol re-run,
       heavier-atom-wins, catch-all injection blacklist, rebuild_in_place
       allowlist (v112.75–v112.77)
+  38. Thinking Defense - Pre-implementation baseline for Thinking Agent (v113)
 
 Key Tests for Recent Fixes (v110):
   - tst_best_files_tracker: Model scoring, autobuild_output same score as refined
@@ -505,6 +506,46 @@ def main():
     except ImportError as e:
         print(f"⚠️  Could not import tst_autosol_bugs: {e}")
         results.append(("Autosol Bugs", False, 0))
+
+    # --- Thinking Defense Tests (v113) ---
+    try:
+        from tests.tst_thinking_defense import run_all_tests as run_thinking_defense_tests
+        success, elapsed = run_test_module(
+            "tst_thinking_defense", run_thinking_defense_tests, args.verbose)
+        results.append(("Thinking Defense", success, elapsed))
+    except ImportError as e:
+        print(f"Could not import tst_thinking_defense: {e}")
+        results.append(("Thinking Defense", False, 0))
+
+    # --- Strategy Memory Tests (v113) ---
+    try:
+        from tests.tst_strategy_memory import run_all_tests as run_strategy_memory_tests
+        success, elapsed = run_test_module(
+            "tst_strategy_memory", run_strategy_memory_tests, args.verbose)
+        results.append(("Strategy Memory", success, elapsed))
+    except ImportError as e:
+        print(f"Could not import tst_strategy_memory: {e}")
+        results.append(("Strategy Memory", False, 0))
+
+    # --- Log Extractor Tests (v113) ---
+    try:
+        from tests.tst_log_extractor import run_all_tests as run_log_extractor_tests
+        success, elapsed = run_test_module(
+            "tst_log_extractor", run_log_extractor_tests, args.verbose)
+        results.append(("Log Extractor", success, elapsed))
+    except ImportError as e:
+        print(f"Could not import tst_log_extractor: {e}")
+        results.append(("Log Extractor", False, 0))
+
+    # --- Thinking Agent Tests (v113) ---
+    try:
+        from tests.tst_thinking_agent import run_all_tests as run_thinking_agent_tests
+        success, elapsed = run_test_module(
+            "tst_thinking_agent", run_thinking_agent_tests, args.verbose)
+        results.append(("Thinking Agent", success, elapsed))
+    except ImportError as e:
+        print(f"Could not import tst_thinking_agent: {e}")
+        results.append(("Thinking Agent", False, 0))
 
     # --- Summary ---
     total_elapsed = time.time() - total_start

@@ -63,6 +63,7 @@ def build_session_state(session_info, session_resolution=None):
             - directives: Extracted user directives
             - force_retry_program: Program to force retry (error recovery)
             - recovery_strategies: Dict of recovery strategies per file
+            - strategy_memory: Thinking agent accumulated state (v113)
         session_resolution: Optional resolution value
 
     Returns:
@@ -101,6 +102,10 @@ def build_session_state(session_info, session_resolution=None):
         # (e.g. {"phenix.refine": ["ignore_symmetry_conflicts"]})
         if session_info.get("bad_inject_params"):
             session_state["bad_inject_params"] = session_info["bad_inject_params"]
+
+        # Thinking agent (v113): accumulated scientific understanding
+        if session_info.get("strategy_memory"):
+            session_state["strategy_memory"] = session_info["strategy_memory"]
 
     return session_state
 

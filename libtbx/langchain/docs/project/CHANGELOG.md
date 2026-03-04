@@ -1,5 +1,92 @@
 # PHENIX AI Agent - Changelog
 
+## Version 113.00 (Thinking Agent — Expert Crystallographer Reasoning)
+
+### Summary
+
+Optional second LLM call that analyzes PHENIX program logs with domain
+expertise and provides strategic guidance to the planning node. Adds a
+THINK node between PERCEIVE and PLAN in the LangGraph pipeline.
+
+### Motivation
+
+The planning LLM selects programs from a structured prompt optimized for
+decision-making. It does not see raw program logs or have the context
+to recognize crystallographic phenomena — twinning detected by xtriage,
+weak MR solutions from phaser, stalled refinement R-free values. A
+human expert would scan the terminal output and adjust strategy
+accordingly. The thinking agent fills this gap.
+
+### New Files (Phase B)
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `agent/thinking_agent.py` | 340 | Core module: `should_think()`, `run_think_node()`, LLM call |
+| `agent/strategy_memory.py` | 138 | Persistent memory across cycles (JSON-serializable) |
+| `agent/log_section_extractor.py` | 187 | Priority-ordered keyword extraction from program logs |
+| `knowledge/thinking_prompts.py` | 234 | Expert persona prompt builder + JSON response parser |
+| `tests/tst_strategy_memory.py` | 160 | 14 tests for memory serialization, stall detection |
+| `tests/tst_log_extractor.py` | 185 | 14 tests for per-program extraction, budget, fallback |
+| `tests/tst_thinking_agent.py` | 210 | 22 tests for should_think, run_think_node, parse |
+
+### Modified Files (Phase A — plumbing)
+
+| File | Changes |
+|------|---------|
+| `agent/graph_state.py` | 3 new fields (`use_thinking_agent`, `expert_assessment`, `strategy_memory`), 2 new params, history copy bug fix |
+| `agent/graph_nodes.py` | `think()` node with import-guarded call to `run_think_node()` |
+| `agent/graph.py` | Import, node registration, perceive→think→plan routing |
+| `agent/api_client.py` | `strategy_memory` in `build_session_state()` whitelist |
+| `agent/event_log.py` | `EXPERT_ASSESSMENT` event type |
+| `phenix_ai/run_ai_agent.py` | Extract `use_thinking_agent` setting, pass to state, return metadata |
+| `phenix_ai/local_agent.py` | Settings passthrough |
+| `phenix_ai/remote_agent.py` | Settings passthrough |
+| `programs/ai_agent.py` | PHIL param, session plumbing, callback data |
+| `wxGUI2/Programs/AIAgent.py` | Checkbox, `[Expert]` progress display |
+
+### Design Decisions
+
+1. **Guidance, not commands.** The expert LLM presents evidence and
+   reasoning ("Strong anomalous signal to 3.0 Å, consider SAD"). It
+   does NOT issue parameter settings or directives. PLAN makes the
+   final decision, keeping the existing validation pipeline intact.
+
+2. **Advice channel injection.** Expert guidance is prepended to
+   `user_advice` as `[Expert assessment] ...`. This flows through
+   existing channels — PLAN and BUILD both see it without any new
+   interface.
+
+3. **Selective engagement.** The thinking LLM is only called at
+   strategic decision points (after xtriage, phaser, autosol,
+   autobuild, failures, R-free stalling). Routine refinement steps
+   pass through without an extra LLM call.
+
+4. **Graceful degradation.** If the thinking LLM fails for any reason,
+   the THINK node logs the error and returns state unchanged. PLAN
+   runs normally. The workflow never crashes due to a thinking failure.
+
+5. **Budget-aware log extraction.** Per-program keyword tables extract
+   the most scientifically relevant sections first (3500-char budget).
+   Twinning before Wilson, R-factors before geometry, MR scores before
+   packing. Unknown programs fall back to the last 100 lines.
+
+### How to Enable
+
+GUI: Check "Use expert crystallographer reasoning" in the AI Agent
+Settings panel.
+
+Command line:
+```bash
+phenix.ai_agent ai_analysis.use_thinking_agent=True \
+    original_files="data.mtz seq.fa"
+```
+
+### Testing
+
+103 thinking-related tests across 4 test files, all passing.
+53 defensive tripwire tests verify plumbing correctness.
+Full suite: 38 passed, 3 pre-existing failures (libtbx-dependent).
+
 ## Version 112.80 (Block bare wavelength= on autosol commands)
 
 ### Problem

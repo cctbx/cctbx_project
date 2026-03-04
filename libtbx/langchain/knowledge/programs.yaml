@@ -1474,6 +1474,8 @@ phenix.pdbtools:
     files:
       - pattern: "*with_ligand*.pdb"
         type: model
+      - pattern: "*_modified.pdb"
+        type: model
 
   command: "phenix.pdbtools {protein} {ligand}"
   

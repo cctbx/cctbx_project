@@ -57,6 +57,7 @@ class EventType:
     STOP_DECISION = "stop_decision"
     DIRECTIVE_APPLIED = "directive_applied"
     USER_REQUEST_INVALID = "user_request_invalid"  # User requested unavailable program
+    EXPERT_ASSESSMENT = "expert_assessment"  # Thinking agent analysis (v113)
 
     # File selection events
     FILES_SELECTED = "files_selected"
@@ -105,6 +106,7 @@ EVENT_VERBOSITY = {
     EventType.PROGRAM_SELECTED: Verbosity.NORMAL,
     EventType.PROGRAM_MODIFIED: Verbosity.NORMAL,
     EventType.STOP_DECISION: Verbosity.NORMAL,
+    EventType.EXPERT_ASSESSMENT: Verbosity.NORMAL,
     EventType.DIRECTIVE_APPLIED: Verbosity.NORMAL,
     EventType.USER_REQUEST_INVALID: Verbosity.QUIET,  # Always show - user needs to know
     EventType.NOTICE: Verbosity.QUIET,                 # Always show - important user info

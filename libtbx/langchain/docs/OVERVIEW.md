@@ -44,7 +44,7 @@ The PHENIX AI Agent is an intelligent automation system for macromolecular struc
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                         phenix_ai/run_ai_agent.py                            │
 │  • Build LangGraph state                                                     │
-│  • Execute graph nodes (perceive → plan → build → validate → output)        │
+│  • Execute graph nodes (perceive → think → plan → build → validate → output)│
 │  • Retry loop with fallback on persistent validation failures               │
 │  • Build response with events                                                │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -53,16 +53,20 @@ The PHENIX AI Agent is an intelligent automation system for macromolecular struc
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                            LangGraph Pipeline                                │
 │  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐                  │
-│  │ perceive │ → │   plan   │ → │  build   │ → │ validate │                  │
-│  └────┬─────┘   └────┬─────┘   └────┬─────┘   └────┬─────┘                  │
-│       │              │   ▲          │              │                         │
-│       │              │   └──────────│──────────────┘ (retry < 3)            │
-│       │              │              │              │                         │
-│       │              │              │         ┌────┴─────┐                   │
-│       │              │              │         │ fallback │ (retry >= 3)      │
-│       │              │              │         └────┬─────┘                   │
-│       │              │              │              │                         │
-│       │              ▼              ▼              ▼                         │
+│  │ perceive │ → │  think   │ → │   plan   │ → │  build   │                  │
+│  └────┬─────┘   └──────────┘   └────┬─────┘   └────┬─────┘                  │
+│       │                             │   ▲          │                         │
+│       │                             │   └──────────│────── (retry < 3)      │
+│       │                             │              │                         │
+│       │                             │         ┌────┴──────┐                  │
+│       │                             │         │ validate  │                  │
+│       │                             │         └────┬──────┘                  │
+│       │                             │              │                         │
+│       │                             │         ┌────┴─────┐                   │
+│       │                             │         │ fallback │ (retry >= 3)      │
+│       │                             │         └────┬─────┘                   │
+│       │                             │              │                         │
+│       │                             ▼              ▼                         │
 │  ┌─────────────────────────────────────────────────────────────────────┐    │
 │  │                       ┌──────────┐                                  │    │
 │  │                       │  output  │ → END                            │    │
@@ -71,6 +75,7 @@ The PHENIX AI Agent is an intelligent automation system for macromolecular struc
 │  │  • STATE_DETECTED, METRICS_EXTRACTED, METRICS_TREND                 │    │
 │  │  • PROGRAM_SELECTED, USER_REQUEST_INVALID, DIRECTIVE_APPLIED        │    │
 │  │  • FILES_SELECTED, COMMAND_BUILT, STOP_DECISION                    │    │
+│  │  • EXPERT_ASSESSMENT (v113, from THINK node)                        │    │
 │  └─────────────────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -81,11 +86,12 @@ The PHENIX AI Agent is an intelligent automation system for macromolecular struc
 
 ### 1. Graph Nodes (`agent/graph_nodes.py`)
 
-The agent uses a LangGraph pipeline with six nodes:
+The agent uses a LangGraph pipeline with seven nodes:
 
 | Node | Purpose | Key Actions |
 |------|---------|-------------|
 | **perceive** | Understand current state | Categorize files, detect workflow state, extract metrics, analyze trends |
+| **think** | Expert reasoning (v113) | Analyze program logs with domain expertise, inject strategic guidance into plan (optional, off by default) |
 | **plan** | Decide next action | Call LLM or rules engine, validate against workflow, check user directives |
 | **build** | Generate command | Select files using BestFilesTracker, build command string |
 | **validate** | Check output | Sanity checks, red flag detection; retry up to 3× on failure |
@@ -139,6 +145,7 @@ Structured logging for transparency:
 | `program_modified` | normal | Program changed by rules/validation |
 | `stop_decision` | normal | Whether to continue |
 | `directive_applied` | normal | User directive enforced |
+| `expert_assessment` | normal | Thinking agent analysis (v113) |
 | `user_request_invalid` | quiet | User requested unavailable program |
 | `files_selected` | verbose | File selection with reasons |
 | `file_scored` | verbose | Individual file scoring detail |
@@ -682,9 +689,9 @@ and [ARCHITECTURE.md](reference/ARCHITECTURE.md#advice-change-detection) for det
 
 ## Testing
 
-### Test Suites (34 files, 32 in runner)
+### Test Suites (37 files, 35 in runner)
 
-**Standalone (no PHENIX required, 25 in runner):**
+**Standalone (no PHENIX required, 28 in runner):**
 - API Schema, Best Files Tracker, Transport, State Serialization
 - Command Builder, File Categorization, File Utils
 - Session Summary, Session Directives, Session Tools, Audit Fix Regressions
@@ -693,6 +700,7 @@ and [ARCHITECTURE.md](reference/ARCHITECTURE.md#advice-change-detection) for det
 - Program Registration, Summary Display, New Programs
 - Error Analyzer, Decision Flow, Phaser Multimodel
 - History Analysis, Docs Tools, YAML Tools
+- Thinking Defense, Strategy Memory, Log Extractor, Thinking Agent (v113)
 
 **PHENIX-dependent (7 in runner):**
 - Workflow State, YAML Config, Sanity Checker
@@ -715,6 +723,7 @@ python3 tests/tst_event_system.py    # Single suite
 
 | Version | Key Changes |
 |---------|-------------|
+| v113 | **Thinking Agent**: Optional expert crystallographer reasoning node (THINK) between PERCEIVE and PLAN. Second LLM call analyzes program logs with domain expertise, injects strategic guidance via user_advice enrichment. Per-program keyword extraction (xtriage, phaser, autosol, autobuild, refine), priority-ordered sections within character budget. Strategy memory persists across cycles via session_info. GUI checkbox + `[Expert]` display in progress panel. 4 new modules, 4 new test files, 103 thinking-related tests. |
 | v112.78 | **GUI mode map_coeffs_mtz + daily usage Sorry + after_program fix + Windows compat**: GUI mode `_record_command_result` and `_track_output_files` used `os.getcwd()` which pointed to parent after CWD restore — now accept explicit `working_dir`; `rest/__init__.py` raises `Sorry` on `daily_usage_reached` and `RemoteAgent` re-raises it; `after_program` changed from hard stop to minimum-run guarantee; Windows: `_filter_intermediate_files` normalizes backslash paths, `Popen` uses `CREATE_NO_WINDOW`, session JSON uses explicit UTF-8 encoding |
 | v112.77 | **Autobuild rebuild_in_place**: Rule D stripped `rebuild_in_place=False` because it wasn't in strategy_flags; added `rebuild_in_place`, `n_cycle_build_max`, `maps_only` to autobuild allowlist; recovery hint for sequence mismatch errors |
 | v112.76 | **Catch-all injection blacklist + deterministic atom_type**: heavier-atom-wins rule swaps `atom_type`/`mad_ha_add_list` when primary has lower Z (27-element table); catch-all streak tracker blacklists injected params after 2 consecutive same-error failures (`return_injected` kwarg, `_update_inject_fail_streak`); recovery retries excluded |

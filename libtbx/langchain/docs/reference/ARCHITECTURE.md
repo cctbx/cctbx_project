@@ -37,15 +37,16 @@ The PHENIX AI Agent is an automated crystallographic workflow system that:
 │  │                       run_ai_agent.py                               ││
 │  │  ┌─────────────────────────────────────────────────────────────────┐││
 │  │  │                      LangGraph                                  │││
-│  │  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌───────┐│││
-│  │  │  │PERCEIVE │─▶│  PLAN   │─▶│  BUILD  │─▶│VALIDATE │─▶│OUTPUT ││││
-│  │  │  └─────────┘  └────┬────┘  └─────────┘  └────┬────┘  └───────┘│││
-│  │  │                    ▲                          │                │││
-│  │  │                    └──────── retry < 3 ───────┤                │││
-│  │  │                                               ▼                │││
-│  │  │                                          ┌──────────┐          │││
-│  │  │                                          │ FALLBACK │──▶OUTPUT │││
-│  │  │                                          └──────────┘          │││
+│  │  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐           │││
+│  │  │  │PERCEIVE │─▶│  THINK  │─▶│  PLAN   │─▶│  BUILD  │──┐       │││
+│  │  │  └─────────┘  └─────────┘  └────┬────┘  └─────────┘  │       │││
+│  │  │                                 ▲                     ▼       │││
+│  │  │                                 └─── retry < 3 ──VALIDATE     │││
+│  │  │                                                       │       │││
+│  │  │                                                       ▼       │││
+│  │  │                                          ┌──────────┐         │││
+│  │  │                                          │ FALLBACK │──▶OUTPUT│││
+│  │  │                                          └──────────┘         │││
 │  │  └─────────────────────────────────────────────────────────────────┘││
 │  └─────────────────────────────────────────────────────────────────────┘│
 │                                                                          │
@@ -202,6 +203,9 @@ Persists workflow state across cycles:
 - R-free MTZ path
 - Cycle history
 - **User Directives** (extracted structured instructions)
+- **Strategy memory** (v113) — accumulated scientific understanding from
+  the thinking agent, persisted via `session.data["strategy_memory"]` and
+  round-tripped through `build_session_state()` each cycle
 - **Supplemental file discovery** — `_rebuild_best_files_from_cycles` (session load)
   and `record_result` (live path) call `_find_missing_outputs` to discover companion
   output files (e.g., map coefficients MTZ) and evaluate them through the best_files
@@ -382,16 +386,16 @@ Single entry point for all requests:
 Decision-making workflow:
 
 ```
-PERCEIVE ──┬──▶ PLAN ─▶ BUILD ─▶ VALIDATE ──┬──▶ OUTPUT ─▶ END
-           │     │        │         │    │    │
-           │     │        │         │    │    │
-        Analyze Select   Build   Validate │  Format
-        inputs  program  command response │  decision
-           │                        │     │
-           │               retry <3 │     │ retry >=3
-           │                   ┌────┘     │
-           │                   ▼          ▼
-           │                  PLAN     FALLBACK ─▶ OUTPUT ─▶ END
+PERCEIVE ──┬──▶ THINK ─▶ PLAN ─▶ BUILD ─▶ VALIDATE ──┬──▶ OUTPUT ─▶ END
+           │              │        │         │    │    │
+           │              │        │         │    │    │
+        Analyze    Expert Select   Build   Validate │  Format
+        inputs   reasoning program command response │  decision
+           │    (optional)                    │     │
+           │                        retry <3 │     │ retry >=3
+           │                            ┌────┘     │
+           │                            ▼          ▼
+           │                           PLAN     FALLBACK ─▶ OUTPUT ─▶ END
            │
            └──▶ OUTPUT ─▶ END  (if red flag abort)
 ```
@@ -420,6 +424,25 @@ The decision flow follows a clean, layered architecture where each component has
 │  - Add start_with_program to front of list (multi-step flows)   │
 │  - Add STOP if skip_validation=true                             │
 │  - Apply workflow preferences (skip/prefer)                      │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│             LAYER 1.5: EXPERT REASONING (THINK, v113)            │
+│  agent/thinking_agent.py — optional, off by default              │
+│                                                                  │
+│  Input: log_text, history, strategy_memory                      │
+│  Output: enriched user_advice with expert guidance              │
+│                                                                  │
+│  Responsibilities:                                               │
+│  - Analyze program logs with domain expertise                   │
+│  - Detect crystallographic issues (twinning, stalling, etc.)    │
+│  - Inject guidance into user_advice for PLAN                    │
+│  - Can recommend STOP (sets command="STOP")                     │
+│                                                                  │
+│  NOT responsible for:                                            │
+│  - Program selection (that's PLAN's job)                        │
+│  - Parameter settings (presents evidence, not commands)         │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -594,6 +617,7 @@ session_state = {
     "bad_inject_params": {"phenix.refine": ["ignore_symmetry_conflicts"]},
     "advice_changed": False,
     "unplaced_model_cell": None,
+    "strategy_memory": {},  # Thinking agent state (v113)
 }
 
 request = build_request_v2(
@@ -751,7 +775,7 @@ Key directories:
 **Rationale**: Modular, testable decision-making.
 
 **Implementation**:
-- Discrete nodes (PERCEIVE, PLAN, BUILD, VALIDATE, OUTPUT)
+- Discrete nodes (PERCEIVE, THINK, PLAN, BUILD, VALIDATE, OUTPUT)
 - State passed between nodes
 - Easy to add/modify nodes
 
@@ -847,6 +871,117 @@ When the fallback cannot produce a command, it now provides specific stop reason
 
 The `abort_message` includes per-program diagnostics showing exactly which required
 input slots could not be filled (via `CommandBuilder._last_missing_slots`).
+
+### 8. Thinking Agent (v113)
+
+**Rationale**: The planning LLM receives a structured prompt optimized for
+program selection. It does not see raw program logs or have the context
+to recognize crystallographic phenomena like twinning, anomalous signal
+quality, or refinement convergence. A second "expert" LLM call fills
+this gap by analyzing program output with domain expertise and providing
+strategic guidance that PLAN can incorporate.
+
+**Implementation**:
+
+The THINK node sits between PERCEIVE and PLAN. It is optional and off
+by default, controlled by `use_thinking_agent` (GUI checkbox: "Use
+expert crystallographer reasoning").
+
+```
+PERCEIVE → THINK → PLAN → BUILD → VALIDATE → OUTPUT
+               │
+               ├─ Disabled? → pass-through (return state unchanged)
+               ├─ Not strategic? → skip (routine refine, mtriage, etc.)
+               └─ Strategic? → extract log sections → build prompt
+                               → call LLM → parse assessment
+                               → enrich state for PLAN
+```
+
+**When THINK engages** (`should_think()` in `agent/thinking_agent.py`):
+
+| Condition | Rationale |
+|-----------|-----------|
+| After xtriage, phaser, autosol, autobuild | Key scientific decision points |
+| After real_space_refine, map_to_model, predict_and_build | Cryo-EM strategic programs |
+| After any failure | May need strategy change |
+| R-free stalled 3+ cycles | Convergence problem |
+
+THINK does NOT engage on the first cycle (no program output yet), routine
+refinement steps, or mtriage.
+
+**Log section extraction** (`agent/log_section_extractor.py`):
+
+PHENIX logs can be megabytes. The extractor uses per-program keyword tables
+to pull out scientifically informative sections within a 3500-character budget.
+Sections are priority-ordered so the most important information is always included
+first:
+
+| Program | Priority sections (first = highest) |
+|---------|--------------------------------------|
+| phenix.xtriage | Twinning → Anomalous signal → Wilson statistics → Space group |
+| phenix.phaser | MR scores (TFZ/LLG) → Packing → Search strategy |
+| phenix.autosol | Phasing stats (FOM/BAYES-CC) → Density modification |
+| phenix.autobuild | Building progress → Map quality |
+| phenix.refine | R-factors → Geometry → Twinning → Difference map |
+
+For each keyword match, a window of 5 lines before and 15 lines after is
+captured and merged with overlapping windows. Unknown programs fall back to
+the last 100 lines.
+
+**LLM response format**: The expert LLM returns structured JSON:
+
+```json
+{
+  "analysis": "Strong anomalous signal to 3.0 Å ...",
+  "confidence": "high|medium|low|hopeless",
+  "action": "guide_step|let_run|stop|pivot",
+  "guidance": "Run autosol with atom_type=Se ...",
+  "data_quality": "good",
+  "phasing_strategy": "SAD",
+  "concerns": ["weak anomalous"],
+  "alternatives": ["MR with AlphaFold as backup"]
+}
+```
+
+**How guidance reaches PLAN**: The assessment's `guidance` string is prepended
+to `user_advice` as `[Expert assessment] ...`. This injects domain reasoning
+through the existing advice channel — PLAN and BUILD both see it naturally
+without any new interface. The expert presents evidence and reasoning;
+PLAN makes the final decision.
+
+**Strategy memory** (`agent/strategy_memory.py`):
+
+Persists across cycles via `session_info`, tracking data quality observations,
+phasing strategy, R-free history, concerns, and decisions. Used by
+`should_think()` to detect R-free stalling and by the prompt builder to
+give the expert context about prior assessments. Capped fields prevent
+unbounded growth (10 concerns, 20 R-free values, 30 programs, 10 decisions).
+
+**Graceful degradation**: If the thinking LLM fails (rate limit, timeout,
+bad parse), the THINK node logs the error and returns state unchanged. PLAN
+runs normally as if THINK were disabled. The workflow never crashes due to
+a thinking failure.
+
+**Files**:
+
+| File | Purpose |
+|------|---------|
+| `agent/thinking_agent.py` | Core module: `should_think()`, `run_think_node()`, context assembly, LLM call |
+| `agent/strategy_memory.py` | `StrategyMemory` class with serialization, `metrics_stalled()` |
+| `agent/log_section_extractor.py` | `extract_sections()` with per-program keyword tables |
+| `knowledge/thinking_prompts.py` | Prompt builder: `build_thinking_prompt()`, `parse_assessment()` |
+
+**Data flow**:
+
+```
+GUI checkbox → params.ai_analysis.use_thinking_agent
+  → LocalAgent/RemoteAgent → request["settings"]["use_thinking_agent"]
+  → run_ai_agent.py → create_initial_state(use_thinking_agent=..., strategy_memory=...)
+  → graph: perceive → think → plan → build → validate → output
+  → response["metadata"]["strategy_memory"] + response["metadata"]["expert_assessment"]
+  → ai_agent.py → session.data["strategy_memory"] (persisted)
+  → GUI progress panel: "[Expert] ..." display
+```
 
 ## Workflow States
 
@@ -2198,7 +2333,7 @@ The agent uses a structured event system for transparent decision logging.
 ```
 ┌────────────────────────────────────────────────────────────────┐
 │                        Graph Nodes                              │
-│  perceive() → plan() → build() → validate()                    │
+│  perceive() → think() → plan() → build() → validate()          │
 │       │          │         │          │                        │
 │       │          │         │     ┌────┴─────┐                  │
 │       │          │         │     │fallback()│                  │
@@ -2242,6 +2377,7 @@ The agent uses a structured event system for transparent decision logging.
 | `stop_decision` | normal | Whether to continue |
 | `directive_applied` | normal | User directive enforced |
 | `user_request_invalid` | quiet | User request unavailable |
+| `expert_assessment` | normal | Thinking agent analysis (v113) |
 | `files_selected` | verbose | File selection details |
 | `file_scored` | verbose | Individual file scoring detail |
 | `command_built` | normal | Final command |
@@ -2268,5 +2404,6 @@ Note: `debug` is accepted as an alias for `verbose` (3 levels total).
 - `agent/event_log.py` - EventType, Verbosity, EventLog class
 - `agent/event_formatter.py` - EventFormatter class
 - `agent/graph_nodes.py` - Event emission (`_emit()` helper)
+- `agent/thinking_agent.py` - Expert assessment event emission (v113)
 
 See [TRANSPARENCY_LOGGING.md](../project/TRANSPARENCY_LOGGING.md) for full details.

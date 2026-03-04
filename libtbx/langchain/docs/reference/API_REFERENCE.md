@@ -187,11 +187,13 @@ success, msg, details = verify_roundtrip(request)
     "experiment_type": "xray",
     "workflow_state": "xray_refined",
     "warnings": [],
-    "red_flags": []
+    "red_flags": [],
+    "strategy_memory": {},
+    "expert_assessment": {}
   },
   
   "debug": {
-    "log": ["PERCEIVE: ...", "PLAN: ...", "BUILD: ..."],
+    "log": ["PERCEIVE: ...", "THINK: ...", "PLAN: ...", "BUILD: ..."],
     "timing_ms": 1234
   },
   
@@ -208,6 +210,17 @@ success, msg, details = verify_roundtrip(request)
 | `reasoning` | string | Explanation of decision |
 | `strategy` | object | Strategy options used |
 | `confidence` | string | "high", "medium", "low", "unknown" |
+
+### Metadata Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `experiment_type` | string | "xray" or "cryoem" |
+| `workflow_state` | string | Current workflow phase |
+| `warnings` | array | Non-fatal warning messages |
+| `red_flags` | array | Critical issues detected |
+| `strategy_memory` | object | Thinking agent accumulated state (v113, present when enabled) |
+| `expert_assessment` | object | Latest expert analysis (v113, present when THINK engaged) |
 
 ### Stop Response
 
@@ -230,6 +243,7 @@ Stop reasons:
 - `red_flag` - Critical issue detected
 - `max_cycles` - Reached cycle limit
 - `error` - Processing error
+- `expert: ...` - Thinking agent recommended stopping (v113)
 
 ## Agent Classes
 

@@ -935,6 +935,83 @@ def test_non_half_map_with_sharpened_map():
     print("  PASSED")
 
 
+def test_pdbtools_modified_recognized_as_with_ligand():
+    """Pdbtools *_modified.pdb must be treated as with_ligand, not refined.
+
+    Regression: After ligandfit + pdbtools combination, the output file
+    (e.g. refine_001_001_modified.pdb) was classified as 'refined' because
+    it contained 'refine' in the name.  This caused best_model to stay on
+    the old ligand-free refined model, and the command builder would
+    override the LLM's correct file choice.
+    """
+    print("Test: pdbtools_modified_recognized_as_with_ligand")
+
+    from agent.best_files_tracker import BestFilesTracker
+
+    tracker = BestFilesTracker()
+
+    # First, register the refined model (no ligand) with good metrics
+    tracker.evaluate_file(
+        "/p/refine_001_001.pdb", cycle=3,
+        metrics={"r_free": 0.28}, stage="refined")
+
+    # Then register the pdbtools combined file (model+ligand)
+    # This file has no metrics yet — just came from pdbtools
+    tracker.evaluate_file(
+        "/p/refine_001_001_modified.pdb", cycle=5,
+        metrics={}, stage="with_ligand")
+
+    best = tracker.get_best_dict()
+    best_model = best.get("model", "")
+
+    assert_in("modified", os.path.basename(best_model),
+             "best model should be the _modified (with_ligand) file, "
+             "got: %s" % best_model)
+
+    # Also verify _classify_stage recognizes _modified as with_ligand
+    stage = tracker._classify_stage(
+        "/p/refine_001_001_modified.pdb", "model")
+    assert_equal("with_ligand", stage,
+                "classify_stage should return with_ligand for _modified.pdb")
+
+    print("  PASSED")
+
+
+def test_pdbtools_modified_not_overridden_by_best_model():
+    """Command builder should NOT override LLM's _modified.pdb choice.
+
+    When the LLM correctly picks the pdbtools combined model+ligand file,
+    the build phase must not replace it with the old best_model.
+    """
+    print("Test: pdbtools_modified_not_overridden_by_best_model")
+
+    from agent.best_files_tracker import BestFilesTracker
+
+    tracker = BestFilesTracker()
+
+    # Register refined model
+    tracker.evaluate_file(
+        "/p/refine_001_001.pdb", cycle=3,
+        metrics={"r_free": 0.28}, stage="refined")
+
+    # Register _modified with explicit with_ligand stage (as session.py
+    # would set it after pdbtools via _infer_stage_from_program)
+    tracker.evaluate_file(
+        "/p/refine_001_001_modified.pdb", cycle=5,
+        metrics={}, stage="with_ligand")
+
+    best = tracker.get_best_dict()
+    best_model = os.path.basename(best.get("model", ""))
+
+    # The with_ligand file should have higher stage score (110 > 100)
+    # even without metrics, so it should be the best model
+    assert_equal("refine_001_001_modified.pdb", best_model,
+                "with_ligand (110) should beat refined (100+metric) — "
+                "got: %s" % best_model)
+
+    print("  PASSED")
+
+
 # =============================================================================
 # RUN ALL TESTS
 # =============================================================================

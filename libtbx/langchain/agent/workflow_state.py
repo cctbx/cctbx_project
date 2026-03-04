@@ -1016,6 +1016,12 @@ def _categorize_files_hardcoded(available_files, ligand_hints=None, files_local=
             if 'with_ligand' in basename:
                 files["with_ligand"].append(f)
                 _is_program_output = True
+            elif '_modified' in basename and basename.endswith('.pdb'):
+                # pdbtools default output: {input}_modified.pdb
+                # In the agent workflow, pdbtools is used to combine
+                # protein + ligand, so _modified.pdb = with_ligand
+                files["with_ligand"].append(f)
+                _is_program_output = True
             if 'ligand_fit' in basename or 'ligandfit' in basename:
                 files["ligand_fit_output"].append(f)
                 _is_program_output = True

@@ -510,7 +510,8 @@ class TemplateBuilder(object):
                 score += 100
 
         # General heuristics
-        if "with_ligand" in basename:
+        if "with_ligand" in basename or (
+            "_modified" in basename and basename.endswith(".pdb")):
             score += 50
         if "_refine_" in basename:
             score += 40

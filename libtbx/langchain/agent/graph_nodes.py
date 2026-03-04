@@ -1253,6 +1253,31 @@ def parse_intent_json(llm_output):
     return intent
 
 
+def think(state):
+  """
+  Node: Expert Crystallographer Reasoning (v113).
+
+  When use_thinking_agent is enabled, this node invokes a
+  second LLM call that analyzes program logs with domain
+  expertise and provides strategic guidance to the plan node.
+
+  When disabled (default), this is a pure pass-through.
+  """
+  if not state.get("use_thinking_agent"):
+    return state
+  try:
+    try:
+      from libtbx.langchain.agent.thinking_agent import run_think_node
+    except ImportError:
+      from agent.thinking_agent import run_think_node
+    return run_think_node(state)
+  except Exception as e:
+    # Never crash the workflow
+    debug_log = list(state.get("debug_log", []))
+    debug_log.append("THINK: Import/call error: %s" % str(e))
+    return {**state, "debug_log": debug_log}
+
+
 def plan(state):
     """
     Node B: Decide Intent (LLM), with auto-stop on plateau.

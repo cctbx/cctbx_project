@@ -40,6 +40,11 @@ class AgentState(TypedDict):
     use_rules_only: bool          # If True, use rules-based selection (no LLM)
     abort_on_red_flags: bool      # If True, abort on critical sanity check failures
     abort_on_warnings: bool       # If True, also abort on warning-level issues
+    use_thinking_agent: bool      # If True, enable expert crystallographer reasoning
+
+    # === THINKING AGENT (v113) ===
+    expert_assessment: Dict       # Output of think node (expert analysis)
+    strategy_memory: Dict         # Accumulated scientific understanding across cycles
 
     # === CURRENT CYCLE DATA ===
     log_text: str                 # Input log for this cycle
@@ -85,7 +90,9 @@ def create_initial_state(
     abort_on_red_flags=True,
     abort_on_warnings=False,
     directives=None,
-    bad_inject_params=None
+    bad_inject_params=None,
+    use_thinking_agent=False,
+    strategy_memory=None
 ):
     """
     Factory function to create a properly initialized AgentState.
@@ -111,13 +118,16 @@ def create_initial_state(
         abort_on_red_flags: If True, abort on critical sanity check failures
         abort_on_warnings: If True, also abort on warning-level issues
         directives: Dict of user directives extracted from advice
+        use_thinking_agent: If True, enable expert crystallographer reasoning
+        strategy_memory: Dict of accumulated scientific understanding from
+            previous cycles. Passed through session_info for persistence.
 
     Returns:
         AgentState: Properly initialized state dict
     """
     return {
         # Session context
-        "history": history if history is not None else [],
+        "history": list(history) if history is not None else [],
         "available_files": list(available_files),
         "cycle_number": cycle_number,
         "max_cycles": max_cycles,
@@ -133,6 +143,11 @@ def create_initial_state(
         "use_rules_only": use_rules_only,
         "abort_on_red_flags": abort_on_red_flags,
         "abort_on_warnings": abort_on_warnings,
+        "use_thinking_agent": use_thinking_agent,
+
+        # Thinking agent (v113)
+        "expert_assessment": {},
+        "strategy_memory": strategy_memory if strategy_memory is not None else {},
 
         # Current cycle data
         "log_text": log_text,

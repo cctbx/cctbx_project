@@ -796,6 +796,10 @@ class BestFilesTracker:
             basename = os.path.basename(path).lower()
             if 'with_ligand' in basename or '_liganded' in basename:
                 stage = "with_ligand"         # Must come before 'refine' check
+            elif '_modified' in basename and basename.endswith('.pdb'):
+                # pdbtools default output: {input}_modified.pdb
+                # After ligandfit, this is the model+ligand combination
+                stage = "with_ligand"
             elif 'refine' in basename and 'real_space' not in basename:
                 stage = "refined"
             elif 'rsr_' in basename or '_rsr' in basename or 'real_space_refined' in basename:
@@ -1233,6 +1237,9 @@ class BestFilesTracker:
             # Model subcategories (positioned, ready for refinement)
             # Check more specific patterns first!
             if 'with_ligand' in basename or '_liganded' in basename:
+                return "with_ligand"
+            if '_modified' in basename and basename.endswith('.pdb'):
+                # pdbtools default output naming after ligand combination
                 return "with_ligand"
             if 'ligand_fit' in basename or 'ligandfit' in basename:
                 return "ligand_fit_output"
