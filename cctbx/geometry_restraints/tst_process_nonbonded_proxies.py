@@ -210,16 +210,19 @@ def test_show():
   clashes.show(log=string_io)
   lines = string_io.getvalue().split('\n')
 
-def test_unknown_pair_type():
-  '''
-  Make sure unknown pair types are not processed
-  '''
-  sorry = None
-  try:
-    clashes = get_clashes_result(raw_records=raw_records_6)
-  except Sorry as e:
-    sorry = e
-  assert(sorry is not None)
+# Disabled because this case does not result in sorry any more.
+# We use some reasonable default for unknown types, see associated changes
+# in pdb_interpretation.
+# def test_unknown_pair_type():
+#   '''
+#   Make sure unknown pair types are not processed
+#   '''
+#   sorry = None
+#   try:
+#     clashes = get_clashes_result(raw_records=raw_records_6)
+#   except Sorry as e:
+#     sorry = e
+#   assert(sorry is not None)
 
 
 def test_running_from_command_line():
@@ -793,7 +796,7 @@ if (__name__ == "__main__"):
   test_atom_selection()
   test_addition_scatterers()
   test_show()
-  test_unknown_pair_type()
+  # test_unknown_pair_type()
   test_running_from_command_line()
   #test_file_with_unknown_pair_type()
   test_small_cell()
