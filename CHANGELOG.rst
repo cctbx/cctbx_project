@@ -1,3 +1,10 @@
+2026.2
+======
+
+* Expand support for variable resolution maps
+* Improve probe2 support for RNA
+* Fixed bug for Boost 1.88 support
+
 2026.1
 ======
 
