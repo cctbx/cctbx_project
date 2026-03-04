@@ -2529,6 +2529,26 @@ def build(state):
                 strategy["resolution"] = 2.0
                 state = _log(state, "BUILD: Limiting autobuild resolution to 2.0Å (data is %.1fÅ)" % resolution)
 
+        # === AUTOBUILD REBUILD_IN_PLACE ===
+        # When autobuild is invoked after refinement has run
+        # (i.e. for model rebuilding, not initial building
+        # from phasing), set rebuild_in_place=False so autobuild
+        # builds a new model from the density rather than just
+        # adjusting the input model in place. This is critical
+        # for fixing fundamental errors like register shifts or
+        # misbuilt regions that refinement cannot correct.
+        if "rebuild_in_place" not in strategy:
+            history = state.get("history", [])
+            has_refined = any(
+                "refine" in str(h.get("program", "")).lower()
+                for h in history
+            )
+            if has_refined:
+                strategy["rebuild_in_place"] = False
+                state = _log(state,
+                    "BUILD: Set rebuild_in_place=False"
+                    " (rebuilding after refinement)")
+
     # === APPLY RESOLUTION FOR PROGRAMS THAT NEED IT ===
     # Helper to find resolution from various sources (priority order)
     def find_resolution():

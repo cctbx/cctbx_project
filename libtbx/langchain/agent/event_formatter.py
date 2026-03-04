@@ -300,6 +300,9 @@ class EventFormatter:
         guidance = event.get("guidance", "")
         concerns = event.get("concerns", [])
         validation = event.get("validation_summary", "")
+        validation_skip = event.get(
+            "validation_skip_reason", "")
+        validated_model = event.get("validated_model", "")
         rfree_trend = event.get("rfree_trend", "")
         kb_matched = event.get("kb_rules_matched", False)
 
@@ -313,11 +316,18 @@ class EventFormatter:
 
         # --- Structural validation (advanced mode) ---
         if validation:
-            lines.append("  Structural validation:")
+            label = "Structural validation"
+            if validated_model:
+                label += " (%s)" % validated_model
+            lines.append("  %s:" % label)
             for vline in validation.split("\n"):
                 vline = vline.strip()
                 if vline:
                     lines.append("    %s" % vline)
+        elif validation_skip:
+            lines.append(
+                "  Validation: not available (%s)"
+                % validation_skip)
 
         # --- R-free trend ---
         if rfree_trend:

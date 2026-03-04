@@ -156,11 +156,13 @@
     fundamental errors that refinement alone cannot fix.
     Before giving up: try autobuild (or predict_and_build
     with an AlphaFold model) to rebuild from the current
-    map — automated building can fix register errors and
-    misbuilt regions that refinement cannot. If R-free
-    remains above 0.40 after automated rebuilding, stop
-    and report. Suggest the user examine the model in
-    Coot to correct problem regions before resuming.
+    map with rebuild_in_place=False — this builds a new
+    model from the density rather than adjusting the old
+    one, which is essential for fixing register errors
+    and misbuilt regions. If R-free remains above 0.40
+    after automated rebuilding, stop and report. Suggest
+    the user examine the model in Coot to correct
+    problem regions before resuming.
   confidence: high
 
 - id: stop_006
@@ -297,15 +299,16 @@
     persistent errors that refinement cannot fix
     (Ramachandran outliers, broken chain geometry,
     incomplete regions), try in order: (1) Run
-    autobuild with the current model and map — it can
-    rebuild misfit regions automatically. (2) Run
-    predict_and_build if an AlphaFold model is
-    available — it can correct register errors.
-    (3) For cryo-EM, use map_to_model. All three
-    accept an existing model and rebuild from the map.
-    Only if automated rebuilding also fails should the
-    agent stop and tell the user to examine the model
-    in Coot.
+    autobuild with rebuild_in_place=False — this builds
+    a new model from the density rather than adjusting
+    the old one, which is essential for register errors
+    and misbuilt regions. (2) Run predict_and_build if
+    an AlphaFold model is available — it can correct
+    register errors. (3) For cryo-EM, use map_to_model.
+    All three accept an existing model and rebuild from
+    the map. Only if automated rebuilding also fails
+    should the agent stop and tell the user to examine
+    the model in Coot.
   confidence: high
 
 - id: agent_002
@@ -454,15 +457,16 @@
     cannot interactively fix individual residues. If
     specific Ramachandran or rotamer outliers persist
     after 2+ refinement cycles, try automated
-    rebuilding: run autobuild (or predict_and_build
-    with an AlphaFold model) to rebuild the model from
-    the current map. Automated building can often fix
-    register errors and misfit loops that refinement
-    alone cannot resolve. If outliers persist after
-    both refinement and automated rebuilding, stop and
-    report the outlier list to the user for manual
-    correction. Do NOT run additional refinement cycles
-    hoping individual outliers will self-correct.
+    rebuilding: run autobuild with rebuild_in_place=False
+    (or predict_and_build with an AlphaFold model) to
+    rebuild the model from the current map. Setting
+    rebuild_in_place=False ensures autobuild builds new
+    fragments into the density rather than adjusting
+    the existing model. If outliers persist after both
+    refinement and automated rebuilding, stop and report
+    the outlier list to the user for manual correction.
+    Do NOT run additional refinement cycles hoping
+    individual outliers will self-correct.
   confidence: high
 
 
@@ -1329,18 +1333,20 @@
     can significantly improve the model. Refinement
     improves the map quality, and autobuild can build
     regions that were too disordered to trace initially.
-    This is especially valuable when the initial build
-    was incomplete (<80% of expected residues). However,
-    autobuild replaces the model entirely — do NOT run
-    it on a well-refined model. The threshold is
-    resolution-dependent: at high resolution (<2.0 Å),
-    do not run if R-free < 0.25; at medium resolution
-    (2.0-3.0 Å), do not run if R-free < 0.28; at low
-    resolution (>3.0 Å), autobuild can still help with
-    connectivity even at R-free 0.28-0.30. If R-free is
-    >0.35 and significant unbuilt regions remain,
-    autobuild is strongly preferred over further
-    refinement alone.
+    Use rebuild_in_place=False so autobuild builds new
+    model from the density rather than adjusting the
+    input model. This is especially valuable when the
+    initial build was incomplete (<80% of expected
+    residues). However, autobuild replaces the model
+    entirely — do NOT run it on a well-refined model.
+    The threshold is resolution-dependent: at high
+    resolution (<2.0 A), do not run if R-free < 0.25;
+    at medium resolution (2.0-3.0 A), do not run if
+    R-free < 0.28; at low resolution (>3.0 A),
+    autobuild can still help with connectivity even at
+    R-free 0.28-0.30. If R-free is >0.35 and
+    significant unbuilt regions remain, autobuild is
+    strongly preferred over further refinement alone.
   confidence: medium
 
 - id: edge_013

@@ -9,6 +9,7 @@ Entry point: run_think_node(state) — called from graph_nodes.think().
 """
 
 from __future__ import absolute_import, division, print_function
+import os
 import traceback
 
 # --- Imports from B1, B2, B3 ---
@@ -140,6 +141,55 @@ def run_think_node(state):
       state, thinking_level
     )
 
+    # --- Emit diagnostic for advanced mode so the
+    # user sees what the agent's "eyes" found (or
+    # why they didn't run), BEFORE the LLM call.
+    # This ensures visibility even if the LLM fails.
+    if thinking_level == "advanced":
+      diag_parts = []
+      model_path = context.get("validated_model_path")
+      skip_reason = context.get(
+        "validation_skip_reason", ""
+      )
+      if model_path and not skip_reason:
+        diag_parts.append(
+          "Validated: %s"
+          % os.path.basename(model_path)
+        )
+      elif skip_reason:
+        diag_parts.append(
+          "Validation skipped: %s" % skip_reason
+        )
+      # KB status
+      kb_text = context.get("kb_rules_text", "")
+      if kb_text:
+        # Count rules (each starts with "[")
+        n_rules = kb_text.count("[")
+        diag_parts.append(
+          "%d KB rule(s) matched" % n_rules
+        )
+      else:
+        diag_parts.append("no KB rules matched")
+      # File metadata status
+      fm = context.get("file_metadata") or {}
+      if fm:
+        diag_parts.append(
+          "%d file(s) tracked" % len(fm)
+        )
+      # Emit as a visible debug_log entry —
+      # the event formatter shows these at NORMAL
+      # inside the Expert Assessment block, but
+      # _log entries are VERBOSE only. Use _emit
+      # with a dedicated type that the formatter
+      # can render, or append to the later
+      # expert_assessment event. For now, ensure
+      # at minimum a _log so verbose users see it.
+      diag_msg = (
+        "THINK: Advanced context: %s"
+        % "; ".join(diag_parts)
+      )
+      state = _log(state, diag_msg)
+
     # Store validation report in state for debugging
     # and potential GUI display (advanced only)
     vr = context.get("validation_report", "")
@@ -175,7 +225,30 @@ def run_think_node(state):
     raw_response = _call_thinking_llm(state, system_msg, user_msg)
 
     if raw_response is None:
-      state = _log(state, "THINK: LLM call failed, continuing without")
+      state = _log(state,
+        "THINK: LLM call failed, continuing without")
+      # Still emit the validation data so the user
+      # sees what advanced mode found, even though
+      # the LLM didn't respond.
+      if thinking_level == "advanced" and vr:
+        vr_lines_clean = [
+          ln for ln in vr.split("\n")
+          if ln.strip() and not ln.startswith("===")
+        ]
+        state = _emit(state,
+          action="let_run",
+          confidence="unknown",
+          thinking_level=thinking_level,
+          analysis="LLM call failed; validation"
+                   " data shown for reference.",
+          guidance="",
+          concerns=[],
+          validation_summary="\n".join(
+            vr_lines_clean),
+          rfree_trend="",
+          kb_rules_matched=bool(
+            context.get("kb_rules_text", "")),
+        )
       return state
 
     # Parse response
@@ -214,11 +287,32 @@ def run_think_node(state):
       guidance=assessment.get("guidance", ""),
       concerns=assessment.get("concerns", []),
       validation_summary=validation_summary,
+      validation_skip_reason=context.get(
+        "validation_skip_reason", ""),
+      validated_model=os.path.basename(
+        context.get("validated_model_path", "") or ""
+      ),
       rfree_trend=rfree_trend_text,
       kb_rules_matched=bool(
         context.get("kb_rules_text", "")
       ),
     )
+
+    # Enrich the assessment dict with advanced-mode data
+    # so the GUI progress panel (AIAgent.py) can display
+    # structural validation alongside the LLM analysis.
+    # The GUI reads expert_assessment from the callback
+    # data, which comes from state["expert_assessment"].
+    if thinking_level == "advanced":
+      assessment["validation_summary"] = (
+        validation_summary)
+      assessment["validation_skip_reason"] = (
+        context.get("validation_skip_reason", ""))
+      assessment["validated_model"] = os.path.basename(
+        context.get("validated_model_path", "") or "")
+      assessment["rfree_trend"] = rfree_trend_text
+      assessment["kb_rules_matched"] = bool(
+        context.get("kb_rules_text", ""))
 
     # Expert recommends stopping?
     if assessment["action"] == "stop":
@@ -365,14 +459,16 @@ def _build_thinking_context(state, thinking_level="advanced"):
   # --- Advanced mode additions ---
   if thinking_level == "advanced":
     # Structural validation (Phase A)
-    validation_report, validation_result, model_path = (
-      _run_structural_validation(
-        state, session_info, metrics, program
+    validation_report, validation_result, model_path, \
+      validation_skip = (
+        _run_structural_validation(
+          state, session_info, metrics, program
+        )
       )
-    )
     context["validation_report"] = validation_report
     context["validation_result"] = validation_result
     context["validated_model_path"] = model_path
+    context["validation_skip_reason"] = validation_skip
 
     # File metadata from state (Phase C)
     context["file_metadata"] = (
@@ -421,10 +517,13 @@ def _run_structural_validation(state, session_info,
   a compact text block for the thinking agent prompt.
 
   Returns:
-    tuple of (report_str, validation_result, model_path)
-    where validation_result is the raw dict (or None)
-    and model_path is the model that was validated.
-    Returns ("", None, None) if unavailable.
+    tuple of (report_str, validation_result, model_path,
+              skip_reason)
+    where validation_result is the raw dict (or None),
+    model_path is the model that was validated, and
+    skip_reason is a short string explaining why
+    validation did not run (empty if it succeeded).
+    Returns ("", None, None, reason) if unavailable.
   """
   try:
     try:
@@ -439,13 +538,20 @@ def _run_structural_validation(state, session_info,
         import format_validation_report
   except ImportError:
     # Modules not available — skip validation
-    return ("", None, None)
+    return ("", None, None,
+            "validation modules not available")
 
   # Get model path from best_files
   best_files = session_info.get("best_files") or {}
   model_path = best_files.get("model")
   if not model_path:
-    return ("", None, None)
+    return ("", None, None,
+            "no model in best_files (too early in run?)")
+
+  if not os.path.isfile(model_path):
+    return ("", None, None,
+            "model file not found: %s"
+            % os.path.basename(model_path))
 
   # Get data and map coefficients paths
   data_path = best_files.get("data")
@@ -461,6 +567,11 @@ def _run_structural_validation(state, session_info,
     map_coeffs_path=map_coeffs,
     experiment_type=exp_type,
   )
+
+  if validation_result is None:
+    return ("", None, model_path,
+            "validation returned no results for %s"
+            % os.path.basename(model_path))
 
   # Get R-free trend for the report
   cycle_number = state.get("cycle_number", 1)
@@ -478,7 +589,7 @@ def _run_structural_validation(state, session_info,
     start_r_free=start_rf,
   )
 
-  return (report, validation_result, model_path)
+  return (report, validation_result, model_path, "")
 
 
 def _collect_r_free_trend(history):
