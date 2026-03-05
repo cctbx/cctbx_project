@@ -1,7 +1,8 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import group_args
 from libtbx.utils import Sorry
-import os, os.path, glob
+import os
+import os.path
 import sys
 
 def redirect_stdout_to_file(file_path):
@@ -52,7 +53,7 @@ def external_cmd(parent, master_phil, firstpart):
             }
   ''' %(parent.loaded_file_name, parent.hklin, tempdir)
   )
-  # reset stdout from logfname 
+  # reset stdout from logfname
   os.dup2(original_stdout_fd, sys.stdout.fileno())
   os.close(original_stdout_fd)
 
