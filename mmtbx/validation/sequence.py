@@ -579,6 +579,7 @@ class validation(object):
       '_struct_ref_seq.seq_align_end',
     ))
 
+    next_entity_id = 0
     entity_id = 0
     # entity_poly
     sequence_to_entity_id = dict()
@@ -611,8 +612,9 @@ class validation(object):
       seq_can = chain.alignment.b
       # entity_id
       if seq_can not in sequence_to_entity_id:
-        entity_id += 1
+        entity_id = next_entity_id
         sequence_to_entity_id[seq_can] = entity_id
+        next_entity_id += 1
       else:
         # subsequent matches just add strand_id
         entity_id = sequence_to_entity_id[seq_can]
