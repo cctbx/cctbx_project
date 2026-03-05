@@ -236,6 +236,9 @@ def exercise_deleted_functions():
   assert not hasattr(v, 'get_residue_bonds'), "get_residue_bonds should have been deleted"
   assert not hasattr(v, 'get_angle_outliers'), "get_angle_outliers should have been deleted"
   assert not hasattr(v, 'get_bond_outliers'), "get_bond_outliers should have been deleted"
+  assert not hasattr(v, 'rotamer_outliers'), "rotamer_outliers should have been deleted"
+  assert not hasattr(v, 'rama_outliers'), "rama_outliers should have been deleted"
+  assert not hasattr(v, 'pperp_outliers'), "pperp_outliers should have been deleted"
   print("  exercise_deleted_functions: OK")
 
 
