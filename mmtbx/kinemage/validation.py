@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 import os
 from iotbx import pdb
 from mmtbx import monomer_library
-from mmtbx.chemical_components import get_bond_pairs
 from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation.cbetadev import cbetadev
@@ -14,8 +13,6 @@ from libtbx import Auto
 from scitbx import matrix
 from cctbx import geometry_restraints
 from mmtbx.monomer_library import pdb_interpretation
-from mmtbx.monomer_library import rna_sugar_pucker_analysis
-from iotbx.pdb.rna_dna_detection import residue_analysis
 import iotbx.phil
 from libtbx.utils import Sorry, Usage
 from libtbx.str_utils import show_string
@@ -351,116 +348,6 @@ def midpoint(p1, p2):
   mid[1] = (p1[1]+p2[1])/2
   mid[2] = (p1[2]+p2[2])/2
   return mid
-
-def pperp_outliers(hierarchy, chain):
-  kin_out = "@vectorlist {ext} color= magenta master= {base-P perp}\n"
-  rv = rna_validate.rna_puckers(pdb_hierarchy=hierarchy)
-  outliers = rv.results
-  params = rna_sugar_pucker_analysis.master_phil.extract()
-  outlier_key_list = []
-  for outlier in outliers:
-    outlier_key_list.append(outlier.id_str())
-  for conformer in chain.conformers():
-    for residue in conformer.residues():
-      if common_residue_names_get_class(residue.resname) != "common_rna_dna":
-        continue
-      ra1 = residue_analysis(
-        residue_atoms=residue.atoms(),
-        distance_tolerance=params.bond_detection_distance_tolerance)
-      if (ra1.problems is not None): continue
-      if (not ra1.is_rna): continue
-      try:
-        key = residue.find_atom_by(name=" C1'").pdb_label_columns()[4:]
-      except Exception:
-        continue
-      if key in outlier_key_list:
-        if rv.pucker_perp_xyz[key][0] is not None:
-          perp_xyz = rv.pucker_perp_xyz[key][0] #p_perp_xyz
-        else:
-          perp_xyz = rv.pucker_perp_xyz[key][1] #o3p_perp_xyz
-        if rv.pucker_dist[key][0] is not None:
-          perp_dist = rv.pucker_dist[key][0]
-          if perp_dist < 2.9:
-            pucker_text = " 2'?"
-          else:
-            pucker_text = " 3'?"
-        else:
-          perp_dist = rv.pucker_dist[key][1]
-          if perp_dist < 2.4:
-            pucker_text = " 2'?"
-          else:
-            pucker_text = " 3'?"
-        key = key[0:4].lower()+key[4:]
-        key += pucker_text
-        kin_out += kin_vec(key, perp_xyz[0], key, perp_xyz[1])
-        a = matrix.col(perp_xyz[1])
-        b = matrix.col(residue.find_atom_by(name=" C1'").xyz)
-        c = (a-b).normalize()
-        new = a-(c*.8)
-        kin_out += kin_vec(key, perp_xyz[1], key, tuple(new), 4)
-        new = a+(c*.4)
-        kin_out += kin_vec(key, perp_xyz[1], key, tuple(new), 4)
-        r_vec = matrix.col(perp_xyz[1]) - matrix.col(perp_xyz[0])
-        r = r_vec.axis_and_angle_as_r3_rotation_matrix(angle=90, deg=True)
-        new = r*(new-a)+a
-        kin_out += kin_vec(key, perp_xyz[1], key, tuple(new), 4)
-        r = r_vec.axis_and_angle_as_r3_rotation_matrix(angle=180, deg=True)
-        new = r*(new-a)+a
-        kin_out += kin_vec(key, perp_xyz[1], key, tuple(new), 4)
-  return kin_out
-
-def rama_outliers(chain, pdbID, ram_outliers):
-  ram_out = "@subgroup {Rama outliers} master= {Rama outliers}\n"
-  ram_out += "@vectorlist {bad Rama Ca} width= 4 color= green\n"
-  outlier_list = []
-  for outlier in ram_outliers.results :
-    if (not outlier.is_outlier()) : continue
-    if outlier.chain_id == chain.id :
-      ram_out += outlier.as_kinemage()
-  return ram_out
-
-def rotamer_outliers(chain, pdbID, rot_outliers):
-  mc_atoms = ["N", "C", "O", "OXT"]
-  rot_out = "@subgroup {Rota outliers} dominant\n"
-  rot_out += "@vectorlist {chain %s} color= gold  master= {Rota outliers}\n" % chain.id
-  outlier_list = []
-  for outlier in rot_outliers.results :
-    if (not outlier.is_outlier()) : continue
-    outlier_list.append(outlier.atom_group_id_str())
-  for residue_group in chain.residue_groups():
-    for atom_group in residue_group.atom_groups():
-      check_key = atom_group.id_str()
-      if (check_key in outlier_list):
-        key_hash = {}
-        xyz_hash = {}
-        for atom in atom_group.atoms():
-          key = "%s %s %s%s  B%.2f %s" % (
-              atom.name.lower(),
-              atom_group.resname.lower(),
-              chain.id,
-              residue_group.resid(),
-              atom.b,
-              pdbID)
-          key_hash[atom.name.strip()] = key
-          xyz_hash[atom.name.strip()] = atom.xyz
-        bonds = get_bond_pairs(code=atom_group.resname)
-        for bond in bonds:
-          if bond[0] in mc_atoms or bond[1] in mc_atoms:
-            continue
-          elif bond[0].startswith('H') or bond[1].startswith('H'):
-            continue
-          if (key_hash.get(bond[0]) == None or
-              key_hash.get(bond[1]) == None or
-              xyz_hash.get(bond[0]) == None or
-              xyz_hash.get(bond[1]) == None):
-            continue
-          rot_out += kin_vec(key_hash[bond[0]],
-                             xyz_hash[bond[0]],
-                             key_hash[bond[1]],
-                             xyz_hash[bond[1]])
-  if len(rot_out.splitlines()) == 2:
-    rot_out = ""
-  return rot_out
 
 def get_chain_color(index):
   chain_colors = ['white',
@@ -866,7 +753,9 @@ def _build_bond_hash(bond_proxies, i_seq_name_hash):
 
 def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
                     rot_outliers, rama_result, cb_result,
-                    restraints_result, keep_hydrogens):
+                    restraints_result, keep_hydrogens,
+                    omega_result=None, rna_puckers_result=None,
+                    cablam_result=None):
   """Shared logic for building the kinemage string.
 
   Args:
@@ -879,6 +768,9 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
     cb_result: cbetadev result object
     restraints_result: mmtbx.validation.restraints.combined result object
     keep_hydrogens: whether to keep hydrogens for probe dots
+    omega_result: omegalyze result object, or None (computed on-the-fly if None)
+    rna_puckers_result: rna_puckers result object, or None
+    cablam_result: cablamalyze result object, or None
   """
   kin_out = get_default_header()
   altid_controls = get_altid_controls(hierarchy=hierarchy)
@@ -904,19 +796,28 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
       # emitted once per unique chain ID (not once per chain segment).
       if chain.id not in validated_chains:
         if (chain.is_protein()):
-          kin_out += rotamer_outliers(chain=chain, pdbID=pdbID,
-            rot_outliers=rot_outliers)
-          kin_out += rama_outliers(chain=chain, pdbID=pdbID,
-            ram_outliers=rama_result)
+          kin_out += rot_outliers.as_kinemage(chain_id=chain.id,
+            pdb_hierarchy=hierarchy)
+          kin_out += rama_result.as_kinemage(chain_id=chain.id)
         kin_out += restraints_result.as_kinemage(chain_id=chain.id)
         if (chain.is_protein()):
           kin_out += cb_result.as_kinemage(chain_id=chain.id)
-        kin_out += pperp_outliers(hierarchy=hierarchy,
-                                  chain=chain)
+        if rna_puckers_result is not None:
+          kin_out += rna_puckers_result.as_kinemage(chain_id=chain.id,
+            pdb_hierarchy=hierarchy)
         validated_chains.append(chain.id)
       counter += 1
-  kin_out += omegalyze.omegalyze(pdb_hierarchy=hierarchy,nontrans_only=True,
-    out=None,quiet=False).as_kinemage()
+  if omega_result is not None:
+    kin_out += omega_result.as_kinemage()
+  else:
+    kin_out += omegalyze.omegalyze(pdb_hierarchy=hierarchy,nontrans_only=True,
+      out=None,quiet=False).as_kinemage()
+  if cablam_result is not None:
+    # Suppress self.out write for assembled kinemage; use returned string only
+    saved_out = cablam_result.out
+    cablam_result.out = None
+    kin_out += cablam_result.as_kinemage()
+    cablam_result.out = saved_out
   kin_out += make_probe_dots(hierarchy=hierarchy, keep_hydrogens=keep_hydrogens)
   kin_out += get_footer()
   return kin_out
@@ -938,6 +839,28 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
   rot_outliers = rotalyze(pdb_hierarchy=hierarchy, outliers_only=True)
   cb = cbetadev(pdb_hierarchy=hierarchy, outliers_only=True)
   rama = ramalyze(pdb_hierarchy=hierarchy, outliers_only=True)
+  omega = omegalyze.omegalyze(pdb_hierarchy=hierarchy, nontrans_only=True,
+    out=None, quiet=True)
+
+  # RNA puckers (only if RNA is present)
+  rna_puckers_result = None
+  has_rna = any(chain.is_na() for model in hierarchy.models()
+                for chain in model.chains())
+  if has_rna:
+    rna_puckers_result = rna_validate.rna_puckers(pdb_hierarchy=hierarchy)
+
+  # CaBLAM
+  from mmtbx.validation.cablam import cablamalyze
+  cablam_result = None
+  has_protein = any(chain.is_protein() for model in hierarchy.models()
+                    for chain in model.chains())
+  if has_protein:
+    from libtbx.utils import null_out
+    cablam_result = cablamalyze(
+      pdb_hierarchy=hierarchy,
+      outliers_only=True,
+      out=null_out(),
+      quiet=True)
 
   # Build restraints validation using mmtbx.validation.restraints
   from mmtbx.validation.restraints import combined as restraints_combined
@@ -958,7 +881,10 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
     rama_result=rama,
     cb_result=cb,
     restraints_result=restraints_result,
-    keep_hydrogens=keep_hydrogens)
+    keep_hydrogens=keep_hydrogens,
+    omega_result=omega,
+    rna_puckers_result=rna_puckers_result,
+    cablam_result=cablam_result)
 
   outfile = open(f, 'w')
   outfile.write(kin_out)
@@ -1054,7 +980,8 @@ def export_molprobity_result_as_kinemage(
     geometry,
     probe_file,
     keep_hydrogens=False,
-    pdbID="PDB"):
+    pdbID="PDB",
+    cablam_result=None):
   assert (result.restraints is not None)
   i_seq_name_hash = build_name_hash(pdb_hierarchy=pdb_hierarchy)
   sites_cart = pdb_hierarchy.atoms().extract_xyz()
@@ -1063,6 +990,12 @@ def export_molprobity_result_as_kinemage(
                                        sites_cart=sites_cart)
   bond_proxies = pair_proxies.bond_proxies
   quick_bond_hash = _build_bond_hash(bond_proxies, i_seq_name_hash)
+  rna_puckers_result = None
+  if hasattr(result, 'rna') and result.rna is not None:
+    rna_puckers_result = result.rna.puckers
+  omega_result = None
+  if hasattr(result, 'omegalyze'):
+    omega_result = result.omegalyze
   return _build_kinemage(
     hierarchy=pdb_hierarchy,
     bond_hash=quick_bond_hash,
@@ -1072,4 +1005,7 @@ def export_molprobity_result_as_kinemage(
     rama_result=result.ramalyze,
     cb_result=result.cbetadev,
     restraints_result=result.restraints,
-    keep_hydrogens=keep_hydrogens)
+    keep_hydrogens=keep_hydrogens,
+    omega_result=omega_result,
+    rna_puckers_result=rna_puckers_result,
+    cablam_result=cablam_result)
