@@ -339,6 +339,66 @@ class rotalyze(validation):
     data['summary_results'] = summary_results
     return json.dumps(data, indent=2)
 
+  def as_kinemage(self, chain_id=None, pdb_hierarchy=None):
+    """Return kinemage markup string for rotamer outlier sidechains.
+
+    Requires pdb_hierarchy to look up atom coordinates and bond connectivity.
+    """
+    from mmtbx.chemical_components import get_bond_pairs
+    from mmtbx.kinemage import kin_vec
+    mc_atoms = ["N", "C", "O", "OXT"]
+    outlier_ids = set()
+    for outlier in self.results:
+      if not outlier.is_outlier():
+        continue
+      if chain_id is not None and outlier.chain_id != chain_id:
+        continue
+      outlier_ids.add(outlier.atom_group_id_str())
+    if not outlier_ids or pdb_hierarchy is None:
+      return ""
+    rot_out = "@subgroup {Rota outliers} dominant\n"
+    rot_out += "@vectorlist {chain %s} color= gold  master= {Rota outliers}\n" % (
+      chain_id if chain_id is not None else "all")
+    found = False
+    for model in pdb_hierarchy.models():
+      for chain in model.chains():
+        if chain_id is not None and chain.id != chain_id:
+          continue
+        for residue_group in chain.residue_groups():
+          for atom_group in residue_group.atom_groups():
+            if atom_group.id_str() not in outlier_ids:
+              continue
+            key_hash = {}
+            xyz_hash = {}
+            for atom in atom_group.atoms():
+              key = "%s %s %s%s  B%.2f" % (
+                atom.name.lower(),
+                atom_group.resname.lower(),
+                chain.id,
+                residue_group.resid(),
+                atom.b)
+              key_hash[atom.name.strip()] = key
+              xyz_hash[atom.name.strip()] = atom.xyz
+            bonds = get_bond_pairs(code=atom_group.resname)
+            for bond in bonds:
+              if bond[0] in mc_atoms or bond[1] in mc_atoms:
+                continue
+              elif bond[0].startswith('H') or bond[1].startswith('H'):
+                continue
+              if (key_hash.get(bond[0]) is None or
+                  key_hash.get(bond[1]) is None or
+                  xyz_hash.get(bond[0]) is None or
+                  xyz_hash.get(bond[1]) is None):
+                continue
+              rot_out += kin_vec(key_hash[bond[0]],
+                                 xyz_hash[bond[0]],
+                                 key_hash[bond[1]],
+                                 xyz_hash[bond[1]])
+              found = True
+    if not found:
+      return ""
+    return rot_out
+
   def as_coot_data(self):
     data = []
     for result in self.results :

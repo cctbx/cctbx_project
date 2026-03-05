@@ -506,12 +506,13 @@ class ramalyze(validation):
       mid_12)
     return ram_out
 
-  def as_kinemage(self):
+  def as_kinemage(self, chain_id=None):
     ram_out = "@subgroup {Rama outliers} master= {Rama outliers}\n"
     ram_out += "@vectorlist {bad Rama Ca} width= 4 color= green\n"
     for rama in self.results :
       if rama.is_outlier():
-        ram_out += rama.as_kinemage()
+        if chain_id is None or rama.chain_id == chain_id:
+          ram_out += rama.as_kinemage()
     return ram_out
 
   def as_coot_data(self):
