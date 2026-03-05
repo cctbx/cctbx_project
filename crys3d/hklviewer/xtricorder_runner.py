@@ -59,7 +59,7 @@ def external_cmd(parent, master_phil, firstpart):
 
   retval = retobj.exit_code()
   errormsg = retobj.error_type() + " error, " + retobj.error_message()
-  import shutil, glob
+  import shutil
   mtzs = retobj.get_filenames(["mtz"])
   if len(mtzs):
     parent.update_from_philstr("openfilename=" + parent.hklin) # resets all PHIL parameters
