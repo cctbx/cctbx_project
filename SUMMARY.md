@@ -38,3 +38,6 @@ Fix probe2/reduce2 crash on structures with atoms near crystallographic symmetry
 
 ## 2026-03-04
 Speed up clashscore2 ~2x by making the second probe2 run (full VDW output for Coot) optional via `save_probe_output` flag (default False). Also use set for clash dedup and iterate by residue group for water classification.
+
+## 2026-03-04
+Speed up probe2 ~23% by replacing `rvec3` matrix operations with direct tuple arithmetic in hot loops (distance checks, dot/spike location), and caching DotInfo sort keys to avoid repeated `_makeName` string formatting during sorting.
