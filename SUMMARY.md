@@ -35,3 +35,6 @@ Differentiate chiral outlier types in residue quality score. Split single chiral
 
 ## 2026-03-01
 Fix probe2/reduce2 crash on structures with atoms near crystallographic symmetry mates. `getBondedNeighborLists` now processes ASU bond proxies (j_sym==0), which contain covalent bonds the restraints engine expresses as ASU proxies instead of simple proxies when an atom is near a symmetry element. Fixes "Found Hydrogen with no neighbors" error (e.g. PDB 3q9v GLN A 179 HE21).
+
+## 2026-03-04
+Speed up clashscore2 ~2x by making the second probe2 run (full VDW output for Coot) optional via `save_probe_output` flag (default False). Also use set for clash dedup and iterate by residue group for water classification.

@@ -65,6 +65,7 @@ class clashscore2(validation):
       b_factor_cutoff=None,
       verbose=False,
       do_flips=False,
+      save_probe_output=False,
       out=sys.stdout):
     validation.__init__(self)
     self.b_factor_cutoff = b_factor_cutoff
@@ -149,7 +150,8 @@ class clashscore2(validation):
         b_factor_cutoff=b_factor_cutoff,
         use_segids=use_segids,
         verbose=verbose,
-        model_id=model.id)
+        model_id=model.id,
+        save_probe_output=save_probe_output)
       self.probe_clashscore_manager.run_probe_clashscore(data_manager, subset_model_manager)
 
       self.clash_dict[model.id] = self.probe_clashscore_manager.clashscore
@@ -332,7 +334,8 @@ class probe_clashscore_manager(object):
                b_factor_cutoff=None,
                use_segids=False,
                verbose=False,
-               model_id=""):
+               model_id="",
+               save_probe_output=False):
     """
     Calculate probe (MolProbity) clashscore
 
@@ -344,6 +347,9 @@ class probe_clashscore_manager(object):
       use_segids (bool)
       verbose (bool): verbosity of printout
       model_id (str): model ID number, used in json output
+      save_probe_output (bool): When True, run probe2 a second time to
+        generate full non-condensed output with VDW contacts (for Coot).
+        Roughly doubles runtime.
     """
     if fast and not condensed_probe:
       raise Sorry("Incompatible parameters: fast=True and condensed=False:\n"+\
@@ -352,6 +358,7 @@ class probe_clashscore_manager(object):
     self.b_factor_cutoff = b_factor_cutoff
     self.fast = fast
     self.condensed_probe = condensed_probe
+    self.save_probe_output = save_probe_output
     self.use_segids=use_segids
     self.model_id = model_id
     self.occupancy_frac = 0.1
@@ -511,38 +518,48 @@ class probe_clashscore_manager(object):
       temp = self.process_json_probe_output(probe_json)
       self.n_clashes = len(temp)
 
-      # If we're not running fast, call probe2 again to get non-condensed output
-      # including VDW contacts.  We make another temporary file for the output and
-      # then delete it.  This option is for printing to file for coot usage.  The
-      # no-VDWOUT option is used to speed up the parsing of the output.
-      tempName = tempfile.mktemp()
-      parser = iotbx.cli_parser.CCTBXParser(program_class=probe2.Program, logger=null_out())
-      args = [
-        "source_selection='(occupancy > {}) and not water'".format(self.occupancy_frac),
-        "target_selection='occupancy > {}'".format(self.occupancy_frac),
-        "use_neutron_distances={}".format(self.nuclear),
-        "approach=once",
-        "output.filename='{}'".format(tempName),
-        "output.format=json",
-        "ignore_lack_of_explicit_hydrogens=True",
-      ]
-      parser.parse_args(args)
-      p2 = probe2.Program(data_manager, parser.working_phil.extract(),
-                         master_phil=parser.master_phil, logger=null_out())
-      p2.overrideModel(hydrogenated_model)
-      dots, output = p2.run()
-      self.probe_json = output
-      os.unlink(tempName)
+      # Optionally call probe2 again to get non-condensed output including VDW
+      # contacts for external tools like Coot.  Skipped by default because it
+      # roughly doubles the total runtime.
+      if self.save_probe_output:
+        tempName = tempfile.mktemp()
+        parser = iotbx.cli_parser.CCTBXParser(program_class=probe2.Program, logger=null_out())
+        args = [
+          "source_selection='(occupancy > {}) and not water'".format(self.occupancy_frac),
+          "target_selection='occupancy > {}'".format(self.occupancy_frac),
+          "use_neutron_distances={}".format(self.nuclear),
+          "approach=once",
+          "output.filename='{}'".format(tempName),
+          "output.format=json",
+          "ignore_lack_of_explicit_hydrogens=True",
+        ]
+        parser.parse_args(args)
+        p2 = probe2.Program(data_manager, parser.working_phil.extract(),
+                           master_phil=parser.master_phil, logger=null_out())
+        p2.overrideModel(hydrogenated_model)
+        dots, output = p2.run()
+        self.probe_json = output
+        os.unlink(tempName)
     else:
       self.n_clashes = self.get_condensed_clashes(probe_json)
 
     # Find the number of non-water atoms that pass the occupancy test
-    # and then use it to compute the clashscore.
+    # and then use it to compute the clashscore.  Iterate by residue group
+    # so we only check water classification once per residue, not per atom.
     self.n_atoms = 0
-    for a in hydrogenated_model.get_hierarchy().atoms():
-      isWater = iotbx.pdb.common_residue_names_get_class(name=a.parent().resname) == "common_water"
-      if a.occ > self.occupancy_frac and not isWater:
-        self.n_atoms += 1
+    self.natoms_b_cutoff = 0
+    has_b_cutoff = (not self.fast) and (self.b_factor_cutoff is not None)
+    for rg in hydrogenated_model.get_hierarchy().residue_groups():
+      for ag in rg.atom_groups():
+        isWater = iotbx.pdb.common_residue_names_get_class(
+          name=ag.resname) == "common_water"
+        if isWater:
+          continue
+        for a in ag.atoms():
+          if a.occ > self.occupancy_frac:
+            self.n_atoms += 1
+            if has_b_cutoff and a.b < self.b_factor_cutoff:
+              self.natoms_b_cutoff += 1
     if self.n_atoms == 0:
       self.clashscore = 0.0
     else:
@@ -556,28 +573,21 @@ class probe_clashscore_manager(object):
           if clash_obj.max_b_factor < self.b_factor_cutoff:
             clashes_b_cutoff += 1
         self.n_clashes_b_cutoff = clashes_b_cutoff
-      used = []
+      used = set()
 
       for clash_obj in sorted(temp):
-        test_key = clash_obj.id_str_no_atom_name()
         test_key = clash_obj.id_str()
         if test_key not in used:
-          used.append(test_key)
+          used.add(test_key)
           self.bad_clashes.append(clash_obj)
 
-      if self.b_factor_cutoff is not None:
-        # Find the number of non-water atoms who pass the B factor test and the occupancy test
-        self.natoms_b_cutoff = 0
-        for a in hydrogenated_model.get_hierarchy().atoms():
-          isWater = iotbx.pdb.common_residue_names_get_class(name=a.parent().resname) == "common_water"
-          if  (a.b < self.b_factor_cutoff) and (a.occ > self.occupancy_frac) and not isWater:
-            self.natoms_b_cutoff += 1
       self.clashscore_b_cutoff = None
-      if self.natoms_b_cutoff == 0:
-        self.clashscore_b_cutoff = 0.0
-      else :
-        self.clashscore_b_cutoff = \
-          (self.n_clashes_b_cutoff*1000) / self.natoms_b_cutoff
+      if has_b_cutoff:
+        if self.natoms_b_cutoff == 0:
+          self.clashscore_b_cutoff = 0.0
+        else:
+          self.clashscore_b_cutoff = \
+            (self.n_clashes_b_cutoff*1000) / self.natoms_b_cutoff
 
 def check_and_add_hydrogen(
         probe_parameters=None,
