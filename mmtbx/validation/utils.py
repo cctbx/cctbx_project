@@ -216,8 +216,8 @@ def calculate_overall_residue_quality_score(
               is_glycine (bool), is_cbeta_outlier (bool), cbeta_deviation (float),
               cablam_outlier_type (str),
               omega_type (str), is_proline (bool),
-              num_bond_outliers_res (int), worst_bond_sigma (float),
-              num_angle_outliers_res (int), worst_angle_sigma (float),
+              num_bond_outliers_res (int), worst_bond_deviation (float, sigma),
+              num_angle_outliers_res (int), worst_angle_deviation (float, sigma),
               num_chiral_handedness_res (int), num_chiral_tetrahedral_res (int),
               num_chiral_pseudochiral_res (int),
               num_chiral_outliers_res (int, fallback if typed counts unavailable),
@@ -284,14 +284,14 @@ def calculate_overall_residue_quality_score(
     num_bond_outliers = get('num_bond_outliers_res', 0)
     if num_bond_outliers > 0:
         has_any_metric = True
-        worst_bond = get('worst_bond_sigma')
+        worst_bond = get('worst_bond_deviation')
         severities.append(_bond_angle_severity(num_bond_outliers, worst_bond))
 
     # --- 8. Bond Angles ---
     num_angle_outliers = get('num_angle_outliers_res', 0)
     if num_angle_outliers > 0:
         has_any_metric = True
-        worst_angle = get('worst_angle_sigma')
+        worst_angle = get('worst_angle_deviation')
         severities.append(_bond_angle_severity(num_angle_outliers, worst_angle))
 
     # --- 9. Chirality ---

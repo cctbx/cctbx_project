@@ -448,6 +448,86 @@ class rna_puckers(rna_geometry):
     data['summary_results'] = summary_results
     return json.dumps(data, indent=2)
 
+  def as_kinemage(self, chain_id=None, pdb_hierarchy=None):
+    """Return kinemage markup for pperp outliers (magenta vectorlist).
+
+    Uses stored pucker_perp_xyz and pucker_dist data. Needs pdb_hierarchy
+    only to find C1' atom for arrow direction.
+    """
+    from mmtbx.kinemage import kin_vec
+    from scitbx import matrix
+    kin_out = ""
+    outlier_key_list = []
+    for outlier in self.results:
+      if chain_id is not None and outlier.chain_id != chain_id:
+        continue
+      outlier_key_list.append(outlier.id_str())
+    if not outlier_key_list:
+      return ""
+    kin_out += "@vectorlist {ext} color= magenta master= {base-P perp}\n"
+    for key in outlier_key_list:
+      if key not in self.pucker_perp_xyz:
+        continue
+      if self.pucker_perp_xyz[key][0] is not None:
+        perp_xyz = self.pucker_perp_xyz[key][0]
+      else:
+        perp_xyz = self.pucker_perp_xyz[key][1]
+      if self.pucker_dist[key][0] is not None:
+        perp_dist = self.pucker_dist[key][0]
+        if perp_dist < 2.9:
+          pucker_text = " 2'?"
+        else:
+          pucker_text = " 3'?"
+      else:
+        perp_dist = self.pucker_dist[key][1]
+        if perp_dist < 2.4:
+          pucker_text = " 2'?"
+        else:
+          pucker_text = " 3'?"
+      display_key = key + pucker_text
+      kin_out += kin_vec(display_key, perp_xyz[0], display_key, perp_xyz[1])
+      # Draw arrow pointing away from C1'
+      c1_xyz = None
+      if pdb_hierarchy is not None:
+        for model in pdb_hierarchy.models():
+          for chain_obj in model.chains():
+            if chain_id is not None and chain_obj.id != chain_id:
+              continue
+            for conformer in chain_obj.conformers():
+              for res in conformer.residues():
+                c1_atom = res.find_atom_by(name=" C1'")
+                if c1_atom is not None:
+                  # Build key for this residue to match
+                  res_key = "%2s%4s%1s%1s%3s" % (
+                    chain_obj.id, res.resseq, res.icode,
+                    conformer.altloc, res.resname)
+                  if res_key == key:
+                    c1_xyz = c1_atom.xyz
+                    break
+              if c1_xyz is not None:
+                break
+            if c1_xyz is not None:
+              break
+          if c1_xyz is not None:
+            break
+      if c1_xyz is None:
+        continue
+      a = matrix.col(perp_xyz[1])
+      b = matrix.col(c1_xyz)
+      c = (a - b).normalize()
+      new = a - (c * .8)
+      kin_out += kin_vec(display_key, perp_xyz[1], display_key, tuple(new), 4)
+      new = a + (c * .4)
+      kin_out += kin_vec(display_key, perp_xyz[1], display_key, tuple(new), 4)
+      r_vec = matrix.col(perp_xyz[1]) - matrix.col(perp_xyz[0])
+      r = r_vec.axis_and_angle_as_r3_rotation_matrix(angle=90, deg=True)
+      new = r * (new - a) + a
+      kin_out += kin_vec(display_key, perp_xyz[1], display_key, tuple(new), 4)
+      r = r_vec.axis_and_angle_as_r3_rotation_matrix(angle=180, deg=True)
+      new = r * (new - a) + a
+      kin_out += kin_vec(display_key, perp_xyz[1], display_key, tuple(new), 4)
+    return kin_out
+
   def show_summary(self, out=sys.stdout, prefix=""):
     if (self.n_total == 0):
       print(prefix + "No RNA sugar groups found.", file=out)
@@ -515,6 +595,10 @@ class rna_validation(slots_getstate_setstate):
     #  pdb_hierarchy=pdb_hierarchy,
     #  geometry_restraints_manager=geometry_restraints_manager,
     #  outliers_only=outliers_only)
+
+  def as_kinemage(self, chain_id=None, pdb_hierarchy=None):
+    return self.puckers.as_kinemage(chain_id=chain_id,
+      pdb_hierarchy=pdb_hierarchy)
 
   def show_summary(self, out=sys.stdout, prefix=""):
     pass

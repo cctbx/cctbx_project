@@ -514,11 +514,12 @@ def exercise_ribbon_in_kinemage():
   assert "@group {ribbon}" not in kin_out, \
       "Ribbon should be a subgroup within the main group, not a separate @group"
 
-  # There should be exactly one top-level @group (the main model group)
+  # The main model group should be the first @group; probe dots may add
+  # an additional @group (e.g. "@group dominant {dots}")
   group_lines = [l for l in kin_out.splitlines()
                  if l.startswith("@group")]
-  assert len(group_lines) == 1, \
-      "Expected 1 @group, got %d: %s" % (len(group_lines), group_lines)
+  assert len(group_lines) >= 1, \
+      "Expected at least 1 @group, got %d: %s" % (len(group_lines), group_lines)
   assert "{ribbon_test}" in group_lines[0]
 
   print("  exercise_ribbon_in_kinemage: OK")
@@ -532,6 +533,9 @@ def exercise_deleted_functions():
   assert not hasattr(v, 'get_residue_bonds'), "get_residue_bonds should have been deleted"
   assert not hasattr(v, 'get_angle_outliers'), "get_angle_outliers should have been deleted"
   assert not hasattr(v, 'get_bond_outliers'), "get_bond_outliers should have been deleted"
+  assert not hasattr(v, 'rotamer_outliers'), "rotamer_outliers should have been deleted"
+  assert not hasattr(v, 'rama_outliers'), "rama_outliers should have been deleted"
+  assert not hasattr(v, 'pperp_outliers'), "pperp_outliers should have been deleted"
   print("  exercise_deleted_functions: OK")
 
 

@@ -41,3 +41,6 @@ Speed up clashscore2 ~2x by making the second probe2 run (full VDW output for Co
 
 ## 2026-03-04
 Speed up probe2 ~23% by replacing `rvec3` matrix operations with direct tuple arithmetic in hot loops (distance checks, dot/spike location), and caching DotInfo sort keys to avoid repeated `_makeName` string formatting during sorting.
+
+## 2026-03-05
+Fix missing probe dots in kinemage output. Two bugs in `make_probe_dots`: (1) passed top-level probe2 params to Optimizer instead of `params.probe` sub-params, (2) used nonexistent `DataManager.set_default_output_dir()` instead of `CCTBXParser`. Both errors were silently swallowed.
