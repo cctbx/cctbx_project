@@ -442,6 +442,11 @@ def _totalInteractionCount(chainCounts):
 
 class DotInfo:
   # Dot class storing information about an individual dot.
+
+  # Class-level cache: atom memory_id -> name string.  Shared across all
+  # DotInfo instances so each atom's name is formatted at most once.
+  _nameCache = {}
+
   def __init__(self, src, target, loc, spike, overlapType, gap, ptmaster, angle):
     self.src = src                  # Source atom for the interaction
     self.target = target            # Target atom for the interactions
@@ -452,38 +457,32 @@ class DotInfo:
     self.ptmaster = ptmaster        # Main/side chain interaction type
     self.angle = angle              # Angle associated with the bump
     self.dotCount = 1               # Used by _condense and raw/JSON output to count dots on the same source + target
+    # Pre-compute sort key to avoid repeated _makeName calls during sorting
+    self._sortKey = self._cachedName(src)
+    if target is not None:
+      self._sortKey += self._cachedName(target)
+
+  @staticmethod
+  def _cachedName(atom):
+      key = atom.memory_id()
+      name = DotInfo._nameCache.get(key)
+      if name is None:
+        name = "{}{:4.4s}{}{} {}{:1s} {:.3f} {:.3f} {:.3f}".format(
+          atom.parent().parent().parent().id,
+          str(atom.parent().parent().resseq_as_int()),
+          atom.parent().parent().icode,
+          atom.parent().resname,
+          atom.name,
+          atom.parent().altloc,
+          atom.xyz[0], atom.xyz[1], atom.xyz[2])
+        DotInfo._nameCache[key] = name
+      return name
 
   def _makeName(self, atom):
-      # Make the name for an atom, which includes its chain and residue information
-      # along with other atom data, and also includes its location to distinguish
-      # among H? atoms that are otherwise identical.
-      return "{}{:4.4s}{}{} {}{:1s} {:.3f} {:.3f} {:.3f}".format(
-        atom.parent().parent().parent().id, # chain
-        str(atom.parent().parent().resseq_as_int()), # residue number
-        atom.parent().parent().icode, # insertion code
-        atom.parent().resname, # residue name
-        atom.name, # atom name
-        atom.parent().altloc, # alternate location
-        atom.xyz[0], atom.xyz[1], atom.xyz[2])
+      return self._cachedName(atom)
 
   def __lt__(self, other):
-      # Sort dots based on characteristics of their source and target atoms, then their gap
-      # (smallest/most negative gap to largest).
-      # We include the XYZ position in the sort so that we get the same order and grouping each
-      # time even though the phantom H? atoms are otherwise identical.
-      # There may be no target atoms specified (may be Python None value), which will
-      # be treated as the empty string.
-
-      selfName = self._makeName(self.src)
-      if self.target is not None:
-        selfName += self._makeName(self.target)
-      otherName = other._makeName(other.src)
-      if other.target is not None:
-        otherName += other._makeName(other.target)
-
-      return (selfName < otherName) or (
-        (selfName == otherName) and (self.gap < other.gap)
-      )
+      return (self._sortKey, self.gap) < (other._sortKey, other.gap)
 
 # ------------------------------------------------------------------------------
 
@@ -495,6 +494,7 @@ def Test():
 
   #=====================================================================================
   # Test the _condense() method.
+  DotInfo._nameCache.clear()
 
   atoms = [ # Different atoms for different indices
     pdb.hierarchy.atom(), pdb.hierarchy.atom(), pdb.hierarchy.atom(), pdb.hierarchy.atom()
@@ -813,6 +813,8 @@ Note:
       srcInWater = self._inWater[src]
       srcExtra = self._extraAtomInfo.getMappingFor(src)
       srcModel = src.parent().parent().parent().parent().id
+      srcXYZ = src.xyz
+      srcVdw = srcExtra.vdwRadius
 
       # Select those that are actually within the contact distance based on their
       # particular radius (this query includes only target atoms, so we don't need to check separately for that).
@@ -826,8 +828,14 @@ Note:
         nExtra = self._extraAtomInfo.getMappingFor(n)
         nModel = n.parent().parent().parent().parent().id
 
-        d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
-        if (d <= nExtra.vdwRadius + srcExtra.vdwRadius + 2*probeRadius):
+        # Use squared distance to avoid sqrt and matrix object overhead
+        nXYZ = n.xyz
+        dx = nXYZ[0] - srcXYZ[0]
+        dy = nXYZ[1] - srcXYZ[1]
+        dz = nXYZ[2] - srcXYZ[2]
+        d_sq = dx*dx + dy*dy + dz*dz
+        cutoff = nExtra.vdwRadius + srcVdw + 2*probeRadius
+        if (d_sq <= cutoff*cutoff):
 
           # if both atoms are in the same non-HET chain and on the main chain, then skip
           # if we're not allowing mainchain-mainchain interactions.
@@ -973,9 +981,15 @@ Note:
 
             # Find the locations of the dot and spike by scaling the dot vector by the atom radius and
             # the (negative because it is magnitude) overlap.
-            loc = Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect)
-            spikeloc = ( Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect).normalize() *
-                         (self._extraAtomInfo.getMappingFor(src).vdwRadius - res.overlap) )
+            loc = (srcXYZ[0]+dotvect[0], srcXYZ[1]+dotvect[1], srcXYZ[2]+dotvect[2])
+            dvLen = math.sqrt(dotvect[0]*dotvect[0]+dotvect[1]*dotvect[1]+dotvect[2]*dotvect[2])
+            if dvLen > 0:
+              spikeScale = (srcVdw - res.overlap) / dvLen
+              spikeloc = (srcXYZ[0]+dotvect[0]*spikeScale,
+                          srcXYZ[1]+dotvect[1]*spikeScale,
+                          srcXYZ[2]+dotvect[2]*spikeScale)
+            else:
+              spikeloc = loc
 
             # Save the dot
             self._save_dot(src, res.cause, atomClass, loc, spikeloc, overlapType, res.gap, ptmaster, 0)
@@ -1004,13 +1018,19 @@ Note:
     r = self._extraAtomInfo.getMappingFor(src).vdwRadius
     pr = self.params.probe.probe_radius
     srcDots = self._dots[src]
+    srcXYZ = src.xyz
     for dotvect in srcDots:
       # Dot on the surface of the atom, at its radius; both dotloc and spikeloc from original code.
       # This is where the probe touches the surface.
-      dotloc = Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect)
+      dotloc = (srcXYZ[0]+dotvect[0], srcXYZ[1]+dotvect[1], srcXYZ[2]+dotvect[2])
       # Dot that is one probe radius past the surface of the atom, exploring for contact with nearby
       # atoms.  This is the location of the center of the probe.
-      exploc = Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect).normalize() * (r + pr)
+      dvLen = math.sqrt(dotvect[0]*dotvect[0]+dotvect[1]*dotvect[1]+dotvect[2]*dotvect[2])
+      if dvLen > 0:
+        expScale = (r + pr) / dvLen
+        exploc = (srcXYZ[0]+dotvect[0]*expScale, srcXYZ[1]+dotvect[1]*expScale, srcXYZ[2]+dotvect[2]*expScale)
+      else:
+        exploc = dotloc
 
       # If the exploring dot is within a probe radius + vdW radius of a nearby atom,
       # we don't add a dot.
@@ -1031,8 +1051,12 @@ Note:
         # The nearby atom is one that we should check interaction with, see if
         # we're in range.  If so, mark this dot as not okay because it is inside a
         # nearby atom.
-        if ( (Helpers.rvec3(b.xyz) - exploc).length() <=
-            pr + self._extraAtomInfo.getMappingFor(b).vdwRadius ):
+        bXYZ = b.xyz
+        dx = bXYZ[0] - exploc[0]
+        dy = bXYZ[1] - exploc[1]
+        dz = bXYZ[2] - exploc[2]
+        cutoff = pr + self._extraAtomInfo.getMappingFor(b).vdwRadius
+        if (dx*dx + dy*dy + dz*dz <= cutoff*cutoff):
           okay = False
 
       # If this dot is okay, add it to the internal data structure based on its
@@ -1184,8 +1208,10 @@ Note:
 
             r1 = self._extraAtomInfo.getMappingFor(a).vdwRadius
             r2 = self._extraAtomInfo.getMappingFor(t).vdwRadius
-            sl = (node.loc-node.spike).length()
-            gap = (Helpers.rvec3(a.xyz)-Helpers.rvec3(t.xyz)).length() - (r1 + r2)
+            ldx = node.loc[0]-node.spike[0]; ldy = node.loc[1]-node.spike[1]; ldz = node.loc[2]-node.spike[2]
+            sl = math.sqrt(ldx*ldx+ldy*ldy+ldz*ldz)
+            adx = a.xyz[0]-t.xyz[0]; ady = a.xyz[1]-t.xyz[1]; adz = a.xyz[2]-t.xyz[2]
+            gap = math.sqrt(adx*adx+ady*ady+adz*adz) - (r1 + r2)
             dtgp = node.gap
             score = 0.0
 
@@ -2348,6 +2374,7 @@ Note:
         for src in self._source_atoms_sorted:
           srcInWater = self._inWater[src]
           srcModel = src.parent().parent().parent().parent().id
+          srcXYZ = src.xyz
 
           # Find nearby atoms that might come into contact.  This greatly speeds up the
           # search for touching atoms.
@@ -2374,9 +2401,14 @@ Note:
             # Skip atoms that are in different models.
             elif srcModel != nModel:
               continue
-            d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
-            if (d <= self._extraAtomInfo.getMappingFor(n).vdwRadius +
-                self._extraAtomInfo.getMappingFor(src).vdwRadius + 2*self.params.probe.probe_radius):
+            nXYZ = n.xyz
+            dx = nXYZ[0] - srcXYZ[0]
+            dy = nXYZ[1] - srcXYZ[1]
+            dz = nXYZ[2] - srcXYZ[2]
+            d_sq = dx*dx + dy*dy + dz*dz
+            cutoff = (self._extraAtomInfo.getMappingFor(n).vdwRadius +
+                self._extraAtomInfo.getMappingFor(src).vdwRadius + 2*self.params.probe.probe_radius)
+            if (d_sq <= cutoff*cutoff):
               atomList.append(n)
 
           # Find out what class of dot we should place for this atom.
