@@ -118,18 +118,108 @@ def get_bonds_as_dict(geometry_restraints_manager, include_non_zero_origin_id=Tr
         tmp.append(p.i_seqs[0])
   return bonds
 
+def guess_atom_charges(ph, bonds):
+  from mmtbx.ligands.chemistry import get_valences
+  possibilities = {
+    'N' : [0,1],
+    }
+  for atom in ph.atoms():
+    if atom.element_is_hydrogen(): continue
+    if atom.parent().resname in ['HOH']: continue
+    number_of_bonds = len(bonds.get(atom.i_seq, None))
+    v = get_valences(atom.element, charge=atom.charge_as_int())
+    print(v, number_of_bonds)
+    assert len(v)==1
+    charge=number_of_bonds-v[0]
+    poss=possibilities.get(atom.element.strip(), [0])
+    print(poss)
+    print(charge, type(charge))
+    if charge in poss:
+      print(dir(atom))
+      atom.set_charge('%2d' % charge)
+    else:
+      print(atom.quote())
+      assert 0
+
+def get_used_valence(atom_group):
+  from mmtbx import monomer_library
+
+  mon_lib_srv = monomer_library.server.server()
+  ener_lib = monomer_library.server.ener_lib()
+
+  cif_object, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
+    residue_name=atom_group.resname, atom_names=atom_group.atoms().extract_name())
+
+  rc={}
+  if cif_object and hasattr(cif_object, "bond_list"):
+    for bond in cif_object.bond_list:
+      atom_name_1 = bond.atom_id_1.strip()
+      atom_name_2 = bond.atom_id_2.strip()
+      order_str = getattr(bond, 'type', 'single')
+      order=0
+      if order_str.find('coval')==0:
+        order=1
+      elif order_str.find('sing')==0:
+        order=1
+      elif order_str.find('doub')==0:
+        order=2
+      elif order_str.find('arom')==0:
+        order=1.5
+      else:
+        print(atom_name_1, atom_name_2, order_str, order)
+        assert 0
+
+      i_seq = atom_group.get_atom(atom_name_1)
+      j_seq = atom_group.get_atom(atom_name_2)
+      if i_seq is None or j_seq is None: continue
+      i_seq=i_seq.i_seq
+      j_seq=j_seq.i_seq
+      rc.setdefault(i_seq, {})
+      rc[i_seq][j_seq]=order
+      rc.setdefault(j_seq, {})
+      rc[j_seq][i_seq]=order
+
+  return rc
+
+def get_used_valences(ph):
+  uv={}
+  for rg in ph.residue_groups():
+    for ag in rg.atom_groups():
+      rc = get_used_valence(ag)
+      uv.update(rc)
+  return uv
+
 def simple_valence_check(ph, geometry_restraints_manager):
   from mmtbx.ligands.chemistry import get_valences
   bonds = get_bonds_as_dict(geometry_restraints_manager.geometry)
+  from time import time
+  t0=time()
+  unused_valences = get_used_valences(ph)
+  print('time',time()-t0)
   for atom in ph.atoms():
+    print(atom.quote(), atom.i_seq)
+    print(unused_valences.get(atom.i_seq))
+    print(unused_valences)
+
     if atom.element_is_hydrogen(): continue
     if atom.parent().resname in ['HOH']: continue
     number_of_bonds = len(bonds.get(atom.i_seq, None))
     # if number_of_bonds is None: continue
     # print(atom.quote(), number_of_bonds, get_valences(atom.element, atom.charge_as_int()))
+    print('"%s"' % atom.charge)
+    if atom.charge in ['']:
+      print(dir(ph))
+      print('-'*80)
+      print(dir(geometry_restraints_manager))
+      print('-'*80)
+      print(dir(geometry_restraints_manager.geometry))
+      guess_atom_charges(ph, bonds)
+      assert 0
     v = get_valences(atom.element, charge=atom.charge_as_int())
+    print(v,atom.charge_as_int(),number_of_bonds)
     if number_of_bonds not in v:
       print(atom.quote(), number_of_bonds, v)
+      assert 0
 
 def main(filename):
   from iotbx import pdb
