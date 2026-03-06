@@ -579,8 +579,8 @@ class validation(object):
       '_struct_ref_seq.seq_align_end',
     ))
 
-    next_entity_id = 0
-    entity_id = 0
+    next_entity_id = 1
+    entity_id = 1
     # entity_poly
     sequence_to_entity_id = dict()
     nstd_linkage = dict()
