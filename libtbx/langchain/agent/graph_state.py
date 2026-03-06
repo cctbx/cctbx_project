@@ -41,10 +41,16 @@ class AgentState(TypedDict):
     abort_on_red_flags: bool      # If True, abort on critical sanity check failures
     abort_on_warnings: bool       # If True, also abort on warning-level issues
     thinking_level: Optional[str] # None, "basic", or "advanced"
+                                  # ("expert" maps to "advanced" here;
+                                  # planning gated in ai_agent.py)
 
     # === THINKING AGENT (v113) ===
     expert_assessment: Dict       # Output of think node (expert analysis)
     strategy_memory: Dict         # Accumulated scientific understanding across cycles
+
+    # === GOAL-DIRECTED AGENT (v114) ===
+    structure_model: Dict         # StructureModel state
+    validation_history: Dict      # Per-cycle snapshots
 
     # === CURRENT CYCLE DATA ===
     log_text: str                 # Input log for this cycle
@@ -92,7 +98,9 @@ def create_initial_state(
     directives=None,
     bad_inject_params=None,
     thinking_level=None,
-    strategy_memory=None
+    strategy_memory=None,
+    structure_model=None,
+    validation_history=None
 ):
     """
     Factory function to create a properly initialized AgentState.
@@ -126,13 +134,24 @@ def create_initial_state(
             file metadata tracking, and expert knowledge base.
         strategy_memory: Dict of accumulated scientific understanding from
             previous cycles. Passed through session_info for persistence.
+        structure_model: Dict from StructureModel.to_dict(). Running
+            structural knowledge accumulated across cycles. Restored
+            from session on resume. None = create fresh.
+        validation_history: Dict from ValidationHistory.to_dict().
+            Per-cycle validation snapshots for gate evaluator and
+            explanation engine. Restored from session on resume.
+            None = create fresh.
 
     Returns:
         AgentState: Properly initialized state dict
     """
     # Validate thinking_level
+    # "expert" activates the planning layer in ai_agent.py
+    # but maps to "advanced" for the graph (THINK node).
     if thinking_level is not None:
       thinking_level = str(thinking_level).lower()
+      if thinking_level == "expert":
+        thinking_level = "advanced"
       if thinking_level not in ("basic", "advanced"):
         thinking_level = None
     return {
@@ -158,6 +177,17 @@ def create_initial_state(
         # Thinking agent (v113)
         "expert_assessment": {},
         "strategy_memory": strategy_memory if strategy_memory is not None else {},
+
+        # Goal-directed agent (v114)
+        "structure_model": (
+          structure_model
+          if structure_model is not None else {}
+        ),
+        "validation_history": (
+          validation_history
+          if validation_history is not None
+          else {}
+        ),
 
         # Current cycle data
         "log_text": log_text,

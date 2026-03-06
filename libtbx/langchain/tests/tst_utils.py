@@ -113,6 +113,12 @@ def run_tests_with_fail_fast(test_functions=None, verbose=True):
 
     print("\n%d passed, %d failed" % (passed, failed))
     if errors:
-        print("First failure: %s — %s" % (errors[0][0], errors[0][1]))
-        return False
+        first_name, first_exc = errors[0]
+        summary = "First failure: %s — %s" % (
+            first_name, first_exc)
+        print(summary)
+        # Raise so callers (including run_all_tests.py) detect
+        # the failure.  The full traceback was already printed
+        # above at the point of failure.
+        raise AssertionError(summary)
     return True

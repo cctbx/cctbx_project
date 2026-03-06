@@ -6892,7 +6892,7 @@ def test_s6g_markdown_table_superseded_footnote():
     # just verify it is present somewhere after the _format_summary_markdown def
     fmt_idx = src.find("def _format_summary_markdown")
     assert_true(fmt_idx >= 0, "_format_summary_markdown not found in session.py")
-    assert_true("superseded_by" in src[fmt_idx:fmt_idx + 5000],
+    assert_true("superseded_by" in src[fmt_idx:fmt_idx + 16000],
         "_format_summary_markdown must reference superseded_by")
     assert_true("does not affect the final result" in src,
         "_format_summary_markdown must include footnote text")

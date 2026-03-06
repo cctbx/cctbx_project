@@ -283,6 +283,65 @@ def remove_last_cycles(data, n, session_dir=None):
         data["summary"] = ""
         print("Cleared stale session summary (referenced removed cycles)")
 
+    # Reset goal-directed plan state (v114).
+    # Phase statuses, cycle counts, and gate_stop all
+    # become stale when cycles are removed. Reset them
+    # so the gate evaluator re-assesses on resume.
+    if data.get("plan") and isinstance(
+      data["plan"], dict
+    ):
+        try:
+            phases = data["plan"].get("phases", [])
+            for phase in phases:
+                if isinstance(phase, dict):
+                    phase["status"] = "pending"
+                    phase["cycles_used"] = 0
+                    phase["start_cycle"] = None
+                    phase["end_cycle"] = None
+            data["plan"]["current_phase_index"] = 0
+            print(
+                "Reset plan: %d phases set to "
+                "pending" % len(phases))
+        except Exception as e:
+            print(
+                "Warning: could not reset plan: "
+                "%s" % e)
+
+    # Clear gate stop flags
+    if data.get("gate_stop"):
+        data["gate_stop"] = False
+        data.pop("gate_stop_reason", None)
+        print("Cleared gate_stop flag")
+
+    # Clear structure model and validation history
+    # (rebuilt from remaining history on next cycle)
+    if data.get("structure_model"):
+        data["structure_model"] = {}
+        print("Cleared structure model "
+              "(will rebuild from history)")
+    if data.get("validation_history"):
+        data["validation_history"] = {}
+        print("Cleared validation history "
+              "(will rebuild from history)")
+
+    # Clear structure report (references removed data)
+    if data.get("structure_report"):
+        data["structure_report"] = ""
+        print("Cleared stale structure report")
+
+    # Clear strategy memory (LLM reasoning references
+    # removed cycles' decisions and may mislead)
+    if data.get("strategy_memory"):
+        data["strategy_memory"] = {}
+        print("Cleared strategy memory")
+
+    # Clear per-cycle tracking state
+    data.pop("last_injected_params", None)
+    data.pop("failure_diagnosis_path", None)
+    data.pop("html_report_path", None)
+    data.pop("_prev_cycle_metrics", None)
+    data.pop("summary_cycle_count", None)
+
     # Rebuild active_files.json to match the new session state
     # This ensures any code reading active_files.json stays in sync
     if session_dir:

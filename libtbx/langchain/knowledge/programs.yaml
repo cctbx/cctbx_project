@@ -1141,7 +1141,7 @@ phenix.refine:
       - bonds_rmsd
       - angles_rmsd
 
-  command: "phenix.refine {model} {data_mtz} xray_data.r_free_flags.generate=True"
+  command: "phenix.refine {model} {data_mtz}"
 
   defaults:
     xray_data.r_free_flags.generate: True
@@ -1178,6 +1178,10 @@ phenix.refine:
       flag: "refinement.twinning.twin_law={value}"
       type: string
       hint: "Include if twinning detected (e.g., '-h,-k,l')"
+    ignore_experimental_phases:
+      flag: "refinement.input.experimental_phases.use={value}"
+      type: boolean
+      hint: "Set to False after AutoSol to avoid MTZ ambiguity with multiple experimental phase sets"
     anisotropic_adp:
       flag: 'refine.adp.individual.anisotropic="not (water or element H)"'
       type: boolean

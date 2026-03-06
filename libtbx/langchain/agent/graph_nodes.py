@@ -627,7 +627,10 @@ def perceive(state):
         maximum_automation=state.get("maximum_automation", True),
         use_yaml_engine=use_yaml_workflow,
         directives=state.get("directives", {}),
-        session_info=state.get("session_info", {}),
+        session_info={
+            **state.get("session_info", {}),
+            "user_advice": state.get("user_advice", ""),
+        },
         files_local=files_local,
     )
 
@@ -721,7 +724,7 @@ def perceive(state):
         state = _log(state, "PERCEIVE: MTZ categories: %s" % "; ".join(mtz_summary))
     # Warn if we have MTZ files but no map_coeffs after refinement
     has_refine_history = any(
-        isinstance(h, dict) and "refine" in h.get("program", "").lower()
+        isinstance(h, dict) and "refine" in (h.get("program") or "").lower()
         for h in history
     )
     if has_refine_history and not categorized.get("map_coeffs_mtz"):
@@ -2169,21 +2172,25 @@ def _build_with_new_builder(state):
         state = _log(state, f"BUILD: Recovery strategies available for: {list(recovery_strategies.keys())}")
 
     # === AUTOBUILD REBUILD_IN_PLACE ===
-    # When autobuild runs after refinement (rebuilding, not initial
-    # building from phasing), set rebuild_in_place=False so it builds
-    # a new model from the density rather than adjusting the input.
+    # When autobuild runs after a model already exists
+    # (from autosol, previous autobuild, or refinement),
+    # set rebuild_in_place=False so it builds a new model
+    # from the density rather than adjusting the input.
     if program == "phenix.autobuild":
         if "rebuild_in_place" not in strategy:
             history = state.get("history", [])
-            has_refined = any(
-                "refine" in str(h.get("program", "")).lower()
+            has_model = any(
+                any(kw in str(h.get("program", "")).lower()
+                    for kw in ("refine", "autosol",
+                               "autobuild"))
                 for h in history
             )
-            if has_refined:
+            if has_model:
                 strategy["rebuild_in_place"] = False
                 state = _log(state,
                     "BUILD: Set rebuild_in_place=False"
-                    " (rebuilding after refinement)")
+                    " (model already exists from"
+                    " previous cycle)")
 
     # Create log wrapper that updates state
     build_logs = []
@@ -2645,24 +2652,23 @@ def build(state):
                 state = _log(state, "BUILD: Limiting autobuild resolution to 2.0Å (data is %.1fÅ)" % resolution)
 
         # === AUTOBUILD REBUILD_IN_PLACE ===
-        # When autobuild is invoked after refinement has run
-        # (i.e. for model rebuilding, not initial building
-        # from phasing), set rebuild_in_place=False so autobuild
-        # builds a new model from the density rather than just
-        # adjusting the input model in place. This is critical
-        # for fixing fundamental errors like register shifts or
-        # misbuilt regions that refinement cannot correct.
+        # When autobuild is invoked after a model exists
+        # (from autosol, previous autobuild, or refinement),
+        # set rebuild_in_place=False so autobuild builds a
+        # new model from density.
         if "rebuild_in_place" not in strategy:
             history = state.get("history", [])
-            has_refined = any(
-                "refine" in str(h.get("program", "")).lower()
+            has_model = any(
+                any(kw in str(h.get("program", "")).lower()
+                    for kw in ("refine", "autosol",
+                               "autobuild"))
                 for h in history
             )
-            if has_refined:
+            if has_model:
                 strategy["rebuild_in_place"] = False
                 state = _log(state,
                     "BUILD: Set rebuild_in_place=False"
-                    " (rebuilding after refinement)")
+                    " (model already exists)")
 
     # === APPLY RESOLUTION FOR PROGRAMS THAT NEED IT ===
     # Helper to find resolution from various sources (priority order)

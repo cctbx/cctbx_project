@@ -28,6 +28,22 @@ IMPORTANT: Present evidence and reasoning. Do NOT issue commands \
 or parameter settings directly. The planning agent will make the \
 final decision based on your analysis.
 
+IMPORTANT: The "Available programs" line shows which programs \
+the workflow engine will allow on the next cycle. Your guidance \
+MUST recommend one of these programs. Do not suggest a program \
+that is not in the available list — it will confuse the user \
+when the agent runs a different program than you recommended.
+
+If a "Plan goal" or "Current plan prefers" line is shown, \
+align your guidance with the plan's strategy. If a "User stop \
+condition" is shown, respect it in your recommendation.
+
+FILE PROVENANCE: The RECENT HISTORY section shows input and \
+output files for each cycle. Always verify that each program \
+received the correct input file — a common failure mode is \
+refinement running on a stale or wrong model. Flag any \
+suspicious file provenance in your concerns list.
+
 Respond with a JSON object (no markdown fences):
 
 {
@@ -74,6 +90,9 @@ def build_thinking_prompt(context, strategy_memory_dict=None):
       - history_summary: str (brief history)
       - validation_report: str (Phase A, optional)
       - r_free_trend: list of float (Phase A, optional)
+      - structure_model_summary: str (v114, optional)
+      - current_problems: list of dict (v114, optional)
+      - hypothesis_prompt: str (Phase 4, optional)
     strategy_memory_dict: Dict from StrategyMemory.to_dict()
       or None.
 
@@ -89,6 +108,31 @@ def build_thinking_prompt(context, strategy_memory_dict=None):
   parts.append(
     "CYCLE %s | %s | workflow: %s" % (cycle, exp, wf)
   )
+
+  # Valid programs (so guidance aligns with what the
+  # agent can actually do next)
+  valid_progs = context.get("valid_programs", [])
+  non_stop = [p for p in valid_progs if p != "STOP"]
+  if non_stop:
+    parts.append(
+      "Available programs: %s"
+      % ", ".join(non_stop)
+    )
+
+  # Plan phase context (so guidance aligns with
+  # the agent's current strategy)
+  plan_phase = context.get("plan_phase", "")
+  if plan_phase:
+    parts.append(plan_phase)
+  plan_goal = context.get("plan_goal", "")
+  if plan_goal:
+    parts.append("Plan goal: %s" % plan_goal)
+  stop_after = context.get("stop_after", "")
+  if stop_after:
+    parts.append(
+      "User stop condition: stop after %s"
+      % stop_after
+    )
 
   # Program and metrics
   program = context.get("program_name", "")
@@ -125,6 +169,31 @@ def build_thinking_prompt(context, strategy_memory_dict=None):
       if trend_str:
         parts.append(trend_str)
 
+  # Structure Model summary (v114)
+  sm_summary = context.get(
+    "structure_model_summary", ""
+  )
+  if sm_summary:
+    parts.append(
+      "\n=== STRUCTURE MODEL ===\n%s" % sm_summary
+    )
+
+  # Current problems from Structure Model (v114)
+  current_problems = context.get(
+    "current_problems", []
+  )
+  if current_problems:
+    prob_lines = []
+    for p in current_problems[:5]:
+      if isinstance(p, dict):
+        prob_lines.append(
+          "- %s" % p.get("problem", "")
+        )
+    if prob_lines:
+      parts.append(
+        "Problems:\n%s" % "\n".join(prob_lines)
+      )
+
   # File metadata summary (Phase C)
   file_metadata = context.get("file_metadata", {})
   if file_metadata:
@@ -147,6 +216,13 @@ def build_thinking_prompt(context, strategy_memory_dict=None):
   kb_rules_text = context.get("kb_rules_text", "")
   if kb_rules_text:
     parts.append("\n" + kb_rules_text)
+
+  # Hypothesis prompt (Phase 4)
+  hypothesis_prompt = context.get(
+    "hypothesis_prompt", ""
+  )
+  if hypothesis_prompt:
+    parts.append(hypothesis_prompt)
 
   # Strategy memory summary
   if strategy_memory_dict \

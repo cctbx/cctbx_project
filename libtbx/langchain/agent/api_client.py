@@ -107,6 +107,14 @@ def build_session_state(session_info, session_resolution=None):
         if session_info.get("strategy_memory"):
             session_state["strategy_memory"] = session_info["strategy_memory"]
 
+        # Goal-directed agent (v114): Structure Model + History
+        if session_info.get("structure_model"):
+            session_state["structure_model"] = (
+                session_info["structure_model"])
+        if session_info.get("validation_history"):
+            session_state["validation_history"] = (
+                session_info["validation_history"])
+
     return session_state
 
 

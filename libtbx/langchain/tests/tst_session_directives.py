@@ -233,24 +233,24 @@ def test_check_directive_stop_after_cycle():
 
 
 def test_check_directive_stop_after_program():
-    """Should stop after specified program."""
+    """after_program is NOT a hard stop (v112.78, Bug 7)."""
     session, temp_dir = create_test_session()
     try:
         session.data["directives"] = {
             "stop_conditions": {"after_program": "phenix.refine"}
         }
 
-        # Different program
+        # Different program — no stop
         should_stop, reason = session.check_directive_stop_conditions(
             cycle_number=2, last_program="phenix.phaser"
         )
         assert_false(should_stop)
 
-        # Matching program
+        # Matching program — still no hard stop (LLM decides)
         should_stop, reason = session.check_directive_stop_conditions(
             cycle_number=2, last_program="phenix.refine"
         )
-        assert_true(should_stop)
+        assert_false(should_stop)
     finally:
         cleanup_test_session(temp_dir)
 

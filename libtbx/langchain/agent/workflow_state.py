@@ -1376,8 +1376,7 @@ def _analyze_history(history):
             cmd = entry.lower()
         elif isinstance(entry, dict):
             prog = (entry.get("program") or "").lower()
-            cmd = entry.get("command", "").lower()
-
+            cmd = (entry.get("command") or "").lower()
             # Extract metrics
             # NOTE: history from session has 'analysis' key, but after transport has 'metrics'
             analysis = entry.get("analysis", entry.get("metrics", {}))
@@ -1467,7 +1466,7 @@ def _analyze_history(history):
             if not isinstance(_entry, dict):
                 continue
             _eprog  = (_entry.get("program") or "").lower()
-            _ecmd   = _entry.get("command", "").lower()
+            _ecmd   = (_entry.get("command") or "").lower()
             _ecomb  = _eprog + " " + _ecmd
             _result = _entry.get("result", "")
 

@@ -654,6 +654,43 @@ class ProgramRegistry:
         if strategy:
             strategy_defs = self.get_strategy_flags(program_name)
 
+            # Pre-pass: resolve dotted PHIL paths to
+            # strategy flag names. LLMs sometimes use
+            # raw PHIL paths (e.g.
+            # "refinement.input.experimental_phases.use")
+            # instead of the flag name
+            # ("ignore_experimental_phases").
+            resolved_renames = {}
+            for key in list(strategy.keys()):
+                if '.' in key and key not in strategy_defs:
+                    for sf_name, sf_def in (
+                      strategy_defs.items()
+                    ):
+                        sf_flag = sf_def.get("flag", "")
+                        sf_path = sf_flag.replace(
+                            "={value}", ""
+                        ).replace("={}", "")
+                        if sf_path and (
+                          key == sf_path
+                          or key.endswith(
+                            "." + sf_path)
+                          or sf_path.endswith(
+                            "." + key)
+                        ):
+                            resolved_renames[key] = (
+                                sf_name)
+                            break
+            for old_key, new_key in (
+              resolved_renames.items()
+            ):
+                strategy[new_key] = strategy.pop(
+                    old_key)
+                log(
+                    "RESOLVED: dotted PHIL '%s' "
+                    "→ strategy flag '%s=%s'"
+                    % (old_key, new_key,
+                       strategy[new_key]))
+
             for key, value in strategy.items():
                 if key not in strategy_defs:
                     # Allow known short PHIL names (nproc, twin_law, etc.) that
@@ -673,14 +710,14 @@ class ProgramRegistry:
                         cmd_parts.append("%s=%s" % (cmd_key, val_str))
                         log("PASSTHROUGH: Adding %s=%s (known short PHIL name)" % (cmd_key, val_str))
                     elif '.' in key:
-                        # Dotted-path PHIL keys (e.g. refinement.main.number_of_macro_cycles)
-                        # are always program-specific. If they are not in strategy_flags for
-                        # this program they almost certainly came from LLM history contamination
-                        # (copying parameters from a previous program into the current strategy).
-                        # Drop them here; user-supplied dotted overrides go through
-                        # _inject_user_params which appends them directly to the command string.
-                        log("DROPPED: '%s' is a dotted PHIL key not in strategy_flags for %s "
-                            "(likely history contamination from another program)" % (key, program_name))
+                        # Dotted-path PHIL keys that
+                        # survived the pre-pass are
+                        # truly unknown — drop them.
+                        log(
+                            "DROPPED: '%s' is a dotted "
+                            "PHIL key not in "
+                            "strategy_flags for %s"
+                            % (key, program_name))
                     else:
                         log("WARNING: Unknown strategy '%s' for %s" % (key, program_name))
                     continue

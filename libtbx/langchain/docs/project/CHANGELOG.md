@@ -1,5 +1,257 @@
 # PHENIX AI Agent - Changelog
 
+## Version 114.00 (Goal-Directed Structure Determination Agent)
+
+### Summary
+
+Transforms the reactive single-step agent into a goal-directed
+strategic planner. Five new components — Structure Model, Plan
+Generator, Gate Evaluator, Hypothesis Engine, and Explanation
+Engine — sit above the existing reactive loop and communicate
+through the directives system. The reactive agent is unchanged;
+every safety check still applies. The new layer is additive,
+not a rewrite.
+
+Activated by `thinking_level=expert`. The existing `advanced`
+level continues to run the THINK node with structural validation
+and expert KB but without the planning overhead. The `expert`
+level adds plan generation, gate evaluation, hypothesis testing,
+and session reports on top of the full `advanced` pipeline.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│              STRATEGIC PLANNER (v114)                │
+│                                                     │
+│  ┌──────────┐  ┌──────────┐  ┌──────────────────┐  │
+│  │  Plan     │  │ Evaluate │  │ Structure Model  │  │
+│  │ Generator │  │  Gate    │  │ (running state)  │  │
+│  └────┬─────┘  └────┬─────┘  └────────┬─────────┘  │
+│       │              │                 │            │
+│       └──────────────┼─────────────────┘            │
+│                      │                              │
+│              directives + advice                    │
+│                      │                              │
+└──────────────────────┼──────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│          EXISTING REACTIVE AGENT (unchanged)         │
+│                                                     │
+│  PERCEIVE → THINK → PLAN → BUILD → VALIDATE → OUT  │
+└─────────────────────────────────────────────────────┘
+```
+
+### New capabilities
+
+**Phase 1 — Structure Model** (`agent/structure_model.py`):
+maintains a running understanding of the specific structure
+being solved. Updated every cycle from validation results (ground
+truth, not LLM reasoning). Tracks data characteristics, model
+state (chains, ligands, waters, problem regions), progress
+history, and a strategy blacklist for anti-oscillation.
+
+- `StructureModel` class with `update_from_validation()`,
+  `update_from_xtriage()`, `update_from_phaser()`,
+  `get_summary(detail_level=)`, `get_current_problems()`,
+  `blacklist_strategy()`, `is_blacklisted()`
+- `Hypothesis` data class with lifecycle tracking (proposed →
+  testing → pending → confirmed/refuted/abandoned),
+  `test_cycles_remaining` countdown, `revalidation_reason`
+- `ValidationHistory` (`agent/validation_history.py`): per-cycle
+  validation snapshots with `get_metric_series()`,
+  `get_phase_start_metrics()` for the monotonic progress gate
+- Difference density peaks (F2): `_find_diff_peaks()` in
+  `validation_inspector.py` using `mmtbx.find_peaks_holes`,
+  KD-tree caching keyed on `(path, mtime, size, space_group,
+  unit_cell)` with symmetry-change invalidation
+- Ligand RSCC (F1): `_validate_data_model()` with resolution-
+  dependent Z-score normalization
+- Per-chain completeness: `_chain_completeness()` with gap
+  detection and disordered-fraction calculation
+- Session persistence via `AgentState` TypedDict fields
+  `structure_model` and `validation_history`
+
+**Phase 2 — Plan Generator** (`agent/plan_generator.py`):
+produces a multi-phase strategy at session start by selecting
+and customizing pre-defined templates.
+
+- `StructurePlan` and `PhaseDef` data classes
+  (`knowledge/plan_schema.py`) with `advance()`, `retreat_to()`,
+  `skip_phase()`, `to_directives()`, `compute_hash()`,
+  `cycles_used` tracking, and serialization round-trip
+- 12 plan templates (`knowledge/plan_templates.yaml`):
+  `mr_refine`, `mr_refine_ligand`, `mr_refine_lowres`,
+  `mr_refine_highres`, `mr_refine_twinned`,
+  `predict_refine`, `predict_refine_ligand`,
+  `mr_sad`, `sad_phasing`, `sad_phasing_ligand`,
+  `cryoem_refine`, `cryoem_refine_ligand`
+- Template selection is deterministic (rule-based on experiment
+  type, available files, resolution); LLM only customizes
+  parameters within template bounds
+- `plan_to_directives()` translates plan phases into reactive
+  agent directives (prefer_programs, after_program,
+  program_settings)
+- Strategy Hash (`compute_hash()`) fingerprints current phase +
+  directives; hash change triggers `advice_changed` in reactive
+  agent via `check_plan_revision()`
+- Plan Repair (`repair_plan()`): when user directives break plan
+  prerequisites, substitutes alternative data sources where
+  possible and logs `[Plan Repair]` / `[Plan Conflict]` messages
+- Wired into `ai_agent.py` session start (generates plan before
+  first cycle) and resume (restores plan from session)
+
+**Phase 3 — Gate Evaluator** (`agent/gate_evaluator.py`):
+evaluates phase progress after each cycle. Purely deterministic
+(no LLM). Compares Structure Model metrics against plan criteria
+using threshold logic.
+
+- `GateEvaluator.evaluate()` returns `GateResult` with actions:
+  continue, advance, retreat, fallback, skip, stop
+- Success criteria evaluation with comparison operators
+  (`<`, `>`, `<=`, `>=`, `==`) and success hysteresis (1.5%
+  buffer to prevent oscillation on noisy metrics)
+- Skip-if pre-entry checks and within-phase fallback conditions
+- Retreat logic with 5 anti-oscillation safeguards:
+  1. Strategy Blacklist — consults `StructureModel.is_blacklisted()`
+  2. Retreat counter — max 2 per phase
+  3. Monotonic progress gate — only retreats if metrics are worse
+     than phase start (via `ValidationHistory`)
+  4. Retreat cooldown — at least 2 cycles since last retreat
+  5. Retreat depth limit — max 1 phase backwards (unless template
+     explicitly overrides)
+- Phase transitions logged via `vlog.normal("[GATE]...")` with
+  `generate_phase_summary()` at each transition
+- Hypothesis evaluation integrated: calls
+  `evaluate_hypotheses()` and `revalidate_confirmed()` each cycle
+
+**Phase 4 — Hypothesis Engine** (`agent/hypothesis_evaluator.py`):
+structured hypothesis formation, testing, and resolution.
+
+- Single active hypothesis budget (max 1 testing/pending at a
+  time) to prevent confounded multi-variable changes
+- Verification latency via `test_cycles_remaining` countdown —
+  prevents premature refutation on unstabilized models
+- `revalidate_confirmed()` checks confirmed hypotheses each
+  cycle (B-factor drift, RSCC drop, R-free spike) and demotes
+  to re-examination when evidence weakens
+- `build_hypothesis_prompt()` generates structured hypothesis
+  section for THINK node prompt, constrained to propose ONE
+  hypothesis with explicit test program, confirm/refute criteria
+- Wired into gate evaluator (evaluation after test cycles) and
+  thinking agent (prompt generation)
+
+**Phase 5 — Explanation Engine** (`knowledge/explanation_prompts.py`):
+crystallographer-level commentary at three detail levels.
+
+- `generate_cycle_commentary()`: template-based per-cycle
+  summary (no LLM), slots filled from Structure Model
+- `generate_phase_summary()`: LLM-generated narrative at phase
+  transitions (3-5 sentences synthesizing multiple cycles)
+- `generate_final_report()`: comprehensive completion report
+  with model contents, phase timeline, hypothesis outcomes
+- `generate_stopped_report()`: explains what was tried and why
+  it failed, with actionable recommendations (critical — a bare
+  "STOP" with no explanation is unacceptable)
+
+### New files (12)
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `agent/structure_model.py` | 1951 | Structure Model + Hypothesis class |
+| `agent/validation_history.py` | 629 | Per-cycle validation snapshots |
+| `agent/plan_generator.py` | 558 | Plan generation, repair, hash |
+| `agent/gate_evaluator.py` | 862 | Phase gate evaluation + retreat |
+| `agent/hypothesis_evaluator.py` | 564 | Hypothesis lifecycle + prompts |
+| `knowledge/plan_schema.py` | 832 | PhaseDef + StructurePlan classes |
+| `knowledge/plan_templates.yaml` | 605 | 12 plan templates |
+| `knowledge/explanation_prompts.py` | 829 | Commentary/report generators |
+| `tests/tst_structure_model.py` | 1626 | 77 tests |
+| `tests/tst_validation_history.py` | 1059 | 56 tests |
+| `tests/tst_plan_generator.py` | 766 | 39 tests |
+| `tests/tst_gate_evaluator.py` | 957 | 54 tests |
+
+### Modified files (13)
+
+| File | Changes |
+|------|---------|
+| `programs/ai_agent.py` | `thinking_level=expert` PHIL choice; `_use_planning` gating on plan init, plan-to-directives, gate eval, hypothesis eval, cycle commentary, structure report; `_get_plan_context()` helper; enriched `agent_cycle` callbacks with plan context; `agent_gate_transition` callback; plan header on resume; `session_summary.json` output; diagnostic logging at NORMAL level; None-safety fixes |
+| `agent/graph_state.py` | `structure_model` and `validation_history` fields in AgentState TypedDict; `create_initial_state()` maps `"expert"` → `"advanced"` for graph |
+| `agent/thinking_agent.py` | StructureModel creation/update from validation, xtriage, phaser results; hypothesis prompt integration; `_summarize_history()` enhanced with file provenance (Input/Output per cycle) |
+| `agent/workflow_engine.py` | Logger added; "Preferred not available" diagnostic when plan directives name unavailable programs; None-safety fixes on `.get().lower()` pattern |
+| `agent/graph_nodes.py` | None-safety fix on history `.get("program")` |
+| `agent/sanity_checker.py` | None-safety fix on history `.get("program")` |
+| `agent/workflow_state.py` | None-safety fixes on `.get("command").lower()` |
+| `agent/session.py` | Structure Model and ValidationHistory persistence |
+| `knowledge/thinking_prompts.py` | FILE PROVENANCE paragraph in SYSTEM_PROMPT; hypothesis_prompt slot in user message builder |
+| `phenix_ai/run_ai_agent.py` | Updated comment documenting four thinking levels |
+| `agent/event_formatter.py` | `structure_model_summary` in expert assessment display |
+| `agent/validation_inspector.py` | `_find_diff_peaks()` (F2), `_validate_data_model()` (F1 with Z-score), `_chain_completeness()` implementations with KD-tree caching |
+| `wxGUI2/Programs/AIAgent.py` | `agent_plan` callback handler (plan header at session start); `agent_gate_transition` callback handler (phase transition blocks); phase context line per cycle |
+
+### Tests
+
+251 new tests across 5 files (77 + 56 + 39 + 54 + 25). All tests
+are standalone (no PHENIX required). Run with:
+
+```bash
+python3 tests/run_all_tests.py  # includes all new suites
+```
+
+### Activation
+
+The planning layer is controlled by the `thinking_level` PHIL
+parameter, which now accepts four values:
+
+| Level | THINK node | Structure Model | Planning | Cost |
+|-------|-----------|-----------------|----------|------|
+| `none` | off | off | off | 0 LLM calls/cycle |
+| `basic` | log analysis | off | off | 1 LLM call/cycle |
+| `advanced` | validation + KB | updated | off | 1-2 LLM calls/cycle |
+| `expert` | validation + KB | updated | full | 1-2 LLM calls/cycle + plan at start |
+
+```bash
+# Default: advanced (no planning)
+phenix.ai_agent data.mtz model.pdb
+
+# Enable planning layer
+phenix.ai_agent data.mtz model.pdb thinking_level=expert
+```
+
+The `expert` level maps to `advanced` inside the LangGraph
+pipeline — the THINK node sees `advanced` and runs the full
+validation/KB/Structure Model pipeline. The planning layer
+(plan generation, gate evaluation, hypothesis testing, reports)
+is gated in `ai_agent.py` around the cycle loop, not in the
+graph.
+
+### Design principles
+
+- **Additive, not rewrite**: the reactive agent loop is unchanged.
+  The strategic planner communicates through directives only —
+  the same interface a human user would use.
+- **Ground truth, not hallucination**: the Structure Model is
+  derived from validation results, not LLM reasoning. The LLM
+  proposes; the gate evaluator (deterministic) decides.
+- **Plans are advisory**: the reactive agent's safety checks
+  always have final authority. If the plan says "run phaser" but
+  files are missing, the reactive agent's fallback logic takes
+  over.
+- **One variable at a time**: single active hypothesis budget
+  prevents confounded experiments.
+- **No oscillation**: strategy blacklist + retreat counter +
+  monotonic progress gate + cooldown + depth limit.
+
+### Not yet implemented
+
+- `tests/evaluation/` harness with 10-15 real-structure test
+  cases and dry-run replay (Phase 0 from the planning doc)
+- GUI pinned plan header (requires replacing `wx.TextCtrl` with
+  composite `wx.Panel`; currently the plan header is rendered
+  as text in the append stream at session start)
+
+
 ## Version 113.10 (Thinking Level Parameter, Validation, Expert KB)
 
 ### Summary

@@ -242,7 +242,11 @@ class SanityChecker:
                 # If so, this is normal workflow progression — the agent should
                 # be allowed to proceed and choose Phaser/dock_in_map.
                 history = context.get("history", [])
-                programs_run = {h.get("program", "").lower() for h in history if isinstance(h, dict)}
+                programs_run = {
+                    (h.get("program") or "").lower()
+                    for h in history
+                    if isinstance(h, dict)
+                }
                 exp_type = context.get("experiment_type", "unknown")
 
                 positioning_programs = {"phenix.phaser"} if exp_type == "xray" else {"phenix.dock_in_map"}

@@ -25,22 +25,113 @@ except ImportError:
   from knowledge.thinking_prompts import (
     build_thinking_prompt, parse_assessment)
 
+# --- Goal-directed agent imports (v114) ---
+try:
+  from libtbx.langchain.agent.structure_model \
+    import StructureModel, Hypothesis
+  from libtbx.langchain.agent.validation_history \
+    import ValidationHistory
+except ImportError:
+  try:
+    from agent.structure_model import (
+      StructureModel, Hypothesis,
+    )
+    from agent.validation_history \
+      import ValidationHistory
+  except ImportError:
+    # Graceful fallback — goal-directed features
+    # disabled but agent still works.
+    StructureModel = None
+    ValidationHistory = None
+    Hypothesis = None
 
-# =========================================================================
-# Strategic program list — programs whose output warrants expert review
-# =========================================================================
 
-_STRATEGIC_PROGRAMS = frozenset([
-  "phenix.xtriage", "xtriage",
-  "phenix.phaser", "phaser",
-  "phenix.autosol", "autosol",
-  "phenix.autobuild", "autobuild",
-  "phenix.refine", "refine",
-  "phenix.real_space_refine", "real_space_refine",
-  "phenix.map_to_model", "map_to_model",
-  "phenix.predict_and_build", "predict_and_build",
-  "phenix.ligandfit", "ligandfit",
-])
+# =========================================================
+# Strategic program list — programs whose output
+# warrants expert review. Loaded from programs.yaml
+# (categories: analysis, model_building, refinement,
+# ligand). Falls back to a minimal set if YAML
+# unavailable.
+# =========================================================
+
+_strategic_programs_cache = None
+
+
+def _get_strategic_programs():
+  """Load strategic programs from YAML config.
+
+  Returns a frozenset of program names (with and
+  without phenix. prefix) whose output warrants
+  expert-level review.
+
+  Cached after first call.
+  """
+  global _strategic_programs_cache
+  if _strategic_programs_cache is not None:
+    return _strategic_programs_cache
+
+  strategic_categories = frozenset([
+    "analysis", "model_building", "refinement",
+    "ligand",
+  ])
+
+  try:
+    try:
+      from libtbx.langchain.knowledge.yaml_loader \
+        import get_all_programs
+    except ImportError:
+      from knowledge.yaml_loader \
+        import get_all_programs
+    all_progs = get_all_programs()
+    names = set()
+    for prog in all_progs:
+      cat = prog.get("category", "")
+      if cat in strategic_categories:
+        name = prog.get("name", "")
+        if name:
+          names.add(name)
+          # Also add short name without phenix.
+          if name.startswith("phenix."):
+            names.add(name[7:])
+    if names:
+      _strategic_programs_cache = frozenset(names)
+      return _strategic_programs_cache
+  except Exception:
+    pass
+
+  # Fallback: load from programs.yaml directly
+  try:
+    import os
+    import yaml
+    yaml_path = os.path.join(
+      os.path.dirname(os.path.abspath(__file__)),
+      "..", "knowledge", "programs.yaml",
+    )
+    if os.path.isfile(yaml_path):
+      with open(yaml_path) as f:
+        data = yaml.safe_load(f)
+      if isinstance(data, dict):
+        names = set()
+        for name, info in data.items():
+          if not isinstance(info, dict):
+            continue
+          cat = info.get("category", "")
+          if cat in strategic_categories:
+            names.add(name)
+            if name.startswith("phenix."):
+              names.add(name[7:])
+        if names:
+          _strategic_programs_cache = frozenset(
+            names
+          )
+          return _strategic_programs_cache
+  except Exception:
+    pass
+
+  # Minimal fallback — should never reach here
+  # in a properly configured installation
+  _strategic_programs_cache = frozenset()
+  return _strategic_programs_cache
 
 
 def should_think(state):
@@ -85,7 +176,10 @@ def should_think(state):
   )
 
   # Strategic programs
-  if any(p in program for p in _STRATEGIC_PROGRAMS):
+  strategic = _get_strategic_programs()
+  if strategic and any(
+    p in program for p in strategic
+  ):
     return True
 
   # Last cycle failed
@@ -215,6 +309,24 @@ def run_think_node(state):
         state.get("file_metadata") or {}
       )
 
+    # Persist Structure Model + Validation History
+    # to state BEFORE the LLM call so structural
+    # knowledge survives even if the LLM fails.
+    # (v114: goal-directed agent)
+    if thinking_level == "advanced":
+      sm = context.get("structure_model")
+      if sm is not None:
+        state = {
+          **state,
+          "structure_model": sm.to_dict(),
+        }
+      vh = context.get("validation_history")
+      if vh is not None:
+        state = {
+          **state,
+          "validation_history": vh.to_dict(),
+        }
+
     # Build prompt
     memory_dict = state.get("strategy_memory") or {}
     system_msg, user_msg = build_thinking_prompt(
@@ -227,14 +339,22 @@ def run_think_node(state):
     if raw_response is None:
       state = _log(state,
         "THINK: LLM call failed, continuing without")
-      # Still emit the validation data so the user
-      # sees what advanced mode found, even though
-      # the LLM didn't respond.
-      if thinking_level == "advanced" and vr:
-        vr_lines_clean = [
-          ln for ln in vr.split("\n")
-          if ln.strip() and not ln.startswith("===")
-        ]
+      # Still emit the validation / structure data so
+      # the user sees what advanced mode found, even
+      # though the LLM didn't respond.
+      sm_summary = context.get(
+        "structure_model_summary", ""
+      )
+      if thinking_level == "advanced" and (
+        vr or sm_summary
+      ):
+        vr_lines_clean = []
+        if vr:
+          vr_lines_clean = [
+            ln for ln in vr.split("\n")
+            if ln.strip()
+            and not ln.startswith("===")
+          ]
         state = _emit(state,
           action="let_run",
           confidence="unknown",
@@ -248,6 +368,10 @@ def run_think_node(state):
           rfree_trend="",
           kb_rules_matched=bool(
             context.get("kb_rules_text", "")),
+          structure_model_summary=context.get(
+            "structure_model_summary", ""),
+          current_problems=context.get(
+            "current_problems", []),
         )
       return state
 
@@ -256,6 +380,15 @@ def run_think_node(state):
     state = _log(state,
       "THINK: Assessment — action=%s confidence=%s"
       % (assessment["action"], assessment["confidence"]))
+
+    # --- Extract hypothesis from LLM response ---
+    # If the LLM proposed a hypothesis in its JSON,
+    # create a Hypothesis object and add it to the
+    # StructureModel. The hypothesis_evaluator will
+    # manage its lifecycle from here.
+    _extract_hypothesis_from_assessment(
+      assessment, context, state
+    )
 
     # Build a validation summary for the event by
     # stripping the "=== VALIDATION ===" header line
@@ -296,6 +429,10 @@ def run_think_node(state):
       kb_rules_matched=bool(
         context.get("kb_rules_text", "")
       ),
+      structure_model_summary=context.get(
+        "structure_model_summary", ""),
+      current_problems=context.get(
+        "current_problems", []),
     )
 
     # Enrich the assessment dict with advanced-mode data
@@ -313,6 +450,10 @@ def run_think_node(state):
       assessment["rfree_trend"] = rfree_trend_text
       assessment["kb_rules_matched"] = bool(
         context.get("kb_rules_text", ""))
+      assessment["structure_model_summary"] = (
+        context.get("structure_model_summary", ""))
+      assessment["current_problems"] = (
+        context.get("current_problems", []))
 
     # Expert recommends stopping?
     if assessment["action"] == "stop":
@@ -444,6 +585,11 @@ def _build_thinking_context(state, thinking_level="advanced"):
     "workflow_state": workflow_state_dict.get(
       "state", "unknown"
     ),
+    "valid_programs": workflow_state_dict.get(
+      "valid_programs", []),
+    "plan_phase": "",
+    "plan_goal": "",
+    "stop_after": "",
     "metrics": metrics,
     "user_advice": state.get("user_advice", ""),
     "history_summary": history_summary,
@@ -455,6 +601,36 @@ def _build_thinking_context(state, thinking_level="advanced"):
     "file_metadata": {},
     "kb_rules_text": "",
   }
+
+  # Plan phase and directives (so guidance aligns
+  # with what the agent is trying to accomplish)
+  _directives = state.get("directives", {})
+  _wf_prefs = _directives.get(
+    "workflow_preferences", {})
+  _stop_conds = _directives.get(
+    "stop_conditions", {})
+  # Plan phase from prefer_programs (set by
+  # plan_to_directives when expert mode active)
+  _prefer = _wf_prefs.get("prefer_programs", [])
+  if _prefer:
+    context["plan_phase"] = (
+      "Current plan prefers: %s"
+      % ", ".join(_prefer[:3])
+    )
+  # Stop condition
+  _after = _stop_conds.get("after_program", "")
+  if _after:
+    context["stop_after"] = _after
+  # Plan goal from session_info (set by ai_agent.py)
+  _plan_data = (session_info or {}).get("plan")
+  if not _plan_data:
+    _plan_data = state.get("session_info", {}).get(
+      "plan")
+  # Not worth full deserialization — just check for
+  # a goal string
+  if isinstance(_plan_data, dict):
+    context["plan_goal"] = (
+      _plan_data.get("goal", ""))
 
   # --- Advanced mode additions ---
   if thinking_level == "advanced":
@@ -469,6 +645,61 @@ def _build_thinking_context(state, thinking_level="advanced"):
     context["validation_result"] = validation_result
     context["validated_model_path"] = model_path
     context["validation_skip_reason"] = validation_skip
+
+    # --- Structure Model + Validation History (v114) ---
+    # Restore from state or create fresh. Updated every
+    # cycle so structural knowledge accumulates.
+    structure_model, validation_hist = (
+      _update_structure_model(
+        state, validation_result, metrics,
+        program, session_info,
+      )
+    )
+    context["structure_model"] = structure_model
+    context["validation_history"] = validation_hist
+
+    # Replace ad-hoc validation_report with Structure
+    # Model summary for the THINK prompt (richer, and
+    # includes cross-cycle knowledge).
+    sm_summary = ""
+    if structure_model is not None:
+      sm_summary = structure_model.get_summary(
+        detail_level="normal"
+      )
+    if sm_summary:
+      context["structure_model_summary"] = sm_summary
+    else:
+      context["structure_model_summary"] = ""
+
+    # Current problems for the THINK prompt
+    current_problems = []
+    if structure_model is not None:
+      current_problems = (
+        structure_model.get_current_problems()
+      )
+    context["current_problems"] = current_problems
+
+    # Hypothesis prompt for the THINK prompt (Phase 4)
+    hypothesis_prompt = ""
+    if structure_model is not None:
+      try:
+        try:
+          from libtbx.langchain.agent \
+            .hypothesis_evaluator import (
+              build_hypothesis_prompt,
+            )
+        except ImportError:
+          from agent.hypothesis_evaluator import (
+            build_hypothesis_prompt,
+          )
+        hypothesis_prompt = build_hypothesis_prompt(
+          structure_model
+        )
+      except ImportError:
+        pass
+      except Exception:
+        pass
+    context["hypothesis_prompt"] = hypothesis_prompt
 
     # File metadata from state (Phase C)
     context["file_metadata"] = (
@@ -496,16 +727,49 @@ def _build_thinking_context(state, thinking_level="advanced"):
 
 
 def _summarize_history(history):
-  """Create a brief text summary of cycle history."""
+  """Create a brief text summary of cycle history.
+
+  Includes input files (extracted from the command string)
+  and output files so the expert can detect wrong-file-for-
+  refinement errors.
+  """
   if not history:
     return "(first cycle)"
   lines = []
   for h in history[-5:]:  # Last 5 cycles
     prog = h.get("program", "?")
-    status = h.get("status", "?")
-    lines.append("C%s: %s (%s)" % (
-      h.get("cycle_number", "?"), prog, status))
-  return "; ".join(lines)
+    status = h.get("result", h.get("status", "?"))
+    cycle = h.get("cycle_number", "?")
+    parts = ["C%s: %s (%s)" % (cycle, prog, status)]
+
+    # Input files — basenames from the command string
+    cmd = h.get("command", "")
+    if cmd:
+      import shlex
+      try:
+        tokens = shlex.split(cmd)
+      except ValueError:
+        tokens = cmd.split()
+      # Skip the program token itself
+      input_names = []
+      for tok in tokens[1:]:
+        # Only include tokens that look like filenames
+        if ("." in os.path.basename(tok)
+            and not tok.startswith("-")):
+          input_names.append(os.path.basename(tok))
+      if input_names:
+        parts.append(
+            "  Input: %s" % ", ".join(input_names))
+
+    # Output files — basenames from output_files list
+    out_files = h.get("output_files") or []
+    if out_files:
+      out_names = [os.path.basename(f) for f in out_files]
+      parts.append(
+          "  Output: %s" % ", ".join(out_names))
+
+    lines.append("\n".join(parts))
+  return "\n".join(lines)
 
 
 def _run_structural_validation(state, session_info,
@@ -553,18 +817,39 @@ def _run_structural_validation(state, session_info,
             "model file not found: %s"
             % os.path.basename(model_path))
 
-  # Get data and map coefficients paths
-  data_path = best_files.get("data")
-  map_coeffs = best_files.get("map_coefficients")
+  # Get data and map coefficients paths.
+  # BestFilesTracker categories:
+  #   "data_mtz" — reflection data with R-free flags
+  #   "map_coeffs_mtz" — map coefficients from refine
+  #   "sequence" — sequence file
+  data_path = best_files.get("data_mtz")
+  map_coeffs = best_files.get("map_coeffs_mtz")
   exp_type = session_info.get(
     "experiment_type", "xray"
   )
+
+  # Get sequence path from best_files or available
+  # files (Step 1.3: chain completeness needs it
+  # for accurate expected-residue counts).
+  seq_path = best_files.get("sequence")
+  if not seq_path:
+    avail_files = state.get(
+      "available_files",
+    ) or []
+    _SEQ_EXT = (".seq", ".fasta", ".fa", ".pir")
+    for f in avail_files:
+      if any(str(f).lower().endswith(ext)
+             for ext in _SEQ_EXT):
+        if os.path.isfile(str(f)):
+          seq_path = str(f)
+          break
 
   # Run validation (never raises)
   validation_result = run_validation(
     model_path=model_path,
     data_path=data_path,
     map_coeffs_path=map_coeffs,
+    sequence_path=seq_path,
     experiment_type=exp_type,
   )
 
@@ -891,6 +1176,166 @@ def _query_knowledge_base(
   )
 
 
+def _update_structure_model(state, validation_result,
+                           log_metrics, program_name,
+                           session_info):
+  """Restore or create StructureModel + ValidationHistory.
+
+  Called from _build_thinking_context (advanced mode).
+  Restores from state on resume, creates fresh on first
+  cycle. Updates from validation results and log metrics.
+
+  Args:
+    state: Graph state dict.
+    validation_result: dict from run_validation() or None.
+    log_metrics: dict with r_work, r_free, etc.
+    program_name: str, e.g. "phenix.refine".
+    session_info: dict with experiment_type, best_files.
+
+  Returns:
+    tuple of (StructureModel, ValidationHistory).
+    Returns (None, None) if classes not available.
+
+  Never raises.
+  """
+  if StructureModel is None or ValidationHistory is None:
+    return (None, None)
+
+  try:
+    return _update_structure_model_inner(
+      state, validation_result, log_metrics,
+      program_name, session_info,
+    )
+  except Exception:
+    import logging
+    logging.getLogger(__name__).debug(
+      "_update_structure_model failed",
+      exc_info=True,
+    )
+    return (None, None)
+
+
+def _update_structure_model_inner(
+  state, validation_result, log_metrics,
+  program_name, session_info,
+):
+  """Inner structure model update. May raise."""
+  cycle_number = state.get("cycle_number", 1)
+  history = state.get("history", [])
+
+  # --- Restore or create StructureModel ---
+  # Check state first (populated if run_ai_agent.py
+  # passes structure_model= to create_initial_state).
+  # Fall back to session_info (always populated by
+  # ai_agent.py, even before run_ai_agent.py is
+  # updated to extract it).
+  sm_dict = state.get("structure_model")
+  if not sm_dict or not isinstance(sm_dict, dict):
+    sm_dict = (session_info or {}).get(
+      "structure_model"
+    )
+  if sm_dict and isinstance(sm_dict, dict) \
+      and sm_dict.get("_version"):
+    sm = StructureModel.from_dict(sm_dict)
+  else:
+    sm = StructureModel()
+
+  # --- Restore or create ValidationHistory ---
+  vh_dict = state.get("validation_history")
+  if not vh_dict or not isinstance(vh_dict, dict):
+    vh_dict = (session_info or {}).get(
+      "validation_history"
+    )
+  if vh_dict and isinstance(vh_dict, dict) \
+      and vh_dict.get("_version"):
+    vh = ValidationHistory.from_dict(vh_dict)
+  else:
+    vh = ValidationHistory()
+
+  # --- Update from xtriage (if first time) ---
+  # Xtriage data comes from history (it ran in an
+  # earlier cycle). Only update if data_characteristics
+  # is still empty (idempotent — don't overwrite on
+  # every cycle).
+  if sm.data_characteristics.get("resolution") is None:
+    xtriage_results = _extract_xtriage(history)
+    if xtriage_results:
+      sm.update_from_xtriage(xtriage_results)
+
+  # Set experiment type if not already set
+  if sm.data_characteristics.get(
+    "experiment_type"
+  ) is None:
+    exp_type = (session_info or {}).get(
+      "experiment_type"
+    )
+    if exp_type:
+      sm.data_characteristics[
+        "experiment_type"
+      ] = exp_type
+
+  # --- Update from phaser (if in history) ---
+  # Same pattern: only on first encounter.
+  if sm.data_characteristics.get("mr_tfz") is None:
+    for entry in history:
+      prog = entry.get("program", "")
+      if "phaser" not in prog:
+        continue
+      la = entry.get("analysis") or entry.get(
+        "log_analysis", {}
+      )
+      if not la:
+        continue
+      phaser_data = {}
+      for key in ("tfz", "llg", "space_group",
+                   "unit_cell", "n_copies"):
+        if key in la:
+          phaser_data[key] = la[key]
+      if phaser_data:
+        sm.update_from_phaser(phaser_data)
+        break
+
+  # --- Update from autosol (if in history) ---
+  if sm.data_characteristics.get(
+    "phasing_fom"
+  ) is None:
+    for entry in history:
+      prog = (entry.get("program") or "")
+      if "autosol" not in prog:
+        continue
+      la = entry.get("analysis") or entry.get(
+        "log_analysis", {}
+      )
+      if not la:
+        continue
+      autosol_data = {}
+      for key in ("fom", "bayes_cc",
+                   "sites_found"):
+        if key in la:
+          autosol_data[key] = la[key]
+      if autosol_data:
+        sm.update_from_autosol(autosol_data)
+        break
+
+  # --- Update from current cycle's validation ---
+  sm.update_from_validation(
+    validation_result, log_metrics,
+    cycle_number, program_name,
+  )
+
+  # --- Record validation history snapshot ---
+  space_group = sm.data_characteristics.get(
+    "space_group"
+  )
+  vh.record(
+    cycle_number, program_name,
+    validation_result, log_metrics,
+    space_group=space_group,
+  )
+
+  return (sm, vh)
+
+
 def _update_file_metadata(state, context):
   """Build and store file metadata from validation.
 
@@ -946,6 +1391,73 @@ def _update_memory(memory_dict, assessment, cycle_number=None):
     memory.record_decision(cycle, assessment["guidance"][:100])
 
   return memory.to_dict()
+
+
+def _extract_hypothesis_from_assessment(
+  assessment, context, state
+):
+  """Extract a hypothesis from the LLM response.
+
+  If the assessment dict contains a "hypothesis" key
+  (from the LLM including it in its JSON response),
+  create a Hypothesis object and add it to the
+  StructureModel.
+
+  Args:
+    assessment: dict from parse_assessment.
+    context: dict from _build_thinking_context.
+    state: graph state dict (for cycle_number).
+
+  Modifies the StructureModel in context in-place.
+  Never raises.
+  """
+  hyp_text = assessment.get("hypothesis")
+  if not hyp_text:
+    return
+
+  sm = context.get("structure_model")
+  if sm is None:
+    return
+
+  try:
+    if Hypothesis is None:
+      return
+    cycle = state.get("cycle_number", 0)
+
+    h = Hypothesis(
+      id="hyp_cycle%d" % cycle,
+      statement=str(hyp_text)[:200],
+      test_program=str(
+        assessment.get("test_program", "")
+      ),
+      test_parameters=(
+        assessment.get("test_parameters")
+        if isinstance(
+          assessment.get("test_parameters"), dict
+        ) else {}
+      ),
+      confirm_if=str(
+        assessment.get("confirm_if", "")
+      ),
+      refute_if=str(
+        assessment.get("refute_if", "")
+      ),
+      status="proposed",
+      proposed_at_cycle=cycle,
+      test_cycles_remaining=int(
+        assessment.get("test_cycles", 1)
+      ),
+    )
+
+    added = sm.add_hypothesis(h)
+    if added:
+      import logging as _log_mod
+      _log_mod.getLogger(__name__).debug(
+        "Hypothesis extracted from LLM: %s",
+        h.statement[:80],
+      )
+  except Exception:
+    pass  # Non-critical — hypothesis is optional
 
 
 def _call_thinking_llm(state, system_msg, user_msg):

@@ -20,8 +20,11 @@ Usage:
 
 from __future__ import absolute_import, division, print_function
 
+import logging
 import os
 import re
+
+logger = logging.getLogger(__name__)
 
 # Import YAML loader
 from libtbx.langchain.knowledge.yaml_loader import (
@@ -67,6 +70,26 @@ class WorkflowEngine:
         Returns:
             dict: Context for condition evaluation
         """
+        # Pre-compute user_wants_ligandfit (needed by
+        # _has_placed_model before the full context
+        # is built).
+        _d = directives or {}
+        _d_sc = _d.get("stop_conditions", {})
+        _d_wf = _d.get("workflow_preferences", {})
+        _d_after = (_d_sc.get("after_program")
+                    or "").lower()
+        _d_prefer = _d_wf.get(
+            "prefer_programs", [])
+        _d_explicit = (
+            (session_info or {}).get(
+                "explicit_program") or "").lower()
+        _early_wants_ligandfit = bool(
+            "ligandfit" in _d_after or
+            any("ligandfit" in p.lower()
+                for p in _d_prefer) or
+            "ligandfit" in _d_explicit
+        )
+
         context = {
             # File availability - using semantic categories
             "has_data_mtz": bool(files.get("data_mtz")),
@@ -90,7 +113,9 @@ class WorkflowEngine:
             "has_ligand_file": bool(files.get("ligand") or files.get("ligand_cif") or files.get("ligand_pdb")),  # Alias for workflow conditions
             "has_predicted_model": bool(files.get("predicted")) or history_info.get("predict_done", False),
             "has_processed_model": bool(files.get("processed_predicted")) or history_info.get("process_predicted_done", False),
-            "has_placed_model": self._has_placed_model(files, history_info, directives),
+            "has_placed_model": self._has_placed_model(
+                files, history_info, directives,
+                user_wants_ligandfit=_early_wants_ligandfit),
             # Placement confirmed by history/files only — does NOT reflect the
             # model_is_placed directive.  Used by Tier 1 routing and S1 short-circuit
             # so that a mis-set directive cannot suppress a real cell-mismatch signal.
@@ -268,17 +293,64 @@ class WorkflowEngine:
         }
         _user_asserts_placed = _explicit_prog in _PROBE_SKIP_PROGRAMS
 
+        # Also check raw user advice for placement clues.
+        # If user says "refine" or "fit ligand" without
+        # mentioning MR/phaser/solve, the model is placed.
+        _raw_advice = (
+            (session_info or {}).get(
+                "user_advice", "")
+        ).lower()
+        if _raw_advice and not _user_asserts_placed:
+            _mr_kw = (
+                "molecular replacement", "phaser",
+                "solve", "mr ", "autosol", "predict",
+                "sad ", "sad,", "mad ", "mad,",
+                "anomalous", "phasing",
+                "heavy atom", "selenium",
+            )
+            _placed_kw = (
+                "refine", "refinement",
+                "fit ligand", "ligandfit",
+                "fit the ligand", "fit atp",
+                "fit nad", "fit fad", "fit heme",
+                "polder", "validate", "molprobity",
+                "just refine", "only refine",
+                "further refine", "continue refin",
+            )
+            _advice_says_mr = any(
+                kw in _raw_advice for kw in _mr_kw
+            )
+            _advice_says_placed = any(
+                kw in _raw_advice
+                for kw in _placed_kw
+            )
+            if _advice_says_placed and not _advice_says_mr:
+                _user_asserts_placed = True
+
+        # When user advice asserts placement AND a
+        # model file exists, override has_placed_model
+        if (_user_asserts_placed
+            and context.get("has_model")
+            and not context.get("has_placed_model")):
+            context["has_placed_model"] = True
+
         # ── User intent: does the user explicitly want ligand fitting? ───────
         # Set when directives or session_info indicate the user wants ligandfit.
         # Used in _detect_xray_phase to relax the r_free < 0.35 threshold and
         # stay in the "refine" phase so ligandfit remains available, rather than
         # falling through to "validate" and offering only validation programs.
-        _after_prog   = (directives or {}).get("stop_conditions", {}).get("after_program", "")
-        _prefer_progs = (directives or {}).get("workflow_preferences", {}).get("prefer_programs", [])
-        _explicit_lig = (session_info or {}).get("explicit_program", "")
+        _after_prog   = (directives or {}).get(
+            "stop_conditions", {}).get(
+            "after_program") or ""
+        _prefer_progs = (directives or {}).get(
+            "workflow_preferences", {}).get(
+            "prefer_programs") or []
+        _explicit_lig = (session_info or {}).get(
+            "explicit_program") or ""
         context["user_wants_ligandfit"] = bool(
             "ligandfit" in _after_prog.lower() or
-            any("ligandfit" in p.lower() for p in (_prefer_progs or [])) or
+            any("ligandfit" in p.lower()
+                for p in _prefer_progs) or
             "ligandfit" in _explicit_lig.lower()
         )
 
@@ -520,7 +592,9 @@ class WorkflowEngine:
 
         return files, context
 
-    def _has_placed_model(self, files, history_info, directives=None):
+    def _has_placed_model(self, files, history_info,
+                          directives=None,
+                          user_wants_ligandfit=False):
         """
         Check if model is placed (after MR/building) or is ready-to-refine.
 
@@ -531,6 +605,7 @@ class WorkflowEngine:
         3. User explicitly says model is placed (model_is_placed directive)
         4. User's constraints imply model is placed (e.g., "refine", "fit ligand")
         5. User explicitly requests refinement/validation via directives
+        6. User wants ligand fitting (implies model is placed)
 
         IMPORTANT: An unclassified PDB (generic file like "1abc.pdb") in the
         'model' parent category is NOT sufficient to be "placed". It could be
@@ -554,6 +629,10 @@ class WorkflowEngine:
                 c_lower = c.lower() if isinstance(c, str) else ""
                 if any(kw in c_lower for kw in placement_keywords):
                     return True
+
+        # ---- 0b. User wants ligand fitting → model must be placed ----
+        if user_wants_ligandfit and files.get("model"):
+            return True
 
         # ---- 1. History-based: definitive evidence of placement ----
         if (history_info.get("phaser_done") or
@@ -590,8 +669,10 @@ class WorkflowEngine:
             if "phenix.predict_and_build" in program_settings:
                 wants_prediction = True
 
-            stop_conditions = directives.get("stop_conditions", {})
-            after_program = stop_conditions.get("after_program", "")
+            stop_conditions = directives.get(
+                "stop_conditions") or {}
+            after_program = stop_conditions.get(
+                "after_program") or ""
             if "predict" in after_program.lower():
                 wants_prediction = True
 
@@ -1631,14 +1712,31 @@ class WorkflowEngine:
                         "Deferred phenix.ligandfit injection (refine_count=0, "
                         "refinement must run first to produce map coefficients)")
 
-            preferred = [p for p in prefer_programs if p in result]
-            others = [p for p in result if p not in prefer_programs]
+            preferred = [p for p in prefer_programs
+                         if p in result]
+            dropped = [p for p in prefer_programs
+                       if p not in result and p]
+            others = [p for p in result
+                      if p not in prefer_programs]
             if preferred:
                 result = preferred + others
-                modifications.append("Prioritized: %s" % preferred)
+                modifications.append(
+                    "Prioritized: %s" % preferred)
+            if dropped:
+                modifications.append(
+                    "Preferred not available: %s"
+                    % dropped)
+                logger.debug(
+                    "Preferred programs %s not in "
+                    "valid list %s — skipped",
+                    dropped, result,
+                )
 
-        # Log modifications (these will show up in debug output)
-        # Store modifications in a class-level list so caller can retrieve them
+        # Log modifications for debug and store for
+        # caller retrieval.
+        for mod in modifications:
+            logger.debug(
+                "Directive modification: %s", mod)
         self._last_directive_modifications = modifications
 
         return result

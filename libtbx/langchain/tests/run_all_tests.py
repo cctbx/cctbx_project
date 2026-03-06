@@ -52,6 +52,21 @@ Test Suites (require PHENIX environment):
       heavier-atom-wins, catch-all injection blacklist, rebuild_in_place
       allowlist (v112.75–v112.77)
   38. Thinking Defense - Pre-implementation baseline for Thinking Agent (v113)
+  39. Contract Compliance - Contract compliance validation
+  40. Explanation Prompts - LLM explanation prompt generation
+  41. Gate Evaluator - Gate evaluation logic (advance/skip/retreat/stop)
+  42. Hypothesis Evaluator - Hypothesis lifecycle, ligand/metal evaluation
+  43. MTZ Crosscheck - MTZ file classification and crosscheck rescue
+  44. Old Client Compat - Backward compatibility with older clients
+  45. Perceive Stop Checks - Perceive-phase stop condition checks
+  46. Plan Generator - Plan generation, revision, and repair logic
+  47. Plan Schema - Plan schema validation, roundtrips, workflow tests
+  48. Shared Code Imports - Shared code import verification
+  49. Structure Model - Structure model state, metrics, problem detection
+  50. Template - Template system tests
+  51. Validation History - Validation history roundtrips, scenarios
+  52. Display Data Model - DisplayDataModel properties, HTML report generation
+  53. Scenario Tracer - Plan selection, gate evaluation, cycle counting, multi-cycle progression
 
 Key Tests for Recent Fixes (v110):
   - tst_best_files_tracker: Model scoring, autobuild_output same score as refined
@@ -547,6 +562,159 @@ def main():
         print(f"Could not import tst_thinking_agent: {e}")
         results.append(("Thinking Agent", False, 0))
 
+    # --- Contract Compliance Tests ---
+    try:
+        from tests.tst_contract_compliance import run_all_tests as run_contract_compliance_tests
+        success, elapsed = run_test_module(
+            "tst_contract_compliance", run_contract_compliance_tests, args.verbose)
+        results.append(("Contract Compliance", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_contract_compliance: {e}")
+        results.append(("Contract Compliance", False, 0))
+
+    # --- Explanation Prompts Tests ---
+    try:
+        from tests.tst_explanation_prompts import run_tests as run_explanation_prompts_tests
+        success, elapsed = run_test_module(
+            "tst_explanation_prompts", run_explanation_prompts_tests, args.verbose)
+        results.append(("Explanation Prompts", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_explanation_prompts: {e}")
+        results.append(("Explanation Prompts", False, 0))
+
+    # --- Gate Evaluator Tests ---
+    try:
+        from tests.tst_gate_evaluator import run_tests as run_gate_evaluator_tests
+        success, elapsed = run_test_module(
+            "tst_gate_evaluator", run_gate_evaluator_tests, args.verbose)
+        results.append(("Gate Evaluator", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_gate_evaluator: {e}")
+        results.append(("Gate Evaluator", False, 0))
+
+    # --- Hypothesis Evaluator Tests ---
+    try:
+        from tests.tst_hypothesis_evaluator import run_tests as run_hypothesis_evaluator_tests
+        success, elapsed = run_test_module(
+            "tst_hypothesis_evaluator", run_hypothesis_evaluator_tests, args.verbose)
+        results.append(("Hypothesis Evaluator", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_hypothesis_evaluator: {e}")
+        results.append(("Hypothesis Evaluator", False, 0))
+
+    # --- MTZ Crosscheck Tests ---
+    try:
+        from tests.tst_mtz_crosscheck import TESTS as mtz_crosscheck_tests_list
+        from tests.tst_utils import run_tests_with_fail_fast
+        success, elapsed = run_test_module(
+            "tst_mtz_crosscheck",
+            lambda: run_tests_with_fail_fast(mtz_crosscheck_tests_list),
+            args.verbose)
+        results.append(("MTZ Crosscheck", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_mtz_crosscheck: {e}")
+        results.append(("MTZ Crosscheck", False, 0))
+
+    # --- Old Client Compat Tests ---
+    try:
+        from tests.tst_old_client_compat import run_all_tests as run_old_client_compat_tests
+        success, elapsed = run_test_module(
+            "tst_old_client_compat", run_old_client_compat_tests, args.verbose)
+        results.append(("Old Client Compat", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_old_client_compat: {e}")
+        results.append(("Old Client Compat", False, 0))
+
+    # --- Perceive Stop Checks Tests ---
+    try:
+        from tests.tst_perceive_stop_checks import run as run_perceive_stop_checks_tests
+        success, elapsed = run_test_module(
+            "tst_perceive_stop_checks", run_perceive_stop_checks_tests, args.verbose)
+        results.append(("Perceive Stop Checks", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_perceive_stop_checks: {e}")
+        results.append(("Perceive Stop Checks", False, 0))
+
+    # --- Plan Generator Tests ---
+    try:
+        from tests.tst_plan_generator import run_tests as run_plan_generator_tests
+        success, elapsed = run_test_module(
+            "tst_plan_generator", run_plan_generator_tests, args.verbose)
+        results.append(("Plan Generator", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_plan_generator: {e}")
+        results.append(("Plan Generator", False, 0))
+
+    # --- Plan Schema Tests ---
+    try:
+        from tests.tst_plan_schema import run_tests as run_plan_schema_tests
+        success, elapsed = run_test_module(
+            "tst_plan_schema", run_plan_schema_tests, args.verbose)
+        results.append(("Plan Schema", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_plan_schema: {e}")
+        results.append(("Plan Schema", False, 0))
+
+    # --- Shared Code Imports Tests ---
+    try:
+        from tests.tst_shared_code_imports import run_all_tests as run_shared_code_imports_tests
+        success, elapsed = run_test_module(
+            "tst_shared_code_imports", run_shared_code_imports_tests, args.verbose)
+        results.append(("Shared Code Imports", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_shared_code_imports: {e}")
+        results.append(("Shared Code Imports", False, 0))
+
+    # --- Structure Model Tests ---
+    try:
+        from tests.tst_structure_model import run_tests as run_structure_model_tests
+        success, elapsed = run_test_module(
+            "tst_structure_model", run_structure_model_tests, args.verbose)
+        results.append(("Structure Model", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_structure_model: {e}")
+        results.append(("Structure Model", False, 0))
+
+    # --- Template Tests ---
+    try:
+        from tests.tst_template import run_all_tests as run_template_tests
+        success, elapsed = run_test_module(
+            "tst_template", run_template_tests, args.verbose)
+        results.append(("Template", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_template: {e}")
+        results.append(("Template", False, 0))
+
+    # --- Validation History Tests ---
+    try:
+        from tests.tst_validation_history import run_tests as run_validation_history_tests
+        success, elapsed = run_test_module(
+            "tst_validation_history", run_validation_history_tests, args.verbose)
+        results.append(("Validation History", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_validation_history: {e}")
+        results.append(("Validation History", False, 0))
+
+    # --- Display Data Model Tests (v114) ---
+    try:
+        from tests.tst_display_data_model import run_tests as run_display_data_model_tests
+        success, elapsed = run_test_module(
+            "tst_display_data_model", run_display_data_model_tests, args.verbose)
+        results.append(("Display Data Model", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_display_data_model: {e}")
+        results.append(("Display Data Model", False, 0))
+
+    # --- Scenario Tracer Tests (v114) ---
+    try:
+        from tests.tst_scenario_tracer import run_all as run_scenario_tracer_tests
+        success, elapsed = run_test_module(
+            "tst_scenario_tracer", run_scenario_tracer_tests, args.verbose)
+        results.append(("Scenario Tracer", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_scenario_tracer: {e}")
+        results.append(("Scenario Tracer", False, 0))
+
     # --- Summary ---
     total_elapsed = time.time() - total_start
 
@@ -560,7 +728,7 @@ def main():
 
     for name, success, elapsed in results:
         status = "✅ PASSED" if success else "❌ FAILED"
-        print(f"  {name:25s} {status} ({elapsed:.2f}s)")
+        print(f"  {name:30s} {status} ({elapsed:.2f}s)")
         if success:
             passed += 1
         else:

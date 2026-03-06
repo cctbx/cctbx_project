@@ -1,0 +1,619 @@
+"""
+Plan Generator for the Goal-Directed Agent.
+
+Generates a StructurePlan at session start by selecting
+the best-matching template from plan_templates.yaml and
+customizing it based on available files, user advice,
+and data characteristics.
+
+Template selection is deterministic (rule-based).
+The LLM is NOT used — the template constrains the
+plan structure, ensuring correctness.
+
+Entry points:
+  generate_plan(...) -> StructurePlan
+  plan_to_directives(plan) -> dict
+  check_plan_revision(plan, session_data) -> bool
+  repair_plan(plan, user_directives) -> list
+
+2-space indentation, 80-char line width.
+"""
+
+from __future__ import absolute_import, division, print_function
+
+import logging
+import os
+import re
+
+logger = logging.getLogger(__name__)
+
+try:
+  from libtbx.langchain.knowledge.plan_schema import (
+    StructurePlan, merge_directives,
+  )
+  from libtbx.langchain.knowledge.plan_template_loader \
+    import (
+      load_templates, select_template,
+      build_plan_from_template,
+    )
+except ImportError:
+  try:
+    from knowledge.plan_schema import (
+      StructurePlan, merge_directives,
+    )
+    from knowledge.plan_template_loader import (
+      load_templates, select_template,
+      build_plan_from_template,
+    )
+  except ImportError:
+    StructurePlan = None
+    merge_directives = None
+    load_templates = None
+    select_template = None
+    build_plan_from_template = None
+
+
+# ── Main entry point ────────────────────────────────
+
+def generate_plan(data_characteristics=None,
+                  user_advice="",
+                  available_files=None,
+                  directives=None,
+                  structure_model=None,
+                  cycle_number=0):
+  """Generate a StructurePlan for the current session.
+
+  Step 1: Build context from available information.
+  Step 2: Select the best-matching template.
+  Step 3: Build and customize the plan.
+
+  The plan generator can NEVER produce an invalid plan —
+  the template guarantees structural correctness.
+
+  Args:
+    data_characteristics: dict from StructureModel or
+      session. May be None at session start.
+    user_advice: str, user's project advice.
+    available_files: list of str, file paths.
+    directives: dict, extracted user directives.
+    structure_model: StructureModel or None.
+    cycle_number: int, current cycle.
+
+  Returns:
+    StructurePlan or None if plan generation fails
+    (e.g. templates not loadable, no matching template).
+
+  Never raises.
+  """
+  if StructurePlan is None or load_templates is None:
+    return None
+
+  try:
+    return _generate_plan_inner(
+      data_characteristics, user_advice,
+      available_files, directives,
+      structure_model, cycle_number,
+    )
+  except Exception:
+    logger.debug(
+      "generate_plan failed", exc_info=True,
+    )
+    return None
+
+
+def _generate_plan_inner(
+  data_characteristics, user_advice,
+  available_files, directives,
+  structure_model, cycle_number,
+):
+  """Inner plan generation. May raise."""
+  # --- Step 1: Build context ---
+  context = _build_context(
+    data_characteristics=data_characteristics,
+    user_advice=user_advice,
+    available_files=available_files,
+    directives=directives,
+    structure_model=structure_model,
+  )
+
+  # --- Step 2: Select template ---
+  templates = load_templates()
+  if not templates:
+    logger.warning(
+      "No plan templates loaded — cannot generate"
+      " plan"
+    )
+    return None
+
+  template_id = select_template(templates, context)
+  if template_id is None:
+    logger.warning(
+      "No matching template for context: %s",
+      {k: v for k, v in context.items()
+       if v is not None},
+    )
+    return None
+
+  # --- Step 3: Build plan ---
+  plan = build_plan_from_template(
+    template_id, templates, context,
+    cycle_number=cycle_number,
+  )
+  if plan is None:
+    return None
+
+  # --- Step 4: Customize ---
+  _customize_plan(plan, context, user_advice)
+
+  # Compute initial strategy hash
+  plan.strategy_hash = plan.compute_hash()
+
+  logger.debug(
+    "Generated plan: template=%s goal=%s "
+    "phases=%d",
+    template_id, plan.goal, len(plan.phases),
+  )
+  return plan
+
+
+# ── Context building ────────────────────────────────
+
+def _build_context(data_characteristics=None,
+                   user_advice="",
+                   available_files=None,
+                   directives=None,
+                   structure_model=None):
+  """Build template-selection context from all sources.
+
+  Merges information from files, advice, directives,
+  and the structure model (if available from a previous
+  run or resumed session).
+
+  Returns:
+    dict with keys matching template applicable_when:
+      experiment_type, has_search_model, has_sequence,
+      has_ligand_code, has_anomalous_atoms, resolution,
+      is_twinned.
+  """
+  ctx = {
+    "experiment_type": None,
+    "has_search_model": False,
+    "has_sequence": False,
+    "has_ligand_code": False,
+    "has_anomalous_atoms": False,
+    "model_is_placed": False,
+    "resolution": None,
+    "is_twinned": None,
+  }
+
+  # --- From available files ---
+  has_pdb = False
+  cif_files = []
+  files = available_files or []
+  for f in files:
+    ext = os.path.splitext(f)[1].lower()
+    bn = os.path.basename(f).lower()
+    if ext in (".pdb", ".ent"):
+      ctx["has_search_model"] = True
+      has_pdb = True
+    elif ext == ".cif":
+      cif_files.append(bn)
+    elif ext in (".mtz", ".sca", ".hkl"):
+      if ctx["experiment_type"] is None:
+        ctx["experiment_type"] = "xray"
+    elif ext in (".mrc", ".ccp4", ".map"):
+      ctx["experiment_type"] = "cryoem"
+    elif ext in (
+      ".seq", ".fa", ".fasta", ".pir", ".dat",
+    ):
+      ctx["has_sequence"] = True
+
+  # Classify CIF files after scanning all files
+  # so we know whether a PDB model is present.
+  for bn in cif_files:
+    if _is_ligand_cif(bn, has_pdb):
+      ctx["has_ligand_code"] = True
+    else:
+      ctx["has_search_model"] = True
+
+  # --- From directives ---
+  d = directives or {}
+  wf = d.get("workflow_preferences", {})
+  ps = d.get("program_settings", {})
+  # Ligand code in directives
+  lf_settings = ps.get("phenix.ligandfit", {})
+  if lf_settings.get("ligand_code"):
+    ctx["has_ligand_code"] = True
+  # Resolution from directives
+  if ctx["resolution"] is None:
+    default_settings = ps.get("default", {})
+    if isinstance(default_settings, dict):
+      res_str = default_settings.get("resolution")
+      if res_str is not None:
+        try:
+          ctx["resolution"] = float(res_str)
+        except (ValueError, TypeError):
+          pass
+  # Anomalous atom type → SAD experiment
+  autosol_settings = ps.get(
+    "phenix.autosol", {})
+  if isinstance(autosol_settings, dict):
+    if autosol_settings.get("atom_type"):
+      ctx["has_anomalous_atoms"] = True
+
+  # --- From user advice (text heuristics) ---
+  advice = (user_advice or "").lower()
+  # Note: has_ligand_code from advice alone is NOT
+  # sufficient — the user may mention "fit ATP" but
+  # not provide a CIF file. Only set it here if
+  # there's also a CIF file present (already set
+  # from file scan above). If no CIF, the template
+  # selection won't include ligandfit phases.
+  # The workflow engine separately handles the case
+  # where the user wants ligandfit (user_wants_ligandfit).
+  # Experiment type from advice
+  if ctx["experiment_type"] is None:
+    if any(w in advice for w in (
+      "cryo-em", "cryoem", "cryo em",
+      "electron microscopy", "map_to_model",
+    )):
+      ctx["experiment_type"] = "cryoem"
+    elif any(w in advice for w in (
+      "x-ray", "xray", "diffraction",
+      "molecular replacement", "phaser",
+      "refinement", "refine",
+    )):
+      ctx["experiment_type"] = "xray"
+
+  # Anomalous from advice
+  if not ctx["has_anomalous_atoms"]:
+    if any(w in advice for w in (
+      "sad", "mad", "anomalous", "selenium",
+      "se-met", "s-sad", "sulfur",
+      "atom_type", "heavy atom",
+    )):
+      ctx["has_anomalous_atoms"] = True
+
+  # Model placement from advice: if user says
+  # "refine", "fit ligand", etc. WITHOUT mentioning
+  # "molecular replacement", "phaser", or "solve",
+  # the model is already placed.
+  _mr_keywords = (
+    "molecular replacement", "phaser", "solve",
+    "mr ", "autosol", "predict",
+    "sad ", "sad,", "mad ", "mad,",
+    "anomalous", "phasing",
+    "heavy atom", "selenium",
+  )
+  _placed_keywords = (
+    "refine", "refinement", "fit ligand",
+    "fit the ligand", "ligandfit",
+    "fit atp", "fit nad", "fit fad", "fit heme",
+    "polder", "validate", "molprobity",
+    "just refine", "only refine",
+    "further refine", "continue refin",
+  )
+  _mentions_mr = any(w in advice for w in _mr_keywords)
+  _mentions_placed = any(
+    w in advice for w in _placed_keywords
+  )
+  if _mentions_placed and not _mentions_mr:
+    ctx["model_is_placed"] = True
+
+  # Also check directives for placement signals
+  d = directives or {}
+  _d_constraints = d.get("constraints", [])
+  for c in _d_constraints:
+    c_lower = (c.lower()
+               if isinstance(c, str) else "")
+    if any(kw in c_lower for kw in (
+      "refine", "ligandfit", "fit ligand",
+      "polder", "validate",
+    )):
+      ctx["model_is_placed"] = True
+      break
+  # user_wants_ligandfit → model is placed
+  wf = d.get("workflow_preferences", {})
+  sc = d.get("stop_conditions", {})
+  _after = (sc.get("after_program") or "").lower()
+  _prefer = wf.get("prefer_programs", [])
+  if ("ligandfit" in _after or
+      any("ligandfit" in p.lower()
+          for p in _prefer)):
+    ctx["model_is_placed"] = True
+  # after_program is a refinement program
+  if _after in (
+    "phenix.refine", "phenix.real_space_refine",
+    "phenix.ligandfit", "phenix.polder",
+    "phenix.molprobity",
+  ):
+    ctx["model_is_placed"] = True
+
+  # --- From data characteristics ---
+  dc = data_characteristics or {}
+  if isinstance(dc, dict):
+    if dc.get("experiment_type"):
+      ctx["experiment_type"] = dc["experiment_type"]
+    res = dc.get("resolution")
+    if res is not None:
+      try:
+        ctx["resolution"] = float(res)
+      except (ValueError, TypeError):
+        pass
+    tw = dc.get("twinning", {})
+    if isinstance(tw, dict):
+      if tw.get("is_twinned") is not None:
+        ctx["is_twinned"] = bool(tw["is_twinned"])
+    elif dc.get("is_twinned") is not None:
+      ctx["is_twinned"] = bool(dc["is_twinned"])
+
+  # --- From structure model (resumed session) ---
+  if structure_model is not None:
+    sm_dc = None
+    if hasattr(structure_model, "data_characteristics"):
+      sm_dc = structure_model.data_characteristics
+    elif isinstance(structure_model, dict):
+      sm_dc = structure_model.get(
+        "data_characteristics"
+      )
+    if sm_dc and isinstance(sm_dc, dict):
+      if sm_dc.get("experiment_type"):
+        ctx["experiment_type"] = sm_dc[
+          "experiment_type"
+        ]
+      if sm_dc.get("resolution") is not None:
+        try:
+          ctx["resolution"] = float(
+            sm_dc["resolution"]
+          )
+        except (ValueError, TypeError):
+          pass
+      tw = sm_dc.get("twinning", {})
+      if isinstance(tw, dict) and \
+          tw.get("is_twinned") is not None:
+        ctx["is_twinned"] = bool(
+          tw["is_twinned"]
+        )
+
+  # Default experiment type
+  if ctx["experiment_type"] is None:
+    ctx["experiment_type"] = "xray"
+
+  return ctx
+
+
+_LIGAND_PATTERN = re.compile(
+  r'\b(?:'
+  r'ligand|ligandfit|atp|adp|nad|fad|heme|'
+  r'cofactor|inhibitor|substrate|drug|'
+  r'small.?molecule|binding.?site|'
+  r'fit.?ligand|place.?ligand|'
+  r'ligand.?fitting'
+  r')\b',
+  re.IGNORECASE,
+)
+
+# Patterns in CIF filenames that indicate ligand
+# restraints rather than a coordinate model.
+_LIGAND_CIF_MARKERS = re.compile(
+  r'elbow|restraint|ligand|_lig[_.]|'
+  r'^[a-z0-9]{1,3}\.cif$',
+  re.IGNORECASE,
+)
+
+# Patterns that indicate a model CIF (not ligand).
+_MODEL_CIF_MARKERS = re.compile(
+  r'model|refine|autobuild|predicted|'
+  r'^\d[a-z0-9]{3}\.cif$',
+  re.IGNORECASE,
+)
+
+
+def _is_ligand_cif(basename, has_pdb_model):
+  """Classify a CIF file as ligand or model.
+
+  Heuristics (in priority order):
+  1. Filename contains ligand markers (elbow,
+     restraint, etc.) → ligand.
+  2. Filename matches model markers (model, refine,
+     PDB code pattern) → model.
+  3. Short name (≤3 chars before .cif) → ligand.
+  4. If a PDB model is already present, CIF is
+     more likely ligand restraints.
+  5. Default: model.
+
+  Args:
+    basename: str, lowercase filename.
+    has_pdb_model: bool, whether a .pdb file is
+      present in the file list.
+
+  Returns:
+    True if likely a ligand CIF.
+  """
+  if _LIGAND_CIF_MARKERS.search(basename):
+    return True
+  if _MODEL_CIF_MARKERS.search(basename):
+    return False
+  # Short name → ligand (ATP.cif, LIG.cif)
+  name_no_ext = os.path.splitext(basename)[0]
+  if len(name_no_ext) <= 3:
+    return True
+  # If PDB already present, CIF is likely restraints
+  if has_pdb_model:
+    return True
+  return False
+
+
+def _mentions_ligand(text):
+  """Check if user advice mentions ligand fitting.
+
+  Returns bool.
+  """
+  return bool(_LIGAND_PATTERN.search(text or ""))
+
+
+# ── Plan customization ──────────────────────────────
+
+def _customize_plan(plan, context, user_advice):
+  """Customize the plan based on context.
+
+  Adjusts resolution-dependent thresholds for
+  intermediate resolutions not covered by the
+  lowres/highres templates.
+
+  Args:
+    plan: StructurePlan (modified in place).
+    context: dict from _build_context.
+    user_advice: str.
+  """
+  resolution = context.get("resolution")
+  if resolution is None:
+    return
+
+  # Intermediate resolution adjustments (1.5-3.0 Å
+  # range, where standard templates apply but
+  # thresholds can be tuned).
+  if 2.5 <= resolution <= 3.0:
+    # Slightly relaxed targets for 2.5-3.0 Å
+    for phase in plan.phases:
+      sc = phase.success_criteria
+      if phase.id == "initial_refinement":
+        if sc.get("r_free") == "<0.35":
+          sc["r_free"] = "<0.37"
+      elif phase.id == "final_refinement":
+        if sc.get("r_free") == "<0.25":
+          sc["r_free"] = "<0.27"
+
+
+# ── Plan-to-directives translator (Step 2.4) ───────
+
+def plan_to_directives(plan):
+  """Convert current phase to reactive agent directives.
+
+  Thin wrapper around StructurePlan.to_directives().
+  Exists as a module-level function so ai_agent.py
+  can call it without importing StructurePlan.
+
+  Args:
+    plan: StructurePlan.
+
+  Returns:
+    dict compatible with the directives system.
+    Empty dict if plan is None.
+  """
+  if plan is None:
+    return {}
+  try:
+    return plan.to_directives()
+  except Exception:
+    return {}
+
+
+# ── Strategy hash and advice_changed (Step 2.6) ────
+
+def check_plan_revision(plan, session_data):
+  """Check if the plan has changed since last stored.
+
+  Compares the plan's current hash against the one
+  stored in session_data. If different, updates the
+  stored hash and sets advice_changed=True.
+
+  Args:
+    plan: StructurePlan.
+    session_data: dict (session.data), modified in
+      place.
+
+  Returns:
+    True if the plan changed, False otherwise.
+  """
+  if plan is None or not isinstance(
+    session_data, dict
+  ):
+    return False
+  try:
+    new_hash = plan.compute_hash()
+    old_hash = plan.strategy_hash
+    if new_hash != old_hash:
+      plan.strategy_hash = new_hash
+      session_data["advice_changed"] = True
+      logger.debug(
+        "Plan hash changed: %s -> %s",
+        old_hash, new_hash,
+      )
+      return True
+    return False
+  except Exception:
+    return False
+
+
+# ── Plan repair (Step 2.5) ──────────────────────────
+
+def repair_plan(plan, user_directives):
+  """Repair the plan when user directives conflict.
+
+  Checks if any user skip_programs conflict with
+  phases that provide essential data. Applies repair
+  rules from the template's if_skipped definitions.
+
+  Args:
+    plan: StructurePlan.
+    user_directives: dict, user's extracted directives.
+
+  Returns:
+    list of repair/warning messages (strings).
+    Empty list if no conflicts.
+
+  Never raises.
+  """
+  if plan is None or not user_directives:
+    return []
+  try:
+    return _repair_plan_inner(
+      plan, user_directives
+    )
+  except Exception:
+    logger.debug(
+      "repair_plan failed", exc_info=True,
+    )
+    return []
+
+
+def _repair_plan_inner(plan, user_directives):
+  """Inner plan repair. May raise."""
+  messages = []
+  ud_wf = user_directives.get(
+    "workflow_preferences", {}
+  )
+  skip_progs = ud_wf.get("skip_programs", [])
+  if not skip_progs:
+    return messages
+
+  for phase in plan.phases:
+    if not phase.provides:
+      continue
+    # Check if any skip_programs match this phase
+    phase_progs = set(phase.programs)
+    skipped = phase_progs & set(skip_progs)
+    if not skipped:
+      continue
+    # This phase's programs are being skipped
+    prog_str = ", ".join(sorted(skipped))
+    if phase.if_skipped:
+      # Apply repair rules
+      for provided, repair in phase.if_skipped.items():
+        messages.append(
+          "[Plan Repair] User skips %s. "
+          "Substituting: %s"
+          % (prog_str, repair)
+        )
+    else:
+      # No repair available — warning only
+      provides_str = ", ".join(phase.provides)
+      messages.append(
+        "[Plan Conflict] User skips %s, but "
+        "the plan requires it for %s. "
+        "Proceeding without — downstream "
+        "decisions may be affected."
+        % (prog_str, provides_str)
+      )
+  return messages

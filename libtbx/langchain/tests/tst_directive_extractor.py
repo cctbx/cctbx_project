@@ -273,14 +273,20 @@ def test_stop_after_cycle():
 
 
 def test_stop_after_program():
-    """Should stop after specified program."""
+    """after_program is NOT a hard stop (v112.78, Bug 7).
+
+    It is now a minimum-run guarantee used by PLAN to suppress
+    auto-stop.  The LLM decides when to actually stop.
+    """
     directives = {"stop_conditions": {"after_program": "phenix.refine"}}
 
+    # Matching program — should NOT trigger hard stop
     should_stop, reason = check_stop_conditions(
         directives, cycle_number=2, last_program="phenix.refine"
     )
-    assert_true(should_stop)
+    assert_false(should_stop)
 
+    # Non-matching program — also no stop
     should_stop, reason = check_stop_conditions(
         directives, cycle_number=2, last_program="phenix.phaser"
     )

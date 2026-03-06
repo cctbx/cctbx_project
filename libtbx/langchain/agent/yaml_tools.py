@@ -144,6 +144,8 @@ def find_yaml_files(directory):
 
     if os.path.isdir(directory):
         for f in os.listdir(directory):
+            if f.startswith('._'):
+                continue  # Skip macOS resource forks
             if f.endswith(('.yaml', '.yml')):
                 yaml_files.append(os.path.join(directory, f))
 
@@ -277,14 +279,21 @@ def validate_yaml_structure(data, filepath):
     elif 'file_categor' in filename or 'categories' in filename:
         issues.extend(_validate_file_categories(data))
     else:
-        # Try to auto-detect based on content
-        if any(k.startswith('phenix.') for k in data.keys()):
+        # Try to auto-detect based on content (only for dict data)
+        if not isinstance(data, dict):
+            pass  # List/scalar YAML — no auto-detect possible
+        elif any(k.startswith('phenix.') for k in data.keys()):
             issues.extend(_validate_programs(data))
-        elif any('phases' in v for v in data.values() if isinstance(v, dict)):
+        elif any('phases' in v for v in data.values()
+                 if isinstance(v, dict)):
             issues.extend(_validate_workflows(data))
-        elif any('direction' in v or 'thresholds' in v for v in data.values() if isinstance(v, dict)):
+        elif any('direction' in v or 'thresholds' in v
+                 for v in data.values()
+                 if isinstance(v, dict)):
             issues.extend(_validate_metrics(data))
-        elif any('extensions' in v or 'patterns' in v for v in data.values() if isinstance(v, dict)):
+        elif any('extensions' in v or 'patterns' in v
+                 for v in data.values()
+                 if isinstance(v, dict)):
             issues.extend(_validate_file_categories(data))
 
     return issues

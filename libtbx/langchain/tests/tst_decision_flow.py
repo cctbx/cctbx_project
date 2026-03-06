@@ -247,7 +247,10 @@ def test_returns_modifications():
 # =============================================================================
 
 def test_after_program_triggers_stop():
-    """after_program should trigger stop after program completes."""
+    """after_program is NOT a hard stop (v112.78, Bug 7).
+
+    It is now a minimum-run guarantee; the LLM decides when to stop.
+    """
     if not HAS_DIRECTIVE_EXTRACTOR:
         print("  SKIPPED (check_stop_conditions not available)")
         return
@@ -261,12 +264,11 @@ def test_after_program_triggers_stop():
         cycle_number=2,
         last_program="phenix.resolve_cryo_em"
     )
-    assert_true(should_stop)
-    assert_in("resolve_cryo_em", reason)
+    assert_false(should_stop)
 
 
 def test_after_program_normalized_match():
-    """Should match with or without phenix. prefix."""
+    """after_program is not a hard stop, regardless of prefix."""
     if not HAS_DIRECTIVE_EXTRACTOR:
         print("  SKIPPED (check_stop_conditions not available)")
         return
@@ -280,7 +282,7 @@ def test_after_program_normalized_match():
         cycle_number=1,
         last_program="xtriage"
     )
-    assert_true(should_stop)
+    assert_false(should_stop)
 
 
 def test_after_program_no_match():
@@ -404,13 +406,14 @@ def test_tutorial_flow_resolve_cryo_em():
     # Step 2: LLM can now choose resolve_cryo_em (it's in valid_programs)
     # (graph_nodes validation would pass)
 
-    # Step 3: After resolve_cryo_em completes, check stop condition
+    # Step 3: After resolve_cryo_em completes, after_program is NOT
+    # a hard stop (v112.78, Bug 7).  The LLM decides when to stop.
     should_stop, reason = check_stop_conditions(
         directives,
         cycle_number=2,
         last_program="phenix.resolve_cryo_em"
     )
-    assert_true(should_stop)
+    assert_false(should_stop)
 
 
 def test_normal_workflow_no_directives():

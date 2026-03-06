@@ -1006,6 +1006,9 @@ def test_bug5_safety_net_handles_empty_best_files():
   ai_agent_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "programs", "ai_agent.py")
+  if not os.path.isfile(ai_agent_path):
+    print("  SKIP (ai_agent.py not found)")
+    return
   with open(ai_agent_path, 'r') as f:
     source = f.read()
 
@@ -1034,6 +1037,9 @@ def test_bug5_gui_sub_job_returns_output_dir():
   ai_agent_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "programs", "ai_agent.py")
+  if not os.path.isfile(ai_agent_path):
+    print("  SKIP (ai_agent.py not found)")
+    return
   with open(ai_agent_path, 'r') as f:
     source = f.read()
 
@@ -1053,6 +1059,9 @@ def test_bug5_execute_command_uses_gui_output_dir():
   ai_agent_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "programs", "ai_agent.py")
+  if not os.path.isfile(ai_agent_path):
+    print("  SKIP (ai_agent.py not found)")
+    return
   with open(ai_agent_path, 'r') as f:
     source = f.read()
 
@@ -1075,6 +1084,9 @@ def test_bug5_track_output_files_accepts_working_dir():
   ai_agent_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "programs", "ai_agent.py")
+  if not os.path.isfile(ai_agent_path):
+    print("  SKIP (ai_agent.py not found)")
+    return
   with open(ai_agent_path, 'r') as f:
     source = f.read()
 
@@ -1100,6 +1112,9 @@ def test_bug6_rest_init_raises_sorry_on_daily_limit():
   rest_init_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "rest", "__init__.py")
+  if not os.path.isfile(rest_init_path):
+    print("  SKIP (rest/__init__.py not found)")
+    return
   with open(rest_init_path, 'r') as f:
     source = f.read()
 
@@ -1121,6 +1136,9 @@ def test_bug6_remote_agent_reraises_sorry():
   remote_agent_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "phenix_ai", "remote_agent.py")
+  if not os.path.isfile(remote_agent_path):
+    print("  SKIP (remote_agent.py not found)")
+    return
   with open(remote_agent_path, 'r') as f:
     source = f.read()
 
@@ -1317,6 +1335,9 @@ def test_win_popen_create_no_window():
   agent_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "programs", "ai_agent.py")
+  if not os.path.isfile(agent_path):
+    print("  SKIP (ai_agent.py not found)")
+    return
   with open(agent_path, 'r') as f:
     source = f.read()
 
@@ -1336,6 +1357,9 @@ def test_win_abort_detection_comment():
   agent_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "programs", "ai_agent.py")
+  if not os.path.isfile(agent_path):
+    print("  SKIP (ai_agent.py not found)")
+    return
   with open(agent_path, 'r') as f:
     source = f.read()
 

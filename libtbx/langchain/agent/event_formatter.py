@@ -202,6 +202,12 @@ class EventFormatter:
         formatter = formatters.get(event_type)
         if formatter:
             return formatter(event)
+
+        # String-based dispatch for new event types
+        # not yet in the EventType enum.
+        if event_type == "phase_transition":
+            return self._format_phase_transition(event)
+
         return None
 
     # -------------------------------------------------------------------------
@@ -314,6 +320,29 @@ class EventFormatter:
             header += " -- STOP RECOMMENDED"
         lines = ["", header]
 
+        # --- Structure Model summary (v114) ---
+        sm_summary = event.get(
+            "structure_model_summary", "")
+        if sm_summary:
+            lines.append("  Structure:")
+            for sline in sm_summary.split("\n"):
+                sline = sline.strip()
+                if sline:
+                    lines.append("    %s" % sline)
+            # Current problems (nested under Structure)
+            problems = event.get(
+                "current_problems", [])
+            if problems and isinstance(problems, list):
+                p_strs = [
+                    str(p.get("problem", ""))
+                    for p in problems[:3] if p
+                ]
+                p_strs = [s for s in p_strs if s]
+                if p_strs:
+                    lines.append(
+                        "    Problems: %s"
+                        % "; ".join(p_strs))
+
         # --- Structural validation (advanced mode) ---
         if validation:
             label = "Structural validation"
@@ -369,6 +398,48 @@ class EventFormatter:
         if len(lines) <= 2 and not analysis:
             lines.append("  (no detailed assessment available)")
 
+        return "\n".join(lines)
+
+    def _format_phase_transition(self, event):
+        """Format phase transition event (v114).
+
+        Shown for advance, retreat, and skip transitions.
+        Uses distinctive visual separator for visibility.
+        """
+        transition = event.get("transition", "advance")
+        from_phase = event.get("from_phase", "?")
+        to_phase = event.get("to_phase", "?")
+        reason = event.get("reason", "")
+        blacklisted = event.get("blacklisted", "")
+
+        bar = "=" * 50
+        lines = ["", bar]
+
+        if transition == "retreat":
+            lines.append(
+                " RETREAT: %s -> %s"
+                % (from_phase, to_phase))
+        elif transition == "skip":
+            lines.append(
+                " SKIP: %s (-> %s)"
+                % (from_phase, to_phase))
+        else:
+            lines.append(
+                " PHASE TRANSITION: %s -> %s"
+                % (from_phase, to_phase))
+
+        if reason:
+            wrapped = self._wrap_text(
+                str(reason), width=46,
+                indent="   ")
+            lines.append(" Reason: %s" % wrapped)
+
+        if blacklisted:
+            lines.append(
+                " Strategy blacklisted: %s"
+                % blacklisted)
+
+        lines.append(bar)
         return "\n".join(lines)
 
     def _format_program_selected(self, event):
