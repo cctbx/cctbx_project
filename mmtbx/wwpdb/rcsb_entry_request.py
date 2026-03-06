@@ -549,7 +549,21 @@ def get_info(pdb_ids):
   data_entries = r.json()['data']['entries']
   # print(json.dumps(r.json(), indent=4))
 
-  result = [rcsb_entry_info(entry) for entry in data_entries]
+  # API request is not guaranteed to return results in the order we submit them!!!
+  # Therefore need to make sure we put them into results list in correct order of
+  # pdb_ids
+  # Create info objects and map by pdb_id to preserve input order
+  info_dict = {}
+  for entry in data_entries:
+    info = rcsb_entry_info(entry)
+    info_dict[info.get_pdb_id()] = info
+  # Return results in the same order as input pdb_ids
+  result = []
+  # print('info_dict.keys()', info_dict.keys())
+  for pdb_id in pdb_ids:
+    if pdb_id.upper() in info_dict:
+      result.append(info_dict[pdb_id.upper()])
+  # print(len(result), len(pdb_ids))
   if len(result) != len(pdb_ids):
     raise Sorry("There are %d invalid pdb ids for which RCSB did not return result." % (len(pdb_ids)-len(result)))
   # for r in result:
