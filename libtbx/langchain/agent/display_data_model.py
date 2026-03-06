@@ -359,7 +359,7 @@ class DisplayDataModel(object):
     'determined' = agent completed all phases or
       reached target metrics.
     'stopped' = agent stopped before completion
-      (gate_stop, red_flag, etc.)
+      (gate_stop, red_flag, user request, etc.)
     'incomplete' = no cycles ran or no metrics.
     """
     if not self._cycles:
@@ -377,24 +377,47 @@ class DisplayDataModel(object):
     # Check if last cycle was a stop
     last = self._cycles[-1] if self._cycles else {}
     result = str(last.get("result", "")).upper()
-    if "STOP" in result or "FAILED" in result:
+    program = str(last.get("program", "")).upper()
+    if program == "STOP" or "STOP" in result:
+      # Stopped — but check if we have good metrics
+      # (agent may have stopped because it's done)
+      rf = self._get_model_metric("r_free")
+      cc = self._get_model_metric("model_map_cc")
+      if cc is None:
+        cc = self._get_model_metric("map_cc")
+      if rf is not None and rf < 0.30:
+        return "determined"
+      if cc is not None and cc > 0.7:
+        return "determined"
+      return "stopped"
+    if "FAILED" in result:
       return "stopped"
     # Has good metrics?
     rf = self._get_model_metric("r_free")
     cc = self._get_model_metric("model_map_cc")
+    if cc is None:
+      cc = self._get_model_metric("map_cc")
     if rf is not None and rf < 0.30:
       return "determined"
     if cc is not None and cc > 0.7:
       return "determined"
+    # Has any metrics at all? Then it ran but
+    # didn't reach targets — "stopped" not
+    # "incomplete".
+    if rf is not None or cc is not None:
+      return "stopped"
     return "incomplete"
 
   @property
   def outcome_message(self):
     """Human-readable one-line summary."""
     status = self.outcome_status
+    rf = self._get_model_metric("r_free")
+    cc = self._get_model_metric("model_map_cc")
+    if cc is None:
+      cc = self._get_model_metric("map_cc")
+
     if status == "determined":
-      rf = self._get_model_metric("r_free")
-      cc = self._get_model_metric("model_map_cc")
       if rf is not None:
         return (
           "Structure determined (R-free: %s)"
@@ -407,8 +430,6 @@ class DisplayDataModel(object):
         )
       return "Structure determination complete"
     elif status == "stopped":
-      rf = self._get_model_metric("r_free")
-      cc = self._get_model_metric("model_map_cc")
       if rf is not None:
         return (
           "Agent stopped — R-free: %s"
@@ -466,21 +487,19 @@ class DisplayDataModel(object):
     dc = self._get_data_chars()
     result = {}
 
-    # R-factors — try SM first, then last cycle
+    # R-factors — try SM first, then scan all cycles
     rf = _safe_float(ms.get("r_free"))
     rw = _safe_float(ms.get("r_work"))
     cc = _safe_float(ms.get("model_map_cc"))
-    if rf is None or rw is None or cc is None:
-      last_metrics = self._last_cycle_metrics()
-      if rf is None:
-        rf = _safe_float(
-          last_metrics.get("r_free"))
-      if rw is None:
-        rw = _safe_float(
-          last_metrics.get("r_work"))
+    if rf is None:
+      rf = self._best_metric_from_cycles("r_free")
+    if rw is None:
+      rw = self._best_metric_from_cycles("r_work")
+    if cc is None:
+      cc = self._best_metric_from_cycles(
+        "model_map_cc")
       if cc is None:
-        cc = _safe_float(
-          last_metrics.get("model_map_cc"))
+        cc = self._best_metric_from_cycles("map_cc")
 
     if rf is not None:
       result["R-free"] = _fmt_rfree(rf)
@@ -515,12 +534,21 @@ class DisplayDataModel(object):
 
     # Data characteristics
     res = dc.get("resolution")
+    if res is None:
+      res = self._best_metric_from_cycles(
+        "resolution")
     if res is not None:
       result["Resolution"] = "%s Å" % _fmt_float(
         res, 2)
     sg = dc.get("space_group")
     if sg:
       result["Space group"] = str(sg)
+
+    # Ligand CC (from ligandfit cycles)
+    lig_cc = self._best_metric_from_cycles(
+      "ligand_cc")
+    if lig_cc is not None:
+      result["Ligand CC"] = _fmt_float(lig_cc, 3)
 
     return result
 
@@ -861,9 +889,8 @@ class DisplayDataModel(object):
     ms = self._get_model_state()
     val = _safe_float(ms.get(key))
     if val is None:
-      # Fallback to last cycle's metrics
-      last = self._last_cycle_metrics()
-      val = _safe_float(last.get(key))
+      # Fallback: scan all successful cycles
+      val = self._best_metric_from_cycles(key)
     return val
 
   def _last_cycle_metrics(self):
@@ -881,3 +908,38 @@ class DisplayDataModel(object):
         if isinstance(m, dict) and m:
           return m
     return {}
+
+  def _best_metric_from_cycles(self, key):
+    """Find the best value of a metric across all
+    successful cycles.
+
+    For metrics in LOWER_IS_BETTER (r_free, r_work),
+    returns the minimum. For others, returns the
+    last non-None value.
+
+    Args:
+      key: str metric name.
+
+    Returns:
+      float or None.
+    """
+    _lower = {"r_free", "r_work", "clashscore"}
+    best = None
+    for c in self._cycles:
+      if not isinstance(c, dict):
+        continue
+      result = str(c.get("result", "")).upper()
+      if "SUCCESS" not in result:
+        continue
+      m = c.get("metrics", {})
+      if not isinstance(m, dict):
+        continue
+      v = _safe_float(m.get(key))
+      if v is not None:
+        if best is None:
+          best = v
+        elif key in _lower and v < best:
+          best = v
+        else:
+          best = v  # Last seen for non-lower
+    return best

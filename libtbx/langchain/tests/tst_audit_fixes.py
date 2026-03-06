@@ -6048,11 +6048,11 @@ def test_s5g_natural_language_macro_cycles_injected():
 
 
 
-    """phenix.polder must only appear in valid_programs when a ligand has
-    been fitted (has_ligand_fit=True).  Running polder on an apo model with
-    no fitted ligand produces a meaningless map and wastes a cycle.
+    """phenix.polder conditions: requires model + data_mtz + ligand_fit
+    (a ligand must have been fitted or already be in the model), and
+    must not have already run (not_done: polder).
     """
-    print("  Test: s5f_polder_requires_ligand_fit")
+    print("  Test: s5f_polder_conditions")
     import sys as _sys
     _sys.path.insert(0, _PROJECT_ROOT)
     from knowledge.yaml_loader import get_workflow_phases
@@ -6063,6 +6063,10 @@ def test_s5g_natural_language_macro_cycles_injected():
         for cond in prog_entry.get("conditions", []):
             if "has" in cond:
                 if not context.get("has_" + cond["has"]):
+                    return False
+            if "not_done" in cond:
+                done_key = cond["not_done"] + "_done"
+                if context.get(done_key):
                     return False
         return True
 
@@ -6075,22 +6079,41 @@ def test_s5g_natural_language_macro_cycles_injected():
         assert_true(polder_entry is not None,
             "phenix.polder must be defined in xray %s phase" % phase_name)
 
-        ctx_no  = {"has_model": True, "has_data_mtz": True, "has_ligand_fit": False}
-        ctx_yes = {"has_model": True, "has_data_mtz": True, "has_ligand_fit": True}
-
+        # Polder should NOT be valid without ligand_fit
+        ctx_no = {"has_model": True, "has_data_mtz": True,
+                  "has_ligand_fit": False}
         assert_true(not check_conditions(polder_entry, ctx_no),
-            "polder must NOT be valid in %s phase when has_ligand_fit=False" % phase_name)
-        assert_true(check_conditions(polder_entry, ctx_yes),
-            "polder MUST be valid in %s phase when has_ligand_fit=True" % phase_name)
+            "polder must NOT be valid in %s phase without ligand_fit"
+            % phase_name)
 
-        # Confirm the condition key is explicitly present in the YAML entry
-        cond_keys = [list(c.keys())[0] + ":" + str(list(c.values())[0])
-                     for c in polder_entry.get("conditions", []) if isinstance(c, dict)]
+        # Polder should be valid with ligand_fit
+        ctx_yes = {"has_model": True, "has_data_mtz": True,
+                   "has_ligand_fit": True}
+        assert_true(check_conditions(polder_entry, ctx_yes),
+            "polder MUST be valid in %s phase with ligand_fit"
+            % phase_name)
+
+        # Polder should NOT be valid when already done
+        ctx_done = {"has_model": True, "has_data_mtz": True,
+                    "has_ligand_fit": True, "polder_done": True}
+        assert_true(not check_conditions(polder_entry, ctx_done),
+            "polder must NOT be valid in %s phase when already done"
+            % phase_name)
+
+        # Confirm both conditions are present
+        cond_keys = []
+        for c in polder_entry.get("conditions", []):
+            if isinstance(c, dict):
+                for k, v in c.items():
+                    cond_keys.append("%s:%s" % (k, v))
         assert_true("has:ligand_fit" in cond_keys,
             "polder %s conditions must include 'has: ligand_fit', got: %s"
             % (phase_name, cond_keys))
+        assert_true("not_done:polder" in cond_keys,
+            "polder %s conditions must include 'not_done: polder', got: %s"
+            % (phase_name, cond_keys))
 
-    print("  PASSED: polder only available when has_ligand_fit=True")
+    print("  PASSED: polder conditions correct (model + data + ligand_fit + not_done)")
 
 def test_s5h_sanitize_strips_out_of_scope_params():
     """_sanitize_command must strip key=value tokens that are not in the

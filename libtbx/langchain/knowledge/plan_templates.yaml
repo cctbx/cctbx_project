@@ -378,7 +378,7 @@ templates:
           [resolution, twinning_status]
 
       - id: refinement
-        programs: [phenix.refine, phenix.polder]
+        programs: [phenix.refine]
         max_cycles: 5
         description: "Refine model against data"
         success:
@@ -388,7 +388,7 @@ templates:
             action: "stop_report"
 
       - id: final_refinement
-        programs: [phenix.refine, phenix.polder]
+        programs: [phenix.refine]
         max_cycles: 3
         description: "Final refinement with waters"
         strategy:
@@ -446,6 +446,13 @@ templates:
           ordered_solvent: true
         success:
           r_free: "<0.25"
+
+      - id: ligand_validation
+        programs: [phenix.polder]
+        max_cycles: 1
+        description: "Validate ligand with polder map"
+        skip_if:
+          polder_done: true
 
 # =============================================================
 # PREDICT + MR + REFINEMENT (X-ray, no search model)
