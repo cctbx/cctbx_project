@@ -423,6 +423,7 @@ class ligand_result(object):
       return self._rmsds
     # ligand without H atoms
     model_ligand = self.model.select(self.ligand_isel_noH)
+    #print(list(self.ligand_isel_noH))
     stats = model_ligand.geometry_statistics()
 
     bond = stats.bond(origin_id=0)

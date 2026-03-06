@@ -69,8 +69,8 @@ def run_test01():
   assert(rmsd_result.angle_n_outliers == 0)
   assert approx_equal(rmsd_result.dihedral_rmsd, 32.6, eps=0.5)
 
-  os.remove('one_chain_ligand_water_newH.cif')
-  os.remove('one_chain_ligand_water_newH.txt')
+  #os.remove('one_chain_ligand_water_newH.cif')
+  #os.remove('one_chain_ligand_water_newH.txt')
 
 # ------------------------------------------------------------------------------
 
@@ -98,8 +98,8 @@ def run_test02():
   tst_adps(vl_manager = vl_manager)
   tst_rmsds(vl_manager = vl_manager)
 
-  os.remove('two_chains_ligand_water_newH.cif')
-  os.remove('two_chains_ligand_water_newH.txt')
+  #os.remove('two_chains_ligand_water_newH.cif')
+  #os.remove('two_chains_ligand_water_newH.txt')
 
 # ------------------------------------------------------------------------------
 
@@ -269,10 +269,10 @@ def run_test03():
       #
       assert approx_equal(adps.b_min_within, 4.00, eps=0.01)
       assert approx_equal(adps.b_max_within, 75.42, eps=0.01)
-      assert approx_equal(adps.b_mean_within, 28.16, eps=0.02)
+      assert approx_equal(adps.b_mean_within, 28.20, eps=0.02)
       #
       assert(clashes_result.n_clashes == 6)
-      assert approx_equal(clashes_result.clashscore, 18.5, eps=0.5)
+      assert approx_equal(clashes_result.clashscore, 19.3, eps=0.5)
 
       #print(round(clashes_result.clashscore,1))
       #print(adps.b_min_within)
@@ -285,8 +285,8 @@ def run_test03():
       #print(adps.b_max)
       #print(adps.b_mean)
 
-  os.remove('pdb1avd_newH.txt')
-  os.remove('pdb1avd_newH.cif')
+  #os.remove('pdb1avd_newH.txt')
+  #os.remove('pdb1avd_newH.cif')
 
 #def tst_get_overlaps(vl_manager):
 #  '''
@@ -346,8 +346,8 @@ def run_test04():
     assert approx_equal(adps.b_mean_within, 42.45, eps=0.02)
   #
   os.remove(model_fn)
-  os.remove('tst_4_fragment_newH.cif')
-  os.remove('tst_4_fragment_newH.txt')
+  #os.remove('tst_4_fragment_newH.cif')
+  #os.remove('tst_4_fragment_newH.txt')
 
 # ------------------------------------------------------------------------------
 
@@ -374,8 +374,8 @@ def run_test05():
     assert (lr.id_str in ['ANGA B   1', 'BA2G B   1', 'GAL B   2'])
   #
   os.remove(model_fn)
-  os.remove('tst_5_newH.cif')
-  os.remove('tst_5_newH.txt')
+  #os.remove('tst_5_newH.cif')
+  #os.remove('tst_5_newH.txt')
 
 # ------------------------------------------------------------------------------
 

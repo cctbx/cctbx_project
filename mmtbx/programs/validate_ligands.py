@@ -8,16 +8,19 @@ except ImportError:
   from libtbx.program_template import ProgramTemplate
 import mmtbx.validation.ligands
 from mmtbx.validation import validate_ligands
+from mmtbx.validation.clashscore2 import check_and_add_hydrogen
 from mmtbx.hydrogens import reduce_hydrogen
 import iotbx.pdb
 from libtbx.utils import null_out, Sorry
 from iotbx import crystal_symmetry_from_any
 from libtbx.str_utils import make_sub_header
 from libtbx import group_args
+#from cctbx.array_family import flex
 
 
 master_phil_str = """
 include scope mmtbx.validation.validate_ligands.master_params
+include scope mmtbx.probe.Helpers.probe_phil_parameters
 scattering_table = *n_gaussian wk1995 it1992 neutron electron
   .type = choice
   .short_caption = Scattering table
@@ -27,12 +30,6 @@ run_reduce2 = True
 verbose = False
   .type = bool
 """
-
-# old params from Nat
-#reference_structure = None
-#  .type = path
-#only_segid = None
-#  .type = str
 
 # =============================================================================
 
@@ -46,7 +43,7 @@ Print out basic statistics for residue(s) with the given code(s), including
 RSCC.
 '''
 
-  datatypes = ['model', 'phil', 'miller_array', 'real_map']
+  datatypes = ['model', 'phil', 'restraint', 'miller_array', 'real_map']
 
   master_phil_str = master_phil_str
   data_manager_options = ['model_skip_expand_with_mtrix',
@@ -56,13 +53,13 @@ RSCC.
 
   def validate(self):
     print('Validating inputs...\n', file=self.logger)
-    #
+
     # allow only one model
     self.data_manager.has_models(
       raise_sorry = True,
       expected_n  = 1,
       exact_count = True)
-    #
+
     has_miller = self.data_manager.has_miller_arrays()
     has_map = self.data_manager.has_real_maps()
 
@@ -148,15 +145,17 @@ RSCC.
   def run(self):
     has_miller = False
     has_map = False
+    #
     fmodel = None
     map_manager = None
+    #
     self.additional_ro = []
     self.working_model_fn = None
     self.ligand_manager = None
+    #
     model_fn = self.data_manager.get_default_model_name()
     data_fn = self.data_manager.get_default_miller_array_name()
     map_fn = self.data_manager.get_default_real_map_name()
-    #print(model_fn, data_fn, map_fn)
 
     print('Using model file:', model_fn, file=self.logger)
     if data_fn is not None:
@@ -166,8 +165,10 @@ RSCC.
       print('Using map file', map_fn, file=self.logger)
       has_map = True
 
+    # get model object from input file
     m = self.data_manager.get_model()
 
+    # stop if multi-model file
     if(len(m.get_hierarchy().models())>1):
       raise Sorry('Multi-model files currently not supported.')
 
@@ -181,34 +182,50 @@ RSCC.
       for lc in self.params.validate_ligands.ligand_code:
         print('\t', lc, file=self.logger)
 
-    # hack to get rid of element X
+    # get rid of element X as it will choke pdb_interpretation
     if ' X' in m.get_hierarchy().atoms().extract_element():
+      print('\nFound atoms with element "X" in model. Removing...',
+        file=self.logger)
       m = m.select(~m.selection('element X'))
-      basename = os.path.splitext(os.path.basename(model_fn))[0]
-      model_fn = "%s_noX.cif" % basename
-      self.data_manager.write_model_file(
-        model_str = m.model_as_mmcif(),
-        filename  = model_fn,
-        overwrite = True)
+      #basename = os.path.splitext(os.path.basename(model_fn))[0]
+      #model_fn = "%s_noX.cif" % basename
+      #self.data_manager.write_model_file(
+      #  model_str = m.model_as_mmcif(),
+      #  filename  = model_fn,
+      #  overwrite = True)
 
     self.working_model = None
+
     if self.params.run_reduce2:
-      self.add_hydrogens(model_fn = model_fn)
+      #self.add_hydrogens(model_fn = model_fn)
+      self.working_model,_ = check_and_add_hydrogen(
+        probe_parameters=self.params.probe,
+        data_manager_model=m,
+        stop_for_unknowns = False,
+        #nuclear=False,
+        #verbose=verbose,
+        keep_hydrogens=False,
+        #do_flips = do_flips,
+        log=self.logger)
+      self.working_model.unset_riding_h_manager()
     else:
-      self.working_model_fn = model_fn
-      m = self.data_manager.get_model(model_fn)
+      #self.working_model_fn = model_fn
+      #m = self.data_manager.get_model(model_fn)
       self.working_model = m
 
     if self.working_model is None:
-      raise Sorry('Could not create model object')
-
+      raise Sorry('Could not create model object.')
 
     if has_map:
-      mmm = self.data_manager.get_map_model_manager(model_file = self.working_model_fn
-                                                    )
+      mmm = self.data_manager.get_map_model_manager(
+        model_file = self.working_model_fn)
       map_manager = mmm.map_manager()
       self.working_model = mmm.model()
       self.working_model.setup_scattering_dictionaries(scattering_table='electron')
+
+    _model_fn = 'bla.pdb'
+    #self.data_manager.write_model_file(self.working_model,filename=_model_fn)
+    self.data_manager.add_model(_model_fn, self.working_model)
 
     self.working_model.set_log(log = null_out())
     if self.additional_ro:
@@ -225,9 +242,10 @@ RSCC.
         pdb_interpretation_params = pi)
     except Exception as e:
       print(e, file=self.logger)
-      print('Could not process model to create restraints.')
+      print('Could not process model to create restraints.', file=self.logger)
       return
 
+    _m = self.working_model.deep_copy() # for some reason get_fmodel removes restraints???
 
     # get fmodel object if reflection data were provided
     if has_miller:
@@ -238,7 +256,7 @@ RSCC.
       self.data_manager.set_fmodel_params(fmodel_params)
       fmodel = self.data_manager.get_fmodel(
         scattering_table = self.params.scattering_table,
-        model_filename   = self.working_model_fn)
+        model_filename   = _model_fn)
       print('\n', file = self.logger)
       fmodel.update_all_scales()
       fmodel.show(log=self.logger, show_header=False)
@@ -250,7 +268,7 @@ RSCC.
 
     #t0 = time.time()
     ligand_manager = validate_ligands.manager(
-      model = self.working_model,
+      model = _m,
       fmodel = fmodel,
       map_manager = map_manager,
       params = self.params.validate_ligands,
