@@ -115,6 +115,15 @@ def build_session_state(session_info, session_resolution=None):
             session_state["validation_history"] = (
                 session_info["validation_history"])
 
+        # Model-vs-Data Gate (v114.1)
+        if session_info.get("model_is_placed"):
+            session_state["model_is_placed"] = True
+        if session_info.get("input_has_ligand"):
+            session_state["input_has_ligand"] = True
+        if session_info.get("user_advice"):
+            session_state["user_advice"] = (
+                session_info["user_advice"])
+
     return session_state
 
 

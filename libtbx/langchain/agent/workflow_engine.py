@@ -126,7 +126,12 @@ class WorkflowEngine:
             # that the user knows the model is placed.  Used to suppress placement_uncertain.
             "has_placed_model_from_after_program": self._has_placed_model_from_after_program(files, directives),
             "has_refined_model": self._has_refined_model(files, history_info),
-            "has_ligand_fit": bool(files.get("ligand_fit_output")) or history_info.get("ligandfit_done", False),
+            "has_ligand_fit": (
+              bool(files.get("ligand_fit_output"))
+              or history_info.get("ligandfit_done", False)
+              or bool((session_info or {}).get(
+                "input_has_ligand", False))
+            ),
             "has_optimized_full_map": self._has_optimized_map(files, history_info),
 
             # Complex program flags (need special logic beyond simple detection)
@@ -221,6 +226,15 @@ class WorkflowEngine:
 
         # Compute derived conditions
         context["model_is_good"] = self._is_model_good(context)
+
+        # Model-vs-Data Gate (v114.1): session-level
+        # placement confirmation from evidence
+        # (model_vs_data CC, refine R-free). This is
+        # a hard gate that prevents destructive
+        # programs from being offered.
+        context["model_is_placed_confirmed"] = bool(
+          (session_info or {}).get(
+            "model_is_placed", False))
 
         # Propagate MR-SAD workflow preference from directives
         if directives:
@@ -1449,6 +1463,27 @@ class WorkflowEngine:
 
         # NOTE: skip_validation STOP handling is now in _apply_directives()
         # No duplicate check needed here
+
+        # ── Model-vs-Data Gate (v114.1) ──────────
+        # When model_is_placed has been confirmed by
+        # evidence (model_vs_data CC, refine R-free),
+        # remove destructive programs that would wipe
+        # out the existing model.
+        if context.get("model_is_placed_confirmed"):
+          _destructive = {
+            "phenix.phaser",
+            "phenix.autosol",
+            "phenix.predict_and_build",
+          }
+          _before = len(valid)
+          valid = [
+            p for p in valid
+            if p not in _destructive
+          ]
+          if len(valid) < _before:
+            removed = _destructive & set(
+              valid + list(_destructive))
+            # (logging handled by caller)
 
         # If no valid programs available, return STOP (stuck state)
         if not valid:

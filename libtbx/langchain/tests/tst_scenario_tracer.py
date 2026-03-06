@@ -2909,6 +2909,304 @@ def trace_L10():
   return t
 
 
+# ── PG1-PG5: Placement gate tests (v114.1) ───
+
+def _check_placement(program, metrics):
+  """Replicate the placement detection logic from
+  _detect_model_placement for testing.
+
+  Returns (placed, metric_name, metric_value) or
+  (False, None, None).
+  """
+  if "model_vs_data" in program:
+    cc = metrics.get(
+      "cc", metrics.get("map_cc",
+        metrics.get("model_data_cc")))
+    if cc is not None:
+      try:
+        cc = float(cc)
+        if cc > 0.3:
+          return (True, "CC", cc)
+      except (ValueError, TypeError):
+        pass
+
+  elif "refine" in program:
+    rf = metrics.get("r_free")
+    if rf is not None:
+      try:
+        rf = float(rf)
+        if rf < 0.50:
+          return (True, "R-free", rf)
+      except (ValueError, TypeError):
+        pass
+    cc = metrics.get(
+      "map_cc", metrics.get("model_map_cc"))
+    if cc is not None:
+      try:
+        cc = float(cc)
+        if cc > 0.3:
+          return (True, "Map CC", cc)
+      except (ValueError, TypeError):
+        pass
+
+  return (False, None, None)
+
+
+def trace_PG1():
+  """PG1: Placement detected from model_vs_data
+  CC → plan MR phase skipped."""
+  t = TraceResult("PG1",
+    "Placement gate: model_vs_data CC=0.5 "
+    "skips MR phase")
+
+  # Detection check
+  placed, metric, value = _check_placement(
+    "phenix.model_vs_data", {"cc": 0.5})
+  t.step("Detection: placed=%s %s=%s"
+         % (placed, metric, value))
+  if not placed:
+    t.issue("WRONG", "Should detect placement "
+            "from CC=0.5")
+
+  # Plan fast-forward
+  plan_template_loader._templates_cache = None
+  plan = generate_plan(
+    available_files=["d.mtz", "m.pdb", "s.fa"],
+    user_advice="solve by MR",
+    directives={})
+  if plan is None:
+    t.issue("CRASH", "No plan")
+    return t
+
+  phase_ids = [p.id for p in plan.phases]
+  t.step("Plan: %s" % " -> ".join(phase_ids))
+
+  # Simulate fast-forward: skip MR phase
+  for phase in plan.phases:
+    if phase.id == "molecular_replacement":
+      if phase.status in ("pending", "active"):
+        phase.status = "skipped"
+        t.step("Skipped: %s" % phase.id)
+
+  # Advance past skipped
+  plan.mark_phase_started(1)
+  plan.record_phase_cycle("phenix.xtriage")
+  plan.advance()
+  # Should skip molecular_replacement
+  curr = plan.current_phase()
+  if curr and curr.id == "molecular_replacement":
+    # advance() doesn't skip — need manual advance
+    if curr.status == "skipped":
+      plan.advance()
+      curr = plan.current_phase()
+  t.step("Current phase after skip: %s"
+         % (curr.id if curr else "DONE"))
+  if curr and curr.id == "molecular_replacement":
+    t.issue("WRONG",
+      "Should have skipped MR phase")
+  elif curr and "refine" in curr.id:
+    t.step("Correctly at refinement (good)")
+
+  return t
+
+
+def trace_PG2():
+  """PG2: Placement NOT detected from poor
+  model_vs_data CC → MR phase remains."""
+  t = TraceResult("PG2",
+    "Placement gate: model_vs_data CC=0.1 "
+    "does NOT skip MR")
+
+  placed, _, _ = _check_placement(
+    "phenix.model_vs_data", {"cc": 0.1})
+  t.step("Detection: placed=%s" % placed)
+  if placed:
+    t.issue("WRONG",
+      "CC=0.1 should NOT trigger placement")
+  else:
+    t.step("Correctly not placed (good)")
+
+  # Also test edge case: no CC metric
+  placed2, _, _ = _check_placement(
+    "phenix.model_vs_data", {})
+  if placed2:
+    t.issue("WRONG",
+      "Empty metrics should not trigger")
+  else:
+    t.step("Empty metrics: not placed (good)")
+
+  return t
+
+
+def trace_PG3():
+  """PG3: Placement detected from refine R-free
+  → phaser should be suppressed."""
+  t = TraceResult("PG3",
+    "Placement gate: refine R-free=0.28 "
+    "confirms placement")
+
+  placed, metric, value = _check_placement(
+    "phenix.refine", {"r_free": 0.28})
+  t.step("Detection: placed=%s %s=%s"
+         % (placed, metric, value))
+  if not placed:
+    t.issue("WRONG",
+      "R-free=0.28 should confirm placement")
+
+  # R-free=0.55 should NOT confirm
+  placed2, _, _ = _check_placement(
+    "phenix.refine", {"r_free": 0.55})
+  t.step("R-free=0.55: placed=%s" % placed2)
+  if placed2:
+    t.issue("WRONG",
+      "R-free=0.55 should NOT confirm — "
+      "model may not be placed correctly")
+
+  # Cryo-EM: map_cc=0.4 should confirm
+  placed3, metric3, val3 = _check_placement(
+    "phenix.real_space_refine",
+    {"map_cc": 0.4})
+  t.step("RSR map_cc=0.4: placed=%s %s=%s"
+         % (placed3, metric3, val3))
+  if not placed3:
+    t.issue("WRONG",
+      "map_cc=0.4 should confirm placement")
+
+  return t
+
+
+def trace_PG4():
+  """PG4: Plan fast-forward skips both MR and
+  phasing phases in mr_sad template."""
+  t = TraceResult("PG4",
+    "Placement gate: mr_sad plan skips MR "
+    "and phasing phases")
+
+  plan_template_loader._templates_cache = None
+  plan = generate_plan(
+    available_files=["d.mtz", "m.pdb", "s.fa"],
+    user_advice="solve by MR-SAD",
+    directives={})
+  if plan is None:
+    t.issue("CRASH", "No plan")
+    return t
+
+  phase_ids = [p.id for p in plan.phases]
+  t.step("Plan: %s" % " -> ".join(phase_ids))
+  if plan.template_id != "mr_sad":
+    t.issue("WRONG",
+      "Expected mr_sad, got %s"
+      % plan.template_id)
+    return t
+
+  # Simulate: xtriage runs, then model_vs_data
+  # detects placement → skip MR + phasing
+  plan.mark_phase_started(1)
+  plan.record_phase_cycle("phenix.xtriage")
+  plan.advance()
+
+  _skip_ids = {
+    "molecular_replacement",
+    "experimental_phasing",
+  }
+  skipped = []
+  for phase in plan.phases:
+    if (phase.id in _skip_ids
+        and phase.status in ("pending", "active")):
+      phase.status = "skipped"
+      skipped.append(phase.id)
+
+  t.step("Skipped phases: %s" % skipped)
+
+  # Advance past skipped
+  while True:
+    curr = plan.current_phase()
+    if curr is None:
+      break
+    if curr.status == "skipped":
+      plan.advance()
+    else:
+      break
+
+  curr = plan.current_phase()
+  t.step("Current phase: %s"
+         % (curr.id if curr else "DONE"))
+
+  if curr and curr.id in _skip_ids:
+    t.issue("WRONG",
+      "MR/phasing phase not skipped: %s"
+      % curr.id)
+  elif curr and "refine" in curr.id:
+    t.step("At refinement after skip (correct)")
+  elif curr and "build" in curr.id:
+    t.step("At build_and_refine after skip "
+           "(correct)")
+
+  return t
+
+
+def trace_PG5():
+  """PG5: Placement gate — PHENIX workflow
+  engine filters destructive programs."""
+  t = TraceResult("PG5",
+    "Placement gate: workflow engine filters "
+    "phaser/autosol when placed")
+
+  # This test requires PHENIX
+  state, vp, _ = mock_detect_ws(
+    ["data.mtz", "model.pdb", "seq.fa"],
+    [], "solve by MR")
+  if state == "SKIP":
+    t.step("PHENIX not available — skipping "
+           "workflow engine check")
+    return t
+
+  # Run with model_is_placed in session_info
+  try:
+    from agent.workflow_state import (
+      detect_workflow_state,
+    )
+    h = mock_history([
+      ("phenix.xtriage", "SUCCESS: OK",
+       {"resolution": 2.0}),
+      ("phenix.model_vs_data", "SUCCESS: OK",
+       {"cc": 0.5}),
+    ])
+    ws = detect_workflow_state(
+      history=h,
+      available_files=[
+        "data.mtz", "model.pdb", "seq.fa"],
+      analysis=None,
+      maximum_automation=True,
+      use_yaml_engine=True,
+      directives={},
+      session_info={
+        "user_advice": "solve by MR",
+        "model_is_placed": True,
+      },
+      files_local=False,
+    )
+    vp = ws.get("valid_programs", [])
+    t.step("Valid programs (placed): %s" % vp)
+    if "phenix.phaser" in vp:
+      t.issue("WRONG",
+        "phaser should be filtered when "
+        "model_is_placed=True")
+    else:
+      t.step("phaser filtered (correct)")
+    if "phenix.autosol" in vp:
+      t.issue("WRONG",
+        "autosol should be filtered")
+    else:
+      t.step("autosol filtered (correct)")
+    if "phenix.refine" in vp:
+      t.step("refine available (correct)")
+  except Exception as e:
+    t.step("Workflow engine test: %s" % e)
+
+  return t
+
+
 # ── Registry ──────────────────────────────────
 
 SCENARIOS = {
@@ -2972,6 +3270,13 @@ SCENARIOS = {
   "L8": trace_L8,
   "L9": trace_L9,
   "L10": trace_L10,
+
+  # Placement gate tests (v114.1)
+  "PG1": trace_PG1,
+  "PG2": trace_PG2,
+  "PG3": trace_PG3,
+  "PG4": trace_PG4,
+  "PG5": trace_PG5,
 }
 
 

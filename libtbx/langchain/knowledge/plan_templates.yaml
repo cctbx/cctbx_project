@@ -620,6 +620,7 @@ templates:
       experiment_type: xray
       has_anomalous_atoms: true
       has_sequence: true
+      has_search_model: false
     priority: 30
     phases:
 
@@ -668,6 +669,7 @@ templates:
       experiment_type: xray
       has_anomalous_atoms: true
       has_sequence: true
+      has_search_model: false
       has_ligand_code: true
     priority: 35
     insert_after: build_and_refine
