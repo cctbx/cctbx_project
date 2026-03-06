@@ -189,7 +189,11 @@ def get_rigid_components(mol,
 
   # Identify Rotatable Bonds
   rotatable_pattern = Lipinski.RotatableBondSmarts
-  matches = mol.GetSubstructMatches(rotatable_pattern)
+  try:
+    matches = mol.GetSubstructMatches(rotatable_pattern)
+  except Exception as e:
+    print('Failed to fragment the molecule.')
+    return [flex.size_t(list(rdkit_to_cctbx.values()))]
 
   candidate_cut_bonds = []
   min_heavy_atoms = 2

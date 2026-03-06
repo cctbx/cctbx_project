@@ -612,6 +612,8 @@ class ligand_result(object):
     mon_lib_srv = self.model.get_mon_lib_srv()
     cif_object, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
       residue_name=ag_ligand.resname, atom_names=ag_ligand.atoms().extract_name())
+    #print(dir(cif_object))
+    #cif_object.show()
     self.ligand_rigid_components_isels = rdkit_utils.get_cctbx_isel_for_rigid_components(
       atom_group = ag_ligand,
       cif_object = cif_object)
