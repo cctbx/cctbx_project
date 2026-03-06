@@ -82,37 +82,60 @@ RSCC.
 
   # ---------------------------------------------------------------------------
 
-  def add_hydrogens(self, model_fn):
+#  def add_hydrogens_old(self, model_fn):
+#    '''
+#    Place H atoms with reduce2
+#    '''
+#    make_sub_header(' Placing H with reduce2 ', out=self.logger)
+#    model_reduce2 = None
+#    basename = os.path.splitext(os.path.basename(model_fn))[0]
+#    model_fn_reduce2 = "%s_newH.cif" % basename.split(".")[0]
+#    from iotbx.cli_parser import run_program
+#    from mmtbx.programs import reduce2 as reduce2
+#    args=["overwrite=True",
+#          "%s" % model_fn,
+#          "ignore_missing_restraints=True",
+#          #"use_neutron_distances=True",
+#          "output.filename=%s" % model_fn_reduce2]
+#    print("mmtbx.reduce2 %s" %(" ".join(args)), file=self.logger)
+#    try:
+#      result = run_program(program_class=reduce2.Program,args=args,
+#       logger = null_out())
+#      #model_reduce2 = self.data_manager.get_model(model_fn_reduce2)
+#      model_reduce2 = result.model
+#      model_reduce2.unset_riding_h_manager()
+#    except Exception as e:
+#      msg = traceback.format_exc()
+#      print('Reduce2 failed.\n' + msg, file=self.logger)
+#      return
+#
+#    self.data_manager.add_model(model_fn_reduce2, model_reduce2)
+#    self.working_model_fn = model_fn_reduce2
+#    self.params.validate_ligands.model_fn_reduce2 = model_fn_reduce2
+#    self.working_model = model_reduce2
+
+  # ---------------------------------------------------------------------------
+
+  def add_hydrogens(self, model):
     '''
     Place H atoms with reduce2
     '''
-    make_sub_header(' Placing H with reduce2 ', out=self.logger)
-    model_reduce2 = None
-    basename = os.path.splitext(os.path.basename(model_fn))[0]
-    model_fn_reduce2 = "%s_newH.cif" % basename.split(".")[0]
-    from iotbx.cli_parser import run_program
-    from mmtbx.programs import reduce2 as reduce2
-    args=["overwrite=True",
-          "%s" % model_fn,
-          "ignore_missing_restraints=True",
-          #"use_neutron_distances=True",
-          "output.filename=%s" % model_fn_reduce2]
-    print("mmtbx.reduce2 %s" %(" ".join(args)), file=self.logger)
+    make_sub_header('Placing hydrogen atoms with reduce2', out=self.logger)
     try:
-      result = run_program(program_class=reduce2.Program,args=args,
-       logger = null_out())
-      #model_reduce2 = self.data_manager.get_model(model_fn_reduce2)
-      model_reduce2 = result.model
-      model_reduce2.unset_riding_h_manager()
+      self.working_model,_ = check_and_add_hydrogen(
+        probe_parameters=self.params.probe,
+        data_manager_model=model,
+        stop_for_unknowns = False,
+        #nuclear=False,
+        #verbose=verbose,
+        keep_hydrogens=False,
+        #do_flips = do_flips,
+        log=self.logger)
+      self.working_model.unset_riding_h_manager()
     except Exception as e:
       msg = traceback.format_exc()
       print('Reduce2 failed.\n' + msg, file=self.logger)
       return
-
-    self.data_manager.add_model(model_fn_reduce2, model_reduce2)
-    self.working_model_fn = model_fn_reduce2
-    self.params.validate_ligands.model_fn_reduce2 = model_fn_reduce2
-    self.working_model = model_reduce2
 
   # ---------------------------------------------------------------------------
 
@@ -134,11 +157,6 @@ RSCC.
                               residue     = ag,
                               mon_lib_srv = model.get_mon_lib_srv(),
                               raise_sorry = False)
-          if cif_object:
-            self.additional_ro.append(('auto_%s' % ag.resname, cif_object))
-          elif mlq is None:
-            print('\tNo restraints available for %s. No H atoms will be added.'
-              % ag.resname, file=self.logger)
 
   # ---------------------------------------------------------------------------
 
@@ -167,6 +185,10 @@ RSCC.
 
     # get model object from input file
     m = self.data_manager.get_model()
+    if self.data_manager.has_restraints():
+      m.set_stop_for_unknowns(False)
+      m.set_log(log = null_out())
+      m.process(make_restraints=False)
 
     # stop if multi-model file
     if(len(m.get_hierarchy().models())>1):
@@ -197,20 +219,8 @@ RSCC.
     self.working_model = None
 
     if self.params.run_reduce2:
-      #self.add_hydrogens(model_fn = model_fn)
-      self.working_model,_ = check_and_add_hydrogen(
-        probe_parameters=self.params.probe,
-        data_manager_model=m,
-        stop_for_unknowns = False,
-        #nuclear=False,
-        #verbose=verbose,
-        keep_hydrogens=False,
-        #do_flips = do_flips,
-        log=self.logger)
-      self.working_model.unset_riding_h_manager()
+      self.add_hydrogens(model = m)
     else:
-      #self.working_model_fn = model_fn
-      #m = self.data_manager.get_model(model_fn)
       self.working_model = m
 
     if self.working_model is None:
@@ -227,12 +237,24 @@ RSCC.
     #self.data_manager.write_model_file(self.working_model,filename=_model_fn)
     self.data_manager.add_model(_model_fn, self.working_model)
 
-    self.working_model.set_log(log = null_out())
-    if self.additional_ro:
-      ro = self.working_model.get_restraint_objects()
-      if ro is None: ro=[]
-      ro.extend(self.additional_ro)
-      self.working_model.set_restraint_objects(ro)
+    ro = self.working_model.get_restraint_objects()
+    if ro is None: ro=[]
+    #if self.additional_ro:
+    #  if ro is None: ro=[]
+    #  ro.extend(self.additional_ro)
+    ro_no_duplicates = []
+    if ro:
+      seen = set()
+      for name, _ro in ro:
+        if name not in seen:
+          ro_no_duplicates.append((name, _ro))
+          seen.add(name)
+
+    #for _ro in ro_no_duplicates:
+    #  print(_ro[0])
+    #  print(_ro[1]['comp_list']['_chem_comp.three_letter_code'][0])
+
+    self.working_model.set_restraint_objects(ro_no_duplicates)
     self.working_model.set_stop_for_unknowns(False)
     pi = self.working_model.get_current_pdb_interpretation_params()
     pi.pdb_interpretation.allow_polymer_cross_special_position = True
