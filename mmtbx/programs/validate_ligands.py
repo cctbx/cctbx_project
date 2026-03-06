@@ -239,9 +239,6 @@ RSCC.
 
     ro = self.working_model.get_restraint_objects()
     if ro is None: ro=[]
-    #if self.additional_ro:
-    #  if ro is None: ro=[]
-    #  ro.extend(self.additional_ro)
     ro_no_duplicates = []
     if ro:
       seen = set()
@@ -267,7 +264,7 @@ RSCC.
       print('Could not process model to create restraints.', file=self.logger)
       return
 
-    _m = self.working_model.deep_copy() # for some reason get_fmodel removes restraints???
+    _m = self.working_model.deep_copy() # get_fmodel unsets restraints manager
 
     # get fmodel object if reflection data were provided
     if has_miller:

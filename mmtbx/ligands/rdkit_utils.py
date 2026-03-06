@@ -83,7 +83,7 @@ def get_rdkit_mol_from_atom_group_and_cif_obj(atom_group, cif_object):
   rdkit_to_cctbx = {}
   name_to_rdkit = {}
 
-  # NEW: Map atom names to element strings (e.g., "CA" -> "C")
+  # Map atom names to element strings (e.g., "CA" -> "C")
   name_to_element = {}
 
   mol = Chem.RWMol()
@@ -111,6 +111,30 @@ def get_rdkit_mol_from_atom_group_and_cif_obj(atom_group, cif_object):
     name_to_rdkit[clean_name] = rd_idx
     name_to_element[clean_name] = element_str.upper() # Store as "C", "P", etc.
 
+  # --- Apply Charges from CIF Dictionary ---
+  if cif_object and hasattr(cif_object, "atom_list"):
+    for cif_atom in cif_object.atom_list:
+      atom_name = cif_atom.atom_id.strip()
+
+      # Check if this atom exists in the RDKit molecule
+      if atom_name in name_to_rdkit:
+        rd_idx = name_to_rdkit[atom_name]
+        rd_atom = mol.GetAtomWithIdx(rd_idx)
+
+        # Extract charge
+        # It might be an integer, a float (partial), or a string.
+        try:
+          c_val = getattr(cif_atom, 'charge', 0)
+          # Convert to int (handle cases like "1.0", 1, or "-1")
+          formal_charge = int(float(c_val))
+
+          if formal_charge != 0:
+            rd_atom.SetFormalCharge(formal_charge)
+
+        except (ValueError, TypeError):
+          # If charge is None or non-numeric, ignore it
+          pass
+
   # --- Build Bonds from CIF ---
   if cif_object and hasattr(cif_object, "bond_list"):
     for bond in cif_object.bond_list:
@@ -135,7 +159,9 @@ def get_rdkit_mol_from_atom_group_and_cif_obj(atom_group, cif_object):
 
           mol.AddBond(rd_i, rd_j, r_type)
 
-  # Apply charge fixes
+  # --- Validation / Fallback ---
+  # You can keep fix_charges as a backup for cases where the CIF
+  # is missing charge data, but generally, the CIF should win.
   mol = fix_charges(mol)
 
   try:
@@ -146,22 +172,37 @@ def get_rdkit_mol_from_atom_group_and_cif_obj(atom_group, cif_object):
 
   return mol, rdkit_to_cctbx
 
+# ------------------------------------------------------------------------------
+
 def fix_charges(mol):
   mol.UpdatePropertyCache(strict=False)
   for atom in mol.GetAtoms():
     anum = atom.GetAtomicNum()
-    # GetValence(Explicit) replaces GetExplicitValence()
     val = atom.GetValence(Chem.ValenceType.EXPLICIT)
     charge = atom.GetFormalCharge()
 
+    # If the CIF already set a non-zero charge, trust it and skip heuristics
+    if charge != 0:
+        continue
+
+    # --- Heuristics (Only run if charge is 0) ---
+
     # Fix Nitrogen: 4 bonds, neutral -> +1
-    if anum == 7 and val == 4 and charge == 0:
+    if anum == 7 and val == 4:
       atom.SetFormalCharge(1)
 
-    # Fix Phosphorus/Sulfur:
-    # Since we mapped 'deloc' -> SINGLE, we might have P with 4 single bonds.
+    # Fix Boron: 4 bonds, neutral -> -1
+    if anum == 5 and val == 4:
+      atom.SetFormalCharge(-1)
+
+    # Fix Phosphorus/Sulfur (Quaternary)
+    # Since 'deloc' is mapped -> SINGLE, we might have P with 4 single bonds.
     # Neutral P cannot have 4 bonds. P+ can.
-    if anum == 15 and val == 4 and charge == 0:
+    if anum == 15 and val == 4:
+      atom.SetFormalCharge(1)
+
+    # Fix Oxygen (Oxonium/protonated ketones - rare in std ligands but possible)
+    if anum == 8 and val == 3:
       atom.SetFormalCharge(1)
 
   return mol
