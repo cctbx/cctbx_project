@@ -1579,7 +1579,8 @@ class AgentSession:
         self.save()
 
     def record_decision(self, cycle_number, program=None, decision=None,
-                        reasoning=None, explanation=None, command=None):
+                        reasoning=None, explanation=None, command=None,
+                        expert_assessment=None):
         """
         Record the decision made for a cycle.
 
@@ -1590,6 +1591,7 @@ class AgentSession:
             reasoning: Detailed reasoning
             explanation: Full explanation including plan
             command: The generated command
+            expert_assessment: Dict from thinking agent
         """
         self.start_cycle(cycle_number)
         cycle = self.data["cycles"][cycle_number - 1]
@@ -1604,6 +1606,11 @@ class AgentSession:
             cycle["explanation"] = explanation
         if command is not None:
             cycle["command"] = command
+        if expert_assessment and isinstance(
+          expert_assessment, dict
+        ):
+            cycle["expert_assessment"] = (
+              expert_assessment)
 
         cycle["timestamp"] = datetime.now().isoformat()
         self.save()
