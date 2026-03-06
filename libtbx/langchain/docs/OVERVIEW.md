@@ -405,6 +405,42 @@ Produces crystallographer-level commentary at three detail levels:
 | `generate_final_report()` | Session completion | Yes |
 | `generate_stopped_report()` | Early stop | Yes |
 
+#### 10f. Model Placement Gate (v114.1)
+
+Prevents destructive program selection on models that already fit the
+data. This is a single mechanism that addresses the class of bugs where
+the LLM runs phaser/autosol on a pre-solved structure, producing a
+worse result than simple refinement.
+
+Detection (in `_detect_model_placement`, `programs/ai_agent.py`):
+- `model_vs_data` with CC > 0.3 → placed
+- `refine` with R-free < 0.50 → placed
+- `real_space_refine` with map_cc > 0.3 → placed
+
+When placement is confirmed:
+1. `session.data["model_is_placed"] = True` — locked, survives resume
+2. `valid_programs` filtered: phaser, autosol, predict_and_build removed
+3. Plan fast-forward: MR/phasing phases marked "skipped" (⊘)
+4. Conflict warning if user advice mentions MR/phaser
+
+#### 10g. Display Data Model (`agent/display_data_model.py`)
+
+Unified data provider for Results tab, Progress tab, and HTML report.
+Eliminates duplication across three display views:
+
+- `outcome_status`: determined / stopped / incomplete
+- `outcome_message`: one-line human-readable summary
+- `final_metrics`: best R-free/CC from structure model or cycle scan
+- `rfree_trajectory` / `cc_trajectory`: for SVG charts
+- `timeline`: compact cycle entries
+- `format_cycle_compact()`: one-line-per-cycle formatting
+
+#### 10h. HTML Report Generator (`knowledge/html_report_template.py`)
+
+Template-based HTML report using DisplayDataModel. No LLM call.
+Includes inline SVG R-free/CC trajectory chart with retreat markers.
+Generated at session completion for all modes (not just expert).
+
 ---
 
 ## Configuration Files
@@ -666,30 +702,33 @@ metrics:
 
 ## Execution Modes
 
-### Standard Mode (LLM)
+### Goal-Directed Mode (v114, default)
 
 ```bash
 phenix.ai_agent original_files="data.mtz seq.fa"
 ```
 
-- LLM makes program selection decisions
-- Structural validation and expert KB (default: `thinking_level=advanced`)
-- Rules engine validates all choices
-- Full reasoning captured in events
-
-### Goal-Directed Mode (v114)
-
-```bash
-phenix.ai_agent thinking_level=expert original_files="data.mtz seq.fa"
-```
-
-- Everything in Standard Mode, plus:
+- Default mode (`thinking_level=expert`)
 - Multi-phase plan generated at session start from templates
 - Gate evaluation after each cycle (advance/retreat/skip/stop)
+- Model placement gate: detects when model fits data and
+  suppresses destructive programs (phaser, autosol)
 - Hypothesis testing with verification latency
-- Per-cycle commentary and phase transition summaries
-- `structure_determination_report.txt` and
-  `session_summary.json` at completion
+- Per-cycle expert assessment and phase transition summaries
+- `structure_report.html`, `structure_determination_report.txt`,
+  and `session_summary.json` at completion
+
+### Standard Mode (LLM, no planning)
+
+```bash
+phenix.ai_agent thinking_level=advanced original_files="data.mtz seq.fa"
+```
+
+- LLM makes program selection decisions
+- Structural validation and expert KB
+- Rules engine validates all choices
+- Full reasoning captured in events
+- No strategic plan or gate evaluation
 
 ### Rules-Only Mode
 
@@ -700,6 +739,8 @@ phenix.ai_agent use_rules_only=True original_files="data.mtz seq.fa"
 - Deterministic program selection (first valid program)
 - No LLM calls
 - Faster, reproducible for testing
+- Auto-discovers files from input_directory (no README
+  parsing needed)
 
 ### Dry-Run Mode
 
@@ -879,6 +920,7 @@ python3 tests/tst_event_system.py    # Single suite
 
 | Version | Key Changes |
 |---------|-------------|
+| v114.1 | **Model Placement Gate + Display + Evaluation Harness**: Default `thinking_level` changed from `advanced` to `expert`. **Placement gate**: detects when model fits data (model_vs_data CC > 0.3 or refine R-free < 0.50) and locks `model_is_placed` in session — suppresses phaser/autosol/predict_and_build, fast-forwards plan past MR/phasing phases, logs conflict warning when user advice contradicts. **Display**: DisplayDataModel unified data layer for Results/Progress/HTML; HTML structure report with SVG trajectory chart; "Open Structure Report" button in GUI; expert assessments now stored in session JSON; DDM scans all cycles for best metrics. **Templates**: `mr_sad` requires explicit MR-SAD intent (`wants_mr_sad`); predict_and_build in MR phase programs; polder moved to post-ligandfit phase only with `has: ligand_fit` YAML condition; SAD templates require sequence. **Files**: auto-discover from `input_directory`; HETATM ligand detection in input PDBs; ligand PDB filename hints. **GUI**: restart_mode as plain wx.Choice (survives session management reset); phase display "cycle X, up to Y". **Safety**: sanity check threshold 3→4; recent failures injected into THINK prompt; STOP not counted as cycle. **Testing**: 57 scenario tracer tests (PG1-PG5 placement gate, L1-L10 mock LLM, C1-C3 cycle counting); tutorial run analyzer for 5 modes. 31 files modified. |
 | v114 | **Goal-Directed Agent** (`thinking_level=expert`): Strategic planner layer with Structure Model (running structural knowledge + strategy blacklist), Plan Generator (12 templates, strategy hash), Gate Evaluator (success hysteresis, 5 anti-oscillation safeguards), Hypothesis Engine (single-budget, verification latency, re-validation), Explanation Engine (cycle/phase/final commentary), GUI phase display (plan header, transition blocks, per-cycle phase context), `session_summary.json` output. 12 new files, 13 modified, 251 tests. Reactive agent unchanged; `advanced` (default) continues to work without planning overhead. |
 | v113.10 | **Thinking Level + Validation + Expert KB**: Replaces boolean `use_thinking_agent` with `thinking_level` parameter (`none`/`basic`/`advanced`; v114 adds `expert`). Advanced mode adds structural validation (Ramachandran, clashscore, rotamers, model contents), 56-entry expert knowledge base with IDF-weighted tag matching, file metadata tracking, R-free trend display, and user-facing Expert Assessment block in event formatter. 7 new files, 25 tests. Backward compatible. |
 | v113 | **Thinking Agent**: Optional expert crystallographer reasoning node (THINK) between PERCEIVE and PLAN. Second LLM call analyzes program logs with domain expertise, injects strategic guidance via user_advice enrichment. Per-program keyword extraction (xtriage, phaser, autosol, autobuild, refine), priority-ordered sections within character budget. Strategy memory persists across cycles via session_info. GUI checkbox + `[Expert]` display in progress panel. 4 new modules, 4 new test files, 103 thinking-related tests. |

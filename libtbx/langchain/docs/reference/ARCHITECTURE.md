@@ -945,8 +945,8 @@ mtriage steps, or when `thinking_level=none`.
 |-------|----------|
 | `none` | No expert reasoning. Pass-through. |
 | `basic` | LLM reasoning with log analysis, strategy memory, R-free trend. |
-| `advanced` (default) | Full pipeline: basic + structural validation + file metadata + expert KB lookup. Structure Model updated. |
-| `expert` | Advanced + goal-directed planning (plan generation, gate evaluation, hypothesis testing, phase reports). `expert` maps to `advanced` in the graph; planning gated in `ai_agent.py`. |
+| `advanced` | Full pipeline: basic + structural validation + file metadata + expert KB lookup. Structure Model updated. |
+| `expert` (default) | Advanced + goal-directed planning (plan generation, gate evaluation, hypothesis testing, phase reports, model placement gate). `expert` maps to `advanced` in the graph; planning gated in `ai_agent.py`. |
 
 **Advanced mode adds** (v113.10):
 

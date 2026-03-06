@@ -9,12 +9,32 @@ The PHENIX AI Agent includes multiple layers of safety checks:
 | Category | Count |
 |----------|-------|
 | Sanity Checks (Pre-Execution) | 20 |
+| Model Placement Gate (v114.1) | 1 |
 | Directive Validation (Post-LLM) | 7 |
 | File Validation | 4 |
 | Workflow State Validation | 8 |
 | Command Building Validation | 3 |
 | Input Validation | 29 |
 | Post-Processing Corrections | 4 |
+
+### Model Placement Gate (v114.1)
+
+When the agent detects that a model already fits the data
+(via `model_vs_data` CC > 0.3 or `refine` R-free < 0.50),
+it locks `model_is_placed` in the session and suppresses
+destructive programs (phaser, autosol, predict_and_build)
+from `valid_programs`. This prevents the LLM from running
+unnecessary molecular replacement on pre-solved structures.
+
+Pending MR/phasing plan phases are marked "skipped" (⊘).
+A conflict warning is logged if user advice mentions MR/phaser.
+
+### Sanity Check Thresholds
+
+The `repeated_failures` check triggers after **4** consecutive
+identical failures of the same program (raised from 3 in v114.1
+to allow reference model refinement and similar tutorials that
+need a first failure to learn correct parameters).
 
 ## Sanity Check Issues
 

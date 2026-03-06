@@ -7,7 +7,7 @@ The PHENIX AI Agent automates macromolecular structure determination for X-ray c
 ## Quick Start
 
 ```bash
-# X-ray structure determination
+# X-ray structure determination (expert mode is default)
 phenix.ai_agent original_files="data.mtz sequence.fa"
 
 # Cryo-EM structure determination  
@@ -17,27 +17,22 @@ phenix.ai_agent original_files="map.mrc sequence.fa"
 phenix.ai_agent original_files="data.mtz model.pdb ligand.pdb" \
     project_advice="Solve the structure and fit the ligand"
 
+# Point at a tutorial directory (auto-discovers files + README)
+phenix.ai_agent input_directory=/path/to/tutorial/
+
 # Stop after specific step
 phenix.ai_agent original_files="data.mtz seq.fa" \
     project_advice="Stop after one refinement job"
 
-# Stepwise mode - more control with intermediate checkpoints
-# Forces predict_and_build to stop after prediction (both X-ray and cryo-EM)
-phenix.ai_agent maximum_automation=False original_files="data.mtz sequence.fa"
+# Rules-only mode (deterministic, no LLM, auto-discovers files)
+phenix.ai_agent use_rules_only=True input_directory=/path/to/data/
 
-# Rules-only mode (deterministic, no LLM)
-phenix.ai_agent use_rules_only=True original_files="data.mtz sequence.fa"
+# Without strategic planning (advanced reasoning only)
+phenix.ai_agent thinking_level=advanced \
+    original_files="data.mtz sequence.fa"
 
 # Control output verbosity
 phenix.ai_agent verbosity=verbose original_files="data.mtz sequence.fa"
-
-# Enable expert crystallographer reasoning (basic: LLM log analysis)
-phenix.ai_agent thinking_level=basic \
-    original_files="data.mtz sequence.fa"
-
-# Advanced reasoning (validation + KB + file metadata)
-phenix.ai_agent thinking_level=advanced \
-    original_files="data.mtz sequence.fa"
 
 # Run a specific program
 phenix.ai_agent original_files="model.pdb map.ccp4" \

@@ -302,6 +302,29 @@ is which — it will figure out that `.mtz` is your
 reflection data, `.pdb` is your model, and so on.
 Just add everything and let the agent sort it out.
 
+**Auto-discovery:** If you set `input_directory` (or
+the GUI detects it from a README file), the agent
+will automatically discover all crystallographic
+files in that directory. This is especially useful
+in rules-only mode, where the agent can't use an
+LLM to extract file names from a README. You'll see
+a log message like:
+```
+[FILES] Auto-discovered 3 file(s) from /path/to/dir:
+  data.mtz
+  model.pdb
+  sequence.fa
+```
+
+**Ligand detection:** If your input model already
+contains ligands (HETATM records that aren't water),
+the agent will detect this automatically and note it:
+```
+[FILES] Input model 1aba.pdb contains ligand(s): ATP, MG
+```
+This enables polder omit map calculations without
+requiring a ligandfit step in the session.
+
 [SCREENSHOT: File list with data.mtz, model.pdb, and
 seq.fa added]
 
@@ -343,13 +366,15 @@ deeply the agent analyzes your data at each step:
 |---------|-------------|---------------|
 | None | Fastest. Minimal analysis, no expert reasoning. | Quick tests, simple workflows |
 | Basic | Adds AI reasoning about each step. | Light analysis |
-| Advanced | (Default) Full structural validation, expert knowledge base, detailed reasoning. | Most runs |
-| Expert | Everything in Advanced, plus a multi-phase strategy plan with progress tracking. | When you want the agent to plan ahead and track goals |
+| Advanced | Full structural validation, expert knowledge base, detailed reasoning. | When you don't need strategic planning |
+| Expert | (Default) Everything in Advanced, plus a multi-phase strategy plan with progress tracking and model placement detection. | Most runs — recommended |
 
-For your first run, **Advanced** (the default) is a
-good choice. Try **Expert** when you want to see the
-agent's overall strategy and track progress against
-specific goals (like "get R-free below 0.25").
+For your first run, **Expert** (the default) is the
+best choice. It gives you the full planning system
+with goal tracking, and it includes the model
+placement gate that prevents the agent from running
+unnecessary molecular replacement on models that
+already fit the data.
 
 **Max cycles**
 
@@ -361,11 +386,18 @@ or decrease it to limit the agent's work.
 
 **Restart mode**
 
-- **Fresh** (default): Start a new analysis from
-  scratch.
+- **Fresh** (default for new runs): Start a new
+  analysis from scratch.
 - **Resume**: Continue from where the previous run
   left off. Use this when the agent stopped and you
   want to try again with different advice or settings.
+
+Note: After using "Display session and stop" or
+"Remove last N cycles", the restart mode
+automatically switches to **Resume** for the next
+run. This is the expected behavior — you just
+inspected or edited a session, so the natural next
+action is to continue it.
 
 **Use LLM**
 
@@ -445,8 +477,8 @@ progressing.
 
 ### The plan header (Expert mode)
 
-If you chose **Expert** analysis depth, the first
-thing you'll see is the agent's strategy plan:
+Since **Expert** is the default analysis depth, the
+first thing you'll see is the agent's strategy plan:
 
 ```
 [CONFIG] thinking_level=expert — goal-directed
@@ -455,16 +487,18 @@ thing you'll see is the agent's strategy plan:
 ==================================================
  STRATEGY PLAN: MR + refinement (standard X-ray)
 ==================================================
- ○ Phase 1: data_assessment  [phenix.xtriage]
-          Goal: xtriage-completed true
- ○ Phase 2: molecular_replacement  [phenix.phaser]
-          Goal: tfz >8, llg >100
- ○ Phase 3: initial_refinement  [phenix.refine]
-          Goal: r-free <0.30
- ○ Phase 4: model_rebuilding  [phenix.autobuild]
-          Goal: r-free <0.28
- ○ Phase 5: final_refinement  [phenix.refine]
-          Goal: r-free <0.25
+ ○ Phase 1: Analyze data quality  [phenix.xtriage]
+          Goal: Data quality analysis complete
+ ○ Phase 2: Find MR solution  [phenix.phaser,
+              phenix.predict_and_build]
+          Goal: TFZ >8, LLG >100
+ ○ Phase 3: Initial refinement  [phenix.refine]
+          Goal: R-free <0.30
+ ○ Phase 4: Rebuild problem regions
+              [phenix.autobuild, phenix.refine]
+          Goal: R-free <0.28
+ ○ Phase 5: Final refinement  [phenix.refine]
+          Goal: R-free <0.25
 ==================================================
 ```
 
@@ -476,13 +510,29 @@ the status of each phase:
 | ○ | Pending — hasn't started yet |
 | ● | Active — currently being worked on |
 | ✓ | Complete — goal was met |
-| — | Skipped — not needed for this structure |
+| ⊘ | Skipped — not needed (e.g., model already placed) |
 | ✗ | Failed — goal wasn't met |
 
 The **Goal** line tells you what the agent is aiming
-for in each phase. For example, "r-free <0.30" means
+for in each phase. For example, "R-free <0.30" means
 the agent will keep refining until R-free drops below
 0.30, or until it runs out of cycles for that phase.
+
+**Model placement detection:** If the agent discovers
+that your model already fits the data (via
+`model_vs_data` or a successful refinement), it will
+automatically skip any pending MR or phasing phases:
+
+```
+[PLACEMENT] Model is placed — phenix.model_vs_data
+  CC=0.52 (cycle 2). Destructive programs (phaser,
+  autosol) will be suppressed.
+[PLACEMENT] Skipped plan phase 'molecular_replacement'
+  — model already placed
+```
+
+This prevents the agent from destroying a good model
+by running unnecessary molecular replacement.
 
 If you chose **Advanced** or lower, you won't see the
 plan header — the agent still works correctly, it
@@ -494,8 +544,8 @@ Each program the agent runs appears as a numbered
 cycle:
 
 ```
-──── Phase: initial_refinement (cycle 2 of 3) ────
-  Goal: r-free <0.30 (current: 0.312)
+──── Phase: Initial refinement (cycle 2, up to 3) ────
+  Goal: R-free <0.30 (current: 0.312)
 
 Cycle 5: phenix.refine
 
@@ -1053,13 +1103,27 @@ understanding what happened during a run.
 
 ### Expert mode additional outputs
 
-When running with Expert analysis depth, the agent
-produces two additional files:
+When running with Expert analysis depth (the default),
+the agent produces additional output files:
 
-**Structure determination report:**
+**HTML structure report:**
+`ai_agent_directory/structure_report.html`
+
+A self-contained HTML report with:
+- Outcome status (determined / stopped / incomplete)
+- Final model metrics (R-free, R-work, geometry)
+- Inline SVG trajectory chart showing R-free or
+  Map CC progression with retreat markers
+- Phase timeline table
+- Output file locations
+
+Click the **Open Structure Report** button in the
+Results tab to view this report in your browser.
+
+**Text structure report:**
 `ai_agent_directory/structure_determination_report.txt`
 
-A human-readable text report summarizing:
+A human-readable text summary with:
 - Data characteristics (resolution, space group)
 - Final model quality (R-free, R-work, geometry)
 - Phase timeline (which phases completed, how many

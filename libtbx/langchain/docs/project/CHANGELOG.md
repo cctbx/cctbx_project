@@ -1,5 +1,145 @@
 # PHENIX AI Agent - Changelog
 
+## Version 114.1 (Model Placement Gate + Display + Evaluation)
+
+### Summary
+
+Fixes the class of bugs where LLM modes underperform rules_only by
+running destructive programs (phaser, autosol) on models that already
+fit the data. The core fix is the **Model Placement Gate**: a single
+mechanism that detects when a model is placed, locks it in the session,
+and filters out destructive programs before the LLM sees them.
+
+Also adds the display data layer, HTML structure reports, auto-file
+discovery, and a 57-test scenario tracer for pre-deployment validation.
+
+Default `thinking_level` changed from `advanced` to `expert`.
+
+### Model Placement Gate
+
+When `model_vs_data` or `refine` confirms the model fits the data:
+1. `session.data["model_is_placed"] = True` — locked, survives resume
+2. `valid_programs` filtered: phaser, autosol, predict_and_build removed
+3. Plan fast-forward: MR/phasing phases marked "skipped" (⊘)
+4. Conflict warning when user advice mentions MR but model is placed
+5. HETATM scan: input PDB files checked for pre-existing ligands
+
+Detection thresholds: CC > 0.3 for model_vs_data, R-free < 0.50 for
+refine, map_cc > 0.3 for real_space_refine.
+
+**Files:** `programs/ai_agent.py`, `agent/workflow_engine.py`,
+`agent/api_client.py`, `phenix_ai/run_ai_agent.py`
+
+### Display Data Model
+
+Unified data provider for Results tab, Progress tab, and HTML report:
+- `DisplayDataModel.from_session()` — never raises
+- Scans ALL successful cycles for best metrics (not just last)
+- Handles STOP program correctly in outcome_status
+- Ligand CC, resolution fallback from cycle scan
+- HTML report with SVG trajectory chart and "Open Structure Report" button
+
+**Files:** `agent/display_data_model.py`, `knowledge/html_report_template.py`,
+`wxGUI2/Programs/AIAgent.py`
+
+### Template Fixes
+
+- `mr_sad` requires explicit MR-SAD intent (`wants_mr_sad` flag)
+- `predict_and_build` added to MR phase programs
+- Polder moved to dedicated `ligand_validation` phase (after ligandfit)
+- Polder YAML conditions: requires `has: ligand_fit` + `not_done: polder`
+- SAD templates require `has_sequence: true`
+- `has_ligand_code` from advice alone removed; requires file evidence
+- Ligand PDB filename hints (e.g., `1J4R_random.pdb` → ligand detected)
+
+**Files:** `knowledge/plan_templates.yaml`, `knowledge/workflows.yaml`,
+`agent/plan_generator.py`
+
+### Auto-File Discovery
+
+When `original_files` is empty (rules_only mode, or LLM preprocessing
+failed), scans `input_directory` for crystallographic files (.mtz, .pdb,
+.cif, .sca, .mrc, etc.) and adds them automatically. Also scans input
+PDBs for HETATM records to detect pre-existing ligands.
+
+**Files:** `programs/ai_agent.py`
+
+### Expert Assessments in Session
+
+`record_decision()` now accepts `expert_assessment` parameter. Thinking
+agent output is stored in `agent_session.json` cycles, enabling the
+analyzer to extract expert reasoning from completed runs.
+
+**Files:** `agent/session.py`, `programs/ai_agent.py`
+
+### GUI Improvements
+
+- Restart mode: plain `wx.Choice` widget (survives session management
+  reset — auto-switches to "resume" after display/remove)
+- Phase display: "cycle X, up to Y" instead of "step X of Y"
+- "Open Structure Report" button in Results tab
+- Structure report text preview in Outcome section
+
+**Files:** `wxGUI2/Programs/AIAgent.py`
+
+### Safety
+
+- Sanity check `repeated_failures` threshold raised from 3 to 4
+- Recent failures injected into THINK prompt with explicit "try different approach"
+- STOP program not counted as a cycle in phase tracking
+
+**Files:** `agent/sanity_checker.py`, `agent/thinking_agent.py`,
+`knowledge/thinking_prompts.py`, `knowledge/plan_schema.py`
+
+### Testing
+
+- Scenario tracer: 57 tests (S1-S15, C1-C3, G1-G4, M1-M2, P1-P6,
+  L1-L10, PG1-PG5) — registered in `run_all_tests.py` as suite #53
+- Tutorial run analyzer: 5-mode comparison (rules_only, llm, llm_think,
+  llm_think_advanced, llm_think_expert)
+- Updated tests: polder conditions, sanity check threshold, plan generator
+  ligand detection
+
+**Files:** `tests/tst_scenario_tracer.py`, `tests/analyze_tutorial_runs.py`,
+`tests/run_all_tests.py`, `tests/tst_audit_fixes.py`,
+`tests/tst_sanity_checker.py`, `tests/tst_plan_generator.py`
+
+### 31 files modified
+
+```
+agent/api_client.py
+agent/display_data_model.py (NEW)
+agent/plan_generator.py
+agent/sanity_checker.py
+agent/session.py
+agent/structure_model.py
+agent/thinking_agent.py
+agent/workflow_engine.py
+knowledge/explanation_prompts.py
+knowledge/html_report_template.py (NEW)
+knowledge/plan_schema.py
+knowledge/plan_templates.yaml
+knowledge/programs.yaml
+knowledge/thinking_prompts.py
+knowledge/workflows.yaml
+phenix_ai/run_ai_agent.py
+programs/ai_agent.py
+wxGUI2/Programs/AIAgent.py
+docs/USER_GUIDE.md
+docs/OVERVIEW.md
+docs/DEVELOPER_GUIDE.md
+docs/SAFETY_CHECKS.md
+docs/project/CHANGELOG.md
+tests/analyze_tutorial_runs.py (NEW)
+tests/run_all_tests.py
+tests/tst_audit_fixes.py
+tests/tst_display_data_model.py (NEW)
+tests/tst_plan_generator.py
+tests/tst_sanity_checker.py
+tests/tst_scenario_tracer.py (NEW)
+tests/tst_thinking_defense.py
+```
+
 ## Version 114.00 (Goal-Directed Structure Determination Agent)
 
 ### Summary

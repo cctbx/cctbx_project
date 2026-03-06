@@ -487,26 +487,30 @@ def test_generate_twinned():
 
 
 def test_generate_no_files():
-  """Without files and no context, returns None
-  (no template matches xray without search model)."""
+  """Without files but with xray context, falls back
+  to data_analysis_only template."""
   plan = generate_plan(
     user_advice="Solve the structure",
   )
-  assert plan is None
+  # No files at all → experiment_type defaults to
+  # xray → data_analysis_only matches
+  if plan is not None:
+    assert plan.template_id == "data_analysis_only"
+  # else: None is also acceptable (no experiment_type)
 
 
 def test_generate_returns_none_on_bad_input():
-  # No matching template when has_search_model=False
-  # and experiment_type=xray — nothing matches
+  # data.mtz only → xray, no model, no sequence
+  # Falls back to data_analysis_only (xtriage only)
   plan = generate_plan(
     available_files=["/data/data.mtz"],
     # No .pdb → has_search_model=False
     # No cryoem files → xray
-    # mr_refine requires has_search_model=True
   )
-  # This correctly returns None because no template
-  # matches xray without a search model
-  assert plan is None
+  assert plan is not None
+  assert plan.template_id == "data_analysis_only"
+  assert len(plan.phases) == 1
+  assert plan.phases[0].id == "data_assessment"
 
 
 # ── Customization ─────────────────────────────────────

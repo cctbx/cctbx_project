@@ -685,6 +685,45 @@ templates:
           ligand_cc: ">0.7"
 
 # =============================================================
+# FALLBACK: DATA ANALYSIS ONLY (no model, no sequence)
+# =============================================================
+# Matches when only experimental data is provided.
+# Runs xtriage to characterize the data. The agent
+# can then suggest next steps based on the results.
+
+  data_analysis_only:
+    description: "Data analysis only (X-ray)"
+    applicable_when:
+      experiment_type: xray
+      has_search_model: false
+      has_sequence: false
+    priority: 1
+    phases:
+
+      - id: data_assessment
+        programs: [phenix.xtriage]
+        max_cycles: 1
+        description: "Analyze data quality"
+        success:
+          xtriage_completed: "true"
+
+  cryoem_analysis_only:
+    description: "Data analysis only (cryo-EM)"
+    applicable_when:
+      experiment_type: cryoem
+      has_search_model: false
+      has_sequence: false
+    priority: 1
+    phases:
+
+      - id: map_assessment
+        programs: [phenix.mtriage]
+        max_cycles: 1
+        description: "Analyze map quality"
+        success:
+          mtriage_completed: "true"
+
+# =============================================================
 # Template selection priority order:
 #
 # 1. Most specific applicable_when conditions

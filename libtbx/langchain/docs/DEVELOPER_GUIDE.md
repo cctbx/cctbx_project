@@ -489,7 +489,53 @@ Three levels of commentary:
   `generate_stopped_report()`: template-based, at
   session end
 
-### 3e. Client-Server Contract
+### 3e. Model Placement Gate (v114.1)
+
+**Files:** `programs/ai_agent.py`
+(`_detect_model_placement`,
+`_skip_plan_phases_for_placement`),
+`agent/workflow_engine.py`
+(`model_is_placed_confirmed` in context)
+
+Prevents destructive program selection on models
+that already fit the data. This is the fix for the
+class of bugs where LLM modes underperform
+rules_only by running phaser/autosol on pre-solved
+structures.
+
+**Data flow:**
+
+```
+_detect_model_placement (post-result)
+  → session.data["model_is_placed"] = True
+    → session_info["model_is_placed"]
+      → api_client.build_session_state
+        → run_ai_agent.create_session_info
+          → workflow_engine context
+            → get_valid_programs filters out
+              phaser, autosol, predict_and_build
+```
+
+**Detection thresholds:** CC > 0.3 for
+model_vs_data, R-free < 0.50 for refine,
+map_cc > 0.3 for real_space_refine. These are
+deliberately low — the question is "does the model
+correspond to the data at all?" not "is the model
+good?"
+
+**Plan fast-forward:** When placement is detected,
+pending `molecular_replacement` and
+`experimental_phasing` phases are marked "skipped"
+and the plan advances to the next actionable phase.
+
+**HETATM detection:** At startup,
+`_scan_input_models_for_ligands` scans input PDB
+files for non-water HETATM records, sets
+`session.data["input_has_ligand"]`. This enables
+polder without a ligandfit step when the model
+already contains ligands.
+
+### 3f. Client-Server Contract
 
 **Files:** `agent/contract.py`,
 `docs/guides/BACKWARD_COMPATIBILITY.md`
@@ -847,6 +893,47 @@ python tests/run_all_tests.py --pattern "plan"
 | tst_structure_model | 77 | Model state tracking, round-trips |
 | tst_validation_history | 56 | Per-cycle metric recording |
 | tst_thinking_defense | 55 | Source code contracts |
+| tst_display_data_model | 41 | DDM properties, HTML report generation |
+| tst_scenario_tracer | 57 | End-to-end scenario testing (see below) |
+
+**Scenario tracer** (`tests/tst_scenario_tracer.py`):
+
+Calls real agent functions with mock data at each
+decision point: `generate_plan`, `GateEvaluator`,
+`build_thinking_prompt`, `parse_intent_json`,
+`parse_assessment`. 57 scenarios covering:
+
+| Group | Count | What |
+|-------|-------|------|
+| S1-S15 | 27 | Crystallographic scenarios (template + gate + prompt) |
+| C1-C3 | 3 | Cycle counting edge cases |
+| G1-G4 | 4 | Gate numeric logic |
+| M1-M2 | 2 | Multi-cycle plan progression |
+| P1-P6 | 6 | PHENIX workflow state (needs libtbx) |
+| L1-L10 | 10 | Mock LLM output parsing and validation |
+| PG1-PG5 | 5 | Model placement gate (v114.1) |
+
+```bash
+python tests/tst_scenario_tracer.py            # All
+python tests/tst_scenario_tracer.py S1A        # One
+python tests/tst_scenario_tracer.py --list     # List
+python tests/tst_scenario_tracer.py --failures # Failures only
+```
+
+**Tutorial run analyzer**
+(`tests/analyze_tutorial_runs.py`):
+
+Compares agent performance across modes. Reads
+`agent_session.json` from tutorial directories named
+`{tutorial}__{mode}` (double underscore), produces
+CSV, Markdown, and JSON reports.
+
+```bash
+python tests/analyze_tutorial_runs.py /path/to/results/
+```
+
+Supports 5 modes: `rules_only`, `llm`, `llm_think`,
+`llm_think_advanced`, `llm_think_expert`.
 
 **When adding tests:**
 
@@ -861,13 +948,11 @@ python tests/run_all_tests.py --pattern "plan"
 
 ## 7. Future Directions
 
-### Phase 0: Evaluation Harness
+### Evaluation Harness
 
-A dry-run replay system with recorded baseline logs
-for 10-15 real structures. Needed to quantify
-improvement from code changes. Would enable A/B
-comparison of `rules_only` vs `llm` vs `llm_think`
-modes.
+Tutorial run analyzer is operational. Next steps:
+expand to 30+ tutorials, establish baseline metrics,
+run regression tests on code changes.
 
 ### GUI Enhancements
 
