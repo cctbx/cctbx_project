@@ -87,7 +87,8 @@ templates:
           anomalous_signal: "unavailable — disable anomalous hypotheses"
 
       - id: molecular_replacement
-        programs: [phenix.phaser]
+        programs: [phenix.phaser,
+                   phenix.predict_and_build]
         max_cycles: 1
         description: "Find MR solution"
         success:
@@ -377,7 +378,7 @@ templates:
           [resolution, twinning_status]
 
       - id: refinement
-        programs: [phenix.refine]
+        programs: [phenix.refine, phenix.polder]
         max_cycles: 5
         description: "Refine model against data"
         success:
@@ -387,7 +388,7 @@ templates:
             action: "stop_report"
 
       - id: final_refinement
-        programs: [phenix.refine]
+        programs: [phenix.refine, phenix.polder]
         max_cycles: 3
         description: "Final refinement with waters"
         strategy:
@@ -544,6 +545,7 @@ templates:
       has_search_model: true
       has_sequence: true
       has_anomalous_atoms: true
+      wants_mr_sad: true
     priority: 40
     phases:
 
@@ -557,9 +559,10 @@ templates:
           [resolution, twinning_status, anomalous_signal]
 
       - id: molecular_replacement
-        programs: [phenix.phaser]
+        programs: [phenix.phaser,
+                   phenix.predict_and_build]
         max_cycles: 1
-        description: "Place search model by MR"
+        description: "Place model into data"
         success:
           tfz: ">8"
         gate:

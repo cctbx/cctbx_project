@@ -240,6 +240,30 @@ def build_thinking_prompt(context, strategy_memory_dict=None):
       "\nHistory: %s" % history_summary[:300]
     )
 
+  # Recent failures — explicit so expert knows what
+  # already failed and can recommend alternatives
+  recent_failures = context.get(
+    "recent_failures", [])
+  if recent_failures:
+    parts.append(
+      "\n--- RECENT FAILURES (try a different "
+      "approach) ---")
+    for f in recent_failures[-3:]:
+      parts.append(
+        "Cycle %s: %s FAILED: %s"
+        % (f.get("cycle", "?"),
+           f.get("program", "?"),
+           f.get("error", "?")[:150]))
+      cmd = f.get("command", "")
+      if cmd:
+        parts.append(
+          "  Command was: %s" % cmd[:150])
+    parts.append(
+      "Do NOT recommend the same command. "
+      "Suggest different parameters, a "
+      "different strategy, or a different "
+      "program.")
+
   # User advice (brief excerpt)
   user_advice = context.get("user_advice", "")
   if user_advice:

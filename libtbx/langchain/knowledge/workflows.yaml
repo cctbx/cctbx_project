@@ -199,7 +199,7 @@ xray:
           conditions:
             - has: model
             - has: data_mtz
-            - has: ligand_fit
+            - not_done: polder
           hint: "Calculate polder omit map to verify ligand/residue placement in density"
 
       repeat:
@@ -254,7 +254,7 @@ xray:
           conditions:
             - has: model
             - has: data_mtz
-            - has: ligand_fit
+            - not_done: polder
           hint: "Verify ligand/residue placement with polder omit maps"
 
       transitions:

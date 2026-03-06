@@ -181,6 +181,7 @@ def _build_context(data_characteristics=None,
     "has_sequence": False,
     "has_ligand_code": False,
     "has_anomalous_atoms": False,
+    "wants_mr_sad": False,
     "model_is_placed": False,
     "resolution": None,
     "is_twinned": None,
@@ -188,6 +189,7 @@ def _build_context(data_characteristics=None,
 
   # --- From available files ---
   has_pdb = False
+  pdb_files = []
   cif_files = []
   files = available_files or []
   for f in files:
@@ -196,6 +198,7 @@ def _build_context(data_characteristics=None,
     if ext in (".pdb", ".ent"):
       ctx["has_search_model"] = True
       has_pdb = True
+      pdb_files.append(bn)
     elif ext == ".cif":
       cif_files.append(bn)
     elif ext in (".mtz", ".sca", ".hkl"):
@@ -215,6 +218,23 @@ def _build_context(data_characteristics=None,
       ctx["has_ligand_code"] = True
     else:
       ctx["has_search_model"] = True
+
+  # Detect potential ligand PDB files.
+  # When multiple PDBs exist and one has a name
+  # suggesting it's a ligand model (not the main
+  # protein), mark has_ligand_code. This handles
+  # cases where ligands are provided as PDB instead
+  # of CIF (common in tutorials).
+  _ligand_pdb_hints = (
+    "ligand", "lig_", "lig.", "random",
+    "compound", "drug", "inhibitor",
+  )
+  _has_ligand_pdb = False
+  if len(pdb_files) >= 2:
+    for pbn in pdb_files:
+      if any(h in pbn for h in _ligand_pdb_hints):
+        _has_ligand_pdb = True
+        break
 
   # --- From directives ---
   d = directives or {}
@@ -243,14 +263,26 @@ def _build_context(data_characteristics=None,
 
   # --- From user advice (text heuristics) ---
   advice = (user_advice or "").lower()
-  # Note: has_ligand_code from advice alone is NOT
-  # sufficient — the user may mention "fit ATP" but
-  # not provide a CIF file. Only set it here if
-  # there's also a CIF file present (already set
-  # from file scan above). If no CIF, the template
-  # selection won't include ligandfit phases.
-  # The workflow engine separately handles the case
-  # where the user wants ligandfit (user_wants_ligandfit).
+  # Ligand detection from advice: only set
+  # has_ligand_code when there is FILE EVIDENCE
+  # of a ligand (CIF already detected, or a PDB
+  # with ligand-like name). This prevents
+  # impossible ligandfit phases when user says
+  # "fit ATP" but provides no ligand file (S11A),
+  # while still enabling ligand fitting when files
+  # are present but not named with .cif extension
+  # (1J4R-ligand tutorial).
+  if not ctx["has_ligand_code"]:
+    if _has_ligand_pdb or _mentions_ligand(advice):
+      # Ligand PDB detected or advice mentions
+      # ligand — but only set if there's some
+      # file evidence (ligand PDB or multiple PDBs)
+      if _has_ligand_pdb:
+        ctx["has_ligand_code"] = True
+      elif cif_files:
+        # CIF files exist but weren't classified
+        # as ligand — trust the advice
+        ctx["has_ligand_code"] = True
   # Experiment type from advice
   if ctx["experiment_type"] is None:
     if any(w in advice for w in (
@@ -273,6 +305,29 @@ def _build_context(data_characteristics=None,
       "atom_type", "heavy atom",
     )):
       ctx["has_anomalous_atoms"] = True
+
+  # MR-SAD intent: user explicitly wants molecular
+  # replacement combined with anomalous phasing.
+  # Without this, pure "SAD phasing" advice will
+  # select sad_phasing (not mr_sad) even when a
+  # search model is present.
+  _wants_mr_sad = False
+  if any(w in advice for w in (
+    "mr-sad", "mr sad", "mrsad", "mr_sad",
+  )):
+    _wants_mr_sad = True
+  elif (
+    any(w in advice for w in (
+      "molecular replacement", "phaser",
+      "mr "))
+    and any(w in advice for w in (
+      "sad", "anomalous", "mad"))
+  ):
+    _wants_mr_sad = True
+  # Also from directives
+  if wf.get("use_mr_sad"):
+    _wants_mr_sad = True
+  ctx["wants_mr_sad"] = _wants_mr_sad
 
   # Model placement from advice: if user says
   # "refine", "fit ligand", etc. WITHOUT mentioning

@@ -594,6 +594,8 @@ def _build_thinking_context(state, thinking_level="advanced"):
     "user_advice": state.get("user_advice", ""),
     "history_summary": history_summary,
     "r_free_trend": r_free_trend,
+    "recent_failures": _collect_recent_failures(
+      history),
     # Advanced fields default to empty
     "validation_report": "",
     "validation_result": None,
@@ -770,6 +772,37 @@ def _summarize_history(history):
 
     lines.append("\n".join(parts))
   return "\n".join(lines)
+
+
+def _collect_recent_failures(history):
+  """Collect recent program failures for thinking.
+
+  Returns a list of dicts with program, error, and
+  cycle number for the last N failures. This gives
+  the thinking agent explicit awareness of what has
+  already been tried and failed, so it can recommend
+  a different approach.
+  """
+  failures = []
+  if not history:
+    return failures
+  for h in history[-5:]:
+    if not isinstance(h, dict):
+      continue
+    result = str(h.get("result", ""))
+    result_upper = result.upper()
+    is_fail = (
+      result_upper.startswith("FAIL")
+      or ("ERROR" in result_upper
+          and "WITHOUT ERROR" not in result_upper))
+    if is_fail:
+      failures.append({
+        "cycle": h.get("cycle_number", "?"),
+        "program": h.get("program", "?"),
+        "error": result[:200],
+        "command": h.get("command", "")[:200],
+      })
+  return failures
 
 
 def _run_structural_validation(state, session_info,

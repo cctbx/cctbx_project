@@ -365,9 +365,13 @@ class SanityChecker:
                 key = (prog, error_key)
                 failure_counts[key] = failure_counts.get(key, 0) + 1
 
-        # Check for 3+ repeated failures
+        # Check for 4+ repeated failures
+        # (3 was too aggressive — reference model
+        # refinement and other tutorials need the
+        # first failure to learn what parameters
+        # are needed, then 2 retries to get it right)
         for (prog, error), count in failure_counts.items():
-            if count >= 3:
+            if count >= 4:
                 return SanityIssue(
                     severity="critical",
                     code="repeated_failures",
