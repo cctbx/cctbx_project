@@ -97,6 +97,12 @@ SESSION_INFO_FIELDS = [
     ("client_protocol_version", 1,    3,
      "Protocol version of the sending client (int). "
      "Defaults to 1 for clients that predate this field."),
+
+    # --- v4: goal-directed plan status ------------------------------------
+    ("plan_has_pending_stages", False, 4,
+     "True when the plan has stages still pending "
+     "with programs that could run. Suppresses "
+     "AUTO-STOP so the plan can drive the workflow."),
 ]
 
 # Convenience lookup: field_name -> (default, version, description)

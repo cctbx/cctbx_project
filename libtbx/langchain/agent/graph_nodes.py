@@ -1445,7 +1445,7 @@ def plan(state):
         # when model building and refinement remain is
         # premature.  Let the plan drive the workflow
         # forward.
-        elif session_info.get("plan_has_pending_stages"):
+        elif session_info.get("plan_has_pending_stages", False):
             state = _log(state,
                 "PLAN: Suppressing AUTO-STOP — "
                 "plan has pending stages (%s)" % reason)
