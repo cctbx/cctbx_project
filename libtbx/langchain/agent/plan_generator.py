@@ -401,6 +401,9 @@ def _build_context(data_characteristics=None,
         ctx["is_twinned"] = bool(tw["is_twinned"])
     elif dc.get("is_twinned") is not None:
       ctx["is_twinned"] = bool(dc["is_twinned"])
+    # Placement detection from session (v114.1)
+    if dc.get("model_is_placed"):
+      ctx["model_is_placed"] = True
 
   # --- From structure model (resumed session) ---
   if structure_model is not None:

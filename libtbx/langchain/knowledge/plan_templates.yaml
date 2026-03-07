@@ -275,10 +275,11 @@ templates:
 
       - id: model_building
         programs:
+          - phenix.dock_in_map
           - phenix.predict_and_build
           - phenix.map_to_model
         max_cycles: 2
-        description: "Build model into map"
+        description: "Place or build model into map"
         success:
           model_map_cc: ">0.5"
         provides:

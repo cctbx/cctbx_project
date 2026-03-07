@@ -123,6 +123,11 @@ def build_session_state(session_info, session_resolution=None):
         if session_info.get("user_advice"):
             session_state["user_advice"] = (
                 session_info["user_advice"])
+        # Plan status: suppress AUTO-STOP when plan
+        # has pending stages (v114.1)
+        if session_info.get("plan_has_pending_stages"):
+            session_state[
+                "plan_has_pending_stages"] = True
 
     return session_state
 

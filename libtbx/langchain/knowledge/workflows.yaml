@@ -387,6 +387,7 @@ cryoem:
           conditions:
             - has_any: [full_map, optimized_full_map]
             - not_done: map_symmetry
+            - not: model  # Skip when user has a model to dock/refine
           hint: "Find point-group symmetry before model building"
 
         - program: phenix.predict_and_build

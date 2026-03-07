@@ -1438,6 +1438,24 @@ def plan(state):
             metrics_trend["reason"] = "Suppressed: ligandfit prerequisite (refinement needed first)"
             state = {**state, "metrics_trend": metrics_trend}
 
+        # Suppress AUTO-STOP when the plan has pending
+        # stages.  The strategic plan (expert mode) maps
+        # structure determination into stages; stopping
+        # after the first stage (e.g. map improvement)
+        # when model building and refinement remain is
+        # premature.  Let the plan drive the workflow
+        # forward.
+        elif session_info.get("plan_has_pending_stages"):
+            state = _log(state,
+                "PLAN: Suppressing AUTO-STOP — "
+                "plan has pending stages (%s)" % reason)
+            metrics_trend = dict(metrics_trend)
+            metrics_trend["should_stop"] = False
+            metrics_trend["reason"] = (
+                "Suppressed: plan has pending stages")
+            state = {**state,
+                     "metrics_trend": metrics_trend}
+
         else:
             # No after_program directive and no pending ligandfit, allow auto-stop
             state = _log(state, "PLAN: AUTO-STOP triggered: %s" % reason)
@@ -1690,6 +1708,49 @@ def plan(state):
                     intent["program"] = explicit_prog
                     intent["stop"] = False
                     intent["reasoning"] = "Running user-requested program: %s" % explicit_prog
+
+        # Override STOP if the plan has pending stages
+        # with valid programs.  The LLM sometimes stops
+        # after the first stage completes (e.g. after
+        # resolve_cryo_em) without running model building
+        # or refinement.  Fall back to rules selection
+        # to pick the best program from valid_programs.
+        if chosen_program == "STOP":
+            if session_info.get(
+              "plan_has_pending_stages"
+            ):
+                non_stop = [
+                    p for p in valid_programs
+                    if p != "STOP"]
+                if non_stop:
+                    # Prefer programs from the plan's
+                    # current stage directives
+                    directives = state.get(
+                        "directives", {})
+                    prefer = (
+                        directives
+                        .get("workflow_preferences", {})
+                        .get("prefer_programs", []))
+                    pick = None
+                    for p in prefer:
+                        if p in non_stop:
+                            pick = p
+                            break
+                    if pick is None:
+                        pick = non_stop[0]
+                    state = _log(
+                        state,
+                        "PLAN: Overriding LLM STOP — "
+                        "plan has pending stages. "
+                        "Selecting %s from "
+                        "valid_programs" % pick)
+                    chosen_program = pick
+                    intent["program"] = pick
+                    intent["stop"] = False
+                    intent["reasoning"] = (
+                        "Plan has pending stages. "
+                        "Running %s. [LLM wanted STOP]"
+                        % pick)
 
         # Simple validation: is the chosen program in valid_programs?
         if chosen_program is None or chosen_program not in valid_programs:
