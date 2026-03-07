@@ -1,7 +1,7 @@
 """
 Gate Evaluator for the Goal-Directed Agent.
 
-Evaluates phase progress against plan criteria after
+Evaluates stage progress against plan criteria after
 each cycle. Decides advance/continue/retreat/stop using
 purely deterministic logic — no LLM involvement.
 
@@ -29,14 +29,14 @@ class GateResult(object):
 
   Attributes:
     action: str. One of:
-      "continue" — keep going in current phase
-      "advance" — move to next phase (success)
-      "skip" — skip current phase, move to next
-      "retreat" — go back to an earlier phase
-      "fallback" — try within-phase fallback
+      "continue" — keep going in current stage
+      "advance" — move to next stage (success)
+      "skip" — skip current stage, move to next
+      "retreat" — go back to an earlier stage
+      "fallback" — try within-stage fallback
       "stop" — end the session
     reason: str. Human-readable explanation.
-    new_phase_id: str or None. Target phase for
+    new_phase_id: str or None. Target stage for
       advance/retreat.
     blacklist_entry: dict or None. Strategy to
       blacklist on retreat.
@@ -271,7 +271,7 @@ def evaluate_gate_condition(parsed, actual_value,
 # ── GateEvaluator ───────────────────────────────────
 
 class GateEvaluator(object):
-  """Evaluates phase progress against plan criteria.
+  """Evaluates stage progress against plan criteria.
 
   Called after each cycle. Uses the Structure Model
   (ground truth) to check success criteria without
@@ -286,16 +286,16 @@ class GateEvaluator(object):
 
   def evaluate(self, plan, structure_model,
                validation_history, cycle_number):
-    """Evaluate current phase progress.
+    """Evaluate current stage progress.
 
     Order of checks:
     1. Is plan complete? → stop
-    2. Is current phase None? → stop
+    2. Is current stage None? → stop
     3. Does skip_if apply? → skip
     4. Are success criteria met? → advance
     5. Do gate conditions fire? → retreat/stop/fallback
     6. Do fallback conditions fire? → fallback
-    7. Is phase exhausted (max_cycles)? → advance
+    7. Is stage exhausted (max_cycles)? → advance
     8. Otherwise → continue
 
     Gates are checked BEFORE exhaustion because gates
@@ -343,33 +343,33 @@ class GateEvaluator(object):
     if plan.is_complete():
       return GateResult(
         action="stop",
-        reason="all phases complete",
+        reason="all stages complete",
       )
 
-    phase = plan.current_phase()
-    if phase is None:
+    stage = plan.current_stage()
+    if stage is None:
       return GateResult(
         action="stop",
-        reason="no active phase",
+        reason="no active stage",
       )
 
-    # --- Check skip_if (phase entry only) ---
+    # --- Check skip_if (stage entry only) ---
     # skip_if is a pre-entry check: "don't enter this
-    # phase if the condition is already met." Once the
-    # phase has started (cycles_used > 0), skip_if no
+    # stage if the condition is already met." Once the
+    # stage has started (cycles_used > 0), skip_if no
     # longer applies — success criteria take over.
-    if (phase.skip_if and structure_model
-        and phase.cycles_used == 0):
+    if (stage.skip_if and structure_model
+        and stage.cycles_used == 0):
       skip_result = self._check_skip(
-        phase, structure_model
+        stage, structure_model
       )
       if skip_result is not None:
         return skip_result
 
     # --- Check success criteria ---
-    if phase.success_criteria and structure_model:
+    if stage.success_criteria and structure_model:
       all_met, details = self._check_success(
-        phase.success_criteria, structure_model
+        stage.success_criteria, structure_model
       )
       if all_met:
         return GateResult(
@@ -383,32 +383,32 @@ class GateEvaluator(object):
     # because gates can include critical stop/retreat
     # conditions that shouldn't be skipped when
     # max_cycles is reached.
-    if phase.gate_conditions and structure_model:
+    if stage.gate_conditions and structure_model:
       gate_result = self._check_gates(
-        plan, phase, structure_model,
+        plan, stage, structure_model,
         cycle_number,
       )
       if gate_result is not None:
         return gate_result
 
     # --- Check fallback conditions ---
-    if phase.fallbacks and structure_model:
+    if stage.fallbacks and structure_model:
       fb_result = self._check_fallbacks(
-        phase, structure_model,
+        stage, structure_model,
       )
       if fb_result is not None:
         return fb_result
 
-    # --- Check phase exhaustion ---
-    if phase.is_exhausted():
+    # --- Check stage exhaustion ---
+    if stage.is_exhausted():
       return self._handle_exhaustion(
-        plan, phase, structure_model,
+        plan, stage, structure_model,
         cycle_number,
       )
 
     return GateResult(
       action="continue",
-      reason="phase in progress",
+      reason="stage in progress",
     )
 
   # ── Hypothesis evaluation ───────────────────────
@@ -418,9 +418,9 @@ class GateEvaluator(object):
     """Evaluate active hypotheses and revalidate
     confirmed ones.
 
-    Called after the main phase evaluation.
+    Called after the main stage evaluation.
     Separate from evaluate() because hypothesis
-    lifecycle is orthogonal to phase transitions.
+    lifecycle is orthogonal to stage transitions.
 
     Args:
       structure_model: StructureModel.
@@ -511,19 +511,19 @@ class GateEvaluator(object):
 
   # ── Skip conditions ─────────────────────────────
 
-  def _check_skip(self, phase, structure_model):
-    """Check if phase should be skipped.
+  def _check_skip(self, stage, structure_model):
+    """Check if stage should be skipped.
 
     Args:
-      phase: PhaseDef with skip_if.
+      stage: StageDef with skip_if.
       structure_model: StructureModel.
 
     Returns:
       GateResult with action="skip" if skip, None
-      otherwise. The caller must call plan.skip_phase()
+      otherwise. The caller must call plan.skip_stage()
       then plan.advance() to handle this correctly.
     """
-    parsed = parse_gate_condition(phase.skip_if)
+    parsed = parse_gate_condition(stage.skip_if)
     if parsed is None:
       return None
     actual = _get_metric_value(
@@ -535,26 +535,26 @@ class GateEvaluator(object):
       return GateResult(
         action="skip",
         reason="skip_if met: %s (actual=%s)"
-          % (phase.skip_if, actual),
+          % (stage.skip_if, actual),
       )
     return None
 
   # ── Gate conditions (retreat triggers) ──────────
 
-  def _check_gates(self, plan, phase,
+  def _check_gates(self, plan, stage,
                    structure_model, cycle_number):
     """Check gate conditions for retreat/stop.
 
     Args:
       plan: StructurePlan.
-      phase: PhaseDef.
+      stage: StageDef.
       structure_model: StructureModel.
       cycle_number: int.
 
     Returns:
       GateResult or None.
     """
-    for gate in phase.gate_conditions:
+    for gate in stage.gate_conditions:
       condition_str = gate.get("if", "")
       action_str = gate.get("action", "")
       parsed = parse_gate_condition(condition_str)
@@ -564,7 +564,7 @@ class GateEvaluator(object):
         structure_model, parsed["metric"]
       )
       if not evaluate_gate_condition(
-        parsed, actual, phase.cycles_used
+        parsed, actual, stage.cycles_used
       ):
         continue
 
@@ -606,12 +606,12 @@ class GateEvaluator(object):
 
   # ── Fallback conditions ─────────────────────────
 
-  def _check_fallbacks(self, phase, structure_model):
-    """Check within-phase fallback conditions.
+  def _check_fallbacks(self, stage, structure_model):
+    """Check within-stage fallback conditions.
 
     Returns GateResult with action="fallback" or None.
     """
-    for fb in phase.fallbacks:
+    for fb in stage.fallbacks:
       condition_str = fb.get("if", "")
       action_str = fb.get("action", "")
       parsed = parse_gate_condition(condition_str)
@@ -621,7 +621,7 @@ class GateEvaluator(object):
         structure_model, parsed["metric"]
       )
       if evaluate_gate_condition(
-        parsed, actual, phase.cycles_used
+        parsed, actual, stage.cycles_used
       ):
         return GateResult(
           action="fallback",
@@ -630,12 +630,12 @@ class GateEvaluator(object):
         )
     return None
 
-  # ── Phase exhaustion ────────────────────────────
+  # ── Stage exhaustion ────────────────────────────
 
-  def _handle_exhaustion(self, plan, phase,
+  def _handle_exhaustion(self, plan, stage,
                          structure_model,
                          cycle_number):
-    """Handle phase that used all its cycles.
+    """Handle stage that used all its cycles.
 
     If some success criteria are met, advance anyway
     (partial success is enough to move forward).
@@ -645,9 +645,9 @@ class GateEvaluator(object):
     Returns GateResult.
     """
     # Check if any success criteria are met
-    if phase.success_criteria and structure_model:
+    if stage.success_criteria and structure_model:
       _, details = self._check_success(
-        phase.success_criteria, structure_model,
+        stage.success_criteria, structure_model,
       )
       n_met = sum(1 for d in details if d["met"])
       n_total = len(details)
@@ -655,24 +655,24 @@ class GateEvaluator(object):
         return GateResult(
           action="advance",
           reason=(
-            "phase exhausted (%d/%d cycles), "
+            "stage exhausted (%d/%d cycles), "
             "%d/%d criteria met — advancing"
-            % (phase.cycles_used, phase.max_cycles,
+            % (stage.cycles_used, stage.max_cycles,
                n_met, n_total)
           ),
           details=details,
         )
 
     # No criteria met — check if we should retreat
-    # Default: advance anyway (the next phase may
+    # Default: advance anyway (the next stage may
     # improve things). Only retreat if a gate
     # condition explicitly says to.
     return GateResult(
       action="advance",
       reason=(
-        "phase exhausted (%d/%d cycles) — "
-        "advancing to next phase"
-        % (phase.cycles_used, phase.max_cycles)
+        "stage exhausted (%d/%d cycles) — "
+        "advancing to next stage"
+        % (stage.cycles_used, stage.max_cycles)
       ),
     )
 
@@ -689,14 +689,14 @@ class GateEvaluator(object):
     1. Strategy Blacklist — is target blacklisted?
     2. Retreat counter — max 2 total
     3. Monotonic progress gate — only retreat if the
-       key metric is WORSE than at phase start
+       key metric is WORSE than at stage start
     4. Retreat cooldown — at least 2 cycles since last
-    5. Retreat depth limit — max 1 phase back (unless
+    5. Retreat depth limit — max 1 stage back (unless
        explicit_target from template gate rule)
 
     Args:
       plan: StructurePlan.
-      target_id: str, phase to retreat to.
+      target_id: str, stage to retreat to.
       condition_str: str, the triggering condition.
       actual_value: the metric value that triggered.
       cycle_number: int.
@@ -734,14 +734,14 @@ class GateEvaluator(object):
 
     # --- Safeguard 3: Monotonic progress gate ---
     # Only retreat if the triggering metric is worse
-    # than (or equal to) its value at phase start.
-    # If the phase is improving, let it continue.
-    phase = plan.current_phase()
-    if (phase and phase.start_cycle is not None
+    # than (or equal to) its value at stage start.
+    # If the stage is improving, let it continue.
+    stage = plan.current_stage()
+    if (stage and stage.start_cycle is not None
         and actual_value is not None
         and structure_model):
       progress_block = self._check_monotonic(
-        structure_model, phase, actual_value,
+        structure_model, stage, actual_value,
         condition_str,
       )
       if progress_block is not None:
@@ -751,13 +751,13 @@ class GateEvaluator(object):
     if not explicit_target:
       prev = plan.get_previous_phase()
       if prev and prev.id != target_id:
-        # Retreat target is deeper than one phase
-        # back. Use one-phase-back instead.
+        # Retreat target is deeper than one stage
+        # back. Use one-stage-back instead.
         target_id = prev.id
 
     # --- Build blacklist entry ---
     bl_entry = None
-    if phase:
+    if stage:
       metrics = {}
       if structure_model:
         for m in ("r_free", "r_work", "tfz", "llg",
@@ -767,7 +767,7 @@ class GateEvaluator(object):
             metrics[m] = v
       bl_entry = {
         "strategy_id": "%s_cycle%d" % (
-          phase.id, cycle_number
+          stage.id, cycle_number
         ),
         "reason": "gate: %s (actual=%s)"
           % (condition_str, actual_value),
@@ -783,12 +783,12 @@ class GateEvaluator(object):
     )
 
   def _check_monotonic(self, structure_model,
-                       phase, actual_value,
+                       stage, actual_value,
                        condition_str):
-    """Check if phase is making progress.
+    """Check if stage is making progress.
 
     If the triggering metric has improved since
-    phase start, block the retreat.
+    stage start, block the retreat.
 
     Returns:
       GateResult to block retreat, or None to allow.
@@ -801,11 +801,11 @@ class GateEvaluator(object):
     if metric is None:
       return None
 
-    # Get value at phase start from progress history
+    # Get value at stage start from progress history
     start_val = None
     if hasattr(structure_model, "progress"):
       for entry in structure_model.progress:
-        if entry.get("cycle") == phase.start_cycle:
+        if entry.get("cycle") == stage.start_cycle:
           start_val = entry.get(metric)
           break
     if start_val is None:
@@ -834,7 +834,7 @@ class GateEvaluator(object):
         action="continue",
         reason=(
           "retreat blocked: %s improving "
-          "(%.3f → %.3f since phase start)"
+          "(%.3f → %.3f since stage start)"
           % (metric, start_f, actual_f)
         ),
       )

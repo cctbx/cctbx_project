@@ -791,7 +791,7 @@ def test_metric_at_cycle():
 # ── Gate evaluator usage pattern ──────────────────────
 
 def test_phase_start_comparison():
-  """Gate evaluator pattern: compare phase-start metrics
+  """Gate evaluator pattern: compare stage-start metrics
   against current metrics for monotonic progress gate."""
   vh = _build_five_cycle_history()
   # Phase started at cycle 3 (first refine)
@@ -815,7 +815,7 @@ def test_phase_start_comparison():
 
 def test_threshold_after_n_cycles():
   """Gate evaluator pattern: check if r_free > threshold
-  after N cycles in current phase."""
+  after N cycles in current step."""
   vh = ValidationHistory()
   # Phase starts at cycle 5 with R-free stuck
   for i in range(5, 8):
@@ -981,7 +981,7 @@ def test_five_cycle_scenario():
   assert ps is not None
   assert ps["log_metrics"]["r_free"] == 0.38
 
-  # Delta from phase start to current
+  # Delta from stage start to current
   delta = vh.get_metrics_delta(3, 5)
   assert abs(
     delta["r_free"]["delta"] - (0.248 - 0.38)

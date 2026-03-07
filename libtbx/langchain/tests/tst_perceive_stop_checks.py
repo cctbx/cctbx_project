@@ -30,22 +30,29 @@ def test_no_history():
     assert not stop
 
 def test_after_program_match():
-    """after_program matches last program → stop."""
+    """after_program matches last program → NOT a hard stop.
+
+    Since v112.78 (Bug 7), after_program is a minimum-run
+    guarantee handled by the PLAN node, not a PERCEIVE
+    hard stop.  The LLM decides when to actually stop.
+    """
     d = {"stop_conditions": {"after_program": "phenix.refine"}}
     h = [{"program": "phenix.refine", "command": "phenix.refine foo.mtz",
           "result": "SUCCESS"}]
     stop, reason = check_directive_stop(d, h, cycle_number=2)
-    assert stop
-    assert "phenix.refine" in reason
-    assert "after_program" in reason
+    assert not stop, (
+        "after_program must NOT hard-stop in PERCEIVE "
+        "(v112.78: minimum-run guarantee, not hard stop)")
 
 def test_after_program_normalized():
-    """after_program='refine' matches last program='phenix.refine'."""
+    """after_program='refine' matches phenix.refine → still no hard stop."""
     d = {"stop_conditions": {"after_program": "refine"}}
     h = [{"program": "phenix.refine", "command": "phenix.refine foo.mtz",
           "result": "SUCCESS"}]
     stop, reason = check_directive_stop(d, h, cycle_number=2)
-    assert stop
+    assert not stop, (
+        "after_program must NOT hard-stop even with "
+        "normalized name match")
 
 def test_after_program_no_match():
     """after_program doesn't match last program → no stop."""
@@ -81,13 +88,19 @@ def test_predict_and_build_guard():
     assert not stop, "Should suppress stop when stop_after_predict used"
 
 def test_predict_and_build_no_guard():
-    """after_program=predict_and_build without stop_after_predict → normal stop."""
+    """after_program=predict_and_build without stop_after_predict → still no hard stop.
+
+    Since v112.78, after_program never hard-stops in
+    PERCEIVE regardless of stop_after_predict.
+    """
     d = {"stop_conditions": {"after_program": "phenix.predict_and_build"}}
     h = [{"program": "phenix.predict_and_build",
           "command": "phenix.predict_and_build model.pdb data.mtz",
           "result": "SUCCESS"}]
     stop, reason = check_directive_stop(d, h, cycle_number=2)
-    assert stop
+    assert not stop, (
+        "after_program must NOT hard-stop in PERCEIVE "
+        "(v112.78: minimum-run guarantee)")
 
 def test_r_free_target_met():
     """r_free below target → stop."""
@@ -215,6 +228,7 @@ def run():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     passed = 0
     failed = 0
+    first_failure = None
     for t in tests:
         try:
             t()
@@ -223,11 +237,16 @@ def run():
         except Exception as e:
             failed += 1
             print("  FAIL: %s — %s" % (t.__name__, e))
+            if first_failure is None:
+                first_failure = "%s — %s" % (t.__name__, e)
     print("\n%d passed, %d failed" % (passed, failed))
-    return failed == 0
+    if failed > 0:
+        raise AssertionError(
+            "First failure: %s" % first_failure)
 
 
 if __name__ == "__main__":
-    ok = run()
-    if not ok:
+    try:
+        run()
+    except AssertionError:
         sys.exit(1)

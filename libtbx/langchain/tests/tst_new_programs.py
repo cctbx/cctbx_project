@@ -208,37 +208,37 @@ def test_model_vs_data_hints():
 # POLDER WORKFLOW CONFIG TESTS
 # =============================================================================
 
-def test_polder_in_xray_refine_phase():
-    """phenix.polder should be in xray refine phase."""
-    xray_phases = WORKFLOWS.get("xray", {}).get("phases", {})
-    refine_phase = xray_phases.get("refine", {})
-    programs = refine_phase.get("programs", [])
+def test_polder_in_xray_refine_step():
+    """phenix.polder should be in xray refine step."""
+    xray_steps = WORKFLOWS.get("xray", {}).get("steps") or WORKFLOWS.get("xray", {}).get("phases") or {}
+    refine_step = xray_steps.get("refine", {})
+    programs = refine_step.get("programs", [])
 
     polder_in_refine = any(
         (p.get("program") if isinstance(p, dict) else p) == "phenix.polder"
         for p in programs
     )
-    assert_true(polder_in_refine, "phenix.polder should be in xray refine phase")
+    assert_true(polder_in_refine, "phenix.polder should be in xray refine step")
 
 
-def test_polder_in_xray_validate_phase():
-    """phenix.polder should be in xray validate phase."""
-    xray_phases = WORKFLOWS.get("xray", {}).get("phases", {})
-    validate_phase = xray_phases.get("validate", {})
-    programs = validate_phase.get("programs", [])
+def test_polder_in_xray_validate_step():
+    """phenix.polder should be in xray validate step."""
+    xray_steps = WORKFLOWS.get("xray", {}).get("steps") or WORKFLOWS.get("xray", {}).get("phases") or {}
+    validate_step = xray_steps.get("validate", {})
+    programs = validate_step.get("programs", [])
 
     polder_in_validate = any(
         (p.get("program") if isinstance(p, dict) else p) == "phenix.polder"
         for p in programs
     )
-    assert_true(polder_in_validate, "phenix.polder should be in xray validate phase")
+    assert_true(polder_in_validate, "phenix.polder should be in xray validate step")
 
 
-def test_polder_conditions_refine_phase():
-    """phenix.polder should have conditions in refine phase."""
-    xray_phases = WORKFLOWS.get("xray", {}).get("phases", {})
-    refine_phase = xray_phases.get("refine", {})
-    programs = refine_phase.get("programs", [])
+def test_polder_conditions_refine_step():
+    """phenix.polder should have conditions in refine step."""
+    xray_steps = WORKFLOWS.get("xray", {}).get("steps") or WORKFLOWS.get("xray", {}).get("phases") or {}
+    refine_step = xray_steps.get("refine", {})
+    programs = refine_step.get("programs", [])
 
     for p in programs:
         if isinstance(p, dict) and p.get("program") == "phenix.polder":
@@ -246,11 +246,11 @@ def test_polder_conditions_refine_phase():
             break
 
 
-def test_polder_conditions_validate_phase():
-    """phenix.polder should have conditions in validate phase."""
-    xray_phases = WORKFLOWS.get("xray", {}).get("phases", {})
-    validate_phase = xray_phases.get("validate", {})
-    programs = validate_phase.get("programs", [])
+def test_polder_conditions_validate_step():
+    """phenix.polder should have conditions in validate step."""
+    xray_steps = WORKFLOWS.get("xray", {}).get("steps") or WORKFLOWS.get("xray", {}).get("phases") or {}
+    validate_step = xray_steps.get("validate", {})
+    programs = validate_step.get("programs", [])
 
     for p in programs:
         if isinstance(p, dict) and p.get("program") == "phenix.polder":
@@ -260,11 +260,11 @@ def test_polder_conditions_validate_phase():
 
 def test_polder_has_hint():
     """phenix.polder should have a hint in workflow."""
-    xray_phases = WORKFLOWS.get("xray", {}).get("phases", {})
+    xray_steps = WORKFLOWS.get("xray", {}).get("steps") or WORKFLOWS.get("xray", {}).get("phases") or {}
 
     found_hint = False
-    for phase_name, phase in xray_phases.items():
-        programs = phase.get("programs", [])
+    for step_name, step in xray_steps.items():
+        programs = step.get("programs", [])
         for p in programs:
             if isinstance(p, dict) and p.get("program") == "phenix.polder":
                 if "hint" in p:

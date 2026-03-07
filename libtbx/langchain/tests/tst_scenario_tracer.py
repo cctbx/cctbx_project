@@ -17,7 +17,7 @@ Each scenario produces a trace like:
   S1A: Standard MR — phaser succeeds
   ──────────────────────────────────
   Files: data.mtz(data_mtz) model.pdb(model)
-  Template: mr_refine (5 phases)
+  Template: mr_refine (5 stages)
   Cycle 1: valid=[xtriage,phaser,STOP]
            plan_phase=data_assessment (step 0/1)
            xtriage runs → gate: advance
@@ -232,13 +232,13 @@ def trace_S1A():
   if plan is None:
     t.issue("CRASH", "No plan generated")
     return t
-  t.step("Template: %s (%d phases)" % (
-    plan.template_id, len(plan.phases)))
+  t.step("Template: %s (%d stages)" % (
+    plan.template_id, len(plan.stages)))
   if plan.template_id != "mr_refine":
     t.issue("WRONG",
       "Expected mr_refine, got %s"
       % plan.template_id)
-  phase_ids = [p.id for p in plan.phases]
+  phase_ids = [p.id for p in plan.stages]
   t.step("Phases: %s" % " → ".join(phase_ids))
 
   # Step 2: Workflow state — fresh session
@@ -291,10 +291,10 @@ def trace_S1A():
 
   # Step 5: Gate evaluation after xtriage
   plan_d = plan.to_dict()
-  # Simulate phase advancement
+  # Simulate stage advancement
   plan_copy = StructurePlan.from_dict(plan_d)
-  plan_copy.mark_phase_started(1)
-  plan_copy.record_phase_cycle("phenix.xtriage")
+  plan_copy.mark_stage_started(1)
+  plan_copy.record_stage_cycle("phenix.xtriage")
   gr = mock_gate(plan_copy.to_dict(), None, 1)
   t.step("Gate after xtriage: %s (%s)" % (
     gr.action, gr.reason[:50]))
@@ -304,8 +304,8 @@ def trace_S1A():
 
   # Step 6: Gate after phaser
   plan_copy.advance()
-  plan_copy.mark_phase_started(2)
-  plan_copy.record_phase_cycle("phenix.phaser")
+  plan_copy.mark_stage_started(2)
+  plan_copy.record_stage_cycle("phenix.phaser")
   sm = make_sm(tfz=14.2, resolution=2.0)
   gr2 = mock_gate(plan_copy.to_dict(), sm, 2)
   t.step("Gate after phaser: %s (%s)" % (
@@ -377,17 +377,17 @@ def trace_S1C():
     t.issue("CRASH", "No plan generated")
     return t
 
-  # Advance to initial_refinement phase
-  plan.mark_phase_started(1)
-  plan.record_phase_cycle("phenix.xtriage")
+  # Advance to initial_refinement stage
+  plan.mark_stage_started(1)
+  plan.record_stage_cycle("phenix.xtriage")
   plan.advance()
-  plan.mark_phase_started(2)
-  plan.record_phase_cycle("phenix.phaser")
+  plan.mark_stage_started(2)
+  plan.record_stage_cycle("phenix.phaser")
   plan.advance()
   # Two refine cycles
-  plan.mark_phase_started(3)
-  plan.record_phase_cycle("phenix.refine")
-  plan.record_phase_cycle("phenix.refine")
+  plan.mark_stage_started(3)
+  plan.record_stage_cycle("phenix.refine")
+  plan.record_stage_cycle("phenix.refine")
 
   sm = make_sm(r_free=0.47, tfz=8.5,
                resolution=2.0)
@@ -397,8 +397,8 @@ def trace_S1C():
   t.step("  reason: %s" % gr.reason[:80])
 
   # Check the gate condition
-  curr = plan.current_phase()
-  t.step("Current phase: %s (gate: %s)" % (
+  curr = plan.current_stage()
+  t.step("Current stage: %s (gate: %s)" % (
     curr.id if curr else "?",
     curr.gate_conditions if curr else "?"))
 
@@ -496,12 +496,12 @@ def trace_S3B():
     pass
 
   # Gate: should NOT advance despite cycle 3 done
-  plan.mark_phase_started(1)
-  plan.record_phase_cycle("phenix.xtriage")
+  plan.mark_stage_started(1)
+  plan.record_stage_cycle("phenix.xtriage")
   plan.advance()
-  plan.mark_phase_started(2)
-  plan.record_phase_cycle("phenix.refine")
-  plan.record_phase_cycle("phenix.refine")
+  plan.mark_stage_started(2)
+  plan.record_stage_cycle("phenix.refine")
+  plan.record_stage_cycle("phenix.refine")
   sm = make_sm(r_free=0.33, resolution=2.0)
   gr = mock_gate(plan.to_dict(), sm, 3)
   t.step("Gate after regression: %s (%s)" % (
@@ -525,7 +525,7 @@ def trace_S4A():
     directives={})
   if plan:
     t.step("Template: %s" % plan.template_id)
-    phase_ids = [p.id for p in plan.phases]
+    phase_ids = [p.id for p in plan.stages]
     t.step("Phases: %s" % " → ".join(phase_ids))
     if plan.template_id != "refine_placed_ligand":
       t.issue("WRONG",
@@ -585,7 +585,7 @@ def trace_S5A():
     directives={})
   if plan:
     t.step("Template: %s" % plan.template_id)
-    phase_ids = [p.id for p in plan.phases]
+    phase_ids = [p.id for p in plan.stages]
     t.step("Phases: %s" % " → ".join(phase_ids))
     if "sad" not in plan.template_id:
       t.issue("WRONG",
@@ -688,9 +688,9 @@ def trace_S11A():
     directives={})
   if plan:
     t.step("Template: %s" % plan.template_id)
-    phase_ids = [p.id for p in plan.phases]
+    phase_ids = [p.id for p in plan.stages]
     t.step("Phases: %s" % " → ".join(phase_ids))
-    # Should NOT have autobuild or ligandfit phases
+    # Should NOT have autobuild or ligandfit stages
     # if files are missing
     has_ab = any("autobuild" in pid
                  for pid in phase_ids)
@@ -698,7 +698,7 @@ def trace_S11A():
                  for pid in phase_ids)
     if has_lf:
       t.issue("WRONG",
-        "ligand_fitting phase present but no "
+        "ligand_fitting stage present but no "
         "CIF file provided")
   else:
     t.step("No plan generated (expected)")
@@ -751,14 +751,14 @@ def trace_G1():
     return t
 
   # Advance to initial_refinement
-  plan.mark_phase_started(1)
-  plan.record_phase_cycle("phenix.xtriage")
+  plan.mark_stage_started(1)
+  plan.record_stage_cycle("phenix.xtriage")
   plan.advance()
-  plan.mark_phase_started(2)
-  plan.record_phase_cycle("phenix.phaser")
+  plan.mark_stage_started(2)
+  plan.record_stage_cycle("phenix.phaser")
   plan.advance()
-  plan.mark_phase_started(3)
-  plan.record_phase_cycle("phenix.refine")
+  plan.mark_stage_started(3)
+  plan.record_stage_cycle("phenix.refine")
 
   # Test: R-free = 0.349 (below 0.35 but above
   # hysteresis buffer of 0.3448)
@@ -774,7 +774,7 @@ def trace_G1():
 
   # Test: R-free = 0.344 (below buffer)
   plan2 = StructurePlan.from_dict(plan.to_dict())
-  plan2.record_phase_cycle("phenix.refine")
+  plan2.record_stage_cycle("phenix.refine")
   sm2 = make_sm(r_free=0.344, resolution=2.0)
   gr2 = mock_gate(plan2.to_dict(), sm2, 4)
   t.step("R-free=0.344: gate=%s" % gr2.action)
@@ -806,7 +806,7 @@ def trace_S2A():
     t.issue("CRASH", "No plan generated")
     return t
   t.step("Template: %s" % plan.template_id)
-  phase_ids = [p.id for p in plan.phases]
+  phase_ids = [p.id for p in plan.stages]
   t.step("Phases: %s" % " -> ".join(phase_ids))
   if "mr" not in plan.template_id:
     t.issue("WRONG",
@@ -817,18 +817,18 @@ def trace_S2A():
       "ligand_fitting missing from MR+lig template")
 
   # Gate: after refine with R-free=0.30, should
-  # advance to ligandfit phase
-  for ph in plan.phases:
+  # advance to ligandfit stage
+  for ph in plan.stages:
     if ph.id in ("data_assessment",
                  "molecular_replacement"):
       ph.status = "complete"
       ph.cycles_used = 1
-  plan.current_phase_index = phase_ids.index(
+  plan.current_stage_index = phase_ids.index(
     "initial_refinement") if (
     "initial_refinement" in phase_ids) else 2
-  plan.mark_phase_started(3)
-  plan.record_phase_cycle("phenix.refine")
-  plan.record_phase_cycle("phenix.refine")
+  plan.mark_stage_started(3)
+  plan.record_stage_cycle("phenix.refine")
+  plan.record_stage_cycle("phenix.refine")
   sm = make_sm(r_free=0.30, resolution=2.0,
                tfz=12.0)
   gr = mock_gate(plan.to_dict(), sm, 4)
@@ -913,19 +913,19 @@ def trace_S4B():
     t.issue("CRASH", "No plan")
     return t
   t.step("Template: %s" % plan.template_id)
-  phase_ids = [p.id for p in plan.phases]
+  phase_ids = [p.id for p in plan.stages]
   t.step("Phases: %s" % " -> ".join(phase_ids))
 
-  # Advance to ligandfit phase
-  for ph in plan.phases:
+  # Advance to ligandfit stage
+  for ph in plan.stages:
     if ph.id in ("data_assessment", "refinement"):
       ph.status = "complete"
       ph.cycles_used = 1
   lig_idx = phase_ids.index("ligand_fitting") if (
     "ligand_fitting" in phase_ids) else 2
-  plan.current_phase_index = lig_idx
-  plan.mark_phase_started(3)
-  plan.record_phase_cycle("phenix.ligandfit")
+  plan.current_stage_index = lig_idx
+  plan.mark_stage_started(3)
+  plan.record_stage_cycle("phenix.ligandfit")
 
   # Gate after ligandfit with no CC metric
   # (failed or very poor)
@@ -938,7 +938,7 @@ def trace_S4B():
   # to final_refinement
   if gr.action == "advance":
     t.step("Advances past ligandfit (correct "
-           "— phase exhausted)")
+           "— stage exhausted)")
   else:
     t.step("Gate action: %s" % gr.action)
 
@@ -966,11 +966,11 @@ def trace_S5B():
   t.step("Template: %s" % plan.template_id)
 
   # Advance to experimental_phasing, then fail
-  plan.mark_phase_started(1)
-  plan.record_phase_cycle("phenix.xtriage")
+  plan.mark_stage_started(1)
+  plan.record_stage_cycle("phenix.xtriage")
   plan.advance()
-  plan.mark_phase_started(2)
-  plan.record_phase_cycle("phenix.autosol")
+  plan.mark_stage_started(2)
+  plan.record_stage_cycle("phenix.autosol")
 
   # Gate after autosol with no FOM (failed)
   sm = make_sm(resolution=2.5)
@@ -1025,7 +1025,7 @@ def trace_S6A():
     t.issue("CRASH", "No plan")
     return t
   t.step("Template: %s" % plan.template_id)
-  phase_ids = [p.id for p in plan.phases]
+  phase_ids = [p.id for p in plan.stages]
   t.step("Phases: %s" % " -> ".join(phase_ids))
 
   if "sad" not in plan.template_id:
@@ -1064,18 +1064,18 @@ def trace_S6B():
   t.step("Template: %s" % plan.template_id)
 
   # Advance to build_and_refine
-  plan.mark_phase_started(1)
-  plan.record_phase_cycle("phenix.xtriage")
+  plan.mark_stage_started(1)
+  plan.record_stage_cycle("phenix.xtriage")
   plan.advance()
-  plan.mark_phase_started(2)
-  plan.record_phase_cycle("phenix.autosol")
+  plan.mark_stage_started(2)
+  plan.record_stage_cycle("phenix.autosol")
   plan.advance()
 
   # 3 cycles in build_and_refine, R-free stuck >0.45
-  plan.mark_phase_started(3)
-  plan.record_phase_cycle("phenix.autobuild")
-  plan.record_phase_cycle("phenix.refine")
-  plan.record_phase_cycle("phenix.refine")
+  plan.mark_stage_started(3)
+  plan.record_stage_cycle("phenix.autobuild")
+  plan.record_stage_cycle("phenix.refine")
+  plan.record_stage_cycle("phenix.refine")
 
   sm = make_sm(r_free=0.46, fom=0.42,
                resolution=2.5)
@@ -1084,7 +1084,7 @@ def trace_S6B():
          "%s" % gr.action)
   t.step("  reason: %s" % gr.reason[:80])
 
-  curr = plan.current_phase()
+  curr = plan.current_stage()
   gates = curr.gate_conditions if curr else []
   t.step("Phase gates: %s" % gates)
 
@@ -1118,7 +1118,7 @@ def trace_S7A():
     directives={})
   if plan:
     t.step("Template: %s" % plan.template_id)
-    phase_ids = [p.id for p in plan.phases]
+    phase_ids = [p.id for p in plan.stages]
     t.step("Phases: %s" % " -> ".join(phase_ids))
     if "cryoem" not in plan.template_id:
       t.issue("WRONG",
@@ -1247,7 +1247,7 @@ def trace_S8A():
     directives={})
   if plan:
     t.step("Template: %s" % plan.template_id)
-    phase_ids = [p.id for p in plan.phases]
+    phase_ids = [p.id for p in plan.stages]
     t.step("Phases: %s" % " -> ".join(phase_ids))
   else:
     t.step("No plan (cryo-EM build may need "
@@ -1313,8 +1313,8 @@ def trace_S9A():
     "plan": {
       "goal": "MR",
       "_version": 1,
-      "current_phase_index": 3,
-      "phases": [
+      "current_stage_index": 3,
+      "stages": [
         {"id": "data", "status": "complete",
          "programs": ["phenix.xtriage"],
          "cycles_used": 1, "max_cycles": 1},
@@ -1330,7 +1330,7 @@ def trace_S9A():
       ],
     },
     "gate_stop": True,
-    "gate_stop_reason": "all phases complete",
+    "gate_stop_reason": "all stages complete",
     "structure_model": {"_version": 1,
       "model_state": {"r_free": 0.25}},
     "validation_history": {"v": 1},
@@ -1365,13 +1365,13 @@ def trace_S9A():
   t.step("Stale keys cleared: OK")
 
   # Check plan reset
-  phases = data.get("plan", {}).get("phases", [])
+  stages = data.get("plan", {}).get("stages", [])
   all_pending = all(
-    p.get("status") == "pending" for p in phases)
+    p.get("status") == "pending" for p in stages)
   if all_pending:
-    t.step("Plan phases all pending: OK")
+    t.step("Plan stages all pending: OK")
   else:
-    statuses = [p.get("status") for p in phases]
+    statuses = [p.get("status") for p in stages]
     t.issue("WRONG",
       "Plan not fully reset: %s" % statuses)
 
@@ -1385,7 +1385,7 @@ def trace_S9A():
   ff_count = 0
   plan = StructurePlan.from_dict(data["plan"])
   while True:
-    curr = plan.current_phase()
+    curr = plan.current_stage()
     if curr is None:
       break
     if curr.status not in ("pending", "active"):
@@ -1398,9 +1398,9 @@ def trace_S9A():
     curr.status = "complete"
     plan.advance()
     ff_count += 1
-  t.step("Fast-forward: %d phases" % ff_count)
+  t.step("Fast-forward: %d stages" % ff_count)
 
-  curr = plan.current_phase()
+  curr = plan.current_stage()
   if curr:
     t.step("Resume at: %s (%s)" % (
       curr.id, curr.status))
@@ -1409,7 +1409,7 @@ def trace_S9A():
         "Should resume at refine, not %s"
         % curr.id)
   else:
-    t.issue("WRONG", "No current phase after FF")
+    t.issue("WRONG", "No current stage after FF")
 
   return t
 
@@ -1435,8 +1435,8 @@ def trace_S9B():
     ],
     "plan": {
       "goal": "test", "_version": 1,
-      "current_phase_index": 1,
-      "phases": [
+      "current_stage_index": 1,
+      "stages": [
         {"id": "data", "status": "complete",
          "programs": ["phenix.xtriage"],
          "cycles_used": 1, "max_cycles": 1},
@@ -1458,7 +1458,7 @@ def trace_S9B():
       % len(data["cycles"]))
 
   plan = StructurePlan.from_dict(data["plan"])
-  curr = plan.current_phase()
+  curr = plan.current_stage()
   if curr and curr.id == "data":
     t.step("Resume at data_assessment (correct)")
   else:
@@ -1544,7 +1544,7 @@ def trace_S11B():
 
   if plan:
     t.step("Template: %s" % plan.template_id)
-    phase_ids = [p.id for p in plan.phases]
+    phase_ids = [p.id for p in plan.stages]
     t.step("Phases: %s" % " -> ".join(phase_ids))
     # SAD without sequence should NOT select SAD
     if "sad" in plan.template_id:
@@ -1572,7 +1572,7 @@ def trace_S11B():
 
 def trace_S12A():
   """S12-A: MR without sequence file — autobuild
-  phase must not block progress."""
+  stage must not block progress."""
   t = TraceResult("S12A",
     "MR without sequence — autobuild handled")
 
@@ -1588,11 +1588,11 @@ def trace_S12A():
     t.issue("CRASH", "No plan")
     return t
   t.step("Template: %s" % plan.template_id)
-  phase_ids = [p.id for p in plan.phases]
+  phase_ids = [p.id for p in plan.stages]
   t.step("Phases: %s" % " -> ".join(phase_ids))
 
   # Check if model_rebuilding has refine as fallback
-  for ph in plan.phases:
+  for ph in plan.stages:
     if ph.id == "model_rebuilding":
       t.step("model_rebuilding programs: %s"
              % ph.programs)
@@ -1707,7 +1707,7 @@ def trace_S14B():
     directives={})
   if plan:
     t.step("Template: %s" % plan.template_id)
-    phase_ids = [p.id for p in plan.phases]
+    phase_ids = [p.id for p in plan.stages]
     t.step("Phases: %s" % " -> ".join(phase_ids))
     if "ligand" in plan.template_id:
       t.issue("WRONG",
@@ -1717,7 +1717,7 @@ def trace_S14B():
              "no CIF file)")
     if "ligand_fitting" in phase_ids:
       t.issue("WRONG",
-        "ligand_fitting phase without CIF")
+        "ligand_fitting stage without CIF")
   else:
     t.issue("CRASH", "No plan")
 
@@ -1740,26 +1740,26 @@ def trace_G2():
     t.issue("CRASH", "No plan")
     return t
 
-  # Advance to refinement phase
-  plan.mark_phase_started(1)
-  plan.record_phase_cycle("phenix.xtriage")
+  # Advance to refinement stage
+  plan.mark_stage_started(1)
+  plan.record_stage_cycle("phenix.xtriage")
   plan.advance()
-  plan.mark_phase_started(2)
+  plan.mark_stage_started(2)
 
   # Cycle 1: R-free improves
-  plan.record_phase_cycle("phenix.refine")
+  plan.record_stage_cycle("phenix.refine")
   sm1 = make_sm(r_free=0.320, resolution=2.0)
   gr1 = mock_gate(plan.to_dict(), sm1, 2)
   t.step("Cycle 2 (R-free 0.320): %s" % gr1.action)
 
   # Cycle 2: R-free improves more
-  plan.record_phase_cycle("phenix.refine")
+  plan.record_stage_cycle("phenix.refine")
   sm2 = make_sm(r_free=0.280, resolution=2.0)
   gr2 = mock_gate(plan.to_dict(), sm2, 3)
   t.step("Cycle 3 (R-free 0.280): %s" % gr2.action)
 
   # Cycle 3: R-free REGRESSES
-  plan.record_phase_cycle("phenix.refine")
+  plan.record_stage_cycle("phenix.refine")
   sm3 = make_sm(r_free=0.340, resolution=2.0)
   gr3 = mock_gate(plan.to_dict(), sm3, 4)
   t.step("Cycle 4 (R-free 0.340 REGRESSION): "
@@ -1806,7 +1806,7 @@ def trace_G3():
   """G3: Phase exhaustion — slow but positive
   progress, should advance not retreat."""
   t = TraceResult("G3",
-    "Gate — phase exhausted with marginal progress")
+    "Gate — stage exhausted with marginal progress")
 
   plan_template_loader._templates_cache = None
   plan = generate_plan(
@@ -1818,17 +1818,17 @@ def trace_G3():
     return t
 
   # Advance to initial_refinement (max_cycles=5)
-  plan.mark_phase_started(1)
-  plan.record_phase_cycle("phenix.xtriage")
+  plan.mark_stage_started(1)
+  plan.record_stage_cycle("phenix.xtriage")
   plan.advance()
-  plan.mark_phase_started(2)
-  plan.record_phase_cycle("phenix.phaser")
+  plan.mark_stage_started(2)
+  plan.record_stage_cycle("phenix.phaser")
   plan.advance()
-  plan.mark_phase_started(3)
+  plan.mark_stage_started(3)
 
   # 5 cycles of slow progress
   for _ in range(5):
-    plan.record_phase_cycle("phenix.refine")
+    plan.record_stage_cycle("phenix.refine")
 
   sm = make_sm(r_free=0.36, resolution=2.0)
   gr = mock_gate(plan.to_dict(), sm, 7)
@@ -1836,7 +1836,7 @@ def trace_G3():
          "%s" % gr.action)
   t.step("  reason: %s" % gr.reason[:80])
 
-  # Should advance (phase exhausted) not retreat
+  # Should advance (stage exhausted) not retreat
   # (R-free > 0.35 target but < 0.45 retreat)
   if gr.action == "advance":
     t.step("Advances (correct — exhausted, "
@@ -1867,18 +1867,18 @@ def trace_G4():
     return t
 
   # Advance through to model_rebuilding
-  phase_ids = [p.id for p in plan.phases]
+  phase_ids = [p.id for p in plan.stages]
   t.step("Phases: %s" % " -> ".join(phase_ids))
 
-  plan.mark_phase_started(1)
-  plan.record_phase_cycle("phenix.xtriage")
+  plan.mark_stage_started(1)
+  plan.record_stage_cycle("phenix.xtriage")
   plan.advance()
-  plan.mark_phase_started(2)
-  plan.record_phase_cycle("phenix.phaser")
+  plan.mark_stage_started(2)
+  plan.record_stage_cycle("phenix.phaser")
   plan.advance()
-  plan.mark_phase_started(3)
-  plan.record_phase_cycle("phenix.refine")
-  plan.record_phase_cycle("phenix.refine")
+  plan.mark_stage_started(3)
+  plan.record_stage_cycle("phenix.refine")
+  plan.record_stage_cycle("phenix.refine")
 
   # R-free = 0.25 — below skip_if threshold
   sm = make_sm(r_free=0.25, resolution=2.0,
@@ -1891,7 +1891,7 @@ def trace_G4():
   # model_rebuilding and potentially skip it
   if gr.action == "advance":
     plan.advance()
-    plan.mark_phase_started(6)
+    plan.mark_stage_started(6)
     gr2 = mock_gate(plan.to_dict(), sm, 6)
     t.step("Gate at model_rebuilding: %s (%s)"
            % (gr2.action, gr2.reason[:50]))
@@ -1908,9 +1908,9 @@ def trace_G4():
 
 def trace_S15():
   """S15: Multiple ligand CIF files — only one
-  ligandfit phase should exist."""
+  ligandfit stage should exist."""
   t = TraceResult("S15",
-    "Multiple CIF files — single ligandfit phase")
+    "Multiple CIF files — single ligandfit stage")
 
   files = ["data.mtz", "model.pdb",
            "atp.cif", "mg.cif"]
@@ -1923,17 +1923,17 @@ def trace_S15():
     directives={})
   if plan:
     t.step("Template: %s" % plan.template_id)
-    phase_ids = [p.id for p in plan.phases]
+    phase_ids = [p.id for p in plan.stages]
     t.step("Phases: %s" % " -> ".join(phase_ids))
     lig_count = phase_ids.count("ligand_fitting")
     if lig_count > 1:
       t.issue("WRONG",
-        "Multiple ligand_fitting phases (%d)"
+        "Multiple ligand_fitting stages (%d)"
         % lig_count)
     elif lig_count == 1:
       t.step("Single ligand_fitting (correct)")
     else:
-      t.step("No ligand_fitting phase")
+      t.step("No ligand_fitting stage")
   else:
     t.step("No plan")
 
@@ -1949,8 +1949,8 @@ def trace_C1():
 
   plan = StructurePlan.from_dict({
     "goal": "test", "_version": 1,
-    "current_phase_index": 0,
-    "phases": [
+    "current_stage_index": 0,
+    "stages": [
       {"id": "build", "status": "active",
        "programs": ["phenix.autobuild",
                     "phenix.refine"],
@@ -1965,12 +1965,12 @@ def trace_C1():
     ("phenix.autobuild", 1, "exact match"),
     ("phenix.autobuild_denmod", 2, "variant"),
     ("phenix.refine", 3, "exact match #2"),
-    ("phenix.pdbtools", 4, "reactive (no phase)"),
+    ("phenix.pdbtools", 4, "reactive (no stage)"),
     ("phenix.model_vs_data", 5, "reactive probe"),
   ]
   for prog, expected, desc in tests:
-    plan.record_phase_cycle(prog)
-    actual = plan.phases[0].cycles_used
+    plan.record_stage_cycle(prog)
+    actual = plan.stages[0].cycles_used
     if actual != expected:
       t.issue("WRONG",
         "%s: expected %d, got %d"
@@ -1979,51 +1979,51 @@ def trace_C1():
       prog, desc, actual))
 
   # STOP should NOT count
-  plan.record_phase_cycle("STOP")
-  if plan.phases[0].cycles_used != 5:
+  plan.record_stage_cycle("STOP")
+  if plan.stages[0].cycles_used != 5:
     t.issue("WRONG",
       "STOP incremented count to %d"
-      % plan.phases[0].cycles_used)
+      % plan.stages[0].cycles_used)
   else:
     t.step("STOP: not counted (correct)")
 
-  # ligandfit belongs to lig phase → skip
-  plan.record_phase_cycle("phenix.ligandfit")
-  if plan.phases[0].cycles_used != 5:
+  # ligandfit belongs to lig stage → skip
+  plan.record_stage_cycle("phenix.ligandfit")
+  if plan.stages[0].cycles_used != 5:
     t.issue("WRONG",
-      "ligandfit counted in build phase")
+      "ligandfit counted in build stage")
   else:
     t.step("ligandfit: skipped (belongs to "
-           "lig phase)")
+           "lig stage)")
 
   return t
 
 
 def trace_C2():
-  """C2: Cycle counting — phase with no programs
+  """C2: Cycle counting — stage with no programs
   list (always counts)."""
   t = TraceResult("C2",
     "Cycle counting: empty programs list")
 
   plan = StructurePlan.from_dict({
     "goal": "test", "_version": 1,
-    "current_phase_index": 0,
-    "phases": [
+    "current_stage_index": 0,
+    "stages": [
       {"id": "any", "status": "active",
        "programs": [],
        "max_cycles": 3, "cycles_used": 0},
     ],
   })
 
-  plan.record_phase_cycle("phenix.anything")
-  plan.record_phase_cycle("phenix.whatever")
-  if plan.phases[0].cycles_used != 2:
+  plan.record_stage_cycle("phenix.anything")
+  plan.record_stage_cycle("phenix.whatever")
+  if plan.stages[0].cycles_used != 2:
     t.issue("WRONG",
       "Empty programs list didn't count: %d"
-      % plan.phases[0].cycles_used)
+      % plan.stages[0].cycles_used)
   else:
     t.step("Empty programs: always counts (%d)"
-           % plan.phases[0].cycles_used)
+           % plan.stages[0].cycles_used)
 
   return t
 
@@ -2036,16 +2036,16 @@ def trace_C3():
 
   plan = StructurePlan.from_dict({
     "goal": "test", "_version": 1,
-    "current_phase_index": 0,
-    "phases": [
+    "current_stage_index": 0,
+    "stages": [
       {"id": "ref", "status": "active",
        "programs": ["phenix.refine"],
        "max_cycles": 5, "cycles_used": 0},
     ],
   })
 
-  plan.record_phase_cycle(None)
-  if plan.phases[0].cycles_used != 1:
+  plan.record_stage_cycle(None)
+  if plan.stages[0].cycles_used != 1:
     t.issue("WRONG",
       "None program didn't count")
   else:
@@ -2057,9 +2057,9 @@ def trace_C3():
 # ── M1-M2: Multi-cycle progression ───────────
 
 def trace_M1():
-  """M1: Full MR progression through all phases."""
+  """M1: Full MR progression through all stages."""
   t = TraceResult("M1",
-    "Full MR: 5 phases, correct advancement")
+    "Full MR: 5 stages, correct advancement")
 
   plan_template_loader._templates_cache = None
   plan = generate_plan(
@@ -2070,7 +2070,7 @@ def trace_M1():
     t.issue("CRASH", "No plan")
     return t
 
-  phase_ids = [p.id for p in plan.phases]
+  phase_ids = [p.id for p in plan.stages]
   t.step("Phases: %s" % " -> ".join(phase_ids))
 
   # Simulate full run
@@ -2095,21 +2095,21 @@ def trace_M1():
     enumerate(cycles)
   ):
     cycle_num = i + 1
-    plan.mark_phase_started(cycle_num)
-    plan.record_phase_cycle(prog)
+    plan.mark_stage_started(cycle_num)
+    plan.record_stage_cycle(prog)
 
     sm = make_sm(**metrics)
     gr = mock_gate(plan.to_dict(), sm, cycle_num)
 
-    curr = plan.current_phase()
+    curr = plan.current_stage()
     curr_id = curr.id if curr else "DONE"
-    t.step("Cycle %d (%s): phase=%s gate=%s"
+    t.step("Cycle %d (%s): step=%s gate=%s"
            % (cycle_num, prog, curr_id,
               gr.action))
 
     if curr_id != expected_phase:
       t.issue("WRONG",
-        "Cycle %d: expected phase %s, got %s"
+        "Cycle %d: expected stage %s, got %s"
         % (cycle_num, expected_phase, curr_id))
 
     if gr.action == "advance":
@@ -2122,11 +2122,11 @@ def trace_M1():
 
   # After all cycles, plan should be complete
   # or at final_refinement
-  final_curr = plan.current_phase()
+  final_curr = plan.current_stage()
   if final_curr is None:
-    t.step("Plan complete (all phases done)")
+    t.step("Plan complete (all stages done)")
   else:
-    t.step("Final phase: %s (%s)" % (
+    t.step("Final stage: %s (%s)" % (
       final_curr.id, final_curr.status))
 
   return t
@@ -2146,12 +2146,12 @@ def trace_M2():
     t.issue("CRASH", "No plan")
     return t
 
-  phase_ids = [p.id for p in plan.phases]
+  phase_ids = [p.id for p in plan.stages]
   t.step("Phases: %s" % " -> ".join(phase_ids))
 
   # Phase 1: xtriage
-  plan.mark_phase_started(1)
-  plan.record_phase_cycle("phenix.xtriage")
+  plan.mark_stage_started(1)
+  plan.record_stage_cycle("phenix.xtriage")
   gr1 = mock_gate(plan.to_dict(),
     make_sm(resolution=2.5), 1)
   t.step("Cycle 1 (xtriage): gate=%s" % gr1.action)
@@ -2159,8 +2159,8 @@ def trace_M2():
     plan.advance()
 
   # Phase 2: autosol (good)
-  plan.mark_phase_started(2)
-  plan.record_phase_cycle("phenix.autosol")
+  plan.mark_stage_started(2)
+  plan.record_stage_cycle("phenix.autosol")
   gr2 = mock_gate(plan.to_dict(),
     make_sm(fom=0.42, resolution=2.5), 2)
   t.step("Cycle 2 (autosol): gate=%s" % gr2.action)
@@ -2168,10 +2168,10 @@ def trace_M2():
     plan.advance()
 
   # Phase 3: build_and_refine — stuck
-  plan.mark_phase_started(3)
-  plan.record_phase_cycle("phenix.autobuild")
-  plan.record_phase_cycle("phenix.refine")
-  plan.record_phase_cycle("phenix.refine")
+  plan.mark_stage_started(3)
+  plan.record_stage_cycle("phenix.autobuild")
+  plan.record_stage_cycle("phenix.refine")
+  plan.record_stage_cycle("phenix.refine")
 
   # R-free stuck at 0.46 → retreat condition
   sm_stuck = make_sm(r_free=0.46, fom=0.42,
@@ -2188,7 +2188,7 @@ def trace_M2():
     if bl:
       t.step("Blacklisted: %s" % bl)
   elif gr3.action == "advance":
-    t.step("Advanced (phase exhausted despite "
+    t.step("Advanced (stage exhausted despite "
            "poor metrics)")
   else:
     t.step("Action: %s" % gr3.action)
@@ -2328,7 +2328,7 @@ def trace_P4():
   # to inject ligandfit into valid_programs when
   # the user explicitly requests it. Without this,
   # YAML conditions alone may not trigger ligandfit
-  # (the "refine" phase programs don't include it).
+  # (the "refine.*stage programs don't include it).
   state, vp, reason = mock_detect_ws(
     files, h,
     "refine and fit ATP",
@@ -2803,7 +2803,7 @@ def trace_L8():
 
 
 def trace_L9():
-  """L9: Expert says stop but plan has phases."""
+  """L9: Expert says stop but plan has stages."""
   t = TraceResult("L9",
     "Mock THINK: stop vs active plan conflict")
 
@@ -2822,7 +2822,7 @@ def trace_L9():
   assessment = parse(raw)
   t.step("Expert action: %s" % assessment["action"])
 
-  # But plan has remaining phases
+  # But plan has remaining stages
   plan_template_loader._templates_cache = None
   plan = generate_plan(
     available_files=["d.mtz", "m.pdb", "s.fa"],
@@ -2832,19 +2832,19 @@ def trace_L9():
     t.issue("CRASH", "No plan")
     return t
 
-  # Plan at initial_refinement, 3 more phases
-  plan.mark_phase_started(1)
-  plan.record_phase_cycle("phenix.xtriage")
+  # Plan at initial_refinement, 3 more stages
+  plan.mark_stage_started(1)
+  plan.record_stage_cycle("phenix.xtriage")
   plan.advance()
-  plan.mark_phase_started(2)
-  plan.record_phase_cycle("phenix.phaser")
+  plan.mark_stage_started(2)
+  plan.record_stage_cycle("phenix.phaser")
   plan.advance()
-  plan.mark_phase_started(3)
+  plan.mark_stage_started(3)
 
   remaining = sum(
-    1 for p in plan.phases
+    1 for p in plan.stages
     if p.status in ("active", "pending"))
-  t.step("Remaining plan phases: %d" % remaining)
+  t.step("Remaining plan stages: %d" % remaining)
   t.step("Expert says stop, plan says continue")
   t.step("Conflict: LLM decision node resolves "
          "(expert advises, LLM decides)")
@@ -2954,10 +2954,10 @@ def _check_placement(program, metrics):
 
 def trace_PG1():
   """PG1: Placement detected from model_vs_data
-  CC → plan MR phase skipped."""
+  CC → plan MR stage skipped."""
   t = TraceResult("PG1",
     "Placement gate: model_vs_data CC=0.5 "
-    "skips MR phase")
+    "skips MR stage")
 
   # Detection check
   placed, metric, value = _check_placement(
@@ -2978,32 +2978,32 @@ def trace_PG1():
     t.issue("CRASH", "No plan")
     return t
 
-  phase_ids = [p.id for p in plan.phases]
+  phase_ids = [p.id for p in plan.stages]
   t.step("Plan: %s" % " -> ".join(phase_ids))
 
-  # Simulate fast-forward: skip MR phase
-  for phase in plan.phases:
-    if phase.id == "molecular_replacement":
-      if phase.status in ("pending", "active"):
-        phase.status = "skipped"
-        t.step("Skipped: %s" % phase.id)
+  # Simulate fast-forward: skip MR stage
+  for stage in plan.stages:
+    if stage.id == "molecular_replacement":
+      if stage.status in ("pending", "active"):
+        stage.status = "skipped"
+        t.step("Skipped: %s" % stage.id)
 
   # Advance past skipped
-  plan.mark_phase_started(1)
-  plan.record_phase_cycle("phenix.xtriage")
+  plan.mark_stage_started(1)
+  plan.record_stage_cycle("phenix.xtriage")
   plan.advance()
   # Should skip molecular_replacement
-  curr = plan.current_phase()
+  curr = plan.current_stage()
   if curr and curr.id == "molecular_replacement":
     # advance() doesn't skip — need manual advance
     if curr.status == "skipped":
       plan.advance()
-      curr = plan.current_phase()
-  t.step("Current phase after skip: %s"
+      curr = plan.current_stage()
+  t.step("Current stage after skip: %s"
          % (curr.id if curr else "DONE"))
   if curr and curr.id == "molecular_replacement":
     t.issue("WRONG",
-      "Should have skipped MR phase")
+      "Should have skipped MR stage")
   elif curr and "refine" in curr.id:
     t.step("Correctly at refinement (good)")
 
@@ -3012,7 +3012,7 @@ def trace_PG1():
 
 def trace_PG2():
   """PG2: Placement NOT detected from poor
-  model_vs_data CC → MR phase remains."""
+  model_vs_data CC → MR stage remains."""
   t = TraceResult("PG2",
     "Placement gate: model_vs_data CC=0.1 "
     "does NOT skip MR")
@@ -3091,7 +3091,7 @@ def trace_PG4():
     t.issue("CRASH", "No plan")
     return t
 
-  phase_ids = [p.id for p in plan.phases]
+  phase_ids = [p.id for p in plan.stages]
   t.step("Plan: %s" % " -> ".join(phase_ids))
   if plan.template_id != "mr_sad":
     t.issue("WRONG",
@@ -3101,8 +3101,8 @@ def trace_PG4():
 
   # Simulate: xtriage runs, then model_vs_data
   # detects placement → skip MR + phasing
-  plan.mark_phase_started(1)
-  plan.record_phase_cycle("phenix.xtriage")
+  plan.mark_stage_started(1)
+  plan.record_stage_cycle("phenix.xtriage")
   plan.advance()
 
   _skip_ids = {
@@ -3110,17 +3110,17 @@ def trace_PG4():
     "experimental_phasing",
   }
   skipped = []
-  for phase in plan.phases:
-    if (phase.id in _skip_ids
-        and phase.status in ("pending", "active")):
-      phase.status = "skipped"
-      skipped.append(phase.id)
+  for stage in plan.stages:
+    if (stage.id in _skip_ids
+        and stage.status in ("pending", "active")):
+      stage.status = "skipped"
+      skipped.append(stage.id)
 
-  t.step("Skipped phases: %s" % skipped)
+  t.step("Skipped stages: %s" % skipped)
 
   # Advance past skipped
   while True:
-    curr = plan.current_phase()
+    curr = plan.current_stage()
     if curr is None:
       break
     if curr.status == "skipped":
@@ -3128,8 +3128,8 @@ def trace_PG4():
     else:
       break
 
-  curr = plan.current_phase()
-  t.step("Current phase: %s"
+  curr = plan.current_stage()
+  t.step("Current stage: %s"
          % (curr.id if curr else "DONE"))
 
   if curr and curr.id in _skip_ids:

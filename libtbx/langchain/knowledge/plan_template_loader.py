@@ -23,15 +23,15 @@ logger = logging.getLogger(__name__)
 
 try:
   from libtbx.langchain.knowledge.plan_schema import (
-    PhaseDef, StructurePlan,
+    StageDef, StructurePlan,
   )
 except ImportError:
   try:
     from knowledge.plan_schema import (
-      PhaseDef, StructurePlan,
+      StageDef, StructurePlan,
     )
   except ImportError:
-    PhaseDef = None
+    StageDef = None
     StructurePlan = None
 
 
@@ -54,7 +54,7 @@ def load_templates(yaml_path=None):
 
   Returns:
     dict of {template_id: resolved_template_dict}.
-    Each template_dict has a flat "phases" list with
+    Each template_dict has a flat "stages" list with
     all inheritance resolved. Returns {} on failure.
 
   Never raises.
@@ -113,7 +113,7 @@ def _resolve_template(template_id, raw_by_id,
                       depth=0):
   """Resolve extends/overrides/insert_after.
 
-  Returns a template dict with a flat phases list.
+  Returns a template dict with a flat stages list.
   Handles up to 5 levels of inheritance to prevent
   infinite recursion.
   """
@@ -140,7 +140,7 @@ def _resolve_template(template_id, raw_by_id,
   if not parent:
     return copy.deepcopy(raw)
 
-  # Start with parent's phases
+  # Start with parent's stages
   result = copy.deepcopy(parent)
 
   # Copy over child metadata
@@ -150,12 +150,12 @@ def _resolve_template(template_id, raw_by_id,
     if key in raw:
       result[key] = copy.deepcopy(raw[key])
 
-  # Apply insert_after: insert child phases after
-  # the named parent phase
+  # Apply insert_after: insert child stages after
+  # the named parent stage
   insert_after = raw.get("insert_after")
-  child_phases = raw.get("phases", [])
+  child_phases = raw.get("stages") or raw.get("phases") or []
   if insert_after and child_phases:
-    parent_phases = result.get("phases", [])
+    parent_phases = result.get("stages") or result.get("phases") or []
     insert_idx = None
     for i, p in enumerate(parent_phases):
       if p.get("id") == insert_after:
@@ -172,17 +172,17 @@ def _resolve_template(template_id, raw_by_id,
       parent_phases.extend(
         copy.deepcopy(cp) for cp in child_phases
       )
-    result["phases"] = parent_phases
+    result["stages"] = parent_phases
 
-  # Apply overrides: merge into existing phases
+  # Apply overrides: merge into existing stages
   overrides = raw.get("overrides", {})
   if overrides and isinstance(overrides, dict):
-    for phase_id, override_data in overrides.items():
+    for stage_id, override_data in overrides.items():
       if not isinstance(override_data, dict):
         continue
-      for phase in result.get("phases", []):
-        if phase.get("id") == phase_id:
-          _merge_phase_override(phase, override_data)
+      for stage in result.get("stages") or result.get("phases") or []:
+        if stage.get("id") == stage_id:
+          _merge_phase_override(stage, override_data)
           break
 
   # Store the template_id and parent reference
@@ -192,8 +192,8 @@ def _resolve_template(template_id, raw_by_id,
   return result
 
 
-def _merge_phase_override(phase, override):
-  """Merge override data into a phase dict.
+def _merge_phase_override(stage, override):
+  """Merge override data into a stage dict.
 
   For dicts (success, strategy): merge keys.
   For lists (gate, fallbacks): replace entirely.
@@ -202,20 +202,20 @@ def _merge_phase_override(phase, override):
   for key, val in override.items():
     if key in ("success", "strategy"):
       # Merge dict keys
-      if key not in phase:
-        phase[key] = {}
+      if key not in stage:
+        stage[key] = {}
       if isinstance(val, dict):
-        phase[key].update(val)
+        stage[key].update(val)
       else:
-        phase[key] = val
+        stage[key] = val
     elif key in ("gate", "fallbacks"):
       # Replace list entirely
-      phase[key] = (
+      stage[key] = (
         list(val) if isinstance(val, list) else val
       )
     else:
       # Replace scalar
-      phase[key] = val
+      stage[key] = val
 
 
 # ── Template selection ──────────────────────────────
@@ -345,7 +345,7 @@ def build_plan_from_template(template_id, templates,
                              cycle_number=0):
   """Build a StructurePlan from a resolved template.
 
-  Converts template phases to PhaseDef objects and
+  Converts template stages to StageDef objects and
   creates a StructurePlan ready for the gate evaluator.
 
   Args:
@@ -359,7 +359,7 @@ def build_plan_from_template(template_id, templates,
 
   Never raises.
   """
-  if PhaseDef is None or StructurePlan is None:
+  if StageDef is None or StructurePlan is None:
     return None
 
   try:
@@ -382,15 +382,15 @@ def _build_plan_inner(template_id, templates,
   if not tdata or not isinstance(tdata, dict):
     return None
 
-  raw_phases = tdata.get("phases", [])
+  raw_phases = tdata.get("stages") or tdata.get("phases") or []
   if not raw_phases:
     return None
 
-  phases = []
+  stages = []
   for rp in raw_phases:
     if not isinstance(rp, dict):
       continue
-    phase = PhaseDef(
+    stage = StageDef(
       id=rp.get("id", "unknown"),
       programs=rp.get("programs", []),
       max_cycles=rp.get("max_cycles", 5),
@@ -406,8 +406,8 @@ def _build_plan_inner(template_id, templates,
     # Prerequisites stored in directives for now
     prereqs = rp.get("prerequisites", {})
     if prereqs:
-      phase.directives["prerequisites"] = prereqs
-    phases.append(phase)
+      stage.directives["prerequisites"] = prereqs
+    stages.append(stage)
 
   # Build goal text
   exp_type = context.get(
@@ -422,7 +422,7 @@ def _build_plan_inner(template_id, templates,
 
   plan = StructurePlan(
     goal=goal,
-    phases=phases,
+    stages=stages,
     created_at_cycle=cycle_number,
     template_id=template_id,
   )

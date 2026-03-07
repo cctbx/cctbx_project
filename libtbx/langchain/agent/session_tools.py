@@ -291,17 +291,24 @@ def remove_last_cycles(data, n, session_dir=None):
       data["plan"], dict
     ):
         try:
-            phases = data["plan"].get("phases", [])
-            for phase in phases:
-                if isinstance(phase, dict):
-                    phase["status"] = "pending"
-                    phase["cycles_used"] = 0
-                    phase["start_cycle"] = None
-                    phase["end_cycle"] = None
-            data["plan"]["current_phase_index"] = 0
+            stages = (
+                data["plan"].get("stages")
+                or data["plan"].get("phases")
+                or [])
+            for stg in stages:
+                if isinstance(stg, dict):
+                    stg["status"] = "pending"
+                    stg["cycles_used"] = 0
+                    stg["start_cycle"] = None
+                    stg["end_cycle"] = None
+            data["plan"]["current_stage_index"] = 0
+            # Also write as "stages" for new format
+            if "phases" in data["plan"]:
+                data["plan"]["stages"] = (
+                    data["plan"].pop("phases"))
             print(
-                "Reset plan: %d phases set to "
-                "pending" % len(phases))
+                "Reset plan: %d stages set to "
+                "pending" % len(stages))
         except Exception as e:
             print(
                 "Warning: could not reset plan: "

@@ -141,9 +141,9 @@ def _generate_html_report_inner(session_data):
         '<div class="chart">%s</div>' % svg)
 
   # === WORKFLOW section ===
-  phases = ddm.phase_outcomes
+  stages = ddm.stage_outcomes
   timeline = ddm.timeline
-  if phases or timeline:
+  if stages or timeline:
     parts.append('<h2>Workflow</h2>')
 
   # Run stats
@@ -162,26 +162,26 @@ def _generate_html_report_inner(session_data):
       '<p class="run-stats">%s</p>'
       % _esc(", ".join(stats_parts)))
 
-  # Phase outcomes
-  if phases:
+  # Stage outcomes
+  if stages:
     parts.append(
-      '<table class="phases">')
-    for p in phases:
+      '<table class="stages">')
+    for p in stages:
       if p.status == "complete":
         icon = "&#x2713;"
-        cls = "phase-ok"
+        cls = "stage-ok"
       elif p.status == "active":
         icon = "&#x25CF;"
-        cls = "phase-active"
+        cls = "stage-active"
       elif p.status == "skipped":
         icon = "&#x2014;"
-        cls = "phase-skip"
+        cls = "stage-skip"
       elif p.status == "failed":
         icon = "&#x2717;"
-        cls = "phase-fail"
+        cls = "stage-fail"
       else:
         icon = "&#x25CB;"
-        cls = "phase-pending"
+        cls = "stage-pending"
       cycle_str = ""
       if p.cycles_used > 0:
         cycle_str = " (%d cycle%s)" % (
@@ -189,7 +189,7 @@ def _generate_html_report_inner(session_data):
           "s" if p.cycles_used != 1 else "")
       parts.append(
         '<tr class="%s">'
-        '<td class="phase-icon">%s</td>'
+        '<td class="stage-icon">%s</td>'
         '<td>%s%s</td></tr>'
         % (cls, icon,
            _esc(p.description),
@@ -518,20 +518,20 @@ _HTML_HEAD = """\
     font-size: 13px;
     word-break: break-all;
   }
-  table.phases {
+  table.stages {
     border-collapse: collapse;
     margin: 8px 0 16px 0;
   }
-  table.phases td {
+  table.stages td {
     padding: 4px 8px;
     font-size: 14px;
   }
-  td.phase-icon { width: 24px; text-align: center; }
-  .phase-ok td { color: #333; }
-  .phase-active td { color: #2980b9; font-weight: 600; }
-  .phase-fail td { color: #c0392b; }
-  .phase-skip td { color: #999; }
-  .phase-pending td { color: #bbb; }
+  td.stage-icon { width: 24px; text-align: center; }
+  .stage-ok td { color: #333; }
+  .stage-active td { color: #2980b9; font-weight: 600; }
+  .stage-fail td { color: #c0392b; }
+  .stage-skip td { color: #999; }
+  .stage-pending td { color: #bbb; }
   table.timeline {
     border-collapse: collapse;
     margin: 12px 0;

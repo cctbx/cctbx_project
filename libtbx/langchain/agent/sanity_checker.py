@@ -413,7 +413,7 @@ class SanityChecker:
             return SanityIssue(
                 severity="warning",
                 code="resolution_unknown",
-                message="Entering refinement phase without established resolution",
+                message="Entering refinement step without established resolution",
                 suggestion="Run xtriage (X-ray) or mtriage (cryo-EM) first to determine data resolution. "
                           "Some programs may fail or produce suboptimal results without resolution.",
             )

@@ -8,7 +8,7 @@ Single data provider for all display views:
 
 All three views read from this model. Metric
 formatting, status indicators, file paths, and
-phase descriptions are computed once, here.
+stage descriptions are computed once, here.
 
 No imports from phenix.*, wx.*, or langchain.*.
 Pure data transformation — safe for agent/ directory.
@@ -72,17 +72,17 @@ class CycleEntry(object):
 
 
 class PhaseEntry(object):
-  """One row in the phase outcomes list."""
+  """One row in the stage outcomes list."""
 
   __slots__ = (
-    "phase_id", "description", "status",
+    "stage_id", "description", "status",
     "programs", "cycles_used", "key_metric",
   )
 
-  def __init__(self, phase_id, description, status,
+  def __init__(self, stage_id, description, status,
                programs=None, cycles_used=0,
                key_metric=""):
-    self.phase_id = phase_id
+    self.stage_id = stage_id
     self.description = description
     self.status = status
     self.programs = programs or []
@@ -285,7 +285,7 @@ class DisplayDataModel(object):
 
   All three views (Progress, Results, HTML) read
   from this model. Metric formatting, status
-  indicators, file paths, and phase descriptions
+  indicators, file paths, and stage descriptions
   are computed once, here.
 
   Never raises — all properties return safe
@@ -356,7 +356,7 @@ class DisplayDataModel(object):
   def outcome_status(self):
     """'determined', 'stopped', 'incomplete'.
 
-    'determined' = agent completed all phases or
+    'determined' = agent completed all stages or
       reached target metrics.
     'stopped' = agent stopped before completion
       (gate_stop, red_flag, user request, etc.)
@@ -365,11 +365,11 @@ class DisplayDataModel(object):
     if not self._cycles:
       return "incomplete"
     # Check plan completion
-    phases = self._plan_data.get("phases", [])
-    if phases:
+    stages = self._plan_data.get("stages") or self._plan_data.get("phases") or []
+    if stages:
       all_done = all(
         p.get("status") in ("complete", "skipped")
-        for p in phases
+        for p in stages
         if isinstance(p, dict)
       )
       if all_done:
@@ -727,18 +727,18 @@ class DisplayDataModel(object):
 
     return points
 
-  # ── Phase outcomes ──────────────────────────
+  # ── Stage outcomes ──────────────────────────
 
   @property
-  def phase_outcomes(self):
+  def stage_outcomes(self):
     """List of PhaseEntry from the plan."""
-    phases = self._plan_data.get("phases", [])
+    stages = self._plan_data.get("stages") or self._plan_data.get("phases") or []
     entries = []
-    for p in phases:
+    for p in stages:
       if not isinstance(p, dict):
         continue
       entries.append(PhaseEntry(
-        phase_id=p.get("id", "?"),
+        stage_id=p.get("id", "?"),
         description=p.get(
           "description",
           p.get("id", "?").replace(

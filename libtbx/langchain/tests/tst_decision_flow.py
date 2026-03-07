@@ -387,7 +387,7 @@ def test_tutorial_flow_resolve_cryo_em():
 
     engine = WorkflowEngine()
 
-    # Initial valid programs (from workflow phase - might not include resolve_cryo_em)
+    # Initial valid programs (from workflow step - might not include resolve_cryo_em)
     valid_programs = ["phenix.predict_and_build"]
 
     # User directive for tutorial
@@ -447,7 +447,7 @@ def test_use_experimental_phasing_prioritizes_autosol():
 
     engine = WorkflowEngine()
 
-    # Simulate obtain_model phase with both programs available
+    # Simulate obtain_model step with both programs available
     valid_programs = ["phenix.predict_and_build", "phenix.autosol", "phenix.phaser"]
 
     directives = {

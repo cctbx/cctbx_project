@@ -646,33 +646,33 @@ def perceive(state):
     # where the hash was already stored before this fix, and the general rule
     # that "complete + user instructions" should never hard-STOP.
     _user_advice = (state.get("user_advice") or "").strip()
-    if (workflow_state.get("phase_info", {}).get("phase") == "complete" and
+    if (workflow_state.get("step_info", {}).get("step") == "complete" and
             (session_info.get("advice_changed", False) or _user_advice)):
         try:
             from libtbx.langchain.agent.workflow_engine import WorkflowEngine as _WE
             _eng = _WE()
-            _validate_phase = {"phase": "validate"}
+            _validate_step = {"step": "validate"}
             _ctx = workflow_state.get("context", {})
             _exp = workflow_state.get("experiment_type", "xray")
             _dir = state.get("directives", {})
-            _new_valid = _eng.get_valid_programs(_exp, _validate_phase, _ctx, _dir)
+            _new_valid = _eng.get_valid_programs(_exp, _validate_step, _ctx, _dir)
             workflow_state = dict(workflow_state)
             workflow_state["valid_programs"] = _new_valid
-            workflow_state["phase_info"] = {
-                "phase": "validate",
-                "reason": "advice_changed: stepped back from complete phase",
+            workflow_state["step_info"] = {
+                "step": "validate",
+                "reason": "advice_changed: stepped back from complete step",
             }
             _trigger = "advice_changed" if session_info.get("advice_changed", False) else "user_advice present"
             state = _log(state,
                 "PERCEIVE: %s — stepped back from 'complete' to 'validate' "
-                "phase. valid_programs: %s" % (_trigger, _new_valid))
+                "step. valid_programs: %s" % (_trigger, _new_valid))
         except Exception as _qe:
             state = _log(state,
-                "PERCEIVE: complete-phase step-back failed (%s) — "
+                "PERCEIVE: complete-step step-back failed (%s) — "
                 "valid_programs unchanged" % _qe)
 
     # If user explicitly requested a program, inject it into valid_programs
-    # regardless of workflow phase (the user knows what they want)
+    # regardless of workflow step (the user knows what they want)
     # BUT: Don't inject if a forced_program is set from directives — the
     # directive system (after_program) understands multi-step ordering while
     # explicit_program is a simple text scan that would conflict.
@@ -819,9 +819,9 @@ def perceive(state):
             "PERCEIVE: STUCK LOOP DETECTED — valid_programs has been %r for %d "
             "consecutive cycles. Stopping to prevent infinite loop." % (
                 actionable_progs, stuck_count),
-            "PERCEIVE: STUCK DIAGNOSTIC — workflow phase: %s" % (
+            "PERCEIVE: STUCK DIAGNOSTIC — workflow step: %s" % (
                 workflow_state.get("state", "unknown")),
-            "PERCEIVE: STUCK DIAGNOSTIC — phase reason: %s" % (
+            "PERCEIVE: STUCK DIAGNOSTIC — step reason: %s" % (
                 workflow_state.get("reason", "unknown")),
         ]
         # Log why each candidate program is blocked
@@ -1705,7 +1705,7 @@ def plan(state):
                 if chosen_program and after_prog and chosen_program == after_prog:
                     state = _log(state, "PLAN: LLM chose after_program '%s' but it is not in "
                         "valid_programs %s — stopping to avoid running off-script. "
-                        "Check phase/workflow YAML to ensure %s is listed for this workflow state." % (
+                        "Check step/workflow YAML to ensure %s is listed for this workflow state." % (
                         chosen_program, valid_programs, chosen_program))
                     return {
                         **state,

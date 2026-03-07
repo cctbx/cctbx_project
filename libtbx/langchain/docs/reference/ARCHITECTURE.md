@@ -6,7 +6,7 @@ The PHENIX AI Agent is an automated crystallographic workflow system
 that operates at two levels:
 
 1. **Strategic planner** (v114) — produces a multi-phase plan at session
-   start, evaluates progress at phase gates after each cycle, retreats
+   start, evaluates progress at stage gates after each cycle, retreats
    when strategies fail, and generates crystallographer-level commentary.
 2. **Reactive execution engine** — analyzes logs, decides the next
    program, executes it, tracks results, and repeats until the structure
@@ -1048,7 +1048,7 @@ When thinking_level=expert (additional):
   → ai_agent.py: _initialize_plan() at session start
   → each cycle: plan_to_directives() before graph
   → each cycle: GateEvaluator.evaluate() after graph
-  → transitions: generate_phase_summary()
+  → transitions: generate_stage_summary()
   → session end: generate_final/stopped_report()
   → output: session_summary.json +
       structure_determination_report.txt
@@ -2471,7 +2471,7 @@ Each cycle:
   2. THINK updates Structure Model from validation results
   3. After cycle: GateEvaluator.evaluate()
      → advance | continue | retreat | fallback | skip | stop
-  4. On advance/retreat: generate_phase_summary()
+  4. On advance/retreat: generate_stage_summary()
   5. On retreat: blacklist_strategy(), compute_hash() →
      advice_changed=True
   6. plan_to_directives() for next cycle
@@ -2521,18 +2521,18 @@ Per-cycle validation snapshots persisted to session JSON.
 Two data classes define the plan structure:
 
 ```
-PhaseDef:
+StageDef:
   id, programs, max_cycles, success_criteria,
   gate_conditions, fallbacks, skip_if, directives,
   cycles_used, status (pending/active/done/skipped)
 
 StructurePlan:
-  goal, phases, current_phase_index, strategy_hash,
+  goal, phases, current_stage_index, strategy_hash,
   created_at_cycle, revised_at_cycle, revision_reason
 ```
 
 Key operations:
-- `advance()` / `retreat_to(phase_id)` / `skip_phase(phase_id)`
+- `advance()` / `retreat_to(phase_id)` / `skip_stage(phase_id)`
 - `to_directives()` → reactive agent directive dict
 - `compute_hash()` → strategy fingerprint (change triggers
   `advice_changed` in the reactive agent)
@@ -2650,7 +2650,7 @@ Four generators producing crystallographer-level commentary:
 | Function | When | Method |
 |----------|------|--------|
 | `generate_cycle_commentary()` | Every cycle | Template slots from Structure Model |
-| `generate_phase_summary()` | Phase transitions | LLM synthesis of multiple cycles |
+| `generate_stage_summary()` | Stage transitions | LLM synthesis of multiple cycles |
 | `generate_final_report()` | Completion | LLM with Structure Model constraints |
 | `generate_stopped_report()` | Early stop | LLM with blacklist + recommendations |
 
@@ -2670,7 +2670,7 @@ Model data (ground truth) to prevent hallucination.
 | Strategy Hash | `ai_agent.py` | `check_plan_revision()` sets `advice_changed` |
 | Hypothesis | `thinking_agent.py` | `build_hypothesis_prompt()` in THINK prompt |
 | Hypothesis | `gate_evaluator.py` | `evaluate_hypotheses()` after test cycles |
-| Explanation | `ai_agent.py` | `generate_phase_summary()` at transitions |
+| Explanation | `ai_agent.py` | `generate_stage_summary()` at transitions |
 | Explanation | `event_formatter.py` | `structure_model_summary` in expert assessment |
 
 ---

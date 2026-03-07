@@ -4,11 +4,11 @@
 # This file defines the workflow (state machine) for each experiment type.
 #
 # Each workflow has:
-#   - phases: Sequential stages of structure determination
-#   - transitions: Rules for moving between phases
+#   - steps: Sequential steps of structure determination
+#   - transitions: Rules for moving between steps
 #   - targets: Quality metrics that define "done"
 #
-# To modify workflow behavior, edit the phases and transitions.
+# To modify workflow behavior, edit the steps and transitions.
 # To change quality thresholds, edit the targets section.
 # =============================================================================
 
@@ -19,10 +19,10 @@
 xray:
   description: "X-ray crystallography structure determination"
 
-  # Define the phases in order
-  phases:
+  # Define the steps in order
+  steps:
 
-    # Phase 1: Analyze data quality
+    # Step 1: Analyze data quality
     analyze:
       description: "Analyze data quality and detect special conditions"
       goal: "Understand data characteristics before proceeding"
@@ -45,7 +45,7 @@ xray:
         - phenix.predict_and_build
         - phenix.phaser
 
-    # Phase 2-pre: Probe model placement (runs at most once per session)
+    # Step 2-pre: Probe model placement (runs at most once per session)
     # Triggered when: model + data present, no history evidence, no directive,
     # not a predicted model, and no cell mismatch (Tier 1 already handled that).
     # Runs phenix.model_vs_data to get R-free; if < 0.50 the model is placed.
@@ -61,7 +61,7 @@ xray:
         if_placed: refine          # R-free < 0.50 → model is placed → refine
         if_not_placed: molecular_replacement  # R-free ≥ 0.50 → needs MR
 
-    # Phase 2: Get an initial model
+    # Step 2: Get an initial model
     obtain_model:
       description: "Obtain an initial atomic model"
       goal: "Get coordinates that can be refined"
@@ -79,8 +79,8 @@ xray:
 
         - program: phenix.phaser
           conditions:
-            # In obtain_model phase, any model or search_model file can be used.
-            # We only reach this phase when has_placed_model is False, so a PDB
+            # In obtain_model step, any model or search_model file can be used.
+            # We only reach this step when has_placed_model is False, so a PDB
             # here is an unpositioned model suitable for MR.
             - has: model_for_mr
             - not_done: phaser  # MR should only run once
@@ -112,7 +112,7 @@ xray:
           - phenix.phaser
           - phenix.autobuild
 
-    # Phase 2b: Place predicted model (if needed)
+    # Step 2b: Place predicted model (if needed)
     molecular_replacement:
       description: "Place search model by molecular replacement"
       goal: "Position model in the unit cell using MR (phenix.phaser)"
@@ -136,7 +136,7 @@ xray:
       transitions:
         on_complete: refine
 
-    # Phase 2c: Build from phases (after autosol)
+    # Step 2c: Build from phases (after autosol)
     build_from_phases:
       description: "Build model from experimental phases"
       goal: "Complete model building after SAD/MAD phasing"
@@ -147,7 +147,7 @@ xray:
       transitions:
         on_complete: refine
 
-    # Phase 2d: MR-SAD experimental phasing (phaser placed model, now use anomalous signal)
+    # Step 2d: MR-SAD experimental phasing (phaser placed model, now use anomalous signal)
     experimental_phasing:
       description: "MR-SAD: use anomalous signal with placed model from phaser"
       goal: "Improve phases by combining MR solution with anomalous differences"
@@ -161,7 +161,7 @@ xray:
       transitions:
         on_complete: build_from_phases
 
-    # Phase 3: Refine the model
+    # Step 3: Refine the model
     refine:
       description: "Improve model against diffraction data"
       goal: "Achieve target R-free"
@@ -225,7 +225,7 @@ xray:
         - phenix.molprobity
         - phenix.model_vs_data
 
-    # Phase 3b: Combine ligand with protein
+    # Step 3b: Combine ligand with protein
     combine_ligand:
       description: "Combine fitted ligand with protein model"
       goal: "Create single model with ligand"
@@ -236,7 +236,7 @@ xray:
       transitions:
         on_complete: refine  # Go back to refine with ligand
 
-    # Phase 4: Validate the model
+    # Step 4: Validate the model
     validate:
       description: "Check model quality"
       goal: "Ensure model meets quality standards"
@@ -270,7 +270,7 @@ xray:
         - phenix.refine
         - phenix.real_space_refine
 
-    # Phase 5: Done
+    # Step 5: Done
     complete:
       description: "Structure determination complete"
       stop: true
@@ -332,9 +332,9 @@ cryoem:
       predict_strategy:
         stop_after_predict: false
 
-  phases:
+  steps:
 
-    # Phase 1: Analyze map quality
+    # Step 1: Analyze map quality
     analyze:
       description: "Analyze map quality and estimate resolution"
       goal: "Understand map characteristics"
@@ -361,7 +361,7 @@ cryoem:
         - phenix.predict_and_build
         - phenix.phaser
 
-    # Phase 2-pre: Probe model placement (runs at most once per session)
+    # Step 2-pre: Probe model placement (runs at most once per session)
     # Triggered when: model + map present, no history evidence, no directive,
     # not a predicted model, and no cell mismatch (Tier 1 already handled that).
     # Runs phenix.map_correlations to get CC; if > 0.15 the model is placed.
@@ -377,7 +377,7 @@ cryoem:
         if_placed: refine          # CC > 0.15 → model is placed → refine/RSR
         if_not_placed: dock_model  # CC ≤ 0.15 → needs docking
 
-    # Phase 2: Get a model
+    # Step 2: Get a model
     obtain_model:
       description: "Obtain initial model"
       goal: "Get coordinates to refine against map"
@@ -441,7 +441,7 @@ cryoem:
           - phenix.phaser
           - phenix.autobuild
 
-    # Phase 2b: Dock predicted model (stepwise path)
+    # Step 2b: Dock predicted model (stepwise path)
     dock_model:
       description: "Process and dock AlphaFold model into map"
       goal: "Position prediction in map"
@@ -483,7 +483,7 @@ cryoem:
       transitions:
         on_complete: check_map
 
-    # Phase 2c: Check if map needs optimization
+    # Step 2c: Check if map needs optimization
     check_map:
       description: "Decide if map needs optimization"
       goal: "Get best possible map for refinement"
@@ -510,7 +510,7 @@ cryoem:
         if_needs_optimization: optimize_map
         else: ready_to_refine
 
-    # Phase 2d: Optimize map
+    # Step 2d: Optimize map
     optimize_map:
       description: "Improve map quality"
       goal: "Create optimized full map from half-maps"
@@ -550,7 +550,7 @@ cryoem:
       transitions:
         on_complete: refine
 
-    # Phase 3: Refine
+    # Step 3: Refine
     refine:
       description: "Refine model against map"
       goal: "Improve map-model correlation"
@@ -591,7 +591,7 @@ cryoem:
         - phenix.molprobity
         - phenix.model_vs_data
 
-    # Phase 4: Validate
+    # Step 4: Validate
     validate:
       description: "Check model quality"
       goal: "Ensure model meets quality standards"
@@ -617,7 +617,7 @@ cryoem:
         - phenix.refine
         - phenix.real_space_refine
 
-    # Phase 5: Done
+    # Step 5: Done
     complete:
       description: "Structure determination complete"
       stop: true
@@ -655,7 +655,7 @@ cryoem:
 shared:
   # Rules-only mode configuration
   rules_config:
-    # Default priority when no phase-specific rules_priority matches
+    # Default priority when no step-specific rules_priority matches
     default_priority:
       - phenix.refine
       - phenix.real_space_refine
@@ -664,13 +664,13 @@ shared:
       - phenix.predict_and_build
       - phenix.phaser
 
-    # Ligand-related phases (matched by substring in state name)
+    # Ligand-related steps (matched by substring in state name)
     ligand_priority:
       - phenix.ligandfit
       - phenix.pdbtools
       - phenix.refine
 
-    # State name aliases (rules_selector state → workflow phase name)
+    # State name aliases (rules_selector state → workflow step name)
     state_aliases:
       xray_initial: analyze
       cryoem_initial: analyze
@@ -753,7 +753,7 @@ sanity_checks:
   warning:
     - name: resolution_unknown
       description: "Resolution should be known before refinement"
-      message: "Entering refinement phase without established resolution"
+      message: "Entering refinement step without established resolution"
       suggestion: "Run xtriage (X-ray) or mtriage (cryo-EM) first to determine resolution."
 
     - name: r_free_spike

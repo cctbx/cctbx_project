@@ -5,7 +5,7 @@ Produces crystallographer-level commentary on what's
 happening and why. Three levels:
 
 1. Per-cycle commentary (deterministic template)
-2. Phase transition summaries
+2. Stage transition summaries
 3. Final/stopped reports (template + data)
 
 No LLM calls for per-cycle commentary. Phase and final
@@ -14,7 +14,7 @@ Structure Model (ground truth) to prevent hallucination.
 
 Entry points:
   generate_cycle_commentary(...) -> str
-  generate_phase_summary(...) -> str
+  generate_stage_summary(...) -> str
   generate_final_report(...) -> str
   generate_stopped_report(...) -> str
 
@@ -230,22 +230,22 @@ def _format_problems_brief(structure_model):
   )
 
 
-# ── Phase transition summary (Step 5.2) ─────────────
+# ── Stage transition summary (Step 5.2) ─────────────
 
-def generate_phase_summary(structure_model, plan,
-                           completed_phase,
-                           next_phase):
-  """Summary of a completed phase.
+def generate_stage_summary(structure_model, plan,
+                           completed_stage,
+                           next_stage):
+  """Summary of a completed stage.
 
   Deterministic template summarizing what was
   achieved, what problems remain, and why the agent
-  is moving to the next phase.
+  is moving to the next step.
 
   Args:
     structure_model: StructureModel or None.
     plan: StructurePlan or None.
-    completed_phase: PhaseDef that just finished.
-    next_phase: PhaseDef coming next, or None.
+    completed_stage: StageDef that just finished.
+    next_stage: StageDef coming next, or None.
 
   Returns:
     str. 2-4 sentences.
@@ -253,43 +253,43 @@ def generate_phase_summary(structure_model, plan,
   Never raises.
   """
   try:
-    return _generate_phase_summary_inner(
+    return _generate_stage_summary_inner(
       structure_model, plan,
-      completed_phase, next_phase,
+      completed_stage, next_stage,
     )
   except Exception:
     return ""
 
 
-def _generate_phase_summary_inner(
+def _generate_stage_summary_inner(
   structure_model, plan,
-  completed_phase, next_phase,
+  completed_stage, next_stage,
 ):
-  """Inner phase summary. May raise."""
+  """Inner stage summary. May raise."""
   parts = []
-  cp = completed_phase
+  cp = completed_stage
   if cp is None:
     return ""
 
-  # What phase completed
+  # What stage completed
   status = cp.status
   if status == "complete":
     parts.append(
-      "Phase '%s' completed in %d cycle(s)."
+      "Stage '%s' completed in %d cycle(s)."
       % (cp.id, cp.cycles_used)
     )
   elif status == "skipped":
     parts.append(
-      "Phase '%s' was skipped." % cp.id
+      "Stage '%s' was skipped." % cp.id
     )
   elif status == "failed":
     parts.append(
-      "Phase '%s' failed after %d cycle(s)."
+      "Stage '%s' failed after %d cycle(s)."
       % (cp.id, cp.cycles_used)
     )
   else:
     parts.append(
-      "Phase '%s' ended (%s)."
+      "Stage '%s' ended (%s)."
       % (cp.id, status)
     )
 
@@ -331,10 +331,10 @@ def _generate_phase_summary_inner(
     # just report the comparison.
 
   # What comes next
-  if next_phase is not None:
+  if next_stage is not None:
     parts.append(
       "Next: '%s' (%s)."
-      % (next_phase.id, next_phase.description)
+      % (next_stage.id, next_stage.description)
     )
 
   # Current problems
@@ -511,31 +511,31 @@ def _generate_final_report_inner(structure_model,
     lines.append("")
 
   # --- Phase timeline ---
-  if plan is not None and plan.phases:
-    lines.append("PHASE TIMELINE")
+  if plan is not None and plan.stages:
+    lines.append("STAGE TIMELINE")
     lines.append("--------------")
-    for i, phase in enumerate(plan.phases):
-      if phase.status == "complete":
+    for i, stage in enumerate(plan.stages):
+      if stage.status == "complete":
         marker = "[done]"
-      elif phase.status == "skipped":
+      elif stage.status == "skipped":
         marker = "[skip]"
-      elif phase.status == "failed":
+      elif stage.status == "failed":
         marker = "[FAIL]"
-      elif phase.status == "active":
+      elif stage.status == "active":
         marker = "[....]"
       else:
         marker = "[    ]"
       line = "  %d. %-6s %s" % (
-        i + 1, marker, phase.id
+        i + 1, marker, stage.id
       )
-      if phase.cycles_used > 0:
+      if stage.cycles_used > 0:
         line += " (%d cycle%s)" % (
-          phase.cycles_used,
-          "s" if phase.cycles_used != 1 else "",
+          stage.cycles_used,
+          "s" if stage.cycles_used != 1 else "",
         )
       lines.append(line)
       # Phase metrics
-      rm = phase.result_metrics
+      rm = stage.result_metrics
       if rm:
         m_strs = []
         for k, v in rm.items():
@@ -672,20 +672,20 @@ def _generate_stopped_report_inner(structure_model,
   lines.append("")
 
   # --- What was tried ---
-  if plan is not None and plan.phases:
-    lines.append("PHASES ATTEMPTED")
+  if plan is not None and plan.stages:
+    lines.append("STAGES ATTEMPTED")
     lines.append("----------------")
-    for phase in plan.phases:
-      if phase.status == "pending":
+    for stage in plan.stages:
+      if stage.status == "pending":
         continue  # never reached
       lines.append(
         "  %s: %s (%d cycle%s)"
-        % (phase.id, phase.status,
-           phase.cycles_used,
-           "s" if phase.cycles_used != 1
+        % (stage.id, stage.status,
+           stage.cycles_used,
+           "s" if stage.cycles_used != 1
            else "")
       )
-      rm = phase.result_metrics
+      rm = stage.result_metrics
       if rm:
         m_strs = [
           "%s=%.3f" % (k, float(v))

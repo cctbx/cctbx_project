@@ -159,7 +159,7 @@ def test_from_session_empty():
   ddm = DisplayDataModel.from_session({})
   assert_equal(ddm.outcome_status, "incomplete")
   assert_equal(ddm.final_metrics, {})
-  assert_equal(ddm.phase_outcomes, [])
+  assert_equal(ddm.stage_outcomes, [])
   print("  PASS: test_from_session_empty")
 
 
@@ -465,16 +465,16 @@ def test_retreat_markers():
 
 # ── Phase outcomes ─────────────────────────────
 
-def test_phase_outcomes():
+def test_stage_outcomes():
   ddm = DisplayDataModel.from_session(
     _make_mr_session())
-  po = ddm.phase_outcomes
+  po = ddm.stage_outcomes
   assert_equal(len(po), 3)
-  assert_equal(po[0].phase_id, "data_assessment")
+  assert_equal(po[0].stage_id, "data_assessment")
   assert_equal(po[0].status, "complete")
   assert_equal(po[0].description, "Analyze data")
   assert_equal(po[2].cycles_used, 3)
-  print("  PASS: test_phase_outcomes")
+  print("  PASS: test_stage_outcomes")
 
 
 # ── Data summary ───────────────────────────────
@@ -775,7 +775,7 @@ def run_tests():
   test_primary_trajectory_xray()
   test_primary_trajectory_cryoem()
   test_retreat_markers()
-  test_phase_outcomes()
+  test_stage_outcomes()
   test_data_summary_mr()
   test_data_summary_sad()
   test_output_files_string()

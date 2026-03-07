@@ -85,13 +85,13 @@ or the agent determines it cannot make further
 progress.
 
 At a higher level (when you choose "expert" analysis
-depth), the agent creates a multi-phase strategy plan
+depth), the agent creates a multi-stage strategy plan
 at the beginning of the session. For example, for a
 molecular replacement problem it might plan: (1) check
 data quality, (2) place the search model, (3) initial
 refinement, (4) model rebuilding, (5) final
 refinement. It then tracks progress against this plan,
-advancing through phases as goals are met, or trying
+advancing through stages as goals are met, or trying
 a different approach if things aren't working.
 
 You can see the agent's reasoning, its plan, and its
@@ -367,7 +367,7 @@ deeply the agent analyzes your data at each step:
 | None | Fastest. Minimal analysis, no expert reasoning. | Quick tests, simple workflows |
 | Basic | Adds AI reasoning about each step. | Light analysis |
 | Advanced | Full structural validation, expert knowledge base, detailed reasoning. | When you don't need strategic planning |
-| Expert | (Default) Everything in Advanced, plus a multi-phase strategy plan with progress tracking and model placement detection. | Most runs — recommended |
+| Expert | (Default) Everything in Advanced, plus a multi-stage strategy plan with progress tracking and model placement detection. | Most runs — recommended |
 
 For your first run, **Expert** (the default) is the
 best choice. It gives you the full planning system
@@ -487,23 +487,23 @@ first thing you'll see is the agent's strategy plan:
 ==================================================
  STRATEGY PLAN: MR + refinement (standard X-ray)
 ==================================================
- ○ Phase 1: Analyze data quality  [phenix.xtriage]
+ ○ Stage 1: Analyze data quality  [phenix.xtriage]
           Goal: Data quality analysis complete
- ○ Phase 2: Find MR solution  [phenix.phaser,
+ ○ Stage 2: Find MR solution  [phenix.phaser,
               phenix.predict_and_build]
           Goal: TFZ >8, LLG >100
- ○ Phase 3: Initial refinement  [phenix.refine]
+ ○ Stage 3: Initial refinement  [phenix.refine]
           Goal: R-free <0.30
- ○ Phase 4: Rebuild problem regions
+ ○ Stage 4: Rebuild problem regions
               [phenix.autobuild, phenix.refine]
           Goal: R-free <0.28
- ○ Phase 5: Final refinement  [phenix.refine]
+ ○ Stage 5: Final refinement  [phenix.refine]
           Goal: R-free <0.25
 ==================================================
 ```
 
-Each line is a phase of the plan. The symbols show
-the status of each phase:
+Each line is a stage of the plan. The symbols show
+the status of each stage:
 
 | Symbol | Meaning |
 |--------|---------|
@@ -514,9 +514,9 @@ the status of each phase:
 | ✗ | Failed — goal wasn't met |
 
 The **Goal** line tells you what the agent is aiming
-for in each phase. For example, "R-free <0.30" means
+for in each stage. For example, "R-free <0.30" means
 the agent will keep refining until R-free drops below
-0.30, or until it runs out of cycles for that phase.
+0.30, or until it runs out of cycles for that stage.
 
 **Model placement detection:** If the agent discovers
 that your model already fits the data (via
@@ -527,7 +527,7 @@ automatically skip any pending MR or phasing phases:
 [PLACEMENT] Model is placed — phenix.model_vs_data
   CC=0.52 (cycle 2). Destructive programs (phaser,
   autosol) will be suppressed.
-[PLACEMENT] Skipped plan phase 'molecular_replacement'
+[PLACEMENT] Skipped plan stage 'molecular_replacement'
   — model already placed
 ```
 
@@ -544,7 +544,7 @@ Each program the agent runs appears as a numbered
 cycle:
 
 ```
-──── Phase: Initial refinement (cycle 2, up to 3) ────
+──── Stage: Initial refinement (cycle 2, up to 3) ────
   Goal: R-free <0.30 (current: 0.312)
 
 Cycle 5: phenix.refine
@@ -560,9 +560,9 @@ Cycle 5: phenix.refine
 
 Here's what each part tells you:
 
-**Phase context** (Expert mode): Shows which phase
+**Stage context** (Expert mode): Shows which stage
 of the plan this cycle belongs to, how many cycles
-have been used in this phase, and how close the
+have been used in this stage, and how close the
 current metric is to the goal.
 
 **Cycle number and program**: "Cycle 5: phenix.refine"
@@ -634,14 +634,14 @@ agent's overall assessment:
   (agent thinks it's done), `pivot` (agent wants
   to try a different approach).
 
-### Phase transitions (Expert mode)
+### Stage transitions (Expert mode)
 
-When the agent completes a phase of its plan, you'll
+When the agent completes a stage of its plan, you'll
 see a transition block:
 
 ```
 ==================================================
- ✓ PHASE COMPLETE: initial_refinement
+ ✓ STAGE COMPLETE: initial_refinement
    R-free reached target (0.28 < 0.30)
  → ADVANCING TO: model_rebuilding
 ==================================================
@@ -696,7 +696,7 @@ their outcomes.
 
 [SCREENSHOT: The Agent Progress panel during a run,
 with annotations pointing to the plan header, a cycle
-display, an Expert Assessment block, and a phase
+display, an Expert Assessment block, and a stage
 transition block]
 
 ---
@@ -705,7 +705,7 @@ transition block]
 
 A successful run follows a recognizable pattern:
 metrics improve over cycles, the agent advances
-through its plan phases, and the final model has good
+through its plan stages, and the final model has good
 geometry and reasonable R-free (for X-ray) or map
 correlation (for cryo-EM).
 
@@ -721,14 +721,14 @@ Cycle 8: phenix.refine   R-free: 0.248
 ```
 
 In Expert mode, the agent will advance through plan
-phases with green checkmarks:
+stages with green checkmarks:
 
 ```
- ✓ Phase 1: data_assessment
- ✓ Phase 2: molecular_replacement
- ✓ Phase 3: initial_refinement
- ● Phase 4: model_rebuilding  ← currently here
- ○ Phase 5: final_refinement
+ ✓ Stage 1: data_assessment
+ ✓ Stage 2: molecular_replacement
+ ✓ Stage 3: initial_refinement
+ ● Stage 4: model_rebuilding  ← currently here
+ ○ Stage 5: final_refinement
 ```
 
 When the agent finishes, it produces a summary of the
@@ -754,7 +754,7 @@ of the run). Key files:
   summary of the entire determination.
 - **Session summary** (Expert mode):
   `session_summary.json` — a machine-readable summary
-  with final metrics, phase outcomes, and hypothesis
+  with final metrics, stage outcomes, and hypothesis
   results.
 
 ### What to do next: the Top 5 Coot checklist
@@ -1126,7 +1126,7 @@ Results tab to view this report in your browser.
 A human-readable text summary with:
 - Data characteristics (resolution, space group)
 - Final model quality (R-free, R-work, geometry)
-- Phase timeline (which phases completed, how many
+- Phase timeline (which stages completed, how many
   cycles each took)
 - Hypotheses tested (if any)
 

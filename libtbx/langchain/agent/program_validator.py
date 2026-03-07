@@ -99,7 +99,7 @@ def check_programs_yaml(program_name, knowledge_dir):
 def check_workflows_yaml(program_name, knowledge_dir):
   """Check if program is included in workflows.yaml."""
   issues = []
-  info = {"phases": []}
+  info = {"steps": []}
 
   filepath = os.path.join(knowledge_dir, "workflows.yaml")
   if not os.path.exists(filepath):
@@ -114,19 +114,19 @@ def check_workflows_yaml(program_name, knowledge_dir):
   for workflow_name, workflow in workflows.items():
     if not isinstance(workflow, dict):
       continue
-    phases = workflow.get("phases", {})
-    for phase_name, phase in phases.items():
-      if not isinstance(phase, dict):
+    steps_dict = workflow.get("steps") or workflow.get("phases") or {}
+    for step_name, step_def in steps.items():
+      if not isinstance(step_def, dict):
         continue
-      programs = phase.get("programs", [])
+      programs = step_def.get("programs", [])
       for prog in programs:
         prog_name = prog if isinstance(prog, str) else prog.get("program", "")
         if prog_name == program_name:
           found = True
-          info["phases"].append(f"{workflow_name}/{phase_name}")
+          info["steps"].append(f"{workflow_name}/{step_name}")
 
   if not found:
-    issues.append(f"Program '{program_name}' not found in any workflow phase in workflows.yaml")
+    issues.append(f"Program '{program_name}' not found in any workflow step in workflows.yaml")
 
   return issues, info
 
@@ -325,7 +325,7 @@ def validate_program(program_name):
       for key, value in info.items():
         if key == "note":
           print(f"  Note: {value}")
-        elif key == "phases":
+        elif key in ("steps", "phases"):
           print(f"  Found in: {', '.join(value)}")
 
   # Summary

@@ -1,5 +1,5 @@
 """
-Unit tests for gate_evaluator.py (Phase 3, Steps 3.1-3.3).
+Unit tests for gate_evaluator.py (Stage 3, Steps 3.1-3.3).
 
 Run standalone:
   python tests/tst_gate_evaluator.py
@@ -27,8 +27,8 @@ from agent.gate_evaluator import (
   parse_gate_condition, evaluate_gate_condition,
 )
 from knowledge.plan_schema import (
-  PhaseDef, StructurePlan,
-  PHASE_ACTIVE, PHASE_COMPLETE,
+  StageDef, StructurePlan,
+  STAGE_ACTIVE, STAGE_COMPLETE,
 )
 from agent.structure_model import StructureModel
 
@@ -137,8 +137,8 @@ def run_tests():
   test("skip_no_data", test_skip_no_data)
   print()
 
-  # --- Phase exhaustion ---
-  print("Phase exhaustion")
+  # --- Stage exhaustion ---
+  print("Stage exhaustion")
   test("exhausted_partial_success",
     test_exhausted_partial_success)
   test("exhausted_no_success",
@@ -212,8 +212,8 @@ def run_tests():
 
 def _make_plan():
   """Build a realistic MR+refine plan."""
-  phases = [
-    PhaseDef(
+  stages = [
+    StageDef(
       id="data_assessment",
       programs=["phenix.xtriage"],
       max_cycles=1,
@@ -221,7 +221,7 @@ def _make_plan():
         "xtriage_completed": "true",
       },
     ),
-    PhaseDef(
+    StageDef(
       id="molecular_replacement",
       programs=["phenix.phaser"],
       max_cycles=1,
@@ -230,7 +230,7 @@ def _make_plan():
         {"if": "tfz < 5", "action": "stop_report"},
       ],
     ),
-    PhaseDef(
+    StageDef(
       id="initial_refinement",
       programs=["phenix.refine"],
       max_cycles=3,
@@ -241,14 +241,14 @@ def _make_plan():
           "retreat_to molecular_replacement",
       }],
     ),
-    PhaseDef(
+    StageDef(
       id="model_rebuilding",
       programs=["phenix.autobuild"],
       max_cycles=1,
       success_criteria={"r_free": "<0.30"},
       skip_if="r_free < 0.28",
     ),
-    PhaseDef(
+    StageDef(
       id="final_refinement",
       programs=["phenix.refine"],
       max_cycles=3,
@@ -256,7 +256,7 @@ def _make_plan():
     ),
   ]
   plan = StructurePlan(
-    goal="Test plan", phases=phases,
+    goal="Test plan", stages=stages,
     template_id="mr_refine",
   )
   return plan
@@ -538,55 +538,55 @@ def test_success_boolean():
 
 def test_skip_met():
   ev = GateEvaluator()
-  phase = PhaseDef(
+  stage = StageDef(
     id="test", skip_if="r_free < 0.28",
   )
   sm = _make_sm(r_free=0.25)
-  result = ev._check_skip(phase, sm)
+  result = ev._check_skip(stage, sm)
   assert result is not None
   assert result.action == "skip"
 
 
 def test_skip_not_met():
   ev = GateEvaluator()
-  phase = PhaseDef(
+  stage = StageDef(
     id="test", skip_if="r_free < 0.28",
   )
   sm = _make_sm(r_free=0.35)
-  result = ev._check_skip(phase, sm)
+  result = ev._check_skip(stage, sm)
   assert result is None
 
 
 def test_skip_no_data():
   ev = GateEvaluator()
-  phase = PhaseDef(
+  stage = StageDef(
     id="test", skip_if="r_free < 0.28",
   )
   sm = StructureModel()  # no r_free
-  result = ev._check_skip(phase, sm)
+  result = ev._check_skip(stage, sm)
   assert result is None
 
 
-# ── Phase exhaustion ──────────────────────────────────
+# ── Stage exhaustion ──────────────────────────────────
 
 def test_exhausted_partial_success():
   ev = GateEvaluator()
   plan = _make_plan()
   # Set up initial_refinement as active + exhausted
-  plan.current_phase_index = 2
-  plan.phases[2].status = PHASE_ACTIVE
-  plan.phases[2].cycles_used = 3
+  plan.current_stage_index = 2
+  plan.stages[2].status = STAGE_ACTIVE
+  plan.stages[2].cycles_used = 3
   sm = _make_sm(r_free=0.36)  # close but not <0.35
   # But r_free itself is evaluable — partially met
   # Actually 0.36 does NOT meet <0.35, so 0/1 met
   # Let me use multi-criteria where one is met
-  plan.phases[2].success_criteria = {
+  plan.stages[2].success_criteria = {
     "r_free": "<0.40",  # met
     "clashscore": "<5",  # not met (no data)
   }
   sm2 = _make_sm(r_free=0.36)
   result = ev._handle_exhaustion(
-    plan, plan.phases[2], sm2, 5,
+    plan, plan.stages[2], sm2, 5,
   )
   assert result.action == "advance"
   assert "1/2 criteria met" in result.reason
@@ -595,12 +595,12 @@ def test_exhausted_partial_success():
 def test_exhausted_no_success():
   ev = GateEvaluator()
   plan = _make_plan()
-  plan.current_phase_index = 2
-  plan.phases[2].status = PHASE_ACTIVE
-  plan.phases[2].cycles_used = 3
+  plan.current_stage_index = 2
+  plan.stages[2].status = STAGE_ACTIVE
+  plan.stages[2].cycles_used = 3
   sm = _make_sm(r_free=0.45)
   result = ev._handle_exhaustion(
-    plan, plan.phases[2], sm, 5,
+    plan, plan.stages[2], sm, 5,
   )
   assert result.action == "advance"
   assert "exhausted" in result.reason
@@ -611,8 +611,8 @@ def test_exhausted_no_success():
 def test_retreat_basic():
   ev = GateEvaluator()
   plan = _make_plan()
-  plan.current_phase_index = 2
-  plan.phases[2].status = PHASE_ACTIVE
+  plan.current_stage_index = 2
+  plan.stages[2].status = STAGE_ACTIVE
   result = ev._evaluate_retreat(
     plan, "molecular_replacement",
     "r_free > 0.45", 0.48, 5, None,
@@ -627,8 +627,8 @@ def test_retreat_basic():
 def test_retreat_blocked_by_blacklist():
   ev = GateEvaluator()
   plan = _make_plan()
-  plan.current_phase_index = 2
-  plan.phases[2].status = PHASE_ACTIVE
+  plan.current_stage_index = 2
+  plan.stages[2].status = STAGE_ACTIVE
   sm = _make_sm(r_free=0.48)
   sm.blacklist_strategy(
     "molecular_replacement",
@@ -646,8 +646,8 @@ def test_retreat_blocked_by_counter():
   ev = GateEvaluator()
   plan = _make_plan()
   plan.retreat_count = 2  # max reached
-  plan.current_phase_index = 2
-  plan.phases[2].status = PHASE_ACTIVE
+  plan.current_stage_index = 2
+  plan.stages[2].status = STAGE_ACTIVE
   result = ev._evaluate_retreat(
     plan, "molecular_replacement",
     "r_free > 0.45", 0.48, 10, None,
@@ -661,8 +661,8 @@ def test_retreat_blocked_by_cooldown():
   plan = _make_plan()
   plan.retreat_count = 1
   plan.last_retreat_cycle = 4
-  plan.current_phase_index = 2
-  plan.phases[2].status = PHASE_ACTIVE
+  plan.current_stage_index = 2
+  plan.stages[2].status = STAGE_ACTIVE
   # Cycle 5 — only 1 cycle since last retreat
   result = ev._evaluate_retreat(
     plan, "molecular_replacement",
@@ -674,12 +674,12 @@ def test_retreat_blocked_by_cooldown():
 
 def test_retreat_depth_limit():
   """Without explicit_target, retreat is limited
-  to one phase back."""
+  to one stage back."""
   ev = GateEvaluator()
   plan = _make_plan()
-  plan.current_phase_index = 2  # initial_refinement
-  plan.phases[2].status = PHASE_ACTIVE
-  # Try to retreat to data_assessment (2 phases back)
+  plan.current_stage_index = 2  # initial_refinement
+  plan.stages[2].status = STAGE_ACTIVE
+  # Try to retreat to data_assessment (2 stages back)
   result = ev._evaluate_retreat(
     plan, "data_assessment",
     "r_free > 0.50", 0.52, 5, None,
@@ -699,8 +699,8 @@ def test_retreat_explicit_deep_target():
   """With explicit_target, depth limit is bypassed."""
   ev = GateEvaluator()
   plan = _make_plan()
-  plan.current_phase_index = 2
-  plan.phases[2].status = PHASE_ACTIVE
+  plan.current_stage_index = 2
+  plan.stages[2].status = STAGE_ACTIVE
   result = ev._evaluate_retreat(
     plan, "data_assessment",
     "twinning discovered", None, 5, None,
@@ -712,16 +712,16 @@ def test_retreat_explicit_deep_target():
 
 def test_retreat_blocked_by_progress():
   """Retreat blocked when metric is improving since
-  phase start (monotonic progress gate)."""
+  stage start (monotonic progress gate)."""
   ev = GateEvaluator()
   plan = _make_plan()
-  plan.current_phase_index = 2
-  plan.phases[2].status = PHASE_ACTIVE
-  plan.phases[2].start_cycle = 3
-  plan.phases[2].cycles_used = 2
+  plan.current_stage_index = 2
+  plan.stages[2].status = STAGE_ACTIVE
+  plan.stages[2].start_cycle = 3
+  plan.stages[2].cycles_used = 2
 
   sm = _make_sm(r_free=0.46)
-  # Simulate progress: phase started at r_free=0.50
+  # Simulate progress: stage started at r_free=0.50
   sm.progress = [
     {"cycle": 3, "r_free": 0.50,
      "r_work": None, "model_map_cc": None},
@@ -744,16 +744,16 @@ def test_retreat_blocked_by_progress():
 
 def test_retreat_allowed_when_worsening():
   """Retreat allowed when metric is worse than at
-  phase start."""
+  stage start."""
   ev = GateEvaluator()
   plan = _make_plan()
-  plan.current_phase_index = 2
-  plan.phases[2].status = PHASE_ACTIVE
-  plan.phases[2].start_cycle = 3
-  plan.phases[2].cycles_used = 2
+  plan.current_stage_index = 2
+  plan.stages[2].status = STAGE_ACTIVE
+  plan.stages[2].start_cycle = 3
+  plan.stages[2].cycles_used = 2
 
   sm = _make_sm(r_free=0.48)
-  # Phase started at r_free=0.45 — WORSENED
+  # Stage started at r_free=0.45 — WORSENED
   sm.progress = [
     {"cycle": 3, "r_free": 0.45,
      "r_work": None, "model_map_cc": None},
@@ -778,9 +778,9 @@ def test_retreat_allowed_when_worsening():
 def test_scenario_continue():
   ev = GateEvaluator()
   plan = _make_plan()
-  plan.current_phase_index = 2
-  plan.phases[2].status = PHASE_ACTIVE
-  plan.phases[2].cycles_used = 1
+  plan.current_stage_index = 2
+  plan.stages[2].status = STAGE_ACTIVE
+  plan.stages[2].cycles_used = 1
   sm = _make_sm(r_free=0.40)  # improving but not there
   result = ev.evaluate(plan, sm, None, 3)
   assert result.action == "continue"
@@ -789,9 +789,9 @@ def test_scenario_continue():
 def test_scenario_advance():
   ev = GateEvaluator()
   plan = _make_plan()
-  plan.current_phase_index = 2
-  plan.phases[2].status = PHASE_ACTIVE
-  plan.phases[2].cycles_used = 2
+  plan.current_stage_index = 2
+  plan.stages[2].status = STAGE_ACTIVE
+  plan.stages[2].cycles_used = 2
   sm = _make_sm(r_free=0.30)  # below <0.35 threshold
   result = ev.evaluate(plan, sm, None, 4)
   assert result.action == "advance"
@@ -799,11 +799,11 @@ def test_scenario_advance():
 
 
 def test_scenario_advance_skip():
-  """Phase with skip_if met should skip."""
+  """Stage with skip_if met should skip."""
   ev = GateEvaluator()
   plan = _make_plan()
-  plan.current_phase_index = 3  # model_rebuilding
-  plan.phases[3].status = PHASE_ACTIVE
+  plan.current_stage_index = 3  # model_rebuilding
+  plan.stages[3].status = STAGE_ACTIVE
   sm = _make_sm(r_free=0.25)  # < 0.28, skip_if met
   result = ev.evaluate(plan, sm, None, 6)
   assert result.action == "skip"
@@ -811,25 +811,25 @@ def test_scenario_advance_skip():
 
 
 def test_scenario_skip_preserves_status():
-  """After skip + advance, phase should be SKIPPED
+  """After skip + advance, stage should be SKIPPED
   not COMPLETE."""
   ev = GateEvaluator()
   plan = _make_plan()
-  plan.current_phase_index = 3  # model_rebuilding
-  plan.phases[3].status = PHASE_ACTIVE
+  plan.current_stage_index = 3  # model_rebuilding
+  plan.stages[3].status = STAGE_ACTIVE
   sm = _make_sm(r_free=0.25)
   result = ev.evaluate(plan, sm, None, 6)
   assert result.action == "skip"
   # Simulate the caller's handling
-  plan.skip_phase(plan.phases[3].id)
+  plan.skip_stage(plan.stages[3].id)
   plan.advance()
-  # Phase 3 should be SKIPPED, not COMPLETE
-  assert plan.phases[3].status == "skipped", (
+  # Stage 3 should be SKIPPED, not COMPLETE
+  assert plan.stages[3].status == "skipped", (
     "Expected skipped, got %s"
-    % plan.phases[3].status
+    % plan.stages[3].status
   )
   # Should have advanced to final_refinement
-  curr = plan.current_phase()
+  curr = plan.current_stage()
   assert curr is not None
   assert curr.id == "final_refinement"
 
@@ -837,9 +837,9 @@ def test_scenario_skip_preserves_status():
 def test_scenario_retreat():
   ev = GateEvaluator()
   plan = _make_plan()
-  plan.current_phase_index = 2
-  plan.phases[2].status = PHASE_ACTIVE
-  plan.phases[2].cycles_used = 2
+  plan.current_stage_index = 2
+  plan.stages[2].status = STAGE_ACTIVE
+  plan.stages[2].cycles_used = 2
   sm = _make_sm(r_free=0.48)  # > 0.45 after 2 cycles
   result = ev.evaluate(plan, sm, None, 4)
   assert result.action == "retreat"
@@ -851,9 +851,9 @@ def test_scenario_retreat():
 def test_scenario_stop():
   ev = GateEvaluator()
   plan = _make_plan()
-  plan.current_phase_index = 1  # MR phase
-  plan.phases[1].status = PHASE_ACTIVE
-  plan.phases[1].cycles_used = 1
+  plan.current_stage_index = 1  # MR stage
+  plan.stages[1].status = STAGE_ACTIVE
+  plan.stages[1].cycles_used = 1
   sm = _make_sm(tfz=3.0)  # < 5 → stop_report
   result = ev.evaluate(plan, sm, None, 2)
   assert result.action == "stop"
@@ -870,8 +870,8 @@ def test_scenario_no_plan():
 def test_scenario_plan_complete():
   ev = GateEvaluator()
   plan = _make_plan()
-  for p in plan.phases:
-    p.status = PHASE_COMPLETE
+  for p in plan.stages:
+    p.status = STAGE_COMPLETE
   result = ev.evaluate(
     plan, _make_sm(r_free=0.22), None, 10
   )
@@ -884,9 +884,9 @@ def test_scenario_no_structure_model():
   should continue (cannot check criteria)."""
   ev = GateEvaluator()
   plan = _make_plan()
-  plan.current_phase_index = 2
-  plan.phases[2].status = PHASE_ACTIVE
-  plan.phases[2].cycles_used = 1
+  plan.current_stage_index = 2
+  plan.stages[2].status = STAGE_ACTIVE
+  plan.stages[2].cycles_used = 1
   result = ev.evaluate(plan, None, None, 3)
   assert result.action == "continue"
 
@@ -895,8 +895,8 @@ def test_scenario_dict_structure_model():
   """Gate evaluator works with plain dict."""
   ev = GateEvaluator()
   plan = _make_plan()
-  plan.current_phase_index = 2
-  plan.phases[2].status = PHASE_ACTIVE
+  plan.current_stage_index = 2
+  plan.stages[2].status = STAGE_ACTIVE
   sm_dict = {"r_free": 0.30}
   result = ev.evaluate(plan, sm_dict, None, 4)
   assert result.action == "advance"
@@ -911,9 +911,9 @@ def test_oscillation_prevented():
   plan = _make_plan()
 
   # First attempt: refinement stalls
-  plan.current_phase_index = 2
-  plan.phases[2].status = PHASE_ACTIVE
-  plan.phases[2].cycles_used = 2
+  plan.current_stage_index = 2
+  plan.stages[2].status = STAGE_ACTIVE
+  plan.stages[2].cycles_used = 2
   sm = _make_sm(r_free=0.48)
 
   r1 = ev.evaluate(plan, sm, None, 4)
@@ -926,8 +926,8 @@ def test_oscillation_prevented():
 
   # Second attempt: redo MR and refine, stalls again
   plan.advance()  # back to refinement
-  plan.phases[2].status = PHASE_ACTIVE
-  plan.phases[2].cycles_used = 2
+  plan.stages[2].status = STAGE_ACTIVE
+  plan.stages[2].cycles_used = 2
 
   r2 = ev.evaluate(plan, sm, None, 7)
   assert r2.action == "retreat"
@@ -939,8 +939,8 @@ def test_oscillation_prevented():
 
   # Third attempt: should be blocked
   plan.advance()
-  plan.phases[2].status = PHASE_ACTIVE
-  plan.phases[2].cycles_used = 2
+  plan.stages[2].status = STAGE_ACTIVE
+  plan.stages[2].cycles_used = 2
 
   r3 = ev.evaluate(plan, sm, None, 10)
   # Max retreats reached (2) — should continue

@@ -171,7 +171,7 @@ def list_yaml_files(paths=None):
     # File descriptions
     file_descriptions = {
         'programs.yaml': 'Program definitions (inputs, outputs, commands, invariants)',
-        'workflows.yaml': 'Workflow state machines (phases, transitions, conditions)',
+        'workflows.yaml': 'Workflow state machines (steps, transitions, conditions)',
         'metrics.yaml': 'Quality metrics and thresholds',
         'file_categories.yaml': 'File categorization rules (extensions, patterns)',
     }
@@ -284,7 +284,7 @@ def validate_yaml_structure(data, filepath):
             pass  # List/scalar YAML — no auto-detect possible
         elif any(k.startswith('phenix.') for k in data.keys()):
             issues.extend(_validate_programs(data))
-        elif any('phases' in v for v in data.values()
+        elif any('steps' in v or 'phases' in v for v in data.values()
                  if isinstance(v, dict)):
             issues.extend(_validate_workflows(data))
         elif any('direction' in v or 'thresholds' in v
@@ -641,7 +641,7 @@ def _validate_workflows(data):
     if not workflows:
         # Check for workflow-like keys at root level
         workflows = {k: v for k, v in data.items()
-                    if isinstance(v, dict) and 'phases' in v}
+                    if isinstance(v, dict) and 'steps' in v or 'phases' in v}
 
     if not workflows:
         issues.append(('warning', "No workflows defined"))
@@ -649,17 +649,17 @@ def _validate_workflows(data):
 
     # Valid top-level fields for a workflow
     valid_workflow_fields = {
-        'description', 'phases', 'targets', 'thresholds', 'automation_paths'
+        'description', 'steps', 'phases', 'targets', 'thresholds', 'automation_paths'
     }
 
-    # Valid fields for a phase
+    # Valid fields for a step
     valid_phase_fields = {
         'description', 'goal', 'programs', 'transitions', 'extracts',
         'repeat', 'stop', 'stop_reasons', 'conditions', 'requires', 'optional',
         'rules_priority',  # Priority order for rules-based program selection
     }
 
-    # Valid fields for a program entry in a phase
+    # Valid fields for a program entry in a step
     valid_program_entry_fields = {
         'program', 'preferred', 'conditions', 'strategy', 'hint',
         'required', 'optional', 'requires_resolution', 'strategy_depends_on',
@@ -677,7 +677,7 @@ def _validate_workflows(data):
         'on_complete', 'on_target_reached', 'on_plateau', 'on_max_cycles',
         'on_ligandfit', 'if_predict_only', 'if_quality_acceptable',
         'if_quality_poor', 'if_has_full_map', 'if_needs_optimization', 'else',
-        # Placement probe transitions (probe_placement phase)
+        # Placement probe transitions (probe_placement step)
         'if_placed', 'if_not_placed',
     }
 
@@ -691,51 +691,51 @@ def _validate_workflows(data):
             if field not in valid_workflow_fields:
                 issues.append(('warning', "Workflow '%s' has unknown field '%s' (typo?)" % (wf_name, field)))
 
-        # Check for phases
-        phases = wf_def.get('phases', {})
-        if not phases:
-            issues.append(('warning', "Workflow '%s' has no phases" % wf_name))
+        # Check for steps
+        steps_dict = wf_def.get('steps') or wf_def.get('phases') or {}
+        if not steps_dict:
+            issues.append(('warning', "Workflow '%s' has no steps" % wf_name))
             continue
 
-        # Check each phase
-        for phase_name, phase_def in phases.items():
-            if not isinstance(phase_def, dict):
-                issues.append(('error', "Phase '%s.%s' must be a dictionary" % (wf_name, phase_name)))
+        # Check each step
+        for step_name, step_def in steps_dict.items():
+            if not isinstance(step_def, dict):
+                issues.append(('error', "Phase '%s.%s' must be a dictionary" % (wf_name, step_name)))
                 continue
 
-            # Check for unknown phase fields
-            for field in phase_def.keys():
+            # Check for unknown step fields
+            for field in step_def.keys():
                 if field not in valid_phase_fields:
                     issues.append(('warning', "Phase '%s.%s' has unknown field '%s' (typo?)" % (
-                        wf_name, phase_name, field)))
+                        wf_name, step_name, field)))
 
             # Check programs list
-            programs = phase_def.get('programs', [])
+            programs = step_def.get('programs', [])
             if isinstance(programs, list):
                 for prog_entry in programs:
                     if isinstance(prog_entry, dict):
                         for field in prog_entry.keys():
                             if field not in valid_program_entry_fields:
                                 issues.append(('warning', "Program entry in '%s.%s' has unknown field '%s' (typo?)" % (
-                                    wf_name, phase_name, field)))
+                                    wf_name, step_name, field)))
 
                         # Validate priority_when value
                         priority_when = prog_entry.get('priority_when')
                         if priority_when:
                             if priority_when not in valid_priority_when_conditions:
                                 issues.append(('warning', "Program '%s' in '%s.%s' has unknown priority_when '%s'" % (
-                                    prog_entry.get('program', '?'), wf_name, phase_name, priority_when)))
+                                    prog_entry.get('program', '?'), wf_name, step_name, priority_when)))
 
             # Check transitions
-            transitions = phase_def.get('transitions', {})
+            transitions = step_def.get('transitions', {})
             if isinstance(transitions, dict):
                 for field in transitions.keys():
                     if field not in valid_transition_fields:
                         issues.append(('warning', "Transition in '%s.%s' has unknown field '%s' (typo?)" % (
-                            wf_name, phase_name, field)))
+                            wf_name, step_name, field)))
 
-            if 'programs' not in phase_def and not phase_def.get('stop'):
-                issues.append(('warning', "Phase '%s.%s' has no programs" % (wf_name, phase_name)))
+            if 'programs' not in step_def and not step_def.get('stop'):
+                issues.append(('warning', "Phase '%s.%s' has no programs" % (wf_name, step_name)))
 
     return issues
 
@@ -957,33 +957,33 @@ def display_workflows(data):
     workflows = data.get('workflows', {})
     if not workflows:
         workflows = {k: v for k, v in data.items()
-                    if isinstance(v, dict) and 'phases' in v}
+                    if isinstance(v, dict) and 'steps' in v or 'phases' in v}
 
     print_subheader("Workflows (%d total)" % len(workflows))
     print()
     print(colored("  This file defines the workflow state machine for each experiment type.", Colors.DIM))
-    print(colored("  Workflows control which programs are valid at each phase and how", Colors.DIM))
+    print(colored("  Workflows control which programs are valid at each step and how", Colors.DIM))
     print(colored("  the agent progresses through structure determination.", Colors.DIM))
     print()
-    print(colored("  Phases:", Colors.DIM))
-    print(colored("    - Each workflow has sequential phases (analyze → build → refine → validate)", Colors.DIM))
-    print(colored("    - Each phase lists which programs are valid", Colors.DIM))
-    print(colored("    - Transitions define when to move to the next phase", Colors.DIM))
+    print(colored("  Steps:", Colors.DIM))
+    print(colored("    - Each workflow has sequential steps (analyze → build → refine → validate)", Colors.DIM))
+    print(colored("    - Each step lists which programs are valid", Colors.DIM))
+    print(colored("    - Transitions define when to move to the next step", Colors.DIM))
     print()
-    print(colored("  Format: phase_name: program1, program2, ... or STOP", Colors.DIM))
+    print(colored("  Format: step_name: program1, program2, ... or STOP", Colors.DIM))
 
     for wf_name, wf_def in workflows.items():
         print()
         print(colored("  [%s]" % wf_name.upper(), Colors.YELLOW + Colors.BOLD))
 
-        phases = wf_def.get('phases', {})
-        for phase_name, phase_def in phases.items():
-            desc = phase_def.get('description', '')
-            programs = phase_def.get('programs', [])
+        steps_dict = wf_def.get('steps') or wf_def.get('phases') or {}
+        for step_name, step_def in steps_dict.items():
+            desc = step_def.get('description', '')
+            programs = step_def.get('programs', [])
 
-            if phase_def.get('stop'):
+            if step_def.get('stop'):
                 print("    %s: %s" % (
-                    colored(phase_name, Colors.GREEN),
+                    colored(step_name, Colors.GREEN),
                     colored("STOP", Colors.RED + Colors.BOLD)
                 ))
             else:
@@ -1009,7 +1009,7 @@ def display_workflows(data):
                             prog_parts.append(prog_name)
 
                 print("    %s: %s" % (
-                    colored(phase_name, Colors.CYAN),
+                    colored(step_name, Colors.CYAN),
                     ", ".join(prog_parts) or "(no programs)"
                 ))
 
@@ -1411,7 +1411,7 @@ def show_summary():
     print(colored("  The AI Agent uses four YAML configuration files:", Colors.DIM))
     print()
     print(colored("  1. programs.yaml       - Defines available programs (inputs, outputs, commands)", Colors.CYAN))
-    print(colored("  2. workflows.yaml      - Defines workflow phases and transitions", Colors.CYAN))
+    print(colored("  2. workflows.yaml      - Defines workflow steps and transitions", Colors.CYAN))
     print(colored("  3. metrics.yaml        - Defines quality metrics and thresholds", Colors.CYAN))
     print(colored("  4. file_categories.yaml - Defines file categorization rules", Colors.CYAN))
     print()
@@ -1476,16 +1476,16 @@ def _show_feature_stats(yaml_files):
 
         elif 'workflow' in filename:
             workflows = {k: v for k, v in data.items()
-                        if isinstance(v, dict) and 'phases' in v}
+                        if isinstance(v, dict) and 'steps' in v or 'phases' in v}
 
             for wf_name, wf_def in workflows.items():
-                phases = wf_def.get('phases', {})
-                for phase_name, phase_def in phases.items():
-                    programs = phase_def.get('programs', [])
+                steps_dict = wf_def.get('steps') or wf_def.get('phases') or {}
+                for step_name, step_def in steps_dict.items():
+                    programs = step_def.get('programs', [])
                     for p in programs:
                         if isinstance(p, dict) and p.get('priority_when'):
                             stats['phases_with_priority_when'].append(
-                                "%s.%s.%s" % (wf_name, phase_name, p.get('program', '?'))
+                                "%s.%s.%s" % (wf_name, step_name, p.get('program', '?'))
                             )
 
     print()
@@ -1522,7 +1522,7 @@ def collect_all_terms(yaml_files):
         file_categories: {name: {definition, used_by, description}}
         strategy_keys: {name: {programs, types, description}}
         metrics: {name: {definition, description}}
-        workflow_phases: {workflow: {phase: definition}}
+        workflow_steps: {workflow: {step: definition}}
         conditions: {name: {used_in, description}}
         check_types: {name: {description, example}}
         fix_types: {name: {description, example}}
@@ -1531,7 +1531,7 @@ def collect_all_terms(yaml_files):
         "file_categories": {},
         "strategy_keys": {},
         "metrics": {},
-        "workflow_phases": {},
+        "workflow_steps": {},
         "conditions": {},
         "priority_conditions": {},
         "check_types": {},
@@ -1626,21 +1626,21 @@ def collect_all_terms(yaml_files):
     # Extract from workflows
     if workflows_data:
         workflows = {k: v for k, v in workflows_data.items()
-                    if isinstance(v, dict) and 'phases' in v}
+                    if isinstance(v, dict) and 'steps' in v or 'phases' in v}
 
         for wf_name, wf_def in workflows.items():
-            terms["workflow_phases"][wf_name] = {}
+            terms["workflow_steps"][wf_name] = {}
 
-            for phase_name, phase_def in wf_def.get("phases", {}).items():
-                terms["workflow_phases"][wf_name][phase_name] = {
-                    "description": phase_def.get("description", ""),
+            for step_name, step_def in (wf_def.get("steps") or wf_def.get("phases") or {}).items():
+                terms["workflow_steps"][wf_name][step_name] = {
+                    "description": step_def.get("description", ""),
                     "programs": [],
                 }
 
-                for prog_entry in phase_def.get("programs", []):
+                for prog_entry in step_def.get("programs", []):
                     if isinstance(prog_entry, dict):
                         prog_name = prog_entry.get("program", "?")
-                        terms["workflow_phases"][wf_name][phase_name]["programs"].append(prog_name)
+                        terms["workflow_steps"][wf_name][step_name]["programs"].append(prog_name)
 
                         # Extract conditions
                         for cond in prog_entry.get("conditions", []):
@@ -1654,7 +1654,7 @@ def collect_all_terms(yaml_files):
                             if cond_name not in terms["conditions"]:
                                 terms["conditions"][cond_name] = {"used_in": []}
                             terms["conditions"][cond_name]["used_in"].append(
-                                "%s.%s.%s" % (wf_name, phase_name, prog_name)
+                                "%s.%s.%s" % (wf_name, step_name, prog_name)
                             )
 
                         # Extract priority_when
@@ -1663,10 +1663,10 @@ def collect_all_terms(yaml_files):
                             if priority_when not in terms["priority_conditions"]:
                                 terms["priority_conditions"][priority_when] = {"used_by": []}
                             terms["priority_conditions"][priority_when]["used_by"].append(
-                                "%s.%s.%s" % (wf_name, phase_name, prog_name)
+                                "%s.%s.%s" % (wf_name, step_name, prog_name)
                             )
                     elif isinstance(prog_entry, str):
-                        terms["workflow_phases"][wf_name][phase_name]["programs"].append(prog_entry)
+                        terms["workflow_steps"][wf_name][step_name]["programs"].append(prog_entry)
 
     # Extract metrics
     if metrics_data:
@@ -1761,9 +1761,9 @@ def _show_terms_simple(terms):
 
     print()
     print(colored("  WORKFLOW PHASES", Colors.YELLOW + Colors.BOLD))
-    for wf_name, phases in terms["workflow_phases"].items():
-        phase_names = sorted(phases.keys())
-        print("    %s: %s" % (colored(wf_name, Colors.CYAN), ", ".join(phase_names)))
+    for wf_name, wf_steps in terms["workflow_steps"].items():
+        step_names = sorted(wf_steps.keys())
+        print("    %s: %s" % (colored(wf_name, Colors.CYAN), ", ".join(step_names)))
 
     print()
     print(colored("  CONDITIONS", Colors.YELLOW + Colors.BOLD))
@@ -1930,21 +1930,21 @@ def _show_terms_full(terms):
                 print("    - %s" % usage)
             print()
 
-    # Workflow phases with programs
+    # Workflow steps with programs
     print()
     print(colored("=" * 60, Colors.BOLD))
     print(colored("  WORKFLOW PHASES (Full Detail)", Colors.YELLOW + Colors.BOLD))
     print(colored("=" * 60, Colors.BOLD))
     print()
 
-    for wf_name, phases in terms["workflow_phases"].items():
+    for wf_name, wf_steps in terms["workflow_steps"].items():
         print(colored("  [%s]" % wf_name.upper(), Colors.YELLOW + Colors.BOLD))
 
-        for phase_name, phase_def in phases.items():
-            desc = phase_def.get("description", "")
-            progs = phase_def.get("programs", [])
+        for step_name, step_def in steps_dict.items():
+            desc = step_def.get("description", "")
+            progs = step_def.get("programs", [])
 
-            print("    %s" % colored(phase_name, Colors.CYAN + Colors.BOLD))
+            print("    %s" % colored(step_name, Colors.CYAN + Colors.BOLD))
             if desc:
                 print("      %s" % colored(desc, Colors.DIM))
             if progs:

@@ -1,5 +1,5 @@
 """
-Unit tests for plan_schema.py (Phase 2, Step 2.1).
+Unit tests for plan_schema.py (Stage 2, Step 2.1).
 
 Run standalone:
   python tests/tst_plan_schema.py
@@ -25,9 +25,9 @@ if _PROJECT_ROOT not in sys.path:
   sys.path.insert(0, _PROJECT_ROOT)
 
 from knowledge.plan_schema import (
-  PhaseDef, StructurePlan, merge_directives,
-  PHASE_PENDING, PHASE_ACTIVE, PHASE_COMPLETE,
-  PHASE_SKIPPED,
+  StageDef, StructurePlan, merge_directives,
+  STAGE_PENDING, STAGE_ACTIVE, STAGE_COMPLETE,
+  STAGE_SKIPPED,
 )
 
 
@@ -57,8 +57,8 @@ def run_tests():
   print("=" * 60)
   print()
 
-  # --- PhaseDef ---
-  print("PhaseDef")
+  # --- StageDef ---
+  print("StageDef")
   test("phase_init_defaults",
     test_phase_init_defaults)
   test("phase_init_full",
@@ -75,10 +75,10 @@ def run_tests():
   print("StructurePlan basics")
   test("plan_init_empty",
     test_plan_init_empty)
-  test("plan_current_phase",
-    test_plan_current_phase)
-  test("plan_current_phase_empty",
-    test_plan_current_phase_empty)
+  test("plan_current_stage",
+    test_plan_current_stage)
+  test("plan_current_stage_empty",
+    test_plan_current_stage_empty)
   print()
 
   # --- Navigation ---
@@ -101,18 +101,18 @@ def run_tests():
     test_retreat_resets_downstream)
   test("retreat_preserves_skipped",
     test_retreat_preserves_skipped)
-  test("skip_phase",
-    test_skip_phase)
-  test("mark_phase_started",
-    test_mark_phase_started)
-  test("record_phase_cycle",
-    test_record_phase_cycle)
+  test("skip_stage",
+    test_skip_stage)
+  test("mark_stage_started",
+    test_mark_stage_started)
+  test("record_stage_cycle",
+    test_record_stage_cycle)
   test("mark_phase_complete",
     test_mark_phase_complete)
   test("is_complete",
     test_is_complete)
-  test("get_phase_by_id",
-    test_get_phase_by_id)
+  test("get_stage_by_id",
+    test_get_stage_by_id)
   test("get_previous_phase",
     test_get_previous_phase)
   test("is_exhausted",
@@ -216,8 +216,8 @@ def run_tests():
 
 def _make_mr_refine_plan():
   """Build a realistic MR+refine plan."""
-  phases = [
-    PhaseDef(
+  stages = [
+    StageDef(
       id="data_assessment",
       programs=["phenix.xtriage"],
       max_cycles=1,
@@ -225,7 +225,7 @@ def _make_mr_refine_plan():
       description="Analyze data quality",
       provides=["resolution", "twinning_status"],
     ),
-    PhaseDef(
+    StageDef(
       id="molecular_replacement",
       programs=["phenix.phaser"],
       max_cycles=1,
@@ -240,7 +240,7 @@ def _make_mr_refine_plan():
       ],
       description="Find MR solution",
     ),
-    PhaseDef(
+    StageDef(
       id="initial_refinement",
       programs=["phenix.refine"],
       max_cycles=3,
@@ -251,7 +251,7 @@ def _make_mr_refine_plan():
       ],
       description="Initial refinement",
     ),
-    PhaseDef(
+    StageDef(
       id="model_rebuilding",
       programs=["phenix.autobuild"],
       max_cycles=1,
@@ -260,7 +260,7 @@ def _make_mr_refine_plan():
       strategy={"rebuild_in_place": False},
       description="Rebuild model",
     ),
-    PhaseDef(
+    StageDef(
       id="final_refinement",
       programs=["phenix.refine"],
       max_cycles=3,
@@ -271,16 +271,16 @@ def _make_mr_refine_plan():
   ]
   return StructurePlan(
     goal="Solve kinase by MR at 2.1A",
-    phases=phases,
+    stages=stages,
     template_id="mr_refine",
     created_at_cycle=0,
   )
 
 
-# ── PhaseDef tests ────────────────────────────────────
+# ── StageDef tests ────────────────────────────────────
 
 def test_phase_init_defaults():
-  p = PhaseDef(id="test")
+  p = StageDef(id="test")
   assert p.id == "test"
   assert p.programs == []
   assert p.max_cycles == 5
@@ -290,13 +290,13 @@ def test_phase_init_defaults():
   assert p.skip_if == ""
   assert p.directives == {}
   assert p.strategy == {}
-  assert p.status == PHASE_PENDING
+  assert p.status == STAGE_PENDING
   assert p.cycles_used == 0
   assert p.start_cycle is None
 
 
 def test_phase_init_full():
-  p = PhaseDef(
+  p = StageDef(
     id="refine",
     programs=["phenix.refine"],
     max_cycles=3,
@@ -320,7 +320,7 @@ def test_phase_init_full():
 
 
 def test_phase_roundtrip():
-  p = PhaseDef(
+  p = StageDef(
     id="mr",
     programs=["phenix.phaser"],
     max_cycles=2,
@@ -333,18 +333,18 @@ def test_phase_roundtrip():
     provides=["mr_solution"],
     if_skipped={"mr_solution": "unavailable"},
   )
-  p.status = PHASE_COMPLETE
+  p.status = STAGE_COMPLETE
   p.cycles_used = 1
   p.start_cycle = 2
   p.end_cycle = 2
   p.result_metrics = {"tfz": 14.2}
 
   d = p.to_dict()
-  p2 = PhaseDef.from_dict(d)
+  p2 = StageDef.from_dict(d)
   assert p2.id == "mr"
   assert p2.programs == ["phenix.phaser"]
   assert p2.success_criteria == {"tfz": ">8"}
-  assert p2.status == PHASE_COMPLETE
+  assert p2.status == STAGE_COMPLETE
   assert p2.cycles_used == 1
   assert p2.start_cycle == 2
   assert p2.end_cycle == 2
@@ -356,23 +356,23 @@ def test_phase_roundtrip():
 
 
 def test_phase_from_dict_tolerant():
-  p = PhaseDef.from_dict({})
+  p = StageDef.from_dict({})
   assert p.id == "unknown"
   assert p.programs == []
-  p = PhaseDef.from_dict("garbage")
+  p = StageDef.from_dict("garbage")
   assert p.id == "unknown"
 
 
 def test_phase_runtime_state_persists():
   """Runtime state (status, cycles) survives
   serialization."""
-  p = PhaseDef(id="test", max_cycles=3)
-  p.status = PHASE_ACTIVE
+  p = StageDef(id="test", max_cycles=3)
+  p.status = STAGE_ACTIVE
   p.cycles_used = 2
   p.start_cycle = 5
   d = p.to_dict()
-  p2 = PhaseDef.from_dict(d)
-  assert p2.status == PHASE_ACTIVE
+  p2 = StageDef.from_dict(d)
+  assert p2.status == STAGE_ACTIVE
   assert p2.cycles_used == 2
   assert p2.start_cycle == 5
 
@@ -382,48 +382,48 @@ def test_phase_runtime_state_persists():
 def test_plan_init_empty():
   plan = StructurePlan()
   assert plan.goal == ""
-  assert plan.phases == []
-  assert plan.current_phase_index == 0
+  assert plan.stages == []
+  assert plan.current_stage_index == 0
   assert plan.retreat_count == 0
 
 
-def test_plan_current_phase():
+def test_plan_current_stage():
   plan = _make_mr_refine_plan()
-  curr = plan.current_phase()
+  curr = plan.current_stage()
   assert curr is not None
   assert curr.id == "data_assessment"
 
 
-def test_plan_current_phase_empty():
+def test_plan_current_stage_empty():
   plan = StructurePlan()
-  assert plan.current_phase() is None
+  assert plan.current_stage() is None
 
 
 # ── Navigation ────────────────────────────────────────
 
 def test_advance_basic():
   plan = _make_mr_refine_plan()
-  plan.phases[0].status = PHASE_ACTIVE
+  plan.stages[0].status = STAGE_ACTIVE
   # Advance from data_assessment to MR
   ok = plan.advance()
   assert ok is True
-  assert plan.current_phase().id == (
+  assert plan.current_stage().id == (
     "molecular_replacement"
   )
-  assert plan.phases[0].status == PHASE_COMPLETE
-  assert plan.phases[1].status == PHASE_ACTIVE
+  assert plan.stages[0].status == STAGE_COMPLETE
+  assert plan.stages[1].status == STAGE_ACTIVE
 
 
 def test_advance_to_end():
   plan = _make_mr_refine_plan()
-  # Advance through all phases
-  for phase in plan.phases:
-    phase.status = PHASE_ACTIVE
-    plan.current_phase_index = (
-      plan.phases.index(phase)
+  # Advance through all stages
+  for stage in plan.stages:
+    stage.status = STAGE_ACTIVE
+    plan.current_stage_index = (
+      plan.stages.index(stage)
     )
     ok = plan.advance()
-    if phase is plan.phases[-1]:
+    if stage is plan.stages[-1]:
       assert ok is False, (
         "Should return False at end"
       )
@@ -432,14 +432,14 @@ def test_advance_to_end():
 
 
 def test_advance_skips_completed():
-  """Advance skips over already-completed phases."""
+  """Advance skips over already-completed stages."""
   plan = _make_mr_refine_plan()
-  plan.phases[0].status = PHASE_ACTIVE
-  plan.phases[1].status = PHASE_COMPLETE  # MR done
+  plan.stages[0].status = STAGE_ACTIVE
+  plan.stages[1].status = STAGE_COMPLETE  # MR done
   ok = plan.advance()
   assert ok is True
   # Should skip MR, land on initial_refinement
-  assert plan.current_phase().id == (
+  assert plan.current_stage().id == (
     "initial_refinement"
   )
 
@@ -447,16 +447,16 @@ def test_advance_skips_completed():
 def test_retreat_basic():
   plan = _make_mr_refine_plan()
   # Start at initial_refinement (index 2)
-  plan.current_phase_index = 2
-  plan.phases[2].status = PHASE_ACTIVE
+  plan.current_stage_index = 2
+  plan.stages[2].status = STAGE_ACTIVE
   ok = plan.retreat_to("molecular_replacement")
   assert ok is True
-  assert plan.current_phase().id == (
+  assert plan.current_stage().id == (
     "molecular_replacement"
   )
-  assert plan.phases[1].status == PHASE_ACTIVE
-  # Target phase should be reset
-  assert plan.phases[1].cycles_used == 0
+  assert plan.stages[1].status == STAGE_ACTIVE
+  # Target stage should be reset
+  assert plan.stages[1].cycles_used == 0
 
 
 def test_retreat_not_found():
@@ -466,118 +466,118 @@ def test_retreat_not_found():
 
 
 def test_retreat_resets_current_to_pending():
-  """After retreat, the previously-active phase is
+  """After retreat, the previously-active stage is
   reset to PENDING (retriable with new strategy)."""
   plan = _make_mr_refine_plan()
-  plan.current_phase_index = 2
-  plan.phases[2].status = PHASE_ACTIVE
+  plan.current_stage_index = 2
+  plan.stages[2].status = STAGE_ACTIVE
   plan.retreat_to("molecular_replacement")
-  # Phase 2 is downstream of retreat target (1),
+  # Stage 2 is downstream of retreat target (1),
   # so it's reset to PENDING for retry.
-  assert plan.phases[2].status == PHASE_PENDING
+  assert plan.stages[2].status == STAGE_PENDING
 
 
 def test_retreat_count_tracks():
   plan = _make_mr_refine_plan()
   assert plan.retreat_count == 0
-  plan.current_phase_index = 2
-  plan.phases[2].status = PHASE_ACTIVE
+  plan.current_stage_index = 2
+  plan.stages[2].status = STAGE_ACTIVE
   plan.retreat_to("molecular_replacement")
   assert plan.retreat_count == 1
   # Second retreat
-  plan.current_phase_index = 2
-  plan.phases[2].status = PHASE_ACTIVE
+  plan.current_stage_index = 2
+  plan.stages[2].status = STAGE_ACTIVE
   plan.retreat_to("data_assessment")
   assert plan.retreat_count == 2
 
 
 def test_retreat_resets_downstream():
-  """Retreat resets all phases after the target to
+  """Retreat resets all stages after the target to
   PENDING so they can re-run with the new strategy."""
   plan = _make_mr_refine_plan()
-  # Simulate: phases 0-2 done, phase 3 active
-  plan.phases[0].status = PHASE_COMPLETE
-  plan.phases[0].cycles_used = 1
-  plan.phases[1].status = PHASE_COMPLETE
-  plan.phases[1].cycles_used = 1
-  plan.phases[1].result_metrics = {"tfz": 7.0}
-  plan.phases[2].status = PHASE_COMPLETE
-  plan.phases[2].cycles_used = 3
-  plan.phases[3].status = PHASE_ACTIVE
-  plan.phases[3].cycles_used = 1
-  plan.current_phase_index = 3
+  # Simulate: stages 0-2 done, stage 3 active
+  plan.stages[0].status = STAGE_COMPLETE
+  plan.stages[0].cycles_used = 1
+  plan.stages[1].status = STAGE_COMPLETE
+  plan.stages[1].cycles_used = 1
+  plan.stages[1].result_metrics = {"tfz": 7.0}
+  plan.stages[2].status = STAGE_COMPLETE
+  plan.stages[2].cycles_used = 3
+  plan.stages[3].status = STAGE_ACTIVE
+  plan.stages[3].cycles_used = 1
+  plan.current_stage_index = 3
   # Retreat to MR (index 1)
   plan.retreat_to("molecular_replacement")
   # Target (index 1) is ACTIVE and reset
-  assert plan.phases[1].status == PHASE_ACTIVE
-  assert plan.phases[1].cycles_used == 0
-  assert plan.phases[1].result_metrics == {}
-  # Phases 2,3 are reset to PENDING
-  assert plan.phases[2].status == PHASE_PENDING
-  assert plan.phases[2].cycles_used == 0
-  assert plan.phases[3].status == PHASE_PENDING
-  assert plan.phases[3].cycles_used == 0
-  # Phase 0 (before target) is untouched
-  assert plan.phases[0].status == PHASE_COMPLETE
-  assert plan.phases[0].cycles_used == 1
-  # Phase 4 (never started) is still PENDING
-  assert plan.phases[4].status == PHASE_PENDING
+  assert plan.stages[1].status == STAGE_ACTIVE
+  assert plan.stages[1].cycles_used == 0
+  assert plan.stages[1].result_metrics == {}
+  # Stages 2,3 are reset to PENDING
+  assert plan.stages[2].status == STAGE_PENDING
+  assert plan.stages[2].cycles_used == 0
+  assert plan.stages[3].status == STAGE_PENDING
+  assert plan.stages[3].cycles_used == 0
+  # Stage 0 (before target) is untouched
+  assert plan.stages[0].status == STAGE_COMPLETE
+  assert plan.stages[0].cycles_used == 1
+  # Stage 4 (never started) is still PENDING
+  assert plan.stages[4].status == STAGE_PENDING
 
 
 def test_retreat_preserves_skipped():
-  """Retreat should NOT reset phases that were
+  """Retreat should NOT reset stages that were
   explicitly skipped (they were skipped for a reason
   independent of the failed strategy)."""
   plan = _make_mr_refine_plan()
-  plan.phases[0].status = PHASE_COMPLETE
-  plan.phases[1].status = PHASE_COMPLETE
-  plan.phases[2].status = PHASE_COMPLETE
-  plan.phases[3].status = PHASE_SKIPPED  # explicitly
-  plan.phases[4].status = PHASE_ACTIVE
-  plan.current_phase_index = 4
+  plan.stages[0].status = STAGE_COMPLETE
+  plan.stages[1].status = STAGE_COMPLETE
+  plan.stages[2].status = STAGE_COMPLETE
+  plan.stages[3].status = STAGE_SKIPPED  # explicitly
+  plan.stages[4].status = STAGE_ACTIVE
+  plan.current_stage_index = 4
   plan.retreat_to("initial_refinement")
-  # Skipped phase should stay skipped
-  assert plan.phases[3].status == PHASE_SKIPPED
+  # Skipped stage should stay skipped
+  assert plan.stages[3].status == STAGE_SKIPPED
   # But the active/complete ones after target
   # should be reset
-  assert plan.phases[4].status == PHASE_PENDING
+  assert plan.stages[4].status == STAGE_PENDING
 
 
-def test_skip_phase():
+def test_skip_stage():
   plan = _make_mr_refine_plan()
-  ok = plan.skip_phase("model_rebuilding",
+  ok = plan.skip_stage("model_rebuilding",
                        reason="r_free already <0.28")
   assert ok is True
-  phase = plan.get_phase_by_id("model_rebuilding")
-  assert phase.status == PHASE_SKIPPED
+  stage = plan.get_stage_by_id("model_rebuilding")
+  assert stage.status == STAGE_SKIPPED
 
 
-def test_mark_phase_started():
+def test_mark_stage_started():
   plan = _make_mr_refine_plan()
-  plan.mark_phase_started(1)
-  curr = plan.current_phase()
-  assert curr.status == PHASE_ACTIVE
+  plan.mark_stage_started(1)
+  curr = plan.current_stage()
+  assert curr.status == STAGE_ACTIVE
   assert curr.start_cycle == 1
   # Second call doesn't overwrite start_cycle
-  plan.mark_phase_started(2)
+  plan.mark_stage_started(2)
   assert curr.start_cycle == 1
 
 
-def test_record_phase_cycle():
+def test_record_stage_cycle():
   plan = _make_mr_refine_plan()
-  plan.mark_phase_started(1)
-  plan.record_phase_cycle()
-  plan.record_phase_cycle()
-  assert plan.current_phase().cycles_used == 2
+  plan.mark_stage_started(1)
+  plan.record_stage_cycle()
+  plan.record_stage_cycle()
+  assert plan.current_stage().cycles_used == 2
 
 
 def test_mark_phase_complete():
   plan = _make_mr_refine_plan()
-  plan.mark_phase_started(1)
+  plan.mark_stage_started(1)
   plan.mark_phase_complete(3,
                            metrics={"r_free": 0.34})
-  curr = plan.current_phase()
-  assert curr.status == PHASE_COMPLETE
+  curr = plan.current_stage()
+  assert curr.status == STAGE_COMPLETE
   assert curr.end_cycle == 3
   assert curr.result_metrics == {"r_free": 0.34}
 
@@ -586,38 +586,38 @@ def test_is_complete():
   plan = _make_mr_refine_plan()
   assert plan.is_complete() is False
   # Mark all as complete
-  for phase in plan.phases:
-    phase.status = PHASE_COMPLETE
+  for stage in plan.stages:
+    stage.status = STAGE_COMPLETE
   assert plan.is_complete() is True
   # With skipped
-  plan.phases[3].status = PHASE_SKIPPED
+  plan.stages[3].status = STAGE_SKIPPED
   assert plan.is_complete() is True
   # With one pending
-  plan.phases[4].status = PHASE_PENDING
+  plan.stages[4].status = STAGE_PENDING
   assert plan.is_complete() is False
 
 
-def test_get_phase_by_id():
+def test_get_stage_by_id():
   plan = _make_mr_refine_plan()
-  p = plan.get_phase_by_id("initial_refinement")
+  p = plan.get_stage_by_id("initial_refinement")
   assert p is not None
   assert p.id == "initial_refinement"
-  assert plan.get_phase_by_id("nope") is None
+  assert plan.get_stage_by_id("nope") is None
 
 
 def test_get_previous_phase():
   plan = _make_mr_refine_plan()
-  plan.current_phase_index = 2
+  plan.current_stage_index = 2
   prev = plan.get_previous_phase()
   assert prev is not None
   assert prev.id == "molecular_replacement"
   # At index 0, no previous
-  plan.current_phase_index = 0
+  plan.current_stage_index = 0
   assert plan.get_previous_phase() is None
 
 
 def test_is_exhausted():
-  p = PhaseDef(id="test", max_cycles=3)
+  p = StageDef(id="test", max_cycles=3)
   assert p.is_exhausted() is False
   p.cycles_used = 2
   assert p.is_exhausted() is False
@@ -663,8 +663,8 @@ def test_can_retreat_cooldown():
 
 def test_retreat_records_cycle():
   plan = _make_mr_refine_plan()
-  plan.current_phase_index = 2
-  plan.phases[2].status = PHASE_ACTIVE
+  plan.current_stage_index = 2
+  plan.stages[2].status = STAGE_ACTIVE
   plan.retreat_to(
     "molecular_replacement", cycle_number=8
   )
@@ -692,10 +692,10 @@ def test_to_directives_single_program():
 
 
 def test_to_directives_multi_program():
-  """Multi-program phase should not set after_program."""
+  """Multi-program stage should not set after_program."""
   plan = StructurePlan(
     goal="test",
-    phases=[PhaseDef(
+    stages=[StageDef(
       id="build",
       programs=[
         "phenix.predict_and_build",
@@ -712,8 +712,8 @@ def test_to_directives_multi_program():
 def test_to_directives_with_strategy():
   plan = _make_mr_refine_plan()
   # model_rebuilding (index 3) has strategy
-  plan.current_phase_index = 3
-  plan.phases[3].status = PHASE_ACTIVE
+  plan.current_stage_index = 3
+  plan.stages[3].status = STAGE_ACTIVE
   directives = plan.to_directives()
   ps = directives.get("program_settings", {})
   assert "phenix.autobuild" in ps
@@ -723,8 +723,8 @@ def test_to_directives_with_strategy():
 
 
 def test_to_directives_with_phase_directives():
-  """Phase-level directives merge into output."""
-  phase = PhaseDef(
+  """Stage-level directives merge into output."""
+  stage = StageDef(
     id="test",
     programs=["phenix.refine"],
     directives={
@@ -737,7 +737,7 @@ def test_to_directives_with_phase_directives():
     },
   )
   plan = StructurePlan(
-    goal="test", phases=[phase],
+    goal="test", stages=[stage],
   )
   d = plan.to_directives()
   wf = d.get("workflow_preferences", {})
@@ -767,7 +767,7 @@ def test_compute_hash_stable():
 
 def test_compute_hash_changes_on_advance():
   plan = _make_mr_refine_plan()
-  plan.phases[0].status = PHASE_ACTIVE
+  plan.stages[0].status = STAGE_ACTIVE
   h1 = plan.compute_hash()
   plan.advance()
   h2 = plan.compute_hash()
@@ -776,8 +776,8 @@ def test_compute_hash_changes_on_advance():
 
 def test_compute_hash_changes_on_retreat():
   plan = _make_mr_refine_plan()
-  plan.current_phase_index = 2
-  plan.phases[2].status = PHASE_ACTIVE
+  plan.current_stage_index = 2
+  plan.stages[2].status = STAGE_ACTIVE
   h1 = plan.compute_hash()
   plan.retreat_to("molecular_replacement")
   h2 = plan.compute_hash()
@@ -925,31 +925,31 @@ def test_merge_preserves_plan_prefer():
 
 def test_get_display_phases():
   plan = _make_mr_refine_plan()
-  plan.phases[0].status = PHASE_COMPLETE
-  plan.phases[1].status = PHASE_ACTIVE
+  plan.stages[0].status = STAGE_COMPLETE
+  plan.stages[1].status = STAGE_ACTIVE
   display = plan.get_display_phases()
   assert len(display) == 5
-  assert display[0]["status"] == PHASE_COMPLETE
-  assert display[1]["status"] == PHASE_ACTIVE
-  assert display[2]["status"] == PHASE_PENDING
+  assert display[0]["status"] == STAGE_COMPLETE
+  assert display[1]["status"] == STAGE_ACTIVE
+  assert display[2]["status"] == STAGE_PENDING
   assert display[0]["id"] == "data_assessment"
   assert "phenix.xtriage" in display[0]["programs"]
 
 
 def test_format_plan_header():
   plan = _make_mr_refine_plan()
-  plan.phases[0].status = PHASE_COMPLETE
-  plan.phases[1].status = PHASE_ACTIVE
+  plan.stages[0].status = STAGE_COMPLETE
+  plan.stages[1].status = STAGE_ACTIVE
   header = plan.format_plan_header()
   assert "STRATEGY PLAN" in header
   assert "kinase" in header
   # Check status indicators
   lines = header.split("\n")
   phase_lines = [
-    l for l in lines if "Phase " in l
+    l for l in lines if "Stage " in l
   ]
   assert len(phase_lines) == 5
-  # First phase should have ✓
+  # First stage should have ✓
   assert "✓" in phase_lines[0]
   # Second should have ●
   assert "●" in phase_lines[1]
@@ -964,17 +964,17 @@ def test_plan_roundtrip_empty():
   d = plan.to_dict()
   plan2 = StructurePlan.from_dict(d)
   assert plan2.goal == ""
-  assert plan2.phases == []
+  assert plan2.stages == []
 
 
 def test_plan_roundtrip_populated():
   plan = _make_mr_refine_plan()
-  plan.phases[0].status = PHASE_COMPLETE
-  plan.phases[0].cycles_used = 1
-  plan.phases[0].start_cycle = 1
-  plan.phases[0].end_cycle = 1
-  plan.current_phase_index = 1
-  plan.phases[1].status = PHASE_ACTIVE
+  plan.stages[0].status = STAGE_COMPLETE
+  plan.stages[0].cycles_used = 1
+  plan.stages[0].start_cycle = 1
+  plan.stages[0].end_cycle = 1
+  plan.current_stage_index = 1
+  plan.stages[1].status = STAGE_ACTIVE
   plan.retreat_count = 1
   plan.last_retreat_cycle = 5
 
@@ -982,16 +982,16 @@ def test_plan_roundtrip_populated():
   plan2 = StructurePlan.from_dict(d)
 
   assert plan2.goal == "Solve kinase by MR at 2.1A"
-  assert len(plan2.phases) == 5
-  assert plan2.phases[0].status == PHASE_COMPLETE
-  assert plan2.phases[0].cycles_used == 1
-  assert plan2.current_phase_index == 1
-  assert plan2.phases[1].status == PHASE_ACTIVE
+  assert len(plan2.stages) == 5
+  assert plan2.stages[0].status == STAGE_COMPLETE
+  assert plan2.stages[0].cycles_used == 1
+  assert plan2.current_stage_index == 1
+  assert plan2.stages[1].status == STAGE_ACTIVE
   assert plan2.template_id == "mr_refine"
   assert plan2.retreat_count == 1
   assert plan2.last_retreat_cycle == 5
-  # Verify phase content survived
-  p2_mr = plan2.phases[1]
+  # Verify stage content survived
+  p2_mr = plan2.stages[1]
   assert p2_mr.id == "molecular_replacement"
   assert "phenix.phaser" in p2_mr.programs
   assert p2_mr.success_criteria == {
@@ -1001,9 +1001,9 @@ def test_plan_roundtrip_populated():
 
 def test_plan_roundtrip_through_json():
   plan = _make_mr_refine_plan()
-  plan.phases[0].status = PHASE_COMPLETE
-  plan.phases[1].status = PHASE_ACTIVE
-  plan.current_phase_index = 1
+  plan.stages[0].status = STAGE_COMPLETE
+  plan.stages[1].status = STAGE_ACTIVE
+  plan.current_stage_index = 1
 
   d = plan.to_dict()
   json_str = json.dumps(d)
@@ -1011,9 +1011,9 @@ def test_plan_roundtrip_through_json():
   plan2 = StructurePlan.from_dict(d2)
 
   assert plan2.goal == "Solve kinase by MR at 2.1A"
-  assert len(plan2.phases) == 5
-  assert plan2.current_phase_index == 1
-  assert plan2.phases[0].status == PHASE_COMPLETE
+  assert len(plan2.stages) == 5
+  assert plan2.current_stage_index == 1
+  assert plan2.stages[0].status == STAGE_COMPLETE
   # Verify to_directives works after round-trip
   directives = plan2.to_directives()
   assert "phenix.phaser" in directives.get(
@@ -1027,13 +1027,13 @@ def test_plan_from_dict_tolerant():
     "extra_key": "ignored",
   })
   assert plan.goal == "test"
-  assert plan.phases == []
+  assert plan.stages == []
 
 
 def test_plan_from_dict_none():
   plan = StructurePlan.from_dict(None)
   assert plan.goal == ""
-  assert plan.phases == []
+  assert plan.stages == []
 
 
 # ── Real workflow scenarios ───────────────────────────
@@ -1042,14 +1042,14 @@ def test_mr_refine_workflow():
   """Simulate a successful MR + refine session.
 
   Walk through the plan as the gate evaluator would:
-  start each phase, record cycles, mark complete,
-  advance. Verify directives change at each phase.
+  start each stage, record cycles, mark complete,
+  advance. Verify directives change at each stage.
   """
   plan = _make_mr_refine_plan()
 
-  # Phase 1: data_assessment
-  plan.mark_phase_started(1)
-  plan.record_phase_cycle()
+  # Stage 1: data_assessment
+  plan.mark_stage_started(1)
+  plan.record_stage_cycle()
   plan.mark_phase_complete(1)
   d1 = plan.to_directives()
   assert "phenix.xtriage" in d1.get(
@@ -1058,8 +1058,8 @@ def test_mr_refine_workflow():
 
   # Advance to MR
   plan.advance()
-  plan.mark_phase_started(2)
-  plan.record_phase_cycle()
+  plan.mark_stage_started(2)
+  plan.record_stage_cycle()
   d2 = plan.to_directives()
   assert "phenix.phaser" in d2.get(
     "workflow_preferences", {}
@@ -1070,55 +1070,55 @@ def test_mr_refine_workflow():
 
   # Advance to initial_refinement
   plan.advance()
-  plan.mark_phase_started(3)
+  plan.mark_stage_started(3)
   d3 = plan.to_directives()
   assert "phenix.refine" in d3.get(
     "workflow_preferences", {}
   ).get("prefer_programs", [])
   for _ in range(3):
-    plan.record_phase_cycle()
+    plan.record_stage_cycle()
   plan.mark_phase_complete(
     5, metrics={"r_free": 0.34}
   )
 
   # Advance to model_rebuilding
   plan.advance()
-  plan.mark_phase_started(6)
+  plan.mark_stage_started(6)
   d4 = plan.to_directives()
   ps = d4.get("program_settings", {})
   assert ps.get("phenix.autobuild", {}).get(
     "rebuild_in_place"
   ) is False
-  plan.record_phase_cycle()
+  plan.record_stage_cycle()
   plan.mark_phase_complete(
     6, metrics={"r_free": 0.28}
   )
 
   # Advance to final_refinement
   plan.advance()
-  plan.mark_phase_started(7)
+  plan.mark_stage_started(7)
   d5 = plan.to_directives()
   ps5 = d5.get("program_settings", {})
   assert ps5.get("phenix.refine", {}).get(
     "ordered_solvent"
   ) is True
   for _ in range(3):
-    plan.record_phase_cycle()
+    plan.record_stage_cycle()
   plan.mark_phase_complete(
     9, metrics={"r_free": 0.24}
   )
 
-  # No more phases
+  # No more stages
   ok = plan.advance()
   assert ok is False
   assert plan.is_complete() is True
 
-  # Verify phase history
-  assert plan.phases[0].status == PHASE_COMPLETE
-  assert plan.phases[1].result_metrics[
+  # Verify stage history
+  assert plan.stages[0].status == STAGE_COMPLETE
+  assert plan.stages[1].result_metrics[
     "tfz"
   ] == 14.2
-  assert plan.phases[4].result_metrics[
+  assert plan.stages[4].result_metrics[
     "r_free"
   ] == 0.24
 
@@ -1128,7 +1128,7 @@ def test_mr_refine_workflow():
     json.loads(json.dumps(d))
   )
   assert plan2.is_complete() is True
-  assert plan2.phases[4].result_metrics[
+  assert plan2.stages[4].result_metrics[
     "r_free"
   ] == 0.24
 
@@ -1142,58 +1142,58 @@ def test_retreat_and_retry_workflow():
   """
   plan = _make_mr_refine_plan()
 
-  # Phase 1: data_assessment
-  plan.mark_phase_started(1)
-  plan.record_phase_cycle()
+  # Stage 1: data_assessment
+  plan.mark_stage_started(1)
+  plan.record_stage_cycle()
   plan.mark_phase_complete(1)
   plan.advance()
 
-  # Phase 2: MR (first attempt)
-  plan.mark_phase_started(2)
-  plan.record_phase_cycle()
+  # Stage 2: MR (first attempt)
+  plan.mark_stage_started(2)
+  plan.record_stage_cycle()
   plan.mark_phase_complete(
     2, metrics={"tfz": 7.0}
   )
   plan.advance()
   h1 = plan.compute_hash()
 
-  # Phase 3: Refinement stalls
-  plan.mark_phase_started(3)
-  plan.record_phase_cycle()
-  plan.record_phase_cycle()
+  # Stage 3: Refinement stalls
+  plan.mark_stage_started(3)
+  plan.record_stage_cycle()
+  plan.record_stage_cycle()
   # Gate evaluator decides to retreat
-  assert plan.current_phase().cycles_used == 2
+  assert plan.current_stage().cycles_used == 2
 
   # Retreat to MR
   plan.retreat_to("molecular_replacement")
   h2 = plan.compute_hash()
   assert h2 != h1  # hash changed
   assert plan.retreat_count == 1
-  assert plan.current_phase().id == (
+  assert plan.current_stage().id == (
     "molecular_replacement"
   )
-  assert plan.phases[2].status == PHASE_PENDING
+  assert plan.stages[2].status == STAGE_PENDING
 
   # MR second attempt
-  plan.mark_phase_started(5)
-  plan.record_phase_cycle()
+  plan.mark_stage_started(5)
+  plan.record_stage_cycle()
   plan.mark_phase_complete(
     5, metrics={"tfz": 14.0}
   )
   plan.advance()
 
   # Refinement succeeds this time
-  plan.mark_phase_started(6)
+  plan.mark_stage_started(6)
   for _ in range(3):
-    plan.record_phase_cycle()
+    plan.record_stage_cycle()
   plan.mark_phase_complete(
     8, metrics={"r_free": 0.32}
   )
-  assert plan.phases[2].status == PHASE_COMPLETE
+  assert plan.stages[2].status == STAGE_COMPLETE
 
   # Plan continues normally
   plan.advance()
-  assert plan.current_phase().id == (
+  assert plan.current_stage().id == (
     "model_rebuilding"
   )
 

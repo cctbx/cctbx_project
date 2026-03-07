@@ -2,9 +2,9 @@
 Workflow Engine for PHENIX AI Agent.
 
 This module interprets workflows.yaml to determine:
-- Current phase in workflow
-- Valid programs for current phase
-- Transitions to next phase
+- Current step in workflow
+- Valid programs for current step
+- Transitions to next step
 - Quality targets
 
 The engine provides a higher-level abstraction than the hardcoded
@@ -14,8 +14,8 @@ Usage:
     from libtbx.langchain.agent.workflow_engine import WorkflowEngine
 
     engine = WorkflowEngine()
-    phase_info = engine.get_current_phase("xray", context)
-    valid_programs = engine.get_valid_programs("xray", phase_info)
+    step_info = engine.get_current_phase("xray", context)
+    valid_programs = engine.get_valid_programs("xray", step_info)
 """
 
 from __future__ import absolute_import, division, print_function
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 # Import YAML loader
 from libtbx.langchain.knowledge.yaml_loader import (
-    get_workflow_phases,
+    get_workflow_steps,
     get_workflow_targets,
     get_metric_threshold,
     get_program,
@@ -42,7 +42,7 @@ class WorkflowEngine:
     """
     Interprets workflow definitions from YAML.
 
-    Provides phase detection and program validation based on
+    Provides step detection and program validation based on
     workflow configuration rather than hardcoded logic.
     """
 
@@ -242,10 +242,10 @@ class WorkflowEngine:
             context["use_mr_sad"] = workflow_prefs.get("use_mr_sad", False)
 
             # CRITICAL: Treat skipped programs as "done" so the workflow can
-            # advance past phases that require them.  Without this, skipping
+            # advance past steps that require them.  Without this, skipping
             # xtriage causes the workflow to stay stuck in "analyze" with no
-            # valid programs, because _detect_xray_phase checks xtriage_done
-            # before allowing progression to later phases.
+            # valid programs, because _detect_xray_step checks xtriage_done
+            # before allowing progression to later steps.
             skip_programs = workflow_prefs.get("skip_programs", [])
             if skip_programs:
                 # get_program_done_flag_map already imported above
@@ -350,8 +350,8 @@ class WorkflowEngine:
 
         # ── User intent: does the user explicitly want ligand fitting? ───────
         # Set when directives or session_info indicate the user wants ligandfit.
-        # Used in _detect_xray_phase to relax the r_free < 0.35 threshold and
-        # stay in the "refine" phase so ligandfit remains available, rather than
+        # Used in _detect_xray_step to relax the r_free < 0.35 threshold and
+        # stay in the "refine" step so ligandfit remains available, rather than
         # falling through to "validate" and offering only validation programs.
         _after_prog   = (directives or {}).get(
             "stop_conditions", {}).get(
@@ -858,11 +858,11 @@ class WorkflowEngine:
     # =========================================================================
     # STATE NAME MAPPING
     # =========================================================================
-    # Map YAML phase names to original hardcoded state names for compatibility
+    # Map YAML step names to original hardcoded state names for compatibility
 
     XRAY_STATE_MAP = {
         "analyze": "xray_initial",
-        "probe_placement": "xray_analyzed",   # Probe is pre-phase-2; maps to same state
+        "probe_placement": "xray_analyzed",   # Probe is pre-step-2; maps to same state
         "obtain_model": "xray_analyzed",
         "molecular_replacement": "xray_has_prediction",   # H2: distinct from xray_initial
         "build_from_phases": "xray_has_phases",
@@ -870,14 +870,14 @@ class WorkflowEngine:
         "refine": "xray_refined",
         "combine_ligand": "xray_combined",
         # H3: validate intentionally maps to the same string as refine for external API
-        # compatibility. Internal code uses phase_info["phase"] to distinguish them.
+        # compatibility. Internal code uses step_info["step"] to distinguish them.
         "validate": "xray_refined",
         "complete": "complete",
     }
 
     CRYOEM_STATE_MAP = {
         "analyze": "cryoem_initial",
-        "probe_placement": "cryoem_analyzed",  # Probe is pre-phase-2; maps to same state
+        "probe_placement": "cryoem_analyzed",  # Probe is pre-step-2; maps to same state
         "obtain_model": "cryoem_analyzed",
         "dock_model": "cryoem_has_prediction",
         # H1: check_map and optimize_map deal with half-map → full-map conversion;
@@ -888,26 +888,26 @@ class WorkflowEngine:
         "ready_to_refine": "cryoem_docked",   # Model docked, ready for first refinement
         "refine": "cryoem_refined",
         # H3: validate intentionally maps to the same string as refine for external API
-        # compatibility. Internal code uses phase_info["phase"] to distinguish them.
+        # compatibility. Internal code uses step_info["step"] to distinguish them.
         "validate": "cryoem_refined",
         "complete": "complete",
     }
 
-    def _map_phase_to_state(self, phase, experiment_type):
-        """Map YAML phase name to original state name."""
+    def _map_step_to_state(self, step_name, experiment_type):
+        """Map YAML step name to original state name."""
         if experiment_type == "xray":
-            return self.XRAY_STATE_MAP.get(phase, phase)
+            return self.XRAY_STATE_MAP.get(step_name, step_name)
         elif experiment_type == "cryoem":
-            return self.CRYOEM_STATE_MAP.get(phase, phase)
-        return phase
+            return self.CRYOEM_STATE_MAP.get(step_name, step_name)
+        return step_name
 
     # =========================================================================
     # PHASE DETECTION
     # =========================================================================
 
-    def detect_phase(self, experiment_type, context):
+    def detect_step(self, experiment_type, context):
         """
-        Detect current workflow phase based on context.
+        Detect current workflow step based on context.
 
         Args:
             experiment_type: "xray" or "cryoem"
@@ -918,40 +918,40 @@ class WorkflowEngine:
                 phase: str,           # Phase name
                 description: str,     # Human-readable description
                 goal: str,            # What we're trying to achieve
-                reason: str,          # Why we're in this phase
+                reason: str,          # Why we're in this step
             }
         """
-        phases = get_workflow_phases(experiment_type)
-        if not phases:
-            return {"phase": "unknown", "reason": "No workflow defined"}
+        steps = get_workflow_steps(experiment_type)
+        if not steps:
+            return {"step": "unknown", "reason": "No workflow defined"}
 
         if experiment_type == "xray":
-            return self._detect_xray_phase(phases, context)
+            return self._detect_xray_step(steps, context)
         elif experiment_type == "cryoem":
-            return self._detect_cryoem_phase(phases, context)
+            return self._detect_cryoem_step(steps, context)
         else:
-            return {"phase": "unknown", "reason": "Unknown experiment type"}
+            return {"step": "unknown", "reason": "Unknown experiment type"}
 
-    def _detect_xray_phase(self, phases, context):
-        """Detect phase in X-ray workflow."""
+    def _detect_xray_step(self, steps, context):
+        """Detect step in X-ray workflow."""
 
-        # Phase 1: Need analysis
+        # Step 1: Need analysis
         if not context.get("xtriage_done"):
-            return self._make_phase_result(phases, "analyze",
+            return self._make_step_result(steps, "analyze",
                 "Need to analyze data quality first")
 
-        # Phase 2b: Have prediction, need to place it
+        # Step 2b: Have prediction, need to place it
         if context.get("has_predicted_model") and not context.get("has_placed_model"):
             if not context.get("has_processed_model"):
-                return self._make_phase_result(phases, "molecular_replacement",
+                return self._make_step_result(steps, "molecular_replacement",
                     "Have prediction, need to process for MR")
             else:
-                return self._make_phase_result(phases, "molecular_replacement",
+                return self._make_step_result(steps, "molecular_replacement",
                     "Model processed, need phaser")
 
-        # Phase 2c: After autosol, need autobuild
+        # Step 2c: After autosol, need autobuild
         if context.get("autosol_done") and not context.get("autobuild_done") and not context.get("has_refined_model"):
-            return self._make_phase_result(phases, "build_from_phases",
+            return self._make_step_result(steps, "build_from_phases",
                 "Experimental phasing complete, need autobuild")
 
         # Phase 2d: MR-SAD - phaser placed model, anomalous data needs autosol
@@ -961,7 +961,7 @@ class WorkflowEngine:
         if (context.get("phaser_done") and
             (context.get("has_anomalous") or context.get("use_mr_sad")) and
             not context.get("autosol_done")):
-            return self._make_phase_result(phases, "experimental_phasing",
+            return self._make_step_result(steps, "experimental_phasing",
                 "Model placed by phaser, anomalous data detected - MR-SAD with autosol")
 
         # ── Tier 1: unit cell mismatch → skip probe, go straight to MR ─────
@@ -970,7 +970,7 @@ class WorkflowEngine:
         if context.get("cell_mismatch") and not context.get("has_placed_model_from_history"):
             # Tier 1: cell mismatch overrides even model_is_placed directive.
             # Only history evidence (phaser_done, dock_done, etc.) can suppress this.
-            return self._make_phase_result(phases, "molecular_replacement",
+            return self._make_step_result(steps, "molecular_replacement",
                 "Unit cell mismatch: model cannot be placed in this crystal — running MR")
 
         # ── Tier 3: probe result known → route based on R-free ───────────────
@@ -983,7 +983,7 @@ class WorkflowEngine:
                 # back here because placement_probed/needs_mr are still in history
                 # → molecular_replacement phase → phaser excluded by not_done:phaser
                 # → valid_programs=[] → STUCK/STOP.
-                return self._make_phase_result(phases, "molecular_replacement",
+                return self._make_step_result(steps, "molecular_replacement",
                     "Placement probe (model_vs_data) confirmed model is not placed "
                     "(R-free ≥ 0.50) — running MR")
             # probe_result == "placed" OR None (probe ran but was inconclusive,
@@ -996,34 +996,34 @@ class WorkflowEngine:
 
         # ── Tier 3: probe not yet run, placement ambiguous → run it ──────────
         if context.get("placement_uncertain"):
-            return self._make_phase_result(phases, "probe_placement",
+            return self._make_step_result(steps, "probe_placement",
                 "Model placement uncertain — running model_vs_data to check "
                 "(R-free < 0.50 → placed, ≥ 0.50 → MR)")
 
-        # Phase 2: Need model
+        # Step 2: Need model
         if not context.get("has_placed_model"):
-            return self._make_phase_result(phases, "obtain_model",
+            return self._make_step_result(steps, "obtain_model",
                 "Data analyzed, need to obtain model")
 
-        # Phase 3b: Ligand fitted, need to combine
+        # Step 3b: Ligand fitted, need to combine
         if context.get("has_ligand_fit") and not context.get("pdbtools_done"):
-            return self._make_phase_result(phases, "combine_ligand",
+            return self._make_step_result(steps, "combine_ligand",
                 "Ligand fitted, need to combine")
 
-        # Phase 3c: Ligand combined, need refinement of model+ligand complex.
+        # Step 3c: Ligand combined, need refinement of model+ligand complex.
         # After ligandfit adds a ligand, the complex always needs re-refinement.
         # This takes priority over "has_refined_model" because the model has
         # changed since the last refinement.
         if context.get("needs_post_ligandfit_refine"):
-            return self._make_phase_result(phases, "refine",
+            return self._make_step_result(steps, "refine",
                 "Ligand fitted, need refinement of model+ligand complex")
 
-        # Phase 3: Has model, may need refinement
+        # Step 3: Has model, may need refinement
         if not context.get("has_refined_model"):
-            return self._make_phase_result(phases, "refine",
+            return self._make_step_result(steps, "refine",
                 "Have model, need initial refinement")
 
-        # CRITICAL: Stay in "refine" phase if ligand fitting is possible.
+        # CRITICAL: Stay in "refine" step if ligand fitting is possible.
         # This allows ligandfit to be offered as a valid program.
         # Conditions: ligandfit not already done AND refinement done.
         #
@@ -1034,7 +1034,7 @@ class WorkflowEngine:
         # user explicitly requested ligand fitting (user_wants_ligandfit=True),
         # relax to < 0.50 — the user knows their model quality and is asserting
         # they want to proceed regardless.  This prevents the workflow from
-        # falling to the "validate" phase and offering only validation programs.
+        # falling to the "validate" step and offering only validation programs.
         #
         # Special case: when the user provides an ALREADY-REFINED model (e.g.,
         # 7qz0.pdb with R-free=0.20), refine_count is 0 because no refinement
@@ -1050,8 +1050,8 @@ class WorkflowEngine:
             model_at_target = self._is_at_target(context, "xray")
             if refine_count > 0 or model_at_target:
                 if r_free is None or r_free < _rfree_threshold:
-                    return self._make_phase_result(phases, "refine",
-                        "User requested ligand fitting — staying in refine phase")
+                    return self._make_step_result(steps, "refine",
+                        "User requested ligand fitting — staying in refine step")
 
         # Also stay in refine for automatic ligandfit when a ligand file is present
         if (context.get("has_ligand_file") and
@@ -1061,33 +1061,33 @@ class WorkflowEngine:
             context.get("refine_count", 0) > 0):
             r_free = context.get("r_free")
             if r_free is None or r_free < 0.35:
-                return self._make_phase_result(phases, "refine",
+                return self._make_step_result(steps, "refine",
                     "Model refined, ligand fitting available")
 
         # Check if validation is needed
         validation_needed = self._needs_validation(context, "xray")
         if validation_needed and not context.get("validation_done"):
-            return self._make_phase_result(phases, "validate",
+            return self._make_step_result(steps, "validate",
                 "Model refined, need validation before stopping")
 
         # Phase 3 continued: Refinement in progress
         if not self._is_at_target(context, "xray"):
-            return self._make_phase_result(phases, "refine",
+            return self._make_step_result(steps, "refine",
                 "Continuing refinement to reach target")
 
         # Phase 4: At target, validate or complete
         if not context.get("validation_done"):
-            return self._make_phase_result(phases, "validate",
+            return self._make_step_result(steps, "validate",
                 "Target reached, need validation")
 
         # Phase 5: Complete
-        return self._make_phase_result(phases, "complete",
+        return self._make_step_result(steps, "complete",
             "Workflow complete")
 
-    def _detect_cryoem_phase(self, phases, context):
-        """Detect phase in cryo-EM workflow."""
+    def _detect_cryoem_step(self, steps, context):
+        """Detect step in cryo-EM workflow."""
 
-        # Phase 1: Need analysis
+        # Step 1: Need analysis
         # mtriage is preferred, but if other cryo-EM programs have already run
         # (e.g., resolve_cryo_em, dock_in_map, map_to_model), we're clearly past
         # analysis.  This handles tutorials that skip mtriage and also prevents
@@ -1104,90 +1104,90 @@ class WorkflowEngine:
             context.get("predict_done", False)
         )
         if not past_analysis:
-            return self._make_phase_result(phases, "analyze",
+            return self._make_step_result(steps, "analyze",
                 "Need to analyze map quality first")
 
         # Phase 1.5: Create full map from half-maps before model building.
         if (context.get("has_half_map") and not context.get("has_full_map") and
                 not context.get("resolve_cryo_em_done") and
                 not context.get("map_sharpening_done")):
-            return self._make_phase_result(phases, "optimize_map",
+            return self._make_step_result(steps, "optimize_map",
                 "Have half-maps but no full map; creating optimized full map "
                 "with resolve_cryo_em before model building")
 
-        # Phase 2b: Stepwise - have prediction, need to dock it
+        # Step 2b: Stepwise - have prediction, need to dock it
         if context.get("has_predicted_model") and not context.get("has_placed_model"):
             if context.get("has_processed_model"):
-                return self._make_phase_result(phases, "dock_model",
+                return self._make_step_result(steps, "dock_model",
                     "Have processed prediction, need to dock in map")
             elif context.get("predict_done") and not context.get("predict_full_done"):
-                return self._make_phase_result(phases, "dock_model",
+                return self._make_step_result(steps, "dock_model",
                     "Have prediction, need to dock in map")
 
         # ── Tier 1: unit cell mismatch → skip probe, go straight to docking ──
         if context.get("cell_mismatch") and not context.get("has_placed_model_from_history"):
-            return self._make_phase_result(phases, "dock_model",
+            return self._make_step_result(steps, "dock_model",
                 "Unit cell mismatch: model is not placed in this map — running docking")
 
         # ── Tier 3: probe result known → route based on map CC ───────────────
         if context.get("placement_probed"):
             if context.get("placement_probe_result") == "needs_dock":
-                return self._make_phase_result(phases, "dock_model",
+                return self._make_step_result(steps, "dock_model",
                     "Placement probe (map_correlations) confirmed model is not placed "
                     "(CC ≤ 0.15) — running docking")
 
         # ── Tier 3: probe not yet run, placement ambiguous → run it ──────────
         if context.get("placement_uncertain"):
-            return self._make_phase_result(phases, "probe_placement",
+            return self._make_step_result(steps, "probe_placement",
                 "Model placement uncertain — running map_correlations to check "
                 "(CC > 0.15 → placed, ≤ 0.15 → docking)")
 
-        # Phase 2: Need model
+        # Step 2: Need model
         if not context.get("has_placed_model"):
-            return self._make_phase_result(phases, "obtain_model",
+            return self._make_step_result(steps, "obtain_model",
                 "Map analyzed, need to obtain model")
 
-        # Phase 2c: Check if map needs optimization
+        # Step 2c: Check if map needs optimization
         if context.get("has_half_map") and not context.get("has_full_map"):
-            return self._make_phase_result(phases, "optimize_map",
+            return self._make_step_result(steps, "optimize_map",
                 "Have model but only half-maps, need full map for refinement")
 
         # Phase 3a: Have docked model but not yet refined
         if context.get("has_placed_model") and not context.get("has_refined_model"):
-            return self._make_phase_result(phases, "ready_to_refine",
+            return self._make_step_result(steps, "ready_to_refine",
                 "Model docked in map, ready for refinement")
 
-        # Phase 3b: Refinement in progress
+        # Step 3b: Refinement in progress
         if not context.get("has_refined_model"):
-            return self._make_phase_result(phases, "refine",
+            return self._make_step_result(steps, "refine",
                 "Have model and map, need refinement")
 
         # Check validation
         validation_needed = self._needs_validation(context, "cryoem")
         if validation_needed and not context.get("validation_done"):
-            return self._make_phase_result(phases, "validate",
+            return self._make_step_result(steps, "validate",
                 "Model refined, need validation")
 
         # Continue refinement if not at target
         if not self._is_at_target(context, "cryoem"):
-            return self._make_phase_result(phases, "refine",
+            return self._make_step_result(steps, "refine",
                 "Continuing refinement")
 
         # Validate or complete
         if not context.get("validation_done"):
-            return self._make_phase_result(phases, "validate",
+            return self._make_step_result(steps, "validate",
                 "Target reached, need validation")
 
-        return self._make_phase_result(phases, "complete",
+        return self._make_step_result(steps, "complete",
             "Workflow complete")
 
-    def _make_phase_result(self, phases, phase_name, reason):
-        """Build phase result dict."""
-        phase_def = phases.get(phase_name, {})
+    def _make_step_result(self, steps, step_name, reason):
+        """Build step result dict."""
+        step_def = steps.get(step_name, {})
         return {
-            "phase": phase_name,
-            "description": phase_def.get("description", ""),
-            "goal": phase_def.get("goal", ""),
+            "step": step_name,
+            "description": step_def.get("description", ""),
+            "goal": step_def.get("goal", ""),
             "reason": reason,
         }
 
@@ -1278,32 +1278,32 @@ class WorkflowEngine:
     # PROGRAM SELECTION
     # =========================================================================
 
-    def get_valid_programs(self, experiment_type, phase_info, context, directives=None):
+    def get_valid_programs(self, experiment_type, step_info, context, directives=None):
         """
-        Get valid programs for current phase.
+        Get valid programs for current step.
 
         Args:
             experiment_type: "xray" or "cryoem"
-            phase_info: Output from detect_phase()
+            step_info: Output from detect_step()
             context: Context dict
             directives: Optional user directives dict
 
         Returns:
             list: Valid program names
         """
-        phases = get_workflow_phases(experiment_type)
-        phase_name = phase_info.get("phase", "")
-        phase_def = phases.get(phase_name, {})
+        steps = get_workflow_steps(experiment_type)
+        step_name = step_info.get("step", "")
+        step_def = steps.get(step_name, {})
 
-        # Handle completion phase
-        if phase_def.get("stop"):
+        # Handle completion step
+        if step_def.get("stop"):
             return ["STOP"]
 
-        # Get programs from phase definition
-        phase_programs = phase_def.get("programs", [])
+        # Get programs from step definition
+        step_programs = step_def.get("programs", [])
 
         valid = []
-        for prog_entry in phase_programs:
+        for prog_entry in step_programs:
             if isinstance(prog_entry, str):
                 # Simple program name
                 valid.append(prog_entry)
@@ -1386,17 +1386,17 @@ class WorkflowEngine:
         # === APPLY USER DIRECTIVES ===
         # This is the SINGLE PLACE where directives affect valid_programs
         if directives:
-            valid = self._apply_directives(valid, directives, phase_name, context,
+            valid = self._apply_directives(valid, directives, step_name, context,
                                            experiment_type=experiment_type)
 
         # Add STOP if validation done and at target
-        if phase_name == "validate" and context.get("validation_done"):
+        if step_name == "validate" and context.get("validation_done"):
             if "STOP" not in valid:
                 valid.append("STOP")
 
-        # Special: also allow refinement during validate phase (user can choose more refinement)
+        # Special: also allow refinement during validate step (user can choose more refinement)
         # BUT respect max_refine_cycles directive AND _is_at_target (e.g., hopeless R-free)
-        if phase_name == "validate":
+        if step_name == "validate":
             max_refine = directives.get("stop_conditions", {}).get("max_refine_cycles") if directives else None
             # I1 fix: use rsr_count for cryoem, refine_count for xray
             if experiment_type == "cryoem":
@@ -1422,12 +1422,12 @@ class WorkflowEngine:
                 if "STOP" not in valid:
                     valid.append("STOP")
 
-        # Refinement phase: remove refinement when at target or max cycles reached
+        # Refinement step: remove refinement when at target or max cycles reached
         # Exception: post-ligandfit refinement is always allowed (model changed)
         # Safety net: _is_at_target() already returns False when ligandfit needs
         # refine as a prerequisite, so at_target should be False in that case.
         # The refine_is_ligandfit_prereq check below is defense-in-depth.
-        if phase_name == "refine":
+        if step_name == "refine":
             needs_post_ligandfit = context.get("needs_post_ligandfit_refine", False)
             max_refine = directives.get("stop_conditions", {}).get("max_refine_cycles") if directives else None
             # I1 fix: use rsr_count for cryoem, refine_count for xray
@@ -1450,7 +1450,7 @@ class WorkflowEngine:
             )
 
             if (not refine_allowed or at_target) and not needs_post_ligandfit and not refine_is_ligandfit_prereq:
-                # Remove refinement programs from the phase's own list
+                # Remove refinement programs from the step's own list
                 for prog in ["phenix.refine", "phenix.real_space_refine"]:
                     if prog in valid:
                         valid.remove(prog)
@@ -1491,7 +1491,7 @@ class WorkflowEngine:
 
         return valid
 
-    def _apply_directives(self, valid_programs, directives, phase_name, context=None,
+    def _apply_directives(self, valid_programs, directives, step_name, context=None,
                           experiment_type="xray"):
         """
         Apply user directives to modify valid programs list.
@@ -1508,9 +1508,9 @@ class WorkflowEngine:
         - Adding programs mentioned in program_settings (user wants to configure them)
 
         Args:
-            valid_programs: List of valid program names from workflow phase
+            valid_programs: List of valid program names from workflow step
             directives: User directives dict from directive_extractor
-            phase_name: Current workflow phase name
+            step_name: Current workflow step name
             context: Workflow context dict (contains refine_count, etc.)
 
         Returns:
@@ -1548,9 +1548,9 @@ class WorkflowEngine:
                 # I1 fix: controlled landing — inject validate programs rather
                 # than bare STOP.  max_refine_cycles means "stop refining and
                 # proceed to validation", NOT "abort immediately".
-                # Only inject if we're currently in refine phase AND validation
+                # Only inject if we're currently in refine step AND validation
                 # has not yet been done.
-                if (phase_name in ("refine", "ready_to_refine") and
+                if (step_name in ("refine", "ready_to_refine") and
                         not (context.get("validation_done"))):
                     validate_progs_xray  = ["phenix.molprobity", "phenix.model_vs_data",
                                             "phenix.map_correlations"]
@@ -1590,7 +1590,7 @@ class WorkflowEngine:
                     modifications.append("Skipped %s from program_settings (already completed)" % prog_name)
                     continue
                 # Check if we should add this program based on prerequisites
-                should_add = self._check_program_prerequisites(prog_name, context, phase_name)
+                should_add = self._check_program_prerequisites(prog_name, context, step_name)
                 if should_add:
                     result.insert(0, prog_name)
                     modifications.append("Added %s (has program_settings)" % prog_name)
@@ -1625,7 +1625,7 @@ class WorkflowEngine:
             if after_program_done:
                 # User's workflow is complete — replace the entire valid_programs
                 # list with just STOP.  Simply appending STOP is not enough: the
-                # phase detector may have already added programs like
+                # step detector may have already added programs like
                 # predict_and_build to 'result', and the LLM (or fallback) will
                 # pick those instead of stopping.
                 non_stop = [p for p in result if p != "STOP"]
@@ -1637,7 +1637,7 @@ class WorkflowEngine:
                 modifications.append("Set valid_programs=[STOP] (after_program %s completed)" % after_program)
             else:
                 # after_program not yet run - add it to valid programs
-                should_add = self._check_program_prerequisites(after_program, context, phase_name)
+                should_add = self._check_program_prerequisites(after_program, context, step_name)
 
                 if should_add:
                     if after_program in result:
@@ -1734,7 +1734,7 @@ class WorkflowEngine:
                 context and
                 context.get("user_wants_ligandfit") and
                 not context.get("ligandfit_done") and
-                phase_name in ("refine", "ready_to_refine")):
+                step_name in ("refine", "ready_to_refine")):
                 refine_key = "rsr_count" if experiment_type == "cryoem" else "refine_count"
                 has_refined = (context.get(refine_key, 0) > 0)
                 r_free = context.get("r_free")
@@ -1824,14 +1824,14 @@ class WorkflowEngine:
 
         return False
 
-    def _check_program_prerequisites(self, program, context, phase_name):
+    def _check_program_prerequisites(self, program, context, step_name):
         """
         Check if a program's prerequisites are met.
 
         Args:
             program: Program name to check
             context: Workflow context dict
-            phase_name: Current workflow phase name
+            step_name: Current workflow step name
 
         Returns:
             bool: True if program can be added
@@ -1839,13 +1839,13 @@ class WorkflowEngine:
         if not context:
             return True  # No context to check against
 
-        # Don't add refinement programs if we're in an early phase without a model
+        # Don't add refinement programs if we're in an early step without a model
         if program in ("phenix.refine", "phenix.real_space_refine"):
             has_model_to_refine = (
                 context.get("refine_count", 0) > 0 or
                 context.get("has_refined_model") or
                 context.get("has_placed_model") or
-                phase_name in ("refine", "validate")
+                step_name in ("refine", "validate")
             )
             if not has_model_to_refine:
                 return False
@@ -1863,7 +1863,7 @@ class WorkflowEngine:
 
         # predict_and_build: for X-ray, only add if xtriage has been run (we need resolution)
         # for cryo-EM, only add if mtriage has been run (we need resolution)
-        # Exception: always allow if we're in a phase that includes predict_and_build
+        # Exception: always allow if we're in a step that includes predict_and_build
         if program == "phenix.predict_and_build":
             # Don't re-run if the full workflow already completed
             if context.get("predict_full_done"):
@@ -1876,10 +1876,10 @@ class WorkflowEngine:
             if automation_path == "stepwise" and context.get("predict_done"):
                 return False  # Force stepwise path through process_predicted -> phaser
 
-            # Check if we're already in a phase that includes predict_and_build
-            # Note: molecular_replacement is NOT included - that phase is for stepwise path only
-            if phase_name in ("obtain_model", "dock_model"):
-                return True  # Let the phase conditions handle it
+            # Check if we're already in a step that includes predict_and_build
+            # Note: molecular_replacement is NOT included - that step is for stepwise path only
+            if step_name in ("obtain_model", "dock_model"):
+                return True  # Let the step conditions handle it
 
             # For X-ray, require xtriage to be done (to get resolution for building)
             # For cryo-EM, require mtriage to be done
@@ -1888,7 +1888,7 @@ class WorkflowEngine:
 
             # Allow prediction-only if explicitly requested, but warn
             # (This case is handled by command builder forcing stop_after_predict=True)
-            return False  # Don't add to early phases - let workflow proceed normally
+            return False  # Don't add to early steps - let workflow proceed normally
 
         # Default: allow
         # phenix.autosol prerequisites:
@@ -2005,17 +2005,17 @@ class WorkflowEngine:
         Returns:
             str: Explanation of why the program is unavailable, or None if it's available
         """
-        phases = get_workflow_phases(experiment_type)
+        steps = get_workflow_steps(experiment_type)
         reasons = []
         found_program = False
 
-        # Find the program in any phase
-        for phase_name, phase_def in phases.items():
-            if not isinstance(phase_def, dict):
+        # Find the program in any step
+        for step_name, step_def in steps.items():
+            if not isinstance(step_def, dict):
                 continue
-            phase_programs = phase_def.get("programs", [])
+            step_programs = step_def.get("programs", [])
 
-            for prog_entry in phase_programs:
+            for prog_entry in step_programs:
                 prog_name = None
                 conditions = []
 
@@ -2069,7 +2069,7 @@ class WorkflowEngine:
                                     # Report this as a reason since it's a common issue
                                     reasons.append("%s=0 does not satisfy condition '%s'" % (metric, condition_str))
 
-        # If program not found in any phase, it's not relevant for this experiment type
+        # If program not found in any step, it's not relevant for this experiment type
         if not found_program:
             return None  # Not a program for this workflow
 
@@ -2202,24 +2202,24 @@ class WorkflowEngine:
 
         # S2c: promote unclassified PDB to search_model when docking is needed.
         # Must run after build_context (needs placement flags) and before
-        # detect_phase + get_valid_programs (both consume context and files).
+        # detect_step + get_valid_programs (both consume context and files).
         files, context = self._promote_unclassified_for_docking(
             files, context, experiment_type)
 
-        phase_info = self.detect_phase(experiment_type, context)
-        valid_programs = self.get_valid_programs(experiment_type, phase_info, context, directives)
+        step_info = self.detect_step(experiment_type, context)
+        valid_programs = self.get_valid_programs(experiment_type, step_info, context, directives)
 
         # Get priority_when info for each valid program
-        program_priorities = self._get_program_priorities(experiment_type, phase_info, context)
+        program_priorities = self._get_program_priorities(experiment_type, step_info, context)
 
-        # Map YAML phase name to original state name for compatibility
-        phase_name = phase_info.get("phase", "unknown")
-        state_name = self._map_phase_to_state(phase_name, experiment_type)
+        # Map YAML step name to original state name for compatibility
+        step_name = step_info.get("step", "unknown")
+        state_name = self._map_step_to_state(step_name, experiment_type)
 
         # Build reason string
-        reason = phase_info.get("reason", "")
-        if phase_info.get("goal"):
-            reason += " - Goal: " + phase_info["goal"]
+        reason = step_info.get("reason", "")
+        if step_info.get("goal"):
+            reason += " - Goal: " + step_info["goal"]
 
         # Add metric info to reason
         if experiment_type == "xray" and context.get("r_free"):
@@ -2228,7 +2228,7 @@ class WorkflowEngine:
             reason += " (CC: %.3f)" % context["map_cc"]
 
         # Check for stuck state (no programs available except STOP)
-        if valid_programs == ["STOP"] and phase_name not in ["complete", "validate"]:
+        if valid_programs == ["STOP"] and step_name not in ["complete", "validate"]:
             reason = "STUCK: " + reason
             if experiment_type == "xray":
                 reason += " - Upload a sequence (.fa) for AlphaFold or a model (.pdb) for MR"
@@ -2270,7 +2270,7 @@ class WorkflowEngine:
             "forced_program": forced_program,  # NEW: from after_program directive
             "reason": reason,
             "conditions": {},
-            "phase_info": phase_info,
+            "step_info": step_info,
             "context": context,
             "resolution": context.get("resolution"),
             "unavailable_explanations": unavailable_explanations,  # NEW: why programs aren't available
@@ -2278,26 +2278,26 @@ class WorkflowEngine:
             "categorized_files": files,
         }
 
-    def _get_program_priorities(self, experiment_type, phase_info, context):
+    def _get_program_priorities(self, experiment_type, step_info, context):
         """
         Get programs that should be prioritized based on priority_when conditions.
 
         Args:
             experiment_type: "xray" or "cryoem"
-            phase_info: Phase detection result
+            step_info: Phase detection result
             context: Context dict
 
         Returns:
             list: Programs that should be prioritized, in priority order
         """
-        phases = get_workflow_phases(experiment_type)
-        phase_name = phase_info.get("phase", "")
-        phase_def = phases.get(phase_name, {})
+        steps = get_workflow_steps(experiment_type)
+        step_name = step_info.get("step", "")
+        step_def = steps.get(step_name, {})
 
         prioritized = []
-        phase_programs = phase_def.get("programs", [])
+        step_programs = step_def.get("programs", [])
 
-        for prog_entry in phase_programs:
+        for prog_entry in step_programs:
             if isinstance(prog_entry, dict):
                 prog_name = prog_entry.get("program")
                 priority_when = prog_entry.get("priority_when")
@@ -2342,10 +2342,10 @@ def get_engine():
 
 
 def detect_workflow_phase(experiment_type, files, history_info, analysis=None):
-    """Convenience function to detect current phase."""
+    """Convenience function to detect current step."""
     engine = get_engine()
     context = engine.build_context(files, history_info, analysis)
-    return engine.detect_phase(experiment_type, context)
+    return engine.detect_step(experiment_type, context)
 
 
 # =============================================================================
@@ -2362,24 +2362,24 @@ if __name__ == "__main__":
     files = {"data_mtz": ["data.mtz"], "sequence": ["seq.fa"]}
     history = {}
     context = engine.build_context(files, history)
-    phase = engine.detect_phase("xray", context)
-    programs = engine.get_valid_programs("xray", phase, context)
+    step = engine.detect_step("xray", context)
+    programs = engine.get_valid_programs("xray", step, context)
 
     print("X-ray initial state:")
-    print("  Phase:", phase["phase"])
-    print("  Reason:", phase["reason"])
+    print("  Step:", step["step"])
+    print("  Reason:", step["reason"])
     print("  Valid programs:", programs)
     print()
 
     # Test X-ray after xtriage
     history = {"xtriage_done": True}
     context = engine.build_context(files, history)
-    phase = engine.detect_phase("xray", context)
-    programs = engine.get_valid_programs("xray", phase, context)
+    step = engine.detect_step("xray", context)
+    programs = engine.get_valid_programs("xray", step, context)
 
     print("X-ray after xtriage:")
-    print("  Phase:", phase["phase"])
-    print("  Reason:", phase["reason"])
+    print("  Step:", step["step"])
+    print("  Reason:", step["reason"])
     print("  Valid programs:", programs)
     print()
 
@@ -2387,12 +2387,12 @@ if __name__ == "__main__":
     files = {"full_map": ["map.mrc"], "sequence": ["seq.fa"]}
     history = {}
     context = engine.build_context(files, history)
-    phase = engine.detect_phase("cryoem", context)
-    programs = engine.get_valid_programs("cryoem", phase, context)
+    step = engine.detect_step("cryoem", context)
+    programs = engine.get_valid_programs("cryoem", step, context)
 
     print("Cryo-EM initial state:")
-    print("  Phase:", phase["phase"])
-    print("  Reason:", phase["reason"])
+    print("  Step:", step["step"])
+    print("  Reason:", step["reason"])
     print("  Valid programs:", programs)
     print()
 

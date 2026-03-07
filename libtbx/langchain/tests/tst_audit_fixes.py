@@ -524,9 +524,9 @@ def test_i1_max_refine_cycles_xray_controlled_landing():
 
     engine = WorkflowEngine()
 
-    # Simulate xray refine phase with refine_count=1 and max_refine_cycles=1
+    # Simulate xray refine step with refine_count=1 and max_refine_cycles=1
     context = {
-        "phase": "refine",
+        "step": "refine",
         "refine_count": 1,
         "rsr_count": 0,
         "r_free": 0.32,
@@ -537,7 +537,7 @@ def test_i1_max_refine_cycles_xray_controlled_landing():
 
     valid = engine.get_valid_programs(
         experiment_type="xray",
-        phase_info={"phase": "refine"},
+        step_info={"step": "refine"},
         context=context,
         directives=directives,
     )
@@ -552,7 +552,7 @@ def test_i1_max_refine_cycles_xray_controlled_landing():
         ]
     )
     assert_true(has_validate,
-                "Validate-phase programs must appear when max_refine_cycles "
+                "Validate-step programs must appear when max_refine_cycles "
                 "limit is reached. Got: %s" % valid)
     assert_in("STOP", valid,
               "STOP must be included alongside validate programs")
@@ -594,7 +594,7 @@ def test_i1_max_refine_cycles_cryoem_uses_rsr_count():
 
     valid = engine.get_valid_programs(
         experiment_type="cryoem",
-        phase_info={"phase": "refine"},
+        step_info={"step": "refine"},
         context=context,
         directives=directives,
     )
@@ -645,7 +645,7 @@ def test_i2_after_program_beats_quality_gate():
 
     valid = engine.get_valid_programs(
         experiment_type="cryoem",
-        phase_info={"phase": "refine"},
+        step_info={"step": "refine"},
         context=context,
         directives=directives,
     )
@@ -765,13 +765,13 @@ def test_polder_selection_always_uses_safe_default():
 # =============================================================================
 
 def test_i1b_validation_done_produces_stop():
-    """I1b: after validation_done=True engine routes to complete phase -> [STOP].
+    """I1b: after validation_done=True engine routes to complete step -> [STOP].
 
     This is the clean-termination half of the I1 story: max_refine_cycles transitions
     to validate (tested in I1a); after validation completes the engine must produce
-    exactly ["STOP"] via the complete-phase handler (not via _apply_directives).
+    exactly ["STOP"] via the complete-step handler (not via _apply_directives).
 
-    Uses build_context() to supply all required context keys — detect_phase()
+    Uses build_context() to supply all required context keys — detect_step()
     raises KeyError for any missing key in the context dict.
     """
     print("Test: i1b_validation_done_produces_stop")
@@ -803,19 +803,19 @@ def test_i1b_validation_done_produces_stop():
     }
     context = engine.build_context(files, history_info, {"r_free": 0.24}, None)
 
-    phase_info = engine.detect_phase("xray", context)
+    step_info = engine.detect_step("xray", context)
     valid = engine.get_valid_programs(
         experiment_type="xray",
-        phase_info=phase_info,
+        step_info=step_info,
         context=context,
     )
 
-    assert_equal(phase_info.get("phase"), "complete",
+    assert_equal(step_info.get("step"), "complete",
                  "Phase must be 'complete' when validation_done=True and r_free is good. "
-                 "Got: %s" % phase_info)
+                 "Got: %s" % step_info)
     assert_equal(valid, ["STOP"],
                  "After validation_done=True the engine must return [STOP] "
-                 "(complete phase). Got: %s" % valid)
+                 "(complete step). Got: %s" % valid)
 
     print("  PASSED")
 
@@ -853,16 +853,16 @@ def test_i1b_cryoem_validation_done_produces_stop():
     }
     context = engine.build_context(files, history_info, {"map_cc": 0.81}, None)
 
-    phase_info = engine.detect_phase("cryoem", context)
+    step_info = engine.detect_step("cryoem", context)
     valid = engine.get_valid_programs(
         experiment_type="cryoem",
-        phase_info=phase_info,
+        step_info=step_info,
         context=context,
     )
 
-    assert_equal(phase_info.get("phase"), "complete",
-                 "Cryo-EM phase must be 'complete' when validation_done=True. "
-                 "Got: %s" % phase_info)
+    assert_equal(step_info.get("step"), "complete",
+                 "Cryo-EM step must be 'complete' when validation_done=True. "
+                 "Got: %s" % step_info)
     assert_equal(valid, ["STOP"],
                  "Cryo-EM: after validation_done=True engine must return [STOP]. "
                  "Got: %s" % valid)
@@ -1668,7 +1668,7 @@ def test_r2_cell_mismatch_false_with_no_files():
 
 
 # =============================================================================
-# CATEGORY R3 — probe_placement phase routing (Tier 3)
+# CATEGORY R3 — probe_placement step routing (Tier 3)
 # =============================================================================
 
 def _make_xray_history_with_probe(program, rfree=None, pre_refine=True):
@@ -1695,7 +1695,7 @@ def _make_xray_history_with_probe(program, rfree=None, pre_refine=True):
 
 
 def test_r3_probe_placement_phase_offered_xray():
-    """R3: placement_uncertain=True → xray phase is probe_placement."""
+    """R3: placement_uncertain=True → xray step is probe_placement."""
     print("Test: r3_probe_placement_phase_offered_xray")
     sys.path.insert(0, _PROJECT_ROOT)
     try:
@@ -1759,14 +1759,14 @@ def test_r3_probe_placement_phase_offered_xray():
         "placement_uncertain": True,   # <- This triggers probe
     }
 
-    from knowledge.yaml_loader import get_workflow_phases
-    phases = get_workflow_phases("xray")
-    result = engine._detect_xray_phase(phases, context)
-    assert result["phase"] == "probe_placement", (
-        "Expected probe_placement phase, got %r (reason: %s)"
-        % (result["phase"], result.get("reason", ""))
+    from knowledge.yaml_loader import get_workflow_steps
+    steps = get_workflow_steps("xray")
+    result = engine._detect_xray_step(steps, context)
+    assert result["step"] == "probe_placement", (
+        "Expected probe_placement step, got %r (reason: %s)"
+        % (result["step"], result.get("reason", ""))
     )
-    print("  PASSED: phase=%r" % result["phase"])
+    print("  PASSED: step=%r" % result["step"])
 
 
 def test_r3_probe_valid_programs_xray():
@@ -1780,8 +1780,8 @@ def test_r3_probe_valid_programs_xray():
         return
 
     engine = WorkflowEngine()
-    phase_info = {"phase": "probe_placement"}
-    progs = engine.get_valid_programs("xray", phase_info, {}, {})
+    step_info = {"step": "probe_placement"}
+    progs = engine.get_valid_programs("xray", step_info, {}, {})
     assert "phenix.model_vs_data" in progs, (
         "phenix.model_vs_data must be in probe_placement valid programs for xray, got %s" % progs
     )
@@ -1802,8 +1802,8 @@ def test_r3_probe_valid_programs_cryoem():
         return
 
     engine = WorkflowEngine()
-    phase_info = {"phase": "probe_placement"}
-    progs = engine.get_valid_programs("cryoem", phase_info, {}, {})
+    step_info = {"step": "probe_placement"}
+    progs = engine.get_valid_programs("cryoem", step_info, {}, {})
     assert "phenix.map_correlations" in progs, (
         "phenix.map_correlations must be in probe_placement valid programs for cryoem, got %s" % progs
     )
@@ -1814,7 +1814,7 @@ def test_r3_probe_valid_programs_cryoem():
 
 
 def test_r3_probe_result_placed_routes_to_refine():
-    """R3: placement_probe_result='placed' → xray phase is refine (not probe_placement)."""
+    """R3: placement_probe_result='placed' → xray step is refine (not probe_placement)."""
     print("Test: r3_probe_result_placed_routes_to_refine")
     sys.path.insert(0, _PROJECT_ROOT)
     try:
@@ -1824,8 +1824,8 @@ def test_r3_probe_result_placed_routes_to_refine():
         return
 
     engine = WorkflowEngine()
-    from knowledge.yaml_loader import get_workflow_phases
-    phases = get_workflow_phases("xray")
+    from knowledge.yaml_loader import get_workflow_steps
+    steps = get_workflow_steps("xray")
 
     # placement_probed=True, result=placed → should skip probe_placement, go to refine
     context = _make_minimal_context({
@@ -1858,16 +1858,16 @@ def test_r3_probe_result_placed_routes_to_refine():
     # replicate that here since we bypass build_context in this unit test.
     if context.get("placement_probe_result") == "placed":
         context["has_placed_model"] = True
-    result = engine._detect_xray_phase(phases, context)
-    assert result["phase"] == "refine", (
+    result = engine._detect_xray_step(steps, context)
+    assert result["step"] == "refine", (
         "After successful probe (placed), expected refine, got %r (reason: %s)"
-        % (result["phase"], result.get("reason", ""))
+        % (result["step"], result.get("reason", ""))
     )
-    print("  PASSED: phase=%r" % result["phase"])
+    print("  PASSED: step=%r" % result["step"])
 
 
 def test_r3_probe_result_needs_mr_routes_to_mr():
-    """R3: placement_probe_result='needs_mr' → xray phase is molecular_replacement."""
+    """R3: placement_probe_result='needs_mr' → xray step is molecular_replacement."""
     print("Test: r3_probe_result_needs_mr_routes_to_mr")
     sys.path.insert(0, _PROJECT_ROOT)
     try:
@@ -1877,8 +1877,8 @@ def test_r3_probe_result_needs_mr_routes_to_mr():
         return
 
     engine = WorkflowEngine()
-    from knowledge.yaml_loader import get_workflow_phases
-    phases = get_workflow_phases("xray")
+    from knowledge.yaml_loader import get_workflow_steps
+    steps = get_workflow_steps("xray")
 
     context = _make_minimal_context({
         "has_placed_model": False,
@@ -1895,16 +1895,16 @@ def test_r3_probe_result_needs_mr_routes_to_mr():
         "has_anomalous": False,
         "model_is_good": False,
     })
-    result = engine._detect_xray_phase(phases, context)
-    assert result["phase"] == "molecular_replacement", (
+    result = engine._detect_xray_step(steps, context)
+    assert result["step"] == "molecular_replacement", (
         "needs_mr probe result should route to molecular_replacement, got %r"
-        % result["phase"]
+        % result["step"]
     )
-    print("  PASSED: phase=%r" % result["phase"])
+    print("  PASSED: step=%r" % result["step"])
 
 
 def test_r3_cell_mismatch_routes_to_mr_xray():
-    """R3: cell_mismatch=True → xray phase is molecular_replacement (skips probe)."""
+    """R3: cell_mismatch=True → xray step is molecular_replacement (skips probe)."""
     print("Test: r3_cell_mismatch_routes_to_mr_xray")
     sys.path.insert(0, _PROJECT_ROOT)
     try:
@@ -1914,8 +1914,8 @@ def test_r3_cell_mismatch_routes_to_mr_xray():
         return
 
     engine = WorkflowEngine()
-    from knowledge.yaml_loader import get_workflow_phases
-    phases = get_workflow_phases("xray")
+    from knowledge.yaml_loader import get_workflow_steps
+    steps = get_workflow_steps("xray")
 
     context = _make_minimal_context({
         "has_placed_model": False,
@@ -1932,15 +1932,15 @@ def test_r3_cell_mismatch_routes_to_mr_xray():
         "has_anomalous": False,
         "model_is_good": False,
     })
-    result = engine._detect_xray_phase(phases, context)
-    assert result["phase"] == "molecular_replacement", (
-        "cell_mismatch should route to molecular_replacement, got %r" % result["phase"]
+    result = engine._detect_xray_step(steps, context)
+    assert result["step"] == "molecular_replacement", (
+        "cell_mismatch should route to molecular_replacement, got %r" % result["step"]
     )
-    print("  PASSED: phase=%r" % result["phase"])
+    print("  PASSED: step=%r" % result["step"])
 
 
 def test_r3_cell_mismatch_routes_to_dock_cryoem():
-    """R3: cell_mismatch=True → cryoem phase is dock_model (skips probe)."""
+    """R3: cell_mismatch=True → cryoem step is dock_model (skips probe)."""
     print("Test: r3_cell_mismatch_routes_to_dock_cryoem")
     sys.path.insert(0, _PROJECT_ROOT)
     try:
@@ -1950,8 +1950,8 @@ def test_r3_cell_mismatch_routes_to_dock_cryoem():
         return
 
     engine = WorkflowEngine()
-    from knowledge.yaml_loader import get_workflow_phases
-    phases = get_workflow_phases("cryoem")
+    from knowledge.yaml_loader import get_workflow_steps
+    steps = get_workflow_steps("cryoem")
 
     context = _make_minimal_context({
         "has_placed_model": False,
@@ -1980,15 +1980,15 @@ def test_r3_cell_mismatch_routes_to_dock_cryoem():
         "automation_path": "automated",
         "map_symmetry_done": False,
     })
-    result = engine._detect_cryoem_phase(phases, context)
-    assert result["phase"] == "dock_model", (
-        "cell_mismatch should route to dock_model for cryoem, got %r" % result["phase"]
+    result = engine._detect_cryoem_step(steps, context)
+    assert result["step"] == "dock_model", (
+        "cell_mismatch should route to dock_model for cryoem, got %r" % result["step"]
     )
-    print("  PASSED: phase=%r" % result["phase"])
+    print("  PASSED: step=%r" % result["step"])
 
 
 def test_r3_probe_not_rerun_when_already_probed():
-    """R3: placement_probed=True → probe_placement phase NOT offered again."""
+    """R3: placement_probed=True → probe_placement step NOT offered again."""
     print("Test: r3_probe_not_rerun_when_already_probed")
     sys.path.insert(0, _PROJECT_ROOT)
     try:
@@ -1998,8 +1998,8 @@ def test_r3_probe_not_rerun_when_already_probed():
         return
 
     engine = WorkflowEngine()
-    from knowledge.yaml_loader import get_workflow_phases
-    phases = get_workflow_phases("xray")
+    from knowledge.yaml_loader import get_workflow_steps
+    steps = get_workflow_steps("xray")
 
     # Probe ran but R-free was unparseable (result=None) → should not re-probe
     context = _make_minimal_context({
@@ -2017,12 +2017,12 @@ def test_r3_probe_not_rerun_when_already_probed():
         "has_anomalous": False,
         "model_is_good": False,
     })
-    result = engine._detect_xray_phase(phases, context)
-    assert result["phase"] != "probe_placement", (
+    result = engine._detect_xray_step(steps, context)
+    assert result["step"] != "probe_placement", (
         "probe_placement must NOT be offered again when placement_probed=True, "
-        "got %r" % result["phase"]
+        "got %r" % result["step"]
     )
-    print("  PASSED: phase=%r (not re-probing)" % result["phase"])
+    print("  PASSED: step=%r (not re-probing)" % result["step"])
 
 
 def test_r3_history_probe_detection_xray_placed():
@@ -2087,7 +2087,7 @@ def test_r3_validation_done_not_set_during_probe_phase():
     flags are SET IN ADDITION — they don't prevent validation_done.
     This test verifies the probe result flags ARE set; validation_done
     being also set is acceptable (it resets when the session resumes with
-    the probe result already known, so validation phase runs normally later).
+    the probe result already known, so validation step runs normally later).
     """
     print("Test: r3_validation_done_not_set_during_probe_phase")
     sys.path.insert(0, _PROJECT_ROOT)
@@ -2301,7 +2301,7 @@ def test_r3_placement_uncertain_clears_after_probe():
 
 
 def test_r3_probe_placement_cryoem_phase_offered():
-    """R3-extra: cryoem placement_uncertain=True -> probe_placement phase offered."""
+    """R3-extra: cryoem placement_uncertain=True -> probe_placement step offered."""
     print("Test: r3_probe_placement_cryoem_phase_offered")
     sys.path.insert(0, _PROJECT_ROOT)
     try:
@@ -2309,10 +2309,10 @@ def test_r3_probe_placement_cryoem_phase_offered():
     except ImportError:
         print("  SKIP (WorkflowEngine unavailable)")
         return
-    from knowledge.yaml_loader import get_workflow_phases
+    from knowledge.yaml_loader import get_workflow_steps
 
     engine = WorkflowEngine()
-    phases = get_workflow_phases("cryoem")
+    steps = get_workflow_steps("cryoem")
     context = _make_minimal_context({
         "has_placed_model": False,
         "has_predicted_model": False,
@@ -2345,15 +2345,15 @@ def test_r3_probe_placement_cryoem_phase_offered():
         "placement_probe_result": None,
         "placement_uncertain": True,  # <- triggers probe
     })
-    result = engine._detect_cryoem_phase(phases, context)
-    assert result["phase"] == "probe_placement", (
-        "Expected probe_placement phase for cryoem, got %r" % result["phase"]
+    result = engine._detect_cryoem_step(steps, context)
+    assert result["step"] == "probe_placement", (
+        "Expected probe_placement step for cryoem, got %r" % result["step"]
     )
-    print("  PASSED: phase=%r" % result["phase"])
+    print("  PASSED: step=%r" % result["step"])
 
 
 def test_r3_needs_dock_routes_to_dock():
-    """R3-extra: cryoem probe result needs_dock routes to dock_model phase."""
+    """R3-extra: cryoem probe result needs_dock routes to dock_model step."""
     print("Test: r3_needs_dock_routes_to_dock")
     sys.path.insert(0, _PROJECT_ROOT)
     try:
@@ -2361,10 +2361,10 @@ def test_r3_needs_dock_routes_to_dock():
     except ImportError:
         print("  SKIP (WorkflowEngine unavailable)")
         return
-    from knowledge.yaml_loader import get_workflow_phases
+    from knowledge.yaml_loader import get_workflow_steps
 
     engine = WorkflowEngine()
-    phases = get_workflow_phases("cryoem")
+    steps = get_workflow_steps("cryoem")
     context = _make_minimal_context({
         "has_placed_model": False,
         "has_predicted_model": False,
@@ -2397,11 +2397,11 @@ def test_r3_needs_dock_routes_to_dock():
         "placement_probe_result": "needs_dock",
         "placement_uncertain": False,
     })
-    result = engine._detect_cryoem_phase(phases, context)
-    assert result["phase"] == "dock_model", (
-        "needs_dock probe result should route to dock_model, got %r" % result["phase"]
+    result = engine._detect_cryoem_step(steps, context)
+    assert result["step"] == "dock_model", (
+        "needs_dock probe result should route to dock_model, got %r" % result["step"]
     )
-    print("  PASSED: phase=%r" % result["phase"])
+    print("  PASSED: step=%r" % result["step"])
 
 
 
@@ -2526,7 +2526,7 @@ def test_s2_directive_model_is_placed_does_not_suppress_cell_mismatch():
       - Directive: model_is_placed=True (set by LLM from "solve the structure")
       - History: no dock_done, no phaser_done
       - Cell mismatch: True (model cell ≠ map cell)
-    Expected: cryoem phase → dock_model  (not ready_to_refine)
+    Expected: cryoem step → dock_model  (not ready_to_refine)
     """
     print("Test: s2_directive_model_is_placed_does_not_suppress_cell_mismatch")
     sys.path.insert(0, _PROJECT_ROOT)
@@ -2540,7 +2540,7 @@ def test_s2_directive_model_is_placed_does_not_suppress_cell_mismatch():
 
     # Build context with directive-driven has_placed_model=True but no history
     directives = {"workflow_preferences": {"model_is_placed": True}}
-    # Include mtriage_done=True so we are past the "analyze" gate in cryoem phase detection
+    # Include mtriage_done=True so we are past the "analyze" gate in cryoem step detection
     history_with_mtriage = {"mtriage_done": True, "resolve_cryo_em_done": False}
     ctx = engine.build_context(files={"model": ["/fake/1aew_A.pdb"], "full_map": ["/fake/map.ccp4"]},
                                history_info=history_with_mtriage, directives=directives)
@@ -2553,14 +2553,14 @@ def test_s2_directive_model_is_placed_does_not_suppress_cell_mismatch():
     # Manually inject cell_mismatch=True to simulate what placement_checker would detect
     ctx["cell_mismatch"] = True
 
-    # Now ask the engine to detect phase given this context
-    from knowledge.yaml_loader import get_workflow_phases; phases = get_workflow_phases("cryoem")
-    phase_info = engine._detect_cryoem_phase(phases, ctx)
+    # Now ask the engine to detect step given this context
+    from knowledge.yaml_loader import get_workflow_steps; steps = get_workflow_steps("cryoem")
+    step_info = engine._detect_cryoem_step(steps, ctx)
 
-    assert phase_info["phase"] == "dock_model", (
+    assert step_info["step"] == "dock_model", (
         "Cell mismatch MUST route to dock_model even when model_is_placed=True "
-        "from directive. Got phase=%r (reason=%r)" % (
-            phase_info["phase"], phase_info.get("reason", ""))
+        "from directive. Got step=%r (reason=%r)" % (
+            step_info["step"], step_info.get("reason", ""))
     )
     print("  PASSED: cell_mismatch → dock_model despite model_is_placed=True directive")
 
@@ -2596,14 +2596,14 @@ def test_s2_history_placed_does_suppress_cell_mismatch():
     # Inject cell_mismatch=True (edge case: could still mismatch due to box padding)
     ctx["cell_mismatch"] = True
 
-    from knowledge.yaml_loader import get_workflow_phases; phases = get_workflow_phases("cryoem")
-    phase_info = engine._detect_cryoem_phase(phases, ctx)
+    from knowledge.yaml_loader import get_workflow_steps; steps = get_workflow_steps("cryoem")
+    step_info = engine._detect_cryoem_step(steps, ctx)
 
     # With dock_done=True history, cell_mismatch is short-circuited to False
     # (from the S1 post-processing short-circuit), so routing advances normally
-    assert phase_info["phase"] != "dock_model", (
+    assert step_info["step"] != "dock_model", (
         "After dock_done, should NOT re-route to dock_model. "
-        "Got phase=%r" % phase_info["phase"]
+        "Got step=%r" % step_info["step"]
     )
     print("  PASSED: dock_done in history correctly suppresses Tier 1 re-dock")
 
@@ -2629,14 +2629,14 @@ def test_s2_xray_tier1_uses_from_history():
 
     # Inject cell_mismatch=True and also fake X-ray analysis flag
     ctx["cell_mismatch"] = True
-    ctx["xtriage_done"] = True  # past analysis phase
+    ctx["xtriage_done"] = True  # past analysis step
 
-    from knowledge.yaml_loader import get_workflow_phases; phases = get_workflow_phases("xray")
-    phase_info = engine._detect_xray_phase(phases, ctx)
+    from knowledge.yaml_loader import get_workflow_steps; steps = get_workflow_steps("xray")
+    step_info = engine._detect_xray_step(steps, ctx)
 
-    assert phase_info["phase"] == "molecular_replacement", (
+    assert step_info["step"] == "molecular_replacement", (
         "X-ray cell mismatch MUST route to MR even with model_is_placed=True directive. "
-        "Got phase=%r" % phase_info["phase"]
+        "Got step=%r" % step_info["step"]
     )
     print("  PASSED: X-ray cell_mismatch → molecular_replacement despite model_is_placed directive")
 
@@ -2750,14 +2750,14 @@ def test_s2_full_cryoem_stack_routes_to_dock_not_rsr():
     # Inject cell mismatch (what placement_checker would detect for 1aew_A.pdb vs denmod_map.ccp4)
     ctx["cell_mismatch"] = True
 
-    from knowledge.yaml_loader import get_workflow_phases; phases = get_workflow_phases("cryoem")
-    phase_info = engine._detect_cryoem_phase(phases, ctx)
+    from knowledge.yaml_loader import get_workflow_steps; steps = get_workflow_steps("cryoem")
+    step_info = engine._detect_cryoem_step(steps, ctx)
 
-    assert phase_info["phase"] == "dock_model", (
+    assert step_info["step"] == "dock_model", (
         "REGRESSION: Full stack must route to dock_model when cell_mismatch=True "
         "and has_placed_model_from_history=False, even if model_is_placed directive "
-        "is set. Got phase=%r (reason=%r). This is the apoferritin bug." % (
-            phase_info["phase"], phase_info.get("reason", ""))
+        "is set. Got step=%r (reason=%r). This is the apoferritin bug." % (
+            step_info["step"], step_info.get("reason", ""))
     )
     print("  PASSED: apoferritin scenario correctly routes to dock_model (not RSR)")
 
@@ -2785,7 +2785,7 @@ def test_s1_yaml_validator_no_if_placed_warnings():
     assert probe_warns == [], (
         "Expected no if_placed/if_not_placed warnings, got: %s" % probe_warns
     )
-    print("  PASSED: no spurious transition-field warnings from probe_placement phase")
+    print("  PASSED: no spurious transition-field warnings from probe_placement step")
 
 
 def test_s1_yaml_validator_if_placed_is_in_valid_set():
@@ -3184,20 +3184,20 @@ def test_s2b_cryoem_routes_to_probe_not_rsr_with_directive_placed():
         "half_map": ["/fake/h1.ccp4", "/fake/h2.ccp4"], "sequence": ["/fake/seq.dat"],
     }
     state = engine.get_workflow_state("cryoem", files, history_info, directives=directives)
-    phase = state.get("phase", state.get("state", ""))
+    step = state.get("step", state.get("state", ""))
     valid_progs = state.get("valid_programs", [])
-    # The probe may be served from phase "probe_placement" or from a general phase
+    # The probe may be served from step "probe_placement" or from a general step
     # like "cryoem_analyzed" — what matters is that map_correlations IS offered
     # and real_space_refine is NOT (before placement is confirmed).
     assert "phenix.map_correlations" in valid_progs, (
         "Agent must offer map_correlations (probe) when placement unconfirmed. "
-        "Got phase=%r programs=%s" % (phase, valid_progs)
+        "Got step=%r programs=%s" % (step, valid_progs)
     )
     assert "phenix.real_space_refine" not in valid_progs, (
         "Agent must NOT offer real_space_refine before placement confirmed. "
-        "Got phase=%r programs=%s" % (phase, valid_progs)
+        "Got step=%r programs=%s" % (step, valid_progs)
     )
-    print("  PASSED: offers probe (map_correlations) not RSR, phase=%r" % phase)
+    print("  PASSED: offers probe (map_correlations) not RSR, step=%r" % step)
 
 
 def test_s2b_map_correlations_has_ignore_symmetry_default():
@@ -3488,7 +3488,7 @@ def test_s2d_rsr_has_skip_map_model_overlap_check_default():
 
 def test_s2e_after_program_requiring_placed_suppresses_probe():
     """S2e: after_program=model_vs_data sets has_placed_model_from_after_program=True,
-    which suppresses placement_uncertain so probe_placement phase is skipped."""
+    which suppresses placement_uncertain so probe_placement step is skipped."""
     print("Test: s2e_after_program_requiring_placed_suppresses_probe")
     sys.path.insert(0, _PROJECT_ROOT)
     try:
@@ -5869,7 +5869,7 @@ def test_s5c_autostop_with_no_ligand_file_message():
 
 def test_s5d_user_wants_ligandfit_stays_in_refine_phase():
     """When user explicitly requests ligand fitting, the workflow must stay in
-    the 'refine' phase so ligandfit is available, regardless of has_ligand_file.
+    the 'refine' step so ligandfit is available, regardless of has_ligand_file.
     """
     print("  Test: s5d_user_wants_ligandfit_stays_in_refine_phase")
     src = open(os.path.join(_PROJECT_ROOT, 'agent', 'workflow_engine.py')).read()
@@ -5880,16 +5880,16 @@ def test_s5d_user_wants_ligandfit_stays_in_refine_phase():
                 '"ligandfit" in _after_prog.lower()' in src,
         "user_wants_ligandfit must check after_program for ligandfit")
     assert_true("_wants_ligandfit" in src,
-        "_detect_xray_phase must use _wants_ligandfit")
+        "_detect_xray_step must use _wants_ligandfit")
     assert_true("0.50" in src,
         "Relaxed r_free threshold (0.50) must be present for user_wants_ligandfit")
 
-    # The user_wants_ligandfit phase block must NOT require has_ligand_file
+    # The user_wants_ligandfit step block must NOT require has_ligand_file
     wants_idx = src.find("_wants_ligandfit = context.get(\"user_wants_ligandfit\"")
     block_end = src.find("return self._make_phase_result", wants_idx)
     block = src[wants_idx:block_end + 60]
     assert_true("has_ligand_file" not in block,
-        "_detect_xray_phase ligandfit gate must not require has_ligand_file")
+        "_detect_xray_step ligandfit gate must not require has_ligand_file")
 
     restore_idx = src.find("user_wants_ligandfit")
     valid_idx = src.find('valid.append("phenix.ligandfit")', restore_idx)
@@ -5904,7 +5904,7 @@ def test_s5d_validate_phase_does_not_block_ligandfit():
     and has not yet run it — even if r_free >= 0.35.
 
     Source check: the _check_metric_condition for r_free returns True when value
-    is None, so the phase detection gate must handle the explicit-user-request
+    is None, so the step detection gate must handle the explicit-user-request
     case by either raising the threshold or re-adding ligandfit to valid_programs.
     """
     print("  Test: s5d_validate_phase_does_not_block_ligandfit")
@@ -5918,7 +5918,7 @@ def test_s5d_validate_phase_does_not_block_ligandfit():
     ligandfit_gate_idx = src.find("user_wants_ligandfit")
     validate_idx = src.find("need validation before stopping")
     assert_true(ligandfit_gate_idx < validate_idx,
-        "Ligandfit gate must be evaluated before routing to validate phase")
+        "Ligandfit gate must be evaluated before routing to validate step")
 
     print("  PASSED: ligandfit gate evaluated before validate routing")
 
@@ -6055,9 +6055,9 @@ def test_s5g_natural_language_macro_cycles_injected():
     print("  Test: s5f_polder_conditions")
     import sys as _sys
     _sys.path.insert(0, _PROJECT_ROOT)
-    from knowledge.yaml_loader import get_workflow_phases
+    from knowledge.yaml_loader import get_workflow_steps
 
-    phases = get_workflow_phases("xray")
+    steps = get_workflow_steps("xray")
 
     def check_conditions(prog_entry, context):
         for cond in prog_entry.get("conditions", []):
@@ -6070,35 +6070,35 @@ def test_s5g_natural_language_macro_cycles_injected():
                     return False
         return True
 
-    for phase_name in ("refine", "validate"):
+    for step_name in ("refine", "validate"):
         polder_entry = next(
-            (p for p in phases[phase_name].get("programs", [])
+            (p for p in steps[step_name].get("programs", [])
              if isinstance(p, dict) and "polder" in p.get("program", "")),
             None
         )
         assert_true(polder_entry is not None,
-            "phenix.polder must be defined in xray %s phase" % phase_name)
+            "phenix.polder must be defined in xray %s step" % step_name)
 
         # Polder should NOT be valid without ligand_fit
         ctx_no = {"has_model": True, "has_data_mtz": True,
                   "has_ligand_fit": False}
         assert_true(not check_conditions(polder_entry, ctx_no),
-            "polder must NOT be valid in %s phase without ligand_fit"
-            % phase_name)
+            "polder must NOT be valid in %s step without ligand_fit"
+            % step_name)
 
         # Polder should be valid with ligand_fit
         ctx_yes = {"has_model": True, "has_data_mtz": True,
                    "has_ligand_fit": True}
         assert_true(check_conditions(polder_entry, ctx_yes),
-            "polder MUST be valid in %s phase with ligand_fit"
-            % phase_name)
+            "polder MUST be valid in %s step with ligand_fit"
+            % step_name)
 
         # Polder should NOT be valid when already done
         ctx_done = {"has_model": True, "has_data_mtz": True,
                     "has_ligand_fit": True, "polder_done": True}
         assert_true(not check_conditions(polder_entry, ctx_done),
-            "polder must NOT be valid in %s phase when already done"
-            % phase_name)
+            "polder must NOT be valid in %s step when already done"
+            % step_name)
 
         # Confirm both conditions are present
         cond_keys = []
@@ -6108,10 +6108,10 @@ def test_s5g_natural_language_macro_cycles_injected():
                     cond_keys.append("%s:%s" % (k, v))
         assert_true("has:ligand_fit" in cond_keys,
             "polder %s conditions must include 'has: ligand_fit', got: %s"
-            % (phase_name, cond_keys))
+            % (step_name, cond_keys))
         assert_true("not_done:polder" in cond_keys,
             "polder %s conditions must include 'not_done: polder', got: %s"
-            % (phase_name, cond_keys))
+            % (step_name, cond_keys))
 
     print("  PASSED: polder conditions correct (model + data + ligand_fit + not_done)")
 
@@ -7036,8 +7036,8 @@ def test_s7c_phaser_valid_for_conventional_model():
 
     wf_path = _os.path.join(_PROJECT_ROOT, "knowledge", "workflows.yaml")
     wf = _yaml.safe_load(open(wf_path))
-    phases = wf.get("xray", {}).get("phases", {})
-    mr_programs = phases.get("molecular_replacement", {}).get("programs", [])
+    steps = wf.get("xray", {}).get("steps") or wf.get("xray", {}).get("phases") or {}
+    mr_programs = steps.get("molecular_replacement", {}).get("programs", [])
 
     # Find phenix.phaser entry
     phaser_entry = None
@@ -7114,7 +7114,7 @@ def test_s7d_phaser_condition_in_workflows_yaml():
     # The old condition (has: processed_model alone on phaser entry) must be gone
     # Check that phaser's conditions no longer contain only 'has: processed_model'
     mr_idx = src.find("molecular_replacement:")
-    assert_true(mr_idx >= 0, "molecular_replacement phase must exist in workflows.yaml")
+    assert_true(mr_idx >= 0, "molecular_replacement step must exist in workflows.yaml")
     # Look for phenix.phaser only within the molecular_replacement section
     # (there is also a phaser entry in obtain_model which has different conditions)
     mr_section = src[mr_idx:mr_idx + 1000]
@@ -7255,7 +7255,7 @@ def test_s7g_retry_feedback_distinguishes_failure_from_success():
 
 
 def test_s7h_molecular_replacement_phase_description_updated():
-    # molecular_replacement phase description must no longer be AlphaFold-specific
+    # molecular_replacement step description must no longer be AlphaFold-specific
     print("  Test: s7h_molecular_replacement_phase_description_updated")
     import sys as _sys, os as _os
     _sys.path.insert(0, _PROJECT_ROOT)
@@ -7281,7 +7281,7 @@ def test_s7h_molecular_replacement_phase_description_updated():
         "molecular_replacement description must contain general MR language, "
         "got:\n%s" % mr_section)
 
-    print("  PASSED: molecular_replacement phase description is now general, "
+    print("  PASSED: molecular_replacement step description is now general, "
           "not AlphaFold-specific")
 
 
@@ -8517,21 +8517,21 @@ def test_s10f_phaser_success_supersedes_probe_needs_mr():
     assert_true(context.get("has_placed_model_from_history") is True,
         "has_placed_model_from_history must be True when phaser_done=True")
 
-    # The critical check: detect_phase must NOT return molecular_replacement
-    phase_info = engine.detect_phase("xray", context)
-    phase = phase_info.get("phase", "")
+    # The critical check: detect_step must NOT return molecular_replacement
+    step_info = engine.detect_step("xray", context)
+    step = step_info.get("step", "")
 
-    assert_true(phase != "molecular_replacement",
-        "After phaser success, phase must NOT be molecular_replacement "
+    assert_true(step != "molecular_replacement",
+        "After phaser success, step must NOT be molecular_replacement "
         "(needs_mr probe result must be superseded by phaser_done); "
-        "got phase=%r" % phase)
+        "got step=%r" % step)
 
-    assert_true(phase in ("refine", "validate", "complete"),
-        "After phaser success with no refinement, phase must be 'refine' "
-        "(or validate/complete); got phase=%r" % phase)
+    assert_true(step in ("refine", "validate", "complete"),
+        "After phaser success with no refinement, step must be 'refine' "
+        "(or validate/complete); got step=%r" % step)
 
     # Also verify valid_programs contains phenix.refine (not STOP)
-    valid = engine.get_valid_programs("xray", phase_info, context, directives={})
+    valid = engine.get_valid_programs("xray", step_info, context, directives={})
     assert_true("phenix.refine" in valid,
         "phenix.refine must be in valid_programs after phaser; "
         "got valid_programs=%r" % valid)

@@ -90,11 +90,11 @@ def _load_rules_config():
 
 
 def _get_phase_rules_priority(experiment_type, state_name, files=None):
-    """Load rules_priority for a workflow phase from YAML.
+    """Load rules_priority for a workflow step from YAML.
 
     Args:
         experiment_type: 'xray' or 'cryoem'
-        state_name: Current workflow state/phase name
+        state_name: Current workflow state/step name
         files: Dict of categorized files (for conditional priorities)
 
     Returns:
@@ -102,15 +102,15 @@ def _get_phase_rules_priority(experiment_type, state_name, files=None):
     """
     config = _load_rules_config()
 
-    # Handle ligand substring match (not a specific phase)
+    # Handle ligand substring match (not a specific step)
     if "ligand" in state_name.lower():
         return config.get("ligand_priority", [])
 
     # Resolve state aliases
     aliases = config.get("state_aliases", {})
-    phase_name = aliases.get(state_name, state_name)
+    step_name = aliases.get(state_name, state_name)
 
-    # Try to load from the specific workflow phase
+    # Try to load from the specific workflow step
     try:
         try:
             from libtbx.langchain.knowledge.yaml_loader import load_workflows
@@ -118,9 +118,9 @@ def _get_phase_rules_priority(experiment_type, state_name, files=None):
             from knowledge.yaml_loader import load_workflows
         workflows = load_workflows()
         wf = workflows.get(experiment_type, {})
-        phases = wf.get("phases", {})
-        phase = phases.get(phase_name, {})
-        priority = phase.get("rules_priority")
+        steps_dict = wf.get("steps") or wf.get("phases") or {}
+        step = steps.get(step_name, {})
+        priority = step.get("rules_priority")
 
         if priority is not None:
             # Handle conditional priority (dict with default/when_* keys)
@@ -143,7 +143,7 @@ class RulesSelector:
     Deterministic program selector using YAML-defined rules.
 
     Selects the next program based on:
-    1. Current workflow phase
+    1. Current workflow step
     2. Available files
     3. Metrics trend
     4. Quality targets

@@ -1,15 +1,15 @@
 """
 Plan Schema for the Goal-Directed Agent.
 
-Defines the data structures for multi-phase strategy
-plans: PhaseDef (one phase in a plan) and StructurePlan
+Defines the data structures for multi-stage strategy
+plans: StageDef (one stage in a plan) and StructurePlan
 (the full plan with navigation and serialization).
 
-The plan is generated once at session start (Phase 2.3),
-consumed by the gate evaluator each cycle (Phase 3),
-and displayed by the explanation engine (Phase 5).
+The plan is generated once at session start (Stage 2.3),
+consumed by the gate evaluator each cycle (Stage 3),
+and displayed by the explanation engine (Stage 5).
 
-Entry points: PhaseDef, StructurePlan classes.
+Entry points: StageDef, StructurePlan classes.
 
 2-space indentation, 80-char line width.
 """
@@ -24,32 +24,32 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-# ── Phase status constants ──────────────────────────
+# ── Stage status constants ──────────────────────────
 
-PHASE_PENDING = "pending"
-PHASE_ACTIVE = "active"
-PHASE_COMPLETE = "complete"
-PHASE_SKIPPED = "skipped"
-PHASE_FAILED = "failed"
+STAGE_PENDING = "pending"
+STAGE_ACTIVE = "active"
+STAGE_COMPLETE = "complete"
+STAGE_SKIPPED = "skipped"
+STAGE_FAILED = "failed"
 
 _VALID_PHASE_STATUSES = frozenset([
-  PHASE_PENDING, PHASE_ACTIVE, PHASE_COMPLETE,
-  PHASE_SKIPPED, PHASE_FAILED,
+  STAGE_PENDING, STAGE_ACTIVE, STAGE_COMPLETE,
+  STAGE_SKIPPED, STAGE_FAILED,
 ])
 
 
-# ── PhaseDef ────────────────────────────────────────
+# ── StageDef ────────────────────────────────────────
 
-class PhaseDef(object):
-  """One phase in a structure determination plan.
+class StageDef(object):
+  """One stage in a structure determination plan.
 
   Defines what programs to run, when to advance, when
-  to retreat, and what success looks like. Each phase
+  to retreat, and what success looks like. Each stage
   maps to a segment of the crystallographic workflow
   (e.g. "molecular replacement", "initial refinement").
 
   The reactive agent sees only the directives derived
-  from the current phase — it does not know about the
+  from the current stage — it does not know about the
   plan structure. The goal-directed layer communicates
   through directives only.
   """
@@ -96,23 +96,23 @@ class PhaseDef(object):
     )
     # Human-readable description
     self.description = str(description)
-    # What this phase provides to downstream phases
+    # What this stage provides to downstream stages
     # e.g. ["resolution", "twinning_status"]
     self.provides = (
       list(provides) if provides else []
     )
-    # Repair rules if this phase is skipped
+    # Repair rules if this stage is skipped
     # e.g. {"resolution": "extract from refine log"}
     self.if_skipped = (
       dict(if_skipped) if if_skipped else {}
     )
 
     # --- Runtime state (updated by gate evaluator) ---
-    self.status = PHASE_PENDING
+    self.status = STAGE_PENDING
     self.cycles_used = 0
     self.start_cycle = None    # cycle number when entered
     self.end_cycle = None      # cycle number when exited
-    self.result_metrics = {}   # metrics at phase completion
+    self.result_metrics = {}   # metrics at stage completion
 
   def to_dict(self):
     """Serialize to JSON-safe dict."""
@@ -146,7 +146,7 @@ class PhaseDef(object):
     """Deserialize from dict. Tolerant of missing keys."""
     if not isinstance(d, dict):
       return cls(id="unknown")
-    phase = cls(
+    stage = cls(
       id=d.get("id", "unknown"),
       programs=d.get("programs"),
       max_cycles=d.get("max_cycles", 5),
@@ -161,21 +161,21 @@ class PhaseDef(object):
       if_skipped=d.get("if_skipped"),
     )
     # Restore runtime state
-    status = d.get("status", PHASE_PENDING)
+    status = d.get("status", STAGE_PENDING)
     if status in _VALID_PHASE_STATUSES:
-      phase.status = status
-    phase.cycles_used = int(
+      stage.status = status
+    stage.cycles_used = int(
       d.get("cycles_used", 0)
     )
-    phase.start_cycle = d.get("start_cycle")
-    phase.end_cycle = d.get("end_cycle")
-    phase.result_metrics = dict(
+    stage.start_cycle = d.get("start_cycle")
+    stage.end_cycle = d.get("end_cycle")
+    stage.result_metrics = dict(
       d.get("result_metrics", {})
     )
-    return phase
+    return stage
 
   def is_exhausted(self):
-    """Check if this phase has used all its cycles.
+    """Check if this stage has used all its cycles.
 
     Returns:
       True if cycles_used >= max_cycles.
@@ -184,7 +184,7 @@ class PhaseDef(object):
 
   def __repr__(self):
     return (
-      "PhaseDef(id=%r, status=%r, programs=%r)"
+      "StageDef(id=%r, status=%r, programs=%r)"
       % (self.id, self.status, self.programs)
     )
 
@@ -192,10 +192,10 @@ class PhaseDef(object):
 # ── Program matching helper ────────────────────────
 
 def _program_matches_phase(program_name, phase_programs):
-  """Check if a program name matches any phase program.
+  """Check if a program name matches any stage program.
 
   Exact match first, then variant match: a program
-  is a variant if a phase program is a prefix of the
+  is a variant if a stage program is a prefix of the
   program name followed by _ (e.g. phenix.autobuild
   matches phenix.autobuild_denmod).
 
@@ -215,7 +215,7 @@ def _program_matches_phase(program_name, phase_programs):
   # Exact match
   if program_name in phase_programs:
     return True
-  # Variant match: phase program + "_" is a prefix
+  # Variant match: stage program + "_" is a prefix
   for pp in phase_programs:
     if program_name.startswith(pp + "_"):
       return True
@@ -225,7 +225,7 @@ def _program_matches_phase(program_name, phase_programs):
 # ── StructurePlan ───────────────────────────────────
 
 class StructurePlan(object):
-  """Multi-phase strategy plan for structure determination.
+  """Multi-stage strategy plan for structure determination.
 
   Generated once at session start from templates
   (Step 2.3). Consumed by the gate evaluator after
@@ -233,13 +233,13 @@ class StructurePlan(object):
   Persisted to session JSON for resume support.
 
   Navigation:
-    current_phase() — get the active PhaseDef
-    advance() — move to next phase (returns False at end)
-    retreat_to(id) — go back to a named phase
+    current_stage() — get the active StageDef
+    advance() — move to next stage (returns False at end)
+    retreat_to(id) — go back to a named stage
     mark_phase_complete() — mark current as done
 
   Directive translation:
-    to_directives() — convert current phase to the
+    to_directives() — convert current stage to the
       reactive agent's directive format
 
   Display:
@@ -247,19 +247,19 @@ class StructurePlan(object):
       for the GUI progress indicator
   """
 
-  def __init__(self, goal="", phases=None,
-               current_phase_index=0,
+  def __init__(self, goal="", stages=None,
+               current_stage_index=0,
                strategy_hash="",
                created_at_cycle=0,
                revised_at_cycle=None,
                revision_reason="",
                template_id=""):
     self.goal = str(goal)
-    self.phases = (
-      list(phases) if phases else []
+    self.stages = (
+      list(stages) if stages else []
     )
-    self.current_phase_index = max(
-      0, int(current_phase_index)
+    self.current_stage_index = max(
+      0, int(current_stage_index)
     )
     self.strategy_hash = str(strategy_hash)
     self.created_at_cycle = int(created_at_cycle)
@@ -275,150 +275,150 @@ class StructurePlan(object):
 
   # ── Navigation ──────────────────────────────────
 
-  def current_phase(self):
-    """Get the active PhaseDef.
+  def current_stage(self):
+    """Get the active StageDef.
 
     Returns:
-      PhaseDef or None if index out of range or
-      plan has no phases.
+      StageDef or None if index out of range or
+      plan has no stages.
     """
-    if not self.phases:
+    if not self.stages:
       return None
-    idx = self.current_phase_index
-    if 0 <= idx < len(self.phases):
-      return self.phases[idx]
+    idx = self.current_stage_index
+    if 0 <= idx < len(self.stages):
+      return self.stages[idx]
     return None
 
   def advance(self):
-    """Move to next phase.
+    """Move to next stage.
 
-    Marks the current phase as complete and activates
-    the next pending phase. Skips phases whose skip_if
+    Marks the current stage as complete and activates
+    the next pending stage. Skips stages whose skip_if
     condition is noted (actual evaluation is done by
-    the gate evaluator, which calls skip_phase()).
+    the gate evaluator, which calls skip_stage()).
 
     Returns:
-      True if advanced to a new phase.
-      False if already at the last phase (plan done).
+      True if advanced to a new stage.
+      False if already at the last stage (plan done).
     """
-    if not self.phases:
+    if not self.stages:
       return False
     # Mark current as complete
-    curr = self.current_phase()
-    if curr and curr.status == PHASE_ACTIVE:
-      curr.status = PHASE_COMPLETE
-    # Find next pending phase
+    curr = self.current_stage()
+    if curr and curr.status == STAGE_ACTIVE:
+      curr.status = STAGE_COMPLETE
+    # Find next pending stage
     for i in range(
-      self.current_phase_index + 1, len(self.phases)
+      self.current_stage_index + 1, len(self.stages)
     ):
-      if self.phases[i].status == PHASE_PENDING:
-        self.current_phase_index = i
-        self.phases[i].status = PHASE_ACTIVE
+      if self.stages[i].status == STAGE_PENDING:
+        self.current_stage_index = i
+        self.stages[i].status = STAGE_ACTIVE
         return True
-    # No more pending phases — plan is done
-    self.current_phase_index = len(self.phases)
+    # No more pending stages — plan is done
+    self.current_stage_index = len(self.stages)
     return False
 
-  def retreat_to(self, phase_id, cycle_number=None):
-    """Go back to a named phase.
+  def retreat_to(self, stage_id, cycle_number=None):
+    """Go back to a named stage.
 
-    Resets the target phase to active, and resets all
-    phases AFTER the target to pending (they need to
-    re-run with the new strategy). Skipped phases are
+    Resets the target stage to active, and resets all
+    stages AFTER the target to pending (they need to
+    re-run with the new strategy). Skipped stages are
     preserved.
 
     The gate evaluator handles blacklisting the failed
     strategy before calling retreat_to.
 
     Args:
-      phase_id: str, the id of the target phase.
+      stage_id: str, the id of the target stage.
       cycle_number: int or None. Current cycle, used
         for retreat cooldown tracking.
 
     Returns:
       True if retreat succeeded.
-      False if phase_id not found.
+      False if stage_id not found.
     """
     target_idx = None
-    for i, phase in enumerate(self.phases):
-      if phase.id == phase_id:
+    for i, stage in enumerate(self.stages):
+      if stage.id == stage_id:
         target_idx = i
         break
     if target_idx is None:
       return False
 
-    # Reset target phase
-    target = self.phases[target_idx]
-    target.status = PHASE_ACTIVE
+    # Reset target stage
+    target = self.stages[target_idx]
+    target.status = STAGE_ACTIVE
     target.cycles_used = 0
     target.start_cycle = None
     target.end_cycle = None
     target.result_metrics = {}
 
-    # Reset all phases AFTER the target to pending.
+    # Reset all stages AFTER the target to pending.
     # They may need to re-run with the new strategy.
-    # Skipped phases are preserved — they were skipped
+    # Skipped stages are preserved — they were skipped
     # for structural reasons independent of the failed
     # strategy.
-    for i in range(target_idx + 1, len(self.phases)):
-      p = self.phases[i]
+    for i in range(target_idx + 1, len(self.stages)):
+      p = self.stages[i]
       if p.status in (
-        PHASE_COMPLETE, PHASE_FAILED, PHASE_ACTIVE
+        STAGE_COMPLETE, STAGE_FAILED, STAGE_ACTIVE
       ):
-        p.status = PHASE_PENDING
+        p.status = STAGE_PENDING
         p.cycles_used = 0
         p.start_cycle = None
         p.end_cycle = None
         p.result_metrics = {}
 
-    self.current_phase_index = target_idx
+    self.current_stage_index = target_idx
     self.retreat_count += 1
     if cycle_number is not None:
       self.last_retreat_cycle = int(cycle_number)
     return True
 
-  def skip_phase(self, phase_id, reason=""):
-    """Skip a phase (e.g. skip_if condition met).
+  def skip_stage(self, stage_id, reason=""):
+    """Skip a stage (e.g. skip_if condition met).
 
     Args:
-      phase_id: str, phase to skip.
+      stage_id: str, stage to skip.
       reason: str, why skipped.
 
     Returns:
       True if skipped, False if not found.
     """
-    for phase in self.phases:
-      if phase.id == phase_id:
-        phase.status = PHASE_SKIPPED
+    for stage in self.stages:
+      if stage.id == stage_id:
+        stage.status = STAGE_SKIPPED
         return True
     return False
 
-  def mark_phase_started(self, cycle_number):
-    """Mark the current phase as started at a cycle.
+  def mark_stage_started(self, cycle_number):
+    """Mark the current stage as started at a cycle.
 
-    Called by the gate evaluator when a phase begins
+    Called by the gate evaluator when a stage begins
     execution.
 
     Args:
       cycle_number: int.
     """
-    curr = self.current_phase()
+    curr = self.current_stage()
     if curr:
-      curr.status = PHASE_ACTIVE
+      curr.status = STAGE_ACTIVE
       if curr.start_cycle is None:
         curr.start_cycle = int(cycle_number)
 
-  def record_phase_cycle(self, program_name=None):
-    """Increment the cycle counter for current phase.
+  def record_stage_cycle(self, program_name=None):
+    """Increment the cycle counter for current stage.
 
     Counting rules:
     - program_name is None → always count (compat)
     - program is STOP → never count
-    - program matches current phase → count
-    - program matches NO phase → count (reactive
-      program like pdbtools running during phase)
-    - program matches a DIFFERENT phase → skip
-      (e.g. ligandfit during refinement phase)
+    - program matches current stage → count
+    - program matches NO stage → count (reactive
+      program like pdbtools running during stage)
+    - program matches a DIFFERENT stage → skip
+      (e.g. ligandfit during refinement stage)
 
     Matching includes variant programs: e.g.
     phenix.autobuild_denmod counts as autobuild.
@@ -426,28 +426,28 @@ class StructurePlan(object):
     Args:
       program_name: str or None.
     """
-    curr = self.current_phase()
+    curr = self.current_stage()
     if curr:
       if program_name is not None:
         # STOP never counts
         if program_name.upper() == "STOP":
           return
         if curr.programs:
-          # Does it match THIS phase?
+          # Does it match THIS stage?
           if _program_matches_phase(
             program_name, curr.programs
           ):
             curr.cycles_used += 1
             return
-          # Does it match ANY other phase?
-          for p in self.phases:
+          # Does it match ANY other stage?
+          for p in self.stages:
             if p is curr:
               continue
             if (p.programs
                 and _program_matches_phase(
                   program_name, p.programs)):
               return
-          # Matches no phase → reactive, count
+          # Matches no stage → reactive, count
           curr.cycles_used += 1
         else:
           curr.cycles_used += 1
@@ -456,55 +456,55 @@ class StructurePlan(object):
 
   def mark_phase_complete(self, cycle_number,
                           metrics=None):
-    """Mark the current phase as complete.
+    """Mark the current stage as complete.
 
     Args:
       cycle_number: int.
-      metrics: dict of final metrics for this phase.
+      metrics: dict of final metrics for this stage.
     """
-    curr = self.current_phase()
+    curr = self.current_stage()
     if curr:
-      curr.status = PHASE_COMPLETE
+      curr.status = STAGE_COMPLETE
       curr.end_cycle = int(cycle_number)
       if metrics:
         curr.result_metrics = dict(metrics)
 
   def is_complete(self):
-    """Check if all phases are done (complete/skipped).
+    """Check if all stages are done (complete/skipped).
 
     Returns:
-      True if no pending or active phases remain.
+      True if no pending or active stages remain.
     """
-    for phase in self.phases:
-      if phase.status in (
-        PHASE_PENDING, PHASE_ACTIVE
+    for stage in self.stages:
+      if stage.status in (
+        STAGE_PENDING, STAGE_ACTIVE
       ):
         return False
-    return len(self.phases) > 0
+    return len(self.stages) > 0
 
-  def get_phase_by_id(self, phase_id):
-    """Look up a phase by ID.
+  def get_stage_by_id(self, stage_id):
+    """Look up a stage by ID.
 
     Returns:
-      PhaseDef or None.
+      StageDef or None.
     """
-    for phase in self.phases:
-      if phase.id == phase_id:
-        return phase
+    for stage in self.stages:
+      if stage.id == stage_id:
+        return stage
     return None
 
   def get_previous_phase(self):
-    """Get the phase before the current one.
+    """Get the stage before the current one.
 
     Used by retreat logic to determine the one-step-
     back target.
 
     Returns:
-      PhaseDef or None.
+      StageDef or None.
     """
-    idx = self.current_phase_index - 1
-    if 0 <= idx < len(self.phases):
-      return self.phases[idx]
+    idx = self.current_stage_index - 1
+    if 0 <= idx < len(self.stages):
+      return self.stages[idx]
     return None
 
   def can_retreat(self, cycle_number,
@@ -540,7 +540,7 @@ class StructurePlan(object):
   # ── Directive translation ───────────────────────
 
   def to_directives(self):
-    """Convert current phase to reactive agent directives.
+    """Convert current stage to reactive agent directives.
 
     Produces a dict compatible with the existing
     directives system consumed by ai_agent.py and
@@ -552,9 +552,9 @@ class StructurePlan(object):
         stop_conditions: {after_program, ...}
         program_settings: {program: {key: val}, ...}
 
-    Returns empty dict if no current phase.
+    Returns empty dict if no current stage.
     """
-    curr = self.current_phase()
+    curr = self.current_stage()
     if curr is None:
       return {}
 
@@ -564,7 +564,7 @@ class StructurePlan(object):
     wf = {}
     if curr.programs:
       wf["prefer_programs"] = list(curr.programs)
-    # Merge any explicit directives from the phase
+    # Merge any explicit directives from the stage
     phase_wf = curr.directives.get(
       "workflow_preferences", {}
     )
@@ -575,9 +575,9 @@ class StructurePlan(object):
 
     # --- stop_conditions ---
     sc = {}
-    # If the phase has a single program, set
+    # If the stage has a single program, set
     # after_program so the reactive agent knows
-    # what this phase is working toward.
+    # what this stage is working toward.
     if len(curr.programs) == 1:
       sc["after_program"] = curr.programs[0]
     phase_sc = curr.directives.get(
@@ -610,24 +610,24 @@ class StructurePlan(object):
   # ── Hash computation ────────────────────────────
 
   def compute_hash(self):
-    """Fingerprint of current phase + directives.
+    """Fingerprint of current stage + directives.
 
     Used to detect plan changes and trigger
     advice_changed. Changes when:
-    - Current phase index changes
-    - Phase directives change
-    - Phases are added/removed
+    - Current stage index changes
+    - Stage directives change
+    - Stages are added/removed
 
     Returns:
       str (hex digest, 12 chars).
     """
     try:
       data = {
-        "current_phase_index": (
-          self.current_phase_index
+        "current_stage_index": (
+          self.current_stage_index
         ),
         "phase_ids": [
-          p.id for p in self.phases
+          p.id for p in self.stages
         ],
         "current_directives": self.to_directives(),
       }
@@ -643,7 +643,7 @@ class StructurePlan(object):
   # ── Display ─────────────────────────────────────
 
   def get_display_phases(self):
-    """Phase list for GUI display.
+    """Stage list for GUI display.
 
     Returns:
       list of {id, description, programs, status,
@@ -652,16 +652,16 @@ class StructurePlan(object):
         skipped, failed.
     """
     result = []
-    for phase in self.phases:
+    for stage in self.stages:
       result.append({
-        "id": phase.id,
-        "description": phase.description,
-        "programs": list(phase.programs),
-        "status": phase.status,
-        "cycles_used": phase.cycles_used,
-        "max_cycles": phase.max_cycles,
+        "id": stage.id,
+        "description": stage.description,
+        "programs": list(stage.programs),
+        "status": stage.status,
+        "cycles_used": stage.cycles_used,
+        "max_cycles": stage.max_cycles,
         "success_criteria": dict(
-          phase.success_criteria
+          stage.success_criteria
         ),
       })
     return result
@@ -682,32 +682,32 @@ class StructurePlan(object):
       " STRATEGY PLAN: %s" % self.goal
     )
     lines.append(bar)
-    for i, phase in enumerate(self.phases):
+    for i, stage in enumerate(self.stages):
       # Status indicator
-      if phase.status == PHASE_COMPLETE:
+      if stage.status == STAGE_COMPLETE:
         indicator = "✓"
-      elif phase.status == PHASE_ACTIVE:
+      elif stage.status == STAGE_ACTIVE:
         indicator = "●"
-      elif phase.status == PHASE_SKIPPED:
+      elif stage.status == STAGE_SKIPPED:
         indicator = "—"
-      elif phase.status == PHASE_FAILED:
+      elif stage.status == STAGE_FAILED:
         indicator = "✗"
       else:
         indicator = "○"
-      # Phase description (human-readable) or
+      # Stage description (human-readable) or
       # formatted id as fallback
       phase_label = (
-        phase.description
-        or phase.id.replace("_", " ").title()
+        stage.description
+        or stage.id.replace("_", " ").title()
       )
-      line = " %s Phase %d: %s" % (
+      line = " %s Stage %d: %s" % (
         indicator, i + 1, phase_label
       )
       lines.append(line)
       # Success criteria (human-readable)
-      if phase.success_criteria:
+      if stage.success_criteria:
         goal_text = self._format_goal_readable(
-          phase.success_criteria
+          stage.success_criteria
         )
         if goal_text:
           lines.append(
@@ -790,11 +790,11 @@ class StructurePlan(object):
     try:
       return {
         "goal": self.goal,
-        "phases": [
-          p.to_dict() for p in self.phases
+        "stages": [
+          p.to_dict() for p in self.stages
         ],
-        "current_phase_index": (
-          self.current_phase_index
+        "current_stage_index": (
+          self.current_stage_index
         ),
         "strategy_hash": self.strategy_hash,
         "created_at_cycle": self.created_at_cycle,
@@ -829,17 +829,21 @@ class StructurePlan(object):
     if not isinstance(d, dict):
       return cls()
     try:
-      phases_data = d.get("phases", [])
-      phases = [
-        PhaseDef.from_dict(p)
-        for p in phases_data
+      # Accept both "stages" (v114.1+) and "phases"
+      # (pre-v114.1 sessions) for backward compat.
+      stages_data = (
+        d.get("stages") or d.get("phases") or [])
+      stages = [
+        StageDef.from_dict(p)
+        for p in stages_data
         if isinstance(p, dict)
       ]
       plan = cls(
         goal=d.get("goal", ""),
-        phases=phases,
-        current_phase_index=d.get(
-          "current_phase_index", 0
+        stages=stages,
+        current_stage_index=d.get(
+          "current_stage_index",
+          d.get("current_phase_index", 0)
         ),
         strategy_hash=d.get("strategy_hash", ""),
         created_at_cycle=d.get(
@@ -908,7 +912,7 @@ def merge_directives(plan_directives,
       if prog in plan_prefer:
         warnings.append(
           "[Plan Conflict] User skips %s, but "
-          "the plan requires it for this phase."
+          "the plan requires it for this stage."
           % prog
         )
     # Merge: user overrides plan

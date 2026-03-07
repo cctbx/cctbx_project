@@ -22,7 +22,7 @@ if _PROJECT_ROOT not in sys.path:
 
 from knowledge.explanation_prompts import (
   generate_cycle_commentary,
-  generate_phase_summary,
+  generate_stage_summary,
   generate_final_report,
   generate_stopped_report,
 )
@@ -30,7 +30,7 @@ from agent.structure_model import (
   StructureModel, Hypothesis,
 )
 from knowledge.plan_schema import (
-  PhaseDef, StructurePlan,
+  StageDef, StructurePlan,
 )
 
 
@@ -77,18 +77,18 @@ def run_tests():
     test_commentary_none_inputs)
   print()
 
-  # --- Phase summary ---
-  print("Phase summary")
+  # --- Stage summary ---
+  print("Stage summary")
   test("phase_complete",
     test_phase_complete)
   test("phase_skipped",
-    test_phase_skipped)
+    test_stage_skipped)
   test("phase_failed",
-    test_phase_failed)
+    test_stage_failed)
   test("phase_with_next",
-    test_phase_with_next)
+    test_stage_with_next)
   test("phase_none_input",
-    test_phase_none_input)
+    test_stage_none_input)
   print()
 
   # --- Final report ---
@@ -163,28 +163,28 @@ def _make_sm():
 
 def _make_plan():
   """Build a completed plan."""
-  phases = [
-    PhaseDef(
+  stages = [
+    StageDef(
       id="data_assessment",
       programs=["phenix.xtriage"],
       max_cycles=1,
       description="Assess data quality",
     ),
-    PhaseDef(
+    StageDef(
       id="molecular_replacement",
       programs=["phenix.phaser"],
       max_cycles=1,
       success_criteria={"tfz": ">8"},
       description="Find MR solution",
     ),
-    PhaseDef(
+    StageDef(
       id="initial_refinement",
       programs=["phenix.refine"],
       max_cycles=3,
       success_criteria={"r_free": "<0.35"},
       description="Initial refinement",
     ),
-    PhaseDef(
+    StageDef(
       id="final_refinement",
       programs=["phenix.refine"],
       max_cycles=3,
@@ -193,21 +193,21 @@ def _make_plan():
     ),
   ]
   # Mark all complete with metrics
-  phases[0].status = "complete"
-  phases[0].cycles_used = 1
-  phases[1].status = "complete"
-  phases[1].cycles_used = 1
-  phases[1].result_metrics = {"tfz": 14.2}
-  phases[2].status = "complete"
-  phases[2].cycles_used = 3
-  phases[2].result_metrics = {"r_free": 0.32}
-  phases[3].status = "complete"
-  phases[3].cycles_used = 3
-  phases[3].result_metrics = {"r_free": 0.24}
+  stages[0].status = "complete"
+  stages[0].cycles_used = 1
+  stages[1].status = "complete"
+  stages[1].cycles_used = 1
+  stages[1].result_metrics = {"tfz": 14.2}
+  stages[2].status = "complete"
+  stages[2].cycles_used = 3
+  stages[2].result_metrics = {"r_free": 0.32}
+  stages[3].status = "complete"
+  stages[3].cycles_used = 3
+  stages[3].result_metrics = {"r_free": 0.24}
 
   return StructurePlan(
     goal="Solve kinase at 2.1A",
-    phases=phases,
+    stages=stages,
     template_id="mr_refine",
   )
 
@@ -288,68 +288,68 @@ def test_commentary_none_inputs():
   assert isinstance(text, str)
 
 
-# ── Phase summary ─────────────────────────────────────
+# ── Stage summary ─────────────────────────────────────
 
 def test_phase_complete():
   sm = _make_sm()
-  phase = PhaseDef(
+  stage = StageDef(
     id="initial_refinement",
     description="Initial refinement",
     max_cycles=3,
   )
-  phase.status = "complete"
-  phase.cycles_used = 3
-  phase.result_metrics = {"r_free": 0.32}
+  stage.status = "complete"
+  stage.cycles_used = 3
+  stage.result_metrics = {"r_free": 0.32}
 
-  text = generate_phase_summary(
-    sm, None, phase, None
+  text = generate_stage_summary(
+    sm, None, stage, None
   )
   assert "completed" in text
   assert "3 cycle" in text
   assert "0.320" in text
 
 
-def test_phase_skipped():
-  phase = PhaseDef(id="model_rebuilding")
-  phase.status = "skipped"
-  text = generate_phase_summary(
-    None, None, phase, None
+def test_stage_skipped():
+  stage = StageDef(id="model_rebuilding")
+  stage.status = "skipped"
+  text = generate_stage_summary(
+    None, None, stage, None
   )
   assert "skipped" in text
 
 
-def test_phase_failed():
-  phase = PhaseDef(id="initial_refinement")
-  phase.status = "failed"
-  phase.cycles_used = 2
-  text = generate_phase_summary(
-    None, None, phase, None
+def test_stage_failed():
+  stage = StageDef(id="initial_refinement")
+  stage.status = "failed"
+  stage.cycles_used = 2
+  text = generate_stage_summary(
+    None, None, stage, None
   )
   assert "failed" in text
   assert "2 cycle" in text
 
 
-def test_phase_with_next():
+def test_stage_with_next():
   sm = _make_sm()
-  completed = PhaseDef(
+  completed = StageDef(
     id="initial_refinement",
     description="Initial refinement",
   )
   completed.status = "complete"
   completed.cycles_used = 3
-  next_p = PhaseDef(
+  next_p = StageDef(
     id="model_rebuilding",
     description="Rebuild model",
   )
-  text = generate_phase_summary(
+  text = generate_stage_summary(
     sm, None, completed, next_p
   )
   assert "model_rebuilding" in text
   assert "Rebuild" in text
 
 
-def test_phase_none_input():
-  text = generate_phase_summary(
+def test_stage_none_input():
+  text = generate_stage_summary(
     None, None, None, None
   )
   assert text == ""
@@ -367,10 +367,10 @@ def test_final_report_full():
   assert "R-free: 0.2800" in report
   assert "187" in report  # waters
   assert "ATP" in report  # ligand
-  assert "PHASE TIMELINE" in report
+  assert "STAGE TIMELINE" in report
   assert "[done]" in report
   assert "data_assessment" in report
-  # Check phase metrics
+  # Check stage metrics
   assert "14.200" in report  # TFZ
 
 
@@ -419,8 +419,8 @@ def test_stopped_report_with_blacklist():
     {"r_free": 0.48},
   )
   plan = _make_plan()
-  plan.phases[2].status = "failed"
-  plan.phases[3].status = "pending"
+  plan.stages[2].status = "failed"
+  plan.stages[3].status = "pending"
 
   report = generate_stopped_report(sm, plan)
   assert "STOPPED" in report

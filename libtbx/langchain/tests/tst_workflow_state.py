@@ -177,7 +177,7 @@ def test_xray_has_prediction():
 
     state = detect_workflow_state(history, files)
 
-    # YAML system maps to molecular_replacement phase → xray_has_prediction state
+    # YAML system maps to molecular_replacement step → xray_has_prediction state
     assert state["state"] in ["xray_has_prediction", "molecular_replacement"], \
         "Expected xray_has_prediction or molecular_replacement, got %s" % state["state"]
     assert "phenix.process_predicted_model" in state["valid_programs"], \
@@ -220,9 +220,9 @@ def test_xray_model_processed():
 
     state = detect_workflow_state(history, files)
 
-    # YAML system maps to molecular_replacement phase
+    # YAML system maps to molecular_replacement step
     assert state["state"] in ["xray_model_processed", "xray_has_prediction", "molecular_replacement"], \
-        "Expected molecular_replacement phase state, got %s" % state["state"]
+        "Expected molecular_replacement step state, got %s" % state["state"]
     assert "phenix.phaser" in state["valid_programs"], \
         "Expected phenix.phaser in valid programs"
 
@@ -259,9 +259,9 @@ def test_xray_has_model():
 
     state = detect_workflow_state(history, files)
 
-    # YAML system may return xray_refined since phaser is done and we go to refine phase
+    # YAML system may return xray_refined since phaser is done and we go to refine step
     assert state["state"] in ["xray_has_model", "xray_refined", "refine"], \
-        "Expected refine phase state, got %s" % state["state"]
+        "Expected refine step state, got %s" % state["state"]
     assert "phenix.refine" in state["valid_programs"], \
         "Expected phenix.refine in valid programs"
 
@@ -411,7 +411,7 @@ def test_xray_has_ligand():
 
     state = detect_workflow_state(history, files)
 
-    # combine_ligand phase is mapped to xray_combined for backward compatibility
+    # combine_ligand step is mapped to xray_combined for backward compatibility
     assert state["state"] in ["xray_has_ligand", "combine_ligand", "xray_combined"]
     assert "phenix.pdbtools" in state["valid_programs"]
 
@@ -581,7 +581,7 @@ def test_cryoem_model_processed_stepwise():
 
     # Stepwise: after processing, still need to dock
     assert state["state"] in ["cryoem_has_prediction", "dock_model"], \
-        "Expected dock phase, got %s" % state["state"]
+        "Expected dock step, got %s" % state["state"]
     assert "phenix.dock_in_map" in state["valid_programs"], \
         "Expected dock_in_map, got %s" % state["valid_programs"]
 
@@ -1024,7 +1024,7 @@ def test_model_placement_inferred_from_polder_directive():
 
     state = detect_workflow_state(history, files, directives=directives)
 
-    # Should NOT be in obtain_model phase since user requests polder
+    # Should NOT be in obtain_model step since user requests polder
     # which implies model is already placed
     assert state["state"] != "xray_analyzed", \
         f"Expected NOT xray_analyzed (obtain_model), got {state['state']}"
@@ -1055,7 +1055,7 @@ def test_model_placement_inferred_from_refine_directive():
 
     state = detect_workflow_state(history, files, directives=directives)
 
-    # Should be in refine phase, not obtain_model
+    # Should be in refine step, not obtain_model
     assert "phenix.refine" in state["valid_programs"], \
         f"phenix.refine should be offered, got {state['valid_programs']}"
 
@@ -1082,7 +1082,7 @@ def test_model_placement_inferred_from_model_vs_data_directive():
 
     state = detect_workflow_state(history, files, directives=directives)
 
-    # Should NOT go to obtain_model phase
+    # Should NOT go to obtain_model step
     assert state["state"] != "xray_analyzed", \
         f"Expected NOT xray_analyzed when model_vs_data requested"
 
@@ -1149,7 +1149,7 @@ def test_program_settings_adds_program_to_valid():
     Test that programs mentioned in program_settings are added to valid_programs.
 
     This is the key fix for v81 - if user has program_settings for predict_and_build,
-    it should be added to valid_programs even if workflow state is "past" that phase.
+    it should be added to valid_programs even if workflow state is "past" that step.
     """
     print("Test: program_settings_adds_program_to_valid")
 
@@ -1551,7 +1551,7 @@ def test_mr_sad_not_triggered_when_autosol_done():
 
 
 def test_mr_sad_directive_prioritizes_phaser():
-    """Test that use_mr_sad directive prioritizes phaser in obtain_model phase."""
+    """Test that use_mr_sad directive prioritizes phaser in obtain_model step."""
     print("Test: mr_sad_directive_prioritizes_phaser")
 
     files = ["data.mtz", "search_model.pdb", "sequence.fa"]
@@ -1569,7 +1569,7 @@ def test_mr_sad_directive_prioritizes_phaser():
 
     state = detect_workflow_state(history, files, directives=directives)
 
-    # Should be in obtain_model phase, with phaser prioritized and autosol removed
+    # Should be in obtain_model step, with phaser prioritized and autosol removed
     assert "phenix.phaser" in state["valid_programs"], \
         "phaser should be valid for MR-SAD, got %s" % state["valid_programs"]
     assert "phenix.autosol" not in state["valid_programs"], \
@@ -1671,13 +1671,13 @@ def test_experimental_phasing_yaml_structure():
     with open(yaml_path) as f:
         workflows = yaml.safe_load(f)
 
-    phases = workflows["xray"]["phases"]
+    steps = workflows["xray"].get("steps") or workflows["xray"].get("phases") or {}
 
-    # experimental_phasing phase should exist
-    assert "experimental_phasing" in phases, \
-        "experimental_phasing phase should exist in xray workflow"
+    # experimental_phasing step should exist
+    assert "experimental_phasing" in steps, \
+        "experimental_phasing step should exist in xray workflow"
 
-    ep = phases["experimental_phasing"]
+    ep = steps["experimental_phasing"]
 
     # Should have autosol as the program
     programs = ep.get("programs", [])
@@ -1702,7 +1702,7 @@ def test_predict_and_build_blocked_after_full_completion():
     followed by autobuild and refinement, the agent would re-offer
     predict_and_build because _check_program_prerequisites only blocked
     re-runs in stepwise mode. Directives (program_settings) could inject
-    it back into valid_programs even in the refine phase.
+    it back into valid_programs even in the refine step.
     """
     print("Test: predict_and_build_blocked_after_full_completion")
 

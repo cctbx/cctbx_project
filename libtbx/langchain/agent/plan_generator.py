@@ -150,8 +150,8 @@ def _generate_plan_inner(
 
   logger.debug(
     "Generated plan: template=%s goal=%s "
-    "phases=%d",
-    template_id, plan.goal, len(plan.phases),
+    "stages=%d",
+    template_id, plan.goal, len(plan.stages),
   )
   return plan
 
@@ -530,12 +530,12 @@ def _customize_plan(plan, context, user_advice):
   # thresholds can be tuned).
   if 2.5 <= resolution <= 3.0:
     # Slightly relaxed targets for 2.5-3.0 Å
-    for phase in plan.phases:
-      sc = phase.success_criteria
-      if phase.id == "initial_refinement":
+    for stage in plan.stages:
+      sc = stage.success_criteria
+      if stage.id == "initial_refinement":
         if sc.get("r_free") == "<0.35":
           sc["r_free"] = "<0.37"
-      elif phase.id == "final_refinement":
+      elif stage.id == "final_refinement":
         if sc.get("r_free") == "<0.25":
           sc["r_free"] = "<0.27"
 
@@ -543,7 +543,7 @@ def _customize_plan(plan, context, user_advice):
 # ── Plan-to-directives translator (Step 2.4) ───────
 
 def plan_to_directives(plan):
-  """Convert current phase to reactive agent directives.
+  """Convert current step to reactive agent directives.
 
   Thin wrapper around StructurePlan.to_directives().
   Exists as a module-level function so ai_agent.py
@@ -607,7 +607,7 @@ def repair_plan(plan, user_directives):
   """Repair the plan when user directives conflict.
 
   Checks if any user skip_programs conflict with
-  phases that provide essential data. Applies repair
+  stages that provide essential data. Applies repair
   rules from the template's if_skipped definitions.
 
   Args:
@@ -643,19 +643,19 @@ def _repair_plan_inner(plan, user_directives):
   if not skip_progs:
     return messages
 
-  for phase in plan.phases:
-    if not phase.provides:
+  for stage in plan.stages:
+    if not stage.provides:
       continue
     # Check if any skip_programs match this phase
-    phase_progs = set(phase.programs)
+    phase_progs = set(stage.programs)
     skipped = phase_progs & set(skip_progs)
     if not skipped:
       continue
     # This phase's programs are being skipped
     prog_str = ", ".join(sorted(skipped))
-    if phase.if_skipped:
+    if stage.if_skipped:
       # Apply repair rules
-      for provided, repair in phase.if_skipped.items():
+      for provided, repair in stage.if_skipped.items():
         messages.append(
           "[Plan Repair] User skips %s. "
           "Substituting: %s"
@@ -663,7 +663,7 @@ def _repair_plan_inner(plan, user_directives):
         )
     else:
       # No repair available — warning only
-      provides_str = ", ".join(phase.provides)
+      provides_str = ", ".join(stage.provides)
       messages.append(
         "[Plan Conflict] User skips %s, but "
         "the plan requires it for %s. "

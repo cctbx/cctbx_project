@@ -26,7 +26,7 @@ This document traces through how the PHENIX AI Agent would handle standard cryst
 **State Detection:**
 - `_categorize_files()` → `{data_mtz: [raster.mtz], sequence: [raster.fa]}`
 - `_detect_experiment_type()` → `xray` (has MTZ, no maps)
-- `detect_phase()`:
+- `detect_step()`:
   - `xtriage_done` = False (no history)
   - → **Phase: `analyze`**
 - **State: `xray_initial`**

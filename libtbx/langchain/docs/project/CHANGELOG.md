@@ -20,7 +20,7 @@ Default `thinking_level` changed from `advanced` to `expert`.
 When `model_vs_data` or `refine` confirms the model fits the data:
 1. `session.data["model_is_placed"] = True` — locked, survives resume
 2. `valid_programs` filtered: phaser, autosol, predict_and_build removed
-3. Plan fast-forward: MR/phasing phases marked "skipped" (⊘)
+3. Plan fast-forward: MR/phasing stages marked "skipped" (⊘)
 4. Conflict warning when user advice mentions MR but model is placed
 5. HETATM scan: input PDB files checked for pre-existing ligands
 
@@ -45,7 +45,7 @@ Unified data provider for Results tab, Progress tab, and HTML report:
 ### Template Fixes
 
 - `mr_sad` requires explicit MR-SAD intent (`wants_mr_sad` flag)
-- `predict_and_build` added to MR phase programs
+- `predict_and_build` added to MR stage programs
 - Polder moved to dedicated `ligand_validation` phase (after ligandfit)
 - Polder YAML conditions: requires `has: ligand_fit` + `not_done: polder`
 - SAD templates require `has_sequence: true`
@@ -217,9 +217,9 @@ history, and a strategy blacklist for anti-oscillation.
 produces a multi-phase strategy at session start by selecting
 and customizing pre-defined templates.
 
-- `StructurePlan` and `PhaseDef` data classes
+- `StructurePlan` and `StageDef` data classes
   (`knowledge/plan_schema.py`) with `advance()`, `retreat_to()`,
-  `skip_phase()`, `to_directives()`, `compute_hash()`,
+  `skip_stage()`, `to_directives()`, `compute_hash()`,
   `cycles_used` tracking, and serialization round-trip
 - 12 plan templates (`knowledge/plan_templates.yaml`):
   `mr_refine`, `mr_refine_ligand`, `mr_refine_lowres`,
@@ -230,7 +230,7 @@ and customizing pre-defined templates.
 - Template selection is deterministic (rule-based on experiment
   type, available files, resolution); LLM only customizes
   parameters within template bounds
-- `plan_to_directives()` translates plan phases into reactive
+- `plan_to_directives()` translates plan stages into reactive
   agent directives (prefer_programs, after_program,
   program_settings)
 - Strategy Hash (`compute_hash()`) fingerprints current phase +
@@ -261,8 +261,8 @@ using threshold logic.
   4. Retreat cooldown — at least 2 cycles since last retreat
   5. Retreat depth limit — max 1 phase backwards (unless template
      explicitly overrides)
-- Phase transitions logged via `vlog.normal("[GATE]...")` with
-  `generate_phase_summary()` at each transition
+- Stage transitions logged via `vlog.normal("[GATE]...")` with
+  `generate_stage_summary()` at each transition
 - Hypothesis evaluation integrated: calls
   `evaluate_hypotheses()` and `revalidate_confirmed()` each cycle
 
@@ -287,7 +287,7 @@ crystallographer-level commentary at three detail levels.
 
 - `generate_cycle_commentary()`: template-based per-cycle
   summary (no LLM), slots filled from Structure Model
-- `generate_phase_summary()`: LLM-generated narrative at phase
+- `generate_stage_summary()`: LLM-generated narrative at phase
   transitions (3-5 sentences synthesizing multiple cycles)
 - `generate_final_report()`: comprehensive completion report
   with model contents, phase timeline, hypothesis outcomes
@@ -304,7 +304,7 @@ crystallographer-level commentary at three detail levels.
 | `agent/plan_generator.py` | 558 | Plan generation, repair, hash |
 | `agent/gate_evaluator.py` | 862 | Phase gate evaluation + retreat |
 | `agent/hypothesis_evaluator.py` | 564 | Hypothesis lifecycle + prompts |
-| `knowledge/plan_schema.py` | 832 | PhaseDef + StructurePlan classes |
+| `knowledge/plan_schema.py` | 832 | StageDef + StructurePlan classes |
 | `knowledge/plan_templates.yaml` | 605 | 12 plan templates |
 | `knowledge/explanation_prompts.py` | 829 | Commentary/report generators |
 | `tests/tst_structure_model.py` | 1626 | 77 tests |
@@ -328,7 +328,7 @@ crystallographer-level commentary at three detail levels.
 | `phenix_ai/run_ai_agent.py` | Updated comment documenting four thinking levels |
 | `agent/event_formatter.py` | `structure_model_summary` in expert assessment display |
 | `agent/validation_inspector.py` | `_find_diff_peaks()` (F2), `_validate_data_model()` (F1 with Z-score), `_chain_completeness()` implementations with KD-tree caching |
-| `wxGUI2/Programs/AIAgent.py` | `agent_plan` callback handler (plan header at session start); `agent_gate_transition` callback handler (phase transition blocks); phase context line per cycle |
+| `wxGUI2/Programs/AIAgent.py` | `agent_plan` callback handler (plan header at session start); `agent_gate_transition` callback handler (stage transition blocks); stage context line per cycle |
 
 ### Tests
 
@@ -1852,7 +1852,7 @@ exist. Fixed to `ligand_fit_output`.
 ### Audits that passed clean
 
 All command template `{slot}` placeholders match defined inputs; all workflow
-phase transitions reference valid phases; all strategy_flags have proper type
+stage transitions reference valid phases; all strategy_flags have proper type
 declarations; all invariant `has_strategy` checks have corresponding sources;
 all hardcoded `categorized_files.get("xxx")` references in Python match YAML;
 no sibling subcategories have overlapping patterns; no category/exclude overlaps
@@ -2824,7 +2824,7 @@ detect_workflow_state()
   engine.get_workflow_state()
       build_context(files, ...)          # placement_uncertain=True OR cell_mismatch=True
       _promote_unclassified_for_docking  # files["search_model"]=[1aew_A.pdb]
-      detect_phase()                     # dock_model (Tier 1 or Tier 3)
+      detect_step()                     # dock_model (Tier 1 or Tier 3)
       get_valid_programs()               # dock_in_map: has_any([search_model✓]) + full_map✓
       return {"categorized_files": files, ...}   # promoted files in return dict
   state["categorized_files"] = state.get("categorized_files", files)  # kept ✓
@@ -3169,7 +3169,7 @@ immediately — the new advice was never acted on.
    The `advice_changed` flag (set by `_preprocess_user_advice` on hash
    mismatch) suppressed this for one cycle.
 2. **Wall 2 — `valid_programs = ['STOP']` in PERCEIVE** (this fix):
-   Once the workflow phase was `complete`, `detect_phase` returned the
+   Once the workflow step was `complete`, `detect_phase` returned the
    terminal phase, and `get_valid_programs` immediately returned `['STOP']`
    before Wall 1's suppression logic ran. The LLM was handed a program
    menu that only said STOP, so it couldn't choose polder even with
@@ -3332,7 +3332,7 @@ auto-set. See previous session-management context for full list.
   consistency.
 - Files: `knowledge/programs.yaml` (`phenix.real_space_refine` `map_cc` spec)
 
-### G1: holton_geometry_validation defined but not in any workflow phase (Verified)
+### G1: holton_geometry_validation defined but not in any workflow step (Verified)
 
 `phenix.holton_geometry_validation` is registered in `programs.yaml`
 with `done_tracking` but deliberately not in any `workflows.yaml` phase.
@@ -3630,7 +3630,7 @@ which is scoped to agent output directories only.*
 **Moved 5 priority lists from `rules_selector.py` to `workflows.yaml`**
 - `shared/rules_config` section has `default_priority`, `ligand_priority`,
   and `state_aliases`
-- Per-phase `rules_priority` lists in workflow phase definitions
+- Per-phase `rules_priority` lists in workflow step definitions
 - `_load_rules_config()` and `_get_phase_rules_priority()` load from YAML
 - r_free/map_cc validation logic stays in Python (behavioral, not config)
 - Files: `knowledge/workflows.yaml`, `agent/rules_selector.py`
@@ -3842,7 +3842,7 @@ which is scoped to agent output directories only.*
 
 **Explicit program injection into valid_programs**
 - Registered explicit programs are injected into `valid_programs` regardless of
-  workflow phase, so the LLM can select them even in early phases (e.g.,
+  workflow step, so the LLM can select them even in early phases (e.g.,
   `map_correlations` during `cryoem_initial`)
 - File: `agent/graph_nodes.py`
 
@@ -4986,7 +4986,7 @@ if program == "phenix.predict_and_build":
     return True  # Always allow - worst case it does prediction-only
 ```
 
-This bypassed the normal workflow phase ordering (xtriage → obtain_model).
+This bypassed the normal workflow step ordering (xtriage → obtain_model).
 
 ### The Fix
 
@@ -5433,7 +5433,7 @@ The prompt was adding `NOTE: Use predict_and_build with strategy: {"stop_after_p
 - Added LLM prompt tests for polder (TestPolderLLMPrompt)
 - Added file categorization tests (TestUnclassifiedPDBCategorization)
 - Tests verify:
-  - Polder is in correct workflow phases
+  - Polder is in correct workflow steps
   - Prompt clarifies polder doesn't need phases
   - Generic PDB files categorize as `model` not `search_model`
 

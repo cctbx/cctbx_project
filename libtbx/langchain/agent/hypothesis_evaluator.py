@@ -545,7 +545,7 @@ def _build_prompt_inner(structure_model):
     ' "refute_if": "metric op value"}'
   )
   lines.append(
-    "Otherwise, focus on the current plan phase."
+    "Otherwise, focus on the current plan stage."
   )
   lines.append(
     "==============================="

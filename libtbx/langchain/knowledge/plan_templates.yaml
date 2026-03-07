@@ -24,10 +24,10 @@
 #     has_ligand_code: true | false
 #     resolution: ">3.0" | "<1.5" | omit for any
 #   extends: parent template id (inheritance)
-#   insert_after: phase id to insert new phases after
+#   insert_after: stage id to insert new stages after
 #   overrides: per-phase overrides for inherited plan
 #   priority: higher = preferred when multiple match
-#   phases: list of phase definitions
+#   phases: list of stage definitions
 #     id: unique phase identifier
 #     programs: list of PHENIX program names
 #     max_cycles: maximum cycles in this phase
@@ -69,7 +69,7 @@ templates:
       experiment_type: xray
       has_search_model: true
     priority: 10
-    phases:
+    stages:
 
       - id: data_assessment
         programs: [phenix.xtriage]
@@ -159,7 +159,7 @@ templates:
     extends: mr_refine
     insert_after: model_rebuilding
     priority: 20
-    phases:
+    stages:
       - id: ligand_fitting
         programs: [phenix.ligandfit]
         max_cycles: 1
@@ -253,7 +253,7 @@ templates:
     applicable_when:
       experiment_type: cryoem
     priority: 10
-    phases:
+    stages:
 
       - id: data_assessment
         programs: [phenix.mtriage]
@@ -304,7 +304,7 @@ templates:
     extends: cryoem_refine
     insert_after: refinement
     priority: 20
-    phases:
+    stages:
       - id: ligand_fitting
         programs: [phenix.ligandfit]
         max_cycles: 1
@@ -366,7 +366,7 @@ templates:
       has_search_model: true
       model_is_placed: true
     priority: 50
-    phases:
+    stages:
 
       - id: data_assessment
         programs: [phenix.xtriage]
@@ -407,7 +407,7 @@ templates:
       model_is_placed: true
       has_ligand_code: true
     priority: 55
-    phases:
+    stages:
 
       - id: data_assessment
         programs: [phenix.xtriage]
@@ -469,7 +469,7 @@ templates:
       has_sequence: true
       has_anomalous_atoms: false
     priority: 10
-    phases:
+    stages:
 
       - id: data_assessment
         programs: [phenix.xtriage]
@@ -525,7 +525,7 @@ templates:
       has_ligand_code: true
     priority: 20
     insert_after: model_rebuilding
-    phases:
+    stages:
       - id: ligand_fitting
         programs: [phenix.ligandfit]
         max_cycles: 1
@@ -554,7 +554,7 @@ templates:
       has_anomalous_atoms: true
       wants_mr_sad: true
     priority: 40
-    phases:
+    stages:
 
       - id: data_assessment
         programs: [phenix.xtriage]
@@ -622,7 +622,7 @@ templates:
       has_sequence: true
       has_search_model: false
     priority: 30
-    phases:
+    stages:
 
       - id: data_assessment
         programs: [phenix.xtriage]
@@ -673,7 +673,7 @@ templates:
       has_ligand_code: true
     priority: 35
     insert_after: build_and_refine
-    phases:
+    stages:
       - id: ligand_fitting
         programs: [phenix.ligandfit]
         max_cycles: 1
@@ -698,7 +698,7 @@ templates:
       has_search_model: false
       has_sequence: false
     priority: 1
-    phases:
+    stages:
 
       - id: data_assessment
         programs: [phenix.xtriage]
@@ -714,7 +714,7 @@ templates:
       has_search_model: false
       has_sequence: false
     priority: 1
-    phases:
+    stages:
 
       - id: map_assessment
         programs: [phenix.mtriage]
@@ -739,5 +739,5 @@ templates:
 #     mr_refine (priority 10) at low resolution
 #
 # The plan generator resolves extends/overrides at
-# load time to produce a flat list of PhaseDef objects.
+# load time to produce a flat list of StageDef objects.
 # =============================================================

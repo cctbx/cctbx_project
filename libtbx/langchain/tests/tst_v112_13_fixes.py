@@ -440,12 +440,12 @@ def test_phaser_condition_in_workflows_yaml():
 
     workflows = _load_workflows()
     xray = workflows.get("xray", {})
-    phases = xray.get("phases", {})
+    steps = xray.get("steps") or xray.get("phases") or {}
 
     # Search all phases for phaser with model_for_mr condition
     found_model_for_mr = False
-    for phase_name, phase_def in phases.items():
-        programs = phase_def.get("programs", [])
+    for step_name, step_def in steps.items():
+        programs = step_def.get("programs", [])
         for prog in programs:
             if isinstance(prog, dict):
                 prog_name = prog.get("program", "")
@@ -682,18 +682,18 @@ def test_best_model_ligand_fit_excluded_from_refine():
 # =============================================================================
 
 def test_combine_ligand_phase_exists():
-    """The combine_ligand phase should be defined in xray workflow."""
+    """The combine_ligand step should be defined in xray workflow."""
     print("Test: combine_ligand_phase_exists")
 
     workflows = _load_workflows()
     xray = workflows.get("xray", {})
-    phases = xray.get("phases", {})
+    steps = xray.get("steps") or xray.get("phases") or {}
 
-    assert_in("combine_ligand", phases,
-             "combine_ligand phase should exist in xray workflow")
+    assert_in("combine_ligand", steps,
+             "combine_ligand step should exist in xray workflow")
 
-    cl_phase = phases["combine_ligand"]
-    programs = cl_phase.get("programs", [])
+    cl_step = steps["combine_ligand"]
+    programs = cl_step.get("programs", [])
 
     prog_names = []
     for p in programs:
@@ -703,9 +703,9 @@ def test_combine_ligand_phase_exists():
             prog_names.extend(p.keys())
 
     assert_in("phenix.pdbtools", prog_names,
-             "combine_ligand phase should include phenix.pdbtools")
+             "combine_ligand step should include phenix.pdbtools")
 
-    transitions = cl_phase.get("transitions", {})
+    transitions = cl_step.get("transitions", {})
     assert_equal(transitions.get("on_complete"), "refine",
                 "combine_ligand should transition to refine on complete")
 
@@ -859,12 +859,12 @@ def test_map_symmetry_requires_non_half_map():
 
     workflows = _load_workflows()
     cryoem = workflows.get("cryoem", {})
-    phases = cryoem.get("phases", {})
+    steps = cryoem.get("steps") or cryoem.get("phases") or {}
 
-    # Find map_symmetry in any phase
+    # Find map_symmetry in any step
     found_condition = False
-    for phase_name, phase_def in phases.items():
-        programs = phase_def.get("programs", [])
+    for step_name, step_def in steps.items():
+        programs = step_def.get("programs", [])
         for prog in programs:
             if isinstance(prog, dict) and prog.get("program") == "phenix.map_symmetry":
                 conditions = prog.get("conditions", [])
@@ -981,7 +981,7 @@ def test_pdbtools_modified_not_overridden_by_best_model():
     """Command builder should NOT override LLM's _modified.pdb choice.
 
     When the LLM correctly picks the pdbtools combined model+ligand file,
-    the build phase must not replace it with the old best_model.
+    the build step must not replace it with the old best_model.
     """
     print("Test: pdbtools_modified_not_overridden_by_best_model")
 

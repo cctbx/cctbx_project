@@ -1804,9 +1804,9 @@ phenix.map_correlations:
   log_detection:
     markers: ["map_correlations"]
   done_tracking:
-    # When run from the normal validate phase this sets validation_done.
-    # When run from probe_placement phase the history analyzer sets
-    # placement_probed instead (phase-aware Python override in workflow_state).
+    # When run from the normal validate step this sets validation_done.
+    # When run from probe_placement step the history analyzer sets
+    # placement_probed instead (step-aware Python override in workflow_state).
     flag: "validation_done"
     history_detection:
       markers: ["map_correlations"]
@@ -1916,9 +1916,9 @@ phenix.model_vs_data:
   log_detection:
     markers: ["model_vs_data"]
   done_tracking:
-    # When run from the normal validate phase this sets validation_done.
-    # When run from probe_placement phase the history analyzer sets
-    # placement_probed instead (phase-aware Python override in workflow_state).
+    # When run from the normal validate step this sets validation_done.
+    # When run from probe_placement step the history analyzer sets
+    # placement_probed instead (step-aware Python override in workflow_state).
     flag: "validation_done"
     history_detection:
       markers: ['model_vs_data']

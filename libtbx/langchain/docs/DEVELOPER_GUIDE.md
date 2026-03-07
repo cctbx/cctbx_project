@@ -254,7 +254,7 @@ each experiment type (X-ray and cryo-EM).
 
 1. `detect_workflow_state()` examines the session
    history and available files to determine the
-   current workflow phase (e.g., "analyze", "refine",
+   current workflow step (e.g., "analyze", "refine",
    "complete").
 
 2. `get_valid_programs()` reads the programs listed
@@ -267,15 +267,15 @@ each experiment type (X-ray and cryo-EM).
    - Apply user directives: `skip_programs` removes
      programs, `prefer_programs` reorders them
    - Apply plan directives (Expert mode):
-     `prefer_programs` from the current plan phase
+     `prefer_programs` from the current plan stage
 
 3. The resulting list is passed to the LLM (or
    rules-based selector) which picks one.
 
-**Phase transitions** happen when a program sets its
+**Stage transitions** happen when a program sets its
 done flag and the phase's transition conditions are
 met. For example, completing xtriage in the "analyze"
-phase transitions to "obtain_model".
+stage transitions to "obtain_model".
 
 **Key configuration:**
 
@@ -483,7 +483,7 @@ evidence decays.
 Three levels of commentary:
 - `generate_cycle_commentary()`: template-based,
   no LLM, every cycle
-- `generate_phase_summary()`: LLM-based, at phase
+- `generate_stage_summary()`: LLM-based, at phase
   transitions
 - `generate_final_report()` /
   `generate_stopped_report()`: template-based, at
@@ -493,7 +493,7 @@ Three levels of commentary:
 
 **Files:** `programs/ai_agent.py`
 (`_detect_model_placement`,
-`_skip_plan_phases_for_placement`),
+`_skip_plan_stages_for_placement`),
 `agent/workflow_engine.py`
 (`model_is_placed_confirmed` in context)
 
@@ -665,7 +665,7 @@ programs, you only need to edit two files:
    inputs, outputs, command template, metric
    extraction, and done_tracking.
 2. **`knowledge/workflows.yaml`**: Add the program to
-   the appropriate workflow phase(s) with conditions.
+   the appropriate workflow step(s) with conditions.
 
 Optionally:
 
@@ -741,7 +741,7 @@ chooses between available programs, modify the LLM
 prompt in `knowledge/prompts.py` or the rules-based
 selector in `graph_nodes.py`.
 
-**Adding a new workflow phase:**
+**Adding a new workflow step:**
 
 1. Add the phase to `workflows.yaml` under the
    appropriate experiment type
@@ -770,7 +770,7 @@ using IDF-weighted scoring) and a guidance text
 ```
 
 Tags are matched against the current session state
-(programs run, metrics, workflow phase). IDF weighting
+(programs run, metrics, workflow step). IDF weighting
 means rare tags (like "twinning") get more weight
 than common ones (like "refinement").
 
@@ -887,7 +887,7 @@ python tests/run_all_tests.py --pattern "plan"
 
 | Suite | Tests | What it covers |
 |-------|-------|---------------|
-| tst_plan_schema | 53 | PhaseDef, StructurePlan serialization |
+| tst_plan_schema | 53 | StageDef, StructurePlan serialization |
 | tst_plan_generator | 39 | Template selection, context building |
 | tst_gate_evaluator | 54 | Success/retreat/advance logic |
 | tst_structure_model | 77 | Model state tracking, round-trips |

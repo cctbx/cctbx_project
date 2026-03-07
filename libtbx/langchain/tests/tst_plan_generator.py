@@ -28,7 +28,7 @@ from agent.plan_generator import (
   _is_ligand_cif,
 )
 from knowledge.plan_schema import (
-  StructurePlan, PHASE_ACTIVE,
+  StructurePlan, STAGE_ACTIVE,
 )
 
 
@@ -402,10 +402,10 @@ def test_generate_mr_refine():
     user_advice="Solve by MR and refine",
   )
   assert plan is not None
-  assert len(plan.phases) == 5
+  assert len(plan.stages) == 5
   assert plan.template_id == "mr_refine"
-  assert plan.phases[0].id == "data_assessment"
-  assert plan.phases[1].id == (
+  assert plan.stages[0].id == "data_assessment"
+  assert plan.stages[1].id == (
     "molecular_replacement"
   )
 
@@ -420,7 +420,7 @@ def test_generate_mr_ligand():
   )
   assert plan is not None
   assert plan.template_id == "mr_refine_ligand"
-  ids = [p.id for p in plan.phases]
+  ids = [p.id for p in plan.stages]
   assert "ligand_fitting" in ids
 
 
@@ -433,10 +433,10 @@ def test_generate_cryoem():
   )
   assert plan is not None
   assert plan.template_id == "cryoem_refine"
-  ids = [p.id for p in plan.phases]
+  ids = [p.id for p in plan.stages]
   assert "refinement" in ids
   assert "phenix.real_space_refine" in (
-    plan.phases[-1].programs
+    plan.stages[-1].programs
   )
 
 
@@ -450,7 +450,7 @@ def test_generate_lowres():
   assert plan is not None
   assert plan.template_id == "mr_refine_lowres"
   # Check relaxed thresholds
-  for p in plan.phases:
+  for p in plan.stages:
     if p.id == "final_refinement":
       assert p.strategy.get(
         "ordered_solvent"
@@ -466,7 +466,7 @@ def test_generate_highres():
   )
   assert plan is not None
   assert plan.template_id == "mr_refine_highres"
-  for p in plan.phases:
+  for p in plan.stages:
     if p.id == "final_refinement":
       assert p.strategy.get("adp", {}).get(
         "type"
@@ -509,8 +509,8 @@ def test_generate_returns_none_on_bad_input():
   )
   assert plan is not None
   assert plan.template_id == "data_analysis_only"
-  assert len(plan.phases) == 1
-  assert plan.phases[0].id == "data_assessment"
+  assert len(plan.stages) == 1
+  assert plan.stages[0].id == "data_assessment"
 
 
 # ── Customization ─────────────────────────────────────
@@ -524,7 +524,7 @@ def test_customize_intermediate_resolution():
     ],
   )
   assert plan is not None
-  for p in plan.phases:
+  for p in plan.stages:
     if p.id == "initial_refinement":
       # 2.7Å is in 2.5-3.0 range → relaxed to <0.37
       assert p.success_criteria.get(
@@ -547,7 +547,7 @@ def test_customize_no_resolution():
     ],
   )
   assert plan is not None
-  for p in plan.phases:
+  for p in plan.stages:
     if p.id == "initial_refinement":
       assert p.success_criteria.get(
         "r_free"
@@ -592,11 +592,11 @@ def test_revision_after_advance():
       "/data/data.mtz", "/data/model.pdb",
     ],
   )
-  plan.phases[0].status = PHASE_ACTIVE
+  plan.stages[0].status = STAGE_ACTIVE
   session_data = {}
   # Hash is set during generation
   h1 = plan.strategy_hash
-  # Advance changes current_phase_index
+  # Advance changes current_stage_index
   plan.advance()
   changed = check_plan_revision(plan, session_data)
   assert changed is True
@@ -609,7 +609,7 @@ def test_revision_sets_advice_changed():
       "/data/data.mtz", "/data/model.pdb",
     ],
   )
-  plan.phases[0].status = PHASE_ACTIVE
+  plan.stages[0].status = STAGE_ACTIVE
   session_data = {"advice_changed": False}
   plan.advance()
   check_plan_revision(plan, session_data)
@@ -653,8 +653,8 @@ def test_repair_skip_no_rules():
   messages = repair_plan(plan, user_d)
   # initial_refinement and final_refinement have
   # no if_skipped, so we get warnings
-  # (provides may be empty for refine phases)
-  # Actually: refine phases don't have provides in
+  # (provides may be empty for refine steps)
+  # Actually: refine steps don't have provides in
   # the template. No conflict detected.
   assert isinstance(messages, list)
 
@@ -692,7 +692,7 @@ def test_generated_plan_json_roundtrip():
   json_str = json.dumps(d)
   d2 = json.loads(json_str)
   plan2 = StructurePlan.from_dict(d2)
-  assert len(plan2.phases) == len(plan.phases)
+  assert len(plan2.stages) == len(plan.stages)
   assert plan2.template_id == plan.template_id
   assert plan2.goal == plan.goal
   # Directives should work after round-trip
@@ -706,7 +706,7 @@ def test_generated_plan_json_roundtrip():
 def test_full_session_flow():
   """Simulate the full session start flow:
   1. Generate plan from files + advice
-  2. Get directives for first phase
+  2. Get directives for first stage
   3. Merge with user directives
   4. Check for conflicts / repair
   5. Verify plan persistence
@@ -760,11 +760,11 @@ def test_full_session_flow():
   plan2 = StructurePlan.from_dict(
     session_data["plan"]
   )
-  assert len(plan2.phases) == len(plan.phases)
+  assert len(plan2.stages) == len(plan.stages)
   assert plan2.template_id == "mr_refine_ligand"
 
   # --- Advance and check revision ---
-  plan2.phases[0].status = PHASE_ACTIVE
+  plan2.stages[0].status = STAGE_ACTIVE
   plan2.advance()
   changed = check_plan_revision(
     plan2, session_data

@@ -490,20 +490,20 @@ def _extract_final_metrics(cycles, session=None):
 
 
 def _extract_plan_info(session):
-    """Extract plan phase information (v114)."""
+    """Extract plan stage information (v114)."""
     plan = session.get("plan")
     if not plan or not isinstance(plan, dict):
         return None
 
-    phases = plan.get("phases", [])
-    if not phases:
+    stages_data = plan.get("stages") or plan.get("phases") or []
+    if not stages_data:
         return None
 
-    phase_list = []
-    for p in phases:
+    stage_list = []
+    for p in stages_data:
         if not isinstance(p, dict):
             continue
-        phase_list.append({
+        stage_list.append({
             "id": p.get("id", ""),
             "status": p.get("status", "pending"),
             "description": p.get("description", ""),
@@ -515,11 +515,11 @@ def _extract_plan_info(session):
     return {
         "goal": plan.get("goal", ""),
         "template_id": plan.get("template_id", ""),
-        "phases": phase_list,
+        "stages": stage_list,
         "n_complete": sum(
-            1 for p in phase_list
+            1 for p in stage_list
             if p["status"] == "complete"),
-        "n_total": len(phase_list),
+        "n_total": len(stage_list),
     }
 
 
@@ -745,13 +745,13 @@ def generate_markdown_report(groups):
             if mode in mode_dict:
                 _, mdata = mode_dict[mode]
                 pi = mdata.get("plan_info")
-                if pi and pi.get("phases"):
+                if pi and (pi.get("stages") or pi.get("phases")):
                     lines.append(
                         "**Plan (%s):** %s"
                         % (MODE_LABELS[mode],
                            pi.get("goal", "")))
                     lines.append("")
-                    for p in pi["phases"]:
+                    for p in (pi.get("stages") or pi.get("phases") or []):
                         icon = {
                             "complete": "+",
                             "active": ">",

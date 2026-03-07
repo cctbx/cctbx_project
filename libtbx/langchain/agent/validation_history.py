@@ -4,7 +4,7 @@ Validation History for the Goal-Directed Agent.
 Stores per-cycle validation snapshots in a queryable
 format. The gate evaluator (Phase 3) uses this to
 compute the Monotonic Progress Gate (are metrics better
-or worse than at phase start?), and the explanation
+or worse than at stage start?), and the explanation
 engine (Phase 5) uses it for the final report and
 per-cycle before/after comparisons.
 
@@ -262,12 +262,12 @@ class ValidationHistory(object):
     """Get the validation snapshot from when a phase began.
 
     Used by the gate evaluator to compare current metrics
-    against phase-start metrics for the monotonic progress
+    against stage-start metrics for the monotonic progress
     gate.
 
     Args:
       phase_start_cycle: int. The cycle number at which
-        the current phase began.
+        the current step began.
 
     Returns:
       dict (snapshot) or None. Returns the snapshot at

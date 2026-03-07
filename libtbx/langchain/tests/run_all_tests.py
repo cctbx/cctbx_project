@@ -58,7 +58,7 @@ Test Suites (require PHENIX environment):
   42. Hypothesis Evaluator - Hypothesis lifecycle, ligand/metal evaluation
   43. MTZ Crosscheck - MTZ file classification and crosscheck rescue
   44. Old Client Compat - Backward compatibility with older clients
-  45. Perceive Stop Checks - Perceive-phase stop condition checks
+  45. Perceive Stop Checks - Perceive-step stop condition checks
   46. Plan Generator - Plan generation, revision, and repair logic
   47. Plan Schema - Plan schema validation, roundtrips, workflow tests
   48. Shared Code Imports - Shared code import verification

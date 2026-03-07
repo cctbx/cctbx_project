@@ -26,7 +26,7 @@ destructive programs (phaser, autosol, predict_and_build)
 from `valid_programs`. This prevents the LLM from running
 unnecessary molecular replacement on pre-solved structures.
 
-Pending MR/phasing plan phases are marked "skipped" (⊘).
+Pending MR/phasing plan stages are marked "skipped" (⊘).
 A conflict warning is logged if user advice mentions MR/phaser.
 
 ### Sanity Check Thresholds

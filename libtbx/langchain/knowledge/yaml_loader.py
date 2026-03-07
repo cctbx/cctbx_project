@@ -408,19 +408,19 @@ def get_workflow(workflow_name):
     return workflows.get(workflow_name)
 
 
-def get_workflow_phases(workflow_name):
+def get_workflow_steps(workflow_name):
     """
-    Get phases for a workflow.
+    Get steps for a workflow.
 
     Args:
         workflow_name: "xray" or "cryoem"
 
     Returns:
-        dict: Phase name -> phase definition
+        dict: Step name -> step definition
     """
     workflow = get_workflow(workflow_name)
     if workflow:
-        return workflow.get("phases", {})
+        return workflow.get("steps") or workflow.get("phases") or {}
     return {}
 
 
@@ -440,20 +440,20 @@ def get_workflow_targets(workflow_name):
     return {}
 
 
-def get_phase_programs(workflow_name, phase_name):
+def get_step_programs(workflow_name, step_name):
     """
-    Get valid programs for a specific phase.
+    Get valid programs for a specific step.
 
     Args:
         workflow_name: "xray" or "cryoem"
-        phase_name: Phase name (e.g., "refine")
+        step_name: Step name (e.g., "refine")
 
     Returns:
-        list: Program definitions for this phase
+        list: Program definitions for this step
     """
-    phases = get_workflow_phases(workflow_name)
-    phase = phases.get(phase_name, {})
-    return phase.get("programs", [])
+    steps = get_workflow_steps(workflow_name)
+    step = steps.get(step_name, {})
+    return step.get("programs", [])
 
 
 # =============================================================================
@@ -725,8 +725,8 @@ def validate_yaml_files():
         else:
             for name, defn in workflows.items():
                 if name in ["xray", "cryoem"]:
-                    if not defn.get("phases"):
-                        errors.append(f"{name} workflow: missing phases")
+                    if not (defn.get("steps") or defn.get("phases")):
+                        errors.append(f"{name} workflow: missing steps")
     except Exception as e:
         errors.append(f"Error loading workflows.yaml: {e}")
 
@@ -771,8 +771,8 @@ if __name__ == "__main__":
     print(f"Loaded {len(workflows)} workflows:")
     for name in workflows:
         if name in ["xray", "cryoem"]:
-            phases = get_workflow_phases(name)
-            print(f"  - {name}: {len(phases)} phases")
+            steps = get_workflow_steps(name)
+            print(f"  - {name}: {len(steps)} steps")
     print()
 
     # Test metrics loading
