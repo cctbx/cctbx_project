@@ -59,14 +59,15 @@ Test Suites (require PHENIX environment):
   43. MTZ Crosscheck - MTZ file classification and crosscheck rescue
   44. Old Client Compat - Backward compatibility with older clients
   45. Perceive Stop Checks - Perceive-step stop condition checks
-  46. Plan Generator - Plan generation, revision, and repair logic
-  47. Plan Schema - Plan schema validation, roundtrips, workflow tests
-  48. Shared Code Imports - Shared code import verification
-  49. Structure Model - Structure model state, metrics, problem detection
-  50. Template - Template system tests
-  51. Validation History - Validation history roundtrips, scenarios
-  52. Display Data Model - DisplayDataModel properties, HTML report generation
-  53. Scenario Tracer - Plan selection, gate evaluation, cycle counting, multi-cycle progression
+  46. Phase→Stage Rename Audit - Runtime introspection audit
+  47. Plan Generator - Plan generation, revision, and repair logic
+  48. Plan Schema - Plan schema validation, roundtrips, workflow tests
+  49. Shared Code Imports - Shared code import verification
+  50. Structure Model - Structure model state, metrics, problem detection
+  51. Template - Template system tests
+  52. Validation History - Validation history roundtrips, scenarios
+  53. Display Data Model - DisplayDataModel properties, HTML report generation
+  54. Scenario Tracer - Plan selection, gate evaluation, cycle counting, multi-cycle progression
 
 Key Tests for Recent Fixes (v110):
   - tst_best_files_tracker: Model scoring, autobuild_output same score as refined
@@ -634,6 +635,16 @@ def main():
     except ImportError as e:
         print(f"⚠️  Could not import tst_perceive_stop_checks: {e}")
         results.append(("Perceive Stop Checks", False, 0))
+
+    # --- Phase→Stage Rename Audit ---
+    try:
+        from tests.audit_phase_rename import run as run_phase_rename_audit
+        success, elapsed = run_test_module(
+            "audit_phase_rename", run_phase_rename_audit, args.verbose)
+        results.append(("Phase→Stage Rename Audit", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import audit_phase_rename: {e}")
+        results.append(("Phase→Stage Rename Audit", False, 0))
 
     # --- Plan Generator Tests ---
     try:
