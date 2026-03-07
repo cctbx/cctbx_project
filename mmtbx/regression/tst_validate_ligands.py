@@ -69,9 +69,6 @@ def run_test01():
   assert(rmsd_result.angle_n_outliers == 0)
   assert approx_equal(rmsd_result.dihedral_rmsd, 32.6, eps=0.5)
 
-  #os.remove('one_chain_ligand_water_newH.cif')
-  #os.remove('one_chain_ligand_water_newH.txt')
-
 # ------------------------------------------------------------------------------
 
 def run_test02():
@@ -97,9 +94,6 @@ def run_test02():
   tst_occupancies(vl_manager = vl_manager)
   tst_adps(vl_manager = vl_manager)
   tst_rmsds(vl_manager = vl_manager)
-
-  #os.remove('two_chains_ligand_water_newH.cif')
-  #os.remove('two_chains_ligand_water_newH.txt')
 
 # ------------------------------------------------------------------------------
 
@@ -285,9 +279,6 @@ def run_test03():
       #print(adps.b_max)
       #print(adps.b_mean)
 
-  #os.remove('pdb1avd_newH.txt')
-  #os.remove('pdb1avd_newH.cif')
-
 #def tst_get_overlaps(vl_manager):
 #  '''
 #  Test nonbonded overlaps
@@ -346,8 +337,6 @@ def run_test04():
     assert approx_equal(adps.b_mean_within, 42.45, eps=0.02)
   #
   os.remove(model_fn)
-  #os.remove('tst_4_fragment_newH.cif')
-  #os.remove('tst_4_fragment_newH.txt')
 
 # ------------------------------------------------------------------------------
 
@@ -374,8 +363,6 @@ def run_test05():
     assert (lr.id_str in ['ANGA B   1', 'BA2G B   1', 'GAL B   2'])
   #
   os.remove(model_fn)
-  #os.remove('tst_5_newH.cif')
-  #os.remove('tst_5_newH.txt')
 
 # ------------------------------------------------------------------------------
 

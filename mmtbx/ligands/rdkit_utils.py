@@ -12,6 +12,10 @@ from scitbx.array_family import flex
 from rdkit.Chem import AllChem
 from rdkit.Chem.Draw import rdMolDraw2D
 
+from rdkit import RDLogger
+lg = RDLogger.logger()
+lg.setLevel(RDLogger.CRITICAL) # Only show critical errors
+
 """
 Utility functions to work with rdkit
 
