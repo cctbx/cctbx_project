@@ -144,6 +144,11 @@ templates:
         strategy:
           ordered_solvent: true
 
+      - id: validation
+        programs: [phenix.molprobity]
+        max_cycles: 1
+        description: "Final model validation"
+
   # -----------------------------------------------------------
   # MR + REFINEMENT + LIGAND FITTING
   # -----------------------------------------------------------
@@ -292,6 +297,11 @@ templates:
         success:
           model_map_cc: ">0.7"
 
+      - id: validation
+        programs: [phenix.molprobity]
+        max_cycles: 1
+        description: "Final model validation"
+
   # -----------------------------------------------------------
   # CRYO-EM MAP + MODEL + LIGAND
   # -----------------------------------------------------------
@@ -321,6 +331,11 @@ templates:
         description: "Final refinement with ligand"
         success:
           model_map_cc: ">0.7"
+
+      - id: validation
+        programs: [phenix.molprobity]
+        max_cycles: 1
+        description: "Final model validation"
 
   # -----------------------------------------------------------
   # TWINNED DATA (X-ray)
@@ -400,6 +415,11 @@ templates:
         success:
           r_free: "<0.22"
 
+      - id: validation
+        programs: [phenix.molprobity]
+        max_cycles: 1
+        description: "Final model validation"
+
   refine_placed_ligand:
     description: "Refine and fit ligand (X-ray)"
     applicable_when:
@@ -454,6 +474,11 @@ templates:
         description: "Validate ligand with polder map"
         skip_if:
           polder_done: true
+
+      - id: validation
+        programs: [phenix.molprobity]
+        max_cycles: 1
+        description: "Final model validation"
 
 # =============================================================
 # PREDICT + MR + REFINEMENT (X-ray, no search model)
@@ -514,6 +539,11 @@ templates:
           ordered_solvent: true
         success:
           r_free: "<0.25"
+
+      - id: validation
+        programs: [phenix.molprobity]
+        max_cycles: 1
+        description: "Final model validation"
 
   predict_refine_ligand:
     description: "Predict model + MR + refine + ligand"
@@ -603,11 +633,11 @@ templates:
           ordered_solvent: true
         success:
           r_free: "<0.25"
-        description: "Final refinement"
-        strategy:
-          ordered_solvent: true
-        success:
-          r_free: "<0.25"
+
+      - id: validation
+        programs: [phenix.molprobity]
+        max_cycles: 1
+        description: "Final model validation"
 
 # =============================================================
 # SAD / EXPERIMENTAL PHASING (X-ray)
@@ -662,6 +692,11 @@ templates:
           ordered_solvent: true
         success:
           r_free: "<0.25"
+
+      - id: validation
+        programs: [phenix.molprobity]
+        max_cycles: 1
+        description: "Final model validation"
 
   sad_phasing_ligand:
     description: "SAD/MAD phasing + ligand fitting"

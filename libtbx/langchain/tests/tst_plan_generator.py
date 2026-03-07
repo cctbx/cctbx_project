@@ -402,12 +402,13 @@ def test_generate_mr_refine():
     user_advice="Solve by MR and refine",
   )
   assert plan is not None
-  assert len(plan.stages) == 5
+  assert len(plan.stages) == 6
   assert plan.template_id == "mr_refine"
   assert plan.stages[0].id == "data_assessment"
   assert plan.stages[1].id == (
     "molecular_replacement"
   )
+  assert plan.stages[5].id == "validation"
 
 
 def test_generate_mr_ligand():
@@ -435,9 +436,15 @@ def test_generate_cryoem():
   assert plan.template_id == "cryoem_refine"
   ids = [p.id for p in plan.stages]
   assert "refinement" in ids
+  assert "validation" in ids
+  # Refinement stage has RSR
+  refine_stage = [s for s in plan.stages
+    if s.id == "refinement"][0]
   assert "phenix.real_space_refine" in (
-    plan.stages[-1].programs
+    refine_stage.programs
   )
+  # Last stage is validation
+  assert plan.stages[-1].id == "validation"
 
 
 def test_generate_lowres():

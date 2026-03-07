@@ -37,7 +37,23 @@ phenix.ai_agent verbosity=verbose original_files="data.mtz sequence.fa"
 # Run a specific program
 phenix.ai_agent original_files="model.pdb map.ccp4" \
     project_advice="Run phenix.map_correlations"
+
+# Tutorial mode (set up tutorial in GUI, then open AI Agent)
+# The agent auto-detects the tutorial and reads the README
+phenix.ai_agent input_directory=/path/to/tutorial/
 ```
+
+## Tutorials
+
+The AI Agent integrates with Phenix tutorials. When you set up a
+tutorial in the GUI (File → Tutorials), then open the AI Agent,
+it automatically detects the tutorial and shows a banner with the
+tutorial name. Compatible tutorials can be run immediately without
+entering any files or advice — just click Run.
+
+Tutorials that require programs not yet available in the agent
+(e.g., `phenix.map_box`) show an orange banner explaining which
+programs are needed, and suggest running step by step instead.
 
 ## Documentation Index
 

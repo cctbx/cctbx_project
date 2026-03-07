@@ -489,13 +489,15 @@ Three levels of commentary:
   `generate_stopped_report()`: template-based, at
   session end
 
-### 3e. Model Placement Gate (v114.1)
+### 3e. Model Placement Gate (v114.1, hardened v114.2)
 
 **Files:** `programs/ai_agent.py`
 (`_detect_model_placement`,
 `_skip_plan_stages_for_placement`),
 `agent/workflow_engine.py`
-(`model_is_placed_confirmed` in context)
+(`model_is_placed_confirmed` in context),
+`agent/workflow_state.py` (symmetry mismatch
+detection)
 
 Prevents destructive program selection on models
 that already fit the data. This is the fix for the
@@ -516,17 +518,31 @@ _detect_model_placement (post-result)
               phaser, autosol, predict_and_build
 ```
 
-**Detection thresholds:** CC > 0.3 for
-model_vs_data, R-free < 0.50 for refine,
-map_cc > 0.3 for real_space_refine. These are
-deliberately low — the question is "does the model
-correspond to the data at all?" not "is the model
-good?"
+**Detection sources** (v114.2 additions in bold):
 
-**Plan fast-forward:** When placement is detected,
+- model_vs_data: CC > 0.3 in metrics dict
+- **model_vs_data: R-free < 0.50 parsed from result text**
+  (fallback when metrics dict is empty)
+- **model_vs_data: R-work < 0.45 parsed from result text**
+- refine: R-free < 0.50 or map_cc > 0.3
+- **RSR symmetry mismatch → `needs_dock`** (failed
+  real_space_refine with "dimensions mismatch" sets
+  `placement_probe_result` in workflow_state)
+
+**Plan stage skipping:** When placement is detected,
 pending `molecular_replacement` and
-`experimental_phasing` phases are marked "skipped"
-and the plan advances to the next actionable phase.
+`experimental_phasing` stages are marked "skipped".
+**Additionally** (v114.2), when the placement evidence
+shows R-free < 0.35 or R-work < 0.30 or CC > 0.5,
+`model_rebuilding` is also skipped (prevents
+autobuild from damaging a well-refined model).
+
+**Dock keyword handling** (v114.2): Words like "dock",
+"docking", "dock_in_map", "place the model" in user
+advice (including README text) cancel the "refine" →
+"model is placed" assumption that suppresses the
+placement probe. Both `workflow_engine.py` and
+`plan_generator.py` share this keyword list.
 
 **HETATM detection:** At startup,
 `_scan_input_models_for_ligands` scans input PDB
@@ -535,7 +551,63 @@ files for non-water HETATM records, sets
 polder without a ligandfit step when the model
 already contains ligands.
 
-### 3f. Client-Server Contract
+### 3f. Plan Enforcement (v114.2)
+
+**Files:** `agent/graph_nodes.py` (plan_node,
+build), `phenix/programs/ai_agent.py`
+(`_plan_has_pending_stages`),
+`agent/contract.py` (v4 field)
+
+Prevents premature STOP when the strategic plan
+has pending stages.  Without this, both LLMs
+(Gemini and OpenAI) frequently stop after the first
+stage completes (e.g., after resolve_cryo_em in a
+4-stage cryo-EM plan).
+
+**Two enforcement points:**
+
+1. **AUTO-STOP suppression** (plan_node): When
+   `metrics_trend.should_stop` fires but
+   `session_info.plan_has_pending_stages` is True,
+   `should_stop` is cleared and the LLM/rules
+   selector runs normally.
+
+2. **LLM STOP override** (build): When the LLM
+   returns `program=STOP` but
+   `plan_has_pending_stages` is True, the node
+   selects the best available program from
+   `prefer_programs` in the plan's current stage
+   directives.
+
+**Contract field:** `plan_has_pending_stages`
+(bool, default False, v4).
+
+### 3f-b. Dotted PHIL Passthrough (v114.2)
+
+**Files:** `agent/program_registry.py`,
+`agent/command_postprocessor.py`
+
+The sanitizer (Rule D) intentionally passes dotted
+PHIL paths through for runtime validation. But
+`program_registry.build_command` used to drop them
+as "unknown dotted keys". This broke every valid
+PHIL parameter the LLM generated that wasn't
+pre-registered in `strategy_flags`.
+
+**Fix:** Dotted PHIL keys now pass through to the
+command line with a PASSTHROUGH log. PHENIX's PHIL
+interpreter validates at runtime; wrong paths produce
+clear errors.
+
+**Rewrite system:** `_PARAM_REWRITES` in
+`command_postprocessor.py` expands short names to
+full PHIL paths (e.g., `mask_atoms` →
+`strategy.mask_atoms` for resolve_cryo_em).
+`_STRATEGY_REWRITES` in `graph_nodes.py` maps
+LLM's dotted keys to canonical strategy_flag names
+before the builder processes them.
+
+### 3f-c. Client-Server Contract
 
 **Files:** `agent/contract.py`,
 `docs/guides/BACKWARD_COMPATIBILITY.md`
@@ -636,15 +708,28 @@ callbacks via `libtbx.call_back`; the GUI
 | `agent_directives` | After extraction | Directives, files, advice |
 | `agent_plan` | Plan generated | Plan dict, header text |
 | `agent_cycle` | Each decision/result | Cycle, program, reasoning, plan context |
-| `agent_gate_transition` | Phase change | Action, phases, reason |
+| `agent_gate_transition` | Stage change | Action, stages, reason |
 | `sub_job_complete` | Program finished | Job info for project DB |
 
 **Display panels:**
 
-- `ConfigPanel`: Setup (files, advice, settings)
+- `ConfigPanel`: Setup (files, advice, settings).
+  Includes tutorial banner (`_detect_tutorial`,
+  `_display_tutorial_banner`) when working directory
+  is a Phenix tutorial.
 - `RunNotebook` → `_progress_panel`: Live progress
-  (text append only)
-- `ResultPanel`: Structured results after completion
+  (text append only). Stage headers appear once per
+  stage (tracked via `_last_stage_id`). Cycle results
+  display inline as `Running prog ... [OK]`.
+- `ResultPanel`: Structured results after completion.
+
+**Tutorial detection** (v114.2): `_detect_tutorial()`
+loads `tutorials.phil` from `phenix_examples`, matches
+CWD basename against tutorial names (longest first to
+avoid prefix collisions), requires README file to
+confirm. `_find_unsupported_programs()` scans the
+README for `phenix.xxx` tokens not in the agent's
+program registry.
 
 All new callback fields must use
 `getattr(data, 'field', default)` on the GUI side

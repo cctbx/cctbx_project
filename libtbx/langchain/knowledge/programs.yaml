@@ -1567,7 +1567,7 @@ phenix.resolve_cryo_em:
   command: "phenix.resolve_cryo_em {half_map} {sequence} {ncs_spec}"
 
   defaults:
-    strategy.mask_atoms: True
+    mask_atoms: True
     nproc: 4
 
   strategy_flags:
@@ -1575,18 +1575,19 @@ phenix.resolve_cryo_em:
       flag: "resolution={value}"
       type: float
     mask_atoms:
-      flag: "strategy.mask_atoms={value}"
+      flag: "mask_atoms={value}"
       type: bool
       hint: "Whether to mask atoms when computing map likelihood"
     nproc:
       flag: "nproc={value}"
       type: int
 
-  # Note: "mask_atoms" is ambiguous in resolve_cryo_em's
-  # PHIL (matches both strategy.mask_atoms and
-  # strategy.mask_atoms_atom_radius).  The _PARAM_REWRITES
-  # in command_postprocessor.py rewrites bare "mask_atoms"
-  # to "strategy.mask_atoms" before PHIL parsing.
+  # Note: "strategy.mask_atoms" is ambiguous in
+  # resolve_cryo_em's PHIL (prefix-matches
+  # strategy.mask_atoms_atom_radius, a float).
+  # Use bare "mask_atoms=True" on the command line
+  # instead — PHENIX resolves it correctly at the
+  # top-level scope.
 
   input_priorities:
     half_map:

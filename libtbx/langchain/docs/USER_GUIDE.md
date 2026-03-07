@@ -284,8 +284,19 @@ In the PHENIX GUI, select **AI Agent** from the
 program list (under "Automation" or by searching).
 The AI Agent setup panel will appear.
 
-[SCREENSHOT: PHENIX GUI program list with AI Agent
-highlighted]
+**Running a tutorial?** If you set up a Phenix
+tutorial (via File → Tutorials) and then open the
+AI Agent, the agent automatically detects the
+tutorial. A blue banner appears at the top of the
+Configure panel showing the tutorial name and
+description. If the tutorial can be run by the AI
+Agent, you can click Run immediately without
+entering any files or advice — the agent reads the
+tutorial's README file for instructions. If the
+tutorial requires programs not yet available in the
+agent, the banner will say so in orange text, and
+you can run it step by step using the individual
+programs in the GUI instead.
 
 ### Step 2: Add your files
 
@@ -544,42 +555,35 @@ Each program the agent runs appears as a numbered
 cycle:
 
 ```
-──── Stage: Initial refinement (cycle 2, up to 3) ────
-  Goal: R-free <0.30 (current: 0.312)
+──── Stage: Initial refinement ──────────────────────────────
+          Goal: R-free <0.30
 
 Cycle 5: phenix.refine
+  Running phenix.refine ... [OK]
+  ────────────────────────────────────────
 
-  Reasoning:
-    R-free has dropped from 0.35 to 0.31 over the
-    last two cycles. Continuing refinement with
-    ordered solvent to improve the model further.
-
-  $ phenix.refine model.pdb data.mtz
-  Running...
+Cycle 6: phenix.refine
+  Running phenix.refine ... [OK]
+  ────────────────────────────────────────
 ```
 
 Here's what each part tells you:
 
 **Stage context** (Expert mode): Shows which stage
-of the plan this cycle belongs to, how many cycles
-have been used in this stage, and how close the
-current metric is to the goal.
+of the plan this cycle belongs to, and the target
+metric for this stage. The stage header appears
+once when a new stage begins and is not repeated
+for subsequent cycles in the same stage.
 
 **Cycle number and program**: "Cycle 5: phenix.refine"
 means this is the 5th program the agent has run, and
 it chose phenix.refine.
 
-**Reasoning**: The agent's explanation of why it chose
-this program. This helps you understand the agent's
-decision-making.
-
-**Command**: The actual PHENIX command being run.
-File paths are shortened to just the file name for
-readability.
-
-**Running...**: The program is executing. Depending
-on the program and your data, this may take seconds
-(xtriage) to hours (autobuild at high resolution).
+**Running ... [OK]**: The program name, followed by
+its result. `[OK]` means success; `[FAILED]` means
+the program encountered an error (with details shown
+below). The agent may recover automatically from
+failures.
 
 ### Expert Assessment
 
@@ -641,9 +645,11 @@ see a transition block:
 
 ```
 ==================================================
- ✓ STAGE COMPLETE: initial_refinement
-   R-free reached target (0.28 < 0.30)
- → ADVANCING TO: model_rebuilding
+ ✓ STAGE COMPLETE: Initial refinement
+   All steps completed (3/3 cycles) — advancing to next stage
+
+   Stage 'initial_refinement' completed in 3 cycle(s).
+ → ADVANCING TO: Model rebuilding
 ==================================================
 ```
 
@@ -665,20 +671,22 @@ do.
 
 ### Cycle results
 
-After each program finishes, you'll see the result:
+After each program finishes, the result appears
+inline on the Running line:
 
 ```
-  >> Sub-job: [OK] phenix.refine
-Cycle 5: phenix.refine -> COMPLETE
-  Result: OK
+Cycle 3: phenix.refine
+  Running phenix.refine ... [OK]
+  ────────────────────────────────────────
 ```
 
 Or if something went wrong:
 
 ```
-  >> Sub-job: [FAILED] phenix.phaser
-Cycle 3: phenix.phaser -> FAILED
-  Result: FAILED: No MR solution found
+Cycle 3: phenix.phaser
+  Running phenix.phaser ... [FAILED]
+    No MR solution found (TFZ < 5)
+  ────────────────────────────────────────
 ```
 
 A single failed cycle doesn't necessarily mean the

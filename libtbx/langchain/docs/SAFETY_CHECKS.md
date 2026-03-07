@@ -17,7 +17,7 @@ The PHENIX AI Agent includes multiple layers of safety checks:
 | Input Validation | 29 |
 | Post-Processing Corrections | 4 |
 
-### Model Placement Gate (v114.1)
+### Model Placement Gate (v114.1, hardened v114.2)
 
 When the agent detects that a model already fits the data
 (via `model_vs_data` CC > 0.3 or `refine` R-free < 0.50),
@@ -27,7 +27,18 @@ from `valid_programs`. This prevents the LLM from running
 unnecessary molecular replacement on pre-solved structures.
 
 Pending MR/phasing plan stages are marked "skipped" (⊘).
+When the model is well-refined (R-free < 0.35), the
+`model_rebuilding` stage is also skipped.
 A conflict warning is logged if user advice mentions MR/phaser.
+
+**v114.2 additions:**
+- Result text parsing fallback (R-free/R-work from log output
+  when metrics dict is empty)
+- RSR symmetry mismatch → `needs_dock` (failed
+  real_space_refine routes to dock_in_map)
+- Dock keywords in advice cancel placement assumption
+- Plan enforcement: `plan_has_pending_stages` suppresses
+  premature STOP when plan has more work to do
 
 ### Sanity Check Thresholds
 

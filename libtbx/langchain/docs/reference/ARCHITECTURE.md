@@ -5,7 +5,7 @@
 The PHENIX AI Agent is an automated crystallographic workflow system
 that operates at two levels:
 
-1. **Strategic planner** (v114) — produces a multi-phase plan at session
+1. **Strategic planner** (v114) — produces a multi-stage plan at session
    start, evaluates progress at stage gates after each cycle, retreats
    when strategies fail, and generates crystallographer-level commentary.
 2. **Reactive execution engine** — analyzes logs, decides the next
@@ -946,7 +946,7 @@ mtriage steps, or when `thinking_level=none`.
 | `none` | No expert reasoning. Pass-through. |
 | `basic` | LLM reasoning with log analysis, strategy memory, R-free trend. |
 | `advanced` | Full pipeline: basic + structural validation + file metadata + expert KB lookup. Structure Model updated. |
-| `expert` (default) | Advanced + goal-directed planning (plan generation, gate evaluation, hypothesis testing, phase reports, model placement gate). `expert` maps to `advanced` in the graph; planning gated in `ai_agent.py`. |
+| `expert` (default) | Advanced + goal-directed planning (plan generation, gate evaluation, hypothesis testing, stage reports, model placement gate). `expert` maps to `advanced` in the graph; planning gated in `ai_agent.py`. |
 
 **Advanced mode adds** (v113.10):
 
@@ -2527,12 +2527,12 @@ StageDef:
   cycles_used, status (pending/active/done/skipped)
 
 StructurePlan:
-  goal, phases, current_stage_index, strategy_hash,
+  goal, stages, current_stage_index, strategy_hash,
   created_at_cycle, revised_at_cycle, revision_reason
 ```
 
 Key operations:
-- `advance()` / `retreat_to(phase_id)` / `skip_stage(phase_id)`
+- `advance()` / `retreat_to(stage_id)` / `skip_stage(stage_id)`
 - `to_directives()` → reactive agent directive dict
 - `compute_hash()` → strategy fingerprint (change triggers
   `advice_changed` in the reactive agent)
@@ -2593,7 +2593,7 @@ GateEvaluator.evaluate(plan, structure_model,
 GateResult:
   action: continue | advance | retreat | fallback | skip | stop
   reason: str
-  new_phase_id: str (for advance/retreat)
+  new_stage_id: str (for advance/retreat)
   blacklist_entry: dict (for retreat)
 ```
 

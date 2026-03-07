@@ -1,5 +1,218 @@
 # PHENIX AI Agent - Changelog
 
+## Version 114.2 (Plan Enforcement + Cryo-EM Fixes + GUI Polish)
+
+### Summary
+
+Addresses LLM mode regressions exposed by 21-tutorial evaluation:
+expert mode now matches or beats rules_only on most tutorials
+instead of losing on 4/9.  Core improvements: plan enforcement
+(suppresses premature STOP), placement gate hardening (result
+text parsing, symmetry mismatch recovery), cryo-EM routing
+fixes, and a general fix for dotted PHIL parameters being
+silently dropped.
+
+Also adds tutorial auto-detection in the GUI, cleans up the
+Agent Progress panel, and fixes autobuild MTZ file selection.
+
+### Plan Enforcement (STOP Suppression)
+
+When the LLM or auto-stop mechanism wants to stop but the plan
+has pending stages with valid programs, the stop is suppressed:
+
+1. **AUTO-STOP suppression**: `plan_has_pending_stages` flag in
+   session_info prevents metrics-based auto-stop when the plan
+   still has work to do (e.g., after resolve_cryo_em completes
+   but model building and refinement remain).
+2. **LLM STOP override**: If the LLM returns `program=STOP` but
+   `plan_has_pending_stages` is True, the BUILD node selects
+   the best program from `prefer_programs` in the plan's current
+   stage directives.
+
+**Data flow:** `ai_agent._plan_has_pending_stages()` →
+`session_info` → `api_client.build_session_state` →
+`run_ai_agent` → `graph_nodes.plan_node` (auto-stop chain) +
+`graph_nodes.build` (LLM STOP override).
+
+**Contract:** Added `plan_has_pending_stages` to
+`agent/contract.py` (v4 field, default False).
+
+**Files:** `phenix/programs/ai_agent.py`, `agent/api_client.py`,
+`phenix/phenix_ai/run_ai_agent.py`, `agent/graph_nodes.py`,
+`agent/contract.py`
+
+### Placement Gate Hardening
+
+Extended the v114.1 placement gate with deeper detection:
+
+1. **Result text parsing**: `_detect_model_placement` now parses
+   R-free/R-work from the result text when the metrics dict is
+   empty (common for model_vs_data which doesn't populate
+   structured metrics).
+2. **model_rebuilding skip**: When placement evidence shows
+   R-free < 0.35, the `model_rebuilding` plan stage is also
+   skipped (prevents autobuild from damaging a well-refined
+   model).
+3. **RSR symmetry mismatch**: Failed real_space_refine with
+   "Symmetry and/or box dimensions mismatch" sets
+   `placement_probe_result = "needs_dock"` so the next cycle
+   routes to dock_in_map.
+4. **Dock keywords**: Words like "dock", "docking",
+   "dock_in_map", "place the model" in user advice cancel the
+   "refine" → "model is placed" assumption. READMEs that say
+   "dock the model then refine" no longer suppress the placement
+   probe.
+5. **Session → plan generator**: `model_is_placed` from session
+   data flows into the plan generator via data_characteristics,
+   enabling correct `refine_placed` template selection.
+
+**Files:** `phenix/programs/ai_agent.py`,
+`agent/workflow_engine.py`, `agent/workflow_state.py`,
+`agent/plan_generator.py`
+
+### Cryo-EM Workflow Fixes
+
+1. **dock_in_map in template**: Added `phenix.dock_in_map` to
+   `cryoem_refine` template's model_building stage.
+2. **map_symmetry gating**: Added `not: model` condition on
+   map_symmetry in analyze and obtain_model workflow steps.
+   Prevents the LLM from choosing map_symmetry over dock_in_map
+   when an atomic model is available.
+3. **resolve_cryo_em params**: Added `strategy_flags`
+   (resolution, mask_atoms, nproc) and `defaults`
+   (`strategy.mask_atoms=True`, `nproc=4`). The `_PARAM_REWRITES`
+   dict in command_postprocessor rewrites bare `mask_atoms` to
+   `strategy.mask_atoms` to avoid PHIL ambiguity with
+   `strategy.mask_atoms_atom_radius`.
+
+**Files:** `knowledge/plan_templates.yaml`,
+`knowledge/workflows.yaml`, `knowledge/programs.yaml`,
+`agent/command_postprocessor.py`
+
+### Dotted PHIL Passthrough (General Fix)
+
+Dotted PHIL paths (e.g., `refinement.reference_model.enabled`)
+in the LLM's strategy dict were silently dropped by
+`program_registry.build_command` because they didn't match any
+`strategy_flags` entry. This contradicted the sanitizer's
+contract which intentionally passes scoped PHIL paths through
+for PHIL validation at runtime.
+
+**Fix:** Changed `DROPPED` → `PASSTHROUGH` for dotted PHIL keys
+in `program_registry.py`. Bare unknown keys still get WARNING.
+PHENIX's PHIL interpreter validates at runtime; wrong paths
+produce clear errors that the error-recovery system handles.
+
+**Files:** `agent/program_registry.py`
+
+### Command Building Fixes
+
+1. **Model chaining**: Added model override in
+   `_build_with_new_builder` — refinement now uses the most
+   recent refined model from categorized_files, not the LLM's
+   stale choice of the original model.
+2. **Resolution injection**: Added `auto_fill_resolution`
+   invariant to `phenix.refine` in programs.yaml.
+3. **reference_model support**: Added `reference_model`,
+   `reference_model_enabled`, `reference_model_use_starting` to
+   phenix.refine strategy_flags plus optional input slot.
+4. **Strategy key rewriting**: `_STRATEGY_REWRITES` in
+   graph_nodes maps LLM's dotted keys to canonical
+   strategy_flag names. `_PARAM_REWRITES` in
+   command_postprocessor catches them on the command line.
+5. **LLM file exclusion validation**: `_build_with_new_builder`
+   now validates LLM file assignments against
+   input_priorities.exclude_categories before passing them to
+   the CommandBuilder (catches half-map assigned to full_map).
+
+**Files:** `agent/graph_nodes.py`, `knowledge/programs.yaml`,
+`agent/command_postprocessor.py`
+
+### Autobuild MTZ Fix
+
+AutoSol produces `overall_best_final_refine_001.mtz` (map
+coefficients, no PHIB/FOM) and `overall_best_refine_data.mtz`
+(original data). The LLM picks the wrong one for autobuild's
+`data=` slot → PHIB/FOM error.
+
+1. **Classifier fix**: `_data.mtz` suffix check runs before
+   `overall_best` marker scan in fallback MTZ classifier.
+2. **exclude_categories**: `[refine_map_coeffs, map_coeffs_mtz]`
+   on autobuild's data_mtz input_priorities.
+3. **exclude_patterns**: Added `_refine_001`, `_refine_002`,
+   `final_refine_001` patterns.
+
+**Files:** `agent/workflow_state.py`, `knowledge/programs.yaml`
+
+### Template Selection Fixes
+
+1. **MR-SAD auto-inference**: When both `has_anomalous_atoms`
+   and `has_search_model` are True, `wants_mr_sad` is
+   automatically set (no need for explicit "mr-sad" keyword).
+   Fixes 1029B-sad selecting `mr_refine` instead of `mr_sad`.
+
+**Files:** `agent/plan_generator.py`
+
+### GUI: Tutorial Banner
+
+When the working directory is a Phenix tutorial:
+- Blue banner at top of Configure panel with tutorial name
+- "View README file" button
+- Green text if tutorial is AI-Agent compatible
+- Orange text if it requires unsupported programs
+- `validate_params` blocks Run on unsupported tutorials
+
+Detection: matches CWD basename against `tutorials.phil` from
+`phenix_examples` (longest-match-first, requires README file).
+
+**Files:** `wxGUI2/Programs/AIAgent.py`
+
+### GUI: Progress Panel Cleanup
+
+**Cycle display** (before → after):
+```
+Cycle 1: phenix.xtriage          Cycle 1: phenix.xtriage
+  Running...                       Running phenix.xtriage ... [OK]
+  >> Sub-job: [OK] phenix.xtriage  ────────────────────────────────
+Cycle 1: phenix.xtriage -> COMPLETE
+  Result: OK
+  ——————————————————————————————
+```
+
+**Stage transition** (before → after):
+```
+ stage exhausted (1/1 cycles)    All steps completed (1/1 cycles)
+ → ADVANCING TO: ...              Stage 'x' completed in 1 cycle(s).
+   Stage 'x' completed ...      → ADVANCING TO: ...
+   Next: 'y' (description).
+```
+
+Changes: inline [OK]/[FAILED], remove redundant sub-job/status
+lines, stage header only on first cycle of each new stage,
+Unicode separators throughout.
+
+**Files:** `wxGUI2/Programs/AIAgent.py`,
+`agent/gate_evaluator.py`, `knowledge/explanation_prompts.py`
+
+### Error Propagation
+
+1. **Remote Sorry**: `remote_agent.py` now re-raises fatal
+   server errors (quota exceeded, API key) as client-side Sorry
+   instead of silently returning None.
+2. **Phaser pkl**: Stub result created when no pkl found for
+   successful jobs (prevents History restore crash).
+
+**Files:** `phenix/phenix_ai/remote_agent.py`,
+`phenix/programs/ai_agent.py`, `wxGUI2/Programs/AIAgent.py`
+
+### Test Updates
+
+- `tst_gate_evaluator`: Updated "exhausted" → "All steps completed"
+- `tst_explanation_prompts`: Removed "Next:" assertion
+- `tst_audit_fixes`: Updated S2j test for PASSTHROUGH behavior
+
+---
+
 ## Version 114.1 (Model Placement Gate + Display + Evaluation)
 
 ### Summary

@@ -401,11 +401,15 @@ Produces crystallographer-level commentary at three detail levels:
 | Function | When | LLM? |
 |----------|------|------|
 | `generate_cycle_commentary()` | Every cycle | No (template) |
-| `generate_stage_summary()` | Stage transitions | Yes |
+| `generate_stage_summary()` | Stage transitions | No (template) |
 | `generate_final_report()` | Session completion | Yes |
 | `generate_stopped_report()` | Early stop | Yes |
 
-#### 10f. Model Placement Gate (v114.1)
+Note: `generate_stage_summary()` no longer includes the "Next:"
+line — that information is shown separately in the GUI's stage
+transition block ("→ ADVANCING TO: ...").
+
+#### 10f. Model Placement Gate (v114.1, hardened v114.2)
 
 Prevents destructive program selection on models that already fit the
 data. This is a single mechanism that addresses the class of bugs where
@@ -414,14 +418,32 @@ worse result than simple refinement.
 
 Detection (in `_detect_model_placement`, `programs/ai_agent.py`):
 - `model_vs_data` with CC > 0.3 → placed
+- `model_vs_data` with R-free < 0.50 from result text → placed (v114.2)
 - `refine` with R-free < 0.50 → placed
 - `real_space_refine` with map_cc > 0.3 → placed
+- `real_space_refine` symmetry mismatch → needs_dock (v114.2)
 
 When placement is confirmed:
-1. `session.data["model_is_placed"] = True` — locked, survives resume
+1. `session.data["model_is_placed"]` — locked, survives resume
 2. `valid_programs` filtered: phaser, autosol, predict_and_build removed
-3. Plan fast-forward: MR/phasing stages marked "skipped" (⊘)
+3. Plan fast-forward: MR/phasing stages (and model_rebuilding if
+   R-free < 0.35) marked "skipped" (⊘)
 4. Conflict warning if user advice mentions MR/phaser
+5. Dock keywords ("dock", "docking") in advice cancel "refine" →
+   "placed" assumption (v114.2)
+
+#### 10f-b. Plan Enforcement (v114.2)
+
+Prevents premature STOP when the strategic plan has pending stages.
+Two enforcement points in `agent/graph_nodes.py`:
+
+1. **AUTO-STOP suppression**: `plan_has_pending_stages` in
+   session_info blocks metrics-based auto-stop.
+2. **LLM STOP override**: When the LLM returns `program=STOP`
+   but the plan has pending stages, the build node selects the
+   best program from `prefer_programs`.
+
+Contract field: `plan_has_pending_stages` (bool, default False, v4).
 
 #### 10g. Display Data Model (`agent/display_data_model.py`)
 
@@ -807,12 +829,19 @@ Red flags that indicate problems:
 - **No model** available for refinement → abort
 - **Resolution unknown** before refinement → warning
 
-### Server Error Propagation (v112.78)
+### Server Error Propagation (v112.78, extended v114.2)
 
 Fatal server errors (e.g., daily API usage limit) are raised as `Sorry` in
 `rest/__init__.py`.  `RemoteAgent` has a dedicated `except Sorry: raise` handler
 before its generic `except Exception` to ensure these propagate cleanly through
 to the GUI instead of being silently swallowed as a None result.
+
+**v114.2 extension:** `RemoteAgent._send_request` also re-raises Sorry when
+`server_result.success` is False and the `server_message` contains fatal
+keywords ("quota", "API key", "rate limit", "authentication", "permission
+denied", "cannot continue"). The same check applies to the parsed JSON
+response's `error` field. Previously, these errors were logged and returned as
+None, causing the agent to silently end with "No command generated".
 
 ### Cross-Platform (Windows) Considerations (v112.78)
 
