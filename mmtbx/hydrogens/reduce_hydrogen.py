@@ -414,6 +414,7 @@ def workaround_001(model, selection):
       sel_built.append(i_seq)
     elif len(v)==2: # Build H-X-H
       h1,h2 = h_to_opt[v[0]], h_to_opt[v[1]]
+      if h1.angle is None or h1.bond is None: continue
       p1,p2 = h1_h2_from_A_X_d_angles(
         A = sites_cart[h1.angle],
         X = sites_cart[h1.bond],
