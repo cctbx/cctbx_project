@@ -603,7 +603,7 @@ def test_exhausted_no_success():
     plan, plan.stages[2], sm, 5,
   )
   assert result.action == "advance"
-  assert "exhausted" in result.reason
+  assert "All steps completed" in result.reason
 
 
 # ── Retreat ───────────────────────────────────────────

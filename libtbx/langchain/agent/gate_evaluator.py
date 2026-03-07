@@ -655,7 +655,7 @@ class GateEvaluator(object):
         return GateResult(
           action="advance",
           reason=(
-            "stage exhausted (%d/%d cycles), "
+            "All steps completed (%d/%d cycles), "
             "%d/%d criteria met — advancing"
             % (stage.cycles_used, stage.max_cycles,
                n_met, n_total)
@@ -670,7 +670,7 @@ class GateEvaluator(object):
     return GateResult(
       action="advance",
       reason=(
-        "stage exhausted (%d/%d cycles) — "
+        "All steps completed (%d/%d cycles) — "
         "advancing to next stage"
         % (stage.cycles_used, stage.max_cycles)
       ),

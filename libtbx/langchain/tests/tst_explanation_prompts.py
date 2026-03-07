@@ -344,8 +344,13 @@ def test_stage_with_next():
   text = generate_stage_summary(
     sm, None, completed, next_p
   )
-  assert "model_rebuilding" in text
-  assert "Rebuild" in text
+  # Summary should mention the completed stage
+  assert "initial_refinement" in text
+  assert "3 cycle" in text
+  # "Next:" line was removed (shown in GUI gate
+  # transition block instead), so next_stage info
+  # should NOT appear in the summary text.
+  assert "model_rebuilding" not in text
 
 
 def test_stage_none_input():

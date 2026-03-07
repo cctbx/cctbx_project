@@ -710,14 +710,33 @@ class ProgramRegistry:
                         cmd_parts.append("%s=%s" % (cmd_key, val_str))
                         log("PASSTHROUGH: Adding %s=%s (known short PHIL name)" % (cmd_key, val_str))
                     elif '.' in key:
-                        # Dotted-path PHIL keys that
-                        # survived the pre-pass are
-                        # truly unknown — drop them.
+                        # Dotted PHIL paths (e.g.
+                        # refinement.reference_model.enabled)
+                        # that weren't matched by the
+                        # pre-pass resolver.  Pass them
+                        # through to the command line —
+                        # the PHENIX PHIL interpreter will
+                        # validate them at runtime.
+                        #
+                        # The sanitizer (Rule D) already
+                        # intentionally kept these paths;
+                        # dropping them here would break
+                        # that contract.  If the path is
+                        # wrong, PHIL raises a clear error
+                        # and the agent's error-recovery
+                        # system retries without it.
+                        val_str = str(value)
+                        if (' ' in val_str
+                            and not val_str.startswith(
+                              ("'", '"'))):
+                            val_str = '"%s"' % val_str
+                        cmd_parts.append(
+                            "%s=%s" % (key, val_str))
                         log(
-                            "DROPPED: '%s' is a dotted "
-                            "PHIL key not in "
-                            "strategy_flags for %s"
-                            % (key, program_name))
+                            "PASSTHROUGH: Adding %s=%s "
+                            "(dotted PHIL path, will be "
+                            "validated by PHIL at runtime)"
+                            % (key, val_str))
                     else:
                         log("WARNING: Unknown strategy '%s' for %s" % (key, program_name))
                     continue

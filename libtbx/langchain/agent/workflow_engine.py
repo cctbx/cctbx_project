@@ -321,6 +321,13 @@ class WorkflowEngine:
                 "sad ", "sad,", "mad ", "mad,",
                 "anomalous", "phasing",
                 "heavy atom", "selenium",
+                # Cryo-EM docking keywords — if the user
+                # mentions docking, the model has NOT been
+                # placed yet.  "refine the docked model"
+                # means dock-THEN-refine, not already-done.
+                "dock", "docking", "dock_in_map",
+                "place the model", "place model",
+                "fit into map", "fit model into",
             )
             _placed_kw = (
                 "refine", "refinement",

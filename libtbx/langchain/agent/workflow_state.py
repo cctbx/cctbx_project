@@ -71,6 +71,13 @@ def _import_mtz_utils():
                 return "data_mtz"
             if _refine_mtz_re.match(bn):
                 return "map_coeffs_mtz"
+            # Files ending in _data.mtz are always
+            # data (not map coefficients), even when
+            # the name contains a map marker like
+            # "overall_best".  Check this BEFORE the
+            # marker scan.
+            if bn.endswith('_data.mtz'):
+                return "data_mtz"
             if any(m in bn for m in _map_markers):
                 return "map_coeffs_mtz"
             return "data_mtz"
@@ -1514,7 +1521,38 @@ def _analyze_history(history):
                         # but treat as inconclusive so refine can still run.
                         info["placement_probed"] = True
                         # Leave placement_probe_result as None (inconclusive)
-                continue   # Ignore failed cycles for all other probe detection
+                    continue   # Ignore failed cycles for all other probe detection
+
+                # ── Failed RSR/refine with symmetry mismatch ─────────
+                # "Symmetry and/or box dimensions mismatch" from
+                # real_space_refine is definitive evidence that the
+                # model has NOT been docked into this map.  The same
+                # error from phenix.refine (X-ray) means the model
+                # cell doesn't match the data cell → needs MR.
+                # Set placement_probed so the next cycle routes to
+                # dock_in_map (cryo-EM) or phaser (X-ray).
+                _rl = (_result or "").lower()
+                _sym_mismatch_signals = [
+                    "symmetry and/or box",
+                    "dimensions mismatch",
+                    "unit cell mismatch",
+                    "unit_cell_mismatch",
+                    "crystal symmetry mismatch",
+                ]
+                _is_rsr = "real_space_refine" in _ecomb
+                _is_refine = (
+                    "refine" in _ecomb
+                    and "real_space" not in _ecomb
+                    and "model_vs_data" not in _ecomb)
+                if (_is_rsr or _is_refine) and any(
+                    s in _rl for s in _sym_mismatch_signals
+                ):
+                    if not info.get("placement_probed"):
+                        info["placement_probed"] = True
+                        info["placement_probe_result"] = (
+                            "needs_dock" if _is_rsr
+                            else "needs_mr")
+                continue   # Ignore failed cycles for remaining detection
 
             # Once refinement or docking has run, anything after is validation
             if ("refine" in _ecomb and "real_space" not in _ecomb and

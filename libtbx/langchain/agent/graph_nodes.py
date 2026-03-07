@@ -2208,8 +2208,58 @@ def _build_with_new_builder(state):
                     if basename in basename_to_path:
                         corrected_files[slot] = basename_to_path[basename]
 
-    # NOTE: Half-map vs full-map categorization is handled by _categorize_files()
-    # in workflow_state.py. If a single map was promoted to full_map, trust that decision.
+    # Validate LLM file assignments against input_priorities
+    # exclude_categories.  This catches the common error where
+    # the LLM assigns a half-map to the full_map slot.
+    # The CommandBuilder also checks this, but catching it
+    # here removes the bad assignment before it propagates.
+    if corrected_files:
+        _cat_files = state.get(
+            "workflow_state", {}).get(
+            "categorized_files", {})
+        if _cat_files:
+            try:
+                try:
+                    from libtbx.langchain.knowledge \
+                        .yaml_loader \
+                        import get_program as _gp
+                except ImportError:
+                    from knowledge.yaml_loader \
+                        import get_program as _gp
+                _pdef = _gp(program) if program else None
+                if _pdef:
+                    _ip = _pdef.get(
+                        "input_priorities", {})
+                    _to_remove = []
+                    for _sl, _fp in corrected_files.items():
+                        if isinstance(_fp, list):
+                            continue
+                        _sl_ip = _ip.get(_sl, {})
+                        _excl = _sl_ip.get(
+                            "exclude_categories", [])
+                        if not _excl:
+                            continue
+                        _fb = os.path.basename(
+                            _fp) if _fp else ""
+                        for _ec in _excl:
+                            _cf = _cat_files.get(_ec, [])
+                            _cb = [os.path.basename(f)
+                                   for f in _cf]
+                            if (_fp in _cf
+                                or _fb in _cb):
+                                state = _log(state,
+                                    "BUILD: LLM assigned "
+                                    "%s to '%s' slot but "
+                                    "file is in excluded "
+                                    "category '%s' — "
+                                    "removing" % (
+                                        _fb, _sl, _ec))
+                                _to_remove.append(_sl)
+                                break
+                    for _sl in _to_remove:
+                        del corrected_files[_sl]
+            except Exception:
+                pass
 
     # Build context from state
     session_info = state.get("session_info", {})
@@ -2218,6 +2268,28 @@ def _build_with_new_builder(state):
     # Handle stepwise mode (maximum_automation=False)
     # Forces stop_after_predict=True for predict_and_build in both cryo-EM and X-ray
     strategy = dict(raw_strategy)
+
+    # Rewrite LLM strategy keys that use shortened
+    # or dotted PHIL paths to canonical strategy_flag
+    # names that the CommandBuilder recognizes.
+    _STRATEGY_REWRITES = {
+        "phenix.refine": {
+            "reference_model.enabled":
+                "reference_model_enabled",
+            "reference_model.use_starting_model":
+                "reference_model_use_starting",
+        },
+    }
+    _s_rewrites = _STRATEGY_REWRITES.get(
+        program, {})
+    if _s_rewrites:
+        for _old, _new in _s_rewrites.items():
+            if _old in strategy:
+                strategy[_new] = strategy.pop(_old)
+                state = _log(state,
+                    "BUILD: Rewrite strategy key "
+                    "'%s' → '%s'" % (_old, _new))
+
     if (workflow_state.get("automation_path") == "stepwise" and
         program == "phenix.predict_and_build"):
         current_state = workflow_state.get("state", "")
@@ -2306,6 +2378,51 @@ def _build_with_new_builder(state):
                 "BUILD: Extracted ligand code '%s'"
                 " from user advice" % code)
               break
+
+    # === OVERRIDE MODEL FOR REFINEMENT ===
+    # The LLM often picks the original (unrefined) model
+    # for subsequent refinement cycles.  Override with
+    # the most recent refined model from categorized_files.
+    if program in ("phenix.refine",
+                    "phenix.real_space_refine"):
+        categorized_files = workflow_state.get(
+            "categorized_files", {})
+        if program == "phenix.real_space_refine":
+            _model_cats = [
+                ("rsr_output", "RSR output"),
+                ("docked", "docked model"),
+                ("with_ligand", "model with ligand"),
+            ]
+        else:
+            _model_cats = [
+                ("refined", "refined model"),
+                ("phaser_output", "Phaser output"),
+                ("with_ligand", "model with ligand"),
+            ]
+        _best = None
+        _src = None
+        for _cat, _label in _model_cats:
+            _cf = categorized_files.get(_cat, [])
+            if _cf:
+                _best = _cf[-1]  # most recent
+                _src = _label
+                break
+        if _best:
+            _llm_model = corrected_files.get("model")
+            if _llm_model != _best:
+                corrected_files["model"] = _best
+                if _llm_model:
+                    state = _log(state,
+                        "BUILD: Overriding LLM model "
+                        "with %s (%s)"
+                        % (os.path.basename(_best),
+                           _src))
+                else:
+                    state = _log(state,
+                        "BUILD: Auto-filled model=%s "
+                        "(%s)"
+                        % (os.path.basename(_best),
+                           _src))
 
     # Create CommandContext
     context = CommandContext(

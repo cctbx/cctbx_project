@@ -560,7 +560,7 @@ phenix.autobuild:
         extensions: [.mtz, .sca, .hkl, .sdf]
         flag: "data="
         description: "Reflection data - prefer phased MTZ from phaser/refine"
-        exclude_patterns: [map_coeffs, denmod_map]
+        exclude_patterns: [map_coeffs, denmod_map, _refine_001, _refine_002, _refine_003, final_refine_001]
       sequence:
         extensions: [.fa, .fasta, .seq, .dat]
         flag: "seq_file="
@@ -582,6 +582,7 @@ phenix.autobuild:
       exclude_categories: [predicted, ligand, ligand_pdb]
     data_mtz:
       categories: [phased_data_mtz, original_data_mtz, data_mtz]  # Prefer phased data
+      exclude_categories: [refine_map_coeffs, map_coeffs_mtz]  # Never use map coefficients as data
 
   outputs:
     files:
@@ -1098,6 +1099,12 @@ phenix.refine:
         extensions: [.mtz, .sca, .hkl, .sdf]
         flag: ""
         description: "Reflection data with Fobs and R-free flags"
+    optional:
+      reference_model:
+        extensions: [.pdb, .cif]
+        flag: "refinement.reference_model.file="
+        description: "AlphaFold or other model to restrain against"
+        auto_fill: false
 
   # Input priorities: which file categories to prefer for each input
   # Categories are checked in order; first match wins
@@ -1195,6 +1202,18 @@ phenix.refine:
     nproc:
       flag: "refinement.main.nproc={value}"
       type: int
+    reference_model:
+      flag: "refinement.reference_model.file={value}"
+      type: path
+      hint: "AlphaFold or other high-quality model to restrain against (e.g., for reference model refinement)"
+    reference_model_enabled:
+      flag: "refinement.reference_model.enabled={value}"
+      type: boolean
+      hint: "Enable reference model restraints"
+    reference_model_use_starting:
+      flag: "refinement.reference_model.use_starting_model_as_reference={value}"
+      type: boolean
+      hint: "Use the starting model as the reference model"
 
   log_parsing:
     r_free:
@@ -1225,6 +1244,14 @@ phenix.refine:
     - "If TWINNING detected, include twin_law"
 
   invariants:
+    - name: requires_resolution
+      description: "Resolution must be set for refinement"
+      check:
+        has_strategy: resolution
+      fix:
+        auto_fill_resolution: true
+      message: "Auto-filling resolution from session"
+
     - name: requires_unique_output_prefix
       description: "Output prefix should be unique per cycle to avoid overwriting"
       check:
@@ -1538,6 +1565,28 @@ phenix.resolve_cryo_em:
         type: map
 
   command: "phenix.resolve_cryo_em {half_map} {sequence} {ncs_spec}"
+
+  defaults:
+    strategy.mask_atoms: True
+    nproc: 4
+
+  strategy_flags:
+    resolution:
+      flag: "resolution={value}"
+      type: float
+    mask_atoms:
+      flag: "strategy.mask_atoms={value}"
+      type: bool
+      hint: "Whether to mask atoms when computing map likelihood"
+    nproc:
+      flag: "nproc={value}"
+      type: int
+
+  # Note: "mask_atoms" is ambiguous in resolve_cryo_em's
+  # PHIL (matches both strategy.mask_atoms and
+  # strategy.mask_atoms_atom_radius).  The _PARAM_REWRITES
+  # in command_postprocessor.py rewrites bare "mask_atoms"
+  # to "strategy.mask_atoms" before PHIL parsing.
 
   input_priorities:
     half_map:

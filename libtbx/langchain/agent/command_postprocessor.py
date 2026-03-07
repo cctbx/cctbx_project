@@ -457,6 +457,47 @@ def sanitize_command(command, program_name=None, bad_inject_params=None,
   if bad_inject_params is None:
     bad_inject_params = set()
 
+  # ── 0. Rewrite ambiguous short PHIL names ──────────
+  # Some PHIL parameters have short names that match
+  # multiple scopes (e.g. "mask_atoms" matches both
+  # strategy.mask_atoms (bool) and
+  # strategy.mask_atoms_atom_radius (float)).
+  # When the LLM or README uses the short name, the
+  # PHIL parser may pick the wrong one.  Rewrite to
+  # the full path before parsing.
+  _PARAM_REWRITES = {
+    "phenix.resolve_cryo_em": {
+      "mask_atoms": "strategy.mask_atoms",
+    },
+    "phenix.refine": {
+      # LLM writes short forms from the README;
+      # rewrite to full PHIL paths so they survive
+      # strategy_flags matching.
+      "reference_model.enabled":
+        "refinement.reference_model.enabled",
+      "reference_model.use_starting_model":
+        "refinement.reference_model"
+        ".use_starting_model_as_reference",
+    },
+  }
+  _rewrites = _PARAM_REWRITES.get(program_name, {})
+  if _rewrites:
+    tokens = command.split()
+    new_tokens = [tokens[0]]  # program name
+    for tok in tokens[1:]:
+      if "=" in tok:
+        key, sep, val = tok.partition("=")
+        # Rewrite bare keys and dotted keys that
+        # are in the rewrite table.
+        if key in _rewrites:
+          new_key = _rewrites[key]
+          if log:
+            log("  [sanitize] rewrite %s → %s"
+                % (key, new_key))
+          tok = "%s=%s" % (new_key, val)
+      new_tokens.append(tok)
+    command = " ".join(new_tokens)
+
   # ── 1. Probe-only programs: strip ALL key=value tokens ─────────────
   # EXCEPT: file-path values (half_map=/path/to/file.mrc) and
   # data-label selection parameters (obs_labels, labels, data_labels).

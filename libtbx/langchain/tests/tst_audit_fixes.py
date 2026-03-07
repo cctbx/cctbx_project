@@ -3814,12 +3814,21 @@ def test_s2i_build_short_circuits_on_program_stop():
 
 
 # =============================================================================
-# CATEGORY S2j — dotted strategy keys from other programs are dropped
+# CATEGORY S2j — dotted strategy keys pass through for PHIL validation
 # =============================================================================
 
 def test_s2j_refinement_key_dropped_from_ligandfit_strategy():
-    """S2j: refinement.main.number_of_macro_cycles in ligandfit strategy is dropped,
-    not passed through to the ligandfit command."""
+    """S2j: refinement.main.number_of_macro_cycles in ligandfit
+    strategy is passed through (PHIL will reject at runtime)
+    rather than silently dropped.
+
+    Cross-program PHIL paths are passed through to the
+    command line because silently dropping valid PHIL paths
+    (like refinement.reference_model.enabled on phenix.refine)
+    is worse than passing invalid paths that PHIL rejects
+    loudly.  The PHENIX PHIL interpreter catches mismatched
+    scopes at runtime with a clear error message.
+    """
     print("Test: s2j_refinement_key_dropped_from_ligandfit_strategy")
     sys.path.insert(0, _PROJECT_ROOT)
     try:
@@ -3829,30 +3838,30 @@ def test_s2j_refinement_key_dropped_from_ligandfit_strategy():
         return
 
     registry = ProgramRegistry(use_yaml=True)
-    dropped = []
     passed = []
 
     def log(msg):
-        if "DROPPED" in msg:
-            dropped.append(msg)
-        elif "PASSTHROUGH" in msg:
+        if "PASSTHROUGH" in msg:
             passed.append(msg)
 
     strategy = {
-        "refinement.main.number_of_macro_cycles": 2,  # belongs to phenix.refine — must be dropped
+        "refinement.main.number_of_macro_cycles": 2,
     }
     files = {"model": "/fake/placed.pdb", "data": "/fake/data.mtz"}
     cmd = registry.build_command("phenix.ligandfit", files, strategy, log=log)
 
-    assert_true(len(dropped) > 0,
-                "refinement.main.number_of_macro_cycles must be DROPPED for ligandfit, "
-                "but got cmd: %r" % cmd)
-    assert_true("number_of_macro_cycles" not in (cmd or ""),
-                "refinement.main.number_of_macro_cycles must not appear in ligandfit command, "
-                "got: %r" % cmd)
-    assert_true(len(passed) == 0,
-                "No dotted key should be passed through, got: %r" % passed)
-    print("  PASSED: refinement.main.number_of_macro_cycles correctly dropped from ligandfit")
+    # Dotted PHIL paths now pass through for PHIL
+    # validation at runtime (not silently dropped).
+    assert_true(len(passed) > 0,
+                "refinement.main.number_of_macro_cycles "
+                "should be PASSTHROUGH'd (dotted PHIL), "
+                "got cmd: %r" % cmd)
+    assert_true(
+        "number_of_macro_cycles" in (cmd or ""),
+        "dotted PHIL path should reach command for "
+        "runtime validation, got: %r" % cmd)
+    print("  PASSED: dotted PHIL path passed through "
+          "(PHIL validates at runtime)")
 
 
 def test_s2j_known_short_names_still_pass_through():

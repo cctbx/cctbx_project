@@ -345,6 +345,7 @@ cryoem:
           conditions:
             - not_done: map_symmetry
             - has: non_half_map  # Needs a full/processed map, not just half maps
+            - not: model  # Skip when user has a model to dock/refine
           hint: "Run when user wants to find symmetry in the map"
 
       transitions:

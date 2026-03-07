@@ -327,6 +327,15 @@ def _build_context(data_characteristics=None,
   # Also from directives
   if wf.get("use_mr_sad"):
     _wants_mr_sad = True
+  # Auto-infer: if anomalous data AND a search model
+  # are both present, MR-SAD is the natural workflow
+  # (place model first, then use anomalous signal to
+  # improve phases). The user doesn't need to spell
+  # out "mr-sad" explicitly.
+  if (ctx["has_anomalous_atoms"]
+      and ctx["has_search_model"]
+      and not _wants_mr_sad):
+    _wants_mr_sad = True
   ctx["wants_mr_sad"] = _wants_mr_sad
 
   # Model placement from advice: if user says
@@ -339,6 +348,11 @@ def _build_context(data_characteristics=None,
     "sad ", "sad,", "mad ", "mad,",
     "anomalous", "phasing",
     "heavy atom", "selenium",
+    # Docking keywords — if the user mentions
+    # docking, the model is NOT yet placed.
+    "dock", "docking", "dock_in_map",
+    "place the model", "place model",
+    "fit into map", "fit model into",
   )
   _placed_keywords = (
     "refine", "refinement", "fit ligand",

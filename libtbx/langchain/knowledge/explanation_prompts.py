@@ -330,12 +330,9 @@ def _generate_stage_summary_inner(
     # We don't need to re-evaluate here;
     # just report the comparison.
 
-  # What comes next
-  if next_stage is not None:
-    parts.append(
-      "Next: '%s' (%s)."
-      % (next_stage.id, next_stage.description)
-    )
+  # What comes next — omitted from summary because
+  # the GUI gate transition block already shows
+  # "ADVANCING TO: <next stage>" separately.
 
   # Current problems
   if structure_model is not None:
