@@ -13,6 +13,7 @@ from mmtbx.ligands.ready_set_utils import add_n_terminal_hydrogens_to_residue_gr
 from cctbx.geometry_restraints.linking_class import linking_class
 #
 from cctbx.maptbx.box import shift_and_box_model
+import math
 
 ext = bp.import_ext("cctbx_geometry_restraints_ext")
 get_class = iotbx.pdb.common_residue_names_get_class
@@ -189,6 +190,240 @@ def get_reduce_pdb_interpretation_params(use_neutron_distances):
 
 # ==============================================================================
 
+def h1_h2_from_A_X_d_angles(A, X, d, ang1_deg, ang2_deg):
+    """
+    AI generated code.
+
+    In 3D. Find coordinates of point H1 and H2, if we know both are distanced by
+    d from point X, we know the angle (H1,X,A) and (H2,X,A), and we know that H1
+    and H2 do not overlap, and all H1,H2,A,X belong to the plane. Coordinates of
+    points A,X are known. Need a function in python. Angles are in degrees. Only
+    inputs are: coordinates of A and X, distance d and two angles H1XA and H2XA.
+    Use pure python. If solution is not unique, just pick any one.
+
+    Pure-python 3D construction of one valid pair (H1, H2), choosing an
+    arbitrary plane.
+
+    Inputs:
+      A, X: (x,y,z) tuples/lists
+      d: distance from X to each Hi
+      ang1_deg: angle(H1, X, A) in degrees
+      ang2_deg: angle(H2, X, A) in degrees
+
+    Returns:
+      (H1, H2) as two (x,y,z) tuples
+
+    Raises:
+      ValueError on degenerate/unsatisfiable cases (e.g. A==X, d<0, forced
+      overlap).
+    """
+    # -------- basic vector ops --------
+    def v_sub(a, b): return (a[0]-b[0], a[1]-b[1], a[2]-b[2])
+    def v_add(a, b): return (a[0]+b[0], a[1]+b[1], a[2]+b[2])
+    def v_mul(s, v): return (s*v[0], s*v[1], s*v[2])
+    def dot(a, b): return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]
+    def norm(v): return math.sqrt(dot(v, v))
+    def unit(v, eps=1e-12):
+      n = norm(v)
+      if n < eps:
+        raise ValueError("Cannot normalize near-zero vector.")
+      return (v[0]/n, v[1]/n, v[2]/n)
+    def proj_perp(ref, u):
+      # component of ref perpendicular to u: ref - (ref·u)u
+      return v_sub(ref, v_mul(dot(ref, u), u))
+    def dist(a, b):
+      return norm(v_sub(a, b))
+    # -------- input checks --------
+    if d < 0:
+      raise ValueError("d must be non-negative.")
+    AX = v_sub(A, X)
+    if norm(AX) < 1e-12:
+      raise ValueError("A and X coincide; angle(H, X, A) is undefined.")
+    # u = direction from X to A
+    u = unit(AX)
+    # Choose an arbitrary but deterministic plane through line XA
+    # by picking a reference axis not parallel to u.
+    ref = (0.0, 0.0, 1.0)
+    if abs(dot(u, ref)) > 0.99:
+      ref = (0.0, 1.0, 0.0)
+    v_raw = proj_perp(ref, u)
+    if norm(v_raw) < 1e-12:
+      # extremely rare fallback
+      ref = (1.0, 0.0, 0.0)
+      v_raw = proj_perp(ref, u)
+    v = unit(v_raw)
+    def point_for(theta_deg, sign):
+      th = math.radians(theta_deg)
+      c = math.cos(th)
+      s = math.sin(th)
+      direction = v_add(v_mul(c, u), v_mul(sign * s, v))
+      return v_add(X, v_mul(d, direction))
+    # Try sign combinations until H1 and H2 don't overlap
+    candidates = [
+        (+1.0, -1.0),
+        (-1.0, +1.0),
+        (+1.0, +1.0),
+        (-1.0, -1.0),
+    ]
+    for s1, s2 in candidates:
+      H1 = point_for(ang1_deg, s1)
+      H2 = point_for(ang2_deg, s2)
+      if dist(H1, H2) > 1e-9:
+        return H1, H2
+    # If we got here, overlap is unavoidable for these inputs
+    # (e.g. d=0, angles 0/180, etc.)
+    raise ValueError(
+    "Cannot produce distinct H1 and H2 for these inputs (overlap unavoidable).")
+
+def point_H_from_A_X_d_angle(A, X, d, ang_deg):
+  """
+  AI generated code.
+
+  Prompt: In 3D. Find coordinates of point H, if we know its distance d from
+  point X, we know the angle (H,X,A). Coordinates of points A,X are known. Need
+  a function in python. Angles are in degrees. Only inputs are: coordinates of A
+  and X, distance d and angle (H,X,A). Use pure python. If solution is not
+  unique, just pick any one.
+
+  Return one valid 3D point H such that:
+    |H - X| = d
+    angle(H, X, A) = ang_deg  (degrees)
+
+  Inputs: A, X are (x,y,z) tuples/lists; d is float; ang_deg is float.
+  Pure python. Picks an arbitrary but deterministic plane (uses global Z as
+  reference).
+  """
+  def v_sub(a, b): return (a[0]-b[0], a[1]-b[1], a[2]-b[2])
+  def v_add(a, b): return (a[0]+b[0], a[1]+b[1], a[2]+b[2])
+  def v_mul(s, v): return (s*v[0], s*v[1], s*v[2])
+  def dot(a, b): return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]
+  def norm(v): return math.sqrt(dot(v, v))
+  def unit(v, eps=1e-12):
+    n = norm(v)
+    if n < eps:
+      raise ValueError("Cannot normalize near-zero vector.")
+    return (v[0]/n, v[1]/n, v[2]/n)
+  if d < 0:
+    raise ValueError("d must be non-negative.")
+  AX = v_sub(A, X)
+  if norm(AX) < 1e-12:
+    raise ValueError("A and X coincide; angle(H, X, A) is undefined.")
+  if d == 0:
+    return (float(X[0]), float(X[1]), float(X[2]))
+  u = unit(AX)  # direction from X to A
+  # Pick a perpendicular direction v using a reference axis (deterministic)
+  ref = (0.0, 0.0, 1.0)
+  if abs(dot(u, ref)) > 0.99:   # too parallel to Z, use Y
+    ref = (0.0, 1.0, 0.0)
+  # v_raw = ref - (ref·u)u  (component of ref perpendicular to u)
+  v_raw = v_sub(ref, v_mul(dot(ref, u), u))
+  if norm(v_raw) < 1e-12:       # very rare fallback
+    ref = (1.0, 0.0, 0.0)
+    v_raw = v_sub(ref, v_mul(dot(ref, u), u))
+  v = unit(v_raw)
+  th = math.radians(ang_deg)
+  c, s = math.cos(th), math.sin(th)
+  direction = v_add(v_mul(c, u), v_mul(s, v))  # choose the "+ side" arbitrarily
+  H = v_add(X, v_mul(d, direction))
+  return H
+
+def workaround_001(model, selection):
+  if selection.size()==0: return None
+  atoms = model.get_hierarchy().atoms()
+  # Collect info about H to build, i_seqs if these H are in selection
+  h_to_opt = {}
+  sites_cart = model.get_sites_cart()
+  def _format_rid(i):
+    resname = atoms[i].parent().resname.strip()
+    resseq  = atoms[i].parent().parent().resseq.strip()
+    cid     = atoms[i].parent().parent().parent().id.strip()
+    return  "%s_%s_%s"%(resname, cid, resseq)
+  for i in selection:
+    h_to_opt[i] = group_args(
+      site_cart = sites_cart[i],
+      d         = None, # X-H bond distance
+      a         = None, # X-H bond angle
+      bond      = None, # i_seq of X
+      angle     = None, # i_seq of A
+      plane     = None) # i_seqs of plane -- not user for now
+  g = model.get_restraints_manager().geometry
+  # Look in bonds:
+  bp_simple, asu = g.get_all_bond_proxies(sites_cart = sites_cart)
+  for bp in bp_simple:
+    i_seqs = bp.i_seqs
+    for j in selection:
+      if j in i_seqs:
+        print(j, " (%s) is found in bond "%_format_rid(j), list(i_seqs))
+        L = [x for x in i_seqs if x not in set(selection)]
+        if len(L)==0: continue
+        if len(L)>1: raise ValueError("It should really be 1.")
+        h_to_opt[j].bond = L[0]
+        h_to_opt[j].d = bp.distance_ideal
+  print()
+  # Look in angles:
+  for ap in g.angle_proxies:
+    i_seqs = ap.i_seqs
+    for j in selection:
+      if j in i_seqs:
+        print(j, " (%s) is found in angle "%_format_rid(j), list(i_seqs))
+        L = [x for x in i_seqs if x != h_to_opt[j].bond and
+             x not in set(selection)]
+        if len(L)==0: continue
+        if len(L)>1: raise ValueError("It should really be 1.")
+        h_to_opt[j].angle = L[0]
+        h_to_opt[j].a = ap.angle_ideal
+  print()
+  # Look in planes
+  for dp in g.dihedral_proxies:
+    i_seqs = dp.i_seqs
+    for j in selection:
+      if j in i_seqs:
+        L = (lambda t: t if len(t) >= 3 else None)([x for x in (L or [])
+             if x not in set(selection)])
+        if L is None: continue
+        print(j, " (%s) is found in torsion "%_format_rid(j), L)
+        h_to_opt[j].plane = L
+  print()
+  # Look in torsions
+  for pp in g.planarity_proxies:
+    i_seqs = pp.i_seqs
+    for j in selection:
+      if j in i_seqs:
+        L = (lambda t: t if len(t) >= 3 else None)([x for x in (L or [])
+             if x not in set(selection)])
+        if L is None: continue
+        print(j, " (%s) is found in plane "%_format_rid(j), L)
+        h_to_opt[j].plane = L
+  # key = i_seq of X, values = i_seqs of H to build
+  xh = {}
+  for k,v in h_to_opt.items():
+    xh.setdefault(v.bond,[]).append(k)
+  # Build
+  sel_built = flex.size_t()
+  for k,v in xh.items():
+    if len(v)==1: # Build X-H
+      h = h_to_opt[v[0]]
+      p = point_H_from_A_X_d_angle(
+        A       = sites_cart[h.angle],
+        X       = sites_cart[h.bond],
+        d       = h.d,
+        ang_deg = h.a)
+      i_seq = v[0]
+      atoms[i_seq].xyz = p
+      sel_built.append(i_seq)
+    elif len(v)==2: # Build H-X-H
+      h1,h2 = h_to_opt[v[0]], h_to_opt[v[1]]
+      p1,p2 = h1_h2_from_A_X_d_angles(
+        A = sites_cart[h1.angle],
+        X = sites_cart[h1.bond],
+        d = h1.d, ang1_deg=h1.a, ang2_deg=h2.a)
+      for pair in [[v[0], p1], [v[1], p2]]:
+        i_seq, p = pair
+        atoms[i_seq].xyz = p
+        sel_built.append(i_seq)
+  # Return list of what was not built
+  return flex.size_t(list(set(selection) - set(sel_built)))
+
 class place_hydrogens():
   '''
   Add H atoms to a model
@@ -288,7 +523,8 @@ class place_hydrogens():
     # Add missing H atoms and place them at bogus position
     # ----------------------------------------------------
     t0 = time.time()
-    pdb_hierarchy = self.add_missing_H_atoms_at_bogus_position()
+    pdb_hierarchy = self.add_missing_H_atoms_at_bogus_position(
+      exclude_water = self.exclude_water)
     self.time_add_missing_H = round(time.time()-t0, 2)
     # DEBUG
     #print(pdb_hierarchy.composition().n_hd)
@@ -370,6 +606,14 @@ class place_hydrogens():
     sel_h_in_para = flex.bool(
       [bool(x) for x in riding_h_manager.h_parameterization])
     sel_h_not_in_para = sel_h_in_para.exclusive_or(sel_h)
+
+    # XXX DEAL WITH WATER IN ANOTHER workaround_00x
+    water_selection = self.model.solvent_selection()
+    sel_h_not_in_para = workaround_001(
+      model     = self.model,
+      selection = (sel_h_not_in_para.select(~water_selection)).iselection())
+    sel_h_not_in_para = flex.bool(self.model.size(), sel_h_not_in_para)
+
     # no need to display lone H atoms in the log, so remove from labels
     sel_h_not_in_para_but_not_lone = sel_h_not_in_para.exclusive_or(sel_lone_H)
     self.site_labels_no_para = [atom.id_str().replace('pdb=','').replace('"','')
@@ -411,6 +655,17 @@ class place_hydrogens():
 
     self.n_H_final = self.model.get_hd_selection().count(True)
 
+    # List missing H
+    mon_lib_srv = self.model.get_mon_lib_srv()
+    for m in self.model.get_hierarchy().models():
+      for c in m.chains():
+        for con in c.conformers():
+          for r in con.residues():
+            ma = r.missing_atoms(mon_lib_srv = mon_lib_srv, mode="h_only")
+            if len(ma)>0:
+              msg="chain %s resseq %s resname %s misses:"
+              print(msg%(c.id, r.resseq, r.resname), ma)
+
     if self.print_time:
       self.print_times()
 
@@ -451,7 +706,7 @@ class place_hydrogens():
 
   # ----------------------------------------------------------------------------
 
-  def add_missing_H_atoms_at_bogus_position(self):
+  def add_missing_H_atoms_at_bogus_position(self, exclude_water):
     '''
     Add missing H atoms at bogus positions to the pdb_hierarchy
 
@@ -484,7 +739,8 @@ class place_hydrogens():
             if n_atom_groups > 2 and ag.altloc == '':
               continue
             #print list(ag.atoms().extract_name())
-            if(get_class(name=ag.resname) == "common_water"): continue
+            if exclude_water:
+              if(get_class(name=ag.resname) == "common_water"): continue
             actual = [a.name.strip().upper() for a in ag.atoms()]
             #
             mlq, cif_object = mon_lib_query(residue=ag, mon_lib_srv=mon_lib_srv, raise_sorry=False)
