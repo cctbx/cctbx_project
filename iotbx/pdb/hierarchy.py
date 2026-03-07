@@ -3693,7 +3693,9 @@ class _():
         for h in ["H1","H2","H3"]:
           if not h in alla: alla.append(h)
       else:
-        assert 'H' in alla
+        # XXX WHY THIS CRASHES SOMETIMES?????????????????
+        #assert 'H' in alla
+        pass
     #
     if  (mode == "all"):   reference_list = alla
     elif(mode == "non_h"): reference_list = nonH

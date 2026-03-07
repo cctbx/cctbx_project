@@ -403,6 +403,7 @@ def workaround_001(model, selection):
   for k,v in xh.items():
     if len(v)==1: # Build X-H
       h = h_to_opt[v[0]]
+      if h.angle is None or h.bond is None: continue
       p = point_H_from_A_X_d_angle(
         A       = sites_cart[h.angle],
         X       = sites_cart[h.bond],
@@ -662,7 +663,7 @@ class place_hydrogens():
         for con in c.conformers():
           for r in con.residues():
             ma = r.missing_atoms(mon_lib_srv = mon_lib_srv, mode="h_only")
-            if len(ma)>0:
+            if ma is not None and len(ma)>0:
               msg="chain %s resseq %s resname %s misses:"
               print(msg%(c.id, r.resseq, r.resname), ma)
 

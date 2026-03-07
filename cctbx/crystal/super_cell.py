@@ -62,7 +62,7 @@ class manager(object):
                box_buffer_layer=3,
                siiu=None,
                debug_files=False,
-               box = False):
+               box_super_sphere = False):
     # Results to be available outside
     self.super_cell_hierarchy = None # XXX sites are NOT in box center!!!
     self.super_sphere_hierarchy = None # XXX sites are NOT in box center!!!
@@ -163,17 +163,16 @@ class manager(object):
     self.super_sphere_hierarchy.atoms().reset_i_seq()
     #
     if(debug_files):
-      self.super_sphere_hierarchy.write_pdb_file(
-        file_name="ss_cut_shifted.pdb",
-        crystal_symmetry = box.crystal_symmetry())
+      self.super_sphere_hierarchy.write_pdb_file(file_name="ss_cut_shifted.pdb")
     # Box final model
     box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
       sites_cart   = self.super_sphere_hierarchy.atoms().extract_xyz(),
       buffer_layer = box_buffer_layer)
     self.cs_super_sphere = box.crystal_symmetry()
     self.super_sphere_hierarchy.atoms().reset_i_seq()
-    if box:
+    if box_super_sphere:
       self.super_sphere_hierarchy.atoms().set_xyz(box.sites_cart)
+
     #
     # DEBUG ONLY
     # To trigger the bug: change copy_atoms to False above, uncomment the code
