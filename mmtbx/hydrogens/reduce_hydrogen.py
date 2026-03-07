@@ -327,7 +327,7 @@ def point_H_from_A_X_d_angle(A, X, d, ang_deg):
   H = v_add(X, v_mul(d, direction))
   return H
 
-def workaround_001(model, selection):
+def workaround_001(model, selection, log=None):
   if selection.size()==0: return None
   atoms = model.get_hierarchy().atoms()
   # Collect info about H to build, i_seqs if these H are in selection
@@ -353,26 +353,26 @@ def workaround_001(model, selection):
     i_seqs = bp.i_seqs
     for j in selection:
       if j in i_seqs:
-        print(j, " (%s) is found in bond "%_format_rid(j), list(i_seqs))
+        if log is not None:
+          print(j, " (%s) is found in bond "%_format_rid(j), list(i_seqs),file=log)
         L = [x for x in i_seqs if x not in set(selection)]
         if len(L)==0: continue
         if len(L)>1: raise ValueError("It should really be 1.")
         h_to_opt[j].bond = L[0]
         h_to_opt[j].d = bp.distance_ideal
-  print()
   # Look in angles:
   for ap in g.angle_proxies:
     i_seqs = ap.i_seqs
     for j in selection:
       if j in i_seqs:
-        print(j, " (%s) is found in angle "%_format_rid(j), list(i_seqs))
+        if log is not None:
+          print(j, " (%s) is found in angle "%_format_rid(j), list(i_seqs),file=log)
         L = [x for x in i_seqs if x != h_to_opt[j].bond and
              x not in set(selection)]
         if len(L)==0: continue
         if len(L)>1: raise ValueError("It should really be 1.")
         h_to_opt[j].angle = L[0]
         h_to_opt[j].a = ap.angle_ideal
-  print()
   # Look in planes
   for dp in g.dihedral_proxies:
     i_seqs = dp.i_seqs
@@ -381,9 +381,9 @@ def workaround_001(model, selection):
         L = (lambda t: t if len(t) >= 3 else None)([x for x in (L or [])
              if x not in set(selection)])
         if L is None: continue
-        print(j, " (%s) is found in torsion "%_format_rid(j), L)
+        if log is not None:
+          print(j, " (%s) is found in torsion "%_format_rid(j), L,log=None)
         h_to_opt[j].plane = L
-  print()
   # Look in torsions
   for pp in g.planarity_proxies:
     i_seqs = pp.i_seqs
@@ -392,7 +392,8 @@ def workaround_001(model, selection):
         L = (lambda t: t if len(t) >= 3 else None)([x for x in (L or [])
              if x not in set(selection)])
         if L is None: continue
-        print(j, " (%s) is found in plane "%_format_rid(j), L)
+        if log is not None:
+          print(j, " (%s) is found in plane "%_format_rid(j), L, file=log)
         h_to_opt[j].plane = L
   # key = i_seq of X, values = i_seqs of H to build
   xh = {}
@@ -666,7 +667,8 @@ class place_hydrogens():
             ma = r.missing_atoms(mon_lib_srv = mon_lib_srv, mode="h_only")
             if ma is not None and len(ma)>0:
               msg="chain %s resseq %s resname %s misses:"
-              print(msg%(c.id, r.resseq, r.resname), ma)
+              if 0: # Hold off printing untill verbosity is added
+                print(msg%(c.id, r.resseq, r.resname), ma)
 
     if self.print_time:
       self.print_times()
