@@ -27,6 +27,8 @@ scattering_table = *n_gaussian wk1995 it1992 neutron electron
   .help = Scattering table for structure factors calculations
 run_reduce2 = True
   .type = bool
+save_reduce2_model = False
+  .type = bool
 verbose = False
   .type = bool
 """
@@ -285,6 +287,12 @@ RSCC.
     #self.data_manager.write_real_map_file(map_manager,filename="my_map.map")
     #self.data_manager.write_model_file(self.working_model,filename="my_model.pdb")
 
+    basename = os.path.splitext(os.path.basename(model_fn))[0]
+    self.model_fn_reduce2 = "%s_newH.cif" % basename.split(".")[0]
+    if self.params.save_reduce2_model:
+      self.data_manager.set_overwrite(True)
+      self.data_manager.write_model_file(_m,filename=self.model_fn_reduce2, format='cif')
+
     #t0 = time.time()
     ligand_manager = validate_ligands.manager(
       model = _m,
@@ -305,5 +313,5 @@ RSCC.
 
   def get_results(self):
     return group_args(
-      working_model_fn = self.working_model_fn,
+      working_model_fn = self.model_fn_reduce2,
       ligand_manager   = self.ligand_manager)

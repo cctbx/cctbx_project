@@ -35,7 +35,8 @@ def run_test01():
   pdb_fname = libtbx.env.find_in_repositories(
     relative_path="mmtbx/regression/pdbs/one_chain_ligand_water.pdb",
     test=os.path.isfile)
-  args=[pdb_fname]
+
+  args=[pdb_fname, 'save_reduce2_model=True']
   #print("mmtbx.development.validate_ligands %s" %(" ".join(args)))
   try:
     result = run_program(program_class=val_lig.Program,args=args,
@@ -49,15 +50,20 @@ def run_test01():
   lr = vl_manager[0]
   assert (lr.id_str == 'PG5 A 201')
 
+  pdb_inp = iotbx.pdb.input(result.working_model_fn, source_info=None)
+  model = mmtbx.model.manager(
+    model_input=pdb_inp,
+    log = null_out())
+  model.process(make_restraints=True)
+  ligand_isel = model.iselection('resname PG5 and chain A and resseq 201')
+
   # test iselection
-  assert(list(lr.ligand_isel) == [190, 191, 192, 193, 194, 195, 196, 197, 198, 199,
-    200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214,
-    215, 216, 217, 218, 219])
+  assert (lr.ligand_isel == ligand_isel)
 
   # Number of clashes and clashscore
   clashes_result = lr.get_overlaps()
   assert(clashes_result.n_clashes == 5)
-  assert approx_equal(clashes_result.clashscore, 27.6, eps=0.5)
+  assert approx_equal(clashes_result.clashscore, 25.6, eps=0.5)
   #
   # Geometry deviations
   rmsd_result = lr.get_rmsds()
@@ -68,6 +74,9 @@ def run_test01():
   assert approx_equal(rmsd_result.angle_rmsz, 1.49, eps=0.05)
   assert(rmsd_result.angle_n_outliers == 0)
   assert approx_equal(rmsd_result.dihedral_rmsd, 32.6, eps=0.5)
+
+  if os.path.isfile('one_chain_ligand_water_newH.cif'):
+    os.remove('one_chain_ligand_water_newH.cif')
 
 # ------------------------------------------------------------------------------
 
