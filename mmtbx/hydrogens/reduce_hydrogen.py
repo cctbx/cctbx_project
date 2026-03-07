@@ -341,6 +341,7 @@ def workaround_001(model, selection, log=None):
   for i in selection:
     h_to_opt[i] = group_args(
       site_cart = sites_cart[i],
+      elementX  = None,
       d         = None, # X-H bond distance
       a         = None, # X-H bond angle
       bond      = None, # i_seq of X
@@ -360,6 +361,7 @@ def workaround_001(model, selection, log=None):
         if len(L)>1: raise ValueError("It should really be 1.")
         h_to_opt[j].bond = L[0]
         h_to_opt[j].d = bp.distance_ideal
+        h_to_opt[j].elementX = atoms[L[0]].element.strip().upper()
   # Look in angles:
   for ap in g.angle_proxies:
     i_seqs = ap.i_seqs
@@ -395,6 +397,18 @@ def workaround_001(model, selection, log=None):
         if log is not None:
           print(j, " (%s) is found in plane "%_format_rid(j), L, file=log)
         h_to_opt[j].plane = L
+  #
+  new_h_to_remove = []
+  for k,v in h_to_opt.items():
+    cntr = 0
+    for bp in bp_simple:
+      i_seqs = bp.i_seqs
+      if v.bond in i_seqs: cntr+=1
+    if v.elementX=="N" and cntr>3: new_h_to_remove.append(k)
+    if v.elementX=="C" and cntr>4: new_h_to_remove.append(k)
+    if v.elementX=="O" and cntr>2: new_h_to_remove.append(k)
+  #print("new_h_to_remove:",new_h_to_remove)
+  h_to_opt = {k: v for k, v in h_to_opt.items() if k not in set(new_h_to_remove)}
   # key = i_seq of X, values = i_seqs of H to build
   xh = {}
   for k,v in h_to_opt.items():
