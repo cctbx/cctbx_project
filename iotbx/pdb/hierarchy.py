@@ -3680,7 +3680,7 @@ class _():
     for atom in self.atoms():
       atom_list.append(atom.name.strip().upper())
     mlq = _mon_lib_query(self.resname.strip().upper(), mon_lib_srv)
-    assert mlq is not None
+    if mlq is None: return None
     reference_list = []
     atom_dict = mlq.atom_dict()
     alla = [at for at in mlq.atom_dict()]
