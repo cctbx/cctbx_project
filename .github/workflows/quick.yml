@@ -1,7 +1,7 @@
 # Quick checks that run the defaults for bootstrap.py for linux, macOS and Windows
 
 name: quick
-on: [workflow_dispatch]
+on: [push, workflow_dispatch]
 
 jobs:
   download_source:
@@ -10,50 +10,312 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
+      - name: Initial setup
+        run: |
+          set -xe
+          pwd
+          echo ${{ github.workspace }}
+          mkdir -p ./modules
+          mkdir -p ~/tmp
+
       - name: Setup source cache
         id: modules-cache
         uses: actions/cache@v5
         with:
           path: ./modules
+          enableCrossOsArchive: true
+          key: modules-${{ github.sha }}
+          restore-keys: |
+            modules
 
       - name: Check out cctbx_project
         uses: actions/checkout@v6
         with:
           path: ./modules/cctbx_project
 
-      - name: Update other sources
+      - name: Update other sources and keep cctbx_project checkout
         run: |
-          ln -s ./modules/cctbx_project/libtbx/auto_build/bootstrap.py .
+          set -xe
+          pwd
+          ls
+          cp -a ./modules/cctbx_project ~/tmp
+          ln -s ~/tmp/cctbx_project/libtbx/auto_build/bootstrap.py .
           python bootstrap.py hot update
+          cd modules
+          rm -fr cctbx_project
+          mv ~/tmp/cctbx_project .
+          cd ..
+          rm bootstrap.py
 
-  quick_checks:
+# -----------------------------------------------------------------------------
+  quick_unix_checks:
     needs: download_source
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
 
     name: Default bootstrap on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     steps:
+
+      - name: Initial setup
+        run: |
+          set -xe
+          pwd
+          echo ${{ github.workspace }}
+          mkdir -p ./build
 
       - name: Setup source cache
         id: modules-cache
         uses: actions/cache@v5
         with:
           path: ./modules
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+          key: modules-${{ github.sha }}
+
+      - name: Setup build cache
+        id: build-cache
+        uses: actions/cache@v5
+        with:
+          path: ./build
+          key: ${{ runner.os }}-build-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-build
 
       - name: Setup conda
         uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          channels: conda-forge
+          conda-remove-defaults: "true"
 
       - name: Setup conda package cache
         id: cache-conda-packages
         uses: actions/cache@v5
         with:
           path: ~/conda_pkgs_dir
-          key: ${{ runner.os }}-conda-cache-${{ hashFiles('**/environment.yaml') }}
+          key: ${{ runner.os }}-conda-cache-${{ hashFiles('./modules/cctbx_project/libtbx/auto_build/conda_envs') }}
+
+      - name: Download phenix_examples, phenix_regression
+        run: |
+          set -xe
+          source ${CONDA}/etc/profile.d/conda.sh
+          conda activate base
+          cd ./modules
+          curl -O https://raw.githubusercontent.com/cctbx/cctbx/refs/heads/master/scripts/download-azure-artifact.py
+          for artifact in phenix_examples phenix_regression; do
+            python download-azure-artifact.py \
+              --organization cctbx \
+              --project cctbx_project \
+              --definitions 4 \
+              --artifact-name $artifact \
+              --local-filename ${artifact}.zip
+            unzip ${artifact}.zip
+            rm ${artifact}.zip
+          done
 
       - name: Base environment info
         run: |
+          set -xe
+          source ${CONDA}/etc/profile.d/conda.sh
           conda info
           conda list
+          pwd
+          ls
+          ls ./modules
+          df -h
+
+      - name: Run bootstrap.py
+        run: |
+          set -xe
+          pwd
+          ln -s ./modules/cctbx_project/libtbx/auto_build/bootstrap.py .
+          python ./modules/cctbx_project/libtbx/auto_build/bootstrap.py base build --nproc=4
+          source ./build/setpaths.sh
+          libtbx.configure \
+            cma_es \
+            fable \
+            rstbx \
+            spotfinder \
+            cbflib_adaptbx \
+            phenix_regression \
+            phenix_examples
+          cd build
+          libtbx.scons -j 4
+          libtbx.scons -j 4
+
+      - name: Run tests
+        continue-on-error: true
+        run: |
+          set -xe
+          pwd
+          source ./build/setpaths.sh
+          rm -fr tests
+          mkdir tests
+          cd tests
+          export PYTHONDEVMODE=1
+          export PYTHONTRACEMALLOC=1
+          libtbx.run_tests_parallel \
+            module=annlib_adaptbx \
+            module=boost_adaptbx \
+            module=cbflib_adaptbx \
+            module=cctbx \
+            module=cctbx_website \
+            module=cma_es \
+            module=fable \
+            module=gltbx \
+            module=iotbx \
+            module=libtbx \
+            module=rstbx \
+            module=scitbx \
+            module=crys3d \
+            module=smtbx \
+            module=spotfinder \
+            nproc=4
+
+# -----------------------------------------------------------------------------
+  quick_win_checks:
+    needs: download_source
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
+
+    name: Default bootstrap on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    steps:
+
+      - name: Initial setup
+        shell: bash
+        run: |
+          set -xe
+          pwd
+          echo ${{ github.workspace }}
+          mkdir -p ./build
+          mkdir -p ./modules
+
+      - name: Setup source cache
+        id: modules-cache
+        uses: actions/cache@v5
+        with:
+          path: ./modules
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+          key: modules-${{ github.sha }}
+
+      - name: Setup build cache
+        id: build-cache
+        uses: actions/cache@v5
+        with:
+          path: ./build
+          key: ${{ runner.os }}-build-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-build
+
+      - name: Setup conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          channels: conda-forge
+          conda-remove-defaults: "true"
+
+      - name: Setup conda package cache
+        id: cache-conda-packages
+        uses: actions/cache@v5
+        with:
+          path: ~/conda_pkgs_dir
+          key: ${{ runner.os }}-conda-cache-${{ hashFiles('.\\modules\\cctbx_project\\libtbx\\auto_build\\conda_envs') }}
+
+      - name: Download phenix_examples, phenix_regression
+        shell: cmd
+        run: |
+          call %CONDA%\condabin\conda.bat activate base
+          call %CONDA%\condabin\conda.bat install -y curl
+          cd ./modules
+          curl -O https://raw.githubusercontent.com/cctbx/cctbx/refs/heads/master/scripts/download-azure-artifact.py
+          python download-azure-artifact.py ^
+            --organization cctbx ^
+            --project cctbx_project ^
+            --definitions 4 ^
+            --artifact-name phenix_examples ^
+            --local-filename phenix_examples.zip
+          if %errorlevel% neq 0 exit /b %errorlevel%
+          unzip phenix_examples.zip
+          if %errorlevel% neq 0 exit /b %errorlevel%
+          del phenix_examples.zip
+          if %errorlevel% neq 0 exit /b %errorlevel%
+          python download-azure-artifact.py ^
+            --organization cctbx ^
+            --project cctbx_project ^
+            --definitions 4 ^
+            --artifact-name phenix_regression ^
+            --local-filename phenix_regression.zip
+          if %errorlevel% neq 0 exit /b %errorlevel%
+          unzip phenix_regression.zip
+          if %errorlevel% neq 0 exit /b %errorlevel%
+          del phenix_regression.zip
+          if %errorlevel% neq 0 exit /b %errorlevel%
+
+      - name: Base environment info
+        shell: cmd
+        run: |
+          call %CONDA%\condabin\conda.bat info
+          if %errorlevel% neq 0 exit /b %errorlevel%
+          call %CONDA%\condabin\conda.bat list
+          if %errorlevel% neq 0 exit /b %errorlevel%
+          dir ${{ github.workspace }}
+          dir ${{ github.workspace }}\modules
+
+      - name: Run bootstrap.py
+        shell: cmd
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+          call %CONDA%\condabin\activate.bat base
+          copy .\modules\cctbx_project\libtbx\auto_build\bootstrap.py .
+          python .\modules\cctbx_project\libtbx\auto_build\bootstrap.py base build --nproc=4
+          if %errorlevel% neq 0 exit /b %errorlevel%
+          call .\build\setpaths.bat
+          libtbx.configure ^
+            cma_es ^
+            fable ^
+            rstbx ^
+            spotfinder ^
+            cbflib_adaptbx
+          if %errorlevel% neq 0 exit /b %errorlevel%
+          cd build
+          libtbx.scons -j 4
+          if %errorlevel% neq 0 exit /b %errorlevel%
+          libtbx.scons -j 4
+          if %errorlevel% neq 0 exit /b %errorlevel%
+
+      - name: Run tests
+        continue-on-error: true
+        shell: cmd
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+          call .\build\setpaths.bat
+          rmdir /S /Q tests
+          mkdir tests
+          cd tests
+          set PYTHONDEVMODE=1
+          set PYTHONTRACEMALLOC=1
+          libtbx.run_tests_parallel ^
+            module=annlib_adaptbx ^
+            module=boost_adaptbx ^
+            module=cbflib_adaptbx ^
+            module=cctbx ^
+            module=cctbx_website ^
+            module=cma_es ^
+            module=fable ^
+            module=gltbx ^
+            module=iotbx ^
+            module=libtbx ^
+            module=rstbx ^
+            module=scitbx ^
+            module=crys3d ^
+            module=smtbx ^
+            module=spotfinder ^
+            nproc=4
+          if %errorlevel% neq 0 exit /b %errorlevel%
