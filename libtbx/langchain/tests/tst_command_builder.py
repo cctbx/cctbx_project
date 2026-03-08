@@ -736,7 +736,7 @@ def test_recovery_empty_scope_applies_to_all():
 
     files = {'data_mtz': '/path/toxd.mtz'}
 
-    for prog in ['phenix.xtriage', 'phenix.refine', 'phenix.autobuild']:
+    for prog in ['phenix.xtriage', 'phenix.refine', 'phenix.phaser']:
         strategy = {}
         result = builder._apply_recovery_strategies(prog, files, strategy, ctx)
         assert len(result) > 0, "Recovery should apply to %s" % prog

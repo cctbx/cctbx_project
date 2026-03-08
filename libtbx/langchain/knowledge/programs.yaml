@@ -560,7 +560,7 @@ phenix.autobuild:
         extensions: [.mtz, .sca, .hkl, .sdf]
         flag: "data="
         description: "Reflection data - prefer phased MTZ from phaser/refine"
-        exclude_patterns: [map_coeffs, denmod_map, _refine_001, _refine_002, _refine_003, final_refine_001]
+        exclude_patterns: [map_coeffs, denmod_map]
       sequence:
         extensions: [.fa, .fasta, .seq, .dat]
         flag: "seq_file="
@@ -582,7 +582,6 @@ phenix.autobuild:
       exclude_categories: [predicted, ligand, ligand_pdb]
     data_mtz:
       categories: [phased_data_mtz, original_data_mtz, data_mtz]  # Prefer phased data
-      exclude_categories: [refine_map_coeffs, map_coeffs_mtz]  # Never use map coefficients as data
 
   outputs:
     files:
@@ -1065,6 +1064,19 @@ phenix.process_predicted_model:
 
   command: "phenix.process_predicted_model {model}"
 
+  # strategy_flags defines the ONLY key=value params allowed (beyond files).
+  # Without this, sanitize_command cannot strip LLM-hallucinated params
+  # like wavelength=, anomalous=True, or ambiguous 'rmsd='.
+  strategy_flags:
+    maximum_rmsd:
+      flag: "maximum_rmsd={value}"
+      type: float
+      hint: "Maximum RMSD for domain splitting (default ~1.5)"
+    b_value_field_is:
+      flag: "b_value_field_is={value}"
+      type: string
+      hint: "What B-factor column contains: 'plddt' or 'b_value'"
+
 
 # -----------------------------------------------------------------------------
 # REFINEMENT PROGRAMS
@@ -1099,12 +1111,6 @@ phenix.refine:
         extensions: [.mtz, .sca, .hkl, .sdf]
         flag: ""
         description: "Reflection data with Fobs and R-free flags"
-    optional:
-      reference_model:
-        extensions: [.pdb, .cif]
-        flag: "refinement.reference_model.file="
-        description: "AlphaFold or other model to restrain against"
-        auto_fill: false
 
   # Input priorities: which file categories to prefer for each input
   # Categories are checked in order; first match wins
@@ -1148,7 +1154,7 @@ phenix.refine:
       - bonds_rmsd
       - angles_rmsd
 
-  command: "phenix.refine {model} {data_mtz}"
+  command: "phenix.refine {model} {data_mtz} xray_data.r_free_flags.generate=True"
 
   defaults:
     xray_data.r_free_flags.generate: True
@@ -1185,10 +1191,6 @@ phenix.refine:
       flag: "refinement.twinning.twin_law={value}"
       type: string
       hint: "Include if twinning detected (e.g., '-h,-k,l')"
-    ignore_experimental_phases:
-      flag: "refinement.input.experimental_phases.use={value}"
-      type: boolean
-      hint: "Set to False after AutoSol to avoid MTZ ambiguity with multiple experimental phase sets"
     anisotropic_adp:
       flag: 'refine.adp.individual.anisotropic="not (water or element H)"'
       type: boolean
@@ -1202,18 +1204,6 @@ phenix.refine:
     nproc:
       flag: "refinement.main.nproc={value}"
       type: int
-    reference_model:
-      flag: "refinement.reference_model.file={value}"
-      type: path
-      hint: "AlphaFold or other high-quality model to restrain against (e.g., for reference model refinement)"
-    reference_model_enabled:
-      flag: "refinement.reference_model.enabled={value}"
-      type: boolean
-      hint: "Enable reference model restraints"
-    reference_model_use_starting:
-      flag: "refinement.reference_model.use_starting_model_as_reference={value}"
-      type: boolean
-      hint: "Use the starting model as the reference model"
 
   log_parsing:
     r_free:
@@ -1226,21 +1216,6 @@ phenix.refine:
       type: float
       display_name: "R-work"
       summary_format: "{value:.4f}"
-    clashscore:
-      pattern: '[Cc]lashscore\s*[=:]\s*([0-9.]+)'
-      type: float
-      display_name: "Clashscore"
-      summary_format: "{value:.1f}"
-    ramachandran_outliers:
-      pattern: '[Rr]amachandran.*?outliers?\s*[=:]\s*([0-9.]+)'
-      type: float
-      display_name: "Ramachandran outliers"
-      summary_format: "{value:.1f}%"
-    rotamer_outliers:
-      pattern: '[Rr]otamer.*?outliers?\s*[=:]\s*([0-9.]+)'
-      type: float
-      display_name: "Rotamer outliers"
-      summary_format: "{value:.1f}%"
     bonds_rmsd:
       pattern: '[Bb]onds?\s*(?:RMSD)?\s*[=:]\s*([0-9.]+)'
       type: float
@@ -1259,14 +1234,6 @@ phenix.refine:
     - "If TWINNING detected, include twin_law"
 
   invariants:
-    - name: requires_resolution
-      description: "Resolution must be set for refinement"
-      check:
-        has_strategy: resolution
-      fix:
-        auto_fill_resolution: true
-      message: "Auto-filling resolution from session"
-
     - name: requires_unique_output_prefix
       description: "Output prefix should be unique per cycle to avoid overwriting"
       check:
@@ -1387,16 +1354,6 @@ phenix.real_space_refine:
       type: float
       extract: last
       display_name: "Clashscore"
-    ramachandran_outliers:
-      pattern: '[Rr]amachandran.*?outliers?\s*[=:]\s*([0-9.]+)'
-      type: float
-      extract: last
-      display_name: "Ramachandran outliers"
-    rotamer_outliers:
-      pattern: '[Rr]otamer.*?outliers?\s*[=:]\s*([0-9.]+)'
-      type: float
-      extract: last
-      display_name: "Rotamer outliers"
 
   hints:
     - "Resolution is REQUIRED - get it from mtriage"
@@ -1591,28 +1548,14 @@ phenix.resolve_cryo_em:
 
   command: "phenix.resolve_cryo_em {half_map} {sequence} {ncs_spec}"
 
-  defaults:
-    mask_atoms: True
-    nproc: 4
-
+  # strategy_flags defines the ONLY key=value params allowed (beyond files).
+  # Without this, sanitize_command cannot strip LLM-hallucinated params
+  # like mask_atoms=True or main.number_of_macro_cycles=1.
   strategy_flags:
     resolution:
       flag: "resolution={value}"
       type: float
-    mask_atoms:
-      flag: "mask_atoms={value}"
-      type: bool
-      hint: "Whether to mask atoms when computing map likelihood"
-    nproc:
-      flag: "nproc={value}"
-      type: int
-
-  # Note: "strategy.mask_atoms" is ambiguous in
-  # resolve_cryo_em's PHIL (prefix-matches
-  # strategy.mask_atoms_atom_radius, a float).
-  # Use bare "mask_atoms=True" on the command line
-  # instead — PHENIX resolves it correctly at the
-  # top-level scope.
+      hint: "High-resolution limit for density modification"
 
   input_priorities:
     half_map:
@@ -1879,9 +1822,9 @@ phenix.map_correlations:
   log_detection:
     markers: ["map_correlations"]
   done_tracking:
-    # When run from the normal validate step this sets validation_done.
-    # When run from probe_placement step the history analyzer sets
-    # placement_probed instead (step-aware Python override in workflow_state).
+    # When run from the normal validate phase this sets validation_done.
+    # When run from probe_placement phase the history analyzer sets
+    # placement_probed instead (phase-aware Python override in workflow_state).
     flag: "validation_done"
     history_detection:
       markers: ["map_correlations"]
@@ -1991,9 +1934,9 @@ phenix.model_vs_data:
   log_detection:
     markers: ["model_vs_data"]
   done_tracking:
-    # When run from the normal validate step this sets validation_done.
-    # When run from probe_placement step the history analyzer sets
-    # placement_probed instead (step-aware Python override in workflow_state).
+    # When run from the normal validate phase this sets validation_done.
+    # When run from probe_placement phase the history analyzer sets
+    # placement_probed instead (phase-aware Python override in workflow_state).
     flag: "validation_done"
     history_detection:
       markers: ['model_vs_data']
