@@ -1050,6 +1050,22 @@ class CommandBuilder:
             del selected_files[slot]
             break
 
+    # POST-SELECTION: Remove redundant map/map_coeffs overlap.
+    # Programs like map_correlations accept both map and map_coeffs inputs.
+    # When both are available, use the appropriate one for the experiment type:
+    #   X-ray  → prefer map_coeffs (MTZ), drop the map
+    #   CryoEM → prefer map, drop the map_coeffs
+    if "full_map" in selected_files and "data_mtz" in selected_files:
+      exp_type = getattr(context, "experiment_type", "") or ""
+      if exp_type == "xray":
+        self._log(context,
+          "BUILD: Dropping full_map (X-ray: prefer map_coeffs over map)")
+        del selected_files["full_map"]
+      elif exp_type == "cryoem":
+        self._log(context,
+          "BUILD: Dropping data_mtz (cryo-EM: prefer map over map_coeffs)")
+        del selected_files["data_mtz"]
+
     # Final check: if program has no required inputs, at least one optional
     # input must be filled (prevents useless commands like "phenix.mtriage" alone)
     if not required_inputs and not selected_files:

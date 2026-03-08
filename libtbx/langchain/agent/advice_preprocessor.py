@@ -506,7 +506,7 @@ def _neutralize_fabricated_stop_condition(processed_advice, raw_advice):
         # No raw input at all — any stop condition is necessarily fabricated
         # (the LLM had nothing to extract a stop instruction from)
         neutralized = re.sub(
-            r'(7\.\s*\*?\*?Stop Condition\*?\*?\s*:?).*?(?=\n\s*(?:8\.|Be concise|Start directly|$))',
+            r'(7\.\s*\*?\*?Stop Condition\*?\*?\s*:?).*?(?=\n\s*(?:8\.|Be concise|Start directly)|\Z)',
             r'\1 None',
             processed_advice,
             flags=re.IGNORECASE | re.DOTALL
@@ -529,7 +529,7 @@ def _neutralize_fabricated_stop_condition(processed_advice, raw_advice):
     # No explicit stop in raw advice — neutralize any fabricated stop condition
     # Replace field 7 content with "None"
     neutralized = re.sub(
-        r'(7\.\s*\*?\*?Stop Condition\*?\*?\s*:?).*?(?=\n\s*(?:8\.|Be concise|Start directly|$))',
+        r'(7\.\s*\*?\*?Stop Condition\*?\*?\s*:?).*?(?=\n\s*(?:8\.|Be concise|Start directly)|\Z)',
         r'\1 None',
         processed_advice,
         flags=re.IGNORECASE | re.DOTALL
