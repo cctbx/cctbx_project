@@ -737,8 +737,11 @@ You MUST choose from the valid programs above, or set "stop": true.
                 continue
 
             # Detect failure in result string
-            if str(result).startswith("FAILED") or "Sorry" in str(result):
-                error = result
+            # Empty/None results indicate timeout or crash (no output)
+            result_str = str(result).strip() if result else ""
+            if (result_str.startswith("FAILED") or "Sorry" in result_str
+                or not result_str or result_str == "None"):
+                error = result_str if result_str else "No output (timeout or crash)"
 
             if len(str(result)) > 100:
                 result = str(result)[:100] + "..."
@@ -763,11 +766,12 @@ You MUST choose from the valid programs above, or set "stop": true.
             if not isinstance(h, dict):
                 break
             prog = h.get('program', '')
-            result = str(h.get('result', h.get('summary', '')))
+            result = str(h.get('result', h.get('summary', ''))).strip()
             is_fail = (result.upper().startswith("FAIL") or
                        "Sorry" in result or
                        ("ERROR" in result.upper() and
-                        "WITHOUT ERROR" not in result.upper()))
+                        "WITHOUT ERROR" not in result.upper()) or
+                       not result or result == "None")
             if is_fail and prog == last_failed_program:
                 consecutive_same_failures += 1
             else:
