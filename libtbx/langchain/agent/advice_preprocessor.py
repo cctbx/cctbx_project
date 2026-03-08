@@ -481,6 +481,64 @@ def extract_files_from_processed_advice(processed_advice):
 # MAIN PREPROCESSING FUNCTION
 # =============================================================================
 
+def _neutralize_fabricated_stop_condition(processed_advice, raw_advice):
+    """
+    Strip LLM-fabricated stop conditions from processed advice.
+
+    The LLM frequently ignores instructions to write "None" for field 7
+    (Stop Condition) and instead fabricates a stop condition from the
+    tutorial's goal description. This causes premature workflow stops.
+
+    Detection: if the original raw advice does NOT contain an explicit
+    stop instruction, any "Stop Condition" in the LLM output is fabricated.
+
+    Args:
+        processed_advice: LLM-generated processed advice
+        raw_advice: Original raw advice (README content)
+
+    Returns:
+        str: Processed advice with fabricated stop conditions neutralized
+    """
+    if not processed_advice:
+        return processed_advice
+
+    if not raw_advice or not raw_advice.strip():
+        # No raw input at all — any stop condition is necessarily fabricated
+        # (the LLM had nothing to extract a stop instruction from)
+        neutralized = re.sub(
+            r'(7\.\s*\*?\*?Stop Condition\*?\*?\s*:?).*?(?=\n\s*(?:8\.|Be concise|Start directly|$))',
+            r'\1 None',
+            processed_advice,
+            flags=re.IGNORECASE | re.DOTALL
+        )
+        return neutralized
+
+    # Check if raw advice contains an explicit stop instruction
+    raw_lower = raw_advice.lower()
+    has_explicit_stop = any(phrase in raw_lower for phrase in [
+        "stop after", "stop when", "stop once",
+        "do not continue", "only run", "just run",
+        "halt after", "quit after",
+        "do not proceed", "don't proceed",
+    ])
+
+    if has_explicit_stop:
+        # User actually said to stop — leave the field alone
+        return processed_advice
+
+    # No explicit stop in raw advice — neutralize any fabricated stop condition
+    # Replace field 7 content with "None"
+    neutralized = re.sub(
+        r'(7\.\s*\*?\*?Stop Condition\*?\*?\s*:?).*?(?=\n\s*(?:8\.|Be concise|Start directly|$))',
+        r'\1 None',
+        processed_advice,
+        flags=re.IGNORECASE | re.DOTALL
+    )
+
+    return neutralized
+
+
+
 def preprocess_advice(raw_advice, experiment_type=None, file_list=None,
                       llm=None, timeout=60, out=sys.stdout, use_rules_only=False):
     """
@@ -542,7 +600,10 @@ def preprocess_advice(raw_advice, experiment_type=None, file_list=None,
 
         # Basic validation - should have some content
         if processed and len(processed) > 20:
-            return processed.strip()
+            # Neutralize fabricated stop conditions before returning
+            processed = _neutralize_fabricated_stop_condition(
+                processed.strip(), raw_advice)
+            return processed
         else:
             print("LLM returned insufficient response, using raw advice", file=out)
             return raw_advice
