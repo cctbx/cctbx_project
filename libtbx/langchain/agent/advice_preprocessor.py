@@ -359,8 +359,8 @@ Please analyze this input and extract actionable information for the AI agent.
 (e.g., "run xtriage to check for twinning", "analyze data quality", "test molecular replacement"),
 this is a FOCUSED TASK, not full structure determination. In such cases:
 - Identify the specific goal (e.g., "check for twinning", "test MR solution")
-- The agent should STOP after completing that specific task
-- Include this in the Stop Condition section
+- Include the goal in the Primary Goal section
+- Do NOT infer a stop condition from the goal description (see Stop Condition rules below)
 
 Your response MUST include these sections:
 
@@ -393,12 +393,11 @@ Your response MUST include these sections:
    - Ligands to include
    - Quality targets (R-free, etc.)
 
-7. **Stop Condition**: When should the agent stop? Examples:
-   - "Stop after running xtriage" (for twinning analysis)
-   - "Stop after molecular replacement" (for MR test)
-   - "Stop after first refinement cycle" (for quick test)
-   - "Continue until structure is complete" (for full workflow)
-   - If the input describes a specific limited procedure, include the appropriate stop condition.
+7. **Stop Condition**: ONLY populate this if the user has EXPLICITLY stated when to stop,
+   using clear language like "stop after X", "only run X", or "do not continue past X".
+   - Do NOT infer a stop condition from the tutorial's stated purpose or goals.
+   - Describing a goal (e.g., "solve by molecular replacement") is NOT a stop condition.
+   - If no explicit stop instruction is present, write "None".
 
 Be concise and specific. Extract actual values from the text rather than being vague.
 

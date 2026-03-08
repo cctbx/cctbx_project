@@ -260,7 +260,9 @@ If the advice mentions cryo-EM, maps (.mrc/.ccp4), or real-space methods:
 - "density modification" → phenix.resolve_cryo_em (NOT phenix.autobuild_denmod)
 
 **TUTORIAL/PROCEDURE DETECTION**:
-If the advice describes a SPECIFIC LIMITED TASK rather than full structure determination, automatically add appropriate stop_conditions:
+If the user gives an EXPLICIT COMMAND to run a single specific program
+(e.g., "run xtriage", "just run phaser", "only analyze data quality"),
+add appropriate stop_conditions:
 - "run xtriage", "check for twinning", "analyze data" → after_program="phenix.xtriage", skip_validation=true
 - "run phaser", "test MR", "try molecular replacement" → after_program="phenix.phaser", skip_validation=true
 - "run one refinement", "quick refinement test" → after_program="phenix.refine", max_refine_cycles=1, skip_validation=true
@@ -268,6 +270,11 @@ If the advice describes a SPECIFIC LIMITED TASK rather than full structure deter
 - "run mtriage", "analyze map quality" → after_program="phenix.mtriage", skip_validation=true
 - "map symmetry", "determine symmetry", "find symmetry" → after_program="phenix.map_symmetry", skip_validation=true
 - "map sharpening", "sharpen the map", "sharpen map", "automatic sharpening" → after_program="phenix.map_sharpening", skip_validation=true
+
+IMPORTANT: Do NOT set stop_conditions based on tutorial descriptions of goals or purposes.
+"The goal is to solve by molecular replacement" is a goal description, NOT a stop command.
+"Stop Condition: None" in the preprocessed advice means NO stop condition was requested.
+Only set stop_conditions when the user uses explicit imperative language to limit the task.
 
 **CRITICAL: model_is_placed — detecting when the model is already positioned**
 ONLY set model_is_placed=true when the user EXPLICITLY states their model is already positioned or placed in the unit cell / map. This is a HIGH-PRECISION flag: when in doubt, do NOT set it. The workflow will figure out placement automatically.
@@ -308,7 +315,6 @@ An unplaced PDB + cryo-EM map always requires phenix.dock_in_map before refineme
 - "polder", "polder map", "omit map", "evaluate ligand placement" → after_program="phenix.polder", skip_validation=true
   (Note: phenix.polder calculates polder omit maps to evaluate ligand/residue placement in density)
 - "fit ligand", "ligandfit", "place ligand" → after_program="phenix.ligandfit", skip_validation=true
-- Any procedure that ends with a specific analysis step should stop after that step.
 - If the stop condition mentions generating a specific output file, set skip_validation=true.
 
 **CRITICAL: WORKFLOW CONTINUATION INDICATORS**:
@@ -2042,7 +2048,12 @@ def extract_directives_simple(user_advice):
 
     # Check for explicit "Stop Condition:" section from preprocessed advice
     # This is output from the advice preprocessor and should trigger skip_validation
-    if re.search(r'stop\s+condition\s*:', advice_lower, re.IGNORECASE):
+    # But only if an actual stop condition is specified (not "None")
+    stop_section_match = re.search(
+      r'stop\s+condition\s*:\s*(.+?)(?:\n|$)', advice_lower, re.IGNORECASE)
+    if stop_section_match:
+      stop_value = stop_section_match.group(1).strip()
+      if stop_value and stop_value not in ('none', 'none.', 'n/a', ''):
         if "stop_conditions" not in directives:
             directives["stop_conditions"] = {}
         # User explicitly specified a stop condition - honor it
