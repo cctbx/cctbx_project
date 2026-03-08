@@ -508,13 +508,45 @@ class DisplayDataModel(object):
     if cc is not None:
       result["Map CC"] = _fmt_float(cc, 3)
 
-    # Geometry
-    cs = _fmt_float(geom.get("clashscore"))
+    # Geometry — try SM first, then scan cycles
+    # (molprobity cycle metrics as fallback)
+    cs_val = _safe_float(geom.get("clashscore"))
+    if cs_val is None:
+      cs_val = self._best_metric_from_cycles(
+        "clashscore")
+    cs = _fmt_float(cs_val)
     if cs:
       result["Clashscore"] = cs
-    rf_pct = _fmt_pct(geom.get("rama_favored"))
+    rf_pct_val = _safe_float(
+      geom.get("rama_favored"))
+    if rf_pct_val is None:
+      # Try ramachandran_favored from cycle metrics
+      rf_pct_val = self._best_metric_from_cycles(
+        "ramachandran_favored")
+      # Also try ramachandran_outliers (lower = better)
+      if rf_pct_val is None:
+        ro_val = self._best_metric_from_cycles(
+          "ramachandran_outliers")
+        if ro_val is not None:
+          result["Ramachandran outliers"] = (
+            "%.1f%%" % ro_val)
+    rf_pct = _fmt_pct(rf_pct_val)
     if rf_pct:
       result["Ramachandran favored"] = rf_pct
+    # Rotamer outliers
+    ro_pct = _safe_float(
+      geom.get("rotamer_outliers"))
+    if ro_pct is None:
+      ro_pct = self._best_metric_from_cycles(
+        "rotamer_outliers")
+    if ro_pct is not None:
+      result["Rotamer outliers"] = "%.1f%%" % ro_pct
+    # MolProbity score
+    mp_score = self._best_metric_from_cycles(
+      "molprobity_score")
+    if mp_score is not None:
+      result["MolProbity score"] = _fmt_float(
+        mp_score, 2)
 
     # Model contents
     chains = ms.get("chains", [])
@@ -923,7 +955,10 @@ class DisplayDataModel(object):
     Returns:
       float or None.
     """
-    _lower = {"r_free", "r_work", "clashscore"}
+    _lower = {"r_free", "r_work", "clashscore",
+              "ramachandran_outliers",
+              "rotamer_outliers",
+              "molprobity_score"}
     best = None
     for c in self._cycles:
       if not isinstance(c, dict):

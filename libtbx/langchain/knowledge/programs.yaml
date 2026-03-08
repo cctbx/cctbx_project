@@ -1226,6 +1226,21 @@ phenix.refine:
       type: float
       display_name: "R-work"
       summary_format: "{value:.4f}"
+    clashscore:
+      pattern: '[Cc]lashscore\s*[=:]\s*([0-9.]+)'
+      type: float
+      display_name: "Clashscore"
+      summary_format: "{value:.1f}"
+    ramachandran_outliers:
+      pattern: '[Rr]amachandran.*?outliers?\s*[=:]\s*([0-9.]+)'
+      type: float
+      display_name: "Ramachandran outliers"
+      summary_format: "{value:.1f}%"
+    rotamer_outliers:
+      pattern: '[Rr]otamer.*?outliers?\s*[=:]\s*([0-9.]+)'
+      type: float
+      display_name: "Rotamer outliers"
+      summary_format: "{value:.1f}%"
     bonds_rmsd:
       pattern: '[Bb]onds?\s*(?:RMSD)?\s*[=:]\s*([0-9.]+)'
       type: float
@@ -1372,6 +1387,16 @@ phenix.real_space_refine:
       type: float
       extract: last
       display_name: "Clashscore"
+    ramachandran_outliers:
+      pattern: '[Rr]amachandran.*?outliers?\s*[=:]\s*([0-9.]+)'
+      type: float
+      extract: last
+      display_name: "Ramachandran outliers"
+    rotamer_outliers:
+      pattern: '[Rr]otamer.*?outliers?\s*[=:]\s*([0-9.]+)'
+      type: float
+      extract: last
+      display_name: "Rotamer outliers"
 
   hints:
     - "Resolution is REQUIRED - get it from mtriage"
