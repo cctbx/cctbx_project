@@ -173,6 +173,8 @@ RSCC.
     self.working_model_fn = None
     self.ligand_manager = None
     #
+    self.model_fn_reduce2 = None
+    #
     model_fn = self.data_manager.get_default_model_name()
     data_fn = self.data_manager.get_default_miller_array_name()
     map_fn = self.data_manager.get_default_real_map_name()
