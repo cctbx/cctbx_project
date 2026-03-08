@@ -1,0 +1,59 @@
+# Quick checks that run the defaults for bootstrap.py for linux, macOS and Windows
+
+name: quick
+on: [workflow_dispatch]
+
+jobs:
+  download_source:
+
+    name: Check out sources
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Setup source cache
+        id: modules-cache
+        uses: actions/cache@v5
+        with:
+          path: ./modules
+
+      - name: Check out cctbx_project
+        uses: actions/checkout@v6
+        with:
+          path: ./modules/cctbx_project
+
+      - name: Update other sources
+        run: |
+          ln -s ./modules/cctbx_project/libtbx/auto_build/bootstrap.py .
+          python bootstrap.py hot update
+
+  quick_checks:
+    needs: download_source
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    name: Default bootstrap on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    steps:
+
+      - name: Setup source cache
+        id: modules-cache
+        uses: actions/cache@v5
+        with:
+          path: ./modules
+
+      - name: Setup conda
+        uses: conda-incubator/setup-miniconda@v3
+
+      - name: Setup conda package cache
+        id: cache-conda-packages
+        uses: actions/cache@v5
+        with:
+          path: ~/conda_pkgs_dir
+          key: ${{ runner.os }}-conda-cache-${{ hashFiles('**/environment.yaml') }}
+
+      - name: Base environment info
+        run: |
+          conda info
+          conda list
