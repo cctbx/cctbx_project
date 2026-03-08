@@ -324,17 +324,21 @@ def _build_context(data_characteristics=None,
       "sad", "anomalous", "mad"))
   ):
     _wants_mr_sad = True
+  # If the user explicitly says to run autosol or
+  # do SAD phasing AND a search model is present,
+  # that's MR-SAD (autosol does MR-SAD when given
+  # a partial model).  This is more targeted than
+  # checking has_anomalous_atoms (which fires on
+  # any data with anomalous signal).
+  elif (
+    ctx["has_search_model"]
+    and any(w in advice for w in (
+      "autosol", "sad phasing", "run sad",
+      "use sad", "do sad"))
+  ):
+    _wants_mr_sad = True
   # Also from directives
   if wf.get("use_mr_sad"):
-    _wants_mr_sad = True
-  # Auto-infer: if anomalous data AND a search model
-  # are both present, MR-SAD is the natural workflow
-  # (place model first, then use anomalous signal to
-  # improve phases). The user doesn't need to spell
-  # out "mr-sad" explicitly.
-  if (ctx["has_anomalous_atoms"]
-      and ctx["has_search_model"]
-      and not _wants_mr_sad):
     _wants_mr_sad = True
   ctx["wants_mr_sad"] = _wants_mr_sad
 
