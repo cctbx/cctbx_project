@@ -398,6 +398,8 @@ pdb_template:
     - "*chainsaw*"
     - "*search_model*"
     - "*search*model*"
+    - "*search*"
+    - "*_search.*"
   notes: "PDB homolog for MR - consider running Sculptor for chain editing"
 
 # Default category for unclassified PDB files
