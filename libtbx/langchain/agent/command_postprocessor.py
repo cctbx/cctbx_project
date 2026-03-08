@@ -466,6 +466,13 @@ def sanitize_command(command, program_name=None, bad_inject_params=None,
   # PHIL parser may pick the wrong one.  Rewrite to
   # the full path before parsing.
   _PARAM_REWRITES = {
+    "phenix.resolve_cryo_em": {
+      # "strategy.mask_atoms" prefix-matches to
+      # strategy.mask_atoms_atom_radius (a float)
+      # in PHIL. The bare form "mask_atoms" works
+      # correctly at the top-level scope.
+      "strategy.mask_atoms": "mask_atoms",
+    },
     "phenix.refine": {
       # LLM writes short forms from the README;
       # rewrite to full PHIL paths so they survive

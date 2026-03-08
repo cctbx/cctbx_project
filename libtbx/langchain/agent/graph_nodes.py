@@ -2279,6 +2279,12 @@ def _build_with_new_builder(state):
             "reference_model.use_starting_model":
                 "reference_model_use_starting",
         },
+        "phenix.resolve_cryo_em": {
+            # strategy.mask_atoms prefix-matches to
+            # mask_atoms_atom_radius in PHIL. Use
+            # the bare form "mask_atoms" instead.
+            "strategy.mask_atoms": "mask_atoms",
+        },
     }
     _s_rewrites = _STRATEGY_REWRITES.get(
         program, {})

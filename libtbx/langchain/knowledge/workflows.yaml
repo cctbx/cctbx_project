@@ -203,6 +203,13 @@ xray:
             - not_done: polder
           hint: "Calculate polder omit map to verify ligand/residue placement in density"
 
+        - program: phenix.molprobity
+          conditions:
+            - has: model
+            - refine_count: "> 0"
+            - not_done: validation
+          hint: "Run model validation after refinement is complete"
+
       repeat:
         max_cycles: 4
         until:
@@ -571,6 +578,13 @@ cryoem:
             - not_done: ligandfit
             - map_cc: "> 0.6"
             - rsr_count: "> 0"  # Requires RSR first (ligandfit needs refined model)
+
+        - program: phenix.molprobity
+          conditions:
+            - has: model
+            - rsr_count: "> 0"
+            - not_done: validation
+          hint: "Run model validation after refinement is complete"
 
       repeat:
         max_cycles: 8
