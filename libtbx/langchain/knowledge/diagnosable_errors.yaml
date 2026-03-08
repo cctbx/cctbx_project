@@ -129,5 +129,33 @@ errors:
       "phenix.<program> --show-defaults" to find the correct name.
 
   # ---------------------------------------------------------------------------
-  # Add new error types below — no Python code change needed.
+  # Atom on or near a crystallographic special position
   # ---------------------------------------------------------------------------
+  # Example error (phenix.refine):
+  #   Sorry: polymer crosses special position element:
+  #   atom        n   met            .   .   .  .  .
+  # This is a data/model problem: the atom's position coincides with a
+  # symmetry operator.  No parameter change can fix it.
+  # ---------------------------------------------------------------------------
+  polymer_special_position:
+    description: "Polymer atom on crystallographic special position"
+    detection_patterns:
+      - "polymer crosses special position"
+      - "Sorry.*crosses.*special position"
+      - "atom.*on.*special position"
+    diagnosis_hint: >
+      An atom in the model sits on or very near a crystallographic special
+      position (a site that is mapped onto itself by a symmetry operator).
+      This usually means the model was placed incorrectly during molecular
+      replacement (wrong copy number, origin shift, or enantiomorph).
+      Possible fixes: (1) re-run Phaser with a different number of copies
+      in the ASU, (2) try a different space group enantiomorph, (3) check
+      that the search model does not contain symmetry-related copies, or
+      (4) manually edit the model to move the offending atom away from the
+      special position before refinement.
+
+  # NOTE: Python tracebacks (program crashes) are NOT listed here because
+  # the agent may be able to pivot to a different program and continue.
+  # Traceback detection is handled in the planning prompt (Fix 3) which
+  # tells the LLM to choose a different program rather than stopping the
+  # entire workflow.

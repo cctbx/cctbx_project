@@ -457,51 +457,6 @@ def sanitize_command(command, program_name=None, bad_inject_params=None,
   if bad_inject_params is None:
     bad_inject_params = set()
 
-  # ── 0. Rewrite ambiguous short PHIL names ──────────
-  # Some PHIL parameters have short names that match
-  # multiple scopes (e.g. "mask_atoms" matches both
-  # strategy.mask_atoms (bool) and
-  # strategy.mask_atoms_atom_radius (float)).
-  # When the LLM or README uses the short name, the
-  # PHIL parser may pick the wrong one.  Rewrite to
-  # the full path before parsing.
-  _PARAM_REWRITES = {
-    "phenix.resolve_cryo_em": {
-      # "strategy.mask_atoms" prefix-matches to
-      # strategy.mask_atoms_atom_radius (a float)
-      # in PHIL. The bare form "mask_atoms" works
-      # correctly at the top-level scope.
-      "strategy.mask_atoms": "mask_atoms",
-    },
-    "phenix.refine": {
-      # LLM writes short forms from the README;
-      # rewrite to full PHIL paths so they survive
-      # strategy_flags matching.
-      "reference_model.enabled":
-        "refinement.reference_model.enabled",
-      "reference_model.use_starting_model":
-        "refinement.reference_model"
-        ".use_starting_model_as_reference",
-    },
-  }
-  _rewrites = _PARAM_REWRITES.get(program_name, {})
-  if _rewrites:
-    tokens = command.split()
-    new_tokens = [tokens[0]]  # program name
-    for tok in tokens[1:]:
-      if "=" in tok:
-        key, sep, val = tok.partition("=")
-        # Rewrite bare keys and dotted keys that
-        # are in the rewrite table.
-        if key in _rewrites:
-          new_key = _rewrites[key]
-          if log:
-            log("  [sanitize] rewrite %s → %s"
-                % (key, new_key))
-          tok = "%s=%s" % (new_key, val)
-      new_tokens.append(tok)
-    command = " ".join(new_tokens)
-
   # ── 1. Probe-only programs: strip ALL key=value tokens ─────────────
   # EXCEPT: file-path values (half_map=/path/to/file.mrc) and
   # data-label selection parameters (obs_labels, labels, data_labels).
@@ -650,6 +605,19 @@ def sanitize_command(command, program_name=None, bad_inject_params=None,
             log("  [sanitize_command] removed bare param %r from "
               "%s (not in strategy_flags or universal keys)"
               % (token.strip(), program_name))
+
+      # Rule E: strip scoped PHIL params when the short key (or the
+      # full scoped path) has been blacklisted by inject_fail_streak.
+      # This catches LLM-generated scoped params like
+      # autobuild.input.xray_data.obs_labels=I(+) that previously
+      # caused "not recognized" errors.
+      if not _strip and '.' in key_full and bad_inject_params:
+        if (key_full in bad_inject_params or
+            key_short in bad_inject_params):
+          _strip = True
+          if log:
+            log("  [sanitize_command] removed blacklisted scoped param "
+              "%r from %s" % (token.strip(), program_name))
 
       if not _strip:
         new_tokens.append(sanitized[last_end:m.end()])

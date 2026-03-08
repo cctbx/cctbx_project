@@ -222,8 +222,7 @@ data_label_parameters:
     parameter: "phaser.hklin.labin"
   phenix.autosol:
     parameter: "autosol.input.xray_data.obs_labels"
-  phenix.autobuild:
-    parameter: "autobuild.input.xray_data.obs_labels"
+  # NOTE: phenix.autobuild removed — does not accept obs_labels parameter
   default:
     parameter: "obs_labels"
 

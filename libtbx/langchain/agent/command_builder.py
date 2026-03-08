@@ -283,7 +283,7 @@ class CommandBuilder:
           "phenix.xtriage": {"parameter": "scaling.input.xray_data.obs_labels"},
           "phenix.refine": {"parameter": "miller_array.labels.name"},
           "phenix.phaser": {"parameter": "phaser.hklin.labin"},
-          "phenix.autobuild": {"parameter": "autobuild.input.xray_data.obs_labels"},
+          # NOTE: phenix.autobuild does NOT accept obs_labels — removed
           "phenix.maps": {"parameter": "maps.input.xray_data.obs_labels"},
         }
         cls._data_label_default = "obs_labels"
