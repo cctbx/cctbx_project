@@ -83,8 +83,8 @@ def test_should_think_after_autobuild():
 
 def test_should_think_routine_refine():
   print("Test: should_think_routine_refine")
-  # mtriage is a routine step that doesn't trigger thinking
-  state = {"history": [{"program": "phenix.mtriage", "status": "OK"}]}
+  # molprobity is a validation program (non-strategic) — should not trigger thinking
+  state = {"history": [{"program": "phenix.molprobity", "status": "OK"}]}
   assert should_think(state) == False
   print("  PASSED")
 
@@ -108,8 +108,10 @@ def test_should_think_stalled_rfree():
 
 def test_should_think_improving_rfree():
   print("Test: should_think_improving_rfree")
+  # Use a non-strategic program so only the R-free trend is checked.
+  # Improving R-free should not trigger thinking.
   state = {
-    "history": [{"program": "phenix.mtriage", "status": "OK"}],
+    "history": [{"program": "phenix.molprobity", "status": "OK"}],
     "strategy_memory": {"r_free_history": [0.30, 0.28, 0.26]},
   }
   assert should_think(state) == False
@@ -143,8 +145,10 @@ def test_enabled_no_llm_graceful():
 
 def test_routine_step_skipped():
   print("Test: routine_step_skipped")
+  # molprobity is a validation program (non-strategic category)
+  # and should not trigger the thinking agent
   state = _make_state(
-    history=[{"program": "phenix.mtriage", "status": "OK"}])
+    history=[{"program": "phenix.molprobity", "status": "OK"}])
   result = run_think_node(state)
   debug = result.get("debug_log", [])
   assert any("Skipping" in str(d) for d in debug)

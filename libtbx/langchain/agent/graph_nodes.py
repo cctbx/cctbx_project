@@ -2697,8 +2697,8 @@ def _build_with_new_builder(state):
     # map_sharpening doesn't have to guess.
     if (program == "phenix.map_sharpening"
             and "resolution" not in strategy):
-        _res = (session_info.get("resolution")
-                or state.get("resolution"))
+        _res = (state.get("session_resolution")
+                or workflow_state.get("resolution"))
         if _res:
             try:
                 strategy["resolution"] = float(_res)
@@ -2840,10 +2840,12 @@ def _build_with_new_builder(state):
                            _src))
 
     # Create CommandContext
+    _ws_res = workflow_state.get(
+        "resolution")  # from xtriage/mtriage
     context = CommandContext(
         cycle_number=state.get("cycle_number", 1),
         experiment_type=session_info.get("experiment_type", ""),
-        resolution=state.get("session_resolution") or workflow_state.get("resolution"),
+        resolution=state.get("session_resolution") or _ws_res,
         best_files=session_info.get("best_files", {}),
         rfree_mtz=session_info.get("rfree_mtz"),
         categorized_files=workflow_state.get("categorized_files", {}),
@@ -3238,7 +3240,8 @@ def build(state):
 
     # === APPLY AUTOBUILD RESOLUTION LIMIT ===
     if program == "phenix.autobuild":
-        resolution = workflow_state.get("resolution")
+        resolution = workflow_state.get(
+            "resolution")  # from xtriage/mtriage
         if resolution and resolution < 2.0:
             if "resolution" not in strategy:
                 strategy["resolution"] = 2.0
@@ -3278,7 +3281,8 @@ def build(state):
             return session_res, "session"
 
         # 2. From workflow_state (extracted from history analysis)
-        res = workflow_state.get("resolution")
+        res = workflow_state.get(
+            "resolution")
         if res:
             return res, "workflow_state"
 
@@ -3952,10 +3956,12 @@ def _fallback_with_new_builder(state):
     def _fallback_log(msg):
         fallback_build_logs.append(msg)
 
+    _ws_res = workflow_state.get(
+        "resolution")  # from xtriage/mtriage
     context = CommandContext(
         cycle_number=state.get("cycle_number", 1),
         experiment_type=session_info.get("experiment_type", ""),
-        resolution=state.get("session_resolution") or workflow_state.get("resolution"),
+        resolution=state.get("session_resolution") or _ws_res,
         best_files=session_info.get("best_files", {}),
         rfree_mtz=session_info.get("rfree_mtz"),
         categorized_files=workflow_state.get("categorized_files", {}),

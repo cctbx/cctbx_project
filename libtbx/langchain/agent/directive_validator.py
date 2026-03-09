@@ -1026,9 +1026,10 @@ def _check_stop_conditions(directives, cycle_number=None, last_program=None, his
             if map_cc is not None and map_cc >= map_cc_target:
                 return True, f"Map CC {map_cc:.3f} reached target {map_cc_target}"
 
-    # Check skip_validation
-    if stop_conditions.get("skip_validation"):
-        return True, "skip_validation directive is active"
+    # Note: skip_validation is NOT a stop trigger.
+    # It is a hint to the plan node to suppress molprobity/model_vs_data
+    # at workflow end.  Stopping is handled by after_program, after_cycle,
+    # max_refine_cycles, and metrics targets above.
 
     # Check max program cycles
     should_stop, reason = _check_max_program_cycles(

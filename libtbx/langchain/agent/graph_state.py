@@ -67,6 +67,8 @@ class AgentState(TypedDict):
     metrics_history: List[Dict]   # Derived from history - metrics per cycle
     metrics_trend: Dict           # Output of analyze_metrics_trend()
     workflow_state: Dict          # Output of detect_workflow_state()
+    error_classification: Dict    # Error classification from PERCEIVE (v115)
+    failure_count: int            # Consecutive failures of same program (v115)
 
     # === CONTROL FLAGS ===
     stop: bool                    # True if workflow complete
@@ -204,6 +206,8 @@ def create_initial_state(
         "metrics_history": [],
         "metrics_trend": {},
         "workflow_state": {},
+        "error_classification": {},
+        "failure_count": 0,
 
         # Control flags
         "stop": False,

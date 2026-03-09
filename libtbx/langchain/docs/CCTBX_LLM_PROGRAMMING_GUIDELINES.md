@@ -344,6 +344,71 @@ When writing classes that persist to JSON or pickle:
 
 ---
 
+### Backward compatibility
+
+The agent has a client-server architecture. Server code may be
+newer than client code. Rules:
+
+- Never read `session_info["key"]` — always
+  `session_info.get("key", default)`.
+- Every new `session_info` field must be registered in
+  `agent/contract.py` with a default value.
+- Shared code in `agent/` must not import server-only
+  dependencies (langchain, openai, anthropic, etc.).
+
+See DEVELOPER_GUIDE.md §8 (Backward Compatibility & Contract) for the full
+contract system.
+
+### GUI callbacks
+
+When adding new data to GUI callbacks:
+
+- New fields in existing callbacks (e.g., `agent_cycle`) must
+  use `getattr(data, 'new_field', default)` on the GUI side —
+  old callbacks won't have the field.
+- New callback types (e.g., `agent_gate_transition`) must be
+  added to the dispatcher in `AIAgent.py` and ignored silently
+  by older GUIs.
+- Always wrap callback sends in `try/except Exception: pass`
+  with a comment explaining why (callbacks are non-critical
+  and must never crash the agent).
+
+---
+
+### Prompt templates
+
+All LLM prompt templates — system prompts, extraction prompts, planning
+prompts — must be stored as plain text files in `agent/prompts/`. Do not
+hardcode prompt strings in Python source.
+
+**Rationale:** Prompts are the agent's "personality." Keeping them in
+text files makes diffs readable, enables direct editing without touching
+Python, and allows a future eval harness to test prompt variants
+independently of code changes.
+
+**Naming convention:** `<purpose>_<role>.txt`, e.g.
+`directive_extraction_user.txt`, `thinking_system.txt`. When a prompt
+has both a system and a user part, use separate files.
+
+**Loading pattern:**
+
+```python
+import os
+_PROMPT_DIR = os.path.join(os.path.dirname(__file__), "prompts")
+
+def _load_prompt(name):
+    path = os.path.join(_PROMPT_DIR, name)
+    with open(path) as f:
+        return f.read()
+
+DIRECTIVE_EXTRACTION_PROMPT = _load_prompt(
+    "directive_extraction_user.txt")
+```
+
+**Migration:** Prompts already extracted to `agent/prompts/` but still
+hardcoded in Python will be updated on first substantive edit.
+New prompts must use `_load_prompt()` immediately.
+
 ## 4. Common Pitfalls
 
 ### Pitfall: `.get("key", "")` with None values
@@ -450,7 +515,53 @@ sg1.group() == sg2.group()
 
 ---
 
-## 5. Error Handling
+### Pitfall: stale plan data across thinking levels
+
+Session data persists across runs. If a session was created
+with `thinking_level=expert` (which generates a plan), then
+resumed with `thinking_level=advanced`, the plan data still
+exists in `session.data["plan"]`. Code that reads plan data
+must check the current thinking level, not just whether the
+data exists.
+
+### Pitfall: `result` vs `status` in history entries
+
+History entries use `"result"` (e.g., `"SUCCESS: OK"`), not
+`"status"`. Reading `h.get("status")` returns `None`. Always
+check both with a fallback:
+
+```python
+status = h.get("result", h.get("status", "?"))
+```
+
+### Pitfall: forgetting to persist state on resume
+
+Every piece of state that the agent needs across cycles must
+be:
+
+1. Written to `session.data["key"]` after the cycle
+2. Read from `session.data["key"]` on resume
+3. Included in `create_initial_state()` if passed through
+   the graph
+
+If you add a new state field, grep for all three patterns and
+verify the field appears in each.
+
+## 5. YAML Configuration
+
+The agent's domain knowledge is externalized to YAML files in
+`knowledge/`. When adding or modifying YAML:
+
+- Run `python agent/yaml_tools.py validate` after changes
+- Ensure the YAML validator handles the file's top-level type
+  (dict or list — `expert_knowledge_base_v2.yaml` is a list)
+- Skip macOS resource fork files (`._*.yaml`) in any file
+  discovery code
+
+---
+
+
+## 6. Error Handling
 
 ### "Never raises" functions
 
@@ -522,28 +633,20 @@ except Exception as e:
 
 ---
 
-## 6. Checklist Before Presenting Code
+## 7. Checklist Before Presenting Code
 
-Before telling the programmer a step is done:
-
-- [ ] All changed files parse cleanly
+- [ ] All changed files parse cleanly (`ast.parse()` or equivalent)
 - [ ] All relevant test suites pass
-- [ ] No lines > 80 chars in changed regions (where
-      feasible)
-- [ ] No trailing whitespace
-- [ ] No unused imports
-- [ ] No bare `except:` — always `except Exception:` or
-      more specific
-- [ ] Every `except Exception: pass` has a comment or
-      log explaining why the exception is safe to discard
-- [ ] `(x.get("key") or "")` pattern for any `.lower()`,
-      `.upper()`, `.strip()` on dict values that could be
-      None
-- [ ] `os.path.join()` for all file paths, never string
-      concatenation with `/`
-- [ ] `approx_equal()` for floating point comparisons in
-      tests, never `==`
-- [ ] Serialization round-trip test for any new
-      `to_dict()` / `from_dict()` pair
-- [ ] Documentation updated for user-visible or
-      architectural changes
+- [ ] New test functions registered in `run_all_tests()` in `tst_utils.py`
+- [ ] No bare `except:` blocks added
+- [ ] Exception swallowing has an explanatory comment
+- [ ] No hardcoded path separators — use `os.path.join()`
+- [ ] `None`-safety: `(x.get("key") or "")` not `x.get("key", "")`
+- [ ] Any new YAML files validated with `agent/yaml_tools.py validate`
+- [ ] Import fallbacks present for all `libtbx.langchain` imports
+- [ ] New `session_info` fields have safe defaults in contract.py
+- [ ] New LLM prompt template stored in `agent/prompts/`, not hardcoded
+- [ ] R-free comparisons use fractions, not percentages
+- [ ] If a new AgentState field was added, update `create_initial_state()`
+      and the field-count test in `tst_thinking_defense.py`
+

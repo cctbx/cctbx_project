@@ -202,10 +202,20 @@ _SOLVE_PHRASES = [
     r"do\s+(?:your|the)\s+(?:best|thing)",
 ]
 
-
-# ================================================================
-# Main classifier
-# ================================================================
+# Phrases that signal a multi-step pipeline rather than a
+# single-program task.  When a task is detected AND one of
+# these patterns is present, the advice describes a sequence
+# of programs and should be classified as solve, not task.
+_PIPELINE_INDICATORS = [
+    r"\bfollowed\s+by\b",
+    r"\bafter\s+(?:that|this|which)\b",
+    r"\bsubsequently\b",
+    # Note: r"\bnext[,\s]" excluded -- fires on "the next step
+    # is xtriage" (next as prefix, not sequencing connector).
+    # "then <action-verb>" — covers "then build", "then refine",
+    # "then run", "then dock", etc. without matching "then stop".
+    r"\bthen\s+(?:build|refine|dock|fit|run|do|apply|use)\b",
+]
 
 def classify_intent(user_advice):
     """Classify user advice into an intent category.
@@ -295,10 +305,18 @@ def classify_intent(user_advice):
     # --- 1. Check for single-program task (highest priority) ---
     task_prog = _detect_task(advice_lower)
     if task_prog:
-        return _result(
-            TASK, "high", task_prog, None,
-            "Explicit single-program command: %s"
-            % task_prog)
+        # Before declaring this a single-step task, check for
+        # pipeline indicators.  "Sharpen the map, then build a
+        # model" names a task program but is a multi-step workflow
+        # — the agent should not stop after sharpening.
+        is_pipeline = any(
+            re.search(p, advice_lower)
+            for p in _PIPELINE_INDICATORS)
+        if not is_pipeline:
+            return _result(
+                TASK, "high", task_prog, None,
+                "Explicit single-program command: %s"
+                % task_prog)
 
     # --- 2. Check for method-constrained solve ---
     method, constraint_reason = _detect_method_constraint(
@@ -354,17 +372,45 @@ def _detect_task(advice_lower):
 
     Returns the program name if a task is detected,
     None otherwise.
+
+    Three detection paths:
+    1. Trigger + alias: "run xtriage", "check for twinning"
+    2. Trigger + phenix.X: "run phenix.map_sharpening"
+    3. Direct alias: "sharpen the map", "auto_sharpen"
+       (short imperative commands without a trigger prefix)
     """
+    # Path 1: trigger prefix + program alias
     for trigger in _TASK_TRIGGERS:
         m = re.search(trigger, advice_lower)
         if not m:
             continue
-        # Text after the trigger should match a program
         rest = advice_lower[m.end():]
+        # 1a: Check program aliases
         for program, aliases in _PROGRAM_ALIASES.items():
             for alias in aliases:
                 if re.match(alias, rest, re.IGNORECASE):
                     return program
+        # 1b: Check "phenix.X" directly after trigger
+        pm = re.match(r"phenix\.(\w+)", rest)
+        if pm:
+            from agent.directive_extractor import (
+                _fix_program_name)
+            fixed = _fix_program_name(pm.group(0))
+            if fixed:
+                return fixed
+
+    # Path 2: direct alias match (no trigger prefix)
+    # Only for short advice (under 80 chars) that
+    # doesn't contain solve/structure language.
+    if (len(advice_lower) < 80
+            and "structure" not in advice_lower
+            and "solve" not in advice_lower):
+        for program, aliases in _PROGRAM_ALIASES.items():
+            for alias in aliases:
+                if re.search(alias, advice_lower,
+                             re.IGNORECASE):
+                    return program
+
     return None
 
 

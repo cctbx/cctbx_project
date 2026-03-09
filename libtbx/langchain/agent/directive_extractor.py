@@ -559,7 +559,9 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
                 return simple_directives
 
         # Store intent classification in directives (v115)
-        if intent_result:
+        # Low-confidence means the default fallback fired — not a
+        # genuine detection, so don't pollute directives.
+        if intent_result and intent_result.get("confidence") != "low":
             directives["intent"] = intent_result
 
         # Intent-driven stop override (v115) — same logic
@@ -2007,8 +2009,10 @@ def extract_directives_simple(user_advice):
 
     directives = {}
 
-    # Store intent in directives for downstream use
-    if intent_result:
+    # Store intent in directives for downstream use.
+    # Low-confidence means the default fallback fired (no pattern
+    # matched) — not a genuine detection, so don't pollute directives.
+    if intent_result and intent_result.get("confidence") != "low":
         directives["intent"] = intent_result
 
     advice_lower = user_advice.lower()

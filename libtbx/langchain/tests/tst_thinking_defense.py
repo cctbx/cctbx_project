@@ -691,7 +691,7 @@ def test_H02_graph_state_field_count():
   print("Test: H02_graph_state_field_count")
   # Count fields in the TypedDict
   annotations = getattr(AgentState, '__annotations__', {})
-  expected = 35
+  expected = 37
   actual = len(annotations)
   assert_equal(actual, expected,
     "AgentState has %d fields, expected %d. "
