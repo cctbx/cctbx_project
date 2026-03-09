@@ -181,6 +181,11 @@ class SanityChecker:
         if issue:
             issues.append(issue)
 
+        # Check: AutoBuild with wrong MTZ type (Fix I2)
+        issue = self._check_autobuild_phib(context)
+        if issue:
+            issues.append(issue)
+
         return issues
 
     def _check_experiment_type_stable(self, context: Dict, session_info: Dict) -> Optional[SanityIssue]:
@@ -381,6 +386,64 @@ class SanityChecker:
                               "Consider using session_utils to examine the session history.",
                     details={"program": prog, "count": count, "error_preview": error[:50]}
                 )
+
+        return None
+
+    def _check_autobuild_phib(self, context: Dict) -> Optional[SanityIssue]:
+        """Check that AutoBuild isn't about to use an MTZ lacking phases.
+
+        AutoBuild's input_map_file mode requires PHIB/FOM columns
+        (experimental phases from AutoSol).  Sigma-A weighted MTZs
+        (with FWT/PHIC only) will crash.  This check catches the
+        problem before the program starts.
+
+        Fix I2 defense-in-depth: phil_validator already strips
+        input_map_file from AutoBuild strategy.  This sanity check
+        catches cases that slip through (e.g., the LLM puts it in
+        files dict instead of strategy).
+        """
+        history = context.get("history", [])
+        if not history:
+            return None
+
+        # Only check if next program is autobuild
+        # (we don't know the next program in the sanity
+        # checker, but we can check if recent autobuild
+        # failures had PHIB-related errors)
+        recent_failures = []
+        for h in history[-3:]:
+            if not isinstance(h, dict):
+                continue
+            prog = (h.get("program") or "").lower()
+            result = str(h.get("result", ""))
+            if ("autobuild" in prog
+                    and "FAIL" in result.upper()
+                    and ("PHIB" in result
+                         or "phase" in result.lower()
+                         or "input_map" in result.lower())):
+                recent_failures.append(h)
+
+        if len(recent_failures) >= 2:
+            return SanityIssue(
+                severity="warning",
+                code="autobuild_missing_phases",
+                message=(
+                    "AutoBuild has failed %d times "
+                    "with phase-related errors"
+                    % len(recent_failures)),
+                suggestion=(
+                    "AutoBuild's input_map_file mode "
+                    "requires PHIB/FOM columns from "
+                    "experimental phasing (AutoSol). "
+                    "For post-MR AutoBuild, use the "
+                    "data MTZ directly (not as "
+                    "input_map_file). Consider running "
+                    "phenix.refine instead to generate "
+                    "map coefficients first."),
+                details={
+                    "failure_count": len(recent_failures),
+                }
+            )
 
         return None
 

@@ -188,6 +188,7 @@ Output a JSON object with these sections. Include ONLY sections that have releva
 
 1. "program_settings": Program-specific parameters
    - Use exact program names: "phenix.refine", "phenix.autosol", "phenix.autobuild", "phenix.phaser", "phenix.molprobity", "phenix.predict_and_build", "phenix.process_predicted_model", "phenix.real_space_refine", "phenix.dock_in_map", "phenix.map_to_model", "phenix.map_sharpening", "phenix.polder", "phenix.xtriage", "phenix.mtriage", "phenix.map_symmetry", "phenix.ligandfit", "phenix.resolve_cryo_em"
+   - IMPORTANT: Do NOT use "phenix.resolve" — the correct name is "phenix.resolve_cryo_em"
    - Use "default" for settings that apply to all programs unless overridden
    - Common parameters and their types:
      * resolution: float (e.g., 2.5)
@@ -1716,6 +1717,11 @@ def _fix_program_name(name):
         "resolve_cryo_em": "phenix.resolve_cryo_em",
         "resolvecryoem": "phenix.resolve_cryo_em",
         "resolve-cryo-em": "phenix.resolve_cryo_em",
+        # LLM often shortens to "resolve" — map to cryo_em
+        # (legacy phenix.resolve is not in the agent's
+        # program list; all density modification goes
+        # through resolve_cryo_em)
+        "resolve": "phenix.resolve_cryo_em",
         "autobuild_denmod": "phenix.autobuild_denmod",
 
         # Map tools
@@ -2185,6 +2191,22 @@ def extract_directives_simple(user_advice):
             if program not in directives["workflow_preferences"]["prefer_programs"]:
                 directives["workflow_preferences"]["prefer_programs"].append(program)
 
+    # ==========================================================================
+    # POLDER SELECTION EXTRACTION
+    # ==========================================================================
+    # Extract atom selection for polder from patterns like:
+    #   "polder map for chain A resseq 88"
+    #   "polder for chain A and resseq 88"
+    #   "polder selection chain A and resseq 88"
+    if "polder" in advice_lower:
+        _polder_sel = _extract_polder_selection(user_advice)
+        if _polder_sel:
+            if "program_settings" not in directives:
+                directives["program_settings"] = {}
+            if "phenix.polder" not in directives["program_settings"]:
+                directives["program_settings"]["phenix.polder"] = {}
+            directives["program_settings"]["phenix.polder"]["selection"] = _polder_sel
+
     # Check for skip program patterns
     skip_program_patterns = [
         (r'(?:skip|no|avoid|(?:don\'?t|do\s+not)\s+(?:run|use))\s+(?:the\s+)?autobuild', 'phenix.autobuild'),
@@ -2514,6 +2536,51 @@ def extract_directives_simple(user_advice):
 # =============================================================================
 # CRYSTAL SYMMETRY EXTRACTION HELPER (shared by simple and LLM paths)
 # =============================================================================
+
+def _extract_polder_selection(user_advice):
+    """Extract polder atom selection from user advice.
+
+    Matches patterns like:
+        "polder map for chain A resseq 88"
+        "polder for chain A and resseq 88"
+        "polder selection chain A and resseq 88"
+        "calculate polder map for resname LIG"
+
+    Returns:
+        str or None — the selection string, or None.
+    """
+    if not user_advice:
+        return None
+
+    # Pattern: "for <selection>" after polder mention
+    m = re.search(
+        r'polder\s+(?:map\s+)?for\s+(.+?)(?:\.|$)',
+        user_advice, re.IGNORECASE)
+    if m:
+        sel = m.group(1).strip()
+        if sel and len(sel) > 3:
+            return sel
+
+    # Pattern: "selection <selection>" near polder
+    m = re.search(
+        r'(?:polder|omit)\s+(?:map\s+)?'
+        r'selection[=:\s]+["\']?(.+?)["\']?'
+        r'(?:\.|$)',
+        user_advice, re.IGNORECASE)
+    if m:
+        sel = m.group(1).strip()
+        if sel and len(sel) > 3:
+            return sel
+
+    # Pattern: "selection='chain A and resseq 88'"
+    m = re.search(
+        r'selection\s*=\s*["\']([^"\']+)["\']',
+        user_advice, re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+
+    return None
+
 
 def _extract_crystal_symmetry_simple(user_advice, directives):
     """

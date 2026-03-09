@@ -73,6 +73,10 @@ phenix.xtriage:
       flag: "xray_data.space_group={value}"
       type: string
       hint: "Space group name or number"
+    obs_labels:
+      flag: "scaling.input.xray_data.obs_labels={value}"
+      type: string
+      hint: "Observation column labels for multi-array MTZ (e.g. IOBS,SIGIOBS)"
 
   log_parsing:
     resolution:
@@ -369,6 +373,10 @@ phenix.predict_and_build:
     nproc:
       flag: "control.nproc={value}"
       type: int
+    obs_labels:
+      flag: "input_files.xray_data.obs_labels={value}"
+      type: string
+      hint: "Observation column labels for multi-array MTZ"
 
   # Invariants are checked before building command
   # If violated, the fix is applied automatically
@@ -506,6 +514,10 @@ phenix.phaser:
       flag: "phaser.root={value}"
       type: string
       hint: "Output filename prefix (default: PHASER)."
+    obs_labels:
+      flag: "phaser.xray_data.obs_labels={value}"
+      type: string
+      hint: "Observation column labels for multi-array MTZ"
 
   # Keywords in user advice that indicate this program should be preferred
   user_advice_keywords:
@@ -755,8 +767,11 @@ phenix.autosol:
       - pattern: "*overall_best*.pdb"
         type: model
       - pattern: "*refinement_data*.mtz"
-        type: data_mtz
-        description: "Phased data with Fobs"
+        type: phased_data_mtz
+        description: "Phased data with Fobs and PHIB/FOM"
+      - pattern: "*_denmod_map_coeffs*.mtz"
+        type: phased_data_mtz
+        description: "Density-modified map coefficients"
     metrics:
       - fom
       - sites_found
@@ -792,6 +807,10 @@ phenix.autosol:
     nproc:
       flag: "nproc={value}"
       type: int
+    obs_labels:
+      flag: "autosol.input.xray_data.obs_labels={value}"
+      type: string
+      hint: "Observation column labels for multi-array MTZ"
 
   # Keywords in user advice that indicate this program should be preferred
   user_advice_keywords:
@@ -1111,6 +1130,11 @@ phenix.refine:
         extensions: [.mtz, .sca, .hkl, .sdf]
         flag: ""
         description: "Reflection data with Fobs and R-free flags"
+    optional:
+      ligand_cif:
+        extensions: [.cif]
+        flag: ""
+        description: "Ligand geometry restraint file (.ligands.cif)"
 
   # Input priorities: which file categories to prefer for each input
   # Categories are checked in order; first match wins
@@ -1128,6 +1152,9 @@ phenix.refine:
     data_mtz:
       categories: [original_data_mtz, data_mtz]  # Prefer MTZ with R-free flags
       exclude_categories: [map_coeffs_mtz]  # Never refine against map coefficients!
+    ligand_cif:
+      categories: [ligand_cif]
+      optional: true  # Don't fail if not present
 
   outputs:
     files:
@@ -1154,7 +1181,7 @@ phenix.refine:
       - bonds_rmsd
       - angles_rmsd
 
-  command: "phenix.refine {model} {data_mtz} xray_data.r_free_flags.generate=True"
+  command: "phenix.refine {model} {data_mtz} {ligand_cif} xray_data.r_free_flags.generate=True"
 
   defaults:
     xray_data.r_free_flags.generate: True
@@ -1703,6 +1730,12 @@ phenix.polder:
       categories: [model]
       prefer_subcategories: [with_ligand, refined, phaser_output]
       exclude_categories: [ligand, ligand_pdb, search_model, predicted]
+    data_mtz:
+      # Polder needs Fobs (measured data), NOT map coefficients
+      # from refinement.  Exclude map_coeffs_mtz to prevent
+      # picking up refine output MTZ (which causes failure).
+      categories: [original_data_mtz, data_mtz]
+      exclude_categories: [map_coeffs_mtz]
 
   strategy_flags:
     selection:
@@ -1716,7 +1749,9 @@ phenix.polder:
       description: "Polder requires an atom selection to calculate the omit map around"
       check:
         has_strategy: selection
-      message: "selection is REQUIRED for polder. Use selection='hetero and not water' to evaluate all ligands."
+      fix:
+        set_strategy: {selection: "hetero and not water"}
+      message: "selection is REQUIRED for polder. Defaulting to 'hetero and not water' to evaluate all ligands."
 
   hints:
     - "selection is REQUIRED - default is selection='hetero and not water' (safe for any ligand name)"

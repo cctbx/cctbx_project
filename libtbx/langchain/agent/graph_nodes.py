@@ -2301,6 +2301,71 @@ def _extract_history_info(state):
 # PHIL STRATEGY VALIDATION (Fix 4, v115)
 # =============================================================================
 
+def _estimate_anomalous_sites(atom_type, categorized_files):
+    """Estimate anomalous sites from sequence (Fix I5).
+
+    Reads sequence file(s) and counts residues that
+    contain the anomalous scatterer:
+      Se → count Met (each has 1 Se)
+      S  → count Cys + Met (each has 1 S)
+      Fe, Zn, etc. → cannot estimate from sequence
+
+    Args:
+        atom_type: Element symbol (e.g., "Se", "S")
+        categorized_files: dict from file categorizer
+
+    Returns:
+        int or None — estimated site count, or None
+        if cannot estimate.
+    """
+    atom_upper = (atom_type or "").upper().strip()
+    if atom_upper not in ("SE", "S"):
+        return None
+
+    # Read sequence files
+    seq_files = categorized_files.get("sequence", [])
+    if not seq_files:
+        return None
+
+    total_sites = 0
+    for sf in seq_files:
+        seq = _read_sequence(sf)
+        if not seq:
+            continue
+        seq_upper = seq.upper()
+        if atom_upper == "SE":
+            total_sites += seq_upper.count("M")
+        elif atom_upper == "S":
+            total_sites += (
+                seq_upper.count("C")
+                + seq_upper.count("M"))
+
+    return total_sites if total_sites > 0 else None
+
+
+def _read_sequence(filepath):
+    """Read a sequence from a FASTA/seq/dat file.
+
+    Returns the concatenated sequence string (no headers,
+    no whitespace), or empty string on failure.
+    """
+    try:
+        with open(filepath, "r") as f:
+            lines = f.readlines()
+        seq_lines = []
+        for line in lines:
+            line = line.strip()
+            if not line or line.startswith(">"):
+                continue
+            # Skip non-sequence lines
+            if any(c.isdigit() for c in line[:5]):
+                continue
+            seq_lines.append(line)
+        return "".join(seq_lines)
+    except Exception:
+        return ""
+
+
 def _validate_phil_strategy(program, strategy, state):
     """Validate LLM strategy against program's known PHIL params.
 
@@ -2516,6 +2581,157 @@ def _build_with_new_builder(state):
                     "BUILD: Set rebuild_in_place=False"
                     " (model already exists from"
                     " previous cycle)")
+        # Fix I5 enhancement: if R-free > 0.45, force
+        # rebuild_in_place=False — the MR model is too
+        # poor to salvage by adjustment.
+        _last_rfree = None
+        for h in reversed(state.get("history", [])):
+            _m = h.get("metrics", {})
+            if "r_free" in _m:
+                try:
+                    _last_rfree = float(_m["r_free"])
+                except (ValueError, TypeError):
+                    pass
+                break
+        if (_last_rfree is not None
+                and _last_rfree > 0.45
+                and strategy.get(
+                    "rebuild_in_place") is not False):
+            strategy["rebuild_in_place"] = False
+            state = _log(state,
+                "BUILD: Force rebuild_in_place=False"
+                " (R-free=%.3f > 0.45, poor MR model)"
+                % _last_rfree)
+
+    # === MTZ LABEL INJECTION (Fix I1, v115) ===
+    # When MTZ has multiple observation arrays, inject
+    # explicit obs_labels to prevent xtriage/autosol crash.
+    _mtz_programs = (
+        "phenix.xtriage", "phenix.autosol",
+        "phenix.phaser", "phenix.predict_and_build",
+    )
+    if (program in _mtz_programs
+            and "obs_labels" not in strategy):
+        _cat = workflow_state.get(
+            "categorized_files", {})
+        _arr_info = _cat.get("mtz_array_info", {})
+        if _arr_info:
+            # Find which data_mtz will be used
+            _data_files = _cat.get(
+                "data_mtz", [])
+            for _df in _data_files:
+                _ai = _arr_info.get(_df)
+                if _ai:
+                    # Ranking rule: use anomalous labels
+                    # for SAD/MAD, merged otherwise
+                    _is_sad = False
+                    _exp = state.get(
+                        "experiment_type", "")
+                    _adv = (
+                        state.get("project_advice", "")
+                        or "")
+                    _dir = state.get("directives", {})
+                    _dir_ps = _dir.get(
+                        "program_settings", {})
+                    _dir_atom = (_dir_ps
+                        .get("phenix.autosol", {})
+                        .get("atom_type", ""))
+                    _search = (
+                        _exp + " " + _adv + " "
+                        + _dir_atom).lower()
+                    if any(kw in _search
+                           for kw in (
+                               "sad", "anomalous",
+                               "mad", "mr-sad",
+                               "mrsad", "se", "fe",
+                               "selenium", "iron")):
+                        _is_sad = True
+                    if _is_sad and _ai.get("anomalous"):
+                        strategy["obs_labels"] = (
+                            _ai["anomalous"])
+                        state = _log(state,
+                            "BUILD: Injecting anomalous"
+                            " labels=%s (SAD/MAD detected)"
+                            % _ai["anomalous"])
+                    elif _ai.get("merged"):
+                        strategy["obs_labels"] = (
+                            _ai["merged"])
+                        state = _log(state,
+                            "BUILD: Injecting merged"
+                            " labels=%s (multi-array MTZ)"
+                            % _ai["merged"])
+                    break
+
+    # === AUTOSOL SITES ESTIMATION (Fix I5, v115) ===
+    # When atom_type is set but sites is not, estimate
+    # the number of anomalous sites from the sequence.
+    if (program == "phenix.autosol"
+            and "sites" not in strategy):
+        _atom_type = strategy.get("atom_type")
+        if not _atom_type:
+            # Check directives for atom_type
+            _dir = state.get("directives", {})
+            _ps = _dir.get("program_settings", {})
+            _as = _ps.get("phenix.autosol", {})
+            _atom_type = _as.get("atom_type")
+            # Forward to strategy so CommandBuilder uses it
+            if _atom_type:
+                strategy["atom_type"] = _atom_type
+                state = _log(state,
+                    "BUILD: Forwarding atom_type=%s "
+                    "from directives" % _atom_type)
+        if _atom_type:
+            _est = _estimate_anomalous_sites(
+                _atom_type,
+                workflow_state.get(
+                    "categorized_files", {}))
+            if _est and _est > 0:
+                strategy["sites"] = _est
+                state = _log(state,
+                    "BUILD: Estimated %d %s sites "
+                    "from sequence"
+                    % (_est, _atom_type))
+
+    # === MAP_SHARPENING RESOLUTION INJECTION (Fix I4) ===
+    # Inject resolution from mtriage output so
+    # map_sharpening doesn't have to guess.
+    if (program == "phenix.map_sharpening"
+            and "resolution" not in strategy):
+        _res = (session_info.get("resolution")
+                or state.get("resolution"))
+        if _res:
+            try:
+                strategy["resolution"] = float(_res)
+                state = _log(state,
+                    "BUILD: Injecting resolution=%.2f"
+                    " for map_sharpening"
+                    % float(_res))
+            except (ValueError, TypeError):
+                pass
+
+    # === POLDER SELECTION INJECTION ===
+    # Polder requires selection= but LLM often omits it.
+    # 1. Forward from directives if extracted by LLM
+    # 2. Fall back to default "hetero and not water"
+    if (program == "phenix.polder"
+            and "selection" not in strategy):
+        # Check directives for user-specified selection
+        _dir = state.get("directives", {})
+        _ps = _dir.get("program_settings", {})
+        _polder_ps = _ps.get("phenix.polder", {})
+        _sel = _polder_ps.get("selection")
+        if _sel:
+            strategy["selection"] = _sel
+            state = _log(state,
+                "BUILD: Forwarding polder selection="
+                "'%s' from directives" % _sel)
+        else:
+            # Default: evaluate all ligands/cofactors
+            strategy["selection"] = (
+                "hetero and not water")
+            state = _log(state,
+                "BUILD: Applying default polder "
+                "selection='hetero and not water'")
 
     # === PHIL STRATEGY VALIDATION (Fix 4, v115) ===
     # Strip LLM-injected params that aren't valid for this

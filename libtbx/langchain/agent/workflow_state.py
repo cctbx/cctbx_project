@@ -1170,7 +1170,125 @@ def _categorize_files_hardcoded(available_files, ligand_hints=None, files_local=
             else:
                 files["ligand_cif"].append(f)
 
+    # ── Post-categorization: phased_data_mtz (Fix I3) ─────
+    # Detect autosol/resolve output MTZs that contain
+    # experimental phases (PHIB/FOM).  These should be
+    # preferred by autobuild over the original data MTZ.
+    if "phased_data_mtz" not in files:
+        files["phased_data_mtz"] = []
+    _phased_markers = (
+        'phased', 'resolve', '_ha_', '_denmod',
+        'overall_best_denmod', 'autosol',
+    )
+    for f in files.get("data_mtz", []):
+        bn = os.path.basename(f).lower()
+        if any(m in bn for m in _phased_markers):
+            if f not in files["phased_data_mtz"]:
+                files["phased_data_mtz"].append(f)
+
+    # ── Post-categorization: MTZ array detection (Fix I1) ──
+    # Detect MTZ files with multiple observation arrays.
+    # When found, record the available labels so the command
+    # builder can inject explicit labels= and avoid the
+    # "ambiguous data" crash in xtriage/autosol/phaser.
+    files["mtz_array_info"] = _detect_mtz_arrays(
+        files.get("data_mtz", []))
+
     return files
+
+
+def _detect_mtz_arrays(data_mtz_files):
+    """Detect MTZ files with multiple observation arrays (Fix I1).
+
+    When an MTZ has both merged (Iobs) and anomalous (I(+)/I(-))
+    arrays, programs like xtriage crash without explicit labels.
+
+    Returns:
+        dict: {filepath: {"merged": label_str,
+                          "anomalous": label_str,
+                          "preferred": label_str}}
+        Empty dict if no multi-array files found or iotbx
+        unavailable.
+
+    Never raises.
+    """
+    if not data_mtz_files:
+        return {}
+
+    result = {}
+    for filepath in data_mtz_files:
+        if not filepath.lower().endswith('.mtz'):
+            continue
+        arrays = _read_mtz_array_labels(filepath)
+        if arrays and len(arrays) > 1:
+            info = _classify_mtz_arrays(arrays)
+            if info.get("merged") and info.get("anomalous"):
+                result[filepath] = info
+    return result
+
+
+def _read_mtz_array_labels(filepath):
+    """Read observation array labels from an MTZ file.
+
+    Returns list of (label_string, is_anomalous) tuples,
+    or empty list if iotbx unavailable or file unreadable.
+    """
+    try:
+        try:
+            from iotbx.reflection_file_reader import (
+                any_reflection_file)
+        except ImportError:
+            from iotbx import reflection_file_reader
+            any_reflection_file = (
+                reflection_file_reader
+                .any_reflection_file)
+
+        reader = any_reflection_file(filepath)
+        if reader is None:
+            return []
+        arrays = reader.as_miller_arrays()
+        obs_arrays = []
+        for ma in arrays:
+            if ma.is_xray_intensity_array():
+                label = ma.info().label_string()
+                is_anom = ma.anomalous_flag()
+                obs_arrays.append((label, is_anom))
+            elif ma.is_xray_amplitude_array():
+                label = ma.info().label_string()
+                is_anom = ma.anomalous_flag()
+                obs_arrays.append((label, is_anom))
+        return obs_arrays
+    except Exception:
+        return []
+
+
+def _classify_mtz_arrays(arrays):
+    """Classify MTZ arrays into merged/anomalous with
+    a preferred default.
+
+    Args:
+        arrays: list of (label_string, is_anomalous)
+
+    Returns:
+        dict with "merged", "anomalous", "preferred" keys.
+    """
+    merged = None
+    anomalous = None
+    for label, is_anom in arrays:
+        if is_anom and anomalous is None:
+            anomalous = label
+        elif not is_anom and merged is None:
+            merged = label
+
+    # Ranking rule: default to merged (safer for MR/refine).
+    # SAD/MAD workflows will override to anomalous based on
+    # experiment context in the command builder.
+    preferred = merged or anomalous
+    return {
+        "merged": merged,
+        "anomalous": anomalous,
+        "preferred": preferred,
+    }
 
 
 def _detect_experiment_type(files, history_info=None):

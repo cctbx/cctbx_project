@@ -88,6 +88,7 @@ _PROGRAM_ALIASES = {
     ],
     "phenix.resolve_cryo_em": [
         r"resolve.?cryo",
+        r"resolve_cryo_em",
         r"density\s+modif",
     ],
     "phenix.map_symmetry": [

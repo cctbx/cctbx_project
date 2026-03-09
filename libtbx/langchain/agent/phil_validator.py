@@ -32,6 +32,18 @@ _BUILD_PIPELINE_KEYS = frozenset({
   "output_root",      # consumed by CommandBuilder
 })
 
+# Per-program blocked params (Fix I2, v115).
+# These are params the LLM commonly hallucinates that
+# cause crashes.  They're stripped with a reason logged.
+_BLOCKED_PARAMS = {
+  "phenix.autobuild": {
+    "input_map_file": (
+      "input_map_file requires PHIB/FOM phases "
+      "(only after autosol). Post-MR autobuild "
+      "should use data= via input_priorities."),
+  },
+}
+
 # Cache for loaded strategy_flags to avoid repeated YAML reads
 _STRATEGY_FLAGS_CACHE = {}
 
@@ -109,22 +121,33 @@ def validate_phil_strategy(program, strategy):
   if not strategy or not program:
     return strategy, []
 
+  # Check for blocked params first (Fix I2).
+  # These are stripped even if they're in strategy_flags.
+  blocked = _BLOCKED_PARAMS.get(program, {})
+  stripped = []
+  if blocked:
+    for key in list(strategy.keys()):
+      if key in blocked:
+        stripped.append((key, strategy.pop(key)))
+        logger.info(
+          "PHIL BLOCKED: %s for %s — %s",
+          key, program, blocked[key])
+
   allowed = _load_strategy_flags(program)
   if allowed is None:
-    # Program not found or YAML loader unavailable
-    return strategy, []
+    # Program not found or YAML loader unavailable.
+    # Return strategy (minus any blocked params).
+    return strategy, stripped
 
   if not allowed:
     # Program has no strategy_flags defined — can't validate.
-    # Pass through to avoid blocking programs that just don't
-    # have flags declared yet.
-    return strategy, []
+    # Pass through (minus any blocked params).
+    return strategy, stripped
 
   # Also allow build-pipeline keys
   allowed = allowed | _BUILD_PIPELINE_KEYS
 
   cleaned = {}
-  stripped = []
   for key, value in strategy.items():
     if key in allowed:
       cleaned[key] = value

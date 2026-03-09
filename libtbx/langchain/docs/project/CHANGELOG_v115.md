@@ -1,4 +1,60 @@
-# CHANGELOG — v115 (Failure Handling & Stop Condition Fixes)
+# CHANGELOG — v115
+
+## Version 115.01 (Intent Classification & Infrastructure Fixes)
+
+### Summary
+
+Intent classification system for dual-run evaluation (tutorial vs solve
+mode), plus 6 infrastructure fixes addressing file routing bugs discovered
+by the first dual-run evaluation.  Expected additional cycle waste
+reduction: ~15-20% from preventing technical crashes.
+
+### New files (3)
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `agent/intent_classifier.py` | 433 | Classifies user advice into solve/solve_constrained/task/tutorial |
+| `knowledge/tutorial_expectations.yaml` | 218 | Expected behavior for all 21 tutorials (answer key) |
+| `knowledge/solve_run_info.yaml` | 94 | Minimal hints for solve-mode runs |
+
+### Modified files (5)
+
+| File | Changes |
+|------|---------|
+| `agent/directive_extractor.py` | Intent classification integration; intent-driven stop behavior; `_set_by_pattern` flag for distinguishing pattern-inferred vs user-explicit stops; intent simplified to string before return |
+| `agent/advice_preprocessor.py` | Early return bypass for "Solve the structure by standard procedures" READMEs (skips LLM preprocessing) |
+| `agent/workflow_state.py` | Fix I1: Multi-array MTZ detection (`_detect_mtz_arrays`, `_read_mtz_array_labels`, `_classify_mtz_arrays`); Fix I3: `phased_data_mtz` post-categorization scan for autosol outputs |
+| `agent/phil_validator.py` | Fix I2: `_BLOCKED_PARAMS` dict; blocked-param check before allowed-flags check (strips `input_map_file` from autobuild) |
+| `agent/graph_nodes.py` | Fix I1: MTZ label injection with SAD/MR ranking rule; Fix I4: `map_sharpening` resolution injection; Fix I5: `_estimate_anomalous_sites`/`_read_sequence` + sites injection + `atom_type` forwarding from directives + `rebuild_in_place=False` when R-free > 0.45 |
+
+### Knowledge base changes (1)
+
+| File | Changes |
+|------|---------|
+| `knowledge/programs.yaml` | Fix I1: `obs_labels` for xtriage and autosol; Fix I3: autosol output type `data_mtz` → `phased_data_mtz` + denmod pattern; Fix I8: `ligand_cif` optional input + input_priorities + command template for refine |
+
+### Evaluation infrastructure (2)
+
+| File | Changes |
+|------|---------|
+| `tests/analyze_tutorial_runs.py` | Dual-run support: `run_type` dimension (solve/readme), per-type output files, updated directory parsing |
+| `solve_readmes/` | 21 solve-mode README.txt files |
+
+### Documentation (2)
+
+| File | Purpose |
+|------|---------|
+| `docs/project/INFRASTRUCTURE_ISSUES.md` | 8 issues identified from dual-run evaluation |
+| `docs/project/FIX_PLAN_INFRASTRUCTURE.md` | Detailed fix plan for I1-I5, I8 |
+| `docs/project/DUAL_RUN_EVALUATION_PLAN.md` | Framework design for tutorial vs solve evaluation |
+
+### Tests
+
+| File | Tests | Covers |
+|------|-------|--------|
+| `tests/tst_intent_classifier.py` | 32 | Intent classification (4 categories) |
+| Total (all test files) | 106 | Fixes 2-6, Enhancement A, Intent, Infrastructure |
+
 
 ## Version 115.00 (Failure Handling & Stop Condition Fixes)
 

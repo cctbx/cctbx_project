@@ -703,6 +703,16 @@ def _build_thinking_context(state, thinking_level="advanced"):
         pass
     context["hypothesis_prompt"] = hypothesis_prompt
 
+    # Error classification from PERCEIVE (Enhancement B, v115)
+    # These feed into the "=== PREVIOUS FAILURE ===" section
+    # of thinking_prompts.py expert prompt.
+    context["error_classification"] = (
+      state.get("error_classification") or ""
+    )
+    context["failure_count"] = (
+      state.get("failure_count") or 0
+    )
+
     # File metadata from state (Phase C)
     context["file_metadata"] = (
       state.get("file_metadata") or {}
