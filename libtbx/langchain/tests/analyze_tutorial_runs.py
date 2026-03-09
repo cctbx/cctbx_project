@@ -15,8 +15,8 @@ Usage
 
 Directory naming convention
 ---------------------------
-  {tutorial_name}__{mode}     (double underscore preferred)
-  {tutorial_name}_{mode}      (single underscore also works)
+  {tutorial_name}__{mode}_{run_type}  (preferred)
+  {tutorial_name}__{mode}             (legacy, run_type defaults to "solve")
 
   where mode is one of:
     rules_only           — deterministic rules selector, no LLM
@@ -25,12 +25,15 @@ Directory naming convention
     llm_think_advanced   — LLM planning + advanced thinking
     llm_think_expert     — LLM planning + expert thinking + plan/gates
 
+  and run_type is one of:
+    solve                — bare files + "Solve the structure" README
+    readme               — original tutorial README with instructions
+
   Examples:
-    1J4R-ligand__rules_only/
-    1J4R-ligand__llm/
-    1J4R-ligand__llm_think/
-    1J4R-ligand__llm_think_advanced/
-    1J4R-ligand__llm_think_expert/
+    a2u-globulin-mr__llm_think_expert_solve/
+    a2u-globulin-mr__llm_think_expert_readme/
+    1J4R-ligand__rules_only_solve/
+    1J4R-ligand__llm/                  (legacy: defaults to solve)
 
 The script searches each directory (recursively) for agent_session.json.
 """
@@ -59,6 +62,15 @@ KNOWN_MODES = [
     "llm_think_advanced",
     "llm_think_expert",
 ]
+
+KNOWN_RUN_TYPES = ["solve", "readme"]
+
+RUN_TYPE_LABELS = {
+    "solve": "Solve",
+    "readme": "Tutorial",
+}
+
+DEFAULT_RUN_TYPE = "solve"
 
 # Canonical mapping: what each mode means internally
 MODE_CANONICAL = {
@@ -144,14 +156,16 @@ def find_session_json(directory):
 
 
 def parse_directory_name(dirname):
-    """Parse a run directory name into (tutorial, mode).
+    """Parse a run directory name into (tutorial, mode, run_type).
 
-    Supports two naming conventions:
-      {tutorial}__{mode}     (double underscore)
-      {tutorial}_{mode}      (single underscore)
+    Supports naming conventions:
+      {tutorial}__{mode}_{run_type}   (new: dual-run)
+      {tutorial}__{mode}              (legacy: run_type=solve)
+      {tutorial}_{mode}_{run_type}    (single underscore)
+      {tutorial}_{mode}               (single underscore legacy)
 
     Double underscore is tried first (unambiguous).
-    Returns (dirname, "unknown") if no mode found.
+    Returns (dirname, "unknown", DEFAULT_RUN_TYPE) if no mode found.
     """
     base = os.path.basename(dirname.rstrip("/"))
 
@@ -159,20 +173,45 @@ def parse_directory_name(dirname):
     if "__" in base:
         parts = base.split("__", 1)
         if len(parts) == 2:
-            tutorial, mode_str = parts
-            if mode_str in KNOWN_MODES:
-                return tutorial, mode_str
+            tutorial, mode_and_type = parts
+            mode, run_type = _split_mode_runtype(
+                mode_and_type)
+            if mode in KNOWN_MODES:
+                return tutorial, mode, run_type
 
     # Fall back to single-underscore suffix matching
     # (longest mode first to avoid prefix collisions)
     for mode in sorted(KNOWN_MODES, key=len,
                        reverse=True):
+        for rt in KNOWN_RUN_TYPES:
+            suffix = "_%s_%s" % (mode, rt)
+            if base.endswith(suffix):
+                tutorial = base[: -len(suffix)]
+                return tutorial, mode, rt
         suffix = "_" + mode
         if base.endswith(suffix):
             tutorial = base[: -len(suffix)]
-            return tutorial, mode
+            return tutorial, mode, DEFAULT_RUN_TYPE
 
-    return base, "unknown"
+    return base, "unknown", DEFAULT_RUN_TYPE
+
+
+def _split_mode_runtype(mode_str):
+    """Split 'llm_think_expert_solve' into (mode, run_type).
+
+    Tries longest mode match first, then checks if the
+    remainder is a known run_type.
+    """
+    for mode in sorted(KNOWN_MODES, key=len,
+                       reverse=True):
+        if mode_str == mode:
+            return mode, DEFAULT_RUN_TYPE
+        if mode_str.startswith(mode + "_"):
+            remainder = mode_str[len(mode) + 1:]
+            if remainder in KNOWN_RUN_TYPES:
+                return mode, remainder
+    # No match — return as-is
+    return mode_str, DEFAULT_RUN_TYPE
 
 
 def discover_runs(root_dir):
@@ -190,10 +229,12 @@ def discover_runs(root_dir):
         session_path = find_session_json(full)
         if session_path is None:
             continue
-        tutorial, mode = parse_directory_name(entry)
+        tutorial, mode, run_type = parse_directory_name(
+            entry)
         runs.append({
             "tutorial": tutorial,
             "mode": mode,
+            "run_type": run_type,
             "directory": full,
             "dir_name": entry,
             "session_path": session_path,
@@ -558,16 +599,31 @@ def _extract_structure_model(session):
 # ---------------------------------------------------------------------------
 
 def group_by_tutorial(runs_data):
-    """Group extracted run data by tutorial name."""
-    groups = defaultdict(dict)
+    """Group extracted run data by tutorial name and run_type.
+
+    Returns:
+        dict: {run_type: OrderedDict({tutorial: {mode: (info, data)}})}
+    """
+    by_rt = defaultdict(lambda: defaultdict(dict))
     for info, data in runs_data:
-        groups[info["tutorial"]][info["mode"]] = (
+        rt = info.get("run_type", DEFAULT_RUN_TYPE)
+        by_rt[rt][info["tutorial"]][info["mode"]] = (
             info, data)
-    return OrderedDict(sorted(groups.items()))
+    # Sort tutorials within each run_type
+    result = {}
+    for rt in sorted(by_rt.keys()):
+        result[rt] = OrderedDict(
+            sorted(by_rt[rt].items()))
+    return result
 
 
 def _modes_present(groups):
-    """Return sorted list of modes actually present."""
+    """Return sorted list of modes actually present.
+
+    Args:
+        groups: dict of {tutorial: {mode: (info, data)}}
+            (single run_type level, not the outer dict)
+    """
     present = set()
     for modes in groups.values():
         present.update(modes.keys())
@@ -579,14 +635,14 @@ def _modes_present(groups):
 #  Output: CSV
 # ---------------------------------------------------------------------------
 
-def generate_summary_csv(groups):
+def generate_summary_csv(groups, run_type=None):
     """Generate summary CSV."""
     buf = io.StringIO()
     w = csv.writer(buf)
     modes = _modes_present(groups)
 
     w.writerow([
-        "Tutorial", "Mode", "Mode_Label",
+        "Tutorial", "Run_Type", "Mode", "Mode_Label",
         "Experiment", "Resolution",
         "Total_Cycles", "Successful", "Failed",
         "R_free", "R_work",
@@ -607,6 +663,7 @@ def generate_summary_csv(groups):
             pi = data.get("plan_info") or {}
             w.writerow([
                 tutorial,
+                run_type or "",
                 mode,
                 MODE_LABELS.get(mode, mode),
                 data["experiment_type"],
@@ -642,14 +699,14 @@ def generate_summary_csv(groups):
     return buf.getvalue()
 
 
-def generate_trajectories_csv(groups):
+def generate_trajectories_csv(groups, run_type=None):
     """Generate per-cycle metrics CSV for plotting."""
     buf = io.StringIO()
     w = csv.writer(buf)
     modes = _modes_present(groups)
 
     w.writerow([
-        "Tutorial", "Mode", "Mode_Label",
+        "Tutorial", "Run_Type", "Mode", "Mode_Label",
         "Cycle", "Program", "Success",
         "R_free", "R_work",
         "Map_CC", "Model_Map_CC", "CC_mask",
@@ -664,6 +721,7 @@ def generate_trajectories_csv(groups):
             for cm in data["cycle_metrics"]:
                 w.writerow([
                     tutorial,
+                    run_type or "",
                     mode,
                     MODE_LABELS.get(mode, mode),
                     cm["cycle"],
@@ -686,14 +744,18 @@ def generate_trajectories_csv(groups):
 #  Output: Markdown
 # ---------------------------------------------------------------------------
 
-def generate_markdown_report(groups):
+def generate_markdown_report(groups, run_type=None):
     """Generate a publication-oriented Markdown report."""
     lines = []
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     modes = _modes_present(groups)
 
+    rt_label = RUN_TYPE_LABELS.get(
+        run_type, run_type or "")
+    title_suffix = " (%s)" % rt_label if rt_label else ""
     lines.append(
-        "# PHENIX AI Agent — Tutorial Evaluation Report")
+        "# PHENIX AI Agent — Tutorial Evaluation "
+        "Report%s" % title_suffix)
     lines.append("")
     lines.append("Generated: %s" % now)
     lines.append("")
@@ -1090,10 +1152,11 @@ def _add_aggregate_stats(lines, groups, modes):
 #  Output: JSON
 # ---------------------------------------------------------------------------
 
-def generate_json_report(groups):
+def generate_json_report(groups, run_type=None):
     """Generate complete JSON export."""
     output = {
         "generated": datetime.now().isoformat(),
+        "run_type": run_type or DEFAULT_RUN_TYPE,
         "tutorials": {},
     }
 
@@ -1174,9 +1237,12 @@ def main():
     print("Found %d run(s):" % len(runs))
     for r in runs:
         label = MODE_LABELS.get(r["mode"], r["mode"])
-        print("  %s  ->  tutorial=%s  mode=%s (%s)"
+        rt = r.get("run_type", DEFAULT_RUN_TYPE)
+        rt_label = RUN_TYPE_LABELS.get(rt, rt)
+        print("  %s  ->  tutorial=%s  mode=%s (%s)  "
+              "run_type=%s"
               % (r["dir_name"], r["tutorial"],
-                 r["mode"], label))
+                 r["mode"], label, rt_label))
 
     # ── Extract data ──────────────────────────────
     runs_data = []
@@ -1214,49 +1280,75 @@ def main():
               file=sys.stderr)
         sys.exit(1)
 
-    # ── Group by tutorial ─────────────────────────
-    groups = group_by_tutorial(runs_data)
-    print("\nGrouped into %d tutorial(s):"
-          % len(groups))
-    for tut, mode_dict in groups.items():
-        mode_list = ", ".join(
-            MODE_LABELS.get(m, m)
-            for m in sorted(mode_dict.keys()))
-        print("  %s: %s" % (tut, mode_list))
+    # ── Group by run_type, then by tutorial ───────
+    grouped = group_by_tutorial(runs_data)
 
-    # ── Generate outputs ──────────────────────────
+    run_types = sorted(grouped.keys())
+    print("\nRun types found: %s" % ", ".join(
+        RUN_TYPE_LABELS.get(rt, rt)
+        for rt in run_types))
+
+    for rt, groups in grouped.items():
+        rt_label = RUN_TYPE_LABELS.get(rt, rt)
+        print("\n%s runs — %d tutorial(s):"
+              % (rt_label, len(groups)))
+        for tut, mode_dict in groups.items():
+            mode_list = ", ".join(
+                MODE_LABELS.get(m, m)
+                for m in sorted(mode_dict.keys()))
+            print("  %s: %s" % (tut, mode_list))
+
+    # ── Generate outputs per run_type ─────────────
     output_dir = os.path.dirname(args.output) or "."
     prefix = os.path.basename(args.output)
 
-    if "csv" in args.format:
-        path = os.path.join(
-            output_dir, "%s_summary.csv" % prefix)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(generate_summary_csv(groups))
-        print("\nWrote: %s" % path)
+    for rt in run_types:
+        groups = grouped[rt]
+        # Use suffix for run_type if more than one type
+        rt_suffix = ""
+        if len(run_types) > 1:
+            rt_suffix = "_%s" % rt
 
-        path = os.path.join(
-            output_dir,
-            "%s_trajectories.csv" % prefix)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(
-                generate_trajectories_csv(groups))
-        print("Wrote: %s" % path)
+        if "csv" in args.format:
+            path = os.path.join(
+                output_dir,
+                "%s%s_summary.csv"
+                % (prefix, rt_suffix))
+            with open(path, "w",
+                      encoding="utf-8") as f:
+                f.write(generate_summary_csv(
+                    groups, run_type=rt))
+            print("\nWrote: %s" % path)
 
-    if "md" in args.format:
-        path = os.path.join(
-            output_dir, "%s.md" % prefix)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(
-                generate_markdown_report(groups))
-        print("Wrote: %s" % path)
+            path = os.path.join(
+                output_dir,
+                "%s%s_trajectories.csv"
+                % (prefix, rt_suffix))
+            with open(path, "w",
+                      encoding="utf-8") as f:
+                f.write(generate_trajectories_csv(
+                    groups, run_type=rt))
+            print("Wrote: %s" % path)
 
-    if "json" in args.format:
-        path = os.path.join(
-            output_dir, "%s.json" % prefix)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(generate_json_report(groups))
-        print("Wrote: %s" % path)
+        if "md" in args.format:
+            path = os.path.join(
+                output_dir,
+                "%s%s.md" % (prefix, rt_suffix))
+            with open(path, "w",
+                      encoding="utf-8") as f:
+                f.write(generate_markdown_report(
+                    groups, run_type=rt))
+            print("Wrote: %s" % path)
+
+        if "json" in args.format:
+            path = os.path.join(
+                output_dir,
+                "%s%s.json" % (prefix, rt_suffix))
+            with open(path, "w",
+                      encoding="utf-8") as f:
+                f.write(generate_json_report(
+                    groups, run_type=rt))
+            print("Wrote: %s" % path)
 
     print("\nDone.")
 
