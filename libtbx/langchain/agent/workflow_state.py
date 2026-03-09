@@ -1179,12 +1179,26 @@ def _categorize_files_hardcoded(available_files, ligand_hints=None, files_local=
     _phased_markers = (
         'phased', 'resolve', '_ha_', '_denmod',
         'overall_best_denmod', 'autosol',
+        'overall_best',   # AutoSol: overall_best_refine_data.mtz, etc.
+                          # Safe: no plain refine output uses 'overall_best'
     )
     for f in files.get("data_mtz", []):
         bn = os.path.basename(f).lower()
         if any(m in bn for m in _phased_markers):
-            if f not in files["phased_data_mtz"]:
-                files["phased_data_mtz"].append(f)
+            # Verify the file actually contains phase columns (PHIB/HL).
+            # A correctly-named file with wrong content would otherwise
+            # replace one crash (missing file) with another (missing labels).
+            if _mtz_has_phase_columns(f):
+                if f not in files["phased_data_mtz"]:
+                    files["phased_data_mtz"].append(f)
+            else:
+                try:
+                    import logging as _log_tmp
+                    _log_tmp.getLogger(__name__).debug(
+                        "CATEGORIZE: %s matches phased marker but has no "
+                        "phase columns (PHIB/HL) -- keeping as data_mtz", bn)
+                except Exception:
+                    pass
 
     # ── Post-categorization: MTZ array detection (Fix I1) ──
     # Detect MTZ files with multiple observation arrays.
@@ -1195,6 +1209,78 @@ def _categorize_files_hardcoded(available_files, ligand_hints=None, files_local=
         files.get("data_mtz", []))
 
     return files
+
+
+def _mtz_has_phase_columns(filepath):
+    """Return True if the MTZ file contains experimental phase columns.
+
+    Checks for PHIB (type 'P') or Hendrickson-Lattman coefficients
+    (type 'A') using iotbx.  Falls back to label-name heuristics if
+    iotbx is unavailable (e.g. in unit-test environments).
+
+    Used by the phased_data_mtz categorisation to prevent a correctly-
+    named but wrong-content file from replacing one crash (missing file)
+    with another (missing labels inside autobuild).
+
+    Never raises.
+    """
+    if not filepath or not os.path.isfile(filepath):
+        return False
+    try:
+        # Primary path: iotbx miller array column types
+        try:
+            from iotbx.reflection_file_reader import any_reflection_file
+        except ImportError:
+            from iotbx import reflection_file_reader
+            any_reflection_file = reflection_file_reader.any_reflection_file
+
+        reader = any_reflection_file(filepath)
+        if reader is None:
+            return False
+        for ma in reader.as_miller_arrays():
+            # type_string() returns one char: P=phase, A=HL coefficients
+            type_str = ""
+            try:
+                type_str = ma.info().type_string()
+            except Exception:
+                pass
+            if type_str in ('P', 'A'):
+                return True
+        return False
+
+    except Exception:
+        pass
+
+    # Fallback: direct mtz object column types
+    try:
+        from iotbx import mtz as _iotbx_mtz
+        obj = _iotbx_mtz.object(filepath)
+        for col in obj.columns():
+            if col.type() in ('P', 'A'):
+                return True
+        return False
+    except Exception:
+        pass
+
+    # Last resort: raw label-name heuristic on ALL mtz columns.
+    # _read_mtz_array_labels() returns only F/I arrays, so it would
+    # never find PHIB/FOM (which are phase columns, not obs arrays).
+    # Instead, iterate every column via iotbx.mtz.object directly.
+    _PHASE_LABEL_SUBSTRINGS = (
+        'PHIB', 'PHIM', 'FOM', 'FOMM',
+        'HLA', 'HLB', 'HLC', 'HLD',
+    )
+    try:
+        from iotbx import mtz as _iotbx_mtz2
+        obj2 = _iotbx_mtz2.object(filepath)
+        for col in obj2.columns():
+            label_up = col.label().upper()
+            if any(p in label_up for p in _PHASE_LABEL_SUBSTRINGS):
+                return True
+    except Exception:
+        pass
+
+    return False
 
 
 def _detect_mtz_arrays(data_mtz_files):
@@ -1886,6 +1972,15 @@ _ZOMBIE_CHECK_TABLE = [
     # accept_any_pdb=True: generic names like "refined_model.pdb" are valid evidence
     ("rsr_done",             _re.compile(r"real_space_refin.*\.pdb$", _re.IGNORECASE),
      None, True),
+    # map_sharpening: output is *_sharpened*.ccp4 or *_sharpened*.mrc.
+    # The 'Sorry:' failure mode IS caught by _is_failed_result (has PHIB/FOM
+    # pattern matches SORRY:).  This entry is a backstop for any graceful
+    # failure mode that does not produce SORRY:/FAILED in the result string
+    # (P5 fix, log-confirmed 2026-03-09).
+    ("map_sharpening_done",  _re.compile(
+        r"sharpened.*\.(ccp4|mrc)$|.*sharpened.*\.(ccp4|mrc)$",
+        _re.IGNORECASE),
+     None, False),
 ]
 
 
@@ -2092,6 +2187,31 @@ def validate_program_choice(chosen_program, workflow_state):
     valid = workflow_state["valid_programs"]
 
     if chosen_program in valid:
+        # P3 fix: autobuild prerequisite check for X-ray experiments.
+        # Even when autobuild is in valid_programs (some analyze-step YAML
+        # variants include it), it requires phasing to have been done.
+        # Without a phased MTZ, autobuild fails with 'MTZ lacks phase/FOM
+        # columns'. CASP7-T0283-mr confirmed autobuild ran before phaser
+        # on cycle 1 because the 5 ab-initio PDBs + MTZ satisfied file
+        # checks; phasing was never done.
+        if chosen_program == "phenix.autobuild": 
+            context = workflow_state.get("context", {})
+            exp_type = workflow_state.get("experiment_type", "")
+            if exp_type == "xray":
+                phasing_done = (
+                    context.get("phaser_done") or
+                    context.get("autosol_done")
+                )
+                placed_from_history = context.get(
+                    "has_placed_model_from_history")
+                if not phasing_done and not placed_from_history:
+                    error = (
+                        "phenix.autobuild requires a phased MTZ "                        "(PHIB/FOM columns). Run phenix.phaser or "                        "phenix.autosol first to obtain phase information. "                        "Current state: phaser_done=%s, autosol_done=%s."
+                    ) % (
+                        context.get("phaser_done", False),
+                        context.get("autosol_done", False),
+                    )
+                    return False, error
         return True, None
 
     try:

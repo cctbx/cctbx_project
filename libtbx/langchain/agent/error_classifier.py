@@ -364,6 +364,62 @@ def count_consecutive_failures(history, program):
   return count
 
 
+
+# Per-program session block thresholds (P4 fix).
+# refine/rsr are expected to run many times; use a higher threshold.
+# All other programs use the default.
+_SESSION_BLOCK_THRESHOLD = {
+    "refine": 6,
+    "real_space_refine": 6,
+    "__default__": 4,
+}
+
+
+def count_total_failures(history, program):
+  """Count all failures of a program in the session, regardless of order.
+
+  Used by the session_blocked_programs mechanism (P4 fix).
+  Catches the case where a program fails with different parameters each
+  time (Fix 5 allows each because the command string differs, but the
+  aggregate still crosses the session threshold).
+
+  Args:
+      history: List of history dicts (oldest first).
+      program: Program name to count.
+
+  Returns:
+      int -- total failures of this program in the session.
+  """
+  if not history or not program:
+    return 0
+  prog_short = program.replace("phenix.", "")
+  count = 0
+  for h in history:
+    if not isinstance(h, dict):
+      continue
+    h_prog = (h.get("program") or "").replace("phenix.", "")
+    if h_prog != prog_short:
+      continue
+    h_result = str(h.get("result") or h.get("status") or "")
+    if not h_result.startswith("SUCCESS"):
+      count += 1
+  return count
+
+
+def session_block_threshold(program):
+  """Return the session-block threshold for a given program.
+
+  Args:
+      program: Program name (with or without phenix. prefix).
+
+  Returns:
+      int -- number of total failures before session block fires.
+  """
+  prog_short = program.replace("phenix.", "")
+  return _SESSION_BLOCK_THRESHOLD.get(
+      prog_short, _SESSION_BLOCK_THRESHOLD["__default__"])
+
+
 def should_pivot(history, program, error_classification):
   """Decide whether to pivot away from a failed program.
 
@@ -400,11 +456,22 @@ def should_pivot(history, program, error_classification):
 
   if failures >= 2:
     return True, (
-      "%s failed %d consecutive times — pivoting "
+      "%s failed %d consecutive times -- pivoting "
       "to different program"
       % (program, failures))
 
-  # First failure — allow self-correction attempt
+  # Check total session failures (P4 fix).
+  # This catches the case where a program fails with different parameters
+  # each time (consecutive count resets, but total keeps climbing).
+  total = count_total_failures(history, program)
+  threshold = session_block_threshold(program)
+  if total >= threshold:
+    return True, (
+      "%s failed %d times total (session threshold=%d) "
+      "-- session block"
+      % (program, total, threshold))
+
+  # First/early failure -- allow self-correction attempt
   return False, (
-    "%s failed once (%s) — allowing self-correction"
+    "%s failed once (%s) -- allowing self-correction"
     % (program, cat))

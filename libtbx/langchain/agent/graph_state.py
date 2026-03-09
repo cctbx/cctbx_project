@@ -102,7 +102,8 @@ def create_initial_state(
     thinking_level=None,
     strategy_memory=None,
     structure_model=None,
-    validation_history=None
+    validation_history=None,
+    session_blocked_programs=None
 ):
     """
     Factory function to create a properly initialized AgentState.
@@ -143,6 +144,11 @@ def create_initial_state(
             Per-cycle validation snapshots for gate evaluator and
             explanation engine. Restored from session on resume.
             None = create fresh.
+        session_blocked_programs: List of program names that have exceeded
+            the per-program total-failure threshold this session (P4 fix).
+            Persisted client-side and re-injected so get_workflow_state
+            can filter them from valid_programs each cycle.
+            None / [] = no programs currently blocked.
 
     Returns:
         AgentState: Properly initialized state dict
@@ -217,6 +223,29 @@ def create_initial_state(
         # Red flag detection
         "red_flag_issues": None,
         "abort_message": None,
+
+        # P4: session-level program block list.
+        # Programs that have failed N times total in this session are added
+        # here and excluded from valid_programs for the rest of the session.
+        # Escape hatch: cleared for a program when user advice changes and
+        # explicitly names the blocked program.
+        # Per-program thresholds: refine/rsr = 6, all others = 4.
+        # Restored from session on resume (like strategy_memory etc.).
+        "session_blocked_programs": list(
+            session_blocked_programs) if session_blocked_programs else [],
+
+        # P1B: typed file overrides from THINK (one-cycle lifetime).
+        # Key = input_name (e.g. 'data_mtz'), value = absolute path.
+        # Consumed and cleared after BUILD uses it.
+        "think_file_overrides": {},
+
+        # P1B: label hints parallel to think_file_overrides.
+        "think_label_hints": {},
+
+        # think_stop_override: dict with 'code' and 'analysis' keys,
+        # or None.  THINK sets this to force a stop with a classified reason.
+        # Code must be in STOP_REASON_CODES (graph_state.py).
+        "think_stop_override": None,
 
         # Debug
         "debug_log": []

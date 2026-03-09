@@ -1114,13 +1114,20 @@ class WorkflowEngine:
             return self._make_step_result(steps, "analyze",
                 "Need to analyze map quality first")
 
-        # Phase 1.5: Create full map from half-maps before model building.
-        if (context.get("has_half_map") and not context.get("has_full_map") and
-                not context.get("resolve_cryo_em_done") and
-                not context.get("map_sharpening_done")):
+        # Phase 1.5: Density modification with resolve_cryo_em.
+        # Fires when half-maps are available and resolve_cryo_em has not run.
+        # We deliberately do NOT gate on has_full_map: a full map may be
+        # present in the original inputs (e.g. full_map_box.ccp4) but that
+        # does not mean density modification has been performed.  resolve_cryo_em
+        # and map_sharpening are complementary; completing one should not
+        # suppress the other.  Once resolve_cryo_em_done=True the gate closes.
+        # map_sharpening_done is intentionally NOT checked here for the same
+        # reason — B-factor sharpening and density modification are different
+        # operations (P5 fix: log-confirmed root cause 2026-03-09).
+        if (context.get("has_half_map") and
+                not context.get("resolve_cryo_em_done")):
             return self._make_step_result(steps, "optimize_map",
-                "Have half-maps but no full map; creating optimized full map "
-                "with resolve_cryo_em before model building")
+                "Have half-maps; running resolve_cryo_em density modification "                "before model building")
 
         # Step 2b: Stepwise - have prediction, need to dock it
         if context.get("has_predicted_model") and not context.get("has_placed_model"):
@@ -2098,6 +2105,20 @@ class WorkflowEngine:
                   not context.get("phaser_done")):
                 reasons.append("MR-SAD: phaser must place model before autosol runs")
 
+        # P3 fix: autobuild requires phasing to be done in X-ray mode.
+        # Without a phased MTZ (PHIB/FOM columns), autobuild will crash
+        # with 'MTZ lacks phase/FOM columns'.  This explanation surfaces
+        # in the PLAN node via unavailable_explanations so the LLM can
+        # reason about it (and so that it appears in the session log).
+        if (program == "phenix.autobuild" and
+                experiment_type == "xray" and
+                not context.get("phaser_done") and
+                not context.get("autosol_done") and
+                not context.get("has_placed_model_from_history")):
+            reasons.append(
+                "autobuild requires a phased MTZ (PHIB/FOM). "                "Run phenix.phaser or phenix.autosol first."
+            )
+
         if reasons:
             return "; ".join(reasons)
         return None
@@ -2256,6 +2277,58 @@ class WorkflowEngine:
                                if p != after_program and p != "STOP"]
                 if not other_valid:
                     forced_program = after_program
+
+        # P4 fix: remove session-blocked programs from valid_programs.
+        # session_blocked_programs is populated by the PLAN node pivot handler
+        # when should_pivot returns a 'session block' reason.  It persists
+        # across cycles (valid_programs is reconstructed each cycle, so
+        # per-cycle exclusion in the pivot handler alone does not survive).
+        session_blocked = set(session_info.get(
+            "session_blocked_programs", []) if session_info else [])
+        # Also pull from top-level state if available (different call sites)
+        if not session_blocked and isinstance(directives, dict):
+            pass  # directives doesn't carry this; session_info is the source
+        if session_blocked:
+            before_block = valid_programs[:]
+            valid_programs = [
+                p for p in valid_programs
+                if p not in session_blocked
+                and p.replace("phenix.", "") not in session_blocked
+            ]
+            if valid_programs != before_block:
+                logger.debug(
+                    "WORKFLOW: session_blocked filtered %s -> %s",
+                    before_block, valid_programs)
+
+        # P3 fix: remove autobuild from valid_programs when phasing prerequisites
+        # are not met for X-ray experiments.  Without this, PLAN sees autobuild
+        # as a valid choice, the LLM picks it, and VALIDATE has to reject it
+        # after BUILD has already built the command — wasting an attempt slot
+        # and confusing the LLM.  Filtering here is cleaner and mirrors the
+        # session_blocked filtering above.
+        # Exemptions: cryoem (different pipeline), has_placed_model_from_history
+        # (refine_done etc. mean a map exists), autosol_done, phaser_done.
+        if (experiment_type == "xray" and
+                "phenix.autobuild" in valid_programs):
+            _ab_ctx = context  # already built above
+            _phasing_satisfied = (
+                _ab_ctx.get("phaser_done") or
+                _ab_ctx.get("autosol_done") or
+                _ab_ctx.get("has_placed_model_from_history")
+            )
+            if not _phasing_satisfied:
+                valid_programs = [
+                    p for p in valid_programs
+                    if p != "phenix.autobuild"
+                ]
+                logger.debug(
+                    "WORKFLOW: autobuild excluded (P3): "
+                    "phaser_done=%s autosol_done=%s "
+                    "has_placed_model_from_history=%s",
+                    _ab_ctx.get("phaser_done"),
+                    _ab_ctx.get("autosol_done"),
+                    _ab_ctx.get("has_placed_model_from_history"),
+                )
 
         # Check for common programs that users might expect but aren't available
         # This helps explain why certain programs can't be run

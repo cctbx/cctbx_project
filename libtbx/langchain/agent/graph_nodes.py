@@ -630,6 +630,12 @@ def perceive(state):
         session_info={
             **state.get("session_info", {}),
             "user_advice": state.get("user_advice", ""),
+            # P4 fix: session_blocked_programs lives at top-level graph state,
+            # not inside session_info, so we must bridge it here explicitly.
+            # get_workflow_state reads session_info.get("session_blocked_programs")
+            # to filter valid_programs each cycle.
+            "session_blocked_programs": state.get(
+                "session_blocked_programs", []),
         },
         files_local=files_local,
     )
@@ -1557,7 +1563,7 @@ def plan(state):
 
             if _do_pivot and _last_prog:
                 state = _log(state,
-                    "PLAN: PIVOT — %s" % _pivot_reason)
+                    "PLAN: PIVOT -- %s" % _pivot_reason)
                 workflow_state = state.get(
                     "workflow_state", {})
                 vp = workflow_state.get(
@@ -1587,6 +1593,28 @@ def plan(state):
                         "PLAN: No programs left "
                         "after excluding %s"
                         % _last_prog)
+
+                # P4 fix: if the pivot reason includes 'session block',
+                # add the program to session_blocked_programs so it stays
+                # excluded across all future cycles (valid_programs is
+                # reconstructed from scratch each cycle, so per-cycle
+                # exclusion above does not persist).
+                if "session block" in _pivot_reason:
+                    blocked = list(
+                        state.get(
+                            "session_blocked_programs",
+                            []))
+                    if _last_prog not in blocked:
+                        blocked.append(_last_prog)
+                        state = {
+                            **state,
+                            "session_blocked_programs":
+                                blocked}
+                        state = _log(state,
+                            "PLAN: SESSION BLOCK -- "
+                            "%s added to "
+                            "session_blocked_programs"
+                            % _last_prog)
         except Exception:
             pass  # error_classifier not available
 
