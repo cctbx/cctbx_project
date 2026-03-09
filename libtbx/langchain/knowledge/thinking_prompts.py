@@ -194,6 +194,32 @@ def build_thinking_prompt(context, strategy_memory_dict=None):
         "Problems:\n%s" % "\n".join(prob_lines)
       )
 
+  # Error classification from previous cycle (Fix 3, v115)
+  # When the previous cycle failed, provide structured error
+  # info so the expert can give recovery guidance.
+  error_class = context.get("error_classification")
+  if error_class and isinstance(error_class, dict):
+    _ecat = error_class.get("category", "")
+    if _ecat and _ecat != "NO_ERROR":
+      _emsg = error_class.get("error_message", "")
+      _esug = error_class.get("suggestion", "")
+      _efc = context.get("failure_count", 0)
+      _elines = [
+        "=== PREVIOUS FAILURE ===",
+        "Error: %s — %s" % (_ecat, _emsg),
+      ]
+      if _esug:
+        _elines.append("Suggested fix: %s" % _esug)
+      bad = error_class.get("bad_params", [])
+      if bad:
+        _elines.append(
+          "Bad params: %s" % ", ".join(bad))
+      if _efc >= 2:
+        _elines.append(
+          "CONSECUTIVE FAILURES: %d — recommend "
+          "pivoting to a different program" % _efc)
+      parts.append("\n".join(_elines))
+
   # File metadata summary (Phase C)
   file_metadata = context.get("file_metadata", {})
   if file_metadata:

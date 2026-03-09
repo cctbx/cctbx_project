@@ -260,8 +260,17 @@ def _is_valid_file(path):
 
 def _load_category_rules():
     """Load file category rules from YAML."""
-    from libtbx.langchain.knowledge.yaml_loader import load_file_categories
-    return load_file_categories()
+    try:
+        from libtbx.langchain.knowledge.yaml_loader \
+          import load_file_categories
+        return load_file_categories()
+    except ImportError:
+        try:
+            from knowledge.yaml_loader \
+              import load_file_categories
+            return load_file_categories()
+        except ImportError:
+            return None
 
 
 def _match_pattern(filename, pattern):
@@ -665,6 +674,49 @@ def _categorize_files(available_files, ligand_hints=None, files_local=True):
                         if f in files.get(subcat, []):
                             files[subcat].remove(f)
 
+    except Exception:
+        pass  # Safety net must not break categorization
+
+    # Post-processing: Map extension safety net (Fix 6, v115).
+    #
+    # Ensure ALL .ccp4/.mrc/.map files appear in at least one map
+    # category.  Some tutorials (actin_sharpen_local_resolution)
+    # have map files that fall through the YAML and hardcoded
+    # categorizers, producing 0 files in original_files.
+    #
+    # Categorize by filename pattern:
+    #   'half' in name → half_map
+    #   everything else → full_map
+    try:
+        all_maps = set()
+        for cat in ("full_map", "half_map",
+                    "optimized_full_map", "sharpened",
+                    "map"):
+            for f in files.get(cat, []):
+                all_maps.add(f)
+
+        for f in available_files:
+            if not f:
+                continue
+            _, ext = os.path.splitext(f.lower())
+            if ext not in _MAP_EXTENSIONS:
+                continue
+            if f in all_maps:
+                continue
+            # Uncategorized map file — rescue it
+            bn = os.path.basename(f).lower()
+            if "half" in bn:
+                dest = "half_map"
+            else:
+                dest = "full_map"
+            if dest not in files:
+                files[dest] = []
+            files[dest].append(f)
+            # Also add to parent 'map' category
+            if "map" not in files:
+                files["map"] = []
+            if f not in files["map"]:
+                files["map"].append(f)
     except Exception:
         pass  # Safety net must not break categorization
 

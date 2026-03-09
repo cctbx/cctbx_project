@@ -1,0 +1,218 @@
+# PHENIX AI Agent — Tutorial Expectations (All 21 tutorials)
+# Drafted from README files. Used by dual-run evaluation.
+#
+# Tutorial mode: grade on instruction-following
+# Solve mode: grade on R-free / quality
+
+# === X-RAY: Molecular Replacement ===
+
+a2u-globulin-mr:
+  topic: "Molecular replacement"
+  experiment_type: xray
+  expected_programs: [phenix.phaser, phenix.refine]
+  expected_method: molecular_replacement
+  stop_after: phenix.refine
+  result_files_to_remove: [a2u-globulin.pdb, Facts.list]
+  solve_run_advice: ""
+
+ICAM-mr:
+  topic: "MR with multi-domain model"
+  experiment_type: xray
+  expected_programs: [phenix.phaser, phenix.refine]
+  expected_method: molecular_replacement
+  stop_after: phenix.refine
+  result_files_to_remove: []
+  solve_run_advice: ""
+
+CASP7-T0283-mr:
+  topic: "MR with ab initio models"
+  experiment_type: xray
+  expected_programs: [phenix.phaser, phenix.refine]
+  expected_method: molecular_replacement
+  stop_after: phenix.refine
+  result_files_to_remove: []
+  solve_run_advice: ""
+
+HNP3-mr-rosetta:
+  topic: "MR-Rosetta"
+  experiment_type: xray
+  expected_programs: [phenix.mr_rosetta]
+  expected_method: mr_rosetta
+  stop_after: phenix.mr_rosetta
+  result_files_to_remove: []
+  solve_run_advice: ""
+
+# === X-RAY: SAD phasing ===
+
+1029B-sad:
+  topic: "SAD phasing with AutoSol"
+  experiment_type: xray
+  expected_programs: [phenix.autosol]
+  expected_method: sad_phasing
+  stop_after: phenix.autosol
+  result_files_to_remove: []
+  solve_run_advice: "anomalous scatterer is selenium"
+
+# === X-RAY: Model rebuilding ===
+
+a2u-globulin-rebuild:
+  topic: "Model rebuilding with AutoBuild"
+  experiment_type: xray
+  expected_programs: [phenix.autobuild]
+  expected_method: autobuild_rebuild
+  stop_after: phenix.autobuild
+  result_files_to_remove: []
+  solve_run_advice: ""
+
+# === X-RAY: Ligand fitting ===
+
+1J4R-ligand:
+  topic: "Ligand fitting into difference density"
+  experiment_type: xray
+  expected_programs: [phenix.ligandfit]
+  expected_method: ligand_fitting
+  stop_after: phenix.ligandfit
+  result_files_to_remove: []
+  solve_run_advice: "fit the ligand into the difference density"
+
+a2u-globulin-ligand:
+  topic: "Ligand fitting (limonene)"
+  experiment_type: xray
+  expected_programs: [phenix.ligandfit]
+  expected_method: ligand_fitting
+  stop_after: phenix.ligandfit
+  result_files_to_remove: []
+  solve_run_advice: "fit the limonene ligand"
+
+# === X-RAY: Polder maps ===
+
+1aba-polder:
+  topic: "Polder omit map computation"
+  experiment_type: xray
+  expected_programs: [phenix.polder]
+  expected_method: polder_map
+  stop_after: phenix.polder
+  result_files_to_remove: []
+  solve_run_advice: "calculate polder map for chain A resseq 88"
+
+# === X-RAY: Ensemble refinement ===
+
+3tpj-ensemble-refine:
+  topic: "Ensemble refinement"
+  experiment_type: xray
+  expected_programs: [phenix.ensemble_refinement]
+  expected_method: ensemble_refinement
+  stop_after: phenix.ensemble_refinement
+  result_files_to_remove: []
+  solve_run_advice: ""
+
+3tpp-ensemble-refine:
+  topic: "Ensemble refinement (companion)"
+  experiment_type: xray
+  expected_programs: [phenix.ensemble_refinement]
+  expected_method: ensemble_refinement
+  stop_after: phenix.ensemble_refinement
+  result_files_to_remove: []
+  solve_run_advice: ""
+
+# === X-RAY: Reference model refinement ===
+
+7rpq_AF_reference_model:
+  topic: "Refinement with AlphaFold reference model"
+  experiment_type: xray
+  expected_programs: [phenix.refine]
+  expected_method: refinement_with_reference
+  stop_after: phenix.refine
+  result_files_to_remove: [7RPQ_superposed.pdb]
+  solve_run_advice: ""
+
+# === X-RAY: Data analysis ===
+
+advanced-xtriage:
+  topic: "Data analysis (twinning, ice rings)"
+  experiment_type: xray
+  expected_programs: [phenix.xtriage]
+  expected_method: data_analysis
+  stop_after: phenix.xtriage
+  result_files_to_remove: []
+  solve_run_advice: "analyze data quality"
+
+# === X-RAY: AlphaFold PredictAndBuild ===
+
+AF_exoV_PredictAndBuild:
+  topic: "PredictAndBuild MR workflow"
+  experiment_type: xray
+  expected_programs: [phenix.predict_and_build]
+  expected_method: predict_and_build
+  stop_after: phenix.predict_and_build
+  result_files_to_remove: []
+  solve_run_advice: ""
+
+AF_bromodomain_ligand:
+  topic: "PredictAndBuild + ligand fitting"
+  experiment_type: xray
+  expected_programs: [phenix.predict_and_build, phenix.refine, phenix.ligandfit]
+  expected_method: predict_and_build
+  stop_after: phenix.ligandfit
+  result_files_to_remove: []
+  solve_run_advice: "fit ligand 7qz0_ligand.pdb after solving"
+
+AF_POMGNT2:
+  topic: "AlphaFold MR with multiple domains"
+  experiment_type: xray
+  expected_programs: [phenix.process_predicted_model, phenix.phaser, phenix.refine]
+  expected_method: molecular_replacement
+  stop_after: phenix.refine
+  result_files_to_remove: []
+  solve_run_advice: ""
+
+AF_exoV_MRSAD:
+  topic: "MR-SAD phasing with AlphaFold model"
+  experiment_type: xray
+  expected_programs: [phenix.process_predicted_model, phenix.phaser, phenix.autosol]
+  expected_method: mr_sad
+  stop_after: phenix.autosol
+  result_files_to_remove: []
+  solve_run_advice: "anomalous scatterer is iron (Fe)"
+
+# === CRYO-EM: PredictAndBuild ===
+
+AF_7mjs_H_PredictAndBuild:
+  topic: "PredictAndBuild cryo-EM (Fab heavy chain)"
+  experiment_type: cryoem
+  expected_programs: [phenix.predict_and_build]
+  expected_method: predict_and_build
+  stop_after: phenix.predict_and_build
+  result_files_to_remove: []
+  solve_run_advice: ""
+
+AF_7n8i_L_PredictAndBuild:
+  topic: "PredictAndBuild cryo-EM (SARS-CoV-2 NTD)"
+  experiment_type: cryoem
+  expected_programs: [phenix.predict_and_build]
+  expected_method: predict_and_build
+  stop_after: phenix.predict_and_build
+  result_files_to_remove: []
+  solve_run_advice: ""
+
+# === CRYO-EM: Density modification ===
+
+actin_denmod:
+  topic: "Cryo-EM density modification"
+  experiment_type: cryoem
+  expected_programs: [phenix.resolve_cryo_em]
+  expected_method: density_modification
+  stop_after: phenix.resolve_cryo_em
+  result_files_to_remove: [6c1g_ABCD.pdb, full_map_box.ccp4]
+  solve_run_advice: ""
+
+# === CRYO-EM: Map sharpening ===
+
+actin_sharpen_local_resolution:
+  topic: "Map sharpening and local resolution"
+  experiment_type: cryoem
+  expected_programs: [phenix.map_sharpening]
+  expected_method: map_sharpening
+  stop_after: phenix.map_sharpening
+  result_files_to_remove: []
+  solve_run_advice: ""

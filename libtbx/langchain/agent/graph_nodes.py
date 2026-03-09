@@ -1084,6 +1084,54 @@ def perceive(state):
                 "abort_message": abort_msg,
             }
 
+    # ── Error classification (Fix 3, v115) ──────────────────────────────
+    # Classify the previous cycle's failure (if any) for THINK/PLAN.
+    # Sets error_classification and failure_count in state.
+    error_classification = None
+    failure_count = 0
+    try:
+        try:
+            from libtbx.langchain.agent.error_classifier \
+                import classify_error, count_consecutive_failures
+        except ImportError:
+            from agent.error_classifier \
+                import classify_error, count_consecutive_failures
+
+        # Only classify if we have log text (not first cycle)
+        if log_text and cycle_number > 1:
+            # What program just ran?
+            last_program = ""
+            if history:
+                last_h = history[-1] if isinstance(
+                    history[-1], dict) else {}
+                last_program = last_h.get("program", "")
+                last_result = (
+                    last_h.get("result")
+                    or last_h.get("status") or "")
+                # Only classify if previous cycle failed
+                if not str(last_result).startswith(
+                        "SUCCESS"):
+                    error_classification = classify_error(
+                        log_text, last_program)
+                    if error_classification.get(
+                            "category") != "NO_ERROR":
+                        failure_count = (
+                            count_consecutive_failures(
+                                history, last_program))
+                        state = _log(state,
+                            "PERCEIVE: Error classified:"
+                            " %s (%s, %d consecutive"
+                            " failures)"
+                            % (error_classification[
+                                   "category"],
+                               error_classification[
+                                   "error_message"
+                               ][:80],
+                               failure_count))
+    except Exception:
+        # error_classifier not available — skip
+        pass
+
     # ── Directive stop check ──────────────────────────────────────────────
     # Check if user directives say we should stop (after_program, after_cycle,
     # metrics targets).  This fires at START of cycle N+1 based on cycle N
@@ -1128,6 +1176,8 @@ def perceive(state):
         "metrics_history": metrics_history,
         "metrics_trend": metrics_trend,
         "workflow_state": workflow_state,
+        "error_classification": error_classification,
+        "failure_count": failure_count,
     }
 
 
@@ -1479,6 +1529,67 @@ def plan(state):
                 "stop_reason": reason,
             }
 
+    # ── Failure-driven pivot (Fix 3, v115) ────────────────────────
+    # If the previous cycle failed and the error classifier says
+    # pivot, exclude the failed program from valid_programs so
+    # BOTH the LLM and rules_only modes choose something different.
+    # Must run before rules_only check.
+    error_classification = state.get("error_classification")
+    if error_classification:
+        try:
+            try:
+                from libtbx.langchain.agent \
+                    .error_classifier import should_pivot
+            except ImportError:
+                from agent.error_classifier \
+                    import should_pivot
+
+            _last_prog = ""
+            history = state.get("history", [])
+            if history:
+                _lh = history[-1] if isinstance(
+                    history[-1], dict) else {}
+                _last_prog = _lh.get("program", "")
+
+            _do_pivot, _pivot_reason = should_pivot(
+                history, _last_prog,
+                error_classification)
+
+            if _do_pivot and _last_prog:
+                state = _log(state,
+                    "PLAN: PIVOT — %s" % _pivot_reason)
+                workflow_state = state.get(
+                    "workflow_state", {})
+                vp = workflow_state.get(
+                    "valid_programs", [])
+                _short = _last_prog.replace(
+                    "phenix.", "")
+                filtered = [
+                    p for p in vp
+                    if p.replace("phenix.", "")
+                    != _short]
+                if filtered != vp and filtered:
+                    workflow_state = dict(
+                        workflow_state)
+                    workflow_state[
+                        "valid_programs"] = filtered
+                    state = {
+                        **state,
+                        "workflow_state":
+                            workflow_state}
+                    state = _log(state,
+                        "PLAN: Excluded %s, "
+                        "remaining: %s"
+                        % (_last_prog, filtered))
+                elif (not filtered
+                      or filtered == ["STOP"]):
+                    state = _log(state,
+                        "PLAN: No programs left "
+                        "after excluding %s"
+                        % _last_prog)
+        except Exception:
+            pass  # error_classifier not available
+
     # 2. Check for rules-only mode (no LLM)
     use_rules_only = state.get("use_rules_only", False) or state.get("use_yaml_mode", USE_RULES_SELECTOR)
     if use_rules_only:
@@ -1521,6 +1632,43 @@ def plan(state):
     # Get best_files from session_info
     session_info = state.get("session_info", {})
     best_files = session_info.get("best_files", {})
+
+    # ── Self-correction context (Enhancement A, v115) ─────────────
+    # When the previous cycle failed, inject structured error context
+    # into user_advice so the planning LLM can make an informed
+    # recovery decision.  This is the "self-correction" step from
+    # the PLAN: instead of hoping implicit reasoning works, we give
+    # the LLM the specific error and a suggestion.
+    if error_classification and error_classification.get(
+            "category") not in (None, "NO_ERROR"):
+        _err_cat = error_classification["category"]
+        _err_msg = error_classification.get(
+            "error_message", "")[:120]
+        _err_sug = error_classification.get(
+            "suggestion", "")
+        _err_context = (
+            "\n[PREVIOUS CYCLE FAILED] %s: %s"
+            % (_err_cat, _err_msg))
+        if _err_sug:
+            _err_context += (
+                "\nSuggested fix: %s" % _err_sug)
+        bad_params = error_classification.get(
+            "bad_params", [])
+        if bad_params:
+            _err_context += (
+                "\nBad parameters to remove: %s"
+                % ", ".join(bad_params))
+        _fc = state.get("failure_count", 0)
+        if _fc >= 2:
+            _err_context += (
+                "\nThis program has failed %d "
+                "consecutive times — choose a "
+                "DIFFERENT program." % _fc)
+        user_advice = (
+            (user_advice or "") + _err_context)
+        state = _log(state,
+            "PLAN: Injected error context for "
+            "self-correction (%s)" % _err_cat)
 
     system_msg, user_msg = get_planning_prompt(
         history=state.get("history", []),
@@ -2150,6 +2298,44 @@ def _extract_history_info(state):
 
 
 # =============================================================================
+# PHIL STRATEGY VALIDATION (Fix 4, v115)
+# =============================================================================
+
+def _validate_phil_strategy(program, strategy, state):
+    """Validate LLM strategy against program's known PHIL params.
+
+    Delegates to phil_validator.validate_phil_strategy() and logs
+    any stripped parameters to the graph state.
+
+    Never raises — returns strategy unchanged if validation
+    cannot be performed.
+    """
+    if not strategy or not program:
+        return strategy, state
+    try:
+        try:
+            from libtbx.langchain.agent.phil_validator \
+                import validate_phil_strategy
+        except ImportError:
+            from agent.phil_validator \
+                import validate_phil_strategy
+        cleaned, stripped = validate_phil_strategy(
+            program, strategy)
+        if stripped:
+            names = ", ".join(
+                "%s=%s" % (k, v)
+                for k, v in stripped)
+            state = _log(state,
+                "BUILD: PHIL VALIDATION — stripped %d "
+                "unrecognized param(s) for %s: %s"
+                % (len(stripped), program, names))
+        return cleaned, state
+    except Exception:
+        # phil_validator not available — skip
+        return strategy, state
+
+
+# =============================================================================
 # NODE: BUILD
 # =============================================================================
 
@@ -2330,6 +2516,13 @@ def _build_with_new_builder(state):
                     "BUILD: Set rebuild_in_place=False"
                     " (model already exists from"
                     " previous cycle)")
+
+    # === PHIL STRATEGY VALIDATION (Fix 4, v115) ===
+    # Strip LLM-injected params that aren't valid for this
+    # program.  Must run AFTER all strategy rewrites/defaults
+    # but BEFORE CommandContext creation.
+    strategy, state = _validate_phil_strategy(
+        program, strategy, state)
 
     # Create log wrapper that updates state
     build_logs = []
@@ -2856,6 +3049,12 @@ def build(state):
 
     # === APPLY RESOLUTION FOR PROGRAMS THAT NEED IT ===
     # Helper to find resolution from various sources (priority order)
+
+    # === PHIL STRATEGY VALIDATION (Fix 4, v115) ===
+    # Also apply to old build path for when flag is toggled.
+    strategy, state = _validate_phil_strategy(
+        program, strategy, state)
+
     def find_resolution():
         # 1. From session_resolution (single source of truth - set by xtriage/mtriage)
         session_res = state.get("session_resolution")
@@ -3370,21 +3569,94 @@ def validate(state):
         state = {**state, "validation_error": error}
         return _increment_attempt(state)
 
-    # === 3. DUPLICATE CHECK ===
-    for hist in state.get("history", []):
-        if isinstance(hist, dict):
-            prev_command = hist.get("command", "")
-            prev_cycle = hist.get("cycle_number", "?")
-        elif isinstance(hist, str):
-            prev_command = hist
-            prev_cycle = "?"
-        else:
-            continue
+    # === 3. DUPLICATE CHECK (Fix 5, v115) ===
+    # Parameter-aware duplicate detection.
+    #
+    # Changes from original:
+    # a) Only check last 5 cycles (stale duplicates irrelevant)
+    # b) Log which cycle matched (fix the ? in diagnostics)
+    # c) If exactly ONE matching cycle FAILED and LLM has
+    #    different strategy intent → allow a retry.  If TWO+
+    #    matching cycles failed → block (LLM stuck in loop).
+    #    If matching cycle SUCCEEDED → always block.
 
+    intent = state.get("intent", {})
+    llm_strategy = intent.get("strategy", {}) or {}
+
+    # Check recent history (last 5 cycles)
+    recent = [h for h in state.get("history", [])
+              if isinstance(h, dict)][-5:]
+
+    # Find ALL cycles that match this command
+    matching = []
+    for hist in recent:
+        prev_command = hist.get("command", "")
         if prev_command and prev_command == command:
-            error = "Duplicate of previous cycle %s" % prev_cycle
-            state = _log(state, "VALIDATE: DUPLICATE - %s" % error)
-            state = {**state, "validation_error": error}
+            prev_cycle = hist.get("cycle_number")
+            if prev_cycle is None:
+                all_hist = state.get("history", [])
+                try:
+                    idx = all_hist.index(hist)
+                    prev_cycle = idx + 1
+                except ValueError:
+                    prev_cycle = "?"
+            prev_result = (
+              hist.get("result")
+              or hist.get("status") or "")
+            prev_ok = str(prev_result).startswith(
+              "SUCCESS")
+            matching.append(
+              (prev_cycle, prev_ok))
+
+    if matching:
+        # Any successful match → always block
+        success_cycles = [
+          c for c, ok in matching if ok]
+        if success_cycles:
+            error = (
+              "Duplicate of successful cycle %s"
+              % success_cycles[-1])
+            state = _log(state,
+              "VALIDATE: DUPLICATE - %s" % error)
+            state = {**state,
+              "validation_error": error}
+            return _increment_attempt(state)
+
+        # All matches are failures.  Allow ONE retry
+        # if the LLM intended different params (stripped
+        # by PHIL validation).  Block on 2+ matches.
+        if len(matching) == 1 and llm_strategy:
+            fail_cycle = matching[0][0]
+            new_params = [
+              k for k in llm_strategy
+              if k not in command
+              and k not in ("output_prefix",
+                            "output_name")]
+            if new_params:
+                state = _log(state,
+                  "VALIDATE: Command matches failed "
+                  "cycle %s but LLM intended extra "
+                  "params: %s — allowing retry "
+                  "(Fix 5)" % (
+                    fail_cycle, new_params[:3]))
+            else:
+                error = (
+                  "Duplicate of failed cycle %s"
+                  % fail_cycle)
+                state = _log(state,
+                  "VALIDATE: DUPLICATE - %s" % error)
+                state = {**state,
+                  "validation_error": error}
+                return _increment_attempt(state)
+        elif len(matching) >= 2:
+            cycles = [str(c) for c, _ in matching]
+            error = (
+              "Duplicate — same command failed in "
+              "cycles %s" % ", ".join(cycles))
+            state = _log(state,
+              "VALIDATE: DUPLICATE - %s" % error)
+            state = {**state,
+              "validation_error": error}
             return _increment_attempt(state)
 
     state = _log(state, "VALIDATE: Passed")
@@ -3406,7 +3678,11 @@ def _fallback_with_new_builder(state):
     # Get CommandBuilder and CommandContext
     CommandBuilder, CommandContext = _get_command_builder()
 
-    # Get previous commands to avoid duplicates
+    # Get previous commands to avoid duplicates.
+    # Fallback is conservative: block ANY repeated command
+    # (both success and failure).  The validate() node has
+    # the nuanced Fix 5 logic for parameter-aware bypass.
+    # Fallback should try DIFFERENT programs, not retry.
     previous_commands = set()
     for hist in state.get("history", []):
         if isinstance(hist, dict) and hist.get("command"):

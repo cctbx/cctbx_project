@@ -1024,6 +1024,8 @@ a thinking failure.
 | `agent/format_validation.py` | Compact text formatter for validation results (v113.10) |
 | `agent/file_metadata.py` | Per-file metadata tracking and queries (v113.10) |
 | `agent/kb_tags.py` | Context tag derivation for KB lookup (v113.10) |
+| `agent/phil_validator.py` | PHIL strategy validation against programs.yaml strategy_flags (v115) |
+| `agent/error_classifier.py` | Error classification + tiered failure response (v115) |
 | `knowledge/thinking_prompts.py` | Prompt builder: `build_thinking_prompt()`, `parse_assessment()` |
 | `knowledge/kb_loader.py` | YAML KB loader with IDF-weighted tag matching (v113.10) |
 | `knowledge/expert_knowledge_base_v2.yaml` | 56 expert-reviewed entries (v113.10) |

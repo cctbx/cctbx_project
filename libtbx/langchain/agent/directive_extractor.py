@@ -40,6 +40,71 @@ import warnings
 
 _STOP_DIRECTIVE_PATTERNS_CACHE = None
 
+
+def _strip_preprocessor_stop_condition(user_advice):
+    """Strip LLM-generated structured headers from preprocessed advice.
+
+    The advice preprocessor LLM creates structured output with headers
+    like 'Stop Condition:', 'Primary Goal:', etc.  These are LLM
+    summaries of the README, not user instructions, and can cause
+    false-positive directive extraction.  For example:
+
+    - 'Stop Condition: Stop after molecular replacement' causes a
+      fabricated after_program directive (none of the original READMEs
+      contain the word 'stop')
+    - 'Primary Goal: Density modification of cryo-EM map' triggers
+      the tutorial_patterns section to set after_program for denmod
+
+    Real user commands ('stop after refinement', 'run xtriage') are
+    natural prose and handled by later extraction patterns.  They
+    never appear in the 'Header: value' format that only the
+    preprocessor produces.
+
+    'Stop Condition:' is always stripped (never real user input).
+    'Goal:' / 'Primary Goal:' are only stripped when the text
+    contains other preprocessor signature headers, to avoid
+    stripping raw user input that happens to start with 'Goal:'.
+
+    Returns:
+        str: advice with preprocessor header lines removed
+    """
+    if not user_advice:
+        return user_advice
+
+    # 'Stop Condition:' is ALWAYS safe to strip — real users
+    # write 'stop after X', not 'Stop Condition: stop after X'.
+    cleaned = re.sub(
+        r'^[ \t]*stop\s+condition\s*:\s*[^\n]*$',
+        '', user_advice,
+        flags=re.IGNORECASE | re.MULTILINE,
+    )
+
+    # 'Goal:' / 'Primary Goal:' — only strip when we detect
+    # preprocessor output (indicated by other signature headers).
+    # This avoids stripping raw user input like 'Goal: R-free
+    # below 0.25' when preprocess_advice=False.
+    _PREPROCESSOR_SIGNATURES = (
+        r'input\s+files?\s+found',
+        r'experiment\s+type',
+        r'key\s+parameters?',
+        r'special\s+instructions?',
+    )
+    is_preprocessed = any(
+        re.search(r'(?i)^[ \t]*%s\s*:' % sig, cleaned,
+                  re.MULTILINE)
+        for sig in _PREPROCESSOR_SIGNATURES
+    )
+    if is_preprocessed:
+        cleaned = re.sub(
+            r'^[ \t]*(?:primary\s+)?goal\s*:\s*[^\n]*$',
+            '', cleaned,
+            flags=re.IGNORECASE | re.MULTILINE,
+        )
+
+    # Collapse any resulting blank-line runs
+    cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
+    return cleaned
+
 def _get_stop_directive_patterns():
     """Load program name mappings for stop-condition parsing from YAML.
 
@@ -148,7 +213,7 @@ Output a JSON object with these sections. Include ONLY sections that have releva
    - For phenix.polder specifically:
      * selection: string (atom selection, e.g., "chain A and resseq 88", "resname LIG")
 
-2. "stop_conditions": When to stop the workflow
+2. "stop_conditions": When to stop the workflow (ONLY if the user gave an EXPLICIT stop command — see rules below)
    - "after_program": string - Stop after this program completes (e.g., "phenix.xtriage", "phenix.refine", "phenix.phaser", "phenix.ligandfit", "phenix.map_to_model", "phenix.dock_in_map", "phenix.map_sharpening", "phenix.polder")
    - "after_cycle": int - Stop after this cycle number
    - "max_refine_cycles": int - Maximum number of refinement cycles to run
@@ -271,10 +336,25 @@ add appropriate stop_conditions:
 - "map symmetry", "determine symmetry", "find symmetry" → after_program="phenix.map_symmetry", skip_validation=true
 - "map sharpening", "sharpen the map", "sharpen map", "automatic sharpening" → after_program="phenix.map_sharpening", skip_validation=true
 
-IMPORTANT: Do NOT set stop_conditions based on tutorial descriptions of goals or purposes.
-"The goal is to solve by molecular replacement" is a goal description, NOT a stop command.
-"Stop Condition: None" in the preprocessed advice means NO stop condition was requested.
-Only set stop_conditions when the user uses explicit imperative language to limit the task.
+**CRITICAL: Do NOT fabricate stop conditions from goal descriptions.**
+Only populate stop_conditions if the user has EXPLICITLY stated when to stop
+using imperative language like "stop after X", "only run X", "just do X".
+Tutorial descriptions of goals are NOT stop conditions.  Do not infer a stop
+point from the tutorial's stated purpose.  If no explicit stop instruction is
+present, do NOT include a stop_conditions section at all.
+
+Examples of goal descriptions that are NOT stop conditions (do NOT extract):
+- "The goal is to solve the structure by molecular replacement" → NO stop condition
+- "This tutorial demonstrates density modification" → NO stop condition
+- "Purpose: rebuild the model using AutoBuild" → NO stop condition
+- "We will run MR-SAD to determine the structure" → NO stop condition
+
+Examples of real stop commands (DO extract):
+- "Stop after running phaser" → after_program="phenix.phaser"
+- "Only run xtriage, nothing else" → after_program="phenix.xtriage"
+- "Just do one refinement" → max_refine_cycles=1
+
+If you see "Stop Condition: None" or no stop instruction, do NOT add stop_conditions.
 
 **CRITICAL: model_is_placed — detecting when the model is already positioned**
 ONLY set model_is_placed=true when the user EXPLICITLY states their model is already positioned or placed in the unit cell / map. This is a HIGH-PRECISION flag: when in doubt, do NOT set it. The workflow will figure out placement automatically.
@@ -388,6 +468,27 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
         log("DIRECTIVES: No user advice provided")
         return {}
 
+    # Strip LLM-fabricated "Stop Condition:" lines from preprocessed
+    # advice before any extraction path sees them (Fix 2, v115).
+    user_advice = _strip_preprocessor_stop_condition(user_advice)
+
+    # Classify intent (v115) — same as simple path.
+    intent_result = None
+    try:
+        try:
+            from libtbx.langchain.agent.intent_classifier \
+                import classify_intent
+        except ImportError:
+            from agent.intent_classifier \
+                import classify_intent
+        intent_result = classify_intent(user_advice)
+        if intent_result:
+            log("DIRECTIVES: Intent classified as '%s' "
+                "(%s)" % (intent_result.get("intent"),
+                           intent_result.get("reason", "")[:60]))
+    except Exception:
+        pass  # intent_classifier not available
+
     advice_lower = user_advice.lower().strip()
     if advice_lower in ("none", "none provided", "n/a", ""):
         log("DIRECTIVES: User advice is empty/none")
@@ -456,7 +557,75 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
             if simple_directives:
                 return simple_directives
 
-        log("DIRECTIVES: Extracted %d directive sections" % len(directives))
+        # Store intent classification in directives (v115)
+        if intent_result:
+            directives["intent"] = intent_result
+
+        # Intent-driven stop override (v115) — same logic
+        # as in extract_directives_simple.
+        _intent = (
+            directives.get("intent") or {}).get("intent")
+
+        # Check if user EXPLICITLY said "stop after X"
+        # (preserve explicit stops regardless of intent)
+        _has_explicit_stop = bool(re.search(
+            r'\bstop\s+after\b|\bonly\s+run\b'
+            r'|\bjust\s+(?:do|run)\b',
+            user_advice, re.IGNORECASE))
+
+        if _intent == "task":
+            _task_prog = (
+                directives.get("intent", {})
+                .get("task_program"))
+            if _task_prog:
+                if "stop_conditions" not in directives:
+                    directives["stop_conditions"] = {}
+                directives["stop_conditions"][
+                    "after_program"] = _task_prog
+                directives["stop_conditions"][
+                    "skip_validation"] = True
+        elif _intent == "solve":
+            sc = directives.get("stop_conditions", {})
+            if ("after_program" in sc
+                    and not _has_explicit_stop):
+                log("DIRECTIVES: Intent=solve, removing "
+                    "after_program=%s"
+                    % sc["after_program"])
+                del sc["after_program"]
+                sc.pop("skip_validation", None)
+                if not sc:
+                    directives.pop(
+                        "stop_conditions", None)
+        elif _intent == "solve_constrained":
+            sc = directives.get("stop_conditions", {})
+            if ("after_program" in sc
+                    and not _has_explicit_stop):
+                log("DIRECTIVES: Intent=solve_constrained"
+                    ", removing after_program=%s"
+                    % sc["after_program"])
+                del sc["after_program"]
+                sc.pop("skip_validation", None)
+                if not sc:
+                    directives.pop(
+                        "stop_conditions", None)
+            _method = (
+                directives.get("intent", {})
+                .get("method_constraint"))
+            if _method:
+                if "workflow_preferences" not in directives:
+                    directives["workflow_preferences"] = {}
+                directives["workflow_preferences"][
+                    "method_constraint"] = _method
+        # tutorial: keep whatever the LLM set
+
+        # Simplify intent to just the string for
+        # downstream consumers
+        if isinstance(directives.get("intent"), dict):
+            directives["intent"] = directives[
+                "intent"].get("intent")
+
+        log("DIRECTIVES: Extracted %d directive sections"
+            % len(directives))
         return directives
 
     except Exception as e:
@@ -1813,7 +1982,29 @@ def extract_directives_simple(user_advice):
     if not user_advice:
         return {}
 
+    # Strip LLM-fabricated "Stop Condition:" lines (Fix 2, v115).
+    user_advice = _strip_preprocessor_stop_condition(user_advice)
+
+    # Classify intent (v115).
+    # The intent controls stopping behavior downstream.
+    intent_result = None
+    try:
+        try:
+            from libtbx.langchain.agent.intent_classifier \
+                import classify_intent
+        except ImportError:
+            from agent.intent_classifier \
+                import classify_intent
+        intent_result = classify_intent(user_advice)
+    except Exception:
+        pass  # intent_classifier not available
+
     directives = {}
+
+    # Store intent in directives for downstream use
+    if intent_result:
+        directives["intent"] = intent_result
+
     advice_lower = user_advice.lower()
 
     # Extract resolution
@@ -2046,42 +2237,15 @@ def extract_directives_simple(user_advice):
     is_cryoem = bool(re.search(r'cryo-?em|half.?map|\.mrc|\.map|full.?map|mtriage', advice_lower))
     is_xray = bool(re.search(r'x-?ray|\.mtz|\.hkl|xtriage|phaser|autosol|sad|mad|molecular.?replacement', advice_lower))
 
-    # Check for explicit "Stop Condition:" section from preprocessed advice
-    # This is output from the advice preprocessor and should trigger skip_validation
-    # But only if an actual stop condition is specified (not "None")
-    stop_section_match = re.search(
-      r'stop\s+condition\s*:\s*(.+?)(?:\n|$)', advice_lower, re.IGNORECASE)
-    if stop_section_match:
-      stop_value = stop_section_match.group(1).strip()
-      if stop_value and stop_value not in ('none', 'none.', 'n/a', ''):
-        if "stop_conditions" not in directives:
-            directives["stop_conditions"] = {}
-        # User explicitly specified a stop condition - honor it
-        directives["stop_conditions"]["skip_validation"] = True
-
-        # Try to extract program from stop condition text
-        stop_match = re.search(r'stop\s+condition\s*:\s*stop\s+after\s+(?:running\s+)?(.+?)(?:\.|$)', advice_lower, re.IGNORECASE)
-        if stop_match:
-            stop_text = stop_match.group(1).strip()
-            # Map common phrases to programs using YAML-driven patterns
-            # (sorted by length descending — more specific patterns first)
-            program_mappings = _get_stop_directive_patterns()
-            for pattern, program in program_mappings:
-                if re.search(pattern, stop_text, re.IGNORECASE):
-                    if "after_program" not in directives["stop_conditions"]:
-                        directives["stop_conditions"]["after_program"] = program
-                    break
-
-            # Handle density modification based on experiment type
-            if "after_program" not in directives.get("stop_conditions", {}):
-                if re.search(r'density\s+modif|denmod', stop_text, re.IGNORECASE):
-                    if is_cryoem and not is_xray:
-                        directives["stop_conditions"]["after_program"] = "phenix.resolve_cryo_em"
-                    elif is_xray and not is_cryoem:
-                        directives["stop_conditions"]["after_program"] = "phenix.autobuild_denmod"
-                    else:
-                        # Default to cryo-EM if ambiguous
-                        directives["stop_conditions"]["after_program"] = "phenix.resolve_cryo_em"
+    # NOTE (Fix 2, v115): Removed "Stop Condition:" parser that used to
+    # live here.  That block parsed LLM-fabricated stop conditions from
+    # the advice preprocessor (e.g., "Stop Condition: Stop after
+    # molecular replacement").  None of the original READMEs contain
+    # the word "stop"; every such line was invented by the preprocessor.
+    # Real user stop commands are handled by the explicit patterns above
+    # (lines ~2025-2039 and ~2200-2260).  The preprocessor's "Stop
+    # Condition:" lines are now stripped by
+    # _strip_preprocessor_stop_condition() at entry.
 
     # Check for workflow continuation indicators that mean we should NOT set early stops
     # Words like "then", "later", "afterwards" indicate multi-step workflows
@@ -2162,7 +2326,28 @@ def extract_directives_simple(user_advice):
                 directives["stop_conditions"]["start_with_program"] = program
                 break  # Only extract the first matching program
     else:
-        # Detect tutorial/procedure patterns that imply stop after specific program
+        # Detect tutorial/procedure patterns that imply stop after
+        # specific program.
+        #
+        # GUARD (Fix 2, v115): Skip this section when the advice
+        # is preprocessor output.  Preprocessor text contains
+        # descriptive phrases like "Density modification of
+        # cryo-EM map" that match tutorial_patterns but are NOT
+        # user commands.  Preprocessor output is identified by
+        # signature headers (Input Files Found, Experiment Type,
+        # Key Parameters, Special Instructions).
+        _PREPROC_SIGS = (
+            r'input\s+files?\s+found',
+            r'experiment\s+type',
+            r'key\s+parameters?',
+            r'special\s+instructions?',
+        )
+        _is_preprocessed = any(
+            re.search(r'(?i)^[ \t]*%s\s*:' % sig,
+                      user_advice, re.MULTILINE)
+            for sig in _PREPROC_SIGS
+        )
+
         tutorial_patterns = [
             # Xtriage/twinning analysis
             (r'(?:run|check|analyze).*(?:xtriage|twinning)', 'phenix.xtriage'),
@@ -2211,19 +2396,32 @@ def extract_directives_simple(user_advice):
             r'one\s+cycle.*(?:density|denmod|map\s+improv)',
         ]
 
-        for pattern, program in tutorial_patterns:
-            if re.search(pattern, advice_lower, re.IGNORECASE):
-                # This looks like a focused task - add stop condition
-                if "stop_conditions" not in directives:
-                    directives["stop_conditions"] = {}
-                # Only set if not already specified
-                if "after_program" not in directives.get("stop_conditions", {}):
-                    directives["stop_conditions"]["after_program"] = program
-                    directives["stop_conditions"]["skip_validation"] = True
-                break
+        _allow_patterns = (
+            not _is_preprocessed
+            or (intent_result
+                and intent_result.get("intent")
+                == "tutorial"))
 
-        # Handle density modification separately since it depends on experiment type
-        if "after_program" not in directives.get("stop_conditions", {}):
+        if _allow_patterns:
+            for pattern, program in tutorial_patterns:
+                if re.search(pattern, advice_lower,
+                             re.IGNORECASE):
+                    if "stop_conditions" not in directives:
+                        directives["stop_conditions"] = {}
+                    if "after_program" not in directives.get(
+                        "stop_conditions", {}):
+                        directives["stop_conditions"][
+                            "after_program"] = program
+                        directives["stop_conditions"][
+                            "skip_validation"] = True
+                        # Internal flag: this was inferred
+                        # from patterns, not user command
+                        directives["stop_conditions"][
+                            "_set_by_pattern"] = True
+                    break
+
+        # Handle density modification separately
+        if _allow_patterns and "after_program" not in directives.get("stop_conditions", {}):
             for pattern in denmod_patterns:
                 if re.search(pattern, advice_lower, re.IGNORECASE):
                     if "stop_conditions" not in directives:
@@ -2238,10 +2436,77 @@ def extract_directives_simple(user_advice):
                         # The LLM extraction will do better with context
                         directives["stop_conditions"]["after_program"] = "phenix.resolve_cryo_em"
                     directives["stop_conditions"]["skip_validation"] = True
+                    directives["stop_conditions"]["_set_by_pattern"] = True
                     break
+
+    # ── Intent-driven stop behavior (v115) ──────────────────────
+    # Override or set stop conditions based on classified intent.
+    # Runs AFTER all pattern extraction so it can override.
+    _intent = (
+        directives.get("intent") or {}).get("intent")
+
+    if _intent == "task":
+        # Task: single program, stop after.
+        _task_prog = (
+            directives.get("intent", {})
+            .get("task_program"))
+        if _task_prog:
+            if "stop_conditions" not in directives:
+                directives["stop_conditions"] = {}
+            directives["stop_conditions"][
+                "after_program"] = _task_prog
+            directives["stop_conditions"][
+                "skip_validation"] = True
+
+    elif _intent == "solve":
+        # Solve: no artificial stops.  Remove any
+        # after_program set by tutorial patterns.
+        sc = directives.get("stop_conditions", {})
+        if "after_program" in sc and sc.get(
+                "_set_by_pattern"):
+            del sc["after_program"]
+            sc.pop("skip_validation", None)
+            sc.pop("_set_by_pattern", None)
+            if not sc:
+                directives.pop("stop_conditions", None)
+
+    elif _intent == "solve_constrained":
+        # Solve-constrained: no artificial stops, but
+        # set the method preference.
+        sc = directives.get("stop_conditions", {})
+        if "after_program" in sc and sc.get(
+                "_set_by_pattern"):
+            del sc["after_program"]
+            sc.pop("skip_validation", None)
+            sc.pop("_set_by_pattern", None)
+            if not sc:
+                directives.pop("stop_conditions", None)
+        _method = (
+            directives.get("intent", {})
+            .get("method_constraint"))
+        if _method:
+            if "workflow_preferences" not in directives:
+                directives["workflow_preferences"] = {}
+            directives["workflow_preferences"][
+                "method_constraint"] = _method
+
+    # intent=tutorial: keep whatever patterns set
+    # (after_program from tutorial_patterns is correct)
 
     # Extract unit_cell and space_group if mentioned
     _extract_crystal_symmetry_simple(user_advice, directives)
+
+    # Strip internal flags before returning
+    sc = directives.get("stop_conditions", {})
+    sc.pop("_set_by_pattern", None)
+    if "stop_conditions" in directives and not sc:
+        del directives["stop_conditions"]
+
+    # Simplify intent: keep only the classification string,
+    # not the full internal dict with reason/confidence/etc.
+    _intent_dict = directives.get("intent")
+    if isinstance(_intent_dict, dict):
+        directives["intent"] = _intent_dict.get("intent")
 
     return directives
 

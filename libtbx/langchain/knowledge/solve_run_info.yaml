@@ -1,0 +1,118 @@
+# PHENIX AI Agent — Solve Run Minimal Information
+#
+# When running tutorials in SOLVE MODE (bare files, no README),
+# some tutorials need minimal hints that would normally come
+# from the README or from the user.  Without these hints, the
+# agent cannot determine the phasing method, atom type, etc.
+#
+# This file provides the minimum information needed for the
+# agent to attempt a structure solution with each tutorial's
+# files.  It is NOT instructions — it's context that would
+# normally be obvious to a crystallographer looking at the data.
+#
+# Format: each entry is a short project_advice string that
+# provides ONLY the essential scientific context, not
+# procedural instructions.
+#
+# Usage:
+#   phenix.ai_agent \
+#     input_directory=tutorials/AF_exoV_MRSAD/ \
+#     project_advice="$(yq '.AF_exoV_MRSAD.advice' solve_run_info.yaml)" \
+#     preprocess_advice=false
+
+# ================================================================
+# TUTORIALS THAT NEED NO HINTS
+# ================================================================
+# These tutorials have sufficient information in their files
+# for the agent to figure out what to do.  The MTZ file
+# contains the data, and the file types make the workflow
+# obvious.
+
+a2u-globulin-mr:
+  advice: ""
+  reason: "MR: data + search model + sequence are sufficient"
+
+a2u-globulin-rebuild:
+  advice: ""
+  reason: "Rebuild: SigmaA MTZ + model are sufficient"
+
+ICAM-mr:
+  advice: ""
+  reason: "MR: data + search model + sequence are sufficient"
+
+AF_exoV_PredictAndBuild:
+  advice: ""
+  reason: "P&B: data + sequence are sufficient (AF prediction automatic)"
+
+7rpq_AF_reference_model:
+  advice: ""
+  reason: "Refinement: data + model + AF reference are sufficient"
+
+CASP7-T0283-mr:
+  advice: ""
+  reason: "MR: data + search models + sequence are sufficient"
+
+# ================================================================
+# TUTORIALS THAT NEED EXPERIMENT-TYPE HINTS
+# ================================================================
+# cryo-EM tutorials where the agent needs to know it's cryo-EM
+# (usually obvious from .mrc/.ccp4 files, but worth being
+# explicit)
+
+actin_denmod:
+  advice: ""
+  reason: "cryo-EM: half-map files make experiment type obvious"
+
+actin_sharpen_local_resolution:
+  advice: ""
+  reason: "cryo-EM: map files make experiment type obvious"
+
+# ================================================================
+# TUTORIALS THAT NEED PHASING HINTS
+# ================================================================
+# SAD/MAD tutorials where the atom type and/or wavelength are
+# essential for phasing and cannot be determined from the files
+# alone.  A crystallographer would know these from their
+# experiment.
+
+AF_exoV_MRSAD:
+  advice: "anomalous scatterer is selenium, wavelength 0.9792"
+  reason: >
+    MR-SAD requires knowing the anomalous atom type and
+    wavelength.  These are experimental parameters that
+    cannot be inferred from the MTZ file alone (xtriage
+    can detect anomalous signal but not the atom type).
+
+1029B-sad:
+  advice: "anomalous scatterer is selenium"
+  reason: >
+    SAD phasing requires knowing the atom type.  The
+    wavelength may be in the MTZ header but atom_type
+    is needed for autosol.
+
+# ================================================================
+# TUTORIALS THAT NEED LIGAND HINTS
+# ================================================================
+# Ligand fitting tutorials where the agent needs to know
+# which ligand to fit (3-letter code or ligand file).
+
+1J4R-ligand:
+  advice: "ligand is ATP"
+  reason: >
+    Ligand fitting requires knowing which ligand to place.
+    A crystallographer would know the ligand from their
+    experiment.  The 3-letter code tells ligandfit what
+    to build.
+
+# ================================================================
+# UNKNOWN TUTORIALS — need READMEs to determine
+# ================================================================
+# For each remaining tutorial, we need to determine:
+# 1. Can the agent solve it from bare files alone?
+# 2. If not, what minimal info is needed?
+#
+# Common cases that need hints:
+# - SAD/MAD: atom_type (always), wavelength (usually)
+# - Ligand fitting: ligand code or ligand file
+# - MR-SAD: atom_type + wavelength
+# - Everything else: usually sufficient from files

@@ -1204,6 +1204,14 @@ phenix.refine:
     nproc:
       flag: "refinement.main.nproc={value}"
       type: int
+    reference_model_enabled:
+      flag: "reference_model.enabled={value}"
+      type: boolean
+      hint: "Enable reference model restraints"
+    reference_model_use_starting:
+      flag: "reference_model.use_starting_model_as_reference={value}"
+      type: boolean
+      hint: "Use starting model as the reference model"
 
   log_parsing:
     r_free:
@@ -1550,12 +1558,18 @@ phenix.resolve_cryo_em:
 
   # strategy_flags defines the ONLY key=value params allowed (beyond files).
   # Without this, sanitize_command cannot strip LLM-hallucinated params
-  # like mask_atoms=True or main.number_of_macro_cycles=1.
+  # like main.number_of_macro_cycles=1.
+  # Note: mask_atoms is a valid param (used by _STRATEGY_REWRITES in
+  # graph_nodes.py to normalize "strategy.mask_atoms" → "mask_atoms").
   strategy_flags:
     resolution:
       flag: "resolution={value}"
       type: float
       hint: "High-resolution limit for density modification"
+    mask_atoms:
+      flag: "mask_atoms={value}"
+      type: boolean
+      hint: "Mask atoms in density modification"
 
   input_priorities:
     half_map:

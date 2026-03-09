@@ -566,6 +566,17 @@ def preprocess_advice(raw_advice, experiment_type=None, file_list=None,
         print("Skipping LLM preprocessing (use_rules_only=True), using raw advice", file=out)
         return raw_advice
 
+    # Skip LLM preprocessing for standardized solve-mode
+    # READMEs (v115).  "Solve the structure by standard
+    # procedures" is a direct instruction that the directive
+    # extractor handles perfectly.  Preprocessing would add
+    # headers that cause misclassification as tutorial intent.
+    if raw_advice.strip().lower().startswith(
+            "solve the structure by standard procedures"):
+        print("Solve-mode README detected, "
+              "skipping LLM preprocessing", file=out)
+        return raw_advice
+
     if not llm:
         print("No LLM available, using raw advice", file=out)
         return raw_advice
