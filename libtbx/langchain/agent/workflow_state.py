@@ -2194,7 +2194,7 @@ def validate_program_choice(chosen_program, workflow_state):
         # columns'. CASP7-T0283-mr confirmed autobuild ran before phaser
         # on cycle 1 because the 5 ab-initio PDBs + MTZ satisfied file
         # checks; phasing was never done.
-        if chosen_program == "phenix.autobuild": 
+        if chosen_program == "phenix.autobuild":
             context = workflow_state.get("context", {})
             exp_type = workflow_state.get("experiment_type", "")
             if exp_type == "xray":

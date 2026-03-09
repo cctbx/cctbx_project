@@ -52,6 +52,14 @@ class AgentState(TypedDict):
     structure_model: Dict         # StructureModel state
     validation_history: Dict      # Per-cycle snapshots
 
+    # === SESSION-LEVEL BLOCKING (P4 fix) ===
+    session_blocked_programs: List[str]  # Programs blocked for this session (exceeded failure threshold)
+
+    # === P1B FUTURE KEYS (think-node MTZ overrides) ===
+    think_file_overrides: Dict    # {category: path} overrides from THINK node (P1B)
+    think_label_hints: Dict       # {path: label_str} MTZ label hints from THINK node (P1B)
+    think_stop_override: Optional[Dict]  # Typed stop override from THINK node (P1B)
+
     # === CURRENT CYCLE DATA ===
     log_text: str                 # Input log for this cycle
     log_analysis: Dict            # Output of perceive node (metrics, errors)
@@ -78,6 +86,15 @@ class AgentState(TypedDict):
     # === RED FLAG DETECTION ===
     red_flag_issues: Optional[List[Dict]]  # Issues from sanity checker
     abort_message: Optional[str]           # Formatted abort message
+
+    # === EVENTS / WARNINGS ===
+    events: List[Dict]            # Structured events emitted by nodes (for client display)
+    warnings: List[str]           # Server-side warnings passed back to client
+
+    # === TRANSIENT WITHIN-CYCLE KEYS ===
+    # These are written and read within a single cycle; they don't need round-tripping.
+    _prev_valid_programs: List[str]  # Loop detection: valid_programs from previous PERCEIVE
+    prerequisite_for: Optional[str]  # When set, this cycle is a prerequisite run for the named program
 
     # === DEBUG ===
     debug_log: List[str]          # Accumulated debug messages

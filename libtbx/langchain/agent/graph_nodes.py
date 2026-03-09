@@ -630,10 +630,12 @@ def perceive(state):
         session_info={
             **state.get("session_info", {}),
             "user_advice": state.get("user_advice", ""),
-            # P4 fix: session_blocked_programs lives at top-level graph state,
-            # not inside session_info, so we must bridge it here explicitly.
-            # get_workflow_state reads session_info.get("session_blocked_programs")
-            # to filter valid_programs each cycle.
+            # P4 fix: mirror session_blocked_programs into session_info so
+            # get_workflow_state can read it via session_info.get(...).
+            # The top-level state is initialized correctly from create_initial_state
+            # each cycle; this bridge ensures mid-cycle PLAN updates (new blocks
+            # added this cycle) are also visible to PERCEIVE within the same graph
+            # invocation when get_valid_programs is called.
             "session_blocked_programs": state.get(
                 "session_blocked_programs", []),
         },

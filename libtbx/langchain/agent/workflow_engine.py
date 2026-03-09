@@ -2285,9 +2285,6 @@ class WorkflowEngine:
         # per-cycle exclusion in the pivot handler alone does not survive).
         session_blocked = set(session_info.get(
             "session_blocked_programs", []) if session_info else [])
-        # Also pull from top-level state if available (different call sites)
-        if not session_blocked and isinstance(directives, dict):
-            pass  # directives doesn't carry this; session_info is the source
         if session_blocked:
             before_block = valid_programs[:]
             valid_programs = [
