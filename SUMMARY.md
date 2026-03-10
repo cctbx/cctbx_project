@@ -44,3 +44,6 @@ Speed up probe2 ~23% by replacing `rvec3` matrix operations with direct tuple ar
 
 ## 2026-03-05
 Fix missing probe dots in kinemage output. Two bugs in `make_probe_dots`: (1) passed top-level probe2 params to Optimizer instead of `params.probe` sub-params, (2) used nonexistent `DataManager.set_default_output_dir()` instead of `CCTBXParser`. Both errors were silently swallowed.
+
+## 2026-03-10
+Add `make_probe_dots_from_model()` to reuse an already-hydrogenated model for probe dots (avoids re-running reduce2). Add `probe_dots_kin` param to `_build_kinemage()` to accept pre-computed dots. Save hydrogenated model on `clashscore2` for downstream kinemage use.

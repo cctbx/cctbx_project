@@ -345,6 +345,66 @@ def make_probe_dots(hierarchy, keep_hydrogens=False):
       pass
   return probe_return
 
+def make_probe_dots_from_model(model_manager):
+  """Generate probe dot kinemage output from an already-hydrogenated model.
+
+  Like make_probe_dots() but skips reduce2 + Optimizer since the model
+  already has hydrogens placed (e.g. from clashscore2).
+  """
+  try:
+    from mmtbx.programs import probe2
+    import mmtbx.model
+    from libtbx.utils import null_out
+    import tempfile
+  except ImportError:
+    return ""
+
+  hierarchy = model_manager.get_hierarchy()
+  probe_return = ""
+  for i_mod, m in enumerate(hierarchy.models()):
+    r = pdb.hierarchy.root()
+    mdc = m.detached_copy()
+    r.append_model(mdc)
+
+    # Build a model manager for this sub-model
+    sub_model = mmtbx.model.manager(
+      model_input=None,
+      pdb_hierarchy=r,
+      stop_for_unknowns=False,
+      crystal_symmetry=model_manager.crystal_symmetry(),
+      log=null_out())
+
+    # Run probe2 in kinemage output mode
+    try:
+      import iotbx.cli_parser
+
+      tempName = tempfile.mktemp()
+      parser = iotbx.cli_parser.CCTBXParser(
+        program_class=probe2.Program, logger=null_out())
+      args = [
+        "approach=self",
+        "output.format=kinemage",
+        "output.filename='%s'" % tempName,
+        "output.separate_worse_clashes=True",
+        "output.report_vdws=False",
+        "output.write_files=False",
+        "count_dots=False",
+        "ignore_lack_of_explicit_hydrogens=True",
+      ]
+      parser.parse_args(args)
+      dm = parser.data_manager
+      p2 = probe2.Program(dm, parser.working_phil.extract(),
+                          master_phil=parser.master_phil, logger=null_out())
+      p2.overrideModel(sub_model)
+      dots, output = p2.run()
+      probe_return += output
+      if os.path.exists(tempName):
+        os.unlink(tempName)
+    except Exception:
+      pass
+  return probe_return
+
+
 def cbeta_dev(outliers, chain_id=None):
   cbeta_out = "@subgroup {CB dev} dominant\n"
   cbeta_out += "@balllist {CB dev Ball} color= magenta master= {Cbeta dev}\n"
@@ -833,7 +893,8 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
                     ss_bonds=None, sites_cart=None,
                     ss_annotation=None,
                     omega_result=None, rna_puckers_result=None,
-                    cablam_result=None):
+                    cablam_result=None,
+                    probe_dots_kin=None):
   """Shared logic for building the kinemage string.
 
   Args:
@@ -852,6 +913,9 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
     omega_result: omegalyze result object, or None (computed on-the-fly if None)
     rna_puckers_result: rna_puckers result object, or None
     cablam_result: cablamalyze result object, or None
+    probe_dots_kin: pre-computed probe dots kinemage string, or None.
+      If provided, this is used instead of calling make_probe_dots().
+      Pass "" to suppress probe dots entirely.
   """
   kin_out = get_default_header()
   altid_controls = get_altid_controls(hierarchy=hierarchy)
@@ -929,7 +993,10 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
   except Exception as e:
     import sys
     print("Warning: ribbon rendering failed: %s" % str(e), file=sys.stderr)
-  kin_out += make_probe_dots(hierarchy=hierarchy, keep_hydrogens=keep_hydrogens)
+  if probe_dots_kin is not None:
+    kin_out += probe_dots_kin
+  else:
+    kin_out += make_probe_dots(hierarchy=hierarchy, keep_hydrogens=keep_hydrogens)
   kin_out += get_footer()
   return kin_out
 
