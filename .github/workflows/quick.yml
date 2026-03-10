@@ -147,7 +147,6 @@ jobs:
           libtbx.scons -j 4
 
       - name: Run tests
-        continue-on-error: true
         run: |
           set -xe
           pwd
@@ -291,7 +290,6 @@ jobs:
           if %errorlevel% neq 0 exit /b %errorlevel%
 
       - name: Run tests
-        continue-on-error: true
         shell: cmd
         run: |
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
