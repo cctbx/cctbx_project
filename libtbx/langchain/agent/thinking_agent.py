@@ -381,6 +381,16 @@ def run_think_node(state):
       "THINK: Assessment — action=%s confidence=%s"
       % (assessment["action"], assessment["confidence"]))
 
+    # P1B guard: stop_reason_code is only meaningful on a stop action.
+    # If the LLM returns a code on guide_step/let_run/pivot, clear it to
+    # prevent phantom entries in session_summary.json (2B companion guard).
+    if (assessment.get("stop_reason_code")
+        and assessment["action"] != "stop"):
+      state = _log(state,
+        "THINK: clearing stop_reason_code=%s on non-stop action=%s"
+        % (assessment["stop_reason_code"], assessment["action"]))
+      assessment["stop_reason_code"] = None
+
     # --- Extract hypothesis from LLM response ---
     # If the LLM proposed a hypothesis in its JSON,
     # create a Hypothesis object and add it to the
@@ -459,17 +469,36 @@ def run_think_node(state):
     if assessment["action"] == "stop":
       state = _log(state, "THINK: Expert recommends STOP")
       cycle = state.get("cycle_number", 1)
-      abort_msg = (
-        "Expert assessment: %s"
-        % assessment["analysis"][:300]
-      )
+
+      # P1B: use typed stop_reason_code if provided and valid;
+      # fall back to freeform "expert: ..." for older behaviour.
+      _src = assessment.get("stop_reason_code")  # may be None
+      if _src:
+        stop_reason = _src          # e.g. "WRONG_MTZ"
+        abort_msg = (
+          "Agent stopped (%s): %s"
+          % (_src, assessment["analysis"][:300])
+        )
+        _think_stop_override = {
+          "code": _src,
+          "analysis": assessment.get("analysis", ""),
+        }
+        state = _log(state,
+          "THINK: classified stop code=%s" % _src)
+      else:
+        stop_reason = (
+          "expert: %s"
+          % assessment["analysis"][:200]
+        )
+        abort_msg = (
+          "Expert assessment: %s"
+          % assessment["analysis"][:300]
+        )
+        _think_stop_override = None
+
       # Emit stop_decision so the event formatter
       # shows it (plan() will short-circuit and
       # never get to emit its own stop_decision).
-      stop_reason = (
-        "expert: %s"
-        % assessment["analysis"][:200]
-      )
       events = list(state.get("events", []))
       events.append({
         "type": "stop_decision",
@@ -483,6 +512,7 @@ def run_think_node(state):
         "stop": True,
         "stop_reason": stop_reason,
         "abort_message": abort_msg,
+        "think_stop_override": _think_stop_override,
         "expert_assessment": assessment,
         "strategy_memory": _update_memory(
           memory_dict, assessment, cycle),
@@ -498,12 +528,22 @@ def run_think_node(state):
       enriched_advice = state.get("user_advice", "")
 
     cycle = state.get("cycle_number", 1)
+
+    # P1B: propagate file_overrides from assessment → think_file_overrides.
+    # BUILD node will consume and clear this (one-cycle lifetime).
+    _file_overrides = assessment.get("file_overrides") or {}
+    if _file_overrides:
+      state = _log(state,
+        "THINK: file_overrides set for categories: %s"
+        % list(_file_overrides.keys()))
+
     return {
       **state,
       "user_advice": enriched_advice,
       "expert_assessment": assessment,
       "strategy_memory": _update_memory(
         memory_dict, assessment, cycle),
+      "think_file_overrides": _file_overrides,
     }
 
   except Exception as e:

@@ -1942,6 +1942,13 @@ def plan(state):
                               .get("stop_conditions", {})
                               .get("after_program"))
                 if chosen_program and after_prog and chosen_program == after_prog:
+                    _apna_msg = (
+                        "Agent stopped: the program '%s' requested by the "
+                        "stop_after directive is not available at the current "
+                        "workflow step. Check that the program name is spelled "
+                        "correctly and that the required input files are present."
+                        % chosen_program
+                    )
                     state = _log(state, "PLAN: LLM chose after_program '%s' but it is not in "
                         "valid_programs %s — stopping to avoid running off-script. "
                         "Check step/workflow YAML to ensure %s is listed for this workflow state." % (
@@ -1951,6 +1958,7 @@ def plan(state):
                         "command": "STOP",
                         "stop": True,
                         "stop_reason": "after_program_not_available",
+                        "abort_message": _apna_msg,
                         "validation_error": None,
                     }
 
@@ -2217,6 +2225,21 @@ def _mock_plan(state):
 
         state = _log(state, "PLAN: RulesSelector chose %s" % intent.get("program"))
 
+        # F5 (v115): when the workflow reaches the 'complete' step and
+        # RulesSelector fires a stop, use stop_reason='workflow_complete'
+        # instead of whatever generic reason RulesSelector returned
+        # (typically 'no_valid_programs').  This lets ai_agent.py F1 and
+        # the Results tab show a success message rather than an error.
+        _step_name = workflow_state.get("step_info", {}).get("step", "")
+        if intent.get("stop") and _step_name == "complete":
+            _success_msg = "Workflow complete — structure determination finished successfully."
+            intent = {
+                **intent,
+                "stop_reason": "workflow_complete",
+                "abort_message": _success_msg,
+                "reasoning": intent.get("reasoning") or _success_msg,
+            }
+
         # === EMIT PROGRAM_SELECTED EVENT ===
         state = _emit(state, EventType.PROGRAM_SELECTED,
             program=intent.get("program"),
@@ -2232,7 +2255,8 @@ def _mock_plan(state):
             **state,
             "intent": intent,
             "stop": intent.get("stop", False),
-            "stop_reason": intent.get("stop_reason")
+            "stop_reason": intent.get("stop_reason"),
+            "abort_message": intent.get("abort_message") or state.get("abort_message"),
         }
     except Exception as e:
         state = _log(state, "PLAN: RulesSelector failed: %s, using simple fallback" % e)
@@ -2240,18 +2264,25 @@ def _mock_plan(state):
     # Simple fallback if rules selector fails
     if not valid_programs:
         state = _log(state, "PLAN: No workflow state, cannot determine valid programs")
+        _no_ws_msg = (
+            "Agent stopped: the workflow engine could not determine a current "
+            "state. Check that the expected input files are present in the "
+            "working directory, then re-run."
+        )
         return {
             **state,
             "intent": {
                 "program": None,
-                "reasoning": "Fallback: No workflow state available, stopping.",
+                "reasoning": _no_ws_msg,
                 "files": {},
                 "strategy": {},
                 "stop": True,
-                "stop_reason": "no_workflow_state"
+                "stop_reason": "no_workflow_state",
+                "abort_message": _no_ws_msg,
             },
             "command": "STOP",
-            "stop_reason": "no_workflow_state"
+            "stop_reason": "no_workflow_state",
+            "abort_message": _no_ws_msg,
         }
 
     # Pick first valid program (excluding STOP unless it's the only option)
@@ -2261,14 +2292,46 @@ def _mock_plan(state):
         program = next((p for p in valid_programs if p != "STOP"), valid_programs[0])
 
     if program == "STOP":
-        mock_intent = {
-            "program": None,
-            "reasoning": "Fallback: No valid programs available, stopping.",
-            "files": {},
-            "strategy": {},
-            "stop": True,
-            "stop_reason": "no_valid_programs"
-        }
+        # F5 (v115): distinguish genuine workflow completion from a stuck state.
+        # If the workflow engine reached the 'complete' step, this is success —
+        # use stop_reason='workflow_complete' and a positive message.
+        _step_name = workflow_state.get("step_info", {}).get("step", "")
+        if _step_name == "complete":
+            _stop_reasoning = (
+                "Workflow complete — structure determination finished successfully."
+            )
+            mock_intent = {
+                "program": None,
+                "reasoning": _stop_reasoning,
+                "files": {},
+                "strategy": {},
+                "stop": True,
+                "stop_reason": "workflow_complete",
+                "abort_message": _stop_reasoning,
+            }
+        else:
+            # Build an informative message that names any session-blocked programs
+            # so the user knows why no programs are available (v115 F4).
+            _blocked = state.get("session_blocked_programs", [])
+            if _blocked:
+                _blocked_str = ", ".join(_blocked)
+                _stop_reasoning = (
+                    "No valid programs remain. "
+                    "The following programs were blocked after repeated failures: %s. "
+                    "Check the log for details or restart with different settings."
+                    % _blocked_str
+                )
+            else:
+                _stop_reasoning = "Fallback: No valid programs available, stopping."
+            mock_intent = {
+                "program": None,
+                "reasoning": _stop_reasoning,
+                "files": {},
+                "strategy": {},
+                "stop": True,
+                "stop_reason": "no_valid_programs",
+                "abort_message": _stop_reasoning,
+            }
     else:
         mock_intent = {
             "program": program,
@@ -2296,7 +2359,10 @@ def _mock_plan(state):
         **state,
         "intent": mock_intent,
         "stop": mock_intent.get("stop", False),
-        "stop_reason": mock_intent.get("stop_reason")
+        "stop_reason": mock_intent.get("stop_reason"),
+        # Propagate abort_message to state top-level so run_ai_agent.py
+        # picks it up via final_state["abort_message"] (v115 F4).
+        "abort_message": mock_intent.get("abort_message") or state.get("abort_message"),
     }
 
 
@@ -2869,6 +2935,31 @@ def _build_with_new_builder(state):
                         % (os.path.basename(_best),
                            _src))
 
+    # P1B: apply think_file_overrides → patch categorized_files for this build.
+    # Each key is a category name (e.g. "data_mtz"); value is an absolute path.
+    # One-cycle lifetime: consume (clear) after reading so it doesn't persist.
+    # The copy of categorized_files is only made when there are overrides to
+    # apply, avoiding an unnecessary dict copy on the common (no-override) path.
+    _think_overrides = state.get("think_file_overrides") or {}
+    if _think_overrides:
+        _categorized_files = dict(workflow_state.get("categorized_files", {}))
+        for _cat, _path in _think_overrides.items():
+            if _path:
+                state = _log(state,
+                    "BUILD: think_file_override category=%s -> %s"
+                    % (_cat, os.path.basename(str(_path))))
+                _categorized_files[_cat] = (
+                    _path if isinstance(_path, list) else [_path]
+                )
+        # Clear so next cycle starts clean
+        state = {**state, "think_file_overrides": {}}
+    else:
+        # No overrides — pass the original dict directly.
+        # CommandContext reads categorized_files but never mutates it,
+        # confirmed by the fact that workflow_state (which holds the
+        # same dict) persists unmodified across cycles.
+        _categorized_files = workflow_state.get("categorized_files", {})
+
     # Create CommandContext
     _ws_res = workflow_state.get(
         "resolution")  # from xtriage/mtriage
@@ -2878,7 +2969,7 @@ def _build_with_new_builder(state):
         resolution=state.get("session_resolution") or _ws_res,
         best_files=session_info.get("best_files", {}),
         rfree_mtz=session_info.get("rfree_mtz"),
-        categorized_files=workflow_state.get("categorized_files", {}),
+        categorized_files=_categorized_files,
         workflow_state=workflow_state.get("state", ""),
         history=state.get("history", []),
         llm_files=corrected_files if corrected_files else None,
@@ -3739,6 +3830,7 @@ def validate(state):
     Checks:
     1. Command is not empty
     2. Program is valid for current workflow state (STRICT)
+    2a. think_file_overrides paths exist in available_files (P1B)
     3. Referenced files exist in available_files
     4. Command is not a duplicate of previous cycle
     """
@@ -3779,6 +3871,38 @@ def validate(state):
     available_files = state.get("available_files", [])
     available_set = set(available_files)
     available_basenames = {os.path.basename(f): f for f in available_set}
+
+    # === 2a. FILE OVERRIDE VALIDATION (P1B) ===
+    # If THINK suggested file_overrides, verify the paths exist before BUILD
+    # consumes them.  An unresolvable override is cleared from state and the
+    # cycle retried with a hint so THINK can self-correct.
+    _think_overrides = state.get("think_file_overrides") or {}
+    if _think_overrides:
+        _bad_overrides = {}
+        for _cat, _path in _think_overrides.items():
+            if not _path:
+                continue
+            # Normalise to a list the same way BUILD does
+            _paths = _path if isinstance(_path, list) else [_path]
+            for _p in _paths:
+                _bn = os.path.basename(_p)
+                if _p not in available_set and _bn not in available_basenames:
+                    _bad_overrides[_cat] = _p
+                    break  # one bad path per category is enough to flag it
+        if _bad_overrides:
+            _detail = "; ".join(
+                "category '%s' -> '%s'" % (c, p)
+                for c, p in sorted(_bad_overrides.items())
+            )
+            error = (
+                "THINK suggested file_override(s) not found in available_files: "
+                "%s. Verify the path is correct and the file has been produced "
+                "by a previous step." % _detail
+            )
+            state = _log(state, "VALIDATE: FILE OVERRIDE ERROR - %s" % error)
+            # Clear the bad overrides so BUILD does not use them on fallback
+            state = {**state, "think_file_overrides": {}, "validation_error": error}
+            return _increment_attempt(state)
 
     # Debug: log file counts for troubleshooting
     state = _log(state, "VALIDATE: Checking against %d available files" % len(available_files))

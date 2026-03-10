@@ -7,6 +7,19 @@ Defines the TypedDict used as state throughout the LangGraph workflow.
 from __future__ import absolute_import, division, print_function
 from typing import TypedDict, List, Dict, Optional
 
+# ---------------------------------------------------------------------------
+# P1B: Typed stop-reason codes for THINK-node classified stops.
+# think_stop_override["code"] must be one of these values.
+# Unrecognised codes are logged and ignored (graceful degradation).
+# ---------------------------------------------------------------------------
+STOP_REASON_CODES = frozenset([
+    "WRONG_MTZ",              # MTZ file has wrong content for this step
+    "WRONG_SPACE_GROUP",      # Space group mismatch prevents solution
+    "MISMATCHED_SEQUENCE",    # Sequence file doesn't match electron density
+    "NO_SOLUTION_FOUND",      # Search exhausted, no plausible solution
+    "REASONLESS_DIVERGENCE",  # R-free diverging with no recoverable cause
+])
+
 
 class AgentState(TypedDict):
     """

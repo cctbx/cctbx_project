@@ -44,7 +44,7 @@ Test Suites (require PHENIX environment):
 
   33. Langchain Tools - Legacy module tests (core, analysis, RAG, validation, prompts, memory)
   34. Hardcoded Cleanup - Conformance guards for YAML-driven architecture (v112.10)
-  35. v112.13 Fixes - Companion files, intermediate filtering, file categorisation
+  35. v112.13        - Companion files, intermediate filtering, file categorisation
   36. Audit Fix Regressions - Categories I/J/E/G/H: max_refine_cycles landing, zombie
       state detection, _is_failed_result false-positives, xtriage resolution regex,
       real_space_refine map_cc extract strategy (v112 systematic audit)
@@ -68,30 +68,22 @@ Test Suites (require PHENIX environment):
   52. Validation History - Validation history roundtrips, scenarios
   53. Display Data Model - DisplayDataModel properties, HTML report generation
   54. Scenario Tracer - Plan selection, gate evaluation, cycle counting, multi-cycle progression
-  55. P1-P5 Fixes - v115 bug fixes: session blocking, autobuild prerequisites, MTZ phase
+  55. v115 P1-P5   - v115 bug fixes: session blocking, autobuild prerequisites, MTZ phase
       detection, cryo-EM phase 1.5 gate, solve-mode file discovery; plus Bug A–F fixes:
       event_formatter string metrics, file discovery supplement mode, predict_and_build
       internal refine PDB exclusion, autosol anomalous deprioritization, CASP7 search
       model misclassification, hopeless R-free MR retry, weak anomalous signal detection
       (v115)
-  56. N-Bug Fixes - additional named bug fixes tracked separately from P1-P5 (v115)
-
-Key Tests for Recent Fixes (v110):
-  - tst_best_files_tracker: Model scoring, autobuild_output same score as refined
-  - tst_workflow_state: Stepwise mode (automation_path), predict_and_build blocking
-  - tst_file_categorization: predict_and_build output file categorization
-  - tst_session_summary: STOP cycle exclusion from counts
-  - tst_history_analysis: Anomalous workflow, analysis/metrics key handling
-  - tst_file_utils: Shared MTZ classification (consolidation fix)
-  - tst_audit_fixes: Systematic audit regressions (v112 Categories I/J/E/G/H)
-  - tst_autosol_bugs: Autosol/autobuild SAD phasing bugs (v112.75–v112.77)
-
-Usage:
-    python tests/run_all_tests.py
-    python tests/run_all_tests.py --verbose
-    python tests/run_all_tests.py --quick  # Skip slow integration tests
-
-Note: Tests requiring PHENIX will be skipped with a warning if libtbx is not available.
+  56. v115 N-Bugs    - N1 event_formatter TypeError, N3 file_categories refined exclude
+  57. v115 Fix 2     - fabricated stop-condition lines stripped before directive extraction
+  58. v115 F1+F3     - abort_message for all stops; max-cycles explicit message
+  59. v115 F2+F4+F7  - API key errors; blocked-program naming; empty command stop
+  60. v115 F5        - workflow_complete stop reason on rules-only success
+  61. v115 F6        - diagnosed_failure stop reason for terminal diagnosis
+  62. v115 Follow-up - abort_message for no_workflow_state and after_program_not_available
+  63. P1B            - STOP_REASON_CODES, think_stop_override, think_file_overrides
+  64. P1B Prompt     - stop_reason table injection, guard, graceful degradation
+  65. P1B Action 1   - validate() think_file_overrides existence check
 """
 
 from __future__ import absolute_import, division, print_function
@@ -505,10 +497,10 @@ def main():
         from tests.tst_v112_13_fixes import run_all_tests as run_v112_13_tests
         success, elapsed = run_test_module(
             "tst_v112_13_fixes", run_v112_13_tests, args.verbose)
-        results.append(("v112.13 Fixes", success, elapsed))
+        results.append(("v112.13: Companion files, intermediate filtering, file categorization", success, elapsed))
     except ImportError as e:
         print(f"⚠️  Could not import tst_v112_13_fixes: {e}")
-        results.append(("v112.13 Fixes", False, 0))
+        results.append(("v112.13: Companion files, intermediate filtering, file categorization", False, 0))
 
     # --- Audit Fix Regression Tests (Categories I, J, E, G, H) ---
     try:
@@ -735,22 +727,114 @@ def main():
 
     # --- P1–P5 Fix Tests (v115) ---
     try:
-        from tests.tst_p1_to_p5_fixes import run_all_tests as run_p1_to_p5_tests
+        from tests.tst_mtz_phases_session_blocking import run_all_tests as run_p1_to_p5_tests
         success, elapsed = run_test_module(
-            "tst_p1_to_p5_fixes", run_p1_to_p5_tests, args.verbose)
-        results.append(("P1-P5 Fixes", success, elapsed))
+            "tst_mtz_phases_session_blocking", run_p1_to_p5_tests, args.verbose)
+        results.append(("MTZ phase detection, session blocking, autobuild prerequisites, cryo-EM gate", success, elapsed))
     except ImportError as e:
-        print(f"⚠️  Could not import tst_p1_to_p5_fixes: {e}")
-        results.append(("P1-P5 Fixes", False, 0))
+        print(f"⚠️  Could not import tst_mtz_phases_session_blocking: {e}")
+        results.append(("MTZ phase detection, session blocking, autobuild prerequisites, cryo-EM gate", False, 0))
 
     try:
-        from tests.tst_n_bugs import run_all_tests as run_n_bugs_tests
+        from tests.tst_event_formatter_file_categories import run_all_tests as run_n_bugs_tests
         success, elapsed = run_test_module(
-            "tst_n_bugs", run_n_bugs_tests, args.verbose)
-        results.append(("N-Bug Fixes", success, elapsed))
+            "tst_event_formatter_file_categories", run_n_bugs_tests, args.verbose)
+        results.append(("N-bug fixes: event_formatter TypeError; file_categories refined exclude", success, elapsed))
     except ImportError as e:
-        print(f"\u26a0\ufe0f  Could not import tst_n_bugs: {e}")
-        results.append(("N-Bug Fixes", False, 0))
+        print(f"\u26a0\ufe0f  Could not import tst_event_formatter_file_categories: {e}")
+        results.append(("N-bug fixes: event_formatter TypeError; file_categories refined exclude", False, 0))
+
+    # --- v115 Fix 2: Fabricated stop-condition stripping ---
+    try:
+        from tests.tst_fabricated_stop_condition import run_all_tests as run_stop_condition_tests
+        success, elapsed = run_test_module(
+            "tst_fabricated_stop_condition", run_stop_condition_tests, args.verbose)
+        results.append(("Fabricated Stop Condition lines stripped before directive extraction", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_fabricated_stop_condition: {e}")
+        results.append(("Fabricated Stop Condition lines stripped before directive extraction", False, 0))
+
+
+    # --- v115 F1+F3: abort_message for all stops; max-cycles message ---
+    try:
+        from tests.tst_abort_message_all_stops import run_all_tests as run_f1_f3_tests
+        success, elapsed = run_test_module(
+            "tst_abort_message_all_stops", run_f1_f3_tests, args.verbose)
+        results.append(("abort_message surfaced for all stop reasons; max-cycles message explicit", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_abort_message_all_stops: {e}")
+        results.append(("abort_message surfaced for all stop reasons; max-cycles message explicit", False, 0))
+
+    # --- v115 F2+F4+F7: API key errors; blocked-program naming; empty command ---
+    try:
+        from tests.tst_stop_feedback_api_plan_command import run_all_tests as run_f2_f4_f7_tests
+        success, elapsed = run_test_module(
+            "tst_stop_feedback_api_plan_command", run_f2_f4_f7_tests, args.verbose)
+        results.append(("Stop feedback: API key errors, blocked-program naming, empty command", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_stop_feedback_api_plan_command: {e}")
+        results.append(("Stop feedback: API key errors, blocked-program naming, empty command", False, 0))
+
+    # --- v115 F5: workflow_complete stop on rules-only success ---
+    try:
+        from tests.tst_workflow_complete_stop import run_all_tests as run_f5_tests
+        success, elapsed = run_test_module(
+            "tst_workflow_complete_stop", run_f5_tests, args.verbose)
+        results.append(("workflow_complete stop reason on rules-only success", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_workflow_complete_stop: {e}")
+        results.append(("workflow_complete stop reason on rules-only success", False, 0))
+
+    # --- v115 F6: diagnosed_failure stop for terminal diagnosis ---
+    try:
+        from tests.tst_diagnosed_failure_stop import run_all_tests as run_f6_tests
+        success, elapsed = run_test_module(
+            "tst_diagnosed_failure_stop", run_f6_tests, args.verbose)
+        results.append(("diagnosed_failure stop reason for terminal diagnosis", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_diagnosed_failure_stop: {e}")
+        results.append(("diagnosed_failure stop reason for terminal diagnosis", False, 0))
+
+    # --- v115 Follow-up: abort_message for no_workflow_state and after_program_not_available ---
+    try:
+        from tests.tst_silent_stop_abort_messages import run_all_tests as run_followup_abort_tests
+        success, elapsed = run_test_module(
+            "tst_silent_stop_abort_messages", run_followup_abort_tests, args.verbose)
+        results.append(("abort_message populated for previously-silent stops", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_silent_stop_abort_messages: {e}")
+        results.append(("abort_message populated for previously-silent stops", False, 0))
+
+    # --- P1B: STOP_REASON_CODES, think_stop_override, think_file_overrides ---
+    try:
+        from tests.tst_stop_reason_codes import run_all_tests as run_p1b_tests
+        success, elapsed = run_test_module(
+            "tst_stop_reason_codes", run_p1b_tests, args.verbose)
+        results.append(("STOP_REASON_CODES: parse_assessment validation, think_stop_override, think_file_overrides", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_stop_reason_codes: {e}")
+        results.append(("STOP_REASON_CODES: parse_assessment validation, think_stop_override, think_file_overrides", False, 0))
+
+    # --- P1B Prompt: stop_reason table injection and guard ---
+    try:
+        from tests.tst_stop_reason_prompt import run_all_tests as run_p1b_prompt_tests
+        success, elapsed = run_test_module(
+            "tst_stop_reason_prompt", run_p1b_prompt_tests, args.verbose)
+        results.append(("Stop-reason table injection into system prompt; non-stop guard", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_stop_reason_prompt: {e}")
+        results.append(("Stop-reason table injection into system prompt; non-stop guard", False, 0))
+
+    # --- P1B Action Item 1: validate() file override existence check ---
+    try:
+        from tests.tst_validate_file_overrides import run_all_tests as run_action_item_1_tests
+        success, elapsed = run_test_module(
+            "tst_validate_file_overrides", run_action_item_1_tests, args.verbose)
+        results.append(("validate() rejects think_file_overrides paths not in available_files", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_validate_file_overrides: {e}")
+        results.append(("validate() rejects think_file_overrides paths not in available_files", False, 0))
+
 
     # --- Summary ---
     total_elapsed = time.time() - total_start
