@@ -141,6 +141,9 @@ class WorkflowEngine:
             "autobuild_done": history_info.get("autobuild_done", False),
             "autosol_done": history_info.get("autosol_done", False),
             "autosol_success": history_info.get("autosol_success", False),
+            # autosol_attempted: True whenever autosol has been tried (success or
+            # failure).  Guards step 2d from looping when autosol fails post-phaser.
+            "autosol_attempted": history_info.get("autosol_attempted", False),
             "refine_done": history_info.get("refine_done", False),
             "rsr_done": history_info.get("rsr_done", False),
             "validation_done": history_info.get("validation_done", False),
@@ -979,9 +982,12 @@ class WorkflowEngine:
         # When phaser has run AND we have anomalous signal, autosol should run
         # using the phaser output as a partial model (partpdb_file) for MR-SAD.
         # Also triggered if user explicitly requested MR-SAD workflow.
+        # Guard: if autosol was already attempted (even if it failed, e.g.
+        # "Unable to find anomalous amplitude arrays"), do NOT loop back here.
         if (context.get("phaser_done") and
             (context.get("has_anomalous") or context.get("use_mr_sad")) and
-            not context.get("autosol_done")):
+            not context.get("autosol_done") and
+            not context.get("autosol_attempted")):
             return self._make_step_result(steps, "experimental_phasing",
                 "Model placed by phaser, anomalous data detected - MR-SAD with autosol")
 
@@ -1429,6 +1435,20 @@ class WorkflowEngine:
                 not context.get("has_ligand_fit") and
                 "phenix.ligandfit" not in valid):
             valid.append("phenix.ligandfit")
+
+        # Fix 3 (v116): Guard against spurious ligandfit in the absence of a
+        # ligand file and without explicit user request.  After a successful
+        # autobuild the YAML refine-step conditions may allow ligandfit in the
+        # valid list (e.g. has_refined_model=True satisfies some conditions),
+        # but there is no actual ligand to fit.  When the duplicate-detection
+        # fallback exhausts autobuild_denmod it then picks ligandfit as "next
+        # available program", fitting amino acids as fake ligands and wrecking
+        # the R-free.  Remove ligandfit here unless the user explicitly asked
+        # for it OR a ligand file is actually present in the session files.
+        if ("phenix.ligandfit" in valid and
+                not context.get("user_wants_ligandfit") and
+                not context.get("has_ligand_file")):
+            valid.remove("phenix.ligandfit")
 
         # === APPLY USER DIRECTIVES ===
         # This is the SINGLE PLACE where directives affect valid_programs

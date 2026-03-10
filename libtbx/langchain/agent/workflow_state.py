@@ -1612,6 +1612,10 @@ def _analyze_history(history):
         # Placement probe results (Tier 3)
         "placement_probed": False,
         "placement_probe_result": None,
+
+        # autosol attempted (set regardless of success — prevents MR-SAD loop
+        # when autosol fails after phaser, e.g. no anomalous arrays in MTZ)
+        "autosol_attempted": False,
     }
 
     # Initialize done flags and count fields from YAML (single source of truth)
@@ -1706,6 +1710,13 @@ def _analyze_history(history):
 
         info["programs_run"].add(prog)
         info["last_program"] = prog
+
+        # autosol_attempted: set True whenever autosol has been tried,
+        # regardless of whether it succeeded.  This prevents the MR-SAD
+        # routing loop (step 2d) from re-offering autosol after a failure
+        # such as "Unable to find anomalous amplitude arrays".
+        if "autosol" in prog.lower():
+            info["autosol_attempted"] = True
 
         # =====================================================================
         # Program done flags — YAML-driven detection for all strategies
