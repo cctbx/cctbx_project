@@ -6,7 +6,7 @@ except ImportError:
   from libtbx.program_template import ProgramTemplate
 import libtbx.load_env
 #import time
-import cctbx.geometry_restraints.nonbonded_overlaps as nbo
+#import cctbx.geometry_restraints.nonbonded_overlaps as nbo
 import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
 from elbow.command_line.ready_set import model_interface as ready_set_model_interface
 
@@ -109,15 +109,15 @@ Example:
       string = 'protein or dna or rna')
 
     #t0 = time.time()
-    nb_overlaps = nbo.info(
-      model = readyset_model,
-      macro_molecule_selection=macro_mol_sel)
+#    nb_overlaps = nbo.info(
+#      model = readyset_model,
+#      macro_molecule_selection=macro_mol_sel)
     #t1 = time.time()
 
-    nb_overlaps.show(
-      log=self.logger,
-      nbo_type='all',
-      normalized_nbo=True)
+#    nb_overlaps.show(
+#3      log=self.logger,
+#      nbo_type='all',
+#      normalized_nbo=True)
 
     #t2 = time.time()
     processed_nbps = pnp.manager(model = readyset_model)

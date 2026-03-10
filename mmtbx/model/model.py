@@ -47,7 +47,6 @@ from mmtbx.geometry_restraints.torsion_restraints.torsion_ncs import torsion_ncs
 from mmtbx.refinement import print_statistics
 from mmtbx.refinement import anomalous_scatterer_groups
 from mmtbx.refinement import geometry_minimization
-import cctbx.geometry_restraints.nonbonded_overlaps as nbo
 import collections
 
 from mmtbx.rotamer import nqh
@@ -3683,13 +3682,13 @@ class manager(object):
     result = self._xray_structure.select(~sel)
     return result
 
-  def non_bonded_overlaps(self):
-    assert self.has_hd()
-    return nbo.info(
-      geometry_restraints_manager = self.get_restraints_manager().geometry,
-      macro_molecule_selection    = self.selection("protein or nucleotide"),
-      sites_cart                  = self.get_sites_cart(),
-      hd_sel                      = self.selection("element H or element D"))
+#  def non_bonded_overlaps(self):
+#    assert self.has_hd()
+#    return nbo.info(
+#      geometry_restraints_manager = self.get_restraints_manager().geometry,
+#      macro_molecule_selection    = self.selection("protein or nucleotide"),
+#      sites_cart                  = self.get_sites_cart(),
+#      hd_sel                      = self.selection("element H or element D"))
 
   def percent_of_single_atom_residues(self, macro_molecule_only=True):
     # XXX Should be a method of pdb.hierarchy
