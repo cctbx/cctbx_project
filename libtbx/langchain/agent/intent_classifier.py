@@ -212,9 +212,18 @@ _PIPELINE_INDICATORS = [
     r"\bsubsequently\b",
     # Note: r"\bnext[,\s]" excluded -- fires on "the next step
     # is xtriage" (next as prefix, not sequencing connector).
-    # "then <action-verb>" — covers "then build", "then refine",
+    # "then <action-verb>\" — covers \"then build\", \"then refine\",
     # "then run", "then dock", etc. without matching "then stop".
     r"\bthen\s+(?:build|refine|dock|fit|run|do|apply|use)\b",
+    # Fix 2 (v116): "and build/autobuild/refine" — OpenAI frequently writes
+    # "Run AutoSol ... and build an initial model" which fires the autosol
+    # task trigger but is clearly a multi-step workflow.  Without this,
+    # intent=task stops the agent after autosol, skipping autobuild/refinement.
+    r"\band\s+(?:build|autobuild|refine|model)\b",
+    r"\bwith\s+autobuild\b",
+    # "model building" in the advice always implies a full pipeline
+    # (e.g. "perform substructure determination, phasing, and initial model building")
+    r"\bmodel\s+building\b",
 ]
 
 def classify_intent(user_advice):

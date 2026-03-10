@@ -2524,18 +2524,6 @@ def extract_directives_simple(user_advice):
 
     # Strip internal flags before returning
     sc = directives.get("stop_conditions", {})
-
-    # Fix 2 (v116): Strip LLM-fabricated after_program=phenix.autosol.
-    # Tutorial-pattern-set cases carry _set_by_pattern=True and should be kept
-    # (e.g. 1029B-sad, AF_exoV_MRSAD in readme mode).  LLM-extracted cases
-    # never have this flag — OpenAI misreads "run autosol" goal descriptions
-    # and sets after_program=autosol + skip_validation=True.  Strip those here,
-    # before _set_by_pattern is popped below.
-    if sc.get("after_program") == "phenix.autosol" and not sc.get("_set_by_pattern"):
-        sc.pop("after_program")
-        sc.pop("skip_validation", None)
-
-    # Now pop the internal flag
     sc.pop("_set_by_pattern", None)
 
     if "stop_conditions" in directives and not sc:
