@@ -277,7 +277,7 @@ jobs:
           python .\modules\cctbx_project\libtbx\auto_build\bootstrap.py base build --nproc=4
           if %errorlevel% neq 0 exit /b %errorlevel%
           call .\build\setpaths.bat
-          libtbx.configure ^
+          call libtbx.configure ^
             cma_es ^
             fable ^
             rstbx ^
@@ -285,9 +285,9 @@ jobs:
             cbflib_adaptbx
           if %errorlevel% neq 0 exit /b %errorlevel%
           cd build
-          libtbx.scons -j 4
+          call libtbx.scons -j 4
           if %errorlevel% neq 0 exit /b %errorlevel%
-          libtbx.scons -j 4
+          call libtbx.scons -j 4
           if %errorlevel% neq 0 exit /b %errorlevel%
 
       - name: Run tests
