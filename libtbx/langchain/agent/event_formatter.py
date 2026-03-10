@@ -252,19 +252,27 @@ class EventFormatter:
                 prev = event.get(prev_key)
 
                 if prev is not None:
-                    diff = value - prev
-                    # For R-factors, clashscore, outliers: lower is better
-                    if key in ("r_free", "r_work", "clashscore", "ramachandran_outliers", "rotamer_outliers"):
-                        direction = "improved" if diff < 0 else "worsened"
-                    else:
-                        direction = "improved" if diff > 0 else "worsened"
+                    try:
+                        diff = value - prev
+                        # For R-factors, clashscore, outliers: lower is better
+                        if key in ("r_free", "r_work", "clashscore", "ramachandran_outliers", "rotamer_outliers"):
+                            direction = "improved" if diff < 0 else "worsened"
+                        else:
+                            direction = "improved" if diff > 0 else "worsened"
 
-                    # Format with change
-                    val_str = fmt % value
-                    prev_str = (fmt % prev).split()[0]  # Remove units for prev
-                    lines.append("  %s: %s -> %s (%s by %.4f)" % (label, prev_str, val_str, direction, abs(diff)))
+                        # Format with change
+                        val_str = fmt % value
+                        prev_str = (fmt % prev).split()[0]  # Remove units for prev
+                        lines.append("  %s: %s -> %s (%s by %.4f)" % (label, prev_str, val_str, direction, abs(diff)))
+                    except (TypeError, ValueError):
+                        # Guard: metric value may be a string (e.g. twin_law, space_group)
+                        lines.append("  %s: %s" % (label, str(value)))
                 else:
-                    lines.append("  %s: %s" % (label, fmt % value))
+                    try:
+                        lines.append("  %s: %s" % (label, fmt % value))
+                    except (TypeError, ValueError):
+                        # Guard: metric value may be a string (e.g. twin_law, space_group)
+                        lines.append("  %s: %s" % (label, str(value)))
 
         return "\n".join(lines) if has_metrics else None
 

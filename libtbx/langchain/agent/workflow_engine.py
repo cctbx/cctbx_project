@@ -640,16 +640,30 @@ class WorkflowEngine:
                 return True
 
             # Infer from constraints: if user's goal implies a placed model
-            # (e.g., "refine the model", "fit a ligand"), trust that inference
+            # (e.g., "refine the model", "fit a ligand"), trust that inference.
+            # GUARD (Bug E fix): if the constraints ALSO mention MR/phaser as a
+            # required step, the refinement references are future goals not
+            # current state — e.g. "do MR then refine".  In that case, do NOT
+            # infer placement from refinement keywords alone.
             constraints = directives.get("constraints", [])
-            placement_keywords = [
-                "refine", "refinement", "ligandfit", "fit ligand",
-                "fit a ligand", "polder", "validate", "molprobity",
+            _mr_keywords = [
+                "molecular replacement", "phaser", " mr ", "autobuild",
+                "place the model", "molecular_replacement",
             ]
-            for c in constraints:
-                c_lower = c.lower() if isinstance(c, str) else ""
-                if any(kw in c_lower for kw in placement_keywords):
-                    return True
+            _wants_mr_first = any(
+                any(kw in (c.lower() if isinstance(c, str) else "")
+                    for kw in _mr_keywords)
+                for c in constraints
+            )
+            if not _wants_mr_first:
+                placement_keywords = [
+                    "refine", "refinement", "ligandfit", "fit ligand",
+                    "fit a ligand", "polder", "validate", "molprobity",
+                ]
+                for c in constraints:
+                    c_lower = c.lower() if isinstance(c, str) else ""
+                    if any(kw in c_lower for kw in placement_keywords):
+                        return True
 
         # ---- 0b. User wants ligand fitting → model must be placed ----
         if user_wants_ligandfit and files.get("model"):
@@ -1011,6 +1025,25 @@ class WorkflowEngine:
         if not context.get("has_placed_model"):
             return self._make_step_result(steps, "obtain_model",
                 "Data analyzed, need to obtain model")
+
+        # Step 2e (Bug F fix): Refinement ran but R-free is very high — the MR
+        # solution is likely wrong.  Route back to obtain_model so the agent can
+        # retry phaser with a different search model rather than being stuck in
+        # xray_refined with only STOP available.
+        # Conditions: refine has run at least once, r_free >= 0.45 (clearly bad),
+        # and we have a search model or multiple input models to try.
+        # We only apply this when phaser has already run (otherwise the normal
+        # path handles it), because a high R-free from a first-pass refine on a
+        # phaser solution that scored TFZ < 5 is a strong signal of MR failure.
+        _r_free_now = context.get("r_free")
+        if (_r_free_now is not None and
+                _r_free_now >= 0.45 and
+                context.get("refine_count", 0) >= 1 and
+                context.get("phaser_done") and
+                context.get("has_model_for_mr")):
+            return self._make_step_result(steps, "obtain_model",
+                "Refinement R-free=%.3f after MR — solution likely wrong; "
+                "retry with different search model" % _r_free_now)
 
         # Step 3b: Ligand fitted, need to combine
         if context.get("has_ligand_fit") and not context.get("pdbtools_done"):
@@ -1714,6 +1747,27 @@ class WorkflowEngine:
                 result.insert(0, "phenix.phaser")
                 modifications.append("Prioritized phenix.phaser (use_molecular_replacement)")
 
+        # Bug D fix: deprioritize autosol when anomalous signal is negligible
+        # and predict_and_build is also available.  When anomalous_measurability
+        # < 0.05 the signal is too weak for reliable experimental phasing, so the
+        # LLM should strongly prefer predict_and_build.  We do not remove autosol
+        # entirely (it remains as a fallback) but move it to the end of the list.
+        # Exemptions: explicit use_mr_sad / use_experimental_phasing overrides.
+        if (not workflow_prefs.get("use_mr_sad") and
+                not workflow_prefs.get("use_experimental_phasing") and
+                "phenix.autosol" in result and
+                "phenix.predict_and_build" in result and
+                not context.get("autosol_done") and
+                not context.get("phaser_done")):
+            anomalous_meas = context.get("anomalous_measurability") or 0
+            if anomalous_meas < 0.05:
+                result.remove("phenix.autosol")
+                result.append("phenix.autosol")
+                modifications.append(
+                    "Deprioritized phenix.autosol "
+                    "(anomalous_measurability=%.3f < 0.05, "
+                    "prefer predict_and_build)" % anomalous_meas)
+
         # Handle start_with_program - add to valid programs if user explicitly requested it
         # This is for multi-step requests like "run polder then refine"
         stop_cond = directives.get("stop_conditions", {})
@@ -1920,6 +1974,18 @@ class WorkflowEngine:
             )
             if needs_phaser_first and not context.get("phaser_done"):
                 return False
+            # PredictAndBuild guard: if a sequence file and a model are both present
+            # and predict_and_build has not yet completed, the appropriate workflow is
+            # predict_and_build (MR with an AF-predicted model), NOT autosol (SAD/MAD
+            # experimental phasing).  Block autosol unless the user has explicitly
+            # requested MR-SAD (use_mr_sad) — in that case phaser must run first
+            # anyway (caught above), so this branch is only reached in the pure
+            # experimental-phasing case where both signals appear together.
+            if (context.get("has_sequence") and
+                    context.get("has_model_for_mr") and
+                    not context.get("predict_full_done") and
+                    not context.get("use_mr_sad")):
+                return False
         return True
 
     # All condition keywords recognized by _check_conditions.
@@ -2104,6 +2170,17 @@ class WorkflowEngine:
                   (context.get("has_anomalous") or context.get("use_mr_sad")) and
                   not context.get("phaser_done")):
                 reasons.append("MR-SAD: phaser must place model before autosol runs")
+            elif (context.get("has_sequence") and
+                  context.get("has_model_for_mr") and
+                  not context.get("predict_full_done") and
+                  not context.get("use_mr_sad")):
+                reasons.append(
+                    "predict_and_build workflow detected: a sequence file and model "
+                    "are present and predict_and_build has not yet run. Use "
+                    "phenix.predict_and_build (MR with predicted model) instead of "
+                    "phenix.autosol (SAD/MAD experimental phasing). To override, set "
+                    "use_mr_sad=true in workflow_preferences."
+                )
 
         # P3 fix: autobuild requires phasing to be done in X-ray mode.
         # Without a phased MTZ (PHIB/FOM columns), autobuild will crash

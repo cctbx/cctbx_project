@@ -68,6 +68,13 @@ Test Suites (require PHENIX environment):
   52. Validation History - Validation history roundtrips, scenarios
   53. Display Data Model - DisplayDataModel properties, HTML report generation
   54. Scenario Tracer - Plan selection, gate evaluation, cycle counting, multi-cycle progression
+  55. P1-P5 Fixes - v115 bug fixes: session blocking, autobuild prerequisites, MTZ phase
+      detection, cryo-EM phase 1.5 gate, solve-mode file discovery; plus Bug A–F fixes:
+      event_formatter string metrics, file discovery supplement mode, predict_and_build
+      internal refine PDB exclusion, autosol anomalous deprioritization, CASP7 search
+      model misclassification, hopeless R-free MR retry, weak anomalous signal detection
+      (v115)
+  56. N-Bug Fixes - additional named bug fixes tracked separately from P1-P5 (v115)
 
 Key Tests for Recent Fixes (v110):
   - tst_best_files_tracker: Model scoring, autobuild_output same score as refined
@@ -725,6 +732,25 @@ def main():
     except ImportError as e:
         print(f"⚠️  Could not import tst_scenario_tracer: {e}")
         results.append(("Scenario Tracer", False, 0))
+
+    # --- P1–P5 Fix Tests (v115) ---
+    try:
+        from tests.tst_p1_to_p5_fixes import run_all_tests as run_p1_to_p5_tests
+        success, elapsed = run_test_module(
+            "tst_p1_to_p5_fixes", run_p1_to_p5_tests, args.verbose)
+        results.append(("P1-P5 Fixes", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_p1_to_p5_fixes: {e}")
+        results.append(("P1-P5 Fixes", False, 0))
+
+    try:
+        from tests.tst_n_bugs import run_all_tests as run_n_bugs_tests
+        success, elapsed = run_test_module(
+            "tst_n_bugs", run_n_bugs_tests, args.verbose)
+        results.append(("N-Bug Fixes", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_n_bugs: {e}")
+        results.append(("N-Bug Fixes", False, 0))
 
     # --- Summary ---
     total_elapsed = time.time() - total_start

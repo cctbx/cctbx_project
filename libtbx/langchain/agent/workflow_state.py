@@ -1656,16 +1656,39 @@ def _analyze_history(history):
                     info["resolution"] = analysis["resolution"]
                 if analysis.get("anomalous_resolution"):
                     info["anomalous_resolution"] = analysis["anomalous_resolution"]
-                    info["has_anomalous"] = True
-                elif analysis.get("has_anomalous"):
+                    # anomalous_resolution is the estimated d-spacing limit of
+                    # useful anomalous signal from xtriage.  A value > 6 Å means
+                    # signal is only present at very low angles (essentially noise
+                    # from Friedel pair differences) and is NOT useful for phasing.
+                    # Example: anomalous_resolution=9.8 with measurability=0.032
+                    # is negligible and must NOT gate autosol availability.
+                    if analysis["anomalous_resolution"] < 6.0:
+                        info["has_anomalous"] = True
+                # has_anomalous from xtriage is checked independently — not as elif —
+                # so it is not silently skipped when anomalous_resolution is also present
+                # but >= 6.0 (e.g. analysis has both anomalous_resolution=9.8 and
+                # has_anomalous=True from a different xtriage signal criterion).
+                if analysis.get("has_anomalous") and not info["has_anomalous"]:
                     info["has_anomalous"] = analysis["has_anomalous"]
                 # Store anomalous measurability for decision making
-                if analysis.get("anomalous_measurability"):
+                if analysis.get("anomalous_measurability") is not None:
                     info["anomalous_measurability"] = analysis["anomalous_measurability"]
                     # Strong anomalous signal if measurability > 0.10
                     if analysis["anomalous_measurability"] > 0.10:
                         info["has_anomalous"] = True
                         info["strong_anomalous"] = True
+                    elif analysis["anomalous_measurability"] >= 0.06:
+                        # Weak but meaningful anomalous signal [0.06, 0.10]:
+                        # has_anomalous=True so autosol remains available, but
+                        # strong_anomalous stays False (phasing may be marginal).
+                        info["has_anomalous"] = True
+                    else:
+                        # anomalous_measurability < 0.06: negligible signal.
+                        # Clear has_anomalous unless xtriage explicitly flagged it True
+                        # (e.g. has_anomalous=True with measurability=0.05 means xtriage
+                        # detected signal by a criterion other than measurability alone).
+                        if not info.get("strong_anomalous") and not analysis.get("has_anomalous"):
+                            info["has_anomalous"] = False
                 # Twinning threshold (0.20) from workflows.yaml shared section
                 if analysis.get("twin_law") and analysis.get("twin_fraction"):
                     twin_frac = analysis["twin_fraction"]
@@ -1694,14 +1717,20 @@ def _analyze_history(history):
         _set_done_flags(info, combined, result)
 
         # The ONE remaining Python-only case: predict_and_build cascade.
-        # When predict runs fully, it also sets refine_done + refine_count.
+        # When predict runs fully, it also sets predict_full_done.
+        # NOTE: we deliberately do NOT set refine_done=True here.
+        # predict_and_build does internal refinement as part of its own
+        # pipeline, but the agent should still be free to run a standalone
+        # phenix.refine pass on the final output model.  Setting refine_done
+        # here caused LOOP WARNING (refine_done=True yet refine in valid_programs)
+        # and caused the file selector to pick predict_and_build's internal
+        # intermediate refined PDB as the model, triggering "Wrong number of
+        # models of each type supplied" from phenix.refine (Bug C fix).
         if "predict_and_build" in combined:
             if not _is_failed_result(result):
                 info["predict_done"] = True
                 if "stop_after_predict=true" not in combined and "stop_after_predict=True" not in combined:
                     info["predict_full_done"] = True
-                    info["refine_done"] = True
-                    info["refine_count"] += 1
 
         # Track whether refinement is needed after ligandfit.
         # After ligandfit adds a ligand, the complex always needs re-refinement.
@@ -2212,6 +2241,24 @@ def validate_program_choice(chosen_program, workflow_state):
                         context.get("autosol_done", False),
                     )
                     return False, error
+        # P6 fix: predict_and_build guard for autosol.
+        # If a sequence file + model are present and predict_and_build has not
+        # yet run, the correct workflow is predict_and_build (MR with a predicted
+        # model), not autosol (SAD/MAD experimental phasing).  Block autosol
+        # unless the user explicitly requested MR-SAD via use_mr_sad.
+        if chosen_program == "phenix.autosol":
+            context = workflow_state.get("context", {})
+            if (context.get("has_sequence") and
+                    context.get("has_model_for_mr") and
+                    not context.get("predict_full_done") and
+                    not context.get("use_mr_sad")):
+                return False, (
+                    "predict_and_build workflow detected: a sequence file and "
+                    "model are present and predict_and_build has not yet run. "
+                    "Use phenix.predict_and_build (MR with predicted model) "
+                    "instead of phenix.autosol (SAD/MAD experimental phasing). "
+                    "To override, set use_mr_sad=true in workflow_preferences."
+                )
         return True, None
 
     try:
