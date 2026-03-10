@@ -250,7 +250,7 @@ Extracts and enforces user instructions:
 - `intent_classifier.py`: Classifies advice into solve/solve_constrained/task/tutorial (v115)
 - `directive_validator.py`: Validates LLM decisions against directives
 - Integrated into graph nodes for consistent enforcement
-- See [USER_GUIDE.md §11](USER_GUIDE.md#11-directives-reference) for details
+- See [USER_DIRECTIVES.md](../guides/USER_DIRECTIVES.md) for details
 
 #### BestFilesTracker (best_files_tracker.py)
 Tracks highest-quality files:
@@ -321,7 +321,7 @@ Extracts metrics and output files from program log output:
 - `phenix.real_space_refine` `map_cc`: uses `extract: last`. RSR emits one CC_mask line per macro-cycle; `last` gives the final value.
 
 **Adding new program support:**
-See [DEVELOPER_GUIDE.md §4](DEVELOPER_GUIDE.md#4-adding-a-new-program) for the complete guide.
+See [ADDING_PROGRAMS.md](../guides/ADDING_PROGRAMS.md) for the complete guide.
 
 ### Centralized Configuration Modules
 
@@ -368,10 +368,6 @@ done_tracking:           get_program_done_flag_map()  ← ALL programs
 
 **`_is_program_already_done` scope (v112.75):** `_apply_directives` in
 `workflow_engine.py` calls `_is_program_already_done()` before re-adding programs
-
-> **Editing workflow logic?** See DEVELOPER_GUIDE §4 (Adding a Program)
-> §Step 2 for `workflows.yaml` schema and §13 for configuration details.
-
 from `program_settings` directives.  This function now checks two conditions:
 (1) `run_once` programs whose done flag is set (original), and (2) any non-count
 program with a program-specific done flag (e.g., `autosol_done` contains `autosol`).
@@ -459,7 +455,7 @@ The decision flow follows a clean, layered architecture where each component has
 │  - Get programs from workflow phase definition                   │
 │  - Add directive-required programs (after_program target)        │
 │  - Add start_with_program to front of list (multi-step flows)   │
-│  - Add STOP if skip_validation=true (permissive hint only)      │
+│  - Add STOP if skip_validation=true                             │
 │  - Apply workflow preferences (skip/prefer)                      │
 └─────────────────────────────────────────────────────────────────┘
                               │
@@ -531,13 +527,6 @@ The decision flow follows a clean, layered architecture where each component has
 │  - Check if metric targets met — r_free, map_cc (hard stop)    │
 │  - This is the ONLY place hard stop conditions are evaluated    │
 │                                                                  │
-│  NOTE (v115.03): Two-layer stop architecture:                    │
-│   Layer 1 — _check_stop_conditions (hard stop detection):        │
-│     after_program, after_cycle, max_refine_cycles, metrics       │
-│   Layer 2 — _apply_directives (valid-program-list shaping):      │
-│     skip_validation (adds STOP as option), after_program inject, │
-│     max_refine_cycles controlled landing                          │
-│   skip_validation belongs ONLY in Layer 2.                       │
 │  NOTE (v112.78): after_program is intentionally NOT a hard      │
 │  stop here.  It is a minimum-run guarantee: PLAN suppresses     │
 │  auto-stop until the target program has run, but the LLM        │
@@ -557,10 +546,6 @@ The decision flow follows a clean, layered architecture where each component has
 #### Knowledge Layer
 
 **YAML Programs** (`knowledge/programs.yaml`):
-
-> **Editing `programs.yaml`?** See DEVELOPER_GUIDE §4 (Adding a Program) for the
-> step-by-step walkthrough and §13 for the full schema reference.
-
 - Program definitions with input/output specifications
 - `strategy_flags` — valid PHIL parameters per program (used by phil_validator)
 - `input_priorities` — file category preferences per input slot
@@ -1188,7 +1173,10 @@ xray_initial → xtriage → xray_analyzed
        [if ligand] ligandfit → pdbtools → refine
 ```
 
-† Prioritized when strong anomalous signal detected (measurability > 0.10)
+† Anomalous signal classification (from `_analyze_history` in `workflow_state.py`):
+  - `strong_anomalous=True`: measurability > 0.10 or `anomalous_resolution` < 6.0 Å → autosol prioritized
+  - `has_anomalous=True` (weak): measurability ≥ 0.06, or xtriage `has_anomalous=True` explicitly → autosol available
+  - negligible: measurability < 0.06 and xtriage did not assert `has_anomalous` → `has_anomalous=False`, autosol unavailable
 ‡ MR-SAD: phaser places model first, then autosol uses it as partpdb_file
 
 | State | Description | Valid Programs |
@@ -1199,7 +1187,7 @@ xray_initial → xtriage → xray_analyzed
 | `xray_mr_sad` | After phaser + anomalous data (MR-SAD) | autosol (with partpdb_file) |
 | `xray_has_phases` | After experimental phasing | autobuild |
 | `xray_has_model` | Have placed model | refine |
-| `xray_refined` | After refinement **or** validation (`refine` and `validate` phases share this external state; internal `phase_info["phase"]` distinguishes them) | refine, molprobity, autobuild, STOP |
+| `xray_refined` | After refinement **or** validation (`refine` and `validate` phases share this external state; internal `phase_info["phase"]` distinguishes them). If R-free ≥ 0.45 after MR + ≥1 refinement cycle, routes back to `obtain_model` (retry with different search model) rather than stopping. | refine, molprobity, autobuild, STOP |
 
 ### Cryo-EM Workflow
 
@@ -1259,6 +1247,14 @@ compares them with a 5% fractional tolerance.
 Checks history flags (`refine_done`, `dock_done`), file subcategory (`positioned`),
 and user directives.  When any of these give a clear signal the framework is done.
 When the result is still ambiguous, Tier 3 runs.
+
+**MR-keyword guard:** Before inferring placement from constraint keywords (e.g.
+"refinement"), `_has_placed_model` first scans constraints for MR intent keywords
+(`"molecular replacement"`, `"phaser"`, `" mr "`, `"autobuild"`, `"place the model"`,
+`"molecular_replacement"`).  If any are found, the placement-keyword inference is
+skipped — those refinement references are future goals, not evidence of current
+placement.  This prevents search-model PDB files from being misidentified as placed
+models when the README describes an MR workflow.
 
 The `build_context()` method in `WorkflowEngine` computes a `placement_uncertain`
 flag that is `True` exactly when all of the following hold:
@@ -1549,6 +1545,18 @@ perceive node after history injection.
 
 These are internal working files from programs like ligandfit that should never
 be used as inputs to other programs.
+
+**`predict_build_refine_internal` category (v115.03):** `predict_and_build`
+performs its own internal refinement passes and writes intermediate PDB files
+named `overall_best_final_refine_NNN.pdb` and `overall_best_refine_NNN.pdb`.
+These are multi-model PDB files (one MODEL record per refinement macro-cycle)
+that cannot be passed directly to `phenix.refine` or used as the session model.
+The `predict_build_refine_internal` category (`parent_category: intermediate`)
+captures these files via glob patterns `*overall_best*final_refine*.pdb` and
+`*overall_best*refine_[0-9][0-9][0-9]*.pdb`, ensuring they are never selected
+as a model input.  The correct post-predict_and_build output
+(`PredictAndBuild_0_overall_best.pdb`) is captured by the existing
+`predict_and_build_output` category.
 
 ### Best Files Exclusion Check
 
@@ -1843,7 +1851,7 @@ When writing a fix, ask: *does this code run before or after
 
 ### Adding a New Program
 
-See [DEVELOPER_GUIDE.md §4](DEVELOPER_GUIDE.md#4-adding-a-new-program) for the complete guide. In summary:
+See [ADDING_PROGRAMS.md](../guides/ADDING_PROGRAMS.md) for the complete guide. In summary:
 
 1. Add program definition to `knowledge/programs.yaml` (inputs, outputs, log_parsing)
 2. Add to appropriate workflow phase in `knowledge/workflows.yaml`
@@ -2502,25 +2510,6 @@ Activated by `thinking_level=expert`. The `expert` value maps to
 The planning layer — plan generation, gate evaluation, hypothesis
 testing, reports — is gated in `ai_agent.py` around the cycle loop.
 
-
-> **The Directive Handshake — why the planner is governed**
->
-> The Strategic Planner does not have a private instruction channel to the
-> execution engine. When the planner wants to influence a cycle it calls
-> `extract_directives()` on its own output — the same function the user's
-> text passes through. This means:
->
-> - Every planner instruction is subject to exactly the same validation as a
->   human directive.
-> - The planner cannot issue a stop condition, program preference, or
->   workflow constraint that a user could not express.
-> - Disabling the planner requires no code changes — the execution engine
->   simply receives no directives and falls back to default workflow logic.
->
-> This is an intentional architectural constraint, not a coincidence.
-> Any future change that requires bypassing directive validation must be
-> explicitly justified and reviewed.
-
 ### Execution Model
 
 ```
@@ -2600,10 +2589,7 @@ Key operations:
 - `compute_hash()` → strategy fingerprint (change triggers
   `advice_changed` in the reactive agent)
 
-### Plan Templates (`knowledge/plan_templates.yaml`
-
-> **Editing plan templates?** See DEVELOPER_GUIDE §4b (Adding a Plan Template).
-)
+### Plan Templates (`knowledge/plan_templates.yaml`)
 
 Twelve pre-defined plan skeletons:
 
@@ -2799,20 +2785,6 @@ Intent is integrated into `directive_extractor.py` for both LLM and
 rules paths. When intent is `task`, plan generation in `ai_agent.py`
 is skipped (no multi-stage plan for a single xtriage run).
 
-**Pipeline detection (v115.03):** `classify_intent` maintains a
-`_PIPELINE_INDICATORS` list of four regex patterns (`followed by`,
-`after that/this/which`, `subsequently`, `then <action-verb>`). When
-`_detect_task` fires but a pipeline indicator is also present, the
-function falls through to `solve` — the advice describes a multi-program
-sequence, not a single-program task, and setting `after_program` would
-stop the workflow too early.
-
-**Low-confidence guard (v115.03):** Both the simple and LLM extraction
-paths only store the intent result when `confidence != "low"`.
-`classify_intent` always returns a dict, defaulting to
-`{intent: solve, confidence: low}` when no pattern matches; a low-confidence
-result means no real intent was detected and must not pollute directives.
-
 ### Multi-Array MTZ Handling
 
 When an MTZ file contains both merged (Iobs) and anomalous (I(+)/I(-))
@@ -2936,405 +2908,4 @@ Note: `debug` is accepted as an alias for `verbose` (3 levels total).
 - `agent/graph_nodes.py` - Event emission (`_emit()` helper)
 - `agent/thinking_agent.py` - Expert assessment event emission (v113)
 
-See [TRANSPARENCY_LOGGING.md](DEVELOPER_GUIDE.md#9-event-system) for full details.
-
----
-
-## API Reference
-
-## Overview
-
-The PHENIX AI Agent uses a client-server architecture where:
-- **Client**: User's PHENIX installation (runs `ai_agent.py`)
-- **Server**: Decision-making engine (runs `run_ai_agent.py`)
-
-Both LocalAgent (same process) and RemoteAgent (REST server) use identical v2 JSON API **and transport encoding** for consistency.
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Client Side                              │
-├─────────────────────────────────────────────────────────────────┤
-│  LocalAgent / RemoteAgent                                        │
-│       │                                                          │
-│       ▼                                                          │
-│  build_request_v2() + prepare_request_for_transport()            │
-│       │                                                          │
-│       ├── sanitize (remove ZZxxZZ, truncate quotes, etc.)        │
-│       ├── json.dumps()                                           │
-│       └── encode_for_rest() [ZZxxZZ markers]                     │
-│                    │                                             │
-│  LocalAgent: decode locally    RemoteAgent: send to server       │
-└─────────────────────────────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      run_ai_agent.py                             │
-│       │                                                          │
-│       ▼                                                          │
-│  process_request_from_transport()                                │
-│       │                                                          │
-│       ├── decode_from_rest()                                     │
-│       └── json.loads()                                           │
-│                    │                                             │
-│                    ▼                                             │
-│              Graph execution → JSON Response                     │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## Transport Layer
-
-The transport layer (`agent/transport.py`) ensures reliable communication:
-
-### Sanitization (before encoding)
-1. Remove ZZxxZZ markers from log content (prevents double-encoding)
-2. Truncate long quoted strings (e.g., pdb70_text='...')
-3. Replace tabs with spaces
-4. Remove control characters (except newline)
-
-### Configuration
-Transport settings are defined in `knowledge/transport.yaml`:
-- Field-specific max lengths
-- Quote truncation settings
-- Sanitization patterns
-
-### Usage
-```python
-from agent.transport import (
-    prepare_request_for_transport,
-    process_request_from_transport,
-    verify_roundtrip,
-)
-
-# Encode request
-encoded, original = prepare_request_for_transport(request, do_encode=True)
-
-# Decode request
-decoded = process_request_from_transport(encoded, was_encoded=True)
-
-# Verify integrity
-success, msg, details = verify_roundtrip(request)
-```
-
-## Request Schema
-
-```json
-{
-  "api_version": "2.0",
-  "client_version": "1.22.0",
-  
-  "log_content": "string - log text from last command",
-  
-  "files": [
-    "/absolute/path/to/file1.mtz",
-    "/absolute/path/to/file2.pdb"
-  ],
-  
-  "history": [
-    {
-      "cycle": 1,
-      "program": "phenix.xtriage",
-      "command": "phenix.xtriage data.mtz",
-      "result": "SUCCESS",
-      "output_files": ["/path/to/output.log"]
-    }
-  ],
-  
-  "session_state": {
-    "resolution": 2.5,
-    "experiment_type": "xray",
-    "rfree_mtz": "/path/to/refine_001_data.mtz",
-    "best_files": {
-      "model": "/path/to/best.pdb",
-      "mtz": "/path/to/best.mtz"
-    }
-  },
-  
-  "user_advice": "Solve the structure using data to 3 A",
-  
-  "settings": {
-    "provider": "google",
-    "abort_on_red_flags": true,
-    "abort_on_warnings": false,
-    "max_cycles": 20,
-    "use_rules_only": false
-  },
-  
-  "cycle_number": 5
-}
-```
-
-### Required Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `api_version` | string | Must be "2.0" |
-| `files` | array | List of available file paths |
-| `cycle_number` | integer | Current cycle number |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `client_version` | string | null | Client software version |
-| `log_content` | string | "" | Log text from previous command |
-| `history` | array | [] | Previous cycle records |
-| `session_state` | object | {} | Session state (see below) |
-| `user_advice` | string | "" | User instructions |
-| `settings` | object | {} | Execution settings |
-
-### Session State Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `resolution` | float | null | Data resolution in Angstroms |
-| `experiment_type` | string | null | "xray" or "cryoem" |
-| `rfree_mtz` | string | null | Path to locked R-free MTZ |
-| `best_files` | object | {} | Best files by category |
-| `directives` | object | {} | Structured user directives (see [USER_GUIDE.md §11](USER_GUIDE.md#11-directives-reference)) |
-
-### Settings Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `provider` | string | "google" | LLM provider |
-| `abort_on_red_flags` | boolean | true | Abort on critical issues |
-| `abort_on_warnings` | boolean | false | Abort on warnings |
-| `max_cycles` | integer | 20 | Maximum cycles |
-| `use_rules_only` | boolean | false | Skip LLM, use rules only |
-
-## Response Schema
-
-```json
-{
-  "api_version": "2.0",
-  "server_version": "1.23.0",
-  
-  "decision": {
-    "program": "phenix.refine",
-    "command": "phenix.refine model.pdb data.mtz output.prefix=refine_001",
-    "reasoning": "The model needs refinement to improve R-free...",
-    "strategy": {
-      "output_prefix": "refine_001",
-      "resolution": 3.0
-    },
-    "confidence": "high"
-  },
-  
-  "stop": false,
-  "stop_reason": null,
-  
-  "metadata": {
-    "experiment_type": "xray",
-    "workflow_state": "xray_refined",
-    "warnings": [],
-    "red_flags": [],
-    "strategy_memory": {},
-    "expert_assessment": {}
-  },
-  
-  "debug": {
-    "log": ["PERCEIVE: ...", "THINK: ...", "PLAN: ...", "BUILD: ..."],
-    "timing_ms": 1234
-  },
-  
-  "error": null
-}
-```
-
-### Decision Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `program` | string | Selected program name |
-| `command` | string | Full command to execute |
-| `reasoning` | string | Explanation of decision |
-| `strategy` | object | Strategy options used |
-| `confidence` | string | "high", "medium", "low", "unknown" |
-
-### Metadata Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `experiment_type` | string | "xray" or "cryoem" |
-| `workflow_state` | string | Current workflow phase |
-| `warnings` | array | Non-fatal warning messages |
-| `red_flags` | array | Critical issues detected |
-| `strategy_memory` | object | Thinking agent accumulated state (v113, present when enabled) |
-| `expert_assessment` | object | Latest expert analysis (v113, present when THINK engaged) |
-
-### Stop Response
-
-When workflow should stop:
-
-```json
-{
-  "decision": {
-    "program": "STOP",
-    "command": "STOP",
-    "reasoning": "R-free converged at 0.22"
-  },
-  "stop": true,
-  "stop_reason": "converged"
-}
-```
-
-Stop reasons:
-- `converged` - Quality metrics indicate completion
-- `red_flag` - Critical issue detected
-- `max_cycles` - Reached cycle limit
-- `error` - Processing error
-- `expert: ...` - Thinking agent recommended stopping (v113)
-
-## Agent Classes
-
-### LocalAgent
-
-Runs the decision-making graph locally (same process).
-
-```python
-from local_agent import LocalAgent
-
-agent = LocalAgent(params, logger=sys.stdout)
-result = agent.decide_next_step(
-    log_content="...",
-    history=[...],
-    files=[...],
-    guidelines="...",
-    session_resolution=2.5,
-    session_info={
-        "experiment_type": "xray",
-        "rfree_mtz": "/path/to/data.mtz",
-        "best_files": {"model": "/path/to/model.pdb"}
-    }
-)
-```
-
-### RemoteAgent
-
-Sends requests to PHENIX REST server for decision-making.
-
-```python
-from remote_agent import RemoteAgent
-
-agent = RemoteAgent(params, logger=sys.stdout)
-result = agent.decide_next_step(
-    log_content="...",
-    history=[...],
-    files=[...],
-    guidelines="...",
-    session_resolution=2.5,
-    session_info={
-        "experiment_type": "xray",
-        "rfree_mtz": "/path/to/data.mtz",
-        "best_files": {"model": "/path/to/model.pdb"}
-    }
-)
-```
-
-### Common Interface
-
-Both agents implement the same interface:
-
-```python
-def decide_next_step(
-    self,
-    log_content,              # Log text from previous command
-    history,                  # List of previous cycle records
-    files,                    # List of available file paths
-    guidelines="",            # User instructions
-    session_resolution=None,  # Resolution in Angstroms
-    session_info=None,        # Session state dict
-    abort_on_red_flags=True,  # Abort on critical issues
-    abort_on_warnings=False   # Abort on warnings
-) -> dict:
-    """Returns history_record with decision."""
-```
-
-Both agents:
-1. Build identical v2 JSON requests using `build_request_v2()`
-2. Pass them to `run_ai_agent.run(request_json=...)`
-3. Receive identical `history_record` responses
-
-## Session Info Structure
-
-The `session_info` dict carries tracked state from the client:
-
-```python
-session_info = {
-    # Locked experiment type (prevents switching mid-workflow)
-    "experiment_type": "xray",  # or "cryoem"
-    
-    # Locked R-free MTZ (ensures consistent R-free flags)
-    "rfree_mtz": "/path/to/refine_001_data.mtz",
-    
-    # Best files by category (from BestFilesTracker)
-    "best_files": {
-        "model": "/path/to/best_model.pdb",
-        "mtz": "/path/to/best_data.mtz",
-        "map": "/path/to/best_map.ccp4"
-    }
-}
-```
-
-## Error Handling
-
-### Client-Side
-
-```python
-result = agent.decide_next_step(...)
-if result is None:
-    # Communication failed
-    handle_error()
-elif result.get("error"):
-    # Server returned error
-    print(f"Error: {result['error']}")
-elif result.get("stop"):
-    # Workflow should stop
-    reason = result.get("stop_reason")
-    if reason == "red_flag":
-        print(f"Aborted: {result.get('abort_message')}")
-```
-
-### Server-Side
-
-```python
-# Validation errors
-if not is_valid:
-    return _build_error_response(f"Invalid request: {errors}")
-
-# Processing errors
-try:
-    final_state = graph.invoke(initial_state)
-except Exception as e:
-    return _build_error_response(f"Graph execution failed: {e}")
-```
-
-## Extending the API
-
-### Adding New Request Fields
-
-1. Add field to `REQUEST_V2_SCHEMA` in `api_schema.py` with default value
-2. Update `_process_request()` in `run_ai_agent.py` to use the field
-3. Update `build_request_v2()` in `api_client.py` to accept the field
-4. Existing code automatically uses default value
-
-### Adding New Response Fields
-
-1. Add field to `RESPONSE_V2_SCHEMA` in `api_schema.py`
-2. Update `create_response()` to include the field
-3. Update `parse_response_v2()` to extract the field
-4. Existing code ignores unknown fields
-
-## Files Reference
-
-| File | Lines | Description |
-|------|-------|-------------|
-| `local_agent.py` | 142 | Builds v2 request, calls run_ai_agent locally |
-| `remote_agent.py` | 211 | Builds v2 request, sends to REST server |
-| `run_ai_agent.py` | 328 | Entry point, parses JSON, runs graph |
-| `knowledge/api_schema.py` | ~450 | Schema definitions, validation, defaults |
-| `agent/api_client.py` | ~450 | Request building, response parsing |
-| `tests/tst_api_schema.py` | ~760 | API tests |
-
+See [TRANSPARENCY_LOGGING.md](../project/TRANSPARENCY_LOGGING.md) for full details.
