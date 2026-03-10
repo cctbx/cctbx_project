@@ -44,7 +44,8 @@ class clashscore2(validation):
     "fast",
     "condensed_probe",
     "probe_file",
-    "probe_clashscore_manager"
+    "probe_clashscore_manager",
+    "hydrogenated_model"
   ]
   program_description = "Analyze clashscore for protein model"
   gui_list_headers = ["Atom 1", "Atom 2", "Overlap"]
@@ -77,6 +78,7 @@ class clashscore2(validation):
     self.clash_dict_b_cutoff = {}
     self.list_dict = {}
     self.probe_file = None
+    self.hydrogenated_model = None
     if verbose:
       if not nuclear:
         print("\nUsing electron cloud x-H distances and vdW radii")
@@ -100,6 +102,9 @@ class clashscore2(validation):
       keep_hydrogens=keep_hydrogens,
       do_flips = do_flips,
       log=out)
+
+    # Save the hydrogenated model for downstream use (e.g. kinemage generation)
+    self.hydrogenated_model = data_manager_model
 
     # First we must rebuild the model from the new hierarchy so that the copy can succeed.
     # Make a copy of the original model to use for submodel processing, we'll trim atoms out
