@@ -691,7 +691,7 @@ def test_H02_graph_state_field_count():
   print("Test: H02_graph_state_field_count")
   # Count fields in the TypedDict
   annotations = getattr(AgentState, '__annotations__', {})
-  expected = 37
+  expected = 45
   actual = len(annotations)
   assert_equal(actual, expected,
     "AgentState has %d fields, expected %d. "
@@ -704,9 +704,10 @@ def test_H03_create_initial_state_param_count():
   """create_initial_state has expected parameter count."""
   print("Test: H03_create_initial_state_param_count")
   sig = inspect.signature(create_initial_state)
-  # Current: 19 parameters (15 original + thinking_level,
-  #   strategy_memory, structure_model, validation_history)
-  expected = 19
+  # Current: 20 parameters (15 original + thinking_level,
+  #   strategy_memory, structure_model, validation_history,
+  #   session_blocked_programs)
+  expected = 20
   actual = len(sig.parameters)
   assert_equal(actual, expected,
     "create_initial_state has %d params, expected %d. "
