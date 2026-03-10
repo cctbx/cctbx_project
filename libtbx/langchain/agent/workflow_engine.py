@@ -1995,6 +1995,7 @@ class WorkflowEngine:
         "has_any",      # {"has_any": ["a", "b"]}     → any(context["has_a"], context["has_b"])
         "not_has",      # {"not_has": "full_map"}      → not context["has_full_map"]
         "not_done",     # {"not_done": "autobuild"}    → not context["autobuild_done"]
+        "not",          # {"not": "model"}              → not context["has_model"]
         "r_free",       # {"r_free": "> 0.35"}         → metric comparison
         "map_cc",       # {"map_cc": "> 0.6"}          → metric comparison
         "refine_count", # {"refine_count": "> 0"}      → metric comparison
@@ -2060,6 +2061,14 @@ class WorkflowEngine:
             # {"not_done": "autobuild"} → context["autobuild_done"] must be falsy
             if "not_done" in cond:
                 key = cond["not_done"] + "_done"
+                if context.get(key):
+                    return False
+
+            # ── not ───────────────────────────────────────────────────────
+            # {"not": "model"} → context["has_model"] must be falsy
+            # Negates a has-style check: the named resource must be absent.
+            if "not" in cond:
+                key = "has_" + cond["not"]
                 if context.get(key):
                     return False
 
