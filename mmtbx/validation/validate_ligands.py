@@ -360,6 +360,7 @@ class ligand_result(object):
     }
 
     self._set_internals()
+    self.d_min = None
     if self.fmodel is not None:
       self.d_min = self.fmodel.f_obs().d_min()
     self._fragment()
