@@ -171,9 +171,11 @@ async def analyze_log_summary(log_info, llm, embeddings,
     )
 
   except google_exceptions.ResourceExhausted as e:
+    # Log full details for debugging, return clean user message.
     # No period before the action text — contains_sorry() in rest/__init__.py
     # truncates at the first '.' or '\n' and appends "Please wait a minute"
     # unless "please" already appears in the first chunk.
+    print(f"Google API quota exceeded. Full error: {e}")
     error_message = (
       "Google API quota exceeded, please try another provider "
       "(eg provider=openai) or wait for quota reset"
@@ -186,9 +188,26 @@ async def analyze_log_summary(log_info, llm, embeddings,
     )
 
   except Exception as e:
-    error_message = (
-      "Reranking failed - try again in a"
-      " couple minutes..." + str(e))
+    e_str = str(e)
+    e_lower = e_str.lower()
+    # Langchain wraps google quota errors as generic exceptions with
+    # "RESOURCE_EXHAUSTED" in the message — the ResourceExhausted branch
+    # above only catches the raw google exception.
+    _is_quota = (
+      "resource_exhausted" in e_lower or
+      ("quota" in e_lower and "exceeded" in e_lower)
+    )
+    if _is_quota:
+      # Log full details for debugging, return clean user message.
+      print(f"Google API quota exceeded. Full error: {e_str}")
+      error_message = (
+        "Google API quota exceeded, please try another provider "
+        "(eg provider=openai) or wait for quota reset"
+      )
+    else:
+      error_message = (
+        "Reranking failed - try again in a"
+        " couple minutes..." + e_str)
     print(error_message)
     return group_args(
       group_args_type='answer',
