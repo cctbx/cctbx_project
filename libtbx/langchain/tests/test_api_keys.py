@@ -79,7 +79,10 @@ def test_google():
     else:
       from urllib2 import Request, urlopen, HTTPError, URLError
 
-    model = "gemini-2.5-flash"
+    # Test gemini-2.5-pro — the model used by ai_analysis/ai_agent.
+    # gemini-2.5-flash has a separate (larger) quota and would show OK
+    # even when the pro quota is exhausted.
+    model = "gemini-2.5-pro"
     url = (
       "https://generativelanguage.googleapis.com/v1beta"
       "/models/%s:generateContent?key=%s" % (model, key)
@@ -114,7 +117,7 @@ def test_google():
     elif e.code == 403:
       return "FORBIDDEN", "Key %s  HTTP 403: %s" % (masked, body)
     elif e.code == 429:
-      return "RATE LIMITED", "Key %s  HTTP 429: %s" % (masked, body)
+      return "QUOTA EXCEEDED", "Key %s  HTTP 429 (gemini-2.5-pro quota exhausted): %s" % (masked, body)
     else:
       return "ERROR", "Key %s  HTTP %d: %s" % (masked, e.code, body)
   except URLError as e:
@@ -136,7 +139,7 @@ def main():
   print("  %s" % detail)
 
   print()
-  print("Google (Gemini 2.5 Flash):")
+  print("Google (Gemini 2.5 Pro):")
   status_g, detail_g = test_google()
   print("  Status: %s" % status_g)
   print("  %s" % detail_g)
@@ -144,19 +147,27 @@ def main():
   print()
   print("-" * 60)
   ok = 0
-  for s in [status, status_g]:
+  quota_exceeded = []
+  for name, s in [("OpenAI", status), ("Google", status_g)]:
     if s == "OK":
       ok += 1
+    elif s == "QUOTA EXCEEDED":
+      quota_exceeded.append(name)
     elif s == "NOT SET":
       pass
     else:
-      print("  WARNING: at least one key failed")
-  if ok == 0:
+      print("  WARNING: %s key check failed (%s)" % (name, s))
+  if quota_exceeded:
+    print("  NOTE: %s quota exhausted for gemini-2.5-pro." % "/".join(quota_exceeded))
+    print("  The agent will fail with this provider until quota resets.")
+    if ok > 0:
+      print("  Use the other working provider instead.")
+  if ok == 0 and not quota_exceeded:
     print("  No working API keys found.")
     print("  Set OPENAI_API_KEY or GOOGLE_API_KEY and retry.")
   elif ok == 1:
     print("  One API is working. The agent needs at least one.")
-  else:
+  elif ok == 2:
     print("  Both APIs are working.")
   print()
   return 0 if ok > 0 else 1
