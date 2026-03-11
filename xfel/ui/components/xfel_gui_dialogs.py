@@ -129,7 +129,7 @@ class SettingsDialog(BaseDialog):
     # Facility control
     self.facility_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
-    choices = ['LCLS', 'Standalone']
+    choices = ['LCLS', 'Standalone', 'Streaming']
     lower_choices = [f.lower() for f in choices]
     self.facility = gctr.ChoiceCtrl(self,
                                     name = 'facility',
@@ -235,6 +235,11 @@ class SettingsDialog(BaseDialog):
       opts.ShowModal()
     elif self.params.facility.name == 'standalone':
       opts = StandaloneOptions(self, self.params)
+      opts.Fit()
+      opts.Center()
+      opts.ShowModal()
+    elif self.params.facility.name == 'streaming':
+      opts = StreamingOptions(self, self.params)
       opts.Fit()
       opts.Center()
       opts.ShowModal()
@@ -737,6 +742,15 @@ class StandaloneOptions(BaseDialog):
         self.n_files_needed.Enable()
       self.last_modified.Disable()
       self.minimum_file_size.Disable()
+
+class StreamingOptions(StandaloneOptions):
+  ''' Options settings specific to streaming GUI (reuses standalone settings) '''
+  def __init__(self, parent, params, *args, **kwargs):
+    if not params.facility.standalone.template:
+      params.facility.standalone.template = '*master.h5'
+    super(StreamingOptions, self).__init__(parent, params, *args, **kwargs)
+    self.SetTitle('Streaming settings')
+
 
 class AdvancedSettingsDialog(BaseDialog):
   ''' Advanced settings for the cctbx.xfel front end '''
@@ -2060,14 +2074,19 @@ class RunBlockDialog(BaseDialog):
     self.db = db
     self.use_ids = db.params.facility.name not in ['lcls']
     self.is_lcls = db.params.facility.name == 'lcls'
+    self.is_streaming = db.params.facility.name == 'streaming'
 
     all_runs = db.get_all_runs()
-    if self.use_ids:
-      runs_available = sorted([i.id for i in all_runs])
+    if self.is_streaming or len(all_runs) == 0:
+      self.first_avail = 1
+      self.last_avail = 100000
     else:
-      runs_available = sorted([int(i.run) for i in all_runs])
-    self.first_avail = min(runs_available)
-    self.last_avail = max(runs_available)
+      if self.use_ids:
+        runs_available = sorted([i.id for i in all_runs])
+      else:
+        runs_available = sorted([int(i.run) for i in all_runs])
+      self.first_avail = min(runs_available)
+      self.last_avail = max(runs_available)
 
     if block is None:
       runs = self.db.get_all_runs()
@@ -2081,11 +2100,14 @@ class RunBlockDialog(BaseDialog):
         self.all_blocks = trial.rungroups
 
       if len(runs) == 0:
-        wx.MessageBox("No runs found", "Error", wx.OK | wx.ICON_EXCLAMATION)
-        assert False # Close and destroy dialog properly here
-
-      self.first_run = min(run_numbers)
-      self.last_run = None
+        if not self.is_streaming:
+          wx.MessageBox("No runs found", "Error", wx.OK | wx.ICON_EXCLAMATION)
+          assert False # Close and destroy dialog properly here
+        self.first_run = 1
+        self.last_run = None
+      else:
+        self.first_run = min(run_numbers)
+        self.last_run = None
 
       class defaults(object):
         def __getattr__(self, item):
@@ -2391,20 +2413,32 @@ class RunBlockDialog(BaseDialog):
   def onOK(self, e):
     try:
       first = int(self.runblocks_start.ctr.GetValue())
-      assert first > 0 and first >= self.first_avail
+      if self.is_streaming:
+        assert first > 0
+      else:
+        assert first > 0 and first >= self.first_avail
       self.first_run = first
     except (ValueError, AssertionError) as e:
-      wx.MessageBox("Please select a contiguous runs between %d and %d." % (self.first_avail, self.last_avail),
-                    'Warning!', wx.ICON_EXCLAMATION)
+      if self.is_streaming:
+        wx.MessageBox("Please enter a run number > 0.", 'Warning!', wx.ICON_EXCLAMATION)
+      else:
+        wx.MessageBox("Please select a contiguous runs between %d and %d." % (self.first_avail, self.last_avail),
+                      'Warning!', wx.ICON_EXCLAMATION)
       return
     if self.end_type.specify.GetValue() == 1:
       try:
         last = int(self.runblocks_end.ctr.GetValue())
-        assert last > 0 and last <= self.last_avail and last >= first
+        if self.is_streaming:
+          assert last > 0 and last >= first
+        else:
+          assert last > 0 and last <= self.last_avail and last >= first
         self.last_run = last
       except (ValueError, AssertionError) as e:
-        wx.MessageBox("Please select contiguous runs between %d and %d." % (self.first_avail, self.last_avail),
-                      'Warning!', wx.ICON_EXCLAMATION)
+        if self.is_streaming:
+          wx.MessageBox("Please enter an end run >= start run.", 'Warning!', wx.ICON_EXCLAMATION)
+        else:
+          wx.MessageBox("Please select contiguous runs between %d and %d." % (self.first_avail, self.last_avail),
+                        'Warning!', wx.ICON_EXCLAMATION)
         return
     elif self.end_type.specify.GetValue() == 0:
       self.last_run = None
@@ -2454,6 +2488,9 @@ class RunBlockDialog(BaseDialog):
 
     if self.block is None:
       self.block = self.db.create_rungroup(**rg_dict)
+      if self.is_streaming:
+        self.block.streaming_first_run = self.first_run
+        self.block.streaming_last_run = self.last_run
       self.block.sync_runs(self.first_run, self.last_run, self.use_ids)
       self.parent.trial.add_rungroup(self.block)
     else:
@@ -2473,6 +2510,9 @@ class RunBlockDialog(BaseDialog):
 
           self.block.open = rg_open
           self.block.comment = rg_dict['comment']
+          if self.is_streaming:
+            self.block.streaming_first_run = self.first_run
+            self.block.streaming_last_run = self.last_run
           self.block.sync_runs(self.first_run, self.last_run, self.use_ids)
 
           if running:
@@ -2482,6 +2522,9 @@ class RunBlockDialog(BaseDialog):
           # enough parameters have changed to warrant creating a new run group
           self.block.active = False
           self.block = self.db.create_rungroup(**rg_dict)
+          if self.is_streaming:
+            self.block.streaming_first_run = self.first_run
+            self.block.streaming_last_run = self.last_run
           self.block.sync_runs(self.first_run, self.last_run, self.use_ids)
           self.parent.trial.add_rungroup(self.block)
 

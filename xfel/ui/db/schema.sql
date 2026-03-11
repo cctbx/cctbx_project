@@ -58,6 +58,8 @@ CREATE TABLE IF NOT EXISTS `mydb`.`rungroup` (
   `spectrum_eV_per_pixel` DOUBLE NULL,
   `spectrum_eV_offset` DOUBLE NULL,
   `comment` TEXT NULL,
+  `streaming_first_run` INT NULL,
+  `streaming_last_run` INT NULL,
   PRIMARY KEY (`id`))
 ENGINE = InnoDB;
 

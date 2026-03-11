@@ -273,6 +273,19 @@ class initialize(initialize_base):
         query = "ALTER TABLE `%s_job` MODIFY COLUMN submission_id TEXT NULL"%self.params.experiment_tag
         cursor.execute(query)
 
+      # Maintain backwards compatibility with SQL tables v5.6: 03/11/26 (streaming facility)
+      query = "SHOW columns FROM `%s_rungroup`"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      columns = cursor.fetchall()
+      column_names = list(zip(*columns))[0]
+      if 'streaming_first_run' not in column_names:
+        print("Upgrading to version 5.6 of mysql database schema")
+        query = "ALTER TABLE `%s_rungroup` ADD COLUMN streaming_first_run INT NULL"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_rungroup` ADD COLUMN streaming_last_run INT NULL"%self.params.experiment_tag
+        cursor.execute(query)
+
       # Maintain backwards compatibility with SQL tables v5.5: 03/10/25
       query = "SHOW columns FROM `%s_experiment`"%self.params.experiment_tag
       cursor = self.dbobj.cursor()
