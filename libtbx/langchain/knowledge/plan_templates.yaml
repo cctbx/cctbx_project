@@ -487,6 +487,52 @@ templates:
         description: "Final model validation"
 
 # =============================================================
+# REFINEMENT + POLDER MAPS (model placed, X-ray)
+# =============================================================
+# Covers: user provides a pre-refined model and says
+# "run polder" or "compute omit maps". Refine first to
+# produce map coefficients, then run polder.
+
+  refine_placed_polder:
+    description: "Refine and compute polder omit maps (X-ray)"
+    applicable_when:
+      experiment_type: xray
+      has_search_model: true
+      model_is_placed: true
+      wants_polder: true
+    priority: 55
+    stages:
+
+      - id: data_assessment
+        programs: [phenix.xtriage]
+        max_cycles: 1
+        description: "Analyze data quality"
+        success:
+          xtriage_completed: "true"
+        provides:
+          [resolution, twinning_status]
+
+      - id: refinement
+        programs: [phenix.refine]
+        max_cycles: 3
+        description: "Refine model to produce map coefficients"
+        success:
+          r_free: "<0.30"
+        gate:
+          - if: "r_free > 0.50 after 2 cycles"
+            action: "stop_report"
+
+      - id: polder_maps
+        programs: [phenix.polder]
+        max_cycles: 1
+        description: "Compute polder omit maps"
+
+      - id: validation
+        programs: [phenix.molprobity]
+        max_cycles: 1
+        description: "Final model validation"
+
+# =============================================================
 # PREDICT + MR + REFINEMENT (X-ray, no search model)
 # =============================================================
 # Covers: new structures where user provides only data +

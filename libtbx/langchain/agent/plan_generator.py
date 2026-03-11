@@ -182,6 +182,7 @@ def _build_context(data_characteristics=None,
     "has_ligand_code": False,
     "has_anomalous_atoms": False,
     "wants_mr_sad": False,
+    "wants_polder": False,
     "model_is_placed": False,
     "resolution": None,
     "is_twinned": None,
@@ -355,7 +356,7 @@ def _build_context(data_characteristics=None,
 
   # Model placement from advice: if user says
   # "refine", "fit ligand", etc. WITHOUT mentioning
-  # "molecular replacement", "phaser", or "solve",
+  # "molecular replacement", "phaser", "solve", etc.,
   # the model is already placed.
   _mr_keywords = (
     "molecular replacement", "phaser", "solve",
@@ -383,6 +384,15 @@ def _build_context(data_characteristics=None,
   )
   if _mentions_placed and not _mentions_mr:
     ctx["model_is_placed"] = True
+
+  # Polder override (v115.05): polder ALWAYS implies
+  # the model is placed (you need a placed model to
+  # compute omit maps).  Override even when "solve"
+  # is present, because "Solve omit maps with polder"
+  # is a task request, not an MR request.
+  if "polder" in advice:
+    ctx["model_is_placed"] = True
+    ctx["wants_polder"] = True
 
   # Also check directives for placement signals
   d = directives or {}
@@ -412,6 +422,15 @@ def _build_context(data_characteristics=None,
     "phenix.molprobity",
   ):
     ctx["model_is_placed"] = True
+
+  # Polder intent: user wants omit maps.  Detected
+  # from advice keywords or after_program directive.
+  # Selects refine_placed_polder template (refine
+  # first to produce map coefficients, then polder).
+  if "polder" in _after:
+    ctx["wants_polder"] = True
+  elif "polder" in advice:
+    ctx["wants_polder"] = True
 
   # --- From data characteristics ---
   dc = data_characteristics or {}

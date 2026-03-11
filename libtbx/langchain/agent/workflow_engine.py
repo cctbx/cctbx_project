@@ -1306,10 +1306,14 @@ class WorkflowEngine:
             # (>0.45) means the model has good geometry but is incorrectly
             # placed or incomplete (common with AlphaFold predictions after
             # MR).  Don't declare at-target in that case.
+            # Also require at least one refinement cycle — a pre-refined
+            # input model may have good geometry but the agent hasn't
+            # produced map coefficients yet (needed by polder, ligandfit).
             clashscore = context.get("clashscore")
             if clashscore is not None and clashscore < 10:
                 r_free = context.get("r_free")
-                if r_free is None or r_free < 0.45:
+                if (refine_count >= 1 and
+                        (r_free is None or r_free < 0.45)):
                     return True
 
             # Hard limit: if we've done 3+ refine cycles, consider it at target.
