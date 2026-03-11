@@ -219,7 +219,7 @@ _PIPELINE_INDICATORS = [
     # "Run AutoSol ... and build an initial model" which fires the autosol
     # task trigger but is clearly a multi-step workflow.  Without this,
     # intent=task stops the agent after autosol, skipping autobuild/refinement.
-    r"\band\s+(?:build|autobuild|refine|model)\b",
+    r"\band\s+(?:build|autobuild|refine)\b",
     r"\bwith\s+autobuild\b",
     # "model building" in the advice always implies a full pipeline
     # (e.g. "perform substructure determination, phasing, and initial model building")

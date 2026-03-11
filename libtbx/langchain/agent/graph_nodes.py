@@ -2063,7 +2063,7 @@ def plan(state):
         }
 
 
-def _check_fatal_llm_error(error_msg):
+def _check_fatal_llm_error(error_msg, provider=None):
     """
     Check if an LLM error is fatal (won't resolve by retrying).
 
@@ -2072,39 +2072,50 @@ def _check_fatal_llm_error(error_msg):
     import re
 
     error_lower = error_msg.lower() if error_msg else ""
+    prov = provider or "google"
+    others = [p for p in SUPPORTED_PROVIDERS if p != prov]
+    alt_provider = others[0] if others else None
 
-    # Google API key IP address restriction
+    def _alt_suggestion():
+        lines = []
+        if alt_provider:
+            lines.append(
+                "Try a different provider:  --provider=%s" % alt_provider
+            )
+        lines.append(
+            "Or run rules-only mode:    --use_rules_only=True"
+        )
+        return "\n".join(lines)
+
+    # API key IP address restriction
     if "ip address restriction" in error_lower or "API_KEY_IP_ADDRESS_BLOCKED" in error_msg:
-        # Extract the IP address if present
         ip_match = re.search(r'originating IP address.*?(\d+\.\d+\.\d+\.\d+)', error_msg)
         ip_addr = ip_match.group(1) if ip_match else "unknown"
         return (
-            "Your Google API key has an IP address restriction. "
-            "Your current IP address (%s) is not in the allowed list.\n\n"
-            "To fix this:\n"
-            "  1. Go to https://console.cloud.google.com/apis/credentials\n"
-            "  2. Edit your API key's IP restrictions\n"
-            "  3. Add your IP address (%s) to the allowed list\n"
-            "  4. Or remove IP restrictions entirely for testing\n\n"
-            "Alternatively, run with use_llm=False for rules-only mode."
-        ) % (ip_addr, ip_addr)
+            "Your %s API key has an IP address restriction "
+            "(blocked IP: %s).\n\n"
+            "Fix: https://console.cloud.google.com/apis/credentials\n"
+            "Add %s to the allowed list, or remove IP restrictions.\n\n"
+            "%s"
+        ) % (prov, ip_addr, ip_addr, _alt_suggestion())
 
     # Invalid API key
     if "api_key_invalid" in error_lower or "api key not valid" in error_lower:
+        env_var = "%s_API_KEY" % prov.upper()
         return (
-            "Your API key is not valid. Please check that you have copied it correctly.\n\n"
-            "To fix this:\n"
-            "  1. Verify your GOOGLE_API_KEY environment variable\n"
-            "  2. Generate a new key at https://console.cloud.google.com/apis/credentials\n\n"
-            "Alternatively, run with use_llm=False for rules-only mode."
-        )
+            "Your %s API key is not valid. "
+            "Check the %s environment variable.\n\n"
+            "%s"
+        ) % (prov, env_var, _alt_suggestion())
 
-    # Quota exceeded (not really fatal but user needs to know)
-    if "quota" in error_lower and "exceeded" in error_lower:
+    # Quota / rate limit exceeded
+    if (("quota" in error_lower and "exceeded" in error_lower) or
+            "resource_exhausted" in error_lower or
+            "rate_limit_exceeded" in error_lower):
         return (
-            "Your API quota has been exceeded. You may need to wait or upgrade your plan.\n\n"
-            "In the meantime, you can run with use_llm=False for rules-only mode."
-        )
+            "Your %s API quota has been exceeded.\n\n"
+            "%s"
+        ) % (prov, _alt_suggestion())
 
     return None  # Retryable error
 
@@ -2130,7 +2141,8 @@ def _handle_llm_failure(state, error_msg):
     MAX_LLM_FAILURES = 3  # Stop after this many consecutive failures
 
     # Check for FATAL errors that won't resolve by retrying
-    fatal_error = _check_fatal_llm_error(error_msg)
+    provider = state.get("provider", "google")
+    fatal_error = _check_fatal_llm_error(error_msg, provider=provider)
     if fatal_error:
         state = _log(state, "PLAN: FATAL LLM error - %s" % fatal_error)
         from libtbx.utils import Sorry
