@@ -2112,10 +2112,20 @@ def _check_fatal_llm_error(error_msg, provider=None):
     if (("quota" in error_lower and "exceeded" in error_lower) or
             "resource_exhausted" in error_lower or
             "rate_limit_exceeded" in error_lower):
-        return (
-            "Your %s API quota has been exceeded.\n\n"
-            "%s"
-        ) % (prov, _alt_suggestion())
+        # No periods or newlines before the action text — contains_sorry() in
+        # rest/__init__.py truncates at the first '.' or '\n' and only skips
+        # its "Please wait" suffix when "please" appears in the first chunk.
+        if alt_provider:
+            return (
+                "Your %s API quota has been exceeded, "
+                "please try another provider: --provider=%s "
+                "or run with --use_rules_only=True"
+            ) % (prov, alt_provider)
+        else:
+            return (
+                "Your %s API quota has been exceeded, "
+                "please run with --use_rules_only=True"
+            ) % prov
 
     return None  # Retryable error
 

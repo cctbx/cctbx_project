@@ -171,9 +171,12 @@ async def analyze_log_summary(log_info, llm, embeddings,
     )
 
   except google_exceptions.ResourceExhausted as e:
+    # No period before the action text — contains_sorry() in rest/__init__.py
+    # truncates at the first '.' or '\n' and appends "Please wait a minute"
+    # unless "please" already appears in the first chunk.
     error_message = (
-      "ERROR: Google AI API quota exceeded. "
-      f"Details: {e}"
+      "Google API quota exceeded, please try another provider "
+      "(eg provider=openai) or wait for quota reset"
     )
     print(error_message)
     return group_args(
