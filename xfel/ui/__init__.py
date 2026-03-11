@@ -16,11 +16,12 @@ monitoring_mode = False
   .help = If True, will hide the submit jobs buttons and remove tabs for configuring \
           Trials and Datasets.
 facility {
-  name = lcls *standalone
+  name = lcls *standalone streaming
     .type = choice
     .help = Facility for the XFEL gui. LCLS configures the GUI to use LCLS services \
-            for data monitoring, job submission, and so forth. Standlone runs the \
-            GUI for all other data sources.
+            for data monitoring, job submission, and so forth. Standalone runs the \
+            GUI for all other data sources. Streaming is for use with dials_streaming \
+            where image data arrives via a live stream.
   lcls {
     experiment = ""
       .type = str

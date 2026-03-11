@@ -83,7 +83,7 @@ class RunSentinel(Thread):
     self.parent = parent
     self.active = active
 
-    if self.parent.params.facility.name == 'standalone':
+    if self.parent.params.facility.name in ['standalone', 'streaming']:
       if self.parent.params.facility.standalone.monitor_for == 'folders' and \
          self.parent.params.facility.standalone.folders.method == 'status_file':
         from xfel.ui.db.xfel_db import cheetah_run_finder
@@ -111,7 +111,7 @@ class RunSentinel(Thread):
           unknown_run_runs = [str(run['run']) for run in db.list_lcls_runs() if
                               str(run['run']) not in known_runs]
           unknown_run_paths = [''] * len(unknown_run_runs)
-        elif self.parent.params.facility.name == 'standalone':
+        elif self.parent.params.facility.name in ['standalone', 'streaming']:
           standalone_runs = [run for run in self.finder.list_runs() if
                              run[0] not in known_runs]
           unknown_run_runs = [r[0] for r in standalone_runs]
@@ -129,7 +129,12 @@ class RunSentinel(Thread):
           # Sync new runs to rungroups
           for rungroup in db.get_all_rungroups(only_active=True):
             first_run, last_run = rungroup.get_first_and_last_runs()
-            # HACK: to get working -- TODO: make nice
+            if first_run is None:
+              # Streaming rungroup with no linked runs yet — use stored range
+              sfr = rungroup.streaming_first_run
+              if sfr is not None:
+                rungroup.sync_runs(sfr, rungroup.streaming_last_run, use_ids=use_ids)
+              continue
             if use_ids:
               first_run = first_run.id
               last_run = last_run.id if last_run is not None else None
