@@ -203,7 +203,8 @@ Output a JSON object with these sections. Include ONLY sections that have releva
      * riding_hydrogens: bool
      * unit_cell: string — space-separated "a b c alpha beta gamma" (e.g., "116.097 116.097 44.175 90 90 120")
      * space_group: string (e.g., "P 32 2 1", "P 1", "C 2 2 21")
-   - IMPORTANT: unit_cell and space_group apply to ALL programs — always place them under "default", not under a specific program
+     * copies: int (number of copies of the search model in the ASU, e.g. 4 — place under "default")
+   - IMPORTANT: unit_cell, space_group, and copies apply to ALL programs — always place them under "default", not under a specific program
    - unit_cell FORMAT: always convert the user's value to a space-separated string of 6 numbers in order a b c alpha beta gamma
      * "(116.097, 116.097, 44.175, 90, 90, 120)" → "116.097 116.097 44.175 90 90 120"
      * "116 116 44 90 90 120" → "116 116 44 90 90 120"
@@ -959,6 +960,7 @@ VALID_SETTINGS = {
     "selection": str,
     "unit_cell": str,    # space-separated "a b c alpha beta gamma"
     "space_group": str,  # e.g. "P 32 2 1"
+    "copies": int,       # ASU copy count (e.g. "4 copies of the search model")
 }
 
 # Valid stop condition keys
@@ -1156,6 +1158,26 @@ def validate_directives(directives, log=None):
                     else:
                         _log("DIRECTIVES: Dropping malformed unit_cell %r (need 6 numbers)" % raw_uc)
                         del valid_settings["unit_cell"]
+
+                # Validate space_group: reject placeholder/non-crystallographic values
+                if "space_group" in valid_settings:
+                    raw_sg = str(valid_settings["space_group"]).strip()
+                    _sg_invalid = (
+                        not raw_sg
+                        or raw_sg.lower() in (
+                            "none", "not mentioned", "not specified",
+                            "unknown", "n/a", "na", "identification",
+                            "to be determined", "tbd", "see above",
+                            "false", "true", "null",
+                        )
+                        # Must start with a letter (space group symbol)
+                        or not raw_sg[0].isalpha()
+                        # Must be short enough to be a real symbol
+                        or len(raw_sg) > 25
+                    )
+                    if _sg_invalid:
+                        _log("DIRECTIVES: Dropping invalid space_group value: %r" % raw_sg)
+                        del valid_settings["space_group"]
 
                 if valid_settings:
                     valid_prog_settings[prog] = valid_settings
@@ -2108,6 +2130,39 @@ def extract_directives_simple(user_advice):
                 directives["program_settings"]["default"] = {}
             directives["program_settings"]["default"]["space_group"] = sg_str
 
+    # ==========================================================================
+    # ASU COPY COUNT EXTRACTION
+    # ==========================================================================
+    # Match forms like:
+    #   "4 copies of the search model"        "there are 4 copies in the ASU"
+    #   "search for 4 copies"                 "4 copies in the asymmetric unit"
+    #   "copies=4"  "copies: 4"               "find 4 copies"
+    #   "place 4 copies"                      "4 molecules in the ASU"
+    # Guard: only accept integers 1-30 (same sanity bound as xtriage path).
+    _copies_patterns = [
+        # Explicit number before "copies" or "molecules" with context keywords
+        r'(\d+)\s+cop(?:y|ies)\s+(?:of|in)',          # "4 copies of/in"
+        r'(\d+)\s+molecules?\s+in\s+(?:the\s+)?asu',  # "4 molecules in the ASU"
+        r'(?:search|find|place|look)\s+(?:for\s+)?(\d+)\s+cop',  # "search for 4 copies"
+        r'cop(?:y|ies)\s*[=:]\s*(\d+)',               # "copies=4" / "copies: 4"
+        r'(?:there\s+are|has?)\s+(\d+)\s+cop',        # "there are 4 copies"
+        r'asu\s+(?:contains?|has?)\s+(\d+)\s+cop',    # "ASU contains 4 copies"
+    ]
+    for _cp_pat in _copies_patterns:
+        _cp_m = re.search(_cp_pat, user_advice, re.IGNORECASE)
+        if _cp_m:
+            try:
+                _cp_v = int(_cp_m.group(1))
+                if 1 <= _cp_v <= 30:
+                    if "program_settings" not in directives:
+                        directives["program_settings"] = {}
+                    if "default" not in directives["program_settings"]:
+                        directives["program_settings"]["default"] = {}
+                    directives["program_settings"]["default"]["copies"] = _cp_v
+                    break
+            except (ValueError, IndexError):
+                pass
+
     # Check for macro_cycles / number of refinement cycles
     cycle_patterns = [
         r'(\d+)\s*(?:macro[- ]?)?cycle',  # "1 macro cycle", "3 cycles"
@@ -2525,7 +2580,6 @@ def extract_directives_simple(user_advice):
     # Strip internal flags before returning
     sc = directives.get("stop_conditions", {})
     sc.pop("_set_by_pattern", None)
-
     if "stop_conditions" in directives and not sc:
         del directives["stop_conditions"]
 

@@ -183,7 +183,8 @@ def _get_fallback_programs():
     return {
         "phenix.xtriage": {"strategy_flags": [], "description": "Data analysis"},
         "phenix.mtriage": {"strategy_flags": ["resolution"], "description": "Map analysis"},
-        "phenix.phaser": {"strategy_flags": [], "description": "Molecular replacement"},
+        "phenix.phaser": {"strategy_flags": ["component_copies", "obs_labels"],
+                          "description": "Molecular replacement"},
         "phenix.refine": {"strategy_flags": ["resolution", "cycles", "anisotropic_adp", "add_waters"],
                         "description": "Refinement"},
         "phenix.real_space_refine": {"strategy_flags": ["resolution", "cycles"], "description": "Real-space refinement"},

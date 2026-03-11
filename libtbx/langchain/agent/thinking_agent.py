@@ -239,9 +239,7 @@ def run_think_node(state):
     # user sees what the agent's "eyes" found (or
     # why they didn't run), BEFORE the LLM call.
     # This ensures visibility even if the LLM fails.
-    if thinking_level == "advanced":
-      diag_parts = []
-      model_path = context.get("validated_model_path")
+    if thinking_level in ("advanced", "expert"):
       skip_reason = context.get(
         "validation_skip_reason", ""
       )
@@ -300,8 +298,8 @@ def run_think_node(state):
         state, "THINK: Validation: %s" % summary
       )
 
-    # Build file metadata (Phase C) — advanced only
-    if thinking_level == "advanced":
+    # Build file metadata (Phase C) — advanced/expert only
+    if thinking_level in ("advanced", "expert"):
       state = _update_file_metadata(state, context)
       # Sync context so the prompt reflects the
       # current cycle's metadata, not the previous.
@@ -313,7 +311,11 @@ def run_think_node(state):
     # to state BEFORE the LLM call so structural
     # knowledge survives even if the LLM fails.
     # (v114: goal-directed agent)
-    if thinking_level == "advanced":
+    # Fix: was "advanced" only — expert mode also builds SM
+    # so it must persist here too, otherwise session.data
+    # never gets structure_model and the Results panel
+    # shows "No structure model available / INCOMPLETE".
+    if thinking_level in ("advanced", "expert"):
       sm = context.get("structure_model")
       if sm is not None:
         state = {
@@ -345,7 +347,7 @@ def run_think_node(state):
       sm_summary = context.get(
         "structure_model_summary", ""
       )
-      if thinking_level == "advanced" and (
+      if thinking_level in ("advanced", "expert") and (
         vr or sm_summary
       ):
         vr_lines_clean = []
@@ -380,16 +382,6 @@ def run_think_node(state):
     state = _log(state,
       "THINK: Assessment — action=%s confidence=%s"
       % (assessment["action"], assessment["confidence"]))
-
-    # P1B guard: stop_reason_code is only meaningful on a stop action.
-    # If the LLM returns a code on guide_step/let_run/pivot, clear it to
-    # prevent phantom entries in session_summary.json (2B companion guard).
-    if (assessment.get("stop_reason_code")
-        and assessment["action"] != "stop"):
-      state = _log(state,
-        "THINK: clearing stop_reason_code=%s on non-stop action=%s"
-        % (assessment["stop_reason_code"], assessment["action"]))
-      assessment["stop_reason_code"] = None
 
     # --- Extract hypothesis from LLM response ---
     # If the LLM proposed a hypothesis in its JSON,
@@ -450,8 +442,7 @@ def run_think_node(state):
     # structural validation alongside the LLM analysis.
     # The GUI reads expert_assessment from the callback
     # data, which comes from state["expert_assessment"].
-    if thinking_level == "advanced":
-      assessment["validation_summary"] = (
+    if thinking_level in ("advanced", "expert"):
         validation_summary)
       assessment["validation_skip_reason"] = (
         context.get("validation_skip_reason", ""))
@@ -469,36 +460,17 @@ def run_think_node(state):
     if assessment["action"] == "stop":
       state = _log(state, "THINK: Expert recommends STOP")
       cycle = state.get("cycle_number", 1)
-
-      # P1B: use typed stop_reason_code if provided and valid;
-      # fall back to freeform "expert: ..." for older behaviour.
-      _src = assessment.get("stop_reason_code")  # may be None
-      if _src:
-        stop_reason = _src          # e.g. "WRONG_MTZ"
-        abort_msg = (
-          "Agent stopped (%s): %s"
-          % (_src, assessment["analysis"][:300])
-        )
-        _think_stop_override = {
-          "code": _src,
-          "analysis": assessment.get("analysis", ""),
-        }
-        state = _log(state,
-          "THINK: classified stop code=%s" % _src)
-      else:
-        stop_reason = (
-          "expert: %s"
-          % assessment["analysis"][:200]
-        )
-        abort_msg = (
-          "Expert assessment: %s"
-          % assessment["analysis"][:300]
-        )
-        _think_stop_override = None
-
+      abort_msg = (
+        "Expert assessment: %s"
+        % assessment["analysis"][:300]
+      )
       # Emit stop_decision so the event formatter
       # shows it (plan() will short-circuit and
       # never get to emit its own stop_decision).
+      stop_reason = (
+        "expert: %s"
+        % assessment["analysis"][:200]
+      )
       events = list(state.get("events", []))
       events.append({
         "type": "stop_decision",
@@ -512,7 +484,6 @@ def run_think_node(state):
         "stop": True,
         "stop_reason": stop_reason,
         "abort_message": abort_msg,
-        "think_stop_override": _think_stop_override,
         "expert_assessment": assessment,
         "strategy_memory": _update_memory(
           memory_dict, assessment, cycle),
@@ -528,22 +499,12 @@ def run_think_node(state):
       enriched_advice = state.get("user_advice", "")
 
     cycle = state.get("cycle_number", 1)
-
-    # P1B: propagate file_overrides from assessment → think_file_overrides.
-    # BUILD node will consume and clear this (one-cycle lifetime).
-    _file_overrides = assessment.get("file_overrides") or {}
-    if _file_overrides:
-      state = _log(state,
-        "THINK: file_overrides set for categories: %s"
-        % list(_file_overrides.keys()))
-
     return {
       **state,
       "user_advice": enriched_advice,
       "expert_assessment": assessment,
       "strategy_memory": _update_memory(
         memory_dict, assessment, cycle),
-      "think_file_overrides": _file_overrides,
     }
 
   except Exception as e:
@@ -567,10 +528,10 @@ def _build_thinking_context(state, thinking_level="advanced"):
 
   Args:
     state: Graph state dict.
-    thinking_level: "basic" or "advanced".
+    thinking_level: "basic", "advanced", or "expert".
       basic: log sections, metrics, history, r_free_trend
-      advanced: all of the above plus validation, KB,
-        and file metadata.
+      advanced/expert: all of the above plus validation,
+        KB, file metadata, and StructureModel.
   """
   history = state.get("history", [])
   last = history[-1] if history else {}
@@ -674,8 +635,12 @@ def _build_thinking_context(state, thinking_level="advanced"):
     context["plan_goal"] = (
       _plan_data.get("goal", ""))
 
-  # --- Advanced mode additions ---
-  if thinking_level == "advanced":
+  # ASU copy count (copies feature): expose so THINK prompt can reason
+  # about whether Phaser found the expected number of copies.
+  _asu_copies = (session_info or {}).get("asu_copies")
+  if _asu_copies:
+    context["asu_copies"] = _asu_copies
+  if thinking_level in ("advanced", "expert"):
     # Structural validation (Phase A)
     validation_report, validation_result, model_path, \
       validation_skip = (

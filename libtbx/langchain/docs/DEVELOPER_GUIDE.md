@@ -653,6 +653,78 @@ and the protocol version it was introduced in.
 See DEVELOPER_GUIDE.md §8 (Backward Compatibility & Contract) for the
 full contract system.
 
+**Critical: the transport triple.** Every new
+`session_info` field that must survive across cycles
+also requires updates to three whitelists — missing
+any one silently drops the value between cycles:
+
+1. `build_session_state()` return dict in
+   `agent/api_client.py`
+2. `build_request_v2()` normalization allowlist in
+   `agent/api_client.py`
+3. `session_state → session_info` mapping in
+   `phenix_ai/run_ai_agent.py`
+
+`normalize_session_info()` in `contract.py` is safe —
+it only fills defaults for explicitly defined fields;
+unknown fields pass through unchanged, so a field that
+survives transport won't be zeroed out by normalization.
+
+Historical additions (each required all three sites):
+`strategy_memory` (v113), `bad_inject_params`,
+`unplaced_model_cell`, `explicit_program`,
+`session_blocked_programs`, `asu_copies` (v115).
+
+### 3f-d. ASU Copy Count Tracking (v115)
+
+**Files:** `agent/directive_extractor.py`,
+`agent/graph_nodes.py`, `programs/ai_agent.py`,
+`phenix_ai/run_ai_agent.py`, `agent/api_client.py`
+
+Tracks the number of copies of the search model in
+the asymmetric unit (ASU) and passes this to Phaser
+as `ensemble.copies` each cycle.
+
+**Data flow — directive path:**
+```
+User advice: "4 copies in the ASU"
+  → _extract_copies_from_directives()
+    → session.data["asu_copies"] = 4  (all 3 extraction paths)
+      → session_info["asu_copies"] = 4  (each cycle, ai_agent.py)
+        → api_client.build_session_state  → build_request_v2
+          → run_ai_agent session_state["asu_copies"]
+            → BUILD: strategy["component_copies"] = 4
+              → phaser.ensemble.copies=4
+```
+
+**Data flow — xtriage path:**
+```
+xtriage log: "Best guess : 4 copies in the ASU"
+  → _fallback_extract_metrics(): log_analysis["n_copies"] = 4
+    → _attach_thinking_metadata() 3-tier fallback:
+        session_info → log_analysis["n_copies"] → raw log_text regex
+          → metadata["asu_copies"] = 4
+            → history_record["asu_copies"] = 4
+              → session.data["asu_copies"] = 4  (only if not set by directive)
+                → next cycle: session_info → BUILD → phaser.ensemble.copies=4
+```
+
+**Priority:** Directive always wins — directive path
+sets `session.data["asu_copies"]` unconditionally;
+xtriage path is guarded by `if not session.data.get("asu_copies")`.
+
+**BUILD guard:** Injection is skipped if the LLM
+already set `component_copies` in the strategy dict
+(prevents overwriting an explicit LLM decision).
+
+**Sanity bound:** All extraction points enforce
+`1 ≤ n ≤ 30`; values outside this range are ignored.
+
+**Transport:** `asu_copies` is included in both
+whitelists in `api_client.py` (`build_session_state`
+and `build_request_v2`), so it survives the
+client→server round-trip each cycle.
+
 ### 3f. Error Recovery
 
 **Files:** `agent/error_analyzer.py`,

@@ -2,31 +2,13 @@
 Thinking Agent Prompt Builder (v113).
 
 Builds (system_msg, user_msg) for the expert crystallographer
-reasoning LLM call.
-
-Note: imports STOP_REASON_CODES from agent.graph_state (P1B) for
-parse_assessment validation.  All other logic is pure data
-formatting with no agent side-effects.
+reasoning LLM call. Imports nothing from agent — pure data
+formatting so it can be iterated on without touching any
+workflow code.
 """
 
 from __future__ import absolute_import, division, print_function
 import json
-
-# P1B: import STOP_REASON_CODES for parse_assessment validation.
-# Hardcoded fallback keeps validation working if the import fails
-# (e.g. during unit tests outside libtbx).
-try:
-  from libtbx.langchain.agent.graph_state import STOP_REASON_CODES as _STOP_REASON_CODES
-except ImportError:
-  try:
-    from agent.graph_state import STOP_REASON_CODES as _STOP_REASON_CODES
-  except ImportError:
-    # Safety net: keep the same codes as graph_state.STOP_REASON_CODES.
-    # If you add a code to STOP_REASON_CODES, add it here too.
-    _STOP_REASON_CODES = frozenset([
-        "WRONG_MTZ", "WRONG_SPACE_GROUP", "MISMATCHED_SEQUENCE",
-        "NO_SOLUTION_FOUND", "REASONLESS_DIVERGENCE",
-    ])
 
 
 # =========================================================================
@@ -72,9 +54,7 @@ Respond with a JSON object (no markdown fences):
   "data_quality": "brief quality note or empty string",
   "phasing_strategy": "current strategy or empty string",
   "concerns": ["list of concerns, if any"],
-  "alternatives": ["list of alternative approaches, if any"],
-  "stop_reason_code": null,
-  "file_overrides": {}
+  "alternatives": ["list of alternative approaches, if any"]
 }
 
 Actions:
@@ -88,22 +68,6 @@ Confidence levels:
 - medium: Some uncertainty, proceed with caution
 - low: Significant problems, may need strategy change
 - hopeless: Fundamental issues, consider stopping
-
-STOP CLASSIFICATION: When action is "stop", set stop_reason_code to
-the most specific applicable code from the reference list below. Only
-emit a code when the reason is unambiguous — wrong file content,
-confirmed space group mismatch, sequence clearly inconsistent with
-density. Leave null if uncertain or stopping for workflow reasons
-(convergence, max cycles). Do NOT set stop_reason_code when action is
-"guide_step", "let_run", or "pivot" — a code without a stop creates
-phantom errors in session analytics.
-
-FILE CORRECTION: Set file_overrides to {"category": "/absolute/path"}
-when RECENT HISTORY shows a specific wrong file was used and you can
-identify the correct replacement from that same history. Use input
-category names (data_mtz, model, sequence, etc.). Leave as empty {}
-if uncertain — do not guess a path. The agent will verify the path
-exists before using it.
 """
 
 
@@ -163,6 +127,10 @@ def build_thinking_prompt(context, strategy_memory_dict=None):
   plan_goal = context.get("plan_goal", "")
   if plan_goal:
     parts.append("Plan goal: %s" % plan_goal)
+  asu_copies = context.get("asu_copies")
+  if asu_copies:
+    parts.append(
+      "ASU copy count: %d (used by Phaser as ensemble.copies)" % asu_copies)
   stop_after = context.get("stop_after", "")
   if stop_after:
     parts.append(
@@ -348,19 +316,7 @@ def build_thinking_prompt(context, strategy_memory_dict=None):
   )
 
   user_msg = "\n".join(parts)
-
-  # 2C (P1B): append the stop_reason_code reference table so the LLM sees
-  # it directly below the "reference list below" pointer in SYSTEM_PROMPT.
-  # build_stop_reason_table() returns "" gracefully if errors.yaml is missing
-  # or PyYAML is unavailable, so the prompt still works without the table.
-  _stop_table = build_stop_reason_table()
-  system_msg = (
-    SYSTEM_PROMPT + "\n" + _stop_table
-    if _stop_table
-    else SYSTEM_PROMPT
-  )
-
-  return (system_msg, user_msg)
+  return (SYSTEM_PROMPT, user_msg)
 
 
 def _format_metrics(metrics):
@@ -445,9 +401,6 @@ def parse_assessment(llm_output):
     "phasing_strategy": "",
     "concerns": [],
     "alternatives": [],
-    # P1B: typed stop classification and file correction
-    "stop_reason_code": None,   # one of STOP_REASON_CODES or None
-    "file_overrides": {},       # {category: path} to override file selection
   }
 
   if not llm_output or not isinstance(llm_output, str):
@@ -481,13 +434,6 @@ def parse_assessment(llm_output):
         if result["confidence"] not in (
             "high", "medium", "low", "hopeless"):
           result["confidence"] = "medium"
-        # P1B: validate stop_reason_code — keep only recognised codes
-        _stop_code = result.get("stop_reason_code")
-        if _stop_code is not None and _stop_code not in _STOP_REASON_CODES:
-          result["stop_reason_code"] = None
-        # P1B: ensure file_overrides is a dict (LLM might return null/list)
-        if not isinstance(result.get("file_overrides"), dict):
-          result["file_overrides"] = {}
         return result
     except (json.JSONDecodeError, ValueError):
       pass
@@ -495,101 +441,3 @@ def parse_assessment(llm_output):
   # Couldn't parse JSON — use the raw text as analysis
   defaults["analysis"] = text[:500]
   return defaults
-
-
-# =========================================================================
-# P1B: Stop-reason reference table for the LLM prompt
-# =========================================================================
-
-def _load_errors_yaml():
-  """Load knowledge/errors.yaml and return the stop_reason_codes list.
-
-  Uses only the path relative to this file — errors.yaml lives in the
-  same knowledge/ directory as thinking_prompts.py in both dev and
-  installed contexts.
-
-  Returns an empty list on any failure (missing PyYAML, missing file,
-  malformed YAML) so the prompt still works without the table.
-  """
-  try:
-    import os
-    import yaml  # inside try — graceful if PyYAML not installed
-    errors_yaml_path = os.path.join(
-      os.path.dirname(os.path.abspath(__file__)),
-      "errors.yaml")
-    if not os.path.isfile(errors_yaml_path):
-      return []
-    with open(errors_yaml_path) as f:
-      data = yaml.safe_load(f)
-    codes = data.get("stop_reason_codes", []) if isinstance(data, dict) else []
-    return codes if isinstance(codes, list) else []
-  except Exception:  # covers ImportError (missing PyYAML) and all IO/parse failures
-    return []
-
-
-# Max characters of example_log_fragment to include in the prompt table.
-# Keeping this short avoids adding hundreds of tokens per code.
-_EXAMPLE_FRAGMENT_MAX_CHARS = 120
-
-
-def build_stop_reason_table():
-  """Return a prompt-ready string describing each stop_reason_code.
-
-  Generated from knowledge/errors.yaml so the prompt and the code
-  set cannot drift apart.  Returns an empty string if the file
-  cannot be loaded (the prompt works without it).
-
-  Each entry renders as:
-    WRONG_MTZ
-      Use when:      <trigger_evidence>
-      Do NOT use if: <negative_constraint>
-      Log pattern:   <first 120 chars of example_log_fragment>
-  """
-  codes = _load_errors_yaml()
-  if not codes:
-    return ""
-
-  lines = ["Stop reason codes — use only with action \"stop\":"]
-  for entry in codes:
-    code = entry.get("code", "")
-    if not code:
-      continue
-    trigger  = (entry.get("trigger_evidence") or "").strip()
-    negative = (entry.get("negative_constraint") or "").strip()
-    example  = (entry.get("example_log_fragment") or "").strip()
-    if example:
-      example = example[:_EXAMPLE_FRAGMENT_MAX_CHARS].rstrip()
-
-    lines.append("")
-    lines.append("  %s" % code)
-    if trigger:
-      lines.append("    Use when:      %s" % _wrap(trigger,  66, "                   "))
-    if negative:
-      lines.append("    Do NOT use if: %s" % _wrap(negative, 66, "                   "))
-    if example:
-      lines.append("    Log pattern:   %s" % _wrap(example,  66, "                   "))
-  return "\n".join(lines)
-
-
-def _wrap(text, width, indent):
-  """Greedy word-wrap for prompt strings.
-
-  Each output line is at most `width` characters.  Continuation lines
-  are prefixed with `indent`.
-  """
-  words = text.split()
-  lines = []
-  current = []
-  current_len = 0  # tracks len(" ".join(current)) — no phantom trailing space
-  for word in words:
-    # Would adding this word (plus a separating space) exceed the width?
-    if current_len + len(word) > width and current:
-      lines.append(" ".join(current))
-      current = [word]
-      current_len = len(word) + 1   # word + future trailing space slot
-    else:
-      current.append(word)
-      current_len += len(word) + 1  # word + future trailing space slot
-  if current:
-    lines.append(" ".join(current))
-  return ("\n" + indent).join(lines)

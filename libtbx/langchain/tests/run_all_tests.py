@@ -836,6 +836,16 @@ def main():
         results.append(("Validate File Overrides", "tst_validate_file_overrides", False, 0))
 
 
+    # --- Copies Tracking: ASU copies from xtriage and directives ---
+    try:
+        from tests.tst_copies_tracking import run as run_copies_tracking_tests
+        success, elapsed = run_test_module(
+            "tst_copies_tracking", run_copies_tracking_tests, args.verbose)
+        results.append(("Copies Tracking", "tst_copies_tracking", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_copies_tracking: {e}")
+        results.append(("Copies Tracking", "tst_copies_tracking", False, 0))
+
     # --- Summary ---
     total_elapsed = time.time() - total_start
 

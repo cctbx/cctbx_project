@@ -1,5 +1,47 @@
 # CHANGELOG — v115
 
+## Version 115.04 (ASU Copy Count Tracking)
+
+### Summary
+
+Tracks the number of copies of the search model in the asymmetric unit (ASU)
+and passes this automatically to Phaser as `ensemble.copies` each cycle.
+Copies are sourced from user directives (always wins) or xtriage log analysis.
+
+### Modified files (5)
+
+| File | Changes |
+|------|---------|
+| `programs/ai_agent.py` | `_extract_copies_from_directives()` method added; copies injected in all 3 directive extraction paths (rules-only, LLM, fallback); xtriage n_copies update from `history_record` |
+| `agent/api_client.py` | `asu_copies` added to both `build_session_state()` and `build_request_v2()` whitelists so value survives client→server round-trip |
+| `agent/graph_nodes.py` | `_fallback_extract_metrics()` extracts `n_copies` from xtriage log; BUILD node reads `session_info["asu_copies"]` and injects `component_copies` into strategy (skipped if LLM already set it); sanity bound 1–30 enforced |
+| `phenix_ai/run_ai_agent.py` | `asu_copies` forwarded from `session_state` → `session_info` each cycle; serialized into `metadata` for persistence |
+| `tests/tst_copies_tracking.py` | New test: directive path, xtriage path, priority (directive wins), range clamping, integration with `run_ai_agent` metadata |
+
+### Data flow
+
+**Directive path** (user says "4 copies in the ASU"):
+```
+_extract_copies_from_directives() → session.data["asu_copies"] = 4
+  → session_info["asu_copies"] → api_client whitelists
+    → run_ai_agent session_state → BUILD node → phaser.ensemble.copies=4
+```
+
+**Xtriage path** (xtriage log: "Best guess : 4 copies"):
+```
+_fallback_extract_metrics() → log_analysis["n_copies"] = 4
+  → history_record["asu_copies"] → session.data["asu_copies"]
+    (only if not already set by directive)
+      → next cycle: session_info → BUILD → phaser.ensemble.copies=4
+```
+
+### Tests
+
+| File | Tests | Covers |
+|------|-------|--------|
+| `tests/tst_copies_tracking.py` | New | Directive extraction, xtriage extraction, priority, bounds |
+
+
 ## Version 115.03 (Tutorial Run Bug Fixes: Bugs A–F + Anomalous Signal)
 
 ### Summary

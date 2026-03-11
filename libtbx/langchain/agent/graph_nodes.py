@@ -649,13 +649,14 @@ def perceive(state):
     # molprobity, model_vs_data, and refine, giving the LLM the right
     # menu to respond to follow-up instructions.
     session_info = state.get("session_info", {})
-    # Q1 step-back: fire on advice_changed (new/different advice this resume)
-    # OR simply on any non-empty user_advice.  The latter covers stale sessions
-    # where the hash was already stored before this fix, and the general rule
-    # that "complete + user instructions" should never hard-STOP.
-    _user_advice = (state.get("user_advice") or "").strip()
+    # Q1 step-back: fire ONLY on advice_changed (new/different advice this resume).
+    # Previously this also triggered on any non-empty user_advice, causing the
+    # step-back to repeat every cycle when README/instructions were present and
+    # preventing the workflow from ever completing normally.  Fix: only step back
+    # when advice_changed is True (set once on resume, cleared by ai_agent.py
+    # after the first successful post-resume cycle).
     if (workflow_state.get("step_info", {}).get("step") == "complete" and
-            (session_info.get("advice_changed", False) or _user_advice)):
+            session_info.get("advice_changed", False)):
         try:
             from libtbx.langchain.agent.workflow_engine import WorkflowEngine as _WE
             _eng = _WE()
@@ -670,10 +671,9 @@ def perceive(state):
                 "step": "validate",
                 "reason": "advice_changed: stepped back from complete step",
             }
-            _trigger = "advice_changed" if session_info.get("advice_changed", False) else "user_advice present"
             state = _log(state,
-                "PERCEIVE: %s — stepped back from 'complete' to 'validate' "
-                "step. valid_programs: %s" % (_trigger, _new_valid))
+                "PERCEIVE: advice_changed — stepped back from 'complete' to 'validate' "
+                "step. valid_programs: %s" % _new_valid)
         except Exception as _qe:
             state = _log(state,
                 "PERCEIVE: complete-step step-back failed (%s) — "
@@ -1246,6 +1246,21 @@ def _fallback_extract_metrics(log_text):
         resolution = patterns.extract_float("metrics.resolution", log_text, flags=re.IGNORECASE)
     if resolution is not None:
         analysis["resolution"] = resolution
+
+    # ASU copy count from Matthews coefficient analysis.
+    # Xtriage prints: "Best guess :    4 copies in the ASU"
+    # Guard: only accept a plain integer (1-30) to avoid "2 or 3"-style
+    # strings and unrealistic values.
+    _copies_m = re.search(
+        r'Best\s+guess\s*:\s*(\d+)\s+cop',
+        log_text, re.IGNORECASE)
+    if _copies_m:
+        try:
+            _nc = int(_copies_m.group(1))
+            if 1 <= _nc <= 30:
+                analysis["n_copies"] = _nc
+        except (ValueError, TypeError):
+            pass
 
     # Error detection using patterns
     if patterns.has_pattern("system.phenix_failed"):
@@ -2850,6 +2865,43 @@ def _build_with_new_builder(state):
             state = _log(state,
                 "BUILD: Applying default polder "
                 "selection='hetero and not water'")
+
+    # === PHASER COPIES INJECTION ===
+    # Inject ASU copy count as phaser.ensemble.copies when known.
+    # Sources (in priority order):
+    #   1. session_info["asu_copies"] — persisted from user directive or xtriage
+    #   2. directives program_settings.default.copies (same-cycle fallback)
+    #   3. directives program_settings.phenix.phaser.copies
+    if (program == "phenix.phaser"
+            and "component_copies" not in strategy):
+        _copies = session_info.get("asu_copies")
+        if not _copies:
+            _dir_c = state.get("directives", {})
+            _ps_c = _dir_c.get("program_settings", {})
+            _copies = (
+                _ps_c.get("default", {}).get("copies")
+                or _ps_c.get("phenix.phaser", {}).get("copies")
+            )
+        if _copies:
+            try:
+                _copies_int = int(_copies)
+                if 1 <= _copies_int <= 30:
+                    strategy["component_copies"] = _copies_int
+                    _src = ("session" if session_info.get("asu_copies")
+                            else "directives")
+                    state = _log(state,
+                        "BUILD: Injecting component_copies=%d "
+                        "for phaser (source: %s)"
+                        % (_copies_int, _src))
+                else:
+                    state = _log(state,
+                        "BUILD: Skipping component_copies — "
+                        "value %d is outside sane range 1-30"
+                        % _copies_int)
+            except (ValueError, TypeError):
+                state = _log(state,
+                    "BUILD: Skipping component_copies — "
+                    "non-integer value %r" % (_copies,))
 
     # === PHIL STRATEGY VALIDATION (Fix 4, v115) ===
     # Strip LLM-injected params that aren't valid for this

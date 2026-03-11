@@ -75,18 +75,27 @@ def derive_metrics_from_history(history):
                 metrics["resolution"] = analysis.get("resolution")
                 metrics["map_cc"] = analysis.get("map_cc")
 
-            # Also check result/summary for metrics (fallback)
+            # Also check result/summary/analysis for metrics (fallback)
             result_text = str(entry.get("result", "") or entry.get("summary", ""))
+            # analysis may be a text string (FINAL QUALITY METRICS REPORT format)
+            # or a dict — include it in the search text either way
+            _analysis = entry.get("analysis", "")
+            if isinstance(_analysis, str) and _analysis:
+                result_text = result_text + "\n" + _analysis
 
-            # Only fill in missing values from result text
+            # Broad r_free pattern: matches "R-free:", "R Free:", "R_Free:", "R Free ="
+            _RFREE_PAT = r"R[- _][Ff]ree[:\s=]+([0-9.]+)"
+            _RWORK_PAT = r"R[- _][Ww]ork[:\s=]+([0-9.]+)"
+
+            # Only fill in missing values from result/analysis text
             if not metrics["r_free"]:
-                metrics["r_free"] = _extract_float(result_text, r"R-free[:\s=]+([0-9.]+)")
+                metrics["r_free"] = _extract_float(result_text, _RFREE_PAT)
             # Try autobuild table format: "SOLUTION  CYCLE     R        RFREE"
             # followed by data row like "1         1      0.21        0.25"
             if not metrics["r_free"]:
                 metrics["r_free"] = _extract_autobuild_rfree(result_text)
             if not metrics["r_work"]:
-                metrics["r_work"] = _extract_float(result_text, r"R-work[:\s=]+([0-9.]+)")
+                metrics["r_work"] = _extract_float(result_text, _RWORK_PAT)
             if not metrics["tfz"]:
                 metrics["tfz"] = _extract_float(result_text, r"TFZ[=:\s]+([0-9.]+)")
             if not metrics["llg"]:

@@ -1167,6 +1167,14 @@ def _categorize_files_hardcoded(available_files, ligand_hints=None, files_local=
             if 'refine' in basename:
                 files["pdb"].append(f)
                 files["refined"].append(f)
+            elif any(pat in basename for pat in (
+                    'overall_best', 'autobuild', 'predict_and_build',
+                    'autosol', 'model_cif')):
+                # Whole-model mmCIF from autobuild/predict_and_build:
+                # geometry restraints for the full protein, NOT a ligand.
+                # Putting these in ligand_cif causes them to be injected
+                # positionally into phenix.refine → "wrong number of models".
+                files["pdb"].append(f)
             else:
                 files["ligand_cif"].append(f)
 
@@ -1612,10 +1620,6 @@ def _analyze_history(history):
         # Placement probe results (Tier 3)
         "placement_probed": False,
         "placement_probe_result": None,
-
-        # autosol attempted (set regardless of success — prevents MR-SAD loop
-        # when autosol fails after phaser, e.g. no anomalous arrays in MTZ)
-        "autosol_attempted": False,
     }
 
     # Initialize done flags and count fields from YAML (single source of truth)
@@ -1668,11 +1672,7 @@ def _analyze_history(history):
                     # is negligible and must NOT gate autosol availability.
                     if analysis["anomalous_resolution"] < 6.0:
                         info["has_anomalous"] = True
-                # has_anomalous from xtriage is checked independently — not as elif —
-                # so it is not silently skipped when anomalous_resolution is also present
-                # but >= 6.0 (e.g. analysis has both anomalous_resolution=9.8 and
-                # has_anomalous=True from a different xtriage signal criterion).
-                if analysis.get("has_anomalous") and not info["has_anomalous"]:
+                elif analysis.get("has_anomalous"):
                     info["has_anomalous"] = analysis["has_anomalous"]
                 # Store anomalous measurability for decision making
                 if analysis.get("anomalous_measurability") is not None:
@@ -1681,17 +1681,11 @@ def _analyze_history(history):
                     if analysis["anomalous_measurability"] > 0.10:
                         info["has_anomalous"] = True
                         info["strong_anomalous"] = True
-                    elif analysis["anomalous_measurability"] >= 0.06:
-                        # Weak but meaningful anomalous signal [0.06, 0.10]:
-                        # has_anomalous=True so autosol remains available, but
-                        # strong_anomalous stays False (phasing may be marginal).
-                        info["has_anomalous"] = True
-                    else:
-                        # anomalous_measurability < 0.06: negligible signal.
-                        # Clear has_anomalous unless xtriage explicitly flagged it True
-                        # (e.g. has_anomalous=True with measurability=0.05 means xtriage
-                        # detected signal by a criterion other than measurability alone).
-                        if not info.get("strong_anomalous") and not analysis.get("has_anomalous"):
+                    elif analysis["anomalous_measurability"] < 0.06:
+                        # Negligible signal: explicitly clear has_anomalous even if
+                        # anomalous_resolution was present (belt-and-suspenders guard).
+                        # Avoids autosol being offered when data is effectively native.
+                        if not info.get("strong_anomalous"):
                             info["has_anomalous"] = False
                 # Twinning threshold (0.20) from workflows.yaml shared section
                 if analysis.get("twin_law") and analysis.get("twin_fraction"):
@@ -1711,13 +1705,6 @@ def _analyze_history(history):
         info["programs_run"].add(prog)
         info["last_program"] = prog
 
-        # autosol_attempted: set True whenever autosol has been tried,
-        # regardless of whether it succeeded.  This prevents the MR-SAD
-        # routing loop (step 2d) from re-offering autosol after a failure
-        # such as "Unable to find anomalous amplitude arrays".
-        if "autosol" in prog.lower():
-            info["autosol_attempted"] = True
-
         # =====================================================================
         # Program done flags — YAML-driven detection for all strategies
         # =====================================================================
@@ -1728,20 +1715,21 @@ def _analyze_history(history):
         _set_done_flags(info, combined, result)
 
         # The ONE remaining Python-only case: predict_and_build cascade.
-        # When predict runs fully, it also sets predict_full_done.
-        # NOTE: we deliberately do NOT set refine_done=True here.
-        # predict_and_build does internal refinement as part of its own
-        # pipeline, but the agent should still be free to run a standalone
-        # phenix.refine pass on the final output model.  Setting refine_done
-        # here caused LOOP WARNING (refine_done=True yet refine in valid_programs)
-        # and caused the file selector to pick predict_and_build's internal
-        # intermediate refined PDB as the model, triggering "Wrong number of
-        # models of each type supplied" from phenix.refine (Bug C fix).
+        # When predict runs fully, it sets predict_full_done.
+        # We intentionally do NOT set refine_done here: predict_and_build
+        # performs internal refinement passes, but those are not the same as
+        # a standalone phenix.refine run on the final output model.  Setting
+        # refine_done=True here caused the LOOP WARNING (refine_done=True but
+        # phenix.refine still in valid_programs) and also triggered the file
+        # selector to pick intermediate multi-model PDBs from PredictAndBuild
+        # subdirectories instead of the correct overall_best output.
         if "predict_and_build" in combined:
             if not _is_failed_result(result):
                 info["predict_done"] = True
                 if "stop_after_predict=true" not in combined and "stop_after_predict=True" not in combined:
                     info["predict_full_done"] = True
+                    # refine_count is NOT incremented here; the agent should
+                    # run a separate phenix.refine step on the p&b output.
 
         # Track whether refinement is needed after ligandfit.
         # After ligandfit adds a ligand, the complex always needs re-refinement.

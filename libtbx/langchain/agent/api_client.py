@@ -129,6 +129,19 @@ def build_session_state(session_info, session_resolution=None):
             session_state[
                 "plan_has_pending_stages"] = True
 
+        # P4: session-blocked programs — programs that have failed too many
+        # times this session.  Persisted client-side and re-injected each
+        # cycle so the server can filter them from valid_programs.
+        if session_info.get("session_blocked_programs"):
+            session_state["session_blocked_programs"] = (
+                session_info["session_blocked_programs"])
+
+        # ASU copy count (copies feature): known after xtriage or from user
+        # directives.  Forwarded each cycle so BUILD can inject
+        # phaser.ensemble.copies without re-parsing xtriage output.
+        if session_info.get("asu_copies"):
+            session_state["asu_copies"] = session_info["asu_copies"]
+
     return session_state
 
 
@@ -233,6 +246,13 @@ def build_request_v2(
         # Parameter blacklist for command post-processing
         if session_state.get("bad_inject_params"):
             normalized_session_state["bad_inject_params"] = session_state["bad_inject_params"]
+        # P4: session-blocked programs
+        if session_state.get("session_blocked_programs"):
+            normalized_session_state["session_blocked_programs"] = (
+                session_state["session_blocked_programs"])
+        # ASU copy count (copies feature)
+        if session_state.get("asu_copies"):
+            normalized_session_state["asu_copies"] = session_state["asu_copies"]
 
     # Build settings
     settings = {

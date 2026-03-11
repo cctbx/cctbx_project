@@ -1135,6 +1135,18 @@ phenix.refine:
         extensions: [.cif]
         flag: ""
         description: "Ligand geometry restraint file (.ligands.cif)"
+        # Exclude autobuild/predict_and_build geometry-restraints CIFs.
+        # These are whole-model mmCIF files (overall_best.cif, refine_*.cif)
+        # that look like .cif but are NOT small-molecule ligand restraints.
+        # Passing them positionally to phenix.refine causes "wrong number of
+        # models" errors.  Real ligand CIFs are named *.ligands.cif or
+        # similar.  Pattern matches are against lowercase basename.
+        exclude_patterns:
+          - "overall_best"
+          - "overall_best_final"
+          - "refine_"
+          - "autobuild"
+          - "predict_and_build"
 
   # Input priorities: which file categories to prefer for each input
   # Categories are checked in order; first match wins
