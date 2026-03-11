@@ -443,6 +443,7 @@ def run_think_node(state):
     # The GUI reads expert_assessment from the callback
     # data, which comes from state["expert_assessment"].
     if thinking_level in ("advanced", "expert"):
+      assessment["validation_summary"] = (
         validation_summary)
       assessment["validation_skip_reason"] = (
         context.get("validation_skip_reason", ""))
@@ -467,10 +468,25 @@ def run_think_node(state):
       # Emit stop_decision so the event formatter
       # shows it (plan() will short-circuit and
       # never get to emit its own stop_decision).
-      stop_reason = (
-        "expert: %s"
-        % assessment["analysis"][:200]
-      )
+      #
+      # P1B: use classified stop_reason_code when
+      # available; fall back to freeform analysis.
+      _src = assessment.get("stop_reason_code")
+      if _src:
+        stop_reason = _src
+      else:
+        stop_reason = (
+          "expert: %s"
+          % assessment["analysis"][:200]
+        )
+      # P1B: build think_stop_override for output_node
+      _think_stop_override = None
+      if _src:
+        _think_stop_override = {
+          "code": _src,
+          "analysis": assessment.get(
+            "analysis", "")[:300],
+        }
       events = list(state.get("events", []))
       events.append({
         "type": "stop_decision",
@@ -485,6 +501,7 @@ def run_think_node(state):
         "stop_reason": stop_reason,
         "abort_message": abort_msg,
         "expert_assessment": assessment,
+        "think_stop_override": _think_stop_override,
         "strategy_memory": _update_memory(
           memory_dict, assessment, cycle),
       }
@@ -498,11 +515,19 @@ def run_think_node(state):
     else:
       enriched_advice = state.get("user_advice", "")
 
+    # P1B: forward file_overrides from expert assessment
+    # to BUILD node via think_file_overrides state key.
+    _file_overrides = assessment.get(
+      "file_overrides", {})
+    if not isinstance(_file_overrides, dict):
+      _file_overrides = {}
+
     cycle = state.get("cycle_number", 1)
     return {
       **state,
       "user_advice": enriched_advice,
       "expert_assessment": assessment,
+      "think_file_overrides": _file_overrides,
       "strategy_memory": _update_memory(
         memory_dict, assessment, cycle),
     }
@@ -603,7 +628,48 @@ def _build_thinking_context(state, thinking_level="advanced"):
     "validated_model_path": None,
     "file_metadata": {},
     "kb_rules_text": "",
+    "file_inventory": "",
   }
+
+  # File inventory: give the expert a category-grouped
+  # view of available files so it can see what inputs
+  # exist without guessing from filenames alone.
+  _cat_files = workflow_state_dict.get(
+    "categorized_files", {})
+  if _cat_files:
+    # Group into meaningful labels, skip empty categories
+    _inv_map = [
+      ("Models", [
+        "model", "refined", "phaser_output",
+        "rsr_output", "predicted",
+        "autobuild_output"]),
+      ("Sequences", ["sequence"]),
+      ("Reflection data", [
+        "data_mtz", "phased_data_mtz"]),
+      ("Map coefficients", [
+        "map_coeffs_mtz", "refine_map_coeffs",
+        "denmod_map_coeffs"]),
+      ("Maps", [
+        "full_map", "half_map"]),
+      ("Ligands", [
+        "ligand_pdb", "ligand_cif"]),
+    ]
+    _inv_lines = []
+    for label, cats in _inv_map:
+      fnames = []
+      for cat in cats:
+        for fpath in _cat_files.get(cat, []):
+          bn = os.path.basename(fpath)
+          tag = cat.replace("_", " ")
+          entry = "%s (%s)" % (bn, tag)
+          if entry not in fnames:
+            fnames.append(entry)
+      if fnames:
+        _inv_lines.append(
+          "  %s: %s" % (label, ", ".join(fnames)))
+    if _inv_lines:
+      context["file_inventory"] = (
+        "\n".join(_inv_lines))
 
   # Plan phase and directives (so guidance aligns
   # with what the agent is trying to accomplish)

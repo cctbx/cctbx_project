@@ -1032,21 +1032,16 @@ class WorkflowEngine:
             return self._make_step_result(steps, "obtain_model",
                 "Data analyzed, need to obtain model")
 
-        # Step 2e (Bug F fix): Refinement ran but R-free is very high — the MR
-        # solution is likely wrong.  Route back to obtain_model so the agent can
-        # retry phaser with a different search model rather than being stuck in
-        # xray_refined with only STOP available.
-        # Conditions: refine has run at least once, r_free >= 0.45 (clearly bad),
-        # and we have a search model or multiple input models to try.
-        # We only apply this when phaser has already run (otherwise the normal
-        # path handles it), because a high R-free from a first-pass refine on a
-        # phaser solution that scored TFZ < 5 is a strong signal of MR failure.
+        # Step 2e (Bug F fix): R-free very high after MR — route to
+        # obtain_model so the agent can retry phaser.  v115.05: also
+        # require autobuild_done (incomplete model, not wrong MR).
         _r_free_now = context.get("r_free")
         if (_r_free_now is not None and
                 _r_free_now >= 0.45 and
                 context.get("refine_count", 0) >= 1 and
                 context.get("phaser_done") and
-                context.get("has_model_for_mr")):
+                context.get("has_model_for_mr") and
+                context.get("autobuild_done")):
             return self._make_step_result(steps, "obtain_model",
                 "Refinement R-free=%.3f after MR — solution likely wrong; "
                 "retry with different search model" % _r_free_now)
@@ -1294,13 +1289,28 @@ class WorkflowEngine:
                 # one refinement, something is fundamentally wrong (wrong model,
                 # wrong space group, severe data issues). Further refinement
                 # won't help — stop and let the user investigate.
+                #
+                # EXCEPTION: if autobuild hasn't been tried yet, a high R-free
+                # after MR may simply mean the model is incomplete (e.g.,
+                # AlphaFold model covering only part of the ASU).  Autobuild
+                # can rebuild and complete the model, often dramatically
+                # improving R-free (e.g., AF_POMGNT2: 0.55 → 0.28).
+                # Don't declare hopeless until rebuilding has been attempted.
                 if r_free > 0.50 and refine_count >= 1:
-                    return True
+                    if context.get("autobuild_done"):
+                        return True
+                    # else: let autobuild have a chance
 
-            # Also check clashscore - if it's good, we're likely done
+            # Also check clashscore - if it's good AND R-free is reasonable,
+            # we're likely done.  A low clashscore with hopeless R-free
+            # (>0.45) means the model has good geometry but is incorrectly
+            # placed or incomplete (common with AlphaFold predictions after
+            # MR).  Don't declare at-target in that case.
             clashscore = context.get("clashscore")
             if clashscore is not None and clashscore < 10:
-                return True
+                r_free = context.get("r_free")
+                if r_free is None or r_free < 0.45:
+                    return True
 
             # Hard limit: if we've done 3+ refine cycles, consider it at target.
             # This prevents unbounded refinement when R-free plateaus above

@@ -219,6 +219,17 @@ def _build_context(data_characteristics=None,
     else:
       ctx["has_search_model"] = True
 
+  # Detect placed-model signals from filenames.
+  # PDB files named *_mr_solution* are already-placed
+  # MR models (not search models).  Boundary-aware:
+  # require _ before mr_solution (or at start of name)
+  # so nmr_solution.pdb doesn't match.
+  for bn in pdb_files:
+    if ('_mr_solution' in bn or
+        bn.startswith('mr_solution')):
+      ctx["model_is_placed"] = True
+      break
+
   # Detect potential ligand PDB files.
   # When multiple PDBs exist and one has a name
   # suggesting it's a ligand model (not the main

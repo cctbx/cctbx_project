@@ -103,6 +103,11 @@ SESSION_INFO_FIELDS = [
      "True when the plan has stages still pending "
      "with programs that could run. Suppresses "
      "AUTO-STOP so the plan can drive the workflow."),
+
+    # --- v5: ASU copy count (v115.04) ------------------------------------
+    ("asu_copies",              None,  5,
+     "Number of copies in the ASU (int or None). "
+     "From user directives or xtriage log analysis."),
 ]
 
 # Convenience lookup: field_name -> (default, version, description)

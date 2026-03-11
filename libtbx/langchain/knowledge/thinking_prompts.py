@@ -138,6 +138,16 @@ def build_thinking_prompt(context, strategy_memory_dict=None):
       % stop_after
     )
 
+  # File inventory (v115.05) — show what files are
+  # available by category so the expert doesn't
+  # hallucinate missing files.
+  file_inventory = context.get("file_inventory", "")
+  if file_inventory:
+    parts.append(
+      "\n=== AVAILABLE FILES ===\n%s"
+      % file_inventory
+    )
+
   # Program and metrics
   program = context.get("program_name", "")
   if program:
@@ -316,7 +326,23 @@ def build_thinking_prompt(context, strategy_memory_dict=None):
   )
 
   user_msg = "\n".join(parts)
-  return (SYSTEM_PROMPT, user_msg)
+
+  # P1B: inject stop_reason table into system prompt
+  # when errors.yaml is available.
+  _table = build_stop_reason_table()
+  if _table:
+    _system = (
+      SYSTEM_PROMPT
+      + "\n\nWhen recommending \"stop\", use the "
+      "reference list below to classify the "
+      "reason.  Put the matching code in the "
+      "\"stop_reason_code\" field of your JSON "
+      "response.\n\n"
+      + _table
+    )
+  else:
+    _system = SYSTEM_PROMPT
+  return (_system, user_msg)
 
 
 def _format_metrics(metrics):
@@ -401,6 +427,8 @@ def parse_assessment(llm_output):
     "phasing_strategy": "",
     "concerns": [],
     "alternatives": [],
+    "stop_reason_code": None,
+    "file_overrides": {},
   }
 
   if not llm_output or not isinstance(llm_output, str):
@@ -434,6 +462,26 @@ def parse_assessment(llm_output):
         if result["confidence"] not in (
             "high", "medium", "low", "hopeless"):
           result["confidence"] = "medium"
+        # P1B: validate stop_reason_code
+        _src = result.get("stop_reason_code")
+        if _src is not None:
+          try:
+            from agent.graph_state import (
+              STOP_REASON_CODES)
+          except ImportError:
+            try:
+              from graph_state import (
+                STOP_REASON_CODES)
+            except ImportError:
+              STOP_REASON_CODES = frozenset()
+          if _src not in STOP_REASON_CODES:
+            result["stop_reason_code"] = None
+        else:
+          result["stop_reason_code"] = None
+        # P1B: normalize file_overrides
+        _fo = result.get("file_overrides")
+        if not isinstance(_fo, dict):
+          result["file_overrides"] = {}
         return result
     except (json.JSONDecodeError, ValueError):
       pass
@@ -441,3 +489,74 @@ def parse_assessment(llm_output):
   # Couldn't parse JSON — use the raw text as analysis
   defaults["analysis"] = text[:500]
   return defaults
+
+
+# =========================================================================
+# P1B: Stop-reason table for system prompt
+# =========================================================================
+
+def _load_errors_yaml():
+  """Load stop reason codes from knowledge/errors.yaml.
+
+  Returns list of dicts with 'code', 'summary',
+  'trigger_evidence', 'negative_constraint' keys.
+  Returns [] if the file is missing or unparseable.
+
+  Never raises.
+  """
+  import os
+  try:
+    import yaml
+  except ImportError:
+    return []
+  _yaml_dir = os.path.join(
+    os.path.dirname(__file__))
+  _yaml_path = os.path.join(
+    _yaml_dir, "errors.yaml")
+  if not os.path.isfile(_yaml_path):
+    return []
+  try:
+    with open(_yaml_path) as f:
+      data = yaml.safe_load(f)
+    if isinstance(data, dict):
+      return data.get("stop_reason_codes", [])
+    return []
+  except Exception:
+    return []
+
+
+def build_stop_reason_table():
+  """Build a text table of stop reason codes for
+  injection into the system prompt.
+
+  Returns a multi-line string, or "" if errors.yaml
+  is absent or empty.
+
+  Never raises.
+  """
+  entries = _load_errors_yaml()
+  if not entries:
+    return ""
+  lines = [
+    "STOP REASON CODES — use one of these codes in "
+    "the stop_reason_code field when action is "
+    "\"stop\":",
+    "",
+  ]
+  for entry in entries:
+    code = entry.get("code", "")
+    summary = entry.get("summary", "")
+    trigger = entry.get(
+      "trigger_evidence", "").strip()
+    negative = entry.get(
+      "negative_constraint", "").strip()
+    lines.append("  %s — %s" % (code, summary))
+    if trigger:
+      lines.append(
+        "    USE WHEN: %s" % trigger[:200])
+    if negative:
+      lines.append(
+        "    DO NOT USE WHEN: %s"
+        % negative[:200])
+    lines.append("")
+  return "\n".join(lines)

@@ -590,6 +590,45 @@ def _categorize_files(available_files, ligand_hints=None, files_local=True):
                 if f not in files["map"]:
                     files["map"].append(f)
 
+    # Post-processing: Detect half-map pairs among full_map files.
+    #
+    # Some cryo-EM half-maps are named with _1/_2 suffixes instead of
+    # containing 'half' (e.g. 7mjs_23883_H_1.ccp4, 7mjs_23883_H_2.ccp4).
+    # The strict 'half'-in-name check (above) correctly avoids false
+    # positives on segmented maps, but misses these legitimate pairs.
+    #
+    # Heuristic: if full_map has exactly 2 files whose basenames differ
+    # only by a trailing _1/_2 before the extension, AND no files are
+    # already in half_map, AND at least one other map remains in full_map
+    # after removing the pair (the companion full map), promote the pair.
+    #
+    # The companion-full-map guard prevents false positives on
+    # resolve_cryo_em segmented outputs (map_1.ccp4, map_2.ccp4) which
+    # also match the _1/_2 pattern but never come with a companion full
+    # map sharing their prefix.
+    if (not files.get("half_map") and
+        len(files.get("full_map", [])) >= 3):
+        # Need >= 3: at least 2 for the pair + 1 companion full map
+        _pair_re = re.compile(
+            r'^(.+)[_-]([12])\.(\w+)$', re.IGNORECASE)
+        _by_prefix = {}
+        for f in files["full_map"]:
+            m = _pair_re.match(os.path.basename(f))
+            if m:
+                prefix = m.group(1).lower()
+                _by_prefix.setdefault(prefix, []).append(f)
+        for prefix, pair in _by_prefix.items():
+            if len(pair) == 2:
+                # Verify at least one non-pair map remains
+                # (the companion full map)
+                remaining = [
+                    f for f in files["full_map"]
+                    if f not in pair]
+                if remaining:
+                    for f in pair:
+                        files["full_map"].remove(f)
+                        files["half_map"].append(f)
+
     # Post-processing: If we have exactly one half-map and no full maps,
     # treat it as a full map. Half-maps only make sense in pairs for FSC.
     # A user providing a single map (even if named like a half-map) wants to use it.
@@ -1060,6 +1099,17 @@ def _categorize_files_hardcoded(available_files, ligand_hints=None, files_local=
 
             if 'phaser' in basename or basename.startswith('phaser'):
                 files["phaser_output"].append(f)
+                _is_program_output = True
+
+            # MR solution files: names like mup_mr_solution.pdb
+            # indicate an already-placed MR model.  Classify as
+            # phaser_output so _has_placed_model recognizes them.
+            # Boundary-aware: require _ before mr_solution (or at
+            # start of name) so nmr_solution.pdb doesn't match.
+            if ('_mr_solution' in basename or
+                basename.startswith('mr_solution')):
+                if f not in files["phaser_output"]:
+                    files["phaser_output"].append(f)
                 _is_program_output = True
 
             if 'refine' in basename and 'real_space' not in basename and 'rsr' not in basename:
@@ -1672,7 +1722,11 @@ def _analyze_history(history):
                     # is negligible and must NOT gate autosol availability.
                     if analysis["anomalous_resolution"] < 6.0:
                         info["has_anomalous"] = True
-                elif analysis.get("has_anomalous"):
+                # Independent 'if' (not elif): has_anomalous from analysis
+                # must be checked even when anomalous_resolution is present
+                # but >= 6.0.  The old 'elif' silently skipped this when
+                # anomalous_resolution was set.  (v115.03 fix)
+                if analysis.get("has_anomalous"):
                     info["has_anomalous"] = analysis["has_anomalous"]
                 # Store anomalous measurability for decision making
                 if analysis.get("anomalous_measurability") is not None:
@@ -1681,11 +1735,15 @@ def _analyze_history(history):
                     if analysis["anomalous_measurability"] > 0.10:
                         info["has_anomalous"] = True
                         info["strong_anomalous"] = True
+                    elif analysis["anomalous_measurability"] >= 0.06:
+                        info["has_anomalous"] = True  # weak signal (v115.03)
                     elif analysis["anomalous_measurability"] < 0.06:
-                        # Negligible signal: explicitly clear has_anomalous even if
-                        # anomalous_resolution was present (belt-and-suspenders guard).
-                        # Avoids autosol being offered when data is effectively native.
-                        if not info.get("strong_anomalous"):
+                        # Negligible signal — clear unless protected
+                        if info.get("strong_anomalous"):
+                            pass  # Don't clear strong signal
+                        elif analysis.get("has_anomalous"):
+                            pass  # Trust explicit flag (v115.03)
+                        else:
                             info["has_anomalous"] = False
                 # Twinning threshold (0.20) from workflows.yaml shared section
                 if analysis.get("twin_law") and analysis.get("twin_fraction"):

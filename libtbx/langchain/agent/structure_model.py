@@ -1622,6 +1622,14 @@ class StructureModel(object):
         dp = ms.get("diff_peaks", {})
         return len(dp.get("negative", []))
 
+      # Anomalous data characteristics (v115.05)
+      anom = dc.get("anomalous", {})
+      if metric_name == "anomalous_measurability":
+        return _safe_float(
+          anom.get("anomalous_measurability"))
+      if metric_name == "has_anomalous":
+        return anom.get("has_anomalous_data")
+
       return None
     except Exception:
       return None

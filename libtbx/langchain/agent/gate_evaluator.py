@@ -378,6 +378,47 @@ class GateEvaluator(object):
           details=details,
         )
 
+    # --- Anomalous signal guard (v115.05) ──────────
+    # After the first autosol attempt in
+    # experimental_phasing, verify that anomalous
+    # signal was actually usable.  Without this, the
+    # agent wastes cycles running autosol on noise
+    # when anomalous_measurability is negligible.
+    #
+    # Placed AFTER success criteria: if autosol
+    # somehow succeeded, let the advance happen.
+    # Uses cycles_used <= 1 (not == 0) because the
+    # gate evaluates AFTER each cycle, so the first
+    # evaluation of this stage has cycles_used == 1.
+    if (stage.id == "experimental_phasing"
+        and stage.cycles_used <= 1
+        and structure_model):
+      _anom_m = _get_metric_value(
+        structure_model,
+        "anomalous_measurability",
+      )
+      _has_anom = _get_metric_value(
+        structure_model, "has_anomalous",
+      )
+      if (_anom_m is not None
+          and _has_anom is not None
+          and not _has_anom):
+        try:
+          _anom_f = float(_anom_m)
+        except (ValueError, TypeError):
+          _anom_f = None
+        if _anom_f is not None and _anom_f < 0.05:
+          return GateResult(
+            action="stop",
+            reason=(
+              "Anomalous measurability %.3f "
+              "< 0.05 — signal too weak for "
+              "SAD phasing. Consider "
+              "predict_and_build or MR "
+              "instead." % _anom_f
+            ),
+          )
+
     # --- Check gate conditions ---
     # Gates must fire BEFORE exhaustion check,
     # because gates can include critical stop/retreat

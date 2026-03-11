@@ -846,6 +846,16 @@ def main():
         print(f"\u26a0\ufe0f  Could not import tst_copies_tracking: {e}")
         results.append(("Copies Tracking", "tst_copies_tracking", False, 0))
 
+    # --- Half-map pairs, sigma-A MTZ, file inventory, anomalous gate ---
+    try:
+        from tests.tst_halfmap_sigmaa_inventory import run as run_halfmap_sigmaa_tests
+        success, elapsed = run_test_module(
+            "tst_halfmap_sigmaa_inventory", run_halfmap_sigmaa_tests, args.verbose)
+        results.append(("Half-map/SigmaA/Inventory", "tst_halfmap_sigmaa_inventory", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_halfmap_sigmaa_inventory: {e}")
+        results.append(("Half-map/SigmaA/Inventory", "tst_halfmap_sigmaa_inventory", False, 0))
+
     # --- Summary ---
     total_elapsed = time.time() - total_start
 

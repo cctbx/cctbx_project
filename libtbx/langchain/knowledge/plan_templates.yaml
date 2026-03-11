@@ -115,6 +115,8 @@ templates:
         success:
           r_free: "<0.35"
         gate:
+          - if: "r_free > 0.50 after 1 cycles"
+            action: "try_rebuilding"
           - if: "r_free > 0.45 after 2 cycles"
             action: "retreat_to molecular_replacement"
           - if: "r_free 0.35-0.45 after 3 cycles"
@@ -199,6 +201,8 @@ templates:
         success:
           r_free: "<0.38"
         gate:
+          - if: "r_free > 0.50 after 1 cycles"
+            action: "try_rebuilding"
           - if: "r_free > 0.48 after 2 cycles"
             action: "retreat_to molecular_replacement"
       model_rebuilding:
@@ -360,6 +364,8 @@ templates:
         success:
           r_free: "<0.38"
         gate:
+          - if: "r_free > 0.50 after 1 cycles"
+            action: "try_rebuilding"
           - if: "r_free > 0.48 after 2 cycles"
             action: "retreat_to molecular_replacement"
       final_refinement:
@@ -520,6 +526,8 @@ templates:
         success:
           r_free: "<0.35"
         gate:
+          - if: "r_free > 0.50 after 1 cycles"
+            action: "try_rebuilding"
           - if: "r_free > 0.45 after 2 cycles"
             action: "retreat_to model_prediction"
 
