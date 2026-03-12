@@ -24,6 +24,7 @@ jobs:
           ssh-keyscan -t rsa gitlab.com >> ~/.ssh/known_hosts
           cd ./modules/cctbx_project
           git checkout master
+          git pull
           git remote add gitlab git@gitlab.com:cctbx/cctbx_project.git
           git fetch gitlab
           git push -u gitlab master
