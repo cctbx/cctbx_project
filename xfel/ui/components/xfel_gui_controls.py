@@ -117,7 +117,8 @@ class RunBlockButton(GradButton):
 
   def update_label(self):
     if self.first_run is None:
-      first = ' ...'
+      sfr = self.block.streaming_first_run
+      first = sfr if sfr is not None else ' ...'
     else:
       if self.use_ids:
         first = self.first_run.id
@@ -125,7 +126,8 @@ class RunBlockButton(GradButton):
         first = self.first_run.run
 
     if self.last_run is None:
-      last = ' ...'
+      slr = self.block.streaming_last_run
+      last = ' - {}'.format(slr) if slr is not None else ' ...'
     else:
       last = ' - {}'.format(self.last_run.id if self.use_ids else self.last_run.run)
 
