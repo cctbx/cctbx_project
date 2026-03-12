@@ -3145,6 +3145,14 @@ categorization guards, error recovery patterns, content-based checks,
 and command postprocessor special cases — see the "Adding a New Tool"
 discussion in OVERVIEW.md.
 
+**Missing guard in cryo-EM target check.** The `_is_at_target`
+clashscore path (line 1334 of `graph_nodes.py`) does not have a
+`rsr_count >= 1` guard like the X-ray path does. In practice this
+is a theoretical-only gap: cryo-EM programs don't produce clashscore
+until after real-space refinement has run, so the unguarded path is
+never reached with current tutorials. Worth a future cleanup but low
+risk.
+
 ### Design tensions
 
 **Rule D ("fail closed") vs LLM error recovery.** The command sanitizer

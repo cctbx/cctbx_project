@@ -431,6 +431,55 @@ def _categorize_files(available_files, ligand_hints=None, files_local=True):
     # Bubble up subcategories to their parent semantic categories
     files = _bubble_up_to_parents(files, category_rules)
 
+    # Post-processing: Rescue "no_ligand" / "noligand" PDB files that
+    # were misclassified as ligand_pdb.  Filenames like 1J4R_no_ligand.pdb
+    # contain the word "ligand" but are protein models with the ligand
+    # omitted — the opposite of a ligand file.  Move them from ligand
+    # categories to model.  Runs after both YAML and hardcoded paths.
+    #
+    # Also handles the case where the hardcoded exclusion prevented the
+    # file from entering ligand_pdb at all — in that case the file is
+    # in pdb but not in model (no subcategory was matched).  Promote
+    # it to model so BUILD can find it.
+    _anti_ligand_patterns = [
+        'no_ligand', 'noligand', 'sans_ligand',
+        'without_ligand', 'apo_ligand',
+    ]
+    # Path 1: file got INTO ligand_pdb (YAML path) — rescue it
+    for f in list(files.get("ligand_pdb", [])):
+        bn = os.path.basename(f).lower()
+        if any(pat in bn for pat in _anti_ligand_patterns):
+            files["ligand_pdb"].remove(f)
+            if f in files.get("ligand", []):
+                files["ligand"].remove(f)
+            for cat in ("model", "pdb"):
+                if cat not in files:
+                    files[cat] = []
+                if f not in files[cat]:
+                    files[cat].append(f)
+
+    # Path 2: file stayed in pdb only (hardcoded exclusion) —
+    # promote to model so has_model=True in PERCEIVE
+    _all_model_subcats = set()
+    for subcat, parent in SUBCATEGORY_TO_PARENT.items():
+        if parent in ("model", "search_model"):
+            _all_model_subcats.add(subcat)
+    for f in list(files.get("pdb", [])):
+        bn = os.path.basename(f).lower()
+        if not bn.endswith('.pdb'):
+            continue
+        if any(pat in bn for pat in _anti_ligand_patterns):
+            # Only promote if not already in a model subcategory
+            _in_subcat = any(
+                f in files.get(sc, [])
+                for sc in _all_model_subcats
+            )
+            if not _in_subcat:
+                if "model" not in files:
+                    files["model"] = []
+                if f not in files["model"]:
+                    files["model"].append(f)
+
     # Post-processing: Cross-check MTZ categorization against file_utils.
     #
     # The YAML pattern-based categorizer can misclassify refine output MTZ files
@@ -1186,7 +1235,11 @@ def _categorize_files_hardcoded(available_files, ligand_hints=None, files_local=
                 re.search(r'(^|[_\-\.])ligand([_\-\.]|\.pdb$|$)', basename)
             )
             if _is_ligand_name:
-                if not any(x in basename for x in ['ligand_fit', 'ligandfit', 'with_ligand']):
+                if not any(x in basename for x in [
+                    'ligand_fit', 'ligandfit', 'with_ligand',
+                    'no_ligand', 'noligand', 'sans_ligand',
+                    'without_ligand', 'apo_ligand',
+                ]):
                     files["ligand_pdb"].append(f)
             elif not _is_program_output:
                 # Content-based detection: HETATM-only files whose names don't
