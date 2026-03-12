@@ -458,27 +458,44 @@ def _categorize_files(available_files, ligand_hints=None, files_local=True):
                 if f not in files[cat]:
                     files[cat].append(f)
 
-    # Path 2: file stayed in pdb only (hardcoded exclusion) —
-    # promote to model so has_model=True in PERCEIVE
+    # Path 2: Promote orphaned PDB files in "pdb" to "model".
+    #
+    # The hardcoded categorizer puts all PDB files in "pdb", then
+    # sorts them into subcategories (refined, phaser_output, etc.)
+    # which bubble up to "model" or "search_model".  User-supplied
+    # input files like 1aba.pdb, myprotein.pdb don't match any
+    # subcategory — they stay in "pdb" alone and has_model=False
+    # in PERCEIVE, so refine is never offered.
+    #
+    # The YAML categorizer has a "*" catch-all for unclassified_pdb
+    # that bubbles to model, but the hardcoded path lacks this.
+    #
+    # Fix: any PDB file in "pdb" that's NOT in a model/search_model
+    # subcategory AND NOT in ligand_pdb should be promoted to model.
     _all_model_subcats = set()
     for subcat, parent in SUBCATEGORY_TO_PARENT.items():
         if parent in ("model", "search_model"):
             _all_model_subcats.add(subcat)
+    _ligand_set = set(files.get("ligand_pdb", []))
+    _intermediate_set = set(files.get("intermediate", [])
+                            + files.get("intermediate_mr", []))
     for f in list(files.get("pdb", [])):
         bn = os.path.basename(f).lower()
         if not bn.endswith('.pdb'):
             continue
-        if any(pat in bn for pat in _anti_ligand_patterns):
-            # Only promote if not already in a model subcategory
-            _in_subcat = any(
-                f in files.get(sc, [])
-                for sc in _all_model_subcats
-            )
-            if not _in_subcat:
-                if "model" not in files:
-                    files["model"] = []
-                if f not in files["model"]:
-                    files["model"].append(f)
+        if f in _ligand_set:
+            continue  # genuinely a ligand — don't promote
+        if f in _intermediate_set:
+            continue  # intermediate output — don't promote
+        _in_subcat = any(
+            f in files.get(sc, [])
+            for sc in _all_model_subcats
+        )
+        if not _in_subcat:
+            if "model" not in files:
+                files["model"] = []
+            if f not in files["model"]:
+                files["model"].append(f)
 
     # Post-processing: Cross-check MTZ categorization against file_utils.
     #
