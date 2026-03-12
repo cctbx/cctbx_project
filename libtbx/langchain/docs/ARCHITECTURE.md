@@ -641,8 +641,13 @@ params.communication.provider = "<provider>"
 
 ### Ollama-Specific Behavior
 
-- **Directive extraction** forces `run_on_server=False` because the Phenix REST
-  server doesn't have access to the user's local ollama service
+- **LLM-only modes** (v115.05): All analysis modes that don't need the
+  RAG database — `directive_extraction`, `advice_preprocessing`,
+  `failure_diagnosis`, `agent_session` — are routed to local execution
+  when `run_on_server=False` or when `provider=ollama`. Only `standard`
+  mode (log analysis with knowledge-base retrieval) requires the server
+  database. This prevents concurrent runs from queueing at the Phenix
+  server for preprocessing when a local LLM is available.
 - **Planning LLM** uses `json_mode=True` (sets `format="json"` in ChatOllama)
   because ollama models need explicit JSON formatting; Google and OpenAI handle
   structured output without this flag
@@ -1945,6 +1950,36 @@ on the server.
 │     └── agent/workflow_engine.py, workflow_state.py, session.py  ││
 └───────────────────────────────────────────────────────────────────┘│
 ```
+
+### Analysis mode routing (`ai_analysis.py`)
+
+The `ai_analysis.py` module is shared infrastructure for all LLM
+interactions. It has five `analysis_mode` values, but only one of
+them uses the RAG database:
+
+| Mode | Used by | Needs RAG DB | What it does |
+|------|---------|:------------:|--------------|
+| `standard` | `phenix.ai_analysis` (standalone) | **Yes** | Analyzes a single PHENIX log file using retrieval-augmented generation against the Phenix knowledge base (documentation, papers, newsletters). Produces a summary + detailed analysis. This is the original `phenix.ai_analysis` program; **the AI Agent does not use this mode**. |
+| `directive_extraction` | AI Agent (session start) | No | Parses user advice into structured directives (prefer_programs, after_program, strategy settings). Pure LLM call. |
+| `advice_preprocessing` | AI Agent (session start) | No | Reformats a tutorial README into structured guidance the agent can follow. Pure LLM call. |
+| `failure_diagnosis` | AI Agent (on terminal error) | No | Produces a three-section diagnosis (what went wrong / cause / fix) from a program's error log. Pure LLM call. |
+| `agent_session` | AI Agent (session end) | No | Generates an end-of-run assessment from the session history. Pure LLM call. |
+
+**Why this matters for routing.** The v115.05 `_LLM_ONLY_MODES` set
+in `run_job_on_server_or_locally()` routes the four non-standard
+modes to local execution when `run_on_server=False` or when
+`provider=ollama`. Only `standard` mode is sent to the server,
+because it is the only mode that needs the RAG database. Without
+this distinction, all five modes would queue at the Phenix server
+for every cycle, even when a local LLM is available.
+
+**The agent's THINK node is separate.** The THINK node in the
+LangGraph pipeline does its own log analysis using `thinking_prompts.py`
+and the expert knowledge base — it does not go through `ai_analysis.py`
+at all. The two systems share the same LLM providers but serve
+different purposes: THINK produces per-cycle expert assessments that
+feed PLAN, while `ai_analysis.py` standard mode produces standalone
+summaries for human consumption.
 
 ### Always server-side (no user action needed)
 
