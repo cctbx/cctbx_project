@@ -242,6 +242,65 @@ def discover_runs(root_dir):
     return runs
 
 
+def get_run_start_time(run_dir):
+    """Extract the start timestamp from run.log line 2.
+
+    Line 2 has the form:
+      on Thu Mar 12 09:16:16 2026 by terwill
+
+    Returns a datetime or None if the file is missing
+    or the line cannot be parsed.
+    """
+    from datetime import datetime
+    log_path = os.path.join(run_dir, "run.log")
+    if not os.path.isfile(log_path):
+        return None
+    try:
+        with open(log_path, "r", errors="replace") as fh:
+            fh.readline()           # line 1: "Starting phenix.ai_agent"
+            line2 = fh.readline()   # line 2: "on Thu Mar 12 ..."
+        # Strip "on " prefix and " by <user>" suffix
+        line2 = line2.strip()
+        if not line2.startswith("on "):
+            return None
+        line2 = line2[3:]  # remove "on "
+        # Remove " by <username>" at the end
+        by_idx = line2.rfind(" by ")
+        if by_idx > 0:
+            line2 = line2[:by_idx]
+        # Parse: "Thu Mar 12 09:16:16 2026"
+        return datetime.strptime(line2, "%a %b %d %H:%M:%S %Y")
+    except Exception:
+        return None
+
+
+def parse_after_timestamp(after_str):
+    """Parse the --after value into a datetime.
+
+    Accepts formats like:
+      "Mar 12 09:13"        (assumes current year)
+      "Mar 12 09:13 2026"
+      "2026-03-12 09:13"
+    """
+    from datetime import datetime
+    formats = [
+        "%b %d %H:%M %Y",      # Mar 12 09:13 2026
+        "%b %d %H:%M",          # Mar 12 09:13
+        "%Y-%m-%d %H:%M",       # 2026-03-12 09:13
+        "%Y-%m-%d %H:%M:%S",    # 2026-03-12 09:13:00
+    ]
+    for fmt in formats:
+        try:
+            dt = datetime.strptime(after_str.strip(), fmt)
+            # If year not specified, use current year
+            if dt.year == 1900:
+                dt = dt.replace(year=datetime.now().year)
+            return dt
+        except ValueError:
+            continue
+    return None
+
+
 # ---------------------------------------------------------------------------
 #  Extraction
 # ---------------------------------------------------------------------------
@@ -1224,6 +1283,11 @@ def main():
         default=["csv", "md", "json"],
         choices=["csv", "md", "json"],
         help="Output formats (default: csv md json)")
+    parser.add_argument(
+        "--after",
+        help="Ignore runs started before this timestamp. "
+             "Parsed from line 2 of run.log. "
+             "Example: --after='Mar 12 09:13'")
     args = parser.parse_args()
 
     # ── Discover runs ─────────────────────────────
@@ -1233,6 +1297,35 @@ def main():
         print("No tutorial runs found.",
               file=sys.stderr)
         sys.exit(1)
+
+    # ── Filter by --after timestamp ──────────────
+    if args.after:
+        cutoff = parse_after_timestamp(args.after)
+        if cutoff is None:
+            print("ERROR: Cannot parse --after='%s'. "
+                  "Try 'Mar 12 09:13' or "
+                  "'2026-03-12 09:13'."
+                  % args.after, file=sys.stderr)
+            sys.exit(1)
+        print("Filtering: only runs started after %s"
+              % cutoff.strftime("%Y-%m-%d %H:%M:%S"))
+        before = len(runs)
+        kept = []
+        for r in runs:
+            ts = get_run_start_time(r["directory"])
+            if ts is not None and ts >= cutoff:
+                kept.append(r)
+            else:
+                ts_str = (ts.strftime("%Y-%m-%d %H:%M:%S")
+                          if ts else "unknown")
+                print("  skipped %s (started %s)"
+                      % (r["dir_name"], ts_str))
+        runs = kept
+        print("Kept %d of %d runs" % (len(runs), before))
+        if not runs:
+            print("No runs after cutoff.",
+                  file=sys.stderr)
+            sys.exit(1)
 
     print("Found %d run(s):" % len(runs))
     for r in runs:
