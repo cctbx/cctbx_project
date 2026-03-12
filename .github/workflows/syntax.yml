@@ -9,7 +9,7 @@ jobs:
     name: Check for clutter
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           path: ./modules/cctbx_project
 
@@ -24,7 +24,7 @@ jobs:
           ssh-keyscan -t rsa gitlab.com >> ~/.ssh/known_hosts
           cd ./modules/cctbx_project
           git checkout master
-          git pull
+          git pull origin master
           git remote add gitlab git@gitlab.com:cctbx/cctbx_project.git
           git fetch gitlab
           git push -u gitlab master
@@ -72,7 +72,7 @@ jobs:
     name: Compiling (Python ${{ matrix.python_version }})
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           path: ./modules/cctbx_project
 
