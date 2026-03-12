@@ -856,6 +856,15 @@ def main():
         print(f"\u26a0\ufe0f  Could not import tst_halfmap_sigmaa_inventory: {e}")
         results.append(("Half-map/SigmaA/Inventory", "tst_halfmap_sigmaa_inventory", False, 0))
 
+    try:
+        from tests.tst_fix_verification import run as run_fix_verification_tests
+        success, elapsed = run_test_module(
+            "tst_fix_verification", run_fix_verification_tests, args.verbose)
+        results.append(("Fix Verification", "tst_fix_verification", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_fix_verification: {e}")
+        results.append(("Fix Verification", "tst_fix_verification", False, 0))
+
     # --- Summary ---
     total_elapsed = time.time() - total_start
 
