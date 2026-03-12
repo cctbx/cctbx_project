@@ -629,8 +629,23 @@ class GateEvaluator(object):
         )
 
       if action_str == "try_rebuilding":
-        # Not a retreat — suggest the gate evaluator
-        # continue but with a fallback hint
+        # Advance to the model_rebuilding stage if it
+        # exists in the plan.  This is stronger than a
+        # fallback hint — it skips remaining refine
+        # cycles and goes straight to autobuild.
+        rebuild_stage = None
+        for s in plan.stages:
+          if s.id == "model_rebuilding":
+            rebuild_stage = s
+            break
+        if rebuild_stage is not None:
+          return GateResult(
+            action="advance",
+            reason="gate: %s → advancing to "
+              "model_rebuilding (autobuild)"
+              % condition_str,
+          )
+        # No model_rebuilding stage — fall back to hint
         return GateResult(
           action="fallback",
           reason="gate suggests rebuilding: %s"
