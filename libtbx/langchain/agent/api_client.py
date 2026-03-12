@@ -138,7 +138,7 @@ def build_session_state(session_info, session_resolution=None):
 
         # ASU copy count (copies feature): known after xtriage or from user
         # directives.  Forwarded each cycle so BUILD can inject
-        # phaser.ensemble.copies without re-parsing xtriage output.
+        # phaser.search_copies without re-parsing xtriage output.
         if session_info.get("asu_copies"):
             session_state["asu_copies"] = session_info["asu_copies"]
 

@@ -508,7 +508,7 @@ phenix.phaser:
 
   strategy_flags:
     component_copies:
-      flag: "phaser.ensemble.copies={value}"
+      flag: "phaser.search_copies={value}"
       type: int
     output_root:
       flag: "phaser.root={value}"

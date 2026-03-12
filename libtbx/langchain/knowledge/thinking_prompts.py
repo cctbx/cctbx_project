@@ -130,7 +130,7 @@ def build_thinking_prompt(context, strategy_memory_dict=None):
   asu_copies = context.get("asu_copies")
   if asu_copies:
     parts.append(
-      "ASU copy count: %d (used by Phaser as ensemble.copies)" % asu_copies)
+      "ASU copy count: %d (used by Phaser as search_copies)" % asu_copies)
   stop_after = context.get("stop_after", "")
   if stop_after:
     parts.append(

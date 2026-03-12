@@ -2867,7 +2867,7 @@ def _build_with_new_builder(state):
                 "selection='hetero and not water'")
 
     # === PHASER COPIES INJECTION ===
-    # Inject ASU copy count as phaser.ensemble.copies when known.
+    # Inject ASU copy count as phaser.search_copies when known.
     # Sources (in priority order):
     #   1. session_info["asu_copies"] — persisted from user directive or xtriage
     #   2. log_analysis["n_copies"] — same-cycle extraction from xtriage log
