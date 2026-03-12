@@ -114,6 +114,8 @@ class db_proxy(object):
           value = "'%s'"%int(value)
         elif value is None or value == "None" or value == "":
           value = "NULL"
+        elif isinstance(value, str) and value.startswith('@'):
+          pass  # MySQL user variable reference — do not quote
         else:
           value = "'%s'"%str(value)
         vals.append(value)

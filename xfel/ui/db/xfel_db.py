@@ -826,6 +826,37 @@ class xfel_db_application(db_application):
       return []
     return self.get_all_x(Run, "run", where = "WHERE run.id IN (%s)"%",".join(run_ids))
 
+  def run_in_rungroup(self, rungroup_id, run_number):
+    """Return True if run_number (string) belongs to the given rungroup.
+
+    First checks the rungroup_run join table (covers runs already synced by
+    the sentinel).  If not found there, falls back to the streaming range
+    fields streaming_first_run / streaming_last_run stored on the rungroup
+    row itself — needed for streaming rungroups whose join table is still
+    empty because the sentinel hasn't cycled yet, or because the run doesn't
+    exist in the DB yet at all.
+
+    streaming_first_run / streaming_last_run are compared directly against
+    int(run_number), so run_number must be a numeric string in streaming mode.
+    """
+    # Check join table first
+    runs = self.get_rungroup_runs(rungroup_id)
+    if any(str(r.run) == str(run_number) for r in runs):
+      return True
+
+    # Fall back to streaming range.
+    # The run may not be in the DB yet (sentinel hasn't cycled), so compare
+    # run_number directly as an integer against the stored integer bounds.
+    rungroup = self.get_rungroup(rungroup_id)
+    sfr = rungroup.streaming_first_run
+    if sfr is None:
+      return False
+
+    slr = rungroup.streaming_last_run
+    if slr is None:
+      return run_num_int >= sfr
+    return sfr <= int(run_number) <= slr
+
   def get_all_rungroups(self, only_active = False):
     if only_active:
       return [rg for rg in self.get_all_x(Rungroup, "rungroup") if rg.active]

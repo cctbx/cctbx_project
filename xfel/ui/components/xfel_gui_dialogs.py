@@ -2134,7 +2134,10 @@ class RunBlockDialog(BaseDialog):
       db = block.app
       self.first_run, self.last_run = block.get_first_and_last_runs()
       if self.first_run is None:
-        self.first_run = self.first_avail
+        # For streaming rungroups with no linked runs yet, restore the stored range
+        sfr = block.streaming_first_run
+        self.first_run = sfr if sfr is not None else self.first_avail
+        self.last_run = block.streaming_last_run if sfr is not None else None
       else:
         if self.use_ids:
           if self.first_run is not None: self.first_run = self.first_run.id
