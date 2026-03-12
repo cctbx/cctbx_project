@@ -2870,11 +2870,20 @@ def _build_with_new_builder(state):
     # Inject ASU copy count as phaser.ensemble.copies when known.
     # Sources (in priority order):
     #   1. session_info["asu_copies"] — persisted from user directive or xtriage
-    #   2. directives program_settings.default.copies (same-cycle fallback)
-    #   3. directives program_settings.phenix.phaser.copies
+    #   2. log_analysis["n_copies"] — same-cycle extraction from xtriage log
+    #      (v115.05: fixes 1-cycle delay where session_info hasn't been
+    #       updated yet because ai_agent.py post-processing hasn't run)
+    #   3. directives program_settings.default.copies
+    #   4. directives program_settings.phenix.phaser.copies
     if (program == "phenix.phaser"
             and "component_copies" not in strategy):
         _copies = session_info.get("asu_copies")
+        if not _copies:
+            # Same-cycle: PERCEIVE extracted n_copies from the
+            # xtriage log THIS cycle, but session_info hasn't
+            # been updated yet (round-trip through ai_agent.py).
+            _copies = state.get(
+                "log_analysis", {}).get("n_copies")
         if not _copies:
             _dir_c = state.get("directives", {})
             _ps_c = _dir_c.get("program_settings", {})
@@ -2888,6 +2897,8 @@ def _build_with_new_builder(state):
                 if 1 <= _copies_int <= 30:
                     strategy["component_copies"] = _copies_int
                     _src = ("session" if session_info.get("asu_copies")
+                            else "log_analysis" if state.get(
+                                "log_analysis", {}).get("n_copies")
                             else "directives")
                     state = _log(state,
                         "BUILD: Injecting component_copies=%d "
