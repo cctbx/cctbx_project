@@ -3178,6 +3178,79 @@ the THINK node to flag plan-incompatible evidence that triggers a
 plan revision, or adding "escape hatch" gates that the evaluator
 checks before entering high-commitment stages.
 
+**Three independent error classification systems.** Error handling
+is split across three classifiers that evolved at different times,
+have overlapping patterns, and are not aware of each other.
+
+*System 1: `ai_agent.py::_classify_error()` (original).* The oldest
+classifier. ~60 hardcoded substring matches (no regex). Two output
+categories: `INPUT_ERROR` (agent's fault — don't count) vs
+`REAL_FAILURE` (real problem — count it). Used only for deciding
+whether a failure enters the cycle history. Knows nothing about the
+YAML files.
+
+*System 2: `agent/error_classifier.py::classify_error()` (v115).*
+Lives in the graph; PERCEIVE calls it at the start of the next cycle.
+Hardcoded regex patterns, more sophisticated. Five categories:
+`TERMINAL`, `PHIL_ERROR`, `AMBIGUOUS_PHIL`, `LABEL_ERROR`, `RETRYABLE`.
+Extracts details (bad param names, suggestions). Feeds `should_pivot()`
+which excludes the failed program from valid_programs. Provides error
+context to THINK and PLAN prompts. Also knows nothing about the YAML.
+
+*System 3: YAML-driven (two files, two consumers).*
+`recoverable_errors.yaml` + `ErrorAnalyzer` detects errors the agent
+can auto-fix (currently: ambiguous data labels, ambiguous experimental
+phases). `diagnosable_errors.yaml` + `DiagnosisDetector` detects
+terminal errors needing LLM diagnosis (5 error types: crystal symmetry
+mismatch, model outside map, SHELX not installed, unknown PHIL
+parameter, polymer special position).
+
+The execution order per cycle is:
+1. Program runs → result text
+2. `ErrorAnalyzer` (YAML recoverable) → if match, set recovery flags
+3. `DiagnosisDetector` (YAML diagnosable) → if match, stop run
+4. `_classify_error` (hardcoded, ai_agent.py) → classify for history
+5. Next cycle: PERCEIVE → `classify_error` (hardcoded,
+   error_classifier.py) → feeds THINK/PLAN + pivot
+
+Where they overlap and conflict:
+
+- *Unknown PHIL parameter*: `diagnosable_errors.yaml` says terminal
+  (stop, diagnose). `_classify_error` says INPUT_ERROR (agent's fault,
+  fixable). `error_classifier.py` says PHIL_ERROR (strip params, retry).
+  Three different behaviors for the same error. In practice the
+  execution order saves this — DiagnosisDetector fires first and stops
+  the run — but the systems disagree on the correct response.
+
+- *Crystal symmetry mismatch*: Present in `diagnosable_errors.yaml`
+  but absent from `error_classifier.py`. If the detector misses it
+  (e.g., unusual error phrasing), the graph-level classifier has no
+  fallback.
+
+- *SHELX not installed*: Same gap — only in the YAML, not in the
+  hardcoded classifier.
+
+- *Ambiguous data labels*: `recoverable_errors.yaml` auto-fixes them;
+  `error_classifier.py` classifies them as LABEL_ERROR (retryable with
+  different approach); `_classify_error` calls them INPUT_ERROR. The
+  YAML recovery fires first, so the other two rarely see it, but they
+  would disagree if they did.
+
+The practical risk is low because the execution order is stable and the
+YAML files are small. But every new error pattern requires checking all
+three systems to ensure they agree, and nothing enforces consistency.
+
+*Recommended consolidation path*: Make `error_classifier.py` the single
+classifier. Have it load the YAML files as additional pattern sources
+rather than duplicating patterns in code. Map its five categories
+(TERMINAL, PHIL_ERROR, LABEL_ERROR, AMBIGUOUS_PHIL, RETRYABLE) to the
+two needed by `_classify_error` (INPUT_ERROR, REAL_FAILURE) so the
+ai_agent.py method becomes a thin wrapper. The YAML files continue to
+define the *data* (patterns, hints, recovery strategies) while the
+classifier provides the *logic* (matching, extraction, category
+assignment). This eliminates the three-way overlap and ensures that
+adding a new error pattern requires editing one place.
+
 ### Potential improvements
 
 **Density map awareness.** Even without full spatial map interpretation,
