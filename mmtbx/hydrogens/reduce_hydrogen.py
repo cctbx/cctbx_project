@@ -327,6 +327,37 @@ def point_H_from_A_X_d_angle(A, X, d, ang_deg):
   H = v_add(X, v_mul(d, direction))
   return H
 
+def find_H1_H2(X, d, angle_deg):
+  """
+  AI generated code.
+
+  Prompt: In 3D. Find coordinates of point H1 and H2, if we know both are
+  distanced by
+  d from point X, we know the angle (H1,X,H2). Coordinates of
+  point X are known. Need a function in python. Angle is in degrees. Only
+  inputs are: coordinates X, distance d and angle H1XH2.
+  Use pure python. If solution is not unique, just pick any one.
+  Return one pair (H1, H2) in 3D such that:
+    |H1 - X| = d
+    |H2 - X| = d
+    angle(H1, X, H2) = angle_deg  (in degrees)
+
+  Picks a convenient solution in the XY-plane.
+  """
+  x, y, z = map(float, X)
+  d = float(d)
+  if d < 0: raise ValueError("d must be non-negative")
+  # If d == 0, both points must coincide with X
+  if d == 0: return (x, y, z), (x, y, z)
+  theta = math.radians(angle_deg)
+  # Choose direction for H1 along +x axis from X
+  H1 = (x + d, y, z)
+  # Place H2 at the requested angle from H1 around X in the XY-plane
+  H2 = (x + d * math.cos(theta),
+        y + d * math.sin(theta),
+        z)
+  return H1, H2
+
 def workaround_001(model, selection, log=None):
   if selection.size()==0: return None
   atoms = model.get_hierarchy().atoms()
@@ -440,6 +471,26 @@ def workaround_001(model, selection, log=None):
         sel_built.append(i_seq)
   # Return list of what was not built
   return flex.size_t(list(set(selection) - set(sel_built)))
+
+def workaround_002(model, selection):
+  h = model.get_hierarchy()
+  atoms = h.atoms()
+  for m in h.models():
+    for c in m.chains():
+      for con in c.conformers():
+        for r in con.residues():
+          if not get_class(name=r.resname) == "common_water": continue
+          three = r.atoms().extract_i_seq()
+          #assert three in selection
+          ij=[]
+          for atom in r.atoms():
+            e = atom.element.strip().upper()
+            if e == "O": X = atom.xyz
+            else:        ij.append(atom.i_seq)
+          if len(ij)!=2: continue
+          p1, p2 = find_H1_H2(X=X, d=0.85, angle_deg=103.91)
+          atoms[ij[0]].xyz = p1
+          atoms[ij[1]].xyz = p2
 
 class place_hydrogens():
   '''
@@ -630,6 +681,11 @@ class place_hydrogens():
       model     = self.model,
       selection = (sel_h_not_in_para.select(~water_selection)).iselection())
     sel_h_not_in_para = flex.bool(self.model.size(), sel_h_not_in_para)
+
+    if not self.exclude_water and water_selection.count(True)>0:
+      workaround_002(
+        model     = self.model,
+        selection = water_selection.iselection())
 
     # no need to display lone H atoms in the log, so remove from labels
     sel_h_not_in_para_but_not_lone = sel_h_not_in_para.exclusive_or(sel_lone_H)
