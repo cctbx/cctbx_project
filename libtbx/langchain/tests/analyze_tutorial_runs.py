@@ -301,6 +301,28 @@ def parse_after_timestamp(after_str):
     return None
 
 
+def is_run_finished(run_dir):
+    """Check if a run has completed.
+
+    A finished run has 'Job complete' in the last 2KB of run.log.
+    Reading only the tail avoids scanning multi-MB log files.
+
+    Returns True if finished, False otherwise.
+    """
+    log_path = os.path.join(run_dir, "run.log")
+    if not os.path.isfile(log_path):
+        return False
+    try:
+        size = os.path.getsize(log_path)
+        read_bytes = min(size, 2048)
+        with open(log_path, "rb") as fh:
+            fh.seek(max(0, size - read_bytes))
+            tail = fh.read().decode("utf-8", errors="replace")
+        return "Job complete" in tail
+    except Exception:
+        return False
+
+
 # ---------------------------------------------------------------------------
 #  Extraction
 # ---------------------------------------------------------------------------
@@ -1288,6 +1310,11 @@ def main():
         help="Ignore runs started before this timestamp. "
              "Parsed from line 2 of run.log. "
              "Example: --after='Mar 12 09:13'")
+    parser.add_argument(
+        "--finished-only", action="store_true",
+        help="Ignore runs that have not finished. "
+             "A run is finished if run.log contains "
+             "'Job complete'.")
     args = parser.parse_args()
 
     # ── Discover runs ─────────────────────────────
@@ -1324,6 +1351,24 @@ def main():
         print("Kept %d of %d runs" % (len(runs), before))
         if not runs:
             print("No runs after cutoff.",
+                  file=sys.stderr)
+            sys.exit(1)
+
+    # ── Filter by --finished-only ────────────────
+    if args.finished_only:
+        before = len(runs)
+        kept = []
+        for r in runs:
+            if is_run_finished(r["directory"]):
+                kept.append(r)
+            else:
+                print("  skipped %s (not finished)"
+                      % r["dir_name"])
+        runs = kept
+        print("Kept %d of %d finished runs"
+              % (len(runs), before))
+        if not runs:
+            print("No finished runs found.",
                   file=sys.stderr)
             sys.exit(1)
 
