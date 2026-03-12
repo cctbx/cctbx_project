@@ -97,6 +97,35 @@ a different approach if things aren't working.
 You can see the agent's reasoning, its plan, and its
 progress in the Agent Progress panel as it runs.
 
+### Quickest way to try it: run a tutorial
+
+The fastest way to see the AI Agent in action is to
+run one of the built-in PHENIX tutorials:
+
+1. In the PHENIX GUI, go to **File → Tutorials**
+2. Pick a tutorial (e.g., "p9-sad" for Se-SAD phasing,
+   or any MR tutorial with diffraction data)
+3. Open the **AI Agent** from the main program list
+4. The GUI will detect the tutorial automatically —
+   you'll see a blue banner with the tutorial name
+
+All you need to do is click **Run**. The agent reads
+the tutorial's README file, extracts the experiment
+parameters (wavelength, atom type, resolution, etc.),
+selects a plan template, and runs the entire workflow
+automatically. No advice, no settings changes, no
+file selection needed.
+
+The p9-sad tutorial, for example, completes in 5
+cycles with 0 failures, producing a model with
+R-free 0.247 at 1.74 Å resolution. The full output
+is shown in sections 5 and 5b of this guide.
+
+This is a good way to verify your installation is
+working, to see what the agent's output looks like,
+and to get a feel for how it makes decisions before
+running it on your own data.
+
 ---
 
 ## 2. What You Need to Provide
@@ -489,29 +518,30 @@ progressing.
 ### The plan header (Expert mode)
 
 Since **Expert** is the default analysis depth, the
-first thing you'll see is the agent's strategy plan:
+first thing you'll see is the agent's strategy plan.
+Here is a real example from the p9-sad tutorial:
 
 ```
-[CONFIG] thinking_level=expert — goal-directed
-  planning active
-
 ==================================================
- STRATEGY PLAN: MR + refinement (standard X-ray)
+ STRATEGY PLAN: SAD/MAD experimental phasing (X-ray)
 ==================================================
- ○ Stage 1: Analyze data quality  [phenix.xtriage]
+ ○ Stage 1: Analyze data quality and anomalous signal
           Goal: Data quality analysis complete
- ○ Stage 2: Find MR solution  [phenix.phaser,
-              phenix.predict_and_build]
-          Goal: TFZ >8, LLG >100
- ○ Stage 3: Initial refinement  [phenix.refine]
+ ○ Stage 2: SAD/MAD phasing and initial model building
+          Goal: Experimental phasing complete
+ ○ Stage 3: Rebuild and refine model
           Goal: R-free <0.30
- ○ Stage 4: Rebuild problem regions
-              [phenix.autobuild, phenix.refine]
-          Goal: R-free <0.28
- ○ Stage 5: Final refinement  [phenix.refine]
+ ○ Stage 4: Final refinement with ordered solvent
           Goal: R-free <0.25
+ ○ Stage 5: Final model validation
 ==================================================
 ```
+
+The plan is selected from 17 templates based on
+your experiment type, available files, and resolution.
+For a molecular replacement problem, you would see
+stages like "Find MR solution" and "Initial
+refinement" instead.
 
 Each line is a stage of the plan. The symbols show
 the status of each stage:
@@ -589,27 +619,34 @@ failures.
 
 When using **Advanced** or **Expert** analysis depth,
 the agent shows a detailed assessment after each
-cycle:
+cycle. Here is an example from a real run (p9-sad,
+cycle 4), where the agent explains its decision to
+run validation instead of continuing with ligand
+fitting:
 
 ```
-  [Expert Assessment (guide_step, high)]
-  Structure:
-    R-free: 0.312 (improved from 0.350)
-    R-work: 0.275
-    Clashscore: 8.2
-    Ramachandran favored: 96.5%
-  Problems: 3 residues in disallowed regions
+Decision: phenix.molprobity
+  Reasoning: AutoSol has already been run and the
+  workflow state does not allow re-running autosol
+  now. With R-free ~0.23 achieved, the appropriate
+  next step is geometry validation to confirm model
+  quality before any further steps such as ligand
+  fitting.
+  Source: llm (openai)
 
-  The model is improving steadily. R-free dropped
-  significantly this cycle. Consider running one
-  more round of refinement before attempting
-  model rebuilding, as the current map quality
-  should support autobuild.
-
-  [Expert Guidance]
-  Continue refinement. The R-free trajectory
-  suggests convergence within 1-2 more cycles.
+Result: SUCCESS
+  Clashscore: 12.46
+  MolProbity Score: 2.09
+  Ramachandran Outliers: 2.44%
+  Rotamer Outliers: 1.87%
 ```
+
+The **Reasoning** field shows exactly why the agent
+made this choice — in this case, it recognized that
+the R-free is already good enough and that geometry
+validation is the right next step. The **Source** field
+tells you whether the decision was made by the LLM
+(`llm`) or by the rules engine (`rules`).
 
 **How to read the metrics:**
 
@@ -719,24 +756,68 @@ correlation (for cryo-EM).
 
 ### What success looks like
 
-You'll see R-free dropping cycle by cycle:
+Here is what a successful Se-SAD phasing run looks like
+(from the p9-sad tutorial, 5 cycles, 0 failures):
 
 ```
-Cycle 3: phenix.refine   R-free: 0.350
-Cycle 5: phenix.refine   R-free: 0.295
-Cycle 7: phenix.refine   R-free: 0.262
-Cycle 8: phenix.refine   R-free: 0.248
+==================================================
+ STRATEGY PLAN: SAD/MAD experimental phasing (X-ray)
+==================================================
+ ○ Stage 1: Analyze data quality and anomalous signal
+          Goal: Data quality analysis complete
+ ○ Stage 2: SAD/MAD phasing and initial model building
+          Goal: Experimental phasing complete
+ ○ Stage 3: Rebuild and refine model
+          Goal: R-free <0.30
+ ○ Stage 4: Final refinement with ordered solvent
+          Goal: R-free <0.25
+ ○ Stage 5: Final model validation
+==================================================
+
+Cycle 1: phenix.xtriage
+  Running phenix.xtriage ... [OK]
+  Resolution: 1.74 Å, Space group: I 4,
+  Anomalous measurability: 0.198, No twinning
+
+  [GATE] Phase complete: data_assessment →
+         experimental_phasing
+
+Cycle 2: phenix.autosol
+  Running phenix.autosol ... [OK]
+
+  [GATE] Phase complete: experimental_phasing →
+         build_and_refine
+
+Cycle 3: phenix.autobuild
+  Running phenix.autobuild ... [OK]
+  R-free: 0.247 → 0.230
+
+Cycle 4: phenix.molprobity
+  Running phenix.molprobity ... [OK]
+  Clashscore: 12.46, MolProbity: 2.09,
+  Ramachandran outliers: 2.44%
+
+Cycle 5: STOP
+  Reasoning: R-free=0.2466 (<0.25 target).
+  No ligand file available. Stopping is appropriate.
 ```
 
-In Expert mode, the agent will advance through plan
-stages with green checkmarks:
+Notice the pattern: each cycle advances the science.
+The agent doesn't repeat programs unnecessarily — it
+runs xtriage once, autosol once, autobuild once,
+validates the geometry, and stops when the target is
+met. The gate evaluations between cycles drive
+progress through the plan stages.
+
+In Expert mode, the plan stages update as the agent
+progresses:
 
 ```
- ✓ Stage 1: data_assessment
- ✓ Stage 2: molecular_replacement
- ✓ Stage 3: initial_refinement
- ● Stage 4: model_rebuilding  ← currently here
- ○ Stage 5: final_refinement
+ ✓ Stage 1: Analyze data quality (1 cycle)
+ ✓ Stage 2: SAD phasing (1 cycle)
+ ✓ Stage 3: Rebuild and refine (2 cycles)
+ ● Stage 4: Final validation  ← currently here
+ ○ Stage 5: Final model validation
 ```
 
 When the agent finishes, it produces a summary of the
@@ -760,6 +841,14 @@ of the run). Key files:
 - **Structure report** (Expert mode):
   `structure_determination_report.txt` — a text
   summary of the entire determination.
+- **HTML report** (Expert mode):
+  `structure_report.html` — an HTML report with an
+  R-free trajectory chart, viewable via the "Open
+  Structure Report" button in the Results tab.
+- **Failure diagnosis** (on terminal errors only):
+  `ai_failure_diagnosis.html` — an LLM-generated
+  report explaining what went wrong and how to fix it.
+  Opens automatically in your browser.
 - **Session summary** (Expert mode):
   `session_summary.json` — a machine-readable summary
   with final metrics, stage outcomes, and hypothesis
@@ -804,6 +893,95 @@ Use Coot's symmetry display to check that the model
 makes sensible crystal contacts. Verify that any
 molecules on special positions are handled correctly
 (correct occupancy, no clashes with symmetry mates).
+
+---
+
+## 5b. Complete Annotated Example: p9-SAD Cycle 2
+
+To show how all the pieces fit together, here is the
+full output for one cycle of the p9-sad tutorial. This
+is cycle 2 (phenix.autosol), where the agent runs
+SAD phasing using parameters from the tutorial README.
+
+**What the agent shows you:**
+
+```
+****************************************
+*               CYCLE 2                *
+****************************************
+
+State: xray_analyzed
+  Reason: Data analyzed, need to obtain model
+  Goal: Get coordinates that can be refined
+
+Metrics:
+  Resolution: 1.74 A
+
+Decision: phenix.autosol
+  Reasoning: User requested SeMet SAD with additional
+  sulfur search using AutoSol, truncating to 2.5 Å,
+  wavelength 0.9792 Å, and ~5 Se sites. Xtriage
+  indicates usable anomalous signal, so experimental
+  phasing is appropriate.
+  Source: llm (openai)
+
+File Selection:
+  Data_Mtz: p9.sca
+    Reason: llm_selected
+  Sequence: seq.dat
+    Reason: llm_selected
+
+Command:
+  phenix.autosol autosol.data=p9.sca
+    seq_file=seq.dat autosol.lambda=0.9792
+    resolution=2.5 autosol.atom_type=Se
+    mad_ha_add_list=S autosol.sites=5 nproc=4
+
+Running: phenix.autosol ... [OK]
+
+Result: SUCCESS: Command completed without errors
+
+FINAL QUALITY METRICS REPORT:
+  Bayes CC: 17.80
+  Completeness: 99.85
+  Resolution: 2.50
+
+[GATE] Phase complete: experimental_phasing →
+       build_and_refine
+  All steps completed (1/1 cycles) — advancing
+  to next stage
+```
+
+**Reading this output:**
+
+- **State** tells you where the agent is in the
+  workflow. "xray_analyzed" means xtriage has run and
+  the data is characterized.
+
+- **Decision + Reasoning** shows which program was
+  chosen and why. Here the LLM read the tutorial README
+  and extracted the Se-SAD parameters (wavelength,
+  resolution cutoff, number of sites, atom types).
+
+- **File Selection** shows which files were picked for
+  each input slot, and whether the LLM chose them
+  (`llm_selected`) or the agent auto-selected them.
+
+- **Command** is the complete PHENIX command that was
+  built. The BUILD node expanded the LLM's strategy
+  flags (`wavelength=0.9792`, `atom_type=Se`, etc.)
+  into the correct PHIL parameter paths
+  (`autosol.lambda`, `autosol.atom_type`, etc.) and
+  appended the default `nproc=4`.
+
+- **GATE** shows the plan advancing. The agent
+  completed the "experimental phasing" stage in one
+  cycle and is moving on to "build and refine."
+
+This is the same cycle shown in the presentation
+walkthrough (slide 10, "The YAML Contract") — you can
+see how the LLM's strategy flags become a validated
+PHENIX command through the programs.yaml rules.
 
 ---
 
@@ -1151,6 +1329,52 @@ A machine-readable summary containing:
 
 This file is useful if you want to process results
 programmatically or compare multiple runs.
+
+**Failure diagnosis** (when a terminal error occurs):
+`ai_failure_diagnosis.html`
+
+If the agent encounters a fatal error it cannot recover
+from (such as a crystal symmetry mismatch between your
+files, or a missing SHELX installation), it stops the
+run and produces an LLM-generated diagnosis. This HTML
+report opens automatically in your browser and contains
+three sections:
+
+- **What went wrong** — a plain-language description
+  of the error
+- **Most likely cause** — the root cause, informed by
+  crystallographic expertise
+- **How to fix it** — concrete steps you can take to
+  resolve the problem
+
+When a failure diagnosis is produced, the normal
+structure report is not generated — the diagnosis is
+your primary output. If the LLM is unavailable
+(rules-only mode), a simpler deterministic diagnosis
+is produced instead.
+
+**What the final quality report looks like:**
+
+Here is the actual final quality report from a
+successful p9-sad run:
+
+```
+Final Quality
+
+  Metric            Value      Assessment
+  ──────            ─────      ──────────
+  R-free            0.2466     Good
+  R-work            0.2295
+  Clashscore        12.5       Acceptable
+  Rama Outliers     2.4%
+  Rotamer Outliers  1.9%
+
+Key Output Files
+
+  overall_best_final_refine_001.pdb  (model)
+  overall_best_refine_data.mtz       (data)
+  overall_best_refine_map_coeffs.mtz (map coefficients)
+```
 
 ### Sub-job directories
 

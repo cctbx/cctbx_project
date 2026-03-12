@@ -569,6 +569,10 @@ The decision flow follows a clean, layered architecture where each component has
   4. `_assemble_command()` - Final command string
 - Uses `CommandContext` dataclass for all parameters
 - Replaces fragmented logic from template_builder and graph_nodes
+- v115.05: Phaser copies injection reads `log_analysis["n_copies"]`
+  from the current cycle (same-cycle), not just `session_info["asu_copies"]`
+  from the previous cycle (1-cycle delay). Eliminates the off-by-one
+  where the first post-Phaser autobuild missed the copies count.
 
 **Template Builder** (`template_builder.py`):
 - Legacy interface (delegates to CommandBuilder)
@@ -578,6 +582,9 @@ The decision flow follows a clean, layered architecture where each component has
 **Workflow State** (`workflow_state.py`):
 - Determines current workflow position
 - Categorizes available files
+- v115.05: `_anti_ligand_patterns` excludes filenames matching
+  `no_ligand` from ligand file classification (prevents Se heavy-atom
+  coordinate files from being misidentified as ligand files)
 - Detects experiment type
 
 ## LLM Provider Architecture
@@ -1364,6 +1371,7 @@ xray_initial → xtriage → xray_analyzed
   - `strong_anomalous=True`: measurability > 0.10 or `anomalous_resolution` < 6.0 Å → autosol prioritized
   - `has_anomalous=True` (weak): measurability ≥ 0.06, or xtriage `has_anomalous=True` explicitly → autosol available
   - negligible: measurability < 0.06 and xtriage did not assert `has_anomalous` → `has_anomalous=False`, autosol unavailable
+  - v115.05 additional guard: when measurability < 0.05 and `has_anomalous=False`, autosol is removed from `valid_programs` entirely (prevents the LLM from choosing it even when anomalous data columns exist in the MTZ)
 ‡ MR-SAD: phaser places model first, then autosol uses it as partpdb_file
 
 | State | Description | Valid Programs |
@@ -1374,7 +1382,7 @@ xray_initial → xtriage → xray_analyzed
 | `xray_mr_sad` | After phaser + anomalous data (MR-SAD) | autosol (with partpdb_file) |
 | `xray_has_phases` | After experimental phasing | autobuild |
 | `xray_has_model` | Have placed model | refine |
-| `xray_refined` | After refinement **or** validation (`refine` and `validate` phases share this external state; internal `phase_info["phase"]` distinguishes them). If R-free ≥ 0.45 after MR + ≥1 refinement cycle, routes back to `obtain_model` (retry with different search model) rather than stopping. | refine, molprobity, autobuild, STOP |
+| `xray_refined` | After refinement **or** validation (`refine` and `validate` phases share this external state; internal `phase_info["phase"]` distinguishes them). If R-free ≥ 0.45 after MR + ≥1 refinement cycle + autobuild completed, routes back to `obtain_model` (retry with different search model). The `autobuild_done` guard (v115.05) ensures the agent tries rebuilding before concluding the MR is wrong. | refine, molprobity, autobuild, STOP |
 
 ### Cryo-EM Workflow
 
@@ -1868,13 +1876,14 @@ The workflow stops when:
 
 1. **Success**: Quality metrics reach targets AND validation done
 2. **Plateau**: < 0.5% improvement for 2+ consecutive cycles
-3. **Hopeless bailout**: R-free > 0.50 after 1+ refinement cycle
+3. **Hopeless bailout**: R-free > 0.50 after 1+ refinement cycle, but only if `autobuild_done` (v115.05 — gives autobuild a chance to rebuild missing density before declaring the structure unsolvable)
 4. **Hard limit**: 3+ refinement cycles regardless of R-free
 5. **Validation Gate**: Must run molprobity before stopping if R-free is good
+6. **Clashscore shortcut**: clashscore < 10 with reasonable R-free, but only if `refine_count >= 1` (v115.05 — prevents declaring at-target before any refinement has run)
 
 ### Refinement Loop Enforcement
 
-When `_is_at_target()` returns True (conditions 2-4 above),
+When `_is_at_target()` returns True (conditions 2-4, 6 above),
 `get_valid_programs()` actively **removes** `phenix.refine` and
 `phenix.real_space_refine` from valid programs in both `validate` and
 `refine` phases, and adds `STOP`. This prevents the LLM from selecting
@@ -2840,6 +2849,13 @@ GateResult:
 `r_free: "<0.35"`, gate uses 0.345 for advancement. Prevents
 oscillation on noisy single-cycle results.
 
+**Early rebuild gate** (v115.05): `mr_refine` template includes
+`r_free > 0.50 after 1 cycles → try_rebuilding`. When triggered,
+the gate evaluator returns `action="advance"` to the
+`model_rebuilding` stage instead of the previous weak `"fallback"`
+hint. This ensures autobuild runs before the agent gives up on a
+high-R-free structure (e.g., incomplete AlphaFold model).
+
 **Retreat logic** (5 safeguards):
 
 ```
@@ -3171,7 +3187,8 @@ deterministic — selected at session start and locked to a phasing
 strategy. When the template is wrong (e.g., SAD template locked in
 despite anomalous measurability of 0.03), expert reasoning correctly
 diagnoses the problem but has no mechanism to override the template.
-The v115.05 anomalous gate addresses one specific case, but the
+The v115.05 anomalous gate addresses the specific case of negligible
+anomalous signal (measurability < 0.05), but the
 general problem — how should the planner respond when the expert says
 the strategy is wrong? — remains unsolved. Options include: allowing
 the THINK node to flag plan-incompatible evidence that triggers a

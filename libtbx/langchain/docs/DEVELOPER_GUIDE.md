@@ -489,11 +489,16 @@ evidence decays.
 Three levels of commentary:
 - `generate_cycle_commentary()`: template-based,
   no LLM, every cycle
-- `generate_stage_summary()`: LLM-based, at phase
-  transitions
+- `generate_stage_summary()`: template-based,
+  no LLM, at phase transitions
 - `generate_final_report()` /
   `generate_stopped_report()`: template-based, at
-  session end
+  session end (data from Structure Model, no LLM)
+
+The only LLM-generated report is the failure diagnosis
+(`ai_failure_diagnosis.html`), produced by
+`failure_diagnoser.py` when a terminal error is
+detected.
 
 ### 3e. Model Placement Gate (v114.1, hardened v114.2)
 
@@ -725,25 +730,52 @@ whitelists in `api_client.py` (`build_session_state`
 and `build_request_v2`), so it survives the
 client→server round-trip each cycle.
 
+**v115.05 same-cycle fix:** The BUILD node now also
+reads `state["log_analysis"]["n_copies"]` directly,
+so when Phaser runs and reports the copy count in the
+same cycle, the copies are available immediately —
+eliminating the one-cycle delay where the first
+post-Phaser autobuild would miss the copies count.
+
 ### 3f. Error Recovery
 
-**Files:** `agent/error_analyzer.py`,
-`programs/ai_agent.py` (`_handle_execution_result`)
+**Files:** `agent/error_analyzer.py`, `agent/error_classifier.py`,
+`agent/failure_diagnoser.py`, `programs/ai_agent.py`
 
 When a PHENIX program fails, the agent attempts
-automatic recovery:
+automatic recovery through three systems that execute
+in sequence:
 
-1. **Probe programs** (`phenix.model_vs_data`): Run
-   a quick diagnostic to gather information.
-2. **Auto-recovery**: Match the error against known
-   patterns and inject corrective parameters (e.g.,
-   reduce macro-cycles, change strategy).
-3. **Terminal diagnosis**: If the error is
-   unrecoverable, generate an HTML diagnosis page
-   explaining what went wrong and how to fix it.
-4. **Continue**: If none of the above applies,
-   annotate the failure and let the agent try a
-   different program on the next cycle.
+1. **ErrorAnalyzer** (YAML-driven, `recoverable_errors.yaml`):
+   Detects errors the agent can auto-fix. Currently
+   handles ambiguous data labels and ambiguous
+   experimental phases. Produces file-level recovery
+   flags and forces a retry.
+
+2. **DiagnosisDetector** (YAML-driven, `diagnosable_errors.yaml`):
+   Detects terminal errors needing human intervention
+   (crystal symmetry mismatch, model outside map, SHELX
+   not installed, unknown PHIL parameter, polymer on
+   special position). Stops the run and produces an
+   LLM-generated HTML diagnosis page.
+
+3. **Error classifier** (`error_classifier.py`, v115):
+   Classifies failures for the graph's THINK and PLAN
+   nodes. Five categories: TERMINAL, PHIL_ERROR,
+   AMBIGUOUS_PHIL, LABEL_ERROR, RETRYABLE. Extracts
+   bad parameter names and provides context for the
+   `should_pivot()` function, which excludes the failed
+   program from valid_programs on the next cycle.
+
+4. **`_classify_error`** (hardcoded, `ai_agent.py`):
+   The oldest classifier. Maps errors to INPUT_ERROR
+   (agent's fault, don't count) or REAL_FAILURE (real
+   problem). Used only for cycle history bookkeeping.
+
+**Known design tension:** These three systems evolved
+independently and have overlapping patterns. See
+ARCHITECTURE.md "Design tensions" section for a
+detailed analysis and recommended consolidation path.
 
 The **catch-all injection blacklist** prevents the
 agent from injecting the same recovery parameter
@@ -828,7 +860,7 @@ critical, must not crash the agent).
 
 ## 4. Adding a New Program
 
-This guide documents the process for adding a new PHENIX program to the AI Agent. The configuration has been centralized so that **adding a new program only requires editing 2-3 files** for most cases.
+This guide documents the process for adding a new PHENIX program to the AI Agent. YAML definitions get the program running in the pipeline with no code changes to the core pipeline. In practice, testing will reveal edge cases that require Python guards — but the process always starts with YAML.
 
 ### Quick Overview
 
@@ -841,7 +873,7 @@ This guide documents the process for adding a new PHENIX program to the AI Agent
 | `agent/directive_extractor.py` | Tutorial/procedure patterns | Optional |
 | `phenix_ai/log_parsers.py` | Complex metric extraction (tables, multi-line) | Only if YAML can't handle it |
 
-**For most programs**, you only need to edit **programs.yaml** and **workflows.yaml**.
+**To get the program running**, you only need `programs.yaml` and `workflows.yaml`. This integrates the program into BUILD, VALIDATE, the sanitizer, and the workflow engine automatically.
 
 The system automatically handles:
 - ✅ Metric extraction from logs (via `log_parsing` in programs.yaml)
@@ -1489,7 +1521,32 @@ summary_display:
       fallback_format: "Analyzed"
 ```
 
-That's it - **only 3 files modified**, and most of the content is in programs.yaml!
+This gets the program running — 3 YAML files, no Python changes.
+
+### Reality check: what testing reveals
+
+The YAML definitions above are the starting point, not the finish
+line. When you run the new program through the tutorial suite, you
+will likely encounter edge cases that need Python guards. As of
+v115.05, 17 of 23 registered programs have at least some
+program-specific Python code (~60 individual guard blocks). Only
+6 programs are pure YAML.
+
+Common edge cases that surface during testing:
+
+| Category | Where | Example |
+|----------|-------|---------|
+| File categorization guards | `workflow_state.py` | Ligand vs protein PDB, half-map vs full-map |
+| Content-based workflow checks | `workflow_state.py` | Se heavy-atom files misidentified as ligands |
+| Error recovery patterns | `recoverable_errors.yaml` | Ambiguous data labels for this program |
+| Exclude patterns | `command_postprocessor.py` | Program strips certain params from other programs |
+| Special-case command building | `graph_nodes.py` BUILD | `rebuild_in_place=False` for autobuild |
+| Done-tracking edge cases | `graph_nodes.py` | Program that should run more than once |
+
+**Process**: Add the YAML → run tutorials → fix the edge cases that
+appear → re-run. Expect 2-3 iterations. The core pipeline
+(`PERCEIVE → THINK → PLAN → BUILD → VALIDATE → OUTPUT`) never
+changes — all guards are in the surrounding code.
 
 ---
 
