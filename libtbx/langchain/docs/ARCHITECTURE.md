@@ -3096,3 +3096,119 @@ Note: `debug` is accepted as an alias for `verbose` (3 levels total).
 - `agent/thinking_agent.py` - Expert assessment event emission (v113)
 
 See [TRANSPARENCY_LOGGING.md](../project/TRANSPARENCY_LOGGING.md) for full details.
+
+---
+
+## Future Directions
+
+### Known gaps and active limitations
+
+**Text-only information channel.** The agent's entire understanding
+of program results comes from log text and numerical metrics. Density
+maps carry spatial information — ligand shape, disorder, connectivity,
+unexplained blobs — that text summaries do not capture. This is the
+single largest limitation of the current system: an experienced
+crystallographer looking at a difference map can immediately see what's
+wrong, but the agent can only read the numbers. Adding even basic
+spatial awareness (e.g., difference density peak statistics, local
+correlation per residue) would significantly improve decision quality
+in the refinement and ligand-fitting stages.
+
+**Hypothesis testing infrastructure.** The hypothesis system (v114) is
+architecturally complete — the evaluator, lifecycle management, single-
+budget constraint, verification latency, and revalidation logic all
+work. However, it does not fire reliably in practice. The prompt only
+invites hypothesis proposals when the Structure Model has unresolved
+problems or ≥ 2 positive difference density peaks above 4 sigma. In
+most tutorial runs the structure either improves steadily (no problems
+to trigger a hypothesis) or fails quickly (not enough validation data).
+When the invitation does fire, the LLM must return a correctly
+structured JSON with `hypothesis`, `test_program`, `confirm_if`, and
+`refute_if` fields — which it does not always do. Making this feature
+work in real sessions requires either lowering the trigger threshold
+(at the risk of spurious hypotheses), improving the prompt to elicit
+reliable JSON, or both.
+
+**Single dataset per session.** The agent assumes one dataset. Multi-
+crystal merging, serial crystallography data reduction, and ensemble
+strategies are not supported. Supporting these would require changes
+to the workflow engine (new phases), the file categorizer (dataset
+grouping), and possibly a multi-session coordinator.
+
+**Program coverage.** 23 PHENIX programs are registered. Notable gaps
+include `ensemble_refinement`, local map sharpening, `map_box`,
+`map_comparison`, and `superpose_models`. Deferred items I6
+(unsupported programs) and I7 (tar.gz input handling) from the v115
+plan are pending workflow engine expansion. Adding programs starts
+with YAML definitions but in practice requires iterating on file
+categorization guards, error recovery patterns, content-based checks,
+and command postprocessor special cases — see the "Adding a New Tool"
+discussion in OVERVIEW.md.
+
+### Design tensions
+
+**Rule D ("fail closed") vs LLM error recovery.** The command sanitizer
+strips bare parameters not in a program's `strategy_flags` allowlist.
+This prevents hallucinated parameters from reaching PHENIX, but also
+strips legitimate recovery parameters that the LLM correctly
+identifies (e.g., `rebuild_in_place=False` for autobuild sequence
+mismatch). The current mitigation is to expand `strategy_flags` for
+programs where recovery params are known. A future "warn but keep"
+mode could allow unrecognized parameters through if they pass PHIL
+validation, relying on the catch-all blacklist (v112.76) as a safety
+net for parameters that cause actual failures.
+
+**Plan template rigidity vs expert reasoning.** The plan templates are
+deterministic — selected at session start and locked to a phasing
+strategy. When the template is wrong (e.g., SAD template locked in
+despite anomalous measurability of 0.03), expert reasoning correctly
+diagnoses the problem but has no mechanism to override the template.
+The v115.05 anomalous gate addresses one specific case, but the
+general problem — how should the planner respond when the expert says
+the strategy is wrong? — remains unsolved. Options include: allowing
+the THINK node to flag plan-incompatible evidence that triggers a
+plan revision, or adding "escape hatch" gates that the evaluator
+checks before entering high-commitment stages.
+
+### Potential improvements
+
+**Density map awareness.** Even without full spatial map interpretation,
+extracting summary statistics from difference density maps —
+peak heights, peak locations relative to the model, local CC per
+residue — would give the THINK node evidence for ligand placement,
+disorder, and model errors that is currently invisible. This could
+plug into the existing expert KB and hypothesis systems.
+
+**Learning from completed sessions.** The agent currently starts fresh
+each session. Collecting outcome data from completed runs — which
+program sequences solved which types of structures, which strategies
+worked at which resolutions — could inform template selection and
+strategy recommendations. This would require a session outcome
+database and a retrieval mechanism, but the RAG pipeline already
+provides the infrastructure for document-grounded retrieval.
+
+**Interactive checkpoints.** The agent currently runs autonomously
+or in stepwise mode (stop after prediction for manual inspection).
+A middle ground would be structured checkpoints where the agent
+presents its assessment and asks the user to confirm or redirect
+before committing to an expensive step (e.g., autosol with SAD
+phasing, or autobuild after marginal MR). The directive system
+already supports this — `after_program` could be extended to
+pause-and-ask rather than just suppress auto-stop.
+
+**Broader program integration.** Many PHENIX tools that appear in
+tutorial READMEs are not yet registered: `map_box` for extracting
+map regions, `superpose_models` for comparing solutions,
+`ensemble_refinement` for modeling disorder, and various map
+utilities. Each requires YAML definitions plus the inevitable
+edge-case iteration, but the pipeline architecture does not need
+to change.
+
+**Multi-model and multi-dataset workflows.** Supporting ensemble
+strategies (multiple models from different MR solutions),
+multi-crystal merging, or comparative analysis across datasets
+would require a session model that tracks multiple parallel
+branches rather than a single linear cycle history. This is a
+significant architectural change but would enable the agent to
+handle the more complex structure determination scenarios that
+currently require manual intervention.
