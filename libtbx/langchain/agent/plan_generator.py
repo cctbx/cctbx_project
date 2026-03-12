@@ -423,13 +423,10 @@ def _build_context(data_characteristics=None,
   ):
     ctx["model_is_placed"] = True
 
-  # Polder intent: user wants omit maps.  Detected
-  # from advice keywords or after_program directive.
-  # Selects refine_placed_polder template (refine
-  # first to produce map coefficients, then polder).
+  # Polder intent from after_program directive.
+  # (The advice-based detection already happened above
+  # in the polder override block.)
   if "polder" in _after:
-    ctx["wants_polder"] = True
-  elif "polder" in advice:
     ctx["wants_polder"] = True
 
   # --- From data characteristics ---

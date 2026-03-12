@@ -50,7 +50,7 @@ phenix.ai_agent original_files="data.mtz seq.fa" \
 # Rules-only mode (deterministic, no LLM, auto-discovers files)
 phenix.ai_agent use_rules_only=True input_directory=/path/to/data/
 
-# Without strategic planning (advanced reasoning only)
+# Without strategic planning (advanced reasoning only, no plan/gates)
 phenix.ai_agent thinking_level=advanced \
     original_files="data.mtz sequence.fa"
 
@@ -366,25 +366,114 @@ The reranking retriever is created in `rag/retriever.py` via
 `create_reranking_retriever()` and used by both log analysis
 (`analysis/analyzer.py`) and documentation queries (`utils/query.py`).
 
-### 10. Strategic Planner (v114)
+### 10. Thinking Levels and the Strategic Planner
 
-The goal-directed layer sits above the reactive agent and communicates
-through the directives system — the same interface a human user would
-use. The reactive agent is unchanged; every safety check still applies.
+The `thinking_level` parameter controls how much intelligence the
+agent applies to each cycle. It is a PHIL choice parameter with four
+values: `none`, `basic`, `advanced`, and `expert` (default). Each
+level is additive — higher levels include everything from lower levels
+plus additional capabilities.
 
-Activated by `thinking_level=expert`. The four thinking levels are:
+A separate parameter, `use_rules_only=True`, is orthogonal to
+`thinking_level`. It replaces the LLM call in the PLAN node with
+deterministic first-valid-program selection. Everything else — PERCEIVE,
+THINK, BUILD, VALIDATE, safety checks, error recovery — runs identically
+regardless of `use_rules_only`. The two axes are independent: you can
+run `thinking_level=advanced use_rules_only=True` to get structural
+validation and expert KB without any LLM calls in PLAN.
 
-| Level | THINK node | Structure Model | Planning layer |
-|-------|-----------|-----------------|---------------|
-| `none` | off | off | off |
-| `basic` | log analysis + LLM | off | off |
-| `advanced` (default) | validation + KB + LLM | updated | off |
-| `expert` | validation + KB + LLM | updated | **on** |
+#### Capability Matrix
 
-The Structure Model is updated at both `advanced` and `expert`
-levels (it feeds the expert assessment display). The planning
-layer (plan generation, gate evaluation, hypothesis testing,
-reports) only activates at `expert`.
+| Capability | `none` | `basic` | `advanced` | `expert` (default) |
+|---|---|---|---|---|
+| **Inside the LangGraph pipeline (per-cycle)** | | | | |
+| PERCEIVE: file categorization, workflow state, metrics, sanity checks | ✓ | ✓ | ✓ | ✓ |
+| THINK: LLM call with log analysis | — | ✓ | ✓ | ✓ |
+| THINK: strategy memory (persists across cycles) | — | ✓ | ✓ | ✓ |
+| THINK: structural validation (Ramachandran, clashscore, rotamers) | — | — | ✓ | ✓ |
+| THINK: Structure Model (accumulated structural knowledge) | — | — | ✓ | ✓ |
+| THINK: Validation History (per-cycle snapshots, trend analysis) | — | — | ✓ | ✓ |
+| THINK: file metadata tracking | — | — | ✓ | ✓ |
+| THINK: expert knowledge base (56 rules, IDF-weighted) | — | — | ✓ | ✓ |
+| THINK: hypothesis extraction from LLM response | — | — | ✓ | ✓ |
+| PLAN: LLM program selection (or rules-only fallback) | ✓ | ✓ | ✓ | ✓ |
+| BUILD: deterministic command assembly | ✓ | ✓ | ✓ | ✓ |
+| VALIDATE: workflow, file, and duplicate checks | ✓ | ✓ | ✓ | ✓ |
+| **Outside the graph (between cycles, in ai_agent.py)** | | | | |
+| Plan generation at session start (12 templates) | — | — | — | ✓ |
+| Plan-to-directives merging before each cycle | — | — | — | ✓ |
+| Gate evaluation after each cycle (advance/retreat/skip/stop) | — | — | — | ✓ |
+| Strategy blacklisting on retreat | — | — | — | ✓ |
+| Hypothesis lifecycle management (confirm/refute/abandon) | — | — | — | ✓ |
+| Cycle commentary (template-based, no LLM) | — | — | — | ✓ |
+| Plan enforcement (suppress premature STOP) | — | — | — | ✓ |
+| Model placement gate | — | — | — | ✓ |
+| **At session end** | | | | |
+| Structure report (HTML with SVG trajectory) | — | — | — | ✓ |
+| Session summary JSON | — | — | — | ✓ |
+| Final/stopped report (LLM-generated) | — | — | — | ✓ |
+
+#### Per-Level Behavior
+
+**`none`** — Minimum viable agent. The THINK node is a complete
+pass-through. The pipeline is effectively PERCEIVE → PLAN → BUILD →
+VALIDATE → OUTPUT. PLAN still calls the LLM for program selection
+(unless `use_rules_only=True`), so there is one LLM call per cycle.
+No between-cycle operations beyond basic stop checks.
+
+**`basic`** — Adds a second LLM call in the THINK node. The thinking
+context includes log sections extracted from the last program's output
+(program-specific keyword extraction), current metrics, R-free trend
+across history, a brief history summary (last 5 cycles), recent
+failures, and strategy memory. The LLM produces an assessment with
+an action, confidence, analysis, and guidance. If guidance is produced,
+it is prepended to `user_advice` as `[Expert assessment] ...` so the
+PLAN node's LLM sees it when selecting a program. Strategy memory
+is updated and persisted. The `should_think()` gate applies: THINK
+only engages after strategic programs (analysis, model-building,
+refinement, ligand), after failures, or when R-free is stalled. It
+skips on the first cycle and on routine steps.
+
+**`advanced`** — Adds four subsystems to the THINK node's context:
+(A) structural validation via headless `run_validation()` on the
+current best model, producing Ramachandran, clashscore, rotamer
+analysis, and model contents; (B) a Structure Model that accumulates
+cross-cycle knowledge from ground-truth validation results — data
+characteristics, model state, R-free trajectory with annotations,
+and a strategy blacklist — plus a Validation History with per-cycle
+snapshots; (C) file metadata entries for validated models; and
+(D) expert knowledge base queries with IDF-weighted tag matching
+against 56 crystallographic rules. The LLM call receives all of this
+richer context. The between-cycle loop in `ai_agent.py` is unchanged
+from `none`/`basic` — no plan, no gate evaluation, no reports.
+
+**`expert`** (default) — Everything from `advanced`, plus the entire
+Strategic Planner layer activates in `ai_agent.py`. Inside the graph,
+the THINK node runs identically to `advanced` (the value `expert`
+is mapped to `advanced` for graph execution, since all planning
+operations live outside the graph). The additions are all in the
+between-cycle loop, described in Sections 10a–10h below.
+
+#### How `expert` Maps to `advanced` in the Graph
+
+The LangGraph pipeline only knows three thinking levels: `none`,
+`basic`, and `advanced`. When the user sets `thinking_level=expert`,
+`create_initial_state()` maps it to `advanced` for graph execution.
+This is deliberate: the graph nodes (PERCEIVE, THINK, PLAN, BUILD,
+VALIDATE) behave identically at `advanced` and `expert`. Everything
+that distinguishes `expert` from `advanced` — plan generation, gate
+evaluation, hypothesis lifecycle, stage summaries, reports — lives
+in the outer loop in `ai_agent.py`, gated on the original
+`thinking_level == "expert"` check.
+
+The subsections below (10a–10h) describe the components of the
+strategic planner in detail.
+
+Note: The Structure Model (10a) and Validation History are updated
+at both `advanced` and `expert` levels inside the THINK node. The
+remaining components (10b–10h: Plan Generator, Gate Evaluator,
+Hypothesis Engine, Explanation Engine, Model Placement Gate, Plan
+Enforcement, Display Data Model, HTML Report) only run at `expert`.
 
 #### 10a. Structure Model (`agent/structure_model.py`)
 
@@ -793,6 +882,11 @@ metrics:
 
 ## Execution Modes
 
+The agent's behavior is controlled by two independent axes:
+`thinking_level` (how much intelligence per cycle) and
+`use_rules_only` (LLM vs deterministic program selection).
+The combinations below are the most common configurations.
+
 ### Goal-Directed Mode (v114, default)
 
 ```bash
@@ -806,6 +900,7 @@ phenix.ai_agent original_files="data.mtz seq.fa"
   suppresses destructive programs (phaser, autosol)
 - Hypothesis testing with verification latency
 - Per-cycle expert assessment and stage transition summaries
+- Two LLM calls per cycle when THINK engages (expert reasoning + program selection)
 - `structure_report.html`, `structure_determination_report.txt`,
   and `session_summary.json` at completion
 
@@ -815,11 +910,25 @@ phenix.ai_agent original_files="data.mtz seq.fa"
 phenix.ai_agent thinking_level=advanced original_files="data.mtz seq.fa"
 ```
 
-- LLM makes program selection decisions
-- Structural validation and expert KB
-- Rules engine validates all choices
-- Full reasoning captured in events
-- No strategic plan or gate evaluation
+- `thinking_level=advanced`: THINK node runs with full context
+  (structural validation, expert KB, Structure Model) but no
+  strategic planning layer
+- LLM makes program selection decisions in PLAN
+- Two LLM calls per cycle when THINK engages
+- No plan generation, gate evaluation, or between-cycle reports
+- Useful when the planning overhead is unnecessary or when
+  debugging the reactive engine in isolation
+
+### Minimal LLM Mode
+
+```bash
+phenix.ai_agent thinking_level=none original_files="data.mtz seq.fa"
+```
+
+- THINK node is a pass-through (no expert reasoning)
+- One LLM call per cycle (PLAN only)
+- Lowest LLM cost; suitable for simple workflows or constrained
+  API budgets
 
 ### Rules-Only Mode
 
@@ -827,11 +936,14 @@ phenix.ai_agent thinking_level=advanced original_files="data.mtz seq.fa"
 phenix.ai_agent use_rules_only=True original_files="data.mtz seq.fa"
 ```
 
-- Deterministic program selection (first valid program)
-- No LLM calls
-- Faster, reproducible for testing
-- Auto-discovers files from input_directory (no README
-  parsing needed)
+- Deterministic program selection (first valid program from
+  workflow engine) — no LLM call in PLAN
+- `use_rules_only` only affects PLAN; `thinking_level` still
+  controls the THINK node independently. At the default
+  `thinking_level=expert`, THINK will attempt its LLM call.
+  To suppress all LLM calls, also set `thinking_level=none`.
+- Faster, fully reproducible for testing (with `thinking_level=none`)
+- Auto-discovers files from input_directory
 
 ### Dry-Run Mode
 

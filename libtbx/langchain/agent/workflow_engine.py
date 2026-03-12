@@ -1437,6 +1437,28 @@ class WorkflowEngine:
             "phenix.autosol" in valid):
             valid.remove("phenix.autosol")
 
+        # Negligible-anomalous guard (v115.05): when anomalous
+        # measurability is below 0.05 and has_anomalous is
+        # explicitly False, remove autosol entirely.  The data
+        # may contain I(+)/I(-) columns but the signal is too
+        # weak for SAD phasing.  Without this guard, the LLM
+        # sees autosol in valid_programs and may choose it,
+        # wasting cycles on doomed autosol + autobuild loops.
+        # (AF_exoV_PredictAndBuild: 7 cycles, 5 failures.)
+        if (context and
+            "phenix.autosol" in valid and
+            not context.get("autosol_done")):
+            _am = context.get("anomalous_measurability")
+            _ha = context.get("has_anomalous")
+            if (_am is not None and _ha is not None
+                    and not _ha):
+                try:
+                    _am_f = float(_am)
+                except (ValueError, TypeError):
+                    _am_f = None
+                if _am_f is not None and _am_f < 0.05:
+                    valid.remove("phenix.autosol")
+
         # Restore: if the user explicitly wants ligandfit, has refined at least once,
         # and ligandfit hasn't run yet, add it to valid_programs even if the r_free < 0.35
         # YAML condition was not met.  phenix.ligandfit works with a ligand PDB file OR

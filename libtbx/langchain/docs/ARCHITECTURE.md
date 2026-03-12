@@ -462,7 +462,7 @@ The decision flow follows a clean, layered architecture where each component has
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │             LAYER 1.5: EXPERT REASONING (THINK, v113)            │
-│  agent/thinking_agent.py — optional, off by default              │
+│  agent/thinking_agent.py — active at basic/advanced/expert       │
 │                                                                  │
 │  Input: log_text, history, strategy_memory                      │
 │  Output: enriched user_advice with expert guidance              │
@@ -933,20 +933,20 @@ strategic guidance that PLAN can incorporate.
 
 **Implementation**:
 
-The THINK node sits between PERCEIVE and PLAN. It is optional and off
-by default, controlled by `thinking_level` (PHIL choice parameter:
-`none`/`basic`/`advanced`/`expert`). Backward compatible:
-`use_thinking_agent=True` maps to `thinking_level=basic`.
+The THINK node sits between PERCEIVE and PLAN. It is controlled by
+`thinking_level` (PHIL choice parameter: `none`/`basic`/`advanced`/`expert`,
+default `expert`). At the default `expert` level, the THINK node runs
+with full context (equivalent to `advanced` inside the graph).
+Backward compatible: `use_thinking_agent=True` maps to `thinking_level=basic`.
 
 ```
 PERCEIVE → THINK → PLAN → BUILD → VALIDATE → OUTPUT
                │
                ├─ thinking_level=none? → pass-through
-               ├─ Not strategic? → skip (routine refine, mtriage)
+               ├─ Not strategic program? → skip
                ├─ thinking_level=basic? → log analysis + LLM
-               ├─ thinking_level=advanced? → validation + KB + metadata + LLM
-               └─ thinking_level=expert? → same as advanced in graph
-                    (planning layer gated in ai_agent.py)
+               └─ thinking_level=advanced/expert? → validation + KB + metadata + LLM
+                    (expert adds planning layer outside the graph, in ai_agent.py)
 ```
 
 **When THINK engages** (`should_think()` in `agent/thinking_agent.py`):
@@ -959,29 +959,213 @@ PERCEIVE → THINK → PLAN → BUILD → VALIDATE → OUTPUT
 | After any failure | May need strategy change |
 | R-free stalled 3+ cycles | Convergence problem |
 
-THINK does NOT engage on the first cycle (no program output yet), routine
-mtriage steps, or when `thinking_level=none`.
+THINK does NOT engage on the first cycle (no program output yet),
+after non-strategic programs (e.g., validation-only or utility programs),
+or when `thinking_level=none`.
 
 **Four-tier thinking_level** (v113.10, v114):
 
-| Level | Behavior |
-|-------|----------|
-| `none` | No expert reasoning. Pass-through. |
-| `basic` | LLM reasoning with log analysis, strategy memory, R-free trend. |
-| `advanced` | Full pipeline: basic + structural validation + file metadata + expert KB lookup. Structure Model updated. |
-| `expert` (default) | Advanced + goal-directed planning (plan generation, gate evaluation, hypothesis testing, stage reports, model placement gate). `expert` maps to `advanced` in the graph; planning gated in `ai_agent.py`. |
+The `thinking_level` parameter controls how much intelligence the
+agent applies per cycle. Each level is additive. A separate parameter,
+`use_rules_only=True`, is orthogonal — it replaces the LLM in PLAN
+with deterministic selection but does not affect THINK, BUILD, VALIDATE,
+or any safety checks.
 
-**Advanced mode adds** (v113.10):
+**Level: `none`**
 
-- Structural validation via `agent/validation_inspector.py` — Ramachandran,
-  rotamer outliers, clashscore, bonds/angles, model contents (chains, ligands,
-  waters, ions)
-- Expert knowledge base (`knowledge/expert_knowledge_base_v2.yaml`) — 56
-  focused entries with IDF-weighted tag matching via `knowledge/kb_loader.py`
-  and `agent/kb_tags.py`
-- File metadata tracking via `agent/file_metadata.py` — content-aware model
-  queries (`find_best_model()`, `find_latest_model_with_ligand()`)
-- User-facing Expert Assessment display in event formatter at NORMAL verbosity
+The THINK node is a complete pass-through (`run_think_node` returns
+immediately when `thinking_level` is falsy). The pipeline is effectively
+PERCEIVE → PLAN → BUILD → VALIDATE → OUTPUT. PLAN still calls the
+LLM for program selection (one LLM call per cycle), unless
+`use_rules_only=True` is set, in which case there are zero LLM calls.
+
+The between-cycle loop in `ai_agent.py` skips all expert-mode
+operations: no plan generation, no gate evaluation, no hypothesis
+testing, no cycle commentary, no structure report.
+
+**Level: `basic`**
+
+The THINK node activates with a shallow context. `_build_thinking_context`
+assembles the "basic context" only:
+
+- Log sections extracted from the last program's output (per-program
+  keyword extraction via `log_section_extractor.py`)
+- Current metrics from `log_analysis` (R-free, map CC, resolution, etc.)
+- R-free trend collected across cycle history
+- Brief history summary (last 5 cycles with inputs/outputs)
+- Recent failures list (last 5 failures with program, error, command)
+- Strategy memory (accumulated observations from prior cycles)
+
+Basic mode does NOT run structural validation, does NOT query the expert
+knowledge base, does NOT build file metadata, and does NOT create or
+update the Structure Model or Validation History.
+
+An LLM call is made via `build_thinking_prompt()` with this context,
+and the response is parsed into an assessment (action, confidence,
+analysis, guidance, concerns). If guidance is produced, it is prepended
+to `user_advice` as `[Expert assessment] ...` so the PLAN node's LLM
+sees it. Strategy memory is updated and persisted via `session_info`.
+
+The `should_think()` gate applies at all non-`none` levels: THINK only
+engages after strategic programs (categories: analysis, model_building,
+refinement, ligand — loaded from `programs.yaml`), after failures, or
+when R-free is stalled (3+ cycles without improvement via
+`StrategyMemory.metrics_stalled()`). THINK skips on the first cycle
+(no program output yet).
+
+The between-cycle loop is unchanged from `none`.
+
+Net effect: two LLM calls per cycle when THINK engages (think + plan),
+with log-analysis-quality reasoning injected into the planning prompt.
+
+**Level: `advanced`**
+
+Everything from `basic`, plus four subsystems activate in
+`_build_thinking_context` (gated on `thinking_level in ("advanced", "expert")`):
+
+*Phase A — Structural validation:*
+`_run_structural_validation()` runs headless `run_validation()` on the
+current best model (from `best_files["model"]`). Produces Ramachandran
+outlier counts, clashscore, rotamer analysis, bonds/angles RMSD, and
+model contents (chains, ligands, waters, ions). The result is formatted
+into a compact text report by `format_validation_report()` and included
+in the THINK prompt context.
+
+*Phase B — Structure Model + Validation History (v114):*
+A `StructureModel` object is created or restored from state. It is
+updated every cycle from ground-truth validation results (not LLM
+reasoning) via `update_from_validation()`, `update_from_xtriage()`,
+and `update_from_phaser()`. Tracks data characteristics (resolution,
+space group, twinning, anomalous), model state, R-free trajectory with
+annotations, strategy blacklist, and hypotheses. The `ValidationHistory`
+stores per-cycle snapshots with `get_metric_series()` for trend analysis
+and `get_phase_start_metrics()` for the monotonic progress gate. Both
+persist across cycles and session resume via state serialization. The
+Structure Model summary replaces the raw validation report in the prompt,
+providing richer cross-cycle structural knowledge. Current problems are
+extracted via `get_current_problems()`.
+
+*Phase C — File metadata:*
+`build_file_metadata()` creates a metadata entry for the validated model
+(validation stats, metrics, program, cycle). Stored in state and included
+in the prompt context so the LLM knows quality characteristics of
+available files.
+
+*Phase D — Expert knowledge base:*
+`_query_knowledge_base()` runs IDF-weighted tag matching against a
+56-entry crystallographic knowledge base. Takes the current validation
+results, metrics, workflow stage, program, resolution, experiment type,
+R-free trend, and xtriage results, and returns matching rules as text.
+These rules encode domain expertise like "if clashscore > 40 after
+autobuild, consider real-space refinement" or "if twinning detected,
+add twin law to refine strategy."
+
+Additionally, a hypothesis prompt is built from the Structure Model
+(if hypotheses exist) and included in the THINK prompt, so the LLM
+can propose new hypotheses or comment on existing ones. Hypotheses
+extracted from the LLM response are added to the Structure Model.
+
+The between-cycle loop in `ai_agent.py` is unchanged from `none`/`basic`:
+no plan generation, no gate evaluation, no reports. The Structure Model
+exists and accumulates knowledge, but it is only used within the THINK
+node to inform the expert assessment. It feeds the GUI's Expert
+Assessment display panel.
+
+Net effect: two LLM calls per cycle when THINK engages, but with
+dramatically richer context. The PLAN LLM receives enriched advice
+that reflects actual structural validation, domain rules, and
+accumulated structural knowledge.
+
+**Level: `expert`** (default)
+
+Everything from `advanced`, plus the entire Strategic Planner layer
+activates. Inside the graph, the THINK node runs identically to
+`advanced` — the value `expert` is mapped to `advanced` by
+`create_initial_state()` since all planning operations live outside
+the graph (see "How `expert` maps to `advanced`" below).
+
+The additions are all in the between-cycle loop in `ai_agent.py`:
+
+*At session start:*
+- `_initialize_plan()` runs. The `PlanGenerator` selects from 12
+  pre-defined templates based on experiment type, available files,
+  resolution, and anomalous atoms. Template selection is deterministic.
+  The LLM only customizes parameters within template bounds.
+- The plan is a `StructurePlan` containing `StageDef` phases, each
+  with programs, success criteria, gate conditions, fallbacks, and
+  skip conditions.
+
+*Before each cycle's graph invocation:*
+- `plan_to_directives()` translates the current plan stage into the
+  directives format: `prefer_programs`, `after_program`,
+  `program_settings`. These are merged into the same directives dict
+  that user advice produces, so the reactive engine treats plan
+  directives identically to user directives.
+- `plan_has_pending_stages` is computed and passed into `session_info`,
+  which the PLAN node uses to suppress auto-stop and override LLM
+  STOP decisions.
+- A Strategy Hash is computed; changes trigger `advice_changed` in
+  the reactive agent.
+
+*After each cycle:*
+- Gate evaluation: `GateEvaluator.evaluate()` checks the plan's
+  success criteria for the current stage. Purely deterministic (no
+  LLM). Returns one of: continue, advance, retreat, fallback, skip,
+  or stop. Success hysteresis (1.5% buffer) prevents oscillation.
+  Five anti-oscillation safeguards protect retreat logic.
+- On advance: plan moves to next stage, `check_plan_revision`
+  adjusts downstream stages, `generate_stage_summary` produces
+  a transition summary.
+- On retreat: failed strategy is blacklisted in the Structure Model
+  (never retried), plan resets to retreat target phase,
+  `advice_changed` is set.
+- Hypothesis evaluation: `evaluate_hypotheses()` manages the lifecycle
+  (proposed → testing → pending → confirmed/refuted/abandoned).
+  Single active hypothesis budget. Verification latency via
+  `test_cycles_remaining`.
+- Cycle commentary: `generate_cycle_commentary()` produces a
+  template-based (no LLM) crystallographer-level comment.
+- Model placement gate: detects when model fits data (CC > 0.3 or
+  R-free < 0.50) and locks `model_is_placed` — suppresses
+  destructive programs and fast-forwards plan past MR/phasing stages.
+
+*At session finalization:*
+- `generate_final_report()` / `generate_stopped_report()` — LLM call.
+- `structure_report.html` with inline SVG trajectory chart.
+- `structure_determination_report.txt`.
+- `session_summary.json` with metrics, stage outcomes, hypotheses.
+
+**How `expert` maps to `advanced` in the graph**
+
+The LangGraph pipeline only knows three thinking levels: `none`, `basic`,
+and `advanced`. When the user sets `thinking_level=expert`,
+`create_initial_state()` maps it to `advanced` for graph execution. This
+is deliberate: the graph nodes (PERCEIVE, THINK, PLAN, BUILD, VALIDATE)
+behave identically at `advanced` and `expert`. Everything that
+distinguishes `expert` from `advanced` lives in the outer loop in
+`ai_agent.py`, gated on the original `thinking_level == "expert"` check
+from the PHIL parameter.
+
+**`use_rules_only` as an orthogonal axis**
+
+Setting `use_rules_only=True` replaces the LLM call in the PLAN node
+with `RulesSelector` (deterministic first-valid-program logic via
+`_mock_plan`). This change is confined to PLAN — everything else runs
+identically:
+
+- PERCEIVE: file categorization, workflow state, metrics, sanity checks
+  — all unchanged.
+- THINK: still controlled by `thinking_level`, which defaults to
+  `expert` (mapped to `advanced` in the graph). The THINK LLM call
+  is independent of `use_rules_only`. To suppress all LLM calls, set
+  both `use_rules_only=True` and `thinking_level=none`.
+- BUILD: runs identically, but the `intent` from `_mock_plan` has empty
+  `files` and `strategy` dicts, so the builder relies entirely on
+  auto-selection rather than LLM file/strategy hints.
+- VALIDATE: workflow validation, file checks, duplicate detection — all
+  unchanged.
+- Between-cycle operations: unchanged (none at `thinking_level=none`;
+  full planning at `thinking_level=expert`).
 
 **Log section extraction** (`agent/log_section_extractor.py`):
 
@@ -1057,7 +1241,7 @@ a thinking failure.
 | `knowledge/tutorial_expectations.yaml` | Per-tutorial expected behavior for dual-run evaluation (v115) |
 | `knowledge/solve_run_info.yaml` | Minimal hints for solve-mode runs (v115) |
 
-**Data flow**:
+**Data flow** (see per-level detail above):
 
 ```
 GUI/CLI → params.ai_analysis.thinking_level
@@ -1073,14 +1257,17 @@ GUI/CLI → params.ai_analysis.thinking_level
   → ai_agent.py → session.data (persisted)
   → event_formatter: Expert Assessment block
 
-When thinking_level=expert (additional):
-  → ai_agent.py: _initialize_plan() at session start
-  → each cycle: plan_to_directives() before graph
-  → each cycle: GateEvaluator.evaluate() after graph
-  → transitions: generate_stage_summary()
-  → session end: generate_final/stopped_report()
-  → output: session_summary.json +
-      structure_determination_report.txt
+When thinking_level=expert (additional, in ai_agent.py):
+  Session start: _initialize_plan()
+  Before graph:  plan_to_directives()
+  After graph:   GateEvaluator.evaluate()
+                 evaluate_hypotheses()
+                 generate_cycle_commentary()
+  Transitions:   generate_stage_summary()
+  Session end:   generate_final/stopped_report()
+  Output:        session_summary.json +
+                 structure_report.html +
+                 structure_determination_report.txt
 ```
 
 **Advanced mode prompt example** (v113.10):
