@@ -583,8 +583,11 @@ The decision flow follows a clean, layered architecture where each component has
 - Determines current workflow position
 - Categorizes available files
 - v115.05: `_anti_ligand_patterns` excludes filenames matching
-  `no_ligand` from ligand file classification (prevents Se heavy-atom
-  coordinate files from being misidentified as ligand files)
+  `no_ligand` from ligand file classification. Orphaned PDB files
+  in the `pdb` category that don't match any model subcategory
+  (refined, phaser_output, etc.) and aren't ligands or intermediates
+  are promoted to `model` — fixes user-supplied input PDBs (e.g.
+  `1aba.pdb`) not appearing as `has_model=True` in PERCEIVE
 - Detects experiment type
 
 ## LLM Provider Architecture
