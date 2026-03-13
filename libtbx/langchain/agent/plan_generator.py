@@ -193,13 +193,30 @@ def _build_context(data_characteristics=None,
   pdb_files = []
   cif_files = []
   files = available_files or []
+
+  # Ligand PDB hints — checked during the file scan so
+  # ligand PDBs don't falsely set has_search_model.
+  _ligand_pdb_hints = (
+    "ligand", "lig_", "lig.", "random",
+    "compound", "drug", "inhibitor",
+  )
+
   for f in files:
     ext = os.path.splitext(f)[1].lower()
     bn = os.path.basename(f).lower()
     if ext in (".pdb", ".ent"):
-      ctx["has_search_model"] = True
       has_pdb = True
       pdb_files.append(bn)
+      # Check if this PDB is a ligand, not a search model.
+      # A file named 7qz0_ligand.pdb is a small-molecule
+      # coordinate file for ligandfit, not a Phaser search
+      # model.  workflow_state.py already classifies these
+      # correctly as ligand_pdb; this mirrors that logic.
+      if any(h in bn for h in _ligand_pdb_hints):
+        ctx["has_ligand_code"] = True
+        # Don't set has_search_model for ligand PDBs
+      else:
+        ctx["has_search_model"] = True
     elif ext == ".cif":
       cif_files.append(bn)
     elif ext in (".mtz", ".sca", ".hkl"):
@@ -231,22 +248,12 @@ def _build_context(data_characteristics=None,
       ctx["model_is_placed"] = True
       break
 
-  # Detect potential ligand PDB files.
-  # When multiple PDBs exist and one has a name
-  # suggesting it's a ligand model (not the main
-  # protein), mark has_ligand_code. This handles
-  # cases where ligands are provided as PDB instead
-  # of CIF (common in tutorials).
-  _ligand_pdb_hints = (
-    "ligand", "lig_", "lig.", "random",
-    "compound", "drug", "inhibitor",
+  # Track whether any PDB matched ligand hints (used
+  # below by the advice-based ligand detection).
+  _has_ligand_pdb = any(
+    any(h in pbn for h in _ligand_pdb_hints)
+    for pbn in pdb_files
   )
-  _has_ligand_pdb = False
-  if len(pdb_files) >= 2:
-    for pbn in pdb_files:
-      if any(h in pbn for h in _ligand_pdb_hints):
-        _has_ligand_pdb = True
-        break
 
   # --- From directives ---
   d = directives or {}

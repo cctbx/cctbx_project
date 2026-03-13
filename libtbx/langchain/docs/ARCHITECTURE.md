@@ -594,6 +594,22 @@ The decision flow follows a clean, layered architecture where each component has
   (refined, phaser_output, etc.) and aren't ligands or intermediates
   are promoted to `model` — fixes user-supplied input PDBs (e.g.
   `1aba.pdb`) not appearing as `has_model=True` in PERCEIVE
+- Half-map pair detection: numbered CCP4 file pairs (e.g.
+  `map_1.ccp4`, `map_2.ccp4`) are promoted to `half_map` when a
+  companion full map exists alongside them. Without a companion,
+  they stay in `full_map` (prevents false positives on
+  resolve_cryo_em segmented outputs). Explicit `half` in the
+  filename always takes priority.
+- MR solution detection: PDB files with `mr_solution` in the name
+  are categorized as `phaser_output`, which triggers
+  `model_is_placed` in the plan context (skips unnecessary MR).
+  The pattern requires the `mr_` prefix to avoid matching
+  `nmr_solution`.
+- Sigma-A MTZ handling: files with `sigmaa` in the name stay in
+  `data_mtz` (they contain both Fobs and map coefficients). They
+  are NOT moved to `map_coeffs_mtz` because `phenix.refine`'s
+  `data_mtz` slot has `exclude_categories: [map_coeffs_mtz]` —
+  dual membership would prevent refine from finding its input data.
 - Detects experiment type
 
 ## LLM Provider Architecture
@@ -1072,6 +1088,15 @@ extracted via `get_current_problems()`.
 in the prompt context so the LLM knows quality characteristics of
 available files.
 
+*Phase D — File inventory:*
+`_build_thinking_context` populates a `file_inventory` string from
+`workflow_state["categorized_files"]`, listing filenames grouped by
+category (models, reflection data, sequences, maps, ligands). This
+appears as an `=== AVAILABLE FILES ===` section in the THINK prompt,
+giving the LLM visibility into what files are available and how they
+are classified — particularly useful when sigma-A MTZ files or MR
+solution PDBs need special handling.
+
 *Phase D — Expert knowledge base:*
 `_query_knowledge_base()` runs IDF-weighted tag matching against a
 56-entry crystallographic knowledge base. Takes the current validation
@@ -1385,7 +1410,7 @@ xray_initial → xtriage → xray_analyzed
   - `strong_anomalous=True`: measurability > 0.10 or `anomalous_resolution` < 6.0 Å → autosol prioritized
   - `has_anomalous=True` (weak): measurability ≥ 0.06, or xtriage `has_anomalous=True` explicitly → autosol available
   - negligible: measurability < 0.06 and xtriage did not assert `has_anomalous` → `has_anomalous=False`, autosol unavailable
-  - v115.05 additional guard: when measurability < 0.05 and `has_anomalous=False`, autosol is removed from `valid_programs` entirely (prevents the LLM from choosing it even when anomalous data columns exist in the MTZ)
+  - v115.05 additional guard: when measurability < 0.05 and `has_anomalous` is not True (i.e., False or absent), autosol is removed from `valid_programs` entirely (prevents the LLM from choosing it even when anomalous data columns exist in the MTZ). The "is not True" check (rather than "== False") also handles the case where `has_anomalous` is absent from the context entirely, as occurs with AlphaFold prediction workflows.
 ‡ MR-SAD: phaser places model first, then autosol uses it as partpdb_file
 
 | State | Description | Valid Programs |
@@ -3198,6 +3223,27 @@ crystal merging, serial crystallography data reduction, and ensemble
 strategies are not supported. Supporting these would require changes
 to the workflow engine (new phases), the file categorizer (dataset
 grouping), and possibly a multi-session coordinator.
+
+**Ligand PDB plan selection (fixed v115.05).** `_build_context()`
+in `plan_generator.py` had two bugs that prevented correct plan
+selection when a ligand is provided as a PDB file (e.g.,
+AF_bromodomain_ligand tutorial with `7qz0_ligand.pdb`):
+
+(A) Every `.pdb` file set `has_search_model=True` (line ~200),
+including ligand PDB files. A ligand PDB is not a search model — this
+falsely triggered MR templates instead of predict-and-build templates.
+
+(B) The ligand name detection (`_ligand_pdb_hints`: "ligand", "lig_",
+etc.) only fired when `len(pdb_files) >= 2` (line ~249). When the
+ligand PDB was the only PDB file, `has_ligand_code` stayed False and
+the plan had no ligandfit stage.
+
+Fix: ligand hints are now checked *during* the file scan, before
+setting `has_search_model`. PDB files matching ligand hints set
+`has_ligand_code=True` instead of `has_search_model=True`. The
+`len(pdb_files) >= 2` guard was removed. With both fixes, the
+correct template `predict_refine_ligand` is selected for tutorials
+that provide only a ligand PDB + sequence + data.
 
 **Program coverage.** 23 PHENIX programs are registered. Notable gaps
 include `ensemble_refinement`, local map sharpening, `map_box`,
