@@ -2782,6 +2782,26 @@ def _build_with_new_builder(state):
                 " (R-free=%.3f > 0.45, poor MR model)"
                 % _last_rfree)
 
+        # Fix: When autobuild runs after autosol, the
+        # refined MTZ has HL coefficients (HLA/HLB/HLC/HLD)
+        # but no PHIB/FOM columns.  Autobuild crashes with
+        # "Please either specify PHIB and HL coeffs or
+        # neither".  Inject use_hl_if_present=False so
+        # autobuild ignores the HL columns and uses the
+        # map coefficients directly.
+        if "use_hl_if_present" not in strategy:
+            history = state.get("history", [])
+            _after_autosol = any(
+                "autosol" in str(
+                    h.get("program", "")).lower()
+                for h in history
+            )
+            if _after_autosol:
+                strategy["use_hl_if_present"] = False
+                state = _log(state,
+                    "BUILD: Set use_hl_if_present=False"
+                    " (autosol MTZ lacks PHIB/FOM)")
+
     # === MTZ LABEL INJECTION (Fix I1, v115) ===
     # When MTZ has multiple observation arrays, inject
     # explicit obs_labels to prevent xtriage/autosol crash.
@@ -3568,6 +3588,20 @@ def build(state):
                 state = _log(state,
                     "BUILD: Set rebuild_in_place=False"
                     " (model already exists)")
+
+        # Fix: use_hl_if_present=False after autosol
+        if "use_hl_if_present" not in strategy:
+            history = state.get("history", [])
+            _after_autosol = any(
+                "autosol" in str(
+                    h.get("program", "")).lower()
+                for h in history
+            )
+            if _after_autosol:
+                strategy["use_hl_if_present"] = False
+                state = _log(state,
+                    "BUILD: Set use_hl_if_present=False"
+                    " (autosol MTZ lacks PHIB/FOM)")
 
     # === APPLY RESOLUTION FOR PROGRAMS THAT NEED IT ===
     # Helper to find resolution from various sources (priority order)

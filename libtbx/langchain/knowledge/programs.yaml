@@ -631,7 +631,10 @@ phenix.autobuild:
     maps_only:
       flag: "maps_only={value}"
       type: boolean
-      hint: "Only generate density-modified maps, skip model building. Useful when density modification is the goal."
+    use_hl_if_present:
+      flag: "use_hl_if_present={value}"
+      type: boolean
+      hint: "Set to False when running after autosol to avoid crash from MTZ files with HL coefficients but no PHIB/FOM columns."
 
   hints:
     - "REQUIRES phased MTZ (from phaser or refine output)"
