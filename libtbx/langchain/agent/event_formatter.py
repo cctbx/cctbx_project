@@ -7,12 +7,20 @@ Produces consistent output for both local and remote execution.
 
 from __future__ import absolute_import, division, print_function
 
-from libtbx.langchain.agent.event_log import (
-    EventType,
-    Verbosity,
-    EVENT_VERBOSITY,
-    verbosity_index,
-)
+try:
+    from libtbx.langchain.agent.event_log import (
+        EventType,
+        Verbosity,
+        EVENT_VERBOSITY,
+        verbosity_index,
+    )
+except ImportError:
+    from agent.event_log import (
+        EventType,
+        Verbosity,
+        EVENT_VERBOSITY,
+        verbosity_index,
+    )
 
 
 class EventFormatter:
@@ -20,13 +28,44 @@ class EventFormatter:
     Formats events for human-readable display.
 
     Supports multiple verbosity levels and produces consistent
-    output for both local and remote execution.
+    output for both local and remote execution. Decision blocks
+    are wrapped in box frames for visual clarity and log
+    searchability.
 
     Usage:
         formatter = EventFormatter(verbosity=Verbosity.NORMAL)
         output = formatter.format_cycle(events, cycle_number=3)
         print(output, file=logger)
+
+        # After program execution:
+        result_output = formatter.format_result_block(
+            status="SUCCESS", metrics={"r_free": 0.230}, ...)
+        print(result_output, file=logger)
     """
+
+    # Tag markers for log searchability (grep-friendly)
+    TAG_DECISION = "[DECISION]"
+    TAG_REASONING = "[REASONING]"
+    TAG_COMMAND = "[COMMAND]"
+    TAG_RESULT = "[RESULT]"
+    TAG_GATE = "[GATE]"
+    TAG_EXPERT = "[EXPERT]"
+    TAG_STOP = "[STOP]"
+    TAG_STATE = "[STATE]"
+
+    # Box-drawing characters
+    _BOX_TL = "\u250c"  # ┌
+    _BOX_TR = "\u2510"  # ┐
+    _BOX_BL = "\u2514"  # └
+    _BOX_BR = "\u2518"  # ┘
+    _BOX_H = "\u2500"   # ─
+    _BOX_V = "\u2502"   # │
+    _BOX_ML = "\u251c"  # ├
+    _BOX_MR = "\u2524"  # ┤
+
+    # Default inner width for box content (72 fits in 80-char
+    # terminal with box chars + padding)
+    _BOX_INNER = 70
 
     def __init__(self, verbosity=Verbosity.NORMAL, width=80):
         """
@@ -38,10 +77,15 @@ class EventFormatter:
         """
         self.verbosity = verbosity
         self._width = width
+        self._BOX_INNER = width - 4  # 2 for "│ " + 2 for " │"
 
     def format_cycle(self, events, cycle_number=None):
         """
         Format all events for a cycle.
+
+        At NORMAL and VERBOSE verbosity, produces a boxed
+        decision block with tagged lines.  At QUIET, produces
+        a one-liner summary.
 
         Args:
             events: List of event dicts
@@ -53,31 +97,9 @@ class EventFormatter:
         if not events:
             return ""
 
-        # For quiet mode, generate one-liner from ALL events (unfiltered)
-        if self.verbosity == Verbosity.QUIET:
-            return self._format_quiet(events, cycle_number)
-
-        # Filter events by verbosity for other modes
-        filtered = self._filter_by_verbosity(events)
-
-        if not filtered:
-            return ""
-
-        lines = []
-
-        # Header
-        lines.append(self._header(cycle_number))
-
-        # Format each event
-        for event in filtered:
-            formatted = self._format_event(event)
-            if formatted:
-                lines.append(formatted)
-
-        # Footer
-        lines.append(self._separator("-"))
-
-        return "\n".join(lines)
+        # Use boxed format for normal/verbose
+        return self.format_decision_block(
+            events, cycle_number=cycle_number)
 
     def format_single(self, event):
         """
@@ -615,6 +637,344 @@ class EventFormatter:
             return None
         wrapped = self._wrap_text(str(content), width=78, indent="  ")
         return "\n[THOUGHT]\n  %s" % wrapped
+
+    # -------------------------------------------------------------------------
+    # Box formatting
+    # -------------------------------------------------------------------------
+
+    def _box_top(self, title=None):
+        """Top border of a box, optionally with a title."""
+        if title:
+            # ┌─ TITLE ──────────────────────────────┐
+            inner = " %s " % title
+            fill = self._BOX_INNER - len(inner)
+            return (self._BOX_TL + self._BOX_H
+                    + inner
+                    + self._BOX_H * max(fill, 0)
+                    + self._BOX_TR)
+        return (self._BOX_TL
+                + self._BOX_H * (self._BOX_INNER + 2)
+                + self._BOX_TR)
+
+    def _box_mid(self):
+        """Middle separator line."""
+        return (self._BOX_ML
+                + self._BOX_H * (self._BOX_INNER + 2)
+                + self._BOX_MR)
+
+    def _box_bottom(self):
+        """Bottom border of a box."""
+        return (self._BOX_BL
+                + self._BOX_H * (self._BOX_INNER + 2)
+                + self._BOX_BR)
+
+    def _box_line(self, text=""):
+        """A single content line inside a box."""
+        # Truncate if too long (shouldn't happen after
+        # wrapping, but safety net)
+        if len(text) > self._BOX_INNER:
+            text = text[:self._BOX_INNER - 1] + "\u2026"
+        padding = self._BOX_INNER - len(text)
+        return "%s %s%s %s" % (
+            self._BOX_V, text, " " * padding, self._BOX_V)
+
+    def _box_wrap_lines(self, text, indent=0):
+        """Wrap text to fit inside a box, return list of
+        box_line() results."""
+        if not text:
+            return []
+        content_width = self._BOX_INNER - indent
+        prefix = " " * indent
+        words = str(text).split()
+        lines = []
+        current = []
+        length = 0
+        for word in words:
+            if length + len(word) + 1 > content_width and current:
+                lines.append(
+                    self._box_line(prefix + " ".join(current)))
+                current = [word]
+                length = len(word)
+            else:
+                current.append(word)
+                length += len(word) + 1
+        if current:
+            lines.append(
+                self._box_line(prefix + " ".join(current)))
+        return lines
+
+    def _box_command(self, command):
+        """Format a command inside a box with backslash
+        continuation for long lines, suitable for copy-paste."""
+        if not command:
+            return []
+        lines = []
+        max_w = self._BOX_INNER - 2  # indent for "  "
+        cmd = str(command).strip()
+        if len(cmd) <= max_w:
+            lines.append(self._box_line("  " + cmd))
+        else:
+            # Split at spaces, add backslash continuation
+            parts = cmd.split()
+            current = parts[0]
+            for part in parts[1:]:
+                if len(current) + 1 + len(part) > max_w - 2:
+                    lines.append(
+                        self._box_line("  " + current + " \\"))
+                    current = "    " + part
+                else:
+                    current += " " + part
+            lines.append(self._box_line("  " + current))
+        return lines
+
+    def format_decision_block(self, events, cycle_number=None):
+        """Format all decision events for a cycle as a boxed block.
+
+        Produces a visually distinct decision block with tagged
+        lines for log searchability.
+
+        Args:
+            events: List of event dicts from the graph pipeline
+            cycle_number: Cycle number for the header
+
+        Returns:
+            str: Boxed decision block, or empty string in quiet mode
+        """
+        if self.verbosity == Verbosity.QUIET:
+            return self._format_quiet(events, cycle_number)
+
+        filtered = self._filter_by_verbosity(events)
+        if not filtered:
+            return ""
+
+        lines = []
+        title = "CYCLE %d" % cycle_number if cycle_number else "AGENT DECISION"
+        lines.append(self._box_top(title))
+
+        for event in filtered:
+            etype = event.get("type", "")
+
+            if etype == EventType.STATE_DETECTED:
+                state = event.get("workflow_state", "?")
+                reason = event.get("reason", "")
+                lines.append(self._box_line(
+                    "%s  %s" % (self.TAG_STATE, state)))
+                if reason:
+                    for rl in self._box_wrap_lines(
+                            reason, indent=2):
+                        lines.append(rl)
+                lines.append(self._box_line(""))
+
+            elif etype == EventType.METRICS_EXTRACTED:
+                mline = self._format_metrics_line(event)
+                if mline:
+                    lines.append(self._box_line(mline))
+
+            elif etype == EventType.EXPERT_ASSESSMENT:
+                analysis = event.get("analysis", "")
+                confidence = event.get(
+                    "confidence", "")
+                if analysis:
+                    label = "%s" % self.TAG_EXPERT
+                    if confidence:
+                        label += "  (%s confidence)" % confidence
+                    lines.append(self._box_line(label))
+                    for al in self._box_wrap_lines(
+                            analysis, indent=2):
+                        lines.append(al)
+                    lines.append(self._box_line(""))
+
+            elif etype == EventType.PROGRAM_SELECTED:
+                prog = event.get("program", "unknown")
+                reasoning = event.get("reasoning", "")
+                source = event.get("source", "")
+                provider = event.get("provider", "")
+
+                lines.append(self._box_line(
+                    "%s  %s" % (self.TAG_DECISION, prog)))
+                if reasoning:
+                    lines.append(self._box_line(
+                        "%s" % self.TAG_REASONING))
+                    for rl in self._box_wrap_lines(
+                            reasoning, indent=2):
+                        lines.append(rl)
+                if source:
+                    src = "%s (%s)" % (source, provider) \
+                        if provider and source == "llm" \
+                        else source
+                    lines.append(self._box_line(
+                        "  Source: %s" % src))
+                lines.append(self._box_line(""))
+
+            elif etype == EventType.STOP_DECISION:
+                if event.get("stop"):
+                    reason = event.get("reason", "")
+                    lines.append(self._box_line(
+                        "%s" % self.TAG_STOP))
+                    for rl in self._box_wrap_lines(
+                            reason, indent=2):
+                        lines.append(rl)
+                    lines.append(self._box_line(""))
+
+            elif etype == EventType.FILES_SELECTED:
+                selections = event.get("selections", {})
+                if selections:
+                    lines.append(self._box_line("Files:"))
+                    for slot, info in selections.items():
+                        if isinstance(info, dict):
+                            fname = info.get("selected", "?")
+                            reason = info.get("reason", "")
+                            entry = "  %s: %s" % (
+                                slot.title(), fname)
+                            if reason:
+                                entry += " (%s)" % reason
+                            lines.append(self._box_line(entry))
+                        else:
+                            lines.append(self._box_line(
+                                "  %s: %s" % (slot.title(), info)))
+                    lines.append(self._box_line(""))
+
+            elif etype == EventType.COMMAND_BUILT:
+                command = event.get("command", "")
+                if command:
+                    lines.append(self._box_line(
+                        "%s" % self.TAG_COMMAND))
+                    for cl in self._box_command(command):
+                        lines.append(cl)
+                    lines.append(self._box_line(""))
+
+            elif etype == EventType.DIRECTIVE_APPLIED:
+                directive = event.get("directive", "")
+                action = event.get("action", "")
+                lines.append(self._box_line(
+                    "  Directive: %s -> %s"
+                    % (directive, action)))
+
+            elif etype == EventType.PROGRAM_MODIFIED:
+                original = event.get("original", "?")
+                selected = event.get("selected", "?")
+                reason = event.get("reason", "")
+                lines.append(self._box_line(
+                    "  Changed: %s -> %s (%s)"
+                    % (original, selected, reason)))
+
+            elif etype == EventType.USER_REQUEST_INVALID:
+                formatted = self._format_user_request_invalid(
+                    event)
+                if formatted:
+                    for fl in formatted.split("\n"):
+                        lines.append(self._box_line(fl))
+
+            elif etype == EventType.WARNING:
+                msg = event.get("message", "")
+                lines.append(self._box_line(
+                    "WARNING: %s" % msg))
+
+            elif etype == EventType.ERROR:
+                msg = event.get("message", "")
+                lines.append(self._box_line(
+                    "ERROR: %s" % msg))
+
+            # Skip CYCLE_START, CYCLE_COMPLETE, DEBUG,
+            # THOUGHT, NOTICE, SANITY_CHECK, METRICS_TREND
+            # in the box — they're either redundant with the
+            # header or too detailed.
+
+        lines.append(self._box_bottom())
+        return "\n".join(lines)
+
+    def _format_metrics_line(self, event):
+        """Compact one-line metrics for inside a box."""
+        parts = []
+        r_free = event.get("r_free")
+        r_free_prev = event.get("r_free_prev")
+        if r_free is not None:
+            s = "R-free: %.4f" % r_free
+            if r_free_prev is not None:
+                diff = r_free - r_free_prev
+                arrow = "\u2193" if diff < 0 else (
+                    "\u2191" if diff > 0 else "\u2192")
+                s += " %s (was %.4f)" % (arrow, r_free_prev)
+            parts.append(s)
+        resolution = event.get("resolution")
+        if resolution is not None:
+            parts.append("Res: %.2f \u00c5" % resolution)
+        cc = event.get("map_cc")
+        if cc is not None:
+            parts.append("CC: %.3f" % cc)
+        if parts:
+            return "  " + "  |  ".join(parts)
+        return None
+
+    def format_result_block(self, status, metrics=None,
+                            error_text=None, program=None):
+        """Format a post-execution result as a small boxed block.
+
+        Called by ai_agent.py after a program finishes.
+
+        Args:
+            status: "SUCCESS" or "FAILED" or "ERROR"
+            metrics: dict of metric name → value (optional)
+            error_text: error message for failures (optional)
+            program: program name for context (optional)
+
+        Returns:
+            str: Boxed result block
+
+        Never raises — returns a minimal block on any error.
+        """
+        try:
+            return self._format_result_block_inner(
+                status, metrics, error_text, program)
+        except Exception:
+            return "%s  %s" % (self.TAG_RESULT, status or "?")
+
+    def _format_result_block_inner(self, status, metrics,
+                                   error_text, program):
+        """Inner implementation of format_result_block."""
+        if self.verbosity == Verbosity.QUIET:
+            tag = self.TAG_RESULT
+            s = "%s  %s" % (tag, status or "?")
+            if metrics and metrics.get("r_free") is not None:
+                s += "  R-free=%.4f" % metrics["r_free"]
+            return s
+
+        lines = []
+        # Result header
+        result_label = status or "?"
+        if program:
+            result_label = "%s: %s" % (program, status)
+        lines.append(self._box_top("RESULT"))
+        lines.append(self._box_line(
+            "%s  %s" % (self.TAG_RESULT, result_label)))
+
+        if status == "FAILED" or status == "ERROR":
+            if error_text:
+                # Show first 3 lines of error
+                err_lines = str(error_text).strip().splitlines()
+                for el in err_lines[:3]:
+                    for wl in self._box_wrap_lines(
+                            el.strip(), indent=2):
+                        lines.append(wl)
+                if len(err_lines) > 3:
+                    lines.append(self._box_line(
+                        "  ... (%d more lines)"
+                        % (len(err_lines) - 3)))
+            else:
+                lines.append(self._box_line(
+                    "  (no error details available)"))
+        elif metrics:
+            for key, val in metrics.items():
+                if val is not None:
+                    if isinstance(val, float):
+                        lines.append(self._box_line(
+                            "  %s: %.4f" % (key, val)))
+                    else:
+                        lines.append(self._box_line(
+                            "  %s: %s" % (key, val)))
+
+        lines.append(self._box_bottom())
+        return "\n".join(lines)
 
     # -------------------------------------------------------------------------
     # Utility methods
