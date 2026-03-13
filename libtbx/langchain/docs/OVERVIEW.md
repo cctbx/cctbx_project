@@ -728,6 +728,15 @@ phenix.refine:
       display_name: "Angles RMSD"
 ```
 
+**Future: structured results.** The `log_parsing` regex approach
+works but is fragile — log format changes silently break extraction.
+Newer PHENIX programs built on `ProgramTemplate` expose a
+`results_as_json()` method that returns metrics as structured JSON.
+As programs adopt this, the agent can read JSON results directly
+instead of parsing logs, with `log_parsing` as a fallback for older
+programs. See ARCHITECTURE.md "Potential improvements" for the
+migration plan.
+
 ### workflows.yaml
 
 Defines workflow state machines:

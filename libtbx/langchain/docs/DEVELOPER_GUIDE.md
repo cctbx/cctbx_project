@@ -1755,6 +1755,15 @@ short-form PHIL paths to full scope paths. This is handled in
 
 For programs that need complex parsing (tables, multi-line, etc.), you can still add hardcoded extractors in `log_parsers.py`. The YAML patterns are tried first, then hardcoded extractors fill in any missing metrics.
 
+**Future alternative: `results_as_json()`.** If the program you're
+adding is built on `ProgramTemplate` and supports
+`results_as_json()`, it may be possible to read structured JSON
+results directly instead of writing `log_parsing` patterns. This
+is not yet implemented in the agent's PERCEIVE node, but is planned
+(see ARCHITECTURE.md "Potential improvements"). For now, add
+`log_parsing` patterns as described above — they'll serve as the
+fallback path once JSON results are supported.
+
 ```python
 # In log_parsers.py
 def _extract_new_program_metrics(log_text):
@@ -4145,6 +4154,18 @@ run regression tests on code changes.
 - **Multi-crystal support**: Handle multiple crystals
   or datasets in a single session with shared
   decision context.
+- **Structured results via `results_as_json()`**:
+  Newer PHENIX programs built on `ProgramTemplate`
+  expose a `results_as_json()` method returning
+  metrics as structured JSON. Migrating the agent
+  from regex log parsing to JSON results would
+  eliminate extraction fragility, provide richer
+  data (per-residue validation, per-chain stats),
+  and reduce per-program integration cost. The
+  migration is incremental — programs that support
+  it can switch one at a time with log parsing as
+  fallback. See ARCHITECTURE.md "Potential
+  improvements" for details.
 
 ---
 

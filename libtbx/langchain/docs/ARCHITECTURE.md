@@ -323,6 +323,12 @@ Extracts metrics and output files from program log output:
 **Adding new program support:**
 See [ADDING_PROGRAMS.md](../guides/ADDING_PROGRAMS.md) for the complete guide.
 
+**Future direction:** Newer PHENIX programs built on `ProgramTemplate`
+expose `results_as_json()` which returns structured metrics without
+log parsing. As programs adopt this, PERCEIVE can read JSON results
+directly with `log_parsing` as fallback. See "Potential improvements"
+in the Future Directions section.
+
 ### Centralized Configuration Modules
 
 The agent uses a centralized YAML-driven architecture that reduces program configuration from 7 files to 2-3 files.
@@ -3166,7 +3172,11 @@ crystallographer looking at a difference map can immediately see what's
 wrong, but the agent can only read the numbers. Adding even basic
 spatial awareness (e.g., difference density peak statistics, local
 correlation per residue) would significantly improve decision quality
-in the refinement and ligand-fitting stages.
+in the refinement and ligand-fitting stages. Adopting
+`results_as_json()` from newer PHENIX programs (see Potential
+improvements below) would provide richer structured data than log
+parsing, but would not address the spatial gap — that requires density
+map analysis.
 
 **Hypothesis testing infrastructure.** The hypothesis system (v114) is
 architecturally complete — the evaluator, lifecycle management, single-
@@ -3307,6 +3317,37 @@ assignment). This eliminates the three-way overlap and ensures that
 adding a new error pattern requires editing one place.
 
 ### Potential improvements
+
+**Structured results via `results_as_json()`.** Newer PHENIX programs
+built on `ProgramTemplate` expose a `results_as_json()` method that
+returns metrics, output files, and status as structured JSON — no log
+parsing needed. The agent currently extracts all metrics by regex-
+matching log text, either via YAML `log_parsing` patterns in
+`programs.yaml` or hardcoded extractors in `log_parsers.py`. This is
+fragile: log format changes silently break extraction, multi-line
+patterns are hard to express in YAML, and programs that don't print
+clean key=value lines require custom Python parsers.
+
+Switching to `results_as_json()` where available would:
+- Eliminate regex fragility for programs that support it
+- Provide richer data (e.g., per-residue validation, per-chain
+  statistics) that log text summarizes or omits entirely
+- Give the THINK node structured input instead of text it must
+  re-parse from the LLM's analysis
+- Reduce the per-program integration cost (no `log_parsing` YAML
+  section needed, no hardcoded extractors)
+
+The migration path is incremental: programs that support
+`results_as_json()` can be switched one at a time, with the existing
+log-parsing path as a fallback for older programs. The PERCEIVE node
+would check for a JSON results file first, then fall back to log text
+extraction. The `programs.yaml` entry for each program could add a
+`has_json_results: true` flag to signal which path to use.
+
+Not all programs support this yet — legacy programs and those not
+built on `ProgramTemplate` will continue to need log parsing. But
+as more programs are updated, the regex-heavy extraction path can
+be phased out gradually.
 
 **Density map awareness.** Even without full spatial map interpretation,
 extracting summary statistics from difference density maps —
