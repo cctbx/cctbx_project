@@ -194,11 +194,20 @@ def _build_context(data_characteristics=None,
   cif_files = []
   files = available_files or []
 
-  # Ligand PDB hints — checked during the file scan so
-  # ligand PDBs don't falsely set has_search_model.
-  _ligand_pdb_hints = (
-    "ligand", "lig_", "lig.", "random",
-    "compound", "drug", "inhibitor",
+  # Ligand PDB hints, split into two tiers:
+  #
+  # Tier 1 (unambiguous): These words in a PDB filename
+  # always mean a ligand coordinate file, never a protein
+  # model.  Safe to skip has_search_model.
+  _ligand_pdb_certain = ("ligand", "lig_", "lig.")
+  #
+  # Tier 2 (ambiguous): These MIGHT indicate a ligand
+  # file but also appear in protein model names (e.g.
+  # drug_resistant_mutant.pdb, kinase_inhibitor_complex.pdb).
+  # These set _has_ligand_pdb for the advice-based check
+  # below but do NOT block has_search_model on their own.
+  _ligand_pdb_broad = (
+    "random", "compound", "drug", "inhibitor",
   )
 
   for f in files:
@@ -207,12 +216,12 @@ def _build_context(data_characteristics=None,
     if ext in (".pdb", ".ent"):
       has_pdb = True
       pdb_files.append(bn)
-      # Check if this PDB is a ligand, not a search model.
-      # A file named 7qz0_ligand.pdb is a small-molecule
-      # coordinate file for ligandfit, not a Phaser search
-      # model.  workflow_state.py already classifies these
-      # correctly as ligand_pdb; this mirrors that logic.
-      if any(h in bn for h in _ligand_pdb_hints):
+      # Check if this PDB is unambiguously a ligand file.
+      # Only the "certain" hints (ligand, lig_, lig.) are
+      # safe to use here — broader hints like "drug" or
+      # "inhibitor" can appear in protein model filenames
+      # (drug_resistant_mutant.pdb, inhibitor_complex.pdb).
+      if any(h in bn for h in _ligand_pdb_certain):
         ctx["has_ligand_code"] = True
         # Don't set has_search_model for ligand PDBs
       else:
@@ -250,10 +259,20 @@ def _build_context(data_characteristics=None,
 
   # Track whether any PDB matched ligand hints (used
   # below by the advice-based ligand detection).
+  # Certain hints match regardless; broad hints only
+  # match when there are 2+ PDB files (the original
+  # guard — prevents "drug_resistant_mutant.pdb" alone
+  # from triggering ligand detection, while still
+  # catching model.pdb + drug.pdb as model + ligand).
   _has_ligand_pdb = any(
-    any(h in pbn for h in _ligand_pdb_hints)
+    any(h in pbn for h in _ligand_pdb_certain)
     for pbn in pdb_files
   )
+  if not _has_ligand_pdb and len(pdb_files) >= 2:
+    _has_ligand_pdb = any(
+      any(h in pbn for h in _ligand_pdb_broad)
+      for pbn in pdb_files
+    )
 
   # --- From directives ---
   d = directives or {}
