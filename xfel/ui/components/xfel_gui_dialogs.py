@@ -1596,10 +1596,13 @@ class AveragingDialog(BaseDialog):
         distance = np.zeros(len(all_rungroups))
         for index, rungroup in enumerate(all_rungroups):
           first_run, last_run = rungroup.get_first_and_last_runs()
-          distance[index] = min([
-            abs(int(first_run.run) - int(run.run)),
-            abs(int(last_run.run) - int(run.run))
-          ])
+          if first_run is None:
+            distance[index] = float('inf')
+            continue
+          candidates = [abs(int(first_run.run) - int(run.run))]
+          if last_run is not None:
+            candidates.append(abs(int(last_run.run) - int(run.run)))
+          distance[index] = min(candidates)
         template_rungroup_id = all_rungroups[np.argmin(distance)].rungroup_id
         self.template_rungroup = run.app.get_rungroup(rungroup_id=template_rungroup_id)
     else:
