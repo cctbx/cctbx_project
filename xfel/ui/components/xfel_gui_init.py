@@ -102,6 +102,8 @@ class RunSentinel(Thread):
     self.post_refresh()
     db = xfel_db_application(self.parent.params)
     use_ids = self.parent.params.facility.name not in ['lcls']
+    is_streaming = self.parent.params.facility.name == 'streaming'
+    previous_known_runs = set()
 
     while self.active:
       try:
@@ -126,7 +128,21 @@ class RunSentinel(Thread):
             for r in new_runs:
               for t in tags:
                 r.add_tag(t)
-          # Sync new runs to rungroups
+          print("%d new runs" % len(unknown_run_runs))
+
+        # In streaming mode, runs are pre-created in the DB by dials_streaming
+        # before the GUI's finder sees them, so they never appear as "new"
+        # above.  Detect DB-resident runs that the finder missed and refresh
+        # only when the set of known runs has actually changed (to avoid
+        # rebuilding the UI and closing open dialogs on every iteration).
+        current_known_runs = set(known_runs)
+        needs_refresh = len(unknown_run_runs) > 0 or \
+                         (is_streaming and current_known_runs != previous_known_runs)
+        previous_known_runs = current_known_runs
+
+        if needs_refresh:
+          self.post_refresh()
+        if needs_refresh or is_streaming:
           for rungroup in db.get_all_rungroups(only_active=True):
             first_run, last_run = rungroup.get_first_and_last_runs()
             if first_run is None:
@@ -145,8 +161,6 @@ class RunSentinel(Thread):
               last_run = int(last_run.run) if last_run is not None else None
             rungroup.sync_runs(first_run, last_run, use_ids=use_ids)
 
-          print("%d new runs" % len(unknown_run_runs))
-          self.post_refresh()
         time.sleep(10)
       except Exception as e:
         print(e)
