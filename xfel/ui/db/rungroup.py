@@ -18,6 +18,14 @@ class Rungroup(db_proxy):
     super(Rungroup, self).__setattr__(name, value)
 
   def get_first_and_last_runs(self):
+    # If streaming_first_run is set, this is a streaming rungroup.
+    # Always return (None, None) so callers use the stored streaming range
+    # instead of join-table-derived values.  Populating the join table (for
+    # GUI visibility) would otherwise cause the rungroup editor dialog to read
+    # DB run.id values and write them back to streaming_first_run/
+    # streaming_last_run on save, corrupting the membership range.
+    if self.streaming_first_run is not None:
+      return (None, None)
     use_ids = self.app.params.facility.name not in ['lcls']
     runs = self.runs
     if len(runs) == 0:
