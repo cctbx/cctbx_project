@@ -875,10 +875,41 @@ class EventFormatter:
                 lines.append(self._box_line(
                     "ERROR: %s" % msg))
 
+            elif etype == EventType.SANITY_CHECK:
+                if not event.get("passed"):
+                    for flag in event.get("red_flags", []):
+                        lines.append(self._box_line(
+                            "  [RED FLAG] %s" % flag))
+                    for warn in event.get("warnings", []):
+                        lines.append(self._box_line(
+                            "  [WARNING] %s" % warn))
+
+            elif etype == EventType.METRICS_TREND:
+                if event.get("plateau"):
+                    cycles = event.get(
+                        "cycles_analyzed", "?")
+                    lines.append(self._box_line(
+                        "  Trend: PLATEAU after %s cycles"
+                        % cycles))
+                elif not event.get("improving"):
+                    lines.append(self._box_line(
+                        "  Trend: Not improving"))
+                # "Improving" is the happy path — skip it
+                # to reduce noise.
+
+            elif etype == EventType.NOTICE:
+                msg = event.get("message", "")
+                details = event.get("details", "")
+                lines.append(self._box_line(
+                    "NOTICE: %s" % msg))
+                if details:
+                    for dl in self._box_wrap_lines(
+                            details, indent=2):
+                        lines.append(dl)
+
             # Skip CYCLE_START, CYCLE_COMPLETE, DEBUG,
-            # THOUGHT, NOTICE, SANITY_CHECK, METRICS_TREND
-            # in the box — they're either redundant with the
-            # header or too detailed.
+            # THOUGHT, FILE_SCORED in the box — they're
+            # redundant with the header or too detailed.
 
         lines.append(self._box_bottom())
         return "\n".join(lines)
