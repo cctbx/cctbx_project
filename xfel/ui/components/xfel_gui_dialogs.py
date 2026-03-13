@@ -2492,12 +2492,17 @@ class RunBlockDialog(BaseDialog):
       elif type(value) == bool:
         rg_dict[key] = int(value)
 
+    # Streaming rungroups store user-entered run numbers in streaming_first_run/
+    # streaming_last_run and compare them against run.run (not run.id), so
+    # sync_runs must use use_ids=False for streaming rungroups.
+    sync_use_ids = False if self.is_streaming else self.use_ids
+
     if self.block is None:
       self.block = self.db.create_rungroup(**rg_dict)
       if self.is_streaming:
         self.block.streaming_first_run = self.first_run
         self.block.streaming_last_run = self.last_run
-      self.block.sync_runs(self.first_run, self.last_run, self.use_ids)
+      self.block.sync_runs(self.first_run, self.last_run, sync_use_ids)
       self.parent.trial.add_rungroup(self.block)
     else:
       # if all the parameters are unchanged, do nothing
@@ -2519,7 +2524,7 @@ class RunBlockDialog(BaseDialog):
           if self.is_streaming:
             self.block.streaming_first_run = self.first_run
             self.block.streaming_last_run = self.last_run
-          self.block.sync_runs(self.first_run, self.last_run, self.use_ids)
+          self.block.sync_runs(self.first_run, self.last_run, sync_use_ids)
 
           if running:
             main.start_job_sentinel()
@@ -2531,7 +2536,7 @@ class RunBlockDialog(BaseDialog):
           if self.is_streaming:
             self.block.streaming_first_run = self.first_run
             self.block.streaming_last_run = self.last_run
-          self.block.sync_runs(self.first_run, self.last_run, self.use_ids)
+          self.block.sync_runs(self.first_run, self.last_run, sync_use_ids)
           self.parent.trial.add_rungroup(self.block)
 
     e.Skip()
