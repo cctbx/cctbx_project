@@ -647,7 +647,7 @@ class EventFormatter:
         if title:
             # ┌─ TITLE ──────────────────────────────┐
             inner = " %s " % title
-            fill = self._BOX_INNER - len(inner)
+            fill = self._BOX_INNER - len(inner) + 1
             return (self._BOX_TL + self._BOX_H
                     + inner
                     + self._BOX_H * max(fill, 0)
