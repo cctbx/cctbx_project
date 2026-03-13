@@ -14,6 +14,7 @@ jobs:
           path: ./modules/cctbx_project
 
       - name: Update GitLab mirror
+        continue-on-error: true
         if: github.repository == 'cctbx/cctbx_project' && github.ref == 'refs/heads/master'
         run: |
           mkdir -p ~/.ssh
@@ -27,7 +28,7 @@ jobs:
           git pull origin master
           git remote add gitlab git@gitlab.com:cctbx/cctbx_project.git
           git fetch gitlab
-          git push -u gitlab master
+          git push -u gitlab master || true
 
       - uses: conda-incubator/setup-miniconda@v3
         with:
