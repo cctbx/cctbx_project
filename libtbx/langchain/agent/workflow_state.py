@@ -279,7 +279,7 @@ def _match_pattern(filename, pattern):
     return fnmatch.fnmatch(filename.lower(), pattern.lower())
 
 
-def _pdb_is_small_molecule(path, max_bytes=32768):
+def _pdb_is_small_molecule(path, max_bytes=1048576):
     """
     Return True if the PDB file is a small-molecule coordinate file
     (ligand, cofactor, ion, etc.) rather than a macromolecular model.
@@ -299,9 +299,10 @@ def _pdb_is_small_molecule(path, max_bytes=32768):
 
     Args:
         path:      Full path to the PDB file.
-        max_bytes: How much of the file to read (default 32 KB — enough to
-                   see ~400 lines and reliably distinguish small ligands
-                   from protein models).
+        max_bytes: How much of the file to read (default 1 MB — must be
+                   large enough to reach coordinate records past long
+                   REMARK/header sections; 32 KB was insufficient for
+                   files like 1aba.pdb with ~400 header lines).
 
     Returns:
         True  → file is a small molecule
@@ -332,7 +333,7 @@ def _pdb_is_small_molecule(path, max_bytes=32768):
         return False                  # Be conservative on read errors
 
 
-def _pdb_is_protein_model(path, max_bytes=32768):
+def _pdb_is_protein_model(path, max_bytes=1048576):
     """
     Return True if the PDB file is predominantly a macromolecular model
     (protein, DNA, RNA) as opposed to a small-molecule ligand.
@@ -353,9 +354,9 @@ def _pdb_is_protein_model(path, max_bytes=32768):
 
     Args:
         path:      Full path to the PDB file.
-        max_bytes: How much of the file to read (default 32 KB — enough to
-                   see ~400 ATOM lines and reliably distinguish small ligands
-                   from protein models).
+        max_bytes: How much of the file to read (default 1 MB — must be
+                   large enough to reach coordinate records past long
+                   REMARK/header sections).
 
     Returns:
         True  → file is positively identified as a protein model
