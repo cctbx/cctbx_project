@@ -688,7 +688,7 @@ Historical additions (each required all three sites):
 
 Tracks the number of copies of the search model in
 the asymmetric unit (ASU) and passes this to Phaser
-as `ensemble.copies` each cycle.
+as `search_copies` each cycle.
 
 **Data flow — directive path:**
 ```
@@ -699,7 +699,7 @@ User advice: "4 copies in the ASU"
         → api_client.build_session_state  → build_request_v2
           → run_ai_agent session_state["asu_copies"]
             → BUILD: strategy["component_copies"] = 4
-              → phaser.ensemble.copies=4
+              → phaser.search_copies=4
 ```
 
 **Data flow — xtriage path:**
@@ -711,7 +711,7 @@ xtriage log: "Best guess : 4 copies in the ASU"
           → metadata["asu_copies"] = 4
             → history_record["asu_copies"] = 4
               → session.data["asu_copies"] = 4  (only if not set by directive)
-                → next cycle: session_info → BUILD → phaser.ensemble.copies=4
+                → next cycle: session_info → BUILD → phaser.search_copies=4
 ```
 
 **Priority:** Directive always wins — directive path
@@ -3336,44 +3336,66 @@ python3 tests/tst_event_system.py
 
 ---
 
-## 10. LLM Developer Policy
+## 10. LLM-Assisted Development
 
-This document describes the workflow that PHENIX developers
-agree to follow when using LLMs (Claude, Gemini, ChatGPT,
-etc.) to write or modify code in the PHENIX/cctbx ecosystem.
+This section describes the workflow that PHENIX developers
+follow when using LLMs (Claude, Gemini, ChatGPT, etc.)
+to write or modify code. The goal is not to restrict LLM
+use — it is to ensure that LLM-generated code meets the
+same standards as hand-written code: correct, tested,
+portable, and maintainable.
 
-The goal is not to restrict LLM use — it is to ensure that
-LLM-generated code meets the same standards as hand-written
-code: correct, tested, portable, and maintainable.
+Two companion documents contain the coding standards that
+the LLM should follow:
+
+- **`CCTBX_LLM_PROGRAMMING_GUIDELINES.md`** — general
+  cctbx/PHENIX coding standards, style rules, pitfalls,
+  and checklist. Applies to all PHENIX code.
+- **`AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md`** — additional
+  patterns specific to the AI Agent codebase: parameter
+  verification against programs.yaml, logging conventions,
+  import fallbacks, analysis mode routing, the three error
+  classification systems, client-server code path
+  awareness, and session state persistence.
 
 ---
 
 ### 1. Session Setup
 
 Before asking the LLM to write any code, provide it with
-context:
+context. The quality of LLM output is directly proportional
+to the quality of context you provide.
 
 **Required context (always attach):**
 
-- `CCTBX_LLM_PROGRAMMING_GUIDELINES.md` — the companion
-  document to this policy. It contains the coding standards,
-  patterns, pitfalls, and checklist that the LLM should
-  follow. Attaching it at the start of every session is the
-  single highest-leverage step you can take.
-- The existing source file(s) to be modified, in full. LLMs
-  produce better code when they can see the surrounding
-  style, imports, and conventions.
+- **`CCTBX_LLM_PROGRAMMING_GUIDELINES.md`** — attaching
+  this at the start of every session is the single
+  highest-leverage step you can take. It grounds the LLM
+  in the coding standards, patterns, and pitfalls it needs
+  to follow.
+- **`AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md`** — attach
+  this as well when working on AI Agent code (`agent/`,
+  `knowledge/`, `programs/ai_agent.py`). It covers
+  agent-specific patterns not in the general guide.
+- **The existing source file(s)** to be modified, in full.
+  LLMs produce better code when they can see the
+  surrounding style, imports, and conventions.
 
 **Recommended context (attach when relevant):**
 
-- `OVERVIEW.md` or `ARCHITECTURE.md` from the relevant
-  subsystem — grounds the LLM in the system design so it
-  doesn't reinvent existing infrastructure.
+- `OVERVIEW.md` or `ARCHITECTURE.md` — grounds the LLM
+  in the system design so it doesn't reinvent existing
+  infrastructure.
 - The test file(s) that cover the code being modified —
   helps the LLM understand what's already tested and write
   compatible new tests.
 - Error messages or log output that motivated the change —
   gives the LLM concrete evidence of the problem.
+- `programs.yaml` — essential when the work involves
+  command building, strategy flags, or file selection.
+- Run logs from tutorial runs — when debugging agent
+  behavior, real log output is far more useful than
+  descriptions of the problem.
 
 **Never rely on the LLM's training data for PHENIX
 specifics.** LLMs hallucinate PHIL parameters, API
@@ -3449,9 +3471,7 @@ audit:
 - Parse-check every changed file
 - Run all relevant test suites
 - Check for line-length violations in changed regions
-- Verify the checklist in the guidelines document (Section
-  7 of the AI Agent guidelines, Section 6 of the general
-  cctbx guidelines)
+- Verify the checklists in both guidelines documents
 
 Then ask: *"Check every changed file for the patterns in
 the Common Pitfalls section."* This catches the classes of
@@ -3464,7 +3484,7 @@ hallucination).
 ### 3. What the Programmer Is Responsible For
 
 The LLM is a tool. The programmer is responsible for the
-code that gets committed. Specifically:
+code that gets committed.
 
 ### Scientific correctness
 
@@ -3537,10 +3557,9 @@ Before committing LLM-generated code:
 
 ### 4. Coding Standards (Summary)
 
-The full coding standards are in the
-`CCTBX_LLM_PROGRAMMING_GUIDELINES.md` document that gets
-fed to the LLM. The programmer should be familiar with
-these and enforce them during review:
+The full coding standards are in the two companion
+guidelines documents. The programmer should be familiar
+with these and enforce them during review:
 
 **Style**: 2-space indentation, 80-character line width,
 descriptive names, no trailing whitespace, no unused
@@ -3564,6 +3583,14 @@ explicit edge-case coverage.
 **Serialization**: `to_dict()` / `from_dict()` must
 round-trip. `from_dict()` must tolerate missing keys.
 
+**Agent-specific** (see `AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md`):
+Verify strategy flags against `programs.yaml` before use.
+Check all three error classification systems when adding
+error patterns. Identify client vs server code path for
+changes to `programs/ai_agent.py`. Ensure session state
+fields appear in `session.data`, `create_initial_state()`,
+and `contract.py`.
+
 ---
 
 ### 5. When NOT to Use LLMs
@@ -3579,6 +3606,8 @@ LLMs are effective for:
 - Writing documentation for existing code
 - Boilerplate (PHIL definitions, serialization, CLI
   wrappers)
+- Analyzing large codebases to find patterns, inconsistencies,
+  or undocumented behavior
 
 LLMs are unreliable for:
 
@@ -3610,7 +3639,7 @@ Keep these prompts handy during LLM sessions:
 
 | When | Prompt |
 |------|--------|
-| Start | Attach guidelines + source files |
+| Start | Attach both guidelines + source files |
 | Before coding | *"Create a plan as a markdown file"* |
 | Plan review | *"What could go wrong with this?"* |
 | Each step | *"Any other fixes before we move on?"* |
@@ -3638,6 +3667,13 @@ confirms:
 - [ ] `approx_equal()` used for all floating-point
       comparisons in tests
 - [ ] Scientific units are correct (Å, fractions, degrees)
+- [ ] Agent-specific: strategy flags verified against
+      `programs.yaml`
+- [ ] Agent-specific: new error patterns checked against
+      all three classification systems
+- [ ] Agent-specific: session state fields in all three
+      locations (session.data, create_initial_state,
+      contract.py)
 - [ ] Documentation updated for user-visible changes
 - [ ] Commit message describes the change, not the tool
 

@@ -696,6 +696,29 @@ def perceive(state):
         state = _log(state, "PERCEIVE: Skipped explicit_program %s (forced_program %s takes precedence)" % (
             explicit_prog, forced_prog))
 
+    # v115.05: Inject plan-stage programs when the plan has
+    # pending stages but the workflow engine only offers STOP.
+    # This happens when the plan calls for polder or ligandfit
+    # after refine — the xray_refined step doesn't include
+    # these programs, so the workflow engine returns [STOP].
+    # The plan knows better: it was generated from the user's
+    # README/advice and has the full pipeline.
+    if session_info.get("plan_has_pending_stages", False):
+        _valid = workflow_state.get("valid_programs", [])
+        _non_stop = [p for p in _valid if p != "STOP"]
+        if not _non_stop:
+            _plan_progs = session_info.get(
+                "plan_next_stage_programs", [])
+            if _plan_progs:
+                for p in _plan_progs:
+                    if p not in _valid:
+                        _valid.append(p)
+                workflow_state["valid_programs"] = _valid
+                state = _log(state,
+                    "PERCEIVE: Injected plan-stage programs "
+                    "(plan has pending stages): %s"
+                    % _plan_progs)
+
     # J5: Log zombie state corrections so users know why a previously-run
     # program is being offered again (helps debug crash/restart scenarios).
     for diag in workflow_state.get("zombie_diagnostics", []):
@@ -1468,29 +1491,52 @@ def plan(state):
                 state = _log(state, "PLAN: Suppressing AUTO-STOP because after_program=%s hasn't run yet" % after_program)
                 # Continue to LLM planning instead of stopping
             else:
-                # after_program has run AND metrics say stop — allow auto-stop.
-                # (after_program alone no longer triggers PERCEIVE hard stop
-                # as of v112.78 Bug 7; only PLAN auto-stop respects it.)
-                state = _log(state, "PLAN: AUTO-STOP triggered: %s (after_program=%s completed)" % (reason, after_program))
-                # Emit STOP_DECISION event
-                state = _emit(state, EventType.STOP_DECISION,
-                    stop=True,
-                    reason=reason)
-                return {
-                    **state,
-                    "intent": {
-                        "program": None,
+                # after_program has run AND metrics say stop.
+                # BUT: if the plan still has pending stages
+                # (e.g. ligandfit, polder after refine),
+                # suppress AUTO-STOP and let the plan drive
+                # the workflow forward.  The per-stage
+                # after_program was injected by the plan to
+                # force a specific program for THIS stage —
+                # it doesn't mean the whole session is done.
+                if session_info.get(
+                        "plan_has_pending_stages", False):
+                    state = _log(state,
+                        "PLAN: Suppressing AUTO-STOP — "
+                        "after_program=%s completed but "
+                        "plan has pending stages (%s)"
+                        % (after_program, reason))
+                    metrics_trend = dict(metrics_trend)
+                    metrics_trend["should_stop"] = False
+                    metrics_trend["reason"] = (
+                        "Suppressed: plan has pending "
+                        "stages after %s" % after_program)
+                    state = {**state,
+                             "metrics_trend": metrics_trend}
+                else:
+                    # (after_program alone no longer triggers
+                    # PERCEIVE hard stop as of v112.78 Bug 7;
+                    # only PLAN auto-stop respects it.)
+                    state = _log(state, "PLAN: AUTO-STOP triggered: %s (after_program=%s completed)" % (reason, after_program))
+                    # Emit STOP_DECISION event
+                    state = _emit(state, EventType.STOP_DECISION,
+                        stop=True,
+                        reason=reason)
+                    return {
+                        **state,
+                        "intent": {
+                            "program": None,
+                            "stop": True,
+                            "stop_reason": reason,
+                            "reasoning": "Automatically stopping: %s. %s" % (
+                                reason, metrics_trend.get("trend_summary", "")
+                            ),
+                            "files": {},
+                            "strategy": {},
+                        },
                         "stop": True,
                         "stop_reason": reason,
-                        "reasoning": "Automatically stopping: %s. %s" % (
-                            reason, metrics_trend.get("trend_summary", "")
-                        ),
-                        "files": {},
-                        "strategy": {},
-                    },
-                    "stop": True,
-                    "stop_reason": reason,
-                }
+                    }
 
         # Suppress AUTO-STOP when user wants ligandfit but it hasn't run yet.
         # The advice preprocessor may extract prefer_programs=['phenix.ligandfit']
@@ -3048,6 +3094,57 @@ def _build_with_new_builder(state):
     # Create CommandContext
     _ws_res = workflow_state.get(
         "resolution")  # from xtriage/mtriage
+
+    # === PHASER COPIES INJECTION (new builder path) ===
+    # Inject ASU copy count into strategy for phaser.
+    # Mirrors the injection in the old build() path.
+    # Sources: session_info > log_analysis > directives.
+    if (program == "phenix.phaser"
+            and "component_copies" not in strategy):
+        _copies = session_info.get("asu_copies")
+        if not _copies:
+            _copies = state.get(
+                "log_analysis", {}).get("n_copies")
+        if not _copies:
+            _dir_c = state.get("directives", {})
+            _ps_c = _dir_c.get("program_settings", {})
+            _copies = (
+                _ps_c.get("default", {}).get("copies")
+                or _ps_c.get(
+                    "phenix.phaser", {}).get("copies")
+            )
+        if _copies:
+            try:
+                _copies_int = int(_copies)
+                if 1 <= _copies_int <= 30:
+                    strategy["component_copies"] = (
+                        _copies_int)
+                    _src = (
+                        "session"
+                        if session_info.get("asu_copies")
+                        else "log_analysis"
+                        if state.get(
+                            "log_analysis", {}).get(
+                            "n_copies")
+                        else "directives")
+                    state = _log(state,
+                        "BUILD: Injecting "
+                        "component_copies=%d for phaser "
+                        "(source: %s)"
+                        % (_copies_int, _src))
+                else:
+                    state = _log(state,
+                        "BUILD: Skipping "
+                        "component_copies — value %d "
+                        "outside range 1-30"
+                        % _copies_int)
+            except (ValueError, TypeError):
+                state = _log(state,
+                    "BUILD: Skipping "
+                    "component_copies — "
+                    "non-integer value %r"
+                    % (_copies,))
+
     context = CommandContext(
         cycle_number=state.get("cycle_number", 1),
         experiment_type=session_info.get("experiment_type", ""),

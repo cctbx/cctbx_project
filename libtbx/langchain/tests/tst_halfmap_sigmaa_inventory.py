@@ -443,7 +443,11 @@ class TestAnomalousGateGuard(unittest.TestCase):
 
   def test_missing_has_anomalous_continues(self):
     """measurability known but has_anomalous unknown →
-    do not fire (require both metrics)."""
+    fire guard (absent has_anomalous is not True, so
+    weak measurability blocks autosol).
+    v115.05: Changed from 'require explicit False' to
+    'has_anomalous is not True' to fix AF_exoV_PredictAndBuild
+    where has_anomalous was absent from context."""
     GateEvaluator, _ = self._try_import()
     stage = self._make_stage(
       "experimental_phasing", cycles_used=0)
@@ -452,9 +456,9 @@ class TestAnomalousGateGuard(unittest.TestCase):
     sm = {"anomalous_measurability": 0.02}
     ev = GateEvaluator()
     result = ev.evaluate(plan, sm, None, 2)
-    self.assertNotEqual(result.action, "stop",
-      "Guard must not fire when has_anomalous is "
-      "unknown — require explicit False")
+    self.assertEqual(result.action, "stop",
+      "Guard should fire when has_anomalous is absent "
+      "and measurability < 0.05 (AF_exoV fix)")
 
   def test_other_stage_not_affected(self):
     """Non-experimental_phasing stage unaffected."""

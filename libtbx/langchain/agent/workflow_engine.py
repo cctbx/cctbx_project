@@ -1439,19 +1439,22 @@ class WorkflowEngine:
 
         # Negligible-anomalous guard (v115.05): when anomalous
         # measurability is below 0.05 and has_anomalous is
-        # explicitly False, remove autosol entirely.  The data
-        # may contain I(+)/I(-) columns but the signal is too
-        # weak for SAD phasing.  Without this guard, the LLM
-        # sees autosol in valid_programs and may choose it,
-        # wasting cycles on doomed autosol + autobuild loops.
-        # (AF_exoV_PredictAndBuild: 7 cycles, 5 failures.)
+        # NOT explicitly True, remove autosol entirely.
+        # The data may contain I(+)/I(-) columns but the
+        # signal is too weak for SAD phasing.  When
+        # has_anomalous is explicitly True (confirmed
+        # anomalous data), allow the user to try autosol
+        # even with weak measurability.  When has_anomalous
+        # is absent/None/False, the measurability threshold
+        # applies.
+        # (AF_exoV_PredictAndBuild: has_anomalous absent,
+        # measurability 0.032 → autosol removed.)
         if (context and
             "phenix.autosol" in valid and
             not context.get("autosol_done")):
             _am = context.get("anomalous_measurability")
             _ha = context.get("has_anomalous")
-            if (_am is not None and _ha is not None
-                    and not _ha):
+            if _am is not None and _ha is not True:
                 try:
                     _am_f = float(_am)
                 except (ValueError, TypeError):

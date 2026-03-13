@@ -400,9 +400,11 @@ class GateEvaluator(object):
       _has_anom = _get_metric_value(
         structure_model, "has_anomalous",
       )
+      # Block only when has_anomalous is not explicitly
+      # True.  When the user genuinely has anomalous data,
+      # allow autosol even with weak measurability.
       if (_anom_m is not None
-          and _has_anom is not None
-          and not _has_anom):
+          and _has_anom is not True):
         try:
           _anom_f = float(_anom_m)
         except (ValueError, TypeError):
