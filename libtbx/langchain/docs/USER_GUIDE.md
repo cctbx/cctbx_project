@@ -582,17 +582,23 @@ just doesn't show the strategic overview.
 ### Cycle display
 
 Each program the agent runs appears as a numbered
-cycle:
+cycle with a brief summary of why it was chosen:
 
 ```
 ──── Stage: Initial refinement ──────────────────────────────
           Goal: R-free <0.30
 
 Cycle 5: phenix.refine
+  Expert: R-free dropped from 0.350 to 0.310, good progress.
+    Model geometry is acceptable.
+  Reasoning: R-free is improving and has not plateaued.
+    Continue refinement to optimize geometry.
   Running phenix.refine ... [OK]
   ────────────────────────────────────────
 
 Cycle 6: phenix.refine
+  Reasoning: R-free continues to improve (0.310 to 0.285).
+    No plateau detected after 5 cycles.
   Running phenix.refine ... [OK]
   ────────────────────────────────────────
 ```
@@ -607,13 +613,25 @@ for subsequent cycles in the same stage.
 
 **Cycle number and program**: "Cycle 5: phenix.refine"
 means this is the 5th program the agent has run, and
-it chose phenix.refine.
+it chose phenix.refine. The program name is displayed
+in color (teal) in the GUI.
+
+**Expert summary** (when available): A brief summary
+of what the expert analysis found — validation
+results, R-free trends, structural issues. This is
+the output of the THINK node.
+
+**Reasoning**: Why the agent chose this program.
+Shows the LLM's reasoning (or the rules engine's
+logic in rules-only mode), truncated to keep the
+display compact. Use Verbose mode to see the full
+reasoning and command details.
 
 **Running ... [OK]**: The program name, followed by
-its result. `[OK]` means success; `[FAILED]` means
-the program encountered an error (with details shown
-below). The agent may recover automatically from
-failures.
+its result. `[OK]` (shown in green) means success;
+`[FAILED]` (shown in red) means the program
+encountered an error (with details shown below).
+The agent may recover automatically from failures.
 
 ### Expert Assessment
 
@@ -743,6 +761,53 @@ their outcomes.
 with annotations pointing to the plan header, a cycle
 display, an Expert Assessment block, and a stage
 transition block]
+
+### The log file
+
+The agent writes a detailed log file
+(`ai_agent_NN.log`) that includes boxed decision
+blocks for each cycle. These are easy to find by
+searching for the `[DECISION]` tag:
+
+```
+┌─ CYCLE 3 ────────────────────────────────────────────────────────────────────┐
+│ [STATE]  xray_refining                                                       │
+│   R-free: 0.2850 ↓ (was 0.3100)  |  Res: 2.00 Å                             │
+│ [DECISION]  phenix.refine                                                    │
+│ [REASONING]                                                                  │
+│   R-free continues to improve. Continue refinement.                          │
+│ [COMMAND]                                                                    │
+│   phenix.refine model.pdb data.mtz nproc=4                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+After the program runs, a result block appears:
+
+```
+┌─ RESULT ─────────────────────────────────────────────────────────────────────┐
+│ [RESULT]  phenix.refine: SUCCESS                                             │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+The tag markers (`[DECISION]`, `[RESULT]`, `[STOP]`,
+`[GATE]`, `[STATE]`, `[EXPERT]`) are designed for
+grep. To extract a timeline of all decisions from a
+log file:
+
+```
+grep "\[DECISION\]" ai_agent_12.log
+grep "\[RESULT\]" ai_agent_12.log
+grep "\[GATE\]" ai_agent_12.log
+```
+
+### Restoring from Job History
+
+If you click on an AI Agent job in Job History (for
+example, one that was aborted), the GUI will
+automatically resume the session and display its
+current status. This is the same as setting
+restart_mode=resume and display_and_stop=basic
+manually — you don't need to configure anything.
 
 ---
 

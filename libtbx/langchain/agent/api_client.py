@@ -499,9 +499,10 @@ def serialize_request(request):
         str: JSON-encoded request
     """
     json_str = json.dumps(request, indent=None, separators=(',', ':'))
-    # Final safety: replace any remaining JSON tab escape sequences with spaces
-    # The transport module should have removed tabs, but this catches edge cases
-    json_str = json_str.replace('\\t', ' ')
+    # NOTE: Do NOT post-process json_str with replace('\\t', ' ')
+    # — this corrupts Windows paths containing \t (e.g. \tutorials).
+    # Tab handling is done by text_as_simple_string in the REST
+    # encoding layer.
     return json_str
 
 
