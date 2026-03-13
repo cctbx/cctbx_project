@@ -130,10 +130,12 @@ class RunSentinel(Thread):
           for rungroup in db.get_all_rungroups(only_active=True):
             first_run, last_run = rungroup.get_first_and_last_runs()
             if first_run is None:
-              # Streaming rungroup with no linked runs yet — use stored range
+              # Streaming rungroup — use stored range.  streaming_first_run/
+              # streaming_last_run hold run numbers (not DB run.ids), so
+              # sync_runs must compare against run.run (use_ids=False).
               sfr = rungroup.streaming_first_run
               if sfr is not None:
-                rungroup.sync_runs(sfr, rungroup.streaming_last_run, use_ids=use_ids)
+                rungroup.sync_runs(sfr, rungroup.streaming_last_run, use_ids=False)
               continue
             if use_ids:
               first_run = first_run.id
