@@ -1716,22 +1716,28 @@ def plan(state):
                 filtered = [
                     p for p in vp
                     if p not in _excluded]
-                if filtered:  # Don't empty the list
-                    workflow_state = dict(
-                        workflow_state)
-                    workflow_state[
-                        "valid_programs"] = filtered
-                    state = {
-                        **state,
-                        "workflow_state":
-                            workflow_state}
-                    state = _log(state,
-                        "PLAN: CONSEC-FAIL guard — "
-                        "excluded %s (2+ consecutive "
-                        "failures), remaining: %s"
-                        % (_excluded, filtered))
-    except Exception:
-        pass  # guard is non-critical
+                if not filtered:
+                    # All non-STOP programs excluded —
+                    # add STOP so agent stops gracefully
+                    # instead of spinning on failures.
+                    filtered = ["STOP"]
+                workflow_state = dict(
+                    workflow_state)
+                workflow_state[
+                    "valid_programs"] = filtered
+                state = {
+                    **state,
+                    "workflow_state":
+                        workflow_state}
+                state = _log(state,
+                    "PLAN: CONSEC-FAIL guard — "
+                    "excluded %s (2+ consecutive "
+                    "failures), remaining: %s"
+                    % (_excluded, filtered))
+    except Exception as _cfe:
+        state = _log(state,
+            "PLAN: CONSEC-FAIL error — %s"
+            % str(_cfe))
 
     # 2. Check for rules-only mode (no LLM)
     use_rules_only = state.get("use_rules_only", False) or state.get("use_yaml_mode", USE_RULES_SELECTOR)
