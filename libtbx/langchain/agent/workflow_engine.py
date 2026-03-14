@@ -1362,6 +1362,9 @@ class WorkflowEngine:
         step_name = step_info.get("step", "")
         step_def = steps.get(step_name, {})
 
+        # === DIAGNOSTIC: trace every filter stage ===
+        _diag = os.environ.get("PHENIX_AGENT_DIAG_VALID_PROGRAMS")
+
         # Handle completion step
         if step_def.get("stop"):
             return ["STOP"]
@@ -1379,6 +1382,14 @@ class WorkflowEngine:
                 prog_name = prog_entry.get("program")
                 if prog_name and self._check_conditions(prog_entry, context):
                     valid.append(prog_name)
+                elif prog_name and _diag:
+                    print("  [DIAG] %s excluded by conditions: %s"
+                          % (prog_name,
+                             prog_entry.get("conditions", [])))
+
+        if _diag:
+            print("  [DIAG] step=%s, after YAML conditions: %s"
+                  % (step_name, valid))
 
         # Filter out programs that require full_map when only half_maps available
         has_full_map = context.get("has_full_map", False)
@@ -1425,6 +1436,9 @@ class WorkflowEngine:
                         continue
             filtered.append(prog)
         valid = filtered
+
+        if _diag:
+            print("  [DIAG] after run_once/done filter: %s" % valid)
 
         # MR-SAD guard: When we have BOTH a search model AND anomalous data,
         # phaser must run first to place the model. AutoSol will be available
@@ -1495,6 +1509,9 @@ class WorkflowEngine:
             valid = self._apply_directives(valid, directives, step_name, context,
                                            experiment_type=experiment_type)
 
+        if _diag:
+            print("  [DIAG] after _apply_directives: %s" % valid)
+
         # Add STOP if validation done and at target
         if step_name == "validate" and context.get("validation_done"):
             if "STOP" not in valid:
@@ -1527,6 +1544,11 @@ class WorkflowEngine:
                 # Add STOP — model is at target or hopeless
                 if "STOP" not in valid:
                     valid.append("STOP")
+
+            if _diag:
+                print("  [DIAG] validate step filter: at_target=%s, "
+                      "refine_allowed=%s, after filter: %s"
+                      % (at_target, refine_allowed, valid))
 
         # Refinement step: remove refinement when at target or max cycles reached
         # Exception: post-ligandfit refinement is always allowed (model changed)
@@ -1567,6 +1589,13 @@ class WorkflowEngine:
                 if "STOP" not in valid:
                     valid.append("STOP")
 
+            if _diag:
+                print("  [DIAG] refine step filter: at_target=%s, "
+                      "refine_allowed=%s, refine_count=%s, "
+                      "after filter: %s"
+                      % (at_target, refine_allowed,
+                         refine_count, valid))
+
         # NOTE: skip_validation STOP handling is now in _apply_directives()
         # No duplicate check needed here
 
@@ -1593,8 +1622,12 @@ class WorkflowEngine:
 
         # If no valid programs available, return STOP (stuck state)
         if not valid:
+            if _diag:
+                print("  [DIAG] EMPTY valid list -> [STOP]")
             return ["STOP"]
 
+        if _diag:
+            print("  [DIAG] FINAL valid_programs: %s" % valid)
         return valid
 
     def _apply_directives(self, valid_programs, directives, step_name, context=None,
@@ -1727,6 +1760,36 @@ class WorkflowEngine:
                 # General fallback: check run_once done flags from YAML
                 elif self._is_program_already_done(after_program, context):
                     after_program_done = True
+
+            if after_program_done:
+                # Quality override: don't declare done when metrics
+                # clearly indicate the result is bad.  The program
+                # "ran" but didn't accomplish its purpose.
+                # AF_POMGNT2: refine ran once (refine_count=1) but
+                # R-free=0.52 — autobuild hasn't been tried and
+                # could dramatically improve the model.
+                if context:
+                    _rf = context.get("r_free")
+                    _cc = context.get("map_cc")
+                    _exp = experiment_type
+                    _ab_done = context.get(
+                        "autobuild_done", False)
+                    if (_exp == "xray" and _rf is not None
+                            and _rf > 0.50
+                            and not _ab_done):
+                        after_program_done = False
+                        modifications.append(
+                            "Overrode after_program_done "
+                            "(R-free=%.3f > 0.50, "
+                            "autobuild not tried)"
+                            % _rf)
+                    elif (_exp == "cryoem"
+                          and _cc is not None
+                          and _cc < 0.70):
+                        after_program_done = False
+                        modifications.append(
+                            "Overrode after_program_done "
+                            "(CC=%.3f < 0.70)" % _cc)
 
             if after_program_done:
                 # User's workflow is complete — replace the entire valid_programs
@@ -2380,6 +2443,24 @@ class WorkflowEngine:
             files, context, experiment_type)
 
         step_info = self.detect_step(experiment_type, context)
+
+        _diag = os.environ.get("PHENIX_AGENT_DIAG_VALID_PROGRAMS")
+        if _diag:
+            print("  [DIAG] detect_step: %s" % step_info.get("step"))
+            print("  [DIAG] context: phaser_done=%s, refine_done=%s, "
+                  "refine_count=%s, autobuild_done=%s, r_free=%s, "
+                  "has_placed_model=%s, has_refined_model=%s, "
+                  "has_sequence=%s, has_predicted_model=%s"
+                  % (context.get("phaser_done"),
+                     context.get("refine_done"),
+                     context.get("refine_count"),
+                     context.get("autobuild_done"),
+                     context.get("r_free"),
+                     context.get("has_placed_model"),
+                     context.get("has_refined_model"),
+                     context.get("has_sequence"),
+                     context.get("has_predicted_model")))
+
         valid_programs = self.get_valid_programs(experiment_type, step_info, context, directives)
 
         # Get priority_when info for each valid program

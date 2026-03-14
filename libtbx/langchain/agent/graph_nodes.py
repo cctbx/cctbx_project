@@ -1681,6 +1681,58 @@ def plan(state):
         except Exception:
             pass  # error_classifier not available
 
+    # ── Consecutive-failure guard ─────────────────────────────────
+    # If ANY program has failed 2+ consecutive times (the most
+    # recent N entries for that program are all failures), remove
+    # it from valid_programs.  This prevents autobuild/refine
+    # cascade failures (e.g. AF_exoV_MRSAD: 4 consecutive
+    # autobuild failures).  The pivot handler above only excludes
+    # the *last* failed program for one cycle; this catches
+    # repeated failures across multiple cycles.
+    try:
+        _history = state.get("history", [])
+        if _history and len(_history) >= 2:
+            try:
+                from libtbx.langchain.agent \
+                    .error_classifier \
+                    import count_consecutive_failures
+            except ImportError:
+                from agent.error_classifier \
+                    import count_consecutive_failures
+
+            workflow_state = state.get(
+                "workflow_state", {})
+            vp = workflow_state.get(
+                "valid_programs", [])
+            _excluded = []
+            for _prog in list(vp):
+                if _prog == "STOP":
+                    continue
+                _consec = count_consecutive_failures(
+                    _history, _prog)
+                if _consec >= 2:
+                    _excluded.append(_prog)
+            if _excluded:
+                filtered = [
+                    p for p in vp
+                    if p not in _excluded]
+                if filtered:  # Don't empty the list
+                    workflow_state = dict(
+                        workflow_state)
+                    workflow_state[
+                        "valid_programs"] = filtered
+                    state = {
+                        **state,
+                        "workflow_state":
+                            workflow_state}
+                    state = _log(state,
+                        "PLAN: CONSEC-FAIL guard — "
+                        "excluded %s (2+ consecutive "
+                        "failures), remaining: %s"
+                        % (_excluded, filtered))
+    except Exception:
+        pass  # guard is non-critical
+
     # 2. Check for rules-only mode (no LLM)
     use_rules_only = state.get("use_rules_only", False) or state.get("use_yaml_mode", USE_RULES_SELECTOR)
     if use_rules_only:
@@ -1990,6 +2042,60 @@ def plan(state):
                         "Plan has pending stages. "
                         "Running %s. [LLM wanted STOP]"
                         % pick)
+
+        # Quality floor: reject LLM STOP when metrics are
+        # clearly below acceptable thresholds and there are
+        # runnable programs.  This catches cases where the
+        # expert assessment or LLM incorrectly concludes the
+        # run is done (e.g. cryo-EM CC 0.67 with resolve_cryo_em
+        # and real_space_refine still available).
+        if chosen_program == "STOP":
+            non_stop = [
+                p for p in valid_programs if p != "STOP"]
+            if non_stop:
+                _ws = state.get("workflow_state", {})
+                _ctx = _ws.get("context", {})
+                _exp = _ws.get("experiment_type", "")
+                _reject = False
+                _floor_reason = ""
+
+                if _exp == "cryoem":
+                    _cc = _ctx.get("map_cc")
+                    if _cc is not None and _cc < 0.70:
+                        _reject = True
+                        _floor_reason = (
+                            "cryo-EM CC=%.3f < 0.70 "
+                            "acceptable threshold"
+                            % _cc)
+                elif _exp == "xray":
+                    _rf = _ctx.get("r_free")
+                    _ab_done = _ctx.get(
+                        "autobuild_done", False)
+                    if (_rf is not None
+                            and _rf > 0.50
+                            and not _ab_done):
+                        _reject = True
+                        _floor_reason = (
+                            "R-free=%.3f > 0.50 and "
+                            "autobuild not yet attempted"
+                            % _rf)
+
+                if _reject:
+                    pick = non_stop[0]
+                    state = _log(
+                        state,
+                        "PLAN: QUALITY FLOOR — "
+                        "rejecting LLM STOP (%s). "
+                        "Selecting %s"
+                        % (_floor_reason, pick))
+                    chosen_program = pick
+                    intent["program"] = pick
+                    intent["stop"] = False
+                    intent["reasoning"] = (
+                        "Quality floor: %s. "
+                        "Running %s. "
+                        "[LLM wanted STOP]"
+                        % (_floor_reason, pick))
 
         # Simple validation: is the chosen program in valid_programs?
         if chosen_program is None or chosen_program not in valid_programs:
