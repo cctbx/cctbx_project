@@ -5,7 +5,7 @@
 ### Summary
 
 Tracks the number of copies of the search model in the asymmetric unit (ASU)
-and passes this automatically to Phaser as `ensemble.copies` each cycle.
+and passes this automatically to Phaser as `search_copies` each cycle.
 Copies are sourced from user directives (always wins) or xtriage log analysis.
 
 ### Modified files (5)
@@ -24,7 +24,7 @@ Copies are sourced from user directives (always wins) or xtriage log analysis.
 ```
 _extract_copies_from_directives() → session.data["asu_copies"] = 4
   → session_info["asu_copies"] → api_client whitelists
-    → run_ai_agent session_state → BUILD node → phaser.ensemble.copies=4
+    → run_ai_agent session_state → BUILD node → phaser.search_copies=4
 ```
 
 **Xtriage path** (xtriage log: "Best guess : 4 copies"):
@@ -32,7 +32,7 @@ _extract_copies_from_directives() → session.data["asu_copies"] = 4
 _fallback_extract_metrics() → log_analysis["n_copies"] = 4
   → history_record["asu_copies"] → session.data["asu_copies"]
     (only if not already set by directive)
-      → next cycle: session_info → BUILD → phaser.ensemble.copies=4
+      → next cycle: session_info → BUILD → phaser.search_copies=4
 ```
 
 ### Tests
