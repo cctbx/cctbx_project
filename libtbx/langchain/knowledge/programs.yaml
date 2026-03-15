@@ -631,10 +631,7 @@ phenix.autobuild:
     maps_only:
       flag: "maps_only={value}"
       type: boolean
-    use_hl_if_present:
-      flag: "use_hl_if_present={value}"
-      type: boolean
-      hint: "Set to False when running after autosol to avoid crash from MTZ files with HL coefficients but no PHIB/FOM columns."
+      hint: "Only generate density-modified maps, skip model building. Useful when density modification is the goal."
 
   hints:
     - "REQUIRES phased MTZ (from phaser or refine output)"
@@ -896,6 +893,9 @@ phenix.dock_in_map:
       categories: [search_model]
       # Subcategory preference: processed_predicted > pdb_template > predicted
       prefer_subcategories: [processed_predicted, pdb_template, predicted]
+      # Fallback: if no search_model exists (S2c promotion lost), try model.
+      # The not_done: dock workflow condition prevents re-docking placed models.
+      fallback_categories: [model]
       # Exclude ligands and intermediates
       exclude_categories: [ligand, ligand_pdb, ligand_cif, intermediate_mr]
     map:
@@ -1086,6 +1086,12 @@ phenix.process_predicted_model:
 
   command: "phenix.process_predicted_model {model}"
 
+  # strict_strategy_flags: only defined strategy_flags are allowed.
+  # KNOWN_PHIL_SHORT_NAMES (space_group, unit_cell, nproc, etc.) are NOT
+  # passed through.  This prevents the LLM from injecting crystal_symmetry
+  # params that process_predicted_model doesn't accept.
+  strict_strategy_flags: true
+
   # strategy_flags defines the ONLY key=value params allowed (beyond files).
   # Without this, sanitize_command cannot strip LLM-hallucinated params
   # like wavelength=, anomalous=True, or ambiguous 'rmsd='.
@@ -1196,12 +1202,21 @@ phenix.refine:
       - bonds_rmsd
       - angles_rmsd
 
-  command: "phenix.refine {model} {data_mtz} {ligand_cif} xray_data.r_free_flags.generate=True"
+  command: "phenix.refine {model} {data_mtz} {ligand_cif}"
 
-  defaults:
-    xray_data.r_free_flags.generate: True
+  # NOTE: xray_data.r_free_flags.generate=True is NOT in the template.
+  # It is added conditionally by the BUILD node only when the session
+  # has no locked R-free MTZ (i.e., first refinement only).
+  # Including it unconditionally causes R-free flags mismatches on
+  # second+ refinements and on datasets with pre-existing R-free flags.
+
+  defaults: {}
 
   strategy_flags:
+    generate_rfree_flags:
+      flag: "xray_data.r_free_flags.generate={value}"
+      type: boolean
+      hint: "Only set True on first refinement when no R-free flags exist"
     output_prefix:
       flag: "output.prefix={value}"
       type: string
@@ -1562,6 +1577,7 @@ phenix.resolve_cryo_em:
   description: "Density modification of cryo-EM map (map optimization, NOT model building)"
   category: map_optimization
   experiment_types: [cryoem]
+  prefers_half_maps: true  # Bug 2/3: dedup must keep half-maps, drop full_map
   log_detection:
     markers: ["resolve_cryo_em"]
   done_tracking:

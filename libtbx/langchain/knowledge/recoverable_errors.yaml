@@ -90,6 +90,34 @@ errors:
     # Resolution strategy - prefer non-anomalous HL coefficients for refinement
     resolution: context_based_phase_selection
 
+  # ---------------------------------------------------------------------------
+  # R-free Flags Mismatch
+  # ---------------------------------------------------------------------------
+  # Occurs when phenix.refine is run with xray_data.r_free_flags.generate=True
+  # but the MTZ already contains R-free flags.  This happens when:
+  #   1. The input MTZ has pre-existing R-free flags (e.g. 3tpp_final.mtz)
+  #   2. A previous refinement cycle already generated flags
+  #
+  # Example error:
+  #   Sorry: Please resolve the R-free flags mismatch.
+  #
+  # Recovery: strip xray_data.r_free_flags.generate=True and retry.
+  # The existing R-free flags in the MTZ will be used automatically.
+  # ---------------------------------------------------------------------------
+  rfree_flags_mismatch:
+    description: "R-free flags mismatch — MTZ already has R-free flags"
+    max_retries: 1
+
+    detection_patterns:
+      - "resolve the R-free flags mismatch"
+      - "R-free flags mismatch"
+
+    # Resolution: remove the generate=True parameter
+    resolution: strip_parameter
+    strip_parameters:
+      - "xray_data.r_free_flags.generate=True"
+      - "xray_data.r_free_flags.generate"
+
 
 # =============================================================================
 # LABEL CLASSIFICATION PATTERNS
@@ -222,6 +250,8 @@ data_label_parameters:
     parameter: "phaser.hklin.labin"
   phenix.autosol:
     parameter: "autosol.input.xray_data.obs_labels"
+  phenix.model_vs_data:
+    parameter: "xray_data.obs_labels"
   # NOTE: phenix.autobuild removed — does not accept obs_labels parameter
   default:
     parameter: "obs_labels"

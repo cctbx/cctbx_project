@@ -876,8 +876,32 @@ class CommandBuilder:
                     canonical_slot, os.path.basename(corrected_str)))
                 continue
 
-          selected_files[canonical_slot] = corrected
-          self._record_selection(canonical_slot, corrected_str, "llm_selected")
+          # For inputs with multiple: true (e.g. half_map for resolve_cryo_em),
+          # append to a list rather than overwriting.  This handles the case
+          # where the LLM assigns half_map_1=file1, half_map_2=file2 — both
+          # fuzzy-match to "half_map" and would otherwise overwrite each other.
+          slot_def = (inputs.get("required", {}).get(canonical_slot) or
+                      inputs.get("optional", {}).get(canonical_slot) or {})
+          if slot_def.get("multiple") and canonical_slot in selected_files:
+            existing = selected_files[canonical_slot]
+            if isinstance(existing, list):
+              existing.append(corrected_str)
+            else:
+              # existing might be a string or a one-element list from
+              # _correct_file_path — normalize to a flat string first
+              prev = existing[0] if isinstance(existing, list) else existing
+              selected_files[canonical_slot] = [prev, corrected_str]
+            self._record_selection(canonical_slot, corrected_str, "llm_selected_append")
+          else:
+            # For multiple:true slots, store the first value as a string
+            # (the append branch above will convert to list when the second
+            # value arrives).  Use corrected_str, not corrected, to ensure
+            # we always store a plain string — never a one-element list.
+            if slot_def.get("multiple"):
+              selected_files[canonical_slot] = corrected_str
+            else:
+              selected_files[canonical_slot] = corrected
+            self._record_selection(canonical_slot, corrected_str, "llm_selected")
         else:
           self._log(context, "BUILD: LLM file rejected (not found): %s=%s" % (
             llm_slot, os.path.basename(str(filepath))))
@@ -1004,11 +1028,18 @@ class CommandBuilder:
     # via generic 'map' category fallback), remove it instead and keep the half_maps.
     # EXCEPTION 2: Programs with keep_half_maps_with_full_map: true (e.g. mtriage,
     # predict_and_build, map_to_model) genuinely need both simultaneously.
+    # EXCEPTION 3: Programs with prefers_half_maps: true (e.g. resolve_cryo_em)
+    # need half-maps as source truth — drop the full_map instead.
     if "full_map" in selected_files and "half_map" in selected_files:
       prog_def = self._registry.get_program(program)
       if prog_def and prog_def.get("keep_half_maps_with_full_map"):
         # Program explicitly needs both — don't remove either
         self._log(context, "BUILD: Keeping half_maps alongside full_map (%s uses both)" % program)
+      elif prog_def and prog_def.get("prefers_half_maps"):
+        # Program needs half-maps as source truth (e.g. resolve_cryo_em)
+        # Drop the full_map, keep the half-maps
+        self._log(context, "BUILD: Keeping half_maps, removing full_map (%s prefers half-maps)" % program)
+        del selected_files["full_map"]
       else:
         full_map_path = selected_files["full_map"]
         if isinstance(full_map_path, list):
@@ -1537,26 +1568,81 @@ class CommandBuilder:
 
     # Validate space_group: LLM sometimes extracts
     # workflow descriptions (e.g. "determination")
-    # as if they were actual space group symbols.
+    # or trailing prose (e.g. "P4 for refinement wit",
+    # "C2 from phaser") as space group symbols.
+    #
+    # Strategy:
+    # 1. Try cctbx.sgtbx on the full value (authoritative)
+    # 2. If that fails, try progressive prefix shortening
+    # 3. If cctbx unavailable, fall back to heuristic check
     if "space_group" in strategy:
+      sg_val = str(strategy["space_group"]).strip()
+      _sg_resolved = False
       try:
+        from cctbx import sgtbx
+        # Try the full value first
         try:
-          from libtbx.langchain.agent \
-            .command_postprocessor \
-            import _is_valid_space_group
-        except ImportError:
-          from agent.command_postprocessor \
-            import _is_valid_space_group
-        sg_val = strategy["space_group"]
-        if not _is_valid_space_group(sg_val):
-          del strategy["space_group"]
-          self._log(context,
-            "BUILD: Stripped invalid "
-            "space_group=%r from strategy "
-            "(not a valid space group symbol)"
-            % str(sg_val))
+          sgi = sgtbx.space_group_info(sg_val)
+          _ = sgi.group()
+          # Valid — use canonical form
+          canonical = str(sgi)
+          if canonical != sg_val:
+            self._log(context,
+              "BUILD: Canonicalized space_group "
+              "%r -> %r (cctbx.sgtbx)"
+              % (sg_val, canonical))
+          strategy["space_group"] = canonical
+          _sg_resolved = True
+        except (ValueError, RuntimeError):
+          # Full value invalid — try prefix shortening
+          # "P4 for refinement wit" -> "P4 for" -> "P4"
+          # "C2 from phaser" -> "C2 from" -> "C2"
+          salvaged = None
+          tokens = sg_val.split()
+          for i in range(len(tokens) - 1, 0, -1):
+            candidate = " ".join(tokens[:i])
+            try:
+              sgi = sgtbx.space_group_info(candidate)
+              _ = sgi.group()
+              salvaged = str(sgi)
+              break
+            except (ValueError, RuntimeError):
+              continue
+          if salvaged:
+            strategy["space_group"] = salvaged
+            self._log(context,
+              "BUILD: Salvaged space_group=%r "
+              "from invalid %r (cctbx.sgtbx)"
+              % (salvaged, sg_val))
+            _sg_resolved = True
+          else:
+            del strategy["space_group"]
+            self._log(context,
+              "BUILD: Stripped invalid "
+              "space_group=%r (cctbx rejects "
+              "all prefixes)" % sg_val)
+            _sg_resolved = True
       except ImportError:
-        pass
+        pass  # cctbx not available
+
+      # Fallback: heuristic check when cctbx unavailable
+      if not _sg_resolved:
+        try:
+          try:
+            from libtbx.langchain.agent \
+              .command_postprocessor \
+              import _is_valid_space_group
+          except ImportError:
+            from agent.command_postprocessor \
+              import _is_valid_space_group
+          if not _is_valid_space_group(sg_val):
+            del strategy["space_group"]
+            self._log(context,
+              "BUILD: Stripped invalid "
+              "space_group=%r from strategy "
+              "(heuristic, no cctbx)" % sg_val)
+        except ImportError:
+          pass
 
     # Auto-fill output_prefix for refinement programs
     if program in (
@@ -1913,16 +1999,31 @@ class CommandBuilder:
             except KeyError as e:
               self._log(context, "BUILD: Warning - could not format output_name: %s" % e)
 
-    # X-ray specific: R-free flags on first refinement
+    # X-ray specific: R-free flags — only generate when no R-free
+    # MTZ has been locked in the session.  The rfree_mtz field is set
+    # by the client after the first successful refinement.  Using it
+    # instead of refine_count avoids two bugs:
+    #   1. Input MTZ has pre-existing R-free flags (3tpp-ensemble-refine)
+    #      → rfree_mtz is locked from the input, generate=True is skipped
+    #   2. First refine succeeds, second refine gets generate=True
+    #      (AF_POMGNT2) → rfree_mtz is locked after cycle 1, skipped
+    # When rfree_mtz is NOT set, this is either the first refinement
+    # or all previous refinements failed — generate=True is correct.
     if program == "phenix.refine" and context.experiment_type == "xray":
-      refine_count = sum(1 for h in context.history
-               if isinstance(h, dict) and
-               h.get("program") == "phenix.refine" and
-               str(h.get("result", "")).startswith("SUCCESS"))
-      if refine_count == 0:
+      if not context.rfree_mtz:
         if "generate_rfree_flags" not in strategy:
           strategy["generate_rfree_flags"] = True
-          self._log(context, "BUILD: First refinement - will generate R-free flags")
+          self._log(context,
+              "BUILD: First refinement - will generate "
+              "R-free flags (no rfree_mtz locked)")
+      else:
+        # R-free MTZ already locked — strip generate if LLM set it
+        if strategy.get("generate_rfree_flags"):
+          del strategy["generate_rfree_flags"]
+          self._log(context,
+              "BUILD: Stripped generate_rfree_flags "
+              "(rfree_mtz locked: %s)"
+              % os.path.basename(str(context.rfree_mtz)))
 
     # predict_and_build: resolution is required for building (stop_after_predict=False)
     # If no resolution available, must use stop_after_predict=True (prediction only)

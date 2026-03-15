@@ -2087,7 +2087,15 @@ def plan(state):
                             % _rf)
 
                 if _reject:
-                    pick = non_stop[0]
+                    # Prefer dock_in_map when model isn't placed
+                    _dock_done = _ctx.get("dock_done", False)
+                    if (_exp == "cryoem"
+                            and _cc is not None and _cc < 0.10
+                            and not _dock_done
+                            and "phenix.dock_in_map" in non_stop):
+                        pick = "phenix.dock_in_map"
+                    else:
+                        pick = non_stop[0]
                     state = _log(
                         state,
                         "PLAN: QUALITY FLOOR — "
@@ -2102,6 +2110,40 @@ def plan(state):
                         "Running %s. "
                         "[LLM wanted STOP]"
                         % (_floor_reason, pick))
+
+        # Unplaced model guard (cryo-EM): if CC < 0.10 and docking
+        # hasn't been done, the model is clearly not placed in the
+        # map.  Redirect to dock_in_map if available, regardless of
+        # what the LLM/rules chose.  This catches cases like
+        # groel_dock_refine where map_symmetry advances the state
+        # past the dock_model step, and real_space_refine runs on
+        # an unplaced model (CC ≈ 0.01).
+        if chosen_program and chosen_program != "STOP":
+            _ws = state.get("workflow_state", {})
+            _ctx = _ws.get("context", {})
+            _exp = _ws.get("experiment_type", "")
+            if _exp == "cryoem":
+                _cc = _ctx.get("map_cc")
+                _dock_done = _ctx.get("dock_done", False)
+                if (_cc is not None and _cc < 0.10
+                        and not _dock_done
+                        and chosen_program != "phenix.dock_in_map"
+                        and "phenix.dock_in_map" in valid_programs):
+                    _orig_program = chosen_program
+                    state = _log(state,
+                        "PLAN: UNPLACED MODEL — "
+                        "CC=%.3f < 0.10 and dock_done=False. "
+                        "Redirecting from %s to "
+                        "phenix.dock_in_map"
+                        % (_cc, _orig_program))
+                    chosen_program = "phenix.dock_in_map"
+                    intent["program"] = "phenix.dock_in_map"
+                    intent["reasoning"] = (
+                        "Unplaced model: CC=%.3f, "
+                        "docking not done. Must dock "
+                        "before refining. "
+                        "[was: %s]"
+                        % (_cc, _orig_program))
 
         # Simple validation: is the chosen program in valid_programs?
         if chosen_program is None or chosen_program not in valid_programs:
@@ -3606,7 +3648,10 @@ def build(state):
                         key, recommended_value, reason[:60] if reason else "recommended"))
 
     # === LEGACY: APPLY REFINE_HINTS (backward compatibility) ===
-    # This handles cases where recommended_strategy might not be populated
+    # NOTE: This block only runs when USE_NEW_COMMAND_BUILDER is False.
+    # With USE_NEW_COMMAND_BUILDER=True (default), the build() function
+    # delegates to _build_with_new_builder() and this code is not reached.
+    # R-free flag logic for the new path is in command_builder.py.
     if program == "phenix.refine" and not recommended_strategy:
         refine_hints = workflow_state.get("refine_hints", [])
 

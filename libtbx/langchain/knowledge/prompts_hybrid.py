@@ -890,11 +890,13 @@ You MUST choose a DIFFERENT program or approach.
 Program: %s
 Error: "%s"
 
-THIS IS AN R-FREE FLAG ERROR. Try to fix it:
-The refinement command already includes xray_data.r_free_flags.generate=True
-which should auto-generate R-free flags. Retry refinement - it should work now.
-If using a different MTZ file, ensure it has reflection data.
-If the error persists, switch to a different program.
+THIS IS AN R-FREE FLAG ERROR.
+The system handles R-free flag generation automatically based on whether the
+MTZ already has R-free flags.  Do NOT set generate_rfree_flags=True — the
+BUILD node will add it only when needed.
+If the error persists, the MTZ may already have R-free flags from a previous
+refinement or the input data.  Try re-running without generate_rfree_flags.
+If the error still persists, switch to a different program.
 """ % (safe_program, safe_error)
 
         elif is_resolution_error and consecutive_same_failures >= 2:

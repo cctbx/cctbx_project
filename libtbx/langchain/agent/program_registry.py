@@ -693,6 +693,17 @@ class ProgramRegistry:
 
             for key, value in strategy.items():
                 if key not in strategy_defs:
+                    # Programs with strict_strategy_flags: true only allow
+                    # defined strategy_flags — no KNOWN_PHIL_SHORT_NAMES
+                    # passthrough.  This prevents the LLM from injecting
+                    # crystal_symmetry params into programs that don't
+                    # accept them (e.g. process_predicted_model).
+                    if prog.get("strict_strategy_flags"):
+                        log("STRICT: Skipping '%s' for %s "
+                            "(strict_strategy_flags=true, "
+                            "only defined flags allowed)"
+                            % (key, program_name))
+                        continue
                     # Allow known short PHIL names (nproc, twin_law, etc.) that
                     # are not program-specific and don't need to be in strategy_flags.
                     if key in KNOWN_PHIL_SHORT_NAMES or '=' in key:

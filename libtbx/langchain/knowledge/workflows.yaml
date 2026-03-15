@@ -429,10 +429,9 @@ cryoem:
 
         - program: phenix.map_sharpening
           conditions:
-            - has: half_map
-            - not_has: full_map
+            - has: full_map
             - not_done: map_sharpening  # Sharpening should only run once
-          hint: "Sharpen map from half-maps"
+          hint: "Sharpen full map (requires full_map; for half-maps use resolve_cryo_em)"
 
       transitions:
         on_complete: check_map
@@ -473,10 +472,9 @@ cryoem:
 
         - program: phenix.map_sharpening
           conditions:
-            - has: half_map
-            - not_has: full_map
+            - has: full_map
             - not_done: map_sharpening
-          hint: "Sharpen map before docking"
+          hint: "Sharpen full map before docking (for half-maps use resolve_cryo_em)"
 
         # Then dock the model into the FULL map (not half-maps).
         # S2c: accepts search_model (promoted unclassified PDB or any template)
@@ -484,7 +482,7 @@ cryoem:
         # PDBs routed here by Tier 1/3 placement detection can dock correctly.
         - program: phenix.dock_in_map
           conditions:
-            - has_any: [search_model, processed_model]
+            - has_any: [search_model, processed_model, model]
             - has: full_map
             - not_done: dock
           hint: "Requires full map (not half-maps) for accurate docking"
@@ -511,7 +509,7 @@ cryoem:
 
         - program: phenix.map_sharpening
           conditions:
-            - has: half_map
+            - has: full_map
             - not_done: map_sharpening
 
       transitions:
@@ -529,9 +527,11 @@ cryoem:
         - program: phenix.resolve_cryo_em
           preferred: true
           conditions:
+            - has: half_map
             - not_done: resolve_cryo_em
         - program: phenix.map_sharpening
           conditions:
+            - has: full_map
             - not_done: map_sharpening
         - program: phenix.map_symmetry
           conditions:
@@ -571,6 +571,16 @@ cryoem:
       programs:
         - program: phenix.real_space_refine
           requires_resolution: true
+
+        # Bug 7: dock_in_map may have been skipped if the workflow jumped
+        # past the dock_model step (e.g. groel_dock_refine where map_symmetry
+        # advances the state directly to refine).  Include it here so docking
+        # is still available when the model hasn't been placed yet.
+        - program: phenix.dock_in_map
+          conditions:
+            - has_any: [search_model, model]
+            - has: full_map
+            - not_done: dock
 
         - program: phenix.ligandfit
           conditions:
