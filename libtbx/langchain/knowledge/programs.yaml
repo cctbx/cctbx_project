@@ -181,8 +181,12 @@ phenix.mtriage:
       - resolution
       - map_cc
 
-  # Half-maps provide FSC-based resolution; keep them even when full_map is also provided
-  keep_half_maps_with_full_map: true
+  # Half-map FSC is the gold standard for resolution estimation.
+  # When both half-maps and a full_map are present, prefer half-maps
+  # and drop the full_map.  This avoids "Maps have different dimensions"
+  # errors when the full_map was post-processed (auto-sharpened, boxed)
+  # with a different grid than the original half-maps.
+  prefers_half_maps: true
   command: "phenix.mtriage {half_map} {full_map}"
 
   log_parsing:
@@ -1647,6 +1651,7 @@ phenix.map_sharpening:
   description: "Sharpen cryo-EM map. Three modes: map+model, full map only, or two half maps"
   category: map_optimization
   experiment_types: [cryoem]
+  prefers_half_maps: true  # Half-map mode gives best results; drop full_map when both present
   log_detection:
     markers: ["map_sharpening", "local_aniso"]
   done_tracking:
@@ -1659,7 +1664,7 @@ phenix.map_sharpening:
   # Three modes of operation:
   # Mode 1 (map+model): map.ccp4 model=model.pdb seq_file=seq.dat sharpening_method=shells model_sharpen=True
   # Mode 2 (full map only): map.ccp4 resolution=2.9 sharpening_method=b-factor seq_file=seq.dat
-  # Mode 3 (two half maps): half_map=half_1.map half_map=half_2.map seq_file=seq.dat
+  # Mode 3 (two half maps): half1.ccp4 half2.ccp4 seq_file=seq.dat  (positional, no flag)
 
   inputs:
     required: {}
@@ -1671,9 +1676,9 @@ phenix.map_sharpening:
         description: "Full map (bare positional arg) - for modes 1 and 2"
       half_map:
         extensions: [.mrc, .ccp4, .map]
-        flag: "half_map="
+        flag: ""
         multiple: true
-        description: "Two half maps - for mode 3"
+        description: "Two half maps (bare positional args) - for mode 3"
       model:
         extensions: [.pdb, .cif]
         flag: "model="

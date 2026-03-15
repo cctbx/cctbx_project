@@ -1021,15 +1021,53 @@ class CommandBuilder:
         else:
           self._record_selection(slot, filepath, "auto_selected")
 
+    # SUPPLEMENT: For multiple:true slots, the LLM often assigns only one
+    # file (e.g. half_map=file2.ccp4).  The slot is now "filled", so
+    # auto-fill above skips it.  But programs like resolve_cryo_em and
+    # mtriage need ALL matching files (both half-maps).  Backfill from the
+    # category to collect any files the LLM missed.
+    all_input_defs = {}
+    all_input_defs.update(inputs.get("required", {}))
+    all_input_defs.update(inputs.get("optional", {}))
+    for input_name, input_def in all_input_defs.items():
+      if not input_def.get("multiple"):
+        continue
+      if input_name not in selected_files:
+        continue  # truly empty — auto-fill already handled it
+      existing = selected_files[input_name]
+      existing_list = existing if isinstance(existing, list) else [existing]
+      # Use _find_file_for_slot to collect ALL category matches
+      all_found = self._find_file_for_slot(
+        program, input_name, input_def,
+        available_files, context, basename_to_path)
+      if not isinstance(all_found, list):
+        continue  # single file or None — nothing to supplement
+      if len(all_found) <= len(existing_list):
+        continue  # no extra files available
+      # Merge: add files not already selected.
+      # Use os.path.realpath to handle symlinks robustly.
+      existing_real = set(os.path.realpath(f) for f in existing_list)
+      added = []
+      for f in all_found:
+        if os.path.realpath(f) not in existing_real:
+          existing_list.append(f)
+          existing_real.add(os.path.realpath(f))
+          added.append(os.path.basename(f))
+      if added:
+        selected_files[input_name] = existing_list
+        self._log(context,
+          "BUILD: Supplemented %s with %d file(s): %s"
+          % (input_name, len(added), ", ".join(added)))
+
     # POST-SELECTION VALIDATION: Remove redundant half_map if full_map is present
-    # Programs like map_to_model and resolve_cryo_em only need half-maps when
-    # no full map is available. Having both causes confusion.
+    # Programs like map_to_model only need half-maps when no full map is available.
+    # Having both causes confusion.
     # EXCEPTION 1: If the "full_map" is actually a categorized half_map (mis-selected
     # via generic 'map' category fallback), remove it instead and keep the half_maps.
-    # EXCEPTION 2: Programs with keep_half_maps_with_full_map: true (e.g. mtriage,
-    # predict_and_build, map_to_model) genuinely need both simultaneously.
-    # EXCEPTION 3: Programs with prefers_half_maps: true (e.g. resolve_cryo_em)
-    # need half-maps as source truth — drop the full_map instead.
+    # EXCEPTION 2: Programs with keep_half_maps_with_full_map: true (e.g. map_to_model)
+    # genuinely need both simultaneously.
+    # EXCEPTION 3: Programs with prefers_half_maps: true (e.g. resolve_cryo_em,
+    # mtriage, map_sharpening) need half-maps as source truth — drop the full_map.
     if "full_map" in selected_files and "half_map" in selected_files:
       prog_def = self._registry.get_program(program)
       if prog_def and prog_def.get("keep_half_maps_with_full_map"):

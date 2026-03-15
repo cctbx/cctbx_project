@@ -429,9 +429,8 @@ cryoem:
 
         - program: phenix.map_sharpening
           conditions:
-            - has: full_map
-            - not_done: map_sharpening  # Sharpening should only run once
-          hint: "Sharpen full map (requires full_map; for half-maps use resolve_cryo_em)"
+            - has_any: [full_map, half_map]
+            - not_done: map_sharpening
 
       transitions:
         on_complete: check_map
@@ -472,9 +471,8 @@ cryoem:
 
         - program: phenix.map_sharpening
           conditions:
-            - has: full_map
+            - has_any: [full_map, half_map]
             - not_done: map_sharpening
-          hint: "Sharpen full map before docking (for half-maps use resolve_cryo_em)"
 
         # Then dock the model into the FULL map (not half-maps).
         # S2c: accepts search_model (promoted unclassified PDB or any template)
@@ -509,7 +507,7 @@ cryoem:
 
         - program: phenix.map_sharpening
           conditions:
-            - has: full_map
+            - has_any: [full_map, half_map]
             - not_done: map_sharpening
 
       transitions:
@@ -531,7 +529,7 @@ cryoem:
             - not_done: resolve_cryo_em
         - program: phenix.map_sharpening
           conditions:
-            - has: full_map
+            - has_any: [full_map, half_map]
             - not_done: map_sharpening
         - program: phenix.map_symmetry
           conditions:
