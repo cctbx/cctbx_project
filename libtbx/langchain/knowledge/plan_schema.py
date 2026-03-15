@@ -417,8 +417,11 @@ class StructurePlan(object):
     - program matches current stage → count
     - program matches NO stage → count (reactive
       program like pdbtools running during stage)
-    - program matches a DIFFERENT stage → skip
-      (e.g. ligandfit during refinement stage)
+    - program matches a LATER stage → advance the
+      plan to that stage and count there (the agent
+      ran ahead of the plan tracker)
+    - program matches an EARLIER stage → skip
+      (e.g. xtriage re-run during refinement)
 
     Matching includes variant programs: e.g.
     phenix.autobuild_denmod counts as autobuild.
@@ -439,13 +442,48 @@ class StructurePlan(object):
           ):
             curr.cycles_used += 1
             return
-          # Does it match ANY other stage?
-          for p in self.stages:
-            if p is curr:
-              continue
-            if (p.programs
+          # Does it match a LATER stage? If so, the
+          # agent ran ahead — advance the plan to
+          # catch up.  Intermediate stages are marked
+          # complete (the agent effectively handled
+          # them).
+          curr_idx = self.current_stage_index
+          for i in range(
+            curr_idx + 1, len(self.stages)
+          ):
+            s = self.stages[i]
+            if (s.programs
                 and _program_matches_phase(
-                  program_name, p.programs)):
+                  program_name, s.programs)):
+              # Advance through all intermediate
+              # stages to reach this one
+              logger.info(
+                "Plan catch-up: program %s matches "
+                "stage '%s' (index %d), advancing "
+                "from '%s' (index %d)"
+                % (program_name, s.id, i,
+                   curr.id, curr_idx))
+              while (self.current_stage_index < i
+                     and self.advance()):
+                pass
+              # Now count for the new current stage,
+              # but only if it actually matches the
+              # program.  If advance() overshot (e.g.
+              # the target stage was SKIPPED), don't
+              # mis-count on an unrelated stage.
+              new_curr = self.current_stage()
+              if (new_curr
+                  and new_curr.programs
+                  and _program_matches_phase(
+                    program_name, new_curr.programs)):
+                new_curr.cycles_used += 1
+              return
+          # Does it match an EARLIER stage? Skip.
+          for i in range(0, curr_idx):
+            s = self.stages[i]
+            if (s.programs
+                and _program_matches_phase(
+                  program_name, s.programs)):
               return
           # Matches no stage → reactive, count
           curr.cycles_used += 1
