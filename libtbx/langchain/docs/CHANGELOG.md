@@ -1,5 +1,94 @@
 # CHANGELOG — v115
 
+## Version 115.06 (Cryo-EM Half-Map Handling — Phase 2)
+
+### Summary
+
+Three interconnected fixes addressing the #1 failure source in cryo-EM
+tutorials: programs receiving only 1 half-map instead of 2. Root cause was
+that the LLM assigns one half-map to a `multiple:true` slot, marking it as
+"filled", so auto-fill skips it. Affected mtriage (109 failures),
+resolve_cryo_em (49), and map_sharpening (46) — totaling ~200 wasted cycles.
+
+### Modified files (3)
+
+| File | Changes |
+|------|---------|
+| `agent/command_builder.py` | **Supplement logic**: after LLM files + auto-fill, a new loop checks every `multiple:true` slot. If the LLM filled it with 1 file but the category has 2+, missing files are backfilled using `_find_file_for_slot()`. Uses `os.path.realpath()` for symlink robustness. |
+| `knowledge/programs.yaml` | **mtriage**: changed from `keep_half_maps_with_full_map: true` to `prefers_half_maps: true` — drops full_map when half-maps present (eliminates "Maps have different dimensions" error from mismatched grids). **map_sharpening**: added `prefers_half_maps: true` + changed half_map flag from `"half_map="` to `""` (positional args, matching the working command `phenix.map_sharpening h1.ccp4 h2.ccp4 seq_file=seq.fa`). |
+| `knowledge/workflows.yaml` | **map_sharpening**: reverted all 4 entries from `has: full_map` to `has_any: [full_map, half_map]` — map_sharpening works with either input type. |
+
+### Data flow: half-map supplement
+
+```
+LLM: {half_map=file2.ccp4}         ← one file
+Corrector: → half_map_1.ccp4       ← still one file
+selected_files["half_map"] = "half_map_1.ccp4"
+
+Auto-fill: half_map already filled → SKIP
+
+NEW SUPPLEMENT:
+  half_map is multiple:true AND in selected_files
+  _find_file_for_slot returns [half_map_1.ccp4, half_map_2.ccp4]
+  len(2) > len(1) → supplement fires
+  selected_files["half_map"] = ["half_map_1.ccp4", "half_map_2.ccp4"]
+
+Dedup: prefers_half_maps → drop full_map, keep both half-maps
+Command: phenix.mtriage half_map=h1.ccp4 half_map=h2.ccp4  ← SUCCESS
+```
+
+### Expected impact
+
+- mtriage: gets 2 half-maps (no full_map) → no dimension mismatch
+- resolve_cryo_em: gets 2 half-maps (supplemented) → "Need 2 half maps" eliminated
+- map_sharpening: gets 2 half-maps positionally → "use b-factor" error eliminated
+- Affects all 9 cryo-EM tutorials that were failing in run 14
+
+
+## Version 115.05 (Run 13/14 Bug Fixes — Phase 1)
+
+### Summary
+
+Ten bugs identified from analysis of run 13 (expanded tutorial set: 33
+README + 35 SOLVE across 25+ tutorials) and verified in run 14 (253 OpenAI
++ 52 Ollama runs). Fixes address R-free flag mismatches, cryo-EM half-map
+dedup, map_sharpening workflow routing, docking for unplaced models, space
+group parsing, PHIL parameter passthrough, and data label selection.
+
+### Modified files (8)
+
+| File | Bugs | Changes |
+|------|------|---------|
+| `knowledge/programs.yaml` | 4/5, 2/3, 7, 10 | Removed `generate=True` from refine template+defaults; added `generate_rfree_flags` strategy flag; added `prefers_half_maps: true` to resolve_cryo_em; added `fallback_categories: [model]` to dock_in_map; added `strict_strategy_flags: true` to process_predicted_model |
+| `knowledge/workflows.yaml` | 1, 2/3, 7 | resolve_cryo_em: added `has: half_map` to optimize_map entry; dock_in_map: added `model` to has_any in dock_model+refine steps; added dock_in_map to cryo-EM refine step |
+| `knowledge/recoverable_errors.yaml` | 9 | Added `phenix.model_vs_data` to data_label_parameters |
+| `knowledge/prompts_hybrid.py` | 4/5 | Updated R-free error recovery prompt (was telling LLM "command already includes generate=True") |
+| `agent/command_builder.py` | 2/3, 6 | `prefers_half_maps` dedup branch; `multiple:true` append logic with normalization; cctbx-first space group validation with prefix shortening |
+| `agent/program_registry.py` | 10 | `strict_strategy_flags` check before KNOWN_PHIL_SHORT_NAMES passthrough |
+| `agent/graph_nodes.py` | 7 | Unplaced model guard: redirects to dock_in_map when CC<0.10 and dock_done=False; quality floor prefers dock_in_map for unplaced models |
+| `docs/RUN_13_BUG_ANALYSIS_AND_PLAN.md` | — | Analysis document |
+
+### Bug details
+
+| Bug | Issue | Fix | Verified |
+|-----|-------|-----|----------|
+| 1 | map_sharpening offered with only half-maps → crash | `has: full_map` condition (later reverted in v115.06 to `has_any`) | ✓ bgal, actin_sharpen eliminated |
+| 2/3 | resolve_cryo_em gets 1 half-map (dedup drops second) | `prefers_half_maps` flag + append logic | ✓ apoferritin_dock CC=0.496 |
+| 4/5 | R-free generate=True on every refinement | Removed from template; conditional via strategy flag | ✓ 3tpp R=0.167 (was CRASH) |
+| 6 | Space group "P4 for refinement wit" | cctbx.sgtbx progressive prefix shortening | ✓ |
+| 7 | groel: dock_in_map never offered | fallback_categories + refine step + CC guard | ✓ dock_in_map now runs |
+| 8 | beta-blip hard MR case | No fix needed | — |
+| 9 | "Multiple equally suitable arrays" | model_vs_data added to data_label_parameters | ✓ |
+| 10 | process_predicted_model PHIL error | strict_strategy_flags blocks passthrough | ✓ b-CA-mr 0 failures |
+
+### Ollama vs OpenAI (run 14)
+
+Both providers use the same server-side code. Key finding: Ollama achieves
+comparable quality (36% vs 39% fail rate) and dramatically outperforms OpenAI
+on AF_POMGNT2 (R=0.287 vs 0.553) because Ollama's LLM correctly runs
+process_predicted_model before molecular replacement.
+
+
 ## Version 115.04 (ASU Copy Count Tracking)
 
 ### Summary

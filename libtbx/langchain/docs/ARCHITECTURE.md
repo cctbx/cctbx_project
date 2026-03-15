@@ -776,7 +776,11 @@ _record_command_result()
 
 All server-side code that reads `best_files` values must handle both types. Use `CommandBuilder._best_path(value)` to safely extract a single path from either a string or a list. Do **not** pass `best_files` values directly to `os.path` functions — this caused a cycle=2 crash (`TypeError: expected str, bytes or os.PathLike, not list`) that only surfaced when `session_state` was re-sent from a client that stored `half_map` as a list.
 
-**Programs that need both `full_map` and `half_map` simultaneously:** Several programs (`phenix.mtriage`, `phenix.predict_and_build`, `phenix.map_to_model`) accept both a full map AND half maps at once — the half maps are not redundant, they enable FSC-based resolution calculation or density modification. These programs are marked `keep_half_maps_with_full_map: true` in `programs.yaml`. The post-selection validation in `CommandBuilder._select_files()` checks this flag before removing half maps. When adding a new program that needs both simultaneously, add this flag to its YAML entry.
+**Programs that need both `full_map` and `half_map` simultaneously:** `phenix.map_to_model` accepts both a full map AND half maps at once. It is marked `keep_half_maps_with_full_map: true` in `programs.yaml`. The post-selection validation in `CommandBuilder._select_files()` checks this flag before removing half maps.
+
+**Programs that prefer half-maps over full maps:** `phenix.resolve_cryo_em`, `phenix.mtriage`, and `phenix.map_sharpening` are marked `prefers_half_maps: true`. When both `full_map` and `half_map` are selected, the dedup drops the `full_map` and keeps the half-maps. This is scientifically correct (half-map FSC is the gold standard for resolution) and avoids "Maps have different dimensions" errors when the full map has different grid dimensions from post-processing.
+
+**Supplement logic for `multiple:true` slots:** LLMs often assign only one file to a `multiple:true` slot (e.g., `half_map=file2.ccp4`). Auto-fill skips the slot because it's already "filled". A supplement loop after auto-fill checks each `multiple:true` slot and backfills missing files from the category. Uses `os.path.realpath()` for symlink robustness.
 
 ### Request Processing (Server)
 
@@ -1947,6 +1951,35 @@ The client's job is: receive user input → serialize it → send to server → 
 a command string → run that command string locally. Everything in between happens
 on the server.
 
+### Local/Remote Parity Invariant
+
+**LocalAgent MUST produce identical results to RemoteAgent.** Both agents go
+through the exact same request preparation pipeline:
+
+```
+_query_agent_for_command() — identical for both modes
+  → build_session_state(session_info)
+  → build_request_v2(files, history, session_state, ...)
+  → request["settings"][...] = ...           ← same settings in both
+  → prepare_request_for_transport(request)   ← same encoding
+  → [LocalAgent: decode locally | RemoteAgent: send over HTTP]
+  → run_ai_agent.run(request_json)           ← identical server-side code
+  → group_args(history_record, events, ...)  ← same return format
+```
+
+The `LocalAgent` intentionally performs the full encode/decode roundtrip
+(not a shortcut). This ensures transport bugs are caught during local testing
+and that local mode produces byte-identical requests to what the server
+would receive.
+
+**When adding a new field or setting, you MUST update both agents:**
+- `phenix_ai/local_agent.py` — `decide_next_step()`
+- `phenix_ai/remote_agent.py` — `decide_next_step()`
+
+If the agents diverge, users will get different results depending on whether
+`run_on_server` is True or False. This is a silent correctness bug that is
+extremely difficult to diagnose.
+
 ### Execution split diagram
 
 ```
@@ -2016,6 +2049,16 @@ feed PLAN, while `ai_analysis.py` standard mode produces standalone
 summaries for human consumption.
 
 ### Always server-side (no user action needed)
+
+**A user with yesterday's PHENIX install must be able to connect to
+today's server and get correct results.** All of the following changes
+are server-side-only and take effect immediately for all users — no
+reinstall required. They are safe because the client never reads these
+files; it sends data and receives a command string.
+
+If a change requires the client to send new data or handle a new response
+format, that is a **protocol change** — see `DEVELOPER_GUIDE.md §8
+(Backward Compatibility & Contract)` for the version-bump procedure.
 
 **LLM decision-making — the entire graph**
 Any change to how the agent thinks: PERCEIVE, PLAN, BUILD, VALIDATE, ACT nodes,

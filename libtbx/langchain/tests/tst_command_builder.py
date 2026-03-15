@@ -252,9 +252,11 @@ def test_invariants_rfree():
     assert strategy.get('generate_rfree_flags') == True
 
     # Second refinement should NOT add R-free flags
+    # (rfree_mtz is locked after the first successful refine)
     ctx2 = CommandContext(
         cycle_number=3,
         experiment_type='xray',
+        rfree_mtz='/path/to/refine_001.mtz',
         history=[
             {'cycle_number': 2, 'program': 'phenix.refine', 'result': 'SUCCESS'},
         ],

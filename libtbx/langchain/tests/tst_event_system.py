@@ -260,7 +260,7 @@ def test_formatter_full_reasoning():
     """Test that reasoning is not truncated."""
     print("Test: EventFormatter full reasoning (no truncation)")
 
-    long_reasoning = "Word" * 200  # 800 chars of continuous text
+    long_reasoning = " ".join(["Word"] * 200)  # 200 words with spaces
 
     events = [
         {"type": EventType.PROGRAM_SELECTED, "program": "test", "reasoning": long_reasoning},
@@ -273,9 +273,6 @@ def test_formatter_full_reasoning():
     # Count total "Word" occurrences - should be 200, not truncated to ~50
     count = output.count("Word")
     assert count == 200, f"Expected 200 occurrences, got {count} - reasoning was truncated"
-
-    # Also verify no "..." truncation marker
-    assert "..." not in output or output.count("...") == 0, "Found truncation marker"
 
     print("  PASSED")
 

@@ -610,6 +610,14 @@ command line with a PASSTHROUGH log. PHENIX's PHIL
 interpreter validates at runtime; wrong paths produce
 clear errors.
 
+**`strict_strategy_flags: true`:** Programs that crash
+on unexpected PHIL parameters (e.g., `process_predicted_model`
+does not accept `crystal_symmetry.space_group`) can set
+this flag in `programs.yaml`. When set, only defined
+`strategy_flags` are allowed — `KNOWN_PHIL_SHORT_NAMES`
+(space_group, unit_cell, nproc, etc.) are NOT passed
+through, and dotted PHIL paths are skipped.
+
 **Rewrite system:** `_PARAM_REWRITES` in
 `command_postprocessor.py` expands short names to
 full PHIL paths (e.g., `mask_atoms` →
@@ -1686,6 +1694,36 @@ input_priorities:
     exclude_categories: [half_map]   # ← Prevents half-map selection
 ```
 
+### Half-Map Handling Flags
+
+Three flags control how the dedup logic handles programs with both `full_map`
+and `half_map` slots:
+
+| Flag | Effect | Programs |
+|------|--------|----------|
+| `prefers_half_maps: true` | Drop full_map, keep half-maps | resolve_cryo_em, mtriage, map_sharpening |
+| `keep_half_maps_with_full_map: true` | Keep both | map_to_model |
+| `requires_full_map: true` | Strip any half-maps | dock_in_map, real_space_refine, validation_cryoem |
+| (none) | Drop half-maps, keep full_map | Default behavior |
+
+Use `prefers_half_maps` when the program works best with half-maps (e.g., FSC
+resolution from half-map pairs) or when full maps may have different grid
+dimensions from post-processing. Use `keep_half_maps_with_full_map` only when
+the program genuinely needs both simultaneously.
+
+### Supplement Logic for `multiple:true` Slots
+
+LLMs often assign only one file to a `multiple:true` slot (e.g.,
+`half_map=file2.ccp4`). Auto-fill skips the slot because it's already
+"filled". A supplement loop in `CommandBuilder._select_files()` checks each
+`multiple:true` slot after auto-fill and backfills missing files from the
+category using `_find_file_for_slot()`. This ensures programs like
+resolve_cryo_em always receive both half-maps.
+
+The supplement respects `auto_fill: false` — if the LLM never assigned a file
+to the slot, it remains empty (the supplement only completes partially-filled
+slots, not empty ones).
+
 ### Intermediate File Exclusions
 
 If your program writes intermediate files to subdirectories, ensure they don't
@@ -2732,6 +2770,38 @@ Test scenarios include:
 
 ## 8. Backward Compatibility & Contract
 
+### Golden Rule
+
+**A user with yesterday's PHENIX install must be able to connect to
+today's server and get correct results.** Their client will send the same
+`session_info` fields it sent yesterday. The server must accept that
+input, produce valid commands, and return a well-formed response. If you
+cannot maintain this guarantee for a particular change, you MUST bump the
+protocol version and handle old clients gracefully (Rule 6 below).
+
+This applies to every kind of change:
+
+| Change type | Safe? | Why |
+|-------------|-------|-----|
+| `programs.yaml` — add program, change conditions, edit flags | **Yes** | Server-side knowledge; client never reads it |
+| `workflows.yaml` — reorder steps, change conditions | **Yes** | Server-side workflow; client never reads it |
+| `command_builder.py` — change file selection, dedup logic | **Yes** | Runs on server only; client receives the final command string |
+| `graph_nodes.py` — change planning, validation, guards | **Yes** | Runs on server only |
+| `recoverable_errors.yaml` — add/change error recovery | **Yes** | Server-side knowledge |
+| `prompts_hybrid.py` — change LLM prompts | **Yes** | Server-side only |
+| `session_info` — add a new field server reads | **Safe IF** default provided | Old clients won't send it; server must `.get(field, default)` |
+| `session_info` — remove a field server reads | **UNSAFE** | Old clients still send it; server ignoring it changes behavior |
+| `session_info` — change meaning of existing field | **UNSAFE** | Old clients send the old meaning |
+| Response — remove a field client reads | **UNSAFE** | Old clients will KeyError or get wrong defaults |
+| Response — add a new field | **Yes** | Old clients ignore unknown fields |
+| `agent/` shared code — add new function | **Risky** | Runs on both client and server; old client doesn't have it |
+| `agent/` shared code — change function signature | **UNSAFE** | Old client calls with old signature |
+
+**UNSAFE changes require a protocol version bump:** increment
+`CURRENT_PROTOCOL_VERSION` in `agent/contract.py`, add
+`MIN_SUPPORTED_PROTOCOL_VERSION` handling for the transition period, and
+log a deprecation warning for old clients via `get_deprecation_warnings()`.
+
 ### The Problem
 
 Users run the PHENIX AI Agent client (GUI/CLI) on their local machines. The agent's "brain" runs on a remote REST server. When you update the server, some users will still be running older client versions. A server change that assumes a new field in `session_info` will silently break for every old client that doesn't send it.
@@ -2888,6 +2958,19 @@ Mitigations:
 - Verify new dependencies exist in the PHENIX distribution
 
 **Enforced by**: `tst_shared_code_imports.py :: test_no_forbidden_imports_in_shared` (blocks LLM SDK imports in shared code) and `test_agent_imports_reference_known_modules` (blocks imports of unknown modules).
+
+### RULE 8: LocalAgent and RemoteAgent must be identical
+
+`LocalAgent` (`phenix_ai/local_agent.py`) and `RemoteAgent` (`phenix_ai/remote_agent.py`) must build identical requests and return identical response formats. The only difference is transport: LocalAgent decodes the request locally, RemoteAgent sends it over HTTP.
+
+When you add or change:
+- A new `session_info` field → both agents receive it via `_query_agent_for_command()` (shared code, no action needed)
+- A new `request["settings"]` entry → add it in **both** `decide_next_step()` methods
+- A new field in the return `group_args` → add it in **both** return blocks
+
+LocalAgent intentionally performs the full encode/decode roundtrip (`prepare_request_for_transport` → `process_request_from_transport`) even though it could pass the dict directly. This ensures local mode exercises the same transport code path as remote mode, catching serialization bugs before they reach production.
+
+**Enforced by**: `tst_backward_compat.py` verifies structural invariants. Manual review is required for settings parity (no automated diff exists yet between the two `decide_next_step` methods).
 
 ### What's Implemented
 

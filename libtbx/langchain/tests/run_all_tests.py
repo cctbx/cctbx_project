@@ -865,6 +865,76 @@ def main():
         print(f"\u26a0\ufe0f  Could not import tst_fix_verification: {e}")
         results.append(("Fix Verification", "tst_fix_verification", False, 0))
 
+    # --- Error Classifier Tests (v115) ---
+    try:
+        from tests.tst_error_classifier import run_all_tests as run_error_classifier_tests
+        success, elapsed = run_test_module(
+            "tst_error_classifier", run_error_classifier_tests, args.verbose)
+        results.append(("Error Classifier", "tst_error_classifier", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_error_classifier: {e}")
+        results.append(("Error Classifier", "tst_error_classifier", False, 0))
+
+    # --- PHIL Validation Tests (v115) ---
+    try:
+        from tests.tst_phil_validation import run_all_tests as run_phil_validation_tests
+        success, elapsed = run_test_module(
+            "tst_phil_validation", run_phil_validation_tests, args.verbose)
+        results.append(("PHIL Validation", "tst_phil_validation", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_phil_validation: {e}")
+        results.append(("PHIL Validation", "tst_phil_validation", False, 0))
+
+    # --- Stop Condition Fix Tests (v115) ---
+    try:
+        from tests.tst_stop_condition_fix import run_all_tests as run_stop_condition_fix_tests
+        success, elapsed = run_test_module(
+            "tst_stop_condition_fix", run_stop_condition_fix_tests, args.verbose)
+        results.append(("Stop Condition Fix", "tst_stop_condition_fix", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_stop_condition_fix: {e}")
+        results.append(("Stop Condition Fix", "tst_stop_condition_fix", False, 0))
+
+    # --- Intent Classifier Tests (v115.01) ---
+    try:
+        from tests.tst_intent_classifier import run_all_tests as run_intent_classifier_tests
+        success, elapsed = run_test_module(
+            "tst_intent_classifier", run_intent_classifier_tests, args.verbose)
+        results.append(("Intent Classifier", "tst_intent_classifier", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_intent_classifier: {e}")
+        results.append(("Intent Classifier", "tst_intent_classifier", False, 0))
+
+    # --- N-Bugs Tests (v115) ---
+    try:
+        from tests.tst_n_bugs import run_all_tests as run_n_bugs_extra_tests
+        success, elapsed = run_test_module(
+            "tst_n_bugs", run_n_bugs_extra_tests, args.verbose)
+        results.append(("N-Bugs", "tst_n_bugs", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_n_bugs: {e}")
+        results.append(("N-Bugs", "tst_n_bugs", False, 0))
+
+    # --- Action Item 1 Tests ---
+    try:
+        from tests.tst_action_item_1 import run_all_tests as run_action_item_1_tests
+        success, elapsed = run_test_module(
+            "tst_action_item_1", run_action_item_1_tests, args.verbose)
+        results.append(("Action Item 1", "tst_action_item_1", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_action_item_1: {e}")
+        results.append(("Action Item 1", "tst_action_item_1", False, 0))
+
+    # --- Backward Compatibility Tests (v115.05/v115.06) ---
+    try:
+        from tests.tst_backward_compat import run_all_tests as run_backward_compat_tests
+        success, elapsed = run_test_module(
+            "tst_backward_compat", run_backward_compat_tests, args.verbose)
+        results.append(("Backward Compat", "tst_backward_compat", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_backward_compat: {e}")
+        results.append(("Backward Compat", "tst_backward_compat", False, 0))
+
     # --- Summary ---
     total_elapsed = time.time() - total_start
 

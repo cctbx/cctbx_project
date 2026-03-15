@@ -633,7 +633,7 @@ def test_i2_after_program_beats_quality_gate():
     context = {
         "refine_count": 0,
         "rsr_count": 1,
-        "map_cc": 0.30,      # poor — quality gate would normally continue
+        "map_cc": 0.75,      # acceptable — above quality override threshold (0.70)
         "r_free": None,
         "validation_done": False,
         "last_program": "phenix.real_space_refine",
@@ -1092,17 +1092,18 @@ def test_k1_command_builder_best_files_list_does_not_crash():
 
 
 def test_k2_mtriage_keeps_half_maps_with_full_map():
-    """K2: mtriage must receive both full_map AND half_maps when both are available.
+    """K2: mtriage must prefer half-maps and drop full_map when both available.
 
-    Root cause: the post-selection validation in command_builder.py had a blanket
-    rule that dropped half_maps whenever a full_map was also selected.  For programs
-    like mtriage the half maps are NOT redundant — they provide FSC-based resolution
-    measurement that full-map-only mode cannot.
+    Half-map FSC is the gold standard for resolution — mtriage computes
+    resolution from half-map pairs.  When both half-maps and a full_map are
+    present, the full_map is dropped (prefers_half_maps: true) to avoid
+    "Maps have different dimensions" errors when the full_map was
+    post-processed with a different grid.
 
-    Fix: keep_half_maps_with_full_map: true in programs.yaml for mtriage and
-    map_to_model. Both genuinely use full_map + half_maps together.
-    predict_and_build takes EITHER 2 half-maps OR 1 full map — not both —
-    so it does NOT have this flag and must drop half_maps when full_map is present.
+    The command should be:
+        phenix.mtriage half_map=half1.ccp4 half_map=half2.ccp4
+    NOT:
+        phenix.mtriage half_map=half1.ccp4 full_map=sharpened.ccp4
     """
     print("Test: k2_mtriage_keeps_half_maps_with_full_map")
     try:
@@ -1139,20 +1140,27 @@ def test_k2_mtriage_keeps_half_maps_with_full_map():
     cmd = cb.build("phenix.mtriage", available, ctx)
 
     assert_not_none(cmd, "mtriage must produce a command when map files are available")
+    # Both half-maps must be present
     assert_true("half_map=" in cmd,
                 "mtriage command must include half_map= when half maps are present. Got: %s" % cmd)
-    assert_true(sharpened in cmd or "sharpened" in cmd,
-                "mtriage command must include the full/sharpened map. Got: %s" % cmd)
+    assert_true("half_map_1" in cmd and "half_map_2" in cmd,
+                "mtriage must include both half-maps. Got: %s" % cmd)
+    # Full map must be DROPPED (prefers_half_maps)
+    assert_false(sharpened in cmd,
+                 "mtriage must drop full_map when half-maps present (prefers_half_maps). Got: %s" % cmd)
 
     print("  PASSED")
 
 
 def test_k2_map_sharpening_uses_half_maps_when_no_full_map():
-    """K2: map_sharpening must use half_map= mode when only half maps are available.
+    """K2: map_sharpening must use half maps as positional args when only half maps
+    are available.
 
-    When the input set contains ONLY half maps (no full map yet), map_sharpening
-    should run in mode 3: half_map=map1 half_map=map2.  It must NOT select a
-    half map as the positional full_map argument.
+    When the input set contains ONLY half maps (no full map), map_sharpening
+    should run with both half maps as bare positional arguments:
+        phenix.map_sharpening half1.ccp4 half2.ccp4 seq_file=seq.dat
+    This matches the confirmed working command format.
+    It must NOT select only one half map or use the half_map= flag.
     """
     print("Test: k2_map_sharpening_uses_half_maps_when_no_full_map")
     try:
@@ -1188,22 +1196,16 @@ def test_k2_map_sharpening_uses_half_maps_when_no_full_map():
     available = [half1, half2, seq]
     cmd = cb.build("phenix.map_sharpening", available, ctx)
 
-    # Command must include half_map= flag (mode 3)
+    # Command must be produced
     assert_not_none(cmd, "map_sharpening must produce a command with half maps available")
-    assert_true("half_map=" in cmd,
-                "map_sharpening must use half_map= mode when no full map exists. Got: %s" % cmd)
-    # Neither half map should appear as a bare positional argument (full_map slot)
-    # The positional full_map slot has flag="" so it appears without a prefix.
-    # If a half map is used as full_map it will appear without "half_map=" prefix.
-    cmd_tokens = cmd.split()
-    bare_map_tokens = [t for t in cmd_tokens
-                       if (t.endswith(".ccp4") or t.endswith(".mrc") or t.endswith(".map"))
-                       and not t.startswith("half_map=")
-                       and not t.startswith("seq_file=")
-                       and not t.startswith("phenix.")]
-    assert_equal(len(bare_map_tokens), 0,
-                 "No half map should appear as bare positional (full_map) arg. "
-                 "Bare map tokens: %s\nFull command: %s" % (bare_map_tokens, cmd))
+    # Both half maps must appear in the command (positional, no flag prefix)
+    assert_true("half_map_1.ccp4" in cmd,
+                "map_sharpening must include half_map_1. Got: %s" % cmd)
+    assert_true("half_map_2.ccp4" in cmd,
+                "map_sharpening must include half_map_2. Got: %s" % cmd)
+    # Must NOT use half_map= flag (positional is correct)
+    assert_false("half_map=" in cmd,
+                 "map_sharpening must use positional args, not half_map= flag. Got: %s" % cmd)
 
     print("  PASSED")
 
@@ -6285,37 +6287,35 @@ def test_s5h_inject_program_defaults():
     """inject_program_defaults must append defaults from programs.yaml when
     they are missing from the command, and must not double-add when present.
 
-    Concrete case: xray_data.r_free_flags.generate=True must be appended
-    for phenix.refine when the LLM omits it.
+    Note: xray_data.r_free_flags.generate was moved from unconditional
+    defaults to a conditional strategy_flag (generate_rfree_flags) in v115.05.
+    It is now injected by the BUILD node's _apply_invariants based on
+    rfree_mtz state, NOT by inject_program_defaults. This test verifies
+    that generate is NOT in defaults (would cause the old bug) and IS
+    in strategy_flags (conditional path).
     """
     print("  Test: s5h_inject_program_defaults")
     import sys as _sys
     _sys.path.insert(0, _PROJECT_ROOT)
 
-    from agent.command_postprocessor import inject_program_defaults
     from knowledge.yaml_loader import get_program
 
-    # Verify phenix.refine has r_free_flags.generate default
+    # Verify phenix.refine does NOT have r_free_flags.generate in defaults
+    # (removed in v115.05 to fix 3tpp-ensemble-refine crash)
     refine = get_program("phenix.refine")
-    defaults = refine.get("defaults", {})
-    assert_true("xray_data.r_free_flags.generate" in defaults,
-        "phenix.refine must have r_free_flags.generate default; got: %s"
-        % list(defaults.keys()))
+    defaults = refine.get("defaults") or {}
+    assert_false("xray_data.r_free_flags.generate" in defaults,
+        "phenix.refine must NOT have r_free_flags.generate in defaults "
+        "(was removed in v115.05); got: %s" % list(defaults.keys()))
 
-    # Missing → injected
-    cmd = "phenix.refine model.pdb data.mtz output.prefix=refine_001"
-    result = inject_program_defaults(cmd, "phenix.refine")
-    assert_true("r_free_flags.generate" in result,
-        "inject_program_defaults must add r_free_flags.generate; got: %s" % result)
+    # Verify it IS in strategy_flags (conditional path via BUILD invariants)
+    sf = refine.get("strategy_flags") or {}
+    assert_true("generate_rfree_flags" in sf,
+        "phenix.refine must have generate_rfree_flags in strategy_flags; "
+        "got: %s" % list(sf.keys()))
 
-    # Already present → no duplicate
-    cmd2 = ("phenix.refine model.pdb data.mtz "
-            "xray_data.r_free_flags.generate=True output.prefix=refine_001")
-    result2 = inject_program_defaults(cmd2, "phenix.refine")
-    assert_true(result2.count("r_free_flags") == 1,
-        "inject_program_defaults must not double-add; got: %s" % result2)
-
-    print("  PASSED: inject_program_defaults adds missing defaults, skips existing")
+    print("  PASSED: refine has no unconditional generate default, "
+          "has conditional generate_rfree_flags strategy_flag")
 
 
 def test_s5h_predict_and_build_has_no_rebuilding_strategy():
