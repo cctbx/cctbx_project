@@ -782,6 +782,12 @@ All server-side code that reads `best_files` values must handle both types. Use 
 
 **Supplement logic for `multiple:true` slots:** LLMs often assign only one file to a `multiple:true` slot (e.g., `half_map=file2.ccp4`). Auto-fill skips the slot because it's already "filled". A supplement loop after auto-fill checks each `multiple:true` slot and backfills missing files from the category. Uses `os.path.realpath()` for symlink robustness.
 
+**Half-map pair detection (v115.07):** Some cryo-EM half-maps use `_1/_2` suffixes instead of containing "half" in the name (e.g., `7n8i_24237_box_1.ccp4`). The categorizer's post-processing detects these pairs using a two-tier heuristic:
+- *Tier 1*: Exactly 2 `full_map` files whose basenames differ only by a trailing `_1/_2` → promote both to `half_map`. No companion full map needed (these ARE the only maps).
+- *Tier 2*: ≥3 `full_map` files with a `_1/_2` pair AND at least one companion remaining → promote the pair, keep the companion.
+
+**Reference model categorizer (v115.07):** When ≥2 PDB files are categorized as `model`, one may be a reference model for restraints (not a model to refine). A post-processing heuristic checks filenames for keywords (`reference`, `homolog`, `template`, `restraint`, `high_res`) and reclassifies the first match to `reference_model`. Agent output files (`refine_*`, `autobuild_*`, etc.) are excluded from this check. Only one file is reclassified per run. This works with the Tier 1 exclusion in `command_builder.py` (line 380), which excludes `reference_model.file` from primary model selection when the strategy dict names it explicitly.
+
 ### Request Processing (Server)
 
 ```python
@@ -2863,6 +2869,13 @@ results. Never from LLM reasoning.
 - `revalidation_reason` field enables re-examination of confirmed
   hypotheses when evidence weakens
 
+**Numeric coercion (v115.07):** `from_dict()` calls `_coerce_numerics()`
+after `_deep_merge()` to convert string values from JSON deserialization
+to proper float/int types. Without this, `r_free - r_work` crashes with
+`TypeError: unsupported operand type(s) for -: 'str' and 'float'` when
+model_vs_data stores metrics as strings. All arithmetic and formatting
+sites also use `_safe_float()` as belt-and-suspenders defense.
+
 ### Validation History (`agent/validation_history.py`)
 
 Per-cycle validation snapshots persisted to session JSON.
@@ -2896,6 +2909,10 @@ Key operations:
 - `to_directives()` → reactive agent directive dict
 - `compute_hash()` → strategy fingerprint (change triggers
   `advice_changed` in the reactive agent)
+- `record_stage_cycle()` — counts cycles per stage. When a program
+  matches a LATER stage (agent ran ahead), advances through intermediate
+  stages marking them complete (v115.07). Overshoot guard: if the target
+  stage is SKIPPED, verifies `new_curr` matches the program before counting.
 
 ### Plan Templates (`knowledge/plan_templates.yaml`)
 
@@ -3071,9 +3088,25 @@ plus failure count to decide when to switch programs.
 against `strategy_flags` from `programs.yaml` before command building.
 Unrecognized parameters are stripped with logging.
 
-The `_BLOCKED_PARAMS` dict blocks specific dangerous parameters per
-program (e.g., `input_map_file` for autobuild, which requires PHIB/FOM
-phases only available after autosol).
+Validation order (first match wins):
+1. **Blocked params** (`_BLOCKED_PARAMS`): always stripped, even if otherwise
+   allowed. E.g., `mask_atoms` for resolve_cryo_em causes RuntimeError.
+2. **Exact match** against `strategy_flags` whitelist.
+3. **Prefix match** against `allowed_phil_prefixes` (case-insensitive substring).
+   E.g., `ncs.type` passes because `"ncs."` is a prefix for phenix.refine.
+   This covers entire PHIL namespaces without listing individual params.
+4. **Build-pipeline keys** (ligand, output_prefix, etc.).
+5. Everything else → stripped.
+
+The `allowed_phil_prefixes` mechanism (v115.07) allows advanced restraint
+parameters (NCS, secondary structure, reference model, Ramachandran) to
+pass through without individually whitelisting each sub-parameter.
+
+**Path resolution** (v115.07): `program_registry.py :: build_command()`
+detects strategy values ending in file extensions (`.pdb`, `.params`, etc.)
+and resolves them to absolute paths via basename matching against known
+files and the working directory. This handles LLM-generated relative
+paths like `reference_model.file=4pf4.pdb`.
 
 ### Sanity Checker
 

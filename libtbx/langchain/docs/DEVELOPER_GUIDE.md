@@ -2936,6 +2936,11 @@ If `best_files.model` means "best positioned model path", don't repurpose it. Ad
 
 Adding a new program to `programs.yaml` is safe. Removing a program that old clients might request via `explicit_program` or directives could cause confusing behavior.
 
+When adding PHIL parameters for a program:
+- **Individual params**: Add to `strategy_flags` with a short name, flag template, type, and hint. Use for standalone params (e.g., `ramachandran_restraints`).
+- **Parameter namespaces**: Add to `allowed_phil_prefixes` instead of listing every sub-param. Use for PHIL scopes with many sub-parameters (e.g., `ncs.` covers `ncs.type`, `ncs.constraints`, `ncs.find_ncs`, etc.). The prefix match is case-insensitive and uses substring matching, so `"ncs."` in the prefix list matches both `ncs.type` and `refinement.pdb_interpretation.ncs.type`.
+- **Blocked params**: Add to `_BLOCKED_PARAMS` in `phil_validator.py` for params that cause crashes. Blocked params are stripped even if they match a strategy_flag or prefix.
+
 ### RULE 5: File list is the client's responsibility
 
 The server must never assume files exist on its filesystem. All file discovery, validation, and content reading must happen on the client, with results passed through `session_info`.
@@ -2971,6 +2976,29 @@ When you add or change:
 LocalAgent intentionally performs the full encode/decode roundtrip (`prepare_request_for_transport` → `process_request_from_transport`) even though it could pass the dict directly. This ensures local mode exercises the same transport code path as remote mode, catching serialization bugs before they reach production.
 
 **Enforced by**: `tst_backward_compat.py` verifies structural invariants. Manual review is required for settings parity (no automated diff exists yet between the two `decide_next_step` methods).
+
+### RULE 9: Numeric fields in StructureModel must survive JSON roundtrip
+
+`StructureModel.from_dict()` uses `_deep_merge()` which copies raw JSON
+values without type conversion. Since JSON has no distinction between
+`0.385` (float) and `"0.385"` (string), model_state fields like `r_work`,
+`r_free`, and `model_map_cc` may arrive as strings after deserialization.
+
+All code that performs arithmetic on these fields (`r_free - r_work`,
+`abs(r - recent[0])`) or formats them (`"%.3f" % r_free`) must use
+`_safe_float()`. The `_coerce_numerics()` function runs once in
+`from_dict()` as a first defense, but individual sites must also guard
+against mid-session corruption.
+
+**When adding new numeric fields to model_state:**
+1. Add the field name to `_MODEL_STATE_FLOAT_FIELDS` (or
+   `_GEOMETRY_FLOAT_FIELDS` if inside `geometry`)
+2. Use `_safe_float()` at every read site
+3. Add a test in `tst_phase3_bug5.py` with a string-valued input
+
+**Enforced by**: `tst_phase3_bug5.py :: test_bug4_*` tests (5 tests
+covering string coercion, garbage handling, crash prevention, gap
+detection, and None preservation).
 
 ### What's Implemented
 

@@ -885,6 +885,16 @@ def main():
         print(f"\u26a0\ufe0f  Could not import tst_phil_validation: {e}")
         results.append(("PHIL Validation", "tst_phil_validation", False, 0))
 
+    # --- Phase 3 + Bug 5 Tests (v115.07) ---
+    try:
+        from tests.tst_phase3_bug5 import run_tests as run_phase3_bug5_tests
+        success, elapsed = run_test_module(
+            "tst_phase3_bug5", run_phase3_bug5_tests, args.verbose)
+        results.append(("Phase 3 + Bug 5", "tst_phase3_bug5", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_phase3_bug5: {e}")
+        results.append(("Phase 3 + Bug 5", "tst_phase3_bug5", False, 0))
+
     # --- Stop Condition Fix Tests (v115) ---
     try:
         from tests.tst_stop_condition_fix import run_all_tests as run_stop_condition_fix_tests

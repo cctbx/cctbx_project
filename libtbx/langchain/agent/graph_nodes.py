@@ -2880,12 +2880,9 @@ def _build_with_new_builder(state):
             "refinement.pdb_interpretation.ncs.constraints":
                 "ncs.constraints",
         },
-        "phenix.resolve_cryo_em": {
-            # strategy.mask_atoms prefix-matches to
-            # mask_atoms_atom_radius in PHIL. Use
-            # the bare form "mask_atoms" instead.
-            "strategy.mask_atoms": "mask_atoms",
-        },
+        # phenix.resolve_cryo_em: no rewrites needed.
+        # mask_atoms was removed (v115.07) — it's now in
+        # _BLOCKED_PARAMS and stripped before rewrites run.
     }
     _s_rewrites = _STRATEGY_REWRITES.get(
         program, {})

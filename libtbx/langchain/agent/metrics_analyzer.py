@@ -66,14 +66,17 @@ def derive_metrics_from_history(history):
             }
 
             # Extract from analysis dict if present
+            # Coerce via _safe_float: JSON round-tripping can turn
+            # floats into strings (e.g. 0.385 → "0.385"), which
+            # causes TypeError in downstream arithmetic.
             analysis = entry.get("analysis", {})
             if isinstance(analysis, dict):
-                metrics["r_free"] = analysis.get("r_free")
-                metrics["r_work"] = analysis.get("r_work")
-                metrics["tfz"] = analysis.get("tfz")
-                metrics["llg"] = analysis.get("llg")
-                metrics["resolution"] = analysis.get("resolution")
-                metrics["map_cc"] = analysis.get("map_cc")
+                metrics["r_free"] = _safe_float(analysis.get("r_free"))
+                metrics["r_work"] = _safe_float(analysis.get("r_work"))
+                metrics["tfz"] = _safe_float(analysis.get("tfz"))
+                metrics["llg"] = _safe_float(analysis.get("llg"))
+                metrics["resolution"] = _safe_float(analysis.get("resolution"))
+                metrics["map_cc"] = _safe_float(analysis.get("map_cc"))
 
             # Also check result/summary/analysis for metrics (fallback)
             result_text = str(entry.get("result", "") or entry.get("summary", ""))
@@ -132,6 +135,21 @@ def _extract_float(text, pattern):
         except (ValueError, IndexError):
             pass
     return None
+
+
+def _safe_float(val):
+    """Convert to float or return None.
+
+    JSON round-tripping can turn float values into strings
+    (e.g. 0.385 → "0.385").  All numeric metrics from history
+    dicts must be coerced before arithmetic or formatting.
+    """
+    if val is None:
+        return None
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return None
 
 
 def _extract_autobuild_rfree(text):
@@ -306,7 +324,7 @@ def _analyze_xray_trend(metrics_history, resolution, result):
     r_free_values = []
     for m in metrics_history:
         prog = (m.get("program") or "").lower()
-        r_free = m.get("r_free")
+        r_free = _safe_float(m.get("r_free"))
         if r_free is None:
             continue
 
@@ -452,7 +470,9 @@ def _analyze_cryoem_trend(metrics_history, result):
         m for m in metrics_history
         if "real_space" in (m.get("program") or "").lower()
     ]
-    cc_values = [m["map_cc"] for m in rsr_metrics if m.get("map_cc") is not None]
+    cc_values = [_safe_float(m["map_cc"]) for m in rsr_metrics
+                 if m.get("map_cc") is not None]
+    cc_values = [v for v in cc_values if v is not None]
     result["map_cc_trend"] = cc_values[-5:]
 
     if len(cc_values) < 1:
@@ -528,8 +548,9 @@ def get_latest_resolution(metrics_history):
         float or None: Resolution in Angstroms
     """
     for m in reversed(metrics_history):
-        if m.get("resolution"):
-            return m["resolution"]
+        res = _safe_float(m.get("resolution"))
+        if res is not None:
+            return res
     return None
 
 
@@ -543,7 +564,9 @@ def get_best_r_free(metrics_history):
     Returns:
         float or None: Best R-free value
     """
-    r_free_values = [m["r_free"] for m in metrics_history if m.get("r_free") is not None]
+    r_free_values = [_safe_float(m["r_free"]) for m in metrics_history
+                     if m.get("r_free") is not None]
+    r_free_values = [v for v in r_free_values if v is not None]
     if r_free_values:
         return min(r_free_values)
     return None
@@ -560,8 +583,9 @@ def get_latest_r_free(metrics_history):
         float or None: Latest R-free value
     """
     for m in reversed(metrics_history):
-        if m.get("r_free"):
-            return m["r_free"]
+        val = _safe_float(m.get("r_free"))
+        if val is not None:
+            return val
     return None
 
 
@@ -576,8 +600,9 @@ def get_latest_map_cc(metrics_history):
         float or None: Latest CC value
     """
     for m in reversed(metrics_history):
-        if m.get("map_cc"):
-            return m["map_cc"]
+        val = _safe_float(m.get("map_cc"))
+        if val is not None:
+            return val
     return None
 
 
