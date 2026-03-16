@@ -784,11 +784,22 @@ def perceive(state):
     metrics_event_data = {}
     if analysis:
         for key in ["r_free", "r_work", "resolution", "map_cc", "tfz", "llg", "clashscore"]:
-            if analysis.get(key) is not None:
-                metrics_event_data[key] = analysis[key]
+            val = analysis.get(key)
+            if val is not None:
+                # Coerce to float — event_formatter does arithmetic
+                # (e.g. r_free - r_free_prev) and crashes on strings.
+                try:
+                    val = float(val)
+                except (ValueError, TypeError):
+                    continue
+                metrics_event_data[key] = val
                 # Add previous value if available
                 if prev_metrics and prev_metrics.get(key) is not None:
-                    metrics_event_data[key + "_prev"] = prev_metrics[key]
+                    try:
+                        metrics_event_data[key + "_prev"] = float(
+                            prev_metrics[key])
+                    except (ValueError, TypeError):
+                        pass
     if metrics_event_data:
         state = _emit(state, EventType.METRICS_EXTRACTED, **metrics_event_data)
 

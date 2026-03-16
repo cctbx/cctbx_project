@@ -920,19 +920,30 @@ class EventFormatter:
         r_free = event.get("r_free")
         r_free_prev = event.get("r_free_prev")
         if r_free is not None:
-            s = "R-free: %.4f" % r_free
-            if r_free_prev is not None:
-                diff = r_free - r_free_prev
-                arrow = "\u2193" if diff < 0 else (
-                    "\u2191" if diff > 0 else "\u2192")
-                s += " %s (was %.4f)" % (arrow, r_free_prev)
-            parts.append(s)
+            try:
+                r_free = float(r_free)
+                s = "R-free: %.4f" % r_free
+                if r_free_prev is not None:
+                    r_free_prev = float(r_free_prev)
+                    diff = r_free - r_free_prev
+                    arrow = "\u2193" if diff < 0 else (
+                        "\u2191" if diff > 0 else "\u2192")
+                    s += " %s (was %.4f)" % (arrow, r_free_prev)
+                parts.append(s)
+            except (ValueError, TypeError):
+                parts.append("R-free: %s" % r_free)
         resolution = event.get("resolution")
         if resolution is not None:
-            parts.append("Res: %.2f \u00c5" % resolution)
+            try:
+                parts.append("Res: %.2f \u00c5" % float(resolution))
+            except (ValueError, TypeError):
+                pass
         cc = event.get("map_cc")
         if cc is not None:
-            parts.append("CC: %.3f" % cc)
+            try:
+                parts.append("CC: %.3f" % float(cc))
+            except (ValueError, TypeError):
+                pass
         if parts:
             return "  " + "  |  ".join(parts)
         return None

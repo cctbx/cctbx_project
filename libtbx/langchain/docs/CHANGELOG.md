@@ -34,10 +34,11 @@ Also modified (config):
 |-----|----------|---------|-----------|-----|
 | 1 | lysozyme-refine | 77% fail, no metric | PDB has AU atom missing element columns → refine crashes → agent retries 5× | Terminal diagnosis: stop with hint |
 | 3 | apoferritin_denmod_dock | 57% fail (LLM modes) | LLM copies `mask_atoms=True` from mtriage log → `strategy.mask_atoms_atom_radius="True"` RuntimeError | Whitelist removes it; `_BLOCKED_PARAMS` double-blocks it |
-| 4 | 7rpq_AF_reference | 0% fail but stops at R=0.386 | model_vs_data stores `r_work="0.385"` (string) → cycle 3 graph crashes on `r_free - r_work` | `_coerce_numerics()` + `_safe_float()` in structure_model; `_safe_float()` at 7 sites in metrics_analyzer (root cause) |
+| 4 | 7rpq_AF_reference | 0% fail but stops at R=0.386 | model_vs_data stores `r_work="0.385"` (string) → cycle 3 graph crashes on `r_free - r_work` | `_safe_float()` at 5 sites in metric_evaluator (true root cause: USE_YAML_METRICS=True); belt-and-suspenders in metrics_analyzer (7 sites), structure_model, graph_nodes, event_formatter, kb_tags, workflow_state._analyze_history |
 | 5 | lowres_restraints | 75% fail (restraint params stripped) | PHIL validator strips `reference_model.file`, `ncs.*`, `secondary_structure.*`, `ramachandran_restraints` — 7 of 8 params lost | Hierarchical prefix whitelist + path resolution + reference model exclusion |
 | 6 | AF_7n8i | 5/10 modes fail at mtriage | `box_1.ccp4`/`box_2.ccp4` not recognized as half-maps (old heuristic required ≥3 full_map files) | Tier 1: exactly 2 matching files → promote |
 | 7 | 1aba-polder | polder fails (missing: model) | Protein model with ligand atoms misclassified as `ligand_pdb` → polder can't find `model` slot | File-size fallback: PDB >10KB in ligand_pdb rescued to model |
+| 8 | apoferritin_denmod_dock (rules_only) | dock_in_map loops 3x, RSR never offered | `emd-20026_auto_sharpen_A.ccp4` excluded from `full_map` by `*_a.*` pattern → `has_full_map=False` → RSR blocked | Orphan-map promotion: map files not in any subcategory → promoted to full_map |
 
 ### Bug 5 details — Reference model restraints for phenix.refine
 
@@ -87,11 +88,15 @@ valid forms (e.g. `refinement.pdb_interpretation.ncs.type` → `ncs.type`).
 | File | Change |
 |------|--------|
 | `agent/metrics_analyzer.py` | Added `_safe_float()` at all 7 numeric read sites in `derive_metrics_from_history()`, `_analyze_xray_trend()`, `_analyze_cryoem_trend()`, `get_latest_resolution()`, `get_best_r_free()`, `get_latest_r_free()`, `get_latest_map_cc()`. Root cause of Bug 4 crash: JSON round-tripping turns floats to strings. |
+| `agent/metric_evaluator.py` | Added `_safe_float()` at 5 arithmetic sites: `_analyze_xray_trend()` r_free extraction, `_analyze_cryoem_trend()` CC extraction, `is_significant_improvement()`, `calculate_improvement_rate()`, `is_plateau()`. TRUE root cause of Bug 4: `USE_YAML_METRICS=True` routes through this file, not `metrics_analyzer.py`. Added import fallback for standalone testing. |
+| `agent/event_formatter.py` | Wrapped compact metrics formatting (L920-935) with float coercion + try/except. Prevents `str - float` crash in METRICS_EXTRACTED event rendering. |
+| `agent/kb_tags.py` | `_trend_tags()` now coerces all R-free trend values to float via try/except before arithmetic (diffs, total_drop). |
+| `agent/workflow_state.py` | `_analyze_history()` L1841-1850: all metric reads coerced via local `_sf()` helper. Orphan-map promotion: map files in parent `map` but not in any subcategory (`full_map`, `half_map`, `optimized_full_map`) promoted to `full_map`. Fixes apoferritin_denmod_dock rules_only. |
 | `agent/graph_nodes.py` | Removed stale `strategy.mask_atoms` → `mask_atoms` rewrite for resolve_cryo_em (now a no-op since mask_atoms is in `_BLOCKED_PARAMS`). |
 | `knowledge/plan_schema.py` | `record_stage_cycle()` catch-up: when agent runs ahead of plan tracker (e.g. ligandfit during refine stage), advance through intermediate stages. Overshoot guard: verify `new_curr` matches program before counting. |
 | `phenix_ai/local_agent.py` | Added `client_version=self._get_client_version()` + `_get_client_version()` method for parity with RemoteAgent. |
 | `phenix_ai/remote_agent.py` | Added `request["settings"]["verbosity"]` and `events=parsed.get("events", [])` for parity with LocalAgent. |
-| `tests/tst_phase3_bug5.py` | NEW: 31 tests / 85 assertions covering all Phase 3 + Bug 5 fixes. |
+| `tests/tst_phase3_bug5.py` | 38 test functions / 104 assertions covering all Phase 3 + Bug 5 + Bug 8 fixes, metric_evaluator coercion, orphan-map promotion, kb_tags string handling. |
 | `tests/tst_phil_validation.py` | Fixed stale `test_rewrite_resolve_cryo_em_mask_atoms` (mask_atoms now blocked, not allowed). |
 | `tests/tst_audit_fixes.py` | 3 stale tests updated: `test_k2_mtriage` (prefers_half_maps), `test_k2_map_sharpening` (positional), `test_s5h_inject_program_defaults` (generate not in defaults). |
 | `tests/tst_backward_compat.py` | 3 new parity tests (26 total): `test_local_remote_agent_settings_parity`, `test_local_remote_agent_return_parity`, `test_local_agent_full_roundtrip`. |
@@ -107,9 +112,9 @@ valid forms (e.g. `refinement.pdb_interpretation.ncs.type` → `ncs.type`).
 | `tst_backward_compat.py` | 26/26 |
 | `tst_command_builder.py` | 22/22 |
 | `tst_event_system.py` | 13/13 |
-| `tst_phase3_bug5.py` | 85/85 |
+| `tst_phase3_bug5.py` | 104/104 |
 | `tst_phil_validation.py` | 15/15 |
-| **Total** | **291** |
+| **Total** | **310** |
 | **Total** | **191/191** |
 
 

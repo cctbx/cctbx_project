@@ -891,6 +891,32 @@ def _categorize_files(available_files, ligand_hints=None, files_local=True):
     except Exception:
         pass  # Safety net must not break categorization
 
+    # Post-processing: Promote orphan map files to full_map.
+    #
+    # Mirrors the orphan-PDB → model promotion above.  Map files that
+    # end up in the "map" parent category but NOT in any subcategory
+    # (full_map, half_map, optimized_full_map) are invisible to the
+    # workflow engine's has_full_map check, so real_space_refine and
+    # other programs with requires_full_map=true are never offered.
+    #
+    # Root cause: the YAML excludes list for full_map has "*_a.*" and
+    # "*_b.*" (intended for half-map suffixes) which false-positive on
+    # filenames like "emd-20026_auto_sharpen_A.ccp4" (the "_A" matches
+    # "*_a.*" case-insensitively).  Rather than fix every exclude
+    # pattern, promote any orphan to full_map — if it's not a half-map
+    # or optimized map, it's a full map by elimination.
+    _map_subcats = {"full_map", "half_map", "optimized_full_map"}
+    _in_subcat = set()
+    for sc in _map_subcats:
+        for f in files.get(sc, []):
+            _in_subcat.add(f)
+    for f in list(files.get("map", [])):
+        if f not in _in_subcat:
+            if "full_map" not in files:
+                files["full_map"] = []
+            if f not in files["full_map"]:
+                files["full_map"].append(f)
+
     return files
 
 
@@ -1838,25 +1864,35 @@ def _analyze_history(history):
             # NOTE: history from session has 'analysis' key, but after transport has 'metrics'
             analysis = entry.get("analysis", entry.get("metrics", {}))
             if isinstance(analysis, dict):
+                # Coerce numeric values — JSON round-tripping can
+                # turn floats into strings (e.g. 0.385 → "0.385").
+                def _sf(v):
+                    if v is None:
+                        return None
+                    try:
+                        return float(v)
+                    except (ValueError, TypeError):
+                        return None
                 if analysis.get("r_free"):
-                    info["last_r_free"] = analysis["r_free"]
+                    info["last_r_free"] = _sf(analysis["r_free"])
                 if analysis.get("map_cc"):
-                    info["last_map_cc"] = analysis["map_cc"]
+                    info["last_map_cc"] = _sf(analysis["map_cc"])
                 if analysis.get("clashscore"):
-                    info["last_clashscore"] = analysis["clashscore"]
+                    info["last_clashscore"] = _sf(analysis["clashscore"])
                 if analysis.get("tfz"):
-                    info["last_tfz"] = analysis["tfz"]
+                    info["last_tfz"] = _sf(analysis["tfz"])
                 if analysis.get("resolution"):
-                    info["resolution"] = analysis["resolution"]
+                    info["resolution"] = _sf(analysis["resolution"])
                 if analysis.get("anomalous_resolution"):
-                    info["anomalous_resolution"] = analysis["anomalous_resolution"]
+                    _ar = _sf(analysis["anomalous_resolution"])
+                    info["anomalous_resolution"] = _ar
                     # anomalous_resolution is the estimated d-spacing limit of
                     # useful anomalous signal from xtriage.  A value > 6 Å means
                     # signal is only present at very low angles (essentially noise
                     # from Friedel pair differences) and is NOT useful for phasing.
                     # Example: anomalous_resolution=9.8 with measurability=0.032
                     # is negligible and must NOT gate autosol availability.
-                    if analysis["anomalous_resolution"] < 6.0:
+                    if _ar is not None and _ar < 6.0:
                         info["has_anomalous"] = True
                 # Independent 'if' (not elif): has_anomalous from analysis
                 # must be checked even when anomalous_resolution is present

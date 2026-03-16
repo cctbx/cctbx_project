@@ -788,6 +788,8 @@ All server-side code that reads `best_files` values must handle both types. Use 
 
 **Reference model categorizer (v115.07):** When ≥2 PDB files are categorized as `model`, one may be a reference model for restraints (not a model to refine). A post-processing heuristic checks filenames for keywords (`reference`, `homolog`, `template`, `restraint`, `high_res`) and reclassifies the first match to `reference_model`. Agent output files (`refine_*`, `autobuild_*`, etc.) are excluded from this check. Only one file is reclassified per run. This works with the Tier 1 exclusion in `command_builder.py` (line 380), which excludes `reference_model.file` from primary model selection when the strategy dict names it explicitly.
 
+**Orphan-map promotion (v115.07+):** Map files that end up in the `map` parent category but not in any subcategory (`full_map`, `half_map`, `optimized_full_map`) are promoted to `full_map`. This mirrors the orphan-PDB → model promotion. Root cause: the YAML `full_map` excludes list has `*_a.*` and `*_b.*` (for half-map suffixes) which false-positive on filenames like `emd-20026_auto_sharpen_A.ccp4`. Without promotion, `has_full_map=False` and programs with `requires_full_map: true` (e.g. `real_space_refine`) are never offered.
+
 ### Request Processing (Server)
 
 ```python
@@ -2905,9 +2907,28 @@ Called by PERCEIVE on every graph invocation.
 are coerced via `_safe_float()` at read time. JSON round-tripping between
 client and server can turn floats into strings (e.g. `0.385` → `"0.385"`).
 Without coercion, `previous - latest_r_free` crashes with TypeError.
-This was the root cause of the Bug 4 graph crash on 7rpq_AF_reference —
-the crash occurred in `_analyze_xray_trend()`, not in `structure_model.py`
-as initially diagnosed.
+This was initially diagnosed as the Bug 4 root cause, but see
+MetricEvaluator below for the true production crash site.
+
+### Metric Evaluator (`agent/metric_evaluator.py`)
+
+YAML-driven replacement for the hardcoded trend analysis in metrics_analyzer.
+Active when `USE_YAML_METRICS=True` (the default since v115).
+
+- `analyze_trend()` routes to `_analyze_xray_trend()` or
+  `_analyze_cryoem_trend()` based on experiment type
+- `is_significant_improvement()` / `calculate_improvement_rate()` — compare
+  metric values with YAML-defined thresholds
+- `is_plateau()` — detect stalled improvement using sliding window
+- `get_target()` — resolution-dependent target lookup from metrics.yaml
+
+**Numeric coercion (v115.07+):** This was the TRUE production crash site
+for Bug 4. Since `USE_YAML_METRICS=True`, `analyze_metrics_trend()` in
+`metrics_analyzer.py` routes to `analyze_refinement_trend()` which calls
+`MetricEvaluator.analyze_trend()`. The evaluator re-reads raw values from
+`metrics_history` without coercion — `_safe_float()` was added at all 5
+arithmetic entry points: r_free extraction, CC extraction,
+`is_significant_improvement`, `calculate_improvement_rate`, `is_plateau`.
 
 ### Plan Schema (`knowledge/plan_schema.py`)
 

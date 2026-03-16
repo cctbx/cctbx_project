@@ -16,7 +16,13 @@ from __future__ import absolute_import, division, print_function
 import re
 
 # Import YAML-driven evaluator
-from libtbx.langchain.agent.metric_evaluator import analyze_refinement_trend
+try:
+    from libtbx.langchain.agent.metric_evaluator import analyze_refinement_trend
+except ImportError:
+    try:
+        from agent.metric_evaluator import analyze_refinement_trend
+    except ImportError:
+        analyze_refinement_trend = None
 
 
 # =============================================================================
@@ -262,7 +268,7 @@ def analyze_metrics_trend(metrics_history, resolution=None, experiment_type="xra
         }
     """
     # Use YAML-driven evaluator
-    if use_yaml_evaluator:
+    if use_yaml_evaluator and analyze_refinement_trend is not None:
         try:
             return analyze_refinement_trend(metrics_history, experiment_type, resolution)
         except Exception as e:

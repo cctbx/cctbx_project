@@ -2977,28 +2977,34 @@ LocalAgent intentionally performs the full encode/decode roundtrip (`prepare_req
 
 **Enforced by**: `tst_backward_compat.py` verifies structural invariants. Manual review is required for settings parity (no automated diff exists yet between the two `decide_next_step` methods).
 
-### RULE 9: Numeric fields in StructureModel must survive JSON roundtrip
+### RULE 9: Numeric fields must survive JSON roundtrip everywhere
 
-`StructureModel.from_dict()` uses `_deep_merge()` which copies raw JSON
-values without type conversion. Since JSON has no distinction between
-`0.385` (float) and `"0.385"` (string), model_state fields like `r_work`,
-`r_free`, and `model_map_cc` may arrive as strings after deserialization.
+JSON round-tripping between client and server can turn floats into strings
+(e.g. `0.385` → `"0.385"`). This affects StructureModel, metrics_history,
+event data, and history analysis. Any code that performs arithmetic on
+metric values (`r_free - r_work`, `previous - latest_r_free`) or formats
+them (`"%.3f" % r_free`) must use `_safe_float()` or equivalent coercion.
 
-All code that performs arithmetic on these fields (`r_free - r_work`,
-`abs(r - recent[0])`) or formats them (`"%.3f" % r_free`) must use
-`_safe_float()`. The `_coerce_numerics()` function runs once in
-`from_dict()` as a first defense, but individual sites must also guard
-against mid-session corruption.
+**Files that require numeric coercion (all fixed as of v115.07+):**
 
-**When adding new numeric fields to model_state:**
-1. Add the field name to `_MODEL_STATE_FLOAT_FIELDS` (or
-   `_GEOMETRY_FLOAT_FIELDS` if inside `geometry`)
-2. Use `_safe_float()` at every read site
-3. Add a test in `tst_phase3_bug5.py` with a string-valued input
+| File | What to guard | Method |
+|------|--------------|--------|
+| `structure_model.py` | `model_state` fields (r_free, r_work, etc.) | `_coerce_numerics()` in `from_dict()` + `_safe_float()` at read sites |
+| `metric_evaluator.py` | `metrics_history` r_free/CC extraction + arithmetic | `_safe_float()` at 5 sites |
+| `metrics_analyzer.py` | `derive_metrics_from_history` + trend analysis | `_safe_float()` at 7 sites |
+| `graph_nodes.py` | METRICS_EXTRACTED event emission (L788/791) | `float()` with try/except |
+| `event_formatter.py` | Compact metrics `r_free - r_free_prev` (L925) | `float()` with try/except |
+| `kb_tags.py` | `_trend_tags()` diffs and total_drop | `float()` with try/except |
+| `workflow_state.py` | `_analyze_history()` metric reads (L1841-1850) | Local `_sf()` helper |
 
-**Enforced by**: `tst_phase3_bug5.py :: test_bug4_*` tests (5 tests
+**When adding new numeric reads from history or metrics_history:**
+1. Use `_safe_float()` or `float()` with try/except at every read site
+2. Add a test in `tst_phase3_bug5.py` with a string-valued input
+3. Never assume values from JSON dicts are the correct Python type
+
+**Enforced by**: `tst_phase3_bug5.py :: test_bug4_*` tests (8 tests
 covering string coercion, garbage handling, crash prevention, gap
-detection, and None preservation).
+detection, None preservation, metric_evaluator, cryo-EM CC, and kb_tags).
 
 ### What's Implemented
 

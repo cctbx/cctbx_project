@@ -27,13 +27,37 @@ Usage:
 from __future__ import absolute_import, division, print_function
 
 # Import YAML loader
-from libtbx.langchain.knowledge.yaml_loader import (
-    get_metric_threshold,
-    get_metric_direction,
-    is_metric_good,
-    is_metric_acceptable,
-    load_metrics,
-)
+try:
+    from libtbx.langchain.knowledge.yaml_loader import (
+        get_metric_threshold,
+        get_metric_direction,
+        is_metric_good,
+        is_metric_acceptable,
+        load_metrics,
+    )
+except ImportError:
+    from knowledge.yaml_loader import (
+        get_metric_threshold,
+        get_metric_direction,
+        is_metric_good,
+        is_metric_acceptable,
+        load_metrics,
+    )
+
+
+def _safe_float(val):
+    """Convert to float or return None.
+
+    JSON round-tripping can turn float values into strings
+    (e.g. 0.385 → "0.385").  All numeric metrics must be
+    coerced before arithmetic or formatting.
+    """
+    if val is None:
+        return None
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return None
 
 
 class MetricEvaluator:
@@ -215,6 +239,8 @@ class MetricEvaluator:
         Returns:
             bool: True if significant improvement
         """
+        old_value = _safe_float(old_value)
+        new_value = _safe_float(new_value)
         if old_value is None or new_value is None:
             return False
 
@@ -242,6 +268,8 @@ class MetricEvaluator:
         Returns:
             float: Percentage improvement (positive = better)
         """
+        old_value = _safe_float(old_value)
+        new_value = _safe_float(new_value)
         if old_value is None or new_value is None or old_value == 0:
             return 0.0
 
@@ -272,7 +300,11 @@ class MetricEvaluator:
             return False
 
         # Calculate improvements for last N cycles
-        recent = values[-(cycles_needed + 1):]
+        # Coerce to float — values may be strings from JSON roundtrip
+        recent = [_safe_float(v) for v in values[-(cycles_needed + 1):]]
+        recent = [v for v in recent if v is not None]
+        if len(recent) < cycles_needed + 1:
+            return False
         improvements = []
 
         direction = self.get_direction(metric_name) if metric_name else "minimize"
@@ -349,7 +381,7 @@ class MetricEvaluator:
         # Extract R-free values
         r_free_values = []
         for m in metrics_history:
-            r_free = m.get("r_free")
+            r_free = _safe_float(m.get("r_free"))
             if r_free is not None:
                 prog = (m.get("program") or "").lower()
                 if "refine" in prog or prog == "unknown":
@@ -448,7 +480,7 @@ class MetricEvaluator:
         # Extract CC values
         cc_values = []
         for m in metrics_history:
-            cc = m.get("map_cc")
+            cc = _safe_float(m.get("map_cc"))
             if cc is not None:
                 prog = (m.get("program") or "").lower()
                 if "real_space" in prog:

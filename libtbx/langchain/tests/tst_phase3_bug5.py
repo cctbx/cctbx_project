@@ -689,6 +689,163 @@ def test_bug6_tier2_no_companion_no_promotion():
 
 
 # =========================================================================
+# Bug 4 continued: metric_evaluator.py _safe_float
+# =========================================================================
+
+def test_bug4_metric_evaluator_safe_float():
+  """metric_evaluator handles string metrics without crash."""
+  print("Test: bug4_metric_evaluator_safe_float")
+  from agent.metric_evaluator import MetricEvaluator, _safe_float
+
+  # Basic _safe_float
+  assert_equal(_safe_float("0.385"), 0.385, "_safe_float string")
+  assert_equal(_safe_float(0.385), 0.385, "_safe_float float")
+  assert_equal(_safe_float(None), None, "_safe_float None")
+  assert_equal(_safe_float("bad"), None, "_safe_float non-numeric")
+
+  ev = MetricEvaluator()
+
+  # calculate_improvement_rate with strings must not crash
+  rate = ev.calculate_improvement_rate("r_free", "0.40", "0.35")
+  assert_true(abs(rate - 12.5) < 0.1, "improvement rate from strings: %.1f" % rate)
+
+  # is_significant_improvement with strings
+  sig = ev.is_significant_improvement("r_free", "0.30", "0.25")
+  assert_true(sig, "significant improvement from strings")
+
+  # is_plateau with string values
+  vals = ["0.30", "0.299", "0.298", "0.297"]
+  plateau = ev.is_plateau(vals, "r_free")
+  assert_true(isinstance(plateau, bool), "is_plateau returned bool")
+
+  print("  PASSED")
+
+
+def test_bug4_metric_evaluator_analyze_trend_strings():
+  """analyze_trend survives string r_free values in metrics_history."""
+  print("Test: bug4_metric_evaluator_analyze_trend_strings")
+  from agent.metric_evaluator import MetricEvaluator
+
+  ev = MetricEvaluator()
+
+  # Simulate the exact 7rpq scenario: model_vs_data writes string r_free
+  history = [
+    {"program": "phenix.xtriage", "r_free": None},
+    {"program": "phenix.model_vs_data", "r_free": "0.385", "r_work": "0.384"},
+  ]
+
+  # This must not crash (was: unsupported operand type(s) for -: 'str' and 'float')
+  result = ev.analyze_trend(history, "xray", resolution=3.3)
+  assert_true(isinstance(result, dict), "returned dict")
+  assert_true("trend_summary" in result, "has trend_summary")
+  print("  PASSED")
+
+
+def test_bug4_metric_evaluator_cryoem_strings():
+  """analyze_trend survives string CC values for cryo-EM."""
+  print("Test: bug4_metric_evaluator_cryoem_strings")
+  from agent.metric_evaluator import MetricEvaluator
+
+  ev = MetricEvaluator()
+  history = [
+    {"program": "phenix.real_space_refine", "map_cc": "0.75"},
+    {"program": "phenix.real_space_refine", "map_cc": "0.78"},
+  ]
+  result = ev.analyze_trend(history, "cryoem")
+  assert_true(isinstance(result, dict), "returned dict")
+  assert_true("map_cc_trend" in result, "has map_cc_trend")
+  print("  PASSED")
+
+
+# =========================================================================
+# Orphan-map promotion
+# =========================================================================
+
+def test_orphan_map_promotion():
+  """Map files in parent 'map' but no subcategory → promoted to full_map."""
+  print("Test: orphan_map_promotion")
+  # Simulate the apoferritin_denmod_dock scenario:
+  # emd-20026_auto_sharpen_A.ccp4 is in 'map' but excluded from 'full_map'
+  # by *_a.* pattern
+  files = {
+    "map": ["/p/emd-20026_auto_sharpen_A.ccp4",
+            "/p/emd_20026_half_map_1_box.ccp4",
+            "/p/emd_20026_half_map_2_box.ccp4"],
+    "full_map": [],
+    "half_map": ["/p/emd_20026_half_map_1_box.ccp4",
+                 "/p/emd_20026_half_map_2_box.ccp4"],
+    "optimized_full_map": [],
+  }
+
+  # Run orphan-map promotion logic directly
+  _map_subcats = {"full_map", "half_map", "optimized_full_map"}
+  _in_subcat = set()
+  for sc in _map_subcats:
+    for f in files.get(sc, []):
+      _in_subcat.add(f)
+  for f in list(files.get("map", [])):
+    if f not in _in_subcat:
+      if "full_map" not in files:
+        files["full_map"] = []
+      if f not in files["full_map"]:
+        files["full_map"].append(f)
+
+  assert_equal(len(files["full_map"]), 1, "orphan promoted to full_map")
+  assert_true("auto_sharpen_A" in files["full_map"][0],
+              "correct file promoted")
+  assert_equal(len(files["half_map"]), 2, "half_maps unchanged")
+  print("  PASSED")
+
+
+def test_orphan_map_no_false_positive():
+  """Files already in subcategories are NOT double-promoted."""
+  print("Test: orphan_map_no_false_positive")
+  files = {
+    "map": ["/p/map.mrc", "/p/half_1.mrc", "/p/half_2.mrc"],
+    "full_map": ["/p/map.mrc"],
+    "half_map": ["/p/half_1.mrc", "/p/half_2.mrc"],
+    "optimized_full_map": [],
+  }
+
+  _map_subcats = {"full_map", "half_map", "optimized_full_map"}
+  _in_subcat = set()
+  for sc in _map_subcats:
+    for f in files.get(sc, []):
+      _in_subcat.add(f)
+  for f in list(files.get("map", [])):
+    if f not in _in_subcat:
+      if "full_map" not in files:
+        files["full_map"] = []
+      if f not in files["full_map"]:
+        files["full_map"].append(f)
+
+  assert_equal(len(files["full_map"]), 1, "no extra promotion")
+  assert_equal(len(files["half_map"]), 2, "half_maps unchanged")
+  print("  PASSED")
+
+
+# =========================================================================
+# Belt-and-suspenders: kb_tags coercion
+# =========================================================================
+
+def test_kb_tags_string_rfree_trend():
+  """kb_tags._trend_tags handles string R-free values."""
+  print("Test: kb_tags_string_rfree_trend")
+  from agent.kb_tags import _trend_tags
+  # String values that would crash on subtraction
+  tags = _trend_tags(["0.30", "0.299", "0.298"])
+  assert_true(isinstance(tags, list), "returned list")
+  # Values are close → should detect plateau
+  assert_true("plateau" in tags or "r_free_stuck" in tags,
+              "plateau detected from strings")
+
+  # With improving values
+  tags2 = _trend_tags(["0.45", "0.35", "0.25"])
+  assert_true("improving" in tags2, "improving detected from strings")
+  print("  PASSED")
+
+
+# =========================================================================
 # Runner
 # =========================================================================
 
