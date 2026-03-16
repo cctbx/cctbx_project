@@ -607,12 +607,33 @@ def _categorize_files(available_files, ligand_hints=None, files_local=True):
         ligand_keep = []
         ligand_rescued = []
         for f in files["ligand_pdb"]:
-            if f.lower().endswith('.pdb') and _pdb_is_protein_model(f):
+            if not f.lower().endswith('.pdb'):
+                ligand_keep.append(f)
+                continue
+            if _pdb_is_protein_model(f):
                 ligand_rescued.append(f)
             else:
-                ligand_keep.append(f)
+                # File-size fallback: small-molecule ligands are typically
+                # <5 KB (10-100 atoms × ~80 bytes/line).  A PDB file >10 KB
+                # in ligand_pdb is almost certainly a protein model that
+                # _pdb_is_protein_model failed to detect (e.g., unusual
+                # formatting, large header, or read error).
+                try:
+                    fsize = os.path.getsize(f)
+                    if fsize > 10000:
+                        print("INFO: Rescuing '%s' from ligand_pdb "
+                              "(file size %d > 10 KB, likely protein model)"
+                              % (os.path.basename(f), fsize))
+                        ligand_rescued.append(f)
+                    else:
+                        ligand_keep.append(f)
+                except OSError:
+                    ligand_keep.append(f)
         if ligand_rescued:
             files["ligand_pdb"] = ligand_keep
+            print("INFO: Rescued %d protein model(s) from ligand_pdb: %s"
+                  % (len(ligand_rescued),
+                     ", ".join(os.path.basename(f) for f in ligand_rescued)))
             # Remove from ligand parent
             for f in ligand_rescued:
                 if f in files.get("ligand", []):
