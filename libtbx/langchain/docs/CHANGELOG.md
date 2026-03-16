@@ -34,9 +34,10 @@ Also modified (config):
 |-----|----------|---------|-----------|-----|
 | 1 | lysozyme-refine | 77% fail, no metric | PDB has AU atom missing element columns → refine crashes → agent retries 5× | Terminal diagnosis: stop with hint |
 | 3 | apoferritin_denmod_dock | 57% fail (LLM modes) | LLM copies `mask_atoms=True` from mtriage log → `strategy.mask_atoms_atom_radius="True"` RuntimeError | Whitelist removes it; `_BLOCKED_PARAMS` double-blocks it |
-| 4 | 7rpq_AF_reference | 0% fail but stops at R=0.386 | model_vs_data stores `r_work="0.385"` (string) → cycle 3 graph crashes on `r_free - r_work` | `_coerce_numerics()` + `_safe_float()` everywhere |
+| 4 | 7rpq_AF_reference | 0% fail but stops at R=0.386 | model_vs_data stores `r_work="0.385"` (string) → cycle 3 graph crashes on `r_free - r_work` | `_coerce_numerics()` + `_safe_float()` in structure_model; `_safe_float()` at 7 sites in metrics_analyzer (root cause) |
 | 5 | lowres_restraints | 75% fail (restraint params stripped) | PHIL validator strips `reference_model.file`, `ncs.*`, `secondary_structure.*`, `ramachandran_restraints` — 7 of 8 params lost | Hierarchical prefix whitelist + path resolution + reference model exclusion |
 | 6 | AF_7n8i | 5/10 modes fail at mtriage | `box_1.ccp4`/`box_2.ccp4` not recognized as half-maps (old heuristic required ≥3 full_map files) | Tier 1: exactly 2 matching files → promote |
+| 7 | 1aba-polder | polder fails (missing: model) | Protein model with ligand atoms misclassified as `ligand_pdb` → polder can't find `model` slot | File-size fallback: PDB >10KB in ligand_pdb rescued to model |
 
 ### Bug 5 details — Reference model restraints for phenix.refine
 
@@ -85,13 +86,17 @@ valid forms (e.g. `refinement.pdb_interpretation.ncs.type` → `ncs.type`).
 
 | File | Change |
 |------|--------|
+| `agent/metrics_analyzer.py` | Added `_safe_float()` at all 7 numeric read sites in `derive_metrics_from_history()`, `_analyze_xray_trend()`, `_analyze_cryoem_trend()`, `get_latest_resolution()`, `get_best_r_free()`, `get_latest_r_free()`, `get_latest_map_cc()`. Root cause of Bug 4 crash: JSON round-tripping turns floats to strings. |
+| `agent/graph_nodes.py` | Removed stale `strategy.mask_atoms` → `mask_atoms` rewrite for resolve_cryo_em (now a no-op since mask_atoms is in `_BLOCKED_PARAMS`). |
 | `knowledge/plan_schema.py` | `record_stage_cycle()` catch-up: when agent runs ahead of plan tracker (e.g. ligandfit during refine stage), advance through intermediate stages. Overshoot guard: verify `new_curr` matches program before counting. |
 | `phenix_ai/local_agent.py` | Added `client_version=self._get_client_version()` + `_get_client_version()` method for parity with RemoteAgent. |
 | `phenix_ai/remote_agent.py` | Added `request["settings"]["verbosity"]` and `events=parsed.get("events", [])` for parity with LocalAgent. |
+| `tests/tst_phase3_bug5.py` | NEW: 31 tests / 85 assertions covering all Phase 3 + Bug 5 fixes. |
+| `tests/tst_phil_validation.py` | Fixed stale `test_rewrite_resolve_cryo_em_mask_atoms` (mask_atoms now blocked, not allowed). |
 | `tests/tst_audit_fixes.py` | 3 stale tests updated: `test_k2_mtriage` (prefers_half_maps), `test_k2_map_sharpening` (positional), `test_s5h_inject_program_defaults` (generate not in defaults). |
 | `tests/tst_backward_compat.py` | 3 new parity tests (26 total): `test_local_remote_agent_settings_parity`, `test_local_remote_agent_return_parity`, `test_local_agent_full_roundtrip`. |
-| `docs/ARCHITECTURE.md` | Added "Local/Remote Parity Invariant" section. |
-| `docs/DEVELOPER_GUIDE.md` | Added RULE 8: "LocalAgent and RemoteAgent must be identical". |
+| `docs/ARCHITECTURE.md` | Updated PHIL validation section (prefix whitelist + path resolution), added half-map Tier 1, reference model categorizer, `_coerce_numerics`, plan_schema catch-up documentation. |
+| `docs/DEVELOPER_GUIDE.md` | RULE 4 expanded (prefix whitelist guidance), RULE 9 added (numeric type safety in StructureModel). |
 
 ### Test results
 
@@ -102,6 +107,9 @@ valid forms (e.g. `refinement.pdb_interpretation.ncs.type` → `ncs.type`).
 | `tst_backward_compat.py` | 26/26 |
 | `tst_command_builder.py` | 22/22 |
 | `tst_event_system.py` | 13/13 |
+| `tst_phase3_bug5.py` | 85/85 |
+| `tst_phil_validation.py` | 15/15 |
+| **Total** | **291** |
 | **Total** | **191/191** |
 
 

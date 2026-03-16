@@ -2889,6 +2889,26 @@ Per-cycle validation snapshots persisted to session JSON.
 - `get_at_cycle()` retrieves any specific snapshot
 - Serializes as list of dicts in `session.data["validation_history"]`
 
+### Metrics Analyzer (`agent/metrics_analyzer.py`)
+
+Extracts metrics from history and analyzes trends for stop decisions.
+Called by PERCEIVE on every graph invocation.
+
+- `derive_metrics_from_history(history)` — reconstructs `metrics_history`
+  from the client-side history list. Extracts R-free, R-work, TFZ, LLG,
+  resolution, and map-CC from analysis dicts and result text.
+- `analyze_metrics_trend()` — detects plateau, success, and excessive
+  refinement conditions. Routes to `_analyze_xray_trend()` (R-free) or
+  `_analyze_cryoem_trend()` (map-model CC) based on experiment type.
+
+**Numeric coercion (v115.07):** All numeric values extracted from history
+are coerced via `_safe_float()` at read time. JSON round-tripping between
+client and server can turn floats into strings (e.g. `0.385` → `"0.385"`).
+Without coercion, `previous - latest_r_free` crashes with TypeError.
+This was the root cause of the Bug 4 graph crash on 7rpq_AF_reference —
+the crash occurred in `_analyze_xray_trend()`, not in `structure_model.py`
+as initially diagnosed.
+
 ### Plan Schema (`knowledge/plan_schema.py`)
 
 Two data classes define the plan structure:
