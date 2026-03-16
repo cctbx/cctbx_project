@@ -691,6 +691,67 @@ class ProgramRegistry:
                     % (old_key, new_key,
                        strategy[new_key]))
 
+            # Pre-pass: resolve strategy values that look like
+            # file paths.  The LLM writes e.g. reference_model.file=4pf4.pdb
+            # (relative filename), but PHENIX needs the absolute path.
+            # Detect by file extension, then resolve using basename matching
+            # against known files, or by joining with the working directory.
+            _PATH_EXTENSIONS = frozenset({
+                '.pdb', '.cif', '.mtz', '.params', '.eff',
+                '.dat', '.fa', '.fasta', '.seq', '.phil',
+                '.param', '.ncs_spec',
+            })
+            # Build a basename → absolute path lookup from all
+            # files passed to this command + their directory siblings.
+            _basename_map = {}
+            _work_dir = None
+            for _fp in files.values():
+                _fps = _fp if isinstance(_fp, list) else [_fp]
+                for _f in _fps:
+                    _f = str(_f)
+                    if os.path.isfile(_f):
+                        _basename_map[os.path.basename(_f)] = _f
+                        if _work_dir is None:
+                            _work_dir = os.path.dirname(_f)
+            # Also scan the working directory for additional files
+            if _work_dir and os.path.isdir(_work_dir):
+                try:
+                    for _fn in os.listdir(_work_dir):
+                        if _fn not in _basename_map:
+                            _full = os.path.join(_work_dir, _fn)
+                            if os.path.isfile(_full):
+                                _basename_map[_fn] = _full
+                except OSError:
+                    pass
+
+            for key in list(strategy.keys()):
+                val = strategy[key]
+                if not isinstance(val, str) or not val:
+                    continue
+                val_lower = val.lower()
+                if not any(val_lower.endswith(ext)
+                           for ext in _PATH_EXTENSIONS):
+                    continue
+                # Value looks like a file path — try to resolve
+                basename = os.path.basename(val)
+                if basename in _basename_map:
+                    resolved = _basename_map[basename]
+                    if resolved != val:
+                        strategy[key] = resolved
+                        log("PATH_RESOLVE: %s=%s → %s"
+                            % (key, basename,
+                               os.path.basename(resolved)))
+                elif os.path.isabs(val) and os.path.isfile(val):
+                    pass  # Already absolute and exists
+                elif _work_dir:
+                    candidate = os.path.join(_work_dir, val)
+                    if os.path.isfile(candidate):
+                        strategy[key] = os.path.abspath(
+                            candidate)
+                        log("PATH_RESOLVE: %s=%s → %s"
+                            % (key, val,
+                               os.path.abspath(candidate)))
+
             for key, value in strategy.items():
                 if key not in strategy_defs:
                     # Programs with strict_strategy_flags: true only allow

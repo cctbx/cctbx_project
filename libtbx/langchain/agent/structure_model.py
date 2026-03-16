@@ -507,8 +507,8 @@ class StructureModel(object):
     geom = self.model_state.get("geometry", {})
 
     # High R-free gap (overfitting)
-    r_work = self.model_state.get("r_work")
-    r_free = self.model_state.get("r_free")
+    r_work = _safe_float(self.model_state.get("r_work"))
+    r_free = _safe_float(self.model_state.get("r_free"))
     if r_work is not None and r_free is not None:
       gap = r_free - r_work
       if gap > 0.10:
@@ -528,10 +528,13 @@ class StructureModel(object):
     # progress entry is appended. So we build the full
     # series from progress + current model_state r_free.
     rfree_vals = [
-      p.get("r_free") for p in self.progress
+      _safe_float(p.get("r_free"))
+      for p in self.progress
       if p.get("r_free") is not None
     ]
-    current_rf = self.model_state.get("r_free")
+    rfree_vals = [v for v in rfree_vals if v is not None]
+    current_rf = _safe_float(
+      self.model_state.get("r_free"))
     if current_rf is not None:
       rfree_vals.append(current_rf)
     if len(rfree_vals) >= 3:
@@ -1103,8 +1106,8 @@ class StructureModel(object):
       parts.append("Data: %s" % ", ".join(data_parts))
 
     # R-factors
-    r_work = self.model_state.get("r_work")
-    r_free = self.model_state.get("r_free")
+    r_work = _safe_float(self.model_state.get("r_work"))
+    r_free = _safe_float(self.model_state.get("r_free"))
     if r_work is not None and r_free is not None:
       parts.append(
         "R-work=%.3f R-free=%.3f" % (r_work, r_free)
@@ -1113,7 +1116,7 @@ class StructureModel(object):
       parts.append("R-free=%.3f" % r_free)
 
     # Model-map CC (cryo-EM)
-    cc = self.model_state.get("model_map_cc")
+    cc = _safe_float(self.model_state.get("model_map_cc"))
     if cc is not None:
       parts.append("Model-map CC=%.3f" % cc)
 
@@ -1274,8 +1277,8 @@ class StructureModel(object):
       )
 
     # R-factors
-    r_work = self.model_state.get("r_work")
-    r_free = self.model_state.get("r_free")
+    r_work = _safe_float(self.model_state.get("r_work"))
+    r_free = _safe_float(self.model_state.get("r_free"))
     if r_work is not None and r_free is not None:
       sections.append(
         "R-factors: R-work=%.3f R-free=%.3f"
@@ -1849,6 +1852,15 @@ class StructureModel(object):
       if isinstance(ms, dict):
         _deep_merge(model.model_state, ms)
 
+      # Coerce all numeric fields after merging raw
+      # JSON values.  _deep_merge copies values as-is
+      # from the deserialized dict, so strings like
+      # "0.385" can end up in numeric fields.
+      # _coerce_numerics converts them to float/int
+      # or None, preventing TypeError in arithmetic
+      # (e.g. _detect_problems gap = r_free - r_work).
+      _coerce_numerics(model.model_state)
+
       # Progress
       prog = d.get("progress")
       if isinstance(prog, list):
@@ -1856,6 +1868,11 @@ class StructureModel(object):
           dict(p) for p in prog
           if isinstance(p, dict)
         ]
+        # Coerce progress entry numerics too
+        for p in model.progress:
+          for k in ("r_work", "r_free", "model_map_cc"):
+            if k in p and p[k] is not None:
+              p[k] = _safe_float(p[k])
 
       # Strategy blacklist
       bl = d.get("strategy_blacklist")
@@ -1943,6 +1960,56 @@ def _deep_merge(target, source):
       _deep_merge(target[key], val)
     else:
       target[key] = val
+
+
+# Fields in model_state that must be float (or None).
+_MODEL_STATE_FLOAT_FIELDS = (
+  "r_work", "r_free", "model_map_cc",
+)
+
+# Fields in model_state.geometry that must be float (or None).
+_GEOMETRY_FLOAT_FIELDS = (
+  "rama_favored", "rama_outliers", "rotamer_outliers",
+  "clashscore", "bonds_rmsd", "angles_rmsd",
+)
+
+
+def _coerce_numerics(model_state):
+  """Coerce all known numeric fields in model_state.
+
+  After JSON deserialization via _deep_merge, values may
+  be strings (e.g. "0.385" instead of 0.385).  This
+  causes TypeError when arithmetic is performed
+  (e.g. r_free - r_work in _detect_problems).
+
+  Converts to float via _safe_float; invalid values
+  become None.  Runs once after from_dict().
+  """
+  for key in _MODEL_STATE_FLOAT_FIELDS:
+    if key in model_state and model_state[key] is not None:
+      model_state[key] = _safe_float(model_state[key])
+
+  geom = model_state.get("geometry")
+  if isinstance(geom, dict):
+    for key in _GEOMETRY_FLOAT_FIELDS:
+      if key in geom and geom[key] is not None:
+        geom[key] = _safe_float(geom[key])
+
+  # diff_peaks.peak_count → int
+  dp = model_state.get("diff_peaks")
+  if isinstance(dp, dict) and "peak_count" in dp:
+    try:
+      dp["peak_count"] = int(dp["peak_count"])
+    except (ValueError, TypeError):
+      dp["peak_count"] = 0
+
+  # waters → int
+  if "waters" in model_state:
+    try:
+      model_state["waters"] = int(
+        model_state["waters"])
+    except (ValueError, TypeError):
+      model_state["waters"] = 0
 
 
 def _suggest_action(problem):

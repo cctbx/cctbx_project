@@ -2858,10 +2858,27 @@ def _build_with_new_builder(state):
     # names that the CommandBuilder recognizes.
     _STRATEGY_REWRITES = {
         "phenix.refine": {
+            # Existing: map to strategy_flag names (exact match)
             "reference_model.enabled":
                 "reference_model_enabled",
             "reference_model.use_starting_model":
                 "reference_model_use_starting",
+            # New: normalize full PHIL paths to shortest valid
+            # forms.  These pass via allowed_phil_prefixes
+            # (substring match), not strategy_flags.
+            "refinement.pdb_interpretation."
+            "secondary_structure.enabled":
+                "secondary_structure.enabled",
+            "refinement.pdb_interpretation."
+            "secondary_structure.protein.remove_outliers":
+                "secondary_structure.protein.remove_outliers",
+            "refinement.pdb_interpretation."
+            "secondary_structure.input.file_name":
+                "secondary_structure.input.file_name",
+            "refinement.pdb_interpretation.ncs.type":
+                "ncs.type",
+            "refinement.pdb_interpretation.ncs.constraints":
+                "ncs.constraints",
         },
         "phenix.resolve_cryo_em": {
             # strategy.mask_atoms prefix-matches to
@@ -2879,6 +2896,30 @@ def _build_with_new_builder(state):
                 state = _log(state,
                     "BUILD: Rewrite strategy key "
                     "'%s' → '%s'" % (_old, _new))
+
+    # === REFERENCE MODEL FILE EXCLUSION (Fix C, Tier 1) ===
+    # When the strategy contains reference_model.file=FILENAME,
+    # that file must NOT be used as the primary model input —
+    # it's a restraint source, not a model to refine.  Without
+    # this, the command builder may select it as the model,
+    # giving "Wrong number of models" (two PDBs as positional
+    # args) or wrong crystal symmetry.
+    #
+    # Inject the filename into file_preferences.exclude so the
+    # command builder skips it during auto-fill.
+    _ref_file = (strategy.get("reference_model.file")
+                 or strategy.get("reference_model_file"))
+    if _ref_file and isinstance(_ref_file, str):
+        _ref_basename = os.path.basename(_ref_file)
+        # Inject into directives.file_preferences.exclude
+        _directives = session_info.setdefault("directives", {})
+        _fprefs = _directives.setdefault("file_preferences", {})
+        _excl = _fprefs.setdefault("exclude", [])
+        if _ref_basename not in _excl:
+            _excl.append(_ref_basename)
+            state = _log(state,
+                "BUILD: Excluding %s from primary model "
+                "(reference_model.file)" % _ref_basename)
 
     if (workflow_state.get("automation_path") == "stepwise" and
         program == "phenix.predict_and_build"):

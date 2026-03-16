@@ -42,6 +42,22 @@ _BLOCKED_PARAMS = {
       "(only after autosol). Post-MR autobuild "
       "should use data= via input_priorities."),
   },
+  "phenix.resolve_cryo_em": {
+    "mask_atoms": (
+      "mask_atoms=True is interpreted as "
+      "strategy.mask_atoms_atom_radius='True' "
+      "(numeric field) → RuntimeError. "
+      "Default masking is adequate."),
+    "output.prefix": (
+      "output.prefix is not a valid PHIL parameter "
+      "for resolve_cryo_em (copied from other logs)."),
+    "d_min": (
+      "d_min is not a valid PHIL parameter for "
+      "resolve_cryo_em; use resolution= instead."),
+    "main.number_of_macro_cycles": (
+      "main.number_of_macro_cycles is not a valid "
+      "PHIL parameter for resolve_cryo_em."),
+  },
 }
 
 # Cache for loaded strategy_flags to avoid repeated YAML reads
@@ -98,11 +114,70 @@ def _load_strategy_flags(program):
   return None
 
 
+# Cache for allowed PHIL prefixes
+_PREFIXES_CACHE = {}
+
+
+def _load_allowed_prefixes(program):
+  """Load allowed_phil_prefixes for a program from programs.yaml.
+
+  Returns:
+      list of prefix strings, or empty list if not defined.
+  """
+  if program in _PREFIXES_CACHE:
+    return _PREFIXES_CACHE[program]
+
+  # Try the libtbx yaml_loader first (production path)
+  try:
+    try:
+      from libtbx.langchain.knowledge.yaml_loader \
+        import get_program
+    except ImportError:
+      from knowledge.yaml_loader import get_program
+    pdef = get_program(program)
+    if pdef:
+      prefixes = pdef.get("allowed_phil_prefixes", [])
+      _PREFIXES_CACHE[program] = prefixes
+      return prefixes
+  except Exception:
+    pass
+
+  # Fallback: load programs.yaml directly
+  try:
+    import os
+    import yaml
+    _dir = os.path.dirname(os.path.abspath(__file__))
+    _yaml_path = os.path.join(
+      _dir, "..", "knowledge", "programs.yaml")
+    _yaml_path = os.path.normpath(_yaml_path)
+    if os.path.isfile(_yaml_path):
+      with open(_yaml_path) as f:
+        data = yaml.safe_load(f)
+      pdef = data.get(program)
+      if pdef and isinstance(pdef, dict):
+        prefixes = pdef.get(
+          "allowed_phil_prefixes", [])
+        _PREFIXES_CACHE[program] = prefixes
+        return prefixes
+  except Exception:
+    pass
+
+  _PREFIXES_CACHE[program] = []
+  return []
+
+
 def validate_phil_strategy(program, strategy):
   """Validate LLM strategy dict against program's strategy_flags.
 
   Strips keys that are not recognized by the target program.
   This prevents unrecognized-PHIL-parameter errors at runtime.
+
+  Validation order:
+    1. Blocked params (always stripped, even if otherwise allowed)
+    2. Exact match against strategy_flags whitelist
+    3. Substring match against allowed_phil_prefixes (case-insensitive)
+    4. Build-pipeline keys (ligand, output_prefix, etc.)
+    5. Everything else → stripped
 
   Args:
       program: Program name (e.g., "phenix.autobuild")
@@ -147,9 +222,19 @@ def validate_phil_strategy(program, strategy):
   # Also allow build-pipeline keys
   allowed = allowed | _BUILD_PIPELINE_KEYS
 
+  # Load allowed PHIL prefixes (case-insensitive substring match).
+  # These cover PHIL namespaces like "ncs.", "secondary_structure",
+  # "reference_model." where the full parameter tree is safe.
+  prefixes = _load_allowed_prefixes(program)
+  # Lowercase for case-insensitive comparison
+  prefixes_lower = [p.lower() for p in prefixes]
+
   cleaned = {}
   for key, value in strategy.items():
     if key in allowed:
+      cleaned[key] = value
+    elif prefixes_lower and any(
+        pfx in key.lower() for pfx in prefixes_lower):
       cleaned[key] = value
     else:
       stripped.append((key, value))

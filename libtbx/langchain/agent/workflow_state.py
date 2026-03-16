@@ -279,7 +279,7 @@ def _match_pattern(filename, pattern):
     return fnmatch.fnmatch(filename.lower(), pattern.lower())
 
 
-def _pdb_is_small_molecule(path, max_bytes=1048576):
+def _pdb_is_small_molecule(path, max_bytes=32768):
     """
     Return True if the PDB file is a small-molecule coordinate file
     (ligand, cofactor, ion, etc.) rather than a macromolecular model.
@@ -299,10 +299,9 @@ def _pdb_is_small_molecule(path, max_bytes=1048576):
 
     Args:
         path:      Full path to the PDB file.
-        max_bytes: How much of the file to read (default 1 MB — must be
-                   large enough to reach coordinate records past long
-                   REMARK/header sections; 32 KB was insufficient for
-                   files like 1aba.pdb with ~400 header lines).
+        max_bytes: How much of the file to read (default 32 KB — enough to
+                   see ~400 lines and reliably distinguish small ligands
+                   from protein models).
 
     Returns:
         True  → file is a small molecule
@@ -333,7 +332,7 @@ def _pdb_is_small_molecule(path, max_bytes=1048576):
         return False                  # Be conservative on read errors
 
 
-def _pdb_is_protein_model(path, max_bytes=1048576):
+def _pdb_is_protein_model(path, max_bytes=32768):
     """
     Return True if the PDB file is predominantly a macromolecular model
     (protein, DNA, RNA) as opposed to a small-molecule ligand.
@@ -354,9 +353,9 @@ def _pdb_is_protein_model(path, max_bytes=1048576):
 
     Args:
         path:      Full path to the PDB file.
-        max_bytes: How much of the file to read (default 1 MB — must be
-                   large enough to reach coordinate records past long
-                   REMARK/header sections).
+        max_bytes: How much of the file to read (default 32 KB — enough to
+                   see ~400 ATOM lines and reliably distinguish small ligands
+                   from protein models).
 
     Returns:
         True  → file is positively identified as a protein model
@@ -626,6 +625,43 @@ def _categorize_files(available_files, ligand_hints=None, files_local=True):
                     if f not in files[dest]:
                         files[dest].append(f)
 
+    # Post-processing: Detect reference model PDB files among models.
+    #
+    # When 2+ PDB files are categorized as "model", one may be a
+    # high-resolution reference model for restraints (not a model to
+    # refine).  If auto-fill picks both as primary model inputs,
+    # phenix.refine crashes with "Wrong number of models".
+    #
+    # Heuristic: if a model file's basename (excluding agent outputs)
+    # matches keywords like "reference", "homolog", "template",
+    # "restraint", "high_res", reclassify it to "reference_model".
+    # The command builder won't use it as a primary model, but it
+    # remains available for reference_model.file= via strategy flags.
+    #
+    # Guard: skip filenames that look like agent outputs (refine_*,
+    # autobuild_*, etc.) to avoid false positives.
+    model_files = files.get("model", [])
+    if len(model_files) >= 2:
+        _REF_KEYWORDS = re.compile(
+            r'(reference|homolog|template|restraint|high.res)',
+            re.IGNORECASE)
+        _AGENT_OUTPUT_PREFIXES = (
+            'refine_', 'autobuild_', 'autosol_', 'phaser_',
+            'resolve_', 'predict_', 'real_space_', 'dock_',
+            'map_to_model_', 'pdbtools_', 'molprobity_', 'rsr_',
+        )
+        for f in list(model_files):  # copy for safe removal
+            bn = os.path.basename(f).lower()
+            if any(bn.startswith(p) for p in _AGENT_OUTPUT_PREFIXES):
+                continue
+            if _REF_KEYWORDS.search(bn):
+                model_files.remove(f)
+                files.setdefault("reference_model", []).append(f)
+                print("INFO: Reclassified '%s' from model "
+                      "to reference_model (filename keyword)"
+                      % os.path.basename(f))
+                break  # Only reclassify one file
+
     # Post-processing: Validate half-map classification.
     #
     # Both the YAML and hardcoded categorizers can misclassify sequentially
@@ -660,34 +696,42 @@ def _categorize_files(available_files, ligand_hints=None, files_local=True):
     # Post-processing: Detect half-map pairs among full_map files.
     #
     # Some cryo-EM half-maps are named with _1/_2 suffixes instead of
-    # containing 'half' (e.g. 7mjs_23883_H_1.ccp4, 7mjs_23883_H_2.ccp4).
+    # containing 'half' (e.g. 7mjs_23883_H_1.ccp4, 7mjs_23883_H_2.ccp4,
+    # 7n8i_24237_box_1.ccp4, 7n8i_24237_box_2.ccp4).
     # The strict 'half'-in-name check (above) correctly avoids false
     # positives on segmented maps, but misses these legitimate pairs.
     #
-    # Heuristic: if full_map has exactly 2 files whose basenames differ
-    # only by a trailing _1/_2 before the extension, AND no files are
-    # already in half_map, AND at least one other map remains in full_map
-    # after removing the pair (the companion full map), promote the pair.
-    #
-    # The companion-full-map guard prevents false positives on
-    # resolve_cryo_em segmented outputs (map_1.ccp4, map_2.ccp4) which
-    # also match the _1/_2 pattern but never come with a companion full
-    # map sharing their prefix.
-    if (not files.get("half_map") and
-        len(files.get("full_map", [])) >= 3):
-        # Need >= 3: at least 2 for the pair + 1 companion full map
+    # Two-tier heuristic:
+    # Tier 1: exactly 2 full_map files whose basenames differ only by
+    #   a trailing _1/_2 before the extension, AND no half_maps.
+    #   When these are the ONLY map files, they're almost certainly
+    #   half-maps (no companion full map to lose).
+    # Tier 2: >= 3 full_map files with a _1/_2 pair AND at least one
+    #   other map remaining after removing the pair (the companion
+    #   full map guard prevents false positives on segmented outputs).
+    if not files.get("half_map"):
         _pair_re = re.compile(
             r'^(.+)[_-]([12])\.(\w+)$', re.IGNORECASE)
         _by_prefix = {}
-        for f in files["full_map"]:
+        for f in files.get("full_map", []):
             m = _pair_re.match(os.path.basename(f))
             if m:
                 prefix = m.group(1).lower()
                 _by_prefix.setdefault(prefix, []).append(f)
+
+        n_full = len(files.get("full_map", []))
         for prefix, pair in _by_prefix.items():
-            if len(pair) == 2:
-                # Verify at least one non-pair map remains
-                # (the companion full map)
+            if len(pair) != 2:
+                continue
+            # Tier 1: exactly 2 full_map files that form a pair
+            # (no companion full map needed — these ARE the only maps)
+            if n_full == 2:
+                for f in pair:
+                    files["full_map"].remove(f)
+                    files["half_map"].append(f)
+                break  # Only one pair possible with 2 files
+            # Tier 2: pair + companion full map
+            elif n_full >= 3:
                 remaining = [
                     f for f in files["full_map"]
                     if f not in pair]

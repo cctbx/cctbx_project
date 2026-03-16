@@ -1273,6 +1273,24 @@ phenix.refine:
       flag: "reference_model.use_starting_model_as_reference={value}"
       type: boolean
       hint: "Use starting model as the reference model"
+    ramachandran_restraints:
+      flag: "ramachandran_restraints={value}"
+      type: boolean
+      hint: "Enable Ramachandran restraints for low-resolution refinement"
+
+  # PHIL namespace prefixes that are safe to pass through PHIL validation.
+  # Any strategy key containing one of these as a substring is allowed,
+  # even if not explicitly listed in strategy_flags.  This covers both
+  # short forms (ncs.type) and full PHIL paths
+  # (refinement.pdb_interpretation.ncs.type).
+  #
+  # Covers standard crystallographic restraint parameters that tutorials
+  # and users commonly need but are too numerous to list individually.
+  allowed_phil_prefixes:
+    - "reference_model."         # .file, .enabled, .use_starting_model, etc.
+    - "secondary_structure"      # .enabled, .protein.*, .input.file_name, etc.
+    - "ncs."                     # .type, .constraints, .find_ncs, .groups, etc.
+    - "ramachandran"             # ramachandran_restraints, ramachandran_plot
 
   log_parsing:
     r_free:
@@ -1621,17 +1639,16 @@ phenix.resolve_cryo_em:
   # strategy_flags defines the ONLY key=value params allowed (beyond files).
   # Without this, sanitize_command cannot strip LLM-hallucinated params
   # like main.number_of_macro_cycles=1.
-  # Note: mask_atoms is a valid param (used by _STRATEGY_REWRITES in
-  # graph_nodes.py to normalize "strategy.mask_atoms" → "mask_atoms").
+  # Note: mask_atoms was removed because `mask_atoms=True` gets resolved
+  # by PHENIX to `strategy.mask_atoms_atom_radius="True"` which is a
+  # numeric field → RuntimeError.  The correct PHIL path would be
+  # `strategy.mask_atoms=True` but the LLM doesn't know the full path.
+  # resolve_cryo_em works fine without it (default is adequate).
   strategy_flags:
     resolution:
       flag: "resolution={value}"
       type: float
       hint: "High-resolution limit for density modification"
-    mask_atoms:
-      flag: "mask_atoms={value}"
-      type: boolean
-      hint: "Mask atoms in density modification"
 
   input_priorities:
     half_map:

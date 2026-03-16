@@ -1,5 +1,110 @@
 # CHANGELOG — v115
 
+## Version 115.07 (Run 15b Bug Fixes — Phase 3)
+
+### Summary
+
+Four bugs identified from analysis of run 15b (OpenAI, 371 runs, 42
+tutorials). Fixes address a graph crash from uncoerced JSON metrics, a
+cryo-EM half-map pair detection gap, a terminal crash loop, and an LLM
+hallucination pattern. Two issues deferred as known limitations.
+
+**Run 15b headline:** 9→18 GOOD tutorials (doubled), failure rate 39%→34%.
+Phase 3 targets remaining failures: lysozyme-refine (77%), apoferritin
+denmod_dock (57%), 7rpq (never refines), AF_7n8i (5/10 fail).
+
+### Modified files (4)
+
+| File | Bug | Changes |
+|------|-----|---------|
+| `agent/structure_model.py` | 4 | **Numeric coercion**: added `_coerce_numerics()` function — coerces all float/int fields after `from_dict()` deserialization. Added `_safe_float()` guards at all 6 arithmetic and formatting sites in `_detect_problems()`, `get_summary()`, and `_format_report()`. Progress entries also coerced. Prevents `TypeError: unsupported operand type(s) for -: 'str' and 'float'` when model_vs_data stores metrics as strings in session JSON. |
+| `agent/workflow_state.py` | 6 | **Two-tier half-map pair detection**: relaxed `_categorize_files()` heuristic. Tier 1 (new): when exactly 2 `full_map` files form a `_1/_2` pair, promote to `half_map` without requiring a companion full map. Tier 2 (existing): when ≥3 `full_map` files include a pair, promote only if a companion remains. Fixes AF_7n8i where `box_1.ccp4`/`box_2.ccp4` were the only maps. |
+| `agent/phil_validator.py` | 3 | **Blocked params**: added `phenix.resolve_cryo_em` to `_BLOCKED_PARAMS` with 4 entries: `mask_atoms`, `output.prefix`, `d_min`, `main.number_of_macro_cycles`. These are LLM-hallucinated params copied from mtriage log output that cause RuntimeError. |
+| `knowledge/diagnosable_errors.yaml` | 1 | **Terminal diagnosis**: added `unknown_chemical_element` — detects "Unknown chemical element type" errors (bad PDB columns 77-78) and stops immediately with actionable hint instead of crash-looping. |
+
+Also modified (config):
+
+| File | Bug | Changes |
+|------|-----|---------|
+| `knowledge/programs.yaml` | 3 | Removed `mask_atoms` from `phenix.resolve_cryo_em` `strategy_flags` whitelist. Only `resolution` passes through. |
+
+### Bug details
+
+| Bug | Tutorial | Symptom | Root cause | Fix |
+|-----|----------|---------|-----------|-----|
+| 1 | lysozyme-refine | 77% fail, no metric | PDB has AU atom missing element columns → refine crashes → agent retries 5× | Terminal diagnosis: stop with hint |
+| 3 | apoferritin_denmod_dock | 57% fail (LLM modes) | LLM copies `mask_atoms=True` from mtriage log → `strategy.mask_atoms_atom_radius="True"` RuntimeError | Whitelist removes it; `_BLOCKED_PARAMS` double-blocks it |
+| 4 | 7rpq_AF_reference | 0% fail but stops at R=0.386 | model_vs_data stores `r_work="0.385"` (string) → cycle 3 graph crashes on `r_free - r_work` | `_coerce_numerics()` + `_safe_float()` everywhere |
+| 5 | lowres_restraints | 75% fail (restraint params stripped) | PHIL validator strips `reference_model.file`, `ncs.*`, `secondary_structure.*`, `ramachandran_restraints` — 7 of 8 params lost | Hierarchical prefix whitelist + path resolution + reference model exclusion |
+| 6 | AF_7n8i | 5/10 modes fail at mtriage | `box_1.ccp4`/`box_2.ccp4` not recognized as half-maps (old heuristic required ≥3 full_map files) | Tier 1: exactly 2 matching files → promote |
+
+### Bug 5 details — Reference model restraints for phenix.refine
+
+**Problem:** phenix.refine has a massive PHIL parameter tree, but the
+strategy_flags whitelist had only 13 entries. Advanced crystallographic
+restraint parameters (reference model, NCS, secondary structure, Ramachandran)
+were correctly extracted by the LLM from the README but stripped by PHIL
+validation. The tutorial requires all of these to produce a meaningful result.
+
+**Fix A — Hierarchical prefix whitelist** (`programs.yaml` + `phil_validator.py`):
+Added `allowed_phil_prefixes` to phenix.refine: `reference_model.`,
+`secondary_structure`, `ncs.`, `ramachandran`. The PHIL validator now allows
+any strategy key containing one of these as a case-insensitive substring.
+This covers both short forms (`ncs.type`) and full PHIL paths
+(`refinement.pdb_interpretation.ncs.type`). Added `ramachandran_restraints`
+as an individual strategy_flag (standalone param, not under a namespace).
+
+**Fix B — Path resolution** (`program_registry.py`):
+Added a pre-pass in `build_command()` that detects strategy values ending
+in file extensions (`.pdb`, `.cif`, `.params`, `.eff`, etc.) and resolves
+them to absolute paths. Builds a basename→path lookup from the command's
+input files and the working directory. Handles the LLM writing
+`reference_model.file=4pf4.pdb` (relative) by resolving to the full path.
+
+**Fix C — Reference model exclusion** (3-tier):
+- Tier 1 (`command_builder.py`): When `reference_model.file` is in the strategy,
+  exclude that file from primary model selection. Already existed (lines 380-394),
+  but was blocked because Fix A wasn't in place — now unblocked.
+- Tier 2 (`workflow_state.py`): When ≥2 PDB files are in the `model` category
+  and one matches `reference|homolog|template|restraint|high.res` (but NOT
+  agent output prefixes like `refine_`, `autobuild_`), reclassify to
+  `reference_model`.
+- Tier 3: LLM extraction of `reference_model.file=` from README feeds Tier 1.
+
+**Fix D — Strategy rewrites** (`graph_nodes.py`):
+5 new `_STRATEGY_REWRITES` entries normalize verbose PHIL paths to shortest
+valid forms (e.g. `refinement.pdb_interpretation.ncs.type` → `ncs.type`).
+
+### Deferred issues
+
+| Tutorial | Symptom | Why deferred |
+|----------|---------|-------------|
+| lysozyme-MRSAD | 72% fail (multi-wavelength label confusion) | Needs wavelength selection feature (Phase 4) |
+
+### Other changes this session
+
+| File | Change |
+|------|--------|
+| `knowledge/plan_schema.py` | `record_stage_cycle()` catch-up: when agent runs ahead of plan tracker (e.g. ligandfit during refine stage), advance through intermediate stages. Overshoot guard: verify `new_curr` matches program before counting. |
+| `phenix_ai/local_agent.py` | Added `client_version=self._get_client_version()` + `_get_client_version()` method for parity with RemoteAgent. |
+| `phenix_ai/remote_agent.py` | Added `request["settings"]["verbosity"]` and `events=parsed.get("events", [])` for parity with LocalAgent. |
+| `tests/tst_audit_fixes.py` | 3 stale tests updated: `test_k2_mtriage` (prefers_half_maps), `test_k2_map_sharpening` (positional), `test_s5h_inject_program_defaults` (generate not in defaults). |
+| `tests/tst_backward_compat.py` | 3 new parity tests (26 total): `test_local_remote_agent_settings_parity`, `test_local_remote_agent_return_parity`, `test_local_agent_full_roundtrip`. |
+| `docs/ARCHITECTURE.md` | Added "Local/Remote Parity Invariant" section. |
+| `docs/DEVELOPER_GUIDE.md` | Added RULE 8: "LocalAgent and RemoteAgent must be identical". |
+
+### Test results
+
+| Suite | Tests |
+|-------|-------|
+| `tst_structure_model.py` | 77/77 |
+| `tst_plan_schema.py` | 53/53 |
+| `tst_backward_compat.py` | 26/26 |
+| `tst_command_builder.py` | 22/22 |
+| `tst_event_system.py` | 13/13 |
+| **Total** | **191/191** |
+
+
 ## Version 115.06 (Cryo-EM Half-Map Handling — Phase 2)
 
 ### Summary

@@ -154,6 +154,33 @@ errors:
       (4) manually edit the model to move the offending atom away from the
       special position before refinement.
 
+  # ---------------------------------------------------------------------------
+  # Unknown chemical element type in PDB file
+  # ---------------------------------------------------------------------------
+  # Example error (phenix.refine, phenix.real_space_refine, etc.):
+  #   Sorry: Unknown chemical element type:
+  #   "ATOM   1001  AU  AU    500 .*.        "
+  #   To resolve this problem, specify a chemical element type in
+  #   columns 77-78 of the PDB file, right justified (e.g. " C").
+  # The PDB has atoms with missing or invalid element symbols in
+  # columns 77-78.  The agent cannot edit PDB files — user must fix.
+  # ---------------------------------------------------------------------------
+  unknown_chemical_element:
+    description: "PDB file contains atoms with missing or invalid element types"
+    detection_patterns:
+      - "Unknown chemical element type"
+      - "specify a chemical element type in.*columns 77"
+    diagnosis_hint: >
+      A PDB file contains atoms whose chemical element type cannot be
+      determined.  This happens when columns 77-78 of the PDB file are
+      blank or contain an unrecognized symbol.  The fix is to edit the PDB
+      file and add the correct element symbols (e.g. " C", " N", " O",
+      "AU", "FE") right-justified in columns 77-78 of each ATOM/HETATM
+      record.  Common causes: (1) heavy-atom sites from experimental
+      phasing stored without element columns, (2) non-standard atom
+      names (e.g. "AU" for gold) that PHENIX cannot auto-detect, or
+      (3) PDB files from very old software that omits columns 77-78.
+
   # NOTE: Python tracebacks (program crashes) are NOT listed here because
   # the agent may be able to pivot to a different program and continue.
   # Traceback detection is handled in the planning prompt (Fix 3) which

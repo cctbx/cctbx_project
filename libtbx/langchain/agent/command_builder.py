@@ -371,6 +371,28 @@ class CommandBuilder:
 
     self._log(context, "BUILD: Starting command generation for %s" % program)
 
+    # 0.5 Reference model exclusion (Fix C, Tier 1).
+    # When the strategy contains reference_model.file=FILENAME, that
+    # file is a RESTRAINT source (not a model to refine).  Exclude it
+    # from primary model selection so the command builder doesn't pick
+    # it as the positional model argument alongside the real model.
+    # This prevents "Wrong number of models" from phenix.refine.
+    if context.llm_strategy:
+      _ref_file = (context.llm_strategy.get("reference_model.file")
+                   or context.llm_strategy.get("reference_model_file"))
+      if _ref_file:
+        _ref_basename = os.path.basename(str(_ref_file))
+        # Inject into the exclude list (context is per-build, safe to modify)
+        if context.directives is None:
+          context.directives = {}
+        _fp = context.directives.setdefault("file_preferences", {})
+        _excl = _fp.setdefault("exclude", [])
+        if _ref_basename not in _excl:
+          _excl.append(_ref_basename)
+          self._log(context,
+            "BUILD: Excluding reference model '%s' from primary model selection"
+            % _ref_basename)
+
     # 1. Select files
     files = self._select_files(program, available_files, context)
     if files is None:
@@ -442,6 +464,44 @@ class CommandBuilder:
       files_summary = ", ".join("%s=%s" % (k, os.path.basename(str(v)))
                    for k, v in files.items())
       self._log(context, "BUILD: Final files: {%s}" % files_summary)
+
+    # 3.7 Resolve file paths in strategy values.
+    # Strategy entries like reference_model.file=4pf4.pdb or
+    # secondary_structure.input.file_name=curated_ss.param contain
+    # relative filenames that need absolute paths for PHENIX.
+    # Detect values that look like filenames (by extension) and resolve
+    # via the same basename → full-path lookup used for file selection.
+    _FILE_EXTENSIONS = frozenset({
+      '.pdb', '.cif', '.mtz', '.params', '.eff',
+      '.dat', '.fa', '.fasta', '.seq', '.phil',
+      '.ncs_spec', '.param',
+    })
+    if strategy:
+      _basename_to_path = {
+        os.path.basename(f): f for f in available_files if f}
+      for key in list(strategy.keys()):
+        val = str(strategy[key])
+        val_lower = val.lower()
+        if any(val_lower.endswith(ext) for ext in _FILE_EXTENSIONS):
+          # Looks like a filename — try to resolve
+          resolved = self._correct_single_path(
+            val, _basename_to_path, available_files)
+          if resolved:
+            strategy[key] = resolved
+            self._log(context,
+              "BUILD: Resolved strategy path %s=%s"
+              % (key, os.path.basename(resolved)))
+          elif os.path.isfile(val):
+            strategy[key] = os.path.abspath(val)
+          elif os.path.isfile(
+              os.path.join(
+                os.path.dirname(available_files[0])
+                if available_files else ".",
+                val)):
+            strategy[key] = os.path.abspath(
+              os.path.join(
+                os.path.dirname(available_files[0]),
+                val))
 
     # 4. Assemble final command (provenance is logged inside registry.build_command)
     command = self._assemble_command(program, files, strategy,
