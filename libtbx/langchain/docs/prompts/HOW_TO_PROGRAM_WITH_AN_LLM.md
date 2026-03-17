@@ -3,10 +3,16 @@
 A practical guide for programmers who are new to using
 large language models as coding partners. The quick-start
 below gets you going immediately. Part 1 covers general
-principles that apply to any LLM and any codebase.
-Part 2 describes the specific prompt files and workflow
-we use on this project, with all small prompts shown
-in full.
+principles that apply to any LLM and any codebase, with
+the project-specific prompts shown in context where each
+principle is introduced. Part 2 covers the project
+workflow: rules of engagement, which guideline files to
+attach and when, and checklists for the human side of
+the process.
+
+All prompt files live in `docs/prompts/`. The small ones
+are reproduced in full throughout this document so you
+can read the guide without opening anything else.
 
 ---
 
@@ -25,7 +31,7 @@ in detail in Parts 1 and 2.
    your code archive, and `HANDOFF.json` if resuming.
    (Also attach
    `AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md` if working
-   on agent code.)
+   on agent code. See §2.2 for when to use which file.)
 
 3. **Paste `WORKFLOW_PROMPT.txt`** as the first message.
    The LLM will acknowledge the rules and ask for
@@ -39,15 +45,14 @@ in detail in Parts 1 and 2.
    back. Revise once or twice.
 
 6. **Let the LLM implement.** Verify each step (see
-   §1.5 Verification Discipline). Make sure it updates
-   `HANDOFF.json` after each step.
+   §1.5). Make sure it updates `HANDOFF.json` after
+   each step.
 
 7. **If the session dies,** start a new session with the
    same attachments and paste `CONTINUE_PROMPT.txt`.
 
 For what each file contains, see the **File Reference**
-table at the end of this document. For the full prompts,
-see §2.2.
+table at the end of this document.
 
 ---
 
@@ -89,7 +94,7 @@ effectively does not exist.
 - Coding standards and style guides. The LLM will match
   whatever conventions you show it. (On this project,
   that means attaching
-  `CCTBX_LLM_PROGRAMMING_GUIDELINES.md` — see §2.1.)
+  `CCTBX_LLM_PROGRAMMING_GUIDELINES.md` — see §2.2.)
 - Error messages, test output, and log snippets when
   debugging. Copy the actual text — don't paraphrase.
 - A description of what you want, including constraints
@@ -160,29 +165,69 @@ time.
 
 The recommended cycle:
 
-1. **Plan.** Ask the LLM to produce a written plan —
-   problem description, approach, implementation steps,
-   risks. Review it yourself. (On this project, use the
-   `PLAN_PROMPT.txt` prompt — see §2.2.)
+```
+START ────────► PLAN ─────────► REVIEW ────────► IMPLEMENT ──► VERIFY
+  │               │               │                │              │
+Attach:         Paste:          Give plan +      LLM writes    You run
+ CCTBX Guide    PLAN_PROMPT     REVIEW.txt       code, updates  tests,
+ WORKFLOW.md    + problem       to a second      HANDOFF.json   read
+ code archive   description     LLM              after each     diffs,
+ HANDOFF.json                                    step           check
+Paste:                                                          edges
+ WORKFLOW_PROMPT
+```
 
-2. **Cross-review.** For important changes, give the
-   plan to a second LLM (or a colleague) for critique.
-   A different model catches different blind spots.
-   (On this project, use the `REVIEW.txt` prompt — see
-   §2.2.)
+**Step 1 — Plan.** Ask the LLM to produce a written
+plan: problem description, approach, implementation
+steps, risks. Review it yourself. When you are ready
+to request the plan, use this prompt:
 
-3. **Revise.** Feed the critique back to the first LLM.
-   Limit to 1–2 revision rounds — diminishing returns
-   set in fast.
+```text
+Please make a plan for fixing these problems. Include
+a full discussion of the problem, the overall approach,
+the details of the approach, implementation plan, and
+risks involved and their mitigation. write as md
+```
 
-4. **Implement.** Only now does the LLM write code,
-   following the agreed plan step by step. The LLM
-   should checkpoint after each step so that work is
-   recoverable if interrupted. (On this project, this
-   means updating `HANDOFF.json` — see §2.3.)
+(This is `PLAN_PROMPT.txt`.)
 
-5. **Verify.** You run the code, run the tests, and
-   confirm correctness. The LLM cannot do this for you.
+**Step 2 — Cross-review.** For important changes, give
+the plan to a second LLM for critique. A different model
+catches different blind spots. Use this prompt with the
+second LLM:
+
+```text
+Gemini, you are a senior engineer tasked with
+**critically reviewing this plan**. Your goal is to find
+every potential flaw, unclear assumption, or workflow
+violation. Be specific and constructive; do not give
+generic praise.
+
+For each step:
+1. Identify issues or risks
+2. Explain why it is a problem
+3. Suggest improvements or alternatives
+
+Limit to 1–2 paragraphs per step. Do not provide
+general compliments.
+```
+
+(This is `REVIEW.txt`. It names Gemini but works with
+any LLM — the important thing is a different model from
+the one that wrote the plan.)
+
+**Step 3 — Revise.** Feed the critique back to the first
+LLM. Limit to 1–2 revision rounds — diminishing returns
+set in fast.
+
+**Step 4 — Implement.** Only now does the LLM write
+code, following the agreed plan step by step. The LLM
+should checkpoint after each step so that work is
+recoverable if interrupted (see §1.7).
+
+**Step 5 — Verify.** You run the code, run the tests,
+and confirm correctness. The LLM cannot do this for you
+(see §1.5).
 
 This cycle prevents the most expensive failure mode:
 the LLM confidently building out an approach that was
@@ -214,6 +259,20 @@ Concrete verification steps:
 - **Check edge cases** the LLM may not have considered:
   None values, empty collections, missing keys,
   unexpected types, concurrent access.
+
+**Project-specific checks** (see §2.4 for the full
+checklist):
+
+- **Command check:** If the code builds PHENIX commands,
+  verify every parameter against the program's PHIL
+  definition or `programs.yaml` strategy flags. The LLM
+  will hallucinate parameters that don't exist.
+- **Import check:** If the code is in `agent/`, verify
+  every `libtbx.langchain` import has a
+  `try/except ImportError` fallback.
+- **State check:** Did the LLM update `HANDOFF.json`
+  before starting this step? If not, remind it now —
+  before you lose the session.
 
 ### 1.6 Common LLM Failure Modes
 
@@ -266,14 +325,12 @@ interrupted by context length limits, timeouts, network
 issues, or simply because you closed the browser tab.
 Plan for this.
 
-**Checkpointing.** After each meaningful step, have the
-LLM write a checkpoint file that captures: what was
-done, what remains, what decisions were made, and what
-the next step is. If the session dies, a new session
-can pick up from the checkpoint with no loss.
+#### Checkpointing with HANDOFF.json
 
-On this project we use `HANDOFF.json` for this purpose.
-A blank one looks like this:
+After each meaningful step, the LLM writes a checkpoint
+file that captures: what was done, what remains, what
+decisions were made, and what the next step is. On this
+project we use `HANDOFF.json`. A blank template:
 
 ```json
 {
@@ -291,24 +348,68 @@ A blank one looks like this:
 ```
 
 The LLM fills in and updates every field as work
-progresses. The critical property: a new LLM session
-should be able to resume using *only* `HANDOFF.json`
-and the code, with no other context about what happened
-before. (The full rules for when and how to update it
-are in `WORKFLOW.md` — see §2.1.)
+progresses. The critical property: **a new LLM session
+must be able to resume using only `HANDOFF.json` and
+the code, with no other context about what happened
+before.** The full rules for when and how to update it
+are in `WORKFLOW.md` (see §2.1).
 
-**Session length.** Shorter sessions with clear handoffs
-are more reliable than marathon sessions. After about
-15–20 back-and-forth exchanges, consider wrapping up and
-starting fresh. Each new session gets a clean context
-window and a fresh start on the instructions you
-provide.
+If the LLM is not updating `HANDOFF.json` after each
+step, remind it. This is the most common workflow
+violation.
 
-**Starting a new session.** Always provide:
+#### Session length
+
+Shorter sessions with clear handoffs are more reliable
+than marathon sessions. After about 15–20 back-and-forth
+exchanges, consider wrapping up and starting fresh. Each
+new session gets a clean context window and a fresh start
+on the instructions you provide.
+
+#### Resuming after interruption
+
+When a session dies (timeout, context limit, crash),
+here is the exact recovery procedure:
+
+1. Open a new LLM session.
+2. Attach the same reference documents as before
+   (`CCTBX_LLM_PROGRAMMING_GUIDELINES.md`,
+   `WORKFLOW.md`, and
+   `AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md` if
+   applicable).
+3. Attach the current `HANDOFF.json` and the code
+   archive.
+4. Paste this prompt as the opening message:
+
+```text
+You were interrupted.
+
+Do NOT continue from memory.
+
+1. Read the attached HANDOFF.json to understand the
+   state.
+2. Read the code archive to see what was actually
+   implemented.
+3. Summarize where we are and what the very next
+   micro-step is.
+
+If anything is unclear or missing, ask before
+proceeding.
+```
+
+(This is `CONTINUE_PROMPT.txt`.)
+
+The LLM will read `HANDOFF.json`, tell you where things
+stand, and propose the next step. Confirm before it
+proceeds.
+
+#### Starting a new session (not a resume)
+
+Always provide:
 
 1. The reference documents (coding guidelines, workflow
-   rules)
-2. The current `HANDOFF.json`
+   rules — see §2.2 for which to attach)
+2. The current `HANDOFF.json` (if any prior work exists)
 3. The relevant source files
 4. A clear statement of what to do next
 
@@ -326,8 +427,9 @@ situations:
 different LLM critique it. They make different kinds of
 mistakes, so the reviewer will often catch things the
 author missed. This is the most effective multi-LLM
-pattern. (On this project, the `REVIEW.txt` prompt is
-designed for this — see §2.2.)
+pattern. The `REVIEW.txt` prompt (shown in §1.4) is
+designed for exactly this — give it plus the plan to
+the second LLM.
 
 **Stuck debugging.** If one LLM has gone in circles on
 a bug, describe the problem fresh to a different model.
@@ -383,72 +485,249 @@ revision — just as you would with a human author.
 
 ---
 
-## Part 2: Project-Specific Prompts and Workflow
+## Part 2: Project Workflow
 
-The `docs/prompts/` directory contains ready-made
-prompts and reference documents for driving LLM coding
-sessions on this project. This section explains each
-file, shows the small ones in full, and describes how
-they fit together.
+### 2.1 Rules of Engagement
 
-### 2.1 Reference Documents (attach at session start)
+When you start a session using `WORKFLOW_PROMPT.txt`
+(the full text is in the Appendix), the LLM is
+instructed to follow these rules. Knowing them helps you
+understand why the LLM behaves the way it does — and
+when to correct it.
 
-These files give the LLM the context it needs to produce
-correct code. Attach them as files at the beginning of
-any coding session — don't paste their contents, since
-they are large and would clutter the conversation.
+**Small steps.** The LLM must modify at most 3 files
+per step unless it justifies more. Work is broken into
+micro-steps: understand the problem, identify files,
+create a plan, implement one change, validate, repeat.
 
-**`CCTBX_LLM_PROGRAMMING_GUIDELINES.md`** — The base
-guideline for all LLM sessions. Contains coding
-standards (2-space indent, 80-char lines, naming
-conventions), cctbx/PHENIX-specific patterns (PHIL
-parameters, flex arrays, space group conventions, import
-patterns), common pitfalls (None-safety on `dict.get()`,
-R-free as fraction not percentage, hardcoded path
-separators), error handling rules ("never raises"
-pattern, no bare excepts), and a pre-submission
-checklist. **Attach this to every session.**
+**No placeholders.** The LLM must provide full copies of
+all changed files, never diffs-only or
+`# ... rest of code stays the same ...` comments. You
+should be able to drop the output directly into the
+codebase.
 
-**`WORKFLOW.md`** — Defines the incremental work model
-that keeps sessions recoverable. Covers `HANDOFF.json`
-field requirements, mandatory checkpoint timing (after
-every reasoning step, code change, and test run), the
-plan format (max 6–8 steps, each independently
-executable), the plan refinement protocol (1–2 rounds
-of critique), file change limits (max 3 files per step),
-output format (full file copies in a tar.gz archive),
-and the interruption protocol (stop immediately, write
-`HANDOFF.json`). **Attach this to every session.**
+**Mandatory checkpoints.** The LLM must update
+`HANDOFF.json` after every micro-step — after reasoning,
+after each code change, before running tests, after test
+results, and before ending its response. This is the
+rule that gets violated most often. If you notice the
+LLM batching multiple changes without checkpointing,
+remind it.
 
-**`AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md`** — Supplement
-for work on the AI Agent code (`agent/`, `knowledge/`,
-`programs/ai_agent.py`). Covers parameter verification
-against `programs.yaml`, the three logging conventions
-(logger in `agent/`, `self.vlog` in `ai_agent.py`,
-`print()` in tests), import fallback requirements
-(`libtbx.langchain` vs direct import), analysis mode
-routing, the three error classification systems, client
-vs server code path awareness, session state
-persistence rules, changelog format, and agent-specific
-test patterns. **Attach this when working on agent
-code.**
+**Plan before code.** The LLM must write a plan (max
+6–8 steps, each independently executable) and have it
+reviewed before writing any code. See §1.4.
 
-### 2.2 Session Prompts (copy-paste at specific moments)
+**Archive output.** When delivering changes, the LLM
+produces a tar.gz archive preserving the original
+directory structure, plus the updated `HANDOFF.json` and
+a short explanation for each modified file.
 
-These are short prompts you paste directly into the chat
-at specific points during a session. Each one is
-reproduced in full below.
+The full workflow rules are in `WORKFLOW.md`, which the
+LLM reads at session start.
+
+### 2.2 Which Guideline Files to Attach
+
+Attaching the right guideline files gives the LLM the
+conventions and pitfalls specific to the code it will
+touch. Attaching the wrong ones wastes context window
+space. Here is when to use each:
+
+**Always attach (every session):**
+
+- **`CCTBX_LLM_PROGRAMMING_GUIDELINES.md`** — The base
+  layer. Covers coding standards (2-space indent,
+  80-char lines, naming conventions), cctbx/PHENIX
+  patterns (PHIL parameters, flex arrays, space group
+  conventions, import patterns), common pitfalls
+  (None-safety on `dict.get()`, R-free as fraction not
+  percentage, hardcoded path separators), error handling
+  rules ("never raises" pattern, no bare excepts), and
+  a pre-submission checklist. Use for any code involving
+  crystallographic logic, PHIL parameters, or standard
+  PHENIX utilities.
+
+- **`WORKFLOW.md`** — Defines the checkpoint discipline,
+  plan format, interruption protocol, and output
+  requirements. This is what makes sessions recoverable.
+
+**Attach when working on agent code:**
+
+- **`AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md`** — The
+  agent layer. Use only when working within `agent/`,
+  `knowledge/`, or `programs/ai_agent.py`. Contains
+  strict rules about parameter verification against
+  `programs.yaml` (the command sanitizer strips unknown
+  flags silently), `libtbx.langchain` import fallbacks
+  (both paths must resolve — this is different from the
+  general cctbx pattern), the three error classification
+  systems (which must agree when you add a new error
+  pattern), client vs server code path awareness,
+  `session.data` persistence (every new state field must
+  appear in three places), and agent-specific test
+  patterns.
+
+**Don't over-attach.** If you are fixing a bug in
+`iotbx/pdb/`, you don't need the agent guidelines. If
+you are modifying `agent/error_classifier.py`, you do.
+Extra guideline files cost context window space that
+could hold more of the actual code the LLM needs to see.
+
+### 2.3 The Workflow Visualized
+
+Here is the full cycle showing which prompt to use at
+each stage and what the human does at each step:
+
+```
+  ┌─────────────────────────────────────────────────┐
+  │               START SESSION                     │
+  │                                                 │
+  │  Attach as files (do NOT paste):                │
+  │    CCTBX_LLM_PROGRAMMING_GUIDELINES.md          │
+  │    WORKFLOW.md                                  │
+  │    AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md       │
+  │      (only if working on agent code)            │
+  │    code archive                                 │
+  │    HANDOFF.json (if resuming)                   │
+  │                                                 │
+  │  Paste into chat:                               │
+  │    WORKFLOW_PROMPT.txt                           │
+  └────────────────────┬────────────────────────────┘
+                       │
+                       ▼
+  ┌─────────────────────────────────────────────────┐
+  │                  PLAN                           │
+  │  Paste into chat:                               │
+  │    PLAN_PROMPT.txt + problem description        │
+  │  Human: Read the plan. Does it make sense?      │
+  └────────────────────┬────────────────────────────┘
+                       │
+                       ▼
+  ┌─────────────────────────────────────────────────┐
+  │            REVIEW (recommended)                 │
+  │  In a DIFFERENT LLM session:                    │
+  │    Give the plan + REVIEW.txt                   │
+  │  Feed critique back to first LLM.               │
+  │  Revise 1–2 rounds.                             │
+  └────────────────────┬────────────────────────────┘
+                       │
+                       ▼
+  ┌─────────────────────────────────────────────────┐
+  │               IMPLEMENT                         │
+  │  LLM executes plan step by step.                │
+  │  LLM updates HANDOFF.json after each step.      │
+  │  Human: verify each step (§1.5, §2.4)           │
+  └────────────────────┬────────────────────────────┘
+                       │
+              ┌────────┴────────┐
+              ▼                 ▼
+  ┌──────────────────┐  ┌──────────────────────────┐
+  │      DONE        │  │     INTERRUPTED           │
+  │  HANDOFF.json    │  │  New session              │
+  │  reflects final  │  │  Same file attachments    │
+  │  state.          │  │  Paste CONTINUE_PROMPT    │
+  │                  │  │  (see §1.7)               │
+  └──────────────────┘  └──────────────────────────┘
+```
+
+### 2.4 The Human Navigator's Checklist
+
+Your job is verification and navigation. The LLM cannot
+do these things for itself. Use this checklist to make
+sure you are holding up your end.
+
+**At session start:**
+
+- [ ] Did I attach `CCTBX_LLM_PROGRAMMING_GUIDELINES.md`
+      and `WORKFLOW.md`?
+- [ ] Did I also attach
+      `AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md` (if
+      working on agent code)?
+- [ ] Did I attach `HANDOFF.json` (if resuming)?
+- [ ] Did I provide only the relevant code files, not
+      the entire codebase?
+
+**After the LLM produces a plan:**
+
+- [ ] Did I read the plan and check it makes sense?
+- [ ] For non-trivial changes, did I send the plan to
+      a second LLM for review?
+
+**After each implementation step:**
+
+- [ ] Did I run `ast.parse()` (or equivalent) on every
+      changed file?
+- [ ] Did I run the tests that exercise the changed
+      code?
+- [ ] Did I read the diff and reject unrelated changes?
+- [ ] Did the LLM hallucinate any PHENIX parameters?
+      (Check against the actual PHIL definition or
+      `programs.yaml` strategy flags.)
+- [ ] Is the LLM keeping `HANDOFF.json` current? If
+      not, remind it.
+
+**Agent-specific checks (when working on agent code):**
+
+- [ ] If a new state field was added, did the LLM
+      update `create_initial_state()`, `session.data`,
+      and `contract.py`?
+- [ ] If a new error pattern was added, does it appear
+      in all three classification systems?
+- [ ] Do all `libtbx.langchain` imports have fallback
+      `except ImportError` blocks?
+
+**At session end:**
+
+- [ ] Does `HANDOFF.json` reflect the final state?
+- [ ] Could a new session resume from `HANDOFF.json`
+      alone?
+- [ ] Did the LLM provide full file copies (not just
+      diffs)?
 
 ---
 
-#### `WORKFLOW_PROMPT.txt` — Start a new session
+## Appendix A: File Reference
 
-Use this as the opening message when starting a coding
-session. It tells the LLM to read `HANDOFF.json` (if
-one exists), summarize the current state, propose a
-plan, and follow the checkpoint discipline defined in
-`WORKFLOW.md`. Pair it with the reference documents from
-§2.1.
+All files live in `docs/prompts/`.
+
+**Attach as files** — these are large reference
+documents. Do NOT paste their contents into the chat;
+that crowds out the LLM's reasoning space and leaves
+less room for your actual code.
+
+| File | Size | Purpose | When to attach |
+|------|------|---------|----------------|
+| `CCTBX_LLM_PROGRAMMING_GUIDELINES.md` | ~650 lines | Coding standards, cctbx patterns, pitfalls, checklist | **Every** session |
+| `WORKFLOW.md` | ~250 lines | Checkpoint rules, plan format, interruption protocol | **Every** session |
+| `AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md` | ~310 lines | Agent-specific patterns: imports, state persistence, error systems | Only when working on **agent code** |
+
+**Paste into chat** — these are short prompts you type
+or paste at specific moments during a session. They are
+small enough that pasting is fine.
+
+| File | Size | Purpose | When to paste |
+|------|------|---------|---------------|
+| `WORKFLOW_PROMPT.txt` | ~55 lines | Start a session; sets checkpoint rules | As the **first message** (full text in Appendix B) |
+| `PLAN_PROMPT.txt` | 2 lines | Ask the LLM for an implementation plan | When **requesting a plan** (full text in §1.4) |
+| `REVIEW.txt` | ~8 lines | Ask a second LLM to critique a plan | Into a **different LLM** with the plan (full text in §1.4) |
+| `CONTINUE_PROMPT.txt` | ~11 lines | Resume after interruption | When **resuming** a dead session (full text in §1.7) |
+
+**Carried between sessions** — the LLM creates and
+maintains this file; you save it and provide it to the
+next session.
+
+| File | Size | Purpose |
+|------|------|---------|
+| `HANDOFF.json` | ~12 lines (blank template) | Session state: what was done, what remains, what to do next. Template in §1.7. |
+
+---
+
+## Appendix B: WORKFLOW_PROMPT.txt (full text)
+
+This is the opening message you paste to start a
+session. It is the longest of the session prompts
+(~55 lines), so it is kept here rather than inline
+in Part 1.
 
 ```text
 You are working on a large codebase with strict workflow rules.
@@ -508,182 +787,3 @@ When you make changes:
 
 Acknowledge these rules and begin by reading HANDOFF.json or requesting it.
 ```
-
----
-
-#### `PLAN_PROMPT.txt` — Request a detailed plan
-
-Use this when you want the LLM to produce a written
-implementation plan before writing any code. Provide it
-along with a description of the problem or the bug
-report. The LLM's output should be a markdown plan
-document that you can review (and optionally send
-through the review cycle described next).
-
-```text
-Please make a plan for fixing these problems. Include a full discussion of the
-problem, the overall approach, the details of the approach, implementation plan,
-and risks involved and their mitigation. write as md
-```
-
----
-
-#### `REVIEW.txt` — Cross-review a plan with a second LLM
-
-After the first LLM produces a plan, give the plan and
-this prompt to a **different** LLM. The prompt text
-names Gemini, but any second model works — the important
-thing is that the reviewer did not write the plan. The
-reviewer is instructed to critique each step: find
-flaws, unclear assumptions, and workflow violations. It
-will not give generic praise — it focuses on concrete
-issues and suggested improvements.
-
-```text
-Gemini, you are a senior engineer tasked with **critically reviewing this plan**.
-Your goal is to find every potential flaw, unclear assumption, or workflow
-violation. Be specific and constructive; do not give generic praise.
-
-For each step:
-1. Identify issues or risks
-2. Explain why it is a problem
-3. Suggest improvements or alternatives
-
-Limit to 1–2 paragraphs per step. Do not provide general compliments.
-```
-
-**The review cycle:**
-
-1. LLM A produces a plan (via `PLAN_PROMPT.txt`)
-2. You give the plan + `REVIEW.txt` to LLM B
-3. You give LLM B's critique back to LLM A to revise
-4. Optionally repeat once (max 2 refinement rounds,
-   per `WORKFLOW.md`)
-
----
-
-#### `CONTINUE_PROMPT.txt` — Resume after interruption
-
-Use this when an LLM session was interrupted (timeout,
-context limit, crash) and you are starting a new session
-to continue the same work. Attach the current
-`HANDOFF.json` and the code archive alongside this
-prompt.
-
-```text
-You were interrupted.
-
-Do NOT continue from memory.
-
-1. Read HANDOFF.json
-2. Summarize current state
-3. Confirm the next step
-4. Continue execution from there
-
-If anything is unclear or missing, ask before proceeding.
-```
-
-### 2.3 The Checkpoint File: HANDOFF.json
-
-`HANDOFF.json` is the critical link between sessions.
-It is the single source of truth for what has been done,
-what remains, and what the LLM should do next.
-
-A blank template:
-
-```json
-{
-  "current_task": "UNKNOWN",
-  "status": "not_started",
-  "relevant_files": [],
-  "completed_steps": [],
-  "remaining_steps": [],
-  "decisions": [],
-  "assumptions": [],
-  "open_questions": [],
-  "last_stable_state": null,
-  "next_step": "analyze task"
-}
-```
-
-The LLM fills this in as it works. The workflow rules in
-`WORKFLOW.md` exist primarily to ensure this file stays
-current — the LLM must update it after every reasoning
-step, code change, and test run. If the LLM is not
-updating it after each step, remind it.
-
-The key property: if the session dies at any point, a
-new session should be able to resume using only
-`HANDOFF.json`, the reference documents, and the code.
-No other context should be necessary.
-
-### 2.4 Typical Workflow Sequence
-
-A full task from start to finish uses the files in this
-order:
-
-**Step 1 — Start the session.** Attach three things to
-the LLM: the reference documents
-(`CCTBX_LLM_PROGRAMMING_GUIDELINES.md` and
-`WORKFLOW.md`; also
-`AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md` if the task
-involves agent code), the code archive, and the current
-`HANDOFF.json` (if resuming prior work). Then paste
-`WORKFLOW_PROMPT.txt` as the opening message.
-
-**Step 2 — Request a plan.** Describe the problem or bug
-and paste `PLAN_PROMPT.txt`. The LLM produces a markdown
-plan. Read it. Does the approach make sense? Are any
-steps vague? Are there risks it didn't mention?
-
-**Step 3 — Review the plan (recommended for non-trivial
-changes).** Copy the plan into a session with a
-different LLM and paste `REVIEW.txt`. Read the critique.
-Feed it back to the first LLM and let it revise. One to
-two rounds is enough — diminishing returns set in fast.
-
-**Step 4 — Implement.** The LLM executes the agreed plan
-step by step, updating `HANDOFF.json` after each step.
-You verify each step before allowing the next (run
-tests, read diffs, check edge cases per §1.5).
-
-**Step 5 — If interrupted.** Start a new session. Attach
-the same reference documents plus the current
-`HANDOFF.json` and code archive. Paste
-`CONTINUE_PROMPT.txt`. The LLM reads the checkpoint and
-picks up where it left off.
-
-### 2.5 Notes
-
-- The reference documents should be **attached as
-  files**, not pasted inline, to keep the conversation
-  clean.
-- The session prompts are **short enough to paste**
-  directly into the chat.
-- `REVIEW.txt` names Gemini but works with any LLM. The
-  important thing is to use a different model (or at
-  minimum a fresh session) so the reviewer is not biased
-  by having produced the plan.
-- `HANDOFF.json` is the most important artifact in the
-  workflow. Everything else exists to support it. If
-  you take away only one habit from this document, make
-  it this: **insist the LLM update `HANDOFF.json` after
-  every step.**
-
----
-
-## Appendix: File Reference
-
-All files live in `docs/prompts/`.
-
-| File | Type | Size | Purpose |
-|------|------|------|---------|
-| `CCTBX_LLM_PROGRAMMING_GUIDELINES.md` | Reference doc | ~650 lines | Coding standards, cctbx patterns, pitfalls, checklist. Attach to every session. |
-| `WORKFLOW.md` | Reference doc | ~250 lines | Checkpoint rules, plan format, interruption protocol. Attach to every session. |
-| `AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md` | Reference doc | ~310 lines | Agent-specific patterns and pitfalls. Attach when working on agent code. |
-| `WORKFLOW_PROMPT.txt` | Session prompt | ~55 lines | Opening message to start a session. Paste into chat. |
-| `PLAN_PROMPT.txt` | Session prompt | 2 lines | Ask the LLM for an implementation plan. Paste into chat. |
-| `REVIEW.txt` | Session prompt | ~8 lines | Ask a second LLM to critique a plan. Paste into chat. |
-| `CONTINUE_PROMPT.txt` | Session prompt | ~11 lines | Resume after interruption. Paste into chat. |
-| `HANDOFF.json` | Checkpoint | ~12 lines | Session state. LLM creates and maintains; you carry between sessions. |
-| `HOW_TO_PROGRAM_WITH_AN_LLM.md` | This document | — | Guide for programmers. You're reading it. |
