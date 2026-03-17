@@ -1,0 +1,11 @@
+You were interrupted.
+
+Do NOT continue from memory.
+
+1. Read HANDOFF.json
+2. Summarize current state
+3. Confirm the next step
+4. Continue execution from there
+
+If anything is unclear or missing, ask before proceeding.
+
