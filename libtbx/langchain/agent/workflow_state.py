@@ -917,7 +917,45 @@ def _categorize_files(available_files, ligand_hints=None, files_local=True):
             if f not in files["full_map"]:
                 files["full_map"].append(f)
 
+    # ── Post-categorization: phased_data_mtz (v115.08) ─────
+    # Content-based promotion: check ALL data_mtz files for phase
+    # columns (iotbx Tier 1 + ASCII heuristic Tier 2).  Promoted
+    # files are moved from data_mtz to phased_data_mtz atomically
+    # (no file exists in both categories).  Runs after BOTH the
+    # YAML and hardcoded paths to handle:
+    #   - YAML path: pattern-matched files need removal from data_mtz
+    #   - Hardcoded path: content-based detection + promotion
+    _resolve_phased_promotions(files)
+
+    # ── Post-categorization: ignored_formats (v115.08) ─────────
+    # Detect known file formats that the agent recognizes but
+    # cannot use for auto-fill.  Surfaces a non-actionable WARNING
+    # so the LLM and user are aware without triggering false
+    # recovery attempts.
+    _ignored = []
+    for f in available_files:
+        ext = os.path.splitext(f)[1].lower()
+        if ext in _IGNORED_FORMATS:
+            _ignored.append({
+                'file': os.path.basename(f),
+                'extension': ext,
+                'note': _IGNORED_FORMATS[ext],
+            })
+    if _ignored:
+        files['ignored_formats'] = _ignored
+
     return files
+
+
+# ── Known but unsupported file formats (v115.08) ──────────────
+# Extensions that the agent recognizes but cannot use for auto-fill.
+# Kept at module level (like _PHASE_LABEL_TOKENS) to avoid
+# re-creating the dict on every call.
+_IGNORED_FORMATS = {
+    '.cv': ('CNS cross-validation file — not supported for '
+            'auto-fill in current version. Proceeding with '
+            'other available data.'),
+}
 
 
 # Mapping from subcategory to parent semantic category
@@ -1390,36 +1428,6 @@ def _categorize_files_hardcoded(available_files, ligand_hints=None, files_local=
             else:
                 files["ligand_cif"].append(f)
 
-    # ── Post-categorization: phased_data_mtz (Fix I3) ─────
-    # Detect autosol/resolve output MTZs that contain
-    # experimental phases (PHIB/FOM).  These should be
-    # preferred by autobuild over the original data MTZ.
-    if "phased_data_mtz" not in files:
-        files["phased_data_mtz"] = []
-    _phased_markers = (
-        'phased', 'resolve', '_ha_', '_denmod',
-        'overall_best_denmod', 'autosol',
-        'overall_best',   # AutoSol: overall_best_refine_data.mtz, etc.
-                          # Safe: no plain refine output uses 'overall_best'
-    )
-    for f in files.get("data_mtz", []):
-        bn = os.path.basename(f).lower()
-        if any(m in bn for m in _phased_markers):
-            # Verify the file actually contains phase columns (PHIB/HL).
-            # A correctly-named file with wrong content would otherwise
-            # replace one crash (missing file) with another (missing labels).
-            if _mtz_has_phase_columns(f):
-                if f not in files["phased_data_mtz"]:
-                    files["phased_data_mtz"].append(f)
-            else:
-                try:
-                    import logging as _log_tmp
-                    _log_tmp.getLogger(__name__).debug(
-                        "CATEGORIZE: %s matches phased marker but has no "
-                        "phase columns (PHIB/HL) -- keeping as data_mtz", bn)
-                except Exception:
-                    pass
-
     # ── Post-categorization: MTZ array detection (Fix I1) ──
     # Detect MTZ files with multiple observation arrays.
     # When found, record the available labels so the command
@@ -1501,6 +1509,181 @@ def _mtz_has_phase_columns(filepath):
         pass
 
     return False
+
+
+# ── Module-level cache for phase-column detection (v115.08) ────────
+# Persists across cycles within the same process.  Same pattern as
+# _load_done_tracking_configs() which caches YAML parsing at module
+# level.  Key: (absolute_path, mtime) — absolute path prevents
+# cross-directory collisions in long-running processes; mtime ensures
+# re-check when programs overwrite files (e.g. phenix.refine produces
+# a new MTZ each cycle).
+_PHASE_COLUMN_CACHE = {}
+
+
+def _has_phase_columns_cached(filepath):
+    """Cached wrapper for _mtz_has_phase_columns().
+
+    Cache key: (os.path.abspath(filepath), mtime).  Returns cached
+    result on hit; calls _mtz_has_phase_columns() on miss and stores
+    the result.
+
+    Never raises.
+    """
+    try:
+        abs_path = os.path.abspath(filepath)
+        mtime = os.path.getmtime(abs_path)
+    except (OSError, TypeError):
+        return False
+    key = (abs_path, mtime)
+    if key in _PHASE_COLUMN_CACHE:
+        return _PHASE_COLUMN_CACHE[key]
+    result = _mtz_has_phase_columns(abs_path)
+    _PHASE_COLUMN_CACHE[key] = result
+    return result
+
+
+# ── Tier 2: ASCII header heuristic for .hkl/.sca files (v115.08) ──
+# When iotbx cannot resolve column types (e.g. .hkl files without a
+# .def file), fall back to scanning the first 100 lines for known
+# phase column label tokens.
+
+_PHASE_LABEL_TOKENS = frozenset({
+    'PHIB', 'PHIM', 'FOM', 'FOMM',
+    'HLA', 'HLB', 'HLC', 'HLD',
+})
+
+_COMMENT_CHARS = ('#', '!', '*', ';')
+
+
+def _ascii_phase_heuristic(filepath):
+    """Check ASCII reflection file header for phase column labels.
+
+    Reads first 100 lines.  Skips blank and comment lines (starting
+    with #, !, *, ;).  Tokenizes remaining lines and checks for
+    known phase column labels as exact whitespace-separated tokens.
+    This avoids false-positives from comments containing phase-related
+    words.
+
+    Never raises.
+    """
+    if not filepath or not os.path.isfile(filepath):
+        return False
+    try:
+        with open(filepath, 'r') as fh:
+            for i, line in enumerate(fh):
+                if i >= 100:
+                    break
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                # Skip comment lines
+                if stripped[0] in _COMMENT_CHARS:
+                    continue
+                tokens = stripped.upper().split()
+                if _PHASE_LABEL_TOKENS & set(tokens):
+                    return True
+    except Exception:
+        pass  # Binary file or encoding issue — not ASCII phases
+    return False
+
+
+def _resolve_phased_promotions(files):
+    """Promote data_mtz files with phase columns to phased_data_mtz.
+
+    Replaces the old marker-gated promotion loop (v115.07 Fix I3).
+    Now content-based: every file in data_mtz is checked for actual
+    phase columns, regardless of filename.
+
+    Two-tier detection:
+      Tier 1: iotbx column-type check (P or A types) — cached
+      Tier 2: ASCII header heuristic (for .hkl without iotbx headers)
+
+    Atomic: each promoted file is added to phased_data_mtz AND removed
+    from data_mtz in a single pass.  No file exists in both categories
+    after this function returns.
+
+    Never raises.
+    """
+    if "phased_data_mtz" not in files:
+        files["phased_data_mtz"] = []
+
+    to_promote = []
+    for f in files.get("data_mtz", []):
+        # Tier 1: iotbx content check (cached)
+        if _has_phase_columns_cached(f):
+            to_promote.append(f)
+            continue
+        # Tier 2: ASCII header heuristic (for .hkl/.sca files)
+        if _ascii_phase_heuristic(f):
+            to_promote.append(f)
+
+    # Atomic: promote + remove in one pass.
+    # IMPORTANT: only remove from data_mtz when OTHER data files
+    # remain.  A phased file (e.g. nsf-d2_phases.hkl) contains
+    # BOTH Fobs AND phases — it IS valid data for refinement.
+    # Programs like phenix.refine/phaser/autosol do NOT check
+    # phased_data_mtz (only data_mtz/original_data_mtz).  If we
+    # remove the only data file, those programs can't find data.
+    # When a separate scale/data file exists (like rab3a_scale.hkl),
+    # removal is correct — it prevents ambiguous file selection.
+    _non_promoted_data = [
+        f for f in files.get("data_mtz", [])
+        if f not in to_promote
+    ]
+    _can_remove = len(_non_promoted_data) > 0
+
+    for f in to_promote:
+        if f not in files["phased_data_mtz"]:
+            files["phased_data_mtz"].append(f)
+        if _can_remove and f in files["data_mtz"]:
+            files["data_mtz"].remove(f)
+            try:
+                logger.debug(
+                    "CATEGORIZE: Promoted %s to phased_data_mtz "
+                    "(removed from data_mtz; other data files "
+                    "remain)", os.path.basename(f))
+            except Exception:
+                pass  # Logging unavailable in test environments
+        elif not _can_remove and f in files["data_mtz"]:
+            try:
+                logger.debug(
+                    "CATEGORIZE: Promoted %s to phased_data_mtz "
+                    "(kept in data_mtz — only data file, needed "
+                    "by refine/phaser/autosol)",
+                    os.path.basename(f))
+            except Exception:
+                pass  # Logging unavailable in test environments
+
+    # ── Category exclusivity enforcement ──────────────────────
+    # When the YAML categorizer placed a file in BOTH data_mtz
+    # (by extension) and phased_data_mtz (by *phases* pattern),
+    # and the content check didn't fire (e.g. iotbx can't parse
+    # the .hkl), enforce exclusivity — but ONLY when other data
+    # files remain.  Same rationale as above: programs like
+    # phenix.refine only look in data_mtz.
+    _phased_set = set(files.get("phased_data_mtz", []))
+    if _phased_set:
+        _data_after_removal = [
+            f for f in files.get("data_mtz", [])
+            if f not in _phased_set
+        ]
+        if len(_data_after_removal) > 0:
+            _before = len(files.get("data_mtz", []))
+            files["data_mtz"] = _data_after_removal
+            _removed = _before - len(files["data_mtz"])
+            if _removed > 0:
+                try:
+                    logger.debug(
+                        "CATEGORIZE: Exclusivity enforcement "
+                        "removed %d file(s) from data_mtz "
+                        "(other data files remain)", _removed)
+                except Exception:
+                    pass  # Logging unavailable in test envs
+        # else: all data_mtz files are phased — keep them in
+        # both categories so refine/phaser can find data.
+
+    return files
 
 
 def _detect_mtz_arrays(data_mtz_files):

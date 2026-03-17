@@ -896,6 +896,536 @@ def test_predict_and_build_mtz_detection():
 
 
 # =============================================================================
+# v115.08: PHASED DATA PROMOTION TESTS
+# =============================================================================
+# Tests for content-based phased_data_mtz promotion, atomic removal,
+# ignored_formats (.cv), cache, ASCII heuristic, and stability.
+
+def _patch_phase_check(module, func):
+  """Monkeypatch _mtz_has_phase_columns and clear cache.
+
+  Returns a cleanup function that must be called in a finally block.
+  """
+  orig = module._mtz_has_phase_columns
+  module._mtz_has_phase_columns = func
+  module._PHASE_COLUMN_CACHE.clear()
+  def restore():
+    module._mtz_has_phase_columns = orig
+    module._PHASE_COLUMN_CACHE.clear()
+  return restore
+
+
+def test_phases_hkl_promoted_tier1():
+  """Tier 1: file with phase columns detected by iotbx → promoted.
+  Single-file case: file stays in both data_mtz and phased_data_mtz
+  because refine/phaser only look in data_mtz."""
+  print("Test: phases_hkl_promoted_tier1")
+  import tempfile, agent.workflow_state as ws
+  # Create a real temp file so os.path.getmtime works
+  with tempfile.NamedTemporaryFile(suffix='_phases.hkl',
+                                   delete=False) as tf:
+    tf.write(b"dummy\n")
+    path = tf.name
+  try:
+    restore = _patch_phase_check(ws, lambda f: True)
+    try:
+      files = {"data_mtz": [path], "phased_data_mtz": []}
+      ws._resolve_phased_promotions(files)
+      assert_in(path, files["phased_data_mtz"],
+        "File with phase columns should be promoted")
+      # Only data file → stays in data_mtz too (refine/phaser
+      # don't check phased_data_mtz).  See test 9
+      # (test_xtriage_gets_data_not_phases) for the two-file
+      # case where removal IS correct.
+      assert_in(path, files["data_mtz"],
+        "Only data file must stay in data_mtz for "
+        "refine/phaser access")
+    finally:
+      restore()
+  finally:
+    os.unlink(path)
+  print("  PASSED")
+
+
+def test_phases_hkl_promoted_tier2():
+  """Tier 2: iotbx returns False but ASCII heuristic finds PHIB.
+  Single-file case: stays in both categories."""
+  print("Test: phases_hkl_promoted_tier2")
+  import tempfile, agent.workflow_state as ws
+  # Create a temp .hkl file with PHIB FOM in a non-comment line
+  with tempfile.NamedTemporaryFile(suffix='_phases.hkl', mode='w',
+                                   delete=False) as tf:
+    tf.write("! Header comment\n")
+    tf.write("COLUMN_LABELS H K L PHIB FOM FP SIGFP\n")
+    tf.write("1 0 0 45.2 0.89 120.5 3.2\n")
+    path = tf.name
+  try:
+    # Tier 1 returns False — simulates iotbx unable to parse .hkl
+    restore = _patch_phase_check(ws, lambda f: False)
+    try:
+      files = {"data_mtz": [path], "phased_data_mtz": []}
+      ws._resolve_phased_promotions(files)
+      assert_in(path, files["phased_data_mtz"],
+        "ASCII heuristic should promote file with PHIB token")
+      assert_in(path, files["data_mtz"],
+        "Only data file must stay in data_mtz for "
+        "refine/phaser access")
+    finally:
+      restore()
+  finally:
+    os.unlink(path)
+  print("  PASSED")
+
+
+def test_autosol_output_promoted():
+  """Regression: autosol output MTZ with P/A columns still promoted.
+  Single-file case: stays in both categories."""
+  print("Test: autosol_output_promoted")
+  import tempfile, agent.workflow_state as ws
+  with tempfile.NamedTemporaryFile(
+      suffix='_overall_best_refine_data.mtz',
+      delete=False) as tf:
+    tf.write(b"dummy\n")
+    path = tf.name
+  try:
+    restore = _patch_phase_check(ws, lambda f: True)
+    try:
+      files = {"data_mtz": [path], "phased_data_mtz": []}
+      ws._resolve_phased_promotions(files)
+      assert_in(path, files["phased_data_mtz"],
+        "Autosol output with phase columns should be promoted")
+      assert_in(path, files["data_mtz"],
+        "Only data file must stay in data_mtz for "
+        "refine/phaser access")
+    finally:
+      restore()
+  finally:
+    os.unlink(path)
+  print("  PASSED")
+
+
+def test_cv_file_warning_emitted():
+  """A .cv file should appear in ignored_formats with non-actionable msg."""
+  print("Test: cv_file_warning_emitted")
+  from agent.workflow_state import _categorize_files
+  files = ["/path/to/nsf-d2.cv", "/path/to/nsf-d2_start.pdb"]
+  result = _categorize_files(files)
+  ignored = result.get("ignored_formats", [])
+  assert_true(len(ignored) >= 1,
+    "ignored_formats should contain the .cv file")
+  cv_entry = None
+  for ig in ignored:
+    if ig.get("extension") == ".cv":
+      cv_entry = ig
+      break
+  assert_not_none(cv_entry, "Should find .cv entry in ignored_formats")
+  assert_equal(cv_entry["file"], "nsf-d2.cv",
+    "Should record correct filename")
+  note = cv_entry.get("note", "")
+  assert_true("not supported" in note.lower(),
+    "Message must be non-actionable (should say 'not supported')")
+  assert_true("phenix.reflection_file_converter" not in note,
+    "Message must NOT suggest a conversion command (hallucination trap)")
+  print("  PASSED")
+
+
+def test_scale_hkl_not_promoted():
+  """Scale .hkl file without phase columns stays in data_mtz."""
+  print("Test: scale_hkl_not_promoted")
+  import tempfile, agent.workflow_state as ws
+  # Create a temp file with no phase columns
+  with tempfile.NamedTemporaryFile(suffix='_scale.hkl', mode='w',
+                                   delete=False) as tf:
+    tf.write("! Scale data\n")
+    tf.write("COLUMN_LABELS H K L FP SIGFP\n")
+    tf.write("1 0 0 120.5 3.2\n")
+    path = tf.name
+  try:
+    restore = _patch_phase_check(ws, lambda f: False)
+    try:
+      files = {"data_mtz": [path], "phased_data_mtz": []}
+      ws._resolve_phased_promotions(files)
+      assert_not_in(path, files["phased_data_mtz"],
+        "Scale file without phases should NOT be promoted")
+      assert_in(path, files["data_mtz"],
+        "Scale file should remain in data_mtz")
+    finally:
+      restore()
+  finally:
+    os.unlink(path)
+  print("  PASSED")
+
+
+def test_comment_line_phib_ignored():
+  """PHIB on a comment line (!) should not trigger promotion."""
+  print("Test: comment_line_phib_ignored")
+  import tempfile, agent.workflow_state as ws
+  with tempfile.NamedTemporaryFile(suffix='_data.hkl', mode='w',
+                                   delete=False) as tf:
+    tf.write("! Removed PHIB FOM outliers from this dataset\n")
+    tf.write("# Another comment mentioning PHIB\n")
+    tf.write("* PHIB values were filtered\n")
+    tf.write("COLUMN_LABELS H K L FP SIGFP\n")
+    tf.write("1 0 0 120.5 3.2\n")
+    path = tf.name
+  try:
+    restore = _patch_phase_check(ws, lambda f: False)
+    try:
+      files = {"data_mtz": [path], "phased_data_mtz": []}
+      ws._resolve_phased_promotions(files)
+      assert_not_in(path, files["phased_data_mtz"],
+        "PHIB on comment lines should not trigger promotion")
+      assert_in(path, files["data_mtz"],
+        "File should stay in data_mtz")
+    finally:
+      restore()
+  finally:
+    os.unlink(path)
+  print("  PASSED")
+
+
+def test_marker_name_without_phases():
+  """File named 'phased' but lacking phase columns stays in data_mtz."""
+  print("Test: marker_name_without_phases")
+  import tempfile, agent.workflow_state as ws
+  with tempfile.NamedTemporaryFile(suffix='_phased_data.mtz',
+                                   delete=False) as tf:
+    tf.write(b"dummy\n")
+    path = tf.name
+  try:
+    restore = _patch_phase_check(ws, lambda f: False)
+    try:
+      files = {"data_mtz": [path], "phased_data_mtz": []}
+      ws._resolve_phased_promotions(files)
+      assert_not_in(path, files["phased_data_mtz"],
+        "File matching old marker but without phase columns "
+        "should NOT be promoted")
+      assert_in(path, files["data_mtz"],
+        "File should stay in data_mtz")
+    finally:
+      restore()
+  finally:
+    os.unlink(path)
+  print("  PASSED")
+
+
+def test_refine_output_not_promoted():
+  """Refinement output MTZ without phase columns not promoted."""
+  print("Test: refine_output_not_promoted")
+  import tempfile, agent.workflow_state as ws
+  with tempfile.NamedTemporaryFile(suffix='_refine_001_data.mtz',
+                                   delete=False) as tf:
+    tf.write(b"dummy\n")
+    path = tf.name
+  try:
+    restore = _patch_phase_check(ws, lambda f: False)
+    try:
+      files = {"data_mtz": [path], "phased_data_mtz": []}
+      ws._resolve_phased_promotions(files)
+      assert_not_in(path, files["phased_data_mtz"],
+        "Refine output without phases should NOT be promoted")
+      assert_in(path, files["data_mtz"],
+        "Should remain in data_mtz")
+    finally:
+      restore()
+  finally:
+    os.unlink(path)
+  print("  PASSED")
+
+
+def test_xtriage_gets_data_not_phases():
+  """After promotion, scale file in data_mtz only, phases in phased only."""
+  print("Test: xtriage_gets_data_not_phases")
+  import tempfile, agent.workflow_state as ws
+  # Create two temp files
+  with tempfile.NamedTemporaryFile(suffix='_scale.hkl',
+                                   delete=False) as tf1:
+    tf1.write(b"dummy scale\n")
+    scale_path = tf1.name
+  with tempfile.NamedTemporaryFile(suffix='_phases.hkl',
+                                   delete=False) as tf2:
+    tf2.write(b"dummy phases\n")
+    phases_path = tf2.name
+  try:
+    # Only the phases file has phase columns
+    def mock_check(f):
+      return os.path.basename(f).endswith('_phases.hkl')
+    restore = _patch_phase_check(ws, mock_check)
+    try:
+      files = {
+        "data_mtz": [scale_path, phases_path],
+        "phased_data_mtz": [],
+      }
+      ws._resolve_phased_promotions(files)
+      # Phases file: promoted
+      assert_in(phases_path, files["phased_data_mtz"],
+        "Phases file should be in phased_data_mtz")
+      assert_not_in(phases_path, files["data_mtz"],
+        "Phases file must NOT be in data_mtz after promotion")
+      # Scale file: stays
+      assert_in(scale_path, files["data_mtz"],
+        "Scale file should remain in data_mtz")
+      assert_not_in(scale_path, files["phased_data_mtz"],
+        "Scale file should NOT be in phased_data_mtz")
+    finally:
+      restore()
+  finally:
+    os.unlink(scale_path)
+    os.unlink(phases_path)
+  print("  PASSED")
+
+
+def test_two_valid_phased_files_both_promoted():
+  """Two files with phase columns: both promoted. No non-phased data
+  remains, so both stay in data_mtz for refine/phaser access."""
+  print("Test: two_valid_phased_files_both_promoted")
+  import tempfile, agent.workflow_state as ws
+  with tempfile.NamedTemporaryFile(suffix='_phases_v1.mtz',
+                                   delete=False) as tf1:
+    tf1.write(b"dummy v1\n")
+    v1 = tf1.name
+  with tempfile.NamedTemporaryFile(suffix='_phases_v2.mtz',
+                                   delete=False) as tf2:
+    tf2.write(b"dummy v2\n")
+    v2 = tf2.name
+  try:
+    restore = _patch_phase_check(ws, lambda f: True)
+    try:
+      files = {"data_mtz": [v1, v2], "phased_data_mtz": []}
+      ws._resolve_phased_promotions(files)
+      assert_in(v1, files["phased_data_mtz"],
+        "v1 should be promoted")
+      assert_in(v2, files["phased_data_mtz"],
+        "v2 should be promoted")
+      # All data files are phased → no non-phased data remains
+      # → keep in data_mtz so refine/phaser can find data
+      assert_equal(len(files["data_mtz"]), 2,
+        "All-phased: files stay in data_mtz for "
+        "refine/phaser access")
+    finally:
+      restore()
+  finally:
+    os.unlink(v1)
+    os.unlink(v2)
+  print("  PASSED")
+
+
+def test_cache_hit_absolute_path():
+  """Cache returns stored result without re-calling _mtz_has_phase_columns."""
+  print("Test: cache_hit_absolute_path")
+  import tempfile, agent.workflow_state as ws
+  with tempfile.NamedTemporaryFile(suffix='.mtz',
+                                   delete=False) as tf:
+    tf.write(b"dummy\n")
+    path = tf.name
+  call_count = [0]
+  def counting_check(f):
+    call_count[0] += 1
+    return True
+  try:
+    restore = _patch_phase_check(ws, counting_check)
+    try:
+      r1 = ws._has_phase_columns_cached(path)
+      r2 = ws._has_phase_columns_cached(path)
+      assert_true(r1, "First call should return True")
+      assert_true(r2, "Second call should return True")
+      assert_equal(call_count[0], 1,
+        "Underlying function should be called only once (cached)")
+    finally:
+      restore()
+  finally:
+    os.unlink(path)
+  print("  PASSED")
+
+
+def test_cache_invalidation_on_mtime():
+  """Cache invalidates when file mtime changes."""
+  print("Test: cache_invalidation_on_mtime")
+  import tempfile, time, agent.workflow_state as ws
+  with tempfile.NamedTemporaryFile(suffix='.mtz',
+                                   delete=False) as tf:
+    tf.write(b"dummy\n")
+    path = tf.name
+  call_count = [0]
+  def counting_check(f):
+    call_count[0] += 1
+    return True
+  try:
+    restore = _patch_phase_check(ws, counting_check)
+    try:
+      r1 = ws._has_phase_columns_cached(path)
+      assert_equal(call_count[0], 1, "First call")
+      # Touch the file to change mtime
+      time.sleep(0.05)
+      with open(path, 'w') as f:
+        f.write("modified\n")
+      r2 = ws._has_phase_columns_cached(path)
+      assert_equal(call_count[0], 2,
+        "After mtime change, underlying function called again")
+    finally:
+      restore()
+  finally:
+    os.unlink(path)
+  print("  PASSED")
+
+
+def test_stale_and_valid_phased_files():
+  """Mixed valid/invalid: only valid file promoted."""
+  print("Test: stale_and_valid_phased_files")
+  import tempfile, agent.workflow_state as ws
+  with tempfile.NamedTemporaryFile(suffix='_phases.hkl',
+                                   delete=False) as tf1:
+    tf1.write(b"valid phases\n")
+    valid_path = tf1.name
+  with tempfile.NamedTemporaryFile(suffix='_old_phases.mtz',
+                                   delete=False) as tf2:
+    tf2.write(b"stale\n")
+    stale_path = tf2.name
+  try:
+    # Only the valid file has phase columns
+    def selective_check(f):
+      return '_phases.hkl' in f
+    restore = _patch_phase_check(ws, selective_check)
+    try:
+      files = {
+        "data_mtz": [valid_path, stale_path],
+        "phased_data_mtz": [],
+      }
+      ws._resolve_phased_promotions(files)
+      assert_in(valid_path, files["phased_data_mtz"],
+        "Valid phases file should be promoted")
+      assert_not_in(stale_path, files["phased_data_mtz"],
+        "Stale file without phases should NOT be promoted")
+      assert_in(stale_path, files["data_mtz"],
+        "Stale file should remain in data_mtz")
+      assert_not_in(valid_path, files["data_mtz"],
+        "Valid file should be removed from data_mtz")
+    finally:
+      restore()
+  finally:
+    os.unlink(valid_path)
+    os.unlink(stale_path)
+  print("  PASSED")
+
+
+def test_promotion_stable_across_reruns():
+  """Running _resolve_phased_promotions 3x produces identical results."""
+  print("Test: promotion_stable_across_reruns")
+  import tempfile, agent.workflow_state as ws
+  with tempfile.NamedTemporaryFile(suffix='_phases.hkl',
+                                   delete=False) as tf1:
+    tf1.write(b"phases\n")
+    phases = tf1.name
+  with tempfile.NamedTemporaryFile(suffix='_scale.hkl',
+                                   delete=False) as tf2:
+    tf2.write(b"scale\n")
+    scale = tf2.name
+  try:
+    def selective_check(f):
+      return '_phases.hkl' in f
+    restore = _patch_phase_check(ws, selective_check)
+    try:
+      # Do NOT clear cache between runs — testing cache stability
+      results = []
+      for i in range(3):
+        files = {
+          "data_mtz": [phases, scale],
+          "phased_data_mtz": [],
+        }
+        ws._resolve_phased_promotions(files)
+        results.append({
+          "data_mtz": sorted(files["data_mtz"]),
+          "phased_data_mtz": sorted(files["phased_data_mtz"]),
+        })
+      assert_equal(results[0], results[1],
+        "Run 1 and 2 should produce identical results")
+      assert_equal(results[1], results[2],
+        "Run 2 and 3 should produce identical results")
+      assert_in(phases, results[0]["phased_data_mtz"],
+        "Phases file should be promoted in all runs")
+      assert_in(scale, results[0]["data_mtz"],
+        "Scale file should stay in data_mtz in all runs")
+    finally:
+      restore()
+  finally:
+    os.unlink(phases)
+    os.unlink(scale)
+  print("  PASSED")
+
+
+def test_yaml_single_phased_kept_in_both():
+  """When the phased file is the ONLY data file, it stays in both
+  data_mtz and phased_data_mtz so refine/phaser can still find data."""
+  print("Test: yaml_single_phased_kept_in_both")
+  import tempfile, agent.workflow_state as ws
+  with tempfile.NamedTemporaryFile(suffix='_phases.hkl', mode='w',
+                                   delete=False) as tf:
+    tf.write("COLUMN_LABELS H K L FP SIGFP\n")
+    tf.write("1 0 0 120.5 3.2\n")
+    path = tf.name
+  try:
+    restore = _patch_phase_check(ws, lambda f: False)
+    try:
+      # Simulate YAML state: file in BOTH categories, no other data
+      files = {
+        "data_mtz": [path],
+        "phased_data_mtz": [path],
+      }
+      ws._resolve_phased_promotions(files)
+      # File is the ONLY data — must stay in data_mtz so
+      # phenix.refine/phaser/autosol can find it (they don't
+      # look in phased_data_mtz).
+      assert_in(path, files["data_mtz"],
+        "Only data file must stay in data_mtz even when also "
+        "in phased_data_mtz (refine/phaser need it)")
+      assert_in(path, files["phased_data_mtz"],
+        "File must remain in phased_data_mtz")
+    finally:
+      restore()
+  finally:
+    os.unlink(path)
+  print("  PASSED")
+
+
+def test_yaml_phased_removed_when_other_data_exists():
+  """When other data files exist, phased file IS removed from data_mtz
+  to prevent ambiguous file selection."""
+  print("Test: yaml_phased_removed_when_other_data_exists")
+  import tempfile, agent.workflow_state as ws
+  with tempfile.NamedTemporaryFile(suffix='_phases.hkl', mode='w',
+                                   delete=False) as tf1:
+    tf1.write("COLUMN_LABELS H K L FP SIGFP\n")
+    path_phases = tf1.name
+  with tempfile.NamedTemporaryFile(suffix='_scale.hkl', mode='w',
+                                   delete=False) as tf2:
+    tf2.write("COLUMN_LABELS H K L FP SIGFP\n")
+    path_scale = tf2.name
+  try:
+    restore = _patch_phase_check(ws, lambda f: False)
+    try:
+      # Simulate YAML: phases in both, scale in data_mtz only
+      files = {
+        "data_mtz": [path_phases, path_scale],
+        "phased_data_mtz": [path_phases],
+      }
+      ws._resolve_phased_promotions(files)
+      # Other data exists → phased file removed from data_mtz
+      assert_not_in(path_phases, files["data_mtz"],
+        "Phased file should be removed from data_mtz when "
+        "other data files exist")
+      assert_in(path_scale, files["data_mtz"],
+        "Scale file stays in data_mtz")
+      assert_in(path_phases, files["phased_data_mtz"],
+        "Phased file stays in phased_data_mtz")
+    finally:
+      restore()
+  finally:
+    os.unlink(path_phases)
+    os.unlink(path_scale)
+  print("  PASSED")
+
+
+# =============================================================================
 # RUN ALL TESTS
 # =============================================================================
 

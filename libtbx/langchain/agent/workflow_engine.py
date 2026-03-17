@@ -945,16 +945,48 @@ class WorkflowEngine:
                 reason: str,          # Why we're in this step
             }
         """
+        # === Developer diagnostics (env-var gated) ===
+        # These print() calls write to stdout/log file ONLY.
+        # They do NOT enter the event system (EventType/state["events"])
+        # and cannot reach the LLM's context window.
+        # The LLM receives context exclusively through _emit() calls
+        # in graph_nodes.py.
+        _diag = os.environ.get("PHENIX_AGENT_DIAG_VALID_PROGRAMS")
+        if _diag:
+            print("  [GATE] detect_step input (%s):" % experiment_type)
+            print("  [GATE]   placement_probed=%s result=%s"
+                  % (context.get("placement_probed"),
+                     context.get("placement_probe_result")))
+            print("  [GATE]   validation_done=%s has_refined=%s"
+                  % (context.get("validation_done"),
+                     context.get("has_refined_model")))
+            print("  [GATE]   has_placed_model=%s r_free=%s"
+                  % (context.get("has_placed_model"),
+                     context.get("r_free")))
+            print("  [GATE]   xtriage_done=%s phaser_done=%s"
+                  % (context.get("xtriage_done"),
+                     context.get("phaser_done")))
+            print("  [GATE]   has_model_for_mr=%s autobuild_done=%s"
+                  % (context.get("has_model_for_mr"),
+                     context.get("autobuild_done")))
+
         steps = get_workflow_steps(experiment_type)
         if not steps:
             return {"step": "unknown", "reason": "No workflow defined"}
 
         if experiment_type == "xray":
-            return self._detect_xray_step(steps, context)
+            result = self._detect_xray_step(steps, context)
         elif experiment_type == "cryoem":
-            return self._detect_cryoem_step(steps, context)
+            result = self._detect_cryoem_step(steps, context)
         else:
-            return {"step": "unknown", "reason": "Unknown experiment type"}
+            result = {"step": "unknown", "reason": "Unknown experiment type"}
+
+        if _diag:
+            print("  [GATE] detect_step → '%s': %s"
+                  % (result.get("step", "?"),
+                     result.get("reason", "?")))
+
+        return result
 
     def _detect_xray_step(self, steps, context):
         """Detect step in X-ray workflow."""
@@ -1516,6 +1548,10 @@ class WorkflowEngine:
         if step_name == "validate" and context.get("validation_done"):
             if "STOP" not in valid:
                 valid.append("STOP")
+                if _diag:
+                    print("  [GATE] STOP added: validation_done=True "
+                          "step=validate r_free=%s"
+                          % context.get("r_free"))
 
         # Special: also allow refinement during validate step (user can choose more refinement)
         # BUT respect max_refine_cycles directive AND _is_at_target (e.g., hopeless R-free)
@@ -1544,6 +1580,10 @@ class WorkflowEngine:
                 # Add STOP — model is at target or hopeless
                 if "STOP" not in valid:
                     valid.append("STOP")
+                    if _diag:
+                        print("  [GATE] STOP added: at_target=True "
+                              "step=validate refine_count=%s r_free=%s"
+                              % (refine_count, context.get("r_free")))
 
             if _diag:
                 print("  [DIAG] validate step filter: at_target=%s, "
@@ -1588,6 +1628,10 @@ class WorkflowEngine:
             if at_target and not needs_post_ligandfit and not refine_is_ligandfit_prereq:
                 if "STOP" not in valid:
                     valid.append("STOP")
+                    if _diag:
+                        print("  [GATE] STOP added: at_target=True "
+                              "step=refine refine_count=%s r_free=%s"
+                              % (refine_count, context.get("r_free")))
 
             if _diag:
                 print("  [DIAG] refine step filter: at_target=%s, "
@@ -1623,7 +1667,13 @@ class WorkflowEngine:
         # If no valid programs available, return STOP (stuck state)
         if not valid:
             if _diag:
-                print("  [DIAG] EMPTY valid list -> [STOP]")
+                print("  [GATE_FAIL] valid_programs empty → STOP")
+                print("  [GATE_FAIL]   step=%s experiment=%s"
+                      % (step_name, experiment_type))
+                _active = sorted(k for k in context
+                    if context[k] not in (None, False, 0, [], ""))
+                print("  [GATE_FAIL]   active context: %s"
+                      % _active[:20])
             return ["STOP"]
 
         if _diag:

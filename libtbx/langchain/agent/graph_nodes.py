@@ -763,6 +763,14 @@ def perceive(state):
                      "data_mtz=%s" % [os.path.basename(f)
                                       for f in categorized.get("data_mtz", [])])
 
+    # Surface ignored-but-recognized file formats as WARNING events
+    # so the LLM and user are aware.  Message is deliberately
+    # non-actionable to prevent hallucinated recovery attempts.
+    for _ig in categorized.get("ignored_formats", []):
+        state = _emit(state, EventType.WARNING,
+            message="%s: %s" % (_ig.get("file", "?"),
+                                _ig.get("note", "unrecognized format")))
+
     # Override detected experiment_type with locked session experiment_type if available
     session_info = state.get("session_info", {})
     session_experiment_type = session_info.get("experiment_type", "")
