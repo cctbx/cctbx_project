@@ -236,13 +236,14 @@ def _is_valid_file(path):
                     return False
             else:  # .pdb
                 # PDB must contain at least one ATOM or HETATM record.
-                # We scan up to 500 lines rather than checking only the first
-                # line, because ligand files often start with COMPND/REMARK/etc.
-                # before the coordinate records.
+                # We scan up to 2000 lines rather than checking only the first
+                # line, because PDB files can have very long headers (REMARK,
+                # COMPND, SEQRES, etc.) before the coordinate records.
+                # 3dnd.pdb has 546 header lines before the first ATOM record.
                 lines = content.splitlines()
                 has_coords = any(
                     len(l) >= 6 and l[:6].upper() in ('ATOM  ', 'HETATM')
-                    for l in lines[:500]
+                    for l in lines[:2000]
                 )
                 if not has_coords:
                     print("WARNING: %s contains no ATOM/HETATM records "
