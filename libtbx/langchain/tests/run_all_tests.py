@@ -84,6 +84,18 @@ Test Suites (require PHENIX environment):
   63. P1B            - STOP_REASON_CODES, think_stop_override, think_file_overrides
   64. P1B Prompt     - stop_reason table injection, guard, graceful degradation
   65. P1B Action 1   - validate() think_file_overrides existence check
+
+Systematic Testing Framework (v115.08):
+  S0. Phase 0: Static Audit - automated gate (parse, bare except, import fallbacks)
+  S1. Phase 1: Contract Gaps - coverage map of 128 functions across 4 key modules
+  S2. Phase 2: Path Consistency - YAML vs hardcoded categorization (10 tutorials)
+  S3. Phase 3: Session Round-Trip - JSON symmetry + invariants + AgentSession (28 tests)
+  S4. Phase 4: History Flags - flag writer/reader consistency, 12 dead flags documented
+  S5. Phase 6: Category-Consumer - input_priorities + fallback_categories (14 checks)
+  S6. Phase 7: Routing Simulation - 32 tutorials x 3 cycles, 9 expected stuck whitelisted
+  S7. Phase 8: Command Building - 7 tutorials + 2 edge cases, 15 command builds
+  S8. Phase 5: Error Classification - 3 classifiers, 30+ patterns, consistency checks
+  S9. Phase 9: LLM Perturbation - filename/program/parameter/truncation/empty (17 tests)
 """
 
 from __future__ import absolute_import, division, print_function
@@ -944,6 +956,124 @@ def main():
     except ImportError as e:
         print(f"\u26a0\ufe0f  Could not import tst_backward_compat: {e}")
         results.append(("Backward Compat", "tst_backward_compat", False, 0))
+
+    # ===================================================================
+    # SYSTEMATIC TESTING FRAMEWORK (v115.08)
+    # ===================================================================
+    # Bottom-up testing of system boundaries where bugs hide.
+    # These tests exercise real production code paths end-to-end
+    # and were designed after 4 code reviews found 3 critical bugs
+    # that 2,186 existing unit tests missed.
+    # ===================================================================
+
+    # --- Phase 0: Static Audit (automated gate) ---
+    try:
+        from tests.tst_phase0_static_audit import run_all_tests as run_phase0_tests
+        success, elapsed = run_test_module(
+            "tst_phase0_static_audit", run_phase0_tests, args.verbose)
+        results.append(("Phase 0: Static Audit", "tst_phase0_static_audit", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_phase0_static_audit: {e}")
+        results.append(("Phase 0: Static Audit", "tst_phase0_static_audit", False, 0))
+
+    # --- Phase 1: Contract Gaps (coverage map) ---
+    try:
+        from tests.tst_phase1_contract_gaps import run_all_tests as run_phase1_tests
+        success, elapsed = run_test_module(
+            "tst_phase1_contract_gaps", run_phase1_tests, args.verbose)
+        results.append(("Phase 1: Contract Gaps", "tst_phase1_contract_gaps", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_phase1_contract_gaps: {e}")
+        results.append(("Phase 1: Contract Gaps", "tst_phase1_contract_gaps", False, 0))
+
+    # --- Phase 2: Path Consistency (YAML vs hardcoded) ---
+    try:
+        from tests.tst_phase2_path_consistency import run_all_tests as run_phase2_tests
+        success, elapsed = run_test_module(
+            "tst_phase2_path_consistency", run_phase2_tests, args.verbose)
+        results.append(("Phase 2: Path Consistency", "tst_phase2_path_consistency", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_phase2_path_consistency: {e}")
+        results.append(("Phase 2: Path Consistency", "tst_phase2_path_consistency", False, 0))
+
+    # --- Phase 3: Session Round-Trip (symmetry + invariants) ---
+    try:
+        from tests.tst_phase3_serialization_symmetry import run_all_tests as run_phase3_tests
+        success, elapsed = run_test_module(
+            "tst_phase3_serialization_symmetry", run_phase3_tests, args.verbose)
+        results.append(("Phase 3: Session Round-Trip", "tst_phase3_serialization_symmetry", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_phase3_serialization_symmetry: {e}")
+        results.append(("Phase 3: Session Round-Trip", "tst_phase3_serialization_symmetry", False, 0))
+
+    # --- Phase 4: History Flag Consistency ---
+    try:
+        from tests.tst_phase4_history_flags import run_all_tests as run_phase4_tests
+        success, elapsed = run_test_module(
+            "tst_phase4_history_flags", run_phase4_tests, args.verbose)
+        results.append(("Phase 4: History Flags", "tst_phase4_history_flags", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_phase4_history_flags: {e}")
+        results.append(("Phase 4: History Flags", "tst_phase4_history_flags", False, 0))
+
+    # --- Phase 5: Error Classification Consistency ---
+    try:
+        from tests.tst_phase5_error_classification import run_all_tests as run_phase5_tests
+        success, elapsed = run_test_module(
+            "tst_phase5_error_classification", run_phase5_tests, args.verbose)
+        results.append(("Phase 5: Error Classification", "tst_phase5_error_classification", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_phase5_error_classification: {e}")
+        results.append(("Phase 5: Error Classification", "tst_phase5_error_classification", False, 0))
+
+    # --- Phase 6: Category-Consumer Alignment ---
+    try:
+        from tests.tst_phase6_category_consumer import run_all_tests as run_phase6_tests
+        success, elapsed = run_test_module(
+            "tst_phase6_category_consumer", run_phase6_tests, args.verbose)
+        results.append(("Phase 6: Category-Consumer", "tst_phase6_category_consumer", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_phase6_category_consumer: {e}")
+        results.append(("Phase 6: Category-Consumer", "tst_phase6_category_consumer", False, 0))
+
+    # --- Phase 7: Routing Simulation (32 tutorials x 3 cycles) ---
+    if not args.quick:
+        try:
+            from tests.tst_phase7_routing_simulation import run_all_tests as run_phase7_tests
+            success, elapsed = run_test_module(
+                "tst_phase7_routing_simulation", run_phase7_tests, args.verbose)
+            results.append(("Phase 7: Routing Simulation", "tst_phase7_routing_simulation", success, elapsed))
+        except ImportError as e:
+            print(f"\u26a0\ufe0f  Could not import tst_phase7_routing_simulation: {e}")
+            results.append(("Phase 7: Routing Simulation", "tst_phase7_routing_simulation", False, 0))
+    else:
+        print("\n  Skipping Phase 7 (routing simulation) in --quick mode")
+
+    # --- Phase 8: Command Building Simulation ---
+    if not args.quick:
+        try:
+            from tests.tst_phase8_command_building import run_all_tests as run_phase8_tests
+            success, elapsed = run_test_module(
+                "tst_phase8_command_building", run_phase8_tests, args.verbose)
+            results.append(("Phase 8: Command Building", "tst_phase8_command_building", success, elapsed))
+        except ImportError as e:
+            print(f"\u26a0\ufe0f  Could not import tst_phase8_command_building: {e}")
+            results.append(("Phase 8: Command Building", "tst_phase8_command_building", False, 0))
+    else:
+        print("  Skipping Phase 8 (command building) in --quick mode")
+
+    # --- Phase 9: LLM Perturbation Tests ---
+    if not args.quick:
+        try:
+            from tests.tst_phase9_llm_perturbation import run_all_tests as run_phase9_tests
+            success, elapsed = run_test_module(
+                "tst_phase9_llm_perturbation", run_phase9_tests, args.verbose)
+            results.append(("Phase 9: LLM Perturbation", "tst_phase9_llm_perturbation", success, elapsed))
+        except ImportError as e:
+            print(f"\u26a0\ufe0f  Could not import tst_phase9_llm_perturbation: {e}")
+            results.append(("Phase 9: LLM Perturbation", "tst_phase9_llm_perturbation", False, 0))
+    else:
+        print("  Skipping Phase 9 (LLM perturbation) in --quick mode")
 
     # --- Summary ---
     total_elapsed = time.time() - total_start

@@ -1,5 +1,74 @@
 # CHANGELOG — v115
 
+## Version 115.08 (Phased File Detection + Systematic Testing Framework)
+
+### Summary
+
+Four critical fixes for phased file detection (F1–F4) that caused rab3a-refine
+and nsf-d2-refine to fail across all 5 modes. One additional bug fix (B1:
+last_program) found by the testing framework. A 10-phase systematic testing
+framework exercising file categorization, routing, command building, error
+classification, and LLM resilience across 32 tutorials.
+
+### Modified Files (main code — 3 files)
+
+| File | Change | Details |
+|------|--------|---------|
+| `agent/workflow_state.py` | F1–F4 | Content-based phased detection replacing filename markers. New: `_PHASE_COLUMN_CACHE` (iotbx column-type check cached by abspath+mtime), `_ascii_phase_heuristic()` (ASCII header check for .hkl files), `_has_phase_columns_cached()` (cached wrapper). `_resolve_phased_promotions()` moved from hardcoded-only to shared post-processing (F2). Category-exclusivity enforcement — files appear in one of `data_mtz` or `phased_data_mtz`, not both (F3). Conditional removal from `data_mtz` only when other non-phased data files remain (F4). `_IGNORED_FORMATS` dict for .cv/.xplor/.param/.eff extensions. |
+| `agent/workflow_engine.py` | B1, diagnostics | B1 fix: added `"last_program": history_info.get("last_program")` to `build_context()` dict literal — the `after_program` directive check at line 1799 previously always saw None. `[GATE]` diagnostic logging controlled by `PHENIX_AGENT_DIAG_VALID_PROGRAMS=1` env var — prints context flags, detect_step result, and STOP reasons to aid routing debugging. |
+| `agent/graph_nodes.py` | WARNING event | WARNING event emitted for each ignored format file in `perceive()` — informs user that .cv/.xplor files are not supported for auto-fill. |
+
+### New Test Files (12 files)
+
+| File | Phase | Tests | Purpose |
+|------|-------|-------|---------|
+| `tst_file_categorization.py` | — | 42 | Unit tests for v115.08 phased detection fixes |
+| `tst_phase0_static_audit.py` | S0 | 5 | Parse check, bare except scan, import fallback check |
+| `tst_phase1_contract_gaps.py` | S1 | 128 | AST-based coverage map of 4 key modules |
+| `tst_phase2_path_consistency.py` | S2 | 10 | YAML vs hardcoded categorization path diff |
+| `tst_phase3_serialization_symmetry.py` | S3 | 28 | JSON symmetry + invariants + AgentSession round-trip |
+| `tst_phase4_history_flags.py` | S4 | 8 | Flag writer/reader consistency, B1 fix verification |
+| `tst_phase5_error_classification.py` | S8 | 7 | 3 error classifiers, pattern overlap, self-detection |
+| `tst_phase6_category_consumer.py` | S5 | 3 | input_priorities + fallback_categories alignment |
+| `tst_phase7_routing_simulation.py` | S6 | 32 | 3-cycle routing simulation with real production code |
+| `tst_phase8_command_building.py` | S7 | 15 | CommandBuilder.build() for 7 tutorials + 2 edge cases |
+| `tst_phase9_llm_perturbation.py` | S9 | 17 | Filename/program/parameter/truncation/empty perturbation |
+| `run_all_tests.py` | — | — | Updated with S0–S9 registration |
+
+### New Documentation
+
+| File | Purpose |
+|------|---------|
+| `docs/PHASE_REVIEW_REPORT.md` | Detailed report of 54 review fixes across all 10 phases |
+
+### Bug Details
+
+| Bug | Severity | Description | Fix |
+|-----|----------|-------------|-----|
+| F1 | CRITICAL | Filename-marker detection checked 'phased' but files were named 'phases' | Content-based detection (iotbx + ASCII heuristic) |
+| F2 | CRITICAL | `_resolve_phased_promotions()` only ran on hardcoded path, not YAML (production) | Moved to shared post-processing |
+| F3 | CRITICAL | YAML put files in both `data_mtz` and `phased_data_mtz` | Exclusivity enforcement |
+| F4 | CRITICAL | Removing from `data_mtz` could delete the only data file | Conditional removal (only when alternatives exist) |
+| B1 | LOW | `last_program` never transferred from `_analyze_history()` to `build_context()` | 1-line addition to `build_context()` dict |
+
+### Test Framework Review (54 fixes across 9 phases)
+
+The testing framework itself was reviewed across multiple rounds. Key
+classes of defects found and fixed in the test scripts:
+
+- **5 tests that could never fail** (Phases 2, 6, 7, 9) — status was always
+  PASS/PARTIAL but raise checked for FAIL. Fixed with whitelist patterns.
+- **3 tautological assertions** (Phases 3, 9) — `assert True`, `assert X or True`.
+- **6 phantom/wrong names** in boundary function sets (Phase 1).
+- **5 missing exception isolation** patterns (Phases 2, 6, 7, 8) — one crash
+  killed all remaining tutorials.
+- **5 wrong `best_files` keys** (Phases 8, 9) — `'data'` should be `'data_mtz'`.
+- **9 new AgentSession round-trip tests** (Phase 3) — replaced 18 tautological
+  JSON identity tests with real production code exercise.
+
+See `docs/PHASE_REVIEW_REPORT.md` for full details.
+
+
 ## Version 115.07 (Run 15b Bug Fixes — Phase 3)
 
 ### Summary

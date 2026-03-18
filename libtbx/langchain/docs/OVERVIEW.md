@@ -1154,7 +1154,7 @@ and [ARCHITECTURE.md](ARCHITECTURE.md) for details.
 
 ## Testing
 
-### Test Suites (42+ files, 40+ in runner)
+### Test Suites (55+ files, 50+ in runner)
 
 **Standalone (no PHENIX required):**
 - API Schema, Best Files Tracker, Transport, State Serialization
@@ -1173,6 +1173,28 @@ and [ARCHITECTURE.md](ARCHITECTURE.md) for details.
 - Workflow State, YAML Config, Sanity Checker
 - Metrics Analyzer, Dry Run, Integration, Directives Integration
 
+**Systematic Testing Framework (v115.08 — 10 phases, ~14s):**
+
+Bottom-up testing of system boundaries where bugs hide. Exercises real
+production code paths end-to-end. Designed after code reviews found 5
+critical bugs that existing unit tests missed.
+
+| Suite | Phase | Tests | What It Tests |
+|-------|-------|-------|---------------|
+| S0 | Static Audit | 5 | Parse check, bare except scan, import fallbacks |
+| S1 | Contract Gaps | 128 | AST coverage map — 4 modules, boundary gap detection |
+| S2 | Path Consistency | 10 | YAML vs hardcoded categorization diff (whitelisted) |
+| S3 | Session Round-Trip | 28 | JSON symmetry + AgentSession save/load/pipeline |
+| S4 | History Flags | 8 | Flag writer/reader consistency, dead flag audit |
+| S5 | Category-Consumer | 14 | input_priorities + fallback_categories alignment |
+| S6 | Routing Simulation | 32 | 3-cycle routing through detect_step + get_valid_programs |
+| S7 | Command Building | 15 | CommandBuilder.build() with real file combinations |
+| S8 | Error Classification | 7 | 3 classifiers × 30+ patterns, overlap + severity |
+| S9 | LLM Perturbation | 17 | Filename/program/parameter/truncation/empty resilience |
+
+Phases S6–S8 are skipped in `--quick` mode. All phases produce machine-readable
+findings in `findings/`. See `docs/PHASE_REVIEW_REPORT.md` for review details.
+
 **Additional test files (not in run_all_tests.py):**
 - tst_template.py (template builder), tst_utils.py (assert helpers)
 
@@ -1180,8 +1202,9 @@ and [ARCHITECTURE.md](ARCHITECTURE.md) for details.
 
 ```bash
 python3 tests/run_all_tests.py        # All tests
-python3 tests/run_all_tests.py --quick  # Standalone only
+python3 tests/run_all_tests.py --quick  # Standalone only (skips S6-S8)
 python3 tests/tst_event_system.py    # Single suite
+python3 tests/tst_phase7_routing_simulation.py  # Single phase
 ```
 
 ---
@@ -1190,6 +1213,8 @@ python3 tests/tst_event_system.py    # Single suite
 
 | Version | Key Changes |
 |---------|-------------|
+| v115.08 | **Phased File Detection + Systematic Testing Framework**: 4 critical fixes for phased file detection (content-based iotbx+ASCII heuristic replacing filename markers; shared post-processing; category exclusivity; conditional data_mtz removal). 1 additional bug fix (B1: last_program missing from build_context). `[GATE]` diagnostic logging for routing debugging. 10-phase systematic testing framework (S0–S9): static audit, contract gap coverage map, YAML/hardcoded path consistency, AgentSession round-trip, history flag consistency, category-consumer alignment, 32-tutorial routing simulation, command building, error classification, LLM perturbation resilience. 12 new test files, 42 unit tests + ~260 phase checks. Framework reviewed across multiple rounds — 54 issues found and fixed in test scripts (5 can't-fail gates, 3 tautological assertions, 5 wrong best_files keys, etc.). |
+| v115.07 | **Run 15b Bug Fixes — Phase 3**: 4 bugs from 371-run analysis. Numeric coercion (`_safe_float` at 6 sites). Two-tier half-map detection. PHIL blocked params for resolve_cryo_em. Terminal diagnosis for unknown chemical elements. Reference model restraint support (hierarchical prefix whitelist, path resolution, strategy rewrites). |
 | v115.05 | **Guard Fixes + Polder + Templates**: (1) `_is_at_target` hopeless R-free (> 0.50) now requires `autobuild_done` — prevents premature stop on incomplete models (p9-SAD fix). (2) `_is_at_target` clashscore path requires `refine_count >= 1` (X-ray only; cryo-EM path is theoretical-only gap). (3) Bug F `obtain_model` routing requires `autobuild_done` — gives autobuild a chance before concluding MR is wrong. (4) Negligible-anomalous guard: removes autosol from `valid_programs` when measurability < 0.05 and `has_anomalous=False`. (5) `wants_polder` context flag + polder override fires despite "solve" keyword in advice. (6) `refine_placed_polder` template added (17 templates total). (7) Early rebuild gate: `r_free > 0.50 after 1 cycles → try_rebuilding`; `gate_evaluator` now advances to `model_rebuilding` stage. (8) Phaser copies injection reads `log_analysis["n_copies"]` same-cycle (not 1-cycle delay). (9) `_anti_ligand_patterns` excludes `no_ligand` from ligand file classification; orphaned PDB files promoted to `model` (fixes user-supplied input PDBs like `1aba.pdb` not being recognized). (10) Unregistered `explicit_program` downgrades to warning (no Sorry). (11) `_preprocessing_programs` / `_needs_plan_programs` ensure polder etc. get full plans. (12) Failed programs skip output file tracking. (13) Metrics-based report selection overrides INCOMPLETE status when R-free/CC targets are met. 15 fix-verification tests (`tst_fix_verification.py`). (14) Ligand PDB plan selection: `_build_context()` now checks ligand name hints before setting `has_search_model`, and removes the `len(pdb_files) >= 2` guard — fixes AF_bromodomain_ligand tutorial selecting `mr_refine` (no ligandfit) instead of `predict_refine_ligand`. (15) Windows transport fix: removed `json_str.replace('\\t', ' ')` from `transport.py` and `api_client.py` — the replace corrupted Windows file paths containing `\t` sequences (e.g. `C:\tutorials\test.mtz`), causing "Failed to parse request JSON" on Windows clients. |
 | v115 | **Infrastructure Audit + Failure Recovery**: Dual-run evaluation framework across 21 tutorials (41% baseline cycle waste identified). Intent classifier (4-way: solve/solve_constrained/task/tutorial). Tiered error recovery (`error_classifier.py`). PHIL strategy validation. Thinking agent context forwarding. Session bug fixes (resolution contract, intent low-confidence guard, pipeline classification, skip_validation stop trigger). |
 | v114.1 | **Model Placement Gate + Display + Evaluation Harness**: Default `thinking_level` changed from `advanced` to `expert`. **Placement gate**: detects when model fits data (model_vs_data CC > 0.3 or refine R-free < 0.50) and locks `model_is_placed` in session — suppresses phaser/autosol/predict_and_build, fast-forwards plan past MR/phasing stages, logs conflict warning when user advice contradicts. **Display**: DisplayDataModel unified data layer for Results/Progress/HTML; HTML structure report with SVG trajectory chart; "Open Structure Report" button in GUI; expert assessments now stored in session JSON; DDM scans all cycles for best metrics. **Templates**: `mr_sad` requires explicit MR-SAD intent (`wants_mr_sad`); predict_and_build in MR stage programs; polder moved to post-ligandfit phase only with `has: ligand_fit` YAML condition; SAD templates require sequence. **Files**: auto-discover from `input_directory`; HETATM ligand detection in input PDBs; ligand PDB filename hints. **GUI**: restart_mode as plain wx.Choice (survives session management reset); stage display "cycle X, up to Y". **Safety**: sanity check threshold 3→4; recent failures injected into THINK prompt; STOP not counted as cycle. **Testing**: 57 scenario tracer tests (PG1-PG5 placement gate, L1-L10 mock LLM, C1-C3 cycle counting); tutorial run analyzer for 5 modes. 31 files modified. |

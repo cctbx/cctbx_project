@@ -825,7 +825,7 @@ Key directories:
 - `analysis/` — Post-run log analysis and session evaluation
 - `core/` — LLM provider abstraction
 - `validation/` — Command validation framework
-- `tests/` — 42+ test files with 1100+ tests
+- `tests/` — 55+ test files with 1400+ tests
 
 ## Key Design Decisions
 
@@ -3298,6 +3298,99 @@ Note: `debug` is accepted as an alias for `verbose` (3 levels total).
 - `agent/thinking_agent.py` - Expert assessment event emission (v113)
 
 See [TRANSPARENCY_LOGGING.md](../project/TRANSPARENCY_LOGGING.md) for full details.
+
+---
+
+## Systematic Testing Framework (v115.08)
+
+A 10-phase bottom-up testing framework that exercises the system boundaries
+where bugs hide — file categorization, routing decisions, command building,
+error classification, and LLM output resilience. Unlike the existing unit
+tests (which test individual functions in isolation), these phases test
+cross-module data flow through the real production pipeline.
+
+### Design Rationale
+
+Four code reviews of v115.05–v115.07 found 5 critical bugs that the existing
+2,186 unit tests missed. All five were at module boundaries: data flowed
+correctly within each module but was corrupted, lost, or misinterpreted at
+the handoff. The systematic framework was designed to test these boundaries
+directly.
+
+### Phase Architecture
+
+Phases are ordered from static analysis (fast, no I/O) to full pipeline
+simulation (slow, creates temp files). Each phase produces a machine-readable
+YAML findings file in `findings/`.
+
+| Suite | Phase | What It Tests | Gate Behavior |
+|-------|-------|---------------|---------------|
+| S0 | Static Audit | Parse check, bare except, import fallbacks | FAIL on blocking issues |
+| S1 | Contract Gaps | AST coverage map of 128 functions in 4 modules | FAIL never (informational PARTIAL) |
+| S2 | Path Consistency | YAML vs hardcoded categorization for 10 tutorials | FAIL on new unexpected divergence |
+| S3 | Session Round-Trip | JSON symmetry + AgentSession save/load/pipeline | FAIL on any test failure |
+| S4 | History Flags | Flag writer/reader consistency across modules | FAIL on any test failure |
+| S5 | Category-Consumer | input_priorities + fallback_categories alignment | FAIL on unexpected missing input |
+| S6 | Routing Simulation | 3-cycle routing for 32 tutorials (real code) | FAIL on unexpected stuck tutorial |
+| S7 | Command Building | CommandBuilder.build() for 15 tutorial×program combos | FAIL on any build failure |
+| S8 | Error Classification | 3 classifiers × 30+ patterns, overlap detection | FAIL on any test failure |
+| S9 | LLM Perturbation | Hallucinated files/programs/params, truncated JSON | FAIL on any test failure |
+
+Phases S6–S8 are skipped in `--quick` mode (~3s saved).
+
+### Whitelist Pattern
+
+Phases 2, 6, and 7 use a whitelist for expected failures that cannot be
+fixed in the test environment (e.g., cryo-EM maps with invalid CCP4
+headers, known YAML/hardcoded divergences). The pattern:
+
+1. Expected issues are listed in a set (e.g., `_EXPECTED_STUCK`)
+2. Each issue is checked against the whitelist
+3. Expected issues → PARTIAL status (does not raise)
+4. Any NEW unexpected issue → FAIL status (raises AssertionError)
+
+This ensures regressions are caught while known test-env limitations
+don't produce false alarms.
+
+### Key Modules Tested
+
+The framework focuses on the 4 highest-risk modules:
+
+- **`workflow_state.py`** — File categorization, history analysis, phased
+  detection. 30 functions, 13 with zero coverage (Phase 1).
+- **`workflow_engine.py`** — Step detection, program routing, stop decisions.
+  32 functions including `_is_at_target` (highest-risk untested).
+- **`command_builder.py`** — File selection, command assembly. 29 functions
+  including `_find_file_for_slot` (second-highest-risk).
+- **`graph_nodes.py`** — LangGraph node functions, LLM intent parsing. 37
+  functions.
+
+### Implementation Files
+
+| File | Purpose |
+|------|---------|
+| `tests/tst_phase0_static_audit.py` | S0: Static analysis |
+| `tests/tst_phase1_contract_gaps.py` | S1: Coverage map |
+| `tests/tst_phase2_path_consistency.py` | S2: YAML vs hardcoded |
+| `tests/tst_phase3_serialization_symmetry.py` | S3: Session round-trip |
+| `tests/tst_phase4_history_flags.py` | S4: Flag consistency |
+| `tests/tst_phase5_error_classification.py` | S8: Error classifiers |
+| `tests/tst_phase6_category_consumer.py` | S5: Category alignment |
+| `tests/tst_phase7_routing_simulation.py` | S6: Routing simulation |
+| `tests/tst_phase8_command_building.py` | S7: Command building |
+| `tests/tst_phase9_llm_perturbation.py` | S9: LLM resilience |
+| `findings/*.yaml` | Machine-readable phase outputs |
+| `docs/PHASE_REVIEW_REPORT.md` | Review findings (54 fixes) |
+
+### Test Environment Conventions
+
+All phase scripts follow the cctbx test convention: test functions raise
+`AssertionError` on failure. The libtbx mock boilerplate (~25 lines) is
+applied at the top of each script before importing any agent module.
+`_PHASE_COLUMN_CACHE` must be cleared between `_categorize_files` calls.
+`ws._mtz_has_phase_columns` is monkeypatched to `lambda f: False` (iotbx
+unavailable). CCP4 map files need a valid 1024-byte header to pass
+`_is_valid_file()` — use `create_ccp4_map()` from Phase 8.
 
 ---
 
