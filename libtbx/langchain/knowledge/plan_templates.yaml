@@ -781,6 +781,34 @@ templates:
 # Runs xtriage to characterize the data. The agent
 # can then suggest next steps based on the results.
 
+# v115.09: Validation-only template. Matches when the
+# user's primary goal is model validation (MolProbity),
+# not refinement or MR. model_vs_data runs first as a
+# crystal-symmetry sanity check before molprobity.
+  validate_existing:
+    description: "Validate existing model (MolProbity)"
+    applicable_when:
+      experiment_type: xray
+      wants_validation_only: true
+      has_search_model: true
+      model_is_placed: true
+    priority: 60
+    stages:
+
+      - id: data_assessment
+        programs: [phenix.xtriage]
+        max_cycles: 1
+        description: "Analyze data quality"
+        success:
+          xtriage_completed: "true"
+
+      - id: validation
+        programs: [phenix.model_vs_data, phenix.molprobity]
+        max_cycles: 2
+        description: "Model validation"
+        success:
+          validation_completed: "true"
+
   data_analysis_only:
     description: "Data analysis only (X-ray)"
     applicable_when:

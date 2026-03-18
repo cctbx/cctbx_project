@@ -237,6 +237,7 @@ Output a JSON object with these sections. Include ONLY sections that have releva
    - "use_molecular_replacement": bool - Prefer MR over experimental phasing
    - "use_mr_sad": bool - MR-SAD workflow: run phaser first to place model, then autosol with placed model
    - "model_is_placed": bool - The user's model is already positioned in the unit cell (skip MR)
+   - "wants_validation_only": bool - User's PRIMARY goal is validation/analysis of an existing model (MolProbity), NOT refinement or MR. Only set when the user explicitly wants validation as the main task, NOT when validation is a final step after refinement.
 
 **CRITICAL: use_experimental_phasing and use_mr_sad**
 - ONLY set these if the user EXPLICITLY requests SAD, MAD, experimental phasing, anomalous phasing, or MR-SAD.
@@ -245,6 +246,16 @@ Output a JSON object with these sections. Include ONLY sections that have releva
 - If the user just provides data + sequence/model without mentioning phasing method, leave these unset.
 - Examples of when to set: "use SAD phasing", "run MR-SAD", "experimental phasing with Fe", "anomalous phasing"
 - Examples of when NOT to set: user provides wavelength/atom_type but doesn't mention SAD/phasing method
+- EXAMPLES that MUST set use_mr_sad=true:
+  - "MR-SAD using intrinsic sulfur (S-SAD)"
+  - "molecular replacement using X.pdb, then run MR-SAD phasing"
+  - "molecular replacement followed by SAD/anomalous phasing"
+  - "perform molecular replacement, then AutoSol with placed model"
+
+**CRITICAL: wants_validation_only**
+- Set wants_validation_only=true ONLY when the user's PRIMARY GOAL is validation or analysis of an existing model.
+- Examples of when to set: "model validation", "comprehensive validation", "analysis only", "run MolProbity on this structure", "structure validation and correction"
+- Examples of when NOT to set: "refine and then validate", "solve the structure", any tutorial that mentions validation as a FINAL STEP after refinement
 
 5. "constraints": list of strings - Other instructions that don't fit above categories
    - Keep these as clear, actionable statements
@@ -398,6 +409,7 @@ An unplaced PDB + cryo-EM map always requires phenix.dock_in_map before refineme
   (Note: phenix.polder calculates polder omit maps to evaluate ligand/residue placement in density)
 - "fit ligand", "ligandfit", "place ligand" → after_program="phenix.ligandfit", skip_validation=true
 - If the stop condition mentions generating a specific output file, set skip_validation=true.
+- "model validation", "comprehensive validation", "analysis only", "validate this structure", "run MolProbity", "structure validation and correction" → Set wants_validation_only=true in workflow_preferences. Do NOT set after_program. Do NOT set this when validation is mentioned as a final step after refinement.
 
 **CRITICAL: WORKFLOW CONTINUATION INDICATORS**:
 Do NOT set after_program stop conditions if the user indicates they want additional steps AFTER a program:
@@ -1299,7 +1311,8 @@ def validate_directives(directives, log=None):
                         if valid_list:
                             valid_wf[key] = valid_list
                 elif key in ("use_experimental_phasing", "use_molecular_replacement",
-                             "use_mr_sad", "model_is_placed"):
+                             "use_mr_sad", "model_is_placed",
+                             "wants_validation_only"):
                     valid_wf[key] = bool(value)
 
             if valid_wf:
@@ -2573,6 +2586,36 @@ def extract_directives_simple(user_advice):
 
     # intent=tutorial: keep whatever patterns set
     # (after_program from tutorial_patterns is correct)
+
+    # v115.09 Fix 3: Detect validation-only intent
+    # NOTE: "analysis only" deliberately omitted — it matches
+    # data-quality analysis (xtriage-only) tutorials, not just
+    # model validation.  The LLM prompt handles that nuance.
+    _validation_signals = [
+        "model validation",
+        "structure validation", "comprehensive validation",
+        "run molprobity", "validate this structure",
+        "validation and correction",
+    ]
+    if any(sig in advice_lower for sig in _validation_signals):
+        if "workflow_preferences" not in directives:
+            directives["workflow_preferences"] = {}
+        directives["workflow_preferences"][
+            "wants_validation_only"] = True
+
+    # v115.09 Fix 4: Detect MR-SAD intent
+    _mr_sad_patterns = [
+        "mr-sad", "mr sad", "mrsad",
+        "molecular replacement sad",
+        "molecular replacement followed by sad",
+        "mr followed by sad",
+    ]
+    if any(pat in advice_lower for pat in _mr_sad_patterns):
+        if "workflow_preferences" not in directives:
+            directives["workflow_preferences"] = {}
+        directives["workflow_preferences"]["use_mr_sad"] = True
+        directives["workflow_preferences"][
+            "use_experimental_phasing"] = True
 
     # Extract unit_cell and space_group if mentioned
     _extract_crystal_symmetry_simple(user_advice, directives)

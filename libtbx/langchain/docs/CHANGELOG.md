@@ -1,5 +1,42 @@
 # CHANGELOG — v115
 
+## Version 115.09 (Tutorial Routing Fixes)
+
+### Summary
+
+Four routing bugs that prevented tutorials from completing. Fixes span
+cryo-EM workflow progression, data-limitation detection, validation-only
+routing, and MR-SAD intent recognition. Intent detection lives in the
+directive extractor layer (LLM prompt + rules-based fallback); the
+routing engine stays deterministic.
+
+### Modified Files (5 production files)
+
+| File | Fixes | Changes |
+|------|-------|---------|
+| `agent/workflow_engine.py` | 1, 3, 4 | Fix 1: `map_sharpening_done`, `map_symmetry_done`, `has_optimized_full_map` added to `past_analysis` gate in `_detect_cryoem_step`. Fix 3: `wants_validation_only` read from directives in `build_context`; validation shortcut in `_detect_xray_step` (guarded by `has_model` AND `has_data_mtz`). Fix 4: `force_mr` flag set in `build_context` when `use_mr_sad` + `has_model` + `not has_search_model` + `not phaser_done`; routing override in `_detect_xray_step` before placement probes; MR-SAD guard in `get_valid_programs` updated to check `force_mr`. |
+| `agent/graph_nodes.py` | 2 | `.sca/.hkl`-only data detection in `perceive()` with abort_message. Guarded by `not _has_model` AND `not _has_sequence` AND no `unit_cell` in directives. Follows established early-stop pattern (stop + stop_reason + abort_message + intent dict). |
+| `agent/directive_extractor.py` | 3, 4 | LLM prompt: `wants_validation_only` added to `workflow_preferences` schema with extraction guidance. MR-SAD prompt strengthened with concrete examples. `_validate_directives`: `wants_validation_only` added to allowed boolean keys. `extract_directives_simple`: rules-based fallback for 6 validation signals and 6 MR-SAD patterns. |
+| `agent/plan_generator.py` | 3 | `wants_validation_only` added to `_build_context` initial dict and propagated from `workflow_preferences` to template selection context. |
+| `knowledge/plan_templates.yaml` | 3 | `validate_existing` template: `applicable_when` requires xray + `wants_validation_only` + `has_search_model` + `model_is_placed` (priority 60, beats `refine_placed_ligand` at 55). Two stages: data_assessment (xtriage) + validation (model_vs_data, molprobity). |
+
+### Bug Details
+
+| Bug | Tutorial | Symptom | Root Cause | Fix |
+|-----|----------|---------|------------|-----|
+| 1 | bgal_denmod, apoferritin_denmod, ion_channel_denmod | Cryo-EM stops after 1 cycle (map_sharpening or resolve_cryo_em) | `map_sharpening_done` missing from `past_analysis` gate → `detect_step` returns "analyze" → no programs → STOP | 3 new flags in `past_analysis` including file-presence fallback |
+| 2 | p9-xtriage | xtriage fails on unmerged .sca without cell dimensions | Data limitation: unmerged scalepack needs unit cell + space group provided interactively | Early detection in `perceive()` with helpful abort message |
+| 3 | pka-validate | Runs predict_and_build instead of molprobity despite "Analysis only" advice | No validation-only routing path; directive extractor doesn't capture validation intent | `wants_validation_only` directive + validation shortcut + plan template |
+| 4 | lysozyme-MRSAD | R-free stuck at 0.54; phaser never runs despite "MR-SAD" advice | PDB classified as `model` not `search_model`; LLM ignores `use_mr_sad` prompt; no rules-based MR-SAD fallback | `force_mr` flag + MR-SAD rules fallback + prompt strengthening |
+
+### Review Fixes (2 bugs found during review)
+
+| Issue | Fix |
+|-------|-----|
+| Fix 2 false positive: gene-5-mad (merged .sca + sequence) falsely aborted | Added `not _has_sequence` guard to `.sca-only` condition |
+| Fix 3 false positive: "analysis only" matched xtriage-only and cryo-EM tutorials | Removed from rules-based signals; LLM prompt handles the nuance |
+
+
 ## Version 115.08 (Phased File Detection + Systematic Testing Framework)
 
 ### Summary

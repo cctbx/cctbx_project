@@ -1585,6 +1585,44 @@ still runs unconditionally on the first cycle when placement is genuinely unknow
 `valid_transition_fields` in `yaml_tools.py` so that `_validate_workflows()` does not
 emit spurious "unknown field" warnings for `probe_placement` phases.
 
+### v115.09 Routing Additions
+
+**Cryo-EM `past_analysis` gate** (`_detect_cryoem_step`): The gate that
+advances cryo-EM routing past the "analyze" step now includes
+`map_sharpening_done`, `map_symmetry_done`, and `has_optimized_full_map`
+(file-presence fallback). Previously, tutorials that started with
+`map_sharpening` instead of `mtriage` got stuck in "analyze" with no
+programs available.
+
+**Validation-only shortcut** (`_detect_xray_step`): When
+`wants_validation_only=True` (from directives) and both `has_model` and
+`has_data_mtz` are present, routing jumps directly from xtriage to the
+`validate` step. The `validate` step runs `model_vs_data` first (crystal
+symmetry sanity check) then `molprobity`. The corresponding
+`validate_existing` plan template (priority 60) ensures the planner
+selects a 2-stage plan (data_assessment → validation).
+
+**`force_mr` flag** (`build_context` + `_detect_xray_step`): When
+`use_mr_sad=True` from directives but the PDB is categorized as `model`
+(not `search_model`), `force_mr=True` is set. This overrides placement
+probes and routes directly to `molecular_replacement`, where phaser's
+`has_any: [processed_model, model_for_mr]` condition is satisfied via
+`has_model_for_mr=True`. The MR-SAD guard in `get_valid_programs` also
+checks `force_mr`, blocking autosol until phaser completes.
+
+**Directive-driven intent**: Both `wants_validation_only` and
+`use_mr_sad` are extracted by the directive extractor, not by string
+matching in the engine. The LLM prompt defines the schema; the
+rules-based fallback in `extract_directives_simple` catches common
+patterns deterministically. The engine reads these as boolean flags
+from `workflow_preferences`.
+
+**.sca-only data detection** (`perceive`): When all data files are
+`.sca/.hkl` with no `.mtz`, no model, and no sequence, and no
+`unit_cell` is provided in directives, `perceive()` emits a helpful
+abort message explaining that unit cell parameters must be provided
+via the GUI.
+
 ---
 
 ## Workflow History and Done Flags
@@ -2971,8 +3009,11 @@ Twelve pre-defined plan skeletons:
 | `mr_sad` | X-ray, has search model + anomalous atoms |
 | `sad_phasing` | X-ray, anomalous atoms (no search model) |
 | `sad_phasing_ligand` | X-ray, anomalous atoms + ligand |
+| `validate_existing` | X-ray, `wants_validation_only` + placed model (v115.09) |
+| `data_analysis_only` | X-ray, no model, no sequence |
 | `cryoem_refine` | Cryo-EM |
 | `cryoem_refine_ligand` | Cryo-EM + ligand |
+| `cryoem_analysis_only` | Cryo-EM, no model, no sequence |
 
 Templates encode expert crystallographic knowledge. Selection is
 deterministic (rule-based). The LLM only customizes parameters

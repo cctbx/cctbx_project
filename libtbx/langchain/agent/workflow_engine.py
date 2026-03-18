@@ -157,6 +157,9 @@ class WorkflowEngine:
             "refine_count": history_info.get("refine_count", 0),
             "rsr_count": history_info.get("rsr_count", 0),
 
+            # Last program that ran (for after_program directive check)
+            "last_program": history_info.get("last_program"),
+
             # Metrics
             "r_free": self._get_metric(analysis, history_info, "r_free", "last_r_free"),
             "r_work": self._get_metric(analysis, history_info, "r_work", "last_r_work"),
@@ -244,6 +247,10 @@ class WorkflowEngine:
             workflow_prefs = directives.get("workflow_preferences", {})
             context["use_mr_sad"] = workflow_prefs.get("use_mr_sad", False)
 
+            # v115.09 Fix 3: validation-only intent from directives
+            context["wants_validation_only"] = workflow_prefs.get(
+                "wants_validation_only", False)
+
             # CRITICAL: Treat skipped programs as "done" so the workflow can
             # advance past steps that require them.  Without this, skipping
             # xtriage causes the workflow to stay stuck in "analyze" with no
@@ -259,6 +266,19 @@ class WorkflowEngine:
                         context[done_flag] = True
         else:
             context["use_mr_sad"] = False
+            context["wants_validation_only"] = False
+
+        # v115.09 Fix 4: MR-SAD with model but no search_model.
+        # The model is likely a search model that the categorizer
+        # couldn't distinguish from an already-placed model.
+        # Set force_mr so phaser is offered without reclassifying
+        # the file between categories.
+        if (context.get("use_mr_sad") and
+            context.get("has_model") and
+            not context.get("has_search_model") and
+            not context.get("phaser_done")):
+            context["force_mr"] = True
+            context["has_model_for_mr"] = True
 
         # ── Tier 1 short-circuit: skip cell check when placement is resolved ────
         # _check_cell_mismatch may run phenix.show_map_info as a subprocess for
@@ -996,6 +1016,17 @@ class WorkflowEngine:
             return self._make_step_result(steps, "analyze",
                 "Need to analyze data quality first")
 
+        # v115.09 Fix 3: Validation-only shortcut.
+        # When the user's primary goal is validation (not refinement/MR),
+        # skip directly to the validate step.  Guards: must have both
+        # a model AND data.  model_vs_data runs first in the validate
+        # step as a crystal-symmetry sanity check before molprobity.
+        if (context.get("wants_validation_only") and
+            context.get("has_model") and
+            context.get("has_data_mtz")):
+            return self._make_step_result(steps, "validate",
+                "Validation-only: running model_vs_data + molprobity")
+
         # Step 2b: Have prediction, need to place it
         if context.get("has_predicted_model") and not context.get("has_placed_model"):
             if not context.get("has_processed_model"):
@@ -1052,6 +1083,13 @@ class WorkflowEngine:
             # and will resolve any minor discrepancy or give a clearer error.
             if not context.get("has_placed_model"):
                 context["has_placed_model"] = True
+
+        # v115.09 Fix 4: force_mr overrides placement checks.
+        # When directives indicate MR-SAD and phaser hasn't run,
+        # route directly to MR instead of probing placement.
+        if context.get("force_mr") and not context.get("phaser_done"):
+            return self._make_step_result(steps, "molecular_replacement",
+                "MR-SAD: model needs placement by phaser first")
 
         # ── Tier 3: probe not yet run, placement ambiguous → run it ──────────
         if context.get("placement_uncertain"):
@@ -1166,15 +1204,22 @@ class WorkflowEngine:
         # analysis.  This handles tutorials that skip mtriage and also prevents
         # the workflow from getting stuck in "analyze" if mtriage's done flag
         # wasn't set (e.g., history detection missed it after a restart).
+        # v115.09: added map_sharpening_done, map_symmetry_done (bgal_denmod fix),
+        # and has_optimized_full_map as file-presence fallback for session resumption.
         past_analysis = (
             context.get("mtriage_done") or
             context.get("resolve_cryo_em_done", False) or
+            context.get("map_sharpening_done", False) or
+            context.get("map_symmetry_done", False) or
             context.get("dock_done", False) or
             context.get("rsr_done", False) or
             context.get("map_to_model_done", False) or
             context.get("autobuild_done", False) or
             context.get("refine_done", False) or
-            context.get("predict_done", False)
+            context.get("predict_done", False) or
+            # File-presence fallback: if an optimized map exists,
+            # some analysis/processing program must have run
+            context.get("has_optimized_full_map", False)
         )
         if not past_analysis:
             return self._make_step_result(steps, "analyze",
@@ -1476,8 +1521,11 @@ class WorkflowEngine:
         # phaser must run first to place the model. AutoSol will be available
         # later in the experimental_phasing phase (after phaser completes).
         # This prevents autosol from running standalone when MR-SAD is appropriate.
+        # v115.09: force_mr allows this guard to fire even when has_search_model
+        # is False (model categorized as 'model' but user wants MR-SAD).
         if (context and
-            context.get("has_search_model") and
+            (context.get("has_search_model") or
+             context.get("force_mr")) and
             (context.get("has_anomalous") or context.get("use_mr_sad")) and
             not context.get("phaser_done") and
             "phenix.autosol" in valid):

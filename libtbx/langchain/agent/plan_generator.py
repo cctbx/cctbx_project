@@ -183,6 +183,7 @@ def _build_context(data_characteristics=None,
     "has_anomalous_atoms": False,
     "wants_mr_sad": False,
     "wants_polder": False,
+    "wants_validation_only": False,
     "model_is_placed": False,
     "resolution": None,
     "is_twinned": None,
@@ -454,6 +455,10 @@ def _build_context(data_characteristics=None,
   # in the polder override block.)
   if "polder" in _after:
     ctx["wants_polder"] = True
+
+  # v115.09: Validation-only intent from directives
+  if wf.get("wants_validation_only"):
+    ctx["wants_validation_only"] = True
 
   # --- From data characteristics ---
   dc = data_characteristics or {}
