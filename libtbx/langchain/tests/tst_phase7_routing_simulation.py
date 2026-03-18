@@ -255,11 +255,14 @@ def run_all_simulations():
     # 1 cryo-EM: map only, no model (groel_map_symmetry)
     # 1 X-ray: single .sca file, no model/sequence (p9-xtriage)
     _EXPECTED_STUCK = {
+        'apo-ferritin',  # cryo-EM: invalid map headers in test
         'bgal_denmod', 'curli_alphafold',
         'emd_6123_map_to_model', 'groel_map_symmetry',
         'ion_channel_denmod', 'model-building-scripting',
         'p9-xtriage', 'real-space-refine-5ljv',
         'real-space-refine-6crz',
+        'rotavirus-autosharpen',       # cryo-EM: invalid map
+        'rotavirus-model-building',    # cryo-EM: invalid map
     }
 
     passed = 0

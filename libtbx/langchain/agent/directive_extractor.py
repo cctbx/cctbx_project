@@ -642,6 +642,14 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
 
         log("DIRECTIVES: Extracted %d directive sections"
             % len(directives))
+
+        # v115.09: Post-LLM overlay — apply deterministic workflow
+        # intent patterns.  The LLM often ignores wants_validation_only
+        # and use_mr_sad even when the advice clearly requests them.
+        # This ensures the critical routing flags are always set.
+        _apply_workflow_intent_fallback(
+            directives, user_advice.lower())
+
         return directives
 
     except Exception as e:
@@ -2009,6 +2017,55 @@ def format_directives_for_display(directives):
 # SIMPLE EXTRACTION (NO LLM FALLBACK)
 # =============================================================================
 
+def _apply_workflow_intent_fallback(directives, advice_lower):
+    """Apply deterministic workflow intent patterns to directives.
+
+    v115.09: Shared by both LLM and rules-based paths.  When the LLM
+    extracts directives, it may miss ``wants_validation_only`` or
+    ``use_mr_sad`` even when the advice clearly requests them.  This
+    function overlays the deterministic pattern matches on top of
+    whatever the LLM returned, ensuring critical routing flags are
+    always set when the advice text contains unambiguous signals.
+
+    Called from:
+      - ``extract_directives`` (post-LLM overlay)
+      - ``extract_directives_simple`` (rules-only path)
+
+    Args:
+        directives: dict — modified in place.
+        advice_lower: str — lowercased user advice text.
+    """
+    # Validation-only intent.
+    # NOTE: "analysis only" deliberately omitted — it matches
+    # data-quality analysis (xtriage-only) tutorials, not just
+    # model validation.  The LLM prompt handles that nuance.
+    _validation_signals = [
+        "model validation",
+        "structure validation", "comprehensive validation",
+        "run molprobity", "validate this structure",
+        "validation and correction",
+    ]
+    if any(sig in advice_lower for sig in _validation_signals):
+        if "workflow_preferences" not in directives:
+            directives["workflow_preferences"] = {}
+        directives["workflow_preferences"][
+            "wants_validation_only"] = True
+
+    # MR-SAD intent.
+    _mr_sad_patterns = [
+        "mr-sad", "mr sad", "mrsad",
+        "molecular replacement sad",
+        "molecular replacement followed by sad",
+        "mr followed by sad",
+    ]
+    if any(pat in advice_lower for pat in _mr_sad_patterns):
+        if "workflow_preferences" not in directives:
+            directives["workflow_preferences"] = {}
+        directives["workflow_preferences"]["use_mr_sad"] = True
+        directives["workflow_preferences"][
+            "use_experimental_phasing"] = True
+
+
 def extract_directives_simple(user_advice):
     """
     Extract directives using simple pattern matching (no LLM).
@@ -2587,35 +2644,9 @@ def extract_directives_simple(user_advice):
     # intent=tutorial: keep whatever patterns set
     # (after_program from tutorial_patterns is correct)
 
-    # v115.09 Fix 3: Detect validation-only intent
-    # NOTE: "analysis only" deliberately omitted — it matches
-    # data-quality analysis (xtriage-only) tutorials, not just
-    # model validation.  The LLM prompt handles that nuance.
-    _validation_signals = [
-        "model validation",
-        "structure validation", "comprehensive validation",
-        "run molprobity", "validate this structure",
-        "validation and correction",
-    ]
-    if any(sig in advice_lower for sig in _validation_signals):
-        if "workflow_preferences" not in directives:
-            directives["workflow_preferences"] = {}
-        directives["workflow_preferences"][
-            "wants_validation_only"] = True
-
-    # v115.09 Fix 4: Detect MR-SAD intent
-    _mr_sad_patterns = [
-        "mr-sad", "mr sad", "mrsad",
-        "molecular replacement sad",
-        "molecular replacement followed by sad",
-        "mr followed by sad",
-    ]
-    if any(pat in advice_lower for pat in _mr_sad_patterns):
-        if "workflow_preferences" not in directives:
-            directives["workflow_preferences"] = {}
-        directives["workflow_preferences"]["use_mr_sad"] = True
-        directives["workflow_preferences"][
-            "use_experimental_phasing"] = True
+    # v115.09 Fix 3+4: Detect validation-only and MR-SAD intent
+    # Calls shared helper (also used as post-LLM overlay).
+    _apply_workflow_intent_fallback(directives, advice_lower)
 
     # Extract unit_cell and space_group if mentioned
     _extract_crystal_symmetry_simple(user_advice, directives)
