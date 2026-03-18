@@ -225,7 +225,6 @@ def compute_fragments(pdb_str, sel_str, expected, filter_lone_linkers=True):
 
 #  print(len(cctbx_rigid_components))
 #
-#  ph =  model.get_hierarchy()
 #  atoms = ph.atoms()
 #  for rigid_comp in cctbx_rigid_components:
 #    print('fragment')

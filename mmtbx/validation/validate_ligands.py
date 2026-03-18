@@ -28,6 +28,8 @@ nproc = 1
   .type = int
 model_fn_reduce2 = None
   .type = path
+save_fragment_png = False
+  .type = bool
 run_qmr = False
   .type = bool
 }
@@ -522,9 +524,13 @@ class ligand_result(object):
     #  _sel_str = self.sel_str
     _sel_str = self.sel_str
 
-    sel_within_str_noH = '(residues_within (%s, %s)) and protein and not water \
+    sel_within_str_noH = '(residues_within (%s, %s)) and not water \
     and not (element H or element D) and not (%s)' % \
     (within_radius, self.sel_str, _sel_str)
+
+    #sel_cache = self._ph.atom_selection_cache()
+    #site_sel= sel_cache.selection(sel_within_str_noH) # does not know residues_within
+    #STOP()
     #print(sel_within_str_noH)
     isel_within_noH = self.model.iselection(sel_within_str_noH)
     xrs_within_noH = self._xrs.select(isel_within_noH)
@@ -618,9 +624,14 @@ class ligand_result(object):
       residue_name=ag_ligand.resname, atom_names=ag_ligand.atoms().extract_name())
     #print(dir(cif_object))
     #cif_object.show()
+    if self.params.save_fragment_png:
+      png_fn = self.fn_string + '.png'
+    else:
+      png_fn = None
     self.ligand_rigid_components_isels = rdkit_utils.get_cctbx_isel_for_rigid_components(
       atom_group = ag_ligand,
-      cif_object = cif_object)
+      cif_object = cif_object,
+      filename = png_fn)
     #for rigid_comp in ligand_rigid_components_isels:
     #  print('fragment')
     #  print(list(rigid_comp))
@@ -814,8 +825,9 @@ class ligand_result(object):
     #  xray_structure = self.model.get_xray_structure(),
     #  update_f_calc=True
     #)
+    fmodel2 = self.fmodel.deep_copy()
     m2 = self.compute_maps(
-      fmodel           = self.fmodel,
+      fmodel           = fmodel2,
       crystal_gridding = crystal_gridding,
       map_type         = "DFmodel")
 
@@ -833,7 +845,7 @@ class ligand_result(object):
       map_type         = "2mFo-DFc")
 
     sc = self.model.get_sites_cart()
-    sites_cart = sc.select(self.ligand_isel)
+    sites_cart = sc.select(self.ligand_isel_noH)
 
     cc_total = self.compute_cc(m1, m2, cs, sites_cart)
 
@@ -860,7 +872,8 @@ class ligand_result(object):
       fft_n_real = m1.focus(),
       fft_m_real = m1.all(),
       sites_cart = sites_cart,
-      site_radii = flex.double(sites_cart.size(), 1.0))
+      site_radii = flex.double(sites_cart.size(), 1.5))
+    #print(sel.size())
     # below selection maybe not necessary?
     # maybe to prevent that particular grid points ruin the overall cc
     m1 = m1.set_selected(m1<0, 0)

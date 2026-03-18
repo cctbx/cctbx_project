@@ -189,9 +189,10 @@ RSCC.
 
     # get model object from input file
     m = self.data_manager.get_model()
+    m.set_log(log = null_out())
     if self.data_manager.has_restraints():
       m.set_stop_for_unknowns(False)
-      m.set_log(log = null_out())
+      #m.set_log(log = null_out())
       m.process(make_restraints=False)
 
     # stop if multi-model file
