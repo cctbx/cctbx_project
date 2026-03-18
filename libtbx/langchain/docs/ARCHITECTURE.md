@@ -1612,10 +1612,22 @@ checks `force_mr`, blocking autosol until phaser completes.
 
 **Directive-driven intent**: Both `wants_validation_only` and
 `use_mr_sad` are extracted by the directive extractor, not by string
-matching in the engine. The LLM prompt defines the schema; the
-rules-based fallback in `extract_directives_simple` catches common
-patterns deterministically. The engine reads these as boolean flags
+matching in the engine. The engine reads these as boolean flags
 from `workflow_preferences`.
+
+**Extraction architecture**: The rules-based patterns in
+`_apply_workflow_intent_fallback()` run as a **post-LLM overlay** —
+after the LLM returns directives, the overlay applies deterministic
+pattern matching and sets routing flags that the LLM missed. This
+is necessary because the LLM has never set these flags in 240+
+tested extractions (across 61 tutorials × 4 modes). The overlay
+also runs in `extract_directives_simple()` for the rules-only path.
+Rules always run last and always win for routing flags.
+
+**Future refactor** (v115.10): Replace overlay with centralized
+`_DIRECTIVE_SCHEMA` and registry-driven `_merge_tiered` merge where
+each field has a declared authority level (RULES or LLM). See
+`docs/directive_merge_plan.md`.
 
 **.sca-only data detection** (`perceive`): When all data files are
 `.sca/.hkl` with no `.mtz`, no model, and no sequence, and no

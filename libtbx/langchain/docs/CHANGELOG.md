@@ -36,6 +36,26 @@ routing engine stays deterministic.
 | Fix 2 false positive: gene-5-mad (merged .sca + sequence) falsely aborted | Added `not _has_sequence` guard to `.sca-only` condition |
 | Fix 3 false positive: "analysis only" matched xtriage-only and cryo-EM tutorials | Removed from rules-based signals; LLM prompt handles the nuance |
 
+### Deployment Fix (discovered via run 19 verification)
+
+Run 19 (OpenAI, post-deployment) showed all four fixes not firing: directives
+contained no `wants_validation_only` or `use_mr_sad` despite code being
+deployed and bytecache cleared.
+
+**Root cause**: The rules-based intent patterns were only in
+`extract_directives_simple()` — the fallback path. OpenAI runs use the
+LLM path in `extract_directives()`, which calls the LLM, gets directives
+without these flags, and returns. The rules-based patterns never execute.
+
+**Fix**: Extracted patterns into `_apply_workflow_intent_fallback()` shared
+helper. Called as **post-LLM overlay** in `extract_directives()` (after LLM
+returns, before final return) AND from `extract_directives_simple()`.
+Rules always run last and always win for routing flags. The LLM cannot
+override them because it never sets them (0/240 extractions).
+
+**Future**: Replace overlay with centralized `_DIRECTIVE_SCHEMA` and
+registry-driven `_merge_tiered` merge (v115.10, see `docs/directive_merge_plan.md`).
+
 
 ## Version 115.08 (Phased File Detection + Systematic Testing Framework)
 
