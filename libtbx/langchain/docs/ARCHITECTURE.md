@@ -1596,11 +1596,19 @@ programs available.
 
 **Validation-only shortcut** (`_detect_xray_step`): When
 `wants_validation_only=True` (from directives) and both `has_model` and
-`has_data_mtz` are present, routing jumps directly from xtriage to the
-`validate` step. The `validate` step runs `model_vs_data` first (crystal
-symmetry sanity check) then `molprobity`. The corresponding
-`validate_existing` plan template (priority 60) ensures the planner
-selects a 2-stage plan (data_assessment → validation).
+data are present (`has_data_mtz` OR `has_phased_data_mtz` — completed
+structures often have phase columns in their MTZ), routing jumps directly
+from xtriage to the `validate` step. The `validate` step runs
+`model_vs_data` first (crystal symmetry sanity check) then `molprobity`.
+The corresponding `validate_existing` plan template (priority 60) ensures
+the planner selects a 2-stage plan (data_assessment → validation).
+
+**`_is_valid_file` PDB scan limit** (`workflow_state.py`): The Layer 3
+structural validity check scans PDB files for ATOM/HETATM records. The
+scan limit is 2000 lines (increased from 500 after 3dnd.pdb — 546 header
+lines — was rejected as invalid). Since the full file content is already
+read into memory, the `any()` short-circuits on first match with no
+performance cost.
 
 **`force_mr` flag** (`build_context` + `_detect_xray_step`): When
 `use_mr_sad=True` from directives but the PDB is categorized as `model`
@@ -1624,10 +1632,22 @@ tested extractions (across 61 tutorials × 4 modes). The overlay
 also runs in `extract_directives_simple()` for the rules-only path.
 Rules always run last and always win for routing flags.
 
+**`map_sharpening_done` regex** (`workflow_state.py`): The zombie check
+table and done-flag detection use regex `sharpen.*\.(ccp4|mrc)$` (not
+`sharpened`) to match actual `phenix.map_sharpening` output filenames
+like `auto_sharpen_A.ccp4` and `bgal_auto_sharpen.ccp4`.
+
 **Future refactor** (v115.10): Replace overlay with centralized
 `_DIRECTIVE_SCHEMA` and registry-driven `_merge_tiered` merge where
 each field has a declared authority level (RULES or LLM). See
 `docs/directive_merge_plan.md`.
+
+**Known issue — preprocessing stop override** (`ai_agent.py` line 2761):
+The `_preprocessing_programs` set (`xtriage`, `mtriage`) causes
+`after_program` to be unconditionally cleared, even when the user
+explicitly says "run mtriage and stop." The intent override also
+changes `task` → `solve`. Fix planned for v115.10: add
+`_has_explicit_stop` regex check before clearing.
 
 **.sca-only data detection** (`perceive`): When all data files are
 `.sca/.hkl` with no `.mtz`, no model, and no sequence, and no
@@ -3525,6 +3545,26 @@ is a theoretical-only gap: cryo-EM programs don't produce clashscore
 until after real-space refinement has run, so the unguarded path is
 never reached with current tutorials. Worth a future cleanup but low
 risk.
+
+**CIF model categorization (v115.09).** When a user provides a
+macromolecular model as a `.cif` file (mmCIF format), the YAML
+categorizer places it in the generic `cif` category — not `model` or
+`search_model`. This causes `has_model=False` in `build_context`,
+breaking all model-dependent routing (validation shortcut, placement
+probes, refinement). In practice most users provide PDB-format models;
+CIF-format ligand restraints are correctly categorized. Fix requires
+adding mmCIF model detection to the YAML category rules (checking for
+`_atom_site.` loop or similar structural markers).
+
+**Preprocessing stop override (v115.09).** `ai_agent.py` line 2761
+has a `_preprocessing_programs` set (`xtriage`, `mtriage`) that
+unconditionally clears the `after_program` stop condition and
+overrides `intent: task` → `intent: solve`. This prevents stopping
+after xtriage/mtriage even when the user explicitly says "run mtriage
+and stop." The fix is to check for explicit stop language
+(`_has_explicit_stop` regex) before clearing. Located in
+`$PHENIX/modules/phenix/phenix/programs/ai_agent.py`, outside the
+langchain directory.
 
 ### Design tensions
 

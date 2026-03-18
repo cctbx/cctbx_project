@@ -56,6 +56,31 @@ override them because it never sets them (0/240 extractions).
 **Future**: Replace overlay with centralized `_DIRECTIVE_SCHEMA` and
 registry-driven `_merge_tiered` merge (v115.10, see `docs/directive_merge_plan.md`).
 
+### Production Verification Fixes (runs 20-22)
+
+| Issue | Discovery | Root Cause | Fix |
+|-------|-----------|------------|-----|
+| Fix 3: `_is_valid_file` rejects valid 3dnd.pdb | Run 21 `[GATE]` output: `has_model=False` despite 3225 ATOM records | PDB scan limit of 500 lines; 3dnd.pdb has 546 header lines before first ATOM record | `workflow_state.py`: increased scan limit to 2000 |
+| Fix 3: `has_data_mtz=False` for phased MTZ | Run 20 analysis: completed structures with phase columns go to `phased_data_mtz` | Validation shortcut only checked `has_data_mtz` | `workflow_engine.py`: added `has_phased_data_mtz` to context + validation shortcut |
+| Fix 1: `map_sharpening_done` regex wrong | Diagnostic: regex matches "sharpened" but output is `auto_sharpen_A.ccp4` | Zombie check table regex too narrow | `workflow_state.py`: broadened regex from "sharpened" to "sharpen" |
+| Fix 2: `.sca-only` check blocked by sequence guard | Run 19: p9-xtriage has `seq.dat` like gene-5-mad | Proactive file-type approach can't distinguish the two | **Deferred** — needs reactive approach (diagnosable_errors.yaml) |
+
+### Additional files modified (production verification)
+
+| File | Changes |
+|------|---------|
+| `agent/workflow_state.py` | `_is_valid_file`: PDB scan limit 500→2000. `_ZOMBIE_CHECK_TABLE`: map_sharpening regex "sharpened"→"sharpen". |
+| `agent/workflow_engine.py` | `has_phased_data_mtz` added to `build_context` initial dict + validation shortcut condition. |
+
+### Known Issues (deferred to v115.10)
+
+| Issue | Description |
+|-------|-------------|
+| Preprocessing stop override | `ai_agent.py` line 2761 unconditionally clears `after_program` for xtriage/mtriage even when user explicitly says "stop". Fix: check `_has_explicit_stop` regex before clearing. |
+| CIF model categorization | `model.cif` files go to generic `cif` category, not `model`. Affects model-dependent routing for CIF-format structures. |
+| Fix 2 redesign | p9-xtriage `.sca-only` proactive check fails (has sequence like gene-5-mad). Need reactive: xtriage "no unit cell" failure as diagnosable terminal error. |
+| Directive extraction refactor | Replace post-LLM overlay with `_DIRECTIVE_SCHEMA` registry + `_merge_tiered`. See `docs/directive_merge_plan.md`. |
+
 
 ## Version 115.08 (Phased File Detection + Systematic Testing Framework)
 
