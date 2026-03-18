@@ -2414,13 +2414,14 @@ _ZOMBIE_CHECK_TABLE = [
     # accept_any_pdb=True: generic names like "refined_model.pdb" are valid evidence
     ("rsr_done",             _re.compile(r"real_space_refin.*\.pdb$", _re.IGNORECASE),
      None, True),
-    # map_sharpening: output is *_sharpened*.ccp4 or *_sharpened*.mrc.
+    # map_sharpening: output filenames vary: *_sharpened*.ccp4, *auto_sharpen*.ccp4,
+    # *sharpen_A*.ccp4, etc.  Match "sharpen" (covers "sharpened" too).
     # The 'Sorry:' failure mode IS caught by _is_failed_result (has PHIB/FOM
     # pattern matches SORRY:).  This entry is a backstop for any graceful
     # failure mode that does not produce SORRY:/FAILED in the result string
     # (P5 fix, log-confirmed 2026-03-09).
     ("map_sharpening_done",  _re.compile(
-        r"sharpened.*\.(ccp4|mrc)$|.*sharpened.*\.(ccp4|mrc)$",
+        r"sharpen.*\.(ccp4|mrc)$|.*sharpen.*\.(ccp4|mrc)$",
         _re.IGNORECASE),
      None, False),
 ]
