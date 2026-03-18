@@ -28,6 +28,7 @@ in detail in Parts 1 and 2.
 
 2. **Open a new LLM session.** Attach as files:
    `CCTBX_LLM_PROGRAMMING_GUIDELINES.md`, `WORKFLOW.md`,
+   `ARCHITECTURE.md` (if you have one — see §1.11),
    your code archive, and `HANDOFF.json` if resuming.
    (Also attach
    `AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md` if working
@@ -50,6 +51,11 @@ in detail in Parts 1 and 2.
 
 7. **If the session dies,** start a new session with the
    same attachments and paste `CONTINUE_PROMPT.txt`.
+
+8. **Ask "what did we miss?"** Before closing out, ask
+   the LLM (or a second LLM) whether there are side
+   effects, callers, edge cases, or downstream
+   consequences that weren't addressed. See §1.12.
 
 For what each file contains, see the **File Reference**
 table at the end of this document.
@@ -91,6 +97,11 @@ effectively does not exist.
 - The specific files the LLM will read or modify. Don't
   give it the entire codebase if you only need changes
   to two files.
+- An architecture document that describes the overall
+  system structure, module responsibilities, and data
+  flow (see §1.11). This is much more effective than
+  hoping the LLM will infer the architecture from
+  scattered source files.
 - Coding standards and style guides. The LLM will match
   whatever conventions you show it. (On this project,
   that means attaching
@@ -166,21 +177,26 @@ time.
 The recommended cycle:
 
 ```
-START ────────► PLAN ─────────► REVIEW ────────► IMPLEMENT ──► VERIFY
-  │               │               │                │              │
-Attach:         Paste:          Give plan +      LLM writes    You run
- CCTBX Guide    PLAN_PROMPT     REVIEW.txt       code, updates  tests,
- WORKFLOW.md    + problem       to a second      HANDOFF.json   read
- code archive   description     LLM              after each     diffs,
- HANDOFF.json                                    step           check
-Paste:                                                          edges
+START ──► PLAN ──► REVIEW ──► IMPLEMENT ──► VERIFY ──► WHAT DID WE MISS?
+  │          │        │           │            │              │
+Attach:    Paste:   Give plan   LLM writes  You run        Ask LLM:
+ CCTBX     PLAN_    + REVIEW    code,       tests,         any side
+ Guide     PROMPT   .txt to a   updates     read diffs,    effects,
+ WORKFLOW  + prob.  second LLM  HANDOFF     check edges    callers,
+ ARCH.md   desc.                each step                  or gaps?
+ code
+Paste:
  WORKFLOW_PROMPT
 ```
 
 **Step 1 — Plan.** Ask the LLM to produce a written
 plan: problem description, approach, implementation
-steps, risks. Review it yourself. When you are ready
-to request the plan, use this prompt:
+steps, risks. If you have an `ARCHITECTURE.md` (see
+§1.11), provide it here so the plan accounts for the
+system's structure. If you don't have one and the task
+is substantial, ask the LLM to draft one first — review
+and correct it, then use it as input to the plan.
+When you are ready to request the plan, use this prompt:
 
 ```text
 Please make a plan for fixing these problems. Include
@@ -228,6 +244,13 @@ recoverable if interrupted (see §1.7).
 **Step 5 — Verify.** You run the code, run the tests,
 and confirm correctness. The LLM cannot do this for you
 (see §1.5).
+
+**Step 6 — Ask "what did we miss?"** Before closing out,
+ask the LLM to consider whether the changes have
+unaddressed side effects, untouched callers, missing
+test coverage, or downstream consequences. This is
+especially valuable with a second LLM that wasn't
+involved in the implementation. See §1.12.
 
 This cycle prevents the most expensive failure mode:
 the LLM confidently building out an approach that was
@@ -483,6 +506,110 @@ but unfamiliar with your project:
 If the answer to any of these is "no," send it back for
 revision — just as you would with a human author.
 
+### 1.11 Supplying an Architecture Document
+
+LLMs work from the files you give them. If you hand them
+three source files with no explanation of how those files
+fit into the larger system, they will guess — and they
+will guess wrong. An architecture document eliminates the
+most damaging category of guessing: guessing about
+structure.
+
+**What to put in `ARCHITECTURE.md`:**
+
+- The major components or modules and what each one is
+  responsible for.
+- How data flows between them (e.g., "the PLAN node
+  produces a command list that the BUILD node executes").
+- Which parts are client-side vs server-side, if
+  applicable.
+- Key design constraints (e.g., "agent/ must not import
+  server-only dependencies").
+- Any non-obvious coupling (e.g., "changes to
+  `session.data` fields must also appear in
+  `create_initial_state()` and `contract.py`").
+
+This does not need to be long. A one-page document with
+a component list and a data flow description is far more
+useful than nothing. The goal is to prevent the LLM from
+making structurally wrong changes — like putting
+server-only logic in client code, or modifying a file
+without updating the three other files that must stay in
+sync with it.
+
+**When to provide it:**
+
+- Attach `ARCHITECTURE.md` alongside the coding
+  guidelines at session start, especially when the task
+  involves multiple files or crosses module boundaries.
+- If you don't have one yet and the project is
+  substantial, **create it as part of the planning
+  process** (§1.4 Step 1). Before asking for an
+  implementation plan, ask the LLM to draft an
+  architecture document from the source files you've
+  provided. Review and correct it, then use it as input
+  to the plan. This pays for itself immediately — the
+  plan will be structurally sound instead of built on
+  guesses about how the system fits together.
+- For smaller or one-off tasks, you can skip this. But
+  if you find yourself explaining the same system
+  structure to the LLM across multiple sessions, that's
+  a sign you need an `ARCHITECTURE.md`.
+
+**When to update it:**
+
+- After any task that changes the system's structure
+  (new modules, new data flow paths, changed
+  responsibilities). If the architecture document is
+  stale, it will actively mislead future sessions.
+
+### 1.12 The "What Did We Miss?" Check
+
+After the code is written and the tests pass, there is
+one more step before you close out: ask the LLM whether
+anything was missed.
+
+This catches a class of problems that verification
+(§1.5) does not: side effects, downstream consequences,
+and unstated assumptions that neither you nor the LLM
+thought to check. It is cheap to do and occasionally
+catches expensive mistakes.
+
+**How to do it.** After the implementation is complete
+and tests pass, ask:
+
+> We just made these changes: [brief summary or diff].
+> Are there any side effects, callers, downstream
+> consumers, edge cases, documentation, or tests that
+> we haven't addressed? Think carefully about what
+> could break that we haven't considered.
+
+**Why a second LLM is especially useful here.** The LLM
+that wrote the code has a blind spot: it has already
+convinced itself the approach is correct. A fresh LLM
+(or a fresh session) has no such commitment. Give it
+the changed files, the original files, and the question
+above. It will often spot things the implementing LLM
+overlooked — a caller that passes None, a serialization
+path that expects the old field name, a test file that
+hard-codes an assumption the change just invalidated.
+
+**What to look for in the answer:**
+
+- Callers or importers of changed functions that weren't
+  updated
+- Serialization round-trips (`to_dict` / `from_dict`)
+  that need new fields
+- Configuration or YAML files that reference changed
+  names
+- Documentation that describes the old behavior
+- Test files that test the old behavior or hard-code
+  values that just changed
+
+You don't need to act on every suggestion — the LLM may
+flag things that aren't actually problems. But reviewing
+the list takes a minute and occasionally saves hours.
+
 ---
 
 ## Part 2: Project Workflow
@@ -551,6 +678,12 @@ space. Here is when to use each:
   plan format, interruption protocol, and output
   requirements. This is what makes sessions recoverable.
 
+- **`ARCHITECTURE.md`** (if you have one) — Describes
+  the system's component structure, data flow, and
+  design constraints. Especially important when the task
+  crosses module boundaries or involves multiple files.
+  See §1.11.
+
 **Attach when working on agent code:**
 
 - **`AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md`** — The
@@ -585,6 +718,7 @@ each stage and what the human does at each step:
   │  Attach as files (do NOT paste):                │
   │    CCTBX_LLM_PROGRAMMING_GUIDELINES.md          │
   │    WORKFLOW.md                                  │
+  │    ARCHITECTURE.md (if you have one)            │
   │    AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md       │
   │      (only if working on agent code)            │
   │    code archive                                 │
@@ -619,6 +753,15 @@ each stage and what the human does at each step:
   │  Human: verify each step (§1.5, §2.4)           │
   └────────────────────┬────────────────────────────┘
                        │
+                       ▼
+  ┌─────────────────────────────────────────────────┐
+  │          WHAT DID WE MISS? (§1.12)              │
+  │  Ask the LLM (or a second LLM):                 │
+  │    any side effects, callers, edge cases,        │
+  │    or downstream consequences we missed?         │
+  │  Review the answer. Act on real issues.          │
+  └────────────────────┬────────────────────────────┘
+                       │
               ┌────────┴────────┐
               ▼                 ▼
   ┌──────────────────┐  ┌──────────────────────────┐
@@ -626,7 +769,10 @@ each stage and what the human does at each step:
   │  HANDOFF.json    │  │  New session              │
   │  reflects final  │  │  Same file attachments    │
   │  state.          │  │  Paste CONTINUE_PROMPT    │
-  │                  │  │  (see §1.7)               │
+  │  Update          │  │  (see §1.7)               │
+  │  ARCHITECTURE.md │  │                           │
+  │  if structure    │  │                           │
+  │  changed.        │  │                           │
   └──────────────────┘  └──────────────────────────┘
 ```
 
@@ -640,6 +786,7 @@ sure you are holding up your end.
 
 - [ ] Did I attach `CCTBX_LLM_PROGRAMMING_GUIDELINES.md`
       and `WORKFLOW.md`?
+- [ ] Did I attach `ARCHITECTURE.md` (if I have one)?
 - [ ] Did I also attach
       `AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md` (if
       working on agent code)?
@@ -676,6 +823,12 @@ sure you are holding up your end.
 - [ ] Do all `libtbx.langchain` imports have fallback
       `except ImportError` blocks?
 
+**Before closing out:**
+
+- [ ] Did I ask the LLM (or a second LLM) "what did we
+      miss?" — any side effects, callers, edge cases,
+      or downstream consequences? (§1.12)
+
 **At session end:**
 
 - [ ] Does `HANDOFF.json` reflect the final state?
@@ -683,6 +836,8 @@ sure you are holding up your end.
       alone?
 - [ ] Did the LLM provide full file copies (not just
       diffs)?
+- [ ] If the system's structure changed, did I update
+      `ARCHITECTURE.md`?
 
 ---
 
@@ -699,6 +854,7 @@ less room for your actual code.
 |------|------|---------|----------------|
 | `CCTBX_LLM_PROGRAMMING_GUIDELINES.md` | ~650 lines | Coding standards, cctbx patterns, pitfalls, checklist | **Every** session |
 | `WORKFLOW.md` | ~250 lines | Checkpoint rules, plan format, interruption protocol | **Every** session |
+| `ARCHITECTURE.md` | varies | System structure, module responsibilities, data flow, design constraints | **Every** session (if you have one). See §1.11. |
 | `AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md` | ~310 lines | Agent-specific patterns: imports, state persistence, error systems | Only when working on **agent code** |
 
 **Paste into chat** — these are short prompts you type
