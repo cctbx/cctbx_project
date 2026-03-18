@@ -93,6 +93,7 @@ class WorkflowEngine:
         context = {
             # File availability - using semantic categories
             "has_data_mtz": bool(files.get("data_mtz")),
+            "has_phased_data_mtz": bool(files.get("phased_data_mtz")),
             "has_map_coeffs_mtz": bool(files.get("map_coeffs_mtz")),
             "has_sequence": bool(files.get("sequence")),
             # SEMANTIC: 'model' = positioned models (phaser_output, refined, docked)
@@ -1019,11 +1020,14 @@ class WorkflowEngine:
         # v115.09 Fix 3: Validation-only shortcut.
         # When the user's primary goal is validation (not refinement/MR),
         # skip directly to the validate step.  Guards: must have both
-        # a model AND data.  model_vs_data runs first in the validate
-        # step as a crystal-symmetry sanity check before molprobity.
+        # a model AND data (either data_mtz or phased_data_mtz — completed
+        # structures often have phase columns in their MTZ).
+        # model_vs_data runs first in the validate step as a crystal-
+        # symmetry sanity check before molprobity.
         if (context.get("wants_validation_only") and
             context.get("has_model") and
-            context.get("has_data_mtz")):
+            (context.get("has_data_mtz") or
+             context.get("has_phased_data_mtz"))):
             return self._make_step_result(steps, "validate",
                 "Validation-only: running model_vs_data + molprobity")
 
