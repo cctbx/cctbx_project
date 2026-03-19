@@ -684,14 +684,47 @@ def perceive(state):
     # BUT: Don't inject if a forced_program is set from directives — the
     # directive system (after_program) understands multi-step ordering while
     # explicit_program is a simple text scan that would conflict.
+    # v115.09b: Also don't inject if the program's done flag is already set.
+    # The LLM may re-request a completed program (e.g. resolve_cryo_em after
+    # it succeeded) — the done flag prevents useless re-runs that cause loops.
+    # Legitimate re-runs with different parameters go through prefer_programs
+    # or after_program directives, which use a different path.
     explicit_prog = session_info.get("explicit_program")
     forced_prog = workflow_state.get("forced_program")
     if explicit_prog and not forced_prog:
-        valid_progs = workflow_state.get("valid_programs", [])
-        if explicit_prog not in valid_progs:
-            valid_progs.append(explicit_prog)
-            workflow_state["valid_programs"] = valid_progs
-            state = _log(state, "PERCEIVE: Injected explicit program request: %s" % explicit_prog)
+        # Check if the program is already done
+        _already_done = False
+        _done_flag_name = None
+        try:
+            from libtbx.langchain.knowledge.program_registration import (
+                get_program_done_flag_map)
+            _flag_map = get_program_done_flag_map()
+            _done_flag_name = _flag_map.get(explicit_prog)
+        except ImportError:
+            try:
+                from knowledge.program_registration import (
+                    get_program_done_flag_map)
+                _flag_map = get_program_done_flag_map()
+                _done_flag_name = _flag_map.get(explicit_prog)
+            except ImportError:
+                pass
+        if _done_flag_name:
+            _ctx = workflow_state.get("context", {})
+            _already_done = bool(_ctx.get(_done_flag_name))
+
+        if _already_done:
+            state = _log(state,
+                "PERCEIVE: Skipped explicit_program %s "
+                "(already done: %s=True)" % (
+                    explicit_prog, _done_flag_name))
+        else:
+            valid_progs = workflow_state.get("valid_programs", [])
+            if explicit_prog not in valid_progs:
+                valid_progs.append(explicit_prog)
+                workflow_state["valid_programs"] = valid_progs
+                state = _log(state,
+                    "PERCEIVE: Injected explicit program "
+                    "request: %s" % explicit_prog)
     elif explicit_prog and forced_prog and explicit_prog != forced_prog:
         state = _log(state, "PERCEIVE: Skipped explicit_program %s (forced_program %s takes precedence)" % (
             explicit_prog, forced_prog))
