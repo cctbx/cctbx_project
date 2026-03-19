@@ -186,3 +186,32 @@ errors:
   # Traceback detection is handled in the planning prompt (Fix 3) which
   # tells the LLM to choose a different program rather than stopping the
   # entire workflow.
+
+  # ---------------------------------------------------------------------------
+  # Reflection data without unit cell or space group (e.g. unmerged .sca)
+  # ---------------------------------------------------------------------------
+  # Example error (phenix.xtriage with .sca file):
+  #   Sorry: No unit cell info available.
+  #   Use keyword 'xray_data.unit_cell' to specify unit_cell
+  #   Cell and/or symmetry not specified in reflection file
+  # Unmerged scalepack/HKL files don't carry crystal symmetry.
+  # The agent cannot provide these parameters interactively.
+  # ---------------------------------------------------------------------------
+  missing_crystal_symmetry:
+    description: "Reflection data missing unit cell or space group"
+    detection_patterns:
+      - "No unit cell info available"
+      - "Cell and/or symmetry not specified"
+      - "Sorry.*No unit cell"
+      - "unit_cell.*not.*specified"
+    diagnosis_hint: >
+      The input reflection data (likely an unmerged scalepack .sca or
+      .hkl file) does not contain unit cell dimensions or space group
+      information.  Unlike MTZ files, scalepack format does not always
+      carry crystal symmetry.  To process this data, please run
+      phenix.xtriage from the PHENIX GUI where you can enter the unit
+      cell (a, b, c, alpha, beta, gamma) and space group interactively,
+      or convert the data to MTZ format first using
+      phenix.reflection_file_converter with explicit symmetry parameters:
+      phenix.reflection_file_converter data.sca --unit_cell="a b c al be ga"
+      --space_group="P222" --output_mtz=data.mtz

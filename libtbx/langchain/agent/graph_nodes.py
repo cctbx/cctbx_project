@@ -771,59 +771,13 @@ def perceive(state):
             message="%s: %s" % (_ig.get("file", "?"),
                                 _ig.get("note", "unrecognized format")))
 
-    # v115.09 Fix 2: Detect .sca/.hkl-only data without unit cell.
-    # Unmerged scalepack data requires cell dimensions and space group
-    # that must be provided interactively in the GUI.
-    # Guard: only fires when there is NO model AND NO sequence.
-    # Tutorials with sequence + .sca (e.g. gene-5-mad with merged
-    # scalepack) work fine through autosol — don't abort those.
-    _data_files = categorized.get("data_mtz", [])
-    _has_mtz = any(f.endswith('.mtz') for f in _data_files)
-    _has_model = bool(categorized.get("model"))
-    _has_sequence = bool(categorized.get("sequence"))
-    _sca_only = (
-        _data_files and
-        not _has_mtz and
-        all(f.lower().endswith(('.sca', '.hkl'))
-            for f in _data_files) and
-        not _has_model and
-        not _has_sequence
-    )
-    if _sca_only:
-        _directives = state.get("directives", {})
-        _prog_settings = _directives.get("program_settings", {})
-        _has_cell = bool(
-            _prog_settings.get("default", {}).get("unit_cell") or
-            _prog_settings.get(
-                "phenix.xtriage", {}).get("unit_cell")
-        )
-        if not _has_cell:
-            _sca_msg = (
-                "Unmerged scalepack/reflection data (.sca) "
-                "requires unit cell dimensions and space group "
-                "that are not present in the file. Please run "
-                "this tutorial from the PHENIX GUI where these "
-                "parameters can be provided interactively.")
-            state = _log(state,
-                "PERCEIVE: .sca-only data without unit cell "
-                "— stopping with helpful message")
-            state = _emit(state, EventType.WARNING,
-                message=_sca_msg,
-                category="data_limitation")
-            return {
-                **state,
-                "stop": True,
-                "stop_reason": "data_limitation",
-                "abort_message": _sca_msg,
-                "intent": {
-                    "program": "STOP",
-                    "stop": True,
-                    "stop_reason": "data_limitation",
-                    "reasoning": _sca_msg,
-                    "files": {},
-                    "strategy": {},
-                },
-            }
+    # v115.09b: Removed proactive .sca-only detection (was v115.09 Fix 2).
+    # Replaced by reactive detection: xtriage's "No unit cell info available"
+    # error is now in diagnosable_errors.yaml as missing_crystal_symmetry.
+    # The DiagnosisDetector fires on the failed result and stops with a
+    # helpful diagnosis.  The proactive check couldn't distinguish
+    # p9-xtriage (needs cell) from gene-5-mad (works fine) because both
+    # have .sca + sequence files.
 
     # Override detected experiment_type with locked session experiment_type if available
     session_info = state.get("session_info", {})
