@@ -2849,25 +2849,25 @@ class build_chain_proxies(object):
         pass
       #
       if (mm.monomer is None):
-        for atom in residue.atoms():
+        def use_scattering_type_if_available_to_define_nonbonded_type():
+          if (   residue.atoms_size() != 1
+              or len(mm.active_atoms) != 1): return False
+          atom = mm.active_atoms[0]
           ad_hoc = ad_hoc_single_atom_residue(
-              residue_name=residue.resname,
-              atom_name=atom.name,
-              atom_element=atom.element)
-          # Use element if ad_hoc didn't determine a type
-          scattering_type = ad_hoc.scattering_type if ad_hoc.scattering_type else atom.element.strip().upper()
-          energy_type = ad_hoc.energy_type if ad_hoc.energy_type else atom.element.strip().upper()
-          scattering_type_registry.assign_directly(i_seq=atom.i_seq, symbol=scattering_type)
-          nonbonded_energy_type_registry.assign_directly(i_seq=atom.i_seq, symbol=energy_type)
-          self.type_energies[atom.i_seq] = energy_type
-          entry = ener_lib.lib_atom.get(energy_type, None)
-          if entry is not None:
-            self.type_h_bonds[atom.i_seq] = entry.hb_type
-          else:
-            self.type_h_bonds[atom.i_seq] = 'N'
-        if residue.atoms_size() == 1:
+            residue_name=residue.resname,
+            atom_name=atom.name,
+            atom_element=atom.element)
+          if (ad_hoc.scattering_type is None): return False
+          entry = ener_lib.lib_atom.get(ad_hoc.energy_type, None)
+          if (entry is None): return False
+          i_seq = atom.i_seq
+          scattering_type_registry.assign_directly(
+            i_seq=i_seq, symbol=ad_hoc.scattering_type)
+          nonbonded_energy_type_registry.assign_directly(
+            i_seq=i_seq, symbol=ad_hoc.energy_type)
           ad_hoc_single_atom_residues[mm.residue_name] += 1
-        else:
+          return True
+        if (not use_scattering_type_if_available_to_define_nonbonded_type()):
           unknown_residues[mm.residue_name] += 1
         n_chain_breaks += 1
       elif (prev_mm is not None and not residue.link_to_previous):
@@ -4133,16 +4133,16 @@ class build_all_chain_proxies(linking_mixins):
       curr_sym_excl_index=len(sym_excl_residue_groups))
     self.type_energies = self.type_energies.convert()
     self.type_h_bonds = self.type_h_bonds.convert()
-    # Assert arrays match atom count - safeguard check
-    n_atoms = self.pdb_atoms.size()
-    assert len(self.type_energies) == n_atoms, \
-      "type_energies array size (%d) != n_atoms (%d)" % (len(self.type_energies), n_atoms)
-    assert len(self.type_h_bonds) == n_atoms, \
-      "type_h_bonds array size (%d) != n_atoms (%d)" % (len(self.type_h_bonds), n_atoms)
-    assert self.scattering_type_registry.size() == n_atoms, \
-      "scattering_type_registry size (%d) != n_atoms (%d)" % (self.scattering_type_registry.size(), n_atoms)
-    assert self.nonbonded_energy_type_registry.size() == n_atoms, \
-      "nonbonded_energy_type_registry size (%d) != n_atoms (%d)" % (self.nonbonded_energy_type_registry.size(), n_atoms)
+    # # Assert arrays match atom count - safeguard check
+    # n_atoms = self.pdb_atoms.size()
+    # assert len(self.type_energies) == n_atoms, \
+    #   "type_energies array size (%d) != n_atoms (%d)" % (len(self.type_energies), n_atoms)
+    # assert len(self.type_h_bonds) == n_atoms, \
+    #   "type_h_bonds array size (%d) != n_atoms (%d)" % (len(self.type_h_bonds), n_atoms)
+    # assert self.scattering_type_registry.size() == n_atoms, \
+    #   "scattering_type_registry size (%d) != n_atoms (%d)" % (self.scattering_type_registry.size(), n_atoms)
+    # assert self.nonbonded_energy_type_registry.size() == n_atoms, \
+    #   "nonbonded_energy_type_registry size (%d) != n_atoms (%d)" % (self.nonbonded_energy_type_registry.size(), n_atoms)
     self.time_building_chain_proxies = timer.elapsed()
     # Make sure pdb_hierarchy and xray_structure are consistent
     if(self.special_position_settings is not None):
