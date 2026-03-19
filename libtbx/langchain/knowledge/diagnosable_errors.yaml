@@ -203,7 +203,6 @@ errors:
       - "No unit cell info available"
       - "Cell and/or symmetry not specified"
       - "Sorry.*No unit cell"
-      - "unit_cell.*not.*specified"
     diagnosis_hint: >
       The input reflection data (likely an unmerged scalepack .sca or
       .hkl file) does not contain unit cell dimensions or space group
