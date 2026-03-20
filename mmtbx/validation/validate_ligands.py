@@ -632,6 +632,43 @@ class ligand_result(object):
       atom_group = ag_ligand,
       cif_object = cif_object,
       filename = png_fn)
+
+    # -------------------------------------------------------------------------
+    # START hack for displaying fragments with individual colors in Coot
+    # -------------------------------------------------------------------------
+#    coot_list = []
+#    import boost_adaptbx.boost.python as bp
+#    ext = bp.import_ext("cctbx_geometry_restraints_ext")
+#    def clean(s):
+#      return s.replace('pdb=', '').replace('"', '')#.strip()
+#    for _isel in self.ligand_rigid_components_isels:
+#      coot_dict = {}
+#      coot_dict['color'] = 'red'
+#      coot_dict['name'] = 'frag'
+#      coot_dict['positition_pairs'] = []
+#      m = self.model.select(_isel)
+#      grm = m.get_restraints_manager()
+#      bond_proxies_simple, asu = grm.geometry.get_all_bond_proxies(
+#        sites_cart = m.get_sites_cart())
+#      all_proxies = [p for p in bond_proxies_simple]
+#      for proxy in asu:
+#        all_proxies.append(proxy)
+#      for proxy in all_proxies:
+#        if(  isinstance(proxy, ext.bond_simple_proxy)): i,j=proxy.i_seqs
+#        elif(isinstance(proxy, ext.bond_asu_proxy)):    i,j=proxy.i_seq,proxy.j_seq
+#        else: assert 0 # never goes here
+#        atoms = m.get_atoms()
+#        s1 = clean(atoms[i].id_str())
+#        s2 = clean(atoms[j].id_str())
+#        print("\t%s --- %s " %  (s1, s2))
+#        coot_dict['positition_pairs'].append([atoms[i].xyz, atoms[j].xyz])
+#      coot_list.append(coot_dict)
+
+#    print(coot_list)
+    # -------------------------------------------------------------------------
+    # END hack
+    # -------------------------------------------------------------------------
+
     #for rigid_comp in ligand_rigid_components_isels:
     #  print('fragment')
     #  print(list(rigid_comp))
