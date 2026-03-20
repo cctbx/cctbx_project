@@ -359,7 +359,6 @@ def run_test05():
   with open(model_fn, "w") as f:
     f.write(pdb_str_tst_5)
   args = [model_fn]
-  #print("mmtbx.development.validate_ligands %s" % model_fn)
   try:
     result = run_program(program_class=val_lig.Program,args=args,
      logger = null_out())
@@ -369,7 +368,7 @@ def run_test05():
   vl_manager = result.ligand_manager
 
   for lr in vl_manager:
-    assert (lr.id_str in ['ANGA B   1', 'BA2G B   1', 'GAL B   2'])
+    assert (lr.id_str in ['NGA B   1', 'A2G B   1', 'GAL B   2'])
   #
   os.remove(model_fn)
 

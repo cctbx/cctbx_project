@@ -589,18 +589,14 @@ class ligand_result(object):
     self.resname = _resname.strip()
 
     _id_str = self._atoms_ligand[0].id_str()
+
     if _id_str.startswith("model"):
       _id_str = _id_str.split('pdb="')[1].split('"')[0]
     else:
       _id_str = _id_str.split('"')[1]
-#    altloc = _id_str[4]
-#    resseq = _id_str[10:14]
-#    chain  = _id_str[8:10]
-#    self.sel_str = " ".join(['chain', chain, 'and resseq', resseq, 'and resname', _resname])
-#    if (altloc != ' '):
-#      self.sel_str = " ".join(['altloc', altloc, 'and', self.sel_str])
-    _id_str = _id_str.strip().split(' ')
-    self.id_str = " ".join(_id_str[1:]).strip()
+    #_id_str = _id_str.strip().split(' ')
+    #self.id_str = " ".join(_id_str[1:]).strip()
+    self.id_str = _id_str[5:].strip()
     #
     _noH = ' and not (element H or element D)'
     self.sel_str_noH = self.sel_str + _noH
