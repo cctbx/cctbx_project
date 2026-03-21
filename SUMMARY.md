@@ -47,3 +47,6 @@ Fix missing probe dots in kinemage output. Two bugs in `make_probe_dots`: (1) pa
 
 ## 2026-03-10
 Add `make_probe_dots_from_model()` to reuse an already-hydrogenated model for probe dots (avoids re-running reduce2). Add `probe_dots_kin` param to `_build_kinemage()` to accept pre-computed dots. Save hydrogenated model on `clashscore2` for downstream kinemage use.
+
+## 2026-03-21
+Tune residue score: use non-linear power curve (exponent 1.3) for clash severity, cap clash-count bonus at 4.0 via log2, raise twisted-peptide severity from 10 to 15. Add `tst_utils.py` with tests for severity functions and ranking invariants.
