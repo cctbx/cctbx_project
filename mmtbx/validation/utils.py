@@ -141,20 +141,29 @@ from typing import Dict, Any, Optional, List
 def _clash_severity(abs_overlap, num_clashes):
     """Map clash overlap magnitude and count to a continuous severity.
 
-    Uses the worst overlap as the primary signal, scaled linearly from
-    the 0.4 A outlier threshold.  Additional clashes beyond the first
-    add a small increment each (0.5 per extra clash) so that a single
-    severe clash always dominates over many minor ones.
+    Uses a non-linear power curve on the worst overlap so that small
+    clashes near the 0.4 A threshold are mild while large overlaps
+    grow sublinearly, staying below the twisted-peptide tier.  The
+    count bonus uses log2 with a cap at 4.0, because high clash counts
+    typically reflect many atom-atom contacts from a single bad
+    pairwise interaction rather than independent problems.
 
-    Severity scale (approximate):
-      0.4 A overlap -> 1.5    (minor)
-      0.5 A         -> 3.0    (moderate)
-      0.7 A         -> 6.0    (severe)
-      0.9 A         -> 9.0    (very severe)
+    Severity scale (single clash, approximate):
+      0.4 A overlap -> 1.4    (minor)
+      0.5 A         -> 2.0    (moderate)
+      0.7 A         -> 3.4    (moderate)
+      0.9 A         -> 5.0    (significant)
+      1.5 A         -> 10.3   (severe, still below twisted peptide)
+
+    Count bonus (log2, capped):
+      2 clashes  -> +1.0
+      5 clashes  -> +2.3
+      16 clashes -> +4.0  (cap reached)
+      50 clashes -> +4.0
     """
-    severity = max(0.0, (abs_overlap - 0.1) * 10.0)
+    severity = max(0.0, (abs_overlap - 0.1) * 10.0) ** 1.3 / 3.0
     if num_clashes > 1:
-        severity += (num_clashes - 1) * 0.5
+        severity += min(math.log2(num_clashes), 4.0) * 1.0
     return severity
 
 def _cbeta_severity(deviation):
@@ -276,7 +285,7 @@ def calculate_overall_residue_quality_score(
     if omega_type not in ['not_applicable', 'not_evaluated', None]:
         has_any_metric = True
         if omega_type == 'twisted':
-            severities.append(10.0)
+            severities.append(15.0)
         elif omega_type == 'cis' and not get('is_proline'):
             severities.append(8.0)
 
