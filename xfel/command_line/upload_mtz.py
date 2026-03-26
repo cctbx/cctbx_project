@@ -27,6 +27,11 @@ drive {
     .help = Id string of the destination folder. If the folder url is \
 https://drive.google.com/drive/u/0/folders/1NlJkfL6CMd1NZIl6Duy23i4G1RM9cNH- , \
 then the id is 1NlJkfL6CMd1NZIl6Duy23i4G1RM9cNH- .
+  lock_file = None
+    .type = path
+    .help = Path to lock file for coordinating concurrent uploads. \
+If None, defaults to ~/.upload_mtz.lock. Set this to a writable location \
+if the home directory is not accessible (e.g., on compute nodes).
 }
 input {
   mtz_file = None
@@ -78,9 +83,14 @@ def _get_log_fname(mtz_fname):
 class Locker:
   """ See https://stackoverflow.com/a/60214222
   """
+  def __init__(self, lock_file_path=None):
+    if lock_file_path is None:
+      lock_file_path = os.path.expanduser('~/.upload_mtz.lock')
+    self.lock_file_path = lock_file_path
+
   def __enter__(self):
     try:
-      self.fp = open(os.path.expanduser('~/.upload_mtz.lock'), 'wb')
+      self.fp = open(self.lock_file_path, 'wb')
     except FileNotFoundError:
       self.fp = None
     if fcntl and self.fp is not None:
@@ -98,7 +108,7 @@ class pydrive2_interface:
   destination folder.
   """
 
-  def __init__(self, cred_file, folder_id):
+  def __init__(self, cred_file, folder_id, lock_file=None):
     try:
       from pydrive2.auth import ServiceAccountCredentials, GoogleAuth
       from pydrive2.drive import GoogleDrive
@@ -111,11 +121,12 @@ class pydrive2_interface:
     )
     self.drive = GoogleDrive(gauth)
     self.top_folder_id = folder_id
+    self.lock_file = lock_file
 
 
 
   def _fetch_or_create_folder(self, fname, parent_id):
-    with Locker():
+    with Locker(self.lock_file):
       query = {
           "q": "'{}' in parents and title='{}'".format(parent_id, fname),
           "supportsTeamDrives": "true",
@@ -209,7 +220,8 @@ def run_with_preparsed(params):
 
   drive = pydrive2_interface(
       params.drive.credential_file,
-      params.drive.shared_folder_id
+      params.drive.shared_folder_id,
+      lock_file=params.drive.lock_file
   )
   folders = [dataset_root, version_str]
   files = [log_path]
