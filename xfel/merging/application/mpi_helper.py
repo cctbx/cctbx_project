@@ -3,6 +3,8 @@ from collections import Counter
 from contextlib import contextmanager
 from libtbx.mpi4py import MPI
 import numpy as np
+from dxtbx import flumpy
+from dials.array_family import flex
 
 
 import sys
@@ -126,3 +128,42 @@ class mpi_helper(object):
     with adaptive_collective(self.comm.Gatherv, self.comm.Allgatherv) as gather_v:
       gather_v(sendbuf=send_arrays, recvbuf=(gathered_array, lengths), root=root)
     return gathered_array
+
+  def gather_reflection_table(self, reflections, root=0):
+    results = {}
+    max_ids = self.comm.allgather(flex.max(reflections['id'])+1)
+    ids_offset = sum(max_ids[:self.rank])
+
+    for key in sorted(reflections):
+      if key == 'shoebox': continue # no shoeboxes supported here
+      if type(reflections[key]) is flex.vec3_double:
+        results[key] = {}
+        a, b, c = reflections[key].parts()
+        results[key]['a'] = self.gather_variable_length_numpy_arrays(flumpy.to_numpy(a))
+        results[key]['b'] = self.gather_variable_length_numpy_arrays(flumpy.to_numpy(b))
+        results[key]['c'] = self.gather_variable_length_numpy_arrays(flumpy.to_numpy(c))
+      else:
+        array = flumpy.to_numpy(reflections[key])
+        if key == 'id':
+          array += ids_offset
+        results[key] = self.gather_variable_length_numpy_arrays(array, dtype=array.dtype)
+
+    expt_ids = flumpy.to_numpy(reflections.experiment_identifiers().keys())
+    expt_ids += ids_offset
+    expt_ids = self.gather_variable_length_numpy_arrays(expt_ids, dtype = expt_ids.dtype)
+    identifiers = self.comm.gather(reflections.experiment_identifiers().values(), root)
+
+    if self.rank == root:
+      identifiers = [s for l in identifiers for s in l]
+      gathered = flex.reflection_table()
+      for key in results:
+        if type(results[key]) is dict:
+          gathered[key] = flex.vec3_double(flumpy.from_numpy(results[key]['a']),
+                                           flumpy.from_numpy(results[key]['b']),
+                                           flumpy.from_numpy(results[key]['c']))
+        else:
+          gathered[key] = flumpy.from_numpy(results[key])
+      for k, v in zip(expt_ids, identifiers):
+        gathered.experiment_identifiers()[k]=str(v)
+      gathered.reset_ids()
+      return gathered

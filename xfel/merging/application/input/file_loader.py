@@ -20,7 +20,8 @@ def create_experiment_identifier(experiment, experiment_file_path, experiment_id
                        str(experiment.beam) + \
                        str(experiment.crystal) + \
                        str(experiment.detector) + \
-                       ''.join([os.path.basename(p) for p in experiment.imageset.paths()]))
+                       ' '.join([os.path.basename(p) for p in experiment.imageset.paths()]) + \
+                       ' '.join([str(i) for i in experiment.imageset.indices()]))
   hash_obj = hashlib.md5(exp_identifier_str.encode('utf-8'))
   return hash_obj.hexdigest()
 
