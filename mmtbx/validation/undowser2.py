@@ -158,7 +158,7 @@ These categories are general suggestions. Check your electron density; trust you
 
     # If we've been asked to, add hydrogens to all of the models in the PDB hierarchy
     # associated with our data_manager_model.
-    data_manager_model,_ = check_and_add_hydrogen(
+    data_manager_model, _, _ = check_and_add_hydrogen(
       probe_parameters=probe_parameters,
       data_manager_model=data_manager_model,
       nuclear=nuclear,

@@ -45,7 +45,8 @@ class clashscore2(validation):
     "condensed_probe",
     "probe_file",
     "probe_clashscore_manager",
-    "hydrogenated_model"
+    "hydrogenated_model",
+    "skipped_residues",
   ]
   program_description = "Analyze clashscore for protein model"
   gui_list_headers = ["Atom 1", "Atom 2", "Overlap"]
@@ -67,6 +68,7 @@ class clashscore2(validation):
       verbose=False,
       do_flips=False,
       save_probe_output=False,
+      ignore_missing_restraints=False,
       out=sys.stdout):
     validation.__init__(self)
     self.b_factor_cutoff = b_factor_cutoff
@@ -79,6 +81,7 @@ class clashscore2(validation):
     self.list_dict = {}
     self.probe_file = None
     self.hydrogenated_model = None
+    self.skipped_residues = []
     if verbose:
       if not nuclear:
         print("\nUsing electron cloud x-H distances and vdW radii")
@@ -94,14 +97,16 @@ class clashscore2(validation):
 
     # If we've been asked to, add hydrogens to all of the models in the PDB hierarchy
     # associated with our data_manager_model.
-    data_manager_model,_ = check_and_add_hydrogen(
+    data_manager_model, _, skipped = check_and_add_hydrogen(
       probe_parameters=probe_parameters,
       data_manager_model=data_manager_model,
       nuclear=nuclear,
       verbose=verbose,
       keep_hydrogens=keep_hydrogens,
       do_flips = do_flips,
+      ignore_missing_restraints=ignore_missing_restraints,
       log=out)
+    self.skipped_residues = skipped
 
     # Save the hydrogenated model for downstream use (e.g. kinemage generation)
     self.hydrogenated_model = data_manager_model
@@ -181,6 +186,10 @@ class clashscore2(validation):
     self.show_summary(out=out)
 
   def show_summary(self, out=sys.stdout, prefix=""):
+    if self.skipped_residues:
+      print(prefix + "WARNING: Restraints not found for: " +
+            " ".join(self.skipped_residues) +
+            " (excluded from H addition)", file=out)
     if self.clashscore is None:
       raise Sorry("PROBE output is empty. Model is not compatible with PROBE.")
     elif (len(self.clash_dict) == 1):
@@ -246,6 +255,8 @@ class clashscore2(validation):
       summary_results[k] = {"clashscore": self.clash_dict[k],
                             "num_clashes": len(self.list_dict[k])}
     data['summary_results'] = summary_results
+    if self.skipped_residues:
+      data['skipped_residues'] = list(self.skipped_residues)
     return json.dumps(data, indent=2)
 
   def as_coot_data(self):
@@ -602,6 +613,7 @@ def check_and_add_hydrogen(
         verbose=False,
         n_hydrogen_cut_off=0,
         do_flips=False,
+        ignore_missing_restraints=False,
         log=None,
         stop_for_unknowns=True):
   """
@@ -616,10 +628,14 @@ def check_and_add_hydrogen(
     verbose (bool): verbosity of printout
     n_hydrogen_cut_off (int): when number of hydrogen atoms < n_hydrogen_cut_off
       force keep_hydrogens tp True
+    ignore_missing_restraints (bool): when True, continue even if some residues
+      have no restraints (e.g. unknown ligands). Those residues will be excluded
+      from hydrogen addition but their heavy atoms remain in the model.
 
   Returns:
     (model): Model with hydrogens added
     (bool): True when the model was modified/replaced
+    (list): List of residue names for which no restraints were found
   """
   if not log: log = sys.stdout
   assert probe_parameters
@@ -658,10 +674,16 @@ def check_and_add_hydrogen(
     reduce_add_h_obj.show(log)
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
     if len(missed_residues) > 0:
-      bad = ""
-      for res in missed_residues:
-        bad += " " + res
-      raise Sorry("Restraints were not found for the following residues:"+bad)
+      if not ignore_missing_restraints:
+        bad = ""
+        for res in missed_residues:
+          bad += " " + res
+        raise Sorry("Restraints were not found for the following residues:"+bad)
+      else:
+        print("\nWARNING: No restraints found for the following residues "
+              "(excluded from hydrogen addition):"
+              + "".join(" " + r for r in sorted(missed_residues)) + "\n",
+              file=log)
     data_manager_model = reduce_add_h_obj.get_model()
 
     # Optimize H atoms with mmtbx.reduce
@@ -690,11 +712,11 @@ def check_and_add_hydrogen(
     data_manager_model.set_stop_for_unknowns(stop_for_unknowns)
     data_manager_model.process(make_restraints=False, pdb_interpretation_params=p)
 
-    return data_manager_model, True
+    return data_manager_model, True, sorted(missed_residues)
   else:
     if verbose:
       print("\nUsing input model H/D atoms...\n")
-    return data_manager_model, False
+    return data_manager_model, False, []
 
   def show(self, out=sys.stdout, prefix=""):
     if (self.n_outliers == 0):
