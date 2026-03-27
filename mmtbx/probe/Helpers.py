@@ -385,7 +385,7 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
   # Traverse the hierarchy and look up the extra data to be filled in.
   extras = probeExt.ExtraAtomInfoMap([],[])
   mon_lib_srv = model.get_mon_lib_srv()
-  ener_lib = mmtbx.monomer_library.server.ener_lib()
+  ener_lib = mmtbx.monomer_library.server.ener_lib(use_neutron_distances=useNeutronDistances)
   ph = model.get_hierarchy()
   for m in ph.models():
     for chain in m.chains():
