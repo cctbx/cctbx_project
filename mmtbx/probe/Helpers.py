@@ -494,6 +494,14 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
               warnings += ("Warning: Could not find atom info for "+fullName+
                 " (perhaps interpretation was not run on the model?):"+
                 " keeping some default values: "+str(e)+"\n")
+              # Fall back to element-based VDW radius for atoms without
+              # restraints (e.g. unknown ligands) so probe2 can still run.
+              if extra.vdwRadius <= 0:
+                element = a.element.strip().upper()
+                if element in ener_lib.lib_atom and ener_lib.lib_atom[element].vdw_radius:
+                  extra.vdwRadius = ener_lib.lib_atom[element].vdw_radius
+                  warnings += ("Using element-based VDW radius for "+fullName+
+                    ": "+str(extra.vdwRadius)+"\n")
               extras.setMappingFor(a, extra)
 
   return getExtraAtomInfoReturn(extras, warnings)
