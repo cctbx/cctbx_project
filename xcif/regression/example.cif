@@ -1,0 +1,113 @@
+# xcif/regression/example.cif
+#
+# Small but realistic mmCIF file used by xcif demos and examples.
+# Values are simplified from PDB entry 1UBQ (ubiquitin, 76 residues).
+#
+# NOTE: This is a demo/test file for the xcif tokenizer.  It is NOT a
+# complete mmCIF submission — mandatory PDBe schema items are intentionally
+# omitted to keep the file short.
+#
+# This file deliberately exercises every token type the xcif tokenizer
+# must handle:
+#   - data_ block header
+#   - single key/value pairs  (_tag value)
+#   - single-quoted string    ('P 21 21 21')
+#   - semicolon text field    (;...;)
+#   - loop_ with multiple columns and rows
+#   - integer, float, and scientific-notation values
+#   - unknown (?) and missing (.) values
+
+data_1UBQ
+
+# --------------------------------------------------------------------------
+# Unit cell parameters (Angstroms / degrees)
+# --------------------------------------------------------------------------
+_cell.entry_id                 1UBQ
+_cell.length_a                 50.840
+_cell.length_b                 42.770
+_cell.length_c                 28.950
+_cell.angle_alpha              90.00
+_cell.angle_beta               90.00
+_cell.angle_gamma              90.00
+# volume in Angstroms^3 (derived quantity)
+_cell.volume                   62868.6
+
+# --------------------------------------------------------------------------
+# Space group — name uses a quoted string because it contains spaces
+# --------------------------------------------------------------------------
+_symmetry.entry_id             1UBQ
+_symmetry.space_group_name_H-M 'P 21 21 21'
+_symmetry.Int_Tables_number    19
+
+# --------------------------------------------------------------------------
+# Metadata
+# --------------------------------------------------------------------------
+_entry.id                      1UBQ
+_exptl.entry_id                1UBQ
+_exptl.method                  'X-RAY DIFFRACTION'
+
+_refine.entry_id               1UBQ
+_refine.pdbx_refine_id         'X-RAY DIFFRACTION'
+# resolution in Angstroms
+_refine.ls_d_res_high          1.80
+_refine.ls_R_factor_R_work     0.196
+_refine.ls_R_factor_R_free     0.241
+# unknown value — measurement not recorded
+_refine.ls_number_reflns_obs   ?
+# missing / inapplicable value
+_refine.B_iso_mean             .
+
+# --------------------------------------------------------------------------
+# Multi-line text field using semicolon delimiters.
+# The field starts on the line after the opening ';' and ends just before
+# the ';' that appears alone at the start of a line.
+# --------------------------------------------------------------------------
+_struct.entry_id               1UBQ
+_struct.title
+;Structure of ubiquitin refined at 1.8 Angstroms resolution.
+Ubiquitin is a small regulatory protein found in most eukaryotic tissues.
+It plays a central role in the ubiquitin-proteasome system for protein
+degradation.
+;
+
+# --------------------------------------------------------------------------
+# Atom coordinate loop — 10 atoms from the first two residues.
+# A loop_ block begins with the keyword `loop_`, followed by all column
+# tag names, followed by the data rows (column-major order, row by row).
+# --------------------------------------------------------------------------
+loop_
+  _atom_site.id
+  _atom_site.label_atom_id
+  _atom_site.type_symbol
+  _atom_site.label_comp_id
+  _atom_site.label_asym_id
+  _atom_site.label_entity_id
+  _atom_site.label_alt_id
+  _atom_site.label_seq_id
+  _atom_site.Cartn_x
+  _atom_site.Cartn_y
+  _atom_site.Cartn_z
+  _atom_site.occupancy
+  _atom_site.B_iso_or_equiv
+  1   N   N  MET A  1  .  1   27.340  24.430   2.614  1.00   9.67
+  2   CA  C  MET A  1  .  1   26.266  25.413   2.842  1.00  10.38
+  3   C   C  MET A  1  .  1   26.913  26.639   3.531  1.00   9.40
+  4   O   O  MET A  1  .  1   27.886  26.463   4.263  1.00   8.32
+  5   CB  C  MET A  1  .  1   25.112  24.880   3.649  1.00  14.45
+  6   N   N  GLN A  1  .  2   26.335  27.770   3.258  1.00   8.64
+  7   CA  C  GLN A  1  .  2   26.850  29.016   3.817  1.00   9.20
+  8   C   C  GLN A  1  .  2   27.826  29.664   2.908  1.00   9.56
+  9   O   O  GLN A  1  .  2   28.804  29.067   2.408  1.00   9.83
+  10  CB  C  GLN A  1  .  2   27.492  28.890   5.201  1.00  11.72
+
+# --------------------------------------------------------------------------
+# Reflection statistics loop (one row, scientific notation value)
+# --------------------------------------------------------------------------
+loop_
+  _reflns.entry_id
+  _reflns.pdbx_diffrn_id
+  _reflns.pdbx_ordinal
+  _reflns.d_resolution_high
+  _reflns.number_obs
+  _reflns.pdbx_Rmerge_I_obs
+  1UBQ  1  1  1.80  7642  3.60e-02

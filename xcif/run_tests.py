@@ -7,6 +7,7 @@ tst_list = [
   "$B/regression/cpp/tst_infrastructure",
   "$B/regression/cpp/tst_tokenizer",
   "$B/regression/cpp/tst_mapped_file",
+  "$D/regression/tst_example_tokenize.py",
 ]
 
 def run():
