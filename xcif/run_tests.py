@@ -6,6 +6,7 @@ import libtbx.load_env
 tst_list = [
   "$B/regression/cpp/tst_infrastructure",
   "$B/regression/cpp/tst_tokenizer",
+  "$B/regression/cpp/tst_mapped_file",
 ]
 
 def run():

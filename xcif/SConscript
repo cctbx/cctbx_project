@@ -36,4 +36,9 @@ if not libtbx.env.module_is_installed("xcif"):
     source=["regression/cpp/tst_tokenizer.cpp",
             "tokenizer.cpp"])
 
+  env_xcif_cpp_tests.Program(
+    target="regression/cpp/tst_mapped_file",
+    source=["regression/cpp/tst_mapped_file.cpp",
+            "tokenizer.cpp"])
+
   # Boost.Python extension and additional C++ test executables added in later steps.

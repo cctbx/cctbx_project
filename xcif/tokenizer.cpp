@@ -1,5 +1,6 @@
 // cctbx_project/xcif/tokenizer.cpp
 #include "xcif/tokenizer.h"
+#include "xcif/mapped_file.h"
 #include <cstring>
 
 namespace xcif {
@@ -50,6 +51,15 @@ Tokenizer::Tokenizer(const char* data, std::size_t length,
     col_ += 3;
   }
 }
+
+// ---------------------------------------------------------------------------
+// MappedFile constructor — delegates to the (data, length, name) overload
+// ---------------------------------------------------------------------------
+Tokenizer::Tokenizer(const MappedFile& mf)
+  : Tokenizer(mf.data(),
+              mf.size(),
+              mf.path())
+{}
 
 Tokenizer::Tokenizer(const char* data, const char* source_name)
   : Tokenizer(data, std::strlen(data), source_name)

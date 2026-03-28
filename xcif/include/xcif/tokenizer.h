@@ -7,6 +7,9 @@
 
 namespace xcif {
 
+// Forward declaration — avoids pulling platform headers into every TU.
+class MappedFile;
+
 // ---------------------------------------------------------------------------
 // Token types
 // ---------------------------------------------------------------------------
@@ -45,6 +48,12 @@ class Tokenizer {
 
   // Convenience: NUL-terminated string (length = strlen)
   Tokenizer(const char* data, const char* source_name = "<input>");
+
+  // Construct directly from a MappedFile (the MappedFile must outlive
+  // both the Tokenizer and any Tokens it produces).
+  // Defined inline in tokenizer.cpp to avoid header dependency on mapped_file.h.
+  explicit Tokenizer(const MappedFile& mf);
+
 
   // Return the next token.  Returns TOKEN_EOF indefinitely at end of input.
   Token next();
