@@ -1,0 +1,17 @@
+from __future__ import absolute_import, division, print_function
+
+from libtbx import test_utils
+import libtbx.load_env
+
+tst_list = [
+  "$B/regression/cpp/tst_infrastructure",
+  "$B/regression/cpp/tst_tokenizer",
+]
+
+def run():
+  build_dir = libtbx.env.under_build("xcif")
+  dist_dir = libtbx.env.dist_path("xcif")
+  test_utils.run_tests(build_dir, dist_dir, tst_list)
+
+if __name__ == '__main__':
+  run()

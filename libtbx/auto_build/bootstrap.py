@@ -2017,6 +2017,7 @@ class CCIBuilder(Builder):
   # Configure for these cctbx packages
   LIBTBX = [
     'cctbx',
+    'xcif',
     'cctbx_website',
     'cbflib',
     'dxtbx',
