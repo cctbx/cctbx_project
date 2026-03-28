@@ -618,7 +618,8 @@ def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
   # re-process below drops restraints, so it must come AFTER the Optimizer
   # (this mirrors clashscore2.check_and_add_hydrogen).
   opt = Optimizers.Optimizer(
-    probe_phil, do_flips, model, modelIndex=None, fillAtomDump=False)
+    probe_phil, do_flips, model, modelIndex=None,
+    useNeutronDistances=nuclear, fillAtomDump=False)
 
   # Delete any hydrogens that we've been asked to delete.
   for a in opt.getHydrogensToDelete():
