@@ -690,7 +690,7 @@ def check_and_add_hydrogen(
     if verbose:
       print("\nOptimizing H atoms with mmtbx.reduce2:Optimizer...\n")
     opt = Optimizers.Optimizer(probe_parameters, do_flips, data_manager_model, modelIndex=None,
-      fillAtomDump = False)
+      useNeutronDistances=nuclear, fillAtomDump = False)
 
     # Re-process the model because we have removed some atoms that were previously
     # bonded.  Don't make restraints during the reprocessing.

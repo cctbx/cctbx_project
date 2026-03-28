@@ -50,3 +50,6 @@ Add `make_probe_dots_from_model()` to reuse an already-hydrogenated model for pr
 
 ## 2026-03-21
 Tune residue score: use non-linear power curve (exponent 1.3) for clash severity, cap clash-count bonus at 4.0 via log2, raise twisted-peptide severity from 10 to 15. Add `tst_utils.py` with tests for severity functions and ranking invariants.
+
+## 2026-03-28
+Pass `useNeutronDistances=nuclear` to the reduce2 Optimizer call in `clashscore2.py`, so neutron-distance models use correct hydrogen placement during clash analysis.
