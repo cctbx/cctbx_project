@@ -23,9 +23,9 @@ data_1UBQ
 # Unit cell parameters (Angstroms / degrees)
 # --------------------------------------------------------------------------
 _cell.entry_id                 1UBQ
-_cell.length_a                 50.840
-_cell.length_b                 42.770
-_cell.length_c                 28.950
+_cell.length_a                 50.840(10)
+_cell.length_b                 42.770(1)
+_cell.length_c                 28.950(2000)
 _cell.angle_alpha              90.00
 _cell.angle_beta               90.00
 _cell.angle_gamma              90.00

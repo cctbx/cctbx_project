@@ -11,6 +11,8 @@ tst_list = [
   "$D/regression/tst_example_tokenize.py",
   "$B/regression/cpp/tst_data_model",
   "$B/regression/cpp/tst_error_handling",
+  "$B/regression/cpp/tst_numeric",
+  "$D/regression/tst_example_parse.py",
 ]
 
 def run():

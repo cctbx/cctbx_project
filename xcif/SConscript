@@ -64,4 +64,15 @@ if not libtbx.env.module_is_installed("xcif"):
     source=["regression/cpp/tst_error_handling.cpp",
             "data_model.cpp", "tokenizer.cpp"])
 
+  env_xcif_cpp_tests.Program(
+    target="regression/cpp/tst_numeric",
+    source=["regression/cpp/tst_numeric.cpp",
+            "numeric.cpp"])
+
+  # Interactive demo — parser + numeric.  Not in run_tests.py.
+  env_xcif_cpp_tests.Program(
+    target="regression/cpp/example_parse",
+    source=["regression/cpp/example_parse.cpp",
+            "data_model.cpp", "numeric.cpp", "tokenizer.cpp"])
+
   # Boost.Python extension and additional C++ test executables added in later steps.
