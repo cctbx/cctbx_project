@@ -31,6 +31,9 @@ The project is organized into specialized modules, each ending in "tbx" (toolbox
 
 ## Common Development Commands
 
+source build/setpaths.sh to make correct python and all the commands available
+libtbx.scons -j 11 to recompile
+
 ### Running Tests
 
 ```bash
