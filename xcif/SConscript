@@ -32,6 +32,10 @@ if not libtbx.env.module_is_installed("xcif"):
     source="regression/cpp/tst_infrastructure.cpp")
 
   env_xcif_cpp_tests.Program(
+    target="regression/cpp/tst_string_view",
+    source="regression/cpp/tst_string_view.cpp")
+
+  env_xcif_cpp_tests.Program(
     target="regression/cpp/tst_tokenizer",
     source=["regression/cpp/tst_tokenizer.cpp",
             "tokenizer.cpp"])
