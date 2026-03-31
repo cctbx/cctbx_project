@@ -126,6 +126,7 @@ class SettingsDialog(BaseDialog):
     self.main_sizer.Add(self.project,
                         flag=wx.EXPAND | wx.ALL,
                         border=10)
+    self.project.Hide() # WIP
 
     # Experiment tag and DB Credentials button
     self.db_cred = gctr.TextButtonCtrl(self,
