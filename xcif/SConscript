@@ -11,18 +11,27 @@ env_etc.xcif_common_includes = [
   env_etc.xcif_header_include,  # xcif/include/ — resolves "xcif/tokenizer.h"
   env_etc.xcif_include,         # cctbx_project/ — resolves other cctbx headers
   env_etc.libtbx_include,
-  # boost_include and scitbx_include are loaded after xcif in SConstruct;
-  # they will be appended in later steps once those modules are ready.
 ]
 
 if not libtbx.env.module_is_installed("xcif"):
-  # Environment for standalone C++ test executables (no Boost.Python).
+  # ── Core shared library (libxcif) ─────────────────────────────────
+  env_xcif_lib = env_base.Clone()
+  env_etc.include_registry.prepend(
+    env=env_xcif_lib,
+    paths=env_etc.xcif_common_includes)
+  if sys.platform == 'darwin' and hasattr(env_etc, 'conda_rpath'):
+    for rpath in env_etc.conda_rpath:
+      env_xcif_lib.Append(SHLINKFLAGS=['-Wl,-rpath,' + rpath])
+  env_xcif_lib.SharedLibrary(
+    target="#lib/xcif",
+    source=["data_model.cpp", "tokenizer.cpp", "numeric.cpp"])
+
+  # ── C++ test executables (link against libxcif) ────────────────────
   env_xcif_cpp_tests = env_base.Clone()
   env_etc.include_registry.prepend(
     env=env_xcif_cpp_tests,
     paths=env_etc.xcif_common_includes)
-  # On macOS with conda, executables need explicit rpaths to find libc++ and
-  # build/lib at runtime (env_base only adds these to SHLINKFLAGS, not LINKFLAGS).
+  env_xcif_cpp_tests.Prepend(LIBS=["xcif"])
   if sys.platform == 'darwin' and hasattr(env_etc, 'conda_rpath'):
     for rpath in env_etc.conda_rpath:
       env_xcif_cpp_tests.Append(LINKFLAGS=['-Wl,-rpath,' + rpath])
@@ -37,42 +46,47 @@ if not libtbx.env.module_is_installed("xcif"):
 
   env_xcif_cpp_tests.Program(
     target="regression/cpp/tst_tokenizer",
-    source=["regression/cpp/tst_tokenizer.cpp",
-            "tokenizer.cpp"])
+    source="regression/cpp/tst_tokenizer.cpp")
 
   env_xcif_cpp_tests.Program(
     target="regression/cpp/tst_mapped_file",
-    source=["regression/cpp/tst_mapped_file.cpp",
-            "tokenizer.cpp"])
+    source="regression/cpp/tst_mapped_file.cpp")
 
-  # Interactive demo — not in run_tests.py (it writes to stdout and takes
-  # a file argument).  Run manually:
-  #   build/xcif/regression/cpp/example_tokenize \
-  #       modules/cctbx_project/xcif/regression/example.cif
   env_xcif_cpp_tests.Program(
     target="regression/cpp/example_tokenize",
-    source=["regression/cpp/example_tokenize.cpp",
-            "tokenizer.cpp"])
+    source="regression/cpp/example_tokenize.cpp")
 
   env_xcif_cpp_tests.Program(
     target="regression/cpp/tst_data_model",
-    source=["regression/cpp/tst_data_model.cpp",
-            "data_model.cpp", "tokenizer.cpp"])
+    source="regression/cpp/tst_data_model.cpp")
 
   env_xcif_cpp_tests.Program(
     target="regression/cpp/tst_error_handling",
-    source=["regression/cpp/tst_error_handling.cpp",
-            "data_model.cpp", "tokenizer.cpp"])
+    source="regression/cpp/tst_error_handling.cpp")
 
   env_xcif_cpp_tests.Program(
     target="regression/cpp/tst_numeric",
-    source=["regression/cpp/tst_numeric.cpp",
-            "numeric.cpp"])
+    source="regression/cpp/tst_numeric.cpp")
 
-  # Interactive demo — parser + numeric.  Not in run_tests.py.
   env_xcif_cpp_tests.Program(
     target="regression/cpp/example_parse",
-    source=["regression/cpp/example_parse.cpp",
-            "data_model.cpp", "numeric.cpp", "tokenizer.cpp"])
+    source="regression/cpp/example_parse.cpp")
 
-  # Boost.Python extension and additional C++ test executables added in later steps.
+  # ── Boost.Python extension (links against libxcif) ─────────────────
+  Import("env_no_includes_boost_python_ext")
+  env_xcif_bpl = env_no_includes_boost_python_ext.Clone()
+  env_etc.include_registry.append(
+    env=env_xcif_bpl,
+    paths=env_etc.xcif_common_includes + [
+      env_etc.boost_adaptbx_include,
+      env_etc.boost_include,
+      env_etc.python_include,
+      env_etc.scitbx_include,
+    ])
+  env_xcif_bpl.Prepend(LIBS=["xcif"])
+  if sys.platform == 'darwin' and hasattr(env_etc, 'conda_rpath'):
+    for rpath in env_etc.conda_rpath:
+      env_xcif_bpl.Append(LINKFLAGS=['-Wl,-rpath,' + rpath])
+  env_xcif_bpl.SharedLibrary(
+    target="#lib/xcif_ext",
+    source=["xcif_ext.cpp"])

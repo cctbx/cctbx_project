@@ -13,6 +13,10 @@ tst_list = [
   "$B/regression/cpp/tst_error_handling",
   "$B/regression/cpp/tst_numeric",
   "$D/regression/tst_example_parse.py",
+  "$D/regression/tst_bindings.py",
+  "$D/regression/tst_memory.py",
+  "$D/regression/tst_gil_release.py",
+  "$D/regression/tst_string_interning.py",
 ]
 
 def run():
