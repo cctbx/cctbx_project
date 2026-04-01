@@ -36,6 +36,8 @@ libtbx.scons -j 11 to recompile
 
 ### Running Tests
 
+libtbx.run_tests_parallel needs to be executed in empty folder.
+
 ```bash
 # Run all tests for a specific module (fastest, recommended)
 libtbx.run_tests_parallel module=<module_name>
