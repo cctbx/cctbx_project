@@ -151,6 +151,14 @@ static bp::list block_loops(const BlockWrap& self) {
   return result;
 }
 
+static bp::list block_pair_tags(const BlockWrap& self) {
+  bp::list result;
+  const std::vector<std::pair<string_view, string_view>>& p = self.p->pairs();
+  for (std::size_t i = 0; i < p.size(); ++i)
+    result.append(intern_sv(p[i].first));
+  return result;
+}
+
 static bp::object block_find_save_frame(const BlockWrap& self,
                                         const std::string& name) {
   const Block* sf = self.p->find_save_frame(string_view(name));
@@ -291,6 +299,7 @@ BOOST_PYTHON_MODULE(xcif_ext)
     .def("find_value", &block_find_value)
     .def("find_loop", &block_find_loop)
     .add_property("loops", &block_loops)
+    .add_property("pair_tags", &block_pair_tags)
     .def("find_save_frame", &block_find_save_frame)
     ;
 

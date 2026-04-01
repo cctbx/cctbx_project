@@ -100,6 +100,9 @@ public:
   const Loop* find_loop(const string_view& tag) const;
   const std::vector<Loop>& loops() const { return loops_; }
   const Block* find_save_frame(const string_view& name) const;
+  const std::vector<std::pair<string_view, string_view>>& pairs() const {
+    return pairs_;
+  }
 
 private:
   friend class detail::Parser;

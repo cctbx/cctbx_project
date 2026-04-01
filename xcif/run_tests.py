@@ -17,6 +17,10 @@ tst_list = [
   "$D/regression/tst_memory.py",
   "$D/regression/tst_gil_release.py",
   "$D/regression/tst_string_interning.py",
+  "$D/regression/tst_api_compat.py",
+  "$D/regression/tst_parse_verify.py",
+  "$D/regression/tst_utf8.py",
+  "$D/regression/tst_roundtrip.py",
 ]
 
 def run():
