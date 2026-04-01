@@ -107,6 +107,22 @@ namespace smtbx {
           af::shared<FloatType>& gradients) const
         {
           FloatType obs = f_calc_function.get_observable();
+          // HKLF 2
+          if (reflections.has_wavelengths()) {
+            const twf_t* fraction = reflections.fraction(i_h);
+            if (fraction == 0) {
+              return obs;
+            }
+            FloatType obs_scale = fraction->value;
+            if (compute_grad) {
+              gradients *= obs_scale;
+              if (fraction->grad) {
+                SMTBX_ASSERT(fraction->grad_index >= 0 && fraction->grad_index < gradients.size());
+                gradients[fraction->grad_index] += obs;
+              }
+            }
+            return obs * obs_scale;
+          }
           if (reflections.has_twin_components()) {
             const twf_t* measured_fraction = reflections.fraction(i_h);
             itr_t itr = reflections.iterate(i_h);
