@@ -5424,7 +5424,7 @@ class array(set):
     return result
 
   def as_xray_observations(self, scale_indices=None, twin_fractions=None,
-                           twin_components=None):
+                           twin_components=None, wavelengths=None):
     assert self.observation_type() is None or (
            self.is_xray_amplitude_array() or self.is_xray_intensity_array())
     assert self.is_real_array()
@@ -5437,9 +5437,14 @@ class array(set):
       assert scale_indices.size() == self.indices().size()
       assert not (twin_fractions is None or len(twin_fractions) == 0)
       assert not twin_components
-      result = observations.observations(
-        self.indices(), self.data(), self.sigmas(),
-        scale_indices, twin_fractions)
+      if wavelengths:
+        result = observations.observations(self.space_group(),
+          self.indices(), self.data(), self.sigmas(),
+          scale_indices, twin_fractions, wavelengths.data())
+      else:
+        result = observations.observations(
+          self.indices(), self.data(), self.sigmas(),
+          scale_indices, twin_fractions)
       result.fo_sq = array(
         miller_set=set(
           crystal_symmetry=self,
