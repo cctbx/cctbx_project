@@ -200,6 +200,7 @@ class Script(object):
     experiments = params.input.experiments[0].data
     reflections = params.input.reflections[0].data
 
+    # Convert q parameters to d parameters if needed (q = 1/d)
     if params.center_scan.q_min is not None:
       params.center_scan.d_max = 1.0 / params.center_scan.q_min
     if params.center_scan.q_max is not None:
@@ -215,10 +216,13 @@ class Script(object):
       for step in params.center_scan.step_px:
         cscan.search_step(step)
 
+      # Z-axis refinement if d_target is set
       if params.center_scan.d_target is not None:
+        # Default Z steps in microns
         z_steps_um = [4000, 2000, 1000, 500, 250, 125, 80, 40, 20, 10, 5]
         for step_um in z_steps_um:
           cscan.search_step_z(step_um, params.center_scan.d_target)
+
         # Second XY refinement sequence
         for step in params.center_scan.step_px:
           cscan.search_step(step)
