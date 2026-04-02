@@ -21,6 +21,8 @@ tst_list = [
   "$D/regression/tst_parse_verify.py",
   "$D/regression/tst_utf8.py",
   "$D/regression/tst_roundtrip.py",
+  "$D/regression/tst_pdb_coordinates.py",
+  "$D/regression/tst_pdb_sf.py",
 ]
 
 def run():

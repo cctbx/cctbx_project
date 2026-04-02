@@ -172,6 +172,11 @@ class _block_adapter(MutableMapping):
     self._ensure_loop_map()
     return dict(self._loop_map)
 
+  def iterloops(self):
+    self._ensure_loop_map()
+    for lp in self._loop_map.values():
+      yield lp
+
   def __len__(self):
     return len(self.keys())
 
@@ -228,6 +233,19 @@ class _block_adapter(MutableMapping):
     lp = self.get_loop(loop_name)
     if lp is not None:
       return lp
+    # Synthesize a single-row loop from scalar tag-value pairs
+    # that share this category prefix (matches iotbx.cif.model behavior).
+    prefix = loop_name.lower()
+    if not prefix.endswith('.'):
+      prefix += '.'
+    self._ensure_pair_tags()
+    found = {}
+    for tag in self._pair_tags:
+      if tag.lower().startswith(prefix):
+        val = self._b.find_value(tag)
+        found[tag] = flex.std_string([val])
+    if found:
+      return _synthetic_loop_adapter(found)
     return default
 
   def show(self, out=None, indent="  ", indent_row=None,
@@ -358,6 +376,101 @@ class _loop_adapter(MutableMapping):
       for r in range(n_rows):
         parts = [columns[c][r] for c in range(n_cols)]
         print(indent_row + " ".join(parts), file=out)
+
+  def __str__(self):
+    s = StringIO()
+    self.show(out=s)
+    return s.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# Synthetic loop adapter (wraps grouped scalar pairs as a single-row loop)
+# ---------------------------------------------------------------------------
+
+class _synthetic_loop_adapter(MutableMapping):
+  """Single-row loop synthesized from scalar tag-value pairs that share
+  a common category prefix.  Returned by _block_adapter.get_loop_or_row()
+  when no real CIF loop_ exists for the requested category, matching
+  iotbx.cif.model.block.get_loop_or_row() behavior."""
+
+  def __init__(self, tag_value_dict):
+    self._data = tag_value_dict
+    self._tags = list(tag_value_dict.keys())
+    self._keys_lower = {}
+    for t in self._tags:
+      self._keys_lower[t.lower()] = t
+
+  def __len__(self):
+    return len(self._tags)
+
+  def __iter__(self):
+    for t in self._tags:
+      yield t
+
+  def __getitem__(self, key):
+    real_key = self._keys_lower.get(key.lower())
+    if real_key is None:
+      raise KeyError(key)
+    return self._data[real_key]
+
+  def __setitem__(self, key, value):
+    raise NotImplementedError("xcif model is read-only")
+
+  def __delitem__(self, key):
+    raise NotImplementedError("xcif model is read-only")
+
+  def keys(self):
+    return list(self._tags)
+
+  def name(self):
+    return _loop_category(self._tags)
+
+  def size(self):
+    return 1
+
+  def n_rows(self):
+    return 1
+
+  def n_columns(self):
+    return len(self._tags)
+
+  def show(self, out=None, indent="  ", indent_row=None,
+           fmt_str=None, align_columns=True):
+    if out is None:
+      out = sys.stdout
+    if indent_row is None:
+      indent_row = indent
+    n_cols = len(self._tags)
+    if n_cols == 0:
+      return
+    print("loop_", file=out)
+    for tag in self._tags:
+      print(indent + tag, file=out)
+    columns = []
+    for tag in self._tags:
+      col = list(self._data[tag])
+      columns.append([_format_value(v) for v in col])
+    if align_columns:
+      fmt_parts = []
+      for col in columns:
+        w = max((len(v) for v in col), default=1)
+        non_null = [v for v in col if v != "." and v != "?"]
+        is_numeric = True
+        for v in non_null:
+          try:
+            float(v)
+          except ValueError:
+            is_numeric = False
+            break
+        if not is_numeric:
+          w = -w
+        fmt_parts.append("%%%is" % w)
+      row_fmt = indent_row + "  ".join(fmt_parts)
+      vals = tuple(columns[c][0] for c in range(n_cols))
+      print((row_fmt % vals).rstrip(), file=out)
+    else:
+      parts = [columns[c][0] for c in range(n_cols)]
+      print(indent_row + " ".join(parts), file=out)
 
   def __str__(self):
     s = StringIO()
