@@ -3058,8 +3058,9 @@ class TrialDialog(BaseDialog):
     edit_phil_dlg.Fit()
 
     if edit_phil_dlg.ShowModal() == wx.ID_OK:
-      self.parse_trial_phil(edit_phil_dlg.phil_box.GetValue())
-      self.sync_controls()
+      _, msg = self.parse_trial_phil(edit_phil_dlg.phil_box.GetValue())
+      if msg is None:
+        self.sync_controls()
 
   def parse_trial_phil(self, target_phil_str):
     # Parameter validation
