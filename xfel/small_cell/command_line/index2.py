@@ -1,3 +1,4 @@
+import numba
 import sys
 import numpy as np
 from dataclasses import dataclass
@@ -604,10 +605,25 @@ class Basis2d(Basis):
         matches = (dq1 < self.q_tolerance) & (dq2 < self.q_tolerance) & (dtheta < self.theta_tolerance)
 
         if np.any(matches):
-            # Get the first match (or could find best one later)
             idx = np.where(matches)[0][0]
             hkl1 = self.hkl1_values[idx]
             hkl2 = self.hkl2_values[idx]
+          #            # Find best match (minimum normalized distance)
+          #            matching_indices = np.where(matches)[0]
+          #
+          #            # Compute normalized distances for all matches
+          #            norm_dq1 = dq1[matching_indices] / self.q_tolerance
+          #            norm_dq2 = dq2[matching_indices] / self.q_tolerance
+          #            norm_dtheta = dtheta[matching_indices] / self.theta_tolerance
+          #
+          #            # Combined distance metric (sum of normalized differences)
+          #            distances = norm_dq1 + norm_dq2 + norm_dtheta
+          #
+          #            # Get index of best match
+          #            best_match_idx = matching_indices[np.argmin(distances)]
+          #
+          #            hkl1 = self.hkl1_values[best_match_idx]
+          #            hkl2 = self.hkl2_values[best_match_idx]
 
             result = PairMatch2d(hkl1, pair.q1, hkl2, pair.q2, pair.theta)
             return result, 'indexed_2d'
@@ -774,8 +790,9 @@ class Basis2d(Basis):
         basis_vectors = np.vstack([v1, v2])
 
         # Sum costs from all pairs
-        return sum(self.compute_pair_cost(basis_vectors, pair, q_weight, theta_weight)
-                  for pair in pairs)
+        pair_costs = [self.compute_pair_cost(basis_vectors, pair, q_weight, theta_weight)
+                          for pair in pairs]
+        return sum(pair_costs)
 
     def plot_cost_histogram(self, pairs=None, q_weight=1000, theta_weight=111.0):
 
@@ -982,9 +999,26 @@ class Basis3d(Basis):
         matches = match_dq2 & match_theta
 
         if np.any(matches):
-            # Get the first match
             match_idx = np.where(matches)[0][0]
-            full_idx = left_idx + match_idx  # Adjust back to original array index
+            full_idx = left_idx + match_idx
+          #            # Find best match (minimum normalized distance)
+          #            matching_indices = np.where(matches)[0]
+          #            full_indices = left_idx + matching_indices
+          #
+          #            # Compute actual distances for matches
+          #            dq1_matches = np.abs(self.q1_values[full_indices] - pair.q1)
+          #            dq2_matches = np.abs(q2_subset[matching_indices] - pair.q2)
+          #            dtheta_matches = np.abs(theta_subset[matching_indices] - pair.theta)
+          #
+          #            # Normalize by tolerances
+          #            norm_distances = (dq1_matches / self.q_tolerance +
+          #                              dq2_matches / self.q_tolerance +
+          #                              dtheta_matches / self.theta_tolerance)
+          #
+          #            # Get index of best match
+          #            best_match_position = np.argmin(norm_distances)
+          #            best_match_position = 0
+          #            full_idx = full_indices[best_match_position]
 
             hkl1 = self.hkl1_values[full_idx]
             hkl2 = self.hkl2_values[full_idx]
@@ -1216,8 +1250,9 @@ class Basis3d(Basis):
             return 1.0e6
 
         # Sum costs from all pairs
-        return sum(self.compute_pair_cost(basis_vectors, pair, q_weight, theta_weight)
-                  for pair in pairs)
+        pair_costs = [self.compute_pair_cost(basis_vectors, pair, q_weight, theta_weight)
+                          for pair in pairs]
+        return sum(pair_costs)
 
     def plot_cost_histogram(self, pairs, q_weight=1000, theta_weight=111.0):
 
@@ -1870,7 +1905,6 @@ _I_VALS = np.array([-2, -2, -2, -2, -2, -1, -1, -1, -1, -1, 0, 0, 0, 0,
                     1, 1, 1, 1, 1, 2, 2, 2, 2, 2])
 _J_VALS = np.array([-2, -1, 0, 1, 2, -2, -1, 0, 1, 2, -2, -1, 1, 2,
                     -2, -1, 0, 1, 2, -2, -1, 0, 1, 2])
-@njit
 def reduce_2d_cell(a, b, gamma_deg):
     """
     Find the reduced setting of a 2D unit cell (Numba JIT version).
@@ -1959,6 +1993,9 @@ def reduce_2d_cell(a, b, gamma_deg):
 
 
 def run():
+    import cProfile
+    pr = cProfile.Profile()
+    pr.enable()
     QMIN=.03
     QMAX=.5
     recon = LatticeReconstruction(qmax=QMAX)
@@ -1970,9 +2007,9 @@ def run():
     data2 = np.vstack((data[:,1], data[:,0], data[:,2])).transpose()
     data_orig = data
     data = np.vstack((data, data2))
-    data_red = np.array([reduce_2d_cell(*item) for item in tqdm(data_orig)])
-    data_red2 = np.vstack((data_red[:,1], data_red[:,0], data_red[:,2])).transpose()
-    data_red_all = np.vstack((data_red, data_red2))
+#    data_red = np.array([reduce_2d_cell(*item) for item in tqdm(data_orig)])
+#    data_red2 = np.vstack((data_red[:,1], data_red[:,0], data_red[:,2])).transpose()
+#    data_red_all = np.vstack((data_red, data_red2))
 
 
     if len(sys.argv)==3 and False:
@@ -1986,7 +2023,7 @@ def run():
     assert sys.argv[2] in ['auto', 'manual']
     # Manual select 2d sub bases
     if sys.argv[2] == 'manual':
-      cl1 = ManualClusterer(data_red_all, n_maxima=0, sb1_callback=sb1_callback, recon=recon, qmin=QMIN, qmax=QMAX)
+      cl1 = ManualClusterer(data, n_maxima=0, sb1_callback=sb1_callback, recon=recon, qmin=QMIN, qmax=QMAX, points=cl_auto.kde_maxima)
 #      cl1 = ManualClusterer(data, n_maxima=0, sb1_callback=sb1_callback, recon=recon, qmin=QMIN, qmax=QMAX)
       title = "select first sub-basis"
       triplets = cl1.select_triplets(title)
@@ -2091,7 +2128,7 @@ def run():
         print(i_results, '\t', pct, '\t', basis)
     i_results_best = int(input('lattice: [0] ') or 0)
     i_best = results[i_results_best][0]
-    best_basis, best_params, fig = find_best_3d_basis(recon, *to_try[i_best], delta_range=(-2,2), steps=11)
+    best_basis, best_params, fig = find_best_3d_basis(recon, *to_try[i_best], delta_range=(-1,1), steps=11)
     plt.show()
 
     best_basis.match_pairs(recon.all_pairs)
@@ -2149,6 +2186,8 @@ def run():
 #
 #    cl_final = ManualClusterer(data_red_all, n_maxima=0, qvals_1=final_qvals, qmin=QMIN, qmax=QMAX, points=final_points_red_all)
     cl_final = ManualClusterer(data, n_maxima=0, qvals_1=final_qvals, qmin=QMIN, qmax=QMAX, points=final_points)
+    pr.disable()
+    import IPython;IPython.embed()
     _ = cl_final.select_triplets()
 
     import IPython;IPython.embed()

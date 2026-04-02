@@ -30,7 +30,7 @@ class PowderGeometryRefiner:
         # Compute reference d-spacings from unit_cell and space_group if provided
         if params.unit_cell is not None and params.space_group is not None:
             print(f"Computing d-spacings from unit_cell={params.unit_cell} "
-                  f"and space_group={params.space_group.info()}")
+                  f"and space_group={params.space_group}")
 
             # Get beam and detector for resolution calculation
             beam = experiments[0].beam
@@ -39,7 +39,7 @@ class PowderGeometryRefiner:
             d_max = params.d_max
 
             # Average unit cell over space group
-            unit_cell = params.space_group.average_unit_cell(params.unit_cell)
+            unit_cell = params.unit_cell
 
             # Generate Miller indices within resolution range
             generator = miller.index_generator(unit_cell, params.space_group.type(), False, d_min)
@@ -47,7 +47,7 @@ class PowderGeometryRefiner:
 
             # Compute d-spacings and filter by resolution range
             all_spacings = unit_cell.d(indices)
-            spacings_in_range = flex.sorted([d for d in all_spacings if d_min <= d <= d_max])
+            spacings_in_range = flex.sorted(flex.double([d for d in all_spacings if d_min <= d <= d_max]))
 
             self.reference_d = np.array(spacings_in_range)
             print(f"Generated {len(self.reference_d)} reference d-spacings in range "
@@ -71,14 +71,16 @@ class PowderGeometryRefiner:
         self._prepare_reflections()
 
     def _get_detector_state(self):
-        """Extract fast, slow, origin, and center from detector panel."""
-        panel = self.detector[0]
-        fast = matrix.col(panel.get_fast_axis())
-        slow = matrix.col(panel.get_slow_axis())
-        origin = matrix.col(panel.get_origin())
+        """Extract fast, slow, origin from detector hierarchy."""
+        hierarchy = self.detector.hierarchy()
+        fast = matrix.col(hierarchy.get_local_fast_axis())
+        slow = matrix.col(hierarchy.get_local_slow_axis())
+        origin = matrix.col(hierarchy.get_local_origin())
         normal = fast.cross(slow)
 
-        # Compute panel center
+        # For multipanel detectors, compute center using first panel dimensions
+        # (this is just for rotation center - all panels move together)
+        panel = self.detector[0]
         size = panel.get_image_size()
         pixel_size = panel.get_pixel_size()
         center = origin + (size[0]/2 * pixel_size[0]) * fast + (size[1]/2 * pixel_size[1]) * slow
@@ -166,6 +168,32 @@ class PowderGeometryRefiner:
         self.panels = self.refls_filtered['panel']
         self.ids = self.refls_filtered['id']
 
+        # Pre-compute unique experiment IDs and create subset for optimization
+        unique_exp_ids_list = sorted(set(self.refls_filtered['id']))
+        print(f"Filtered reflections span {len(unique_exp_ids_list)} unique experiments "
+              f"out of {len(self.experiments)}")
+
+        # Create a subset of experiments and remap reflection IDs
+        # This dramatically speeds up coordinate transformations
+        if len(unique_exp_ids_list) < len(self.experiments):
+            from dxtbx.model.experiment_list import ExperimentList
+            self.experiments_subset = ExperimentList()
+            old_to_new_id = {}
+            for new_id, old_id in enumerate(unique_exp_ids_list):
+                self.experiments_subset.append(self.experiments[old_id])
+                old_to_new_id[old_id] = new_id
+
+            # Remap reflection IDs to the subset
+            old_ids = self.refls_filtered['id']
+            new_ids = flex.size_t([old_to_new_id[old_id] for old_id in old_ids])
+            self.refls_filtered['id'] = new_ids
+
+            # Use the subset for all operations
+            self.experiments = self.experiments_subset
+            print(f"Created experiment subset with {len(self.experiments)} experiments")
+        else:
+            print(f"Using all experiments (no subset needed)")
+
     def apply_params(self, x):
         """Apply parameter vector to detector geometry."""
         # Parse parameter vector
@@ -216,9 +244,9 @@ class PowderGeometryRefiner:
                       shift2 * d2 +
                       dist * dn)
 
-        # Update detector panel
-        panel = self.detector[0]
-        panel.set_frame(
+        # Update detector hierarchy (moves all panels together as rigid body)
+        hierarchy = self.detector.hierarchy()
+        hierarchy.set_local_frame(
             d1_new.elems,
             d2_new.elems,
             new_origin.elems
@@ -243,17 +271,34 @@ class PowderGeometryRefiner:
         distances = np.abs(self.reference_d - d_obs)
         return self.reference_d[np.argmin(distances)]
 
+    def find_nearest_references_vectorized(self, d_obs_array):
+        """Find closest reference d-spacing for array of observations (vectorized)."""
+        # d_obs_array shape: (n_obs,)
+        # reference_d shape: (n_ref,)
+        # Compute distances matrix: (n_obs, n_ref)
+        distances = np.abs(d_obs_array[:, np.newaxis] - self.reference_d[np.newaxis, :])
+        # Find index of minimum distance for each observation
+        nearest_indices = np.argmin(distances, axis=1)
+        return self.reference_d[nearest_indices]
+
     def objective(self, x):
         """Compute sum of squared residuals."""
         self.apply_params(x)
         dvals = self.compute_dvals()
 
-        residuals = []
-        for d_obs in dvals:
-            d_ref = self.find_nearest_reference(d_obs)
-            residuals.append(d_obs - d_ref)
+        # Vectorized computation of residuals
+        dvals_np = dvals.as_numpy_array() if hasattr(dvals, 'as_numpy_array') else np.array(dvals)
+        d_ref = self.find_nearest_references_vectorized(dvals_np)
+        residuals = dvals_np - d_ref
 
-        return np.sum(np.array(residuals) ** 2)
+        # Progress counter
+        if not hasattr(self, '_obj_eval_count'):
+            self._obj_eval_count = 0
+        self._obj_eval_count += 1
+        if self._obj_eval_count % 10 == 0:
+            print(f"  Objective evaluation {self._obj_eval_count}, value: {np.sum(residuals ** 2):.6f}")
+
+        return np.sum(residuals ** 2)
 
     def run(self):
         """Run refinement and return results."""
@@ -272,7 +317,7 @@ class PowderGeometryRefiner:
             self.objective,
             x0=self.initial_params,
             method='Powell',
-            options={'maxiter': 100, 'disp': True, 'xtol': 0.001, 'ftol': 0.0001}
+            options={'maxiter': 50, 'disp': True, 'xtol': 0.01, 'ftol': 0.001}
         )
 
         # Apply final parameters
@@ -283,6 +328,7 @@ class PowderGeometryRefiner:
         final_obj = result.fun
         print(f"\nFinal objective: {final_obj:.6f}")
         print(f"Final RMS residual: {np.sqrt(final_obj / len(self.refls_filtered)):.6f} A")
+        print(f"Total objective evaluations: {self._obj_eval_count}")
 
         # Report parameter changes
         print("\nRefined parameters:")
@@ -299,10 +345,10 @@ class PowderGeometryRefiner:
 
     def report_geometry_changes(self):
         """Print summary of geometry changes."""
-        panel = self.detector[0]
-        new_origin = matrix.col(panel.get_origin())
-        new_fast = matrix.col(panel.get_fast_axis())
-        new_slow = matrix.col(panel.get_slow_axis())
+        hierarchy = self.detector.hierarchy()
+        new_origin = matrix.col(hierarchy.get_local_origin())
+        new_fast = matrix.col(hierarchy.get_local_fast_axis())
+        new_slow = matrix.col(hierarchy.get_local_slow_axis())
 
         old_origin = self.initial_state['origin']
         old_fast = self.initial_state['fast']

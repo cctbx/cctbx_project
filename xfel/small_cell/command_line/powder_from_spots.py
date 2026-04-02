@@ -149,9 +149,21 @@ center_scan {
     .type = float
   d_max = None
     .type = float
+  q_min = None
+    .type = float
+    .help = Minimum q (inverse angstroms). Converted to d_max if provided.
+  q_max = None
+    .type = float
+    .help = Maximum q (inverse angstroms). Converted to d_min if provided.
   step_px = None
     .type = float
     .multiple = True
+  d_target = None
+    .type = float
+    .help = If set, enables detector distance refinement along z-axis
+  q_target = None
+    .type = float
+    .help = Target q value (inverse angstroms). Converted to d_target if provided.
 }
 plot {
   interactive = True
@@ -195,11 +207,33 @@ class Script(object):
     experiments = params.input.experiments[0].data
     reflections = params.input.reflections[0].data
 
+    # Convert q parameters to d parameters if needed (q = 1/d)
+    if params.center_scan.q_min is not None:
+      params.center_scan.d_max = 1.0 / params.center_scan.q_min
+    if params.center_scan.q_max is not None:
+      params.center_scan.d_min = 1.0 / params.center_scan.q_max
+    if params.center_scan.q_target is not None:
+      params.center_scan.d_target = 1.0 / params.center_scan.q_target
+
     if params.center_scan.d_min:
       assert params.center_scan.d_max
       cscan = Center_scan(experiments, reflections, params)
+
+      # First XY refinement sequence
       for step in params.center_scan.step_px:
         cscan.search_step(step)
+
+      # Z-axis refinement if d_target is set
+      if params.center_scan.d_target is not None:
+        # Default Z steps in microns
+        z_steps_um = [4000, 2000, 1000, 500, 250, 125, 80, 40, 20, 10, 5]
+        for step_um in z_steps_um:
+          cscan.search_step_z(step_um, params.center_scan.d_target)
+
+        # Second XY refinement sequence
+        for step in params.center_scan.step_px:
+          cscan.search_step(step)
+
       if params.output.geom_file is not None:
         experiments.as_file(params.output.geom_file)
 
