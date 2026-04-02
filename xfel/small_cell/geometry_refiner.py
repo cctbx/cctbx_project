@@ -30,7 +30,7 @@ class PowderGeometryRefiner:
         # Compute reference d-spacings from unit_cell and space_group if provided
         if params.unit_cell is not None and params.space_group is not None:
             print(f"Computing d-spacings from unit_cell={params.unit_cell} "
-                  f"and space_group={params.space_group.symbol_and_number()}")
+                  f"and space_group={params.space_group}")
 
             # Get beam and detector for resolution calculation
             beam = experiments[0].beam
@@ -71,14 +71,16 @@ class PowderGeometryRefiner:
         self._prepare_reflections()
 
     def _get_detector_state(self):
-        """Extract fast, slow, origin, and center from detector panel."""
-        panel = self.detector[0]
-        fast = matrix.col(panel.get_fast_axis())
-        slow = matrix.col(panel.get_slow_axis())
-        origin = matrix.col(panel.get_origin())
+        """Extract fast, slow, origin from detector hierarchy."""
+        hierarchy = self.detector.hierarchy()
+        fast = matrix.col(hierarchy.get_local_fast_axis())
+        slow = matrix.col(hierarchy.get_local_slow_axis())
+        origin = matrix.col(hierarchy.get_local_origin())
         normal = fast.cross(slow)
 
-        # Compute panel center
+        # For multipanel detectors, compute center using first panel dimensions
+        # (this is just for rotation center - all panels move together)
+        panel = self.detector[0]
         size = panel.get_image_size()
         pixel_size = panel.get_pixel_size()
         center = origin + (size[0]/2 * pixel_size[0]) * fast + (size[1]/2 * pixel_size[1]) * slow
@@ -216,9 +218,9 @@ class PowderGeometryRefiner:
                       shift2 * d2 +
                       dist * dn)
 
-        # Update detector panel
-        panel = self.detector[0]
-        panel.set_frame(
+        # Update detector hierarchy (moves all panels together as rigid body)
+        hierarchy = self.detector.hierarchy()
+        hierarchy.set_local_frame(
             d1_new.elems,
             d2_new.elems,
             new_origin.elems
@@ -299,10 +301,10 @@ class PowderGeometryRefiner:
 
     def report_geometry_changes(self):
         """Print summary of geometry changes."""
-        panel = self.detector[0]
-        new_origin = matrix.col(panel.get_origin())
-        new_fast = matrix.col(panel.get_fast_axis())
-        new_slow = matrix.col(panel.get_slow_axis())
+        hierarchy = self.detector.hierarchy()
+        new_origin = matrix.col(hierarchy.get_local_origin())
+        new_fast = matrix.col(hierarchy.get_local_fast_axis())
+        new_slow = matrix.col(hierarchy.get_local_slow_axis())
 
         old_origin = self.initial_state['origin']
         old_fast = self.initial_state['fast']
