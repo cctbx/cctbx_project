@@ -279,6 +279,7 @@ class Center_scan:
     assert len(self.experiments.detectors())==1
 
     self.net_origin_shift = np.array([0.,0.,0.])
+    self.net_distance_shift = 0.0
     self.centroid_px_mm_done = False
     self.px_size = self.experiments.detectors()[0][0].get_pixel_size()
     self.target_refl_count = 0
@@ -327,6 +328,16 @@ class Center_scan:
       print(f'width {result:.5f} from {sel.count(True)} dvals')
       return result
 
+  def mean_squared_error_from_target(self, d_target):
+    """Calculate mean squared difference between d-spacings and target d-spacing"""
+    if len(self.dvals) < 3: return 999
+    dvals_array = flex.double(self.dvals)
+    differences = dvals_array - d_target
+    mse = flex.mean(differences * differences)
+    rmse = np.sqrt(mse)
+    print(f'RMSE from target {d_target:.5f}: {rmse:.5f} from {len(self.dvals)} dvals')
+    return mse
+
   def search_step(self, step_px, nsteps=3, update=True):
     step_size_mm = np.array(self.px_size + (0.,)) * step_px
     assert nsteps%2 == 1, "nsteps should be odd"
@@ -367,6 +378,74 @@ class Center_scan:
     print(f'end: {width_end:.5f}')
     print(f'net shift: {self.net_origin_shift}')
     return width_start, width_end, self.net_origin_shift
+
+  def search_step_z(self, step_um, d_target, nsteps=3, update=True, min_refl_fraction=0.8):
+    """Search along detector z-axis (distance) to minimize MSE from d_target
+
+    Args:
+      step_um: step size in microns
+      d_target: target d-spacing value
+      nsteps: number of steps to search (default 3: -1, 0, +1)
+      update: whether to update the geometry with the best result
+      min_refl_fraction: reject steps if reflection count drops below this fraction (default 0.8)
+    """
+    step_size_mm = step_um / 1000.0  # convert microns to mm
+    assert nsteps % 2 == 1, "nsteps should be odd"
+    step_min = -1 * (nsteps // 2)
+    step_max = nsteps // 2 + 1e-6  # make the range inclusive
+    step_arange = np.arange(step_min, step_max)
+
+    detector = self.experiments.detectors()[0]
+    hierarchy = detector.hierarchy()
+    fast = hierarchy.get_local_fast_axis()
+    slow = hierarchy.get_local_slow_axis()
+    origin = hierarchy.get_local_origin()
+
+    # Compute detector normal (z-axis direction)
+    # Normal points from sample toward detector
+    normal = np.cross(fast, slow)
+    normal = normal / np.linalg.norm(normal)
+
+    results = []
+    self.update_dvals()
+    initial_count = len(self.dvals)
+    mse_start = self.mean_squared_error_from_target(d_target)
+    print(f'Z-axis search start (MSE): {mse_start:.5f}, n_refl: {initial_count}')
+
+    for step_idx in step_arange:
+      step_mm = step_idx * step_size_mm
+      # Shift along normal direction
+      origin_shift = normal * step_mm
+      new_origin = origin + origin_shift
+      hierarchy.set_local_frame(fast, slow, new_origin)
+      self.update_dvals()
+      current_count = len(self.dvals)
+
+      # Reject if reflection count dropped by more than (1 - min_refl_fraction)
+      if current_count < min_refl_fraction * initial_count:
+        result = 999  # penalty value
+        print(f'  Step {step_mm:.6f} mm: rejected (n_refl={current_count}, {100*current_count/initial_count:.1f}%)')
+      else:
+        result = self.mean_squared_error_from_target(d_target)
+      results.append(result)
+
+    mse_end = min(results)
+    i_best = results.index(mse_end)
+    distance_shift = step_arange[i_best] * step_size_mm
+    if update:
+      origin_shift = normal * distance_shift
+      new_origin = origin + origin_shift
+      self.net_origin_shift += origin_shift
+      self.net_distance_shift += distance_shift
+    else:
+      new_origin = origin
+    hierarchy.set_local_frame(fast, slow, new_origin)
+    self.update_dvals()
+    final_count = len(self.dvals)
+    print(f'Z step: {distance_shift:.6f} mm')
+    print(f'Z end (MSE): {mse_end:.5f}, n_refl: {final_count}')
+    print(f'net distance shift: {self.net_distance_shift:.6f} mm')
+    return mse_start, mse_end, self.net_distance_shift
 
 def augment(expts, refls, d_min, d_max):
   """ Add pairwise 3D spot distances to the d-spacing histogram """
