@@ -85,13 +85,18 @@ class Locker:
   """
   def __init__(self, lock_file_path=None):
     if lock_file_path is None:
-      lock_file_path = os.path.expanduser('~/.upload_mtz.lock')
-    self.lock_file_path = lock_file_path
+      self.lock_file_path = os.path.expanduser('~/.upload_mtz.lock')
+      self._using_default = True
+    else:
+      self.lock_file_path = lock_file_path
+      self._using_default = False
 
   def __enter__(self):
     try:
       self.fp = open(self.lock_file_path, 'wb')
     except FileNotFoundError:
+      if not self._using_default:
+        raise
       self.fp = None
     if fcntl and self.fp is not None:
       fcntl.flock(self.fp.fileno(), fcntl.LOCK_EX)

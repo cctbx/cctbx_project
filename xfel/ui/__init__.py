@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-import os, sys
+import os
 from iotbx.phil import parse
 from libtbx.utils import Sorry
 
@@ -197,8 +197,9 @@ def save_cached_settings(params):
   if settings_file is None:
     settings_file = os.path.join(settings_dir, 'settings.phil')
 
-  if not os.path.exists(settings_dir):
-    os.makedirs(settings_dir)
+  target_dir = os.path.dirname(settings_file)
+  if not os.path.exists(target_dir):
+    os.makedirs(target_dir)
 
   working_phil = master_phil_scope.format(python_object = params)
   diff_phil = master_phil_scope.fetch_diff(source = working_phil)
