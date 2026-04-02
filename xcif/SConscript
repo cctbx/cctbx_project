@@ -19,9 +19,12 @@ if not libtbx.env.module_is_installed("xcif"):
   env_etc.include_registry.prepend(
     env=env_xcif_lib,
     paths=env_etc.xcif_common_includes)
-  if sys.platform == 'darwin' and hasattr(env_etc, 'conda_rpath'):
-    for rpath in env_etc.conda_rpath:
-      env_xcif_lib.Append(SHLINKFLAGS=['-Wl,-rpath,' + rpath])
+  if sys.platform == 'darwin':
+    env_xcif_lib.Append(
+      SHLINKFLAGS=['-install_name', '@rpath/libxcif.dylib'])
+    if hasattr(env_etc, 'conda_rpath'):
+      for rpath in env_etc.conda_rpath:
+        env_xcif_lib.Append(SHLINKFLAGS=['-Wl,-rpath,' + rpath])
   env_xcif_lib.SharedLibrary(
     target="#lib/xcif",
     source=["data_model.cpp", "tokenizer.cpp", "numeric.cpp"])
@@ -71,6 +74,14 @@ if not libtbx.env.module_is_installed("xcif"):
   env_xcif_cpp_tests.Program(
     target="regression/cpp/example_parse",
     source="regression/cpp/example_parse.cpp")
+
+  env_xcif_cpp_tests.Program(
+    target="regression/cpp/tst_thread_safety",
+    source="regression/cpp/tst_thread_safety.cpp")
+
+  env_xcif_cpp_tests.Program(
+    target="regression/cpp/fuzz_target",
+    source="regression/cpp/fuzz_target.cpp")
 
   # ── Boost.Python extension (links against libxcif) ─────────────────
   Import("env_no_includes_boost_python_ext")
