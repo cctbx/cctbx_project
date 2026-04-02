@@ -300,6 +300,82 @@ class ManualClusterer:
         # Return the selected triplets
         return self.selected_triplets
 
+    def compute_ms_maxima(self):
+        from sklearn.cluster import MeanShift, estimate_bandwidth
+
+        # Normalize data by bandwidths for anisotropic treatment
+        normalized_data = self.data / self.bandwidths[np.newaxis, :]
+
+        # Use a subsample for bandwidth estimation and faster mean-shift
+        n_sample = max(int(len(normalized_data) * 0.05), 100000)
+        n_sample = min(600000, len(normalized_data))
+        print(f'{n_sample=}')
+
+        sample_indices = np.random.choice(len(normalized_data), size=n_sample, replace=False)
+        sample_data = normalized_data[sample_indices]
+
+        # Run mean-shift clustering on the sample
+        # bandwidth=1 since we normalized, bin_seeding for speed
+        print('Running mean-shift...')
+        ms = MeanShift(bandwidth=1, bin_seeding=True, min_bin_freq=5)
+        ms.fit(sample_data)
+        print('Done mean-shift')
+
+        # Cluster centers are the density maxima in normalized space
+        cluster_centers = ms.cluster_centers_
+        print(f'Found {len(cluster_centers)} initial cluster centers')
+
+        # Compute density at each cluster center for filtering
+        kde = KernelDensity(bandwidth=1, kernel='cosine')
+        kde.fit(normalized_data)
+        center_densities = np.exp(kde.score_samples(cluster_centers))
+
+        # Sort by density
+        sorted_indices = np.argsort(center_densities)[::-1]
+
+        # Filter centers with your spatial and domain constraints
+        maxima_points = []
+        maxima_densities = []
+
+        for idx in sorted_indices:
+            if len(maxima_points) >= self.n_maxima:
+                break
+
+            candidate = cluster_centers[idx]
+            density = center_densities[idx]
+            q1, q2, th = candidate
+
+            # Apply your domain constraints
+            if np.abs(q1 - q2) < 2: continue
+            if th < 8 or th > 160: continue
+
+            # Check distance to already accepted maxima
+            too_close = False
+            for accepted_point in maxima_points:
+                dist = np.linalg.norm(candidate - accepted_point)
+                if dist < 5:
+                    too_close = True
+                    break
+
+            # Additional suspicious point filter
+            sus = False
+            if np.abs(q1 - q2) < 2: sus = True
+            if th < 5 or th > 160: sus = True
+
+            if not too_close and not sus:
+                maxima_points.append(candidate)
+                maxima_densities.append(density)
+
+        # Convert back to original space
+        kde_maxima = np.array(maxima_points) * self.bandwidths[np.newaxis, :]
+        kde_values = np.array(maxima_densities)
+
+        # Final sorting and selection
+        sort_vals = kde_maxima[:, 0] + kde_maxima[:, 1]
+        final_indices = np.argsort(sort_vals)[:self.n_shortest]
+        self.kde_maxima = kde_maxima[final_indices]
+        self.kde_values = kde_values[final_indices]
+
     def compute_kde_maxima(self):
         # Normalize data by bandwidths for anisotropic KDE
         normalized_data = self.data / self.bandwidths[np.newaxis, :]
@@ -903,7 +979,7 @@ class ManualClusterer:
                         self.ax2.axvline(q, color='red', linestyle='--', alpha=0.5)
             if self.current_points_selection is not None:
                 self.ax2.scatter(self.current_points_selection[:,1], self.current_points_selection[:,2],
-                               color='orange', marker='o', s=20, label='points')
+                               color='red', marker='o', s=5, label='points')
 
             # Create RectangleSelector only if it doesn't exist already
             if not hasattr(self, 'rect') or self.rect is None:

@@ -775,8 +775,9 @@ class Basis2d(Basis):
         basis_vectors = np.vstack([v1, v2])
 
         # Sum costs from all pairs
-        return sum(self.compute_pair_cost(basis_vectors, pair, q_weight, theta_weight)
-                  for pair in pairs)
+        pair_costs = [self.compute_pair_cost(basis_vectors, pair, q_weight, theta_weight)
+                          for pair in pairs]
+        return sum(pair_costs)
 
     def plot_cost_histogram(self, pairs=None, q_weight=1000, theta_weight=111.0):
 
@@ -1217,8 +1218,9 @@ class Basis3d(Basis):
             return 1.0e6
 
         # Sum costs from all pairs
-        return sum(self.compute_pair_cost(basis_vectors, pair, q_weight, theta_weight)
-                  for pair in pairs)
+        pair_costs = [self.compute_pair_cost(basis_vectors, pair, q_weight, theta_weight)
+                          for pair in pairs]
+        return sum(pair_costs)
 
     def plot_cost_histogram(self, pairs, q_weight=1000, theta_weight=111.0):
 
@@ -1991,7 +1993,7 @@ def run():
     # Manual select 2d sub bases
     if sys.argv[2] == 'manual':
 #      cl1 = ManualClusterer(data_red_all, n_maxima=0, sb1_callback=sb1_callback, recon=recon, qmin=QMIN, qmax=QMAX)
-      cl1 = ManualClusterer(data, n_maxima=0, sb1_callback=sb1_callback, recon=recon, qmin=QMIN, qmax=QMAX)
+      cl1 = ManualClusterer(data, n_maxima=0, sb1_callback=sb1_callback, recon=recon, qmin=QMIN, qmax=QMAX, points=cl_auto.kde_maxima)
       title = "select first sub-basis"
       triplets = cl1.select_triplets(title)
       # Lattice doubling test case: 0.153379 0.125106 40.434691
@@ -2091,7 +2093,7 @@ def run():
               raise
               print(i)
       results.sort(key=lambda x:x[2], reverse=True)
-      for i_results, (i, basis, fom, pct) in enumerate(results[:30]):
+      for i_results, (i, basis, fom, pct) in enumerate(results[:50]):
           print(i_results, '\t', pct, '\t', basis)
       i_results_best = int(input('lattice: [0] ') or 0)
       i_best = results[i_results_best][0]
