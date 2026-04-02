@@ -207,7 +207,7 @@ class Spotfinder_radial_average:
       sym = symmetry(
           unit_cell=params.unit_cell, space_group=params.space_group.group()
       )
-      hkl_list = cctbx.miller.build_set(sym, True, d_min=params.d_min)
+      hkl_list = cctbx.miller.build_set(sym, False, d_min=params.d_min)
       dspacings = params.unit_cell.d(hkl_list.indices())
 #      for hkl, d in sorted(zip(hkl_list.indices(), dspacings), key=lambda x:x[1]):
 #        print('{:.3f}: {}'.format(d, hkl))
