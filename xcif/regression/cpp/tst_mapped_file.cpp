@@ -18,7 +18,7 @@
 // ---------------------------------------------------------------------------
 
 // Write `len` bytes to a new temporary file; return the path.
-// std::tmpnam is deprecated but acceptable in test code.
+#ifdef _WIN32
 static std::string write_temp(const char* content, std::size_t len) {
   char buf[L_tmpnam];
   if (!std::tmpnam(buf)) {
@@ -29,12 +29,29 @@ static std::string write_temp(const char* content, std::size_t len) {
   if (!f) {
     throw std::runtime_error(std::string("cannot create temp file: ") + path);
   }
-  if (len > 0) {
-    std::fwrite(content, 1, len, f);
-  }
+  if (len > 0) std::fwrite(content, 1, len, f);
   std::fclose(f);
   return path;
 }
+#else
+#include <unistd.h>
+static std::string write_temp(const char* content, std::size_t len) {
+  char tmpl[] = "/tmp/xcif_test_XXXXXX";
+  int fd = mkstemp(tmpl);
+  if (fd < 0) {
+    throw std::runtime_error("mkstemp failed");
+  }
+  if (len > 0) {
+    ssize_t n = write(fd, content, len);
+    if (n < 0 || static_cast<std::size_t>(n) != len) {
+      close(fd);
+      throw std::runtime_error("write failed");
+    }
+  }
+  close(fd);
+  return std::string(tmpl);
+}
+#endif
 
 static void rm_temp(const std::string& path) {
   std::remove(path.c_str());
