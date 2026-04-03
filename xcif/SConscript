@@ -25,9 +25,17 @@ if not libtbx.env.module_is_installed("xcif"):
     if hasattr(env_etc, 'conda_rpath'):
       for rpath in env_etc.conda_rpath:
         env_xcif_lib.Append(SHLINKFLAGS=['-Wl,-rpath,' + rpath])
-  env_xcif_lib.SharedLibrary(
+
+  xcif_sources = ["data_model.cpp", "tokenizer.cpp", "numeric.cpp"]
+
+  if (env_etc.static_libraries):
+    builder = env_xcif_lib.StaticLibrary
+  else:
+    builder = env_xcif_lib.SharedLibrary
+
+  builder(
     target="#lib/xcif",
-    source=["data_model.cpp", "tokenizer.cpp", "numeric.cpp"])
+    source=xcif_sources)
 
   # ── C++ test executables (link against libxcif) ────────────────────
   env_xcif_cpp_tests = env_base.Clone()
@@ -88,20 +96,21 @@ if not libtbx.env.module_is_installed("xcif"):
     source="benchmarks/bench_xcif.cpp")
 
   # ── Boost.Python extension (links against libxcif) ─────────────────
-  Import("env_no_includes_boost_python_ext")
-  env_xcif_bpl = env_no_includes_boost_python_ext.Clone()
-  env_etc.include_registry.append(
-    env=env_xcif_bpl,
-    paths=env_etc.xcif_common_includes + [
-      env_etc.boost_adaptbx_include,
-      env_etc.boost_include,
-      env_etc.python_include,
-      env_etc.scitbx_include,
-    ])
-  env_xcif_bpl.Prepend(LIBS=["xcif"])
-  if sys.platform == 'darwin' and hasattr(env_etc, 'conda_rpath'):
-    for rpath in env_etc.conda_rpath:
-      env_xcif_bpl.Append(LINKFLAGS=['-Wl,-rpath,' + rpath])
-  env_xcif_bpl.SharedLibrary(
-    target="#lib/xcif_ext",
-    source=["xcif_ext.cpp"])
+  if (not env_etc.no_boost_python):
+    Import("env_no_includes_boost_python_ext")
+    env_xcif_bpl = env_no_includes_boost_python_ext.Clone()
+    env_etc.include_registry.append(
+      env=env_xcif_bpl,
+      paths=env_etc.xcif_common_includes + [
+        env_etc.boost_adaptbx_include,
+        env_etc.boost_include,
+        env_etc.python_include,
+        env_etc.scitbx_include,
+      ])
+    env_xcif_bpl.Prepend(LIBS=["xcif"])
+    if sys.platform == 'darwin' and hasattr(env_etc, 'conda_rpath'):
+      for rpath in env_etc.conda_rpath:
+        env_xcif_bpl.Append(LINKFLAGS=['-Wl,-rpath,' + rpath])
+    env_xcif_bpl.SharedLibrary(
+      target="#lib/xcif_ext",
+      source=["xcif_ext.cpp"])
