@@ -6,7 +6,6 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import xcif
-from scitbx.array_family import flex
 from libtbx.utils import format_cpu_times
 from libtbx.test_utils import approx_equal
 import libtbx.load_env

@@ -12,7 +12,6 @@ import gc
 import os
 import libtbx.load_env
 from libtbx.utils import format_cpu_times
-from libtbx.test_utils import approx_equal
 
 CIF_TEXT = (
   "data_mem\n"

@@ -96,7 +96,6 @@ def exercise_utf8_in_loop_values():
 def exercise_utf8_block_data_integrity():
   """Numeric data after UTF-8 comments parses correctly."""
   import xcif_ext
-  from scitbx.array_family import flex
 
   cif_text = (
     u"# Crystallographic data for compound \u03b1-Fe\u2082O\u2083\n"

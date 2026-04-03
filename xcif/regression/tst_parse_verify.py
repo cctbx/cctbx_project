@@ -14,7 +14,6 @@ import xcif_ext
 import iotbx.cif
 from iotbx.cif import model as cif_model
 import libtbx.load_env
-from scitbx.array_family import flex
 from libtbx.utils import format_cpu_times
 from libtbx.test_utils import approx_equal
 
