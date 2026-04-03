@@ -102,8 +102,7 @@ namespace detail {
 class Parser {
 public:
   Parser(const char* data, std::size_t len, const char* src)
-    : tok_(data, len, src), source_(src), buf_end_(data + len)
-    { advance(); }
+    : tok_(data, len, src), source_(src) { advance(); }
 
   void run(Document& doc) {
     while (cur_.type != TOKEN_EOF) {
@@ -124,7 +123,6 @@ private:
   Tokenizer tok_;
   Token cur_;
   std::string source_;
-  const char* buf_end_;
 
   void advance() { cur_ = tok_.next(); }
 
@@ -210,14 +208,6 @@ private:
     }
     if (lp.tags_.empty())
       error("loop_ must be followed by at least one tag");
-    // Pre-allocate values based on remaining buffer size to avoid
-    // repeated vector reallocations on large loops (e.g. _atom_site).
-    if (cur_.ptr && buf_end_ > cur_.ptr) {
-      std::size_t remaining = buf_end_ - cur_.ptr;
-      if (remaining > 4096) {
-        lp.values_.reserve(remaining / 8);
-      }
-    }
     // Read values
     while (cur_.type == TOKEN_VALUE) {
       lp.values_.push_back(sv());
