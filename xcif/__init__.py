@@ -14,6 +14,7 @@ from __future__ import absolute_import, division, print_function
 
 import sys
 import xcif_ext
+import copy
 from cctbx.array_family import flex
 
 try:
@@ -135,6 +136,27 @@ class _cif_adapter(MutableMapping):
     s = StringIO()
     self.show(out=s)
     return s.getvalue()
+
+  def __deepcopy__(self, memo):
+    # Materialize to iotbx.cif.model only on copy
+    return copy.deepcopy(self._to_cif_model(), memo)
+
+  def __getstate__(self):
+    return self._to_cif_model()
+
+  def __setstate__(self, state):
+    # After unpickle, we're just a plain model.cif
+    self.__class__ = state.__class__
+    self.__dict__ = state.__dict__
+
+  def _to_cif_model(self):
+    """Materialize to iotbx.cif.model.cif (only called on copy/pickle)."""
+    from iotbx.cif import model
+    cif_obj = model.cif()
+    for name in self._names:
+      blk = self._doc.find_block(name)
+      cif_obj[name] = _block_adapter(blk)._to_block_model()
+    return cif_obj
 
 
 # ---------------------------------------------------------------------------
@@ -273,6 +295,26 @@ class _block_adapter(MutableMapping):
     self.show(out=s)
     return s.getvalue()
 
+  def __deepcopy__(self, memo):
+    return copy.deepcopy(self._to_block_model(), memo)
+
+  def _to_block_model(self):
+    from iotbx.cif import model
+    blk = model.block()
+    self._ensure_pair_tags()
+    for tag in self._pair_tags:
+      blk[tag] = self._b.find_value(tag)
+    for lp in self._b.loops:
+      blk.add_loop(_loop_adapter(lp)._to_loop_model())
+    for sf_block in self._b.save_frames:  # needs the new binding
+      sf = model.save()
+      for tag in sf_block.pair_tags:
+        sf[tag] = sf_block.find_value(tag)
+      for xloop in sf_block.loops:
+        sf.add_loop(_loop_adapter(xloop)._to_loop_model())
+      blk[sf_block.name] = sf
+    return blk
+
 
 # ---------------------------------------------------------------------------
 # Loop adapter (wraps Loop — dict of tag -> flex.std_string column)
@@ -382,6 +424,22 @@ class _loop_adapter(MutableMapping):
     self.show(out=s)
     return s.getvalue()
 
+  def __deepcopy__(self, memo):
+    return copy.deepcopy(self._to_loop_model(), memo)
+
+  def _to_loop_model(self):
+      from iotbx.cif import model
+      tags = list(self._lp.tags)
+
+      # Initialize an entirely empty loop. DO NOT pass header=tags.
+      lp = model.loop()
+
+      for tag in tags:
+        # On the first iteration, len(lp) is 0, so the assertion is bypassed.
+        # On the second iteration, len(lp) is 1, and the assertion safely checks 28 == 28.
+        lp[tag] = self._lp.column_as_flex_string(tag)
+
+      return lp
 
 # ---------------------------------------------------------------------------
 # Synthetic loop adapter (wraps grouped scalar pairs as a single-row loop)

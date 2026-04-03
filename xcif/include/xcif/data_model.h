@@ -104,6 +104,7 @@ public:
   const std::vector<std::pair<string_view, string_view>>& pairs() const {
     return pairs_;
   }
+  const std::vector<Block>& save_frames() const { return save_frames_; }
 
 private:
   friend class detail::Parser;
