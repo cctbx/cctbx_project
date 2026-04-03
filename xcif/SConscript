@@ -83,6 +83,10 @@ if not libtbx.env.module_is_installed("xcif"):
     target="regression/cpp/fuzz_target",
     source="regression/cpp/fuzz_target.cpp")
 
+  env_xcif_cpp_tests.Program(
+    target="benchmarks/bench_xcif",
+    source="benchmarks/bench_xcif.cpp")
+
   # ── Boost.Python extension (links against libxcif) ─────────────────
   Import("env_no_includes_boost_python_ext")
   env_xcif_bpl = env_no_includes_boost_python_ext.Clone()
