@@ -1,2 +1,5 @@
 cctbx_version.txt
 setup.py
+xcif/benchmarks/run_benchmarks.py
+xcif/regression/1yjp.cif
+xcif/regression/1yjp-sf.cif
