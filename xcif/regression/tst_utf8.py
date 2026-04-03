@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 
 from libtbx.utils import format_cpu_times
 from libtbx.test_utils import approx_equal
+from scitbx.array_family import flex  # registers shared<double> converter
 
 
 def exercise_utf8_in_comments():
