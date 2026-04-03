@@ -3,6 +3,7 @@
 #define XCIF_DATA_MODEL_H
 
 #include <xcif/string_view.h>
+#include <xcif/mapped_file.h>
 #include <cstring>
 #include <stdexcept>
 #include <string>
@@ -126,7 +127,9 @@ public:
 private:
   friend class detail::Parser;
   friend Document parse(const char*, std::size_t, const char*);
+  friend Document parse_file(const char*);
   std::vector<char> owned_buf_;
+  MappedFile mapped_file_;
   std::vector<Block> blocks_;
   ci_map<std::size_t> block_index_;
 };
@@ -140,6 +143,10 @@ inline Document parse(const char* data,
                       const char* source = "<input>") {
   return parse(data, std::strlen(data), source);
 }
+
+// Zero-copy file parse: memory-maps the file and parses directly
+// from mapped memory without copying the buffer.
+Document parse_file(const char* path);
 
 } // namespace xcif
 #endif // XCIF_DATA_MODEL_H

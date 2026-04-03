@@ -52,15 +52,15 @@ int main(int argc, char* argv[]) {
   if (repeat < 1) repeat = 1;
   if (warmup < 0) warmup = 0;
 
-  // Memory-map the file once; reuse the buffer for all iterations.
-  xcif::MappedFile mf(path);
+  // Check file exists and report size.
+  xcif::MappedFile mf_check(path);
   std::fprintf(stderr, "File: %s (%.1f MB)\n",
-               path, mf.size() / (1024.0 * 1024.0));
+               path, mf_check.size() / (1024.0 * 1024.0));
   std::fprintf(stderr, "Warmup: %d  Repeat: %d\n\n", warmup, repeat);
 
-  // Warmup: parse and discard.
+  // Warmup: parse and discard (uses zero-copy parse_file).
   for (int i = 0; i < warmup; ++i) {
-    xcif::Document doc = xcif::parse(mf.data(), mf.size(), path);
+    xcif::Document doc = xcif::parse_file(path);
     (void)doc;
   }
 
@@ -71,7 +71,7 @@ int main(int argc, char* argv[]) {
 
   for (int i = 0; i < repeat; ++i) {
     Clock::time_point t0 = Clock::now();
-    xcif::Document doc = xcif::parse(mf.data(), mf.size(), path);
+    xcif::Document doc = xcif::parse_file(path);
     Clock::time_point t1 = Clock::now();
     (void)doc;
 

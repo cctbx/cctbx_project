@@ -41,6 +41,16 @@ namespace xcif {
 // ---------------------------------------------------------------------------
 class MappedFile {
  public:
+  // Default constructor: creates an empty (unmapped) MappedFile.
+  MappedFile() noexcept
+    : data_(nullptr),
+      size_(0)
+#ifdef _WIN32
+      , file_handle_(INVALID_HANDLE_VALUE)
+      , mapping_handle_(nullptr)
+#endif
+  {}
+
   // Map the file at `path` read-only into the process address space.
   // Throws std::runtime_error on failure.
   explicit MappedFile(const char* path)

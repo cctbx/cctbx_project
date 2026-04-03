@@ -93,10 +93,8 @@ static DocPtr py_parse(const std::string& text) {
 static DocPtr py_parse_file(const std::string& path) {
   DocPtr result;
   {
-    MappedFile mf(path);
     GILRelease gil;
-    result = std::make_shared<Document>(
-      parse(mf.data(), mf.size(), mf.path()));
+    result = std::make_shared<Document>(parse_file(path.c_str()));
   }
   return result;
 }
