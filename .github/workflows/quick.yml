@@ -172,6 +172,7 @@ jobs:
             module=crys3d \
             module=smtbx \
             module=spotfinder \
+            module=xcif \
             nproc=4
 
 # -----------------------------------------------------------------------------
@@ -321,5 +322,6 @@ jobs:
             module=crys3d ^
             module=smtbx ^
             module=spotfinder ^
+            module=xcif ^
             nproc=4
           if %errorlevel% neq 0 exit /b %errorlevel%
