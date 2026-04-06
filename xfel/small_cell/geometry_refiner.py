@@ -1,6 +1,5 @@
 from __future__ import division
 import numpy as np
-import copy
 
 from dials.array_family import flex
 from cctbx import uctbx, miller

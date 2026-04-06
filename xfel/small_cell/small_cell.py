@@ -941,7 +941,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
           flex.random_permutation(len(all_reflections))
       )[: int(len(all_reflections) * pct / 100)]
 
-    
+
     try:
       lattice_results = small_cell_index_lattice_detail(experiments, reflections, horiz_phil)
       if not lattice_results:
