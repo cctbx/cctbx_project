@@ -750,7 +750,7 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
 
   # Add spheres for ions (was single-atom Het groups in original Flipkins?)
   ret += '@subgroup {het groups} dominant\n'
-  ret += '@spherelist {het M} color= gray  radius= 0.5  nubutton master= {hets}\n'
+  ret += '@spherelist {het M} color= gray radius= 0.5 nobutton master= {hets}\n'
   for a in model.get_atoms():
     if a.element_is_ion():
       ret += _AddPosition(a, '', fileBaseName) + '\n'

@@ -1559,6 +1559,7 @@ phenix.pdbtools:
         extensions: [.pdb]
         flag: ""
         prefer_patterns: [ligand_fit, lig]
+        exclude_patterns: [pose]
 
   # Input priorities for category-based file selection
   input_priorities:
@@ -1757,7 +1758,7 @@ phenix.polder:
   
   # NOTE: Polder only needs Fobs (data_mtz), NOT map coefficients!
   # It calculates its own phases internally.
-  # Polder has NO resolution keyword.
+  # Polder must use the same or worse resolution than refinement.
   log_detection:
     markers: ["polder"]
   done_tracking:
@@ -1791,6 +1792,10 @@ phenix.polder:
       exclude_categories: [map_coeffs_mtz]
 
   strategy_flags:
+    resolution:
+      flag: "xray_data.high_resolution={value}"
+      type: float
+      description: "Resolution limit — must match or be worse than the refinement resolution"
     selection:
       flag: "selection='{value}'"
       type: str
@@ -1806,10 +1811,12 @@ phenix.polder:
         set_strategy: {selection: "hetero and not water"}
       message: "selection is REQUIRED for polder. Defaulting to 'hetero and not water' to evaluate all ligands."
 
-  hints:
-    - "selection is REQUIRED - default is selection='hetero and not water' (safe for any ligand name)"
-    - "Polder has NO resolution keyword - do not add resolution to the command"
-    - "IMPORTANT: always use single quotes around the selection value on the command line"
+    - name: requires_resolution
+      description: "Resolution must match or be worse than refinement resolution"
+      check:
+        has_strategy: resolution
+      fix:
+        auto_fill_resolution: true
 
   outputs:
     files:
@@ -1845,6 +1852,9 @@ phenix.polder:
       summary_format: "{value}"
 
   hints:
+    - "selection is REQUIRED - default is selection='hetero and not water' (safe for any ligand name)"
+    - "Resolution MUST match or be worse than the refinement resolution - use xray_data.high_resolution=X.X"
+    - "IMPORTANT: always use single quotes around the selection value on the command line"
     - "Use to verify ligand or residue placement in electron density"
     - "High CC(1,3) and conclusion 'likely to show' indicates good placement"
     - "Selection syntax: 'chain X and resseq N' or 'resname LIG'"

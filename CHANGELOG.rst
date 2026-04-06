@@ -1,3 +1,11 @@
+2026.3
+======
+
+* Add hydrogens that may not be uniquely defined by geometry
+* Improvements to ligand validation tool
+* Fix bug in adding sequence information to mmCIF files where
+  _entity_poly.entity_id could be overridden
+
 2026.2
 ======
 

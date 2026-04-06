@@ -1798,6 +1798,40 @@ class CommandBuilder:
             "'%s' -> '%s'"
             % (raw, valid_atoms[0]))
 
+    # v115.09b: Intercept phaser_sad.atom_type for
+    # autosol.  The LLM uses this dotted PHIL path to
+    # tell autosol's internal phaser to search for a
+    # secondary atom, but it overrides the primary
+    # atom_type, causing autosol to use S instead of Se.
+    # Convert to additional_atom_types (the correct
+    # way) and strip the dotted path.
+    if program == "phenix.autosol":
+      _phaser_at = strategy.pop(
+          "phaser_sad.atom_type", None)
+      if _phaser_at:
+        _primary = strategy.get("atom_type", "")
+        _phaser_at_str = str(_phaser_at).strip()
+        if (_phaser_at_str
+                and _phaser_at_str != _primary
+                and "additional_atom_types"
+                    not in strategy):
+          strategy["additional_atom_types"] = (
+              _phaser_at_str)
+          self._log(context,
+            "BUILD: Converted "
+            "phaser_sad.atom_type=%s -> "
+            "additional_atom_types=%s "
+            "(prevents override of primary "
+            "atom_type=%s)"
+            % (_phaser_at_str,
+               _phaser_at_str, _primary))
+        else:
+          self._log(context,
+            "BUILD: Stripped "
+            "phaser_sad.atom_type=%s "
+            "(conflicts with atom_type=%s)"
+            % (_phaser_at_str, _primary))
+
     # Sanitize autosol wavelength: for MAD the LLM
     # sometimes provides multiple wavelengths (peak,
     # inflection, high-remote).  phenix.autosol only

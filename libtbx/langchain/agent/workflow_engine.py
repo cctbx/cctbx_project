@@ -1596,6 +1596,28 @@ class WorkflowEngine:
         if _diag:
             print("  [DIAG] after _apply_directives: %s" % valid)
 
+        # v115.09b: combine_ligand step guard.
+        # After ligandfit, the combine_ligand step MUST run
+        # pdbtools and ONLY pdbtools.  _apply_directives may
+        # inject other programs (after_program, program_settings)
+        # that the LLM picks instead of pdbtools.  Force the
+        # list to just pdbtools.
+        if step_name == "combine_ligand":
+            if "phenix.pdbtools" in valid:
+                if valid != ["phenix.pdbtools"]:
+                    valid[:] = ["phenix.pdbtools"]
+                    if _diag:
+                        print("  [DIAG] combine_ligand guard: "
+                              "forced pdbtools-only")
+            else:
+                valid.insert(0, "phenix.pdbtools")
+                if "STOP" in valid:
+                    valid.remove("STOP")
+                if _diag:
+                    print("  [DIAG] combine_ligand guard: "
+                          "restored pdbtools, result=%s"
+                          % valid)
+
         # Add STOP if validation done and at target
         if step_name == "validate" and context.get("validation_done"):
             if "STOP" not in valid:
@@ -1763,6 +1785,15 @@ class WorkflowEngine:
         result = list(valid_programs)
         modifications = []  # Track what we changed for logging
 
+        # v115.09b: Debug trace for combine_ligand routing
+        _trace_combine = (step_name == "combine_ligand")
+        if _trace_combine:
+            print("  [DIAG] _apply_directives ENTRY: "
+                  "step=%s result=%s" % (step_name, result))
+            print("  [DIAG] _apply_directives: "
+                  "stop_conditions=%s" %
+                  directives.get("stop_conditions", {}))
+
         # Get stop_conditions
         stop_cond = directives.get("stop_conditions", {})
 
@@ -1893,7 +1924,59 @@ class WorkflowEngine:
                             "Overrode after_program_done "
                             "(CC=%.3f < 0.70)" % _cc)
 
-            if after_program_done:
+            # v115.09b: Post-ligandfit exemption.
+            # When the ligand-fitting workflow has mandatory
+            # pending steps (combine with pdbtools, then
+            # re-refine the complex), don't let ANY
+            # after_program_done fire.  The LLM may set
+            # after_program to "phenix.ligandfit" OR
+            # "phenix.refine" — either way, the refine that
+            # already ran was pre-ligandfit and doesn't
+            # satisfy the user's intent of refining the
+            # model-with-ligand complex.
+            #
+            # NOTE: We use _post_ligandfit_pending instead
+            # of setting after_program_done=False, because
+            # the else branch would re-add the after_program
+            # to valid_programs (confusing the LLM).
+            _post_ligandfit_pending = False
+            if after_program_done and context:
+                if step_name == "combine_ligand":
+                    _post_ligandfit_pending = True
+                    modifications.append(
+                        "Post-ligandfit: combine_ligand "
+                        "step needed — keeping "
+                        "valid_programs as-is")
+                elif context.get(
+                        "needs_post_ligandfit_refine"):
+                    _post_ligandfit_pending = True
+                    modifications.append(
+                        "Post-ligandfit: refine needed "
+                        "— keeping valid_programs as-is")
+
+            if _post_ligandfit_pending:
+                # Don't STOP and don't re-add the after_program.
+                # Behavior depends on the step:
+                if step_name == "combine_ligand":
+                    # Combine step: ONLY pdbtools belongs.
+                    # _apply_directives may have injected
+                    # other programs (refine from
+                    # program_settings, polder from
+                    # after_program).  Strip everything
+                    # except pdbtools.
+                    result[:] = ["phenix.pdbtools"]
+                else:
+                    # Refine step: prioritize refine over
+                    # validation so the LLM doesn't skip
+                    # the post-ligandfit refinement.
+                    _refine_progs = [
+                        "phenix.refine",
+                        "phenix.real_space_refine"]
+                    for rp in reversed(_refine_progs):
+                        if rp in result:
+                            result.remove(rp)
+                            result.insert(0, rp)
+            elif after_program_done:
                 # User's workflow is complete — replace the entire valid_programs
                 # list with just STOP.  Simply appending STOP is not enough: the
                 # step detector may have already added programs like
@@ -1925,6 +2008,17 @@ class WorkflowEngine:
 
         # 3. Apply workflow preferences
         workflow_prefs = directives.get("workflow_preferences", {})
+
+        if _trace_combine:
+            print("  [DIAG] _apply_directives after "
+                  "after_program block: result=%s" % result)
+            print("  [DIAG]   after_program=%s "
+                  "after_program_done=%s "
+                  "_post_ligandfit_pending=%s" % (
+                    after_program,
+                    after_program_done if after_program else 'N/A',
+                    _post_ligandfit_pending
+                      if after_program else 'N/A'))
 
         # Handle use_mr_sad - phaser first, then autosol (handled by experimental_phasing phase)
         # In obtain_model phase: prioritize phaser (need to place model first)
@@ -2065,6 +2159,11 @@ class WorkflowEngine:
             logger.debug(
                 "Directive modification: %s", mod)
         self._last_directive_modifications = modifications
+
+        if _trace_combine:
+            print("  [DIAG] _apply_directives EXIT: "
+                  "result=%s modifications=%s"
+                  % (result, modifications))
 
         return result
 

@@ -858,7 +858,10 @@ END
         if int(r.resseq)==1:
           assert r1 == ['HG2', 'CD', "H2"]
           assert r2 == ['CD']
-          assert r3 == ['H2', 'HG2']
+          r3.sort()
+          r3_ = ['H2', 'HG2']
+          r3_.sort()
+          assert r3 == r3_, r3
         elif int(r.resseq)==2:
           r1 == ['CA']
           r2 == ['CA']

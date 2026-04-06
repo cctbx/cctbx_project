@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from cctbx import maptbx
-from cctbx.maptbx.bcr import qmap
+import cctbx.maptbx.bcr as bcr
 
 import boost_adaptbx.boost.python as bp
 ext = bp.import_ext("cctbx_maptbx_bcr_bcr_ext")
@@ -34,12 +34,12 @@ def run():
       print("%5.3f %15.9f %15.9f %12.6f"%(a,b,c, b-c))
   #
   if 1:
-    tH = qmap.load_table(element="H", table="wk1995")
-    tC = qmap.load_table(element="C", table="wk1995")
-    tO = qmap.load_table(element="O", table="wk1995")
-    tN = qmap.load_table(element="N", table="wk1995")
-    tS = qmap.load_table(element="S", table="wk1995")
-    tP = qmap.load_table(element="P", table="wk1995")
+    tH = bcr.load_table(element="H", table="wk1995")
+    tC = bcr.load_table(element="C", table="wk1995")
+    tO = bcr.load_table(element="O", table="wk1995")
+    tN = bcr.load_table(element="N", table="wk1995")
+    tS = bcr.load_table(element="S", table="wk1995")
+    tP = bcr.load_table(element="P", table="wk1995")
     f = "%4s %8.6f %8.6f %8.6f %8.6f %8.6f  %8.6f"
     kk = "ErrRel"
     for k in tC.keys():

@@ -1,5 +1,55 @@
 # CHANGELOG — v115
 
+## Version 115.09b (GUI Fixes + Ligand Workflow + Bug 1)
+
+### Summary
+
+Production fixes from GUI testing and run 25 analysis. Three categories:
+explicit_program loop guard, ligand-fitting workflow (6 fixes), and
+GUI-mode corrections. 7 files modified.
+
+### Modified Files
+
+| File | Changes |
+|------|---------|
+| `agent/graph_nodes.py` | Bug 1: explicit_program done-flag guard prevents LLM-driven program loops. Removed dead .sca-only proactive check (replaced by diagnosable error). |
+| `agent/directive_extractor.py` | Ligand-fit placement: `model_is_placed=True` for "fit ligand" advice. Ligand-fit `after_program` clearing: removes LLM-set `after_program` for multi-step ligand workflows. |
+| `agent/workflow_engine.py` | Post-ligandfit exemption: defers `after_program_done` during combine/refine steps. Combine_ligand guard: forces pdbtools-only in combine step. Debug tracing for combine_ligand routing. |
+| `agent/command_builder.py` | `phaser_sad.atom_type` interception: converts to `additional_atom_types`, prevents Se→S override in autosol. |
+| `knowledge/programs.yaml` | Polder: `requires_resolution` invariant with `auto_fill_resolution` + `xray_data.high_resolution` strategy flag. Pdbtools: `exclude_patterns: [pose]` for ligand input (prevents selecting pose files over final model). Merged duplicate hints blocks. |
+| `knowledge/diagnosable_errors.yaml` | `missing_crystal_symmetry`: "No unit cell info available" + "Cell and/or symmetry not specified" patterns for xtriage with .sca data. |
+| `phenix/programs/ai_agent.py` | Fix A: `_has_explicit_stop` regex guard on preprocessing stop override (xtriage/mtriage). GUI auto-discovery skip: in GUI mode with user-selected files, skip supplement to prevent PHENIX artifacts from changing workflow intent. |
+
+### Bug Details
+
+| Bug | Symptom | Root Cause | Fix |
+|-----|---------|------------|-----|
+| Bug 1 (explicit_program loop) | bgal_denmod 3x resolve_cryo_em, hipip-refine 3x refine, emd_6123 3x map_to_model | `explicit_program` injection at graph_nodes.py line 691 bypasses done-flag check | Check done flag before injecting; skip if program already completed |
+| Fix A (preprocessing stop) | "run mtriage and stop" generates full 5-stage plan | `_preprocessing_programs` unconditionally clears `after_program` | `_has_explicit_stop` regex check before clearing |
+| Fix B (p9-xtriage) | xtriage fails twice on .sca without cell | Proactive file-type check can't distinguish p9 from gene-5-mad | Reactive: diagnosable_errors.yaml entry for "No unit cell" |
+| GUI discovery | nsf-d2-ligand picks up pdb_sequences.fa → predict_and_build | Auto-discovery supplements with PHENIX project artifacts | Skip supplement in GUI mode with user-selected files |
+| Ligand placement | "fit ATP" advice → predict_and_build instead of ligandfit | `model_is_placed` not set; model treated as unplaced | Rules overlay sets `model_is_placed=True` for ligand-fit signals |
+| Ligand after_program | Ligandfit→pdbtools→refine→polder workflow blocked at each step | LLM sets `after_program` to different program each run (ligandfit/refine/polder); each choice blocks a different step | Clear `after_program` when ligand-fit signals detected; plan template drives workflow |
+| Combine_ligand stuck | `combine_ligand` step gets STOP instead of pdbtools | `_apply_directives` wipes valid_programs via `after_program_done` | Post-ligandfit exemption + combine_ligand guard forces pdbtools-only |
+| Post-ligandfit refine | LLM picks molprobity instead of refine after pdbtools | `_apply_directives` re-adds ligandfit or polder to front of list | Three-way branch: combine→pdbtools-only; refine→prioritize refine; done→STOP |
+| phaser_sad.atom_type | Autosol uses S instead of Se | LLM adds `phaser_sad.atom_type=S` which overrides primary atom_type | Intercept and convert to `additional_atom_types` |
+| Polder resolution | Polder crashes without resolution limit | No `auto_fill_resolution` invariant for polder | Added `requires_resolution` invariant + `xray_data.high_resolution` strategy flag |
+| Pdbtools pose file | Pdbtools uses `ligand_fit_1_pose_5.pdb` instead of `ligand_fit_1.pdb` | `prefer_patterns: [ligand_fit]` matches both final and pose files | `exclude_patterns: [pose]` on ligand input slot |
+
+### Verification
+
+| Fix | Status |
+|-----|--------|
+| Bug 1 (bgal_denmod/rules_only) | ✅ mtriage→resolve_cryo_em→predict_and_build→RSR, CC=0.68 |
+| Bug 1 (hipip-refine/rules_only) | ✅ refine→xtriage→molprobity→auto-stop, R-free=0.223 |
+| Fix A (xtriage and stop) | ✅ Stops after xtriage in GUI |
+| Fix B (p9-xtriage) | ✅ 1 cycle, clean diagnosis with helpful message |
+| GUI discovery skip | ✅ Deployed, prevents pdb_sequences.fa pickup |
+| Ligand workflow | ✅ xtriage→refine→ligandfit→pdbtools→refine→polder→molprobity |
+| Polder resolution | ⏳ Deployed to server, awaiting verification |
+| Pdbtools pose exclusion | ⏳ Deployed, awaiting verification |
+
+
 ## Version 115.09 (Tutorial Routing Fixes)
 
 ### Summary

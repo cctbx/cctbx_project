@@ -2837,6 +2837,19 @@ FINAL REPORT:"""
         except Exception:
             pass  # Non-critical — if import fails, skip validation
 
+        # 5. Filter out intermediate output files that should never be
+        #    used as inputs to subsequent programs.  These files enter
+        #    available_files through _discover_cycle_outputs (glob scan
+        #    of output directories) and record_result (output_files list).
+        #    Matching on basename only to avoid directory-name false
+        #    positives.
+        _intermediate_substrings = ['_pose_', '_pose.']
+        files = [
+            f for f in files
+            if not any(sub in os.path.basename(f).lower()
+                       for sub in _intermediate_substrings)
+        ]
+
         return files
 
     def _find_missing_outputs(self, cycle, already_seen):

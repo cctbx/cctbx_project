@@ -25,7 +25,6 @@ from scitbx import fftpack
 from libtbx.test_utils import approx_equal
 from cctbx import uctbx
 import scitbx.math
-from cctbx.maptbx.bcr import bcr
 
 debug_peak_cluster_analysis = os.environ.get(
   "CCTBX_MAPTBX_DEBUG_PEAK_CLUSTER_ANALYSIS", "")
@@ -1597,6 +1596,7 @@ Fourier image of specified resolution, etc.
                  kpres = 1,
                  kprot = 112,
                  ):
+    from cctbx.maptbx.bcr import bcr
     b_iso = 0 # Must always be 0! All image vals below are for b_iso=0 !!!
 
     im = self.image(

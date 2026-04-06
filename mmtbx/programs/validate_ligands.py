@@ -256,20 +256,9 @@ RSCC.
     #  print(_ro[0])
     #  print(_ro[1]['comp_list']['_chem_comp.three_letter_code'][0])
 
-    self.working_model.set_restraint_objects(ro_no_duplicates)
-    self.working_model.set_stop_for_unknowns(False)
-    pi = self.working_model.get_current_pdb_interpretation_params()
-    pi.pdb_interpretation.allow_polymer_cross_special_position = True
-    try:
-      self.working_model.process(
-        make_restraints=True,
-        pdb_interpretation_params = pi)
-    except Exception as e:
-      print(e, file=self.logger)
-      print('Could not process model to create restraints.', file=self.logger)
-      return
 
-    _m = self.working_model.deep_copy() # get_fmodel unsets restraints manager
+
+    #_m = self.working_model.deep_copy() # get_fmodel unsets restraints manager
 
     # get fmodel object if reflection data were provided
     if has_miller:
@@ -290,15 +279,29 @@ RSCC.
     #self.data_manager.write_real_map_file(map_manager,filename="my_map.map")
     #self.data_manager.write_model_file(self.working_model,filename="my_model.pdb")
 
+    self.working_model.set_restraint_objects(ro_no_duplicates)
+    self.working_model.set_stop_for_unknowns(False)
+    pi = self.working_model.get_current_pdb_interpretation_params()
+    pi.pdb_interpretation.allow_polymer_cross_special_position = True
+    try:
+      self.working_model.process(
+        make_restraints=True,
+        pdb_interpretation_params = pi)
+    except Exception as e:
+      print(e, file=self.logger)
+      print('Could not process model to create restraints.', file=self.logger)
+      return
+
+
     basename = os.path.splitext(os.path.basename(model_fn))[0]
     self.model_fn_reduce2 = "%s_newH.cif" % basename.split(".")[0]
     if self.params.save_reduce2_model:
       self.data_manager.set_overwrite(True)
-      self.data_manager.write_model_file(_m,filename=self.model_fn_reduce2, format='cif')
+      self.data_manager.write_model_file(self.working_model,filename=self.model_fn_reduce2, format='cif')
 
     #t0 = time.time()
     ligand_manager = validate_ligands.manager(
-      model = _m,
+      model = self.working_model,
       fmodel = fmodel,
       map_manager = map_manager,
       params = self.params.validate_ligands,

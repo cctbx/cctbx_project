@@ -267,6 +267,12 @@ jobs:
           dir ${{ github.workspace }}
           dir ${{ github.workspace }}\modules
 
+      - name: Fix broken cache
+        continue-on-error: true
+        shell: cmd
+        run: |
+          del /S /Q .\build\lib\_pycbf.pyd 2> nul
+
       - name: Run bootstrap.py
         shell: cmd
         run: |

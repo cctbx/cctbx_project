@@ -1329,7 +1329,12 @@ def _categorize_files_hardcoded(available_files, ligand_hints=None, files_local=
                 files["with_ligand"].append(f)
                 _is_program_output = True
             if 'ligand_fit' in basename or 'ligandfit' in basename:
-                files["ligand_fit_output"].append(f)
+                # Exclude individual pose files — only the final
+                # combined model (ligand_fit_1.pdb) should be used.
+                # Pose files (ligand_fit_1_pose_5.pdb) are intermediate
+                # results with individual conformations.
+                if '_pose' not in basename:
+                    files["ligand_fit_output"].append(f)
                 _is_program_output = True
 
             if 'predict' in basename or 'alphafold' in basename or 'colabfold' in basename:
