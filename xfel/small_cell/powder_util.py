@@ -198,8 +198,10 @@ class Spotfinder_radial_average:
 
     if params.output.xy_file:
       with open(params.output.xy_file, 'w') as f:
+        use_q = getattr(params.output, 'xy_file_units', 'd') == 'q'
         for x,y in zip(xvalues, yvalues):
-          f.write("{:.6f}\t{}\n".format(x, y))
+          xout = x if use_q else 1/x
+          f.write("{:.6f}\t{}\n".format(xout, y))
 
     # Now plot the predicted peak positions if requested
     if params.unit_cell or params.space_group:

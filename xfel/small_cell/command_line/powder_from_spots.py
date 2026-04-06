@@ -124,6 +124,10 @@ output {
     .type = str
   xy_file = None
     .type = str
+  xy_file_units = *d q
+    .type = choice
+    .help = X-axis units for xy_file output: d-spacing in Angstroms (default) \
+            or inverse-d-spacing (q) in inverse Angstroms.
   peak_file = None
     .type = str
     .help = Optionally, specify an output file for interactive peak picking in \
