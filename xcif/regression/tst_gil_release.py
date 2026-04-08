@@ -19,6 +19,10 @@ def exercise_parse_file_releases_gil():
   increment a counter in the main thread. If the GIL is held during
   parsing, the main thread counter stays near zero. If released, the
   counter advances.
+
+  Uses a threading.Event to ensure the main thread is counting before
+  the parse thread starts, avoiding a race where parsing completes
+  before the main thread enters the counting loop.
   """
   import xcif_ext
   dist_dir = libtbx.env.dist_path("xcif")
@@ -26,10 +30,11 @@ def exercise_parse_file_releases_gil():
 
   counter = [0]
   done = [False]
+  ready = threading.Event()
 
   def parse_loop():
-    # Parse the file many times to create a measurable window
-    for _ in range(500):
+    ready.wait()  # Don't start until main thread is counting
+    for _ in range(1000):
       doc = xcif_ext.parse_file(cif_file)
       _ = len(doc)
     done[0] = True
@@ -37,7 +42,11 @@ def exercise_parse_file_releases_gil():
   t = threading.Thread(target=parse_loop)
   t.start()
 
-  # Increment counter while parse thread is running
+  # Signal parse thread to start, then immediately begin counting.
+  # The parse thread needs the GIL to proceed past ready.wait(), but
+  # the main thread holds it until time.sleep(), so counter >= 1 is
+  # guaranteed before any parsing begins.
+  ready.set()
   while not done[0]:
     counter[0] += 1
     # Yield to avoid busy-waiting artifacts
@@ -50,7 +59,11 @@ def exercise_parse_file_releases_gil():
     % counter[0])
 
 def exercise_parse_string_releases_gil():
-  """parse() from string should also release the GIL."""
+  """parse() from string should also release the GIL.
+
+  Uses a threading.Event to avoid a race where parsing completes before
+  the main thread enters the counting loop.
+  """
   import xcif_ext
 
   # Build a moderately large CIF string to make parsing take measurable time
@@ -62,9 +75,11 @@ def exercise_parse_string_releases_gil():
 
   counter = [0]
   done = [False]
+  ready = threading.Event()
 
   def parse_loop():
-    for _ in range(20):
+    ready.wait()  # Don't start until main thread is counting
+    for _ in range(50):
       doc = xcif_ext.parse(big_cif)
       _ = len(doc)
     done[0] = True
@@ -72,6 +87,7 @@ def exercise_parse_string_releases_gil():
   t = threading.Thread(target=parse_loop)
   t.start()
 
+  ready.set()
   while not done[0]:
     counter[0] += 1
     time.sleep(0.0001)
