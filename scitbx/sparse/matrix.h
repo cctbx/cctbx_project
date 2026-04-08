@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <limits>
 #include <vector>
 #include <scitbx/error.h>
 #include <scitbx/array_family/shared.h>
@@ -504,7 +505,7 @@ public:
       const_row_iterator b = col(i).begin(), e = col(i).end();
       if (b == e) {
         // Empty column: sentinel ensures no overlap with any other column.
-        col_range[i].min_row = 1;
+        col_range[i].min_row = std::numeric_limits<index_type>::max();
         col_range[i].max_row = 0;
       } else {
         col_range[i].min_row = b.index();
