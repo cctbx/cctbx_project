@@ -3,7 +3,6 @@
 
 #include <algorithm>
 #include <functional>
-#include <limits>
 #include <vector>
 #include <scitbx/error.h>
 #include <scitbx/array_family/shared.h>
@@ -493,35 +492,10 @@ public:
   {
     SCITBX_ASSERT(w.size() == n_rows())(w.size())(n_rows());
     index_type n = n_cols();
-
-    // Compact all columns so iterators give sorted, unique indices.
-    for (index_type i=0; i<n; ++i) col(i).compact();
-
-    // Precompute bounding box (min_row, max_row) per column.
-    // For an empty column, set min_row > max_row so the overlap test always fails.
-    struct col_range_t { index_type min_row, max_row; };
-    std::vector<col_range_t> col_range(n);
-    for (index_type i=0; i<n; ++i) {
-      const_row_iterator b = col(i).begin(), e = col(i).end();
-      if (b == e) {
-        // Empty column: sentinel ensures no overlap with any other column.
-        col_range[i].min_row = std::numeric_limits<index_type>::max();
-        col_range[i].max_row = 0;
-      } else {
-        col_range[i].min_row = b.index();
-        col_range[i].max_row = (e - 1).index();
-      }
-    }
-
     matrix result(n, n);
     for (index_type i=0; i<n; ++i) {
       result(i, i) = weighted_dot(col(i), w, col(i));
-      index_type imin = col_range[i].min_row;
-      index_type imax = col_range[i].max_row;
       for (index_type j=i+1; j<n; ++j) {
-        // Skip pairs whose row-index bounding boxes do not overlap:
-        // their weighted dot product is provably zero.
-        if (col_range[j].max_row < imin || imax < col_range[j].min_row) continue;
         result(j,i) = result(i,j) = weighted_dot(col(i), w, col(j));
       }
     }
