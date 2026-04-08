@@ -254,6 +254,7 @@ jobs:
       call libtbx.run_tests_parallel ^
         module=boost_adaptbx ^
         module=cctbx ^
+        module=xcif ^
         module=cctbx_website ^
         module=cma_es ^
         module=fable ^
