@@ -42,25 +42,21 @@ int as_int(const string_view& sv) {
   if (sv.empty())
     throw std::invalid_argument("as_int: empty string");
 
-  const char* p = sv.data();
-  std::size_t len = sv.size();
-  std::size_t i = 0;
-  bool neg = false;
+  char buf[32];
+  if (sv.size() >= sizeof(buf))
+    throw std::invalid_argument("as_int: value too long");
+  std::memcpy(buf, sv.data(), sv.size());
+  buf[sv.size()] = '\0';
 
-  if (p[0] == '-')      { neg = true; ++i; }
-  else if (p[0] == '+') { ++i; }
-
-  if (i == len)
-    throw std::invalid_argument("as_int: no digits");
-
-  int result = 0;
-  for (; i < len; ++i) {
-    char c = p[i];
-    if (c < '0' || c > '9')
-      throw std::invalid_argument("as_int: non-digit character");
-    result = result * 10 + (c - '0');
-  }
-  return neg ? -result : result;
+  char* end;
+  errno = 0;
+  long val = std::strtol(buf, &end, 10);
+  if (end == buf || *end != '\0')
+    throw std::invalid_argument("as_int: non-digit character");
+  if (errno == ERANGE || val > std::numeric_limits<int>::max()
+                      || val < std::numeric_limits<int>::min())
+    throw std::overflow_error("as_int: value out of range");
+  return static_cast<int>(val);
 }
 
 // ── as_double_with_su ──────────────────────────────────────────────
