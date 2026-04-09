@@ -25,9 +25,14 @@ namespace cctbx { namespace uctbx {
    *   A = a.a,  B = b.b,  C = c.c
    *   xi = 2(b.c),  eta = 2(a.c),  zeta = 2(a.b)
    *
+   * The main loop mirrors the Python krivy_gruber_1976.reduction.step() function
+   * exactly: A1 (N1 sort), A2 (N2 sort, restart if fired), A3/A4 (N3 sign,
+   * always), A5-A8 (reduction, restart if fired).  n_iterations() counts
+   * individual actions (cb_update calls) to match the Python implementation.
+   *
    * The accumulated change-of-basis matrix r_inv is stored as a 3x3 integer
-   * matrix (denominator = 1, entries are 0 or +/-1) in the same convention as
-   * fast_minimum_reduction::r_inv() and reduction_base._r_inv.
+   * matrix (denominator = 1) in the same convention as fast_minimum_reduction
+   * and reduction_base._r_inv.
    *
    * Based on the algorithm in gemmi::GruberVector (cellred.hpp), ported to
    * cctbx to remove the gemmi external dependency.
@@ -56,16 +61,8 @@ namespace cctbx { namespace uctbx {
         zeta_ = 2.0 * m[3];  // 2*(a.b)
         epsilon_ = std::pow(unit_cell.volume(), 1.0/3.0) * relative_epsilon;
 
-        // Main reduction loop: normalize then apply one Niggli step.
-        for (;;) {
-          normalize();
-          if (++n_iterations_ == iteration_limit_) {
-            throw error_niggli_iteration_limit_exceeded();
-          }
-          if (niggli_step()) {
-            break;
-          }
-        }
+        // Main reduction loop, matching Python's: while (self.step()): pass
+        while (step()) {}
       }
 
       scitbx::mat3<int> const& r_inv() const { return r_inv_; }
@@ -119,71 +116,93 @@ namespace cctbx { namespace uctbx {
         return !eps_lt(x, y) && !eps_lt(y, x);
       }
 
-      // --- N1 sorting step (used inside normalize) ---
+      // --- Iteration counter (mirrors Python cb_update) ---
+      // Called once per action, checks limit before incrementing.
 
-      void do_step_N1()
+      void cb_update()
+      {
+        if (n_iterations_ == iteration_limit_) {
+          throw error_niggli_iteration_limit_exceeded();
+        }
+        n_iterations_++;
+      }
+
+      // --- Individual action methods (A1-A8 = N1, N2, N3, A5-A8) ---
+      // Each mirrors the corresponding Python action method.
+
+      // A1: N1 sort (A <= B).  Returns true if the swap was applied.
+      bool do_a1()
       {
         if (eps_gt(A_, B_) ||
             (eps_eq(A_, B_) && eps_gt(std::abs(xi_), std::abs(eta_)))) {
           std::swap(A_, B_);
           std::swap(xi_, eta_);
           swap_columns_and_negate(0, 1);
+          cb_update();
+          return true;
         }
+        return false;
       }
 
-      // --- normalize(): Algorithm N from Gruber (1973) ---
-      // Sorts A <= B <= C with tie-breaking on |xi|, |eta|, |zeta|,
-      // then enforces consistent signs on xi, eta, zeta.
-
-      void normalize()
+      // A2: N2 sort (B <= C).  Returns true if the swap was applied.
+      bool do_a2()
       {
-        // N1: sort A <= B
-        do_step_N1();
-
-        // N2: sort B <= C (then re-apply N1 since B may have decreased)
         if (eps_gt(B_, C_) ||
             (eps_eq(B_, C_) && eps_gt(std::abs(eta_), std::abs(zeta_)))) {
           std::swap(B_, C_);
           std::swap(eta_, zeta_);
           swap_columns_and_negate(1, 2);
-          do_step_N1();
+          cb_update();
+          return true;
         }
+        return false;
+      }
 
-        // N3: enforce consistent sign convention for xi, eta, zeta.
-        // Target: all three values have the same sign.
-        // sgn=+1 if exactly an odd number are strictly positive (all zeros ignored),
-        //        AND there are no zero-valued components.
-        // sgn=-1 otherwise (make all non-positive).
-        int pos   = (xi_ > epsilon_)    + (eta_ > epsilon_)    + (zeta_ > epsilon_);
-        int nonneg = (xi_ >= -epsilon_) + (eta_ >= -epsilon_) + (zeta_ >= -epsilon_);
+      // Helper: classify xi_/eta_/zeta_ signs.
+      // n_positive: number strictly greater than +epsilon
+      // n_nonneg:   number greater than -epsilon (i.e., >= 0 within tolerance)
+      void sign_counts(int& n_positive, int& n_nonneg) const
+      {
+        n_positive = (xi_   >  epsilon_) + (eta_  >  epsilon_) + (zeta_ >  epsilon_);
+        n_nonneg   = (xi_   > -epsilon_) + (eta_  > -epsilon_) + (zeta_ > -epsilon_);
+      }
+
+      // A3/A4: N3 sign normalization.  Always applied (always calls cb_update).
+      // Mirrors Python n3_true_action (def_gt_0=true) and n3_false_action (false).
+      void do_a3_a4()
+      {
+        int pos, nonneg;
+        sign_counts(pos, nonneg);
+
+        // Target sign: +1 if all-positive case (def_gt_0), -1 otherwise.
+        // def_gt_0 <==> n_positive==3 OR (n_zero==0 AND n_positive==1)
+        //           <==> pos==nonneg AND pos%2==1
         double sgn = (pos == nonneg && pos % 2 == 1) ? 1.0 : -1.0;
 
-        // Negate columns whose value has the wrong sign.
+        // Negate columns whose current sign opposes the target.
         if (sgn * xi_   < -epsilon_) negate_column(0);
         if (sgn * eta_  < -epsilon_) negate_column(1);
         if (sgn * zeta_ < -epsilon_) negate_column(2);
 
-        // Special case: if there is a zero component and we are in the odd-positive
-        // case, negate one more column to keep the product of all signs consistent.
+        // Edge case: zero-valued component in the all-positive branch requires
+        // one extra negation to maintain the correct sign product
+        // (mirrors Python n3_false_action's f[z]=-1 adjustment).
         if (pos != nonneg && pos % 2 == 1) {
           negate_column(
             std::fabs(zeta_) <= epsilon_ ? 2 :
             std::fabs(eta_)  <= epsilon_ ? 1 : 0);
         }
 
-        // Apply the target sign to the scalar values.
         xi_   = std::copysign(xi_,   sgn);
         eta_  = std::copysign(eta_,  sgn);
         zeta_ = std::copysign(zeta_, sgn);
+
+        cb_update();  // ONE action regardless of how many columns were negated
       }
 
-      // --- niggli_step(): Steps A5-A8 from Krivy & Gruber (1976) ---
-      // Must be called after normalize(). Returns true if the cell is already
-      // Niggli-reduced (no step was needed).
-
-      bool niggli_step()
+      // A5: reduce |xi| w.r.t. B.  Returns true if the step was applied.
+      bool do_a5()
       {
-        // Step 5: reduce |xi| w.r.t. B
         if (eps_gt(std::abs(xi_), B_) ||
             (xi_ >= B_ - epsilon_ && eps_lt(2*eta_, zeta_)) ||
             (xi_ <= -(B_ - epsilon_) && eps_lt(zeta_, 0.0))) {
@@ -192,9 +211,15 @@ namespace cctbx { namespace uctbx {
           eta_ -= zeta_ * s;
           xi_  -= 2 * B_ * s;
           add_column(1, 2, -(int)s);
-          return false;
+          cb_update();
+          return true;
         }
-        // Step 6: reduce |eta| w.r.t. A
+        return false;
+      }
+
+      // A6: reduce |eta| w.r.t. A.  Returns true if the step was applied.
+      bool do_a6()
+      {
         if (eps_gt(std::abs(eta_), A_) ||
             (eta_ >= A_ - epsilon_ && eps_lt(2*xi_, zeta_)) ||
             (eta_ <= -(A_ - epsilon_) && eps_lt(zeta_, 0.0))) {
@@ -203,9 +228,15 @@ namespace cctbx { namespace uctbx {
           xi_  -= zeta_ * s;
           eta_ -= 2 * A_ * s;
           add_column(0, 2, -(int)s);
-          return false;
+          cb_update();
+          return true;
         }
-        // Step 7: reduce |zeta| w.r.t. A
+        return false;
+      }
+
+      // A7: reduce |zeta| w.r.t. A.  Returns true if the step was applied.
+      bool do_a7()
+      {
         if (eps_gt(std::abs(zeta_), A_) ||
             (zeta_ >= A_ - epsilon_ && eps_lt(2*xi_, eta_)) ||
             (zeta_ <= -(A_ - epsilon_) && eps_lt(eta_, 0.0))) {
@@ -214,9 +245,15 @@ namespace cctbx { namespace uctbx {
           xi_   -= eta_ * s;
           zeta_ -= 2 * A_ * s;
           add_column(0, 1, -(int)s);
-          return false;
+          cb_update();
+          return true;
         }
-        // Step 8: mixed condition
+        return false;
+      }
+
+      // A8: mixed condition.  Returns true if the step was applied.
+      bool do_a8()
+      {
         if (eps_lt(xi_ + eta_ + zeta_ + A_ + B_, 0.0) ||
             (eps_eq(xi_ + eta_ + zeta_ + A_ + B_, 0.0) &&
              eps_gt(2*(A_ + eta_) + zeta_, 0.0))) {
@@ -225,9 +262,30 @@ namespace cctbx { namespace uctbx {
           eta_ += 2*A_ + zeta_;
           add_column(0, 2, 1);
           add_column(1, 2, 1);
-          return false;
+          cb_update();  // ONE action for the two add_column calls (mirrors Python)
+          return true;
         }
-        return true;  // already Niggli-reduced
+        return false;
+      }
+
+      // --- Main step function ---
+      // Mirrors Python krivy_gruber_1976.reduction.step() exactly:
+      //   A1 (optional N1 sort)
+      //   A2 (N2 sort, restart if fired)
+      //   A3/A4 (N3 sign, always)
+      //   A5-A8 (reduction, restart if fired)
+      //   return false when nothing triggered a restart
+
+      bool step()
+      {
+        do_a1();                    // A1: N1 sort (optional, no restart)
+        if (do_a2()) return true;   // A2: N2 sort (restart if fired)
+        do_a3_a4();                 // A3/A4: sign normalization (always)
+        if (do_a5()) return true;   // A5
+        if (do_a6()) return true;   // A6
+        if (do_a7()) return true;   // A7
+        if (do_a8()) return true;   // A8
+        return false;               // done
       }
 
       double A_, B_, C_, xi_, eta_, zeta_;
