@@ -11,6 +11,7 @@
 #include <scitbx/array_family/flex_types.h>
 #include <memory>
 #include <cmath>
+#include <stdexcept>
 
 namespace bp = boost::python;
 using namespace xcif;
@@ -305,8 +306,20 @@ static bool py_is_inapplicable(const std::string& s) {
 
 // ===== Module definition ==========================================
 
+static void translate_invalid_argument(const std::invalid_argument& e) {
+  PyErr_SetString(PyExc_ValueError, e.what());
+}
+
+static void translate_overflow_error(const std::overflow_error& e) {
+  PyErr_SetString(PyExc_OverflowError, e.what());
+}
+
 BOOST_PYTHON_MODULE(xcif_ext)
 {
+  bp::register_exception_translator<std::invalid_argument>(
+    translate_invalid_argument);
+  bp::register_exception_translator<std::overflow_error>(
+    translate_overflow_error);
   bp::class_<BlockWrap>("Block", bp::no_init)
     .add_property("name", &block_name)
     .def("has_tag", &block_has_tag)
