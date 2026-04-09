@@ -6,14 +6,24 @@
 #include <locale.h>
 #include <stdexcept>
 
+// strtod is locale-sensitive (decimal separator varies).  Use a C-locale
+// strtod wrapper so that CIF's mandatory '.' separator always works.
+// POSIX provides strtod_l / newlocale; MSVC provides _strtod_l / _create_locale.
+#ifdef _WIN32
 namespace {
-// strtod is locale-sensitive (decimal separator varies).  Use strtod_l with
-// a fixed C locale so that CIF's mandatory '.' separator always works.
-locale_t xcif_c_locale() {
-  static locale_t loc = ::newlocale(LC_ALL_MASK, "C", (locale_t)0);
-  return loc;
+static double xcif_strtod_c(const char* buf, char** end) {
+  static _locale_t s_loc = _create_locale(LC_ALL, "C");
+  return _strtod_l(buf, end, s_loc);
 }
 } // namespace
+#else
+namespace {
+static double xcif_strtod_c(const char* buf, char** end) {
+  static locale_t s_loc = ::newlocale(LC_ALL_MASK, "C", (locale_t)0);
+  return ::strtod_l(buf, end, s_loc);
+}
+} // namespace
+#endif
 
 namespace xcif {
 
@@ -41,7 +51,7 @@ double as_double(const string_view& sv) {
   buf[parse_len] = '\0';
 
   char* end;
-  double val = ::strtod_l(buf, &end, xcif_c_locale());
+  double val = xcif_strtod_c(buf, &end);
   if (end == buf) return XCIF_NAN;
   return val;
 }
@@ -93,7 +103,7 @@ std::pair<double, double> as_double_with_su(const string_view& sv) {
   buf[val_len] = '\0';
 
   char* end;
-  double value = ::strtod_l(buf, &end, xcif_c_locale());
+  double value = xcif_strtod_c(buf, &end);
   if (end == buf)
     return std::make_pair(XCIF_NAN, 0.0);
 
