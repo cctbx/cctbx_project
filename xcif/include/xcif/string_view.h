@@ -47,8 +47,8 @@ public:
   const_iterator end()   const { return ptr_ + len_; }
 
   // Modifiers
-  void remove_prefix(size_type n) { ptr_ += n; len_ -= n; }
-  void remove_suffix(size_type n) { len_ -= n; }
+  void remove_prefix(size_type n) { assert(n <= len_); ptr_ += n; len_ -= n; }
+  void remove_suffix(size_type n) { assert(n <= len_); len_ -= n; }
 
   // Operations
   string_view substr(size_type pos, size_type count = npos) const {
