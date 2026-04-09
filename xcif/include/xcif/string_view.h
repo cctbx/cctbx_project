@@ -14,6 +14,7 @@ namespace xcif { using string_view = std::string_view; }
 #else // C++14 implementation
 
 #include <algorithm>
+#include <cassert>
 #include <cstring>
 #include <ostream>
 #include <string>
@@ -38,8 +39,8 @@ public:
   size_type   length() const { return len_; }
   bool        empty()  const { return len_ == 0; }
   char operator[](size_type i) const { return ptr_[i]; }
-  char front() const { return ptr_[0]; }
-  char back()  const { return ptr_[len_ - 1]; }
+  char front() const { assert(!empty()); return ptr_[0]; }
+  char back()  const { assert(!empty()); return ptr_[len_ - 1]; }
 
   // Iterators
   const_iterator begin() const { return ptr_; }
