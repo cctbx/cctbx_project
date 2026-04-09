@@ -71,3 +71,7 @@ mmtbx/suitename/assist/
 mmtbx/suitename/*.show.txt
 
 *sublime*
+
+# Local Claude AI guidance files (not for shared use)
+CLAUDE.md
+*/CLAUDE.md
