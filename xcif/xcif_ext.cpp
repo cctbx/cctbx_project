@@ -68,14 +68,14 @@ typedef std::shared_ptr<Document> DocPtr;
 struct BlockWrap {
   DocPtr doc;
   const Block* p;
-  BlockWrap() : p(0) {}
+  BlockWrap() : p(nullptr) {}
   BlockWrap(DocPtr d, const Block* b) : doc(d), p(b) {}
 };
 
 struct LoopWrap {
   DocPtr doc;
   const Loop* p;
-  LoopWrap() : p(0) {}
+  LoopWrap() : p(nullptr) {}
   LoopWrap(DocPtr d, const Loop* l) : doc(d), p(l) {}
 };
 

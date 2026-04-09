@@ -66,14 +66,12 @@ static void test_unquoted_value() {
 static void test_single_quoted_string() {
   xcif::Token t = second("_a 'hello world'");
   CHECK_EQ(t.type, xcif::TOKEN_VALUE);
-  std::cout << "Im'm in test singel quoted string\n";
   CHECK_EQ(t.as_str(), std::string("hello world"));
 }
 
 static void test_double_quoted_string() {
   xcif::Token t = second("_a \"hello world\"");
   CHECK_EQ(t.type, xcif::TOKEN_VALUE);
-  std::cout << "Im'm bla test 10 test_double_quoted_string\n";
   CHECK_EQ(t.as_str(), std::string("hello world"));
 }
 
@@ -82,7 +80,6 @@ static void test_semicolon_text_field() {
   const char* input = "_a\n;line one\nline two\n;\n";
   xcif::Token t = second(input);
   CHECK_EQ(t.type, xcif::TOKEN_VALUE);
-  std::cout << "Im'm bla test 325 test_semicolon_text_field\n";
   CHECK_EQ(t.as_str(), std::string("line one\nline two\n"));
 }
 

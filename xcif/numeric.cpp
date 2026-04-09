@@ -3,7 +3,17 @@
 #include <cstdlib>
 #include <cstring>
 #include <limits>
+#include <locale.h>
 #include <stdexcept>
+
+namespace {
+// strtod is locale-sensitive (decimal separator varies).  Use strtod_l with
+// a fixed C locale so that CIF's mandatory '.' separator always works.
+locale_t xcif_c_locale() {
+  static locale_t loc = ::newlocale(LC_ALL_MASK, "C", (locale_t)0);
+  return loc;
+}
+} // namespace
 
 namespace xcif {
 
@@ -31,7 +41,7 @@ double as_double(const string_view& sv) {
   buf[parse_len] = '\0';
 
   char* end;
-  double val = std::strtod(buf, &end);
+  double val = ::strtod_l(buf, &end, xcif_c_locale());
   if (end == buf) return XCIF_NAN;
   return val;
 }
@@ -83,7 +93,7 @@ std::pair<double, double> as_double_with_su(const string_view& sv) {
   buf[val_len] = '\0';
 
   char* end;
-  double value = std::strtod(buf, &end);
+  double value = ::strtod_l(buf, &end, xcif_c_locale());
   if (end == buf)
     return std::make_pair(XCIF_NAN, 0.0);
 

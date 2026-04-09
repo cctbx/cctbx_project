@@ -129,6 +129,28 @@ void test_int_leading_plus() {
   CHECK_EQ(as_int("+5"), 5);
 }
 
+void test_int_max() {
+  CHECK_EQ(as_int("2147483647"), std::numeric_limits<int>::max());
+}
+
+void test_int_min() {
+  CHECK_EQ(as_int("-2147483648"), std::numeric_limits<int>::min());
+}
+
+void test_int_overflow_pos() {
+  bool caught = false;
+  try { as_int("2147483648"); }
+  catch (const std::overflow_error&) { caught = true; }
+  CHECK(caught);
+}
+
+void test_int_overflow_neg() {
+  bool caught = false;
+  try { as_int("-2147483649"); }
+  catch (const std::overflow_error&) { caught = true; }
+  CHECK(caught);
+}
+
 // ─── §5  as_double_with_su ──────────────────────────────────────────
 
 void test_su_none() {
@@ -165,6 +187,13 @@ void test_su_single_decimal() {
   std::pair<double, double> r = as_double_with_su("1.0(1)");
   CHECK(approx_eq(r.first, 1.0));
   CHECK(approx_eq(r.second, 0.1));
+}
+
+void test_su_with_exponent() {
+  // "1.5e+3(2)": 1 decimal digit before 'e', so su = 2/10 = 0.2; value = 1500
+  std::pair<double, double> r = as_double_with_su("1.5e+3(2)");
+  CHECK(approx_eq(r.first, 1500.0));
+  CHECK(approx_eq(r.second, 0.2));
 }
 
 void test_su_unknown_returns_nan() {
@@ -237,6 +266,10 @@ void run_all_tests() {
   test_int_zero();
   test_int_large();
   test_int_leading_plus();
+  test_int_max();
+  test_int_min();
+  test_int_overflow_pos();
+  test_int_overflow_neg();
 
   // §5 as_double_with_su
   test_su_none();
@@ -245,6 +278,7 @@ void run_all_tests() {
   test_su_integer();
   test_su_many_decimals();
   test_su_single_decimal();
+  test_su_with_exponent();
   test_su_unknown_returns_nan();
 
   // §6 Predicates

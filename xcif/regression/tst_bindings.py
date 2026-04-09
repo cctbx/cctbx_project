@@ -181,6 +181,23 @@ def exercise_flex_columns():
   assert math.isnan(x2[2]), "Expected NaN for '?'"
   assert approx_equal(x2[3], 3.0)
 
+  # column_as_flex_int raises ValueError when a cell contains '.' or '?'
+  cif_nullints = (
+    "data_nullints\n"
+    "loop_\n"
+    "_val.n\n"
+    "1\n"
+    ".\n"
+    "3\n"
+  )
+  doc3 = xcif_ext.parse(cif_nullints)
+  loop3 = doc3[0].find_loop("_val")
+  try:
+    loop3.column_as_flex_int("_val.n")
+    raise AssertionError("Expected ValueError for '.' in int column")
+  except ValueError:
+    pass
+
 def exercise_numeric():
   """Numeric conversion free functions."""
   import xcif_ext
