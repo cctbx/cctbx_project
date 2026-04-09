@@ -703,6 +703,37 @@ def exercise_output_example_cif():
       sx[:500], su[:500])
 
 
+def exercise_loop_category():
+  """Edge cases for the _loop_category() helper used by _loop_adapter."""
+  from xcif import _loop_category
+
+  # Empty list -> empty string
+  assert _loop_category([]) == "", \
+    "Expected '' for empty list, got '%s'" % _loop_category([])
+
+  # Single tag returned as-is (no trimming applied)
+  assert _loop_category(["_atom_site.id"]) == "_atom_site.id", \
+    "Single tag with dot: %s" % _loop_category(["_atom_site.id"])
+  assert _loop_category(["_single"]) == "_single", \
+    "Single tag no dot: %s" % _loop_category(["_single"])
+
+  # Multiple tags sharing a dot-separated category
+  r = _loop_category(["_atom_site.id", "_atom_site.x", "_atom_site.z"])
+  assert r == "_atom_site", \
+    "Dot-prefix: expected '_atom_site', got '%s'" % r
+
+  # Tags that share only the category name (diverge right after the dot)
+  # "_cell.length_a" vs "_cell.angle_alpha" → common prefix = "_cell." → "_cell"
+  r = _loop_category(["_cell.length_a", "_cell.angle_alpha"])
+  assert r == "_cell", "Expected '_cell', got '%s'" % r
+
+  # Multiple tags sharing only an underscore delimiter (no dot)
+  # "_refln_h", "_refln_k" → common prefix "_refln_" (ends with '_', kept)
+  r = _loop_category(["_refln_h", "_refln_k", "_refln_l"])
+  assert r.startswith("_refln"), \
+    "Underscore-prefix: expected '_refln...', got '%s'" % r
+
+
 if __name__ == "__main__":
   # C++ binding level tests
   exercise_block_names()
@@ -735,5 +766,7 @@ if __name__ == "__main__":
   exercise_output_quoted()
   exercise_output_nulls()
   exercise_output_example_cif()
+  # Internal helper
+  exercise_loop_category()
   print(format_cpu_times())
   print("OK")

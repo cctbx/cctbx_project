@@ -305,6 +305,30 @@ static void test_loop_followed_by_tags_and_values() {
   CHECK_EQ(toks[3].type, xcif::TOKEN_VALUE);
 }
 
+static void test_unterminated_single_quote_returns_rest() {
+  // Unterminated single-quoted string: returns everything after the opening
+  // quote up to EOF as TOKEN_VALUE (graceful degradation, not an error).
+  xcif::Token t = second("_a 'hello world");
+  CHECK_EQ(t.type, xcif::TOKEN_VALUE);
+  CHECK_EQ(t.as_str(), std::string("hello world"));
+}
+
+static void test_unterminated_double_quote_returns_rest() {
+  xcif::Token t = second("_a \"hello world");
+  CHECK_EQ(t.type, xcif::TOKEN_VALUE);
+  CHECK_EQ(t.as_str(), std::string("hello world"));
+}
+
+static void test_null_byte_truncates_unquoted_token() {
+  // Null byte is not an ordinary character, so read_unquoted stops there.
+  const char input[] = {'_', 'a', ' ', 'v', 'a', 'l', '\0', 'u', 'e'};
+  xcif::Tokenizer tok(input, sizeof(input), "<test>");
+  tok.next(); // _a
+  xcif::Token t = tok.next();
+  CHECK_EQ(t.type, xcif::TOKEN_VALUE);
+  CHECK_EQ(t.as_str(), std::string("val"));
+}
+
 // ---------------------------------------------------------------------------
 // Test Registry
 // ---------------------------------------------------------------------------
@@ -373,6 +397,9 @@ static void run_all_tests() {
   test_multiple_blank_lines_ignored();
   test_consecutive_tags_and_values();
   test_loop_followed_by_tags_and_values();
+  test_unterminated_single_quote_returns_rest();
+  test_unterminated_double_quote_returns_rest();
+  test_null_byte_truncates_unquoted_token();
 }
 
 XCIF_TEST_MAIN()

@@ -202,6 +202,28 @@ void test_su_unknown_returns_nan() {
   CHECK(approx_eq(r.second, 0.0));
 }
 
+// ─── §5b as_double / as_double_with_su — boundary / malformed input ──
+
+void test_double_long_value_nan() {
+  // Values with ≥32 chars before '(' exceed the stack buffer → NaN
+  CHECK(std::isnan(as_double("1.23456789012345678901234567890123")));
+}
+
+void test_su_missing_close_paren() {
+  // "1.5(" has no closing ')' → su = 0.0 (graceful)
+  std::pair<double, double> r = as_double_with_su("1.5(");
+  CHECK(approx_eq(r.first, 1.5));
+  CHECK(approx_eq(r.second, 0.0));
+}
+
+void test_su_nonnumeric_in_su_content() {
+  // Non-digit chars in su content are skipped; digits are accumulated.
+  // "1.5(3a5)": su_int = 35, decimals = 1, su = 3.5
+  std::pair<double, double> r = as_double_with_su("1.5(3a5)");
+  CHECK(approx_eq(r.first, 1.5));
+  CHECK(approx_eq(r.second, 3.5));
+}
+
 // ─── §6  Predicates ─────────────────────────────────────────────────
 
 void test_is_unknown_dot() {
@@ -280,6 +302,11 @@ void run_all_tests() {
   test_su_single_decimal();
   test_su_with_exponent();
   test_su_unknown_returns_nan();
+
+  // §5b as_double/as_double_with_su — boundary / malformed
+  test_double_long_value_nan();
+  test_su_missing_close_paren();
+  test_su_nonnumeric_in_su_content();
 
   // §6 Predicates
   test_is_unknown_dot();

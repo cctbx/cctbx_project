@@ -153,6 +153,20 @@ void test_whitespace_only_no_error() {
   CHECK_EQ(doc.size(), 0u);
 }
 
+void test_unterminated_quoted_string_graceful() {
+  // Missing closing quote: tokenizer returns partial content and parse succeeds.
+  Document doc = parse("data_t\n_a 'hello");
+  CHECK_EQ(doc.size(), 1u);
+  CHECK(doc[0].has_tag(string_view("_a")));
+}
+
+void test_unclosed_semicolon_field_graceful() {
+  // Missing closing ';': tokenizer returns partial content and parse succeeds.
+  Document doc = parse("data_t\n_a\n;line one\nline two\n");
+  CHECK_EQ(doc.size(), 1u);
+  CHECK(doc[0].has_tag(string_view("_a")));
+}
+
 // ─── run_all_tests ─────────────────────────────────────────────────
 
 void run_all_tests() {
@@ -182,6 +196,8 @@ void run_all_tests() {
   test_empty_input_no_error();
   test_comment_only_no_error();
   test_whitespace_only_no_error();
+  test_unterminated_quoted_string_graceful();
+  test_unclosed_semicolon_field_graceful();
 }
 
 XCIF_TEST_MAIN()
