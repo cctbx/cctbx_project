@@ -24,12 +24,13 @@ namespace cctbx { namespace xray {
       grad_index(-1)
     {}
 
-    virtual FloatType compute(miller::index<> const &h,
+    virtual FloatType compute(FloatType wl,
+      miller::index<> const &h,
       FloatType fc_sq,
       bool compute_grad) const
     {
       const FloatType
-        p = calc_factor(h, fc_sq),
+        p = calc_factor(wl, h, fc_sq),
         k = 1 + p * value,
         k_sqrt = std::sqrt(k),
         rv = 1 / k_sqrt;
@@ -54,11 +55,15 @@ namespace cctbx { namespace xray {
     }
     virtual size_t n_param() const { return 1; }
   protected:
-    FloatType calc_factor(const miller::index<>& h,
+    FloatType calc_factor(FloatType wl,
+      const miller::index<>& h,
       FloatType fc_sq) const
     {
-      const FloatType sin_2t = u_cell.sin_two_theta(h, wavelength);
-      return fc_sq*std::pow(wavelength,3)/(sin_2t*1000);
+      FloatType l = wl == 0 ? this->wavelength : wl;
+      //const FloatType sin_2t = u_cell.sin_two_theta(h, l);
+      const double x = u_cell.d_star_sq(h) * l * l * 0.25;
+      const double sin_2t =  std::sqrt(std::abs(x * (1 - x)));
+      return fc_sq*std::pow(l,3) * 0.001/(sin_2t*2);
     }
 
     uctbx::unit_cell const &u_cell;
@@ -86,12 +91,15 @@ namespace cctbx { namespace xray {
     }
 
     // for testing
-    FloatType calc(miller::index<> const& h, FloatType Fsq, FloatType g, FloatType U) const {
+    FloatType calc(miller::index<> const& h, FloatType Fsq,
+      FloatType g, FloatType U) const
+    {
       FloatType stol_sq = u_cell.stol_sq(h);
       return Fsq * std::pow(1-g*std::exp(-scitbx::constants::eight_pi_sq * stol_sq *U), 2);
     }
 
-    virtual FloatType compute(miller::index<> const& h,
+    virtual FloatType compute(FloatType wl,
+      miller::index<> const& h,
       FloatType fc_sq,
       bool compute_grad) const
     {

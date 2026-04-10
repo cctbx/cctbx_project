@@ -155,7 +155,17 @@ namespace {
                arg("res_min_d"),
                arg("res_max_d"),
                arg("min_i_o_sig"))))
-      .def("is_to_omit", &ft::is_to_omit)
+        .def(init<uctbx::unit_cell const&,
+          sgtbx::space_group const&,
+          miller::lookup_utils::lookup_tensor<FloatType> const&,
+          FloatType, FloatType, FloatType>
+          ((arg("unit_cell"),
+            arg("space_group"),
+            arg("omit_map"),
+            arg("res_min_d"),
+            arg("res_max_d"),
+            arg("min_i_o_sig"))))
+        .def("is_to_omit", &ft::is_to_omit)
       ;
     }
   };
