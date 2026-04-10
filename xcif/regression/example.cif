@@ -71,6 +71,24 @@ degradation.
 ;
 
 # --------------------------------------------------------------------------
+# Parent categories required by _atom_site child items (minimal stubs)
+# --------------------------------------------------------------------------
+loop_
+  _chem_comp.id
+  MET
+  GLN
+
+loop_
+  _entity.id
+  1
+
+loop_
+  _atom_type.symbol
+  N
+  C
+  O
+
+# --------------------------------------------------------------------------
 # Atom coordinate loop -10 atoms from the first two residues.
 # A loop_ block begins with the keyword `loop_`, followed by all column
 # tag names, followed by the data rows (column-major order, row by row).
