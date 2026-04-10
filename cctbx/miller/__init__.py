@@ -5435,7 +5435,7 @@ class array(set):
       tw_cmps = twin_components
     if scale_indices is not None: # HKLF 5
       assert scale_indices.size() == self.indices().size()
-      assert not (twin_fractions is None or len(twin_fractions) == 0)
+      assert not (not wavelengths and (twin_fractions is None or len(twin_fractions) == 0))
       assert not twin_components
       if wavelengths:
         result = observations.observations(self.space_group(),

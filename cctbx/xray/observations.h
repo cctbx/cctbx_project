@@ -65,12 +65,25 @@ namespace cctbx { namespace xray {
         res_filter(res_d_min_ > 0 || res_d_max_ > 0)
       {}
 
+      filter(uctbx::unit_cell const& unit_cell_,
+        sgtbx::space_group const& space_group_,
+        miller::lookup_utils::lookup_tensor<FloatType> const &omit_map,
+        FloatType res_d_min_, FloatType res_d_max_, FloatType min_i_o_sig_)
+        : unit_cell(unit_cell_),
+        space_group(space_group_),
+        omit_map(omit_map),
+        res_d_min(res_d_min_),
+        res_d_max(res_d_max_),
+        min_i_o_sig(min_i_o_sig_),
+        res_filter(res_d_min_ > 0 || res_d_max_ > 0)
+      {}
+
       bool is_to_omit(miller::index<> const& h,
         FloatType f_sq, FloatType sig) const
       {
         if (res_filter) {
           FloatType d = unit_cell.d(h);
-          if (d <= res_d_min || (res_d_max > 0 && d >= res_d_max)) {
+          if ((res_d_min >=0 && d <= res_d_min) || (res_d_max >= 0 && d >= res_d_max)) {
             return true;
           }
         }
@@ -251,7 +264,10 @@ namespace cctbx { namespace xray {
       index_components_.reserve(indices.size());
       for (int i = 0; i < indices.size(); i++) {
         int s_ind = scale_indices[i];
-        CCTBX_ASSERT(!(s_ind < 1 || s_ind > twin_fractions_.size() + 1));
+        // batches outside the "twin" fractions are just scaled by OSF
+        if (s_ind < 1 || s_ind > twin_fractions.size()+1) {
+          s_ind = 1;
+        }
         measured_scale_indices_.push_back(s_ind);
         index_components_.push_back(
           scitbx::af::shared<local_twin_component>());
