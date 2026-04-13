@@ -193,7 +193,7 @@ class _():
   def niggli_reduction(self, relative_epsilon=None, iteration_limit=None):
     from cctbx_uctbx_ext import niggli_reduction as _c_niggli_reduction
     from cctbx.uctbx.reduction_base import iteration_limit_exceeded
-    from cctbx import sgtbx
+    from cctbx.uctbx.reduction_base import cpp_niggli_reduction_result
     if relative_epsilon is None:
       relative_epsilon = 1.e-5
     if iteration_limit is None:
@@ -202,22 +202,9 @@ class _():
       impl = _c_niggli_reduction(self, relative_epsilon, iteration_limit)
     except RuntimeError as e:
       raise iteration_limit_exceeded(str(e))
-
-    class _result(object):
-      def __init__(self, impl):
-        self._impl = impl
-      def r_inv(self):
-        return matrix.sqr(self._impl.r_inv_as_tuple())
-      def n_iterations(self):
-        return self._impl.n_iterations()
-      def as_unit_cell(self):
-        return self._impl.as_unit_cell()
-      def change_of_basis_op(self):
-        return sgtbx.change_of_basis_op(
-          sgtbx.rt_mx(sgtbx.rot_mx(
-            self._impl.r_inv_as_tuple(), 1))).inverse()
-
-    return _result(impl)
+    return cpp_niggli_reduction_result(
+      impl.as_unit_cell(), relative_epsilon,
+      impl.r_inv_as_tuple(), impl.n_iterations())
 
   def niggli_cell(self,
         relative_epsilon=None,

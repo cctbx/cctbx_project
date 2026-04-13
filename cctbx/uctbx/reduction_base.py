@@ -114,6 +114,30 @@ class gruber_parameterization(object):
 
 class iteration_limit_exceeded(RuntimeError): pass
 
+class cpp_niggli_reduction_result(gruber_parameterization):
+  """Result wrapper for C++ niggli_reduction.
+
+  Inherits all analysis methods from gruber_parameterization
+  (is_niggli_cell, is_buerger_cell, type, meets_main_conditions, etc.)
+  and adds r_inv, n_iterations, and change_of_basis_op from the C++ result.
+  """
+
+  def __init__(self, reduced_cell, relative_epsilon, r_inv_elems, n_iterations):
+    gruber_parameterization.__init__(self, reduced_cell, relative_epsilon)
+    self._r_inv = matrix.sqr(r_inv_elems)
+    self._n_iterations = n_iterations
+
+  def r_inv(self):
+    return self._r_inv
+
+  def n_iterations(self):
+    return self._n_iterations
+
+  def change_of_basis_op(self):
+    from cctbx import sgtbx
+    return sgtbx.change_of_basis_op(
+      sgtbx.rt_mx(sgtbx.rot_mx(self._r_inv.elems, 1))).inverse()
+
 class reduction_base(gruber_parameterization):
 
   def __init__(self, unit_cell, relative_epsilon, iteration_limit):

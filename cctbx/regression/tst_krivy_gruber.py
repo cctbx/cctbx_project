@@ -117,7 +117,8 @@ def do_reduce(inp):
   if (relative_epsilon is None):
     assert check_is_niggli_cell(red_cell).itva_is_niggli_cell()
   # Cross-check: verify C++ niggli_reduction gives identical results to Python.
-  cpp_red = inp.niggli_reduction(relative_epsilon=relative_epsilon or 1.e-5)
+  cpp_red = inp.niggli_reduction(
+    relative_epsilon=1.e-5 if relative_epsilon is None else relative_epsilon)
   assert cpp_red.as_unit_cell().is_similar_to(red_cell), \
     "C++ niggli cell differs from Python: %s vs %s" % (
       cpp_red.as_unit_cell(), red_cell)
