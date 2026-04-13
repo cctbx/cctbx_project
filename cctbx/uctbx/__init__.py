@@ -204,7 +204,8 @@ class _():
       raise iteration_limit_exceeded(str(e))
     return cpp_niggli_reduction_result(
       impl.as_unit_cell(), relative_epsilon,
-      impl.r_inv_as_tuple(), impl.n_iterations())
+      impl.r_inv_as_tuple(), impl.n_iterations(),
+      impl.gruber_parameters())
 
   def niggli_cell(self,
         relative_epsilon=None,

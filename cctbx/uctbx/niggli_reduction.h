@@ -69,6 +69,14 @@ namespace cctbx { namespace uctbx {
 
       int n_iterations() const { return n_iterations_; }
 
+      //! Direct access to the reduced G6 Gruber parameters.
+      double A()    const { return A_; }
+      double B()    const { return B_; }
+      double C()    const { return C_; }
+      double xi()   const { return xi_; }
+      double eta()  const { return eta_; }
+      double zeta() const { return zeta_; }
+
       uctbx::unit_cell as_unit_cell() const
       {
         // as_sym_mat3 convention: (A, B, C, zeta/2, eta/2, xi/2)

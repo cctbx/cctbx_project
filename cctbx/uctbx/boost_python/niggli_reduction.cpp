@@ -22,6 +22,16 @@ namespace {
         m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8]);
     }
 
+    // Return the 6 reduced G6 Gruber parameters (A, B, C, xi, eta, zeta)
+    // as a Python tuple, avoiding metrical matrix round-trip drift.
+    static boost::python::tuple
+    gruber_parameters(w_t const& self)
+    {
+      return boost::python::make_tuple(
+        self.A(), self.B(), self.C(),
+        self.xi(), self.eta(), self.zeta());
+    }
+
     static void
     wrap()
     {
@@ -35,6 +45,7 @@ namespace {
           arg("iteration_limit")=1000)))
         .def("r_inv", &w_t::r_inv, ccr())
         .def("r_inv_as_tuple", r_inv_as_tuple)
+        .def("gruber_parameters", gruber_parameters)
         .def("n_iterations", &w_t::n_iterations)
         .def("as_unit_cell", &w_t::as_unit_cell)
       ;

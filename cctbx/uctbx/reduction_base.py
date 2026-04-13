@@ -120,10 +120,17 @@ class cpp_niggli_reduction_result(gruber_parameterization):
   Inherits all analysis methods from gruber_parameterization
   (is_niggli_cell, is_buerger_cell, type, meets_main_conditions, etc.)
   and adds r_inv, n_iterations, and change_of_basis_op from the C++ result.
+
+  G6 parameters are set directly from C++ to avoid floating-point drift
+  from the unit_cell metrical matrix round-trip (G6 -> cell params -> G6).
   """
 
-  def __init__(self, reduced_cell, relative_epsilon, r_inv_elems, n_iterations):
-    gruber_parameterization.__init__(self, reduced_cell, relative_epsilon)
+  def __init__(self, reduced_cell, relative_epsilon, r_inv_elems, n_iterations,
+               gruber_parameters):
+    # Set G6 values directly from C++ instead of calling
+    # gruber_parameterization.__init__ which round-trips through unit_cell
+    self.a, self.b, self.c, self.d, self.e, self.f = gruber_parameters
+    self.epsilon = reduced_cell.volume()**(1/3.) * relative_epsilon
     self._r_inv = matrix.sqr(r_inv_elems)
     self._n_iterations = n_iterations
 
