@@ -81,21 +81,21 @@ struct LoopWrap {
 
 // ===== Parse (GIL released) =======================================
 
-static DocPtr py_parse(const std::string& text) {
+static DocPtr py_parse(const std::string& text, bool strict) {
   DocPtr result;
   {
     GILRelease gil;
     result = std::make_shared<Document>(
-      parse(text.c_str(), text.size(), "<string>"));
+      parse(text.c_str(), text.size(), "<string>", strict));
   }
   return result;
 }
 
-static DocPtr py_parse_file(const std::string& path) {
+static DocPtr py_parse_file(const std::string& path, bool strict) {
   DocPtr result;
   {
     GILRelease gil;
-    result = std::make_shared<Document>(parse_file(path.c_str()));
+    result = std::make_shared<Document>(parse_file(path.c_str(), strict));
   }
   return result;
 }
@@ -352,8 +352,10 @@ BOOST_PYTHON_MODULE(xcif_ext)
     ;
 
   // Free functions
-  bp::def("parse", &py_parse);
-  bp::def("parse_file", &py_parse_file);
+  bp::def("parse", &py_parse,
+          (bp::arg("text"), bp::arg("strict") = true));
+  bp::def("parse_file", &py_parse_file,
+          (bp::arg("path"), bp::arg("strict") = true));
   bp::def("as_double", &py_as_double);
   bp::def("as_int", &py_as_int);
   bp::def("as_double_with_su", &py_as_double_with_su);

@@ -215,6 +215,12 @@ Token Tokenizer::read_unquoted(int tok_line, int tok_col) {
   if (iprefix(start, len, "data_", 5)) {
     return make_token(TOKEN_BLOCK_HEADER, start, len, tok_line, tok_col);
   }
+  // CIF 1.1 reserved block type: 'global_' is a standalone header, exactly
+  // 7 characters, case-insensitive. Used by the cctbx monomer library
+  // (mon_lib_list.cif and friends) and inherited from mmCIF dictionaries.
+  if (len == 7 && iprefix(start, len, "global_", 7)) {
+    return make_token(TOKEN_BLOCK_HEADER, start, len, tok_line, tok_col);
+  }
   if (iprefix(start, len, "loop_", 5) && len == 5) {
     return make_token(TOKEN_LOOP, start, len, tok_line, tok_col);
   }

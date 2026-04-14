@@ -23,6 +23,8 @@ tst_list = [
   "$D/regression/tst_roundtrip.py",
   "$D/regression/tst_pdb_coordinates.py",
   "$D/regression/tst_pdb_sf.py",
+  "$B/regression/cpp/tst_non_strict_mode",
+  "$D/regression/tst_non_strict_mode.py",
   "$B/regression/cpp/tst_thread_safety",
   "$B/regression/cpp/fuzz_target",
 ]

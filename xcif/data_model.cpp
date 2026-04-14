@@ -101,28 +101,69 @@ namespace detail {
 
 class Parser {
 public:
-  Parser(const char* data, std::size_t len, const char* src)
-    : tok_(data, len, src), source_(src) { advance(); }
+  Parser(const char* data, std::size_t len, const char* src,
+         bool strict = true)
+    : tok_(data, len, src), source_(src), strict_(strict) { advance(); }
 
   void run(Document& doc) {
     while (cur_.type != TOKEN_EOF) {
       if (cur_.type == TOKEN_BLOCK_HEADER) {
         doc.blocks_.push_back(Block());
         Block& blk = doc.blocks_.back();
-        blk.name_ = string_view(cur_.ptr + 5, cur_.len - 5);
+        // Two kinds of TOKEN_BLOCK_HEADER tokens come from the tokenizer:
+        //   "data_X"  (any length >=5) — block name is X
+        //   "global_" (exactly 7 chars) — block name is the full "global_"
+        // For "global_", point the string_view at a static literal so the
+        // name survives Document copies/moves and matches the non-strict
+        // synthesized block's storage strategy.
+        if (cur_.len == 7 &&
+            (cur_.ptr[0] == 'g' || cur_.ptr[0] == 'G')) {
+          static const char kGlobalName[] = "global_";
+          blk.name_ = string_view(kGlobalName, 7);
+        } else {
+          blk.name_ = string_view(cur_.ptr + 5, cur_.len - 5);
+        }
         doc.block_index_[blk.name_] = doc.blocks_.size() - 1;
         advance();
         parse_content(blk, false);
+      } else if (!strict_) {
+        // Non-strict: accumulate pre-block-header content into an
+        // implicit block named "global_". Created on demand; reused if
+        // content appears both before any data_ block and again between
+        // two data_ blocks (rare but legal under ucif-compat semantics).
+        Block& global_blk = find_or_create_global_block(doc);
+        parse_content(global_blk, false);
       } else {
         error("data outside of a data block");
       }
     }
   }
 
+  Block& find_or_create_global_block(Document& doc) {
+    // The name "global_" lives in static storage so the string_view has
+    // stable backing regardless of how the Document is copied or moved.
+    // (Storing it in a std::string member of Document triggers SSO: the
+    // string's buffer moves with the object, dangling any string_view
+    // into it.)
+    static const char kGlobalName[] = "global_";
+    static const std::size_t kGlobalLen = sizeof(kGlobalName) - 1;
+    string_view name(kGlobalName, kGlobalLen);
+    ci_map<std::size_t>::iterator it = doc.block_index_.find(name);
+    if (it != doc.block_index_.end()) {
+      return doc.blocks_[it->second];
+    }
+    doc.blocks_.push_back(Block());
+    Block& blk = doc.blocks_.back();
+    blk.name_ = name;
+    doc.block_index_[name] = doc.blocks_.size() - 1;
+    return blk;
+  }
+
 private:
   Tokenizer tok_;
   Token cur_;
   std::string source_;
+  bool strict_;
 
   void advance() { cur_ = tok_.next(); }
 
@@ -227,18 +268,21 @@ private:
 
 // ── parse() ────────────────────────────────────────────────────────
 
-Document parse(const char* data, std::size_t length, const char* source) {
+Document parse(const char* data, std::size_t length, const char* source,
+               bool strict) {
   Document doc;
   doc.owned_buf_.assign(data, data + length);
-  detail::Parser parser(doc.owned_buf_.data(), doc.owned_buf_.size(), source);
+  detail::Parser parser(doc.owned_buf_.data(), doc.owned_buf_.size(),
+                        source, strict);
   parser.run(doc);
   return doc;
 }
 
-Document parse_file(const char* path) {
+Document parse_file(const char* path, bool strict) {
   Document doc;
   doc.mapped_file_ = MappedFile(path);
-  detail::Parser parser(doc.mapped_file_.data(), doc.mapped_file_.size(), path);
+  detail::Parser parser(doc.mapped_file_.data(), doc.mapped_file_.size(),
+                        path, strict);
   parser.run(doc);
   return doc;
 }

@@ -127,8 +127,8 @@ public:
 
 private:
   friend class detail::Parser;
-  friend Document parse(const char*, std::size_t, const char*);
-  friend Document parse_file(const char*);
+  friend Document parse(const char*, std::size_t, const char*, bool);
+  friend Document parse_file(const char*, bool);
   std::vector<char> owned_buf_;
   MappedFile mapped_file_;
   std::vector<Block> blocks_;
@@ -137,17 +137,23 @@ private:
 
 // ── Free functions ─────────────────────────────────────────────────
 
+// When strict=false, content (pair items, loops) appearing before the
+// first data_ block is attached to an implicit block named "global_"
+// instead of raising "data outside of a data block". Matches ucif's
+// non-strict behavior. Everything inside a data_ block is unaffected.
 Document parse(const char* data, std::size_t length,
-               const char* source = "<input>");
+               const char* source = "<input>",
+               bool strict = true);
 
 inline Document parse(const char* data,
-                      const char* source = "<input>") {
-  return parse(data, std::strlen(data), source);
+                      const char* source = "<input>",
+                      bool strict = true) {
+  return parse(data, std::strlen(data), source, strict);
 }
 
 // Zero-copy file parse: memory-maps the file and parses directly
 // from mapped memory without copying the buffer.
-Document parse_file(const char* path);
+Document parse_file(const char* path, bool strict = true);
 
 } // namespace xcif
 #endif // XCIF_DATA_MODEL_H
