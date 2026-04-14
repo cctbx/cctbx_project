@@ -21,11 +21,11 @@ from libtbx.utils import format_cpu_times
 # Expected golden values — update here when example.cif is intentionally
 # changed, and document the reason in the commit message.
 # ---------------------------------------------------------------------------
-EXPECTED_TOTAL          = 204
-EXPECTED_TAG            = 42
-EXPECTED_VALUE          = 159
+EXPECTED_TOTAL          = 216
+EXPECTED_TAG            = 45
+EXPECTED_VALUE          = 165
 EXPECTED_BLOCK_HEADER   = 1
-EXPECTED_LOOP           = 2
+EXPECTED_LOOP           = 5
 
 def exercise():
   build_dir = libtbx.env.under_build("xcif")

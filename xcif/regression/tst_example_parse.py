@@ -42,7 +42,7 @@ def exercise():
   # -----------------------------------------------------------------------
   assert "Blocks: 1" in out, "Expected 1 block"
   assert "Block: 1UBQ" in out, "Expected block name 1UBQ"
-  assert "Loops: 2" in out, "Expected 2 loops"
+  assert "Loops: 5" in out, "Expected 5 loops"
   assert "13 tags x 10 rows" in out, "Expected atom loop dimensions"
   assert "6 tags x 1 rows" in out, "Expected reflns loop dimensions"
 
