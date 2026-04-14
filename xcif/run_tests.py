@@ -25,6 +25,8 @@ tst_list = [
   "$D/regression/tst_pdb_sf.py",
   "$B/regression/cpp/tst_non_strict_mode",
   "$D/regression/tst_non_strict_mode.py",
+  "$B/regression/cpp/tst_quoted_string_delimiter",
+  "$D/regression/tst_quoted_string_delimiter.py",
   "$B/regression/cpp/tst_thread_safety",
   "$B/regression/cpp/fuzz_target",
 ]

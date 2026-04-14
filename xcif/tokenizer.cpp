@@ -117,11 +117,21 @@ Token Tokenizer::read_quoted(char delim, int tok_line, int tok_col) {
   while (!at_end()) {
     char c = *cur_;
     if (c == delim) {
-      // Check for CIF2 triple-quote: we should not be here for triple-quoted
-      // (handled separately), so a lone delimiter ends the string.
-      std::size_t len = static_cast<std::size_t>(cur_ - start);
-      ++cur_; ++col_; // consume closing delimiter
-      return make_token(TOKEN_VALUE, start, len, tok_line, tok_col);
+      // CIF 1.1 (section 2.2.7.3): the closing delimiter of a quoted
+      // string is only recognised as such when followed by whitespace
+      // or end-of-input. An embedded delimiter followed by any other
+      // character is part of the string content. This is what lets
+      //   'N-METHYL-PYRIDOXAL-5'-PHOSPHATE'
+      // parse as a single value (the inner `'` precedes `-`, not ws).
+      char next = peek2();
+      if (next == '\0' || next == ' ' || next == '\t' ||
+          next == '\r' || next == '\n') {
+        std::size_t len = static_cast<std::size_t>(cur_ - start);
+        ++cur_; ++col_; // consume closing delimiter
+        return make_token(TOKEN_VALUE, start, len, tok_line, tok_col);
+      }
+      // Embedded delimiter — step over it and continue reading.
+      ++cur_; ++col_;
     } else if (c == '\r') {
       ++cur_;
       if (!at_end() && *cur_ == '\n') ++cur_;
