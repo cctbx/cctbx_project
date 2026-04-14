@@ -35,6 +35,58 @@ class CifParserError(Sorry):
   __orig_module__ = __module__
   __module__ = Exception.__module__
 
+
+# Parser engine selection.
+# Callers can override per-instance via the engine= kwarg on reader.__init__.
+DEFAULT_ENGINE = "ucif"
+_VALID_ENGINES = ("ucif", "xcif")
+
+
+def _drive_builder_from_xcif(builder, input_string):
+  """Parse input_string with xcif and drive the given cif_model_builder-style
+  builder via its callback methods (add_data_block / add_data_item / add_loop /
+  start_save_frame / end_save_frame).
+
+  The xcif C++ parser stores block and save-frame names with the data_/save_
+  prefix stripped; the builder's strip-before-first-underscore logic
+  (iotbx/cif/builders.py add_data_block / start_save_frame) expects raw
+  tokens, so we prepend the prefix back.
+  """
+  import xcif_ext
+  try:
+    doc = xcif_ext.parse(input_string)
+  except (ValueError, RuntimeError) as e:
+    # xcif raises ValueError for std::invalid_argument (explicit translator)
+    # and RuntimeError for CifError (inherits std::runtime_error, default
+    # boost.python translation). Both become CifParserError so callers'
+    # existing except-CifParserError clauses keep working.
+    raise CifParserError(str(e))
+
+  def _drive_block_body(xblock):
+    # Pair items first, then loops. Source-order interleave is not preserved
+    # by xcif (pairs_ and loops_ are separate vectors in xcif::Block); if
+    # downstream .show() output diffs become a problem, revisit here.
+    for tag, val in zip(xblock.pair_tags, xblock.pair_values):
+      builder.add_data_item(tag, val)
+    for xloop in xblock.loops:
+      tags = list(xloop.tags)
+      columns = [xloop.column_as_flex_string(t) for t in tags]
+      builder.add_loop(tags, columns)
+
+  for i in range(len(doc)):
+    xblock = doc[i]
+    name = xblock.name
+    if name.lower() == "global_":
+      builder.add_data_block("global_")
+    else:
+      builder.add_data_block("data_" + name)
+    _drive_block_body(xblock)
+    for sf in xblock.save_frames:
+      builder.start_save_frame("save_" + sf.name)
+      _drive_block_body(sf)
+      builder.end_save_frame()
+
+
 class reader(object):
 
   def __init__(self,
@@ -44,7 +96,8 @@ class reader(object):
                cif_object=None,
                builder=None,
                raise_if_errors=True,
-               strict=True):
+               strict=True,
+               engine=None):
     assert [file_path, file_object, input_string].count(None) == 2
     self.file_path = file_path
     if builder is None:
@@ -65,21 +118,35 @@ class reader(object):
       len(input_string), binary_detector.monitor_initial)
     if binary_detector.is_binary_file(block=input_string):
       raise CifParserError("Binary file detected, aborting parsing.")
-    self.parser = ext.fast_reader(builder, input_string, file_path, strict)
-    if raise_if_errors and len(self.parser.lexer_errors()):
-      raise CifParserError(self.parser.lexer_errors()[0])
-    if raise_if_errors and len(self.parser.parser_errors()):
-      raise CifParserError(self.parser.parser_errors()[0])
+    if engine is None:
+      engine = DEFAULT_ENGINE
+    if engine not in _VALID_ENGINES:
+      raise ValueError(
+        "engine must be one of %s, got %r" % (_VALID_ENGINES, engine))
+    self.engine = engine
+    if engine == "xcif":
+      _drive_builder_from_xcif(self.builder, input_string)
+      self.parser = None
+    else:
+      self.parser = ext.fast_reader(builder, input_string, file_path, strict)
+      if raise_if_errors and len(self.parser.lexer_errors()):
+        raise CifParserError(self.parser.lexer_errors()[0])
+      if raise_if_errors and len(self.parser.parser_errors()):
+        raise CifParserError(self.parser.parser_errors()[0])
 
   def model(self):
     return self.builder.model()
 
   def error_count(self):
+    if self.parser is None:
+      return 0
     return self.parser.lexer_errors().size()\
            + self.parser.parser_errors().size()
 
   def show_errors(self, max_errors=50, out=None):
     if out is None: out = sys.stdout
+    if self.parser is None:
+      return
     for msg in self.parser.lexer_errors()[:max_errors]:
       print(msg, file=out)
     for msg in self.parser.parser_errors()[:max_errors]:
