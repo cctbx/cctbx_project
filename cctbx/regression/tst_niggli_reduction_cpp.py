@@ -9,7 +9,6 @@ from cctbx.uctbx import krivy_gruber_1976
 from cctbx.uctbx.reduction_base import iteration_limit_exceeded
 from cctbx import uctbx
 from libtbx.test_utils import Exception_expected
-import sys
 
 def ucgmx(gruber_matrix):
   (a,b,c,d,e,f) = gruber_matrix
