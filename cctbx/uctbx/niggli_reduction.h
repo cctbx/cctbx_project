@@ -76,6 +76,8 @@ namespace cctbx { namespace uctbx {
 
       int n_iterations() const { return n_iterations_; }
 
+      double epsilon() const { return epsilon_; }
+
       //! Direct access to the reduced G6 Gruber parameters.
       double A()    const { return A_; }
       double B()    const { return B_; }

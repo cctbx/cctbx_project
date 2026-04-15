@@ -194,20 +194,19 @@ class _():
     from cctbx_uctbx_ext import niggli_reduction as _c_niggli_reduction
     from cctbx.uctbx.reduction_base import iteration_limit_exceeded
     from cctbx.uctbx.reduction_base import cpp_niggli_reduction_result
-    from cctbx.uctbx.reduction_base import NIGGLI_DEFAULT_RELATIVE_EPSILON
-    from cctbx.uctbx.reduction_base import NIGGLI_DEFAULT_ITERATION_LIMIT
-    if relative_epsilon is None:
-      relative_epsilon = NIGGLI_DEFAULT_RELATIVE_EPSILON
-    if iteration_limit is None:
-      iteration_limit = NIGGLI_DEFAULT_ITERATION_LIMIT
+    kwargs = {}
+    if relative_epsilon is not None:
+      kwargs['relative_epsilon'] = relative_epsilon
+    if iteration_limit is not None:
+      kwargs['iteration_limit'] = iteration_limit
     try:
-      impl = _c_niggli_reduction(self, relative_epsilon, iteration_limit)
+      impl = _c_niggli_reduction(self, **kwargs)
     except RuntimeError as e:
       if "Niggli reduction iteration limit exceeded" not in str(e):
         raise
       raise iteration_limit_exceeded(str(e)) from e
     return cpp_niggli_reduction_result(
-      impl.as_unit_cell(), self, relative_epsilon,
+      impl.as_unit_cell(), impl.epsilon(),
       impl.r_inv_as_tuple(), impl.n_iterations(),
       impl.gruber_parameters())
 

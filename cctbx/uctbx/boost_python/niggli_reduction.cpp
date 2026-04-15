@@ -47,6 +47,7 @@ namespace {
         .def("r_inv_as_tuple", r_inv_as_tuple)
         .def("gruber_parameters", gruber_parameters)
         .def("n_iterations", &w_t::n_iterations)
+        .def("epsilon", &w_t::epsilon)
         .def("as_unit_cell", &w_t::as_unit_cell)
       ;
     }
