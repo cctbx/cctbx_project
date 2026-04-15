@@ -169,6 +169,36 @@ void test_unterminated_quoted_string_raises() {
   CHECK(parse_throws("data_t\n_a \"hello", "unterminated"));
 }
 
+void test_dos_eof_marker_accepted_at_end() {
+  // Legacy DOS end-of-file marker (0x1A) commonly appended by SHELX
+  // and other tools to `.hkl` / `.cif` files. CIF 1.1 doesn't list
+  // it in the character set, but ucif ignores it and real files
+  // contain it. xcif must treat it as EOF, not as a stray value
+  // that bumps the loop's value count.
+  const char src[] =
+    "data_t\n"
+    "loop_\n_a\n_b\n1 2\n3 4\n"
+    "\x1A\n";
+  Document doc = parse(src, sizeof(src) - 1);
+  CHECK_EQ(doc.size(), 1u);
+  const Loop* lp = doc[0].find_loop(string_view("_a"));
+  CHECK(lp != 0);
+  if (lp) CHECK_EQ(lp->length(), 2u);
+}
+
+void test_dos_eof_marker_mid_stream_is_eof() {
+  // If 0x1A appears mid-stream (followed by more content), treat it
+  // as EOF and ignore everything after — matches DOS-era semantics.
+  const char src[] = "data_t\n_a 1\n\x1A\n_b 2\n";
+  Document doc = parse(src, sizeof(src) - 1);
+  CHECK_EQ(doc.size(), 1u);
+  CHECK_EQ(std::string(doc[0].find_value(string_view("_a")).data(),
+                       doc[0].find_value(string_view("_a")).size()),
+           std::string("1"));
+  // _b never appeared — it's past the DOS-EOF
+  CHECK(!doc[0].has_tag(string_view("_b")));
+}
+
 void test_unclosed_semicolon_field_raises() {
   // CIF 1.1 syntax spec paragraph 17
   // (https://www.iucr.org/resources/cif/spec/version1.1/cifsyntax):
@@ -208,6 +238,8 @@ void run_all_tests() {
   test_comment_only_no_error();
   test_whitespace_only_no_error();
   test_unterminated_quoted_string_raises();
+  test_dos_eof_marker_accepted_at_end();
+  test_dos_eof_marker_mid_stream_is_eof();
   test_unclosed_semicolon_field_raises();
 }
 

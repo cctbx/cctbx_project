@@ -275,6 +275,17 @@ Token Tokenizer::next() {
   int      tok_line = line_;
   int      tok_col  = col_;
 
+  // Legacy DOS end-of-file marker (0x1A / Ctrl-Z / SUB). Not part of
+  // the CIF 1.1 character set, but SHELX and many older tools append
+  // it to .hkl / .cif output, and ucif silently treats it as EOF.
+  // Match that behaviour: consume the rest of the buffer and report
+  // EOF so the 0x1A doesn't tokenise as a stray value and throw off
+  // loop count checks downstream.
+  if (c == '\x1A') {
+    cur_ = end_;
+    return make_token(TOKEN_EOF, cur_, 0, tok_line, tok_col);
+  }
+
   // Semicolon text field: only when ';' appears at column 1
   if (c == ';' && tok_col == 1) {
     return read_semicolon_field(tok_line, tok_col);
