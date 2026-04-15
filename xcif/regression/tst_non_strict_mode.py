@@ -94,24 +94,36 @@ def test_non_strict_find_block_by_global_name():
   assert g.name == "global_"
 
 
-# ─── Explicit global_ block header (CIF 1.1 reserved) ─────────────
+# ─── Explicit global_ block header — strict rejects, non-strict OK ───
+# CIF 1.1 strict does not allow `global_`; ucif treats it as a
+# non-strict-only relaxation. xcif matches: strict mode rejects,
+# non-strict accepts. The cctbx monomer library (mon_lib_list.cif etc.)
+# uses `global_` and loads with strict=False.
 
-def test_explicit_global_header_strict():
-  doc = xcif_ext.parse("global_\n_a 1\n_b 2\n")
+def test_explicit_global_header_rejected_in_strict():
+  try:
+    xcif_ext.parse("global_\n_a 1\n_b 2\n")
+  except (RuntimeError, ValueError) as e:
+    assert "global_" in str(e), str(e)
+    return
+  raise AssertionError("strict mode should reject global_ header")
+
+def test_explicit_global_header_non_strict():
+  doc = xcif_ext.parse("global_\n_a 1\n_b 2\n", strict=False)
   assert len(doc) == 1
   assert doc[0].name == "global_"
   assert doc[0].find_value("_a") == "1"
   assert doc[0].find_value("_b") == "2"
 
 def test_explicit_global_followed_by_data_block():
-  doc = xcif_ext.parse("global_\n_a 1\ndata_foo\n_x 1\n")
+  doc = xcif_ext.parse("global_\n_a 1\ndata_foo\n_x 1\n", strict=False)
   assert len(doc) == 2
   assert doc[0].name == "global_"
   assert doc[0].find_value("_a") == "1"
   assert doc[1].name == "foo"
 
 def test_explicit_global_case_insensitive():
-  doc = xcif_ext.parse("GLOBAL_\n_a 1\n")
+  doc = xcif_ext.parse("GLOBAL_\n_a 1\n", strict=False)
   assert len(doc) == 1
   g = doc.find_block("global_")
   assert g is not None
@@ -128,7 +140,7 @@ def test_monomer_library_header_with_explicit_global():
     "_chem_comp.id\n"
     "ALA\n"
   )
-  doc = xcif_ext.parse(src)  # strict=True
+  doc = xcif_ext.parse(src, strict=False)
   assert len(doc) == 2
   assert doc[0].name == "global_"
   assert doc[0].find_value("_lib_version") == "4.11"
@@ -145,7 +157,8 @@ def run():
   test_non_strict_empty_input()
   test_non_strict_only_data_block_unchanged()
   test_non_strict_find_block_by_global_name()
-  test_explicit_global_header_strict()
+  test_explicit_global_header_rejected_in_strict()
+  test_explicit_global_header_non_strict()
   test_explicit_global_followed_by_data_block()
   test_explicit_global_case_insensitive()
   test_monomer_library_header_with_explicit_global()

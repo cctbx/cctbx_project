@@ -42,10 +42,21 @@ DEFAULT_ENGINE = "ucif"
 _VALID_ENGINES = ("ucif", "xcif")
 
 
-def _drive_builder_from_xcif(builder, input_string):
+def _drive_builder_from_xcif(builder, input_string, strict):
   """Parse input_string with xcif and drive the given cif_model_builder-style
   builder via its callback methods (add_data_block / add_data_item / add_loop /
   start_save_frame / end_save_frame).
+
+  Returns a (possibly empty) list of error message strings. xcif throws on
+  first parse error rather than accumulating, so the list has at most one
+  entry. When it does, the builder is left with whatever state it had
+  before the throw — which is nothing, since xcif_ext.parse runs to
+  completion before the walker touches the builder.
+
+  strict=False relaxes two things: pair items appearing before the first
+  data_ block are attached to an implicit 'global_' block; and explicit
+  'global_' block headers (STAR/DDL2 convention, used by the cctbx
+  monomer library) are accepted. strict=True rejects both.
 
   The xcif C++ parser stores block and save-frame names with the data_/save_
   prefix stripped; the builder's strip-before-first-underscore logic
@@ -54,13 +65,13 @@ def _drive_builder_from_xcif(builder, input_string):
   """
   import xcif_ext
   try:
-    doc = xcif_ext.parse(input_string)
+    doc = xcif_ext.parse(input_string, strict=strict)
   except (ValueError, RuntimeError) as e:
     # xcif raises ValueError for std::invalid_argument (explicit translator)
     # and RuntimeError for CifError (inherits std::runtime_error, default
-    # boost.python translation). Both become CifParserError so callers'
-    # existing except-CifParserError clauses keep working.
-    raise CifParserError(str(e))
+    # boost.python translation). Return the message so the caller can
+    # either surface it as CifParserError or stash it for error_count().
+    return [str(e)]
 
   def _drive_block_body(xblock):
     # Pair items first, then loops. Source-order interleave is not preserved
@@ -77,14 +88,18 @@ def _drive_builder_from_xcif(builder, input_string):
     xblock = doc[i]
     name = xblock.name
     if name.lower() == "global_":
-      builder.add_data_block("global_")
-    else:
-      builder.add_data_block("data_" + name)
+      # Match ucif: global_ blocks are ignored in non-strict mode
+      # (ucif/cif.g:167). Content is accepted syntactically but not
+      # stored in the model. Synthesised global_ blocks from leading
+      # pairs (strict=false, no explicit header) are also dropped.
+      continue
+    builder.add_data_block("data_" + name)
     _drive_block_body(xblock)
     for sf in xblock.save_frames:
       builder.start_save_frame("save_" + sf.name)
       _drive_block_body(sf)
       builder.end_save_frame()
+  return []
 
 
 class reader(object):
@@ -124,9 +139,13 @@ class reader(object):
       raise ValueError(
         "engine must be one of %s, got %r" % (_VALID_ENGINES, engine))
     self.engine = engine
+    self._xcif_errors = []
     if engine == "xcif":
-      _drive_builder_from_xcif(self.builder, input_string)
+      self._xcif_errors = _drive_builder_from_xcif(
+        self.builder, input_string, strict)
       self.parser = None
+      if raise_if_errors and self._xcif_errors:
+        raise CifParserError(self._xcif_errors[0])
     else:
       self.parser = ext.fast_reader(builder, input_string, file_path, strict)
       if raise_if_errors and len(self.parser.lexer_errors()):
@@ -139,13 +158,15 @@ class reader(object):
 
   def error_count(self):
     if self.parser is None:
-      return 0
+      return len(self._xcif_errors)
     return self.parser.lexer_errors().size()\
            + self.parser.parser_errors().size()
 
   def show_errors(self, max_errors=50, out=None):
     if out is None: out = sys.stdout
     if self.parser is None:
+      for msg in self._xcif_errors[:max_errors]:
+        print(msg, file=out)
       return
     for msg in self.parser.lexer_errors()[:max_errors]:
       print(msg, file=out)

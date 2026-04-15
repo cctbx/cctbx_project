@@ -108,16 +108,24 @@ public:
   void run(Document& doc) {
     while (cur_.type != TOKEN_EOF) {
       if (cur_.type == TOKEN_BLOCK_HEADER) {
-        doc.blocks_.push_back(Block());
-        Block& blk = doc.blocks_.back();
         // Two kinds of TOKEN_BLOCK_HEADER tokens come from the tokenizer:
         //   "data_X"  (any length >=5) — block name is X
-        //   "global_" (exactly 7 chars) — block name is the full "global_"
-        // For "global_", point the string_view at a static literal so the
-        // name survives Document copies/moves and matches the non-strict
-        // synthesized block's storage strategy.
-        if (cur_.len == 7 &&
-            (cur_.ptr[0] == 'g' || cur_.ptr[0] == 'G')) {
+        //   "global_" (exactly 7 chars) — a STAR/DDL2 reserved block.
+        // CIF 1.1 strict does not allow `global_`; it's a non-strict
+        // relaxation (the cctbx monomer library uses it and loads with
+        // strict=false).
+        bool is_global = (cur_.len == 7 &&
+            (cur_.ptr[0] == 'g' || cur_.ptr[0] == 'G'));
+        if (is_global && strict_) {
+          error("global_ block is not allowed in strict mode "
+                "(use strict=false to accept STAR/DDL2 files)");
+        }
+        doc.blocks_.push_back(Block());
+        Block& blk = doc.blocks_.back();
+        if (is_global) {
+          // Point at a static literal so the name survives Document
+          // copies/moves and matches the non-strict synthesised block's
+          // storage strategy.
           static const char kGlobalName[] = "global_";
           blk.name_ = string_view(kGlobalName, 7);
         } else {

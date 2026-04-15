@@ -6,6 +6,7 @@
 
 #include "test_utils.h"
 #include "xcif/tokenizer.h"
+#include "xcif/data_model.h"  // xcif::CifError (thrown on malformed tokens)
 #include <cstring>
 #include <iostream>
 #include <string>
@@ -305,18 +306,32 @@ static void test_loop_followed_by_tags_and_values() {
   CHECK_EQ(toks[3].type, xcif::TOKEN_VALUE);
 }
 
-static void test_unterminated_single_quote_returns_rest() {
-  // Unterminated single-quoted string: returns everything after the opening
-  // quote up to EOF as TOKEN_VALUE (graceful degradation, not an error).
-  xcif::Token t = second("_a 'hello world");
-  CHECK_EQ(t.type, xcif::TOKEN_VALUE);
-  CHECK_EQ(t.as_str(), std::string("hello world"));
+static void test_unterminated_single_quote_raises() {
+  // CIF 1.1 grammar requires a matching closing delimiter for a
+  // quoted string (https://www.iucr.org/resources/cif/spec/version1.1/cifsyntax);
+  // unterminated quoted strings are syntax errors.
+  // (Previously "returns rest"; tightened to match spec and ucif.)
+  const char* src = "_a 'hello world";
+  xcif::Tokenizer tok(src, std::strlen(src), "<test>");
+  (void)tok.next(); // _a
+  try {
+    (void)tok.next(); // should throw on the unterminated quote
+    CHECK(false /* expected CifError */);
+  } catch (const xcif::CifError&) {
+    // expected
+  }
 }
 
-static void test_unterminated_double_quote_returns_rest() {
-  xcif::Token t = second("_a \"hello world");
-  CHECK_EQ(t.type, xcif::TOKEN_VALUE);
-  CHECK_EQ(t.as_str(), std::string("hello world"));
+static void test_unterminated_double_quote_raises() {
+  const char* src = "_a \"hello world";
+  xcif::Tokenizer tok(src, std::strlen(src), "<test>");
+  (void)tok.next();
+  try {
+    (void)tok.next();
+    CHECK(false /* expected CifError */);
+  } catch (const xcif::CifError&) {
+    // expected
+  }
 }
 
 static void test_null_byte_truncates_unquoted_token() {
@@ -397,8 +412,8 @@ static void run_all_tests() {
   test_multiple_blank_lines_ignored();
   test_consecutive_tags_and_values();
   test_loop_followed_by_tags_and_values();
-  test_unterminated_single_quote_returns_rest();
-  test_unterminated_double_quote_returns_rest();
+  test_unterminated_single_quote_raises();
+  test_unterminated_double_quote_raises();
   test_null_byte_truncates_unquoted_token();
 }
 

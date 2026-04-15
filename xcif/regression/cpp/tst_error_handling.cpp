@@ -153,16 +153,20 @@ void test_whitespace_only_no_error() {
   CHECK_EQ(doc.size(), 0u);
 }
 
-void test_unterminated_quoted_string_graceful() {
-  // Missing closing quote: tokenizer returns partial content and parse succeeds.
-  Document doc = parse("data_t\n_a 'hello");
-  CHECK_EQ(doc.size(), 1u);
-  CHECK(doc[0].has_tag(string_view("_a")));
+void test_unterminated_quoted_string_raises() {
+  // CIF 1.1 grammar requires a matching closing delimiter for a
+  // quoted string; EOF before the close is a syntax error.
+  // (See https://www.iucr.org/resources/cif/spec/version1.1/cifsyntax.)
+  // Was previously "graceful"; tightened to match spec + ucif.
+  CHECK(parse_throws("data_t\n_a 'hello", "unterminated"));
+  CHECK(parse_throws("data_t\n_a \"hello", "unterminated"));
 }
 
 void test_unclosed_semicolon_field_raises() {
-  // CIF 1.1 §2.2.7.4: semicolon text field must be closed by `;` at
-  // column 1 of a new line. EOF before that is a syntax error.
+  // CIF 1.1 syntax spec paragraph 17
+  // (https://www.iucr.org/resources/cif/spec/version1.1/cifsyntax):
+  // a semicolon text field is closed by `;` as the first character of
+  // a line. EOF before that is a syntax error.
   // (Was previously "graceful"; tightened to match spec + ucif.)
   CHECK(parse_throws("data_t\n_a\n;line one\nline two\n", "semicolon"));
 }
@@ -196,7 +200,7 @@ void run_all_tests() {
   test_empty_input_no_error();
   test_comment_only_no_error();
   test_whitespace_only_no_error();
-  test_unterminated_quoted_string_graceful();
+  test_unterminated_quoted_string_raises();
   test_unclosed_semicolon_field_raises();
 }
 

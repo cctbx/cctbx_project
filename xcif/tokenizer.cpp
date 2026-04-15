@@ -144,10 +144,15 @@ Token Tokenizer::read_quoted(char delim, int tok_line, int tok_col) {
       ++cur_; ++col_;
     }
   }
-  // Unterminated quoted string — return what we have (error path)
-  return make_token(TOKEN_VALUE, start,
-                    static_cast<std::size_t>(cur_ - start),
-                    tok_line, tok_col);
+  // Unterminated quoted string — raise. The CIF 1.1 grammar
+  // (https://www.iucr.org/resources/cif/spec/version1.1/cifsyntax)
+  // requires a matching closing delimiter; running off EOF mid-string
+  // is a syntax error.
+  throw CifError(
+    std::string("unterminated ") +
+      (delim == '\'' ? "single-quoted" : "double-quoted") +
+      " string (missing closing delimiter)",
+    tok_line, tok_col, source_name_);
 }
 
 // ---------------------------------------------------------------------------

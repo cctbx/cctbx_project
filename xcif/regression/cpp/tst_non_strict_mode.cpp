@@ -139,14 +139,23 @@ void test_non_strict_find_block_by_global_name() {
   if (g) CHECK_EQ(sv_to_string(g->name()), std::string("global_"));
 }
 
-// ─── Explicit global_ header (CIF 1.1 reserved block type) ────────
-// Separate from non-strict synthesis: `global_` appears as its own
-// line and the tokenizer must recognize it as a block header, not a
-// value. Case is insensitive. This is the form used by cctbx's
-// monomer library (mon_lib_list.cif and friends).
+// ─── Explicit global_ header (reserved STAR/DDL2 block type) ──────
+// CIF 1.1 strict does not allow `global_`; ucif treats it as a
+// non-strict-only relaxation. xcif matches: strict mode rejects,
+// non-strict mode accepts. The cctbx monomer library (mon_lib_list.cif
+// and friends) uses `global_` and loads with strict=false.
 
-void test_explicit_global_header_strict() {
-  Document doc = parse("global_\n_a 1\n_b 2\n");
+void test_explicit_global_header_rejected_in_strict() {
+  try {
+    parse("global_\n_a 1\n_b 2\n");
+    CHECK(false /* should have thrown */);
+  } catch (const CifError& e) {
+    CHECK(std::string(e.what()).find("global_") != std::string::npos);
+  }
+}
+
+void test_explicit_global_header_non_strict() {
+  Document doc = parse("global_\n_a 1\n_b 2\n", "<test>", /*strict=*/false);
   CHECK_EQ(doc.size(), 1u);
   CHECK_EQ(sv_to_string(doc[0].name()), std::string("global_"));
   CHECK_EQ(sv_to_string(doc[0].find_value(string_view("_a"))),
@@ -156,7 +165,8 @@ void test_explicit_global_header_strict() {
 }
 
 void test_explicit_global_followed_by_data_block() {
-  Document doc = parse("global_\n_a 1\ndata_foo\n_x 1\n");
+  Document doc = parse("global_\n_a 1\ndata_foo\n_x 1\n",
+                       "<test>", /*strict=*/false);
   CHECK_EQ(doc.size(), 2u);
   CHECK_EQ(sv_to_string(doc[0].name()), std::string("global_"));
   CHECK_EQ(sv_to_string(doc[0].find_value(string_view("_a"))),
@@ -165,7 +175,7 @@ void test_explicit_global_followed_by_data_block() {
 }
 
 void test_explicit_global_case_insensitive() {
-  Document doc = parse("GLOBAL_\n_a 1\n");
+  Document doc = parse("GLOBAL_\n_a 1\n", "<test>", /*strict=*/false);
   CHECK_EQ(doc.size(), 1u);
   const Block* g = doc.find_block(string_view("global_"));
   CHECK(g != 0);
@@ -182,7 +192,7 @@ void test_monomer_library_header_with_explicit_global() {
     "loop_\n"
     "_chem_comp.id\n"
     "ALA\n";
-  Document doc = parse(src, "<monomer>");  // strict=true — no relaxation needed
+  Document doc = parse(src, "<monomer>", /*strict=*/false);
   CHECK_EQ(doc.size(), 2u);
   CHECK_EQ(sv_to_string(doc[0].name()), std::string("global_"));
   CHECK_EQ(sv_to_string(doc[0].find_value(string_view("_lib_version"))),
@@ -205,7 +215,8 @@ void run_all_tests() {
   test_non_strict_only_data_block_unchanged();
   test_non_strict_find_block_by_global_name();
 
-  test_explicit_global_header_strict();
+  test_explicit_global_header_rejected_in_strict();
+  test_explicit_global_header_non_strict();
   test_explicit_global_followed_by_data_block();
   test_explicit_global_case_insensitive();
   test_monomer_library_header_with_explicit_global();
