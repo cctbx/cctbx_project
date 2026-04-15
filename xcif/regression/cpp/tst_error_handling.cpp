@@ -71,11 +71,18 @@ void test_loop_no_tags() {
 }
 
 void test_loop_values_not_multiple_of_tags() {
-  // 2 tags but 3 values
+  // 2 tags but 3 values. The error message must name the offending
+  // loop's first tag so users can grep for it in large files, and
+  // include the actual counts so the user understands the shape.
   CHECK(parse_throws(
-    "data_t\nloop_\n_a\n_b\n1 2 3\n",
-    "multiple"
-  ));
+    "data_t\nloop_\n_alpha\n_beta\n1 2 3\n",
+    "_alpha"));
+  CHECK(parse_throws(
+    "data_t\nloop_\n_alpha\n_beta\n1 2 3\n",
+    "3 values"));
+  CHECK(parse_throws(
+    "data_t\nloop_\n_alpha\n_beta\n1 2 3\n",
+    "2 tags"));
 }
 
 // ─── §2  Duplicate detection ───────────────────────────────────────

@@ -262,8 +262,18 @@ private:
       lp.values_.push_back(sv());
       advance();
     }
-    if (!lp.values_.empty() && lp.values_.size() % lp.tags_.size() != 0)
-      error("loop value count is not a multiple of tag count");
+    if (!lp.values_.empty() && lp.values_.size() % lp.tags_.size() != 0) {
+      // Include the first tag name and actual counts — the user can
+      // then grep a large file for the offending loop, and the counts
+      // make the shape of the mismatch obvious.
+      std::ostringstream msg;
+      msg << "loop containing tag '"
+          << std::string(lp.tags_[0].data(), lp.tags_[0].size())
+          << "' has " << lp.values_.size()
+          << " values, not a multiple of its "
+          << lp.tags_.size() << " tags";
+      error(msg.str());
+    }
     // Register loop tags in block index
     std::size_t li = blk.loops_.size();
     for (std::size_t i = 0; i < lp.tags_.size(); ++i)
