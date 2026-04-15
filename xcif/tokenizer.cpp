@@ -1,6 +1,7 @@
 // cctbx_project/xcif/tokenizer.cpp
 #include "xcif/tokenizer.h"
 #include "xcif/mapped_file.h"
+#include "xcif/data_model.h"  // for CifError (thrown on malformed tokens)
 #include <cstring>
 
 namespace xcif {
@@ -205,6 +206,14 @@ Token Tokenizer::read_semicolon_field(int tok_line, int tok_col) {
       ++cur_; ++col_;
     }
   }
+  // Reached EOF without finding a closing ';' at column 1. CIF 1.1
+  // §2.2.7.4 requires the terminator to be the first character of a
+  // line, so this is a syntax error — raise rather than silently
+  // returning a partial value (which would mask malformations like
+  // a trailing mid-line `;` that the user mistook for a terminator).
+  throw CifError("unterminated semicolon text field "
+                 "(expected closing ';' at column 1)",
+                 tok_line, tok_col, source_name_);
   return make_token(TOKEN_VALUE, start,
                     static_cast<std::size_t>(cur_ - start),
                     tok_line, tok_col);

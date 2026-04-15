@@ -92,6 +92,10 @@ if not libtbx.env.module_is_installed("xcif"):
     source="regression/cpp/tst_quoted_string_delimiter.cpp")
 
   env_xcif_cpp_tests.Program(
+    target="regression/cpp/tst_semicolon_field_strict",
+    source="regression/cpp/tst_semicolon_field_strict.cpp")
+
+  env_xcif_cpp_tests.Program(
     target="regression/cpp/tst_thread_safety",
     source="regression/cpp/tst_thread_safety.cpp")
 

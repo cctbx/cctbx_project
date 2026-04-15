@@ -160,11 +160,11 @@ void test_unterminated_quoted_string_graceful() {
   CHECK(doc[0].has_tag(string_view("_a")));
 }
 
-void test_unclosed_semicolon_field_graceful() {
-  // Missing closing ';': tokenizer returns partial content and parse succeeds.
-  Document doc = parse("data_t\n_a\n;line one\nline two\n");
-  CHECK_EQ(doc.size(), 1u);
-  CHECK(doc[0].has_tag(string_view("_a")));
+void test_unclosed_semicolon_field_raises() {
+  // CIF 1.1 §2.2.7.4: semicolon text field must be closed by `;` at
+  // column 1 of a new line. EOF before that is a syntax error.
+  // (Was previously "graceful"; tightened to match spec + ucif.)
+  CHECK(parse_throws("data_t\n_a\n;line one\nline two\n", "semicolon"));
 }
 
 // ─── run_all_tests ─────────────────────────────────────────────────
@@ -197,7 +197,7 @@ void run_all_tests() {
   test_comment_only_no_error();
   test_whitespace_only_no_error();
   test_unterminated_quoted_string_graceful();
-  test_unclosed_semicolon_field_graceful();
+  test_unclosed_semicolon_field_raises();
 }
 
 XCIF_TEST_MAIN()
