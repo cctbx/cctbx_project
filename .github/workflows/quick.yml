@@ -127,6 +127,13 @@ jobs:
           ls ./modules
           df -h
 
+      - name: Skip build cache, if requested
+        if: contains(github.event.head_commit.message, '[skip cache]')
+        run: |
+          set -xe
+          rm -fr ./build
+          ls
+
       - name: Run bootstrap.py
         run: |
           set -xe
@@ -273,6 +280,13 @@ jobs:
         shell: cmd
         run: |
           del /S /Q .\build\lib\_pycbf.pyd 2> nul
+
+      - name: Skip build cache, if requested
+        if: contains(github.event.head_commit.message, '[skip cache]')
+        shell: cmd
+        run: |
+          rmdir /s /q .\build
+          dir
 
       - name: Run bootstrap.py
         shell: cmd
