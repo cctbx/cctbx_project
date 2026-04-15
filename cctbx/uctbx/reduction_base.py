@@ -3,6 +3,14 @@ from cctbx import uctbx
 from scitbx import matrix
 from six.moves import zip
 
+# Defaults shared by the C++ wrapper (cctbx/uctbx/__init__.py) and the
+# Python reduction classes.  Update all three sites if these change:
+#   1. Here (authoritative Python values)
+#   2. cctbx/uctbx/__init__.py (niggli_reduction method)
+#   3. cctbx/uctbx/niggli_reduction.h (C++ default args — C++-only API)
+NIGGLI_DEFAULT_RELATIVE_EPSILON = 1.e-5
+NIGGLI_DEFAULT_ITERATION_LIMIT  = 1000
+
 class gruber_parameterization(object):
 
   def __init__(self, unit_cell, relative_epsilon=None):
@@ -125,12 +133,14 @@ class cpp_niggli_reduction_result(gruber_parameterization):
   from the unit_cell metrical matrix round-trip (G6 -> cell params -> G6).
   """
 
-  def __init__(self, reduced_cell, relative_epsilon, r_inv_elems, n_iterations,
-               gruber_parameters):
+  def __init__(self, reduced_cell, input_cell, relative_epsilon,
+               r_inv_elems, n_iterations, gruber_parameters):
     # Set G6 values directly from C++ instead of calling
-    # gruber_parameterization.__init__ which round-trips through unit_cell
+    # gruber_parameterization.__init__, which round-trips through unit_cell.
+    # Epsilon is computed from the INPUT cell volume, matching the C++ algorithm
+    # and gruber_parameterization (not the reduced cell, which differs in volume).
     self.a, self.b, self.c, self.d, self.e, self.f = gruber_parameters
-    self.epsilon = reduced_cell.volume()**(1/3.) * relative_epsilon
+    self.epsilon = input_cell.volume()**(1/3.) * relative_epsilon
     self._r_inv = matrix.sqr(r_inv_elems)
     self._n_iterations = n_iterations
 

@@ -1,3 +1,10 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// Derived from gemmi::GruberVector in include/gemmi/cellred.hpp
+// Copyright 2017-2024 Global Phasing Ltd.  MPL-2.0.
+
 #ifndef CCTBX_UCTBX_NIGGLI_REDUCTION_H
 #define CCTBX_UCTBX_NIGGLI_REDUCTION_H
 
@@ -192,7 +199,7 @@ namespace cctbx { namespace uctbx {
         if (sgn * eta_  < -epsilon_) negate_column(1);
         if (sgn * zeta_ < -epsilon_) negate_column(2);
 
-        // Edge case: zero-valued component in the all-positive branch requires
+        // Edge case: zero-valued component in the all-negative branch requires
         // one extra negation to maintain the correct sign product
         // (mirrors Python n3_false_action's f[z]=-1 adjustment).
         if (pos != nonneg && pos % 2 == 1) {
