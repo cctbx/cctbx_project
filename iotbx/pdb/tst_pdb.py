@@ -714,8 +714,18 @@ ATOM  60  CA . VAL  C   26  ?  -12.16900  22.54800  -4.78000  1.000   8.45988  C
   try: pdb_inp = pdb.input(file_name=f.name, source_info=None)
   except iotbx.cif.CifParserError as e:
     err_message = str(e)
-    assert err_message == \
-           "Wrong number of data items for loop containing _atom_site.group_PDB"
+    # Both wordings accepted so the test stays valid regardless of
+    # which parser iotbx.cif.reader uses underneath. Both messages
+    # name the offending loop's first tag so users can grep for it.
+    # - ucif raises at model-build time;
+    # - xcif raises at parse time and prefixes "<source>:line:col: ".
+    accepted = (
+      "Wrong number of data items for loop containing _atom_site.group_PDB",
+      "loop containing tag '_atom_site.group_PDB' has 57 values, "
+        "not a multiple of its 18 tags",
+    )
+    assert any(err_message == m or err_message.endswith(": " + m)
+               for m in accepted), "got: %r" % err_message
   else: raise Exception_expected
 
 def exercise_extract_authors():
