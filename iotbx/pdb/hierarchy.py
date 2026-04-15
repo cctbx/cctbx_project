@@ -448,6 +448,41 @@ class _():
     for model in ph.models():
       self.append_model(model=model.detached_copy())
 
+  def get_unique_resnames(self):
+    """Returns a list of all unique residue names in the hierarchy."""
+    resnames = []
+    for model in self.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          for atom_group in residue_group.atom_groups():
+            if atom_group.resname not in resnames:
+              resnames.append(atom_group.resname)
+    return resnames
+
+  def get_water_resname(self):
+    """Returns the resname of the first water found, or None if no water."""
+    get_class = iotbx.pdb.common_residue_names_get_class
+    for model in self.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          for atom_group in residue_group.atom_groups():
+            # Return the first resname that belongs to the water class
+            if get_class(name=atom_group.resname) == "common_water":
+              return atom_group.resname
+    return None
+
+  def get_water_max_resseq(self):
+    """Returns the max resseq of water as integer."""
+    get_class = iotbx.pdb.common_residue_names_get_class
+    result = flex.int()
+    for model in self.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          for atom_group in residue_group.atom_groups():
+            if get_class(name=atom_group.resname) == "common_water":
+              result.append(int(atom_group.parent().resseq))
+    return flex.max_default(result, 0)
+
   def chains(self):
     """
     Iterate over all chains in all models.
@@ -1481,6 +1516,7 @@ class _():
       occupancy_precision=3,
       b_iso_precision=5,
       u_aniso_precision=5,
+      resolution_precision=2,
       segid_as_auth_segid=False,
       output_break_records=False):
 
@@ -1494,6 +1530,7 @@ class _():
     occ_fmt_str = "%%.%if" %occupancy_precision
     b_iso_fmt_str = "%%.%if" %b_iso_precision
     u_aniso_fmt_str = "%%.%if" %u_aniso_precision
+    resolution_fmt_str = "%%.%if" %resolution_precision
 
     atom_site_header = [
       '_atom_site.group_PDB',
@@ -1511,6 +1548,7 @@ class _():
       '_atom_site.B_iso_or_equiv',
       '_atom_site.type_symbol',
       '_atom_site.pdbx_formal_charge',
+      '_atom_site.phenix_resolution',
       '_atom_site.phenix_scat_dispersion_real',
       '_atom_site.phenix_scat_dispersion_imag',
       '_atom_site.label_asym_id',
@@ -1568,6 +1606,7 @@ class _():
       atom_site_loop['_atom_site.phenix_scat_dispersion_real']
     atom_site_phenix_scat_dispersion_imag = \
       atom_site_loop['_atom_site.phenix_scat_dispersion_imag']
+    atom_site_phenix_resolution = atom_site_loop['_atom_site.phenix_resolution']
     atom_site_label_asym_id = atom_site_loop['_atom_site.label_asym_id']
     atom_site_label_entity_id = atom_site_loop['_atom_site.label_entity_id']
     atom_site_label_seq_id = atom_site_loop['_atom_site.label_seq_id']
@@ -1675,6 +1714,7 @@ class _():
               atom_site_pdbx_formal_charge.append(atom_charge)
               atom_site_phenix_scat_dispersion_real.append(fp)
               atom_site_phenix_scat_dispersion_imag.append(fdp)
+              atom_site_phenix_resolution.append(resolution_fmt_str % atom.resolution)
               atom_site_label_asym_id.append(label_asym_id.strip())
               if label_asym_id.strip() not in struct_asym_ids:
                 struct_asym_ids.append(label_asym_id.strip())
@@ -1712,6 +1752,8 @@ class _():
                 '_atom_site.phenix_scat_dispersion_imag'):
       if atom_site_loop[key].all_eq('.'):
         del atom_site_loop[key]
+    if atom_site_loop['_atom_site.phenix_resolution'].all_eq('0.00'):
+      del atom_site_loop['_atom_site.phenix_resolution']
     h_cif_block.add_loop(atom_site_loop)
     if aniso_loop.size() > 0:
       h_cif_block.add_loop(aniso_loop)
@@ -3656,6 +3698,71 @@ class _():
     assert self.atoms_size() == 1
     return self.atoms()[0]
 
+  def missing_atoms(self, mon_lib_srv, mode="non_h"):
+    """
+    Returns atoms missing in the residue (self).
+    LIMITED: may not be aware of modifications, terminals and
+             similar peculiarities.
+    EXTEND coverage as needed, and add tests to exercise_missing_atoms() in
+           iotbx/pdb/tst_pdb.py
+    """
+    assert mode in ["all", "non_h", "h_only"]
+    def _mon_lib_query(residue, mon_lib_srv):
+      get_func = getattr(mon_lib_srv, "get_comp_comp_id", None)
+      if (get_func is not None): return get_func(comp_id=residue)
+      return mon_lib_srv.get_comp_comp_id_direct(comp_id=residue)
+    atom_list = []
+    for atom in self.atoms():
+      atom_list.append(atom.name.strip().upper())
+    mlq = _mon_lib_query(self.resname.strip().upper(), mon_lib_srv)
+    if mlq is None: return None
+    reference_list = []
+    atom_dict = mlq.atom_dict()
+    alla = [at for at in mlq.atom_dict()]
+    nonH = [non.atom_id.strip().upper() for non in mlq.non_hydrogen_atoms()]
+    # Handle N terminal, if this is aa
+    aa_alikes = ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']
+    if(common_residue_names_get_class(name=self.resname) in aa_alikes):
+      if(not self.link_to_previous):
+        try:               alla.remove('H')
+        except ValueError: pass
+        for h in ["H1","H2","H3"]:
+          if not h in alla: alla.append(h)
+      else:
+        # XXX WHY THIS CRASHES SOMETIMES?????????????????
+        #assert 'H' in alla
+        pass
+    #
+    if  (mode == "all"):   reference_list = alla
+    elif(mode == "non_h"): reference_list = nonH
+    else:                  reference_list = list(set(alla) - set(nonH))
+    if(mode != "non_h"):
+      alternative_names = [
+        ('HA1', 'HA2', 'HA3'),
+        ('HB1', 'HB2', 'HB3'),
+        ('HG1', 'HG2', 'HG3'),
+        ('HD1', 'HD2', 'HD3'),
+        ('HE1', 'HE2', 'HE3'),
+        ('HG11', 'HG12', 'HG13')
+        ]
+      for alts in alternative_names:
+        if (alts[0] in reference_list and alts[1] in reference_list):
+          if (atom_dict[alts[0]].type_energy == 'HCH2' and
+              atom_dict[alts[1]].type_energy == 'HCH2'):
+            reference_list.append(alts[2])
+            reference_list.remove(alts[0])
+    missing=[]
+    for atom in reference_list:
+      if atom not in atom_list:
+        atom_temp = atom.replace("*", "'")
+        if atom.upper() == "O1P":
+          atom_temp = "OP1"
+        elif atom.upper() == "O2P":
+          atom_temp = "OP2"
+        if atom_temp not in atom_list:
+          missing.append(atom)
+    return missing
+
   def residue_name_plus_atom_names_interpreter(self,
         translate_cns_dna_rna_residue_names=None,
         return_mon_lib_dna_name=False):
@@ -3667,7 +3774,6 @@ class _():
       atom_names=[atom.name for atom in self.atoms()],
       translate_cns_dna_rna_residue_names=translate_cns_dna_rna_residue_names,
       return_mon_lib_dna_name=return_mon_lib_dna_name)
-
 
 @bp.inject_into(ext.atom_with_labels)
 class _():

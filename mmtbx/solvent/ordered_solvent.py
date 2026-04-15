@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
-from cctbx import xray
 import math,sys
 from libtbx import adopt_init_args
 from cctbx import adptbx
@@ -17,6 +16,7 @@ from mmtbx.solvent import map_to_water
 from libtbx import group_args
 import string
 import libtbx.log
+from libtbx import Auto
 
 def get_unique_altloc(exclude):
   for l in string.ascii_uppercase:
@@ -32,7 +32,7 @@ def get_unique_altloc2(available, exclude):
   return l
 
 output_params_str = """
-  output_residue_name = HOH
+  output_residue_name = Auto
     .type=str
     .input_size = 50
   output_chain_id = S
@@ -173,6 +173,187 @@ master_params_str = """\
 def master_params():
   return iotbx.phil.parse(master_params_str)
 
+def new_solvent_sites_as_hierarchy_chain(
+      sites, model, params, conformer_indices=None):
+  uc = model.crystal_symmetry().unit_cell()
+  ort = uc.orthogonalize
+  b_iso = flex.mean(model.get_xray_structure(
+    ).extract_u_iso_or_u_equiv()) * adptbx.u_as_b(1) * 1.5
+  u_star = adptbx.u_iso_as_u_star(uc, adptbx.b_as_u(b_iso))
+  u_cart = adptbx.u_star_as_u_cart(uc, u_star)
+  size = model.size()
+  # Figure out resname
+  resname = params.output_residue_name
+  if resname is Auto:
+    resname = model.get_hierarchy().get_water_resname()
+    if resname is None:
+      table = model.get_xray_structure().get_scattering_table()
+      if table=="neutron": resname = "DOD"
+      else:                resname = "HOH"
+  # Figure out first water resseq
+  first_water_resseq = model.get_hierarchy().get_water_max_resseq()+1
+  #
+  new_chain = iotbx.pdb.hierarchy.chain(id=params.output_chain_id)
+  for i_seq, site_frac in enumerate(sites):
+    water_i_seq = size+i_seq+1 # same as resseq below
+    new_atom = (iotbx.pdb.hierarchy.atom()
+      .set_serial(new_serial=iotbx.pdb.hy36encode(width=5, value=water_i_seq))
+      .set_name(new_name="O")
+      .set_xyz(new_xyz=ort(site_frac))
+      .set_occ(new_occ=1)
+      .set_element("O")
+      .set_charge("")
+      .set_hetero(new_hetero=True))
+    if(  params.new_solvent == "isotropic"):
+      new_atom.set_b(new_b=b_iso)
+    elif(params.new_solvent == "anisotropic"):
+      new_atom.set_uij(new_uij=u_cart)
+    else: raise RuntimeError
+    altloc=""
+    if conformer_indices is not None:
+      ci = conformer_indices.conformer_indices[i_seq]
+      cm = conformer_indices.index_altloc_mapping
+      if not ci in cm.values() and ci==0: altloc = ""
+      else:
+        altloc = list(cm.keys())[list(cm.values()).index(ci)]
+    new_atom_group = iotbx.pdb.hierarchy.atom_group(
+      altloc  = altloc,
+      resname = resname)
+    new_atom_group.append_atom(atom=new_atom)
+    new_residue_group = iotbx.pdb.hierarchy.residue_group(
+      resseq=iotbx.pdb.resseq_encode(value=first_water_resseq), icode=" ")
+    first_water_resseq += 1
+    new_residue_group.append_atom_group(atom_group=new_atom_group)
+    new_chain.append_residue_group(residue_group=new_residue_group)
+  if new_chain.residue_groups_size()>0: return new_chain
+  else:                                 return None
+
+def add_solvent_to_model_inplace(sites, model, params, conformer_indices=None):
+  """
+  A series of very specialzied manipulations on the model to add new solvent
+  without re-creating the new model.
+  """
+  # Get new solvent as pdb hierarchy chain
+  new_solvent_chain = new_solvent_sites_as_hierarchy_chain(
+    sites             = sites,
+    model             = model,
+    params            = params,
+    conformer_indices = conformer_indices)
+  if new_solvent_chain is None: return
+  # Get new solvent selection
+  n_new_solvent      = new_solvent_chain.atoms().size()
+  initial_model_size = model.size()
+  new_solvent_selection = flex.bool(initial_model_size, False)
+  new_solvent_selection.extend(flex.bool(n_new_solvent, True))
+  # Append new chain to the model
+  model.get_hierarchy().only_model().append_chain(chain=new_solvent_chain)
+  model._update_atom_selection_cache()
+  model.get_hierarchy().atoms().reset_i_seq()
+  model.unset_processed_pdb_file()
+  # Force-update xray_structure
+  solvent_xray_structure = new_solvent_chain.as_new_hierarchy(
+    ).extract_xray_structure(crystal_symmetry=model.crystal_symmetry())
+  model._xray_structure = model._xray_structure.concatenate(
+    solvent_xray_structure)
+  #
+  # Adjust refinement flags
+  #
+  rfs = model.refinement_flags
+  if rfs is not None:
+    # Occupancy
+    occupancy_flags = None
+    if(params.refine_occupancies):
+      occupancy_flags = []
+      for i in range(1, n_new_solvent+1):
+        occupancy_flags.append([flex.size_t([initial_model_size+i-1])])
+    # Sites
+    if(rfs.individual_sites):
+      ssites = flex.bool(n_new_solvent, True)
+    else: ssites = None
+    # Torsion angles
+    if(rfs.torsion_angles):
+      ssites_tors = flex.bool(n_new_solvent, True)
+    else: ssites_tors = None
+    # ADP
+    xrs = model.get_xray_structure()
+    uui=xrs.use_u_iso().select(new_solvent_selection)
+    uua=xrs.use_u_aniso().select(new_solvent_selection)
+    sadp_iso, sadp_aniso = None, None
+    if(params.new_solvent == "isotropic"):
+      if(rfs.adp_individual_iso or uui.count(True)>0):
+        sadp_iso = uui
+        sadp_aniso = flex.bool(sadp_iso.size(), False)
+      else: sadp_iso = None
+    if(params.new_solvent == "anisotropic"):
+      if(rfs.adp_individual_aniso or uua.count(True)>0):
+        sadp_aniso = uua
+        sadp_iso = flex.bool(sadp_aniso.size(), False)
+      else: sadp_aniso = None
+    rfs.inflate(
+      sites_individual       = ssites,
+      sites_torsion_angles   = ssites_tors,
+      adp_individual_iso     = sadp_iso,
+      adp_individual_aniso   = sadp_aniso,
+      s_occupancies          = occupancy_flags,
+      size_all               = initial_model_size)#torsion_angles
+  #
+  # Finally, add new atoms to restraints manager
+  #
+  rm = model.get_restraints_manager()
+  if(rm is not None):
+    geometry = rm.geometry
+    if (geometry.model_indices is None):
+      model_indices = None
+    else:
+      model_indices = flex.size_t(n_new_solvent, 0)
+    if(geometry.conformer_indices is None):
+      conformer_indices = None
+    else:
+      if conformer_indices is not None:
+        assert conformer_indices.conformer_indices.size() == n_new_solvent
+        conformer_indices = conformer_indices.conformer_indices
+      else:
+        conformer_indices = flex.size_t(n_new_solvent, 0)
+    if (geometry.sym_excl_indices is None):
+      sym_excl_indices = None
+    else:
+      sym_excl_indices = flex.size_t(n_new_solvent, 0)
+    if (geometry.donor_acceptor_excl_groups is None):
+      donor_acceptor_excl_groups = None
+    else:
+      donor_acceptor_excl_groups = flex.size_t(n_new_solvent, 0)
+    sst = model.get_xray_structure().select(
+      new_solvent_selection).site_symmetry_table()
+    geometry = geometry.new_including_isolated_sites(
+      n_additional_sites         = n_new_solvent,
+      model_indices              = model_indices,
+      conformer_indices          = conformer_indices,
+      sym_excl_indices           = sym_excl_indices,
+      donor_acceptor_excl_groups = donor_acceptor_excl_groups,
+      site_symmetry_table        = sst,
+      nonbonded_types            = flex.std_string(["OH2"]*n_new_solvent),
+      nonbonded_charges          = flex.int(n_new_solvent, 0))
+    model.restraints_manager = mmtbx.restraints.manager(
+      geometry              = geometry,
+      cartesian_ncs_manager = rm.cartesian_ncs_manager,
+      normalization         = rm.normalization)
+    c_ncs_m = model.get_cartesian_NCS_manager()
+    if(c_ncs_m is not None):
+      c_ncs_m.register_additional_isolated_sites(
+        number=n_new_solvent)
+    model.restraints_manager.geometry.update_plain_pair_sym_table(
+      sites_frac = model.get_sites_frac())
+  #
+  # Update H riding manager
+  #
+  if model.riding_h_manager is not None:
+    new_riding_h_manager = model.riding_h_manager.update(
+      pdb_hierarchy       = model.get_hierarchy(),
+      geometry_restraints = geometry,
+      n_new_atoms         = n_new_solvent)
+    model.riding_h_manager = new_riding_h_manager
+  return new_solvent_selection
+
 class maps(object):
   def __init__(self,
                fmodel,
@@ -186,6 +367,7 @@ class maps(object):
     self.radius = radius
     self.fmodel = fmodel
     self.model  = model
+    self.r_work = fmodel.r_work()
     self.e_map = fmodel.electron_density_map()
     self.crystal_symmetry = fmodel.xray_structure.crystal_symmetry()
     self.crystal_gridding = maptbx.crystal_gridding(
@@ -259,8 +441,9 @@ class maps(object):
       y=self.data_map.select(sel)).coefficient()
     value_2 = self.data_map.eight_point_interpolation(site_frac)
     diff_map_val = self.difference_map.eight_point_interpolation(site_frac)
+    cutoff = -3
     result = (cc > min_cc and value_2 > min_value*atom.occ) and \
-             not (diff_map_val < -3)
+             not (diff_map_val < cutoff)
     return group_args(result = result, cc=cc, value_2=value_2)
 
   def _estimate_diff_map_cutoff(self):
@@ -609,70 +792,30 @@ class manager(object):
       with open(file_name, "w") as fo:
         fo.write(self.model.model_as_pdb())
 
-  def _add_new_solvent(self):
+  def _add_new_solvent(self, conformer_indices=None):
+    """
+    A series of very specialzied manipulations on the model to add new solvent
+    without re-creating the new model.
+    """
     if(self._peaks is None): return
-    sites, heights = self._peaks.sites, self._peaks.heights
-    if(sites.size()==0): return
+    if(self._peaks.sites.size()==0): return
     if(self.params.mode == "filter_only"): return
 
-    self.new_solvent_selection = flex.bool(self.model.size(), False)
-    self.new_solvent_selection.extend(flex.bool(sites.size(), True))
-
-    if self.params.refine_oat:
-      b_solv = 0
-      occ = 0.
-    else:
-      b_solv = 20
-      if self.params.refine_occupancies:
-        occ = 0.004
-      else:
-        occ = 1.
-
-    if(self.params.new_solvent == "isotropic"):
-      new_scatterers = flex.xray_scatterer(
-        sites.size(),
-        xray.scatterer(occupancy       = occ,
-                       b               = b_solv,
-                       scattering_type = self.params.scattering_type))
-    elif(self.params.new_solvent == "anisotropic"):
-      u_star = adptbx.u_iso_as_u_star(
-        self.model.crystal_symmetry().unit_cell(), adptbx.b_as_u(b_solv))
-      new_scatterers = flex.xray_scatterer(
-        sites.size(),
-        xray.scatterer(
-          occupancy       = occ,
-          u               = u_star,
-          scattering_type = self.params.scattering_type))
-    else: raise RuntimeError
-    new_scatterers.set_sites(sites)
-    solvent_xray_structure = xray.structure(
-      special_position_settings = self.model.get_xray_structure(),
-      scatterers                = new_scatterers)
-    self.model.add_solvent(
-      solvent_xray_structure = solvent_xray_structure,
-      conformer_indices      = None, #self._peaks.conformer_indices,
-      residue_name           = self.params.output_residue_name,
-      atom_name              = self.params.output_atom_name,
-      chain_id               = self.params.output_chain_id,
-      refine_occupancies     = self.params.refine_occupancies,
-      refine_adp             = self.params.new_solvent)
-    ####
-    # This is an ugly work-around to set altlocs and conformer_indices
-    ####
+    self.new_solvent_selection = add_solvent_to_model_inplace(
+      sites             = self._peaks.sites,
+      model             = self.model,
+      params            = self.params,
+      conformer_indices = None)
     if self.params.include_altlocs:
       self.model = fix_altlocs_and_filter(model=self.model, fix_only=True)
       ss = self.model.solvent_selection()
       ms = self.model.select(ss)
       self.model = self.model.select(~ss)
-      self.model.add_solvent(
-        solvent_xray_structure = ms.get_xray_structure(),
-        conformer_indices      = ms.get_hierarchy().get_conformer_indices(),
-        residue_name           = self.params.output_residue_name,
-        atom_name              = self.params.output_atom_name,
-        chain_id               = self.params.output_chain_id,
-        refine_occupancies     = self.params.refine_occupancies,
-        refine_adp             = self.params.new_solvent)
-    ###
+      self.new_solvent_selection = add_solvent_to_model_inplace(
+        sites             = ms.get_sites_frac(),
+        model             = self.model,
+        params            = self.params,
+        conformer_indices = ms.get_hierarchy().get_conformer_indices())
 
   def refine_oat(self):
     if self.new_solvent_selection is None: return
@@ -710,6 +853,8 @@ class manager(object):
     if([self.params.refine_adp , self.params.refine_occupancies].count(True)>0 and
        self.new_solvent_selection.count(True)>0):
       from mmtbx.refinement import wrappers
+      if self.params.new_solvent == "anisotropic":
+        raise RuntimeError("Not implemented: new_solvent=anisotropic")
       o = wrappers.unrestrained_qbr_fsr(
         fmodel     = self.fmodel,
         model      = self.model,
@@ -754,4 +899,5 @@ class manager(object):
         sites_frac_peaks = sites_frac,
         water_selection  = solvent_selection,
         unit_cell        = self.model.get_xray_structure().unit_cell())
-      self.model.get_xray_structure().set_sites_frac(sites_frac = model_sites_frac)
+      self.model.get_xray_structure().set_sites_frac(
+        sites_frac = model_sites_frac)

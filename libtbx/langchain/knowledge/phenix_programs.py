@@ -6,7 +6,7 @@ This module handles:
 - Getting program keywords via introspection
 
 Usage:
-    from libtbx.langchain.knowledge import get_phenix_program_list, get_keywords_as_phil_string
+    from libtbx.langchain.knowledge.phenix_programs import get_phenix_program_list, get_keywords_as_phil_string
 
     programs = get_phenix_program_list()
     keywords = get_keywords_as_phil_string('phenix.refine')

@@ -26,7 +26,7 @@ class gradients_fd(object):
   def __init__(self, ControlMap, xrs, n_real, d_min):
     adopt_init_args(self, locals())
 
-  def compute(self):
+  def target(self):
     o = qmap.compute(
       xray_structure=self.xrs,
       n_real=self.n_real,
@@ -61,14 +61,13 @@ def run(d_min, table="wk1995"):
     debug=True)
   OmegaMap_py = o.OmegaMap_py
   bcr_scatterers = o.bcr_scatterers
-  #
+  # AU Python reference implementation
   nx,ny,nz = n_real
   ControlMap = [[[ math.sin(ix*iy*iz/math.pi) for ix in range(nx) ]
                 for iy in range(ny)] for iz in range(nz)]
-  GradMap  = qmap.CalcGradMap(OmegaMap_py, ControlMap, n_real)
   GradAtom = qmap.CalcGradAtom(
-    GradMap, n_real,[0,0,0],n_real,cs.unit_cell(), bcr_scatterers)
-
+    OmegaMap_py, ControlMap, n_real,[0,0,0],n_real,cs.unit_cell(), bcr_scatterers)
+  # C++ implementation
   ControlMap_flex = flex.double(flex.grid([nz,ny,nx]))
   for iz in range(0, nz):
     for iy in range(0, ny):
@@ -84,7 +83,7 @@ def run(d_min, table="wk1995"):
     xrs        = xrs,
     n_real     = n_real,
     d_min      = d_min)
-  assert approx_equal(o.target(), gcalc.compute())
+  assert approx_equal(o.target(), gcalc.target())
 
   eob = 0.00001
   er = 1.e-6
@@ -104,29 +103,29 @@ def run(d_min, table="wk1995"):
       xyzp = list( flex.double(xyz) + e3 )
       xyzm = list( flex.double(xyz) - e3 )
       sc.site = fra(xyzp)
-      f1 = gcalc.compute()
+      f1 = gcalc.target()
       sc.site = fra(xyzm)
-      f2 = gcalc.compute()
+      f2 = gcalc.target()
       g_ = (f1-f2)/(2*er)
       sc.site = xyzf
       g.append(g_)
     g_fd_ += g
     # occupancy
     sc.occupancy += eob
-    f1 = gcalc.compute()
+    f1 = gcalc.target()
     sc.occupancy -= eob
     sc.occupancy -= eob
-    f2 = gcalc.compute()
+    f2 = gcalc.target()
     sc.occupancy += eob
     g = (f1-f2)/(2*eob)
     os_fd.append(g)
     g_fd_ += os_fd
     # u_iso
     sc.u_iso += eob
-    f1 = gcalc.compute()
+    f1 = gcalc.target()
     sc.u_iso -= eob
     sc.u_iso -= eob
-    f2 = gcalc.compute()
+    f2 = gcalc.target()
     sc.u_iso += eob
     g = (f1-f2)/(2*eob)
     bs_fd.append(g)

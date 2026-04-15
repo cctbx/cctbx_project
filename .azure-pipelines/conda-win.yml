@@ -16,10 +16,6 @@ jobs:
   strategy:
     maxParallel: 2
     matrix:
-      python3.9:
-        OS: win-64
-        PYTHON_VERSION: py39
-        MODULES: ${{ parameters.modules }}
       python3.10:
         OS: win-64
         PYTHON_VERSION: py310
@@ -32,10 +28,14 @@ jobs:
         OS: win-64
         PYTHON_VERSION: py312
         MODULES: ${{ parameters.modules }}
-      # python3.13:
-      #   OS: win-64
-      #   PYTHON_VERSION: py313
-      #   MODULES: ${{ parameters.modules }}
+      python3.13:
+        OS: win-64
+        PYTHON_VERSION: py313
+        MODULES: ${{ parameters.modules }}
+      python3.14:
+        OS: win-64
+        PYTHON_VERSION: py314
+        MODULES: ${{ parameters.modules }}
 
   variables:
   - name: artifact_name
@@ -74,12 +74,6 @@ jobs:
       tar -xf modules.tar
       del modules.tar
     displayName: Extract modules tarball
-
-  - script: |
-      cd $(Pipeline.Workspace)\modules
-      rmdir /S /Q boost
-    displayName: Remove subset of Boost sources
-    condition: ne(variables['PYTHON_VERSION'], 'py27')
 
   - script: |
       cd $(Pipeline.Workspace)
@@ -260,6 +254,7 @@ jobs:
       call libtbx.run_tests_parallel ^
         module=boost_adaptbx ^
         module=cctbx ^
+        module=xcif ^
         module=cctbx_website ^
         module=cma_es ^
         module=fable ^

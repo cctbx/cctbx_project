@@ -35,6 +35,16 @@ require you to set output.description_file_name to specify where descriptive tex
 will be written, current versions set this by default to add a .txt extension rather than
 a .cif or .pdb extension to the output file name.
 
+**Embedding inside other scripts:** The Reduce2 functionality can also be used from
+Python code by importing the mmtbx.reduce module. The hydrogen placement is done using the
+reduce_hydrogen object from mmtbx.hydrogens. The optimization of the hydrogens and other
+movable atoms is done using the mmtbx.reduce.Optimizers module.  Some reinterpretation
+of the model is needed between steps to handle the fact that some atoms are removed and
+others added.  An example of harnessing this behavior can be found in the
+mmtbx/validation/clashscore2.py script, which places hydrogens and optimizes them on
+and already-loaded model file. You can see this in the check_and_add_hydrogen() function
+at https://github.com/cctbx/cctbx_project/blob/a8684546afeb52346e51540d9312f063d86a4c26/mmtbx/validation/clashscore2.py#L587
+
 # C++ Classes
 
 The C++ classes, wrapped for use in Python, make use of CCTBX and Boost structures and define

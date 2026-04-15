@@ -8,30 +8,66 @@ from libtbx.test_utils import approx_equal
 from iotbx.cli_parser import run_program
 from mmtbx.programs import validate_ligands as val_lig
 
+from rdkit import RDLogger
+lg = RDLogger.logger()
+lg.setLevel(RDLogger.CRITICAL) # Only show critical errors
+
+# ------------------------------------------------------------------------------
+
+_1avd_manager_cache = None  # populated lazily by _load_1avd_manager()
+
+def _load_1avd_manager():
+  """Load the 1avd structure once and cache the ligand manager.
+
+  Returns the validate_ligands.manager for streptavidin (1avd), or None
+  if phenix_regression is not available.
+  """
+  global _1avd_manager_cache
+  if _1avd_manager_cache is not None:
+    return _1avd_manager_cache
+  mtz_fname = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/reflection_files/1avd.mtz",
+    test=os.path.isfile)
+  pdb_fname = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/pdb1avd.ent.gz",
+    test=os.path.isfile)
+  if mtz_fname is None or pdb_fname is None:
+    return None
+  result = run_program(
+    program_class=val_lig.Program,
+    args=[pdb_fname, mtz_fname],
+    logger=null_out())
+  _1avd_manager_cache = result.ligand_manager
+  return _1avd_manager_cache
+
 # ------------------------------------------------------------------------------
 
 def run():
-  run_test1()
-  run_test2()
-  run_test3()
-  #run_test4()
-  run_test5()
-  run_test6()
+  run_test01()
+  run_test02()
+  run_test03()
+  run_test04()
+  run_test05()
+  run_test06()
+  run_test08()
+  run_test09()
 
 # ------------------------------------------------------------------------------
 
-def run_test1():
+def run_test01():
   '''
   Several tests:
     - check if iselection for ligand PG5 (chain A resseq 201) is correct
     - count clashes involving ligand and calculate ligand clashscore
     - check geometry outliers
   '''
+  print('test01')
   pdb_fname = libtbx.env.find_in_repositories(
     relative_path="mmtbx/regression/pdbs/one_chain_ligand_water.pdb",
     test=os.path.isfile)
-  args=[pdb_fname]
-  print("mmtbx.development.validate_ligands %s" %(" ".join(args)))
+
+  args=[pdb_fname, 'save_reduce2_model=True']
+  #print("mmtbx.development.validate_ligands %s" %(" ".join(args)))
   try:
     result = run_program(program_class=val_lig.Program,args=args,
      logger = null_out())
@@ -42,17 +78,22 @@ def run_test1():
 
   assert (len(vl_manager) == 1)
   lr = vl_manager[0]
-  assert (lr.id_str == 'PG5 A 201')
+  #assert (lr.id_str == 'PG5 A 201')
+
+  pdb_inp = iotbx.pdb.input(result.working_model_fn, source_info=None)
+  model = mmtbx.model.manager(
+    model_input=pdb_inp,
+    log = null_out())
+  model.process(make_restraints=True)
+  ligand_isel = model.iselection('resname PG5 and chain A and resseq 201')
 
   # test iselection
-  assert(list(lr.ligand_isel) == [190, 191, 192, 193, 194, 195, 196, 197, 198, 199,
-    200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214,
-    215, 216, 217, 218, 219])
+  assert (set(lr.ligand_isel) == set(ligand_isel))
 
   # Number of clashes and clashscore
   clashes_result = lr.get_overlaps()
   assert(clashes_result.n_clashes == 5)
-  assert approx_equal(clashes_result.clashscore, 27.6, eps=0.5)
+  assert approx_equal(clashes_result.clashscore, 25.6, eps=0.5)
   #
   # Geometry deviations
   rmsd_result = lr.get_rmsds()
@@ -64,42 +105,63 @@ def run_test1():
   assert(rmsd_result.angle_n_outliers == 0)
   assert approx_equal(rmsd_result.dihedral_rmsd, 32.6, eps=0.5)
 
-  os.remove('one_chain_ligand_water_newH.cif')
-  os.remove('one_chain_ligand_water_newH.txt')
+  if os.path.isfile('one_chain_ligand_water_newH.cif'):
+    os.remove('one_chain_ligand_water_newH.cif')
 
 # ------------------------------------------------------------------------------
 
-def run_test2():
+def run_test02():
   '''
   Test
   - occupancy determination for ligands
   - adp determination for ligands and neighbors
   '''
+  print('test02')
   pdb_fname = libtbx.env.find_in_repositories(
     relative_path="mmtbx/regression/pdbs/two_chains_ligand_water.pdb",
     test=os.path.isfile)
   args=[pdb_fname]
-  print("mmtbx.development.validate_ligands %s" %(" ".join(args)))
+  #print("mmtbx.development.validate_ligands %s" %(" ".join(args)))
   try:
     result = run_program(program_class=val_lig.Program,args=args,
      logger = null_out())
   except Exception as e:
     msg = traceback.format_exc()
+    print(msg)
+
+  ligands = ['ABEN A   2',
+             'BBEN A   2',
+             'SO4 A   3',
+             'SO4 A   4',
+             'GOL A   5']
 
   vl_manager = result.ligand_manager
+  for lr in vl_manager:
+    id_str = lr.id_str
+    assert id_str in ligands
+
   tst_occupancies(vl_manager = vl_manager)
   tst_adps(vl_manager = vl_manager)
   tst_rmsds(vl_manager = vl_manager)
 
-  os.remove('two_chains_ligand_water_newH.cif')
-  os.remove('two_chains_ligand_water_newH.txt')
+# ------------------------------------------------------------------------------
+
+def find_lr(vl_manager, sel):
+  '''Return the ligand_result whose ligand_isel matches model.iselection(sel).'''
+  ref = set(vl_manager.model.iselection(sel))
+  for lr in vl_manager:
+    if set(lr.ligand_isel) == ref:
+      return lr
+  raise AssertionError("no ligand found for: %s" % sel)
 
 # ------------------------------------------------------------------------------
 
 def tst_rmsds(vl_manager):
+  ligand_isel = vl_manager.model.iselection('resname SO4 and chain A and resseq 4')
   for lr in vl_manager:
-    id_str = lr.id_str
-    if (id_str.strip() == 'SO4 A   4'):
+    if lr.ligand_isel.size() != ligand_isel.size(): continue
+    are_equal = (set(lr.ligand_isel) == set(ligand_isel))
+    if are_equal:
       rmsd_result = lr.get_rmsds()
       assert approx_equal(rmsd_result.bond_rmsd, 0.055, eps=0.005)
       assert approx_equal(rmsd_result.bond_rmsz, 2.761, eps=0.005)
@@ -115,203 +177,190 @@ def tst_occupancies(vl_manager):
   '''
   Test occupancies
   '''
-  assert (len(vl_manager) == 5)
-  for lr in vl_manager:
-    occs = lr.get_occupancies()
-    id_str = lr.id_str
-    if (id_str.strip() == 'ABEN A   2'):
-      assert approx_equal(occs.occ_mean, 0.56, eps=0.01)
-    if (id_str.strip() == 'BBEN A   2'):
-      assert approx_equal(occs.occ_mean, 0.44, eps=0.01)
-    if (id_str.strip() == 'SO4 A   3'):
-      assert approx_equal(occs.occ_mean, 0.65, eps=0.01)
-    if (id_str.strip() == 'SO4 A   4'):
-      assert approx_equal(occs.occ_mean, 0.48, eps=0.01)
-    if (id_str.strip() == 'GOL A   5'):
-      assert approx_equal(occs.occ_mean, 0.67, eps=0.01)
+  assert len(vl_manager) == 5
+
+  occs = find_lr(vl_manager,
+    'chain A and resseq 2 and resname BEN and (altloc A)').get_occupancies()
+  assert approx_equal(occs.occ_mean, 0.56, eps=0.01)
+
+  occs = find_lr(vl_manager,
+    'chain A and resseq 2 and resname BEN and (altloc B)').get_occupancies()
+  assert approx_equal(occs.occ_mean, 0.44, eps=0.01)
+
+  occs = find_lr(vl_manager, 'chain A and resseq 3 and resname SO4').get_occupancies()
+  assert approx_equal(occs.occ_mean, 0.65, eps=0.01)
+
+  occs = find_lr(vl_manager, 'chain A and resseq 4 and resname SO4').get_occupancies()
+  assert approx_equal(occs.occ_mean, 0.48, eps=0.01)
+
+  occs = find_lr(vl_manager, 'chain A and resseq 5 and resname GOL').get_occupancies()
+  assert approx_equal(occs.occ_mean, 0.67, eps=0.01)
 
 # ------------------------------------------------------------------------------
 
 def tst_adps(vl_manager):
   '''
-  Test ADPs of ligands and surrounding atoms
+  Test ADPs of ligands
   '''
-  for lr in vl_manager:
-    occs = lr.get_occupancies()
-    id_str = lr.id_str
-    adps = lr.get_adps()
-    if (id_str == 'ABEN B   2'):
-      assert(adps.n_iso == 0)
-      assert(adps.n_aniso == 9)
-      assert(adps.b_min_within is None)
-      assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
-        [4.7, 8.1, 6.0], eps=0.1)
-    if (id_str.strip() == 'BBEN B   2'):
-      assert(adps.n_iso == 0)
-      assert(adps.n_aniso == 9)
-      assert(adps.b_min_within is None)
-      assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
-        [5.1, 8.2, 6.4], eps=0.1)
-    if (id_str.strip() == 'SO4 B   3'):
-      assert(adps.n_iso == 5)
-      assert(adps.n_aniso == 0)
-      assert(adps.b_min_within is None)
-      assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
-        [7.4,13.1,10.2], eps=0.1)
-    if (id_str.strip() == 'SO4 B   4'):
-      assert(adps.n_iso == 0)
-      assert(adps.n_aniso == 5)
-      assert(adps.b_min_within is None)
-      assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
-        [10.3,14.6,12.3], eps=0.1)
-    if (id_str.strip() == 'GOL B   5'):
-      assert(adps.n_iso == 6)
-      assert(adps.n_aniso == 0)
-      assert(adps.b_min_within is None)
-      assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
-        [58.7,114.9,96.9], eps=0.1)
+  adps = find_lr(vl_manager,
+    'chain A and resseq 2 and resname BEN and (altloc A)').get_adps()
+  assert adps.n_iso == 0
+  assert adps.n_aniso == 9
+  assert adps.b_min_within is None
+  assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
+          [4.7, 8.1, 6.0], eps=0.1)
+
+  adps = find_lr(vl_manager,
+    'chain A and resseq 2 and resname BEN and (altloc B)').get_adps()
+  assert adps.n_iso == 0
+  assert adps.n_aniso == 9
+  assert adps.b_min_within is None
+  assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
+          [5.1, 8.2, 6.4], eps=0.1)
+
+  adps = find_lr(vl_manager, 'chain A and resseq 3 and resname SO4').get_adps()
+  assert adps.n_iso == 5
+  assert adps.n_aniso == 0
+  assert adps.b_min_within is None
+  assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
+          [7.4, 13.1, 10.2], eps=0.1)
+
+  adps = find_lr(vl_manager, 'chain A and resseq 4 and resname SO4').get_adps()
+  assert adps.n_iso == 0
+  assert adps.n_aniso == 5
+  assert adps.b_min_within is None
+  assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
+          [10.3, 14.6, 12.3], eps=0.1)
+
+  adps = find_lr(vl_manager, 'chain A and resseq 5 and resname GOL').get_adps()
+  assert adps.n_iso == 6
+  assert adps.n_aniso == 0
+  assert adps.b_min_within is None
+  assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
+          [58.7, 114.9, 96.9], eps=0.1)
 
 # ------------------------------------------------------------------------------
 
-def run_test3():
+def run_test03():
   '''
-  Test
-  - CC calculation for three ligands
-  - ADP calculations for ligands
-  - occupancy calculations for ligands
+  Test CC, ADP, occupancy, overlap, and geometry metrics for three ligands
+  in streptavidin (1avd): BTN A 400, BTN B 401, NAG A 600.
   '''
-  mtz_fname = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/reflection_files/1avd.mtz",
-    test=os.path.isfile)
-  pdb_fname = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/pdb/pdb1avd.ent.gz",
-    test=os.path.isfile)
-  args=[pdb_fname, mtz_fname]
-  #
-  print("mmtbx.development.validate_ligands %s" %(" ".join(args)))
-  try:
-    result = run_program(program_class=val_lig.Program,args=args,
-     logger = null_out())
-  except Exception as e:
-    msg = traceback.format_exc()
+  print('test03')
+  vl_manager = _load_1avd_manager()
+  if vl_manager is None:
+    print('  skipping: phenix_regression not available')
+    return
 
-  vl_manager = result.ligand_manager
-
+  # Universal assertions: hold for every ligand in 1avd
   for lr in vl_manager:
     occs = lr.get_occupancies()
-    id_str = lr.id_str
-    adps = lr.get_adps()
-    ccs = lr.get_ccs()
-    clashes_result = lr.get_overlaps()
-    #
-    if (id_str.strip() == 'NAG A 600'):
-      assert approx_equal(ccs.cc_2fofc, 0.87, eps=0.03)
-      #
-      assert approx_equal(occs.occ_min, 0, eps=0.01)
-      assert approx_equal(occs.occ_max, 1, eps=0.01)
-      assert approx_equal(occs.occ_mean, 0.86, eps=0.01)
-      #
-      assert approx_equal(adps.b_min, 27.99, eps=0.01)
-      assert approx_equal(adps.b_max, 90.00, eps=0.01)
-      assert approx_equal(adps.b_mean, 70.71, eps=0.05)
-      #
-      assert approx_equal(adps.b_min_within, 5.23, eps=0.01)
-      assert approx_equal(adps.b_max_within, 79.14, eps=0.01)
-      assert approx_equal(adps.b_mean_within, 35.37, eps=0.02)
-      #
-      assert(clashes_result.n_clashes == 1)
-      assert approx_equal(clashes_result.clashscore, 9.4, eps=0.5)
-      #
-    if (id_str.strip() == 'BTN A 400'):
-      assert approx_equal(ccs.cc_2fofc, 0.94, eps=0.03)
-      #
-      assert approx_equal(occs.occ_mean, 1, eps=0.01)
-      #
-      assert approx_equal(adps.b_min, 4.00, eps=0.01)
-      assert approx_equal(adps.b_max, 90.00, eps=0.01)
-      assert approx_equal(adps.b_mean, 31.19, eps=0.05)
-      #
-      assert approx_equal(adps.b_min_within, 4.00, eps=0.01)
-      assert approx_equal(adps.b_max_within, 54.65, eps=0.01)
-      assert approx_equal(adps.b_mean_within, 23.23, eps=0.02)
-      #
-      assert(clashes_result.n_clashes == 4)
-      assert approx_equal(clashes_result.clashscore, 13.0, eps=0.5)
+    assert occs.negative_count == 0
+    assert occs.negative_isel.size() == 0
+    assert lr.get_adps().n_zero == 0
+    assert lr.get_overlaps().n_clashes_sym == 0
 
-      rmsd_result = lr.get_rmsds()
-      assert approx_equal(rmsd_result.bond_rmsd, 0.033, eps=0.005)
-      assert approx_equal(rmsd_result.bond_rmsz, 1.639, eps=0.005)
-      assert(rmsd_result.bond_n_outliers == 1)
-      #
-      assert approx_equal(rmsd_result.angle_rmsd, 4.00, eps=0.05)
-      assert approx_equal(rmsd_result.angle_rmsz, 1.33, eps=0.05)
-      assert(rmsd_result.angle_n_outliers == 1)
-      assert approx_equal(rmsd_result.dihedral_rmsd, 17.4, eps=0.5)
-      assert approx_equal(rmsd_result.planarity_rmsd, 0.02, eps=0.05)
-      #
-    if (id_str.strip() == 'BTN B 401'):
-      assert approx_equal(ccs.cc_2fofc, 0.95, eps=0.03)
-      #
-      assert approx_equal(occs.occ_mean, 1, eps=0.01)
-      #
-      assert approx_equal(adps.b_min, 4.00, eps=0.01)
-      assert approx_equal(adps.b_max, 46.67, eps=0.01)
-      assert approx_equal(adps.b_mean, 23.04, eps=0.05)
-      #
-      assert approx_equal(adps.b_min_within, 4.00, eps=0.01)
-      assert approx_equal(adps.b_max_within, 75.42, eps=0.01)
-      assert approx_equal(adps.b_mean_within, 28.16, eps=0.02)
-      #
-      assert(clashes_result.n_clashes == 6)
-      assert approx_equal(clashes_result.clashscore, 18.5, eps=0.5)
+  # --- NAG A 600 ---
+  lr = find_lr(vl_manager, 'chain A and resseq 600 and resname NAG')
+  occs = lr.get_occupancies()
+  adps = lr.get_adps()
+  ccs = lr.get_ccs()
+  overlaps = lr.get_overlaps()
 
-      #print(round(clashes_result.clashscore,1))
-      #print(adps.b_min_within)
-      #print(adps.b_max_within)
-      #print(adps.b_mean_within)
-      #print(occs.occ_min)
-      #print(occs.occ_max)
-      #print(occs.occ_mean)
-      #print(adps.b_min)
-      #print(adps.b_max)
-      #print(adps.b_mean)
+  assert approx_equal(ccs.rscc, 0.87, eps=0.03)
+  assert approx_equal(ccs.rscc_sites, 0.886, eps=0.03)
+  assert approx_equal(occs.occ_min, 0, eps=0.01)
+  assert approx_equal(occs.occ_max, 1, eps=0.01)
+  assert approx_equal(occs.occ_mean, 0.86, eps=0.01)
+  assert occs.zero_count >= 1         # occ_min == 0 -> at least one atom has occ 0
+  assert occs.zero_isel.size() == occs.zero_count
+  assert approx_equal(adps.b_min, 27.99, eps=0.01)
+  assert approx_equal(adps.b_max, 90.00, eps=0.01)
+  assert approx_equal(adps.b_mean, 70.71, eps=0.05)
+  assert approx_equal(adps.b_min_within, 5.23, eps=0.01)
+  assert approx_equal(adps.b_max_within, 79.14, eps=0.01)
+  assert approx_equal(adps.b_mean_within, 35.37, eps=0.02)
+  assert overlaps.n_clashes == 1
+  assert overlaps.n_hbonds == 1
+  assert approx_equal(overlaps.clashscore, 9.4, eps=0.5)
 
-  os.remove('pdb1avd_newH.txt')
-  os.remove('pdb1avd_newH.cif')
+  # --- BTN A 400 ---
+  lr = find_lr(vl_manager, 'chain A and resseq 400 and resname BTN')
+  occs = lr.get_occupancies()
+  adps = lr.get_adps()
+  ccs = lr.get_ccs()
+  overlaps = lr.get_overlaps()
+  rmsd_result = lr.get_rmsds()
 
-#def tst_get_overlaps(vl_manager):
-#  '''
-#  Test nonbonded overlaps
-#  '''
-#  for id_tuple, ligand_dict in vl_manager.items():
-#    for altloc, lr in ligand_dict.items():
-#      clashes_result = lr.get_overlaps()
-#      assert(clashes_result.n_clashes == 5)
-#      assert approx_equal(clashes_result.clashscore, 31.6, eps=1.0)
-# anaconda
-#(['pdb=" HE3 MET A 107 "', 'pdb=" H81 PG5 A 201 "'], 17, 54, 2.0370952358689647, 2.44, '', None),
-#(['pdb=" CE  MET A 107 "', 'pdb=" C8  PG5 A 201 "'], 15, 34, 2.946989989803154, 3.4, '', None),
-#(['pdb=" CE  MET A 107 "', 'pdb=" H83 PG5 A 201 "'], 15, 56, 2.4839921497460486, 2.92, '', None)
-#
-# MAC
-#(['pdb=" CE  MET A 107 "', 'pdb=" C8  PG5 A 201 "'], 16, 35, 2.946989989803154, 3.4, '', None),
-#(['pdb=" HE3 MET A 107 "', 'pdb=" H83 PG5 A 201 "'], 18, 57, 2.026073542594147, 2.44, '', None),
-#(['pdb=" CE  MET A 107 "', 'pdb=" H81 PG5 A 201 "'], 16, 55, 2.4973179613337146, 2.92, '', None)
-#
-# Readyset gives different names to H atoms.
+  assert approx_equal(ccs.rscc, 0.94, eps=0.03)
+  assert approx_equal(ccs.rscc_sites, 0.885, eps=0.03)
+  assert isinstance(ccs.frag_ccs, dict)
+  assert len(ccs.frag_ccs) == len(lr.ligand_rigid_components_isels)
+  assert len(ccs.frag_ccs) == 3
+  for cc_val in ccs.frag_ccs.values():
+    assert -1 <= cc_val <= 1
+    assert cc_val > 0.85         # all fragments well-fitted in 1avd
+  assert occs.zero_count == 0
+  assert occs.zero_isel.size() == 0
+  assert approx_equal(occs.occ_mean, 1, eps=0.01)
+  assert approx_equal(adps.b_min, 4.00, eps=0.01)
+  assert approx_equal(adps.b_max, 90.00, eps=0.01)
+  assert approx_equal(adps.b_mean, 31.19, eps=0.05)
+  assert approx_equal(adps.b_min_within, 4.00, eps=0.01)
+  assert approx_equal(adps.b_max_within, 54.65, eps=0.01)
+  assert approx_equal(adps.b_mean_within, 23.23, eps=0.02)
+  assert overlaps.n_clashes == 4
+  assert overlaps.n_hbonds == 2
+  assert approx_equal(overlaps.clashscore, 13.0, eps=0.5)
+  assert rmsd_result.bond_n == 17
+  assert approx_equal(rmsd_result.bond_rmsd, 0.033, eps=0.005)
+  assert approx_equal(rmsd_result.bond_rmsz, 1.639, eps=0.005)
+  assert rmsd_result.bond_n_outliers == 1
+  assert rmsd_result.angle_n == 23
+  assert approx_equal(rmsd_result.angle_rmsd, 4.00, eps=0.05)
+  assert approx_equal(rmsd_result.angle_rmsz, 1.33, eps=0.05)
+  assert rmsd_result.angle_n_outliers == 1
+  assert rmsd_result.dihedral_n == 20
+  assert approx_equal(rmsd_result.dihedral_rmsd, 17.4, eps=0.5)
+  assert approx_equal(rmsd_result.dihedral_rmsz, 0.579, eps=0.1)
+  assert approx_equal(rmsd_result.planarity_rmsd, 0.02, eps=0.05)
+  assert rmsd_result.dihedral_n_outliers == 0
+
+  # --- BTN B 401 ---
+  lr = find_lr(vl_manager, 'chain B and resseq 401 and resname BTN')
+  occs = lr.get_occupancies()
+  adps = lr.get_adps()
+  ccs = lr.get_ccs()
+  overlaps = lr.get_overlaps()
+
+  assert approx_equal(ccs.rscc, 0.95, eps=0.03)
+  assert approx_equal(ccs.rscc_sites, 0.867, eps=0.03)
+  assert occs.zero_count == 0
+  assert occs.zero_isel.size() == 0
+  assert approx_equal(occs.occ_mean, 1, eps=0.01)
+  assert approx_equal(adps.b_min, 4.00, eps=0.01)
+  assert approx_equal(adps.b_max, 46.67, eps=0.01)
+  assert approx_equal(adps.b_mean, 23.04, eps=0.05)
+  assert approx_equal(adps.b_min_within, 4.00, eps=0.01)
+  assert approx_equal(adps.b_max_within, 75.42, eps=0.01)
+  assert approx_equal(adps.b_mean_within, 28.20, eps=0.02)
+  assert overlaps.n_clashes == 6
+  assert overlaps.n_hbonds == 2
+  assert approx_equal(overlaps.clashscore, 19.3, eps=0.5)
 
 # ------------------------------------------------------------------------------
 
-def run_test4():
+def run_test04():
   '''
   Test if ligands with 5-letter ID are processed properly
   from PDB model 7has
   '''
+  print('test04')
   model_fn = "tst_4_fragment.cif"
   with open(model_fn, "w") as f:
     f.write(cif_str_tst_4)
   args = [model_fn]
-  print("mmtbx.development.validate_ligands %s run_reduce2=False" % model_fn)
+  #print("mmtbx.development.validate_ligands %s run_reduce2=False" % model_fn)
   try:
     result = run_program(program_class=val_lig.Program,args=args,
      logger = null_out())
@@ -320,37 +369,34 @@ def run_test4():
 
   vl_manager = result.ligand_manager
 
-  for lr in vl_manager:
-    assert (lr.id_str == 'A1AYY A 301')
-    occs = lr.get_occupancies()
-    adps = lr.get_adps()
-    #
-    assert approx_equal(occs.occ_mean, 0.91, eps=0.01)
-    #
-    assert approx_equal(adps.b_min, 38.36, eps=0.01)
-    assert approx_equal(adps.b_max, 66.40, eps=0.01)
-    assert approx_equal(adps.b_mean, 47.82, eps=0.05)
-    #
-    assert approx_equal(adps.b_min_within, 30.55, eps=0.01)
-    assert approx_equal(adps.b_max_within, 63.10, eps=0.01)
-    assert approx_equal(adps.b_mean_within, 42.45, eps=0.02)
-  #
+  assert len(vl_manager) == 1
+  lr = vl_manager[0]
+  assert lr.resname == 'A1AYY'   # 5-character resname preserved
+  assert lr.altloc == ''
+
+  occs = lr.get_occupancies()
+  adps = lr.get_adps()
+  assert approx_equal(occs.occ_mean, 0.91, eps=0.01)
+  assert approx_equal(adps.b_min, 38.36, eps=0.01)
+  assert approx_equal(adps.b_max, 66.40, eps=0.01)
+  assert approx_equal(adps.b_mean, 47.82, eps=0.05)
+  assert approx_equal(adps.b_min_within, 30.55, eps=0.01)
+  assert approx_equal(adps.b_max_within, 63.10, eps=0.01)
+  assert approx_equal(adps.b_mean_within, 42.45, eps=0.02)
   os.remove(model_fn)
-  os.remove('tst_4_fragment_newH.cif')
-  os.remove('tst_4_fragment_newH.txt')
 
 # ------------------------------------------------------------------------------
 
-def run_test5():
+def run_test05():
   '''
   Test if ligand with two conformers with different names is processed correctly
   from PDB model 4d3w
   '''
+  print('test05')
   model_fn = "tst_5.pdb"
   with open(model_fn, "w") as f:
     f.write(pdb_str_tst_5)
   args = [model_fn]
-  print("mmtbx.development.validate_ligands %s" % model_fn)
   try:
     result = run_program(program_class=val_lig.Program,args=args,
      logger = null_out())
@@ -359,16 +405,34 @@ def run_test5():
 
   vl_manager = result.ligand_manager
 
+  # Check identity via (resname, altloc) pairs — independent of id_str
+  expected = {('NGA', 'A'), ('A2G', 'B'), ('GAL', '')}
+  found    = {(lr.resname, lr.altloc) for lr in vl_manager}
+  assert found == expected, "unexpected ligand set: %s" % found
+
+  # Verify iselection size against selection strings derived from pdb_str_tst_5
+  expected_sel = {
+    ('NGA', 'A'): 'chain B and resseq 1 and resname NGA',
+    ('A2G', 'B'): 'chain B and resseq 1 and resname A2G',
+    ('GAL', ''):  'chain B and resseq 2 and resname GAL',
+  }
+  model = vl_manager.model
   for lr in vl_manager:
-    assert (lr.id_str in ['ANGA B   1', 'BA2G B   1', 'GAL B   2'])
+    key = (lr.resname, lr.altloc)
+    ligand_isel = model.iselection(expected_sel[key])
+    expected_size = ligand_isel.size()
+    assert lr.ligand_isel.size() == expected_size, \
+        "isel size mismatch for %s %s: got %d, expected %d" % (
+            lr.resname, lr.altloc,
+            lr.ligand_isel.size(), expected_size)
+    assert (set(lr.ligand_isel) == set(ligand_isel))
   #
   os.remove(model_fn)
-  os.remove('tst_5_newH.cif')
-  os.remove('tst_5_newH.txt')
 
 # ------------------------------------------------------------------------------
 
-def run_test6():
+def run_test06():
+  print('test06')
   pdb_str = '''
 CRYST1   14.103   13.596   12.544  90.00  90.00  90.00 P 1
 SCALE1      0.070907  0.000000  0.000000        0.00000
@@ -398,6 +462,125 @@ ATOM     11  HG  SER A   9       8.382   5.000   7.090  1.00 17.71           H
   assert len(dihedral.outliers) == 0
   assert approx_equal(dihedral.mean, 10.91, eps=0.05)
   assert approx_equal(dihedralz.mean, 0.52, eps=0.05)
+
+# ------------------------------------------------------------------------------
+
+def run_test08():
+  '''
+  Test get_map_values():
+  - fofc_map_values size matches non-H atom count
+  - percent_bad_at_atom_centers, n_bad_blobs, percent_bad_blobs
+    are in valid ranges and meaningful for well-fitted ligands
+  '''
+  print('test08')
+  vl_manager = _load_1avd_manager()
+  if vl_manager is None:
+    print('  skipping: phenix_regression not available')
+    return
+
+  # Sanity ranges valid for all ligands; fmodel is set so result is never None
+  for lr in vl_manager:
+    map_values = lr.get_map_values()
+    assert map_values is not None
+    assert map_values.percent_bad_at_atom_centers >= 0
+    assert map_values.n_bad_blobs >= 0
+    assert map_values.percent_bad_blobs >= 0
+    assert map_values.percent_bad_blobs <= 100
+
+  # --- BTN A 400: well-fitted, no bad density ---
+  map_values = find_lr(vl_manager, 'chain A and resseq 400 and resname BTN').get_map_values()
+  assert map_values.fofc_map_values.size() == 16
+  assert map_values.percent_bad_at_atom_centers == 0.0
+  assert map_values.n_bad_blobs == 0
+  assert approx_equal(map_values.percent_bad_blobs, 0.0, eps=0.1)
+
+  # --- BTN B 401: well-fitted; two small difference-density blobs nearby ---
+  map_values = find_lr(vl_manager, 'chain B and resseq 401 and resname BTN').get_map_values()
+  assert map_values.fofc_map_values.size() == 16
+  assert map_values.percent_bad_at_atom_centers == 0.0
+  assert map_values.n_bad_blobs == 2
+  assert approx_equal(map_values.percent_bad_blobs, 0.546, eps=0.5)
+
+  # --- NAG A 600: moderately fitted, no atoms in bad density ---
+  map_values = find_lr(vl_manager, 'chain A and resseq 600 and resname NAG').get_map_values()
+  assert map_values.fofc_map_values.size() == 14
+  assert map_values.percent_bad_at_atom_centers == 0.0
+  assert map_values.n_bad_blobs == 0
+  assert approx_equal(map_values.percent_bad_blobs, 0.0, eps=0.1)
+
+
+# ------------------------------------------------------------------------------
+
+def run_test09():
+  '''
+  Test get_ccs_map() - the map_manager code path of get_ccs().
+  Writes a 2mFo-DFc model map from 1avd to a temp CCP4 file, then runs
+  the program with PDB + map (no MTZ) to exercise the map_manager branch.
+  '''
+  print('test09')
+  from mmtbx import map_tools
+  from cctbx import maptbx, miller
+  from iotbx import mrcfile
+  from cctbx.array_family import flex
+
+  vl_manager = _load_1avd_manager()
+  if vl_manager is None:
+    print('  skipping: phenix_regression not available')
+    return
+
+  pdb_fname = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/pdb1avd.ent.gz",
+    test=os.path.isfile)
+  if pdb_fname is None:
+    print('  skipping: phenix_regression not available')
+    return
+
+  # Compute a 2mFo-DFc model map from the 1avd fmodel
+  fmodel = vl_manager[0].fmodel
+  cs = fmodel.f_obs().crystal_symmetry()
+  d_min = round(fmodel.f_obs().d_min(), 2)
+  crystal_gridding = maptbx.crystal_gridding(
+    unit_cell        = cs.unit_cell(),
+    space_group_info = cs.space_group_info(),
+    symmetry_flags   = maptbx.use_space_group_symmetry,
+    step             = 0.6)
+  map_coefficients = map_tools.electron_density_map(
+    fmodel=fmodel).map_coefficients(
+      map_type     = "2mFo-DFc",
+      isotropize   = True,
+      fill_missing = False)
+  fft_map = miller.fft_map(
+    crystal_gridding     = crystal_gridding,
+    fourier_coefficients = map_coefficients)
+  fft_map.apply_sigma_scaling()
+  map_data = fft_map.real_map_unpadded()
+
+  map_fn = "tst09_1avd.ccp4"
+  try:
+    mrcfile.write_ccp4_map(
+      file_name   = map_fn,
+      unit_cell   = cs.unit_cell(),
+      space_group = cs.space_group(),
+      map_data    = map_data,
+      labels      = flex.std_string([""]))
+    result = run_program(
+      program_class = val_lig.Program,
+      args          = [pdb_fname, map_fn,
+                       'validate_ligands.resolution=%s' % d_min],
+      logger        = null_out())
+    vl_manager2 = result.ligand_manager
+    assert vl_manager2 is not None
+    for lr in vl_manager2:
+      ccs = lr.get_ccs()
+      assert ccs is not None
+      assert hasattr(ccs, 'rscc')
+      assert -1 <= ccs.rscc <= 1
+      assert ccs.rscc_sites is None   # map path never computes sites RSCC
+    # Well-fitted ligand: CC with its own model map should be positive
+    assert find_lr(vl_manager2, 'chain A and resseq 400 and resname BTN').get_ccs().rscc > 0.5
+  finally:
+    if os.path.isfile(map_fn):
+      os.remove(map_fn)
 
 # ------------------------------------------------------------------------------
 

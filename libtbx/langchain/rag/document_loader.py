@@ -7,7 +7,7 @@ This module handles:
 - Smart chunking with keyword section handling
 
 Usage:
-    from libtbx.langchain.rag import load_all_docs_from_folder
+    from libtbx.langchain.rag.document_loader import load_all_docs_from_folder
 
     docs, files = load_all_docs_from_folder('./docs/')
 """
@@ -16,6 +16,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import re
 from typing import List
+assert List is not None
 
 from bs4 import BeautifulSoup
 from langchain_core.documents import Document

@@ -1,0 +1,56 @@
+================================================================================
+phenix.real_space_refine - Real-Space Refinement
+================================================================================
+
+Input files:
+  Model: model_rsr_002.pdb
+  Map: map.mrc
+  Resolution: 3.2 A
+
+------------------------------------------------------------------------------
+Refinement Strategy
+------------------------------------------------------------------------------
+
+Strategy: Individual sites + Individual B-factors + Secondary structure
+Number of cycles: 5
+Weight optimization: automatic
+
+------------------------------------------------------------------------------
+Refinement Progress
+------------------------------------------------------------------------------
+
+Starting map-model CC: 0.760
+
+Cycle 1: CC = 0.765
+Cycle 2: CC = 0.770
+Cycle 3: CC = 0.774
+Cycle 4: CC = 0.777
+Cycle 5: CC = 0.780
+
+------------------------------------------------------------------------------
+Final Statistics
+------------------------------------------------------------------------------
+
+Final map-model CC: 0.780
+
+Resolution used: 3.2 A
+Number of atoms: 628 (including 3 waters)
+
+Geometry:
+  Bond RMSD: 0.006 A
+  Angle RMSD: 1.10 degrees
+
+Ramachandran:
+  Favored: 97.8%
+  Allowed: 2.2%
+  Outliers: 0.0%
+
+------------------------------------------------------------------------------
+Output Files
+------------------------------------------------------------------------------
+
+Refined model: model_rsr_003.pdb
+
+================================================================================
+phenix.real_space_refine completed successfully
+================================================================================

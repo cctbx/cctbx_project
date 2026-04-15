@@ -13,13 +13,13 @@ import openai
 from google.api_core import exceptions as google_exceptions
 from langchain_google_genai._common import GoogleGenerativeAIError
 
-from libtbx.langchain.core import get_llm_and_embeddings
-from libtbx.langchain.rag import (
+from libtbx.langchain.core.llm import get_llm_and_embeddings
+from libtbx.langchain.rag.retriever import (
     load_persistent_db,
     create_reranking_retriever,
     create_reranking_rag_chain,
 )
-from libtbx.langchain.knowledge import get_docs_query_prompt
+from libtbx.langchain.knowledge.prompts import get_docs_query_prompt
 
 
 # Global variable to track the last query time for throttling

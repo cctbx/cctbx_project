@@ -1037,8 +1037,11 @@ def numpy_map_as_flex_standard_order(np_array=None,
   # Flatten it out
   np_array_standard_order_1d=np_array_standard_order.flatten()
 
-  # Read in to flex array
-  flex_array=flex.float(np_array_standard_order_1d)
+  # Read in to flex array, explicitly converting to float32 if necessary
+  try:
+    flex_array=flex.float(np_array_standard_order_1d)
+  except RuntimeError:
+    flex_array=flex.float(np_array_standard_order_1d.astype(np.float32, copy=False))
 
   # set up new shape (same as was in the numpy array after transposing it)
   flex_grid=grid(shape)

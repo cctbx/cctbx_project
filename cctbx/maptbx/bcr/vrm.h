@@ -136,6 +136,10 @@ public:
 
   void compute_gradients(af::ref<FloatType, af::c_grid<3> > map_data) {
 
+    af::c_grid<3> a1 = map.accessor();
+    af::c_grid<3> a2 = map_data.accessor();
+    for(int i = 0; i < 3; i++) CCTBX_ASSERT(a1[i]==a2[i]);
+
     target = 0.;
     for (int iz = 0; iz < Nz; ++iz) {
       for (int iy = 0; iy < Ny; ++iy) {
@@ -400,7 +404,6 @@ public:
           FloatType r2zyx = dx * dx + r2zy;
           FloatType cx    = dx * StepXX2 + StepXXS;
           for (int ix = Kx1; ix < Kx2; ++ix) {
-              //if(r2zyx == 0.0) {
               if(std::abs(r2zyx)<1.e-4) {
                  AtomGrid0 = af::tiny<int, 3>(ix,iy,iz);
                  ix0       = ix;

@@ -938,6 +938,11 @@ class type_symbol_registry_base(object):
     print ('charges', list(self.charges))
     print ('==== end of symbol registry base:')
 
+  def size(self):
+    assert self.symbols.size() == self.source_labels.size() == \
+        self.source_n_expected_atoms.size() == self.charges.size()
+    return self.symbols.size()
+
   def expand_with_ncs(self, nrgl, n_atoms_full):
     new_symbols = flex.std_string(n_atoms_full)
     new_source_labels = flex.std_string(new_symbols.size())
@@ -2633,6 +2638,40 @@ class conformer_i_seq(dict):
     self.update(other)
     return self
 
+  def expand_with_ncs(self, nrgl, n_atoms_full):
+    """
+    Add entries for NCS copy atoms by copying from master atoms.
+    Called before convert() to populate the dict with copy i_seqs.
+    AI inspired by type_symbol_registry_base.expand_with_ncs()
+
+    Args:
+      nrgl: NCS restraint group list
+      n_atoms_full: Total atoms including NCS copies
+    """
+    # Create new dict with entries for full hierarchy
+    new_dict = {}
+    # Identify which atoms in full hierarchy are masters/rest (non-copies)
+    masters_and_rest_bool_selection = ~flex.bool(n_atoms_full, nrgl.get_all_copies_selection())
+    masters_and_rest_iselection = masters_and_rest_bool_selection.iselection()
+    # Reindexing array: maps full hierarchy i_seq -> reduced hierarchy index
+    ra = reindexing_array(n_atoms_full, masters_and_rest_iselection.as_int())
+    # Copy existing entries to new positions in full hierarchy
+    for reduced_i_seq, value in self.items():
+      full_i_seq = masters_and_rest_iselection[reduced_i_seq]
+      new_dict[full_i_seq] = value
+    # Add copy entries
+    for ncs_group in nrgl:
+      # Translate master i_seqs from full hierarchy to reduced hierarchy indices
+      translated_master_iselection = flex.size_t([ra[i] for i in ncs_group.master_iselection])
+      for c in ncs_group.copies:
+        for copy_i_seq, reduced_master_idx in zip(c.iselection, translated_master_iselection):
+          # Look up master's value in old dict (using reduced index)
+          if reduced_master_idx in self:
+            new_dict[copy_i_seq] = self[reduced_master_idx]
+    # Replace dict contents
+    self.clear()
+    self.update(new_dict)
+
   def convert(self):
     rc = flex.std_string()
     for i, (i_seq, item) in enumerate(sorted(self.items())):
@@ -4042,6 +4081,8 @@ class build_all_chain_proxies(linking_mixins):
       self.scattering_type_registry.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
       self.nonbonded_energy_type_registry.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
       self.geometry_proxy_registries.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
+      self.type_energies.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
+      self.type_h_bonds.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
       # Expand cystein_sulphur_i_seqs
       new_cystein_sulphur_i_seqs = list(self.cystein_sulphur_i_seqs)
       for master_c_iseq in self.cystein_sulphur_i_seqs:
@@ -4092,6 +4133,16 @@ class build_all_chain_proxies(linking_mixins):
       curr_sym_excl_index=len(sym_excl_residue_groups))
     self.type_energies = self.type_energies.convert()
     self.type_h_bonds = self.type_h_bonds.convert()
+    # # Assert arrays match atom count - safeguard check
+    # n_atoms = self.pdb_atoms.size()
+    # assert len(self.type_energies) == n_atoms, \
+    #   "type_energies array size (%d) != n_atoms (%d)" % (len(self.type_energies), n_atoms)
+    # assert len(self.type_h_bonds) == n_atoms, \
+    #   "type_h_bonds array size (%d) != n_atoms (%d)" % (len(self.type_h_bonds), n_atoms)
+    # assert self.scattering_type_registry.size() == n_atoms, \
+    #   "scattering_type_registry size (%d) != n_atoms (%d)" % (self.scattering_type_registry.size(), n_atoms)
+    # assert self.nonbonded_energy_type_registry.size() == n_atoms, \
+    #   "nonbonded_energy_type_registry size (%d) != n_atoms (%d)" % (self.nonbonded_energy_type_registry.size(), n_atoms)
     self.time_building_chain_proxies = timer.elapsed()
     # Make sure pdb_hierarchy and xray_structure are consistent
     if(self.special_position_settings is not None):

@@ -7,7 +7,7 @@ This module handles:
 - Run history management
 
 Usage:
-    from libtbx.langchain.agent import load_learned_memory, learn_from_history
+    from libtbx.langchain.agent.memory import load_learned_memory, learn_from_history
 
     memory = load_learned_memory(memory_file)
     await learn_from_history(run_history, llm, memory_file)

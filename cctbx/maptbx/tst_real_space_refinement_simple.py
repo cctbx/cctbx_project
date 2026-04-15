@@ -11,7 +11,7 @@ import random
 import sys
 from six.moves import zip
 
-def exercise_lbfgs(test_case, use_geo, out, d_min=2):
+def exercise_lbfgs(test_case, use_geo, out, d_min=1.9):
   sites_cart, geo_manager = cctbx.geometry_restraints.manager.\
     construct_non_crystallographic_conserving_bonds_and_angles(
       sites_cart=flex.vec3_double(test_case.sites),
@@ -56,7 +56,7 @@ def exercise_lbfgs(test_case, use_geo, out, d_min=2):
   print("RMSD start, final:", rmsd_start, rmsd_final, file=out)
   if (use_geo):
     assert rmsd_start >= 1-1e-6
-    assert rmsd_final < 0.2
+    assert rmsd_final < 0.2, rmsd_final
   def show_f_g(label, f, g):
     print(label, "f, |g|:", f, flex.mean_sq(g)**0.5, file=out)
   show_f_g(label="start", f=minimized.f_start, g=minimized.g_start)

@@ -28,7 +28,7 @@ from mmtbx.probe import Helpers
 from iotbx import pdb
 from iotbx.pdb import common_residue_names_get_class
 
-version = "4.11.0"
+version = "4.13.0"
 
 master_phil_str = '''
 profile = False
@@ -1161,7 +1161,7 @@ Note:
             ret += ', "src": {{"chainID": "{}", "resID": {}, "iCode": "{}", "resName": "{}", "atomName": "{}", "alt": "{}"}}'.format(
               chainID, resID, iCode.strip(), resName, a.name, alt.strip())
           else:
-            ret += "{:>2s}{:>4s}{}{} {}{:1s}:".format(chainID, resID, iCode, resName.strip(), a.name, alt)
+            ret += "{:>2s}{:>4s}{}{:>3s} {:<3s}{:1s}:".format(chainID, resID, iCode, resName.strip(), a.name, alt)
 
           # Describe the target atom, if it exists
           t = node.target
@@ -1180,7 +1180,7 @@ Note:
               ret += ', "target": {{"chainID": "{}", "resID": {}, "iCode": "{}", "resName": "{}", "atomName": "{}", "alt": "{}"}}'.format(
                 chainID, resID, iCode.strip(), resName, t.name, alt.strip())
             else:
-              ret += "{:>2s}{:>4s}{}{} {:<3s}{:1s}:".format(chainID, resID, iCode, resName.strip(), t.name, alt)
+              ret += "{:>2s}{:>4s}{}{:>3s} {:<3s}{:1s}:".format(chainID, resID, iCode, resName.strip(), t.name, alt)
 
             r1 = self._extraAtomInfo.getMappingFor(a).vdwRadius
             r2 = self._extraAtomInfo.getMappingFor(t).vdwRadius
@@ -1226,12 +1226,8 @@ Note:
             tBVal = ""
 
           if writeJSON:
-            if self.params.output.condensed:
-              # Don't write elements that are not needed for condensed output
-              ret += ', "srcClass": "{}", "targetClass": "{}"'.format(self._atomClasses[a], tName)
-            else:
-              ret += ', "srcClass": "{}", "targetClass": "{}", "loc": [{:.3f},{:.3f},{:.3f}]'.format(
-                self._atomClasses[a], tName, node.loc[0], node.loc[1], node.loc[2])
+            ret += ', "srcClass": "{}", "targetClass": "{}", "loc": [{:.3f},{:.3f},{:.3f}]'.format(
+              self._atomClasses[a], tName, node.loc[0], node.loc[1], node.loc[2])
           else:
             ret += ":{}:{}:{:.3f}:{:.3f}:{:.3f}".format(self._atomClasses[a], tName,
               node.loc[0], node.loc[1], node.loc[2])

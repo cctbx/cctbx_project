@@ -28,6 +28,7 @@ $ wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 $ bash Miniconda3-latest-Linux-x86_64.sh -b -p $PWD/mc3
 $ source mc3/etc/profile.d/conda.sh
 $ conda env create -f psana_environment.yml -p $PWD/conda_base
+$ conda install -c conda-forge --no-deps -p $PWD/conda_base gemmi
 $ conda activate `pwd`/conda_base
 $ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base --nproc=48 \
     --no-boost-src hot update build

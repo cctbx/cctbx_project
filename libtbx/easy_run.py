@@ -223,14 +223,14 @@ class fully_buffered_subprocess(fully_buffered_base):
       o, e = p.communicate(input=stdin_lines)
     if (stdout_splitlines):
       self.stdout_buffer = None
-      self.stdout_lines = o.splitlines()
+      self.stdout_lines = o.splitlines() if o else []
     else:
       self.stdout_buffer = o
       self.stdout_lines = None
     if (join_stdout_stderr):
       self.stderr_lines = []
     else:
-      self.stderr_lines = e.splitlines()
+      self.stderr_lines = e.splitlines() if e else []
     self.return_code = p.returncode
 
 fully_buffered = fully_buffered_subprocess

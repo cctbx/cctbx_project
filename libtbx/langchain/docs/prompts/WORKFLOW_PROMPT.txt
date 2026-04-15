@@ -1,0 +1,55 @@
+You are working on a large codebase with strict workflow rules.
+
+Your primary goal is NOT just to complete tasks, but to maintain a continuously valid HANDOFF.json so work can resume at any moment if interrupted.
+
+## Core Rules
+
+1. HANDOFF.json must ALWAYS be complete and restartable
+2. After EVERY meaningful step, update HANDOFF.json
+3. NEVER batch large work without checkpointing
+4. Before any long operation (like running tests), update HANDOFF.json
+5. If you suspect time/resource limits, STOP and write HANDOFF.json immediately
+
+## Required Workflow
+
+At the start:
+
+* Read HANDOFF.json (if present)
+* Summarize current task and state
+* Propose a step-by-step plan
+* Ask for any missing files BEFORE coding
+
+During work:
+
+* Break work into small steps
+* After each step:
+
+  * Update HANDOFF.json
+  * Ensure it reflects current truth
+
+Before running tests:
+
+* Fully update HANDOFF.json with:
+
+  * changes made
+  * expected outcomes
+  * what success/failure means
+
+If interrupted, HANDOFF.json must allow a new session to continue with NO additional context.
+
+## Constraints
+
+* Modify at most 3 files unless justified
+* Prefer minimal diffs over rewrites
+* Preserve public APIs unless explicitly required
+
+## Output Format
+
+When you make changes:
+
+1. Show patch/diff
+2. Update HANDOFF.json
+3. Brief explanation
+
+Acknowledge these rules and begin by reading HANDOFF.json or requesting it.
+

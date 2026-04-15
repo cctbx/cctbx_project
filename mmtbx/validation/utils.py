@@ -143,146 +143,127 @@ def calculate_overall_residue_quality_score(
     weights: Optional[Dict[str, float]] = None
 ) -> Optional[float]:
     """
-    Calculates an aggregated quality score for a single residue based on various validation metrics.
+    Calculates a penalty score for a single residue based on validation outliers.
+
+    The score starts at 0 (no issues) and increases with each outlier found.
+    More severe outliers contribute larger penalties. The score is the sum of
+    all applicable tiered penalties.
 
     Args:
         residue_data (Dict[str, Any]): A dictionary containing all the extracted
                                          validation metrics for a single residue.
-                                         Expected keys should match those in ResidueResult,
-                                         e.g., 'ramalyze_category', 'is_cbeta_outlier', etc.
-        weights (Optional[Dict[str, float]]): A dictionary of weights for each validation category.
-                                              If None, default weights will be used.
+        weights: Unused, kept for API compatibility.
 
     Returns:
-        Optional[float]: The aggregated quality score (0-1), or None if no applicable metrics.
+        Optional[float]: The penalty score (0 = no issues, higher = worse),
+                         or None if no applicable metrics.
     """
 
-    # --- Default Weights (can be overridden by the 'weights' argument) ---
-    DEFAULT_WEIGHTS = {
-        'RAMA': 0.10,
-        'ROTA': 0.10,
-        'CBETA': 0.10,
-        'CABLAM': 0.20,
-        'OMEGA': 0.20,
-        'RNA_SUITE': 0.35,
-        'RNA_PUCKER': 0.35,
-        'BONDS': 0.05,
-        'ANGLES': 0.05,
-        'CHIRAL': 0.05,
-        'CLASH': 0.15,
-    }
-
-    current_weights = weights if weights is not None else DEFAULT_WEIGHTS
-
-    total_quality_points = 0.0
-    total_possible_points = 0.0
+    penalty = 0.0
+    has_any_metric = False
 
     # --- Helper to safely get data ---
     def get_data(key, default=None):
         return residue_data.get(key, default)
 
-    # --- 1. Ramachandran Contribution ---
-    s_rama = 1.0
-    if get_data('ramalyze_category') == 'outlier':
-        s_rama = 0.0
-    elif get_data('ramalyze_category') == 'allowed':
-        s_rama = 0.8
-    if get_data('ramalyze_type') not in ['not_applicable', 'not_evaluated']:
-        total_quality_points += s_rama * current_weights['RAMA']
-        total_possible_points += current_weights['RAMA']
-
-    # --- 2. Rotamer Contribution ---
-    s_rota = 1.0
-    if get_data('rotalyze_category') == 'outlier':
-        s_rota = 0.0
-    elif get_data('rotalyze_category') == 'allowed':
-        s_rota = 0.8
-    if get_data('rotalyze_category') != 'not_evaluated':
-        total_quality_points += s_rota * current_weights['ROTA']
-        total_possible_points += current_weights['ROTA']
-
-    # --- 3. C-beta Deviation Contribution ---
-    s_cbeta = 1.0
-    if get_data('is_cbeta_outlier'):
-        s_cbeta = 0.0
-    if not get_data('is_glycine', False): # Glycine doesn't have a C-beta
-        total_quality_points += s_cbeta * current_weights['CBETA']
-        total_possible_points += current_weights['CBETA']
-
-    # --- 4. CaBLAM Contribution ---
-    s_cablam = 1.0
-    if get_data('cablam_outlier_type') == 'outlier':
-        s_cablam = 0.0
-    elif get_data('cablam_outlier_type') == 'disfavored':
-        s_cablam = 0.5
-    if get_data('cablam_outlier_type') != 'not_evaluated':
-        total_quality_points += s_cablam * current_weights['CABLAM']
-        total_possible_points += current_weights['CABLAM']
-
-    # --- 5. Omega Angle Contribution ---
-    s_omega = 1.0
-    if get_data('omega_type') == 'twisted':
-        s_omega = 0.0
-    elif get_data('omega_type') == 'cis' and not get_data('is_proline'):
-        s_omega = 0.0
-    if get_data('omega_res_type') != 'not_applicable':
-        total_quality_points += s_omega * current_weights['OMEGA']
-        total_possible_points += current_weights['OMEGA']
-
-    # --- 6. RNA Suite Contribution ---
-    s_rna_suite = 1.0
-    if get_data('is_rna_residue', False):
-        if get_data('is_rna_suite_outlier', False):
-            s_rna_suite = 0.1
-        total_quality_points += s_rna_suite * current_weights['RNA_SUITE']
-        total_possible_points += current_weights['RNA_SUITE']
-
-    # --- 7. RNA Pucker Contribution ---
-    s_rna_pucker = 1.0
-    if get_data('is_rna_residue', False):
-        if get_data('is_rna_pucker_outlier', False):
-            s_rna_pucker = 0.1
-        total_quality_points += s_rna_pucker * current_weights['RNA_PUCKER']
-        total_possible_points += current_weights['RNA_PUCKER']
-
-    # --- 8. Bond Lengths Contribution ---
-    s_bonds = 1.0
-    if get_data('num_bond_outliers_res', 0) > 0:
-        s_bonds = 0.0 # Simple penalty for any bond outlier
-    total_quality_points += s_bonds * current_weights['BONDS']
-    total_possible_points += current_weights['BONDS']
-
-    # --- 9. Bond Angles Contribution ---
-    s_angles = 1.0
-    if get_data('num_angle_outliers_res', 0) > 0:
-        s_angles = 0.0 # Simple penalty for any angle outlier
-    total_quality_points += s_angles * current_weights['ANGLES']
-    total_possible_points += current_weights['ANGLES']
-
-    # --- 10. Chirality Contribution ---
-    s_chiral = 1.0
-    if get_data('num_chiral_outliers_res', 0) > 0:
-        s_chiral = 0.0
-    total_quality_points += s_chiral * current_weights['CHIRAL']
-    total_possible_points += current_weights['CHIRAL']
-
-    # --- 11. Steric Clash Contribution ---
-    s_clash = 1.0
-    num_bad_clashes = get_data('num_bad_clashes_res', 0) # Assumes you are still populating this simple count during parsing
+    # --- 1. Steric Clash Penalty ---
+    num_bad_clashes = get_data('num_bad_clashes_res', 0)
     if num_bad_clashes > 0:
-        s_clash = max(0.0, 1.0 - (0.5 * num_bad_clashes))
-        if num_bad_clashes > 2: s_clash = 0.0 # Critical failure threshold
-    total_quality_points += s_clash * current_weights['CLASH']
-    total_possible_points += current_weights['CLASH']
+        has_any_metric = True
+        worst_overlap = get_data('worst_clash_overlap', 0.0)
+        # Tier based on worst overlap magnitude (values are negative)
+        abs_overlap = abs(worst_overlap) if worst_overlap else 0.0
+        if abs_overlap > 0.7:
+            penalty += 3  # Severe clash
+        elif abs_overlap > 0.5:
+            penalty += 2  # Moderate clash
+        else:
+            penalty += 1  # Minor clash (0.4-0.5 range)
+        # Additional clashes beyond the first
+        if num_bad_clashes > 1:
+            penalty += (num_bad_clashes - 1)
 
+    # --- 2. Ramachandran Penalty ---
+    if get_data('ramalyze_type') not in ['not_applicable', 'not_evaluated']:
+        has_any_metric = True
+        if get_data('ramalyze_category') == 'outlier':
+            penalty += 3
 
-    # --- Final Normalization ---
-    if total_possible_points > 0:
-        final_score = total_quality_points / total_possible_points
-        return round(final_score, 4) # Round for consistency
+    # --- 3. Rotamer Penalty ---
+    if get_data('rotalyze_category') not in ['not_evaluated', None]:
+        has_any_metric = True
+        if get_data('rotalyze_category') == 'outlier':
+            penalty += 2
+
+    # --- 4. C-beta Deviation Penalty ---
+    if not get_data('is_glycine', False):
+        has_any_metric = True
+        if get_data('is_cbeta_outlier'):
+            deviation = get_data('cbeta_deviation', 0.0) or 0.0
+            if deviation > 0.5:
+                penalty += 2  # Severe distortion
+            else:
+                penalty += 1  # Standard outlier (>0.25)
+
+    # --- 5. CaBLAM Penalty ---
+    cablam_type = get_data('cablam_outlier_type')
+    if cablam_type not in ['not_evaluated', None]:
+        has_any_metric = True
+        if cablam_type == 'outlier':
+            penalty += 2
+        elif cablam_type == 'ca_geom_outlier':
+            penalty += 2
+        elif cablam_type == 'disfavored':
+            penalty += 1
+
+    # --- 6. Omega Angle Penalty ---
+    omega_type = get_data('omega_type')
+    if omega_type not in ['not_applicable', 'not_evaluated', None]:
+        has_any_metric = True
+        if omega_type == 'twisted':
+            penalty += 3
+        elif omega_type == 'cis' and not get_data('is_proline'):
+            penalty += 3  # Cis non-proline
+
+    # --- 7. Bond Length Penalty ---
+    num_bond_outliers = get_data('num_bond_outliers_res', 0)
+    if num_bond_outliers > 0:
+        has_any_metric = True
+        if num_bond_outliers >= 2:
+            penalty += 2
+        else:
+            penalty += 1
+
+    # --- 8. Bond Angle Penalty ---
+    num_angle_outliers = get_data('num_angle_outliers_res', 0)
+    if num_angle_outliers > 0:
+        has_any_metric = True
+        if num_angle_outliers >= 2:
+            penalty += 2
+        else:
+            penalty += 1
+
+    # --- 9. Chirality Penalty ---
+    if get_data('num_chiral_outliers_res', 0) > 0:
+        has_any_metric = True
+        penalty += 3
+
+    # --- 10. RNA Suite Penalty ---
+    if get_data('is_rna_residue', False):
+        has_any_metric = True
+        if get_data('is_rna_suite_outlier', False):
+            penalty += 2
+
+    # --- 11. RNA Pucker Penalty ---
+    if get_data('is_rna_residue', False):
+        has_any_metric = True
+        if get_data('is_rna_pucker_outlier', False):
+            penalty += 2
+
+    if has_any_metric:
+        return penalty
     else:
-        # If no metrics were applicable (e.g., a pure ligand without any standard validations)
-        return None # Or 1.0 if you prefer a perfect score for non-evaluated items
+        return None
 
 def use_segids_in_place_of_chainids(hierarchy, strict=False):
   use_segids = False

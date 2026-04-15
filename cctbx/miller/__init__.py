@@ -4362,20 +4362,27 @@ class array(set):
     d1 = f1.data()
     d2 = f2.data()
     s = flex.sort_permutation(ds)
-    ds = ds.select(s)
-    d1 = d1.select(s)
-    d2 = d2.select(s)
+    # [1:] excludes s=0 or d=-1
+    ds = ds.select(s)[1:]
+    d1 = d1.select(s)[1:]
+    d2 = d2.select(s)[1:]
+    del s
     # Get bins
     bins = bins_mixed(d_spacings_sorted=ds)
     # Compute FSC
     fsc = flex.double()
     d   = flex.double()
+    raw = []
     for bin in bins:
-      x = d1[bin[0]:bin[1]]
-      y = d2[bin[0]:bin[1]]
-      z = ds[bin[0]:bin[1]]
-      fsc.append(maptbx.cc_complex_complex(f_1 = x, f_2 = y))
+      l, r = bin[0], bin[1]
+      x = d1[l:r]
+      y = d2[l:r]
+      z = ds[l:r]
+      value = maptbx.cc_complex_complex(f_1 = x, f_2 = y)
+      fsc.append(value)
       d.append(flex.mean(z))
+      raw.append( (z[0], z[-1], 2./(z[0]+z[-1]), value) )
+
     d_inv = 1/d
     # Smooth FSC curve
     # Smoothing can change the input array size causing an assertion crash!
@@ -4400,7 +4407,7 @@ class array(set):
 
     s = flex.sort_permutation(d_inv)
     return group_args(
-      d=d.select(s), d_inv=d_inv.select(s), fsc=fsc.select(s))
+      raw=raw, d=d.select(s), d_inv=d_inv.select(s), fsc=fsc.select(s))
 
   def d_min_from_fsc(self, other=None, fsc_curve=None, fsc_cutoff=0.143):
     """

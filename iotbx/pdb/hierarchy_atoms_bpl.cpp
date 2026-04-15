@@ -106,6 +106,7 @@ namespace {
 #endif
       .def("extract_fp", extract_fp)
       .def("extract_fdp", extract_fdp)
+      .def("extract_resolution", extract_resolution)
       .def("extract_hetero", extract_hetero)
       .def("extract_element", extract_element, (arg("strip")=false))
       .def("extract_i_seq", extract_i_seq)
@@ -122,6 +123,7 @@ namespace {
 #endif
       .def("set_fp", set_fp, (arg("new_fp")), return_self<>())
       .def("set_fdp", set_fdp, (arg("new_fdp")), return_self<>())
+      .def("set_resolution", set_resolution, (arg("new_resolution")), return_self<>())
       .def("reset_serial", reset_serial, (arg("first_value")=1))
       .def("set_chemical_element_simple_if_necessary",
         set_chemical_element_simple_if_necessary, (

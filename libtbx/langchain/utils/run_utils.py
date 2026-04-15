@@ -116,9 +116,6 @@ def validate_api_keys(provider, debug_log=None):
     if not os.getenv("OPENAI_API_KEY"):
       return "OPENAI_API_KEY environment variable not set."
 
-  if not os.getenv("COHERE_API_KEY"):
-    return "COHERE_API_KEY environment variable not set."
-
   return None
 
 # =============================================================================
@@ -178,23 +175,25 @@ def setup_llms(provider, timeout, debug_log=None):
     debug_log = []
 
   try:
-    from libtbx.langchain import langchain_tools as lct
+    from libtbx.langchain.core.llm import get_expensive_llm
+    from libtbx.langchain.core.llm import get_cheap_llm
+
 
     debug_log.append("Setting up LLMs...")
 
-    expensive_llm, embeddings = lct.get_expensive_llm(
+    expensive_llm, embeddings = get_expensive_llm(
       provider=provider, timeout=timeout, json_mode=False
     )
 
     # Only create separate planning LLM for Ollama (needs JSON mode)
     if provider == 'ollama':
-      planning_llm, _ = lct.get_expensive_llm(
+      planning_llm, _ = get_expensive_llm(
         provider=provider, timeout=timeout, json_mode=True
       )
     else:
       planning_llm = expensive_llm
 
-    cheap_llm = lct.get_cheap_llm(provider=provider, timeout=timeout)
+    cheap_llm = get_cheap_llm(provider=provider, timeout=timeout)
 
     return expensive_llm, cheap_llm, planning_llm, embeddings
 

@@ -81,6 +81,9 @@ def exercise_atom():
   assert a.fdp == 0
   a.fdp = 0.2
   assert a.fdp == 0.2
+  assert a.resolution == 0
+  a.resolution = 3.5
+  assert a.resolution == 3.5
   assert not a.hetero
   a.hetero = True
   assert a.hetero
@@ -108,6 +111,7 @@ def exercise_atom():
     .set_uij(new_uij=(1.3,2.1,3.2,4.3,2.7,9.3))
     .set_fp(new_fp=0.3)
     .set_fdp(new_fdp=0.4)
+    .set_resolution(new_resolution=3.5)
     .set_hetero(new_hetero=True))
   if (pdb.hierarchy.atom.has_siguij()):
     assert a.set_siguij(new_siguij=(.1,.2,.3,.6,.1,.9)) is a
@@ -128,6 +132,7 @@ def exercise_atom():
   assert a.hetero
   assert approx_equal(a.fp, 0.3)
   assert approx_equal(a.fdp, 0.4)
+  assert approx_equal(a.resolution, 3.5)
   assert a.tmp == 0
   try: a.set_name(new_name="12345")
   except (ValueError, RuntimeError) as e:
@@ -155,6 +160,7 @@ def exercise_atom():
   assert ac.hetero
   assert approx_equal(a.fp, 0.3)
   assert approx_equal(a.fdp, 0.4)
+  assert approx_equal(a.resolution, 3.5)
   #
   for e in ["H", "H ", " H", "D", "D ", " D"]:
     a.element = e
@@ -4709,10 +4715,13 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
       (-1,-1,-1,-1,-1,-1)])
   new_fp = flex.double([0, 0.1, 0.2, 0, 0, 0, 0])
   new_fdp = flex.double([0, 0.2, 0.3, 0.1, 0, 0, 0])
+  new_res = flex.double([3.5, 3.5, 3.3, 3.3, 3.7, 3.7, 0])
   assert atoms.set_fp(new_fp=new_fp) is atoms
   assert atoms.set_fdp(new_fdp=new_fdp) is atoms
+  assert atoms.set_resolution(new_resolution=new_res) is atoms
   assert approx_equal(atoms.extract_fp(), new_fp)
   assert approx_equal(atoms.extract_fdp(), new_fdp)
+  assert approx_equal(atoms.extract_resolution(), new_res)
   #
   h = pdb_inp.construct_hierarchy(set_atom_i_seq=False, sort_atoms=False)
   for i in range(2):
@@ -5600,6 +5609,7 @@ ATOM     10  O
 
 def exercise_root_pickling():
   # XXX fp, fdp?
+  # XXX resolution is not working either
   pdb_inp = pdb.input(source_info=None, lines="""\
 MODEL        1
 ATOM      1  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
@@ -5624,13 +5634,28 @@ ENDMDL
   hierarchy = pdb_inp.construct_hierarchy()
   hierarchy.info.append("a")
   hierarchy.info.append("b")
+  new_fp = flex.double([0, 0.1, 0.2, 0, 0, 0])
+  new_fdp = flex.double([0, 0.2, 0.3, 0.1, 0, 0])
+  new_res = flex.double([3.5, 3.5, 3.3, 3.3, 3.7, 0])
+
+  # hierarchy.atoms().set_fp(new_fp=new_fp)
+  # hierarchy.atoms().set_fdp(new_fdp=new_fdp)
+  # hierarchy.atoms().set_resolution(new_resolution=new_res)
+  # print(list(hierarchy.atoms().extract_fdp()))
+
   s = pickle.dumps(hierarchy, 1)
   l = pickle.loads(s)
   assert not show_diff("\n".join(l.info), "\n".join(hierarchy.info))
   assert not show_diff(l.as_pdb_string(), hierarchy.as_pdb_string())
 
+  # atoms = l.atoms()
+  # assert approx_equal(atoms.extract_fp(), new_fp)
+  # assert approx_equal(atoms.extract_fdp(), new_fdp)
+  # assert approx_equal(atoms.extract_resolution(), new_res)
+
 def exercise_residue_pickling():
   # XXX fp, fdp?
+  # XXX resolution is probably not working either
   pdb_inp = pdb.input(source_info=None, lines="""\
 ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
 ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C

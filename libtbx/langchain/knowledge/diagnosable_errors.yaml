@@ -1,0 +1,216 @@
+# =============================================================================
+# PHENIX AI Agent - Diagnosable Terminal Errors
+# =============================================================================
+#
+# These errors cannot be auto-corrected.  When detected, the agent stops the
+# run, calls the LLM for a diagnosis, writes an HTML report, and raises Sorry.
+#
+# IMPORTANT: No error type here should overlap with recoverable_errors.yaml.
+#            Recoverable errors get retried; diagnosable errors stop the run.
+#
+# Fields per error type:
+#   description
+#       Human-readable label — appears in the Sorry message and as the HTML
+#       report title.
+#
+#   detection_patterns
+#       List of regex strings searched case-insensitively in the result/log
+#       text.  The first match wins.  Use re.DOTALL semantics (. matches \n).
+#
+#   diagnosis_hint
+#       Crystallographer's prior injected into the LLM prompt.  Should name
+#       the most likely root causes and point toward concrete fixes without
+#       hardcoding the answer.  Also used verbatim in the fallback (no-LLM)
+#       report so it must be useful on its own.
+#
+# To add a new entry: edit this file only — no Python code change needed.
+# =============================================================================
+
+errors:
+
+  # ---------------------------------------------------------------------------
+  # Unit cell / space group mismatch between input files
+  # ---------------------------------------------------------------------------
+  # Example error (phenix.refine, phenix.phaser, etc.):
+  #   Sorry: Crystal symmetry mismatch between different files.
+  #   File 1: a=34.5, b=34.5, c=34.5 Ang, alpha=90, beta=90, gamma=90 deg
+  #   File 2: a=39.6, b=45.2, c=51.3 Ang, alpha=90, beta=90, gamma=90 deg
+  # ---------------------------------------------------------------------------
+  crystal_symmetry_mismatch:
+    description: "Unit cell or space group mismatch between input files"
+    detection_patterns:
+      - "Crystal symmetry mismatch between different files"
+      - "Sorry.*symmetry mismatch"
+      - "Sorry.*unit cell.*mismatch"
+      - "Sorry.*space group.*incompatible"
+    diagnosis_hint: >
+      The error shows two unit cells that are numerically close but not
+      identical.  Common causes: (1) the reflection data and the model were
+      processed with slightly different unit cells — re-refine the model
+      against the current data before using it as a search model; (2) different
+      indexing conventions or origin shifts between programs; (3) the model
+      comes from a related but non-isomorphous crystal form.  Possible fix:
+      use phenix.fetch_pdb to obtain the deposited structure factors for the
+      model, or rerun phenix.refine allowing the unit cell to refine freely
+      (refinement.crystal_symmetry.unit_cell=None).
+
+  # ---------------------------------------------------------------------------
+  # Atomic model is entirely outside the cryo-EM map volume
+  # ---------------------------------------------------------------------------
+  # Example error (phenix.real_space_refine, phenix.map_correlations, etc.):
+  #   Sorry: Stopping as model is entirely outside map and wrapping=False
+  # This is also detected in workflow_state.py as a placement probe result;
+  # the duplicate pattern here acts as a safety net if the probe-crash handler
+  # did not fire (e.g. the job ran outside a probe cycle).
+  # ---------------------------------------------------------------------------
+  model_outside_map:
+    description: "Atomic model is entirely outside the cryo-EM map volume"
+    detection_patterns:
+      - "model is entirely outside map"
+      - "Stopping as model is entirely outside map"
+      - "model.*outside.*map.*wrapping=False"
+    diagnosis_hint: >
+      The PDB model coordinates are completely outside the map box.  This
+      almost always means the model has not been docked into the map.  A
+      common cause is that the model is a crystal structure with a large
+      unit cell (e.g., F432, a = 184 Ang) while the cryo-EM map covers only
+      a small extracted sub-volume in a P1 box.  Solution: run
+      phenix.dock_in_map to place the model into the map before any
+      refinement step.
+
+  # ---------------------------------------------------------------------------
+  # SHELX executables not installed
+  # ---------------------------------------------------------------------------
+  # Example error (phenix.autosol, phenix.hyss, etc.):
+  #   Cannot find SHELXD executable
+  # ---------------------------------------------------------------------------
+  shelx_not_installed:
+    description: "SHELX executable not found"
+    detection_patterns:
+      - "shelxe.*not found"
+      - "shelxd.*not found"
+      - "shelxc.*not found"
+      - "Cannot find.*shelx"
+      - "shelx.*executable.*not found"
+    diagnosis_hint: >
+      SHELX is a third-party program that must be installed separately.
+      It is free for non-commercial academic use.  Obtain it from
+      http://shelx.uni-goettingen.de, install the executables (shelxd,
+      shelxe, shelxc) so they are on your PATH, then re-run the agent.
+      Alternatively, use phenix.hyss (built-in, no extra installation
+      required) for the substructure search step instead of SHELXD.
+
+  # ---------------------------------------------------------------------------
+  # Unknown PHIL command-line parameter (agent injected a bad parameter name)
+  # ---------------------------------------------------------------------------
+  # Example error (any PHENIX program):
+  #   Sorry: Unknown command line parameter definition: unit_cell = 116.097 ...
+  #   It turns out there is no such parameter ...
+  #
+  # This fires when the agent appends a parameter that the target program's
+  # PHIL scope does not define.  It cannot be auto-corrected because the
+  # program won't start at all; human review of the parameter name is needed.
+  # ---------------------------------------------------------------------------
+  unknown_phil_parameter:
+    description: "Unrecognised command-line parameter rejected by PHENIX"
+    detection_patterns:
+      - "Unknown command line parameter definition"
+      - "Sorry.*no such parameter"
+      - "Sorry.*unknown.*parameter.*definition"
+      - "there is no such parameter"
+    diagnosis_hint: >
+      PHENIX rejected a parameter name passed on the command line — usually
+      because (1) the parameter belongs to a different program's PHIL scope,
+      (2) the fully-dotted path is wrong (e.g. "unit_cell=" instead of
+      "crystal_symmetry.unit_cell="), or (3) the program simply does not
+      expose that setting on the command line (it reads it from the input
+      files automatically).  Look at the parameter name in the error message
+      and check the program's PHIL definition with
+      "phenix.<program> --show-defaults" to find the correct name.
+
+  # ---------------------------------------------------------------------------
+  # Atom on or near a crystallographic special position
+  # ---------------------------------------------------------------------------
+  # Example error (phenix.refine):
+  #   Sorry: polymer crosses special position element:
+  #   atom        n   met            .   .   .  .  .
+  # This is a data/model problem: the atom's position coincides with a
+  # symmetry operator.  No parameter change can fix it.
+  # ---------------------------------------------------------------------------
+  polymer_special_position:
+    description: "Polymer atom on crystallographic special position"
+    detection_patterns:
+      - "polymer crosses special position"
+      - "Sorry.*crosses.*special position"
+      - "atom.*on.*special position"
+    diagnosis_hint: >
+      An atom in the model sits on or very near a crystallographic special
+      position (a site that is mapped onto itself by a symmetry operator).
+      This usually means the model was placed incorrectly during molecular
+      replacement (wrong copy number, origin shift, or enantiomorph).
+      Possible fixes: (1) re-run Phaser with a different number of copies
+      in the ASU, (2) try a different space group enantiomorph, (3) check
+      that the search model does not contain symmetry-related copies, or
+      (4) manually edit the model to move the offending atom away from the
+      special position before refinement.
+
+  # ---------------------------------------------------------------------------
+  # Unknown chemical element type in PDB file
+  # ---------------------------------------------------------------------------
+  # Example error (phenix.refine, phenix.real_space_refine, etc.):
+  #   Sorry: Unknown chemical element type:
+  #   "ATOM   1001  AU  AU    500 .*.        "
+  #   To resolve this problem, specify a chemical element type in
+  #   columns 77-78 of the PDB file, right justified (e.g. " C").
+  # The PDB has atoms with missing or invalid element symbols in
+  # columns 77-78.  The agent cannot edit PDB files — user must fix.
+  # ---------------------------------------------------------------------------
+  unknown_chemical_element:
+    description: "PDB file contains atoms with missing or invalid element types"
+    detection_patterns:
+      - "Unknown chemical element type"
+      - "specify a chemical element type in.*columns 77"
+    diagnosis_hint: >
+      A PDB file contains atoms whose chemical element type cannot be
+      determined.  This happens when columns 77-78 of the PDB file are
+      blank or contain an unrecognized symbol.  The fix is to edit the PDB
+      file and add the correct element symbols (e.g. " C", " N", " O",
+      "AU", "FE") right-justified in columns 77-78 of each ATOM/HETATM
+      record.  Common causes: (1) heavy-atom sites from experimental
+      phasing stored without element columns, (2) non-standard atom
+      names (e.g. "AU" for gold) that PHENIX cannot auto-detect, or
+      (3) PDB files from very old software that omits columns 77-78.
+
+  # NOTE: Python tracebacks (program crashes) are NOT listed here because
+  # the agent may be able to pivot to a different program and continue.
+  # Traceback detection is handled in the planning prompt (Fix 3) which
+  # tells the LLM to choose a different program rather than stopping the
+  # entire workflow.
+
+  # ---------------------------------------------------------------------------
+  # Reflection data without unit cell or space group (e.g. unmerged .sca)
+  # ---------------------------------------------------------------------------
+  # Example error (phenix.xtriage with .sca file):
+  #   Sorry: No unit cell info available.
+  #   Use keyword 'xray_data.unit_cell' to specify unit_cell
+  #   Cell and/or symmetry not specified in reflection file
+  # Unmerged scalepack/HKL files don't carry crystal symmetry.
+  # The agent cannot provide these parameters interactively.
+  # ---------------------------------------------------------------------------
+  missing_crystal_symmetry:
+    description: "Reflection data missing unit cell or space group"
+    detection_patterns:
+      - "No unit cell info available"
+      - "Cell and/or symmetry not specified"
+      - "Sorry.*No unit cell"
+    diagnosis_hint: >
+      The input reflection data (likely an unmerged scalepack .sca or
+      .hkl file) does not contain unit cell dimensions or space group
+      information.  Unlike MTZ files, scalepack format does not always
+      carry crystal symmetry.  To process this data, please run
+      phenix.xtriage from the PHENIX GUI where you can enter the unit
+      cell (a, b, c, alpha, beta, gamma) and space group interactively,
+      or convert the data to MTZ format first using
+      phenix.reflection_file_converter with explicit symmetry parameters:
+      phenix.reflection_file_converter data.sca --unit_cell="a b c al be ga"
+      --space_group="P222" --output_mtz=data.mtz

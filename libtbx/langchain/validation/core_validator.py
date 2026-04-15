@@ -7,7 +7,7 @@ This module handles:
 - General validation utilities
 
 Usage:
-    from libtbx.langchain.validation import validate_phenix_command, fix_command_syntax
+    from libtbx.langchain.validation.core_validator import validate_phenix_command, fix_command_syntax
 
     is_valid, error = validate_phenix_command(command)
     if not is_valid:
@@ -371,8 +371,8 @@ Return ONLY the fixed command. No explanation, no markdown.
 
 
     try:
-        from libtbx.langchain.model_setup import get_model
-        llm = get_model(expensive=False)
+        from libtbx.langchain.core.llm import get_cheap_llm
+        llm, _ = get_cheap_llm()
         response = llm.invoke(fix_prompt)
 
         fixed = response.content if hasattr(response, 'content') else str(response)

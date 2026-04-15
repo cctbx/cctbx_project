@@ -3,11 +3,11 @@ RAG (Retrieval-Augmented Generation) retriever and chain functions.
 
 This module handles:
 - Loading persisted vector databases
-- Creating reranking retrievers (using Cohere)
+- Creating reranking retrievers (using FlashRank, a local cross-encoder)
 - Building RAG chains for various purposes
 
 Usage:
-    from libtbx.langchain.rag import load_persistent_db, create_reranking_retriever
+    from libtbx.langchain.rag.retriever import load_persistent_db, create_reranking_retriever
 
     vectorstore = load_persistent_db(embeddings, db_dir='./docs_db')
     retriever = create_reranking_retriever(vectorstore, llm)
@@ -16,12 +16,33 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-import cohere
-from langchain_cohere import CohereRerank
-from langchain_classic.retrievers import ContextualCompressionRetriever
+from langchain_core.retrievers import BaseRetriever
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import PromptTemplate
 from langchain_chroma import Chroma
+assert PromptTemplate is not None
+
+
+class _CompressionRetriever(BaseRetriever):
+    """Minimal replacement for langchain ContextualCompressionRetriever.
+
+    Retrieves documents from a base retriever then reranks/compresses them
+    using a document compressor. Implements BaseRetriever so it works in
+    LCEL chains (e.g., retriever | format_docs | llm).
+
+    This replaces langchain.retrievers.ContextualCompressionRetriever which
+    was removed in langchain 1.0 (moved to langchain_classic).
+    """
+    base_compressor: object  # BaseDocumentCompressor
+    base_retriever: object   # BaseRetriever
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    def _get_relevant_documents(self, query, *, run_manager=None):
+        docs = self.base_retriever.invoke(query)
+        compressed = self.base_compressor.compress_documents(docs, query)
+        return list(compressed)
 
 
 # =============================================================================
@@ -50,18 +71,21 @@ def load_persistent_db(embeddings, db_dir: str = "./docs_db", collection_name: s
 # Retriever Creation
 # =============================================================================
 
-def create_reranking_retriever(vectorstore, llm, timeout: int = 60, top_n: int = 8):
+def create_reranking_retriever(vectorstore, llm, timeout=60, top_n=8):
     """
-    Creates a retriever with Cohere reranking for improved relevance.
+    Creates a retriever with FlashRank reranking for improved relevance.
+
+    Uses a local cross-encoder model (ms-marco-MiniLM-L-12-v2, ~34MB) to
+    rerank documents. Runs on CPU, no API key required.
 
     Args:
         vectorstore: Chroma vector store to retrieve from
-        llm: Language model (not directly used, but kept for API compatibility)
-        timeout: Timeout in seconds for Cohere API
+        llm: Language model (not directly used, kept for API compatibility)
+        timeout: Unused, kept for backward compatibility
         top_n: Number of top results to return after reranking
 
     Returns:
-        ContextualCompressionRetriever: Retriever with reranking
+        BaseRetriever: Retriever with reranking
 
     Example:
         retriever = create_reranking_retriever(vectorstore, llm, top_n=5)
@@ -69,14 +93,15 @@ def create_reranking_retriever(vectorstore, llm, timeout: int = 60, top_n: int =
     """
     base_retriever = vectorstore.as_retriever(search_kwargs={"k": 20})
 
-    cohere_client = cohere.ClientV2(
-        api_key=os.getenv("COHERE_API_KEY"),
-        timeout=timeout
+    # Lazy import: only needed when actually reranking (not on client in server mode)
+    from langchain_community.document_compressors import FlashrankRerank
+
+    reranker = FlashrankRerank(
+        model="ms-marco-MiniLM-L-12-v2",
+        top_n=top_n,
     )
 
-    reranker = CohereRerank(client=cohere_client, model="rerank-english-v3.0", top_n=top_n)
-
-    compression_retriever = ContextualCompressionRetriever(
+    compression_retriever = _CompressionRetriever(
         base_compressor=reranker, base_retriever=base_retriever
     )
 

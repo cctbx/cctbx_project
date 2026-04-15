@@ -28,7 +28,8 @@ from __future__ import absolute_import, division, print_function
 
 from abc import ABC, abstractmethod
 from typing import Optional
-
+assert Optional is not None
+assert abstractmethod is not None
 
 class ProgramValidator(ABC):
     """

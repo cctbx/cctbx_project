@@ -196,7 +196,7 @@ if __name__ == '__main__':
   # run a similar test for a B matrix
   try:
     import dxtbx # import dependency
-  except ImportError:
+  except (ImportError, KeyError):
     pass
   else:
     test_B_matrix()

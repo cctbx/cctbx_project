@@ -5,7 +5,7 @@ This module maintains a registry of all program validators,
 allowing easy lookup by program name.
 
 Usage:
-    from libtbx.langchain.validation import get_validator
+    from libtbx.langchain.validation.registry import get_validator
 
     validator = get_validator('phenix.refine')
     if validator:
@@ -15,6 +15,7 @@ from __future__ import absolute_import, division, print_function
 
 from libtbx.langchain.validation.base import ProgramValidator
 from libtbx.langchain.validation.phenix_refine import RefineValidator
+assert ProgramValidator is not None
 
 
 # =============================================================================

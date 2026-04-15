@@ -1,0 +1,7 @@
+HEADER    CRYO-EM MODEL                           01-JAN-25   XXXX
+REMARK   Predicted and docked model - CC 0.65
+ATOM      1  N   ALA A   1       0.000   0.000   0.000  1.00 50.00           N
+ATOM      2  CA  ALA A   1       1.458   0.000   0.000  1.00 50.00           C
+ATOM      3  C   ALA A   1       2.009   1.420   0.000  1.00 50.00           C
+ATOM      4  O   ALA A   1       1.246   2.390   0.000  1.00 50.00           O
+END

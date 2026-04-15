@@ -41,6 +41,10 @@ approach = *add remove
   .type = choice
   .short_caption = Add or remove Hydrogens
   .help = Determines whether Reduce will add (and optimize) or remove Hydrogens from the model
+skip_water = True
+  .type = bool
+  .short_caption = Do not add H to water
+  .help = Do not add H to water
 keep_existing_H = False
   .type = bool
   .short_caption = Do not remove Hydrogens in the original model
@@ -746,7 +750,7 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
 
   # Add spheres for ions (was single-atom Het groups in original Flipkins?)
   ret += '@subgroup {het groups} dominant\n'
-  ret += '@spherelist {het M} color= gray  radius= 0.5  nubutton master= {hets}\n'
+  ret += '@spherelist {het M} color= gray radius= 0.5 nobutton master= {hets}\n'
   for a in model.get_atoms():
     if a.element_is_ion():
       ret += _AddPosition(a, '', fileBaseName) + '\n'
@@ -1042,7 +1046,7 @@ NOTES:
       model = self.model,
       use_neutron_distances=self.params.use_neutron_distances,
       n_terminal_charge=self.params.n_terminal_charge,
-      exclude_water=True,
+      exclude_water = self.params.skip_water,
       stop_for_unknowns=self.params.stop_on_any_missing_hydrogen,
       keep_existing_H=self.params.keep_existing_H
     )

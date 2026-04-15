@@ -900,6 +900,8 @@ class manager(Base_geometry):
   def remove_secondary_structure_restraints(self, sites_cart):
     bp_origin_id = origin_ids.get_origin_id('hydrogen bonds')
     bonds_to_remove = []
+    self.reset_internals()
+    self.pair_proxies(sites_cart=sites_cart)
     for proxy_type in self.get_all_bond_proxies():
       for proxy in proxy_type:
         if proxy.origin_id == bp_origin_id:
@@ -1897,26 +1899,6 @@ class manager(Base_geometry):
                                       tempbuffer.getvalue()[start:]
                                      ),
             file=f)
-
-# This should be in model class?
-#  def nb_overlaps_info(
-#    self,
-#    sites_cart,
-#    hd_sel,
-#    macro_mol_sel=None,
-#    site_labels=None):
-#    """ non-bonded overlaps information """
-#    from cctbx.geometry_restraints.nonbonded_overlaps import info
-#    if not macro_mol_sel:
-#      from cctbx.geometry_restraints.nonbonded_overlaps import get_macro_mol_sel
-#      macro_mol_sel = get_macro_mol_sel(pdb_processed_file=self)
-#
-#    return info(
-#      geometry_restraints_manager=self,
-#      macro_molecule_selection=macro_mol_sel,
-#      sites_cart=sites_cart,
-#      hd_sel=hd_sel,
-#      site_labels=site_labels).result
 
   def _bond_generator(self):
     simple, asu = self.get_all_bond_proxies()

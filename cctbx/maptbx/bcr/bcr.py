@@ -1119,11 +1119,6 @@ def InputScat(filedata, Badd):
 #============================
 
 def SFactG(ScatAtom,Resolution,NSgrid) :
-    print(ScatAtom)
-    print(Resolution)
-    print(NSgrid)
-    assert 0
-
     ScatFunc = [0.0 for ig in range(NSgrid+1)]
 
     Smax    = 1.0 / Resolution
@@ -1377,10 +1372,11 @@ def RefinedTable(AtomType,Resolutions,DistMax,Ngrid,Terms_Resol,
 #####################################################
 
 def compute_tables(
+      DistMax,
+      Ngrid, # grid number for atomic images
+      scattering_table,
       MinResolution = 4.0,
       MaxResolution = 4.0,
-      DistMax       = 5.0,
-      scattering_table = "wk1995",
       TypesAtoms = ["C",]):
 
   fileBCRlog = None #open('BCR.log', 'w')
@@ -1393,7 +1389,6 @@ def compute_tables(
   epsp      = 0.000                # peak limit value with respect to the central value
   kpres     = 1                    # precision to be defined in absolute values
   Badd      = 0.0                  # Badd (normally zero)
-  Ngrid     = 2000                 # grid number for atomic images
   NSgrid    = 2000                 # grid number for scattering function
   Precision = 0.99                 # part of the local max next to the last; to estimate accuracy limit
   MaxTerms  = 50                   # max allowed number of terms
@@ -1507,27 +1502,11 @@ def compute_tables(
 
 
          o = maptbx.atom_curves(scattering_type=AtomType, scattering_table=scattering_table)
-         # SLOW VERSION and also poor -- not full longer curve
-         #oresult = o.image(
-         #     d_min=Resolution,
-         #     b_iso=0,
-         #     d_max = None,
-         #     radius_min = 0,
-         #     radius_max = DistImage*Resolution,
-         #     radius_step = StepImage*Resolution,
-         #     n_integration_steps = 2000)
-         #Image = oresult.image_values
-         #
-         # FAST VERSION:
-         #
          v = list(o.scr.as_type_gaussian_dict().values())[0]
          ff_AU_style = tuple(v.array_of_a()) + (v.c(),) + tuple(v.array_of_b()) + (0,)
-         Image = maptbx.atom_image_fast(
-           ff_packed = ff_AU_style,
-           d_min     = Resolution,
-           n_grid    = NSgrid,
-           dist_max  = DistMax,
-           scaled    = True)
+         ff_AU_style = [round(_,6) for _ in ff_AU_style]
+         ScatFunc = SFactG(ff_AU_style,Resolution,NSgrid)
+         Image = AtomImage(ScatFunc,Resolution,DistImage*Resolution,StepImage*Resolution)
 
          NGridImage = len(Image)
          Distance   = [ id * StepImage for id in range(NGridImage)]
@@ -1701,28 +1680,8 @@ def compute_tables(
              #
              #Image = AtomImage(ScatFunc,Resolution,DistImage*Resolution,StepImage*Resolution)
 
-             o = maptbx.atom_curves(scattering_type=AtomType, scattering_table=scattering_table)
-             #oresult = o.image(
-             #     d_min=Resolution,
-             #     b_iso=0,
-             #     d_max = None,
-             #     radius_min = 0,
-             #     radius_max = DistImage*Resolution,
-             #     radius_step = StepImage*Resolution,
-             #     n_integration_steps = 2000)
-             #Image = oresult.image_values
-
-             #
-             # FAST VERSION:
-             #
-             v = list(o.scr.as_type_gaussian_dict().values())[0]
-             ff_AU_style = tuple(v.array_of_a()) + (v.c(),) + tuple(v.array_of_b()) + (0,)
-             Image = maptbx.atom_image(
-               ff_packed = ff_AU_style,
-               d_min     = Resolution,
-               n_grid    = NSgrid,
-               dist_max  = DistMax,
-               scaled    = True)
+             ScatFunc = SFactG(ff_AU_style,Resolution,NSgrid)
+             Image = AtomImage(ScatFunc,Resolution,DistImage*Resolution,StepImage*Resolution)
 
              NGridImage = len(Image)
              Distance   = [ id * StepImage for id in range(NGridImage)]

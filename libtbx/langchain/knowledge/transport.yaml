@@ -1,0 +1,232 @@
+# =============================================================================
+# PHENIX AI Agent - Transport Configuration
+# =============================================================================
+# This file configures how data is sanitized and encoded for transport
+# between client and server.
+#
+# Sanitization Order (important!):
+# 1. Remove ZZxxZZ markers (before truncation to avoid splitting markers)
+# 2. Truncate long quoted strings
+# 3. Replace tabs and other characters
+# 4. Remove control characters
+# 5. Apply field-specific max length truncation
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# REST Encoding Markers
+# -----------------------------------------------------------------------------
+# These are the ZZxxZZ markers used by phenix.rest for encoding special chars.
+# We need to remove these from input data to prevent double-encoding issues.
+
+encoding_markers:
+  ZZCRZZ: "\n"      # Carriage return / newline
+  ZZLBZZ: "{"       # Left brace
+  ZZRBZZ: "}"       # Right brace
+  ZZSCZZ: ";"       # Semicolon
+  ZZHAZZ: "#"       # Hash
+  ZZTAZZ: "\t"      # Tab
+  ZZDQZZ: '"'       # Double quote
+  ZZSQZZ: "'"       # Single quote
+  ZZSRZZ: "`"       # Backtick
+  ZZEXZZ: "!"       # Exclamation
+  ZZDSZZ: "$"       # Dollar sign
+
+# Pattern to match any marker (used for removal)
+marker_pattern: 'ZZ[A-Z]{2}ZZ'
+
+# -----------------------------------------------------------------------------
+# Character Replacements
+# -----------------------------------------------------------------------------
+# Characters that should be replaced (not removed) during sanitization.
+
+replacements:
+  "\t": " "         # Tab -> space (tabs break REST transport)
+  "\r": ""          # Carriage return -> remove (normalize line endings)
+
+# -----------------------------------------------------------------------------
+# Control Character Handling
+# -----------------------------------------------------------------------------
+# Control characters (ASCII 0-31, 127) that should be removed.
+# Some are preserved for readability.
+
+control_chars:
+  # Remove these (hex ranges)
+  remove:
+    - "00-08"       # NULL through BACKSPACE
+    - "0B"          # Vertical tab
+    - "0C"          # Form feed  
+    - "0E-1F"       # Shift out through Unit separator
+    - "7F"          # DEL
+  
+  # Preserve these
+  preserve:
+    - "0A"          # Newline (\n) - needed for log readability
+    # Note: Tab (09) is handled by replacements above
+
+# -----------------------------------------------------------------------------
+# Quoted String Truncation
+# -----------------------------------------------------------------------------
+# Long quoted strings (like HHblits pdb70_text output) can be truncated
+# to reduce payload size without losing important information.
+
+quoted_string_truncation:
+  enabled: true
+  
+  # Quote characters to look for
+  quote_chars:
+    - "'"           # Single quotes (safe - not used in JSON structure)
+    # Note: Double quotes are NOT included - they're part of JSON syntax
+  
+  # Default max length for quoted content
+  default_max_length: 500
+  
+  # Truncation marker
+  truncation_marker: "...[truncated]"
+  
+  # Keep beginning (usually has context like variable names)
+  keep_beginning: true
+
+# -----------------------------------------------------------------------------
+# Field-Specific Settings
+# -----------------------------------------------------------------------------
+# Each field can have its own sanitization rules and limits.
+
+fields:
+  # === REQUEST FIELDS (Client -> Server) ===
+  
+  request:
+    log_content:
+      description: "Program output from previous command"
+      max_length: 50000
+      sanitize: true
+      truncate_quotes: true
+      quote_max_length: 500
+    
+    user_advice:
+      description: "User-provided instructions"
+      max_length: 10000
+      sanitize: true
+      truncate_quotes: false  # User input should be preserved
+    
+    # History is a list of records from previous cycles
+    history:
+      type: list
+      item_fields:
+        program:
+          description: "Program name that was run"
+          max_length: 100
+          sanitize: true
+        
+        command:
+          description: "Full command that was executed"
+          max_length: 2000
+          sanitize: true
+        
+        result:
+          description: "Brief result/output from the program"
+          max_length: 1000
+          sanitize: true
+          truncate_quotes: true
+          quote_max_length: 200
+        
+        output_files:
+          description: "List of output file paths"
+          type: list
+          sanitize: false  # File paths should not be modified
+        
+        metrics:
+          description: "Extracted metrics from log parsing"
+          type: dict
+          sanitize: recursive
+          max_length_per_value: 500
+    
+    # Session state fields
+    session_state:
+      type: dict
+      fields:
+        resolution:
+          type: float
+          sanitize: false
+        
+        experiment_type:
+          type: string
+          sanitize: false
+          allowed_values: ["xray", "cryoem"]
+        
+        rfree_mtz:
+          type: string
+          sanitize: false  # File path
+        
+        best_files:
+          type: dict
+          sanitize: false  # File paths
+    
+    # Settings are config values, not user content
+    settings:
+      sanitize: false
+  
+  # === RESPONSE FIELDS (Server -> Client) ===
+  
+  response:
+    decision:
+      type: dict
+      fields:
+        program:
+          max_length: 100
+          sanitize: true
+        
+        command:
+          max_length: 5000
+          sanitize: true
+        
+        reasoning:
+          description: "LLM explanation of decision"
+          max_length: 5000
+          sanitize: true
+        
+        strategy:
+          type: dict
+          sanitize: false
+    
+    stop_reason:
+      max_length: 500
+      sanitize: true
+    
+    metadata:
+      type: dict
+      fields:
+        warnings:
+          type: list
+          item_max_length: 500
+          sanitize: true
+        
+        red_flags:
+          type: list
+          item_max_length: 500
+          sanitize: true
+    
+    # Debug log can be large
+    debug_log:
+      type: list
+      item_max_length: 1000
+      sanitize: true
+    
+    # History record returned to client
+    history_record:
+      type: dict
+      # Uses same schema as request.history item_fields
+      inherit: request.history.item_fields
+
+# -----------------------------------------------------------------------------
+# Performance Settings
+# -----------------------------------------------------------------------------
+
+performance:
+  # Cache the loaded config
+  cache_config: true
+  
+  # Maximum recursion depth for nested structures
+  max_recursion_depth: 10
+  
+  # Log sanitization statistics (for debugging)
+  log_stats: false
