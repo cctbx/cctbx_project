@@ -11,7 +11,6 @@ import os
 import sys
 
 import libtbx.load_env
-from libtbx.test_utils import show_diff
 import iotbx.cif
 
 
