@@ -118,10 +118,12 @@ Token Tokenizer::read_quoted(char delim, int tok_line, int tok_col) {
   while (!at_end()) {
     char c = *cur_;
     if (c == delim) {
-      // CIF 1.1 (section 2.2.7.3): the closing delimiter of a quoted
-      // string is only recognised as such when followed by whitespace
-      // or end-of-input. An embedded delimiter followed by any other
-      // character is part of the string content. This is what lets
+      // CIF 1.1 syntax spec, paragraph 15
+      // (https://www.iucr.org/resources/cif/spec/version1.1/cifsyntax):
+      // a quote-delimited character string may contain instances of
+      // the delimiter provided they are not followed by whitespace.
+      // The closing `'` or `"` is recognised only when followed by
+      // whitespace or end-of-input. This is what lets
       //   'N-METHYL-PYRIDOXAL-5'-PHOSPHATE'
       // parse as a single value (the inner `'` precedes `-`, not ws).
       char next = peek2();
@@ -212,7 +214,9 @@ Token Tokenizer::read_semicolon_field(int tok_line, int tok_col) {
     }
   }
   // Reached EOF without finding a closing ';' at column 1. CIF 1.1
-  // §2.2.7.4 requires the terminator to be the first character of a
+  // syntax spec, paragraph 17
+  // (https://www.iucr.org/resources/cif/spec/version1.1/cifsyntax)
+  // requires the terminator to be `;` as the first character of a
   // line, so this is a syntax error — raise rather than silently
   // returning a partial value (which would mask malformations like
   // a trailing mid-line `;` that the user mistook for a terminator).

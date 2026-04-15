@@ -1,6 +1,8 @@
-"""CIF 1.1 §2.2.7.4: the closing delimiter of a semicolon text field
-must be a `;` at column 1 of a new line. An unterminated field (no
-such closer before EOF) is a syntax error.
+"""CIF 1.1 syntax spec, paragraph 17
+(https://www.iucr.org/resources/cif/spec/version1.1/cifsyntax): a
+semicolon text field is delimited by `;` appearing as the first
+character of a line. An unterminated field (no such closer before
+EOF) is a syntax error.
 
 Previously xcif returned a partial TOKEN_VALUE for unterminated fields
 and the parse succeeded silently — masking real malformations.

@@ -1,6 +1,9 @@
-"""CIF 1.1 quoted-string delimiter rule: a ' (or ") only closes a
-single-(double-)quoted string when followed by whitespace or EOL.
-An embedded delimiter followed by a non-whitespace char is part of
+"""CIF 1.1 syntax spec, paragraph 15
+(https://www.iucr.org/resources/cif/spec/version1.1/cifsyntax): a
+quote-delimited string may contain instances of the delimiter
+provided they are not followed by whitespace. The closing `'` (or
+`"`) is only recognised when followed by whitespace or EOL; an
+embedded delimiter followed by a non-whitespace char is part of
 the string content.
 
 Motivating case — cctbx monomer library, mon_lib_list.cif line 1688:
@@ -35,7 +38,7 @@ def test_apostrophe_followed_by_letter_is_embedded():
 
 def test_double_quote_followed_by_letter_is_embedded():
   # No space before `once` — else the `" ` sequence would close the
-  # string per CIF 1.1 2.2.7.3.
+  # string per CIF 1.1 paragraph 15.
   doc = xcif_ext.parse('data_t\n_a "say "hi"once"\n')
   assert doc[0].find_value("_a") == 'say "hi"once'
 

@@ -1,9 +1,10 @@
 // cctbx_project/xcif/regression/cpp/tst_semicolon_field_strict.cpp
 //
-// CIF 1.1 §2.2.7.4: a semicolon text field must be terminated by `;`
-// appearing as the first character of a line. An unterminated field
-// (EOF before the closing `;` at column 1, or only a mid-line `;`) is
-// a syntax error.
+// CIF 1.1 syntax spec, paragraph 17
+// (https://www.iucr.org/resources/cif/spec/version1.1/cifsyntax):
+// a semicolon text field is delimited by `;` appearing as the first
+// character of a line. An unterminated field (EOF before the closing
+// `;` at column 1, or only a mid-line `;`) is a syntax error.
 //
 // xcif previously returned a partial TOKEN_VALUE and let the parse
 // succeed, silently accepting content that has no closing delimiter.

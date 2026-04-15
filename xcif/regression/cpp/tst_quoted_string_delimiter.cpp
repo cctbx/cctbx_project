@@ -1,9 +1,11 @@
 // cctbx_project/xcif/regression/cpp/tst_quoted_string_delimiter.cpp
 //
-// CIF 1.1 requires that the closing delimiter of a quoted string
-// (' for single, " for double) is only treated as a close when it is
-// followed by whitespace or end-of-input. An embedded delimiter
-// followed by a non-whitespace character is part of the string.
+// CIF 1.1 syntax spec, paragraph 15
+// (https://www.iucr.org/resources/cif/spec/version1.1/cifsyntax):
+// a quote-delimited character string may contain instances of the
+// delimiter (' for single, " for double) provided they are not
+// followed by whitespace. The closing delimiter is only recognised
+// as such when it is followed by whitespace or end-of-input.
 //
 // Motivating case — cctbx monomer library, mon_lib_list.cif line 1688:
 //   'N-METHYL-PYRIDOXAL-5'-PHOSPHATE     '
@@ -65,9 +67,9 @@ void test_apostrophe_followed_by_letter_is_embedded() {
 }
 
 void test_double_quote_followed_by_letter_is_embedded() {
-  // Same rule applies to double-quoted strings.
+  // Same rule applies to double-quoted strings (paragraph 15).
   // Note the absence of a space between the inner `"` and `once` —
-  // a space there would close the string (CIF 1.1 2.2.7.3).
+  // a space there would close the string.
   CHECK_EQ(nth_value("_a \"say \"hi\"once\"\n", 0),
            std::string("say \"hi\"once"));
 }
