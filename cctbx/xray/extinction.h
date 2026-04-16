@@ -61,9 +61,9 @@ namespace cctbx { namespace xray {
     {
       FloatType l = wl == 0 ? this->wavelength : wl;
       //const FloatType sin_2t = u_cell.sin_two_theta(h, l);
-      const double x = u_cell.d_star_sq(h) * l * l * 0.25;
-      const double sin_2t =  std::sqrt(std::abs(x * (1 - x)));
-      return fc_sq*std::pow(l,3) * 0.001/(sin_2t*2);
+      const double sin_t_sq = u_cell.d_star_sq(h) * l * l * 0.25;
+      const double sin_2t = 2 * std::sqrt(std::abs(sin_t_sq * (1 - sin_t_sq)));
+      return fc_sq * l * l * l * 0.001 / (sin_2t);
     }
 
     uctbx::unit_cell const &u_cell;

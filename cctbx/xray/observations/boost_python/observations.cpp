@@ -106,6 +106,7 @@ namespace {
         .add_property("indices", make_function(&obst::indices, rbv))
         .add_property("data", make_function(&obst::data, rbv))
         .add_property("sigmas", make_function(&obst::sigmas, rbv))
+        .add_property("wavelengths", make_function(&obst::wavelengths, rbv))
         .add_property("twin_fractions", make_function(&obst::twin_fractions, rbv))
         .add_property("merohedral_components", make_function(&obst::merohedral_components, rbv))
         .add_property("measured_scale_indices", make_function(&obst::measured_scale_indices, rbv))
@@ -113,6 +114,7 @@ namespace {
         .def("detwin", detwin)
         .def("customized_detwin", customized_detwin)
         .def("twin", twin)
+        .def("has_wavelengths", &obst::has_wavelengths)
         ;
 
       typedef typename obst::iterator itrt;
