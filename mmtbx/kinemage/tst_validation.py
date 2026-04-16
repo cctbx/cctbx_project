@@ -205,6 +205,78 @@ def exercise_make_multikin():
   print("  exercise_make_multikin: OK")
 
 
+def exercise_build_kinemage_from_model():
+  """Test the high-level build_kinemage_from_model helper with an
+  mmtbx.model.manager input (no explicit hydrogens)."""
+  from mmtbx.kinemage.validation import build_kinemage_from_model
+  import mmtbx.model
+  from iotbx import pdb
+
+  pdb_io = pdb.input(source_info=None, lines=pdb_str)
+  model = mmtbx.model.manager(model_input=pdb_io)
+
+  # probe_dots_kin="" skips the (expensive) probe2 call — we just want to
+  # exercise the hash/bond/validator plumbing here.
+  kin_out = build_kinemage_from_model(
+      model=model, pdbID="model_test", probe_dots_kin="")
+
+  assert "@kinemage 1" in kin_out, "Missing @kinemage header"
+  assert "@group {model_test}" in kin_out, "Missing @group"
+  assert "@subgroup" in kin_out, "Missing @subgroup"
+  assert "@vectorlist {mc}" in kin_out, "Missing mainchain vectorlist"
+  assert "master= {mainchain}" in kin_out, "Missing mainchain master"
+  assert "@vectorlist {Calphas}" in kin_out, "Missing Calphas vectorlist"
+  # Probe dots were suppressed — should not contain probe master
+  assert "master= {dots}" not in kin_out, \
+      "probe_dots_kin='' should suppress probe dots"
+  assert isinstance(kin_out, str)
+  print("  exercise_build_kinemage_from_model: OK")
+
+
+def exercise_build_kinemage_from_model_with_hydrogens():
+  """Test that build_kinemage_from_model renders H sticks when the model has
+  hydrogens placed. This regression-guards the bug where the non-H hierarchy
+  was fed into _build_kinemage and no H were ever drawn."""
+  from mmtbx.kinemage.validation import build_kinemage_from_model
+  from mmtbx.hydrogens import reduce_hydrogen
+  import mmtbx.model
+  from iotbx import pdb
+
+  pdb_io = pdb.input(source_info=None, lines=pdb_str)
+  model = mmtbx.model.manager(model_input=pdb_io)
+
+  # Place hydrogens with reduce2 so the hierarchy carries H atoms.
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
+      model=model,
+      use_neutron_distances=False,
+      n_terminal_charge="residue_one",
+      exclude_water=True,
+      stop_for_unknowns=False,
+      keep_existing_H=False)
+  reduce_add_h_obj.run()
+  hmodel = reduce_add_h_obj.get_model()
+
+  # Confirm the H model actually has H atoms before testing the kinemage side.
+  n_h = sum(1 for atom in hmodel.get_hierarchy().atoms()
+            if atom.element.strip() in ("H", "D"))
+  assert n_h > 0, \
+      "Test setup error: reduce2 did not add hydrogens to the model"
+
+  kin_out = build_kinemage_from_model(
+      model=hmodel, pdbID="hmodel_test", probe_dots_kin="")
+
+  # With H in the hierarchy and bond_hash, _build_kinemage should emit
+  # H vectorlists via get_kin_lots -> _draw_residue_bonds.
+  has_mc_h = "@vectorlist {mc H}" in kin_out
+  has_sc_h = "@vectorlist {sc H}" in kin_out
+  assert has_mc_h or has_sc_h, (
+      "Expected at least one H vectorlist ({mc H} / {sc H}) "
+      "in kinemage built from H-added model")
+  assert "master= {H's}" in kin_out, \
+      "Expected master= {H's} declaration when H sticks are drawn"
+  print("  exercise_build_kinemage_from_model_with_hydrogens: OK")
+
+
 def exercise_helper_functions():
   """Test the extracted helper functions individually."""
   from mmtbx.kinemage.validation import (
@@ -1087,6 +1159,8 @@ def run():
   exercise_disulfide_bonds()
   exercise_make_multikin_with_ribbons()
   exercise_make_multikin_with_disulfide()
+  exercise_build_kinemage_from_model()
+  exercise_build_kinemage_from_model_with_hydrogens()
   exercise_ribbon_rendering()
   exercise_ribbon_in_kinemage()
   print("All tests passed.")
