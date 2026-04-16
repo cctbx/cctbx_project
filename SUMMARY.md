@@ -53,3 +53,6 @@ Tune residue score: use non-linear power curve (exponent 1.3) for clash severity
 
 ## 2026-03-28
 Pass `useNeutronDistances=nuclear` to the reduce2 Optimizer call in `clashscore2.py`, so neutron-distance models use correct hydrogen placement during clash analysis.
+
+## 2026-04-16
+Add `build_kinemage_from_model()` high-level helper in `mmtbx/kinemage/validation.py` that takes an `mmtbx.model.manager` and handles the bond_hash / ss_bonds / validator / ss-annotation / probe-dots plumbing internally. Callers may inject pre-run validator results or probe dots. Add two regression tests covering the H and non-H paths.

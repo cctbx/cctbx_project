@@ -1000,6 +1000,125 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
   kin_out += get_footer()
   return kin_out
 
+def build_kinemage_from_model(
+    model,
+    pdbID="PDB",
+    rot_outliers=None,
+    rama_result=None,
+    cb_result=None,
+    restraints_result=None,
+    omega_result=None,
+    rna_puckers_result=None,
+    cablam_result=None,
+    ss_annotation=None,
+    probe_dots_kin=None,
+    keep_hydrogens=False):
+  """High-level kinemage builder that takes an mmtbx.model.manager.
+
+  Encapsulates the i_seq_name_hash / bond_hash / ss_bonds / sites_cart plumbing
+  that _build_kinemage requires. Callers may inject already-run validator
+  results, a pre-computed secondary-structure annotation, and pre-computed
+  probe dots to avoid duplicated work.
+
+  Args:
+    model: mmtbx.model.manager. If it has no restraints manager, one will be
+      attached via .process(make_restraints=True).
+    pdbID: structure identifier string.
+    rot_outliers, rama_result, cb_result, restraints_result, omega_result,
+      rna_puckers_result, cablam_result: pre-run validator results. Any that
+      are None will be run internally with outliers_only=True.
+    ss_annotation: iotbx.pdb.secondary_structure.annotation, or None to
+      compute one via mmtbx.secondary_structure.manager (search_method=from_ca).
+    probe_dots_kin: pre-computed probe dots kinemage string. If None,
+      make_probe_dots_from_model(model) is called. Pass "" to suppress.
+    keep_hydrogens: only used for the make_probe_dots() fallback inside
+      _build_kinemage when probe_dots_kin is None and the fallback path fires.
+
+  Returns:
+    The kinemage string.
+  """
+  if model.get_restraints_manager() is None:
+    model.process(make_restraints=True)
+
+  hierarchy = model.get_hierarchy()
+  geometry = model.get_restraints_manager().geometry
+
+  i_seq_name_hash = build_name_hash(pdb_hierarchy=hierarchy)
+  sites_cart = hierarchy.atoms().extract_xyz()
+  flags = geometry_restraints.flags.flags(default=True)
+  pair_proxies = geometry.pair_proxies(flags=flags, sites_cart=sites_cart)
+  bond_proxies = pair_proxies.bond_proxies
+  bond_hash = _build_bond_hash(bond_proxies, i_seq_name_hash)
+  ss_bonds = _build_ss_bond_list(bond_proxies, i_seq_name_hash)
+
+  has_protein = any(chain.is_protein()
+                    for mdl in hierarchy.models() for chain in mdl.chains())
+  has_rna = any(chain.is_na()
+                for mdl in hierarchy.models() for chain in mdl.chains())
+
+  if rot_outliers is None:
+    rot_outliers = rotalyze(pdb_hierarchy=hierarchy, outliers_only=True)
+  if rama_result is None:
+    rama_result = ramalyze(pdb_hierarchy=hierarchy, outliers_only=True)
+  if cb_result is None:
+    cb_result = cbetadev(pdb_hierarchy=hierarchy, outliers_only=True)
+  if omega_result is None:
+    omega_result = omegalyze.omegalyze(
+        pdb_hierarchy=hierarchy, nontrans_only=True, out=None, quiet=True)
+  if cablam_result is None and has_protein:
+    from mmtbx.validation.cablam import cablamalyze
+    from libtbx.utils import null_out
+    cablam_result = cablamalyze(
+        pdb_hierarchy=hierarchy, outliers_only=True,
+        out=null_out(), quiet=True)
+  if rna_puckers_result is None and has_rna:
+    rna_puckers_result = rna_validate.rna_puckers(pdb_hierarchy=hierarchy)
+  if restraints_result is None:
+    from mmtbx.validation.restraints import combined as _restraints_combined
+    restraints_result = _restraints_combined(
+        pdb_hierarchy=hierarchy,
+        xray_structure=model.get_xray_structure(),
+        geometry_restraints_manager=geometry,
+        ignore_hd=True,
+        outliers_only=True)
+
+  if ss_annotation is None:
+    try:
+      import mmtbx.secondary_structure
+      from libtbx.utils import null_out
+      ss_params = mmtbx.secondary_structure.manager.get_default_ss_params()
+      ss_params.secondary_structure.protein.search_method = "from_ca"
+      ss_params = ss_params.secondary_structure
+      ss_manager = mmtbx.secondary_structure.manager(
+          hierarchy, params=ss_params, log=null_out())
+      ss_annotation = ss_manager.actual_sec_str
+    except Exception:
+      ss_annotation = None
+
+  if probe_dots_kin is None:
+    try:
+      probe_dots_kin = make_probe_dots_from_model(model)
+    except Exception:
+      probe_dots_kin = ""
+
+  return _build_kinemage(
+      hierarchy=hierarchy,
+      bond_hash=bond_hash,
+      i_seq_name_hash=i_seq_name_hash,
+      pdbID=pdbID,
+      rot_outliers=rot_outliers,
+      rama_result=rama_result,
+      cb_result=cb_result,
+      restraints_result=restraints_result,
+      keep_hydrogens=keep_hydrogens,
+      ss_bonds=ss_bonds,
+      sites_cart=sites_cart,
+      ss_annotation=ss_annotation,
+      omega_result=omega_result,
+      rna_puckers_result=rna_puckers_result,
+      cablam_result=cablam_result,
+      probe_dots_kin=probe_dots_kin)
+
 def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
   if pdbID is None:
     pdbID = "PDB"
