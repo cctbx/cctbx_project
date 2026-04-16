@@ -26,6 +26,7 @@ from libtbx.utils import flat_list
 from libtbx.utils import detect_binary_file
 from libtbx import smart_open
 
+import os
 import sys
 
 distances_as_cif_loop = geometry.distances_as_cif_loop
@@ -42,21 +43,22 @@ DEFAULT_ENGINE = "ucif"
 _VALID_ENGINES = ("ucif", "xcif")
 
 
-def _drive_builder_from_xcif(builder, input_string, strict):
-  """Parse input_string with xcif and drive the given cif_model_builder-style
-  builder via its callback methods (add_data_block / add_data_item / add_loop /
-  start_save_frame / end_save_frame).
+_XCIF_COMPRESSED_SUFFIXES = (".gz", ".Z", ".bz2")
 
-  Returns a (possibly empty) list of error message strings. xcif throws on
-  first parse error rather than accumulating, so the list has at most one
-  entry. When it does, the builder is left with whatever state it had
-  before the throw — which is nothing, since xcif_ext.parse runs to
-  completion before the walker touches the builder.
 
-  strict=False relaxes two things: pair items appearing before the first
-  data_ block are attached to an implicit 'global_' block; and explicit
-  'global_' block headers (STAR/DDL2 convention, used by the cctbx
-  monomer library) are accepted. strict=True rejects both.
+def _xcif_can_use_parse_file(file_path):
+  """True when file_path is safe to hand to xcif_ext.parse_file (which
+  memory-maps). False for compressed files; smart_open handles those,
+  parse_file does not."""
+  if file_path is None:
+    return False
+  return not file_path.endswith(_XCIF_COMPRESSED_SUFFIXES)
+
+
+def _walk_xcif_doc(builder, doc):
+  """Drive `builder` (a cif_model_builder-style object with
+  add_data_block / add_data_item / add_loop / start_save_frame /
+  end_save_frame) from an already-parsed xcif Document.
 
   The xcif C++ parser stores block and save-frame names with the data_/save_
   prefix stripped; the builder's strip-before-first-underscore logic
@@ -64,15 +66,6 @@ def _drive_builder_from_xcif(builder, input_string, strict):
   tokens, so we prepend the prefix back.
   """
   import xcif_ext
-  try:
-    doc = xcif_ext.parse(input_string, strict=strict)
-  except (ValueError, RuntimeError) as e:
-    # xcif raises ValueError for std::invalid_argument (explicit translator)
-    # and RuntimeError for CifError (inherits std::runtime_error, default
-    # boost.python translation). Return the message so the caller can
-    # either surface it as CifParserError or stash it for error_count().
-    return [str(e)]
-
   # Use the enum values from xcif_ext directly — no ABI drift.
   # int(...) because bp::enum_ wraps values in a Python type;
   # the tuple comparisons below want plain ints.
@@ -119,6 +112,45 @@ def _drive_builder_from_xcif(builder, input_string, strict):
         builder.end_save_frame()
       else:
         _emit_pair_or_loop(kind, idx, pair_tags, pair_values, loops)
+
+
+def _drive_builder_from_xcif(builder, input_string, strict):
+  """Parse input_string with xcif and drive the given builder.
+
+  Returns a (possibly empty) list of error message strings. xcif throws on
+  first parse error rather than accumulating, so the list has at most one
+  entry. When it does, the builder is left with whatever state it had
+  before the throw — which is nothing, since xcif_ext.parse runs to
+  completion before the walker touches the builder.
+
+  strict=False relaxes two things: pair items appearing before the first
+  data_ block are attached to an implicit 'global_' block; and explicit
+  'global_' block headers (STAR/DDL2 convention, used by the cctbx
+  monomer library) are accepted. strict=True rejects both.
+  """
+  import xcif_ext
+  try:
+    doc = xcif_ext.parse(input_string, strict=strict)
+  except (ValueError, RuntimeError) as e:
+    # xcif raises ValueError for std::invalid_argument (explicit translator)
+    # and RuntimeError for CifError (inherits std::runtime_error, default
+    # boost.python translation). Return the message so the caller can
+    # either surface it as CifParserError or stash it for error_count().
+    return [str(e)]
+  _walk_xcif_doc(builder, doc)
+  return []
+
+
+def _drive_builder_from_xcif_file(builder, file_path, strict):
+  """Like _drive_builder_from_xcif but dispatches to xcif_ext.parse_file
+  (memory-mapped, zero-copy). Avoids allocating a Python string copy of
+  the file contents when the caller supplied a plain uncompressed path."""
+  import xcif_ext
+  try:
+    doc = xcif_ext.parse_file(file_path, strict=strict)
+  except (ValueError, RuntimeError) as e:
+    return [str(e)]
+  _walk_xcif_doc(builder, doc)
   return []
 
 
@@ -146,6 +178,24 @@ class reader(object):
     else: assert cif_object is None
     self.builder = builder
     self.original_arrays = None
+    self._xcif_errors = []
+    self.parser = None
+    # Fast path: xcif + plain uncompressed file_path -> memory-mapped
+    # parse_file, skipping the Python-string copy of the whole file.
+    # file_object= callers always go through the read-into-string path
+    # because there is no file descriptor to hand to mmap.
+    if (engine == "xcif"
+        and file_object is None
+        and file_path is not None
+        and _xcif_can_use_parse_file(file_path)):
+      resolved = os.path.expanduser(file_path)
+      if detect_binary_file.from_initial_block(resolved):
+        raise CifParserError("Binary file detected, aborting parsing.")
+      self._xcif_errors = _drive_builder_from_xcif_file(
+        self.builder, resolved, strict)
+      if raise_if_errors and self._xcif_errors:
+        raise CifParserError(self._xcif_errors[0])
+      return
     if file_path is not None:
       file_object = smart_open.for_reading(file_path)
     else:
@@ -159,11 +209,9 @@ class reader(object):
       len(input_string), binary_detector.monitor_initial)
     if binary_detector.is_binary_file(block=input_string):
       raise CifParserError("Binary file detected, aborting parsing.")
-    self._xcif_errors = []
     if engine == "xcif":
       self._xcif_errors = _drive_builder_from_xcif(
         self.builder, input_string, strict)
-      self.parser = None
       if raise_if_errors and self._xcif_errors:
         raise CifParserError(self._xcif_errors[0])
     else:
