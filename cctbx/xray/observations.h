@@ -161,6 +161,8 @@ namespace cctbx { namespace xray {
     scitbx::af::shared<int> measured_scale_indices_;
     mutable FloatType prime_fraction_;
     size_t total_data_cnt;
+    // HKLF 2 etc but not HKLF 5/6
+    bool twinned;
 
     miller::index<> generate(scitbx::mat3<FloatType> const& tl,
       miller::index<> const& h) const
@@ -259,7 +261,8 @@ namespace cctbx { namespace xray {
         wavelengths_(wavelengths),
         twin_fractions_(twin_fractions),
         prime_fraction_(1),
-        total_data_cnt(data.size())
+        total_data_cnt(data.size()),
+        twinned(false)
     {
       index_components_.reserve(indices.size());
       for (int i = 0; i < indices.size(); i++) {
@@ -285,7 +288,8 @@ namespace cctbx { namespace xray {
         data_(data),
         sigmas_(sigmas),
         prime_fraction_(1),
-        total_data_cnt(data.size())
+        total_data_cnt(data.size()),
+        twinned(merohedral_components.size() > 0)
     {
       process_merohedral_components(space_group, merohedral_components);
     }
@@ -298,7 +302,8 @@ namespace cctbx { namespace xray {
       scitbx::af::shared<twin_fraction<FloatType>*> const&
         twin_fractions)
       : twin_fractions_(twin_fractions),
-      total_data_cnt(data.size())
+        total_data_cnt(data.size()),
+        twinned(true)
     {
       build_indices_twin_components(indices, data, sigmas, scale_indices);
       update_prime_fraction();
@@ -320,7 +325,8 @@ namespace cctbx { namespace xray {
         wavelengths_(obs.wavelengths_),
         measured_scale_indices_(obs.measured_scale_indices_),
         twin_fractions_(twin_fractions),
-        total_data_cnt(obs.total_data_cnt)
+        total_data_cnt(obs.total_data_cnt),
+        twinned(obs.twinned)
     {
       CCTBX_ASSERT(twin_fractions.size()==obs.twin_fractions_.size());
       CCTBX_ASSERT(!(twin_fractions.size() != 0 && merohedral_components.size() != 0));
@@ -336,11 +342,15 @@ namespace cctbx { namespace xray {
       return wavelengths_.size() != 0;
     }
 
+    bool is_twinned() const {
+      return twinned;
+    }
+
     iterator iterate(int i) const { return iterator(*this, i); }
 
     /* must be called before using scale(index) or iterator */
     void update_prime_fraction() const {
-      if (has_wavelengths()) {
+      if (!twinned) {
         return;
       }
       FloatType sum=0;

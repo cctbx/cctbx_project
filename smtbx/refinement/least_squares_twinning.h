@@ -107,8 +107,8 @@ namespace smtbx {
           af::shared<FloatType>& gradients) const
         {
           FloatType obs = f_calc_function.get_observable();
-          // HKLF 2
-          if (reflections.has_wavelengths()) {
+          // HKLF 2 or other scaled batches format
+          if (!reflections.is_twinned()) {
             const twf_t* fraction = reflections.fraction(i_h);
             if (fraction == 0) {
               return obs;
