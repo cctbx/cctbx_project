@@ -38,7 +38,16 @@ class CifParserError(Sorry):
 
 
 # Parser engine selection.
-# Callers can override per-instance via the engine= kwarg on reader.__init__.
+#
+# "ucif" is the historical ANTLR-generated parser that has shipped with
+# iotbx.cif since 2011; it is the default for backward compatibility.
+# "xcif" is a newer hand-written C++ parser in cctbx_project/xcif that
+# is API-compatible through the iotbx.cif.reader adapter but materially
+# faster on large files (memory-mapped zero-copy parse_file path).
+#
+# Callers can override per-instance via the engine= kwarg on
+# reader.__init__. DEFAULT_ENGINE is read at construction time; changing
+# it at runtime affects only subsequent reader() calls.
 DEFAULT_ENGINE = "ucif"
 _VALID_ENGINES = ("ucif", "xcif")
 
@@ -155,6 +164,81 @@ def _drive_builder_from_xcif_file(builder, file_path, strict):
 
 
 class reader(object):
+  """Parse a CIF / mmCIF input and populate an iotbx.cif.model tree.
+
+  Accepts input via exactly one of file_path, file_object, or
+  input_string. Parsing is delegated to a selected engine (see
+  engine= below). On success, model() returns the populated
+  iotbx.cif.model.cif tree. On error, the behavior depends on the
+  raise_if_errors flag and the selected engine (see engine= for the
+  divergence).
+
+  Arguments
+  ---------
+  file_path : str or None
+      Path to a CIF file on disk. Handles .gz / .Z / .bz2 via
+      smart_open. Mutually exclusive with file_object / input_string.
+  file_object : file-like or None
+      Readable stream containing CIF text. Read to EOF. Mutually
+      exclusive with file_path / input_string.
+  input_string : str or None
+      CIF text already in memory. Mutually exclusive with the above.
+  cif_object : iotbx.cif.model.cif or None
+      Pre-existing model to append into. Mutually exclusive with
+      builder.
+  builder : object or None
+      Custom builder receiving parse callbacks. Must implement
+      add_data_block(heading), add_data_item(tag, value),
+      add_loop(header, data), start_save_frame(heading), and
+      end_save_frame(). IMPORTANT: heading strings are passed WITH
+      the "data_" / "save_" prefix intact (e.g. "data_foo",
+      "save_bar"); the default cif_model_builder strips the prefix
+      at the first underscore, so a third-party builder that
+      string-compares the full token needs to account for the
+      prefix. Mutually exclusive with cif_object.
+  raise_if_errors : bool, default True
+      If True, raise CifParserError on the first parse error. If
+      False, collect errors (see error_count() / show_errors()) and
+      leave whatever model state the engine produced accessible via
+      model(). See engine= for the partial-model divergence.
+  strict : bool, default True
+      If False, accept STAR/DDL2 global_ blocks and content
+      appearing before the first data_ block (attached to an
+      implicit global_ block). Required for the cctbx monomer
+      library.
+  engine : {"ucif", "xcif", None}, default None
+      Selects the underlying parser implementation. None means
+      DEFAULT_ENGINE. Behavioral differences that matter for
+      callers:
+        * Error messages. xcif prefixes diagnostics with
+          "<source>:line:col: "; ucif emits bare messages. Code
+          that greps CifParserError strings must handle both.
+        * Partial-model-on-error (raise_if_errors=False). ucif
+          continues past the first error, accumulates multiple
+          diagnostics, and yields a partial model with blocks
+          parsed before the fault populated. xcif stops at the
+          first CifError and yields an EMPTY model with exactly
+          one diagnostic. Callers that salvage partial state from
+          malformed files must use engine="ucif".
+        * Source order. Both engines preserve pair/loop/save-frame
+          source order within a block (str(model) output matches).
+        * File path fast-path. engine="xcif" with file_path set
+          and an uncompressed extension dispatches to a
+          memory-mapped C++ parser, skipping the Python-string
+          copy of the file. Compressed files (.gz/.Z/.bz2) and
+          file_object= inputs fall back to the read-into-string
+          path.
+
+  Attributes
+  ----------
+  engine : str
+      The engine actually used for this parse (never None after
+      __init__).
+  file_path : str or None
+      As passed in.
+  builder : object
+      The builder that received callbacks.
+  """
 
   def __init__(self,
                file_path=None,
