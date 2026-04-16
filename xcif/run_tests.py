@@ -30,6 +30,7 @@ tst_list = [
   "$B/regression/cpp/tst_semicolon_field_strict",
   "$D/regression/tst_semicolon_field_strict.py",
   "$D/regression/tst_iotbx_cif_reader_parity.py",
+  "$D/regression/tst_iotbx_cif_reader_engine.py",
   "$B/regression/cpp/tst_thread_safety",
   "$B/regression/cpp/fuzz_target",
 ]

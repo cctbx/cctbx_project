@@ -134,6 +134,12 @@ class reader(object):
                strict=True,
                engine=None):
     assert [file_path, file_object, input_string].count(None) == 2
+    if engine is None:
+      engine = DEFAULT_ENGINE
+    if engine not in _VALID_ENGINES:
+      raise ValueError(
+        "engine must be one of %s, got %r" % (_VALID_ENGINES, engine))
+    self.engine = engine
     self.file_path = file_path
     if builder is None:
       builder = builders.cif_model_builder(cif_object)
@@ -153,12 +159,6 @@ class reader(object):
       len(input_string), binary_detector.monitor_initial)
     if binary_detector.is_binary_file(block=input_string):
       raise CifParserError("Binary file detected, aborting parsing.")
-    if engine is None:
-      engine = DEFAULT_ENGINE
-    if engine not in _VALID_ENGINES:
-      raise ValueError(
-        "engine must be one of %s, got %r" % (_VALID_ENGINES, engine))
-    self.engine = engine
     self._xcif_errors = []
     if engine == "xcif":
       self._xcif_errors = _drive_builder_from_xcif(
