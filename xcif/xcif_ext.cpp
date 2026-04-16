@@ -174,6 +174,17 @@ static bp::list block_save_frames(const BlockWrap& self) {
   return result;
 }
 
+static bp::list block_source_order(const BlockWrap& self) {
+  bp::list out;
+  const auto& order = self.p->source_order();
+  for (std::size_t i = 0; i < order.size(); ++i) {
+    out.append(bp::make_tuple(
+      static_cast<int>(order[i].first),
+      order[i].second));
+  }
+  return out;
+}
+
 static bp::object block_find_save_frame(const BlockWrap& self,
                                         const std::string& name) {
   const Block* sf = self.p->find_save_frame(string_view(name));
@@ -320,6 +331,13 @@ BOOST_PYTHON_MODULE(xcif_ext)
     translate_invalid_argument);
   bp::register_exception_translator<std::overflow_error>(
     translate_overflow_error);
+
+  bp::enum_<Block::EntryKind>("EntryKind")
+    .value("PAIR", Block::ENTRY_PAIR)
+    .value("LOOP", Block::ENTRY_LOOP)
+    .value("SAVE_FRAME", Block::ENTRY_SAVE_FRAME)
+    ;
+
   bp::class_<BlockWrap>("Block", bp::no_init)
     .add_property("name", &block_name)
     .def("has_tag", &block_has_tag)
@@ -330,6 +348,7 @@ BOOST_PYTHON_MODULE(xcif_ext)
     .add_property("pair_values", &block_pair_values)
     .add_property("save_frames", &block_save_frames)
     .def("find_save_frame", &block_find_save_frame)
+    .add_property("source_order", &block_source_order)
     ;
 
   bp::class_<LoopWrap>("Loop", bp::no_init)

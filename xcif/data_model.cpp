@@ -210,6 +210,9 @@ private:
           advance();
           if (!parse_content(sf, true))
             error("unclosed save frame");
+          blk.source_order_.push_back(
+            std::make_pair(Block::ENTRY_SAVE_FRAME,
+                           blk.save_frames_.size() - 1));
           break;
         }
         case TOKEN_SAVE_END:
@@ -239,6 +242,8 @@ private:
     string_view val = sv();
     blk.pairs_.push_back(std::make_pair(tag, val));
     blk.pair_index_[tag] = blk.pairs_.size() - 1;
+    blk.source_order_.push_back(
+      std::make_pair(Block::ENTRY_PAIR, blk.pairs_.size() - 1));
     advance();
   }
 
@@ -279,6 +284,8 @@ private:
     for (std::size_t i = 0; i < lp.tags_.size(); ++i)
       blk.loop_tag_index_[lp.tags_[i]] = li;
     blk.loops_.push_back(std::move(lp));
+    blk.source_order_.push_back(
+      std::make_pair(Block::ENTRY_LOOP, blk.loops_.size() - 1));
   }
 };
 

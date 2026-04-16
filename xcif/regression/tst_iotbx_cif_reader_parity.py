@@ -47,7 +47,13 @@ _site.id
 _site.occ
  1  1.0
  2  0.5
-_trailing_key 'after loop'
+_middle_key 'between loops'
+loop_
+_other.id
+_other.val
+ 1  a
+ 2  b
+_trailing_key 'after loops'
 """
 
 CIF_MULTIBLOCK = """\
@@ -155,7 +161,18 @@ def _compare_loop(ctx, lp_u, lp_x):
   return None
 
 def _compare_block_like(ctx, blk_u, blk_x):
-  # Pair items
+  # Pair items + loop names: check ORDER first via block._set.
+  # _set is the OrderedSet that preserves source-order interleave
+  # across pair items and loops within a block; it drives
+  # str(model) / block.show() output. Comparing _items and .loops
+  # as separate dicts cannot catch pair/loop interleave mismatches.
+  set_u = list(blk_u._set)
+  set_x = list(blk_x._set)
+  if set_u != set_x:
+    return _fail(ctx,
+      "block key order differs (source-order mismatch):\n"
+      "  ucif=%s\n  xcif=%s" % (set_u, set_x))
+  # Pair items (content; order already verified via _set above)
   items_u = dict(blk_u._items)
   items_x = dict(blk_x._items)
   if set(items_u.keys()) != set(items_x.keys()):
@@ -168,7 +185,7 @@ def _compare_block_like(ctx, blk_u, blk_x):
     if v_u != v_x:
       return _fail(ctx + "/" + k,
                    "pair value differs: ucif=%r xcif=%r" % (v_u, v_x))
-  # Loops
+  # Loops (content)
   loops_u = blk_u.loops
   loops_x = blk_x.loops
   if set(loops_u.keys()) != set(loops_x.keys()):

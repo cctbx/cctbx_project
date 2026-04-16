@@ -93,6 +93,17 @@ private:
 
 class Block {
 public:
+  enum EntryKind { ENTRY_PAIR = 0, ENTRY_LOOP = 1, ENTRY_SAVE_FRAME = 2 };
+
+  // Ordered (kind, index) log of pair / loop / save-frame entries in
+  // the order they appeared in the source. kind values are EntryKind;
+  // index points into pairs_, loops_, or save_frames_ respectively.
+  // Consumers that need to serialise or walk the block in source
+  // order should iterate source_order() instead of pairs() + loops()
+  // separately.
+  const std::vector<std::pair<EntryKind, std::size_t>>&
+  source_order() const { return source_order_; }
+
   string_view name() const { return name_; }
   bool has_tag(const string_view& tag) const {
     return pair_index_.find(tag) != pair_index_.end();
@@ -115,6 +126,7 @@ private:
   ci_map<std::size_t> loop_tag_index_;
   std::vector<Block> save_frames_;
   ci_map<std::size_t> save_frame_index_;
+  std::vector<std::pair<EntryKind, std::size_t>> source_order_;
 };
 
 // ── Document ───────────────────────────────────────────────────────

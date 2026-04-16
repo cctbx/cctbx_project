@@ -73,16 +73,24 @@ def _drive_builder_from_xcif(builder, input_string, strict):
     # either surface it as CifParserError or stash it for error_count().
     return [str(e)]
 
-  def _drive_block_body(xblock):
-    # Pair items first, then loops. Source-order interleave is not preserved
-    # by xcif (pairs_ and loops_ are separate vectors in xcif::Block); if
-    # downstream .show() output diffs become a problem, revisit here.
-    for tag, val in zip(xblock.pair_tags, xblock.pair_values):
-      builder.add_data_item(tag, val)
-    for xloop in xblock.loops:
+  # Use the enum values from xcif_ext directly — no ABI drift.
+  # int(...) because bp::enum_ wraps values in a Python type;
+  # the tuple comparisons below want plain ints.
+  ENTRY_PAIR = int(xcif_ext.EntryKind.PAIR)
+  ENTRY_LOOP = int(xcif_ext.EntryKind.LOOP)
+  ENTRY_SAVE_FRAME = int(xcif_ext.EntryKind.SAVE_FRAME)
+
+  def _emit_pair_or_loop(kind, idx, pair_tags, pair_values, loops):
+    if kind == ENTRY_PAIR:
+      builder.add_data_item(pair_tags[idx], pair_values[idx])
+    elif kind == ENTRY_LOOP:
+      xloop = loops[idx]
       tags = list(xloop.tags)
       columns = [xloop.column_as_flex_string(t) for t in tags]
       builder.add_loop(tags, columns)
+    # Unknown kinds are silently skipped — preserves forward-compat
+    # if xcif ever adds a new EntryKind and consumers upgrade the
+    # walker later.
 
   for i in range(len(doc)):
     xblock = doc[i]
@@ -90,15 +98,27 @@ def _drive_builder_from_xcif(builder, input_string, strict):
     if name.lower() == "global_":
       # Match ucif: global_ blocks are ignored in non-strict mode
       # (ucif/cif.g:167). Content is accepted syntactically but not
-      # stored in the model. Synthesised global_ blocks from leading
-      # pairs (strict=false, no explicit header) are also dropped.
+      # stored in the model.
       continue
     builder.add_data_block("data_" + name)
-    _drive_block_body(xblock)
-    for sf in xblock.save_frames:
-      builder.start_save_frame("save_" + sf.name)
-      _drive_block_body(sf)
-      builder.end_save_frame()
+    pair_tags = list(xblock.pair_tags)
+    pair_values = list(xblock.pair_values)
+    loops = list(xblock.loops)
+    save_frames = list(xblock.save_frames)
+    for kind, idx in xblock.source_order:
+      if kind == ENTRY_SAVE_FRAME:
+        sf = save_frames[idx]
+        builder.start_save_frame("save_" + sf.name)
+        sf_pair_tags = list(sf.pair_tags)
+        sf_pair_values = list(sf.pair_values)
+        sf_loops = list(sf.loops)
+        for sub_kind, sub_idx in sf.source_order:
+          _emit_pair_or_loop(sub_kind, sub_idx,
+                             sf_pair_tags, sf_pair_values, sf_loops)
+          # Nested save frames are rejected by the parser.
+        builder.end_save_frame()
+      else:
+        _emit_pair_or_loop(kind, idx, pair_tags, pair_values, loops)
   return []
 
 

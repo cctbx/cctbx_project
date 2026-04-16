@@ -321,6 +321,49 @@ void test_block_name_preserves_original_case() {
   CHECK_EQ(doc[0].name(), "MyProtein");
 }
 
+void test_block_source_order() {
+  Document doc = parse(
+    "data_t\n"
+    "_a 1\n"
+    "loop_ _x _y 1 2\n"
+    "_b 2\n",
+    "<test>");
+  const Block& blk = doc[0];
+  const auto& order = blk.source_order();
+  CHECK_EQ(order.size(), 3u);
+  CHECK_EQ(order[0].first, Block::ENTRY_PAIR);
+  CHECK_EQ(order[0].second, 0u);
+  CHECK_EQ(order[1].first, Block::ENTRY_LOOP);
+  CHECK_EQ(order[1].second, 0u);
+  CHECK_EQ(order[2].first, Block::ENTRY_PAIR);
+  CHECK_EQ(order[2].second, 1u);
+}
+
+void test_block_source_order_with_save_frame() {
+  Document doc = parse(
+    "data_t\n"
+    "_a 1\n"
+    "save_s1\n"
+    "_inside 2\n"
+    "save_\n"
+    "loop_ _x _y 1 2\n",
+    "<test>");
+  const Block& blk = doc[0];
+  const auto& order = blk.source_order();
+  CHECK_EQ(order.size(), 3u);
+  CHECK_EQ(order[0].first, Block::ENTRY_PAIR);
+  CHECK_EQ(order[0].second, 0u);
+  CHECK_EQ(order[1].first, Block::ENTRY_SAVE_FRAME);
+  CHECK_EQ(order[1].second, 0u);
+  CHECK_EQ(order[2].first, Block::ENTRY_LOOP);
+  CHECK_EQ(order[2].second, 0u);
+  // Save frame's own source_order should contain its pair item.
+  const Block& sf = blk.save_frames()[0];
+  const auto& sf_order = sf.source_order();
+  CHECK_EQ(sf_order.size(), 1u);
+  CHECK_EQ(sf_order[0].first, Block::ENTRY_PAIR);
+}
+
 // ─── run_all_tests ─────────────────────────────────────────────────
 
 void run_all_tests() {
@@ -369,6 +412,8 @@ void run_all_tests() {
 
   // §6 Misc
   test_block_name_preserves_original_case();
+  test_block_source_order();
+  test_block_source_order_with_save_frame();
 }
 
 XCIF_TEST_MAIN()
