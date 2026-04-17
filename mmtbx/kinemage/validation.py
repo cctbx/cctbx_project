@@ -894,7 +894,9 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
                     ss_annotation=None,
                     omega_result=None, rna_puckers_result=None,
                     cablam_result=None,
-                    probe_dots_kin=None):
+                    probe_dots_kin=None,
+                    include_cablam_wheels=False,
+                    plain_coils=False):
   """Shared logic for building the kinemage string.
 
   Args:
@@ -916,6 +918,14 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
     probe_dots_kin: pre-computed probe dots kinemage string, or None.
       If provided, this is used instead of calling make_probe_dots().
       Pass "" to suppress probe dots entirely.
+    include_cablam_wheels: when True, include the cablam peptide-plane score
+      wheels (purple/magenta triangle wedges with a deadblack outline) in
+      addition to the cablam outlier line markup. Defaults to False; the
+      wheels are noisy in a multicrit viewer. Ignored when cablam_result is
+      None. Does not affect direct callers of cablamalyze.as_kinemage.
+    plain_coils: when True, skip the rear deadblack halo drawn behind each
+      colored coil ribbon list (passed through as do_plain_coils to
+      generate_chain_ribbons). Defaults to False (halo drawn).
   """
   kin_out = get_default_header()
   altid_controls = get_altid_controls(hierarchy=hierarchy)
@@ -963,7 +973,7 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
     # Suppress self.out write for assembled kinemage; use returned string only
     saved_out = cablam_result.out
     cablam_result.out = None
-    kin_out += cablam_result.as_kinemage()
+    kin_out += cablam_result.as_kinemage(include_wheels=include_cablam_wheels)
     cablam_result.out = saved_out
   # Ribbon rendering
   try:
@@ -985,7 +995,8 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
         ribbon_kin += generate_chain_ribbons(
             chain=chain, secondary_structure=ss_map,
             chain_id=chain.id, chain_color=chain_color,
-            has_dna=has_dna, has_rna=has_rna)
+            has_dna=has_dna, has_rna=has_rna,
+            do_plain_coils=plain_coils)
         ribbon_counter += 1
 
     if ribbon_kin:
@@ -1012,7 +1023,9 @@ def build_kinemage_from_model(
     cablam_result=None,
     ss_annotation=None,
     probe_dots_kin=None,
-    keep_hydrogens=False):
+    keep_hydrogens=False,
+    include_cablam_wheels=False,
+    plain_coils=False):
   """High-level kinemage builder that takes an mmtbx.model.manager.
 
   Encapsulates the i_seq_name_hash / bond_hash / ss_bonds / sites_cart plumbing
@@ -1033,6 +1046,10 @@ def build_kinemage_from_model(
       make_probe_dots_from_model(model) is called. Pass "" to suppress.
     keep_hydrogens: only used for the make_probe_dots() fallback inside
       _build_kinemage when probe_dots_kin is None and the fallback path fires.
+    include_cablam_wheels: when True, emit the cablam score wheels in addition
+      to the outlier line markup. Defaults to False for multicrit viewers.
+    plain_coils: when True, omit the rear deadblack halo behind coil ribbons.
+      Defaults to False.
 
   Returns:
     The kinemage string.
@@ -1117,9 +1134,12 @@ def build_kinemage_from_model(
       omega_result=omega_result,
       rna_puckers_result=rna_puckers_result,
       cablam_result=cablam_result,
-      probe_dots_kin=probe_dots_kin)
+      probe_dots_kin=probe_dots_kin,
+      include_cablam_wheels=include_cablam_wheels,
+      plain_coils=plain_coils)
 
-def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
+def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False,
+                  include_cablam_wheels=False, plain_coils=False):
   if pdbID is None:
     pdbID = "PDB"
   hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
@@ -1206,7 +1226,9 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
     ss_annotation=ss_annotation,
     omega_result=omega,
     rna_puckers_result=rna_puckers_result,
-    cablam_result=cablam_result)
+    cablam_result=cablam_result,
+    include_cablam_wheels=include_cablam_wheels,
+    plain_coils=plain_coils)
 
   outfile = open(f, 'w')
   outfile.write(kin_out)
@@ -1304,7 +1326,9 @@ def export_molprobity_result_as_kinemage(
     keep_hydrogens=False,
     pdbID="PDB",
     ss_annotation=None,
-    cablam_result=None):
+    cablam_result=None,
+    include_cablam_wheels=False,
+    plain_coils=False):
   assert (result.restraints is not None)
   i_seq_name_hash = build_name_hash(pdb_hierarchy=pdb_hierarchy)
   sites_cart = pdb_hierarchy.atoms().extract_xyz()
@@ -1335,4 +1359,6 @@ def export_molprobity_result_as_kinemage(
     ss_annotation=ss_annotation,
     omega_result=omega_result,
     rna_puckers_result=rna_puckers_result,
-    cablam_result=cablam_result)
+    cablam_result=cablam_result,
+    include_cablam_wheels=include_cablam_wheels,
+    plain_coils=plain_coils)

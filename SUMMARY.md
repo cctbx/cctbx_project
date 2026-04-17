@@ -56,3 +56,6 @@ Pass `useNeutronDistances=nuclear` to the reduce2 Optimizer call in `clashscore2
 
 ## 2026-04-16
 Add `build_kinemage_from_model()` high-level helper in `mmtbx/kinemage/validation.py` that takes an `mmtbx.model.manager` and handles the bond_hash / ss_bonds / validator / ss-annotation / probe-dots plumbing internally. Callers may inject pre-run validator results or probe dots. Add two regression tests covering the H and non-H paths.
+
+## 2026-04-16
+Add `include_cablam_wheels` and `plain_coils` toggle parameters to kinemage output. Cablam wheels (purple/magenta peptide-plane score wedges) are now off by default in `_build_kinemage`; gate the wheel rendering in `cablamalyze.as_kinemage(include_wheels=...)`. `plain_coils` suppresses the rear deadblack coil halo. Both flags threaded through all entry points (`build_kinemage_from_model`, `make_multikin`, `export_molprobity_result_as_kinemage`). Add toggle tests.
