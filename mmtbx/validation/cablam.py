@@ -1374,8 +1374,14 @@ class cablamalyze(validation):
 
   #{{{ as_kinemage
   #-----------------------------------------------------------------------------
-  def as_kinemage(self, chain_id=None):
+  def as_kinemage(self, chain_id=None, include_wheels=True):
     #output cablam validation as kinemage markup, returns string
+    #
+    #include_wheels=True emits the purple/magenta peptide-plane score wheels
+    #(and their deadblack outline) alongside the outlier line markup. Set to
+    #False to emit only the {cablam disfavored} / {cablam outlier} /
+    #{ca geom outlier} line subgroups — useful when the wheels are too busy
+    #for an embedded multicrit kinemage viewer.
     kin_out = '\n@subgroup {cablam disfavored} dominant\n'
     kin_out += '@vectorlist {cablam disfavored} color= purple width= 4 master={cablam disfavored} off' #default off
     for result in self.results:
@@ -1403,56 +1409,57 @@ class cablamalyze(validation):
         continue
       if result.feedback.c_alpha_geom_outlier:
         kin_out += result.as_kinemage(mode="ca_geom")
-    #----------------------------
-    #"wheels" show favorable and unfavorabe regions for each peptide plane involved in a cablam outlier
-    #Some additional calculations are required to generate these wheels
-    cablam_contours = fetch_peptide_expectations()
-    wheels_list = []
-    for result in self.results:
-      if not result.has_ca:
-        continue
-      if chain_id is not None and result.chain_id.strip() != chain_id.strip():
-        continue
-      if result.feedback.cablam_disfavored:
-        wheels_list.extend(result.calculate_kinemage_wheels(cablam_contours=cablam_contours))
-    #wheels are made of 10-degree wedges, each wedge drawn as a triangle
-    kin_out += '\n@subgroup {cablam_wheels} dominant master={cablam wheels}\n'
-    kin_out += '@trianglelist {cablam_wheels} alpha=0.75'
-    for cablam_wheel in wheels_list:
-      wheel = cablam_wheel[0]
-      wheel_center = cablam_wheel[1]
-      for wedge in wheel:
-        if wedge is None:
+    if include_wheels:
+      #----------------------------
+      #"wheels" show favorable and unfavorabe regions for each peptide plane involved in a cablam outlier
+      #Some additional calculations are required to generate these wheels
+      cablam_contours = fetch_peptide_expectations()
+      wheels_list = []
+      for result in self.results:
+        if not result.has_ca:
           continue
-        elif wedge.cablam_score < 0.01:
-          color = 'magenta'
-        else:
-          color = 'purple'
-        kin_out += self.cablam_wheel_triangle(wheel_center, wedge, color)
-    #a thin black line outlining the wheel greatly aids visual interpretation
-    kin_out += '\n@vectorlist {cablam_wheels_lines} color=deadblack width= 1 alpha=0.75'
-    for cablam_wheel in wheels_list:
-      wheel = cablam_wheel[0]
-      wheel_center = cablam_wheel[1]
-      prevwedge = wheel[-1]
-      new_poly = ' P' #starts a new polyline in kinemage format, print this for each new wheel
-      for wedge in wheel:
-        if wedge and prevwedge:
-          kin_out += '\n{}%s %.3f %.3f %.3f' % (new_poly, wedge.start[0], wedge.start[1], wedge.start[2])
-          kin_out += '\n{} %.3f %.3f %.3f' % (wedge.end[0], wedge.end[1], wedge.end[2])
-        elif wedge and not prevwedge:
-          kin_out += '\n{}%s %.3f %.3f %.3f' % (new_poly, wheel_center[0], wheel_center[1], wheel_center[2])
-          kin_out += '\n{} %.3f %.3f %.3f' % (wedge.start[0], wedge.start[1], wedge.start[2])
-          kin_out += '\n{} %.3f %.3f %.3f' % (wedge.end[0], wedge.end[1], wedge.end[2])
-        elif prevwedge and not wedge:
-          kin_out += '\n{}%s %.3f %.3f %.3f' % (new_poly, prevwedge.end[0], prevwedge.end[1], prevwedge.end[2])
-          kin_out += '\n{} %.3f %.3f %.3f' % (wheel_center[0], wheel_center[1], wheel_center[2])
-        else:
+        if chain_id is not None and result.chain_id.strip() != chain_id.strip():
+          continue
+        if result.feedback.cablam_disfavored:
+          wheels_list.extend(result.calculate_kinemage_wheels(cablam_contours=cablam_contours))
+      #wheels are made of 10-degree wedges, each wedge drawn as a triangle
+      kin_out += '\n@subgroup {cablam_wheels} dominant master={cablam wheels}\n'
+      kin_out += '@trianglelist {cablam_wheels} alpha=0.75'
+      for cablam_wheel in wheels_list:
+        wheel = cablam_wheel[0]
+        wheel_center = cablam_wheel[1]
+        for wedge in wheel:
+          if wedge is None:
+            continue
+          elif wedge.cablam_score < 0.01:
+            color = 'magenta'
+          else:
+            color = 'purple'
+          kin_out += self.cablam_wheel_triangle(wheel_center, wedge, color)
+      #a thin black line outlining the wheel greatly aids visual interpretation
+      kin_out += '\n@vectorlist {cablam_wheels_lines} color=deadblack width= 1 alpha=0.75'
+      for cablam_wheel in wheels_list:
+        wheel = cablam_wheel[0]
+        wheel_center = cablam_wheel[1]
+        prevwedge = wheel[-1]
+        new_poly = ' P' #starts a new polyline in kinemage format, print this for each new wheel
+        for wedge in wheel:
+          if wedge and prevwedge:
+            kin_out += '\n{}%s %.3f %.3f %.3f' % (new_poly, wedge.start[0], wedge.start[1], wedge.start[2])
+            kin_out += '\n{} %.3f %.3f %.3f' % (wedge.end[0], wedge.end[1], wedge.end[2])
+          elif wedge and not prevwedge:
+            kin_out += '\n{}%s %.3f %.3f %.3f' % (new_poly, wheel_center[0], wheel_center[1], wheel_center[2])
+            kin_out += '\n{} %.3f %.3f %.3f' % (wedge.start[0], wedge.start[1], wedge.start[2])
+            kin_out += '\n{} %.3f %.3f %.3f' % (wedge.end[0], wedge.end[1], wedge.end[2])
+          elif prevwedge and not wedge:
+            kin_out += '\n{}%s %.3f %.3f %.3f' % (new_poly, prevwedge.end[0], prevwedge.end[1], prevwedge.end[2])
+            kin_out += '\n{} %.3f %.3f %.3f' % (wheel_center[0], wheel_center[1], wheel_center[2])
+          else:
+            prevwedge = wedge
+            continue
           prevwedge = wedge
-          continue
-        prevwedge = wedge
-        new_poly=''
-    #----------------------------
+          new_poly=''
+      #----------------------------
     kin_out += '\n'
     # Write to self.out for backward compatibility with standalone use
     if self.out is not None:

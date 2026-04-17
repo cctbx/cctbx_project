@@ -277,6 +277,67 @@ def exercise_build_kinemage_from_model_with_hydrogens():
   print("  exercise_build_kinemage_from_model_with_hydrogens: OK")
 
 
+def exercise_build_kinemage_from_model_toggles():
+  """Test the include_cablam_wheels and plain_coils toggles on
+  build_kinemage_from_model."""
+  from mmtbx.kinemage.validation import build_kinemage_from_model
+  import mmtbx.model
+  from iotbx import pdb
+
+  # --- Cablam wheels toggle ---
+  # Use the basic pdb_str fixture. cablam.as_kinemage always emits the
+  # cablam_wheels subgroup/trianglelist when include_wheels=True (even if
+  # the structure has no outliers), so absence is a clean signal.
+  pdb_io = pdb.input(source_info=None, lines=pdb_str)
+  model = mmtbx.model.manager(model_input=pdb_io)
+
+  # Default: wheels off.
+  kin_default = build_kinemage_from_model(
+      model=model, pdbID="toggle_test", probe_dots_kin="")
+  assert "@subgroup {cablam_wheels}" not in kin_default, (
+      "Default build_kinemage_from_model should suppress cablam wheels "
+      "(include_cablam_wheels=False)")
+  assert "{cablam_wheels_lines}" not in kin_default, (
+      "Default build_kinemage_from_model should suppress "
+      "cablam_wheels_lines")
+  # Outlier line markup still emitted.
+  assert "@subgroup {cablam outlier}" in kin_default, (
+      "Default output should still contain cablam outlier line markup")
+
+  # Opt back in: include_cablam_wheels=True restores the wheels subgroup.
+  kin_with_wheels = build_kinemage_from_model(
+      model=model, pdbID="toggle_test", probe_dots_kin="",
+      include_cablam_wheels=True)
+  assert "@subgroup {cablam_wheels}" in kin_with_wheels, (
+      "include_cablam_wheels=True should restore the cablam_wheels subgroup")
+  assert "{cablam_wheels_lines}" in kin_with_wheels, (
+      "include_cablam_wheels=True should restore cablam_wheels_lines")
+
+  # --- Plain coils toggle ---
+  # Use pdb_ribbon_str so ribbon rendering actually emits coil lists.
+  pdb_io_rb = pdb.input(source_info=None, lines=pdb_ribbon_str)
+  model_rb = mmtbx.model.manager(model_input=pdb_io_rb)
+
+  # Default: halo (rear deadblack outline) present on coil.
+  kin_halo = build_kinemage_from_model(
+      model=model_rb, pdbID="halo_test", probe_dots_kin="")
+  halo_line = "rear color= deadblack master= {protein ribbon} master= {coil}"
+  assert halo_line in kin_halo, (
+      "Default ribbon rendering should emit the rear deadblack coil halo")
+
+  # plain_coils=True: halo line suppressed.
+  kin_plain = build_kinemage_from_model(
+      model=model_rb, pdbID="plain_test", probe_dots_kin="",
+      plain_coils=True)
+  assert halo_line not in kin_plain, (
+      "plain_coils=True should suppress the rear deadblack coil halo")
+  # The colored coil list itself should still be there.
+  assert "master= {coil}" in kin_plain, (
+      "plain_coils=True should still emit the colored coil list")
+
+  print("  exercise_build_kinemage_from_model_toggles: OK")
+
+
 def exercise_helper_functions():
   """Test the extracted helper functions individually."""
   from mmtbx.kinemage.validation import (
@@ -1161,6 +1222,7 @@ def run():
   exercise_make_multikin_with_disulfide()
   exercise_build_kinemage_from_model()
   exercise_build_kinemage_from_model_with_hydrogens()
+  exercise_build_kinemage_from_model_toggles()
   exercise_ribbon_rendering()
   exercise_ribbon_in_kinemage()
   print("All tests passed.")
