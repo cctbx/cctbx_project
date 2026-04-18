@@ -35,7 +35,19 @@ run_in_unique_dirs = False
   .type = bool
   .help = "If True, each test script runs in its own subdirectory of the "
           "current working directory. The subdirectory is named after the "
-          "test file (and arguments, if any)."
+          "test file (and arguments, if any). Automatically enabled when "
+          "max_retries > 0 so that per-attempt cleanup can safely wipe the "
+          "directory between retries without disturbing other tests."
+max_retries = 0
+  .type = int(value_min=0)
+  .help = "Number of additional attempts for a test that exits with a "
+          "non-zero return code. Total attempts = 1 + max_retries. Setting "
+          "max_retries > 0 automatically enables run_in_unique_dirs so "
+          "each attempt starts from a clean working directory. Between "
+          "attempts a 1s, 2s, 4s, ... (capped at 60s) exponential backoff "
+          "is applied. Tests in the expected_failure list are never "
+          "retried; tests in the expected_unstable list are retried "
+          "normally."
 max_time = 180
   .type = float(value_min=0)
   .help = "Print warning and timing for all tests that take longer"
@@ -106,6 +118,49 @@ def run(args,
    expected_failures_from_phenix_regression=[],
    unstables_from_phenix_regression = [],
    supplied_list_of_tests = None):
+  """Dispatch a set of cctbx tests in parallel, with optional retry.
+
+  Parameters
+  ----------
+  args : list of str
+      Command-line arguments or PHIL strings. Bare directory paths
+      are interpreted as ``directory=<path>`` PHIL fragments.
+  return_list_of_tests : bool, optional
+      If truthy, collect and return the resolved test list without
+      executing anything. Used by test suites that want to inspect
+      the command set.
+  python_keyword_text : str, optional
+      Extra arguments prepended to each ``libtbx.python`` command
+      (e.g. coverage-runner flags).
+  max_tests : int, optional
+      Truncate the resolved list to the first ``max_tests`` entries.
+  start_test : int, optional
+      Skip the first ``start_test`` entries before running.
+  tests_to_skip : list of str, optional
+      Substring filters; matching tests are dropped.
+  tests_to_run : list of str, optional
+      Substring filters; only matching tests are kept.
+  expected_failures_from_phenix_regression : list of str, optional
+      Additional substrings marking commands as expected-failures.
+  unstables_from_phenix_regression : list of str, optional
+      Additional substrings marking commands as expected-unstable.
+  supplied_list_of_tests : list of str, optional
+      Bypass module/directory discovery entirely; use this list.
+
+  Returns
+  -------
+  int or list of str
+      When ``return_list_of_tests`` is truthy, the resolved test
+      commands. Otherwise, the number of failing tests (``0`` on
+      success).
+
+  Notes
+  -----
+  When the ``max_retries`` PHIL parameter is positive, this
+  function also auto-enables ``run_in_unique_dirs`` so that
+  per-attempt cleanup is safe, and prints a one-line notice to
+  stdout describing the flip before any test runs.
+  """
 
   if (len(args) == 0):
     raise Usage("""libtbx.run_tests_parallel [module=NAME] [directory=path]""")
@@ -122,6 +177,11 @@ def run(args,
         user_phil.append(arg_phil)
 
   params = master_phil.fetch(sources=user_phil).extract()
+  if params.max_retries > 0 and not params.run_in_unique_dirs:
+    print("Note: max_retries=%d enabled run_in_unique_dirs=True "
+          "(retries require per-test directories for safe cleanup)."
+          % params.max_retries)
+    params.run_in_unique_dirs = True
   if params.run_in_tmp_dir:
     from libtbx.test_utils import open_tmp_directory
     run_dir = open_tmp_directory()
@@ -262,7 +322,8 @@ def run(args,
       log=log,
       verbosity=params.verbosity,
       max_time=params.max_time,
-      cwd_map=cwd_map)
+      cwd_map=cwd_map,
+      max_retries=params.max_retries)
   print("\nSee run_tests_parallel_zlog for full output.\n")
   if (result.failure > 0):
     print("")

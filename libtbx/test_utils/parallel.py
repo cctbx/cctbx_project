@@ -13,11 +13,100 @@ import re
 import sys
 import re
 import codecs
+import errno
+import shutil
+import stat
 
 try:
   from enum import IntEnum
 except ImportError:
   IntEnum = object
+
+def _chmod_then_retry(func, path, exc_info):
+  """Recover from Windows read-only removal failures inside ``rmtree``.
+
+  Designed to be passed as the ``onerror`` callback to
+  :func:`shutil.rmtree`. When ``func`` is a removal function
+  (``os.unlink``, ``os.remove``, or ``os.rmdir``) and the underlying
+  exception is an ``OSError`` with ``errno`` equal to ``EACCES`` or
+  ``EPERM``, the target path is ``chmod``-ed writable and the
+  removal is retried. Any other error is ignored — the caller
+  treats cleanup as best-effort.
+
+  Parameters
+  ----------
+  func : callable
+      The filesystem function that raised (one of ``os.unlink``,
+      ``os.remove``, ``os.rmdir``).
+  path : str
+      The path the function was attempting to operate on.
+  exc_info : tuple
+      The exception triple as produced by ``sys.exc_info()``.
+
+  Notes
+  -----
+  On POSIX systems a file's permissions do not prevent unlinking
+  when its parent directory is writable, so this callback is
+  effectively dead code there. On Windows, files copied out of a
+  read-only source tree carry the read-only attribute; removing
+  them requires clearing the attribute first.
+
+  Never raises.
+  """
+  excvalue = exc_info[1]
+  if (func in (os.unlink, os.remove, os.rmdir)
+      and isinstance(excvalue, OSError)
+      and excvalue.errno in (errno.EACCES, errno.EPERM)):
+    try:
+      os.chmod(path, stat.S_IWUSR | stat.S_IWRITE)
+      func(path)
+    except OSError:
+      pass
+
+def _reset_cwd_for_retry(cwd):
+  """Empty a test's working directory in place before a retry.
+
+  Removes every entry inside ``cwd`` while leaving the directory
+  itself intact. Subdirectories are recursively removed via
+  :func:`shutil.rmtree` with :func:`_chmod_then_retry` as the
+  ``onerror`` callback; plain files are removed with an
+  ``os.chmod`` + retry fallback for the Windows read-only case.
+
+  Parameters
+  ----------
+  cwd : str or None
+      Absolute path of the test's per-run working directory (as
+      produced by ``_build_unique_dir_mapping``). ``None``, the
+      empty string, and non-existent paths are silently tolerated.
+
+  Notes
+  -----
+  Symlinks are unlinked rather than followed, so removal never
+  escapes ``cwd``. The directory itself is not removed or
+  recreated — this avoids a Windows race in which a freshly
+  created directory is not yet visible to a subprocess spawned
+  immediately afterward.
+
+  Best-effort. Never raises.
+  """
+  if not cwd or not os.path.isdir(cwd):
+    return
+  for entry in os.listdir(cwd):
+    path = os.path.join(cwd, entry)
+    try:
+      if os.path.isdir(path) and not os.path.islink(path):
+        shutil.rmtree(path, onerror=_chmod_then_retry)
+      else:
+        try:
+          os.remove(path)
+        except OSError:
+          try:
+            os.chmod(path, stat.S_IWUSR | stat.S_IWRITE)
+            os.remove(path)
+          except OSError:
+            pass
+    except OSError:
+      pass
 
 class Status(IntEnum):
   OK = 0
@@ -102,16 +191,87 @@ def find_tests(dir_name):
 
 def run_command(command,
                 verbosity=DEFAULT_VERBOSITY,
-                cwd=None):
+                cwd=None,
+                max_retries=0,
+                skip_retry=False):
+  """Run a single test command, optionally retrying on failure.
+
+  The command is executed via :func:`libtbx.easy_run.fully_buffered`.
+  When the first attempt exits with a non-zero return code, up to
+  ``max_retries`` additional attempts are performed with exponential
+  backoff (1s, 2s, 4s, ..., capped at 60s) between them. If ``cwd``
+  is supplied, it is emptied via :func:`_reset_cwd_for_retry` before
+  each retry so the next attempt starts from a clean state.
+
+  Parameters
+  ----------
+  command : str
+      The shell command to execute (typically
+      ``libtbx.python "path/to/tst_xxx.py"``).
+  verbosity : int, optional
+      Verbosity level. Accepted for API compatibility with older
+      callers; not referenced by the retry path.
+  cwd : str or None, optional
+      Absolute path of the working directory in which to run the
+      command. When set, the directory is emptied between retries.
+      When ``None`` (the default), the command inherits the
+      caller's cwd and no cleanup is performed.
+  max_retries : int, optional
+      Number of additional attempts to make after an initial
+      failure. Total attempts = ``1 + max_retries``. Default ``0``
+      (no retries, preserves legacy behavior).
+  skip_retry : bool, optional
+      If ``True``, perform exactly one attempt regardless of
+      ``max_retries``. Used by callers for tests in the
+      expected-failure list.
+
+  Returns
+  -------
+  libtbx.easy_run.fully_buffered or None
+      The result of the final attempt, with additional attributes
+      ``wall_time`` (float, seconds of the final attempt),
+      ``error_lines`` (list of suspicious stdout/stderr lines as
+      classified by ``phenix_regression``), ``attempt`` (int,
+      1-indexed index of the final attempt), and ``attempts_total``
+      (int, number of attempts allowed for this command). Output
+      from earlier attempts is discarded. Returns ``None`` only on
+      KeyboardInterrupt.
+
+  Raises
+  ------
+  ValueError
+      If ``max_retries`` is negative.
+
+  Notes
+  -----
+  Only the final attempt's stdout/stderr and timing are returned;
+  output from earlier attempts is discarded. Callers that need to
+  retain per-attempt output must capture it themselves.
+  """
+  if max_retries < 0:
+    raise ValueError(
+      "max_retries must be >= 0, got %d" % max_retries)
   try:
-    t0=time.time()
-    cmd_result = easy_run.fully_buffered(
-      command=command,
-      cwd=cwd,
-      )
-    cmd_result.wall_time = time.time()-t0
-    cmd_result.error_lines = phenix_separate_output(cmd_result)
-    return cmd_result
+    attempts = 1 if skip_retry else 1 + max_retries
+    last_result = None
+    for attempt in range(1, attempts + 1):
+      if attempt > 1:
+        time.sleep(min(2 ** (attempt - 2), 60))
+        if cwd is not None:
+          _reset_cwd_for_retry(cwd)
+      t0 = time.time()
+      cmd_result = easy_run.fully_buffered(
+        command=command,
+        cwd=cwd,
+        )
+      cmd_result.wall_time = time.time() - t0
+      cmd_result.error_lines = phenix_separate_output(cmd_result)
+      cmd_result.attempt = attempt
+      cmd_result.attempts_total = attempts
+      last_result = cmd_result
+      if cmd_result.return_code == 0:
+        break
+    return last_result
   except KeyboardInterrupt:
     traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
     sys.stdout.write(traceback_str)
@@ -222,7 +382,47 @@ class run_command_list(object):
                 log=None,
                 verbosity=DEFAULT_VERBOSITY,
                 max_time=180,
-                cwd_map=None):
+                cwd_map=None,
+                max_retries=0):
+    """Run a list of test commands with optional parallelism and retry.
+
+    Parameters
+    ----------
+    cmd_list : list of str
+        Shell commands to execute, typically produced by
+        :func:`make_commands`. Duplicates are silently dropped.
+    expected_failure_list : list of str, optional
+        Commands known to fail; their non-zero exit codes are
+        reclassified as ``Status.EXPECTED_FAIL``. Never retried.
+    expected_unstable_list : list of str, optional
+        Commands known to flicker; their non-zero exit codes are
+        reclassified as ``Status.EXPECTED_UNSTABLE``. Retried
+        normally.
+    parallel_list : list of str, optional
+        Commands that run one-at-a-time but each with multiple
+        processors (``OMP_NUM_THREADS`` set to ``nprocs``).
+    nprocs : int or libtbx.Auto, optional
+        Worker count for the multiprocessing pool. ``Auto`` means
+        :func:`multiprocessing.cpu_count`. Default ``1``.
+    out : file, optional
+        Stream for per-test progress output. Default ``sys.stdout``.
+    log : file or None, optional
+        Secondary log stream. Default ``None`` (drops output).
+    verbosity : int, optional
+        ``0`` = quiet, ``1`` = default, ``2`` = extra verbose.
+    max_time : float, optional
+        Tests taking longer than ``max_time`` seconds are flagged
+        as "long jobs" in the summary.
+    cwd_map : dict, optional
+        ``{command: cwd}`` mapping used when tests are dispatched
+        with per-test working directories (the
+        ``run_in_unique_dirs`` mode).
+    max_retries : int, optional
+        Additional attempts for commands that exit with a non-zero
+        return code. ``0`` (the default) preserves legacy
+        behavior. Commands in ``expected_failure_list`` are never
+        retried regardless of this value.
+    """
     if (log is None) : log = null_out()
     self.out = multi_out()
     self.log = log
@@ -243,6 +443,7 @@ class run_command_list(object):
     if self.parallel_list is None:
       self.parallel_list = []
     self.cwd_map = cwd_map if cwd_map is not None else {}
+    self.max_retries = max_retries
 
     # Filter cmd list for duplicates.
     self.cmd_list = []
@@ -279,9 +480,11 @@ class run_command_list(object):
       # Run the tests with multiprocessing pool.
       self.pool = Pool(processes=nprocs)
       for command in self.cmd_list:
+        skip_retry = command in self.expected_failure_list
         self.pool.apply_async(
           run_command,
-          [command, verbosity, self.cwd_map.get(command)],
+          [command, verbosity, self.cwd_map.get(command),
+           self.max_retries, skip_retry],
           callback=self.save_result)
       try:
         self.pool.close()
@@ -375,6 +578,11 @@ class run_command_list(object):
       self.expected_failures, file=self.out)
     print("  Known Unstable (% 3d)         :" % len(self.expected_unstable_list),
       self.expected_unstable, file=self.out)
+    retry_results = [r for r in self.results if getattr(r, 'attempt', 1) > 1]
+    if retry_results:
+      extra_attempts = sum(r.attempt - 1 for r in retry_results)
+      print("  Retries used                 : %d attempts across %d tests"
+        % (extra_attempts, len(retry_results)), file=self.out)
     print("  Stderr output (discouraged)  :",extra_stderr, file=self.out)
     if (self.finished != len(self.parallel_list) + len(self.cmd_list)):
       print("*" * 80, file=self.out)
@@ -405,9 +613,24 @@ class run_command_list(object):
     return alert
 
   def run_serial(self, command_list):
+    """Run a list of commands serially, forwarding retry configuration.
+
+    Parameters
+    ----------
+    command_list : list of str
+        Commands to dispatch. Each is run through
+        :func:`run_command` with this instance's ``max_retries``
+        and with ``skip_retry=True`` iff the command appears in
+        ``expected_failure_list``.
+    """
     for command in command_list:
-      rc = run_command(command, verbosity=self.verbosity,
-                       cwd=self.cwd_map.get(command))
+      skip_retry = command in self.expected_failure_list
+      rc = run_command(
+        command,
+        verbosity=self.verbosity,
+        cwd=self.cwd_map.get(command),
+        max_retries=self.max_retries,
+        skip_retry=skip_retry)
       if self.save_result(rc) == False:
         break
 
@@ -446,17 +669,36 @@ class run_command_list(object):
       **kw
     )
 
-  def display_result(self, result, alert, out=None, log_return=True, log_stderr=True, log_stdout=False):
+  def display_result(self, result, alert, out=None, log_return=True,
+                     log_stderr=True, log_stdout=False):
+    """Print one test's outcome, with a retry annotation when relevant.
+
+    Appends ``(passed on attempt N of M)`` or ``(failed after M
+    attempts)`` to the status line whenever ``result.attempt`` is
+    greater than 1.
+    """
     status = {Status.OK: 'OK', Status.WARNING: 'WARNING', Status.FAIL: 'FAIL',
               Status.EXPECTED_FAIL: 'EXPECTED FAIL',
               Status.EXPECTED_UNSTABLE: 'EXPECTED UNSTABLE'}
+    retry_note = ""
+    attempt = getattr(result, 'attempt', 1)
+    attempts_total = getattr(result, 'attempts_total', 1)
+    if attempt > 1:
+      if result.return_code == 0:
+        retry_note = "  (passed on attempt %d of %d)" % (
+          attempt, attempts_total)
+      else:
+        retry_note = "  (failed after %d attempts)" % attempt
     if out:
-      print("%s [%s] %.1fs"%(result.command, status[alert], result.wall_time), file=out)
+      print("%s [%s] %.1fs%s" % (
+        result.command, status[alert], result.wall_time, retry_note),
+        file=out)
       out.flush()
     if log_return:
       print("  Time: %5.2f"%result.wall_time, file=log_return)
       print("  Return code: %s"%result.return_code, file=log_return)
-      print("  OKs:", len([x for x in result.stdout_lines if 'OK' in x]), file=log_return)
+      print("  OKs:", len([x for x in result.stdout_lines if 'OK' in x]),
+        file=log_return)
       log_return.flush()
     if log_stdout and (len(result.stdout_lines) > 0):
       print("  Standard out:", file=log_stdout)
