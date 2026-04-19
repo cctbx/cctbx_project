@@ -180,6 +180,7 @@ jobs:
             module=smtbx \
             module=spotfinder \
             module=xcif \
+            max_retries=2 \
             nproc=4
 
 # -----------------------------------------------------------------------------
@@ -337,5 +338,6 @@ jobs:
             module=smtbx ^
             module=spotfinder ^
             module=xcif ^
+            max_retries=2 ^
             nproc=4
           if %errorlevel% neq 0 exit /b %errorlevel%

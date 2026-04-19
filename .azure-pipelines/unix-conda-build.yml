@@ -249,6 +249,7 @@ steps:
       module=crys3d \
       module=smtbx \
       module=spotfinder \
+      max_retries=2 \
       nproc=4
   failOnStderr: false
   displayName: Test

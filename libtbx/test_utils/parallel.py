@@ -581,7 +581,7 @@ class run_command_list(object):
     retry_results = [r for r in self.results if getattr(r, 'attempt', 1) > 1]
     if retry_results:
       extra_attempts = sum(r.attempt - 1 for r in retry_results)
-      print("  Retries used                 : %d attempts across %d tests"
+      print("  Retries used                 : %d extra attempts across %d tests"
         % (extra_attempts, len(retry_results)), file=self.out)
     print("  Stderr output (discouraged)  :",extra_stderr, file=self.out)
     if (self.finished != len(self.parallel_list) + len(self.cmd_list)):
