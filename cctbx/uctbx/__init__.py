@@ -191,8 +191,11 @@ class _():
     return gruber_parameterization(self, relative_epsilon).is_niggli_cell()
 
   def niggli_reduction(self, relative_epsilon=None, iteration_limit=None):
-    from cctbx.uctbx import krivy_gruber_1976
-    return krivy_gruber_1976.reduction(self, relative_epsilon, iteration_limit)
+    if relative_epsilon is None:
+      relative_epsilon = 1.e-5
+    if iteration_limit is None:
+      iteration_limit = 1000
+    return ext.niggli_reduction(self, relative_epsilon, iteration_limit)
 
   def niggli_cell(self,
         relative_epsilon=None,
@@ -296,6 +299,22 @@ class _():
       h, u_star, exp_arg_limit, truncate_exp_arg)
 
   debye_waller_factor = debye_waller_factors
+
+# Wrap niggli_reduction.r_inv() so it returns a matrix.sqr (with .elems),
+# matching the interface of the Python krivy_gruber_1976.reduction.r_inv().
+# The C++ binding converts scitbx::mat3<int> to a plain Python tuple; we
+# rewrap it here so callers can use .elems and pass it to change_basis().
+_cpp_niggli_reduction_r_inv = ext.niggli_reduction.r_inv
+
+@bp.inject_into(ext.niggli_reduction)
+class _():
+  def r_inv(self):
+    return matrix.sqr(_cpp_niggli_reduction_r_inv(self))
+
+  def change_of_basis_op(self):
+    from cctbx import sgtbx
+    return sgtbx.change_of_basis_op(
+      sgtbx.rt_mx(sgtbx.rot_mx(self.r_inv().elems, 1))).inverse()
 
 def non_crystallographic_buffer_layer(
       sites_cart_min,

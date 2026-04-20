@@ -17,6 +17,7 @@
 namespace cctbx { namespace uctbx { namespace boost_python {
 
   void wrap_fast_minimum_reduction();
+  void wrap_niggli_reduction();
 
 namespace {
 
@@ -390,6 +391,7 @@ namespace {
 
     unit_cell_wrappers::wrap();
     wrap_fast_minimum_reduction();
+    wrap_niggli_reduction();
 
     def("fractional_unit_shifts", fractional_unit_shifts_d, (
       arg("distance_frac")));
