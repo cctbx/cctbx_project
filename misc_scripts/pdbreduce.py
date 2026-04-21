@@ -18,16 +18,40 @@ def get_model_files_dict(path):
     file_name = "/".join([path,l])
     #assert os.path.isfile(file_name) # Terribly runtime expensive
     code = l[-11:-7]
+    #
+    #
+    #if code != "13mj": continue # XXX DEBUGGING
+    #
+    #
     result[code] = file_name
   return result
+
+def fetch_sorry(fn, code, cmd):
+  sorry = None
+  with open(fn, "r") as fo:
+    for l in fo.readlines():
+      if l.startswith("Sorry:"):
+        sorry = l
+        break
+  if sorry is not None:
+    with open("%s.error.log"%code, "w") as fo:
+      print(cmd, file=fo)
+      print(sorry, file=fo)
+    return True
+  return False
 
 def run_one(args):
   cif, code = args
   #
-  cmd = "mmtbx.reduce2 %s output.filename=%s_H.cif >& %s.zlog"%(cif, code, code)
-  print(cmd)
+  ofn = "%s_H.cif"%code
+  zlg = "%s.zlog"%code
+  cmd = "mmtbx.reduce2 %s output.filename=%s >& %s"%(cif, ofn, zlg)
   try:
-    easy_run.call(cmd)
+    rc = easy_run.call(cmd)
+    if rc!=0:
+      found = fetch_sorry(fn=zlg, code=code, cmd=cmd)
+      if not found:
+        raise RuntimeError("Error code is failure, but Sorry not found.")
   except Exception as e:
     of = open("%s.error.log"%code, "w")
     print(cmd, file=of)
@@ -35,7 +59,7 @@ def run_one(args):
     traceback.print_exc(file=of)
     of.close()
 
-def run(NPROC=30):
+def run(NPROC=128):
   #
   processed = []
   for f in os.listdir("."):

@@ -89,14 +89,15 @@ def fix_program_parameters(command, program):
         if wrong_param.startswith('_'):
             continue
 
-        # Skip if right_param is already in the command (avoid double-fixing)
-        if right_param and right_param + '=' in command:
-            continue
-
         # Pattern to match parameter=value (handles quoted values too)
         # Use word boundary and negative lookbehind to avoid matching if already prefixed
         # e.g., don't match "input_labels" if "file_info.input_labels" exists
         pattern = rf'(?<![.\w]){re.escape(wrong_param)}=("(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'|\S+)'
+
+        # If right_param already in command, REMOVE the wrong param (don't duplicate)
+        if right_param and right_param + '=' in command:
+            command = re.sub(pattern, '', command)
+            continue
 
         if right_param == "":
             # Remove the parameter name but keep the value

@@ -32,10 +32,12 @@ import os
 from datetime import datetime
 
 # Centralized pattern utilities - handle both PHENIX and standalone imports
-try:
-    from libtbx.langchain.agent.pattern_manager import is_half_map
-except ImportError:
-    from agent.pattern_manager import is_half_map
+# Override is_half_map with a stricter version that requires 'half' in name.
+# The pattern_manager version uses [_-]?[12]$ which false-positives on
+# sequentially numbered maps (map_1.ccp4, map_2.ccp4).
+def is_half_map(basename):
+    """Return True only if basename contains 'half' (strict version)."""
+    return 'half' in basename.lower()
 
 
 # =============================================================================
@@ -216,6 +218,13 @@ class BestFilesTracker:
         # ligand subcategories
         "ligand_pdb": "ligand",
         "ligand_cif": "ligand",
+        # map_coeffs_mtz subcategories
+        "refine_map_coeffs": "map_coeffs_mtz",
+        "denmod_map_coeffs": "map_coeffs_mtz",
+        "predict_build_map_coeffs": "map_coeffs_mtz",
+        # data_mtz subcategories
+        "original_data_mtz": "data_mtz",
+        "phased_data_mtz": "data_mtz",
         # intermediate - NOT tracked (returns None)
         "intermediate_mr": None,
         "autobuild_temp": None,
@@ -286,8 +295,8 @@ class BestFilesTracker:
                 "stage_scores": {
                     "refined": 100,
                     "rsr_output": 100,
-                    "with_ligand": 100,      # Tag, same score as refined
-                    "ligand_fit_output": 90,
+                    "with_ligand": 110,      # Model with ligand — beats plain refined (no metrics yet)
+                    "ligand_fit_output": 105,  # LigandFit output before pdbtools combination
                     "autobuild_output": 100,  # AutoBuild does internal refinement
                     "phaser_output": 70,      # MR output - positioned in unit cell
                     "docked": 60,             # Docked into map
@@ -552,6 +561,17 @@ class BestFilesTracker:
         if category == "map_coeffs_mtz":
             return self._evaluate_map_coeffs_mtz(path, cycle, metrics, stage, score)
 
+        # Special handling for with_ligand models: inherit metrics from the
+        # current best model so the ligand-combined file isn't penalized for
+        # lacking R-free metrics. A with_ligand model is always derived from
+        # the current best refined model, so it deserves the same quality score.
+        if category == "model" and stage == "with_ligand" and not metrics:
+            current = self.best.get(category)
+            if current and current.metrics:
+                inherited_metrics = dict(current.metrics)
+                inherited_score = self._calculate_score(path, category, stage, inherited_metrics)
+                return self._evaluate_standard(path, category, cycle, inherited_metrics, stage, inherited_score)
+
         # For other categories: higher score wins, with recency as tiebreaker
         return self._evaluate_standard(path, category, cycle, metrics, stage, score)
 
@@ -767,11 +787,20 @@ class BestFilesTracker:
         Returns:
             float: Score (higher is better)
         """
-        # SAFETY: If stage wasn't determined but filename clearly indicates refinement,
+        # SAFETY: If stage wasn't determined but filename clearly indicates a type,
         # override stage. This handles cases where program context was lost.
+        # IMPORTANT: Check with_ligand BEFORE refine — filenames like
+        # overall_best_final_refine_001_with_ligand.pdb contain both 'refine'
+        # and 'with_ligand', and must be treated as with_ligand (higher priority).
         if category == "model" and stage in (None, "model", "_default"):
             basename = os.path.basename(path).lower()
-            if 'refine' in basename and 'real_space' not in basename:
+            if 'with_ligand' in basename or '_liganded' in basename:
+                stage = "with_ligand"         # Must come before 'refine' check
+            elif '_modified' in basename and basename.endswith('.pdb'):
+                # pdbtools default output: {input}_modified.pdb
+                # After ligandfit, this is the model+ligand combination
+                stage = "with_ligand"
+            elif 'refine' in basename and 'real_space' not in basename:
                 stage = "refined"
             elif 'rsr_' in basename or '_rsr' in basename or 'real_space_refined' in basename:
                 stage = "rsr_output"
@@ -1017,7 +1046,7 @@ class BestFilesTracker:
         lower = path.lower()
 
         # First check for ligands (small molecules)
-        if self._is_ligand_file(basename):
+        if self._is_ligand_file(basename, path=path):
             return "ligand"
 
         # Check for SEARCH_MODEL indicators FIRST (templates, NOT positioned)
@@ -1093,17 +1122,63 @@ class BestFilesTracker:
         # Default: assume it's a model (conservative - better to try refinement)
         return "model"
 
-    def _is_ligand_file(self, basename):
-        """Check if file is a ligand (small molecule)."""
-        ligand_patterns = ['lig.pdb', 'lig.cif', 'ligand.pdb', 'ligand.cif',
-                          'lig_', 'ligand_', 'restraint', 'constraint']
-        not_ligand = ['ligand_fit', 'ligandfit', 'with_ligand', '_liganded']
+    def _is_ligand_file(self, basename, path=None):
+        """
+        Check if file is a ligand (small molecule).
 
-        is_ligand = any(p in basename for p in ligand_patterns)
-        is_excluded = any(p in basename for p in not_ligand)
-        is_small_name = len(basename) < 20
+        Strategy:
+        1. Fast exclusion — output files that happen to contain 'ligand' in a
+           different sense (ligand_fit output, with_ligand model, etc.) are
+           NOT small-molecule ligands.
+        2. Word-boundary pattern matching on the filename to catch names like
+           lig.pdb, LIG_001.pdb, ligand.pdb, atp_ligand.pdb etc.  Uses fnmatch
+           so '*' matches any prefix/suffix without false-positives on substrings
+           like 'noligand' (which DOES contain 'ligand.pdb' as a substring!).
+        3. Content fallback — HETATM-only PDB files (e.g. atp.pdb, gdp.pdb)
+           that carry a hetcode name pass even when the name gives no hint.
+        """
+        import fnmatch, re as _re
 
-        return is_ligand and not is_excluded and is_small_name
+        # Step 1: These are output/composite files, NOT small-molecule ligands
+        not_ligand_patterns = [
+            'ligand_fit*', '*ligand_fit*',
+            'ligandfit*',  '*ligandfit*',
+            '*with_ligand*',
+            '*_liganded*',
+        ]
+        if any(fnmatch.fnmatch(basename, p) for p in not_ligand_patterns):
+            return False
+
+        # Step 2: Word-boundary ligand patterns.
+        # Match 'lig' or 'ligand' only when they appear at the START of the name
+        # or immediately after a separator (_  -  .), and before a separator or
+        # end-of-stem.  This prevents 'noligand' from matching.
+        WORD_SEP = r'(?:^|[_\-\.])'
+        AFTER    = r'(?=[_\-\.]|\.(?:pdb|cif)$|$)'
+        word_boundary_ligand = _re.search(
+            r'(?:' + WORD_SEP + r'lig' + AFTER + r'|'
+                   + WORD_SEP + r'ligand' + AFTER + r')',
+            basename
+        )
+        # Also catch pure restraint/constraint files
+        restraint_match = any(p in basename for p in ('restraint', 'constraint'))
+
+        if word_boundary_ligand or restraint_match:
+            return True
+
+        # Step 3: Content-based fallback for PDB files (e.g. atp.pdb, gdp.pdb,
+        # hem.pdb) whose names give no ligand hint.
+        if path and basename.endswith('.pdb'):
+            try:
+                from libtbx.langchain.agent.workflow_state import _pdb_is_small_molecule
+            except ImportError:
+                try:
+                    from agent.workflow_state import _pdb_is_small_molecule
+                except ImportError:
+                    return False
+            return _pdb_is_small_molecule(path)
+
+        return False
 
     def _classify_cif_content(self, path, basename):
         """
@@ -1163,6 +1238,9 @@ class BestFilesTracker:
             # Check more specific patterns first!
             if 'with_ligand' in basename or '_liganded' in basename:
                 return "with_ligand"
+            if '_modified' in basename and basename.endswith('.pdb'):
+                # pdbtools default output naming after ligand combination
+                return "with_ligand"
             if 'ligand_fit' in basename or 'ligandfit' in basename:
                 return "ligand_fit_output"
             if 'real_space_refined' in basename or 'rsr_' in basename or '_rsr' in basename:
@@ -1170,6 +1248,8 @@ class BestFilesTracker:
             if 'refine' in basename and 'real_space' not in basename:
                 return "refined"
             if 'overall_best' in basename or 'autobuild' in basename:
+                return "autobuild_output"
+            if 'map_to_model' in basename:
                 return "autobuild_output"
             if 'placed' in basename or 'dock' in basename:
                 return "docked"

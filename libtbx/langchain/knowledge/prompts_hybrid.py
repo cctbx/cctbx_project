@@ -227,6 +227,14 @@ You must output a SINGLE JSON object matching this schema:
     "stop_reason": null
 }
 
+**CRITICAL STRATEGY RULE**: Strategy keys must ONLY contain parameters that are valid for
+the selected program. NEVER include parameters from a different program:
+- Do NOT put refinement.* parameters in a ligandfit or dock_in_map strategy
+- Do NOT put autosol.* parameters in a refine strategy
+- Do NOT put any parameters in a STOP response (strategy must be empty when stop=true)
+If you want to remember a parameter for a future cycle, omit it now — the agent will
+reconstruct it when the correct program runs.
+
 ### PROGRAM REFERENCE
 
 **phenix.xtriage** - Data quality analysis (X-ray)
@@ -262,7 +270,7 @@ You must output a SINGLE JSON object matching this schema:
 
 **phenix.predict_and_build** - AlphaFold prediction + MR + building
   Files: {sequence: .fa/.seq/.dat, data: .mtz/.sca (X-ray), full_map: .mrc/.ccp4 (cryo-EM), half_map: [.mrc, .mrc] (cryo-EM)}
-  Strategy: {resolution: N, stop_after_predict: true/false, rebuilding_strategy: "Quick"/"Standard"}
+  Strategy: {resolution: N, stop_after_predict: true/false}
   IMPORTANT: Set resolution if building (get from xtriage/mtriage)
   NOTE: By default (stop_after_predict=False), this runs the FULL workflow: prediction → molecular replacement → model building
   NOTE: Only set stop_after_predict=True for cryo-EM stepwise workflow where you want just the predicted model
@@ -402,6 +410,7 @@ Set "stop": true when:
 3. **Don't repeat failing commands** - change strategy or try different program
 4. **Always set resolution for predict_and_build** if building
 5. **Files must exist** - only use files from the inventory
+6. **Strategy is program-specific** - never put parameters for program X in a strategy for program Y; when stop=true, strategy must be empty
 """
 
 
@@ -728,8 +737,11 @@ You MUST choose from the valid programs above, or set "stop": true.
                 continue
 
             # Detect failure in result string
-            if str(result).startswith("FAILED") or "Sorry" in str(result):
-                error = result
+            # Empty/None results indicate timeout or crash (no output)
+            result_str = str(result).strip() if result else ""
+            if (result_str.startswith("FAILED") or "Sorry" in result_str
+                or not result_str or result_str == "None"):
+                error = result_str if result_str else "No output (timeout or crash)"
 
             if len(str(result)) > 100:
                 result = str(result)[:100] + "..."
@@ -747,6 +759,36 @@ You MUST choose from the valid programs above, or set "stop": true.
         history_str = "No previous history. This is the FIRST cycle."
 
     # === RETRY CONTEXT ===
+    # Count consecutive failures of the SAME program (for pivot logic)
+    consecutive_same_failures = 0
+    if history and last_failed_program:
+        for h in reversed(history):
+            if not isinstance(h, dict):
+                break
+            prog = h.get('program', '')
+            result = str(h.get('result', h.get('summary', ''))).strip()
+            is_fail = (result.upper().startswith("FAIL") or
+                       "Sorry" in result or
+                       ("ERROR" in result.upper() and
+                        "WITHOUT ERROR" not in result.upper()) or
+                       not result or result == "None")
+            if is_fail and prog == last_failed_program:
+                consecutive_same_failures += 1
+            else:
+                break  # streak broken
+
+    # Detect terminal errors (no retry can fix these)
+    is_terminal_error = False
+    if last_error:
+        _le = last_error.lower()
+        is_terminal_error = any(x in _le for x in [
+            "traceback (most recent call last)",
+            "polymer crosses special position",
+            "segmentation fault",
+            "killed",
+            "core dumped",
+        ])
+
     retry_msg = ""
     if previous_attempts:
         last = previous_attempts[-1]
@@ -794,15 +836,53 @@ YOU MUST FIX THIS. Try a DIFFERENT approach:
         safe_error = escape_percent(last_error[:200])
         safe_program = escape_percent(last_failed_program or "unknown")
 
-        if is_phil_error:
+        if is_terminal_error:
+            runtime_error_msg = """
+!!! PREVIOUS CYCLE FAILED - TERMINAL ERROR !!!
+Program: %s
+Error: "%s"
+
+This error CANNOT be fixed by retrying with different parameters.
+You MUST choose a DIFFERENT program or a different approach entirely.
+Consider whether a prerequisite step (e.g., refinement to standardize data)
+might help, or try an alternative workflow path.
+""" % (safe_program, safe_error)
+
+        elif is_phil_error and consecutive_same_failures >= 2:
+            runtime_error_msg = """
+!!! PREVIOUS CYCLE FAILED - PHIL SYNTAX ERROR (REPEATED %d TIMES) !!!
+Program: %s
+Error: "%s"
+
+This program has failed %d consecutive times with parameter errors.
+Retrying with tweaked parameters is NOT working.
+You MUST choose a DIFFERENT program or approach.
+Consider whether a prerequisite step (e.g., running phenix.refine first
+to create a standard MTZ) would resolve the underlying issue.
+""" % (consecutive_same_failures, safe_program, safe_error,
+       consecutive_same_failures)
+
+        elif is_phil_error:
             runtime_error_msg = """
 !!! PREVIOUS CYCLE FAILED - PHIL SYNTAX ERROR !!!
 Program: %s
 Error: "%s"
 
-THIS IS A SYNTAX ERROR - DO NOT SWITCH PROGRAMS!
-Retry with corrected parameter names.
+This is a parameter syntax error. Remove or correct the unrecognized
+parameter(s) named in the error message and retry.
+If the error persists after correction, switch to a different program.
 """ % (safe_program, safe_error)
+
+        elif is_rfree_error and consecutive_same_failures >= 2:
+            runtime_error_msg = """
+!!! PREVIOUS CYCLE FAILED - R-FREE FLAG ISSUE (REPEATED %d TIMES) !!!
+Program: %s
+Error: "%s"
+
+This program has failed %d consecutive times with R-free flag errors.
+You MUST choose a DIFFERENT program or approach.
+""" % (consecutive_same_failures, safe_program, safe_error,
+       consecutive_same_failures)
 
         elif is_rfree_error:
             runtime_error_msg = """
@@ -810,11 +890,25 @@ Retry with corrected parameter names.
 Program: %s
 Error: "%s"
 
-THIS IS AN R-FREE FLAG ERROR - DO NOT SWITCH PROGRAMS!
-The refinement command already includes xray_data.r_free_flags.generate=True
-which should auto-generate R-free flags. Retry refinement - it should work now.
-If using a different MTZ file, ensure it has reflection data.
+THIS IS AN R-FREE FLAG ERROR.
+The system handles R-free flag generation automatically based on whether the
+MTZ already has R-free flags.  Do NOT set generate_rfree_flags=True — the
+BUILD node will add it only when needed.
+If the error persists, the MTZ may already have R-free flags from a previous
+refinement or the input data.  Try re-running without generate_rfree_flags.
+If the error still persists, switch to a different program.
 """ % (safe_program, safe_error)
+
+        elif is_resolution_error and consecutive_same_failures >= 2:
+            runtime_error_msg = """
+!!! PREVIOUS CYCLE FAILED - RESOLUTION ISSUE (REPEATED %d TIMES) !!!
+Program: %s
+Error: "%s"
+
+This program has failed %d consecutive times with resolution errors.
+You MUST choose a DIFFERENT program or approach.
+""" % (consecutive_same_failures, safe_program, safe_error,
+       consecutive_same_failures)
 
         elif is_resolution_error:
             runtime_error_msg = """
@@ -822,8 +916,8 @@ If using a different MTZ file, ensure it has reflection data.
 Program: %s
 Error: "%s"
 
-THIS IS A RESOLUTION ERROR - DO NOT SWITCH PROGRAMS!
-Add or fix the resolution parameter in strategy.
+THIS IS A RESOLUTION ERROR. Add or fix the resolution parameter in strategy.
+If the error persists, switch to a different program.
 """ % (safe_program, safe_error)
 
         elif is_file_error:
@@ -836,7 +930,19 @@ A required file was not found. Check the FILE INVENTORY and use only files that 
 """ % (safe_program, safe_error)
 
         else:
-            runtime_error_msg = """
+            if consecutive_same_failures >= 2:
+                runtime_error_msg = """
+!!! PREVIOUS CYCLE FAILED (REPEATED %d TIMES) !!!
+Program: %s
+Error: "%s"
+
+This program has failed %d consecutive times.
+You MUST choose a DIFFERENT program or approach.
+Consider whether a prerequisite step might resolve the underlying issue.
+""" % (consecutive_same_failures, safe_program, safe_error,
+       consecutive_same_failures)
+            else:
+                runtime_error_msg = """
 !!! PREVIOUS CYCLE FAILED !!!
 Program: %s
 Error: "%s"
@@ -862,13 +968,13 @@ You must adapt:
 ### USER ADVICE (FOLLOW THIS)
 %s
 
-**IMPORTANT**: Extract any specific parameters from the user advice above (wavelength, atom type,
-resolution, number of sites, etc.) and include them in your "strategy" field. For example:
-- If user mentions wavelength 0.9792 → add to strategy: "wavelength": 0.9792
-- If user mentions Se atoms → add to strategy: "atom_type": "Se"
-- If user mentions additional S atoms → add to strategy: "additional_atom_types": "S"
-- If user mentions 5 sites → add to strategy: "sites": 5
-- If user mentions resolution 2.5 Å → add to strategy: "resolution": 2.5
+**IMPORTANT**: Extract parameters from the user advice above ONLY when they apply to the
+program you are currently selecting. Do NOT carry over parameters that belong to a different
+program. For example:
+- If user mentions wavelength 0.9792 AND you selected phenix.autosol → add to strategy: "wavelength": 0.9792
+- If user mentions Se atoms AND you selected phenix.autosol → add to strategy: "atom_type": "Se"
+- If user mentions resolution 2.5 Å AND the selected program uses resolution → add to strategy: "resolution": 2.5
+- If user mentions refinement parameters (e.g. number_of_macro_cycles) AND you selected phenix.ligandfit → DO NOT add them; they don't apply
 
 """ % escape_percent(user_advice)
 
@@ -939,6 +1045,8 @@ Keep your assessment concise (3-5 sentences per section). Focus on practical ins
 === SESSION SUMMARY ===
 {session_summary}
 === END SESSION SUMMARY ===
+
+**Superseded failures**: Steps marked [SUPERSEDED] were resolved by later successful steps — do not report them as critical issues.
 
 Provide your assessment in Markdown format with the headers above."""
 

@@ -252,9 +252,11 @@ def test_invariants_rfree():
     assert strategy.get('generate_rfree_flags') == True
 
     # Second refinement should NOT add R-free flags
+    # (rfree_mtz is locked after the first successful refine)
     ctx2 = CommandContext(
         cycle_number=3,
         experiment_type='xray',
+        rfree_mtz='/path/to/refine_001.mtz',
         history=[
             {'cycle_number': 2, 'program': 'phenix.refine', 'result': 'SUCCESS'},
         ],
@@ -736,7 +738,7 @@ def test_recovery_empty_scope_applies_to_all():
 
     files = {'data_mtz': '/path/toxd.mtz'}
 
-    for prog in ['phenix.xtriage', 'phenix.refine', 'phenix.autobuild']:
+    for prog in ['phenix.xtriage', 'phenix.refine', 'phenix.phaser']:
         strategy = {}
         result = builder._apply_recovery_strategies(prog, files, strategy, ctx)
         assert len(result) > 0, "Recovery should apply to %s" % prog

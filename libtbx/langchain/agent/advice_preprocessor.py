@@ -359,8 +359,8 @@ Please analyze this input and extract actionable information for the AI agent.
 (e.g., "run xtriage to check for twinning", "analyze data quality", "test molecular replacement"),
 this is a FOCUSED TASK, not full structure determination. In such cases:
 - Identify the specific goal (e.g., "check for twinning", "test MR solution")
-- The agent should STOP after completing that specific task
-- Include this in the Stop Condition section
+- Include the goal in the Primary Goal section
+- Do NOT infer a stop condition from the goal description (see Stop Condition rules below)
 
 Your response MUST include these sections:
 
@@ -377,17 +377,27 @@ Your response MUST include these sections:
    - Heavy atom type (Se, S, etc.)
    - Space group (if mentioned)
 
-5. **Special Instructions**: Any specific requirements like:
+5. **Program Parameters**:
+   Translate any program settings expressed in plain English to exact PHIL key=value pairs
+   that can be appended to PHENIX commands.
+   Common translations:
+   - "one macro-cycle" / "1 macro-cycle" / "run only N macro-cycle(s)" → `main.number_of_macro_cycles=1` (or N)
+   - "N macro-cycles of refinement" → `main.number_of_macro_cycles=N`
+   - "superquick" refinement → `superquick=True`
+   - "N cycles of real-space refinement" → `macro_cycles=N`
+   - "resolution limit X Å" → `d_min=X`
+   Format each as a bare `key=value` line (one per line). If none, write "None".
+
+6. **Special Instructions**: Any specific requirements like:
    - Additional atom types to search for
    - Ligands to include
    - Quality targets (R-free, etc.)
 
-6. **Stop Condition**: When should the agent stop? Examples:
-   - "Stop after running xtriage" (for twinning analysis)
-   - "Stop after molecular replacement" (for MR test)
-   - "Stop after first refinement cycle" (for quick test)
-   - "Continue until structure is complete" (for full workflow)
-   - If the input describes a specific limited procedure, include the appropriate stop condition.
+7. **Stop Condition**: ONLY populate this if the user has EXPLICITLY stated when to stop,
+   using clear language like "stop after X", "only run X", or "do not continue past X".
+   - Do NOT infer a stop condition from the tutorial's stated purpose or goals.
+   - Describing a goal (e.g., "solve by molecular replacement") is NOT a stop condition.
+   - If no explicit stop instruction is present, write "None".
 
 Be concise and specific. Extract actual values from the text rather than being vague.
 
@@ -471,6 +481,64 @@ def extract_files_from_processed_advice(processed_advice):
 # MAIN PREPROCESSING FUNCTION
 # =============================================================================
 
+def _neutralize_fabricated_stop_condition(processed_advice, raw_advice):
+    """
+    Strip LLM-fabricated stop conditions from processed advice.
+
+    The LLM frequently ignores instructions to write "None" for field 7
+    (Stop Condition) and instead fabricates a stop condition from the
+    tutorial's goal description. This causes premature workflow stops.
+
+    Detection: if the original raw advice does NOT contain an explicit
+    stop instruction, any "Stop Condition" in the LLM output is fabricated.
+
+    Args:
+        processed_advice: LLM-generated processed advice
+        raw_advice: Original raw advice (README content)
+
+    Returns:
+        str: Processed advice with fabricated stop conditions neutralized
+    """
+    if not processed_advice:
+        return processed_advice
+
+    if not raw_advice or not raw_advice.strip():
+        # No raw input at all — any stop condition is necessarily fabricated
+        # (the LLM had nothing to extract a stop instruction from)
+        neutralized = re.sub(
+            r'(7\.\s*\*?\*?Stop Condition\*?\*?\s*:?).*?(?=\n\s*(?:8\.|Be concise|Start directly)|\Z)',
+            r'\1 None',
+            processed_advice,
+            flags=re.IGNORECASE | re.DOTALL
+        )
+        return neutralized
+
+    # Check if raw advice contains an explicit stop instruction
+    raw_lower = raw_advice.lower()
+    has_explicit_stop = any(phrase in raw_lower for phrase in [
+        "stop after", "stop when", "stop once",
+        "do not continue", "only run", "just run",
+        "halt after", "quit after",
+        "do not proceed", "don't proceed",
+    ])
+
+    if has_explicit_stop:
+        # User actually said to stop — leave the field alone
+        return processed_advice
+
+    # No explicit stop in raw advice — neutralize any fabricated stop condition
+    # Replace field 7 content with "None"
+    neutralized = re.sub(
+        r'(7\.\s*\*?\*?Stop Condition\*?\*?\s*:?).*?(?=\n\s*(?:8\.|Be concise|Start directly)|\Z)',
+        r'\1 None',
+        processed_advice,
+        flags=re.IGNORECASE | re.DOTALL
+    )
+
+    return neutralized
+
+
+
 def preprocess_advice(raw_advice, experiment_type=None, file_list=None,
                       llm=None, timeout=60, out=sys.stdout, use_rules_only=False):
     """
@@ -496,6 +564,17 @@ def preprocess_advice(raw_advice, experiment_type=None, file_list=None,
 
     if use_rules_only:
         print("Skipping LLM preprocessing (use_rules_only=True), using raw advice", file=out)
+        return raw_advice
+
+    # Skip LLM preprocessing for standardized solve-mode
+    # READMEs (v115).  "Solve the structure by standard
+    # procedures" is a direct instruction that the directive
+    # extractor handles perfectly.  Preprocessing would add
+    # headers that cause misclassification as tutorial intent.
+    if raw_advice.strip().lower().startswith(
+            "solve the structure by standard procedures"):
+        print("Solve-mode README detected, "
+              "skipping LLM preprocessing", file=out)
         return raw_advice
 
     if not llm:
@@ -532,7 +611,10 @@ def preprocess_advice(raw_advice, experiment_type=None, file_list=None,
 
         # Basic validation - should have some content
         if processed and len(processed) > 20:
-            return processed.strip()
+            # Neutralize fabricated stop conditions before returning
+            processed = _neutralize_fabricated_stop_condition(
+                processed.strip(), raw_advice)
+            return processed
         else:
             print("LLM returned insufficient response, using raw advice", file=out)
             return raw_advice

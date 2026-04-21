@@ -149,14 +149,25 @@ def post_query(query_json=None, xray_only=True, d_max=None, d_min=None,
   res_ids = []
   attempt_number = 0
   while len(res_ids) == 0 and attempt_number < n_retries_on_no_results:
+    if attempt_number > 0:
+      print("  Retry # %d to get non empty result from RCSB" % attempt_number, file=log)
     s = requests.Session()
     retries = Retry(
         total=5,
+        connect=5,
+        read=5,
+        other=5,
         backoff_factor=0.1,
-        status_forcelist=[ 500, 502, 503, 504 ])
+        status_forcelist=[ 500, 502, 503, 504 ],
+        allowed_methods=frozenset(["POST"]),
+        raise_on_status=False)
     s.mount('https://', HTTPAdapter(max_retries=retries))
     r = s.post(search_base_url, json=query_json)
     # print('r.status_code', r.status_code)
+    retry_state = r.raw.retries              # urllib3.util.retry.Retry
+    num_retries = len(retry_state.history)   # how many retry events occurred
+    if num_retries > 0:
+      print("  Number of retries for RCSB query: %d" % num_retries, file=log)
     if r.status_code == 200:
       r_json = r.json()
       # print(json.dumps(r_json, indent=4))

@@ -9,6 +9,13 @@ from collections import defaultdict
 from rdkit.Chem import Lipinski
 from scitbx.array_family import flex
 
+from rdkit.Chem import AllChem
+from rdkit.Chem.Draw import rdMolDraw2D
+
+from rdkit import RDLogger
+lg = RDLogger.logger()
+lg.setLevel(RDLogger.CRITICAL) # Only show critical errors
+
 """
 Utility functions to work with rdkit
 
@@ -20,18 +27,32 @@ Functions:
   mol_from_smiles: Generate rdkit mol from smiles string
   match_mol_indices: Match atom indices of different mols
 """
+# ------------------------------------------------------------------------------
 
-def get_rdkit_bond_type(cif_order):
+def get_rdkit_bond_type(cif_order, elements=None):
   """
   Maps CCTBX CIF bond orders to RDKit BondType enum.
+  elements: A set/list of the two element symbols involved, e.g. {'C', 'O'}
   """
   if not cif_order: return Chem.BondType.SINGLE
   order = cif_order.lower()
+
   if 'sing' in order: return Chem.BondType.SINGLE
   if 'doub' in order: return Chem.BondType.DOUBLE
   if 'trip' in order: return Chem.BondType.TRIPLE
-  if 'deloc' in order or 'arom' in order: return Chem.BondType.AROMATIC
+  if 'arom' in order: return Chem.BondType.AROMATIC
+
+  if 'deloc' in order:
+    # Special handling for P and S to avoid valence errors (e.g. Valence 6 on P)
+    if elements and any(e in elements for e in ['P', 'S', 'CL']):
+        return Chem.BondType.SINGLE
+
+    # For Carbon (Carboxylates), 1.5 is safe and correct
+    return Chem.BondType.ONEANDAHALF
+
   return Chem.BondType.SINGLE
+
+# ------------------------------------------------------------------------------
 
 def is_amide_bond(mol, bond):
   """
@@ -56,31 +77,32 @@ def is_amide_bond(mol, bond):
         return True
   return False
 
-def get_rdkit_mol_from_atom_group_and_cif_obj(atom_group, cif_object):
+# ------------------------------------------------------------------------------
 
+def get_rdkit_mol_from_atom_group_and_cif_obj(atom_group, cif_object):
   atoms_ligand = atom_group.atoms()
-  resname = atom_group.resname
 
   # Mappings
-  # cctbx_idx -> rdkit_idx
-  # rdkit_idx -> cctbx_idx
-  # atom_name -> rdkit_idx (For CIF lookup)
   cctbx_to_rdkit = {}
   rdkit_to_cctbx = {}
   name_to_rdkit = {}
+
+  # Map atom names to element strings (e.g., "CA" -> "C")
+  name_to_element = {}
 
   mol = Chem.RWMol()
 
   # --- Build RDKit Nodes (Atoms) ---
   for cctbx_atom in atoms_ligand:
-
     atom_idx = cctbx_atom.i_seq
-    # Handle Element
-    element = cctbx_atom.element.strip().capitalize()
-    #if not element: element = cctbx_atom.name.strip()[0:1]
 
-    rd_atom = Chem.Atom(element)
-    # Store name for debugging and potential mapping checks
+    # Get Element string (e.g., "C", "N", "P")
+    element_str = cctbx_atom.element.strip().capitalize()
+    if not element_str:
+        # Fallback if element is empty
+        element_str = cctbx_atom.name.strip()[0:1].capitalize()
+
+    rd_atom = Chem.Atom(element_str)
     rd_atom.SetProp("_Name", cctbx_atom.name)
 
     rd_idx = mol.AddAtom(rd_atom)
@@ -88,49 +110,136 @@ def get_rdkit_mol_from_atom_group_and_cif_obj(atom_group, cif_object):
     cctbx_to_rdkit[atom_idx] = rd_idx
     rdkit_to_cctbx[rd_idx] = atom_idx
 
-    # Clean name for dictionary lookup (e.g. " C1 " -> "C1")
-    name_to_rdkit[cctbx_atom.name.strip()] = rd_idx
+    # Store mappings
+    clean_name = cctbx_atom.name.strip()
+    name_to_rdkit[clean_name] = rd_idx
+    name_to_element[clean_name] = element_str.upper() # Store as "C", "P", etc.
 
-  # Build Bonds from CIF (Primary source)
+  # --- Apply Charges from CIF Dictionary ---
+  if cif_object and hasattr(cif_object, "atom_list"):
+    for cif_atom in cif_object.atom_list:
+      atom_name = cif_atom.atom_id.strip()
+
+      # Check if this atom exists in the RDKit molecule
+      if atom_name in name_to_rdkit:
+        rd_idx = name_to_rdkit[atom_name]
+        rd_atom = mol.GetAtomWithIdx(rd_idx)
+
+        # Extract charge
+        # It might be an integer, a float (partial), or a string.
+        try:
+          c_val = getattr(cif_atom, 'charge', 0)
+          # Convert to int (handle cases like "1.0", 1, or "-1")
+          formal_charge = int(float(c_val))
+
+          if formal_charge != 0:
+            rd_atom.SetFormalCharge(formal_charge)
+
+        except (ValueError, TypeError):
+          # If charge is None or non-numeric, ignore it
+          pass
+
+  # --- Build Bonds from CIF ---
   if cif_object and hasattr(cif_object, "bond_list"):
     for bond in cif_object.bond_list:
-      atom_1 = bond.atom_id_1
-      atom_2 = bond.atom_id_2
-      order_str = bond.type
+      # These are STRINGS (names)
+      atom_name_1 = bond.atom_id_1.strip()
+      atom_name_2 = bond.atom_id_2.strip()
 
-      if atom_1 in name_to_rdkit and atom_2 in name_to_rdkit:
-        rd_i = name_to_rdkit[atom_1]
-        rd_j = name_to_rdkit[atom_2]
-        # Check existing to prevent duplicates
+      # Use .type if available, otherwise assume single
+      order_str = getattr(bond, 'type', 'sing')
+
+      if atom_name_1 in name_to_rdkit and atom_name_2 in name_to_rdkit:
+        rd_i = name_to_rdkit[atom_name_1]
+        rd_j = name_to_rdkit[atom_name_2]
+
         if mol.GetBondBetweenAtoms(rd_i, rd_j) is None:
-          mol.AddBond(rd_i, rd_j, get_rdkit_bond_type(order_str))
+          # LOOKUP ELEMENTS from the map we built
+          el1 = name_to_element.get(atom_name_1, 'C')
+          el2 = name_to_element.get(atom_name_2, 'C')
 
-  # Sanitize (Important for implicit valence calculation)
+          # Pass element set to the helper
+          r_type = get_rdkit_bond_type(order_str, elements={el1, el2})
+
+          mol.AddBond(rd_i, rd_j, r_type)
+
+  # --- Validation / Fallback ---
+  # You can keep fix_charges as a backup for cases where the CIF
+  # is missing charge data, but generally, the CIF should win.
+  mol = fix_charges(mol)
+
   try:
     Chem.SanitizeMol(mol)
   except ValueError:
+    print("Warning: Sanitization failed. Proceeding with unsanitized molecule.")
     mol.UpdatePropertyCache(strict=False)
 
   return mol, rdkit_to_cctbx
 
+# ------------------------------------------------------------------------------
+
+def fix_charges(mol):
+  mol.UpdatePropertyCache(strict=False)
+  for atom in mol.GetAtoms():
+    anum = atom.GetAtomicNum()
+    val = atom.GetValence(Chem.ValenceType.EXPLICIT)
+    charge = atom.GetFormalCharge()
+
+    # If the CIF already set a non-zero charge, trust it and skip heuristics
+    if charge != 0:
+        continue
+
+    # --- Heuristics (Only run if charge is 0) ---
+
+    # Fix Nitrogen: 4 bonds, neutral -> +1
+    if anum == 7 and val == 4:
+      atom.SetFormalCharge(1)
+
+    # Fix Boron: 4 bonds, neutral -> -1
+    if anum == 5 and val == 4:
+      atom.SetFormalCharge(-1)
+
+    # Fix Phosphorus/Sulfur (Quaternary)
+    # Since 'deloc' is mapped -> SINGLE, we might have P with 4 single bonds.
+    # Neutral P cannot have 4 bonds. P+ can.
+    if anum == 15 and val == 4:
+      atom.SetFormalCharge(1)
+
+    # Fix Oxygen (Oxonium/protonated ketones - rare in std ligands but possible)
+    if anum == 8 and val == 3:
+      atom.SetFormalCharge(1)
+
+  return mol
+
+# ------------------------------------------------------------------------------
+
 def get_cctbx_isel_for_rigid_components(atom_group,
                                         cif_object,
-                                        filter_lone_linkers=True):
+                                        filter_lone_linkers=True,
+                                        filename=None):
   mol, rdkit_to_cctbx = get_rdkit_mol_from_atom_group_and_cif_obj(
     atom_group = atom_group,
     cif_object = cif_object)
-  cctbx_rigid_components = get_rigid_components(
-    mol, rdkit_to_cctbx, filter_lone_linkers)
+  cctbx_rigid_components, _mol, _frags = get_rigid_components(
+    mol, rdkit_to_cctbx, filter_lone_linkers, filename)
 
   return cctbx_rigid_components
 
+# ------------------------------------------------------------------------------
+
 def get_rigid_components(mol,
                          rdkit_to_cctbx,
-                         filter_lone_linkers=True):
+                         filter_lone_linkers=True,
+                         filename=None):
 
   # Identify Rotatable Bonds
   rotatable_pattern = Lipinski.RotatableBondSmarts
-  matches = mol.GetSubstructMatches(rotatable_pattern)
+  try:
+    matches = mol.GetSubstructMatches(rotatable_pattern)
+  except Exception as e:
+    print('Failed to fragment the molecule.')
+    frags = Chem.GetMolFrags(mol, asMols=False)
+    return [flex.size_t(list(rdkit_to_cctbx.values()))], mol, list(frags)
 
   candidate_cut_bonds = []
   min_heavy_atoms = 2
@@ -187,23 +296,28 @@ def get_rigid_components(mol,
 
   # Fragment
   if not final_bonds_to_cut:
-    return [flex.size_t(list(rdkit_to_cctbx.values()))]
+    rdkit_frags = list(Chem.GetMolFrags(mol, asMols=False))
+    draw_colored_fragments(mol, rdkit_frags, filename=filename)
+    return [flex.size_t(list(rdkit_to_cctbx.values()))], mol, rdkit_frags
 
   fragmented_mol = Chem.FragmentOnBonds(mol, final_bonds_to_cut, addDummies=False)
-  raw_fragments = Chem.GetMolFrags(fragmented_mol, asMols=False)
+  raw_fragments = list(Chem.GetMolFrags(fragmented_mol, asMols=False))
 
   # Convert to CCTBX format
   cctbx_rigid_components = []
 
-  merged_fragments = raw_fragments
-  for frag in merged_fragments:
+  for frag in raw_fragments:
     component_indices = flex.size_t()
     for rd_idx in frag:
       global_idx = rdkit_to_cctbx[rd_idx]
       component_indices.append(global_idx)
     cctbx_rigid_components.append(component_indices)
 
-  return cctbx_rigid_components
+  draw_colored_fragments(mol, raw_fragments, filename=filename)
+
+  return cctbx_rigid_components, mol, raw_fragments
+
+# ------------------------------------------------------------------------------
 
 def _filter_isolated_linkers(candidate_cut_bonds, mol, fragment_size_map):
   # 1. Map bonds to atoms
@@ -291,6 +405,184 @@ def _filter_isolated_linkers(candidate_cut_bonds, mol, fragment_size_map):
       safe_atoms.add(bond.GetOtherAtom(atom).GetIdx())
 
   return bonds_to_skip
+
+# ------------------------------------------------------------------------------
+
+def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
+                           frag_ccs=None):
+  """
+  1. Removes all H atoms.
+  2. Strips all charges and implicit H properties (forces clean drawing).
+  3. Maps colors from the original fragmented indices to the new clean molecule.
+  frag_ccs: optional list of CC floats, one per fragment in rdkit_frags order.
+            When provided, each CC value is drawn at the centroid of its fragment.
+  """
+  if filename is None: return
+
+  # 1. Work on a copy
+  mol_viz = Chem.Mol(mol)
+
+  # 2. Tag atoms with their original index so we can trace them back to rdkit_frags
+  for atom in mol_viz.GetAtoms():
+    atom.SetIntProp("orig_idx", atom.GetIdx())
+
+  # 3. Remove Hydrogens
+  # implicitOnly=False ensures we remove the explicit H atoms
+  mol_viz = Chem.RemoveHs(mol_viz, implicitOnly=False)
+
+  # 4. Cleanup Loop
+  # This prevents the "OH" or "S+" labels. Force RDKit to draw atoms as-is.
+  for atom in mol_viz.GetAtoms():
+    # Force RDKit to believe there are no implicit Hydrogens
+    atom.SetNoImplicit(True)
+    # Force explicit H count to 0
+    atom.SetNumExplicitHs(0)
+    # Optional: Remove formal charges (e.g. make S+ look like S)
+    atom.SetFormalCharge(0)
+    # Update property cache to accept these "weird" valences
+    atom.UpdatePropertyCache(strict=False)
+
+    # --- Labeling Logic ---
+    if use_atom_names and atom.HasProp("_Name"):
+      # RDKit looks for "atomLabel" to override the symbol
+      name = atom.GetProp("_Name").strip()
+      atom.SetProp("atomLabel", name)
+
+  # 5. Coordinate Generation
+  AllChem.Compute2DCoords(mol_viz)
+
+  # 6. Color Mapping Logic
+  palette = [
+    (1.0, 0.6, 0.6), (0.6, 0.8, 1.0), (0.6, 1.0, 0.6),
+    (1.0, 0.8, 0.4), (0.8, 0.6, 1.0), (1.0, 1.0, 0.6),
+    (0.4, 0.8, 0.8), (0.8, 0.8, 0.8)
+  ]
+
+  # Map: Original_Index -> Fragment_ID
+  old_idx_to_frag_id = {}
+  for frag_idx, frag_atoms in enumerate(rdkit_frags):
+    for old_idx in frag_atoms:
+      old_idx_to_frag_id[old_idx] = frag_idx
+
+  # Map: New_Atom_Index -> Color
+  new_atom_highlights = {}
+  new_bond_highlights = {}
+  new_idx_to_frag_id = {}
+
+  for atom in mol_viz.GetAtoms():
+    if atom.HasProp("orig_idx"):
+      old_idx = atom.GetIntProp("orig_idx")
+
+      if old_idx in old_idx_to_frag_id:
+        frag_id = old_idx_to_frag_id[old_idx]
+        color = palette[frag_id % len(palette)]
+
+        new_idx = atom.GetIdx()
+        new_atom_highlights[new_idx] = color
+        new_idx_to_frag_id[new_idx] = frag_id
+
+  # 7. Highlight Bonds
+  for bond in mol_viz.GetBonds():
+    a1 = bond.GetBeginAtomIdx()
+    a2 = bond.GetEndAtomIdx()
+
+    if a1 in new_idx_to_frag_id and a2 in new_idx_to_frag_id:
+      if new_idx_to_frag_id[a1] == new_idx_to_frag_id[a2]:
+        new_bond_highlights[bond.GetIdx()] = new_atom_highlights[a1]
+
+  # 8. Draw
+  width, height = 500, 500
+  drawer = rdMolDraw2D.MolDraw2DCairo(width, height)
+
+  opts = drawer.drawOptions()
+  opts.fillHighlights = True
+  opts.padding = 0.05  # tight fit; CC label strip is added via PIL below
+
+  drawer.DrawMolecule(
+    mol_viz,
+    highlightAtoms=list(new_atom_highlights.keys()),
+    highlightAtomColors=new_atom_highlights,
+    highlightBonds=list(new_bond_highlights.keys()),
+    highlightBondColors=new_bond_highlights
+  )
+
+  # Collect canvas-space (pixel) x positions for each fragment centroid and
+  # the pixel y of the lowest atom, so labels sit just below the molecule.
+  # GetDrawCoords must be called after DrawMolecule but before FinishDrawing.
+  frag_pixel_xs = {}
+  max_atom_canvas_y = 0
+  if frag_ccs is not None:
+    from rdkit.Geometry import rdGeometry
+    conf = mol_viz.GetConformer()
+    frag_mol_pts = {}
+    for new_idx, frag_id in new_idx_to_frag_id.items():
+      pos = conf.GetAtomPosition(new_idx)
+      frag_mol_pts.setdefault(frag_id, []).append((pos.x, pos.y))
+      canvas_pt = drawer.GetDrawCoords(rdGeometry.Point2D(pos.x, pos.y))
+      if canvas_pt.y > max_atom_canvas_y:
+        max_atom_canvas_y = canvas_pt.y
+    for frag_id, pts in frag_mol_pts.items():
+      cx = sum(x for x, y in pts) / len(pts)
+      cy = sum(y for x, y in pts) / len(pts)
+      canvas_pt = drawer.GetDrawCoords(rdGeometry.Point2D(cx, cy))
+      frag_pixel_xs[frag_id] = canvas_pt.x
+
+  drawer.FinishDrawing()
+  png_bytes = drawer.GetDrawingText()
+
+  # 9. Composite CC labels onto the PNG using PIL so text is always horizontal.
+  #    Row 1: "RSCC:" left-aligned, placed just below the lowest atom.
+  #    Row 2: per-fragment CC values centred at each fragment's centroid x.
+  #    The canvas is extended only if the text would otherwise be clipped.
+  if frag_ccs is not None and frag_pixel_xs:
+    try:
+      from PIL import Image, ImageDraw as PILDraw, ImageFont
+      import io as _io
+      font_size = 22
+      row_h = font_size + 6
+      # Extra pixels below the lowest atom to clear atom symbols and highlights
+      margin = 15
+      y_row1 = int(max_atom_canvas_y) + margin
+      y_row2 = y_row1 + row_h
+      needed_h = y_row2 + row_h // 2 + 4
+      canvas_h = max(height, needed_h)
+
+      img = Image.open(_io.BytesIO(png_bytes)).convert('RGBA')
+      new_img = Image.new('RGBA', (width, canvas_h), (255, 255, 255, 255))
+      new_img.paste(img, (0, 0))
+      draw = PILDraw.Draw(new_img)
+      try:
+        font = ImageFont.load_default(size=font_size)
+      except TypeError:
+        font = ImageFont.load_default()
+      # Row 1: "RSCC:" at the left margin
+      try:
+        draw.text((6, y_row1), 'RSCC:', fill=(80, 80, 80), font=font, anchor='lt')
+      except TypeError:
+        draw.text((6, y_row1), 'RSCC:', fill=(80, 80, 80), font=font)
+      # Row 2: CC values centred at each fragment's centroid x
+      for frag_id in sorted(frag_pixel_xs):
+        if frag_id >= len(frag_ccs):
+          continue
+        label = '%.2f' % frag_ccs[frag_id]
+        px = int(frag_pixel_xs[frag_id])
+        try:
+          draw.text((px, y_row2), label, fill=(0, 0, 0), font=font, anchor='mt')
+        except TypeError:
+          draw.text((px, y_row2), label, fill=(0, 0, 0), font=font)
+      out = _io.BytesIO()
+      new_img.save(out, format='PNG')
+      png_bytes = out.getvalue()
+    except ImportError:
+      pass  # PIL not available; save without CC labels
+
+  # 10. Save
+  with open(filename, 'wb') as f:
+    f.write(png_bytes)
+
+  print(f"PNG saved to {filename}")
+
+# ------------------------------------------------------------------------------
 
 def get_prop_safe(rd_obj, prop):
   if prop not in rd_obj.GetPropNames(): return False

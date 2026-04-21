@@ -283,6 +283,72 @@ def remove_last_cycles(data, n, session_dir=None):
         data["summary"] = ""
         print("Cleared stale session summary (referenced removed cycles)")
 
+    # Reset goal-directed plan state (v114).
+    # Phase statuses, cycle counts, and gate_stop all
+    # become stale when cycles are removed. Reset them
+    # so the gate evaluator re-assesses on resume.
+    if data.get("plan") and isinstance(
+      data["plan"], dict
+    ):
+        try:
+            stages = (
+                data["plan"].get("stages")
+                or data["plan"].get("phases")
+                or [])
+            for stg in stages:
+                if isinstance(stg, dict):
+                    stg["status"] = "pending"
+                    stg["cycles_used"] = 0
+                    stg["start_cycle"] = None
+                    stg["end_cycle"] = None
+            data["plan"]["current_stage_index"] = 0
+            # Also write as "stages" for new format
+            if "phases" in data["plan"]:
+                data["plan"]["stages"] = (
+                    data["plan"].pop("phases"))
+            print(
+                "Reset plan: %d stages set to "
+                "pending" % len(stages))
+        except Exception as e:
+            print(
+                "Warning: could not reset plan: "
+                "%s" % e)
+
+    # Clear gate stop flags
+    if data.get("gate_stop"):
+        data["gate_stop"] = False
+        data.pop("gate_stop_reason", None)
+        print("Cleared gate_stop flag")
+
+    # Clear structure model and validation history
+    # (rebuilt from remaining history on next cycle)
+    if data.get("structure_model"):
+        data["structure_model"] = {}
+        print("Cleared structure model "
+              "(will rebuild from history)")
+    if data.get("validation_history"):
+        data["validation_history"] = {}
+        print("Cleared validation history "
+              "(will rebuild from history)")
+
+    # Clear structure report (references removed data)
+    if data.get("structure_report"):
+        data["structure_report"] = ""
+        print("Cleared stale structure report")
+
+    # Clear strategy memory (LLM reasoning references
+    # removed cycles' decisions and may mislead)
+    if data.get("strategy_memory"):
+        data["strategy_memory"] = {}
+        print("Cleared strategy memory")
+
+    # Clear per-cycle tracking state
+    data.pop("last_injected_params", None)
+    data.pop("failure_diagnosis_path", None)
+    data.pop("html_report_path", None)
+    data.pop("_prev_cycle_metrics", None)
+    data.pop("summary_cycle_count", None)
+
     # Rebuild active_files.json to match the new session state
     # This ensures any code reading active_files.json stays in sync
     if session_dir:
@@ -451,6 +517,8 @@ def rebuild_best_files(data):
                     elif stage == "ligand_fit_output" and ('ligand_fit' in basename or 'lig_fit' in basename):
                         file_stage = "ligand_fit_output"
                     elif stage == "with_ligand" and 'with_ligand' in basename:
+                        file_stage = "with_ligand"
+                    elif stage == "with_ligand" and '_modified' in basename:
                         file_stage = "with_ligand"
                     elif stage == "rsr_output" and ('real_space' in basename or 'rsr_' in basename):
                         file_stage = "rsr_output"

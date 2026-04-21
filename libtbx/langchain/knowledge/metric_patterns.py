@@ -71,7 +71,7 @@ def get_all_metric_patterns():
 
       try:
         # Compile primary pattern
-        compiled_pattern = re.compile(pattern_str, re.IGNORECASE)
+        compiled_pattern = re.compile(pattern_str, re.IGNORECASE | re.MULTILINE)
 
         config = {
           'pattern': compiled_pattern,

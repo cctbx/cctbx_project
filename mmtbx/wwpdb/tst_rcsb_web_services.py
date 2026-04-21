@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from mmtbx.wwpdb import rcsb_web_services
 import requests
+import sys
 
 def thorough_exercise():
   """
@@ -135,16 +136,16 @@ def exercise_sequence_search():
 
 def exercise_reference_chain_search():
   lysozyme = """KVFGRCELAAAMKRHGLDNYRGYSLGNWVCAAKFESNFNTQATNRNTDGSTDYGILQINSR"""
-  r = rcsb_web_services.reference_chain_search(sequence=lysozyme)
+  r = rcsb_web_services.reference_chain_search(sequence=lysozyme, log=sys.stdout)
   # print(len(r))
 
   # This is not going to work at all:
   # probably because geometry filters are not applicable when we request
   # "return_type": "polymer_instance", instead of "polymer_entity" in sequence_search.
-  r = rcsb_web_services.reference_chain_search(sequence=lysozyme, clashscore_range=(0,20))
+  r = rcsb_web_services.reference_chain_search(sequence=lysozyme, clashscore_range=(0,20), log=sys.stdout)
   # print(len(r))
   assert len(r) == 0, len(r)
-  r = rcsb_web_services.reference_chain_search(sequence=lysozyme, d_max=2)
+  r = rcsb_web_services.reference_chain_search(sequence=lysozyme, d_max=2, log=sys.stdout)
   # print(len(r))
   assert len(r) == 0, len(r)
 

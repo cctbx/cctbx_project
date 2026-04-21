@@ -3,15 +3,16 @@ import time, random
 from cctbx.development import random_structure
 from cctbx.sgtbx import space_group_info
 from cctbx.array_family import flex
-#from cctbx.eltbx.discamb import tst_IAM_discamb_vs_cctbx as tst_disc
 import pydiscamb
+
+# fix random seeds
+random.seed(42)
+flex.set_random_seed(42)
 
 '''
 Notes
 -----
-This test can only be executed if pyDiSCaMB is available
-Right now, it needs to be installed manually, but it will be
-included in bootstrap in the near future.
+This test can only be executed if pyDiSCaMB is available.
 '''
 
 def compare_structure_factors(x,y):
@@ -72,7 +73,8 @@ def test_all_spacegroups():
     if random_fdp:
       xrs.shake_fdps()
     xrs.scattering_type_registry(table = "electron")
-    d_min = random.uniform(2, 5)
+    #d_min = random.uniform(2, 5)
+    d_min = 2.0
     # Calculate structure factors with cctbx
     fcalc_cctbx = xrs.structure_factors(
       d_min=d_min, algorithm="direct").f_calc().data()

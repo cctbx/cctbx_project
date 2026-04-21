@@ -40,6 +40,71 @@ import warnings
 
 _STOP_DIRECTIVE_PATTERNS_CACHE = None
 
+
+def _strip_preprocessor_stop_condition(user_advice):
+    """Strip LLM-generated structured headers from preprocessed advice.
+
+    The advice preprocessor LLM creates structured output with headers
+    like 'Stop Condition:', 'Primary Goal:', etc.  These are LLM
+    summaries of the README, not user instructions, and can cause
+    false-positive directive extraction.  For example:
+
+    - 'Stop Condition: Stop after molecular replacement' causes a
+      fabricated after_program directive (none of the original READMEs
+      contain the word 'stop')
+    - 'Primary Goal: Density modification of cryo-EM map' triggers
+      the tutorial_patterns section to set after_program for denmod
+
+    Real user commands ('stop after refinement', 'run xtriage') are
+    natural prose and handled by later extraction patterns.  They
+    never appear in the 'Header: value' format that only the
+    preprocessor produces.
+
+    'Stop Condition:' is always stripped (never real user input).
+    'Goal:' / 'Primary Goal:' are only stripped when the text
+    contains other preprocessor signature headers, to avoid
+    stripping raw user input that happens to start with 'Goal:'.
+
+    Returns:
+        str: advice with preprocessor header lines removed
+    """
+    if not user_advice:
+        return user_advice
+
+    # 'Stop Condition:' is ALWAYS safe to strip — real users
+    # write 'stop after X', not 'Stop Condition: stop after X'.
+    cleaned = re.sub(
+        r'^[ \t]*stop\s+condition\s*:\s*[^\n]*$',
+        '', user_advice,
+        flags=re.IGNORECASE | re.MULTILINE,
+    )
+
+    # 'Goal:' / 'Primary Goal:' — only strip when we detect
+    # preprocessor output (indicated by other signature headers).
+    # This avoids stripping raw user input like 'Goal: R-free
+    # below 0.25' when preprocess_advice=False.
+    _PREPROCESSOR_SIGNATURES = (
+        r'input\s+files?\s+found',
+        r'experiment\s+type',
+        r'key\s+parameters?',
+        r'special\s+instructions?',
+    )
+    is_preprocessed = any(
+        re.search(r'(?i)^[ \t]*%s\s*:' % sig, cleaned,
+                  re.MULTILINE)
+        for sig in _PREPROCESSOR_SIGNATURES
+    )
+    if is_preprocessed:
+        cleaned = re.sub(
+            r'^[ \t]*(?:primary\s+)?goal\s*:\s*[^\n]*$',
+            '', cleaned,
+            flags=re.IGNORECASE | re.MULTILINE,
+        )
+
+    # Collapse any resulting blank-line runs
+    cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
+    return cleaned
+
 def _get_stop_directive_patterns():
     """Load program name mappings for stop-condition parsing from YAML.
 
@@ -123,6 +188,7 @@ Output a JSON object with these sections. Include ONLY sections that have releva
 
 1. "program_settings": Program-specific parameters
    - Use exact program names: "phenix.refine", "phenix.autosol", "phenix.autobuild", "phenix.phaser", "phenix.molprobity", "phenix.predict_and_build", "phenix.process_predicted_model", "phenix.real_space_refine", "phenix.dock_in_map", "phenix.map_to_model", "phenix.map_sharpening", "phenix.polder", "phenix.xtriage", "phenix.mtriage", "phenix.map_symmetry", "phenix.ligandfit", "phenix.resolve_cryo_em"
+   - IMPORTANT: Do NOT use "phenix.resolve" — the correct name is "phenix.resolve_cryo_em"
    - Use "default" for settings that apply to all programs unless overridden
    - Common parameters and their types:
      * resolution: float (e.g., 2.5)
@@ -135,13 +201,21 @@ Output a JSON object with these sections. Include ONLY sections that have releva
      * sites: int (number of anomalous sites)
      * twin_law: string (e.g., "-h,-k,l")
      * riding_hydrogens: bool
+     * unit_cell: string — space-separated "a b c alpha beta gamma" (e.g., "116.097 116.097 44.175 90 90 120")
+     * space_group: string (e.g., "P 32 2 1", "P 1", "C 2 2 21")
+     * copies: int (number of copies of the search model in the ASU, e.g. 4 — place under "default")
+   - IMPORTANT: unit_cell, space_group, and copies apply to ALL programs — always place them under "default", not under a specific program
+   - unit_cell FORMAT: always convert the user's value to a space-separated string of 6 numbers in order a b c alpha beta gamma
+     * "(116.097, 116.097, 44.175, 90, 90, 120)" → "116.097 116.097 44.175 90 90 120"
+     * "116 116 44 90 90 120" → "116 116 44 90 90 120"
+     * Never use parentheses or commas in the extracted string value
    - For phenix.map_sharpening specifically:
      * resolution: float (required for model-based sharpening)
      * sharpening_method: string (e.g., "b-factor", "model_sharpening")
    - For phenix.polder specifically:
      * selection: string (atom selection, e.g., "chain A and resseq 88", "resname LIG")
 
-2. "stop_conditions": When to stop the workflow
+2. "stop_conditions": When to stop the workflow (ONLY if the user gave an EXPLICIT stop command — see rules below)
    - "after_program": string - Stop after this program completes (e.g., "phenix.xtriage", "phenix.refine", "phenix.phaser", "phenix.ligandfit", "phenix.map_to_model", "phenix.dock_in_map", "phenix.map_sharpening", "phenix.polder")
    - "after_cycle": int - Stop after this cycle number
    - "max_refine_cycles": int - Maximum number of refinement cycles to run
@@ -163,6 +237,7 @@ Output a JSON object with these sections. Include ONLY sections that have releva
    - "use_molecular_replacement": bool - Prefer MR over experimental phasing
    - "use_mr_sad": bool - MR-SAD workflow: run phaser first to place model, then autosol with placed model
    - "model_is_placed": bool - The user's model is already positioned in the unit cell (skip MR)
+   - "wants_validation_only": bool - User's PRIMARY goal is validation/analysis of an existing model (MolProbity), NOT refinement or MR. Only set when the user explicitly wants validation as the main task, NOT when validation is a final step after refinement.
 
 **CRITICAL: use_experimental_phasing and use_mr_sad**
 - ONLY set these if the user EXPLICITLY requests SAD, MAD, experimental phasing, anomalous phasing, or MR-SAD.
@@ -171,6 +246,16 @@ Output a JSON object with these sections. Include ONLY sections that have releva
 - If the user just provides data + sequence/model without mentioning phasing method, leave these unset.
 - Examples of when to set: "use SAD phasing", "run MR-SAD", "experimental phasing with Fe", "anomalous phasing"
 - Examples of when NOT to set: user provides wavelength/atom_type but doesn't mention SAD/phasing method
+- EXAMPLES that MUST set use_mr_sad=true:
+  - "MR-SAD using intrinsic sulfur (S-SAD)"
+  - "molecular replacement using X.pdb, then run MR-SAD phasing"
+  - "molecular replacement followed by SAD/anomalous phasing"
+  - "perform molecular replacement, then AutoSol with placed model"
+
+**CRITICAL: wants_validation_only**
+- Set wants_validation_only=true ONLY when the user's PRIMARY GOAL is validation or analysis of an existing model.
+- Examples of when to set: "model validation", "comprehensive validation", "analysis only", "run MolProbity on this structure", "structure validation and correction"
+- Examples of when NOT to set: "refine and then validate", "solve the structure", any tutorial that mentions validation as a FINAL STEP after refinement
 
 5. "constraints": list of strings - Other instructions that don't fit above categories
    - Keep these as clear, actionable statements
@@ -189,6 +274,14 @@ IMPORTANT GUIDELINES:
 - Wavelength (in Angstroms) is the X-ray beam wavelength, typically 0.5-2.5 Å. Extract as wavelength, NEVER as resolution.
 - Resolution is the diffraction limit (d_min), typically 1.5-4.0 Å. Only extract as resolution if explicitly stated as resolution/d_min.
 - If the text says "Resolution limit: Not mentioned" or similar, do NOT extract a resolution value from anywhere else in the text.
+
+**CRITICAL: unit_cell and space_group — always use "default" scope**
+- When the user specifies a unit cell or space group, put it under "default" so it applies to all programs:
+  ```json
+  {"program_settings": {"default": {"unit_cell": "116.097 116.097 44.175 90 90 120"}}}
+  ```
+- Convert any parenthesized comma-separated tuple to a plain space-separated string: strip `(`, `)`, and replace `,` with spaces.
+- Example triggers: "use unit cell (a, b, c, α, β, γ)", "the specified unit cell is ...", "space group P 32 2 1"
 
 **CRITICAL: max_refine_cycles vs after_program vs after_cycle**
 - max_refine_cycles=N: Limits the NUMBER of refinement jobs to N. The workflow continues normally until refinement, then stops after N refinement jobs.
@@ -245,7 +338,9 @@ If the advice mentions cryo-EM, maps (.mrc/.ccp4), or real-space methods:
 - "density modification" → phenix.resolve_cryo_em (NOT phenix.autobuild_denmod)
 
 **TUTORIAL/PROCEDURE DETECTION**:
-If the advice describes a SPECIFIC LIMITED TASK rather than full structure determination, automatically add appropriate stop_conditions:
+If the user gives an EXPLICIT COMMAND to run a single specific program
+(e.g., "run xtriage", "just run phaser", "only analyze data quality"),
+add appropriate stop_conditions:
 - "run xtriage", "check for twinning", "analyze data" → after_program="phenix.xtriage", skip_validation=true
 - "run phaser", "test MR", "try molecular replacement" → after_program="phenix.phaser", skip_validation=true
 - "run one refinement", "quick refinement test" → after_program="phenix.refine", max_refine_cycles=1, skip_validation=true
@@ -254,20 +349,47 @@ If the advice describes a SPECIFIC LIMITED TASK rather than full structure deter
 - "map symmetry", "determine symmetry", "find symmetry" → after_program="phenix.map_symmetry", skip_validation=true
 - "map sharpening", "sharpen the map", "sharpen map", "automatic sharpening" → after_program="phenix.map_sharpening", skip_validation=true
 
+**CRITICAL: Do NOT fabricate stop conditions from goal descriptions.**
+Only populate stop_conditions if the user has EXPLICITLY stated when to stop
+using imperative language like "stop after X", "only run X", "just do X".
+Tutorial descriptions of goals are NOT stop conditions.  Do not infer a stop
+point from the tutorial's stated purpose.  If no explicit stop instruction is
+present, do NOT include a stop_conditions section at all.
+
+Examples of goal descriptions that are NOT stop conditions (do NOT extract):
+- "The goal is to solve the structure by molecular replacement" → NO stop condition
+- "This tutorial demonstrates density modification" → NO stop condition
+- "Purpose: rebuild the model using AutoBuild" → NO stop condition
+- "We will run MR-SAD to determine the structure" → NO stop condition
+
+Examples of real stop commands (DO extract):
+- "Stop after running phaser" → after_program="phenix.phaser"
+- "Only run xtriage, nothing else" → after_program="phenix.xtriage"
+- "Just do one refinement" → max_refine_cycles=1
+
+If you see "Stop Condition: None" or no stop instruction, do NOT add stop_conditions.
+
 **CRITICAL: model_is_placed — detecting when the model is already positioned**
-If the user's goal implies their model is already in the unit cell (NOT a template for MR), set model_is_placed=true in workflow_preferences. This tells the agent to skip molecular replacement.
-Set model_is_placed=true when:
-- User says "refine this model", "run refinement", "refine the structure"
-- User says "fit a ligand", "ligandfit", "place ligand into density"
-- User says "run polder", "evaluate ligand", "validate model"
-- User says "the model is already placed" or "skip molecular replacement"
-- User's goal clearly implies the model is ready for refinement (not MR)
-- User provides a model + ligand + data and wants ligand fitting
-Do NOT set model_is_placed=true when:
-- User says "solve the structure" (might need MR)
-- User says "molecular replacement" or "run phaser"
-- User provides only a search model / template
-- Goal is ambiguous about whether MR is needed
+ONLY set model_is_placed=true when the user EXPLICITLY states their model is already positioned or placed in the unit cell / map. This is a HIGH-PRECISION flag: when in doubt, do NOT set it. The workflow will figure out placement automatically.
+
+Set model_is_placed=true ONLY when the user uses language like:
+- "the model is already placed", "the model is already positioned", "skip molecular replacement"
+- "skip docking", "skip MR", "the structure is solved", "I already ran phaser/dock_in_map"
+- "run refinement on this placed model", "refine this placed model"
+- User explicitly confirms no MR/docking step is needed because they placed it themselves
+
+Do NOT set model_is_placed=true in any of these cases:
+- User says "solve the structure" (ambiguous — may need MR or docking)
+- User says "refine this model" or "run refinement" (the model may still need docking first)
+- User says "fit a ligand" or "validate model" (use after_program stop instead)
+- User provides a PDB alongside half-maps without explicitly saying the model is placed
+- User provides a homology model / starting model for structure determination
+- Goal is ambiguous or generic ("run the workflow", "analyze these files")
+- User provides a PDB + cryo-EM map combination (model almost certainly needs docking)
+
+IMPORTANT: For cryo-EM workflows where a PDB is provided alongside maps, do NOT set
+model_is_placed=true unless the user explicitly says the model has already been docked.
+An unplaced PDB + cryo-EM map always requires phenix.dock_in_map before refinement.
 
 **CRITICAL: MR-SAD workflow**
 - For MR-SAD experiments, set use_mr_sad=true in workflow_preferences. Do NOT set after_program="phenix.autosol".
@@ -286,8 +408,8 @@ Do NOT set model_is_placed=true when:
 - "polder", "polder map", "omit map", "evaluate ligand placement" → after_program="phenix.polder", skip_validation=true
   (Note: phenix.polder calculates polder omit maps to evaluate ligand/residue placement in density)
 - "fit ligand", "ligandfit", "place ligand" → after_program="phenix.ligandfit", skip_validation=true
-- Any procedure that ends with a specific analysis step should stop after that step.
 - If the stop condition mentions generating a specific output file, set skip_validation=true.
+- "model validation", "comprehensive validation", "analysis only", "validate this structure", "run MolProbity", "structure validation and correction" → Set wants_validation_only=true in workflow_preferences. Do NOT set after_program. Do NOT set this when validation is mentioned as a final step after refinement.
 
 **CRITICAL: WORKFLOW CONTINUATION INDICATORS**:
 Do NOT set after_program stop conditions if the user indicates they want additional steps AFTER a program:
@@ -299,6 +421,13 @@ Do NOT set after_program stop conditions if the user indicates they want additio
 - If user mentions a downstream task (ligand fitting, validation, additional refinement), do NOT set early stop
 - Put downstream tasks in "constraints" instead so the agent knows to do them
 
+**CRITICAL: predict_and_build is ALWAYS INTERMEDIATE**:
+When a user says "solve the structure using predict_and_build" or "use PredictAndBuild workflow",
+they want the FULL pipeline: prediction → molecular replacement → building → refinement.
+Do NOT set after_program="phenix.predict_and_build" for structure solution requests.
+Only set after_program="phenix.predict_and_build" if the user EXPLICITLY says "just run the prediction"
+or "only predict the model, nothing else".
+
 **CRITICAL: LIGAND FITTING WORKFLOWS**:
 When user mentions ligand fitting as part of the workflow:
 - "refine, fit ligand, then refine again" → Do NOT set after_program, let workflow complete naturally
@@ -308,6 +437,7 @@ When user mentions ligand fitting as part of the workflow:
 - Put "Fit ligand after first refinement" or similar in constraints, NOT in stop_conditions
 
 Examples of what NOT to do:
+- User says "solve structure using PredictAndBuild" → Do NOT set after_program="phenix.predict_and_build" (this is a full workflow, not a single step!)
 - User says "run predict_and_build and fit ligand later" → Do NOT set after_program="phenix.predict_and_build"
 - User says "try MR then refine" → Do NOT set after_program="phenix.phaser"
 - User says "refine, fit ligand, refine again" → Do NOT set after_program="phenix.refine" (this would stop before ligandfit!)
@@ -351,6 +481,27 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
     if not user_advice or not user_advice.strip():
         log("DIRECTIVES: No user advice provided")
         return {}
+
+    # Strip LLM-fabricated "Stop Condition:" lines from preprocessed
+    # advice before any extraction path sees them (Fix 2, v115).
+    user_advice = _strip_preprocessor_stop_condition(user_advice)
+
+    # Classify intent (v115) — same as simple path.
+    intent_result = None
+    try:
+        try:
+            from libtbx.langchain.agent.intent_classifier \
+                import classify_intent
+        except ImportError:
+            from agent.intent_classifier \
+                import classify_intent
+        intent_result = classify_intent(user_advice)
+        if intent_result:
+            log("DIRECTIVES: Intent classified as '%s' "
+                "(%s)" % (intent_result.get("intent"),
+                           intent_result.get("reason", "")[:60]))
+    except Exception:
+        pass  # intent_classifier not available
 
     advice_lower = user_advice.lower().strip()
     if advice_lower in ("none", "none provided", "n/a", ""):
@@ -407,6 +558,12 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
         # Validate and clean directives
         directives = validate_directives(directives, log)
 
+        # Regex fallback: ensure unit_cell and space_group are always captured.
+        # The LLM sometimes returns an empty dict (or only stop_conditions) even
+        # when the advice contains an explicit unit cell.  This pass is
+        # deterministic and only fills in fields the LLM left empty.
+        directives = _apply_crystal_symmetry_fallback(directives, user_advice, log)
+
         # If validation stripped everything for ollama, try simple extraction
         if not directives and provider == "ollama":
             log("DIRECTIVES: Validation emptied directives, trying simple extraction")
@@ -414,7 +571,85 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
             if simple_directives:
                 return simple_directives
 
-        log("DIRECTIVES: Extracted %d directive sections" % len(directives))
+        # Store intent classification in directives (v115)
+        # Low-confidence means the default fallback fired — not a
+        # genuine detection, so don't pollute directives.
+        if intent_result and intent_result.get("confidence") != "low":
+            directives["intent"] = intent_result
+
+        # Intent-driven stop override (v115) — same logic
+        # as in extract_directives_simple.
+        _intent = (
+            directives.get("intent") or {}).get("intent")
+
+        # Check if user EXPLICITLY said "stop after X"
+        # (preserve explicit stops regardless of intent)
+        _has_explicit_stop = bool(re.search(
+            r'\bstop\s+after\b|\bonly\s+run\b'
+            r'|\bjust\s+(?:do|run)\b',
+            user_advice, re.IGNORECASE))
+
+        if _intent == "task":
+            _task_prog = (
+                directives.get("intent", {})
+                .get("task_program"))
+            if _task_prog:
+                if "stop_conditions" not in directives:
+                    directives["stop_conditions"] = {}
+                directives["stop_conditions"][
+                    "after_program"] = _task_prog
+                directives["stop_conditions"][
+                    "skip_validation"] = True
+        elif _intent == "solve":
+            sc = directives.get("stop_conditions", {})
+            if ("after_program" in sc
+                    and not _has_explicit_stop):
+                log("DIRECTIVES: Intent=solve, removing "
+                    "after_program=%s"
+                    % sc["after_program"])
+                del sc["after_program"]
+                sc.pop("skip_validation", None)
+                if not sc:
+                    directives.pop(
+                        "stop_conditions", None)
+        elif _intent == "solve_constrained":
+            sc = directives.get("stop_conditions", {})
+            if ("after_program" in sc
+                    and not _has_explicit_stop):
+                log("DIRECTIVES: Intent=solve_constrained"
+                    ", removing after_program=%s"
+                    % sc["after_program"])
+                del sc["after_program"]
+                sc.pop("skip_validation", None)
+                if not sc:
+                    directives.pop(
+                        "stop_conditions", None)
+            _method = (
+                directives.get("intent", {})
+                .get("method_constraint"))
+            if _method:
+                if "workflow_preferences" not in directives:
+                    directives["workflow_preferences"] = {}
+                directives["workflow_preferences"][
+                    "method_constraint"] = _method
+        # tutorial: keep whatever the LLM set
+
+        # Simplify intent to just the string for
+        # downstream consumers
+        if isinstance(directives.get("intent"), dict):
+            directives["intent"] = directives[
+                "intent"].get("intent")
+
+        log("DIRECTIVES: Extracted %d directive sections"
+            % len(directives))
+
+        # v115.09: Post-LLM overlay — apply deterministic workflow
+        # intent patterns.  The LLM often ignores wants_validation_only
+        # and use_mr_sad even when the advice clearly requests them.
+        # This ensures the critical routing flags are always set.
+        _apply_workflow_intent_fallback(
+            directives, user_advice.lower())
+
         return directives
 
     except Exception as e:
@@ -743,6 +978,9 @@ VALID_SETTINGS = {
     "tls": bool,
     "sharpening_method": str,
     "selection": str,
+    "unit_cell": str,    # space-separated "a b c alpha beta gamma"
+    "space_group": str,  # e.g. "P 32 2 1"
+    "copies": int,       # ASU copy count (e.g. "4 copies of the search model")
 }
 
 # Valid stop condition keys
@@ -754,6 +992,123 @@ VALID_STOP_CONDITIONS = {
     "r_free_target": float,
     "map_cc_target": float,
 }
+
+
+def _normalize_unit_cell(value):
+    """
+    Normalise a unit-cell value to a plain space-separated string.
+
+    The LLM may return the value in several formats:
+        "(116.097, 116.097, 44.175, 90, 90, 120)"   ← parenthesised tuple
+        "116.097, 116.097, 44.175, 90, 90, 120"     ← comma-separated
+        "116.097 116.097 44.175 90 90 120"           ← already correct
+
+    All are normalised to "116.097 116.097 44.175 90 90 120".
+
+    Returns the normalised string, or None if the value doesn't parse as
+    six numbers.
+    """
+    if not isinstance(value, str):
+        return None
+    # Strip outer brackets/parens
+    cleaned = value.strip().strip("()[]")
+    # Replace commas (with optional surrounding whitespace) with a single space
+    cleaned = re.sub(r'\s*,\s*', ' ', cleaned).strip()
+    # Verify we have exactly 6 numeric tokens
+    tokens = cleaned.split()
+    if len(tokens) != 6:
+        return None
+    try:
+        floats = [float(t) for t in tokens]
+    except ValueError:
+        return None
+    # Reconstruct with minimal precision (strip trailing zeros)
+    return ' '.join(('%g' % f) for f in floats)
+
+
+def _apply_crystal_symmetry_fallback(directives, user_advice, log):
+    """
+    Regex-based fallback for unit_cell and space_group extraction.
+
+    Called unconditionally after LLM extraction so that an explicit unit cell
+    or space group in the user's advice is always captured, even when the LLM
+    returns an otherwise empty or incomplete dict.  Only fills in fields that
+    the LLM left empty — never overwrites a value the LLM already extracted.
+
+    This is critical because the directive-extraction LLM sometimes returns {}
+    for complex advice that mixes stop-conditions with crystal-symmetry data.
+
+    Args:
+        directives: Already-validated directive dict (may be {})
+        user_advice: Raw advice text to scan
+        log: Logging callable
+
+    Returns:
+        Updated directives dict (new dict; caller's dict is not mutated)
+    """
+    if not user_advice:
+        return directives
+
+    existing_default = (
+        (directives.get("program_settings") or {}).get("default") or {}
+    )
+    needs_uc = "unit_cell" not in existing_default
+    needs_sg = "space_group" not in existing_default
+    if not needs_uc and not needs_sg:
+        return directives   # both already set — nothing to do
+
+    directives = dict(directives)   # shallow copy so we don't mutate caller's dict
+
+    def _ensure_default():
+        """Return (possibly freshly created) default settings dict."""
+        if "program_settings" not in directives:
+            directives["program_settings"] = {}
+        if "default" not in directives["program_settings"]:
+            directives["program_settings"]["default"] = {}
+        return directives["program_settings"]["default"]
+
+    # ------------------------------------------------------------------
+    # unit_cell — match: "unit cell (116.097, 116.097, 44.175, 90, 90, 120)"
+    #             or  "unit_cell = 116 116 44 90 90 120"
+    #             or  "unit cell: 116.097 116.097 44.175 90 90 120"
+    # ------------------------------------------------------------------
+    if needs_uc:
+        _NUM = r'[-+]?\d+(?:\.\d+)?'
+        _SEP = r'[\s,]+'
+        _uc_pat = (
+            r'unit[_ ]cell'
+            r'(?:\s*[=:(\s]\s*|\s+(?:is|of|=|:)?\s*[(]?)'
+            r'(' + _NUM + _SEP + _NUM + _SEP + _NUM + _SEP
+              + _NUM + _SEP + _NUM + _SEP + _NUM + r')'
+        )
+        uc_match = re.search(_uc_pat, user_advice, re.IGNORECASE)
+        if uc_match:
+            nums = re.findall(r'[-+]?\d+(?:\.\d+)?', uc_match.group(1))
+            if len(nums) == 6:
+                normalized = _normalize_unit_cell(" ".join(nums))
+                if normalized:
+                    _ensure_default()["unit_cell"] = normalized
+                    log("DIRECTIVES: Regex fallback extracted "
+                        "unit_cell=%s" % normalized)
+
+    # ------------------------------------------------------------------
+    # space_group — match: "space group P 32 2 1"  "space_group=P63"
+    # ------------------------------------------------------------------
+    if needs_sg:
+        _sg_pat = (
+            r'space[_ ]group'
+            r'(?:\s*[=:]\s*|\s+(?:is|of|=|:)?\s*)'
+            r'([A-Za-z][A-Za-z0-9 /_-]{1,20})'
+        )
+        sg_match = re.search(_sg_pat, user_advice, re.IGNORECASE)
+        if sg_match:
+            sg_str = sg_match.group(1).strip().rstrip('.')
+            if sg_str:
+                _ensure_default()["space_group"] = sg_str
+                log("DIRECTIVES: Regex fallback extracted "
+                    "space_group=%s" % sg_str)
+
+    return directives
 
 
 def validate_directives(directives, log=None):
@@ -810,6 +1165,39 @@ def validate_directives(directives, log=None):
                         # Keep unknown settings but log them
                         valid_settings[key] = value
                         _log("DIRECTIVES: Unknown setting %s=%s (keeping)" % (key, value))
+
+                # Normalize unit_cell to a plain space-separated string regardless
+                # of how the LLM formatted it (parentheses, commas, etc.)
+                if "unit_cell" in valid_settings:
+                    raw_uc = valid_settings["unit_cell"]
+                    normalized = _normalize_unit_cell(str(raw_uc))
+                    if normalized:
+                        if normalized != raw_uc:
+                            _log("DIRECTIVES: Normalised unit_cell %r → %r" % (raw_uc, normalized))
+                        valid_settings["unit_cell"] = normalized
+                    else:
+                        _log("DIRECTIVES: Dropping malformed unit_cell %r (need 6 numbers)" % raw_uc)
+                        del valid_settings["unit_cell"]
+
+                # Validate space_group: reject placeholder/non-crystallographic values
+                if "space_group" in valid_settings:
+                    raw_sg = str(valid_settings["space_group"]).strip()
+                    _sg_invalid = (
+                        not raw_sg
+                        or raw_sg.lower() in (
+                            "none", "not mentioned", "not specified",
+                            "unknown", "n/a", "na", "identification",
+                            "to be determined", "tbd", "see above",
+                            "false", "true", "null",
+                        )
+                        # Must start with a letter (space group symbol)
+                        or not raw_sg[0].isalpha()
+                        # Must be short enough to be a real symbol
+                        or len(raw_sg) > 25
+                    )
+                    if _sg_invalid:
+                        _log("DIRECTIVES: Dropping invalid space_group value: %r" % raw_sg)
+                        del valid_settings["space_group"]
 
                 if valid_settings:
                     valid_prog_settings[prog] = valid_settings
@@ -931,7 +1319,8 @@ def validate_directives(directives, log=None):
                         if valid_list:
                             valid_wf[key] = valid_list
                 elif key in ("use_experimental_phasing", "use_molecular_replacement",
-                             "use_mr_sad", "model_is_placed"):
+                             "use_mr_sad", "model_is_placed",
+                             "wants_validation_only"):
                     valid_wf[key] = bool(value)
 
             if valid_wf:
@@ -1057,6 +1446,20 @@ def _fix_multi_step_workflow_conflict(directives, log):
     # Define which programs are "intermediate" and what downstream keywords indicate
     # the workflow should continue past them
     intermediate_programs = {
+        "phenix.predict_and_build": [
+            # predict_and_build is almost always intermediate — the user wants
+            # MR + building + refinement after prediction.  Only stop here if the
+            # user explicitly asks "just predict" or "only prediction".
+            r'solv',            # "solve the structure"
+            r'refine',
+            r'build',
+            r'molecular\s+replacement',
+            r'phaser',
+            r'MR\b',
+            r'model\s+building',
+            r'ligand',
+            r'structure\s+(?:determination|solution)',
+        ],
         "phenix.map_symmetry": [
             r'build\s+(?:a\s+)?model',
             r'model\s+building',
@@ -1359,6 +1762,11 @@ def _fix_program_name(name):
         "resolve_cryo_em": "phenix.resolve_cryo_em",
         "resolvecryoem": "phenix.resolve_cryo_em",
         "resolve-cryo-em": "phenix.resolve_cryo_em",
+        # LLM often shortens to "resolve" — map to cryo_em
+        # (legacy phenix.resolve is not in the agent's
+        # program list; all density modification goes
+        # through resolve_cryo_em)
+        "resolve": "phenix.resolve_cryo_em",
         "autobuild_denmod": "phenix.autobuild_denmod",
 
         # Map tools
@@ -1525,15 +1933,18 @@ def check_stop_conditions(directives, cycle_number, last_program, metrics=None):
                 cycle_number, stop_cond["after_cycle"]
             )
 
-    # Check after_program - normalize names for comparison
-    if "after_program" in stop_cond:
-        target_program = stop_cond["after_program"]
-        # Normalize: remove "phenix." prefix for comparison
-        target_normalized = target_program.replace("phenix.", "")
-        last_normalized = last_program.replace("phenix.", "") if last_program else ""
-
-        if last_normalized == target_normalized or last_program == target_program:
-            return True, "Completed %s (directive: after_program)" % target_program
+    # after_program — intentionally NOT a hard stop (v112.78, Bug 7)
+    # ─────────────────────────────────────────────────────────────────
+    # Previously, after_program caused an immediate stop when the target
+    # program completed.  This broke multi-goal requests: the directive
+    # extractor can only name one program, so goals beyond that program
+    # were silently dropped.
+    #
+    # Now after_program is a *minimum-run guarantee* — the PLAN node uses
+    # it to suppress auto-stop until the target program has run, but the
+    # LLM decides when to actually stop.
+    #
+    # Hard stops that remain: after_cycle and metrics targets.
 
     # Check max_refine_cycles
     if "max_refine_cycles" in stop_cond and last_program == "phenix.refine":
@@ -1606,6 +2017,99 @@ def format_directives_for_display(directives):
 # SIMPLE EXTRACTION (NO LLM FALLBACK)
 # =============================================================================
 
+def _apply_workflow_intent_fallback(directives, advice_lower):
+    """Apply deterministic workflow intent patterns to directives.
+
+    v115.09: Shared by both LLM and rules-based paths.  When the LLM
+    extracts directives, it may miss ``wants_validation_only`` or
+    ``use_mr_sad`` even when the advice clearly requests them.  This
+    function overlays the deterministic pattern matches on top of
+    whatever the LLM returned, ensuring critical routing flags are
+    always set when the advice text contains unambiguous signals.
+
+    Called from:
+      - ``extract_directives`` (post-LLM overlay)
+      - ``extract_directives_simple`` (rules-only path)
+
+    Args:
+        directives: dict — modified in place.
+        advice_lower: str — lowercased user advice text.
+    """
+    # Validation-only intent.
+    # NOTE: "analysis only" deliberately omitted — it matches
+    # data-quality analysis (xtriage-only) tutorials, not just
+    # model validation.  The LLM prompt handles that nuance.
+    _validation_signals = [
+        "model validation",
+        "structure validation", "comprehensive validation",
+        "run molprobity", "validate this structure",
+        "validation and correction",
+    ]
+    if any(sig in advice_lower for sig in _validation_signals):
+        if "workflow_preferences" not in directives:
+            directives["workflow_preferences"] = {}
+        directives["workflow_preferences"][
+            "wants_validation_only"] = True
+
+    # MR-SAD intent.
+    _mr_sad_patterns = [
+        "mr-sad", "mr sad", "mrsad",
+        "molecular replacement sad",
+        "molecular replacement followed by sad",
+        "mr followed by sad",
+    ]
+    if any(pat in advice_lower for pat in _mr_sad_patterns):
+        if "workflow_preferences" not in directives:
+            directives["workflow_preferences"] = {}
+        directives["workflow_preferences"]["use_mr_sad"] = True
+        directives["workflow_preferences"][
+            "use_experimental_phasing"] = True
+
+    # Ligand-fitting implies model is placed.
+    # You can't fit a ligand into an unplaced model.  When the user
+    # says "fit ATP" or "fit ligand", the model must already be in
+    # the correct position — no MR or docking needed.
+    # Guard: only set model_is_placed when the advice does NOT also
+    # mention molecular replacement, phaser, solving, or docking
+    # (those indicate the model still needs placement first).
+    #
+    # v115.09b: Also clear after_program.  Ligand-fitting is a
+    # multi-step workflow (refine → ligandfit → pdbtools → refine
+    # → polder → validate).  The plan template covers all steps.
+    # The LLM sets after_program to a DIFFERENT program each run
+    # (ligandfit, refine, or polder), and each choice breaks a
+    # different step.  Clearing after_program lets the plan gates
+    # advance through all stages naturally and stop when complete.
+    _ligand_fit_signals = [
+        "fit ligand", "fit the ligand", "ligandfit",
+        "fit atp", "fit nad", "fit fad", "fit heme",
+        "place ligand", "place the ligand",
+        "add ligand", "add the ligand",
+        "dock ligand", "dock the ligand",
+    ]
+    _mr_signals = [
+        "molecular replacement", "phaser", "solve",
+        "mr ", "autosol", "predict",
+        "dock in map", "dock_in_map", "dock into",
+    ]
+    if (any(sig in advice_lower for sig in _ligand_fit_signals) and
+            not any(sig in advice_lower for sig in _mr_signals)):
+        if "workflow_preferences" not in directives:
+            directives["workflow_preferences"] = {}
+        directives["workflow_preferences"][
+            "model_is_placed"] = True
+        # Clear after_program — the plan template handles
+        # the full ligand-fitting workflow.  Any single
+        # after_program will interfere with one of the
+        # intermediate steps (combine, post-refine, polder).
+        _sc = directives.get("stop_conditions", {})
+        if _sc.get("after_program"):
+            _sc.pop("after_program", None)
+            _sc.pop("skip_validation", None)
+            if directives.get("intent") == "task":
+                directives["intent"] = "solve"
+
+
 def extract_directives_simple(user_advice):
     """
     Extract directives using simple pattern matching (no LLM).
@@ -1622,7 +2126,31 @@ def extract_directives_simple(user_advice):
     if not user_advice:
         return {}
 
+    # Strip LLM-fabricated "Stop Condition:" lines (Fix 2, v115).
+    user_advice = _strip_preprocessor_stop_condition(user_advice)
+
+    # Classify intent (v115).
+    # The intent controls stopping behavior downstream.
+    intent_result = None
+    try:
+        try:
+            from libtbx.langchain.agent.intent_classifier \
+                import classify_intent
+        except ImportError:
+            from agent.intent_classifier \
+                import classify_intent
+        intent_result = classify_intent(user_advice)
+    except Exception:
+        pass  # intent_classifier not available
+
     directives = {}
+
+    # Store intent in directives for downstream use.
+    # Low-confidence means the default fallback fired (no pattern
+    # matched) — not a genuine detection, so don't pollute directives.
+    if intent_result and intent_result.get("confidence") != "low":
+        directives["intent"] = intent_result
+
     advice_lower = user_advice.lower()
 
     # Extract resolution
@@ -1667,6 +2195,87 @@ def extract_directives_simple(user_advice):
         if "phenix.refine" not in directives["program_settings"]:
             directives["program_settings"]["phenix.refine"] = {}
         directives["program_settings"]["phenix.refine"]["anisotropic_adp"] = True
+
+    # ==========================================================================
+    # UNIT CELL EXTRACTION
+    # ==========================================================================
+    # Match forms like:
+    #   "unit cell (116.097, 116.097, 44.175, 90, 90, 120)"
+    #   "unit_cell = 116 116 44 90 90 120"
+    #   "the specified unit cell (a, b, c, α, β, γ) must be used"
+    #   "unit cell: 116.097 116.097 44.175 90 90 120"
+    _NUM = r'[-+]?\d+(?:\.\d+)?'
+    _SEP = r'[\s,]+'
+    _uc_pattern = (
+        r'unit[_ ]cell'
+        r'(?:\s*[=:(\s]\s*|\s+(?:is|of|=|:)?\s*[(]?)'    # separator
+        r'(' + _NUM + _SEP + _NUM + _SEP + _NUM + _SEP
+          + _NUM + _SEP + _NUM + _SEP + _NUM + r')'       # 6 numbers
+    )
+    uc_match = re.search(_uc_pattern, user_advice, re.IGNORECASE)
+    if uc_match:
+        # Normalise to 6 space-separated numbers (strip parens/commas)
+        raw = uc_match.group(1)
+        nums = re.findall(r'[-+]?\d+(?:\.\d+)?', raw)
+        if len(nums) == 6:
+            uc_str = " ".join(nums)
+            if "program_settings" not in directives:
+                directives["program_settings"] = {}
+            if "default" not in directives["program_settings"]:
+                directives["program_settings"]["default"] = {}
+            directives["program_settings"]["default"]["unit_cell"] = uc_str
+
+    # ==========================================================================
+    # SPACE GROUP EXTRACTION
+    # ==========================================================================
+    # Match: "space group P 32 2 1", "space_group=P63", "space group: C 2 2 21"
+    _sg_pattern = (
+        r'space[_ ]group'
+        r'(?:\s*[=:]\s*|\s+(?:is|of|=|:)?\s*)'
+        r'([A-Za-z][A-Za-z0-9 /_-]{1,20})'  # Herman–Mauguin symbol
+    )
+    sg_match = re.search(_sg_pattern, user_advice, re.IGNORECASE)
+    if sg_match:
+        sg_str = sg_match.group(1).strip().rstrip('.')
+        if sg_str:
+            if "program_settings" not in directives:
+                directives["program_settings"] = {}
+            if "default" not in directives["program_settings"]:
+                directives["program_settings"]["default"] = {}
+            directives["program_settings"]["default"]["space_group"] = sg_str
+
+    # ==========================================================================
+    # ASU COPY COUNT EXTRACTION
+    # ==========================================================================
+    # Match forms like:
+    #   "4 copies of the search model"        "there are 4 copies in the ASU"
+    #   "search for 4 copies"                 "4 copies in the asymmetric unit"
+    #   "copies=4"  "copies: 4"               "find 4 copies"
+    #   "place 4 copies"                      "4 molecules in the ASU"
+    # Guard: only accept integers 1-30 (same sanity bound as xtriage path).
+    _copies_patterns = [
+        # Explicit number before "copies" or "molecules" with context keywords
+        r'(\d+)\s+cop(?:y|ies)\s+(?:of|in)',          # "4 copies of/in"
+        r'(\d+)\s+molecules?\s+in\s+(?:the\s+)?asu',  # "4 molecules in the ASU"
+        r'(?:search|find|place|look)\s+(?:for\s+)?(\d+)\s+cop',  # "search for 4 copies"
+        r'cop(?:y|ies)\s*[=:]\s*(\d+)',               # "copies=4" / "copies: 4"
+        r'(?:there\s+are|has?)\s+(\d+)\s+cop',        # "there are 4 copies"
+        r'asu\s+(?:contains?|has?)\s+(\d+)\s+cop',    # "ASU contains 4 copies"
+    ]
+    for _cp_pat in _copies_patterns:
+        _cp_m = re.search(_cp_pat, user_advice, re.IGNORECASE)
+        if _cp_m:
+            try:
+                _cp_v = int(_cp_m.group(1))
+                if 1 <= _cp_v <= 30:
+                    if "program_settings" not in directives:
+                        directives["program_settings"] = {}
+                    if "default" not in directives["program_settings"]:
+                        directives["program_settings"]["default"] = {}
+                    directives["program_settings"]["default"]["copies"] = _cp_v
+                    break
+            except (ValueError, IndexError):
+                pass
 
     # Check for macro_cycles / number of refinement cycles
     cycle_patterns = [
@@ -1755,6 +2364,22 @@ def extract_directives_simple(user_advice):
             if program not in directives["workflow_preferences"]["prefer_programs"]:
                 directives["workflow_preferences"]["prefer_programs"].append(program)
 
+    # ==========================================================================
+    # POLDER SELECTION EXTRACTION
+    # ==========================================================================
+    # Extract atom selection for polder from patterns like:
+    #   "polder map for chain A resseq 88"
+    #   "polder for chain A and resseq 88"
+    #   "polder selection chain A and resseq 88"
+    if "polder" in advice_lower:
+        _polder_sel = _extract_polder_selection(user_advice)
+        if _polder_sel:
+            if "program_settings" not in directives:
+                directives["program_settings"] = {}
+            if "phenix.polder" not in directives["program_settings"]:
+                directives["program_settings"]["phenix.polder"] = {}
+            directives["program_settings"]["phenix.polder"]["selection"] = _polder_sel
+
     # Check for skip program patterns
     skip_program_patterns = [
         (r'(?:skip|no|avoid|(?:don\'?t|do\s+not)\s+(?:run|use))\s+(?:the\s+)?autobuild', 'phenix.autobuild'),
@@ -1807,37 +2432,15 @@ def extract_directives_simple(user_advice):
     is_cryoem = bool(re.search(r'cryo-?em|half.?map|\.mrc|\.map|full.?map|mtriage', advice_lower))
     is_xray = bool(re.search(r'x-?ray|\.mtz|\.hkl|xtriage|phaser|autosol|sad|mad|molecular.?replacement', advice_lower))
 
-    # Check for explicit "Stop Condition:" section from preprocessed advice
-    # This is output from the advice preprocessor and should trigger skip_validation
-    if re.search(r'stop\s+condition\s*:', advice_lower, re.IGNORECASE):
-        if "stop_conditions" not in directives:
-            directives["stop_conditions"] = {}
-        # User explicitly specified a stop condition - honor it
-        directives["stop_conditions"]["skip_validation"] = True
-
-        # Try to extract program from stop condition text
-        stop_match = re.search(r'stop\s+condition\s*:\s*stop\s+after\s+(?:running\s+)?(.+?)(?:\.|$)', advice_lower, re.IGNORECASE)
-        if stop_match:
-            stop_text = stop_match.group(1).strip()
-            # Map common phrases to programs using YAML-driven patterns
-            # (sorted by length descending — more specific patterns first)
-            program_mappings = _get_stop_directive_patterns()
-            for pattern, program in program_mappings:
-                if re.search(pattern, stop_text, re.IGNORECASE):
-                    if "after_program" not in directives["stop_conditions"]:
-                        directives["stop_conditions"]["after_program"] = program
-                    break
-
-            # Handle density modification based on experiment type
-            if "after_program" not in directives.get("stop_conditions", {}):
-                if re.search(r'density\s+modif|denmod', stop_text, re.IGNORECASE):
-                    if is_cryoem and not is_xray:
-                        directives["stop_conditions"]["after_program"] = "phenix.resolve_cryo_em"
-                    elif is_xray and not is_cryoem:
-                        directives["stop_conditions"]["after_program"] = "phenix.autobuild_denmod"
-                    else:
-                        # Default to cryo-EM if ambiguous
-                        directives["stop_conditions"]["after_program"] = "phenix.resolve_cryo_em"
+    # NOTE (Fix 2, v115): Removed "Stop Condition:" parser that used to
+    # live here.  That block parsed LLM-fabricated stop conditions from
+    # the advice preprocessor (e.g., "Stop Condition: Stop after
+    # molecular replacement").  None of the original READMEs contain
+    # the word "stop"; every such line was invented by the preprocessor.
+    # Real user stop commands are handled by the explicit patterns above
+    # (lines ~2025-2039 and ~2200-2260).  The preprocessor's "Stop
+    # Condition:" lines are now stripped by
+    # _strip_preprocessor_stop_condition() at entry.
 
     # Check for workflow continuation indicators that mean we should NOT set early stops
     # Words like "then", "later", "afterwards" indicate multi-step workflows
@@ -1918,7 +2521,28 @@ def extract_directives_simple(user_advice):
                 directives["stop_conditions"]["start_with_program"] = program
                 break  # Only extract the first matching program
     else:
-        # Detect tutorial/procedure patterns that imply stop after specific program
+        # Detect tutorial/procedure patterns that imply stop after
+        # specific program.
+        #
+        # GUARD (Fix 2, v115): Skip this section when the advice
+        # is preprocessor output.  Preprocessor text contains
+        # descriptive phrases like "Density modification of
+        # cryo-EM map" that match tutorial_patterns but are NOT
+        # user commands.  Preprocessor output is identified by
+        # signature headers (Input Files Found, Experiment Type,
+        # Key Parameters, Special Instructions).
+        _PREPROC_SIGS = (
+            r'input\s+files?\s+found',
+            r'experiment\s+type',
+            r'key\s+parameters?',
+            r'special\s+instructions?',
+        )
+        _is_preprocessed = any(
+            re.search(r'(?i)^[ \t]*%s\s*:' % sig,
+                      user_advice, re.MULTILINE)
+            for sig in _PREPROC_SIGS
+        )
+
         tutorial_patterns = [
             # Xtriage/twinning analysis
             (r'(?:run|check|analyze).*(?:xtriage|twinning)', 'phenix.xtriage'),
@@ -1967,19 +2591,32 @@ def extract_directives_simple(user_advice):
             r'one\s+cycle.*(?:density|denmod|map\s+improv)',
         ]
 
-        for pattern, program in tutorial_patterns:
-            if re.search(pattern, advice_lower, re.IGNORECASE):
-                # This looks like a focused task - add stop condition
-                if "stop_conditions" not in directives:
-                    directives["stop_conditions"] = {}
-                # Only set if not already specified
-                if "after_program" not in directives.get("stop_conditions", {}):
-                    directives["stop_conditions"]["after_program"] = program
-                    directives["stop_conditions"]["skip_validation"] = True
-                break
+        _allow_patterns = (
+            not _is_preprocessed
+            or (intent_result
+                and intent_result.get("intent")
+                == "tutorial"))
 
-        # Handle density modification separately since it depends on experiment type
-        if "after_program" not in directives.get("stop_conditions", {}):
+        if _allow_patterns:
+            for pattern, program in tutorial_patterns:
+                if re.search(pattern, advice_lower,
+                             re.IGNORECASE):
+                    if "stop_conditions" not in directives:
+                        directives["stop_conditions"] = {}
+                    if "after_program" not in directives.get(
+                        "stop_conditions", {}):
+                        directives["stop_conditions"][
+                            "after_program"] = program
+                        directives["stop_conditions"][
+                            "skip_validation"] = True
+                        # Internal flag: this was inferred
+                        # from patterns, not user command
+                        directives["stop_conditions"][
+                            "_set_by_pattern"] = True
+                    break
+
+        # Handle density modification separately
+        if _allow_patterns and "after_program" not in directives.get("stop_conditions", {}):
             for pattern in denmod_patterns:
                 if re.search(pattern, advice_lower, re.IGNORECASE):
                     if "stop_conditions" not in directives:
@@ -1994,6 +2631,189 @@ def extract_directives_simple(user_advice):
                         # The LLM extraction will do better with context
                         directives["stop_conditions"]["after_program"] = "phenix.resolve_cryo_em"
                     directives["stop_conditions"]["skip_validation"] = True
+                    directives["stop_conditions"]["_set_by_pattern"] = True
                     break
 
+    # ── Intent-driven stop behavior (v115) ──────────────────────
+    # Override or set stop conditions based on classified intent.
+    # Runs AFTER all pattern extraction so it can override.
+    _intent = (
+        directives.get("intent") or {}).get("intent")
+
+    if _intent == "task":
+        # Task: single program, stop after.
+        _task_prog = (
+            directives.get("intent", {})
+            .get("task_program"))
+        if _task_prog:
+            if "stop_conditions" not in directives:
+                directives["stop_conditions"] = {}
+            directives["stop_conditions"][
+                "after_program"] = _task_prog
+            directives["stop_conditions"][
+                "skip_validation"] = True
+
+    elif _intent == "solve":
+        # Solve: no artificial stops.  Remove any
+        # after_program set by tutorial patterns.
+        sc = directives.get("stop_conditions", {})
+        if "after_program" in sc and sc.get(
+                "_set_by_pattern"):
+            del sc["after_program"]
+            sc.pop("skip_validation", None)
+            sc.pop("_set_by_pattern", None)
+            if not sc:
+                directives.pop("stop_conditions", None)
+
+    elif _intent == "solve_constrained":
+        # Solve-constrained: no artificial stops, but
+        # set the method preference.
+        sc = directives.get("stop_conditions", {})
+        if "after_program" in sc and sc.get(
+                "_set_by_pattern"):
+            del sc["after_program"]
+            sc.pop("skip_validation", None)
+            sc.pop("_set_by_pattern", None)
+            if not sc:
+                directives.pop("stop_conditions", None)
+        _method = (
+            directives.get("intent", {})
+            .get("method_constraint"))
+        if _method:
+            if "workflow_preferences" not in directives:
+                directives["workflow_preferences"] = {}
+            directives["workflow_preferences"][
+                "method_constraint"] = _method
+
+    # intent=tutorial: keep whatever patterns set
+    # (after_program from tutorial_patterns is correct)
+
+    # v115.09 Fix 3+4: Detect validation-only and MR-SAD intent
+    # Calls shared helper (also used as post-LLM overlay).
+    _apply_workflow_intent_fallback(directives, advice_lower)
+
+    # Extract unit_cell and space_group if mentioned
+    _extract_crystal_symmetry_simple(user_advice, directives)
+
+    # Strip internal flags before returning
+    sc = directives.get("stop_conditions", {})
+    sc.pop("_set_by_pattern", None)
+    if "stop_conditions" in directives and not sc:
+        del directives["stop_conditions"]
+
+    # Simplify intent: keep only the classification string,
+    # not the full internal dict with reason/confidence/etc.
+    _intent_dict = directives.get("intent")
+    if isinstance(_intent_dict, dict):
+        directives["intent"] = _intent_dict.get("intent")
+
     return directives
+
+
+# =============================================================================
+# CRYSTAL SYMMETRY EXTRACTION HELPER (shared by simple and LLM paths)
+# =============================================================================
+
+def _extract_polder_selection(user_advice):
+    """Extract polder atom selection from user advice.
+
+    Matches patterns like:
+        "polder map for chain A resseq 88"
+        "polder for chain A and resseq 88"
+        "polder selection chain A and resseq 88"
+        "calculate polder map for resname LIG"
+
+    Returns:
+        str or None — the selection string, or None.
+    """
+    if not user_advice:
+        return None
+
+    # Pattern: "for <selection>" after polder mention
+    m = re.search(
+        r'polder\s+(?:map\s+)?for\s+(.+?)(?:\.|$)',
+        user_advice, re.IGNORECASE)
+    if m:
+        sel = m.group(1).strip()
+        if sel and len(sel) > 3:
+            return sel
+
+    # Pattern: "selection <selection>" near polder
+    m = re.search(
+        r'(?:polder|omit)\s+(?:map\s+)?'
+        r'selection[=:\s]+["\']?(.+?)["\']?'
+        r'(?:\.|$)',
+        user_advice, re.IGNORECASE)
+    if m:
+        sel = m.group(1).strip()
+        if sel and len(sel) > 3:
+            return sel
+
+    # Pattern: "selection='chain A and resseq 88'"
+    m = re.search(
+        r'selection\s*=\s*["\']([^"\']+)["\']',
+        user_advice, re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+
+    return None
+
+
+def _extract_crystal_symmetry_simple(user_advice, directives):
+    """
+    Extract unit_cell and space_group from user advice using regex patterns.
+
+    Mutates *directives* in place (adding/merging program_settings.default).
+
+    Handles common formats::
+
+        "unit cell (116.097, 116.097, 44.175, 90, 90, 120)"
+        "unit_cell = 116.097 116.097 44.175 90 90 120"
+        "use unit cell 116 116 44 90 90 120"
+        "space group P 32 2 1"  /  "space_group=P212121"
+    """
+    NUMBER = r'[0-9]+(?:\.[0-9]*)?'
+    SEP    = r'[\s,]+'
+
+    # --- unit cell ---
+    UC_PATTERNS = [
+        # parenthesised: (a, b, c, al, be, ga)
+        r'unit[_ ]?cell\s*[=:]?\s*\(\s*'
+        r'(?P<a>{n}){s}(?P<b>{n}){s}(?P<c>{n}){s}'
+        r'(?P<al>{n}){s}(?P<be>{n}){s}(?P<ga>{n})\s*\)',
+        # plain key=value: unit_cell = a b c al be ga
+        r'unit[_ ]?cell\s*[=:]\s*'
+        r'(?P<a>{n})\s+(?P<b>{n})\s+(?P<c>{n})\s+'
+        r'(?P<al>{n})\s+(?P<be>{n})\s+(?P<ga>{n})',
+        # prose: "use unit cell a b c al be ga"
+        r'unit\s+cell\s+'
+        r'(?P<a>{n})\s+(?P<b>{n})\s+(?P<c>{n})\s+'
+        r'(?P<al>{n})\s+(?P<be>{n})\s+(?P<ga>{n})',
+    ]
+    for raw_pat in UC_PATTERNS:
+        pat = raw_pat.format(n=NUMBER, s=SEP)
+        m = re.search(pat, user_advice, re.IGNORECASE)
+        if m:
+            raw = '%s %s %s %s %s %s' % (
+                m.group('a'), m.group('b'), m.group('c'),
+                m.group('al'), m.group('be'), m.group('ga'))
+            normalized = _normalize_unit_cell(raw)
+            if normalized:
+                if "program_settings" not in directives:
+                    directives["program_settings"] = {}
+                if "default" not in directives["program_settings"]:
+                    directives["program_settings"]["default"] = {}
+                directives["program_settings"]["default"]["unit_cell"] = normalized
+            break
+
+    # --- space group ---
+    m = re.search(r'space[_ ]?group\s*[=:]?\s*([A-Za-z][A-Za-z0-9 _\-]{1,20})',
+                  user_advice, re.IGNORECASE)
+    if m:
+        sg = m.group(1).strip().rstrip('.,;')
+        if sg:
+            if "program_settings" not in directives:
+                directives["program_settings"] = {}
+            if "default" not in directives["program_settings"]:
+                directives["program_settings"]["default"] = {}
+            directives["program_settings"]["default"]["space_group"] = sg

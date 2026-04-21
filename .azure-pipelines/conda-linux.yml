@@ -17,16 +17,6 @@ jobs:
   strategy:
     maxParallel: 2
     matrix:
-      # python2.7:
-      #   CONDA: Linux
-      #   OS: linux-64
-      #   PYTHON_VERSION: py27
-      #   MODULES: ${{ parameters.modules }}
-      python3.9:
-        CONDA: Linux
-        OS: linux-64
-        PYTHON_VERSION: py39
-        MODULES: ${{ parameters.modules }}
       python3.10:
         CONDA: Linux
         OS: linux-64
@@ -47,6 +37,11 @@ jobs:
         OS: linux-64
         PYTHON_VERSION: py313
         MODULES: ${{ parameters.modules }}
+      # python3.14:
+      #   CONDA: Linux
+      #   OS: linux-64
+      #   PYTHON_VERSION: py314
+      #   MODULES: ${{ parameters.modules }}
 
   container:
     image: ${{ parameters.distribution }}:${{ join('.', parameters.version) }}

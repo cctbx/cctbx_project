@@ -12,22 +12,22 @@ To create a new strategy:
 3. Register in strategies/__init__.py
 
 Example:
-    class MyStrategy(PlanningStrategy):
-        @property
-        def name(self) -> str:
-            return "my_strategy"
+  class MyStrategy(PlanningStrategy):
+    @property
+    def name(self) -> str:
+      return "my_strategy"
 
-        @property
-        def description(self) -> str:
-            return "My custom planning approach"
+    @property
+    def description(self) -> str:
+      return "My custom planning approach"
 
-        async def plan_next_move(self, run_history, project_state, context):
-            # Your planning logic here
-            return AgentPlan(
-                commands=["phenix.refine model.pdb data.mtz"],
-                reasoning="Need to refine the model",
-                program="phenix.refine"
-            )
+    async def plan_next_move(self, run_history, project_state, context):
+      # Your planning logic here
+      return AgentPlan(
+        commands=["phenix.refine model.pdb data.mtz"],
+        reasoning="Need to refine the model",
+        program="phenix.refine"
+      )
 """
 from __future__ import absolute_import, division, print_function
 
@@ -39,100 +39,100 @@ from libtbx.langchain.core.types import AgentPlan
 
 
 class PlanningStrategy(ABC):
+  """
+  Abstract base class for all planning strategies.
+
+  Subclasses must implement:
+  - name: Unique identifier for this strategy
+  - plan_next_move(): Generate the next action plan
+
+  Optional overrides:
+  - description: Human-readable description
+  - initialize(): Setup called once before first use
+  """
+
+  @property
+  @abstractmethod
+  def name(self) -> str:
     """
-    Abstract base class for all planning strategies.
+    Unique name for this strategy.
 
-    Subclasses must implement:
-    - name: Unique identifier for this strategy
-    - plan_next_move(): Generate the next action plan
+    Used for:
+    - Strategy selection: CrystallographyAgent(strategy='sequential')
+    - Logging and debugging
+    - Registry lookup
 
-    Optional overrides:
-    - description: Human-readable description
-    - initialize(): Setup called once before first use
+    Returns:
+      str: Short identifier (e.g., 'sequential', 'batch', 'workflow')
     """
+    pass
 
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """
-        Unique name for this strategy.
+  @property
+  def description(self) -> str:
+    """
+    Human-readable description of what this strategy does.
 
-        Used for:
-        - Strategy selection: CrystallographyAgent(strategy='sequential')
-        - Logging and debugging
-        - Registry lookup
+    Returns:
+      str: Description for documentation/help
+    """
+    return f"Planning strategy: {self.name}"
 
-        Returns:
-            str: Short identifier (e.g., 'sequential', 'batch', 'workflow')
-        """
-        pass
+  def initialize(self, llm: Any, embeddings: Any, db_dir: str) -> None:
+    """
+    Initialize the strategy with required resources.
 
-    @property
-    def description(self) -> str:
-        """
-        Human-readable description of what this strategy does.
+    Called once before first use. Override to set up any
+    resources needed for planning (e.g., RAG retriever).
 
-        Returns:
-            str: Description for documentation/help
-        """
-        return f"Planning strategy: {self.name}"
+    Args:
+      llm: Language model for reasoning
+      embeddings: Embedding model for RAG
+      db_dir: Path to documentation database
+    """
+    self.llm = llm
+    self.embeddings = embeddings
+    self.db_dir = db_dir
 
-    def initialize(self, llm: Any, embeddings: Any, db_dir: str) -> None:
-        """
-        Initialize the strategy with required resources.
+  @abstractmethod
+  async def plan_next_move(
+    self,
+    run_history: list,
+    project_state: dict,
+    context: dict = None
+  ) -> AgentPlan:
+    """
+    Generate a plan for what to do next.
 
-        Called once before first use. Override to set up any
-        resources needed for planning (e.g., RAG retriever).
+    This is the main method that each strategy must implement.
 
-        Args:
-            llm: Language model for reasoning
-            embeddings: Embedding model for RAG
-            db_dir: Path to documentation database
-        """
-        self.llm = llm
-        self.embeddings = embeddings
-        self.db_dir = db_dir
+    Args:
+      run_history: List of previous runs with their results
+      project_state: Current state of the project (files, parameters)
+      context: Additional context (advice, original_files, etc.)
 
-    @abstractmethod
-    async def plan_next_move(
-        self,
-        run_history: list,
-        project_state: dict,
-        context: dict = None
-    ) -> AgentPlan:
-        """
-        Generate a plan for what to do next.
+    Returns:
+      AgentPlan: The planned action(s) to take
 
-        This is the main method that each strategy must implement.
+    Example implementation:
+      async def plan_next_move(self, run_history, project_state, context):
+        # Analyze what's been done
+        if not run_history:
+          return AgentPlan(
+            commands=["phenix.xtriage data.mtz"],
+            reasoning="First step: analyze data quality",
+            program="phenix.xtriage"
+          )
 
-        Args:
-            run_history: List of previous runs with their results
-            project_state: Current state of the project (files, parameters)
-            context: Additional context (advice, original_files, etc.)
+        # Plan based on history
+        last_run = run_history[-1]
+        if last_run.get('program') == 'phenix.xtriage':
+          return AgentPlan(
+            commands=["phenix.phaser ..."],
+            reasoning="Data looks good, try MR",
+            program="phenix.phaser"
+          )
+    """
+    pass
 
-        Returns:
-            AgentPlan: The planned action(s) to take
-
-        Example implementation:
-            async def plan_next_move(self, run_history, project_state, context):
-                # Analyze what's been done
-                if not run_history:
-                    return AgentPlan(
-                        commands=["phenix.xtriage data.mtz"],
-                        reasoning="First step: analyze data quality",
-                        program="phenix.xtriage"
-                    )
-
-                # Plan based on history
-                last_run = run_history[-1]
-                if last_run.get('program') == 'phenix.xtriage':
-                    return AgentPlan(
-                        commands=["phenix.phaser ..."],
-                        reasoning="Data looks good, try MR",
-                        program="phenix.phaser"
-                    )
-        """
-        pass
-
-    def __repr__(self) -> str:
-        return f"<{self.__class__.__name__}(name='{self.name}')>"
+  def __repr__(self) -> str:
+    return f"<{self.__class__.__name__}(name='{self.name}')>"

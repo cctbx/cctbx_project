@@ -101,11 +101,13 @@ def find_tests(dir_name):
   return all_tests
 
 def run_command(command,
-                verbosity=DEFAULT_VERBOSITY):
+                verbosity=DEFAULT_VERBOSITY,
+                cwd=None):
   try:
     t0=time.time()
     cmd_result = easy_run.fully_buffered(
       command=command,
+      cwd=cwd,
       )
     cmd_result.wall_time = time.time()-t0
     cmd_result.error_lines = phenix_separate_output(cmd_result)
@@ -219,7 +221,8 @@ class run_command_list(object):
                 out=sys.stdout,
                 log=None,
                 verbosity=DEFAULT_VERBOSITY,
-                max_time=180):
+                max_time=180,
+                cwd_map=None):
     if (log is None) : log = null_out()
     self.out = multi_out()
     self.log = log
@@ -239,6 +242,7 @@ class run_command_list(object):
     self.parallel_list = parallel_list
     if self.parallel_list is None:
       self.parallel_list = []
+    self.cwd_map = cwd_map if cwd_map is not None else {}
 
     # Filter cmd list for duplicates.
     self.cmd_list = []
@@ -277,7 +281,7 @@ class run_command_list(object):
       for command in self.cmd_list:
         self.pool.apply_async(
           run_command,
-          [command, verbosity],
+          [command, verbosity, self.cwd_map.get(command)],
           callback=self.save_result)
       try:
         self.pool.close()
@@ -402,7 +406,8 @@ class run_command_list(object):
 
   def run_serial(self, command_list):
     for command in command_list:
-      rc = run_command(command, verbosity=self.verbosity)
+      rc = run_command(command, verbosity=self.verbosity,
+                       cwd=self.cwd_map.get(command))
       if self.save_result(rc) == False:
         break
 

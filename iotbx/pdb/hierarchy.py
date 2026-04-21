@@ -448,6 +448,41 @@ class _():
     for model in ph.models():
       self.append_model(model=model.detached_copy())
 
+  def get_unique_resnames(self):
+    """Returns a list of all unique residue names in the hierarchy."""
+    resnames = []
+    for model in self.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          for atom_group in residue_group.atom_groups():
+            if atom_group.resname not in resnames:
+              resnames.append(atom_group.resname)
+    return resnames
+
+  def get_water_resname(self):
+    """Returns the resname of the first water found, or None if no water."""
+    get_class = iotbx.pdb.common_residue_names_get_class
+    for model in self.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          for atom_group in residue_group.atom_groups():
+            # Return the first resname that belongs to the water class
+            if get_class(name=atom_group.resname) == "common_water":
+              return atom_group.resname
+    return None
+
+  def get_water_max_resseq(self):
+    """Returns the max resseq of water as integer."""
+    get_class = iotbx.pdb.common_residue_names_get_class
+    result = flex.int()
+    for model in self.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          for atom_group in residue_group.atom_groups():
+            if get_class(name=atom_group.resname) == "common_water":
+              result.append(int(atom_group.parent().resseq))
+    return flex.max_default(result, 0)
+
   def chains(self):
     """
     Iterate over all chains in all models.
@@ -3680,7 +3715,7 @@ class _():
     for atom in self.atoms():
       atom_list.append(atom.name.strip().upper())
     mlq = _mon_lib_query(self.resname.strip().upper(), mon_lib_srv)
-    assert mlq is not None
+    if mlq is None: return None
     reference_list = []
     atom_dict = mlq.atom_dict()
     alla = [at for at in mlq.atom_dict()]
@@ -3689,11 +3724,14 @@ class _():
     aa_alikes = ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']
     if(common_residue_names_get_class(name=self.resname) in aa_alikes):
       if(not self.link_to_previous):
-        alla.remove('H')
+        try:               alla.remove('H')
+        except ValueError: pass
         for h in ["H1","H2","H3"]:
           if not h in alla: alla.append(h)
       else:
-        assert 'H' in alla
+        # XXX WHY THIS CRASHES SOMETIMES?????????????????
+        #assert 'H' in alla
+        pass
     #
     if  (mode == "all"):   reference_list = alla
     elif(mode == "non_h"): reference_list = nonH

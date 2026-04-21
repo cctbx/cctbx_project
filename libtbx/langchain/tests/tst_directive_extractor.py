@@ -29,6 +29,8 @@ from agent.directive_extractor import (
     extract_directives_simple,
     _fix_program_name,
     format_directives_for_display,
+    _normalize_unit_cell,
+    _extract_crystal_symmetry_simple,
 )
 
 
@@ -271,14 +273,20 @@ def test_stop_after_cycle():
 
 
 def test_stop_after_program():
-    """Should stop after specified program."""
+    """after_program is NOT a hard stop (v112.78, Bug 7).
+
+    It is now a minimum-run guarantee used by PLAN to suppress
+    auto-stop.  The LLM decides when to actually stop.
+    """
     directives = {"stop_conditions": {"after_program": "phenix.refine"}}
 
+    # Matching program — should NOT trigger hard stop
     should_stop, reason = check_stop_conditions(
         directives, cycle_number=2, last_program="phenix.refine"
     )
-    assert_true(should_stop)
+    assert_false(should_stop)
 
+    # Non-matching program — also no stop
     should_stop, reason = check_stop_conditions(
         directives, cycle_number=2, last_program="phenix.phaser"
     )
@@ -846,6 +854,157 @@ def test_validate_clears_sharpening_with_build_constraint():
     stop_cond = result.get("stop_conditions", {})
     assert_not_in("after_program", stop_cond,
                   "after_program=map_sharpening should be cleared when build is planned")
+
+
+# =============================================================================
+# UNIT CELL / SPACE GROUP EXTRACTION TESTS
+# =============================================================================
+
+def test_normalize_unit_cell_parenthesised():
+    """Parenthesised comma-separated tuple is normalised to space-separated string."""
+    raw = "(116.097, 116.097, 44.175, 90, 90, 120)"
+    result = _normalize_unit_cell(raw)
+    assert_equal(result, "116.097 116.097 44.175 90 90 120")
+
+
+def test_normalize_unit_cell_comma_separated():
+    """Comma-separated without parens is normalised."""
+    raw = "116.097, 116.097, 44.175, 90, 90, 120"
+    result = _normalize_unit_cell(raw)
+    assert_equal(result, "116.097 116.097 44.175 90 90 120")
+
+
+def test_normalize_unit_cell_already_correct():
+    """Already space-separated values pass through unchanged."""
+    raw = "116.097 116.097 44.175 90 90 120"
+    result = _normalize_unit_cell(raw)
+    assert_equal(result, "116.097 116.097 44.175 90 90 120")
+
+
+def test_normalize_unit_cell_integer_values():
+    """Integer values (no decimal point) are also normalised."""
+    raw = "(116, 116, 44, 90, 90, 120)"
+    result = _normalize_unit_cell(raw)
+    assert_equal(result, "116 116 44 90 90 120")
+
+
+def test_normalize_unit_cell_too_few_numbers():
+    """Fewer than 6 numbers returns None (invalid cell)."""
+    result = _normalize_unit_cell("116.097 116.097 44.175")
+    assert_equal(result, None)
+
+
+def test_normalize_unit_cell_non_numeric():
+    """Non-numeric content returns None."""
+    result = _normalize_unit_cell("P 32 2 1")  # space group, not a cell
+    assert_equal(result, None)
+
+
+def test_validate_directives_normalises_unit_cell():
+    """validate_directives normalises parenthesised unit_cell format."""
+    raw = {
+        "program_settings": {
+            "default": {"unit_cell": "(116.097, 116.097, 44.175, 90, 90, 120)"}
+        }
+    }
+    result = validate_directives(raw)
+    uc = result["program_settings"]["default"]["unit_cell"]
+    assert_equal(uc, "116.097 116.097 44.175 90 90 120",
+                 "Parenthesised unit_cell must be normalised by validate_directives")
+
+
+def test_validate_directives_drops_malformed_unit_cell():
+    """validate_directives drops a unit_cell that doesn't have 6 numbers."""
+    raw = {
+        "program_settings": {
+            "default": {"unit_cell": "116.097 116.097"}  # only 2 numbers
+        }
+    }
+    result = validate_directives(raw)
+    default = result.get("program_settings", {}).get("default", {})
+    assert_not_in("unit_cell", default,
+                  "Malformed unit_cell (< 6 numbers) must be dropped")
+
+
+def test_validate_directives_keeps_space_group():
+    """validate_directives keeps a valid space_group string."""
+    raw = {
+        "program_settings": {
+            "default": {"space_group": "P 32 2 1"}
+        }
+    }
+    result = validate_directives(raw)
+    sg = result.get("program_settings", {}).get("default", {}).get("space_group")
+    assert_equal(sg, "P 32 2 1")
+
+
+def test_extract_crystal_symmetry_simple_parenthesised():
+    """_extract_crystal_symmetry_simple extracts parenthesised unit cell from prose."""
+    advice = ("The specified unit cell (116.097, 116.097, 44.175, 90, 90, 120) "
+              "must be used for the procedure.")
+    directives = {}
+    _extract_crystal_symmetry_simple(advice, directives)
+    uc = directives.get("program_settings", {}).get("default", {}).get("unit_cell")
+    assert_equal(uc, "116.097 116.097 44.175 90 90 120",
+                 "Parenthesised unit cell must be extracted and normalised")
+
+
+def test_extract_crystal_symmetry_simple_space_group():
+    """_extract_crystal_symmetry_simple extracts space group."""
+    advice = "Use space group P 32 2 1 for refinement."
+    directives = {}
+    _extract_crystal_symmetry_simple(advice, directives)
+    sg = directives.get("program_settings", {}).get("default", {}).get("space_group")
+    assert_true(sg is not None and "P 32 2 1" in sg,
+                "Space group must be extracted (got: %s)" % sg)
+
+
+def test_extract_crystal_symmetry_simple_both():
+    """_extract_crystal_symmetry_simple extracts unit cell and space group together."""
+    advice = ("Unit cell: 50.0 60.0 70.0 90.0 90.0 90.0. "
+              "Space group P 21 21 21.")
+    directives = {}
+    _extract_crystal_symmetry_simple(advice, directives)
+    default = directives.get("program_settings", {}).get("default", {})
+    assert_true("unit_cell" in default, "unit_cell must be extracted")
+    assert_true("space_group" in default, "space_group must be extracted")
+    assert_equal(default["unit_cell"], "50 60 70 90 90 90")
+
+
+def test_extract_directives_simple_unit_cell_end_to_end():
+    """
+    extract_directives_simple must capture a unit cell from the kind of
+    preprocessed advice the agent actually produces (as in the AIAgent_35 log).
+    This is the end-to-end test for the nsf-d2 ligand case.
+    """
+    advice = (
+        "5. **Special Instructions**:\n"
+        "   - The ligand to be fit is from the file `atp.pdb`.\n"
+        "   - The specified unit cell (116.097, 116.097, 44.175, 90, 90, 120) "
+        "must be used for the procedure.\n"
+        "6. **Stop Condition**: Stop after the ligand has been successfully placed "
+        "and the resulting model has undergone one cycle of refinement.\n"
+    )
+    result = extract_directives_simple(advice)
+    default = result.get("program_settings", {}).get("default", {})
+    assert_true(
+        "unit_cell" in default,
+        "unit_cell must be extracted from preprocessed advice "
+        "(got program_settings=%s)" % result.get("program_settings")
+    )
+    assert_equal(default["unit_cell"], "116.097 116.097 44.175 90 90 120",
+                 "unit_cell must be normalised to space-separated string")
+
+
+def test_unit_cell_in_valid_settings():
+    """unit_cell and space_group must be in VALID_SETTINGS so validate_directives keeps them."""
+    from agent.directive_extractor import VALID_SETTINGS
+    assert_in("unit_cell", VALID_SETTINGS,
+              "unit_cell must be in VALID_SETTINGS")
+    assert_in("space_group", VALID_SETTINGS,
+              "space_group must be in VALID_SETTINGS")
+    assert_equal(VALID_SETTINGS["unit_cell"], str)
+    assert_equal(VALID_SETTINGS["space_group"], str)
 
 
 def run_all_tests():

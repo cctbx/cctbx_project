@@ -444,7 +444,7 @@ def test_done_tracking_flags_in_build_context():
     """Every done_tracking flag should appear in build_context().
 
     If a flag is declared in YAML but never read in build_context, it
-    can't gate any workflow phase, making skip_programs ineffective.
+    can't gate any workflow step, making skip_programs ineffective.
     """
     source = _read("agent/workflow_engine.py")
     programs = _program_defs()
@@ -861,7 +861,7 @@ def test_no_hardcoded_program_mappings_in_directive_extractor():
 
 
 def test_rules_priority_in_workflow_phases():
-    """Key workflow phases must have rules_priority in YAML.
+    """Key workflow steps must have rules_priority in YAML.
 
     Phases: analyze, obtain_model, refine, validate (both xray and cryoem).
     """
@@ -871,26 +871,26 @@ def test_rules_priority_in_workflow_phases():
     with open(yaml_path) as f:
         workflows = _yaml.safe_load(f)
 
-    expected_phases = {
+    expected_steps = {
         "xray": ["analyze", "obtain_model", "refine", "validate"],
         "cryoem": ["analyze", "obtain_model", "refine", "validate"],
     }
 
     missing = []
-    for wf_name, phases in expected_phases.items():
+    for wf_name, step_names in expected_steps.items():
         wf = workflows.get(wf_name, {})
-        wf_phases = wf.get("phases", {})
-        for phase_name in phases:
-            phase = wf_phases.get(phase_name, {})
-            rp = phase.get("rules_priority")
+        wf_steps = wf.get("steps") or wf.get("phases") or {}
+        for step_name in step_names:
+            step = wf_steps.get(step_name, {})
+            rp = step.get("rules_priority")
             if not rp:
-                missing.append(f"{wf_name}/{phase_name}")
+                missing.append(f"{wf_name}/{step_name}")
 
     assert not missing, (
-        "These workflow phases are missing rules_priority:\n  "
+        "These workflow steps are missing rules_priority:\n  "
         + "\n  ".join(missing)
     )
-    print("  test_rules_priority_in_workflow_phases PASSED")
+    print("  test_rules_priority_in_workflow_steps PASSED")
 
 
 def test_rules_config_in_shared():

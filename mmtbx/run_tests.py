@@ -140,6 +140,7 @@ general_tests = [
   "$D/monomer_library/tst_tyr_from_gly_and_bnz.py",
   "$D/monomer_library/tst_pdb_interpretation.py",
   "$D/monomer_library/tst_pdb_interpretation_3.py",
+  "$D/monomer_library/tst_pdb_interpretation_5.py",
   "$D/monomer_library/tst_rna_dna_interpretation.py",
   "$D/monomer_library/tst_protein_interpretation.py",
   "$D/monomer_library/tst_pdb_interpretation_ncs_processing.py",
@@ -163,6 +164,7 @@ general_tests = [
   "$D/hydrogens/tst_add_hydrogen_6.py",
   "$D/hydrogens/tst_add_hydrogen_7.py",
   "$D/hydrogens/tst_add_hydrogen_8.py",
+  "$D/hydrogens/tst_add_hydrogen_9.py",
   #"$D/hydrogens/tst_add_hydrogen_time.py",
   "$D/hydrogens/tst_validate_H.py",
   "$D/hydrogens/tst_connectivity.py",
@@ -229,6 +231,7 @@ general_tests = [
   "$D/regression/tst_find_ncs.py",
   "$D/regression/tst_minimize_chain.py",
   "$D/regression/tst_sequence_validation.py",
+  "$D/regression/tst_model_vs_sequence.py",
   "$D/regression/tst_prune_model.py",
   "$D/regression/tst_real_space_correlation.py",
   "$D/regression/tst_examples.py",
@@ -375,6 +378,8 @@ general_tests = [
   "$D/regression/tst_model_map.py",
   #
   "$D/regression/tst_validate_ligands.py",
+  "$D/regression/tst_validate_ligands_2.py",
+  "$D/regression/tst_rdkit_utils_fragmentation.py",
   #
   "$D/regression/tst_cis_trans_peptide_link.py",
   "$D/regression/tst_apply_cif_restraints.py",

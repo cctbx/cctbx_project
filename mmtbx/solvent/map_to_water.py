@@ -689,7 +689,6 @@ class run_one(object):
     #
     self.model.add_solvent(
       solvent_xray_structure = self.xrs_water,
-      conformer_indices = None,
       atom_name    = "O",
       residue_name = "HOH",
       chain_id     = solvent_chain,

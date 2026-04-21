@@ -714,3 +714,179 @@ def analyze_error(log_text: str, program: str,
     Equivalent to ErrorAnalyzer().analyze(...).
     """
     return get_analyzer().analyze(log_text, program, context, session)
+
+
+_detector_instance = None
+
+def get_diagnosis_detector() -> 'DiagnosisDetector':
+    """
+    Get singleton DiagnosisDetector instance.
+
+    Mirrors get_analyzer() — avoids re-parsing diagnosable_errors.yaml on
+    every failed program execution.
+    """
+    global _detector_instance
+    if _detector_instance is None:
+        _detector_instance = DiagnosisDetector()
+    return _detector_instance
+
+
+# =============================================================================
+# DIAGNOSIS DETECTOR
+# =============================================================================
+
+class DiagnosisDetector:
+    """
+    Detects diagnosable-terminal errors in program result/log text.
+
+    Unlike ErrorAnalyzer (which prepares retry strategies for recoverable
+    errors), this class only detects; the caller decides what to do.
+    When a match is found the appropriate action is always to stop the run
+    and call the LLM for a diagnosis.
+
+    Configuration is loaded from knowledge/diagnosable_errors.yaml.
+
+    The two YAML files (recoverable_errors.yaml / diagnosable_errors.yaml)
+    are intentionally kept separate so no error can accidentally be treated
+    as both retryable and terminal.
+
+    Usage:
+        detector = DiagnosisDetector()
+        match = detector.detect(result_text)
+        if match:
+            error_type, description, excerpt = match
+            # ... stop the run and diagnose
+    """
+
+    def __init__(self):
+        self._config = self._load_config()
+
+    # =========================================================================
+    # CONFIGURATION
+    # =========================================================================
+
+    def _load_config(self) -> dict:
+        """Load diagnosable errors configuration from YAML."""
+        if yaml is None:
+            print("Warning: PyYAML not available, failure diagnosis disabled")
+            return {}
+
+        # Resolve knowledge/ directory relative to this file (agent/).
+        # Mirrors the exact path-resolution logic used by ErrorAnalyzer.
+        this_dir = os.path.dirname(os.path.abspath(__file__))
+
+        # Primary: parent/knowledge  (agent/ -> ../knowledge/)
+        knowledge_dir = os.path.join(os.path.dirname(this_dir), "knowledge")
+        yaml_path = os.path.join(knowledge_dir, "diagnosable_errors.yaml")
+
+        if not os.path.exists(yaml_path):
+            # Fallback: sibling path  (handles some install layouts)
+            yaml_path = os.path.join(this_dir, "..", "knowledge",
+                                     "diagnosable_errors.yaml")
+            yaml_path = os.path.normpath(yaml_path)
+
+        if not os.path.exists(yaml_path):
+            # Missing YAML is not fatal — detection simply returns None always.
+            return {}
+
+        try:
+            with open(yaml_path, 'r') as f:
+                return yaml.safe_load(f) or {}
+        except Exception as e:
+            print(f"Warning: Could not load diagnosable_errors.yaml: {e}")
+            return {}
+
+    # =========================================================================
+    # PUBLIC API
+    # =========================================================================
+
+    def detect(self, result_text: str) -> Optional[Tuple[str, str, str]]:
+        """
+        Check result_text for a diagnosable-terminal error.
+
+        Searches all patterns in diagnosable_errors.yaml case-insensitively.
+        Returns on the first match.
+
+        Args:
+            result_text: The full result/log text from the failing program.
+
+        Returns:
+            (error_type, description, excerpt) if a match is found, else None.
+
+            error_type:  Key from the YAML (e.g. 'crystal_symmetry_mismatch').
+            description: Human-readable label from the YAML.
+            excerpt:     Up to ~20 lines centred on the first matching line,
+                         suitable for display in the HTML report and the
+                         diagnosis prompt.
+        """
+        if not result_text:
+            return None
+
+        errors = self._config.get("errors", {})
+
+        for error_type, error_def in errors.items():
+            patterns = error_def.get("detection_patterns", [])
+            for pattern in patterns:
+                try:
+                    if re.search(pattern, result_text,
+                                 re.IGNORECASE | re.DOTALL):
+                        description = error_def.get("description", error_type)
+                        excerpt = self._extract_excerpt(result_text, pattern)
+                        return (error_type, description, excerpt)
+                except re.error:
+                    # Malformed regex in config — skip this pattern silently.
+                    continue
+
+        return None
+
+    def get_hint(self, error_type: str) -> str:
+        """
+        Return the diagnosis_hint for a given error type.
+
+        Used by build_diagnosis_prompt (server-side) and by the fallback
+        rules-only message (client-side, no LLM).
+
+        Returns:
+            The hint string, or '' if the error_type is not found.
+        """
+        error_def = self._config.get("errors", {}).get(error_type, {})
+        return error_def.get("diagnosis_hint", "").strip()
+
+    # =========================================================================
+    # INTERNAL HELPERS
+    # =========================================================================
+
+    def _extract_excerpt(self, text: str, matching_pattern: str,
+                         context_lines: int = 10) -> str:
+        """
+        Extract a readable excerpt centred on the first matching line.
+
+        Args:
+            text:             Full result/log text.
+            matching_pattern: The regex that triggered detection.
+            context_lines:    Number of lines before and after the match to
+                              include (default 10, giving ~20 lines total).
+
+        Returns:
+            A string containing the matching line plus surrounding context,
+            or the last 20 lines of the text as a fallback.
+        """
+        lines = text.splitlines()
+
+        # Find the first matching line index
+        match_idx = None
+        for i, line in enumerate(lines):
+            try:
+                if re.search(matching_pattern, line, re.IGNORECASE):
+                    match_idx = i
+                    break
+            except re.error:
+                pass
+
+        if match_idx is None:
+            # Pattern matched across lines (DOTALL) — return the tail
+            return "\n".join(lines[-20:])
+
+        start = max(0, match_idx - context_lines)
+        end   = min(len(lines), match_idx + context_lines + 1)
+        return "\n".join(lines[start:end])

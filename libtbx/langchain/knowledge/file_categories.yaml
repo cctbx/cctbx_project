@@ -77,7 +77,6 @@ ligand:
 intermediate:
   description: "Intermediate processing files - never use as input"
   extensions: [".pdb"]
-  is_semantic_parent: true
   patterns:
     - "*reference*"       # Reference/template files used during building
     - "*EDITED*"          # Edited intermediate files
@@ -257,7 +256,23 @@ predict_and_build_output:
     - "*PredictAndBuild*overall_best*.pdb"
   excludes:
     - "*_predicted_model*"  # stop_after_predict outputs are predictions, not built models
+    - "*_final_refine_*"    # Bug C fix: internal autobuild refinement outputs inside p&b
+                            # (e.g. overall_best_final_refine_001.pdb) are multi-model
+                            # intermediates — never pass directly to phenix.refine.
   notes: "Output from phenix.predict_and_build - fully built model from prediction workflow"
+
+predict_build_refine_internal:
+  description: "Internal refinement outputs from predict_and_build autobuild pipeline"
+  parent_category: intermediate
+  extensions: [".pdb"]
+  patterns:
+    - "*overall_best*final_refine*.pdb"
+    - "*overall_best*refine_[0-9][0-9][0-9]*.pdb"
+  notes: "Bug C fix: predict_and_build copies its internal autobuild refinement outputs
+    (e.g. overall_best_final_refine_001.pdb) to the top-level working directory.
+    These are multi-model PDBs and must never be used as phenix.refine input.
+    By routing them to intermediate they are stripped from the model category
+    by the post-processing step in _categorize_files_yaml."
 
 refined:
   description: "X-ray refined models"
@@ -270,6 +285,10 @@ refined:
     - "*real_space*"
     - "*rsr*"
     - "*predict*"
+    - "*overall_best*"  # predict_and_build / autobuild internal outputs.
+                        # Basename matching: *PredictAndBuild* would not match
+                        # overall_best_final_refine_001.pdb, but *overall_best*
+                        # does. Standalone phenix.refine never uses this prefix.
     - "*EDITED*"      # Edited intermediates
     - "*reference*"   # Reference models
     - "*TEMP*"        # Temporary files
@@ -289,6 +308,7 @@ rsr_output:
 phaser_output:
   description: "Models from molecular replacement (Phaser)"
   parent_category: model
+  extensions: [".pdb"]
   patterns:
     - "PHASER*"
     - "phaser*"
@@ -335,6 +355,7 @@ with_ligand:
     - "*with_ligand*"
     - "*_liganded*"
     - "*plus_lig*"
+    - "*_modified.pdb"
   also_in: [refined]  # Preserve refined status - this is a TAG not a replacement
   notes: "Combined protein + ligand models - still a refined model"
 
@@ -397,6 +418,8 @@ pdb_template:
     - "*chainsaw*"
     - "*search_model*"
     - "*search*model*"
+    - "*search*"
+    - "*_search.*"
   notes: "PDB homolog for MR - consider running Sculptor for chain editing"
 
 # Default category for unclassified PDB files
@@ -407,8 +430,9 @@ unclassified_pdb:
   parent_category: model  # Default to positioned model - user can provide model directly
   extensions: [".pdb"]
   patterns:
-    - "*model*"  # Generic model files
-    - "*"  # Catch-all for any PDB
+    - "*model*"   # Generic model files
+    - "*noligand*"  # Protein structure explicitly described as lacking ligand (e.g. nsf-d2_noligand.pdb)
+    - "*"         # Catch-all for any PDB
   excludes:
     # Exclude everything that should be in a more specific category
     - "*refine*"
@@ -431,11 +455,25 @@ unclassified_pdb:
     - "*search*"  # Search models for MR
     - "*sculptor*"  # Sculptor output (processed search models)
     - "*chainsaw*"  # Chainsaw output (processed search models)
-    - "lig*"
-    - "*ligand*"
+    # Ligand files — use SPECIFIC word-boundary patterns to avoid matching
+    # files whose names contain 'ligand' as part of a different word (e.g. 'noligand').
+    # The HETATM content check in _categorize_files catches hetcode files (atp.pdb etc.).
+    - "lig.*"         # lig.pdb, lig.cif (exact ligand files)
+    - "lig_*"         # lig_001.pdb etc.
+    - "LIG.*"         # uppercase variants
+    - "LIG_*"
+    - "ligand.*"      # ligand.pdb itself
+    - "ligand_*"      # ligand_001.pdb etc.
+    - "*_ligand.*"    # my_model_ligand.pdb (ligand as suffix)
+    - "*_ligand_*"    # foo_ligand_bar.pdb
+    - "EDITED*"          # Intermediate files from ligandfit processing
+    - "*EDITED*"         # Intermediate files (anywhere in name)
+    - "TEMP*"            # Temporary files
     - "path_[0-9]*.pdb"    # trace-and-build fragments (intermediate)
     - "*TEMP*"              # Temporary files (intermediate)
     - "*reference*"         # Reference models (intermediate)
+    - "*_cycle_*"           # Intermediate cycle files
+    - "*intermediate*"      # Intermediate processing files
     - "unrefined_model*"    # map_to_model intermediate
     - "*box_au_map*"        # map_to_model intermediate
     - "*map_shifted*"       # map_to_model intermediate
@@ -455,6 +493,8 @@ ligand_pdb:
     - "ligand_*.pdb"
     - "*_ligand.pdb"
     - "*_lig.pdb"
+    - "*-ligand.pdb"
+    - "*-lig.pdb"
     - "LIG.pdb"
     - "LIG_*.pdb"
   excludes:
@@ -479,6 +519,12 @@ ligand_cif:
     - "lig_*.cif"
     - "ligand.cif"
     - "ligand_*.cif"
+    - "*_ligand.cif"
+    - "*-ligand.cif"
+    - "*_ligand_*.cif"
+    - "*-ligand-*.cif"
+    - "*_lig.cif"
+    - "*-lig.cif"
     - "LIG.cif"
     - "LIG_*.cif"
   excludes:
@@ -584,7 +630,12 @@ half_map:
     - "*_b.*"
     - "*-1.*"
     - "*-2.*"
-  notes: "Usually come in pairs, used for resolution estimation"
+  excludes:
+    - "*sharpened*"
+    - "*sharpen*"
+    - "*optimized*"
+  notes: "Usually come in pairs, used for resolution estimation. Sharpened maps are excluded
+    because map_sharpening output is a processed map for analysis, not a raw half map."
 
 # =============================================================================
 # CIF SPECIAL HANDLING

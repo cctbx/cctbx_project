@@ -19,7 +19,7 @@ template <typename FloatType=double,
 class bcr_scatterer
 {
   public:
-    XrayScattererType const& scatterer;
+    XrayScattererType & scatterer;
     FloatType radius;
     FloatType resolution;
     af::shared<FloatType> mu;
@@ -29,7 +29,7 @@ class bcr_scatterer
     af::shared<FloatType> kappi;
 
     bcr_scatterer(
-      XrayScattererType const& scatterer_,
+      XrayScattererType & scatterer_,
       FloatType radius_,
       FloatType resolution_,
       af::shared<FloatType> mu_,
@@ -54,7 +54,7 @@ class bcr_scatterer
       CCTBX_ASSERT(mu.size()==kappi.size());
     }
 
-    XrayScattererType const& get_scatterer() const { return scatterer; }
+    XrayScattererType& get_scatterer() { return scatterer; }
 
 };
 

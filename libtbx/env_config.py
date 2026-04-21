@@ -38,7 +38,7 @@ default_enable_cuda = False
 default_enable_kokkos = False
 default_opt_resources = False
 default_enable_cxx11 = False
-default_cxxstd = None
+default_cxxstd = 'c++14'
 default_use_conda = False
 
 def is_64bit_architecture():
@@ -2856,7 +2856,7 @@ class pre_process_args:
       action="store",
       type="choice",
       default=default_cxxstd,
-      choices=['c++11', 'c++14'], # this should just be the argument to the -std flag
+      choices=['c++14'], # this should just be the argument to the -std flag
       help="Set the C++ standard. This cannot be set along with --enable_cxx11")
     parser.option("--skip_phenix_dispatchers",
       action="store_true",

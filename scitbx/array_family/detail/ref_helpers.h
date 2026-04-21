@@ -59,10 +59,12 @@ ElementType& operator[](size_type i) { return beg[i]; } \
 ElementType const& operator[](size_type i) const { return beg[i]; } \
  \
 ElementType& at(size_type i) { \
-  if (i >= sz) throw_range_error(); return beg[i]; \
+  if (i >= sz) throw_range_error(); \
+  return beg[i]; \
 } \
 ElementType const& at(size_type i) const { \
-  if (i >= sz) throw_range_error(); return beg[i]; \
+  if (i >= sz) throw_range_error(); \
+  return beg[i]; \
 } \
 this_type& fill(ElementType const& x) { \
   std::fill(this->begin(), this->end(), x); \

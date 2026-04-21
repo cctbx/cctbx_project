@@ -9,14 +9,32 @@ jobs:
     name: Check for clutter
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           path: ./modules/cctbx_project
 
+      - name: Update GitLab mirror
+        continue-on-error: true
+        if: github.repository == 'cctbx/cctbx_project' && github.ref == 'refs/heads/master'
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.CCIBOT_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          eval `ssh-agent -s | head -2 | tee "/tmp/.ssh-agent-output"`
+          ssh-add ~/.ssh/id_rsa
+          ssh-keyscan -t rsa gitlab.com >> ~/.ssh/known_hosts
+          cd ./modules/cctbx_project
+          git checkout master
+          git pull origin master
+          git remote add gitlab git@gitlab.com:cctbx/cctbx_project.git
+          git fetch gitlab
+          git push -u gitlab master || true
+
       - uses: conda-incubator/setup-miniconda@v3
         with:
-          activate-environment: test
           miniforge-version: latest
+          channels: conda-forge
+          conda-remove-defaults: "true"
 
       - name: Base environment info
         run: |
@@ -55,13 +73,15 @@ jobs:
     name: Compiling (Python ${{ matrix.python_version }})
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           path: ./modules/cctbx_project
 
       - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-version: latest
+          channels: conda-forge
+          conda-remove-defaults: "true"
 
       - name: Base environment info
         run: |
@@ -69,17 +89,9 @@ jobs:
           conda list
 
       - name: Create conda environment
-        if: ${{ matrix.python_version != '3.14' }}
         run: |
           source ${CONDA}/etc/profile.d/conda.sh
           conda create -y -n syntax -c conda-forge python=${{ matrix.python_version }} six future scons setuptools
-          python --version
-
-      - name: Create conda environment (3.14)
-        if: ${{ matrix.python_version == '3.14' }}
-        run: |
-          source ${CONDA}/etc/profile.d/conda.sh
-          conda create -y -n syntax -c conda-forge -c conda-forge/label/python_rc python=${{ matrix.python_version }} six future scons setuptools
           python --version
 
       - name: Set up cctbx

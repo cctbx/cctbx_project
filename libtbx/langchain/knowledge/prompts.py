@@ -131,7 +131,7 @@ OUTPUT FORMAT
 
 Respond with ONLY a valid JSON object (no markdown, no code blocks):
 
-{{"long_term_plan": "Step 1: [Done], Step 2: [Current], Step 3: [Goal]", "reasoning": "Your explanation", "selected_program": "phenix.program_name", "strategy_details": "key=value pairs", "input_files": "file1.pdb file2.mtz"}}
+{{"long_term_plan": "Step 1: [Done], Step 2: [Current], Step 3: [Goal]", "reasoning": "Your explanation", "selected_program": "phenix.program_name", "strategy_details": "PHIL parameters for the selected program", "input_files": "file1.pdb file2.mtz"}}
 
 If the project is complete or stuck, use: "selected_program": "STOP: Success" or "STOP: Manual Intervention"
 """

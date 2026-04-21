@@ -34,7 +34,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "2.14.0"
+version = "2.15.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -746,7 +746,7 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
 
   # Add spheres for ions (was single-atom Het groups in original Flipkins?)
   ret += '@subgroup {het groups} dominant\n'
-  ret += '@spherelist {het M} color= gray  radius= 0.5  nubutton master= {hets}\n'
+  ret += '@spherelist {het M} color= gray radius= 0.5 nobutton master= {hets}\n'
   for a in model.get_atoms():
     if a.element_is_ion():
       ret += _AddPosition(a, '', fileBaseName) + '\n'
@@ -1042,7 +1042,7 @@ NOTES:
       model = self.model,
       use_neutron_distances=self.params.use_neutron_distances,
       n_terminal_charge=self.params.n_terminal_charge,
-      exclude_water=True,
+      exclude_water = True,
       stop_for_unknowns=self.params.stop_on_any_missing_hydrogen,
       keep_existing_H=self.params.keep_existing_H
     )

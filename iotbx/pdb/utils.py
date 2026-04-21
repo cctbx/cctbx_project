@@ -316,7 +316,8 @@ def get_lines(text = None, file_name = None, lines = None):
     elif lines:
       text = "\n".join(lines)
     elif file_name and os.path.isfile(file_name):
-      text = open(file_name).read()
+      with open(file_name) as f:
+        text = f.read()
     if not text:
       text = ""
     # Python 3 read fix

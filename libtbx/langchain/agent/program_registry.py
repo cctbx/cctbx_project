@@ -43,6 +43,28 @@ from libtbx.langchain.knowledge.yaml_loader import (
 )
 
 
+
+def _quote_if_needed(path):
+    """Quote a file path if it contains spaces (for shell-safe command assembly).
+
+    PHENIX commands are ultimately passed through shlex.split() by easy_run
+    when use_shell_in_subprocess=False. Unquoted paths with spaces would be
+    tokenized incorrectly.  We only add quoting when actually needed to keep
+    commands readable in logs.
+
+    Args:
+        path: File path string (or anything coercible to str)
+
+    Returns:
+        str: Path wrapped in single quotes if it contains spaces, else unchanged.
+    """
+    s = str(path)
+    if ' ' in s:
+        import shlex
+        return shlex.quote(s)
+    return s
+
+
 class ProgramRegistry:
     """
     Registry providing program information from YAML or JSON templates.
@@ -199,6 +221,34 @@ class ProgramRegistry:
                 if slot_def.get("required"):
                     required.append(slot_name)
             return required
+
+    def get_required_input_defs(self, program_name):
+        """
+        Get required input slots with their full slot definitions.
+
+        Unlike get_required_inputs() which returns only slot names,
+        this returns the complete definition for each slot including
+        extensions, flag, exclude_patterns, and require_best_files_only.
+        Used by _inject_missing_required_files for client-side file
+        completeness validation.
+
+        Args:
+            program_name: Name of program
+
+        Returns:
+            dict: {slot_name: {extensions, flag, exclude_patterns, ...}}
+                  Empty dict if program unknown or has no required inputs.
+        """
+        if self.use_yaml:
+            inputs = get_program_inputs(program_name)
+            return dict(inputs.get("required", {}))
+        else:
+            prog = self._json_templates.get(program_name, {})
+            result = {}
+            for slot_name, slot_def in prog.get("file_slots", {}).items():
+                if slot_def.get("required"):
+                    result[slot_name] = slot_def
+            return result
 
     def get_input_priorities(self, program_name, input_name):
         """
@@ -484,18 +534,18 @@ class ProgramRegistry:
                     if is_multiple and isinstance(file_path, list):
                         # Multiple files - add flag prefix to each
                         if flag:
-                            replacement = " ".join("%s%s" % (flag, fp) for fp in file_path)
+                            replacement = " ".join("%s%s" % (flag, _quote_if_needed(fp)) for fp in file_path)
                         else:
-                            replacement = " ".join(file_path)
+                            replacement = " ".join(_quote_if_needed(fp) for fp in file_path)
                     else:
                         # Single file
                         if isinstance(file_path, list):
                             file_path = file_path[0] if file_path else ""
                         # Apply flag if defined
                         if flag:
-                            replacement = "%s%s" % (flag, file_path)
+                            replacement = "%s%s" % (flag, _quote_if_needed(file_path))
                         else:
-                            replacement = str(file_path)
+                            replacement = _quote_if_needed(file_path)
 
                     cmd = cmd.replace(placeholder, replacement)
 
@@ -512,11 +562,11 @@ class ProgramRegistry:
                         is_multiple = slot_def.get("multiple", False)
                         if is_multiple and isinstance(file_path, list):
                             for fp in file_path:
-                                cmd += " %s%s" % (flag, fp)
+                                cmd += " %s%s" % (flag, _quote_if_needed(fp))
                         else:
                             if isinstance(file_path, list):
                                 file_path = file_path[0] if file_path else ""
-                            cmd += " %s%s" % (flag, file_path)
+                            cmd += " %s%s" % (flag, _quote_if_needed(file_path))
 
             # Remove any unfilled placeholders (optional files not provided)
             import re
@@ -547,14 +597,14 @@ class ProgramRegistry:
                 if is_multiple and isinstance(file_path, list):
                     for fp in file_path:
                         if flag and not flag.endswith("="):
-                            cmd_parts.append("%s %s" % (flag, fp))
+                            cmd_parts.append("%s %s" % (flag, _quote_if_needed(fp)))
                         else:
-                            cmd_parts.append("%s%s" % (flag, fp))
+                            cmd_parts.append("%s%s" % (flag, _quote_if_needed(fp)))
                 else:
                     if flag and not flag.endswith("="):
-                        cmd_parts.append("%s %s" % (flag, file_path))
+                        cmd_parts.append("%s %s" % (flag, _quote_if_needed(file_path)))
                     else:
-                        cmd_parts.append("%s%s" % (flag, file_path))
+                        cmd_parts.append("%s%s" % (flag, _quote_if_needed(file_path)))
 
         # Handle defaults (can be overridden by strategy)
         defaults = dict(self.get_defaults(program_name))
@@ -575,17 +625,190 @@ class ProgramRegistry:
         # add resolution keywords to programs that don't accept them
         # (e.g., polder).
 
+        # Apply strategy_flag defaults for flags not already in strategy.
+        # E.g. polder's selection defaults to 'hetero and not water'.
+        if self.use_yaml:
+            strategy_defs_for_defaults = self.get_strategy_flags(program_name)
+            strategy = dict(strategy) if strategy else {}
+
+            # polder: always use the safe default selection regardless of what
+            # the LLM suggested.  The LLM cannot reliably know the residue name
+            # (it guesses "LIG", "LGD", etc.) and 'hetero and not water'
+            # works correctly for any ligand without assuming a name.
+            if program_name == "phenix.polder" and "selection" in strategy:
+                llm_sel = strategy["selection"]
+                safe_sel = (strategy_defs_for_defaults
+                            .get("selection", {})
+                            .get("default", "hetero and not water"))
+                if llm_sel != safe_sel:
+                    strategy["selection"] = safe_sel
+                    log("OVERRIDE: polder selection reset from LLM value %r to "
+                        "safe default %r" % (llm_sel, safe_sel))
+
+            for flag_key, flag_def in strategy_defs_for_defaults.items():
+                if flag_key not in strategy and "default" in flag_def:
+                    strategy[flag_key] = flag_def["default"]
+                    log("DEFAULT: %s %s=%s (from strategy_flags default)" % (
+                        program_name, flag_key, flag_def["default"]))
+
         if strategy:
             strategy_defs = self.get_strategy_flags(program_name)
 
+            # Pre-pass: resolve dotted PHIL paths to
+            # strategy flag names. LLMs sometimes use
+            # raw PHIL paths (e.g.
+            # "refinement.input.experimental_phases.use")
+            # instead of the flag name
+            # ("ignore_experimental_phases").
+            resolved_renames = {}
+            for key in list(strategy.keys()):
+                if '.' in key and key not in strategy_defs:
+                    for sf_name, sf_def in (
+                      strategy_defs.items()
+                    ):
+                        sf_flag = sf_def.get("flag", "")
+                        sf_path = sf_flag.replace(
+                            "={value}", ""
+                        ).replace("={}", "")
+                        if sf_path and (
+                          key == sf_path
+                          or key.endswith(
+                            "." + sf_path)
+                          or sf_path.endswith(
+                            "." + key)
+                        ):
+                            resolved_renames[key] = (
+                                sf_name)
+                            break
+            for old_key, new_key in (
+              resolved_renames.items()
+            ):
+                strategy[new_key] = strategy.pop(
+                    old_key)
+                log(
+                    "RESOLVED: dotted PHIL '%s' "
+                    "→ strategy flag '%s=%s'"
+                    % (old_key, new_key,
+                       strategy[new_key]))
+
+            # Pre-pass: resolve strategy values that look like
+            # file paths.  The LLM writes e.g. reference_model.file=4pf4.pdb
+            # (relative filename), but PHENIX needs the absolute path.
+            # Detect by file extension, then resolve using basename matching
+            # against known files, or by joining with the working directory.
+            _PATH_EXTENSIONS = frozenset({
+                '.pdb', '.cif', '.mtz', '.params', '.eff',
+                '.dat', '.fa', '.fasta', '.seq', '.phil',
+                '.param', '.ncs_spec',
+            })
+            # Build a basename → absolute path lookup from all
+            # files passed to this command + their directory siblings.
+            _basename_map = {}
+            _work_dir = None
+            for _fp in files.values():
+                _fps = _fp if isinstance(_fp, list) else [_fp]
+                for _f in _fps:
+                    _f = str(_f)
+                    if os.path.isfile(_f):
+                        _basename_map[os.path.basename(_f)] = _f
+                        if _work_dir is None:
+                            _work_dir = os.path.dirname(_f)
+            # Also scan the working directory for additional files
+            if _work_dir and os.path.isdir(_work_dir):
+                try:
+                    for _fn in os.listdir(_work_dir):
+                        if _fn not in _basename_map:
+                            _full = os.path.join(_work_dir, _fn)
+                            if os.path.isfile(_full):
+                                _basename_map[_fn] = _full
+                except OSError:
+                    pass
+
+            for key in list(strategy.keys()):
+                val = strategy[key]
+                if not isinstance(val, str) or not val:
+                    continue
+                val_lower = val.lower()
+                if not any(val_lower.endswith(ext)
+                           for ext in _PATH_EXTENSIONS):
+                    continue
+                # Value looks like a file path — try to resolve
+                basename = os.path.basename(val)
+                if basename in _basename_map:
+                    resolved = _basename_map[basename]
+                    if resolved != val:
+                        strategy[key] = resolved
+                        log("PATH_RESOLVE: %s=%s → %s"
+                            % (key, basename,
+                               os.path.basename(resolved)))
+                elif os.path.isabs(val) and os.path.isfile(val):
+                    pass  # Already absolute and exists
+                elif _work_dir:
+                    candidate = os.path.join(_work_dir, val)
+                    if os.path.isfile(candidate):
+                        strategy[key] = os.path.abspath(
+                            candidate)
+                        log("PATH_RESOLVE: %s=%s → %s"
+                            % (key, val,
+                               os.path.abspath(candidate)))
+
             for key, value in strategy.items():
                 if key not in strategy_defs:
-                    # Check if this looks like a PHENIX parameter (contains dots)
-                    # or is a known short PHIL name from directives/LLM
-                    if '.' in key or '=' in key or key in KNOWN_PHIL_SHORT_NAMES:
-                        # Pass through as key=value
-                        cmd_parts.append("%s=%s" % (key, value))
-                        log("PASSTHROUGH: Adding %s=%s (not in strategy_defs)" % (key, value))
+                    # Programs with strict_strategy_flags: true only allow
+                    # defined strategy_flags — no KNOWN_PHIL_SHORT_NAMES
+                    # passthrough.  This prevents the LLM from injecting
+                    # crystal_symmetry params into programs that don't
+                    # accept them (e.g. process_predicted_model).
+                    if prog.get("strict_strategy_flags"):
+                        log("STRICT: Skipping '%s' for %s "
+                            "(strict_strategy_flags=true, "
+                            "only defined flags allowed)"
+                            % (key, program_name))
+                        continue
+                    # Allow known short PHIL names (nproc, twin_law, etc.) that
+                    # are not program-specific and don't need to be in strategy_flags.
+                    if key in KNOWN_PHIL_SHORT_NAMES or '=' in key:
+                        val_str = str(value)
+                        if ' ' in val_str and not (val_str.startswith("'") or val_str.startswith('"')):
+                            val_str = '"%s"' % val_str
+                        # unit_cell and space_group must use the full crystal_symmetry
+                        # scope on the command line.  The bare form (unit_cell=...) is
+                        # not universally accepted by PHENIX programs; the scoped form
+                        # (crystal_symmetry.unit_cell=...) always works.
+                        if key in ('unit_cell', 'space_group'):
+                            cmd_key = 'crystal_symmetry.%s' % key
+                        else:
+                            cmd_key = key
+                        cmd_parts.append("%s=%s" % (cmd_key, val_str))
+                        log("PASSTHROUGH: Adding %s=%s (known short PHIL name)" % (cmd_key, val_str))
+                    elif '.' in key:
+                        # Dotted PHIL paths (e.g.
+                        # refinement.reference_model.enabled)
+                        # that weren't matched by the
+                        # pre-pass resolver.  Pass them
+                        # through to the command line —
+                        # the PHENIX PHIL interpreter will
+                        # validate them at runtime.
+                        #
+                        # The sanitizer (Rule D) already
+                        # intentionally kept these paths;
+                        # dropping them here would break
+                        # that contract.  If the path is
+                        # wrong, PHIL raises a clear error
+                        # and the agent's error-recovery
+                        # system retries without it.
+                        val_str = str(value)
+                        if (' ' in val_str
+                            and not val_str.startswith(
+                              ("'", '"'))):
+                            val_str = '"%s"' % val_str
+                        cmd_parts.append(
+                            "%s=%s" % (key, val_str))
+                        log(
+                            "PASSTHROUGH: Adding %s=%s "
+                            "(dotted PHIL path, will be "
+                            "validated by PHIL at runtime)"
+                            % (key, val_str))
                     else:
                         log("WARNING: Unknown strategy '%s' for %s" % (key, program_name))
                     continue
@@ -696,7 +919,7 @@ class ProgramRegistry:
         data_mtz = files.get("data_mtz") or files.get("mtz")  # Backward compat
         if not data_mtz:
             raise ValueError("Missing required data_mtz file for phenix.phaser")
-        cmd_parts.append(str(data_mtz))
+        cmd_parts.append(_quote_if_needed(data_mtz))
 
         # Get model
         model = files.get("model")
@@ -704,7 +927,7 @@ class ProgramRegistry:
             model = model[0] if model else None
         if not model:
             raise ValueError("Missing required model file for phenix.phaser")
-        cmd_parts.append(model)
+        cmd_parts.append(_quote_if_needed(model))
 
         # Get sequence - try to match to model name
         sequences = files.get("sequence", [])
@@ -723,11 +946,11 @@ class ProgramRegistry:
                     break
 
             if matched_seq:
-                cmd_parts.append(matched_seq)
+                cmd_parts.append(_quote_if_needed(matched_seq))
                 log("DEBUG: Using matching sequence %s for model %s" % (matched_seq, model))
             else:
                 # No match found - use first sequence
-                cmd_parts.append(sequences[0])
+                cmd_parts.append(_quote_if_needed(sequences[0]))
                 log("DEBUG: No matching sequence found for %s, using %s" % (model, sequences[0]))
 
         # Add defaults

@@ -63,6 +63,7 @@ def build_session_state(session_info, session_resolution=None):
             - directives: Extracted user directives
             - force_retry_program: Program to force retry (error recovery)
             - recovery_strategies: Dict of recovery strategies per file
+            - strategy_memory: Thinking agent accumulated state (v113)
         session_resolution: Optional resolution value
 
     Returns:
@@ -87,6 +88,59 @@ def build_session_state(session_info, session_resolution=None):
         # Explicit program request (from user advice)
         if session_info.get("explicit_program"):
             session_state["explicit_program"] = session_info["explicit_program"]
+
+        # Resume flag: new advice provided on a completed workflow — suppresses
+        # AUTO-STOP and steps back from 'complete' to 'validate' phase (Q1 fix)
+        if session_info.get("advice_changed"):
+            session_state["advice_changed"] = True
+
+        # S2L: client-side model CRYST1 cell for server-side Tier 1 mismatch check
+        if session_info.get("unplaced_model_cell"):
+            session_state["unplaced_model_cell"] = session_info["unplaced_model_cell"]
+
+        # Parameter blacklist: params that caused PHIL errors for specific programs
+        # (e.g. {"phenix.refine": ["ignore_symmetry_conflicts"]})
+        if session_info.get("bad_inject_params"):
+            session_state["bad_inject_params"] = session_info["bad_inject_params"]
+
+        # Thinking agent (v113): accumulated scientific understanding
+        if session_info.get("strategy_memory"):
+            session_state["strategy_memory"] = session_info["strategy_memory"]
+
+        # Goal-directed agent (v114): Structure Model + History
+        if session_info.get("structure_model"):
+            session_state["structure_model"] = (
+                session_info["structure_model"])
+        if session_info.get("validation_history"):
+            session_state["validation_history"] = (
+                session_info["validation_history"])
+
+        # Model-vs-Data Gate (v114.1)
+        if session_info.get("model_is_placed"):
+            session_state["model_is_placed"] = True
+        if session_info.get("input_has_ligand"):
+            session_state["input_has_ligand"] = True
+        if session_info.get("user_advice"):
+            session_state["user_advice"] = (
+                session_info["user_advice"])
+        # Plan status: suppress AUTO-STOP when plan
+        # has pending stages (v114.1)
+        if session_info.get("plan_has_pending_stages"):
+            session_state[
+                "plan_has_pending_stages"] = True
+
+        # P4: session-blocked programs — programs that have failed too many
+        # times this session.  Persisted client-side and re-injected each
+        # cycle so the server can filter them from valid_programs.
+        if session_info.get("session_blocked_programs"):
+            session_state["session_blocked_programs"] = (
+                session_info["session_blocked_programs"])
+
+        # ASU copy count (copies feature): known after xtriage or from user
+        # directives.  Forwarded each cycle so BUILD can inject
+        # phaser.search_copies without re-parsing xtriage output.
+        if session_info.get("asu_copies"):
+            session_state["asu_copies"] = session_info["asu_copies"]
 
     return session_state
 
@@ -183,6 +237,22 @@ def build_request_v2(
         # Explicit program request
         if session_state.get("explicit_program"):
             normalized_session_state["explicit_program"] = session_state["explicit_program"]
+        # Resume flag — new advice on a completed workflow (Q1 fix)
+        if session_state.get("advice_changed"):
+            normalized_session_state["advice_changed"] = True
+        # S2L: client-side model CRYST1 cell for server-side placement check
+        if session_state.get("unplaced_model_cell"):
+            normalized_session_state["unplaced_model_cell"] = session_state["unplaced_model_cell"]
+        # Parameter blacklist for command post-processing
+        if session_state.get("bad_inject_params"):
+            normalized_session_state["bad_inject_params"] = session_state["bad_inject_params"]
+        # P4: session-blocked programs
+        if session_state.get("session_blocked_programs"):
+            normalized_session_state["session_blocked_programs"] = (
+                session_state["session_blocked_programs"])
+        # ASU copy count (copies feature)
+        if session_state.get("asu_copies"):
+            normalized_session_state["asu_copies"] = session_state["asu_copies"]
 
     # Build settings
     settings = {
@@ -429,9 +499,10 @@ def serialize_request(request):
         str: JSON-encoded request
     """
     json_str = json.dumps(request, indent=None, separators=(',', ':'))
-    # Final safety: replace any remaining JSON tab escape sequences with spaces
-    # The transport module should have removed tabs, but this catches edge cases
-    json_str = json_str.replace('\\t', ' ')
+    # NOTE: Do NOT post-process json_str with replace('\\t', ' ')
+    # — this corrupts Windows paths containing \t (e.g. \tutorials).
+    # Tab handling is done by text_as_simple_string in the REST
+    # encoding layer.
     return json_str
 
 

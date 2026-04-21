@@ -210,6 +210,7 @@ def test_repeated_failures():
         {"program": "phenix.refine", "result": "FAILED: Some error message", "cycle": 1},
         {"program": "phenix.refine", "result": "FAILED: Some error message", "cycle": 2},
         {"program": "phenix.refine", "result": "FAILED: Some error message", "cycle": 3},
+        {"program": "phenix.refine", "result": "FAILED: Some error message", "cycle": 4},
     ]
 
     context = make_context(history=history)
@@ -223,7 +224,7 @@ def test_repeated_failures():
     # Check the issue details
     issue = next(i for i in result.issues if i.code == "repeated_failures")
     assert "phenix.refine" in issue.message
-    assert "3" in issue.message or "three" in issue.message.lower()
+    assert "4" in issue.message or "four" in issue.message.lower()
 
     print("  PASSED")
 

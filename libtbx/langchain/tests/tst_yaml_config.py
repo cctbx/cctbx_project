@@ -5,7 +5,7 @@ Tests:
 1. YAML files load correctly
 2. Program registry works with YAML
 3. Metrics can be extracted from logs
-4. Workflow phases are defined correctly
+4. Workflow steps are defined correctly
 
 Note: These tests require the full PHENIX environment (libtbx).
 Some tests additionally require phenix.phenix_ai and will be skipped if not available.
@@ -279,25 +279,25 @@ def test_measurability_sanity_check():
     print("  PASSED")
 
 
-def test_workflow_phases():
-    """Test workflow phase definitions."""
-    print("Test: workflow_phases")
+def test_workflow_steps():
+    """Test workflow step definitions."""
+    print("Test: workflow_steps")
 
-    from libtbx.langchain.knowledge.yaml_loader import get_workflow_phases, get_phase_programs
+    from libtbx.langchain.knowledge.yaml_loader import get_workflow_steps, get_step_programs
 
-    # X-ray phases
-    xray_phases = get_workflow_phases("xray")
-    assert "analyze" in xray_phases, "analyze phase not found"
-    assert "refine" in xray_phases, "refine phase not found"
-    assert "validate" in xray_phases, "validate phase not found"
+    # X-ray steps
+    xray_steps = get_workflow_steps("xray")
+    assert "analyze" in xray_steps, "analyze step not found"
+    assert "refine" in xray_steps, "refine step not found"
+    assert "validate" in xray_steps, "validate step not found"
 
-    # Phase programs
-    analyze_progs = get_phase_programs("xray", "analyze")
-    assert len(analyze_progs) > 0, "No programs for analyze phase"
+    # Step programs
+    analyze_progs = get_step_programs("xray", "analyze")
+    assert len(analyze_progs) > 0, "No programs for analyze step"
 
-    # Cryo-EM phases
-    cryoem_phases = get_workflow_phases("cryoem")
-    assert "analyze" in cryoem_phases, "analyze phase not found in cryoem"
+    # Cryo-EM steps
+    cryoem_steps = get_workflow_steps("cryoem")
+    assert "analyze" in cryoem_steps, "analyze step not found in cryoem"
 
     print("  PASSED")
 
@@ -329,7 +329,7 @@ def test_command_with_strategy():
 
 
 def test_workflow_engine():
-    """Test WorkflowEngine for phase detection."""
+    """Test WorkflowEngine for step detection."""
     print("Test: workflow_engine")
 
     from libtbx.langchain.agent.workflow_engine import WorkflowEngine
@@ -340,32 +340,32 @@ def test_workflow_engine():
     files = {"data_mtz": ["data.mtz"], "sequence": ["seq.fa"]}
     history = {}
     context = engine.build_context(files, history)
-    phase = engine.detect_phase("xray", context)
+    step = engine.detect_step("xray", context)
 
-    assert phase["phase"] == "analyze", "X-ray initial should be analyze phase"
+    assert step["step"] == "analyze", "X-ray initial should be analyze step"
 
-    programs = engine.get_valid_programs("xray", phase, context)
-    assert "phenix.xtriage" in programs, "xtriage should be valid in analyze phase"
+    programs = engine.get_valid_programs("xray", step, context)
+    assert "phenix.xtriage" in programs, "xtriage should be valid in analyze step"
 
     # Test X-ray after xtriage
     history = {"xtriage_done": True}
     context = engine.build_context(files, history)
-    phase = engine.detect_phase("xray", context)
+    step = engine.detect_step("xray", context)
 
-    assert phase["phase"] == "obtain_model", "After xtriage should be obtain_model"
+    assert step["step"] == "obtain_model", "After xtriage should be obtain_model"
 
-    programs = engine.get_valid_programs("xray", phase, context)
+    programs = engine.get_valid_programs("xray", step, context)
     assert "phenix.predict_and_build" in programs, "predict_and_build should be valid"
 
     # Test cryo-EM initial state
     files = {"full_map": ["map.mrc"], "sequence": ["seq.fa"]}
     history = {}
     context = engine.build_context(files, history)
-    phase = engine.detect_phase("cryoem", context)
+    step = engine.detect_step("cryoem", context)
 
-    assert phase["phase"] == "analyze", "Cryo-EM initial should be analyze"
+    assert step["step"] == "analyze", "Cryo-EM initial should be analyze"
 
-    programs = engine.get_valid_programs("cryoem", phase, context)
+    programs = engine.get_valid_programs("cryoem", step, context)
     assert "phenix.mtriage" in programs, "mtriage should be valid"
 
     print("  PASSED")
@@ -396,10 +396,10 @@ def test_workflow_engine_refined_state():
     analysis = {"r_free": 0.24, "resolution": 2.0}
 
     context = engine.build_context(files, history, analysis)
-    phase = engine.detect_phase("xray", context)
+    step = engine.detect_step("xray", context)
 
     # Should need validation since R-free is good
-    assert phase["phase"] in ["validate", "refine"], "Should be validate or refine phase"
+    assert step["step"] in ["validate", "refine"], "Should be validate or refine step"
 
     # Test cryo-EM with half-maps only
     files = {
@@ -413,10 +413,10 @@ def test_workflow_engine_refined_state():
     }
 
     context = engine.build_context(files, history)
-    phase = engine.detect_phase("cryoem", context)
+    step = engine.detect_step("cryoem", context)
 
     # Should need to optimize map since only half-maps
-    assert phase["phase"] == "optimize_map", "Should need map optimization: %s" % phase
+    assert step["step"] == "optimize_map", "Should need map optimization: %s" % step
 
     print("  PASSED")
 
@@ -1004,8 +1004,8 @@ def test_priority_when_yaml_structure():
 
     # Check xray workflow
     xray = workflows.get("xray", {})
-    phases = xray.get("phases", {})
-    obtain_model = phases.get("obtain_model", {})
+    steps = xray.get("steps") or xray.get("phases") or {}
+    obtain_model = steps.get("obtain_model", {})
     programs = obtain_model.get("programs", [])
 
     # Find autosol entry
@@ -1015,7 +1015,7 @@ def test_priority_when_yaml_structure():
             autosol_entry = p
             break
 
-    assert autosol_entry is not None, "autosol should be in obtain_model phase"
+    assert autosol_entry is not None, "autosol should be in obtain_model step"
     assert "priority_when" in autosol_entry, "autosol should have priority_when"
     assert autosol_entry["priority_when"] == "strong_anomalous", \
         "autosol priority_when should be 'strong_anomalous'"
@@ -1032,7 +1032,7 @@ def test_priority_when_workflow_engine():
     engine = WorkflowEngine()
 
     # Build context with strong anomalous signal
-    # Need xtriage_done=True to be in obtain_model phase where autosol is valid
+    # Need xtriage_done=True to be in obtain_model step where autosol is valid
     files = {
         "data_mtz": ["data.mtz"],
         "sequence": ["seq.fa"],
@@ -1040,7 +1040,7 @@ def test_priority_when_workflow_engine():
     history_info = {
         "strong_anomalous": True,
         "anomalous_measurability": 0.15,
-        "xtriage_done": True,  # Must have completed analyze phase
+        "xtriage_done": True,  # Must have completed analyze step
     }
 
     workflow_state = engine.get_workflow_state("xray", files, history_info, {})

@@ -116,9 +116,6 @@ def validate_api_keys(provider, debug_log=None):
     if not os.getenv("OPENAI_API_KEY"):
       return "OPENAI_API_KEY environment variable not set."
 
-  if not os.getenv("COHERE_API_KEY"):
-    return "COHERE_API_KEY environment variable not set."
-
   return None
 
 # =============================================================================

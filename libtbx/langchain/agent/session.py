@@ -35,6 +35,73 @@ except Exception:
     from agent.best_files_tracker import BestFilesTracker
 
 
+# ---------------------------------------------------------------------------
+# Module-level helpers for superseded-issue provenance matching
+# ---------------------------------------------------------------------------
+
+def _strip_stage_prefix(basename):
+    """Strip leading stage-prefix from a PHENIX output filename stem.
+
+    PHENIX programs produce output files named like::
+
+        refine_001_model.pdb
+        phased_model.pdb
+        ligandfit_001_model.pdb
+
+    This removes the leading ``<word>_<digits>_`` (or ``<word>_``) prefix
+    so that ``refine_001_7qz0`` and ``7qz0`` compare as equal stems.
+
+    Args:
+        basename: Filename with extension (e.g. ``"refine_001_7qz0.pdb"``).
+
+    Returns:
+        Lowercase stem with stage prefix stripped
+        (e.g. ``"7qz0"`` from ``"refine_001_7qz0.pdb"``).
+    """
+    import re as _re
+    import os as _os
+    stem = _os.path.splitext(basename.lower())[0]
+    # Remove one or two leading word_digits_ prefixes
+    stem = _re.sub(r'^[a-z]+_\d+_', '', stem)   # e.g. refine_001_model -> model
+    stem = _re.sub(r'^[a-z]+_',      '', stem)   # e.g. phased_model     -> model
+    return stem
+
+
+def _extract_file_basenames(command_str):
+    """Extract lowercase basenames of file-like tokens from a command string.
+
+    Splits on whitespace, strips ``key=`` prefixes and surrounding quotes,
+    then returns basenames for any token whose extension is a recognised
+    crystallographic file type.
+
+    Note: uses naive ``.split()`` rather than ``shlex.split()`` deliberately.
+    For a quoted path with spaces in the directory
+    (e.g. ``seq_file='/data/my dir/7qz0.fa'``), ``.split()`` yields the
+    trailing fragment ``7qz0.fa'`` whose quote is stripped to give the
+    correct basename ``7qz0.fa``.  ``shlex.split()`` would give the wrong
+    basename ``my dir/7qz0.fa``.
+
+    Args:
+        command_str: Raw command string (may be None or empty).
+
+    Returns:
+        list: Lowercase basenames of recognised file tokens (may be empty).
+    """
+    import os as _os
+    _FILE_EXTS = {'.pdb', '.cif', '.mtz', '.sca', '.hkl', '.mrc',
+                  '.ccp4', '.map', '.fa', '.fasta', '.seq', '.dat',
+                  '.ncs_spec', '.eff'}
+    result = []
+    for token in (command_str or '').split():
+        if '=' in token:
+            token = token.split('=', 1)[1]
+        token = token.strip('"\'')
+        ext = _os.path.splitext(token)[1].lower()
+        if ext in _FILE_EXTS:
+            result.append(_os.path.basename(token).lower())
+    return result
+
+
 class AgentSession:
     """
     Manages persistent state for an agent session across multiple cycles.
@@ -106,7 +173,7 @@ class AgentSession:
     def load(self):
         """Load session from file."""
         try:
-            with open(self.session_file, 'r') as f:
+            with open(self.session_file, 'r', encoding='utf-8') as f:
                 self.data = json.load(f)
             # ALWAYS rebuild best_files from cycle history on load
             # This ensures consistency after cycle removal or external modification
@@ -115,6 +182,125 @@ class AgentSession:
         except Exception as e:
             print(f"Warning: Could not load session file: {e}")
             self._init_new_session()
+
+    def _get_session_dir(self):
+        """Get the directory containing the session file.
+
+        This is the agent working directory (e.g., ai_agent_directory/) that
+        contains all sub_NN_program/ output directories.  It's always known
+        from the session_file path and doesn't depend on any cycle data.
+        """
+        if hasattr(self, 'session_file') and self.session_file:
+            d = os.path.dirname(os.path.abspath(self.session_file))
+            if os.path.isdir(d):
+                return d
+        return None
+
+    def _discover_cycle_outputs(self, cycle):
+        """Discover output files for a cycle from disk.
+
+        Tries stored output_files paths first, then falls back to scanning
+        the expected output directory based on cycle number and program name.
+        This ensures files are found even when output_files is empty or
+        contains stale/relative paths that don't resolve.
+
+        This is the general strategy for surviving restart scenarios where
+        the agent directory exists on disk but stored paths are broken.
+
+        Args:
+            cycle: Cycle dict from session data
+
+        Returns:
+            list: Absolute paths to existing output files
+        """
+        import glob
+        found = []
+        seen = set()
+
+        output_files = cycle.get("output_files", [])
+        session_dir = self._get_session_dir()
+
+        # Strategy 1: Try stored paths as-is
+        for f in output_files:
+            if f:
+                abs_path = os.path.abspath(f) if not os.path.isabs(f) else f
+                if os.path.exists(abs_path):
+                    bn = os.path.basename(abs_path)
+                    if bn not in seen:
+                        found.append(abs_path)
+                        seen.add(bn)
+
+        # Strategy 2: Resolve relative paths against session directory
+        # Handles: cwd changed between runs, relative paths in session JSON
+        if session_dir:
+            unresolved = [f for f in output_files
+                          if f and os.path.basename(f) not in seen]
+            for f in unresolved:
+                # Try relative to session dir (ai_agent_directory/)
+                for base in [session_dir, os.path.dirname(session_dir)]:
+                    resolved = os.path.normpath(os.path.join(base, f))
+                    if os.path.exists(resolved):
+                        bn = os.path.basename(resolved)
+                        if bn not in seen:
+                            found.append(os.path.abspath(resolved))
+                            seen.add(bn)
+                        break
+
+        # Strategy 3: Scan expected output directory
+        # Uses cycle number + program name to compute the directory name,
+        # then scans for all crystallography file types.  This works even
+        # when output_files is completely empty.
+        if session_dir:
+            cycle_num = cycle.get("cycle_number", 0)
+            program = cycle.get("program", "")
+            result = cycle.get("result", "")
+
+            # Strategy 2.5: Use stored output_dir if available
+            # (recorded by record_result — survives cycle-number mismatches)
+            stored_dir = cycle.get("output_dir")
+            if stored_dir and os.path.isdir(stored_dir):
+                for ext in ("*.mtz", "*.pdb", "*.cif",
+                            "*.map", "*.ccp4", "*.ncs_spec"):
+                    for f in glob.glob(os.path.join(stored_dir, ext)):
+                        bn = os.path.basename(f)
+                        if bn not in seen:
+                            found.append(f)
+                            seen.add(bn)
+
+            # Only scan for successful cycles with a known program
+            if (cycle_num > 0 and program
+                    and "FAILED" not in result.upper()):
+                shortname = program.replace("phenix.", "").replace(".", "_")
+
+                # Try 1: Exact cycle-number-based pattern
+                dir_pattern = os.path.join(
+                    session_dir, "sub_%02d_%s*" % (cycle_num, shortname))
+                matched_dirs = [d for d in glob.glob(dir_pattern)
+                                if os.path.isdir(d)]
+
+                # Try 2: If exact match fails, scan ALL sub_*_{program}*
+                # directories.  This handles the common case where session
+                # cycle numbers diverge from GUI directory numbering after
+                # an agent restart (e.g., session says cycle 2 but GUI
+                # created sub_04_pdbtools).
+                if not matched_dirs:
+                    broad_pattern = os.path.join(
+                        session_dir, "sub_*_%s*" % shortname)
+                    matched_dirs = sorted(
+                        [d for d in glob.glob(broad_pattern)
+                         if os.path.isdir(d)])
+
+                for output_dir in matched_dirs:
+                    for ext in ("*.mtz", "*.pdb", "*.cif",
+                                "*.map", "*.ccp4", "*.ncs_spec"):
+                        for f in glob.glob(
+                                os.path.join(output_dir, ext)):
+                            bn = os.path.basename(f)
+                            if bn not in seen:
+                                found.append(f)
+                                seen.add(bn)
+
+        return found
 
     def _rebuild_best_files_from_cycles(self):
         """
@@ -142,17 +328,20 @@ class AgentSession:
             program = cycle.get("program", "")
             result = cycle.get("result", "")
             metrics = cycle.get("metrics", {})
-            output_files = cycle.get("output_files", [])
 
             # Skip failed cycles
             if "FAILED" in result.upper():
                 continue
 
+            # Discover output files — tries stored paths first, then falls
+            # back to scanning the expected output directory on disk.
+            output_files = self._discover_cycle_outputs(cycle)
+
             # Determine stage from program
             stage = self._infer_stage_from_program(program)
 
             for f in output_files:
-                if f and os.path.exists(f):
+                if f:
                     # Build file-specific metrics
                     file_metrics = dict(metrics) if metrics else {}
 
@@ -175,10 +364,18 @@ class AgentSession:
                         )
 
                         # Classify as data_mtz or map_coeffs_mtz
+                        # Refine output MTZ files contain map coefficients
+                        # (2mFo-DFc, Fo-Fc) AND R-free flags.  They should be
+                        # classified as map_coeffs, NOT data_mtz.
+                        # Patterns from file_categories.yaml refine_map_coeffs:
+                        #   refine_001.mtz, 7qz0_refine_001.mtz,
+                        #   refine_001_001.mtz, 7qz0_refine_001_001.mtz
                         is_map_coeffs = (
                             'map_coeffs' in basename or
                             'denmod' in basename or
-                            re.match(r'refine_\d+_001\.mtz$', basename)
+                            bool(re.match(
+                                r'(?:.*_)?refine_\d{3}(?:_\d{3})?\.mtz$',
+                                basename))
                         )
 
                         if is_map_coeffs:
@@ -225,6 +422,8 @@ class AgentSession:
                             file_stage = "ligand_fit_output"
                         elif stage == "with_ligand" and 'with_ligand' in basename:
                             file_stage = "with_ligand"
+                        elif stage == "with_ligand" and '_modified' in basename:
+                            file_stage = "with_ligand"
                         elif stage == "rsr_output" and ('real_space' in basename or 'rsr_' in basename):
                             file_stage = "rsr_output"
                         # else: file_stage stays None, tracker will infer from filename
@@ -236,13 +435,45 @@ class AgentSession:
                         stage=file_stage
                     )
 
+            # Also evaluate supplemental files discovered by _find_missing_outputs.
+            # These are companion outputs (e.g. map coefficients MTZ from refine)
+            # that the client may not have tracked in output_files.
+            # Without this, best_files["map_coeffs_mtz"] won't be populated
+            # and programs with require_best_files_only (like ligandfit) can't build.
+            already_seen = {os.path.basename(f) for f in output_files if f}
+            supplemental = self._find_missing_outputs(cycle, already_seen)
+            for sf in supplemental:
+                if sf and os.path.exists(sf):
+                    sf_basename = os.path.basename(sf).lower()
+                    sf_stage = None
+                    sf_metrics = dict(metrics) if metrics else {}
+
+                    # Classify supplemental MTZ files
+                    if sf.lower().endswith('.mtz'):
+                        is_map_coeffs = (
+                            'map_coeffs' in sf_basename or
+                            'denmod' in sf_basename or
+                            bool(re.match(
+                                r'(?:.*_)?refine_\d{3}(?:_\d{3})?\.mtz$',
+                                sf_basename))
+                        )
+                        if is_map_coeffs:
+                            sf_stage = "refine_map_coeffs"
+
+                    self.best_files.evaluate_file(
+                        path=sf,
+                        cycle=cycle_num,
+                        metrics=sf_metrics,
+                        stage=sf_stage
+                    )
+
     def save(self):
         """Save session to file."""
         try:
             # Include best files tracker in saved data
             self.data["best_files"] = self.best_files.to_dict()
             self.data["best_files_history"] = [h.to_dict() for h in self.best_files.get_history()]
-            with open(self.session_file, 'w') as f:
+            with open(self.session_file, 'w', encoding='utf-8') as f:
                 json.dump(self.data, f, indent=2)
                 f.flush()
                 import os
@@ -251,14 +482,32 @@ class AgentSession:
             print(f"Warning: Could not save session file: {e}")
 
     def set_project_info(self, project_advice=None, original_files=None):
-        """Set project-level information."""
+        """Set project-level information.
+
+        On resume (session already has original_files), new files are MERGED
+        into the existing list rather than replacing it.  This preserves files
+        from the first run (e.g. a ligand CIF) that the user may not re-supply
+        when resuming with only the refinement outputs.
+        """
         if project_advice:
             self.data["project_advice"] = project_advice
         if original_files:
             if isinstance(original_files, str):
-                self.data["original_files"] = original_files.split()
+                new_files = original_files.split()
             else:
-                self.data["original_files"] = list(original_files)
+                new_files = list(original_files)
+
+            existing = self.data.get("original_files", [])
+            if existing:
+                # MERGE: add new files not already present (by basename)
+                existing_bns = {os.path.basename(f).lower() for f in existing}
+                for f in new_files:
+                    if os.path.basename(f).lower() not in existing_bns:
+                        existing.append(f)
+                        existing_bns.add(os.path.basename(f).lower())
+                self.data["original_files"] = existing
+            else:
+                self.data["original_files"] = new_files
 
         # Store run_name if not already set (compute it once on the client)
         if not self.data.get("run_name"):
@@ -362,6 +611,11 @@ class AgentSession:
                 directives = {}
 
             # Store and log results
+            # Sanitize: strip invalid space_group values from program_settings.
+            # The LLM sometimes extracts workflow descriptions as space group
+            # symbols (e.g. "determination" from "space group determination").
+            directives = self._sanitize_directives(directives, log)
+            directives = self._fix_autosol_atom_type_order(directives, log)
             self.data["directives"] = directives
             self.data["directives_extracted"] = True
             self.save()
@@ -392,6 +646,7 @@ class AgentSession:
             try:
                 from libtbx.langchain.agent.directive_extractor import extract_directives_simple
                 directives = extract_directives_simple(project_advice)
+                directives = self._fix_autosol_atom_type_order(directives, log)
                 self.data["directives"] = directives
                 self.data["directives_extracted"] = True
                 self.save()
@@ -419,6 +674,113 @@ class AgentSession:
             dict: Directives dict, or empty dict if not extracted
         """
         return self.data.get("directives", {})
+
+    @staticmethod
+    def _sanitize_directives(directives, log=None):
+        """Remove invalid crystal symmetry values from extracted directives.
+
+        The LLM sometimes extracts workflow descriptions as parameter values.
+        For example, user advice mentioning "space group determination" can
+        produce program_settings.default.space_group = "determination".
+        This method strips such values before they reach the command builder.
+
+        Args:
+            directives: Extracted directives dict (modified in place)
+            log: Optional logging callable
+
+        Returns:
+            The (possibly modified) directives dict
+        """
+        if not directives or not isinstance(directives, dict):
+            return directives
+
+        prog_settings = directives.get("program_settings")
+        if not prog_settings or not isinstance(prog_settings, dict):
+            return directives
+
+        try:
+            try:
+                from libtbx.langchain.agent.command_postprocessor import _is_valid_space_group
+            except ImportError:
+                from agent.command_postprocessor import _is_valid_space_group
+        except ImportError:
+            return directives  # Can't validate without the function
+
+        for scope_name in list(prog_settings.keys()):
+            scope = prog_settings.get(scope_name)
+            if not isinstance(scope, dict):
+                continue
+            sg = scope.get("space_group")
+            if sg and not _is_valid_space_group(sg):
+                del scope["space_group"]
+                if log:
+                    log("DIRECTIVES: Removed invalid space_group=%r from "
+                        "program_settings.%s (not a valid space group symbol)"
+                        % (str(sg), scope_name))
+                # Clean up empty scope
+                if not scope:
+                    del prog_settings[scope_name]
+
+        return directives
+
+    @staticmethod
+    def _fix_autosol_atom_type_order(directives, log=None):
+        """Ensure atom_type is the heavier element in autosol directives.
+
+        The LLM directive extractor non-deterministically assigns which element
+        goes to atom_type vs additional_atom_types.  In SAD/MAD, the heavier
+        element (higher Z) should always be the primary scatterer (atom_type).
+
+        This mirrors _ensure_primary_scatterer_is_heavier() in
+        command_postprocessor.py but operates at the directive level — before
+        command assembly — so the command builder starts with correct values.
+
+        Args:
+            directives: Extracted directives dict (modified in place)
+            log: Optional logging callable
+
+        Returns:
+            The (possibly modified) directives dict
+        """
+        if not directives or not isinstance(directives, dict):
+            return directives
+
+        prog_settings = directives.get("program_settings")
+        if not prog_settings or not isinstance(prog_settings, dict):
+            return directives
+
+        # Import the Z table from command_postprocessor
+        try:
+            try:
+                from libtbx.langchain.agent.command_postprocessor import _ANOMALOUS_Z
+            except ImportError:
+                from agent.command_postprocessor import _ANOMALOUS_Z
+        except ImportError:
+            return directives  # Can't validate without the table
+
+        # Check autosol-specific settings
+        autosol_settings = prog_settings.get("phenix.autosol")
+        if not autosol_settings or not isinstance(autosol_settings, dict):
+            return directives
+
+        at = autosol_settings.get("atom_type")
+        ha = autosol_settings.get("additional_atom_types")
+        if not at or not ha:
+            return directives
+
+        at_z = _ANOMALOUS_Z.get(str(at), 0)
+        ha_z = _ANOMALOUS_Z.get(str(ha), 0)
+
+        if at_z > 0 and ha_z > 0 and at_z < ha_z:
+            # Swap: heavier element should be atom_type
+            autosol_settings["atom_type"] = ha
+            autosol_settings["additional_atom_types"] = at
+            if log:
+                log("DIRECTIVES: Swapped atom_type=%s with "
+                    "additional_atom_types=%s (Z=%d < Z=%d, heavier "
+                    "element is primary scatterer)" % (at, ha, at_z, ha_z))
+
+        return directives
 
     def _validate_directives(self, user_advice, directives, log_func=None):
         """
@@ -529,29 +891,39 @@ class AgentSession:
 
         try:
             from libtbx.langchain.agent.directive_extractor import check_stop_conditions
-            return check_stop_conditions(directives, cycle_number, last_program, metrics)
+            should_stop, reason = check_stop_conditions(
+                directives, cycle_number, last_program, metrics)
         except ImportError:
             # Manual implementation if import fails
             stop_cond = directives.get("stop_conditions", {})
             if not stop_cond:
                 return False, None
 
+            should_stop = False
+            reason = None
+
             # Check after_cycle
             if "after_cycle" in stop_cond:
                 if cycle_number >= stop_cond["after_cycle"]:
-                    return True, "Reached cycle %d (directive)" % cycle_number
+                    should_stop = True
+                    reason = "Reached cycle %d (directive)" % cycle_number
 
-            # Check after_program - normalize names for comparison
-            if "after_program" in stop_cond:
-                target_program = stop_cond["after_program"]
-                # Normalize: remove "phenix." prefix for comparison
-                target_normalized = target_program.replace("phenix.", "")
-                last_normalized = last_program.replace("phenix.", "") if last_program else ""
+            # after_program — intentionally NOT a hard stop (v112.78, Bug 7)
+            # See perceive_checks.py for full rationale.  after_program is
+            # now a minimum-run guarantee used by PLAN to suppress auto-stop,
+            # not a trigger to force-stop.  The LLM decides when to stop.
 
-                if last_normalized == target_normalized or last_program == target_program:
-                    return True, "Completed %s (directive)" % target_program
-
+        if not should_stop:
             return False, None
+
+        return should_stop, reason
+
+    def _get_last_cycle_command(self):
+        """Get the command string from the most recent cycle."""
+        cycles = self.data.get("cycles", [])
+        if cycles:
+            return cycles[-1].get("command", "")
+        return ""
 
     def should_skip_validation(self):
         """
@@ -1017,6 +1389,38 @@ class AgentSession:
         self.data["ignored_commands"] = {}
         self.save()
 
+    def record_bad_inject_param(self, program_name, param_key):
+        """Record a parameter name that caused an 'Unknown command line parameter'
+        failure for a specific program.
+
+        Once recorded, inject_user_params (in command_postprocessor.py) will
+        skip this key for the same program on every future cycle, breaking
+        the inject→crash→re-inject loop.
+
+        Args:
+            program_name: e.g. "phenix.refine"
+            param_key:    The bare or dotted parameter name that was rejected,
+                          e.g. "ignore_symmetry_conflicts" or "bad.scope.key"
+        """
+        if "bad_inject_params" not in self.data:
+            self.data["bad_inject_params"] = {}
+        prog_bad = self.data["bad_inject_params"].setdefault(program_name, [])
+        if param_key not in prog_bad:
+            prog_bad.append(param_key)
+        self.save()
+
+    def get_bad_inject_params(self, program_name):
+        """Return the set of parameter keys blacklisted for *program_name*.
+
+        Args:
+            program_name: e.g. "phenix.refine"
+
+        Returns:
+            set of str — parameter keys to skip during injection
+        """
+        bad = self.data.get("bad_inject_params", {})
+        return set(bad.get(program_name, []))
+
     # =========================================================================
     # BEST FILES TRACKING
     # =========================================================================
@@ -1147,7 +1551,7 @@ class AgentSession:
             "cycles": self.data.get("cycles", []),
         }
 
-        with open(output_path, 'w') as f:
+        with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(history_data, f, indent=2)
 
         return output_path
@@ -1175,7 +1579,8 @@ class AgentSession:
         self.save()
 
     def record_decision(self, cycle_number, program=None, decision=None,
-                        reasoning=None, explanation=None, command=None):
+                        reasoning=None, explanation=None, command=None,
+                        expert_assessment=None):
         """
         Record the decision made for a cycle.
 
@@ -1186,6 +1591,7 @@ class AgentSession:
             reasoning: Detailed reasoning
             explanation: Full explanation including plan
             command: The generated command
+            expert_assessment: Dict from thinking agent
         """
         self.start_cycle(cycle_number)
         cycle = self.data["cycles"][cycle_number - 1]
@@ -1200,6 +1606,11 @@ class AgentSession:
             cycle["explanation"] = explanation
         if command is not None:
             cycle["command"] = command
+        if expert_assessment and isinstance(
+          expert_assessment, dict
+        ):
+            cycle["expert_assessment"] = (
+              expert_assessment)
 
         cycle["timestamp"] = datetime.now().isoformat()
         self.save()
@@ -1223,6 +1634,14 @@ class AgentSession:
             if isinstance(output_files, str):
                 output_files = [output_files]
             cycle["output_files"] = list(output_files)
+
+            # Store the output directory for reliable future lookups.
+            # Session cycle_number may not match GUI directory numbering
+            # after restarts, so storing the actual directory is essential.
+            for f in output_files:
+                if f and os.path.isabs(f) and os.path.exists(f):
+                    cycle["output_dir"] = os.path.dirname(f)
+                    break
 
         # Extract and store metrics from result for use by workflow_state
         program = cycle.get("program", "")
@@ -1294,10 +1713,14 @@ class AgentSession:
                     )
 
                     # Check if this is map coefficients (for visualization/ligand fitting)
+                    # Matches: refine_001.mtz, refine_001_001.mtz,
+                    #          7qz0_refine_001.mtz, 7qz0_refine_001_001.mtz
                     is_map_coeffs = (
                         'map_coeffs' in basename or
                         'denmod' in basename or
-                        re.match(r'refine_\d+_001\.mtz$', basename)
+                        re.match(
+                            r'(?:.*_)?refine_\d{3}(?:_\d{3})?\.mtz$',
+                            basename)
                     )
 
                     if is_map_coeffs:
@@ -1393,6 +1816,11 @@ class AgentSession:
                         file_stage = "ligand_fit_output"
                     elif model_stage == "with_ligand" and 'with_ligand' in basename:
                         file_stage = "with_ligand"
+                    elif model_stage == "with_ligand" and '_modified' in basename:
+                        # pdbtools default output: {input}_modified.pdb
+                        # This IS a with_ligand model even though the
+                        # filename doesn't contain "with_ligand"
+                        file_stage = "with_ligand"
                     elif model_stage == "rsr_output" and ('real_space' in basename or 'rsr_' in basename):
                         file_stage = "rsr_output"
                     else:
@@ -1415,6 +1843,42 @@ class AgentSession:
                     category = self.best_files._classify_category(f)
                     if category:
                         cycle.setdefault("best_file_updates", []).append(category)
+
+            # Discover and evaluate supplemental output files that the client
+            # may not have tracked.  Same logic as _rebuild_best_files_from_cycles
+            # but on the live path.  E.g., refine produces refine_001.mtz (map
+            # coefficients) alongside refine_001_data.mtz, but the client may
+            # only report the _data.mtz.  Without this, best_files["map_coeffs_mtz"]
+            # stays empty and ligandfit can't build.
+            already_seen = {os.path.basename(f) for f in output_files if f}
+            supplemental = self._find_missing_outputs(cycle, already_seen)
+            for sf in supplemental:
+                if sf and os.path.exists(sf):
+                    sf_basename = os.path.basename(sf).lower()
+                    sf_stage = None
+                    sf_metrics = dict(metrics) if metrics else {}
+
+                    if sf.lower().endswith('.mtz'):
+                        is_map_coeffs = (
+                            'map_coeffs' in sf_basename or
+                            'denmod' in sf_basename or
+                            bool(re.match(
+                                r'(?:.*_)?refine_\d{3}(?:_\d{3})?\.mtz$',
+                                sf_basename))
+                        )
+                        if is_map_coeffs:
+                            sf_stage = "refine_map_coeffs"
+
+                    updated = self.best_files.evaluate_file(
+                        path=sf,
+                        cycle=cycle_number,
+                        metrics=sf_metrics,
+                        stage=sf_stage
+                    )
+                    if updated:
+                        # Also add to cycle's output_files so get_available_files
+                        # picks them up without needing _find_missing_outputs again
+                        cycle.setdefault("output_files", []).append(sf)
 
         # If this was a validation program, update best model metrics
         # (validation metrics apply to the current best model, not a new file)
@@ -1465,6 +1929,8 @@ class AgentSession:
         if "real_space_refine" in program_lower:
             return "rsr_output"
         if "autobuild" in program_lower:
+            return "autobuild_output"
+        if "map_to_model" in program_lower:
             return "autobuild_output"
         if "dock_in_map" in program_lower:
             return "docked"
@@ -1555,21 +2021,92 @@ class AgentSession:
 
         return removed
 
+    def get_all_failed_commands(self):
+        """
+        Get all commands that were attempted and FAILED (for exact-duplicate loop detection).
+
+        Only exact matches are meaningful here — we only want to catch the case where
+        the same command is retried verbatim after failing.  The 80%-overlap heuristic
+        is NOT applied to failed commands because partial similarity in failed attempts
+        is too noisy (e.g., two different recovery strategies that share the same data
+        file would incorrectly be flagged as duplicates).
+
+        Returns:
+            list of tuples: [(cycle_number, normalized_command), ...]
+        """
+        commands = []
+        for cycle in self.data["cycles"]:
+            program = cycle.get("program", "")
+            if program in ("CRASH", ""):
+                continue
+            result = cycle.get("result", "")
+            # Only include cycles that definitely failed (not incomplete / in-progress)
+            if not result:
+                continue
+            if result.startswith("SUCCESS"):
+                continue
+            cmd = cycle.get("command", "")
+            if cmd:
+                norm_cmd = " ".join(cmd.strip().split())
+                commands.append((cycle.get("cycle_number", 0), norm_cmd))
+        return commands
+
+    def get_cycle_result(self, cycle_number):
+        """Return the result text of a specific cycle, or None if not found.
+
+        Used by _build_duplicate_feedback to include the original error text
+        in the feedback message when a command is rejected as a failed-duplicate.
+
+        Args:
+            cycle_number: 1-based cycle number.
+
+        Returns:
+            str or None: The result/error text stored on the cycle, or None.
+        """
+        for cycle in self.data.get("cycles", []):
+            if cycle.get("cycle_number") == cycle_number:
+                return cycle.get("result") or None
+        return None
+
+
     def is_duplicate_command(self, command):
         """
-        Check if a command (or very similar) has already been run successfully.
+        Check if a command (or very similar) has already been run.
+
+        Two-tier check:
+          1. Exact match against ALL previous commands — both successful AND failed.
+             An exact repeated failure is always a loop; stop it immediately.
+          2. 80%-token-overlap heuristic against SUCCESSFUL commands only.
+             This catches semantically equivalent successful runs (same program,
+             same core params, minor path differences) without generating false
+             positives from failed recovery attempts.
 
         Args:
             command: The command to check
 
         Returns:
-            tuple: (is_duplicate: bool, previous_cycle: int or None)
+            tuple: (is_duplicate: bool, previous_cycle: int or None,
+                    was_failure: bool)
+                   was_failure is True when the matched prior cycle failed —
+                   callers can use this to generate context-appropriate feedback.
         """
         if not command or command == "No command generated.":
             return False, None
 
         norm_new = " ".join(command.strip().split())
 
+        # ── Tier 1: exact match against ALL commands (success AND failure) ───
+        # This catches the common loop pattern where the LLM retries an identical
+        # command after a failure (e.g., missing required file, unrecognised param).
+        all_failed = self.get_all_failed_commands()
+        failed_nums = {cn for cn, _ in all_failed}
+        for cycle_num, norm_cmd in self.get_all_commands() + all_failed:
+            if not norm_cmd:
+                continue
+            if norm_cmd == norm_new:
+                return True, cycle_num, (cycle_num in failed_nums)
+
+        # ── Tier 2: 80%-overlap heuristic against SUCCESSFUL commands only ───
         # Extract program name from new command
         new_program = norm_new.split()[0] if norm_new else ""
 
@@ -1585,9 +2122,7 @@ class AgentSession:
             if os.path.basename(new_program) != os.path.basename(old_program):
                 continue
 
-            # Exact match
-            if norm_cmd == norm_new:
-                return True, cycle_num
+            # (Exact match already handled in Tier 1 above)
 
             # For predict_and_build, stop_after_predict is a critical parameter
             # Commands with different stop_after_predict values are NOT duplicates
@@ -1602,13 +2137,55 @@ class AgentSession:
             new_parts = set(os.path.basename(p) for p in norm_new.split())
             old_parts = set(os.path.basename(p) for p in norm_cmd.split())
 
+            # Extract file tokens (basenames with crystallographic extensions)
+            _FILE_EXTS = {'.pdb', '.cif', '.mtz', '.sca', '.hkl', '.mrc',
+                          '.ccp4', '.map', '.fa', '.seq', '.dat'}
+            def _file_tokens(parts):
+                return {p for p in parts
+                        if os.path.splitext(p)[1].lower() in _FILE_EXTS}
+
+            new_files = _file_tokens(new_parts)
+            old_files = _file_tokens(old_parts)
+
+            # If the input file basenames differ, this is NOT a duplicate.
+            # Running refine with a different model is a different computation,
+            # even if all other params match.
+            if new_files != old_files:
+                continue
+
             # If >80% overlap in tokens, consider it a duplicate
             if len(new_parts) > 0 and len(old_parts) > 0:
                 overlap = len(new_parts & old_parts) / max(len(new_parts), len(old_parts))
                 if overlap > 0.8:
-                    return True, cycle_num
+                    return True, cycle_num, False  # matched successful cycle
 
-        return False, None
+        return False, None, False
+
+    def get_consecutive_program_count(self, program_name):
+        """Count how many times a program ran consecutively at the end of history.
+
+        Looks at the tail of completed (SUCCESS) cycles and counts how many
+        consecutive entries match *program_name* (compared by base name,
+        e.g. "phenix.refine" matches "phenix.refine").
+
+        Returns:
+            int: Number of consecutive runs (0 if last cycle was different).
+        """
+        count = 0
+        target = os.path.basename(program_name) if program_name else ""
+        # Walk cycles in reverse
+        for cycle in reversed(self.data.get("cycles", [])):
+            prog = cycle.get("program", "")
+            result = cycle.get("result", "")
+            if not prog or prog in ("CRASH", ""):
+                continue
+            if not result.startswith("SUCCESS"):
+                continue
+            if os.path.basename(prog) == target:
+                count += 1
+            else:
+                break  # different program — stop counting
+        return count
 
     def get_history_for_agent(self):
         """
@@ -1759,7 +2336,7 @@ class AgentSession:
         experiment_type = self._detect_experiment_type_for_summary(original_files)
 
         lines = [
-            f"WORKING DIRECTORY:{os.getcwd()}",
+            f"WORKING DIRECTORY:{self._get_working_directory_path()}",
             "COMMAND THAT WAS RUN: phenix.run_agent",
             "PHENIX AGENT SESSION LOG",
             f"Experiment Type: {experiment_type}",
@@ -2142,17 +2719,19 @@ FINAL REPORT:"""
                     seen.add(basename)
 
         # 2. Add output files from each cycle (in order)
+        #    Uses _discover_cycle_outputs which tries stored paths first, then
+        #    scans the expected output directory — handles restart scenarios
+        #    where output_files is empty or paths are stale.
         for cycle in self.data.get("cycles", []):
-            for f in cycle.get("output_files", []):
-                if f:
-                    abs_path = os.path.abspath(f) if not os.path.isabs(f) else f
-                    basename = os.path.basename(abs_path)
-                    # Only add if file exists and not already tracked
-                    if basename not in seen and os.path.exists(abs_path):
-                        files.append(abs_path)
-                        seen.add(basename)
+            discovered = self._discover_cycle_outputs(cycle)
+            for f in discovered:
+                basename = os.path.basename(f)
+                if basename not in seen:
+                    files.append(f)
+                    seen.add(basename)
 
             # Supplement: look for expected outputs that client may have missed
+            # (derives companion files from known output file names/patterns)
             supplemental = self._find_missing_outputs(cycle, seen)
             for f in supplemental:
                 abs_path = os.path.abspath(f) if not os.path.isabs(f) else f
@@ -2160,6 +2739,116 @@ FINAL REPORT:"""
                 if basename not in seen and os.path.exists(abs_path):
                     files.append(abs_path)
                     seen.add(basename)
+
+        # 3. Catch-all: Scan agent sub-directories for output files not yet
+        #    found.  Step 2's _discover_cycle_outputs handles known cycles;
+        #    this catches files from cycles that may not be in session data
+        #    (e.g., partially written session, manual directory copies).
+        import glob
+        pre_scan_count = len(files)  # Track boundary for Step 3.5
+        agent_dirs = set()
+
+        # PRIMARY: Use the session directory directly.
+        session_dir = self._get_session_dir()
+        if session_dir:
+            agent_dirs.add(session_dir)
+
+        # FALLBACK: Also infer agent dirs from any tracked files that happen
+        # to be inside sub_* directories (original heuristic, kept for cases
+        # where session_file isn't in the agent directory).
+        for f in files:
+            abs_f = os.path.abspath(f)
+            parts = abs_f.replace("\\", "/").split("/")
+            for i, part in enumerate(parts):
+                if part.startswith("sub_") and "_" in part[4:]:
+                    candidate = os.sep.join(parts[:i])
+                    if os.path.isdir(candidate):
+                        agent_dirs.add(candidate)
+                    break
+        for agent_dir in agent_dirs:
+            # Refine outputs: map coefficients MTZ and refined models
+            for entry in sorted(glob.glob(os.path.join(agent_dir, "sub_*_refine*"))):
+                if not os.path.isdir(entry):
+                    continue
+                for mtz in glob.glob(os.path.join(entry, "refine_*.mtz")):
+                    bn = os.path.basename(mtz)
+                    if bn not in seen and not bn.endswith("_data.mtz"):
+                        files.append(mtz)
+                        seen.add(bn)
+                for pdb in glob.glob(os.path.join(entry, "refine_*.pdb")):
+                    bn = os.path.basename(pdb)
+                    if bn not in seen:
+                        files.append(pdb)
+                        seen.add(bn)
+            # Pdbtools outputs: *_with_ligand.pdb
+            for entry in glob.glob(os.path.join(agent_dir, "sub_*_pdbtools")):
+                if not os.path.isdir(entry):
+                    continue
+                for pdb in glob.glob(os.path.join(entry, "*_with_ligand.pdb")):
+                    bn = os.path.basename(pdb)
+                    if bn not in seen:
+                        files.append(pdb)
+                        seen.add(bn)
+            # Autobuild outputs: overall_best files
+            for entry in glob.glob(os.path.join(agent_dir, "sub_*_autobuild*")):
+                if not os.path.isdir(entry):
+                    continue
+                for pattern in ["overall_best*.pdb", "overall_best*.mtz"]:
+                    for match in glob.glob(os.path.join(entry, pattern)):
+                        bn = os.path.basename(match)
+                        if bn not in seen:
+                            files.append(match)
+                            seen.add(bn)
+
+        # 3.5. Evaluate Step-3 discoveries through best_files.
+        #      _rebuild_best_files_from_cycles() only processes files from known
+        #      cycles.  Files discovered by the directory scan above may not be
+        #      associated with any cycle (e.g., with_ligand PDBs from pdbtools
+        #      when the cycle number doesn't match the directory number, or files
+        #      from a previous agent run).  Without this step, best_files stays
+        #      stale and the command builder selects the wrong model/MTZ.
+        new_discoveries = files[pre_scan_count:]
+        if new_discoveries and hasattr(self, 'best_files'):
+            highest_cycle = max(
+                (c.get("cycle_number", 0) for c in self.data.get("cycles", [])),
+                default=0
+            )
+            for f in new_discoveries:
+                # Let the tracker infer category and stage from filename.
+                # Use highest_cycle so these files don't lose recency tiebreakers.
+                self.best_files.evaluate_file(
+                    path=f,
+                    cycle=highest_cycle,
+                    metrics=None,
+                    stage=None
+                )
+
+        # 4. Filter out corrupt / zero-byte / invalid files.
+        #    _is_valid_file() checks CCP4 magic bytes, PDB structural validity,
+        #    etc.  Applying it here (client-side, where files are on disk) ensures
+        #    the server receives only validated files, so its pass-through behavior
+        #    (returning True for non-existent paths) never matters.
+        try:
+            try:
+                from libtbx.langchain.agent.workflow_state import _is_valid_file
+            except ImportError:
+                from agent.workflow_state import _is_valid_file
+            files = [f for f in files if _is_valid_file(f)]
+        except Exception:
+            pass  # Non-critical — if import fails, skip validation
+
+        # 5. Filter out intermediate output files that should never be
+        #    used as inputs to subsequent programs.  These files enter
+        #    available_files through _discover_cycle_outputs (glob scan
+        #    of output directories) and record_result (output_files list).
+        #    Matching on basename only to avoid directory-name false
+        #    positives.
+        _intermediate_substrings = ['_pose_', '_pose.']
+        files = [
+            f for f in files
+            if not any(sub in os.path.basename(f).lower()
+                       for sub in _intermediate_substrings)
+        ]
 
         return files
 
@@ -2185,18 +2874,20 @@ FINAL REPORT:"""
         result = cycle.get("result", "")
 
         # Only supplement successful cycles
-        if not output_files or "FAILED" in result.upper():
+        if "FAILED" in result.upper():
             return []
 
         found = []
 
         # --- phenix.refine: look for map coefficients and refined model ---
         if "refine" in program.lower() and "real_space" not in program.lower():
-            # Derive output prefix from _data.mtz file
+            # Strategy 1: Derive output prefix from _data.mtz file
             # e.g., refine_001_data.mtz -> prefix = refine_001
+            data_mtz_found = False
             for f in output_files:
                 basename = os.path.basename(f)
                 if basename.endswith("_data.mtz"):
+                    data_mtz_found = True
                     prefix = basename[:-9]  # Strip "_data.mtz"
                     output_dir = os.path.dirname(os.path.abspath(f))
 
@@ -2235,6 +2926,40 @@ FINAL REPORT:"""
                             found.append(mtz)
 
                     break  # Only process one _data.mtz
+
+            # Strategy 2: If no _data.mtz in output_files, try to derive the
+            # output directory from ANY output file, or from the command itself.
+            # This handles the case where the client tracked a PDB or .cif but
+            # not the _data.mtz, or where output_files is empty entirely.
+            if not data_mtz_found:
+                output_dir = None
+                # Try to get output dir from any output file
+                for f in output_files:
+                    if f and os.path.exists(f):
+                        output_dir = os.path.dirname(os.path.abspath(f))
+                        break
+                # Try to derive from command's output_prefix
+                if not output_dir:
+                    import re
+                    command = cycle.get("command", "")
+                    prefix_match = re.search(r'output\.prefix\s*=\s*(\S+)', command)
+                    if not prefix_match:
+                        prefix_match = re.search(r'output_prefix\s*=\s*(\S+)', command)
+                    if prefix_match:
+                        prefix_path = prefix_match.group(1)
+                        candidate_dir = os.path.dirname(os.path.abspath(prefix_path))
+                        if os.path.isdir(candidate_dir):
+                            output_dir = candidate_dir
+                if output_dir and os.path.isdir(output_dir):
+                    # Scan for refine output files
+                    for mtz in glob.glob(os.path.join(output_dir, "refine_*.mtz")):
+                        bn = os.path.basename(mtz)
+                        if bn not in already_seen and not bn.endswith("_data.mtz"):
+                            found.append(mtz)
+                    for pdb in glob.glob(os.path.join(output_dir, "refine_*.pdb")):
+                        bn = os.path.basename(pdb)
+                        if bn not in already_seen:
+                            found.append(pdb)
 
         # --- phenix.autobuild: look for overall_best model and map ---
         elif "autobuild" in program.lower() and "denmod" not in program.lower():
@@ -2289,6 +3014,236 @@ FINAL REPORT:"""
             "data": summary_data,
         }
 
+    # ── Superseded-issue authority table ──────────────────────────────────────
+    # Maps diagnosable error_type (from diagnosable_errors.yaml) to the set of
+    # programs whose *success* supersedes the concern raised by that error.
+    # Refinement carries the highest evidential weight because it is the most
+    # sensitive test of model-data compatibility.
+    _SUPERSESSION_AUTHORITY = {
+        "crystal_symmetry_mismatch": {
+            "phenix.refine", "phenix.real_space_refine",
+        },
+        "model_outside_map": {
+            "phenix.dock_in_map", "phenix.real_space_refine",
+        },
+        # Default: any program that positions, builds, or refines a model
+        # is authoritative for superseding generic probe/recoverable failures.
+        # Expanded from {refine, real_space_refine} to include:
+        #   phenix.phaser      — MR placement (supersedes needs_mr probe)
+        #   phenix.autobuild   — model building (supersedes needs_build probe)
+        #   phenix.dock_in_map — cryo-EM docking (supersedes needs_dock probe)
+        # The _files_overlap check still guards each supersession — expanding
+        # the authority set broadens candidacy, not provenance matching.
+        "_default": {
+            "phenix.refine", "phenix.real_space_refine",
+            "phenix.phaser",
+            "phenix.autobuild",
+            "phenix.dock_in_map",
+        },
+    }
+
+    @staticmethod
+    def _stage_prefix_strip(basename):
+        """Strip leading stage-prefix from a PHENIX output filename stem.
+        Delegates to the module-level _strip_stage_prefix() function.
+        """
+        return _strip_stage_prefix(basename)
+
+    @staticmethod
+    def _build_lineage_graph(cycles):
+        """Build a file provenance map from session cycle history.
+
+        Maps each output file basename (lowercase) to the set of input
+        file basenames that produced it.  Used by ``_files_overlap``
+        Strategy 4 to trace transitive file ancestry across cycles.
+
+        Example::
+
+            Cycle 2: phenix.phaser beta.pdb data.mtz → PHASER.1.pdb
+            Result:  {"phaser.1.pdb": {"beta.pdb", "data.mtz"}}
+
+        Cycles whose ``output_files`` list is empty (e.g. older sessions
+        recorded before output tracking was introduced) are silently skipped
+        — the graph will simply have fewer entries and Strategies 1–3 still
+        apply unchanged.
+
+        Args:
+            cycles: List of cycle dicts from ``session.data["cycles"]``.
+
+        Returns:
+            dict: ``{output_basename_lower: set_of_input_basename_lower}``
+        """
+        import os as _os
+        produced_by = {}
+        for cycle in cycles:
+            inputs = set(_extract_file_basenames(cycle.get("command", "")))
+            for f in cycle.get("output_files", []):
+                bn = _os.path.basename(f).lower()
+                produced_by[bn] = inputs
+        return produced_by
+
+    @staticmethod
+    def _ancestors(bn, produced_by, visited=None):
+        """Transitively resolve all ancestor file basenames for a given file.
+
+        Walks the lineage graph built by ``_build_lineage_graph`` to find
+        every input file that contributed — directly or indirectly — to
+        producing ``bn``.
+
+        Example::
+
+            graph = {"phaser.1.pdb": {"beta.pdb"}, "refined.pdb": {"phaser.1.pdb"}}
+            _ancestors("refined.pdb", graph)
+            → {"phaser.1.pdb", "beta.pdb"}
+
+        Cycle detection via ``visited`` prevents infinite recursion on
+        degenerate or cyclic graphs.
+
+        Args:
+            bn:          Lowercase basename to resolve.
+            produced_by: Lineage graph from ``_build_lineage_graph``.
+            visited:     Internal set for cycle detection (callers pass None).
+
+        Returns:
+            set: All ancestor basenames (may be empty for leaf/unknown files).
+        """
+        if visited is None:
+            visited = set()
+        if bn in visited:
+            return set()
+        visited.add(bn)
+        result = set()
+        for parent in produced_by.get(bn, set()):
+            result.add(parent)
+            result |= AgentSession._ancestors(parent, produced_by, visited)
+        return result
+
+    @staticmethod
+    def _files_overlap(probe_files, command_str, original_files, scope=None,
+                       lineage_graph=None):
+        """Return True if the probe and a later command share a semantic input file.
+
+        Handles four matching strategies in order:
+          1. Exact basename match
+          2. Stage-prefix-stripped stem match
+          3. Both trace back to the same session original file
+          4. Transitive file lineage — a command file's ancestor (via the
+             lineage graph) appears in the probe's input files.  Closes the
+             case where an intermediate program (e.g. phaser) produces a
+             derived file (PHASER.1.pdb) that a later authoritative program
+             (e.g. refine) consumes, while the probe ran on the original
+             input (beta.pdb) that phaser also used.
+
+        Args:
+            probe_files:    List of lowercase basenames from the probe command.
+            command_str:    Raw command string of the later (authoritative) cycle.
+            original_files: List of original session input file paths.
+            scope:          Failure scope ("probe" | "recoverable" | "terminal").
+                            When scope="probe" and either file list is empty,
+                            returns True (probe programs run before derived files
+                            exist and have no output history to compare against).
+                            For all other scopes, empty file lists return False.
+            lineage_graph:  Optional dict from ``_build_lineage_graph``.
+                            When None, Strategy 4 is skipped.
+
+        Returns:
+            bool
+        """
+        import os as _os
+
+        # Extract basenames from the later command
+        cmd_files = _extract_file_basenames(command_str)
+
+        if not probe_files or not cmd_files:
+            # Empty file lists: only treat as overlapping for scope="probe".
+            # Probe programs (e.g. model_vs_data) run early and may not yet
+            # have derived output files, so we give them the benefit of the doubt.
+            # For recoverable failures without parseable file provenance we
+            # conservatively return False — don't auto-supersede without evidence.
+            return scope == "probe"
+
+        # Strategy 1: exact basename
+        for pf in probe_files:
+            if pf in cmd_files:
+                return True
+
+        # Strategy 2: stage-prefix-stripped stem
+        probe_stems = {_strip_stage_prefix(f) for f in probe_files}
+        cmd_stems   = {_strip_stage_prefix(f) for f in cmd_files}
+        if probe_stems & cmd_stems:
+            return True
+
+        # Strategy 3: shared original file
+        orig_basenames = {_os.path.basename(f).lower()
+                          for f in (original_files or [])}
+        if set(probe_files) & orig_basenames and set(cmd_files) & orig_basenames:
+            return True
+
+        # Strategy 4: transitive file lineage
+        # Resolves cases where the later command operates on a file produced
+        # from one of the probe's inputs in an intermediate cycle.
+        # Example: probe ran on beta.pdb → phaser produced PHASER.1.pdb →
+        #          refine ran on PHASER.1.pdb.  Ancestors of PHASER.1.pdb
+        #          include beta.pdb, so overlap is confirmed.
+        if lineage_graph:
+            probe_set = set(probe_files)
+            for cf in cmd_files:
+                if AgentSession._ancestors(cf, lineage_graph) & probe_set:
+                    return True
+
+        return False
+
+    def _annotate_superseded_issues(self, cycles):
+        """Backward-scan cycles to mark probe/recoverable failures as superseded.
+
+        For each failed cycle carrying a failure_context with scope in
+        ("probe", "recoverable"), look forward for a successful authoritative
+        program that ran using overlapping inputs.  If found, write
+        failure_context["superseded_by"] = "<program> (cycle N)".
+
+        File overlap is checked via four strategies (see ``_files_overlap``);
+        Strategy 4 uses the lineage graph built here from ``output_files``
+        to handle cases where an intermediate cycle produces a derived file
+        that the authoritative cycle then consumes.
+
+        Args:
+            cycles: List of cycle dicts from session.data["cycles"].
+                    Modified in-place.
+        """
+        lineage_graph = self._build_lineage_graph(cycles)
+        original_files = self.data.get("original_files", [])
+
+        for i, cycle in enumerate(cycles):
+            fc = cycle.get("failure_context")
+            if not fc:
+                continue
+            if fc.get("scope") not in ("probe", "recoverable"):
+                continue
+            if fc.get("superseded_by"):
+                continue  # already annotated
+
+            error_type  = fc.get("error_type") or "_default"
+            probe_files = fc.get("input_files", [])
+            authority   = (
+                self._SUPERSESSION_AUTHORITY.get(error_type)
+                or self._SUPERSESSION_AUTHORITY["_default"]
+            )
+
+            for j in range(i + 1, len(cycles)):
+                later = cycles[j]
+                if "SUCCESS" not in str(later.get("result", "")).upper():
+                    continue
+                later_prog = later.get("program", "")
+                if later_prog not in authority:
+                    continue
+                later_cmd = later.get("command", "")
+                if self._files_overlap(probe_files, later_cmd, original_files,
+                                        scope=fc.get("scope"),
+                                        lineage_graph=lineage_graph):
+                    fc["superseded_by"] = "%s (cycle %s)" % (
+                        later_prog, later.get("cycle_number", j + 1))
+                    break
+
     def _extract_summary_data(self):
         """
         Extract structured summary data from the session.
@@ -2298,6 +3253,10 @@ FINAL REPORT:"""
         """
         cycles = self.data.get("cycles", [])
         original_files = self.data.get("original_files", [])
+
+        # Annotate superseded failures before building summary data.
+        # This writes superseded_by onto failure_context dicts in-place.
+        self._annotate_superseded_issues(cycles)
 
         # Detect experiment type
         experiment_type = self.data.get("experiment_type")
@@ -2331,6 +3290,26 @@ FINAL REPORT:"""
             if stop_cond.get("after_program") and stop_cond.get("skip_validation"):
                 is_tutorial = True
 
+        # Get preflight check results (v113)
+        preflight_check = self.data.get("preflight_check", {})
+
+        # Get stop info (captured during _extract_steps above)
+        stop_info = getattr(self, '_last_stop_info', None)
+
+        # Collect expert assessments across all steps
+        expert_assessments = []
+        for step in steps:
+            ea = step.get("expert_assessment", {})
+            if ea and isinstance(ea, dict) and ea.get("analysis"):
+                expert_assessments.append({
+                    "cycle": step["cycle"],
+                    "program": step["program"],
+                    "action": ea.get("action", ""),
+                    "confidence": ea.get("confidence", ""),
+                    "analysis": ea.get("analysis", ""),
+                    "guidance": ea.get("guidance", ""),
+                })
+
         return {
             "session_id": self.data.get("session_id", "unknown"),
             "experiment_type": experiment_type,
@@ -2349,6 +3328,13 @@ FINAL REPORT:"""
                                     and "SUCCESS" in str(c.get("result", ""))),
             "run_name": run_name,
             "is_tutorial": is_tutorial,
+            # Job context
+            "working_dir": self._get_working_directory_path(),
+            "failure_diagnosis_path": self.data.get("failure_diagnosis_path"),
+            # v113: thinking agent data
+            "preflight_check": preflight_check,
+            "stop_info": stop_info,
+            "expert_assessments": expert_assessments,
         }
 
     def _get_run_name(self):
@@ -2376,7 +3362,10 @@ FINAL REPORT:"""
                     return os.path.basename(parent_dir)
             return dir_name
 
-        # Fall back to current working directory (use abspath to get actual name)
+        # Fall back to client_working_directory then current working directory
+        client_wd = self.data.get("client_working_directory")
+        if client_wd:
+            return os.path.basename(client_wd)
         return os.path.basename(os.path.abspath(os.getcwd()))
 
     def _determine_workflow_path(self, cycles, experiment_type):
@@ -2404,11 +3393,24 @@ FINAL REPORT:"""
                 return "X-ray structure determination"
 
     def _extract_steps(self, cycles):
-        """Extract step-by-step summary."""
+        """Extract step-by-step summary including reasoning and expert."""
         steps = []
+        stop_info = None
         for cycle in cycles:
             program = cycle.get("program", "unknown")
-            if program in ["STOP", None, "unknown"]:
+
+            # Capture STOP cycle separately
+            if program == "STOP":
+                stop_info = {
+                    "cycle": cycle.get("cycle_number", "?"),
+                    "reasoning": cycle.get("reasoning", ""),
+                    "explanation": cycle.get("explanation", ""),
+                    "expert_assessment": cycle.get(
+                        "expert_assessment", {}),
+                }
+                continue
+
+            if program in [None, "unknown"]:
                 continue
 
             result = cycle.get("result", "")
@@ -2417,8 +3419,11 @@ FINAL REPORT:"""
             # Extract key metric for this step
             key_metric = self._get_key_metric_for_step(cycle, program)
 
-            # Get brief decision (first sentence)
+            # Get reasoning (full, not just first sentence)
+            reasoning = cycle.get("reasoning", "")
             decision = cycle.get("decision", "")
+
+            # Get brief decision (first sentence) for table
             if decision:
                 decision_brief = decision.split(".")[0] + "."
                 if len(decision_brief) > 100:
@@ -2426,13 +3431,25 @@ FINAL REPORT:"""
             else:
                 decision_brief = ""
 
+            # Expert assessment
+            expert = cycle.get("expert_assessment", {})
+
+            fc = cycle.get("failure_context") or {}
             steps.append({
                 "cycle": cycle.get("cycle_number", "?"),
                 "program": program,
                 "success": success,
                 "key_metric": key_metric,
                 "decision_brief": decision_brief,
+                "reasoning": reasoning,
+                "expert_assessment": expert if isinstance(
+                    expert, dict) else {},
+                "superseded_by": fc.get("superseded_by"),
             })
+
+        # Attach stop_info to the data (will be picked up by
+        # _extract_summary_data)
+        self._last_stop_info = stop_info
 
         return steps
 
@@ -2845,10 +3862,18 @@ FINAL REPORT:"""
         """
         Get the absolute path of the working directory where the agent was run.
 
-        Uses input_directory from session data, or infers from session file path.
-        Falls back to current working directory.
+        Priority:
+        1. client_working_directory (stored at client startup — reliable on server)
+        2. input_directory (from user param or README discovery)
+        3. Infer from session file path
+        4. Fall back to os.getcwd() (only correct on the client machine)
         """
-        # Try input_directory first (set when agent starts)
+        # Try client_working_directory first (set by client, survives server round-trip)
+        client_wd = self.data.get("client_working_directory")
+        if client_wd:
+            return client_wd
+
+        # Try input_directory (set when agent starts)
         input_dir = self.data.get("input_directory")
         if input_dir:
             abs_dir = os.path.abspath(input_dir)
@@ -2954,7 +3979,9 @@ FINAL REPORT:"""
                     "type": "model",
                     "description": "Docked model in map"
                 }
-            elif "with_ligand" in basename_lower:
+            elif "with_ligand" in basename_lower or (
+                    "_modified" in basename_lower and
+                    basename_lower.endswith(".pdb")):
                 return {
                     "name": basename,
                     "type": "model",
@@ -3156,135 +4183,349 @@ FINAL REPORT:"""
         return quality
 
     def _format_summary_markdown(self, data, include_llm_assessment):
-        """Format the summary data as Markdown."""
+        """Format the summary data as Markdown.
+
+        Produces a structured report including:
+        - Input files, experiment type, user goal
+        - Pre-flight check results (if thinking agent was active)
+        - Input data quality metrics
+        - Workflow path and detailed step-by-step narrative
+        - Expert crystallographer assessments (if thinking agent)
+        - Stop decision rationale (if workflow stopped early)
+        - Final quality metrics
+        - Output files
+        - LLM assessment placeholder (optional)
+        """
         lines = []
 
-        # Header - create descriptive title based on run type and directory
+        # Header
         run_name = data.get('run_name', 'unknown')
         is_tutorial = data.get('is_tutorial', False)
-
         if is_tutorial:
-            # Tutorial/focused task header
-            title = f"Phenix AI Tutorial: {run_name}"
+            title = "Phenix AI Tutorial: %s" % run_name
         else:
-            # Regular run header
-            title = f"Phenix AI Run: {run_name}"
-
-        # Use h2 (##) instead of h1 (#) for smaller header
-        lines.append(f"## {title}")
+            title = "Phenix AI Run: %s" % run_name
+        lines.append("## %s" % title)
         lines.append("")
 
-        # Session info line
+        # Session info
         session_id = data['session_id']
-        lines.append(f"**Session:** {session_id} | **Cycles:** {data['total_cycles']} ({data['successful_cycles']} successful)")
+        if '_' in session_id:
+            date_part, time_part = session_id.split('_', 1)
+            time_display = time_part.replace('-', ':')
+            session_display = "%s %s" % (date_part, time_display)
+        else:
+            session_display = session_id
+        lines.append(
+            "**Session:** %s | **Cycles:** %d (%d successful)"
+            % (session_display, data['total_cycles'],
+               data['successful_cycles']))
+        working_dir = data.get("working_dir")
+        if working_dir:
+            lines.append("")
+            lines.append("**Working directory:** `%s`" % working_dir)
         if include_llm_assessment:
             lines.append("")
             lines.append("_[STATUS_PLACEHOLDER]_")
         lines.append("")
 
-        # Input Section
+        # ── 1. Input ────────────────────────────────────────────
         lines.append("## Input")
         lines.append("")
-        lines.append(f"- **Files:** {', '.join(data['original_files'])}")
-        lines.append(f"- **User Advice:** {data['user_advice']}")
-        lines.append(f"- **Experiment Type:** {data['experiment_type']}")
+        lines.append(
+            "- **Files:** %s" % ', '.join(data['original_files']))
+        lines.append("- **User Advice:** %s" % data['user_advice'])
+        lines.append(
+            "- **Experiment Type:** %s" % data['experiment_type'])
         if data.get("resolution"):
-            lines.append(f"- **Resolution:** {data['resolution']:.2f} Å")
+            lines.append(
+                "- **Resolution:** %.2f \u00C5" % data['resolution'])
 
-        # Add stop condition info if this is a focused task/tutorial
         directives = self.get_directives()
         if directives:
             stop_cond = directives.get("stop_conditions", {})
             if stop_cond:
                 stop_parts = []
                 if stop_cond.get("after_program"):
-                    stop_parts.append(f"stop after {stop_cond['after_program']}")
+                    stop_parts.append(
+                        "stop after %s" % stop_cond['after_program'])
                 if stop_cond.get("after_cycle"):
-                    stop_parts.append(f"stop after cycle {stop_cond['after_cycle']}")
+                    stop_parts.append(
+                        "stop after cycle %s" % stop_cond['after_cycle'])
                 if stop_parts:
-                    lines.append(f"- **Stop Condition (Focused Task):** {', '.join(stop_parts)}")
-
+                    lines.append(
+                        "- **Stop Condition (Focused Task):** %s"
+                        % ', '.join(stop_parts))
         lines.append("")
 
-        # Input Data Quality
+        # ── 2. Pre-flight Check ─────────────────────────────────
+        preflight = data.get("preflight_check", {})
+        if preflight and isinstance(preflight, dict):
+            pf_ready = preflight.get("ready", True)
+            pf_analysis = preflight.get("analysis", "")
+            pf_missing = preflight.get("missing_files", [])
+            pf_warnings = preflight.get("warnings", [])
+            pf_recommendation = preflight.get("recommendation", "")
+
+            if not pf_ready or pf_missing or pf_warnings:
+                if not pf_ready:
+                    lines.append(
+                        "## \u26D4 Pre-flight Check: Missing Inputs")
+                else:
+                    lines.append(
+                        "## \u26A0 Pre-flight Check: Warnings")
+                lines.append("")
+                if pf_analysis:
+                    lines.append(pf_analysis.strip())
+                    lines.append("")
+                if pf_missing:
+                    lines.append("**Missing files:**")
+                    for m in pf_missing[:5]:
+                        lines.append("- %s" % str(m))
+                    lines.append("")
+                if pf_warnings:
+                    for w in pf_warnings[:3]:
+                        lines.append("> **Note:** %s" % str(w))
+                    lines.append("")
+                if pf_recommendation:
+                    lines.append(
+                        "**Recommendation:** %s"
+                        % pf_recommendation.strip())
+                    lines.append("")
+                if not pf_ready:
+                    lines.append(
+                        "*The workflow was stopped because "
+                        "required input files are missing.*")
+                    lines.append("")
+
+        # ── 3. Input Data Quality ───────────────────────────────
         if data.get("input_quality"):
             lines.append("## Input Data Quality")
             lines.append("")
             iq = data["input_quality"]
             if "resolution" in iq:
-                lines.append(f"- **Resolution:** {iq['resolution']:.2f} Å")
+                lines.append(
+                    "- **Resolution:** %.2f \u00C5" % iq['resolution'])
             if "completeness" in iq:
-                lines.append(f"- **Completeness:** {iq['completeness']:.1f}%")
+                lines.append(
+                    "- **Completeness:** %.1f%%" % iq['completeness'])
             if "i_over_sigma" in iq:
-                lines.append(f"- **I/σ(I):** {iq['i_over_sigma']:.1f}")
+                lines.append(
+                    "- **I/\u03C3(I):** %.1f" % iq['i_over_sigma'])
             if "wilson_b" in iq:
-                lines.append(f"- **Wilson B-factor:** {iq['wilson_b']:.1f} Å²")
+                lines.append(
+                    "- **Wilson B-factor:** %.1f \u00C5\u00B2"
+                    % iq['wilson_b'])
             if "twinning" in iq:
-                lines.append(f"- **Twinning:** {iq['twinning']}")
+                lines.append(
+                    "- **Twinning:** %s" % iq['twinning'])
             if "twin_law" in iq:
-                lines.append(f"- **Twin Law:** {iq['twin_law']}")
+                lines.append(
+                    "- **Twin Law:** %s" % iq['twin_law'])
             if "twin_fraction" in iq:
-                lines.append(f"- **Twin Fraction:** {iq['twin_fraction']:.4f}")
+                lines.append(
+                    "- **Twin Fraction:** %.4f" % iq['twin_fraction'])
             if iq.get("has_anomalous"):
                 anom_info = "Yes"
                 if "anomalous_measurability" in iq:
-                    anom_info += f" (measurability: {iq['anomalous_measurability']:.3f})"
+                    anom_info += (
+                        " (measurability: %.3f)"
+                        % iq['anomalous_measurability'])
                 if "anomalous_resolution" in iq:
-                    anom_info += f", extends to {iq['anomalous_resolution']:.2f} Å"
-                lines.append(f"- **Anomalous Signal:** {anom_info}")
+                    anom_info += (
+                        ", extends to %.2f \u00C5"
+                        % iq['anomalous_resolution'])
+                lines.append(
+                    "- **Anomalous Signal:** %s" % anom_info)
             if "d99" in iq:
-                lines.append(f"- **d99:** {iq['d99']:.2f} Å")
+                lines.append("- **d99:** %.2f \u00C5" % iq['d99'])
             if "map_cc" in iq:
-                lines.append(f"- **Map CC:** {iq['map_cc']:.3f}")
+                lines.append(
+                    "- **Map CC:** %.3f" % iq['map_cc'])
             lines.append("")
 
-        # Workflow Path
+        # ── 4. Workflow ─────────────────────────────────────────
         lines.append("## Workflow Path")
         lines.append("")
         lines.append(data["workflow_path"])
         lines.append("")
 
-        # Steps Performed
+        # ── 5. Steps Performed (detailed) ───────────────────────
         lines.append("## Steps Performed")
         lines.append("")
+
+        _has_superseded_step = any(
+            step.get("superseded_by") for step in data["steps"])
+
+        # Summary table first
         lines.append("| Cycle | Program | Result | Key Metric |")
         lines.append("|-------|---------|--------|------------|")
         for step in data["steps"]:
-            result_symbol = "✓" if step["success"] else "✗"
+            if step["success"]:
+                result_symbol = "\u2713"
+            elif step.get("superseded_by"):
+                result_symbol = "\u2717*"
+            else:
+                result_symbol = "\u2717"
             program_short = step["program"].replace("phenix.", "")
-            # Sanitize key_metric for markdown table:
-            # - Replace newlines with spaces
-            # - Replace pipe characters with dashes
-            # - Truncate if too long
             key_metric = step['key_metric']
-            key_metric = key_metric.replace('\n', ' ').replace('\r', ' ')
+            key_metric = key_metric.replace('\n', ' ').replace(
+                '\r', ' ')
             key_metric = key_metric.replace('|', '-')
-            key_metric = ' '.join(key_metric.split())  # Collapse multiple spaces
+            key_metric = ' '.join(key_metric.split())
             if len(key_metric) > 60:
                 key_metric = key_metric[:57] + "..."
-            lines.append(f"| {step['cycle']} | {program_short} | {result_symbol} | {key_metric} |")
+            lines.append(
+                "| %s | %s | %s | %s |"
+                % (step['cycle'], program_short,
+                   result_symbol, key_metric))
+        if _has_superseded_step:
+            lines.append("")
+            lines.append(
+                "_\\* Failure resolved by a later successful "
+                "step \u2014 does not affect the final result._")
         lines.append("")
 
-        # Final Quality
-        if data.get("final_metrics"):
-            lines.append("## Final Quality")
+        # Detailed narrative per step (reasoning + expert)
+        _has_detail = any(
+            step.get("reasoning") or step.get("expert_assessment")
+            for step in data["steps"])
+        if _has_detail:
+            lines.append("### Step Details")
             lines.append("")
-            lines.append("| Metric | Value | Assessment |")
-            lines.append("|--------|-------|------------|")
+            for step in data["steps"]:
+                program_short = step["program"].replace("phenix.", "")
+                if step["success"]:
+                    status_str = "\u2713"
+                else:
+                    status_str = "\u2717"
+                lines.append(
+                    "**Cycle %s: %s** %s"
+                    % (step['cycle'], program_short, status_str))
+                lines.append("")
+
+                # Expert assessment (shown before reasoning since
+                # it evaluates the PREVIOUS step's output)
+                ea = step.get("expert_assessment", {})
+                if ea and isinstance(ea, dict):
+                    analysis = ea.get("analysis", "").strip()
+                    guidance = ea.get("guidance", "").strip()
+                    action = ea.get("action", "")
+                    confidence = ea.get("confidence", "")
+                    if analysis:
+                        tag = ""
+                        if action and confidence:
+                            tag = " (%s, %s)" % (action, confidence)
+                        lines.append(
+                            "> **Expert Assessment%s:** %s" % (
+                                tag, analysis[:600]))
+                        if guidance:
+                            lines.append(">")
+                            lines.append(
+                                "> **Guidance:** %s"
+                                % guidance[:300])
+                        lines.append("")
+
+                # Agent reasoning
+                reasoning = step.get("reasoning", "").strip()
+                if reasoning:
+                    display_reasoning = reasoning
+                    if len(display_reasoning) > 500:
+                        display_reasoning = (
+                            display_reasoning[:497] + "...")
+                    lines.append(
+                        "**Reasoning:** %s" % display_reasoning)
+                    lines.append("")
+
+        # ── 6. Stop Decision ────────────────────────────────────
+        stop_info = data.get("stop_info")
+        if stop_info and isinstance(stop_info, dict):
+            lines.append("## Stop Decision")
+            lines.append("")
+            stop_reasoning = (
+                stop_info.get("reasoning")
+                or stop_info.get("explanation", "")).strip()
+            if stop_reasoning:
+                if len(stop_reasoning) > 600:
+                    stop_reasoning = stop_reasoning[:597] + "..."
+                lines.append(
+                    "**Why the workflow stopped:** %s"
+                    % stop_reasoning)
+                lines.append("")
+
+            # Expert stop review
+            stop_expert = stop_info.get("expert_assessment", {})
+            if stop_expert and isinstance(stop_expert, dict):
+                stop_review = stop_expert.get("stop_review", {})
+                stop_analysis = stop_expert.get(
+                    "analysis", "").strip()
+
+                if stop_analysis:
+                    lines.append(
+                        "> **Expert analysis of stop:** %s"
+                        % stop_analysis[:500])
+                    lines.append("")
+
+                if stop_review and isinstance(stop_review, dict):
+                    agrees = stop_review.get(
+                        "agree_with_stop", True)
+                    review_analysis = stop_review.get(
+                        "analysis", "").strip()
+                    alternatives = stop_review.get(
+                        "alternatives", [])
+                    review_guidance = stop_review.get(
+                        "guidance", "").strip()
+
+                    if agrees:
+                        verdict = "\u2705 Expert **agrees** " \
+                                  "with stopping."
+                    else:
+                        verdict = "\u26A0 Expert **disagrees** " \
+                                  "with stopping."
+                    lines.append(verdict)
+                    lines.append("")
+
+                    if review_analysis:
+                        lines.append(review_analysis[:500])
+                        lines.append("")
+                    if alternatives:
+                        lines.append("**Suggested alternatives:**")
+                        for alt in alternatives[:4]:
+                            lines.append(
+                                "- %s" % str(alt)[:120])
+                        lines.append("")
+                    if review_guidance:
+                        lines.append(
+                            "**Guidance:** %s"
+                            % review_guidance[:300])
+                        lines.append("")
+
+        # ── 7. Final Quality ────────────────────────────────────
+        if data.get("final_metrics"):
             fm = data["final_metrics"]
 
-            # Use YAML-based formatting from metrics.yaml
             try:
-                from libtbx.langchain.knowledge.summary_display import format_quality_table_rows
+                from libtbx.langchain.knowledge.summary_display \
+                    import format_quality_table_rows
             except Exception:
-                from knowledge.summary_display import format_quality_table_rows
+                from knowledge.summary_display \
+                    import format_quality_table_rows
 
-            rows = format_quality_table_rows(fm, data.get('experiment_type'))
-            for row in rows:
-                lines.append(f"| {row['label']} | {row['value']} | {row['detail']} |")
-            lines.append("")
+            rows = format_quality_table_rows(
+                fm, data.get('experiment_type'))
+            if rows:
+                lines.append("## Final Quality")
+                lines.append("")
+                lines.append("| Metric | Value | Assessment |")
+                lines.append("|--------|-------|------------|")
+                for row in rows:
+                    lines.append(
+                        "| %s | %s | %s |"
+                        % (row['label'], row['value'],
+                           row['detail']))
+                lines.append("")
 
-        # Output Files
+        # ── 8. Output Files ─────────────────────────────────────
         if data.get("final_files"):
             lines.append("## Key Output Files")
             lines.append("")
@@ -3294,11 +4535,24 @@ FINAL REPORT:"""
                 file_type = f.get('type', 'file')
                 description = f.get('description', '')
                 display_path = self._get_display_path(f)
-                lines.append(f"| {display_path} | {file_type} | {description} |")
+                lines.append(
+                    "| %s | %s | %s |"
+                    % (display_path, file_type, description))
             lines.append("")
             lines.append("")
 
-        # LLM Assessment placeholder
+        # ── 9. Failure Diagnosis ───────────────────────────────
+        failure_diagnosis_path = data.get("failure_diagnosis_path")
+        if failure_diagnosis_path:
+            lines.append("## Failure Diagnosis")
+            lines.append("")
+            lines.append(
+                "A terminal error was encountered during this "
+                "run. An AI-generated diagnosis report was saved:")
+            lines.append("`%s`" % failure_diagnosis_path)
+            lines.append("")
+
+        # ── 10. LLM Assessment ──────────────────────────────────
         if include_llm_assessment:
             lines.append("## Assessment")
             lines.append("")
@@ -3314,7 +4568,9 @@ FINAL REPORT:"""
         Returns a text block with key information for the LLM to evaluate:
         - Input data quality
         - Goal/strategy
-        - Steps taken
+        - Pre-flight check results
+        - Steps taken with reasoning and expert assessments
+        - Stop decision with expert review
         - Current status
         """
         data = self._extract_summary_data()
@@ -3324,14 +4580,19 @@ FINAL REPORT:"""
         # Header with run context
         run_name = data.get('run_name', 'unknown')
         is_tutorial = data.get('is_tutorial', False)
-        run_type = "TUTORIAL/FOCUSED TASK" if is_tutorial else "STRUCTURE DETERMINATION"
-        lines.append(f"=== AGENT SESSION: {run_name} ({run_type}) ===")
+        run_type = ("TUTORIAL/FOCUSED TASK"
+                    if is_tutorial else "STRUCTURE DETERMINATION")
+        lines.append(
+            "=== AGENT SESSION: %s (%s) ==="
+            % (run_name, run_type))
         lines.append("")
 
         # Input
-        lines.append(f"EXPERIMENT TYPE: {data['experiment_type']}")
-        lines.append(f"INPUT FILES: {', '.join(data['original_files'])}")
-        lines.append(f"USER GOAL: {data['user_advice']}")
+        lines.append(
+            "EXPERIMENT TYPE: %s" % data['experiment_type'])
+        lines.append(
+            "INPUT FILES: %s" % ', '.join(data['original_files']))
+        lines.append("USER GOAL: %s" % data['user_advice'])
         lines.append("")
 
         # Stop condition / tutorial detection
@@ -3341,50 +4602,156 @@ FINAL REPORT:"""
             if stop_cond:
                 lines.append("STOP CONDITION (FOCUSED TASK):")
                 if stop_cond.get("after_program"):
-                    lines.append(f"  Stop after: {stop_cond['after_program']}")
+                    lines.append(
+                        "  Stop after: %s"
+                        % stop_cond['after_program'])
                 if stop_cond.get("after_cycle"):
-                    lines.append(f"  Stop after cycle: {stop_cond['after_cycle']}")
+                    lines.append(
+                        "  Stop after cycle: %s"
+                        % stop_cond['after_cycle'])
                 if stop_cond.get("skip_validation"):
-                    lines.append("  Skip validation: Yes (user-directed stop)")
-                lines.append("  NOTE: This was a FOCUSED TASK/TUTORIAL, not full structure determination.")
+                    lines.append(
+                        "  Skip validation: Yes (user-directed stop)")
+                lines.append(
+                    "  NOTE: This was a FOCUSED TASK/TUTORIAL, "
+                    "not full structure determination.")
+                lines.append("")
+
+        # Pre-flight check (v113)
+        preflight = data.get("preflight_check", {})
+        if preflight and isinstance(preflight, dict):
+            pf_ready = preflight.get("ready", True)
+            pf_analysis = preflight.get("analysis", "")
+            pf_missing = preflight.get("missing_files", [])
+            if not pf_ready or pf_missing:
+                lines.append("PRE-FLIGHT CHECK: NOT READY")
+                if pf_analysis:
+                    lines.append("  %s" % pf_analysis.strip()[:300])
+                if pf_missing:
+                    lines.append(
+                        "  Missing: %s" % ", ".join(
+                            str(m) for m in pf_missing[:5]))
                 lines.append("")
 
         # Input quality
         if data.get("input_quality"):
             lines.append("INPUT DATA QUALITY:")
             for k, v in data["input_quality"].items():
-                lines.append(f"  {k}: {v}")
+                lines.append("  %s: %s" % (k, v))
             lines.append("")
 
         # Workflow
-        lines.append(f"WORKFLOW PATH: {data['workflow_path']}")
+        lines.append(
+            "WORKFLOW PATH: %s" % data['workflow_path'])
         lines.append("")
 
-        # Steps (brief)
+        # Steps — annotate superseded failures
+        raw_cycles = self.data.get("cycles", [])
+        _fc_by_cycle = {}
+        for _rc in raw_cycles:
+            _cn = _rc.get("cycle_number")
+            _fc = _rc.get("failure_context")
+            if _cn is not None and _fc:
+                _fc_by_cycle[_cn] = _fc
+
+        _any_superseded = any(
+            fc.get("superseded_by")
+            for fc in _fc_by_cycle.values()
+        )
+        if _any_superseded:
+            lines.append(
+                "NOTE: Steps marked [SUPERSEDED] failed but "
+                "were resolved by later successful steps.")
+            lines.append("")
+
         lines.append("STEPS TAKEN:")
         for step in data["steps"]:
             status = "OK" if step["success"] else "FAILED"
-            lines.append(f"  {step['cycle']}. {step['program']} - {status} {step['key_metric']}")
+            fc = _fc_by_cycle.get(step["cycle"])
+            if fc and fc.get("superseded_by"):
+                tag = " [SUPERSEDED by %s]" % fc["superseded_by"]
+            else:
+                tag = ""
+            lines.append(
+                "  %s. %s - %s%s %s"
+                % (step['cycle'], step['program'],
+                   status, tag, step['key_metric']))
+
+            # Include expert assessment for LLM context (v113)
+            ea = step.get("expert_assessment", {})
+            if ea and isinstance(ea, dict):
+                ea_analysis = ea.get("analysis", "").strip()
+                if ea_analysis:
+                    if len(ea_analysis) > 200:
+                        ea_analysis = ea_analysis[:197] + "..."
+                    lines.append(
+                        "     [Expert: %s] %s"
+                        % (ea.get("action", ""), ea_analysis))
         lines.append("")
+
+        # Stop decision (v113)
+        stop_info = data.get("stop_info")
+        if stop_info and isinstance(stop_info, dict):
+            stop_reasoning = (
+                stop_info.get("reasoning")
+                or stop_info.get("explanation", "")).strip()
+            if stop_reasoning:
+                if len(stop_reasoning) > 400:
+                    stop_reasoning = stop_reasoning[:397] + "..."
+                lines.append(
+                    "STOP DECISION: %s" % stop_reasoning)
+
+            stop_expert = stop_info.get("expert_assessment", {})
+            if stop_expert and isinstance(stop_expert, dict):
+                stop_review = stop_expert.get("stop_review", {})
+                if stop_review:
+                    agrees = stop_review.get(
+                        "agree_with_stop", True)
+                    lines.append(
+                        "  Expert %s with stopping."
+                        % ("agrees" if agrees else "DISAGREES"))
+                    ra = stop_review.get("analysis", "").strip()
+                    if ra:
+                        lines.append("  %s" % ra[:200])
+                    alts = stop_review.get("alternatives", [])
+                    if alts:
+                        lines.append(
+                            "  Alternatives: %s" % "; ".join(
+                                str(a)[:60] for a in alts[:3]))
+            lines.append("")
 
         # Final metrics
         if data.get("final_metrics"):
             lines.append("FINAL METRICS:")
             fm = data["final_metrics"]
             if "r_free" in fm:
-                lines.append(f"  R-free: {fm['r_free']:.4f} ({fm.get('r_free_assessment', '')})")
+                lines.append(
+                    "  R-free: %.4f (%s)"
+                    % (fm['r_free'],
+                       fm.get('r_free_assessment', '')))
             if "r_work" in fm:
-                lines.append(f"  R-work: {fm['r_work']:.4f}")
+                lines.append(
+                    "  R-work: %.4f" % fm['r_work'])
             if "map_cc" in fm:
-                lines.append(f"  Map CC: {fm['map_cc']:.3f} ({fm.get('map_cc_assessment', '')})")
+                lines.append(
+                    "  Map CC: %.3f (%s)"
+                    % (fm['map_cc'],
+                       fm.get('map_cc_assessment', '')))
             if "clashscore" in fm:
-                lines.append(f"  Clashscore: {fm['clashscore']:.2f} ({fm.get('clashscore_assessment', '')})")
+                lines.append(
+                    "  Clashscore: %.2f (%s)"
+                    % (fm['clashscore'],
+                       fm.get('clashscore_assessment', '')))
             if "bonds_rmsd" in fm:
-                lines.append(f"  Bonds RMSD: {fm['bonds_rmsd']:.4f}")
+                lines.append(
+                    "  Bonds RMSD: %.4f" % fm['bonds_rmsd'])
             if "angles_rmsd" in fm:
-                lines.append(f"  Angles RMSD: {fm['angles_rmsd']:.3f}")
+                lines.append(
+                    "  Angles RMSD: %.3f" % fm['angles_rmsd'])
             if "ramachandran_outliers" in fm:
-                lines.append(f"  Ramachandran outliers: {fm['ramachandran_outliers']:.2f}%")
+                lines.append(
+                    "  Ramachandran outliers: %.2f%%"
+                    % fm['ramachandran_outliers'])
             lines.append("")
 
         # Key output files
@@ -3393,9 +4760,11 @@ FINAL REPORT:"""
             for f in data["final_files"]:
                 desc = f.get('description', f.get('type', 'file'))
                 display_path = self._get_display_path(f)
-                lines.append(f"  {display_path} - {desc}")
+                lines.append("  %s - %s" % (display_path, desc))
             lines.append("")
 
-        lines.append(f"TOTAL CYCLES: {data['total_cycles']} ({data['successful_cycles']} successful)")
+        lines.append(
+            "TOTAL CYCLES: %d (%d successful)"
+            % (data['total_cycles'], data['successful_cycles']))
 
         return "\n".join(lines)

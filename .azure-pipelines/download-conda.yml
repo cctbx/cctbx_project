@@ -14,9 +14,6 @@ jobs:
   strategy:
     maxParallel: 3
     matrix:
-      # linux_py27:
-      #   OS: linux-64
-      #   PYTHON_VERSION: py27
       linux_py39:
         OS: linux-64
         PYTHON_VERSION: py39
@@ -32,9 +29,9 @@ jobs:
       linux_py313:
         OS: linux-64
         PYTHON_VERSION: py313
-      # macos_py27:
-      #   OS: osx-64
-      #   PYTHON_VERSION: py27
+      linux_py314:
+        OS: linux-64
+        PYTHON_VERSION: py314
       macos_py39:
         OS: osx-64
         PYTHON_VERSION: py39
@@ -50,6 +47,9 @@ jobs:
       macos_py313:
         OS: osx-64
         PYTHON_VERSION: py313
+      macos_py314:
+        OS: osx-64
+        PYTHON_VERSION: py314
       win_py39:
         OS: win-64
         PYTHON_VERSION: py39
@@ -65,6 +65,9 @@ jobs:
       win_py313:
         OS: win-64
         PYTHON_VERSION: py313
+      win_py314:
+        OS: win-64
+        PYTHON_VERSION: py314
 
   steps:
 

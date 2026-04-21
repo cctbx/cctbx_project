@@ -3,6 +3,7 @@ import libtbx.test_utils.parallel
 from libtbx.utils import Sorry, Usage
 import libtbx.phil
 import random
+import re
 import os
 import sys
 
@@ -30,6 +31,11 @@ skip_missing = False
   .type = bool
 run_in_tmp_dir = False
   .type = bool
+run_in_unique_dirs = False
+  .type = bool
+  .help = "If True, each test script runs in its own subdirectory of the "
+          "current working directory. The subdirectory is named after the "
+          "test file (and arguments, if any)."
 max_time = 180
   .type = float(value_min=0)
   .help = "Print warning and timing for all tests that take longer"
@@ -38,6 +44,57 @@ slow_tests = False
   .type = bool
   .help = "If True, also run any tests marked as slow, if any"
 """)
+
+_QUOTED_PATH_RE = re.compile(r'^[^"]*"([^"]*)"(.*)$')
+_INVALID_NAME_CHARS_RE = re.compile(r'[^A-Za-z0-9_-]+')
+
+
+def _derive_unique_dir_name(command, used_names):
+  """Return a filesystem-safe directory name for the given test command,
+  unique within `used_names`. Mutates `used_names` to include the name
+  that is returned."""
+  m = _QUOTED_PATH_RE.match(command)
+  if m:
+    file_path = m.group(1)
+    args = m.group(2).strip()
+  else:
+    file_path = command.strip()
+    args = ""
+  basename = os.path.basename(file_path)
+  name = basename.replace(".", "_")
+  if not name:
+    name = "test"
+  if args:
+    sanitized = _INVALID_NAME_CHARS_RE.sub("_", args).strip("_")
+    if sanitized:
+      name = "%s_%s" % (name, sanitized)
+  candidate = name
+  suffix = 1
+  while candidate in used_names:
+    candidate = "%s_%d" % (name, suffix)
+    suffix += 1
+  used_names.add(candidate)
+  return candidate
+
+
+def _build_unique_dir_mapping(commands, base_dir):
+  """For each unique command in `commands`, derive a per-test directory
+  name under `base_dir`, create the directory on disk, and return a
+  mapping {command: absolute_dir_path}. The caller passes this mapping
+  to `run_command_list` as `cwd_map`, and each test is dispatched via
+  `subprocess.Popen(..., cwd=<dir>)` so the test's working directory is
+  its own subdirectory without any command-string rewriting."""
+  used_names = set()
+  mapping = {}
+  for cmd in commands:
+    if cmd in mapping:
+      continue
+    dir_name = _derive_unique_dir_name(cmd, used_names)
+    dir_path = os.path.abspath(os.path.join(base_dir, dir_name))
+    os.makedirs(dir_path)
+    mapping[cmd] = dir_path
+  return mapping
+
 
 def run(args,
    return_list_of_tests=None,
@@ -185,6 +242,12 @@ def run(args,
       raise Sorry("No tests to run")
     else: # usual
       raise Sorry("No test scripts found in %s." % params.directory)
+  cwd_map = None
+  if params.run_in_unique_dirs:
+    cwd_map = _build_unique_dir_mapping(
+      all_tests + expected_failure_list + expected_unstable_list
+        + parallel_list,
+      os.getcwd())
   if (params.shuffle):
     random.shuffle(all_tests)
   if (params.quiet):
@@ -198,7 +261,8 @@ def run(args,
       nprocs=params.nproc,
       log=log,
       verbosity=params.verbosity,
-      max_time=params.max_time)
+      max_time=params.max_time,
+      cwd_map=cwd_map)
   print("\nSee run_tests_parallel_zlog for full output.\n")
   if (result.failure > 0):
     print("")

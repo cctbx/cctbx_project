@@ -586,7 +586,8 @@ def check_and_add_hydrogen(
         verbose=False,
         n_hydrogen_cut_off=0,
         do_flips=False,
-        log=None):
+        log=None,
+        stop_for_unknowns=True):
   """
   If no hydrogens present, force addition for clashscore calculation.
   Use REDUCE to add the hydrogen atoms.
@@ -659,6 +660,7 @@ def check_and_add_hydrogen(
     # mmCIF files, so we always do it for safety.
     data_manager_model.get_hierarchy().sort_atoms_in_place()
     data_manager_model.get_hierarchy().atoms().reset_serial()
+    #data_manager_model.update_xrs(data_manager_model.get_hierarchy())
     p = reduce_hydrogen.get_reduce_pdb_interpretation_params(nuclear)
     # We need to turn this on because without it 1zz0.txt kept flipping the ring
     # in A TYR 214 every time we re-interpreted. The original interpretation done
@@ -669,6 +671,7 @@ def check_and_add_hydrogen(
     p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     p.pdb_interpretation.proceed_with_excessive_length_bonds=True
     #p.pdb_interpretation.sort_atoms=True
+    data_manager_model.set_stop_for_unknowns(stop_for_unknowns)
     data_manager_model.process(make_restraints=False, pdb_interpretation_params=p)
 
     return data_manager_model, True

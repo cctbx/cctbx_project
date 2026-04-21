@@ -45,11 +45,18 @@ steps:
     echo "restore_free_channel: true" > $(Pipeline.Workspace)/miniforge/.condarc
   displayName: Install miniforge
 
+# We make a dummy fi_info (a libfabric thing) so a gdk postinstall script
+# won't error out
 - script: |
     set -xe
+    mkdir dummy
+    echo '#!/bin/bash' > dummy/fi_info
+    chmod +x dummy/fi_info
+    export PATH=$PATH:$PWD/dummy
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
     conda create -y -n psana_env -c conda-forge python=$(PYTHON_FULL_VERSION)
     conda env update -n psana_env -f $(Pipeline.Workspace)/modules/cctbx_project/xfel/conda_envs/psana_environment.yml
+    conda install -y -c conda-forge -n psana_env --no-deps gemmi
     conda install -y -c conda-forge --no-deps -n psana_env junit-xml
     conda install -y -c conda-forge cmake pandas distro -n psana_env
   displayName: Create conda environment

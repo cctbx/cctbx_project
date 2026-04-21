@@ -21,6 +21,95 @@ import random
 random.seed(0)
 flex.set_random_seed(0)
 
+class tg_vrm(object):
+  def __init__(self,
+               vrm,
+               map_data,
+               x,
+               restraints_weight,
+               bound_flags,
+               lower_bound,
+               upper_bound):
+    self.bound_flags = bound_flags
+    self.lower_bound = lower_bound
+    self.upper_bound = upper_bound
+    self.restraints_weight = restraints_weight
+    self.vrm = vrm
+    self.map_data = map_data
+    self.plain_pair_sym_table = None
+    self.adp_iso_params = None
+    if(self.restraints_weight is not None):
+      self.plain_pair_sym_table = \
+        mmtbx.refinement.real_space.adp.get_plain_pair_sym_table(
+          crystal_symmetry = self.vrm.crystal_symmetry,
+          sites_frac       = self.vrm.xray_structure.sites_frac())
+      self.adp_iso_params = \
+        adp_refinement.adp_restraints_master_params.extract().iso
+    # required fields
+    self.x = x
+    self.t = None
+    self.g = None
+    self.d = None
+    self.use_curvatures=False
+    #
+    self.weight = None
+    if(self.restraints_weight is not None):
+      self.weight = self._weight()
+      assert abs(self.weight) > 1.e-6
+    self.tgo = self._compute(x = self.x)
+    self.update_target_and_grads(x=x)
+
+  def _weight(self):
+    num = self._restraints().gradients.norm()
+    den = self._data().gradients(map_data = self.map_data).grad_uiso.norm()
+    if(den==0): return 1
+    return num/den
+
+  def _restraints(self):
+    return adp_restraints.energies_iso(
+      plain_pair_sym_table = self.plain_pair_sym_table,
+      xray_structure       = self.vrm.xray_structure,
+      parameters           = self.adp_iso_params,
+      compute_gradients    = True,
+      use_u_local_only     = self.adp_iso_params.use_u_local_only,
+      use_hd               = False)
+
+  def _data(self):
+    return self.vrm
+
+  def _compute(self, x):
+    for bs, xi in zip(self.vrm.bcr_scatterers, x):
+      bs.scatterer.u_iso = xi
+    self.vrm.update()
+    D = self._data()
+    DG = D.gradients(map_data = self.map_data).grad_uiso
+    DT = D.target()
+    if(self.restraints_weight is not None):
+      R = self._restraints()
+      self.tgo = group_args(
+        target   = DT*self.weight + R.target   *self.restraints_weight,
+        gradient = DG*self.weight + R.gradients*self.restraints_weight)
+    else:
+      self.tgo = group_args(
+        target   = DT,
+        gradient = DG)
+    return self.tgo
+
+  def update(self, x):
+    self.update_target_and_grads(x = x)
+
+  def update_target_and_grads(self, x):
+    self.x = x
+    self.tgo = self._compute(x=self.x)
+    self.t = self.tgo.target
+    self.g = self.tgo.gradient
+
+  def target(self): return self.t
+
+  def gradients(self): return self.g
+
+  def gradient(self): return self.gradients()
+
 def map_and_model_to_fmodel(map_data, xray_structure, atom_radius, d_min,
                             reset_adp=True):
   box = mmtbx.utils.extract_box_around_model_and_map(

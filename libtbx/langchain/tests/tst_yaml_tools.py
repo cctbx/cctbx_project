@@ -202,7 +202,7 @@ def test_extract_terms():
     assert "file_categories" in terms, "Should have file_categories"
     assert "strategy_keys" in terms, "Should have strategy_keys"
     assert "metrics" in terms, "Should have metrics"
-    assert "workflow_phases" in terms, "Should have workflow_phases"
+    assert "workflow_steps" in terms, "Should have workflow_steps"
 
     # Check some expected values
     assert len(terms["file_categories"]) > 0, "Should have file categories"

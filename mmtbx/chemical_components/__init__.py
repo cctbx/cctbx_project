@@ -93,25 +93,16 @@ def is_residue_specified(code, alternate=False):
     return get_atom_names(code, alternate=alternate)
   return False
 
-def get_cif_dictionary(code,
-                       filename=None,
-                       old_reader=False,
-                       ):
+def get_cif_dictionary(code, filename=None):
   if filename is not None:
-    if old_reader:
-      cif = cif_parser.run2(filename)
-    else:
-      cif = cif_parser.run(filename)
+    cif = cif_parser.run(filename)
   elif code in loaded_cifs:
     cif = loaded_cifs[code]
   else:
     filename = get_cif_filename(code)
     cif=None
     if os.path.exists(filename):
-      if old_reader:
-        cif = cif_parser.run2(filename)
-      else:
-        cif = cif_parser.run(filename)
+      cif = cif_parser.run(filename)
       loaded_cifs[code] = cif
     if cif:
       for loop_id in ['_pdbx_chem_comp_descriptor', '_chem_comp']:

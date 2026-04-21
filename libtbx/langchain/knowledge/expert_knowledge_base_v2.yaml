@@ -1,0 +1,1458 @@
+# ================================================================
+# PHENIX AI Agent — Expert Knowledge Base (v2)
+# ================================================================
+#
+# DESIGN PRINCIPLE:
+#   This KB exists ONLY for knowledge that a general-purpose LLM
+#   is likely to get wrong when advising this specific agent.
+#   If an LLM would give correct advice 95%+ of the time on a
+#   topic, it does NOT belong here. Every entry should address
+#   one of:
+#     (A) Agent-specific knowledge the LLM cannot have
+#     (B) Stopping/convergence decisions (LLMs are too optimistic)
+#     (C) PHENIX-specific parameter pitfalls
+#     (D) Resolution-dependent thresholds LLMs get wrong
+#     (E) Crystallographic edge cases LLMs handle poorly
+#
+# STRUCTURE PER ENTRY:
+#   id:          Unique identifier (category_NNN)
+#   category:    One of: stopping, agent_limits, phenix_pitfalls,
+#                metric_thresholds, edge_cases
+#   tags:        List of keywords for runtime lookup
+#   question:    The decision or situation
+#   llm_error:   What the LLM typically gets wrong
+#   correct:     What the agent should actually do
+#   confidence:  high / medium / low
+#
+# CATEGORIES:
+#   stopping         — When to stop (LLMs are too optimistic)
+#   agent_limits     — What this agent can and cannot do
+#   phenix_pitfalls  — PHENIX-specific parameter/workflow gotchas
+#   metric_thresholds — Resolution-dependent numbers LLMs get wrong
+#   edge_cases       — Crystallographic situations LLMs mishandle
+#
+# RESOLUTION BANDS:
+#   atomic:    < 1.5 Å
+#   high_res:  1.5 – 2.0 Å
+#   medium_res: 2.0 – 3.0 Å
+#   low_res:   3.0 – 4.0 Å
+#   very_low:  > 4.0 Å
+# ================================================================
+
+
+# ================================================================
+# STOPPING — When to quit
+# LLMs are systematically too optimistic. They suggest "try one
+# more cycle" or "adjust parameters" when the correct answer is
+# to stop and deliver the current model.
+# ================================================================
+
+- id: stop_001
+  category: stopping
+  tags: [r_free, plateau, refinement, r_free_stuck]
+  question: >
+    R-free has not improved by more than 0.005 over the
+    last 3 refinement cycles. Should we continue?
+  llm_error: >
+    LLMs typically suggest parameter changes (more macro
+    cycles, different weight, TLS, etc.) when R-free has
+    plateaued. In practice, if 3 consecutive cycles of
+    phenix.refine show <0.005 total improvement, the model
+    has converged. Further refinement wastes compute and
+    risks overfitting.
+  correct: >
+    Stop refinement. The model has converged. Deliver the
+    best model (lowest R-free) from the plateau. Exceptions
+    before stopping: (1) If waters have not been added yet
+    and resolution < 2.5 Å, try one cycle with
+    ordered_solvent=True. (2) If TLS has not been tried
+    and resolution is 2.0-3.5 Å, try one cycle with TLS.
+    If neither improves R-free by > 0.003, stop for real.
+  confidence: high
+
+- id: stop_002
+  category: stopping
+  tags: [r_free_high, medium_resolution,
+         low_resolution, very_low_resolution,
+         convergence]
+  question: >
+    R-free is 0.32 at 3.5 Å resolution. Is this a problem?
+  llm_error: >
+    LLMs often state that R-free should be below 0.30 or
+    even 0.25, regardless of resolution. They suggest
+    continued refinement to "improve" R-free, not
+    recognizing that 0.32 at 3.5 Å is normal and expected.
+  correct: >
+    R-free expectations are strongly resolution-dependent.
+    Approximate expected ranges: <1.5 Å: 0.15-0.20.
+    1.5-2.0 Å: 0.18-0.25. 2.0-2.5 Å: 0.22-0.28.
+    2.5-3.0 Å: 0.25-0.32. 3.0-3.5 Å: 0.28-0.36.
+    3.5-4.0 Å: 0.30-0.40. >4.0 Å: 0.35-0.45. An R-free
+    of 0.32 at 3.5 Å is within the expected range. Do NOT
+    continue refinement just because R-free seems "high"
+    by absolute standards.
+  confidence: high
+
+- id: stop_003
+  category: stopping
+  tags: [r_free, r_free_very_high, hopeless]
+  question: >
+    R-free is above 0.50 after initial refinement. What now?
+  llm_error: >
+    LLMs suggest trying different refinement strategies,
+    adding NCS restraints, or adjusting weights. But R-free
+    above 0.50 after rigid body + restrained refinement
+    almost always indicates a fundamental problem: wrong
+    space group, incorrect MR solution, or bad data.
+    Parameter tweaks cannot fix this.
+  correct: >
+    Stop refinement. R-free > 0.50 after rigid body
+    refinement plus 1-2 cycles of restrained refinement
+    signals a structural problem, not a parameter problem.
+    Check: (1) Was the MR solution correct? (TFZ > 8?)
+    (2) Is the space group correct? (3) Is there a cell
+    content mismatch? The agent should stop and report the
+    failure rather than running 10+ futile refinement
+    cycles. Note: R-free > 0.50 in the FIRST cycle only
+    (before rigid body) is expected and not cause for alarm.
+  confidence: high
+
+- id: stop_004
+  category: stopping
+  tags: [r_free, r_factor_gap, r_factor_gap_large,
+         overfitting]
+  question: >
+    R-work keeps dropping but R-free is rising. Is this
+    overfitting?
+  llm_error: >
+    LLMs correctly identify this as potential overfitting
+    but then suggest "reducing parameters" and continuing.
+    They rarely recommend stopping immediately and reverting
+    to the pre-overfitting model.
+  correct: >
+    This is definitive overfitting. Stop immediately. Revert
+    to the model from the cycle with the lowest R-free (not
+    the lowest R-work). The agent tracks all models; deliver
+    the best R-free model. Do NOT try to "fix" overfitting
+    by continuing refinement — it only makes it worse.
+  confidence: high
+
+- id: stop_005
+  category: stopping
+  tags: [r_free, r_free_high, refinement, geometry_poor]
+  question: >
+    R-free is stuck at 0.42 with poor geometry after 5+
+    refinement cycles. Should we keep trying?
+  llm_error: >
+    LLMs suggest systematic approaches: "try rigid body
+    refinement", "add NCS restraints", "check for alternate
+    conformations". These waste 5-10 more cycles when the
+    fundamental problem is usually an incorrect model
+    (wrong MR solution, misbuilt regions) that automated
+    refinement cannot fix.
+  correct: >
+    After 5+ refinement cycles with R-free stuck above
+    0.40 and deteriorating geometry, the model has
+    fundamental errors that refinement alone cannot fix.
+    Before giving up: try autobuild (or predict_and_build
+    with an AlphaFold model) to rebuild from the current
+    map with rebuild_in_place=False — this builds a new
+    model from the density rather than adjusting the old
+    one, which is essential for fixing register errors
+    and misbuilt regions. If R-free remains above 0.40
+    after automated rebuilding, stop and report. Suggest
+    the user examine the model in Coot to correct
+    problem regions before resuming.
+  confidence: high
+
+- id: stop_006
+  category: stopping
+  tags: [refinement, geometry_good, r_free, convergence]
+  question: >
+    Model has excellent geometry (Rama 98%, rotamers 99%,
+    clashscore 2) and R-free 0.22 at 2.0 Å. Should we
+    try to improve further?
+  llm_error: >
+    LLMs often suggest "there may be room for improvement"
+    and recommend adding riding hydrogens, anisotropic B,
+    or alternate conformations. This is harmful — the model
+    is already at high quality and further changes risk
+    degrading it.
+  correct: >
+    This is a high-quality, converged model. Stop and
+    deliver. Attempting further "improvements" at this stage
+    has high risk of overfitting and low probability of
+    meaningful improvement. The model is publication-ready.
+  confidence: high
+
+- id: stop_007
+  category: stopping
+  tags: [cryoem, map_cc, convergence]
+  question: >
+    Cryo-EM refinement: map-model CC has plateaued at 0.82.
+    Should we continue?
+  llm_error: >
+    LLMs suggest trying different map sharpening, weight
+    optimization, or more cycles. But map-model CC above
+    0.80 indicates good fit, and further refinement of a
+    well-fitting model into a cryo-EM map rarely improves
+    CC by more than 0.01.
+  correct: >
+    Map-model CC > 0.80 with stable geometry indicates
+    convergence. Stop and deliver. Cryo-EM CC expectations:
+    CC > 0.85 is excellent. CC 0.75-0.85 is good.
+    CC 0.65-0.75 is acceptable but check local regions.
+    CC < 0.65 may indicate problems. Note these thresholds
+    depend on local resolution and map quality.
+  confidence: medium
+
+- id: stop_008
+  category: stopping
+  tags: [phasing, molecular_replacement, TFZ]
+  question: >
+    Phaser TFZ is 5.2. Should we proceed with this solution?
+  llm_error: >
+    LLMs often state TFZ > 5 is "marginal but acceptable"
+    and suggest proceeding to refinement. In practice, TFZ
+    5-7 produces wrong solutions more often than correct
+    ones. The LLM wastes many refinement cycles on a
+    solution that was never right.
+  correct: >
+    TFZ 5-7 is ambiguous. Proceed to initial refinement
+    (1-2 cycles max) and check: if R-free drops below 0.48
+    after rigid body + restrained refinement, the solution
+    may be correct. If R-free stays above 0.50, the
+    solution is almost certainly wrong — stop and report.
+    Do NOT run 5+ refinement cycles hoping it will improve.
+    TFZ > 8: confident. TFZ 5-8: verify quickly.
+    TFZ < 5: likely wrong, do not proceed.
+  confidence: high
+
+- id: stop_009
+  category: stopping
+  tags: [ligand_fitting, r_free, ligand_present]
+  question: >
+    Ligand fitting completed but R-free increased by 0.02.
+    Should we accept the ligand placement?
+  llm_error: >
+    LLMs typically suggest "refine a few more cycles to
+    accommodate the ligand" when R-free rises after ligand
+    placement. But if R-free increases after adding the
+    correct ligand to the correct density, one cycle of
+    refinement should recover it. A persistent R-free
+    increase means the ligand is probably placed incorrectly.
+  correct: >
+    After ligand fitting, run exactly one refinement cycle.
+    If R-free recovers (drops back to pre-ligand or better),
+    accept the placement. If R-free remains elevated or
+    increases further, the placement is likely wrong. Remove
+    the ligand and deliver the model without it, noting
+    unmodeled density for the user to examine.
+  confidence: high
+
+- id: stop_010
+  category: stopping
+  tags: [refinement, waters, r_free]
+  question: >
+    Adding waters improved R-free by 0.001 but added 200
+    waters. Is this good?
+  llm_error: >
+    LLMs see R-free improvement and validate the result.
+    But a tiny R-free drop with a large number of waters
+    is a red flag for overfitting — the waters are fitting
+    noise, not real solvent structure.
+  correct: >
+    Ratio matters. At 2.0 Å resolution, expect roughly
+    1 water per residue. A 200-residue protein at 2.0 Å
+    might legitimately have 100-250 waters. But if adding
+    200 waters improves R-free by only 0.001, many are
+    spurious. The waters are overfitting noise. Remove
+    them (refinement without ordered_solvent) and compare.
+    Accept waters only if R-free improvement is > 0.005
+    or individual waters have clear density (2Fo-Fc > 1σ).
+  confidence: medium
+
+
+# ================================================================
+# AGENT LIMITATIONS — What this agent can and cannot do
+# LLMs suggest actions that require manual intervention or
+# tools the agent doesn't have.
+# ================================================================
+
+- id: agent_001
+  category: agent_limits
+  tags: [model_building, manual, refinement,
+         autobuild, geometry]
+  question: >
+    The model has register errors or misbuilt loops.
+    Can the agent fix this?
+  llm_error: >
+    LLMs suggest "rebuild the problematic regions" or
+    "use Coot to fix the backbone trace." The agent
+    cannot interactively move atoms or refit residues,
+    but it CAN run automated rebuilding programs.
+    LLMs often skip this middle ground, jumping from
+    "refinement can't fix it" to "user must use Coot."
+  correct: >
+    The agent cannot do interactive model building but
+    has automated rebuilding tools. If the model has
+    persistent errors that refinement cannot fix
+    (Ramachandran outliers, broken chain geometry,
+    incomplete regions), try in order: (1) Run
+    autobuild with rebuild_in_place=False — this builds
+    a new model from the density rather than adjusting
+    the old one, which is essential for register errors
+    and misbuilt regions. (2) Run predict_and_build if
+    an AlphaFold model is available — it can correct
+    register errors. (3) For cryo-EM, use map_to_model.
+    All three accept an existing model and rebuild from
+    the map. Only if automated rebuilding also fails
+    should the agent stop and tell the user to examine
+    the model in Coot.
+  confidence: high
+
+- id: agent_002
+  category: agent_limits
+  tags: [ligand_fitting, manual, ligand_present]
+  question: >
+    Automated ligand fitting failed. Can the agent try
+    a different approach?
+  llm_error: >
+    LLMs suggest "try fitting the ligand manually" or
+    "use LigandFit with different starting conformations."
+    The agent can run phenix.ligandfit with different
+    parameters but cannot manually place a ligand in
+    density.
+  correct: >
+    If phenix.ligandfit fails, the agent can try: (1) Run
+    phenix.ligandfit with different nproc or search
+    parameters. (2) Skip ligand fitting entirely and deliver
+    the model noting unmodeled density. (3) If the ligand
+    CIF is from ELBOW, verify ELBOW succeeded (geometry
+    file present and valid). The agent should NOT attempt
+    unlimited retries. After 2 failed attempts, skip the
+    ligand and report.
+  confidence: high
+
+- id: agent_003
+  category: agent_limits
+  tags: [programs, available, refinement, phasing,
+         ligand_fitting, data_assessment]
+  question: >
+    What programs can this agent run?
+  llm_error: >
+    LLMs suggest programs like Coot, SHELX, Buccaneer,
+    ARP/wARP, or REFMAC that are not available to this
+    agent. They may also suggest PHENIX programs that are
+    not wired into the workflow.
+  correct: >
+    Available programs: phenix.xtriage (data analysis),
+    phenix.phaser (molecular replacement), phenix.autosol
+    (experimental phasing), phenix.autobuild (automated
+    building and rebuilding), phenix.refine (reciprocal-
+    space refinement), phenix.real_space_refine (real-space
+    refinement for cryo-EM), phenix.ligandfit (ligand
+    fitting), phenix.predict_and_build (AlphaFold-based
+    building and rebuilding), phenix.map_to_model (cryo-EM
+    model building and rebuilding), phenix.map_sharpening
+    (cryo-EM map sharpening), phenix.resolve_cryo_em
+    (cryo-EM map improvement by density modification),
+    phenix.polder (OMIT map for ligands),
+    phenix.model_vs_data (placement verification). NOTE:
+    autobuild, predict_and_build, and map_to_model can all
+    accept an existing model and rebuild it from the map —
+    this is the agent's alternative to manual model
+    building. NOT available: Coot, SHELX, Buccaneer,
+    REFMAC, PyMOL, DeepEMhancer, or interactive building
+    tools.
+  confidence: high
+
+- id: agent_004
+  category: agent_limits
+  tags: [space_group, symmetry, data_assessment,
+         xtriage]
+  question: >
+    Xtriage suggests the space group may be wrong. Can the
+    agent re-process the data?
+  llm_error: >
+    LLMs suggest "re-process the diffraction images in the
+    correct space group" or "re-index the data." The agent
+    cannot run data processing — it receives an already-
+    processed MTZ file and must work with it as-is.
+  correct: >
+    The agent CANNOT re-process data. If xtriage indicates
+    a likely space group problem (systematic absence
+    violations, possible higher symmetry), the agent should
+    report this finding to the user and suggest they
+    re-process their data before resubmitting. Do NOT
+    attempt MR or refinement in a potentially wrong space
+    group — it will waste many cycles and fail.
+  confidence: high
+
+- id: agent_005
+  category: agent_limits
+  tags: [refinement, alternate_conformations, geometry]
+  question: >
+    Density suggests alternate conformations at several
+    residues. Should the agent model them?
+  llm_error: >
+    LLMs suggest adding alternate conformations, which
+    is correct crystallographic practice. But the agent
+    cannot create alternate conformations — this requires
+    manual intervention or specialized tools not in the
+    workflow.
+  correct: >
+    The agent cannot add alternate conformations. If
+    difference density at specific residues persists after
+    refinement, note this in the output but do not attempt
+    to model it. phenix.refine can refine existing alt
+    confs if they're already in the model, but the agent
+    cannot create new ones. Report to user for manual
+    attention.
+  confidence: high
+
+- id: agent_006
+  category: agent_limits
+  tags: [cryoem, map_sharpening, map, resolution,
+         data_assessment]
+  question: >
+    The cryo-EM map looks poorly resolved. Should the
+    agent sharpen or filter it?
+  llm_error: >
+    LLMs suggest external tools like DeepEMhancer or
+    local resolution filtering, or they assume the agent
+    cannot modify maps at all. In fact, the agent has
+    PHENIX tools for map improvement that LLMs overlook.
+  correct: >
+    The agent CAN improve maps. For cryo-EM: run
+    phenix.map_sharpening to optimize the B-factor
+    sharpening, or phenix.resolve_cryo_em to improve
+    the map by density modification and likelihood-
+    based map calculation. For X-ray data: density
+    modification (solvent flattening, histogram
+    matching, NCS averaging) can substantially improve
+    maps, especially after phasing. The agent should
+    try map improvement before concluding the map is
+    too poor to build into. Tools NOT available:
+    DeepEMhancer, local resolution filtering, or other
+    non-PHENIX map tools.
+  confidence: high
+
+- id: agent_007
+  category: agent_limits
+  tags: [validation, manual_inspection, refinement,
+         outliers]
+  question: >
+    Validation shows persistent outliers at specific
+    residues. Should the agent fix them?
+  llm_error: >
+    LLMs suggest "refine those residues with tighter
+    restraints" or "manually correct the backbone." The
+    agent can apply global restraint weights but cannot
+    target specific residues directly. LLMs also fail
+    to consider automated rebuilding as an intermediate
+    step between "more refinement" and "give up."
+  correct: >
+    The agent applies global refinement parameters and
+    cannot interactively fix individual residues. If
+    specific Ramachandran or rotamer outliers persist
+    after 2+ refinement cycles, try automated
+    rebuilding: run autobuild with rebuild_in_place=False
+    (or predict_and_build with an AlphaFold model) to
+    rebuild the model from the current map. Setting
+    rebuild_in_place=False ensures autobuild builds new
+    fragments into the density rather than adjusting
+    the existing model. If outliers persist after both
+    refinement and automated rebuilding, stop and report
+    the outlier list to the user for manual correction.
+    Do NOT run additional refinement cycles hoping
+    individual outliers will self-correct.
+  confidence: high
+
+
+# ================================================================
+# PHENIX-SPECIFIC PITFALLS — Parameter and workflow gotchas
+# LLMs hallucinate parameter names, give wrong PHIL syntax,
+# or misunderstand how PHENIX programs interact.
+# ================================================================
+
+- id: phenix_001
+  category: phenix_pitfalls
+  tags: [refinement, tls, parameters]
+  question: >
+    Should TLS refinement be enabled?
+  llm_error: >
+    LLMs often recommend TLS for all refinements or give
+    wrong criteria. They may suggest TLS at very high
+    resolution (where individual anisotropic B is better)
+    or at very low resolution (where TLS adds too many
+    parameters relative to data).
+  correct: >
+    TLS is beneficial at 2.0-3.5 Å resolution. Below
+    2.0 Å, individual anisotropic B-factors are better
+    (more data per parameter). Above 3.5 Å, TLS groups
+    add too many parameters — use one group per chain
+    maximum, or skip TLS entirely. The agent should NOT
+    add TLS until R-free is below 0.35, as TLS on a
+    poorly refined model amplifies errors. Always check
+    that R-free improves after adding TLS; if it worsens,
+    remove TLS.
+  confidence: high
+
+- id: phenix_002
+  category: phenix_pitfalls
+  tags: [refinement, twin_refinement, twinning]
+  question: >
+    Xtriage reports a twin fraction. Should twin
+    refinement be enabled?
+  llm_error: >
+    LLMs typically say "enable twin refinement if twin
+    fraction > 0" and treat it as always beneficial. In
+    practice, twin refinement with a small twin fraction
+    can make things worse, and phenix.refine handles
+    twinning internally — you don't always need to
+    explicitly enable it.
+  correct: >
+    Twin refinement in phenix.refine is controlled by
+    twin_law parameter in the PHIL scope. Enable it only
+    when: (1) xtriage twin fraction > 0.10 AND (2) R-free
+    is not already converging normally. If twin fraction
+    is 0.05-0.10, try refinement without twin law first.
+    If R-free improves normally, skip twin refinement.
+    WARNING: twin refinement with an incorrect twin law
+    can dramatically worsen the model. If R-free increases
+    after enabling twin refinement, immediately disable it
+    and revert.
+  confidence: high
+
+- id: phenix_003
+  category: phenix_pitfalls
+  tags: [refinement, anisotropic_b, parameters,
+         atomic_resolution, high_resolution]
+  question: >
+    When should anisotropic B-factor refinement be used?
+  llm_error: >
+    LLMs suggest anisotropic B at resolutions that are
+    too low. The data-to-parameter ratio matters: each
+    atom goes from 1 parameter (isotropic B) to 6
+    parameters (anisotropic B tensor), a 6x increase.
+  correct: >
+    Anisotropic B-factor refinement requires at minimum
+    ~4 observations per parameter. Rules: <1.5 Å: use
+    anisotropic B for all atoms. 1.5-2.0 Å: anisotropic
+    for protein only if data is >90% complete, otherwise
+    TLS+individual isotropic. >2.0 Å: NEVER use
+    anisotropic B for individual atoms — the data cannot
+    support it. Use TLS groups + individual isotropic
+    B-factors instead. LLMs routinely suggest anisotropic
+    B at 2.5 Å, which causes severe overfitting.
+  confidence: high
+
+- id: phenix_004
+  category: phenix_pitfalls
+  tags: [refinement, waters, ordered_solvent,
+         medium_resolution, low_resolution]
+  question: >
+    When should ordered solvent (water picking) be enabled?
+  llm_error: >
+    LLMs suggest adding waters too early in refinement
+    (before the model is well-placed) or at resolutions
+    that are too low. They also underestimate the risk of
+    water overfitting.
+  correct: >
+    Enable ordered_solvent=True only when: (1) R-free is
+    below 0.35 (model is reasonably refined), (2)
+    resolution is better than 3.0 Å, and (3) the model
+    is not still improving rapidly (plateau detected). At
+    3.0-3.5 Å, be extremely conservative — few real
+    waters are visible. Above 3.5 Å, do NOT add waters.
+    After adding waters, verify R-free improved. If R-free
+    worsened, revert and deliver without waters.
+  confidence: high
+
+- id: phenix_005
+  category: phenix_pitfalls
+  tags: [refinement, ncs, restraints, parameters,
+         low_resolution, medium_resolution,
+         multiple_copies]
+  question: >
+    Should NCS restraints or constraints be applied?
+  llm_error: >
+    LLMs often suggest NCS constraints (strict) when NCS
+    restraints (soft) are more appropriate, or suggest NCS
+    in situations where the copies genuinely differ (e.g.,
+    different crystal contacts, ligand bound to one copy).
+  correct: >
+    phenix.refine auto-detects NCS by default and applies
+    torsion-angle NCS restraints. Do NOT manually specify
+    NCS constraints unless there is a specific reason.
+    Constraints force copies to be identical, which is
+    rarely correct. Let phenix.refine handle NCS
+    automatically. At medium-to-low resolution (>2.5 Å)
+    with multiple copies, NCS restraints are especially
+    important to prevent overfitting — verify they are
+    active rather than disabled. If R-free is not
+    improving and multiple copies are present, verify
+    that NCS restraints are not preventing legitimate
+    structural differences (different crystal contacts,
+    ligand bound to one copy only).
+  confidence: high
+
+- id: phenix_006
+  category: phenix_pitfalls
+  tags: [autobuild, phasing, model_building]
+  question: >
+    Autobuild placed only 60% of the expected residues.
+    Should it be re-run?
+  llm_error: >
+    LLMs suggest re-running autobuild with different
+    parameters, or running it multiple times. But
+    autobuild is deterministic with the same inputs — re-
+    running gives the same result. The LLM wastes cycles.
+  correct: >
+    Re-running autobuild with identical inputs gives
+    identical results. If autobuild built only a partial
+    model, proceed to refinement with what was built.
+    After 2-3 refinement cycles (which improve the map),
+    the agent can try predict_and_build as an alternative
+    building approach. But do NOT re-run autobuild with
+    the same inputs.
+  confidence: high
+
+- id: phenix_007
+  category: phenix_pitfalls
+  tags: [molecular_replacement, phaser, search_model]
+  question: >
+    Phaser found no solution. What should the agent try?
+  llm_error: >
+    LLMs suggest lowering the sequence identity threshold,
+    trying ensembles, or using fragments. The agent
+    cannot create ensembles or fragments — it uses the
+    model provided by the user as-is.
+  correct: >
+    If phaser fails with the provided search model, the
+    agent's options are limited: (1) If a predicted model
+    (AlphaFold) is available, try with that instead.
+    (2) Try with the search model trimmed to high-
+    confidence regions (predict_and_build can do this).
+    (3) Report failure — the agent cannot create custom
+    ensembles, fragment-based searches, or modify the
+    search model. Do NOT retry phaser with the same
+    inputs.
+  confidence: high
+
+- id: phenix_008
+  category: phenix_pitfalls
+  tags: [refinement, weight, wxc, wc, parameters]
+  question: >
+    Should the X-ray/stereochemistry weight be adjusted?
+  llm_error: >
+    LLMs suggest specific weight values (wxc_scale=0.5,
+    etc.) which are almost always wrong. They also
+    confuse the different weight parameters in PHENIX.
+  correct: >
+    phenix.refine optimizes the X-ray/stereochemistry
+    weight automatically by default (optimize_wxc=True).
+    Do NOT manually set weight values unless there is a
+    specific, demonstrated problem. If geometry is poor
+    despite good R-factors, the automatic weight may be
+    too data-biased; in that case, the user should
+    intervene. The agent should never adjust refinement
+    weights — let the automatic optimization work.
+  confidence: high
+
+- id: phenix_009
+  category: phenix_pitfalls
+  tags: [ligand_fitting, elbow, geometry, ligandfit]
+  question: >
+    Ligand fitting failed because ELBOW could not generate
+    restraints. What should the agent do?
+  llm_error: >
+    LLMs suggest "try a different restraint generation
+    tool" or "edit the SMILES string." The agent cannot
+    do either — it depends on phenix.elbow for ligand
+    geometry.
+  correct: >
+    If ELBOW fails to generate restraints, ligand fitting
+    cannot proceed. The agent should skip ligand fitting
+    entirely and report to the user that restraint
+    generation failed. Common causes: invalid SMILES in
+    the CIF file, metal-organic compounds ELBOW cannot
+    handle, or very large/complex ligands. The user must
+    provide a valid CIF restraint file.
+  confidence: high
+
+- id: phenix_010
+  category: phenix_pitfalls
+  tags: [refinement, phil, parameters]
+  question: >
+    How does the agent pass parameters to PHENIX programs?
+  llm_error: >
+    LLMs generate command-line flags that don't exist
+    (e.g., --macro-cycles=5) or use wrong PHIL scope
+    syntax. PHENIX uses PHIL (Python Hierarchical
+    Information Language), not GNU-style flags.
+  correct: >
+    PHENIX programs use PHIL syntax: keyword=value,
+    with scoped parameters separated by dots. Example:
+    refinement.main.number_of_macro_cycles=5 (not
+    --macro-cycles or -n 5). The agent's command builder
+    uses the program registry to construct correct PHIL
+    parameters. The thinking agent should recommend
+    actions ("increase macro cycles") not specific PHIL
+    parameters — the command builder handles translation.
+  confidence: high
+
+
+# ================================================================
+# METRIC THRESHOLDS — Resolution-dependent numbers
+# LLMs give generic thresholds that don't account for
+# resolution, completeness, or data quality.
+# ================================================================
+
+- id: thresh_001
+  category: metric_thresholds
+  tags: [r_free, resolution, r_factor_gap, overfitting]
+  question: >
+    What R-free gap indicates overfitting?
+  llm_error: >
+    LLMs typically say "R-free minus R-work should be
+    below 0.05" regardless of resolution. This is wrong —
+    the expected gap is strongly resolution-dependent.
+  correct: >
+    Expected R-free minus R-work gap by resolution:
+    <1.5 Å: 0.01-0.03 (very tight). 1.5-2.0 Å:
+    0.02-0.04. 2.0-2.5 Å: 0.03-0.05. 2.5-3.0 Å:
+    0.04-0.06. 3.0-3.5 Å: 0.05-0.08. >3.5 Å: 0.05-0.10.
+    A gap exceeding these ranges by 0.02+ is concerning.
+    A gap below 0.02 at any resolution suggests the R-free
+    set is contaminated (not truly independent of the
+    working set). Both directions are diagnostic.
+  confidence: high
+
+- id: thresh_002
+  category: metric_thresholds
+  tags: [clashscore, geometry, resolution]
+  question: >
+    What clashscore is acceptable?
+  llm_error: >
+    LLMs state "clashscore should be below 5" or "aim
+    for clashscore under 10." These thresholds are only
+    appropriate for high-resolution structures. At low
+    resolution, clashscore is naturally higher because
+    atom positions are less well-determined.
+  correct: >
+    Clashscore expectations by resolution: <2.0 Å: below
+    5 (excellent: below 2). 2.0-2.5 Å: below 10.
+    2.5-3.0 Å: below 15. 3.0-3.5 Å: below 25. >3.5 Å:
+    below 40. A clashscore of 20 at 3.0 Å is fine; at
+    1.8 Å it indicates serious problems. The agent should
+    NOT keep refining to reduce clashscore below these
+    thresholds — the data does not support it.
+  confidence: high
+
+- id: thresh_003
+  category: metric_thresholds
+  tags: [ramachandran, geometry, resolution, outliers]
+  question: >
+    How many Ramachandran outliers are acceptable?
+  llm_error: >
+    LLMs often state "zero Ramachandran outliers" is the
+    target. While ideal, this is unrealistic at medium to
+    low resolution and for certain residue types. More
+    importantly, LLMs don't distinguish between genuine
+    outliers (real unusual conformations) and errors.
+  correct: >
+    Targets: Ramachandran favored >97% at high resolution,
+    >95% at medium, >92% at low resolution. Outliers:
+    <0.5% is excellent. 0.5-1% is acceptable. >2% signals
+    model problems. HOWEVER: a few persistent outliers at
+    specific residues after multiple refinement cycles are
+    likely genuine (crystal contacts, functional sites) or
+    model errors. If outlier rate is high, try an autobuild
+    or predict_and_build pass to rebuild from the map
+    before reporting to the user. The agent should not
+    attempt to force outliers into favored regions by
+    running more refinement cycles.
+  confidence: high
+
+- id: thresh_004
+  category: metric_thresholds
+  tags: [bonds, angles, geometry, bonds_rmsd,
+         angles_rmsd, refinement]
+  question: >
+    What bond and angle RMSD values indicate problems?
+  llm_error: >
+    LLMs say "bonds should be 0.02 Å and angles 2.0°"
+    as universal standards. In practice, phenix.refine
+    with automatic weight optimization produces tighter
+    values, and deviations from these indicate either
+    the model or the weight is wrong.
+  correct: >
+    With phenix.refine automatic weighting: bonds RMSD
+    0.005-0.010 Å and angles RMSD 0.8-1.3° are normal.
+    Bonds RMSD > 0.015 or angles RMSD > 2.0 suggests
+    the X-ray weight is too high (data over-restraints).
+    Bonds RMSD < 0.003 suggests the restraint weight is
+    too high (geometry over-data). These values should be
+    monitored for trends across cycles, not compared to
+    arbitrary thresholds.
+  confidence: high
+
+- id: thresh_005
+  category: metric_thresholds
+  tags: [rotamer_outliers, geometry, resolution]
+  question: >
+    What percentage of rotamer outliers is acceptable?
+  llm_error: >
+    LLMs state "rotamer outliers should be below 1%"
+    universally. But at low resolution, side chain density
+    is ambiguous and a higher outlier rate is expected.
+    Also, some genuine non-rotameric conformations exist.
+  correct: >
+    Rotamer outlier targets: <1.5 Å: below 0.5%.
+    1.5-2.5 Å: below 2%. 2.5-3.0 Å: below 4%. >3.0 Å:
+    below 6%. A model at 3.5 Å with 5% rotamer outliers
+    is acceptable — do not continue refining to reduce
+    it further. Persistent rotamer outliers at specific
+    residues after 2+ cycles are either real or require
+    rebuilding. If outlier rate is well above the target,
+    try an autobuild pass to rebuild from the map. If
+    outliers persist, report to the user.
+  confidence: medium
+
+- id: thresh_006
+  category: metric_thresholds
+  tags: [completeness, data_assessment, resolution]
+  question: >
+    Is 85% data completeness acceptable?
+  llm_error: >
+    LLMs say "completeness should be above 90%" and may
+    suggest this as a hard cutoff. In practice, the
+    resolution shell matters more than overall
+    completeness, and some analyses succeed at lower
+    overall completeness.
+  correct: >
+    Overall completeness >90% is ideal. 80-90% is usually
+    fine for MR and refinement. Below 80% check: is the
+    low completeness in specific resolution shells? Low
+    completeness in the highest shell is expected and
+    acceptable. Low completeness throughout (e.g., 70%
+    overall) may cause MR to fail or produce artifacts.
+    The agent should note completeness in its assessment
+    but should NOT refuse to proceed unless completeness
+    is below 70% overall.
+  confidence: medium
+
+- id: thresh_007
+  category: metric_thresholds
+  tags: [cryoem, map_cc, resolution, convergence]
+  question: >
+    What map-model CC is expected at different cryo-EM
+    resolutions?
+  llm_error: >
+    LLMs give a single threshold (e.g., "CC > 0.7 is
+    good") without accounting for resolution. CC is
+    inherently lower at lower resolution because the map
+    contains less information.
+  correct: >
+    Expected map-model CC (overall) by nominal resolution:
+    <2.5 Å: 0.80-0.90. 2.5-3.0 Å: 0.75-0.85. 3.0-3.5 Å:
+    0.70-0.80. 3.5-4.0 Å: 0.60-0.75. >4.0 Å: 0.50-0.70.
+    Note: local CC varies significantly — helices may show
+    CC>0.9 while loops show CC<0.5 in the same map. The
+    agent should track overall CC for convergence, not as
+    an absolute quality measure.
+  confidence: medium
+
+
+# ================================================================
+# EDGE CASES — Crystallographic situations LLMs mishandle
+# ================================================================
+
+- id: edge_001
+  category: edge_cases
+  tags: [twinning, xtriage, data_assessment]
+  question: >
+    Xtriage says "twin fraction 0.03." Is the crystal
+    twinned?
+  llm_error: >
+    LLMs often say "yes, the crystal is twinned" for any
+    non-zero twin fraction. A twin fraction of 0.03 is
+    within the estimation error and almost certainly means
+    the crystal is NOT twinned. Unnecessary twin refinement
+    adds parameters and can worsen results.
+  correct: >
+    Twin fractions below 0.05 are unreliable and should
+    be treated as untwinned. Twin fractions 0.05-0.10 are
+    ambiguous — proceed without twin refinement and
+    compare. Twin fractions above 0.10 are significant.
+    Fractions above 0.40 indicate near-perfect twinning
+    and require twin refinement. Key: the agent should
+    ignore twin fractions below 0.05 entirely.
+  confidence: high
+
+- id: edge_002
+  category: edge_cases
+  tags: [tncs, xtriage, data_assessment, phasing]
+  question: >
+    Xtriage detects translational NCS (tNCS). How does
+    this affect the workflow?
+  llm_error: >
+    LLMs either ignore tNCS or suggest it's just "NCS
+    restraints needed." tNCS causes modulated Patterson
+    peaks and F(obs) intensity modulations that can
+    seriously mislead molecular replacement and cause
+    refinement oscillations.
+  correct: >
+    tNCS requires special handling: (1) Phaser can handle
+    tNCS if told about it (it should auto-detect). (2) In
+    refinement, tNCS causes oscillatory R-free behavior.
+    If R-free oscillates between cycles by >0.01, tNCS
+    is likely the cause. (3) Do NOT interpret R-free
+    oscillations from tNCS as "failed refinement" — they
+    are a known artifact. Run at least 5 refinement cycles
+    before concluding R-free has plateaued. (4) NCS
+    restraints are usually beneficial with tNCS.
+  confidence: medium
+
+- id: edge_003
+  category: edge_cases
+  tags: [ice_rings, data_assessment, xtriage]
+  question: >
+    Xtriage reports ice rings. How should the agent respond?
+  llm_error: >
+    LLMs suggest "exclude the affected resolution shells"
+    or "reject the data." The agent cannot modify the data,
+    and ice rings do not necessarily ruin structure
+    determination — they affect specific thin shells.
+  correct: >
+    The agent CANNOT exclude resolution shells or modify
+    the data. Ice rings affect narrow shells at specific
+    d-spacings (3.90, 3.67, 3.44, 2.67, 2.25 Å). In
+    practice, phenix.refine handles ice rings adequately
+    because the affected shells are narrow. The agent
+    should: (1) Note ice rings in the assessment. (2)
+    Proceed normally — do not modify the workflow. (3)
+    If refinement produces unusual R-factors at specific
+    resolution ranges, ice rings may be the cause but
+    cannot be fixed by the agent.
+  confidence: high
+
+- id: edge_004
+  category: edge_cases
+  tags: [anisotropy, data_assessment, xtriage]
+  question: >
+    Xtriage reports severe anisotropy in the diffraction
+    data. What should the agent do?
+  llm_error: >
+    LLMs suggest "apply anisotropy correction" or "use
+    the STARANISO server." The agent cannot run external
+    servers or modify the data. They may also suggest
+    ellipsoidal truncation, which again requires
+    preprocessing the agent cannot do.
+  correct: >
+    The agent cannot correct anisotropy. phenix.refine
+    handles mild anisotropy through bulk solvent
+    correction. For severe anisotropy (ratio > 2.0),
+    the agent should: (1) Note anisotropy in the
+    assessment. (2) Proceed normally — refinement may
+    converge at a higher R-free than expected, this is
+    a data quality issue, not a model problem. (3) If
+    refinement fails to converge, report anisotropy as
+    the likely cause and suggest the user apply
+    anisotropy correction before resubmitting.
+  confidence: medium
+
+- id: edge_005
+  category: edge_cases
+  tags: [pseudosymmetry, space_group, symmetry,
+         data_assessment, xtriage,
+         molecular_replacement, phasing]
+  question: >
+    Xtriage suggests a higher symmetry space group
+    is possible, or the space group is ambiguous.
+    How should the agent handle this?
+  llm_error: >
+    LLMs either say "use the highest symmetry space
+    group" (which can be wrong if it's pseudosymmetry)
+    or treat the input space group as fixed and final.
+    Neither is correct. Space groups are often ambiguous
+    at the start of structure determination: before MR
+    the space group is typically known only to within
+    the point group, and for experimental phasing the
+    enantiomeric space group cannot be determined from
+    the data alone.
+  correct: >
+    Space group handling depends on the stage.
+    Before MR: the space group is often ambiguous within
+    the point group (e.g., P212121 vs P21212 vs P2221).
+    Phaser can search alternative space groups within
+    the point group automatically — let it do so.
+    During experimental phasing: enantiomeric space
+    groups (e.g., P31 vs P32) cannot be distinguished
+    until phasing is attempted; autosol handles this.
+    After refinement: if xtriage flags possible higher
+    symmetry but the structure is already refined, do
+    NOT switch — pseudosymmetry is common and the
+    current space group is likely correct. The agent
+    cannot re-process (re-index/re-scale) the input
+    data, but it does not need to: Phaser and autosol
+    handle the ambiguity within their workflows.
+  confidence: high
+
+- id: edge_006
+  category: edge_cases
+  tags: [molecular_replacement, phaser, multiple_copies,
+         phasing]
+  question: >
+    The ASU should contain 2 copies but Phaser only
+    found 1. Should the agent search for the second?
+  llm_error: >
+    LLMs suggest "run Phaser again searching for 2
+    copies" or "manually place the second copy." The
+    nuance is that partial MR solutions often fail —
+    you need both copies placed together for the TFZ
+    to be meaningful.
+  correct: >
+    If Phaser searching for N copies found fewer, this
+    usually means the search model is inadequate or the
+    space group is wrong. The agent should: (1) Check if
+    Phaser was configured for the right number of copies.
+    (2) If Phaser found 1 of 2 with TFZ > 8, proceed to
+    autobuild — the second copy may be buildable from
+    the map. (3) If TFZ < 8 for the partial solution,
+    the overall solution is suspect. Try predict_and_build
+    or report failure. Do NOT re-run Phaser with the same
+    inputs expecting different results.
+  confidence: medium
+
+- id: edge_007
+  category: edge_cases
+  tags: [refinement, r_free, negative_delta, regression]
+  question: >
+    R-free got worse after the latest refinement cycle.
+    Is this a problem?
+  llm_error: >
+    LLMs treat any R-free increase as a failure and
+    suggest reverting or changing parameters. A single-
+    cycle R-free increase of <0.005 is normal noise,
+    especially early in refinement or after adding
+    waters/TLS.
+  correct: >
+    Single-cycle R-free fluctuations of ±0.005 are normal,
+    especially early in refinement or after adding new
+    features (waters, TLS, hydrogens). Concerning patterns:
+    (1) R-free increased >0.01 in one cycle — likely
+    overfitting, monitor carefully. (2) R-free increased
+    for 2+ consecutive cycles — definite problem, revert
+    to best model. (3) R-free increased after adding
+    waters/TLS — remove them and compare. The agent should
+    track the BEST model seen across all cycles and deliver
+    that, not necessarily the last model.
+  confidence: high
+
+- id: edge_008
+  category: edge_cases
+  tags: [cryoem, resolution, map, real_space_refine]
+  question: >
+    The cryo-EM map has a stated resolution of 3.5 Å
+    but some regions look much worse. How should
+    refinement be configured?
+  llm_error: >
+    LLMs suggest using the stated resolution as-is and
+    may not account for local resolution variation. They
+    suggest uniform refinement strategies, but cryo-EM
+    maps can have 2 Å resolution in the core and 6 Å
+    at the periphery.
+  correct: >
+    phenix.real_space_refine accounts for local resolution
+    variation when used with the half-maps. The agent
+    should: (1) Use the stated resolution as the nominal
+    target. (2) Not be alarmed if peripheral regions have
+    poor geometry — this reflects map quality, not model
+    error. (3) Do NOT tighten restraints to force good
+    geometry in poorly resolved regions — this produces a
+    model that looks good but doesn't match the density.
+    (4) Focus convergence assessment on the overall
+    map-model CC, not individual residue statistics.
+  confidence: medium
+
+- id: edge_009
+  category: edge_cases
+  tags: [ligand_fitting, resolution, ligand_present,
+         low_resolution]
+  question: >
+    The user wants to fit a ligand at 3.8 Å resolution.
+    Should the agent attempt it?
+  llm_error: >
+    LLMs may either refuse ("resolution too low") or
+    attempt it without appropriate caveats. The truth
+    is nuanced: some ligands can be placed at 3.8 Å,
+    others cannot, depending on size and rigidity.
+  correct: >
+    At 3.8 Å, ligand fitting is unreliable. The agent
+    should: (1) Attempt fitting ONLY for large, rigid
+    ligands (heme, FAD, nucleotides, large cofactors).
+    (2) Skip entirely for small or flexible ligands
+    (drug-like molecules, peptide fragments). (3) If
+    attempted, require phenix.polder OMIT map to verify
+    the placement. (4) Always flag the result as low-
+    confidence and advise the user to verify manually.
+    The biggest error is confidently fitting a ligand
+    at low resolution — it's almost always wrong.
+  confidence: high
+
+- id: edge_010
+  category: edge_cases
+  tags: [molecular_replacement, predicted_model,
+         phasing, alphafold]
+  question: >
+    Should the agent use an AlphaFold predicted model
+    for MR, and how?
+  llm_error: >
+    LLMs say "use AlphaFold as-is" or "just run Phaser
+    with the prediction." AlphaFold models have systematic
+    issues for MR: inflated B-factors in flexible regions,
+    potentially wrong domain orientations, and overfit
+    loops that don't match crystal conformations.
+  correct: >
+    AlphaFold models need processing before MR.
+    predict_and_build handles this automatically —
+    it trims low-confidence regions (pLDDT < 70),
+    applies appropriate B-factor adjustments, and
+    can split into rigid domains. The agent should
+    prefer predict_and_build over raw Phaser when an
+    AlphaFold model is available. If predict_and_build
+    fails, try Phaser with the processed model. Do NOT
+    send a raw AlphaFold model directly to Phaser without
+    processing — it will often fail on the unprocessed
+    flexible regions.
+  confidence: high
+
+
+# ================================================================
+# ADDITIONAL PHENIX PITFALLS
+# ================================================================
+
+- id: phenix_011
+  category: phenix_pitfalls
+  tags: [refinement, hydrogens, parameters,
+         low_resolution, medium_resolution]
+  question: >
+    Should riding hydrogens be added to the model?
+  llm_error: >
+    LLMs often recommend adding riding hydrogens in all
+    cases, stating they "always improve geometry and
+    R-factors." In practice, riding hydrogens help at
+    high resolution but add noise at low resolution
+    where hydrogen positions are not determined by the
+    data.
+  correct: >
+    Riding hydrogens: <2.5 Å: generally beneficial, can
+    improve R-free by 0.005-0.01 and geometry scores.
+    2.5-3.5 Å: marginal benefit, may help clashscore
+    but unlikely to improve R-free meaningfully. >3.5 Å:
+    do NOT add — they increase parameter count without
+    data support and can worsen overfitting. Always
+    verify R-free improves after adding hydrogens; if it
+    worsens, remove them.
+  confidence: high
+
+- id: phenix_012
+  category: phenix_pitfalls
+  tags: [refinement, simulated_annealing, parameters]
+  question: >
+    Should simulated annealing (SA) be used in refinement?
+  llm_error: >
+    LLMs frequently recommend simulated annealing,
+    especially when refinement is "stuck." They treat SA
+    as a general-purpose optimizer. In practice, SA is
+    useful only in early refinement to escape local minima
+    after MR; it is harmful on well-refined models because
+    it introduces large random perturbations.
+  correct: >
+    Simulated annealing: useful in the first 1-2 cycles
+    after molecular replacement to correct the initial
+    model placement. Harmful after cycle 3+ because it
+    perturbs well-refined coordinates and can undo
+    legitimate structural features. If R-free is below
+    0.35, do NOT use SA — the model is past the stage
+    where SA helps. Cartesian SA is preferred over
+    torsion-angle SA for initial refinement.
+  confidence: high
+
+- id: phenix_013
+  category: phenix_pitfalls
+  tags: [refinement, macro_cycles, parameters]
+  question: >
+    How many macro cycles should phenix.refine run?
+  llm_error: >
+    LLMs suggest 10, 15, or even 20 macro cycles "for
+    thorough refinement." More macro cycles means more
+    parameter optimization per run, which increases
+    overfitting risk. The time cost is also substantial.
+  correct: >
+    Standard: 3-5 macro cycles per refinement run. For
+    initial refinement after MR: 5 macro cycles. For
+    subsequent cycles in the workflow: 3 macro cycles.
+    The agent runs multiple workflow cycles (each calling
+    phenix.refine once), so each individual call should
+    be conservative. Running 10+ macro cycles in a single
+    call risks overfitting and is rarely better than
+    two separate 5-cycle calls with assessment in between.
+  confidence: high
+
+- id: phenix_014
+  category: phenix_pitfalls
+  tags: [refinement, rigid_body, molecular_replacement,
+         phasing]
+  question: >
+    Should rigid body refinement be run as a separate
+    step after molecular replacement?
+  llm_error: >
+    LLMs often suggest running a dedicated rigid body
+    refinement cycle after MR before starting restrained
+    refinement, as if it were a required separate step.
+    This wastes a cycle. Phaser already performs rigid
+    body refinement internally as part of MR, and
+    phenix.refine's automatic protocol includes rigid
+    body as its first step before restrained refinement.
+  correct: >
+    Do NOT run a separate rigid body refinement step
+    after MR. Phaser optimizes the rigid body position
+    during molecular replacement, and phenix.refine
+    automatically starts with rigid body refinement
+    before switching to restrained refinement. The agent
+    should proceed directly to standard phenix.refine
+    after Phaser. Running an extra rigid-body-only cycle
+    is redundant and delays convergence.
+  confidence: high
+
+
+# ================================================================
+# ADDITIONAL STOPPING RULES
+# ================================================================
+
+- id: stop_011
+  category: stopping
+  tags: [refinement, cycle_budget, convergence]
+  question: >
+    How many total refinement cycles should the agent run
+    before stopping?
+  llm_error: >
+    LLMs suggest open-ended strategies: "keep refining
+    until metrics converge" without considering that the
+    agent has a cycle budget. They don't recognize that
+    diminishing returns set in quickly — most improvement
+    happens in the first 5-8 cycles.
+  correct: >
+    The agent should plan for at most 10-15 total
+    refinement cycles. Typical convergence timeline:
+    Cycles 1-2: rigid body + initial restrained (R-free
+    drops dramatically). Cycles 3-5: restrained refinement
+    (R-free improvements slow). Cycles 6-8: add waters,
+    try TLS (small improvements or plateau). Cycles 9-10:
+    final polish, verify convergence. Beyond cycle 10,
+    improvement is almost never significant. If R-free has
+    not dropped below 0.40 by cycle 5, the model likely
+    has fundamental problems — stop and report rather than
+    spending 10 more cycles.
+  confidence: high
+
+- id: stop_012
+  category: stopping
+  tags: [refinement, model_delivery, convergence,
+         r_free]
+  question: >
+    Which model should the agent deliver as the final
+    result?
+  llm_error: >
+    LLMs typically assume the last model produced is the
+    best. In practice, the last refinement cycle may have
+    slightly worse R-free than a previous cycle due to
+    normal fluctuations or parameter changes (adding
+    waters, TLS) that didn't help.
+  correct: >
+    Always deliver the model with the LOWEST R-free
+    across all cycles, not the model from the last cycle.
+    The agent tracks all output models with their R-free
+    values. If the best R-free model is from cycle 6 but
+    the last cycle is 10, deliver cycle 6's model.
+    Exception: if two models have R-free within 0.002,
+    prefer the one with better geometry (lower clashscore,
+    higher Rama favored).
+  confidence: high
+
+
+# ================================================================
+# ADDITIONAL EDGE CASES
+# ================================================================
+
+- id: edge_011
+  category: edge_cases
+  tags: [data_assessment, mtz, column_selection,
+         refinement]
+  question: >
+    The MTZ file has multiple data arrays. Which should
+    the agent use?
+  llm_error: >
+    LLMs hallucinate column names (FOBS, SIGFOBS,
+    F-obs-filtered, etc.) or suggest using specific
+    column labels without checking what is actually in
+    the file. MTZ column names vary between processing
+    programs and there is no universal naming convention.
+  correct: >
+    The agent must read the actual column labels from the
+    MTZ file — never assume or hallucinate column names.
+    Common patterns: CCP4: F,SIGF or FP,SIGFP. PHENIX:
+    F-obs,F-obs-sigma. Aimless: FP,SIGFP. autoPROC:
+    F,SIGF. If multiple amplitude columns exist (e.g.,
+    both F and I), prefer amplitudes (F) over intensities
+    (I) for refinement. For anomalous data, look for
+    F(+),F(-) or DANO columns. If the MTZ has R-free
+    flags, they are usually in a column named FreeR_flag
+    or FREE or R-free-flags.
+  confidence: high
+
+- id: edge_012
+  category: edge_cases
+  tags: [autobuild, refinement, building,
+         model_building, high_resolution,
+         medium_resolution, low_resolution]
+  question: >
+    Can autobuild be run AFTER refinement to improve
+    the model?
+  llm_error: >
+    LLMs treat model building as a one-time step that
+    happens before refinement. They don't suggest re-
+    running autobuild after refinement has improved the
+    map.
+  correct: >
+    Yes — running autobuild after 2-3 refinement cycles
+    can significantly improve the model. Refinement
+    improves the map quality, and autobuild can build
+    regions that were too disordered to trace initially.
+    Use rebuild_in_place=False so autobuild builds new
+    model from the density rather than adjusting the
+    input model. This is especially valuable when the
+    initial build was incomplete (<80% of expected
+    residues). However, autobuild replaces the model
+    entirely — do NOT run it on a well-refined model.
+    The threshold is resolution-dependent: at high
+    resolution (<2.0 A), do not run if R-free < 0.25;
+    at medium resolution (2.0-3.0 A), do not run if
+    R-free < 0.28; at low resolution (>3.0 A),
+    autobuild can still help with connectivity even at
+    R-free 0.28-0.30. If R-free is >0.35 and
+    significant unbuilt regions remain, autobuild is
+    strongly preferred over further refinement alone.
+  confidence: medium
+
+- id: edge_013
+  category: edge_cases
+  tags: [refinement, b_factors, parameters]
+  question: >
+    Should B-factors be reset before refinement?
+  llm_error: >
+    LLMs sometimes suggest "reset all B-factors to 20"
+    or "use Wilson B as starting value" as a refinement
+    strategy. This destroys information about per-atom
+    disorder that the model already encodes.
+  correct: >
+    Do NOT reset B-factors on a model that has already
+    been refined. The existing B-factors encode real
+    information about atomic displacement. Resetting
+    them forces the refinement to re-derive this
+    information from scratch, wasting cycles. The only
+    time B-factor modification is appropriate is: (1)
+    After MR, the search model B-factors may be from a
+    different crystal form — phenix.refine handles this
+    automatically. (2) If all B-factors are identical
+    (e.g., from a prediction), phenix.refine will
+    optimize them. The agent should never explicitly
+    reset B-factors.
+  confidence: high
+
+- id: phenix_015
+  category: phenix_pitfalls
+  tags: [refinement, b_factors, parameters,
+         medium_resolution, low_resolution,
+         overfitting]
+  question: >
+    Which B-factor model should be used — individual
+    isotropic or group B-factors?
+  llm_error: >
+    LLMs default to individual isotropic B-factors at
+    all resolutions because "more detail is better."
+    At resolutions worse than ~2.8 Å, individual B
+    refinement is unstable — each atom gets a free
+    parameter that the data cannot support, leading to
+    overfitting and noisy B-factor distributions.
+  correct: >
+    B-factor strategy is resolution-dependent. Better
+    than 2.5 Å: individual isotropic B-factors are
+    appropriate (sufficient data-to-parameter ratio).
+    2.5-3.5 Å: use TLS groups + individual isotropic
+    (the TLS model captures bulk motion, individual
+    B handles local variation with restraints). Worse
+    than 3.5 Å: use group B-factors (one or two per
+    residue) or TLS only. A sign of B-factor over-
+    fitting is R-free worsening or a large R-free gap
+    (>0.06) when switching from group to individual B.
+  confidence: high
+
+- id: edge_014
+  category: edge_cases
+  tags: [ligand_fitting, ligand_present, refinement,
+         b_factors, r_free]
+  question: >
+    The ligand fits the density but R-factors around
+    the binding site are poor, or ligand B-factors are
+    much higher than the surrounding protein.
+  llm_error: >
+    LLMs assume ligands have 1.0 occupancy and suggest
+    repositioning or re-fitting the ligand to fix the
+    density mismatch. They do not consider partial
+    occupancy as a cause.
+  correct: >
+    Many ligands are partially occupied, especially in
+    soaking experiments. Symptoms of partial occupancy:
+    (1) persistent positive Fo-Fc density after fitting,
+    (2) ligand B-factors 2-3x higher than surrounding
+    protein, (3) R-free worsens locally around the
+    ligand. The agent should suggest refining ligand
+    occupancy if these signs are present. In
+    phenix.refine, set refine.strategy=occupancy or
+    use occupancy groups. If refined occupancy drops
+    below ~0.3, the ligand placement may be wrong.
+  confidence: medium
+
+- id: edge_015
+  category: edge_cases
+  tags: [refinement, twinning, r_free, r_free_high,
+         r_free_stuck, plateau, convergence,
+         data_assessment]
+  question: >
+    R-factors are stalled around 0.35-0.40 despite a
+    model that looks reasonable. Should refinement
+    continue with different parameters?
+  llm_error: >
+    LLMs suggest more macro cycles, weight adjustment,
+    water picking, or TLS. They rarely consider that
+    undetected or unhandled twinning might be the root
+    cause of stalled R-factors. This is a common blind
+    spot — the LLM treats the symptom (high R-free)
+    rather than diagnosing the underlying data issue.
+  correct: >
+    If R-factors stall at 0.35-0.40 with an otherwise
+    reasonable model (good geometry, complete build),
+    the agent should check xtriage output for twinning
+    indicators (L-test, Britton plot, twin fraction).
+    If twin fraction > 0.10, enable twin refinement
+    in phenix.refine (twin_law parameter from xtriage).
+    Twin refinement can drop R-free by 0.05-0.10 in
+    heavily twinned crystals. Do NOT continue refining
+    with normal parameters — the R-factor ceiling is
+    structural and cannot be overcome by more cycles.
+  confidence: high

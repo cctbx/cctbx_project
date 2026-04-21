@@ -4,7 +4,7 @@ from langgraph.graph import StateGraph, END
 # Import from libtbx.langchain
 from libtbx.langchain.agent.graph_state import AgentState
 from libtbx.langchain.agent.graph_nodes import (
-    perceive, plan, build, validate, fallback, output_node
+    perceive, think, plan, build, validate, fallback, output_node
 )
 
 
@@ -14,11 +14,11 @@ def route_after_perceive(state):
 
   Routes to:
   - "output": if stop flag set (red flag abort or workflow complete)
-  - "plan": normal continuation
+  - "think": normal continuation (expert reasoning before plan)
   """
   if state.get("stop"):
     return "output"
-  return "plan"
+  return "think"
 
 
 def route_after_validate(state):
@@ -52,16 +52,21 @@ def build_agent_graph():
 
   Graph topology:
 
-    perceive --+--> plan --> build --> validate --+--> output --> END
-               |                ^                 |
-               |                |  (retry < 3)    |
-               |                +-----------------+
-               |                                  |
-               |                (fallback >= 3)   |
-               |                                  v
-               |                              fallback --> output --> END
+    perceive --+--> think --> plan --> build --> validate --+--> output --> END
+               |                           ^               |
+               |                           |  (retry < 3)  |
+               |                           +---------------+
+               |                                           |
+               |                           (fallback >= 3) |
+               |                                           v
+               |                                       fallback --> output --> END
                |
                +--> output --> END  (if red flag abort)
+
+  The think node is a no-op pass-through when thinking_level
+  is None (default). When set to "basic" or "advanced", it
+  provides expert crystallographer reasoning to guide the plan
+  node.
 
   Returns:
     Compiled LangGraph application
@@ -70,6 +75,7 @@ def build_agent_graph():
 
   # Add Nodes
   workflow.add_node("perceive", perceive)
+  workflow.add_node("think", think)
   workflow.add_node("plan", plan)
   workflow.add_node("build", build)
   workflow.add_node("validate", validate)
@@ -84,10 +90,13 @@ def build_agent_graph():
     "perceive",
     route_after_perceive,
     {
-      "plan": "plan",
+      "think": "think",
       "output": "output"
     }
   )
+
+  # Think always flows to Plan
+  workflow.add_edge("think", "plan")
 
   # Linear Edges
   workflow.add_edge("plan", "build")

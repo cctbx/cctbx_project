@@ -5,7 +5,7 @@ from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx import group_args
 import time
-
+import cctbx.maptbx.bcr
 
 def get_map_data(xrs, d_min):
   cg = maptbx.crystal_gridding(
@@ -140,9 +140,9 @@ def exercise_03(d_min = 1.0, n_grid = 2000, dist_max = 5.0):
   #
   # BCR approximation, (1-2)
   #
-  from cctbx.maptbx.bcr import qmap
+  import cctbx.maptbx.bcr
   from cctbx.maptbx.bcr import bcr
-  t = qmap.load_table(element="S", table="wk1995")
+  t = cctbx.maptbx.bcr.load_table(element="S", table="wk1995")
   d = t["1.0"]
   B = d["B"]
   C = d["C"]

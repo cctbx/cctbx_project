@@ -32,7 +32,7 @@ def classify_mtz_type(filepath):
     - map_coeffs_mtz: Contains calculated phases (for ligand fitting, visualization)
 
     Classification rules:
-    1. refine_*_001.mtz pattern -> map_coeffs_mtz (standard refine map output)
+    1. refine_NNN.mtz or refine_NNN_NNN.mtz -> map_coeffs_mtz (refine map output)
     2. *_001.mtz pattern -> map_coeffs_mtz (other numbered map outputs)
     3. Contains 'map_coeffs', 'denmod', 'density_mod' -> map_coeffs_mtz
     4. Contains '_data.mtz' or 'refinement_data' -> data_mtz
@@ -45,7 +45,11 @@ def classify_mtz_type(filepath):
         str: "data_mtz" or "map_coeffs_mtz"
 
     Examples:
+        >>> classify_mtz_type("/path/to/refine_001.mtz")
+        'map_coeffs_mtz'
         >>> classify_mtz_type("/path/to/refine_001_001.mtz")
+        'map_coeffs_mtz'
+        >>> classify_mtz_type("/path/to/7qz0_refine_001.mtz")
         'map_coeffs_mtz'
         >>> classify_mtz_type("/path/to/data.mtz")
         'data_mtz'
@@ -54,8 +58,10 @@ def classify_mtz_type(filepath):
     """
     basename = os.path.basename(filepath).lower()
 
-    # Pattern 1: Standard refine output with maps (refine_001_001.mtz)
-    if re.match(r'refine_\d+_001\.mtz$', basename):
+    # Pattern 1: Refine output MTZ — all variants:
+    #   refine_001.mtz, refine_001_001.mtz,
+    #   7qz0_refine_001.mtz, 7qz0_refine_001_001.mtz
+    if re.match(r'(?:.*_)?refine_\d{3}(?:_\d{3})?\.mtz$', basename):
         return "map_coeffs_mtz"
 
     # Pattern 2: Other numbered outputs like model_refine_001.mtz
@@ -179,3 +185,41 @@ def is_sequence_file(filepath):
     lower = filepath.lower()
     return lower.endswith('.fa') or lower.endswith('.fasta') or \
            lower.endswith('.seq') or lower.endswith('.dat')
+
+
+# =============================================================================
+# PATTERN MATCHING
+# =============================================================================
+
+def matches_exclude_pattern(basename, patterns):
+    """Check if basename matches any exclude/prefer pattern (word-boundary aware).
+
+    All patterns use word-boundary semantics on the filename stem:
+      'ligand' matches 'ligand.pdb', 'my_ligand.pdb', 'ligand_001.pdb'
+      'ligand' does NOT match 'noligand.pdb' (no word boundary before 'ligand')
+      'lig.pdb' matches 'lig.pdb' but NOT 'nolig.pdb'
+
+    Word boundaries are: start-of-string, end-of-string, or separators
+    (underscore, hyphen, dot).
+
+    Used by:
+      - CommandBuilder._find_file_for_slot (extension fallback)
+      - ai_agent._find_candidate_for_slot (safety-net injection)
+    """
+    bn_lower = basename.lower()
+    stem = bn_lower.rsplit('.', 1)[0] if '.' in bn_lower else bn_lower
+    for pat in patterns:
+        pat_lower = pat.lower()
+        # Extract pattern stem (strip extension if present)
+        pat_stem = pat_lower.rsplit('.', 1)[0] if '.' in pat_lower else pat_lower
+        # If pattern has extension, require that the basename ends with it
+        if '.' in pat_lower:
+            pat_ext = '.' + pat_lower.rsplit('.', 1)[1]
+            if not bn_lower.endswith(pat_ext):
+                continue
+        # Word-boundary match on stems
+        if re.search(
+            r'(?:^|[_\-\.])' + re.escape(pat_stem) + r'(?=[_\-\.]|$)',
+            stem):
+            return True
+    return False

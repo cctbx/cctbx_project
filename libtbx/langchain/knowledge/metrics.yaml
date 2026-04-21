@@ -511,8 +511,8 @@ best_files_scoring:
       refined: 100           # Output from phenix.refine - highest quality
       rsr_output: 100        # Output from real_space_refine - highest for cryo-EM
       autobuild_output: 100  # Output from phenix.autobuild - does internal refinement
-      with_ligand: 100       # Refined model with ligand (also tagged as refined)
-      ligand_fit_output: 90  # Output from ligandfit (also tagged as with_ligand)
+      with_ligand: 110       # Model with ligand combined — beats plain refined (no metrics yet)
+      ligand_fit_output: 105 # Output from ligandfit before pdbtools combination
       phaser_output: 70      # MR solution - positioned in unit cell, ready for refinement
       docked: 60             # Output from dock_in_map - positioned in map
       model_cif: 100         # mmCIF model from refinement (also tagged as refined)

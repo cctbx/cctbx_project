@@ -34,6 +34,7 @@ restore_free_channel: true
 " > $WORKING/dialsBuild/miniconda3/.condarc
 source $WORKING/dialsBuild/miniconda3/etc/profile.d/conda.sh
 conda env create -f $WORKING/dialsBuild/modules/cctbx_project/xfel/conda_envs/psana_environment.yml
+conda install -y -c conda-forge -n psana_env --no-deps gemmi
 conda activate psana_env
 
 # Build DIALS sources
