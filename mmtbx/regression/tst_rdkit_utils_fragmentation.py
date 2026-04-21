@@ -249,14 +249,22 @@ def compute_fragments(pdb_str, sel_str, expected, filter_lone_linkers=True):
     cif_object = cif_object,
     filter_lone_linkers = filter_lone_linkers)
 
-#  print(len(cctbx_rigid_components))
-#
-#  atoms = ph.atoms()
-#  for rigid_comp in cctbx_rigid_components:
-#    print('fragment')
-#    print(list(rigid_comp))
-#    for idx in rigid_comp:
-#      print(atoms[idx].name)
+  #print(len(cctbx_rigid_components))
+
+  if 0:
+    ph =  model.get_hierarchy()
+    print(dir(model))
+    print(dir(ph))
+    ph.write_mmcif_file('test.cif')
+    atoms = ph.atoms()
+    for rigid_comp in cctbx_rigid_components:
+      print('fragment')
+      print(list(rigid_comp))
+      for idx in rigid_comp:
+        print(atoms[idx].name)
+  if 0:
+    import os
+    os.system('phenix.start_coot --no-guano')
 
   assert len(cctbx_rigid_components) == expected
 
