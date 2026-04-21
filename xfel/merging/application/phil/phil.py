@@ -133,7 +133,7 @@ filter
   .help = or to modify the entire experiment by a reindexing operator
   .help = refer to the select section for filtering of individual reflections
   {
-  algorithm = n_obs resolution unit_cell energy
+  algorithm = n_obs resolution unit_cell energy bootstrap
     .type = choice(multi=True)
   n_obs {
     min = None
@@ -230,6 +230,11 @@ filter
     max_eV = None
       .type = float
       .help = Filter out lattices with beam energy higher than or equal to this number
+  }
+  bootstrap {
+    random_seed = 0
+      .type = int
+      .help = seed for the bootstrap filtering algorithm (random selection with replacement)
   }
 }
 """
