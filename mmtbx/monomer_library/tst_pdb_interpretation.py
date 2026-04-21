@@ -1392,6 +1392,16 @@ _chem_comp_angle.value_angle_esd   3.000
   geo_file.close()
   assert "Bond angle | covalent geometry | restraints: 1" in geo_file_str
 
+  pdb_string = pdb_string.replace('HOH', 'H!H')
+  pdb_file = open_tmp_file(suffix="HOH.pdb")
+  pdb_file.write(pdb_string)
+  pdb_file.close()
+  cmd = "phenix.pdb_interpretation %s" % (pdb_file.name)
+  result = easy_run.fully_buffered(cmd).raise_if_errors()
+  std_lines='\n'.join(result.stdout_lines)
+  msg='Number of atoms with unknown nonbonded energy type symbols: 3'
+  assert std_lines.find(msg)!=-1, 'error msg "%s" missing' % msg
+
 def exercise_do_not_link(mon_lib_srv, ener_lib):
   """
   Do not attempt to link two residues below.

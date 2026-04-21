@@ -20,6 +20,19 @@ def run():
   test_009()
 
 # ------------------------------------------------------------------------------
+def write_models(model_initial, model_h_added):
+  f = open("m_initial.pdb","w")
+  f.write(model_initial.model_as_pdb())
+  f.close()
+  f = open("m_initial.cif","w")
+  f.write(model_initial.model_as_mmcif())
+  f.close()
+  f = open("m_added.pdb","w")
+  f.write(model_h_added.model_as_pdb())
+  f.close()
+  f = open("m_added.cif","w")
+  f.write(model_h_added.model_as_mmcif())
+  f.close()
 
 def compare_models(pdb_str,
                    contains     = None,
@@ -59,20 +72,11 @@ def compare_models(pdb_str,
 
   # For debugging
   if 0:
-    f = open("m_initial.pdb","w")
-    f.write(model_initial.model_as_pdb())
-    f.close()
-    f = open("m_initial.cif","w")
-    f.write(model_initial.model_as_mmcif())
-    f.close()
-    f = open("m_added.pdb","w")
-    f.write(model_h_added.model_as_pdb())
-    f.close()
-    f = open("m_added.cif","w")
-    f.write(model_h_added.model_as_mmcif())
-    f.close()
+    write_models(model_initial, model_h_added)
 
   ph_h_added = model_h_added.get_hierarchy()
+  if not ph_initial.is_similar_hierarchy(other=ph_h_added):
+    write_models(model_initial, model_h_added)
   assert ph_initial.is_similar_hierarchy(other=ph_h_added)
 
   number_h_added = hd_sel_h_added.count(True)
