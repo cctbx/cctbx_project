@@ -208,7 +208,7 @@ def exercise_gruber_types():
   type_conditions = gruber_1973_table_1.get_type_conditions()
   for k in range(1, 29):
     tc = type_conditions[k]
-    for _ in range(10):
+    for _ in range(100):
       compare_reductions(ucgmx(random_gruber_matrix(tc)))
 
 def exercise_iteration_limit():
