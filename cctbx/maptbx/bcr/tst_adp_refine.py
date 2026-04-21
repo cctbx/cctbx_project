@@ -125,7 +125,7 @@ def run(resolution=2.0, table="wk1995"):
   for it in [1,]:
     x = xrs.extract_u_iso_or_u_equiv()
     lower = flex.double(x.size(), 0)
-    upper = flex.double(x.size(), 1) # 1 = 78.95683520871486
+    upper = flex.double(x.size(), 3) # 1 = 78.95683520871486
     calculator = mmtbx.refinement.real_space.adp.tg_vrm(
       vrm               = vrm,
       map_data          = map_data,

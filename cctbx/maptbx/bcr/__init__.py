@@ -17,6 +17,68 @@ def load_table(element=None, table=None, file_name=None):
   with gzip.open(file_name, "rt", encoding="utf-8") as f:
     return json.load(f)
 
+class manager(object):
+  def __init__(self,
+               xray_structure,
+               RadFact = 2.0,
+               RadAdd  = 0.5):
+    self.xray_structure = xray_structure
+    self.RadFact        = RadFact
+    self.RadAdd         = RadAdd
+    self.arrays = {}
+    element_types = list(
+      self.xray_structure.scattering_type_registry().type_count_dict().keys())
+    table = xray_structure.get_scattering_table()
+    for e in element_types:
+      d = load_table(element=e, table=table)
+      self.arrays[e] = d
+
+
+  def get_scatterers(self, resolution = None, resolutions = None):
+    if resolutions is None:
+      resolutions = [resolution,] * self.xray_structure.scatterers().size()
+    RadMu   = self.RadFact + self.RadAdd
+    ScaleB = 1.0 / (8.0 * math.pi**2)
+    kscale = math.pi**1.5
+    result = []
+    shown = []
+    for r, scatterer in zip(resolutions, self.xray_structure.scatterers()):
+      e = scatterer.scattering_type.strip().upper()
+      entry = self.arrays[e]
+      keys = [float(x) for x in entry.keys()]
+      key = str(min(keys, key=lambda x: abs(x - r)))
+      vals = entry[key]
+      R = flex.double(vals['R'])
+      B = flex.double(vals['B'])
+      C = flex.double(vals['C'])
+      sel = R < (r*RadMu)
+      R = R.select(sel)
+      B = B.select(sel)
+      C = C.select(sel)
+      #if show_BCR and not e in shown:
+      #  shown.append(e)
+      #  print("    %s: R B C"%e)
+      #  for r,b,c in zip(R,B,C):
+      #    print("%15.9f %15.9f %15.9f"%(r,b,c))
+
+      mu    = R
+      nu    = B * ScaleB
+      kappa = C
+      musq  = mu * mu
+      kappi = kappa/kscale
+
+      bcr_scatterer = ext.bcr_scatterer(
+        scatterer = scatterer,
+        radius    = r*self.RadFact, # atomic radius = atomic_resolution * RadFact
+        resolution=r,
+        mu        = mu,
+        kappa     = kappa,
+        nu        = nu,
+        musq      = musq,
+        kappi     = kappi)
+      result.append(bcr_scatterer)
+    return result
+
 def scatterers(xray_structure,
                resolution  = None,
                resolutions = None,
@@ -25,16 +87,17 @@ def scatterers(xray_structure,
   table = xray_structure.get_scattering_table()
   assert table in ["electron", "wk1995"]
   assert [resolution, resolutions].count(None)==1
-  unit_cell = xray_structure.unit_cell()
   if resolutions is None:
     resolutions = [resolution,] * xray_structure.scatterers().size()
   RadMu   = RadFact + RadAdd
+
   arrays = {}
   element_types = list(
     xray_structure.scattering_type_registry().type_count_dict().keys())
   for e in element_types:
     d = load_table(element=e, table=table)
     arrays[e] = d
+
   ScaleB = 1.0 / (8.0 * math.pi**2)
   kscale = math.pi**1.5
   result = []

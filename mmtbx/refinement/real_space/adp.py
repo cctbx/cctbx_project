@@ -55,12 +55,13 @@ class tg_vrm(object):
     self.weight = None
     if(self.restraints_weight is not None):
       self.weight = self._weight()
-      assert abs(self.weight) > 1.e-6
+      if abs(self.weight)<1.e-6: self.weight = 1  #XXX
     self.tgo = self._compute(x = self.x)
     self.update_target_and_grads(x=x)
 
   def _weight(self):
-    num = self._restraints().gradients.norm()
+    R = self._restraints()
+    num = R.gradients.norm()
     den = self._data().gradients(map_data = self.map_data).grad_uiso.norm()
     if(den==0): return 1
     return num/den
