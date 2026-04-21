@@ -3,7 +3,6 @@
 
 #include <cctbx/uctbx.h>
 #include <cctbx/error.h>
-#include <cctbx/sgtbx/change_of_basis_op.h>
 #include <scitbx/array_family/tiny.h>
 #include <cmath>
 #include <string>
@@ -40,9 +39,6 @@ namespace cctbx { namespace uctbx {
   class niggli_reduction
   {
     public:
-      //! Default constructor. Data members are not initialized.
-      niggli_reduction() {}
-
       /*! \brief Execute the Niggli reduction algorithm.
 
           \param unit_cell      Input cell to reduce.
@@ -189,21 +185,6 @@ namespace cctbx { namespace uctbx {
           if (eps_gt(a_ + a_ + e_ + e_ + f_, FloatType(0))) return false;
         }
         return true;
-      }
-
-      /*! \brief Change-of-basis operator that transforms the input cell to
-          the reduced Niggli cell.
-
-          Uses sgtbx types.  The translator is constructed from the accumulated
-          integer matrix r_inv_ in the same way as reduction_base.change_of_basis_op().
-       */
-      sgtbx::change_of_basis_op
-      change_of_basis_op() const
-      {
-        // r_inv_ is scitbx::mat3<int>; rot_mx takes (mat3<int>, denominator).
-        sgtbx::rot_mx rot(r_inv_, 1);
-        sgtbx::rt_mx rt(rot);
-        return sgtbx::change_of_basis_op(rt).inverse();
       }
 
     protected:

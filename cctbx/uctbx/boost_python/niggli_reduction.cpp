@@ -1,7 +1,6 @@
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/return_value_policy.hpp>
-#include <boost/python/copy_const_reference.hpp>
+#include <boost/python/tuple.hpp>
 #include <boost/python/exception_translator.hpp>
 #include <boost/python/import.hpp>
 #include <boost/python/str.hpp>
@@ -15,11 +14,24 @@ namespace {
   {
     typedef niggli_reduction<> w_t;
 
+    // Return r_inv as scitbx.matrix.sqr directly, bypassing the intermediate
+    // boost.python mat3<int>->tuple conversion and the Python inject_into layer.
+    // scitbx.matrix is guaranteed to be in sys.modules by the time any
+    // niggli_reduction object is constructed (cctbx.array_family.flex imports
+    // it transitively before cctbx_uctbx_ext is initialised).
+    static boost::python::object
+    r_inv_as_sqr(w_t const& self)
+    {
+      namespace bp = boost::python;
+      scitbx::mat3<int> const& m = self.r_inv();
+      return bp::import("scitbx.matrix").attr("sqr")(
+        bp::make_tuple(m[0],m[1],m[2],m[3],m[4],m[5],m[6],m[7],m[8]));
+    }
+
     static void
     wrap()
     {
       using namespace boost::python;
-      typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("niggli_reduction", no_init)
         .def(init<unit_cell const&, double, std::size_t>((
           arg("unit_cell"),
@@ -29,7 +41,7 @@ namespace {
         .def("as_niggli_matrix",         &w_t::as_niggli_matrix)
         .def("as_sym_mat3",              &w_t::as_sym_mat3)
         .def("as_unit_cell",             &w_t::as_unit_cell)
-        .def("r_inv",                    &w_t::r_inv, ccr())
+        .def("r_inv",                    r_inv_as_sqr)
         .def("n_iterations",             &w_t::n_iterations)
         .def("iteration_limit",          &w_t::iteration_limit)
         .def("type",                     &w_t::type)

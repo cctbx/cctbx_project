@@ -57,6 +57,7 @@ tst_list = [
   "$D/adp_restraints/tst_ext.py",
   "$D/regression/tst_math_module.py",
   ["$D/regression/tst_krivy_gruber.py", "--Quick"],
+  "$D/regression/tst_niggli_reduction_cpp.py",
   "$D/regression/tst_sgtbx.py",
   "$D/regression/tst_itvb_2001_table_a1427_hall_symbols.py",
   "$D/regression/tst_space_group_type_tidy_cb_op_t.py",

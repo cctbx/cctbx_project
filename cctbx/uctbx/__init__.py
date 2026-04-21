@@ -300,17 +300,11 @@ class _():
 
   debye_waller_factor = debye_waller_factors
 
-# Wrap niggli_reduction.r_inv() so it returns a matrix.sqr (with .elems),
-# matching the interface of the Python krivy_gruber_1976.reduction.r_inv().
-# The C++ binding converts scitbx::mat3<int> to a plain Python tuple; we
-# rewrap it here so callers can use .elems and pass it to change_basis().
-_cpp_niggli_reduction_r_inv = ext.niggli_reduction.r_inv
-
+# r_inv() is exposed directly from C++ and returns scitbx.matrix.sqr.
+# change_of_basis_op() uses a deferred sgtbx import because cctbx_sgtbx_ext
+# is not guaranteed to be loaded by a plain "from cctbx import uctbx".
 @bp.inject_into(ext.niggli_reduction)
 class _():
-  def r_inv(self):
-    return matrix.sqr(_cpp_niggli_reduction_r_inv(self))
-
   def change_of_basis_op(self):
     from cctbx import sgtbx
     return sgtbx.change_of_basis_op(
