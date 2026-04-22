@@ -186,8 +186,6 @@ class restraints_scale_manager(object):
     self.hd_selection  = model.get_xray_structure().hd_selection()
     self.total_bonds   = 0
     self.total_angles  = 0
-    self.scaled_bonds  = 0
-    self.scaled_angles = 0
     self.uc            = model.crystal_symmetry().unit_cell()
     g                  = self.model.get_restraints_manager().geometry
     # BONDS
@@ -209,7 +207,7 @@ class restraints_scale_manager(object):
       self.current_angle_weights.append(proxy.weight)
     self.scale_counts_angles = flex.int(self.original_angle_weights.size(), 0)
 
-  def scale_bonds(self, factor, cutoff, second_factor = 2):
+  def scale_bonds(self, factor, cutoff, second_factor=2, one_time_scale=None):
     g = self.model.get_restraints_manager().geometry
     bond_proxies_simple, asu = g.get_all_bond_proxies(
       sites_cart = self.model.get_sites_cart())
@@ -220,18 +218,24 @@ class restraints_scale_manager(object):
       dist_ideal = proxy.distance_ideal
       dist_model = self.uc.distance(sites_frac[i_seq], sites_frac[j_seq])
       delta = abs(dist_ideal-dist_model)
+      ots = (one_time_scale[i_seq]+one_time_scale[j_seq])/2
+      consensus_scale = 1
+      if ots < 0.6: cutoff = 0.02
+      else:         cutoff = 0.03
       if delta > cutoff:
-        self.scaled_bonds+=1
         if self.scale_counts_bonds[k]==0:
-          proxy.weight = proxy.weight * factor
+          consensus_scale = factor
+          self.scale_counts_bonds[k] += 1
         else:
-          proxy.weight = proxy.weight * second_factor
-        self.scale_counts_bonds[k] += 1
-      if delta < 0.01:
-        proxy.weight = proxy.weight / second_factor
+          consensus_scale = second_factor
+      if delta < 0.01 and ots > 0.6:
+        consensus_scale = 1./second_factor**2
+      if delta < 0.01 and ots <= 0.6:
+        consensus_scale = 1./1.5
+      proxy.weight = proxy.weight * consensus_scale
       self.current_bond_weights[k] = proxy.weight
 
-  def scale_angles(self, factor, cutoff, second_factor = 2):
+  def scale_angles(self, factor, cutoff, second_factor=2, one_time_scale=None):
     g = self.model.get_restraints_manager().geometry
     sites_cart = self.model.get_sites_cart()
     for k, proxy in enumerate(g.angle_proxies):
@@ -240,15 +244,21 @@ class restraints_scale_manager(object):
       sites = (sites_cart[i_seq], sites_cart[j_seq], sites_cart[k_seq])
       angle_model = geometry.angle(sites).angle_model
       delta = abs(angle_ideal-angle_model)
+      ots = (one_time_scale[i_seq]+one_time_scale[j_seq])/2
+      consensus_scale = 1
+      if ots < 0.6: cutoff = 3.0
+      else:         cutoff = 5.0
       if delta > cutoff:
-        self.scaled_angles+=1
         if self.scale_counts_angles[k]==0:
-          proxy.weight = proxy.weight * factor
+          consensus_scale = factor
+          self.scale_counts_angles[k] += 1
         else:
-          proxy.weight = proxy.weight * second_factor
-        self.scale_counts_angles[k] += 1
-      if delta < 1.5:
-        proxy.weight = proxy.weight / second_factor
+          consensus_scale = second_factor
+      if delta < 1.5 and ots > 0.6:
+        consensus_scale = 1./second_factor**2
+      if delta < 1.5 and ots <= 0.6:
+        consensus_scale = 1./1.5
+      proxy.weight = proxy.weight * consensus_scale
       self.current_angle_weights[k] = proxy.weight
 
   def unscale(self):
@@ -2203,11 +2213,17 @@ class manager(object):
     # Order of calling this matters!
     self.link_records_in_pdb_format = link_record_output(acp)
 
-  def scale_restraints(self, factor, bond_cutoff, angle_cutoff):
+  def scale_restraints(self, factor, bond_cutoff, angle_cutoff, one_time_scale):
     if self.rsm is None: return
     if abs(factor)<1.e-9: return
-    self.rsm.scale_bonds( factor = factor, cutoff=bond_cutoff)
-    self.rsm.scale_angles(factor = factor, cutoff=angle_cutoff)
+    self.rsm.scale_bonds(
+      factor         = factor,
+      cutoff         = bond_cutoff,
+      one_time_scale = one_time_scale)
+    self.rsm.scale_angles(
+      factor         = factor,
+      cutoff         = angle_cutoff,
+      one_time_scale = one_time_scale)
 
   def unscale_restraints(self):
     if self.rsm is None: return
