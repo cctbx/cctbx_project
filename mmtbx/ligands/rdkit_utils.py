@@ -521,11 +521,22 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
         new_bond_highlights[bond.GetIdx()] = new_atom_highlights[a1]
 
   # 8. Draw
-  # Scale canvas with molecule complexity so large ligands stay legible.
+  # Base size scales with molecule complexity; canvas then stretches to match
+  # the molecule's 2D aspect ratio so long/thin ligands don't end up drawn
+  # in a narrow strip of a square canvas.
   n_heavy = mol_viz.GetNumHeavyAtoms()
-  if   n_heavy > 40: width = height = 800
-  elif n_heavy > 20: width = height = 650
-  else:              width = height = 500
+  if   n_heavy > 40: base_px = 800
+  elif n_heavy > 20: base_px = 650
+  else:              base_px = 500
+  conf = mol_viz.GetConformer()
+  xs = [conf.GetAtomPosition(i).x for i in range(mol_viz.GetNumAtoms())]
+  ys = [conf.GetAtomPosition(i).y for i in range(mol_viz.GetNumAtoms())]
+  bb_w = max(xs) - min(xs) if xs else 1.0
+  bb_h = max(ys) - min(ys) if ys else 1.0
+  aspect = max(0.33, min(3.0, (bb_w + 1e-6) / (bb_h + 1e-6)))
+  import math
+  width  = max(400, int(base_px * math.sqrt(aspect)))
+  height = max(400, int(base_px / math.sqrt(aspect)))
   drawer = rdMolDraw2D.MolDraw2DCairo(width, height)
 
   opts = drawer.drawOptions()
