@@ -227,6 +227,24 @@ def get_cctbx_isel_for_rigid_components(atom_group,
 
 # ------------------------------------------------------------------------------
 
+# Common non-metal atomic numbers (metalloids Si/As/Te included so they
+# aren't treated as metals). Any atom outside this set is treated as a
+# metal for fragmentation purposes: coordination-style bonds to metals
+# aren't rotatable in the crystallographic sense, so we don't cut across
+# them (e.g. Fe-O in an oFo ligand must stay a single rigid fragment).
+_NON_METAL_Z = frozenset([
+  1, 2,               # H, He
+  5, 6, 7, 8, 9, 10,  # B, C, N, O, F, Ne
+  14, 15, 16, 17, 18, # Si, P, S, Cl, Ar
+  33, 34, 35, 36,     # As, Se, Br, Kr
+  52, 53, 54,         # Te, I, Xe
+  85, 86,             # At, Rn
+])
+
+def _bond_touches_metal(bond):
+  return (bond.GetBeginAtom().GetAtomicNum() not in _NON_METAL_Z
+       or bond.GetEndAtom().GetAtomicNum()   not in _NON_METAL_Z)
+
 def get_rigid_components(mol,
                          rdkit_to_cctbx,
                          filter_lone_linkers=True,
@@ -253,6 +271,7 @@ def get_rigid_components(mol,
     if bond is None: continue
 
     if is_amide_bond(mol, bond): continue
+    if _bond_touches_metal(bond): continue
 
     bidx = bond.GetIdx()
 
