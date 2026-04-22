@@ -200,8 +200,8 @@ class experiment_filter(worker):
       new_experiments = bootstrapped_expts
       new_reflections = flex.reflection_table.concat(bootstrapped_refls)
       total_duplications = comm.reduce(duplications, MPI.SUM, 0)
-    if self.mpi_helper.rank == 0:
-      self.logger.main_log("Total duplications during bootstrapping: %d"%total_duplications)
+      if self.mpi_helper.rank == 0:
+        self.logger.main_log("Total duplications during bootstrapping: %d"%total_duplications)
 
     self.logger.log_step_time("FILTER_EXPERIMENTS", True)
 
