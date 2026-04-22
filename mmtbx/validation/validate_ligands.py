@@ -80,7 +80,7 @@ class manager(list):
       ligand_results.append(lr)
       for attr, func in lr._result_attrs.items():
         funcs.append([lr, func])
-        inputs.append(func)
+        inputs.append((sel_str, lr.altloc, func))
 
     results = []
     t0=time.time()
@@ -88,6 +88,7 @@ class manager(list):
       _run,
       funcs,
       self.params.nproc,
+      keep_input_order=True,
       )):
       results.append([args, res, err_str])
       if self.params.nproc>1:

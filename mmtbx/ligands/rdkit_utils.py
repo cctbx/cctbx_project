@@ -458,6 +458,17 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
     (0.4, 0.8, 0.8), (0.8, 0.8, 0.8)
   ]
 
+  # Per-fragment color: traffic-light by CC when provided, else rainbow palette.
+  frag_colors = {}
+  for i in range(len(rdkit_frags)):
+    if frag_ccs is not None and i < len(frag_ccs):
+      cc = frag_ccs[i]
+      if   cc >= 0.8: frag_colors[i] = (0.6, 1.0, 0.6)
+      elif cc >= 0.6: frag_colors[i] = (1.0, 1.0, 0.6)
+      else:           frag_colors[i] = (1.0, 0.6, 0.6)
+    else:
+      frag_colors[i] = palette[i % len(palette)]
+
   # Map: Original_Index -> Fragment_ID
   old_idx_to_frag_id = {}
   for frag_idx, frag_atoms in enumerate(rdkit_frags):
@@ -475,7 +486,7 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
 
       if old_idx in old_idx_to_frag_id:
         frag_id = old_idx_to_frag_id[old_idx]
-        color = palette[frag_id % len(palette)]
+        color = frag_colors[frag_id]
 
         new_idx = atom.GetIdx()
         new_atom_highlights[new_idx] = color
@@ -491,12 +502,16 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
         new_bond_highlights[bond.GetIdx()] = new_atom_highlights[a1]
 
   # 8. Draw
-  width, height = 500, 500
+  # Scale canvas with molecule complexity so large ligands stay legible.
+  n_heavy = mol_viz.GetNumHeavyAtoms()
+  if   n_heavy > 40: width = height = 800
+  elif n_heavy > 20: width = height = 650
+  else:              width = height = 500
   drawer = rdMolDraw2D.MolDraw2DCairo(width, height)
 
   opts = drawer.drawOptions()
   opts.fillHighlights = True
-  opts.padding = 0.05  # tight fit; CC label strip is added via PIL below
+  opts.padding = 0.05  # tight fit; badges + legend are added via PIL below
 
   drawer.DrawMolecule(
     mol_viz,
@@ -506,11 +521,10 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
     highlightBondColors=new_bond_highlights
   )
 
-  # Collect canvas-space (pixel) x positions for each fragment centroid and
-  # the pixel y of the lowest atom, so labels sit just below the molecule.
-  # GetDrawCoords must be called after DrawMolecule but before FinishDrawing.
-  frag_pixel_xs = {}
-  max_atom_canvas_y = 0
+  # Collect pixel-space centroids of each fragment so we can place numbered
+  # badges. GetDrawCoords must be called after DrawMolecule but before
+  # FinishDrawing.
+  frag_pixel_centroids = {}
   if frag_ccs is not None:
     from rdkit.Geometry import rdGeometry
     conf = mol_viz.GetConformer()
@@ -518,63 +532,147 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
     for new_idx, frag_id in new_idx_to_frag_id.items():
       pos = conf.GetAtomPosition(new_idx)
       frag_mol_pts.setdefault(frag_id, []).append((pos.x, pos.y))
-      canvas_pt = drawer.GetDrawCoords(rdGeometry.Point2D(pos.x, pos.y))
-      if canvas_pt.y > max_atom_canvas_y:
-        max_atom_canvas_y = canvas_pt.y
     for frag_id, pts in frag_mol_pts.items():
       cx = sum(x for x, y in pts) / len(pts)
       cy = sum(y for x, y in pts) / len(pts)
       canvas_pt = drawer.GetDrawCoords(rdGeometry.Point2D(cx, cy))
-      frag_pixel_xs[frag_id] = canvas_pt.x
+      frag_pixel_centroids[frag_id] = (canvas_pt.x, canvas_pt.y)
 
   drawer.FinishDrawing()
   png_bytes = drawer.GetDrawingText()
 
-  # 9. Composite CC labels onto the PNG using PIL so text is always horizontal.
-  #    Row 1: "RSCC:" left-aligned, placed just below the lowest atom.
-  #    Row 2: per-fragment CC values centred at each fragment's centroid x.
-  #    The canvas is extended only if the text would otherwise be clipped.
-  if frag_ccs is not None and frag_pixel_xs:
+  # 9. Composite numbered badges at each fragment centroid and a wrapped
+  #    legend below the molecule, so every CC stays linked to its fragment
+  #    regardless of molecule shape or fragment count.
+  if frag_ccs is not None and frag_pixel_centroids:
     try:
       from PIL import Image, ImageDraw as PILDraw, ImageFont
       import io as _io
-      font_size = 22
-      row_h = font_size + 6
-      # Extra pixels below the lowest atom to clear atom symbols and highlights
-      margin = 15
-      y_row1 = int(max_atom_canvas_y) + margin
-      y_row2 = y_row1 + row_h
-      needed_h = y_row2 + row_h // 2 + 4
-      canvas_h = max(height, needed_h)
+
+      legend_font_size = 20
+      badge_font_size = 16
+      badge_r = 13
+      badge_text_gap = 6
+      try:
+        legend_font = ImageFont.load_default(size=legend_font_size)
+      except TypeError:
+        legend_font = ImageFont.load_default()
+      try:
+        badge_font = ImageFont.load_default(size=badge_font_size)
+      except TypeError:
+        badge_font = ImageFont.load_default()
+
+      def cc_text_rgb(cc):
+        if cc >= 0.8: return (40, 140, 40)
+        if cc >= 0.6: return (180, 110, 0)
+        return (180, 40, 40)
+
+      tmp_draw = PILDraw.Draw(Image.new('RGBA', (1, 1)))
+      def text_size(s, font):
+        try:
+          bb = tmp_draw.textbbox((0, 0), s, font=font)
+          return bb[2] - bb[0], bb[3] - bb[1]
+        except AttributeError:
+          return tmp_draw.textsize(s, font=font)
+
+      def draw_badge(d, cx, cy, n):
+        d.ellipse(
+          (cx - badge_r, cy - badge_r, cx + badge_r, cy + badge_r),
+          fill=(255, 255, 255, 235), outline=(40, 40, 40), width=2)
+        try:
+          d.text((cx, cy), str(n), fill=(0, 0, 0),
+                 font=badge_font, anchor='mm')
+        except TypeError:
+          tw, th = text_size(str(n), badge_font)
+          d.text((cx - tw // 2, cy - th // 2), str(n),
+                 fill=(0, 0, 0), font=badge_font)
+
+      # Number fragments 1..N left-to-right by centroid x.
+      sorted_frag_ids = sorted(
+        frag_pixel_centroids,
+        key=lambda fid: frag_pixel_centroids[fid][0])
+      frag_id_to_n = {fid: i + 1 for i, fid in enumerate(sorted_frag_ids)}
+
+      # Legend entries in the same left-to-right order.
+      entries = []
+      for fid in sorted_frag_ids:
+        if fid >= len(frag_ccs):
+          continue
+        cc = frag_ccs[fid]
+        cc_str = '%.2f' % cc
+        cc_w, _ = text_size(cc_str, legend_font)
+        entry_w = 2 * badge_r + badge_text_gap + cc_w
+        entries.append((frag_id_to_n[fid], cc_str, cc_text_rgb(cc), entry_w))
+
+      prefix = 'RSCC  '
+      sep = '   '
+      prefix_w, _ = text_size(prefix, legend_font)
+      sep_w, _ = text_size(sep, legend_font)
+      row_h = max(legend_font_size, 2 * badge_r) + 6
+
+      # Wrap entries into rows.
+      max_row_w = width - 20
+      rows = []
+      cur_row = []
+      cur_w = prefix_w
+      for i, (_, _, _, entry_w) in enumerate(entries):
+        add_w = entry_w + (sep_w if cur_row else 0)
+        if cur_row and cur_w + add_w > max_row_w:
+          rows.append(cur_row)
+          cur_row = [i]
+          cur_w = entry_w
+        else:
+          cur_row.append(i)
+          cur_w += add_w
+      if cur_row: rows.append(cur_row)
+
+      legend_pad_top = 8
+      legend_pad_bot = 6
+      legend_h = legend_pad_top + row_h * len(rows) + legend_pad_bot
+      canvas_h = height + legend_h
 
       img = Image.open(_io.BytesIO(png_bytes)).convert('RGBA')
       new_img = Image.new('RGBA', (width, canvas_h), (255, 255, 255, 255))
       new_img.paste(img, (0, 0))
       draw = PILDraw.Draw(new_img)
-      try:
-        font = ImageFont.load_default(size=font_size)
-      except TypeError:
-        font = ImageFont.load_default()
-      # Row 1: "RSCC:" at the left margin
-      try:
-        draw.text((6, y_row1), 'RSCC:', fill=(80, 80, 80), font=font, anchor='lt')
-      except TypeError:
-        draw.text((6, y_row1), 'RSCC:', fill=(80, 80, 80), font=font)
-      # Row 2: CC values centred at each fragment's centroid x
-      for frag_id in sorted(frag_pixel_xs):
-        if frag_id >= len(frag_ccs):
+
+      # Badges on the molecule.
+      for fid, (cx, cy) in frag_pixel_centroids.items():
+        if fid >= len(frag_ccs):
           continue
-        label = '%.2f' % frag_ccs[frag_id]
-        px = int(frag_pixel_xs[frag_id])
-        try:
-          draw.text((px, y_row2), label, fill=(0, 0, 0), font=font, anchor='mt')
-        except TypeError:
-          draw.text((px, y_row2), label, fill=(0, 0, 0), font=font)
+        draw_badge(draw, int(cx), int(cy), frag_id_to_n[fid])
+
+      # Legend: same badge graphic + tier-coloured CC value.
+      y_row = height + legend_pad_top
+      for row_i, row in enumerate(rows):
+        x = 10
+        row_mid = y_row + row_h // 2
+        if row_i == 0:
+          try:
+            draw.text((x, row_mid), prefix, fill=(80, 80, 80),
+                      font=legend_font, anchor='lm')
+          except TypeError:
+            draw.text((x, y_row), prefix, fill=(80, 80, 80), font=legend_font)
+          x += prefix_w
+        for j, idx in enumerate(row):
+          n, cc_str, color, entry_w = entries[idx]
+          if j > 0:
+            x += sep_w
+          draw_badge(draw, x + badge_r, row_mid, n)
+          tx = x + 2 * badge_r + badge_text_gap
+          try:
+            draw.text((tx, row_mid), cc_str, fill=color,
+                      font=legend_font, anchor='lm')
+          except TypeError:
+            draw.text((tx, y_row), cc_str, fill=color, font=legend_font)
+          x += entry_w
+        y_row += row_h
+
       out = _io.BytesIO()
       new_img.save(out, format='PNG')
       png_bytes = out.getvalue()
     except ImportError:
-      pass  # PIL not available; save without CC labels
+      pass  # PIL not available; save without annotations
 
   # 10. Save
   with open(filename, 'wb') as f:
