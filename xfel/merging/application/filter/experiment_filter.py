@@ -93,7 +93,7 @@ class experiment_filter(worker):
     filter_by_energy = 'energy' in self.params.filter.algorithm
     filter_by_bootstrap = 'bootstrap' in self.params.filter.algorithm
     # only unit_cell, n_obs, resolution, and energy algorithms are supported
-    if (not filter_by_unit_cell) and (not filter_by_n_obs) and (not filter_by_resolution) and (not filter_by_energy):
+    if (not filter_by_unit_cell) and (not filter_by_n_obs) and (not filter_by_resolution) and (not filter_by_energy) and not (filter_by_bootstrap):
       return experiments, reflections
     self.logger.log_step_time("FILTER_EXPERIMENTS")
 
