@@ -6,18 +6,10 @@ import re
 
 class file_clutter(object):
 
-  from_future_pat = re.compile(
-    '^ from [ ]+ __future__ ', re.VERBOSE)
-  from_future_import_division_pat = re.compile(
-    r'^ from [ ]+ __future__ [ ]+ import [ \w,]+ division', re.VERBOSE)
-  from_future_import_absolute_import_pat = re.compile(
-    r'^ from [ ]+ __future__ [ ]+ import [ \w,]+ absolute_import', re.VERBOSE)
-  from_future_import_print_function_pat = re.compile(
-    r'^ from [ ]+ __future__ [ ]+ import [ \w,]+ print_function', re.VERBOSE)
+  _from_future_pat = re.compile(r'^\s*from\s+__future__\s+import\b')
 
   def __init__(self, path, find_unused_imports=False,
-      find_bad_indentation=True, flag_absolute_import=False,
-      flag_print_function=False):
+      find_bad_indentation=True):
     self.path = path
     self.is_executable = os.access(path, os.X_OK)
     self.dos_format = False
@@ -26,11 +18,6 @@ class file_clutter(object):
     self.missing_eol = False
     self.n_bare_excepts = 0
     self.unused_imports = None
-    self.n_from_future_import_division = -1
-    self.flag_absolute_import = flag_absolute_import
-    self.n_from_future_import_absolute_import = -1
-    self.flag_print_function = flag_print_function
-    self.n_from_future_import_print_function = -1
     self.bad_indentation = None
     self.file_should_be_empty = False
 
@@ -53,21 +40,14 @@ class file_clutter(object):
         if (len(clean_line) == 0): self.n_trailing_empty_lines += 1
         else: self.n_trailing_empty_lines = 0
       if (path.endswith(".py")):
-        self.n_from_future_import_division = 0
-        self.n_from_future_import_absolute_import = 0
-        self.n_from_future_import_print_function = 0
         py_lines = bytes.splitlines()
         self.file_should_be_empty = True
         for line in py_lines:
-          if self.file_should_be_empty and line.strip() != '' and not self.from_future_pat.search(line):
-            self.file_should_be_empty = False
-          if self.from_future_import_division_pat.search(line):
-            self.n_from_future_import_division += 1
-          if self.from_future_import_absolute_import_pat.search(line):
-            self.n_from_future_import_absolute_import += 1
-          if self.from_future_import_print_function_pat.search(line):
-            self.n_from_future_import_print_function += 1
           ls = line.strip()
+          if (self.file_should_be_empty
+              and ls != ''
+              and not self._from_future_pat.search(line)):
+            self.file_should_be_empty = False
           if (    ls.startswith("except")
               and ls[6:].strip().startswith(":")
               and not ls.endswith(" # intentional")):
@@ -129,25 +109,7 @@ class file_clutter(object):
     if (self.has_unused_imports()):
       sapp("unused imports=%d" % len(self.unused_imports))
     if self.file_should_be_empty:
-      if self.n_from_future_import_division == 0 and self.n_from_future_import_absolute_import == 0 and \
-         self.n_from_future_import_print_function:
-        sapp("file is empty, should be 0 byte file")
-      else:
-        sapp("file contains only 'from __future__ import' and should be empty instead")
-    # elif self.n_from_future_import_division == 0:
-    #   sapp("missing 'from __future__ import division'")
-    elif self.n_from_future_import_division > 1:
-      sapp("more than one appearance of 'from __future__ import division'")
-    if self.flag_absolute_import and not self.file_should_be_empty:
-      if self.n_from_future_import_absolute_import == 0:
-        sapp("missing 'from __future__ import absolute_import'")
-      elif self.n_from_future_import_absolute_import > 1:
-        sapp("more than one appearance of 'from __future__ import absolute_import'")
-    if self.flag_print_function and not self.file_should_be_empty:
-      if self.n_from_future_import_print_function == 0:
-        sapp("missing 'from __future__ import print_function'")
-      elif self.n_from_future_import_print_function > 1:
-        sapp("more than one appearance of 'from __future__ import print_function'")
+      sapp("file contains only 'from __future__ import' and should be empty instead")
     if (self.bad_indentation is not None) and (flag_indentation):
       n_tab, n_space = self.bad_indentation
       sapp("non-standard indentation: %d space, %d tab" % (n_space, n_tab))
@@ -178,12 +140,11 @@ def is_text_file(file_name):
     if (name.endswith(extension)): return True
   return False
 
-def gather(paths, find_unused_imports=False, find_bad_indentation=False, flag_absolute_import=False, flag_print_function=False):
+def gather(paths, find_unused_imports=False, find_bad_indentation=False):
   clutter = []
   def capp():
     clutter.append(file_clutter(path, find_unused_imports,
-      find_bad_indentation=find_bad_indentation, flag_absolute_import=flag_absolute_import,
-      flag_print_function=flag_print_function))
+      find_bad_indentation=find_bad_indentation))
   for path in paths:
     if (not os.path.exists(path)):
       print("No such file or directory:", path, file=sys.stderr)
