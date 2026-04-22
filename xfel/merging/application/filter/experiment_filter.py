@@ -178,6 +178,7 @@ class experiment_filter(worker):
       bootstrapped_expts = ExperimentList()
       bootstrapped_refls = []
       counter = 0
+      root_ident = ""
       duplications = 0
       for i, expt_id in enumerate(bootstrapped_expt_ids):
         new_expt = new_experiments[expt_id]
@@ -189,9 +190,10 @@ class experiment_filter(worker):
         else:
           duplications += counter
           counter = 0
+          root_ident = new_expt.identifier
 
         # handle duplications by tagging the identifier with a counter
-        ident = new_expt.identifier + f"_{counter}"
+        ident = root_ident + f"_{counter}"
         new_expt.identifier = ident
         new_refls.experiment_identifiers()[expt_id] = ident
         bootstrapped_expts.append(new_expt)
