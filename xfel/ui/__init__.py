@@ -148,7 +148,6 @@ db {
 master_phil_scope = parse(master_phil_str + db_phil_str, process_includes=True)
 
 settings_dir = os.path.join(os.path.expanduser('~'), '.cctbx.xfel')
-settings_file = os.path.join(settings_dir, 'settings.phil')
 
 known_dials_dispatchers = {
   'cctbx.xfel.xtc_process': 'xfel.command_line.xtc_process',
@@ -167,6 +166,13 @@ def load_phil_scope_from_dispatcher(dispatcher):
   return phil_scope
 
 def load_cached_settings(scope=None, extract=True):
+  # Determine which settings file to use
+  settings_file = os.environ.get('CCTBX_XFEL_SETTINGS')
+  if settings_file is None:
+    settings_file = os.path.join(settings_dir, 'settings.phil')
+
+  print('Load settings from', settings_file)
+
   if scope is None:
     scope = master_phil_scope
   if os.path.exists(settings_file):
@@ -186,8 +192,14 @@ def load_cached_settings(scope=None, extract=True):
       return scope
 
 def save_cached_settings(params):
-  if not os.path.exists(settings_dir):
-    os.makedirs(settings_dir)
+  # Save to the file specified by environment or default
+  settings_file = os.environ.get('CCTBX_XFEL_SETTINGS')
+  if settings_file is None:
+    settings_file = os.path.join(settings_dir, 'settings.phil')
+
+  target_dir = os.path.dirname(settings_file)
+  if not os.path.exists(target_dir):
+    os.makedirs(target_dir)
 
   working_phil = master_phil_scope.format(python_object = params)
   diff_phil = master_phil_scope.fetch_diff(source = working_phil)

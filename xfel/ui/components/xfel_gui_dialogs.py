@@ -14,6 +14,7 @@ import os
 import wx
 from wx.lib.mixins.listctrl import TextEditMixin, getListCtrlSelection
 from wx.lib.scrolledpanel import ScrolledPanel
+from iotbx.phil import parse
 from xfel.ui.db.task import task_types
 import numpy as np
 
@@ -2102,7 +2103,7 @@ class RunBlockDialog(BaseDialog):
           elif item in ["extra_phil_str", "calib_dir", "dark_avg_path", "dark_stddev_path",
             "gain_map_path", "beamx", "beamy", "gain_mask_level", "untrusted_pixel_mask_path",
             "binning", "energy", "wavelength_offset", "spectrum_eV_per_pixel", "spectrum_eV_offset",
-            "comment", "config_str", "extra_format_str"]:
+            "comment", "extra_format_str"]:
             return None
           else:
             raise AttributeError(item)
@@ -2132,13 +2133,6 @@ class RunBlockDialog(BaseDialog):
 
     # Run block start / end points (choice widgets)
 
-    if self.is_lcls:
-      self.config_panel = wx.Panel(self)
-      config_box = wx.StaticBox(self.config_panel, label='Configuration')
-      self.config_sizer = wx.StaticBoxSizer(config_box)
-      self.config_panel.SetSizer(self.config_sizer)
-      self.config_panel.Hide()
-
     self.phil_panel = wx.Panel(self)
     phil_box = wx.StaticBox(self.phil_panel, label='Extra phil parameters')
     self.phil_sizer = wx.StaticBoxSizer(phil_box)
@@ -2155,18 +2149,6 @@ class RunBlockDialog(BaseDialog):
     self.runblock_panel = ScrolledPanel(self, size=(550, 225))
     self.runblock_sizer = wx.BoxSizer(wx.VERTICAL)
     self.runblock_panel.SetSizer(self.runblock_sizer)
-
-    if self.is_lcls:
-      # Configuration text ctrl (user can put in anything they want)
-      self.config = gctr.PHILBox(self.config_panel,
-                                 btn_import=True,
-                                 btn_import_label='Import Config',
-                                 btn_export=False,
-                                 btn_default=True,
-                                 btn_default_label='Default Config',
-                                 ctr_size=(-1, 100),
-                                 ctr_value=str(block.config_str))
-      self.config_sizer.Add(self.config, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Extra phil
     self.phil = gctr.PHILBox(self.phil_panel,
@@ -2304,7 +2286,6 @@ class RunBlockDialog(BaseDialog):
 
     self.main_sizer.Add(self.phil_panel, flag=wx.EXPAND | wx.ALL, border=10)
     if self.is_lcls:
-      self.main_sizer.Add(self.config_panel, flag=wx.EXPAND | wx.ALL, border=10)
       self.main_sizer.Add(self.format_panel, flag=wx.EXPAND | wx.ALL, border=10)
     self.runblock_box_sizer.Add(self.runblock_panel)
     self.main_sizer.Add(self.runblock_box_sizer, flag=wx.EXPAND | wx.ALL,
@@ -2325,7 +2306,6 @@ class RunBlockDialog(BaseDialog):
               id=self.untrusted_path.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
-
     self.fill_in_fields()
     self.configure_controls()
     self.Layout()
@@ -2338,21 +2318,6 @@ class RunBlockDialog(BaseDialog):
 
   def onSpecifyEnd(self, e):
     self.runblocks_end.Enable()
-
-  def onImportConfig(self, e):
-    cfg_dlg = wx.FileDialog(self,
-                            message="Load configuration file",
-                            defaultDir=os.curdir,
-                            defaultFile="*",
-                            wildcard="*",
-                            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
-                            )
-    if cfg_dlg.ShowModal() == wx.ID_OK:
-      config_file = cfg_dlg.GetPaths()[0]
-      with open(config_file, 'r') as cfg:
-        cfg_contents = cfg.read()
-      self.config.ctr.SetValue(cfg_contents)
-    cfg_dlg.Destroy()
 
   def onImportPhil(self, e):
     phil_dlg = wx.FileDialog(self,
@@ -2383,10 +2348,6 @@ class RunBlockDialog(BaseDialog):
         phil_contents = phil.read()
       self.format.ctr.SetValue(phil_contents)
     phil_dlg.Destroy()
-
-  def onDefaultConfig(self, e):
-    # TODO: Generate default config parameters (re-do based on pickle / CBF)
-    pass
 
   def onOK(self, e):
     try:
@@ -2439,7 +2400,6 @@ class RunBlockDialog(BaseDialog):
       rg_dict['wavelength_offset']=self.wavelength_offset.wavelength_offset.GetValue()
       rg_dict['binning']=self.bin_nrg_gain.binning.GetValue()
       rg_dict['detector_address']=self.address.ctr.GetValue()
-      rg_dict['config_str']=self.config.ctr.GetValue()
       rg_dict['extra_format_str']=self.format.ctr.GetValue()
       rg_dict['spectrum_eV_per_pixel']=self.spectrum_calibration.spectrum_eV_per_pixel.GetValue()
       rg_dict['spectrum_eV_offset']=self.spectrum_calibration.spectrum_eV_offset.GetValue()
@@ -2494,7 +2454,6 @@ class RunBlockDialog(BaseDialog):
       self.phil.ctr.SetValue(str(last.extra_phil_str))
       if self.is_lcls:
         self.address.ctr.SetValue(str(last.detector_address))
-        self.config.ctr.SetValue(str(last.config_str))
         self.format.ctr.SetValue(str(last.extra_format_str))
         self.beam_xyz.DetZ.SetValue(str(last.detz_parameter))
         self.beam_xyz.X.SetValue(str(last.beamx))
@@ -2675,7 +2634,7 @@ class TrialDialog(BaseDialog):
   def __init__(self, parent, db,
                new=True,
                trial=None,
-               label_style='bold',
+               label_style='normal',
                content_style='normal',
                *args, **kwargs):
 
@@ -2704,21 +2663,136 @@ class TrialDialog(BaseDialog):
     self.trial_info = gctr.TwoButtonCtrl(self,
                                          label='Trial number:',
                                          label_size=(100, -1),
-                                         label_style='bold',
+                                         label_style='normal',
                                          button1=True,
                                          button1_label='Import PHIL',
                                          button1_size=(120, -1),
                                          button2=True,
-                                         button2_label='Default PHIL',
+                                         button2_label='Edit PHIL' if new else 'Show PHIL',
                                          button2_size=(120, -1),
                                          value="{}".format(trial_number))
     self.trial_comment = gctr.TextButtonCtrl(self,
                                              label='Comment:',
                                              label_size=(100, -1),
-                                             label_style='bold',
+                                             label_style='normal',
                                              ghost_button=False)
 
-    self.phil_box = gctr.RichTextCtrl(self, style=wx.VSCROLL, size=(-1, 400))
+    self.overall_panel = wx.Panel(self)
+    overall_box = wx.StaticBox(self.overall_panel, label='Overall parameters')
+    self.overall_sizer = wx.StaticBoxSizer(overall_box)
+    self.overall_panel.SetSizer(self.overall_sizer)
+
+    self.chk_find_spots = wx.CheckBox(self.overall_panel,
+                                      label='Find spots')
+    self.chk_index = wx.CheckBox(self.overall_panel,
+                                 label='Index')
+    self.chk_integrate = wx.CheckBox(self.overall_panel,
+                                     label='Integrate')
+    self.min_spots = gctr.TextButtonCtrl(self.overall_panel,
+                                         label='Min spots',
+                                         label_size=(-1, -1),
+                                         label_style='normal',
+                                         ghost_button=False)
+    self.overall_ctrl_sizer = wx.FlexGridSizer(1, 4, 10, 20)
+    self.overall_ctrl_sizer.Add(self.chk_find_spots, flag=wx.ALL, border=10)
+    self.overall_ctrl_sizer.Add(self.chk_index, flag=wx.ALL, border=10)
+    self.overall_ctrl_sizer.Add(self.chk_integrate, flag=wx.ALL, border=10)
+    self.overall_ctrl_sizer.Add(self.min_spots, flag=wx.ALL, border=10)
+    self.overall_sizer.Add(self.overall_ctrl_sizer)
+
+    self.spotfinding_panel = wx.Panel(self)
+    spotfinding_box = wx.StaticBox(self.spotfinding_panel, label='Spotfinding parameters')
+    self.spotfinding_sizer = wx.StaticBoxSizer(spotfinding_box)
+    self.spotfinding_panel.SetSizer(self.spotfinding_sizer)
+
+    self.min_spot_size = gctr.TextButtonCtrl(self.spotfinding_panel,
+                                             label='Min spot size',
+                                             label_size=(-1, -1),
+                                             label_style='normal',
+                                             ghost_button=False)
+    self.max_spot_size = gctr.TextButtonCtrl(self.spotfinding_panel,
+                                             label='Max spot size',
+                                             label_size=(-1, -1),
+                                             label_style='normal',
+                                             ghost_button=False)
+    self.sigma_background = gctr.TextButtonCtrl(self.spotfinding_panel,
+                                               label='Sigma background',
+                                               label_size=(-1, -1),
+                                               label_style='normal',
+                                               ghost_button=False)
+    self.sigma_strong = gctr.TextButtonCtrl(self.spotfinding_panel,
+                                            label='Sigma strong',
+                                            label_size=(-1, -1),
+                                            label_style='normal',
+                                            ghost_button=False)
+    self.global_threshold = gctr.TextButtonCtrl(self.spotfinding_panel,
+                                                label='Global threshold',
+                                                label_size=(-1, -1),
+                                                label_style='normal',
+                                                ghost_button=False)
+    self.gain = gctr.TextButtonCtrl(self.spotfinding_panel,
+                                    label='Gain',
+                                    label_size=(-1, -1),
+                                    label_style='normal',
+                                    ghost_button=False)
+    self.kernel_size = gctr.TextButtonCtrl(self.spotfinding_panel,
+                                          label='Kernel size',
+                                          label_size=(-1, -1),
+                                          label_style='normal',
+                                          ghost_button=False)
+    self.threshold_algorithm = gctr.ChoiceCtrl(self.spotfinding_panel,
+                                               label='Threshold algorithm:',
+                                               label_size=(200, -1),
+                                               label_style='normal',
+                                               ctrl_size=(200, -1),
+                                               choices=['dispersion', 'dispersion_extended', 'radial_profile'])
+
+    self.spotfinding_ctrl_sizer = wx.FlexGridSizer(4, 2, 10, 10)
+    self.spotfinding_ctrl_sizer.Add(self.min_spot_size, flag=wx.ALL, border=10)
+    self.spotfinding_ctrl_sizer.Add(self.max_spot_size, flag=wx.ALL, border=10)
+    self.spotfinding_ctrl_sizer.Add(self.sigma_background, flag=wx.ALL, border=10)
+    self.spotfinding_ctrl_sizer.Add(self.sigma_strong, flag=wx.ALL, border=10)
+    self.spotfinding_ctrl_sizer.Add(self.global_threshold, flag=wx.ALL, border=10)
+    self.spotfinding_ctrl_sizer.Add(self.gain, flag=wx.ALL, border=10)
+    self.spotfinding_ctrl_sizer.Add(self.kernel_size, flag=wx.ALL, border=10)
+    self.spotfinding_ctrl_sizer.Add(self.threshold_algorithm, flag=wx.ALL, border=10)
+    self.spotfinding_sizer.Add(self.spotfinding_ctrl_sizer)
+
+    self.indexing_panel = wx.Panel(self)
+    indexing_box = wx.StaticBox(self.indexing_panel, label='Indexing parameters')
+    self.indexing_sizer = wx.StaticBoxSizer(indexing_box)
+    self.indexing_panel.SetSizer(self.indexing_sizer)
+    self.indexing_ctrl_sizer = wx.FlexGridSizer(4, 2, 10, 10)
+
+    self.unit_cell = gctr.TextButtonCtrl(self.indexing_panel,
+                                         label='Unit cell:',
+                                         label_size=(100, -1),
+                                         label_style='normal',
+                                         ghost_button=False)
+    self.space_group = gctr.TextButtonCtrl(self.indexing_panel,
+                                           label='Space group:',
+                                           label_size=(150, -1),
+                                           label_style='normal',
+                                           ghost_button=False)
+    self.d_min_indexing = gctr.TextButtonCtrl(self.indexing_panel,
+                                              label='d_min indexing:',
+                                              label_size=(150, -1),
+                                              label_style='normal',
+                                              ghost_button=False)
+    self.max_lattices = gctr.TextButtonCtrl(self.indexing_panel,
+                                            label='Max lattices:',
+                                            label_size=(150, -1),
+                                            label_style='normal',
+                                            ghost_button=False)
+    self.chk_subsampling = wx.CheckBox(self.indexing_panel,
+                                       label='Reflection subsampling')
+
+    self.indexing_ctrl_sizer.Add(self.unit_cell, flag=wx.ALL, border=10)
+    self.indexing_ctrl_sizer.Add(self.space_group, flag=wx.ALL, border=10)
+    self.indexing_ctrl_sizer.Add(self.d_min_indexing, flag=wx.ALL, border=10)
+    self.indexing_ctrl_sizer.Add(self.max_lattices, flag=wx.ALL, border=10)
+    self.indexing_ctrl_sizer.Add(self.chk_subsampling, flag=wx.ALL, border=10)
+    self.indexing_sizer.Add(self.indexing_ctrl_sizer)
 
     choices = [('None', None)] + \
               [('Trial {}'.format(t.trial), t.trial) for t in self.all_trials]
@@ -2733,7 +2807,7 @@ class TrialDialog(BaseDialog):
                                   name='trial_throttle',
                                   label='Percent events processed:',
                                   label_size=(180, -1),
-                                  label_style='bold',
+                                  label_style='normal',
                                   ctrl_size=(150, -1),
                                   ctrl_value='100',
                                   ctrl_min=1,
@@ -2742,7 +2816,7 @@ class TrialDialog(BaseDialog):
                                   name='trial_num_bins',
                                   label='Number of bins:',
                                   label_size=(180, -1),
-                                  label_style='bold',
+                                  label_style='normal',
                                   ctrl_size=(150, -1),
                                   ctrl_value='20',
                                   ctrl_min=1,
@@ -2753,7 +2827,7 @@ class TrialDialog(BaseDialog):
                                label='High res. limit ({}):'
                                ''.format(u'\N{ANGSTROM SIGN}'.encode('utf-8')),
                                label_size=(180, -1),
-                               label_style='bold',
+                               label_style='normal',
                                ctrl_size=(150, -1),
                                ctrl_value=str(d_min),
                                ctrl_min=0.1,
@@ -2775,9 +2849,9 @@ class TrialDialog(BaseDialog):
     self.main_sizer.Add(self.trial_comment,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)
-    self.main_sizer.Add(self.phil_box, 1,
-                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
+    self.main_sizer.Add(self.overall_panel, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.spotfinding_panel, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.indexing_panel, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.option_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
 
@@ -2814,10 +2888,8 @@ class TrialDialog(BaseDialog):
 
       # Disable controls for viewing
       self.trial_info.button1.Disable()
-      self.trial_info.button2.Disable()
       self.trial_info.ctr.SetEditable(False)
       self.copy_runblocks.Hide()
-      self.phil_box.SetEditable(False)
       self.throttle.ctr.Disable()
       self.num_bins.ctr.Disable()
       self.d_min.ctr.Disable()
@@ -2826,13 +2898,126 @@ class TrialDialog(BaseDialog):
       target_phil_str = ""
     if process_percent is None:
       process_percent = 100
-    self.phil_box.SetValue(target_phil_str)
+
+    dispatcher = self.db.params.dispatcher
+    from xfel.ui import load_phil_scope_from_dispatcher
+    self.phil_scope = load_phil_scope_from_dispatcher(dispatcher)
+    self.working_phil_scope = self.phil_scope.fetch(parse(target_phil_str))
+
+    self.sync_controls()
+
     self.throttle.ctr.SetValue(process_percent)
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onBrowse, self.trial_info.button1)
-    self.Bind(wx.EVT_BUTTON, self.onDefault, self.trial_info.button2)
+    self.Bind(wx.EVT_BUTTON, self.onEdit, self.trial_info.button2)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+  def sync_controls(self):
+    def set_value(control, value):
+      # use for parameters that could be None
+      if value is None:
+        control.SetValue("")
+      else:
+        control.SetValue(str(value))
+
+    params = self.working_phil_scope.extract()
+    self.chk_find_spots.SetValue(params.dispatch.find_spots)
+    self.chk_index.SetValue(params.dispatch.index)
+    self.chk_integrate.SetValue(params.dispatch.integrate)
+    set_value(self.min_spots.ctr, params.dispatch.hit_finder.minimum_number_of_reflections)
+
+    self.max_spot_size.ctr.SetValue(str(params.spotfinder.filter.max_spot_size))
+    self.threshold_algorithm.ctr.SetSelection(self.threshold_algorithm.ctr.GetStrings().index(params.spotfinder.threshold.algorithm))
+    self.kernel_size.ctr.SetValue(" ".join(str(k) for k in params.spotfinder.threshold.dispersion.kernel_size))
+
+    set_value(self.gain.ctr, params.spotfinder.threshold.dispersion.gain)
+    set_value(self.min_spot_size.ctr, params.spotfinder.filter.min_spot_size)
+    set_value(self.sigma_background.ctr, params.spotfinder.threshold.dispersion.sigma_background)
+    set_value(self.sigma_strong.ctr, params.spotfinder.threshold.dispersion.sigma_strong)
+    set_value(self.global_threshold.ctr, params.spotfinder.threshold.dispersion.global_threshold)
+
+    if params.indexing.known_symmetry.unit_cell:
+      self.unit_cell.ctr.SetValue(str(params.indexing.known_symmetry.unit_cell).strip('()'))
+    else:
+      self.unit_cell.ctr.SetValue("")
+    if params.indexing.known_symmetry.space_group:
+      self.space_group.ctr.SetValue(str(params.indexing.known_symmetry.space_group))
+    else:
+      self.space_group.ctr.SetValue("")
+
+    set_value(self.d_min_indexing.ctr, params.indexing.refinement_protocol.d_min_start)
+    set_value(self.max_lattices.ctr, params.indexing.multiple_lattice_search.max_lattices)
+
+    self.chk_subsampling.SetValue(params.indexing.stills.reflection_subsampling.enable)
+
+  def sync_phil_scope(self):
+    def str_or_none(control):
+      return control.GetValue() if control.GetValue() else "None"
+
+    trial_phil = f"""
+    dispatch {{
+      find_spots = {self.chk_find_spots.GetValue()}
+      index = {self.chk_index.GetValue()}
+      integrate = {self.chk_integrate.GetValue()}
+      hit_finder {{
+        minimum_number_of_reflections = {str_or_none(self.min_spots.ctr)}
+      }}
+    }}
+    spotfinder {{
+      filter {{
+        min_spot_size = {str_or_none(self.min_spot_size.ctr)}
+        max_spot_size = {str_or_none(self.max_spot_size.ctr)}
+      }}
+      threshold {{
+        algorithm = {self.threshold_algorithm.ctr.GetString(self.threshold_algorithm.ctr.GetSelection())}
+        dispersion {{
+          gain = {str_or_none(self.gain.ctr)}
+          kernel_size = {self.kernel_size.ctr.GetValue()}
+          sigma_background = {str_or_none(self.sigma_background.ctr)}
+          sigma_strong = {str_or_none(self.sigma_strong.ctr)}
+          global_threshold = {str_or_none(self.global_threshold.ctr)}
+        }}
+      }}
+    }}
+    indexing {{
+      known_symmetry {{
+        unit_cell = {str_or_none(self.unit_cell.ctr)}
+        space_group = {str_or_none(self.space_group.ctr)}
+      }}
+      refinement_protocol {{
+        d_min_start = {str_or_none(self.d_min_indexing.ctr)}
+      }}
+      multiple_lattice_search {{
+        max_lattices = {str_or_none(self.max_lattices.ctr)}
+      }}
+      stills {{
+        reflection_subsampling {{
+          enable = {self.chk_subsampling.GetValue()}
+        }}
+      }}
+    }}
+    """
+    params, msg = self.parse_trial_phil(trial_phil)
+
+    if msg is None:
+      unit_cell = params.indexing.known_symmetry.unit_cell
+      space_group = params.indexing.known_symmetry.space_group
+      if unit_cell and space_group:
+        if space_group.group().is_compatible_unit_cell(unit_cell, absolute_angle_tolerance=0.1):
+          return True
+        else:
+          msg = "Unit cell is incompatible with space group"
+      else:
+        return True
+
+    msg += '\nFix the parameters and try again'
+    msgdlg = wx.MessageDialog(self,
+                              message=msg,
+                              caption='Warning',
+                              style=wx.OK |  wx.ICON_EXCLAMATION)
+    msgdlg.ShowModal()
+    return False
 
   def onBrowse(self, e):
     ''' Open dialog for selecting PHIL file '''
@@ -2848,48 +3033,63 @@ class TrialDialog(BaseDialog):
       target_file = load_dlg.GetPaths()[0]
       with open(target_file, 'r') as phil_file:
         phil_file_contents = phil_file.read()
-      self.phil_box.SetValue(phil_file_contents)
-    load_dlg.Destroy()
+      _, msg = self.parse_trial_phil(phil_file_contents)
 
-  def onDefault(self, e):
-    # TODO: Generate default PHIL parameters
-    pass
-
-  def onOK(self, e):
-    if self.new:
-      target_phil_str = self.phil_box.GetValue()
-
-      # Parameter validation
-      dispatcher = self.db.params.dispatcher
-      from xfel.ui import load_phil_scope_from_dispatcher
-      phil_scope = load_phil_scope_from_dispatcher(dispatcher)
-
-      from iotbx.phil import parse
-      msg = None
-      try:
-        trial_params, unused = phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
-      except Exception as e:
-        msg = '\nParameters incompatible with %s dispatcher:\n%s\n' % (dispatcher, str(e))
+      if msg is None:
+        self.sync_controls()
       else:
-        if len(unused) > 0:
-          msg = [str(item) for item in unused]
-          msg = '\n'.join(['  %s' % line for line in msg])
-          msg = 'The following definitions were not recognized:\n%s\n' % msg
-
-        try:
-          params = trial_params.extract()
-        except Exception as e:
-          if msg is None: msg = ""
-          msg += '\nOne or more values could not be parsed:\n%s\n' % str(e)
-
-      if msg is not None:
-        msg += '\nFix the parameters and press OK again'
+        msg += '\nFix the parameters in the file and reload'
         msgdlg = wx.MessageDialog(self,
                                   message=msg,
                                   caption='Warning',
                                   style=wx.OK |  wx.ICON_EXCLAMATION)
         msgdlg.ShowModal()
+
+    load_dlg.Destroy()
+
+  def onEdit(self, e):
+    if self.new and not self.sync_phil_scope():
+      return
+    edit_phil_dlg = EditPhilDialog(self,
+                                   db=self.db,
+                                   read_only=not self.new,
+                                   phil_scope=self.phil_scope,
+                                   working_phil_scope=self.working_phil_scope)
+    edit_phil_dlg.Fit()
+
+    if edit_phil_dlg.ShowModal() == wx.ID_OK:
+      _, msg = self.parse_trial_phil(edit_phil_dlg.phil_box.GetValue())
+      if msg is None:
+        self.sync_controls()
+
+  def parse_trial_phil(self, target_phil_str):
+    # Parameter validation
+    params = None
+    msg = None
+    try:
+      working_phil_scope, unused = self.working_phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
+    except Exception as e:
+      msg = '\nParameters incompatible with %s dispatcher:\n%s\n' % (self.db.params.dispatcher, str(e))
+    else:
+      if len(unused) > 0:
+        msg = [str(item) for item in unused]
+        msg = '\n'.join(['  %s' % line for line in msg])
+        msg = 'The following definitions were not recognized:\n%s\n' % msg
+
+      try:
+        params = working_phil_scope.extract()
+      except Exception as e:
+        if msg is None: msg = ""
+        msg += '\nOne or more values could not be parsed:\n%s\n' % str(e)
+      else:
+        self.working_phil_scope = working_phil_scope
+    return params, msg
+
+  def onOK(self, e):
+    if self.new:
+      if not self.sync_phil_scope():
         return
+      target_phil_str = self.phil_scope.fetch_diff(self.working_phil_scope).as_str()
 
       comment = self.trial_comment.ctr.GetValue()
       process_percent = int(self.throttle.ctr.GetValue())
@@ -2923,6 +3123,92 @@ class TrialDialog(BaseDialog):
     else:
       if self.trial.comment != self.trial_comment.ctr.GetValue():
         self.trial.comment = self.trial_comment.ctr.GetValue()
+    e.Skip()
+
+class EditPhilDialog(BaseDialog):
+  def __init__(self, parent, db,
+               read_only=False,
+               phil_scope=None,
+               working_phil_scope=None,
+               label_style='normal',
+               content_style='normal',
+               *args, **kwargs):
+
+    self.db = db
+    self.read_only = read_only
+    self.phil_scope = phil_scope
+    self.working_phil_scope = working_phil_scope
+
+    BaseDialog.__init__(self, parent,
+                        label_style=label_style,
+                        content_style=content_style,
+                        size=(600, 600),
+                        *args, **kwargs)
+
+    self.phil_box = gctr.RichTextCtrl(self, style=wx.VSCROLL, size=(400, 400))
+
+    self.main_sizer.Add(self.phil_box, 1,
+                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
+                        border=10)
+
+    # Dialog control
+    if self.read_only:
+      dialog_box = self.CreateSeparatedButtonSizer(wx.OK)
+    else:
+      dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+
+    self.main_sizer.Add(dialog_box,
+                        flag=wx.EXPAND | wx.ALL,
+                        border=10)
+
+    self.Layout()
+
+    self.SetTitle('Settings')
+    if self.read_only:
+      # Disable controls for viewing
+      self.phil_box.SetEditable(False)
+
+    self.phil_box.SetValue(phil_scope.fetch_diff(working_phil_scope).as_str())
+
+    # Bindings
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+  def parse_trial_phil(self, target_phil_str):
+    # Parameter validation
+    params = None
+    msg = None
+    try:
+      working_phil_scope, unused = self.working_phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
+    except Exception as e:
+      msg = '\nParameters incompatible with %s dispatcher:\n%s\n' % (self.db.params.dispatcher, str(e))
+    else:
+      if len(unused) > 0:
+        msg = [str(item) for item in unused]
+        msg = '\n'.join(['  %s' % line for line in msg])
+        msg = 'The following definitions were not recognized:\n%s\n' % msg
+
+      try:
+        params = working_phil_scope.extract()
+      except Exception as e:
+        if msg is None: msg = ""
+        msg += '\nOne or more values could not be parsed:\n%s\n' % str(e)
+      else:
+        self.working_phil_scope = working_phil_scope
+    return params, msg
+
+  def onOK(self, e):
+    if not self.read_only:
+      target_phil_str = self.phil_box.GetValue()
+      _, msg = self.parse_trial_phil(target_phil_str)
+
+      if msg is not None:
+        msg += '\nFix the parameters and press OK again'
+        msgdlg = wx.MessageDialog(self,
+                                  message=msg,
+                                  caption='Warning',
+                                  style=wx.OK |  wx.ICON_EXCLAMATION)
+        msgdlg.ShowModal()
+        return
     e.Skip()
 
 class DatasetDialog(BaseDialog):
@@ -3124,7 +3410,6 @@ class TaskDialog(BaseDialog):
 
     # Parameter validation
     from xfel.ui.db.task import Task
-    from iotbx.phil import parse
     dispatcher, phil_scope = Task.get_phil_scope(self.db, task_type)
 
     if phil_scope is not None:
