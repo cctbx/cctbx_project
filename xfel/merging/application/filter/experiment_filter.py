@@ -157,10 +157,10 @@ class experiment_filter(worker):
       self.logger.main_log("Total reflections rejected because of rejected experiments %d"%total_reflections_removed)
 
     if filter_by_bootstrap:
-      self.logger.main_log("Performing random bootstrap method, randomly selecting with replacement")
       # keep track of which rank has which experiment by creating a list of tuples (rank, expt_id)
       rank_experiment_tuples = comm.gather(tuple((self.mpi_helper.rank, i) for i in range(len_new_experiments)), root=0)
       if self.mpi_helper.rank == 0:
+        self.logger.main_log("Performing random bootstrap method, randomly selecting with replacement")
         # unpack into single list
         rank_experiment_tuples = [t for sublist in rank_experiment_tuples for t in sublist]
         total_experiments = len(rank_experiment_tuples)
