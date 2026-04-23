@@ -6,6 +6,9 @@
 #include <scitbx/array_family/tiny.h>
 #include <cmath>
 #include <string>
+#include <cctbx/sgtbx/change_of_basis_op.h>
+#include <cctbx/sgtbx/rt_mx.h>
+#include <cctbx/sgtbx/rot_mx.h>
 
 namespace cctbx { namespace uctbx {
 
@@ -156,6 +159,14 @@ namespace cctbx { namespace uctbx {
           if (eps_gt(std::abs(e_), std::abs(f_))) return false;
         }
         return true;
+      }
+
+      //! Change-of-basis operator that transforms the input cell to the Niggli cell.
+      sgtbx::change_of_basis_op
+      change_of_basis_op() const
+      {
+        return sgtbx::change_of_basis_op(
+          sgtbx::rt_mx(sgtbx::rot_mx(r_inv_, 1))).inverse();
       }
 
       //! True if Buerger cell and 7 Niggli boundary uniqueness conditions.

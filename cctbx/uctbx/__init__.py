@@ -300,15 +300,6 @@ class _():
 
   debye_waller_factor = debye_waller_factors
 
-# r_inv() is exposed directly from C++ and returns scitbx.matrix.sqr.
-# change_of_basis_op() uses a deferred sgtbx import because cctbx_sgtbx_ext
-# is not guaranteed to be loaded by a plain "from cctbx import uctbx".
-@bp.inject_into(ext.niggli_reduction)
-class _():
-  def change_of_basis_op(self):
-    from cctbx import sgtbx
-    return sgtbx.change_of_basis_op(
-      sgtbx.rt_mx(sgtbx.rot_mx(self.r_inv().elems, 1))).inverse()
 
 def non_crystallographic_buffer_layer(
       sites_cart_min,

@@ -20,6 +20,14 @@ namespace {
     // niggli_reduction object is constructed (cctbx.array_family.flex imports
     // it transitively before cctbx_uctbx_ext is initialised).
     static boost::python::object
+    change_of_basis_op_as_py(w_t const& self)
+    {
+      namespace bp = boost::python;
+      bp::import("cctbx.sgtbx");
+      return bp::object(self.change_of_basis_op());
+    }
+
+    static boost::python::object
     r_inv_as_sqr(w_t const& self)
     {
       namespace bp = boost::python;
@@ -41,6 +49,7 @@ namespace {
         .def("as_niggli_matrix",         &w_t::as_niggli_matrix)
         .def("as_sym_mat3",              &w_t::as_sym_mat3)
         .def("as_unit_cell",             &w_t::as_unit_cell)
+        .def("change_of_basis_op",       change_of_basis_op_as_py)
         .def("r_inv",                    r_inv_as_sqr)
         .def("n_iterations",             &w_t::n_iterations)
         .def("iteration_limit",          &w_t::iteration_limit)
