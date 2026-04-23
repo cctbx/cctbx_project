@@ -19,18 +19,46 @@ from dials.array_family import flex
 from dials.util.options import ArgumentParser
 from dxtbx.model.experiment_list import ExperimentList
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 from matplotlib.ticker import FuncFormatter
 import numpy as np
 import sys
 
 phil_str = """
 mp {
-  method = *serial mpi multiprocessing
+  method = *multiprocessing mpi
     .type = choice
-    .help = Parallelization method
+    .help = Parallelization method. When method=multiprocessing and nproc=1, runs serially.
   nproc = 1
     .type = int
-    .help = Number of processes for multiprocessing method
+    .help = Number of processes. nproc=1 (default) runs serially with no pool overhead.
+}
+plot {
+  method = *histogram scatter
+    .type = choice
+    .help = Plotting method: 2D histogram (default) or scatter plot
+  d_min = None
+    .type = float
+    .help = Low-resolution cutoff in Angstroms (largest d-spacing shown). Controls left x-axis limit.
+  d_max = None
+    .type = float
+    .help = High-resolution cutoff in Angstroms (smallest d-spacing shown). Controls right x-axis limit.
+  scatter {
+    spotsize = 0.5
+      .type = float
+      .help = Marker size for scatter plot points (matplotlib s parameter)
+    alpha = 0.5
+      .type = float
+      .help = Transparency of scatter plot points (0=transparent, 1=opaque)
+  }
+  histogram {
+    n_bins_radial = 100
+      .type = int
+      .help = Number of bins along the x-axis (1/d, radial direction)
+    n_bins_azimuthal = 100
+      .type = int
+      .help = Number of bins along the y-axis (azimuthal angle direction)
+  }
 }
 """
 
@@ -117,7 +145,7 @@ def extract_panel_data(experiments, reflections, params=None):
 
     Returns a dict ``panel_id -> {'d': list/array, 'azi': list/array}``.
     """
-    if params is None or params.mp.method == 'serial':
+    if params is None or (params.mp.method == 'multiprocessing' and params.mp.nproc == 1):
         return _extract_panel_data_serial(experiments, reflections)
     elif params.mp.method == 'mpi':
         return _extract_panel_data_mpi(experiments, reflections)
@@ -184,31 +212,73 @@ def _extract_panel_data_mp(experiments, reflections, nproc):
     return merge_panel_data(all_results)
 
 
-def plot_panel_data(panel_data):
+def plot_panel_data(panel_data, params=None):
     """Create the cake plot.
 
     ``panel_data`` is the dict returned by ``extract_panel_data``.
     The figure is displayed interactively.
     """
-    cmap = plt.get_cmap('tab20')
+    plot_params = params.plot if params is not None else None
+    method = plot_params.method if plot_params is not None else 'histogram'
+    d_min = plot_params.d_min if plot_params is not None else None
+    d_max = plot_params.d_max if plot_params is not None else None
+
     fig, ax = plt.subplots(figsize=(6, 3))
-    for i, (panel_id, data) in enumerate(sorted(panel_data.items())):
-        d_arr = np.array(data['d'])
-        azi_arr = np.array(data['azi'])
-        mask = d_arr > 0
-        if not mask.any():
-            continue
-        x = 1.0 / d_arr[mask]  # plotted values: 1/d (1/Å)
-        y = azi_arr[mask]
-        ax.scatter(x, y, s=0.5, alpha=0.5, color=cmap(i % 20), label=f'Panel {panel_id}')
-    ax.set_ylabel('Azimuthal Angle (deg)')
-    ax.set_xlabel('Resolution (Å)')
-    # Format x‑axis to show resolution instead of 1/d
+
     def resolution_formatter(x, pos):
         if x == 0:
             return '-'
         return f"{1/x:.2f}"
+
+    if method == 'histogram':
+        # Combine all panels into a single 2D histogram
+        all_d = np.concatenate([np.array(data['d']) for data in panel_data.values()])
+        all_azi = np.concatenate([np.array(data['azi']) for data in panel_data.values()])
+        mask = all_d > 0
+        if d_min is not None:
+            mask &= all_d <= d_min
+        if d_max is not None:
+            mask &= all_d >= d_max
+        x = 1.0 / all_d[mask]
+        y = all_azi[mask]
+        n_bins_r = plot_params.histogram.n_bins_radial if plot_params is not None else 100
+        n_bins_a = plot_params.histogram.n_bins_azimuthal if plot_params is not None else 100
+        cmap = plt.get_cmap('binary').copy()
+        h = ax.hist2d(x, y, bins=[n_bins_r, n_bins_a], cmap=cmap, norm=LogNorm(vmin=1))
+        fig.colorbar(h[3], ax=ax, label='Counts')
+    else:
+        # Scatter mode: per-panel coloring
+        cmap = plt.get_cmap('tab20')
+        spotsize = plot_params.scatter.spotsize if plot_params is not None else 0.5
+        alpha = plot_params.scatter.alpha if plot_params is not None else 0.5
+        for i, (panel_id, data) in enumerate(sorted(panel_data.items())):
+            d_arr = np.array(data['d'])
+            azi_arr = np.array(data['azi'])
+            mask = d_arr > 0
+            if d_min is not None:
+                mask &= d_arr <= d_min
+            if d_max is not None:
+                mask &= d_arr >= d_max
+            if not mask.any():
+                continue
+            x = 1.0 / d_arr[mask]
+            y = azi_arr[mask]
+            ax.scatter(x, y, s=spotsize, alpha=alpha, color=cmap(i % 20), label=f'Panel {panel_id}')
+
+    ax.set_ylabel('Azimuthal Angle (deg)')
+    ax.set_xlabel('Resolution (Å)')
     ax.xaxis.set_major_formatter(FuncFormatter(resolution_formatter))
+
+    # Apply resolution limits: d_min (low-res) → left x-limit, d_max (high-res) → right x-limit
+    xlim_left = 1.0 / d_min if d_min is not None else None
+    xlim_right = 1.0 / d_max if d_max is not None else None
+    if xlim_left is not None or xlim_right is not None:
+        current = ax.get_xlim()
+        ax.set_xlim(
+            xlim_left if xlim_left is not None else current[0],
+            xlim_right if xlim_right is not None else current[1],
+        )
+
     fig.tight_layout()
     plt.show()
 
@@ -273,7 +343,7 @@ def run(args=None):
 
     panel_data = extract_panel_data(experiments, reflections, params)
     if is_rank0 and panel_data is not None:
-        plot_panel_data(panel_data)
+        plot_panel_data(panel_data, params)
 
 if __name__ == '__main__':
     run()
