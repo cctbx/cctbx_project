@@ -272,7 +272,12 @@ class reflection_filter(worker):
       intensity_counts_rank, intensity_counts, op=self.mpi_helper.MPI.SUM, root=0
       )
     if self.mpi_helper.rank == 0:
-      binned_mean = intensity_summation / intensity_counts
+      with np.errstate(invalid='ignore', divide='ignore'):
+        binned_mean = np.where(
+          intensity_counts > 0,
+          intensity_summation / intensity_counts,
+          np.nan
+        )
     else:
       binned_mean = np.zeros(n_bins)
     self.mpi_helper.comm.Bcast(binned_mean, root=0)
@@ -284,6 +289,8 @@ class reflection_filter(worker):
         q2_rank >= q2_bins[bin_index],
         q2_rank < q2_bins[bin_index + 1]
         )
+      if np.isnan(binned_mean[bin_index]):
+        continue
       intensity_normalized_rank[indices] = intensity_rank[indices] / binned_mean[bin_index]
     reflections['intensity_normalized'] = flex.double(intensity_normalized_rank)
 
@@ -304,6 +311,18 @@ class reflection_filter(worker):
       q2_rank_bin = q2_rank[indices]
 
       bin_sizes = self.mpi_helper.comm.gather(q2_rank_bin.size, root=0)
+
+      if self.mpi_helper.rank == 0:
+        total_bin_size = intensity_counts[bin_index]
+      else:
+        total_bin_size = None
+      total_bin_size = self.mpi_helper.comm.bcast(total_bin_size, root=0)
+      if total_bin_size == 0:
+        if self.mpi_helper.rank == 0:
+          lower_tail.append(np.zeros((0, 2)))
+          upper_tail.append(np.zeros((0, 2)))
+        continue
+
       if self.mpi_helper.rank == 0:
         q2_bin = np.zeros(intensity_counts[bin_index])
         intensity_normalized_bin = np.zeros(intensity_counts[bin_index])
