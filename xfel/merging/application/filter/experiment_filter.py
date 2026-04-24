@@ -175,6 +175,7 @@ class experiment_filter(worker):
       else:
         experiment_ids_by_rank = None
       bootstrapped_expt_ids = list(sorted(self.mpi_helper.comm.scatter(experiment_ids_by_rank, root=0)))
+      #self.logger.log('Experiment ids after bootstrapping: %s'%', '.join([str(i) for i in bootstrapped_expt_ids]))
       bootstrapped_expts = ExperimentList()
       bootstrapped_refls = []
       counter = 0
