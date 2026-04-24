@@ -889,6 +889,7 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
                     rot_outliers, rama_result, cb_result,
                     restraints_result, keep_hydrogens,
                     omega_result=None, rna_puckers_result=None,
+                    suite_result=None,
                     cablam_result=None,
                     probe_dots_kin=None,
                     ss_bonds=None, sites_cart=None,
@@ -910,6 +911,7 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
     keep_hydrogens: whether to keep hydrogens for probe dots
     omega_result: omegalyze result object, or None (computed on-the-fly if None)
     rna_puckers_result: rna_puckers result object, or None
+    suite_result: suitealyze result object, or None
     cablam_result: cablamalyze result object, or None
     probe_dots_kin: pre-computed probe dots kinemage string, or None.
       If provided, this is used instead of calling make_probe_dots().
@@ -963,6 +965,11 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
             pdb_hierarchy=hierarchy)
         validated_chains.append(chain.id)
       counter += 1
+  if suite_result is not None:
+    # as_kinemage_markup() returns a non-newline-terminated block; add the
+    # trailing newline so the following section's @subgroup starts on its own
+    # line (otherwise it is glued to the last suite point on RNA models).
+    kin_out += suite_result.as_kinemage_markup() + "\n"
   if omega_result is not None:
     kin_out += omega_result.as_kinemage()
   else:
@@ -1019,6 +1026,7 @@ def build_kinemage_from_model(
     restraints_result=None,
     omega_result=None,
     rna_puckers_result=None,
+    suite_result=None,
     cablam_result=None,
     ss_annotation=None,
     probe_dots_kin=None,
@@ -1037,8 +1045,9 @@ def build_kinemage_from_model(
       attached via .process(make_restraints=True).
     pdbID: structure identifier string.
     rot_outliers, rama_result, cb_result, restraints_result, omega_result,
-      rna_puckers_result, cablam_result: pre-run validator results. Any that
-      are None will be run internally with outliers_only=True.
+      rna_puckers_result, suite_result, cablam_result: pre-run validator
+      results. Any that are None will be run internally with
+      outliers_only=True.
     ss_annotation: iotbx.pdb.secondary_structure.annotation, or None to
       compute one via mmtbx.secondary_structure.manager (search_method=from_ca).
     probe_dots_kin: pre-computed probe dots kinemage string. If None,
@@ -1089,6 +1098,9 @@ def build_kinemage_from_model(
         out=null_out(), quiet=True)
   if rna_puckers_result is None and has_rna:
     rna_puckers_result = rna_validate.rna_puckers(pdb_hierarchy=hierarchy)
+  if suite_result is None and has_rna:
+    from mmtbx.suitename.suitealyze import suitealyze
+    suite_result = suitealyze(pdb_hierarchy=hierarchy, outliers_only=True)
   if restraints_result is None:
     from mmtbx.validation.restraints import combined as _restraints_combined
     restraints_result = _restraints_combined(
@@ -1132,6 +1144,7 @@ def build_kinemage_from_model(
       ss_annotation=ss_annotation,
       omega_result=omega_result,
       rna_puckers_result=rna_puckers_result,
+      suite_result=suite_result,
       cablam_result=cablam_result,
       probe_dots_kin=probe_dots_kin,
       include_cablam_wheels=include_cablam_wheels,
@@ -1165,6 +1178,12 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False,
                 for chain in model.chains())
   if has_rna:
     rna_puckers_result = rna_validate.rna_puckers(pdb_hierarchy=hierarchy)
+
+  # Suite outliers (only if RNA is present)
+  suite_result = None
+  if has_rna:
+    from mmtbx.suitename.suitealyze import suitealyze
+    suite_result = suitealyze(pdb_hierarchy=hierarchy, outliers_only=True)
 
   # CaBLAM
   from mmtbx.validation.cablam import cablamalyze
@@ -1222,6 +1241,7 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False,
     keep_hydrogens=keep_hydrogens,
     omega_result=omega,
     rna_puckers_result=rna_puckers_result,
+    suite_result=suite_result,
     cablam_result=cablam_result,
     ss_bonds=ss_bonds,
     sites_cart=sites_cart,
@@ -1337,8 +1357,10 @@ def export_molprobity_result_as_kinemage(
   bond_proxies = pair_proxies.bond_proxies
   quick_bond_hash = _build_bond_hash(bond_proxies, i_seq_name_hash)
   rna_puckers_result = None
+  suite_result = None
   if hasattr(result, 'rna') and result.rna is not None:
     rna_puckers_result = result.rna.puckers
+    suite_result = result.rna.suites
   omega_result = None
   if hasattr(result, 'omegalyze'):
     omega_result = result.omegalyze
@@ -1355,6 +1377,7 @@ def export_molprobity_result_as_kinemage(
     keep_hydrogens=keep_hydrogens,
     omega_result=omega_result,
     rna_puckers_result=rna_puckers_result,
+    suite_result=suite_result,
     cablam_result=cablam_result,
     ss_bonds=ss_bonds,
     sites_cart=sites_cart,
