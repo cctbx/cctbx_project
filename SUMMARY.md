@@ -59,3 +59,9 @@ Add `build_kinemage_from_model()` high-level helper in `mmtbx/kinemage/validatio
 
 ## 2026-04-16
 Add `include_cablam_wheels` and `plain_coils` toggle parameters to kinemage output. Cablam wheels (purple/magenta peptide-plane score wedges) are now off by default in `_build_kinemage`; gate the wheel rendering in `cablamalyze.as_kinemage(include_wheels=...)`. `plain_coils` suppresses the rear deadblack coil halo. Both flags threaded through all entry points (`build_kinemage_from_model`, `make_multikin`, `export_molprobity_result_as_kinemage`). Add toggle tests.
+
+## 2026-04-24
+Pass `restraint_objects` from parent model manager to sub-models in `make_probe_dots_from_model` so probe2 gets correct bond topology for CCD-restrained residues (e.g. AS).
+
+## 2026-04-24
+Add suitealyze RNA suite outlier markup to kinemage output. Thread `suite_result` through `_build_kinemage`, `build_kinemage_from_model`, `make_multikin`, and `export_molprobity_result_as_kinemage`.
