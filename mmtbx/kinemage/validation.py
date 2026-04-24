@@ -361,12 +361,15 @@ def make_probe_dots_from_model(model_manager):
     mdc = m.detached_copy()
     r.append_model(mdc)
 
-    # Build a model manager for this sub-model
+    # Build a model manager for this sub-model, preserving restraint objects
+    # (e.g. CCD restraints for element-stub-shadowed residues like AS)
+    # so that probe2 gets correct bond topology.
     sub_model = mmtbx.model.manager(
       model_input=None,
       pdb_hierarchy=r,
       stop_for_unknowns=False,
       crystal_symmetry=model_manager.crystal_symmetry(),
+      restraint_objects=model_manager.get_restraint_objects(),
       log=null_out())
 
     # Run probe2 in kinemage output mode
