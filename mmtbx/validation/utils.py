@@ -136,6 +136,135 @@ def molprobity_score(clashscore, rota_out, rama_fav):
     return -1 # FIXME prevents crashing on RNA and None in inputs
   return mpscore
 
+from typing import Dict, Any, Optional
+
+def calculate_overall_residue_quality_score(
+    residue_data: Dict[str, Any],
+    weights: Optional[Dict[str, float]] = None
+) -> Optional[float]:
+    """
+    Calculates a penalty score for a single residue based on validation outliers.
+
+    The score starts at 0 (no issues) and increases with each outlier found.
+    More severe outliers contribute larger penalties. The score is the sum of
+    all applicable tiered penalties.
+
+    Args:
+        residue_data (Dict[str, Any]): A dictionary containing all the extracted
+                                         validation metrics for a single residue.
+        weights: Unused, kept for API compatibility.
+
+    Returns:
+        Optional[float]: The penalty score (0 = no issues, higher = worse),
+                         or None if no applicable metrics.
+    """
+
+    penalty = 0.0
+    has_any_metric = False
+
+    # --- Helper to safely get data ---
+    def get_data(key, default=None):
+        return residue_data.get(key, default)
+
+    # --- 1. Steric Clash Penalty ---
+    num_bad_clashes = get_data('num_bad_clashes_res', 0)
+    if num_bad_clashes > 0:
+        has_any_metric = True
+        worst_overlap = get_data('worst_clash_overlap', 0.0)
+        # Tier based on worst overlap magnitude (values are negative)
+        abs_overlap = abs(worst_overlap) if worst_overlap else 0.0
+        if abs_overlap > 0.7:
+            penalty += 3  # Severe clash
+        elif abs_overlap > 0.5:
+            penalty += 2  # Moderate clash
+        else:
+            penalty += 1  # Minor clash (0.4-0.5 range)
+        # Additional clashes beyond the first
+        if num_bad_clashes > 1:
+            penalty += (num_bad_clashes - 1)
+
+    # --- 2. Ramachandran Penalty ---
+    if get_data('ramalyze_type') not in ['not_applicable', 'not_evaluated']:
+        has_any_metric = True
+        if get_data('ramalyze_category') == 'outlier':
+            penalty += 3
+
+    # --- 3. Rotamer Penalty ---
+    if get_data('rotalyze_category') not in ['not_evaluated', None]:
+        has_any_metric = True
+        if get_data('rotalyze_category') == 'outlier':
+            penalty += 2
+
+    # --- 4. C-beta Deviation Penalty ---
+    if not get_data('is_glycine', False):
+        has_any_metric = True
+        if get_data('is_cbeta_outlier'):
+            deviation = get_data('cbeta_deviation', 0.0) or 0.0
+            if deviation > 0.5:
+                penalty += 2  # Severe distortion
+            else:
+                penalty += 1  # Standard outlier (>0.25)
+
+    # --- 5. CaBLAM Penalty ---
+    cablam_type = get_data('cablam_outlier_type')
+    if cablam_type not in ['not_evaluated', None]:
+        has_any_metric = True
+        if cablam_type == 'outlier':
+            penalty += 2
+        elif cablam_type == 'ca_geom_outlier':
+            penalty += 2
+        elif cablam_type == 'disfavored':
+            penalty += 1
+
+    # --- 6. Omega Angle Penalty ---
+    omega_type = get_data('omega_type')
+    if omega_type not in ['not_applicable', 'not_evaluated', None]:
+        has_any_metric = True
+        if omega_type == 'twisted':
+            penalty += 3
+        elif omega_type == 'cis' and not get_data('is_proline'):
+            penalty += 3  # Cis non-proline
+
+    # --- 7. Bond Length Penalty ---
+    num_bond_outliers = get_data('num_bond_outliers_res', 0)
+    if num_bond_outliers > 0:
+        has_any_metric = True
+        if num_bond_outliers >= 2:
+            penalty += 2
+        else:
+            penalty += 1
+
+    # --- 8. Bond Angle Penalty ---
+    num_angle_outliers = get_data('num_angle_outliers_res', 0)
+    if num_angle_outliers > 0:
+        has_any_metric = True
+        if num_angle_outliers >= 2:
+            penalty += 2
+        else:
+            penalty += 1
+
+    # --- 9. Chirality Penalty ---
+    if get_data('num_chiral_outliers_res', 0) > 0:
+        has_any_metric = True
+        penalty += 3
+
+    # --- 10. RNA Suite Penalty ---
+    if get_data('is_rna_residue', False):
+        has_any_metric = True
+        if get_data('is_rna_suite_outlier', False):
+            penalty += 2
+
+    # --- 11. RNA Pucker Penalty ---
+    if get_data('is_rna_residue', False):
+        has_any_metric = True
+        if get_data('is_rna_pucker_outlier', False):
+            penalty += 2
+
+    if has_any_metric:
+        return penalty
+    else:
+        return None
+
 def use_segids_in_place_of_chainids(hierarchy, strict=False):
   use_segids = False
   for model in hierarchy.models():

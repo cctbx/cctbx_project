@@ -251,7 +251,10 @@ class managed_calculation_base(object):
     if (manager is not None):
       assert xray_structure.unit_cell().is_similar_to(manager.unit_cell())
       assert xray_structure.space_group() == manager.space_group()
-    assert algorithm in ["direct", "fft"]
+
+    from cctbx.xray.structure_factors.algorithm import algorithms
+    assert algorithm in algorithms.keys()
+
 
   def manager(self):
     return self._manager
@@ -265,6 +268,5 @@ class managed_calculation_base(object):
   def algorithm(self, verbose=False):
     if (not verbose):
       return self._algorithm
-    if (self._algorithm == "direct"):
-      return "Direct Summation"
-    return "FFT Approximation"
+    from cctbx.xray.structure_factors.algorithm import algorithms
+    return algorithms[self._algorithm].desc

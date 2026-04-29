@@ -561,7 +561,7 @@ class scene(object):
         points = uc.reciprocal_space_vector(new_indices) * 100
         self.points.extend(points)
         n_sys_absent = new_indices.size()
-        self.radii.extend(flex.double(new_indices.size(), self.max_radius/2.0))
+        self.radii.extend(flex.double(new_indices.size(), 1.5*self.max_radius))
         self.indices.extend(new_indices)
         self.missing_flags.extend(flex.bool(new_indices.size(), False))
         self.sys_absent_flags.extend(flex.bool(new_indices.size(), True))

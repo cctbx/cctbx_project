@@ -72,6 +72,7 @@ Configuration options:
 """)
     parse(master_phil_str, process_includes = True).show(attributes_level=2)
     return
+
   app = MainApp(0)
   app.MainLoop()
 

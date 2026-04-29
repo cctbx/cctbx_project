@@ -6,9 +6,12 @@
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <cctbx/maptbx/bcr/bcr.h>
+#include <cctbx/maptbx/bcr/vrm.h>
 
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <scitbx/boost_python/is_polymorphic_workaround.h>
+
+#include <boost/python/reference_existing_object.hpp>
 
 namespace cctbx { namespace maptbx { namespace boost_python {
 
@@ -27,6 +30,36 @@ namespace {
   void init_module()
   {
     using namespace boost::python;
+
+   {
+      typedef return_value_policy<return_by_value> rbv;
+      typedef return_value_policy<reference_existing_object> reo;
+      class_<bcr_scatterer<> >("bcr_scatterer", no_init)
+        .def(init<cctbx::xray::scatterer<> &,
+                  double,
+                  double,
+                  af::shared<double>,
+                  af::shared<double>,
+                  af::shared<double>,
+                  af::shared<double>,
+                  af::shared<double> >((arg("scatterer"),
+                                        arg("radius"),
+                                        arg("resolution"),
+                                        arg("mu"),
+                                        arg("kappa"),
+                                        arg("nu"),
+                                        arg("musq"),
+                                        arg("kappi"))))
+        .add_property("scatterer",  make_function(&bcr_scatterer<>::get_scatterer, reo()))
+        .add_property("radius",     make_getter(&bcr_scatterer<>::radius,     rbv()))
+        .add_property("resolution", make_getter(&bcr_scatterer<>::resolution, rbv()))
+        .add_property("mu",         make_getter(&bcr_scatterer<>::mu,         rbv()))
+        .add_property("kappa",      make_getter(&bcr_scatterer<>::kappa,      rbv()))
+        .add_property("nu",         make_getter(&bcr_scatterer<>::nu,         rbv()))
+        .add_property("musq",       make_getter(&bcr_scatterer<>::musq,       rbv()))
+        .add_property("kappi",      make_getter(&bcr_scatterer<>::kappi,      rbv()))
+      ;
+    }
 
     {
       typedef return_value_policy<return_by_value> rbv;
@@ -67,6 +100,32 @@ namespace {
         .def(init<bcr_model<double> const& >((arg("bcr_model") )))
         .def("atom_radius",   &calculator<>::atom_radius)
         .def("rho",           &calculator<>::rho)
+      ;
+    }
+
+    {
+      typedef return_value_policy<return_by_value> rbv;
+      class_<OmegaMap<> >("vrm", no_init)
+        .def(init<
+          af::tiny<int, 3> const&,
+          af::tiny<int, 3> const&,
+          af::tiny<int, 3> const&,
+          cctbx::uctbx::unit_cell const&,
+          boost::python::list const&,
+          bool const&  >(
+                    (arg("Ncrs"),
+                     arg("Scrs"),
+                     arg("Nxyz"),
+                     arg("unit_cell"),
+                     arg("bcr_scatterers"),
+                     arg("use_exp_table"))))
+        .def("compute",             &OmegaMap<>::compute, (arg("compute_gradients")=false))
+        .def("compute_gradients",   &OmegaMap<>::compute_gradients, arg("map_data"))
+        .add_property("map",        make_getter(&OmegaMap<>::map, rbv()))
+        .add_property("target",     make_getter(&OmegaMap<>::target, rbv()))
+        .add_property("grad_xyz",   make_getter(&OmegaMap<>::grad_xyz, rbv()))
+        .add_property("grad_occ",   make_getter(&OmegaMap<>::grad_occ, rbv()))
+        .add_property("grad_uiso",  make_getter(&OmegaMap<>::grad_uiso, rbv()))
       ;
     }
 

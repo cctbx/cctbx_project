@@ -1,3 +1,4 @@
+"""Extensive testing of hierarchy methods"""
 from __future__ import absolute_import, division, print_function
 from iotbx import pdb
 from cctbx.array_family import flex
@@ -80,6 +81,9 @@ def exercise_atom():
   assert a.fdp == 0
   a.fdp = 0.2
   assert a.fdp == 0.2
+  assert a.resolution == 0
+  a.resolution = 3.5
+  assert a.resolution == 3.5
   assert not a.hetero
   a.hetero = True
   assert a.hetero
@@ -107,6 +111,7 @@ def exercise_atom():
     .set_uij(new_uij=(1.3,2.1,3.2,4.3,2.7,9.3))
     .set_fp(new_fp=0.3)
     .set_fdp(new_fdp=0.4)
+    .set_resolution(new_resolution=3.5)
     .set_hetero(new_hetero=True))
   if (pdb.hierarchy.atom.has_siguij()):
     assert a.set_siguij(new_siguij=(.1,.2,.3,.6,.1,.9)) is a
@@ -127,6 +132,7 @@ def exercise_atom():
   assert a.hetero
   assert approx_equal(a.fp, 0.3)
   assert approx_equal(a.fdp, 0.4)
+  assert approx_equal(a.resolution, 3.5)
   assert a.tmp == 0
   try: a.set_name(new_name="12345")
   except (ValueError, RuntimeError) as e:
@@ -154,6 +160,7 @@ def exercise_atom():
   assert ac.hetero
   assert approx_equal(a.fp, 0.3)
   assert approx_equal(a.fdp, 0.4)
+  assert approx_equal(a.resolution, 3.5)
   #
   for e in ["H", "H ", " H", "D", "D ", " D"]:
     a.element = e
@@ -4708,10 +4715,13 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
       (-1,-1,-1,-1,-1,-1)])
   new_fp = flex.double([0, 0.1, 0.2, 0, 0, 0, 0])
   new_fdp = flex.double([0, 0.2, 0.3, 0.1, 0, 0, 0])
+  new_res = flex.double([3.5, 3.5, 3.3, 3.3, 3.7, 3.7, 0])
   assert atoms.set_fp(new_fp=new_fp) is atoms
   assert atoms.set_fdp(new_fdp=new_fdp) is atoms
+  assert atoms.set_resolution(new_resolution=new_res) is atoms
   assert approx_equal(atoms.extract_fp(), new_fp)
   assert approx_equal(atoms.extract_fdp(), new_fdp)
+  assert approx_equal(atoms.extract_resolution(), new_res)
   #
   h = pdb_inp.construct_hierarchy(set_atom_i_seq=False, sort_atoms=False)
   for i in range(2):
@@ -5083,52 +5093,6 @@ TER
 """)
   assert h1.is_similar_hierarchy(other=h2)
   assert h2.is_similar_hierarchy(other=h1)
-  #
-  with open("tmp_tst_hierarchy.pdb", "w") as f:
-    f.write("""\
-CRYST1    2.000    3.000    4.000  90.00  80.00  90.00 P 2           5
-ATOM      0  S   SO4     0       3.302   8.419   8.560  1.00 10.00           S
-ATOM      1  O1  SO4     0       3.497   8.295   7.118  1.00 10.00           O
-ATOM      2  O2 ASO4     0       3.098   7.095   9.140  0.80 10.00           O
-ATOM      3  O2 BSO4     0       3.498   7.495   9.440  0.20 10.00           O
-ATOM      4  O3  SO4     0       4.481   9.037   9.159  1.00 10.00           O
-ATOM      5  O4  SO4     0       2.131   9.251   8.823  1.00 10.00           O
-""")
-  pdb.rewrite_normalized(
-    input_file_name="tmp_tst_hierarchy.pdb",
-    output_file_name="tmp_norm.pdb")
-  with open("tmp_norm.pdb") as f:
-    lines = f.read()
-  assert not show_diff(lines, """\
-CRYST1    2.000    3.000    4.000  90.00  80.00  90.00 P 1 2 1
-SCALE1      0.500000  0.000000 -0.088163        0.00000
-SCALE2      0.000000  0.333333  0.000000        0.00000
-SCALE3      0.000000  0.000000  0.253857        0.00000
-ATOM      1  O1  SO4     0       3.497   8.295   7.118  1.00 10.00           O
-ATOM      2  O3  SO4     0       4.481   9.037   9.159  1.00 10.00           O
-ATOM      3  O4  SO4     0       2.131   9.251   8.823  1.00 10.00           O
-ATOM      4  S   SO4     0       3.302   8.419   8.560  1.00 10.00           S
-ATOM      5  O2 ASO4     0       3.098   7.095   9.140  0.80 10.00           O
-ATOM      6  O2 BSO4     0       3.498   7.495   9.440  0.20 10.00           O
-END
-""")
-  pdb.rewrite_normalized(
-    input_file_name="tmp_tst_hierarchy.pdb",
-    output_file_name="tmp_norm.pdb",
-    keep_original_crystallographic_section=True,
-    keep_original_atom_serial=True)
-  with open("tmp_norm.pdb") as f:
-    lines = f.read()
-  assert not show_diff(lines, """\
-CRYST1    2.000    3.000    4.000  90.00  80.00  90.00 P 2           5
-ATOM      1  O1  SO4     0       3.497   8.295   7.118  1.00 10.00           O
-ATOM      2  O3  SO4     0       4.481   9.037   9.159  1.00 10.00           O
-ATOM      3  O4  SO4     0       2.131   9.251   8.823  1.00 10.00           O
-ATOM      4  S   SO4     0       3.302   8.419   8.560  1.00 10.00           S
-ATOM      5  O2 ASO4     0       3.098   7.095   9.140  0.80 10.00           O
-ATOM      6  O2 BSO4     0       3.498   7.495   9.440  0.20 10.00           O
-END
-""")
   #
   if (pdb_file_names is None):
     print("Skipping exercise_as_pdb_string(): input files not available")
@@ -5645,6 +5609,7 @@ ATOM     10  O
 
 def exercise_root_pickling():
   # XXX fp, fdp?
+  # XXX resolution is not working either
   pdb_inp = pdb.input(source_info=None, lines="""\
 MODEL        1
 ATOM      1  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
@@ -5669,13 +5634,28 @@ ENDMDL
   hierarchy = pdb_inp.construct_hierarchy()
   hierarchy.info.append("a")
   hierarchy.info.append("b")
+  new_fp = flex.double([0, 0.1, 0.2, 0, 0, 0])
+  new_fdp = flex.double([0, 0.2, 0.3, 0.1, 0, 0])
+  new_res = flex.double([3.5, 3.5, 3.3, 3.3, 3.7, 0])
+
+  # hierarchy.atoms().set_fp(new_fp=new_fp)
+  # hierarchy.atoms().set_fdp(new_fdp=new_fdp)
+  # hierarchy.atoms().set_resolution(new_resolution=new_res)
+  # print(list(hierarchy.atoms().extract_fdp()))
+
   s = pickle.dumps(hierarchy, 1)
   l = pickle.loads(s)
   assert not show_diff("\n".join(l.info), "\n".join(hierarchy.info))
   assert not show_diff(l.as_pdb_string(), hierarchy.as_pdb_string())
 
+  # atoms = l.atoms()
+  # assert approx_equal(atoms.extract_fp(), new_fp)
+  # assert approx_equal(atoms.extract_fdp(), new_fdp)
+  # assert approx_equal(atoms.extract_resolution(), new_res)
+
 def exercise_residue_pickling():
   # XXX fp, fdp?
+  # XXX resolution is probably not working either
   pdb_inp = pdb.input(source_info=None, lines="""\
 ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
 ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
@@ -6054,6 +6034,7 @@ HETATM   48  O   HOH A  14       8.000   4.000   7.299  1.00 15.18           O
 HETATM   48  O   HOH A  15      10.000   0.000   7.299  1.00 15.18           O
 """).construct_hierarchy()
   assert pdb_hierarchy.only_model().only_chain().is_protein()
+  assert not pdb_hierarchy.only_model().only_chain().is_water()
   assert not pdb_hierarchy.only_model().only_chain().is_protein(
     ignore_water=False)
 
@@ -6072,6 +6053,7 @@ HETATM   48  O   HOH A  14       8.000   4.000   7.299  1.00 15.18           O
 HETATM   48  O   HOH A  15      10.000   0.000   7.299  1.00 15.18           O
 """).construct_hierarchy()
   assert not pdb_hierarchy.only_model().only_chain().is_protein()
+  assert pdb_hierarchy.only_model().only_chain().is_water()
   assert not pdb_hierarchy.only_model().only_chain().is_protein(
     ignore_water=False)
   pdb_hierarchy = pdb.input(source_info=None, lines="""\
@@ -6996,8 +6978,6 @@ END
   assert (ph.atoms()[0].charge == '1-')
 
 def exercise_remove_atoms():
-  random.seed(1)
-  flex.set_random_seed(1)
   pdb_str = """
 ATOM      1  N  AMET B  37       7.525   5.296   6.399  1.00 10.00           N
 ATOM      2  CA AMET B  37       6.533   6.338   6.634  1.00 10.00           C
@@ -7052,11 +7032,9 @@ END
   """
   pi = pdb.input(source_info=None, lines=pdb_str)
   ph_in = pi.construct_hierarchy()
-  s1 = ph_in.atoms_size()
+  assert ph_in.atoms_size() == 48
   ph = ph_in.remove_atoms(fraction=0.1)
-  s2 = ph.atoms_size()
-  f = s2*100./s1
-  assert f>90 and f<100
+  assert ph.atoms_size() == 43
 
 def exercise_set_atomic_charge():
   pdb_str = """

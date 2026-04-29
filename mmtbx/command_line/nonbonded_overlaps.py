@@ -1,3 +1,4 @@
+"""Identify overlaps between non-bonded atoms"""
 # LIBTBX_SET_DISPATCHER_NAME mmtbx.nonbonded_overlaps
 from __future__ import division, print_function
 
@@ -202,3 +203,4 @@ if __name__ == '__main__':
 
 # if (__name__ == "__main__"):
 #   run(sys.argv[1:])
+

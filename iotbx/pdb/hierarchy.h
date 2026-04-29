@@ -244,6 +244,7 @@ namespace hierarchy {
 #endif
       double fp;
       double fdp;
+      double resolution;
       unsigned i_seq;
       int tmp;
       bool have_sentinel;
@@ -266,7 +267,7 @@ namespace hierarchy {
                         siguij_
 #endif
                                ,
-        double fp_, double fdp_,
+        double fp_, double fdp_, double resolution_,
         bool hetero_, str5 serial_, str4 name_,
         str4 segid_, str2 element_, str2 charge_)
       :
@@ -278,7 +279,7 @@ namespace hierarchy {
 #ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
         siguij(siguij_),
 #endif
-        fp(fp_), fdp(fdp_),
+        fp(fp_), fdp(fdp_), resolution(resolution_),
         i_seq(0), tmp(0), have_sentinel(false),
         hetero(hetero_), serial(serial_), name(name_),
         segid(segid_), element(element_), charge(charge_)
@@ -294,7 +295,7 @@ namespace hierarchy {
                         siguij_
 #endif
                                ,
-        double fp_, double fdp_,
+        double fp_, double fdp_, double resolution_,
         bool hetero_, str5 serial_, str4 name_,
         str4 segid_, str2 element_, str2 charge_)
       :
@@ -305,7 +306,7 @@ namespace hierarchy {
 #ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
         siguij(siguij_),
 #endif
-        fp(fp_), fdp(fdp_),
+        fp(fp_), fdp(fdp_), resolution(resolution_),
         i_seq(0), tmp(0), have_sentinel(false),
         hetero(hetero_), serial(serial_), name(name_),
         segid(segid_), element(element_), charge(charge_)
@@ -461,7 +462,7 @@ namespace hierarchy {
         double b=0, double sigb=0,
         sym_mat3 const& uij=sym_mat3(-1,-1,-1,-1,-1,-1),
         sym_mat3 const& siguij=sym_mat3(-1,-1,-1,-1,-1,-1),
-        double fp=0, double fdp=0,
+        double fp=0, double fdp=0, double resolution=0,
         bool hetero=false, const char* serial="", const char* name="",
         const char* segid="", const char* element="", const char* charge="");
 
@@ -472,7 +473,7 @@ namespace hierarchy {
         double b=0, double sigb=0,
         sym_mat3 const& uij=sym_mat3(-1,-1,-1,-1,-1,-1),
         sym_mat3 const& siguij=sym_mat3(-1,-1,-1,-1,-1,-1),
-        double fp=0, double fdp=0,
+        double fp=0, double fdp=0, double resolution=0,
         bool hetero=false, const char* serial="", const char* name="",
         const char* segid="", const char* element="", const char* charge="")
       :
@@ -482,7 +483,7 @@ namespace hierarchy {
           b, sigb,
           uij,
           siguij,
-          fp, fdp,
+          fp, fdp, resolution,
           hetero, serial, name,
           segid, element, charge))
       {}
@@ -494,7 +495,7 @@ namespace hierarchy {
         double b, double sigb,
         sym_mat3 const& uij,
         sym_mat3 const& siguij,
-        double fp, double fdp,
+        double fp, double fdp,  double resolution,
         bool hetero, str5 serial, str4 name,
         str4 segid, str2 element, str2 charge)
       :
@@ -504,7 +505,7 @@ namespace hierarchy {
           b, sigb,
           uij,
           siguij,
-          fp, fdp,
+          fp, fdp, resolution,
           hetero, serial, name,
           segid, element, charge))
       {}
@@ -590,6 +591,13 @@ namespace hierarchy {
       set_fdp(double new_fdp)
       {
         data->fdp = new_fdp;
+        return *this;
+      }
+
+      atom&
+      set_resolution(double new_resolution)
+      {
+        data->resolution = new_resolution;
         return *this;
       }
 
@@ -1898,7 +1906,7 @@ namespace hierarchy {
     double b, double sigb,
     sym_mat3 const& uij,
     sym_mat3 const& siguij,
-    double fp, double fdp,
+    double fp, double fdp, double resolution,
     bool hetero, const char* serial, const char* name,
     const char* segid, const char* element, const char* charge)
   :
@@ -1909,7 +1917,7 @@ namespace hierarchy {
       b, sigb,
       uij,
       siguij,
-      fp, fdp,
+      fp, fdp, resolution,
       hetero, serial, name,
       segid, element, charge))
   {}

@@ -4,8 +4,8 @@
 # https://github.com/actions/virtual-environments/blob/main/images/win/Windows2022-Readme.md
 #
 # Parameters:
-#   vmImage: windows-2019
-#   vs: 2019
+#   vmImage: windows-2022
+#   vs: 2022
 #   modules: <modules artifact name>
 
 jobs:
@@ -16,21 +16,25 @@ jobs:
   strategy:
     maxParallel: 2
     matrix:
-      python3.7:
-        OS: win-64
-        PYTHON_VERSION: py37
-        MODULES: ${{ parameters.modules }}
-      python3.8:
-        OS: win-64
-        PYTHON_VERSION: py38
-        MODULES: ${{ parameters.modules }}
-      python3.9:
-        OS: win-64
-        PYTHON_VERSION: py39
-        MODULES: ${{ parameters.modules }}
       python3.10:
         OS: win-64
         PYTHON_VERSION: py310
+        MODULES: ${{ parameters.modules }}
+      python3.11:
+        OS: win-64
+        PYTHON_VERSION: py311
+        MODULES: ${{ parameters.modules }}
+      python3.12:
+        OS: win-64
+        PYTHON_VERSION: py312
+        MODULES: ${{ parameters.modules }}
+      python3.13:
+        OS: win-64
+        PYTHON_VERSION: py313
+        MODULES: ${{ parameters.modules }}
+      python3.14:
+        OS: win-64
+        PYTHON_VERSION: py314
         MODULES: ${{ parameters.modules }}
 
   variables:
@@ -94,6 +98,7 @@ jobs:
       project: '$(resources.pipeline.build_cache.projectID)'
       pipeline: '$(resources.pipeline.build_cache.pipelineID)'
       allowPartiallySucceededBuilds: true
+      allowFailedBuilds: true
       artifact: $(PYTHON_VERSION)_$(OS)
       path: $(Pipeline.Workspace)/channel
     displayName: Download cached conda packages
@@ -115,14 +120,14 @@ jobs:
 
   # call %CONDA%\condabin\conda.bat create -y -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)\modules\cctbx_project\libtbx\auto_build\conda_envs\cctbx_%PYTHON_VERSION%_%OS%.txt
   - script: |
-      call %CONDA%\condabin\conda.bat remove -y --all -n $(PYTHON_VERSION)
-      if %errorlevel% neq 0 exit /b %errorlevel%
+      if exist %CONDA%\envs\$(PYTHON_VERSION) (
+        call %CONDA%\condabin\conda.bat remove -y --all -n $(PYTHON_VERSION)
+        if %errorlevel% neq 0 exit /b %errorlevel%
+      )
       call %CONDA%\condabin\conda.bat create -y --offline -c $(Pipeline.Workspace)\channel\ --override-channels -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)\channel\env.txt
       if %errorlevel% neq 0 exit /b %errorlevel%
-      call %CONDA%\condabin\conda.bat remove -y -n $(PYTHON_VERSION) --force boost boost-cpp pytest
-      if %errorlevel% neq 0 exit /b %errorlevel%
       call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
-      pip install junit-xml pytest==7.0.1
+      pip install junit-xml
       if %errorlevel% neq 0 exit /b %errorlevel%
     displayName: Create conda environment
     retryCountOnTaskFailure: 3
@@ -170,6 +175,20 @@ jobs:
 
   - script: |
       cd $(Pipeline.Workspace)
+      del /S /Q .\build\lib\_pycbf.pyd
+    displayName: Fix broken cache on Windows
+    condition: >
+      and(or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+                ne(variables['day'], 'Sunday')),
+            eq(variables['Build.DefinitionName'], 'CI'),
+            eq(variables['Build.DefinitionName'], 'CI branch'),
+            eq(variables['Build.DefinitionName'], 'Full')),
+          ne(variables['SKIP_CACHED_BUILD'], 'true'))
+    continueOnError: true
+    failOnStderr: false
+
+  - script: |
+      cd $(Pipeline.Workspace)
       dir
     displayName: Check disk space
 
@@ -186,6 +205,7 @@ jobs:
       python bootstrap.py build ^
         --builder=cctbx ^
         --use-conda=%CONDA_PREFIX% ^
+        --config-flags="--cxxstd=c++14" ^
         --nproc=4
       call .\build\setpaths.bat
       call libtbx.configure ^
@@ -200,6 +220,21 @@ jobs:
       call libtbx.scons -j 4
       call libtbx.scons -j 4
     displayName: Configure and Build
+    retryCountOnTaskFailure: 3
+
+  # install pyDiSCaMB
+  - script: |
+      cd $(Pipeline.Workspace)
+      if exist "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+        call "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      )
+      if exist "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+        call "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      )
+      call .\build\setpaths.bat
+      cd .\modules\pyDiSCaMB
+      call libtbx.python -m pip install .
+    displayName: Install pyDiSCaMB
     retryCountOnTaskFailure: 3
 
   # test
@@ -219,6 +254,7 @@ jobs:
       call libtbx.run_tests_parallel ^
         module=boost_adaptbx ^
         module=cctbx ^
+        module=xcif ^
         module=cctbx_website ^
         module=cma_es ^
         module=fable ^
@@ -232,9 +268,25 @@ jobs:
         module=annlib_adaptbx ^
         module=cbflib_adaptbx ^
         module=crys3d ^
+        max_retries=2 ^
         nproc=4
     failOnStderr: false
     displayName: Test
+    retryCountOnTaskFailure: 3
+
+  # run pyDiSCaMB tests
+  - script: |
+      cd $(Pipeline.Workspace)
+      call .\build\setpaths.bat
+      cd .\modules\cctbx_project\mmtbx\regression\discamb
+      for %%t in (tst*.py) do (
+        echo %%t
+        echo "============================================================"
+        call libtbx.python %%t
+        if %errorlevel% neq 0 exit /b %errorlevel%
+        echo ""
+      )
+    displayName: Test pyDiSCaMB
     retryCountOnTaskFailure: 3
 
   # store tests directory as an artifact

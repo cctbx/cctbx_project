@@ -42,6 +42,8 @@ class mp_bond(atoms):
       atoms_dict["atoms_"+s] = [getattr(self.atoms_info[0], s), getattr(self.atoms_info[1], s)]
     serializable_slots = [s for s in self.__slots__ if s != 'atoms_info' and hasattr(self, s)]
     slots_as_dict = ({s: getattr(self, s) for s in serializable_slots})
+    # Add top-level model_id for consistency with other validation tools
+    slots_as_dict['model_id'] = getattr(self.atoms_info[0], 'model_id', '')
     return json.dumps(self.merge_two_dicts(slots_as_dict, atoms_dict), indent=2)
 
   def as_hierarchical_JSON(self):
@@ -80,6 +82,8 @@ class mp_angle(atoms):
       atoms_dict["atoms_"+s] = [getattr(self.atoms_info[0], s), getattr(self.atoms_info[1], s), getattr(self.atoms_info[2], s)]
     serializable_slots = [s for s in self.__slots__ if s != 'atoms_info' and hasattr(self, s)]
     slots_as_dict = ({s: getattr(self, s) for s in serializable_slots})
+    # Add top-level model_id for consistency with other validation tools
+    slots_as_dict['model_id'] = getattr(self.atoms_info[0], 'model_id', '')
     return json.dumps(self.merge_two_dicts(slots_as_dict, atoms_dict), indent=2)
 
   def as_hierarchical_JSON(self):

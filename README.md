@@ -40,7 +40,7 @@ conda create -n my_env -c conda-forge cctbx-base
 ```
 To choose a specific version of Python, add the `python` package with the specific version
 ```
-conda create -n my_env -c conda-forge cctbx-base python=3.8
+conda create -n my_env -c conda-forge cctbx-base python=3.11
 ```
 Then the environment can be activated with
 ```
@@ -52,6 +52,27 @@ To install `cctbx-base` into the currently active environment, use
 conda install -c conda-forge cctbx-base
 ```
 The `python` package with a specific version can be added to change the version of `python` that is already installed in the active environment.
+
+There are also regular python packages for `cctbx-base` and `cctbx`. They can
+be installed with
+```
+pip install cctbx-base
+```
+
+### Monomer library
+
+Some programs in cctbx require information about geometric restraints for molecules. This information is available in the `chem_data` conda package from our [releases](https://github.com/cctbx/cctbx_project/releases). Download the `chem_data` conda package and install in your active environment with
+```
+conda install <chem_data package>
+```
+Alternatively, the latest version of the `chem_data` conda package is available
+on the `chem_data` channel from https://anaconda.org. You can install it with
+```
+conda install -c chem_data chem_data
+```
+Due to space limitations on anaconda.org, we can only keep the latest version
+available.
+The `chem_data` package is built from the [`chem_data`](https://gitlab.com/phenix_project/chem_data) and [`geostd`](https://github.com/phenix-project/geostd) repositories.
 
 <a name="developmentversion"/>
 
@@ -79,6 +100,14 @@ A nightly build of the `conda` packages are available on the [`cctbx-nightly` ch
 conda create -n my_env <b>-c cctbx-nightly</b> -c conda-forge cctbx-base
 </code></pre>
 This will use the `cctbx-base` package from the `cctbx-nightly` channel, but pull the remaining dependencies from `conda-forge`.
+
+There are also nightly builds for the regular python packages. They can be
+installed with
+```
+pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple cctbx-base
+```
+The `--extra-index-url` flag may be needed if `pip` is not able to find the
+other dependencies on TestPyPI.
 
 Nightly builds are only updated if there are additional commits from the previous build.
 

@@ -491,8 +491,145 @@ def exercise_model_filename():
   m = mmtbx.model.manager(model_input=inp)
   assert m.get_source_filename() is None
 
+def exercise_altlocs_present():
+  pdb_str1="""
+CRYST1   13.135   16.057   12.855  90.00  90.00  90.00 P 1
+ATOM      1  N   HIS A   3       8.135   7.414   7.855  1.00 22.05           N
+ATOM      2  CA  HIS A   3       7.032   6.873   7.032  1.00 18.37           C
+ATOM      3  C   HIS A   3       7.233   5.393   6.739  1.00 13.79           C
+ATOM      4  O   HIS A   3       8.085   5.000   5.991  1.00 12.07           O
+ATOM      5  CB  HIS A   3       6.816   7.572   5.708  1.00 21.10           C
+ATOM      6  CG  HIS A   3       6.273   8.956   5.759  1.00 24.64           C
+ATOM      7  ND1 HIS A   3       5.237   9.382   6.577  1.00 21.60           N
+ATOM      8  CD2 HIS A   3       6.625  10.039   5.000  1.00 33.23           C
+ATOM      9  CE1 HIS A   3       5.000  10.626   6.356  1.00 23.45           C
+ATOM     10  NE2 HIS A   3       5.834  11.057   5.402  1.00 24.68           N
+ATOM     11  OXT HIS A   3       6.509   4.555   7.276  1.00 13.79           O
+ATOM     12  H   HIS A   3       7.879   8.235   8.404  1.00 22.05           H
+ATOM     13  H2  HIS A   3       8.446   6.714   8.498  1.00 22.05           H
+ATOM     14  H3  HIS A   3       8.894   7.681   7.262  1.00 22.05           H
+ATOM     15  HA  HIS A   3       6.135   7.043   7.628  1.00 18.37           H
+ATOM     16  HB2 HIS A   3       7.776   7.626   5.195  1.00 21.10           H
+ATOM     17  HB3 HIS A   3       6.114   6.977   5.123  1.00 21.10           H
+ATOM     18  HD2 HIS A   3       7.384  10.073   4.233  1.00 33.23           H
+ATOM     19  HE1 HIS A   3       4.253  11.224   6.857  1.00 23.45           H
+
+ATOM     20  HD1AHIS A   3       4.740   8.798   7.250  0.50 21.60           H
+ATOM     21  HE2AHIS A   3       5.867  12.008   5.035  0.50 24.68           H
+
+ATOM     22  DD1BHIS A   3       4.740   8.798   7.250  0.50 21.60           D
+ATOM     23  DE2BHIS A   3       5.867  12.008   5.035  0.50 24.68           D
+TER
+END
+  """
+  pdb_str2="""
+CRYST1   13.135   16.057   12.855  90.00  90.00  90.00 P 1
+ATOM      1  N   HIS A   3       8.135   7.414   7.855  1.00 22.05           N
+ATOM      2  CA AHIS A   3       7.032   6.873   7.032  1.00 18.37           C
+ATOM      2  CA BHIS A   3       7.032   6.873   7.032  1.00 18.37           C
+ATOM      3  C   HIS A   3       7.233   5.393   6.739  1.00 13.79           C
+ATOM      4  O   HIS A   3       8.085   5.000   5.991  1.00 12.07           O
+ATOM      5  CB  HIS A   3       6.816   7.572   5.708  1.00 21.10           C
+ATOM      6  CG  HIS A   3       6.273   8.956   5.759  1.00 24.64           C
+ATOM      7  ND1 HIS A   3       5.237   9.382   6.577  1.00 21.60           N
+ATOM      8  CD2 HIS A   3       6.625  10.039   5.000  1.00 33.23           C
+ATOM      9  CE1 HIS A   3       5.000  10.626   6.356  1.00 23.45           C
+ATOM     10  NE2 HIS A   3       5.834  11.057   5.402  1.00 24.68           N
+ATOM     11  OXT HIS A   3       6.509   4.555   7.276  1.00 13.79           O
+ATOM     12  H   HIS A   3       7.879   8.235   8.404  1.00 22.05           H
+ATOM     13  H2  HIS A   3       8.446   6.714   8.498  1.00 22.05           H
+ATOM     14  H3  HIS A   3       8.894   7.681   7.262  1.00 22.05           H
+ATOM     15  HA  HIS A   3       6.135   7.043   7.628  1.00 18.37           H
+ATOM     16  HB2 HIS A   3       7.776   7.626   5.195  1.00 21.10           H
+ATOM     17  HB3 HIS A   3       6.114   6.977   5.123  1.00 21.10           H
+ATOM     18  HD2 HIS A   3       7.384  10.073   4.233  1.00 33.23           H
+ATOM     19  HE1 HIS A   3       4.253  11.224   6.857  1.00 23.45           H
+
+ATOM     20  HD1AHIS A   3       4.740   8.798   7.250  0.50 21.60           H
+ATOM     21  HE2AHIS A   3       5.867  12.008   5.035  0.50 24.68           H
+
+ATOM     22  DD1BHIS A   3       4.740   8.798   7.250  0.50 21.60           D
+ATOM     23  DE2BHIS A   3       5.867  12.008   5.035  0.50 24.68           D
+TER
+END
+  """
+  pdb_str3="""
+CRYST1   13.135   16.057   12.855  90.00  90.00  90.00 P 1
+ATOM      1  N   HIS A   3       8.135   7.414   7.855  1.00 22.05           N
+ATOM      2  CA AHIS A   3       7.032   6.873   7.032  1.00 18.37           C
+ATOM      2  CA BHIS A   3       7.032   6.873   7.032  1.00 18.37           C
+ATOM      3  C   HIS A   3       7.233   5.393   6.739  1.00 13.79           C
+ATOM      4  O   HIS A   3       8.085   5.000   5.991  1.00 12.07           O
+ATOM      5  CB  HIS A   3       6.816   7.572   5.708  1.00 21.10           C
+ATOM      6  CG  HIS A   3       6.273   8.956   5.759  1.00 24.64           C
+ATOM      7  ND1 HIS A   3       5.237   9.382   6.577  1.00 21.60           N
+ATOM      8  CD2 HIS A   3       6.625  10.039   5.000  1.00 33.23           C
+ATOM      9  CE1 HIS A   3       5.000  10.626   6.356  1.00 23.45           C
+ATOM     10  NE2 HIS A   3       5.834  11.057   5.402  1.00 24.68           N
+ATOM     11  OXT HIS A   3       6.509   4.555   7.276  1.00 13.79           O
+ATOM     12  H   HIS A   3       7.879   8.235   8.404  1.00 22.05           H
+ATOM     13  H2  HIS A   3       8.446   6.714   8.498  1.00 22.05           H
+ATOM     14  H3  HIS A   3       8.894   7.681   7.262  1.00 22.05           H
+ATOM     15  HA  HIS A   3       6.135   7.043   7.628  1.00 18.37           H
+ATOM     16  HB2 HIS A   3       7.776   7.626   5.195  1.00 21.10           H
+ATOM     17  HB3 HIS A   3       6.114   6.977   5.123  1.00 21.10           H
+ATOM     18  HD2 HIS A   3       7.384  10.073   4.233  1.00 33.23           H
+ATOM     19  HE1 HIS A   3       4.253  11.224   6.857  1.00 23.45           H
+TER
+END
+  """
+  pdb_str4="""
+CRYST1   13.135   16.057   12.855  90.00  90.00  90.00 P 1
+ATOM      1  N   HIS A   3       8.135   7.414   7.855  1.00 22.05           N
+ATOM      2  CA  HIS A   3       7.032   6.873   7.032  1.00 18.37           C
+ATOM      3  C   HIS A   3       7.233   5.393   6.739  1.00 13.79           C
+ATOM      4  O   HIS A   3       8.085   5.000   5.991  1.00 12.07           O
+ATOM      5  CB  HIS A   3       6.816   7.572   5.708  1.00 21.10           C
+ATOM      6  CG  HIS A   3       6.273   8.956   5.759  1.00 24.64           C
+ATOM      7  ND1 HIS A   3       5.237   9.382   6.577  1.00 21.60           N
+ATOM      8  CD2 HIS A   3       6.625  10.039   5.000  1.00 33.23           C
+ATOM      9  CE1 HIS A   3       5.000  10.626   6.356  1.00 23.45           C
+ATOM     10  NE2 HIS A   3       5.834  11.057   5.402  1.00 24.68           N
+ATOM     11  OXT HIS A   3       6.509   4.555   7.276  1.00 13.79           O
+ATOM     12  H   HIS A   3       7.879   8.235   8.404  1.00 22.05           H
+ATOM     13  H2  HIS A   3       8.446   6.714   8.498  1.00 22.05           H
+ATOM     14  H3  HIS A   3       8.894   7.681   7.262  1.00 22.05           H
+ATOM     15  HA  HIS A   3       6.135   7.043   7.628  1.00 18.37           H
+ATOM     16  HB2 HIS A   3       7.776   7.626   5.195  1.00 21.10           H
+ATOM     17  HB3 HIS A   3       6.114   6.977   5.123  1.00 21.10           H
+ATOM     18  HD2 HIS A   3       7.384  10.073   4.233  1.00 33.23           H
+ATOM     19  HE1 HIS A   3       4.253  11.224   6.857  1.00 23.45           H
+TER
+END
+  """
+  pdb_inp1 = iotbx.pdb.input(source_info=None, lines=pdb_str1)
+  m1 = mmtbx.model.manager(model_input = pdb_inp1)
+  #
+  pdb_inp2 = iotbx.pdb.input(source_info=None, lines=pdb_str2)
+  m2 = mmtbx.model.manager(model_input = pdb_inp2)
+  #
+  pdb_inp3 = iotbx.pdb.input(source_info=None, lines=pdb_str3)
+  m3 = mmtbx.model.manager(model_input = pdb_inp3)
+  #
+  pdb_inp4 = iotbx.pdb.input(source_info=None, lines=pdb_str4)
+  m4 = mmtbx.model.manager(model_input = pdb_inp4)
+  #
+  assert m1.altlocs_present()
+  assert m1.altlocs_present_only_hd()
+  #
+  assert m2.altlocs_present()
+  assert not m2.altlocs_present_only_hd()
+  #
+  assert m3.altlocs_present()
+  assert not m3.altlocs_present_only_hd()
+  #
+  assert not m4.altlocs_present()
+  assert not m4.altlocs_present_only_hd()
+
+
 if (__name__ == "__main__"):
   t0 = time.time()
+  exercise_altlocs_present()
   exercise_macromolecule_plus_hetatms_by_chain_selections()
   exercise_ss_creation_crash()
   exercise_set_b_iso()

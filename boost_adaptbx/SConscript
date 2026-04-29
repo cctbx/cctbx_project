@@ -66,7 +66,11 @@ if (libtbx.env.build_options.enable_boost_threads and
   # This environment is to be used latter to build Boost libraries
   # So we need a clean one without extra library linking.
   env_boost_shlibs_base = env_base.Clone()
-  libs = ['boost_thread', 'boost_system']
+  libs = ['boost_thread']
+  # starting with Boost 1.89, Boost.System is a header only library
+  # https://www.boost.org/releases/1.89.0/
+  if env_etc.boost_version < 108900:
+    libs.append('boost_system')
   if boost_thread_uses_winthreads:
     libs.append('boost_chrono')
   # In case env_base specifies LIBS already, don't override but instead
@@ -88,6 +92,7 @@ if (not env_etc.no_boost_python):
   # boost_adaptbx/meta_ext.cpp
   if (libtbx.env.build_options.use_conda):
     env_etc.cxxflags_bpl_defines_base.append("-DUSE_CONDA")
+    env_etc.cxxflags_bpl_defines_base.append("-DBOOST_TIMER_ENABLE_DEPRECATED")
   env_no_includes_boost_python_ext = env_base.Clone(
     SHLINKFLAGS=env_etc.shlinkflags_bpl,
     SHLIBPREFIX="")

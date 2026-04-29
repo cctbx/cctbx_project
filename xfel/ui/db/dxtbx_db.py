@@ -57,55 +57,64 @@ def log_frame(experiments, reflections, params, run, n_strong, timestamp = None,
     inserts += app.last_query + ";\n"
 
   for i, experiment in enumerate(experiments or []):
-    reflections_i = reflections.select(reflections['id']==i)
-
     imageset = Imageset(app)
     save_last_id('imageset')
 
-    beam = Beam(app, beam = experiment.beam)
+    if experiment.beam:
+      beam = Beam(app, beam = experiment.beam)
+    else:
+      beam = Beam(app, wavelength = 0)
     save_last_id('beam')
 
     detector = Detector(app, detector = experiment.detector)
     save_last_id('detector')
 
-    cell = Cell(app, crystal=experiment.crystal, isoform_id = None)
-    save_last_id('cell')
+    if experiment.crystal:
+      cell = Cell(app, crystal=experiment.crystal, isoform_id = None)
+      save_last_id('cell')
 
-    crystal = Crystal(app, crystal = experiment.crystal, make_cell = False, cell_id = "@cell_id")
-    save_last_id('crystal')
+      crystal = Crystal(app, crystal = experiment.crystal, make_cell = False, cell_id = "@cell_id")
+      save_last_id('crystal')
 
-    inserts += ("INSERT INTO `%s_experiment` (imageset_id, beam_id, detector_id, crystal_id, crystal_cell_id) " + \
-                "VALUES (@imageset_id, @beam_id, @detector_id, @crystal_id, @cell_id);\n") % (
-      params.experiment_tag)
+      inserts += ("INSERT INTO `%s_experiment` (imageset_id, beam_id, detector_id, crystal_id, crystal_cell_id) " + \
+                  "VALUES (@imageset_id, @beam_id, @detector_id, @crystal_id, @cell_id);\n") % (
+        params.experiment_tag)
+
+    else:
+      inserts += ("INSERT INTO `%s_experiment` (imageset_id, beam_id, detector_id) " + \
+                  "VALUES (@imageset_id, @beam_id, @detector_id);\n") % (
+        params.experiment_tag)
 
     inserts += "INSERT INTO `%s_imageset_event` (imageset_id, event_id, event_run_id) VALUES (@imageset_id, @event_id, %d);\n" % (
       params.experiment_tag, db_run.id)
 
-    d = experiment.crystal.get_unit_cell().d(reflections['miller_index']).select(reflections['id']==i)
-    from cctbx.crystal import symmetry
-    cs = symmetry(unit_cell = experiment.crystal.get_unit_cell(), space_group = experiment.crystal.get_space_group())
-    mset = cs.build_miller_set(anomalous_flag=False, d_min=db_trial.d_min)
-    n_bins = 10 # FIXME use n_bins as an attribute on the trial table
-    binner = mset.setup_binner(n_bins=n_bins)
-    for i in binner.range_used():
-      d_max, d_min = binner.bin_d_range(i)
-      Bin(app, number = i, d_min = d_min, d_max = d_max,
-          total_hkl = binner.counts_complete()[i], cell_id = '@cell_id')
-      save_last_id('bin')
+    if reflections and experiment.crystal:
+      reflections_i = reflections.select(reflections['id']==i)
+      d = experiment.crystal.get_unit_cell().d(reflections['miller_index']).select(reflections['id']==i)
+      from cctbx.crystal import symmetry
+      cs = symmetry(unit_cell = experiment.crystal.get_unit_cell(), space_group = experiment.crystal.get_space_group())
+      mset = cs.build_miller_set(anomalous_flag=False, d_min=db_trial.d_min)
+      n_bins = 10 # FIXME use n_bins as an attribute on the trial table
+      binner = mset.setup_binner(n_bins=n_bins)
+      for i in binner.range_used():
+        d_max, d_min = binner.bin_d_range(i)
+        Bin(app, number = i, d_min = d_min, d_max = d_max,
+            total_hkl = binner.counts_complete()[i], cell_id = '@cell_id')
+        save_last_id('bin')
 
-      sel = (d <= float(d_max)) & (d > float(d_min))
-      sel &= reflections_i['intensity.sum.value'] > 0
-      refls = reflections_i.select(sel)
-      n_refls = len(refls)
-      Cell_Bin(app,
-               count = n_refls,
-               bin_id = '@bin_id',
-               crystal_id = '@crystal_id',
-               avg_intensity = flex.mean(refls['intensity.sum.value']) if n_refls > 0 else None,
-               avg_sigma = flex.mean(flex.sqrt(refls['intensity.sum.variance'])) if n_refls > 0 else None,
-               avg_i_sigi = flex.mean(refls['intensity.sum.value'] /
+        sel = (d <= float(d_max)) & (d > float(d_min))
+        sel &= reflections_i['intensity.sum.value'] > 0
+        refls = reflections_i.select(sel)
+        n_refls = len(refls)
+        Cell_Bin(app,
+                 count = n_refls,
+                 bin_id = '@bin_id',
+                 crystal_id = '@crystal_id',
+                 avg_intensity = flex.mean(refls['intensity.sum.value']) if n_refls > 0 else None,
+                 avg_sigma = flex.mean(flex.sqrt(refls['intensity.sum.variance'])) if n_refls > 0 else None,
+                 avg_i_sigi = flex.mean(refls['intensity.sum.value'] /
                                       flex.sqrt(refls['intensity.sum.variance'])) if n_refls > 0 else None)
-      inserts += app.last_query + ";\n"
+        inserts += app.last_query + ";\n"
   app.mode = 'execute'
   return inserts
 

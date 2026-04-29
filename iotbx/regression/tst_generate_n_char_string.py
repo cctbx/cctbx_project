@@ -32,7 +32,7 @@ def test_1():
     if string_list[-1] is None:
       string_list = string_list[:-1]
       break
-  assert [string_list[55], string_list[90], string_list[87]] == " 3 + %".split(), "%s %s %s" %(string_list[55], string_list[90], string_list[87])
+  assert [string_list[55], string_list[89], string_list[86]] == " 3 + %".split(), "%s %s %s" %(string_list[55], string_list[89], string_list[86])
 
   string_list = []
   g = generate_n_char_string(n_chars=3, include_upper=False,

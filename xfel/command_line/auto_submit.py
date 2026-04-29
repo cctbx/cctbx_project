@@ -52,6 +52,8 @@ class _run:
   def __eq__(self, other): return other == self.id
   def __ne__(self, other): return not __eq__(self,other)
 
+  def __repr__(self): return f"Run: {self.id}, files: {','.join(self.files)}"
+
   def max_chunks(self):
     streams = {}
     for file in self.files:

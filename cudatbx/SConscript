@@ -7,7 +7,7 @@ env_etc.cudatbx_include = os.path.dirname(env_etc.cudatbx_dist)
 
 if (not env_etc.no_boost_python):
   Import("env_boost_python_ext")
-  env_bpl = env_boost_python_ext.Copy()
+  env_bpl = env_boost_python_ext.Clone()
   env_etc.include_registry.append(
     env=env_bpl,
     paths=[env_etc.cudatbx_include])
@@ -25,13 +25,13 @@ if (env_etc.enable_cuda):
               'math/special_functions/special_functions_ext.cpp',
               ])
 
-  env_bpl.Prepend(LIBS=["cufft"])
-  env_bpl.cudaSharedLibrary(
-    target = "#lib/cudatbx_cufft_ext",
-    source = ['cufft/ext.cpp',
-	      'cufft/ext_double.cpp',
-	      'cufft/ext_float.cpp',
-	     ])
+  # env_bpl.Prepend(LIBS=["cufft"])
+  # env_bpl.cudaSharedLibrary(
+  #   target = "#lib/cudatbx_cufft_ext",
+  #   source = ['cufft/ext.cpp',
+	#       'cufft/ext_double.cpp',
+	#       'cufft/ext_float.cpp',
+	#      ])
 
   env_bpl.Prepend(LIBS=["cctbx"])
   env_bpl.cudaSharedLibrary(

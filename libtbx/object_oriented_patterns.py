@@ -19,6 +19,9 @@ class meta_injector(type):
         if sys.hexversion >= 0x03000000:
           if name in ('__qualname__',):
             continue
+        if sys.version_info.major == 3 and sys.version_info.minor >= 13:
+          if name in ('__firstlineno__', '__static_attributes__'):
+            continue
         assert not hasattr(target_class, name), (
           "class %s already has attribute '%s'"
           % (target_class.__name__, name))

@@ -1,3 +1,4 @@
+"""Compute F000 using atomic model and bulk-solvent contribution"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.f000
 
@@ -43,3 +44,4 @@ Estimate of F(0,0,0)=%s given mean bulk-solvent density %s and fraction %s
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
+

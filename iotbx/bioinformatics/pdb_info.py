@@ -1,11 +1,11 @@
+"""Get experimental information summary for PDB IDS from the PDB"""
+
 from __future__ import absolute_import, division, print_function
 
 import sys
 from libtbx import easy_pickle
 from libtbx.utils import Sorry
-import libtbx.load_env
 from libtbx import smart_open
-import os
 import csv
 import requests
 
@@ -29,6 +29,9 @@ def get_experimental_pdb_info(pdbids, site="rcsb"):
   """
   returns list of tuples (pdb_id, resolution, rwork, rfree) and dict
   pdbid: (resolution, rwork, rfree)
+
+
+  OBSOLETED. New functionality is mmtbx.wwpdb.rcsb_entry_request.get_info
   """
   rlist = []
   rdict = {}
@@ -62,9 +65,13 @@ class pdb_info_local(object):
     Should be centralized somewhere else upon going to production.
     """
     db_dict = {}
-    pdb_info_file = libtbx.env.find_in_repositories(
-      relative_path="cctbx_project/iotbx/bioinformatics/pdb_info.csv.gz",
-      test=os.path.isfile)
+
+    import iotbx
+    from pathlib import Path
+    data_dir = Path(iotbx.__file__).parent / 'bioinformatics'
+    pdb_info_file = str( data_dir / 'pdb_info.csv.gz')
+
+
     csv_file = smart_open.for_reading(file_name=pdb_info_file, gzip_mode="rt")
     csv_reader = csv.reader(csv_file,delimiter=";")
     for row in csv_reader:
@@ -164,8 +171,8 @@ def tst_pdb_info_local():
   except requests.exceptions.ReadTimeout:
     print("Skipped test: transient read timeout, can't run test right now")
     return
-  assert rlist == ans_list_2
-  assert rdict == ans_dict_2
+  assert rlist == ans_list_2, rlist
+  assert rdict == ans_dict_2, rdict
 
 
 def run(args):

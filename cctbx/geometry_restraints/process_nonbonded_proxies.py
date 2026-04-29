@@ -471,7 +471,7 @@ class h_bond(object):
     self.Hs = ["H", "D"]
     self.As = ["O","N","S","F","CL"]
     self.Ds = ["O","N","S"]
-    self.d_HA_cutoff  = [1.4, 3.0]
+    self.d_HA_cutoff  = [1.4, 2.8]
     self.d_DA_cutoff  = [2.4, 4.1]
     self.a_DHA_cutoff = 120
     self.a_YAH_cutoff = [90, 180]
@@ -609,6 +609,8 @@ class manager():
       if find_hbonds:
         if (model_distance <= self.d_HA_cutoff[1] # currently: 3.0
           and [self.hd_sel[i_seq],self.hd_sel[j_seq]].count(True) == 1):
+          #print('candidate')
+          #print(self.atoms[i_seq].id_str(), self.atoms[j_seq].id_str())
           is_hbond = self._is_hbond(item  = item, fsc0  = fsc0)
           # proxy cannot be clash and hbond at the same time
           if is_hbond: continue
@@ -662,7 +664,8 @@ class manager():
       Hs = self.Hs,
       As = self.As,
       Ds = self.Ds,
-      fsc0 = fsc0)
+      fsc0 = fsc0,
+      tolerate_altloc=True)
 
     if (not is_candidate):
       return is_hbond

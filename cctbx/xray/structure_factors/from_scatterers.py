@@ -1,17 +1,15 @@
 from __future__ import absolute_import, division, print_function
 # -*- coding: utf-8 -*-
 from cctbx.xray.structure_factors.manager import manager
-from cctbx.xray.structure_factors.from_scatterers_direct \
-  import from_scatterers_direct
-from cctbx.xray.structure_factors.from_scatterers_fft \
-  import from_scatterers_fft
+from cctbx.xray.structure_factors.algorithm import algorithms
 
 class from_scatterers(manager):
   """ Factory class for structure factor evaluations """
 
   def __call__(self, xray_structure,
                      miller_set,
-                     algorithm=None):
+                     algorithm=None,
+                     extra_params=None):
     """Evaluate structure factors and return the result
 
     :type xray_structure: cctbx.xray.structure
@@ -31,8 +29,9 @@ class from_scatterers(manager):
       or the best suited of the two of them when C{algorithm} is None
       providing the evaluated structure factors as C{e.f_calc()}
     """
-    assert algorithm in ("direct", "fft", None)
+    assert algorithm in algorithms.keys() or algorithm is None
     if (algorithm is None):
+      algorithm = "fft"
       n_scatterers = xray_structure.scatterers().size()
       n_miller_indices = miller_set.indices().size()
       if (not self.have_good_timing_estimates()):
@@ -44,10 +43,10 @@ class from_scatterers(manager):
         if (   self.estimate_time_direct(n_scatterers * n_miller_indices)
             <= self.estimate_time_fft(n_scatterers, n_miller_indices)):
           algorithm = "direct"
-    if (algorithm == "direct"): f = from_scatterers_direct
-    else:                       f = from_scatterers_fft
+    f = algorithms[algorithm].from_scatterers
     return f(
       manager=self,
       xray_structure=xray_structure,
       miller_set=miller_set,
-      algorithm=algorithm) # passing algorithm allows f to decide on CPU/GPU implementation
+      algorithm=algorithm, # passing algorithm allows f to decide on CPU/GPU implementation
+      extra_params=extra_params)

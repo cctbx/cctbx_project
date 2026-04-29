@@ -1,3 +1,4 @@
+"""Compute maximum entropy map from map coefficients"""
 # LIBTBX_SET_DISPATCHER_NAME phenix.maximum_entropy_map
 
 from __future__ import absolute_import, division, print_function
@@ -199,3 +200,4 @@ if(__name__ == "__main__"):
   log = sys.stdout
   run(sys.argv[1:], log=log)
   print("Total time: %-8.3f" % timer.elapsed(), file=log)
+

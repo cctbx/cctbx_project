@@ -249,7 +249,7 @@ class SetupInstaller(object):
       env['PATH'] = os.getenv('PATH')
       try:
         output = subprocess.check_output(
-          ['conda', 'pack', '-h'],
+          ['conda-pack', '-h'],
           stderr=subprocess.STDOUT, env=env)
         conda_pack_is_available = True
       except Exception as e:
@@ -263,7 +263,7 @@ class SetupInstaller(object):
         try:
           filename = 'conda_base.tar'
           output = subprocess.check_output(
-            ['conda', 'pack', '--force', '-p', os.path.abspath('conda_base'),
+            ['conda-pack', '--force', '-p', os.path.abspath('conda_base'),
              '-o', filename],
             stderr=subprocess.STDOUT, env=env)
           shutil.copy(os.path.join(self.root_dir, filename),

@@ -306,6 +306,10 @@ def import_xds_integrate_hkl(integrate_hkl_file):
         if record.startswith('!ORGX='):
             ox = float(record.split()[1])
             oy = float(record.split()[3])
+            try:
+                distance = float(record.split()[5])
+            except IndexError: # Older versions of this file do not contain distance on this line.
+                pass
             continue
         if record.startswith('!STARTING_FRAME'):
             starting_frame = int(record.split()[-1])

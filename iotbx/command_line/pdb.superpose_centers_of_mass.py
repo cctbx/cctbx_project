@@ -1,3 +1,5 @@
+"""Superpose center of mass of model on center of mass of another model"""
+
 from __future__ import absolute_import, division, print_function
 from iotbx import pdb
 import iotbx.phil

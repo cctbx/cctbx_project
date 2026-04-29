@@ -20,6 +20,7 @@ class five_cc(object):
                map,
                xray_structure,
                d_min,
+               map_calc=None,
                box=None,
                keep_map_calc=False,
                compute_cc_box=False,
@@ -56,7 +57,10 @@ class five_cc(object):
     self.n_nodes_inside = self.sel_inside.size()
     del bs_mask
     #
-    map_calc = self._get_map_calc()
+    if map_calc is None:
+      map_calc = self._get_map_calc()
+    else:
+      maptbx.assert_same_gridding(map_calc, self.map)
     #
     if(compute_cc_mask):
       cc_mask = from_map_map_selection(map_1=self.map, map_2=map_calc,

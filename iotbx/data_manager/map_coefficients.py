@@ -32,12 +32,13 @@ class MapCoefficientsDataManager(MillerArrayDataManager):
     return self._export_miller_array_phil_extract(
       MapCoefficientsDataManager.datatype)
 
-  def load_map_coefficients_phil_extract(self, phil_extract):
+  def load_map_coefficients_phil_extract(self, phil_extract, process_files=True):
     '''
     Load custom PHIL extract
     '''
     self._load_miller_array_phil_extract(MapCoefficientsDataManager.datatype,
-                                         phil_extract)
+                                         phil_extract,
+                                         process_files=process_files)
 
   def add_map_coefficients(self, filename, data):
     self.add_miller_array(filename, data)

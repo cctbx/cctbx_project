@@ -3,7 +3,7 @@ import scitbx.math
 from scitbx.array_family import flex
 from scitbx import lbfgsb as lbfgsb_core
 import scitbx.lbfgs as lbfgs_core
-import sys
+from libtbx import adopt_init_args
 
 floating_point_epsilon_double = scitbx.math.floating_point_epsilon_double_get()
 
@@ -241,78 +241,130 @@ class newton_more_thuente_1994(object):
     print("  line_search_info:", \
         self.line_search_info)
 
-class lbfgsb(object):
-  """
-  Wrapper for LBGFGS-B minimizer with simplified interface. See lbfgsb_core for
-  more settings.
-  Vector of varibales calculator.x is changed in-place.
-  """
-
-  def __init__(self, calculator, max_iterations=None):
-    M = lbfgsb_core.minimizer(
-      n   = calculator.n,
-      l   = calculator.lower_bound,
-      u   = calculator.upper_bound,
-      nbd = calculator.bound_flags)
-    M.error = None
-    f_start = None
-    f = None
-    try:
-      icall = 0
-      while 1:
-        icall += 1
-        x, f, g = calculator() # x will be changed in place
-        if(icall==1): f_start = f
-        have_request = M.process(x, f, g)
-        if(have_request):
-          requests_f_and_g = M.requests_f_and_g()
-          continue
-        assert not M.requests_f_and_g()
-        if(M.is_terminated()): break
-        if(max_iterations is not None and icall>max_iterations): break
-    except Exception as e:
-      M.error = str(e)
-    M.n_calls = icall
-    if(M.error is not None):
-      print("lbfgsb: an error occured: %s"%M.error)
-    # items to store
-    self.M          = M
-    self.f_start    = f_start
-    self.f          = f
-    self.nfev       = self.M.n_calls
-    self.calculator = calculator
-
-  def show(self, log=None, prefix=""):
-    if(log is None): log = sys.stdout
-    m="%sLBFGS-B: function start/end, n_calls:"%prefix
-    print(m, "%12.6g %12.6g"%(self.f_start, self.f), self.nfev, file=log)
 
 class lbfgs(object):
   """
-  Wrapper for LBGFGS minimizer with simplified interface. See lbfgs_core for
-  more settings.
-  Vector of varibales calculator.x is changed in-place.
+    A general L-BFGS and L-BFGS-B minimizer class.
+
+    This class implements a minimizer for solving optimization problems using
+    either the Limited-memory Broyden-Fletcher-Goldfarb-Shanno (L-BFGS) or
+    L-BFGS with Box constraints (L-BFGS-B) algorithms.
+    The behavior is determined by the selected mode, and it interacts with
+    provided calculator object to compute function values, gradients, and
+    curvatures.
+
+    Parameters
+    ----------
+    mode : str
+        The minimization mode, either 'lbfgs' for L-BFGS or 'lbfgsb' for
+        L-BFGS-B.
+    calculator : object
+        An object that provides methods to compute the target function value,
+        gradients, and optionally curvatures. It must have `x`,
+        `initial_values`, `target()`, `gradients()`, and `curvatures()`
+        methods.
+    max_iterations : int, optional
+        Maximum number of iterations for the minimization. Defaults to None,
+        allowing unlimited iterations.
+    diag_mode : str, optional
+        If specified, controls the frequency of diagonal updates for curvature
+        approximation. Must be either 'once' or 'always'. Defaults to None.
+
+    Attributes
+    ----------
+    x : flex.double
+        The current values of the variables being optimized.
+    minimizer : object
+        The underlying L-BFGS or L-BFGS-B minimizer object, depending on the
+        selected mode.
+
+    Notes
+    -----
+    - The class selects between L-BFGS and L-BFGS-B based on
+      the value of `mode`. For L-BFGS-B, it also uses bounds specified by the
+      `calculator` object.
+    - The `diag_mode` controls if curvature are used during optimization.
+
+    Methods
+    -------
+    compute_functional_and_gradients()
+        Computes the target function value and gradients for the current
+        values of the variables.
+    compute_functional_gradients_diag()
+        Computes the target function value, gradients, and curvatures
+        (diagonal) for the current values of the variables (only applicable
+        in modes where curvature is needed).
   """
 
-  def __init__(self, calculator, stpmax, max_iterations, gradient_only):
-    core_params = lbfgs_core.core_parameters(stpmax = stpmax)
-    termination_params = lbfgs_core.termination_parameters(
-      max_iterations = max_iterations)
-    M = lbfgs_core.run(
-      core_params               = core_params,
-      termination_params        = termination_params,
-      exception_handling_params = None,
-      target_evaluator          = calculator,
-      gradient_only             = gradient_only,
-      line_search               = True,
-      log                       = None)
-    # items to store
-    self.M          = M
-    self.calculator = calculator
-    self.nfev       = self.M.nfun()
+  def __init__(self,
+               mode,
+               calculator,
+               core_params = None,
+               exception_handling_params = None,
+               max_iterations = None,
+               min_iterations = 0,
+               diag_mode = None,
+               gradient_only = False):
+    """
+    Initialize the minimizer with the selected mode and calculator object.
+    """
+    adopt_init_args(self, locals())
+    self.callback_after_step = getattr(
+      self.calculator, "callback_after_step", None)
+    assert mode in ['lbfgs', 'lbfgsb']
+    self.x = self.calculator.x
+    # necessary? also done in run_c_plus_plus
+    if diag_mode is not None: assert diag_mode in ['once', 'always']
+    if self.mode == 'lbfgs':
+      # TODO: How to best expose all the params of these classes?
+      if core_params is None: core_params = lbfgs_core.core_parameters()
+      termination_params = lbfgs_core.termination_parameters(
+        max_iterations = max_iterations, min_iterations = min_iterations)
+      if exception_handling_params is None:
+        exception_handling_params = lbfgs_core.exception_handling_parameters()
+      self.minimizer = lbfgs_core.run_c_plus_plus(
+        target_evaluator          = self,
+        termination_params        = termination_params,
+        core_params               = core_params,
+        exception_handling_params = exception_handling_params,
+        log                       = None,
+        gradient_only             = gradient_only,
+        line_search               = True
+        )
+    if self.mode == 'lbfgsb':
+      self.minimizer = lbfgsb_core.run(
+        target_evaluator = self,
+        max_iterations   = max_iterations,
+        bound_flags      = self.calculator.bound_flags,
+        lower_bound      = self.calculator.lower_bound,
+        upper_bound      = self.calculator.upper_bound,
+        n                = self.x.size())
 
-  def show(self, log=None, prefix=""):
-    if(log is None): log = sys.stdout
-    m="%sLBFGS: function start/end, n_calls: %.6f %.6f %d"
-    print(m%(prefix, self.calculator.f_start, self.calculator.f, self.M.nfun()),
-      file=log)
+  def compute_functional_and_gradients(self):
+    """
+    Compute the target function value and gradients.
+
+    Updates the calculator with the current values of the variables `x`,
+    then computes the target function value and gradients.
+    """
+    self.calculator.update(x = self.x)
+    t = self.calculator.target()
+    g = self.calculator.gradients()
+    if self.mode == 'lbfgs':
+      return t,g
+    if self.mode == 'lbfgsb':
+      return self.x,t,g
+
+  def compute_functional_gradients_diag(self):
+    """
+    Compute the target function value, gradients, and diagonal curvatures.
+
+    Updates the calculator with the current values of the variables `x`,
+    then computes the target function value, gradients, and curvatures
+    (diagonal elements).
+    """
+    self.calculator.update(x = self.x)
+    t = self.calculator.target()
+    g = self.calculator.gradients()
+    d = self.calculator.curvatures()
+    return t,g,d

@@ -1,3 +1,4 @@
+"""Summarize contents of a reflection file or show each reflection"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.mtz.dump
 # LIBTBX_SET_DISPATCHER_NAME iotbx.mtz.dump

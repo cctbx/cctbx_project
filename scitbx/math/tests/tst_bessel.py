@@ -1,3 +1,8 @@
+"""
+math.tests.tst_bessel
+
+"""
+
 from __future__ import absolute_import, division, print_function
 import scitbx.math
 from scitbx.stdlib import math
@@ -78,9 +83,9 @@ def run(args):
 
 if (__name__ == "__main__"):
   # XXX Test disabled: "Floating-point error" crash, pending future investigation.
-  sys.exit(0)
-  if 'test_j1' in sys.argv[1:]:
-    tst_sph_bessel_j1()
-    tst_bessel_J()
-    exit()
-  run(args=sys.argv[1:])
+  if 0:
+    if 'test_j1' in sys.argv[1:]:
+      tst_sph_bessel_j1()
+      tst_bessel_J()
+      exit()
+    run(args=sys.argv[1:])

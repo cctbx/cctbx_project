@@ -1,3 +1,4 @@
+"""Extract extract rfactors resolutions sigma from reflection file"""
 from __future__ import absolute_import, division, print_function
 import sys
 from libtbx.str_utils import format_value
@@ -140,7 +141,7 @@ def extract_remark_2_and_3_records(file_name, file_lines=None):
       start = True
       result.append(rec)
     else:
-      if(rec.startswith("ATOM ") or rec.startswith("HETATM ")):
+      if(rec.startswith("ATOM ") or rec.startswith("HETATM ")): # PDB OK
         break
   return result
 

@@ -1,3 +1,4 @@
+"""Transfer crystal symmetry to a cns file"""
 from __future__ import absolute_import, division, print_function
 from iotbx import cns
 import iotbx.cns.space_group_symbols

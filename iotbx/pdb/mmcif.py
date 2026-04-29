@@ -1,3 +1,4 @@
+"""Interpretation of mmCIF formatted model files"""
 from __future__ import absolute_import, division, print_function
 import sys
 from cctbx.array_family import flex
@@ -6,8 +7,10 @@ from libtbx import group_args
 from libtbx.utils import Sorry
 from libtbx.str_utils import format_value
 import iotbx.pdb
+import cctbx.crystal
 from iotbx.pdb import hierarchy
 from iotbx.pdb import hy36encode
+from iotbx.pdb import cryst1_interpretation
 from iotbx.pdb.experiment_type import experiment_type
 from iotbx.pdb.remark_3_interpretation import \
      refmac_range_to_phenix_string_selection, tls
@@ -37,9 +40,9 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     self.hierarchy = hierarchy.root()
     # These items are mandatory for the _atom_site loop, all others are optional
     type_symbol = self._wrap_loop_if_needed(cif_block, "_atom_site.type_symbol")
-    atom_labels = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_atom_id")
+    atom_labels = self._wrap_loop_if_needed(cif_block, "_atom_site.label_atom_id") # corresponds to chem comp atom name
     if atom_labels is None:
-      atom_labels = self._wrap_loop_if_needed(cif_block, "_atom_site.label_atom_id") # corresponds to chem comp atom name
+      atom_labels = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_atom_id")
     alt_id = self._wrap_loop_if_needed(cif_block,"_atom_site.label_alt_id") # alternate conformer id
     label_asym_id = self._wrap_loop_if_needed(cif_block, "_atom_site.label_asym_id") # chain id
     auth_asym_id = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_asym_id")
@@ -54,7 +57,10 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     seq_id = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_seq_id")
     if seq_id is None:
       seq_id = self._wrap_loop_if_needed(cif_block, "_atom_site.label_seq_id") # residue number
-    assert [atom_labels, alt_id, auth_asym_id, comp_id, entity_id, seq_id].count(None) == 0, "something is not present"
+    error_message = """something is not present - not enough information
+    to make a hierarcy out of this CIF file.
+    It could be because this is restraints or component cif or a corrupted model cif."""
+    assert [atom_labels, alt_id, auth_asym_id, comp_id, entity_id, seq_id].count(None) == 0, error_message
     assert type_symbol is not None
 
     atom_site_fp = cif_block.get('_atom_site.phenix_scat_dispersion_real')
@@ -72,6 +78,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     cart_z = flex.double(self._wrap_loop_if_needed(cif_block, "_atom_site.Cartn_z"))
     occu =   flex.double(self._wrap_loop_if_needed(cif_block, "_atom_site.occupancy"))
     formal_charge = self._wrap_loop_if_needed(cif_block, "_atom_site.pdbx_formal_charge")
+    resolution = self._wrap_loop_if_needed(cif_block, "_atom_site.phenix_resolution")
     # anisotropic b-factors
     # TODO: read esds
     anisotrop_id = self._wrap_loop_if_needed(cif_block, "_atom_site_anisotrop.id")
@@ -214,6 +221,10 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
           charge = int(charge)
           if charge == 0: sign = ""
           atom.set_charge("%i%s" %(charge, sign))
+      if resolution is not None:
+        res = resolution[i_atom]
+        if res not in ("?", "."):
+          atom.resolution=float(res)
       if atom_site_fp is not None:
         fp = atom_site_fp[i_atom]
         if fp not in ("?", "."):
@@ -361,11 +372,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
                cif_object=None,
                source_info=iotbx.pdb.Please_pass_string_or_None,
                lines=None,
-               pdb_id=None,
                raise_sorry_if_format_error=False):
-    if (pdb_id is not None):
-      assert file_name is None
-      file_name = iotbx.pdb.ent_path_local_mirror(pdb_id=pdb_id)
     if file_name is not None:
       reader = iotbx.cif.reader(file_path=file_name)
       self.cif_model = reader.model()
@@ -396,8 +403,13 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
       if (set_atom_i_seq):
         self.hierarchy.reset_atom_i_seqs()
       self.hierarchy.atoms_reset_serial()
-
     return self.hierarchy
+
+  def label_to_auth_asym_id_dictionary(self):
+    auth_asym = self.cif_block.get('_atom_site.auth_asym_id')
+    label_asym = self.cif_block.get('_atom_site.label_asym_id')
+    assert len(label_asym) == len(auth_asym)
+    return dict(zip(label_asym, auth_asym))
 
   def source_info(self):
     return self._source_info
@@ -427,9 +439,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def crystal_symmetry(self,
                        crystal_symmetry=None,
                        weak_symmetry=False):
-    if self.hierarchy is None:
-      self.construct_hierarchy()
-    self_symmetry = self.builder.crystal_symmetry
+    self_symmetry = self.crystal_symmetry_from_cryst1()
     if (crystal_symmetry is None):
       return self_symmetry
     if (self_symmetry is None):
@@ -441,7 +451,18 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def crystal_symmetry_from_cryst1(self):
     if self.hierarchy is None:
       self.construct_hierarchy()
-    return self.builder.crystal_symmetry
+    builder_cs = self.builder.crystal_symmetry
+    # check for dummy one
+    if (builder_cs.unit_cell() is not None and
+        cryst1_interpretation.dummy_unit_cell(
+            abc = builder_cs.unit_cell().parameters()[:3],
+            abg = builder_cs.unit_cell().parameters()[3:],
+            sg_symbol=str(builder_cs.space_group_info()))):
+      return cctbx.crystal.symmetry(
+        unit_cell=None,
+        space_group_info=None)
+    return builder_cs
+
 
   def extract_cryst1_z_columns(self):
     return self.cif_model.values()[0].get("_cell.Z_PDB")

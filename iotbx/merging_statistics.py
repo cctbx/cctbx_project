@@ -1,4 +1,3 @@
-
 """
 Routines for calculating common metrics of data quality based on merging of
 redundant observations.

@@ -2359,6 +2359,59 @@ pdb_interpretation {
   }
 }
   ''',
+  'linking_test_cyclic_d_amino_acid.pdb' : '''
+CRYST1   62.592   88.672   79.544  90.00  90.00  90.00 P 1           0
+SCALE1      0.015976  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.011278  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.012572        0.00000
+ATOM      1  N   ALA A   1     139.541 141.181  96.260  1.00 20.00           N
+ATOM      2  CA  ALA A   1     138.637 140.412  97.146  1.00 20.00           C
+ATOM      3  C   ALA A   1     139.314 139.161  97.689  1.00 20.00           C
+ATOM      4  O   ALA A   1     140.095 138.531  96.963  1.00 20.00           O
+ATOM      5  CB  ALA A   1     137.356 140.101  96.417  1.00 20.00           C
+ATOM      6  O   ALA A   2     137.325 136.971  99.601  1.00 30.00           O
+ATOM      7  N   ALA A   2     139.043 138.844  98.952  1.00 30.00           N
+ATOM      8  CA  ALA A   2     139.595 137.635  99.598  1.00 30.00           C
+ATOM      9  C   ALA A   2     138.408 136.872 100.186  1.00 30.00           C
+ATOM     10  CB  ALA A   2     140.622 138.035 100.627  1.00 30.00           C
+ATOM     11  O   GLY A   3     137.830 133.641 100.447  1.00 30.00           O
+ATOM     12  N   GLY A   3     138.559 136.152 101.290  1.00 30.00           N
+ATOM     13  CA  GLY A   3     137.375 135.482 101.846  1.00 30.00           C
+ATOM     14  C   GLY A   3     136.942 134.331 100.969  1.00 30.00           C
+ATOM     15  O   ALA A   4     136.226 132.849  97.746  1.00 30.00           O
+ATOM     16  N   ALA A   4     135.635 134.109 100.811  1.00 30.00           N
+ATOM     17  CA  ALA A   4     135.185 133.051  99.882  1.00 30.00           C
+ATOM     18  C   ALA A   4     135.449 133.514  98.449  1.00 30.00           C
+ATOM     19  CB  ALA A   4     133.736 132.690 100.110  1.00 30.00           C
+ATOM     20  O   ALA A   5     136.629 136.668  96.001  1.00 30.00           O
+ATOM     21  N   ALA A   5     134.856 134.630  98.036  1.00 30.00           N
+ATOM     22  CA  ALA A   5     134.990 135.102  96.644  1.00 30.00           C
+ATOM     23  C   ALA A   5     136.429 135.521  96.406  1.00 30.00           C
+ATOM     24  CB  ALA A   5     134.055 136.265  96.409  1.00 30.00           C
+ATOM     25  O   ALA A   6     139.834 134.403  94.458  1.00 30.00           O
+ATOM     26  N   ALA A   6     137.389 134.638  96.643  1.00 30.00           N
+ATOM     27  CA  ALA A   6     138.809 135.028  96.518  1.00 30.00           C
+ATOM     28  C   ALA A   6     139.123 135.234  95.043  1.00 30.00           C
+ATOM     29  CB  ALA A   6     139.676 133.969  97.130  1.00 30.00           C
+ATOM     30  O   ALA A   7     137.722 138.645  93.058  1.00 30.00           O
+ATOM     31  N   ALA A   7     138.555 136.270  94.446  1.00 30.00           N
+ATOM     32  CA  ALA A   7     138.715 136.491  92.997  1.00 30.00           C
+ATOM     33  C   ALA A   7     138.736 137.996  92.776  1.00 30.00           C
+ATOM     34  CB  ALA A   7     137.571 135.846  92.258  1.00 30.00           C
+ATOM     35  N   DPR A   8     139.914 138.630  92.485  1.00 20.00           N
+ATOM     36  CA  DPR A   8     139.816 140.123  92.327  1.00 20.00           C
+ATOM     37  CB  DPR A   8     140.573 140.423  91.018  1.00 20.00           C
+ATOM     38  CG  DPR A   8     141.601 139.328  90.913  1.00 20.00           C
+ATOM     39  CD  DPR A   8     141.393 138.483  92.150  1.00 20.00           C
+ATOM     40  C   DPR A   8     140.000 141.439  93.121  1.00 20.00           C
+ATOM     41  O   DPR A   8     139.549 142.442  92.591  1.00 20.00           O
+ATOM     42  N   DAL A   9     140.609 141.365  93.957  1.00 20.00           N
+ATOM     43  CA  DAL A   9     140.665 142.742  94.522  1.00 20.00           C
+ATOM     44  CB  DAL A   9     142.190 142.550  94.599  1.00 20.00           C
+ATOM     45  C   DAL A   9     140.049 142.247  95.882  1.00 20.00           C
+ATOM     46  O   DAL A   9     139.571 143.185  96.612  1.00 20.00           O
+END
+  ''',
         }
 
 links = {
@@ -2388,6 +2441,7 @@ links = {
   "linking_test_CD_GHE_A_B.pdb" : [0,0],             #4],
   "linking_test_XYP_XYP.pdb" : [18,19],
   "linking_test_ALY_MCM.pdb" : [11,12], # links AA with quasi-AA
+  # cross link not working - DL: I think it works now
   "linking_test_cyclic_side_chain.pdb" : [67,68], # side chain cross link
   "linking_test_cyclic_main_chain.pdb" : [34,35], # main chain cyclic
   "linking_test_over_valence.pdb" : [6,6],
@@ -2406,7 +2460,8 @@ links = {
   "linking_test_MAN-before-ASN.pdb" : [15,15],
   "linking_test_partial_alt_loc_glyco.pdb" : [63,67],
   'linking_test_CM-SO4.pdb' : [4,4],
-  'linking_test_exclusion_SO4.pdb' :[24,22]
+  'linking_test_exclusion_SO4.pdb' :[24,22],
+  'linking_test_cyclic_d_amino_acid.pdb' : [46,47],
   }
 
 def run_and_test(cmd, pdb, i, skip_links=False):
@@ -2424,22 +2479,26 @@ def run_and_test(cmd, pdb, i, skip_links=False):
   f.close()
   if pdb=='linking_test_cyclic_main_chain.pdb':
     if i==1:
-      assert lines.find('link_TRANS restraints: 1')>-1
+      assert lines.find('link_TRANS | restraints: 1')>-1
   bonds = 0
   for line in lines.splitlines():
-    for bond_like in ["Bond restraints:",
+    for bond_like in ["Bond | covalent geometry | restraints:",
                       'Bond-like restraints:',
-                      'Metal coordination restraints:',
-                      #
-                      'Disulphide bridge restraints:',
-                      'User supplied restraints:',
-                      'Standard Glycosidic restraints:',
-                      'Custom Glycosidic restraints:',
-                      'Misc. restraints:',
-                      #
-                      'link_'
+                      'Bond | Metal coordination | restraints',
+                      'Bond | User supplied | restraints',
+                      'Bond | Custom Glycosidic | restraints',
+                      'Bond | link_BETA1-6 | restraints',
+                      'Bond | link_NAG-ASN | restraints',
+                      'Bond | link_BETA1-3 | restraints',
+                      'Bond | link_BETA1-4 | restraints',
+                      'Bond | link_ALPHA2-6 | restraints',
+                      'Bond | Misc. | restraints',
+                      'Bond | Disulphide bridge | restraints',
+                      'Bond | link_TRANS | restraints',
                       ]:
       if line.find(bond_like)>-1:
+        print('line',line)
+        print('bond_like',bond_like)
         print('Adding %s for "%s"' % (int(line.split()[-1]), line))
         bonds += int(line.split()[-1])
     if line.find('Bond angle')>-1: break
@@ -2512,7 +2571,7 @@ def run(only_i=None):
     f.close()
     if pdb.endswith(".cif"): cifs += " %s" % pdb
   j=0
-  for pdb in sorted(pdbs):
+  for k, pdb in enumerate(sorted(pdbs)):
     #break
     if pdb.endswith(".cif"): continue
     if pdb.endswith(".params"): continue
@@ -2522,7 +2581,7 @@ def run(only_i=None):
     if pdb.find("partial")>-1: continue
     #if pdb.find('SO4')==-1: continue
     if pdb in ['linking_test_exclusion_SO4.pdb']: continue
-    print('pdb '*10,pdb)
+    print('pdb '*10,k-10,pdb)
     j+=1
     if only_i is not None and only_i!=j: continue
     for i in range(2):
@@ -2530,16 +2589,20 @@ def run(only_i=None):
       cmd = "phenix.geometry_minimization %s write_geo_file=True" % pdb
       cmd += " link_all=%d link_carbohydrate=%d %s" % (i, i, cifs)
       cmd += " link_ligand=%d" % i
-      if pdb in [
-        "linking_test_ccp4_other.pdb",
-        ]:
-        if i:
-          cmd += " secondary_structure.enabled=1"
+      if pdb in ["linking_test_ccp4_other.pdb"]:
+        if i: cmd += " secondary_structure.enabled=1"
+      if pdb in ['linking_test_cyclic_d_amino_acid.pdb',
+                 'linking_test_cyclic_main_chain.pdb',
+                 'linking_test_cyclic_side_chain.pdb',
+                 ]:
+        if not i: cmd += ' link_residues=False'
       if pdb.replace(".pdb", ".params") in pdbs:
         cmd += " %s" % pdb.replace(".pdb", ".params")
-      print("test number:",j)
+      print('='*80)
+      print("test number: %s (%s)" % (j,i))
+      print('='*80)
       print(cmd)
-      run_and_test(cmd, pdb,i)
+      run_and_test(cmd, pdb, i)
 
   for pdb in sorted(pdbs):
     if pdb not in longer_tests: continue

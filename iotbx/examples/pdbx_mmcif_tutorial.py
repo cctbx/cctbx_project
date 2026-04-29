@@ -1,3 +1,4 @@
+"""Examples of how to work with PDB and mmCIF files"""
 from __future__ import absolute_import, division, print_function
 #
 # Command to run this example:
@@ -8,25 +9,25 @@ from __future__ import absolute_import, division, print_function
 #
 import os
 from six.moves import range
-
+from libtbx.utils import Sorry
+from iotbx.pdb.fetch import valid_pdb_id, fetch_and_write
 
 def run(args):
   if len(args) == 0:
     args = ["1hbb"]
 
   for arg in args:
-    import iotbx.pdb.fetch
-
     if os.path.isfile(arg):
       mmcif_file = arg
       pdb_id = os.path.splitext(os.path.basename(mmcif_file))[0]
-      iotbx.pdb.fetch.validate_pdb_id(pdb_id)
+      if not valid_pdb_id(pdb_id):
+        raise Sorry("Not valid pdb id")
     else:
       # download pdbx/mmcif file from the PDB
       pdb_id = arg
       mirror = "pdbe"
-      mmcif_file = iotbx.pdb.fetch.get_pdb(
-        pdb_id, data_type="pdb", mirror=mirror, log=sys.stdout, format="cif")
+      mmcif_file = fetch_and_write(
+        pdb_id, entity="model_cif", mirror=mirror, log=sys.stdout)
 
     # read the cif file and get an iotbx.cif object
     import iotbx.cif

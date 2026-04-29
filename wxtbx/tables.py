@@ -28,7 +28,7 @@ class TableView(wx.ListCtrl):
     col_width = ((w - 20) / len(labels))
     for i_lab, label in enumerate(labels):
       self.InsertColumn(i_lab, label)
-      self.SetColumnWidth(i_lab, col_width)
+      self.SetColumnWidth(i_lab, int(col_width))
     for row in rows[1:] :
       assert len(row) == len(labels), labels
       idx = self.InsertStringItem(sys.maxunicode, row[0])

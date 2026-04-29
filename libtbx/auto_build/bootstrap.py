@@ -782,6 +782,24 @@ class qrefine_module(SourceModule):
                'https://github.com/qrefine/qrefine.git',
                ]
 
+class pydiscamb_module(SourceModule):
+  module = 'pyDiSCaMB'
+  anonymous = ['git',
+               'git@github.com:discamb-project/pyDiSCaMB.git',
+               'https://github.com/discamb-project/pyDiSCaMB.git',
+               ]
+
+class molstar_adaptbx(SourceModule):
+  module = 'molstar_adaptbx'
+  anonymous = ['git',
+               'https://github.com/phenix-project/molstar_adaptbx.git']
+
+class molstar_module(SourceModule):
+  module = 'molstar'
+  anonymous = ['git',
+               '-b v4.11.0',
+               'https://github.com/molstar/molstar.git']
+
 class mon_lib_module(SourceModule):
   module = 'mon_lib'
   anonymous = ['curl', 'http://boa.lbl.gov/repositories/mon_lib.gz']
@@ -805,9 +823,9 @@ class boost_module(SourceModule):
 class cbflib_module(SourceModule):
   module = 'cbflib'
   anonymous = ['git',
-               'git@github.com:yayahjb/cbflib.git',
-               'https://github.com/yayahjb/cbflib.git',
-               'https://github.com/yayahjb/cbflib/archive/main.zip']
+               'git@github.com:dials/cbflib.git',
+               'https://github.com/dials/cbflib.git',
+               'https://github.com/dials/cbflib/archive/main.zip']
 
 class ccp4io_adaptbx(SourceModule):
   module = 'ccp4io_adaptbx'
@@ -938,6 +956,12 @@ class phenix_pathwalker_module(SourceModule):
   module = 'phenix_pathwalker'
   anonymous = ['git', 'git@github.com:phenix-project/phenix_pathwalker.git']
 
+class alphafold_module(SourceModule):
+  module = 'alphafold'
+  anonymous = ['git',
+               'git@github.com:google-deepmind/alphafold.git',
+               'https://github.com/google-deepmind/alphafold.git']
+
 # Phaser repositories
 class phaser_module(SourceModule):
   module = 'phaser'
@@ -1009,7 +1033,6 @@ class iota_module(SourceModule):
 class msgpack_module(SourceModule):
   module = 'msgpack'
   anonymous = ['curl', [
-    "https://gitcdn.link/repo/dials/dependencies/dials-1.13/msgpack-3.1.1.tar.gz",
     "https://github.com/dials/dependencies/raw/dials-1.13/msgpack-3.1.1.tar.gz",
   ]]
 
@@ -1397,6 +1420,47 @@ class Builder(object):
     else:
       raise Exception('Unknown access method: %s %s'%(method, str(parameters)))
 
+    # add git-lfs steps if needed (should move into Toolbox class)
+    git_lfs_modules = ['phenix_examples', 'phenix_regression', 'chem_data', 'phasertng']
+    if module in git_lfs_modules:
+      # prepend path for check
+      dev_env = os.path.join('.', 'dev_env', 'bin')
+      if sys.platform == 'win32':
+        dev_env = os.path.join('.', 'dev_env', 'Library', 'bin')
+        os.environ['PATH'] = os.path.abspath(dev_env) + ';'  + os.environ['PATH']
+      else:
+        os.environ['PATH'] = os.path.abspath(dev_env) + ':'  + os.environ['PATH']
+
+      git_lfs_is_available = False
+
+      # check if git-lfs and svn are available
+      log = open(os.devnull, 'w')
+
+      try:
+        returncode = subprocess.call(['git', 'lfs', '--version'], stdout=log, stderr=log)
+        if returncode == 0:
+          git_lfs_is_available = True
+      except Exception:
+        pass
+
+      log.close()
+
+      # set if dev_env will be created in base step
+      self.install_dev_env = not git_lfs_is_available
+
+      # get lfs files
+      if self.install_dev_env:
+        print('*'*79)
+        print("""\
+An environment containing git-lfs and/or svn will be installed during the "base"
+step. Pleaser re-run the "update" step after "base" completes, so that git-lfs
+files for {module} will be downloaded.""".format(module=module))
+        print('*'*79)
+      else:
+        workdir = ['modules', module]
+        self.add_step(self.shell(command=['git', 'lfs', 'install', '--local'], workdir=workdir))
+        self.add_step(self.shell(command=['git', 'lfs', 'pull'], workdir=workdir))
+
   def _add_rsync(self, module, url, workdir=None, module_directory=None):
     """Add packages not in source control."""
     # rsync the hot packages.
@@ -1586,16 +1650,10 @@ class Builder(object):
       method, geostd_parameters = action[0], action[1:]
       self._add_git('geostd', geostd_parameters, destination=self.opjoin('modules', 'chem_data', 'geostd'))
 
-    # Use dials-2.2 branches for Python 2
-    if (module == 'dials' or module == 'dxtbx' or module == 'xia2') and not self.python3:
-      workdir = ['modules', module]
-      if module == 'dxtbx':
-        self.add_step(self.shell(command=['git', 'remote', 'set-url', 'origin', 'https://github.com/dials/dxtbx.git'], workdir=workdir))
-        self.add_step(self.shell(command=['git', 'fetch', 'origin'], workdir=workdir))
-      self.add_step(self.shell(command=['git', 'checkout', 'dials-2.2'], workdir=workdir))
-      self.add_step(self.shell(
-        command=['git', 'branch', '--set-upstream-to=origin/dials-2.2', 'dials-2.2'],
-        workdir=workdir))
+    # pick a specific commit for cbflib
+    if module == 'cbflib':
+      self.add_step(self.shell(command=['git', 'checkout', 'a9f39aff00580bb24d6dacb9ffa1bd2df1dedc31'],
+                               workdir=['modules', 'cbflib']))
 
   def _check_for_Windows_prerequisites(self):
     if self.isPlatformWindows():
@@ -1988,6 +2046,8 @@ class CCIBuilder(Builder):
     'clipper',
     'eigen',
     'reduce',
+    'ksdssp',
+    'ncdist',
   ]
   CODEBASES_EXTRA = []
   # Copy these sources from cci.lbl.gov
@@ -1998,6 +2058,7 @@ class CCIBuilder(Builder):
   # Configure for these cctbx packages
   LIBTBX = [
     'cctbx',
+    'xcif',
     'cctbx_website',
     'cbflib',
     'dxtbx',
@@ -2009,6 +2070,7 @@ class CCIBuilder(Builder):
     'smtbx',
     'gltbx',
     'wxtbx',
+    'ksdssp',
   ]
   LIBTBX_EXTRA = []
 
@@ -2029,7 +2091,7 @@ class MOLPROBITYBuilder(Builder):
   ]
   CODEBASES_EXTRA = [
     'molprobity',
-    #'chem_data', #chem_data removed from molprobity builder until accessible outside cci, -CJW
+    'chem_data',
     'reduce',
     'probe'
   ]
@@ -2143,7 +2205,8 @@ class PhaserTNGBuilder(PhaserBuilder):
 
   def get_libtbx_configure(self):
     configlst = super(PhaserTNGBuilder, self).get_libtbx_configure()
-    configlst.append('--enable_cxx11')
+    if not self.isPlatformMacOSX():
+      configlst.append("--enable_openmp_if_possible=True")
     return configlst
 
   def get_codebases(self):
@@ -2225,21 +2288,13 @@ class CCTBXBuilder(CCIBuilder):
 
   def _add_git(self, module, parameters, destination=None):
     super(CCTBXBuilder, self)._add_git(module, parameters, destination)
-    # select dials-3.5 branch
+    # select dials-3.22 branch
     if (module == 'dials' or module == 'dxtbx' or module == 'xia2') and self.python3:
       workdir = ['modules', module]
-      if module == 'dxtbx':
-        self.add_step(self.shell(command=['git', 'remote', 'set-url', 'origin', 'https://github.com/dials/dxtbx.git'], workdir=workdir))
-        self.add_step(self.shell(command=['git', 'fetch', 'origin'], workdir=workdir))
-      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.5'], workdir=workdir))
+      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.24'], workdir=workdir))
       self.add_step(self.shell(
-        command=['git', 'branch', '--set-upstream-to=origin/dials-3.5', 'dials-3.5'],
+        command=['git', 'branch', '--set-upstream-to=origin/dials-3.24', 'dials-3.24'],
         workdir=workdir))
-    # switch eigen to 3.3.9 for CentOS 6
-    if module == 'eigen':
-      if sys.platform.startswith('linux') and '.el6.' in platform.platform():
-        workdir = ['modules', module]
-        self.add_step(self.shell(command=['git', 'checkout', '3.3.9'], workdir=workdir))
 
 class DIALSBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['dials', 'iota', 'xia2', 'kokkos', 'kokkos-kernels']
@@ -2268,9 +2323,8 @@ class DIALSBuilder(CCIBuilder):
 
   def get_libtbx_configure(self):
     configlst = super(DIALSBuilder, self).get_libtbx_configure()
-    if self.python != "27":
-      # Do not enable C++11 for Python 2.7 builds, cf. https://github.com/cctbx/cctbx_project/pull/497
-      configlst.append('--enable_cxx11')
+    if '--enable_cxx11' in configlst: configlst.remove('--enable_cxx11')
+    configlst.append('--cxxstd=c++14')
     return configlst
 
 class LABELITBuilder(CCIBuilder):
@@ -2346,6 +2400,8 @@ class XFELBuilder(CCIBuilder):
     configlst = super(XFELBuilder, self).get_libtbx_configure()
     if '--enable_cxx11' in configlst: configlst.remove('--enable_cxx11')
     configlst.append('--cxxstd=c++14')
+    if not self.isPlatformMacOSX():
+      configlst.append("--enable_openmp_if_possible=True")
     return configlst
 
   def add_tests(self):
@@ -2375,8 +2431,8 @@ class PhenixBuilder(CCIBuilder):
     'elbow',
     'amber_adaptbx',
     'amber_library',
-    'ksdssp',
     'pulchra',
+    'qrefine',
     'solve_resolve',
     'reel',
     'gui_resources',
@@ -2402,6 +2458,7 @@ class PhenixBuilder(CCIBuilder):
     'phenix_examples',
     'phenix_pathwalker',
     'Colabs',
+    'qrefine',
     'solve_resolve',
     'reel',
     'phaser',
@@ -2421,79 +2478,15 @@ class PhenixBuilder(CCIBuilder):
     # 'prime',
   ]
 
-  # select dials-3.8 branch
+  # select DIALS
   def _add_git(self, module, parameters, destination=None):
     super(PhenixBuilder, self)._add_git(module, parameters, destination)
-    if module == 'boost':
+    if (module == 'dials' or module == 'dxtbx' or module == 'xia2'):
       workdir = ['modules', module]
-      self.add_step(self.shell(command=['git', 'checkout', '1.74'], workdir=workdir))
-    elif (module == 'dials' or module == 'dxtbx' or module == 'xia2') and self.python3:
-      workdir = ['modules', module]
-      if module == 'dxtbx':
-        self.add_step(self.shell(command=['git', 'remote', 'set-url', 'origin', 'https://github.com/dials/dxtbx.git'], workdir=workdir))
-        self.add_step(self.shell(command=['git', 'fetch', 'origin'], workdir=workdir))
-      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.8'], workdir=workdir))
+      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.24'], workdir=workdir))
       self.add_step(self.shell(
-        command=['git', 'branch', '--set-upstream-to=origin/dials-3.8', 'dials-3.8'],
+        command=['git', 'branch', '--set-upstream-to=origin/dials-3.24', 'dials-3.24'],
         workdir=workdir))
-
-  def add_module(self, module, workdir=None, module_directory=None):
-    """
-    Add git-lfs command for phenix_examples and phenix_regression
-    If the dev_env directory already exists, it is assumed that git-lfs
-    is available in that directory
-    """
-    super(PhenixBuilder, self).add_module(module, workdir, module_directory)
-
-    # update phenix_regression and phenix_examples with git-lfs
-    if module == 'phenix_examples' or module == 'phenix_regression' or module == 'chem_data':
-      # prepend path for check
-      dev_env = os.path.join('.', 'dev_env', 'bin')
-      if sys.platform == 'win32':
-        dev_env = os.path.join('.', 'dev_env', 'Library', 'bin')
-        os.environ['PATH'] = os.path.abspath(dev_env) + ';'  + os.environ['PATH']
-      else:
-        os.environ['PATH'] = os.path.abspath(dev_env) + ':'  + os.environ['PATH']
-
-      svn_is_available = False
-      git_lfs_is_available = False
-
-      # check if git-lfs and svn are available
-      log = open(os.devnull, 'w')
-
-      try:
-        returncode = subprocess.call(['svn', '--version'], stdout=log, stderr=log)
-        if returncode == 0:
-          svn_is_available = True
-      except Exception:
-        pass
-
-      try:
-        returncode = subprocess.call(['git', 'lfs', '--version'], stdout=log, stderr=log)
-        if returncode == 0:
-          git_lfs_is_available = True
-      except Exception:
-        pass
-
-      log.close()
-
-      # set if dev_env will be created in base step
-      self.install_dev_env = False
-      if not svn_is_available or not git_lfs_is_available:
-        self.install_dev_env = True
-
-      # get lfs files
-      if self.install_dev_env:
-        print('*'*79)
-        print("""\
-An environment containing git-lfs and/or svn will be installed during the "base"
-step. Pleaser re-run the "update" step after "base" completes, so that git-lfs
-files for {module} will be downloaded.""".format(module=module))
-        print('*'*79)
-      else:
-        workdir = ['modules', module]
-        self.add_step(self.shell(command=['git', 'lfs', 'install', '--local'], workdir=workdir))
-        self.add_step(self.shell(command=['git', 'lfs', 'pull'], workdir=workdir))
 
   def add_base(self, extra_opts=[]):
     super(PhenixBuilder, self).add_base(
@@ -2531,12 +2524,6 @@ in your path. """)
     configlst = super(PhenixBuilder, self).get_libtbx_configure()
     if '--enable_cxx11' in configlst:
       configlst.remove('--enable_cxx11')
-    set_std = ['cxxstd' in conf for conf in configlst]
-    if set_std.count(True) == 0:
-      if platform.mac_ver()[-1] == 'arm64':
-        configlst.append('--cxxstd=c++14')
-      else:
-        configlst.append('--cxxstd=c++11')
     if not self.isPlatformMacOSX():
       configlst.append("--enable_openmp_if_possible=True")
     return configlst
@@ -2572,6 +2559,37 @@ in your path. """)
         run_dials_tests=False
     if run_dials_tests:
       self.add_test_parallel('dials', flunkOnFailure=False, warnOnFailure=True)
+
+class PhenixDiscambBuilder(PhenixBuilder):
+  CODEBASES_EXTRA = PhenixBuilder.CODEBASES_EXTRA + ['pyDiSCaMB']
+
+  def get_libtbx_configure(self):
+    configlst = super(PhenixDiscambBuilder, self).get_libtbx_configure()
+    # switch to C++14 for new environments
+    if '--cxxstd=c++14' not in configlst:
+      configlst.append('--cxxstd=c++14')
+    return configlst
+
+  def add_make(self):
+    super(PhenixDiscambBuilder, self).add_make()
+    # install pyDiSCaMB
+    python = os.path.normpath(os.path.join(os.getcwd(), 'build', self.python_base))
+    self.add_step(self.shell(
+      command=[python, '-m', 'pip', 'install', '.'],
+        workdir=['modules', 'pyDiSCaMB'],
+        description='pip installing pyDiSCaMB',
+      ))
+
+class PhenixMolstarBuilder(PhenixBuilder):
+  CODEBASES_EXTRA = PhenixBuilder.CODEBASES_EXTRA + ['molstar','molstar_adaptbx']
+  def add_make(self):
+    super(PhenixMolstarBuilder, self).add_make()
+    python = os.path.normpath(os.path.join(os.getcwd(), 'build', self.python_base))
+    self.add_step(self.shell(
+      command=[python, "install_molstar.py"],
+        workdir=['modules', 'molstar_adaptbx',"command_line"],
+        description='molstar adaptbx install script',
+      ))
 
 class PhenixExternalRegression(PhenixBuilder):
   EXTERNAL_CODEBASES = [
@@ -2754,7 +2772,7 @@ class QRBuilder(PhenixBuilder):
     # XXX Do not get JPype1 as it fails. This makes QR work only with
     # XXX fast_interaction=True (=False won't work)
     #
-    pip_installs = ['ase', 'pymongo']
+    pip_installs = ['ase==3.22.1',]
     instructions = []
     # versioning
     cmd = [os.path.join('..', self.python_base),
@@ -2837,24 +2855,6 @@ def set_builder_defaults(options):
   '''
   Updates defaults for specific builders
   '''
-  if options.builder == 'phenix_voyager':
-    if not options.no_boost_src:
-      options.no_boost_src = True
-      # restore default for CentOS 7
-      if sys.platform.startswith('linux') and '.el7.' in platform.platform():
-        options.no_boost_src = False
-  if options.builder == 'phenix_voyager' or options.builder == 'phenix' \
-    or options.builder == 'molprobity':
-    # Apple Silicon uses Boost 1.78 in environment, Python 3.9
-    if platform.mac_ver()[-1] == 'arm64':
-      options.no_boost_src = True
-      options.python = '39'
-    if not options.no_boost_src:
-      options.no_boost_src = True
-      if sys.platform.startswith('linux') and '.el7.' in platform.platform():
-        options.no_boost_src = False
-    if options.use_conda is None:
-      options.use_conda = ''
 
   return options
 
@@ -2863,6 +2863,8 @@ def run(root=None):
     'cctbxlite': CCTBXLiteBuilder,
     'cctbx': CCTBXBuilder,
     'phenix': PhenixBuilder,
+    'phenix_discamb': PhenixDiscambBuilder,
+    'phenix_molstar': PhenixMolstarBuilder,
     'phenix_voyager': PhenixBuilder,
     'phenix_release': PhenixReleaseBuilder,
     'xfellegacy': XFELLegacyBuilder,
@@ -2978,8 +2980,8 @@ def run(root=None):
                     default=False)
   python_args = parser.add_mutually_exclusive_group(required=False)
   python_args.add_argument('--python',
-                    default='37', type=str, nargs='?', const='37',
-                    choices=['27', '37', '38', '39', '310'],
+                    default='311', type=str, nargs='?', const='311',
+                    choices=['39', '310', '311', '312', '313', '314'],
                     help="""When set, a specific Python version of the
 conda environment will be used. This only affects environments selected with
 the --builder flag. For non-conda dependencies, any Python 3 implies
@@ -3001,16 +3003,17 @@ building, $CONDA_PREFIX should be the argument for this flag. Otherwise, a new
 environment will be created. The --python flag will be ignored when there is
 an argument for this flag. Specifying an environment is for developers that
 maintain their own conda environment.""",
-                    default=None, nargs='?', const='')
+                    default='', nargs='?', const='')
   parser.add_argument("--no-boost-src", "--no_boost_src",
                       dest="no_boost_src",
                       help="""When set, the reduced Boost source code is not
 downloaded into the modules directory. This enables the usage of an existing
 installation of Boost in the same directory as the Python for configuration.
 For example, this flag should be used if the conda package for Boost is
-available. This flag only affects the "update" step.""",
+available. This flag only affects the "update" step. DEPRECATED: the Boost
+installation in the conda environment should be used.""",
                       action="store_true",
-                      default=False)
+                      default=True)
   parser.add_argument("--build-dir",
                      dest="build_dir",
                      help="directory where the build will be. Should be at the same level as modules! default is 'build'",

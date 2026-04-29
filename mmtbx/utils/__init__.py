@@ -1,4 +1,3 @@
-
 """
 Library of convenience functions for working with models and reflection data.
 This contains a number of routines used in phenix.refine and related programs,
@@ -554,58 +553,8 @@ def assert_water_is_consistent(model):
       assert doh >0.35 and doh < 1.45, doh
 
 # MARKED_FOR_DELETION_OLEG
-# Reason: Another custom-build method to 'quickly' get more or less
-# correct xray structure(s). Should be handled by mmtbx.model.
-# Used in:
-# mmtbx/refinement/ensemble_refinement/__init__.py
-class xray_structures_from_processed_pdb_file(object):
-
-  def __init__(self, processed_pdb_file, scattering_table, d_min, log = None):
-    self.xray_structures = []
-    self.model_selections = []
-    self.neutron_scattering_dict = None
-    self.xray_scattering_dict = None
-    self.xray_structure_all = \
-        processed_pdb_file.xray_structure(show_summary = False)
-    # XXX ad hoc manipulation
-    for sc in self.xray_structure_all.scatterers():
-      lbl=sc.label.split()
-      if("IAS" in lbl and sc.scattering_type=="?" and lbl[1].startswith("IS")):
-        sc.scattering_type = lbl[1]
-    #
-    if(self.xray_structure_all is None):
-      raise Sorry("Cannot extract xray_structure.")
-    if(self.xray_structure_all.scatterers().size()==0):
-      raise Sorry("Empty xray_structure.")
-    all_chain_proxies = processed_pdb_file.all_chain_proxies
-    self.xray_scattering_dict, self.neutron_scattering_dict = \
-      setup_scattering_dictionaries(
-        scattering_table  = scattering_table,
-        all_chain_proxies = all_chain_proxies,
-        xray_structure    = self.xray_structure_all,
-        d_min             = d_min,
-        log               = log)
-    model_indices = all_chain_proxies.pdb_inp.model_indices()
-    if(len(model_indices)>1):
-       model_indices_padded = flex.size_t([0])
-       model_indices_padded.extend(model_indices)
-       ranges = []
-       for i, v in enumerate(model_indices_padded):
-         try: ranges.append([model_indices_padded[i],
-                             model_indices_padded[i+1]])
-         except IndexError: pass
-       for ran in ranges:
-         sel = flex.size_t(range(ran[0],ran[1]))
-         self.model_selections.append(sel)
-         self.xray_structures.append(self.xray_structure_all.select(sel))
-    else:
-      self.model_selections.append(
-        flex.size_t(range(self.xray_structure_all.scatterers().size())) )
-      self.xray_structures.append(self.xray_structure_all)
-# END_MARKED_FOR_DELETION_OLEG
-
-# MARKED_FOR_DELETION_OLEG
 # Reason: Moved to mmtbx.model.manager
+# used in cctbx_project/mmtbx/command_line/maps.py
 def setup_scattering_dictionaries(scattering_table,
                                   xray_structure,
                                   d_min,
@@ -670,6 +619,7 @@ def fmodel_manager2(
   twin_law,
   ignore_r_free_flags,
   mask_params,
+  sf_accuracy_params,
   mtz_object=None,
   data_type=None):
   """
@@ -685,6 +635,7 @@ def fmodel_manager2(
       r_free_flags   = r_free_flags,
       abcd           = abcd,
       mask_params    = mask_params,
+      sf_and_grads_accuracy_params = sf_accuracy_params,
       xray_structure = xray_structure,
       origin         = mtz_object,
       data_type      = data_type)
@@ -700,6 +651,7 @@ def fmodel_manager2(
       twin_law_str   = twin_law,
       detwin_mode    = twin_params.detwin.mode,
       map_types      = twin_params.detwin.map_types,
+      sf_and_grads_accuracy_params = sf_accuracy_params,
       origin         = mtz_object,
       mask_params    = mask_params,
       data_type      = data_type)
@@ -1277,15 +1229,15 @@ class fmodel_from_xray_structure(object):
       try: hr = params.high_resolution
       except Exception: self.Sorry_high_resolution_is_not_defined()
       if(params.scattering_table == "neutron"):
-        if(new_scattering_dictionary):
-          xray_structure.scattering_type_registry(
-            custom_dict = new_scattering_dictionary)
-          xray_structure.scattering_type_registry().show(out = out)
-        else:
-          xray_structure.switch_to_neutron_scattering_dictionary()
+        xray_structure.switch_to_neutron_scattering_dictionary()
       else:
         xray_structure.scattering_type_registry(
           table = params.scattering_table, d_min = hr)
+      if(new_scattering_dictionary):
+        xray_structure.scattering_type_registry(
+            custom_dict = new_scattering_dictionary)
+        xray_structure.scattering_type_registry().show(out = out)
+
       if(hr is None): self.Sorry_high_resolution_is_not_defined()
       f_obs = xray_structure.structure_factors(d_min = hr).f_calc()
       sfga = params.structure_factors_accuracy
@@ -1298,7 +1250,8 @@ class fmodel_from_xray_structure(object):
          u_base                       = sfga.u_base,
          b_base                       = sfga.b_base,
          wing_cutoff                  = sfga.wing_cutoff,
-         exp_table_one_over_step_size = sfga.exp_table_one_over_step_size
+         exp_table_one_over_step_size = sfga.exp_table_one_over_step_size,
+         extra_params                 = sfga.extra
          ).f_calc()
       lr = None
       try: lr = params.low_resolution
@@ -1550,54 +1503,6 @@ def equivalent_sigma_from_cumulative_histogram_match(
   #
   return tmp2
 
-# MARKED_FOR_DELETION_OLEG
-# REASON: not used, not tested.
-def limit_frac_min_frac_max(frac_min,frac_max):
-      new_frac_min=[]
-      new_frac_max=[]
-      for lb,ub in zip(frac_min,frac_max):
-        new_frac_min.append(max(0,lb))
-        new_frac_max.append(min(1,ub))
-      return new_frac_min,new_frac_max
-def optimize_h(fmodel, mon_lib_srv, pdb_hierarchy=None, model=None, log=None,
-      verbose=True):
-  assert 0
-  assert [pdb_hierarchy, model].count(None)==1
-  if(log is None): log = sys.stdout
-  if(fmodel.xray_structure.hd_selection().count(True)==0): return
-  if(verbose):
-    print(file=log)
-    print("Optimizing scattering from H...", file=log)
-    print("  before optimization: r_work=%6.4f r_free=%6.4f"%(
-    fmodel.r_work(), fmodel.r_free()), file=log)
-  if(model is not None):
-    assert_xray_structures_equal(
-      x1 = fmodel.xray_structure,
-      x2 = model.get_xray_structure())
-    model.reset_occupancies_for_hydrogens()
-  if(model is not None): pdb_hierarchy = model.get_hierarchy()
-  import mmtbx.hydrogens
-  rmh_sel = mmtbx.hydrogens.rotatable(pdb_hierarchy = pdb_hierarchy,
-    mon_lib_srv=mon_lib_srv, restraints_manager=model.restraints_manager)
-  # XXX inefficient
-  rmh_sel_i_seqs = flex.size_t()
-  for i in rmh_sel:
-    for ii in i[1]:
-      rmh_sel_i_seqs.append(ii)
-  fmodel.xray_structure.set_occupancies(value = 0, selection = rmh_sel_i_seqs)
-  fmodel.update_f_hydrogens(log=log)
-  if(model is not None):
-    model.set_xray_structure(fmodel.xray_structure)
-  fmodel.xray_structure.set_occupancies(value = 0,
-    selection = fmodel.xray_structure.hd_selection())
-  if(model is not None):
-    model.set_xray_structure(fmodel.xray_structure)
-  if(verbose):
-    print("  after optimization:  r_work=%6.4f r_free=%6.4f"%(
-      fmodel.r_work(), fmodel.r_free()), file=log)
-  #
-# END_MARKED_FOR_DELETION_OLEG
-
 class set_map_to_value(object):
   def __init__(self, map_data, xray_structure, atom_radius, value):
     adopt_init_args(self, locals())
@@ -1690,7 +1595,9 @@ class shift_origin(object):
 
   def write_model_file(self, file_name):
     assert self.pdb_hierarchy is not None
-    self.pdb_hierarchy.write_pdb_file(file_name=file_name,
+    self.pdb_hierarchy.write_pdb_or_mmcif_file(
+      target_format='pdb',
+      target_filename=file_name,
       crystal_symmetry=self.crystal_symmetry)
 
   def write_map_file(self, file_name):
@@ -2042,8 +1949,9 @@ class states(object):
     if([crystal_symmetry,self.xray_structure].count(None)==0):
       assert crystal_symmetry.is_similar_symmetry(
         self.xray_structure.crystal_symmetry())
-    self.root.write_pdb_file(
-      file_name        = file_name,
+    self.root.write_pdb_or_mmcif_file(
+      target_format='pdb',
+      target_filename = file_name,
       crystal_symmetry = crystal_symmetry)
 
 class f_000(object):
@@ -2156,46 +2064,6 @@ class detect_hydrogen_nomenclature_problem(object):
         else :
           self.n_other += 1
 
-# MARKED_FOR_DELETION_OLEG
-# REASON: moved to be classmethod of mmtbx.model.manager.from_sites_cart()
-def model_from_sites_cart(sites_cart,
-    atom_name='CA',
-    resname='GLY',
-    chain_id='A',
-    b_iso=30.,
-    occ=1.,
-    scatterer='C',
-    crystal_symmetry=None):
-  assert sites_cart is not None
-  hierarchy = iotbx.pdb.hierarchy.root()
-  m = iotbx.pdb.hierarchy.model()
-  c = iotbx.pdb.hierarchy.chain()
-  c.id=chain_id
-  hierarchy.append_model(m)
-  m.append_chain(c)
-  count=0
-  for sc in sites_cart:
-    count+=1
-    rg=iotbx.pdb.hierarchy.residue_group()
-    c.append_residue_group(rg)
-    ag=iotbx.pdb.hierarchy.atom_group()
-    rg.append_atom_group(ag)
-    a=iotbx.pdb.hierarchy.atom()
-    ag.append_atom(a)
-    rg.resseq=str(count)
-    ag.resname=resname
-    a.set_b(b_iso)
-    a.set_element(scatterer)
-    a.set_occ(occ)
-    a.set_name(atom_name)
-    a.set_xyz(sc)
-    a.set_serial(count)
-
-  from mmtbx.model import manager
-  return mmtbx.model.manager(model_input = None, pdb_hierarchy=hierarchy,
-     crystal_symmetry=crystal_symmetry)
-# END_MARKED_FOR_DELETION_OLEG
-
 class run_reduce_with_timeout(easy_run.fully_buffered):
   def __init__(self,
       stdin_lines,
@@ -2222,7 +2090,7 @@ class run_reduce_with_timeout(easy_run.fully_buffered):
     if file_name is not None:
       assert os.path.isfile(file_name), 'no file_name : %s' % file_name
       size_bytes = os.path.getsize(file_name)
-      command_to_run += file_name + " "
+      command_to_run += '"%s"' % file_name + " "
     command_to_run += parameters
     size_in_mb = size_bytes / 1024 / 1024
 

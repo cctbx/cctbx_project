@@ -1,3 +1,4 @@
+"""Example of how to use direct methods"""
 from __future__ import absolute_import, division, print_function
 from six.moves import range
 from six.moves import zip

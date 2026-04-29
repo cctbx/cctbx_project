@@ -1,3 +1,7 @@
+"""
+Tools to read and write csv formatted files
+"""
+
 from __future__ import absolute_import, division, print_function
 import csv
 from six.moves import range

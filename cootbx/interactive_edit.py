@@ -44,8 +44,7 @@ def to_bytes(text, codec=None, errors='replace'):
       new_text = text.encode(codec, errors)
     except UnicodeEncodeError: # in case errors='strict'
       raise Sorry('Unable to encode text with %s' % codec)
-    finally:
-      return new_text
+    return new_text
   elif (text is not None):
     return bytes(text)
   else:

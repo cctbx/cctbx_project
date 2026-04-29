@@ -139,6 +139,16 @@ namespace random {
         return result;
       }
 
+      //! Returns integer selection to select a random sample of requested size.
+      af::shared<std::size_t>
+      random_selection(std::size_t population_size, double sample_size)
+      {
+        af::shared<std::size_t> result = random_permutation(population_size);
+        result.resize(sample_size);
+        std::sort(result.begin(), result.end());
+        return result;
+      }
+
       //! Random permutation of integers in the range [0, size).
       af::shared<std::size_t>
       random_permutation(std::size_t size)

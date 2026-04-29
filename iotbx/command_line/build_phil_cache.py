@@ -1,3 +1,4 @@
+"""Create master parameters from a Phil file"""
 from __future__ import absolute_import, division, print_function
 
 import libtbx.load_env

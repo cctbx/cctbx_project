@@ -1,3 +1,4 @@
+"""Validate waters"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.undowser2_validation
 # LIBTBX_SET_DISPATCHER_NAME mmtbx.undowser2_validation
@@ -47,3 +48,4 @@ def old_run(args):
 if __name__ == '__main__':
   #run(sys.argv[1:])
   run_program(program_class=undowser2.Program, hide_parsing_output=True)
+

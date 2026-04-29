@@ -35,6 +35,13 @@ pair_asu_j_sym_group = scitbx.stl.set.unsigned
 class symmetry(object):
   """This class represents the symmetry of a crystal and bundles information on its unit cell and space group.
   """
+  def __setstate__(self, state):
+    if sys.version_info.major > 2:
+      from libtbx.easy_pickle import fix_py2_pickle_orig
+      state = fix_py2_pickle_orig(state)
+    for name,value in state.items():
+      setattr(self, name, value)
+
   def __init__(self,
         unit_cell=None,
         space_group_symbol=None,
@@ -552,8 +559,15 @@ def select_crystal_symmetry(
           break
   for crystal_symmetry in from_coordinate_files:
     if crystal_symmetry is not None:
-      result = result.join_symmetry(
-        other_symmetry=crystal_symmetry, force=False)
+      if enforce_similarity:  # usual, require compatibility here
+        result = result.join_symmetry(
+          other_symmetry=crystal_symmetry, force=False)
+      else:  # skip incompatible symmetries (can happen e.g. in map_box)
+        try:
+          result = result.join_symmetry(
+            other_symmetry=crystal_symmetry, force=False)
+        except Exception as e:
+          pass
   if (result.space_group_info() is None):
     for crystal_symmetry in from_reflection_files:
       space_group_info = None

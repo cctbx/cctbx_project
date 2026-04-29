@@ -1,3 +1,4 @@
+"""Analyze a tardy tree from a model"""
 from __future__ import absolute_import, division, print_function
 import math
 import time
@@ -98,7 +99,7 @@ def run(args):
   #
   if (len(args) != 0):
     for file_name in args:
-      process(file_name=file_name)
+      process(file_name=file_name) # PDB OK
   else:
     import libtbx.load_env
     if not libtbx.env.has_module("phenix_regression"):

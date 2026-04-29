@@ -1,3 +1,4 @@
+"""Rearrange non-macromolecular heteroatom"""
 # LIBTBX_SET_DISPATCHER_NAME phenix.sort_hetatms
 
 # TODO sort waters by distance from macromolecule
@@ -325,7 +326,8 @@ def sort_hetatms(
   for chain in new_hetatm_chains :
     for residue_group in chain.residue_groups():
       residue_group.link_to_previous = True # suppress BREAK records
-    new_model.append_chain(chain)
+    if len(chain.atoms()) > 0:  # Skip empty chains
+      new_model.append_chain(chain)
   if (len(loose_residues.residue_groups()) > 0):
     new_model.append_chain(loose_residues)
   n_atoms_new = len(new_hierarchy.atoms())
@@ -472,3 +474,4 @@ class launcher(runtime_utils.target_with_save_result):
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
+

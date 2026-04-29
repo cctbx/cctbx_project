@@ -1,5 +1,5 @@
 from __future__ import division
-from math import pi, sin, cos, atan2, sqrt
+from math import pi, sin, cos, atan2, sqrt, atan
 
 from mmtbx.conformation_dependent_library.cdl_utils import round_to_ten
 from mmtbx.validation.mean_devs_PRO_phi_psi import mean_devs as PRO_phi_psi
@@ -7,7 +7,11 @@ from mmtbx.validation.mean_devs_others_phi_psi import mean_devs as others_phi_ps
 from mmtbx.validation.mean_devs_VAL_THR_ILE_phi_psi import mean_devs as VAL_THR_ILE_phi_psi
 
 class radial_deviation:
-  def __init__(self, r, t, input_in_radians=False):
+  def __init__(self, r, t, input_in_radians=False, input_in_cartesian=False):
+    if input_in_cartesian:
+      self.r = sqrt(r*r + t*t)
+      self.t = atan(t/r)
+      input_in_radians=True
     self.r = r
     self.t = t
     if not input_in_radians: self.t *= pi/180
@@ -122,3 +126,9 @@ if __name__ == '__main__':
   v2 = radial_deviation(-1,0)
   print(v1,v2)
   print(v1-v2)
+  v1 = radial_deviation(1,1)
+  print(v1)
+  v1 = radial_deviation(1,1, input_in_radians=True)
+  print(v1)
+  v1 = radial_deviation(1,1, input_in_cartesian=True)
+  print(v1)

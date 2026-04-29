@@ -53,12 +53,13 @@ class MillerArrayDataManager(DataManagerBase):
     return self._export_miller_array_phil_extract(
       MillerArrayDataManager.datatype)
 
-  def load_miller_array_phil_extract(self, phil_extract):
+  def load_miller_array_phil_extract(self, phil_extract, process_files=True):
     '''
     Load custom PHIL extract
     '''
     self._load_miller_array_phil_extract(MillerArrayDataManager.datatype,
-                                         phil_extract)
+                                         phil_extract,
+                                         process_files=process_files)
 
   def add_miller_array(self, filename, data):
     self._add(MillerArrayDataManager.datatype, filename, data)
@@ -621,7 +622,7 @@ user_selected_labels: %s
       matched labels: %s
 ''' % (label_pair[1], label_pair[0]))
 
-  def _load_miller_array_phil_extract(self, datatype, phil_extract):
+  def _load_miller_array_phil_extract(self, datatype, phil_extract, process_files=True):
     if self.supports('model'):
       self._fmodel_phil_scope = self.master_phil.format(python_object=phil_extract)
     extract = phil_extract.data_manager
@@ -636,75 +637,76 @@ user_selected_labels: %s
         if len(filenames) == 0:
           raise Sorry('No reflection files are available to continue processing PHIL.')
         item_extract.file = filenames[-1]
-      getattr(self, 'process_%s_file' % datatype)(item_extract.file)
+      if process_files:
+        getattr(self, 'process_%s_file' % datatype)(item_extract.file)
 
-      # check labels (if available)
-      if len(item_extract.labels) > 0 or len(item_extract.user_selected_labels) > 0:
-        # all labels in file
-        file_labels = getattr(self, self._all_labels_str % 'miller_array')[item_extract.file]
+        # check labels (if available)
+        if len(item_extract.labels) > 0 or len(item_extract.user_selected_labels) > 0:
+          # all labels in file
+          file_labels = getattr(self, self._all_labels_str % 'miller_array')[item_extract.file]
 
-        # labels from PHIL
-        phil_labels = []
-        phil_types = {}
-        phil_array_types = {}
-        phil_user_selected_labels = []
-        specified_labels = item_extract.labels + item_extract.user_selected_labels
-        for label in specified_labels:
-          label_name = label
-          if hasattr(label_name, 'name'):
-            label_name = label_name.name
-          phil_user_selected_labels.append(label_name)
-          if label_name not in file_labels:
+          # labels from PHIL
+          phil_labels = []
+          phil_types = {}
+          phil_array_types = {}
+          phil_user_selected_labels = []
+          specified_labels = item_extract.labels + item_extract.user_selected_labels
+          for label in specified_labels:
+            label_name = label
+            if hasattr(label_name, 'name'):
+              label_name = label_name.name
+            phil_user_selected_labels.append(label_name)
+            if label_name not in file_labels:
 
-            # try matching
-            label_match = self._match_label(label_name, self.get_miller_arrays(filename=item_extract.file))
-            if label_match is None:
-              raise Sorry('The label, %s, could not be found in %s.' %
-                (label_name, item_extract.file))
-            else:
-              label_name = label_match
-          phil_labels.append(label_name)
-          if hasattr(label, 'type'):
-            if not self._is_valid_miller_array_type(datatype, label.type):
-              raise Sorry(self._unrecognized_type_error_str %
-                          (datatype,
-                           ', '.join(label.type),
-                           ', '.join(getattr(self, self._possible_types_str % datatype))))
-            phil_types[label_name] = label.type
-          if hasattr(label, 'array_type'):
-            if label.array_type not in getattr(self, self._possible_array_types_str % datatype):
-              raise Sorry(self._unrecognized_type_error_str %
-                          (datatype, label.array_type, ', '.join(
-                            getattr(self, self._possible_array_types_str % datatype))))
-            # if a non-default type is set, assume it is manually set
-            # otherwise, automatically detect array_type
-            array_type = label.array_type
-            if array_type == self.get_default_miller_array_array_type():
-              array = self.get_miller_arrays(labels=[label_name], filename=item_extract.file)[0]
-              array_type = self._detect_miller_array_array_type(array)
-            phil_array_types[label_name] = array_type
+              # try matching
+              label_match = self._match_label(label_name, self.get_miller_arrays(filename=item_extract.file))
+              if label_match is None:
+                raise Sorry('The label, %s, could not be found in %s.' %
+                  (label_name, item_extract.file))
+              else:
+                label_name = label_match
+            phil_labels.append(label_name)
+            if hasattr(label, 'type'):
+              if not self._is_valid_miller_array_type(datatype, label.type):
+                raise Sorry(self._unrecognized_type_error_str %
+                            (datatype,
+                            ', '.join(label.type),
+                            ', '.join(getattr(self, self._possible_types_str % datatype))))
+              phil_types[label_name] = label.type
+            if hasattr(label, 'array_type'):
+              if label.array_type not in getattr(self, self._possible_array_types_str % datatype):
+                raise Sorry(self._unrecognized_type_error_str %
+                            (datatype, label.array_type, ', '.join(
+                              getattr(self, self._possible_array_types_str % datatype))))
+              # if a non-default type is set, assume it is manually set
+              # otherwise, automatically detect array_type
+              array_type = label.array_type
+              if array_type == self.get_default_miller_array_array_type():
+                array = self.get_miller_arrays(labels=[label_name], filename=item_extract.file)[0]
+                array_type = self._detect_miller_array_array_type(array)
+              phil_array_types[label_name] = array_type
 
-        # update storage
-        labels_storage = getattr(self, self._labels_str % datatype)
-        if item_extract.file not in labels_storage.keys():
-          raise Sorry('The file, %s, does not seem to have %s data.' % (item_extract.file, datatype))
-        labels_storage = labels_storage[item_extract.file]
-        types_storage = getattr(self, self._type_str % datatype)[item_extract.file]
-        array_types_storage = getattr(self, self._array_type_str % datatype)[item_extract.file]
-        for label in phil_labels:
-          if label not in labels_storage:
-            labels_storage.append(label)
-          if label in phil_types:
-            types_storage[label] = phil_types[label]
-          if label in phil_array_types:
-            array_types_storage[label] = phil_array_types[label]
-        user_selected_labels_storage = getattr(self, self._user_selected_labels_str % datatype)[item_extract.file]
-        for label in phil_user_selected_labels:
-          if label not in user_selected_labels_storage:
-            user_selected_labels_storage.append(label)
+          # update storage
+          labels_storage = getattr(self, self._labels_str % datatype)
+          if item_extract.file not in labels_storage.keys():
+            raise Sorry('The file, %s, does not seem to have %s data.' % (item_extract.file, datatype))
+          labels_storage = labels_storage[item_extract.file]
+          types_storage = getattr(self, self._type_str % datatype)[item_extract.file]
+          array_types_storage = getattr(self, self._array_type_str % datatype)[item_extract.file]
+          for label in phil_labels:
+            if label not in labels_storage:
+              labels_storage.append(label)
+            if label in phil_types:
+              types_storage[label] = phil_types[label]
+            if label in phil_array_types:
+              array_types_storage[label] = phil_array_types[label]
+          user_selected_labels_storage = getattr(self, self._user_selected_labels_str % datatype)[item_extract.file]
+          for label in phil_user_selected_labels:
+            if label not in user_selected_labels_storage:
+              user_selected_labels_storage.append(label)
 
-      # ensure user_selected_labels are consistent
-      self._reconcile_user_labels(filename=item_extract.file)
+        # ensure user_selected_labels are consistent
+        self._reconcile_user_labels(filename=item_extract.file)
 
   def _is_valid_miller_array_type(self, datatype, array_type):
     """

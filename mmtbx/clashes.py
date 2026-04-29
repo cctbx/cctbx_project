@@ -1,3 +1,4 @@
+"""Obtain information on clashing atoms"""
 from __future__ import absolute_import, division, print_function
 import mmtbx.monomer_library
 import mmtbx.monomer_library.pdb_interpretation

@@ -210,7 +210,8 @@ class crystal_symmetry_builder(builder_base):
         item = "90" # enumeration default for angles is 90 degrees
       items.append(item)
     ic = items.count(None)
-    if (ic == 6):
+    ic_question = items.count('?')
+    if ic == 6 or ic_question > 0:
       if (strict):
         raise CifBuilderError(
           "Unit cell parameters not found in the cif file")

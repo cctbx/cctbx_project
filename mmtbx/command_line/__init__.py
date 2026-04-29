@@ -483,7 +483,7 @@ class load_model_and_data(object):
       if known_sel.count(False) > 0:
         self.pdb_inp = iotbx.pdb.input(
             source_info = None,
-            lines=h.select(known_sel).as_pdb_string())
+            lines=h.select(known_sel).as_pdb_or_mmcif_string())
 
     model_params = mmtbx.model.manager.get_default_pdb_interpretation_params()
     pdb_interp_params = getattr(params, "pdb_interpretation", None)

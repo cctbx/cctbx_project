@@ -18,6 +18,7 @@ from libtbx.test_utils import approx_equal
 from boost_adaptbx import graph
 from boost_adaptbx.graph import connected_component_algorithm
 import iotbx.pdb
+import scitbx.minimizers
 
 class groups(object):
 
@@ -161,8 +162,6 @@ class groups(object):
        str(self.tncsresults))
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
-
-
 def initialize_rho_mn(ncs_pairs, d_spacings_data, binner, rms=0.5):
   """
   Initialize rho_mn
@@ -180,69 +179,10 @@ def initialize_rho_mn(ncs_pairs, d_spacings_data, binner, rms=0.5):
   for p in ncs_pairs:
     p.set_rhoMN(rho_mn_initial)
 
-def lbfgs_run(target_evaluator, use_bounds, lower_bound, upper_bound,
-       max_iterations=None):
-  minimizer = lbfgsb.minimizer(
-    n   = target_evaluator.n,
-    #factr=1.e+1, XXX Affects speed significantly
-    l   = lower_bound, # lower bound
-    u   = upper_bound, # upper bound
-    nbd = flex.int(target_evaluator.n, use_bounds)) # flag to apply both bounds
-  minimizer.error = None
-  try:
-    icall = 0
-    while 1:
-      icall += 1
-      x, f, g = target_evaluator()
-      #print "x,f:", ",".join(["%6.3f"%x_ for x_ in x]), f, icall
-      have_request = minimizer.process(x, f, g)
-      if(have_request):
-        requests_f_and_g = minimizer.requests_f_and_g()
-        continue
-      assert not minimizer.requests_f_and_g()
-      if(minimizer.is_terminated()): break
-      # XXX temp fix for python3 failure (run_lbfgs in tncs)
-      # Failure is that max_iterations is None
-      # temp fix is to break if max_iterations is None or icall>max_iterations
-      #if(icall>max_iterations): break
-      if ((max_iterations is None) or (icall>max_iterations)): break
-  except RuntimeError as e:
-    minimizer.error = str(e)
-  minimizer.n_calls = icall
-  return minimizer
-
-class minimizer(object):
-
-  def __init__(self,
-               potential,
-               use_bounds,
-               lower_bound,
-               upper_bound,
-               max_iterations,
-               initial_values):
-    adopt_init_args(self, locals())
-    self.x = initial_values
-    self.n = self.x.size()
-
-  def run(self):
-    self.minimizer = lbfgs_run(
-      target_evaluator=self,
-      use_bounds=self.use_bounds,
-      lower_bound = self.lower_bound,
-      upper_bound = self.upper_bound,
-      max_iterations = self.max_iterations)
-    self()
-    return self
-
-  def __call__(self):
-    self.potential.update(x = self.x)
-    self.f = self.potential.target()
-    self.g = self.potential.gradient()
-    return self.x, self.f, self.g
-
 class potential(object):
 
-  def __init__(self, f_obs, ncs_pairs, reflections_per_bin):
+  def __init__(self, f_obs, ncs_pairs, reflections_per_bin,
+               bound_flags=None, lower_bound=None, upper_bound=None):
     adopt_init_args(self, locals())
     # Create bins
     f_obs.setup_binner(reflections_per_bin = reflections_per_bin)
@@ -251,6 +191,7 @@ class potential(object):
     self.n_bins = n_bins
     self.SigmaN = None
     self.update_SigmaN()
+    self.x = None
     #
     self.rbin = flex.int(f_obs.data().size(), -1)
     for i_bin in self.binner.range_used():
@@ -278,7 +219,16 @@ class potential(object):
 
     self.update()
 
+  def set_x(self, x):
+    self.x = x
+
+  def set_bounds(self, bound_flags, lower_bound, upper_bound):
+    self.bound_flags = bound_flags
+    self.lower_bound = lower_bound
+    self.upper_bound = upper_bound
+
   def update(self, x=None):
+    self.x = x
     if(self.gradient_evaluator=="rhoMN"):
       size = len(self.ncs_pairs)
       for i, ncs_pair in enumerate(self.ncs_pairs):
@@ -329,7 +279,7 @@ class potential(object):
   def target(self):
     return self.target_and_grads.target()
 
-  def gradient(self):
+  def gradients(self):
     if(self.gradient_evaluator=="rhoMN"):
       return self.target_and_grads.gradient_rhoMN()
     elif(self.gradient_evaluator=="radius"):
@@ -351,7 +301,7 @@ def finite_differences_grad_radius(ncs_pairs, f_obs, reflections_per_bin,
       reflections_per_bin = reflections_per_bin)
   pot = pot.set_refine_radius()
   t = pot.target()
-  g_exact = pot.gradient()
+  g_exact = pot.gradients()
   #print "Exact:", list(g_exact)
   #
   eps = 1.e-4
@@ -392,7 +342,7 @@ def finite_differences_rho_mn(ncs_pairs, f_obs, reflections_per_bin,
       reflections_per_bin = reflections_per_bin)
   pot = pot.set_refine_rhoMN()
   t = pot.target()
-  g_exact = pot.gradient()
+  g_exact = pot.gradients()
   #
   rho_mn = flex.double()
   for p in ncs_pairs:
@@ -459,24 +409,24 @@ class compute_eps_factor(object):
         rho_mn = flex.double()
         for ncs_pair in self.ncs_pairs:
           rho_mn.extend(ncs_pair.rho_mn)
-        m = minimizer(
-          potential      = pot.set_refine_rhoMN(),
-          use_bounds     = 2,
-          lower_bound    = flex.double(rho_mn.size(), 0.),
-          upper_bound    = flex.double(rho_mn.size(), 1.),
-          max_iterations = 100,
-          initial_values = rho_mn).run()
+        pot.set_x(x = rho_mn)
+        pot.set_bounds(
+          bound_flags = flex.int(rho_mn.size(), 2),
+          lower_bound = flex.double(rho_mn.size(), 0.),
+          upper_bound = flex.double(rho_mn.size(), 1.))
+        m = scitbx.minimizers.lbfgs(
+           mode='lbfgsb', max_iterations=100, calculator=pot.set_refine_rhoMN())
         # refine radius
         radii = flex.double()
         for ncs_pair in self.ncs_pairs:
           radii.append(ncs_pair.radius)
-        m = minimizer(
-          potential      = pot.set_refine_radius(),
-          use_bounds     = 2,
-          lower_bound    = rad_lower_bound,
-          upper_bound    = rad_upper_bound,
-          max_iterations = 100,
-          initial_values = radii).run()
+        pot.set_x(x = radii)
+        pot.set_bounds(
+          bound_flags = flex.int(radii.size(), 2),
+          lower_bound = rad_lower_bound,
+          upper_bound = rad_upper_bound)
+        m = scitbx.minimizers.lbfgs(
+           mode='lbfgsb', max_iterations=100, calculator=pot.set_refine_radius())
       self.epsfac = pot.target_and_grads.tncs_epsfac()
 
   def show_summary(self, log=None):
@@ -499,9 +449,6 @@ class compute_eps_factor(object):
       print("  fracscat:", ncs_pair.fracscat, file=log)
     print("tNCS eps factor: min,max,mean: %6.4f %6.4f %6.4f"%\
       self.epsfac.min_max_mean().as_tuple(), file=log)
-
-
-
 
 if __name__ == '__main__':
   xtal = iotbx.pdb.input(file_name= sys.argv[1] )

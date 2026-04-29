@@ -1,3 +1,4 @@
+"""Tools for multiprocessing"""
 from __future__ import absolute_import, division, print_function
 from libtbx.str_utils import show_string
 from libtbx.math_utils import ifloor
@@ -108,7 +109,10 @@ try: # cannot use detect_problem() here (hangs in pool.map())
   # on macOS restore "fork" instead of new default of "spawn" on Python 3.8
   # https://bugs.python.org/issue33725
   # may need to re-evaluate if Python is built with macOS 10.13 SDK (or later)
-  if sys.platform == 'darwin' and sys.hexversion >= 0x03080000:
+  # on linux restore "fork" on Python 3.14 and later
+  # the WeakValueDictionary may need a manager in order to be used in multiprocessing
+  if (sys.platform == 'darwin' and sys.hexversion >= 0x03080000) \
+    or (sys.platform == 'linux' and sys.version_info.major==3 and sys.version_info.minor>=14):
     import multiprocessing
     multiprocessing.set_start_method('fork')
 except Exception:

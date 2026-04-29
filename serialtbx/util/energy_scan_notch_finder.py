@@ -24,29 +24,39 @@ per_run_plots = False
   .help = for each run, additionally plot original pixel data, smoothed or reference data, and scaled flattened data from which notch position is finally determined
 """
 
-def find_notch(data_x, data_y, kernel_size, fit_half_range, baseline_cutoff, ref_spectrum=None):
-  """Given a series that smoothly increases and then decreases, with a notch cut out somewhere, find the position in data_x that we expect (via interpolation) corresponds to the true minimum of the notch in data_y. This is empirically a good way to find the notches of known energies in the FEE spectra."""
+def find_notch(data_x, data_y, kernel_size, fit_half_range, baseline_cutoff, ref_spectrum=None, minima=False):
+  """Given a series that smoothly increases and then decreases, with a notch cut out somewhere,
+     find the position in data_x that we expect (via interpolation) corresponds to the true
+     minimum or maximum of the notch in data_y. This is empirically a good way to find the notches of known
+     energies in the FEE spectra."""
   if ref_spectrum is not None: # subtract baseline from data_y
     flattened_y = data_y - ref_spectrum
   else: # subtract smoothed data_y from data_y
     # smooth data_y
     kernel = np.ones(kernel_size)/kernel_size
     smoothed_y = np.convolve(data_y, kernel, mode='same')
-    # subtract smoothed shape to isolate notch as an absolute minimum
-    flattened_y = data_y - smoothed_y
-    # scale to account for scan shape
-    minimum = max(smoothed_y)*baseline_cutoff
-    scale = np.max([smoothed_y, np.ones(len(smoothed_y))*minimum], axis=0)
-    flattened_y /= scale
+    if minima:
+      # subtract smoothed shape to isolate notch as an absolute minimum
+      flattened_y = data_y - smoothed_y
+      # scale to account for scan shape
+      minimum = max(smoothed_y)*baseline_cutoff
+      scale = np.max([smoothed_y, np.ones(len(smoothed_y))*minimum], axis=0)
+      flattened_y /= scale
+    else:
+      flattened_y = smoothed_y
   # isolate a range where the notch can be approximated by a small degree polynomial
-  rough_min_idx = np.argmin(flattened_y)
-  start = rough_min_idx - fit_half_range
-  end = rough_min_idx + fit_half_range
+  if minima:
+    rough_min_idx = np.argmin(flattened_y)
+  else:
+    rough_max_idx = np.argmax(flattened_y)
+
+  start = rough_max_idx - fit_half_range
+  end = rough_max_idx + fit_half_range
   # model it as a parabola
   notch_shape = Poly.fit(data_x[start:end+1], data_y[start:end+1], 2)
-  fitted_min_x = notch_shape.deriv().roots()[0]
-  fitted_min_y = notch_shape.__call__(fitted_min_x)
-  return ((fitted_min_x, fitted_min_y), notch_shape, smoothed_y, flattened_y)
+  fitted_x = notch_shape.deriv().roots()[0]
+  fitted_y = notch_shape.__call__(fitted_x)
+  return ((fitted_x, fitted_y), notch_shape, smoothed_y, flattened_y)
 
 def plot_notches(runs, rundata, notches, per_run_plots=False, use_figure=None):
   """Plot the energy scan, optionally one plot per spectrum for troubleshooting misses when automatically identifying notch positions, and always as an overlay of spectra in the scan with notch positions marked."""

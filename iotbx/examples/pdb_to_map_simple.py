@@ -1,4 +1,4 @@
-"input pdb -> structure factors -> x-plor map files"
+"""input pdb -> structure factors -> x-plor map files"""
 from __future__ import absolute_import, division, print_function
 
 import iotbx.pdb

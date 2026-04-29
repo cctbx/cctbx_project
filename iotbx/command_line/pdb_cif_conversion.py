@@ -1,3 +1,5 @@
+"""Information on PDB to CIF conversion process"""
+
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.pdb_cif_conversion
 
@@ -181,10 +183,10 @@ here are some alternatives:
     str = ph.as_pdb_string()
     print("Doing something with a string %s" %str)
 
-  Use instead model.as_pdb_or_mmcif_string() which will give you a PDB or
+  Use instead ph.as_pdb_or_mmcif_string() which will give you a PDB or
      mmcif string as appropriate:
 
-    str = model.as_pdb_or_mmcif_string(
+    str = ph.as_pdb_or_mmcif_string(
         target_format = params.output.target_output_format)
     print("Doing something with a string %s" %str)
 
@@ -435,9 +437,9 @@ possible, returning the string:
   def as_pdb_or_mmcif_string(self,
 
 NOTE: This method and the corresponding method in model.py use
-default of segid_as_auth_segid = True, different from the default in
+default of segid_as_auth_segid = False, same as the default in
 model_as_mmcif() in model.py and as_mmcif_string() in hierarchy.py
-The default of segid_as_auth_segid = True causes any text in the SEGID
+A value of segid_as_auth_segid = True causes any text in the SEGID
 field read from a PDB-formatted file to be written to the auth_segid field
 in the mmCIF output, and the chain ID from the PDB file is used as
 the actual chain ID in the mmCIF output.
@@ -461,9 +463,9 @@ possible, returning the string:
   def as_pdb_or_mmcif_string(self,
 
 NOTE: This method and the corresponding method in hierarchy.py use
-default of segid_as_auth_segid = True, different from the default in
+default of segid_as_auth_segid = False , same as the default in
 model_as_mmcif() in model.py and as_mmcif_string() in hierarchy.py.
-The default of segid_as_auth_segid = True causes any text in the SEGID
+A value of segid_as_auth_segid = True causes any text in the SEGID
 field read from a PDB-formatted file to be written to the auth_segid field
 in the mmCIF output, and the chain ID from the PDB file is used as
 the actual chain ID in the mmCIF output.

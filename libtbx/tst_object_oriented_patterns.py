@@ -65,7 +65,9 @@ def exercise_memoize():
     pass
   else:
     raise Exception_expected
-  assert mf.__doc__ == """ Documentation for function f """
+  # Python 3.13 automatically strips leading spaces
+  assert mf.__doc__ == """ Documentation for function f """ \
+    or mf.__doc__ == """Documentation for function f """
 
 def exercise_memoize_with_injector():
   class foo(object):
@@ -97,7 +99,8 @@ def exercise_memoize_with_injector():
   assert diagnostic == ['+']*4
   assert o1.f(1) == 2
   assert diagnostic == ['+']*4
-  assert o1.f.__doc__ == " Documentation for method f "
+  assert o1.f.__doc__ == " Documentation for method f " \
+    or o1.f.__doc__ == "Documentation for method f "
 
   class _foo_extension(oop.injector, foo):
     def g(self, n):

@@ -28,7 +28,7 @@ namespace scitbx { namespace af { namespace boost_python {
 
     static PyTypeObject const *get_pytype() {
       using namespace boost::python;
-      return converter::registered<source_t>::converters.to_python_target_type();
+      return converter::registered<target_t>::converters.to_python_target_type();
     }
 
     /// Register conversions

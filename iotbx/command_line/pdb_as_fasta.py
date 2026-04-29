@@ -1,3 +1,5 @@
+"""Create fasta sequence file from a model file (PDB or mmCIF format)"""
+
 from __future__ import absolute_import, division, print_function
 import libtbx.phil
 from libtbx.utils import Sorry

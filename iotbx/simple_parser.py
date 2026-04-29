@@ -1,3 +1,5 @@
+"""Tools for parsing
+"""
 from __future__ import absolute_import, division, print_function
 class operator_priority_evaluator(object):
 

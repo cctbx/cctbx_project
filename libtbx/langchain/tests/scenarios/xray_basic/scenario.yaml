@@ -1,0 +1,69 @@
+# =============================================================================
+# Test Scenario: xray_basic
+# =============================================================================
+# Basic X-ray crystallography workflow from data to validated model.
+# Tests the standard path: xtriage → predict_and_build → refine → molprobity
+#
+# This scenario simulates:
+# - Initial data analysis with xtriage
+# - Model prediction and building
+# - Three rounds of refinement (R-free: 0.32 → 0.28 → 0.26)
+# - Final validation with molprobity
+# - Agent should STOP after validation shows acceptable quality
+# =============================================================================
+
+name: xray_basic
+description: "Basic X-ray workflow: analyze → predict → refine → validate"
+experiment_type: xray
+
+# Initial files available to the agent
+initial_files:
+  - inputs/data.mtz
+  - inputs/sequence.fa
+
+# Ordered list of program calls and their simulated outputs
+steps:
+  # Step 1: Data analysis
+  - program: phenix.xtriage
+    log: steps/phenix.xtriage_1/log.txt
+    outputs: []
+
+  # Step 2: Model prediction and building
+  - program: phenix.predict_and_build
+    log: steps/phenix.predict_and_build_1/log.txt
+    outputs:
+      - steps/phenix.predict_and_build_1/outputs/PHASER.1.pdb
+
+  # Step 3: First refinement cycle
+  - program: phenix.refine
+    log: steps/phenix.refine_1/log.txt
+    outputs:
+      - steps/phenix.refine_1/outputs/model_refine_001.pdb
+
+  # Step 4: Second refinement cycle
+  - program: phenix.refine
+    log: steps/phenix.refine_2/log.txt
+    outputs:
+      - steps/phenix.refine_2/outputs/model_refine_002.pdb
+
+  # Step 5: Third refinement cycle
+  - program: phenix.refine
+    log: steps/phenix.refine_3/log.txt
+    outputs:
+      - steps/phenix.refine_3/outputs/model_refine_003.pdb
+
+  # Step 6: Validation
+  - program: phenix.molprobity
+    log: steps/phenix.molprobity_1/log.txt
+    outputs: []
+
+# Expected outcome for test validation
+expected:
+  final_command: STOP
+  min_cycles: 5
+  max_cycles: 8
+  programs_must_run:
+    - phenix.xtriage
+    - phenix.refine
+    - phenix.molprobity
+  final_r_free_below: 0.30

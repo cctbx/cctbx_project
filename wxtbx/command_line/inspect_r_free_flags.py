@@ -87,7 +87,7 @@ class RfreeInspector(wx.Panel):
   def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     self.sizer = wx.BoxSizer(wx.VERTICAL)
-    grid = wx.FlexGridSizer(cols=2, rows=4)
+    grid = wx.FlexGridSizer(2, 4, 0, 0)
     self.sizer.Add(grid, 0, wx.ALL, 5)
     grid.Add(wx.StaticText(self, -1, "File name:"), 0,
       wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)

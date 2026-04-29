@@ -1,3 +1,4 @@
+"""Analyze omega angles in a model, report on cis peptides"""
 from __future__ import absolute_import, division, print_function
 
 import os

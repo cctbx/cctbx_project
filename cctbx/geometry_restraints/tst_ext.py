@@ -1286,6 +1286,19 @@ def exercise_angle():
     proxies=proxies,
     gradient_array=None)
   assert approx_equal(residual_sum, 2*25)
+  p1 = geometry_restraints.angle_proxy(i_seqs=[0,1,2], proxy=p)
+  p1.origin_id = 1
+  # here their origin ids are 3,1
+  proxies = geometry_restraints.shared_angle_proxy([p,p1])
+  # and we expect only 1 delta in the result
+  assert approx_equal(geometry_restraints.angle_deltas(
+    sites_cart=sites_cart,
+    proxies=proxies,
+    origin_id=1), [5])
+  assert approx_equal(geometry_restraints.angle_deltas(
+    sites_cart=sites_cart,
+    proxies=proxies,
+    origin_id=3), [5])
 
   # test with symmetry operations
   sym_ops = (sgtbx.rt_mx('-1+x,+y,+z'),sgtbx.rt_mx(),sgtbx.rt_mx())
@@ -1320,13 +1333,36 @@ def exercise_angle():
   assert approx_equal(a.angle_model, 90)
   assert approx_equal(a.delta, 5)
   assert approx_equal(a.residual(), a.weight*a.delta**2)
-  p.origin_ud = 0
+  p.origin_id = 0
+  p1 = geometry_restraints.angle_proxy(
+    i_seqs=[0,1,2],
+    proxy=p)
+  p1.origin_id = 2
   proxies = geometry_restraints.shared_angle_proxy()
-  for i in range(10): proxies.append(p)
+  for i in range(10):
+    if i<7:
+      proxies.append(p)
+    else:
+      proxies.append(p1)
   assert approx_equal(geometry_restraints.angle_deltas(
     unit_cell=unit_cell,
     sites_cart=sites_cart,
     proxies=proxies), [5]*10)
+  assert approx_equal(geometry_restraints.angle_deltas(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies,
+    origin_id=0), [5]*7)
+  assert approx_equal(geometry_restraints.angle_deltas(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies,
+    origin_id=2), [5]*3)
+  assert approx_equal(geometry_restraints.angle_deltas(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies,
+    origin_id=1), [])
   assert approx_equal(geometry_restraints.angle_residuals(
     unit_cell=unit_cell,
     sites_cart=sites_cart,

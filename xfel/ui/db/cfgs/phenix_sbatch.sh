@@ -3,7 +3,7 @@
 #SBATCH --job-name=<jobname>
 #SBATCH --reservation=<reservation>
 #SBATCH --time=<walltime>
-#SBATCH --ntasks=2
+#SBATCH --ntasks=4
 #SBATCH --constraint=<constraint>
 #SBATCH --mail-type=NONE
 #SBATCH -A <project>

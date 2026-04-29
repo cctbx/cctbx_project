@@ -23,3 +23,12 @@ expensive_function_call_message = (
     "Programming problem: Calling this function is expensive."
   + " Please assign the result to an intermediate variable.")
 
+
+# Check if pydiscamb is installed
+try:
+  # prefix to avoid including in structure_factors import
+  import pydiscamb as __pydiscamb
+  pydiscamb_is_installed = True
+  del __pydiscamb
+except ImportError:
+  pydiscamb_is_installed = False

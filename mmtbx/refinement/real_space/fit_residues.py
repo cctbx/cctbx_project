@@ -78,6 +78,7 @@ def fit_altlocs_with_masking(model, fmodel, sin_cos_table=None,
   #
   map_data = get_map(fmodel=fmodel, crystal_gridding=cg, map_type='2mFo-DFc')
   #
+  protein_selection = model.selection("protein")
   sites_cart = model.get_sites_cart()
   sites_cart_start = sites_cart.deep_copy()
   cis = model.get_hierarchy().get_conformer_indices()
@@ -87,6 +88,7 @@ def fit_altlocs_with_masking(model, fmodel, sin_cos_table=None,
     if v == 0: continue
     sel  = indices == 0
     sel |= indices == v
+    sel = sel & protein_selection
     model_conf = model.select(sel)
     # Compute mask for other conformers
     model_other = model.select(~sel)

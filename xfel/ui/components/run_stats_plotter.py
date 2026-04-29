@@ -97,6 +97,7 @@ def get_run_stats(timestamps,
                    n_strong,
                    resolutions,
                    n_lattices,
+                   wavelengths,
                    tuple_of_timestamp_boundaries,
                    lengths,
                    run_numbers,
@@ -168,6 +169,7 @@ def get_run_stats(timestamps,
           hq_sel,
           resolutions,
           half_idx_rate_window*2,
+          wavelengths,
           lengths,
           tuple_of_timestamp_boundaries,
           run_numbers)
@@ -200,7 +202,7 @@ def plot_run_stats(stats,
     text_ratio = plot_ratio*3
   t, drop_ratios, drop_hits, drop_hit_rate, n_strong, xtal_hits, \
   idx_rate, multiples_rate, hq_rate, indexed_sel, hq_sel, resolutions, \
-  window, lengths, boundaries, run_numbers = stats
+  window, wavelengths, lengths, boundaries, run_numbers = stats
   if len(t) == 0:
     return None
   n_runs = len(boundaries)//2
@@ -240,6 +242,7 @@ def plot_run_stats(stats,
   formatter = FuncFormatter(resolution)
   ax3.yaxis.set_major_formatter(formatter)
   ax3_twin = ax3.twinx()
+  ax3.set_zorder(0.1)
   ax3_twin.plot(t, hq_rate*100, color='orange')
   ax3_twin.set_ylim(ymin=0)
   ax3.axis('tight')
@@ -290,15 +293,49 @@ def plot_run_stats(stats,
       ax3.set_xlabel("timestamp (s)\n# images shown as all (%3.1f Angstroms)" % d_min, fontsize=text_ratio)
       ax3.set_yticks([])
     else:
-      ax4.text(start_t, 3.85, " " + ", ".join(tags) + " [%s]" % status, fontsize=text_ratio, color=status_color, rotation=10)
-      ax4.text(start_t, .85, "run %s" % str(run_numbers[idx]), fontsize=text_ratio)
-      ax4.text(start_t, .65, "%d img/%d hit" % (lengths[idx], n_hits), fontsize=text_ratio)
-      ax4.text(start_t, .45, "%d (%d) idx" % (n_idx_low, n_idx_high), fontsize=text_ratio)
-      ax4.text(start_t, .25, "%-3.1f%% solv/%-3.1f%% xtal" % ((100*n_drops/lengths[idx]),(100*n_hits/lengths[idx])), fontsize=text_ratio)
-      ax4.text(start_t, .05, "%-3.1f (%-3.1f)%% idx" % \
-        (100*n_idx_low/lengths[idx], 100*n_idx_high/lengths[idx]), fontsize=text_ratio)
+      sel = wavelengths > 0
+      energies = 12398.4/wavelengths.select(sel)
+      ax4.scatter(t.select(sel), energies, c='lightgray', s=spot_ratio, alpha=0.5)
+      min_energy = flex.min(energies); max_energy = flex.max(energies); energy_range = max_energy-min_energy
+      def normit(v):
+        return min_energy + (v * energy_range)
+
+      def clipit(ax, x, y, text, max_width, fontsize):
+        t = ax.text(x, y, text, fontsize=fontsize)
+        width = t.get_window_extent().width
+        ax_width = ax.get_window_extent().width
+        xmin, xmax = ax.get_xlim()
+        max_width_in_pixels = (max_width / (xmax-xmin)) * (ax_width)
+
+        if width > max_width_in_pixels:
+          for i in range(len(text), 0, -1):
+            t.remove()
+            truncated_text = text[:i] + "..."
+            t = ax.text(x, y, truncated_text, fontsize=fontsize)
+            if t.get_window_extent().width < max_width_in_pixels:
+              break
+          ax.text(x, y, truncated_text, fontsize=fontsize)
+
+      ax4.text(start_t, normit(4.05), " " + ", ".join(tags) + " [%s]" % status, fontsize=text_ratio, color=status_color, rotation=10)
+
+      if end_t:
+        width = end_t - start_t
+        clipit(ax4, start_t, normit(.85), "run %s" % str(run_numbers[idx]), width, fontsize=text_ratio)
+        clipit(ax4, start_t, normit(.65), "%d img/%d hit" % (lengths[idx], n_hits), width, fontsize=text_ratio)
+        clipit(ax4, start_t, normit(.45), "%d (%d) idx" % (n_idx_low, n_idx_high), width, fontsize=text_ratio)
+        clipit(ax4, start_t, normit(.25), "%-3.1f%% solv/%-3.1f%% xtal" % ((100*n_drops/lengths[idx]),(100*n_hits/lengths[idx])), width, fontsize=text_ratio)
+        clipit(ax4, start_t, normit(.05), "%-3.1f (%-3.1f)%% idx" % \
+          (100*n_idx_low/lengths[idx], 100*n_idx_high/lengths[idx]), width, fontsize=text_ratio)
+      else:
+        ax4.text(start_t, normit(.85), "run %s" % str(run_numbers[idx]), fontsize=text_ratio)
+        ax4.text(start_t, normit(.65), "%d img/%d hit" % (lengths[idx], n_hits), fontsize=text_ratio)
+        ax4.text(start_t, normit(.45), "%d (%d) idx" % (n_idx_low, n_idx_high), fontsize=text_ratio)
+        ax4.text(start_t, normit(.25), "%-3.1f%% solv/%-3.1f%% xtal" % ((100*n_drops/lengths[idx]),(100*n_hits/lengths[idx])), fontsize=text_ratio)
+        ax4.text(start_t, normit(.05), "%-3.1f (%-3.1f)%% idx" % \
+          (100*n_idx_low/lengths[idx], 100*n_idx_high/lengths[idx]), fontsize=text_ratio)
+
       ax4.set_xlabel("timestamp (s)\n# images shown as all (%3.1f Angstroms)" % d_min, fontsize=text_ratio)
-      ax4.set_yticks([])
+      ax4.set_ylabel("energy (eV)", fontsize=text_ratio)
     for item in axset:
       item.tick_params(labelsize=text_ratio)
     start += lengths[idx]
@@ -339,6 +376,7 @@ def plot_multirun_stats(runs,
   nset = flex.int()
   resolutions_set = flex.double()
   n_lattices = flex.int()
+  wavelengths = flex.double()
   boundaries = []
   lengths = []
   runs_with_data = []
@@ -360,6 +398,7 @@ def plot_multirun_stats(runs,
       nset.extend(r[3])
       resolutions_set.extend(r[4])
       n_lattices.extend(r[5])
+      wavelengths.extend(r[6])
       boundaries.append(tslice[0])
       boundaries.append(tslice[-1])
       lengths.append(len(tslice))
@@ -374,6 +413,7 @@ def plot_multirun_stats(runs,
                               nset,
                               resolutions_set,
                               n_lattices,
+                              wavelengths,
                               tuple(boundaries),
                               tuple(lengths),
                               runs_with_data,

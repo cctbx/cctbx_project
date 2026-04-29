@@ -49,13 +49,13 @@ class unit_cell_distribution(object):
     self.uc_gamma_values.append(gamma)
 
   def collect_from_all_ranks(self):
-    self.all_uc_a_values = self.mpi_helper.aggregate_flex(self.uc_a_values, flex.double)
-    self.all_uc_b_values = self.mpi_helper.aggregate_flex(self.uc_b_values, flex.double)
-    self.all_uc_c_values = self.mpi_helper.aggregate_flex(self.uc_c_values, flex.double)
+    self.all_uc_a_values = self.mpi_helper.aggregate_flex(self.uc_a_values, flex.double, root=None)
+    self.all_uc_b_values = self.mpi_helper.aggregate_flex(self.uc_b_values, flex.double, root=None)
+    self.all_uc_c_values = self.mpi_helper.aggregate_flex(self.uc_c_values, flex.double, root=None)
 
-    self.all_uc_alpha_values  = self.mpi_helper.aggregate_flex(self.uc_alpha_values, flex.double)
-    self.all_uc_beta_values   = self.mpi_helper.aggregate_flex(self.uc_beta_values, flex.double)
-    self.all_uc_gamma_values  = self.mpi_helper.aggregate_flex(self.uc_gamma_values, flex.double)
+    self.all_uc_alpha_values  = self.mpi_helper.aggregate_flex(self.uc_alpha_values, flex.double, root=None)
+    self.all_uc_beta_values   = self.mpi_helper.aggregate_flex(self.uc_beta_values, flex.double, root=None)
+    self.all_uc_gamma_values  = self.mpi_helper.aggregate_flex(self.uc_gamma_values, flex.double, root=None)
 
   def is_valid(self):
     return len(self.all_uc_a_values) > 0 and len(self.all_uc_b_values) > 0 and len(self.all_uc_c_values) > 0 and \
@@ -129,14 +129,10 @@ class unit_cell_statistics(worker):
     ucd.collect_from_all_ranks()
 
     average_unit_cell = None
-    if self.mpi_helper.rank == 0:
-      if ucd.is_valid():
+    if ucd.is_valid():
+      if self.mpi_helper.rank == 0:
         ucd.show_histograms()
-        average_unit_cell = ucd.get_average_cell()
-
-    self.logger.log_step_time("BROADCAST_UNIT_CELL")
-    average_unit_cell = self.mpi_helper.comm.bcast(average_unit_cell, root = 0)
-    self.logger.log_step_time("BROADCAST_UNIT_CELL", True)
+      average_unit_cell = ucd.get_average_cell()
 
     # save the average unit cell to the phil parameters
     if self.mpi_helper.rank == 0:

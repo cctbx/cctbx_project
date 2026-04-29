@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools"]
+
+[project]
+name = "cctbx.xfel"
+version = "REPLACEME"
+dependencies = ["cctbx-base", "iota", "mysql", "mysqlclient", "pydrive2"]
+license = "BSD-3-Clause-LBNL"
+license-files = ["LICEN[CS]E*.txt"]
+
+description = "cctbx.xfel"
+readme = "./conda_envs/README.md"
+authors = [{name = "cctbx.xfel developers"}]
+maintainers = [{name = "cctbx.xfel developers", email="cctbx@cci.lbl.gov"}]
+
+requires-python = ">=3.10"
+
+classifiers = [
+  'Development Status :: 5 - Production/Stable',
+  'Intended Audience :: Science/Research',
+  'Intended Audience :: Developers',
+  'Programming Language :: C++',
+  'Programming Language :: Python',
+  'Programming Language :: Python :: 3',
+  'Programming Language :: Python :: 3.10',
+  'Programming Language :: Python :: 3.11',
+  'Programming Language :: Python :: 3.12',
+  'Programming Language :: Python :: 3 :: Only',
+  'Programming Language :: Python :: Implementation :: CPython',
+  'Topic :: Software Development',
+  'Topic :: Scientific/Engineering',
+  'Operating System :: Microsoft :: Windows',
+  'Operating System :: POSIX',
+  'Operating System :: Unix',
+  'Operating System :: MacOS',
+]
+
+[project.urls]
+homepage = "https://cci.lbl.gov/xfel/"
+documentation = "https://cci.lbl.gov/xfel/"
+source = "https://github.com/cctbx/cctbx_project/tree/master/xfel"
+download = "https://github.com/cctbx/cctbx_project/releases"
+tracker = "https://github.com/cctbx/cctbx_project/issues"
+"release notes" = "https://github.com/cctbx/cctbx_project/releases"
+
+[tool.setuptools]
+include-package-data = true

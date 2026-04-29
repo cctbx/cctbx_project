@@ -1,5 +1,4 @@
 from __future__ import absolute_import, division, print_function
-from iotbx import pdb
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
@@ -610,37 +609,6 @@ END
     lines=log.getvalue().splitlines())
   assert len(lines) == 1
 
-  # test the atom_selection feature
-  log = StringIO()
-  pdb_inp = pdb.input(source_info = None, lines = raw_records)
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-    mon_lib_srv=mon_lib_srv,
-    ener_lib=ener_lib,
-    atom_selection_string="resname ser",
-    pdb_inp = pdb_inp,
-    crystal_symmetry=pdb_inp.crystal_symmetry(),
-    log=log)
-  processed_pdb_file.geometry_restraints_manager()
-  lines = search_for(
-    pattern=" +Nonbonded interactions: 0$",
-    mode="re.match",
-    lines=log.getvalue().splitlines())
-  assert len(lines) == 1
-
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-    mon_lib_srv=mon_lib_srv,
-    ener_lib=ener_lib,
-    atom_selection_string="resname ser or resname ala",
-    pdb_inp = pdb_inp,
-    crystal_symmetry=pdb_inp.crystal_symmetry(),
-    log=log)
-  processed_pdb_file.geometry_restraints_manager()
-  lines = search_for(
-    pattern=" +Nonbonded interactions: 7$",
-    mode="re.match",
-    lines=log.getvalue().splitlines())
-  assert len(lines) == 1
-  #
   raw_records = """\
 CRYST1   53.910   23.100   23.100  90.00 110.40  90.00 C 2
 ATOM    561  N   TYR X  39      11.814  -3.041  22.005  1.00 15.52           N
@@ -1071,11 +1039,13 @@ def exercise_dna_cns_cy5_th6():
   monomer_library.pdb_interpretation.run(args=file_paths, params=params, log=log)
   assert not block_show_diff(log.getvalue(), """\
         Number of residues, atoms: 12, 244
+          Unusual residues: %s
           Classifications: %s
           Modifications used: {'5*END': 1}
           Link IDs: %s
 """ % (
-  str({'DNA': 12}),
+  str({'CY5': 1, 'TH6': 1}),
+  str({'DNA': 10, 'DNA_mixed' : 2}),
   str({'rna3p': 11})))
 
 def exercise_sym_excl_indices(mon_lib_srv, ener_lib):
@@ -1420,7 +1390,7 @@ _chem_comp_angle.value_angle_esd   3.000
   geo_file = open(pdb_file.name+".geo", "r")
   geo_file_str = geo_file.read()
   geo_file.close()
-  assert "Bond angle restraints: 1" in geo_file_str
+  assert "Bond angle | covalent geometry | restraints: 1" in geo_file_str
 
 def exercise_do_not_link(mon_lib_srv, ener_lib):
   """

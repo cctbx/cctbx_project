@@ -1,3 +1,4 @@
+"""Superpose models using named atom pairs in the two models"""
 from __future__ import absolute_import, division, print_function
 def run(args):
   assert len(args) == 2

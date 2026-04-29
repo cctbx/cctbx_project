@@ -1,3 +1,4 @@
+"""Calculate model structure factors"""
 from __future__ import absolute_import, division, print_function
 try:
   from phenix.program_template import ProgramTemplate

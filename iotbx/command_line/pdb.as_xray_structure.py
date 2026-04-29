@@ -1,3 +1,4 @@
+"""Calculate xray_structure from a model and dump as pickle"""
 from __future__ import absolute_import, division, print_function
 from iotbx import pdb
 from iotbx.option_parser import option_parser

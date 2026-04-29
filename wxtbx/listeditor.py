@@ -41,7 +41,7 @@ class ListEditor(wx.Panel):
       size=(300,-1),
       style=wx.TE_PROCESS_ENTER)
     self.Bind(wx.EVT_TEXT_ENTER, self.OnUpdate, self.edit)
-    edit_szr.Add(self.edit, 1, wx.EXPAND|wx.RIGHT|wx.ALIGN_CENTER_VERTICAL, 5)
+    edit_szr.Add(self.edit, 1, wx.EXPAND|wx.RIGHT, 5)
     szr.Add(edit_szr, 0, wx.EXPAND|wx.TOP|wx.LEFT|wx.BOTTOM, 5)
     szr.Layout()
     self.sizer = szr

@@ -220,6 +220,7 @@ def get_hand(c_atom, o_atom, angles, verbose=False):
 def get_classes(atom, verbose=False):
   def _num_atoms_residue(atom):
     return len(atom.parent().parent().atoms())
+  #
   def _filter_for_metal(atom, class_name):
     if class_name=="common_element":
       if atom.element.strip().upper() in ad_hoc_single_metal_residue_element_types:
@@ -231,6 +232,15 @@ def get_classes(atom, verbose=False):
     return class_name
   #
   important_only_value = None
+  def _filter_for_uncommon_amino_acid(atom, class_name):
+    backbone_atoms = ['C', 'CA', 'N', 'O', 'OXT']
+    backbone_bonds = [[0,1],]
+    count = 0
+    for a in atom.parent().parent().atoms():
+      if a.name.strip() in backbone_atoms: count+=1
+    if count>=4: class_name='uncommon_amino_acid'
+    return class_name
+  #
   attrs = [
     "common_saccharide",
     "common_water",
@@ -296,6 +306,10 @@ def get_classes(atom, verbose=False):
         important_only_value = _filter_for_metal(atom, rc)
         setattr(classes, "important_only", important_only_value)
       setattr(classes, attr, True)
+  if (classes.other):
+    setattr(classes, _filter_for_uncommon_amino_acid(atom, rc), True)
+  if verbose:
+    print(classes)
   return classes
 
 def is_atom_group_pair_linked(atom_group1,
@@ -305,18 +319,13 @@ def is_atom_group_pair_linked(atom_group1,
   #
   # look in link list for atom group links
   #
-  simple_key = "%s-%s" % (
-    atom_group1.resname,
-    atom_group2.resname,
-    )
-  if simple_key in mon_lib_srv.link_link_id_dict:
-    return mon_lib_srv.link_link_id_dict[simple_key], False, simple_key
-  simple_key = "%s-%s" % (
-    atom_group2.resname,
-    atom_group1.resname,
-    )
-  if simple_key in mon_lib_srv.link_link_id_dict:
-    return mon_lib_srv.link_link_id_dict[simple_key], True, simple_key
+  key_data = [
+    ["%s-%s" % (atom_group1.resname, atom_group2.resname), False],
+    ["%s-%s" % (atom_group2.resname, atom_group1.resname), True],
+    ]
+  for i, (simple_key, swap) in enumerate(key_data):
+    if simple_key in mon_lib_srv.link_link_id_dict:
+      return mon_lib_srv.link_link_id_dict[simple_key], swap, simple_key
   return None, None, None
 
 def is_atom_metal_coordinated(lookup,
@@ -337,17 +346,44 @@ def is_atom_metal_coordinated(lookup,
 def _get_cis_trans():
   return 'TRANS'
 
+def allow_cis_trans_important(class_important_1, class_important_2):
+  peptides = ['common_amino_acid', 'd_amino_acid', 'uncommon_amino_acid']
+  if class_important_1 in peptides and class_important_2 in peptides:
+    return True
+  return False
+
+def allow_cis_trans(classes1, classes2):
+  return allow_cis_trans_important(classes1.important_only, classes2.important_only)
+
 def is_atom_pair_linked_tuple(atom1,
                               atom2,
                               class_important_1,
-                              class_important_2):
-  if class_important_1=='common_amino_acid' and class_important_2==class_important_1:
+                              class_important_2,
+                              mon_lib_srv,
+                              ):
+  #
+  # atom name specific links
+  #
+  if allow_cis_trans_important(class_important_1, class_important_2):
     if atom1.name==' N  ' and atom2.name==' C  ':
       return _get_cis_trans(), False, '?'
     elif atom1.name==' C  ' and atom2.name==' N  ':
       return _get_cis_trans(), True, '?'
-    else:
-      print('amino acid link not found',atom1.quote(),atom2.quote())
+  atom_group1 = atom1.parent()
+  atom_group2 = atom2.parent()
+  key_data = [
+    # ['%s_%s-%s_%s' % (atom_group1.resname, atom1.name.strip(),
+    #                   atom_group2.resname, atom2.name.strip()), False],
+    # ['%s_%s-%s_%s' % (atom_group2.resname, atom2.name.strip(),
+    #                   atom_group1.resname, atom1.name.strip()), True],
+    ['%s_%s-%s_%s' % (atom_group1.resname, atom1.name.strip(),
+                      'ANY', atom2.name.strip()), False],
+    ['%s_%s-%s_%s' % (atom_group2.resname, atom2.name.strip(),
+                      'ANY', atom1.name.strip()), True],
+    ]
+  for i, (simple_key, swap) in enumerate(key_data):
+    if simple_key in mon_lib_srv.link_link_id_dict:
+      return mon_lib_srv.link_link_id_dict[simple_key], swap, simple_key
   return None, None, None
 
 def is_atom_pair_linked(atom1,
@@ -471,6 +507,11 @@ Send details to help@phenix-online.org
   if class1=="common_amino_acid" and class2=="common_amino_acid":
     if verbose:
       print("AMINO ACIDS",atom1.quote(), atom2.quote())
+    el1 = atom1.element.strip().upper()
+    el2 = atom2.element.strip().upper()
+    if ( (el1=='N' and el2=='C') or (el1=='C' and el2=='N')):
+      return True
+
   #
   # D-peptide special case...
   #

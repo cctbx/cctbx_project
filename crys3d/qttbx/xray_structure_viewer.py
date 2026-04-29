@@ -3,9 +3,9 @@ from PyQt4 import QtGui
 from PyQt4.QtCore import Qt
 from crys3d import qttbx
 import crys3d.qttbx.xray_structure_viewer_controls
-from gltbx import quadrics, gl_managed
 from gltbx.gl import *
 from gltbx.glu import *
+from gltbx import quadrics, gl_managed
 from cctbx import crystal
 from cctbx.array_family import flex
 from cctbx.eltbx import covalent_radii

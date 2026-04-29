@@ -580,6 +580,11 @@ class structure(crystal.special_position_settings):
                    .n_independent_params()] += 1
     return result
 
+  def get_scattering_table(self):
+    if not self._scattering_type_registry:
+      return None
+    return self._scattering_type_registry.last_table()
+
   def guess_scattering_type_neutron(self):
     ac,bc,cc = 0,0,0
     result = False
@@ -1376,7 +1381,8 @@ class structure(crystal.special_position_settings):
                               quality_factor=None,
                               u_base=None,
                               b_base=None,
-                              wing_cutoff=None):
+                              wing_cutoff=None,
+                              extra_params=None):
     """
     Calculate structure factors for the current scatterers using either direct
     summation or FFT method; by default the appropriate method will be guessed
@@ -1405,6 +1411,8 @@ class structure(crystal.special_position_settings):
     :param wing_cutoff: is how far away from atomic center you sample density
       around atom
     :type wing_cutoff: float
+    :param extra_params: Additional parameters passed to the structure factor calculation algorithm
+    :type extra_params: libtbx.phil.scope_extract
 
     :returns: a custom Python object (exact type depends on method used), from
       which f_calc() may be called
@@ -1421,17 +1429,21 @@ class structure(crystal.special_position_settings):
             "xray.structure with anomalous scatterers"
           + " but miller.array is non-anomalous.")
     miller_set = miller.build_set(self, anomalous_flag, d_min)
+    d_min = miller_set.d_min() # Overwrite d_min with the actual value
     return structure_factors.from_scatterers(
       crystal_symmetry=self,
       d_min=d_min,
       cos_sin_table=cos_sin_table,
+      grid_resolution_factor=1/3.,
       quality_factor=quality_factor,
       u_base=u_base,
       b_base=b_base,
-      wing_cutoff=wing_cutoff)(
+      wing_cutoff=wing_cutoff,
+      exp_table_one_over_step_size=None)(
         xray_structure=self,
         miller_set=miller_set,
-        algorithm=algorithm)
+        algorithm=algorithm,
+        extra_params=extra_params)
 
   def as_py_code(self, indent=""):
     """eval(self.as_py_code()) is similar (but sometimes not identical)

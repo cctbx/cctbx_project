@@ -280,7 +280,7 @@ def copy_modules(env, sp_dir=None, link=False):
                 dst = os.path.join(sp_dir, 'phenix', subdir)
                 copy_cmd(src, dst, link)
             continue
-          elif module in ['elbow', 'phaser', 'phasertng', 'PyQuante']:
+          elif module in ['elbow', 'phaser', 'phasertng', 'PyQuante', 'reel']:
             if module == 'elbow':
               # yacc.py and resources
               for m in ['yacc.py', 'resources']:

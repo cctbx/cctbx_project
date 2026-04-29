@@ -42,6 +42,104 @@ ATOM      9  NZ  LYS A   7       1.911   6.790  -2.075  0.10 26.71           N
 TER
 """)
 
+def exercise_cmdline_cif():
+  #
+  params = iotbx.phil.parse(input_string = master_params).extract()
+  #
+  pdb_in = iotbx.pdb.input(source_info=None, lines=model_1yjp)
+  m1 = mmtbx.model.manager(model_input = pdb_in, log = null_out())
+  h_in = m1.get_hierarchy()
+  #
+  mtz_file = "tst_extend_sidechains.mtz"
+  xrs = m1.get_xray_structure()
+  f_calc = abs(xrs.structure_factors(d_min=1.5).f_calc())
+  flags = f_calc.generate_r_free_flags(fraction=0.1)
+  mtz = f_calc.as_mtz_dataset(column_root_label="F")
+  mtz.add_miller_array(flags, column_root_label="FreeR_flag")
+  mtz.mtz_object().write(mtz_file)
+  sel_str = "not (resname TYR and not (name c or name o or name n or name oxt or name ca or name cb))"
+  sel = m1.selection(sel_str)
+  h_trimmed = h_in.select(sel)
+
+  # Convert to mmcif_only:
+  h_trimmed.rename_chain_id('A','AXLONG')
+
+  pdb_file = "tst_extend_sidechains.cif"
+  h_trimmed.write_pdb_or_mmcif_file(pdb_file)
+
+  pdb_out = "tst_extend_sidechains_out.cif"
+  prefix=os.path.splitext(os.path.basename(pdb_out))[0]
+
+  dm = DataManager()
+  m3 = dm.get_model(pdb_file)
+  ma = dm.get_miller_arrays(filename = mtz_file)
+  fmo3 = dm.get_fmodel(scattering_table="n_gaussian")
+  out1 = StringIO()
+  mmtbx.building.extend_sidechains.extend_and_refine(
+    pdb_hierarchy=m3.get_hierarchy(),
+    xray_structure=m3.get_xray_structure(),
+    fmodel=fmo3,
+    params=params,
+    prefix=prefix,
+    out=out1,
+    output_model=pdb_out)
+
+  assert ("1 sidechains extended." in out1.getvalue()), out1.getvalue()
+
+  pdb_new = iotbx.pdb.input(file_name=pdb_out)
+  h_new = pdb_new.construct_hierarchy()
+  r1 = rotalyze.rotalyze(pdb_hierarchy=h_in, outliers_only=False)
+  r2 = rotalyze.rotalyze(pdb_hierarchy=h_new, outliers_only=False)
+  for o1, o2 in zip(r1.results, r2.results):
+    assert o1.rotamer_name == o2.rotamer_name
+  # Cleanup
+  if os.path.isfile(pdb_out): os.remove(pdb_out)
+  if os.path.isfile(pdb_file): os.remove(pdb_file)
+  if os.path.isfile(prefix+'_maps.mtz'): os.remove(prefix+'_maps.mtz')
+  #
+  # Part 2: with sequence corrections
+  #
+  out2 = StringIO()
+  #seq_file = "tst_extend_sidechains.fa"
+  #with open(seq_file, "w") as f:
+  #  f.write(">1yjp_new\nGNDQQNY")
+
+  sequences = [iotbx.bioinformatics.sequence("GNDQQNY")]
+  h_in_mod = h_trimmed.deep_copy()
+  n_changed = mmtbx.building.extend_sidechains.correct_sequence(
+    pdb_hierarchy=h_in_mod,
+    sequences=sequences,
+    out=out2)
+  #print(h_in.as_sequence())
+  #print(h_in_mod.as_sequence())
+
+  pdb_file = "tst_extend_sidechains_2.cif"
+  h_in_mod.write_pdb_or_mmcif_file(pdb_file)
+
+  dm = DataManager()
+  m4 = dm.get_model(pdb_file)
+  ma = dm.get_miller_arrays(filename = mtz_file)
+  fmo4 = dm.get_fmodel(scattering_table="n_gaussian")
+
+  pdb_out = "tst_extend_sidechains_out2.cif"
+  prefix=os.path.splitext(os.path.basename(pdb_out))[0]
+
+  mmtbx.building.extend_sidechains.extend_and_refine(
+    pdb_hierarchy=m4.get_hierarchy(),
+    xray_structure=m4.get_xray_structure(),
+    fmodel=fmo4,
+    params=params,
+    prefix=prefix,
+    out=out2,
+    output_model=pdb_out)
+
+  assert ("2 sidechains extended." in out2.getvalue()), out2.getvalue()
+  # Cleanup
+  if os.path.isfile(pdb_out): os.remove(pdb_out)
+  if os.path.isfile(pdb_file): os.remove(pdb_file)
+  if os.path.isfile(prefix+'_maps.mtz'): os.remove(prefix+'_maps.mtz')
+  if os.path.isfile(mtz_file): os.remove(mtz_file)
+
 def exercise_cmdline():
   #
   params = iotbx.phil.parse(input_string = master_params).extract()
@@ -160,6 +258,7 @@ def exercise_correct_sequence():
   assert ("  chain 'A'    3  ASP --> ASP (3 atoms removed)" in out.getvalue())
 
 if (__name__ == "__main__"):
+  exercise_cmdline_cif()
   exercise_model_only()
   exercise_correct_sequence()
   exercise_cmdline()

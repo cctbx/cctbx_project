@@ -6,14 +6,22 @@ from scitbx.array_family import flex
 from mmtbx.geometry_restraints import base_qm_manager
 
 import libtbx.load_env
+from libtbx import Auto
 
 from mmtbx.geometry_restraints.base_qm_manager import get_internal_coordinate_value
 
-def get_exe():
+def get_exe(verbose=False):
   bin_dir = libtbx.env.under_base('bin')
   exe_path = os.path.join(bin_dir, 'mopac')
   bin_dir = libtbx.env.under_base('Library')
   win_exe_path = os.path.join(bin_dir,"bin", 'mopac.exe')
+  if verbose:
+    print('"'*79)
+    print('  Looking for mopac in env var PHENIX_MOPAC : %s' % os.environ.get('PHENIX_MOPAC', False))
+    print('  Looking for mopac as %s : %s' % (exe_path, os.path.exists(exe_path)))
+    # print(f'  Looking for mopac in directory {bin_dir}s')
+    print('  Looking for win mopac as %s : %s\n' % (win_exe_path, os.path.exists(win_exe_path)))
+    print('"'*79)
   if os.environ.get('PHENIX_MOPAC', False):
     return os.environ['PHENIX_MOPAC']
   elif os.path.exists(exe_path):
@@ -29,16 +37,31 @@ class mopac_manager(base_qm_manager.base_qm_manager):
   def get_log_filename(self):
     return 'mopac_%s.out' % self.preamble
 
-  def _input_header(self):
+  def _input_header(self, gradients_only=False):
     if self.nproc==0:
       nproc_str=''
     else:
       nproc_str='THREADS=%s' % self.nproc
-    outl = '%s %s %s %s DISP \n%s\n\n' % (
+    multiplicity_str=''
+    if self.multiplicity not in [None, Auto, 1]:
+      multiplicity_str=[None,
+                        'singlet', # - 0 unpaired electrons
+                        'doublet', # - 1 unpaired electrons
+                        'triplet', # - 2 unpaired electrons
+                        'quartet', # - 3 unpaired electrons
+                        'quintet', # - 4 unpaired electrons
+                        'sextet', # - 5 unpaired electrons
+                        ][self.multiplicity]
+    additional_options=''
+    if gradients_only:
+      additional_options+=' 1SCF GRAD ANALYT'
+    outl = '%s %s %s %s DISP %s %s\n%s\n\n' % (
      self.method,
      self.basis_set,
      self.solvent_model,
      'CHARGE=%s %s' % (self.charge, nproc_str),
+     multiplicity_str,
+     additional_options,
      self.preamble,
      )
     return outl
@@ -109,8 +132,8 @@ class mopac_manager(base_qm_manager.base_qm_manager):
     outl += '\n'
     return outl
 
-  def get_input_lines(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False):
-    outl = self._input_header()
+  def get_input_lines(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False, gradients=False):
+    outl = self._input_header(gradients_only=gradients)
     outl += self.get_coordinate_lines(optimise_ligand=optimise_ligand,
                                       optimise_h=optimise_h,
                                       constrain_torsions=constrain_torsions,
@@ -120,11 +143,12 @@ class mopac_manager(base_qm_manager.base_qm_manager):
   def get_input_filename(self):
     return 'mopac_%s.mop' % self.preamble
 
-  def read_xyz_output(self):
+  def read_xyz_output(self, verbose=False):
     filename = self.get_coordinate_filename()
     filename = filename.replace('.arc', '.out')
     if not os.path.exists(filename):
       raise Sorry('QM output filename not found: %s' % filename)
+    if verbose: print('reading %s' % filename)
     f=open(filename, 'r')
     lines = f.read()
     del f
@@ -178,6 +202,36 @@ class mopac_manager(base_qm_manager.base_qm_manager):
         self.charge = float(line.split()[5])
         break
     return self.charge
+
+  def validate_atomic_charges(self, filename=None):
+    '''
+                 NET ATOMIC CHARGES AND DIPOLE CONTRIBUTIONS
+
+  ATOM NO.   TYPE          CHARGE      No. of ELECS.   s-Pop       p-Pop
+    1          C          -0.691089        4.6911     1.10997     3.58112
+    2          C           0.963519        3.0365     1.15413     1.88235
+    3          O          -0.111514        6.1115     1.65968     4.45183
+    4          H           0.405761        0.5942     0.59424
+    5          H           0.399617        0.6004     0.60038
+    6          H           0.404684        0.5953     0.59532
+    7          H           1.000000        0.0000     0.00000
+    8          H           1.000000        0.0000     0.00000
+    9          H           0.629022        0.3710     0.37098
+ DIPOLE           X         Y         Z       TOTAL
+ POINT-CHG.    29.803  -147.398  -116.121   189.996
+ HYBRID         0.786     0.431     0.475     1.015
+ SUM           30.590  -146.966  -115.646   189.496'''
+    lines = self.get_lines(filename=filename)
+    reading=False
+    for line in lines.splitlines():
+      if reading:
+        print(line)
+        assert 0
+      if line.find('ATOM NO.   TYPE          CHARGE      No. of ELECS.')>-1:
+        reading=True
+
+  def validate_calculation(self):
+    self.validate_atomic_charges()
 
   def read_gradients(self, filename=None):
     lines = self.get_lines(filename=filename)

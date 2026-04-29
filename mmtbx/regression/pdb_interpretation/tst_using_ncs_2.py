@@ -1,10 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-import iotbx.pdb
-import mmtbx.model
 import libtbx.load_env
-from libtbx.utils import null_out
-
+from libtbx.test_utils import show_diff, assert_lines_in_text
+from mmtbx.regression.pdb_interpretation.tst_using_ncs_1 import get_geometry_stats
 
 pdb_str = """\
 ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
@@ -455,23 +453,21 @@ ATOM    431  CZ  TYR h   7       9.995   8.028  12.611  1.00 15.09           C
 ATOM    432  OH  TYR h   7      11.276   7.888  12.151  1.00 14.39           O
 ATOM    433  OXT TYR h   7       3.684  10.298  14.830  1.00 17.49           O
 TER
-
 """
 
 def exercise_01():
-
-
-  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
-  m = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
-  p = m.get_default_pdb_interpretation_params()
-  p.pdb_interpretation.use_ncs_to_build_restraints = True
-  # p.pdb_interpretation.use_ncs_to_build_restraints = False
-  m.process(make_restraints=True, pdb_interpretation_params=p)
-
+  geom_ncs, log_ncs=get_geometry_stats(pdb_str, True)
+  geom_no_ncs, log_no_ncs=get_geometry_stats(pdb_str, False)
+  assert not show_diff(geom_ncs, geom_no_ncs)
+  # assert not show_diff(log_ncs, log_no_ncs)
+  assert_lines_in_text(log_ncs, """   Restraints were copied for chains:
+    X, h, B, H, R, f
+""")
+  # print(log_ncs)
 
 if(__name__ == "__main__"):
   if libtbx.env.find_in_repositories(relative_path="chem_data") is None:
-    print("Skipping exercise_02(): chem_data directory not available")
+    print("Skipping exercise_01(): chem_data directory not available")
   else:
     exercise_01()
     print('OK')

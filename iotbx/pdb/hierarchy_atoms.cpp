@@ -68,6 +68,7 @@ namespace iotbx { namespace pdb { namespace hierarchy { namespace atoms {
 #endif
   IOTBX_LOC(fp, double)
   IOTBX_LOC(fdp, double)
+  IOTBX_LOC(resolution, double)
   IOTBX_LOC(i_seq, std::size_t)
 
 #undef IOTBX_LOC
@@ -149,6 +150,7 @@ namespace iotbx { namespace pdb { namespace hierarchy { namespace atoms {
 #endif
   IOTBX_LOC(fp, double)
   IOTBX_LOC(fdp, double)
+  IOTBX_LOC(resolution, double)
 
 #undef IOTBX_LOC
 

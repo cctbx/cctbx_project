@@ -1,4 +1,5 @@
-
+"""GUI tool for manipulating reflection file data
+"""
 # TODO: confirm old_test_flag_value if ambiguous
 
 from __future__ import absolute_import, division, print_function

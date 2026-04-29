@@ -1,3 +1,4 @@
+"""Counts of various chiral volume outlier classes"""
 from __future__ import absolute_import, division, print_function
 
 import os
@@ -19,19 +20,12 @@ Options:
   outliers_only=True    Only return chiral outliers
   kinemage=False        Create kinemage markup (overrides text output)
   json=False            Outputs results as JSON compatible dictionary
-  help = False          Prints this help message if true
+  help=False          Prints this help message if true
 
-  SUMMARY statistics provide:
-    counts of cis prolines and twisted prolines relative to total prolines with
-      measurable omega dihedrals across all chains
-    counts of non-proline cis and twisted peptides relative to total non-proline
-      peptides with measurable omega dihedrals across all chains
-
-  Cis Prolines occur in ~5%% of prolines (1 in 20) at high resolution
-  Non-Proline Cis residues occur in ~0.05%% of residues (1 in 2000) and require
-    clear support from experimental data or homology.
-  Twisted peptides are even less frequent and are highly suspect without
-    high-resolution data.
+  counts of various chiral volume outlier classes, including the following:
+    tetrahedral geometry outliers (e.g. flattened geometry)
+    chiral identity swaps (e.g. L vs D amino acids)
+    pseudochiral naming issues (e.g. swapped chemically identical atoms with distinct names)
 
 Example:
 
@@ -44,7 +38,7 @@ Example:
       .help = "Only show outliers"
     kinemage = False
       .type = bool
-      .help = "Prints kinemage markup for cis-peptides"
+      .help = "Prints kinemage markup for chiral volume outliers"
     json = False
       .type = bool
       .help = "Prints results as JSON format dictionary"

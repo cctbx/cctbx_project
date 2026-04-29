@@ -369,9 +369,13 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     self.map_types = map_types
 
     assert (self.twin_law is not None)
+
     f_obs = f_obs.map_to_asu()
+    r_free_flags = r_free_flags.map_to_asu()
+    f_obs, r_free_flags = f_obs.common_sets(r_free_flags)
     self.f_obs_ = f_obs
-    self.r_free_flags_ = r_free_flags.map_to_asu().common_set(f_obs)
+    self.r_free_flags_ = r_free_flags
+
     assert self.f_obs_.indices().all_eq( self.r_free_flags_.indices() )
 
     self.f_obs_w = f_obs.select( ~self.r_free_flags_.data() )
@@ -620,7 +624,11 @@ the percentage of R-free reflections).
       x = flex.abs( self.bulk_solvent_mask().data - manager.bulk_solvent_mask().data )
       print("Bit wise diff mask ", flex.sum( x ), file=self.out)
 
-
+  def is_taam(self):
+    """
+    Not implemented.
+    """
+    return False
 
   def deep_copy(self):
     new_object = twin_model_manager(
@@ -993,7 +1001,8 @@ the percentage of R-free reflections).
         b_base                       = self.sfg_params.b_base,
         wing_cutoff                  = self.sfg_params.wing_cutoff,
         exp_table_one_over_step_size =
-                        self.sfg_params.exp_table_one_over_step_size
+                        self.sfg_params.exp_table_one_over_step_size,
+        extra_params                 = self.sfg_params.extra
       )
     else:
       tmp = self.miller_set.structure_factors_from_scatterers(
@@ -1093,7 +1102,8 @@ the percentage of R-free reflections).
            b_base                       = self.sfg_params.b_base,
            wing_cutoff                  = self.sfg_params.wing_cutoff,
            exp_table_one_over_step_size =
-                           self.sfg_params.exp_table_one_over_step_size).f_calc()
+                           self.sfg_params.exp_table_one_over_step_size,
+           extra_params                 = self.sfg_params.extra).f_calc()
        else:
          f_calc = self.miller_set.structure_factors_from_scatterers(
            xray_structure = self.xray_structure).f_calc()

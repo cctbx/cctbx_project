@@ -1,3 +1,4 @@
+"""Convert SHELX to mmCIF format"""
 from __future__ import absolute_import, division, print_function
 from cctbx import xray
 import sys, os

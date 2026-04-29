@@ -1,3 +1,10 @@
+"""
+  Manager for files containing map coefficients (either as complex arrays or
+  separate F, PHI, and optional FOM).  Once an MTZ file or collection of
+  Miller arrays is loaded, individual maps can be quickly retrieved, and it
+  includes built-in recognition of standard map labels used in PHENIX (and
+  CCP4).Routines to calculate maps from map coefficients of various types
+"""
 from __future__ import absolute_import, division, print_function
 
 from libtbx.math_utils import ifloor, iceil

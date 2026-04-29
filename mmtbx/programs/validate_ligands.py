@@ -1,170 +1,352 @@
+"""Validate ligands in a model"""
 from __future__ import absolute_import, division, print_function
+import os
+import traceback
 try:
   from phenix.program_template import ProgramTemplate
 except ImportError:
   from libtbx.program_template import ProgramTemplate
 import mmtbx.validation.ligands
 from mmtbx.validation import validate_ligands
+from mmtbx.validation.clashscore2 import check_and_add_hydrogen
+from mmtbx.hydrogens import reduce_hydrogen
+import iotbx.pdb
 from libtbx.utils import null_out, Sorry
 from iotbx import crystal_symmetry_from_any
 from libtbx.str_utils import make_sub_header
-from iotbx import extract_xtal_data
+from libtbx import group_args
+#from cctbx.array_family import flex
 
 
 master_phil_str = """
 include scope mmtbx.validation.validate_ligands.master_params
-ligand_code = None
-  .type = str
-  .multiple = True
-reference_structure = None
-  .type = path
-only_segid = None
-  .type = str
-
+include scope mmtbx.probe.Helpers.probe_phil_parameters
+scattering_table = *n_gaussian wk1995 it1992 neutron electron
+  .type = choice
+  .short_caption = Scattering table
+  .help = Scattering table for structure factors calculations
+run_reduce2 = True
+  .type = bool
+save_reduce2_model = False
+  .type = bool
 verbose = False
   .type = bool
-update_scales = True
-  .type = bool
+gui
+  .help = GUI-specific parameters
+{
+  output_dir = None
+    .type = path
+    .style = output_dir
 
+  data_column_label = None
+    .type = str
+    .style = noauto renderer:draw_any_label_widget
+    .input_size = 200
+
+  free_column_label = None
+    .type = str
+    .style = noauto renderer:draw_any_label_widget
+    .input_size = 200
+}
 """
-# TODO update_scales if for development only, delete for production!
 
 # =============================================================================
 
 class Program(ProgramTemplate):
 
   description = '''
-mmtbx.validate_ligands model.pdb data.mtz LIGAND_CODE [...]
+mmtbx.development.validate_ligands model.pdb data.mtz
+mmtbx.development.validate_ligands model.pdb
 
 Print out basic statistics for residue(s) with the given code(s), including
-electron density values/CC.
+RSCC.
 '''
 
-  datatypes = ['model', 'phil', 'miller_array']
+  datatypes = ['model', 'phil', 'restraint', 'miller_array', 'real_map']
 
   master_phil_str = master_phil_str
+  data_manager_options = ['model_skip_expand_with_mtrix',
+                          'model_skip_ss_annotations']
 
   # ---------------------------------------------------------------------------
 
   def validate(self):
     print('Validating inputs...\n', file=self.logger)
+
+    # allow only one model
     self.data_manager.has_models(
       raise_sorry = True,
       expected_n  = 1,
       exact_count = True)
-#    if (self.params.ligand_code is None or self.params.ligand_code[0] is None):
-#      raise Sorry("Ligand code required!")
+
+    has_miller = self.data_manager.has_miller_arrays()
+    has_map = self.data_manager.has_real_maps()
 
   # ---------------------------------------------------------------------------
 
-  def get_crystal_symmetry(self):
+  def get_crystal_symmetry(self, model_fn, data_fn):
     crystal_symmetries = []
-    files = [self.data_manager.get_default_model_name()]
-    if self.data_manager.get_default_miller_array_name() is not None:
-      files.append(self.data_manager.get_default_miller_array_name())
-    for f in files:
+    for f in [model_fn, data_fn]:
+      if f is None: continue
       cs = crystal_symmetry_from_any.extract_from(f)
       if (cs is not None):
         crystal_symmetries.append(cs)
-    if (len(crystal_symmetries) == 1): crystal_symmetry = crystal_symmetries[0]
-    elif (len(crystal_symmetries) == 0):
+    if (len(crystal_symmetries) == 0):
      raise Sorry("No crystal symmetry found.")
-    else:
+    elif (len(crystal_symmetries) > 1):
       if (not crystal_symmetries[0].is_similar_symmetry(crystal_symmetries[1])):
         raise Sorry("Crystal symmetry mismatch between different files.")
-      crystal_symmetry = crystal_symmetries[0]
+    crystal_symmetry = crystal_symmetries[0]
     return crystal_symmetry
 
   # ---------------------------------------------------------------------------
 
-  def get_fobs_rfree(self, crystal_symmetry):
-    rfs = self.data_manager.get_reflection_file_server(
-      filenames = [self.data_manager.get_default_miller_array_name()],
-      crystal_symmetry = crystal_symmetry,
-      logger=null_out())
-    parameters = extract_xtal_data.data_and_flags_master_params().extract()
-    determined_data_and_flags = extract_xtal_data.run(
-      reflection_file_server = rfs,
-      parameters             = parameters,
-      keep_going             = True,
-      working_point_group = crystal_symmetry.space_group().build_derived_point_group())
-    f_obs = determined_data_and_flags.f_obs
-    r_free_flags = determined_data_and_flags.r_free_flags
-    return f_obs, r_free_flags
+#  def add_hydrogens_old(self, model_fn):
+#    '''
+#    Place H atoms with reduce2
+#    '''
+#    make_sub_header(' Placing H with reduce2 ', out=self.logger)
+#    model_reduce2 = None
+#    basename = os.path.splitext(os.path.basename(model_fn))[0]
+#    model_fn_reduce2 = "%s_newH.cif" % basename.split(".")[0]
+#    from iotbx.cli_parser import run_program
+#    from mmtbx.programs import reduce2 as reduce2
+#    args=["overwrite=True",
+#          "%s" % model_fn,
+#          "ignore_missing_restraints=True",
+#          #"use_neutron_distances=True",
+#          "output.filename=%s" % model_fn_reduce2]
+#    print("mmtbx.reduce2 %s" %(" ".join(args)), file=self.logger)
+#    try:
+#      result = run_program(program_class=reduce2.Program,args=args,
+#       logger = null_out())
+#      #model_reduce2 = self.data_manager.get_model(model_fn_reduce2)
+#      model_reduce2 = result.model
+#      model_reduce2.unset_riding_h_manager()
+#    except Exception as e:
+#      msg = traceback.format_exc()
+#      print('Reduce2 failed.\n' + msg, file=self.logger)
+#      return
+#
+#    self.data_manager.add_model(model_fn_reduce2, model_reduce2)
+#    self.working_model_fn = model_fn_reduce2
+#    self.params.validate_ligands.model_fn_reduce2 = model_fn_reduce2
+#    self.working_model = model_reduce2
+
+  # ---------------------------------------------------------------------------
+
+  def add_hydrogens(self, model):
+    '''
+    Place H atoms with reduce2
+    '''
+    make_sub_header('Placing hydrogen atoms with reduce2', out=self.logger)
+    try:
+      self.working_model,_ = check_and_add_hydrogen(
+        probe_parameters=self.params.probe,
+        data_manager_model=model,
+        stop_for_unknowns = False,
+        #nuclear=False,
+        #verbose=verbose,
+        keep_hydrogens=False,
+        #do_flips = do_flips,
+        log=self.logger)
+      self.working_model.unset_riding_h_manager()
+    except Exception as e:
+      msg = traceback.format_exc()
+      print('Reduce2 failed.\n' + msg, file=self.logger)
+      return
+
+  # ---------------------------------------------------------------------------
+
+  def check_ligands(self, model):
+    make_sub_header('Check if input model has ligands', out=self.logger)
+    get_class = iotbx.pdb.common_residue_names_get_class
+    exclude = ["common_amino_acid", "modified_amino_acid", "common_rna_dna",
+               "modified_rna_dna", "ccp4_mon_lib_rna_dna", "common_water",
+                "common_element"]
+    self.has_ligands = False
+    model = model.select(~model.selection('element X'))
+    for chain in model.chains():
+      for rg in chain.residue_groups():
+        for ag in rg.atom_groups():
+          if (get_class(name=ag.resname) in exclude): continue
+          print('Found ligand: ', ag.resname, file=self.logger)
+          self.has_ligands = True
+          mlq, cif_object = reduce_hydrogen.mon_lib_query(
+                              residue     = ag,
+                              mon_lib_srv = model.get_mon_lib_srv(),
+                              raise_sorry = False)
 
   # ---------------------------------------------------------------------------
 
   def run(self):
-
-    model_fn = self.data_manager.get_default_model_name()
-    print('Using model file:', model_fn, file=self.logger)
-    print('Using reflection file:',
-      self.data_manager.get_default_miller_array_name(), file=self.logger)
-
-    cs = self.get_crystal_symmetry()
-    model = self.data_manager.get_model()
-    #grm = model.get_restraints_manager()
-    ph = model.get_hierarchy()
-    xrs = model.get_xray_structure()
-
+    has_miller = False
+    has_map = False
+    #
     fmodel = None
-    if self.data_manager.get_default_miller_array_name():
-      f_obs, r_free_flags = self.get_fobs_rfree(crystal_symmetry = cs)
-      print('\nInput data...', file=self.logger)
-      print('  Reflection data:', f_obs.info().labels, file=self.logger)
-      if (r_free_flags is not None):
-        print('  Free-R flags:', r_free_flags.info().labels, file=self.logger)
-      else:
-        print('  Free-R flags: not present or not found', file=self.logger)
-      fmodel = mmtbx.f_model.manager(
-       f_obs          = f_obs,
-       r_free_flags   = r_free_flags,
-       xray_structure = xrs)
+    map_manager = None
+    #
+    self.additional_ro = []
+    self.working_model_fn = None
+    self.ligand_manager = None
+    #
+    self.model_fn_reduce2 = None
+    #
+    model_fn = self.data_manager.get_default_model_name()
+    self._original_model_fn = model_fn
+    data_fn = self.data_manager.get_default_miller_array_name()
+    map_fn = self.data_manager.get_default_real_map_name()
+
+    print('Using model file:', model_fn, file=self.logger)
+    if data_fn is not None:
+      print('Using reflection file:', data_fn, file=self.logger)
+      has_miller = True
+    if map_fn is not None:
+      print('Using map file', map_fn, file=self.logger)
+      has_map = True
+
+    # get model object from input file
+    m = self.data_manager.get_model()
+    m.set_log(log = null_out())
+    if self.data_manager.has_restraints():
+      m.set_stop_for_unknowns(False)
+      #m.set_log(log = null_out())
+      m.process(make_restraints=False)
+
+    # stop if multi-model file
+    if(len(m.get_hierarchy().models())>1):
+      raise Sorry('Multi-model files currently not supported.')
+
+    self.check_ligands(model = m)
+    if not self.has_ligands:
+      print('No ligands found. Exiting.', file=self.logger)
+      return
+
+    if self.params.validate_ligands.ligand_code:
+      print('\nFocusing on the following ligands only:', file=self.logger)
+      for lc in self.params.validate_ligands.ligand_code:
+        print('\t', lc, file=self.logger)
+
+    # get rid of element X as it will choke pdb_interpretation
+    if ' X' in m.get_hierarchy().atoms().extract_element():
+      print('\nFound atoms with element "X" in model. Removing...',
+        file=self.logger)
+      m = m.select(~m.selection('element X'))
+      #basename = os.path.splitext(os.path.basename(model_fn))[0]
+      #model_fn = "%s_noX.cif" % basename
+      #self.data_manager.write_model_file(
+      #  model_str = m.model_as_mmcif(),
+      #  filename  = model_fn,
+      #  overwrite = True)
+
+    self.working_model = None
+
+    if self.params.run_reduce2:
+      self.add_hydrogens(model = m)
+    else:
+      self.working_model = m
+
+    if self.working_model is None:
+      raise Sorry('Could not create model object.')
+
+    if has_map:
+      mmm = self.data_manager.get_map_model_manager(
+        model_file = self.working_model_fn)
+      map_manager = mmm.map_manager()
+      self.working_model = mmm.model()
+      self.working_model.setup_scattering_dictionaries(scattering_table='electron')
+
+    _model_fn = 'bla.pdb'
+    #self.data_manager.write_model_file(self.working_model,filename=_model_fn)
+    self.data_manager.add_model(_model_fn, self.working_model)
+
+    ro = self.working_model.get_restraint_objects()
+    if ro is None: ro=[]
+    ro_no_duplicates = []
+    if ro:
+      seen = set()
+      for name, _ro in ro:
+        if name not in seen:
+          ro_no_duplicates.append((name, _ro))
+          seen.add(name)
+
+    #for _ro in ro_no_duplicates:
+    #  print(_ro[0])
+    #  print(_ro[1]['comp_list']['_chem_comp.three_letter_code'][0])
+
+
+
+    #_m = self.working_model.deep_copy() # get_fmodel unsets restraints manager
+
+    # get fmodel object if reflection data were provided
+    if has_miller:
+      make_sub_header(' Creating fmodel object ', out=self.logger)
+      fmodel_params = self.data_manager.get_fmodel_params()
+      fmodel_params.xray_data.r_free_flags.required = False
+      fmodel_params.xray_data.r_free_flags.ignore_r_free_flags = True
+      self.data_manager.set_fmodel_params(fmodel_params)
+      fmodel = self.data_manager.get_fmodel(
+        scattering_table = self.params.scattering_table,
+        model_filename   = _model_fn)
       print('\n', file = self.logger)
-      fmodel.show(log=self.logger, show_header=False)
-      # TODO: delete this keyword for production
-      #if self.params.update_scales:
       fmodel.update_all_scales()
       fmodel.show(log=self.logger, show_header=False)
+      print ("r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(), fmodel.r_free()),
+        file=self.logger)
 
-    print('\nWorking crystal symmetry after inspecting all inputs:', file=self.logger)
-    cs.show_summary(f=self.logger)
+    #self.data_manager.write_real_map_file(map_manager,filename="my_map.map")
+    #self.data_manager.write_model_file(self.working_model,filename="my_model.pdb")
 
-    # This is the new class, currently a stub but will be developed
-    # spring 2019 by DL and NWM
+    self.working_model.set_restraint_objects(ro_no_duplicates)
+    self.working_model.set_stop_for_unknowns(False)
+    pi = self.working_model.get_current_pdb_interpretation_params()
+    pi.pdb_interpretation.allow_polymer_cross_special_position = True
+    try:
+      self.working_model.process(
+        make_restraints=True,
+        pdb_interpretation_params = pi)
+    except Exception as e:
+      print(e, file=self.logger)
+      print('Could not process model to create restraints.', file=self.logger)
+      return
+
+
+    basename = os.path.splitext(os.path.basename(model_fn))[0]
+    self.model_fn_reduce2 = "%s_newH.cif" % basename.split(".")[0]
+    if self.params.save_reduce2_model:
+      self.data_manager.set_overwrite(True)
+      self.data_manager.write_model_file(self.working_model,filename=self.model_fn_reduce2, format='cif')
+
     #t0 = time.time()
-    # TODO: Decide if H should be placed here or in the class
-    # if readyset is used, filename is needed
-    # if readyset can be run as class, filename could be avoided
     ligand_manager = validate_ligands.manager(
-      model = model,
-#      model_fn = model_fn,
+      model = self.working_model,
       fmodel = fmodel,
+      map_manager = map_manager,
       params = self.params.validate_ligands,
       log   = self.logger)
     ligand_manager.run()
     ligand_manager.show_ligand_counts()
-    ligand_manager.show_ligand_occupancies()
-    ligand_manager.show_adps()
-    ligand_manager.show_ccs()
-    ligand_manager.show_nonbonded_overlaps()
+    ligand_manager.show_fragmentation()
+    ligand_manager.show_sites_within()
+    ligand_manager.show_table(out=self.logger)
+
+    self.ligand_manager = ligand_manager
     #print('time running manager: ', time.time()-t0)
 
-    # TODO
-    # DL: Eventually, delete "old" call below, but leave it for now to keep the
-    # funcitonality alive, just in case
-    if self.params.ligand_code and self.data_manager.get_default_miller_array_name() is not None:
-      if (not(self.params.ligand_code is None or self.params.ligand_code[0] is None)):
-        make_sub_header("Validating ligands", out=self.logger)
-        for ligand_code in self.params.ligand_code :
-          validations = mmtbx.validation.ligands.validate_ligands(
-            pdb_hierarchy       = ph,
-            fmodel              = fmodel,
-            ligand_code         = ligand_code,
-            reference_structure = self.params.reference_structure,
-            only_segid          = self.params.only_segid)
-          if (validations is None):
-            raise Sorry("No ligands named '%s' found." % ligand_code)
-          mmtbx.validation.ligands.show_validation_results(validations=validations,
-            out     = self.logger,
-            verbose = self.params.verbose)
+  # ---------------------------------------------------------------------------
+
+  def get_results(self):
+    if (self.params.run_reduce2
+        and self.params.save_reduce2_model
+        and self.model_fn_reduce2 is not None):
+      model_to_open = os.path.abspath(self.model_fn_reduce2)
+    else:
+      model_to_open = getattr(self, '_original_model_fn', None)
+    ligand_results = None
+    if self.ligand_manager is not None:
+      ligand_results = [lr.as_picklable_snapshot()
+                        for lr in self.ligand_manager]
+    return group_args(
+      working_model_fn = model_to_open,
+      ligand_manager   = self.ligand_manager,
+      ligand_results   = ligand_results)

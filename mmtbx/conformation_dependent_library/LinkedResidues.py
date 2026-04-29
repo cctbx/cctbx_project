@@ -53,7 +53,12 @@ class LinkedResidues(list):
         del self[0]
         if len(self)==0: break
 
-  def get_i_seqs(self): assert 0
+  def get_i_seqs(self):
+    rc=[]
+    for residue in self:
+      for atom in residue.atoms():
+        rc.append(atom.i_seq)
+    return rc
 
   def get_resnames(self):
     rc = []

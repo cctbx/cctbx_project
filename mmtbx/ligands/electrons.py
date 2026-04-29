@@ -105,7 +105,7 @@ class electron_distribution(dict):
                hierarchy,
                grm,
                specific_atom_charges=None, # a list of selections and charges
-               specific_atom_multicities=None,
+               specific_atom_multiplicities=None,
                alternative_location_id=None,
                alternative_location_index=None,
                log=None,
@@ -123,6 +123,8 @@ class electron_distribution(dict):
       sites_cart=self.xrs.sites_cart())
     #
     self.specific_atom_charges = specific_atom_charges
+    self.specific_atom_multiplicities = specific_atom_multiplicities
+    self.atoms_with_charges_set = []
     if log is None:
       self.logger = sys.stdout
     else:
@@ -147,6 +149,7 @@ class electron_distribution(dict):
     self.set_charges() # place for selections
     self.validate_metals()
     self.form_bonds()
+    self.adjust_for_multiplicity()
 
   def __repr__(self):
     return self.show()
@@ -278,13 +281,30 @@ class electron_distribution(dict):
         metal_asc = self.hierarchy.atom_selection_cache()
         metal_sel = metal_asc.selection(sac.atom_selection)
         metal_hierarchy = self.hierarchy.select(metal_sel)
-        for atom in metal_hierarchy.atoms():
+        for i, atom in enumerate(metal_hierarchy.atoms()):
           self[atom.i_seq]=sac.charge*-1
+          self.atoms_with_charges_set.append(atom.i_seq)
+          assert i<1
+
+  def adjust_for_multiplicity(self):
+    if self.specific_atom_multiplicities:
+      for i, mac in enumerate(self.specific_atom_multiplicities):
+        radical_asc = self.hierarchy.atom_selection_cache()
+        radical_sel = radical_asc.selection(mac.atom_selection)
+        radical_hierarchy = self.hierarchy.select(radical_sel)
+        for i, atom in enumerate(radical_hierarchy.atoms()):
+          if self[atom.i_seq] and not atom.i_seq in self.atoms_with_charges_set:
+            if mac.multiplicity==2:
+              self[atom.i_seq]=0
+              print('\nCharge on %s changed to zero because of multiplicity. CHECK!' % atom.quote(),
+                    file=self.logger)
+              break
 
   def _has_metal(self, atom1, atom2):
     is_metal_count = [0,1][self.properties.is_metal(atom1.element)]
     is_metal_count+= [0,1][self.properties.is_metal(atom2.element)]
-    if is_metal_count==2: assert 0
+    if is_metal_count==2:
+      print('\nMore than one metal in a bond can lead to issues. CHECK!', file=self.logger)
     return is_metal_count
 
   def is_metal_bond(self, key):
@@ -990,6 +1010,7 @@ def run(pdb_filename=None,
         raw_records=None,
         return_formal_charges=False,
         verbose=False,
+        cif_objects=None,
         ):
   # legacy from Q|R...
   if pdb_filename:
@@ -1009,6 +1030,7 @@ def run(pdb_filename=None,
   working_params.pdb_interpretation.automatic_linking.link_metals=True
   model = mmtbx.model.manager(
     model_input = inp,
+    restraint_objects=cif_objects,
     log = log,
   )
   model.process(make_restraints=True,

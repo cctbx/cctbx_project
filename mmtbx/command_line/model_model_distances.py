@@ -1,3 +1,4 @@
+"""Distance between two PDB files: per atom, residue, chain, model and overall"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.model_model_distances
 
@@ -119,3 +120,4 @@ def run(args, log=sys.stdout):
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
+

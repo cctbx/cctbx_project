@@ -1,12 +1,16 @@
+"""
+Tools to safely add and remove files
+"""
 from __future__ import absolute_import, division, print_function
-from distutils.dir_util import remove_tree
 import random
 import stat
 import os
 import os.path as op
+from shutil import rmtree
 from six.moves import range
 
 def make_paths_writable_if_possible(paths):
+  """Safely make a list of paths writable (if possible)"""
   os_stat = os.stat
   os_chmod = os.chmod
   irwusr = stat.S_IRUSR | stat.S_IWUSR
@@ -30,11 +34,12 @@ def make_paths_writable_if_possible(paths):
           pass
 
 def remove_directories_if_possible(paths):
+  """Safely remove a list of directories (if possible)"""
   remaining = []
   for path in paths:
     if (op.isdir(path)):
       try:
-        remove_tree(path)
+        rmtree(path, ignore_errors=True)
       except KeyboardInterrupt: raise
       except Exception:
         pass
@@ -43,6 +48,7 @@ def remove_directories_if_possible(paths):
   return remaining
 
 def remove_files_if_possible(paths):
+  """Safely remove a list of files (if possible)"""
   remaining = []
   for path in paths:
     if (op.exists(path)):
@@ -56,6 +62,8 @@ def remove_files_if_possible(paths):
   return remaining
 
 def rename_files_and_directories_if_possible(paths):
+  """Safely rename a list of files or directories and append _OBSOLETE_xxx
+    (if possible)"""
   remaining = []
   for path in paths:
     if (op.exists(path)):
@@ -74,6 +82,9 @@ def rename_files_and_directories_if_possible(paths):
   return remaining
 
 def remove_or_rename_files_and_directories_if_possible(paths):
+  """Safely remove a list of files and directories,
+    and if not successful, rename them with the extension _OBSOLETE_xxx
+    (if possible)"""
   make_paths_writable_if_possible(paths=paths)
   remaining_dirs = remove_directories_if_possible(paths=paths)
   remaining_files = remove_files_if_possible(paths=paths)

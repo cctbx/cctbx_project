@@ -1,3 +1,6 @@
+"""
+High-level manager for reading and writing 3D maps and functions to operate on maps.  This is the class to use for most map operations.
+"""
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import to_str, null_out, Sorry
 from libtbx import group_args, Auto
@@ -7,17 +10,17 @@ import io
 from cctbx import miller
 from iotbx.mrcfile import map_reader, write_ccp4_map
 from scitbx.array_family import flex
-from scitbx.matrix import col
 from cctbx import maptbx
 from cctbx import miller
 import mmtbx.ncs.ncs
 from copy import deepcopy
 from scitbx.matrix import col
 
-class map_manager(map_reader, write_ccp4_map):
 
+class map_manager(map_reader, write_ccp4_map):
   '''
-   map_manager, includes map_reader and write_ccp4_map
+   map_manager, includes map_reader and write_ccp4_map and functions to
+   operate on a 3D map object.
 
    This class is intended to be the principal mechanism for reading
    and writing map information.  It is intended to be used by the
@@ -100,7 +103,7 @@ class map_manager(map_reader, write_ccp4_map):
      Write out the map in map_data() in original location:
        mm.write_map(file_name = 'output_map.ccp4')
 
-   --------     CONVENTIONS  --------------
+   CONVENTIONS
    See http://www.ccpem.ac.uk/mrc_format/mrc2014.php for MRC format
    See https://pypi.org/project/mrcfile/ for mrcfile library documentation
 
@@ -190,7 +193,7 @@ class map_manager(map_reader, write_ccp4_map):
       i_mapr = 2    i_mapr_np = 1
       i_maps = 1    i_maps_np = 0
 
-   --------     END CONVENTIONS  --------------
+   END CONVENTIONS
 
   '''
 
@@ -427,15 +430,36 @@ class map_manager(map_reader, write_ccp4_map):
         not self.log.closed):
       print(m, file = self.log)
 
-  def set_unit_cell_crystal_symmetry(self, crystal_symmetry):
+  def set_unit_cell_crystal_symmetry(self, unit_cell_crystal_symmetry):
     '''
-      Specify the dimensions and space group of unit cell.  This also changes
-      the crystal_symmetry of the part that is present and the grid spacing.
-      Also resets crystal_symmetry of ncs object
+      Specify the dimensions and space group of the full unit cell for this
+      map.  This also changes the crystal_symmetry of the part that is
+      present and the grid spacing. Also resets crystal_symmetry of ncs object
 
       Purpose is to redefine the dimensions of the map without changing values
-      of the map.  Normally used to correct the dimensions of a map
-      where something was defined incorrectly.
+      of the map.
+
+      Can be used to correct the dimensions of a map where something was
+      defined incorrectly.
+
+      Can also be used to redefine the dimensions of a map after re-estimating
+      the magnification of the map.
+
+      **********************************************************************
+      NOTE: Be careful using this function if the map is boxed.  If a map is
+      boxed then it has a unit_cell_crystal_symmetry which describes the
+      symmetry and cell dimensions of the original (full) map, and it also
+      has a (different) crystal_symmetry that describes the symmetry and
+      cell dimensions of the current boxed version of the map.
+
+      This function operates on the current map to change its
+      unit_cell_crystal_symmetry to the value that is supplied. This
+      automatically also changes the crystal_symmetry.
+
+      If the map is boxed, you need to supply the new value of the
+      unit_cell_crystal_symmetry, NOT the new value of crystal_symmetry.
+      **********************************************************************
+
 
       Does not change self.unit_cell_grid or self.origin_shift_grid_units
 
@@ -449,8 +473,8 @@ class map_manager(map_reader, write_ccp4_map):
     '''
 
     from cctbx import crystal
-    assert isinstance(crystal_symmetry, crystal.symmetry)
-    self._unit_cell_crystal_symmetry = crystal_symmetry
+    assert isinstance(unit_cell_crystal_symmetry, crystal.symmetry)
+    self._unit_cell_crystal_symmetry = unit_cell_crystal_symmetry
 
     # Always follow a set of _unit_cell_crystal_symmetry with this:
     self.set_crystal_symmetry_of_partial_map()
@@ -460,8 +484,10 @@ class map_manager(map_reader, write_ccp4_map):
       self._ncs_object = self.shift_ncs_object_to_match_map_and_return_new_ncs_object(self._ncs_object)
 
   def set_output_external_origin(self, value):
+    '''Set the value of the output external origin'''
     assert isinstance(value, tuple) or isinstance(value,list)
     self.output_external_origin = tuple(value)
+
 
   def set_original_origin_and_gridding(self,
       original_origin = None,
@@ -564,6 +590,7 @@ class map_manager(map_reader, write_ccp4_map):
     self._is_mask = value
 
   def origin_is_zero(self):
+    '''Return whether this map currently has an origin of (0,0,0)'''
     if self.map_data().origin() == (0, 0, 0):
       return True
     else:
@@ -571,7 +598,6 @@ class map_manager(map_reader, write_ccp4_map):
 
   def shift_origin(self, desired_origin = (0, 0, 0),
      apply_external_origin_if_present = True,):
-
     '''
     Shift the origin of the map to desired_origin
       (normally desired_origin is (0, 0, 0), so just update
@@ -605,6 +631,14 @@ class map_manager(map_reader, write_ccp4_map):
 
     '''
     if(self.map_data() is None): return
+
+    # Don't do anything and stop here if required origin is the same as in self
+    alleq = all(a == b for a, b in zip(self.map_data().origin(), desired_origin))
+    if alleq:
+      if (not apply_external_origin_if_present):
+        return
+      elif tuple(self.external_origin) == (0, 0, 0):
+        return
 
     # Figure out what the shifts are (in grid units)
     shift_info = self._get_shift_info(desired_origin = desired_origin,
@@ -700,7 +734,6 @@ class map_manager(map_reader, write_ccp4_map):
 
     current_end = add_tuples_int(current_origin, self.map_data().all())
     new_end = add_tuples_int(desired_origin, self.map_data().all())
-
     shift_to_apply_cart = self.grid_units_to_cart(shift_to_apply)
 
     shift_info = group_args(
@@ -717,6 +750,7 @@ class map_manager(map_reader, write_ccp4_map):
     return shift_info
 
   def external_origin_is_compatible_with_gridding(self):
+    '''Determine if external origin falls on a grid point.'''
     value = self.external_origin_as_grid_units()
     if value is not None:
       return True
@@ -724,6 +758,8 @@ class map_manager(map_reader, write_ccp4_map):
       return False
 
   def external_origin_as_grid_units(self, as_inverse = False):
+    ''' Convert external_origin to value in grid units.
+        See notes on external origin. '''
     unit_cell = self.unit_cell_crystal_symmetry().unit_cell()
     unit_cell_grid = self.unit_cell_grid
     spacings = [(a/n) for a,n in zip(unit_cell.parameters()[:3],
@@ -734,8 +770,27 @@ class map_manager(map_reader, write_ccp4_map):
       external_origin = flex.double((0.,0.,0.))
     if flex.sum(flex.abs(external_origin)) > 0:
       import math
-      origin_shift = tuple([round(o/s) for o,s in zip(external_origin, spacings)])
-      origin_check = [(g*s) for g,s in zip(origin_shift, spacings)]
+      # external_origin is the location of the external origin in xyz coords
+      # origin_shift is the location in gridding space of the external_origin
+      # we are hoping that it will fall on an integer grid point in this space
+      # The gridding coordinate system is the unit_cell, with one unit
+      #  in each direction corresponding to the spacings in that
+      #   direction (e.g., a/grid_points_along_a along the x axis)
+
+      # use unit_cell.fractionalize(origin_shift) to get fractional coords
+      fractional_external_origin = unit_cell.fractionalize(col(external_origin))
+
+      # origin_shift in grid units is fractional_external_origin multiplied
+      #   by the number of grid units along the 3 axes, rounded
+      origin_shift = tuple(
+         [round(f * s) for f,s in zip(
+            fractional_external_origin, unit_cell_grid)])
+
+      # origin_check is position of external_origin calculated from
+      #   origin_shift and the unit_cell_grid
+      origin_check = unit_cell.orthogonalize(col( tuple(
+        [os / a for os, a in zip(origin_shift, unit_cell_grid)])))
+
       origin_distance_to_grid = math.sqrt(flex.sum(
             flex.pow2(flex.double(external_origin)-flex.double(origin_check))))
       if origin_distance_to_grid > 0.001:
@@ -1008,9 +1063,11 @@ class map_manager(map_reader, write_ccp4_map):
     self.set_map_data(map_data = new_mm.map_data())  # replace map data
 
   def delete_mask(self):
+    '''Remove working mask'''
     self._created_mask = None
 
   def get_mask_as_map_manager(self):
+    '''Return a map_manager containing the working mask'''
     assert self._created_mask is not None
     return self._created_mask.map_manager()
 
@@ -1149,6 +1206,7 @@ class map_manager(map_reader, write_ccp4_map):
 
 
   def cc_to_other_map_manager(self, other_map_manager):
+    '''Get map correlation to other map manager'''
     assert self.is_similar(other_map_manager)
 
     return flex.linear_correlation(self.map_data().as_1d(),
@@ -1156,8 +1214,12 @@ class map_manager(map_reader, write_ccp4_map):
 
   def density_at_sites_cart(self, sites_cart):
     '''
-    Return flex.double list of density values corresponding to sites (cartesian
-     coordinates in A)
+    Return flex.double list of density values corresponding to sites (Cartesian
+    coordinates in A).
+    Note that coordinates are relative to the current
+    origin of the map (normally set to (0,0,0) before working with the map,
+    see sites_cart_to_sites_cart_absolute and
+    sites_cart_absolute_to_sites_cart.)
     '''
     assert isinstance(sites_cart, flex.vec3_double)
 
@@ -1193,8 +1255,12 @@ class map_manager(map_reader, write_ccp4_map):
     '''
       Return group_args object with density values and coordinates
       along a line segment from start_site to end_site
-      (cartesian coordinates in A) with n_along_line sampling points.
+      (Cartesian coordinates in A) with n_along_line sampling points.
       Optionally include/exclude ends.
+      Note that coordinates are relative to the current
+      origin of the map (normally set to (0,0,0) before working with the map,
+      see sites_cart_to_sites_cart_absolute and
+      sites_cart_absolute_to_sites_cart.)
     '''
     along_sites = flex.vec3_double()
     if include_ends:
@@ -1215,6 +1281,8 @@ class map_manager(map_reader, write_ccp4_map):
 
   def apply_spectral_scaling(self, d_min = None, d_max = None,
     n_bins = 100):
+    '''Apply spectral scaling to a map to approximate intensity vs
+       resolution expected for a protein structure'''
 
     print("Applying spectral scaling", file = self.log)
     map_coeffs = self.map_as_fourier_coefficients(d_min = d_min,
@@ -1241,6 +1309,12 @@ class map_manager(map_reader, write_ccp4_map):
 
     self.set_map_data(map_data = new_mm.map_data())  # replace map data
 
+
+  def scale_map(self, scale = None):
+    '''
+      Multiply values in map by scale.
+    '''
+    self.set_map_data(map_data = scale * self.map_data())  # replace map data
 
   def resolution_filter(self, d_min = None, d_max = None):
     '''
@@ -1308,7 +1382,6 @@ class map_manager(map_reader, write_ccp4_map):
       can be controlled.
 
       Parameters:
-      -----------
 
       d_min:  high-resolution limit in Fourier transformations
 
@@ -1512,6 +1585,7 @@ class map_manager(map_reader, write_ccp4_map):
     self._resolution = resolution
 
   def experiment_type(self):
+    '''Return the experiment type (xray or cryo_em)'''
     return self._experiment_type
 
   def minimum_resolution(self, set_minimum_resolution = True):
@@ -1572,12 +1646,22 @@ class map_manager(map_reader, write_ccp4_map):
     return working_resolution
 
   def scattering_table(self):
+    '''Return the scattering table to use:
+       electron:  cryo_em
+       n_gaussian x-ray (standard)
+       wk1995:    x-ray (alternative)
+       it1992:    x-ray (alternative)
+       neutron:   neutron scattering
+    '''
     return self._scattering_table
 
   def ncs_object(self):
+    ''' Return the NCS object '''
     return self._ncs_object
 
   def _set_up_experiment_type_and_scattering_table_and_resolution(self):
+    '''Set up the experiment type, scattering table, and resolution
+    '''
     default_scattering_table_dict = {
      'xray':'n_gaussian',
      'neutron':'neutron',
@@ -1686,6 +1770,9 @@ class map_manager(map_reader, write_ccp4_map):
      absolute_angle_tolerance = 0.01,
      absolute_length_tolerance = 0.01,
      ):
+    '''Determine whether this map_manager is similar (symmetry, gridding,
+        size) to another map_manager.
+    '''
     # Check to make sure origin, gridding and symmetry are similar
     self._warning_message=""
 
@@ -1744,24 +1831,36 @@ class map_manager(map_reader, write_ccp4_map):
     return True
 
   def cart_to_grid_units(self, xyz):
+    '''Convert xyz (Cartesian) to grid units'''
 
     return tuple([int(0.5 + x * n) for x,n in
        zip(self.crystal_symmetry().unit_cell().fractionalize(xyz),
         self.map_data().all())])
 
   def grid_units_to_cart(self, grid_units):
-    ''' Convert grid units to cartesian coordinates '''
+    ''' Convert grid units to Cartesian coordinates '''
     x = grid_units[0]/self.unit_cell_grid[0]
     y = grid_units[1]/self.unit_cell_grid[1]
     z = grid_units[2]/self.unit_cell_grid[2]
     return self.unit_cell().orthogonalize(tuple((x, y, z)))
 
 
+  def shifted(self, eps=1.e-3):
+    ''' Return True if this map has been shifted from its original
+     location (e.g., by boxing the map).
+     Checks self.shift_cart() to determine if map has been shifted.
+    '''
+
+    r = self.shift_cart()
+    if(r is None): return False
+    if(flex.max(flex.abs(flex.double(r)))<=eps): return False
+    return True
+
   def shift_cart(self):
     '''
      Return the shift_cart of this map from its original location.
 
-     (the negative of the origin shift ) in cartesian coordinates
+     (the negative of the origin shift ) in Cartesian coordinates
      '''
     return tuple(
        [-x for x in self.grid_units_to_cart(self.origin_shift_grid_units)])
@@ -1867,6 +1966,43 @@ class map_manager(map_reader, write_ccp4_map):
     #   map (shift of origin is opposite of shift applied)
     model.set_shift_cart(self.shift_cart())
 
+  def check_consistency(self, stop_on_errors = True, print_errors = True,
+        absolute_angle_tolerance = None,
+        absolute_length_tolerance = None,
+        shift_tol = None):
+    """
+    Carry out overall consistency checks. Used in map_model_manager
+    Note: the stop_on_errors, print_errors, and 3 tolerance kw are used in
+      map_model_manager when checking consistency there
+    """
+
+    if absolute_angle_tolerance is None:
+      absolute_angle_tolerance = 0.01
+    if absolute_length_tolerance is None:
+      absolute_length_tolerance = 0.01
+    if shift_tol is None:
+      shift_tol = 0.001
+
+    # Check crystal_symmetry, unit_cell_crystal_symmetry, shift_cart
+    # For now, only shift_cart and only ncs_object are relevant
+
+    ok = True
+    if self.ncs_object():
+      if (not self.is_compatible_ncs_object(self.ncs_object(),
+         tol = shift_tol)):
+        ok = False
+        text = "NCS object does not have same shift_cart as map_manager" +\
+          " %s vs %s" %(self.ncs_object().shift_cart(),
+           self.shift_cart())
+
+    if (not ok):
+      if print_errors:
+         print("** Mismatch in model object\n%s" %(text))
+      if stop_on_errors:
+        raise AssertionError(text)
+
+    return ok
+
   def is_compatible_ncs_object(self, ncs_object, tol = 0.001):
     '''
       ncs_object is compatible with this map_manager if shift_cart is
@@ -1889,7 +2025,7 @@ class map_manager(map_reader, write_ccp4_map):
     return ok
 
   def is_compatible_model(self, model,
-       require_match_unit_cell_crystal_symmetry=True,
+       require_match_unit_cell_crystal_symmetry = False,
         absolute_angle_tolerance = 0.01,
         absolute_length_tolerance = 0.01,
         shift_tol = 0.001):
@@ -1903,13 +2039,12 @@ class map_manager(map_reader, write_ccp4_map):
         2. model current symmetry does not match map original or current
         3. model has a shift_cart (shift applied) different than map shift_cart
 
-      NOTE: a True result does not mean that the model crystal_symmetry matches
-      the map crystal_symmetry.  It does mean that it is reasonable to set the
-      model crystal_symmetry to match the map ones.
-
       If require_match_unit_cell_crystal_symmetry is True, then they are
-      different if anything is different. If it is False, allow original
-       symmetries do not have to match
+      incompatible if anything is different.
+
+      If require_match_unit_cell_crystal_symmetry is False, original
+       symmetries do not have to match.  Model crystal_symmetry can match
+       the unit_cell_crystal_symmetry or crystal_symmetry of the map.
     '''
 
     ok=None
@@ -1946,6 +2081,8 @@ class map_manager(map_reader, write_ccp4_map):
     text_map_uc=str(map_uc).replace("\n"," ")
     text_map=str(map_sym).replace("\n"," ")
 
+    assert map_sym # map_sym should always should be there. model_sym could be missing
+
     if require_match_unit_cell_crystal_symmetry and map_uc and (
       not model_uc) and (
        not map_sym.is_similar_symmetry(map_uc,
@@ -1961,7 +2098,7 @@ class map_manager(map_reader, write_ccp4_map):
         "\n%s\n. Current map symmetry is: \n%s\n " %(
          text_map_uc,text_map)
 
-    elif  model_uc and map_uc and (
+    elif model_sym and model_uc and map_uc and (
         (not map_uc.is_similar_symmetry(map_sym,
         absolute_angle_tolerance = absolute_angle_tolerance,
         absolute_length_tolerance = absolute_length_tolerance,))
@@ -1977,13 +2114,13 @@ class map_manager(map_reader, write_ccp4_map):
         absolute_angle_tolerance = absolute_angle_tolerance,
         absolute_length_tolerance = absolute_length_tolerance,
          ) ) ):
-       ok=False# model and map_manager symmetries present and do not match
+       ok=False # model and map_manager uc present and some symmetries do not match
        text="Model original symmetry: \n%s\n and current symmetry :\n%s\n" %(
           text_model_uc,text_model)+\
           "do not match map unit_cell symmetry:"+\
          " \n%s\n and map current symmetry: \n%s\n symmetry" %(
            text_map_uc,text_map)
-    elif model_sym and map_uc and (not model_sym.is_similar_symmetry(map_uc,
+    elif map_uc and model_sym and (not model_sym.is_similar_symmetry(map_uc,
         absolute_angle_tolerance = absolute_angle_tolerance,
         absolute_length_tolerance = absolute_length_tolerance,
         )) and (not
@@ -1991,17 +2128,27 @@ class map_manager(map_reader, write_ccp4_map):
         absolute_angle_tolerance = absolute_angle_tolerance,
         absolute_length_tolerance = absolute_length_tolerance,
         )):
-       ok=False# model does not match either map symmetry
+       ok=False # model does not match either map symmetry
        text="Model current symmetry: \n%s\n" %(
           text_model)+\
           " does not match map unit_cell symmetry:"+\
            " \n%s\n or map current symmetry: \n%s\n" %(
            text_map_uc,text_map)
+    elif model_sym and (not model_uc) and (not map_uc) and (
+           not model_sym.is_similar_symmetry(map_sym,
+        absolute_angle_tolerance = absolute_angle_tolerance,
+        absolute_length_tolerance = absolute_length_tolerance,
+        )):
+       ok=False # model has no uc and model symmetry does not match map symmetry
+       text="Model current symmetry: \n%s\n" %(
+          text_model)+\
+          " does not match map symmetry: \n%s\n" %( text_map)
 
     elif require_match_unit_cell_crystal_symmetry and (
         not model_sym) and (not model_uc):
        ok=False # model does not have any symmetry so it does not match
        text="Model has no symmetry and cannot match any map"
+
     elif (not model_sym) and (not model_uc):
        ok=True # model does not have any symmetry so anything is ok
        text="Model has no symmetry and can match any map symmetry"
@@ -2037,6 +2184,7 @@ class map_manager(map_reader, write_ccp4_map):
     return ok
 
   def warning_message(self):
+    '''Return the warning message, if any'''
     if hasattr(self,'_warning_message'):
        return self._warning_message
 
@@ -2053,6 +2201,7 @@ class map_manager(map_reader, write_ccp4_map):
       self.set_map_data(map_data)
 
   def ncs_cc(self):
+    '''Return value of NCS correlation if available'''
     if hasattr(self,'_ncs_cc'):
        return self._ncs_cc
 
@@ -2068,28 +2217,29 @@ class map_manager(map_reader, write_ccp4_map):
      If place_on_grid_point then guess the end by whether the center ends
        on a grid point
      If use_unit_cell_grid just find center of full unit cell
+
     '''
+
     if use_unit_cell_grid:  # Find center of unit cell
-      return tuple([a*0.5 for a in
-        self.unit_cell_crystal_symmetry().unit_cell().parameters()[:3] ])
+      return self.unit_cell_crystal_symmetry().unit_cell().orthogonalize(
+        (0.5, 0.5, 0.5))
 
     elif place_on_grid_point:
-      return tuple([a*(int (0.5*n)/n + o/n)  - sc for a,n,o,sc in zip(
-        self.crystal_symmetry().unit_cell().parameters()[:3],
-        self.map_data().all(),
-        self.map_data().origin(),
-        self.shift_cart())])
+      return tuple(col(self.crystal_symmetry().unit_cell().orthogonalize(
+        tuple(col([int (0.5*n)/n + o/n for n,o in zip(
+          self.map_data().all(),
+          self.map_data().origin())])))) - col(self.shift_cart()))
 
     else:
       if use_assumed_end:
         n_end = 0
       else:
         n_end = 1
-      return tuple([a*(0.5*(n-n_end)/n + o/n)  - sc for a,n,o,sc in zip(
-        self.crystal_symmetry().unit_cell().parameters()[:3],
-        self.map_data().all(),
-        self.map_data().origin(),
-        self.shift_cart())])
+      return tuple(col(self.crystal_symmetry().unit_cell().orthogonalize(
+        tuple(col([0.5*(n-n_end)/n + o/n for n,o in zip(
+          self.map_data().all(),
+          self.map_data().origin())])))) - col(self.shift_cart()))
+
 
   def map_map_cc(self, other_map_manager):
    ''' Return simple map correlation to other map_manager'''
@@ -2384,6 +2534,7 @@ class map_manager(map_reader, write_ccp4_map):
     return box_info
 
   def get_n_real_for_grid_spacing(self, grid_spacing = None):
+    '''Identify values of gridding to match target grid spacing'''
     n_real = []
     for n,a in zip(self.map_data().all(),
        self.crystal_symmetry().unit_cell().parameters()):
@@ -2391,6 +2542,100 @@ class map_manager(map_reader, write_ccp4_map):
       target_n = (spacing/grid_spacing) * n
       n_real.append(int(target_n + 0.999))
     return n_real
+
+  def sites_cart_to_sites_cart_absolute(self, sites_cart):
+    """ Shift sites_cart that are relative to the boxed map to
+        make them relative to the point (0,0,0) in absolute coordinates
+   NOTE: sites_cart is a flex.vec3_double array
+   NOTE: This is the opposite of sites_cart_absolute_to_sites_cart
+
+   NOTE on shift_cart:
+
+    Position of origin of boxed map:
+     origin_position = self.grid_units_to_cart(self.origin_shift_grid_units)
+     shift_cart = self.shift_cart() == - origin_position
+
+    If you have Cartesian coordinates xyz for an atom relative to the boxed map,
+    the absolute coordinates are:
+      coords_abs =  col(xyz) + col(origin_position)
+      coords_abs =  col(xyz) - col(self.shift_cart())
+
+    """
+    return  sites_cart - col(self.shift_cart())
+
+  def sites_cart_absolute_to_sites_cart(self, sites_cart_absolute):
+    """ Shift sites_cart that are in absolute coordinates to make them
+        relative to the boxed map.
+       NOTE: This is the opposite of sites_cart_to_sites_cart_absolute
+       NOTE: sites_cart is a flex.vec3_double array
+    """
+    return  sites_cart_absolute + col(self.shift_cart())
+
+  def peak_search(self,
+      peak_search_level = 3,
+      max_peaks = None,
+      peak_cutoff            = None,
+      interpolate            = True,
+      min_distance_sym_equiv = 0,
+      general_positions_only = False,
+      min_cross_distance     = None,
+      min_cubicle_edge       = 5):
+
+    """ Run peak search on this map.
+     returns group_args with:
+        sites (fractional)
+        sites_cart (orthogonal)
+        sites_cart_absolute (orthogonal, with shift_cart applied)
+        heights
+        full_result (original peak_search_result object)
+
+     Note: normally supply at least max_peaks or peak_cutoff
+
+    position of origin of boxed map:
+     origin_position = self.grid_units_to_cart(self.origin_shift_grid_units)
+     shift_cart = self.shift_cart() == - origin_position
+
+    """
+    if peak_cutoff is None and max_peaks is None: # give them 1000
+      max_peaks = 1000
+    if min_cross_distance is None: # use half resolution
+      min_cross_distance = 0.5 * self.resolution()
+    if peak_search_level is None:  # this is how finely to search 1 to 3
+      peak_searchlevel = 3
+
+
+    map_data = self.map_data()
+    cg = maptbx.crystal_gridding(
+      space_group_info = self.crystal_symmetry().space_group_info(),
+      symmetry_flags   = maptbx.use_space_group_symmetry,
+      unit_cell        = self.crystal_symmetry().unit_cell(),
+      pre_determined_n_real = map_data.all())
+
+    # Set parameters for peak peaking and find peaks
+    cgt = maptbx.crystal_gridding_tags(gridding = cg)
+    peak_search_parameters = maptbx.peak_search_parameters(
+      peak_search_level = peak_search_level,
+      max_peaks = max_peaks,
+      peak_cutoff = peak_cutoff,
+      interpolate            = interpolate,
+      min_distance_sym_equiv = min_distance_sym_equiv,
+      general_positions_only = general_positions_only,
+      min_cross_distance     = min_cross_distance,
+      min_cubicle_edge       = min_cubicle_edge)
+    psr = cgt.peak_search(
+      parameters = peak_search_parameters,
+      map        = map_data).all(max_clusters = 99999999)
+    sites_cart = self.crystal_symmetry().unit_cell().orthogonalize(psr.sites())
+    sites_cart_absolute = self.sites_cart_to_sites_cart_absolute(sites_cart)
+    result = group_args(group_args_type = 'peak search result',
+      full_result = psr,
+      heights = psr.heights(),
+      sites = psr.sites(),
+      sites_cart = sites_cart,
+      sites_cart_absolute = sites_cart_absolute,
+     )
+
+    return result
 
   def find_n_highest_grid_points_as_sites_cart(self, n = 0,
     n_tolerance = 0, max_tries = 100):
@@ -2471,7 +2716,7 @@ class map_manager(map_reader, write_ccp4_map):
           n = n_atoms)
 
   def map_as_fourier_coefficients(self, d_min = None, d_max = None, box=True,
-     resolution_factor=1./3):
+     resolution_factor=1./3, include_000 = True):
     '''
        Convert a map to Fourier coefficients to a resolution of d_min,
        if d_min is provided, otherwise box full of map coefficients
@@ -2515,7 +2760,7 @@ class map_manager(map_reader, write_ccp4_map):
       self.crystal_symmetry().unit_cell().parameters(), 1)
     ma = miller.structure_factor_box_from_map(
       crystal_symmetry = crystal_symmetry,
-      include_000      = True,
+      include_000      = include_000,
       map              = self.map_data(),
       d_min            = d_min)
     if(d_max is not None):
@@ -2560,7 +2805,7 @@ class map_manager(map_reader, write_ccp4_map):
     objects that each may have an offset from absolute coordinates.
 
    absolute rt is rotation/translation when everything is in original,
-      absolute cartesian coordinates.
+      absolute Cartesian coordinates.
 
    working_rt is rotation/translation of anything in "from_obj" object
       to anything in "to_obj" object using working coordinates in each.
@@ -2654,7 +2899,7 @@ class shift_aware_rt:
   objects that each may have an offset from absolute coordinates.
 
   Basic idea:  absolute rt is rotation/translation when everything is in
-  original, absolute cartesian coordinates.
+  original, absolute Cartesian coordinates.
 
   working_rt is rotation/translation of anything in "from_obj" object to anything
    in "to_obj" object using working coordinates in each.
@@ -2689,6 +2934,7 @@ class shift_aware_rt:
 
 
   def is_similar(self, other_shift_aware_rt_info, tol = 0.001):
+    '''Check whether this shift_aware_rt is similar to another one'''
     r = self._absolute_rt_info.r
     t = self._absolute_rt_info.t
     other_r = other_shift_aware_rt_info._absolute_rt_info.r
@@ -2766,10 +3012,12 @@ class shift_aware_rt:
 
 
   def absolute_rt_info(self):
+    '''Return the absolute RT info for this shift_aware_rt object'''
     return self._absolute_rt_info
 
 
   def inverse(self):
+    '''Return the inverse for this shift_aware_rt object'''
     r = self._absolute_rt_info.r
     t = self._absolute_rt_info.t
 
@@ -2801,6 +3049,7 @@ def dummy_map_manager(crystal_symmetry, n_grid = 12):
 
 
 def get_indices_from_index(index = None, all = None):
+        '''Get indices (in a 3D map) for a grid point with given 1D index'''
         #index = k+j*all[2]+i*(all[1]*all[2])
         i = index//(all[1]*all[2])
         j =  (index-i*(all[1]*all[2]))//all[2]
@@ -2840,6 +3089,7 @@ def _round_tuple_int(t):
   return new_t
 
 def add_tuples_int(t1, t2):
+  ''' Add two tuples (can be integers or floats)'''
   try:
     return tuple(flex.int(t1)+flex.int(t2))
   except Exception as e: # not integers
@@ -2854,6 +3104,7 @@ def subtract_tuples_int(t1, t2):
        flex.int(_round_tuple_int(t1)) - flex.int(_round_tuple_int(t2)))
 
 def remove_site_with_most_neighbors(sites_cart):
+  '''Remove the site with the most neighbors'''
   useful_norms_list = []
   closest_distance = 1.e+30
   for i in range(sites_cart.size()):

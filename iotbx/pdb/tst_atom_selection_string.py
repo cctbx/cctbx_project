@@ -1,3 +1,4 @@
+"""Test atom selection string usage"""
 from __future__ import absolute_import, division, print_function
 from iotbx.pdb.atom_selection import selection_string_from_selection
 from iotbx.pdb.atom_selection import get_clean_selection_string

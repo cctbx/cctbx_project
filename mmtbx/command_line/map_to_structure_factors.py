@@ -1,3 +1,4 @@
+"""Calculate structure factors and HL coefficients from ccp4 map file and save in MTZ"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.map_to_structure_factors
 
@@ -266,3 +267,4 @@ def run(args, log=None, ccp4_map=None,
 if(__name__ == "__main__"):
   run(sys.argv[1:])
   print("All done.")
+

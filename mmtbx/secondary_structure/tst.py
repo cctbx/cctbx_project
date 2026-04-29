@@ -567,7 +567,7 @@ HELIX    1   1 ALA      2  ALA      5  1                                  10
     proxies_for_grm, angle_p = ss_manager.create_protein_hbond_proxies(
       annotation= None,
       log          = log)
-    pdb_h.write_pdb_file(file_name="alpha_h1_1_5_10ac.pdb")
+    # pdb_h.write_pdb_file(file_name="alpha_h1_1_5_10ac.pdb")
     # print proxies_for_grm.as_pymol_dashes(pdb_inp.hierarchy)
     # print angle_p.as_pymol_dashes(pdb_hierarchy=pdb_inp.hierarchy)
     # print "hbonds, hangles:", proxies_for_grm.size(), angle_p.size()

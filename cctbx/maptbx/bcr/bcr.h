@@ -6,12 +6,57 @@
 #include <cctbx/xray/scatterer.h>
 #include <cctbx/adptbx.h>
 #include <cctbx/xray/sampling_base.h>
+#include <iotbx/pdb/hierarchy.h>
 
 namespace cctbx { namespace maptbx {
 
 using scitbx::constants::pi;
 using scitbx::constants::four_pi_sq;
 using scitbx::constants::four_pi;
+
+template <typename FloatType=double,
+          typename XrayScattererType=cctbx::xray::scatterer<> >
+class bcr_scatterer
+{
+  public:
+    XrayScattererType & scatterer;
+    FloatType radius;
+    FloatType resolution;
+    af::shared<FloatType> mu;
+    af::shared<FloatType> kappa;
+    af::shared<FloatType> nu;
+    af::shared<FloatType> musq;
+    af::shared<FloatType> kappi;
+
+    bcr_scatterer(
+      XrayScattererType & scatterer_,
+      FloatType radius_,
+      FloatType resolution_,
+      af::shared<FloatType> mu_,
+      af::shared<FloatType> kappa_,
+      af::shared<FloatType> nu_,
+      af::shared<FloatType> musq_,
+      af::shared<FloatType> kappi_
+      )
+    :
+      radius(radius_),
+      resolution(resolution_),
+      mu(mu_),
+      kappa(kappa_),
+      nu(nu_),
+      musq(musq_),
+      kappi(kappi_),
+      scatterer(scatterer_)
+    {
+      CCTBX_ASSERT(mu.size()==kappa.size());
+      CCTBX_ASSERT(mu.size()==nu.size());
+      CCTBX_ASSERT(mu.size()==musq.size());
+      CCTBX_ASSERT(mu.size()==kappi.size());
+    }
+
+    XrayScattererType& get_scatterer() { return scatterer; }
+
+};
 
 template <typename FloatType=double,
           typename XrayScattererType=cctbx::xray::scatterer<> >

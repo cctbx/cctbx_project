@@ -12,6 +12,7 @@ import six
 
 class MonomerLibraryServerError(RuntimeError): pass
 
+# CLIBD_MON no longer supported because of the cascade to GeoStd
 mon_lib_env_vars = ["MMTBX_CCP4_MONOMER_LIB", "CLIBD_MON"]
 
 def load_mon_lib_file(mon_lib_path,
@@ -26,8 +27,9 @@ def load_mon_lib_file(mon_lib_path,
 def find_mon_lib_file(env_vars=mon_lib_env_vars,
                       relative_path_components=[],
                       ):
+  redirect_dir=os.environ.get(env_vars[0], None)
   result = load_mon_lib_file(
-    mon_lib_path=os.environ.get(env_vars[0], None),
+    mon_lib_path=redirect_dir,
     relative_path_components=relative_path_components)
   if (result is not None): return result
   relative_paths = [
@@ -40,6 +42,7 @@ def find_mon_lib_file(env_vars=mon_lib_env_vars,
       # or 'ener_lib.cif' in relative_path_components
       ):
     relative_paths.reverse()
+  if redirect_dir and 'geostd_list.cif' in relative_path_components: return None
   for relative_path in relative_paths:
     result = load_mon_lib_file(
       mon_lib_path=libtbx.env.find_in_repositories(
@@ -542,6 +545,9 @@ class server(process_cif_mixin):
                               comp_id,
                               pH_range=None, # low *neutral high
                               specific_residue_restraints=None,
+                              ad_hoc_single_atom_residues=False,
+                              user_supplied_restraints_directory=None,
+                              user_supplied_pre_post=None,
                               return_filename=False,
                              ):
     comp_id = comp_id.strip().upper()
@@ -574,7 +580,19 @@ class server(process_cif_mixin):
     if (result is not None):
       return result
     std_comp_id = self.comp_synonym_list_dict.get(comp_id, "").strip().upper()
+    def find_user_file(user_path):
+      for trial_comp_id in [std_comp_id, comp_id]:
+        if not trial_comp_id: continue
+        for dir_name in [user_path, os.path.join(user_path, trial_comp_id[0].lower())]:
+          for cif_name in ["%s.cif" % (trial_comp_id),
+                           "data_%s.cif" % (trial_comp_id)]:
+            file_name=os.path.join(dir_name, cif_name)
+            if (os.path.isfile(file_name)): return file_name
+      return None
     def find_file():
+      if user_supplied_restraints_directory and user_supplied_pre_post=='pre':
+        file_name = find_user_file(user_supplied_restraints_directory)
+        if file_name is not None: return file_name
       for i_pass in [0,1]:
         for trial_comp_id in [std_comp_id, comp_id]:
           if (len(trial_comp_id) == 0): continue
@@ -614,6 +632,9 @@ class server(process_cif_mixin):
               for node in os.listdir(dir_name):
                 if (node.lower() != cif_name): continue
                 return os.path.join(dir_name, node)
+      if user_supplied_restraints_directory:
+        file_name = find_user_file(user_supplied_restraints_directory)
+        if file_name is not None: return file_name
       return None
     if (file_name is None): file_name = find_file()
     if (file_name is None): return None
@@ -644,6 +665,9 @@ class server(process_cif_mixin):
       if (result is not None):
         if (len(std_comp_id) != 0):
           self.comp_comp_id_dict[std_comp_id] = result
+      elif ad_hoc_single_atom_residues:
+        comp_id = comp_id.replace('_EL', '')
+        result = self.comp_comp_id_dict.get(comp_id)
       else:
         or_std_comp_id = ""
         if (len(std_comp_id) > 0):
@@ -658,6 +682,9 @@ class server(process_cif_mixin):
         atom_names,
         translate_cns_dna_rna_residue_names=None,
         specific_residue_restraints=None,
+        ad_hoc_single_atom_residues=False,
+        user_supplied_restraints_directory=None,
+        user_supplied_pre_post=None,
         ):
     # not sure this works with specific_residue_restraints
     rnpani = residue_name_plus_atom_names_interpreter(
@@ -675,6 +702,9 @@ class server(process_cif_mixin):
       self.get_comp_comp_id_direct(
         comp_id=rnpani.work_residue_name,
         specific_residue_restraints=specific_residue_restraints,
+        ad_hoc_single_atom_residues=ad_hoc_single_atom_residues,
+        user_supplied_restraints_directory=user_supplied_restraints_directory,
+        user_supplied_pre_post=user_supplied_pre_post,
         ),
       rnpani.atom_name_interpretation,
       )

@@ -1,3 +1,5 @@
+"""fmodels and map_names container classes"""
+
 from __future__ import absolute_import, division, print_function
 
 from libtbx.utils import Sorry
@@ -307,6 +309,7 @@ class fmodels(object):
           else:
             sf = tfx_r.gradients_wrt_atomic_parameters(
               u_iso_refinable_params = u_iso_refinable_params).packed()
+
           self.gradient_xray = sf
           self.gradient_xray_weighted = sf * wx
         if(fmodels.fmodel_neutron() is not None):

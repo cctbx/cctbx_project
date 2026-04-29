@@ -1,3 +1,4 @@
+"""Calculate structure factors from model"""
 # LIBTBX_SET_DISPATCHER_NAME phenix.fmodel
 from __future__ import absolute_import, division, print_function
 
@@ -477,3 +478,4 @@ if __name__ == '__main__':
 #if (__name__ == "__main__"):
 #  run(args=sys.argv[1:])
 #
+

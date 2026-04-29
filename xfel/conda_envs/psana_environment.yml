@@ -33,6 +33,7 @@ dependencies:
  - reportlab
  - wxpython
  - pyopengl
+ - mesa-libgl-devel-conda-x86_64
 
  # HDF5 (main libraries come with psana)
  - h5py
@@ -56,7 +57,7 @@ dependencies:
  - msgpack-python
  - msgpack-c
  - msgpack-cxx
- - orderedset
+ - ordered-set
  - python-blosc
  - scikit-learn
  - tqdm
@@ -64,7 +65,8 @@ dependencies:
  - dials-data
  - pint
  - nxmx
- - gemmi
+ # - gemmi  # add this separately with --no-deps due to a solver problem
+ - hatchling
 
  # xia2
  - tabulate

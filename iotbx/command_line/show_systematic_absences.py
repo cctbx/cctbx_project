@@ -1,3 +1,4 @@
+"""Show the systematic absences in a reflection file"""
 # LIBTBX_SET_DISPATCHER_NAME cctbx.show_systematic_absences
 
 from __future__ import absolute_import, division, print_function

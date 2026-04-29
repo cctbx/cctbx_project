@@ -1,3 +1,4 @@
+"""validate hydrogens"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.validate_H
 import sys, time
@@ -223,9 +224,11 @@ Usage:
     self.print_results(results)
 
     #results.pdb_hierarchy_curated.write_pdb_file(file_name="%s.pdb" % 'bla2')
+if __name__ == "__main__":
 
-t0 = time.time()
-validate_H_app = cl_validate_H(
+  t0 = time.time()
+  validate_H_app = cl_validate_H(
     cl_args=sys.argv[1:])
-validate_H_app.run()
-print("Finished. Time: %8.3f"%(time.time()-t0))
+  validate_H_app.run()
+  print("Finished. Time: %8.3f"%(time.time()-t0))
+

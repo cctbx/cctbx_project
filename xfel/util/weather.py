@@ -79,6 +79,7 @@ def run(params):
     good_timepoints = []
     run_timepoints = []
     rank = int(filename.split('_')[1].split('.')[0])
+    ts = None
     for line in open(os.path.join(root, filename)):
       try:
         hostname, psanats, ts, status, result = line.strip().split(',')
@@ -101,7 +102,7 @@ def run(params):
         processing_of_most_recent_still_terminated = True
       else:
         processing_of_most_recent_still_terminated = False
-    rank_walltimes.append(timestamp_to_seconds(ts) - reference)
+    rank_walltimes.append(timestamp_to_seconds(ts) - reference if ts else 0)
     plt.plot(fail_timepoints, [rank]*len(fail_timepoints), 'b.')
     plt.plot(good_timepoints, [rank]*len(good_timepoints), 'g.')
     fail_total += len(fail_timepoints)

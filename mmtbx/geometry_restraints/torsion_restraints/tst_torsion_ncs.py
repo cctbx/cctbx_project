@@ -120,12 +120,10 @@ TER     106      ALA B   6
 """
 
 def exercise_1(mon_lib_srv, ener_lib):
-  f = open("1.pdb", "w")
-  f.write(pdb_str_1)
-  f.close()
+  pdb_h = iotbx.pdb.input(lines=pdb_str_1, source_info=None).construct_hierarchy()
   log = StringIO()
   dihedral_proxies = utils.get_complete_dihedral_proxies(
-                       raw_records=pdb_str_1)
+                       pdb_hierarchy=pdb_h)
   assert len(dihedral_proxies) == 54, \
       "Expected 54, got %d" % len(dihedral_proxies)
 

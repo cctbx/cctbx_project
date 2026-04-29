@@ -11,6 +11,8 @@ import sys
 import time
 import traceback
 import warnings
+from functools import wraps
+from collections import OrderedDict
 
 from six.moves import cStringIO as StringIO
 
@@ -321,20 +323,34 @@ def warn_if_unexpected_md5_hexdigest(
   print("*"*width, file=out)
   return True
 
-def md5_hexdigest(filename=None, blocksize=256):
-  """ Compute the MD5 hexdigest of the content of the given file,
-      efficiently even for files much larger than the available RAM.
-
-      The file is read by chunks of `blocksize` MB.
+def file_hexdigest(filename=None, algorithm=None, blocksize=256):
+  """
+  Compute the hexdigest in blocksize (MB) chunks
   """
   blocksize *= 1024**2
-  m = hashlib.md5()
+  m = algorithm()
   with open(filename, 'rb') as f:
     buf = f.read(blocksize)
     while buf:
       m.update(buf)
       buf = f.read(blocksize)
   return m.hexdigest()
+
+def md5_hexdigest(filename=None, blocksize=256):
+  """ Compute the MD5 hexdigest of the content of the given file,
+      efficiently even for files much larger than the available RAM.
+
+      The file is read by chunks of `blocksize` MB.
+  """
+  return file_hexdigest(filename=filename, algorithm=hashlib.md5, blocksize=blocksize)
+
+def sha256_hexdigest(filename, blocksize=256):
+  """ Compute the sha256 hexdigest of the content of the given file,
+      efficiently even for files much larger than the available RAM.
+
+      The file is read by chunks of `blocksize` MB.
+  """
+  return file_hexdigest(filename=filename, algorithm=hashlib.sha256, blocksize=blocksize)
 
 def get_memory_from_string(mem_str):
   """
@@ -1045,6 +1061,15 @@ class time_log(object):
     return "time_log: %s: %d %.2f %.3g %.3g" % (
       self.label, self.n, self.accumulation,
       self.delta, self.average())
+
+def human_readable_code(s, extra=False):
+  rc = ''
+  for c in s:
+    if c in ['O', 'I', 'S']:        rc += c.lower()
+    elif c in ['l']:                rc += c.upper()
+    elif extra and c in ['Z', 'B']: rc += c.lower()
+    else:                           rc += c
+  return rc
 
 def human_readable_time(time_in_seconds):
   """
@@ -2404,8 +2429,7 @@ def to_unicode(text, codec=None, errors='replace'):
       new_text = text.decode(codec, errors)
     except UnicodeDecodeError: # in case errors='strict'
       raise Sorry('Unable to decode text with %s' % codec)
-    finally:
-      return new_text
+    return new_text
   elif (text is not None):
     return unicode(text)
   else:
@@ -2443,8 +2467,7 @@ def to_bytes(text, codec=None, errors='replace'):
       new_text = text.encode(codec, errors)
     except UnicodeEncodeError: # in case errors='strict'
       raise Sorry('Unable to encode text with %s' % codec)
-    finally:
-      return new_text
+    return new_text
   elif (text is not None):
     return bytes(text)
   else:
@@ -2567,6 +2590,7 @@ def display_context(text, file_name = 'file name', n_context = 5,
     if lines[i].find(search_word)>-1  and (
        not lines[i].strip().startswith("#")):
       text_block = ""
+      text_block_continuation = ""
       first_line_number = max(0,i-n_context)
       last_line_number = min(len(lines), i+n_context+1)
       for ll in lines[first_line_number: last_line_number]:
@@ -2574,15 +2598,19 @@ def display_context(text, file_name = 'file name', n_context = 5,
           text_block += "  ** %s\n" %(ll)
         else:
           text_block += "     %s\n" %(ll)
+        if ll.endswith("\\"):
+          text_block_continuation += "%s" %(ll[:-1].strip())
+        else:
+          text_block_continuation += "%s\n" %(ll.strip())
       skip = False
       for x in excluded_words + always_excluded_words:
-        if text_block.find(x) > -1:
+        if text_block_continuation.find(x) > -1:
           skip = True
         if working_lines_text.find(x) > -1: # allow backwards further
           skip = True
       if skip:
         continue
-      if required_word and  (text_block.find(required_word) < 0):
+      if required_word and  (text_block_continuation.find(required_word) < 0):
         continue
 
       if not quiet:
@@ -2602,7 +2630,6 @@ def display_context(text, file_name = 'file name', n_context = 5,
       text_block_list.append(info)
   return text_block_list
 
-
 class timer:
   '''
   Context manager for timing blocks of code
@@ -2620,3 +2647,64 @@ class timer:
   def __exit__(self, type, value, traceback):
     self.time = time.perf_counter() - self.time
     print('Elapsed time (s): {}'.format(self.time))
+
+class Tracker(type):
+  '''
+  Track the number of calls and total time taken for each method of a class that
+  is invoked during the lifetime of a class instance. The tracking is safe with
+  respect to deep copies and selection-aware operations.
+  '''
+  def __new__(mcs, name, bases, namespace):
+    for attr_name, attr_value in list(namespace.items()):
+      if callable(attr_value) and not attr_name.startswith('_'):
+        namespace[attr_name] = mcs.wrap_method(attr_value, attr_name)
+    # Add method 1
+    def call_stats_sorted_and_rounded(self, ndigits=3, trim=True):
+      # Sort by total_time in descending order
+      sorted_items = sorted(
+        self._call_stats.items(), key=lambda x: x[1]['total_time'], reverse=True)
+      # Build OrderedDict, round total_time, and filter out zeros
+      sorted_rounded_dict = OrderedDict()
+      for key, value in sorted_items:
+        rounded_time = round(value['total_time'], ndigits)
+        if trim and rounded_time > 0.0:
+          sorted_rounded_dict[key] = {
+            'count': value['count'],
+            'total_time': rounded_time
+          }
+      return sorted_rounded_dict
+    namespace["call_stats_sorted_and_rounded"]=call_stats_sorted_and_rounded
+    # Add method 2
+    def show_call_stats_sorted_and_rounded(self, indent=2):
+      stats_dict = self.call_stats_sorted_and_rounded()
+      # Determine longest key for alignment
+      max_key_len = max(len(key) for key in stats_dict)
+      # Format each line with consistent alignment
+      pad = ' ' * indent
+      lines = []
+      for key, val in stats_dict.items():
+        key_formatted = f"{key}:".ljust(max_key_len + 2)  # +2 for colon and a space
+        count_formatted = f"count: {val['count']:<5}"     # left-align count in fixed width
+        time_formatted = f"total_time: {val['total_time']:.3f}"
+        lines.append(f"{pad}{key_formatted} {count_formatted} {time_formatted}")
+      return '\n'.join(lines)
+    namespace["show_call_stats_sorted_and_rounded"]=\
+      show_call_stats_sorted_and_rounded
+    #
+    return super().__new__(mcs, name, bases, namespace)
+
+  @staticmethod
+  def wrap_method(method, method_name):
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+      start = time.perf_counter()
+      result = method(self, *args, **kwargs)
+      end = time.perf_counter()
+      if not hasattr(self, '_call_stats'):
+        self._call_stats = {}
+      stats = self._call_stats.setdefault(
+        method_name, {"count": 0, "total_time": 0.0})
+      stats["count"] += 1
+      stats["total_time"] += end - start
+      return result
+    return wrapper

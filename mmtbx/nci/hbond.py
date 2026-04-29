@@ -318,7 +318,7 @@ def stats(model, prefix, output_stats_pdf, no_ticks=True):
   return group_args(all = HB_all, alpha = HB_alpha, beta = HB_beta)
 
 
-def precheck(atoms, i, j, Hs, As, Ds, fsc0):
+def precheck(atoms, i, j, Hs, As, Ds, fsc0, tolerate_altloc=False):
   """
   Check if two atoms are potential H bond partners, based on element and altloc
   """
@@ -329,8 +329,11 @@ def precheck(atoms, i, j, Hs, As, Ds, fsc0):
   resseq_j = atoms[j].parent().parent().resseq
   one_is_Hs = ei in Hs or ej in Hs
   other_is_acceptor = ei in As or ej in As
-  is_candidate = one_is_Hs and other_is_acceptor and \
-    altloc_i == altloc_j and resseq_i != resseq_j
+  if tolerate_altloc:
+    is_candidate = one_is_Hs and other_is_acceptor and resseq_i != resseq_j
+  else:
+    is_candidate = one_is_Hs and other_is_acceptor and \
+      altloc_i == altloc_j and resseq_i != resseq_j
   if(ei in Hs):
     bound_to_h = fsc0[i]
     if(not bound_to_h): # exclude 'lone' H

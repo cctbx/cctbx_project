@@ -1,3 +1,8 @@
+"""Explore Metric Symmetry. A list of possible unit cells and spacegroups is
+given for the given specified unit cell and spacegroup combination. If a
+second unit cell is given, linear combinations of the basis vector of one
+unit cell are sought that match the other."""
+
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.explore_metric_symmetry
 

@@ -207,7 +207,7 @@ def test1():
   model_cif = model.model_as_mmcif()
    # print(model_cif)
   for l in [
-    'HETATM 10 C10 . 7ZTVU A 302 ? -7.64600 -6.96500 5.79600 1.000 22.62000 C ? B ? . 1',
+    'HETATM 10 C10 . 7ZTVU A 302 ? -7.64600 -6.96500 5.79600 1.000 22.62000 C ? B ? . C10 1',
     '7ZTVU N1 C2 single 1.452 0.020',
     'data_comp_7ZTVU',
     ]:

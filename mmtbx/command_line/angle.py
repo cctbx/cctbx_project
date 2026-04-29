@@ -1,3 +1,4 @@
+"""Given PDB file and two atom selections that allow to define two lines compute the angle between these two lines"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.angle
 
@@ -133,3 +134,4 @@ def run(args, log=sys.stdout):
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
+

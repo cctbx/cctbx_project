@@ -38,7 +38,7 @@ default_enable_cuda = False
 default_enable_kokkos = False
 default_opt_resources = False
 default_enable_cxx11 = False
-default_cxxstd = None
+default_cxxstd = 'c++14'
 default_use_conda = False
 
 def is_64bit_architecture():
@@ -100,7 +100,7 @@ def darwin_shlinkcom(env_etc, env, lo, dylib):
     else:
       opt_m = " -m"
     shlinkcom = [
-      "ld -dynamic%s -headerpad_max_install_names -r -d -bind_at_load -o %s $SOURCES" %
+      "ld -dynamic%s -headerpad_max_install_names -r -bind_at_load -o %s $SOURCES" %
         (opt_m, lo),
       "$SHLINK -nostartfiles -undefined dynamic_lookup -Wl,-dylib"
         " %s -o %s %s" % (dylib1, dylib, lo)]
@@ -1208,6 +1208,7 @@ Wait for the command to finish, then try again.""" % vars())
         print('@set LIBTBX_PREFIX=%LIBTBX_PREFIX:~0,-1%', file=f)
         print(r'@for %%F in ("%LIBTBX_PREFIX%") do @set LIBTBX_PREFIX=%%~dpF', file=f)
         print('@set LIBTBX_PREFIX=%LIBTBX_PREFIX:~0,-1%', file=f)
+        print('@set LIBTBX_BUILD=%LIBTBX_PREFIX%\\..\\Library\\share\\cctbx', file=f)
         print('@set LIBTBX_DISPATCHER_NAME=%~nx0', file=f)
         print('@set PATH=%LIBTBX_PREFIX%\\..;%LIBTBX_PREFIX%\\..\\mingw-w64\\bin;%LIBTBX_PREFIX%\\..\\bin;%LIBTBX_PREFIX%\\..\\..\\Scripts;%PATH%', file=f)
         def write_dispatcher_include(where):
@@ -1258,8 +1259,12 @@ Wait for the command to finish, then try again.""" % vars())
           % show_string(self.under_build("dispatcher_include_template.sh")), file=f)
         print('#', file=f)
         print(_SHELLREALPATH_CODE, file=f)
+        print('LC_NUMERIC=C', file=f)
+        print('export LC_NUMERIC', file=f)
         print('LIBTBX_PREFIX="$(shellrealpath "$0" && cd "$(dirname "$RESULT")/.." && pwd)"', file=f)
         print('export LIBTBX_PREFIX', file=f)
+        print('LIBTBX_BUILD=${LIBTBX_PREFIX}/share/cctbx', file=f)
+        print('export LIBTBX_BUILD', file=f)
         print('LIBTBX_PYEXE_BASENAME="%s"' % self.python_exe.basename(), file=f)
         print('export LIBTBX_PYEXE_BASENAME', file=f)
         print('# Set the CCTBX_CONDA_USE_ENVIRONMENT_VARIABLES environment variable', file=f)
@@ -2066,89 +2071,6 @@ selfx:
     command.run()
     return dist.install_scripts
 
-  def regenerate_entry_point_console_scripts(self, verbose=True):
-    '''
-    Creates all console_scripts entry point scripts from scratch and overwrites existing ones.
-    This is intended to be used by installers to relocate the entry point script paths.
-    '''
-    try:
-      import distutils.dist
-      import libtbx.fastentrypoints # monkeypatches setuptools
-      import pkg_resources
-      import setuptools.command.easy_install
-    except ImportError:
-      return
-
-    # Prepare generic script generator
-    distribution = distutils.dist.Distribution({'name': 'setuptools'})
-    command = setuptools.command.easy_install.easy_install(distribution)
-    command.args = ['wheel']  # dummy argument
-    command.finalize_options()
-
-    # Force regeneration of all known console_scripts
-    for pkg_resources_dist in pkg_resources.working_set:
-      console_scripts = pkg_resources_dist.get_entry_map().get('console_scripts')
-      if console_scripts:
-        if verbose:
-          print("Regenerating commands for %s: %s" % (
-              pkg_resources_dist,
-              list(console_scripts),
-          ))
-        command.install_wrapper_scripts(pkg_resources_dist)
-
-  def generate_entry_point_dispatchers(self):
-    '''
-    Write indirect dispatcher scripts for all console_scripts entry points
-    that have existing dispatcher scripts in the base/bin directory, but
-    add a 'libtbx.' prefix.
-    Generate dispatchers for any libtbx.dispatcher.script entry points.
-    These can be arbitrary non-python scripts defined by modules.
-    '''
-    try:
-      import pkg_resources
-    except ImportError:
-      return
-    if self.build_options.use_conda and os.name != "nt":
-      paths = {
-        os.path.normpath(os.path.join(sys.prefix, "bin")),
-        os.path.normpath(os.path.join(get_conda_prefix(), "bin")),
-      }
-    else:
-      try:
-        paths = {self.get_setuptools_script_dir()}
-      except ImportError:
-        return
-
-    for bin_directory in paths:
-      if not os.path.isdir(bin_directory):
-        continue # do not create console_scripts dispatchers, only point to them
-
-      base_bin_dispatchers = os.listdir(bin_directory)
-      if os.name == "nt":
-        base_bin_dispatchers = [os.path.splitext(f)[0] if os.path.splitext(
-            f)[1] in ['.bat', '.exe'] else f for f in base_bin_dispatchers]
-      base_bin_dispatchers = set(base_bin_dispatchers)
-      existing_dispatchers = filter(lambda f: f.startswith(
-          'libtbx.'), self.bin_path.listdir())
-      existing_dispatchers = set([f[7:] for f in existing_dispatchers])
-      entry_point_candidates = base_bin_dispatchers - existing_dispatchers
-
-      entry_points = pkg_resources.iter_entry_points('console_scripts')
-      entry_points = filter(lambda ep: ep.name in entry_point_candidates, entry_points)
-      for ep in entry_points:
-        self.write_dispatcher(
-            source_file=os.path.join(bin_directory, ep.name),
-            target_file=os.path.join('bin', 'libtbx.' + ep.name),
-        )
-
-      entry_points = pkg_resources.iter_entry_points('libtbx.dispatcher.script')
-      entry_points = filter(lambda ep: ep.name in entry_point_candidates, entry_points)
-      for ep in entry_points:
-        self.write_dispatcher(
-            source_file=os.path.join(bin_directory, ep.module_name),
-            target_file=os.path.join('bin', ep.name),
-        )
-
   def write_command_version_duplicates(self):
     if (self.command_version_suffix is None): return
     suffix = "_" + self.command_version_suffix
@@ -2283,7 +2205,6 @@ selfx:
           os.environ.pop('SETUPTOOLS_ENABLE_FEATURES')
 
       self.write_python_and_show_path_duplicates()
-      self.generate_entry_point_dispatchers()
       self.process_exe()
       self.write_command_version_duplicates()
       if (os.name != "nt"):     # LD_LIBRARY_PATH for dependencies
@@ -2314,13 +2235,6 @@ selfx:
     return result
 
 class module:
-  """
-  Attributes:
-    conda_required (List[str]):
-      List of conda package requirement specifiers. Should match PEP508-style.
-    python_required (List[str]):
-      List of python package requirement specifiers. Should match PEP508-style.
-  """
   def __init__(self, env, name, dist_path=None, mate_suffix="adaptbx"):
     self.env = env
     self.mate_suffix = mate_suffix
@@ -2335,8 +2249,6 @@ class module:
       self.names = [name, name + mate_suffix]
       if (dist_path is not None):
         self.dist_paths = [dist_path, None]
-    self.conda_required = []
-    self.python_required = []
 
   def names_active(self):
     for name,path in zip(self.names, self.dist_paths):
@@ -2371,8 +2283,6 @@ class module:
     self.exclude_from_binary_bundle = []
     dist_paths = []
     self.extra_command_line_locations = []
-    self.conda_required = []
-    self.python_required = []
     for dist_path in self.dist_paths:
       if (dist_path is not None):
         while True:
@@ -2413,8 +2323,6 @@ class module:
             "modules_required_for_build", []))
           self.required_for_use.extend(config.get(
             "modules_required_for_use", []))
-          self.conda_required.extend(config.get("conda_required", []))
-          self.python_required.extend(config.get("python_required", []))
           self.optional.extend(config.get(
             "optional_modules", []))
           self.optional.extend(
@@ -2533,6 +2441,14 @@ class module:
           source_file = self.env.under_build(
             op.join(self.name, "exe", file_name[:-len(ext)]+exe_suffix),
             return_relocatable_path=True)
+          # build and prefix directories are different in installations
+          if self.env.installed:
+            from libtbx.auto_build.conda_build.update_libtbx_env import get_default_dir, get_prefix_dir
+            source_file = op.join(
+              get_default_dir(),
+              self.name, "exe", file_name[:-len(ext)]+exe_suffix)
+            source_file = relocatable_path(
+              absolute_path(get_prefix_dir()), source_file, resolve_symlinks=False)
     if (len(target_files) == 0):
       target_file = self.name.lower() + target_file_name_infix
       if (not file_name_lower.startswith("main.")
@@ -2940,7 +2856,7 @@ class pre_process_args:
       action="store",
       type="choice",
       default=default_cxxstd,
-      choices=['c++11', 'c++14'], # this should just be the argument to the -std flag
+      choices=['c++14'], # this should just be the argument to the -std flag
       help="Set the C++ standard. This cannot be set along with --enable_cxx11")
     parser.option("--skip_phenix_dispatchers",
       action="store_true",
@@ -3095,7 +3011,7 @@ def unpickle(build_path=None, env_name="libtbx_env"):
   if build_path is None:
     build_path = os.getenv("LIBTBX_BUILD")
   # try default installed location
-  if not build_path:
+  if not build_path or not os.path.isdir(build_path):
     build_path = get_installed_path()
   set_preferred_sys_prefix_and_sys_executable(build_path=build_path)
   with open(op.join(build_path, env_name), "rb") as libtbx_env:
@@ -3189,6 +3105,16 @@ def get_installed_path():
     installed_path = os.path.join(sys.prefix, 'Library', 'share', 'cctbx')
   else:
     installed_path = os.path.join(get_conda_prefix(), 'share', 'cctbx')
+  if not os.path.isdir(installed_path):
+    # try libtbx/core
+    import sysconfig
+    paths = sysconfig.get_paths()
+    for key in ['purelib', 'platlib']:
+      site_packages = paths[key]
+      test_path = os.path.join(site_packages, 'libtbx', 'core', 'share', 'cctbx')
+      if os.path.isdir(test_path):
+        installed_path = test_path
+      break
   return installed_path
 
 def _get_env(build_path, env_name='libtbx_env'):

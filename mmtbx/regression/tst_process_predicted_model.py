@@ -19,13 +19,24 @@ from iotbx.data_manager import DataManager
 from mmtbx.process_predicted_model import split_model_into_compact_units, \
    get_cutoff_b_value, \
    get_b_values_from_plddt, get_rmsd_from_plddt, \
-   process_predicted_model, master_phil_str, get_plddt_from_b
+   process_predicted_model, master_phil_str, get_plddt_from_b, \
+   convert_model_from_plddt_to_b, \
+   convert_model_from_b_to_plddt
 
 from mmtbx.domains_from_pae import parse_pae_file
 master_phil = iotbx.phil.parse(master_phil_str)
 params = master_phil.extract()
 
+# For these tests, use defaults from original version of process_predicted_model
+params.process_predicted_model.minimum_domain_length = 10
+params.process_predicted_model.minimum_sequential_residues = 5
+params.process_predicted_model.pae_power = 1
+params.process_predicted_model.pae_cutoff = 5
+params.process_predicted_model.pae_graph_resolution = 0.5
 
+
+
+two_chains_model_file=os.path.join(data_dir,'two_chains.pdb')
 model_file=os.path.join(data_dir,'fibronectin_af_ca_1358_1537.pdb')
 pae_model_file=os.path.join(data_dir,'pae_model.pdb')
 pae_file=os.path.join(pae_data_dir,'pae.json')
@@ -96,9 +107,10 @@ def tst_01(log = sys.stdout):
   params.process_predicted_model.split_model_by_compact_regions = True
   params.process_predicted_model.maximum_domains = 3
 
+
   model_info = process_predicted_model(m, params, mark_atoms_to_keep_with_occ_one= True)
   models = model_info.model_list
-  for mm,vrms,target_vrms,n1,n2 in zip(models,model_info.vrms_list,[1.1506528458663525,1.1506528458663525],[85,87],[87,85]):
+  for mm,vrms,target_vrms,n1,n2 in zip(models,model_info.vrms_list,[1.1855925413499029,1.1855925413499029],[85,87],[95,93]):
     model_occ_values = mm.get_hierarchy().atoms().extract_occ()
     assert model_occ_values.count(1) == n1
     assert model_occ_values.count(0) == n2
@@ -117,6 +129,31 @@ def tst_01(log = sys.stdout):
   model = model_info.model
   model_b_values = model.get_hierarchy().atoms().extract_b()
   assert approx_equal(b_values, model_b_values, eps = 0.02) # come back rounded
+
+  print("\nConverting plddt to B in model in place", file = log)
+  m = model.deep_copy()
+  m.set_b_iso(plddt_values)
+  convert_model_from_plddt_to_b(m)
+  b = m.get_b_iso()
+  assert approx_equal(b, b_values)
+
+  print("\nConverting B to pLDDT in model in place, fractional=False ",
+      file = log)
+  m = model.deep_copy()
+  m.set_b_iso(b_values)
+  convert_model_from_b_to_plddt(m, input_plddt_is_fractional = False)
+  plddt  = m.get_b_iso()
+  assert approx_equal(plddt, plddt_values)
+
+  print("\nConverting B to pLDDT in model in place, fractional=True ",
+      file = log)
+  m = model.deep_copy()
+  m.set_b_iso(b_values)
+  convert_model_from_b_to_plddt(m, input_plddt_is_fractional = True)
+  plddt  = m.get_b_iso()
+  assert approx_equal(plddt, 0.01*plddt_values)
+
+
 
 
   print("\nConverting fractional plddt to B values", file = log)
@@ -293,11 +330,41 @@ def tst_03():
   print(list(a))
   assert list(a) == [False, False, False, True, True, True, True, True, True, True, True, True, True, False, False]
 
+def tst_04(log = sys.stdout):
+
+
+  # Run on model with multiple chain IDs
+  print("\nModel with multiple chain IDs",
+    file = log)
+
+  # two_chains_model_file
+
+  # Check splitting model into domains
+  print("\nSplitting model with 2 chains into domains", file = log)
+
+  try:
+    from iotbx.cli_parser import run_program
+    from mmtbx.programs import process_predicted_model as run
+  except Exception as e:
+    print("process_predicted_model not available...skipping")
+    return
+
+  args = "%s minimum_domain_length=10 minimum_sequential_residues=5 pae_power=1 pae_cutoff=5 pae_graph_resolution=0.5" %(two_chains_model_file)
+
+
+
+  args = args.split()
+
+  pp = run_program(program_class=run.Program,args=args)
+  assert pp.processed_model.overall_counts().n_residues == 172
+  assert pp.processed_model.chain_ids() == ['B1','B2']
+
 if __name__ == "__main__":
 
   t0 = time.time()
   tst_01()
   tst_02()
   tst_03()
+  tst_04()
   print ("Time:", time.time()-t0)
   print ("OK")

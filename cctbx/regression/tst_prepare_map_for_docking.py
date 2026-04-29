@@ -130,10 +130,10 @@ def exercise():
   mmm.map_manager().set_map_data(map_data = mm_mean_data)
 
   # Add mask map for ordered component of map
-  mask_id = 'ordered_volume_mask'
+  ordered_mask_id = 'ordered_volume_mask'
   add_ordered_volume_mask(mmm, d_min,
       protein_mw=protein_mw, nucleic_mw=nucleic_mw,
-      map_id_out=mask_id)
+      ordered_mask_id=ordered_mask_id)
   box_centre = tuple(flex.double((ucpars[0],ucpars[1],ucpars[2]))/2)
 
   # Now refine to assess parameters describing map errors
@@ -142,8 +142,13 @@ def exercise():
   else:
     verbosity = 0
   results = assess_cryoem_errors(
-      mmm, d_min, sphere_points=500,
-      sphere_cent=box_centre, radius=model_radius+d_min, verbosity=verbosity)
+                  mmm=mmm,
+                  d_min=d_min,
+                  half_maps_provided=True,
+                  ordered_mask_id=ordered_mask_id,
+                  sphere_cent=box_centre,
+                  radius=model_radius+d_min,
+                  verbosity=verbosity)
 
   if debug:
     resultsdict = results.resultsdict

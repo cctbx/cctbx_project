@@ -38,8 +38,9 @@ RUN cd /img && \
   source /mc3/etc/profile.d/conda.sh && \
   conda activate base && \
   conda install mamba -c conda-forge -y && \
-  mamba env create -f psana_environment.yml -p $PWD/conda_base
-  
+  mamba env create -f psana_environment.yml -p $PWD/conda_base && \
+  conda install -y -c conda-forge --no-deps -p $PWD/conda_base gemmi
+
 # Get sources and build
 RUN cd /img && \
   source /mc3/etc/profile.d/conda.sh && \

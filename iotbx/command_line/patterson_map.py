@@ -1,3 +1,4 @@
+"""Calculate Patterson map"""
 # LIBTBX_SET_DISPATCHER_NAME cctbx.patterson_map
 
 from __future__ import absolute_import, division, print_function

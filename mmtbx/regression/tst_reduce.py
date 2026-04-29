@@ -86,7 +86,7 @@ END
    "A",
    5,
    "HG",
-   [ (-33.788, 46.891, 0.809)
+   [ (-33.906, 46.773, 1.342)
    ],
    0.1,
    []
@@ -275,6 +275,62 @@ END
 
   ["1xso_histidine_flipped",
    """\
+CRYST1   73.450   68.940   58.760  90.00  90.00  90.00 P 21 21 21
+SCALE1      0.013615  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.014505  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.017018        0.00000
+ATOM      1  N   VAL A  17      15.777  20.067  -3.917  1.00 11.00           N
+ATOM      2  CA  VAL A  17      16.936  19.211  -3.933  1.00 12.41           C
+ATOM      3  C   VAL A  17      18.055  19.934  -4.702  1.00  9.37           C
+ATOM      4  O   VAL A  17      17.836  20.513  -5.742  1.00 13.60           O
+ATOM      5  CB  VAL A  17      16.635  17.858  -4.617  1.00 16.16           C
+ATOM      6  CG1 VAL A  17      17.933  16.983  -4.557  1.00 21.33           C
+ATOM      7  CG2 VAL A  17      15.541  17.118  -3.839  1.00 19.65           C
+ATOM      8  H   VAL A  17      15.824  20.729  -4.464  1.00 11.00           H
+ATOM      9  HA  VAL A  17      17.211  19.025  -3.022  1.00 12.41           H
+ATOM     10  HB  VAL A  17      16.348  18.006  -5.532  1.00 16.16           H
+ATOM     11 HG11 VAL A  17      18.178  16.845  -3.629  1.00 21.33           H
+ATOM     12 HG12 VAL A  17      18.647  17.445  -5.023  1.00 21.33           H
+ATOM     13 HG13 VAL A  17      17.758  16.129  -4.983  1.00 21.33           H
+ATOM     14 HG21 VAL A  17      14.738  17.662  -3.828  1.00 19.65           H
+ATOM     15 HG22 VAL A  17      15.848  16.963  -2.932  1.00 19.65           H
+ATOM     16 HG23 VAL A  17      15.360  16.271  -4.276  1.00 19.65           H
+ATOM     17  N   HIS A  19      22.094  19.284  -6.044  1.00 11.05           N
+ATOM     18  CA  HIS A  19      23.225  18.356  -6.269  1.00 10.79           C
+ATOM     19  C   HIS A  19      24.527  19.153  -6.473  1.00 11.77           C
+ATOM     20  O   HIS A  19      24.547  20.205  -7.093  1.00 13.93           O
+ATOM     21  CB  HIS A  19      22.920  17.515  -7.520  1.00 18.16           C
+ATOM     22  CG  HIS A  19      22.000  16.372  -7.273  1.00 26.17           C
+ATOM     23  ND1 HIS A  19      20.613  16.482  -7.381  1.00 28.19           N
+ATOM     24  CD2 HIS A  19      22.252  15.112  -6.890  1.00 32.51           C
+ATOM     25  CE1 HIS A  19      20.075  15.354  -7.090  1.00 32.39           C
+ATOM     26  NE2 HIS A  19      21.021  14.479  -6.766  1.00 34.60           N
+ATOM     27  H   HIS A  19      22.262  20.099  -6.260  1.00 11.05           H
+ATOM     28  HA  HIS A  19      23.356  17.763  -5.513  1.00 10.79           H
+ATOM     29  HB2 HIS A  19      23.752  17.154  -7.863  1.00 18.16           H
+ATOM     30  HB3 HIS A  19      22.507  18.087  -8.186  1.00 18.16           H
+ATOM     31  HD2 HIS A  19      23.088  14.735  -6.737  1.00 32.51           H
+ATOM     32  HE1 HIS A  19      19.162  15.177  -7.104  1.00 32.39           H
+ATOM     33  HE2 HIS A  19      20.894  13.664  -6.522  1.00 34.60           H
+TER
+HETATM   34  O   HOH B 215      21.490  11.727  -5.002  1.00 34.66           O
+HETATM   35  O   HOH B 218      16.653  14.508   9.188  1.00 35.04           O
+HETATM   36  O   HOH B 280       8.420  -1.071  13.530  1.00 50.43           O
+HETATM   37  O   HOH B 307      37.167  -8.451   4.794  1.00 59.87           O
+HETATM   38  O   HOH B 320      14.429  18.062  16.293  1.00 67.01           O
+END
+""",
+   "A",
+   19,
+   "ND1",
+   [ (22.149, 15.200, -6.888)
+   ],
+   0.1,
+   []
+  ],
+
+  ["1xso_histidine_uncertain",
+   """\
 CRYST1   73.450   68.940   58.760  90.00  90.00  90.00 P 21 21 21    8
 ORIGX1      1.000000  0.000000  0.000000        0.00000
 ORIGX2      0.000000  1.000000  0.000000        0.00000
@@ -318,7 +374,7 @@ END
    "B",
    19,
    "ND1",
-   [ (22.666, 16.182, 21.033)
+   [ (23.897, 17.622, 20.251)
    ],
    0.1,
    []
@@ -486,7 +542,9 @@ def RunRegressionTests():
                     if dist <= maxDist:
                       closeEnough = True
                   if not closeEnough:
-                    return "Atom "+chain+" "+str(resID)+" "+atomName+" in "+name+" too far from expected locations"
+                    return ("Atom "+chain+" "+str(resID)+" "+atomName+" in "+name+" too far from expected locations: " +
+                            "Found at " + str(loc) + " but expected one of " + str(positions)
+                           )
       if not found:
         return "Did not find atom "+atomName+" in chain "+chain+" residue "+str(resID)+" of "+name
     except Exception as e:

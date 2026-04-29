@@ -1,3 +1,6 @@
+"""Program for preparing model and data files for depostion into the Protein
+Data Bank
+"""
 from __future__ import absolute_import, division, print_function
 
 import os

@@ -374,6 +374,11 @@ if (sys.platform == "win32" or
         ENV=os.environ, MSVC_VERSION="14.4", TARGET_ARCH=target_arch, tools=['msvc','mslink', 'mslib'])
       env_etc.have_manifest_tool = True
       env_etc.msvc_version = 17
+    elif visual_studio_version.startswith("19.5"):
+      env_base = Environment(
+        ENV=os.environ, MSVC_VERSION="14.5", TARGET_ARCH=target_arch, tools=['msvc','mslink', 'mslib'])
+      env_etc.have_manifest_tool = True
+      env_etc.msvc_version = 18
     else:
       raise RuntimeError("""\
 Unknown or unsupported cl.exe version.
@@ -428,7 +433,7 @@ libtbx.scons: Warning: compiling with /MDd:
       "/GR",
       "/EHsc"]
     if (libtbx.env.build_options.optimization):
-      opts = ["/DNDEBUG", "/O2"]
+      opts = ["/DNDEBUG", "/O1"]
       if (    libtbx.env.build_options.msvc_arch_flag is not None
           and not is_64bit_architecture):
         opts.append("/arch:%s" %libtbx.env.build_options.msvc_arch_flag)
@@ -453,9 +458,9 @@ libtbx.scons: Warning: compiling with /MDd:
     if sys.version_info.major == 3 and sys.version_info.minor <= 8:
       env_etc.ccflags_base.append('/DHAVE_SNPRINTF')
       env_etc.cxxflags_base.append('/DHAVE_SNPRINTF')
-    # needed for latest versions of Visual Studio 2022 so that type
+    # needed for latest versions of Visual Studio 2019 and C++14 so that type
     # limits are available
-    if env_etc.msvc_version == 17:
+    if env_etc.msvc_version >= 16:
       env_etc.ccflags_base.append('/D__STDC_LIMIT_MACROS')
       env_etc.cxxflags_base.append('/D__STDC_LIMIT_MACROS')
   elif (env_etc.compiler == "win32_icc"):
@@ -533,7 +538,7 @@ libtbx.scons: Warning: compiling with /MDd:
       "-DMS_WIN64"]
     env_etc.cxxflags_base = ["-DMS_WIN64"]
     # XXX feature duplication, see env.build_options.enable_cxx11
-    if (env_etc.gcc_version >= 40400 and determine_cpp0x_flag()):
+    if (env_etc.gcc_version is not None and env_etc.gcc_version >= 40400 and determine_cpp0x_flag()):
       env_etc.cxxflags_base.append("-std=c++0x")
       env_etc.cxx11_is_available = True
     if (libtbx.env.build_options.warning_level == 0):
@@ -546,7 +551,7 @@ libtbx.scons: Warning: compiling with /MDd:
     env_etc.ccflags_base.extend(warn_options)
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O3", "-ffast-math"]
-      if (env_etc.gcc_version >= 40100 and is_64bit_architecture):
+      if (env_etc.gcc_version is not None and env_etc.gcc_version >= 40100 and is_64bit_architecture):
         opts.insert(2, "-funroll-loops")
     else:
       opts = ["-O0", "-fno-inline"]
@@ -648,7 +653,7 @@ else:
       "-fno-strict-aliasing"]
     env_etc.cxxflags_base = []
     # XXX feature duplication, see env.build_options.enable_cxx11
-    if (env_etc.gcc_version >= 40400 and determine_cpp0x_flag()):
+    if (env_etc.gcc_version is not None and env_etc.gcc_version >= 40400 and determine_cpp0x_flag()):
       env_etc.cxxflags_base.append("-std=c++0x")
       env_etc.cxx11_is_available = True
     if (libtbx.env.build_options.warning_level == 0):
@@ -661,9 +666,9 @@ else:
     env_etc.ccflags_base.extend(warn_options)
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O3"]
-      if (env_etc.gcc_version < 11000):
+      if (env_etc.gcc_version is not None and env_etc.gcc_version < 11000):
         opts.append("-ffast-math")
-      if (env_etc.gcc_version >= 40100 and is_64bit_architecture):
+      if (env_etc.gcc_version is not None and env_etc.gcc_version >= 40100 and is_64bit_architecture):
         opts.append("-funroll-loops")
     else:
       opts = ["-O0", "-fno-inline"]
@@ -985,6 +990,12 @@ int main() {
     if env_etc.clang_version[0] >= 15:
       base_macos_flags.append('-Wno-enum-constexpr-conversion')
 
+    # Xcode 16.3 fails to build boost.geometry (Boost 1.86)
+    # https://github.com/llvm/llvm-project/issues/101079
+    if (xcode_version is not None and xcode_version[0] == 16 and xcode_version[1] >= 3) \
+      or env_etc.clang_version[0] > 16:
+      base_macos_flags.append('-Wno-missing-template-arg-list-after-template-kw')
+
     link_flags = ["-w"] # suppress "source/lib does not exist" warning
     link_flags.extend(base_macos_flags)
     if libtbx.env.build_options.force_32bit:
@@ -1009,12 +1020,12 @@ int main() {
       env_etc.ccflags_base.extend(warn_options)
     if cxx == "c++" and env_etc.clang_version is None:
       env_etc.ccflags_base.extend(["-no-cpp-precomp"])
-      if (env_etc.gcc_version < 40201):
+      if (env_etc.gcc_version is not None and env_etc.gcc_version < 40201):
         env_etc.ccflags_base.append("-Wno-long-double")
 
     env_etc.cxxflags_base = base_macos_flags
 
-    if env_etc.clang_version is None and env_etc.gcc_version < 40000:
+    if env_etc.clang_version is None and env_etc.gcc_version is not None and env_etc.gcc_version < 40000:
       env_etc.cxxflags_base.append("-fcoalesce-templates")
     env_etc.cxxflags_base.append("-DBOOST_ALL_NO_LIB")
     if (libtbx.env.build_options.optimization):
@@ -1410,7 +1421,7 @@ def enable_cuda_if_possible():
         break
 
     major = None
-    cuda_version = re.findall('release [0-9]+\.*[0-9]+', line)
+    cuda_version = re.findall(r'release [0-9]+\.*[0-9]+', line)
     if cuda_version:
       try:
         assert( len(cuda_version)==1)

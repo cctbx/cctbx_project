@@ -36,7 +36,7 @@ import mmtbx.monomer_library.server
 from mmtbx.geometry_restraints.torsion_restraints.utils import check_for_internal_chain_ter_records
 import mmtbx.tls.tools as tls_tools
 from mmtbx import ias
-
+from collections import defaultdict
 
 from mmtbx.ncs.ncs_utils import apply_transforms
 from mmtbx.command_line import find_tls_groups
@@ -47,7 +47,6 @@ from mmtbx.geometry_restraints.torsion_restraints.torsion_ncs import torsion_ncs
 from mmtbx.refinement import print_statistics
 from mmtbx.refinement import anomalous_scatterer_groups
 from mmtbx.refinement import geometry_minimization
-import cctbx.geometry_restraints.nonbonded_overlaps as nbo
 import collections
 
 from mmtbx.rotamer import nqh
@@ -80,6 +79,10 @@ import sys
 import math
 
 from mmtbx.monomer_library import pdb_interpretation
+
+from cctbx import geometry_restraints
+from cctbx import geometry
+from cctbx.geometry_restraints.linking_class import linking_class
 
 time_model_show = 0.0
 
@@ -175,6 +178,106 @@ class xh_connectivity_table2(object):
           if(sct in ["H","D"]): ih = i
         if("H" in h and not o.all_eq(o[0])):
           self.table.setdefault(ih).append(p.i_seqs)
+
+class restraints_scale_manager(object):
+
+  def __init__(self, model):
+    self.model         = model
+    self.hd_selection  = model.get_xray_structure().hd_selection()
+    self.total_bonds   = 0
+    self.total_angles  = 0
+    self.uc            = model.crystal_symmetry().unit_cell()
+    g                  = self.model.get_restraints_manager().geometry
+    # BONDS
+    self.original_bond_weights = flex.double()
+    self.current_bond_weights  = flex.double()
+    bond_proxies_simple, asu = g.get_all_bond_proxies(
+      sites_cart = self.model.get_sites_cart())
+    for proxy in bond_proxies_simple:
+      self.total_bonds+=1
+      self.original_bond_weights.append(proxy.weight)
+      self.current_bond_weights.append(proxy.weight)
+    self.scale_counts_bonds = flex.int(self.original_bond_weights.size(), 0)
+    # ANGLES
+    self.original_angle_weights = flex.double()
+    self.current_angle_weights  = flex.double()
+    for proxy in g.angle_proxies:
+      self.total_angles+=1
+      self.original_angle_weights.append(proxy.weight)
+      self.current_angle_weights.append(proxy.weight)
+    self.scale_counts_angles = flex.int(self.original_angle_weights.size(), 0)
+
+  def scale_bonds(self, factor, cutoff, second_factor=2, one_time_scale=None):
+    g = self.model.get_restraints_manager().geometry
+    bond_proxies_simple, asu = g.get_all_bond_proxies(
+      sites_cart = self.model.get_sites_cart())
+    sites_frac = self.model.get_sites_frac()
+    for k, proxy in enumerate(bond_proxies_simple):
+      i_seq, j_seq = proxy.i_seqs
+      if self.hd_selection[i_seq] or self.hd_selection[j_seq]: continue
+      dist_ideal = proxy.distance_ideal
+      dist_model = self.uc.distance(sites_frac[i_seq], sites_frac[j_seq])
+      delta = abs(dist_ideal-dist_model)
+      ots = (one_time_scale[i_seq]+one_time_scale[j_seq])/2
+      consensus_scale = 1
+      if ots < 0.6: cutoff = 0.02
+      else:         cutoff = 0.03
+      if delta > cutoff:
+        if self.scale_counts_bonds[k]==0:
+          consensus_scale = factor
+          self.scale_counts_bonds[k] += 1
+        else:
+          consensus_scale = second_factor
+      if delta < 0.01 and ots > 0.6:
+        consensus_scale = 1./second_factor**2
+      if delta < 0.01 and ots <= 0.6:
+        consensus_scale = 1./1.5
+      proxy.weight = proxy.weight * consensus_scale
+      self.current_bond_weights[k] = proxy.weight
+
+  def scale_angles(self, factor, cutoff, second_factor=2, one_time_scale=None):
+    g = self.model.get_restraints_manager().geometry
+    sites_cart = self.model.get_sites_cart()
+    for k, proxy in enumerate(g.angle_proxies):
+      i_seq,j_seq,k_seq = proxy.i_seqs
+      angle_ideal = proxy.angle_ideal
+      sites = (sites_cart[i_seq], sites_cart[j_seq], sites_cart[k_seq])
+      angle_model = geometry.angle(sites).angle_model
+      delta = abs(angle_ideal-angle_model)
+      ots = (one_time_scale[i_seq]+one_time_scale[j_seq])/2
+      consensus_scale = 1
+      if ots < 0.6: cutoff = 3.0
+      else:         cutoff = 5.0
+      if delta > cutoff:
+        if self.scale_counts_angles[k]==0:
+          consensus_scale = factor
+          self.scale_counts_angles[k] += 1
+        else:
+          consensus_scale = second_factor
+      if delta < 1.5 and ots > 0.6:
+        consensus_scale = 1./second_factor**2
+      if delta < 1.5 and ots <= 0.6:
+        consensus_scale = 1./1.5
+      proxy.weight = proxy.weight * consensus_scale
+      self.current_angle_weights[k] = proxy.weight
+
+  def unscale(self):
+    g = self.model.get_restraints_manager().geometry
+    bond_proxies_simple, asu = g.get_all_bond_proxies(
+      sites_cart = self.model.get_sites_cart())
+    for k, proxy in enumerate(bond_proxies_simple):
+      proxy.weight = self.original_bond_weights[k]
+    for k, proxy in enumerate(g.angle_proxies):
+      proxy.weight = self.original_angle_weights[k]
+
+  def rescale(self):
+    g = self.model.get_restraints_manager().geometry
+    bond_proxies_simple, asu = g.get_all_bond_proxies(
+      sites_cart = self.model.get_sites_cart())
+    for k, proxy in enumerate(bond_proxies_simple):
+      proxy.weight = self.current_bond_weights[k]
+    for k, proxy in enumerate(g.angle_proxies):
+      proxy.weight = self.current_angle_weights[k]
 
 class manager(object):
   """
@@ -305,6 +408,7 @@ class manager(object):
     self.get_hierarchy().atoms().reset_i_seq()
     ########### Allow access to methods from pdb_hierarchy directly ######
     self.set_up_methods_from_hierarchy() # Allow methods from hierarchy
+    self.rsm = None
 
   @classmethod
   def from_sites_cart(cls,
@@ -420,6 +524,9 @@ class manager(object):
     """
     return manager.get_default_pdb_interpretation_scope().extract()
 
+  def unset_processed_pdb_file(self):
+    self._processed_pdb_file = None
+
   def get_header_r_free_flags_md5_hexdigest(self):
     """
     XXX Limited to PDB format XXX
@@ -479,15 +586,17 @@ class manager(object):
       result.append(dbest)
     return result
 
-  def get_xray_structure(self):
+  def get_scattering_table(self):
+    return self.get_xray_structure().get_scattering_table()
+
+  def get_xray_structure(self, force=False):
+    if force: self._xray_structure = None
     if(self._xray_structure is None):
       cs = self.crystal_symmetry()
-      assert cs is not None
-      assert cs.unit_cell() is not None
-      assert cs.space_group() is not None
+      if cs is None or cs.unit_cell() is None or cs.space_group() is None:
+        return None
       self._xray_structure = self.get_hierarchy().extract_xray_structure(
         crystal_symmetry = cs)
-      cs = self.crystal_symmetry()
     return self._xray_structure
 
   def set_sites_cart(self, sites_cart, selection=None):
@@ -502,7 +611,7 @@ class manager(object):
     if(self._xray_structure is not None):
       self._xray_structure.set_sites_cart(sites_cart_)
 
-  def set_b_iso(self, values, selection=None):
+  def set_b_iso(self, values, selection=None, keep_aniso=False):
     if(values is None): return
     if(selection is not None):
       b_iso = self.get_hierarchy().atoms().extract_b()
@@ -511,9 +620,10 @@ class manager(object):
       b_iso = values
     if(self._xray_structure is not None):
       self.get_xray_structure().set_b_iso(values = b_iso, selection=selection)
-      u_iso = self.get_xray_structure().scatterers().extract_u_iso()
-      b_iso = u_iso * adptbx.u_as_b(1)
-      b_iso = b_iso.set_selected(~self.get_xray_structure().use_u_iso(), -1)
+      if keep_aniso is False:
+       u_iso = self.get_xray_structure().scatterers().extract_u_iso()
+       b_iso = u_iso * adptbx.u_as_b(1)
+       b_iso = b_iso.set_selected(~self.get_xray_structure().use_u_iso(), -1)
     self.get_hierarchy().atoms().set_b(b_iso)
 
   def convert_to_isotropic(self, selection=None):
@@ -680,7 +790,10 @@ class manager(object):
   #  params.pdb_interpretation.nonbonded_weight = value
   #  self.set_pdb_interpretation_params(params = params)
 
-  def check_consistency(self):
+  def check_consistency(self, stop_on_errors = True, print_errors = True,
+        absolute_angle_tolerance = None,
+        absolute_length_tolerance = None,
+        shift_tol = None):
     """
     Primarilly for debugging
     """
@@ -895,7 +1008,7 @@ class manager(object):
       Set the unit_cell_crystal_symmetry (original crystal symmetry)
 
       Only used to reset original crystal symmetry of model
-      Requires that there is no shift_cart for this model in
+      Requires that there is no shift_cart for this model
     '''
     assert crystal_symmetry is not None
 
@@ -906,18 +1019,43 @@ class manager(object):
 
     self._unit_cell_crystal_symmetry = crystal_symmetry
 
-  def set_crystal_symmetry(self, crystal_symmetry):
+  def set_crystal_symmetry(self, crystal_symmetry,
+     unit_cell_crystal_symmetry = None):
     '''
-      Set the crystal_symmetry, keeping sites_cart the same
+      Set the crystal_symmetry, keeping sites_cart the same.
 
-      NOTE: Normally instead use
-        shift_model_and_set_crystal_symmetry(shift_cart=shift_cart) and
-      shift_model_back() to shift the coordinates of the model.
+      Optionally set unit_cell_crystal_symmetry as well.
+      Setting unit_cell_crystal_symmetry requires that shift_cart is None.
+
+      Uses:
+       1. You can set crystal_symmetry (the working symmetry) for the
+       model, keeping unit_cell_crystal_symmetry (the original symmetry before
+       any boxing) the same.  This is what is used in boxing a model and map.
+
+       2. You can set both crystal_symmetry and unit_cell_crystal_symmetry.
+       This is what you would use if you are creating a new model.
+
+      NOTE 1: If you set crystal_symmetry but not unit_cell_crystal_symmetry,
+      the current value of unit_cell_crystal_symmetry will remain. Be sure
+      that is what you intend.
+
+      NOTE 2: When a model is written out, the symmetry written is normally
+      the unit_cell_crystal_symmetry, so be sure this is set appropriately.
+
+      NOTE 3: If your goal is to shift the coordinates of a model, normally
+      instead use shift_model_and_set_crystal_symmetry(shift_cart=shift_cart)
+      along with shift_model_back().
+
+      NOTE 4: If this model is part of a map_model_manager, normally
+      use that manager to make changes in symmetry, because otherwise your
+      maps and this model will be out of sync.
 
       Uses set_crystal_symmetry_and_sites_cart because sites_cart have to
       be replaced in either case.
     '''
     self.set_crystal_symmetry_and_sites_cart(crystal_symmetry,None)
+    if unit_cell_crystal_symmetry:
+      self.set_unit_cell_crystal_symmetry(unit_cell_crystal_symmetry)
 
   def set_crystal_symmetry_and_sites_cart(self, crystal_symmetry, sites_cart):
 
@@ -1024,6 +1162,10 @@ class manager(object):
       return None
 
   def shifted(self, eps=1.e-3):
+    ''' Return True if this model has been shifted from its original
+     location (e.g., by boxing a map and this model).
+    '''
+
     r = self.shift_cart()
     if(r is None): return False
     if(flex.max(flex.abs(flex.double(r)))<=eps): return False
@@ -1073,7 +1215,7 @@ class manager(object):
     return self.refinement_flags
 
   def get_number_of_atoms(self):
-    return self.get_hierarchy().atoms().size()
+    return self.get_hierarchy().atoms_size()
 
   def size(self):
     return self.get_number_of_atoms()
@@ -1090,10 +1232,17 @@ class manager(object):
     return self._site_symmetry_table
 
   def altlocs_present(self):
-    conformer_indices = \
-      self.get_hierarchy().get_conformer_indices().conformer_indices
-    if(len(list(set(list(conformer_indices))))>1):
-      result = True
+    return self.get_hierarchy().altlocs_present()
+
+  def altlocs_present_only_hd(self):
+    """ True when model has H/D exchangeable sites and does not have
+    other alternative conformations. False otherwise.
+    """
+    noh_selection = self.selection("not (element H or element D)")
+    hierarchy_no_hd = self.get_hierarchy().select(noh_selection)
+    altlocs = hierarchy_no_hd.altlocs_present()
+    hd = self.get_hierarchy().exchangeable_hd_selections()
+    if not altlocs and len(hd)>0: return True
     return False
 
   def aa_residues_with_bound_sidechains(self):
@@ -1388,7 +1537,7 @@ class manager(object):
     else:
       return self.ias_manager.get_ias_selection()
 
-  def get_bonds_rmsd(self, use_hydrogens=False):
+  def get_bonds_rmsd(self, include_angles=False, use_hydrogens=False):
     assert self.restraints_manager is not None
     if(use_hydrogens):
       rm = self.restraints_manager
@@ -1401,7 +1550,11 @@ class manager(object):
       rm.geometry.energies_sites(
         sites_cart        = sc,
         compute_gradients = False)
-    return energies_sites.bond_deviations()[2]
+    if include_angles:
+      return energies_sites.bond_deviations()[2],\
+             energies_sites.angle_deviations()[2]
+    else:
+      return energies_sites.bond_deviations()[2]
 
   def apply_selection_string(self, selection_string):
     if not selection_string:
@@ -1551,12 +1704,30 @@ class manager(object):
         crystal_symmetry=self.crystal_symmetry())
 
   def _figure_out_cs_to_output(self, do_not_shift_back, output_cs):
+    """Decide what crystal_symmetry to output.
+
+     This is non-trivial and a little confusing because the model may
+     have a unit_cell_crystal_symmetry (the original crystal_symmetry before
+     any boxing), and it may have a crystal_symmetry (the working
+     crystal_symmetry for the model that matches the coordinates.)
+
+     The basic rule is:  write out the unit_cell_crystal_symmetry.
+
+     However, if output_cs False, return None.
+     Also, if do_not_shift_back is True, return self.crystal_symmetry()
+
+     In a special case (unit_cell_crystal_symmetry = None), the model has
+     not had unit_cell_crystal_symmetry set, so write out crystal_symmetry
+     instead. (Note: this used to be chosen by self._shift_cart == None)
+
+    """
+
     if not output_cs:
       return None
     if do_not_shift_back:
       return self._crystal_symmetry
     else:
-      if self._shift_cart is not None:
+      if (self.unit_cell_crystal_symmetry() is not None):
         return self.unit_cell_crystal_symmetry()
       else:
         return self.crystal_symmetry()
@@ -1700,7 +1871,7 @@ class manager(object):
 
   def as_pdb_or_mmcif_string(self,
        target_format = None,
-       segid_as_auth_segid = True,
+       segid_as_auth_segid = False,
        remark_section = None,
        **kw):
     '''
@@ -1710,7 +1881,7 @@ class manager(object):
 
      Method to allow shifting from general writing as pdb to
      writing as mmcif, with the change in two places (here and model.py)
-     Use default of segid_as_auth_segid=True here (different than
+     Use default of segid_as_auth_segid=False here (same as in
        as_mmcif_string())
      :param target_format: desired output format, pdb or mmcif
      :param segid_as_auth_segid: use the segid in hierarchy as the auth_segid
@@ -1732,7 +1903,7 @@ class manager(object):
   def pdb_or_mmcif_string_info(self,
       target_filename = None,
       target_format = None,
-      segid_as_auth_segid = True,
+      segid_as_auth_segid = False,
       write_file = False,
       data_manager = None,
       overwrite = True,
@@ -1746,7 +1917,7 @@ class manager(object):
 
     #  If you need a pdb string, normally use as_pdb_or_mmcif_string
     #   instead of this general function
-    #  Note default of segid_as_auth_segid = True, different from
+    #  Note default of segid_as_auth_segid = False, same as in
     #     as_mmcif_string()
 
     if target_format in ['None',None]:  # set the default format here
@@ -1764,7 +1935,8 @@ class manager(object):
           segid_as_auth_segid = segid_as_auth_segid,**kw)
         is_mmcif = True
     else:
-      pdb_str = self.model_as_mmcif(segid_as_auth_segid = segid_as_auth_segid,**kw)
+      pdb_str = self.model_as_mmcif(
+          segid_as_auth_segid = segid_as_auth_segid,**kw)
       is_mmcif = True
     if target_filename:
       import os
@@ -2023,11 +2195,13 @@ class manager(object):
     #
     if(make_restraints):
       self._setup_restraints_manager(
-       pdb_interpretation_params = pdb_interpretation_params,
-       grm_normalization         = grm_normalization,
-       plain_pairs_radius        = plain_pairs_radius,
-       custom_nb_excl            = custom_nb_excl,
-       run_clash_guard           = run_clash_guard)
+        pdb_interpretation_params = pdb_interpretation_params,
+        grm_normalization         = grm_normalization,
+        plain_pairs_radius        = plain_pairs_radius,
+        custom_nb_excl            = custom_nb_excl,
+        run_clash_guard           = run_clash_guard)
+      if self.crystal_symmetry() is not None:
+        self.rsm = restraints_scale_manager(model = self)
     #
     if self._processed_pdb_file:
       self._clash_guard_msg = self._processed_pdb_file.clash_guard(
@@ -2035,9 +2209,29 @@ class manager(object):
     # This must happen after process call.
     # Reason: contents of model and _model_input can get out of sync any time.
     self._model_input = None
-    self._processed_pdb_file = None
-    # Order of calling this matetrs!
+    self.unset_processed_pdb_file()
+    # Order of calling this matters!
     self.link_records_in_pdb_format = link_record_output(acp)
+
+  def scale_restraints(self, factor, bond_cutoff, angle_cutoff, one_time_scale):
+    if self.rsm is None: return
+    if abs(factor)<1.e-9: return
+    self.rsm.scale_bonds(
+      factor         = factor,
+      cutoff         = bond_cutoff,
+      one_time_scale = one_time_scale)
+    self.rsm.scale_angles(
+      factor         = factor,
+      cutoff         = angle_cutoff,
+      one_time_scale = one_time_scale)
+
+  def unscale_restraints(self):
+    if self.rsm is None: return
+    self.rsm.unscale()
+
+  def rescale_restraints(self):
+    if self.rsm is None: return
+    self.rsm.rescale()
 
   def has_atoms_in_special_positions(self, selection, log=None):
     pdb_hierarchy = self.get_hierarchy()
@@ -2062,8 +2256,13 @@ class manager(object):
     return self._has_hd
 
   def _update_has_hd(self):
-    sctr_keys = self.get_xray_structure().scattering_type_registry().type_count_dict()
-    self._has_hd = "H" in sctr_keys or "D" in sctr_keys
+    if self.get_xray_structure() is not None:
+      sctr_keys = self.get_xray_structure(
+        ).scattering_type_registry().type_count_dict()
+      self._has_hd = "H" in sctr_keys or "D" in sctr_keys
+    else:
+      sel = self.selection(string="element H or element D")
+      self._has_hd = sel.count(True)>0
     if not self._has_hd:
       self.unset_riding_h_manager()
     if self._has_hd:
@@ -2080,7 +2279,7 @@ class manager(object):
   def unset_restraints_manager(self):
     self.restraints_manager = None
     self.model_statistics_info = None
-    self._processed_pdb_file = None
+    self.unset_processed_pdb_file()
 
   def raise_clash_guard(self):
     if self._clash_guard_msg is not None:
@@ -2141,11 +2340,18 @@ class manager(object):
     if hasattr(params, 'amber') and params.amber.use_amber:
       from amber_adaptbx.manager import digester
       geometry = digester(geometry, params, log=self.log)
-    elif quantum_interface.is_quantum_interface_active(params):
-      geometry = quantum_interface.digester(self,
-                                            geometry,
-                                            params,
-                                            log=self.log)
+    elif rc:=quantum_interface.is_quantum_interface_active(params):
+      if rc[1]=='qm_restraints':
+        geometry = quantum_interface.digester(self,
+                                              geometry,
+                                              params,
+                                              log=self.log)
+      elif rc[1]=='qm_gradients':
+        from mmtbx.geometry_restraints import qm_manager
+        geometry = qm_manager.digester( self,
+                                        geometry,
+                                        params,
+                                        log=self.log)
     elif hasattr(params, "schrodinger") and params.schrodinger.use_schrodinger:
       from phenix_schrodinger import schrodinger_manager
       geometry = schrodinger_manager(self._pdb_hierarchy,
@@ -2276,12 +2482,14 @@ class manager(object):
     g = self.get_ncs_groups()
     return g is not None and len(g)>0
 
-  def search_for_ncs(self, params=None, show_groups=False, ncs_phil_groups=None):
+  def search_for_ncs(self, params=None, show_groups=False, ncs_phil_groups=None, log=None):
+    if log == None:
+      log = self.log
     self._ncs_obj = iotbx.ncs.input(
       hierarchy       = self.get_hierarchy(),
       ncs_phil_groups = ncs_phil_groups,
       params          = params,
-      log             = self.log)
+      log             = log)
     if(self._ncs_obj is not None):
       self._ncs_groups = self.get_ncs_obj().get_ncs_restraints_group_list()
     self._update_master_sel()
@@ -2408,6 +2616,82 @@ class manager(object):
     type_energy = self._type_energies[i_seq]
     ion_radii = e.lib_atom[type_energy].ion_radius
     return ion_radii
+
+  def restrain_selection_to_self_or_neighbors(self, selection_string,
+        radius=3.5):
+    """
+    Anchor selected by selection_string atoms to others via H bond or else.
+    """
+    assert type(selection_string) == str
+    selection = self.selection(string = selection_string)
+    grm = self.get_restraints_manager().geometry
+    h_to_restrain = self.get_hierarchy().select(selection)
+    atoms = self.get_hierarchy().atoms()
+    elements = atoms.extract_element()
+    pairs = self.pairs_within(radius=radius, as_dict=True)
+    origin_ids = linking_class()
+    get_class = iotbx.pdb.common_residue_names_get_class
+    #
+    def _find_pair(i_seq, clash_dist=2.0):
+      dist_min = 1.e9
+      best_interaction = None
+      try: interactions = pairs[i_seq]
+      except KeyError: pass
+      for interaction in interactions:
+        j, symmat, d = interaction
+        if symmat.as_xyz() != "x,y,z": continue
+        if selection[j]: continue
+        e = elements[j].strip().upper()
+        if e in ["C","H","D"]: continue
+        if d < dist_min and d > clash_dist:
+          dist_min = d
+          best_interaction = interaction[:]
+      return best_interaction
+    #
+    def _bonded(l2, s1): return any((a in s1) ^ (b in s1) for a, b in l2)
+    #
+    bond_proxies,_=grm.get_all_bond_proxies(sites_cart = self.get_sites_cart())
+    bond_pairs = [[p.i_seqs[0], p.i_seqs[1]] for p in bond_proxies]
+    proxies = []
+    rcp_selection = []
+    for ag in h_to_restrain.atom_groups():
+      class_name = get_class(name = ag.resname)
+      if class_name in ["common_water", "common_element"]:
+        if _bonded(l2=bond_pairs, s1=set(ag.atoms().extract_i_seq())):
+          continue
+        for atom in ag.atoms():
+          if atom.element_is_hydrogen(): continue
+          interaction = _find_pair(atom.i_seq)
+          if interaction is not None:
+            i,j, dist = atom.i_seq, interaction[0], interaction[-1]
+            assert i != j
+            # print(f'restraining {i}, {j}')
+            proxy = geometry_restraints.bond_simple_proxy(
+              i_seqs         = (i,j),
+              distance_ideal = dist,
+              weight         = 1./(0.5**2),
+              origin_id      = origin_ids.get_origin_id('solvent network'))
+            proxies.append(proxy)
+          else:
+            # collecting iseqs for reference coordinate proxies
+            rcp_selection.append(atom.i_seq)
+      elif class_name == "common_small_molecule":
+        pass # not hanled yet, different logic to anchor..
+    grm.add_new_bond_restraints_in_place(proxies, self.get_sites_cart())
+    # add rcp:
+    if len(rcp_selection) > 0:
+      from mmtbx.geometry_restraints import reference
+      # remove duplicates and sort
+      rcp_selection = sorted(list(set(rcp_selection)))
+      # print(f'rcp_selection, {rcp_selection}')
+      grm.append_reference_coordinate_restraints_in_place(
+        reference.add_coordinate_restraints(
+          sites_cart = self.get_sites_cart().select(flex.size_t(rcp_selection)),
+          selection  = rcp_selection,
+          sigma      = 0.5,
+          limit      = 1.0,
+          top_out_potential=False))
+
 
   def get_vdw_radii(self, vdw_radius_default = 1.0):
     """
@@ -2536,6 +2820,7 @@ class manager(object):
       self._xray_structure.set_inelastic_form_factors(
           photon=iff_wavelength,
           table=set_inelastic_form_factors)
+    self._xray_structure.scattering_type_registry_params.table = scattering_table
     return self.xray_scattering_dict, self.neutron_scattering_dict
 
   def get_searched_tls_selections(self, nproc, log):
@@ -2747,7 +3032,7 @@ class manager(object):
       selection[j_seq] = False
     return selection
 
-  def reset_adp_for_hydrogens(self, scale=1.2):
+  def reset_adp_for_hydrogens(self, scale=1.2, keep_aniso=False):
     """
     Set the isotropic B-factor for all hydrogens to those of the associated
     heavy atoms (using the total isotropic equivalent) times a scale factor of
@@ -2762,7 +3047,7 @@ class manager(object):
       for t in self.xh_connectivity_table():
         i_x, i_h = t[0], t[1]
         bfi[i_h] = adptbx.u_as_b(bfi[i_x])*scale
-      self.set_b_iso(values = bfi, selection = hd_sel)
+      self.set_b_iso(values = bfi, selection = hd_sel, keep_aniso=keep_aniso)
 
   def reset_occupancy_for_hydrogens_simple(self):
     """
@@ -3229,7 +3514,10 @@ class manager(object):
     self.idealize_h_minimization(
         correct_special_position_tolerance=correct_special_position_tolerance)
 
-  def pairs_within(self, radius):
+  def pairs_within(self, radius, as_dict=False):
+    """
+    Find pairs of atoms within radius.
+    """
     cs = self.crystal_symmetry()
     asu_mappings = crystal.symmetry.asu_mappings(cs, buffer_thickness = radius)
     special_position_settings = crystal.special_position_settings(
@@ -3242,7 +3530,19 @@ class manager(object):
     pair_asu_table = crystal.pair_asu_table(asu_mappings = asu_mappings)
     pair_asu_table.add_all_pairs(distance_cutoff = radius)
     pst = pair_asu_table.extract_pair_sym_table()
-    return [i.i_seqs() for i in pst.iterator()]
+    pairs = []
+    sites_frac = self.get_sites_frac()
+    uc = self.crystal_symmetry().unit_cell()
+    for p in pst.full_connectivity().iterator():
+      i, j, m = p.i_seq, p.j_seq, p.rt_mx_ji
+      dist = uc.distance(sites_frac[i], m*sites_frac[j])
+      pairs.append([i, j, m, dist])
+    if as_dict:
+      result = defaultdict(list)
+      for first, second, third, fourth in pairs:
+        result[first].append([second, third, fourth])
+      pairs = result
+    return pairs
 
   def reprocess_pdb_hierarchy_inefficient(self):
     # XXX very inefficient
@@ -3309,7 +3609,7 @@ class manager(object):
 
   def rms_b_iso_or_b_equiv(self, exclude_hd=True):
     result = None
-    pairs = self.pairs_within(radius=1.6)
+    pairs = [[i[0],i[1]] for i in self.pairs_within(radius=1.6)]
     atoms = self.get_hierarchy().atoms()
     values = flex.double()
     for pair in pairs:
@@ -3514,14 +3814,6 @@ class manager(object):
     result = self._xray_structure.select(~sel)
     return result
 
-  def non_bonded_overlaps(self):
-    assert self.has_hd()
-    return nbo.info(
-      geometry_restraints_manager = self.get_restraints_manager().geometry,
-      macro_molecule_selection    = self.selection("protein or nucleotide"),
-      sites_cart                  = self.get_sites_cart(),
-      hd_sel                      = self.selection("element H or element D"))
-
   def percent_of_single_atom_residues(self, macro_molecule_only=True):
     # XXX Should be a method of pdb.hierarchy
     sizes = flex.int()
@@ -3534,7 +3826,7 @@ class manager(object):
     if(sizes.size()==0): return 0
     return sizes.count(1)*100./sizes.size()
 
-  def select(self, selection):
+  def select(self, selection, exclude_flags=False):
     # what about 3 types of NCS and self._master_sel?
     # XXX ignores IAS
     if isinstance(selection, flex.size_t) or isinstance(selection, flex.int):
@@ -3542,7 +3834,7 @@ class manager(object):
     new_pdb_hierarchy = self._pdb_hierarchy.select(selection, copy_atoms=True)
     sdi = self.scattering_dict_info
     new_refinement_flags = None
-    if(self.refinement_flags is not None):
+    if(self.refinement_flags is not None and not exclude_flags):
       new_refinement_flags = self.refinement_flags.select_detached(
         selection = selection)
     new_restraints_manager = None
@@ -3580,7 +3872,9 @@ class manager(object):
 
     if new_riding_h_manager is not None:
       new.riding_h_manager = new_riding_h_manager
-    new.get_xray_structure().scattering_type_registry()
+    new_xrs = new.get_xray_structure()
+    if new_xrs is not None:
+      new_xrs.scattering_type_registry()
     new.set_refinement_flags(new_refinement_flags)
     new.scattering_dict_info = sdi
     new._update_has_hd()
@@ -3662,18 +3956,19 @@ class manager(object):
     out.flush()
     time_model_show += timer.elapsed()
 
-  def remove_alternative_conformations(self, always_keep_one_conformer):
+  def remove_alternative_conformations(self, always_keep_one_conformer, altloc_to_keep=None):
     # XXX This is not working correctly when something was deleted.
     # Need to figure out a way to update everything so GRM
     # construction will not fail.
     self.geometry_restraints = None
+    n_old_atoms = self.get_number_of_atoms()
     self._pdb_hierarchy.remove_alt_confs(
-        always_keep_one_conformer=always_keep_one_conformer)
+        always_keep_one_conformer=always_keep_one_conformer,
+        altloc_to_keep=altloc_to_keep)
     self._pdb_hierarchy.sort_atoms_in_place()
     self._pdb_hierarchy.atoms_reset_serial()
     self.update_xrs()
     self._atom_selection_cache = None
-    n_old_atoms = self.get_number_of_atoms()
     n_new_atoms = self.get_number_of_atoms()
     return n_old_atoms - n_new_atoms
 
@@ -3715,162 +4010,6 @@ class manager(object):
     print("|"+"-"*77+"|", file=out)
     out.flush()
     time_model_show += timer.elapsed()
-
-  def add_solvent(self, solvent_xray_structure,
-                        conformer_indices=None,
-                        atom_name    = "O",
-                        residue_name = "HOH",
-                        chain_id     = " ",
-                        refine_occupancies = False,
-                        refine_adp = None):
-    assert refine_adp is not None
-    n_atoms = solvent_xray_structure.scatterers().size()
-    new_atom_name = atom_name.strip()
-    if(len(new_atom_name) < 4): new_atom_name = " " + new_atom_name
-    while(len(new_atom_name) < 4): new_atom_name = new_atom_name+" "
-    atom_names = [ new_atom_name ] * n_atoms
-    residue_names = [ residue_name ] * n_atoms
-    nonbonded_types = flex.std_string([ "OH2" ] * n_atoms)
-    i_seq = find_common_water_resseq_max(pdb_hierarchy=self._pdb_hierarchy)
-    if (i_seq is None or i_seq < 0): i_seq = 0
-    self.append_single_atoms(
-      new_xray_structure=solvent_xray_structure,
-      conformer_indices=conformer_indices,
-      atom_names=atom_names,
-      residue_names=residue_names,
-      nonbonded_types=nonbonded_types,
-      i_seq_start=i_seq,
-      chain_id=chain_id,
-      refine_adp=refine_adp,
-      refine_occupancies=refine_occupancies,
-      reset_labels=True, # Not clear if one forgot to do this or this
-      # was not available at the time. Need investigation. Probably will
-      # help to eliminate special water treatment in adopt_xray_structure()
-      )
-    self._update_has_hd()
-
-  def append_single_atoms(self,
-      new_xray_structure,
-      conformer_indices,
-      atom_names,
-      residue_names,
-      nonbonded_types,
-      refine_adp,
-      refine_occupancies=None,
-      nonbonded_charges=None,
-      segids=None,
-      i_seq_start = 0,
-      chain_id     = " ",
-      reset_labels=False):
-    assert refine_adp in ["isotropic", "anisotropic"]
-    assert new_xray_structure.scatterers().size() == len(atom_names) == \
-        len(residue_names) == len(nonbonded_types)
-    if segids is not None:
-      assert len(atom_names) == len(segids)
-    ms = self._xray_structure.scatterers().size() #
-    number_of_new_atoms = new_xray_structure.scatterers().size()
-    self._xray_structure = \
-      self._xray_structure.concatenate(new_xray_structure)
-    # Occupancy
-    occupancy_flags = None
-    if(refine_occupancies):
-      occupancy_flags = []
-      for i in range(1, new_xray_structure.scatterers().size()+1):
-        occupancy_flags.append([flex.size_t([ms+i-1])])
-    #
-    if(self.refinement_flags is not None and
-       self.refinement_flags.individual_sites):
-      ssites = flex.bool(new_xray_structure.scatterers().size(), True)
-    else: ssites = None
-    # add flags
-    if(self.refinement_flags is not None and
-       self.refinement_flags.torsion_angles):
-      ssites_tors = flex.bool(new_xray_structure.scatterers().size(), True)
-    else: ssites_tors = None
-    #
-    sadp_iso, sadp_aniso = None, None
-    if(refine_adp=="isotropic"):
-      nxrs_ui = new_xray_structure.use_u_iso()
-      if((self.refinement_flags is not None and
-          self.refinement_flags.adp_individual_iso) or nxrs_ui.count(True)>0):
-        sadp_iso = nxrs_ui
-        sadp_aniso = flex.bool(sadp_iso.size(), False)
-      else: sadp_iso = None
-    if(refine_adp=="anisotropic"):
-      nxrs_ua = new_xray_structure.use_u_aniso()
-      if((self.refinement_flags is not None and
-          self.refinement_flags.adp_individual_aniso) or nxrs_ua.count(True)>0):
-        sadp_aniso = nxrs_ua
-        sadp_iso = flex.bool(sadp_aniso.size(), False)
-      else: sadp_aniso = None
-    if(self.refinement_flags is not None):
-      self.refinement_flags.inflate(
-        sites_individual       = ssites,
-        sites_torsion_angles   = ssites_tors,
-        adp_individual_iso     = sadp_iso,
-        adp_individual_aniso   = sadp_aniso,
-        s_occupancies          = occupancy_flags,
-        size_all               = ms)#torsion_angles
-    #
-    self._append_pdb_atoms(
-      new_xray_structure=new_xray_structure,
-      conformer_indices=conformer_indices,
-      atom_names=atom_names,
-      residue_names=residue_names,
-      chain_id=chain_id,
-      segids=segids,
-      i_seq_start=i_seq_start,
-      reset_labels=reset_labels)
-    if(self.restraints_manager is not None):
-      geometry = self.restraints_manager.geometry
-      if (geometry.model_indices is None):
-        model_indices = None
-      else:
-        model_indices = flex.size_t(number_of_new_atoms, 0)
-      if(geometry.conformer_indices is None):
-        conformer_indices = None
-      else:
-        if conformer_indices is not None:
-          assert conformer_indices.conformer_indices.size() == number_of_new_atoms
-          conformer_indices = conformer_indices.conformer_indices
-        else:
-          conformer_indices = flex.size_t(number_of_new_atoms, 0)
-      if (geometry.sym_excl_indices is None):
-        sym_excl_indices = None
-      else:
-        sym_excl_indices = flex.size_t(number_of_new_atoms, 0)
-      if (geometry.donor_acceptor_excl_groups is None):
-        donor_acceptor_excl_groups = None
-      else:
-        donor_acceptor_excl_groups = flex.size_t(number_of_new_atoms, 0)
-      if (nonbonded_charges is None):
-        nonbonded_charges = flex.int(number_of_new_atoms, 0)
-      geometry = geometry.new_including_isolated_sites(
-        n_additional_sites =number_of_new_atoms,
-        model_indices=model_indices,
-        conformer_indices=conformer_indices,
-        sym_excl_indices=sym_excl_indices,
-        donor_acceptor_excl_groups=donor_acceptor_excl_groups,
-        site_symmetry_table=new_xray_structure.site_symmetry_table(),
-        nonbonded_types=nonbonded_types,
-        nonbonded_charges=nonbonded_charges)
-      self.restraints_manager = mmtbx.restraints.manager(
-        geometry      = geometry,
-        cartesian_ncs_manager    = self.restraints_manager.cartesian_ncs_manager,
-        normalization = self.restraints_manager.normalization)
-      c_ncs_m = self.get_cartesian_NCS_manager()
-      if (c_ncs_m is not None):
-        c_ncs_m.register_additional_isolated_sites(
-          number=number_of_new_atoms)
-      self.restraints_manager.geometry.update_plain_pair_sym_table(
-        sites_frac = self._xray_structure.sites_frac())
-    assert self.size() == self._xray_structure.scatterers().size()
-    if self.riding_h_manager is not None:
-      new_riding_h_manager = self.riding_h_manager.update(
-        pdb_hierarchy       = self._pdb_hierarchy,
-        geometry_restraints = geometry,
-        n_new_atoms         = number_of_new_atoms)
-      self.riding_h_manager = new_riding_h_manager
 
   def _append_pdb_atoms(self,
       new_xray_structure,
@@ -3929,11 +4068,34 @@ class manager(object):
     self.get_hierarchy().atoms().reset_i_seq()
     if (reset_labels):
       self._sync_xrs_labels()
-    self._processed_pdb_file = None
+    self.unset_processed_pdb_file()
 
   def _sync_xrs_labels(self):
     for sc, atom in zip(self.get_xray_structure().scatterers(), self.get_hierarchy().atoms()):
       sc.label = atom.id_str()
+
+  def add_solvent(
+      self,
+      solvent_xray_structure = None,
+      sites_frac             = None,
+      refine_occupancies     = None,
+      atom_name              = "O",
+      residue_name           = "HOH",
+      chain_id               = "S",
+      refine_adp             = "isotropic"):
+    assert [solvent_xray_structure, sites_frac].count(None) == 1
+    if sites_frac is None:
+      sites_frac = solvent_xray_structure.sites_frac()
+    import mmtbx.solvent.ordered_solvent as osm
+    params = osm.master_params().extract()
+    params.output_chain_id     = chain_id
+    params.output_residue_name = residue_name
+    params.output_atom_name    = atom_name
+    params.refine_occupancies  = refine_occupancies
+    osm.add_solvent_to_model_inplace(
+      sites = sites_frac,
+      model = self,
+      params = params)
 
   def convert_atom(self,
       i_seq,
@@ -4094,7 +4256,7 @@ class manager(object):
       if(self.riding_h_manager is not None or
          scattering_table in ["n_gaussian","wk1995", "it1992", "electron"]):
         not_hd_sel = ~hd_selection
-        m = m.select(not_hd_sel)
+        m = m.select(not_hd_sel, exclude_flags=True)
     return mmtbx.model.statistics.geometry(
       model           = m,
       fast_clash      = fast_clash,

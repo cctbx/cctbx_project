@@ -51,6 +51,8 @@ namespace {
             &w_t::random_double, (arg("size"), arg("factor")))
         .def("random_bool", &w_t::random_bool, (
           arg("size"), arg("threshold")))
+        .def("random_selection", &w_t::random_selection, (
+          arg("population_size"), arg("sample_size")))
         .def("random_permutation", &w_t::random_permutation, (arg("size")))
         .def("random_double_point_on_sphere",
           &w_t::random_double_point_on_sphere)

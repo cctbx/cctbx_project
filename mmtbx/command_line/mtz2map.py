@@ -1,3 +1,4 @@
+"""See phenix.maps"""
 # LIBTBX_SET_DISPATCHER_NAME phenix.mtz2map
 # LIBTBX_SET_DISPATCHER_NAME phenix.fft
 # LIBTBX_SET_DISPATCHER_NAME mmtbx.fft
@@ -378,3 +379,4 @@ def validate_params(params):
 
 if __name__ == "__main__" :
   run(sys.argv[1:])
+

@@ -1,3 +1,4 @@
+"""Create CNS test set from a reflection file"""
 from __future__ import absolute_import, division, print_function
 from iotbx import reflection_file_reader
 import iotbx.cns.miller_array

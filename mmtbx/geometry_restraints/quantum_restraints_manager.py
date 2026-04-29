@@ -185,7 +185,7 @@ def select_and_reindex(model,
       atoms[ra[i_seq]].tmp=i_seq
     if verbose:
       for atom in mod.get_atoms():
-        print(atom.quote(), atom.i_seq, atom.tmp)
+        print('...',atom.quote(), atom.i_seq, atom.tmp)
     return mod
   assert (selection_array, selection_str).count(None)==1
   if selection_str:
@@ -394,8 +394,17 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False, log=N
   if debug: print('buffer_selection_string',buffer_selection_string)
   buffer_model = select_and_reindex(model, buffer_selection_string)
   if write_steps: write_pdb_file(buffer_model, 'pre_remove_altloc.pdb', None)
-  if 0: retain_only_one_alternative_conformation(buffer_model, 'B')
-  buffer_model.remove_alternative_conformations(always_keep_one_conformer=True)
+  altloc=None
+  if qmr.selection.find('altloc')>-1:
+    tmp = qmr.selection.split()
+    i = tmp.index('altloc')
+    altloc=tmp[i+1]
+    altloc=altloc.replace(')','')
+    altloc=altloc.replace('"','')
+    altloc=altloc.replace("'",'')
+  if 0: retain_only_one_alternative_conformation(buffer_model, altloc)
+  buffer_model.remove_alternative_conformations(always_keep_one_conformer=True,
+                                                altloc_to_keep=altloc)
   if write_steps: write_pdb_file(buffer_model, 'post_remove_altloc.pdb', None)
   validate_ligand_buffer_models(ligand_model, buffer_model, qmr, log=log)
   if write_steps: write_pdb_file(buffer_model, 'pre_super_cell.pdb', None)
@@ -514,6 +523,8 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
     solvent_model = default_solvent_model
   elif program_goal in ['opt', 'bound']:
     electron_model = buffer_model
+  elif program_goal in ['gradients']:
+    electron_model = buffer_model
   elif program_goal in ['pocket']:
     tmps=[]
     for atom in ligand_model.get_atoms(): tmps.append(atom.tmp)
@@ -525,21 +536,47 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
   else:
     assert 0, 'program_goal %s not in list' % program_goal
   specific_atom_charges = qmr.specific_atom_charges
+  specific_atom_multiplicities = qmr.specific_atom_multiplicities
   total_charge = quantum_interface.electrons(
     electron_model,
     specific_atom_charges=specific_atom_charges,
+    specific_atom_multiplicities=specific_atom_multiplicities,
     log=log)
-  if total_charge!=qmr.package.charge:
+  if qmr.package.charge is Auto: #total_charge!=qmr.package.charge:
+
     print(u'  Update charge for "%s" cluster : %s ~> %s' % (qmr.selection,
                                                             qmr.package.charge,
                                                             total_charge),
           file=log)
-    qmr.package.charge=total_charge
+    # qmr.package.charge=total_charge
+  else:
+    print(u'  Setting charge for "%s" cluster : %s (not calculated %s)' % (
+                                                             qmr.selection,
+                                                             qmr.package.charge,
+                                                             total_charge),
+          file=log)
+    total_charge=qmr.package.charge
+  #######
+  # MULTI
+  #######
+  total_multiplicity = quantum_interface.get_total_multiplicity(qmr)
+  if qmr.package.multiplicity is Auto: #total_multiplicity!=qmr.package.multiplicity:
+    print(u'  Update multiplicity for "%s" cluster : %s ~> %s' % (qmr.selection,
+                                                                  qmr.package.multiplicity,
+                                                                  total_multiplicity),
+          file=log)
+    qmr.package.multiplicity=total_multiplicity
+  else:
+    print(u'  Setting multiplicity for "%s" cluster : %s (not calculated %s)' % (
+                                                                  qmr.selection,
+                                                                  qmr.package.multiplicity,
+                                                                  total_multiplicity),
+          file=log)
   qmm = qmm(electron_model.get_atoms(),
             qmr.package.method,
             qmr.package.basis_set,
             solvent_model,
-            qmr.package.charge,
+            total_charge, #qmr.package.charge,
             qmr.package.multiplicity,
             qmr.package.nproc,
             # preamble='%02d' % (i+1),
@@ -906,6 +943,9 @@ def update_dihedral_restraints_simple(model):
 
 def get_program_goal(qmr, macro_cycle=None, energy_only=False):
   program_goal=[]
+  if qmr.calculate.count('gradients'):
+    program_goal.append('gradients')
+    return program_goal
   if not energy_only:
     program_goal=['opt']
     return program_goal
@@ -935,10 +975,29 @@ def get_program_goal(qmr, macro_cycle=None, energy_only=False):
       program_goal.append('pocket')
   return program_goal
 
+def generate_uniform_qm_scopes(qmrs):
+  for i, qmr in enumerate(qmrs):
+    for attr in ['freeze_specific_atoms',
+                 'protein_optimisation_freeze',
+                 'write_files',
+                 ]:
+      if not hasattr(qmr, attr):
+        qmr.__inject__(attr, [])
+    for attr in ['calculate']: #???
+      if not hasattr(qmr, attr):
+        qmr.__inject__(attr, ['gradients'])
+    for attr in ['include_nearest_neighbours_in_optimisation',
+                 'buffer_selection',
+      ]:
+      if not hasattr(qmr, attr):
+        qmr.__inject__(attr, False)
+    yield qmr
+
 def setup_qm_jobs(model,
                   params,
                   macro_cycle,
                   energy_only=False,
+                  gradients_only=False,
                   pre_refinement=True,
                   log=StringIO()):
   prefix = get_prefix(params)
@@ -952,12 +1011,15 @@ def setup_qm_jobs(model,
   #     os.mkdir(working_directory)
   #   print('  Changing to %s' % working_directory, file=log)
   #   os.chdir(working_directory)
-  for i, qmr in enumerate(params.qi.qm_restraints):
+  qmrs=params.qi.qm_restraints
+  if hasattr(params.qi, 'qm_gradients'): qmrs+=params.qi.qm_gradients
+  for i, qmr in enumerate(generate_uniform_qm_scopes(qmrs)):
     if len(qmr.freeze_specific_atoms)>2:
       raise Sorry('Only Auto supported so multiple freezes not necessary.')
     elif len(qmr.freeze_specific_atoms)==1:
       if qmr.freeze_specific_atoms[0].atom_selection!=Auto:
         raise Sorry('Freezing ligand atoms only supports "Auto" for centre of mass.')
+    print('\n%s QM selection %d "%s" %s' % ('-'*10, i+1, qmr.selection, '-'*10), file=log)
     number_of_macro_cycles = 1
     if hasattr(params, 'main'):
       number_of_macro_cycles = params.main.number_of_macro_cycles
@@ -981,6 +1043,7 @@ def setup_qm_jobs(model,
     #
     program_goals = get_program_goal(qmr, macro_cycle, energy_only=energy_only)
     for program_goal in program_goals:
+      print(f'  QM program "{program_goal}"', file=log)
       qmm = get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=log)
       preamble = quantum_interface.get_preamble(macro_cycle, i, qmr)
       if not energy_only: # only write PDB files for restraints update
@@ -1021,8 +1084,10 @@ def run_jobs(objects, macro_cycle, nproc=1, log=StringIO()):
     xyzs = []
     xyzs_buffer = []
     energies = {}
+    gradientss = {}
     for i, (ligand_model, buffer_model, qmm, qmr) in enumerate(objects):
       xyz, xyz_buffer = results[i]
+      # print(results)
       units=''
       if qmm.program_goal in ['opt']:
         energy, units = qmm.read_energy()
@@ -1044,6 +1109,17 @@ def run_jobs(objects, macro_cycle, nproc=1, log=StringIO()):
           # qmm.preamble=qmm.preamble.replace(qmm.program_goal, 'pocket_energy')
         charge = qmm.read_charge()
         # except: charge=-99
+      elif qmm.program_goal in ['gradients']:
+        energy=xyz
+        gradients=xyz_buffer
+        xyz=None
+        # xyz_buffer=None
+        qmm.preamble += '_%s' % qmm.program_goal
+        charge = qmm.read_charge()
+        # print('11111')
+        # print(energy)
+        # # print(list(gradients))
+        # print(len(gradients))
       else:
         assert 0, 'program_goal %s not in list' % qmm.program_goal
       energies.setdefault(qmr.selection,[])
@@ -1116,6 +1192,51 @@ def run_energies(model,
                     units=units,
                     )
 
+def run_gradients(model, params, macro_cycle=None, run_program=True, pre_refinement=True, nproc=1, log=StringIO()):
+  t0 = time.time()
+  gradients_only=True
+  if not model.restraints_manager_available():
+    model.log=null_out()
+    model.process(make_restraints=True)
+  # if macro_cycle in [None, 0]: run_program=False
+  # qi_array = quantum_interface.get_qi_macro_cycle_array(params)
+  if quantum_interface.is_quantum_interface_active_this_macro_cycle(params,
+                                                                    macro_cycle,
+                                                                    gradients_only=gradients_only,
+                                                                    # pre_refinement=pre_refinement,
+                                                                    ) and run_program:
+    print('  QM energy gradients', file=log)
+  #
+  # setup QM jobs
+  #
+  objects = setup_qm_jobs(model,
+                          params,
+                          macro_cycle,
+                          gradients_only=gradients_only,
+                          pre_refinement=pre_refinement,
+                          log=log)
+  if not run_program: return
+  # assert macro_cycle is not None
+  #
+  # run jobs
+  #
+  working_dir = quantum_interface.get_working_directory(model, params)
+  if not os.path.exists(working_dir):
+    try: os.mkdir(working_dir)
+    except Exception as e: pass
+  os.chdir(working_dir)
+  xyzs, gradients, energies, units = run_jobs(objects,
+                                                macro_cycle=macro_cycle,
+                                                nproc=nproc,
+                                                log=log)
+  os.chdir('..')
+  print('  Total time for QM gradients: %0.1fs' % (time.time()-t0), file=log)
+  print('%s%s' % ('<'*40, '>'*40), file=log)
+  return group_args(energies=energies,
+                    gradients=gradients,
+                    objects=objects,
+                    )
+
 def update_restraints(model,
                       params,
                       macro_cycle=None,
@@ -1145,6 +1266,7 @@ def update_restraints(model,
     try:
       model.process(make_restraints=True)
     except Sorry as e:
+      print(model.log.getvalue())
       raise e
   if quantum_interface.is_quantum_interface_active_this_macro_cycle(params,
                                                                     macro_cycle,

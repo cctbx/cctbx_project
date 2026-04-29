@@ -158,7 +158,7 @@ class InspectorHeader(wx.PyControl, MouseClickButtonMixin):
     self.on_click()
 
 
-class Inspector(wx.PyPanel):
+class Inspector(wx.Panel):
 
   def __init__(self, parent, id=wx.ID_ANY, label="", colour=wx.BLACK,
                pos=wx.DefaultPosition, size=wx.DefaultSize, style=0):

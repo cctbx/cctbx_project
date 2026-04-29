@@ -1,3 +1,4 @@
+"""Compare model with x-ray data"""
 from __future__ import absolute_import, division, print_function
 import sys, random
 from cctbx.array_family import flex

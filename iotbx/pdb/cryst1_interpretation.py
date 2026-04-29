@@ -1,3 +1,4 @@
+"""Interpretation of CRYST1 records from PDB"""
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from cctbx import crystal
@@ -113,11 +114,7 @@ class categorize(object):
       return sgtbx.space_group_info(special[self.symbol])
     raise RuntimeError("Programming error (should be unreachable).")
 
-def crystal_symmetry(cryst1_record):
-  if (isinstance(cryst1_record, str)):
-    cryst1_record = iotbx.pdb.records.cryst1(pdb_str=cryst1_record)
-  u = cryst1_record.ucparams
-  s = cryst1_record.sgroup
+def dummy_unit_cell(abc, abg, sg_symbol):
   def are_dummy_lengths(abc):
     for v in abc:
       if (v not in [0, 1]): return False
@@ -126,11 +123,19 @@ def crystal_symmetry(cryst1_record):
     for v in abg:
       if (v not in [0, 90]): return False
     return True
+  dummy_sg = sg_symbol is None or sg_symbol.replace(" ","") == "P1"
+  return (    are_dummy_lengths(abc)
+          and are_dummy_angles(abg)
+          and dummy_sg)
+
+def crystal_symmetry(cryst1_record):
+  if (isinstance(cryst1_record, str)):
+    cryst1_record = iotbx.pdb.records.cryst1(pdb_str=cryst1_record)
+  u = cryst1_record.ucparams
+  s = cryst1_record.sgroup
   if (    u is not None
       and len(u) == 6
-      and (s is None or s.replace(" ","") == "P1")
-      and are_dummy_lengths(u[:3])
-      and are_dummy_angles(u[3:])):
+      and dummy_unit_cell(u[:3], u[3:], s)):
     return crystal.symmetry(
       unit_cell=None,
       space_group_info=None)

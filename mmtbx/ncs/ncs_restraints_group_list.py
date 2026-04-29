@@ -5,11 +5,11 @@ from scitbx.array_family import flex
 from scitbx import matrix
 import mmtbx.ncs.ncs_utils as nu
 import scitbx.rigid_body
-from libtbx.utils import Sorry
+from libtbx.utils import null_out, Sorry
 from libtbx.test_utils import approx_equal
 import iotbx.cif.model
 from six.moves import zip
-
+import sys
 
 class NCS_copy():
   def __init__(self,copy_iselection, rot, tran, str_selection=None, rmsd=999):
@@ -28,7 +28,7 @@ class NCS_copy():
     self.rmsd = rmsd
 
   def __eq__(self, other):
-    return approx_equal(self.r, other.r) and approx_equal(self.t, other.t)
+    return approx_equal(self.r, other.r, out=null_out()) and approx_equal(self.t, other.t, out=null_out())
 
   def deep_copy(self):
     res = NCS_copy(
@@ -258,7 +258,7 @@ class class_ncs_restraints_group_list(list):
       if iseqs[0] in gr.set_master_iselection:
         # check the rest are in:
         for iseq in iseqs[1:]:
-          assert iseq in gr.set_master_iselection
+          assert iseq in gr.set_master_iselection, "%d, %s" % (iseq, gr.set_master_iselection)
         # now iterate over input iseqs and populate the result
         for i in range(gr.get_number_of_copies()):
           result.append([])
@@ -268,8 +268,7 @@ class class_ncs_restraints_group_list(list):
           for i, c in enumerate(gr.copies):
             result[i].append(c.iselection[iseq_idex])
         return result
-
-
+    return result
 
   def get_n_groups(self):
     return len(self)
@@ -340,12 +339,14 @@ class class_ncs_restraints_group_list(list):
     """
     def whole_chain_in_ncs(whole_h, master_iselection):
       m_c_id = whole_h.atoms()[master_iselection[0]].parent().parent().parent().id
+      atoms_in_chain = 0
       for chain in ncs_obj.truncated_hierarchy.only_model().chains():
         if chain.id == m_c_id:
-          if chain.atoms_size() <= master_iselection.size():
-            return True
-          else:
-            return False
+          atoms_in_chain += chain.atoms_size()
+      if atoms_in_chain <= master_iselection.size():
+        return True
+      else:
+        return False
     n_gr_to_remove = []
     for i, ncs_gr in enumerate(self):
       if not whole_chain_in_ncs(whole_h, ncs_gr.master_iselection):
@@ -458,27 +459,27 @@ class class_ncs_restraints_group_list(list):
       new_list = ncs_restraints_group_list
     return new_list
 
-  def _show(self, hierarchy=None, brief=True):
+  def _show(self, hierarchy=None, brief=True, out=sys.stdout):
     """
     For debugging
     """
-    print("debugging output of ncs_restraints_group_list")
+    #print("debugging output of ncs_restraints_group_list")
     for group in self:
-      print("Master str selection:", group.master_str_selection)
+      print("Master str selection:", group.master_str_selection, file=out)
       if not brief:
-        print(list(group.master_iselection))
+        print(list(group.master_iselection), file=out)
       if hierarchy is not None:
-        print(hierarchy.select(group.master_iselection).as_pdb_string())
+        print(hierarchy.select(group.master_iselection).as_pdb_string(), file=out) # PDB OK - debugging output
       for c in group.copies:
-        print("Copy str selection:", c.str_selection)
+        print("Copy str selection:", c.str_selection, file=out)
         if not brief:
-          print(list(c.iselection))
+          print(list(c.iselection), file=out)
         # print "rot", list(c.r)
         # print "tran", list(c.t)
         if hierarchy is not None:
-          print(hierarchy.select(c.iselection).as_pdb_string())
-      print("="*30)
-    print("end debugging output of ncs_restraints_group_list")
+          print(hierarchy.select(c.iselection).as_pdb_string(), file=out) # PDB OK - debugging output
+      print("="*30, file=out)
+    #print("end debugging output of ncs_restraints_group_list")
 
 
   def get_ncs_groups_centers(self, sites_cart):

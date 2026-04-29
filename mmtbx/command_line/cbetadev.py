@@ -1,3 +1,4 @@
+"""Validate protein sidechain C-beta geometry"""
 from __future__ import division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.cbetadev
 # LIBTBX_SET_DISPATCHER_NAME molprobity.cbetadev
@@ -46,4 +47,3 @@ def old_run(args):
 if __name__ == '__main__':
   #run(sys.argv[1:])
   run_program(program_class=cbetadev.Program, hide_parsing_output=True)
-

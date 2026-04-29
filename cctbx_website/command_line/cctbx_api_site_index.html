@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
+<meta name="generator" content="pdoc3 0.11.0">
+<title>CCTBX Python API documentation</title>
+<meta name="description" content="">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/sanitize.min.css" integrity="sha512-y1dtMcuvtTMJc1yPgEqF0ZjQbhnc/bFhyvIyVNb9Zk5mIGtqVaAB1Ttl28su8AvFMOY0EwRbAe+HCLqj6W7/KA==" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/typography.min.css" integrity="sha512-Y1DYSb995BAfxobCkKepB1BqJJTPrOp3zPL74AWFugHHmmdcvO+C48WLrUOlhGMc0QG7AE3f7gmvvcrmX2fDoA==" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:1.5em;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:2em 0 .50em 0}h3{font-size:1.4em;margin:1.6em 0 .7em 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .2s ease-in-out}a:visited{color:#503}a:hover{color:#b62}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900;font-weight:bold}pre code{font-size:.8em;line-height:1.4em;padding:1em;display:block}code{background:#f3f3f3;font-family:"DejaVu Sans Mono",monospace;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em 1em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul ul{padding-left:1em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" integrity="sha512-D9gUyxqja7hBtkWpPWGt9wfbfaMGVt9gnyCvYa+jojwwPHLCzUm5i8rpk7vD7wNee9bA35eYIjobYPaQuKS1MQ==" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => {
+hljs.configure({languages: ['bash', 'css', 'diff', 'graphql', 'ini', 'javascript', 'json', 'plaintext', 'python', 'python-repl', 'rust', 'shell', 'sql', 'typescript', 'xml', 'yaml']});
+hljs.highlightAll();
+})</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">CCTBX Python API</h1>
+</header>
+<section id="section-intro">
+<h2 class = "desc"> Tools for analysis and manipulation of crystallographic
+and cryo-EM data</h2>
+</section>
+
+<section>
+<h2 class="section-title" id="header-submodules">Core cctbx Toolboxes</h2>
+<dl>
+
+<dt><code class="name"><a title="iotbx" href="iotbx/index.html">iotbx</a></code></dt>
+<dd>
+<div class="desc">
+<p>High-level data_manager for input and output, map_manager for map manipulation and map_model_manager for working with maps and models together, along with libraries for reading and writing common file formats, including PDB, CIF, many reflection formats, electron density maps, and sequences.</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="cctbx" href="cctbx/index.html">cctbx</a></code></dt>
+<dd>
+<div class="desc">
+<p>Libraries for general crystallographic and cryo-EM applications, useful for both small-molecule and macro-molecular crystallography and cryo-EM. The libraries in the cctbx module include algorithms and data structures for the handling of crystal symmetry, basic geometry restraints, reflection data, atomic displacement parameters, X-ray scattering, and high-level building blocks for refinement algorithms. Note the distinction between the CCTBX project and the cctbx module.</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="scitbx" href="scitbx/index.html">scitbx</a></code></dt>
+<dd>
+<div class="desc">
+<p>Libraries for general scientific computing (i.e. libraries that are not specific to crystallographic applications). This includes a family of high-level C++ array types, a fast Fourier transform library, and a C++ port of the popular L-BFGS quasi-Newton minimizer, and many mathematical utilities, all including Python bindings. These libraries are separated from the crystallographic code base to make them easily accessible for non-crystallographic application developers.</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="mmtbx" href="mmtbx/index.html">mmtbx</a></code></dt>
+<dd>
+<div class="desc">
+<p>High-level classes for manipulation of macromolecular models and functionality specific to macromolecular crystallography and cryo-EM. This includes all of the machinery required for setup of geometry restraints, bulk solvent correction and scaling, analysis of macromolecular diffraction data, calculation of weighted map coefficients, and most of the methods implemented in phenix.refine. The majority of infrastructure for the MolProbity validation server (and Phenix equivalent) is also located here.</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="libtbx" href="libtbx/index.html">libtbx</a></code></dt>
+<dd>
+<div class="desc">
+<p>The build system common to all other modules. This includes a very thin wrapper around the SCons software construction tool. It also contains many useful frameworks and utilities to simplify application development, including tools for regression testing, parallelization across multiprocessor systems and managed clusters, and a flexible, modular configuration syntax called PHIL (Python Hierarchial Interface Language) used throughout the CCTBX.</p>
+</div>
+</dd>
+
+
+</dl>
+</section>
+
+<section>
+<h2 class="section-title" id="header-submodules">Specialized cctbx Toolboxes</h2>
+<dl>
+
+<dt><code class="name"><a title="boost" href="boost/index.html">boost</a></code></dt>
+<dd>
+<div class="desc">
+<p>Boost Python methods.</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="boost_adaptbx" href="boost_adaptbx/index.html">boost_adaptbx</a></code></dt>
+<dd>
+<div class="desc">
+<p>A very small adaptor toolbox with platform-independent instructions for building the Boost.Python library.
+</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="cbflib_adaptbx" href="cbflib_adaptbx/index.html">cbflib_adaptbx</a></code></dt>
+<dd>
+<div class="desc">
+<p>CBFLIB Adaptor methods.</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="cma_es" href="cma_es/index.html">cma_es</a></code></dt>
+<dd>
+<div class="desc">
+<p>CMA_ES methods.</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="cootbx" href="cootbx/index.html">cootbx</a></code></dt>
+<dd>
+<div class="desc">
+<p>Tools for communication with Coot</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="crys3d" href="crys3d/index.html">crys3d</a></code></dt>
+<dd>
+<div class="desc">
+<p>Phenix diffraction viewer tools</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="cudatbx" href="cudatbx/index.html">cudatbx</a></code></dt>
+<dd>
+<div class="desc">
+<p>Tools for using cuda</p>
+</div>
+
+<dt><code class="name"><a title="dxtbx" href="dxtbx/index.html">dxtbx</a></code></dt>
+<dd>
+<div class="desc">
+<p>The Diffraction Image Toolbox, a library for handling X-ray detector data of arbitrary complexity from a variety of standard formats. (Also used by routines in iotbx.)</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="fable" href="fable/index.html">fable</a></code></dt>
+<dd>
+<div class="desc">
+<p>Tools for automatic conversion of FORTRAN to C++ code</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="fast_linalg" href="fast_linalg/index.html">fast_linalg</a></code></dt>
+<dd>
+<div class="desc">
+<p>Fast linear algebra routines</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="fftw3tbx" href="fftw3tbx/index.html">fftw3tbx</a></code></dt>
+<dd>
+<div class="desc">
+<p>FFTW3 routines</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="gltbx" href="gltbx/index.html">gltbx</a></code></dt>
+<dd>
+<div class="desc">
+<p>Python bindings for OpenGL and GLU_, and gl() and glu functions. The
+original C interfaces are preserved as much as possible.
+</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="omptbx" href="omptbx/index.html">omptbx</a></code></dt>
+<dd>
+<div class="desc">
+<p>Open MP routines</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="qttbx" href="qttbx/index.html">qttbx</a></code></dt>
+<dd>
+<div class="desc">
+<p>Tools for communication with various graphical display programs</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="rstbx" href="rstbx/index.html">rstbx</a></code></dt>
+<dd>
+<div class="desc">
+<p>RSTBX: A reciprocal space toolbox to autoindex small molecule Bragg
+       diffraction, given the reciprocal space vectors.</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="serialtbx" href="serialtbx/index.html">serialtbx</a></code></dt>
+<dd>
+<div class="desc">
+<p>Tools for serial crystallography</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="smtbx" href="smtbx/index.html">smtbx</a></code></dt>
+<dd>
+<div class="desc">
+<p>Functionality specific to small-molecule crystallography, including a complete refinement program (smtbx.refine).
+</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="spotfinder" href="spotfinder/index.html">spotfinder</a></code></dt>
+<dd>
+<div class="desc">
+<p>Bragg spot finder using machine learning</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="wxtbx" href="wxtbx/index.html">wxtbx</a></code></dt>
+<dd>
+<div class="desc">
+<p>Tools for the wx package</p>
+</div>
+</dd>
+
+<dt><code class="name"><a title="xfel" href="xfel/index.html">xfel</a></code></dt>
+<dd>
+<div class="desc">
+<p>Software for processing serial data collected using an X-ray free electron laser. Includes spotfinding, integration, data clustering/filering and merging tools.</p>
+</div>
+</dd>
+
+</dl>
+</section>
+
+
+</article>
+<nav id="sidebar">
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3><a href="#header-submodules">Sub-modules</a></h3>
+<ul>
+<li><code><a title="boost" href="boost/index.html">boost</a></code></li>
+<li><code><a title="boost_adaptbx" href="boost_adaptbx/index.html">boost_adaptbx</a></code></li>
+<li><code><a title="cbflib_adaptbx" href="cbflib_adaptbx/index.html">cbflib_adaptbx</a></code></li>
+<li><code><a title="cctbx" href="cctbx/index.html">cctbx</a></code></li>
+<li><code><a title="cma_es" href="cma_es/index.html">cma_es</a></code></li>
+<li><code><a title="cootbx" href="cootbx/index.html">cootbx</a></code></li>
+<li><code><a title="crys3d" href="crys3d/index.html">crys3d</a></code></li>
+<li><code><a title="cudatbx" href="cudatbx/index.html">cudatbx</a></code></li>
+<li><code><a title="fable" href="fable/index.html">fable</a></code></li>
+<li><code><a title="fast_linalg" href="fast_linalg/index.html">fast_linalg</a></code></li>
+<li><code><a title="fftw3tbx" href="fftw3tbx/index.html">fftw3tbx</a></code></li>
+<li><code><a title="gltbx" href="gltbx/index.html">gltbx</a></code></li>
+<li><code><a title="iotbx" href="iotbx/index.html">iotbx</a></code></li>
+<li><code><a title="libtbx" href="libtbx/index.html">libtbx</a></code></li>
+<li><code><a title="mmtbx" href="mmtbx/index.html">mmtbx</a></code></li>
+<li><code><a title="omptbx" href="omptbx/index.html">omptbx</a></code></li>
+<li><code><a title="qttbx" href="qttbx/index.html">qttbx</a></code></li>
+<li><code><a title="rstbx" href="rstbx/index.html">rstbx</a></code></li>
+<li><code><a title="scitbx" href="scitbx/index.html">scitbx</a></code></li>
+<li><code><a title="serialtbx" href="serialtbx/index.html">serialtbx</a></code></li>
+<li><code><a title="smtbx" href="smtbx/index.html">smtbx</a></code></li>
+<li><code><a title="spotfinder" href="spotfinder/index.html">spotfinder</a></code></li>
+<li><code><a title="wxtbx" href="wxtbx/index.html">wxtbx</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.0</a>.</p>
+</footer>
+</body>
+</html>

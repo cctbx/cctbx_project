@@ -70,7 +70,7 @@ class rotarama_frame(wxtbx.plots.plot_frame):
     self.OnUpdatePlot(None)
 
   def OnDestroy(self, event):
-    if hasattr(self.GetParent(), self.frame_name):
+    if self and hasattr(self.GetParent(), self.frame_name):
       setattr(self.GetParent(), self.frame_name, None)
 
   def OnUpdatePlot(self, event):

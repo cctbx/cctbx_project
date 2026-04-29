@@ -43,6 +43,84 @@ def real_space_rigid_body_gradients_simple(
   for i in range(3): get(i=i+4, delta=translation_delta)
   return result
 
+class refine2(object):
+
+  def __init__(self,
+        sites_cart,
+        density_map,
+        real_space_gradients_delta,
+        lbfgs_termination_params,
+        unit_cell,
+        states_collector=None):
+    self.states_collector = states_collector
+    self.density_map = density_map
+    self.real_space_gradients_delta = real_space_gradients_delta
+    #
+    self.unit_cell = unit_cell
+    self.sites_cart = sites_cart
+    self.center_of_mass = self.sites_cart.mean()
+    tardy_tree = scitbx.graph.tardy_tree.construct(
+      n_vertices=self.sites_cart.size(),
+      edge_list="all_in_one_rigid_body") \
+        .build_tree() \
+        .fix_near_singular_hinges(sites=None)
+    self.tardy_model = scitbx.rigid_body.tardy_model(
+      labels=None,
+      sites=self.sites_cart,
+      masses=flex.double(self.sites_cart.size(), 1),
+      tardy_tree=tardy_tree,
+      potential_obj=self)
+    self.x = self.tardy_model.pack_q()
+    assert self.x.size() == 7 # other cases not implemented
+    #
+    self.number_of_function_evaluations = -1
+    self.f_start, self.g_start = self.compute_functional_and_gradients()
+    self.rs_f_start = self.rs_f
+    lbfgs_exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
+      ignore_line_search_failed_step_at_lower_bound = True,
+      ignore_line_search_failed_step_at_upper_bound = True,
+      ignore_line_search_failed_maxfev              = True)
+    self.minimizer = scitbx.lbfgs.run(
+      target_evaluator=self,
+      termination_params=lbfgs_termination_params,
+      exception_handling_params = lbfgs_exception_handling_params)
+    self.f_final, self.g_final = self.compute_functional_and_gradients()
+    self.rs_f_final = self.rs_f
+    del self.rs_f
+    del self.x
+    del self.center_of_mass
+    del self.unit_cell
+
+  def compute_functional_and_gradients(self):
+    if (self.number_of_function_evaluations == 0):
+      self.number_of_function_evaluations += 1
+      return self.f_start, self.g_start
+    self.number_of_function_evaluations += 1
+    self.tardy_model.unpack_q(q_packed=self.x)
+    self.sites_cart = self.tardy_model.sites_moved()
+    if(self.states_collector is not None):
+      self.states_collector.add(sites_cart = self.sites_cart)
+    rs_f = maptbx.real_space_target_simple(
+      unit_cell=self.unit_cell,
+      density_map=self.density_map,
+      sites_cart=self.sites_cart,
+      selection=flex.bool(self.sites_cart.size(),True))
+    rs_g = real_space_rigid_body_gradients_simple(
+      unit_cell=self.unit_cell,
+      density_map=self.density_map,
+      sites_cart_0=self.sites_cart,
+      center_of_mass=self.center_of_mass,
+      q=self.x)
+    self.rs_f = rs_f
+    f = -1*rs_f
+    g = -1*rs_g
+    return f, g.as_double()
+
+  def d_e_pot_d_sites(self, sites_moved):
+    result = self.__d_e_pot_d_sites
+    del self.__d_e_pot_d_sites
+    return result
+
 class refine(object):
 
   def __init__(self,
@@ -157,6 +235,7 @@ class refine_mz(object):
         masking_atom_radius=5,
         max_iterations=50,
         macro_cycles=1,
+        use_one_zone=False,
         prefix="",
         log=None):
     adopt_init_args(self, locals())
@@ -176,7 +255,10 @@ class refine_mz(object):
       d_min            = self.d_min)
     self.cc_start = self._get_cc()
     self._show_and_track(d_min = self.d_min)
-    self.d_mins = self._get_mz_resolution_limits()
+    if not use_one_zone:
+      self.d_mins = self._get_mz_resolution_limits()
+    else:
+      self.d_mins = [d_min, ]
     for macro_cycle in range(self.macro_cycles):
       self._refine()
     self.xray_structure.set_sites_cart(self.sites_cart_best)
@@ -337,3 +419,61 @@ class refine_groups(object):
         selection, minimized.sites_cart_best+shift_back)
     self.xray_structure.set_sites_cart(sites_cart_result)
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
+
+def translation_search(model, map_data, shifts=None):
+  """
+  Rigid-body translation grid search in real-space
+  """
+  sites_cart_best = model.get_sites_cart()
+  cs = model.crystal_symmetry()
+  fm = cs.unit_cell().fractionalization_matrix()
+  if shifts is None:
+    shifts = [i/10. for i in range(0,101, 2)]
+  t_best = -999999999.
+  sites_cart = sites_cart_best.deep_copy()
+  size = sites_cart.size()
+  best_shift = None
+  for sh in shifts:
+    for x in [-1,0,1]:
+      for y in [-1,0,1]:
+        for z in [-1,0,1]:
+          sh_ = [x*sh,y*sh,z*sh]
+          sites_cart_shifted = sites_cart + \
+            flex.vec3_double(sites_cart.size(), sh_)
+          sites_frac_shifted = fm*sites_cart_shifted
+          t = maptbx.map_sum_at_sites_frac(
+            map_data   = map_data,
+            sites_frac = sites_frac_shifted)/size
+          if(t>t_best):
+            t_best=t
+            best_shift = sh_[:]
+            sites_cart_best=sites_cart_shifted.deep_copy()
+  #print("best_shift:", best_shift)
+  model.set_sites_cart(sites_cart = sites_cart_best)
+  return best_shift
+
+def protocol_1(model, map_data, macro_cycles=6, max_iterations=25):
+  """
+  Rigid-body grid search translation search combined with rigid body gradient
+  based minimization in real-space
+  """
+  shift = translation_search(model=model, map_data=map_data)
+  #
+  for it in range(macro_cycles):
+    delta = 0.01
+    lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
+      max_iterations = max_iterations)
+    o = refine2(
+      sites_cart                      = model.get_sites_cart(),
+      density_map                     = map_data,
+      real_space_gradients_delta      = delta,
+      lbfgs_termination_params        = lbfgs_termination_params,
+      unit_cell                       = model.crystal_symmetry().unit_cell(),
+      states_collector                = None)
+    model.set_sites_cart(sites_cart = o.sites_cart)
+    shift = translation_search(model=model, map_data=map_data)
+    max_shift = flex.max(flex.abs(flex.double(shift)))
+    if max_shift < 0.09: break
+  #
+  shifts = [x * 0.01 for x in range(0, 21)]
+  shift = translation_search(model=model, map_data=map_data, shifts=shifts)

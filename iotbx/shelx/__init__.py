@@ -1,3 +1,5 @@
+"""Tools for manipulation of SHELX formatted data files
+"""
 from __future__ import absolute_import, division, print_function
 from iotbx.shelx.errors import *
 from iotbx.shelx.lexer import *

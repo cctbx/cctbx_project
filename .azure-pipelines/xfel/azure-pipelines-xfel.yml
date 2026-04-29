@@ -2,6 +2,7 @@
 # Based on approach from conda-forge
 
 trigger:
+  batch: true
   branches:
     include:
       - master

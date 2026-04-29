@@ -90,6 +90,7 @@ class energies(list):
           t_atoms[i][k3]=t_atoms[i][k2]
       if i:
         def _add_dE(e1, e2, units):
+          b1=None
           s=''
           if e1 and e2:
             if e1[0]==e2[0]:

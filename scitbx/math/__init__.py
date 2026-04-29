@@ -455,13 +455,24 @@ def similarity_indices(x, eps):
   return y
 
 def simpson(f, a, b, n):
-  """
-  Integral of f on [a,b] using composite Simpson's rule.
-  """
-  if(n % 2 != 0): raise ValueError("n must be even" % n)
-  h = (b - a) / n
-  s = f(a) + f(b)
-  for i in range(1, n, 1):
-    if(i%2==0): s += 4 * f(a + i * h)
-    else:       s += 2 * f(a + i * h)
-  return s * h / 3
+    """
+    Integral of f on [a,b] using composite Simpson's rule.
+    f : function
+        The integrand function.
+    a : float
+        The lower limit of integration.
+    b : float
+        The upper limit of integration.
+    n : int
+        The number of subintervals (must be even).
+    Returns:
+    float
+        The approximate value of the integral.
+    """
+    if n % 2 != 0: raise ValueError("n must be even")
+    h = (b - a) / n
+    s = f(a) + f(b)
+    for i in range(1, n):
+      if i % 2 == 0: s += 2 * f(a + i * h)
+      else:          s += 4 * f(a + i * h)
+    return s * h / 3

@@ -5,6 +5,7 @@
 #include <scitbx/constants.h>
 #include <boost/shared_array.hpp>
 #include <complex>
+#include <cstdio>
 
 namespace cctbx { namespace math {
 
@@ -37,17 +38,27 @@ namespace cctbx { namespace math {
 
       cos_sin_table() {}
 
-      cos_sin_table(int n_points)
+      cos_sin_table(int n_points, bool interpolate=false)
       :
         n_points_(n_points),
         n_points_4_(n_points/4),
         values_memory_(new float_type[n_points_+n_points_4_]),
-        values_(values_memory_.get())
+        values_(values_memory_.get()),
+        interpolate_(interpolate)
       {
+        if (interpolate_) {
+          diffvalues_memory_.reset(new float_type[n_points_ + n_points_4_ + 1]);
+          diffvalues_ = diffvalues_memory_.get();
+        }
         CCTBX_ASSERT(n_points % 4 == 0);
         using scitbx::constants::two_pi;
+        FloatType two_pi_over_n_points = two_pi/n_points_;
         for(int i=0;i<n_points_+n_points_4_;i++) {
-          values_[i] = std::sin(i*two_pi/n_points_);
+          FloatType value = std::sin(i*two_pi_over_n_points);
+          values_[i] = value;
+          if(interpolate_) {
+            diffvalues_[i] = std::sin((i+1)*two_pi_over_n_points) - value;
+          }
         }
       }
 
@@ -57,9 +68,31 @@ namespace cctbx { namespace math {
       complex_type
       get(float_type unary_angle) const
       {
-        int i = static_cast<int>(unary_angle*n_points_) % n_points_;
-        if (i < 0) i += n_points_;
-        return complex_type(values_[i+n_points_4_], values_[i]);
+        if(interpolate_) {
+          float_type dec = unary_angle*n_points_;
+          if (dec<0.0) {
+            dec = -dec;
+            int i = static_cast<int>(dec);
+            float_type frac = dec - i;
+            i = i % n_points_;
+            return complex_type(
+                values_[i+n_points_4_] + frac*diffvalues_[i+n_points_4_],
+                - values_[i] - frac*diffvalues_[i]);
+          }
+          else {
+            int i = static_cast<int>(dec);
+            float_type frac = dec - i;
+            i = i % n_points_;
+            return complex_type(
+                values_[i+n_points_4_] + frac*diffvalues_[i+n_points_4_],
+                values_[i] + frac*diffvalues_[i]);
+          }
+        }
+        else {
+          int i = static_cast<int>(unary_angle*n_points_) % n_points_;
+          if (i < 0) i += n_points_;
+          return complex_type(values_[i+n_points_4_], values_[i]);
+        }
       }
 
       complex_type operator()(float_type unary_angle) const {
@@ -71,6 +104,9 @@ namespace cctbx { namespace math {
       int n_points_4_;
       boost::shared_array<float_type> values_memory_;
       float_type* values_;
+      bool interpolate_;
+      boost::shared_array<float_type> diffvalues_memory_;
+      float_type* diffvalues_;
   };
 
   template <typename FloatType=double>

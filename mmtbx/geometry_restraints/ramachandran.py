@@ -406,7 +406,7 @@ class ramachandran_manager(object):
           weight       = weight)
         self.append_emsley8k_proxies(proxy, n_seq)
       elif r_type == 'phi_psi_2':
-        from phenix.pdb_tools.phi_psi_2_data import get_phi_psi_key_for_rama_proxy
+        from mmtbx.validation.phi_psi_2_data import get_phi_psi_key_for_rama_proxy
         if phi_psi_2_motifs is None: phi_psi_2_motifs = _get_motifs()
         if(  r_eval is favored): strategy=self.params.phi_psi_2.favored_strategy
         elif(r_eval is allowed): strategy=self.params.phi_psi_2.allowed_strategy
@@ -538,7 +538,7 @@ class ramachandran_manager(object):
           epsilon        = 1.0) # XXX
       overall_residual_sum += flex.sum(self.residuals_array_emsley8k)
     # phi/psi/2
-    from phenix.pdb_tools.phi_psi_2_data import get_rama_table
+    from mmtbx.validation.phi_psi_2_data import get_rama_table
     self.residuals_array_phi_psi_2 = None
     n_phi_psi_2_proxies = self.get_n_phi_psi_2_proxies()
     if n_phi_psi_2_proxies:
@@ -747,7 +747,7 @@ def load_emsley8k_tables():
   return tables
 
 def load_phi_psi_2_tables():
-  from phenix.pdb_tools.phi_psi_2_data import load_phi_psi_2_rama_restraints_tables
+  from mmtbx.validation.phi_psi_2_data import load_phi_psi_2_rama_restraints_tables
   return load_phi_psi_2_rama_restraints_tables()
 
 class ramachandran_plot_data(object):

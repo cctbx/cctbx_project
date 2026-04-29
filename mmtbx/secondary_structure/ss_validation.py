@@ -16,7 +16,7 @@ from six.moves import zip
 ext = bp.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 from mmtbx.validation import ramalyze
-from phenix.pdb_tools.phi_psi_2_data import phi_psi_2_mask_class
+from mmtbx.validation.phi_psi_2_data import phi_psi_2_mask_class
 
 master_phil_str = '''
 ss_validation {

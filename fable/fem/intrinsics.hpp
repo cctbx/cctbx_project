@@ -112,6 +112,14 @@ namespace fem {
   }
 
   inline
+  double
+  dcos(
+    double const& angle)
+  {
+    return std::cos(angle);
+  }
+
+  inline
   float
   acos(
     float const& angle)
@@ -143,6 +151,14 @@ namespace fem {
   inline
   double
   sin(
+    double const& angle)
+  {
+    return std::sin(angle);
+  }
+
+  inline
+  double
+  dsin(
     double const& angle)
   {
     return std::sin(angle);
@@ -257,6 +273,30 @@ namespace fem {
     double const& x)
   {
     return std::exp(x);
+  }
+
+  inline
+  float
+  log10(
+    float const& x)
+  {
+    return std::log10(x);
+  }
+
+  inline
+  double
+  log10(
+    double const& x)
+  {
+    return std::log10(x);
+  }
+
+  inline
+  double
+  dlog10(
+    double const& x)
+  {
+    return std::log10(x);
   }
 
   inline
@@ -726,6 +766,38 @@ namespace fem {
     double const& exponent)
   {
     return std::pow(base, exponent);
+  }
+
+  inline
+  float
+  cosh(
+    float const& angle)
+  {
+    return std::cosh(angle);
+  }
+
+  inline
+  double
+  cosh(
+    double const& angle)
+  {
+    return std::cosh(angle);
+  }
+
+  inline
+  float
+  tanh(
+    float const& angle)
+  {
+    return std::tanh(angle);
+  }
+
+  inline
+  double
+  tanh(
+    double const& angle)
+  {
+    return std::tanh(angle);
   }
 
   using std::abs;

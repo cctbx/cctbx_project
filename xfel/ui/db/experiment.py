@@ -39,14 +39,22 @@ class Imageset(db_proxy):
     self.imageset_id = self.id
 
 class Beam(db_proxy):
-  def __init__(self, app, beam_id = None, beam = None, **kwargs):
-    assert [beam_id, beam].count(None) == 1
+  def __init__(self, app, beam_id = None, beam = None, wavelength = None, **kwargs):
     if beam is not None:
+      assert beam_id is None and wavelength is None
       u_s0 = beam.get_unit_s0()
       kwargs['direction_1'] = u_s0[0]
       kwargs['direction_2'] = u_s0[1]
       kwargs['direction_3'] = u_s0[2]
       kwargs['wavelength'] = beam.get_wavelength()
+    elif wavelength is not None:
+      assert beam_id is None
+      kwargs['direction_1'] = 0
+      kwargs['direction_2'] = 0
+      kwargs['direction_3'] = 0
+      kwargs['wavelength'] = wavelength
+    else:
+      assert beam_id is not None
 
     db_proxy.__init__(self, app, "%s_beam" % app.params.experiment_tag, id=beam_id, **kwargs)
     self.beam_id = self.id

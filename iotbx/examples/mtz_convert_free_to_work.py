@@ -1,3 +1,5 @@
+"""Conversion of reflections from free to work by changing R-free flags"""
+
 from __future__ import absolute_import, division, print_function
 import iotbx.mtz
 from cctbx.array_family import flex

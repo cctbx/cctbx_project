@@ -25,6 +25,7 @@ from dials.array_family import flex
 import numpy as np
 from libtbx import easy_pickle
 from dxtbx.model.experiment_list import ExperimentList
+from serialtbx import detector as serialtbx_detector
 
 import io # fix buffering py2/3
 
@@ -1043,7 +1044,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     if self.params.format.file_format == 'cbf':
       if self.params.format.cbf.mode == "cspad":
         # get numpy array, 32x185x388
-        data = cspad_cbf_tbx.get_psana_corrected_data(self.psana_det, evt, use_default=False, dark=True,
+        data = serialtbx_detector.cspad.get_psana_corrected_data(self.psana_det, evt, use_default=False, dark=True,
                                                     common_mode=self.common_mode,
                                                     apply_gain_mask=self.params.format.cbf.cspad.gain_mask_value is not None,
                                                     gain_mask_value=self.params.format.cbf.cspad.gain_mask_value,

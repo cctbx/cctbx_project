@@ -1,3 +1,7 @@
+"""
+Tools for working with xml
+"""
+
 from __future__ import absolute_import, division, print_function
 
 class Node(object):

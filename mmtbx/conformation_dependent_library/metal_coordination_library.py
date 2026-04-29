@@ -106,6 +106,7 @@ def get_metal_coordination_proxies(pdb_hierarchy,
       sites_cart=sites_cart,
       cutoff=hbond_distance_cutoff):
     i_seq, j_seq, dist, sym_op_j, rt_mx, proxy = item
+    # if i_seq==j_seq: continue
     a1 = atoms[i_seq]
     ag1 = a1.parent()
     a2 = atoms[j_seq]

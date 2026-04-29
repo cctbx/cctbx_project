@@ -1,0 +1,861 @@
+# =============================================================
+# Plan Templates for the Goal-Directed Agent
+# =============================================================
+#
+# Pre-defined plan skeletons for common structure
+# determination scenarios. The plan generator selects
+# and customizes a template rather than generating
+# plans from scratch.
+#
+# Templates are NOT LLM-generated. They encode expert
+# crystallographic knowledge about standard workflows.
+#
+# Template selection is deterministic (rule-based
+# matching on experiment_type + available files +
+# resolution range). The LLM only customizes
+# parameters within the template's bounds.
+#
+# Fields:
+#   description: Human-readable summary
+#   applicable_when: Conditions for selection
+#     experiment_type: xray | cryoem
+#     has_search_model: true | false
+#     has_sequence: true | false
+#     has_ligand_code: true | false
+#     resolution: ">3.0" | "<1.5" | omit for any
+#   extends: parent template id (inheritance)
+#   insert_after: stage id to insert new stages after
+#   overrides: per-phase overrides for inherited plan
+#   priority: higher = preferred when multiple match
+#   phases: list of stage definitions
+#     id: unique phase identifier
+#     programs: list of PHENIX program names
+#     max_cycles: maximum cycles in this phase
+#     description: human-readable phase goal
+#     success: success criteria {metric: "op value"}
+#     gate: list of retreat/stop triggers
+#     fallbacks: list of within-phase fallbacks
+#     skip_if: condition to skip this phase
+#     strategy: program-specific settings
+#     provides: list of data this phase produces
+#     if_skipped: repair rules when phase is skipped
+#     prerequisites: required state before entering
+#
+# Operators in success/gate conditions:
+#   "<0.35"  — less than 0.35
+#   ">8"     — greater than 8
+#   "<=0.30" — less than or equal
+#   ">= 0.7" — greater than or equal
+#   "true"   — boolean flag must be true
+#
+# Gate condition format:
+#   if: "metric op value [after N cycles]"
+#   action: "retreat_to phase_id" | "stop_report" |
+#           "try_rebuilding" | "proceed_cautiously"
+#
+# =============================================================
+
+templates:
+
+  # -----------------------------------------------------------
+  # STANDARD MR + REFINEMENT (X-ray)
+  # -----------------------------------------------------------
+  # Covers: easy_mr, stuck_refine, wrong_mr, sym_ambig
+  # Resolution: any (overridden by lowres/highres variants)
+
+  mr_refine:
+    description: "MR + refinement (standard X-ray)"
+    applicable_when:
+      experiment_type: xray
+      has_search_model: true
+    priority: 10
+    stages:
+
+      - id: data_assessment
+        programs: [phenix.xtriage]
+        max_cycles: 1
+        description: "Analyze data quality"
+        success:
+          xtriage_completed: "true"
+        provides:
+          - resolution
+          - twinning_status
+          - anomalous_signal
+        if_skipped:
+          resolution: "extract from first refine cycle log"
+          twinning_status: "use refine internal twin detection"
+          anomalous_signal: "unavailable — disable anomalous hypotheses"
+
+      - id: molecular_replacement
+        programs: [phenix.phaser,
+                   phenix.predict_and_build]
+        max_cycles: 1
+        description: "Find MR solution"
+        success:
+          tfz: ">8"
+          llg: ">100"
+        gate:
+          - if: "tfz < 5"
+            action: "stop_report"
+        fallbacks:
+          - if: "tfz < 6"
+            action: "try_alphafold"
+          - if: "tfz 6-8"
+            action: "proceed_cautiously"
+        provides:
+          - mr_solution
+          - space_group_confirmed
+        if_skipped:
+          mr_solution: "unavailable — cannot proceed without MR solution"
+
+      - id: initial_refinement
+        programs: [phenix.refine]
+        max_cycles: 3
+        description: "Initial refinement"
+        success:
+          r_free: "<0.35"
+        gate:
+          - if: "r_free > 0.50 after 1 cycles"
+            action: "try_rebuilding"
+          - if: "r_free > 0.45 after 2 cycles"
+            action: "retreat_to molecular_replacement"
+          - if: "r_free 0.35-0.45 after 3 cycles"
+            action: "try_rebuilding"
+        provides:
+          - refined_model
+          - map_coefficients
+
+      - id: model_rebuilding
+        programs: [phenix.autobuild, phenix.refine]
+        max_cycles: 2
+        description: "Rebuild model"
+        success:
+          r_free: "<0.30"
+        skip_if: "r_free < 0.28"
+        strategy:
+          rebuild_in_place: false
+        provides:
+          - rebuilt_model
+
+      - id: final_refinement
+        programs: [phenix.refine]
+        max_cycles: 3
+        description: "Final refinement with waters"
+        success:
+          r_free: "<0.25"
+        strategy:
+          ordered_solvent: true
+
+      - id: validation
+        programs: [phenix.molprobity]
+        max_cycles: 1
+        description: "Final model validation"
+
+  # -----------------------------------------------------------
+  # MR + REFINEMENT + LIGAND FITTING
+  # -----------------------------------------------------------
+  # Covers: ligand_fit test cases
+  # Inherits mr_refine, inserts ligand fitting phase
+
+  mr_refine_ligand:
+    description: "MR + refinement + ligand fitting"
+    applicable_when:
+      experiment_type: xray
+      has_search_model: true
+      has_ligand_code: true
+    extends: mr_refine
+    insert_after: model_rebuilding
+    priority: 20
+    stages:
+      - id: ligand_fitting
+        programs: [phenix.ligandfit]
+        max_cycles: 1
+        description: "Fit ligand into difference density"
+        prerequisites:
+          r_free: "<0.35"
+          has_difference_density: "true"
+        success:
+          ligand_cc: ">0.7"
+        fallbacks:
+          - if: "ligand_cc < 0.5"
+            action: "try_polder_map"
+        provides:
+          - placed_ligand
+
+  # -----------------------------------------------------------
+  # MR + REFINEMENT — LOW RESOLUTION (>3.0 Å)
+  # -----------------------------------------------------------
+  # Covers: low_resolution test case
+  # Relaxed R-free targets, no ordered solvent
+
+  mr_refine_lowres:
+    description: "MR + refinement at low resolution (>3.0 Å)"
+    applicable_when:
+      experiment_type: xray
+      has_search_model: true
+      resolution: ">3.0"
+    extends: mr_refine
+    priority: 15
+    overrides:
+      initial_refinement:
+        success:
+          r_free: "<0.38"
+        gate:
+          - if: "r_free > 0.50 after 1 cycles"
+            action: "try_rebuilding"
+          - if: "r_free > 0.48 after 2 cycles"
+            action: "retreat_to molecular_replacement"
+      model_rebuilding:
+        success:
+          r_free: "<0.35"
+      final_refinement:
+        # No ordered solvent at low resolution — waters
+        # are not reliably resolved below 3.0 Å and
+        # adding them risks overfitting.
+        strategy:
+          ordered_solvent: false
+        success:
+          r_free: "<0.30"
+
+  # -----------------------------------------------------------
+  # MR + REFINEMENT — HIGH RESOLUTION (<1.5 Å)
+  # -----------------------------------------------------------
+  # Covers: high_resolution test case
+  # Tighter targets, anisotropic B-factors, riding H
+
+  mr_refine_highres:
+    description: "MR + refinement at high resolution (<1.5 Å)"
+    applicable_when:
+      experiment_type: xray
+      has_search_model: true
+      resolution: "<1.5"
+    extends: mr_refine
+    priority: 15
+    overrides:
+      initial_refinement:
+        success:
+          r_free: "<0.28"
+        max_cycles: 4
+      model_rebuilding:
+        success:
+          r_free: "<0.22"
+      final_refinement:
+        strategy:
+          ordered_solvent: true
+          adp:
+            strategy: individual
+            type: anisotropic
+          hydrogens:
+            refine: riding
+        success:
+          r_free: "<0.20"
+        max_cycles: 5
+
+  # -----------------------------------------------------------
+  # CRYO-EM MAP + MODEL REFINEMENT
+  # -----------------------------------------------------------
+  # Covers: cryoem test cases
+  # Different programs, different metrics (CC instead of R)
+
+  cryoem_refine:
+    description: "Cryo-EM map + model refinement"
+    applicable_when:
+      experiment_type: cryoem
+    priority: 10
+    stages:
+
+      - id: data_assessment
+        programs: [phenix.mtriage]
+        max_cycles: 1
+        description: "Assess map quality"
+        success:
+          mtriage_completed: "true"
+        provides:
+          - resolution
+          - map_quality
+
+      - id: map_improvement
+        programs: [phenix.resolve_cryo_em]
+        max_cycles: 1
+        description: "Improve map by density modification"
+        skip_if: "resolution < 3.0"
+        provides:
+          - improved_map
+
+      - id: model_building
+        programs:
+          - phenix.dock_in_map
+          - phenix.predict_and_build
+          - phenix.map_to_model
+        max_cycles: 2
+        description: "Place or build model into map"
+        success:
+          model_map_cc: ">0.5"
+        provides:
+          - initial_model
+
+      - id: refinement
+        programs: [phenix.real_space_refine]
+        max_cycles: 3
+        description: "Real-space refinement"
+        success:
+          model_map_cc: ">0.7"
+
+      - id: validation
+        programs: [phenix.molprobity]
+        max_cycles: 1
+        description: "Final model validation"
+
+  # -----------------------------------------------------------
+  # CRYO-EM MAP + MODEL + LIGAND
+  # -----------------------------------------------------------
+  # Cryo-EM with ligand fitting
+
+  cryoem_refine_ligand:
+    description: "Cryo-EM refinement + ligand fitting"
+    applicable_when:
+      experiment_type: cryoem
+      has_ligand_code: true
+    extends: cryoem_refine
+    insert_after: refinement
+    priority: 20
+    stages:
+      - id: ligand_fitting
+        programs: [phenix.ligandfit]
+        max_cycles: 1
+        description: "Fit ligand into cryo-EM density"
+        prerequisites:
+          model_map_cc: ">0.5"
+        success:
+          ligand_cc: ">0.6"
+
+      - id: final_refinement
+        programs: [phenix.real_space_refine]
+        max_cycles: 2
+        description: "Final refinement with ligand"
+        success:
+          model_map_cc: ">0.7"
+
+      - id: validation
+        programs: [phenix.molprobity]
+        max_cycles: 1
+        description: "Final model validation"
+
+  # -----------------------------------------------------------
+  # TWINNED DATA (X-ray)
+  # -----------------------------------------------------------
+  # Covers: twinned data test case
+  # Standard MR+refine but with twin law applied
+  # in refinement. Gate evaluator checks for twin
+  # law detection and adjusts strategy accordingly.
+
+  mr_refine_twinned:
+    description: "MR + refinement with twinned data"
+    applicable_when:
+      experiment_type: xray
+      has_search_model: true
+      is_twinned: true
+    extends: mr_refine
+    priority: 25
+    overrides:
+      initial_refinement:
+        strategy:
+          twin_law: "auto"
+        success:
+          r_free: "<0.38"
+        gate:
+          - if: "r_free > 0.50 after 1 cycles"
+            action: "try_rebuilding"
+          - if: "r_free > 0.48 after 2 cycles"
+            action: "retreat_to molecular_replacement"
+      final_refinement:
+        strategy:
+          ordered_solvent: true
+          twin_law: "auto"
+        success:
+          r_free: "<0.28"
+
+# =============================================================
+# REFINEMENT ONLY (model already placed, X-ray)
+# =============================================================
+# Covers: user provides a pre-refined model and says
+# "refine" or "fit ligand" — no MR needed.
+
+  refine_placed:
+    description: "Refine existing model (X-ray)"
+    applicable_when:
+      experiment_type: xray
+      has_search_model: true
+      model_is_placed: true
+    priority: 50
+    stages:
+
+      - id: data_assessment
+        programs: [phenix.xtriage]
+        max_cycles: 1
+        description: "Analyze data quality"
+        success:
+          xtriage_completed: "true"
+        provides:
+          [resolution, twinning_status]
+
+      - id: refinement
+        programs: [phenix.refine]
+        max_cycles: 5
+        description: "Refine model against data"
+        success:
+          r_free: "<0.25"
+        gate:
+          - if: "r_free > 0.50 after 2 cycles"
+            action: "stop_report"
+
+      - id: final_refinement
+        programs: [phenix.refine]
+        max_cycles: 3
+        description: "Final refinement with waters"
+        strategy:
+          ordered_solvent: true
+        success:
+          r_free: "<0.22"
+          ordered_solvent: true
+        success:
+          r_free: "<0.22"
+
+      - id: validation
+        programs: [phenix.molprobity]
+        max_cycles: 1
+        description: "Final model validation"
+
+  refine_placed_ligand:
+    description: "Refine and fit ligand (X-ray)"
+    applicable_when:
+      experiment_type: xray
+      has_search_model: true
+      model_is_placed: true
+      has_ligand_code: true
+    priority: 55
+    stages:
+
+      - id: data_assessment
+        programs: [phenix.xtriage]
+        max_cycles: 1
+        description: "Analyze data quality"
+        success:
+          xtriage_completed: "true"
+        provides:
+          [resolution, twinning_status]
+
+      - id: refinement
+        programs: [phenix.refine]
+        max_cycles: 5
+        description: "Refine model against data"
+        success:
+          r_free: "<0.30"
+        gate:
+          - if: "r_free > 0.50 after 2 cycles"
+            action: "stop_report"
+
+      - id: ligand_fitting
+        programs: [phenix.ligandfit]
+        max_cycles: 1
+        description: "Fit ligand into density"
+        prerequisites:
+          r_free: "<0.35"
+          has_difference_density: true
+        success:
+          ligand_cc: ">0.7"
+
+      - id: final_refinement
+        programs: [phenix.refine]
+        max_cycles: 3
+        description: "Refine model with ligand"
+        strategy:
+          ordered_solvent: true
+        success:
+          r_free: "<0.25"
+
+      - id: ligand_validation
+        programs: [phenix.polder]
+        max_cycles: 1
+        description: "Validate ligand with polder map"
+        skip_if:
+          polder_done: true
+
+      - id: validation
+        programs: [phenix.molprobity]
+        max_cycles: 1
+        description: "Final model validation"
+
+# =============================================================
+# REFINEMENT + POLDER MAPS (model placed, X-ray)
+# =============================================================
+# Covers: user provides a pre-refined model and says
+# "run polder" or "compute omit maps". Refine first to
+# produce map coefficients, then run polder.
+
+  refine_placed_polder:
+    description: "Refine and compute polder omit maps (X-ray)"
+    applicable_when:
+      experiment_type: xray
+      has_search_model: true
+      model_is_placed: true
+      wants_polder: true
+    priority: 55
+    stages:
+
+      - id: data_assessment
+        programs: [phenix.xtriage]
+        max_cycles: 1
+        description: "Analyze data quality"
+        success:
+          xtriage_completed: "true"
+        provides:
+          [resolution, twinning_status]
+
+      - id: refinement
+        programs: [phenix.refine]
+        max_cycles: 3
+        description: "Refine model to produce map coefficients"
+        success:
+          r_free: "<0.30"
+        gate:
+          - if: "r_free > 0.50 after 2 cycles"
+            action: "stop_report"
+
+      - id: polder_maps
+        programs: [phenix.polder]
+        max_cycles: 1
+        description: "Compute polder omit maps"
+
+      - id: validation
+        programs: [phenix.molprobity]
+        max_cycles: 1
+        description: "Final model validation"
+
+# =============================================================
+# PREDICT + MR + REFINEMENT (X-ray, no search model)
+# =============================================================
+# Covers: new structures where user provides only data +
+# sequence. Uses AlphaFold prediction via predict_and_build
+# to generate a search model, then MR + refine.
+
+  predict_refine:
+    description: "Predict model + MR + refinement (X-ray)"
+    applicable_when:
+      experiment_type: xray
+      has_search_model: false
+      has_sequence: true
+      has_anomalous_atoms: false
+    priority: 10
+    stages:
+
+      - id: data_assessment
+        programs: [phenix.xtriage]
+        max_cycles: 1
+        description: "Analyze data quality"
+        success:
+          xtriage_completed: "true"
+        provides:
+          [resolution, twinning_status, anomalous_signal]
+
+      - id: model_prediction
+        programs: [phenix.predict_and_build]
+        max_cycles: 1
+        description: "AlphaFold prediction and MR"
+        success:
+          predict_completed: "true"
+
+      - id: initial_refinement
+        programs: [phenix.refine]
+        max_cycles: 3
+        description: "Initial refinement"
+        success:
+          r_free: "<0.35"
+        gate:
+          - if: "r_free > 0.50 after 1 cycles"
+            action: "try_rebuilding"
+          - if: "r_free > 0.45 after 2 cycles"
+            action: "retreat_to model_prediction"
+
+      - id: model_rebuilding
+        programs: [phenix.autobuild, phenix.refine]
+        max_cycles: 2
+        description: "Rebuild model"
+        success:
+          r_free: "<0.30"
+        skip_if: "r_free < 0.28"
+
+      - id: final_refinement
+        programs: [phenix.refine]
+        max_cycles: 3
+        description: "Final refinement"
+        strategy:
+          ordered_solvent: true
+        success:
+          r_free: "<0.25"
+
+      - id: validation
+        programs: [phenix.molprobity]
+        max_cycles: 1
+        description: "Final model validation"
+
+  predict_refine_ligand:
+    description: "Predict model + MR + refine + ligand"
+    extends: predict_refine
+    applicable_when:
+      experiment_type: xray
+      has_search_model: false
+      has_sequence: true
+      has_anomalous_atoms: false
+      has_ligand_code: true
+    priority: 20
+    insert_after: model_rebuilding
+    stages:
+      - id: ligand_fitting
+        programs: [phenix.ligandfit]
+        max_cycles: 1
+        description: "Fit ligand"
+        prerequisites:
+          r_free: "<0.35"
+          has_difference_density: true
+        success:
+          ligand_cc: ">0.7"
+
+# =============================================================
+# MR-SAD (search model + anomalous signal)
+# =============================================================
+# When the user has both a search model and anomalous atoms,
+# the best strategy is MR first (place the model), then
+# MR-SAD (autosol with the placed model to improve phases).
+# This must have higher priority than both mr_refine (10) and
+# sad_phasing (30) since it matches both conditions.
+
+  mr_sad:
+    description: "MR + SAD phasing (X-ray)"
+    applicable_when:
+      experiment_type: xray
+      has_search_model: true
+      has_sequence: true
+      has_anomalous_atoms: true
+      wants_mr_sad: true
+    priority: 40
+    stages:
+
+      - id: data_assessment
+        programs: [phenix.xtriage]
+        max_cycles: 1
+        description: "Analyze data quality and anomalous signal"
+        success:
+          xtriage_completed: "true"
+        provides:
+          [resolution, twinning_status, anomalous_signal]
+
+      - id: molecular_replacement
+        programs: [phenix.phaser,
+                   phenix.predict_and_build]
+        max_cycles: 1
+        description: "Place model into data"
+        success:
+          tfz: ">8"
+        gate:
+          - if: "tfz < 5"
+            action: "retreat_to experimental_phasing"
+
+      - id: experimental_phasing
+        programs: [phenix.autosol]
+        max_cycles: 1
+        description: "MR-SAD phasing with placed model"
+        success:
+          autosol_completed: "true"
+
+      - id: build_and_refine
+        programs:
+          [phenix.autobuild, phenix.refine]
+        max_cycles: 5
+        description: "Rebuild and refine model"
+        success:
+          r_free: "<0.28"
+        gate:
+          - if: "r_free > 0.45 after 3 cycles"
+            action: "retreat_to experimental_phasing"
+
+      - id: final_refinement
+        programs: [phenix.refine]
+        max_cycles: 3
+        description: "Final refinement"
+        strategy:
+          ordered_solvent: true
+        success:
+          r_free: "<0.25"
+
+      - id: validation
+        programs: [phenix.molprobity]
+        max_cycles: 1
+        description: "Final model validation"
+
+# =============================================================
+# SAD / EXPERIMENTAL PHASING (X-ray)
+# =============================================================
+# Covers: SAD, MAD, S-SAD, Se-Met
+# Requires anomalous atom type specified by user.
+
+  sad_phasing:
+    description: "SAD/MAD experimental phasing (X-ray)"
+    applicable_when:
+      experiment_type: xray
+      has_anomalous_atoms: true
+      has_sequence: true
+      has_search_model: false
+    priority: 30
+    stages:
+
+      - id: data_assessment
+        programs: [phenix.xtriage]
+        max_cycles: 1
+        description: "Analyze data quality and anomalous signal"
+        success:
+          xtriage_completed: "true"
+        provides:
+          [resolution, twinning_status, anomalous_signal]
+
+      - id: experimental_phasing
+        programs: [phenix.autosol]
+        max_cycles: 1
+        description: "SAD/MAD phasing and initial model building"
+        success:
+          autosol_completed: "true"
+        gate:
+          - if: "no_solution"
+            action: "stop_report"
+
+      - id: build_and_refine
+        programs: [phenix.autobuild, phenix.refine]
+        max_cycles: 5
+        description: "Rebuild and refine model"
+        success:
+          r_free: "<0.30"
+        gate:
+          - if: "r_free > 0.45 after 3 cycles"
+            action: "retreat_to experimental_phasing"
+
+      - id: final_refinement
+        programs: [phenix.refine]
+        max_cycles: 3
+        description: "Final refinement with ordered solvent"
+        strategy:
+          ordered_solvent: true
+        success:
+          r_free: "<0.25"
+
+      - id: validation
+        programs: [phenix.molprobity]
+        max_cycles: 1
+        description: "Final model validation"
+
+  sad_phasing_ligand:
+    description: "SAD/MAD phasing + ligand fitting"
+    extends: sad_phasing
+    applicable_when:
+      experiment_type: xray
+      has_anomalous_atoms: true
+      has_sequence: true
+      has_search_model: false
+      has_ligand_code: true
+    priority: 35
+    insert_after: build_and_refine
+    stages:
+      - id: ligand_fitting
+        programs: [phenix.ligandfit]
+        max_cycles: 1
+        description: "Fit ligand into density"
+        prerequisites:
+          r_free: "<0.35"
+          has_difference_density: true
+        success:
+          ligand_cc: ">0.7"
+
+# =============================================================
+# FALLBACK: DATA ANALYSIS ONLY (no model, no sequence)
+# =============================================================
+# Matches when only experimental data is provided.
+# Runs xtriage to characterize the data. The agent
+# can then suggest next steps based on the results.
+
+# v115.09: Validation-only template. Matches when the
+# user's primary goal is model validation (MolProbity),
+# not refinement or MR. model_vs_data runs first as a
+# crystal-symmetry sanity check before molprobity.
+  validate_existing:
+    description: "Validate existing model (MolProbity)"
+    applicable_when:
+      experiment_type: xray
+      wants_validation_only: true
+      has_search_model: true
+      model_is_placed: true
+    priority: 60
+    stages:
+
+      - id: data_assessment
+        programs: [phenix.xtriage]
+        max_cycles: 1
+        description: "Analyze data quality"
+        success:
+          xtriage_completed: "true"
+
+      - id: validation
+        programs: [phenix.model_vs_data, phenix.molprobity]
+        max_cycles: 2
+        description: "Model validation"
+        success:
+          validation_completed: "true"
+
+  data_analysis_only:
+    description: "Data analysis only (X-ray)"
+    applicable_when:
+      experiment_type: xray
+      has_search_model: false
+      has_sequence: false
+    priority: 1
+    stages:
+
+      - id: data_assessment
+        programs: [phenix.xtriage]
+        max_cycles: 1
+        description: "Analyze data quality"
+        success:
+          xtriage_completed: "true"
+
+  cryoem_analysis_only:
+    description: "Data analysis only (cryo-EM)"
+    applicable_when:
+      experiment_type: cryoem
+      has_search_model: false
+      has_sequence: false
+    priority: 1
+    stages:
+
+      - id: map_assessment
+        programs: [phenix.mtriage]
+        max_cycles: 1
+        description: "Analyze map quality"
+        success:
+          mtriage_completed: "true"
+
+# =============================================================
+# Template selection priority order:
+#
+# 1. Most specific applicable_when conditions
+# 2. Highest priority number
+#
+# When multiple templates match, the one with the
+# highest priority wins. For example:
+#   - mr_refine_twinned (priority 25) beats
+#     mr_refine (priority 10) when data is twinned
+#   - mr_refine_ligand (priority 20) beats
+#     mr_refine (priority 10) when ligand code present
+#   - mr_refine_lowres (priority 15) beats
+#     mr_refine (priority 10) at low resolution
+#
+# The plan generator resolves extends/overrides at
+# load time to produce a flat list of StageDef objects.
+# =============================================================

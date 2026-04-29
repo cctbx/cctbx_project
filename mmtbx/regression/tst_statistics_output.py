@@ -1184,8 +1184,8 @@ def test_1():
       exp = """
 GEOMETRY RESTRAINTS LIBRARY: GEOSTD + MONOMER LIBRARY + CDL V1.2
 DEVIATIONS FROM IDEAL VALUES - RMSD, RMSZ FOR BONDS AND ANGLES.
-  BOND      :  0.004   0.020   1174  Z= 0.292
-  ANGLE     :  0.908   4.674   1594  Z= 0.671
+  BOND      :  0.004   0.020   1174  Z= 0.293
+  ANGLE     :  0.914   4.674   1594  Z= 0.676
   CHIRALITY :  0.038   0.125    186
   PLANARITY :  0.003   0.018    205
   DIHEDRAL  : 11.055  85.166    440
@@ -1208,10 +1208,9 @@ MOLPROBITY STATISTICS.
     TWISTED PROLINE : 0.00 %
     TWISTED GENERAL : 0.00 %
 
-RAMA-Z (RAMACHANDRAN PLOT Z-SCORE):
-INTERPRETATION: BAD |RAMA-Z| > 3; SUSPICIOUS 2 < |RAMA-Z| < 3; GOOD |RAMA-Z| < 2.
-SCORES FOR WHOLE/HELIX/SHEET/LOOP ARE SCALED INDEPENDENTLY;
-THEREFORE, THE VALUES ARE NOT RELATED IN A SIMPLE MANNER.
+RAMA-Z VALUES WITH (UNCERTAINTIES):
+INTERPRETATION: POOR |RAMA-Z| > 3; SUSPICIOUS 2 < |RAMA-Z| < 3; GOOD |RAMA-Z| < 2.
+SCORES BELOW ARE SCALED INDEPENDENTLY, SO THEY ARE NOT RELATED IN A SIMPLE WAY.
   WHOLE: -0.62 (0.62), RESIDUES: 149
   HELIX:  0.29 (0.58), RESIDUES: 67
   SHEET: -1.83 (0.89), RESIDUES: 20
@@ -1223,10 +1222,18 @@ MAX DEVIATION FROM PLANES:
    TYR   0.008   0.002   TYR A  40
    PHE   0.008   0.001   PHE A  87
    HIS   0.001   0.000   HIS A 126
+
+DETAILS OF BONDING TYPE RMSD
+  COVALENT GEOMETRY    : BOND        0.00413 ( 1174)
+  COVALENT GEOMETRY    : ANGLE       0.91411 ( 1594)
 """
   val = [l.strip() for l in val.splitlines() if l.strip() != '']
   exp = [l.strip() for l in exp.splitlines() if l.strip() != '']
-  assert val == exp
+  if val!=exp:
+    for a,b in zip(val,exp):
+      if a!=b:
+        print('------\n%s\n%s\n======' % (a,b))
+  assert val == exp, '%s\n NOT EQUAL\n%s' % (val, exp)
 
 if __name__ == '__main__':
   test_1()

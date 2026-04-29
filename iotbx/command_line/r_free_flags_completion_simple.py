@@ -1,3 +1,5 @@
+"""Try to complete the test set for a reflection file"""
+
 from __future__ import absolute_import, division, print_function
 import iotbx.reflection_file_utils
 import iotbx.reflection_file_reader

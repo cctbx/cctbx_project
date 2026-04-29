@@ -1,0 +1,12 @@
+{
+  "current_task": "UNKNOWN",
+  "status": "not_started",
+  "relevant_files": [],
+  "completed_steps": [],
+  "remaining_steps": [],
+  "decisions": [],
+  "assumptions": [],
+  "open_questions": [],
+  "last_stable_state": null,
+  "next_step": "analyze task"
+}

@@ -1,4 +1,3 @@
-
 """
 Wrapper module for computing targets and gradients for restraints (or other
 energy functions) on coordinates and B-factors; used in phenix.refine.
@@ -302,7 +301,7 @@ class manager(object):
         for line in header_lines:
           print(prefix+line, file=out)
       sub_hierarchy = hierarchy.select(atom_selection=selection)
-      s = sub_hierarchy.as_pdb_string()
+      s = sub_hierarchy.as_pdb_or_mmcif_string()
       if (len(s) == 0 and header_lines is not None):
         s = "  None\n"
       if (prefix == ""):

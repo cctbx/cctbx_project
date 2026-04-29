@@ -8,41 +8,42 @@ jobs:
   strategy:
     maxParallel: 10
     matrix:
-      python2.7:
-        PYTHON_VERSION: 2.7
-      python3.7:
-        PYTHON_VERSION: 3.7
-      python3.8:
-        PYTHON_VERSION: 3.8
-      python3.9:
-        PYTHON_VERSION: 3.9
-      python3.10:
-        PYTHON_VERSION: 3.10
       python3.11:
         PYTHON_VERSION: 3.11
-      python3.12:
-        PYTHON_VERSION: 3.12
 
   steps:
+
+  - task: InstallSSHKey@0
+    inputs:
+      knownHostsEntry: boa.lbl.gov ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAnPOtqyYASs6hc3fsmUQn92ovSozJsMsJyrMWjppUERX1tD4Fh0D7YaNhLvYpKi5mYVREo+tsKoOatCcqKGHCONWpzx7JHXUzfIBsy6nCeygRyyW4yuyoCuYFvOYLkaM4PrN/7XaZEnp1ux6/ZcbRxBDNK4f42svJUV39OX33tRuQWpP+O85paJr1ePHVz6U2n14a+3fRN3DBMti1dJuKOThU4djYEBQimx54pnW71eYORN2oUz+N/4RHAcomtxZpcUMl3Qadw8hD4s1XM6fzJ0Que7KefnnrPOgAEtZxKl9j09aaE70Oh+ie5Y6ckwddJ/4qZB5m2tBaEi3xuy0TSQ==
+      sshPublicKey: ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA7XgVgdU9GmZuo5yVyW/htrAuxe7ypuq7IowWwfUC0WZw9SPzQ8kOGj63plF3ytx/qpgvUlS1AiywO20rZ83gHmRdAiuvt9laH09KlWEUhIhAQTzesqBG5aUT0MKo01yxijoRl5HC8w/MdOanc0h01e6IxnZvgG0N30RB1i4xVPCtR/VBmXSp4R0T+Q/gJjfQssuBxHVMrrute4V3uUHek58FL2QgUB0+zq6ipETjuCJxTSyYVAFtCYDPYs+0lAYYkWrXALCr9kX9s22jYtkyv5kNw6mEW8nhtA7GbTdJLv4M6/WYtcvQV8TDcNCfltOfl81U3gcZ9zhQDKGVoNaJEw== buildbot@cci.lbl.gov
+      sshKeySecureFile: id_rsa
+    displayName: Download SSH key
 
   - checkout: self
     path: ./modules/cctbx_project
 
+  - script: |
+      set -xe
+      ssh-keyscan -t rsa gitlab.com >> ~/.ssh/known_hosts
+      cd $(Pipeline.Workspace)/modules/cctbx_project
+      git checkout master
+      git remote add gitlab git@gitlab.com:cctbx/cctbx_project.git
+      git fetch gitlab
+      git push -u gitlab master
+    displayName: Update GitLab mirror
+    continueOnError: true
+
   - script: echo "##vso[task.prependpath]$CONDA/bin"
     displayName: Add conda to PATH
 
-  - script: |
-      conda create -y -c conda-forge -n py$(PYTHON_VERSION) python=$(PYTHON_VERSION) six future scons
-    displayName: Create conda environment
+  # accept conda tos
+  - script: conda config --set plugins.auto_accept_tos yes
+    displayName: Accept conda TOS
 
   - script: |
-      set -xe
-      cd $(Pipeline.Workspace)/modules/cctbx_project
-      for f in `cat .azure-pipelines/py2_syntax_exceptions.txt`; do
-        echo Removing $f
-        rm $f; done
-    displayName: Remove Python 3 only files for Python 2 syntax check
-    condition: or(eq(variables['PYTHON_VERSION'], '2.7'), eq(variables['PYTHON_VERSION'], '3.7'))
+      conda create -y -c conda-forge -n py$(PYTHON_VERSION) python=$(PYTHON_VERSION) six future scons setuptools
+    displayName: Create conda environment
 
   - script: |
       source activate py$(PYTHON_VERSION)

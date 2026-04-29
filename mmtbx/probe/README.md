@@ -6,7 +6,19 @@ a module) during regression testing.  It is intended that future development and
 on Probe2 and not on the original code base.
 
 **Notes:**
-* Probe2 requires the chem_data modules from Phenix.
+* Probe2 requires the chem_data modules to work.
+
+**Installing and running:** *Probe2* is part of the mmtbx module, which is part of the CCTBX
+distribution. It can be built and run as part of the CCTBX build process. The CCTBX install and
+build processes are described in the README.md file in the root of the CCTBX distribution at
+https://github.com/cctbx/cctbx_project/blob/master/README.md. Probe2 does require the Monomer
+library described at https://github.com/cctbx/cctbx_project?tab=readme-ov-file#monomer-library
+to be installed. You can download a .conda package from the linked-to releases page and then
+after activating your conda environment, run `conda install -c cctbx cctbx_monomer_library` to install it.
+
+Once the system has been installed and the environment configured,
+the Probe2 program can be run from the command line as `mmtbx.probe2`, and the --help or
+--show-defaults options used to see the available options.
 
 ## C++ Classes
 

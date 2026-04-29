@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 import sys
 import os
 import shutil
-from libtbx import subversion
 from libtbx.option_parser import option_parser
 import libtbx.file_clutter
 
@@ -50,45 +49,28 @@ def run():
   opt_parser = (option_parser(
     usage="""
 clean_clutter [-t n | --tabsize=n] file1 file2 ...
-clean_clutter [-t n | --tabsize=n] [directory]
-clean_clutter [-t n | --tabsize=n] [--committing|-c]""",
+clean_clutter [-t n | --tabsize=n] [directory]""",
     description="""The first form cleans the specified files whereas the second
 form cleans all files in the hierarchy rooted in the given directory or
-the current directory is none is given.
-The  -c options restricts cleaning to those files which would be committed
-by running svn commit.""")
+the current directory is none is given.""")
     .option("-t", "--tabsize",
       action="store",
       type="int",
       default=8,
       help="the number of spaces a tab is to be replaced by",
       metavar="INT")
-    .option("-c", "--committing",
-      action="store_true",
-      default=False,
-      help="whether to clean the files which are to be committed")
   )
   command_line = opt_parser.process(args=sys.argv[1:])
   co = command_line.options
   files = command_line.args
-  if co.committing and files:
-      opt_parser.show_help()
-      exit(1)
   run_isort_in_path = False
-  if co.committing:
-    try:
-      files = list(subversion.marked_for_commit())
-    except RuntimeError as err:
-      print(err)
-      exit(1)
-  else:
-    if len(files) <= 1:
-      if not files: dir = '.'
-      else: dir = files[0]
-      files = [ c.path for c in libtbx.file_clutter.gather([dir])
-                if c.is_cluttered(flag_x=False) ]
-      if os.path.exists(os.path.join(dir, '.isort.cfg')):
-        run_isort_in_path = dir
+  if len(files) <= 1:
+    if not files: dir = '.'
+    else: dir = files[0]
+    files = [ c.path for c in libtbx.file_clutter.gather([dir])
+              if c.is_cluttered(flag_x=False) ]
+    if os.path.exists(os.path.join(dir, '.isort.cfg')):
+      run_isort_in_path = dir
   clean_clutter_in(files, tabsize=co.tabsize)
   if run_isort_in_path:
     try:

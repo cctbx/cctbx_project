@@ -1,3 +1,5 @@
+"""Computes omit maps by excluding the bulk solvent in the area around a
+selection."""
 from __future__ import absolute_import, division, print_function
 from six.moves import zip
 try:
@@ -105,6 +107,7 @@ Optional output:
 
   master_phil_str = master_phil_str
   known_article_ids = ['phenix.polder']
+  use_scattering_table_for_default_type = 'scattering_table'
 
   # ---------------------------------------------------------------------------
 
@@ -133,6 +136,8 @@ Optional output:
 
     if (self.params.polder.resolution_factor < 0.0):
       raise Sorry('Use a positive value for the resolution gridding factor.')
+    if (self.params.polder.resolution_factor > 0.5):
+      raise Sorry('Use a value < 0.5 for the resolution gridding factor.')
 
     self.fmodel = None
     try:
@@ -206,7 +211,7 @@ Optional output:
 
     print('Number of atoms selected:', n_selected, file=self.logger)
     pdb_hierarchy_selected = pdb_hierarchy.select(selection_bool)
-    ligand_str = pdb_hierarchy_selected.as_pdb_string()
+    ligand_str = pdb_hierarchy_selected.as_pdb_or_mmcif_string(target_format='pdb')
     print(ligand_str, file=self.logger)
     print("*"*79, file=self.logger)
 
@@ -300,11 +305,14 @@ Optional output:
       self.write_map_box(
         box      = vr.box_3,
         filename = "box_3_polder.ccp4")
-      vr.ph_selected.write_pdb_file(file_name="box_polder.pdb",
-        crystal_symmetry=vr.box_1.model().crystal_symmetry())
+      vr.ph_selected.write_pdb_or_mmcif_file(target_filename="box_polder.pdb",
+        target_format = 'pdb')
+      #crystal_symmetry=vr.box_1.model().crystal_symmetry()
     #
     print ('*'*79, file=self.logger)
     message = self.result_message(cc12 = vr.cc12, cc13 = vr.cc13, cc23 = vr.cc23)
+    if self.params.scattering_table=='electron':
+      message=''
     print(message, file=self.logger)
     return message
 
@@ -323,11 +331,13 @@ Optional output:
       msg = 'The polder map is likely to show the omitted atoms.'
     elif (cc13 >= 0.7 and cc13 < 0.8):
       if (cc23 < 0.7*cc13):
-        msg = """The polder map is more likely to show the omitted atoms than bulk solvent.
-  It is recommended to carefully inspect the maps to confirm."""
+        msg = """\
+The polder map is more likely to show the omitted atoms than bulk solvent.
+It is recommended to carefully inspect the maps to confirm."""
       else:
-        msg = """The polder map is more likely to show bulk-solvent or noise
-  instead of the omitted atoms. But it is recommended to inspect the maps to confirm."""
+        msg = """\
+The polder map is more likely to show bulk-solvent or noise instead of the
+omitted atoms. But it is recommended to inspect the maps to confirm."""
     return msg
 
   # ---------------------------------------------------------------------------
@@ -348,12 +358,22 @@ Optional output:
 
     f_obs, r_free_flags = self.fmodel.f_obs(), self.fmodel.r_free_flags()
 
-    print('Input data...', file=self.logger)
-    print('  Reflection data:', f_obs.info().labels, file=self.logger)
-    if (r_free_flags.info() is not None):
-      print('  Free-R flags:', r_free_flags.info().labels, file=self.logger)
-    else:
-      print('  Free-R flags: not present or not found', file=self.logger)
+    self.fmodel.update_all_scales()
+    print("Initial r_work, r_free: %6.4f %6.4f"%(
+      self.fmodel.r_work(), self.fmodel.r_free()), file=self.logger)
+
+    if(self.fmodel.twin_law is not None or
+       isinstance(self.fmodel, mmtbx.twinning.twin_f_model.twin_model_manager)):
+      raise Sorry("Twinning is not supported in Polder map calculation.")
+
+    if f_obs.info() is not None:
+      print('Input data...', file=self.logger)
+      print('  Reflection data:', f_obs.info().labels, file=self.logger)
+      if (r_free_flags.info() is not None):
+        print('  Free-R flags:', r_free_flags.info().labels, file=self.logger)
+      else:
+        print('  Free-R flags: not present or not found', file=self.logger)
+
     print('\nWorking crystal symmetry after inspecting all inputs:', file=self.logger)
     cs.show_summary(f=self.logger)
 

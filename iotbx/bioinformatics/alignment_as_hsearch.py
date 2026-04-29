@@ -1,3 +1,5 @@
+"""Generate information for homology search from a sequence file"""
+
 from __future__ import absolute_import, division, print_function
 
 from iotbx import bioinformatics

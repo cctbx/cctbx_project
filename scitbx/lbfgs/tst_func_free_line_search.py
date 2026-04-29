@@ -1,3 +1,8 @@
+"""
+lbfgs.tst_func_free_line_search
+
+"""
+
 from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 import scitbx.lbfgs
@@ -11,8 +16,6 @@ def grad(x1,x2,x3):
   return flex.double([(x1-2)*2, (x2+5)*2, 4*(x3-500)*3])
 
 x0 = [-100,203,999]
-print("The answer is: [2, -5, 500] ")
-print("The start value is:", x0)
 
 class lbfgs(object):
 
@@ -41,6 +44,8 @@ class lbfgs(object):
     return self.f, self.g
 
 if(__name__ == "__main__"):
+  print("The answer is: [2, -5, 500] ")
+  print("The start value is:", x0)
   t=lbfgs(True)
   assert approx_equal(t.x, [2, -5, 500])
   t=lbfgs(False)

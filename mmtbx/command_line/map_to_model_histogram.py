@@ -1,3 +1,4 @@
+"""Compute averaged radial density distribution"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.map_to_model_histogram
 
@@ -366,3 +367,4 @@ def run(args, log = None):
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
+

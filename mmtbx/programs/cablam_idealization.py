@@ -1,3 +1,5 @@
+"""Tool for sampling different conformations in attempt to
+  fix Cablam outliers"""
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
 
@@ -12,12 +14,12 @@ import os
 class Program(ProgramTemplate):
 
   description = '''
-phenix.fix_cablam: tool for sampling different conformations in attempt to
+phenix.cablam_idealization: tool for sampling different conformations in attempt to
   fix Cablam outliers.
 
 Usage examples:
-  phenix.fix_cablam model.pdb
-  phenix.fix_cablam model.cif
+  phenix.cablam_idealization model.pdb
+  phenix.cablam_idealization model.cif
   '''
 
   datatypes = ['model', 'phil']
@@ -27,10 +29,6 @@ include scope mmtbx.building.cablam_idealization.master_phil_str
 output {
   suffix = _cablam_fixed
     .type = str
-  format = *pdb mmcif
-    .type = choice(multi=True)
-  overwrite = True
-    .type = bool
 }
   """
 
@@ -59,27 +57,33 @@ output {
         log = self.logger)
 
     results = self.cablam_id.get_results()
+
+    flat_cablam_results = [item for sublist in results.cablam_results.values() for item in sublist]
+    print("Rotated residues (angle, chain id, resnum, resname, alpha, beta):", file=self.logger)
+    for cr, angle in flat_cablam_results:
+      a = angle if angle !=360 else 0
+      print(f'{a:3d} {cr.chain_id} {cr.resid} {cr.resname} {cr.feedback.alpha} {cr.feedback.alpha}', file=self.logger)
+      # print(angle, cr)
+
+    print(f"Total number of outliers in starting model: {results.n_initial_cablam_outliers}", file=self.logger)
     print("Total number of tried outliers: %d" % results.n_tried_residues, file=self.logger)
     print("Number of rotated outliers: %d" % results.n_rotated_residues, file=self.logger)
+    # splitting by cablam recommendation:
+    # flatten the info
+    print("Breakdown by type: fixed / total")
+    print(f"  loop : {results.n_fixed_for_loop} / {results.n_fixed_for_loop+results.n_not_fixed_for_loop}")
+    print(f"  alpha: {results.n_fixed_for_alpha} / {results.n_fixed_for_alpha+results.n_not_fixed_for_alpha}")
+    print(f"  beta : {results.n_fixed_for_beta} / {results.n_fixed_for_beta+results.n_not_fixed_for_beta}")
+    print(f"  3-10 : {results.n_fixed_for_threeten} / {results.n_fixed_for_threeten+results.n_not_fixed_for_threeten}")
     # I believe this should go to data_manager. Also not clear how output of
     # two files would affect data_manager.
     for m, fname_base in [
         (results.model, self.output_fname_base),
         (results.model_minimized, self.output_fname_base+"_minimized")]:
       if m is not None:
-        if 'pdb' in self.params.output.format:
-          str_to_output = model.model_as_pdb()
-          fname = fname_base+".pdb"
-          print('Writing results: %s' % fname)
-          self.data_manager.write_model_file(
-              str_to_output, fname)
-        if 'mmcif' in self.params.output.format:
-          str_to_output = model.model_as_mmcif()
-          fname = fname_base+".cif"
-          print('Writing results: %s' % fname)
-          self.data_manager.write_model_file(
-              str_to_output, fname)
-
+        self.final_file_name = self.data_manager.write_model_file(
+            m, fname_base)
+        print("Model written to '%s'" % self.final_file_name)
 
   # ---------------------------------------------------------------------------
   def get_results(self):

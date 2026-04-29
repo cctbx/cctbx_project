@@ -43,15 +43,37 @@ def round_to_int(d, n=10, wrap=True):
 def round_to_ten(d):
   return round_to_int(d, 10)
 
+def get_children():
+  from iotbx.pdb.modified_aa_names import lookup as parent_child
+  rc={}
+  for c, p in parent_child.items():
+    rc.setdefault(p,[])
+    rc[p].append(c)
+  return rc
+
+children = get_children()
+
+def is_child_of_PRO(resname):
+  return resname in children['P']
+
+def get_parent(resname):
+  from iotbx.pdb.modified_aa_names import lookup as parent_child
+  rc=parent_child.get(resname, '???')
+  from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter
+  rc = three_letter_given_one_letter.get(rc, '???')
+  return rc
+
 def get_res_type_group(resname1, resname2):
   resname1=resname1.strip()
   resname2=resname2.strip()
-  if resname2=="PRO":
+  # check for prePro
+  if resname2=="PRO" or is_child_of_PRO(resname2):
     lookup = before_pro_groups
   else:
     lookup = not_before_pro_groups
+  # find four other sub-classes
   for key in lookup:
-    if resname1 in lookup[key]:
+    if resname1 in lookup[key] or get_parent(resname1) in lookup[key]:
       return key
   return None
 
@@ -123,4 +145,9 @@ def get_ca_dihedrals(residues, verbose=False):
       dihedrals.append(dihedral_angle(sites=[atom.xyz for atom in atoms], deg=True))
       del atoms[0]
   return dihedrals
+
+def get_enol_atoms(residue1, residue2):
+  backbone_i, outl1 = get_c_ca_n(residue1, return_subset=True)
+  backbone_i_plus_1, outl2 = get_c_ca_n(residue2, return_subset=True)
+  return backbone_i, backbone_i_plus_1
 

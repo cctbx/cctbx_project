@@ -1,3 +1,4 @@
+"""Insert SCALE records in a PDB file"""
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from cctbx import uctbx

@@ -1,3 +1,4 @@
+"""Calculate cc_star values for correlation of data vs resolution"""
 # LIBTBX_SET_DISPATCHER_NAME phenix.cc_star
 
 from __future__ import absolute_import, division, print_function
@@ -277,3 +278,4 @@ def finish_job(result):
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
+

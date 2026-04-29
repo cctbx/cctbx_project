@@ -1,3 +1,4 @@
+"""Run molprobity. version 2"""
 ##################################################################################
 # Copyright(c) 2021-2023, Richardson Lab at Duke
 # Licensed under the Apache 2 license
@@ -26,10 +27,8 @@ import mmtbx_probe_ext as probeExt
 from mmtbx.probe import Helpers
 from iotbx import pdb
 from iotbx.pdb import common_residue_names_get_class
-# @todo See if we can remove the shift and box once reduce_hydrogen is complete
-from cctbx.maptbx.box import shift_and_box_model
 
-version = "4.2.0"
+version = "4.13.0"
 
 master_phil_str = '''
 profile = False
@@ -115,6 +114,11 @@ ignore_lack_of_explicit_hydrogens = False
 output
   .style = menu_item auto_align
 {
+  write_files = True
+    .type = bool
+    .short_caption = Write the output files
+    .help = Write the output files(s) when this is True (default). Set to False when harnessing the program.
+
   file_name = None
     .type = str
     .short_caption = Output file name
@@ -125,7 +129,7 @@ output
     .short_caption = Dump file name
     .help = Dump file name for regression testing atom characteristics (-DUMPATOMS in probe)
 
-  format = *kinemage raw oneline
+  format = *kinemage raw oneline json
     .type = choice
     .short_caption = Output format
     .help = Type of output to write (-oneline -unformated -kinemage in probe)
@@ -257,7 +261,6 @@ citation {
 }
 ''')
 
-
 ################################################################################
 # List of all of the keys for atom classes, including all elements and all
 # nucleic acid types.  These are in the order that the original Probe reported
@@ -370,7 +373,7 @@ def _color_for_atom_class(c):
 
 def _condense(dotInfoList, condense):
   '''
-    Condensing the list of dots for use in raw output, sorting and removing
+    Condensing the list of dots for use in raw or JSON output, sorting and removing
     duplicates.
     :param dotInfoList: List of DotInfo structures to sort and perhaps condense.
     :param condense: Boolean telling whether to condense the output, removing duplicates.
@@ -448,7 +451,7 @@ class DotInfo:
     self.gap = gap                  # Gap between the atoms
     self.ptmaster = ptmaster        # Main/side chain interaction type
     self.angle = angle              # Angle associated with the bump
-    self.dotCount = 1               # Used by _condense and raw output to count dots on the same source + target
+    self.dotCount = 1               # Used by _condense and raw/JSON output to count dots on the same source + target
 
   def _makeName(self, atom):
       # Make the name for an atom, which includes its chain and residue information
@@ -464,7 +467,8 @@ class DotInfo:
         atom.xyz[0], atom.xyz[1], atom.xyz[2])
 
   def __lt__(self, other):
-      # Sort dots based on characteristics of their source and target atoms, then their gap.
+      # Sort dots based on characteristics of their source and target atoms, then their gap
+      # (smallest/most negative gap to largest).
       # We include the XYZ position in the sort so that we get the same order and grouping each
       # time even though the phantom H? atoms are otherwise identical.
       # There may be no target atoms specified (may be Python None value), which will
@@ -565,7 +569,7 @@ This program replaces the original "probe" program from the Richarson lab
 at Duke University and was developed by them as part of a supplemental award.
 
 It computes the MolProbity Probe score for a file, or a subset of the file,
-producing summaries or lists of all contacts, in Kinemage or raw format, depending
+producing summaries or lists of all contacts, in Kinemage/raw/JSON format, depending
 on the Phil parameters.
 
 By default, it compares all atoms in all alternates that meet an occupancy
@@ -585,7 +589,7 @@ Output:
 
   If neither output.file_name nor output.filename is specified, it will write
   to a file with the same name as the input model file name but with the
-  extension replaced with with either '.kin' or '.txt' depending on the
+  extension replaced with with '.kin', '.txt', or '.json' depending on the
   parameters (.kin when output.format == kinemage and output.count_dots == False).
 
   In addition to writing files, this is derived from the Program Template object
@@ -712,10 +716,14 @@ Note:
       :param a: Atom whose class is to be specified
       :return: If our parameters have been set to color and sort by NA base,
       then it returns the appropriate base name.  Otherwise, it returns the
-      element of the atom.
+      element of the atom with any second letter in the element name lower-case
+      to match the values in the _allAtomClasses list.
     '''
     if not self.params.output.color_by_na_base:
-      return a.element
+      val = a.element
+      if len(val) > 1:
+        val = val[0] + val[1:].lower()
+      return val
     else:
       resName = a.parent().resname
       cl = common_residue_names_get_class(name = resName)
@@ -1096,15 +1104,19 @@ Note:
 
 # ------------------------------------------------------------------------------
 
-  def _writeRawOutput(self, groupName, masterName):
+  def _writeRawOutput(self, groupName, masterName, writeJSON = False):
     '''
       Describe raw summary counts for data of various kinds.
       :param groupName: Name to give to the group.
       :param masterName: Name for the beginning of each line.
+      :param writeJSON: If True, write the output in JSON format.  Otherwise, write one raw entry per line.
       :return: String to be added to the output.
     '''
 
-    ret = ''
+    if writeJSON:
+      ret = '{ "flat_results" : ['
+    else:
+      ret = ''
 
     # Provide a short name for each interaction type
     mast = {}
@@ -1118,6 +1130,7 @@ Note:
     hydrogen_bond_weight = self.params.probe.hydrogen_bond_weight
 
     # Go through all atom types and contact types and report the contacts.
+    first_line = True
     for atomClass in _allAtomClasses:
       for interactionType in _interactionTypes:
 
@@ -1125,7 +1138,15 @@ Note:
         condensed = _condense(self._results[atomClass][interactionType], self.params.output.condensed)
         for node in condensed:
 
-          ret += "{}:{}:{}:".format(masterName, groupName, mast[interactionType])
+          if writeJSON:
+            if first_line:
+              first_line = False
+            else:
+              ret += ','
+            ret += '\n'
+            ret += '{{"master": "{}", "group": "{}", "type": "{}"'.format(masterName, groupName, mast[interactionType])
+          else:
+            ret += "{}:{}:{}:".format(masterName, groupName, mast[interactionType])
 
           # Describe the source atom
           a = node.src
@@ -1133,25 +1154,38 @@ Note:
           resID = str(a.parent().parent().resseq_as_int())
           chainID = a.parent().parent().parent().id
           iCode = a.parent().parent().icode
+          if iCode == "":
+            iCode = " "
           alt = a.parent().altloc
-          ret += "{:>2s}{:>4s}{}{} {}{:1s}:".format(chainID, resID, iCode, resName, a.name, alt)
+          if writeJSON:
+            ret += ', "src": {{"chainID": "{}", "resID": {}, "iCode": "{}", "resName": "{}", "atomName": "{}", "alt": "{}"}}'.format(
+              chainID, resID, iCode.strip(), resName, a.name, alt.strip())
+          else:
+            ret += "{:>2s}{:>4s}{}{:>3s} {:<3s}{:1s}:".format(chainID, resID, iCode, resName.strip(), a.name, alt)
 
           # Describe the target atom, if it exists
           t = node.target
           if t is None:
-            ret += ":::::::"
+            if not writeJSON:
+              ret += ":::::::"
           else:
             resName = t.parent().resname.strip().upper()
             resID = str(t.parent().parent().resseq_as_int())
             chainID = t.parent().parent().parent().id
             iCode = t.parent().parent().icode
+            if iCode == "":
+              iCode = " "
             alt = t.parent().altloc
-            ret += "{:>2s}{:>4s}{}{} {:<3s}{:1s}:".format(chainID, resID, iCode, resName, t.name, alt)
+            if writeJSON:
+              ret += ', "target": {{"chainID": "{}", "resID": {}, "iCode": "{}", "resName": "{}", "atomName": "{}", "alt": "{}"}}'.format(
+                chainID, resID, iCode.strip(), resName, t.name, alt.strip())
+            else:
+              ret += "{:>2s}{:>4s}{}{:>3s} {:<3s}{:1s}:".format(chainID, resID, iCode, resName.strip(), t.name, alt)
 
             r1 = self._extraAtomInfo.getMappingFor(a).vdwRadius
             r2 = self._extraAtomInfo.getMappingFor(t).vdwRadius
-            sl = (Helpers.rvec3(a.xyz)-Helpers.rvec3(t.xyz)).length()
-            gap = sl - (r1 + r2)
+            sl = (node.loc-node.spike).length()
+            gap = (Helpers.rvec3(a.xyz)-Helpers.rvec3(t.xyz)).length() - (r1 + r2)
             dtgp = node.gap
             score = 0.0
 
@@ -1168,22 +1202,43 @@ Note:
               score = hydrogen_bond_weight * sl
 
             if self.params.output.condensed:
-              ret += "{}:".format(node.dotCount)
+              if writeJSON:
+                ret += ', "dotCount": {}'.format(node.dotCount)
+              else:
+                ret += "{}:".format(node.dotCount)
 
-            ret += "{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.4f}".format(gap, dtgp,
-              node.spike[0], node.spike[1], node.spike[2], sl, score/density)
+            if writeJSON:
+              if self.params.output.condensed:
+                # Don't write elements that are not needed for condensed output
+                ret += ', "gap": {:.3f}'.format(gap)
+              else:
+                ret += ', "gap": {:.3f}, "dotGap": {:.3f}, "spike": [{:.3f},{:.3f},{:.3f}], "spikeLen": {:.3f}, "scoreOverDensity": {:.4f}'.format(
+                  gap, dtgp, node.spike[0], node.spike[1], node.spike[2], sl, score/density)
+            else:
+              ret += "{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.4f}".format(gap, dtgp,
+                node.spike[0], node.spike[1], node.spike[2], sl, score/density)
 
           try:
-            tName = t.element
+            tName = self._atomClasses[t]
             tBVal = "{:.2f}".format(t.b)
           except Exception:
             tName = ""
             tBVal = ""
-          ret += ":{}:{}:{:.3f}:{:.3f}:{:.3f}".format(a.element, tName,
-            node.loc[0], node.loc[1], node.loc[2])
 
-          ret += ":{:.2f}:{}\n".format(a.b, tBVal)
+          if writeJSON:
+            ret += ', "srcClass": "{}", "targetClass": "{}", "loc": [{:.3f},{:.3f},{:.3f}]'.format(
+              self._atomClasses[a], tName, node.loc[0], node.loc[1], node.loc[2])
+          else:
+            ret += ":{}:{}:{:.3f}:{:.3f}:{:.3f}".format(self._atomClasses[a], tName,
+              node.loc[0], node.loc[1], node.loc[2])
 
+          if writeJSON:
+            ret += ', "srcBFactor": {:.2f}, "targetBFactor": {}}}'.format(a.b, tBVal)
+          else:
+            ret += ":{:.2f}:{}\n".format(a.b, tBVal)
+
+    if writeJSON:
+      ret += '\n] }\n'
     return ret
 
 # ------------------------------------------------------------------------------
@@ -1314,7 +1369,7 @@ Note:
           else:
             ptmast = " '{}' ".format(node.ptmaster)
 
-          pointid = "{}{:1s}{} {:>3d} {:1s}{}".format(a.name, a.parent().altloc, a.parent().resname,
+          pointid = "{}{:1s}{:>3s} {:>3d} {:1s}{}".format(a.name, a.parent().altloc, a.parent().resname,
             a.parent().parent().resseq_as_int(), a.parent().parent().icode,
             a.parent().parent().parent().id)
           if pointid != lastPointID:
@@ -1722,7 +1777,10 @@ Note:
       # Check for various output format types.
       # We're not implementing O format or XV format, but we still allow raw and oneline
       if self.params.output.format == 'raw':
-        ret += self._writeRawOutput(comparisonString,groupLabel)
+        ret += self._writeRawOutput(comparisonString,groupLabel, False)
+
+      elif self.params.output.format == 'json':
+        ret += self._writeRawOutput(comparisonString,groupLabel, True)
 
       elif self.params.output.format == 'oneline':
         ret += self._count_summary(intersectionName)
@@ -1786,9 +1844,11 @@ Note:
     if self.params.output.filename is None:
       # If the output file name is not specified, use the same root as the
       # input file and replace the suffix with .kin for Kinemage output or
-      # .txt for others.
+      # .txt for raw or .json for JSON.
       suffix = '.kin'
-      if self.params.output.format != 'kinemage' or self.params.output.count_dots:
+      if self.params.output.format == 'json':
+        suffix = '.json'
+      elif self.params.output.format != 'kinemage' or self.params.output.count_dots:
         suffix = '.txt'
       inName = self.data_manager.get_default_model_name()
       p = Path(inName)
@@ -1845,13 +1905,20 @@ Note:
     # Get the bonding information we'll need to exclude our bonded neighbors.
     allAtoms = self.model.get_atoms()
     make_sub_header('Compute neighbor lists', out=self.logger)
+
+    self.model.set_stop_for_unknowns(False)
     p = mmtbx.model.manager.get_default_pdb_interpretation_params()
     p.pdb_interpretation.use_neutron_distances = self.params.use_neutron_distances
     p.pdb_interpretation.allow_polymer_cross_special_position=True
     p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+    p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check=True
+    # We need to turn this on because without it the interpretation is
+    # renaming atoms to be more correct.  Unfortunately, this causes the
+    # dot names to no longer match the input file.
+    p.pdb_interpretation.flip_symmetric_amino_acids=False
     try:
-      self.model.process(make_restraints=True, pdb_interpretation_params=p, logger=self.logger) # make restraints
+      self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
       geometry = self.model.get_restraints_manager().geometry
       sites_cart = self.model.get_sites_cart() # cartesian coordinates
       bondProxies, asu = \
@@ -1859,9 +1926,7 @@ Note:
     except Exception as e:
       try:
         # Fix up bogus unit cell when it occurs by checking crystal symmetry.
-        cs = self.model.crystal_symmetry()
-        if (cs is None) or (cs.unit_cell() is None):
-          self.model = shift_and_box_model(model = self.model, shift_model=False)
+        self.model.add_crystal_symmetry_if_necessary()
 
         # Retry with the adjusted model
         self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
@@ -2255,7 +2320,7 @@ Note:
 
       ################################################################################
       # Find our group label
-      if self.params.output.format == 'raw':
+      if self.params.output.format in ['raw','json']:
         groupLabel = ""
       else:
         groupLabel = "dots"
@@ -2471,12 +2536,13 @@ Note:
             raise ValueError("Unrecognized output format: "+self.params.output.format+" (internal error)")
 
     # Write the output to the specified file.
-    self.data_manager._write_text("Text", outString, self.params.output.filename)
+    if self.params.output.write_files:
+      self.data_manager._write_text("Text", outString, self.params.output.filename)
 
     # If we have a dump file specified, write the atom information into it.
     # We write it at the end because the extra atom info may have been adjusted
     # during the code that handles hydrogen adjustements.
-    if self.params.output.dump_file_name is not None:
+    if self.params.output.write_files and self.params.output.dump_file_name is not None:
       atomDump = Helpers.writeAtomInfoToString(allAtoms, self._extraAtomInfo)
       with open(self.params.output.dump_file_name,"w") as df:
         df.write(atomDump)

@@ -1,3 +1,4 @@
+"""generate pseudo H-bond restraints for alpha helices, beta sheets, and nucleic acid base pairs"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.secondary_structure_restraints
 
@@ -243,3 +244,4 @@ def validate_params(params):
 
 if __name__ == "__main__" :
   run(sys.argv[1:])
+

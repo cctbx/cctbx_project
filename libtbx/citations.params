@@ -1405,13 +1405,13 @@ citation {
 
 citation {
   article_id = phenix.mosaic
-  authors = Afonine PV, Adams PD, Sobolev OV, Urzhumtsev A
+  authors = Afonine PV, Adams PD, Sobolev OV, Urzhumtsev AG
   title = Accounting for nonuniformity of bulk-solvent: a mosaic model
-  journal = None
-  volume = None
+  journal = Protein Science
+  volume = 33
   pages = None
-  year = 2030
-  doi_id = None
+  year = 2024
+  doi_id = 10.1002/pro.4909
 }
 
 citation {
@@ -1607,6 +1607,19 @@ citation {
   pmid = 36920336
   doi_id = 10.1107/S2059798323001602
 }
+
+citation {
+  article_id = emplace_local
+  authors = Read RJ, Pettersen EF, McCoy AJ, Croll TI, Terwilliger TC, Poon BK, Meng EC, Liebschner D, Adams PD
+  title = Likelihood-based interactive local docking into cryo-EM maps in ChimeraX
+  journal = Acta Cryst. D
+  volume = 80
+  pages = 588-598
+  year = 2024
+  pmid = 39058381
+  doi_id = 10.1107/S2059798324006776
+}
+
 citation {
   article_id = lddt
   authors = Mariani V, Biasini M, Barbato A, Schwede T.

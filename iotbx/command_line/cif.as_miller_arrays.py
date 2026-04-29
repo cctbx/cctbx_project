@@ -1,3 +1,4 @@
+"""Read a reflection file and get miller arrays and dump as pickle"""
 from __future__ import absolute_import, division, print_function
 import iotbx.cif
 from libtbx import easy_pickle, smart_open

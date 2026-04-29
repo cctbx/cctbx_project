@@ -1,3 +1,6 @@
+"""Manipulation of xray data objects (coordinates and reflection files
+"""
+
 from __future__ import absolute_import, division, print_function
 from mmtbx import xmanip_tasks
 from iotbx import reflection_file_reader

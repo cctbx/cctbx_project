@@ -1,4 +1,4 @@
-
+"""Tools for keeping track of symmetry information from multiple files"""
 from __future__ import absolute_import, division, print_function
 from libtbx import group_args
 from libtbx.utils import Sorry

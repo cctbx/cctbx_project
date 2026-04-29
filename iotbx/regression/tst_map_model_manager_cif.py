@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import libtbx.load_env
 from iotbx.data_manager import DataManager
-from iotbx.map_model_manager import match_map_model_ncs, map_model_manager
+from iotbx.map_model_manager import _match_map_model_ncs, map_model_manager
 from iotbx.phil import parse
 from libtbx.program_template import ProgramTemplate
 from libtbx.test_utils import approx_equal
@@ -42,7 +42,7 @@ def test_01():
 
   ncs_dc = ncs.deep_copy()
 
-  mmmn = match_map_model_ncs()
+  mmmn = _match_map_model_ncs()
   mmmn.add_map_manager(mm)
   mmmn.add_model(model)
   mmmn.add_ncs_object(ncs)
@@ -58,14 +58,14 @@ def test_01():
 
   # Make sure we can add an ncs object that is either shifted or not
   mmmn_dcdc=mmmn.deep_copy()
-  new_mmmn = match_map_model_ncs()
+  new_mmmn = _match_map_model_ncs()
   new_mmmn.add_map_manager(mmmn_dcdc.map_manager())
   new_mmmn.add_model(mmmn_dcdc.model())
   new_mmmn.add_ncs_object(mmmn_dcdc.ncs_object())
   assert new_mmmn.ncs_object().shift_cart() == new_mmmn.map_manager().shift_cart()
 
   mmmn_dcdc=mmmn.deep_copy()
-  new_mmmn = match_map_model_ncs()
+  new_mmmn = _match_map_model_ncs()
   new_mmmn.add_map_manager(mmmn_dcdc.map_manager())
   new_mmmn.add_model(mmmn_dcdc.model())
   new_mmmn.add_ncs_object(ncs_dc)
@@ -80,7 +80,7 @@ def test_01():
   assert tuple(mmmn._map_manager.origin_shift_grid_units) == (0,0,0)
 
   # Shift origin to (0,0,0)
-  mmmn=mmmn_dc.deep_copy()  # fresh version of match_map_model_ncs
+  mmmn=mmmn_dc.deep_copy()  # fresh version of _match_map_model_ncs
   mmmn.shift_origin()
   new_ncs=mmmn.ncs_object()
   assert tuple(mmmn._map_manager.origin_shift_grid_units) == (100,100,100)
@@ -95,7 +95,7 @@ def test_01():
 
   # Shift a model and shift it back
 
-  mmmn=mmmn_dc.deep_copy()  # fresh version of match_map_model_ncs
+  mmmn=mmmn_dc.deep_copy()  # fresh version of _match_map_model_ncs
   model=mmmn.model()
   shifted_model=mmmn.shift_model_to_match_working_map(model=model)
   model_in_original_position=mmmn.shift_model_to_match_original_map(
@@ -235,7 +235,7 @@ def test_01():
   dm = DataManager(['model'])
   assert not hasattr(dm, 'get_map_model_manager')
   dm = DataManager(['real_map'])
-  assert not hasattr(dm, 'get_map_model_manager')
+  assert hasattr(dm, 'get_map_model_manager')
   dm = DataManager(['sequence'])
   assert not hasattr(dm, 'get_map_model_manager')
   dm = DataManager(['model', 'real_map'])

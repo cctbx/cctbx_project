@@ -1,12 +1,11 @@
+"""Tool for selecting some atoms and optionally
+  write out them as a PDB file"""
 from __future__ import absolute_import, division, print_function
 
 from libtbx.program_template import ProgramTemplate
-from libtbx.str_utils import show_string
 from libtbx.utils import plural_s
 from cctbx.array_family import flex
 from cctbx import crystal, uctbx, xray
-import mmtbx.model
-import iotbx.pdb
 from libtbx.utils import Sorry
 from cctbx.maptbx.box import shift_and_box_model
 
@@ -65,7 +64,6 @@ Usage examples:
           print ("    %s" % atom.format_atom_record(), file=self.logger)
     print("", file=self.logger)
     if self.params.atom_selection_program.write_pdb_file is not None:
-      print ("Writing file:", show_string(self.params.atom_selection_program.write_pdb_file),file=self.logger)
       ss_ann = model.get_ss_annotation()
       if not model.crystal_symmetry() or \
         (not model.crystal_symmetry().unit_cell()):
@@ -91,10 +89,10 @@ Usage examples:
         xrs_box = selected_model.get_xray_structure().replace_sites_frac(box.sites_frac())
         xray_structure_box = xray.structure(sp, xrs_box.scatterers())
         selected_model.set_xray_structure(xray_structure_box)
-      pdb_str = selected_model.model_as_pdb()
-      f = open(self.params.atom_selection_program.write_pdb_file, 'w')
-      f.write(pdb_str)
-      f.close()
+      written_fname = self.data_manager.write_model_file(
+          model_str=selected_model,
+          filename=self.params.atom_selection_program.write_pdb_file)
+      print("Wrote file: %s" % written_fname, file=self.logger)
       print("", file=self.logger)
 
   # ---------------------------------------------------------------------------

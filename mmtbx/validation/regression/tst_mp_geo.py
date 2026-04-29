@@ -1,8 +1,13 @@
 
 from __future__ import absolute_import, division, print_function
 from mmtbx.validation.molprobity import mp_geo
+from iotbx.data_manager import DataManager
+from mmtbx.model import manager
+from libtbx.utils import null_out
 from iotbx import pdb
+from libtbx.test_utils import approx_equal
 import time
+import json
 
 pdb_str_1 = """
 ATOM     60  N   GLU A   9       7.757   9.623  27.829  1.00 12.74           N
@@ -177,7 +182,48 @@ def exercise_mp_geo():
   assert lines[3] == \
     ' :1: B: 118: : :  C:-62.565:164.517:69.624:78.058:__?__:__?__'
 
+def exercise_mp_geo_bonds_angles_json():
+  dm = DataManager()
+  #print(help(dm))
+  dm.process_model_str("1",pdb_str_1)
+  model = dm.get_model("1")
+  model.set_stop_for_unknowns(False)
+  hierarchy = model.get_hierarchy()
+  p = manager.get_default_pdb_interpretation_params()
+  ##print(dir(p.pdb_interpretation))
+  p.pdb_interpretation.allow_polymer_cross_special_position=True
+  p.pdb_interpretation.flip_symmetric_amino_acids=False
+  p.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
+  p.pdb_interpretation.restraints_library.cdl = True
+  model.set_log(log = null_out())
+  model.process(make_restraints=True, pdb_interpretation_params=p)
+  geometry = model.get_restraints_manager().geometry
+  atoms = hierarchy.atoms()
+  rc = mp_geo.get_bond_and_angle_outliers(
+           pdb_hierarchy=hierarchy,
+           xray_structure=model.get_xray_structure(),
+           geometry_restraints_manager=geometry,
+           use_segids=False,
+           outliers_only=False)
+  bonds = rc.bonds
+  angles = rc.angles
+  import pprint
+  bonds_json = json.loads(bonds.as_JSON())
+  #pprint.pprint(bonds_json)
+  assert len(bonds_json['flat_results'])==19, "tst_mp_validate_bonds total number of bonds changed, now: "+str(len(bonds_json['flat_results']))
+  assert approx_equal(bonds_json['flat_results'][18]["sigma"], 0.019), "tst_mp_validate_bonds json output last sigma value changed, now: "+str(bonds_json['flat_results'][18]["sigma"])
+  assert bonds_json['summary_results'][""]["num_outliers"] == 1, "tst_mp_validate_bonds json summary output total number of outliers changed, now: "+str(bonds_json['summary_results'][""]["num_outliers"])
+  assert bonds_json['summary_results'][""]["num_total"]==19, "tst_mp_validate_bonds json summary output total number of bonds changed, now: "+str(bonds_json['summary_results'][""]["num_total"])
+  angles_json = json.loads(angles.as_JSON())
+  #pprint.pprint(angles_json)
+  assert len(angles_json['flat_results'])==24, "tst_mp_validate_bonds total number of angles changed, now: "+str(len(angles_json['flat_results']))
+  assert approx_equal(angles_json['flat_results'][23]["sigma"], 2.4), "tst_mp_validate_bonds json output last sigma value changed, now: "+str(angles_json['flat_results'][23]["sigma"])
+  assert angles_json['summary_results'][""]["num_outliers"] == 1, "tst_mp_validate_bonds json summary output total number of outliers changed, now: "+str(angles_json['summary_results'][""]["num_outliers"])
+  assert angles_json['summary_results'][""]["num_total"]==24, "tst_mp_validate_bonds json summary output total number of angles changed, now: "+str(angles_json['summary_results'][""]["num_total"])
+  return bonds_json, angles_json
+
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_mp_geo()
+  exercise_mp_geo_bonds_angles_json()
   print("OK. Time: %8.3f"%(time.time()-t0))

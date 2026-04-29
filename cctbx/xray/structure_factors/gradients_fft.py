@@ -17,7 +17,8 @@ class gradients_fft(gradients_base):
                      u_iso_refinable_params,
                      miller_set,
                      d_target_d_f_calc,
-                     n_parameters):
+                     n_parameters,
+                     extra_params=None):
     time_all = time_apply_u_extra = user_plus_sys_time()
     gradients_base.__init__(self,
       manager, xray_structure, miller_set, algorithm="fft")

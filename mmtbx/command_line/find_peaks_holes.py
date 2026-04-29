@@ -1,3 +1,4 @@
+"""Find peaks and holes in a difference map"""
 # LIBTBX_SET_DISPATCHER_NAME phenix.find_peaks_holes
 # LIBTBX_SET_DISPATCHER_NAME mmtbx.find_peaks_holes
 
@@ -560,3 +561,4 @@ def finish_job(result):
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
+

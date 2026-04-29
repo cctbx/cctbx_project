@@ -26,7 +26,7 @@ def run(args):
                 if (atom.name not in ala_atom_names):
                   ag.remove_atom(atom=atom)
     output_pdb = "v3_truncated_to_ala_"+file_name
-    hierarchy.write_pdb_file(file_name=output_pdb)
+    hierarchy.write_pdb_or_mmcif_file(target_filename=output_pdb)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

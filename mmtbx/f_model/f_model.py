@@ -43,6 +43,7 @@ import libtbx
 import mmtbx.bulk_solvent
 import six
 from six.moves import zip, range
+import libtbx.utils
 
 ext = bp.import_ext("mmtbx_f_model_ext")
 
@@ -146,7 +147,7 @@ class manager_mixin(object):
       .gradients_wrt_atomic_parameters(**keyword_args)
 
 sf_and_grads_accuracy_master_params = iotbx.phil.parse("""\
-  algorithm = *fft direct
+  algorithm = *fft direct taam
     .type = choice
   cos_sin_table = False
     .type = bool
@@ -162,7 +163,19 @@ sf_and_grads_accuracy_master_params = iotbx.phil.parse("""\
     .type = float
   exp_table_one_over_step_size = None
     .type = float
+  extra
+    .help = Extra parameters for additional algorithms, e.g. TAAM using DiSCaMB
+  {
+  }
 """)
+
+if cctbx.xray.structure_factors.pydiscamb_is_installed:
+  sf_and_grads_accuracy_master_params.adopt_scope(
+    iotbx.phil.parse(
+      "extra  { discamb { include scope pydiscamb.cctbx_interface.pydiscamb_master_params } }",
+      process_includes=True,
+    )
+  )
 
 alpha_beta_master_params = iotbx.phil.parse("""\
   include scope mmtbx.max_lik.maxlik.alpha_beta_params
@@ -326,7 +339,7 @@ class manager_kbu(object):
     return flex.double(self.f_obs.data().size(),
       mmtbx.bulk_solvent.scale(self.f_obs.data(), self.f_model.data()))
 
-class manager(manager_mixin):
+class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
 
   def __init__(self,
          f_obs                        = None,
@@ -401,6 +414,7 @@ class manager(manager_mixin):
     self._hl_coeffs = abcd
     if(sf_and_grads_accuracy_params is None):
       sf_and_grads_accuracy_params = sf_and_grads_accuracy_master_params.extract()
+    self.sfg_params = sf_and_grads_accuracy_params
     if(alpha_beta_params is None):
       alpha_beta_params = alpha_beta_master_params.extract()
     self.twin = False
@@ -413,7 +427,6 @@ class manager(manager_mixin):
       # twin mate of mapped-to-asu does not have to obey this!
       assert f_obs.is_in_asu()
       assert r_free_flags.is_in_asu()
-    self.sfg_params = sf_and_grads_accuracy_params
     self.alpha_beta_params = alpha_beta_params
     self.xray_structure    = xray_structure
     self.use_f_model_scaled= use_f_model_scaled
@@ -541,7 +554,9 @@ class manager(manager_mixin):
       u_base                       = p.u_base,
       b_base                       = p.b_base,
       wing_cutoff                  = p.wing_cutoff,
-      exp_table_one_over_step_size = p.exp_table_one_over_step_size)
+      exp_table_one_over_step_size = p.exp_table_one_over_step_size,
+      extra_params = p.extra
+      )
     m = manager.manager()
     return manager.f_calc()
 
@@ -741,6 +756,7 @@ class manager(manager_mixin):
     result.twin_law_str = self.twin_law_str
     result.k_h = self.k_h
     result.b_h = self.b_h
+    result._call_stats = self._call_stats # tracking!!
     if(in_place): # XXX USE THIS INSTEAD OF ABOVE
       # TODO: six.moves.zip this file
       for k, v in six.iteritems(self.__dict__):
@@ -1440,7 +1456,7 @@ class manager(manager_mixin):
         fill         = True)
 
   def k_sol_b_sol_from_k_mask(self):
-    sel = self.f_obs().d_spacings().data()>=3.5
+    sel = self.f_obs().d_spacings().data()>=4.0
     k_mask = self.k_masks()[0].select(sel)
     ss = self.ss.select(sel)
     r = scitbx.math.gaussian_fit_1d_analytical(x=flex.sqrt(ss), y=k_mask)
@@ -1698,6 +1714,14 @@ class manager(manager_mixin):
       return self._hl_coeffs
     else:
       return self.arrays.hl_coeffs
+
+  def f_obs_scaled(self, include_fom=False):
+    scale = 1.0 / self.k_total()
+    if include_fom:
+      scale = scale * self.figures_of_merit()
+    return miller.array(
+      miller_set = self.f_obs(),
+      data       = self.f_obs().data()*scale)
 
   def f_obs(self):
     if(self.arrays is not None):
@@ -2566,7 +2590,7 @@ class manager(manager_mixin):
     file_name = None
     if (out is None):
       out = sys.stdout
-    elif (hasattr(out, "name")):
+    elif (hasattr(out, "name") and file_name is None):
       file_name = libtbx.path.canonical_path(file_name=out.name)
     if(format == "mtz"):
       assert file_name is not None

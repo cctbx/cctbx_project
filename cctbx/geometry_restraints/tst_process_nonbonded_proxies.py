@@ -182,9 +182,7 @@ def test_addition_scatterers():
     special_position_settings = xrs,
     scatterers                = new_scatterers)
   model.add_solvent(
-    solvent_xray_structure = new_xrs,
-    refine_occupancies     = False,
-    refine_adp             = "isotropic")
+    solvent_xray_structure = new_xrs)
 
   pnps = pnp.manager(model = model)
   clashes = pnps.get_clashes()

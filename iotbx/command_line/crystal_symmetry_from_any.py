@@ -1,3 +1,4 @@
+"""Extract crystal_symmetry from any suitable file"""
 from __future__ import absolute_import, division, print_function
 from iotbx import crystal_symmetry_from_any
 from iotbx.pdb import format_cryst1_and_scale_records

@@ -148,18 +148,18 @@ def generate_model(
     iotbx_regression = os.path.join(libtbx.env.find_in_repositories("iotbx"),
       'regression')
     if n_residues < 25:
-      file_name=os.path.join(iotbx_regression,'secondary_structure',
+      file_name=os.path.join(iotbx_regression,'secondary_structure', # PDB OK
          '5a63_chainBp.pdb')  # starts at 219
       if not start_res: start_res=219
     elif n_residues < 167:
-      file_name=os.path.join(iotbx_regression,'secondary_structure',
+      file_name=os.path.join(iotbx_regression,'secondary_structure', # PDB OK
          '3jd6_noh.pdb') # starts at 58
       if not start_res:start_res=58
     else:
-      file_name=os.path.join(iotbx_regression,'secondary_structure',
+      file_name=os.path.join(iotbx_regression,'secondary_structure', # PDB OK
          '4a7h_chainC.pdb') # starts at 9
       if not start_res:start_res=9
-  else: # have file_name
+  else: # have file_name                              # PDB OK
     if start_res is None:
       start_res=1
     if not n_residues:
@@ -197,7 +197,7 @@ def generate_model(
 
   if output_model_file_name:
     f=open(output_model_file_name,'w')
-    print ("%s" %(model.model_as_pdb()),file=f)
+    print ("%s" %(model.model_as_pdb()),file=f)  # PDB OK
     f.close()
     print ("Writing model with %s residues and b_iso=%s from %s to %s" %(
       n_residues,b_iso,file_name,output_model_file_name),file=log)

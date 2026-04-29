@@ -176,7 +176,7 @@ class bond_simple_proxy_registry(proxy_registry_base):
         if ps: return ps
     return False
 
-  def process(self, source_info, proxy, tolerance=1.e-6):
+  def process(self, source_info, proxy, tolerance=1.e-6, replace_in_place=False):
     result = proxy_registry_process_result()
     proxy = proxy.sort_i_seqs()
     if (proxy.i_seqs[1] not in self.table[proxy.i_seqs[0]]):
@@ -185,6 +185,15 @@ class bond_simple_proxy_registry(proxy_registry_base):
         source_info=source_info,
         proxy=proxy,
         process_result=result)
+    elif replace_in_place:
+      i_list = self.table[proxy.i_seqs[0]][proxy.i_seqs[1]]
+      tabulated_proxy = self.proxies[i_list]
+      for attr in ['distance_ideal',
+                   'limit',
+                   'slack',
+                   'top_out',
+                   'weight']:
+        setattr(tabulated_proxy, attr, getattr(proxy, attr))
     else:
       i_list = self.table[proxy.i_seqs[0]][proxy.i_seqs[1]]
       result.tabulated_proxy = self.proxies[i_list]
@@ -252,7 +261,7 @@ class angle_proxy_registry(proxy_registry_base):
       return True
     return False
 
-  def process(self, source_info, proxy, tolerance=1.e-6):
+  def process(self, source_info, proxy, tolerance=1.e-6, replace_in_place=False):
     result = proxy_registry_process_result()
     proxy = proxy.sort_i_seqs()
     tab_i_seq_1 = self.table.setdefault(proxy.i_seqs[1], {})
@@ -263,6 +272,11 @@ class angle_proxy_registry(proxy_registry_base):
         source_info=source_info,
         proxy=proxy,
         process_result=result)
+    elif replace_in_place:
+      i_list = tab_i_seq_1[i_seqs_0_2]
+      tabulated_proxy = self.proxies[i_list]
+      for attr in ['angle_ideal', 'slack', 'weight']:
+        setattr(tabulated_proxy, attr, getattr(proxy, attr))
     else:
       i_list = tab_i_seq_1[i_seqs_0_2]
       result.tabulated_proxy = self.proxies[i_list]
@@ -338,7 +352,7 @@ class dihedral_proxy_registry(proxy_registry_base):
       return True
     return False
 
-  def process(self, source_info, proxy, tolerance=1.e-6):
+  def process(self, source_info, proxy, tolerance=1.e-6, replace_in_place=False):
     result = proxy_registry_process_result()
     proxy = proxy.sort_i_seqs()
     tab_i_seq_0 = self.table.setdefault(proxy.i_seqs[0], {})
@@ -349,6 +363,17 @@ class dihedral_proxy_registry(proxy_registry_base):
         source_info=source_info,
         proxy=proxy,
         process_result=result)
+    elif replace_in_place:
+      i_list = tab_i_seq_0[i_seqs_1_2_3]
+      tabulated_proxy = self.proxies[i_list]
+      for attr in ['alt_angle_ideals',
+                   'angle_ideal',
+                   'limit',
+                   'periodicity',
+                   'slack',
+                   'top_out',
+                   'weight']:
+        setattr(tabulated_proxy, attr, getattr(proxy, attr))
     else:
       i_list = tab_i_seq_0[i_seqs_1_2_3]
       result.tabulated_proxy = self.proxies[i_list]
@@ -1080,14 +1105,15 @@ class _():
     n_not_shown = correct_id_proxies - n_outputted
     return sorted_table, n_not_shown
 
-  def get_outliers(self, sites_cart, sigma_threshold):
+  def get_outliers(self, sites_cart, sigma_threshold, origin_id=None):
     result = []
     from cctbx.geometry_restraints.linking_class import linking_class
     origin_ids = linking_class()
+    if origin_id is None: origin_id=origin_ids.get_origin_id('covalent geometry')
     vals = self.get_sorted(
         by_value="delta",
         sites_cart=sites_cart,
-        origin_id=origin_ids.get_origin_id('covalent geometry'))[0]
+        origin_id=origin_id)[0]
     if(vals is None): return result
     for it in vals:
       i,j = it[0],it[1]
@@ -1454,12 +1480,17 @@ class _():
       i += 1
     return result
 
-  def deltas(self, sites_cart, unit_cell=None):
+  def deltas(self, sites_cart, unit_cell=None, origin_id=None):
     if unit_cell is None:
-      return angle_deltas(sites_cart=sites_cart, proxies=self)
+      if origin_id is None:
+        return angle_deltas(sites_cart=sites_cart, proxies=self)
+      return angle_deltas(sites_cart=sites_cart, proxies=self, origin_id=origin_id)
     else:
+      if origin_id is None:
+        return angle_deltas(
+          unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
       return angle_deltas(
-        unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
+        unit_cell=unit_cell, sites_cart=sites_cart, proxies=self, origin_id=origin_id)
 
   def residuals(self, sites_cart, unit_cell=None):
     if unit_cell is None:
@@ -1539,9 +1570,11 @@ class _():
         site_labels=site_labels, max_items=max_items,
         get_restraints_only=False, origin_id=origin_id)
 
-  def get_outliers(self, sites_cart, sigma_threshold):
+  def get_outliers(self, sites_cart, sigma_threshold, origin_id=0):
     result = []
-    vals = self.get_sorted(by_value="delta", sites_cart=sites_cart)[0]
+    vals = self.get_sorted(by_value="delta",
+                           origin_id=origin_id,
+                           sites_cart=sites_cart)[0]
     if(vals is None): return result
     for it in vals:
       i,j,k = [int(i) for i in it[0]]

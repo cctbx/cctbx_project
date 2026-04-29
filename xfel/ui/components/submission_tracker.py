@@ -102,7 +102,9 @@ class QueueInterrogator(object):
                   'STOPPED': 'SUSP',
                   'CANCELLED': 'EXIT',
                   'TIMEOUT': 'TIMEOUT',
+                  'OUT_OF_ME': 'EXIT',
                  }
+      if status not in statuses: print('Unknown job status', status)
       return statuses[status] if status in statuses else 'UNKWN'
     elif self.queueing_system == 'htcondor':
       # (copied from the man page)
@@ -168,6 +170,8 @@ class LogReader(object):
       "queue interrogator not implemented for %s queueing system"%self.queueing_system)
 
   def read_result(self, log_path):
+    if not log_path:
+      return "Error reading log file, no path to log"
     result = easy_run.fully_buffered(command=self.command % log_path)
     status = "\n".join(result.stdout_lines)
     error = "\n".join(result.stderr_lines)

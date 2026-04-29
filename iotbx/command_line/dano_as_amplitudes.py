@@ -1,4 +1,4 @@
-
+"""Convert DANO values (F+ - F-) to pseudo-amplitudes"""
 # TODO tests
 
 from __future__ import absolute_import, division, print_function

@@ -42,6 +42,7 @@ class Script(DialsScript):
 
     self.tag = None
     self.reference_detector = None
+    self.debug_file_handle = None
 
     # Create the parser
     self.parser = ArgumentParser(

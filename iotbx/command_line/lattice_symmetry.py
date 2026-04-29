@@ -1,3 +1,5 @@
+"""Analyze lattice symmetry"""
+
 from __future__ import absolute_import, division, print_function
 # Comments by Phil Evans, MRC-LMB, Cambridge, U.K.
 

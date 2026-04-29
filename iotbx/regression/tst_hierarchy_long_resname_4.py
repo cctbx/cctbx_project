@@ -202,7 +202,7 @@ def test1():
   model_cif = model.model_as_mmcif()
   # print(model_cif)
   for l in [
-    '   ATOM 21 N . longGLY A 4 ? -1.00500 2.22800 3.59800 1.000 10.29000 N ? B ? . 1',
+    '   ATOM 21 N . longGLY A 4 ? -1.00500 2.22800 3.59800 1.000 10.29000 N ? B ? . N 1',
     'longGLY N H coval 0.860 0.020 1.020',
     'data_comp_longGLY',
     ]:

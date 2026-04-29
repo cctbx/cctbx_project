@@ -64,7 +64,7 @@ model
       extract.append(item_extract)
     return extract
 
-  def load_model_phil_extract(self, phil_extract):
+  def load_model_phil_extract(self, phil_extract, process_files=True):
     '''
     Load custom PHIL extract
     '''
@@ -75,7 +75,7 @@ model
         raise Sorry('This PHIL is not properly defined for the "model" datatype.\n There should be a parameter for the filename ("file") and type ("type").\n')
 
       # process file
-      if item_extract.file is not None:
+      if process_files and item_extract.file is not None:
         self.process_model_file(item_extract.file)
         self._model_types[item_extract.file] = item_extract.type
 
@@ -234,8 +234,8 @@ The choices are {}.
 
     Returns
     -------
-    None
-        The model is added to the DataManager
+    filename : str
+        The model filename added to the DataManager
 
     """
     # unique because any_file does not return a model object

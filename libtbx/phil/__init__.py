@@ -1,4 +1,6 @@
-"Documentation: https://cctbx.github.io/libtbx/libtbx.phil.html"
+"Documentation: https://cci.lbl.gov/docs/cctbx/doc_low_phil/"
+
+# was: https://cctbx.github.io/libtbx/libtbx.phil.html"
 
 from __future__ import absolute_import, division, print_function
 from libtbx.phil import tokenizer

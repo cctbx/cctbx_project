@@ -10,7 +10,7 @@ buttonsdeflist = [
             }
 """),
 
-  ("amplitudes", "Show Amplitudes", """
+  ("Amplitudes", "Show Amplitudes", """
             viewer {
               data_array {
                 label = "FOBS,SIGFOBS"

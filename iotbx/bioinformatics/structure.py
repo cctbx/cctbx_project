@@ -1,3 +1,5 @@
+"""Tools to run BLAST searches"""
+
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry
 from libtbx import slots_getstate_setstate_default_initializer
@@ -98,7 +100,7 @@ def summarize_blast_output(blast_out=None, blast_file=None,
           next_chain_id = hit_def_fields[i_field + 2].split()[0]
         else:
           next_chain_id = None
-        if (iotbx.pdb.fetch.looks_like_pdb_id(next_pdb_id)):
+        if (iotbx.pdb.fetch.valid_pdb_id(next_pdb_id)):
           all_ids.append([next_pdb_id,next_chain_id])
     summary = blast_hit(
       hit_num=i_hit+1,

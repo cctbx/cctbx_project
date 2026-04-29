@@ -718,9 +718,6 @@ ATOM     12  OH  TYR    22      -1.452   2.696  -2.817  1.00 10.00           O
     assert line1 == line2
 
 def exercise_remove_atoms():
-  import random
-  random.seed(1)
-  flex.set_random_seed(1)
   pdb_str = """
 ATOM      1  N  AMET B  37       7.525   5.296   6.399  1.00 10.00           N
 ATOM      2  CA AMET B  37       6.533   6.338   6.634  1.00 10.00           C
@@ -773,24 +770,18 @@ ATOM      8  CE BMET B  39       8.775   5.000  10.645  1.00 10.00           C
 TER
 END
   """
-  pi = iotbx.pdb.input(source_info=None, lines=pdb_str)
-  ph_in = pi.construct_hierarchy()
-  s1 = ph_in.atoms_size()
-  pi.write_pdb_file(file_name="exercise_remove_atoms.pdb")
+  # Initial size - 48 atoms
+  with open("exercise_remove_atoms.pdb", 'w') as f:
+    f.write(pdb_str)
   cmd = " ".join([
     "phenix.pdbtools",
     "exercise_remove_atoms.pdb",
     "remove_fraction=0.1"])
   print(cmd)
   run_command(command=cmd, verbose=False)
-  pi = iotbx.pdb.input(file_name="exercise_remove_atoms_modified.pdb")
-  ph_in = pi.construct_hierarchy()
-  s2 = ph_in.atoms_size()
-  f = s2*100./s1
-  #
-  # UNSTABLE 3x
-  #
-  assert f>77 and f<100, f # was getting 79.16, 70.8333 on anaconda t96,
+  inp = iotbx.pdb.input(file_name="exercise_remove_atoms_modified.pdb")
+  # removed 5 atoms (~10%).
+  assert inp.atoms().size() == 43, inp.atoms().size()
 
 def exercise_change_of_basis():
   with open("tmp_pdbtools_cb_op.pdb", "w") as f:
@@ -1019,6 +1010,46 @@ HETATM   20  O   UNK B   6      35.068  19.167 155.349  1.00 15.97       B   O
   cmd2 = cmd + " stop_for_unknowns=False"
   print(cmd2)
   run_command(command=cmd2)
+
+def exercise_average_alt_confs(prefix='tst_pdbtools_average_alt_confs'):
+  pdb_in = """\
+ATOM     16  O  AHOH A   2       5.131   5.251   5.823  0.60 10.00           O
+ATOM     60  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
+ATOM     63  CB ALYS A  32       9.197   8.686  12.246  0.29 14.71           C
+ATOM     64  CB BLYS A  32       9.193   8.732  12.170  0.71 12.23           C
+ATOM     74  CA  VAL A  33      11.708   5.617  14.332  1.00 11.42           C
+ATOM     77  CB  VAL A  33      11.101   4.227  14.591  1.00 11.47           C
+ATOM     18  O   HOH A   3       1.132   5.963   7.065  1.00 15.00           O
+ATOM     19  O  BHOH A   4       4.132   9.963   7.800  0.50 15.00           O
+"""
+  with open("%s.pdb" % prefix, "w") as f:
+    f.write(pdb_in)
+  cmd = "phenix.pdbtools %s.pdb average_alt_confs=True" % prefix
+  print(cmd)
+  run_command(command=cmd, verbose=False)
+
+  with open("%s_modified.pdb" % prefix) as f:
+    pdb_new = f.read()
+  new_lines = []
+  for line in pdb_new.splitlines():
+    if line.startswith("CRYST") or line.startswith("SCALE"):
+      continue
+    else:
+      new_lines.append(line)
+  pdb_new = "\n".join(new_lines)
+
+  expected = '''\
+ATOM      1  O  AHOH A   2       5.131   5.251   5.823  0.60 10.00           O
+ATOM      2  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
+ATOM      3  CB ALYS A  32       9.195   8.709  12.208  0.29 14.71           C
+ATOM      4  CB BLYS A  32       9.195   8.709  12.208  0.71 12.23           C
+ATOM      5  CA  VAL A  33      11.708   5.617  14.332  1.00 11.42           C
+ATOM      6  CB  VAL A  33      11.101   4.227  14.591  1.00 11.47           C
+ATOM      7  O   HOH A   3       1.132   5.963   7.065  1.00 15.00           O
+ATOM      8  O  BHOH A   4       4.132   9.963   7.800  0.50 15.00           O
+TER
+END'''
+  assert (pdb_new == expected)
 
 def exercise_remove_alt_confs():
   pdb_in = """\
@@ -1339,7 +1370,44 @@ SCALE3      0.000000  0.000000  0.021784        0.00000
 END
 """
 
+def exercise_renumber_and_move_waters(prefix='exercise_renumber_and_move_waters'):
+  pdb_str = """
+ATOM     16  O   HOH A   2       5.131   5.251   5.823  0.60 10.00           O
+ATOM     18  O   HOH AAFF4       1.132   5.963   7.065  1.00 15.00           O
+ATOM     19  O   HOH A   4       4.132   9.963   7.800  0.50 15.00           O
+TER
+ATOM     60  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
+ATOM     64  CB  LYS A  32       9.193   8.732  12.170  1.00 12.23           C
+ATOM     74  CA  VAL A  33      11.708   5.617  14.332  1.00 11.42           C
+ATOM     77  CB  VAL A  33      11.101   4.227  14.591  1.00 11.47           C
+"""
+
+  with open("%s.pdb"%prefix, 'w') as f:
+    f.write(pdb_str)
+  cmd = " ".join([
+      "phenix.pdbtools",
+      "%s.pdb"%prefix,
+      "renumber_and_move_waters=True",
+      "output.prefix=out_%s"%(prefix)])
+  print(cmd)
+  run_command(command=cmd, verbose=False)
+  # assert os.path.isfile("out_%s_modified.pdb"%(prefix))
+  with open("out_%s_modified.pdb"%(prefix), 'r') as f:
+    pdb_new = f.read()
+    assert pdb_new == """\
+ATOM      1  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
+ATOM      2  CB  LYS A  32       9.193   8.732  12.170  1.00 12.23           C
+ATOM      3  CA  VAL A  33      11.708   5.617  14.332  1.00 11.42           C
+ATOM      4  CB  VAL A  33      11.101   4.227  14.591  1.00 11.47           C
+TER
+ATOM      5  O   HOH A 100       5.131   5.251   5.823  0.60 10.00           O
+ATOM      6  O   HOH A 101       1.132   5.963   7.065  1.00 15.00           O
+ATOM      7  O   HOH A 102       4.132   9.963   7.800  0.50 15.00           O
+END
+"""
+
 def exercise(args):
+  exercise_average_alt_confs()
   exercise_flip_symmetric_amino_acids()
   exercise_switch_rotamers()
   exercise_mmcif_support_2()
@@ -1358,6 +1426,7 @@ def exercise(args):
   exercise_mmcif_support()
   exercise_segid_manipulations()
   exercise_result_is_empty()
+  exercise_renumber_and_move_waters()
   print("OK")
 
 if (__name__ == "__main__"):

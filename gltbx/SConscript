@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+import sys
+
 import libtbx.load_env
 Import("env_etc")
 
@@ -61,7 +63,7 @@ if not libtbx.env.module_is_installed("gltbx"):
       test_compile_success = conf.TryCompile("""
   #include <gltbx/include_opengl.h>
   """, extension=".cpp")
-      if not test_compile_success and env_etc.compiler == "unix_conda":
+      if not test_compile_success and sys.platform == 'linux':
         conf.Finish()
         print("gltbx: Attempting to compile with system libraries")
         alternative_includes = ["/usr/local/include", "/usr/include"]

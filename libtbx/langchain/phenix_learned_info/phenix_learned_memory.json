@@ -1,0 +1,17 @@
+{
+  "phenix.refine": [
+    "ALWAYS use actual filenames like PHASER.1.pdb and PHASER.1.mtz - NEVER use /path/to/ or /dev/null",
+    "First argument is PDB model, second is MTZ data: phenix.refine PHASER.1.pdb PHASER.1.mtz",
+    "Do NOT use ambiguous 'resolution=X' - use 'xray_data.high_resolution=X' instead"
+  ],
+  "phenix.predict_and_build": [
+    "NEVER use input_files.docked_model_file with a ligand file - this causes 'NoneType has no attribute get_hierarchy' error",
+    "For prediction only: input_files.seq_file=X.fa input_files.xray_data_file=X.mtz predict_and_build.stop_after_predict=True",
+    "Use prediction.nproc=4 NOT nproc=4 (ambiguous parameter)",
+    "Use crystal_info.resolution=X NOT resolution=X (ambiguous parameter)"
+  ],
+  "phenix.phaser": [
+    "CRITICAL: Phaser REQUIRES a PDB model file for molecular replacement",
+    "A sequence file (.fa) alone is NOT sufficient - it only provides composition"
+  ]
+}

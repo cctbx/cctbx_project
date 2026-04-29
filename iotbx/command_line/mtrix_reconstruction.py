@@ -1,3 +1,4 @@
+"""Apply MTRIX records of PDB or equivalent records of mmCIF"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.pdb.mtrix_reconstruction
 

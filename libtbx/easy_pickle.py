@@ -165,7 +165,7 @@ def fix_py2_pickle_orig(p):
     for i in range(len(p)):
       p[i] = fix_py2_pickle_orig(p[i])
 
-  if hasattr(p, '__dict__') and '__dict__' in dir(p):
+  if hasattr(p, '__dict__'):
     p.__dict__ = fix_py2_pickle_orig(p.__dict__)
   # miller array object
   if hasattr(p, '_info') and hasattr(p._info, 'labels'):

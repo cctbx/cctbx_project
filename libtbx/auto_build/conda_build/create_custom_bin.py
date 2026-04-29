@@ -68,6 +68,7 @@ def copy_bin(prefix, custom_bin, packages=[]):
                   if 'dp0' in line:  # make path relative to original location
                     line += '\\..\\Library\\bin'
                   f.write(line)
+                  f.write('\r\n')
           else:
             print(f'Linking {prefix/bin_file} to {new_prefix/bin_name}')
             os.symlink(prefix/bin_file, new_prefix/bin_name)

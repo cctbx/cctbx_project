@@ -1,3 +1,5 @@
+"""Routines to read denzo/scalepack log files
+"""
 
 from __future__ import absolute_import, division, print_function
 import sys, os, re

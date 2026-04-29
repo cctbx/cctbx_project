@@ -1,4 +1,6 @@
-
+"""
+Tools to work with dsn6 formatted files
+"""
 # TODO TESTS
 
 from __future__ import absolute_import, division, print_function

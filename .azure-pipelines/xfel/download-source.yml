@@ -9,6 +9,27 @@ jobs:
 
   steps:
 
+  # free up more disk space
+  - script: |
+      sudo apt update
+      sudo apt install rsync
+      sudo mkdir -p /tmp/empty_dir
+      sudo rsync --stats -a --delete /tmp/empty_dir/ /tmp/host_opt/hostedtoolcache
+      for d in \
+          lib/jvm \
+          local/.ghcup \
+          local/lib/android \
+          local/share/powershell \
+          share/dotnet \
+          share/swift \
+        ; do
+        echo Deleting $d
+        sudo rsync --stats -a --delete /tmp/empty_dir/ /usr/$d
+      done
+      df -h
+    displayName: Clean up host image
+    continueOnError: true
+
   # download sources
   - checkout: self
     path: ./modules/cctbx_project
@@ -18,13 +39,9 @@ jobs:
   - bash: echo "##vso[task.prependpath]$CONDA/bin"
     displayName: Add conda to PATH
 
-  # create environment with earlier version of git
-  # https://github.com/git-lfs/git-lfs/issues/5749
-  - script: |
-      set -xe
-      conda create -n git -c conda-forge -y git=2.44
-    displayName: Create environment with git
-    retryCountOnTaskFailure: 3
+  # accept conda tos
+  - script: conda config --set plugins.auto_accept_tos yes
+    displayName: Accept conda TOS
 
   - script: |
       cd $(Pipeline.Workspace)
@@ -34,13 +51,12 @@ jobs:
   - script: |
       set -xe
       source $(CONDA)/etc/profile.d/conda.sh
-      conda activate git
       cd $(Pipeline.Workspace)
-      python bootstrap.py hot update --builder=xfel --python=39 --no-boost-src
+      python bootstrap.py hot update --builder=xfel --no-boost-src
       cd modules
       git clone https://github.com/nksauter/LS49.git
       git clone https://gitlab.com/cctbx/ls49_big_data.git
-      git clone https://github.com/lanl/lunus.git
+      # git clone https://github.com/lanl/lunus.git
     displayName: Download sources
 
   - script: |

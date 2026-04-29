@@ -1,10 +1,11 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
+from iotbx.pdb.fetch import fetch_and_write
 from time import time
 import libtbx.load_env
 
 def exercise_01():
-  assert not easy_run.call("phenix.fetch_pdb 5o61 -c")
+  fetch_and_write(id='5o61', entity='model_cif')
   fb = easy_run.fully_buffered("phenix.cablam 5o61.cif")
   assert fb.return_code == 0, fb.return_code
 

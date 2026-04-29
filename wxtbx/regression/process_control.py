@@ -381,7 +381,7 @@ class ProcessDialog(wx.Dialog):
     szr2.Add(msg_txt, 0, wx.ALIGN_CENTER_HORIZONTAL|wx.ALL, 5)
     self.gauge = wx.Gauge(parent=self, size=(300,-1))
     self.gauge.SetRange(100)
-    szr2.Add(self.gauge, 1, wx.ALL|wx.EXPAND|wx.ALIGN_CENTER_HORIZONTAL, 5)
+    szr2.Add(self.gauge, 1, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, 5)
     abort_btn = wx.Button(parent=self,
       label="Abort")
     self.Bind(wx.EVT_BUTTON, self.OnAbort, abort_btn)

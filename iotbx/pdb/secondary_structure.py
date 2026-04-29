@@ -1,3 +1,4 @@
+"""Tools for identification of secondary structure in a model"""
 from __future__ import absolute_import, division, print_function
 #
 # Implemented based on PDB v3.2 specification at:

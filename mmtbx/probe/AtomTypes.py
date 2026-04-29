@@ -28,10 +28,6 @@ from __future__ import print_function, nested_scopes, generators, division
 from __future__ import absolute_import, unicode_literals
 import sys
 
-import boost_adaptbx.boost.python as bp
-bp.import_ext("mmtbx_probe_ext")
-import mmtbx_probe_ext as probe
-
 ##################################################################################
 # Helper functions.
 
@@ -72,11 +68,12 @@ _AromaticAcceptorTable = [
   # this is not a set.
 
   # Do not mark the atoms in the Histidine ring or the atoms in the TRP 5-sided
-  # ring as acceptors just because they are in the ring.  5-sided rings were getting too
+  # ring as acceptors just because they are in the ring, but the HIS Nitrogens
+  # remain acceptors because they might be unprotonated.  5-sided rings were getting too
   # many bonds from the sides.  Once we have a better aromatic ring hydrogen bond test,
   # we may put these back in.
   # @todo Remove the Hydrogens & Deuteriums below that are bonded to these atoms.
-  # [ ['HIS'], ['ND1','NE2'] ],
+  [ ['HIS'], ['ND1','NE2'] ],
   # [ ['HIS'], ['CD2','CE1','CG'] ],
   # [ ['TRP'], ['CH2','CZ3','CZ2','CE3','CE2','NE1','CD2','CD1','CG'] ],
   [ ['TRP'], ['CH2','CZ3','CZ2','CE3','CE2','CD2'] ],
@@ -105,20 +102,6 @@ _AromaticAcceptorTable = [
               'C1D','C2D','C3D','C4D'] ],
   [ ['PHE'], ['CZ','CE2','CE1','CD2','CD1','CG'] ],
   [ ['TYR'], ['CZ','CE2','CE1','CD2','CD1','CG'] ],
-
-  # Here we add the hydrogens and deuteriums that can be part of a ring from probe:select.c
-  [ ['PHE'], ['HD1','HD2','HE1','HE2','HZ','DD1','DD2','DE1','DE2','DZ'] ],
-  [ ['HIS'], ['HD1','HD2','HE1','HE2','DD1','DD2','DE1','DE2'] ],
-  [ ['TYR'], ['HD1','HD2','HE1','HE2','DD1','DD2','DE1','DE2'] ],
-  [ ['TRP'], ['HD1','HE1','HE3','HZ2','HZ3','HH2','DD1','DE1','DE3','DZ2','DZ3','DH2'] ],
-  [ ['U','URA','UTP','UDP','UMP','UR'], ['H3','HN3','H5','H6','D3','DN3','D5','D6'] ],
-  [ ['T','THY','TTP','TDP','TMP','5MU','DT','TR'], ['H3','HN3','H6','D3','DN3','D6'] ],
-  [ ['A','ADE','ATP','ADP','AMP','1MA','RIA','T6A','DA','AR'], ['H8','H2','D8','D2'] ],
-  [ ['C','CYT','CTP','CDP','CMP','5MC','OMC','DC','CR'], ['H5','H6','D5','D6'] ],
-  [ ['G','GUA','GTP','GDP','GMP','GSP','2MG','M2G','7MG','OMG','DG','GR'], ['H8','H1','HN1','D8','D1','DN1'] ],
-  [ ['YG','1MG'], ['H8','D8'] ],
-  [ ['PSU'], ['H6','D6','H1','HN1','D1','DN1','H3','HN3','D3','DN3'] ],
-  [ ['I','DI'], ['H8','H2','H1','HN1','D8','D2','D1','DN1'] ]
 ]
 
 # Is a carbon or nitrogen or hydrogen atom part of an aromatic ring?
@@ -142,7 +125,7 @@ def Test(inFileName = None):
   # Check IsAromaticAcceptor() to ensure it gives results when expected and not when not.
   aromaticChecks = [
       ['PHE', 'CE2', True],
-      ['  U', 'HN3', True],
+      ['  A',  'N1', True],
       ['ASN',   'O', False]
     ]
   for a in aromaticChecks:

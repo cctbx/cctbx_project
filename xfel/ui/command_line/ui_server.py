@@ -32,10 +32,7 @@ basedir={basedir}
 datadir={basedir}{sep}data
 socket={basedir}{sep}mysql.sock
 port={port}
-# Disabling symbolic-links is recommended to prevent assorted security risks
-symbolic-links=0
 max_connections=10000
-default_authentication_plugin=mysql_native_password
 
 [mysqld_safe]
 log-error={basedir}{sep}mysqld.log
@@ -82,7 +79,6 @@ def run(args):
     os.makedirs(params.db.server.basedir)
     with open(cnf_path, 'w') as f:
       f.write(default_cnf.format(basedir=params.db.server.basedir, sep=os.path.sep, port=params.db.port))
-
     assert easy_run.call("mysqld --defaults-file=%s --initialize-insecure"%(cnf_path)) == 0
 
   elif params.db.server.prompt_for_root_password:
@@ -120,7 +116,15 @@ def run(args):
     print("Setting permissions")
     app.execute_query("GRANT ALL PRIVILEGES ON %s . * TO '%s'@'%%'"%(new_db, new_user))
     app.execute_query("FLUSH PRIVILEGES")
-    app.execute_query("UPDATE mysql.user SET Super_Priv='Y' WHERE user='%s' AND host='%%'"%new_user)
+
+    # Detect MySQL version to grant the correct privilege for SET GLOBAL
+    cursor = app.execute_query("SELECT VERSION()")
+    version_str = cursor.fetchall()[0][0]
+    major_version = int(version_str.split('.')[0])
+    if major_version >= 9:
+      app.execute_query("GRANT SYSTEM_VARIABLES_ADMIN ON *.* TO '%s'@'%%'"%(new_user))
+    else:
+      app.execute_query("UPDATE mysql.user SET Super_Priv='Y' WHERE user='%s' AND host='%%'"%new_user)
     app.execute_query("FLUSH PRIVILEGES")
     print("Initialized")
   else:

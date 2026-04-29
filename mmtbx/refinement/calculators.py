@@ -26,8 +26,14 @@ class individual(object):
     f, g = self.target_and_gradients()
     return self.x, f, g
 
+  def target(self): return self.t
+
+  def gradients(self): return self.g
+
   def update(self, x):
     self.data.update(x = x)
+    if self.restraints is not None:
+      self.restraints.update(x = x)
     self.x = x
     self.t, self.g = 0, 0
     for p in [[self.data,       self.data_weight],

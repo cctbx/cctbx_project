@@ -26,6 +26,7 @@ from libtbx import Auto, group_args, slots_getstate_setstate
 from six.moves import cStringIO as StringIO
 import string
 import sys, os
+import textwrap
 import time
 import math
 import numpy as np
@@ -158,6 +159,9 @@ restraints_library_str = """
       .help = Use Conformation Dependent Library (CDL) \
         for geometry restraints
       .style = bold
+    include_modified_amino_acid_in_cdl = False
+      .type = bool
+      .style = hidden
     mcl = True
       .type = bool
       .short_caption = Use Metal Coordination Library (MCL)
@@ -181,15 +185,12 @@ restraints_library_str = """
         .short_caption = Use RestraintsLib for DNA and RNA
         .help = Use RestraintsLib for DNA and RNA \
           for geometry restraints
-        .style = hidden
       esd = *phenix csd
         .type = choice
         .short_caption = Apply the e.s.d. values from Phenix or CSD
-        .style = hidden
       factor = 2.0
         .type = float
         .short_caption = Factor applied to the e.s.d. values from CSD (not Phenix)
-        .style = hidden
     }
     cdl_svl = False
       .type = bool
@@ -203,7 +204,17 @@ restraints_library_str = """
       .style = hidden
     hpdl = False
       .type = bool
-      .style = hidden
+    include scope mmtbx.conformation_dependent_library.density_dependent_restraints.ddw_master_params
+    user_supplied
+      .short_caption = Directory to load user supplied restraints
+    {
+      path = None
+        .type = path
+        .help = Root directory of user supplied restraints
+      action = *pre post
+        .type = choice(multi=False)
+        .help = Choice to look here before GeoStd, the default, or after
+    }
   }
 """
 ideal_ligands = ['SF4', 'F3S', 'DVT']
@@ -215,7 +226,7 @@ master_params_str = """\
   sort_atoms = True
     .type = bool
     .short_caption = Sort atoms in input pdb so they would be in the same order
-  use_ncs_to_build_restraints = False
+  use_ncs_to_build_restraints = True
     .type = bool
     .short_caption = Look for NCS and use it to speed up building restraints
   show_restraints_histograms = True
@@ -267,6 +278,15 @@ master_params_str = """\
       .type = float
     top_out = False
       .type = bool
+    reference_is_average_alt_confs = False
+      .type = bool
+      .help = Sets the reference coordinate to the average of two alt. confs. \
+              Ignores selection option.
+  }
+  automatic_restraints
+  {
+    side_chain_parallelity = False
+      .type = bool
   }
   automatic_linking
     .style = box auto_align noauto
@@ -289,7 +309,7 @@ master_params_str = """\
       .style = noauto
     link_metals = Auto
       .type = bool
-    link_residues = False
+    link_residues = True
       .type = bool
       .short_caption = Link amino acids in "special" ways such as cyclic and \
         side-chain to side-chain links
@@ -305,7 +325,7 @@ master_params_str = """\
     link_small_molecules = False
       .type = bool
       .short_caption = Link small molecules such as SO4, PO4 to protein
-    metal_coordination_cutoff = 3.5
+    metal_coordination_cutoff = 3.0
       .type = float
       .short_caption = Maximum distance for automatic linking of metals
     amino_acid_bond_cutoff = 1.9
@@ -916,6 +936,11 @@ class type_symbol_registry_base(object):
     print ('charges', list(self.charges))
     print ('==== end of symbol registry base:')
 
+  def size(self):
+    assert self.symbols.size() == self.source_labels.size() == \
+        self.source_n_expected_atoms.size() == self.charges.size()
+    return self.symbols.size()
+
   def expand_with_ncs(self, nrgl, n_atoms_full):
     new_symbols = flex.std_string(n_atoms_full)
     new_source_labels = flex.std_string(new_symbols.size())
@@ -1186,6 +1211,7 @@ class monomer_mapping(slots_getstate_setstate):
     "chainid",
     #
     'atom_names_mappings',
+    'skipped_deletes',
     ]
 
   def __init__(self,
@@ -1202,7 +1228,9 @@ class monomer_mapping(slots_getstate_setstate):
         pdb_residue,
         next_pdb_residue,
         chainid,
-        specific_residue_restraints=None):
+        specific_residue_restraints=None,
+        user_supplied_restraints_directory=None,
+        user_supplied_pre_post=None):
     self.chainid = chainid
     self.pdb_atoms = pdb_atoms
     self.mon_lib_srv = mon_lib_srv
@@ -1212,14 +1240,17 @@ class monomer_mapping(slots_getstate_setstate):
     self.pdb_residue = pdb_residue
     self.pdb_residue_id_str = residue_id_str(pdb_residue, suppress_segid=-1)
     self.residue_name = pdb_residue.resname
+    self.skipped_deletes = {}
     atom_id_str_pdbres_list = self._collect_atom_names()
     self.monomer, self.atom_name_interpretation \
       = self.mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
           residue_name=self.residue_name,
           atom_names=self.atom_names_given,
-          translate_cns_dna_rna_residue_names
-            =translate_cns_dna_rna_residue_names,
-          specific_residue_restraints=specific_residue_restraints)
+          translate_cns_dna_rna_residue_names=translate_cns_dna_rna_residue_names,
+          specific_residue_restraints=specific_residue_restraints,
+          user_supplied_restraints_directory=user_supplied_restraints_directory,
+          user_supplied_pre_post=user_supplied_pre_post,
+          )
     if (self.atom_name_interpretation is None):
       self.mon_lib_names = None
     else:
@@ -1298,6 +1329,7 @@ class monomer_mapping(slots_getstate_setstate):
     if (ra1.problems is not None): return
     self.is_rna_dna = True
     if (not ra1.is_rna): return
+    if not params.enable: return
     residue_2_p_atom = None
     if (next_pdb_residue is not None):
       residue_2_p_atom = next_pdb_residue.find_atom_by(name=" P  ")
@@ -1615,6 +1647,11 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
       self.chem_mod_ids.add(chem_mod_id)
       self.residue_name += "%" + chem_mod_id
 
+  def _track_dels(self, dels):
+    for atom_name in dels:
+      self.skipped_deletes.setdefault(atom_name, 0)
+      self.skipped_deletes[atom_name]+=1
+
   def apply_mod(self, mod_mod_id):
     if (mod_mod_id.chem_mod.id in self.chem_mod_ids):
       return
@@ -1631,6 +1668,7 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
         "  mod id: %s" % mod_mod_id.chem_mod.id])
       raise Sorry("\n".join(msg))
     self._track_mods(chem_mod_ids=[mod_mod_id.chem_mod.id])
+    self._track_dels(dels=mod_mon.skipped_deletes)
     mod_mon.classification = self.monomer.classification
     self.monomer = mod_mon
     if (    mod_mod_id.chem_mod.name is not None
@@ -1945,6 +1983,8 @@ def get_restraints_loading_flags(params):
   rc = {}
   if params:
     rc["use_neutron_distances"] = params.use_neutron_distances
+    rc['user_supplied_restraints_directory']=params.restraints_library.user_supplied.path
+    rc['user_supplied_pre_post']=params.restraints_library.user_supplied.action
   return rc
 
 def special_dispensation(proxy_label, m_i, m_j, i_seqs):
@@ -1961,6 +2001,14 @@ def special_dispensation(proxy_label, m_i, m_j, i_seqs):
     [' H2 ', ' N  '],
     ]:
     return names
+  return False
+
+def override_origin_ids(origin_id):
+  overrides=[]
+  for attr in ['User supplied cif_link']:
+    overrides.append(origin_ids[attr])
+  if origin_id in overrides:
+    return True
   return False
 
 def evaluate_registry_process_result(
@@ -2027,6 +2075,10 @@ class add_bond_proxies(object):
             and bond.atom_id_2.replace("'", "*") in m_j.monomer_atom_dict):
           bond.atom_id_1 = bond.atom_id_1.replace("'", "*")
           bond.atom_id_2 = bond.atom_id_2.replace("'", "*")
+        elif (    bond.atom_id_1.replace("*", "'") in m_i.monomer_atom_dict
+              and bond.atom_id_2.replace("*", "'") in m_j.monomer_atom_dict):
+          bond.atom_id_1 = bond.atom_id_1.replace("*", "'")
+          bond.atom_id_2 = bond.atom_id_2.replace("*", "'")
         else:
           counters.corrupt_monomer_library_definitions += 1
           continue
@@ -2062,9 +2114,11 @@ class add_bond_proxies(object):
               and all_atoms_are_in_main_conf(atoms=atoms)):
             counters.already_assigned_to_first_conformer += 1
           else:
+            replace_in_place=override_origin_ids(origin_id)
             registry_process_result = bond_simple_proxy_registry.process(
               source_info=source_info_server(m_i=m_i, m_j=m_j),
-              proxy=proxy)
+              proxy=proxy,
+              replace_in_place=replace_in_place)
             evaluate_registry_process_result(
               proxy_label="bond_simple", m_i=m_i, m_j=m_j, i_seqs=i_seqs,
               registry_process_result=registry_process_result)
@@ -2098,6 +2152,12 @@ class add_angle_proxies(object):
           angle.atom_id_1 = angle.atom_id_1.replace("'", "*")
           angle.atom_id_2 = angle.atom_id_2.replace("'", "*")
           angle.atom_id_3 = angle.atom_id_3.replace("'", "*")
+        elif (    angle.atom_id_1.replace("*", "'") in m_1.monomer_atom_dict
+              and angle.atom_id_2.replace("*", "'") in m_2.monomer_atom_dict
+              and angle.atom_id_3.replace("*", "'") in m_3.monomer_atom_dict):
+          angle.atom_id_1 = angle.atom_id_1.replace("*", "'")
+          angle.atom_id_2 = angle.atom_id_2.replace("*", "'")
+          angle.atom_id_3 = angle.atom_id_3.replace("*", "'")
         else:
           counters.corrupt_monomer_library_definitions += 1
           continue
@@ -2122,6 +2182,7 @@ class add_angle_proxies(object):
         elif (involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs)):
           pass
         else:
+          replace_in_place=override_origin_ids(origin_id)
           registry_process_result = angle_proxy_registry.process(
             source_info=source_info_server(m_i=m_i, m_j=m_j),
             proxy=geometry_restraints.angle_proxy(
@@ -2129,7 +2190,8 @@ class add_angle_proxies(object):
               angle_ideal=angle.value_angle,
               weight=1/angle.value_angle_esd**2,
               origin_id=origin_id,
-              ))
+              ),
+            replace_in_place=replace_in_place)
           evaluate_registry_process_result(
             proxy_label="angle", m_i=m_i, m_j=m_j, i_seqs=i_seqs,
             registry_process_result=registry_process_result)
@@ -2178,6 +2240,14 @@ class add_dihedral_proxies(object):
           tor.atom_id_2 = tor.atom_id_2.replace("'", "*")
           tor.atom_id_3 = tor.atom_id_3.replace("'", "*")
           tor.atom_id_4 = tor.atom_id_4.replace("'", "*")
+        elif (    tor.atom_id_1.replace("*", "'") in m_1.monomer_atom_dict
+              and tor.atom_id_2.replace("*", "'") in m_2.monomer_atom_dict
+              and tor.atom_id_3.replace("*", "'") in m_3.monomer_atom_dict
+              and tor.atom_id_4.replace("*", "'") in m_4.monomer_atom_dict):
+          tor.atom_id_1 = tor.atom_id_1.replace("*", "'")
+          tor.atom_id_2 = tor.atom_id_2.replace("*", "'")
+          tor.atom_id_3 = tor.atom_id_3.replace("*", "'")
+          tor.atom_id_4 = tor.atom_id_4.replace("*", "'")
         else:
           counters.corrupt_monomer_library_definitions += 1
           continue
@@ -2270,9 +2340,11 @@ class add_dihedral_proxies(object):
                       self.chem_link_id=self.chem_link_id.replace('CIS','TRANS')
                       proxy.angle_ideal=180
 
+          replace_in_place=override_origin_ids(origin_id)
           registry_process_result = dihedral_proxy_registry.process(
             source_info=source_info_server(m_i=m_i, m_j=m_j),
-            proxy=proxy)
+            proxy=proxy,
+            replace_in_place=replace_in_place)
           evaluate_registry_process_result(
             proxy_label="dihedral", m_i=m_i, m_j=m_j, i_seqs=i_seqs,
             registry_process_result=registry_process_result,
@@ -2322,6 +2394,14 @@ class add_chirality_proxies(object):
           chir.atom_id_2 = chir.atom_id_2.replace("'", "*")
           chir.atom_id_3 = chir.atom_id_3.replace("'", "*")
           chir.atom_id_centre = chir.atom_id_centre.replace("'", "*")
+        elif (    chir.atom_id_1.replace("*", "'") in m_1.monomer_atom_dict
+              and chir.atom_id_2.replace("*", "'") in m_2.monomer_atom_dict
+              and chir.atom_id_3.replace("*", "'") in m_3.monomer_atom_dict
+              and chir.atom_id_centre.replace("*", "'") in m_c.monomer_atom_dict):
+          chir.atom_id_1 = chir.atom_id_1.replace("*", "'")
+          chir.atom_id_2 = chir.atom_id_2.replace("*", "'")
+          chir.atom_id_3 = chir.atom_id_3.replace("*", "'")
+          chir.atom_id_centre = chir.atom_id_centre.replace("*", "'")
         else:
           counters.corrupt_monomer_library_definitions += 1
           continue
@@ -2398,6 +2478,8 @@ class add_planarity_proxies(object):
         if (plane_atom.atom_id not in m_x.monomer_atom_dict):
           if (   plane_atom.atom_id.replace("'", "*") in m_x.monomer_atom_dict):
             plane_atom.atom_id = plane_atom.atom_id.replace("'", "*")
+          elif (   plane_atom.atom_id.replace("*", "'") in m_x.monomer_atom_dict):
+            plane_atom.atom_id = plane_atom.atom_id.replace("*", "'")
           else:
             counters.corrupt_monomer_library_definitions += 1
             continue
@@ -2554,6 +2636,40 @@ class conformer_i_seq(dict):
     self.update(other)
     return self
 
+  def expand_with_ncs(self, nrgl, n_atoms_full):
+    """
+    Add entries for NCS copy atoms by copying from master atoms.
+    Called before convert() to populate the dict with copy i_seqs.
+    AI inspired by type_symbol_registry_base.expand_with_ncs()
+
+    Args:
+      nrgl: NCS restraint group list
+      n_atoms_full: Total atoms including NCS copies
+    """
+    # Create new dict with entries for full hierarchy
+    new_dict = {}
+    # Identify which atoms in full hierarchy are masters/rest (non-copies)
+    masters_and_rest_bool_selection = ~flex.bool(n_atoms_full, nrgl.get_all_copies_selection())
+    masters_and_rest_iselection = masters_and_rest_bool_selection.iselection()
+    # Reindexing array: maps full hierarchy i_seq -> reduced hierarchy index
+    ra = reindexing_array(n_atoms_full, masters_and_rest_iselection.as_int())
+    # Copy existing entries to new positions in full hierarchy
+    for reduced_i_seq, value in self.items():
+      full_i_seq = masters_and_rest_iselection[reduced_i_seq]
+      new_dict[full_i_seq] = value
+    # Add copy entries
+    for ncs_group in nrgl:
+      # Translate master i_seqs from full hierarchy to reduced hierarchy indices
+      translated_master_iselection = flex.size_t([ra[i] for i in ncs_group.master_iselection])
+      for c in ncs_group.copies:
+        for copy_i_seq, reduced_master_idx in zip(c.iselection, translated_master_iselection):
+          # Look up master's value in old dict (using reduced index)
+          if reduced_master_idx in self:
+            new_dict[copy_i_seq] = self[reduced_master_idx]
+    # Replace dict contents
+    self.clear()
+    self.update(new_dict)
+
   def convert(self):
     rc = flex.std_string()
     for i, (i_seq, item) in enumerate(sorted(self.items())):
@@ -2587,7 +2703,6 @@ class build_chain_proxies(object):
         nonbonded_energy_type_registry,
         geometry_proxy_registries,
         cystein_sulphur_i_seqs,
-        cystein_monomer_mappings,
         is_unique_model,
         i_model,
         i_conformer,
@@ -2619,6 +2734,7 @@ class build_chain_proxies(object):
     duplicate_atoms = dicts.with_default_value(0)
     classifications = dicts.with_default_value(0)
     modifications_used = dicts.with_default_value(0)
+    skipped_deletes = dicts.with_default_value(0)
     incomplete_infos = dicts.with_default_value(0)
     missing_h_bond_type = dicts.with_default_value(0)
     link_ids = dicts.with_default_value(0)
@@ -2647,6 +2763,7 @@ class build_chain_proxies(object):
     prev_mm = None
     prev_prev_mm = None
     pdb_residues = conformer.residues()
+    #
     for i_residue,residue in enumerate(pdb_residues):
       def _get_next_residue():
         j = i_residue + 1
@@ -2661,21 +2778,18 @@ class build_chain_proxies(object):
         residue_i_seqs=atoms.extract_i_seq()
         min_i_seq, max_i_seq = min(residue_i_seqs), max(residue_i_seqs)
         for selection, item in apply_restraints_specifications.items():
-          #print min_i_seq,max_i_seq,list(selection)
           if min_i_seq in selection and max_i_seq in selection:
             if selection.all_eq(residue_i_seqs):
-              print('%sResidue %s was targeted for' % (' '*8,
-                                                               residue.id_str(),
-                ), file=log)
-              print('%srestraints from file: "%s"' % (' '*10,
-                                                              item[1],
-                ), file=log)
+              print('%sResidue %s was targeted for' % (' '*8, residue.id_str()),
+                    file=log)
+              print('%srestraints from file: "%s"' % (' '*10, item[1]),
+                    file=log)
               if len(alt_locs)!=1:
                 print('%sbut ignored because residue has complex alt. loc.' % (
                   ' '*10), file=log)
                 continue
               specific_residue_restraints=item[1]
-              apply_restraints_specifications[selection]="OK"
+              apply_restraints_specifications[selection][2]="OK"
               break
       #
       mm = monomer_mapping(
@@ -2693,7 +2807,9 @@ class build_chain_proxies(object):
         pdb_residue=residue,
         next_pdb_residue=_get_next_residue(),
         chainid=residue.parent().parent().id,
-        specific_residue_restraints=specific_residue_restraints)
+        specific_residue_restraints=specific_residue_restraints,
+        user_supplied_restraints_directory=restraints_loading_flags.get('user_supplied_restraints_directory', None),
+        user_supplied_pre_post=restraints_loading_flags.get('user_supplied_pre_post', None))
       if mm.monomer and mm.monomer.cif_object:
         self._cif.chem_comps.append(mm.monomer.chem_comp)
         if specific_residue_restraints:
@@ -2725,6 +2841,10 @@ class build_chain_proxies(object):
             self.type_energies[atom.i_seq] = None
             self.type_h_bonds[atom.i_seq] = None
             raise Sorry('Not able to determine energy type for atom %s' % atom.quote())
+      #
+      if (mm.monomer is None):
+        # try to get restraints from e tu
+        pass
       #
       if (mm.monomer is None):
         def use_scattering_type_if_available_to_define_nonbonded_type():
@@ -2884,6 +3004,8 @@ class build_chain_proxies(object):
           classifications[mm.monomer.classification] += 1
         for chem_mod_id in mm.chem_mod_ids:
           modifications_used[chem_mod_id] += 1
+        for atom_name in mm.skipped_deletes:
+          skipped_deletes[atom_name]+=1
         scattering_type_registry.assign_from_monomer_mapping(
           conf_altloc=conformer.altloc, mm=mm)
         nonbonded_energy_type_registry.assign_from_monomer_mapping(
@@ -2951,7 +3073,6 @@ class build_chain_proxies(object):
           if (sulphur_atom is not None
               and sulphur_atom.i_seq not in cystein_sulphur_i_seqs):
             cystein_sulphur_i_seqs.append(sulphur_atom.i_seq)
-            cystein_monomer_mappings.append(mm)
       if (conformation_dependent_restraints.is_available):
         cdr = conformation_dependent_restraints \
                 .build_conformation_dependent_angle_proxies(
@@ -2997,6 +3118,8 @@ class build_chain_proxies(object):
         print("          Classifications:", print_dict(classifications), file=log)
       if (len(modifications_used) > 0):
         print("          Modifications used:", print_dict(modifications_used), file=log)
+      if (len(skipped_deletes) > 0):
+        print("          Skipped deletes:", print_dict(skipped_deletes), file=log)
       if (len(incomplete_infos) > 0):
         print("          Incomplete info:", print_dict(incomplete_infos), file=log)
       if (len(missing_h_bond_type) > 0):
@@ -3377,7 +3500,6 @@ class build_all_chain_proxies(linking_mixins):
         params=None,
         pdb_inp=None,
         pdb_hierarchy=None,
-        atom_selection_string=None,
         special_position_settings=None,
         crystal_symmetry=None,
         force_symmetry=False,
@@ -3428,13 +3550,7 @@ class build_all_chain_proxies(linking_mixins):
       info = self.pdb_hierarchy.flip_symmetric_amino_acids()
       if info and log is not None:
         print("\n  Symmetric amino acids flipped. %s\n" % info.strip(), file=log)
-    if atom_selection_string is not None:
-      sel = self.pdb_hierarchy.atom_selection_cache().selection(atom_selection_string)
-      temp_string = self.pdb_hierarchy.select(sel).as_pdb_string()
-      self.pdb_inp = pdb.input(source_info=None, lines=temp_string)
-      self.pdb_hierarchy = self.pdb_inp.construct_hierarchy(sort_atoms=self.params.sort_atoms)
-      if self.params.flip_symmetric_amino_acids:
-        self.pdb_hierarchy.flip_symmetric_amino_acids()
+    user_supplied_restraints=self.params.restraints_library.user_supplied
     self.pdb_hierarchy.merge_atoms_at_end_to_residues()
     self.pdb_hierarchy.format_correction_for_H()
     self.pdb_atoms = self.pdb_hierarchy.atoms()
@@ -3447,6 +3563,10 @@ class build_all_chain_proxies(linking_mixins):
     if (log is not None):
       print("  Monomer Library directory:", file=log)
       print("   ", show_string(mon_lib_srv.root_path), file=log)
+      if user_supplied_restraints.path:
+        print('  User supplied directory: (%sprocessing)' % user_supplied_restraints.action, file=log)
+        print('   ', show_string(user_supplied_restraints.path), file=log)
+
       print("  Total number of atoms:", self.pdb_atoms.size(), file=log)
     selection_cache = self.pdb_hierarchy.atom_selection_cache()
     # cis-trans specifications
@@ -3480,12 +3600,13 @@ class build_all_chain_proxies(linking_mixins):
       apply_restraints_specifications[t_selection]=[
         acf.residue_selection,
         acf.restraints_file_name,
+        None,
         ]
     if apply_restraints_specifications:
       print("  Apply specific restraints filenames to specific monomers", file=log)
       for acf in self.params.apply_cif_restraints:
         print('    "%s" - %s' % (acf.residue_selection,
-                                         acf.restraints_file_name,
+                                 acf.restraints_file_name,
           ), file=log)
     self.special_position_settings = None
     self._site_symmetry_table = None
@@ -3602,7 +3723,6 @@ class build_all_chain_proxies(linking_mixins):
       n_seq=self.pdb_atoms.size(),
       strict_conflict_handling=strict_conflict_handling)
     self.cystein_sulphur_i_seqs = flex.size_t()
-    self.cystein_monomer_mappings = []
     n_unique_models = 0
 
     use_ncs_for_interpretation = False
@@ -3706,7 +3826,6 @@ class build_all_chain_proxies(linking_mixins):
             nonbonded_energy_type_registry=self.nonbonded_energy_type_registry,
             geometry_proxy_registries=self.geometry_proxy_registries,
             cystein_sulphur_i_seqs=self.cystein_sulphur_i_seqs,
-            cystein_monomer_mappings=self.cystein_monomer_mappings,
             is_unique_model=is_unique_model,
             i_model=i_model,
             i_conformer=i_conformer,
@@ -3731,13 +3850,9 @@ class build_all_chain_proxies(linking_mixins):
           flush_log(log)
       if apply_restraints_specifications:
         for selection, item in apply_restraints_specifications.items():
-          if item=="OK": continue
-          print("%sRestraints for '%s'" % (' '*6,
-                                                   item[0],
-            ), file=log)
-          print('%swere not modified by "%s"' % (' '*8,
-                                                         item[1],
-            ), file=log)
+          if item[2]=="OK": continue
+          print("%sRestraints for '%s'" % (' '*6, item[0]), file=log)
+          print('%swere not modified by "%s"' % (' '*8,item[1]), file=log)
       #
       # Identify disulfide bond exclusions BEGIN
       self.disulfide_bond_exclusions_selection = flex.size_t()
@@ -3821,7 +3936,8 @@ class build_all_chain_proxies(linking_mixins):
             apply.was_used = True
             def raise_if_corrupt(link_resolution):
               counters = link_resolution.counters
-              if (counters.corrupt_monomer_library_definitions != 0):
+              if (counters.corrupt_monomer_library_definitions != 0 or
+                  getattr(link_resolution, 'broken_bond_i_seq_pairs', False)):
                 raise Sorry(
                   "Error processing %s:\n" % counters.label
                   + "  data_link: %s\n" % show_string(apply.data_link)
@@ -3953,9 +4069,26 @@ class build_all_chain_proxies(linking_mixins):
       self.sites_cart = self.pdb_atoms.extract_xyz()
       # We have to expand the tables using ncs information...
       nrgl.setup_sets()
+      # get copies chain ids and output them:
+      cids = []
+      for g in nrgl:
+        for c in g.copies:
+          cids.append(self.pdb_atoms[c.iselection[0]].parent().parent().parent().id)
+      print("  Restraints were copied for chains:", file=log)
+      print("\n".join(textwrap.wrap(", ".join(cids), initial_indent='    ', subsequent_indent='    ')), file=log)
       self.scattering_type_registry.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
       self.nonbonded_energy_type_registry.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
       self.geometry_proxy_registries.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
+      self.type_energies.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
+      self.type_h_bonds.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
+      # Expand cystein_sulphur_i_seqs
+      new_cystein_sulphur_i_seqs = list(self.cystein_sulphur_i_seqs)
+      for master_c_iseq in self.cystein_sulphur_i_seqs:
+        copy_iseqs = nrgl.get_copy_iseqs([master_c_iseq])
+        flatten_copies = [item for sublist in copy_iseqs for item in sublist]
+        new_cystein_sulphur_i_seqs.extend(flatten_copies)
+      self.cystein_sulphur_i_seqs = flex.size_t(new_cystein_sulphur_i_seqs)
+
       # self.scattering_type_registry._show()
     # STOP()
 
@@ -3998,6 +4131,16 @@ class build_all_chain_proxies(linking_mixins):
       curr_sym_excl_index=len(sym_excl_residue_groups))
     self.type_energies = self.type_energies.convert()
     self.type_h_bonds = self.type_h_bonds.convert()
+    # # Assert arrays match atom count - safeguard check
+    # n_atoms = self.pdb_atoms.size()
+    # assert len(self.type_energies) == n_atoms, \
+    #   "type_energies array size (%d) != n_atoms (%d)" % (len(self.type_energies), n_atoms)
+    # assert len(self.type_h_bonds) == n_atoms, \
+    #   "type_h_bonds array size (%d) != n_atoms (%d)" % (len(self.type_h_bonds), n_atoms)
+    # assert self.scattering_type_registry.size() == n_atoms, \
+    #   "scattering_type_registry size (%d) != n_atoms (%d)" % (self.scattering_type_registry.size(), n_atoms)
+    # assert self.nonbonded_energy_type_registry.size() == n_atoms, \
+    #   "nonbonded_energy_type_registry size (%d) != n_atoms (%d)" % (self.nonbonded_energy_type_registry.size(), n_atoms)
     self.time_building_chain_proxies = timer.elapsed()
     # Make sure pdb_hierarchy and xray_structure are consistent
     if(self.special_position_settings is not None):
@@ -5694,6 +5837,7 @@ class build_all_chain_proxies(linking_mixins):
         cdl_proxies=cdl_proxies,
         cis_pro_eh99=cis_pro_eh99,
         cdl_svl=self.params.restraints_library.cdl_svl,
+        include_non_standard_peptides=self.params.restraints_library.include_modified_amino_acid_in_cdl,
         log=log,
         verbose=True,
         )
@@ -5702,6 +5846,23 @@ class build_all_chain_proxies(linking_mixins):
       print("""\
   Conformation dependent library (CDL) restraints added in %0.1f %sseconds
   """ % greek_time(cdl_time), file=log)
+    #
+    # enol-peptide
+    #
+    if 1:
+      from mmtbx.conformation_dependent_library.enol_peptide_restraints import update_restraints
+      t0=time.time()
+      enol_time = time.time()-t0
+      junk, number_of_enols = update_restraints(
+        self.pdb_hierarchy,
+        result,
+        log=log,
+        verbose=True,
+        )
+      if number_of_enols:
+        print("""\
+  Enol-peptide restraints (%d) added in %0.1f %sseconds
+  """ % (number_of_enols, greek_time(enol_time)), file=log)
     #
     # need autodetect code
     #
@@ -5875,10 +6036,9 @@ class process(object):
         ener_lib,
         params=None,
         file_name=None,
-        raw_records=None,
+        raw_records=None, # PDB OK
         pdb_inp=None,
         pdb_hierarchy=None,
-        atom_selection_string=None,
         strict_conflict_handling=False,
         special_position_settings=None,
         crystal_symmetry=None,
@@ -5918,7 +6078,6 @@ class process(object):
       params=params,
       pdb_inp=pdb_inp,
       pdb_hierarchy=pdb_hierarchy,
-      atom_selection_string=atom_selection_string,
       special_position_settings=special_position_settings,
       crystal_symmetry=crystal_symmetry,
       force_symmetry=force_symmetry,
@@ -5942,6 +6101,7 @@ class process(object):
     # attempt to fix pH problems
     if self.all_chain_proxies.nonbonded_energy_type_registry.n_unknown_type_symbols():
       from mmtbx.conformation_dependent_library import pH_dependent_restraints
+      from mmtbx.conformation_dependent_library import enol_peptide_restraints
       unknown_atoms = \
         self.all_chain_proxies.nonbonded_energy_type_registry.get_unknown_atoms(
           self.all_chain_proxies.pdb_hierarchy.atoms(),
@@ -5953,7 +6113,7 @@ class process(object):
         if atoms[i].element in ['H', 'D']:
           missing_h_atoms=True
           break
-      if missing_h_atoms and 0: # turning off until debugged NWM
+      if missing_h_atoms:
         rc = pH_dependent_restraints.adjust_geometry_proxies_registeries(
           self.all_chain_proxies.pdb_hierarchy,
           self.all_chain_proxies.geometry_proxy_registries,
@@ -5965,6 +6125,17 @@ class process(object):
           if atom_i_seq in unknown_atoms:
             self.all_chain_proxies.nonbonded_energy_type_registry.symbols[atom_i_seq] = \
                 item.type_energy
+        # ENOL
+        rc = enol_peptide_restraints.adjust_geometry_proxies_registeries(
+          self.all_chain_proxies.pdb_hierarchy,
+          self.all_chain_proxies.geometry_proxy_registries,
+          unknown_atoms,
+          )
+        for atom_i_seq, item in rc.items():
+          if atom_i_seq in unknown_atoms:
+            self.all_chain_proxies.nonbonded_energy_type_registry.symbols[atom_i_seq] = \
+                item.type_energy
+
     # Find NCS -- THIS MUST LAST -----------------------------------------------
     self.ncs_obj = None
     if(len(list(self.all_chain_proxies.pdb_hierarchy.models())) == 1 and
@@ -6076,14 +6247,21 @@ class process(object):
                 all_chain_proxies=self.all_chain_proxies,
                 # pdb_hierarchy=self.all_chain_proxies.pdb_hierarchy,
                 selection=rcr.selection,
+                reference_is_average_alt_confs=rcr.reference_is_average_alt_confs,
                 exclude_outliers=rcr.exclude_outliers,
                 sigma=rcr.sigma,
                 limit=rcr.limit,
-                top_out=rcr.top_out)
+                top_out=rcr.top_out,
+                )
         n_rcr = self._geometry_restraints_manager.\
             get_n_reference_coordinate_proxies()
         print("  Number of reference coordinate restraints generated:",\
            n_rcr, file=self.log)
+
+      if self.all_chain_proxies.params.automatic_restraints.side_chain_parallelity:
+        self._geometry_restraints_manager.\
+            add_parallelity_proxies_for_side_chain(self.all_chain_proxies.pdb_hierarchy,
+                                                   log=self.log)
 
       # DEN manager
       self._geometry_restraints_manager.adopt_den_manager(den_manager)

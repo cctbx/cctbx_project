@@ -1,3 +1,4 @@
+"""Tools for map analysis and manipulation"""
 from __future__ import absolute_import, division, print_function
 import cctbx.sgtbx
 
@@ -51,6 +52,12 @@ class _():
 
 def smooth_map(map, crystal_symmetry, rad_smooth, method = "exp",
      non_negative = True):
+  """Smooth a map with radius rad_smooth, using one of these
+   methods:  "exp" (Gaussian smoothing), "box_average" (local box average),
+   "top_hat" (Top-hat smoothing, spherical average done in reciprocal
+   space)
+  """
+
   from cctbx import miller
   assert method in ["exp", "box_average", "top_hat"]
   map_smooth = None
@@ -321,7 +328,8 @@ def mask(xray_structure,
          mask_value_inside_molecule = 0,
          mask_value_outside_molecule = 1,
          solvent_radius = 0,
-         atom_radius = None):
+         atom_radius = None,
+         wrapping = True):
   xrs_p1 = xray_structure.expand_to_p1(sites_mod_positive = True)
   if(atom_radius is None):
     from cctbx.masks import vdw_radii_from_xray_structure
@@ -334,7 +342,8 @@ def mask(xray_structure,
     n_real                      = n_real,
     mask_value_inside_molecule  = mask_value_inside_molecule,
     mask_value_outside_molecule = mask_value_outside_molecule,
-    radii                       = atom_radii + solvent_radius)
+    radii                       = atom_radii + solvent_radius,
+    wrapping                    = wrapping)
 
 class statistics(ext.statistics):
 
@@ -1433,6 +1442,84 @@ def atom_radius_as_central_peak_width(element, b_iso, d_min, scattering_table):
   assert radius is not None
   return radius
 
+def atom_image_fast(ff_packed, d_min, n_grid, dist_max, n_sf_grid=2000):
+  #
+  # ff_packed is linear array of array_of_a() + c() + array_of_b() + (0,)
+  # n_grid - number of intervals
+  #
+  DistImage  = dist_max
+  NImage     = n_grid
+  if n_sf_grid != int(n_sf_grid/2) * 2 : n_sf_grid +=1
+  #
+  def _SFactG(ScatAtom,Resolution,n_sf_grid) :
+    ScatFunc = [0.0 for ig in range(n_sf_grid+1)]
+    Smax    = 1.0 / Resolution
+    dsstep  = Smax / n_sf_grid
+    NGauss  = int(len(ScatAtom) / 2)
+    for isg in range(n_sf_grid+1) :
+      sg   = dsstep * isg
+      ss24 = sg * sg / 4.0
+      fact = 0.0
+      for ig in range(NGauss) :
+        argexp = ScatAtom[ig + NGauss] * ss24
+        fact  += ScatAtom[ig] * math.exp(-argexp)
+      ScatFunc[isg] = fact
+    return ScatFunc
+  #
+  def _AtomImage(ScatFunc,Resolution,DistImage,NImage) :
+    StepImage  = DistImage /NImage
+    NSGrid = len(ScatFunc) - 1
+    Smax   = 1.0 / Resolution
+    SStep  = Smax / NSGrid
+    Image = [0.0 for j in range(NImage+1)]
+    dx = 2. * math.pi * StepImage
+#   integrate scattering curve
+#   odd points
+    for igs in range(1, NSGrid, 2):
+      ss     = SStep * igs
+      fatoms = ScatFunc[igs] * ss * 4.
+      for ir in range(1,NImage+1):
+        rr   = dx * ir
+        arg  = rr * ss
+        sarg = math.sin(arg)
+        Image[ir] = Image[ir] + fatoms * sarg
+      Image[0] = Image[0] + fatoms * ss
+#   even points
+    for igs in range(2, NSGrid-1, 2):
+      ss     = SStep * igs
+      fatoms = ScatFunc[igs] * ss * 2.
+      for ir in range(1,NImage+1):
+        rr   = dx * ir
+        arg  = rr * ss
+        sarg = math.sin(arg)
+        Image[ir] = Image[ir] + fatoms * sarg
+      Image[0] = Image[0] + fatoms * ss
+#   terminal point (point s = 0 gives zero contribution and is ignored)
+    ss     = SStep * NSGrid
+    fatoms = ScatFunc[NSGrid] * ss
+    for ir in range(1,NImage+1):
+      rr   = dx * ir
+      arg  = rr * ss
+      sarg = math.sin(arg)
+      Image[ir] = Image[ir] + fatoms * sarg
+    Image[0] = Image[0] + fatoms * ss
+# ---- normalisation ----
+    scal = 2.0 * SStep / 3.0
+    for ir in range(1,NImage+1):
+      rr = ir * StepImage
+      Image[ir] = Image[ir] * scal / rr
+    Image[0] = Image[0] * SStep * 4. * math.pi / 3.
+    return Image, StepImage
+  #
+  ScatFunc = _SFactG(ScatAtom=ff_packed, Resolution=d_min, n_sf_grid=n_sf_grid)
+  Image, StepImage = _AtomImage(
+    ScatFunc   = ScatFunc,
+    Resolution = d_min,
+    DistImage  = DistImage,
+    NImage     = NImage)
+  Distance = [_ * StepImage for _ in range(len(Image))]
+  return flex.double(Image), flex.double(Distance)
+
 class atom_curves(object):
   """
 Class-toolkit to compute various 1-atom 1D curves: exact electron density,
@@ -1469,15 +1556,20 @@ Fourier image of specified resolution, etc.
     return self.scr.gaussian(self.scattering_type).gradient(r = r, t = t, t0 = t0,
       b_iso = b_iso)
 
-  def exact_density(self, b_iso, radius_max = 5., radius_step = 0.001):
-    r = 0.0
+  def exact_density(self, b_iso, radius_max = 5., radius_step = 0.001,
+                    radii = None, norm_to_max = False):
+    if radii is None:
+      radii = flex.double()
+      r = 0
+      while r <= radius_max:
+        radii.append(r)
+        r+= radius_step
     density = flex.double()
-    radii   = flex.double()
     ed = self.scr.gaussian(self.scattering_type)
-    while r < radius_max:
-      density.append(ed.electron_density(r, b_iso))
-      radii.append(r)
-      r+= radius_step
+    for r in radii:
+      val = ed.electron_density(r, b_iso)
+      density.append(val)
+    if norm_to_max: density = density / flex.max(density)
     return group_args(radii = radii, density = density)
 
   def form_factor(self, ss, b_iso):
@@ -1497,34 +1589,32 @@ Fourier image of specified resolution, etc.
                  d_min,
                  radius_max,
                  radius_step,
-                 mxp=5, epsc=0.001, kpres=0 # BCR params
+                 mxp,
+                 epsc,
+                 epsp  = 0.000,
+                 edist = 1.0E-13,
+                 kpres = 1,
+                 kprot = 112,
                  ):
-    b_iso = 0 # Must always be 0! All image vals below are for b_iso=0 !!!
     from cctbx.maptbx.bcr import bcr
+    b_iso = 0 # Must always be 0! All image vals below are for b_iso=0 !!!
+
     im = self.image(
       d_min=d_min, b_iso=0, radius_max=radius_max, radius_step=radius_step)
-    bpeak, cpeak, rpeak, _,_,_ = bcr.get_BCR(
-      dens=im.image_values, dist=im.radii, mxp=mxp, epsc=epsc, kpres=kpres)
-    bcr_approx_values = flex.double()
-    # FILTER
-    bpeak_, cpeak_, rpeak_ = [],[],[]
-    for bi, ci, ri in zip(bpeak, cpeak, rpeak):
-      if(abs(bi)<1.e-6 or abs(ci)<1.e-6): continue
-      else:
-        bpeak_.append(bi)
-        cpeak_.append(ci)
-        rpeak_.append(ri)
-    bpeak, cpeak, rpeak = bpeak_, cpeak_, rpeak_
-    #
-    for r in im.radii:
-      first = 0
-      second = 0
-      for B, C, R in zip(bpeak, cpeak, rpeak):
-        if(abs(R)<1.e-6):
-          first += bcr.gauss(B=B, C=C, r=r, b_iso=0)
-        else:
-          second += C*bcr.chi(B=B, R=R, r=r, b_iso=0)
-      bcr_approx_values.append(first + second)
+    bpeak, cpeak, rpeak, _,_,_,_ = bcr.get_BCR(
+      dens  = im.image_values,
+      dist  = im.radii,
+      dmax  = radius_max,
+      mxp   = mxp,
+      epsc  = epsc,
+      epsp  = epsp,
+      edist = edist,
+      kpres = kpres,
+      kprot = kprot,
+      nfmes = None,
+      )
+    bcr_approx_values = bcr.curve(
+      B=bpeak, C=cpeak, R=rpeak, radii=im.radii, b_iso=0)
     return group_args(
       radii             = im.radii,
       image_values      = im.image_values,
@@ -1535,46 +1625,77 @@ Fourier image of specified resolution, etc.
             d_min,
             b_iso,
             d_max = None,
+            radii = None,
             radius_min = 0,
             radius_max = 5.,
             radius_step = 0.001,
-            n_integration_steps = 2000):
-    r = radius_min
+            n_integration_steps = 2000,
+            compute_derivatives=True,
+            fast=False):
+    # define radii if not supplied
+    if radii is None:
+      radii = flex.double()
+      r = radius_min
+      while r <= radius_max + 1e-10:
+        radii.append(r)
+        r += radius_step
+        if math.isclose(r, radius_max, abs_tol=1e-10):
+            radii.append(radius_max)
+            break
     assert d_max !=  0.
     if(d_max is None): s_min = 0
     else:              s_min = 1./d_max
     assert d_min !=  0.
     s_max = 1./d_min
     image_values = flex.double()
-    radii        = flex.double()
-    while r < radius_max:
-      s = scitbx.math.simpson(
-        f = self.integrand(r, b_iso), a = s_min, b = s_max, n = n_integration_steps)
-      image_values.append(s)
-      radii.append(r)
-      r+= radius_step
+    if not fast: # Use direct integration
+      for r in radii:
+        s = scitbx.math.simpson(
+          f = self.integrand(r, b_iso), a = s_min, b = s_max,
+          n=n_integration_steps)
+        image_values.append(s)
+    else: # use AU's adopted code, limited (see assertions below)
+      assert d_max is None
+      assert abs(b_iso) < 1.e-6
+      v = self.scr.as_type_gaussian_dict()[self.scattering_type]
+      ff_AU_style=tuple(v.array_of_a())+(v.c(),)+tuple(v.array_of_b())+(0,)
+      #
+      # Reason for this is unclear. Values in ff_AU_style do not match
+      # wk1995.ccp -- there is more digits after 6x position. The rounding
+      # below is meant to make these numbers match the wk1995.ccp table
+      # exactly.
+      #
+      ff_AU_style = [round(_,6) for _ in ff_AU_style]
+      image_values, _ = atom_image_fast(
+        ff_packed = ff_AU_style,
+        d_min     = d_min,
+        n_grid    = radii.size()-1,
+        dist_max  = radii[-1])
+      image_values = flex.double(image_values)
     # Fine first inflection point
     first_inflection_point = None
     i_first_inflection_point = None
     size = image_values.size()
     second_derivatives = flex.double()
-    for i in range(size):
-      if(i>0 and i<size-1):
-        dxx = image_values[i-1]+image_values[i+1]-2*image_values[i]
-      elif(i == 0):
-        dxx = 2*image_values[i+1]-2*image_values[i]
-      else:
-        dxx = second_derivatives[i-1]*radius_step**2
-      if(first_inflection_point is None and dxx>0):
-        first_inflection_point = (radii[i-1]+radii[i])/2.
-        i_first_inflection_point = i
-      second_derivatives.append(dxx/radius_step**2)
+    if compute_derivatives:
+      for i in range(size):
+        if(i>0 and i<size-1):
+          dxx = image_values[i-1]+image_values[i+1]-2*image_values[i]
+        elif(i == 0):
+          dxx = 2*image_values[i+1]-2*image_values[i]
+        else:
+          dxx = second_derivatives[i-1]*radius_step**2
+        if(first_inflection_point is None and dxx>0):
+          first_inflection_point = (radii[i-1]+radii[i])/2.
+          i_first_inflection_point = i
+        second_derivatives.append(dxx/radius_step**2)
+      first_inflection_point = first_inflection_point*2
     return group_args(
       radii                    = radii,
       image_values             = image_values,
       first_inflection_point   = first_inflection_point,
       i_first_inflection_point = i_first_inflection_point,
-      radius                   = first_inflection_point*2,
+      radius                   = first_inflection_point,
       second_derivatives       = second_derivatives)
 
   def image_from_miller_indices(self, miller_indices, b_iso, uc,
@@ -1658,8 +1779,7 @@ def sharpen2(map, xray_structure, resolution, file_name_prefix):
   #
   fc = fo.structure_factors_from_scatterers(
     xray_structure = xray_structure).f_calc()
-  d_fsc_model = fc.d_min_from_fsc(
-        other = fo, bin_width = 100, fsc_cutoff = 0.).d_min
+  d_fsc_model = fc.d_min_from_fsc(other = fo, fsc_cutoff = 0.).d_min
   print("d_fsc_model:", d_fsc_model)
   #resolution = min(resolution, d_fsc_model)
   #resolution = d_fsc_model
@@ -1795,8 +1915,7 @@ def loc_res(map_model_manager,
     if(method == "d99"):
       d_min = d99(f_map=fo).result.d99
     elif(method == "fsc"):
-      d_min = fc.d_min_from_fsc(other = fo, bin_width = 100,
-        fsc_cutoff = fsc_cutoff).d_min
+      d_min = fc.d_min_from_fsc(other = fo, fsc_cutoff = fsc_cutoff).d_min
     elif(method == "rscc"):
       d_min, cc = cc_complex_complex(
         f_1        = fo.data(),
@@ -2206,32 +2325,71 @@ def is_periodic(map_data,
     else:
         return None # Really do not know
 
-def map_values_along_line_connecting_two_points(map_data, points_cart, step,
-      unit_cell, interpolation):
+def map_values_along_line_connecting_two_points(map_data, points_cart,
+      unit_cell, interpolation, step=None, n_steps=None):
   """
   Calculate interpolated map values along the line connecting two points in
   space.
   """
   assert interpolation in ["eight_point", "tricubic"]
+  assert [step, n_steps].count(None)==1
   points_frac = unit_cell.fractionalize(points_cart)
   dist = unit_cell.distance(points_frac[0], points_frac[1])
-  assert step<dist, "step cannot be greater than the distance between two points"
   #
-  alp = 0
+  def get_points(start, end, step=None, n_steps=None):
+    assert [step, n_steps].count(None)==1
+    dx = end[0] - start[0]
+    dy = end[1] - start[1]
+    dz = end[2] - start[2]
+    direction = (dx, dy, dz)
+    length = math.sqrt(direction[0]**2 + direction[1]**2 + direction[2]**2)
+    direction_unit = (direction[0] / length, direction[1] / length, direction[2] / length)
+    if n_steps is None:
+      n_steps = int(max(abs(dx), abs(dy), abs(dz), length) / step)
+    if step is None:
+      step = length/n_steps
+    points = []
+    for i in range(n_steps + 1):
+      point = (
+        start[0] + i * step * direction_unit[0],
+        start[1] + i * step * direction_unit[1],
+        start[2] + i * step * direction_unit[2])
+      points.append(point)
+    # check end point
+    end_ = points[-1]
+    d = math.sqrt(
+      (end_[0] - start[0])**2 +
+      (end_[1] - start[1])**2 +
+      (end_[2] - start[2])**2)
+    if d<length: points.append(end)
+    #
+    return points
+  #
+  points = get_points(start=points_cart[0], end=points_cart[1], step=step,
+    n_steps=n_steps)
+
   dist = flex.double()
   vals = flex.double()
-  while alp <= 1.0+1.e-6:
-    x1,y1,z1 = points_cart[0]
-    x2,y2,z2 = points_cart[1]
-    xp = x1+alp*(x2-x1)
-    yp = y1+alp*(y2-y1)
-    zp = z1+alp*(z2-z1)
-    dist.append(alp)
+  mv_max = None
+  point_max = None
+  for p in points:
+    xp = p[0]
+    yp = p[1]
+    zp = p[2]
+    rp = unit_cell.fractionalize([xp,yp,zp])
+    d = unit_cell.distance(points_frac[0], rp)
+    dist.append(d)
     pf = unit_cell.fractionalize([xp,yp,zp])
     if(interpolation=="eight_point"):
       mv = map_data.eight_point_interpolation(pf)
     else:
       mv = map_data.tricubic_interpolation(pf)
+    if mv_max is None:
+      mv_max = mv
+      point_max = p[:]
+    else:
+      if mv > mv_max:
+        mv_max = mv
+        point_max = p[:]
     vals.append(mv)
-    alp += step
-  return group_args(dist = dist, vals = vals)
+  return group_args(dist = dist, vals = vals, point_max = point_max)

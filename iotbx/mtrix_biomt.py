@@ -1,3 +1,7 @@
+"""
+Routines to read and write PDB-style BIOMTR records
+"""
+
 from __future__ import absolute_import, division, print_function
 from scitbx import matrix
 import iotbx.pdb

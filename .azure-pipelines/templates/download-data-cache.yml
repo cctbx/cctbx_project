@@ -1,8 +1,8 @@
-# Template for updating data cache artifacts
+# Template for downloading data cache artifacts
 #   - chem_data
+#     - geostd
 #   - phenix_regression
 #   - phenix_examples
-# A ssh_config secure file is needed
 
 steps:
 - task: InstallSSHKey@0
@@ -11,7 +11,9 @@ steps:
     sshPublicKey: ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA7XgVgdU9GmZuo5yVyW/htrAuxe7ypuq7IowWwfUC0WZw9SPzQ8kOGj63plF3ytx/qpgvUlS1AiywO20rZ83gHmRdAiuvt9laH09KlWEUhIhAQTzesqBG5aUT0MKo01yxijoRl5HC8w/MdOanc0h01e6IxnZvgG0N30RB1i4xVPCtR/VBmXSp4R0T+Q/gJjfQssuBxHVMrrute4V3uUHek58FL2QgUB0+zq6ipETjuCJxTSyYVAFtCYDPYs+0lAYYkWrXALCr9kX9s22jYtkyv5kNw6mEW8nhtA7GbTdJLv4M6/WYtcvQV8TDcNCfltOfl81U3gcZ9zhQDKGVoNaJEw== buildbot@cci.lbl.gov
     sshKeySecureFile: id_rsa
   displayName: Download SSH key
+  continueOnError: true
 
+# chem_data
 - task: DownloadPipelineArtifact@2
   inputs:
     source: 'specific'
@@ -22,12 +24,6 @@ steps:
   displayName: Download chem_data
 
 - script: |
-    if [ ! -d "$(Pipeline.Workspace)/modules/chem_data" ]; then
-      cd $(Pipeline.Workspace)/modules
-      git clone https://gitlab.com/phenix_project/chem_data.git
-      git lfs install --local
-      git lfs pull
-    fi
     cd $(Pipeline.Workspace)/modules/chem_data
     git reset --hard origin/main
     git lfs install --local
@@ -36,6 +32,26 @@ steps:
   displayName: Update chem_data
   continueOnError: true
 
+# geostd (in chem_data)
+- task: DownloadPipelineArtifact@2
+  inputs:
+    source: 'specific'
+    project: '$(resources.pipeline.data_cache.projectID)'
+    pipeline: '$(resources.pipeline.data_cache.pipelineID)'
+    allowPartiallySucceededBuilds: true
+    artifact: 'geostd'
+    path: $(Pipeline.Workspace)/modules/chem_data/geostd
+  displayName: Download geostd
+  continueOnError: true
+
+- script: |
+    cd $(Pipeline.Workspace)/modules/chem_data/geostd
+    git reset --hard origin/master
+    git pull --rebase
+  displayName: Update geostd
+  continueOnError: true
+
+# phenix_regression
 - task: DownloadPipelineArtifact@2
   inputs:
     source: 'specific'
@@ -54,6 +70,7 @@ steps:
   displayName: Update phenix_regression
   continueOnError: true
 
+# phenix_examples
 - task: DownloadPipelineArtifact@2
   inputs:
     source: 'specific'

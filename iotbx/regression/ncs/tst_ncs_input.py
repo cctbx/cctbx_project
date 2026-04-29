@@ -1255,6 +1255,185 @@ TER
 END
 """
 
+pdb_str_24 = """
+CRYST1   76.486   77.631  216.881  90.00  90.00  90.00 P 21 21 21
+SCALE1      0.013074  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.012881  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.004611        0.00000
+ATOM    982  N   ARG A 125       9.773  18.491  33.022  1.00 61.37           N
+ATOM    983  CA  ARG A 125      10.267  17.380  32.220  1.00 71.35           C
+ATOM    984  C   ARG A 125      11.259  16.547  33.018  1.00 62.76           C
+ATOM    985  O   ARG A 125      11.140  15.318  33.094  1.00 72.81           O
+ATOM    986  CB  ARG A 125      10.900  17.905  30.931  1.00 64.16           C
+ATOM    987  CG  ARG A 125       9.880  18.399  29.916  1.00 40.86           C
+ATOM    988  CD  ARG A 125      10.531  18.918  28.646  1.00 48.22           C
+ATOM    989  NE  ARG A 125       9.529  19.321  27.662  1.00 52.59           N
+ATOM    990  CZ  ARG A 125       9.806  19.880  26.488  1.00 48.26           C
+ATOM    991  NH1 ARG A 125      11.062  20.113  26.134  1.00 48.70           N
+ATOM    992  NH2 ARG A 125       8.819  20.210  25.666  1.00 49.04           N
+ATOM    993  N   GLU A 126      12.225  17.205  33.662  1.00 63.21           N
+ATOM    994  CA  GLU A 126      13.225  16.450  34.406  1.00 78.02           C
+ATOM    995  C   GLU A 126      12.632  15.795  35.650  1.00 89.06           C
+ATOM    996  O   GLU A 126      13.057  14.698  36.028  1.00103.40           O
+ATOM    997  CB  GLU A 126      14.401  17.349  34.782  1.00 82.45           C
+ATOM    998  CG  GLU A 126      15.677  16.568  35.092  1.00 91.17           C
+ATOM    999  CD  GLU A 126      16.917  17.159  34.440  1.00109.97           C
+ATOM   1000  OE1 GLU A 126      18.031  16.899  34.945  1.00109.65           O
+ATOM   1001  OE2 GLU A 126      16.785  17.875  33.425  1.00 97.57           O
+ATOM   1002  N   LYS A 127      11.648  16.430  36.293  1.00 75.13           N
+ATOM   1003  CA  LYS A 127      11.018  15.805  37.452  1.00 69.58           C
+ATOM   1004  C   LYS A 127      10.264  14.546  37.045  1.00 88.59           C
+ATOM   1005  O   LYS A 127      10.483  13.469  37.611  1.00105.79           O
+ATOM   1006  CB  LYS A 127      10.074  16.787  38.148  1.00 78.73           C
+ATOM   1007  CG  LYS A 127       9.598  16.287  39.509  1.00 91.26           C
+ATOM   1008  CD  LYS A 127       8.654  17.260  40.202  1.00 90.42           C
+ATOM   1009  CE  LYS A 127       7.239  17.168  39.654  1.00 84.11           C
+ATOM   1010  NZ  LYS A 127       6.224  17.503  40.695  1.00 84.76           N
+ATOM   1011  N   ASP A 128       9.365  14.663  36.065  1.00 90.36           N
+ATOM   1012  CA  ASP A 128       8.652  13.493  35.571  1.00 97.11           C
+ATOM   1013  C   ASP A 128       9.608  12.437  35.031  1.00103.15           C
+ATOM   1014  O   ASP A 128       9.257  11.253  35.002  1.00106.89           O
+ATOM   1015  CB  ASP A 128       7.649  13.911  34.493  1.00 80.42           C
+ATOM   1016  CG  ASP A 128       6.552  12.883  34.281  1.00101.74           C
+ATOM   1017  OD1 ASP A 128       6.682  11.752  34.795  1.00109.66           O
+ATOM   1018  OD2 ASP A 128       5.553  13.211  33.606  1.00103.92           O
+ATOM   1019  N   ARG A 129      10.808  12.837  34.602  1.00 97.73           N
+ATOM   1020  CA  ARG A 129      11.841  11.854  34.292  1.00 95.38           C
+ATOM   1021  C   ARG A 129      12.283  11.127  35.556  1.00 98.41           C
+ATOM   1022  O   ARG A 129      12.298   9.892  35.603  1.00 95.12           O
+ATOM   1023  CB  ARG A 129      13.028  12.544  33.618  1.00 85.97           C
+ATOM   1024  CG  ARG A 129      13.890  11.631  32.758  1.00 74.83           C
+ATOM   1025  CD  ARG A 129      14.881  10.822  33.579  1.00 92.99           C
+ATOM   1026  NE  ARG A 129      15.876  11.663  34.243  1.00 98.70           N
+ATOM   1027  CZ  ARG A 129      17.000  12.095  33.675  1.00 88.85           C
+ATOM   1028  NH1 ARG A 129      17.284  11.777  32.418  1.00 74.86           N
+ATOM   1029  NH2 ARG A 129      17.844  12.852  34.366  1.00 76.69           N
+ATOM   1030  N   LEU A 130      12.646  11.884  36.592  1.00104.97           N
+ATOM   1031  CA  LEU A 130      13.022  11.312  37.879  1.00112.32           C
+ATOM   1032  C   LEU A 130      11.932  10.388  38.404  1.00110.14           C
+ATOM   1033  O   LEU A 130      12.101   9.164  38.428  1.00103.14           O
+ATOM   1034  CB  LEU A 130      13.297  12.423  38.897  1.00 91.77           C
+ATOM   1035  CG  LEU A 130      14.750  12.866  39.084  1.00 80.63           C
+ATOM   1036  CD1 LEU A 130      15.545  11.798  39.827  1.00 97.71           C
+ATOM   1037  CD2 LEU A 130      15.405  13.195  37.751  1.00 95.08           C
+TER
+ATOM   8774  N   ARG F 125      10.452  30.705  49.041  1.00 51.45           N
+ATOM   8775  CA  ARG F 125       9.875  31.452  50.151  1.00 42.65           C
+ATOM   8776  C   ARG F 125       8.537  30.856  50.561  1.00 58.84           C
+ATOM   8777  O   ARG F 125       8.272  30.655  51.753  1.00 62.79           O
+ATOM   8778  CB  ARG F 125       9.726  32.926  49.770  1.00 34.75           C
+ATOM   8779  CG  ARG F 125      10.998  33.739  49.974  1.00 48.58           C
+ATOM   8780  CD  ARG F 125      10.892  35.136  49.381  1.00 47.83           C
+ATOM   8781  NE  ARG F 125      12.120  35.903  49.575  1.00 40.07           N
+ATOM   8782  CZ  ARG F 125      12.304  37.149  49.150  1.00 35.39           C
+ATOM   8783  NH1 ARG F 125      11.339  37.784  48.497  1.00 36.70           N
+ATOM   8784  NH2 ARG F 125      13.457  37.762  49.378  1.00 40.69           N
+ATOM   8785  N   GLU F 126       7.681  30.547  49.582  1.00 76.22           N
+ATOM   8786  CA  GLU F 126       6.396  29.945  49.928  1.00 61.43           C
+ATOM   8787  C   GLU F 126       6.565  28.523  50.449  1.00 57.03           C
+ATOM   8788  O   GLU F 126       5.822  28.102  51.343  1.00 57.49           O
+ATOM   8789  CB  GLU F 126       5.453  29.974  48.726  1.00 59.74           C
+ATOM   8790  CG  GLU F 126       4.365  31.031  48.849  1.00 60.06           C
+ATOM   8791  CD  GLU F 126       4.927  32.411  49.126  1.00 81.51           C
+ATOM   8792  OE1 GLU F 126       5.740  32.899  48.312  1.00 85.73           O
+ATOM   8793  OE2 GLU F 126       4.566  33.001  50.167  1.00 81.43           O
+ATOM   8794  N   LYS F 127       7.544  27.779  49.930  1.00 58.23           N
+ATOM   8795  CA  LYS F 127       7.805  26.440  50.445  1.00 51.76           C
+ATOM   8796  C   LYS F 127       8.193  26.488  51.919  1.00 65.55           C
+ATOM   8797  O   LYS F 127       7.712  25.679  52.722  1.00 72.54           O
+ATOM   8798  CB  LYS F 127       8.900  25.772  49.610  1.00 63.55           C
+ATOM   8799  CG  LYS F 127       9.291  24.369  50.056  1.00 91.13           C
+ATOM   8800  CD  LYS F 127      10.356  23.778  49.134  1.00 94.56           C
+ATOM   8801  CE  LYS F 127       9.769  22.767  48.155  1.00 96.34           C
+ATOM   8802  NZ  LYS F 127       9.419  21.477  48.818  1.00 86.37           N
+ATOM   8803  N  BASP F 128       9.133  27.361  52.316  0.38 62.87           N
+ATOM   8804  CA BASP F 128       9.578  27.468  53.744  0.38 48.81           C
+ATOM   8805  C  BASP F 128       8.425  28.107  54.594  0.38 59.71           C
+ATOM   8806  O  BASP F 128       8.291  27.636  55.724  0.38 63.03           O
+ATOM   8807  CB BASP F 128      10.872  28.273  53.854  0.38 65.51           C
+ATOM   8808  CG BASP F 128      12.065  27.592  53.215  0.38 65.67           C
+ATOM   8809  OD1BASP F 128      12.020  26.366  53.054  0.38 54.17           O
+ATOM   8810  OD2BASP F 128      13.027  28.297  52.884  0.38 76.43           O
+ATOM   8811  N   ARG F 129       7.611  29.111  54.153  1.00 68.75           N
+ATOM   8812  CA  ARG F 129       6.434  29.572  54.862  1.00 58.29           C
+ATOM   8813  C   ARG F 129       5.449  28.434  55.079  1.00 71.92           C
+ATOM   8814  O   ARG F 129       4.763  28.394  56.107  1.00 73.61           O
+ATOM   8815  CB  ARG F 129       5.809  30.711  54.070  1.00 68.67           C
+ATOM   8816  CG  ARG F 129       4.624  31.350  54.722  1.00 54.93           C
+ATOM   8817  CD  ARG F 129       4.361  32.689  54.077  1.00 64.27           C
+ATOM   8818  NE  ARG F 129       5.336  33.692  54.502  1.00123.14           N
+ATOM   8819  CZ  ARG F 129       5.576  34.828  53.854  1.00119.24           C
+ATOM   8820  NH1 ARG F 129       4.920  35.109  52.735  1.00107.68           N
+ATOM   8821  NH2 ARG F 129       6.480  35.682  54.320  1.00119.09           N
+ATOM   8822  N   LEU F 130       5.387  27.485  54.140  1.00 74.90           N
+ATOM   8823  CA  LEU F 130       4.517  26.326  54.310  1.00 71.49           C
+ATOM   8824  C   LEU F 130       5.032  25.387  55.393  1.00 66.21           C
+ATOM   8825  O   LEU F 130       4.236  24.707  56.050  1.00 59.85           O
+ATOM   8826  CB  LEU F 130       4.385  25.575  52.987  1.00 64.81           C
+ATOM   8827  CG  LEU F 130       3.071  24.818  52.807  1.00 41.77           C
+ATOM   8828  CD1 LEU F 130       1.947  25.797  52.493  1.00 61.75           C
+ATOM   8829  CD2 LEU F 130       3.202  23.768  51.721  1.00 46.78           C
+TER
+HETATM 9346  C1' CTP A 201       4.240  18.558  36.758  0.93 67.75           C
+HETATM 9347  C2  CTP A 201       3.926  20.715  37.868  0.93 70.26           C
+HETATM 9348  C2' CTP A 201       3.416  17.353  37.127  0.93 75.55           C
+HETATM 9349  C3' CTP A 201       3.873  16.336  36.043  0.93 75.44           C
+HETATM 9350  C4  CTP A 201       2.178  22.080  37.193  0.93 48.66           C
+HETATM 9351  C4' CTP A 201       4.865  17.117  35.203  0.93 76.06           C
+HETATM 9352  C5  CTP A 201       1.760  21.161  36.234  0.93 51.30           C
+HETATM 9353  C5' CTP A 201       4.677  16.780  33.753  0.93 76.35           C
+HETATM 9354  C6  CTP A 201       2.471  20.001  36.124  0.93 54.86           C
+HETATM 9355  N1  CTP A 201       3.496  19.767  36.904  0.93 58.61           N
+HETATM 9356  N3  CTP A 201       3.232  21.889  38.003  0.93 63.86           N
+HETATM 9357  N4  CTP A 201       1.525  23.225  37.317  0.93 39.11           N
+HETATM 9358  O1A CTP A 201       3.054  15.039  32.621  0.93 87.57           O
+HETATM 9359  O1B CTP A 201       0.836  16.529  29.242  0.93 81.12           O
+HETATM 9360  O1G CTP A 201       3.539  15.284  27.178  0.93102.66           O
+HETATM 9361  O2  CTP A 201       4.890  20.448  38.554  0.93 52.94           O
+HETATM 9362  O2' CTP A 201       3.744  16.961  38.425  0.93 80.00           O
+HETATM 9363  O2A CTP A 201       1.248  16.129  33.990  0.93 59.52           O
+HETATM 9364  O2B CTP A 201       2.687  17.991  29.776  0.93 72.35           O
+HETATM 9365  O2G CTP A 201       4.756  13.769  28.739  0.93 59.52           O
+HETATM 9366  O3' CTP A 201       4.559  15.227  36.614  0.93 80.14           O
+HETATM 9367  O3A CTP A 201       1.662  16.810  31.626  0.93 60.30           O
+HETATM 9368  O3B CTP A 201       3.120  15.501  29.842  0.93 72.11           O
+HETATM 9369  O3G CTP A 201       2.318  13.561  28.541  0.93 98.31           O
+HETATM 9370  O4' CTP A 201       4.553  18.476  35.419  0.93 62.09           O
+HETATM 9371  O5' CTP A 201       3.367  17.217  33.356  0.93 75.19           O
+HETATM 9372  PA  CTP A 201       2.270  16.205  32.913  0.93 66.87           P
+HETATM 9373  PB  CTP A 201       2.123  16.651  29.985  0.93 91.05           P
+HETATM 9374  PG  CTP A 201       3.489  14.512  28.471  0.93101.70           P
+HETATM 9491  C1'ACTP F 201      13.964  26.733  50.766  0.62 67.52           C
+HETATM 9492  C2 ACTP F 201      14.486  25.231  48.851  0.62 68.70           C
+HETATM 9493  C2'ACTP F 201      14.100  26.070  52.113  0.62 64.29           C
+HETATM 9494  C3'ACTP F 201      13.449  27.153  53.025  0.62 72.35           C
+HETATM 9495  C4 ACTP F 201      16.626  25.201  47.926  0.62 63.87           C
+HETATM 9496  C4'ACTP F 201      13.432  28.417  52.150  0.62 69.82           C
+HETATM 9497  C5 ACTP F 201      17.094  26.167  48.844  0.62 58.73           C
+HETATM 9498  C5'ACTP F 201      14.053  29.615  52.865  0.62 72.42           C
+HETATM 9499  C6 ACTP F 201      16.205  26.659  49.775  0.62 48.91           C
+HETATM 9500  N1 ACTP F 201      14.945  26.216  49.801  0.62 62.55           N
+HETATM 9501  N3 ACTP F 201      15.362  24.729  47.913  0.62 66.52           N
+HETATM 9502  N4 ACTP F 201      17.473  24.696  47.011  0.62 60.14           N
+HETATM 9503  O1AACTP F 201      16.477  28.303  52.040  0.62 66.78           O
+HETATM 9504  O1BACTP F 201      17.264  31.510  52.100  0.62 75.29           O
+HETATM 9505  O1GACTP F 201      18.721  35.021  52.963  0.62 67.59           O
+HETATM 9506  O2 ACTP F 201      13.326  24.860  48.906  0.62 57.76           O
+HETATM 9507  O2'ACTP F 201      13.395  24.871  52.103  0.62 58.72           O
+HETATM 9508  O2AACTP F 201      16.693  27.769  54.499  0.62 79.47           O1-
+HETATM 9509  O2BACTP F 201      15.812  31.687  54.293  0.62 87.41           O1-
+HETATM 9510  O2GACTP F 201      17.245  34.852  54.963  0.62 54.68           O1-
+HETATM 9511  O3'ACTP F 201      12.097  26.822  53.344  0.62 70.65           O
+HETATM 9512  O3AACTP F 201      17.383  30.027  53.660  0.62 53.83           O
+HETATM 9513  O3BACTP F 201      18.261  32.559  54.047  0.62 65.92           O
+HETATM 9514  O3GACTP F 201      19.621  34.398  55.214  0.62 66.01           O1-
+HETATM 9515  O4'ACTP F 201      14.182  28.093  50.949  0.62 63.99           O
+HETATM 9516  O5'ACTP F 201      15.016  29.191  53.853  0.62 69.01           O
+HETATM 9517  PA ACTP F 201      16.481  28.753  53.464  0.62 71.42           P
+HETATM 9518  PB ACTP F 201      17.148  31.722  53.516  0.62 71.63           P
+HETATM 9519  PG ACTP F 201      18.460  34.316  54.269  0.62 90.35           P
+END
+"""
 
 
 def exercise_00(prefix="iotbx_ncs_exercise_00",debug=False):
@@ -1745,6 +1924,37 @@ ncs_group {
   selection        = chain Av or chain Aw or chain Ax
 }""")
 
+def exercise_24():
+  """
+  PDB file with another alternative conformations. Similar to exercise_14(),
+  but the trick here is we have chain A and F split into two with the same chain IDs.
+  Moreover, protein in chain F has single altloc B, and ligand in chain F has
+  signle altloc 'A'. When combined, makes the resulting chain have
+  altlocs while separately they dont.
+
+  The result we are looking for is essentially skipping residue 128 and 201
+  which are in AC in chain F.
+  """
+
+  p = ncs.input.get_default_params()
+  p.ncs_search.residue_match_radius=5 # for residue 129 to be included
+
+  ncs_inp = ncs.input(
+      hierarchy=iotbx.pdb.input(source_info=None, lines=pdb_str_24).construct_hierarchy(),
+      params=p.ncs_search)
+  ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+  assert len(ncs_groups)==1
+  # print(ncs_inp.show_phil_format())
+  phil_out = ncs_inp.show_phil_format()
+  assert not show_diff(phil_out, """\
+
+NCS phil parameters:
+-----------------------
+ncs_group {
+  reference = (chain 'A' and (resid 125 through 127 or resid 129 through 130))
+  selection = (chain 'F' and (resid 125 through 127 or resid 129 through 130))
+}""")
+
 def clean_temp_files(file_list):
   """ delete files in the file_list """
   for fn in file_list:
@@ -1773,4 +1983,5 @@ if (__name__ == "__main__"):
   exercise_22()
   # exercise_23() # Not grouping chains anymore. Test is left to illustrate
   # failure of update_chain_ids_search_order in this example
+  exercise_24()
   print("OK")

@@ -1,3 +1,6 @@
+"""
+Tools to obtain crystal_symmetry from any suitable object or string
+"""
 from __future__ import absolute_import, division, print_function
 import libtbx.load_env
 

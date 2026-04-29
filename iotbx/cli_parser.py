@@ -8,7 +8,7 @@ PHIL scope and citations for a program.
 '''
 from __future__ import absolute_import, division, print_function
 
-import argparse, getpass, logging, os, sys, time
+import argparse, getpass, logging, os, sys, textwrap, time
 
 from six.moves import cStringIO as StringIO
 
@@ -138,15 +138,15 @@ class CCTBXParser(ParserBase):
     self.modified_filename = self.prefix + '_modified.eff'
     self.all_filename = self.prefix + '_all.eff'
 
-    # JSON filename
-    self.json_filename = self.prefix + '_result.json'
-
     # terminal width
     self.text_width = 79
 
+    # DataManager diff
+    self.data_manager_diff = None
+
     # print header
     border = '-' * self.text_width
-    description = border + program_class.description + border
+    description = border + textwrap.dedent(program_class.description) + border
     epilog = border + program_class.epilog
     super(CCTBXParser, self).__init__(
       prog=self.prog, description=description, epilog=epilog,
@@ -182,6 +182,18 @@ class CCTBXParser(ParserBase):
     self.master_phil.adopt_scope(required_output_phil)
     self.working_phil = None
 
+    # add master PHIL to description
+    extra_description = '\n\nPHIL arguments:\n'
+    phil_str = ''
+    if self.program_class.show_data_manager_scope_by_default:
+      phil_str += self.data_manager.master_phil.as_str(
+        prefix='  ', expert_level=3, attributes_level=0)
+    phil_str += self.master_phil.as_str(
+      prefix='  ', expert_level=3, attributes_level=0)
+    if len(phil_str) > 0:
+      extra_description += phil_str
+      self.description += extra_description
+
     self.add_default_options()
 
   # ---------------------------------------------------------------------------
@@ -192,8 +204,8 @@ class CCTBXParser(ParserBase):
     # --show-defaults=n sets it to n and it can only be {0, 1, 2, 3}
     self.add_argument(
       '--show-defaults', '--show_defaults',
-      nargs='?', const=0, type=int, choices=range(0,4),
-      help='show default parameters with expert level (default=0)'
+      nargs='?', const=3, type=int, choices=range(0,4),
+      help='show default parameters with expert level (default=3)'
     )
 
     # --attributes-level by itself is set to 0
@@ -249,9 +261,8 @@ class CCTBXParser(ParserBase):
     self.add_argument(
       '--json', action='store_true',
       help='''\
-writes or overwrites the JSON output for the program to file (%s).
-Use --json-filename to specify a different filename for the output.''' %
-      self.json_filename,
+writes or overwrites the JSON output for the program to file. The default
+filename is determined by the program, but can be set using --json-filename.'''
     )
 
     # --json-filename
@@ -263,6 +274,13 @@ Use --json-filename to specify a different filename for the output.''' %
 optionally specify a filename for JSON output. If a filename is provided,
 the .json extension will be added automatically if it does not already exist.
 Also, specifying this flag implies that --json is also specified.'''
+    )
+
+    # --check-current-dir
+    # if a file does exist in the path specified in the PHIL, check the current directory
+    self.add_argument(
+      '--check-current-dir', '--check_current_dir', action='store_true',
+      help='check current directory for a file if the file path specified in a PHIL file does not work'
     )
 
     # --overwrite
@@ -438,7 +456,8 @@ Also, specifying this flag implies that --json is also specified.'''
     for name in phil_names:
       phil = self.data_manager.get_phil(name)
       if hasattr(phil.extract(), 'data_manager'):
-        self.data_manager.load_phil_scope(phil)
+        phil = self._update_phil_paths_to_cwd(phil)
+        self.data_manager.load_phil_scope(phil, process_files=not self.namespace.diff_params)
 
     if not printed_something:
       print('  No files found', file=self.logger)
@@ -467,7 +486,7 @@ Also, specifying this flag implies that --json is also specified.'''
       error_message += wordwrap('PHIL parameters in files should be fully specified (e.g. "output.overwrite" instead of just "overwrite")', max_chars=self.text_width) + '\n'
       if advice:
         error_message += wordwrap(advice, max_chars=self.text_width) + '\n'
-      if self.unused_phil_raises_sorry:
+      if self.unused_phil_raises_sorry and not self.namespace.diff_params:
         raise Sorry(error_message)
 
   # ---------------------------------------------------------------------------
@@ -512,9 +531,9 @@ Also, specifying this flag implies that --json is also specified.'''
     # processed in given order
     if len(phil_list) > 0:
       interpreter = self.master_phil.command_line_argument_interpreter(
-        assume_when_ambiguous=self.program_class.assume_when_ambiguous)
+        assume_when_ambiguous=False)
       data_manager_interpreter = self.data_manager.master_phil.command_line_argument_interpreter(
-        assume_when_ambiguous=self.program_class.assume_when_ambiguous)
+        assume_when_ambiguous=False)
       print('  Adding command-line PHIL:', file=self.logger)
       print('  -------------------------', file=self.logger)
       for phil in phil_list:
@@ -633,9 +652,14 @@ Also, specifying this flag implies that --json is also specified.'''
       sources.append(iotbx.phil.parse('output.overwrite=True'))
 
     # process program parameters
+    skip_incompatible_objects = False
+    if self.namespace.diff_params:
+      skip_incompatible_objects = True
     if len(data_sources) + len(sources) > 0:
       self.working_phil, more_unused_phil = self.master_phil.fetch(
-        sources=data_sources + sources, track_unused_definitions=True)
+        sources=data_sources + sources,
+        track_unused_definitions=True,
+        skip_incompatible_objects=skip_incompatible_objects)
       self.unused_phil.extend(more_unused_phil)
     elif self.working_phil is None:
       self.working_phil = self.master_phil.fetch()
@@ -646,7 +670,9 @@ Also, specifying this flag implies that --json is also specified.'''
         sources=data_manager_data_sources + data_manager_sources, track_unused_definitions=True)
       self.unused_phil.extend(more_unused_phil)
       # load remaining files and final fmodel parameters
-      self.data_manager.load_phil_scope(diff_phil)
+      diff_phil = self._update_phil_paths_to_cwd(diff_phil)
+      self.data_manager.load_phil_scope(diff_phil, process_files=not self.namespace.diff_params)
+      self.data_manager_diff = diff_phil
 
     # show unrecognized parameters and abort
     self.raise_Sorry_for_unused_phil()
@@ -657,6 +683,7 @@ Also, specifying this flag implies that --json is also specified.'''
     # as a command-line argument. This is mostly for finding data files
     # defined by PHIL parameters that should be added to the DataManager
     diff_phil = self.master_phil.fetch_diff(self.working_phil)
+    diff_phil = self._update_phil_paths_to_cwd(diff_phil)
     paths = self.check_phil_for_paths(diff_phil)
     if len(paths) > 0:
       files = set()
@@ -703,6 +730,23 @@ Also, specifying this flag implies that --json is also specified.'''
     return paths
 
   # ---------------------------------------------------------------------------
+  def _update_phil_paths_to_cwd(self, phil=None):
+    '''
+    Convenience function for modifying a phil scope so that file paths
+    are reset to use the current working directory if the filename exists.
+    '''
+    if self.namespace.check_current_dir:
+      diff_phil = self.data_manager.master_phil.fetch_diff(phil)
+      paths = self.check_phil_for_paths(diff_phil)
+      phil_str = diff_phil.as_str()
+      for path in paths:
+        new_path = os.path.join(os.getcwd(), os.path.basename(path))
+        if not os.path.isfile(path) and os.path.isfile(new_path):
+          phil_str = phil_str.replace(path, new_path)
+      phil = iotbx.phil.parse(phil_str, process_includes=True)
+    return phil
+
+  # ---------------------------------------------------------------------------
   def post_process(self):
     '''
     Post processing of inputs after all arguments are parsed
@@ -731,6 +775,9 @@ Also, specifying this flag implies that --json is also specified.'''
     try:
       data_diff = self.data_manager.master_phil.fetch_diff(
         self.data_manager.export_phil_scope())
+      # keep original DataManager scope when using --diff-params
+      if self.namespace.diff_params and self.data_manager_diff is not None:
+        data_diff = self.data_manager_diff
     except RuntimeError as err:
       raise Sorry(err)
     try:
@@ -856,7 +903,7 @@ or with pip run
 # =============================================================================
 def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arguments=None,
                 unused_phil_raises_sorry=True, args=None, json=False, logger=None,
-                hide_parsing_output=False):
+                hide_parsing_output=False, allow_default_args=False):
   '''
   Function for running programs using CCTBXParser and the program template
 
@@ -888,6 +935,8 @@ def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arg
 
   if args is None:
     args = sys.argv[1:]
+  elif allow_default_args and type(args) in [list, tuple]:
+    args = sys.argv[1:] + args
 
   # start profiling
   pr = None
@@ -957,7 +1006,7 @@ def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arg
   if namespace.json or namespace.json_filename:
     result = task.get_results_as_JSON()
     if result is not None:
-      json_filename = parser.json_filename
+      json_filename = '.'.join([task.get_default_output_filename(), 'json'])
       if namespace.json_filename is not None:
         json_filename = namespace.json_filename
         if not json_filename.endswith('.json'):
@@ -989,18 +1038,18 @@ def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arg
 
 # =============================================================================
 def get_program_params(run):
-    """Tool to get parameters object for a program that runs with
-      the program template.
-    params: run:  the program template object
-    returns: parameters for this program as set up by the program template
-    Get the run something like this way:
-     from phenix.programs import map_to_model as run
-    """
+  """Tool to get parameters object for a program that runs with
+     the program template.
+  params: run:  the program template object
+  returns: parameters for this program as set up by the program template
+  Get the run something like this way:
+    from phenix.programs import map_to_model as run
+  """
 
-    parser = CCTBXParser(program_class=run.Program,
-                         logger=null_out())
-    _ = parser.parse_args([], skip_help = True)
-    return parser.working_phil.extract()
+  parser = CCTBXParser(program_class=run.Program,
+                       logger=null_out())
+  _ = parser.parse_args([], skip_help = True)
+  return parser.working_phil.extract()
 
 # =============================================================================
 # end

@@ -921,7 +921,7 @@ class UnitCellSentinel(Thread):
     import xfel.ui.components.xfel_gui_plotter as pltr
 
     feature_vectors = {
-      "Triclinic": None,
+      "Triclinic": "a,b,c",
       "Monoclinic": "a,b,c",
       "Orthorhombic": "a,b,c",
       "Tetragonal": "a,c",
@@ -990,7 +990,13 @@ class UnitCellSentinel(Thread):
           params.input.space_group = sg
 
           iterable = ["{a} {b} {c} {alpha} {beta} {gamma} ".format(**c) + sg for c in info_list[0]]
-          params.input.__inject__('iterable', iterable)
+          if hasattr(params.input, "iterable") and params.input.iterable == [None]: # seems to be the case recently, new python issue?
+            del(params.input.iterable[0])
+            params.input.iterable.extend(iterable)
+          elif not hasattr(params.input.iterable):
+            params.input.__inject__('iterable', iterable)
+          else:
+            assert False, 'Iterable already populated'
           params.file_name = None
           params.cluster.dbscan.eps = float(self.parent.run_window.unitcell_tab.plot_eps.eps.GetValue())
           params.show_plot = True
@@ -1506,6 +1512,7 @@ class MainWindow(wx.Frame):
     info.AddDeveloper('Derek A. Mendez')
     info.AddDeveloper('Johannes Blaschke')
     info.AddDeveloper('Robert Bolotovsky')
+    info.AddDeveloper('Vanessa Oklejas')
     info.AddDeveloper('Axel Brunger')
     info.AddDeveloper('Nicholas Sauter')
     wx.adv.AboutBox(info)
@@ -2123,7 +2130,7 @@ class EnergyTab(BaseTab):
                                style=wx.OK | wx.ICON_ERROR)
         dlg.ShowModal()
         return
-      self.fee_runs.append(run)
+      self.fee_runs.append(int(run))
 
       try:
         energy = float(self.scan_runs_list.GetItem(itemIdx=row, col=1).GetText())
@@ -2796,48 +2803,48 @@ class RunStatsTab(SpotfinderTab):
                                         label='High resolution limit:',
                                         sub_labels=[''],
                                         label_size=(160, -1),
-                                        ctrl_size=(30, -1),
+                                        ctrl_size=(60, -1),
                                         items=[('d_min', 2.0)])
     self.n_multiples_selector = gctr.OptionCtrl(self.options_box,
                                                name='rs_multiples',
                                                label='# multiples threshold:',
                                                sub_labels=[''],
                                                label_size=(160, -1),
-                                               ctrl_size=(30, -1),
+                                               ctrl_size=(60, -1),
                                                items=[('multiples', 2)])
     self.ratio_cutoff = gctr.OptionCtrl(self.options_box,
                                         name='rs_ratio',
                                         label='two theta ratio cutoff:',
                                         sub_labels=[''],
                                         label_size=(160, -1),
-                                        ctrl_size=(30, -1),
+                                        ctrl_size=(60, -1),
                                         items=[('ratio', 1)])
     self.n_strong_cutoff = gctr.OptionCtrl(self.options_box,
                                            name='rs_n_strong',
                                            label='# strong spots cutoff:',
                                            sub_labels=[''],
                                            label_size=(160, -1),
-                                           ctrl_size=(30, -1),
+                                           ctrl_size=(60, -1),
                                            items=[('n_strong', 16)])
     self.i_sigi_cutoff = gctr.OptionCtrl(self.options_box,
                                          name='rs_isigi',
                                          label='I/sig(I) cutoff:',
                                          sub_labels=[''],
                                          label_size=(160, -1),
-                                         ctrl_size=(30, -1),
+                                         ctrl_size=(60, -1),
                                          items=[('isigi', 1)])
     self.n_dump_cutoff = gctr.OptionCtrl(self.options_box,
                                          name='rs_n_dump',
                                          label='# images to dump:',
                                          sub_labels=[''],
                                          label_size=(160, -1),
-                                         ctrl_size=(30, -1),
+                                         ctrl_size=(60, -1),
                                          items=[('n_dump', 10)])
     self.run_numbers =  gctr.CheckListCtrl(self.options_box,
                                            label='Selected runs:',
                                            label_size=(200, -1),
                                            label_style='normal',
-                                           ctrl_size=(150, 224),
+                                           ctrl_size=(150, 250),
                                            direction='vertical',
                                            choices=[])
 
@@ -3039,11 +3046,24 @@ class RunStatsTab(SpotfinderTab):
     all_stats = tab.main.runstats_sentinel.stats
     if not all_stats:
       return
-    x = round(event.xdata)
+
+    if 'strong' in event.inaxes.get_ylabel():
+      twod_data = np.concatenate([event.inaxes.collections[0].get_offsets().data, event.inaxes.collections[1].get_offsets().data])
+    elif 'high res' in event.inaxes.get_ylabel():
+      twod_data = event.inaxes.collections[0].get_offsets().data
+    else:
+      return
+    twod_picture = event.inaxes.transData.transform(twod_data)
+    evt_xy_picture = event.inaxes.transData.transform((event.xdata, event.ydata))
+    diffs = twod_picture - (evt_xy_picture)
+    diffs = np.linalg.norm(diffs, axis=1)
+    mindiff = np.argmin(diffs)
+    x = round(twod_data[mindiff][0])
+
     run_numbers = tab.main.runstats_sentinel.run_numbers
     found_it = False
     for run_number, stats in zip(run_numbers, all_stats):
-      timestamps, two_theta_low, two_theta_high, n_strong, resolutions, n_lattices = stats
+      timestamps, two_theta_low, two_theta_high, n_strong, resolutions, n_lattices, wavelengths = stats
       if x < len(timestamps):
         found_it = True
         break

@@ -1,3 +1,4 @@
+"""Side-chain-directed model and map validation for 3D Electron Cryomicroscopy"""
 from __future__ import absolute_import, division, print_function
 try:
   from phenix.program_template import ProgramTemplate

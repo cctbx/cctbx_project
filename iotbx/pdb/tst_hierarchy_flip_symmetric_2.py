@@ -1,3 +1,4 @@
+"""Test flipping symmetric amino acids, part 2"""
 from __future__ import division
 import sys
 from libtbx import easy_run

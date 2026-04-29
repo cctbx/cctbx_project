@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import time
 import mmtbx.model
-from mmtbx.hydrogens.tst_add_hydrogen import compare_models
+from mmtbx.hydrogens.tst_add_hydrogen_1 import compare_models
 
 
 def run():
@@ -154,6 +154,9 @@ ATOM     44 HE22 GLN H   3      55.661 -70.489  30.801  1.00 55.07           H
 pdb_str_001 = """
 REMARK this fails in REDUCE because of clash between LYS 246 NZ & Tam 2 C5
 CRYST1   24.984   25.729   23.590  90.00  90.00  90.00 P 1
+SCALE1      0.040026  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.038867  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.042391        0.00000
 ATOM      1  N   PRO A 245      13.194  10.192  16.658  1.00 41.32           N
 ATOM      2  CA  PRO A 245      12.939  11.276  15.705  1.00 43.09           C
 ATOM      3  C   PRO A 245      13.983  11.305  14.601  1.00 46.16           C
@@ -177,8 +180,8 @@ ATOM     20  CG  LYS A 246      12.652  11.809  10.713  1.00 54.70           C
 ATOM     21  CD  LYS A 246      13.071  10.649   9.829  1.00 62.40           C
 ATOM     22  CE  LYS A 246      11.928   9.661   9.640  1.00 71.25           C
 ATOM     23  NZ  LYS A 246      10.594  10.329   9.556  1.00 76.52           N
-ATOM     24  H   LYS A 246      12.828  12.269  13.355  1.00 42.99           H
-ATOM     25  HA  LYS A 246      14.966  11.285  12.179  1.00 43.44           H
+ATOM     24  H   LYS A 246      12.828  12.269  13.357  1.00 42.99           H
+ATOM     25  HA  LYS A 246      14.962  11.284  12.174  1.00 43.44           H
 ATOM     26  HB2 LYS A 246      13.509  13.547  11.338  1.00 49.81           H
 ATOM     27  HB3 LYS A 246      14.472  12.674  10.423  1.00 49.81           H
 ATOM     28  HG2 LYS A 246      12.208  11.447  11.496  1.00 54.70           H
@@ -187,7 +190,7 @@ ATOM     30  HD2 LYS A 246      13.815  10.182  10.241  1.00 62.40           H
 ATOM     31  HD3 LYS A 246      13.332  10.985   8.958  1.00 62.40           H
 ATOM     32  HE2 LYS A 246      11.910   9.050  10.393  1.00 71.25           H
 ATOM     33  HE3 LYS A 246      12.069   9.168   8.816  1.00 71.25           H
-ATOM     34  HZ1 LYS A 246       9.955   9.720   9.446  1.00 76.52           H
+ATOM     34  HZ1 LYS A 246      10.795  11.159   9.807  1.00 76.52           H
 ATOM     37  N   PRO A 247      16.897  12.890  12.459  1.00 44.07           N
 ATOM     38  CA  PRO A 247      17.961  13.810  12.905  1.00 39.69           C
 ATOM     39  C   PRO A 247      17.659  15.272  12.622  1.00 41.96           C
@@ -222,7 +225,7 @@ HETATM   66  H31 TAM H   2       7.225  10.740   7.392  1.00 20.00           H
 HETATM   67  H32 TAM H   2       7.071  11.859   6.340  1.00 20.00           H
 HETATM   68  H41 TAM H   2       7.600  14.117   6.009  1.00 20.00           H
 HETATM   69  H42 TAM H   2       7.377  15.476   6.732  1.00 20.00           H
-HETATM   70  H51 TAM H   2       9.455  10.349   8.462  1.00 20.00           H
+HETATM   70  H51 TAM H   2       9.023  10.453   8.305  1.00 20.00           H
 HETATM   72  H61 TAM H   2       5.264  12.763   7.385  1.00 20.00           H
 HETATM   73  H62 TAM H   2       5.044  11.254   7.689  1.00 20.00           H
 HETATM   74  HN1 TAM H   2       9.235  12.859   6.527  1.00 20.00           H
@@ -230,6 +233,7 @@ HETATM   75  HN2 TAM H   2       9.942  12.134   7.862  1.00 20.00           H
 HETATM   76  HO4 TAM H   2       5.529  13.560   6.592  1.00 20.00           H
 HETATM   77  HO5 TAM H   2       7.358   9.637   8.639  1.00 20.00           H
 HETATM   78  HO6 TAM H   2       6.211  12.942   9.316  1.00 20.00           H
+END
 """
 
 pdb_str_002 = """
@@ -363,13 +367,13 @@ HETATM   51 SE2' UMS A   3      10.815   5.400  11.905  1.00 48.17          Se
 HETATM   52  H5* UMS A   3       8.158   9.276  13.531  1.00 36.88           H
 HETATM   53  H4* UMS A   3       8.782   7.553  12.369  1.00 39.11           H
 HETATM   54  H3* UMS A   3      11.022   9.152  12.279  1.00 40.33           H
-HETATM   55 HO3* UMS A   3      10.593   8.589  14.362  1.00 40.80           H
 HETATM   56  H2* UMS A   3      12.022   6.833  11.440  1.00 40.93           H
 HETATM   57  H1* UMS A   3      10.387   7.156   9.525  1.00 38.75           H
 HETATM   58  H5  UMS A   3      11.056  12.270   9.246  1.00 33.90           H
 HETATM   59 H5*2 UMS A   3       7.481   9.448  12.109  1.00 36.88           H
 HETATM   60  H3  UMS A   3      13.140   9.648   7.179  1.00 33.98           H
 HETATM   61  H6  UMS A   3      10.252  10.527  10.462  1.00 34.62           H
+REMARK HETATM   55 HO3* UMS A   3      10.593   8.589  14.362  1.00 40.80           H
 """
 
 pdb_str_004 = '''
@@ -608,6 +612,7 @@ ATOM     49  H   GLY A   4      46.611  -0.661  10.761  1.00 10.55           H
 ATOM     50  HA2 GLY A   4      46.949  -2.714  12.356  1.00 10.24           H
 ATOM     51  HA3 GLY A   4      47.703  -2.493  10.986  1.00 10.24           H
 '''
+
 
 if (__name__ == "__main__"):
   t0 = time.time()

@@ -1,0 +1,13 @@
+You were interrupted.
+
+Do NOT continue from memory.
+
+1. Read the attached HANDOFF.json to understand the
+   state.
+2. Read the code archive to see what was actually
+   implemented.
+3. Summarize where we are and what the very next
+   micro-step is.
+
+If anything is unclear or missing, ask before
+proceeding.

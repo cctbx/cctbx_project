@@ -1,3 +1,4 @@
+"""Create MTZ file with Fmodel,Fcalc,Fbulk,Fmask,FOM,HL, resolution and more"""
 # LIBTBX_SET_DISPATCHER_NAME phenix.reciprocal_space_arrays
 
 from __future__ import absolute_import, division, print_function
@@ -261,3 +262,4 @@ class launcher(runtime_utils.target_with_save_result):
 
 if(__name__ == "__main__"):
   run(sys.argv[1:])
+

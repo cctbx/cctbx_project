@@ -37,8 +37,8 @@ _atom_site.auth_atom_id
 _atom_site.pdbx_PDB_model_num
 ATOM   1  N N   . GLY A 1 1 ? -9.009  4.612  6.102  1.00 16.77 ? 1  GLY A N   1
 ATOM   2  C CA  . GLY A 1 1 ? -9.052  4.207  4.651  1.00 16.57 ? 1  GLY A CA  1
-ATOM   3  C C   . GLY A 1 1 ? -8.015  3.140  4.419  1.00 16.16 ? 1  GLY A C   1
-ATOM   4  O O   . GLY A 1 1 ? -7.523  2.521  5.381  1.00 16.78 ? 1  GLY A O   1
+ATOM   3  C C   . GLY C 1 1 ? -8.015  3.140  4.419  1.00 16.16 ? 1  GLY CC C   1
+ATOM   4  O O   . GLY D 1 1 ? -7.523  2.521  5.381  1.00 16.78 ? 1  GLY DDDD O   1
 """
 
 
@@ -58,5 +58,12 @@ def exercise_extract_header_year(prefix="iotbx_tst_mmcif_segids"):
   assert cif_inp_2.deposition_date() == '?'
   assert cif_inp_2.extract_header_year() == None
 
+def exercise_label_to_auth_asym_id_dictionary():
+  cif_inp = iotbx.pdb.input(lines=cif_str, source_info=None)
+  res = cif_inp.label_to_auth_asym_id_dictionary()
+  # print(res)
+  assert res == {'A': 'A', 'C': 'CC', 'D': 'DDDD'}, res
+
 if __name__ == "__main__":
   exercise_extract_header_year()
+  exercise_label_to_auth_asym_id_dictionary()

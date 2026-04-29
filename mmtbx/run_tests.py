@@ -1,3 +1,5 @@
+"""Specify tests to be run in this and sub-directories"""
+
 from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
 import libtbx.load_env
@@ -66,7 +68,6 @@ general_tests = [
   "$D/chemical_components/tst.py",
   "$D/regression/tst_add_h_to_water.py",
   "$D/rotamer/rotamer_eval.py",
-  "$D/wwpdb/tst_standard_geometry_cif.py",
   "$D/regression/tst_pdbtools.py",
   "$D/real_space/tst.py",
   "$D/ias/tst_ias.py",
@@ -95,11 +96,14 @@ general_tests = [
   "$D/regression/model/tst_model_get_vdw_radii.py",
   "$D/regression/model/tst_model_dedeuterate.py",
   "$D/regression/model/tst_model_utils_merge_models.py",
+  "$D/regression/model/tst_model_pairs_within.py",
+  "$D/regression/model/tst_restrain_selection_to_self_or_neighbors.py",
   #
   "$D/regression/tst_fmodel.py",
   "$D/regression/tst_utils.py",
   "$D/regression/tst_alignment.py",
   ["$D/regression/tst_fmodel_fd.py", "P31"],
+  "$D/regression/discamb/tst_fmodel_fd_discamb.py",
   "$D/maps/tst_composite_omit_map.py",
   "$D/maps/tst_composite_omit_map_2.py",
   "$D/maps/tst_composite_omit_map_3.py",
@@ -136,6 +140,7 @@ general_tests = [
   "$D/monomer_library/tst_tyr_from_gly_and_bnz.py",
   "$D/monomer_library/tst_pdb_interpretation.py",
   "$D/monomer_library/tst_pdb_interpretation_3.py",
+  "$D/monomer_library/tst_pdb_interpretation_5.py",
   "$D/monomer_library/tst_rna_dna_interpretation.py",
   "$D/monomer_library/tst_protein_interpretation.py",
   "$D/monomer_library/tst_pdb_interpretation_ncs_processing.py",
@@ -150,9 +155,16 @@ general_tests = [
   "$D/regression/tst_altloc_remediate.py",
   "$D/hydrogens/build_hydrogens.py",
   "$D/hydrogens/tst.py",
-  "$D/hydrogens/tst_add_hydrogen.py",
+  # Reduce 2 - hydrogenate
+  "$D/hydrogens/tst_add_hydrogen_1.py",
   "$D/hydrogens/tst_add_hydrogen_2.py",
   "$D/hydrogens/tst_add_hydrogen_3.py",
+  "$D/hydrogens/tst_add_hydrogen_4.py",
+  "$D/hydrogens/tst_add_hydrogen_5.py",
+  "$D/hydrogens/tst_add_hydrogen_6.py",
+  "$D/hydrogens/tst_add_hydrogen_7.py",
+  "$D/hydrogens/tst_add_hydrogen_8.py",
+  "$D/hydrogens/tst_add_hydrogen_9.py",
   #"$D/hydrogens/tst_add_hydrogen_time.py",
   "$D/hydrogens/tst_validate_H.py",
   "$D/hydrogens/tst_connectivity.py",
@@ -218,8 +230,8 @@ general_tests = [
   "$D/regression/tst_regularize_from_pdb_cif.py",
   "$D/regression/tst_find_ncs.py",
   "$D/regression/tst_minimize_chain.py",
-  "$D/regression/tst_minimize_chain_cif.py",
   "$D/regression/tst_sequence_validation.py",
+  "$D/regression/tst_model_vs_sequence.py",
   "$D/regression/tst_prune_model.py",
   "$D/regression/tst_real_space_correlation.py",
   "$D/regression/tst_examples.py",
@@ -261,6 +273,7 @@ general_tests = [
   "$D/regression/tst_anomalous_substructure.py",
   #
   "$D/regression/tst_fmodel_no_cryst1.py",
+  "$D/regression/tst_fmodel_and_dm.py",
   "$D/regression/tst_fmodel_misc.py",
   "$D/regression/tst_isomorphous_difference_misc.py",
   "$D/regression/tst_dynamics_cli.py",
@@ -274,21 +287,26 @@ general_tests = [
   # validation/molprobity
   "$D/regression/tst_probe.py",
   "$D/regression/tst_reduce.py",
+  "$D/regression/tst_ribbons.py",
   "$D/validation/regression/tst_molprobity_arguments.py",
+  "$D/validation/regression/tst_chiral_validation.py",
   "$D/validation/regression/tst_waters.py",
   "$D/validation/regression/tst_keep_hydrogens.py",
   "$D/validation/regression/tst_mp_geo.py",
   "$D/validation/regression/tst_rotalyze.py",
   "$D/validation/regression/tst_ramalyze.py",
   "$D/validation/regression/tst_ramalyze2.py",
+  "$D/validation/regression/tst_ramalyze_rare.py",
   "$D/validation/regression/tst_clashscore.py",
   "$D/validation/regression/tst_clashscore_2.py",
   "$D/validation/regression/tst_restraints.py",
   "$D/validation/regression/tst_omegalyze.py",
   "$D/validation/regression/tst_rna_validate.py",
+  "$D/validation/regression/tst_suitename.py",
   "$D/validation/regression/tst_model_properties.py",
   "$D/validation/regression/tst_molprobity_2.py",
   "$D/validation/regression/tst_molprobity_3.py",
+  "$D/validation/regression/tst_mp_validate_bonds.py",
   "$D/validation/regression/tst_hydrogen_addition_clashscore.py",
   "$D/validation/regression/tst_symmetry_SS.py",
   "$D/validation/regression/tst_do_flips_clashscore.py",
@@ -353,12 +371,15 @@ general_tests = [
   "$D/regression/tst_polder_1.py",
   "$D/regression/tst_polder_2.py",
   "$D/regression/tst_polder_3.py",
+  "$D/regression/tst_polder_4.py",
   "$D/regression/tst_polder_box.py",
   "$D/regression/tst_polder_ccs.py",
   "$D/regression/tst_map_model_cc.py",
   "$D/regression/tst_model_map.py",
   #
   "$D/regression/tst_validate_ligands.py",
+  "$D/regression/tst_validate_ligands_2.py",
+  "$D/regression/tst_rdkit_utils_fragmentation.py",
   #
   "$D/regression/tst_cis_trans_peptide_link.py",
   "$D/regression/tst_apply_cif_restraints.py",
@@ -376,8 +397,8 @@ general_tests = [
   #
   "$D/nci/tst_hbond.py",
   "$D/wwpdb/tst_rcsb_web_services.py",
+  "$D/wwpdb/tst_rcsb_entry_request.py",
   "$D/regression/command_line/tst_find_residue_in_pdb.py",
-  "$D/wwpdb/tst_utils.py",
   "$D/monomer_library/tst_all_cif_files.py",
   "$D/refinement/tst_misc.py",
   "$D/refinement/tst_real_space_simple.py",
@@ -394,7 +415,6 @@ general_tests = [
   "$D/regression/tst_fmodel_2.py",
   "$D/regression/tst_rigid_bond_test.py",
   "$D/validation/regression/tst_cablam.py",
-  "$D/building/tst_make_library.py",
   "$D/regression/real_space_refine_chain/tst_00.py",
   "$D/regression/real_space_refine_chain/tst_01.py",
   "$D/conformation_dependent_library/tst_omega_cdl.py",
@@ -402,8 +422,10 @@ general_tests = [
   "$D/regression/fix_cablam/tst_single_outliers_surroundings.py",
   "$D/regression/fix_cablam/tst_one_resid_rotation.py",
   "$D/regression/fix_cablam/tst_insertion_codes.py",
-  #
+  # Tests involving scattering table
   "$D/regression/tst_scattering_type_registry.py",
+  "$D/regression/tst_scattering_table.py",
+  #
   "$D/atomic_environment_vectors/tst.py",
   #
   "$D/building/ligands/tst_00.py",
@@ -427,6 +449,8 @@ molprobity_tests = [
   "$D/validation/regression/tst_rama_z_02.py",
   "$D/regression/pdb_interpretation/tst_edits.py",
   "$D/regression/pdb_interpretation/tst_edits_actions.py",
+  "$D/regression/pdb_interpretation/tst_tardy_geo.py",
+  "$D/regression/pdb_interpretation/tst_custom_nb_sym_excl.py",
   "$D/regression/pdb_interpretation/tst_using_ncs_1.py",
   "$D/regression/pdb_interpretation/tst_using_ncs_2.py",
   "$D/regression/tst_add_arrows_on_plot.py",
@@ -437,10 +461,10 @@ molprobity_tests = [
   "$D/regression/tst_clashes.py",
   "$D/validation/regression/tst_cbetadev.py",
   "$D/validation/regression/tst_cbetadev_02.py",
+  "$D/validation/regression/tst_undowser.py",
   "$D/regression/tst_statistics_output.py",
   "$D/regression/tst_geo_min_restraints_phil.py",
   "$D/regression/tst_model_vs_map.py",
-  "$D/regression/tst_model_vs_sequence.py",
   # validation/molprobity
   "$D/validation/regression/tst_molprobity_1.py",
   "$D/validation/regression/tst_molprobity_4.py",
@@ -502,6 +526,7 @@ else:
 # generally failing tests
 tst_list_expected_failures = [
   "$D/monomer_library/tst_pdb_interpretation_2.py",
+  "$D/monomer_library/tst_pdb_interpretation_4.py",
   ]
 
 def run():

@@ -16,7 +16,7 @@ def run(args):
     test=os.path.isdir)
   if ("set" not in libtbx.forward_compatibility.__builtins__):
     libtbx.forward_compatibility.__builtins__["set"] = list
-  for file_name in ["crambin_pieces.pdb", "resname_mix.pdb"]:
+  for file_name in ["crambin_pieces.pdb", "resname_mix.pdb"]: # PDB OK
     file_path = os.path.join(tutorial_dir, file_name)
     if (   not os.path.isfile(file_name)
         or not is_same_file(file_names=[file_path, file_name])):

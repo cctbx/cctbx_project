@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.geometry_restraints.auto_linking_types import origin_ids
+from cctbx.geometry_restraints.auto_linking_types import covalent_headers
 
 class linking_class(dict):
   def __init__(self):
@@ -111,6 +112,95 @@ Look for a key in the list below
       else: assert 0
     else: return info[0]
 
+  def parse_geo_file_header(self, origin_id_label, subheader=None, internals=None):
+    if origin_id_label in ['Nonbonded']:
+      # special case for Nonbonded
+      return 0, origin_id_label
+    elif not origin_id_label in covalent_headers:
+      assert 0, 'origin_id_label "%s" not in %s' % (origin_id_label, covalent_headers)
+    info = self.data.get(origin_id_label, None)
+    if info:
+      assert 0
+    else:
+      for i, (origin_label, info) in enumerate(self.data.items()):
+        if len(info)==2:
+          if subheader in info:
+            return i, '%s %s' % (origin_id_label, subheader)
+        elif len(info)>=4:
+          header_info = info[3]
+          if isinstance(header_info, list):
+            if subheader in header_info:
+              return i, '%s %s' % (origin_id_label, subheader)
+
+    print(origin_id_label, subheader)
+    assert 0
+
+  def get_origin_label_and_internal(self, query_header, verbose=False):
+    '''
+    Input:
+      Line from a .geo file
+    Returns:
+      None if not a header line
+      If header:
+      tuple of:
+        Origin_id :
+        Bond type : Bond, Bond angle, ...
+        Subtype   : A string related mostly to the cif_link used but also
+                    origin_id
+        Number of restraints: int - number from the header.
+    '''
+    if verbose:
+      for origin_label, info in self.data.items():
+        print('origin_label, info',origin_label,info)
+    if query_header.find('|')==-1: return None
+    tmp = query_header.split('|')
+    header=tmp[0].strip()
+    subheader=tmp[1].strip()
+    oi, rc = self.parse_geo_file_header(header, subheader=subheader)
+    rc = rc.replace(header, '').strip()
+    tmp = query_header.split(':')
+    num = int(tmp[-1])
+    return oi, header, rc, num
+
 if __name__=='__main__':
   lc = linking_class()
   print(lc)
+  for line in [ 'Bond | covalent geometry | restraints: -1',
+                'Bond | Misc. | restraints: -1',
+                'Bond | link_BETA1-4 | restraints: -1',
+                'Bond | link_TRANS | restraints: -1',
+                'Bond angle | covalent geometry | restraints: -1',
+                'Bond angle | link_BETA1-4 | restraints: -1',
+                'Bond angle | link_TRANS | restraints: -1',
+                'Dihedral angle | covalent geometry | restraints: -1',
+                'Dihedral angle | C-Beta improper | restraints: -1',
+                'Dihedral angle | link_TRANS | restraints: -1',
+                'Chirality | covalent geometry | restraints: -1',
+                'Chirality | link_BETA1-4 | restraints: -1',
+                'Planarity | covalent geometry | restraints: -1',
+                'Planarity | link_TRANS | restraints: -1',
+
+                "Bond | Bond-like | restraints: -1",
+                "Bond angle | Secondary Structure restraints around h-bond | restraints: -1",
+                "Parallelity | Stacking parallelity | restraints: -1",
+                "Parallelity | Basepair parallelity | restraints: -1",
+                'random line',
+
+                #148L
+                'Bond | covalent geometry | restraints: 1390',
+                'Bond | Misc. | restraints: 4',
+                'Bond | link_BETA1-4 | restraints: 1',
+                'Bond | link_TRANS | restraints: 1',
+                'Bond angle | covalent geometry | restraints: 1868',
+                'Bond angle | link_BETA1-4 | restraints: 3',
+                'Bond angle | link_TRANS | restraints: 3',
+                'Dihedral angle | covalent geometry | restraints: 563',
+                'Dihedral angle | C-Beta improper | restraints: 308',
+                'Dihedral angle | link_TRANS | restraints: 3',
+                'Chirality | covalent geometry | restraints: 210',
+                'Chirality | link_BETA1-4 | restraints: 1',
+                'Planarity | covalent geometry | restraints: 238',
+                'Planarity | link_TRANS | restraints: 1',
+                'Nonbonded | unspecified | interactions: 15086',
+    ]:
+    print('.........',line, lc.get_origin_label_and_internal(line))

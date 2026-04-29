@@ -80,9 +80,7 @@ def get_complete_dihedral_proxies_2(
   return dihedral_registry.proxies
 
 def get_complete_dihedral_proxies(
-      pdb_hierarchy=None,
-      file_name=None,
-      raw_records=None,
+      pdb_hierarchy,
       mon_lib_srv=None,
       ener_lib=None,
       crystal_symmetry=None,
@@ -95,10 +93,8 @@ def get_complete_dihedral_proxies(
   # Still used for reference model torsion restraints
   #
   import mmtbx.model
-  assert [pdb_hierarchy,
-          file_name,
-          raw_records].count(None) == 2
-  from mmtbx.monomer_library import server, pdb_interpretation
+  from mmtbx.monomer_library import server
+  assert pdb_hierarchy is not None
   if log is None:
     log = sys.stdout
   if mon_lib_srv is None:

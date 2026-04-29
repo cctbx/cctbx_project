@@ -23,6 +23,36 @@ from cctbx.geometry_restraints.linking_class import linking_class
 origin_ids = linking_class()
 from cctbx.geometry_restraints.base_geometry import Base_geometry
 
+def create_side_chain_restraints(hierarchy, grm, log=None):
+  proxies=[]
+  for rg in hierarchy.residue_groups():
+    ags=rg.atom_groups()
+    names = []
+    for atom in rg.atoms():
+      if atom.element_is_hydrogen(): continue
+      if atom.name not in names:
+        names.append(atom.name)
+    pairs=[[],[]]
+    for name in names:
+      if name in [' CA ', ' N  ', ' C  ', ' O  ']: continue
+      for i, ag in enumerate(ags):
+        if not ag.altloc: continue
+        pairs[i].append(ag.get_atom(name.strip()).i_seq)
+    sigma=.2
+    if not pairs[0] or not pairs[1]: continue
+    if len(pairs[0])<3 or len(pairs[1])<3: continue
+    proxy=geometry_restraints.parallelity_proxy(
+              i_seqs=flex.size_t(pairs[0]),
+              j_seqs=flex.size_t(pairs[1]),
+              weight=1/(sigma**2),
+              target_angle_deg=0,
+              slack=0,
+              top_out=False,
+              limit=1,
+              origin_id=origin_ids.get_origin_id('side-chain parallelity'))
+    proxies.append(proxy)
+  return proxies
+
 class manager(Base_geometry):
 # This class is documented in
 # http://www.phenix-online.org/papers/iucrcompcomm_aug2004.pdf
@@ -595,7 +625,9 @@ class manager(Base_geometry):
       sigma=0.2,
       limit=1.0,
       top_out=False,
-      n_atoms_in_target_model=None):
+      n_atoms_in_target_model=None,
+      reference_is_average_alt_confs=None,
+      ):
     assert [all_chain_proxies, pdb_hierarchy].count(None) == 1
     assert [all_chain_proxies, n_atoms_in_target_model].count(None) == 1
     if all_chain_proxies is None:
@@ -607,9 +639,15 @@ class manager(Base_geometry):
       isel = selection
       bsel = flex.bool(n_atoms_in_target_model, isel)
       sites_cart=pdb_hierarchy.atoms().extract_xyz()
+      assert not reference_is_average_alt_confs
     else:
       # should be deleted if all_chain_proxies won't be used
-      sites_cart = all_chain_proxies.pdb_hierarchy.atoms().extract_xyz()
+      if reference_is_average_alt_confs:
+        hierarchy = all_chain_proxies.pdb_hierarchy.as_forward_compatible_hierarchy()
+        asel = hierarchy.average_alt_confs(pinch_limit=limit)
+        sites_cart = hierarchy.atoms().extract_xyz()
+      else:
+        sites_cart = all_chain_proxies.pdb_hierarchy.atoms().extract_xyz()
       new_selection = flex.bool(sites_cart.size(), True)
       if selection is not None:
         new_selection = all_chain_proxies.selection(selection)
@@ -624,6 +662,8 @@ class manager(Base_geometry):
           pdb_hierarchy=pdb_hierarchy if pdb_hierarchy is not None else all_chain_proxies.pdb_hierarchy,
           restraints_selection=new_selection if all_chain_proxies is not None else bsel)
       isel = new_selection.iselection()
+    if reference_is_average_alt_confs:
+      isel = asel
     proxies = add_coordinate_restraints(
         sites_cart=sites_cart.select(isel) if n_atoms_in_target_model is None else sites_cart,
         selection=isel,
@@ -857,11 +897,37 @@ class manager(Base_geometry):
     self.add_planarities_in_place(planarity_proxies)
     self.add_parallelities_in_place(parallelity_proxies)
 
-  def remove_secondary_structure_restraints(self):
-    # Not implemented. The problem here is to remove hbond restraints, which
-    # requires modification of pair_proxies and as complicated as addition
-    # of bond restraint.
-    raise NotImplementedError
+  def remove_secondary_structure_restraints(self, sites_cart):
+    bp_origin_id = origin_ids.get_origin_id('hydrogen bonds')
+    bonds_to_remove = []
+    self.reset_internals()
+    self.pair_proxies(sites_cart=sites_cart)
+    for proxy_type in self.get_all_bond_proxies():
+      for proxy in proxy_type:
+        if proxy.origin_id == bp_origin_id:
+          bonds_to_remove.append(proxy.i_seqs)
+    self.remove_bond_restraints_in_place(
+        bonded_pairs=bonds_to_remove,
+        sites_cart=sites_cart)
+    if self.angle_proxies is not None:
+      self.angle_proxies = self.angle_proxies.proxy_remove(
+          origin_id=origin_ids.get_origin_id('hydrogen bonds'))
+    if self.planarity_proxies is not None:
+      self.planarity_proxies = self.planarity_proxies.proxy_remove(
+          origin_id=origin_ids.get_origin_id('basepair planarity'))
+    if self.parallelity_proxies is not None:
+      self.parallelity_proxies = self.parallelity_proxies.proxy_remove(
+          origin_id=origin_ids.get_origin_id('basepair parallelity'))
+    if self.parallelity_proxies is not None:
+      self.parallelity_proxies = self.parallelity_proxies.proxy_remove(
+          origin_id=origin_ids.get_origin_id('basepair stacking'))
+    return None
+
+  def add_parallelity_proxies_for_side_chain(self, hierarchy, log):
+    parallelity_proxies = create_side_chain_restraints( hierarchy=hierarchy,
+                                                        grm=self,
+                                                        log=log)
+    self.add_parallelities_in_place(parallelity_proxies)
 
   def set_external_energy_function(self, energy_function):
     self.external_energy_function = energy_function
@@ -893,7 +959,7 @@ class manager(Base_geometry):
     if pair_proxies is not None:
       if pair_proxies.bond_proxies is not None:
         return (pair_proxies.bond_proxies.simple,
-        pair_proxies.bond_proxies.asu)
+                pair_proxies.bond_proxies.asu)
 
   def get_covalent_angle_proxies(self):
     specific_origin_id = origin_ids.get_origin_id('covalent geometry')
@@ -1221,6 +1287,52 @@ class manager(Base_geometry):
     # print "t61: %f" % (t61-t6)
     # print "t7: %f" % (t7-t61)
     # STOP()
+
+  def remove_bond_restraints_in_place(self, bonded_pairs, sites_cart):
+    """ Removing bond restraints in place.
+    Current limitations:
+      * symmetry related cases (1' means symmetry mate of 1):
+        -: 2' --- 1 --- 2
+        -: 1' --- 1
+
+    Args:
+        bonded_pairs (list): list of bonded i_seqs to remove bonds, e.g.
+        [(0,1), (5,15)] for bonds between atoms 0--1 and 5--15 to be removed.
+    """
+    def _show_bpt(bpt):
+      print('bpt size:', bpt.size())
+      for i_seq in range(bpt.size()):
+        print('i_seq', i_seq)
+        d = bpt[i_seq]
+        for k in d.keys():
+          print('  j_seq: %d, %f' % (k, d[k].distance_ideal))
+
+    # print("1-2,"*30)
+    # print('BEGIN shell_sym_tables[0]')
+    # self.shell_sym_tables[0].show()
+    filtered_bonded_pairs = [sorted(x) for x in bonded_pairs if self.is_bonded_atoms(x[0], x[1])]
+    # print("Original BPT")
+    # _show_bpt(self.bond_params_table)
+
+    # Removing bonds from self.shell_sym_tables
+    asu_mappings = self.crystal_symmetry.special_position_settings().\
+        asu_mappings(buffer_thickness=5)
+    asu_mappings.process_sites_cart(
+        original_sites=sites_cart,
+        site_symmetry_table=self.site_symmetry_table)
+
+    pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+    for i, j in filtered_bonded_pairs:
+      del self.shell_sym_tables[0][i][j]
+    pair_asu_table.add_pair_sym_table(self.shell_sym_tables[0])
+    shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
+      pair_asu_table=pair_asu_table,
+      max_shell=3)
+    self.shell_sym_tables = [shell_asu_table.extract_pair_sym_table()
+      for shell_asu_table in shell_asu_tables]
+
+    self.reset_internals()
+    self.pair_proxies(sites_cart=sites_cart)
 
   def is_bonded_atoms(self, i_seq, j_seq):
     i_s = i_seq
@@ -1631,25 +1743,37 @@ class manager(Base_geometry):
         sites_cart=None,
         site_labels=None,
         f=None):
-    default_origin_id = origin_ids.get_origin_id('covalent geometry')
+    from cctbx.geometry_restraints.auto_linking_types import covalent_headers
+    from cctbx.geometry_restraints.auto_linking_types import internal_labels
+    covalent_key = 'covalent geometry'
+    default_origin_id = origin_ids.get_origin_id(covalent_key)
     if (f is None): f = sys.stdout
     pair_proxies = self.pair_proxies(flags=flags, sites_cart=sites_cart)
     if (sites_cart is None):
       sites_cart = self._sites_cart_used_for_pair_proxies
 
     if pair_proxies.bond_proxies is not None:
+      #
       # write covalent bonds
+      #
+      label='%s | %s |' % (covalent_headers[0], covalent_key)
+      tempbuffer = StringIO()
       pair_proxies.bond_proxies.show_sorted(
           by_value="residual",
           sites_cart=sites_cart,
           site_labels=site_labels,
-          f=f,
+          f=tempbuffer,
           origin_id=default_origin_id)
-      print(file=f)
+      if tempbuffer.getvalue().find(': 0')==-1:
+        print(label, tempbuffer.getvalue()[5:], file=f)
+      #
+      # write bonds with other origin_id
+      #
+      label=covalent_headers[0]
       for key in origin_ids.get_bond_origin_id_labels():
         origin_id=origin_ids.get_origin_id(key)
         if origin_id==default_origin_id: continue
-        label=origin_ids.get_geo_file_header(key)
+        t_label=origin_ids.get_geo_file_header(key)
         tempbuffer = StringIO()
         pair_proxies.bond_proxies.show_sorted(
             by_value="residual",
@@ -1659,55 +1783,58 @@ class manager(Base_geometry):
             prefix="",
             origin_id=origin_id)
         if tempbuffer.getvalue().find(': 0')==-1:
-          print(label, tempbuffer.getvalue()[5:], file=f)
-
-    for p_label, proxies, internals, i_label, keys, start in [
-      ("Bond angle",
+          print('%s | %s |' % (label, t_label), tempbuffer.getvalue()[5:], file=f)
+    #
+    # write of the other internals for each origin_id
+    #
+    for i, (proxies, keys, start) in enumerate([
+      (
        self.angle_proxies, # self.get_all_angle_proxies(),
-       'angles',
-       '',
        origin_ids.get_angle_origin_id_labels(),
-       5),
-      ("Dihedral angle",
+       11),
+      (
        self.dihedral_proxies, # self.get_dihedral_proxies(),
-       'dihedrals',
-       'torsion',
        origin_ids.get_dihedral_origin_id_labels(),
-       9),
-      ("Chirality",
+       15),
+      (
        self.chirality_proxies,
-       'chirals',
-       '',
        origin_ids.get_chiral_origin_id_labels(),
-       0),
-      ("Planes",
+       10),
+      (
        self.planarity_proxies,
-       'planes',
-       '',
        origin_ids.get_plane_origin_id_labels(),
        10),
-      ("Parallelity",
+      (
        self.parallelity_proxies,
-       'parallelities',
-       '',
        origin_ids.get_parallelity_origin_id_labels(),
        12),
-      ]:
+      ]):
+      p_label=covalent_headers[i+1]
+      internals=internal_labels[i+1]
       if (proxies is not None):
+        #
+        # "covalent" original ids
+        #
         if p_label not in ['Parallelity']: # not default origin for parallelity
+          tempbuffer = StringIO()
           proxies.show_sorted(
             by_value="residual",
             sites_cart=sites_cart,
             site_labels=site_labels,
-            f=f,
+            f=tempbuffer,
             origin_id=default_origin_id)
-          print(file=f)
-        for key in keys: #origin_ids.get_dihedral_origin_id_labels():
+          print('%s | %s | %s' % (tempbuffer.getvalue()[:start-1],
+                                  covalent_key,
+                                  tempbuffer.getvalue()[start:]),
+                file=f)
+        #
+        # other origin ids
+        #
+        for key in keys:
           origin_id=origin_ids.get_origin_id(key)
           if origin_id==default_origin_id: continue
           label=origin_ids.get_geo_file_header(key, internals=internals)
           if label is None: continue
-          if i_label: label = '%s %s' % (label, i_label)
           tempbuffer = StringIO()
           proxies.show_sorted(
               by_value="residual",
@@ -1717,49 +1844,61 @@ class manager(Base_geometry):
               prefix="",
               origin_id=origin_id)
           if len(tempbuffer.getvalue()) and tempbuffer.getvalue().find(': 0')==-1:
-            print(label, tempbuffer.getvalue()[start:], file=f)
-
+            print('%s | %s | %s' % (p_label, label, tempbuffer.getvalue()[start:]),
+                  file=f)
+    #
+    # not parsed for geo viewer
+    #
     for p_label, proxies in [
         ("Reference torsion angle", self.reference_dihedral_manager),
-        ("NCS torsion angle", self.ncs_dihedral_manager),
-        ("", self.ramachandran_manager),
+        ("NCS torsion angle",       self.ncs_dihedral_manager),
+        ("",                        self.ramachandran_manager),
+        ('Reference coordinate',    self.reference_coordinate_proxies),
         ]:
       if proxies is not None:
-        proxies.show_sorted(
-            by_value="residual",
-            sites_cart=sites_cart,
-            site_labels=site_labels,
-            proxy_label=p_label,
-            f=f)
+        if hasattr(proxies, 'show_sorted'):
+          proxies.show_sorted(
+              by_value="residual",
+              sites_cart=sites_cart,
+              site_labels=site_labels,
+              proxy_label=p_label,
+              f=f)
+        else:
+          def dist2(xyz1, xyz2):
+            d2=0
+            for i in range(3):
+              d2+=(xyz1[i]-xyz2[i])**2
+            return d2
+          print('Harmonic | Reference coordinate | restraints :%d' % (len(proxies)),
+                file=f)
+          for proxy in proxies:
+            i_seq=proxy.i_seqs[0]
+            d2=dist2(proxy.ref_sites, sites_cart[i_seq])
+            print('bond %s, d2=%6.3fA, sigma=%7.3f, weight=%7.3f' % (
+              site_labels[i_seq],
+              d2,
+              # '(%9.5f, %9.5f, %9.5f)' % tuple(proxy.ref_sites),
+              1/proxy.weight**0.5,
+              proxy.weight,
+              ),
+              file=f,
+              )
+        print(file=f)
     #
     # Here should be showing DEN manager...
     #
     if (pair_proxies.nonbonded_proxies is not None):
+      tempbuffer = StringIO()
       pair_proxies.nonbonded_proxies.show_sorted(
         by_value="delta",
-        sites_cart=sites_cart, site_labels=site_labels, f=f,
+        sites_cart=sites_cart, site_labels=site_labels,
+        f=tempbuffer,
         suppress_model_minus_vdw_greater_than=None)
-      print(file=f)
-
-# This should be in model class?
-#  def nb_overlaps_info(
-#    self,
-#    sites_cart,
-#    hd_sel,
-#    macro_mol_sel=None,
-#    site_labels=None):
-#    """ non-bonded overlaps information """
-#    from cctbx.geometry_restraints.nonbonded_overlaps import info
-#    if not macro_mol_sel:
-#      from cctbx.geometry_restraints.nonbonded_overlaps import get_macro_mol_sel
-#      macro_mol_sel = get_macro_mol_sel(pdb_processed_file=self)
-#
-#    return info(
-#      geometry_restraints_manager=self,
-#      macro_molecule_selection=macro_mol_sel,
-#      sites_cart=sites_cart,
-#      hd_sel=hd_sel,
-#      site_labels=site_labels).result
+      start=10
+      print('%s| unspecified | %s' % (tempbuffer.getvalue()[:start],
+                                      tempbuffer.getvalue()[start:]
+                                     ),
+            file=f)
 
   def _bond_generator(self):
     simple, asu = self.get_all_bond_proxies()

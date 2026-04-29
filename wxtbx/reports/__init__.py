@@ -24,12 +24,12 @@ class PDBLinkMixin(object):
   def OnViewPDB(self, event):
     pdb_id = self.get_pdb_id_for_viewing()
     if (pdb_id is not None):
-      url = "http://www.rcsb.org/pdb/explore/explore.do?structureId=%s" %pdb_id
+      url = "https://www.rcsb.org/pdb/explore/explore.do?structureId=%s" %pdb_id
       if (sys.platform == "darwin"):
         from wxtbx import browser
         if (getattr(self, "web_frame", None) is None):
           self.web_frame = browser.browser_frame(self, -1, "RCSB PDB")
-          self.web_frame.SetHomepage("http://www.rcsb.org")
+          self.web_frame.SetHomepage("https://www.rcsb.org")
           self.Bind(wx.EVT_WINDOW_DESTROY, self.OnCloseWWW, self.web_frame)
           self.web_frame.Show()
         self.web_frame.Raise()
@@ -43,8 +43,13 @@ class PDBLinkMixin(object):
     pdb_id = self.get_pdb_id_for_viewing()
     if (pdb_id is not None):
       def download(args):
-        import mmtbx.command_line.fetch_pdb
-        return mmtbx.command_line.fetch_pdb.run2(args=args)
+        from iotbx.cli_parser import run_program
+        from mmtbx.programs import fetch
+        from mmtbx.command_line.fetch_pdb import custom_args_proc
+        files = run_program(program_class=fetch.Program, custom_process_arguments=custom_args_proc, args=args)[0]
+        if len(files) > 0:
+          return files[-1]
+        return []
       from wxtbx.process_control import download_file_basic
       download_file_basic(
         window=self,

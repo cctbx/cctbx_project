@@ -1,12 +1,12 @@
 """
+Tools for reading and writing mmCIF files.
+
 R. J. Gildea, L. J. Bourhis, O. V. Dolomanov, R. W. Grosse-Kunstleve,
 H. Puschmann, P. D. Adams and J. A. K. Howard:
 iotbx.cif: a comprehensive CIF toolbox.
 J. Appl. Cryst. (2011). 44, 1259-1263.
 
 https://doi.org/10.1107/S0021889811041161
-
-http://cctbx.sourceforge.net/iotbx_cif
 
 """
 from __future__ import absolute_import, division, print_function
@@ -26,6 +26,7 @@ from libtbx.utils import flat_list
 from libtbx.utils import detect_binary_file
 from libtbx import smart_open
 
+import os
 import sys
 
 distances_as_cif_loop = geometry.distances_as_cif_loop
@@ -35,7 +36,209 @@ class CifParserError(Sorry):
   __orig_module__ = __module__
   __module__ = Exception.__module__
 
+
+# Parser engine selection.
+#
+# "ucif" is the historical ANTLR-generated parser that has shipped with
+# iotbx.cif since 2011; it is the default for backward compatibility.
+# "xcif" is a newer hand-written C++ parser in cctbx_project/xcif that
+# is API-compatible through the iotbx.cif.reader adapter but materially
+# faster on large files (memory-mapped zero-copy parse_file path).
+#
+# Callers can override per-instance via the engine= kwarg on
+# reader.__init__. DEFAULT_ENGINE is read at construction time; changing
+# it at runtime affects only subsequent reader() calls.
+DEFAULT_ENGINE = "ucif"
+_VALID_ENGINES = ("ucif", "xcif")
+
+
+_XCIF_COMPRESSED_SUFFIXES = (".gz", ".Z", ".bz2")
+
+
+def _xcif_can_use_parse_file(file_path):
+  """True when file_path is safe to hand to xcif_ext.parse_file (which
+  memory-maps). False for compressed files; smart_open handles those,
+  parse_file does not."""
+  if file_path is None:
+    return False
+  return not file_path.endswith(_XCIF_COMPRESSED_SUFFIXES)
+
+
+def _walk_xcif_doc(builder, doc):
+  """Drive `builder` (a cif_model_builder-style object with
+  add_data_block / add_data_item / add_loop / start_save_frame /
+  end_save_frame) from an already-parsed xcif Document.
+
+  The xcif C++ parser stores block and save-frame names with the data_/save_
+  prefix stripped; the builder's strip-before-first-underscore logic
+  (iotbx/cif/builders.py add_data_block / start_save_frame) expects raw
+  tokens, so we prepend the prefix back.
+  """
+  import xcif_ext
+  # Use the enum values from xcif_ext directly — no ABI drift.
+  # int(...) because bp::enum_ wraps values in a Python type;
+  # the tuple comparisons below want plain ints.
+  ENTRY_PAIR = int(xcif_ext.EntryKind.PAIR)
+  ENTRY_LOOP = int(xcif_ext.EntryKind.LOOP)
+  ENTRY_SAVE_FRAME = int(xcif_ext.EntryKind.SAVE_FRAME)
+
+  def _emit_pair_or_loop(kind, idx, pair_tags, pair_values, loops):
+    if kind == ENTRY_PAIR:
+      builder.add_data_item(pair_tags[idx], pair_values[idx])
+    elif kind == ENTRY_LOOP:
+      xloop = loops[idx]
+      tags = list(xloop.tags)
+      columns = [xloop.column_as_flex_string(t) for t in tags]
+      builder.add_loop(tags, columns)
+    # Unknown kinds are silently skipped — preserves forward-compat
+    # if xcif ever adds a new EntryKind and consumers upgrade the
+    # walker later.
+
+  for i in range(len(doc)):
+    xblock = doc[i]
+    name = xblock.name
+    if name.lower() == "global_":
+      # Match ucif: global_ blocks are ignored in non-strict mode
+      # (ucif/cif.g:167). Content is accepted syntactically but not
+      # stored in the model.
+      continue
+    builder.add_data_block("data_" + name)
+    pair_tags = list(xblock.pair_tags)
+    pair_values = list(xblock.pair_values)
+    loops = list(xblock.loops)
+    save_frames = list(xblock.save_frames)
+    for kind, idx in xblock.source_order:
+      if kind == ENTRY_SAVE_FRAME:
+        sf = save_frames[idx]
+        builder.start_save_frame("save_" + sf.name)
+        sf_pair_tags = list(sf.pair_tags)
+        sf_pair_values = list(sf.pair_values)
+        sf_loops = list(sf.loops)
+        for sub_kind, sub_idx in sf.source_order:
+          _emit_pair_or_loop(sub_kind, sub_idx,
+                             sf_pair_tags, sf_pair_values, sf_loops)
+          # Nested save frames are rejected by the parser.
+        builder.end_save_frame()
+      else:
+        _emit_pair_or_loop(kind, idx, pair_tags, pair_values, loops)
+
+
+def _drive_builder_from_xcif(builder, input_string, strict):
+  """Parse input_string with xcif and drive the given builder.
+
+  Returns a (possibly empty) list of error message strings. xcif throws on
+  first parse error rather than accumulating, so the list has at most one
+  entry. When it does, the builder is left with whatever state it had
+  before the throw — which is nothing, since xcif_ext.parse runs to
+  completion before the walker touches the builder.
+
+  strict=False relaxes two things: pair items appearing before the first
+  data_ block are attached to an implicit 'global_' block; and explicit
+  'global_' block headers (STAR/DDL2 convention, used by the cctbx
+  monomer library) are accepted. strict=True rejects both.
+  """
+  import xcif_ext
+  try:
+    doc = xcif_ext.parse(input_string, strict=strict)
+  except (ValueError, RuntimeError) as e:
+    # xcif raises ValueError for std::invalid_argument (explicit translator)
+    # and RuntimeError for CifError (inherits std::runtime_error, default
+    # boost.python translation). Return the message so the caller can
+    # either surface it as CifParserError or stash it for error_count().
+    return [str(e)]
+  _walk_xcif_doc(builder, doc)
+  return []
+
+
+def _drive_builder_from_xcif_file(builder, file_path, strict):
+  """Like _drive_builder_from_xcif but dispatches to xcif_ext.parse_file
+  (memory-mapped, zero-copy). Avoids allocating a Python string copy of
+  the file contents when the caller supplied a plain uncompressed path."""
+  import xcif_ext
+  try:
+    doc = xcif_ext.parse_file(file_path, strict=strict)
+  except (ValueError, RuntimeError) as e:
+    return [str(e)]
+  _walk_xcif_doc(builder, doc)
+  return []
+
+
 class reader(object):
+  """Parse a CIF / mmCIF input and populate an iotbx.cif.model tree.
+
+  Accepts input via exactly one of file_path, file_object, or
+  input_string. Parsing is delegated to a selected engine (see
+  engine= below). On success, model() returns the populated
+  iotbx.cif.model.cif tree. On error, the behavior depends on the
+  raise_if_errors flag and the selected engine (see engine= for the
+  divergence).
+
+  Arguments
+  ---------
+  file_path : str or None
+      Path to a CIF file on disk. Handles .gz / .Z / .bz2 via
+      smart_open. Mutually exclusive with file_object / input_string.
+  file_object : file-like or None
+      Readable stream containing CIF text. Read to EOF. Mutually
+      exclusive with file_path / input_string.
+  input_string : str or None
+      CIF text already in memory. Mutually exclusive with the above.
+  cif_object : iotbx.cif.model.cif or None
+      Pre-existing model to append into. Mutually exclusive with
+      builder.
+  builder : object or None
+      Custom builder receiving parse callbacks. Must implement
+      add_data_block(heading), add_data_item(tag, value),
+      add_loop(header, data), start_save_frame(heading), and
+      end_save_frame(). IMPORTANT: heading strings are passed WITH
+      the "data_" / "save_" prefix intact (e.g. "data_foo",
+      "save_bar"); the default cif_model_builder strips the prefix
+      at the first underscore, so a third-party builder that
+      string-compares the full token needs to account for the
+      prefix. Mutually exclusive with cif_object.
+  raise_if_errors : bool, default True
+      If True, raise CifParserError on the first parse error. If
+      False, collect errors (see error_count() / show_errors()) and
+      leave whatever model state the engine produced accessible via
+      model(). See engine= for the partial-model divergence.
+  strict : bool, default True
+      If False, accept STAR/DDL2 global_ blocks and content
+      appearing before the first data_ block (attached to an
+      implicit global_ block). Required for the cctbx monomer
+      library.
+  engine : {"ucif", "xcif", None}, default None
+      Selects the underlying parser implementation. None means
+      DEFAULT_ENGINE. Behavioral differences that matter for
+      callers:
+        * Error messages. xcif prefixes diagnostics with
+          "<source>:line:col: "; ucif emits bare messages. Code
+          that greps CifParserError strings must handle both.
+        * Partial-model-on-error (raise_if_errors=False). ucif
+          continues past the first error, accumulates multiple
+          diagnostics, and yields a partial model with blocks
+          parsed before the fault populated. xcif stops at the
+          first CifError and yields an EMPTY model with exactly
+          one diagnostic. Callers that salvage partial state from
+          malformed files must use engine="ucif".
+        * Source order. Both engines preserve pair/loop/save-frame
+          source order within a block (str(model) output matches).
+        * File path fast-path. engine="xcif" with file_path set
+          and an uncompressed extension dispatches to a
+          memory-mapped C++ parser, skipping the Python-string
+          copy of the file. Compressed files (.gz/.Z/.bz2) and
+          file_object= inputs fall back to the read-into-string
+          path.
+
+  Attributes
+  ----------
+  engine : str
+      The engine actually used for this parse (never None after
+      __init__).
+  file_path : str or None
+      As passed in.
+  builder : object
+      The builder that received callbacks.
+  """
 
   def __init__(self,
                file_path=None,
@@ -44,14 +247,39 @@ class reader(object):
                cif_object=None,
                builder=None,
                raise_if_errors=True,
-               strict=True):
+               strict=True,
+               engine=None):
     assert [file_path, file_object, input_string].count(None) == 2
+    if engine is None:
+      engine = DEFAULT_ENGINE
+    if engine not in _VALID_ENGINES:
+      raise ValueError(
+        "engine must be one of %s, got %r" % (_VALID_ENGINES, engine))
+    self.engine = engine
     self.file_path = file_path
     if builder is None:
       builder = builders.cif_model_builder(cif_object)
     else: assert cif_object is None
     self.builder = builder
     self.original_arrays = None
+    self._xcif_errors = []
+    self.parser = None
+    # Fast path: xcif + plain uncompressed file_path -> memory-mapped
+    # parse_file, skipping the Python-string copy of the whole file.
+    # file_object= callers always go through the read-into-string path
+    # because there is no file descriptor to hand to mmap.
+    if (engine == "xcif"
+        and file_object is None
+        and file_path is not None
+        and _xcif_can_use_parse_file(file_path)):
+      resolved = os.path.expanduser(file_path)
+      if detect_binary_file.from_initial_block(resolved):
+        raise CifParserError("Binary file detected, aborting parsing.")
+      self._xcif_errors = _drive_builder_from_xcif_file(
+        self.builder, resolved, strict)
+      if raise_if_errors and self._xcif_errors:
+        raise CifParserError(self._xcif_errors[0])
+      return
     if file_path is not None:
       file_object = smart_open.for_reading(file_path)
     else:
@@ -65,21 +293,33 @@ class reader(object):
       len(input_string), binary_detector.monitor_initial)
     if binary_detector.is_binary_file(block=input_string):
       raise CifParserError("Binary file detected, aborting parsing.")
-    self.parser = ext.fast_reader(builder, input_string, file_path, strict)
-    if raise_if_errors and len(self.parser.lexer_errors()):
-      raise CifParserError(self.parser.lexer_errors()[0])
-    if raise_if_errors and len(self.parser.parser_errors()):
-      raise CifParserError(self.parser.parser_errors()[0])
+    if engine == "xcif":
+      self._xcif_errors = _drive_builder_from_xcif(
+        self.builder, input_string, strict)
+      if raise_if_errors and self._xcif_errors:
+        raise CifParserError(self._xcif_errors[0])
+    else:
+      self.parser = ext.fast_reader(builder, input_string, file_path, strict)
+      if raise_if_errors and len(self.parser.lexer_errors()):
+        raise CifParserError(self.parser.lexer_errors()[0])
+      if raise_if_errors and len(self.parser.parser_errors()):
+        raise CifParserError(self.parser.parser_errors()[0])
 
   def model(self):
     return self.builder.model()
 
   def error_count(self):
+    if self.parser is None:
+      return len(self._xcif_errors)
     return self.parser.lexer_errors().size()\
            + self.parser.parser_errors().size()
 
   def show_errors(self, max_errors=50, out=None):
     if out is None: out = sys.stdout
+    if self.parser is None:
+      for msg in self._xcif_errors[:max_errors]:
+        print(msg, file=out)
+      return
     for msg in self.parser.lexer_errors()[:max_errors]:
       print(msg, file=out)
     for msg in self.parser.parser_errors()[:max_errors]:

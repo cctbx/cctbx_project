@@ -37,17 +37,6 @@ jobs:
   - publish: $(System.DefaultWorkingDirectory)/miniforge
     artifact: miniforge
 
-  # mambaforge
-  - script: |
-      mkdir -p $(System.DefaultWorkingDirectory)/mambaforge
-      cd $(System.DefaultWorkingDirectory)/mambaforge
-      wget https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh
-      wget https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-MacOSX-x86_64.sh
-    displayName: Download mambaforge
-
-  - publish: $(System.DefaultWorkingDirectory)/mambaforge
-    artifact: mambaforge
-
   # chem_data
   - task: DownloadPipelineArtifact@2
     inputs:

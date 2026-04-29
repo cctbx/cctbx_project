@@ -1,3 +1,4 @@
+"""Misc utilities for working with models"""
 from __future__ import absolute_import, division, print_function
 import string
 from itertools import product
@@ -5,7 +6,7 @@ from six.moves import range
 import sys
 
 class generate_n_char_string:
-  """ Iterator to generate strings of length n_chars, using upper-case,
+  r""" Iterator to generate strings of length n_chars, using upper-case,
     lower-case and numbers as desired.
     Allows specialty sets of characters as well
 
@@ -27,6 +28,7 @@ class generate_n_char_string:
   Tested in iotbx/regression/tst_generate_n_char_string.py
 
   """
+  # The doc string must be a raw string because of the special characters
   def __init__(self, n_chars = 1,
       include_upper = True,
       include_lower = True,
@@ -43,7 +45,7 @@ class generate_n_char_string:
     all_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     all_chars_lc = all_chars.lower()
     all_numbers = '0123456789'
-    special_characters = """[]_,.;:"&<>()\/\{}'`~!@#$%*|+-"""
+    special_characters = r"""[]_,.;:"&<>()/\{}'`~!@#$%*|+-"""
     self._tilde = """~"""
 
     self._all_everything = ""
@@ -123,6 +125,7 @@ def all_chain_ids():
   return result
 
 def all_label_asym_ids(maximum_length=4):
+  """Return a list of possible label_asym_ids"""
   chars = string.ascii_uppercase
   rc = ["".join(c) for c in chars]
   for r in range(2, maximum_length+1):
@@ -130,7 +133,17 @@ def all_label_asym_ids(maximum_length=4):
     rc += ["".join(p) for p in char_upper]
   return rc
 
+def tst_get_input_model_file_name_from_params():
+  from libtbx import group_args
+  params = group_args(
+    input_files=group_args(
+      pdb_in = group_args(test='test'),
+    model =['abcf.pdb','cdef.pdb'],
+    search_model=['abcf.pdb','cdef.pdb'],))
+  print(get_input_model_file_name_from_params(params))
+
 def get_input_model_file_name_from_params(params):
+  """Return input model file_name from a parameters object"""
   if not params:
     return ""
 
@@ -146,11 +159,18 @@ def get_input_model_file_name_from_params(params):
       elif hasattr(params,s):
         ss = getattr(params,s)
         file_name = getattr(ss,x,None)
-  if type(file_name) in [type([1,2,3]),type((1,2,3))]:
-    if file_name:
-      file_name = file_name[0]
-    else:
-      file_name = ''
+      if file_name and type(file_name) in [type([1,2,3]),type((1,2,3))] and (
+           file_name[0]):
+        file_name = file_name[0]
+      if file_name:
+        try:
+          import os
+          path, ext = os.path.splitext(file_name)
+        except Exception as e:  # if it is not a path, do not use it
+          file_name = ''
+      else:
+        file_name = ''
+
   return file_name
 
 def target_output_format_in_params(params):
@@ -170,6 +190,8 @@ def target_output_format_in_params(params):
 
 def get_target_output_format_from_file_name(file_name,
    default = None):
+  """Generate reasonable target_output_format (pdb/mmcif/default) from a
+  a file name"""
   if file_name:
     import os
     path, ext = os.path.splitext(file_name)
@@ -287,13 +309,15 @@ def lines_are_really_text(lines):
     return False
 
 def get_lines(text = None, file_name = None, lines = None):
+    """Read lines from text or file or lines"""
     import os
     if lines and lines_are_really_text(lines):
       text = lines
     elif lines:
       text = "\n".join(lines)
     elif file_name and os.path.isfile(file_name):
-      text = open(file_name).read()
+      with open(file_name) as f:
+        text = f.read()
     if not text:
       text = ""
     # Python 3 read fix
@@ -305,6 +329,7 @@ def get_lines(text = None, file_name = None, lines = None):
     return flex.split_lines(text)
 
 def check_for_missing_elements(hierarchy, file_name = None):
+    """Check a hierarchy for missing element names"""
     atoms = hierarchy.atoms()
     elements = atoms.extract_element().strip()
     if (not elements.all_ne("")):
@@ -439,7 +464,8 @@ def set_element_ignoring_spacings(hierarchy):
   atoms.set_chemical_element_simple_if_necessary()
 
 def check_for_pseudo_atoms(hierarchy):
-    # Check for special case where PDB input contains pseudo-atoms ZC ZU etc
+    """Check for special case where PDB input contains pseudo-atoms ZC ZU etc
+    """
     atoms = hierarchy.atoms()
     # Do we already have all the elements
     elements = atoms.extract_element().strip()
@@ -463,6 +489,7 @@ def check_for_pseudo_atoms(hierarchy):
             break
 
 def type_of_pdb_input(pdb_inp):
+  """Determine type of PDB input from a pdb_inp object"""
   format_type = None
   if not pdb_inp:
     return format_type
@@ -475,8 +502,9 @@ def type_of_pdb_input(pdb_inp):
     return format_type
 
 def try_to_get_hierarchy(pdb_inp):
+    """Try to get a hierarchy from a pdb_inp object"""
     try:
-      return pdb_inp.construct_hierarchy()
+      return pdb_inp.construct_hierarchy(sort_atoms=False)
     except Exception as e: # nothing there
       if str(e).find("something is not present") > -1:  # was empty hierarchy
         # NOTE this text is in modules/cctbx_project/iotbx/pdb/mmcif.py
@@ -494,6 +522,7 @@ def try_to_get_hierarchy(pdb_inp):
          necessary"""
         raise Sorry(ph_text+"\n"+text+"\n"+str(e))
 def add_hierarchies(hierarchy_list, create_new_chain_ids_if_necessary = True):
+  """Append all hierarchies on to the first one"""
   if not hierarchy_list:
     return None
   new_hierarchy_list = []
@@ -538,6 +567,7 @@ def add_hierarchy(hierarchy, other, create_new_chain_ids_if_necessary = True):
   return hierarchy
 
 def get_chain(hierarchy, chain_id = None):
+  """Get chain with id of chain_id"""
   for model in hierarchy.models():
     for chain in model.chains():
       if chain.id == chain_id:
@@ -554,10 +584,20 @@ def add_models(model_list, create_new_chain_ids_if_necessary = True):
 
   if not model_list:
     return None # nothing to do
+  if len(model_list) == 1:
+    return model_list[0]
+
   new_model_list = []
+  new_model_format = None
+
   for m in model_list:
     if m and (m.get_hierarchy().overall_counts().n_residues > 0):
       new_model_list.append(m)
+      if (not new_model_format) or m._original_model_format == 'mmcif':
+        new_model_format = m._original_model_format
+      elif (not new_model_format) and m._original_model_format:
+        new_model_format = m._original_model_format
+
   model_list = new_model_list
   if not model_list:
     return None # nothing to do
@@ -574,7 +614,6 @@ def add_models(model_list, create_new_chain_ids_if_necessary = True):
     # Can deep-copy a hierarchy without crystal_symmetry
     ph = model_list[0].get_hierarchy().deep_copy()
     model_list[0] = ph.as_model_manager(crystal_symmetry = crystal_symmetry)
-    model_list[0].add_crystal_symmetry_if_necessary()
     m_had_crystal_symmetry = False
 
   model = model_list[0]
@@ -583,7 +622,10 @@ def add_models(model_list, create_new_chain_ids_if_necessary = True):
          create_new_chain_ids_if_necessary = create_new_chain_ids_if_necessary)
 
   if not m_had_crystal_symmetry:
-    model = model.get_hierarchy().as_model_manager(crystal_symmetry = None)
+    model = model.get_hierarchy().as_model_manager(crystal_symmetry = None,
+       force_no_crystal_symmetry = True)
+  if new_model_format:
+    model._original_model_format = new_model_format
   return model
 
 def add_model(model, other, create_new_chain_ids_if_necessary = True):
@@ -635,7 +677,7 @@ def add_model(model, other, create_new_chain_ids_if_necessary = True):
   return model
 
 def get_new_chain_id(existing_chain_ids):
-  # Generate something new...
+  """Generate a new chain ID not matching existing_chain_ids"""
   lc = "abcdefghijklmnopqrstuvwxyz"
   uc = lc.upper()
   cc = uc+lc

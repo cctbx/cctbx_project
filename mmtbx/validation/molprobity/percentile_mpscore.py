@@ -9,8 +9,8 @@ def get_percentile_for_mpscore(clashscore, resolution=None):
     minres = 0
     maxres = 99
   else:
-    minres = min(resolution, 3.50) - windowHalfwidth;
-    maxres = max(resolution, 0.75) + windowHalfwidth;
+    minres = min(resolution, 3.50) - windowHalfWidth;
+    maxres = max(resolution, 0.75) + windowHalfWidth;
 
   for i in mpscores_by_resolution():
   #[pdbFile,resolution,clashscore]

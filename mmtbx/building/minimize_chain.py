@@ -238,7 +238,7 @@ def run_one_cycle(
   hierarchy.atoms().reset_i_seq()
   xrs=pdb_inp.xray_structure_simple()
   if not pdb_string:
-    pdb_string=hierarchy.as_pdb_string()
+    pdb_string=hierarchy.as_pdb_or_mmcif_string(crystal_symmetry=xrs.crystal_symmetry())
   # Initialize states accumulator
   states = mmtbx.utils.states(pdb_hierarchy=hierarchy)
   states.add(sites_cart = xrs.sites_cart())
@@ -319,11 +319,10 @@ def run(args,
     out=out)
 
   if params.output_files.pdb_out:
-    f=open(params.output_files.pdb_out,'w')
-    print(cryst1_line, file=f)
-    print(pdb_hierarchy.as_pdb_string(), file=f)
-    print("\nWrote output model to %s" %(params.output_files.pdb_out), file=out)
-    f.close()
+    fn = pdb_hierarchy.write_pdb_or_mmcif_file(
+      target_filename=params.output_files.pdb_out,
+      crystal_symmetry=crystal_symmetry)
+    print("\nWrote output model to %s" %(fn), file=out)
   # all done
   return pdb_hierarchy,multiple_models_hierarchy
 

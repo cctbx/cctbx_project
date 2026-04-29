@@ -1809,7 +1809,7 @@ class SelectChainDialog(wx.Dialog):
     caption_txt = wx.StaticText(self, -1, message)
     caption_txt.Wrap(480)
     szr.Add(caption_txt, 0, wx.ALL, 5)
-    box = wx.FlexGridSizer(rows=2, cols=2)
+    box = wx.FlexGridSizer(rows=2, cols=2, vgap=0, hgap=0)
     txt1 = wx.StaticText(self, -1, "Select chain:")
     box.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     choices = []

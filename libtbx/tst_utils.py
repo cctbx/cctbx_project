@@ -314,6 +314,7 @@ def exercise_retrieve_unless_exists():
     f.writelines([
       ('%s %s\n') %
       (os.path.basename(filename), utils.md5_hexdigest(filename)),
+      (os.path.basename(filename), utils.sha256_hexdigest(filename)),
       'something_else  yyyyyyy',
     ])
   os.chmod(digestname,

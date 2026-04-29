@@ -6,7 +6,7 @@ import os.path, time
 
 import struct
 import asyncio
-import websockets
+from websockets.legacy import server
 from typing import Optional
 from websockets.exceptions import (
   ConnectionClosed,
@@ -14,7 +14,7 @@ from websockets.exceptions import (
   ConnectionClosedOK,
 )
 
-class MyWebSocketServerProtocol(websockets.WebSocketServerProtocol):
+class MyWebSocketServerProtocol(server.WebSocketServerProtocol):
   def __init__(self, *args, **kwargs):
     self.client_connected = None
     self.onconnect = None
@@ -97,7 +97,7 @@ class WBmessenger(object):
           logger.setLevel(logging.DEBUG)
           logger.addHandler(logging.StreamHandler())
 
-      self.server = websockets.serve(self.WebSockHandler, 'localhost',
+      self.server = server.serve(self.WebSockHandler, 'localhost',
                                       self.websockport, #ssl=ssl_context,
                                       create_protocol=MyWebSocketServerProtocol,
                                       )

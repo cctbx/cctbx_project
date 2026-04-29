@@ -343,6 +343,74 @@ other_file = %s
     assert 'duplicate user_selected_labels' in str(s)
 
 # -----------------------------------------------------------------------------
+def test_update_all_defaults():
+
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  model_1yjp = os.path.join(data_dir, 'data', '1yjp.pdb')
+  data_mtz = os.path.join(data_dir, 'data', 'phaser_1.mtz')
+
+  class testProgram(ProgramTemplate):
+
+    datatypes = ['model', 'miller_array', 'phil']
+
+    def validate(self):
+      pass
+
+    def run(self):
+      pass
+
+    def get_results(self):
+      return self.data_manager
+
+  dm = run_program(
+    program_class=testProgram,
+    args=['--quiet', '--overwrite', model_1yjp, data_mtz]
+  )
+  dm.update_all_defaults('neutron')
+  model_type = dm.get_model_type(model_1yjp)
+  assert 'neutron' in model_type
+  assert 'x_ray' not in model_type
+  assert 'electron' not in model_type
+  assert 'reference' not in model_type
+  for label in dm.get_miller_array_all_labels(data_mtz):
+    array_type = dm.get_miller_array_type(data_mtz, label)
+    assert 'neutron' in array_type
+    assert 'x_ray' not in array_type
+    assert 'electron' not in array_type
+
+  # check that all default types are updated even with label selection
+  dm = run_program(
+    program_class=testProgram,
+    args=['--quiet', '--overwrite', model_1yjp, data_mtz,
+          'user_selected=FWT,PHIFWT']
+  )
+  dm.update_all_defaults('electron')
+  model_type = dm.get_model_type(model_1yjp)
+  assert 'electron' in model_type
+  assert 'x_ray' not in model_type
+  assert 'neutron' not in model_type
+  assert 'reference' not in model_type
+  for label in dm.get_miller_array_all_labels(data_mtz):
+    array_type = dm.get_miller_array_type(data_mtz, label)
+    assert 'electron' in array_type
+    assert 'x_ray' not in array_type
+    assert 'neutron' not in array_type
+
+  # check that reference type is kept
+  dm = run_program(
+    program_class=testProgram,
+    args=['--quiet', '--overwrite', model_1yjp, data_mtz,
+          'user_selected=FWT,PHIFWT']
+  )
+  dm.set_model_type(model_1yjp, ['reference'])
+  dm.update_all_defaults('neutron')
+  model_type = dm.get_model_type(model_1yjp)
+  assert 'neutron' in model_type
+  assert 'x_ray' not in model_type
+  assert 'electron' not in model_type
+  assert 'reference' in model_type
+
+# -----------------------------------------------------------------------------
 def test_json():
   class testProgram(ProgramTemplate):
     program_name = 'tst_cli_parser'
@@ -387,10 +455,10 @@ def test_json():
 
   run_program(
     program_class=testProgram,
-    args=['--quiet', '--overwrite', '--json', model_1yjp]
+    args=['--quiet', '--overwrite', '--json', 'output.prefix=1yjp', 'output.serial=123', model_1yjp]
   )
 
-  expected_filename = 'tst_cli_parser_result.json'
+  expected_filename = '1yjp_123.json'
   assert os.path.exists(expected_filename)
   with open(expected_filename, 'r') as f:
     result = json.loads(f.read())
@@ -429,6 +497,8 @@ class testProgram(ProgramTemplate):
   program_name = 'test_diff_params'
   master_phil_str = '''
 diff_test_parameter = None
+.type = str
+another_parameter = None
 .type = str
 '''
   def run():
@@ -480,8 +550,220 @@ def test_diff_params():
     assert text.count('1yjp.pdb') == 2, text
     assert 'diff_test_parameter' in text.strip(), text
 
-  if os.path.exists(expected_filename):
-    os.remove(expected_filename)
+  # phil file
+  test_phil = '''\
+data_manager {
+  model {
+    file = not_a_real_filename.pdb
+  }
+}
+diff_test_parameter = abc
+another_parameter = def
+'''
+  with open('phil_file.eff', 'w') as f:
+    f.write(test_phil)
+  args = ['--quiet', '--diff-params', 'phil_file.eff']
+  run_function_in_process(args)
+  with open(expected_filename, 'r') as f:
+    text = f.read()
+    assert text.count('not_a_real_filename.pdb') == 1, text
+    assert 'diff_test_parameter = abc' in text
+    assert 'another_parameter = def' in text
+
+  # multiple phil files with different orders
+  test_phil_a = '''\
+another_parameter = ghi
+'''
+  test_phil_b = '''\
+diff_test_parameter = jkl
+'''
+  test_phil_c = '''\
+data_manager {
+  model {
+    file = possibly_a_real_filename.pdb
+  }
+}
+'''
+  with open('a.eff', 'w') as f:
+    f.write(test_phil_a)
+  with open('b.eff', 'w') as f:
+    f.write(test_phil_b)
+  with open('c.eff', 'w') as f:
+    f.write(test_phil_c)
+  args = ['--quiet', '--diff-params', 'phil_file.eff', 'a.eff']
+  run_function_in_process(args)
+  with open(expected_filename, 'r') as f:
+    text = f.read()
+    assert text.count('not_a_real_filename.pdb') == 1, text
+    assert 'diff_test_parameter = abc' in text
+    assert 'another_parameter = ghi' in text
+
+  args = ['--quiet', '--diff-params', 'phil_file.eff', 'b.eff']
+  run_function_in_process(args)
+  with open(expected_filename, 'r') as f:
+    text = f.read()
+    assert text.count('not_a_real_filename.pdb') == 1, text
+    assert 'diff_test_parameter = jkl' in text
+    assert 'another_parameter = def' in text
+
+  args = ['--quiet', '--diff-params', 'phil_file.eff', 'a.eff', 'b.eff']
+  run_function_in_process(args)
+  with open(expected_filename, 'r') as f:
+    text = f.read()
+    assert text.count('not_a_real_filename.pdb') == 1, text
+    assert 'diff_test_parameter = jkl' in text
+    assert 'another_parameter = ghi' in text
+
+  args = ['--quiet', '--diff-params', 'a.eff', 'b.eff', 'phil_file.eff']
+  run_function_in_process(args)
+  with open(expected_filename, 'r') as f:
+    text = f.read()
+    assert text.count('not_a_real_filename.pdb') == 1, text
+    assert 'diff_test_parameter = abc' in text
+    assert 'another_parameter = def' in text
+
+  args = ['--quiet', '--diff-params', 'phil_file.eff', 'a.eff', 'b.eff', 'c.eff']
+  run_function_in_process(args)
+  with open(expected_filename, 'r') as f:
+    text = f.read()
+    assert text.count('not_a_real_filename.pdb') == 1, text
+    assert text.count('possibly_a_real_filename.pdb') == 1, text
+    assert 'diff_test_parameter = jkl' in text
+    assert 'another_parameter = ghi' in text
+
+  # modify settings in file with command-line argument
+  args = ['--quiet', '--diff-params', 'phil_file.eff', 'a.eff', 'b.eff', 'c.eff', 'another_parameter=mno']
+  run_function_in_process(args)
+  with open(expected_filename, 'r') as f:
+    text = f.read()
+    assert text.count('not_a_real_filename.pdb') == 1, text
+    assert text.count('possibly_a_real_filename.pdb') == 1, text
+    assert 'diff_test_parameter = jkl' in text
+    assert 'another_parameter = mno' in text
+
+  for filename in [expected_filename, 'phil_file.eff', 'a.eff', 'b.eff',
+                  'c.eff']:
+    if os.path.isfile(filename):
+      os.remove(filename)
+
+# -----------------------------------------------------------------------------
+def test_check_current_dir():
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  model_1yjp = os.path.join(data_dir, 'data', '1yjp.pdb')
+
+  test_filename = 'check_current_dir_model.pdb'
+  with open(model_1yjp, 'r') as fread:
+    model_text = fread.read()
+    with open(test_filename, 'w') as fwrite:
+      fwrite.write(model_text)
+
+  original_phil = '''\
+data_manager {
+  model {
+    file = %s
+  }
+}
+''' % os.path.join(data_dir, test_filename)
+  phil_filename = 'check_current_dir.eff'
+  with open(phil_filename, 'w') as f:
+    f.write(original_phil)
+
+  class testProgram(ProgramTemplate):
+    program_name = 'tst_cli_parser'
+
+    def validate(self):
+      pass
+
+    def run(self):
+      pass
+
+    def get_results(self):
+      return self.data_manager.get_model_names()
+
+  # check for missing file
+  try:
+    run_program(program_class=testProgram, args=[phil_filename, '--quiet'])
+  except Sorry as s:
+    assert "Couldn't find the file" in str(s)
+
+  # check --check-current-dir
+  result = run_program(program_class=testProgram,
+                       args=[phil_filename, '--check-current-dir', '--quiet'])
+  expected_filename = os.path.join(os.getcwd(), test_filename)
+  assert expected_filename in result, result
+
+  for filename in [test_filename, phil_filename]:
+    if os.path.isfile(filename):
+      os.remove(filename)
+
+# -----------------------------------------------------------------------------
+def test_scattering_table():
+
+  class TestScatteringTableProgram(ProgramTemplate):
+
+    datatypes = ['model', 'phil']
+
+    use_scattering_table_for_default_type = 'a.b.c.d.efgh'
+
+    master_phil_str = """\
+a {
+  b {
+    c {
+      d {
+        efgh = electron
+          .type = str
+      }
+    }
+  }
+}
+"""
+
+    def validate(self):
+      pass
+
+    def run(self):
+      pass
+
+    def get_results(self):
+      return self.data_manager
+
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  model_1yjp = os.path.join(data_dir, 'data', '1yjp.pdb')
+  data_mtz = os.path.join(data_dir, 'data', 'phaser_1.mtz')
+
+  # check that both model and miller_array are required
+  try:
+    dm = run_program(TestScatteringTableProgram,
+                    args=['--quiet', model_1yjp, data_mtz])
+  except Sorry as s:
+    assert 'use_scattering_table_for_default_type' in str(s)
+
+  TestScatteringTableProgram.datatypes = ['miller_array', 'model', 'phil']
+
+  # check default PHIL
+  dm = run_program(TestScatteringTableProgram,
+                   args=['--quiet', model_1yjp, data_mtz])
+  model_type = dm.get_model_type(model_1yjp)
+  assert 'x_ray' not in model_type
+  assert 'electron' in model_type
+  assert 'neutron' not in model_type
+  assert 'reference' not in model_type
+
+  # check modified PHIL
+  dm = run_program(TestScatteringTableProgram,
+                   args=['--quiet', 'efgh=neutron', model_1yjp, data_mtz])
+  model_type = dm.get_model_type(model_1yjp)
+  assert 'x_ray' not in model_type
+  assert 'electron' not in model_type
+  assert 'neutron' in model_type
+  assert 'reference' not in model_type
+
+  # check wrong input
+  try:
+    dm = run_program(TestScatteringTableProgram,
+                    args=['--quiet', 'efgh=not_a_type', model_1yjp, data_mtz])
+  except Sorry as s:
+    assert 'not_a_type' in str(s)
 
 # =============================================================================
 if __name__ == '__main__':
@@ -489,7 +771,10 @@ if __name__ == '__main__':
   test_label_parsing()
   test_model_type_parsing()
   test_user_selected_labels()
+  test_update_all_defaults()
   test_json()
   test_diff_params()
+  test_check_current_dir()
+  test_scattering_table()
 
   print("OK")

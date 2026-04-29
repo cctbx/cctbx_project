@@ -187,11 +187,11 @@ class KClusterSFBugs(unittest.TestCase):
 if (__name__ == "__main__"):
   unittest.TextTestRunner(stream=sys.stdout, verbosity=0).run(
       unittest.TestSuite((
-            unittest.makeSuite(HClusterSmallListTestCase),
-            unittest.makeSuite(HClusterIntegerTestCase),
-            unittest.makeSuite(HClusterStringTestCase),
-            unittest.makeSuite(KClusterSmallListTestCase),
-            unittest.makeSuite(KCluster2DTestCase),
-            unittest.makeSuite(KClusterSFBugs),
+            unittest.defaultTestLoader.loadTestsFromTestCase(HClusterSmallListTestCase),
+            unittest.defaultTestLoader.loadTestsFromTestCase(HClusterIntegerTestCase),
+            unittest.defaultTestLoader.loadTestsFromTestCase(HClusterStringTestCase),
+            unittest.defaultTestLoader.loadTestsFromTestCase(KClusterSmallListTestCase),
+            unittest.defaultTestLoader.loadTestsFromTestCase(KCluster2DTestCase),
+            unittest.defaultTestLoader.loadTestsFromTestCase(KClusterSFBugs),
          ))
       )

@@ -704,7 +704,7 @@ def test_geo(result, opposite=False):
 
 def main():
   write_and_run(large_pdb)
-  result = '''Basepair planarity restraints: 5
+  result = '''Planarity | Basepair planarity | restraints: 5
 Sorted by residual:
                                delta    sigma   weight rms_deltas residual
 plane pdb=" C1'  DC C   7 "   -0.366 1.76e-01 3.23e+01   1.84e-01 2.28e+01
@@ -729,7 +729,7 @@ plane pdb=" C1'  DC C   7 "   -0.366 1.76e-01 3.23e+01   1.84e-01 2.28e+01
       pdb=" N3   DG D  10 "    0.167 1.76e-01 3.23e+01
       pdb=" C4   DG D  10 "    0.015 1.76e-01 3.23e+01'''
   test_geo(result)
-  result = '''Stacking parallelity restraints: 8
+  result = '''Parallelity | Stacking parallelity | restraints: 8
 Sorted by residual:
     plane 1                plane 2                residual  delta(deg) sigma
     pdb=" C1'  DC C   7 "  pdb=" C1'  DG C   8 "  3.21e+01  12.4210    0.0270
@@ -745,7 +745,7 @@ Sorted by residual:
                            pdb=" N3   DG C   8 "
                            pdb=" C4   DG C   8 "'''
   test_geo(result)
-  result = '''Basepair parallelity restraints: 5
+  result = '''Parallelity | Basepair parallelity | restraints: 5
 Sorted by residual:
     plane 1                plane 2                residual  delta(deg) sigma
     pdb=" C1'  DG C   8 "  pdb=" C1'  DC D   9 "  2.80e+01  14.3936    0.0335
@@ -761,7 +761,7 @@ Sorted by residual:
   test_geo(result)
 
   write_and_run(small_pdb)
-  result = '''Stacking parallelity restraints: 2
+  result = '''Parallelity | Stacking parallelity | restraints: 2
 Sorted by residual:
     plane 1                plane 2                residual  delta(deg) sigma
     pdb=" C1'  DC D  11 "  pdb=" C1'  DC D  12 "  1.50e+01   8.4829    0.0270
@@ -786,8 +786,8 @@ Sorted by residual:
     pdb=" C2   DG D  10 "  pdb=" C6   DC D  11 "
     pdb=" N2   DG D  10 "'''
   test_geo(result)
-  test_geo('Basepair planarity restraints:', opposite=True)
-  test_geo('Basepair parallelity restraints:', opposite=True)
+  test_geo('Basepair planarity | restraints:', opposite=True)
+  test_geo('Basepair parallelity | restraints:', opposite=True)
 
 if __name__ == '__main__':
   main()

@@ -1,4 +1,7 @@
 from __future__ import absolute_import, division, print_function
+#
+# regenerate using python <PHENIX>/modules/cctbx_project/mmtbx/monomer_library/populate_auto_linking_origin_ids.py
+#
 standard_cif_links = [
   ['link_ACE_C-N', 'ACE_C-N from Monomer Library or GeoStd'],
   ['link_AHT-ALA', 'AHT-ALA from Monomer Library or GeoStd'],
@@ -8,6 +11,7 @@ standard_cif_links = [
   ['link_ALPHA1-6', 'ALPHA1-6 from Monomer Library or GeoStd'],
   ['link_ALPHA2-3', 'ALPHA2-3 from Monomer Library or GeoStd'],
   ['link_ALPHA2-6', 'ALPHA2-6 from Monomer Library or GeoStd'],
+  ['link_ASP_CG-ANY_N', 'ASP_CG-ANY_N from Monomer Library or GeoStd'],
   ['link_BETA1-2', 'BETA1-2 from Monomer Library or GeoStd'],
   ['link_BETA1-3', 'BETA1-3 from Monomer Library or GeoStd'],
   ['link_BETA1-4', 'BETA1-4 from Monomer Library or GeoStd'],

@@ -3,14 +3,15 @@ from mmtbx.regression import model_1yjp, model_1yjp_with_waters
 from iotbx.data_manager import DataManager
 
 count_1yjp = {
-              'Bond restraints': 59,
-              'Bond angle restraints': 79,
-              'Dihedral angle restraints': 22,
+              'Bond | covalent geometry | restraints': 59,
+              'Bond angle | covalent geometry | restraints': 79,
+              'Dihedral angle | covalent geometry | restraints': 22,
               '    harmonic':  7,
               '  sinusoidal': 15,
-              'Planarity restraints': 13,
-              'Chirality restraints': 6,
-              'C-Beta improper torsion angle restraints': 12,
+              'Planarity | covalent geometry | restraints': 13,
+              'Chirality | covalent geometry | restraints': 6,
+              # 'C-Beta improper torsion angle restraints': 12,
+              'Dihedral angle | C-Beta improper | restraints': 12,
               # 'Parallelity restraints': 0,
               #'User supplied restraints': 0,
               #'User supplied torsion angle restraints': 0,
@@ -23,10 +24,12 @@ count_1yjp = {
               #'Metal coordination restraints': 0,
               #'Disulphide bridge angle restraints': 0,
               #'Disulphide bridge restraints': 0,
-              'Nonbonded interactions': 990,
+              'Nonbonded | unspecified | interactions': 990,
+              #
+              # 'Bond | User supplied | restraints': -1,
               }
 count_1yjp_with_waters = count_1yjp.copy()
-count_1yjp_with_waters['Nonbonded interactions'] = 1178
+count_1yjp_with_waters['Nonbonded | unspecified | interactions'] = 1178
 
 edits = '''
 refinement.geometry_restraints.edits {
@@ -54,6 +57,8 @@ def check_geo(geo_lines):
 def check_diff(d1,d2):
   outl = 'diff\n%s\n%s\n' % (d1,d2)
   for key in d1:
+    print(d1)
+    print(d2)
     if d1[key]!=d2[key]:
       outl += '%s : %d %d\n' % (key, d1[key], d2[key])
   return outl
@@ -71,7 +76,7 @@ def main():
   model = dm.get_model()
   rc = model.restraints_as_geo(force=True)
   rc = check_geo(rc)
-  assert rc == count_1yjp_with_waters, rc
+  assert rc == count_1yjp_with_waters, '%s != %s' % (count_1yjp_with_waters, rc)
 
   params = model.get_default_pdb_interpretation_params()
   edits_1yjp = params.geometry_restraints.edits
@@ -86,8 +91,9 @@ def main():
   rc = model.restraints_as_geo(force=True)
   rc = check_geo(rc)
   current = count_1yjp_with_waters.copy()
-  current['User supplied restraints'] = 1
-  current['Nonbonded interactions']   = 1176
+  # current['User supplied restraints'] = 1
+  current['Bond | User supplied | restraints'] = 1
+  current['Nonbonded | unspecified | interactions']   = 1176
   assert rc == current, check_diff(rc, current)
 
   edits_1yjp.angle[0].action='add'
@@ -101,9 +107,9 @@ def main():
   rc = model.restraints_as_geo(force=True)
   rc = check_geo(rc)
   current = count_1yjp_with_waters.copy()
-  current['User supplied restraints'] = 1
-  current['User supplied angle restraints'] = 1
-  current['Nonbonded interactions']   = 1176
+  current['Bond | User supplied | restraints'] = 1
+  current['Bond angle | User supplied | restraints'] = 1
+  current['Nonbonded | unspecified | interactions']   = 1176
   assert rc == current, check_diff(rc, current)
 
   edits_1yjp.dihedral[0].action='add'
@@ -119,11 +125,11 @@ def main():
   rc = model.restraints_as_geo(force=True)
   rc = check_geo(rc)
   current = count_1yjp_with_waters.copy()
-  current['User supplied restraints'] = 1
-  current['User supplied angle restraints'] = 1
-  current['User supplied torsion angle restraints'] = 1
+  current['Bond | User supplied | restraints'] = 1
+  current['Bond angle | User supplied | restraints'] = 1
+  current['Dihedral angle | User supplied | restraints'] = 1
   #current['  sinusoidal'] = 16
-  current['Nonbonded interactions']   = 1176
+  current['Nonbonded | unspecified | interactions']   = 1176
   assert rc == current, check_diff(rc, current)
   print('OK')
 

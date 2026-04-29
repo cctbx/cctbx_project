@@ -1,3 +1,4 @@
+"""Distribution of Rfree, Rwork and Rfree-Rwork for PDB models at similar resolution"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.r_factor_statistics
 
@@ -124,3 +125,4 @@ def run(args, left_offset=0.1, right_offset=0.1, n_bins=10):
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
+

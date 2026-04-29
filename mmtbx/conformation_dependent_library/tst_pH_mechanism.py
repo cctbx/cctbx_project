@@ -108,13 +108,13 @@ def run1():
   cmd = 'phenix.geometry_minimization tst_pH_gnp.pdb'
   print(cmd)
   rc = easy_run.go(cmd)
-  find = ['Changed 28 bond restraint(s),  added 1 bond restraint(s)',
-          'Changed 43 angle restraint(s), added 1 angle restraint(s)',
+  find = ['Changed (significantly) 24 bond restraint(s),  added 1 bond restraint(s)',
+          'Changed (significantly) 35 angle restraint(s), added 1 angle restraint(s)',
           ]
   for f in find:
     for line in rc.stdout_lines:
       if line.find(f)>-1:
-        print(line)
+        # print(line)
         break
     else:
       assert 0, 'line not found: %s' % f
@@ -127,13 +127,13 @@ def run2():
   cmd = 'phenix.geometry_minimization tst_LLP_neutron.pdb'
   print(cmd)
   rc = easy_run.go(cmd)
-  find = ['Changed 32 bond restraint(s),  added 2 bond restraint(s)',
-          'Changed 52 angle restraint(s), added 4 angle restraint(s)',
+  find = ['Changed (significantly) 29 bond restraint(s),  added 2 bond restraint(s)',
+          'Changed (significantly) 13 angle restraint(s), added 4 angle restraint(s)',
           ]
   for f in find:
     for line in rc.stdout_lines:
       if line.find(f)>-1:
-        print(line)
+        # print(line)
         break
     else:
       assert 0, 'line not found: %s' % f
@@ -144,5 +144,5 @@ if __name__=="__main__":
   del sys.argv[1:]
   rc = run1()
   assert rc.return_code==0
-  # rc = run2()
-  # assert rc.return_code==0
+  rc = run2()
+  assert rc.return_code==0

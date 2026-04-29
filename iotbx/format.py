@@ -1,4 +1,6 @@
+"""Format crystal symmetry"""
 from __future__ import absolute_import, division, print_function
+
 def crystal_symmetry(cs):
   if (cs.unit_cell() is None):
     u = "None"

@@ -297,6 +297,37 @@ class binner(ext.binner):
 AnomalousProbabilityPlotResult = namedtuple("AnomalousProbabilityPlotResult", [
   "slope", "intercept", "n_pairs", "expected_delta"])
 
+def bins_mixed(d_spacings_sorted, bin_width_max=0.005):
+  """
+  d_spacings_sorted: d spacings data sorted from lowest to hightest resolution (
+  from largest to smallerst d).
+  Return bins as list of pairs, each pair is start:end indices to access data.
+  """
+  size=d_spacings_sorted.size()
+  cntr=0
+  i_seqs = flex.int()
+  n_left = size
+  reached_end = False
+  bins = []
+  for i, d in enumerate(d_spacings_sorted):
+    i_seqs.append(i)
+    cntr+=1
+    n_left-=1
+    if cntr==1:           dl    = d
+    if   dl > 10:         n_min = 100
+    elif dl<=10 and dl>5: n_min = 250
+    else:                 n_min = 500
+    if cntr<n_min and not (n_left<n_min): continue
+    if cntr>n_min or abs(dl-d)>0.005:
+      if n_left<n_min:
+        i_seqs.append(size-1)
+        cntr+=n_left
+        reached_end=True
+      bins.append([flex.min(i_seqs), 1+flex.max(i_seqs)])
+      i_seqs = flex.int()
+      cntr=0
+    if reached_end: break
+  return bins
 
 class binned_data(object):
 
@@ -653,6 +684,8 @@ class set(crystal.symmetry):
     """
     Generate a double Miller array containing the resolution d of each
     index.
+    Note: if f000 term is present, the resolution of that term will be -1
+     and not infinity.
     """
     return array(
       self, self.unit_cell().d(self.indices()))
@@ -1552,7 +1585,8 @@ class set(crystal.symmetry):
                                         u_base=None,
                                         b_base=None,
                                         wing_cutoff=None,
-                                        exp_table_one_over_step_size=None):
+                                        exp_table_one_over_step_size=None,
+                                        extra_params=None):
     """
     Calculate structure factors for an :py:class:`cctbx.xray.structure` object
     corresponding to the current set of Miller indices.  Can use either FFT
@@ -1580,7 +1614,8 @@ class set(crystal.symmetry):
       exp_table_one_over_step_size=exp_table_one_over_step_size)(
         xray_structure=xray_structure,
         miller_set=self,
-        algorithm=algorithm)
+        algorithm=algorithm,
+        extra_params=extra_params)
 
   def amplitude_normalisations(self, asu_contents, wilson_plot):
     """ A miller.array whose data N(h) are the normalisations to convert
@@ -1615,7 +1650,8 @@ class set(crystal.symmetry):
         u_base=None,
         b_base=None,
         wing_cutoff=None,
-        exp_table_one_over_step_size=None):
+        exp_table_one_over_step_size=None,
+        extra_params=None):
     return self.f_obs_minus_f_calc(
       f_obs_factor=f_obs_factor,
       f_calc=self.structure_factors_from_scatterers(
@@ -1626,7 +1662,8 @@ class set(crystal.symmetry):
         u_base=u_base,
         b_base=b_base,
         wing_cutoff=wing_cutoff,
-        exp_table_one_over_step_size=exp_table_one_over_step_size).f_calc())
+        exp_table_one_over_step_size=exp_table_one_over_step_size,
+        extra_params=extra_params).f_calc())
 
   def setup_binner(self, d_max=0, d_min=0,
                    auto_binning=False,
@@ -2348,7 +2385,8 @@ class array(set):
     if(not result.is_unique_set_under_symmetry()):
       merged = result.merge_equivalents()
       result = merged.array()
-      info = info.customized_copy(merged=True)
+      if info is not None:
+        info = info.customized_copy(merged=True)
     result = result.map_to_asu()
     if(not result.sigmas_are_sensible()):
       result = result.customized_copy(
@@ -3665,25 +3703,46 @@ class array(set):
       .set_info(self.info()) \
       .set_observation_type(self)
 
-  def multiscale(self, other, reflections_per_bin = None):
+  def multiscale(self, other, use_exp_scale=False, reflections_per_bin=None):
+    if use_exp_scale:
+      import libtbx.load_env
+      if (not libtbx.env.has_module("mmtbx")):
+        raise ImportError("mmtbx is required for this functionality.")
+      from mmtbx import bulk_solvent
+      ss = 1./flex.pow2(self.d_spacings().data()) / 4.
+      b_range = flex.double(range(-1000,1000,1))
+      if isinstance(self.data(), flex.complex_double):
+        scaler_func = bulk_solvent.complex_f_kb_scaled
+      else:
+        scaler_func = bulk_solvent.f_kb_scaled
     if(reflections_per_bin is None):
       reflections_per_bin = other.indices().size()
     assert self.indices().all_eq(other.indices())
     assert self.is_similar_symmetry(other)
+    assert type(self.data()) == type(other.data())
+
     self.setup_binner(reflections_per_bin = reflections_per_bin)
     other.use_binning_of(self)
-    scale = flex.double(self.indices().size(),-1)
+    other_data = other.data()*0
     for i_bin in self.binner().range_used():
       sel = self.binner().selection(i_bin)
       f1  = self.select(sel)
       f2  = other.select(sel)
-      scale_ = 1.0
-      den = flex.sum(flex.abs(f2.data())*flex.abs(f2.data()))
-      if(den != 0):
-        scale_ = flex.sum(flex.abs(f1.data())*flex.abs(f2.data())) / den
-      scale.set_selected(sel, scale_)
-    assert (scale > 0).count(True) == scale.size()
-    return other.array(data = other.data()*scale)
+      if not use_exp_scale: # use scalar scale
+        scale_ = 1.0
+        den = flex.sum(flex.abs(f2.data())*flex.abs(f2.data()))
+        if(den != 0):
+          scale_ = flex.sum(flex.abs(f1.data())*flex.abs(f2.data())) / den
+        other_data.set_selected(sel, f2.data()*scale_)
+      else:
+        ss_ = ss.select(sel)
+        o = scaler_func(
+          f1      = f1.data(),
+          f2      = f2.data(),
+          b_range = b_range,
+          ss      = ss_)
+        other_data.set_selected(sel, f2.data()*o.k()*flex.exp(-o.b()*ss_))
+    return other.array(data = other_data)
 
   def apply_debye_waller_factors(self,
         u_iso=None,
@@ -4292,7 +4351,7 @@ class array(set):
         print(prefix + str(h), d, s, file=f)
     return self
 
-  def fsc(self, other, bin_width=1000):
+  def fsc(self, other, smooth=False):
     """
     Compute Fourier Shell Correlation (FSC)
     """
@@ -4303,35 +4362,61 @@ class array(set):
     d1 = f1.data()
     d2 = f2.data()
     s = flex.sort_permutation(ds)
-    ds = ds.select(s)
-    d1 = d1.select(s)
-    d2 = d2.select(s)
-    r = maptbx.fsc(f1=d1, f2=d2, d_spacings=ds, step=bin_width)
-    fsc = r.fsc()
-    d = r.d()
-    d_inv = r.d_inv()
-    # Smooth FSC curve
-    half_window=50
-    ratio=d_inv.size()/half_window
-    if(ratio<10):
-      half_window = int(half_window/10)
-    from scitbx import smoothing
-    d_inv, fsc = smoothing.savitzky_golay_filter(
-      x=d_inv,  y=fsc,  half_window=half_window, degree=2)
-    s = flex.sort_permutation(d_inv)
-    if fsc.size() != d.size(): # happens if bin width too big
-      return None
-    return group_args(d=d.select(s), d_inv=d_inv.select(s), fsc=fsc.select(s))
+    # [1:] excludes s=0 or d=-1
+    ds = ds.select(s)[1:]
+    d1 = d1.select(s)[1:]
+    d2 = d2.select(s)[1:]
+    del s
+    # Get bins
+    bins = bins_mixed(d_spacings_sorted=ds)
+    # Compute FSC
+    fsc = flex.double()
+    d   = flex.double()
+    raw = []
+    for bin in bins:
+      l, r = bin[0], bin[1]
+      x = d1[l:r]
+      y = d2[l:r]
+      z = ds[l:r]
+      value = maptbx.cc_complex_complex(f_1 = x, f_2 = y)
+      fsc.append(value)
+      d.append(flex.mean(z))
+      raw.append( (z[0], z[-1], 2./(z[0]+z[-1]), value) )
 
-  def d_min_from_fsc(self, other=None, fsc_curve=None, bin_width=1000,
-                           fsc_cutoff=0.143):
+    d_inv = 1/d
+    # Smooth FSC curve
+    # Smoothing can change the input array size causing an assertion crash!
+    sel = d>15.
+    d_const = None
+
+    if d.size() > 10:
+
+      if sel.count(True)>0:
+        d_const   = d    .select(sel)
+        fsc_const = fsc  .select(sel)
+        d         = d    .select(~sel)
+        fsc       = fsc  .select(~sel)
+      half_window=10
+      from scitbx import smoothing
+      d, fsc = smoothing.savitzky_golay_filter(
+        x=d,  y=fsc, half_window=half_window, degree=2)
+      if d_const is not None:
+        d  .extend(d_const)
+        fsc.extend(fsc_const)
+      d_inv = 1./d
+
+    s = flex.sort_permutation(d_inv)
+    return group_args(
+      raw=raw, d=d.select(s), d_inv=d_inv.select(s), fsc=fsc.select(s))
+
+  def d_min_from_fsc(self, other=None, fsc_curve=None, fsc_cutoff=0.143):
     """
     Compute Fourier Shell Correlation (FSC) and derive resolution based on
     specified cutoff.
     """
     if(fsc_curve is None):
       assert other is not None
-      fsc_curve = self.fsc(other=other, bin_width=bin_width)
+      fsc_curve = self.fsc(other=other)
       if not fsc_curve: return group_args(fsc=None, d_min=None)
     else:
       assert other is None
@@ -4383,6 +4468,8 @@ class array(set):
     return group_args(fsc=fsc_curve, d_min=d_min)
 
   def map_correlation(self, other):
+    # Can be replace with a faster version:
+    #   return maptbx.cc_complex_complex(f_1 = x, f_2 = y)
     d1 = flex.abs(self.data())
     d2 = flex.abs(other.data())
     p1 = self.phases().data()
@@ -4635,11 +4722,16 @@ class array(set):
                                          mandatory_factors=None,
                                          max_prime=5,
                                          assert_shannon_sampling=True,
-                                         f_000=None):
+                                         f_000=None,
+                                         include_000=False):
     # Based on local_standard_deviation_map above
     assert self.crystal_symmetry().unit_cell().is_similar_to(
         other.crystal_symmetry().unit_cell())
     complete_set = self.complete_set()
+    if(include_000 or f_000 is not None):
+      indices = complete_set.indices()
+      indices.append((0,0,0))
+      complete_set = complete_set.customized_copy(indices = indices)
     sphere_reciprocal = self.g_function(R=radius, s=1./complete_set.d_spacings().data())
     if d_min is None:
       d_min=self.d_min()
@@ -6125,6 +6217,8 @@ class fft_map(maptbx.crystal_gridding):
     """
     from iotbx import mrcfile
     map_data = self.real_map(direct_access=False)
+    if (gridding_first is None) and (gridding_last is None):
+      labels.append("wrapping_outside_cell")
     if gridding_first is None :
       gridding_first = (0,0,0)
     if gridding_last is None :

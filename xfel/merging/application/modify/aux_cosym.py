@@ -6,7 +6,7 @@ from cctbx import sgtbx, miller
 from libtbx import easy_mp, Auto
 from scipy import sparse
 import numpy as np
-from orderedset import OrderedSet
+from ordered_set import OrderedSet
 import copy
 
 # Specialization, run only a subset of cosym steps and include plot
@@ -174,7 +174,7 @@ class CosymAnalysis(BaseClass):
 from dials.command_line.cosym import logger
 from dials.command_line.cosym import cosym as dials_cl_cosym_wrapper
 from dials.util.exclude_images import get_selection_for_valid_image_ranges
-from dials.command_line.symmetry import (
+from dials.algorithms.symmetry import (
     apply_change_of_basis_ops,
     change_of_basis_ops_to_minimum_cell,
     eliminate_sys_absent,
@@ -307,8 +307,8 @@ cosym.single_cb_op_to_minimum is not True')
         datasets = [
             ma.as_anomalous_array().merge_equivalents().array() for ma in datasets
         ]
-
         # opportunity here to subclass as defined above, instead of the dials-implemented version
+        self.params.min_reflections = 0 # avoid any further filtering implemented in https://github.com/dials/dials/pull/2741
         self.cosym_analysis = CosymAnalysis(
             datasets,
             self.params,
@@ -359,9 +359,16 @@ class TargetWithFastRij(Target):
         self._min_pairs = 3 # minimum number of mutual miller indices for a match
 
         # truncate the input data to save time
-        self._lattices = self._lattices[:10]
+        # self._lattices is the list of start index of each dataset
+        self._lattices = self._lattices[:11]
+
         i_last = self._lattices[-1]
         self._data = self._data[:i_last]
+
+        # now remove the last index in self._lattices as this was just used
+        # to determine the start index of the next dataset (which does not
+        # exist in the cut set)
+        self._lattices = self._lattices[:-1]
 
   def _lattice_lower_upper_index(self, lattice_id):
        lower_index = int(self._lattices[lattice_id])

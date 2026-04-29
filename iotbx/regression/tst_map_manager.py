@@ -27,9 +27,11 @@ def test_01():
   print (mm.map_data().origin())
   assert mm.map_data().origin() == (100,100,100)
   assert mm.origin_shift_grid_units == (0,0,0)
+  assert not mm.shifted()
   mm.shift_origin()
   assert mm.map_data().origin() == (0,0,0)
   assert mm.origin_shift_grid_units == (100,100,100)
+  assert mm.shifted()
   mm.show_summary()
 
   # test cc_to_other_map
@@ -287,11 +289,11 @@ def test_01():
 
   # Reset crystal_symmetry of map with ncs object
   another_mm.set_unit_cell_crystal_symmetry(
-     crystal_symmetry=another_mm.unit_cell_crystal_symmetry())
+     unit_cell_crystal_symmetry=another_mm.unit_cell_crystal_symmetry())
   assert not new_cs.is_similar_symmetry(
     another_mm.unit_cell_crystal_symmetry())
   shift_cart =  another_mm.shift_cart()
-  another_mm.set_unit_cell_crystal_symmetry(crystal_symmetry=new_cs)
+  another_mm.set_unit_cell_crystal_symmetry(unit_cell_crystal_symmetry=new_cs)
   assert shift_cart !=  another_mm.shift_cart()
   assert approx_equal(another_mm.ncs_object().shift_cart(), another_mm.shift_cart())
 
@@ -309,10 +311,18 @@ def test_01():
 
   # Adjust model and ncs symmetry to match this map
   assert model.shift_cart()  is None
+  assert not model.shifted()
   new_mm.set_model_symmetries_and_shift_cart_to_match_map(model)
+  assert model.shifted()
   assert approx_equal (model.shift_cart() ,
        (-0.888888888888889, -0.8888888888888891, -0.888888888888889))
-
+  sc = model.get_sites_cart()
+  from scitbx.matrix import col
+  sc_absolute = sc - col(model.shift_cart())
+  assert approx_equal(new_mm.sites_cart_to_sites_cart_absolute(sc),
+     sc_absolute)
+  assert approx_equal(new_mm.sites_cart_absolute_to_sites_cart(sc_absolute),
+     sc)
   assert new_mm.is_compatible_ncs_object(ncs_obj)
   ncs_obj.set_shift_cart((0,0,0))
   assert not new_mm.is_compatible_ncs_object(ncs_obj)
@@ -348,11 +358,16 @@ def test_01():
   binary=mm.deep_copy()
   binary.binary_filter(threshold=0.5)
 
+  scaled=mm.deep_copy()
+  scaled.scale_map(10)
+
   assert approx_equal(
      (mm.map_data().as_1d()[1073],low_pass_filtered.map_data().as_1d()[1073],
        high_pass_filtered.map_data().as_1d()[1073],
-       gaussian.map_data().as_1d()[1073],binary.map_data().as_1d()[1073]),
-      (0.0171344596893,0.0227163900537,-0.0072717454565,0.0149086679298,0.0))
+       gaussian.map_data().as_1d()[1073],binary.map_data().as_1d()[1073],
+       scaled.map_data().as_1d()[1073]),
+      (0.0171344596893,0.0227163900537,-0.0072717454565,0.0149086679298,0.0,
+        0.171344596893))
 
   info=mm.get_density_along_line((5,5,5),(10,10,10))
   assert approx_equal([info.along_density_values[4]]+list(info.along_sites[4]),

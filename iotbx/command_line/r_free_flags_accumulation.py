@@ -1,5 +1,5 @@
 """
-Extracts R-free flags from reflection files.
+Extract R-free flags from reflection files.
 Writes reflection count, free fraction pairs to file (for plotting).
 Also shows free fraction in bins.
 """

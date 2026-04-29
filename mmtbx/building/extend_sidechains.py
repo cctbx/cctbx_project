@@ -418,7 +418,9 @@ class extend_and_refine(object):
       if (output_model is None):
         output_model = prefix + "_extended.pdb"
       f = open(output_model, "w")
-      f.write(pdb_hierarchy.as_pdb_string(fmodel.xray_structure))
+      f.write(pdb_hierarchy.as_pdb_or_mmcif_string(
+         crystal_symmetry=fmodel.xray_structure.crystal_symmetry(),
+         target_format='pdb'))
       f.close()
       self.pdb_file = output_model
       print("  wrote new model to %s" % output_model, file=out)

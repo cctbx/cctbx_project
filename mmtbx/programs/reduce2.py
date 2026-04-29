@@ -1,3 +1,4 @@
+"""Run reduce (add hydrogens). version 2"""
 ##################################################################################
 # Copyright(c) 2021-2023, Richardson Lab at Duke
 # Licensed under the Apache 2 license
@@ -24,19 +25,16 @@ from libtbx.utils import Sorry, null_out
 import mmtbx
 from mmtbx.probe import Helpers
 from iotbx import pdb, cli_parser
-# @todo See if we can remove the shift and box once reduce_hydrogen is complete
-from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.reduce import Optimizers
 from scitbx.array_family import flex
-from iotbx.pdb import common_residue_names_get_class, amino_acid_codes
+from iotbx.pdb import common_residue_names_get_class, amino_acid_codes, nucleic_acid_codes
 from mmtbx.programs import probe2
 import copy
-import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "2.5.0"
+version = "2.15.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -103,10 +101,17 @@ stop_on_any_missing_hydrogen = False
   .type = bool
   .short_caption = Emit a Sorry and stop when any hydrogen in the model has insufficient restraints.
   .help = Emit a Sorry and stop when any hydrogen in the model has insufficient restraints. It will always emit when there are one or more residues without restraints.
-
+ignore_missing_restraints = False
+  .type = bool
+  .short_caption = Don't stop if restraints for a residue are missing.
+  .help = Don't stop if restraints for a residue are missing.
 output
   .style = menu_item auto_align
 {
+  write_files = True
+    .type = bool
+    .short_caption = Write the output files
+    .help = Write the output files(s) when this is True (default). Set to False when harnessing the program.
   description_file_name = None
     .type = str
     .short_caption = Description output file name
@@ -124,7 +129,10 @@ output
     .short_caption = Print extra atom info
     .help = Print extra atom info
 }
-''' + Helpers.probe_phil_parameters
+''' + Helpers.probe_phil_parameters.replace("bump_weight = 10.0", "bump_weight = 100.0").replace("hydrogen_bond_weight = 4.0", "hydrogen_bond_weight = 40.0")
+# @todo We replace the default weights to avoid the issue described in
+# https://github.com/cctbx/cctbx_project/issues/1072 until we can figure out the appropriate
+# fix.
 
 program_citations = phil.parse('''
 citation {
@@ -310,16 +318,17 @@ def _DescribeMainchainLink(a0s, a1s, group):
         ret += _AddPosition(a0, 'P', group) + ' ' + _AddPosition(a1, 'L', group, a0) + '\n'
   return ret
 
-def _IsStandardResidue(resname):
-  amino_acid_resnames = sorted(amino_acid_codes.one_letter_given_three_letter.keys())
-  return resname.strip().upper() in amino_acid_resnames
 
+_amino_acid_resnames = sorted(amino_acid_codes.one_letter_given_three_letter.keys())
+def _IsStandardResidue(resname):
+  return resname.strip().upper() in _amino_acid_resnames
+
+
+_nucleic_acid_resnames = set(nucleic_acid_codes.rna_one_letter_code_dict.keys()).union(
+  set(nucleic_acid_codes.dna_one_letter_code_dict.keys()))
 def _IsNucleicAcidResidue(resname):
-  nucleic_acids = [
-        "A", "C", "G", "T",  # DNA bases
-        "U", "I",            # RNA bases (I for inosine, a modified RNA base)
-  ]
-  return resname.strip().upper() in nucleic_acids
+  return resname.strip().upper() in _nucleic_acid_resnames
+
 
 def _MainChainAtomsWithHydrogen(resname):
   # Find the main chain atoms with hydrogen bonds
@@ -737,7 +746,7 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
 
   # Add spheres for ions (was single-atom Het groups in original Flipkins?)
   ret += '@subgroup {het groups} dominant\n'
-  ret += '@spherelist {het M} color= gray  radius= 0.5  nubutton master= {hets}\n'
+  ret += '@spherelist {het M} color= gray radius= 0.5 nobutton master= {hets}\n'
   for a in model.get_atoms():
     if a.element_is_ion():
       ret += _AddPosition(a, '', fileBaseName) + '\n'
@@ -898,6 +907,17 @@ NOTES:
   Note that the program also takes probe Phil arguments; run with --show_defaults to see
   all Phil arguments.
 
+  As of 7/14/2025, reduce2 is switching to new default parameters for the relative weighting of
+  external contacts (which remains the same) and both hydrogen bonds and collisions (whic are
+  increasing by 10x). This is to work as expected with a radius larger than 0 (it is being switched
+  to 0.25, which matches the probe2 default). The original Reduce had switched to a radius of 0.0
+  and was not considering external contacts; this fixes that without causing hydrogen bonds to be
+  broken. See https://github.com/cctbx/cctbx_project/issues/1072 for details. The defaults for
+  probe2 are not being changed, so its default behavior will be different from reduce2 until the
+  issue can be fully resolved and both set to the same defaults. The probe radius and relative
+  weights can be set in both probe2 and reduce2 using the probe2 Phil parameters if different
+  behavior is desired.
+
   Equivalent PHIL arguments for original Reduce command-line options:
     -quiet: No equivalent; metadata is never written to the model file, it is always
             written to the description file, and progress information is always written
@@ -912,6 +932,7 @@ NOTES:
     -onlya: alt_id=A
     -nuclear: use_neutron_distances=True
     -demandflipallnhqs: add_flip_movers=True
+    -rad0.25: probe.probe_radius=0.25
 '''.format(version)
   datatypes = ['model', 'restraint', 'phil']
   master_phil_str = master_phil_str
@@ -973,7 +994,7 @@ NOTES:
   # Create a parser for Probe2 PHIL parameters, overriding specific defaults.
   # Use it to parse the parameters we need to change and return the parser so we
   # can extract values from it.
-  def _MakeProbePhilParser(self, movers_to_check, temp_output_file_name, extraArgs = []):
+  def _MakeProbePhilParser(self, movers_to_check, extraArgs = []):
 
     # Determine the source and target selections based on the Movers
     # that we are checking being tested against everything else.
@@ -998,13 +1019,20 @@ NOTES:
       "minimum_water_hydrogen_occupancy=0.66",
       "maximum_water_hydrogen_b=40.0",
       "minimum_occupancy=0.01",
-      "output.filename='{}'".format(temp_output_file_name),
+      "output.write_files=False",
       "ignore_lack_of_explicit_hydrogens=True",
       "output.add_group_line=False"
     ]
     args.extend(extraArgs)
-    parser.parse_args(args)
 
+    # Add the probe parameters from the command line to the parser
+    for arg in sys.argv:
+      if arg.startswith("probe."):
+        # Remove the leading "probe." and add it to the parser
+        arg = arg[6:]
+        args.append(arg)
+
+    parser.parse_args(args)
     return parser
 
 # ------------------------------------------------------------------------------
@@ -1014,25 +1042,35 @@ NOTES:
       model = self.model,
       use_neutron_distances=self.params.use_neutron_distances,
       n_terminal_charge=self.params.n_terminal_charge,
-      exclude_water=True,
-      stop_for_unknowns=False,
+      exclude_water = True,
+      stop_for_unknowns=self.params.stop_on_any_missing_hydrogen,
       keep_existing_H=self.params.keep_existing_H
     )
     reduce_add_h_obj.run()
     reduce_add_h_obj.show(self.logger)
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
-    if len(missed_residues) > 0:
-      bad = ""
-      for res in missed_residues:
-        bad += " " + res
-      raise Sorry("Restraints were not found for the following residues:"+bad)
+    if not self.params.ignore_missing_restraints:
+      if len(missed_residues) > 0:
+        bad = ""
+        for res in missed_residues:
+          bad += " " + res
+        raise Sorry("Restraints were not found for the following residues:"+bad)
     insufficient_restraints = list(reduce_add_h_obj.site_labels_no_para)
     if self.params.stop_on_any_missing_hydrogen and len(insufficient_restraints) > 0:
       bad = insufficient_restraints[0]
       for res in insufficient_restraints[1:]:
         bad += "," + res
       raise Sorry("Insufficient restraints were found for the following atoms:"+bad)
+
     self.model = reduce_add_h_obj.get_model()
+
+    if not self.model.has_hd():
+      raise Sorry("It was not possible to place any H atoms. Is this a single atom model?")
+
+    # We must re-interpret the model when _type_energies is not defined, which happens
+    # for example when running on 8zst.cif.
+    if not hasattr(self.model, '_type_energies'):
+      self._ReinterpretModel(make_restraints=True)
 
 # ------------------------------------------------------------------------------
 
@@ -1050,6 +1088,7 @@ NOTES:
     # by Hydrogen placement will have flipped them, so we don't need to do it again.
     p.pdb_interpretation.flip_symmetric_amino_acids=False
     #p.pdb_interpretation.sort_atoms=True
+    self.model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
     self.model.process(make_restraints=make_restraints, pdb_interpretation_params=p)
 
 # ------------------------------------------------------------------------------
@@ -1139,6 +1178,7 @@ NOTES:
     # Set the default output file name if one has not been given.
     if self.params.output.filename is None:
       inName = self.data_manager.get_default_model_name()
+      if inName is None: raise Sorry('model not found')
       suffix = os.path.splitext(os.path.basename(inName))[1]
       if self.params.add_flip_movers:
         pad = 'FH'
@@ -1147,6 +1187,12 @@ NOTES:
       base = os.path.splitext(os.path.basename(inName))[0] + pad
       self.params.output.filename = base + suffix
       print('Writing model output to', self.params.output.filename, file=self.logger)
+
+    if os.environ.get('PHENIX_OVERWRITE_ALL', False):
+      self.data_manager.set_overwrite(True)
+    if not self.params.output.overwrite:
+      if os.path.exists(self.params.output.filename):
+        print('\n\tOutput filename exists. Use overwrite=True to continue.')
 
     self.data_manager.has_models(raise_sorry=True)
     if self.params.output.description_file_name is None:
@@ -1183,11 +1229,13 @@ NOTES:
     # Get our model.
     self.model = self.data_manager.get_model()
 
-    # Fix up bogus unit cell when it occurs by checking crystal symmetry.
-    # @todo reduce_hydrogens.py:run() says: TODO temporary fix until the code is moved to model class
-    cs = self.model.crystal_symmetry()
-    if (cs is None) or (cs.unit_cell() is None):
-      self.model = shift_and_box_model(model = self.model)
+    self.model = self.model.select(~self.model.selection('element X'))
+
+    # Use model function to set crystal symmetry if necessary 2025-03-19 TT
+    self.model.add_crystal_symmetry_if_necessary()
+    if self.data_manager.has_restraints():
+      self.model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
+      self.model.process(make_restraints=False)
 
     # If we've been asked to only to a single model index from the file, strip the model down to
     # only that index.
@@ -1240,6 +1288,12 @@ NOTES:
         cliqueOutlineFileName=self.params.output.clique_outline_file_name,
         fillAtomDump = self.params.output.print_atom_info)
       doneOpt = time.time()
+      warnings = opt.getWarnings()
+      # Find the lines from warnings that start with "Warning: " and
+      # concatenate them into a single string.
+      warnings = '\n'.join([line for line in warnings.split('\n') if line.startswith('Warning:')])
+      if len(warnings) > 0:
+        print('\nWarnings during optimization:\n'+warnings, file=self.logger)
       outString += opt.getInfo()
       outString += 'Time to Add Hydrogen = {:.3f} sec'.format(doneAdd-startAdd)+'\n'
       outString += 'Time to Optimize = {:.3f} sec'.format(doneOpt-startOpt)+'\n'
@@ -1262,20 +1316,23 @@ NOTES:
 
     make_sub_header('Writing output', out=self.logger)
 
-    # Write the description output to the specified file.
-    self.data_manager._write_text("description", outString,
-      self.params.output.description_file_name)
+    # Skip writing the main output file and description output file if output.write_files is False.
+    # This enables a program to harness Reduce2 and not have to deal with handling output files.
+    if self.params.output.write_files:
+      # Write the description output to the specified file.
+      self.data_manager._write_text("description", outString,
+        self.params.output.description_file_name)
 
-    # Determine whether to write a PDB or CIF file and write the appropriate text output.
-    suffix = os.path.splitext(self.params.output.filename)[1]
-    if suffix.lower() == ".pdb":
-      txt = self.model.model_as_pdb()
-    else:
-      txt = self.model.model_as_mmcif()
-    self.data_manager._write_text("model", txt, self.params.output.filename)
+      # Determine whether to write a PDB or CIF file and write the appropriate text output.
+      suffix = os.path.splitext(self.params.output.filename)[1]
+      if suffix.lower() == ".pdb":
+        txt = self.model.model_as_pdb()
+      else:
+        txt = self.model.model_as_mmcif()
+      self.data_manager._write_text("model", txt, self.params.output.filename)
 
-    print('Wrote', self.params.output.filename,'and',
-      self.params.output.description_file_name, file = self.logger)
+      print('Wrote', self.params.output.filename,'and',
+        self.params.output.description_file_name, file = self.logger)
 
     # If we've been asked to do a comparison with another program's output, do it.
     if self.params.comparison_file is not None:
@@ -1307,7 +1364,6 @@ NOTES:
         # Make the Probe2 Phil parameters, then overwrite the ones that were
         # filled in with values that we want for our summaries.
         source = [ m ]
-        tempName = tempfile.mktemp()
         extraArgs = [
           "approach=once",
           "output.format=raw",
@@ -1315,7 +1371,7 @@ NOTES:
           "output.condensed=True",
           "output.count_dots=True"
           ]
-        probeParser = self._MakeProbePhilParser(source, tempName, extraArgs)
+        probeParser = self._MakeProbePhilParser(source, extraArgs)
 
         # Run Probe2
         p2 = probe2.Program(self.data_manager, probeParser.working_phil.extract(),
@@ -1335,7 +1391,6 @@ NOTES:
         myScore = sum(values)
 
         print('My values for Mover', str(m), 'are', values, 'sum is', myScore, file=self.logger)
-        os.unlink(tempName)
 
         #============================================================
         # Find the score for the comparison file.
@@ -1347,7 +1402,6 @@ NOTES:
 
         # Make the Probe2 Phil parameters, then overwrite the ones that were
         # filled in with values that we want for our summaries.
-        tempName = tempfile.mktemp()
         extraArgs = [
           "approach=once",
           "output.format=raw",
@@ -1355,7 +1409,7 @@ NOTES:
           "output.condensed=True",
           "output.count_dots=True"
           ]
-        probeParser = self._MakeProbePhilParser(source, tempName, extraArgs)
+        probeParser = self._MakeProbePhilParser(source, extraArgs)
 
         # Run Probe2
         p2 = probe2.Program(self.data_manager, probeParser.working_phil.extract(),
@@ -1375,7 +1429,6 @@ NOTES:
         otherScore = sum(values)
 
         print('Other values for Mover', str(m), 'are', values, 'sum is', otherScore, file=self.logger)
-        os.unlink(tempName)
 
         #============================================================
         # Add the line to the table, indicating if the other is better.
@@ -1521,10 +1574,7 @@ NOTES:
 
           # Modify the parameters that are passed to include the ones for
           # the harnessed program, including the source and target atom selections.
-          # Specify a temporary file for the output of Probe2, which we'll
-          # delete after running.
-          tempName = tempfile.mktemp()
-          probeParser = self._MakeProbePhilParser(amides, tempName)
+          probeParser = self._MakeProbePhilParser(amides)
 
           # Run the program and append its Kinemage output to ours, deleting
           # the temporary file that it produced.
@@ -1534,7 +1584,6 @@ NOTES:
           p2.overrideModel(self.model)
           dots, kinString = p2.run()
           flipkinText += kinString
-          os.unlink(tempName)
 
         # Write the accumulated Flipkin string to the output file.
         with open(flipkinBase+"-flipnq.kin", "w") as f:
@@ -1645,10 +1694,7 @@ NOTES:
 
           # Modify the parameters that are passed to include the ones for
           # the harnessed program, including the source and target atom selections.
-          # Specify a temporary file for the output of Probe2, which we'll
-          # delete after running.
-          tempName = tempfile.mktemp()
-          probeParser = self._MakeProbePhilParser(hists, tempName)
+          probeParser = self._MakeProbePhilParser(hists)
 
           # Run the program and append its Kinemage output to ours, deleting
           # the temporary file that it produced.
@@ -1657,7 +1703,6 @@ NOTES:
           p2.overrideModel(self.model)
           dots, kinString = p2.run()
           flipkinText += kinString
-          os.unlink(tempName)
 
         # Write the accumulated Flipkin string to the output file.
         with open(flipkinBase+"-fliphis.kin", "w") as f:

@@ -1,3 +1,4 @@
+"""Analyze merging statistics for a reflection file"""
 # LIBTBX_SET_DISPATCHER_NAME phenix.merging_statistics
 # LIBTBX_SET_DISPATCHER_NAME iotbx.merging_statistics
 

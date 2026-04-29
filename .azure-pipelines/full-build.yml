@@ -4,36 +4,19 @@
 jobs:
   - template: ./conda-win.yml
     parameters:
-      vmImage: windows-2019
-      vs: 2019
-      modules: ${{ parameters.modules }}
-  - template: ./conda-win.yml
-    parameters:
       vmImage: windows-2022
       vs: 2022
       modules: ${{ parameters.modules }}
   - template: ./conda-linux.yml
     parameters:
-      distribution: rockylinux
+      distribution: cctbx/rockylinux
       version: [9]
       modules: ${{ parameters.modules }}
       template: ./unix-conda-build.yml
-  # - template: ./conda-linux.yml
-  #   parameters:
-  #     distribution: centos
-  #     version: [7]
-  #     modules: ${{ parameters.modules }}
-  #     template: ./unix-conda-build.yml
   - template: ./conda-linux.yml
     parameters:
-      distribution: rockylinux
+      distribution: cctbx/rockylinux
       version: [8]
-      modules: ${{ parameters.modules }}
-      template: ./unix-conda-build.yml
-  - template: ./conda-linux.yml
-    parameters:
-      distribution: ubuntu
-      version: ['18', '04']
       modules: ${{ parameters.modules }}
       template: ./unix-conda-build.yml
   - template: ./conda-linux.yml
@@ -45,24 +28,24 @@ jobs:
   - template: ./conda-linux.yml
     parameters:
       distribution: ubuntu
-      version: ['20', '04']
+      version: ['24', '04']
       modules: ${{ parameters.modules }}
       template: ./unix-conda-build.yml
   - template: ./conda-osx.yml
     parameters:
-      vmImage: [13]
-      xcode_version: [14, 3, 1]
+      vmImage: [15]
+      xcode_version: [26, 2]
       modules: ${{ parameters.modules }}
       template: ./unix-conda-build.yml
   - template: ./conda-osx.yml
     parameters:
-      vmImage: [12]
-      xcode_version: [13, 4, 1]
+      vmImage: [15]
+      xcode_version: [16, 4]
       modules: ${{ parameters.modules }}
       template: ./unix-conda-build.yml
   - template: ./conda-osx.yml
     parameters:
-      vmImage: [13]
-      xcode_version: [15, 2]
+      vmImage: [14]
+      xcode_version: [15, 4]
       modules: ${{ parameters.modules }}
       template: ./unix-conda-build.yml

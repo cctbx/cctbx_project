@@ -8,7 +8,42 @@ uses the modules in this directory, along with those in mmtbx/hydrogens and mmtb
 and optimize Hydrogens on a model.
 
 **Notes:**
-* Reduce2 uses the Probe2 module, which requires the chem_data modules from Phenix.
+* Reduce2 uses the probe2 module, which requires the chem_data module.
+* As of 7/14/2025, reduce2 is switching to new default parameters for the relative weighting of
+  external contacts (which remains the same) and both hydrogen bonds and collisions (whic are
+  increasing by 10x). This is to work as expected with a radius larger than 0 (it is being switched
+  to 0.25, which matches the probe2 default). The original Reduce had switched to a radius of 0.0
+  and was not considering external contacts; this fixes that without causing hydrogen bonds to be
+  broken. See https://github.com/cctbx/cctbx_project/issues/1072 for details. The defaults for
+  probe2 are not being changed, so its default behavior will be different from reduce2 until the
+  issue can be fully resolved and both set to the same defaults. The probe radius and relative
+  weights can be set in both probe2 and reduce2 using the probe2 Phil parameters if different
+  behavior is desired.
+
+**Installing and running:** *Reduce2* is part of the mmtbx module, which is part of the CCTBX
+distribution. It can be built and run as part of the CCTBX build process. The CCTBX install and
+build processes are described in the README.md file in the root of the CCTBX distribution at
+https://github.com/cctbx/cctbx_project/blob/master/README.md. Reduce2 does require the Monomer
+library described at https://github.com/cctbx/cctbx_project?tab=readme-ov-file#monomer-library
+to be installed. You can download a .conda package from the linked-to releases page and then
+after activating your conda environment, run `conda install -c cctbx cctbx_monomer_library` to install it.
+
+Once the system has been installed and the environment configured,
+the Reduce2 program can be run from the command line as `mmtbx.reduce2`, and the --help or
+--show-defaults options used to see the available options.  Older versions of the program
+require you to set output.description_file_name to specify where descriptive text output
+will be written, current versions set this by default to add a .txt extension rather than
+a .cif or .pdb extension to the output file name.
+
+**Embedding inside other scripts:** The Reduce2 functionality can also be used from
+Python code by importing the mmtbx.reduce module. The hydrogen placement is done using the
+reduce_hydrogen object from mmtbx.hydrogens. The optimization of the hydrogens and other
+movable atoms is done using the mmtbx.reduce.Optimizers module.  Some reinterpretation
+of the model is needed between steps to handle the fact that some atoms are removed and
+others added.  An example of harnessing this behavior can be found in the
+mmtbx/validation/clashscore2.py script, which places hydrogens and optimizes them on
+and already-loaded model file. You can see this in the check_and_add_hydrogen() function
+at https://github.com/cctbx/cctbx_project/blob/a8684546afeb52346e51540d9312f063d86a4c26/mmtbx/validation/clashscore2.py#L587
 
 # C++ Classes
 

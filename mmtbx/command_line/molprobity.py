@@ -1,3 +1,4 @@
+"""Run molprobity"""
 # LIBTBX_SET_DISPATCHER_NAME phenix.molprobity
 # LIBTBX_SET_DISPATCHER_NAME molprobity.molprobity
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
@@ -133,6 +134,7 @@ def run(args,
     program_name="phenix.molprobity",
     ignore_missing_modules=False,
     return_input_objects=False) : # for testing
+  print("\n**Starting %s **\n" %(program_name), file = out)
   rotarama_dir = libtbx.env.find_in_repositories(
     relative_path="chem_data/rotarama_data",
     test=os.path.isdir)
@@ -327,3 +329,4 @@ class result(program_result):
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
+

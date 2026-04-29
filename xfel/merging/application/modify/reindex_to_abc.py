@@ -2,6 +2,9 @@ from __future__ import division
 from xfel.merging.application.worker import worker
 from rstbx.symmetry.constraints import parameter_reduction
 from cctbx import sgtbx
+from cctbx import miller
+from cctbx.crystal import symmetry
+import copy
 
 def reindex_experiments(experiments, cb_op, space_group):
   for experiment in experiments:
@@ -44,5 +47,15 @@ class reindex_to_abc(worker):
     miller_indices = reflections["miller_index"]
     miller_indices_reindexed = change_of_basis_op.apply(miller_indices)
     reflections["miller_index"] = miller_indices_reindexed
+
+    target_unit_cell = self.params.scaling.unit_cell
+    target_space_group_info = self.params.scaling.space_group
+    target_symmetry = symmetry(unit_cell=target_unit_cell, space_group_info=target_space_group_info)
+    target_space_group = target_symmetry.space_group()
+
+    reflections['miller_index_asymmetric'] = copy.deepcopy(reflections['miller_index'])
+    miller.map_to_asu(target_space_group.type(),
+                      not self.params.merging.merge_anomalous,
+                      reflections['miller_index_asymmetric'])
 
     return experiments, reflections

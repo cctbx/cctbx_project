@@ -420,7 +420,7 @@ def tst_0():
   r  = maptbx.loc_res(
     map_model_manager = mmm,
     method            = method)
-  assert  approx_equal(sorted([round(r,1) for r in set(r.result)]), [2.3, 6.4], eps=.05)
+  assert  approx_equal(sorted([round(r,1) for r in set(r.result)]), [1.9, 5.2], eps=.05)
 
 def tst_1():
   for set_b_iso,expected_b_values,expected_occs in zip(

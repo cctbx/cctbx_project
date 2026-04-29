@@ -1,3 +1,4 @@
+"""Viewer for x-ray images"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.image_viewer
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
@@ -25,3 +26,4 @@ def run(args):
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
+

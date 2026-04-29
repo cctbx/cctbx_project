@@ -172,7 +172,7 @@ class info(object):
     from mmtbx import bulk_solvent
     from cctbx.array_family import flex
     if(self.target_name == "twin_lsq_f"):
-      return fmodel.statistics_in_resolution_bins()
+      return fmodel.statistics_in_resolution_bins(max_number_of_bins=n_bins)
     result = []
     target_functor = fmodel.target_functor()
     target_result = target_functor(compute_gradients=False)

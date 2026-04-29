@@ -42,6 +42,7 @@ namespace {
 #endif
       IOTBX_LOC(fp)
       IOTBX_LOC(fdp)
+      IOTBX_LOC(resolution)
       IOTBX_LOC(i_seq)
       IOTBX_LOC(tmp)
       IOTBX_LOC(have_sentinel)
@@ -146,6 +147,15 @@ namespace {
     set_fdp(w_t const& self, double new_fdp)
     {
       self.data->fdp = new_fdp;
+    }
+
+    static double
+    get_resolution(w_t const& self) { return self.data->resolution; }
+
+    static void
+    set_resolution(w_t const& self, double new_resolution)
+    {
+      self.data->resolution = new_resolution;
     }
 
     static unsigned
@@ -298,6 +308,7 @@ namespace {
 #endif
         .def("set_fp", set_fp, (arg("new_fp")), return_self<>())
         .def("set_fdp", set_fdp, (arg("new_fdp")), return_self<>())
+        .def("set_resolution", set_resolution, (arg("new_resolution")), return_self<>())
         .def("set_hetero", set_hetero, (arg("new_hetero")), return_self<>())
         .def("set_serial", set_serial, (arg("new_serial")), return_self<>())
         .def("set_name", set_name, (arg("new_name")), return_self<>())
@@ -326,6 +337,8 @@ namespace {
           make_function(get_fp), make_function(set_fp))
         .add_property("fdp",
           make_function(get_fdp), make_function(set_fdp))
+        .add_property("resolution",
+          make_function(get_resolution), make_function(set_resolution))
         .add_property("i_seq", make_function(get_i_seq))
         .add_property("tmp",
           make_function(get_tmp), make_function(set_tmp))

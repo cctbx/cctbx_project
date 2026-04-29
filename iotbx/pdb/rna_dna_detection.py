@@ -1,3 +1,4 @@
+"""Tools for detection of RNA vs DNA"""
 from __future__ import absolute_import, division, print_function
 from scitbx import matrix
 from libtbx import slots_getstate_setstate
@@ -90,6 +91,8 @@ class atom_name_analysis(slots_getstate_setstate):
       return
     if (tab_offs == 2 and O.c2_o2 == "C2* O2*"):
       O.sub_classification = ""
+    elif (tab_offs == 2 and O.c2_o2 == "C2' O2'"):
+      O.sub_classification = '_mixed'
     elif (tab_offs == 0 and O.c2_o2 == "C2' O2'"):
       O.sub_classification = "v3"
     else:

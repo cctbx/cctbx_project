@@ -16,6 +16,8 @@ def kearsley_rotation(reference_sites, other_sites):
   Added by Peter H. Zwart, Nov 3rd, 2006.
   Converted to C++ by Gabor Bunkoczi, Apr 2008.
   """
+  assert reference_sites.size() == other_sites.size(), "%d != %d" % (
+      reference_sites.size(), other_sites.size())
   return matrix.sqr(superpose_kearsley_rotation(
     reference_sites=reference_sites,
     other_sites=other_sites))

@@ -1,0 +1,110 @@
+# Basic syntax checks
+
+name: clutter_and_syntax
+on: [push, workflow_dispatch]
+
+jobs:
+  check_clutter:
+
+    name: Check for clutter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: ./modules/cctbx_project
+
+      - name: Update GitLab mirror
+        continue-on-error: true
+        if: github.repository == 'cctbx/cctbx_project' && github.ref == 'refs/heads/master'
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.CCIBOT_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          eval `ssh-agent -s | head -2 | tee "/tmp/.ssh-agent-output"`
+          ssh-add ~/.ssh/id_rsa
+          ssh-keyscan -t rsa gitlab.com >> ~/.ssh/known_hosts
+          cd ./modules/cctbx_project
+          git checkout master
+          git pull origin master
+          git remote add gitlab git@gitlab.com:cctbx/cctbx_project.git
+          git fetch gitlab
+          git push -u gitlab master || true
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          channels: conda-forge
+          conda-remove-defaults: "true"
+
+      - name: Base environment info
+        run: |
+          conda info
+          conda list
+
+      - name: Create conda environment
+        run: |
+          source ${CONDA}/etc/profile.d/conda.sh
+          conda create -n test -y -c conda-forge python six future scons setuptools
+          conda activate test
+          python --version
+
+      - name: Set up cctbx
+        run: |
+          source ${CONDA}/etc/profile.d/conda.sh
+          conda activate test
+          mkdir build
+          cd build
+          python ../modules/cctbx_project/libtbx/configure.py libtbx
+          make
+
+      - name: Check for clutter
+        run: |
+          source ./build/setpaths.sh
+          cd ./modules/cctbx_project
+          libtbx.find_clutter --verbose
+
+  check_syntax:
+    if: ${{ always() }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python_version: [3.9, "3.10", 3.11, 3.12, 3.13, "3.14"]
+
+    name: Compiling (Python ${{ matrix.python_version }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: ./modules/cctbx_project
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          channels: conda-forge
+          conda-remove-defaults: "true"
+
+      - name: Base environment info
+        run: |
+          conda info
+          conda list
+
+      - name: Create conda environment
+        run: |
+          source ${CONDA}/etc/profile.d/conda.sh
+          conda create -y -n syntax -c conda-forge python=${{ matrix.python_version }} six future scons setuptools
+          python --version
+
+      - name: Set up cctbx
+        run: |
+          source ${CONDA}/etc/profile.d/conda.sh
+          conda activate syntax
+          mkdir build
+          cd build
+          python ../modules/cctbx_project/libtbx/configure.py libtbx
+          make
+
+      - name: Compile Python files
+        run: |
+          source ./build/setpaths.sh
+          cd ./modules/cctbx_project
+          libtbx.py_compile_all -v .

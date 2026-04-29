@@ -6,6 +6,9 @@ from libtbx.utils import Sorry
 from scitbx.array_family import flex
 from mmtbx.geometry_restraints import base_qm_manager
 
+harkcal = 627.50946900
+bohrang = 0.52918
+
 class orca_manager(base_qm_manager.base_qm_manager):
 
   error_lines = [
@@ -139,18 +142,23 @@ class orca_manager(base_qm_manager.base_qm_manager):
                                )
     self.times.append(time.time()-t0)
 
-  def _input_header(self):
+  def _input_header(self, gradients_only=False):
     standard_options = '''%scf maxiter=500
 
 SOSCFStart 0.00033 # Default value of orbital gradient is 0.0033. Here reduced by a factor of 10.
 
 end
 '''
-    outl = '%s\n! %s %s %s %s\n\n' % (standard_options,
+    addiotnal_options=''
+    ptr=1
+    if gradients_only:
+      ptr=2
+    outl = '%s\n! %s %s %s %s %s\n\n' % (standard_options,
                                        self.method,
                                        self.basis_set,
                                        self.solvent_model,
-                                       ['Opt', 'LooseOpt'][1],
+                                       ['Opt', 'LooseOpt', 'EnGrad'][ptr],
+                                       addiotnal_options,
                                        )
     return outl
 
@@ -168,8 +176,8 @@ end
     outl += '*\n'
     return outl
 
-  def get_input_lines(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False):
-    outl = self._input_header()
+  def get_input_lines(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False, gradients=False):
+    outl = self._input_header(gradients_only=gradients)
     outl += self.get_coordinate_lines(optimise_ligand=optimise_ligand,
                                       optimise_h=optimise_h,
                                       constrain_torsions=constrain_torsions,
@@ -202,23 +210,23 @@ end
       added+=1
     freeze_outl += 'end\nend\n'
     if added: outl+=freeze_outl
-    assert outl.find('Opt')>-1
+    assert outl.find('Opt')>-1 or outl.find('EnGrad')>-1
     return outl
 
-  def get_engrad(self):
-    outl = '! %s %s %s EnGrad\n\n' % (self.method,
-                                      self.basis_set,
-                                      self.solvent_model)
-    outl += self.get_coordinate_lines()
-    if outl in self.energies:
-      self.times.append(0)
-      return self.energies[outl]
-    self.write_input(outl)
-    self.run_cmd()
-    energy, gradients = self.read_engrad_output()
-    self.print_timings(energy)
-    self.energies[outl] = (energy, gradients)
-    return energy, gradients
+  # def get_engrad(self):
+  #   outl = '! %s %s %s EnGrad\n\n' % (self.method,
+  #                                     self.basis_set,
+  #                                     self.solvent_model)
+  #   outl += self.get_coordinate_lines()
+  #   if outl in self.energies:
+  #     self.times.append(0)
+  #     return self.energies[outl]
+  #   self.write_input(outl)
+  #   self.run_cmd()
+  #   energy, gradients = self.read_engrad_output()
+  #   self.print_timings(energy)
+  #   self.energies[outl] = (energy, gradients)
+  #   return energy, gradients
 
   def cleanup(self, level=None, verbose=False):
     if not self.preamble: return

@@ -1,3 +1,145 @@
+2026.3
+======
+
+* Add hydrogens that may not be uniquely defined by geometry
+* Improvements to ligand validation tool
+* Fix bug in adding sequence information to mmCIF files where
+  _entity_poly.entity_id could be overridden
+
+2026.2
+======
+
+* Expand support for variable resolution maps
+* Improve probe2 support for RNA
+* Fixed bug for Boost 1.88 support
+
+2026.1
+======
+
+* Improvements to variable resolution map calculation
+* Fix bug in counting atoms split across chains with the same chain ID
+* Fix bug in reading MRC files with 16-bit floats
+
+2025.12
+=======
+
+* Polder maps: stop when data is twinned
+* mmtbx.table_one: fix bug with twinned data and using model header information
+* Speed up variable resolution map calculation
+
+2025.11
+=======
+
+* Print additional information from DiSCaMB
+* More developments in QM restraints
+
+2025.10
+=======
+
+* Added mmtbx.reduce_cryoem_resolution for creating lower resolution maps
+  from existing maps
+* Initial support for Python 3.14
+* General wxPython syntax updates in wxtbx
+
+2025.9
+======
+
+* Added tool for finding restraint files in installation
+  (mmtbx.where_is_that_cif_file)
+* Improvements to variable resolution map calculation
+
+2025.8
+======
+
+* Added function to find similar ligands via SMILES with RCSB web services
+* Improvements to ligand validation tool (work in progress)
+* Initial integration of aspherical structure factors from DiSCaMB
+
+2025.7
+======
+
+* Added _atom_site.auth_atom_id to mmCIF output
+* Added calculation of a variable resolution map
+* CCTBParser: updated --diff-params to report any incompatible PHIL as unused
+
+2025.6
+======
+
+* Added ability to remove bonds in geometry restraints manager
+* Added forward compatible PDB format for iotbx.cif_as_pdb
+* Improved tool for fixing CaBLAM outliers
+
+2025.5
+======
+
+* Added parameter for user restraints to pdb_interpretation
+* Improved barbed wire analysis, including JSON output
+* Improved consistency of handling models with hybrid36
+
+2025.4
+======
+
+* Improved mmCIF compatibility across programs
+* Updated amino acid residue parentage
+* Updated map preparation so both half-maps and full-maps can be used
+
+2025.3
+======
+
+* Improved mmCIF compatibility across programs
+* Added more intrinsic functions to fable
+* CCTBXParser: show PHIL parameters in default help output
+
+2025.2
+======
+
+* Add peak search to map manager
+* Add water renumbering to pdbtools
+* Update FSC calculation to use different binning
+* Add more searches for RCSB search API
+* CCTBXParser: --diff-params flag can proceed with non-local files
+* DataManager: fix bug where the default type for Miller arrays may not update correctly
+
+2025.1
+======
+
+* Improvements to probe2
+* Fix bug where the scattering table was not kept after selecting in xray_structure
+* Update for changes in RCSB web API
+
+2024.12
+=======
+
+* Added consistency checks for map_model_manager
+* Added tool for finding reference models based on sequence identity
+
+2024.11
+=======
+
+* Added generalized interface for LBFGS minimizer
+* Improved adding of hydrogens near links in Reduce2
+
+2024.10
+=======
+
+* Added support for Python 3.13
+* Improved tools for alternate conformations
+* Added option to download maps from the EMDB to iotbx.fetch_pdb
+* Fix random selection of atoms to consistently select the same number of atoms
+
+2024.9
+======
+
+* Added general minimizer class for LBFGS and LBFGS-B minimizers
+* Enabled linking of modified amino acids for cyclic peptides
+* Added functions for parsing .geo files
+
+2024.8
+======
+
+* Speed improvements to pdb_interpretation
+* DataManager: add sanity check for specified resolution limits
+
 2024.7
 ======
 

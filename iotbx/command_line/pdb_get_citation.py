@@ -1,3 +1,8 @@
+"""Given a PDB ID (and an email address, as required by the NCBI), will attempt
+to identify the PubMed ID of the primary citation for the structure, download
+the article XML from NCBI, and print a bibliography entry.
+"""
+
 # LIBTBX_SET_DISPATCHER_NAME iotbx.pdb.get_citation
 
 from __future__ import absolute_import, division, print_function
@@ -29,7 +34,7 @@ the article XML from NCBI, and print a bibliography entry.
     raise Sorry("BioPython not installed.")
   class _cmdline(iotbx.phil.process_command_line_with_files):
     def process_other(self, arg):
-      if (iotbx.pdb.fetch.looks_like_pdb_id(arg)):
+      if (iotbx.pdb.fetch.valid_pdb_id(arg)):
         return iotbx.phil.parse("""pdb_id=%s""" % arg)
       elif (arg.count("@") == 1):
         return iotbx.phil.parse("""email=\"%s\"""" % arg)

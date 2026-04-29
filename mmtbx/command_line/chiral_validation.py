@@ -1,3 +1,4 @@
+"""Validate chirality"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.chiral_validation
 # LIBTBX_SET_DISPATCHER_NAME molprobity.chiral_validation
@@ -46,3 +47,4 @@ def old_run(args):
 if __name__ == '__main__':
   #run(sys.argv[1:])
   run_program(program_class=chiral_validation.Program, hide_parsing_output=True)
+

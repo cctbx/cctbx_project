@@ -1,3 +1,5 @@
+"""Option parser tools for GUI
+"""
 from __future__ import absolute_import, division, print_function
 from iotbx import crystal_symmetry_from_any
 from cctbx import crystal

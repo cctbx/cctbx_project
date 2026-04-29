@@ -39,8 +39,8 @@ def run(args):
       output_pdb = "v4_truncated_to_ala_"+os.path.basename(file_name)
       if (output_pdb.endswith(".gz")): output_pdb = output_pdb[:-3]
       print("Writing file:", output_pdb)
-      hierarchy.write_pdb_file(
-        file_name=output_pdb,
+      hierarchy.write_pdb_or_mmcif_file(
+        target_filename=output_pdb,
         crystal_symmetry=pdb_obj.crystal_symmetry(),
         append_end=True)
     print()

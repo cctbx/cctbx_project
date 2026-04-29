@@ -79,7 +79,8 @@ class with_bounds(object):
     assert self._map_manager.map_data().accessor().origin()  ==  (0, 0, 0)
     if model is not None:
       assert isinstance(model, mmtbx.model.manager)
-      assert map_manager.is_compatible_model(model)
+      assert map_manager.is_compatible_model(model,
+        require_match_unit_cell_crystal_symmetry=True)
 
     self._force_wrapping = wrapping
     if wrapping is None:
@@ -629,7 +630,8 @@ class around_unique(with_bounds):
     assert resolution is not None
     if model is not None:
       assert isinstance(model, mmtbx.model.manager)
-      assert map_manager.is_compatible_model(model)
+      assert map_manager.is_compatible_model(model,
+        require_match_unit_cell_crystal_symmetry=True)
     if self.map_manager().wrapping():  # map must be entire unit cell
       assert map_manager.unit_cell_grid == map_manager.map_data().all()
 
@@ -1332,9 +1334,10 @@ def shift_and_box_model(model = None,
     sites_cart=sites_cart-col(sites_cart.min())+col(
       (box_cushion,box_cushion,box_cushion))
 
+  box_start=col(sites_cart.min())-col((box_cushion,box_cushion,box_cushion))
   box_end=col(sites_cart.max())+col((box_cushion,box_cushion,box_cushion))
   if not crystal_symmetry:
-    a,b,c=box_end
+    a,b,c = box_end - box_start
     crystal_symmetry=crystal.symmetry((a,b,c, 90,90,90),1)
   phc = ph.deep_copy()
   phc.atoms().set_xyz(sites_cart)

@@ -171,6 +171,13 @@ namespace {
         af::const_ref<angle_proxy> const&))
       angle_deltas,
       (arg("sites_cart"), arg("proxies")));
+    def("angle_deltas",
+      (af::shared<double>(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<angle_proxy> const&,
+        unsigned char))
+      angle_deltas,
+      (arg("sites_cart"), arg("proxies"), arg("origin_id")));
     def("angle_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
@@ -191,6 +198,14 @@ namespace {
         af::const_ref<angle_proxy> const&))
       angle_deltas,
       (arg("unit_cell"), arg("sites_cart"), arg("proxies")));
+    def("angle_deltas",
+      (af::shared<double>(*)(
+        uctbx::unit_cell const&,
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<angle_proxy> const&,
+        unsigned char))
+      angle_deltas,
+      (arg("unit_cell"), arg("sites_cart"), arg("proxies"), arg("origin_id")));
     def("angle_residuals",
       (af::shared<double>(*)(
         uctbx::unit_cell const&,

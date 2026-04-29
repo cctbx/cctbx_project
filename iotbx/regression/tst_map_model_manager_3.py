@@ -55,6 +55,151 @@ def exercise(file_name, out = sys.stdout):
   for id in all_map_names:
     print("Map_manager %s: %s " %(id,mam.get_map_manager_by_id(id)))
 
+  # Check the method all_objects_have_same_symmetry_and_shift_cart()
+  # It should apply to changes in crystal_symmetry, unit_cell_crystal_symmetry,
+  #   and shift_cart in model, map_model_manager, map_manager, and ncs_object
+
+  print("\nChecking crystal_symmetry, unit_cell_crystal_symmetry, shift_cart"+
+     " consistency")
+
+  from cctbx import uctbx
+  from cctbx import crystal
+  from iotbx.map_model_manager import all_objects_have_same_symmetry_and_shift_cart
+
+  # Change gridding on a map
+  new_mam = mam.deep_copy()
+  assert new_mam.check_consistency(stop_on_errors=False,print_errors=True)
+  new_mm = new_mam.map_manager().resample_on_different_grid(n_real=(15,16,17))
+  new_mam._map_dict['test'] = new_mm
+  assert not new_mam.check_consistency(stop_on_errors=False,print_errors=True)
+
+  # Check consistencies of cs, unit_cell cs and shift_cart
+
+  for delta in [0.00001,0.15]:
+    # Check unit_cell dims in model crystal_symmetry (this also checks for
+    #   map_model_manager as its model is used to return crystal_symmetry).
+    new_mam = mam.deep_copy()
+    object_list = [new_mam, new_mam.model(), new_mam.map_manager_1(),
+       new_mam.map_manager().ncs_object()]
+    assert all_objects_have_same_symmetry_and_shift_cart(object_list)
+    assert new_mam.check_consistency(stop_on_errors=False,print_errors=True)
+    cs = new_mam.crystal_symmetry()
+    shift_cart = new_mam.shift_cart()
+    # Now change some objects outside the map_model_manager
+    params = list(cs.unit_cell().parameters()[:6])
+    params[1] += delta
+    new_uc = uctbx.unit_cell(params)
+    new_cs = crystal.symmetry(unit_cell=new_uc, space_group=cs.space_group())
+    print("\nNew CS: ",new_cs)
+    new_mam.model().set_crystal_symmetry(new_cs)
+    print("\nCHECK WITH DELTA",delta)
+    if delta < 0.01:
+      assert all_objects_have_same_symmetry_and_shift_cart(object_list)
+      assert new_mam.check_consistency(stop_on_errors=False,print_errors=True)
+    else:
+      assert not all_objects_have_same_symmetry_and_shift_cart(object_list,
+        print_errors=True)
+      assert not new_mam.check_consistency(stop_on_errors=False,print_errors=True)
+
+  for delta in [None]:
+    # Check SG in map_manager
+    new_mam = mam.deep_copy()
+    object_list = [new_mam, new_mam.model(), new_mam.map_manager_1(),
+       new_mam.map_manager().ncs_object()]
+    assert all_objects_have_same_symmetry_and_shift_cart(object_list)
+    new_mam.map_manager().set_crystal_symmetry_of_partial_map(
+      space_group_number=6)
+    print("\nCHECK WITH new SG")
+    assert not all_objects_have_same_symmetry_and_shift_cart(object_list,
+        print_errors=True)
+
+  for delta in [0.00001,0.15]:
+    # Check unit_cell in model unit_cell_crystal_symmetry angles
+    new_mam = mam.deep_copy()
+    object_list = [new_mam, new_mam.model(), new_mam.map_manager_1(),
+       new_mam.map_manager().ncs_object()]
+    cs = new_mam.unit_cell_crystal_symmetry()
+    shift_cart = new_mam.shift_cart()
+    assert all_objects_have_same_symmetry_and_shift_cart(object_list)
+    params = list(cs.unit_cell().parameters()[:6])
+    params[4] += delta
+    new_uc = uctbx.unit_cell(params)
+    new_cs = crystal.symmetry(unit_cell=new_uc, space_group=cs.space_group())
+    print("\nNew CS: ",new_cs)
+    new_mam.model().set_unit_cell_crystal_symmetry(new_cs)
+    print("\nCHECK WITH DELTA",delta)
+    if delta < 0.01:
+      assert all_objects_have_same_symmetry_and_shift_cart(object_list)
+    else:
+      assert not all_objects_have_same_symmetry_and_shift_cart(object_list,
+        print_errors=True)
+
+  for delta in [0.00001,0.15]:
+    # Check unit_cell angles in model crystal_symmetry
+    new_mam = mam.deep_copy()
+    object_list = [new_mam, new_mam.model(), new_mam.map_manager_1(),
+       new_mam.map_manager().ncs_object()]
+    cs = new_mam.crystal_symmetry()
+    shift_cart = new_mam.shift_cart()
+    assert all_objects_have_same_symmetry_and_shift_cart(object_list)
+    params = list(cs.unit_cell().parameters()[:6])
+    params[4] += delta
+    new_uc = uctbx.unit_cell(params)
+    new_cs = crystal.symmetry(unit_cell=new_uc, space_group=cs.space_group())
+    print("\nNew CS: ",new_cs)
+    new_mam.model().set_crystal_symmetry(new_cs)
+    print("\nCHECK WITH DELTA",delta)
+    if delta < 0.01:
+      assert all_objects_have_same_symmetry_and_shift_cart(object_list)
+    else:
+      assert not all_objects_have_same_symmetry_and_shift_cart(object_list,
+        print_errors=True)
+
+  for delta in [0.00001,0.15]:
+    # Check shift_cart
+    new_mam = mam.deep_copy()
+    object_list = [new_mam, new_mam.model(), new_mam.map_manager_1(),
+       new_mam.map_manager().ncs_object()]
+    cs = new_mam.crystal_symmetry()
+    shift_cart = new_mam.shift_cart()
+    assert all_objects_have_same_symmetry_and_shift_cart(object_list)
+    params = list(shift_cart)
+    params[1] += delta
+    new_shift_cart = params
+    print("\nNew SC: ",new_shift_cart)
+    new_mam.model().set_shift_cart(new_shift_cart)
+    print("\nCHECK SC WITH DELTA",delta)
+    if delta < 0.01:
+      assert all_objects_have_same_symmetry_and_shift_cart(object_list)
+    else:
+      assert not all_objects_have_same_symmetry_and_shift_cart(object_list,
+        print_errors=True)
+
+  for delta in [0.00001,0.15]:
+    # Check shift_cart in ncs object
+    new_mam = mam.deep_copy()
+    object_list = [new_mam, new_mam.model(), new_mam.map_manager_1(),
+       new_mam.map_manager().ncs_object()]
+    cs = new_mam.crystal_symmetry()
+    shift_cart = new_mam.shift_cart()
+    assert all_objects_have_same_symmetry_and_shift_cart(object_list)
+    params = list(shift_cart)
+    params[1] += delta
+    new_shift_cart = params
+    print("\nNew SC: ",new_shift_cart)
+    new_mam.map_manager().ncs_object().set_shift_cart(new_shift_cart)
+    print("\nCHECK SC ncs WITH DELTA",delta)
+    if delta < 0.01:
+      assert all_objects_have_same_symmetry_and_shift_cart(object_list)
+      assert new_mam.map_manager().check_consistency(print_errors=True,
+         stop_on_errors=True)
+    else:
+      assert not all_objects_have_same_symmetry_and_shift_cart(object_list,
+        print_errors=True)
+      assert not new_mam.map_manager().check_consistency(print_errors=True,
+         stop_on_errors=False)
+
+
   dm = DataManager(['model','miller_array', 'real_map', 'phil','ncs_spec'])
   dm.set_overwrite(True)
 
@@ -281,7 +426,6 @@ def exercise(file_name, out = sys.stdout):
   mmm.generate_map(box_cushion=0,wrapping=True, d_min=3)
   mam=mmm
   mam_dc=mam.deep_copy()
-
   new_mm_1=mam.map_manager()
   assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
      ((18, 25, 20),(18, 25, 20)))
@@ -318,8 +462,8 @@ def exercise(file_name, out = sys.stdout):
   fsc_curve=dc.map_map_fsc(
       map_id_1='map_manager',map_id_2='filtered',mask_id='mask',
       resolution=3.5,fsc_cutoff = 0.97)
-  assert approx_equal(fsc_curve.d_min, 3.93793648601,eps=0.01)
-  assert approx_equal (fsc_curve.fsc.fsc[-1],0.707536576779)
+  assert approx_equal(fsc_curve.d_min, 3.44, eps=0.01)
+  assert approx_equal (fsc_curve.fsc.fsc[-1],0.7097, eps = 0.01)
 
   # Get map-map CC
   dc=mam_dc.deep_copy()

@@ -1,3 +1,4 @@
+"""Calculate FAB elbow angle"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.fab_elbow_angle
 from mmtbx.utils.fab_elbow_angle import fab_elbow_angle
@@ -80,3 +81,4 @@ def run(args, log=sys.stdout):
 
 if __name__ == "__main__":
   run(args=sys.argv[1:])
+

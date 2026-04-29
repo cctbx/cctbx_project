@@ -1,4 +1,3 @@
-
 """
 This module provides a generic frontend to all of the reflection file formats
 supported in ``iotbx``.  Note that this module can also be used indirectly via

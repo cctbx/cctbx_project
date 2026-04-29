@@ -1,3 +1,4 @@
+"""Tool to find H bonds in an atomic model"""
 from __future__ import division, print_function
 from libtbx.program_template import ProgramTemplate
 import mmtbx.nci.hbond

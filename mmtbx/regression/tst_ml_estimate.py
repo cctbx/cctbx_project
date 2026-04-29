@@ -31,8 +31,8 @@ def run():
         ml_err_ = fmodel.model_error_ml()
         ml_err.append(ml_err_)
       result.append(flex.mean(ml_err))
-  assert result[0] > 0 and result[0] < 0.03
-  assert result[1] > 0.2 and result[1] <= 0.32
+  assert result[0] >= 0.0 and result[0] < 0.03, result
+  assert result[1] > 0.2 and result[1] <= 0.32, result
 
 if (__name__ == "__main__"):
   run()

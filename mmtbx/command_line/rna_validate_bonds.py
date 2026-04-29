@@ -1,3 +1,4 @@
+"""Validate bonds in RNA"""
 # LIBTBX_SET_DISPATCHER_NAME phenix.rna_validate_bonds
 # LIBTBX_SET_DISPATCHER_NAME molprobity.rna_validate_bonds
 
@@ -39,3 +40,4 @@ def run(args, out=sys.stdout, quiet=False):
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
+

@@ -1,3 +1,4 @@
+"""Helper tools for auto-sharpening"""
 from __future__ import absolute_import, division, print_function
 
 import sys,os
@@ -15,18 +16,10 @@ from six.moves import zip
 from scitbx import matrix
 from cctbx import adptbx
 
-def write_mtz(ma=None,phases=None,file_name=None):
-  mtz_dataset=ma.as_mtz_dataset(column_root_label="FWT")
-  mtz_dataset.add_miller_array(miller_array=phases,column_types="P", column_root_label="PHWT")
-  mtz_dataset.mtz_object().write(file_name=file_name)
-
-# XXX copied these from cctbx.miller; made small change to catch weird case
-#  where normalizations are negative.  Just multiply these *-1 and it seems to
-#  close to what we want. Figure this out later...
-# XXX Also set means=1 not mean square = 1
-
 def amplitude_quasi_normalisations(ma, d_star_power=1, set_to_minimum=None,
-    pseudo_likelihood=False):  # Used for pseudo-likelihood calculation
+    pseudo_likelihood=False):
+    """Calculations for normalizing miller arrays
+    for pseudo-likelihood calculation"""
     epsilons = ma.epsilons().data().as_double()
     mean_f_sq_over_epsilon = flex.double()
     for i_bin in ma.binner().range_used():
@@ -57,6 +50,7 @@ def amplitude_quasi_normalisations(ma, d_star_power=1, set_to_minimum=None,
 
 def quasi_normalize_structure_factors(ma, d_star_power=1, set_to_minimum=None,
      pseudo_likelihood=False):
+    """Normalize miller arrays for likelihood calculation"""
     normalisations = amplitude_quasi_normalisations(ma, d_star_power,
        set_to_minimum=set_to_minimum,pseudo_likelihood=pseudo_likelihood)
     if pseudo_likelihood:
@@ -68,7 +62,7 @@ def quasi_normalize_structure_factors(ma, d_star_power=1, set_to_minimum=None,
     return array(ma, q)
 
 def get_array(file_name=None,labels=None):
-
+  """Read from a reflection file. Used in testing these tools"""
   print("Reading from %s" %(file_name))
   from iotbx import reflection_file_reader
   reflection_file = reflection_file_reader.any_reflection_file(
@@ -97,6 +91,7 @@ def get_array(file_name=None,labels=None):
 
 
 def get_amplitudes(args):
+  """Read in map coefficients or amplitudes and sharpen, used in testing"""
   if not args or 'help' in args or '--help' in args:
     print("\nsharpen.py")
     print("Read in map coefficients or amplitudes and sharpen")
@@ -123,8 +118,8 @@ def get_amplitudes(args):
 
 def get_effective_b_values(d_min_ratio=None,resolution_dependent_b=None,
     resolution=None):
-  # Return effective b values at sthol2_1 2 and 3
-  # see adjust_amplitudes_linear below
+  """Return effective b values at sthol2_1 2 and 3
+  see adjust_amplitudes_linear below """
 
   d_min=resolution*d_min_ratio
   sthol2_2=0.25/resolution**2
@@ -152,12 +147,12 @@ def get_effective_b_values(d_min_ratio=None,resolution_dependent_b=None,
 
 def adjust_amplitudes_linear(f_array,b1,b2,b3,resolution=None,
     d_min_ratio=None):
-  # do something to the amplitudes.
-  #   b1=delta_b at midway between d=inf and d=resolution,b2 at resolution,
-  #   b3 at d_min (added to b2)
-  # pseudo-B at position of b1= -b1/sthol2_2= -b1*4*resolution**2
-  #  or...b1=-pseudo_b1/(4*resolution**2)
-  #  typical values of say b1=1 at 3 A -> pseudo_b1=-4*9=-36
+  """do something to the amplitudes.
+  b1=delta_b at midway between d=inf and d=resolution,b2 at resolution,
+  b3 at d_min (added to b2)
+  pseudo-B at position of b1= -b1/sthol2_2= -b1*4*resolution**2
+  or...b1=-pseudo_b1/(4*resolution**2)
+  typical values of say b1=1 at 3 A -> pseudo_b1=-4*9=-36 """
 
   data_array=f_array.data()
   sthol2_array=f_array.sin_theta_over_lambda_sq()
@@ -193,6 +188,8 @@ def get_model_map_coeffs_normalized(pdb_hierarchy=None,
    target_b_iso_model_scale=0,
    target_b_iso_ratio = 5.9,  # empirical, see params for segment_and_split_map
    out=sys.stdout):
+  """define Wilson B for the model, generate model map coeffs,
+      and normalize the model-map coefficients"""
   if not pdb_hierarchy: return None
   if not si:
     from cctbx.maptbx.segment_and_split_map import sharpening_info
@@ -200,7 +197,6 @@ def get_model_map_coeffs_normalized(pdb_hierarchy=None,
      target_b_iso_model_scale=0,
      target_b_iso_ratio = target_b_iso_ratio,
      n_bins=n_bins)
-  # define Wilson B for the model
   if overall_b is None:
     if si.resolution:
       overall_b=si.get_target_b_iso()*si.target_b_iso_model_scale
@@ -237,6 +233,7 @@ def get_model_map_coeffs_normalized(pdb_hierarchy=None,
   return model_map_coeffs_normalized
 
 def get_b_eff(si=None,out=sys.stdout):
+  """Get value of effective B factor from si object"""
   if si.rmsd is None:
     b_eff=None
   else:
@@ -247,7 +244,8 @@ def get_b_eff(si=None,out=sys.stdout):
 
 def cc_fit(s_value_list=None,scale=None,value_zero=None,baseline=None,
      scale_using_last=None):
-  # for scale_using_last, fix final value at zero
+  """Fit CC values to simple exponential.
+    For scale_using_last, fix final value at zero"""
   fit=flex.double()
   s_zero=s_value_list[0]
   for s in s_value_list:
@@ -257,6 +255,7 @@ def cc_fit(s_value_list=None,scale=None,value_zero=None,baseline=None,
   return fit
 
 def get_baseline(scale=None,scale_using_last=None,max_cc_for_rescale=None):
+  """Estimate baseline for exponential fit"""
   if not scale_using_last:
     return 0
   else:
@@ -268,9 +267,9 @@ def get_baseline(scale=None,scale_using_last=None,max_cc_for_rescale=None):
 
 def fit_cc(cc_list=None,s_value_list=None,
     scale_min=None,scale_max=None,n_tries=None,scale_using_last=None):
-  # find value of scale in range scale_min,scale_max that minimizes rms diff
-  # between cc_list and cc_list[0]*exp(-scale*(s_value-s_value_list[0]))
-  # for scale_using_last, require it to go to zero at end
+  """find value of scale in range scale_min,scale_max that minimizes rms diff
+  between cc_list and cc_list[0]*exp(-scale*(s_value-s_value_list[0]))
+  for scale_using_last, require it to go to zero at end """
 
   best_scale=None
   best_rms=None
@@ -289,8 +288,10 @@ def fit_cc(cc_list=None,s_value_list=None,
 def get_fitted_cc(cc_list=None,s_value_list=None, cc_cut=None,
    scale_using_last=None,keep_cutoff_point=False,force_scale_using_last=False,
    cutoff_after_last_high_point = False):
-  # only do this if there is some value of s where cc is at least 2*cc_cut or
-  #  (1-c_cut/2), whichever is smaller
+  """Alternative fit to CC values.
+  only do this if there is some value of s where cc is at least 2*cc_cut or
+  (1-c_cut/2), whichever is smaller. """
+
   min_cc=min(2*cc_cut,1-0.5*cc_cut)
   if cc_list.min_max_mean().max < min_cc and (not force_scale_using_last):
     return cc_list
@@ -348,12 +349,13 @@ def get_fitted_cc(cc_list=None,s_value_list=None, cc_cut=None,
 def estimate_cc_star(cc_list=None,s_value_list=None, cc_cut=None,
     scale_using_last=None,
     keep_cutoff_point=False):
-  # cc ~ sqrt(2*half_dataset_cc/(1+half_dataset_cc))
-  # however for small cc the errors are very big and we think cc decreases
-  #  rapidly towards zero once cc is small
-  # So find value of s_value_zero that gives cc about cc_cut...for
-  #   s_value >s_value_zero use fit of cc_zero * exp(-falloff*(s_value-s_value_zero))
-  #  for scale_using_last set: subtract off final values so it goes to zero.
+  """Estimate value of CC* (True map correlation)
+  cc ~ sqrt(2*half_dataset_cc/(1+half_dataset_cc))
+  however for small cc the errors are very big and we think cc decreases
+  rapidly towards zero once cc is small
+  So find value of s_value_zero that gives cc about cc_cut...for
+  s_value >s_value_zero use fit of cc_zero * exp(-falloff*(s_value-s_value_zero))
+  for scale_using_last set: subtract off final values so it goes to zero."""
 
   fitted_cc=get_fitted_cc(
     cc_list=cc_list,s_value_list=s_value_list,cc_cut=cc_cut,
@@ -370,13 +372,13 @@ def estimate_cc_star(cc_list=None,s_value_list=None, cc_cut=None,
 
 def rescale_cc_list(cc_list=None,scale_using_last=None,
     max_cc_for_rescale=None):
+  """Rescale CC values by replacing cc with (cc-baseline)/(1-baseline)"""
   baseline=get_baseline(scale=cc_list,
       scale_using_last=scale_using_last,
       max_cc_for_rescale=max_cc_for_rescale)
   if baseline is None:
      return cc_list,baseline
 
-  # replace cc with (cc-baseline)/(1-baseline)
   scaled_cc_list=flex.double()
   for cc in cc_list:
     scaled_cc_list.append((cc-baseline)/(1-baseline))
@@ -389,6 +391,7 @@ def get_calculated_scale_factors(
       cc_list = None,
       dv = None,
       uc = None):
+    """Calculate expected scale factors from s_value_list and cc_list"""
     recip_space_vectors = flex.vec3_double()
     scale_values = flex.double()
     original_scale_values = flex.double()
@@ -423,7 +426,8 @@ def get_rms_fo_values(fo = None, direction_vectors = None, d_avg = None,
        aniso_scale_factor_array = None,
      i_bin = None,
      first_bin = None):
-    '''  For first bin everything is just the average'''
+    '''Estimate rms Fo values along direction vectors.
+       For first bin everything is just the average'''
 
     abs_fo_data = flex.abs(fo.data())
     sqr_fo = fo.customized_copy(data=flex.pow2(abs_fo_data))
@@ -896,6 +900,7 @@ def calculate_fsc(**kw):
 
 def get_apply_aniso_dict_by_dv(direction_vectors,
     f_array, aniso_scale_factor_as_u_cart):
+  """Calculate anisotropic values to apply for each direction vector"""
   s_value_list = flex.double()
   dsd = f_array.d_spacings().data()
   for i_bin in f_array.binner().range_used():
@@ -933,6 +938,7 @@ def get_apply_aniso_dict_by_dv(direction_vectors,
 
 def get_aniso_scale_factor_array(fo_map,
    aniso_scale_factor_as_u_cart):
+  """Apply anisotropic scale factor"""
   scale_values_array = fo_map.customized_copy(
        data = flex.double(fo_map.size(),1.))
   u_star= adptbx.u_cart_as_u_star(
@@ -978,7 +984,32 @@ def analyze_anisotropy(
   update_scale_values_to_match_s_matrix = False,
   update_scale_values_to_match_qq_values= True,
   out = sys.stdout):
+  """Analyze anisotropy in a map.
 
+  Define:
+  F1a_obs = rmsFc(|s|) * Ao(|s|) * (A(s) * F1a + B(s) * s1)
+  ssqr = rms(s1)**2 = ssqr(|s|)
+  At(|s|)  = rmsFc(|s|)
+
+  Then we can ssqr(s) as:
+  ssqr(|s|), ssqr(s)  = (1/CC_half(s)) - 1  # s**2, overall and  by direction
+  rmsFo(|s|), rmsFo(s)  # rms F obs (mean of half maps) overall and by direction
+
+  Define D(s), D(|s|):
+  D(s) = 1./sqrt(1 +  0.5* ssqr(s))
+
+  These can be used to calculate the anisotropy values A(s) and B(s):
+  A(s) = (rmsFo(s)/rmsFo(|s|))*sqrt((1 +  0.5* ssqr(|s|))/(1 +  0.5* ssqr(s)))
+  B(s) = A(s) * sqrt (ssqr(s) /ssqr(|s|))
+
+  Ao(|s|)  = rmsFo(|s|) / (rmsFc(|s|) * sqrt(1 +  0.5* ssqr(|s|)))
+    # overall true fall-off
+
+  The scale factor to apply to Fobs is:
+  Q(s) = (rmsFc(|s|)/rmsFo(s))  * sqrt(1 +  0.5 * ssqr(s))/(1 + ssqr(s))
+
+  Normalize these to Q(s=0).
+  """
   print ("\n",79*"=","\nAnalyzing anisotropy","\n",79*"=", file = out)
 
   cc_b_cart = get_overall_anisotropy(
@@ -1060,31 +1091,6 @@ def analyze_anisotropy(
       aniso_info = aniso_info,
       out = out)
 
-  """
-  Define:
-  F1a_obs = rmsFc(|s|) * Ao(|s|) * (A(s) * F1a + B(s) * s1)
-  ssqr = rms(s1)**2 = ssqr(|s|)
-  At(|s|)  = rmsFc(|s|)
-
-  Then we can ssqr(s) as:
-  ssqr(|s|), ssqr(s)  = (1/CC_half(s)) - 1  # s**2, overall and  by direction
-  rmsFo(|s|), rmsFo(s)  # rms F obs (mean of half maps) overall and by direction
-
-  Define D(s), D(|s|):
-  D(s) = 1./sqrt(1 +  0.5* ssqr(s))
-
-  These can be used to calculate the anisotropy values A(s) and B(s):
-  A(s) = (rmsFo(s)/rmsFo(|s|))*sqrt((1 +  0.5* ssqr(|s|))/(1 +  0.5* ssqr(s)))
-  B(s) = A(s) * sqrt (ssqr(s) /ssqr(|s|))
-
-  Ao(|s|)  = rmsFo(|s|) / (rmsFc(|s|) * sqrt(1 +  0.5* ssqr(|s|)))
-    # overall true fall-off
-
-  The scale factor to apply to Fobs is:
-  Q(s) = (rmsFc(|s|)/rmsFo(s))  * sqrt(1 +  0.5 * ssqr(s))/(1 + ssqr(s))
-
-  Normalize these to Q(s=0).
-  """
 
   scale_factor_info = group_args(
     group_args_type = """
@@ -1117,7 +1123,7 @@ def analyze_anisotropy(
 
 def estimate_s_matrix(aniso_info):
 
-  # Estimate errors and calculate A,B,D S and Q matrices
+  """Estimate errors and calculate A,B,D S and Q matrices"""
 
   aniso_info = get_starting_sd_info(
     aniso_info = aniso_info,)
@@ -1190,6 +1196,9 @@ def estimate_s_matrix(aniso_info):
 def get_overall_anisotropy(overall_si,
   n_bins_use,
   out = sys.stdout):
+  """Estimate overall fall-off with resolution of data
+    and corrections for it including uncertainties"""
+
   print("\nEstimating overall fall-off with resolution of data"+
     " and correction including uncertainties", file = out)
 
@@ -1250,6 +1259,8 @@ def get_aniso_info(
     out = sys.stdout):
 
   """
+  Calculate anisotropic information for an array.
+
   ssqr(s) = (1/CC_half(s) - 1)  ...along any direction s
   Ao(|s|)**2 = rmsFobs(s*)**2 * (1 + 0.5*ssqr(s*))    ...along s*
 
@@ -1416,7 +1427,7 @@ def get_aniso_info(
 
 def get_starting_sd_info(aniso_info = None):
 
-  # Try to get variances of aa, bb values within each resolution bin
+  """Try to get variances of aa, bb values within each resolution bin"""
   sd_ss = flex.double()
   for i in range(aniso_info.n_bins):
     ss_in_bin = flex.double()
@@ -1443,6 +1454,9 @@ def get_calc_values_with_dv_weighting(
    b_cart,
    direction_vector_k_list = None,
    apply_b = None):
+  """Calculate anisotropic scale factors in each direction dv
+      that removes anisotropic b_cart from data, applying weighting
+      depending on the direction dv"""
 
   if direction_vector_k_list is None:
     direction_vector_k_list = list(range(aniso_info.n_dv))
@@ -1478,7 +1492,8 @@ def get_calc_values(
    use_dv_weighting = None,
    direction_vector_k_list = None,
    apply_b = None):
-
+  """Calculate anisotropic scale factors in each direction dv
+      that removes anisotropic b_cart from data"""
   if use_dv_weighting is None:
     use_dv_weighting = aniso_info.use_dv_weighting
   if use_dv_weighting:
@@ -1508,9 +1523,9 @@ def get_calc_values(
 
 def update_sd_values(aniso_info):
 
-  # Now update error estimates using calculated values as reference
-  # Try to get variances of aa, bb values within each resolution bin
-  #
+  """Update error estimates using calculated values as reference
+  Try to get variances of aa, bb values within each resolution bin"""
+
   delta_ss = flex.double(aniso_info.n_bins,0)
   for k in range(aniso_info.n_dv):
     delta_ss += flex.pow2(
@@ -1530,6 +1545,8 @@ def get_scale_from_aniso_b_cart(f_array = None,
     indices = None,
     b_cart = None,
     apply_b = False):
+  """Calculate anisotropic scale factor that removes anisotropic b_cart from
+  data"""
   scale_values_array = f_array.customized_copy(
     data = flex.double(indices.size(),1),
     indices = indices)
@@ -1606,7 +1623,7 @@ def get_any_list_from_any(
    use_dv_weighting = None,
    direction_vector_k = None):
   '''
-  calculate estimated amplitude fall-off along this direction vector vs sthol2
+  Calculate estimated amplitude fall-off along this direction vector vs sthol2
   Value of any_matrix = A(s) (any anisotropic tensor)
   '''
 
@@ -1626,7 +1643,7 @@ def display_scale_values(
     n_display=None,
     values_by_dv = None,
     out = sys.stdout):
-
+  """Display scale values as function of direction vectors"""
   for k in range(min(aniso_info.n_dv,n_display)):
     print("  %4s " %(k+1), file = out, end = "")
   print("", file = out)
@@ -1646,7 +1663,7 @@ def get_aniso_from_scale_values(
    sd_values = None,
    b_cart = None,
    ):
-
+  """Estimate anistropy from scale values"""
   # If nothing present yet,
   #   Get a first cut for aniso_obj.b_cart with analyze_aniso
   if not b_cart:
@@ -1682,6 +1699,8 @@ def get_aniso_from_scale_values(
   return b_cart
 
 class aniso_refinery:
+  """Refine anisotropic parameters to match scale factors along direction
+   vectors dv. Specific for tools in this file"""
   def __init__(self,
     aniso_info,
     b_cart,
@@ -1976,6 +1995,7 @@ class iso_refinery(aniso_refinery):
 
 def calculate_kurtosis(ma,phases,b,resolution,n_real=None,
     d_min_ratio=None):
+  """Calculate the kurtosis of a map"""
   map_data=get_sharpened_map(ma,phases,b,resolution,n_real=n_real,
   d_min_ratio=d_min_ratio)
   return get_kurtosis(map_data.as_1d())
@@ -1991,7 +2011,8 @@ def get_aniso_obj_from_direction_vectors(
         expected_rms_fc_list = None,
         invert_in_scaling = False,
         ):
-
+      """Calculate anisotropic information from direction vectors and
+         a list of CC values or expected rms FC values """
       scale_values = flex.double()
       indices = flex.miller_index()
       extra_b = -15.  # Just so ml scaling gives about the right answer for
@@ -2033,6 +2054,7 @@ def get_aniso_obj_from_direction_vectors(
 
 def get_resolution_for_aniso(s_value_list=None, si_list=None,
     minimum_ratio = 0.05):
+  """Estimate a reasonable resolution to use for anisotropic calculations"""
   highest_d_min = None
   for si in si_list:
     first_rms_fo = None
@@ -2048,8 +2070,8 @@ def get_resolution_for_aniso(s_value_list=None, si_list=None,
   return highest_d_min
 
 def remove_values_if_necessary(f_values,max_ratio=100, min_ratio=0.01):
-  # Make sure values are within a factor of 100 of low_res ones...if they are
-  #  not it was probably something like zero values or near-zero values
+  """Make sure values are within a factor of 100 of low_res ones...if they are
+  not it was probably something like zero values or near-zero values"""
   f_values=flex.double(f_values)
   low_res = f_values[:3].min_max_mean().mean
   new_values=flex.double()
@@ -2115,6 +2137,7 @@ def smooth_values(cc_values, max_relative_rms=10, n_smooth = None,
 
 
 def relative_rms(cc_values):
+  """Calculate relative rms of CC values"""
   diffs = cc_values[:-1] - cc_values[1:]
   avg_delta = abs(diffs.min_max_mean().mean)
   rms = diffs.sample_standard_deviation()
@@ -2144,7 +2167,8 @@ def complete_cc_analysis(
        expected_ssqr_list,
        overall_si,
        out):
-
+  """Analyze CC values as function of direction vectors. Return
+    an si object with this analysis"""
   if scale_using_last: # rescale to give final value average==0
     cc_list,baseline=rescale_cc_list(
        cc_list=cc_list,scale_using_last=scale_using_last,
@@ -2274,7 +2298,7 @@ def complete_cc_analysis(
   return si
 
 def get_sel_para(f_array, direction_vector, minimum_dot = 0.70):
-    # get selections based on |dot(normalized_indices, direction_vector)|
+    """get selections based on |dot(normalized_indices, direction_vector)|"""
     u = f_array.unit_cell()
     rcvs = u.reciprocal_space_vector(f_array.indices())
     norms = rcvs.norms()
@@ -2285,6 +2309,7 @@ def get_sel_para(f_array, direction_vector, minimum_dot = 0.70):
 
 def get_normalized_weights_para(f_array,direction_vectors, dv,
     include_all_in_lowest_bin = None):
+    """Get normalized weights parallel to direction vectors dv"""
 
     sum_weights = flex.double(f_array.size(),0)
     current_weights = None
@@ -2303,6 +2328,7 @@ def get_weights_para(f_array, direction_vector,
        very_high_dot = 0.9,
        pre_factor_scale= 10,
        include_all_in_lowest_bin = None):
+    """Get weights parallel to direction vectors dv"""
     u = f_array.unit_cell()
     rcvs = u.reciprocal_space_vector(f_array.indices())
     norms = rcvs.norms()
@@ -2335,6 +2361,7 @@ def get_weights_para(f_array, direction_vector,
     return weights
 
 def get_nearest_lattice_points(unit_cell, reciprocal_space_vectors):
+  """Return lattice points nearest each of a set of reciprocal-space vectors"""
   lattice_points=flex.vec3_double()
   v = matrix.sqr(unit_cell.fractionalization_matrix()).inverse()
   for x in reciprocal_space_vectors:
@@ -2358,7 +2385,8 @@ def get_target_scale_factors(
      maximum_scale_factor = None,
      b_eff = None,
      out = sys.stdout):
-
+  """Estimate target scale factors and return a group_args object
+   containing them"""
 
   weighted_cc = 0
   weighted = 0
@@ -2436,7 +2464,8 @@ def get_target_scale_factors(
 def get_effective_b(values = None,
       sthol2_values = None,
        n_bins_use = None):
-
+  """Estimate effective B corresponding to falloff of a set of values at
+   sin**2(theta)/lambda**2 values"""
   ir = iso_refinery(
     values,
     sthol2_values,
@@ -2460,7 +2489,9 @@ def get_effective_b(values = None,
 
 
 def get_b_calc( b_value, sthol2_values, values, n_bins_use = None):
-  ''' if n_bins_use is set, just use that many for rms value'''
+  '''Calculate values using b_value and sthol2_values, normalize to
+   first element of values.
+   If n_bins_use is set, just use that many for rms value'''
   import math
   sum= 0.
   sumx= 0.
@@ -2495,10 +2526,11 @@ def analyze_aniso(f_array=None,map_coeffs=None,b_iso=None,resolution=None,
      get_remove_aniso_object=True,
      invert = False,
      remove_aniso=None, aniso_obj=None, out=sys.stdout):
-  # optionally remove anisotropy and set all directions to mean value
-  #  return array and analyze_aniso_object
-  #  resolution can be None, b_iso can be None
-  #  if remove_aniso is None, just analyze and return original array
+  """Analyze anisotropy in f_array or map_coeffs.
+     Optionally remove anisotropy and set all directions to mean value.
+  return array and analyze_aniso_object
+  resolution can be None, b_iso can be None
+  if remove_aniso is None, just analyze and return original array"""
 
   if map_coeffs:  # convert to f and apply
     from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
@@ -2535,12 +2567,12 @@ def scale_amplitudes(model_map_coeffs=None,
     map_calculation=True,
     verbose=False,
     out=sys.stdout):
-  # Figure out resolution_dependent sharpening to optimally
-  #  match map and model. Then apply it as usual.
-  #  if second_half_map_coeffs instead of model,
-  #     use second_half_map_coeffs same as
-  #    normalized model map_coeffs, except that the target fall-off should be
-  #    skipped (could use fall-off based on a dummy model...)
+  """Figure out resolution_dependent sharpening to optimally
+  match map and model. Then apply it as usual.
+  if second_half_map_coeffs instead of model,
+  use second_half_map_coeffs same as
+  normalized model map_coeffs, except that the target fall-off should be
+  skipped (could use fall-off based on a dummy model...)"""
 
   if model_map_coeffs and (
       not first_half_map_coeffs or not second_half_map_coeffs):
@@ -2631,6 +2663,8 @@ def apply_target_scale_factors(f_array=None,phases=None,
    resolution=None,target_scale_factors=None,
    n_real=None,
    return_map_coeffs=None,out=sys.stdout):
+    """Apply target_scale_factors to f_array.  Returns map_and_b object
+    with map_data and starting and final b_iso values. """
     from cctbx.maptbx.segment_and_split_map import get_b_iso
     f_array_b_iso=get_b_iso(f_array,d_min=resolution)
     scale_array=f_array.binner().interpolate(
@@ -2649,7 +2683,7 @@ def apply_target_scale_factors(f_array=None,phases=None,
     return map_and_b_object(map_data=map_data,starting_b_iso=f_array_b_iso,
       final_b_iso=scaled_f_array_b_iso)
 def calculate_map(map_coeffs=None,crystal_symmetry=None,n_real=None):
-
+  """Calculate a map from map_coeffs and crystal_symmetry"""
   if crystal_symmetry is None: crystal_symmetry=map_coeffs.crystal_symmetry()
   from cctbx.development.create_models_or_maps import get_map_from_map_coeffs
   map_data=get_map_from_map_coeffs(
@@ -2658,6 +2692,8 @@ def calculate_map(map_coeffs=None,crystal_symmetry=None,n_real=None):
 
 def get_sharpened_map(ma=None,phases=None,b=None,resolution=None,
     n_real=None,d_min_ratio=None):
+  """Calculate a sharpened map from amplitudes in ma, the values in b,
+   and phases"""
   assert n_real is not None
   sharpened_ma=adjust_amplitudes_linear(ma,b[0],b[1],b[2],resolution=resolution,
      d_min_ratio=d_min_ratio)
@@ -2666,6 +2702,8 @@ def get_sharpened_map(ma=None,phases=None,b=None,resolution=None,
   return map_data
 
 def calculate_match(target_sthol2=None,target_scale_factors=None,b=None,resolution=None,d_min_ratio=None,rmsd=None,fraction_complete=None):
+  """Calculate residual between target_scale_factors and those calculated
+   using effective b values sthol2_1 2 and 3"""
 
   if fraction_complete is None:
     pass # XXX not implemented for fraction_complete
@@ -2727,7 +2765,7 @@ def calculate_adjusted_sa(ma,phases,b,
     fraction_occupied=None,
     wrapping=None,
     n_real=None):
-
+  """Calculate adjusted surface area for a map"""
   map_data=get_sharpened_map(ma,phases,b,resolution,n_real=n_real,
     d_min_ratio=d_min_ratio)
   from cctbx.maptbx.segment_and_split_map import score_map
@@ -2744,12 +2782,14 @@ def calculate_adjusted_sa(ma,phases,b,
   return si.adjusted_sa
 
 def get_kurtosis(data=None):
+  """Calculate kurtosis of a list of values in a flex.double array"""
   mean=data.min_max_mean().mean
   sd=data.sample_standard_deviation()
   x=data-mean
   return (x**4).min_max_mean().mean/sd**4
 
 class analyze_aniso_object:
+  """ Object to hold information about anisotropy in structure factors"""
   def __init__(self):
 
     self.b_cart=None
@@ -2812,6 +2852,7 @@ class analyze_aniso_object:
 
 
 class refinery:
+  """Refine machinery specific for auto-sharpening"""
   def __init__(self,ma,phases,b,resolution,
     residual_target=None,
     solvent_fraction=None,
@@ -2940,6 +2981,7 @@ class refinery:
 
 def calculate_kurtosis(ma,phases,b,resolution,n_real=None,
     d_min_ratio=None):
+  """Calculate kurtosis from amplitudes and phases for a map"""
   map_data=get_sharpened_map(ma,phases,b,resolution,n_real=n_real,
   d_min_ratio=d_min_ratio)
   return get_kurtosis(map_data.as_1d())
@@ -2966,6 +3008,7 @@ def run(map_coeffs=None,
   normalize_amplitudes_in_resdep=None,
   out=sys.stdout):
 
+  """Run map auto-sharpening"""
   if sharpening_info_obj:
     solvent_fraction=sharpening_info_obj.solvent_fraction
     wrapping=sharpening_info_obj.wrapping

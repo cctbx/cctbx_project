@@ -15,12 +15,12 @@ Utility functions used for reading input data
 def create_experiment_identifier(experiment, experiment_file_path, experiment_id):
   'Create a hashed experiment identifier based on the experiment file path, experiment index in the file, and experiment features'
   import hashlib
-  exp_identifier_str = experiment_file_path + \
+  exp_identifier_str = os.path.basename(experiment_file_path + \
                        str(experiment_id) + \
                        str(experiment.beam) + \
                        str(experiment.crystal) + \
                        str(experiment.detector) + \
-                       ''.join(experiment.imageset.paths())
+                       ''.join([os.path.basename(p) for p in experiment.imageset.paths()]))
   hash_obj = hashlib.md5(exp_identifier_str.encode('utf-8'))
   return hash_obj.hexdigest()
 
@@ -110,6 +110,8 @@ class simple_file_loader(worker):
       starting_expts_count = len(all_experiments)
       starting_refls_count = len(all_reflections)
     self.logger.log("Initial number of experiments: %d; Initial number of reflections: %d"%(starting_expts_count, starting_refls_count))
+
+    if not self.check_psana2(): return all_experiments, all_reflections
 
     # Generate and send a list of file paths to each worker
     if self.mpi_helper.rank == 0:
@@ -208,7 +210,7 @@ class simple_file_loader(worker):
 
     # Do we have any data?
     from xfel.merging.application.utils.data_counter import data_counter
-    data_counter(self.params).count(all_experiments, all_reflections)
+    data_counter(self.params, mpi_helper = self.mpi_helper, mpi_logger = self.logger).count(all_experiments, all_reflections)
     return all_experiments, all_reflections
 
   def prune_reflection_table_keys(self, reflections):

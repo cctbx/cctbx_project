@@ -11,6 +11,7 @@ and optionally cctbx.xfel.mpi_integrate
 
 from libtbx.phil import parse
 from dials.util import show_mail_on_error
+from libtbx.mpi4py import MPI, mpi_abort_on_exception
 
 ensemble_refinement_pipline_str = """
 combine_experiments_phil = None
@@ -44,9 +45,9 @@ class Script(object):
       phil=phil_scope,
       epilog=help_message)
 
+  @mpi_abort_on_exception
   def run(self):
     ''' Parse the options. '''
-    from libtbx.mpi4py import MPI
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank() # each process in MPI has a unique id, 0-indexed
     size = comm.Get_size() # size: number of processes running in this job

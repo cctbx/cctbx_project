@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import os.path
+from libtbx.utils import to_bytes
 from six.moves import range
 
 def encode(data):
@@ -50,9 +51,9 @@ class img_data:
   def as_wx_Bitmap(self):
     import wx
     w,h = self.get_size()
-    data = self.get_data()
+    data = to_bytes(self.get_data())
     mask = self.get_mask()
-    img = wx.EmptyImage(w, h)
+    img = wx.Image(w, h)
     img.SetData(data)
     if (mask >= 0):
       img.SetMaskColour(ord(data[mask]), ord(data[mask+1]), ord(data[mask+2]))
@@ -64,4 +65,3 @@ if (__name__ == "__main__"):
   print('from gltbx.images import img_data\n')
   for arg in sys.argv[1:]:
     create_encoded(arg)
-

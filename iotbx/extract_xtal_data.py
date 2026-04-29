@@ -1,3 +1,8 @@
+"""
+Extract crystallographic data from an array.
+  Encapsulates logic for extracting experimental amplitudes and R-free flags
+  from the given input file(s) via using reflection_file_server.
+"""
 from __future__ import absolute_import, division, print_function
 from cctbx import miller
 from cctbx.array_family import flex

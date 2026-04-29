@@ -234,6 +234,10 @@ def possible_cyclic_peptide(atom1,
                             ):
   if verbose:
     print(atom1.quote(),atom2.quote())
+  names=[atom1.name, atom2.name]
+  names.sort()
+  if verbose: print('names',names)
+  if names!=[' C  ', ' N  ']: return False
   len_fl = 0
   len_fl += atoms_in_first_last_rgs.get(atom1.i_seq, -1)
   len_fl += atoms_in_first_last_rgs.get(atom2.i_seq, -1)
@@ -257,6 +261,9 @@ def check_for_peptide_links(atom1,
       other = atom_group2
     else:
       other = atom_group1
+    #
+    # only for AA to other
+    #
     if linking_utils.get_class(other.resname) not in ["other"]:
       return None
     # sulfur bridge
@@ -565,13 +572,14 @@ Residue classes
       if (not link_small_molecules and
           (classes1.common_small_molecule or classes2.common_small_molecule)): continue
       # is_proxy_set between any of the atoms ????????
-      if classes1.common_amino_acid and classes2.common_amino_acid:
+      if linking_utils.allow_cis_trans(classes1, classes2):
         if not link_residues:
           continue
         # special amino acid linking
         #  - cyclic
         #  - beta, delta ???
         if possible_cyclic_peptide(atom1, atom2, atoms_in_first_last_rgs): # first & last peptide
+          if verbose: print('possible_cyclic_peptide')
           use_only_bond_cutoff = True
       if sym_op:
         if classes1.common_amino_acid and classes2.common_saccharide: continue
@@ -651,9 +659,12 @@ Residue classes
       if not link_residues:
         if class_key in [
             ("common_amino_acid", "common_amino_acid"),
-            #("common_amino_acid", "other"),
+            ("common_amino_acid", "d_amino_acid"),
+            ("common_amino_acid", "uncommon_amino_acid"),
            ]:
           continue
+      else:
+        if len(key)>2: continue
       #else:
       #  atoms_must_be.setdefault(("common_amino_acid",
       #                            "common_amino_acid"),["C", "N"])
@@ -750,6 +761,7 @@ Residue classes
                                                                   atom2,
                                                                   classes1.important_only,
                                                                   classes2.important_only,
+                                                                  self.mon_lib_srv,
                                                                   )
         if link=='TRANS':
           key=link
@@ -774,7 +786,9 @@ Residue classes
         origin_id = origin_ids.get_origin_id('link_%s' % key,
                                              return_none_if_absent=True,
                                              )
-        if verbose: print('apply standard link', key, origin_id)
+        if verbose:
+          print('apply standard link', key, origin_id)
+          assert origin_id, 'origin_id for "link_%s" not found' % key
         if origin_id is None:
           # user defined links should not be applied here
           continue
