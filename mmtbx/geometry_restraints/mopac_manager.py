@@ -177,6 +177,11 @@ class mopac_manager(base_qm_manager.base_qm_manager):
   def run_cmd(self, redirect_output=False, log=None):
     t0=time.time()
     cmd = self.get_cmd()
+    self.error_lines=[
+      'THE SCF CALCULATION FAILED.',
+      'UNABLE TO ACHIEVE SELF-CONSISTENCE',
+      'Error and normal termination messages reported in this calculation',
+    ]
     base_qm_manager.run_qm_cmd(cmd,
                                'mopac_%s.out' % self.preamble,
                                error_lines=self.error_lines,

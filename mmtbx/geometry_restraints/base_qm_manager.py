@@ -73,11 +73,18 @@ def process_qm_log_file(log_filename=None,
     if line.find('* JOB ENDED NORMALLY *')>-1:
       status = True
     if error_lines:
-      for el, ad in error_lines.items():
-        if line.find(el)>-1:
-          error_line = line
-          advice = ad
-          break
+      if type(error_lines)==type({}):
+        for el, ad in error_lines.items():
+          if line.find(el)>-1:
+            error_line = line
+            advice = ad
+            break
+      else:
+        for el in error_lines:
+          if line.find(el)>-1:
+            error_line = line
+            advice = '='
+            break
     if error_line: break
   if error_line:
     raise Sorry(f'{error_line}\nAdvice: {advice}')
