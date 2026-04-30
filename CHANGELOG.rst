@@ -1,3 +1,10 @@
+2026.4
+======
+
+* Added new xcif C++ CIF parser, selectable via engine= in iotbx.cif.reader
+* Ported Niggli reduction to C++
+* Improvements to ligand validation GUI
+
 2026.3
 ======
 
