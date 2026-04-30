@@ -319,7 +319,7 @@ class base_qm_manager(base_manager):
       optimise_ligand=True
     # elif self.program_goal in ['energy']:
     #   optimise_ligand=False
-    constrain_torsions = self.exclude_torsions_from_optimisation
+    constrain_torsions = getattr(self, 'exclude_torsions_from_optimisation', False)
 
     coordinates = None
     rc=True
