@@ -146,7 +146,7 @@ class MetallicButton(WxCtrl):
         self.gradient_percent)
 
     if evt:
-      self.__DrawButton()
+      self.Refresh()
       evt.Skip()
 
   def OnPaint(self, event):
