@@ -3,6 +3,7 @@ import os
 import time
 
 from libtbx.utils import Sorry
+from libtbx import Auto
 from scitbx.array_family import flex
 from mmtbx.geometry_restraints import base_qm_manager
 
@@ -163,6 +164,8 @@ end
     return outl
 
   def get_coordinate_lines(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False):
+    if self.multiplicity in [None, Auto]:
+      self.multiplicity=1
     outl = '* xyz %s %s\n' % (self.charge, self.multiplicity)
     for i, atom in enumerate(self.atoms):
       outl += ' %s %0.5f %0.5f %0.5f # %s %s\n' % (
@@ -244,7 +247,7 @@ end
           name, ext = os.path.splitext(filename)
           if ext in most_keepers: continue
         if verbose: print('  removing',filename)
-        os.remove(filename)
+        # os.remove(filename)
 
   def view(self, cmd, ext='.xyz'):
     # /Applications/Avogadro.app/Contents/MacOS/Avogadro
