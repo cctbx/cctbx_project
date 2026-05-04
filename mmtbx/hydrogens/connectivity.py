@@ -47,6 +47,7 @@ class determine_connectivity(object):
       geometry.get_all_bond_proxies(sites_cart = self.sites_cart)
     angle_proxies = geometry.get_all_angle_proxies()
     dihedral_proxies = geometry.dihedral_proxies # this should be function in GRM, like previous
+    const_dihedral_proxies = getattr(geometry, 'const_dihedral_proxies', None) or []
     planarity_proxies = geometry.planarity_proxies
     fsc0 = geometry.shell_sym_tables[0].full_simple_connectivity()
     self.n_atoms = pdb_hierarchy.atoms_size()
@@ -68,7 +69,9 @@ class determine_connectivity(object):
     self.process_second_neighbors()
 
     # 5. Find third neighbors via dihedral proxies
-    self.find_third_neighbors(dihedral_proxies = dihedral_proxies)
+    self.find_third_neighbors(
+      dihedral_proxies = dihedral_proxies,
+      const_dihedral_proxies = const_dihedral_proxies)
 
     # 6. Find angles involving a0 and covalently bound non-H atoms and
     #    find preliminary list of third neighbors in cases where no dihedral
@@ -324,33 +327,69 @@ class determine_connectivity(object):
             number_non_h_neighbors = 0)
 
 
-  def find_third_neighbors(self, dihedral_proxies):
-    """ Loop through dihedral angle proxies to find third neighbor
-    Fill in neighbors.b1 with iseq and angle proxy"""
+  def find_third_neighbors(self, dihedral_proxies, const_dihedral_proxies):
+    """Loop through dihedral angle proxies to find third neighbor.
+    Fill in neighbors.b1 with iseq and angle proxy.
+
+    CONST dihedrals are processed first; Var dihedrals override via last-write
+    semantics (a Var entry on the same H wins because find sets b1 unconditionally).
+    """
+    # Process CONST first - their value_angle IS the ideal (no periodicity correction).
+    for dp in const_dihedral_proxies:
+      self._set_b1_from_const_proxy(dp)
+    # Process Var second - last-write wins, so Var overrides CONST.
     for dp in dihedral_proxies:
-      for i_test in dp.i_seqs:
-        if (self.h_connectivity[i_test] is None and not self.hd_sel[i_test]):
-          continue
-        ih = i_test
-        i1, i2, i3, i4 = dp.i_seqs
-        if (ih == i1):
-          i_third = i4
-        if (ih == i4):
-          i_third = i1
-        dihedral = dihedral_angle(
-              sites = [self.sites_cart[i1], self.sites_cart[i2],
-              self.sites_cart[i3],self.sites_cart[i4]])
-        if dihedral is None:
-          return
-        dihedral_id = dp.angle_ideal
-        delta = geometry_restraints.angle_delta_deg(
-          angle_1 = math.degrees(dihedral),
-          angle_2 = dihedral_id,
-          periodicity = dp.periodicity)
-        dihedral_ideal = math.degrees(dihedral) + delta
-        b1 = {'iseq': i_third, 'dihedral_ideal': dihedral_ideal}
-        self.h_connectivity[ih].b1 = b1
-        self.assign_b1_for_H_atom_groups(ih = ih, i_third = i_third)
+      self._set_b1_from_var_proxy(dp)
+
+  def _set_b1_from_const_proxy(self, dp):
+    for i_test in dp.i_seqs:
+      if (self.h_connectivity[i_test] is None and not self.hd_sel[i_test]):
+        continue
+      ih = i_test
+      i1, i2, i3, i4 = dp.i_seqs
+      if (ih == i1):
+        i_third = i4
+        dihedral_ideal = dp.angle_ideal
+      elif (ih == i4):
+        i_third = i1
+        # dihedral_proxy_registry canonicalizes by outer-swapping i1<->i4 when
+        # needed (keeping i2,i3 fixed), which negates the stored angle_ideal
+        # because dihedral(a,b,c,d) == -dihedral(d,b,c,a). Negating here
+        # recovers the original cif value_angle.
+        dihedral_ideal = -dp.angle_ideal
+      else:
+        # H is in the middle of the dihedral (i2 or i3) - cannot use as third-neighbor source
+        continue
+      b1 = {'iseq': i_third, 'dihedral_ideal': dihedral_ideal}
+      self.h_connectivity[ih].b1 = b1
+      self.assign_b1_for_H_atom_groups(ih = ih, i_third = i_third)
+
+  def _set_b1_from_var_proxy(self, dp):
+    for i_test in dp.i_seqs:
+      if (self.h_connectivity[i_test] is None and not self.hd_sel[i_test]):
+        continue
+      ih = i_test
+      i1, i2, i3, i4 = dp.i_seqs
+      if (ih == i1):
+        i_third = i4
+      elif (ih == i4):
+        i_third = i1
+      else:
+        continue
+      dihedral = dihedral_angle(
+            sites = [self.sites_cart[i1], self.sites_cart[i2],
+            self.sites_cart[i3],self.sites_cart[i4]])
+      if dihedral is None:
+        return
+      dihedral_id = dp.angle_ideal
+      delta = geometry_restraints.angle_delta_deg(
+        angle_1 = math.degrees(dihedral),
+        angle_2 = dihedral_id,
+        periodicity = dp.periodicity)
+      dihedral_ideal = math.degrees(dihedral) + delta
+      b1 = {'iseq': i_third, 'dihedral_ideal': dihedral_ideal}
+      self.h_connectivity[ih].b1 = b1
+      self.assign_b1_for_H_atom_groups(ih = ih, i_third = i_third)
 
   def assign_b1_for_H_atom_groups(self, ih, i_third):
     """ For atom groups (such as propeller), only one H atom has dihedral proxy

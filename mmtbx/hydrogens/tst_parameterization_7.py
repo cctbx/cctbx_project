@@ -24,9 +24,9 @@ def prepare_inputs(pdb_str, cif_str):
   return model
 
 #-----------------------------------------------------------------------------
-# For this ligand, three H cannot be parameterized
-# NH2 group is planar, but there are no dihedral restraints
-# no dihedral restraint for H11
+# For this ligand, one H cannot be parameterized
+# H101 and H102 (NH2 group) are parameterized via CONST torsions (alg1a)
+# H11 (hydroxyl) remains un-parameterized: no dihedral restraint
 #-----------------------------------------------------------------------------
 
 def exercise1(pdb_str, cif_str):
@@ -46,7 +46,7 @@ def exercise1(pdb_str, cif_str):
   number_h = model.get_hd_selection().count(True)
   number_h_para = len(h_para) - h_para.count(None)
 
-  assert (number_h_para == number_h-3), 'Not all H atoms are parameterized'
+  assert (number_h_para == number_h-1), 'Not all H atoms are parameterized'
 
   for ih in h_distances:
     # One atom is expected to be moved
@@ -269,7 +269,7 @@ _chem_comp_plane_atom.dist_esd
 
 #type_list_known1 = ['flat_2neigbs', 'alg1b', 'flat_2neigbs', 'flat_2neigbs',
 #  'alg1a', 'alg1a']
-type_list_known1 = ['flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs']
+type_list_known1 = ['flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs', 'alg1a', 'alg1a']
 
 # Zundelion ( [H2O -- H -- OH2]+)
 
