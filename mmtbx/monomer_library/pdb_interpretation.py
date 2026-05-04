@@ -824,6 +824,7 @@ class counters(object):
     self.unresolved_non_hydrogen = 0
     self.unresolved_hydrogen = 0
     self.undefined = 0
+    self.const = 0
     self.resolved = 0
     self.discarded_because_of_special_positions = 0
 
@@ -1732,7 +1733,8 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
   def add_dihedral_proxies(self,
         dihedral_function_type,
         special_position_dict,
-        dihedral_proxy_registry):
+        dihedral_proxy_registry,
+        const_dihedral_proxy_registry):
     self.dihedral_counters = add_dihedral_proxies(
       counters=counters(label="dihedral"),
       m_i=self,
@@ -1741,6 +1743,7 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
       dihedral_function_type=dihedral_function_type,
       peptide_link_params=None,
       dihedral_proxy_registry=dihedral_proxy_registry,
+      const_dihedral_proxy_registry=const_dihedral_proxy_registry,
       special_position_dict=special_position_dict).counters
 
   def add_chirality_proxies(self, special_position_dict,
@@ -2206,6 +2209,7 @@ class add_dihedral_proxies(object):
         dihedral_function_type,
         peptide_link_params,
         dihedral_proxy_registry,
+        const_dihedral_proxy_registry,
         special_position_dict,
         sites_cart=None,
         chem_link_id=None,
@@ -2263,9 +2267,31 @@ class add_dihedral_proxies(object):
           counters.unresolved_hydrogen += 1
         else:
           counters.unresolved_non_hydrogen += 1
-      elif (   tor.value_angle is None
-            or tor.value_angle_esd in [None, 0]):
+      elif tor.value_angle is None:
         counters.undefined += 1
+      elif tor.value_angle_esd in [None, 0]:
+        counters.const += 1
+        i_seqs = [atom.i_seq for atom in atoms]
+        if (special_position_dict.involves_special_positions(i_seqs)):
+          counters.discarded_because_of_special_positions += 1
+        elif (involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs)):
+          pass
+        else:
+          proxy = geometry_restraints.dihedral_proxy(
+            i_seqs=i_seqs,
+            angle_ideal=tor.value_angle,
+            weight=0.0,
+            periodicity=0,
+            origin_id=origin_id)
+          replace_in_place=override_origin_ids(origin_id)
+          registry_process_result = const_dihedral_proxy_registry.process(
+            source_info=source_info_server(m_i=m_i, m_j=m_j),
+            proxy=proxy,
+            replace_in_place=replace_in_place)
+          evaluate_registry_process_result(
+            proxy_label="const_dihedral", m_i=m_i, m_j=m_j, i_seqs=i_seqs,
+            registry_process_result=registry_process_result,
+            lines=["tor id: " + str(tor.id)])
       else:
         counters.resolved += 1
         i_seqs = [atom.i_seq for atom in atoms]
@@ -2938,6 +2964,7 @@ class build_chain_proxies(object):
               dihedral_function_type=dihedral_function_type,
               peptide_link_params=peptide_link_params,
               dihedral_proxy_registry=geometry_proxy_registries.dihedral,
+              const_dihedral_proxy_registry=geometry_proxy_registries.const_dihedral,
               special_position_dict=special_position_dict,
               sites_cart=sites_cart,
               chem_link_id=prev_mm.lib_link.chem_link.id,
@@ -3034,7 +3061,8 @@ class build_chain_proxies(object):
         mm.add_dihedral_proxies(
           dihedral_function_type=dihedral_function_type,
           special_position_dict=special_position_dict,
-          dihedral_proxy_registry=geometry_proxy_registries.dihedral)
+          dihedral_proxy_registry=geometry_proxy_registries.dihedral,
+          const_dihedral_proxy_registry=geometry_proxy_registries.const_dihedral)
         if (mm.dihedral_counters.corrupt_monomer_library_definitions > 0):
           corrupt_monomer_library_definitions[mm.residue_name] \
             += mm.dihedral_counters.corrupt_monomer_library_definitions
@@ -3221,6 +3249,8 @@ class geometry_restraints_proxy_registries(object):
       strict_conflict_handling=strict_conflict_handling)
     self.dihedral = geometry_restraints.dihedral_proxy_registry(
       strict_conflict_handling=strict_conflict_handling)
+    self.const_dihedral = geometry_restraints.dihedral_proxy_registry(
+      strict_conflict_handling=strict_conflict_handling)
     self.chirality = geometry_restraints.chirality_proxy_registry(
       strict_conflict_handling=strict_conflict_handling)
     self.planarity = geometry_restraints.planarity_proxy_registry(
@@ -3234,6 +3264,7 @@ class geometry_restraints_proxy_registries(object):
     self.bond_simple.expand_with_ncs(nrgl, masters_and_rest_iselection)
     self.angle.expand_with_ncs(nrgl, masters_and_rest_iselection)
     self.dihedral.expand_with_ncs(nrgl, masters_and_rest_iselection)
+    self.const_dihedral.expand_with_ncs(nrgl, masters_and_rest_iselection)
     self.chirality.expand_with_ncs(nrgl, masters_and_rest_iselection)
     self.planarity.expand_with_ncs(nrgl, masters_and_rest_iselection)
     self.parallelity.expand_with_ncs(nrgl, masters_and_rest_iselection)
@@ -3243,6 +3274,7 @@ class geometry_restraints_proxy_registries(object):
     self.bond_simple.initialize_table()
     self.angle.initialize_table()
     self.dihedral.initialize_table()
+    self.const_dihedral.initialize_table()
     self.chirality.initialize_table()
     self.planarity.initialize_table()
     self.parallelity.initialize_table()
@@ -3251,6 +3283,7 @@ class geometry_restraints_proxy_registries(object):
     self.bond_simple.discard_table()
     self.angle.discard_table()
     self.dihedral.discard_table()
+    self.const_dihedral.discard_table()
     self.chirality.discard_table()
     self.planarity.discard_table()
     self.parallelity.discard_table()
@@ -3268,6 +3301,10 @@ class geometry_restraints_proxy_registries(object):
       print(prefix + (
         "Number of resolved dihedral restraint conflicts: %d"
           % self.dihedral.n_resolved_conflicts), file=log)
+    if (self.const_dihedral.n_resolved_conflicts > 0):
+      print(prefix + (
+        "Number of resolved const-dihedral restraint conflicts: %d"
+          % self.const_dihedral.n_resolved_conflicts), file=log)
     if (self.chirality.n_resolved_conflicts > 0):
       print(prefix + (
         "Number of resolved chirality restraint conflicts: %d"
@@ -4011,6 +4048,7 @@ class build_all_chain_proxies(linking_mixins):
               dihedral_function_type=self.params.dihedral_function_type,
               peptide_link_params=self.params.peptide_link,
               dihedral_proxy_registry=self.geometry_proxy_registries.dihedral,
+              const_dihedral_proxy_registry=self.geometry_proxy_registries.const_dihedral,
               origin_id=origin_ids.get_origin_id('User supplied cif_link'),
               special_position_dict=self.special_position_dict,
               sites_cart=self.sites_cart,
@@ -5806,6 +5844,7 @@ class build_all_chain_proxies(linking_mixins):
       nonbonded_buffer=self.params.nonbonded_buffer,
       angle_proxies=self.geometry_proxy_registries.angle.proxies,
       dihedral_proxies=self.geometry_proxy_registries.dihedral.proxies,
+      const_dihedral_proxies=self.geometry_proxy_registries.const_dihedral.proxies,
       chirality_proxies=self.geometry_proxy_registries.chirality.proxies,
       planarity_proxies=self.geometry_proxy_registries.planarity.proxies,
       parallelity_proxies=self.geometry_proxy_registries.parallelity.proxies,
