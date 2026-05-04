@@ -501,7 +501,10 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
     return None
 
   count = 0
+  tsc_count = 0
   for i in itertools.permutations(range(len(spots_on_drings)),spots_count):
+    if tsc_count > horiz_phil.small_cell.max_spot_comparisons:
+      continue
     count += 1
     spotA = spots_on_drings[i[0]]
     spotB = spots_on_drings[i[1]]
@@ -516,6 +519,7 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
             continue
           tested_B.append(hklB)
 
+          tsc_count += 1
           approx_eq, delta_obv, delta_calc = test_spot_connection(hklA,hklB,spotA.xyz,spotB.xyz,mm,horiz_phil)
 
           if approx_eq:
@@ -525,6 +529,8 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
                   #(spotA.ID, hklA.ohkl[0], hklA.ohkl[1], hklA.ohkl[2],
                     #spotB.ID, hklB.ohkl[0], hklB.ohkl[1], hklB.ohkl[2],
                     #delta_obv, delta_calc)
+
+  print("Tested %d spot connections from %d spots"%(tsc_count, len(spots_on_drings)))
 
   # if I want to print out the full graph, I would do it here using spots_on_drings and test the connections attribute of each spot
   for spot in spots_on_drings:

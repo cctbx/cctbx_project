@@ -48,6 +48,9 @@ small_cell {
     .type = int
     .help = "Terminate indexing on this many calls to the maximum clique finder."
             "This eliminates a long tail of slow images with too many spots."
+  max_spot_comparisons = 50000
+    .type = int
+    .help = "For longer spot lists, limit the number of comparisons between spots."
 }
 """
 
