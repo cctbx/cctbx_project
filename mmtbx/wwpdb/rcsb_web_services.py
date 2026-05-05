@@ -13,6 +13,9 @@ from requests.adapters import HTTPAdapter, Retry
 search_base_url = "https://search.rcsb.org/rcsbsearch/v2/query?json="
 report_base_url = "https://data.rcsb.org/graphql"
 
+# RCSB GraphQL caps `entries(entry_ids: [...])` at 1000 ids per request.
+report_entry_ids_chunk_size = 1000
+
 def value_attribute_filter(attribute_name, operator, value):
   assert operator in ["greater", "less", "less_or_equal", "greater_or_equal", "exact_match"]
   filt = {
@@ -350,11 +353,21 @@ def get_high_resolution_for_structures(pdb_ids):
   return result
 
 def post_report_query_with_pdb_list(query, pdb_ids):
-  pdb_list = "%s" % pdb_ids
-  pdb_list = pdb_list.replace("'", '"')
-  request = query.format(pdb_list=pdb_list)
-  r = requests.post(report_base_url, json={"query":request})
-  return r.json()
+  merged_entries = []
+  for i in range(0, len(pdb_ids), report_entry_ids_chunk_size):
+    chunk = pdb_ids[i:i + report_entry_ids_chunk_size]
+    pdb_list = "%s" % list(chunk)
+    pdb_list = pdb_list.replace("'", '"')
+    request = query.format(pdb_list=pdb_list)
+    r = requests.post(report_base_url, json={"query":request})
+    r_json = r.json()
+    entries = r_json.get("data", {}).get("entries")
+    if entries is None:
+      raise RuntimeError(
+          "RCSB GraphQL request failed for %d ids (chunk starting at %d): %s" % (
+              len(chunk), i, r_json.get("errors", r_json)))
+    merged_entries.extend(entries)
+  return {"data": {"entries": merged_entries}}
 
 def get_r_work_rfree_for_structures(pdb_ids):
   """ Get Rwork and Rfree for list of pdb ids

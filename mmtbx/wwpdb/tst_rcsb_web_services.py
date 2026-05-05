@@ -74,6 +74,31 @@ def exercise_chemical_id_search():
   # print("len(hyp_search)", len(hyp_search), hyp_search)
   assert len(hyp_search) >= 217, len(hyp_search)
 
+def exercise_post_report_query_chunking():
+  """ RCSB GraphQL caps `entries(entry_ids: [...])` at 1000 ids per request,
+  so post_report_query_with_pdb_list must split larger payloads.  Drive the
+  helper directly with a 1500-id list of synthetic codes (leading "0" — never
+  assigned by the PDB) and seed one real id into each of the expected chunks.
+  Both seeds must come back, proving every chunk was dispatched and merged.
+  """
+  query = """
+  {{
+    entries(entry_ids: {pdb_list} )
+    {{
+      rcsb_id
+    }}
+  }}"""
+  fake = ['0%03X' % i for i in range(1498)]
+  pdb_ids = list(fake)
+  pdb_ids.insert(100,  '1ucs')   # lands inside the first 1000-id chunk
+  pdb_ids.insert(1100, '8wcc')   # lands inside the second chunk
+  assert len(pdb_ids) == 1500
+
+  r_json = rcsb_web_services.post_report_query_with_pdb_list(query, pdb_ids)
+  returned = {e['rcsb_id'].upper() for e in r_json['data']['entries']}
+  assert '1UCS' in returned, returned
+  assert '8WCC' in returned, returned
+
 def exercise_2():
   fes_binding = rcsb_web_services.chemical_id_search(
       "FES",
@@ -175,6 +200,7 @@ if (__name__ == "__main__"):
     exercise_sequence_search()
     exercise_reference_chain_search()
     exercise_chemical_id_search()
+    exercise_post_report_query_chunking()
     exercise_similar_ligands_via_smiles()
     print("OK")
   else:
