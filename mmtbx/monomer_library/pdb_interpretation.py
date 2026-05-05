@@ -3316,7 +3316,7 @@ class geometry_restraints_proxy_registries(object):
     if (self.parallelity.n_resolved_conflicts > 0):
       print(prefix + (
         "Number of resolved parallelity restraint conflicts: %d"
-          % self.planarity.n_resolved_conflicts), file=log)
+          % self.parallelity.n_resolved_conflicts), file=log)
 
 class cif_output_holder:
   def __init__(self):
