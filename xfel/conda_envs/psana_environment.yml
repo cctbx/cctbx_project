@@ -16,6 +16,7 @@ dependencies:
 
  # python
  - python
+ - pip
  - biopython
  - ipython
 
