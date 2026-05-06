@@ -77,7 +77,7 @@ def compare_models(pdb_str,
   ph_h_added = model_h_added.get_hierarchy()
   if not ph_initial.is_similar_hierarchy(other=ph_h_added):
     write_models(model_initial, model_h_added)
-  assert ph_initial.is_similar_hierarchy(other=ph_h_added)
+  assert ph_initial.is_similar_hierarchy(other=ph_h_added), 'Diffs\n%s\n====\n%s' % (ph_initial.show(),ph_h_added.show())
 
   number_h_added = hd_sel_h_added.count(True)
   assert(number_h_expected == number_h_added)
