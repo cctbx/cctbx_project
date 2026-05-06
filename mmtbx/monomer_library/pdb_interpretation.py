@@ -2886,11 +2886,19 @@ class build_chain_proxies(object):
           nonbonded_energy_type_registry.assign_directly(
             i_seq=i_seq, symbol=ad_hoc.energy_type)
           ad_hoc_single_atom_residues[mm.residue_name] += 1
+          self.type_energies[atom.i_seq] = ad_hoc.energy_type
+          if entry is not None:
+            self.type_h_bonds[atom.i_seq] = entry.hb_type
+          else:
+            self.type_h_bonds[atom.i_seq] = 'N'
           return True
         if (not use_scattering_type_if_available_to_define_nonbonded_type()):
           unknown_residues[mm.residue_name] += 1
           for atom in residue.atoms():
-            scattering_type = ''
+            if atom.element:
+              scattering_type = atom.element
+            else:
+              scattering_type = ''
             energy_type = ''
             scattering_type_registry.assign_directly(i_seq=atom.i_seq, symbol=scattering_type)
             nonbonded_energy_type_registry.assign_directly(i_seq=atom.i_seq, symbol=energy_type)
