@@ -2306,19 +2306,21 @@ def _resolve_after_program(directives, advice_lower):
             directives["stop_conditions"][
                 "start_with_program"] = first_prog
     elif n == 1 and _has_stop:
-        # "do A and stop" → set after_program if LLM missed it
-        if not _sc.get("after_program"):
-            action_name = actions[0][0]
-            prog = _ACTION_TABLE[action_name].get(
-                _exp) or _ACTION_TABLE[action_name].get(
-                "xray")
-            if prog:
-                if "stop_conditions" not in directives:
-                    directives["stop_conditions"] = {}
-                directives["stop_conditions"][
-                    "after_program"] = prog
-                directives["stop_conditions"][
-                    "skip_validation"] = True
+        # "do A and stop" → set after_program to the detected
+        # action's program.  Always override — the LLM often
+        # sets the wrong program (e.g., real_space_refine instead
+        # of resolve_cryo_em for "density modify and stop").
+        action_name = actions[0][0]
+        prog = _ACTION_TABLE[action_name].get(
+            _exp) or _ACTION_TABLE[action_name].get(
+            "xray")
+        if prog:
+            if "stop_conditions" not in directives:
+                directives["stop_conditions"] = {}
+            directives["stop_conditions"][
+                "after_program"] = prog
+            directives["stop_conditions"][
+                "skip_validation"] = True
     # n == 1, no stop → leave as-is
     # n == 0 → leave as-is
 

@@ -294,9 +294,10 @@ def test_resolve_multi_step_stop_last():
 # =====================================================================
 
 def test_resolve_single_stop_set():
-    """Single action + stop → set after_program if not set."""
+    """Single action + stop → set after_program (overriding LLM)."""
     print("Test: resolve_single_stop_set")
     cases = [
+        # LLM missed it
         ("density modify and stop", None,
          "phenix.autobuild_denmod"),  # xray default
         ("create a density-modified map and stop", None,
@@ -307,6 +308,13 @@ def test_resolve_single_stop_set():
          "phenix.ligandfit"),
         ("run mtriage and stop", None,
          "phenix.mtriage"),
+        # LLM set WRONG program — resolver overrides
+        ("create a density-modified map and stop",
+         "phenix.real_space_refine",
+         "phenix.resolve_cryo_em"),
+        ("run xtriage and stop",
+         "phenix.refine",
+         "phenix.xtriage"),
     ]
     for advice, initial, expected in cases:
         got = _resolve(advice, initial)
