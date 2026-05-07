@@ -230,6 +230,7 @@ def test_running_from_command_line():
     #self.file_to_delete.append(self.file_name)
   cmd = 'mmtbx.nonbonded_overlaps {}'
   cmd = cmd.format(file_name)
+  print(cmd)
   r = easy_run.go(cmd, join_stdout_stderr=False)
   assert(not bool(r.stderr_lines))
 
