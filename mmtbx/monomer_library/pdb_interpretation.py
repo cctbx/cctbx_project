@@ -1111,6 +1111,7 @@ class monomer_mapping_summary(slots_getstate_setstate):
     "ignored_atoms",
     "classification",
     "incomplete_info",
+    'missing_atoms_info',
     "is_terminus",
     "is_unusual"]
 
@@ -1213,6 +1214,7 @@ class monomer_mapping(slots_getstate_setstate):
     #
     'atom_names_mappings',
     'skipped_deletes',
+    'missing_atoms_info',
     ]
 
   def __init__(self,
@@ -1292,6 +1294,7 @@ class monomer_mapping(slots_getstate_setstate):
         self.resolve_unexpected()
       # strange behaviour of mods destroys cif_object
       self.monomer.cif_object = cif_object
+      self._set_missing_atoms_info()
     if (self.pdb_residue_id_str in apply_cif_links_mm_pdbres_dict):
       apply_cif_links_mm_pdbres_dict[self.pdb_residue_id_str].setdefault(
         self.i_conformer, []).append(self)
@@ -1515,10 +1518,22 @@ class monomer_mapping(slots_getstate_setstate):
       elif (self.is_rna_dna or self.monomer.is_rna_dna()):
         atom_ids = " ".join(self.expected_atoms.keys())
         if (atom_ids == "P"): return "p_only"
+      # return atom_ids
     return None
+
+  def _get_missing_atoms_info(self):
+    rc={}
+    if self.missing_hydrogen_atoms:
+      rc['hydrogens']=self.missing_hydrogen_atoms
+    if self.missing_non_hydrogen_atoms:
+      rc['heavy']=self.missing_non_hydrogen_atoms
+    return rc
 
   def _set_incomplete_info(self):
     self.incomplete_info = self._get_incomplete_info()
+
+  def _set_missing_atoms_info(self):
+    self.missing_atoms_info = self._get_missing_atoms_info()
 
   def resolve_unexpected(self):
     get_class = iotbx.pdb.common_residue_names_get_class
@@ -1706,6 +1721,7 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
       ignored_atoms=list(self.ignored_atoms.values()),
       classification=classification,
       incomplete_info=self.incomplete_info,
+      missing_atoms_info=self.missing_atoms_info,
       is_terminus=self.is_terminus,
       is_unusual=self._is_unusual())
 
