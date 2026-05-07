@@ -259,7 +259,9 @@ def get_classes(atom, verbose=False):
     "unknown",
     'd_amino_acid',
     ]
-  redirect = {"modified_amino_acid" : "other",
+  redirect = {
+              # "modified_amino_acid" : "uncommon_amino_acid",
+              "modified_amino_acid" : "other",
               "modified_rna_dna" : "other",
               }
   atom_group = atom.parent()
