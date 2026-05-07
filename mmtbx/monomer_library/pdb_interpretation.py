@@ -1265,6 +1265,7 @@ class monomer_mapping(slots_getstate_setstate):
       for atom,atom_name in zip(self.active_atoms, self.atom_names_given):
         self.unexpected_atoms[atom_name] = atom
       self.incomplete_info = None
+      self.missing_atoms_info = None
       self.is_terminus = None
     else:
       self.chem_mod_ids = set()
