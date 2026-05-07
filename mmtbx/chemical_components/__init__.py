@@ -143,6 +143,15 @@ def get_field_simple(code, loop, field):
   desc = cif.get(loop, {})[0]
   return getattr(desc, field, "")
 
+def get_cif_loop(code, loop):
+  filename=get_cif_filename(code)
+  if not filename: return None
+  if not os.path.exists(filename): return None
+  cif = get_cif_dictionary(code)
+  if not cif: return cif
+  desc = cif.get(loop, {})[0]
+  return desc
+
 def get_type(code):
   return get_field_simple(code, "_chem_comp", "type")
 
@@ -259,19 +268,8 @@ def generate_chemical_components_codes(sort_reverse_by_smiles=False,
     yield code
 
 def get_header(code):
-  filename=get_cif_filename(code)
-  if not filename: return ""
-  if not os.path.exists(filename): return ''
-  f=open(filename)
-  lines=f.readlines()
-  f.close()
-  outl=""
-  for i, line in enumerate(lines):
-    outl+="  %s" % line
-    if i<3: continue
-    if line.find("_chem_comp.")==-1:
-      break
-  return outl
+  loop=get_cif_loop(code, '_chem_comp')
+  return loop
 
 def get_group(code, split_rna_dna=False, split_l_d=False, verbose=False):
   t = get_type(code)
@@ -422,15 +420,9 @@ def get_obsolete_status_from_chemical_components(code):
   # _chem_comp.pdbx_release_status                   OBS
   # _chem_comp.pdbx_replaced_by                      PCA
   header = get_header(code)
-  pdbx_release_status = None
-  pdbx_replaced_by = None
   if header is None: return None, None
-  for line in header.split("\n"):
-    tmp = line.split()
-    if line.find("pdbx_release_status")>-1:
-      pdbx_release_status = tmp[1]
-    if line.find("pdbx_replaced_by")>-1:
-      pdbx_replaced_by = tmp[1]
+  pdbx_release_status = header.pdbx_release_status
+  pdbx_replaced_by = header.pdbx_replaced_by
   return pdbx_release_status, pdbx_replaced_by
 
 def get_filenames_from_start(start):
