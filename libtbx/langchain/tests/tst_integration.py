@@ -199,7 +199,18 @@ def test_cryoem_workflow_detection():
         maximum_automation=True
     )
 
-    state = perceive(state)
+    # Mock _files_are_local to return False — test uses hypothetical
+    # filenames that may collide with files in the working directory.
+    try:
+        import libtbx.langchain.agent.graph_nodes as _gn
+    except ImportError:
+        import agent.graph_nodes as _gn
+    _orig = _gn._files_are_local
+    _gn._files_are_local = lambda *a, **k: False
+    try:
+        state = perceive(state)
+    finally:
+        _gn._files_are_local = _orig
 
     assert state["workflow_state"]["experiment_type"] == "cryoem"
     assert state["workflow_state"]["state"] == "cryoem_initial"

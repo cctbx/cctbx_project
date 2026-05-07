@@ -220,16 +220,18 @@ def test_mtz_has_phase_columns_non_mtz():
 
 
 def test_phased_markers_includes_overall_best():
-    """Verify 'overall_best' is in _phased_markers by checking source file."""
+    """Verify 'overall_best' is in _map_markers by checking source file."""
     _ws_path = os.path.join(_ROOT, "agent", "workflow_state.py")
     with open(_ws_path) as _f:
         src = _f.read()
-    # Find the _phased_markers tuple
-    idx = src.find("_phased_markers = (")
-    assert idx >= 0, "_phased_markers not found in workflow_state.py"
+    # Find the _map_markers tuple (renamed from _phased_markers)
+    idx = src.find("_map_markers = (")
+    if idx < 0:
+        idx = src.find("_map_markers=(")
+    assert idx >= 0, "_map_markers not found in workflow_state.py"
     tuple_section = src[idx:idx+400]
     assert "overall_best" in tuple_section, \
-        "'overall_best' not found in _phased_markers tuple"
+        "'overall_best' not found in _map_markers tuple"
     print("  PASS: test_phased_markers_includes_overall_best")
 
 

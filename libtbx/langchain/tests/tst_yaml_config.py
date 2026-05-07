@@ -431,7 +431,7 @@ def test_yaml_workflow_state_detection():
     available_files = ["data.mtz", "seq.fa"]
     history = []
 
-    result = detect_workflow_state(history, available_files, use_yaml_engine=True)
+    result = detect_workflow_state(history, available_files, use_yaml_engine=True, files_local=False)
 
     assert result["experiment_type"] == "xray", \
         "Expected xray, got %s" % result["experiment_type"]
@@ -442,7 +442,7 @@ def test_yaml_workflow_state_detection():
     available_files = ["map.mrc", "seq.fa"]
     history = []
 
-    result = detect_workflow_state(history, available_files, use_yaml_engine=True)
+    result = detect_workflow_state(history, available_files, use_yaml_engine=True, files_local=False)
 
     assert result["experiment_type"] == "cryoem", \
         "Expected cryoem, got %s" % result["experiment_type"]
@@ -453,7 +453,7 @@ def test_yaml_workflow_state_detection():
     available_files = ["data.mtz", "seq.fa"]
     history = [{"program": "phenix.xtriage", "result": "SUCCESS"}]
 
-    result = detect_workflow_state(history, available_files, use_yaml_engine=True)
+    result = detect_workflow_state(history, available_files, use_yaml_engine=True, files_local=False)
 
     assert "phenix.predict_and_build" in result["valid_programs"], \
         "predict_and_build should be valid after xtriage"

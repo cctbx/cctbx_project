@@ -498,6 +498,45 @@ def _categorize_files(available_files, ligand_hints=None, files_local=True):
             if f not in files["model"]:
                 files["model"].append(f)
 
+    # Post-processing: Map file safety net (common path).
+    #
+    # Ensure ALL .ccp4/.mrc/.map files appear in at least one map
+    # category.  The YAML categorizer may not match simple filenames
+    # like "map.mrc" if patterns are too specific.  The hardcoded
+    # categorizer has its own safety net (line ~852), but this runs
+    # for BOTH YAML and hardcoded paths.
+    try:
+        _all_maps = set()
+        for _mcat in ("full_map", "half_map",
+                       "optimized_full_map", "sharpened",
+                       "map"):
+            for f in files.get(_mcat, []):
+                _all_maps.add(f)
+
+        for f in available_files:
+            if not f:
+                continue
+            _, _ext = os.path.splitext(f.lower())
+            if _ext not in _MAP_EXTENSIONS:
+                continue
+            if f in _all_maps:
+                continue
+            # Uncategorized map file — rescue it
+            _bn = os.path.basename(f).lower()
+            if "half" in _bn:
+                _dest = "half_map"
+            else:
+                _dest = "full_map"
+            if _dest not in files:
+                files[_dest] = []
+            files[_dest].append(f)
+            if "map" not in files:
+                files["map"] = []
+            if f not in files["map"]:
+                files["map"].append(f)
+    except Exception:
+        pass  # Safety net must not break categorization
+
     # Post-processing: Cross-check MTZ categorization against file_utils.
     #
     # The YAML pattern-based categorizer can misclassify refine output MTZ files
