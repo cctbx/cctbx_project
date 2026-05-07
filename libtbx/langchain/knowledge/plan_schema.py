@@ -704,23 +704,41 @@ class StructurePlan(object):
       })
     return result
 
-  def format_plan_header(self):
+  def format_plan_header(self, stop_after=None):
     """Format the plan as a compact text header.
 
     Used for the progress panel fixed header and
     for logging at session start.
+
+    Args:
+      stop_after: str or None.  If set (a program name
+        like "phenix.resolve_cryo_em"), only display
+        stages up to and including the one that contains
+        this program.  Adds a "will stop here" indicator.
 
     Returns:
       str, multi-line text.
     """
     lines = []
     bar = "=" * 50
+
+    # If stop_after is set, find the last stage to show
+    _stop_stage_idx = None
+    if stop_after:
+      for i, stage in enumerate(self.stages):
+        if stop_after in stage.programs:
+          _stop_stage_idx = i
+          break
+
     lines.append(bar)
     lines.append(
       " STRATEGY PLAN: %s" % self.goal
     )
     lines.append(bar)
     for i, stage in enumerate(self.stages):
+      # Display truncation: skip stages after stop
+      if _stop_stage_idx is not None and i > _stop_stage_idx:
+        break
       # Status indicator
       if stage.status == STAGE_COMPLETE:
         indicator = "✓"
@@ -751,6 +769,11 @@ class StructurePlan(object):
           lines.append(
             "          Goal: %s" % goal_text
           )
+      # Stop indicator
+      if _stop_stage_idx is not None and i == _stop_stage_idx:
+        lines.append(
+          "          ▸ Will stop here"
+        )
     lines.append(bar)
     return "\n".join(lines)
 
