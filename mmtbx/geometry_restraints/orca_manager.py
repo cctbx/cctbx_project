@@ -124,9 +124,11 @@ class orca_manager(base_qm_manager.base_qm_manager):
         rc.append((float(tmp[1]), float(tmp[2]), float(tmp[3])))
     return rc
 
-  def get_cmd(self):
+  def get_cmd(self, env='PHENIX_ORCA'):
+    if not os.environ.get(env, False):
+      raise Sorry(f'Shell Environment Variable "{env}" not set to point to Orca exe')
     cmd = '%s orca_%s.in' % (
-      os.environ['PHENIX_ORCA'],
+      os.environ[env],
       self.preamble,
       )
     return cmd
