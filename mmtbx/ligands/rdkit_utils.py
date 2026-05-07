@@ -28,6 +28,13 @@ Functions:
   match_mol_indices: Match atom indices of different mols
 """
 # ------------------------------------------------------------------------------
+def get_atom_element(atom):
+  pse = Chem.GetPeriodicTable()
+  return pse.GetElementSymbol(atom.GetAtomicNum())
+
+def is_hydrogen(molecule, i):
+  atom=molecule.GetAtomWithIdx(i)
+  return get_atom_element(atom) in ['H', 'D', 'T']
 
 def get_rdkit_bond_type(cif_order, elements=None):
   """
@@ -734,10 +741,59 @@ def get_cc_cartesian_coordinates(cc_cif, label='pdbx_model_Cartn_x_ideal', ignor
                )
       rc.append(xyz)
       if not ignore_question_mark and '?' in xyz[-1]: return None
-  # print(rc)
   return rc
 
-def read_chemical_component_filename(filename):
+def overlay_two_molecules(mol1, mol2):
+  from rdkit.Chem import rdFMCS
+
+  params = rdFMCS.MCSParameters()
+  params.AtomTyper = rdFMCS.AtomCompare.CompareElements
+  params.BondTyper = rdFMCS.BondCompare.CompareOrder
+  params.BondCompareParameters.RingMatchesRingOnly = True
+  params.BondCompareParameters.CompleteRingsOnly = True
+
+  res = rdFMCS.FindMCS([mol1, mol2], params)
+
+  highlightAtoms_mol1 = mol1.GetSubstructMatch(res.queryMol)
+  print(highlightAtoms_mol1)
+  highlightAtoms_mol2 = mol2.GetSubstructMatch(res.queryMol)
+  print(highlightAtoms_mol2)
+
+  return list(zip(highlightAtoms_mol1, highlightAtoms_mol2))
+
+
+def read_chemical_component_smiles(filename):
+  from iotbx import cif
+  ccd = cif.reader(filename).model()
+  for i, (code, monomer) in enumerate(ccd.items()):
+    # molecule = Chem.Mol()
+    desc = monomer.get_loop_or_row('_pdbx_chem_comp_descriptor')
+    for j, tmp in enumerate(desc.iterrows()):
+      smiles_type = tmp.get('_pdbx_chem_comp_descriptor.type')
+      if smiles_type=='SMILES_CANONICAL':
+        smiles = tmp.get('_pdbx_chem_comp_descriptor.descriptor')
+        return smiles
+
+def read_chemical_component_filename_new(filename):
+  smiles=read_chemical_component_smiles(filename)
+  print('smiles',smiles)
+  mol1=mol_from_smiles(smiles)
+  print(mol1)
+  mol2=read_chemical_component_filename_old(filename)
+  print(mol2)
+  print(Chem.FindMolChiralCenters(mol1, includeUnassigned=True))
+  print(Chem.FindMolChiralCenters(mol2, includeUnassigned=True))
+
+  matches = overlay_two_molecules(mol1, mol2)
+  print(matches)
+
+  for k, (i, j) in enumerate(matches):
+    # print(dir(mol1.GetAtomWithIdx(i)))
+    print(k,i,j,mol1.GetAtomWithIdx(i).GetSymbol(), mol2.GetAtomWithIdx(j).GetSymbol())
+
+  assert 0
+
+def read_chemical_component_filename(filename, verbose=False):
   from iotbx import cif
   bond_order_ccd = {
     1.5:Chem.rdchem.BondType.AROMATIC,
@@ -792,22 +848,17 @@ def read_chemical_component_filename(filename):
         order = bond_order_ccd[order]
         rwmol.AddBond(atom1, atom2, order)
   rwmol.AddConformer(conformer)
-  # Chem.SanitizeMol(rwmol)
+  Chem.SanitizeMol(rwmol)
   # from rdkit.Chem.PropertyMol import PropertyMol
-  molecule = rwmol.GetMol()
   # molecule = PropertyMol(molecule)
-#  print(dir(molecule))
-#  print(desc)
-#  print(dir(desc))
-#  for key, item in desc.items():
-#    key = key.split('.')[1]
-#    print(key,list(item))
-#    molecule.SetProp(key,item[0])
-#    print(molecule.HasProp(key))
-#    print(molecule.GetProp(key))
-#  print(dir(molecule.GetPropNames()))
-#  print(molecule.GetPropsAsDict())
-  # print(dir(rwmol))
+  molecule = rwmol.GetMol()
+  for key, item in desc.items():
+    key = key.split('.')[1]
+    molecule.SetProp(key,item[0])
+  molecule.SetProp('id', code.upper())
+  if verbose:
+    for atom in molecule.GetAtoms():
+      print(atom, atom.GetPropsAsDict())
   return molecule
 
 def get_molecule_from_resname(resname):
@@ -822,7 +873,7 @@ def get_molecule_from_resname(resname):
     return None
   return molecule
 
-def mol_from_chemical_component(code):
+def molecule_from_chemical_component(code):
   from mmtbx.chemical_components import get_cif_filename
   rc = get_cif_filename(code)
   molecule = read_chemical_component_filename(rc)
@@ -967,25 +1018,36 @@ def enumerate_torsions(mol):
 
 def mol_to_3d(mol):
   """
-  Convert and rdkit mol to 3D coordinates
+  Convert a rdkit mol to 3D coordinates
   """
+  assert 0
   assert len(mol.GetConformers())==0, "mol already has conformer"
   param = rdDistGeom.ETKDGv3()
-  conf_id = rdDistGeom.EmbedMolecule(mol,clearConfs=True)
+  conf_id = rdDistGeom.EmbedMolecule(mol, clearConfs=True)
   return mol
 
 def mol_to_2d(mol):
   """
-  Convert and rdkit mol to 2D coordinates
+  Convert a rdkit mol to 2D coordinates
   """
   mol = Chem.Mol(mol) # copy to preserve original coords
   ret = Chem.rdDepictor.Compute2DCoords(mol)
   return mol
 
-def mol_from_smiles(smiles, embed3d=False, addHs=True, removeHs=False, verbose=False):
+def print_coordinates(mol):
+  conformer = mol.GetConformer()
+  positions=conformer.GetPositions()
+  print("Atomic coordinates (x, y, z): %s" % conformer.Is3D())
+  for i, atom in enumerate(mol.GetAtoms()):
+    position = conformer.GetAtomPosition(i)
+    new_xyz=positions[i]
+    print(f"{atom.GetSymbol()} {position.x:.4f} {position.y:.4f} {position.z:.4f}")
+
+def mol_from_smiles(smiles, embed3d=True, addHs=True, removeHs=False, verbose=False):
   """
   Convert a smiles string to rdkit mol
   """
+  assert 0
   ps = Chem.SmilesParserParams()
   ps.removeHs=removeHs
   rdmol = Chem.MolFromSmiles(smiles, ps)
@@ -1002,6 +1064,14 @@ def mol_from_smiles(smiles, embed3d=False, addHs=True, removeHs=False, verbose=F
   if verbose: print('rdmol',rdmol.Debug())
   rdmol.UpdatePropertyCache()
   if verbose: print('rdmol',rdmol.Debug())
+  if embed3d:
+    conf_id = AllChem.EmbedMolecule(rdmol, AllChem.ETKDG())
+    if conf_id == -1:
+      print("Could not generate 3D coordinates")
+      return None
+    AllChem.MMFFOptimizeMolecule(rdmol, confId=conf_id)
+    if verbose:
+      print_coordinates(rdmol)
   return rdmol
 
 def match_mol_indices(mol_list):
