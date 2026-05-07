@@ -2017,6 +2017,324 @@ def format_directives_for_display(directives):
 # SIMPLE EXTRACTION (NO LLM FALLBACK)
 # =============================================================================
 
+# =====================================================================
+# General after_program resolver (v115.10)
+#
+# Maps user language to workflow actions, then resolves after_program
+# based on how many actions the user mentioned and whether they said
+# "stop."  Replaces per-workflow overlays (ligand, denmod) with one
+# unified mechanism.
+# =====================================================================
+
+# Action → (xray_program, cryoem_program, keywords)
+# Keywords are matched longest-first.  Single-word keywords use word-
+# boundary matching; multi-word use substring matching.
+_ACTION_TABLE = {
+    "analyze": {
+        "xray": "phenix.xtriage",
+        "cryoem": "phenix.mtriage",
+        "keywords": [
+            "analyze data", "data quality", "data analysis",
+            "analyze map", "xtriage", "mtriage", "map quality",
+            "map triage",
+        ],
+    },
+    "solve": {
+        "xray": "phenix.phaser",
+        "cryoem": None,
+        "keywords": [
+            "molecular replacement", "solve the structure",
+            "solve structure", "phaser", "mr ",
+        ],
+    },
+    "phase": {
+        "xray": "phenix.autosol",
+        "cryoem": None,
+        "keywords": [
+            "experimental phasing", "sad phasing",
+            "mad phasing", "autosol", "anomalous phasing",
+        ],
+    },
+    "predict_build": {
+        "xray": "phenix.predict_and_build",
+        "cryoem": "phenix.predict_and_build",
+        "keywords": [
+            "predict and build", "predict, build",
+            "predict then build", "predict_and_build",
+        ],
+    },
+    "predict": {
+        "xray": "phenix.predict_and_build",
+        "cryoem": "phenix.predict_and_build",
+        "keywords": [
+            "predict a model", "predict model", "predict",
+        ],
+    },
+    "build": {
+        "xray": "phenix.autobuild",
+        "cryoem": "phenix.predict_and_build",
+        "keywords": [
+            "build a model", "build model", "build the model",
+            "model building", "autobuild", "map to model",
+            "map_to_model", "build",
+        ],
+    },
+    "denmod": {
+        "xray": "phenix.autobuild_denmod",
+        "cryoem": "phenix.resolve_cryo_em",
+        "keywords": [
+            "density modif", "density-modif", "density mod",
+            "denmod", "resolve_cryo_em", "resolve cryo",
+            "improve map", "improve the map", "improve phases",
+        ],
+    },
+    "sharpen": {
+        "xray": None,
+        "cryoem": "phenix.map_sharpening",
+        "keywords": [
+            "map sharpening", "auto-sharpen", "autosharpen",
+            "sharpen",
+        ],
+    },
+    "refine": {
+        "xray": "phenix.refine",
+        "cryoem": "phenix.real_space_refine",
+        "keywords": [
+            "real_space_refine", "refinement", "refine",
+            "pick water", "add water",
+        ],
+    },
+    "ligandfit": {
+        "xray": "phenix.ligandfit",
+        "cryoem": None,
+        "keywords": [
+            "ligand fit", "fit ligand", "ligandfit",
+            "place ligand", "fit the ligand",
+            "place the ligand", "fit atp", "fit nad",
+            "fit fad", "fit heme", "add ligand",
+            "add the ligand", "dock ligand",
+        ],
+    },
+    "validate": {
+        "xray": "phenix.molprobity",
+        "cryoem": "phenix.molprobity",
+        "keywords": [
+            "validation", "validate", "molprobity",
+        ],
+    },
+    "polder": {
+        "xray": "phenix.polder",
+        "cryoem": None,
+        "keywords": [
+            "polder map", "omit map", "polder",
+        ],
+    },
+    "dock": {
+        "xray": None,
+        "cryoem": "phenix.dock_in_map",
+        "keywords": [
+            "dock in map", "dock into map", "dock_in_map",
+        ],
+    },
+    "symmetry": {
+        "xray": None,
+        "cryoem": "phenix.map_symmetry",
+        "keywords": [
+            "map symmetry", "find symmetry",
+            "determine symmetry", "apply symmetry",
+            "apply ncs", "ncs", "oligomer",
+        ],
+    },
+}
+
+# Pre-compiled negation pattern — checks text immediately
+# before a keyword match for negation words.
+_NEGATION_BEFORE_RE = re.compile(
+    r"(?:don'?t|do\s+not|never|skip|no)\s*$",
+    re.IGNORECASE)
+
+
+def _detect_actions(advice_lower):
+    """Detect workflow action mentions in advice, ordered by
+    position of first appearance.
+
+    Uses _ACTION_TABLE keywords.  Longest keywords are checked
+    first to avoid partial matches ("predict and build" before
+    "predict" and "build").  Single-word keywords use word-boundary
+    matching to avoid false positives ("solve" inside "resolve").
+    Negated actions ("don't build", "skip refinement") are excluded.
+
+    Compound rule: if both "predict" and "build" are detected
+    separately, they merge into a single "predict_build" action.
+
+    Returns:
+        list of (action_name, position) sorted by position.
+    """
+    # Build (keyword, action) pairs, longest first
+    _all_kw = []
+    for action, info in _ACTION_TABLE.items():
+        for kw in info["keywords"]:
+            _all_kw.append((kw, action))
+    _all_kw.sort(key=lambda x: -len(x[0]))
+
+    # Find first non-negated occurrence of each action
+    found = {}  # action → position
+    for kw, action in _all_kw:
+        if action in found:
+            continue
+        if " " not in kw and "-" not in kw:
+            # Single-word: word-boundary matching
+            m = re.search(
+                r'\b' + re.escape(kw) + r'\b', advice_lower)
+            if m:
+                before = advice_lower[:m.start()]
+                if _NEGATION_BEFORE_RE.search(before):
+                    continue  # Negated
+                found[action] = m.start()
+        else:
+            # Multi-word: substring matching
+            pos = advice_lower.find(kw)
+            if pos >= 0:
+                before = advice_lower[:pos]
+                if _NEGATION_BEFORE_RE.search(before):
+                    continue
+                found[action] = pos
+
+    # Compound rule: predict + build → predict_build
+    if "predict" in found and "build" in found:
+        pos = found["predict"]
+        del found["predict"]
+        del found["build"]
+        if "predict_build" not in found:
+            found["predict_build"] = pos
+    # If predict_build matched directly, remove individuals
+    if "predict_build" in found:
+        found.pop("predict", None)
+        found.pop("build", None)
+
+    return sorted(found.items(), key=lambda x: x[1])
+
+
+def _resolve_after_program(directives, advice_lower):
+    """General after_program resolver.
+
+    Corrects after_program based on how many workflow actions the
+    user mentioned and whether they said "stop."
+
+    Rules:
+      Multiple actions + stop  → after_program = last mentioned
+      Multiple actions + no stop → clear after_program (plan drives)
+      Single action + stop     → set after_program if not set
+      Otherwise                → leave as-is
+
+    Also sets start_with_program to the first action when multiple
+    actions are detected (helps the workflow engine prioritize).
+
+    Called from _apply_workflow_intent_fallback (both LLM and
+    rules-only paths).
+    """
+    # If this is preprocessed text (has "Primary Goal:" header),
+    # extract just that line for action detection.  The full
+    # preprocessed text contains sections like
+    # "Special Instructions: Do not proceed to refinement"
+    # that cause false positive action detection — the negation
+    # "Do not" is too far from "refinement" for the immediate-
+    # predecessor check to catch.
+    _action_text = advice_lower
+    _goal_match = re.search(
+        r'primary\s+goal\s*:\s*(.+?)(?:\n|$)',
+        advice_lower)
+    if _goal_match:
+        _action_text = _goal_match.group(1).strip()
+
+    actions = _detect_actions(_action_text)
+    if not actions:
+        return  # No actions detected — leave directives as-is
+
+    # Detect stop intent: \bstop\b with negation guard
+    _has_stop = bool(re.search(r'\bstop\b', advice_lower))
+    if _has_stop and re.search(
+            r"(?:don'?t|do\s+not|never)\s+stop",
+            advice_lower):
+        _has_stop = False
+
+    # Infer experiment type from advice text (same heuristic
+    # as extract_directives_simple).
+    _is_cryoem = bool(re.search(
+        r'cryo-?em|half.?map|\.mrc|\.map|full.?map|mtriage'
+        r'|sharpen|map.sharpening|auto.sharpen'
+        r'|resolve.cryo|dock.in.map|map.to.model'
+        r'|density.modif\w*\s+map',
+        advice_lower))
+    _is_xray = bool(re.search(
+        r'x-?ray|\.mtz|\.hkl|xtriage|phaser|autosol|'
+        r'sad|mad|molecular.?replacement',
+        advice_lower))
+    if _is_cryoem and not _is_xray:
+        _exp = "cryoem"
+    else:
+        _exp = "xray"  # Default to xray
+
+    _sc = directives.get("stop_conditions", {})
+    n = len(actions)
+
+    if n > 1:
+        if _has_stop:
+            # "do A, B and stop" → after_program = B (last)
+            last_action = actions[-1][0]
+            last_prog = _ACTION_TABLE[last_action].get(
+                _exp) or _ACTION_TABLE[last_action].get(
+                "xray")
+            if last_prog:
+                if "stop_conditions" not in directives:
+                    directives["stop_conditions"] = {}
+                directives["stop_conditions"][
+                    "after_program"] = last_prog
+                directives["stop_conditions"][
+                    "skip_validation"] = True
+        else:
+            # "do A and B" → clear, plan drives
+            _sc.pop("after_program", None)
+            _sc.pop("skip_validation", None)
+        # Set start_with_program to first action
+        first_action = actions[0][0]
+        first_prog = _ACTION_TABLE[first_action].get(
+            _exp) or _ACTION_TABLE[first_action].get("xray")
+        if first_prog:
+            if "stop_conditions" not in directives:
+                directives["stop_conditions"] = {}
+            directives["stop_conditions"][
+                "start_with_program"] = first_prog
+    elif n == 1 and _has_stop:
+        # "do A and stop" → set after_program if LLM missed it
+        if not _sc.get("after_program"):
+            action_name = actions[0][0]
+            prog = _ACTION_TABLE[action_name].get(
+                _exp) or _ACTION_TABLE[action_name].get(
+                "xray")
+            if prog:
+                if "stop_conditions" not in directives:
+                    directives["stop_conditions"] = {}
+                directives["stop_conditions"][
+                    "after_program"] = prog
+                directives["stop_conditions"][
+                    "skip_validation"] = True
+    # n == 1, no stop → leave as-is
+    # n == 0 → leave as-is
+
+    # Special: "predict" action (not predict_build) implies
+    # stop_after_predict=True — the user wants prediction only,
+    # not the full predict-and-build workflow.
+    # NOTE: must re-read stop_conditions after resolver modified it.
+    _final_sc = directives.get("stop_conditions", {})
+    if (n >= 1 and actions[-1][0] == "predict"
+            and _final_sc.get("after_program")):
+        if "program_settings" not in directives:
+            directives["program_settings"] = {}
+        directives["program_settings"][
+            "stop_after_predict"] = True
+
+
 def _apply_workflow_intent_fallback(directives, advice_lower):
     """Apply deterministic workflow intent patterns to directives.
 
@@ -2072,14 +2390,6 @@ def _apply_workflow_intent_fallback(directives, advice_lower):
     # Guard: only set model_is_placed when the advice does NOT also
     # mention molecular replacement, phaser, solving, or docking
     # (those indicate the model still needs placement first).
-    #
-    # v115.09b: Also clear after_program.  Ligand-fitting is a
-    # multi-step workflow (refine → ligandfit → pdbtools → refine
-    # → polder → validate).  The plan template covers all steps.
-    # The LLM sets after_program to a DIFFERENT program each run
-    # (ligandfit, refine, or polder), and each choice breaks a
-    # different step.  Clearing after_program lets the plan gates
-    # advance through all stages naturally and stop when complete.
     _ligand_fit_signals = [
         "fit ligand", "fit the ligand", "ligandfit",
         "fit atp", "fit nad", "fit fad", "fit heme",
@@ -2098,16 +2408,13 @@ def _apply_workflow_intent_fallback(directives, advice_lower):
             directives["workflow_preferences"] = {}
         directives["workflow_preferences"][
             "model_is_placed"] = True
-        # Clear after_program — the plan template handles
-        # the full ligand-fitting workflow.  Any single
-        # after_program will interfere with one of the
-        # intermediate steps (combine, post-refine, polder).
-        _sc = directives.get("stop_conditions", {})
-        if _sc.get("after_program"):
-            _sc.pop("after_program", None)
-            _sc.pop("skip_validation", None)
-            if directives.get("intent") == "task":
-                directives["intent"] = "solve"
+
+    # ── General after_program resolver (v115.10) ──────────
+    # Replaces per-workflow overlays (ligand after_program
+    # clearing, denmod stop/clear) with a single mechanism
+    # that counts distinct action mentions and checks for
+    # "stop" to determine the correct after_program.
+    _resolve_after_program(directives, advice_lower)
 
 
 def extract_directives_simple(user_advice):
@@ -2442,197 +2749,126 @@ def extract_directives_simple(user_advice):
     # Condition:" lines are now stripped by
     # _strip_preprocessor_stop_condition() at entry.
 
-    # Check for workflow continuation indicators that mean we should NOT set early stops
-    # Words like "then", "later", "afterwards" indicate multi-step workflows
-    continuation_indicators = [
-        r'\bthen\b',
-        r'\blater\b',
-        r'\bafterwards?\b',
-        r'\band\s+then\b',
-        r'\bcontinue\b',
-        r'\bnext\b',
-        r'\bfollowed\s+by\b',
-        r'\bafter\s+(?:that|this|which)\b',
-        r'\bsubsequent',
+    # v115.10: continuation_indicators, downstream_tasks, and
+    # multi_program_patterns removed — replaced by the general
+    # after_program resolver in _apply_workflow_intent_fallback
+    # which counts distinct action mentions via _ACTION_TABLE.
+
+    # Detect tutorial/procedure patterns that imply stop after
+    # specific program.  These provide initial after_program
+    # extraction; the general resolver in
+    # _apply_workflow_intent_fallback overrides when wrong
+    # (e.g., multi-step detected).
+    #
+    # GUARD (Fix 2, v115): Skip this section when the advice
+    # is preprocessor output.  Preprocessor text contains
+    # descriptive phrases like "Density modification of
+    # cryo-EM map" that match tutorial_patterns but are NOT
+    # user commands.  Preprocessor output is identified by
+    # signature headers (Input Files Found, Experiment Type,
+    # Key Parameters, Special Instructions).
+    _PREPROC_SIGS = (
+        r'input\s+files?\s+found',
+        r'experiment\s+type',
+        r'key\s+parameters?',
+        r'special\s+instructions?',
+    )
+    _is_preprocessed = any(
+        re.search(r'(?i)^[ \t]*%s\s*:' % sig,
+                  user_advice, re.MULTILINE)
+        for sig in _PREPROC_SIGS
+    )
+
+    tutorial_patterns = [
+        # Xtriage/twinning analysis
+        (r'(?:run|check|analyze).*(?:xtriage|twinning)', 'phenix.xtriage'),
+        (r'(?:check|look)\s+for\s+twin', 'phenix.xtriage'),
+        (r'analyze.*(?:data\s+quality|reflection)', 'phenix.xtriage'),
+        # Phaser/MR testing
+        (r'(?:run|try|test).*(?:phaser|molecular\s+replacement|MR)', 'phenix.phaser'),
+        (r'(?:test|check).*MR\s+solution', 'phenix.phaser'),
+        # Mtriage analysis
+        (r'(?:run|check).*mtriage', 'phenix.mtriage'),
+        (r'analyze.*map\s+quality', 'phenix.mtriage'),
+        # Map symmetry analysis
+        (r'(?:run|check|find|determine|detect).*(?:map\s*symmetry|symmetry)', 'phenix.map_symmetry'),
+        (r'(?:symmetry|ncs).*(?:map|cryo)', 'phenix.map_symmetry'),
+        # Map to model (automated model building into cryo-EM maps)
+        # Check BEFORE dock_in_map patterns
+        (r'map\s*to\s*model', 'phenix.map_to_model'),
+        (r'maptomodel', 'phenix.map_to_model'),
+        (r'(?:use|run|try).*map\s*to\s*model', 'phenix.map_to_model'),
+        (r'(?:automated?\s+)?model\s+building.*(?:into|in)\s*(?:the\s*)?(?:cryo[- ]?em\s+)?(?:density\s+)?map', 'phenix.map_to_model'),
+        (r'build.*model.*(?:into|in)\s*(?:the\s*)?(?:density\s+)?map', 'phenix.map_to_model'),
+        # Map sharpening
+        (r'map\s*sharpening', 'phenix.map_sharpening'),
+        (r'sharpen.*(?:the\s+)?map', 'phenix.map_sharpening'),
+        (r'(?:run|use|try).*map\s*sharpening', 'phenix.map_sharpening'),
+        # Polder omit maps
+        (r'polder', 'phenix.polder'),
+        (r'polder\s*map', 'phenix.polder'),
+        (r'omit\s*map', 'phenix.polder'),
+        (r'(?:evaluate|check|verify).*ligand.*(?:placement|density)', 'phenix.polder'),
+        (r'(?:evaluate|check|verify).*(?:placement|density).*ligand', 'phenix.polder'),
+        # Dock in map (rigid body fitting)
+        (r'dock.*(?:in|into)\s+map', 'phenix.dock_in_map'),
+        (r'(?:rigid\s+body\s+)?fit.*model.*(?:to|into)\s+map', 'phenix.dock_in_map'),
+        # Ligand fitting
+        (r'(?:run|try).*ligand\s*fit', 'phenix.ligandfit'),
+        (r'(?:fit|place|add).*ligand', 'phenix.ligandfit'),
+        (r'ligand\s*fitting', 'phenix.ligandfit'),
     ]
 
-    # Downstream task indicators - if user mentions these, don't stop early
-    downstream_tasks = [
-        r'ligand\s+(?:fit|fitting|place|placement)',
-        r'fit\s+(?:the\s+)?ligand',
-        r'add\s+(?:the\s+)?ligand',
-        r'place\s+(?:the\s+)?ligand',
-        r'validate|validation|molprobity',
-        r'refine.*(?:further|more|additional)',
-        r'additional\s+refine',
-        r'water\s+(?:pick|add|place)',
-        # Cryo-EM downstream tasks (indicate steps AFTER an earlier program)
-        r'build\s+(?:a\s+)?model',
-        r'model\s+building',
-        r'map[\s_]to[\s_]model',
-        r'apply\s+(?:ncs|symmetry)',
-        r'generate\s+(?:the\s+)?(?:full|complete)',
-        r'(?:full|complete)\s+(?:complex|assembly|oligomer|multimer)',
-        r'(?:real[- ]space\s+)?refine.*(?:model|structure)',
-        r'extract\s+(?:the\s+)?(?:unique|asymmetric)',
+    # Density modification patterns - need to determine experiment type
+    denmod_patterns = [
+        r'density\s+modif',
+        r'denmod',
+        r'(?:improve).*(?:map|phases)',  # Removed 'sharpen' - now goes to map_sharpening
+        r'one\s+cycle.*(?:density|denmod|map\s+improv)',
     ]
 
-    has_continuation = any(re.search(p, advice_lower) for p in continuation_indicators)
-    has_downstream_task = any(re.search(p, advice_lower) for p in downstream_tasks)
+    _allow_patterns = (
+        not _is_preprocessed
+        or (intent_result
+            and intent_result.get("intent")
+            == "tutorial"))
 
-    # Also detect multi-step workflows by counting distinct program mentions
-    # If multiple programs are referenced, this is a pipeline, not a single-step task
-    multi_program_patterns = [
-        (r'(?:auto[- ]?sharpen|map[\s_]sharpening|sharpen\s+(?:the\s+)?map)', 'sharpening'),
-        (r'(?:map[\s_]symmetry|find\s+symmetry|determine\s+symmetry|ncs\s+(?:from|in))', 'symmetry'),
-        (r'(?:map[\s_]to[\s_]model|build.*model.*(?:into|in)\s+(?:the\s+)?map)', 'build'),
-        (r'(?:dock.*(?:in|into)\s+map|fit\s+model\s+to\s+map)', 'dock'),
-        (r'(?:refine|refinement)', 'refine'),
-        (r'(?:ligand\s*fit|fit.*ligand|place.*ligand)', 'ligand'),
-        (r'(?:density\s+modif|resolve_cryo_em)', 'denmod'),
-        (r'(?:apply\s+(?:ncs|symmetry)|generate.*(?:complex|assembly))', 'apply_ncs'),
-    ]
-    distinct_steps = set()
-    for pattern, step_name in multi_program_patterns:
-        if re.search(pattern, advice_lower, re.IGNORECASE):
-            distinct_steps.add(step_name)
-    has_multi_step = len(distinct_steps) >= 2
+    if _allow_patterns:
+        for pattern, program in tutorial_patterns:
+            if re.search(pattern, advice_lower,
+                         re.IGNORECASE):
+                if "stop_conditions" not in directives:
+                    directives["stop_conditions"] = {}
+                if "after_program" not in directives.get(
+                    "stop_conditions", {}):
+                    directives["stop_conditions"][
+                        "after_program"] = program
+                    directives["stop_conditions"][
+                        "skip_validation"] = True
+                    # Internal flag: this was inferred
+                    # from patterns, not user command
+                    directives["stop_conditions"][
+                        "_set_by_pattern"] = True
+                break
 
-    # If there are continuation indicators, downstream tasks, or multiple distinct
-    # program steps, this is a multi-step workflow - don't set after_program
-    if has_continuation or has_downstream_task or has_multi_step:
-        # This is a multi-step workflow - extract the first program to start with
-        # Common patterns: "run X then Y", "calculate X and then refine"
-        first_program_patterns = [
-            (r'(?:calculate|run|compute)\s+(?:a\s+)?polder', 'phenix.polder'),
-            (r'polder\s+(?:map|omit)', 'phenix.polder'),
-            (r'(?:run|do)\s+xtriage', 'phenix.xtriage'),
-            (r'(?:run|try)\s+phaser', 'phenix.phaser'),
-            (r'(?:run|do)\s+mtriage', 'phenix.mtriage'),
-            (r'dock.*(?:in|into)\s+(?:the\s+)?map', 'phenix.dock_in_map'),
-            (r'map\s*to\s*model', 'phenix.map_to_model'),
-        ]
-
-        for pattern, program in first_program_patterns:
+    # Handle density modification separately
+    if _allow_patterns and "after_program" not in directives.get("stop_conditions", {}):
+        for pattern in denmod_patterns:
             if re.search(pattern, advice_lower, re.IGNORECASE):
                 if "stop_conditions" not in directives:
                     directives["stop_conditions"] = {}
-                # Set as start_with_program - workflow should run this first
-                directives["stop_conditions"]["start_with_program"] = program
-                break  # Only extract the first matching program
-    else:
-        # Detect tutorial/procedure patterns that imply stop after
-        # specific program.
-        #
-        # GUARD (Fix 2, v115): Skip this section when the advice
-        # is preprocessor output.  Preprocessor text contains
-        # descriptive phrases like "Density modification of
-        # cryo-EM map" that match tutorial_patterns but are NOT
-        # user commands.  Preprocessor output is identified by
-        # signature headers (Input Files Found, Experiment Type,
-        # Key Parameters, Special Instructions).
-        _PREPROC_SIGS = (
-            r'input\s+files?\s+found',
-            r'experiment\s+type',
-            r'key\s+parameters?',
-            r'special\s+instructions?',
-        )
-        _is_preprocessed = any(
-            re.search(r'(?i)^[ \t]*%s\s*:' % sig,
-                      user_advice, re.MULTILINE)
-            for sig in _PREPROC_SIGS
-        )
-
-        tutorial_patterns = [
-            # Xtriage/twinning analysis
-            (r'(?:run|check|analyze).*(?:xtriage|twinning)', 'phenix.xtriage'),
-            (r'(?:check|look)\s+for\s+twin', 'phenix.xtriage'),
-            (r'analyze.*(?:data\s+quality|reflection)', 'phenix.xtriage'),
-            # Phaser/MR testing
-            (r'(?:run|try|test).*(?:phaser|molecular\s+replacement|MR)', 'phenix.phaser'),
-            (r'(?:test|check).*MR\s+solution', 'phenix.phaser'),
-            # Mtriage analysis
-            (r'(?:run|check).*mtriage', 'phenix.mtriage'),
-            (r'analyze.*map\s+quality', 'phenix.mtriage'),
-            # Map symmetry analysis
-            (r'(?:run|check|find|determine|detect).*(?:map\s*symmetry|symmetry)', 'phenix.map_symmetry'),
-            (r'(?:symmetry|ncs).*(?:map|cryo)', 'phenix.map_symmetry'),
-            # Map to model (automated model building into cryo-EM maps)
-            # Check BEFORE dock_in_map patterns
-            (r'map\s*to\s*model', 'phenix.map_to_model'),
-            (r'maptomodel', 'phenix.map_to_model'),
-            (r'(?:use|run|try).*map\s*to\s*model', 'phenix.map_to_model'),
-            (r'(?:automated?\s+)?model\s+building.*(?:into|in)\s*(?:the\s*)?(?:cryo[- ]?em\s+)?(?:density\s+)?map', 'phenix.map_to_model'),
-            (r'build.*model.*(?:into|in)\s*(?:the\s*)?(?:density\s+)?map', 'phenix.map_to_model'),
-            # Map sharpening
-            (r'map\s*sharpening', 'phenix.map_sharpening'),
-            (r'sharpen.*(?:the\s+)?map', 'phenix.map_sharpening'),
-            (r'(?:run|use|try).*map\s*sharpening', 'phenix.map_sharpening'),
-            # Polder omit maps
-            (r'polder', 'phenix.polder'),
-            (r'polder\s*map', 'phenix.polder'),
-            (r'omit\s*map', 'phenix.polder'),
-            (r'(?:evaluate|check|verify).*ligand.*(?:placement|density)', 'phenix.polder'),
-            (r'(?:evaluate|check|verify).*(?:placement|density).*ligand', 'phenix.polder'),
-            # Dock in map (rigid body fitting)
-            (r'dock.*(?:in|into)\s+map', 'phenix.dock_in_map'),
-            (r'(?:rigid\s+body\s+)?fit.*model.*(?:to|into)\s+map', 'phenix.dock_in_map'),
-            # Ligand fitting
-            (r'(?:run|try).*ligand\s*fit', 'phenix.ligandfit'),
-            (r'(?:fit|place|add).*ligand', 'phenix.ligandfit'),
-            (r'ligand\s*fitting', 'phenix.ligandfit'),
-        ]
-
-        # Density modification patterns - need to determine experiment type
-        denmod_patterns = [
-            r'density\s+modif',
-            r'denmod',
-            r'(?:improve).*(?:map|phases)',  # Removed 'sharpen' - now goes to map_sharpening
-            r'one\s+cycle.*(?:density|denmod|map\s+improv)',
-        ]
-
-        _allow_patterns = (
-            not _is_preprocessed
-            or (intent_result
-                and intent_result.get("intent")
-                == "tutorial"))
-
-        if _allow_patterns:
-            for pattern, program in tutorial_patterns:
-                if re.search(pattern, advice_lower,
-                             re.IGNORECASE):
-                    if "stop_conditions" not in directives:
-                        directives["stop_conditions"] = {}
-                    if "after_program" not in directives.get(
-                        "stop_conditions", {}):
-                        directives["stop_conditions"][
-                            "after_program"] = program
-                        directives["stop_conditions"][
-                            "skip_validation"] = True
-                        # Internal flag: this was inferred
-                        # from patterns, not user command
-                        directives["stop_conditions"][
-                            "_set_by_pattern"] = True
-                    break
-
-        # Handle density modification separately
-        if _allow_patterns and "after_program" not in directives.get("stop_conditions", {}):
-            for pattern in denmod_patterns:
-                if re.search(pattern, advice_lower, re.IGNORECASE):
-                    if "stop_conditions" not in directives:
-                        directives["stop_conditions"] = {}
-                    # Determine program based on experiment type
-                    if is_cryoem and not is_xray:
-                        directives["stop_conditions"]["after_program"] = "phenix.resolve_cryo_em"
-                    elif is_xray and not is_cryoem:
-                        directives["stop_conditions"]["after_program"] = "phenix.autobuild_denmod"
-                    else:
-                        # Ambiguous or unknown - default to cryo-EM as it's more commonly requested
-                        # The LLM extraction will do better with context
-                        directives["stop_conditions"]["after_program"] = "phenix.resolve_cryo_em"
-                    directives["stop_conditions"]["skip_validation"] = True
-                    directives["stop_conditions"]["_set_by_pattern"] = True
-                    break
+                # Determine program based on experiment type
+                if is_cryoem and not is_xray:
+                    directives["stop_conditions"]["after_program"] = "phenix.resolve_cryo_em"
+                elif is_xray and not is_cryoem:
+                    directives["stop_conditions"]["after_program"] = "phenix.autobuild_denmod"
+                else:
+                    # Ambiguous or unknown - default to cryo-EM as it's more commonly requested
+                    # The LLM extraction will do better with context
+                    directives["stop_conditions"]["after_program"] = "phenix.resolve_cryo_em"
+                directives["stop_conditions"]["skip_validation"] = True
+                directives["stop_conditions"]["_set_by_pattern"] = True
+                break
 
     # ── Intent-driven stop behavior (v115) ──────────────────────
     # Override or set stop conditions based on classified intent.

@@ -278,6 +278,13 @@ Semantic file classification using rules from `file_categories.yaml`:
   models (>150 atoms, majority ATOM records) → rescued to `model`.  Catches
   false positives from broad YAML patterns matching names like `1aba.pdb`.
 - **MTZ safety net**: Cross-checks all MTZ files against `classify_mtz_type()` regex
+- **Pose file exclusion** (v115.09b): LigandFit individual pose files
+  (`ligand_fit_1_pose_5.pdb`) are excluded from `ligand_fit_output` category
+  at categorization time. Only the final combined model (`ligand_fit_1.pdb`)
+  is categorized. Additionally, `session.get_available_files()` filters
+  `_pose_`/`_pose.` from the returned file list — this is the primary
+  defense, catching pose files that enter through `_discover_cycle_outputs`
+  glob scans.
 
 ### 6. Best Files Tracker (`agent/best_files_tracker.py`)
 
@@ -325,6 +332,37 @@ can only name one program in `after_program`.  For multi-goal requests like
 `map_symmetry`) and goals beyond that point would be silently dropped if
 `after_program` triggered an immediate stop.  By letting the LLM decide, all
 goals in the user's advice are honored.
+
+**Ligand-fit exception (v115.09b):** When ligand-fit signals are detected
+("fit ATP", "fit ligand", etc.), `after_program` is cleared entirely. Ligand
+fitting is a multi-step workflow (refine → ligandfit → pdbtools → refine →
+polder → validate) driven by the `refine_placed_ligand` plan template (6
+stages). The LLM sets `after_program` to a different program each run
+(ligandfit, refine, or polder), and each choice blocks a different
+intermediate step. Clearing `after_program` lets the plan gates advance
+through all stages naturally.
+
+**General `after_program` resolver (v115.10):** Replaces per-workflow
+overlays with a single mechanism.  Uses `_ACTION_TABLE` (14 actions)
+to detect program mentions in the user's advice, then applies rules
+based on action count and explicit "stop":
+- 2+ actions, no stop → clear `after_program` (plan drives)
+- 2+ actions + stop → `after_program` = last mentioned
+- 1 action + stop → set `after_program` if LLM missed it
+- 1 action, no stop → leave as-is
+
+Handles all workflows: MR, cryo-EM density modification, ligand
+fitting, predict/build, etc.  Includes negation detection ("don't
+build") and predict+build compound rule.
+
+**Parameter requests** ("set resolution to 3", "run 4 cycles") use
+a different, three-layer architecture: (1) the LLM extracts the
+concept and value, (2) ``strategy_flags`` in programs.yaml maps
+concepts to program-specific PHIL paths, (3) the command builder
+applies them.  Unlike stop/continue (where the LLM is systematically
+unreliable), the LLM handles parameter extraction well.  When a
+parameter request fails, the fix is to add a ``strategy_flags``
+entry in programs.yaml, not new Python code.
 
 ### 8. Safety Checks (`agent/sanity_checker.py`, `agent/directive_extractor.py`)
 
@@ -663,7 +701,10 @@ crystal symmetry mismatch, missing data columns, PHIL parse failure).
 The `DiagnosisDetector` identifies the error type from
 `diagnosable_errors.yaml`, reads the failing program's log tail, and
 sends both to the LLM (via the server's `failure_diagnosis` analysis
-mode). The response is structured as three sections: "What went wrong,"
+mode). Error types include crystal symmetry mismatch, model outside
+map, SHELX not installed, unknown PHIL parameter, polymer special
+position, and missing crystal symmetry (v115.09b — covers xtriage
+with .sca data lacking unit cell info). The response is structured as three sections: "What went wrong,"
 "Most likely cause," and "How to fix it." The HTML report opens
 automatically in the user's browser. If the LLM is unavailable
 (rules-only mode or API failure), a deterministic fallback uses the
@@ -1213,6 +1254,8 @@ python3 tests/tst_phase7_routing_simulation.py  # Single phase
 
 | Version | Key Changes |
 |---------|-------------|
+| v115.10 | **General `after_program` resolver**: Replaces per-workflow overlays (ligand-fit clearing, denmod stop/clear, continuation_indicators, downstream_tasks, multi_program_patterns) with a single `_ACTION_TABLE`-based mechanism. 14 actions with keywords mapped to xray/cryoem programs. Rules: multiple actions + stop → after_program = last; multiple + no stop → clear; single + stop → set. Features: word-boundary matching, action-specific negation detection ("don't build"), predict+build compound rule, cryo-EM experiment type inference. 33 old regex patterns removed, replaced by keyword-based action detection. 20 unit tests (91 assertions). 1 file modified (`directive_extractor.py`). |
+| v115.09b | **GUI Fixes + Ligand Workflow + Production Bugs**: (1) `explicit_program` done-flag guard prevents LLM-driven program loops (bgal_denmod, hipip-refine). (2) Ligand-fitting workflow: `after_program` clearing for multi-step workflows; `combine_ligand` guard forces pdbtools-only; post-ligandfit exemption defers `after_program_done` during combine/refine; `model_is_placed=True` for ligand-fit signals. (3) Pose file exclusion at three levels: `session.get_available_files()` basename filter (primary), `workflow_state.py` categorization, `programs.yaml` `exclude_patterns`. (4) `phaser_sad.atom_type` interception → `additional_atom_types` conversion in autosol. (5) Polder `requires_resolution` invariant with `auto_fill_resolution` + `xray_data.high_resolution` strategy flag. (6) Preprocessing stop override with `_has_explicit_stop` regex. (7) GUI auto-discovery skip for user-selected files. (8) `missing_crystal_symmetry` diagnosable error for xtriage with .sca data. 8 files modified. |
 | v115.09 | **Tutorial Routing Fixes**: (1) Cryo-EM `past_analysis` gate: added `map_sharpening_done`, `map_symmetry_done`, `has_optimized_full_map` — unblocks bgal_denmod, apoferritin_denmod, ion_channel_denmod after map_sharpening; regex broadened to match actual output filenames. (2) `.sca-only` data detection in `perceive()` — deferred, needs reactive approach. (3) Validation-only routing: `wants_validation_only` directive extracted via LLM prompt + rules-based fallback + post-LLM overlay → validation shortcut in `_detect_xray_step` → `validate_existing` plan template; PDB scan limit 500→2000 in `_is_valid_file` (3dnd.pdb has 546 header lines); `has_phased_data_mtz` added. (4) MR-SAD routing: `force_mr` flag when `use_mr_sad` + model not categorized as search_model → phaser offered; MR-SAD guard updated. Critical deployment fix: rules-based intent patterns moved to shared `_apply_workflow_intent_fallback()` called as post-LLM overlay. 7 files modified. |
 | v115.08 | **Phased File Detection + Systematic Testing Framework**: 4 critical fixes for phased file detection (content-based iotbx+ASCII heuristic replacing filename markers; shared post-processing; category exclusivity; conditional data_mtz removal). 1 additional bug fix (B1: last_program missing from build_context). `[GATE]` diagnostic logging for routing debugging. 10-phase systematic testing framework (S0–S9): static audit, contract gap coverage map, YAML/hardcoded path consistency, AgentSession round-trip, history flag consistency, category-consumer alignment, 32-tutorial routing simulation, command building, error classification, LLM perturbation resilience. 12 new test files, 42 unit tests + ~260 phase checks. Framework reviewed across multiple rounds — 54 issues found and fixed in test scripts (5 can't-fail gates, 3 tautological assertions, 5 wrong best_files keys, etc.). |
 | v115.07 | **Run 15b Bug Fixes — Phase 3**: 4 bugs from 371-run analysis. Numeric coercion (`_safe_float` at 6 sites). Two-tier half-map detection. PHIL blocked params for resolve_cryo_em. Terminal diagnosis for unknown chemical elements. Reference model restraint support (hierarchical prefix whitelist, path resolution, strategy rewrites). |

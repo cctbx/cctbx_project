@@ -96,6 +96,7 @@ Systematic Testing Framework (v115.08):
   S7. Phase 8: Command Building - 7 tutorials + 2 edge cases, 15 command builds
   S8. Phase 5: Error Classification - 3 classifiers, 30+ patterns, consistency checks
   S9. Phase 9: LLM Perturbation - filename/program/parameter/truncation/empty (17 tests)
+  S10. General Resolver - ACTION_TABLE, _detect_actions, _resolve_after_program (20 tests, 91 assertions)
 """
 
 from __future__ import absolute_import, division, print_function
@@ -1074,6 +1075,16 @@ def main():
             results.append(("Phase 9: LLM Perturbation", "tst_phase9_llm_perturbation", False, 0))
     else:
         print("  Skipping Phase 9 (LLM perturbation) in --quick mode")
+
+    # --- General Resolver Tests (v115.10) ---
+    try:
+        from tests.tst_general_resolver import run_all_tests as run_general_resolver_tests
+        success, elapsed = run_test_module(
+            "tst_general_resolver", run_general_resolver_tests, args.verbose)
+        results.append(("General Resolver", "tst_general_resolver", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_general_resolver: {e}")
+        results.append(("General Resolver", "tst_general_resolver", False, 0))
 
     # --- Summary ---
     total_elapsed = time.time() - total_start

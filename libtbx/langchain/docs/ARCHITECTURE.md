@@ -211,6 +211,16 @@ is always the primary scatterer in SAD/MAD.  Uses `_ANOMALOUS_Z` table covering
 harm).  Handles multi-element `mad_ha_add_list` by swapping with the heaviest
 secondary.
 
+**`phaser_sad.atom_type` interception (v115.09b):** The LLM sometimes uses the
+dotted PHIL path `phaser_sad.atom_type=S` to tell autosol's internal phaser to
+search for a secondary atom. This bypasses the `strategy_flags` system and
+overrides the primary `atom_type`, causing autosol to use S instead of Se. The
+command builder's `_build_strategy()` now intercepts this key: if the value
+differs from the primary `atom_type` and `additional_atom_types` isn't already
+set, it's converted to `additional_atom_types` (preserving the LLM's intent).
+If it matches the primary or `additional_atom_types` already exists, it's
+stripped. Six scenarios tested.
+
 **Rule D design tension (v112.77):** Rule D ("fail closed") strips bare params not
 in a program's `strategy_flags` allowlist.  This is safe against hallucination but
 blocks legitimate LLM error recovery — e.g., `rebuild_in_place=False` correctly
@@ -558,7 +568,12 @@ The decision flow follows a clean, layered architecture where each component has
 - `obs_labels` for multi-array MTZ handling (xtriage, autosol, phaser, predict_and_build)
 - `ligand_cif` optional input for refine
 - Autosol output typed as `phased_data_mtz` (not `data_mtz`)
-- Invariants (rules that must be satisfied)
+- Invariants (rules that must be satisfied): auto_fill_resolution for
+  programs that need it (real_space_refine, dock_in_map, map_to_model,
+  polder, map_correlations, validation_cryoem, predict_and_build)
+- `exclude_patterns` on input slots for file filtering (e.g., pdbtools
+  ligand slot excludes `pose` to prevent selecting individual LigandFit
+  pose files instead of the final combined model)
 - Scoring rules
 
 **Rules Selector** (`rules_selector.py`):
@@ -1415,8 +1430,36 @@ xray_initial → xtriage → xray_analyzed
     molprobity refine STOP
               │
               ↓
-       [if ligand] ligandfit → pdbtools → refine
+       [if ligand] ligandfit → pdbtools → refine → polder → validate
 ```
+
+**Ligand-fitting sub-workflow (v115.09b):** When a ligand file is
+present and the user requests fitting, the plan template
+`refine_placed_ligand` drives a 6-stage pipeline: data_assessment →
+refinement → ligand_fitting → final_refinement → ligand_validation →
+validation. Three mechanisms ensure the pipeline completes:
+
+1. **General `after_program` resolver** (`directive_extractor.py`,
+   v115.10): Detects "fit ligand" as a single action. If the user
+   also mentions "refine" or other actions, after_program is cleared
+   (multi-step → plan drives). If the user says "fit ligand and
+   stop", after_program is set to ligandfit.  Replaces the per-
+   workflow ligand after_program clearing from v115.09b.
+2. **`combine_ligand` guard** (`workflow_engine.py`): Forces
+   `valid_programs = ["phenix.pdbtools"]` for the combine step,
+   regardless of what `_apply_directives` returns.
+3. **Post-ligandfit exemption** (`workflow_engine.py`): Defers
+   `after_program_done` during combine and refine steps so the
+   workflow can complete even if the LLM's `after_program` wasn't
+   cleared (defense-in-depth).
+
+**Pose file exclusion (v115.09b):** LigandFit produces individual
+pose files (`ligand_fit_1_pose_5.pdb`) alongside the final combined
+model (`ligand_fit_1.pdb`). Pose files are filtered at three levels:
+(1) `session.get_available_files()` removes `_pose_`/`_pose.` from
+the returned list — the primary fix; (2) `workflow_state.py`
+categorization excludes pose files from `ligand_fit_output`; (3)
+`programs.yaml` `exclude_patterns: [pose]` on pdbtools ligand input.
 
 † Anomalous signal classification (from `_analyze_history` in `workflow_state.py`):
   - `strong_anomalous=True`: measurability > 0.10 or `anomalous_resolution` < 6.0 Å → autosol prioritized
@@ -1642,12 +1685,64 @@ like `auto_sharpen_A.ccp4` and `bgal_auto_sharpen.ccp4`.
 each field has a declared authority level (RULES or LLM). See
 `docs/directive_merge_plan.md`.
 
-**Known issue — preprocessing stop override** (`ai_agent.py` line 2761):
-The `_preprocessing_programs` set (`xtriage`, `mtriage`) causes
-`after_program` to be unconditionally cleared, even when the user
-explicitly says "run mtriage and stop." The intent override also
-changes `task` → `solve`. Fix planned for v115.10: add
-`_has_explicit_stop` regex check before clearing.
+**Preprocessing stop override (v115.09b, fixed):** The
+`_preprocessing_programs` set (`xtriage`, `mtriage`) previously cleared
+`after_program` unconditionally, even when the user explicitly said
+"run mtriage and stop." Fixed with `_has_explicit_stop` regex check
+before clearing — raw user advice is checked for explicit stop signals
+before the preprocessing override fires.
+
+**General `after_program` resolver (v115.10):** Replaces per-workflow
+overlays (ligand-fit clearing, denmod stop/clear) with a single
+general mechanism.  The resolver uses `_ACTION_TABLE` (14 actions
+with keywords mapped to xray/cryoem programs) to detect which
+workflow actions the user mentioned, then applies three rules:
+
+- **Multiple actions + "stop"** → `after_program` = last mentioned
+  action's program.  "run phaser, refine, and stop" → `after_program
+  = phenix.refine`.
+- **Multiple actions, no "stop"** → clear `after_program`.  Plan
+  template drives the full workflow.  "density modify and build" →
+  no `after_program`.
+- **Single action + "stop"** → set `after_program` if LLM missed it.
+  "density modify and stop" → `after_program = resolve_cryo_em`.
+
+Key features: word-boundary matching for single-word keywords (prevents
+"solve" matching inside "resolve"); action-specific negation detection
+("don't build" removes the build action); predict+build compound rule
+(merged into single `predict_build` action); experiment-type inference
+from advice text for xray/cryoem program mapping.
+
+Also removed from `extract_directives_simple`: `continuation_indicators`
+(9 patterns), `downstream_tasks` (16 patterns), `multi_program_patterns`
+(8 patterns) — all replaced by `_detect_actions()`.  `tutorial_patterns`
+and `denmod_patterns` retained for initial extraction; the general
+resolver overrides when wrong.
+
+**Parameter handling architecture (v115.10 design note):** User parameter
+requests ("set resolution to 3", "run 4 cycles of refinement", "box the
+map") use a different architecture from the stop/continue resolver above.
+Stop/continue is a *routing* decision with a small discrete solution space
+(14 actions) where the LLM was systematically wrong — a general resolver
+was needed.  Parameters are *value* decisions where the LLM is generally
+reliable at extraction, and the solution space is large (hundreds of PHIL
+parameters per program).  The parameter system uses three layers:
+
+1. **LLM extraction** → extracts user intent as concept + value
+   (e.g., ``resolution: 3``, ``macro_cycles: 4``).  Rules-based
+   patterns (``cycle_patterns``) provide fallback for common cases.
+2. **``strategy_flags`` in programs.yaml** → maps concept names to
+   program-specific PHIL paths (e.g., ``resolution`` →
+   ``xray_data.high_resolution={value}`` for refinement vs
+   ``crystal_info.resolution={value}`` for predict_and_build).
+3. **``command_builder``** → applies mapped parameters to the command.
+
+When a user parameter request fails, the fix is typically to add a
+``strategy_flags`` entry in programs.yaml for the missing concept,
+not to build new Python extraction code.  The ``auto_fill_resolution``
+invariant is an example: it automatically fills the resolution
+parameter for programs that need it, using the value from previous
+program outputs.
 
 **.sca-only data detection** (`perceive`): When all data files are
 `.sca/.hkl` with no `.mtz`, no model, and no sequence, and no
@@ -1789,6 +1884,16 @@ still runs.
 Without this layer, all downstream recovery (categorization safety nets,
 best_files tracking, etc.) is irrelevant because the files were never in the
 working set.
+
+**Intermediate file filtering (v115.09b):** `get_available_files()` applies a
+final filter (Step 5) that removes files with `_pose_` or `_pose.` in the
+basename. LigandFit produces individual pose files (`ligand_fit_1_pose_5.pdb`)
+alongside the final combined model (`ligand_fit_1.pdb`). Without this filter,
+`_discover_cycle_outputs` globs `LigandFit_run_1_/*.pdb` and adds all pose
+files to `available_files`. The LLM then picks the pose with the highest CC
+instead of the final model. Matching is basename-only to avoid directory-name
+false positives. Words containing "pose" (decompose, compose, expose) are not
+affected because the patterns require an underscore before "pose".
 
 **Layer 1: `session._find_missing_outputs()`** — Runs in
 `get_available_files()` after Layer 0.  Derives companion files from
