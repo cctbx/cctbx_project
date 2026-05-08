@@ -5928,9 +5928,10 @@ class build_all_chain_proxies(linking_mixins):
         verbose=True,
         )
       if number_of_enols:
-        print("""\
-  Enol-peptide restraints (%d) added in %0.1f %sseconds
-  """ % (number_of_enols, greek_time(enol_time)), file=log)
+        gt, gu = greek_time(enol_time)
+        print(f"""\
+  Enol-peptide restraints ({number_of_enols}) added in {gt} {gu}seconds
+  """, file=log)
     #
     # need autodetect code
     #
