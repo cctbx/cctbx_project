@@ -1223,9 +1223,9 @@ MAX DEVIATION FROM PLANES:
    PHE   0.008   0.001   PHE A  87
    HIS   0.001   0.000   HIS A 126
 
-DETAILS OF BONDING TYPE RMSD
-  COVALENT GEOMETRY    : BOND        0.00413 ( 1174)
-  COVALENT GEOMETRY    : ANGLE       0.91411 ( 1594)
+DETAILS OF BONDING TYPE RMSD/Z
+COVALENT GEOMETRY    : BOND        0.00413 /  0.29 ( 1174)
+COVALENT GEOMETRY    : ANGLE       0.91411 /  0.68 ( 1594)
 """
   val = [l.strip() for l in val.splitlines() if l.strip() != '']
   exp = [l.strip() for l in exp.splitlines() if l.strip() != '']
