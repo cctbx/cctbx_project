@@ -51,6 +51,7 @@ class mopac_manager(base_qm_manager.base_qm_manager):
                         'quartet', # - 3 unpaired electrons
                         'quintet', # - 4 unpaired electrons
                         'sextet', # - 5 unpaired electrons
+                        'septet',
                         ][self.multiplicity]
     additional_options=''
     if gradients_only:
