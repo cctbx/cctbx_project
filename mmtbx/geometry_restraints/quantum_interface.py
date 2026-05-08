@@ -474,6 +474,7 @@ def get_qi_macro_cycle_array(params, verbose=False, log=None):
   if qi:
     data={}
     for i, qmr in enumerate(params.qi.qm_restraints):
+      if qmr.selection is None: continue
       data[qmr.selection]=[]
       rc=[]
       for j in range(number_of_macro_cycles+1):

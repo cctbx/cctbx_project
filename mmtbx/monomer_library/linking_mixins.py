@@ -535,12 +535,15 @@ class linking_mixins(object):
            atom2.parent().resname.strip() in moved
            ): continue
       #
+      # distance too short because of sym. overlap
       #
       if verbose:
         print('='*80)
         print('nonbonded', i_seq, j_seq, atom1.quote(), end=' ')
         print(atom2.quote(), end=' ')
         print("Distance: %0.2f" % distance, rt_mx_ji, sym_op)
+      # if distance<1e-3:
+      #   if rt_mx_ji: continue
 
       # don't link atoms not in the same conformer (works for models also)...
       # They will never be in different conformers, we are looping over
