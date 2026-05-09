@@ -326,7 +326,7 @@ namespace cctbx { namespace xray {
         measured_scale_indices_(obs.measured_scale_indices_),
         twin_fractions_(twin_fractions),
         total_data_cnt(obs.total_data_cnt),
-        twinned(obs.twinned)
+        twinned(twin_fractions.size() > 0 || merohedral_components.size() > 0)
     {
       CCTBX_ASSERT(twin_fractions.size()==obs.twin_fractions_.size());
       CCTBX_ASSERT(!(twin_fractions.size() != 0 && merohedral_components.size() != 0));
