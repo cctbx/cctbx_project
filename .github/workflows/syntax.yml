@@ -30,7 +30,7 @@ jobs:
           git fetch gitlab
           git push -u gitlab master || true
 
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@v4
         with:
           miniforge-version: latest
           channels: conda-forge
@@ -77,7 +77,7 @@ jobs:
         with:
           path: ./modules/cctbx_project
 
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@v4
         with:
           miniforge-version: latest
           channels: conda-forge
