@@ -668,6 +668,31 @@ def exercise_float_widget_limits():
   assert w.isValid()
   print("exercise_float_widget_limits OK")
 
+from qttbx.widgets.phil.key_widget import KeyWidget
+
+def _make_key_definition():
+  return libtbx.phil.parse('output_label = "fobs"\n  .type = key').objects[0]
+
+def exercise_key_widget_accepts_identifier():
+  d = _make_key_definition()
+  w = KeyWidget(d)
+  w._line_edit.setText("abc_123")
+  w._line_edit.validate()
+  assert w.isValid()
+  assert w.value() == "abc_123"
+  print("exercise_key_widget_accepts_identifier OK")
+
+def exercise_key_widget_rejects_non_identifier():
+  d = _make_key_definition()
+  w = KeyWidget(d)
+  w._line_edit.setText("9starts_with_digit")
+  w._line_edit.validate()
+  assert not w.isValid()
+  w._line_edit.setText("has space")
+  w._line_edit.validate()
+  assert not w.isValid()
+  print("exercise_key_widget_rejects_non_identifier OK")
+
 
 def run_all():
   _get_app()
@@ -711,6 +736,8 @@ def run_all():
   exercise_bool_widget_tristate_for_none()
   exercise_float_widget_round_trip()
   exercise_float_widget_limits()
+  exercise_key_widget_accepts_identifier()
+  exercise_key_widget_rejects_non_identifier()
 
 if __name__ == "__main__":
   run_all()
