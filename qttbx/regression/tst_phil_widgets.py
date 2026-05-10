@@ -931,6 +931,63 @@ def exercise_strings_text_widget_round_trip_strips_blank():
   print("exercise_strings_text_widget_round_trip_strips_blank OK")
 
 
+def _make_words_definition():
+  scope = libtbx.phil.parse('''
+tags = None
+  .type = words
+'''.strip())
+  return scope.objects[0]
+
+
+def exercise_words_widget_round_trip_quoted():
+  """WordsWidget preserves quoted multi-word tokens."""
+  from qttbx.widgets.phil.words_widget import WordsWidget
+  _get_app()
+  w = WordsWidget(_make_words_definition())
+  w._line_edit.setText('alpha "two words" beta')
+  w._line_edit.validate()
+  values = [tw.value for tw in w.value()]
+  assert values == ["alpha", "two words", "beta"], values
+  print("exercise_words_widget_round_trip_quoted OK")
+
+
+def exercise_words_text_widget_round_trip():
+  from qttbx.widgets.phil.words_widget import WordsTextWidget
+  _get_app()
+  w = WordsTextWidget(_make_words_definition())
+  w._text_edit.setPlainText("a b\nc d")
+  w._text_edit.validate()
+  values = [tw.value for tw in w.value()]
+  assert values == ["a", "b", "c", "d"], values
+  print("exercise_words_text_widget_round_trip OK")
+
+
+def exercise_words_widget_round_trip_backslash():
+  """WordsWidget round-trips tokens with backslash, quotes, and trailing backslash.
+
+  The trailing-backslash case is the canonical demonstration: a value like
+  ``ab\\`` formatted naively as ``"ab\\"`` makes the tokenizer treat the
+  closing quote as an escaped literal and report a missing-closing-quote
+  error. Using ``libtbx.phil.tokenizer.quote_python_str`` produces ``"ab\\\\"``,
+  which round-trips correctly.
+  """
+  from libtbx.phil import tokenizer
+  from qttbx.widgets.phil.words_widget import WordsWidget
+  _get_app()
+  w = WordsWidget(_make_words_definition())
+  tokens_in = [
+    tokenizer.word(value="plain"),
+    tokenizer.word(value=r"a\b", quote_token='"'),
+    tokenizer.word(value='has"quote', quote_token='"'),
+    tokenizer.word(value="ab\\", quote_token='"'),     # trailing backslash
+  ]
+  w.setValue(tokens_in)
+  values_out = [tw.value for tw in w.value()]
+  assert w.isValid(), w.errorString()
+  assert values_out == ["plain", r"a\b", 'has"quote', "ab\\"], values_out
+  print("exercise_words_widget_round_trip_backslash OK")
+
+
 def _make_choice_multi_definition(optional=True):
   opt_attr = "" if optional else "\n  .optional = False"
   scope = libtbx.phil.parse('''
@@ -1283,6 +1340,9 @@ def run_all():
   exercise_strings_widget_round_trip()
   exercise_strings_widget_size_limits()
   exercise_strings_text_widget_round_trip_strips_blank()
+  exercise_words_widget_round_trip_quoted()
+  exercise_words_text_widget_round_trip()
+  exercise_words_widget_round_trip_backslash()
   exercise_choice_multi_widget_round_trip()
   exercise_choice_multi_widget_dispatch_via_registry()
   exercise_choice_multi_widget_optional_false_requires_selection()
