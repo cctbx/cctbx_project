@@ -795,6 +795,47 @@ def exercise_str_text_widget_round_trip_preserves_newlines():
   print("exercise_str_text_widget_round_trip_preserves_newlines OK")
 
 
+def _make_qstr_definition():
+  scope = libtbx.phil.parse('''
+label = "alpha"
+  .type = qstr
+'''.strip())
+  return scope.objects[0]
+
+
+def exercise_qstr_widget_round_trip():
+  from qttbx.widgets.phil.qstr_widget import QstrWidget
+  _get_app()
+  w = QstrWidget(_make_qstr_definition())
+  w.setValue("hello world")
+  assert w.value() == "hello world"
+  print("exercise_qstr_widget_round_trip OK")
+
+
+def exercise_qstr_widget_rejects_dollar():
+  """QstrWidget rejects '$' per wxtbx convention."""
+  from qttbx.widgets.phil.qstr_widget import QstrWidget
+  _get_app()
+  w = QstrWidget(_make_qstr_definition())
+  w.setValue("ok")
+  assert w.isValid()
+  # Bypass setValue's signal-block: set the text directly and validate.
+  w._line_edit.setText("bad$value")
+  w._line_edit.validate()
+  assert not w.isValid()
+  assert "$" in w.errorString()
+  print("exercise_qstr_widget_rejects_dollar OK")
+
+
+def exercise_qstr_text_widget_round_trip():
+  from qttbx.widgets.phil.qstr_widget import QstrTextWidget
+  _get_app()
+  w = QstrTextWidget(_make_qstr_definition())
+  w.setValue("first line\nsecond")
+  assert w.value() == "first line\nsecond"
+  print("exercise_qstr_text_widget_round_trip OK")
+
+
 def _make_choice_multi_definition(optional=True):
   opt_attr = "" if optional else "\n  .optional = False"
   scope = libtbx.phil.parse('''
@@ -1137,6 +1178,9 @@ def run_all():
   exercise_str_widget_round_trip()
   exercise_str_widget_min_max_length()
   exercise_str_text_widget_round_trip_preserves_newlines()
+  exercise_qstr_widget_round_trip()
+  exercise_qstr_widget_rejects_dollar()
+  exercise_qstr_text_widget_round_trip()
   exercise_choice_multi_widget_round_trip()
   exercise_choice_multi_widget_dispatch_via_registry()
   exercise_choice_multi_widget_optional_false_requires_selection()
