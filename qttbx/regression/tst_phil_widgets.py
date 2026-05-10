@@ -988,6 +988,63 @@ def exercise_words_widget_round_trip_backslash():
   print("exercise_words_widget_round_trip_backslash OK")
 
 
+def _make_ints_definition(value_min=None, value_max=None):
+  if value_min is not None or value_max is not None:
+    bounds = []
+    if value_min is not None:
+      bounds.append("value_min={vm}".format(vm=value_min))
+    if value_max is not None:
+      bounds.append("value_max={vm}".format(vm=value_max))
+    type_str = "ints({b})".format(b=", ".join(bounds))
+  else:
+    type_str = "ints"
+  scope = libtbx.phil.parse('''
+nums = None
+  .type = {t}
+'''.strip().format(t=type_str))
+  return scope.objects[0]
+
+
+def exercise_ints_widget_round_trip():
+  from qttbx.widgets.phil.ints_widget import IntsWidget
+  _get_app()
+  w = IntsWidget(_make_ints_definition())
+  w.setValue([1, 2, 3])
+  assert w.value() == [1, 2, 3]
+  print("exercise_ints_widget_round_trip OK")
+
+
+def exercise_ints_widget_per_element_bounds():
+  from qttbx.widgets.phil.ints_widget import IntsWidget
+  _get_app()
+  w = IntsWidget(_make_ints_definition(value_min=0, value_max=10))
+  w.setValue([1, 5, 9])
+  assert w.isValid(), w.errorString()
+  w.setValue([1, 11, 5])
+  assert not w.isValid()
+  print("exercise_ints_widget_per_element_bounds OK")
+
+
+def exercise_ints_widget_size_bounds():
+  from qttbx.widgets.phil.ints_widget import IntsWidget
+  _get_app()
+  w = IntsWidget(_make_ints_definition(), size_min=2, size_max=4)
+  w.setValue([1])
+  assert not w.isValid()
+  w.setValue([1, 2, 3])
+  assert w.isValid()
+  print("exercise_ints_widget_size_bounds OK")
+
+
+def exercise_ints_text_widget_round_trip():
+  from qttbx.widgets.phil.ints_widget import IntsTextWidget
+  _get_app()
+  w = IntsTextWidget(_make_ints_definition())
+  w.setValue([10, 20, 30])
+  assert w.value() == [10, 20, 30]
+  print("exercise_ints_text_widget_round_trip OK")
+
+
 def _make_choice_multi_definition(optional=True):
   opt_attr = "" if optional else "\n  .optional = False"
   scope = libtbx.phil.parse('''
@@ -1343,6 +1400,10 @@ def run_all():
   exercise_words_widget_round_trip_quoted()
   exercise_words_text_widget_round_trip()
   exercise_words_widget_round_trip_backslash()
+  exercise_ints_widget_round_trip()
+  exercise_ints_widget_per_element_bounds()
+  exercise_ints_widget_size_bounds()
+  exercise_ints_text_widget_round_trip()
   exercise_choice_multi_widget_round_trip()
   exercise_choice_multi_widget_dispatch_via_registry()
   exercise_choice_multi_widget_optional_false_requires_selection()
