@@ -749,6 +749,52 @@ mode = *fast "(none)" exhaustive
   assert w.value() == "(none)"
   print("exercise_choice_widget_literal_none_label_does_not_collide OK")
 
+def _make_str_definition():
+  scope = libtbx.phil.parse('''
+title = "Untitled"
+  .type = str
+'''.strip())
+  return scope.objects[0]
+
+
+def exercise_str_widget_round_trip():
+  """StrWidget round-trips strings and respects allow_none."""
+  from qttbx.widgets.phil.str_widget import StrWidget
+  _get_app()
+  w = StrWidget(_make_str_definition())
+  w.setValue("Hello world")
+  assert w.value() == "Hello world"
+  w.setValue(None)
+  assert w.value() is None
+  print("exercise_str_widget_round_trip OK")
+
+
+def exercise_str_widget_min_max_length():
+  """StrWidget rejects strings outside [min_length, max_length]."""
+  from qttbx.widgets.phil.str_widget import StrWidget
+  _get_app()
+  d = _make_str_definition()
+  w = StrWidget(d, min_length=3, max_length=8)
+  w.setValue("abc")
+  assert w.isValid(), w.errorString()
+  w.setValue("ab")
+  assert not w.isValid()
+  w.setValue("abcdefghi")
+  assert not w.isValid()
+  print("exercise_str_widget_min_max_length OK")
+
+
+def exercise_str_text_widget_round_trip_preserves_newlines():
+  """StrTextWidget preserves embedded newlines."""
+  from qttbx.widgets.phil.str_widget import StrTextWidget
+  _get_app()
+  w = StrTextWidget(_make_str_definition())
+  multiline = "first line\nsecond line\nthird"
+  w.setValue(multiline)
+  assert w.value() == multiline
+  print("exercise_str_text_widget_round_trip_preserves_newlines OK")
+
+
 def _make_choice_multi_definition(optional=True):
   opt_attr = "" if optional else "\n  .optional = False"
   scope = libtbx.phil.parse('''
@@ -789,6 +835,189 @@ def exercise_choice_multi_widget_optional_false_requires_selection():
   w.setValue(["fast"])
   assert w.isValid()
   print("exercise_choice_multi_widget_optional_false_requires_selection OK")
+
+from PySide2.QtCore import Qt, QCoreApplication
+from qttbx.widgets.phil import PhilField
+
+def exercise_phil_field_widget_to_model():
+  m = PhilModel()
+  m.initialize_model(_example_master())
+  f = PhilField(m, "refinement.macro_cycles")
+  inner = f.widget()
+  inner.setValue(8)
+  inner._line_edit._commit()                       # simulate focus loss
+  assert m.get_phil_extract_value("refinement.macro_cycles") == 8
+  print("exercise_phil_field_widget_to_model OK")
+
+def exercise_phil_field_model_to_widget():
+  m = PhilModel()
+  m.initialize_model(_example_master())
+  f = PhilField(m, "refinement.macro_cycles")
+  idx = m.index_for_path("refinement.macro_cycles")
+  m.setData(idx, 4, Qt.EditRole)
+  assert f.widget().value() == 4
+  print("exercise_phil_field_model_to_widget OK")
+
+def exercise_phil_field_no_recursion():
+  m = PhilModel()
+  m.initialize_model(_example_master())
+  f = PhilField(m, "refinement.macro_cycles")
+  count = [0]
+  orig_set = m.setData
+  def counting_set(*a, **kw):
+    count[0] += 1
+    return orig_set(*a, **kw)
+  m.setData = counting_set
+  idx = m.index_for_path("refinement.macro_cycles")
+  m.setData(idx, 9, Qt.EditRole)
+  assert count[0] == 1, "recursion: setData called %d times" % count[0]
+  print("exercise_phil_field_no_recursion OK")
+
+def exercise_phil_field_lifecycle_no_signal_after_delete():
+  m = PhilModel()
+  m.initialize_model(_example_master())
+  f = PhilField(m, "refinement.macro_cycles")
+  f.deleteLater()
+  QCoreApplication.processEvents()
+  idx = m.index_for_path("refinement.macro_cycles")
+  m.setData(idx, 6, Qt.EditRole)        # would crash if slot still bound
+  print("exercise_phil_field_lifecycle_no_signal_after_delete OK")
+
+def exercise_phil_field_error_icon_visibility():
+  m = PhilModel()
+  m.initialize_model(_example_master())
+  f = PhilField(m, "refinement.macro_cycles")
+  f.show()                                   # so isVisible() reflects show/hide
+  inner = f.widget()
+  inner._line_edit.setText("99")             # > value_max=20
+  inner._line_edit.validate()
+  assert not inner.isValid()
+  assert f._error_icon.isVisible()
+  assert "20" in f._error_icon.toolTip() or "20" in inner.toolTip()
+  inner._line_edit.setText("5")              # back to valid
+  inner._line_edit.validate()
+  assert not f._error_icon.isVisible()
+  print("exercise_phil_field_error_icon_visibility OK")
+
+
+def exercise_phil_field_persistent_index_basic():
+  """PhilField built with persistent_index= behaves the same as full_path=."""
+  from qttbx.phil import PhilModel
+  from qttbx.widgets.phil import PhilField
+  _get_app()
+  m = PhilModel()
+  m.initialize_model(libtbx.phil.parse('''
+refine {
+  cycles = 3
+    .type = int
+}
+'''.strip()))
+  qpi = m.persistent_index_for_path("refine.cycles")
+  field = PhilField(m, persistent_index=qpi)
+  assert field.widget().value() == 3
+  field.widget().setValue(7)
+  field.commit()
+  assert m.get_phil_extract().refine.cycles == 7
+  print("exercise_phil_field_persistent_index_basic OK")
+
+
+def exercise_phil_field_rejects_neither_or_both_kwargs():
+  """PhilField raises if neither or both of full_path / persistent_index is given."""
+  from qttbx.phil import PhilModel
+  from qttbx.widgets.phil import PhilField
+  _get_app()
+  m = PhilModel()
+  m.initialize_model(libtbx.phil.parse('''
+refine {
+  cycles = 3
+    .type = int
+}
+'''.strip()))
+  qpi = m.persistent_index_for_path("refine.cycles")
+  # Neither kwarg.
+  try:
+    PhilField(m)
+  except ValueError as e:
+    assert "exactly one" in str(e)
+  else:
+    raise AssertionError("expected ValueError on neither kwarg")
+  # Both kwargs.
+  try:
+    PhilField(m, full_path="refine.cycles", persistent_index=qpi)
+  except ValueError as e:
+    assert "exactly one" in str(e)
+  else:
+    raise AssertionError("expected ValueError on both kwargs")
+  print("exercise_phil_field_rejects_neither_or_both_kwargs OK")
+
+
+def exercise_phil_field_commit_returns_bool():
+  """commit() returns True on valid, False on invalid."""
+  from qttbx.phil import PhilModel
+  from qttbx.widgets.phil import PhilField
+  _get_app()
+  m = PhilModel()
+  m.initialize_model(libtbx.phil.parse('''
+val = 5
+  .type = int(value_min=1, value_max=10)
+'''.strip()))
+  f = PhilField(m, "val")
+  # Valid input -> True.
+  f.widget().setValue(7)
+  assert f.commit() is True
+  assert m.get_phil_extract().val == 7
+  # Force the inner widget invalid by setting out-of-range text directly.
+  f.widget()._line_edit.setText("99")
+  f.widget()._line_edit.validate()
+  assert not f.widget().isValid()
+  assert f.commit() is False
+  # Model still holds the previous valid value.
+  assert m.get_phil_extract().val == 7
+  print("exercise_phil_field_commit_returns_bool OK")
+
+
+def exercise_phil_field_label_uses_short_caption_or_prettified():
+  """PhilField shows short_caption when set; falls back to prettified name."""
+  from qttbx.phil import PhilModel
+  from qttbx.widgets.phil import PhilField
+  _get_app()
+  m = PhilModel()
+  m.initialize_model(libtbx.phil.parse('''
+atom_selection = "all"
+  .type = str
+labelled = 1
+  .type = int
+  .short_caption = "Custom Label"
+'''.strip()))
+  f_default = PhilField(m, "atom_selection")
+  f_caption = PhilField(m, "labelled")
+  assert f_default._label.text() == "Atom selection", f_default._label.text()
+  assert f_caption._label.text() == "Custom Label", f_caption._label.text()
+  print("exercise_phil_field_label_uses_short_caption_or_prettified OK")
+from PySide2.QtWidgets import QTreeView, QStyleOptionViewItem
+from qttbx.widgets.phil.delegate import PhilItemDelegate
+
+def exercise_phil_item_delegate_round_trip():
+  m = PhilModel()
+  m.initialize_model(_example_master())
+  view = QTreeView()
+  view.setModel(m)
+  d = PhilItemDelegate()
+  view.setItemDelegate(d)
+  idx = m.index_for_path("refinement.macro_cycles")
+  editor = d.createEditor(view, QStyleOptionViewItem(), idx)
+  d.setEditorData(editor, idx)
+  assert editor.value() == 3
+  # _example_master uses value_max=20, so 25 is definitely above the limit.
+  editor.setValue(25)
+  assert not editor.isValid()
+  d.setModelData(editor, m, idx)      # invalid -> model unchanged
+  assert m.get_phil_extract_value("refinement.macro_cycles") == 3
+  editor.setValue(7)
+  assert editor.isValid()
+  d.setModelData(editor, m, idx)
+  assert m.get_phil_extract_value("refinement.macro_cycles") == 7
+  print("exercise_phil_item_delegate_round_trip OK")
 
 from PySide2.QtWidgets import (
   QFormLayout, QDialog, QDialogButtonBox, QWidget as _QWidget)
@@ -905,9 +1134,22 @@ def run_all():
   exercise_choice_widget_rejects_unknown()
   exercise_choice_widget_set_choices_dynamic()
   exercise_choice_widget_literal_none_label_does_not_collide()
+  exercise_str_widget_round_trip()
+  exercise_str_widget_min_max_length()
+  exercise_str_text_widget_round_trip_preserves_newlines()
   exercise_choice_multi_widget_round_trip()
   exercise_choice_multi_widget_dispatch_via_registry()
   exercise_choice_multi_widget_optional_false_requires_selection()
+  exercise_phil_field_widget_to_model()
+  exercise_phil_field_model_to_widget()
+  exercise_phil_field_no_recursion()
+  exercise_phil_field_lifecycle_no_signal_after_delete()
+  exercise_phil_field_error_icon_visibility()
+  exercise_phil_field_persistent_index_basic()
+  exercise_phil_field_rejects_neither_or_both_kwargs()
+  exercise_phil_field_commit_returns_bool()
+  exercise_phil_field_label_uses_short_caption_or_prettified()
+  exercise_phil_item_delegate_round_trip()
   exercise_v1_tree_and_form_sync()
 
 if __name__ == "__main__":
