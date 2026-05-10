@@ -1666,6 +1666,119 @@ def exercise_unit_cell_widget_tooltip_refresh_on_typing():
   print("exercise_unit_cell_widget_tooltip_refresh_on_typing OK")
 
 
+def _make_atom_selection_definition():
+  import iotbx.phil
+  scope = iotbx.phil.parse('''
+sel = "all"
+  .type = atom_selection
+'''.strip())
+  return scope.objects[0]
+
+
+def exercise_atom_selection_widget_round_trip():
+  """AtomSelectionWidget round-trips an atom selection string."""
+  from qttbx.widgets.phil.atom_selection import AtomSelectionWidget
+  _get_app()
+  w = AtomSelectionWidget(_make_atom_selection_definition())
+  w.setValue("chain A and resid 1:100")
+  assert w.value() == "chain A and resid 1:100"
+  print("exercise_atom_selection_widget_round_trip OK")
+
+
+def exercise_atom_selection_widget_rejects_dollar():
+  """AtomSelectionWidget rejects '$' (matches qstr_converters parent)."""
+  from qttbx.widgets.phil.atom_selection import AtomSelectionWidget
+  _get_app()
+  w = AtomSelectionWidget(_make_atom_selection_definition())
+  w._line_edit.setText("chain $A")
+  w._line_edit.validate()
+  assert not w.isValid()
+  assert "$" in w.errorString()
+  print("exercise_atom_selection_widget_rejects_dollar OK")
+
+
+def exercise_atom_selection_text_widget_round_trip_multiline():
+  """AtomSelectionTextWidget preserves multi-line selection strings."""
+  from qttbx.widgets.phil.atom_selection import AtomSelectionTextWidget
+  _get_app()
+  w = AtomSelectionTextWidget(_make_atom_selection_definition())
+  multiline = "(chain A and resid 1:100)\nor\n(chain B and resid 1:50)"
+  w.setValue(multiline)
+  assert w.value() == multiline
+  print("exercise_atom_selection_text_widget_round_trip_multiline OK")
+
+
+def exercise_atom_selection_widget_dispatch_via_registry():
+  """widget_for_definition routes an atom_selection def to AtomSelectionWidget."""
+  from qttbx.widgets.phil import widget_for_definition
+  import qttbx.widgets.phil.atom_selection   # noqa: F401
+  _get_app()
+  w = widget_for_definition(_make_atom_selection_definition())
+  assert type(w).__name__ == "AtomSelectionWidget"
+  print("exercise_atom_selection_widget_dispatch_via_registry OK")
+
+
+def _v4_master():
+  import iotbx.phil
+  return iotbx.phil.parse('''
+crystal {
+  space_group = "P 1"
+    .type = space_group
+  unit_cell = None
+    .type = unit_cell
+}
+selection = "all"
+  .type = atom_selection
+'''.strip())
+
+
+def exercise_v4_domain_widgets_in_form():
+  """End-to-end: domain widgets (space_group, unit_cell, atom_selection) in a form."""
+  from cctbx import sgtbx, uctbx
+  from PySide2.QtWidgets import QTreeView
+  from qttbx.phil import PhilModel
+  from qttbx.widgets.phil import PhilField
+  from qttbx.widgets.phil.delegate import PhilItemDelegate
+  # Importing the modules triggers their register_widget calls.
+  import qttbx.widgets.phil.space_group     # noqa: F401
+  import qttbx.widgets.phil.unit_cell       # noqa: F401
+  import qttbx.widgets.phil.atom_selection  # noqa: F401
+  _get_app()
+
+  m = PhilModel()
+  m.initialize_model(_v4_master())
+
+  view = QTreeView()
+  view.setModel(m)
+  view.setItemDelegate(PhilItemDelegate())
+
+  sg_field = PhilField(m, "crystal.space_group")
+  uc_field = PhilField(m, "crystal.unit_cell")
+  sel_field = PhilField(m, "selection")
+
+  # Form -> model: edit each widget; commit; verify model picks it up.
+  sg_field.widget().setValue(sgtbx.space_group_info(symbol="P 21"))
+  sg_field.commit()
+  assert str(m.get_phil_extract().crystal.space_group) == "P 1 21 1"
+
+  uc_in = uctbx.unit_cell((50.0, 60.0, 70.0, 90.0, 95.0, 90.0))
+  uc_field.widget().setValue(uc_in)
+  uc_field.commit()
+  out_uc = m.get_phil_extract().crystal.unit_cell
+  for got, want in zip(out_uc.parameters(), uc_in.parameters()):
+    assert approx_equal(got, want)
+
+  sel_field.widget().setValue("chain A and resid 1:100")
+  sel_field.commit()
+  assert m.get_phil_extract().selection == "chain A and resid 1:100"
+
+  # Model -> form: drive selection from the model side and confirm widget reflects it.
+  from PySide2.QtCore import Qt
+  idx = m.index_for_path("selection")
+  m.setData(idx, "all", Qt.EditRole)
+  assert sel_field.widget().value() == "all"
+
+  print("exercise_v4_domain_widgets_in_form OK")
 
 def run_all():
   _get_app()
@@ -1768,6 +1881,11 @@ def run_all():
   exercise_unit_cell_widget_rejects_bad_geometry()
   exercise_unit_cell_widget_dispatch_via_registry()
   exercise_unit_cell_widget_tooltip_refresh_on_typing()
+  exercise_atom_selection_widget_round_trip()
+  exercise_atom_selection_widget_rejects_dollar()
+  exercise_atom_selection_text_widget_round_trip_multiline()
+  exercise_atom_selection_widget_dispatch_via_registry()
+  exercise_v4_domain_widgets_in_form()
 
 if __name__ == "__main__":
   run_all()
