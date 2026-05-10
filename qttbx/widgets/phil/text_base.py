@@ -4,8 +4,18 @@ from PySide2.QtCore import Signal
 from PySide2.QtWidgets import QLineEdit, QPlainTextEdit
 
 
-_INVALID_STYLE = "QLineEdit { border: 1px solid red; background: #fff5f5; }"
-_INVALID_STYLE_TE = "QPlainTextEdit { border: 1px solid red; background: #fff5f5; }"
+def _invalid_le_style():
+  """Return the QSS for an invalid QLineEdit, derived from the active palette."""
+  from qttbx.widgets.phil._colors import invalid_background, invalid_border
+  return "QLineEdit { border: 1px solid %s; background: %s; }" % (
+    invalid_border().name(), invalid_background().name())
+
+
+def _invalid_te_style():
+  """Return the QSS for an invalid QPlainTextEdit, derived from the active palette."""
+  from qttbx.widgets.phil._colors import invalid_background, invalid_border
+  return "QPlainTextEdit { border: 1px solid %s; background: %s; }" % (
+    invalid_border().name(), invalid_background().name())
 
 
 class ValidatedLineEdit(QLineEdit):
@@ -94,7 +104,7 @@ class ValidatedLineEdit(QLineEdit):
     if is_valid:
       self.setStyleSheet(self._normal_style)
     else:
-      self.setStyleSheet(_INVALID_STYLE)
+      self.setStyleSheet(_invalid_le_style())
     if is_valid != self._was_valid:
       self._was_valid = is_valid
       self.validityChanged.emit(is_valid)
@@ -202,7 +212,7 @@ class ValidatedTextEdit(QPlainTextEdit):
     if is_valid:
       self.setStyleSheet(self._normal_style)
     else:
-      self.setStyleSheet(_INVALID_STYLE_TE)
+      self.setStyleSheet(_invalid_te_style())
     if is_valid != self._was_valid:
       self._was_valid = is_valid
       self.validityChanged.emit(is_valid)

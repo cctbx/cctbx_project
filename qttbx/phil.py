@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from PySide2.QtCore import Qt, QAbstractItemModel, QModelIndex, QThread, QCoreApplication
-from PySide2.QtGui import QBrush, QColor
+from PySide2.QtGui import QBrush
 
 from libtbx import Auto
 import libtbx.phil
@@ -1126,7 +1126,8 @@ class PhilModel(QAbstractItemModel):
     item = index.internalPointer()
     if role == Qt.BackgroundRole and index.column() == 1:
       if item._validation_error:
-        return QBrush(QColor("#fff5f5"))   # matches the editor invalid style
+        from qttbx.widgets.phil._colors import invalid_background
+        return QBrush(invalid_background())
       return None
     if role == Qt.ToolTipRole and index.column() == 1:
       if item._validation_error:

@@ -416,6 +416,67 @@ labelled = 1
   print("exercise_label_for_definition_helper OK")
 
 
+def exercise_palette_helpers_light_vs_dark():
+  """Color helpers return distinct colors for light and dark palettes."""
+  from PySide2.QtGui import QColor, QPalette
+  from qttbx.widgets.phil._colors import (
+    is_dark_palette, invalid_background, invalid_border, error_emphasis,
+    secondary_label,
+  )
+  light = QPalette()
+  light.setColor(QPalette.Base, QColor(255, 255, 255))
+  light.setColor(QPalette.WindowText, QColor(0, 0, 0))
+  dark = QPalette()
+  dark.setColor(QPalette.Base, QColor(30, 30, 30))
+  dark.setColor(QPalette.WindowText, QColor(230, 230, 230))
+  assert not is_dark_palette(light)
+  assert is_dark_palette(dark)
+  # Each helper returns visibly distinct colors for the two palettes.
+  for fn in (invalid_background, invalid_border, error_emphasis, secondary_label):
+    light_c = fn(light)
+    dark_c = fn(dark)
+    assert light_c.name() != dark_c.name(), fn.__name__
+  # Light invalid background is bright; dark is dim.
+  assert invalid_background(light).lightness() > 200
+  assert invalid_background(dark).lightness() < 80
+  # Secondary label readable in both directions: light gets dark gray, dark gets light gray.
+  assert secondary_label(light).lightness() < 128
+  assert secondary_label(dark).lightness() > 128
+  print("exercise_palette_helpers_light_vs_dark OK")
+
+
+def exercise_phil_model_invalid_background_palette_aware():
+  """PhilModel BackgroundRole brush adapts to the active QApplication palette."""
+  from PySide2.QtCore import Qt
+  from PySide2.QtGui import QColor, QPalette
+  from qttbx.phil import PhilModel
+  app = _get_app()
+  m = PhilModel()
+  m.initialize_model(libtbx.phil.parse('''
+val = 5
+  .type = int(value_min=1, value_max=10)
+'''.strip()))
+  idx = m.index_for_path("val")
+  m.setData(idx, 99, Qt.EditRole)             # force invalid
+  saved = app.palette()
+  try:
+    light = QPalette()
+    light.setColor(QPalette.Base, QColor(255, 255, 255))
+    app.setPalette(light)
+    light_brush = m.data(idx, Qt.BackgroundRole)
+    dark = QPalette()
+    dark.setColor(QPalette.Base, QColor(20, 20, 20))
+    app.setPalette(dark)
+    dark_brush = m.data(idx, Qt.BackgroundRole)
+  finally:
+    app.setPalette(saved)
+  assert light_brush is not None and dark_brush is not None
+  assert light_brush.color().name() != dark_brush.color().name()
+  assert light_brush.color().lightness() > 200
+  assert dark_brush.color().lightness() < 80
+  print("exercise_phil_model_invalid_background_palette_aware OK")
+
+
 from qttbx.widgets.phil import PhilWidget
 
 def _make_int_definition():
@@ -2161,6 +2222,8 @@ def run_all():
   exercise_phil_model_intrinsic_validation_choice_membership()
   exercise_phil_model_intrinsic_validation_at_initialize()
   exercise_label_for_definition_helper()
+  exercise_palette_helpers_light_vs_dark()
+  exercise_phil_model_invalid_background_palette_aware()
   exercise_phil_widget_base_construct()
   exercise_phil_widget_base_signals_exist()
   exercise_validated_line_edit_valid_to_invalid()

@@ -60,9 +60,10 @@ class SpaceGroupWidget(PhilWidget):
     self._line_edit = ValidatedLineEdit(parse=self._parse, parent=self)
     if width is not None:
       self._line_edit.setMinimumWidth(int(width))
+    from qttbx.widgets.phil._colors import secondary_label
     self._side_label = QLabel("", parent=self)
     self._side_label.setStyleSheet(
-      "QLabel { color: #555; font-style: italic; }")
+      "QLabel { color: %s; font-style: italic; }" % secondary_label().name())
     layout = QHBoxLayout(self)
     layout.setContentsMargins(0, 0, 0, 0)
     layout.addWidget(self._line_edit, stretch=1)

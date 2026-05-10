@@ -435,9 +435,10 @@ class PhilField(QWidget):
     self._base_tooltip = base_tooltip
 
     # Error icon: a small label that is shown only when the widget is invalid.
+    from qttbx.widgets.phil._colors import error_emphasis
     self._error_icon = QLabel("⚠", parent=self)   # WARNING SIGN
     self._error_icon.setStyleSheet(
-      "QLabel { color: #c00; font-weight: bold; }")
+      "QLabel { color: %s; font-weight: bold; }" % error_emphasis().name())
     self._error_icon.hide()
 
     layout = QHBoxLayout(self)

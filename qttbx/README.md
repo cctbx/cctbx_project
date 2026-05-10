@@ -425,6 +425,15 @@ widget.validityChanged    # Signal(bool)   — fires on transitions only
 - The error message is in `errorString()`; `PhilField` shows it in a
   warning-icon tooltip.
 
+**Theming.** Every validation color (invalid background, invalid border,
+warning-icon foreground, low-emphasis side labels) derives from the
+active `QApplication.palette()` via helpers in
+`qttbx.widgets.phil._colors`. The widgets adapt to light and dark themes
+without per-widget configuration: light palettes get a pale-pink invalid
+background; dark palettes get a desaturated dark-red one. Tree-view
+`Qt.BackgroundRole` re-evaluates per paint, so palette changes propagate
+on the next repaint.
+
 **Best-effort `valueChanged`:** the signal never fires for invalid
 parses; consumers gate on `validityChanged` for "the widget is now in a
 state where reads will succeed".
