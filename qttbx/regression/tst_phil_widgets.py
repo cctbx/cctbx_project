@@ -1594,6 +1594,78 @@ def exercise_space_group_widget_dispatch_via_registry():
   print("exercise_space_group_widget_dispatch_via_registry OK")
 
 
+def _make_unit_cell_definition():
+  import iotbx.phil
+  scope = iotbx.phil.parse('''
+uc = None
+  .type = unit_cell
+'''.strip())
+  return scope.objects[0]
+
+
+def exercise_unit_cell_widget_round_trip():
+  """UnitCellWidget round-trips a 6-parameter cell."""
+  from cctbx import uctbx
+  from qttbx.widgets.phil.unit_cell import UnitCellWidget
+  _get_app()
+  w = UnitCellWidget(_make_unit_cell_definition())
+  uc_in = uctbx.unit_cell((10.0, 20.0, 30.0, 90.0, 90.0, 90.0))
+  w.setValue(uc_in)
+  out = w.value()
+  for got, want in zip(out.parameters(), uc_in.parameters()):
+    assert approx_equal(got, want)
+  print("exercise_unit_cell_widget_round_trip OK")
+
+
+def exercise_unit_cell_widget_rejects_wrong_token_count():
+  """UnitCellWidget rejects input that is not exactly six numbers."""
+  from qttbx.widgets.phil.unit_cell import UnitCellWidget
+  _get_app()
+  w = UnitCellWidget(_make_unit_cell_definition())
+  w._line_edit.setText("10 20 30")          # only three values
+  w._line_edit.validate()
+  assert not w.isValid()
+  print("exercise_unit_cell_widget_rejects_wrong_token_count OK")
+
+
+def exercise_unit_cell_widget_rejects_bad_geometry():
+  """UnitCellWidget rejects geometrically invalid input (e.g. zero axis)."""
+  from qttbx.widgets.phil.unit_cell import UnitCellWidget
+  _get_app()
+  w = UnitCellWidget(_make_unit_cell_definition())
+  w._line_edit.setText("0 20 30 90 90 90")
+  w._line_edit.validate()
+  assert not w.isValid()
+  print("exercise_unit_cell_widget_rejects_bad_geometry OK")
+
+
+def exercise_unit_cell_widget_dispatch_via_registry():
+  """widget_for_definition routes a unit_cell def to UnitCellWidget."""
+  from qttbx.widgets.phil import widget_for_definition
+  import qttbx.widgets.phil.unit_cell   # noqa: F401
+  _get_app()
+  w = widget_for_definition(_make_unit_cell_definition())
+  assert type(w).__name__ == "UnitCellWidget"
+  print("exercise_unit_cell_widget_dispatch_via_registry OK")
+
+
+def exercise_unit_cell_widget_tooltip_refresh_on_typing():
+  """Tooltip updates when user types valid input after another valid input."""
+  from qttbx.widgets.phil.unit_cell import UnitCellWidget
+  _get_app()
+  w = UnitCellWidget(_make_unit_cell_definition())
+  w._line_edit.setText("10 20 30 90 90 90")
+  w._line_edit.validate()
+  first_tooltip = w._line_edit.toolTip()
+  assert "a = 10" in first_tooltip and "b = 20" in first_tooltip, first_tooltip
+  # Type a different valid cell. Validity stays True (no transition).
+  w._line_edit.setText("40 50 60 90 90 90")
+  # Note: setText fires textChanged, which is now connected to _refresh_tooltip.
+  second_tooltip = w._line_edit.toolTip()
+  assert "a = 40" in second_tooltip and "b = 50" in second_tooltip, second_tooltip
+  print("exercise_unit_cell_widget_tooltip_refresh_on_typing OK")
+
+
 
 def run_all():
   _get_app()
@@ -1691,6 +1763,11 @@ def run_all():
   exercise_space_group_widget_side_label_hall_option()
   exercise_space_group_widget_rejects_invalid_side_label()
   exercise_space_group_widget_dispatch_via_registry()
+  exercise_unit_cell_widget_round_trip()
+  exercise_unit_cell_widget_rejects_wrong_token_count()
+  exercise_unit_cell_widget_rejects_bad_geometry()
+  exercise_unit_cell_widget_dispatch_via_registry()
+  exercise_unit_cell_widget_tooltip_refresh_on_typing()
 
 if __name__ == "__main__":
   run_all()
