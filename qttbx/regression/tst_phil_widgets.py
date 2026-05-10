@@ -693,6 +693,169 @@ def exercise_key_widget_rejects_non_identifier():
   assert not w.isValid()
   print("exercise_key_widget_rejects_non_identifier OK")
 
+from qttbx.widgets.phil.choice_widget import ChoiceWidget
+
+def _make_choice_definition():
+  return libtbx.phil.parse(
+    "mode = fast *thorough exhaustive\n  .type = choice").objects[0]
+
+def exercise_choice_widget_round_trip():
+  d = _make_choice_definition()
+  w = ChoiceWidget(d)
+  assert w.value() == "thorough"          # the * marks the default
+  w.setValue("fast")
+  assert w.value() == "fast"
+  print("exercise_choice_widget_round_trip OK")
+
+def exercise_choice_widget_rejects_unknown():
+  d = _make_choice_definition()
+  w = ChoiceWidget(d)
+  raised = False
+  try:
+    w.setValue("not_a_choice")
+  except ValueError:
+    raised = True
+  assert raised
+  print("exercise_choice_widget_rejects_unknown OK")
+
+def exercise_choice_widget_set_choices_dynamic():
+  d = _make_choice_definition()
+  w = ChoiceWidget(d)
+  w.setValue("fast")
+  w.setChoices(["fast", "extra", "more"])  # "fast" preserved
+  assert w.value() == "fast"
+  w.setChoices(["x", "y"])                  # current selection gone -> first item
+  assert w.value() == "x"
+  print("exercise_choice_widget_set_choices_dynamic OK")
+
+def exercise_choice_widget_literal_none_label_does_not_collide():
+  """A real choice whose text is "(none)" does NOT collide with the None sentinel."""
+  from qttbx.widgets.phil.choice_widget import ChoiceWidget
+  _get_app()
+  scope = libtbx.phil.parse('''
+mode = *fast "(none)" exhaustive
+  .type = choice
+'''.strip())
+  d = scope.objects[0]
+  w = ChoiceWidget(d)
+  # The literal "(none)" choice is selectable AND distinct from None.
+  w.setValue("(none)")
+  assert w.value() == "(none)"          # the literal string, NOT None
+  # Selecting None still works via the synthetic sentinel.
+  w.setValue(None)
+  assert w.value() is None
+  # And a non-None setValue back recovers the literal again.
+  w.setValue("(none)")
+  assert w.value() == "(none)"
+  print("exercise_choice_widget_literal_none_label_does_not_collide OK")
+
+def _make_choice_multi_definition(optional=True):
+  opt_attr = "" if optional else "\n  .optional = False"
+  scope = libtbx.phil.parse('''
+methods = *fast slow exhaustive
+  .type = choice(multi=True){opt}
+'''.strip().format(opt=opt_attr))
+  return scope.objects[0]
+
+
+def exercise_choice_multi_widget_round_trip():
+  from qttbx.widgets.phil.choice_widget import ChoiceMultiWidget
+  _get_app()
+  w = ChoiceMultiWidget(_make_choice_multi_definition())
+  w.setValue(["fast", "exhaustive"])
+  assert sorted(w.value()) == ["exhaustive", "fast"]
+  print("exercise_choice_multi_widget_round_trip OK")
+
+
+def exercise_choice_multi_widget_dispatch_via_registry():
+  from qttbx.widgets.phil import widget_for_definition
+  _get_app()
+  d = _make_choice_multi_definition()
+  w = widget_for_definition(d)
+  # Duck-type check: it has the multi value() shape.
+  w.setValue(["slow"])
+  assert w.value() == ["slow"]
+  # The class is the multi-variant.
+  assert type(w).__name__ == "ChoiceMultiWidget"
+  print("exercise_choice_multi_widget_dispatch_via_registry OK")
+
+
+def exercise_choice_multi_widget_optional_false_requires_selection():
+  from qttbx.widgets.phil.choice_widget import ChoiceMultiWidget
+  _get_app()
+  w = ChoiceMultiWidget(_make_choice_multi_definition(optional=False))
+  w.setValue([])
+  assert not w.isValid()
+  w.setValue(["fast"])
+  assert w.isValid()
+  print("exercise_choice_multi_widget_optional_false_requires_selection OK")
+
+from PySide2.QtWidgets import (
+  QFormLayout, QDialog, QDialogButtonBox, QWidget as _QWidget)
+
+def _v1_master():
+  return libtbx.phil.parse("""
+refinement {
+  macro_cycles = 3
+    .type = int(value_min=1, value_max=20)
+  weight = 1.0
+    .type = float(value_min=0.0, value_max=10.0)
+  use_ncs = True
+    .type = bool
+  mode = fast *thorough exhaustive
+    .type = choice
+  output_label = result
+    .type = key
+}
+""")
+
+def exercise_v1_tree_and_form_sync():
+  m = PhilModel()
+  m.initialize_model(_v1_master())
+
+  # Tree view side
+  tree = QTreeView()
+  tree.setModel(m)
+  tree.setItemDelegate(PhilItemDelegate())
+
+  # Form view side: one PhilField per parameter.
+  form_host = _QWidget()
+  form = QFormLayout(form_host)
+  fields = {}
+  for name in ("macro_cycles", "weight", "use_ncs", "mode", "output_label"):
+    f = PhilField(m, "refinement.{}".format(name))
+    form.addRow(f)
+    fields[name] = f
+
+  # Edit via the form -- verify model and tree see the change.
+  fields["macro_cycles"].widget().setValue(7)
+  fields["macro_cycles"].widget()._line_edit._commit()
+  assert m.get_phil_extract_value("refinement.macro_cycles") == 7
+
+  # Edit via setData (simulating tree-view delegate commit) -- verify form sees it.
+  idx = m.index_for_path("refinement.weight")
+  m.setData(idx, 5.5, Qt.EditRole)
+  assert approx_equal(fields["weight"].widget().value(), 5.5)
+
+  # Bool toggle through form.
+  fields["use_ncs"].widget().setValue(False)
+  fields["use_ncs"].commit()
+  assert m.get_phil_extract_value("refinement.use_ncs") is False
+
+  # Choice change through form.
+  fields["mode"].widget().setValue("exhaustive")
+  fields["mode"].commit()
+  assert m.get_phil_extract_value("refinement.mode") == "exhaustive"
+
+  # Validity gating on the macro_cycles field with invalid input.
+  fields["macro_cycles"].widget()._line_edit.setText("99")  # > value_max=20
+  fields["macro_cycles"].widget()._line_edit.validate()
+  assert not fields["macro_cycles"].isValid()
+  # commit() should be a no-op while invalid; model retains the prior value.
+  fields["macro_cycles"].commit()
+  assert m.get_phil_extract_value("refinement.macro_cycles") == 7
+  print("exercise_v1_tree_and_form_sync OK")
+
 
 def run_all():
   _get_app()
@@ -738,6 +901,14 @@ def run_all():
   exercise_float_widget_limits()
   exercise_key_widget_accepts_identifier()
   exercise_key_widget_rejects_non_identifier()
+  exercise_choice_widget_round_trip()
+  exercise_choice_widget_rejects_unknown()
+  exercise_choice_widget_set_choices_dynamic()
+  exercise_choice_widget_literal_none_label_does_not_collide()
+  exercise_choice_multi_widget_round_trip()
+  exercise_choice_multi_widget_dispatch_via_registry()
+  exercise_choice_multi_widget_optional_false_requires_selection()
+  exercise_v1_tree_and_form_sync()
 
 if __name__ == "__main__":
   run_all()
