@@ -1456,6 +1456,144 @@ def exercise_v2_tree_and_form_sync():
 
   print("exercise_v2_tree_and_form_sync OK")
 
+def _make_space_group_definition():
+  import iotbx.phil
+  scope = iotbx.phil.parse('''
+sg = "P 1"
+  .type = space_group
+'''.strip())
+  return scope.objects[0]
+
+
+def exercise_space_group_widget_round_trip():
+  """SpaceGroupWidget round-trips a space group symbol."""
+  from cctbx import sgtbx
+  from qttbx.widgets.phil.space_group import SpaceGroupWidget
+  _get_app()
+  w = SpaceGroupWidget(_make_space_group_definition())
+  w.setValue(sgtbx.space_group_info(symbol="P 21 21 21"))
+  out = w.value()
+  assert out is not None
+  assert str(out) == "P 21 21 21", str(out)
+  print("exercise_space_group_widget_round_trip OK")
+
+
+def exercise_space_group_widget_accepts_number():
+  """SpaceGroupWidget accepts space group number as input."""
+  from qttbx.widgets.phil.space_group import SpaceGroupWidget
+  _get_app()
+  w = SpaceGroupWidget(_make_space_group_definition())
+  w._line_edit.setText("19")
+  w._line_edit.validate()
+  assert w.isValid(), w.errorString()
+  assert str(w.value()) == "P 21 21 21"
+  print("exercise_space_group_widget_accepts_number OK")
+
+
+def exercise_space_group_widget_accepts_hermann_mauguin_short():
+  """SpaceGroupWidget accepts short Hermann-Mauguin forms."""
+  from qttbx.widgets.phil.space_group import SpaceGroupWidget
+  _get_app()
+  w = SpaceGroupWidget(_make_space_group_definition())
+  w._line_edit.setText("P21")
+  w._line_edit.validate()
+  assert w.isValid(), w.errorString()
+  # Canonical full HM is "P 1 21 1".
+  assert str(w.value()) == "P 1 21 1"
+  print("exercise_space_group_widget_accepts_hermann_mauguin_short OK")
+
+
+def exercise_space_group_widget_accepts_hall():
+  """SpaceGroupWidget accepts Hall symbol via the fallback path."""
+  from qttbx.widgets.phil.space_group import SpaceGroupWidget
+  _get_app()
+  w = SpaceGroupWidget(_make_space_group_definition())
+  w._line_edit.setText("P 2yb")
+  w._line_edit.validate()
+  assert w.isValid(), w.errorString()
+  # P 2yb is the Hall symbol for P 1 21 1 (number 4).
+  assert w.value().type().number() == 4
+  print("exercise_space_group_widget_accepts_hall OK")
+
+
+def exercise_space_group_widget_rejects_invalid():
+  """SpaceGroupWidget marks invalid when neither symbol nor Hall parses."""
+  from qttbx.widgets.phil.space_group import SpaceGroupWidget
+  _get_app()
+  w = SpaceGroupWidget(_make_space_group_definition())
+  w._line_edit.setText("nonsense_symbol")
+  w._line_edit.validate()
+  assert not w.isValid()
+  print("exercise_space_group_widget_rejects_invalid OK")
+
+
+def exercise_space_group_widget_rejects_invalid_combines_errors():
+  """When both symbol and Hall parses fail, errorString includes BOTH messages."""
+  from qttbx.widgets.phil.space_group import SpaceGroupWidget
+  _get_app()
+  w = SpaceGroupWidget(_make_space_group_definition())
+  w._line_edit.setText("nonsense_symbol")
+  w._line_edit.validate()
+  assert not w.isValid()
+  err = w.errorString()
+  assert "space group symbol" in err, err
+  assert "Hall" in err, err
+  print("exercise_space_group_widget_rejects_invalid_combines_errors OK")
+
+
+def exercise_space_group_widget_side_label_default_is_full_hm():
+  """The default side label shows the full Hermann-Mauguin symbol."""
+  from cctbx import sgtbx
+  from qttbx.widgets.phil.space_group import SpaceGroupWidget
+  _get_app()
+  w = SpaceGroupWidget(_make_space_group_definition())
+  # User typed a short form; side label should expand to canonical HM.
+  w._line_edit.setText("P21")
+  w._line_edit.validate()
+  assert w._side_label.text() == "P 1 21 1", w._side_label.text()
+  print("exercise_space_group_widget_side_label_default_is_full_hm OK")
+
+
+def exercise_space_group_widget_side_label_hall_option():
+  """side_label=SIDE_LABEL_HALL switches the side label to the Hall symbol."""
+  from cctbx import sgtbx
+  from qttbx.widgets.phil.space_group import (
+    SIDE_LABEL_HALL, SpaceGroupWidget,
+  )
+  _get_app()
+  w = SpaceGroupWidget(_make_space_group_definition(),
+                       side_label=SIDE_LABEL_HALL)
+  w.setValue(sgtbx.space_group_info(symbol="P 21"))
+  # Hall symbol for P 1 21 1 is " P 2yb".
+  assert "2yb" in w._side_label.text(), w._side_label.text()
+  print("exercise_space_group_widget_side_label_hall_option OK")
+
+
+def exercise_space_group_widget_rejects_invalid_side_label():
+  """SpaceGroupWidget rejects unknown side_label values at construction."""
+  from qttbx.widgets.phil.space_group import SpaceGroupWidget
+  _get_app()
+  try:
+    SpaceGroupWidget(_make_space_group_definition(),
+                     side_label="not_a_real_option")
+  except ValueError as e:
+    assert "side_label" in str(e)
+    print("exercise_space_group_widget_rejects_invalid_side_label OK")
+    return
+  raise AssertionError("expected ValueError for unknown side_label")
+
+
+def exercise_space_group_widget_dispatch_via_registry():
+  """widget_for_definition routes a space_group def to SpaceGroupWidget."""
+  from qttbx.widgets.phil import widget_for_definition
+  # Importing the module triggers register_widget("space_group", ...).
+  import qttbx.widgets.phil.space_group   # noqa: F401
+  _get_app()
+  w = widget_for_definition(_make_space_group_definition())
+  assert type(w).__name__ == "SpaceGroupWidget"
+  print("exercise_space_group_widget_dispatch_via_registry OK")
+
+
 
 def run_all():
   _get_app()
@@ -1543,6 +1681,16 @@ def run_all():
   exercise_phil_item_delegate_round_trip()
   exercise_v1_tree_and_form_sync()
   exercise_v2_tree_and_form_sync()
+  exercise_space_group_widget_round_trip()
+  exercise_space_group_widget_accepts_number()
+  exercise_space_group_widget_accepts_hermann_mauguin_short()
+  exercise_space_group_widget_accepts_hall()
+  exercise_space_group_widget_rejects_invalid()
+  exercise_space_group_widget_rejects_invalid_combines_errors()
+  exercise_space_group_widget_side_label_default_is_full_hm()
+  exercise_space_group_widget_side_label_hall_option()
+  exercise_space_group_widget_rejects_invalid_side_label()
+  exercise_space_group_widget_dispatch_via_registry()
 
 if __name__ == "__main__":
   run_all()
