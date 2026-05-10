@@ -577,6 +577,46 @@ def exercise_widget_for_definition_fallback_kwarg():
   assert type(w).__name__ == "StrWidget"
   print("exercise_widget_for_definition_fallback_kwarg OK")
 
+from qttbx.widgets.phil.int_widget import IntWidget
+
+def exercise_int_widget_round_trip():
+  d = _make_int_definition()
+  w = IntWidget(d)
+  w.setValue(7)
+  assert w.value() == 7
+  assert w.isValid()
+  w.setValue(None)
+  assert w.value() is None
+  print("exercise_int_widget_round_trip OK")
+
+def exercise_int_widget_limits():
+  d = _make_int_definition()             # value_min=0, value_max=10
+  w = IntWidget(d)
+  w.setValue(0)
+  assert w.isValid()
+  w.setValue(10)
+  assert w.isValid()
+  w._line_edit.setText("11")
+  w._line_edit.validate()
+  assert not w.isValid()
+  assert "10" in w.errorString()
+  w._line_edit.setText("-1")
+  w._line_edit.validate()
+  assert not w.isValid()
+  assert "0" in w.errorString()
+  print("exercise_int_widget_limits OK")
+
+def exercise_int_widget_setvalue_idempotent():
+  # setValue must NOT trigger valueChanged when the new value matches current.
+  d = _make_int_definition()
+  w = IntWidget(d)
+  w.setValue(5)
+  events = []
+  w.valueChanged.connect(events.append)
+  w.setValue(5)               # idempotent
+  assert events == [], "spurious valueChanged: " + repr(events)
+  print("exercise_int_widget_setvalue_idempotent OK")
+
 from qttbx.widgets.phil.bool_widget import BoolWidget
 
 def _make_bool_definition():
@@ -636,6 +676,9 @@ def run_all():
   # replaced the "int" registration with _DummyWidget.
   from qttbx.widgets.phil import register_builtin_widgets
   register_builtin_widgets()
+  exercise_int_widget_round_trip()
+  exercise_int_widget_limits()
+  exercise_int_widget_setvalue_idempotent()
   exercise_bool_widget_round_trip()
   exercise_bool_widget_tristate_for_none()
 
