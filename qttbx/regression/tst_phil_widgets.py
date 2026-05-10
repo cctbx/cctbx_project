@@ -1045,6 +1045,56 @@ def exercise_ints_text_widget_round_trip():
   print("exercise_ints_text_widget_round_trip OK")
 
 
+def _make_floats_definition(value_min=None, value_max=None):
+  if value_min is not None or value_max is not None:
+    bounds = []
+    if value_min is not None:
+      bounds.append("value_min={vm}".format(vm=value_min))
+    if value_max is not None:
+      bounds.append("value_max={vm}".format(vm=value_max))
+    type_str = "floats({b})".format(b=", ".join(bounds))
+  else:
+    type_str = "floats"
+  scope = libtbx.phil.parse('''
+weights = None
+  .type = {t}
+'''.strip().format(t=type_str))
+  return scope.objects[0]
+
+
+def exercise_floats_widget_round_trip():
+  from qttbx.widgets.phil.floats_widget import FloatsWidget
+  _get_app()
+  w = FloatsWidget(_make_floats_definition())
+  w.setValue([1.5, 2.5, 3.5])
+  out = w.value()
+  for got, want in zip(out, [1.5, 2.5, 3.5]):
+    assert approx_equal(got, want)
+  print("exercise_floats_widget_round_trip OK")
+
+
+def exercise_floats_widget_per_element_bounds():
+  from qttbx.widgets.phil.floats_widget import FloatsWidget
+  _get_app()
+  w = FloatsWidget(_make_floats_definition(value_min=0.0, value_max=1.0))
+  w.setValue([0.1, 0.5, 0.9])
+  assert w.isValid(), w.errorString()
+  w.setValue([0.1, 1.5, 0.5])
+  assert not w.isValid()
+  print("exercise_floats_widget_per_element_bounds OK")
+
+
+def exercise_floats_text_widget_round_trip():
+  from qttbx.widgets.phil.floats_widget import FloatsTextWidget
+  _get_app()
+  w = FloatsTextWidget(_make_floats_definition())
+  w.setValue([10.0, 20.0])
+  out = w.value()
+  for got, want in zip(out, [10.0, 20.0]):
+    assert approx_equal(got, want)
+  print("exercise_floats_text_widget_round_trip OK")
+
+
 def _make_choice_multi_definition(optional=True):
   opt_attr = "" if optional else "\n  .optional = False"
   scope = libtbx.phil.parse('''
@@ -1335,6 +1385,77 @@ def exercise_v1_tree_and_form_sync():
   assert m.get_phil_extract_value("refinement.macro_cycles") == 7
   print("exercise_v1_tree_and_form_sync OK")
 
+def _v2_master():
+  return libtbx.phil.parse("""
+files {
+  input_file = None
+    .type = path
+  labels = None
+    .type = strings
+  weights = None
+    .type = floats(value_min=0.0)
+}
+notes = ""
+  .type = str
+methods = *fast slow exhaustive
+  .type = choice(multi=True)
+""")
+
+
+def exercise_v2_tree_and_form_sync():
+  """End-to-end sync between a tree view and a form for v2 types."""
+  from PySide2.QtCore import Qt
+  from PySide2.QtWidgets import QTreeView
+  from qttbx.phil import PhilModel
+  from qttbx.widgets.phil import PhilField
+  from qttbx.widgets.phil.delegate import PhilItemDelegate
+  from qttbx.widgets.phil.str_widget import StrTextWidget
+  _get_app()
+
+  m = PhilModel()
+  m.initialize_model(_v2_master())
+
+  view = QTreeView()
+  view.setModel(m)
+  view.setItemDelegate(PhilItemDelegate())
+
+  fields = {
+    "files.input_file": PhilField(m, "files.input_file"),
+    "files.labels": PhilField(m, "files.labels"),
+    "files.weights": PhilField(m, "files.weights"),
+    "notes": PhilField(m, "notes", widget=StrTextWidget),
+    "methods": PhilField(m, "methods"),
+  }
+
+  # Form -> model: edit each widget via setValue and confirm the model picks it up.
+  fields["files.input_file"].widget().setValue("/tmp/x.pdb")
+  fields["files.input_file"].commit()
+  assert m.get_phil_extract().files.input_file == "/tmp/x.pdb"
+
+  fields["files.labels"].widget().setValue(["F", "SIGF"])
+  fields["files.labels"].commit()
+  assert m.get_phil_extract().files.labels == ["F", "SIGF"]
+
+  fields["files.weights"].widget().setValue([0.5, 1.0])
+  fields["files.weights"].commit()
+  for got, want in zip(m.get_phil_extract().files.weights, [0.5, 1.0]):
+    assert approx_equal(got, want)
+
+  fields["notes"].widget().setValue("First-pass refinement")
+  fields["notes"].commit()
+  assert m.get_phil_extract().notes == "First-pass refinement"
+
+  fields["methods"].widget().setValue(["slow", "exhaustive"])
+  fields["methods"].commit()
+  assert sorted(m.get_phil_extract().methods) == ["exhaustive", "slow"]
+
+  # Model -> form: drive the model directly and confirm the form reflects it.
+  idx = m.index_for_path("notes")
+  m.setData(idx, "Updated notes", Qt.EditRole)
+  assert fields["notes"].widget().value() == "Updated notes"
+
+  print("exercise_v2_tree_and_form_sync OK")
+
 
 def run_all():
   _get_app()
@@ -1404,6 +1525,9 @@ def run_all():
   exercise_ints_widget_per_element_bounds()
   exercise_ints_widget_size_bounds()
   exercise_ints_text_widget_round_trip()
+  exercise_floats_widget_round_trip()
+  exercise_floats_widget_per_element_bounds()
+  exercise_floats_text_widget_round_trip()
   exercise_choice_multi_widget_round_trip()
   exercise_choice_multi_widget_dispatch_via_registry()
   exercise_choice_multi_widget_optional_false_requires_selection()
@@ -1418,6 +1542,7 @@ def run_all():
   exercise_phil_field_label_uses_short_caption_or_prettified()
   exercise_phil_item_delegate_round_trip()
   exercise_v1_tree_and_form_sync()
+  exercise_v2_tree_and_form_sync()
 
 if __name__ == "__main__":
   run_all()
