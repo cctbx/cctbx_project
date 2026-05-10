@@ -1456,6 +1456,366 @@ def exercise_v2_tree_and_form_sync():
 
   print("exercise_v2_tree_and_form_sync OK")
 
+def _make_int_multi_definition():
+  scope = libtbx.phil.parse('''
+val = 1
+  .type = int
+'''.strip())
+  scope.objects[0].multiple = True
+  return scope.objects[0]
+
+
+def exercise_multiple_widget_round_trip():
+  """MultipleWidget round-trips a list of values."""
+  from qttbx.widgets.phil.int_widget import IntWidget
+  from qttbx.widgets.phil.multiple import MultipleWidget
+  _get_app()
+  w = MultipleWidget(_make_int_multi_definition(), inner_cls=IntWidget)
+  w.setValue([10, 20, 30])
+  assert w.value() == [10, 20, 30], w.value()
+  print("exercise_multiple_widget_round_trip OK")
+
+
+def exercise_multiple_widget_add_remove_via_buttons():
+  """The +/- toolbar grows/shrinks the wrapper's value list."""
+  from qttbx.widgets.phil.int_widget import IntWidget
+  from qttbx.widgets.phil.multiple import MultipleWidget
+  _get_app()
+  w = MultipleWidget(_make_int_multi_definition(), inner_cls=IntWidget)
+  w.setValue([1, 2, 3])
+  # Add a row; selection defaults to the current row (none), so append.
+  w._on_add()
+  assert len(w.value()) == 4, w.value()
+  # Remove row 1 (select first then remove).
+  w._list.setCurrentRow(0)
+  w._on_remove()
+  assert len(w.value()) == 3, w.value()
+  print("exercise_multiple_widget_add_remove_via_buttons OK")
+
+
+def exercise_multiple_widget_move_up_down():
+  """The up/down buttons swap adjacent row values."""
+  from qttbx.widgets.phil.int_widget import IntWidget
+  from qttbx.widgets.phil.multiple import MultipleWidget
+  _get_app()
+  w = MultipleWidget(_make_int_multi_definition(), inner_cls=IntWidget)
+  w.setValue([1, 2, 3])
+  w._list.setCurrentRow(0)
+  w._on_move_down()
+  assert w.value() == [2, 1, 3], w.value()
+  w._list.setCurrentRow(2)
+  w._on_move_up()
+  assert w.value() == [2, 3, 1], w.value()
+  print("exercise_multiple_widget_move_up_down OK")
+
+
+def exercise_multiple_widget_size_bounds():
+  """isValid honors size_min and size_max."""
+  from qttbx.widgets.phil.int_widget import IntWidget
+  from qttbx.widgets.phil.multiple import MultipleWidget
+  _get_app()
+  w = MultipleWidget(_make_int_multi_definition(),
+                     inner_cls=IntWidget, size_min=2, size_max=4)
+  w.setValue([1])
+  assert not w.isValid()
+  w.setValue([1, 2, 3])
+  assert w.isValid()
+  w.setValue([1, 2, 3, 4, 5])
+  assert not w.isValid()
+  print("exercise_multiple_widget_size_bounds OK")
+
+
+def exercise_widget_for_definition_wraps_multi():
+  """widget_for_definition wraps a non-list-native multi in MultipleWidget."""
+  from qttbx.widgets.phil import widget_for_definition
+  _get_app()
+  w = widget_for_definition(_make_int_multi_definition())
+  assert type(w).__name__ == "MultipleWidget"
+  print("exercise_widget_for_definition_wraps_multi OK")
+
+
+def exercise_widget_for_definition_skips_list_native_multi():
+  """widget_for_definition does NOT wrap an ints/floats/strings/words multi."""
+  from qttbx.widgets.phil import widget_for_definition
+  _get_app()
+  scope = libtbx.phil.parse('''
+val = None
+  .type = ints
+'''.strip())
+  scope.objects[0].multiple = True
+  w = widget_for_definition(scope.objects[0])
+  assert type(w).__name__ == "IntsWidget", type(w).__name__
+  print("exercise_widget_for_definition_skips_list_native_multi OK")
+
+
+def exercise_multiple_widget_initial_value_from_scalar_default():
+  """MultipleWidget seeds one row from a non-None scalar default of a multi-def."""
+  from qttbx.widgets.phil import widget_for_definition
+  _get_app()
+  scope = libtbx.phil.parse('''
+val = 7
+  .type = int
+'''.strip())
+  scope.objects[0].multiple = True
+  w = widget_for_definition(scope.objects[0])
+  assert w.value() == [7], w.value()
+  print("exercise_multiple_widget_initial_value_from_scalar_default OK")
+
+
+def exercise_multiple_widget_initial_value_from_none_default():
+  """MultipleWidget seeds zero rows when a multi-def has no default."""
+  from qttbx.widgets.phil import widget_for_definition
+  _get_app()
+  scope = libtbx.phil.parse('''
+val = None
+  .type = int
+'''.strip())
+  scope.objects[0].multiple = True
+  w = widget_for_definition(scope.objects[0])
+  assert w.value() == [], w.value()
+  print("exercise_multiple_widget_initial_value_from_none_default OK")
+
+
+def exercise_multiple_widget_no_widget_leak_on_remove():
+  """Repeated _on_remove cycles do not accumulate orphan inner widgets."""
+  import shiboken2
+  from PySide2.QtCore import QCoreApplication, QEvent
+  from qttbx.widgets.phil.int_widget import IntWidget
+  from qttbx.widgets.phil.multiple import MultipleWidget
+  _get_app()
+  scope = libtbx.phil.parse('''
+val = 1
+  .type = int
+'''.strip())
+  scope.objects[0].multiple = True
+  w = MultipleWidget(scope.objects[0], inner_cls=IntWidget)
+  for _ in range(20):
+    w._on_add()
+    w._list.setCurrentRow(0)
+    w._on_remove()
+  # deleteLater() schedules destruction; flush DeferredDelete events.
+  QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+  QCoreApplication.processEvents()
+  # After 20 add/remove cycles: viewport children should not have grown.
+  # Each row that exists should equal one viewport child; we end with 1 row
+  # (the initial default) so a small bounded child count is expected.
+  children = [c for c in w._list.viewport().children() if shiboken2.isValid(c)]
+  assert len(children) <= 5, len(children)
+  print("exercise_multiple_widget_no_widget_leak_on_remove OK")
+
+
+def _make_ncs_group_multi_master():
+  master = libtbx.phil.parse('''
+ncs_group {
+  selection = "all"
+    .type = str
+}
+'''.strip())
+  master.objects[0].multiple = True
+  return master
+
+
+def exercise_repeatable_scope_widget_initial_tabs():
+  """RepeatableScopeWidget builds one tab per existing instance."""
+  from qttbx.phil import PhilModel
+  from qttbx.widgets.phil.multiple import RepeatableScopeWidget
+  _get_app()
+  m = PhilModel()
+  m.initialize_model(_make_ncs_group_multi_master())
+  m.add_scope_instance("ncs_group")    # 2 instances total
+  w = RepeatableScopeWidget(m, "ncs_group")
+  assert w._tabs.count() == 2, w._tabs.count()
+  print("exercise_repeatable_scope_widget_initial_tabs OK")
+
+
+def exercise_repeatable_scope_widget_add_button_grows():
+  """[+] button appends a tab and grows the model."""
+  from qttbx.phil import PhilModel
+  from qttbx.widgets.phil.multiple import RepeatableScopeWidget
+  _get_app()
+  m = PhilModel()
+  m.initialize_model(_make_ncs_group_multi_master())
+  w = RepeatableScopeWidget(m, "ncs_group")
+  before = w._tabs.count()
+  w._on_add()
+  assert w._tabs.count() == before + 1, (before, w._tabs.count())
+  assert len(m._extract.ncs_group) == before + 1
+  print("exercise_repeatable_scope_widget_add_button_grows OK")
+
+
+def exercise_repeatable_scope_widget_remove_button_shrinks():
+  """[x] button removes the active tab's instance from the model."""
+  from qttbx.phil import PhilModel
+  from qttbx.widgets.phil.multiple import RepeatableScopeWidget
+  _get_app()
+  m = PhilModel()
+  m.initialize_model(_make_ncs_group_multi_master())
+  m.add_scope_instance("ncs_group")
+  w = RepeatableScopeWidget(m, "ncs_group")
+  assert w._tabs.count() == 2
+  w._tabs.setCurrentIndex(0)
+  w._on_remove()
+  assert w._tabs.count() == 1
+  assert len(m._extract.ncs_group) == 1
+  print("exercise_repeatable_scope_widget_remove_button_shrinks OK")
+
+
+def exercise_repeatable_scope_widget_external_sync():
+  """A model-driven add_scope_instance updates the tab strip without UI clicks."""
+  from qttbx.phil import PhilModel
+  from qttbx.widgets.phil.multiple import RepeatableScopeWidget
+  _get_app()
+  m = PhilModel()
+  m.initialize_model(_make_ncs_group_multi_master())
+  w = RepeatableScopeWidget(m, "ncs_group")
+  before = w._tabs.count()
+  m.add_scope_instance("ncs_group")
+  assert w._tabs.count() == before + 1
+  print("exercise_repeatable_scope_widget_external_sync OK")
+
+
+def exercise_repeatable_scope_widget_no_field_slot_leak():
+  """Many rebuilds do not accumulate orphan PhilField data-changed slots.
+
+  After repeated add/remove cycles (each triggering a full _rebuild_tabs),
+  a single setData on a leaf cell should fire _on_data_changed at most
+  on the *currently active* PhilField instances, not on prior generations.
+  """
+  from PySide2.QtCore import QCoreApplication, QEvent, Qt
+  from qttbx.phil import PhilModel
+  from qttbx.widgets.phil import PhilField
+  from qttbx.widgets.phil.multiple import RepeatableScopeWidget
+  _get_app()
+  m = PhilModel()
+  m.initialize_model(_make_ncs_group_multi_master())
+  w = RepeatableScopeWidget(m, "ncs_group")
+
+  # Wrap _on_data_changed with a counter on a per-instance basis.
+  counter = {"hits": 0}
+  original = PhilField._on_data_changed
+  def counting(self, top_left, bottom_right, roles):
+    counter["hits"] += 1
+    return original(self, top_left, bottom_right, roles)
+  PhilField._on_data_changed = counting
+  try:
+    # Cycle: add 5 instances, remove all but one, several times. Each
+    # add and each remove triggers a full _rebuild_tabs in the widget.
+    for _ in range(3):
+      for _ in range(4):
+        m.add_scope_instance("ncs_group")
+      while len(m._extract.ncs_group) > 1:
+        m.remove_scope_instance("ncs_group", len(m._extract.ncs_group) - 1)
+    # Flush DeferredDelete so the orphan tab bodies (and their PhilFields)
+    # are actually destroyed before we measure.
+    QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QCoreApplication.processEvents()
+    # Now there is 1 active tab with 1 PhilField. A single setData on
+    # the selection cell should hit at most the active PhilField.
+    counter["hits"] = 0
+    qpi = m.persistent_index_for_path("ncs_group.selection",
+                                       scope_indices=[0])
+    from PySide2.QtCore import QModelIndex
+    m.setData(QModelIndex(qpi), "X", Qt.EditRole)
+    # Active tabs == 1 in the widget; allow some slack for related
+    # signals, but the orphan-slot-leak symptom is hits > 5.
+    assert counter["hits"] <= 5, counter["hits"]
+  finally:
+    PhilField._on_data_changed = original
+  print("exercise_repeatable_scope_widget_no_field_slot_leak OK")
+
+
+def exercise_repeatable_scope_widget_tab_text_uses_short_caption():
+  """Tab labels use short_caption (or prettified scope name) plus the instance index."""
+  from qttbx.phil import PhilModel
+  from qttbx.widgets.phil.multiple import RepeatableScopeWidget
+  _get_app()
+  # Prettified-name fallback: scope name "ncs_group" -> "Ncs group".
+  m1 = PhilModel()
+  m1.initialize_model(_make_ncs_group_multi_master())
+  m1.add_scope_instance("ncs_group")
+  w1 = RepeatableScopeWidget(m1, "ncs_group")
+  assert w1._tabs.tabText(0) == "Ncs group 1", w1._tabs.tabText(0)
+  assert w1._tabs.tabText(1) == "Ncs group 2", w1._tabs.tabText(1)
+  # short_caption override.
+  master = libtbx.phil.parse('''
+ncs_group
+  .short_caption = "NCS group"
+{
+  selection = "all"
+    .type = str
+}
+'''.strip())
+  master.objects[0].multiple = True
+  m2 = PhilModel()
+  m2.initialize_model(master)
+  m2.add_scope_instance("ncs_group")
+  w2 = RepeatableScopeWidget(m2, "ncs_group")
+  assert w2._tabs.tabText(0) == "NCS group 1", w2._tabs.tabText(0)
+  assert w2._tabs.tabText(1) == "NCS group 2", w2._tabs.tabText(1)
+  print("exercise_repeatable_scope_widget_tab_text_uses_short_caption OK")
+
+
+def _v3_master():
+  master = libtbx.phil.parse('''
+selections = "all"
+  .type = str
+ncs_group {
+  selection = "chain A"
+    .type = str
+  rotation = 0.0
+    .type = float
+}
+'''.strip())
+  master.objects[0].multiple = True   # definition-multiple
+  master.objects[1].multiple = True   # scope-multiple
+  return master
+
+
+def exercise_v3_definition_multi_and_scope_multi():
+  """End-to-end: definition-multiple + scope-multiple in tree + form."""
+  from PySide2.QtWidgets import QTreeView
+  from qttbx.phil import PhilModel
+  from qttbx.widgets.phil import PhilField
+  from qttbx.widgets.phil.delegate import PhilItemDelegate
+  from qttbx.widgets.phil.multiple import RepeatableScopeWidget
+  _get_app()
+
+  m = PhilModel()
+  m.initialize_model(_v3_master())
+
+  # Tree view smoke test.
+  view = QTreeView()
+  view.setModel(m)
+  view.setItemDelegate(PhilItemDelegate())
+
+  # Form: definition-multiple via PhilField + scope-multiple via
+  # RepeatableScopeWidget.
+  selections_field = PhilField(m, "selections")
+  ncs_widget = RepeatableScopeWidget(m, "ncs_group")
+
+  # Definition-multiple round-trip via the wrapping MultipleWidget.
+  selections_field.widget().setValue(["chain A", "chain B", "chain C"])
+  selections_field.commit()
+  assert m.get_phil_extract().selections == ["chain A", "chain B", "chain C"]
+
+  # Scope-multiple [+] adds an instance both in the model and in the tabs.
+  before = ncs_widget._tabs.count()
+  ncs_widget._on_add()
+  assert ncs_widget._tabs.count() == before + 1
+  assert len(m._extract.ncs_group) == before + 1
+
+  # External (model-driven) add updates the tabs.
+  m.add_scope_instance("ncs_group")
+  assert ncs_widget._tabs.count() == before + 2
+
+  # Scope-multiple [x] removes the active tab.
+  ncs_widget._tabs.setCurrentIndex(0)
+  ncs_widget._on_remove()
+  assert ncs_widget._tabs.count() == before + 1
+
+  print("exercise_v3_definition_multi_and_scope_multi OK")
+
+
 def _make_space_group_definition():
   import iotbx.phil
   scope = iotbx.phil.parse('''
@@ -1866,6 +2226,22 @@ def run_all():
   exercise_phil_item_delegate_round_trip()
   exercise_v1_tree_and_form_sync()
   exercise_v2_tree_and_form_sync()
+  exercise_multiple_widget_round_trip()
+  exercise_multiple_widget_add_remove_via_buttons()
+  exercise_multiple_widget_move_up_down()
+  exercise_multiple_widget_size_bounds()
+  exercise_widget_for_definition_wraps_multi()
+  exercise_widget_for_definition_skips_list_native_multi()
+  exercise_multiple_widget_initial_value_from_scalar_default()
+  exercise_multiple_widget_initial_value_from_none_default()
+  exercise_multiple_widget_no_widget_leak_on_remove()
+  exercise_repeatable_scope_widget_initial_tabs()
+  exercise_repeatable_scope_widget_add_button_grows()
+  exercise_repeatable_scope_widget_remove_button_shrinks()
+  exercise_repeatable_scope_widget_external_sync()
+  exercise_repeatable_scope_widget_no_field_slot_leak()
+  exercise_repeatable_scope_widget_tab_text_uses_short_caption()
+  exercise_v3_definition_multi_and_scope_multi()
   exercise_space_group_widget_round_trip()
   exercise_space_group_widget_accepts_number()
   exercise_space_group_widget_accepts_hermann_mauguin_short()
