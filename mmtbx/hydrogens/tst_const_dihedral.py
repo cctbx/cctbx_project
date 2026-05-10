@@ -864,6 +864,183 @@ def test_refinement_unaffected_by_const_proxies():
     % grad_diff
 
 
+ZZN_CIF = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ZZN ZZN "synthetic no-torsion fixture" non-polymer 5 4 .
+data_comp_ZZN
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+ZZN X  C C 0.0
+ZZN Y  C C 0.0
+ZZN Z  C C 0.0
+ZZN D  C C 0.0
+ZZN HX H H 0.0
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ZZN X HX single 1.090 0.020
+ZZN X Y  single 1.500 0.020
+ZZN Y Z  single 1.500 0.020
+ZZN Y D  single 1.500 0.020
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ZZN HX X Y 109.470 3.000
+ZZN X  Y Z 109.470 3.000
+ZZN X  Y D 109.470 3.000
+ZZN Z  Y D 109.470 3.000
+"""
+
+ZZN_PDB = """\
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
+HETATM    1  X   ZZN A   1       6.000   6.000   6.000  1.00 20.00           C
+HETATM    2  Y   ZZN A   1       7.500   6.000   6.000  1.00 20.00           C
+HETATM    3  Z   ZZN A   1       8.250   7.299   6.000  1.00 20.00           C
+HETATM    4  D   ZZN A   1       8.250   4.701   6.000  1.00 20.00           C
+HETATM    5  HX  ZZN A   1       5.470   6.918   6.000  1.00 20.00           H
+END
+"""
+
+def test_solo_h_no_torsion_uses_staggered_default():
+    """Solo H whose cif lacks a torsion is parameterized as alg1b with
+    b1.dihedral_ideal == 180.0 (staggered default)."""
+    model = _build_model_with_custom_cif(ZZN_PDB, ZZN_CIF)
+    model.setup_riding_h_manager(use_ideal_dihedral=True)
+    rh = model.get_riding_h_manager()
+    assert rh is not None
+
+    # Find HX
+    atoms = model.get_hierarchy().atoms()
+    ih = None
+    for atom in atoms:
+        if atom.name.strip() == 'HX':
+            ih = atom.i_seq
+            break
+    assert ih is not None, 'HX not found in model'
+
+    # Re-derive connectivity to inspect b1 directly
+    from mmtbx.hydrogens import connectivity
+    cm = connectivity.determine_connectivity(
+        pdb_hierarchy       = model.get_hierarchy(),
+        geometry_restraints = model.get_restraints_manager().geometry,
+        mon_lib_srv         = model.get_mon_lib_srv())
+    b1 = cm.h_connectivity[ih].b1
+    assert 'iseq' in b1, 'b1.iseq not populated for HX'
+    assert 'dihedral_ideal' in b1, 'b1.dihedral_ideal not populated for HX'
+    assert abs(b1['dihedral_ideal'] - 180.0) < 1e-6, \
+        'expected staggered default 180.0, got %s' % b1['dihedral_ideal']
+
+    # End-to-end: HX is parameterized (h_parameterization entry is non-None)
+    h_para = rh.h_parameterization
+    assert h_para[ih] is not None, 'HX not parameterized'
+
+
+ZZD_CIF = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ZZD ZZD "synthetic missing-atom fixture" non-polymer 5 4 .
+data_comp_ZZD
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+ZZD A  C C 0.0
+ZZD B  C C 0.0
+ZZD C  C C 0.0
+ZZD D  C C 0.0
+ZZD HB H H 0.0
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ZZD A B  single 1.500 0.020
+ZZD B C  single 1.500 0.020
+ZZD C D  single 1.500 0.020
+ZZD B HB single 1.090 0.020
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ZZD A  B C 109.470 3.000
+ZZD A  B HB 109.470 3.000
+ZZD HB B C 109.470 3.000
+ZZD B  C D 109.470 3.000
+"""
+
+# No _chem_comp_tor block: HB has no torsion, so it enters the no-dihedral
+# branch in process_a0_angles_and_third_neighbors_without_dihedral, which is
+# what we want to exercise.
+
+# PDB omits atom A — only B, C, D, HB are present.
+ZZD_PDB_MISSING_A = """\
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
+HETATM    1  B   ZZD A   1       7.500   6.000   6.000  1.00 20.00           C
+HETATM    2  C   ZZD A   1       8.250   7.299   6.000  1.00 20.00           C
+HETATM    3  D   ZZD A   1       9.750   7.299   6.000  1.00 20.00           C
+HETATM    4  HB  ZZD A   1       6.970   6.918   6.000  1.00 20.00           H
+END
+"""
+
+def test_missing_heavy_atom_refuses_h_placement():
+    """When parent (B) is missing an expected heavy neighbor (A) in the
+    model, HB is wiped — number_non_h_neighbors == 0 — so the H is not
+    parameterized."""
+    model = _build_model_with_custom_cif(ZZD_PDB_MISSING_A, ZZD_CIF)
+
+    atoms = model.get_hierarchy().atoms()
+    ih = None
+    for atom in atoms:
+        if atom.name.strip() == 'HB':
+            ih = atom.i_seq
+            break
+    assert ih is not None, 'HB not found in model'
+
+    from mmtbx.hydrogens import connectivity
+    cm = connectivity.determine_connectivity(
+        pdb_hierarchy       = model.get_hierarchy(),
+        geometry_restraints = model.get_restraints_manager().geometry,
+        mon_lib_srv         = model.get_mon_lib_srv())
+    no = cm.h_connectivity[ih]
+    assert no.number_non_h_neighbors == 0, \
+        'expected HB wiped (number_non_h_neighbors=0), got %d' % \
+        no.number_non_h_neighbors
+
+
 if __name__ == "__main__":
   test_const_proxy_populates_b1()
   test_var_overrides_const()
@@ -871,4 +1048,6 @@ if __name__ == "__main__":
   test_ekb_const_h_placed()
   test_const_dihedral_proxies_survive_selection()
   test_refinement_unaffected_by_const_proxies()
+  test_solo_h_no_torsion_uses_staggered_default()
+  test_missing_heavy_atom_refuses_h_placement()
   print("OK")

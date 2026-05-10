@@ -2901,7 +2901,8 @@ class manager(object):
       pdb_hierarchy       = self.get_hierarchy(),
       geometry_restraints = self.get_restraints_manager().geometry,
       use_ideal_dihedral  = use_ideal_dihedral,
-      ignore_h_with_dof   = ignore_h_with_dof)
+      ignore_h_with_dof   = ignore_h_with_dof,
+      mon_lib_srv         = self.get_mon_lib_srv())
     if(idealize):
       self.idealize_h_riding()
 

@@ -677,15 +677,17 @@ class place_hydrogens():
 
     # XXX DEAL WITH WATER IN ANOTHER workaround_00x
     water_selection = self.model.solvent_selection()
-    sel_h_not_in_para = workaround_001(
-      model     = self.model,
-      selection = (sel_h_not_in_para.select(~water_selection)).iselection())
-    sel_h_not_in_para = flex.bool(self.model.size(), sel_h_not_in_para)
+    # workaround_001 is now superseded by the corrected no-dihedral handling
+    # in mmtbx/hydrogens/connectivity.py::process_a0_angles_and_third_neighbors_without_dihedral.
+    # sel_h_not_in_para = workaround_001(
+    #   model     = self.model,
+    #   selection = (sel_h_not_in_para.select(~water_selection)).iselection())
+    # sel_h_not_in_para = flex.bool(self.model.size(), sel_h_not_in_para)
 
-    if not self.exclude_water and water_selection.count(True)>0:
-      workaround_002(
-        model     = self.model,
-        selection = water_selection.iselection())
+    # if not self.exclude_water and water_selection.count(True)>0:
+    #   workaround_002(
+    #     model     = self.model,
+    #     selection = water_selection.iselection())
 
     # no need to display lone H atoms in the log, so remove from labels
     sel_h_not_in_para_but_not_lone = sel_h_not_in_para.exclusive_or(sel_lone_H)

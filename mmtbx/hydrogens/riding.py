@@ -14,11 +14,13 @@ class manager(object):
       use_ideal_bonds_angles = True,
       process_manager        = True,
       use_ideal_dihedral = False,
-      ignore_h_with_dof  = False):
+      ignore_h_with_dof  = False,
+      mon_lib_srv        = None):
     self.pdb_hierarchy = pdb_hierarchy
     self.geometry_restraints = geometry_restraints
     self.use_ideal_bonds_angles = use_ideal_bonds_angles
     self.ignore_h_with_dof = ignore_h_with_dof
+    self.mon_lib_srv = mon_lib_srv
     #
     self.hd_selection = self.pdb_hierarchy.atom_selection_cache().\
       selection("element H or element D")
@@ -28,7 +30,8 @@ class manager(object):
     if process_manager is True:
       connectivity_manager = connectivity.determine_connectivity(
         pdb_hierarchy       = self.pdb_hierarchy,
-        geometry_restraints = geometry_restraints)
+        geometry_restraints = geometry_restraints,
+        mon_lib_srv         = self.mon_lib_srv)
       h_connectivity = connectivity_manager.h_connectivity
       diagnostics_connectivity = connectivity_manager.get_diagnostics()
       parameterization_manager = parameterization.manager(
@@ -61,7 +64,8 @@ class manager(object):
       pdb_hierarchy = pdb_hierarchy,
       geometry_restraints = geometry_restraints,
       use_ideal_bonds_angles = self.use_ideal_bonds_angles,
-      process_manager = False)
+      process_manager = False,
+      mon_lib_srv = self.mon_lib_srv)
     new_manager.h_parameterization = new_h_parameterization
     new_manager.parameterization_cpp = \
       self.get_parameterization_cpp(h_parameterization = new_h_parameterization)
@@ -77,7 +81,8 @@ class manager(object):
       pdb_hierarchy = self.pdb_hierarchy.deep_copy(),
       geometry_restraints = self.geometry_restraints,
       use_ideal_bonds_angles = self.use_ideal_bonds_angles,
-      process_manager = False)
+      process_manager = False,
+      mon_lib_srv = self.mon_lib_srv)
     # Properties from current manager
     n_atoms = new_manager.pdb_hierarchy.atoms_size()
     iselection_original = new_manager.pdb_hierarchy.atoms().extract_i_seq()

@@ -93,7 +93,7 @@ def run_test01():
   # Number of clashes and clashscore
   clashes_result = lr.get_overlaps()
   assert(clashes_result.n_clashes == 5)
-  assert approx_equal(clashes_result.clashscore, 25.6, eps=0.5)
+  assert approx_equal(clashes_result.clashscore, 27.5, eps=0.5)
   #
   # Geometry deviations
   rmsd_result = lr.get_rmsds()
@@ -105,8 +105,8 @@ def run_test01():
   assert(rmsd_result.angle_n_outliers == 0)
   assert approx_equal(rmsd_result.dihedral_rmsd, 32.6, eps=0.5)
 
-  if os.path.isfile('one_chain_ligand_water_newH.cif'):
-    os.remove('one_chain_ligand_water_newH.cif')
+  #if os.path.isfile('one_chain_ligand_water_newH.cif'):
+  #  os.remove('one_chain_ligand_water_newH.cif')
 
 # ------------------------------------------------------------------------------
 
