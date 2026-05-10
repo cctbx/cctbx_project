@@ -640,6 +640,34 @@ def exercise_bool_widget_tristate_for_none():
   assert w.value() is None
   print("exercise_bool_widget_tristate_for_none OK")
 
+from qttbx.widgets.phil.float_widget import FloatWidget
+
+def _make_float_definition():
+  return libtbx.phil.parse(
+    "x = 1.5\n  .type = float(value_min=0.0, value_max=2.0)").objects[0]
+
+def exercise_float_widget_round_trip():
+  d = _make_float_definition()
+  w = FloatWidget(d)
+  w.setValue(1.25)
+  assert approx_equal(w.value(), 1.25)
+  assert w.isValid()
+  print("exercise_float_widget_round_trip OK")
+
+def exercise_float_widget_limits():
+  d = _make_float_definition()           # value_min=0.0, value_max=2.0
+  w = FloatWidget(d)
+  w._line_edit.setText("2.5")
+  w._line_edit.validate()
+  assert not w.isValid()
+  w._line_edit.setText("-0.1")
+  w._line_edit.validate()
+  assert not w.isValid()
+  w._line_edit.setText("0.0")
+  w._line_edit.validate()
+  assert w.isValid()
+  print("exercise_float_widget_limits OK")
+
 
 def run_all():
   _get_app()
@@ -681,6 +709,8 @@ def run_all():
   exercise_int_widget_setvalue_idempotent()
   exercise_bool_widget_round_trip()
   exercise_bool_widget_tristate_for_none()
+  exercise_float_widget_round_trip()
+  exercise_float_widget_limits()
 
 if __name__ == "__main__":
   run_all()
