@@ -891,6 +891,46 @@ def exercise_paths_text_widget_round_trip():
   print("exercise_paths_text_widget_round_trip OK")
 
 
+def _make_strings_definition():
+  scope = libtbx.phil.parse('''
+labels = None
+  .type = strings
+'''.strip())
+  return scope.objects[0]
+
+
+def exercise_strings_widget_round_trip():
+  from qttbx.widgets.phil.strings_widget import StringsWidget
+  _get_app()
+  w = StringsWidget(_make_strings_definition())
+  w.setValue(["a", "b", "c"])
+  assert w.value() == ["a", "b", "c"]
+  print("exercise_strings_widget_round_trip OK")
+
+
+def exercise_strings_widget_size_limits():
+  from qttbx.widgets.phil.strings_widget import StringsWidget
+  _get_app()
+  w = StringsWidget(_make_strings_definition(), size_min=2, size_max=4)
+  w.setValue(["a", "b"])
+  assert w.isValid(), w.errorString()
+  w.setValue(["a"])
+  assert not w.isValid()
+  w.setValue(["a", "b", "c", "d", "e"])
+  assert not w.isValid()
+  print("exercise_strings_widget_size_limits OK")
+
+
+def exercise_strings_text_widget_round_trip_strips_blank():
+  from qttbx.widgets.phil.strings_widget import StringsTextWidget
+  _get_app()
+  w = StringsTextWidget(_make_strings_definition())
+  w._text_edit.setPlainText("alpha\n\nbeta\n  \ngamma\n")
+  w._text_edit.validate()
+  assert w.value() == ["alpha", "beta", "gamma"]
+  print("exercise_strings_text_widget_round_trip_strips_blank OK")
+
+
 def _make_choice_multi_definition(optional=True):
   opt_attr = "" if optional else "\n  .optional = False"
   scope = libtbx.phil.parse('''
@@ -1240,6 +1280,9 @@ def run_all():
   exercise_path_widget_must_exist()
   exercise_path_widget_browse_callback()
   exercise_paths_text_widget_round_trip()
+  exercise_strings_widget_round_trip()
+  exercise_strings_widget_size_limits()
+  exercise_strings_text_widget_round_trip_strips_blank()
   exercise_choice_multi_widget_round_trip()
   exercise_choice_multi_widget_dispatch_via_registry()
   exercise_choice_multi_widget_optional_false_requires_selection()
