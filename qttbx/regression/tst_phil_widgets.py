@@ -577,6 +577,29 @@ def exercise_widget_for_definition_fallback_kwarg():
   assert type(w).__name__ == "StrWidget"
   print("exercise_widget_for_definition_fallback_kwarg OK")
 
+from qttbx.widgets.phil.bool_widget import BoolWidget
+
+def _make_bool_definition():
+  return libtbx.phil.parse("flag = True\n  .type = bool").objects[0]
+
+def exercise_bool_widget_round_trip():
+  d = _make_bool_definition()
+  w = BoolWidget(d)
+  w.setValue(True)
+  assert w.value() is True
+  assert w.isValid()
+  w.setValue(False)
+  assert w.value() is False
+  print("exercise_bool_widget_round_trip OK")
+
+def exercise_bool_widget_tristate_for_none():
+  d = _make_bool_definition()
+  w = BoolWidget(d)
+  w.setAllowNone(True)
+  w.setValue(None)
+  assert w.value() is None
+  print("exercise_bool_widget_tristate_for_none OK")
+
 
 def run_all():
   _get_app()
@@ -609,6 +632,12 @@ def run_all():
   exercise_registry_unknown_type_raises()
   exercise_widget_for_definition_unregistered_raises_value_error()
   exercise_widget_for_definition_fallback_kwarg()
+  # Restore builtin widgets after exercise_registry_register_and_dispatch
+  # replaced the "int" registration with _DummyWidget.
+  from qttbx.widgets.phil import register_builtin_widgets
+  register_builtin_widgets()
+  exercise_bool_widget_round_trip()
+  exercise_bool_widget_tristate_for_none()
 
 if __name__ == "__main__":
   run_all()
