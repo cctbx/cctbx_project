@@ -836,6 +836,61 @@ def exercise_qstr_text_widget_round_trip():
   print("exercise_qstr_text_widget_round_trip OK")
 
 
+def _make_path_definition():
+  scope = libtbx.phil.parse('''
+input_file = None
+  .type = path
+'''.strip())
+  return scope.objects[0]
+
+
+def exercise_path_widget_round_trip():
+  from qttbx.widgets.phil.path_widget import PathWidget
+  _get_app()
+  w = PathWidget(_make_path_definition())
+  w.setValue("/tmp/example.pdb")
+  assert w.value() == "/tmp/example.pdb"
+  w.setValue(None)
+  assert w.value() is None
+  print("exercise_path_widget_round_trip OK")
+
+
+def exercise_path_widget_must_exist():
+  """PathWidget(must_exist=True) rejects non-existent paths."""
+  import tempfile
+  from qttbx.widgets.phil.path_widget import PathWidget
+  _get_app()
+  w = PathWidget(_make_path_definition(), must_exist=True)
+  with tempfile.NamedTemporaryFile() as f:
+    w.setValue(f.name)
+    assert w.isValid(), w.errorString()
+  # File now removed; validate again.
+  w._line_edit.validate()
+  assert not w.isValid()
+  print("exercise_path_widget_must_exist OK")
+
+
+def exercise_path_widget_browse_callback():
+  """PathWidget._apply_browse_result emits valueChanged."""
+  from qttbx.widgets.phil.path_widget import PathWidget
+  _get_app()
+  w = PathWidget(_make_path_definition())
+  emitted = []
+  w.valueChanged.connect(lambda v: emitted.append(v))
+  w._apply_browse_result("/usr")
+  assert emitted == ["/usr"]
+  print("exercise_path_widget_browse_callback OK")
+
+
+def exercise_paths_text_widget_round_trip():
+  from qttbx.widgets.phil.path_widget import PathsTextWidget
+  _get_app()
+  w = PathsTextWidget(_make_path_definition())
+  w.setValue(["/a", "/b", "/c"])
+  assert w.value() == ["/a", "/b", "/c"]
+  print("exercise_paths_text_widget_round_trip OK")
+
+
 def _make_choice_multi_definition(optional=True):
   opt_attr = "" if optional else "\n  .optional = False"
   scope = libtbx.phil.parse('''
@@ -1181,6 +1236,10 @@ def run_all():
   exercise_qstr_widget_round_trip()
   exercise_qstr_widget_rejects_dollar()
   exercise_qstr_text_widget_round_trip()
+  exercise_path_widget_round_trip()
+  exercise_path_widget_must_exist()
+  exercise_path_widget_browse_callback()
+  exercise_paths_text_widget_round_trip()
   exercise_choice_multi_widget_round_trip()
   exercise_choice_multi_widget_dispatch_via_registry()
   exercise_choice_multi_widget_optional_false_requires_selection()
