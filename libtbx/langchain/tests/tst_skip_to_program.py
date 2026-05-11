@@ -362,6 +362,68 @@ def test_format_will_stop_here():
     print("  PASS")
 
 
+def test_format_starting_here_anchors_to_current_stage():
+    """'Starting here' anchors to current_stage_index, not
+    the first DISPLAYED stage.
+
+    Bug: on a resumed session where stage 0 is COMPLETE
+    (from a previous run) and stage 1 is SKIPPED (skipped
+    on this run via new directives), the first DISPLAYED
+    stage is stage 0 (COMPLETE).  Annotating it
+    'Starting here' is misleading — the agent is actually
+    starting at stage 2.  The annotation should anchor
+    to current_stage_index.
+    """
+    print("Test: format_starting_here_anchors_to_current_stage")
+    p = _predict_plan()
+    # Simulate resume state:
+    #   stage 0: COMPLETE (ran in previous session)
+    #   stage 1: SKIPPED (new skip directive this session)
+    #   stage 2: PENDING (current — where we resume)
+    p.stages[0].status = STAGE_COMPLETE
+    p.stages[1].status = STAGE_SKIPPED
+    p.current_stage_index = 2
+
+    h = p.format_plan_header()
+    lines = h.split("\n")
+    # Stage 0 (COMPLETE) is shown
+    stage1_line = next(i for i, ln in enumerate(lines)
+                        if "Stage 1" in ln)
+    # Stage 3 is the third stage (refine, index 2)
+    stage3_line = next(i for i, ln in enumerate(lines)
+                        if "Stage 3" in ln)
+    starting_line = next(
+        (i for i, ln in enumerate(lines)
+         if "Starting here" in ln), None)
+    assert starting_line is not None, \
+        "Expected 'Starting here' annotation in:\n%s" % h
+    # The annotation should appear AFTER stage 3 (the
+    # current stage), not after stage 1 (the COMPLETE one)
+    assert starting_line > stage3_line, \
+        "'Starting here' anchored to COMPLETE stage " \
+        "instead of current stage:\n%s" % h
+    print("  PASS")
+
+
+def test_format_no_starting_here_without_prior_skip():
+    """'Starting here' should NOT appear when no SKIPPED
+    stages exist before current_stage_index.
+
+    Resume case: all earlier stages are COMPLETE, no
+    SKIPPED.  The user knows they already ran them; no
+    annotation needed.
+    """
+    print("Test: format_no_starting_here_without_prior_skip")
+    p = _predict_plan()
+    p.stages[0].status = STAGE_COMPLETE
+    p.stages[1].status = STAGE_COMPLETE
+    p.current_stage_index = 2
+    h = p.format_plan_header()
+    assert "Starting here" not in h, \
+        "No annotation expected when no SKIPPED stages"
+    print("  PASS")
+
+
 def test_format_combined_starting_and_stopping():
     """When the same stage is both first shown and the
     stop target, the annotation reads

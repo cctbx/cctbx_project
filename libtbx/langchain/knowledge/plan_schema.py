@@ -793,20 +793,33 @@ class StructurePlan(object):
           _stop_stage_idx = i
           break
 
-    # Track whether any stages were skipped (for the
-    # "Starting here" annotation on the first displayed
-    # stage).  Also find the index of the first
-    # non-skipped stage that will actually be shown.
-    _any_skipped = False
-    _first_shown_idx = None
-    for i, stage in enumerate(self.stages):
-      if _stop_stage_idx is not None and i > _stop_stage_idx:
-        break
-      if stage.status == STAGE_SKIPPED:
-        _any_skipped = True
-        continue
-      if _first_shown_idx is None:
-        _first_shown_idx = i
+    # Where does "Starting here" point?  At the stage the
+    # agent is currently about to work on — current_stage_index.
+    # NOT at the first displayed stage, which on a resumed
+    # session can be a COMPLETE stage from a previous run.
+    # We only show the annotation when SKIPPED stages exist
+    # before the current stage (this is what motivates the
+    # annotation — it explains why the visible numbering
+    # doesn't start at Stage 1).
+    _start_here_idx = None
+    if (self.current_stage_index is not None
+            and 0 <= self.current_stage_index
+                  < len(self.stages)):
+      _curr = self.current_stage_index
+      # Only annotate if the current stage will actually be
+      # displayed (not past the stop point, not SKIPPED).
+      _curr_displayable = (
+        (_stop_stage_idx is None
+         or _curr <= _stop_stage_idx)
+        and self.stages[_curr].status != STAGE_SKIPPED)
+      # Only annotate if there's at least one SKIPPED stage
+      # before the current one — that's what the annotation
+      # is for.
+      _any_skipped_before = any(
+        self.stages[i].status == STAGE_SKIPPED
+        for i in range(_curr))
+      if _curr_displayable and _any_skipped_before:
+        _start_here_idx = _curr
 
     lines.append(bar)
     lines.append(
@@ -852,10 +865,11 @@ class StructurePlan(object):
           )
       # Combined start/stop annotation — both can fire
       # on the same stage (e.g. "predict and stop" where
-      # the predict stage is both the first shown and
-      # the last shown).
+      # the predict stage is both where the agent starts
+      # and where it stops).
       _is_start_here = (
-        _any_skipped and i == _first_shown_idx)
+        _start_here_idx is not None
+        and i == _start_here_idx)
       _is_stop_here = (
         _stop_stage_idx is not None
         and i == _stop_stage_idx)
