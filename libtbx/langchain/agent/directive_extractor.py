@@ -1985,10 +1985,19 @@ def format_directives_for_display(directives):
     lines = ["Extracted Directives:"]
 
     if "program_settings" in directives:
-        lines.append("\n  Program Settings:")
-        for prog, settings in directives["program_settings"].items():
-            settings_str = ", ".join("%s=%s" % (k, v) for k, v in settings.items())
-            lines.append("    %s: %s" % (prog, settings_str))
+        _ps = directives["program_settings"]
+        if isinstance(_ps, dict):
+            lines.append("\n  Program Settings:")
+            for prog, settings in _ps.items():
+                if isinstance(settings, dict):
+                    settings_str = ", ".join(
+                        "%s=%s" % (k, v)
+                        for k, v in settings.items())
+                    lines.append(
+                        "    %s: %s" % (prog, settings_str))
+                else:
+                    lines.append(
+                        "    %s: %s" % (prog, settings))
 
     if "stop_conditions" in directives:
         lines.append("\n  Stop Conditions:")
@@ -2327,13 +2336,18 @@ def _resolve_after_program(directives, advice_lower):
     # Special: "predict" action (not predict_build) implies
     # stop_after_predict=True — the user wants prediction only,
     # not the full predict-and-build workflow.
+    # Nested under program name so command_builder merges it
+    # into strategy (line 1645: prog_settings[program]).
     # NOTE: must re-read stop_conditions after resolver modified it.
     _final_sc = directives.get("stop_conditions", {})
     if (n >= 1 and actions[-1][0] == "predict"
             and _final_sc.get("after_program")):
         if "program_settings" not in directives:
             directives["program_settings"] = {}
-        directives["program_settings"][
+        _pab = "phenix.predict_and_build"
+        if _pab not in directives["program_settings"]:
+            directives["program_settings"][_pab] = {}
+        directives["program_settings"][_pab][
             "stop_after_predict"] = True
 
 

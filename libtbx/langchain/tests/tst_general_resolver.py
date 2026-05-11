@@ -397,18 +397,19 @@ def test_stop_after_predict():
     print("Test: stop_after_predict")
     d = {}
     _resolve_after_program(d, "predict a model and stop")
+    _pab = "phenix.predict_and_build"
     sap = d.get("program_settings", {}).get(
-        "stop_after_predict", False)
+        _pab, {}).get("stop_after_predict", False)
     ap = d.get("stop_conditions", {}).get("after_program")
     assert sap is True, \
         "stop_after_predict should be True, got %s" % sap
-    assert ap == "phenix.predict_and_build", \
+    assert ap == _pab, \
         "after_program should be predict_and_build, got %s" % ap
     # predict_build should NOT set stop_after_predict
     d2 = {}
     _resolve_after_program(d2, "predict and build and stop")
     sap2 = d2.get("program_settings", {}).get(
-        "stop_after_predict", False)
+        _pab, {}).get("stop_after_predict", False)
     assert sap2 is False, \
         "predict_build should NOT set stop_after_predict"
     print("  PASS")
