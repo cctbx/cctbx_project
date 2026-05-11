@@ -211,6 +211,7 @@ jobs:
       call libtbx.configure ^
         cma_es ^
         fable ^
+        qttbx ^
         rstbx ^
         spotfinder ^
         cbflib_adaptbx ^
@@ -268,6 +269,7 @@ jobs:
         module=annlib_adaptbx ^
         module=cbflib_adaptbx ^
         module=crys3d ^
+        module=qttbx ^
         max_retries=2 ^
         nproc=4
     failOnStderr: false

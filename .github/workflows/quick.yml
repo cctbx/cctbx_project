@@ -144,6 +144,7 @@ jobs:
           libtbx.configure \
             cma_es \
             fable \
+            qttbx \
             rstbx \
             spotfinder \
             cbflib_adaptbx \
@@ -177,6 +178,7 @@ jobs:
             module=rstbx \
             module=scitbx \
             module=crys3d \
+            module=qttbx \
             module=smtbx \
             module=spotfinder \
             module=xcif \
@@ -306,6 +308,7 @@ jobs:
           call libtbx.configure ^
             cma_es ^
             fable ^
+            qttbx ^
             rstbx ^
             spotfinder ^
             cbflib_adaptbx
@@ -345,6 +348,7 @@ jobs:
             module=rstbx ^
             module=scitbx ^
             module=crys3d ^
+            module=qttbx ^
             module=smtbx ^
             module=spotfinder ^
             module=xcif ^
