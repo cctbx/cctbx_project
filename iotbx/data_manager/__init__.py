@@ -36,6 +36,7 @@ any_file_type = {
 # reverse dictionary to map any_file types to DataManager datatypes
 data_manager_type = {value:key for key, value in any_file_type.items()}
 data_manager_type['hkl'] = 'miller_array'   # map hkl to parent, miller_array
+data_manager_type['mtz'] = 'miller_array'   # accept the legacy file_type:mtz token
 
 # build list of supported datatypes
 # datatypes have corresponding modules in iotbx/data_manager
