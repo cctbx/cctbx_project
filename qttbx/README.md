@@ -1155,21 +1155,251 @@ is needed; expanding the row reveals each instance's children.
 
 ---
 
+## DataManagerWidget
+
+`qttbx.widgets.data_manager.DataManagerWidget` is a PySide2 widget for
+adding and removing files via drag-drop (or browse), and for binding
+those files to PHIL `path` parameters annotated with
+`.style file_type:<suffix>`.
+
+The submodule exports:
+
+```python
+from qttbx.widgets.data_manager import (
+  DataManagerWidget,         # the QWidget itself
+  DataManagerTableModel,     # QAbstractTableModel; useful for column constants
+  DataManagerItemDelegate,   # custom paint/click delegate
+  DataManagerBindingPopup,   # the binding popup opened by the "+" chip
+  normalize_path,            # abspath(normpath(expanduser)); no realpath
+  parse_file_type_style,     # ".style = file_type:pdb" -> "pdb"
+  detect_data_type,          # iotbx.any_file-based suffix detection
+  compatible_phil_params,    # walk a PhilModel for file_type:<x> paths
+)
+```
+
+### Construction
+
+```python
+from qttbx.widgets.data_manager import DataManagerWidget
+from qttbx.phil import PhilModel
+import iotbx.phil
+
+master = iotbx.phil.parse("""
+  input_model = None
+    .type = path
+    .style = file_type:pdb
+""")
+pm = PhilModel()
+pm.initialize_model(master)
+w = DataManagerWidget(phil_model=pm)
+w.show()
+```
+
+The constructor signature is:
+
+```python
+DataManagerWidget(
+  parent=None,
+  phil_model=None,    # qttbx.phil.PhilModel, optional
+  data_manager=None,  # iotbx.data_manager.DataManager, optional
+  root=None,          # str, optional -- see Root display below
+  root_label="Root",  # str; the label next to the root path
+)
+```
+
+`phil_model` and `data_manager` are both optional. If `data_manager`
+is omitted, a fresh `iotbx.data_manager.DataManager` is constructed.
+If `phil_model` is omitted (or contains no `path` definitions with a
+recognized `file_type:<suffix>` token), the widget runs as a pure
+file manager: the **Used for** column is still present but stays
+empty (no chips, no `+` button), and the Delete column remains
+visible so files can still be removed.
+
+### Public API
+
+**Methods:**
+
+| Method | Description |
+|---|---|
+| `add_file(filename, data_type=None)` | Add via `DataManager.process_<type>_file`. `data_type=None` triggers `any_file`-based detection. Raises `libtbx.utils.Sorry` on failure. |
+| `remove_file(filename)` | Remove. Cascades to clear PHIL bindings. |
+| `bind(filename, phil_path)` | Bind a file to a PHIL parameter. Idempotent. Raises on non-`.multiple` already-bound conflict. |
+| `unbind(filename, phil_path)` | Remove a binding. Idempotent. |
+| `refresh()` | Re-enumerate the attached DataManager after external mutation. Also clears stale rows (PHIL-derived rows for missing/mismatched files) -- call this when you've reconciled state through some channel other than the widget. |
+| `set_root(path)` | Set or clear the optional root directory (see Root display below). |
+| `set_root_label(text)` | Change the text shown next to the root path. |
+
+All `filename` arguments are normalized via
+`qttbx.widgets.data_manager.normalize_path` (`abspath(normpath(expanduser))`,
+no `realpath`).
+
+**Properties (read-only):**
+
+| Property | Description |
+|---|---|
+| `data_manager` | The underlying `iotbx.data_manager.DataManager` -- the widget reflects its state. Useful for callers that want to feed the DM into downstream code (e.g. `mmtbx.model.manager` lookups). |
+| `phil_model` | The attached `qttbx.phil.PhilModel`, or `None`. |
+| `root` | The current root directory (normalized), or `None`. |
+| `root_label` | The label text shown next to the root path in the top bar. |
+
+**Signals:**
+
+```python
+widget.fileAdded        # Signal(str, str)  -- (filename, data_type)
+widget.fileRemoved      # Signal(str, str)  -- (filename, data_type)
+widget.bindingChanged   # Signal(str, str, bool)  -- (filename, phil_path,
+                        #                            is_bound)
+```
+
+All three filenames are the canonical normalized form; `bindingChanged`
+fires once on every bind (`is_bound=True`) and once on every unbind
+(`is_bound=False`).
+
+### Auto-import: PHIL state seeds the DataManager
+
+At construction time the widget walks the attached PhilModel for every
+`path` definition tagged with `.style = file_type:<suffix>` whose suffix
+maps to a known DataManager data type. For every non-`None` value it
+finds, it either:
+
+- adds the file to the DataManager (so a normal row appears with the
+  PHIL parameter pre-bound), or
+- when the file is missing on disk or has a mismatched detected type,
+  appends a **stale row** (see below) so the binding survives but is
+  visually flagged.
+
+This means a widget constructed against a PhilModel that already has
+file paths set (e.g. loaded from a saved-parameters file) shows the
+expected state immediately, with no separate "load" step. `.multiple`
+path definitions are iterated; duplicate phil_paths are deduplicated so
+one missing file produces one stale row, not N.
+
+### Root display
+
+Pass `root=<path>` to the constructor (or call `widget.set_root(path)`)
+to declare a project root. Filenames that live inside the root render
+in the Filename column as paths *relative to it*; filenames outside the
+root keep their full normalized form. Internal state (DataManager
+entries, PhilModel values, the binding cache) always uses the full
+normalized path, so binds, signal handlers, and reconciliation are
+unaffected by the display choice.
+
+A small bar at the top of the widget shows the current root, a "Set…"
+button that opens a directory chooser, and an "Add files…" button that
+opens a file chooser. The label next to the path defaults to `"Root"`
+and can be customized via `root_label=` or `set_root_label(text)` --
+e.g. `"Project"`, `"Workspace"`, etc.
+
+### `.style file_type:<suffix>` vocabulary
+
+Suffixes are matched through `iotbx.data_manager.data_manager_type`:
+
+```
+pdb -> model
+hkl -> miller_array
+mtz -> miller_array          (added by this widget)
+cif -> restraint
+ccp4_map -> real_map
+ncs -> ncs_spec
+phil -> phil
+seq -> sequence
+```
+
+The label shown in the **Used for** chip for each PHIL parameter is
+`label_for_definition(definition)` -- i.e. `.short_caption` when set,
+otherwise the prettified parameter name.
+
+### Drag-drop
+
+Drop one or more local files anywhere on the widget body. The widget
+calls `add_file` on each. On per-file failure, a `QMessageBox.warning`
+lists the offending filenames and reasons. While a drag is over the
+widget, the table border is highlighted in red (bright red on light
+themes, softer pink-red on dark themes -- the color is palette-derived
+so it tracks `QApplication.palette()`).
+
+### Stale rows
+
+If the widget is constructed against a PhilModel whose `path` value
+points at a missing file (or a file whose detected data type doesn't
+match the slot's `file_type:`), that binding appears as a red **stale
+row**. The PHIL value is preserved. The user can:
+
+- Click the row's trash icon to clear the PHIL value (and the stale row).
+- Add the underlying file via drag-drop or `add_file`; the stale row
+  is auto-reconciled and the normal row's **Used for** cell shows
+  the binding.
+
+### Columns and theming
+
+The table has four columns:
+
+| Column | Resize | Sort | Contents |
+|---|---|---|---|
+| Filename | Interactive | Yes | Path string -- relative to `root` if inside it, otherwise absolute. |
+| Type | Interactive | Yes (by display label) | Prettified DataManager data type ("Model", "Miller array", etc.). |
+| Used for | Stretch | Yes (by chip count) | One filled chip per bound PHIL path; a `+` chip opens the binding popup. |
+| Delete | Fixed (~28 px) | No (click reverts) | System trash icon (`QStyle.SP_TrashIcon`). |
+
+Click a header to toggle ascending / descending sort; clicks on the
+Delete header are caught and the sort indicator reverts to the
+previously-active column.
+
+**Theming.** Chip backgrounds and the `+`-chip fill use the active
+`QApplication.palette()`: `QPalette.Button` for the chip fill and
+`QPalette.ButtonText` for the chip text, so the widget tracks light and
+dark themes without per-widget configuration. Stale-row backgrounds are
+pale pink on light themes and a desaturated dark red on dark themes.
+Hard-coded pixel sizes (chip padding, Delete-column width) are scaled
+by Qt's high-DPI machinery -- the example apps call
+`QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)` /
+`AA_UseHighDpiPixmaps` before constructing `QApplication`, which is the
+recommended setup.
+
+### Proportional column widths (example pattern)
+
+The widget intentionally leaves overall column sizing to the consumer
+because applications differ on how much horizontal space they want to
+give Filename vs. Used for. The example apps under `qttbx/examples/`
+demonstrate a 60/20/20 split (Filename/Type/Used-for) using a small
+`ProportionalColumns` helper in `qttbx/examples/_helpers.py`; copy
+that pattern into your own app if you want the same layout.
+
+---
+
 ## Testing your GUI
 
-`qttbx/regression/tst_phil_widgets.py` is the canonical test file. The
-end-to-end exercises (`exercise_v1_tree_and_form_sync`,
-`exercise_v2_tree_and_form_sync`, `exercise_v3_definition_multi_and_scope_multi`,
-`exercise_v4_domain_widgets_in_form`) are useful templates for your own
-GUI-level integration tests. They run headless under `QT_QPA_PLATFORM=offscreen`
-and are registered in `qttbx/run_tests.py`.
+Two regression files cover the PySide2 widgets in this package:
+
+- `qttbx/regression/tst_phil_widgets.py` -- PHIL widgets and their
+  integration with `PhilModel`. The end-to-end exercises
+  (`exercise_v1_tree_and_form_sync`, `exercise_v2_tree_and_form_sync`,
+  `exercise_v3_definition_multi_and_scope_multi`,
+  `exercise_v4_domain_widgets_in_form`) are useful templates for your
+  own GUI-level integration tests.
+- `qttbx/regression/tst_data_manager_widget.py` -- `DataManagerWidget`
+  end-to-end: drag-drop, binding popup, stale rows, root display,
+  pretty data-type labels, sortable / resizable columns, palette-aware
+  chip painting, and the pure-file-manager mode (no PhilModel).
+
+Both run headless under `QT_QPA_PLATFORM=offscreen` and are registered
+in `qttbx/run_tests.py`.
 
 Run with:
 
 ```sh
 libtbx.python qttbx/regression/tst_phil_widgets.py
-# or:
+libtbx.python qttbx/regression/tst_data_manager_widget.py
+# or both at once:
 libtbx.run_tests_parallel module=qttbx nproc=2 run_in_unique_dirs=True
+```
+
+For interactive exploration the package ships two runnable example
+apps under `qttbx/examples/`:
+
+```sh
+libtbx.python qttbx/examples/phil_widgets_example.py
+libtbx.python qttbx/examples/data_manager_example.py
 ```
 
 ---
@@ -1180,26 +1410,38 @@ libtbx.run_tests_parallel module=qttbx nproc=2 run_in_unique_dirs=True
 qttbx/
 ├── phil.py                       # PhilModel + PhilItem (multi-instance aware)
 ├── widgets/
-│   └── phil/
-│       ├── __init__.py           # PhilWidget base, PhilField, registry, register_widget
-│       ├── delegate.py           # PhilItemDelegate (tree-view controller)
-│       ├── text_base.py          # ValidatedLineEdit, ValidatedTextEdit
-│       ├── int_widget.py         # IntWidget
-│       ├── bool_widget.py        # BoolWidget
-│       ├── float_widget.py       # FloatWidget
-│       ├── key_widget.py         # KeyWidget
-│       ├── choice_widget.py      # ChoiceWidget, ChoiceMultiWidget
-│       ├── str_widget.py         # StrWidget, StrTextWidget
-│       ├── qstr_widget.py        # QstrWidget, QstrTextWidget
-│       ├── path_widget.py        # PathWidget (browse), PathsTextWidget
-│       ├── strings_widget.py     # StringsWidget, StringsTextWidget
-│       ├── words_widget.py       # WordsWidget, WordsTextWidget
-│       ├── ints_widget.py        # IntsWidget, IntsTextWidget
-│       ├── floats_widget.py      # FloatsWidget, FloatsTextWidget
-│       ├── multiple.py           # MultipleWidget, RepeatableScopeWidget
-│       ├── space_group.py        # SpaceGroupWidget (self-registers)
-│       ├── unit_cell.py          # UnitCellWidget (self-registers)
-│       └── atom_selection.py     # AtomSelectionWidget, AtomSelectionTextWidget (self-registers)
+│   ├── phil/
+│   │   ├── __init__.py           # PhilWidget base, PhilField, registry, register_widget
+│   │   ├── delegate.py           # PhilItemDelegate (tree-view controller)
+│   │   ├── text_base.py          # ValidatedLineEdit, ValidatedTextEdit
+│   │   ├── int_widget.py         # IntWidget
+│   │   ├── bool_widget.py        # BoolWidget
+│   │   ├── float_widget.py       # FloatWidget
+│   │   ├── key_widget.py         # KeyWidget
+│   │   ├── choice_widget.py      # ChoiceWidget, ChoiceMultiWidget
+│   │   ├── str_widget.py         # StrWidget, StrTextWidget
+│   │   ├── qstr_widget.py        # QstrWidget, QstrTextWidget
+│   │   ├── path_widget.py        # PathWidget (browse), PathsTextWidget
+│   │   ├── strings_widget.py     # StringsWidget, StringsTextWidget
+│   │   ├── words_widget.py       # WordsWidget, WordsTextWidget
+│   │   ├── ints_widget.py        # IntsWidget, IntsTextWidget
+│   │   ├── floats_widget.py      # FloatsWidget, FloatsTextWidget
+│   │   ├── multiple.py           # MultipleWidget, RepeatableScopeWidget
+│   │   ├── space_group.py        # SpaceGroupWidget (self-registers)
+│   │   ├── unit_cell.py          # UnitCellWidget (self-registers)
+│   │   └── atom_selection.py     # AtomSelectionWidget, AtomSelectionTextWidget (self-registers)
+│   └── data_manager/
+│       ├── __init__.py           # public exports (DataManagerWidget + helpers)
+│       ├── widget.py             # DataManagerWidget (the QWidget itself)
+│       ├── _table_model.py       # DataManagerTableModel + StaleRow + pretty_data_type
+│       ├── _delegate.py          # DataManagerItemDelegate (chip + trash painting)
+│       ├── _binding_popup.py     # DataManagerBindingPopup
+│       └── _phil_helpers.py      # normalize_path, parse_file_type_style, etc.
+├── examples/
+│   ├── phil_widgets_example.py   # runnable showcase of every PHIL widget
+│   ├── data_manager_example.py   # runnable DataManagerWidget demo
+│   └── _helpers.py               # ProportionalColumns helper shared by both examples
 └── regression/
-    └── tst_phil_widgets.py       # ~115 exercise functions; integration tests
+    ├── tst_phil_widgets.py       # ~115 exercise functions; integration tests
+    └── tst_data_manager_widget.py # ~40 exercise functions; DataManagerWidget tests
 ```
