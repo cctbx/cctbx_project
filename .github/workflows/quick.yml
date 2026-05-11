@@ -292,7 +292,12 @@ jobs:
       - name: Run bootstrap.py
         shell: cmd
         run: |
-          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+          if exist "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+            call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+          )
+          if exist "C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+            call "C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+          )
           call %CONDA%\condabin\activate.bat base
           copy .\modules\cctbx_project\libtbx\auto_build\bootstrap.py .
           python .\modules\cctbx_project\libtbx\auto_build\bootstrap.py base build --nproc=4
