@@ -404,6 +404,16 @@ def render_fancy_ribbon(guides, secondary_structure, n_intervals=4,
 
   rib_element.end = len(splinepts[0]) - 1
 
+  # Convert degenerate or too-short HELIX/SHEET elements to COIL.
+  # A 1-residue SS annotation produces start > end; a 2-residue one produces
+  # only ~3 spline points. Prekin avoids this via per-residue rendering;
+  # we filter them here instead.
+  for rib_elt in ribbon_elements:
+    if rib_elt.type in ('HELIX', 'SHEET'):
+      if rib_elt.end - rib_elt.start < n_intervals:
+        rib_elt.type = 'COIL'
+        rib_elt.range = None
+
   # Crayons for coloring
   normal_crayon = Crayon(do_rainbow)
   edge_crayon = Crayon(False)  # No color; deadblack set on vectorlist
@@ -642,7 +652,7 @@ def generate_chain_ribbons(chain, secondary_structure, chain_id,
                            do_nucleic_acid=True, untwist=True,
                            dna_style=False, do_plain_coils=False,
                            coil_width=1.0, color_by="secondary_structure",
-                           nucleic_acid_as_helix=True,
+                           nucleic_acid_as_sheet=True,
                            has_dna=False, has_rna=False):
   """Generate complete ribbon kinemage text for one chain.
 
@@ -661,7 +671,8 @@ def generate_chain_ribbons(chain, secondary_structure, chain_id,
     do_plain_coils: if True, omit coil outlines (halo)
     coil_width: width of the coil part
     color_by: "rainbow", "secondary_structure", or "solid"
-    nucleic_acid_as_helix: treat nucleic acids as helix in SS map
+    nucleic_acid_as_sheet: treat nucleic acids as sheet (flat ribbon with
+        arrowheads) in SS map, matching Prekin's BETA behavior
     has_dna: whether DNA is present in the model
     has_rna: whether RNA is present in the model
 
@@ -720,6 +731,14 @@ def generate_chain_ribbons(chain, secondary_structure, chain_id,
       else:
         out += "@colorset {{nucl{}}} {}\n".format(chain_id, chain_color)
         out += "@colorset {{ncoi{}}} {}\n".format(chain_id, chain_color)
+
+      # Mark nucleic acid residues as SHEET in the SS map when requested,
+      # producing flat ribbons with arrowheads (matching Prekin's BETA behavior).
+      if nucleic_acid_as_sheet:
+        sheet_range = Range('SHEET')
+        for contig in contiguous_lists:
+          for res in contig:
+            secondary_structure[res.resseq_as_int()] = sheet_range
 
       for contig in contiguous_lists:
         guidepoints = make_nucleic_acid_guidepoints(contig)

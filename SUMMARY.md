@@ -65,3 +65,6 @@ Pass `restraint_objects` from parent model manager to sub-models in `make_probe_
 
 ## 2026-04-24
 Add suitealyze RNA suite outlier markup to kinemage output. Thread `suite_result` through `_build_kinemage`, `build_kinemage_from_model`, `make_multikin`, and `export_molprobity_result_as_kinemage`.
+
+## 2026-05-11
+Fix ribbon rendering: nucleic acid ribbons now render as SHEET (flat with arrowheads, matching Prekin's BETA behavior) instead of thin coil lines. Raise minimum contiguous segment to 3 residues (matching Prekin). Filter degenerate short HELIX/SHEET ribbon elements to COIL.

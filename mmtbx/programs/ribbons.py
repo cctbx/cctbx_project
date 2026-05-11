@@ -49,10 +49,12 @@ selection = (altloc ' ' or altloc '' or altloc a)
   .type = atom_selection
   .short_caption = Atom selection
   .help = Atom selection description
-nucleic_acid_as_helix = True
+nucleic_acid_as_sheet = True
   .type = bool
-  .short_caption = Draw nucleic acids as helix
-  .help = If true, draw nucleic acids as helix rather than treating as coil because there are not secondary structure records for them
+  .short_caption = Draw nucleic acids as sheet
+  .help = If true, draw nucleic acids as flat sheet ribbons with arrowheads \
+    (matching Prekin's BETA behavior) rather than treating as coil, since \
+    there are not secondary structure records for them
 '''
 
 # ------------------------------------------------------------------------------
@@ -123,9 +125,11 @@ Output:
         hierarchy, annotation=annotation, log=self.logger)
     consolidate_sheets(self.secondaryStructure)
 
-    # If we are treating nucleic acids as helices, change the record of each nucleic acid residue to be a helix.
-    if self.params.nucleic_acid_as_helix:
-      r = Range('HELIX')
+    # If we are treating nucleic acids as sheets, change the record of each
+    # nucleic acid residue to SHEET, producing flat ribbons with arrowheads
+    # (matching Prekin's BETA behavior for nucleic acids).
+    if self.params.nucleic_acid_as_sheet:
+      r = Range('SHEET')
       for res in hierarchy.residue_groups():
         if _IsNucleicAcidResidue(res.unique_resnames()[0]):
           self.secondaryStructure[res.resseq_as_int()] = r
