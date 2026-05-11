@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
 from PySide2.QtCore import Qt, QAbstractItemModel, QModelIndex, QThread, QCoreApplication
 from PySide2.QtGui import QBrush
 
