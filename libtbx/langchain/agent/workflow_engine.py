@@ -2277,6 +2277,24 @@ class WorkflowEngine:
             if context.get("xtriage_done") or context.get("mtriage_done"):
                 return True
 
+            # v116.10: Prediction-only mode (AlphaFold-only).
+            # When the user has uploaded a sequence file but no diffraction
+            # data (no .mtz), xtriage cannot run and the workflow would
+            # otherwise stall at xray_initial.  predict_and_build CAN run
+            # with just a sequence — it produces an AlphaFold prediction
+            # without needing data, MR, or refinement.  This is the
+            # "explicit request" case the comment below alludes to.
+            #
+            # The command builder forces stop_after_predict=True when
+            # data is absent, so the resulting workflow is a pure
+            # prediction run.  The user's after_program directive
+            # (handled upstream in _apply_directives) typically pairs
+            # with stop_after_predict=True for this case.
+            if (context.get("has_sequence") and
+                    not context.get("has_data_mtz") and
+                    not context.get("has_phased_data_mtz")):
+                return True
+
             # Allow prediction-only if explicitly requested, but warn
             # (This case is handled by command builder forcing stop_after_predict=True)
             return False  # Don't add to early steps - let workflow proceed normally
