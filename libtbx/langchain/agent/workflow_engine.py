@@ -1012,6 +1012,31 @@ class WorkflowEngine:
     def _detect_xray_step(self, steps, context):
         """Detect step in X-ray workflow."""
 
+        # v116.10 Phase 6b: Sequence-only sessions skip the analyze step.
+        #
+        # When there's no diffraction data (no .mtz), xtriage cannot run,
+        # so staying at the "analyze" step would block the workflow.  If
+        # a sequence is present, we route directly to obtain_model where
+        # predict_and_build is available (it has condition `has: sequence`
+        # in the YAML).
+        #
+        # This is the cleaner equivalent of the v116.10 prediction-only
+        # allowance in _check_program_prerequisites: that path adds
+        # predict_and_build to valid_programs while leaving state at
+        # "analyze"; this path moves state to "obtain_model" so the YAML
+        # naturally yields predict_and_build with the correct strategy.
+        # The allowance in _check_program_prerequisites is retained as
+        # defense in depth — it covers paths where Phase 6b doesn't fire
+        # but the user explicitly requested predict_and_build via
+        # after_program.
+        if (not context.get("xtriage_done") and
+                context.get("has_sequence") and
+                not context.get("has_data_mtz") and
+                not context.get("has_phased_data_mtz")):
+            return self._make_step_result(steps, "obtain_model",
+                "Sequence-only session (no diffraction data) — "
+                "skipping analyze, routing to obtain_model for prediction")
+
         # Step 1: Need analysis
         if not context.get("xtriage_done"):
             return self._make_step_result(steps, "analyze",
@@ -1520,6 +1545,18 @@ class WorkflowEngine:
 
         if _diag:
             print("  [DIAG] after run_once/done filter: %s" % valid)
+
+        # v116.10 Phase 4b: Remove programs whose data inputs are absent.
+        # xtriage/mtriage are added unconditionally by the analyze step
+        # but cannot run without their respective data files.  Filtering
+        # them out here prevents wasted LLM cycles where xtriage gets
+        # picked, the command builds, and execution fails at runtime.
+        # See _filter_programs_missing_data_inputs for details.
+        valid = self._filter_programs_missing_data_inputs(
+            valid, context, _diag=_diag)
+
+        if _diag:
+            print("  [DIAG] after data-input filter: %s" % valid)
 
         # MR-SAD guard: When we have BOTH a search model AND anomalous data,
         # phaser must run first to place the model. AutoSol will be available
@@ -2215,6 +2252,68 @@ class WorkflowEngine:
 
         return False
 
+    def _filter_programs_missing_data_inputs(self, valid_programs, context,
+                                             _diag=False):
+        """Remove programs that cannot run because required data inputs are missing.
+
+        Some programs are added unconditionally by the YAML step definition
+        (e.g., phenix.xtriage at the X-ray analyze step) but cannot actually
+        execute without their data inputs:
+
+        - phenix.xtriage needs X-ray diffraction data (has_data_mtz or
+          has_phased_data_mtz)
+        - phenix.mtriage needs a cryo-EM map (has_full_map or has_half_map)
+
+        Without this filter, the LLM may pick xtriage/mtriage in a session
+        that lacks the data, the command builder generates a command, and
+        the program fails at runtime (one wasted cycle).  Filtering here
+        means the LLM is presented only with programs that can actually
+        run, so a sequence-only session sees [predict_and_build, STOP]
+        instead of [xtriage, predict_and_build, STOP].
+
+        This is the upstream complement to the prediction-only allowance
+        in _check_program_prerequisites: that path keeps predict_and_build
+        runnable for sequence-only sessions; this path removes the xtriage
+        distraction.
+
+        Args:
+            valid_programs: List of program names from YAML/condition filtering
+            context: Workflow context dict (must have data-presence flags)
+            _diag: When True, print diagnostic lines for each removal
+
+        Returns:
+            list: Copy of valid_programs with data-missing programs removed
+        """
+        result = list(valid_programs)
+
+        # X-ray: xtriage needs intensity data (raw or phased)
+        if "phenix.xtriage" in result:
+            has_xray_data = bool(
+                context.get("has_data_mtz") or
+                context.get("has_phased_data_mtz"))
+            if not has_xray_data:
+                result.remove("phenix.xtriage")
+                if _diag:
+                    print("  [DIAG] phenix.xtriage removed: no .mtz data "
+                          "(has_data_mtz=%s, has_phased_data_mtz=%s)"
+                          % (context.get("has_data_mtz"),
+                             context.get("has_phased_data_mtz")))
+
+        # Cryo-EM: mtriage needs a map (full or half)
+        if "phenix.mtriage" in result:
+            has_cryoem_map = bool(
+                context.get("has_full_map") or
+                context.get("has_half_map"))
+            if not has_cryoem_map:
+                result.remove("phenix.mtriage")
+                if _diag:
+                    print("  [DIAG] phenix.mtriage removed: no map data "
+                          "(has_full_map=%s, has_half_map=%s)"
+                          % (context.get("has_full_map"),
+                             context.get("has_half_map")))
+
+        return result
+
     def _check_program_prerequisites(self, program, context, step_name):
         """
         Check if a program's prerequisites are met.
@@ -2229,6 +2328,30 @@ class WorkflowEngine:
         """
         if not context:
             return True  # No context to check against
+
+        # v116.10 Phase 4b: xtriage needs X-ray intensity data (raw or phased).
+        # Without .mtz, xtriage cannot run.  This gate is the directive-side
+        # complement to _filter_programs_missing_data_inputs (which removes
+        # xtriage from the YAML-derived valid_programs).  Both paths must
+        # enforce the same requirement so that user advice like "analyze
+        # and stop" on a sequence-only session doesn't re-add xtriage
+        # after the YAML filter already removed it.
+        if program == "phenix.xtriage":
+            has_xray_data = (
+                context.get("has_data_mtz") or
+                context.get("has_phased_data_mtz")
+            )
+            if not has_xray_data:
+                return False
+
+        # v116.10 Phase 4b: mtriage needs a cryo-EM map (full or half).
+        if program == "phenix.mtriage":
+            has_cryoem_map = (
+                context.get("has_full_map") or
+                context.get("has_half_map")
+            )
+            if not has_cryoem_map:
+                return False
 
         # Don't add refinement programs if we're in an early step without a model
         if program in ("phenix.refine", "phenix.real_space_refine"):

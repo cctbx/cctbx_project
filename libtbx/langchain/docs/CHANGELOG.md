@@ -1,4 +1,96 @@
-# CHANGELOG — v115
+# CHANGELOG — v116
+
+## Version 116.10 (Reliability and Classification Cleanup)
+
+### Summary
+
+Six bugs in advice parsing, LLM prompting, program selection, and
+plan classification, plus drift-detection machinery for the wire
+contract and the client's plan-generation logic. The cleanup was
+scoped from a single batch-tutorial finding ("predict and stop"
+sessions were AUTO-STOPping) and grew as adjacent bugs surfaced
+during investigation. Five files modified, 89 new tests across
+7 new test files plus one augmented file. Rollout order in
+testing: 1 → 6a → 4b → 2 → 6b → 3a → 3d.
+
+### Modified Files (5 production files)
+
+| File | Phases | Changes |
+|------|--------|---------|
+| `agent/rules_selector.py` | 1 | `_apply_user_advice` `stop_condition_patterns` extended with `"and stop"`, `"then stop"`, `", stop"` so "predict and stop" stops being collapsed to `["STOP"]`. |
+| `agent/workflow_engine.py` | 4b, 6b | Phase 4b: new `_filter_programs_missing_data_inputs` strips `xtriage` when `not has_data_mtz and not has_phased_data_mtz`, strips `mtriage` when no map; matching guards added to `_check_program_prerequisites` for defense in depth. Phase 6b: top of `_detect_xray_step` routes sequence-only sessions directly to `obtain_model` (state becomes `xray_analyzed`). |
+| `agent/contract.py` | 2 | `CURRENT_PROTOCOL_VERSION` 3 → 5 (matches highest field version after silent drift). New `validate_contract()` returns `(ok, errors)` enforcing three invariants: CURRENT ≥ max field version, MIN ≤ CURRENT, MIN ≥ 1. |
+| `knowledge/prompts_hybrid.py` | 6a | `_format_directives_for_prompt` after-program lines replaced: "CRITICAL: You MUST run X" → "Stop target: X. If in VALID PROGRAMS choose it; if not, choose an appropriate prerequisite. Never pick outside VALID PROGRAMS." |
+| `phenix/programs/ai_agent.py` | 2, 3a, 3d | Phase 2: `_get_protocol_version()` fallback `return 3` → `return 5`. Phase 3a: `_STANDALONE_PROGRAMS` and `_NEEDS_PLAN_PROGRAMS` extracted as module-level frozensets near line 815; three call sites in `_initialize_plan_inner` updated to reference them (pure refactor, 51 program×intent traces verified identical). Phase 3d: `phenix.map_symmetry` and `phenix.dock_in_map` added to `_STANDALONE_PROGRAMS` (behavior change: skips plan generation, routes through workflow_engine state machine instead). |
+
+### Bug Details
+
+| Bug | Phase | Symptom | Root Cause | Fix |
+|-----|-------|---------|------------|-----|
+| 1 | 1 | "predict and stop" sessions immediately AUTO-STOP at session start | `_apply_user_advice` saw `stop` keyword without matching any of `stop after / stop when / stop once / stop if / stop condition / stop at` → fell through to "treat as immediate stop" → `valid_programs` collapsed to `["STOP"]` | Extended `stop_condition_patterns` with `"and stop"`, `"then stop"`, `", stop"` |
+| 2 | 6a | LLM picks `predict_and_build` before `xtriage` has run, hitting prerequisite failure | Prompt told LLM "CRITICAL: You MUST run X before stopping. If it's in VALID PROGRAMS, choose it NOW." — overrode prerequisite logic | Reframed as "Stop target: X. If in VALID PROGRAMS choose it; if not, choose an appropriate prerequisite" |
+| 3 | 4b | xtriage offered as valid program even when no `.mtz` is uploaded; session stalls | YAML lists xtriage at analyze step unconditionally; no data-input filter | New `_filter_programs_missing_data_inputs` strips xtriage when no .mtz, mtriage when no map; matching prereq guard in `_check_program_prerequisites` for defense in depth |
+| 4 | 2 | New v3/v4/v5 fields added to `SESSION_INFO_FIELDS` while `CURRENT_PROTOCOL_VERSION` stuck at 3 — silent drift | No invariant check between `CURRENT_PROTOCOL_VERSION` and registered field versions | Bumped CURRENT to 5; added `validate_contract()` invariant function; augmented existing `tst_contract_compliance.py` with drift-detection test |
+| 5 | 6b | Sequence-only X-ray sessions stuck at `xray_initial` (analyze step); xtriage filtered, no fallback | `_detect_xray_step` returned analyze for `not xtriage_done` regardless of whether xtriage could even run | Routing branch at top of `_detect_xray_step`: when no .mtz and has sequence → `obtain_model` (state becomes `xray_analyzed`); `predict_and_build` available via YAML `has: sequence` condition |
+| 6 | 3a | `_initialize_plan_inner` standalone-programs list duplicated inline at two call sites; comment admitted the duplication; classification couldn't be tested | Original implementation kept the two tuples in sync by hand | Extracted `_STANDALONE_PROGRAMS` and `_NEEDS_PLAN_PROGRAMS` as module-level frozensets; new `tst_standalone_consistency.py` enforces alignment with `directive_extractor._ACTION_TABLE` |
+| 7 | 3d | "dock and stop" with sequence + map (no model) generates a plan, `skip_to_program(dock_in_map)` marks predict_and_build SKIPPED, dock_in_map then fails at runtime | `dock_in_map` was a "full-plan target" (caught by the v116.10 elif); skip_to_program incorrectly removed the predict prerequisite | Reclassified `phenix.dock_in_map` and `phenix.map_symmetry` as `_STANDALONE_PROGRAMS`; `_initialize_plan_inner` now skips plan generation, lets `workflow_engine` handle prerequisites via state machine (analyze → predict → dock) |
+
+### Tests (7 new files, 1 augmented, 89 new test cases)
+
+| File | Phase | Cases | Covers |
+|------|-------|-------|--------|
+| `tst_user_advice_filter.py` | 1 (S13) | 16 | "X and stop" / "X then stop" / "X, stop" preserved; recognized stop-conditions still respected |
+| `tst_after_program_prompt.py` | 6a (S14) | 12 | Prompt uses target-not-now framing; aggressive "MUST" language removed |
+| `tst_data_input_filter.py` | 4b (S15) | 22 | xtriage filtered when no .mtz; mtriage filtered when no map; prereq guard handles directive re-injection |
+| `tst_protocol_version.py` | 2 (S16) | 15 | `validate_contract()` invariants via synthetic probes (drift detection, bounds checking) |
+| `tst_contract_compliance.py` | 2 (augmented) | +1 | New `test_contract_validate_passes` adds drift-detection entry point |
+| `tst_sequence_only_routing.py` | 6b (S17) | 10 | Sequence-only sessions route to `obtain_model`; doesn't fire when data is present or sequence absent |
+| `tst_standalone_consistency.py` | 3a (S18) | 8 | `_STANDALONE_PROGRAMS` aligned with `_ACTION_TABLE`; drift detection for new actions |
+| `tst_dock_and_stop.py` | 3d (S19) | 5 | Phase 3d behavior change documented; blast-radius regression guard (48 unrelated traces unchanged) |
+
+Registered in `tests/run_all_tests.py` as suites S13–S19.
+
+Run with: `python3 tests/run_all_tests.py` or individually
+`python3 tests/tst_user_advice_filter.py`, etc.
+
+### Verification
+
+| Fix | Verification |
+|-----|--------------|
+| Bug 1 (user advice "X and stop") | ✅ 16 unit tests pass; 6/16 fail on pre-fix code |
+| Bug 2 (after-program prompt) | ✅ 12 unit tests pass; 6/12 fail on pre-fix |
+| Bug 3 (data-input filter) | ✅ 22 unit tests pass; 18/22 fail on pre-fix; integration smoke test confirms xtriage absent from valid_programs when no .mtz |
+| Bug 4 (protocol hygiene) | ✅ 15 + 1 unit tests pass; 8/15 fail on pre-fix; verified `tst_contract_compliance.py:test_protocol_version_consistency` now passes (was failing because fallback `return 3` ≠ CURRENT `5`) |
+| Bug 5 (sequence-only routing) | ✅ 10 unit tests pass; 4/10 fail on pre-fix; end-to-end integration test confirms state becomes `xray_analyzed` with `valid_programs=[phenix.predict_and_build]` |
+| Bug 6 (Phase 3a refactor) | ✅ 8 consistency tests pass; behavioral equivalence verified by 51 (program × intent) decision-tree traces — all identical pre/post |
+| Bug 7 (Phase 3d behavior change) | ✅ 5 unit tests pass; 3/5 fail on pre-fix; blast-radius check confirms 48 unrelated traces unchanged. ⏳ Integration test against tutorial corpus pending. |
+
+### Self-Review Finding (Phase 3a/3d split)
+
+Phase 3 was initially delivered as a single phase that bundled the
+de-duplication refactor with two new programs added to
+`_STANDALONE_PROGRAMS` (silently changing behavior). Self-review
+caught this:
+
+- Refactor PRs that change behavior should be split. "Cleaner"
+  behavior is still a behavior change.
+- The fix was to split into Phase 3a (verified by 51 trace-equivalence
+  checks) and Phase 3d (explicit behavior change, with `tst_dock_and_stop.py`
+  including a 48-trace blast-radius regression guard).
+
+This is recorded in `OVERVIEW.md` under Active Development as a
+principle for future cleanups.
+
+### Known Issues (deferred to future work)
+
+| Issue | Description |
+|-------|-------------|
+| Phase 3d integration verification | Decision-tree traces verified, but no tutorial currently exercises "dock and stop with sequence + map". A tutorial that does would close the verification gap. Rollback is one line if a regression appears. |
+| Systematic input-availability audit | Phase 4b only filters xtriage and mtriage. A systematic "every program declares its inputs" audit is unfinished. The next program added with hard input requirements should be added to the filter at the same time. |
+| Phase 6a "appropriate prerequisite" language | Shipped Option A (ship as-is) over Options B (add hint) and C (surface `rules_priority`). If integration testing shows the LLM picks the wrong prerequisite, revisit. |
+| Redundant prediction-only allowance | The v116.10 allowance in `_check_program_prerequisites` is mostly redundant after Phase 6b but retained as defense in depth. A future cleanup could remove it if edge cases (e.g., `xtriage_done=True` with no data) are verified to reach `predict_and_build` through other paths. |
+
+
 
 ## Version 115.09b (GUI Fixes + Ligand Workflow + Bug 1)
 

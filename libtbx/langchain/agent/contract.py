@@ -35,7 +35,16 @@ HOW TO ADD A NEW RESPONSE FIELD
 
 # Bump CURRENT when the client adds new session_info fields.
 # Bump MIN_SUPPORTED only after a deprecation period (see BACKWARD_COMPATIBILITY.md).
-CURRENT_PROTOCOL_VERSION = 3
+#
+# Invariant: CURRENT_PROTOCOL_VERSION must be >= the highest version
+# in SESSION_INFO_FIELDS.  The validate_contract() function below
+# checks this; tst_contract_compliance.py (and tst_protocol_version.py)
+# fail if the invariant is violated, so drift is caught in CI.
+#
+# v116.10 Phase 2: bumped from 3 to 5 to match the v4 and v5 fields
+# (plan_has_pending_stages, asu_copies) that were registered without
+# updating this constant.
+CURRENT_PROTOCOL_VERSION = 5
 MIN_SUPPORTED_PROTOCOL_VERSION = 1
 
 
@@ -272,3 +281,53 @@ def get_deprecation_warnings(session_info):
         )
 
     return warnings
+
+
+def validate_contract():
+    """Check that contract.py's protocol-version constants are internally consistent.
+
+    Catches drift between CURRENT_PROTOCOL_VERSION and the highest version
+    registered in SESSION_INFO_FIELDS.  Returns (ok, errors) so callers
+    can decide how to handle violations — tests assert on the result,
+    runtime code can log and proceed.
+
+    Returns:
+        (bool, list[str]):  (True, []) if all invariants hold.
+                            (False, [...]) with one message per violation.
+
+    Invariants checked:
+      1. CURRENT_PROTOCOL_VERSION >= max version in SESSION_INFO_FIELDS
+         (otherwise old clients comparing against CURRENT get wrong warnings,
+         and the documented protocol-version contract is broken)
+      2. MIN_SUPPORTED_PROTOCOL_VERSION <= CURRENT_PROTOCOL_VERSION
+         (otherwise no client can ever satisfy MIN at the current protocol)
+      3. MIN_SUPPORTED_PROTOCOL_VERSION >= 1
+         (versions start at 1; 0 or negative is undefined)
+    """
+    errors = []
+
+    if SESSION_INFO_FIELDS:
+        max_field_version = max(
+            ver for _, _, ver, _ in SESSION_INFO_FIELDS)
+        if CURRENT_PROTOCOL_VERSION < max_field_version:
+            errors.append(
+                "CURRENT_PROTOCOL_VERSION (%d) is less than the highest "
+                "registered field version (%d). Bump "
+                "CURRENT_PROTOCOL_VERSION to at least %d when adding "
+                "new fields." % (CURRENT_PROTOCOL_VERSION,
+                                 max_field_version, max_field_version))
+
+    if MIN_SUPPORTED_PROTOCOL_VERSION > CURRENT_PROTOCOL_VERSION:
+        errors.append(
+            "MIN_SUPPORTED_PROTOCOL_VERSION (%d) is greater than "
+            "CURRENT_PROTOCOL_VERSION (%d). No client could ever "
+            "satisfy this." % (MIN_SUPPORTED_PROTOCOL_VERSION,
+                               CURRENT_PROTOCOL_VERSION))
+
+    if MIN_SUPPORTED_PROTOCOL_VERSION < 1:
+        errors.append(
+            "MIN_SUPPORTED_PROTOCOL_VERSION (%d) is less than 1. "
+            "Protocol versions start at 1."
+            % MIN_SUPPORTED_PROTOCOL_VERSION)
+
+    return (len(errors) == 0, errors)

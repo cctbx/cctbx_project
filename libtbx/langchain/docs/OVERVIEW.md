@@ -70,18 +70,70 @@ phenix.ai_agent input_directory=/path/to/tutorial/
 
 ## Active Development
 
-The v115 cycle addresses two categories of work.
+The v116.10 cleanup cycle is complete; see [CHANGELOG.md
+v116.10](CHANGELOG.md) for the full per-bug breakdown.
 
-**Infrastructure fixes** — 22 items identified from dual-run evaluation
-of 21 tutorials, tracked in [`PLAN.md`](../PLAN.md) at the repo root.
-20 of 22 are complete; I6 (unsupported programs) and I7 (tar.gz input)
-are deferred pending workflow engine expansion.
+**Scope** — Six bugs in advice parsing, LLM prompting, program
+selection, and plan classification, plus drift-detection machinery
+for the wire contract and the client's plan-generation logic.
+Five files modified, 89 new tests across 7 new test files plus
+one augmented file (`tst_contract_compliance.py`).
 
-**Bug fixes** — five issues found during v115 test suite review:
-see [CHANGELOG.md v115.03](CHANGELOG.md).
+**Categories of work** — The fixes operate at four layers:
+mechanical filters (Phase 4b strips programs whose inputs aren't
+present), prompt engineering (Phase 6a reframes the LLM's
+`after_program` directive), state-machine routing (Phase 6b
+recognizes sessions that can't analyze), and plan-generation
+classification (Phases 1, 3a, 3d fix the user-advice filter and
+the `_initialize_plan_inner` standalone-programs classification).
+Phase 2 (protocol hygiene) sits alongside and enforces wire-contract
+invariants that the existing `tst_contract_compliance.py` suite
+couldn't previously catch.
 
-Contributors should read `PLAN.md` before starting new v115 work to
-avoid duplicating completed items or conflicting with deferred ones.
+**Principles surfaced** — Three patterns from this cleanup that
+generalize beyond v116.10:
+
+1. **Filter before adding to `valid_programs`.** Phase 4b strips
+   programs whose inputs aren't present before they reach the LLM,
+   which is more robust than relying on the LLM to notice missing
+   inputs from the prompt. Any program with hard input requirements
+   should be filterable at the workflow_engine layer.
+
+2. **Refactor means no behavior change, period.** Phase 3 was
+   initially delivered as a single phase that bundled the
+   de-duplication refactor with two new programs added to
+   `_STANDALONE_PROGRAMS` (silently changing behavior). Self-review
+   caught this. The fix was to split into Phase 3a (pure refactor,
+   verified by 51 program×intent trace-equivalence checks) and
+   Phase 3d (explicit behavior change, with `tst_dock_and_stop.py`
+   including a 48-trace blast-radius regression guard).
+
+3. **Drift catchers belong in the existing test suite.** Phase 2
+   added `validate_contract()` to `agent/contract.py`, but its
+   drift-detection power came from adding a one-line call to it
+   in the existing `tst_contract_compliance.py`. The same pattern
+   in Phase 3a: the consistency test imports `_ACTION_TABLE` from
+   the source-of-truth module rather than maintaining a duplicate.
+
+**Known gaps** (deferred to future work):
+
+- Phase 3d behavior change is verified by decision-tree traces;
+  no tutorial currently exercises "dock and stop with sequence +
+  map". Rollback is one line if a regression appears.
+- Phase 4b only filters xtriage and mtriage. A systematic
+  "every program declares its inputs" audit is unfinished.
+- The v116.10 prediction-only allowance in
+  `_check_program_prerequisites` is mostly redundant after Phase
+  6b but retained as defense in depth.
+
+### Prior cycle
+
+The v115 cycle addressed 22 infrastructure items identified from
+dual-run evaluation of 21 tutorials plus 5 bug fixes from test
+suite review. 20 of 22 infrastructure items completed; I6
+(unsupported programs) and I7 (tar.gz input) are deferred pending
+workflow engine expansion. See [`PLAN.md`](../PLAN.md) at the
+repo root for status.
 
 ### Success Metrics
 
@@ -92,6 +144,10 @@ avoid duplicating completed items or conflicting with deferred ones.
 | Terminal failure pivots firing | 0% (no pivot logic) | > 90% | `tst_error_classifier.py` |
 | PHIL rejections causing halt | untracked | 0 | `tst_phil_validation.py` |
 | Intent misclassification | untracked | < 5% on tutorial set | `tst_intent_classifier.py` |
+| "X and stop" sessions | AUTO-STOPs (Bug 1) | preserves valid_programs | `tst_user_advice_filter.py` (v116.10) |
+| xtriage offered without .mtz | yes (Bug 3) | filtered | `tst_data_input_filter.py` (v116.10) |
+| `_ACTION_TABLE` target drift | manual | automated | `tst_standalone_consistency.py` (v116.10) |
+| `CURRENT_PROTOCOL_VERSION` drift | manual | automated | `validate_contract()` + `tst_contract_compliance.py` (v116.10) |
 
 ---
 

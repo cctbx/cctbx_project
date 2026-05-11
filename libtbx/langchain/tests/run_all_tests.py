@@ -98,6 +98,27 @@ Systematic Testing Framework (v115.08):
   S9. Phase 9: LLM Perturbation - filename/program/parameter/truncation/empty (17 tests)
   S10. General Resolver - ACTION_TABLE, _detect_actions, _resolve_after_program (20 tests, 91 assertions)
   S11. Skip to Program - StructurePlan.skip_to_program() + format_plan_header display (30 tests, v116.10)
+  S12. Directive Validator Typo Hints - difflib-based suggestion algorithm and
+       'Did you mean?' hints in after_program issues (13 tests, v116.10 Phase 4a)
+  S13. User Advice Filter - 'X and stop' / 'X then stop' / 'X, stop' phrasings no longer
+       truncate valid_programs to [STOP] (16 tests, v116.10 Phase 1)
+  S14. After-Program Prompt Alignment - target-not-now framing replaces
+       'CRITICAL: You MUST run X / Do NOT...run X instead!' (12 tests, v116.10 Phase 6a)
+  S15. Data-Input Filter - xtriage removed when no .mtz, mtriage removed
+       when no map (16 tests, v116.10 Phase 4b)
+  S16. Protocol Version Invariants - CURRENT_PROTOCOL_VERSION drift detection
+       and validate_contract() function (15 tests, v116.10 Phase 2)
+  S17. Sequence-Only Routing - _detect_xray_step routes to obtain_model when
+       no .mtz data is present and has_sequence=True (10 tests, v116.10 Phase 6b)
+  S18. Standalone Programs Consistency - _STANDALONE_PROGRAMS / _NEEDS_PLAN_PROGRAMS
+       de-duplication + drift detection against _ACTION_TABLE
+       (8 tests, v116.10 Phase 3a/3b)
+  S19. Dock-and-Stop Behavior Change - phenix.map_symmetry and phenix.dock_in_map
+       reclassified as standalone (5 tests, v116.10 Phase 3d)
+  S20. CC Key Extraction - _generate_structure_report success-detection logic
+       recognizes the canonical "model_map_cc" key, fixing misleading
+       "SESSION STOPPED - INCOMPLETE" banner on successful cryo-EM runs
+       (11 tests, v116.10)
 """
 
 from __future__ import absolute_import, division, print_function
@@ -1096,6 +1117,141 @@ def main():
     except ImportError as e:
         print(f"\u26a0\ufe0f  Could not import tst_skip_to_program: {e}")
         results.append(("Skip to Program", "tst_skip_to_program", False, 0))
+
+    # --- Directive Validator Typo Hints (v116.10 Phase 4a) ---
+    try:
+        from tests.tst_directive_validator_typo_hints import (
+            run_all_tests as run_directive_validator_typo_hints_tests)
+        success, elapsed = run_test_module(
+            "tst_directive_validator_typo_hints",
+            run_directive_validator_typo_hints_tests, args.verbose)
+        results.append(("Directive Validator Typo Hints",
+                       "tst_directive_validator_typo_hints",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_directive_validator_typo_hints: {e}")
+        results.append(("Directive Validator Typo Hints",
+                       "tst_directive_validator_typo_hints", False, 0))
+
+    # --- User Advice Filter (v116.10 Phase 1) ---
+    try:
+        from tests.tst_user_advice_filter import (
+            run_all_tests as run_user_advice_filter_tests)
+        success, elapsed = run_test_module(
+            "tst_user_advice_filter",
+            run_user_advice_filter_tests, args.verbose)
+        results.append(("User Advice Filter",
+                       "tst_user_advice_filter",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_user_advice_filter: {e}")
+        results.append(("User Advice Filter",
+                       "tst_user_advice_filter", False, 0))
+
+    # --- After-Program Prompt Alignment (v116.10 Phase 6a) ---
+    try:
+        from tests.tst_after_program_prompt import (
+            run_all_tests as run_after_program_prompt_tests)
+        success, elapsed = run_test_module(
+            "tst_after_program_prompt",
+            run_after_program_prompt_tests, args.verbose)
+        results.append(("After-Program Prompt Alignment",
+                       "tst_after_program_prompt",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_after_program_prompt: {e}")
+        results.append(("After-Program Prompt Alignment",
+                       "tst_after_program_prompt", False, 0))
+
+    # --- Data-Input Filter (v116.10 Phase 4b) ---
+    try:
+        from tests.tst_data_input_filter import (
+            run_all_tests as run_data_input_filter_tests)
+        success, elapsed = run_test_module(
+            "tst_data_input_filter",
+            run_data_input_filter_tests, args.verbose)
+        results.append(("Data-Input Filter",
+                       "tst_data_input_filter",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_data_input_filter: {e}")
+        results.append(("Data-Input Filter",
+                       "tst_data_input_filter", False, 0))
+
+    # --- Protocol Version Invariants (v116.10 Phase 2) ---
+    try:
+        from tests.tst_protocol_version import (
+            run_all_tests as run_protocol_version_tests)
+        success, elapsed = run_test_module(
+            "tst_protocol_version",
+            run_protocol_version_tests, args.verbose)
+        results.append(("Protocol Version Invariants",
+                       "tst_protocol_version",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_protocol_version: {e}")
+        results.append(("Protocol Version Invariants",
+                       "tst_protocol_version", False, 0))
+
+    # --- Sequence-Only Routing (v116.10 Phase 6b) ---
+    try:
+        from tests.tst_sequence_only_routing import (
+            run_all_tests as run_sequence_only_routing_tests)
+        success, elapsed = run_test_module(
+            "tst_sequence_only_routing",
+            run_sequence_only_routing_tests, args.verbose)
+        results.append(("Sequence-Only Routing",
+                       "tst_sequence_only_routing",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_sequence_only_routing: {e}")
+        results.append(("Sequence-Only Routing",
+                       "tst_sequence_only_routing", False, 0))
+
+    # --- Standalone Programs Consistency (v116.10 Phase 3a/3b) ---
+    try:
+        from tests.tst_standalone_consistency import (
+            run_all_tests as run_standalone_consistency_tests)
+        success, elapsed = run_test_module(
+            "tst_standalone_consistency",
+            run_standalone_consistency_tests, args.verbose)
+        results.append(("Standalone Programs Consistency",
+                       "tst_standalone_consistency",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_standalone_consistency: {e}")
+        results.append(("Standalone Programs Consistency",
+                       "tst_standalone_consistency", False, 0))
+
+    # --- Dock-and-Stop Behavior Change (v116.10 Phase 3d) ---
+    try:
+        from tests.tst_dock_and_stop import (
+            run_all_tests as run_dock_and_stop_tests)
+        success, elapsed = run_test_module(
+            "tst_dock_and_stop",
+            run_dock_and_stop_tests, args.verbose)
+        results.append(("Dock-and-Stop Behavior Change",
+                       "tst_dock_and_stop",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_dock_and_stop: {e}")
+        results.append(("Dock-and-Stop Behavior Change",
+                       "tst_dock_and_stop", False, 0))
+
+    # --- CC Key Extraction (v116.10) ---
+    try:
+        from tests.tst_cc_key_extraction import (
+            run_all_tests as run_cc_key_extraction_tests)
+        success, elapsed = run_test_module(
+            "tst_cc_key_extraction",
+            run_cc_key_extraction_tests, args.verbose)
+        results.append(("CC Key Extraction",
+                       "tst_cc_key_extraction",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_cc_key_extraction: {e}")
+        results.append(("CC Key Extraction",
+                       "tst_cc_key_extraction", False, 0))
 
     # --- Summary ---
     total_elapsed = time.time() - total_start

@@ -455,9 +455,27 @@ def _format_directives_for_prompt(directives):
         if "after_program" in stop_cond:
             after_prog = stop_cond["after_program"]
             lines.append("- Stop after %s completes" % after_prog)
-            # Add explicit guidance to run the program - make it very clear
-            lines.append("- **CRITICAL: You MUST run %s before stopping. If it's in VALID PROGRAMS, choose it NOW.**" % after_prog)
-            lines.append("- Do NOT keep running refinement cycles - run %s instead!" % after_prog)
+            # v116.10 Phase 6a: target-not-now framing.
+            #
+            # The previous wording said "CRITICAL: You MUST run X.
+            # Do NOT keep running refinement cycles - run X instead!"
+            # which caused the LLM to pick after_program even when
+            # it was not in VALID PROGRAMS (e.g. predict_and_build at
+            # xray_initial), triggering the after_program_not_available
+            # STOP defense.
+            #
+            # The new wording aligns with the authoritative VALID
+            # PROGRAMS guidance later in the prompt ("You MUST choose
+            # from the valid programs above, or set 'stop': true."):
+            #   - after_program is a STOP TARGET, not a now-directive
+            #   - When the target is in VALID PROGRAMS, pick it
+            #   - When the target is not in VALID PROGRAMS, pick a
+            #     prerequisite from VALID PROGRAMS
+            #   - Never pick a program outside VALID PROGRAMS
+            lines.append("- **Stop target: %s.** The agent will stop once this program completes." % after_prog)
+            lines.append("- If %s is in VALID PROGRAMS this cycle, choose it." % after_prog)
+            lines.append("- If %s is NOT in VALID PROGRAMS, choose the appropriate prerequisite from VALID PROGRAMS. The workflow will reach %s when its inputs become available." % (after_prog, after_prog))
+            lines.append("- Never pick a program outside VALID PROGRAMS. Programs outside the list cannot run this cycle.")
         if "max_refine_cycles" in stop_cond:
             lines.append("- Maximum %d refinement cycles" % stop_cond["max_refine_cycles"])
         if "r_free_target" in stop_cond:

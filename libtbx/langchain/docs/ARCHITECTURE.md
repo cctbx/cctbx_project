@@ -3392,6 +3392,230 @@ Core unsupported programs like `ensemble_refinement` correctly block.
 The same logic applies in `wxGUI2/Programs/AIAgent.py` for the GUI.
 
 ---
+## Reliability and Classification Fixes (v116.10)
+
+Version 116.10 addresses six distinct bugs in advice parsing,
+LLM prompting, program selection, and plan classification, plus
+adds drift-detection machinery for the wire contract and the
+client's plan-generation logic. The fixes operate at four layers:
+
+1. **Mechanical filters** (Phase 4b) — strip programs whose
+   inputs aren't present, before they reach the LLM.
+2. **Prompt engineering** (Phase 6a) — reframe the LLM's
+   `after_program` directive so it doesn't override prerequisite
+   logic.
+3. **State machine routing** (Phase 6b) — recognize sessions
+   that can't analyze and route them to the model-obtaining step.
+4. **Plan generation** (Phases 1, 3a, 3d) — fix the
+   `_apply_user_advice` filter and the `_initialize_plan_inner`
+   classification of stop-target programs.
+
+The contract hygiene work (Phase 2) sits alongside these and
+enforces invariants the existing `tst_contract_compliance.py`
+suite couldn't previously catch.
+
+### User Advice Filter
+
+`agent/rules_selector.py :: _apply_user_advice` previously
+collapsed `valid_programs` to `["STOP"]` whenever the user's
+advice contained the literal substring `stop` without matching
+one of the recognized stop-condition patterns. Phrasings like
+"predict and stop" matched the stop-keyword branch but not any
+of the `stop after`, `stop when`, `stop once`, etc. patterns,
+so they fell through to the "treat as immediate stop" path.
+
+The fix extends `stop_condition_patterns` with three additional
+phrasings derived from natural English:
+
+```python
+stop_condition_patterns = [
+    "stop after", "stop when", "stop once",
+    "stop if",    "stop condition", "stop at",
+    "and stop",   "then stop",      ", stop",   # v116.10 Phase 1
+]
+```
+
+Effect: "predict and stop" / "predict, then stop" / "predict,
+stop" are recognized as stop-conditioned requests, and
+`valid_programs` is preserved so downstream logic can pick
+`predict_and_build` rather than aborting at the filter.
+
+### Stop-Target Prompt Framing
+
+`knowledge/prompts_hybrid.py :: _format_directives_for_prompt`
+previously told the LLM:
+
+```
+- CRITICAL: You MUST run phenix.X before stopping. If it's in
+  VALID PROGRAMS, choose it NOW.
+- Do NOT keep running refinement cycles - run phenix.X instead!
+```
+
+The aggressive framing led to mispicks when the target's
+prerequisites weren't in `valid_programs` (e.g., picking
+`predict_and_build` before `xtriage` had run). The replacement
+uses target-not-now framing:
+
+```
+Stop target: phenix.X
+- If phenix.X is in VALID PROGRAMS, choose it.
+- If phenix.X is NOT in VALID PROGRAMS, choose an appropriate prerequisite.
+- Never pick a program outside VALID PROGRAMS.
+```
+
+The new wording makes the LLM's job a two-step choice (target
+present? if not, what gets us there?) rather than an override of
+the workflow state.
+
+### Data-Input Filter
+
+`agent/workflow_engine.py :: get_valid_programs` now calls
+`_filter_programs_missing_data_inputs` after the run-once filter.
+The new filter removes:
+- `phenix.xtriage` when `has_data_mtz=False` and
+  `has_phased_data_mtz=False` (xtriage has nothing to analyze).
+- `phenix.mtriage` when `has_full_map=False` and
+  `has_half_map=False` and `has_optimized_full_map=False`
+  (mtriage has nothing to analyze).
+
+Defense in depth: `_check_program_prerequisites` was extended
+with matching guards so directives passed through
+`_apply_directives` cannot re-introduce these programs after
+the filter has removed them. The two layers protect against
+different paths: the filter handles YAML-added programs at the
+analyze step; the prereq check handles directive-added programs
+at any step.
+
+### Protocol Hygiene
+
+`agent/contract.py` previously had `CURRENT_PROTOCOL_VERSION = 3`
+while `SESSION_INFO_FIELDS` contained v3, v4, and v5 fields —
+silent version drift caused by adding new fields without
+bumping `CURRENT`.
+
+Phase 2 bumped `CURRENT_PROTOCOL_VERSION` to 5 (the highest
+field version) and added a `validate_contract()` function that
+returns `(ok, errors)` enforcing three invariants:
+
+1. `CURRENT_PROTOCOL_VERSION >= max(field.version for field in SESSION_INFO_FIELDS)` — bumps must accompany new fields.
+2. `MIN_SUPPORTED_PROTOCOL_VERSION <= CURRENT_PROTOCOL_VERSION` — can't require a future version.
+3. `MIN_SUPPORTED_PROTOCOL_VERSION >= 1` — sanity floor.
+
+The client's `_get_protocol_version()` fallback (`return 3` →
+`return 5`) was updated in lockstep; the existing
+`tst_contract_compliance.py:test_protocol_version_consistency`
+checks that the client fallback equals
+`CURRENT_PROTOCOL_VERSION` by regex match.
+`tst_contract_compliance.py` was augmented with a new
+`test_contract_validate_passes` that calls
+`validate_contract()` and asserts no violations — this is the
+drift-detection entry point for the broader compliance suite.
+
+### Sequence-Only Routing
+
+`agent/workflow_engine.py :: _detect_xray_step` was extended
+with a sequence-only route at the top of the function:
+
+```python
+if (not context.get("xtriage_done") and
+        context.get("has_sequence") and
+        not context.get("has_data_mtz") and
+        not context.get("has_phased_data_mtz")):
+    return self._make_step_result(steps, "obtain_model",
+        "Sequence-only session — routing to obtain_model")
+```
+
+For sessions where only a sequence is present (no diffraction
+data), the workflow now skips the analyze step and routes
+directly to `obtain_model`. The state name becomes
+`xray_analyzed` (per the existing `XRAY_STATE_MAP`), and
+`obtain_model`'s YAML provides `predict_and_build` (its
+condition is `has: sequence`).
+
+The v116.10 prediction-only allowance in
+`_check_program_prerequisites` is retained as defense in depth.
+It covers paths where Phase 6b doesn't fire (e.g.,
+`xtriage_done=True` but no data) but the user explicitly
+requests `predict_and_build` via `after_program`.
+
+### Plan-Generation Classification
+
+`phenix/programs/ai_agent.py :: _initialize_plan_inner` decides
+whether to generate a multi-stage plan based on the
+`after_program` target. Pre-v116.10, the standalone-programs
+list was duplicated inline at two call sites with an inline
+comment admitting the duplication. Phase 3a extracted both
+into module-level constants:
+
+```python
+_STANDALONE_PROGRAMS = frozenset({
+    "phenix.xtriage", "phenix.mtriage", "phenix.molprobity",
+    "phenix.model_vs_data", "phenix.map_correlations",
+    "phenix.map_sharpening",
+    "phenix.map_symmetry", "phenix.dock_in_map",  # Phase 3d
+})
+
+_NEEDS_PLAN_PROGRAMS = frozenset({
+    "phenix.polder", "phenix.ligandfit",
+})
+```
+
+The three buckets are:
+
+| Bucket | Plan generated? | Mechanism |
+|--------|----------------|-----------|
+| `_STANDALONE_PROGRAMS` | No (skip plan) | `_initialize_plan_inner` returns early; `workflow_engine` handles via state machine |
+| `_NEEDS_PLAN_PROGRAMS` | Yes (template) | Polder/ligandfit need refine first; plan generated with the specific template |
+| (everything else — full-plan target) | Yes (full multi-stage) | The v116.10 elif generates a plan; `skip_to_program` fast-forwards to the target |
+
+Phase 3a is a pure refactor: 51 (program × intent) decision-tree
+traces verified identical pre/post.
+
+Phase 3d (separate, explicit) reclassified `phenix.map_symmetry`
+and `phenix.dock_in_map` from "full-plan target" to
+`_STANDALONE_PROGRAMS`. This addresses the case where a user
+says "dock and stop" with sequence + map (no model): the old
+path generated a plan `[predict_and_build, dock_in_map]` and
+then `skip_to_program(dock_in_map)` marked
+`predict_and_build` as SKIPPED, leaving `dock_in_map` to fail at
+runtime with no model. The new path skips plan generation
+entirely and lets `workflow_engine` route through analyze →
+predict → dock via the state machine.
+
+`tests/tst_standalone_consistency.py` enforces an explicit
+classification invariant: every single-program target in
+`directive_extractor._ACTION_TABLE` must be in exactly one of
+`_STANDALONE_PROGRAMS`, `_NEEDS_PLAN_PROGRAMS`, or
+`_FULL_PLAN_TARGETS` (a frozenset enumerated in the test file).
+Adding a new action without classifying its target fails the
+test loudly.
+
+### Files
+
+| File | Phase | Type |
+|------|-------|------|
+| `agent/rules_selector.py` | 1 | server fix |
+| `agent/workflow_engine.py` | 4b, 6b | server fixes |
+| `agent/contract.py` | 2 | protocol bump + invariant |
+| `knowledge/prompts_hybrid.py` | 6a | prompt edit |
+| `phenix/programs/ai_agent.py` | 2, 3a, 3d | client fallback + refactor + behavior change |
+
+### Test Suites Added
+
+| Test | Phase | Cases | Verifies |
+|------|-------|-------|----------|
+| `tst_user_advice_filter.py` | 1 | 16 | "X and stop" / "X then stop" preserved |
+| `tst_after_program_prompt.py` | 6a | 12 | Prompt uses target-not-now framing |
+| `tst_data_input_filter.py` | 4b | 22 | xtriage/mtriage filtered without inputs |
+| `tst_protocol_version.py` | 2 | 15 | `validate_contract()` invariants |
+| `tst_sequence_only_routing.py` | 6b | 10 | Sequence-only routes to obtain_model |
+| `tst_standalone_consistency.py` | 3a | 8 | `_STANDALONE_PROGRAMS` aligned with `_ACTION_TABLE` |
+| `tst_dock_and_stop.py` | 3d | 5 | dock_in_map/map_symmetry reclassification |
+
+Plus one test added to existing `tst_contract_compliance.py`
+(`test_contract_validate_passes`).
+
+---
 
 ## Event System
 
