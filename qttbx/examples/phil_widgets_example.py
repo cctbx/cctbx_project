@@ -1,7 +1,7 @@
 """qttbx PHIL widgets -- end-to-end runnable example.
 
 Run:
-  /path/to/build/bin/libtbx.python qttbx/phil_widgets_example.py
+  /path/to/build/bin/libtbx.python qttbx/examples/phil_widgets_example.py
 
 A window opens with a tree view of an example PHIL scope on the left and a
 tab strip of form-style demos on the right. Both panes share the same
@@ -113,6 +113,26 @@ crystallography {
     .short_caption = "Atom selection"
 }
 
+data_manager_demo {
+  input_model = None
+    .type = path
+    .style = file_type:pdb
+    .short_caption = "Input model"
+  reference_model = None
+    .type = path
+    .style = file_type:pdb
+    .short_caption = "Reference model"
+  input_data = None
+    .type = path
+    .style = file_type:hkl
+    .short_caption = "Input data"
+  output_map = None
+    .multiple = True
+    .type = path
+    .style = file_type:ccp4_map
+    .short_caption = "Output map"
+}
+
 aux_file = None
   .type = path
 
@@ -154,6 +174,35 @@ def make_form(model, paths, widgets=None):
     kwargs = {"widget": widgets[path]} if path in widgets else {}
     layout.addRow(PhilField(model, path, **kwargs))
   return panel
+
+
+def make_data_manager_tab(model):
+  """Build the 'Data Manager' tab.
+
+  Parameters
+  ----------
+  model : qttbx.phil.PhilModel
+
+  Returns
+  -------
+  QWidget
+  """
+  from qttbx.widgets.data_manager import (
+    DataManagerWidget, DataManagerTableModel)
+  from qttbx.examples._helpers import ProportionalColumns
+  widget = DataManagerWidget(phil_model=model)
+  # Match the 60/20/20 layout from data_manager_example.py. Keep a
+  # reference on the widget so the helper isn't garbage-collected when
+  # this function returns; QObject parenting alone would suffice but
+  # an explicit attribute is easier to spot for a reader.
+  widget._column_proportions = ProportionalColumns(
+    widget._table,
+    [
+      (DataManagerTableModel.COL_FILENAME, 0.60),
+      (DataManagerTableModel.COL_TYPE,     0.20),
+      (DataManagerTableModel.COL_USED_FOR, 0.20),
+    ])
+  return widget
 
 
 class ExampleWindow(QMainWindow):
@@ -251,6 +300,8 @@ class ExampleWindow(QMainWindow):
     mp_layout.addStretch(1)
     tabs.addTab(multi_panel, "Multiples")
 
+    tabs.addTab(make_data_manager_tab(self._model), "Data Manager")
+
     self._extract_view = QTextEdit()
     self._extract_view.setReadOnly(True)
     self._extract_view.setStyleSheet("font-family: monospace;")
@@ -272,6 +323,14 @@ class ExampleWindow(QMainWindow):
 
 
 def main():
+  # Opt into Qt's high-DPI scaling before constructing QApplication so
+  # the widget's hardcoded pixel constants (chip paddings, column
+  # widths, border widths) get scaled by the system's device pixel
+  # ratio. Font sizes already scale via QFontMetrics. These attributes
+  # are application-global and must be set before any QApplication.
+  if QApplication.instance() is None:
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
   app = QApplication.instance() or QApplication(sys.argv)
   win = ExampleWindow()
   win.show()
