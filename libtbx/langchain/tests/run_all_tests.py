@@ -97,6 +97,7 @@ Systematic Testing Framework (v115.08):
   S8. Phase 5: Error Classification - 3 classifiers, 30+ patterns, consistency checks
   S9. Phase 9: LLM Perturbation - filename/program/parameter/truncation/empty (17 tests)
   S10. General Resolver - ACTION_TABLE, _detect_actions, _resolve_after_program (20 tests, 91 assertions)
+  S11. Skip to Program - StructurePlan.skip_to_program() + format_plan_header display (30 tests, v116.10)
 """
 
 from __future__ import absolute_import, division, print_function
@@ -1085,6 +1086,16 @@ def main():
     except ImportError as e:
         print(f"\u26a0\ufe0f  Could not import tst_general_resolver: {e}")
         results.append(("General Resolver", "tst_general_resolver", False, 0))
+
+    # --- Skip-to-Program Tests (v116.10) ---
+    try:
+        from tests.tst_skip_to_program import run_all_tests as run_skip_to_program_tests
+        success, elapsed = run_test_module(
+            "tst_skip_to_program", run_skip_to_program_tests, args.verbose)
+        results.append(("Skip to Program", "tst_skip_to_program", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_skip_to_program: {e}")
+        results.append(("Skip to Program", "tst_skip_to_program", False, 0))
 
     # --- Summary ---
     total_elapsed = time.time() - total_start

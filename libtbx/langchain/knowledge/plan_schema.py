@@ -393,6 +393,54 @@ class StructurePlan(object):
         return True
     return False
 
+  def skip_to_program(self, program_name):
+    """Skip stages until reaching one that contains program.
+
+    Marks all earlier stages as SKIPPED and sets
+    current_stage_index to the target stage.
+
+    Called at plan initialization time when the user
+    has set start_with_program or after_program to a
+    target that isn't in the first plan stage (e.g.
+    "predict and stop" — target is predict_and_build
+    but Stage 1 is xtriage).  Without this, the agent
+    would try to run xtriage first and stop with an
+    "after_program_not_available" error.
+
+    Only skips FORWARD — if the target program is in
+    the current stage or an earlier (already-passed)
+    stage, no skipping occurs and 0 is returned.
+
+    Args:
+      program_name: str, e.g. "phenix.predict_and_build"
+
+    Returns:
+      int: number of stages skipped, or 0 if program
+        not found or already in current/earlier stage.
+    """
+    # Find first stage containing this program
+    target_idx = None
+    for i, stage in enumerate(self.stages):
+      if program_name in stage.programs:
+        target_idx = i
+        break
+
+    if target_idx is None:
+      return 0  # Program not in any stage
+
+    if target_idx <= self.current_stage_index:
+      return 0  # Already at or past target
+
+    # Skip everything before the target
+    skipped = 0
+    for i in range(self.current_stage_index, target_idx):
+      if self.stages[i].status in (
+              STAGE_PENDING, STAGE_ACTIVE):
+        self.stages[i].status = STAGE_SKIPPED
+        skipped += 1
+    self.current_stage_index = target_idx
+    return skipped
+
   def mark_stage_started(self, cycle_number):
     """Mark the current stage as started at a cycle.
 
@@ -716,6 +764,21 @@ class StructurePlan(object):
         stages up to and including the one that contains
         this program.  Adds a "will stop here" indicator.
 
+    Display rules:
+      - Stages with STAGE_SKIPPED status are HIDDEN
+        (e.g. prerequisites skipped via skip_to_program
+        because the user asked to start later in the
+        plan).  Showing "—" for skipped stages adds
+        noise when the user didn't ask for them.
+      - The first displayed stage gets a
+        "▸ Starting here" annotation when any stages
+        were skipped (explains non-1 stage numbering).
+      - The last displayed stage gets "▸ Will stop here"
+        when stop_after truncation is active.
+      - Both annotations can appear on the same stage
+        (e.g. "predict and stop" → Stage 2 is both
+        start and stop).
+
     Returns:
       str, multi-line text.
     """
@@ -730,6 +793,21 @@ class StructurePlan(object):
           _stop_stage_idx = i
           break
 
+    # Track whether any stages were skipped (for the
+    # "Starting here" annotation on the first displayed
+    # stage).  Also find the index of the first
+    # non-skipped stage that will actually be shown.
+    _any_skipped = False
+    _first_shown_idx = None
+    for i, stage in enumerate(self.stages):
+      if _stop_stage_idx is not None and i > _stop_stage_idx:
+        break
+      if stage.status == STAGE_SKIPPED:
+        _any_skipped = True
+        continue
+      if _first_shown_idx is None:
+        _first_shown_idx = i
+
     lines.append(bar)
     lines.append(
       " STRATEGY PLAN: %s" % self.goal
@@ -739,13 +817,16 @@ class StructurePlan(object):
       # Display truncation: skip stages after stop
       if _stop_stage_idx is not None and i > _stop_stage_idx:
         break
+      # Hide skipped stages — user didn't ask for them,
+      # and showing "skipped" adds noise to the plan
+      # display.
+      if stage.status == STAGE_SKIPPED:
+        continue
       # Status indicator
       if stage.status == STAGE_COMPLETE:
         indicator = "✓"
       elif stage.status == STAGE_ACTIVE:
         indicator = "●"
-      elif stage.status == STAGE_SKIPPED:
-        indicator = "—"
       elif stage.status == STAGE_FAILED:
         indicator = "✗"
       else:
@@ -769,8 +850,24 @@ class StructurePlan(object):
           lines.append(
             "          Goal: %s" % goal_text
           )
-      # Stop indicator
-      if _stop_stage_idx is not None and i == _stop_stage_idx:
+      # Combined start/stop annotation — both can fire
+      # on the same stage (e.g. "predict and stop" where
+      # the predict stage is both the first shown and
+      # the last shown).
+      _is_start_here = (
+        _any_skipped and i == _first_shown_idx)
+      _is_stop_here = (
+        _stop_stage_idx is not None
+        and i == _stop_stage_idx)
+      if _is_start_here and _is_stop_here:
+        lines.append(
+          "          ▸ Starting here — Will stop here"
+        )
+      elif _is_start_here:
+        lines.append(
+          "          ▸ Starting here"
+        )
+      elif _is_stop_here:
         lines.append(
           "          ▸ Will stop here"
         )
