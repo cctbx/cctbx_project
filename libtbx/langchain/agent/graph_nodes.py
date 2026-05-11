@@ -2209,33 +2209,66 @@ def plan(state):
         if chosen_program is None or chosen_program not in valid_programs:
             if valid_programs:
                 # If the LLM chose the after_program target but it's not yet in
-                # valid_programs, do NOT fall through to an arbitrary program —
-                # that would silently skip the user-requested sequence step.
-                # Instead, log a clear warning and stop so the configuration
-                # problem surfaces rather than the workflow running off-script.
+                # valid_programs, the right response depends on whether the plan
+                # can drive the workflow there via prerequisites:
+                #
+                # - Plan has pending stages → fall through to override (pick a
+                #   valid program).  The workflow will progress through the
+                #   prerequisite states until after_program becomes valid.
+                #   This matches the architecture's intent for `after_program`
+                #   as a "minimum-run guarantee" (per OVERVIEW.md §327,
+                #   ARCHITECTURE.md §546–551, v112.78).
+                #
+                # - No plan / no pending stages → STOP with a clear error.
+                #   Without a plan to drive the workflow, falling through to an
+                #   arbitrary program would silently skip the user-requested
+                #   sequence step.  This is the original v115 safety check
+                #   (genuine config error or typo'd program name).
+                #
+                # v116.10: bug fix — previously, this STOP fired unconditionally
+                # whenever the LLM picked the after_program target while it was
+                # out of valid_programs.  On a fresh "predict and stop" request
+                # at xray_initial, the LLM picks predict_and_build (the user's
+                # target) but valid_programs=[xtriage] because xtriage hasn't
+                # run yet.  The STOP fired at cycle 1 before xtriage could run,
+                # producing the "not available at the current workflow step"
+                # error.  The plan WAS pending — the fix is to let it drive.
                 after_prog = (state.get("directives", {})
                               .get("stop_conditions", {})
                               .get("after_program"))
                 if chosen_program and after_prog and chosen_program == after_prog:
-                    _apna_msg = (
-                        "Agent stopped: the program '%s' requested by the "
-                        "stop_after directive is not available at the current "
-                        "workflow step. Check that the program name is spelled "
-                        "correctly and that the required input files are present."
-                        % chosen_program
-                    )
-                    state = _log(state, "PLAN: LLM chose after_program '%s' but it is not in "
-                        "valid_programs %s — stopping to avoid running off-script. "
-                        "Check step/workflow YAML to ensure %s is listed for this workflow state." % (
-                        chosen_program, valid_programs, chosen_program))
-                    return {
-                        **state,
-                        "command": "STOP",
-                        "stop": True,
-                        "stop_reason": "after_program_not_available",
-                        "abort_message": _apna_msg,
-                        "validation_error": None,
-                    }
+                    if not session_info.get(
+                            "plan_has_pending_stages", False):
+                        # No plan-driven path to the target — genuine config
+                        # error.  Surface it rather than running off-script.
+                        _apna_msg = (
+                            "Agent stopped: the program '%s' requested by the "
+                            "stop_after directive is not available at the current "
+                            "workflow step. Check that the program name is spelled "
+                            "correctly and that the required input files are present."
+                            % chosen_program
+                        )
+                        state = _log(state, "PLAN: LLM chose after_program '%s' but it is not in "
+                            "valid_programs %s — stopping to avoid running off-script. "
+                            "Check step/workflow YAML to ensure %s is listed for this workflow state." % (
+                            chosen_program, valid_programs, chosen_program))
+                        return {
+                            **state,
+                            "command": "STOP",
+                            "stop": True,
+                            "stop_reason": "after_program_not_available",
+                            "abort_message": _apna_msg,
+                            "validation_error": None,
+                        }
+                    # Plan has pending stages: log the situation but fall
+                    # through to the override below.  The workflow will reach
+                    # after_program via prerequisites — no need to STOP here.
+                    state = _log(state,
+                        "PLAN: LLM chose after_program '%s' but it is not in "
+                        "valid_programs %s — plan has pending stages, falling "
+                        "through to override (workflow will progress through "
+                        "prerequisites until %s becomes valid)" % (
+                            chosen_program, valid_programs, chosen_program))
 
                 # Override to first valid program (or first non-STOP if available)
                 override_program = next((p for p in valid_programs if p != "STOP"), valid_programs[0])
