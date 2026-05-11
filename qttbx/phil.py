@@ -667,6 +667,133 @@ class PhilModel(QAbstractItemModel):
     return item
 
   # ---------------------------------------------------------------------------
+  def iter_definitions(self):
+    """Iterate over every PHIL definition in the master scope.
+
+    Walks the master ``libtbx.phil.scope`` (set by
+    :py:meth:`initialize_model`) in document order, descending into nested
+    scopes. Yields a ``(phil_path, definition)`` pair for each
+    ``libtbx.phil.definition`` encountered; scopes are traversed but not
+    themselves yielded.
+
+    Each definition (including ones inside ``.multiple = True`` scopes)
+    is yielded exactly once, addressed by its template ``full_path()``;
+    per-instance addresses are not enumerated. Returns nothing if
+    :py:meth:`initialize_model` has not been called.
+
+    Yields
+    ------
+    (str, libtbx.phil.definition)
+      The definition's dotted path (via ``definition.full_path()``) and
+      the definition object itself.
+    """
+    if self._scope is None:
+      return
+    stack = [self._scope]
+    while stack:
+      node = stack.pop(0)
+      if node.is_definition:
+        yield node.full_path(), node
+        continue
+      # Scope: descend into its objects in document order.
+      stack[:0] = list(node.objects)
+
+  # ---------------------------------------------------------------------------
+  def value_at_path(self, phil_path):
+    """Return the current value at ``phil_path``, or None.
+
+    Thin wrapper around :py:meth:`get_phil_extract_value` that adds a
+    "not a definition" guard: scopes (including ``.multiple = True``
+    scopes) yield ``None`` rather than a ``scope_extract`` /
+    ``scope_extract_list``. Useful when callers want a scalar PHIL
+    value and want to silently ignore non-leaves.
+
+    Parameters
+    ----------
+    phil_path: str
+      The full dotted PHIL path (e.g. ``"input_model"``,
+      ``"refinement.macro_cycles"``).
+
+    Returns
+    -------
+    object or None
+      The scalar value of the definition (``None`` for unset PHIL
+      ``None`` defaults), or ``None`` when ``phil_path`` does not exist
+      or addresses a scope rather than a definition.
+    """
+    try:
+      item = self._item_for_path(phil_path)
+    except ValueError:
+      return None
+    if item.definition is None or not item.definition.is_definition:
+      return None
+    return self.get_phil_extract_value(phil_path)
+
+  # ---------------------------------------------------------------------------
+  def path_for_index(self, index):
+    """Return the dotted PHIL path for ``index``, or ``None``.
+
+    Inverse of :py:meth:`index_for_path` / :py:meth:`persistent_index_for_path`:
+    looks up the :class:`PhilItem` stored on the index and returns its
+    ``full_path``. Returns ``None`` when ``index`` is invalid or when the
+    item has no associated definition (the artificial root or the master
+    scope item).
+
+    Used by :class:`qttbx.widgets.data_manager.DataManagerTableModel` to
+    map ``dataChanged`` notifications from PhilModel back to PHIL paths
+    while updating its binding caches.
+
+    Parameters
+    ----------
+      index: QModelIndex
+        Any index from this model, regardless of column.
+
+    Returns
+    -------
+      str or None
+        The PHIL ``full_path`` (e.g. ``"input_model"``,
+        ``"refinement.macro_cycles"``) when ``index`` points at a real
+        item, otherwise ``None``.
+    """
+    if not index.isValid():
+      return None
+    item = index.internalPointer()
+    if item is None or item.definition is None:
+      return None
+    return item.full_path
+
+  # ---------------------------------------------------------------------------
+  def set_value_at_path(self, phil_path, value):
+    """Set the value at ``phil_path`` and notify attached views.
+
+    Thin wrapper around :py:meth:`setData` that resolves ``phil_path``
+    to its value-column QModelIndex via :py:meth:`index_for_path` and
+    issues a ``Qt.EditRole`` write. The underlying ``setData`` updates
+    the PhilItem, propagates into ``self._extract``, refreshes
+    intrinsic validity, and emits ``dataChanged`` -- so external
+    callers using this helper benefit from the same plumbing as a
+    delegate-driven edit.
+
+    Parameters
+    ----------
+      phil_path: str
+        The full dotted PHIL path (e.g. ``"input_model"``). Must not
+        traverse any ``.multiple = True`` scope; use
+        :py:meth:`persistent_index_for_path` + :py:meth:`setData` for
+        repeated-scope paths.
+      value: object
+        The new Python value (matching the definition's PHIL type).
+
+    Returns
+    -------
+      bool
+        ``True`` when the write was accepted (mirrors
+        :py:meth:`setData`'s return).
+    """
+    index = self.index_for_path(phil_path)
+    return self.setData(index, value, Qt.EditRole)
+
+  # ---------------------------------------------------------------------------
   def get_definition(self, full_path):
     """
     Return the libtbx.phil definition or scope at the given dotted path.
@@ -689,6 +816,141 @@ class PhilModel(QAbstractItemModel):
         If the path does not exist.
     """
     return self._item_for_path(full_path).definition
+
+  # ---------------------------------------------------------------------------
+  def definition_for_path(self, full_path):
+    """Return the ``libtbx.phil.definition`` at ``full_path``.
+
+    Thin alias of :py:meth:`get_definition` named so consumers reading
+    binding code (e.g.
+    :class:`qttbx.widgets.data_manager.DataManagerWidget`) can phrase
+    their lookup in domain terms (``defn = pm.definition_for_path(p)``)
+    without inheriting the broader ``get_definition`` name shape.
+
+    Parameters
+    ----------
+      full_path: str
+        The dotted PHIL path.
+
+    Returns
+    -------
+      libtbx.phil.definition or libtbx.phil.scope
+        The PHIL object at ``full_path``.
+
+    Raises
+    ------
+      ValueError
+        If ``full_path`` does not exist.
+    """
+    return self.get_definition(full_path)
+
+  # ---------------------------------------------------------------------------
+  def instances_for_path(self, full_path):
+    """Return the list of current values at a ``.multiple = True`` definition.
+
+    For a ``.multiple = True`` path/scalar definition (not a multi-*scope*),
+    the PHIL extract stores a list of values. This helper returns that
+    list as a plain Python list, dropping the singleton ``[None]``
+    default that a freshly-extracted multi-definition holds.
+
+    Parameters
+    ----------
+      full_path: str
+        The dotted PHIL path of a ``.multiple = True`` definition.
+
+    Returns
+    -------
+      list
+        A fresh list of current instance values. Empty list when the
+        extract is unset, equals ``[None]`` (the default state), or the
+        path does not exist.
+    """
+    try:
+      value = self.value_at_path(full_path)
+    except Exception:
+      return []
+    if value is None:
+      return []
+    if hasattr(value, "encode"):
+      # A scalar string -- caller likely passed a non-multiple path; treat
+      # as a single-element list.
+      return [value]
+    out = [v for v in value if v is not None]
+    return out
+
+  # ---------------------------------------------------------------------------
+  def append_instance(self, full_path, value):
+    """Append ``value`` to a ``.multiple = True`` definition's list.
+
+    For a ``.multiple = True`` path/scalar definition, the underlying
+    PHIL extract stores a list of values. This helper appends an entry
+    and propagates the update through ``set_value_at_path`` so attached
+    views receive a ``dataChanged`` notification.
+
+    A freshly-initialized multi-definition extract starts as
+    ``[None]`` (PHIL's "no instances yet" placeholder); this helper
+    replaces that placeholder with ``[value]`` rather than leaving a
+    trailing ``None`` in the list.
+
+    Parameters
+    ----------
+      full_path: str
+        The dotted PHIL path of a ``.multiple = True`` definition.
+      value: object
+        The new instance value to append.
+
+    Returns
+    -------
+      bool
+        ``True`` when the write was accepted (mirrors
+        :py:meth:`set_value_at_path`).
+    """
+    current = self.value_at_path(full_path)
+    if current is None or hasattr(current, "encode"):
+      new_list = [value]
+    else:
+      filtered = [v for v in current if v is not None]
+      filtered.append(value)
+      new_list = filtered
+    return self.set_value_at_path(full_path, new_list)
+
+  # ---------------------------------------------------------------------------
+  def remove_instance_with_value(self, full_path, value):
+    """Remove the instance equal to ``value`` from a ``.multiple = True``
+    definition's list.
+
+    Locates the first list entry equal to ``value`` and removes it,
+    leaving the surrounding entries undisturbed. When the resulting
+    list is empty, the extract is set to ``[None]`` to match PHIL's
+    "no instances yet" placeholder convention used by
+    :py:meth:`initialize_model`.
+
+    Parameters
+    ----------
+      full_path: str
+        The dotted PHIL path of a ``.multiple = True`` definition.
+      value: object
+        The value of the instance to remove (compared with ``==``).
+
+    Returns
+    -------
+      bool
+        ``True`` when an instance was found and removed; ``False`` when
+        no matching instance exists (the extract is left unchanged).
+    """
+    current = self.value_at_path(full_path)
+    if current is None or hasattr(current, "encode"):
+      return False
+    filtered = [v for v in current if v is not None]
+    if value not in filtered:
+      return False
+    filtered.remove(value)
+    if not filtered:
+      new_list = [None]
+    else:
+      new_list = filtered
+    self.set_value_at_path(full_path, new_list)
+    return True
 
   # ---------------------------------------------------------------------------
   def index_for_path(self, full_path):
