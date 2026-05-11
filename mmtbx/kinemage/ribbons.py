@@ -67,7 +67,7 @@ def _FindContiguousResiduesByAtomDistances(chain, type_function, desired_atoms, 
         current_contig_residues.append(residue_group)
       else:
         # If not, start a new list for the current residue if we have at least one residue
-        if len(current_contig_residues) > 0:
+        if len(current_contig_residues) > 2:
           contiguous_residues.append(current_contig_residues)
         current_contig_residues = [residue_group]
 
@@ -75,8 +75,8 @@ def _FindContiguousResiduesByAtomDistances(chain, type_function, desired_atoms, 
     prev_atom = atom
 
   # After iterating through the chain, add any remaining contiguous residues to the main list
-  # if there are at least two.
-  if len(current_contig_residues) > 1:
+  # if there are at least three (matching Prekin's minimum fragment size).
+  if len(current_contig_residues) > 2:
     contiguous_residues.append(current_contig_residues)
 
   return contiguous_residues
