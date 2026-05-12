@@ -884,7 +884,7 @@ def run_pyside_check():
   Function for checking if PySide2 is available
   '''
   try:
-    import PySide2
+    import PySide2 # import dependency
   except ImportError:
     msg = '''
 ------------------------------------------------------------------------

@@ -566,7 +566,6 @@ class any_file_input(object):
     Extract the crystal symmetry (if any).  Only valid for model (PDB/mmCIF)
     and reflection files.
     """
-    from cctbx import crystal
     if(self._file_type == "pdb"):
       return self._file_object.input.crystal_symmetry()
     elif(self._file_type == "hkl"):
