@@ -1,9 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
+import io
 import os
 op = os.path
 
 import re
+import tokenize
 
 # Finds flake8-style ignore directives
 # Taken from flake8 source code
@@ -14,15 +16,37 @@ RE_FLAKE8 = re.compile(
 # re for flake8 to split a string on spaces, commas
 COMMA_SEPARATED_LIST_RE = re.compile(r"[,\s]")
 
+def _lines_inside_string_literals(py_lines):
+  # Returns the 1-indexed line numbers that are fully inside a multi-line
+  # string literal. Example-code shown inside a module docstring would
+  # otherwise be misparsed as real `from X import Y` statements.
+  skip = set()
+  source = "\n".join(py_lines)
+  try:
+    tokens = tokenize.generate_tokens(io.StringIO(source).readline)
+    for tok in tokens:
+      if tok.type != tokenize.STRING:
+        continue
+      start_row, end_row = tok.start[0], tok.end[0]
+      if end_row > start_row:
+        for row in range(start_row + 1, end_row):
+          skip.add(row)
+  except (tokenize.TokenizeError, IndentationError, SyntaxError):
+    pass
+  return skip
+
 def inspect(py_lines):
   imports_to_ignore = set([
     "from {0} import {1}",
     "import libtbx.forward_compatibility",
     "  import libtbx.start_print_trace",
     "    import libtbx.callbacks"])
+  skip_lines = _lines_inside_string_literals(py_lines)
   combined_lines = []
   block = []
-  for line in py_lines:
+  for lineno, line in enumerate(py_lines, start=1):
+    if (lineno in skip_lines):
+      continue
     if (line in imports_to_ignore):
       continue
     l = line.strip()
