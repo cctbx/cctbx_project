@@ -1,7 +1,7 @@
 """WordsWidget, WordsTextWidget -- PHIL words list editors."""
 
-from PySide2.QtCore import QSignalBlocker
-from PySide2.QtWidgets import QHBoxLayout, QVBoxLayout
+from qttbx.qt.QtCore import QSignalBlocker
+from qttbx.qt.QtWidgets import QHBoxLayout, QVBoxLayout
 
 from libtbx import Auto
 from libtbx.phil import tokenizer

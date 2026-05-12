@@ -15,7 +15,7 @@ keeping the table consistent with successful ``add_file`` gestures.
 
 import os
 
-from PySide2.QtCore import QAbstractTableModel, Qt, QModelIndex
+from qttbx.qt.QtCore import QAbstractTableModel, Qt, QModelIndex
 
 
 _PRETTY_DATA_TYPE = {
@@ -59,7 +59,7 @@ def _trash_icon():
   ``QStyle.SP_TrashIcon`` (older than Qt 5.12) or when no
   :class:`QApplication` has been constructed yet.
   """
-  from PySide2.QtWidgets import QApplication, QStyle
+  from qttbx.qt.QtWidgets import QApplication, QStyle
   sp = getattr(QStyle, "SP_TrashIcon", None)
   if sp is None:
     return None

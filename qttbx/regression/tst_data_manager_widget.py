@@ -3,9 +3,9 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import sys
 try:
-  from PySide2.QtWidgets import QApplication
+  from qttbx.qt.QtWidgets import QApplication
 except ImportError:
-  print("PySide2 not available; skipping")
+  print("PySide2/PySide6 not available; skipping")
   print("OK")
   sys.exit(0)
 
@@ -206,7 +206,7 @@ def exercise_table_model_skeleton():
   import tempfile
   from iotbx.data_manager import DataManager
   from qttbx.widgets.data_manager._table_model import DataManagerTableModel
-  from PySide2.QtCore import Qt
+  from qttbx.qt.QtCore import Qt
 
   _get_app()
   tmpdir = tempfile.mkdtemp(prefix="dmw_t5_")
@@ -487,7 +487,7 @@ def exercise_table_model_cache_o1():
   from qttbx.widgets.data_manager._table_model import DataManagerTableModel
   import iotbx.phil
   from qttbx.phil import PhilModel
-  from PySide2.QtCore import Qt
+  from qttbx.qt.QtCore import Qt
 
   _get_app()
   tmpdir = tempfile.mkdtemp(prefix="dmw_t7b_")
@@ -522,7 +522,7 @@ def exercise_table_model_stale_rows():
   """Table model can hold stale rows in addition to DM-derived rows."""
   from qttbx.widgets.data_manager._table_model import (
     DataManagerTableModel, StaleRow)
-  from PySide2.QtCore import Qt
+  from qttbx.qt.QtCore import Qt
   _get_app()
   missing = os.path.join(os.sep, "tmp", "missing.pdb")
   m = DataManagerTableModel()
@@ -757,7 +757,7 @@ def exercise_binding_popup_basic():
 
 def exercise_delegate_paints_chips():
   """Delegate's sizeHint accounts for chip-per-line layout."""
-  from PySide2.QtWidgets import QStyleOptionViewItem
+  from qttbx.qt.QtWidgets import QStyleOptionViewItem
   from qttbx.widgets.data_manager._delegate import DataManagerItemDelegate
   from qttbx.widgets.data_manager._table_model import (
     DataManagerTableModel)
@@ -828,7 +828,7 @@ def exercise_delegate_no_compatible_params_no_add_chip():
   """
   import os
   import tempfile
-  from PySide2.QtWidgets import QStyleOptionViewItem
+  from qttbx.qt.QtWidgets import QStyleOptionViewItem
   from qttbx.widgets.data_manager._delegate import DataManagerItemDelegate
   from qttbx.widgets.data_manager._table_model import (
     DataManagerTableModel)
@@ -1099,8 +1099,8 @@ def exercise_widget_reconcile_on_add():
 def exercise_widget_drag_drop():
   """dropEvent with a valid + an invalid file calls QMessageBox once."""
   import tempfile
-  from PySide2.QtCore import QMimeData, QUrl, QPointF, Qt
-  from PySide2.QtGui import QDropEvent
+  from qttbx.qt.QtCore import QMimeData, QUrl, QPointF, Qt
+  from qttbx.qt.QtGui import QDropEvent
   import qttbx.widgets.data_manager.widget as widget_mod
   from qttbx.widgets.data_manager.widget import DataManagerWidget
   from qttbx.widgets.data_manager._phil_helpers import normalize_path
@@ -1162,8 +1162,8 @@ def exercise_widget_row_grows_with_chips():
   QHeaderView.ResizeToContents mode for that hint to take effect.
   """
   import tempfile
-  from PySide2.QtCore import Qt
-  from PySide2.QtWidgets import QHeaderView, QStyleOptionViewItem
+  from qttbx.qt.QtCore import Qt
+  from qttbx.qt.QtWidgets import QHeaderView, QStyleOptionViewItem
   from iotbx.data_manager import DataManager
   from qttbx.widgets.data_manager.widget import DataManagerWidget
   from qttbx.widgets.data_manager._table_model import DataManagerTableModel
@@ -1230,7 +1230,7 @@ def exercise_widget_row_grows_with_chips():
 def exercise_table_model_delete_header_icon():
   """The Delete column's header decoration is the same trash icon
   used by the per-row paint."""
-  from PySide2.QtCore import Qt
+  from qttbx.qt.QtCore import Qt
   from qttbx.widgets.data_manager._table_model import (
     DataManagerTableModel, _trash_icon)
 
@@ -1265,9 +1265,9 @@ def exercise_table_model_delete_header_icon():
 def exercise_delegate_paints_delete_icon():
   """The delegate's paint() renders the trash-can glyph without error."""
   import tempfile
-  from PySide2.QtCore import QRect, Qt
-  from PySide2.QtGui import QPainter, QPixmap
-  from PySide2.QtWidgets import QStyleOptionViewItem
+  from qttbx.qt.QtCore import QRect, Qt
+  from qttbx.qt.QtGui import QPainter, QPixmap
+  from qttbx.qt.QtWidgets import QStyleOptionViewItem
   from iotbx.data_manager import DataManager
   from qttbx.widgets.data_manager._delegate import DataManagerItemDelegate
   from qttbx.widgets.data_manager._table_model import DataManagerTableModel
@@ -1321,7 +1321,7 @@ def exercise_delegate_palette_aware():
   Builds a light QPalette and a dark QPalette, asks the delegate's
   internal color helpers for each, and verifies they differ and that
   contrast with the text color is preserved in both modes."""
-  from PySide2.QtGui import QPalette, QColor
+  from qttbx.qt.QtGui import QPalette, QColor
   from qttbx.widgets.data_manager._delegate import (
     _chip_background, _chip_text_color, _stale_background, _is_dark)
 
@@ -1362,7 +1362,7 @@ def exercise_table_model_sort():
   """sort() reorders normal rows by Filename or Type; stale rows stay
   after; sort on Used for / Delete is a no-op."""
   import tempfile
-  from PySide2.QtCore import Qt
+  from qttbx.qt.QtCore import Qt
   from iotbx.data_manager import DataManager
   from qttbx.widgets.data_manager._table_model import (
     DataManagerTableModel, StaleRow)
@@ -1421,7 +1421,7 @@ def exercise_table_model_sort():
 def exercise_table_model_sort_by_used_for():
   """sort(COL_USED_FOR) orders rows by binding count, ties by filename."""
   import tempfile
-  from PySide2.QtCore import Qt
+  from qttbx.qt.QtCore import Qt
   from iotbx.data_manager import DataManager
   from qttbx.widgets.data_manager._table_model import DataManagerTableModel
   from qttbx.widgets.data_manager._phil_helpers import normalize_path
@@ -1468,7 +1468,7 @@ def exercise_table_model_sort_by_used_for():
 
 def exercise_widget_delete_column_not_sortable():
   """Clicking the Delete-column header reverts the sort indicator."""
-  from PySide2.QtCore import Qt
+  from qttbx.qt.QtCore import Qt
   from qttbx.widgets.data_manager.widget import DataManagerWidget
   from qttbx.widgets.data_manager._table_model import DataManagerTableModel
   import iotbx.phil
@@ -1504,7 +1504,7 @@ def exercise_widget_columns_resizable_and_sortable():
   """The widget's header has per-column resize modes and sorting on.
 
   Tested with a PhilModel attached (all four columns present)."""
-  from PySide2.QtWidgets import QHeaderView
+  from qttbx.qt.QtWidgets import QHeaderView
   from qttbx.widgets.data_manager.widget import DataManagerWidget
   from qttbx.widgets.data_manager._table_model import DataManagerTableModel
   import iotbx.phil
@@ -1538,7 +1538,7 @@ def exercise_widget_root_relative_display():
   outside the root keep full paths. Label is configurable.
   """
   import tempfile, os
-  from PySide2.QtCore import Qt
+  from qttbx.qt.QtCore import Qt
   from iotbx.data_manager import DataManager
   from qttbx.widgets.data_manager.widget import DataManagerWidget
   from qttbx.widgets.data_manager._table_model import DataManagerTableModel
@@ -1642,9 +1642,9 @@ def exercise_widget_root_relative_display():
 def exercise_widget_click_outside_clears_selection():
   """Clicking the viewport below the last row clears the selection."""
   import tempfile
-  from PySide2.QtCore import QPoint, Qt
-  from PySide2.QtGui import QMouseEvent
-  from PySide2.QtWidgets import QApplication
+  from qttbx.qt.QtCore import QPoint, Qt
+  from qttbx.qt.QtGui import QMouseEvent
+  from qttbx.qt.QtWidgets import QApplication
   from iotbx.data_manager import DataManager
   from qttbx.widgets.data_manager.widget import DataManagerWidget
   import iotbx.phil
@@ -1683,8 +1683,8 @@ def exercise_widget_click_outside_clears_selection():
 def exercise_integration_v1():
   """End-to-end: construct, drop, bind, unbind, delete."""
   import tempfile
-  from PySide2.QtCore import QMimeData, QUrl, QPointF, Qt
-  from PySide2.QtGui import QDropEvent
+  from qttbx.qt.QtCore import QMimeData, QUrl, QPointF, Qt
+  from qttbx.qt.QtGui import QDropEvent
   from qttbx.widgets.data_manager.widget import DataManagerWidget
   from qttbx.widgets.data_manager._phil_helpers import normalize_path
   import iotbx.phil

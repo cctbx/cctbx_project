@@ -2,8 +2,8 @@
 
 import os
 
-from PySide2.QtCore import QSignalBlocker
-from PySide2.QtWidgets import (
+from qttbx.qt.QtCore import QSignalBlocker
+from qttbx.qt.QtWidgets import (
   QFileDialog, QHBoxLayout, QPushButton, QVBoxLayout,
 )
 

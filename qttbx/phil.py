@@ -1,5 +1,5 @@
-from PySide2.QtCore import Qt, QAbstractItemModel, QModelIndex, QThread, QCoreApplication
-from PySide2.QtGui import QBrush
+from qttbx.qt.QtCore import Qt, QAbstractItemModel, QModelIndex, QThread, QCoreApplication
+from qttbx.qt.QtGui import QBrush
 
 from libtbx import Auto
 import libtbx.phil
@@ -1013,7 +1013,7 @@ class PhilModel(QAbstractItemModel):
         If the path doesn't exist or ``scope_indices`` doesn't match the number
         of multi-scope segments.
     """
-    from PySide2.QtCore import QPersistentModelIndex
+    from qttbx.qt.QtCore import QPersistentModelIndex
     scope_indices = list(scope_indices) if scope_indices is not None else []
     # Walk down the tree by full_path segments, consuming a scope_index at
     # each multi-scope encountered.
@@ -1131,7 +1131,7 @@ class PhilModel(QAbstractItemModel):
     app = QCoreApplication.instance()
     assert app is not None and QThread.currentThread() == app.thread(), \
         "PhilModel mutated from non-GUI thread"
-    from PySide2.QtCore import QPersistentModelIndex
+    from qttbx.qt.QtCore import QPersistentModelIndex
     master_scope = self._master_scope_at_path(full_path)
     if not getattr(master_scope, "multiple", False):
       raise ValueError(

@@ -1,6 +1,8 @@
 # qttbx
 
-PySide2 (Qt5) GUI module for the cctbx project. The flagship subsystem is
+PySide-based GUI module for the cctbx project. Imports go through
+`qttbx.qt`, which selects PySide6 (Qt6) when available and falls back to
+PySide2 (Qt5). The flagship subsystem is
 `qttbx.widgets.phil` — a complete set of Qt widgets for editing
 [PHIL parameters](https://phenix-online.org/phenix_html/static/papers/d-72-00018.pdf)
 with built-in type and limit validation.
@@ -81,7 +83,7 @@ value cannot diverge.
 ## Quick start: a minimal form
 
 ```python
-from PySide2.QtWidgets import QApplication, QDialog, QFormLayout, QDialogButtonBox
+from qttbx.qt.QtWidgets import QApplication, QDialog, QFormLayout, QDialogButtonBox
 import libtbx.phil
 from qttbx.phil import PhilModel
 from qttbx.widgets.phil import PhilField
@@ -226,8 +228,8 @@ short widget; scope rows are read-only "headers" that expand to show
 their children. Multi-scope rows expand to N children (one per instance).
 
 ```python
-from PySide2.QtCore import QModelIndex
-from PySide2.QtWidgets import QApplication, QPushButton, QTreeView, QVBoxLayout, QWidget
+from qttbx.qt.QtCore import QModelIndex
+from qttbx.qt.QtWidgets import QApplication, QPushButton, QTreeView, QVBoxLayout, QWidget
 from qttbx.phil import PhilModel
 from qttbx.widgets.phil.delegate import PhilItemDelegate
 import libtbx.phil
@@ -285,7 +287,7 @@ field can be sized, ordered, and visually grouped independently of the
 underlying PHIL tree.
 
 ```python
-from PySide2.QtWidgets import QApplication, QDialog, QFormLayout, QDialogButtonBox
+from qttbx.qt.QtWidgets import QApplication, QDialog, QFormLayout, QDialogButtonBox
 from qttbx.phil import PhilModel
 from qttbx.widgets.phil import PhilField
 from qttbx.widgets.phil.str_widget import StrTextWidget
@@ -355,7 +357,7 @@ if dlg.exec_() == QDialog.Accepted:
 ### Two views over the same model
 
 ```python
-from PySide2.QtWidgets import (
+from qttbx.qt.QtWidgets import (
   QApplication, QHBoxLayout, QTreeView, QWidget, QFormLayout,
 )
 from qttbx.phil import PhilModel
@@ -489,7 +491,7 @@ registry automatically wraps such definitions in `MultipleWidget` (unless
 the type is already list-native: `ints`, `floats`, `strings`, `words`).
 
 ```python
-from PySide2.QtWidgets import QApplication, QDialog, QFormLayout, QDialogButtonBox
+from qttbx.qt.QtWidgets import QApplication, QDialog, QFormLayout, QDialogButtonBox
 from qttbx.phil import PhilModel
 from qttbx.widgets.phil import PhilField
 import libtbx.phil
@@ -532,7 +534,7 @@ instances. In a tree view, instances appear automatically as expandable
 sibling subtrees. In a form view, use `RepeatableScopeWidget`:
 
 ```python
-from PySide2.QtWidgets import QApplication, QDialog, QDialogButtonBox, QVBoxLayout
+from qttbx.qt.QtWidgets import QApplication, QDialog, QDialogButtonBox, QVBoxLayout
 from qttbx.phil import PhilModel
 from qttbx.widgets.phil.multiple import RepeatableScopeWidget
 import libtbx.phil
@@ -577,7 +579,7 @@ if dlg.exec_() == QDialog.Accepted:
 ### Programmatic model mutation
 
 ```python
-from PySide2.QtWidgets import QApplication
+from qttbx.qt.QtWidgets import QApplication
 from qttbx.phil import PhilModel
 import libtbx.phil
 
@@ -609,7 +611,7 @@ For **nested** multi-scopes, pass `scope_indices` to disambiguate
 intermediate multi segments:
 
 ```python
-from PySide2.QtWidgets import QApplication
+from qttbx.qt.QtWidgets import QApplication
 from qttbx.phil import PhilModel
 import libtbx.phil
 
@@ -693,7 +695,7 @@ SpaceGroupWidget. Try typing any of `"19"` / `"P21"` / `"P 2yb"` and
 watch the side label show the canonical full Hermann-Mauguin form:
 
 ```python
-from PySide2.QtWidgets import QApplication, QDialog, QFormLayout, QDialogButtonBox
+from qttbx.qt.QtWidgets import QApplication, QDialog, QFormLayout, QDialogButtonBox
 import iotbx.phil
 from qttbx.phil import PhilModel
 from qttbx.widgets.phil import PhilField
@@ -735,8 +737,8 @@ and wire it to the model manually. `PhilField` always uses the registry
 default. Same dialog, different side-label content:
 
 ```python
-from PySide2.QtCore import Qt
-from PySide2.QtWidgets import (
+from qttbx.qt.QtCore import Qt
+from qttbx.qt.QtWidgets import (
   QApplication, QDialog, QFormLayout, QDialogButtonBox,
 )
 import iotbx.phil
@@ -796,7 +798,7 @@ see invalid input drawn with a red border and a tooltip-surfaced
 error message.
 
 ```python
-from PySide2.QtWidgets import QApplication, QDialog, QFormLayout, QDialogButtonBox
+from qttbx.qt.QtWidgets import QApplication, QDialog, QFormLayout, QDialogButtonBox
 import iotbx.phil
 from qttbx.phil import PhilModel
 from qttbx.widgets.phil import PhilField
@@ -840,7 +842,7 @@ syntactic validation against a model is deferred until a DataManager
 widget exists. `value()` is a string.
 
 ```python
-from PySide2.QtWidgets import QApplication, QDialog, QFormLayout, QDialogButtonBox
+from qttbx.qt.QtWidgets import QApplication, QDialog, QFormLayout, QDialogButtonBox
 import iotbx.phil
 from qttbx.phil import PhilModel
 from qttbx.widgets.phil import PhilField
@@ -888,8 +890,8 @@ uses it via the registry. Run the script and notice the new widget
 upper-cases everything you type:
 
 ```python
-from PySide2.QtCore import QSignalBlocker
-from PySide2.QtWidgets import (
+from qttbx.qt.QtCore import QSignalBlocker
+from qttbx.qt.QtWidgets import (
   QApplication, QDialog, QDialogButtonBox, QFormLayout, QLineEdit, QHBoxLayout,
 )
 from qttbx.phil import PhilModel
@@ -996,7 +998,7 @@ For paths that traverse a multi-scope, pass a list of segments where each
 multi-scope segment is a `(name, instance_index)` tuple:
 
 ```python
-from PySide2.QtWidgets import QApplication
+from qttbx.qt.QtWidgets import QApplication
 from qttbx.phil import PhilModel
 import libtbx.phil
 
@@ -1063,8 +1065,8 @@ need to mutate parameters must marshal the call onto the GUI thread:
 
 ```python
 import threading
-from PySide2.QtCore import QObject, Signal
-from PySide2.QtWidgets import QApplication
+from qttbx.qt.QtCore import QObject, Signal
+from qttbx.qt.QtWidgets import QApplication
 from qttbx.phil import PhilModel
 import libtbx.phil
 
@@ -1157,7 +1159,7 @@ is needed; expanding the row reveals each instance's children.
 
 ## DataManagerWidget
 
-`qttbx.widgets.data_manager.DataManagerWidget` is a PySide2 widget for
+`qttbx.widgets.data_manager.DataManagerWidget` is a Qt widget for
 adding and removing files via drag-drop (or browse), and for binding
 those files to PHIL `path` parameters annotated with
 `.style file_type:<suffix>`.
@@ -1369,7 +1371,7 @@ that pattern into your own app if you want the same layout.
 
 ## Testing your GUI
 
-Two regression files cover the PySide2 widgets in this package:
+Two regression files cover the Qt widgets in this package:
 
 - `qttbx/regression/tst_phil_widgets.py` -- PHIL widgets and their
   integration with `PhilModel`. The end-to-end exercises

@@ -1,7 +1,7 @@
 """Base text-input widget shared by PHIL line-edit-shaped widgets."""
 
-from PySide2.QtCore import Signal
-from PySide2.QtWidgets import QLineEdit, QPlainTextEdit
+from qttbx.qt.QtCore import Signal
+from qttbx.qt.QtWidgets import QLineEdit, QPlainTextEdit
 
 
 def _invalid_le_style():

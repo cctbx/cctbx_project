@@ -4,8 +4,8 @@ and binding them to PHIL ``path`` parameters with ``.style file_type:<x>``.
 
 import os
 
-from PySide2.QtCore import Qt, QEvent, Signal
-from PySide2.QtWidgets import (
+from qttbx.qt.QtCore import Qt, QEvent, Signal
+from qttbx.qt.QtWidgets import (
   QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTableView,
   QHeaderView, QMessageBox, QFileDialog)
 
@@ -403,7 +403,13 @@ class DataManagerWidget(QWidget):
     """
     if (obj is self._table.viewport()
         and event.type() == QEvent.MouseButtonPress):
-      index = self._table.indexAt(event.pos())
+      # QMouseEvent.pos() is deprecated in Qt6; use position().toPoint() when
+      # available, fall back to pos() on PySide2.
+      if hasattr(event, "position"):
+        p = event.position().toPoint()
+      else:
+        p = event.pos()
+      index = self._table.indexAt(p)
       if not index.isValid():
         self._table.clearSelection()
     return False  # don't consume; normal event flow continues
@@ -626,7 +632,7 @@ class DataManagerWidget(QWidget):
     Palette-aware: bright red in light mode, softer pink-red in dark
     mode so the border remains visible without screaming."""
     if on:
-      from PySide2.QtGui import QPalette
+      from qttbx.qt.QtGui import QPalette
       palette = self._table.palette()
       is_dark = palette.color(QPalette.Base).lightness() < 128
       color = "rgb(255, 100, 100)" if is_dark else "rgb(220, 50, 50)"

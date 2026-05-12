@@ -1,4 +1,4 @@
-"""qttbx.widgets.phil -- PySide2 widgets for editing PHIL parameters.
+"""qttbx.widgets.phil -- Qt widgets for editing PHIL parameters.
 
 This package provides three layers of an MVC-style widget system over the
 existing ``qttbx.phil.PhilModel``:
@@ -27,8 +27,8 @@ with ``definition.type.multi == True`` dispatch to ``ChoiceMultiWidget``
 instead of ``ChoiceWidget``.
 """
 
-from PySide2.QtCore import Qt, QModelIndex, QSignalBlocker, Signal
-from PySide2.QtWidgets import QHBoxLayout, QLabel, QWidget
+from qttbx.qt.QtCore import Qt, QModelIndex, QSignalBlocker, Signal
+from qttbx.qt.QtWidgets import QHBoxLayout, QLabel, QWidget
 
 
 class PhilWidget(QWidget):

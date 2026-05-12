@@ -10,8 +10,8 @@ symbol when ``side_label=SIDE_LABEL_HALL`` is passed at construction.
 Registers itself for ``phil_type == 'space_group'`` at module import time.
 """
 
-from PySide2.QtCore import QSignalBlocker
-from PySide2.QtWidgets import QHBoxLayout, QLabel
+from qttbx.qt.QtCore import QSignalBlocker
+from qttbx.qt.QtWidgets import QHBoxLayout, QLabel
 
 from cctbx import sgtbx
 from libtbx import Auto

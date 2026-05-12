@@ -1,7 +1,7 @@
 """BoolWidget -- a PHIL bool editor wrapping QCheckBox."""
 
-from PySide2.QtCore import Qt, QSignalBlocker
-from PySide2.QtWidgets import QCheckBox, QHBoxLayout
+from qttbx.qt.QtCore import Qt, QSignalBlocker
+from qttbx.qt.QtWidgets import QCheckBox, QHBoxLayout
 
 from libtbx import Auto
 from qttbx.widgets.phil import PhilWidget

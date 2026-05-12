@@ -7,8 +7,8 @@ validates via ``cctbx.uctbx.unit_cell((...))``. The widget ``value()`` is a
 Registers itself for ``phil_type == 'unit_cell'`` at module import time.
 """
 
-from PySide2.QtCore import QSignalBlocker
-from PySide2.QtWidgets import QHBoxLayout
+from qttbx.qt.QtCore import QSignalBlocker
+from qttbx.qt.QtWidgets import QHBoxLayout
 
 from cctbx import uctbx
 from libtbx import Auto

@@ -1,7 +1,7 @@
 """FloatWidget -- a PHIL float editor wrapping ValidatedLineEdit."""
 
-from PySide2.QtCore import QSignalBlocker
-from PySide2.QtWidgets import QHBoxLayout
+from qttbx.qt.QtCore import QSignalBlocker
+from qttbx.qt.QtWidgets import QHBoxLayout
 
 from libtbx import Auto
 from qttbx.widgets.phil import PhilWidget

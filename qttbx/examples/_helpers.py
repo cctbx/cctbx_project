@@ -1,7 +1,7 @@
 """Internal helpers shared by qttbx example apps."""
 
-from PySide2.QtCore import QEvent, QObject, QTimer
-from PySide2.QtWidgets import QHeaderView
+from qttbx.qt.QtCore import QEvent, QObject, QTimer
+from qttbx.qt.QtWidgets import QHeaderView
 
 
 class ProportionalColumns(QObject):

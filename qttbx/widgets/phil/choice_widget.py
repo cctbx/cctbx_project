@@ -1,7 +1,7 @@
 """ChoiceWidget -- a PHIL choice editor backed by QComboBox."""
 
-from PySide2.QtCore import Qt, QSignalBlocker
-from PySide2.QtWidgets import QComboBox, QHBoxLayout, QListWidget, QListWidgetItem, QVBoxLayout
+from qttbx.qt.QtCore import Qt, QSignalBlocker
+from qttbx.qt.QtWidgets import QComboBox, QHBoxLayout, QListWidget, QListWidgetItem, QVBoxLayout
 
 from qttbx.widgets.phil import PhilWidget
 

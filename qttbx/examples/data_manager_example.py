@@ -18,8 +18,8 @@ so the example can be driven programmatically as well.
 """
 import sys
 
-from PySide2.QtCore import Qt
-from PySide2.QtWidgets import (
+from qttbx.qt.QtCore import Qt
+from qttbx.qt.QtWidgets import (
   QApplication, QFormLayout, QLabel, QMainWindow,
   QPushButton, QSplitter, QTextEdit, QVBoxLayout, QWidget,
 )

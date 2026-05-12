@@ -3,7 +3,7 @@ from libtbx import test_utils
 
 tst_list_base = []
 try:
-  import PySide2  # noqa: F401
+  import qttbx.qt  # noqa: F401
   tst_list_base.append("$D/regression/tst_phil_widgets.py")
   tst_list_base.append("$D/regression/tst_data_manager_widget.py")
 except ImportError:

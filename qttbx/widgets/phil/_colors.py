@@ -9,7 +9,7 @@ Helpers return ``QColor`` objects; consumers convert to stylesheet strings
 or ``QBrush`` as needed.
 """
 
-from PySide2.QtGui import QColor, QPalette
+from qttbx.qt.QtGui import QColor, QPalette
 
 
 def _active_palette():
@@ -19,7 +19,7 @@ def _active_palette():
   -------
     QPalette
   """
-  from PySide2.QtWidgets import QApplication
+  from qttbx.qt.QtWidgets import QApplication
   app = QApplication.instance()
   if app is not None:
     return app.palette()

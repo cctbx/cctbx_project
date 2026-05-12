@@ -12,8 +12,8 @@ multi-line ``AtomSelectionTextWidget`` is opt-in via
 ``PhilField(model, path, widget=AtomSelectionTextWidget)``.
 """
 
-from PySide2.QtCore import QSignalBlocker
-from PySide2.QtWidgets import QHBoxLayout, QVBoxLayout
+from qttbx.qt.QtCore import QSignalBlocker
+from qttbx.qt.QtWidgets import QHBoxLayout, QVBoxLayout
 
 from libtbx import Auto
 from qttbx.widgets.phil import PhilWidget, register_widget

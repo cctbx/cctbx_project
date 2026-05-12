@@ -7,8 +7,8 @@ non-list-native type) -- value is a Python list, edited via N inner widgets.
 ``.multiple = True``. See its class docstring for details.
 """
 
-from PySide2.QtCore import QPersistentModelIndex, QSignalBlocker
-from PySide2.QtWidgets import (
+from qttbx.qt.QtCore import QPersistentModelIndex, QSignalBlocker
+from qttbx.qt.QtWidgets import (
   QFormLayout, QHBoxLayout, QListWidget, QListWidgetItem, QPushButton,
   QTabWidget, QVBoxLayout, QWidget,
 )

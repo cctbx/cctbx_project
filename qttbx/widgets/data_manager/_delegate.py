@@ -2,9 +2,9 @@
 columns. Stale rows are rendered with a pale-pink background matching
 existing qttbx convention (text_base.py uses #fff5f5)."""
 
-from PySide2.QtCore import Qt, QSize, QRect, QEvent, Signal
-from PySide2.QtGui import QColor, QBrush, QFontMetrics, QPalette
-from PySide2.QtWidgets import QStyledItemDelegate
+from qttbx.qt.QtCore import Qt, QSize, QRect, QEvent, Signal
+from qttbx.qt.QtGui import QColor, QBrush, QFontMetrics, QPalette
+from qttbx.qt.QtWidgets import QStyledItemDelegate
 
 from qttbx.widgets.data_manager._table_model import (
   DataManagerTableModel, _trash_icon)

@@ -3,9 +3,9 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import sys
 try:
-  from PySide2.QtWidgets import QApplication
+  from qttbx.qt.QtWidgets import QApplication
 except ImportError:
-  print("PySide2 not available; skipping")
+  print("PySide2/PySide6 not available; skipping")
   print("OK")
   sys.exit(0)
 
@@ -284,7 +284,7 @@ ncs_group {
 
 def exercise_phil_model_add_scope_instance_treeview_sync():
   """An attached QTreeView reflects the new row after add_scope_instance."""
-  from PySide2.QtWidgets import QTreeView
+  from qttbx.qt.QtWidgets import QTreeView
   from qttbx.phil import PhilModel
   _get_app()
   m = PhilModel()
@@ -333,7 +333,7 @@ ncs_group {
 
 def exercise_phil_model_intrinsic_validation_int_bounds():
   """A row whose stored int is out of bounds reports a BackgroundRole pink + ToolTipRole error."""
-  from PySide2.QtCore import Qt
+  from qttbx.qt.QtCore import Qt
   from qttbx.phil import PhilModel
   _get_app()
   m = PhilModel()
@@ -357,7 +357,7 @@ val = 5
 
 def exercise_phil_model_intrinsic_validation_choice_membership():
   """A choice value not in the master's set is flagged."""
-  from PySide2.QtCore import Qt
+  from qttbx.qt.QtCore import Qt
   from qttbx.phil import PhilModel
   _get_app()
   m = PhilModel()
@@ -381,7 +381,7 @@ def exercise_phil_model_intrinsic_validation_at_initialize():
   (the same path _populate_tree exercises) to confirm that initialize_model's
   per-leaf refresh would flag a bad value identically.
   """
-  from PySide2.QtCore import Qt
+  from qttbx.qt.QtCore import Qt
   from qttbx.phil import PhilModel
   _get_app()
   m = PhilModel()
@@ -418,7 +418,7 @@ labelled = 1
 
 def exercise_palette_helpers_light_vs_dark():
   """Color helpers return distinct colors for light and dark palettes."""
-  from PySide2.QtGui import QColor, QPalette
+  from qttbx.qt.QtGui import QColor, QPalette
   from qttbx.widgets.phil._colors import (
     is_dark_palette, invalid_background, invalid_border, error_emphasis,
     secondary_label,
@@ -447,8 +447,8 @@ def exercise_palette_helpers_light_vs_dark():
 
 def exercise_phil_model_invalid_background_palette_aware():
   """PhilModel BackgroundRole brush adapts to the active QApplication palette."""
-  from PySide2.QtCore import Qt
-  from PySide2.QtGui import QColor, QPalette
+  from qttbx.qt.QtCore import Qt
+  from qttbx.qt.QtGui import QColor, QPalette
   from qttbx.phil import PhilModel
   app = _get_app()
   m = PhilModel()
@@ -499,7 +499,7 @@ def exercise_phil_widget_base_construct():
 def exercise_phil_widget_base_signals_exist():
   d = _make_int_definition()
   w = PhilWidget(d)
-  # valueChanged and validityChanged are class attributes (PySide2 Signal)
+  # valueChanged and validityChanged are class attributes (Qt Signal)
   assert hasattr(type(w), "valueChanged")
   assert hasattr(type(w), "validityChanged")
   print("exercise_phil_widget_base_signals_exist OK")
@@ -558,8 +558,8 @@ def exercise_validated_text_edit_valid_to_invalid():
 
 def exercise_validated_text_edit_focus_out_commits():
   """focusOutEvent on a valid ValidatedTextEdit emits valueChanged."""
-  from PySide2.QtGui import QFocusEvent
-  from PySide2.QtCore import QEvent
+  from qttbx.qt.QtGui import QFocusEvent
+  from qttbx.qt.QtCore import QEvent
   from qttbx.widgets.phil.text_base import ValidatedTextEdit
   _get_app()
   te = ValidatedTextEdit(parse=int)
@@ -1198,7 +1198,7 @@ def exercise_choice_multi_widget_optional_false_requires_selection():
   assert w.isValid()
   print("exercise_choice_multi_widget_optional_false_requires_selection OK")
 
-from PySide2.QtCore import Qt, QCoreApplication
+from qttbx.qt.QtCore import Qt, QCoreApplication
 from qttbx.widgets.phil import PhilField
 
 def exercise_phil_field_widget_to_model():
@@ -1356,7 +1356,7 @@ labelled = 1
   assert f_default._label.text() == "Atom selection", f_default._label.text()
   assert f_caption._label.text() == "Custom Label", f_caption._label.text()
   print("exercise_phil_field_label_uses_short_caption_or_prettified OK")
-from PySide2.QtWidgets import QTreeView, QStyleOptionViewItem
+from qttbx.qt.QtWidgets import QTreeView, QStyleOptionViewItem
 from qttbx.widgets.phil.delegate import PhilItemDelegate
 
 def exercise_phil_item_delegate_round_trip():
@@ -1381,7 +1381,7 @@ def exercise_phil_item_delegate_round_trip():
   assert m.get_phil_extract_value("refinement.macro_cycles") == 7
   print("exercise_phil_item_delegate_round_trip OK")
 
-from PySide2.QtWidgets import (
+from qttbx.qt.QtWidgets import (
   QFormLayout, QDialog, QDialogButtonBox, QWidget as _QWidget)
 
 def _v1_master():
@@ -1466,8 +1466,8 @@ methods = *fast slow exhaustive
 
 def exercise_v2_tree_and_form_sync():
   """End-to-end sync between a tree view and a form for v2 types."""
-  from PySide2.QtCore import Qt
-  from PySide2.QtWidgets import QTreeView
+  from qttbx.qt.QtCore import Qt
+  from qttbx.qt.QtWidgets import QTreeView
   from qttbx.phil import PhilModel
   from qttbx.widgets.phil import PhilField
   from qttbx.widgets.phil.delegate import PhilItemDelegate
@@ -1641,8 +1641,8 @@ val = None
 
 def exercise_multiple_widget_no_widget_leak_on_remove():
   """Repeated _on_remove cycles do not accumulate orphan inner widgets."""
-  import shiboken2
-  from PySide2.QtCore import QCoreApplication, QEvent
+  from qttbx.qt import shiboken
+  from qttbx.qt.QtCore import QCoreApplication, QEvent
   from qttbx.widgets.phil.int_widget import IntWidget
   from qttbx.widgets.phil.multiple import MultipleWidget
   _get_app()
@@ -1662,7 +1662,7 @@ val = 1
   # After 20 add/remove cycles: viewport children should not have grown.
   # Each row that exists should equal one viewport child; we end with 1 row
   # (the initial default) so a small bounded child count is expected.
-  children = [c for c in w._list.viewport().children() if shiboken2.isValid(c)]
+  children = [c for c in w._list.viewport().children() if shiboken.isValid(c)]
   assert len(children) <= 5, len(children)
   print("exercise_multiple_widget_no_widget_leak_on_remove OK")
 
@@ -1744,7 +1744,7 @@ def exercise_repeatable_scope_widget_no_field_slot_leak():
   a single setData on a leaf cell should fire _on_data_changed at most
   on the *currently active* PhilField instances, not on prior generations.
   """
-  from PySide2.QtCore import QCoreApplication, QEvent, Qt
+  from qttbx.qt.QtCore import QCoreApplication, QEvent, Qt
   from qttbx.phil import PhilModel
   from qttbx.widgets.phil import PhilField
   from qttbx.widgets.phil.multiple import RepeatableScopeWidget
@@ -1777,7 +1777,7 @@ def exercise_repeatable_scope_widget_no_field_slot_leak():
     counter["hits"] = 0
     qpi = m.persistent_index_for_path("ncs_group.selection",
                                        scope_indices=[0])
-    from PySide2.QtCore import QModelIndex
+    from qttbx.qt.QtCore import QModelIndex
     m.setData(QModelIndex(qpi), "X", Qt.EditRole)
     # Active tabs == 1 in the widget; allow some slack for related
     # signals, but the orphan-slot-leak symptom is hits > 5.
@@ -1836,7 +1836,7 @@ ncs_group {
 
 def exercise_v3_definition_multi_and_scope_multi():
   """End-to-end: definition-multiple + scope-multiple in tree + form."""
-  from PySide2.QtWidgets import QTreeView
+  from qttbx.qt.QtWidgets import QTreeView
   from qttbx.phil import PhilModel
   from qttbx.widgets.phil import PhilField
   from qttbx.widgets.phil.delegate import PhilItemDelegate
@@ -2158,7 +2158,7 @@ selection = "all"
 def exercise_v4_domain_widgets_in_form():
   """End-to-end: domain widgets (space_group, unit_cell, atom_selection) in a form."""
   from cctbx import sgtbx, uctbx
-  from PySide2.QtWidgets import QTreeView
+  from qttbx.qt.QtWidgets import QTreeView
   from qttbx.phil import PhilModel
   from qttbx.widgets.phil import PhilField
   from qttbx.widgets.phil.delegate import PhilItemDelegate
@@ -2196,7 +2196,7 @@ def exercise_v4_domain_widgets_in_form():
   assert m.get_phil_extract().selection == "chain A and resid 1:100"
 
   # Model -> form: drive selection from the model side and confirm widget reflects it.
-  from PySide2.QtCore import Qt
+  from qttbx.qt.QtCore import Qt
   idx = m.index_for_path("selection")
   m.setData(idx, "all", Qt.EditRole)
   assert sel_field.widget().value() == "all"

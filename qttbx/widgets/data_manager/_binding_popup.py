@@ -1,8 +1,8 @@
 """DataManagerBindingPopup -- a frameless checkbox-list popup for
 choosing which PHIL parameters a file is bound to."""
 
-from PySide2.QtCore import Qt, Signal
-from PySide2.QtWidgets import (
+from qttbx.qt.QtCore import Qt, Signal
+from qttbx.qt.QtWidgets import (
   QFrame, QVBoxLayout, QScrollArea, QCheckBox, QWidget)
 
 

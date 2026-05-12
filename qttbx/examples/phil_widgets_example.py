@@ -25,8 +25,8 @@ Refresh to see edits land in the model.
 """
 import sys
 
-from PySide2.QtCore import Qt
-from PySide2.QtWidgets import (
+from qttbx.qt.QtCore import Qt
+from qttbx.qt.QtWidgets import (
   QApplication, QFormLayout, QLabel, QMainWindow, QPushButton, QSplitter,
   QTabWidget, QTextEdit, QTreeView, QVBoxLayout, QWidget,
 )

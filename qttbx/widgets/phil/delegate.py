@@ -1,7 +1,7 @@
 """QStyledItemDelegate that hosts PhilWidget editors in a QTreeView."""
 
-from PySide2.QtCore import QEvent, Qt
-from PySide2.QtWidgets import QStyledItemDelegate
+from qttbx.qt.QtCore import QEvent, Qt
+from qttbx.qt.QtWidgets import QStyledItemDelegate
 
 from qttbx.widgets.phil import widget_for_definition
 
