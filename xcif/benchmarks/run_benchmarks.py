@@ -5,7 +5,7 @@ from __future__ import absolute_import, division, print_function
 #
 # Usage:
 #   libtbx.python xcif/benchmarks/run_benchmarks.py <file.cif> [file2.cif ...] \
-#       [--repeat N] [--warmup N] [--level1]
+#       [--repeat N] [--warmup N] [--level1] [--no-ucif]
 #
 # Each parser runs in a subprocess so ru_maxrss is isolated per parser.
 
@@ -21,13 +21,6 @@ import platform
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def _median(v):
-  s = sorted(v)
-  n = len(s)
-  if n % 2 == 1:
-    return s[n // 2]
-  return (s[n // 2 - 1] + s[n // 2]) / 2.0
 
 def _stddev(v, mean):
   return math.sqrt(sum((x - mean) ** 2 for x in v) / len(v))
@@ -167,6 +160,7 @@ def main():
   repeat = 5
   warmup = 3
   run_level1 = False
+  skip_ucif = False
   i = 0
   while i < len(args):
     if args[i] == "--repeat":
@@ -178,13 +172,16 @@ def main():
     elif args[i] == "--level1":
       run_level1 = True
       i += 1
+    elif args[i] == "--no-ucif":
+      skip_ucif = True
+      i += 1
     else:
       cif_paths.append(args[i])
       i += 1
 
   if not cif_paths:
     print("Usage: libtbx.python run_benchmarks.py <file.cif> [file2.cif ...]")
-    print("       [--repeat N] [--warmup N] [--level1]")
+    print("       [--repeat N] [--warmup N] [--level1] [--no-ucif]")
     sys.exit(1)
 
   # Validate files
@@ -197,6 +194,8 @@ def main():
   python_exe = sys.executable
 
   parsers = ["ucif", "gemmi", "xcif"]
+  if skip_ucif:
+    parsers = [p for p in parsers if p != "ucif"]
 
   for cif_path in cif_paths:
     size_mb = os.path.getsize(cif_path) / (1024.0 * 1024.0)
@@ -220,34 +219,33 @@ def main():
 
       times = data["times_ms"]
       rss = data["peak_rss_kb"]
-      med = _median(times)
       mn = min(times)
       mx = max(times)
       avg = sum(times) / len(times)
       sd = _stddev(times, avg)
 
       results[name] = {
-        "median_ms": med, "min_ms": mn, "max_ms": mx,
+        "average_ms": avg, "min_ms": mn, "max_ms": mx,
         "stddev_ms": sd, "peak_rss_kb": rss,
       }
-      print("median=%s  min=%s  max=%s  sd=%s  RSS=%.0f MB" % (
-        _format_ms(med), _format_ms(mn), _format_ms(mx),
+      print("avg=%s  min=%s  max=%s  sd=%s  RSS=%.0f MB" % (
+        _format_ms(avg), _format_ms(mn), _format_ms(mx),
         _format_ms(sd), rss / 1024.0))
 
     # Summary table
     if len(results) >= 2:
-      gemmi_med = results.get("gemmi", {}).get("median_ms")
+      gemmi_avg = results.get("gemmi", {}).get("average_ms")
       gemmi_rss = results.get("gemmi", {}).get("peak_rss_kb")
-      print("\n  %-12s %10s %10s %10s" % ("Parser", "Median", "vs gemmi", "RSS MB"))
+      print("\n  %-12s %10s %10s %10s" % ("Parser", "Average", "vs gemmi", "RSS MB"))
       print("  " + "-" * 46)
-      for name in sorted(results, key=lambda k: results[k]["median_ms"]):
+      for name in sorted(results, key=lambda k: results[k]["average_ms"]):
         r = results[name]
         ratio_str = ""
-        if gemmi_med:
-          ratio = r["median_ms"] / gemmi_med
+        if gemmi_avg:
+          ratio = r["average_ms"] / gemmi_avg
           ratio_str = "%.2fx" % ratio
         print("  %-12s %10s %10s %10.0f" % (
-          name, _format_ms(r["median_ms"]), ratio_str,
+          name, _format_ms(r["average_ms"]), ratio_str,
           r["peak_rss_kb"] / 1024.0))
 
     # ── Level 1 (pure C++) ─────────────────────────────────────────
@@ -262,8 +260,10 @@ def main():
           _format_ms(l1["min_ms"]),
           _format_ms(l1["max_ms"]),
           _format_ms(l1["stddev_ms"])))
-        # Compare Level 1 vs Level 2
-        xcif_l2 = results.get("xcif", {}).get("median_ms")
+        # Compare Level 1 vs Level 2 (Python avg vs bench_xcif median — the
+        # C++ binary's RESULT line still emits median; mismatch is tolerable
+        # for this rough overhead diagnostic).
+        xcif_l2 = results.get("xcif", {}).get("average_ms")
         if xcif_l2:
           overhead = xcif_l2 - l1["median_ms"]
           print("  Python boundary overhead: %s (%.0f%%)" % (
