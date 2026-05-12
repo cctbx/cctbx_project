@@ -78,7 +78,7 @@ def _install_stubs():
 # Only install stubs if libtbx isn't already importable (i.e. when
 # running outside a PHENIX environment)
 try:
-    import libtbx.langchain.agent.rules_selector as _real
+    import libtbx.langchain.agent.rules_selector as _real  # special import
     _real_imported = True
 except ImportError:
     _install_stubs()
