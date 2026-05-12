@@ -38,8 +38,10 @@ def exercise_normalize_path():
   import os
   from qttbx.widgets.data_manager._phil_helpers import normalize_path
 
-  # absolute input passes through
-  abs_path = "/tmp/foo.pdb"
+  # absolute input passes through (build canonical form for the platform
+  # so the assertion holds on Windows, where "/tmp/foo.pdb" is rooted but
+  # driveless and normalize_path would prepend a drive + flip separators).
+  abs_path = os.path.abspath(os.path.join(os.sep, "tmp", "foo.pdb"))
   assert normalize_path(abs_path) == abs_path
 
   # relative becomes absolute
@@ -522,12 +524,13 @@ def exercise_table_model_stale_rows():
     DataManagerTableModel, StaleRow)
   from PySide2.QtCore import Qt
   _get_app()
+  missing = os.path.join(os.sep, "tmp", "missing.pdb")
   m = DataManagerTableModel()
   m.attach(None, phil_model=None)
 
   # Inject a stale row directly (production code path uses widget
   # construction; here we exercise the internal API).
-  sr = StaleRow(filename="/tmp/missing.pdb",
+  sr = StaleRow(filename=missing,
                 expected_type="model",
                 phil_path="input_model",
                 message="file not found")
@@ -536,7 +539,7 @@ def exercise_table_model_stale_rows():
   assert m.rowCount() == 1
   assert m.is_stale(0) is True
   assert m.stale_message(0) == "file not found"
-  assert m.data(m.index(0, m.COL_FILENAME), Qt.DisplayRole) == "/tmp/missing.pdb"
+  assert m.data(m.index(0, m.COL_FILENAME), Qt.DisplayRole) == missing
   assert m.data(m.index(0, m.COL_TYPE), Qt.DisplayRole) == "Model"
   used_for = m.data(m.index(0, m.COL_USED_FOR), Qt.DisplayRole)
   assert used_for == ["input_model"]
@@ -549,8 +552,10 @@ def exercise_table_model_stale_rows():
   assert m.rowCount() == 0
 
   # Regression: StaleRow.__repr__ surfaces all four attributes verbatim.
+  # Compare against repr(missing) because __repr__ uses %r, which escapes
+  # backslashes on Windows (otherwise the substring check fails there).
   rep = repr(sr)
-  assert "/tmp/missing.pdb" in rep
+  assert repr(missing) in rep
   assert "input_model" in rep
   assert "file not found" in rep
   assert "model" in rep
@@ -688,7 +693,7 @@ def exercise_table_model_reconcile_stale_edge_cases():
   assert not m.is_stale(0)
 
   # ---------- (b) Unrelated stale row preserved ----------
-  m.append_stale_row(StaleRow(filename="/tmp/other.pdb",
+  m.append_stale_row(StaleRow(filename=os.path.join(os.sep, "tmp", "other.pdb"),
                               expected_type="model",
                               phil_path="input_model",
                               message="file not found"))
@@ -1375,7 +1380,8 @@ def exercise_table_model_sort():
   m = DataManagerTableModel()
   m.attach(dm, phil_model=None)
   # Append a stale row so we can verify it stays after sorted rows.
-  m.append_stale_row(StaleRow(filename="/tmp/missing.pdb",
+  missing = os.path.join(os.sep, "tmp", "missing.pdb")
+  m.append_stale_row(StaleRow(filename=missing,
                               expected_type="model",
                               phil_path="some.path",
                               message="file not found"))
@@ -1386,7 +1392,7 @@ def exercise_table_model_sort():
                for r in range(m.rowCount())]
   # 3 normal rows sorted alphabetically, then the stale row.
   assert filenames[:3] == [norm_a, norm_b, norm_c], filenames
-  assert filenames[3] == "/tmp/missing.pdb", filenames
+  assert filenames[3] == missing, filenames
   assert m.is_stale(3)
 
   # Descending.
@@ -1941,7 +1947,7 @@ def exercise_widget_bind_normalizes_path():
 
   _get_app()
   tmpdir = tempfile.mkdtemp(prefix="dmw_norm_")
-  pdb = tmpdir + "/m.pdb"
+  pdb = os.path.join(tmpdir, "m.pdb")
   with open(pdb, "w") as fh:
     fh.write(
       "CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 1\n"
@@ -1959,13 +1965,21 @@ def exercise_widget_bind_normalizes_path():
   w = DataManagerWidget(phil_model=pm, data_manager=dm)
   w.add_file(pdb)
   # Now use a relative form to bind; widget should normalize.
-  rel = os.path.relpath(pdb)
-  w.bind(rel, "input_model")
-  assert pm.value_at_path("input_model") == normalize_path(pdb)
+  # Run the relpath portion from inside tmpdir so cwd and the target file
+  # are guaranteed to be on the same drive on Windows (os.path.relpath
+  # raises ValueError across drives).
+  old_cwd = os.getcwd()
+  try:
+    os.chdir(tmpdir)
+    rel = os.path.relpath(pdb)
+    w.bind(rel, "input_model")
+    assert pm.value_at_path("input_model") == normalize_path(pdb)
 
-  # Unbind via relative path too
-  w.unbind(rel, "input_model")
-  assert pm.value_at_path("input_model") is None
+    # Unbind via relative path too
+    w.unbind(rel, "input_model")
+    assert pm.value_at_path("input_model") is None
+  finally:
+    os.chdir(old_cwd)
   print("exercise_widget_bind_normalizes_path OK")
 
 

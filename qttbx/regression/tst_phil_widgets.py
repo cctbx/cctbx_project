@@ -909,8 +909,9 @@ def exercise_path_widget_round_trip():
   from qttbx.widgets.phil.path_widget import PathWidget
   _get_app()
   w = PathWidget(_make_path_definition())
-  w.setValue("/tmp/example.pdb")
-  assert w.value() == "/tmp/example.pdb"
+  example = os.path.join(os.sep, "tmp", "example.pdb")
+  w.setValue(example)
+  assert w.value() == example
   w.setValue(None)
   assert w.value() is None
   print("exercise_path_widget_round_trip OK")
@@ -1489,9 +1490,10 @@ def exercise_v2_tree_and_form_sync():
   }
 
   # Form -> model: edit each widget via setValue and confirm the model picks it up.
-  fields["files.input_file"].widget().setValue("/tmp/x.pdb")
+  input_file = os.path.join(os.sep, "tmp", "x.pdb")
+  fields["files.input_file"].widget().setValue(input_file)
   fields["files.input_file"].commit()
-  assert m.get_phil_extract().files.input_file == "/tmp/x.pdb"
+  assert m.get_phil_extract().files.input_file == input_file
 
   fields["files.labels"].widget().setValue(["F", "SIGF"])
   fields["files.labels"].commit()
