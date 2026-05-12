@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from scitbx.math import superpose
-from libtbx.utils import Sorry
 import sys
 from six.moves import cStringIO as StringIO
 import iotbx.pdb

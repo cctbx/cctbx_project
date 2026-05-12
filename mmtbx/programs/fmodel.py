@@ -7,7 +7,6 @@ except ImportError:
 import os
 import mmtbx.utils
 import iotbx.phil
-import iotbx.pdb
 import random
 from libtbx.utils import Sorry
 from cctbx.array_family import flex

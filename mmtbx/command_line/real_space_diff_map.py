@@ -4,7 +4,6 @@ from __future__ import absolute_import, division, print_function
 
 from scitbx.array_family import flex
 import sys
-import iotbx.pdb
 from libtbx.utils import Sorry
 import mmtbx.utils
 from cctbx import maptbx

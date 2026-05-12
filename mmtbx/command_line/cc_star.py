@@ -84,7 +84,6 @@ Full parameters:
     params = cmdline.work.extract()
   import mmtbx.command_line
   import mmtbx.validation.experimental
-  from iotbx import merging_statistics
   from iotbx import file_reader
   import iotbx.pdb
   if (params.data is None):

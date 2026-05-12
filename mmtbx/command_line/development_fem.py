@@ -5,8 +5,6 @@
 from __future__ import absolute_import, division, print_function
 import mmtbx.command_line
 import mmtbx.maps
-import iotbx.phil
-import iotbx.pdb
 from scitbx.array_family import flex
 from libtbx import runtime_utils
 import os.path
