@@ -160,6 +160,13 @@ for link_info in [
      [0],
     ],
 
+    ['reference hydrogen bonds',
+     'H-bonds detected in the reference model, restrained to preserve reference geometry',
+     '',
+     ['Reference H-bond', 'Reference H-bond angles'],
+     [0,1],
+    ],
+
     ]:
   for oi in origin_ids:
     assert starting_id not in oi

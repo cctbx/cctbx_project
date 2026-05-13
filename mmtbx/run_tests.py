@@ -82,6 +82,7 @@ general_tests = [
   "$D/refinement/tst_refinement_flags.py",
   "$D/geometry_restraints/torsion_restraints/tst_reference_model.py",
   "$D/geometry_restraints/torsion_restraints/tst_reference_model_ligands.py",
+  "$D/geometry_restraints/torsion_restraints/tst_reference_hbond.py",
   # model tests, some more elsewhere in this file
   "$D/regression/model/tst_model_mtrix.py",
   "$D/regression/model/tst_model_ncs.py",
