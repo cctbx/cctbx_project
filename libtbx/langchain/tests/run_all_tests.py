@@ -127,6 +127,16 @@ Systematic Testing Framework (v115.08):
        ligand_fit_output as new best by inheriting metrics from prior
        refined model. Fixes nsf-d2-ligand tutorial restarting at cycle 3
        (14 tests, v116.10 Phase 6c)
+  S23. Initialize Plan Smoke - behavioral tests for _initialize_plan_inner
+       decision tree. Verifies side effects (intent rewrite, stop_after
+       clearing, plan-generation gating) for each branch of the function.
+       Complements tst_dock_and_stop.py's decision-tree traces with actual
+       behavioral assertions (9 tests, v116.10 Tier 1 follow-up)
+  S24. Phase 3d Motivating Tutorial - integration-level verification of the
+       Phase 3d dock-and-stop fix. Skip-aware against an optional session
+       fixture; runs decision-tree + YAML format checks unconditionally.
+       Closes the highest-priority verification gap from the v116.10 review
+       (3 tests, v116.10 Tier 1 follow-up)
 """
 
 from __future__ import absolute_import, division, print_function
@@ -1291,6 +1301,38 @@ def main():
               f"tst_ligand_workflow_restart: {e}")
         results.append(("Ligand Workflow Restart",
                        "tst_ligand_workflow_restart", False, 0))
+
+    # --- Initialize Plan Smoke (v116.10 Tier 1 follow-up) ---
+    try:
+        from tests.tst_initialize_plan_smoke import (
+            run_all_tests as run_initialize_plan_smoke_tests)
+        success, elapsed = run_test_module(
+            "tst_initialize_plan_smoke",
+            run_initialize_plan_smoke_tests, args.verbose)
+        results.append(("Initialize Plan Smoke",
+                       "tst_initialize_plan_smoke",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_initialize_plan_smoke: {e}")
+        results.append(("Initialize Plan Smoke",
+                       "tst_initialize_plan_smoke", False, 0))
+
+    # --- Phase 3d Motivating Tutorial (v116.10 Tier 1 follow-up) ---
+    try:
+        from tests.tst_phase3d_motivating_tutorial import (
+            run_all_tests as run_phase3d_motivating_tutorial_tests)
+        success, elapsed = run_test_module(
+            "tst_phase3d_motivating_tutorial",
+            run_phase3d_motivating_tutorial_tests, args.verbose)
+        results.append(("Phase 3d Motivating Tutorial",
+                       "tst_phase3d_motivating_tutorial",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_phase3d_motivating_tutorial: {e}")
+        results.append(("Phase 3d Motivating Tutorial",
+                       "tst_phase3d_motivating_tutorial", False, 0))
 
     # --- Summary ---
     total_elapsed = time.time() - total_start
