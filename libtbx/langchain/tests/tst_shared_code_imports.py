@@ -98,7 +98,7 @@ def test_no_forbidden_imports_in_shared():
     violations = []
     for filepath in _get_shared_file_paths():
         basename = os.path.basename(filepath)
-        with open(filepath) as f:
+        with open(filepath, encoding='utf-8') as f:
             for lineno, line in enumerate(f, 1):
                 stripped = line.strip()
                 if stripped.startswith("#") or not (stripped.startswith("from ") or stripped.startswith("import ")):
@@ -118,7 +118,7 @@ def test_agent_imports_reference_known_modules():
     unknown = []
     for filepath in _get_shared_file_paths():
         basename = os.path.basename(filepath)
-        with open(filepath) as f:
+        with open(filepath, encoding='utf-8') as f:
             for lineno, line in enumerate(f, 1):
                 stripped = line.strip()
                 if stripped.startswith("#"): continue
@@ -137,7 +137,7 @@ def test_server_only_has_llm_imports():
     if not os.path.exists(graph_nodes):
         print("  SKIP (graph_nodes.py not found)")
         return
-    with open(graph_nodes) as f:
+    with open(graph_nodes, encoding='utf-8') as f:
         content = f.read()
     has_llm = bool(re.search(r'(?:from|import)\s+(?:langchain_core|langchain_google|langchain_openai)', content))
     has_provider = "provider" in content and ("openai" in content or "google" in content)
@@ -148,7 +148,7 @@ def test_shared_imports_are_guarded():
     unguarded = []
     for filepath in _get_shared_file_paths():
         basename = os.path.basename(filepath)
-        with open(filepath) as f:
+        with open(filepath, encoding='utf-8') as f:
             lines = f.readlines()
         in_try = False
         for i, line in enumerate(lines, 1):

@@ -93,7 +93,7 @@ def _load_yaml_config():
     for yaml_path in yaml_paths:
         if os.path.exists(yaml_path):
             try:
-                with open(yaml_path, 'r') as f:
+                with open(yaml_path, 'r', encoding='utf-8') as f:
                     return yaml.safe_load(f)
             except Exception as e:
                 import sys

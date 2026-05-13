@@ -1257,7 +1257,7 @@ def test_cache_invalidation_on_mtime():
       assert_equal(call_count[0], 1, "First call")
       # Touch the file to change mtime
       time.sleep(0.05)
-      with open(path, 'w') as f:
+      with open(path, 'w', encoding='utf-8') as f:
         f.write("modified\n")
       r2 = ws._has_phase_columns_cached(path)
       assert_equal(call_count[0], 2,

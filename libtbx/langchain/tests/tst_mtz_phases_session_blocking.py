@@ -222,7 +222,7 @@ def test_mtz_has_phase_columns_non_mtz():
 def test_phased_markers_includes_overall_best():
     """Verify 'overall_best' is in _map_markers by checking source file."""
     _ws_path = os.path.join(_ROOT, "agent", "workflow_state.py")
-    with open(_ws_path) as _f:
+    with open(_ws_path, encoding='utf-8') as _f:
         src = _f.read()
     # Find the _map_markers tuple (renamed from _phased_markers)
     idx = src.find("_map_markers = (")
@@ -273,7 +273,7 @@ def test_phase_15_fires_with_full_map_present():
     time, which is not available in the standalone test environment).
     """
     _engine_path = os.path.join(_ROOT, "agent", "workflow_engine.py")
-    with open(_engine_path) as _f:
+    with open(_engine_path, encoding='utf-8') as _f:
         src = _f.read()
     # Find the Phase 1.5 block
     idx = src.find("Phase 1.5")
@@ -297,7 +297,7 @@ def test_phase_15_does_not_check_map_sharpening_done():
     completing one should not suppress the other (P5 fix).
     """
     _engine_path = os.path.join(_ROOT, "agent", "workflow_engine.py")
-    with open(_engine_path) as _f:
+    with open(_engine_path, encoding='utf-8') as _f:
         src = _f.read()
     idx = src.find("Phase 1.5")
     assert idx >= 0, "Phase 1.5 comment not found in workflow_engine.py"
@@ -414,7 +414,7 @@ def test_predict_build_refine_internal_in_yaml():
     and have parent_category=intermediate so overall_best_final_refine files
     are stripped from the model category (Bug C fix)."""
     _yaml_path = os.path.join(_ROOT, "knowledge", "file_categories.yaml")
-    with open(_yaml_path) as _f:
+    with open(_yaml_path, encoding='utf-8') as _f:
         src = _f.read()
     assert "predict_build_refine_internal:" in src, \
         "predict_build_refine_internal category must be defined"
@@ -431,7 +431,7 @@ def test_predict_and_build_output_excludes_final_refine():
     """predict_and_build_output category must exclude *_final_refine_* files
     (Bug C fix)."""
     _yaml_path = os.path.join(_ROOT, "knowledge", "file_categories.yaml")
-    with open(_yaml_path) as _f:
+    with open(_yaml_path, encoding='utf-8') as _f:
         src = _f.read()
     idx = src.find("predict_and_build_output:")
     assert idx >= 0, "predict_and_build_output category not found"
@@ -450,7 +450,7 @@ def test_has_placed_model_wants_mr_guard_exists():
     Without this guard, CASP7 search model PDBs caused the workflow to jump
     straight to xray_refined before phaser ran."""
     _engine_path = os.path.join(_ROOT, "agent", "workflow_engine.py")
-    with open(_engine_path) as _f:
+    with open(_engine_path, encoding='utf-8') as _f:
         src = _f.read()
     # _mr_keywords is defined just before _wants_mr_first; search from there
     idx = src.find("_mr_keywords")
@@ -469,7 +469,7 @@ def test_has_placed_model_wants_mr_guard_exists():
 def test_has_placed_model_placement_keywords_still_conditional():
     """placement_keywords logic must still exist but only run when no MR intent."""
     _engine_path = os.path.join(_ROOT, "agent", "workflow_engine.py")
-    with open(_engine_path) as _f:
+    with open(_engine_path, encoding='utf-8') as _f:
         src = _f.read()
     assert "placement_keywords" in src, \
         "placement_keywords logic must still exist"
@@ -486,7 +486,7 @@ def test_hopeless_rfree_routes_to_obtain_model():
     must route to obtain_model for phaser retry instead of trapping at STOP
     (Bug F fix)."""
     _engine_path = os.path.join(_ROOT, "agent", "workflow_engine.py")
-    with open(_engine_path) as _f:
+    with open(_engine_path, encoding='utf-8') as _f:
         src = _f.read()
     idx = src.find("Bug F fix")
     assert idx >= 0, \
@@ -506,7 +506,7 @@ def test_hopeless_rfree_routes_to_obtain_model():
 def test_hopeless_rfree_threshold_conservative():
     """R-free threshold for Bug F must be >= 0.45 (not lower)."""
     _engine_path = os.path.join(_ROOT, "agent", "workflow_engine.py")
-    with open(_engine_path) as _f:
+    with open(_engine_path, encoding='utf-8') as _f:
         src = _f.read()
     idx = src.find("Bug F fix")
     assert idx >= 0, "Bug F fix comment not found"
@@ -525,7 +525,7 @@ def test_weak_anomalous_sets_has_anomalous_true():
     This is the 'weak but real' signal range — autosol should remain available
     even if phasing may be marginal. Regression for tst_history_analysis failure."""
     _ws_path = os.path.join(_ROOT, "agent", "workflow_state.py")
-    with open(_ws_path) as _f:
+    with open(_ws_path, encoding='utf-8') as _f:
         src = _f.read()
     # Find the measurability block
     idx = src.find(">= 0.06")
@@ -544,7 +544,7 @@ def test_weak_anomalous_sets_has_anomalous_true():
 def test_negligible_anomalous_clears_has_anomalous():
     """Measurability < 0.06 must clear has_anomalous=False (negligible signal)."""
     _ws_path = os.path.join(_ROOT, "agent", "workflow_state.py")
-    with open(_ws_path) as _f:
+    with open(_ws_path, encoding='utf-8') as _f:
         src = _f.read()
     # The else branch should still clear has_anomalous for negligible signal
     assert "has_anomalous" in src and "False" in src, \
@@ -693,7 +693,7 @@ def test_event_formatter_prev_string_no_crash():
 def test_event_formatter_source_has_isinstance_guard():
     """event_formatter.py must guard against string metric values (Bug A fix)."""
     _ef_path = os.path.join(_ROOT, "agent", "event_formatter.py")
-    with open(_ef_path) as f:
+    with open(_ef_path, encoding='utf-8') as f:
         src = f.read()
     # The fix can be either isinstance() or try/except — both handle strings.
     # Verify that the metrics section has some form of TypeError protection.
@@ -718,7 +718,7 @@ def test_auto_discover_supplements_existing_files():
         mtz    = os.path.join(tmpdir, "data.mtz")
         fa     = os.path.join(tmpdir, "seq.fa")
         for p in (ligand, mtz, fa):
-            open(p, "w").close()
+            open(p, "w", encoding='utf-8').close()
 
         existing = [ligand]
         existing_basenames = {os.path.basename(f) for f in existing}
@@ -749,7 +749,7 @@ def test_auto_discover_no_duplicates():
     import tempfile
     with tempfile.TemporaryDirectory() as tmpdir:
         mtz = os.path.join(tmpdir, "data.mtz")
-        open(mtz, "w").close()
+        open(mtz, "w", encoding='utf-8').close()
         existing = [mtz]
         existing_basenames = {os.path.basename(f) for f in existing}
 
@@ -771,7 +771,7 @@ def test_auto_discover_readme_not_included():
         readme = os.path.join(tmpdir, "README.txt")
         mtz    = os.path.join(tmpdir, "data.mtz")
         for p in (readme, mtz):
-            open(p, "w").close()
+            open(p, "w", encoding='utf-8').close()
 
         existing = []
         existing_basenames = set()
@@ -800,7 +800,7 @@ def test_auto_discover_readme_not_included():
 def test_predict_and_build_cascade_no_refine_done():
     """workflow_state.py source must NOT set refine_done in predict_and_build cascade."""
     _ws_path = os.path.join(_ROOT, "agent", "workflow_state.py")
-    with open(_ws_path) as f:
+    with open(_ws_path, encoding='utf-8') as f:
         src = f.read()
 
     # Find the cascade block
@@ -821,7 +821,7 @@ def test_predict_and_build_cascade_no_refine_done():
 def test_refined_category_excludes_predictandbuild():
     """file_categories.yaml refined category must exclude *PredictAndBuild* files."""
     _yaml_path = os.path.join(_ROOT, "knowledge", "file_categories.yaml")
-    with open(_yaml_path) as f:
+    with open(_yaml_path, encoding='utf-8') as f:
         content = f.read()
 
     # Find the refined: section
@@ -844,7 +844,7 @@ def test_refined_category_excludes_predictandbuild():
 def test_autosol_deprioritized_low_anomalous():
     """workflow_engine.py source must contain the low-anomalous deprioritization block."""
     _eng_path = os.path.join(_ROOT, "agent", "workflow_engine.py")
-    with open(_eng_path) as f:
+    with open(_eng_path, encoding='utf-8') as f:
         src = f.read()
     assert "anomalous_measurability" in src and "0.05" in src, \
         "Bug D deprioritization block not found in workflow_engine.py"

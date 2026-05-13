@@ -89,7 +89,7 @@ def test_bug1_no_overlap_with_recoverable():
   this_dir = os.path.dirname(os.path.abspath(__file__))
   yaml_path = os.path.join(this_dir, "..", "knowledge", "recoverable_errors.yaml")
   if os.path.exists(yaml_path):
-    with open(yaml_path) as f:
+    with open(yaml_path, encoding='utf-8') as f:
       content = f.read()
     assert_not_in("Unknown chemical element", content,
                   "Must not overlap with recoverable_errors")
@@ -129,7 +129,7 @@ def test_bug3_mask_atoms_not_in_strategy_flags():
   import yaml
   this_dir = os.path.dirname(os.path.abspath(__file__))
   yaml_path = os.path.join(this_dir, "..", "knowledge", "programs.yaml")
-  with open(yaml_path) as f:
+  with open(yaml_path, encoding='utf-8') as f:
     progs = yaml.safe_load(f)
   sf = progs["phenix.resolve_cryo_em"].get("strategy_flags", {})
   assert_not_in("mask_atoms", sf, "mask_atoms must not be in strategy_flags")
@@ -369,7 +369,7 @@ def test_bug5b_path_resolution():
   tmpdir = tempfile.mkdtemp()
   try:
     for fn in ["target.pdb", "ref.pdb", "data.mtz", "ss.params"]:
-      with open(os.path.join(tmpdir, fn), "w") as f:
+      with open(os.path.join(tmpdir, fn), "w", encoding='utf-8') as f:
         f.write("dummy")
 
     # Simulate the path resolution logic from program_registry.py
@@ -438,7 +438,7 @@ def test_bug5b_absolute_path_unchanged():
   tmpdir = tempfile.mkdtemp()
   try:
     ref_path = os.path.join(tmpdir, "ref.pdb")
-    with open(ref_path, "w") as f:
+    with open(ref_path, "w", encoding='utf-8') as f:
       f.write("dummy")
 
     strategy = {"reference_model.file": ref_path}
@@ -575,7 +575,7 @@ def test_bug5d_rewrites_exist():
   """_STRATEGY_REWRITES must have new entries for refine."""
   print("Test: bug5d_rewrites_exist")
   with open(os.path.join(os.path.dirname(__file__),
-            "..", "agent", "graph_nodes.py")) as f:
+            "..", "agent", "graph_nodes.py"), encoding='utf-8') as f:
     src = f.read()
   expected = [
     "secondary_structure.enabled",

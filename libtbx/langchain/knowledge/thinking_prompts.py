@@ -516,7 +516,7 @@ def _load_errors_yaml():
   if not os.path.isfile(_yaml_path):
     return []
   try:
-    with open(_yaml_path) as f:
+    with open(_yaml_path, encoding='utf-8') as f:
       data = yaml.safe_load(f)
     if isinstance(data, dict):
       return data.get("stop_reason_codes", [])

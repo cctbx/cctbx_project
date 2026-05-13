@@ -90,6 +90,134 @@ principle for future cleanups.
 | Phase 6a "appropriate prerequisite" language | Shipped Option A (ship as-is) over Options B (add hint) and C (surface `rules_priority`). If integration testing shows the LLM picks the wrong prerequisite, revisit. |
 | Redundant prediction-only allowance | The v116.10 allowance in `_check_program_prerequisites` is mostly redundant after Phase 6b but retained as defense in depth. A future cleanup could remove it if edge cases (e.g., `xtriage_done=True` with no data) are verified to reach `predict_and_build` through other paths. |
 
+### Post-Phase-5 Addition: CC Key Extraction Fix (S20)
+
+#### Summary
+
+A successful cryo-EM workflow that produced metrics and a structure
+model displayed the misleading banner "SESSION STOPPED -
+INCOMPLETE / No structure model available." Root-caused to a key
+naming inconsistency in `_generate_structure_report` and patched
+with a defensive multi-key lookup.
+
+#### Bug Details
+
+| Symptom | Successful cryo-EM run reports "SESSION STOPPED - INCOMPLETE" |
+| Root Cause | `_generate_structure_report` looked up CC under `map_model_cc` (the form programs PRINT in logs), but the cycle metrics dict stores it under `model_map_cc` (the canonical storage key, see schema at `ai_agent.py:9083-9088`). The v115.05 author wrote the lookup against the printed form. For cryo-EM workflows without R-free, this meant `_best_cc=None` → `_metrics_good=False` → stopped-report path fires despite success. |
+| Fix | Defensive multi-key lookup at lines 8794-8797 and 8822-8823: checks `model_map_cc` (canonical), `map_model_cc` (legacy/unnormalized), `map_cc` (workflow_engine variant), `cc_mask` (real_space_refine output). Works regardless of which form actually appears in the dict. |
+
+#### Files Modified
+
+| File | Lines | Change |
+|------|-------|--------|
+| `phenix/programs/ai_agent.py` | 8794-8797, 8822-8823 | Two surgical edits adding `model_map_cc` to lookup lists |
+
+#### Tests
+
+`tst_cc_key_extraction.py` (11 tests, suite S20): 2 source-level
+invariants, 5 behavioral key-variant tests, 3 edge cases, 1
+motivating-case test reproducing the Tom-reported scenario.
+
+#### Self-Review Note
+
+Initially framed as "an open-and-shut typo." That was sloppy.
+`map_model_cc` is a legitimate spelling — it appears as a phenix
+program name and in regex-captured raw log lines. The bug is real
+but it's "wrong form of the name" not "typo": the author used the
+printed form rather than the stored form. The fix's defensive
+multi-key lookup handles both forms regardless.
+
+### Post-Phase-5 Addition: File Encoding Fix (S21)
+
+#### Summary
+
+A user on Chinese-locale Windows reported a `UnicodeDecodeError:
+'gbk' codec can't decode byte 0x94` crash at startup while loading
+`programs.yaml`. Root cause: Python's `open()` without explicit
+`encoding=` falls back to the system code page (`gbk` for
+Chinese-locale Windows, `cp1252` for English, `cp932` for
+Japanese), which crashes on any non-ASCII content in a UTF-8 file.
+
+The fix was applied in two passes: initially to the 4 files
+directly implicated by the crash trace, then to the **entire
+v116.10 codebase** (63 additional files surfaced by a recursive
+grep audit).
+
+#### Bug Details
+
+| Symptom | `UnicodeDecodeError: 'gbk' codec can't decode byte 0x94 in position 987` on PHENIX startup, Chinese-locale Windows |
+| Root Cause | `open(path)` without `encoding=` uses `locale.getpreferredencoding()`. On non-UTF-8 Windows locales, any UTF-8 file with non-ASCII content (curly quotes, em dashes, accented letters) crashes the read. |
+| Fix | Add `encoding='utf-8'` to every text-mode `open()` call. YAML, JSON, PDB, and report files are all UTF-8 by spec, so this is correct behavior, not a workaround. |
+
+#### Files Modified
+
+**First pass (the reported crash site + immediate neighbors):**
+
+| File | Sites |
+|------|-------|
+| `knowledge/yaml_loader.py` | 1 (the reported crash) |
+| `phenix/programs/ai_agent.py` | 3 |
+| `agent/directive_validator.py` | 1 |
+| 4 test files | 11 |
+
+**Second pass (codebase-wide audit, 305 sites across 63 files):**
+
+| Subdirectory | Offenders | Files |
+|--------------|-----------|-------|
+| `agent/` | 53 | 22 |
+| `knowledge/` | 3 | 3 |
+| `utils/` | 1 | 1 |
+| `tests/` | 248 | 37 |
+
+Patches applied: `open(path)` → `open(path, encoding='utf-8')`;
+`open(path, 'r')` → `open(path, 'r', encoding='utf-8')`;
+`open(path, errors='X')` → `open(path, encoding='utf-8',
+errors='X')`. Binary opens, `Popen`, `urlopen`, and `.open()`
+method calls were correctly excluded.
+
+#### Tests
+
+`tst_file_encoding.py` (7 tests, suite S21):
+
+- 3 per-file source scans (`yaml_loader`, `ai_agent`, `directive_validator`)
+- 2 directory-scan tests (`test_all_production_code_uses_utf8`,
+  `test_all_test_code_uses_utf8`) — walk the entire production and
+  test trees automatically, so new files added in the future are
+  covered without test updates
+- 2 empirical tests (write/read UTF-8, the user's exact byte pattern)
+
+The scanner uses Python's `tokenize` module rather than regex
+heuristics, so docstrings and string-literal occurrences of
+`open(` are correctly excluded.
+
+#### Verification
+
+| Check | Result |
+|-------|--------|
+| Re-audit of patched files (tokenize-based) | 0 offenders |
+| Python syntax (all 63 files) | All parse |
+| Line-count drift | 0 (every patch is in-place) |
+| 1:1 substitution (added = removed) | 306 = 306 |
+| `tst_file_encoding.py` on patched | 7/7 pass |
+| `tst_file_encoding.py` on unpatched | Correctly flags 302 |
+
+#### User Workaround (No Code Change)
+
+If a user can't deploy the patched files immediately, setting
+`PYTHONUTF8=1` in their shell before launching phenix forces
+Python 3.7+ to use UTF-8 for all file I/O regardless of system
+locale.
+
+#### Self-Review Note
+
+The 305 patches are mechanically uniform but lack per-patch
+explanatory comments (the first encoding fix added a 5-line
+comment to each file; the automated patcher for the codebase-wide
+pass did not). The rationale lives in this CHANGELOG entry rather
+than per-patch comments. Future maintainers cleaning up the
+codebase should know the `encoding='utf-8'` convention is
+load-bearing for non-UTF-8 Windows locales.
+
 
 
 ## Version 115.09b (GUI Fixes + Ligand Workflow + Bug 1)

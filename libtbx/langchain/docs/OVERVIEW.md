@@ -126,6 +126,33 @@ generalize beyond v116.10:
   `_check_program_prerequisites` is mostly redundant after Phase
   6b but retained as defense in depth.
 
+**Post-Phase-5 additions.** Two user-reported issues surfaced
+during deployment and were patched after the Phase 5 docs
+shipped:
+
+- **CC key extraction (S20).** A successful cryo-EM workflow
+  displayed the misleading "SESSION STOPPED - INCOMPLETE" banner
+  because `_generate_structure_report` looked up the CC metric
+  under `map_model_cc` (the form programs print in logs) instead
+  of `model_map_cc` (the canonical storage key). The fix is a
+  defensive multi-key lookup that accepts both forms. This adds
+  a fourth principle to the cycle's collection:
+  **when fixing bugs that cross the print/store boundary,
+  accept both forms rather than picking the "correct" one.**
+
+- **File encoding (S21).** A Chinese-locale Windows user
+  reported a `UnicodeDecodeError` at PHENIX startup because
+  Python's `open()` without explicit `encoding=` falls back to
+  the system code page. An audit found **305 additional sites**
+  across the codebase with the same vulnerability; all were
+  patched to specify `encoding='utf-8'` explicitly. The
+  regression test uses directory-scan tests that walk the
+  production and test trees automatically, so new files are
+  covered without test updates. This adds a fifth principle:
+  **cross-platform code requires explicit encoding everywhere
+  text files are opened; relying on defaults assumes a locale
+  the user may not have.**
+
 ### Prior cycle
 
 The v115 cycle addressed 22 infrastructure items identified from
@@ -148,6 +175,9 @@ repo root for status.
 | xtriage offered without .mtz | yes (Bug 3) | filtered | `tst_data_input_filter.py` (v116.10) |
 | `_ACTION_TABLE` target drift | manual | automated | `tst_standalone_consistency.py` (v116.10) |
 | `CURRENT_PROTOCOL_VERSION` drift | manual | automated | `validate_contract()` + `tst_contract_compliance.py` (v116.10) |
+| Cryo-EM runs reported INCOMPLETE | yes (CC bug) | fixed | `tst_cc_key_extraction.py` (v116.10) |
+| Non-UTF-8 Windows startup crash | yes | fixed | `tst_file_encoding.py` (v116.10) |
+| Text-mode `open()` without `encoding=` | ungoverned | automated | `tst_file_encoding.py` directory-scan tests (v116.10) |
 
 ---
 

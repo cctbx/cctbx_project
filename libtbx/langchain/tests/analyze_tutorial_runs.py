@@ -256,7 +256,7 @@ def get_run_start_time(run_dir):
     if not os.path.isfile(log_path):
         return None
     try:
-        with open(log_path, "r", errors="replace") as fh:
+        with open(log_path, "r", encoding='utf-8', errors="replace") as fh:
             fh.readline()           # line 1: "Starting phenix.ai_agent"
             line2 = fh.readline()   # line 2: "on Thu Mar 12 ..."
         # Strip "on " prefix and " by <user>" suffix

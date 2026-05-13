@@ -2266,7 +2266,7 @@ class CommandBuilder:
     # Primary: read from file (works on client where files are on disk)
     if model_path and context.files_local and self._file_is_available(model_path):
       try:
-        with open(str(model_path), 'r', errors='replace') as fh:
+        with open(str(model_path), 'r', errors='replace', encoding='utf-8') as fh:
           for line in fh:
             if not line.startswith("HETATM"):
               continue

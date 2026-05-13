@@ -118,14 +118,14 @@ def _load_yaml_rules():
         return None
     try:
         import yaml
-        with open(yaml_path) as f:
+        with open(yaml_path, encoding='utf-8') as f:
             return yaml.safe_load(f)
     except ImportError:
         pass
     try:
         from ruamel.yaml import YAML
         yml = YAML()
-        with open(yaml_path) as f:
+        with open(yaml_path, encoding='utf-8') as f:
             return yml.load(f)
     except ImportError:
         return None
@@ -230,10 +230,10 @@ def test_auto_discover_supplement_mode():
     # Build a temporary directory with MTZ + FASTA + ligand PDB
     tmpdir = tempfile.mkdtemp()
     try:
-        open(os.path.join(tmpdir, "7qz0.mtz"), 'w').close()
-        open(os.path.join(tmpdir, "7qz0.fa"), 'w').close()
-        open(os.path.join(tmpdir, "7qz0_ligand.pdb"), 'w').close()
-        open(os.path.join(tmpdir, "README.txt"), 'w').close()
+        open(os.path.join(tmpdir, "7qz0.mtz"), 'w', encoding='utf-8').close()
+        open(os.path.join(tmpdir, "7qz0.fa"), 'w', encoding='utf-8').close()
+        open(os.path.join(tmpdir, "7qz0_ligand.pdb"), 'w', encoding='utf-8').close()
+        open(os.path.join(tmpdir, "README.txt"), 'w', encoding='utf-8').close()
 
         # Simulate: LLM preprocessing already found ligand PDB
         discovered_so_far = [os.path.join(tmpdir, "7qz0_ligand.pdb")]

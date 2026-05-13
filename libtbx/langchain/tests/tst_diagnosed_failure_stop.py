@@ -98,7 +98,7 @@ def test_f6a_stop_reason_set_even_when_html_write_fails():
 def test_f6a_full_report_line_only_when_file_written():
     """Step 4 must only print 'Full report:' when failure_diagnosis_path
     is in session.data — not when html_path is merely assigned in the try
-    block before a failed open()."""
+    block before a failed open(, encoding='utf-8')."""
     # When HTML write succeeds: session.data has failure_diagnosis_path
     session_ok = _SessionStub({"failure_diagnosis_path": "/out/ai_failure_diagnosis.html"})
     assert session_ok.data.get("failure_diagnosis_path")  # would print

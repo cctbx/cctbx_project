@@ -119,6 +119,9 @@ Systematic Testing Framework (v115.08):
        recognizes the canonical "model_map_cc" key, fixing misleading
        "SESSION STOPPED - INCOMPLETE" banner on successful cryo-EM runs
        (11 tests, v116.10)
+  S21. File Encoding - text-mode open() calls specify encoding='utf-8',
+       preventing UnicodeDecodeError crashes on non-UTF-8 system locales
+       (Chinese/Japanese Windows in particular) (5 tests, v116.10)
 """
 
 from __future__ import absolute_import, division, print_function
@@ -1252,6 +1255,21 @@ def main():
         print(f"\u26a0\ufe0f  Could not import tst_cc_key_extraction: {e}")
         results.append(("CC Key Extraction",
                        "tst_cc_key_extraction", False, 0))
+
+    # --- File Encoding (v116.10) ---
+    try:
+        from tests.tst_file_encoding import (
+            run_all_tests as run_file_encoding_tests)
+        success, elapsed = run_test_module(
+            "tst_file_encoding",
+            run_file_encoding_tests, args.verbose)
+        results.append(("File Encoding",
+                       "tst_file_encoding",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_file_encoding: {e}")
+        results.append(("File Encoding",
+                       "tst_file_encoding", False, 0))
 
     # --- Summary ---
     total_elapsed = time.time() - total_start

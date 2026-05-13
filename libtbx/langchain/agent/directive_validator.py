@@ -149,7 +149,8 @@ def _load_programs_from_yaml_directly():
     if not yaml_path:
         raise FileNotFoundError("Could not find programs.yaml")
 
-    with open(yaml_path, 'r') as f:
+    # v116.10: Force UTF-8 (see yaml_loader.py).
+    with open(yaml_path, 'r', encoding='utf-8') as f:
         data = yaml.safe_load(f)
 
     programs = {}

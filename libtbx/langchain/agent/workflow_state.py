@@ -224,7 +224,7 @@ def _is_valid_file(path):
     # Layer 3: PDB/CIF structural validity check
     elif ext in _MODEL_EXTENSIONS:
         try:
-            with open(path, 'r', errors='replace') as fh:
+            with open(path, 'r', encoding='utf-8', errors='replace') as fh:
                 content = fh.read()
             if ext == '.cif':
                 # CIF must have at least one data_ block or loop
@@ -312,7 +312,7 @@ def _pdb_is_small_molecule(path, max_bytes=32768):
     try:
         atom_count = 0
         hetatm_count = 0
-        with open(path, 'r', errors='replace') as fh:
+        with open(path, 'r', encoding='utf-8', errors='replace') as fh:
             for line in fh.read(max_bytes).splitlines():
                 if line.startswith('ATOM  ') or line.startswith('ATOM '):
                     atom_count += 1
@@ -365,7 +365,7 @@ def _pdb_is_protein_model(path, max_bytes=32768):
     try:
         atom_count = 0
         hetatm_count = 0
-        with open(path, 'r', errors='replace') as fh:
+        with open(path, 'r', encoding='utf-8', errors='replace') as fh:
             for line in fh.read(max_bytes).splitlines():
                 if line.startswith('ATOM  ') or line.startswith('ATOM '):
                     atom_count += 1
@@ -1615,7 +1615,7 @@ def _ascii_phase_heuristic(filepath):
     if not filepath or not os.path.isfile(filepath):
         return False
     try:
-        with open(filepath, 'r') as fh:
+        with open(filepath, 'r', encoding='utf-8') as fh:
             for i, line in enumerate(fh):
                 if i >= 100:
                     break

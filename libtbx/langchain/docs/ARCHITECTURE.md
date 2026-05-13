@@ -3615,6 +3615,66 @@ test loudly.
 Plus one test added to existing `tst_contract_compliance.py`
 (`test_contract_validate_passes`).
 
+### Post-Phase-5 Reliability Layers
+
+Two additional fixes were added after Phase 5 documentation
+shipped, both addressing user-reported issues that surfaced
+during deployment. They extend the v116.10 framing with two
+new layers:
+
+**Layer 5 — Result classification.** A successful cryo-EM
+workflow displayed the "SESSION STOPPED - INCOMPLETE" banner
+because `_generate_structure_report` looked up the CC metric
+under `map_model_cc` (the form programs print in logs) instead
+of `model_map_cc` (the canonical storage key used by the metrics
+schema). This produced `_metrics_good=False` for cryo-EM runs
+that didn't have R-free, routing the report to
+`generate_stopped_report` despite the workflow's success. The fix
+is a defensive multi-key lookup at the two affected sites in
+`_generate_structure_report`. The principle: when bugs cross
+the print/store boundary, the fix should accept both forms
+rather than picking the "correct" one.
+
+**Layer 6 — Cross-platform file encoding.** A user on
+Chinese-locale Windows reported a `UnicodeDecodeError` at PHENIX
+startup. Python's `open()` without explicit `encoding=` falls
+back to `locale.getpreferredencoding()`, which on non-UTF-8
+Windows locales (`gbk`, `cp1252`, `cp932`, etc.) crashes on any
+UTF-8 content. The first encoding fix patched the four files
+directly implicated by the crash trace. A subsequent audit
+surfaced **305 more instances** across the codebase, which were
+all patched to specify `encoding='utf-8'` explicitly. YAML, JSON,
+PDB, and report files are all UTF-8 by spec, so this is correct
+behavior, not a workaround.
+
+The encoding fix introduced a pattern that's now codebase-wide:
+**every text-mode `open()` specifies `encoding='utf-8'`
+explicitly**. The regression test (`tst_file_encoding.py`) uses
+directory-scan tests that walk `agent/`, `knowledge/`, `utils/`,
+and `tests/` automatically, so new files are covered without
+test updates. The scanner uses Python's `tokenize` module rather
+than regex heuristics, so docstrings and string-literal
+occurrences of `open(` are correctly excluded.
+
+### Post-Phase-5 Files Modified
+
+| File | Fix | Sites |
+|------|-----|-------|
+| `phenix/programs/ai_agent.py` | CC key + encoding | 2 (CC) + 3 (encoding) |
+| `knowledge/yaml_loader.py` | encoding | 1 (the reported crash) |
+| `agent/directive_validator.py` | encoding | 1 |
+| `agent/` (22 files) | encoding | 53 |
+| `knowledge/` (3 files) | encoding | 3 |
+| `utils/run_utils.py` | encoding | 1 |
+| `tests/` (37 files) | encoding | 248 |
+
+### Post-Phase-5 Test Suites Added
+
+| Test | Cases | Verifies |
+|------|-------|----------|
+| `tst_cc_key_extraction.py` (S20) | 11 | Cycle metric CC lookup recognizes canonical `model_map_cc` |
+| `tst_file_encoding.py` (S21) | 7 | Every text-mode `open()` specifies `encoding='utf-8'`; directory-scan tests cover new files automatically |
+
 ---
 
 ## Event System

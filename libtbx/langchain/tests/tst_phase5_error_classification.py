@@ -95,9 +95,9 @@ def load_yamls():
                             'recoverable_errors.yaml')
     diag_path = os.path.join(BASE_DIR, 'knowledge',
                              'diagnosable_errors.yaml')
-    with open(rec_path) as f:
+    with open(rec_path, encoding='utf-8') as f:
         rec = yaml.safe_load(f)
-    with open(diag_path) as f:
+    with open(diag_path, encoding='utf-8') as f:
         diag = yaml.safe_load(f)
     return rec, diag
 
@@ -391,7 +391,7 @@ def run_all_tests():
     os.makedirs(FINDINGS_DIR, exist_ok=True)
     path = os.path.join(FINDINGS_DIR,
                         'phase_5_classification_disagreements.yaml')
-    with open(path, 'w') as f:
+    with open(path, 'w', encoding='utf-8') as f:
         f.write("# Phase 5: Error Classification Findings\n")
         f.write("phase: 5\n")
         f.write("name: error_classification\n")

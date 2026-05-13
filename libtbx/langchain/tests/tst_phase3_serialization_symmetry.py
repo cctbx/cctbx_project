@@ -95,9 +95,9 @@ def round_trip(data):
 def session_round_trip(session_data, tmpdir):
     """Save session data to file and load it back."""
     path = os.path.join(tmpdir, "test_session.json")
-    with open(path, 'w') as f:
+    with open(path, 'w', encoding='utf-8') as f:
         json.dump(session_data, f, indent=2)
-    with open(path, 'r') as f:
+    with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
 
 
@@ -962,7 +962,7 @@ def run_all_tests():
     os.makedirs(FINDINGS_DIR, exist_ok=True)
     path = os.path.join(FINDINGS_DIR,
                         'phase_3_roundtrip_failures.yaml')
-    with open(path, 'w') as f:
+    with open(path, 'w', encoding='utf-8') as f:
         f.write("# Phase 3: Session Round-Trip Findings\n")
         f.write("phase: 3\n")
         f.write("name: session_roundtrip\n")

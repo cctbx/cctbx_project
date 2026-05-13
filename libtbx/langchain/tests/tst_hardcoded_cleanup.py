@@ -37,7 +37,7 @@ def _read(relpath):
     # First try the simple local path
     path = os.path.join(_ROOT_DIR, relpath)
     if os.path.exists(path):
-        with open(path) as f:
+        with open(path, encoding='utf-8') as f:
             return f.read()
 
     # Not co-located — resolve via import system.
@@ -48,7 +48,7 @@ def _read(relpath):
         try:
             mod = __import__(prefix + mod_path, fromlist=["__file__"])
             if hasattr(mod, "__file__") and mod.__file__:
-                with open(mod.__file__) as f:
+                with open(mod.__file__, encoding='utf-8') as f:
                     return f.read()
         except (ImportError, AttributeError):
             continue
@@ -868,7 +868,7 @@ def test_rules_priority_in_workflow_phases():
     import yaml as _yaml
 
     yaml_path = os.path.join(_ROOT_DIR, "knowledge", "workflows.yaml")
-    with open(yaml_path) as f:
+    with open(yaml_path, encoding='utf-8') as f:
         workflows = _yaml.safe_load(f)
 
     expected_steps = {
@@ -898,7 +898,7 @@ def test_rules_config_in_shared():
     import yaml as _yaml
 
     yaml_path = os.path.join(_ROOT_DIR, "knowledge", "workflows.yaml")
-    with open(yaml_path) as f:
+    with open(yaml_path, encoding='utf-8') as f:
         workflows = _yaml.safe_load(f)
 
     config = workflows.get("shared", {}).get("rules_config", {})

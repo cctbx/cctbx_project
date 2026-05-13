@@ -134,7 +134,7 @@ class ErrorAnalyzer:
             return {}
 
         try:
-            with open(yaml_path, 'r') as f:
+            with open(yaml_path, 'r', encoding='utf-8') as f:
                 return yaml.safe_load(f) or {}
         except Exception as e:
             print(f"Warning: Could not load recoverable_errors.yaml: {e}")
@@ -790,7 +790,7 @@ class DiagnosisDetector:
             return {}
 
         try:
-            with open(yaml_path, 'r') as f:
+            with open(yaml_path, 'r', encoding='utf-8') as f:
                 return yaml.safe_load(f) or {}
         except Exception as e:
             print(f"Warning: Could not load diagnosable_errors.yaml: {e}")

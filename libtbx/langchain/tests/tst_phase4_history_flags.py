@@ -79,7 +79,7 @@ def test_all_read_flags_are_written():
 
     with open(os.path.join(os.path.dirname(os.path.dirname(
             os.path.abspath(__file__))),
-            'agent', 'workflow_engine.py')) as f:
+            'agent', 'workflow_engine.py'), encoding='utf-8') as f:
         src = f.read()
 
     # Extract flags from dict literal in build_context
@@ -184,7 +184,7 @@ def test_yaml_done_flags_registered():
 
     with open(os.path.join(os.path.dirname(os.path.dirname(
             os.path.abspath(__file__))),
-            'knowledge', 'programs.yaml')) as f:
+            'knowledge', 'programs.yaml'), encoding='utf-8') as f:
         progs = yaml.safe_load(f)
 
     from knowledge.program_registration import (
@@ -348,7 +348,7 @@ def test_dead_flags_documented():
     all_read = set()
     for module in ['agent/workflow_engine.py',
                     'agent/graph_nodes.py']:
-        with open(os.path.join(base, module)) as f:
+        with open(os.path.join(base, module), encoding='utf-8') as f:
             src = f.read()
         for m in re.finditer(
                 r'context\.get\(["\'](\w+)["\']', src):
@@ -359,7 +359,7 @@ def test_dead_flags_documented():
 
     # Extract all written flags from workflow_engine.py
     with open(os.path.join(base,
-              'agent/workflow_engine.py')) as f:
+              'agent/workflow_engine.py'), encoding='utf-8') as f:
         src = f.read()
     ctx_start = src.find('context = {')
     ctx_end = src.find('\n        }', ctx_start) + 10
@@ -434,7 +434,7 @@ def run_all_tests():
     os.makedirs(FINDINGS_DIR, exist_ok=True)
     path = os.path.join(FINDINGS_DIR,
                         'phase_4_flag_mismatches.yaml')
-    with open(path, 'w') as f:
+    with open(path, 'w', encoding='utf-8') as f:
         f.write("# Phase 4: History Flag Consistency Findings\n")
         f.write("phase: 4\n")
         f.write("name: history_flags\n")

@@ -250,7 +250,7 @@ class BestFilesTracker:
             import yaml
             yaml_path = self._find_yaml_path()
             if yaml_path and os.path.exists(yaml_path):
-                with open(yaml_path, 'r') as f:
+                with open(yaml_path, 'r', encoding='utf-8') as f:
                     data = yaml.safe_load(f)
                 self._scoring_config = data.get("best_files_scoring", {})
                 if self._scoring_config:
@@ -1199,7 +1199,7 @@ class BestFilesTracker:
 
         # Content detection (slower but accurate)
         try:
-            with open(path, 'r') as f:
+            with open(path, 'r', encoding='utf-8') as f:
                 content = f.read(4096)  # Read first 4KB
                 if '_atom_site.' in content or '_atom_site_' in content:
                     return "model"

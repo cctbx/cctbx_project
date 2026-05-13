@@ -1620,7 +1620,7 @@ def test_autosol_has_partial_model_config():
     import yaml
     yaml_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                              "knowledge", "programs.yaml")
-    with open(yaml_path) as f:
+    with open(yaml_path, encoding='utf-8') as f:
         programs = yaml.safe_load(f)
 
     autosol = programs["phenix.autosol"]
@@ -1678,7 +1678,7 @@ def test_experimental_phasing_yaml_structure():
     import yaml
     yaml_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                              "knowledge", "workflows.yaml")
-    with open(yaml_path) as f:
+    with open(yaml_path, encoding='utf-8') as f:
         workflows = yaml.safe_load(f)
 
     steps = workflows["xray"].get("steps") or workflows["xray"].get("phases") or {}

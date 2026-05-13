@@ -146,7 +146,7 @@ def create_tutorial_files(tmpdir, file_list):
     for name in file_list:
         path = os.path.join(tmpdir, name)
         ext = os.path.splitext(name)[1].lower()
-        with open(path, 'w') as f:
+        with open(path, 'w', encoding='utf-8') as f:
             if ext == '.pdb':
                 # Protein-sized PDB (>10KB to avoid ligand_pdb)
                 for i in range(800):
@@ -348,7 +348,7 @@ def run_all_tests():
     os.makedirs(findings_dir, exist_ok=True)
     findings_path = os.path.join(
         findings_dir, 'phase_2_path_divergences.yaml')
-    with open(findings_path, 'w') as f:
+    with open(findings_path, 'w', encoding='utf-8') as f:
         f.write("# Phase 2: Path Consistency Findings\n")
         f.write("phase: 2\n")
         f.write("name: path_consistency\n")

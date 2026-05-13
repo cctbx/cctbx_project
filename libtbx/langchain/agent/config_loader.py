@@ -21,7 +21,7 @@ def load_config(path=None):
     global _config
     if _config is None or path is not None:
         config_path = path or CONFIG_PATH
-        with open(config_path) as f:
+        with open(config_path, encoding='utf-8') as f:
             _config = json.load(f)
     return _config
 

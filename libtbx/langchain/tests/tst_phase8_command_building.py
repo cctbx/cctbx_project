@@ -164,7 +164,7 @@ EDGE_CASES = {
 
 def create_pdb(path, n_atoms=800):
     """Create a realistic PDB file."""
-    with open(path, 'w') as f:
+    with open(path, 'w', encoding='utf-8') as f:
         for i in range(n_atoms):
             f.write(
                 "ATOM  %5d  CA  ALA A%4d"
@@ -198,14 +198,14 @@ def create_tutorial_files(tmpdir, file_list, real_map=False):
         elif ext in ('.ccp4', '.mrc', '.map') and real_map:
             create_ccp4_map(path)
         elif ext in ('.ccp4', '.mrc', '.map'):
-            with open(path, 'w') as f:
+            with open(path, 'w', encoding='utf-8') as f:
                 f.write("MAP " + "\x00" * 200 + "\n")
         elif ext in ('.seq', '.dat', '.fasta'):
-            with open(path, 'w') as f:
+            with open(path, 'w', encoding='utf-8') as f:
                 f.write(">sequence\n")
                 f.write("MVLSPADKTNVKAAWGKVGA" * 10 + "\n")
         elif ext in ('.hkl', '.sca'):
-            with open(path, 'w') as f:
+            with open(path, 'w', encoding='utf-8') as f:
                 if 'phases' in name.lower():
                     f.write("COLUMN_LABELS H K L PHIB FOM "
                             "FP SIGFP\n")
@@ -213,13 +213,13 @@ def create_tutorial_files(tmpdir, file_list, real_map=False):
                     f.write("COLUMN_LABELS H K L FP SIGFP\n")
                 f.write("1 0 0 120.5 3.2\n")
         elif ext == '.mtz':
-            with open(path, 'w') as f:
+            with open(path, 'w', encoding='utf-8') as f:
                 f.write("MTZ_DUMMY\n" * 100)
         elif ext == '.cif':
-            with open(path, 'w') as f:
+            with open(path, 'w', encoding='utf-8') as f:
                 f.write("data_ligand\n_chem_comp.id LIG\n")
         else:
-            with open(path, 'w') as f:
+            with open(path, 'w', encoding='utf-8') as f:
                 f.write("dummy\n")
         paths.append(path)
     return paths
@@ -399,7 +399,7 @@ def run_all_simulations():
     os.makedirs(FINDINGS_DIR, exist_ok=True)
     path = os.path.join(FINDINGS_DIR,
                         'phase_8_command_failures.yaml')
-    with open(path, 'w') as f:
+    with open(path, 'w', encoding='utf-8') as f:
         f.write("# Phase 8: Command Building Findings\n")
         f.write("phase: 8\n")
         f.write("name: command_building\n")

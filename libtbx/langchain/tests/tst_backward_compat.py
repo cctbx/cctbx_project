@@ -45,13 +45,13 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def _load_programs_yaml():
     path = os.path.join(_PROJECT_ROOT, "knowledge", "programs.yaml")
-    with open(path) as f:
+    with open(path, encoding='utf-8') as f:
         return yaml.safe_load(f)
 
 
 def _load_workflows_yaml():
     path = os.path.join(_PROJECT_ROOT, "knowledge", "workflows.yaml")
-    with open(path) as f:
+    with open(path, encoding='utf-8') as f:
         return yaml.safe_load(f)
 
 
@@ -422,7 +422,7 @@ def test_no_new_required_session_info():
 def test_supplement_uses_realpath():
     """The supplement logic must use os.path.realpath for symlink robustness."""
     path = os.path.join(_PROJECT_ROOT, "agent", "command_builder.py")
-    with open(path) as f:
+    with open(path, encoding='utf-8') as f:
         src = f.read()
     assert_in("os.path.realpath", src,
               "Supplement logic must use os.path.realpath")
@@ -438,7 +438,7 @@ def test_supplement_uses_realpath():
 def test_supplement_variable_not_shadowed():
     """The supplement loop variable must not shadow all_inputs."""
     path = os.path.join(_PROJECT_ROOT, "agent", "command_builder.py")
-    with open(path) as f:
+    with open(path, encoding='utf-8') as f:
         src = f.read()
     # Must use all_input_defs, not all_inputs
     supp_start = src.index("SUPPLEMENT:")
@@ -458,7 +458,7 @@ def test_supplement_variable_not_shadowed():
 def test_space_group_cctbx_before_heuristic():
     """cctbx.sgtbx validation must run before the heuristic fallback."""
     path = os.path.join(_PROJECT_ROOT, "agent", "command_builder.py")
-    with open(path) as f:
+    with open(path, encoding='utf-8') as f:
         src = f.read()
     cctbx_pos = src.index("from cctbx import sgtbx")
     heuristic_pos = src.index("heuristic, no cctbx")
@@ -474,7 +474,7 @@ def test_space_group_cctbx_before_heuristic():
 def test_unplaced_model_guard_saves_orig_program():
     """The unplaced model guard must save _orig_program before overwriting."""
     path = os.path.join(_PROJECT_ROOT, "agent", "graph_nodes.py")
-    with open(path) as f:
+    with open(path, encoding='utf-8') as f:
         src = f.read()
     assert_in("_orig_program = chosen_program", src,
               "Must save original program name before redirect")
@@ -589,7 +589,7 @@ def test_output_node_guarantees_documented_fields():
     old clients will KeyError or get wrong behavior.
     """
     path = os.path.join(_PROJECT_ROOT, "agent", "graph_nodes.py")
-    with open(path) as f:
+    with open(path, encoding='utf-8') as f:
         src = f.read()
 
     # Find the output_node function
@@ -616,7 +616,7 @@ def test_dedup_documents_all_flag_types():
     three mutually-exclusive half-map dedup behaviors.
     """
     path = os.path.join(_PROJECT_ROOT, "agent", "command_builder.py")
-    with open(path) as f:
+    with open(path, encoding='utf-8') as f:
         src = f.read()
     dedup_start = src.index("POST-SELECTION VALIDATION:")
     dedup_end = src.index("if \"full_map\" in selected_files", dedup_start)
@@ -676,7 +676,7 @@ def test_no_llm_imports_in_shared_code():
         path = os.path.join(_PROJECT_ROOT, "agent", fname)
         if not os.path.exists(path):
             continue
-        with open(path) as f:
+        with open(path, encoding='utf-8') as f:
             src = f.read()
         for lib in FORBIDDEN:
             # Check for bare imports (not inside try/except)
@@ -749,9 +749,9 @@ def test_local_remote_agent_settings_parity():
         pattern = r'request\["settings"\]\["(\w+)"\]'
         return sorted(set(re.findall(pattern, src)))
 
-    with open(local_path) as f:
+    with open(local_path, encoding='utf-8') as f:
         local_src = f.read()
-    with open(remote_path) as f:
+    with open(remote_path, encoding='utf-8') as f:
         remote_src = f.read()
 
     local_settings = extract_settings(local_src)
@@ -802,9 +802,9 @@ def test_local_remote_agent_return_parity():
         # Remove 'group_args_type' as it's the type label, not a data field
         return sorted(f for f in fields if f != 'group_args_type')
 
-    with open(local_path) as f:
+    with open(local_path, encoding='utf-8') as f:
         local_src = f.read()
-    with open(remote_path) as f:
+    with open(remote_path, encoding='utf-8') as f:
         remote_src = f.read()
 
     local_fields = extract_group_args_fields(local_src)
@@ -829,7 +829,7 @@ def test_local_agent_full_roundtrip():
         print("  SKIP (phenix_ai/ not available)")
         return
 
-    with open(local_path) as f:
+    with open(local_path, encoding='utf-8') as f:
         src = f.read()
 
     assert_in("prepare_request_for_transport", src,

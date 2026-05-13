@@ -971,7 +971,7 @@ def test_phase2_mock_drift_check():
     print("  SKIP (ai_agent.py not found at %s)" % ai_agent_path)
     return
 
-  with open(ai_agent_path) as f:
+  with open(ai_agent_path, encoding='utf-8') as f:
     source = f.read()
 
   # Verify the method exists
@@ -1009,7 +1009,7 @@ def test_bug5_safety_net_handles_empty_best_files():
   if not os.path.isfile(ai_agent_path):
     print("  SKIP (ai_agent.py not found)")
     return
-  with open(ai_agent_path, 'r') as f:
+  with open(ai_agent_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   # The safety net condition must use `is not None`, not truthiness
@@ -1040,7 +1040,7 @@ def test_bug5_gui_sub_job_returns_output_dir():
   if not os.path.isfile(ai_agent_path):
     print("  SKIP (ai_agent.py not found)")
     return
-  with open(ai_agent_path, 'r') as f:
+  with open(ai_agent_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   # The main return must include gui_output_dir
@@ -1062,7 +1062,7 @@ def test_bug5_execute_command_uses_gui_output_dir():
   if not os.path.isfile(ai_agent_path):
     print("  SKIP (ai_agent.py not found)")
     return
-  with open(ai_agent_path, 'r') as f:
+  with open(ai_agent_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   # Must unpack 4-tuple from _execute_sub_job_for_gui
@@ -1087,7 +1087,7 @@ def test_bug5_track_output_files_accepts_working_dir():
   if not os.path.isfile(ai_agent_path):
     print("  SKIP (ai_agent.py not found)")
     return
-  with open(ai_agent_path, 'r') as f:
+  with open(ai_agent_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   # Function signature must accept working_dir
@@ -1115,7 +1115,7 @@ def test_bug6_rest_init_raises_sorry_on_daily_limit():
   if not os.path.isfile(rest_init_path):
     print("  SKIP (rest/__init__.py not found)")
     return
-  with open(rest_init_path, 'r') as f:
+  with open(rest_init_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   import re
@@ -1139,7 +1139,7 @@ def test_bug6_remote_agent_reraises_sorry():
   if not os.path.isfile(remote_agent_path):
     print("  SKIP (remote_agent.py not found)")
     return
-  with open(remote_agent_path, 'r') as f:
+  with open(remote_agent_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   assert_in("except Sorry:", source,
@@ -1227,7 +1227,7 @@ def test_bug7_source_no_after_program_return_true():
   checks_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "perceive_checks.py")
-  with open(checks_path, 'r') as f:
+  with open(checks_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   # The old pattern that returned True on after_program match must be gone
@@ -1250,7 +1250,7 @@ def test_bug7_session_fallback_no_after_program_stop():
   session_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "session.py")
-  with open(session_path, 'r') as f:
+  with open(session_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   # The old pattern that set should_stop=True on after_program match
@@ -1271,7 +1271,7 @@ def test_bug7_no_dead_last_command_in_perceive_checks():
   checks_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "perceive_checks.py")
-  with open(checks_path, 'r') as f:
+  with open(checks_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   assert_true(
@@ -1289,7 +1289,7 @@ def test_bug7_directive_extractor_no_after_program_stop():
   extractor_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "directive_extractor.py")
-  with open(extractor_path, 'r') as f:
+  with open(extractor_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   assert_true(
@@ -1317,7 +1317,7 @@ def test_win_filter_intermediate_normalizes_separators():
   nodes_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "graph_nodes.py")
-  with open(nodes_path, 'r') as f:
+  with open(nodes_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   # The function must normalize backslashes before matching markers
@@ -1338,7 +1338,7 @@ def test_win_popen_create_no_window():
   if not os.path.isfile(agent_path):
     print("  SKIP (ai_agent.py not found)")
     return
-  with open(agent_path, 'r') as f:
+  with open(agent_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   assert_in("CREATE_NO_WINDOW", source,
@@ -1360,7 +1360,7 @@ def test_win_abort_detection_comment():
   if not os.path.isfile(agent_path):
     print("  SKIP (ai_agent.py not found)")
     return
-  with open(agent_path, 'r') as f:
+  with open(agent_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   assert_in("taskkill", source,
@@ -1378,7 +1378,7 @@ def test_win_session_utf8_encoding():
   session_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "session.py")
-  with open(session_path, 'r') as f:
+  with open(session_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   # All three open() calls for session JSON should use encoding='utf-8'
@@ -1386,7 +1386,7 @@ def test_win_session_utf8_encoding():
   open_calls = re.findall(r"open\([^)]*session_file[^)]*\)", source)
   for call in open_calls:
     assert_in("encoding='utf-8'", call,
-         "session_file open() must specify UTF-8: %s" % call)
+         "session_file open(, encoding='utf-8') must specify UTF-8: %s" % call)
 
 
 def run_all_tests():

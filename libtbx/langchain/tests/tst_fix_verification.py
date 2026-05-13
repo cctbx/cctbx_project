@@ -22,11 +22,11 @@ if not os.path.isdir(os.path.join(_ROOT, "agent")):
                          "libtbx", "langchain")
 
 def _read(relpath):
-    with open(os.path.join(_ROOT, relpath)) as f:
+    with open(os.path.join(_ROOT, relpath), encoding='utf-8') as f:
         return f.read()
 
 def _read_abs(abspath):
-    with open(abspath) as f:
+    with open(abspath, encoding='utf-8') as f:
         return f.read()
 
 

@@ -98,7 +98,7 @@ class ProgramRegistry:
             )
 
         if os.path.exists(self._template_path):
-            with open(self._template_path, 'r') as f:
+            with open(self._template_path, 'r', encoding='utf-8') as f:
                 self._json_templates = json.load(f)
         else:
             self._json_templates = {}

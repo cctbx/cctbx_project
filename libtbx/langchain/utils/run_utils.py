@@ -330,7 +330,7 @@ def save_history_to_json(history_record, log_directory, job_id=None, debug_log=N
     json_path = os.path.join(log_directory, json_filename)
 
     import json
-    with open(json_path, 'w') as f:
+    with open(json_path, 'w', encoding='utf-8') as f:
       json.dump(history_record, f, indent=2)
 
     debug_log.append(f"Saved run history to: {json_path}")

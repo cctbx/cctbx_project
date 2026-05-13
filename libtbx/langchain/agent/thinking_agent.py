@@ -108,7 +108,7 @@ def _get_strategic_programs():
       "..", "knowledge", "programs.yaml",
     )
     if os.path.isfile(yaml_path):
-      with open(yaml_path) as f:
+      with open(yaml_path, encoding='utf-8') as f:
         data = yaml.safe_load(f)
       if isinstance(data, dict):
         names = set()

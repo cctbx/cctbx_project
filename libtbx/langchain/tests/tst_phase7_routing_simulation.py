@@ -74,7 +74,7 @@ def load_tutorials():
         print("  Copy report_solve.json from a batch run directory")
         print("  to: %s" % BASE_DIR)
         return {}
-    with open(report_path) as f:
+    with open(report_path, encoding='utf-8') as f:
         solve = json.load(f)['tutorials']
 
     tutorials = {}
@@ -116,7 +116,7 @@ def create_tutorial_files(tmpdir, file_list):
         if parent and not os.path.exists(parent):
             os.makedirs(parent)
         ext = os.path.splitext(name)[1].lower()
-        with open(path, 'w') as f:
+        with open(path, 'w', encoding='utf-8') as f:
             if ext == '.pdb':
                 for i in range(800):
                     f.write(
@@ -372,7 +372,7 @@ def run_all_simulations():
     os.makedirs(FINDINGS_DIR, exist_ok=True)
     path = os.path.join(FINDINGS_DIR,
                         'phase_7_routing_failures.yaml')
-    with open(path, 'w') as f:
+    with open(path, 'w', encoding='utf-8') as f:
         f.write("# Phase 7: Routing Simulation Findings\n")
         f.write("phase: 7\n")
         f.write("name: routing_simulation\n")
