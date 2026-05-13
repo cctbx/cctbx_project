@@ -2121,9 +2121,7 @@ class manager(object):
         grm_normalization         = True,
         plain_pairs_radius        = 5,
         custom_nb_excl            = None,
-        run_clash_guard           = False,
-        unset_processed_pdb_file  = True,
-        ):
+        run_clash_guard           = False):
     self._processed = True
     if(pdb_interpretation_params is not None):
       self.unset_restraints_manager()
@@ -2216,8 +2214,7 @@ class manager(object):
     # This must happen after process call.
     # Reason: contents of model and _model_input can get out of sync any time.
     self._model_input = None
-    if unset_processed_pdb_file:
-      self.unset_processed_pdb_file()
+    self.unset_processed_pdb_file()
     # Order of calling this matters!
     self.link_records_in_pdb_format = link_record_output(acp)
 
