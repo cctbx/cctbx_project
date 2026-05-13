@@ -12,17 +12,6 @@ class resolution_binner(worker):
   def run(self, experiments, reflections):
     '''Set up resolution bins; assign bin number to each hkl in the full miller set'''
 
-    '''
-    # for debugging purposes on Cori
-    memory_MB = get_memory_usage()
-    self.logger.log("Starting resolution_binner with memory usage: %d"%memory_MB)
-    comm = self.mpi_helper.comm
-    MPI = self.mpi_helper.MPI
-    max_memory_usage_MB = comm.reduce(memory_MB, MPI.MAX)
-    if self.mpi_helper.rank == 0:
-      self.logger.main_log("Maximum memory usage per process: %d MB"%max_memory_usage_MB)
-    '''
-
     # Create resolution binner
     full_miller_set = self.params.scaling.miller_set
     full_miller_set.setup_binner(d_max=100000, d_min=self.params.merging.d_min, n_bins=self.params.statistics.n_bins)
