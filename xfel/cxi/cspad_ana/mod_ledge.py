@@ -433,7 +433,7 @@ class mod_ledge(common_mode.common_mode_correction):
     """
 
     from pyana.event import Event
-    from acqiris_ext import acqiris_integrate, apd_hitfind
+    from acqiris_ext import acqiris_integrate
 
     super(mod_ledge, self).event(evt, env)
     if evt.status() != Event.Normal:

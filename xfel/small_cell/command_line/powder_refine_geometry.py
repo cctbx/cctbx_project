@@ -3,7 +3,6 @@ from __future__ import division
 import logging
 
 from iotbx.phil import parse
-from dials.util import log
 from dials.util import show_mail_on_error
 from dials.util.options import ArgumentParser
 from xfel.small_cell.geometry_refiner import PowderGeometryRefiner

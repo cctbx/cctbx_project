@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
-from xfel.merging.application.utils.memory_usage import get_memory_usage
 
 class resolution_binner(worker):
 
