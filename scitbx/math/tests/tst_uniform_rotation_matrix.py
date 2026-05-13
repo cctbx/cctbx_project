@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-import math, random
+import math
 from scitbx import matrix
 from scitbx.array_family import flex
 from six.moves import range
