@@ -126,6 +126,43 @@ class shared_rotated_u(object):
     self.value = u_c
     self.angle = angle
 
+class scalar_scaled_u(object):
+  """ u_iso or u_star of a group of atoms all equal to their starting values
+      times a scalar constant
+  """
+
+  def __init__(self, ind_sequence):
+    self.indices = ind_sequence
+
+  @property
+  def constrained_parameters(self):
+    return tuple((idx, "U") for idx in self.indices)
+
+  def add_to(self, reparametrisation):
+    scatterers = reparametrisation.structure.scatterers()
+    scalar = reparametrisation.add(_.independent_scalar_parameter,
+      value=1., variable=True)
+    for idx in self.indices:
+      use_u_aniso = scatterers[idx].flags.use_u_aniso()
+      if use_u_aniso:
+        param = reparametrisation.add(
+          _.scalar_scaled_u_star,
+          scalar=scalar,
+          scatterer=scatterers[idx])
+      else:
+        param = reparametrisation.add(
+          _.scalar_scaled_u_iso,
+          scalar=scalar,
+          scatterer=scatterers[idx])
+      # reparametrisation.shared_Us[idx] = param # not sure what to do with this
+      reparametrisation.asu_scatterer_parameters[idx].u = param
+    self.scalar = scalar
+
+  def esd(self, ls):
+    from math import sqrt
+    cov_diag = ls.covariance_matrix().matrix_packed_u_diagonal()
+    return sqrt(cov_diag[self.scalar.index])
+
 class shared_rotating_u(object):
   """ u_eq or u_star of some scatterer constrained to be equal to
       u_iso or u_start of another scatterer
