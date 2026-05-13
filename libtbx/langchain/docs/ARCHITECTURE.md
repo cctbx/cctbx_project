@@ -3703,6 +3703,7 @@ of being skipped.
 | `tests/` (37 files) | encoding | 248 |
 | `agent/workflow_engine.py` | Phase 6c past_analysis | 1 function (lines 1040-1086) |
 | `agent/best_files_tracker.py` | Phase 6c ligand_fit_output inheritance | 1 condition (lines 564-583) |
+| `wxGUI2/Programs/AIAgent.py` | GUI tutorial override guard | 1 condition (validate_params) |
 
 ### Post-Phase-5 Test Suites Added
 
@@ -3711,6 +3712,31 @@ of being skipped.
 | `tst_cc_key_extraction.py` (S20) | 11 | Cycle metric CC lookup recognizes canonical `model_map_cc` |
 | `tst_file_encoding.py` (S21) | 7 | Every text-mode `open()` specifies `encoding='utf-8'`; directory-scan tests cover new files automatically |
 | `tst_ligand_workflow_restart.py` (S22) | 14 | `_detect_xray_step` past_analysis check (8 tests); existing-behavior regression (2 tests); `ligand_fit_output` metric inheritance (4 tests) |
+| `tst_initialize_plan_smoke.py` (S23) | 9 | Behavioral assertions on `_initialize_plan_inner`'s decision tree side effects (directive rewrites, plan-generation gating) — complements the existing trace-only tests |
+| `tst_phase3d_motivating_tutorial.py` (S24) | 3 | Integration-level verification of Phase 3d dock-and-stop with sequence + map: decision-tree (unconditional), YAML expectations format (unconditional), session-based behavior (skip-aware) |
+
+### Post-Phase-5 GUI Fix
+
+A single-condition guard added to `wxGUI2/Programs/AIAgent.py`
+during integration testing of Phase 6c.
+
+The bug: when running a tutorial whose README mentioned a phenix
+program not yet supported by the AI Agent, the GUI's
+`validate_params()` blocked Run with a `Sorry` dialog —
+even when the user had supplied their own files and advice that
+didn't use the unsupported program. The blocking guard was
+unconditional on `tut["can_run"]`, ignoring user input.
+
+The fix: guard the blocking dialog with
+`not has_files and not has_advice` so it only fires when the
+user is actually relying on the README. The informational
+banner at the top of the page still displays the "tutorial
+requires X" warning so the user sees what the README is asking
+for.
+
+This wasn't part of the planned v116.10 cycle — it was
+discovered during testing of Phase 6c, fixed in passing.
+User-confirmed working.
 
 ---
 

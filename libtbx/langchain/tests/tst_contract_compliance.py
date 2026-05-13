@@ -90,7 +90,7 @@ def test_no_bare_session_info_bracket_reads():
     for filepath in SERVER_FILES:
         if not os.path.exists(filepath):
             continue
-        with open(filepath) as f:
+        with open(filepath, encoding='utf-8') as f:
             for lineno, line in enumerate(f, 1):
                 stripped = line.strip()
                 if stripped.startswith("#"):
@@ -134,7 +134,7 @@ def test_all_accessed_fields_in_contract():
     for filepath in SERVER_FILES:
         if not os.path.exists(filepath):
             continue
-        with open(filepath) as f:
+        with open(filepath, encoding='utf-8') as f:
             content = f.read()
         # .get() calls
         for m in re.finditer(r'session_info\.get\("(\w+?)"', content):
@@ -172,7 +172,7 @@ def test_contract_defaults_consistency():
     for filepath in SERVER_FILES:
         if not os.path.exists(filepath):
             continue
-        with open(filepath) as f:
+        with open(filepath, encoding='utf-8') as f:
             for lineno, line in enumerate(f, 1):
                 if line.strip().startswith("#"):
                     continue
@@ -249,7 +249,7 @@ def test_get_without_default_on_non_none_fields():
     for filepath in SERVER_FILES:
         if not os.path.exists(filepath):
             continue
-        with open(filepath) as f:
+        with open(filepath, encoding='utf-8') as f:
             for lineno, line in enumerate(f, 1):
                 if line.strip().startswith("#"):
                     continue
@@ -294,7 +294,7 @@ def test_protocol_version_consistency():
         print("  SKIP (ai_agent.py not found)")
         return
 
-    with open(client_file) as f:
+    with open(client_file, encoding='utf-8') as f:
         content = f.read()
 
     # Check that the client imports from contract (not hardcoded)
@@ -406,7 +406,7 @@ def test_client_handles_warnings():
         print("  SKIP (ai_agent.py not found)")
         return
 
-    with open(client_file) as f:
+    with open(client_file, encoding='utf-8') as f:
         content = f.read()
 
     assert_true(

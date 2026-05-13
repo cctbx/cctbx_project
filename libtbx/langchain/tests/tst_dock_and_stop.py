@@ -122,7 +122,7 @@ def _find_ai_agent_py():
 def _load_standalone():
     """Extract _STANDALONE_PROGRAMS from ai_agent.py source."""
     ai_agent_path = _find_ai_agent_py()
-    with open(ai_agent_path) as f:
+    with open(ai_agent_path, encoding='utf-8') as f:
         source = f.read()
     m = re.search(
         r"^_STANDALONE_PROGRAMS\s*=\s*frozenset\(\{([^}]*?)\}\)",
@@ -140,7 +140,7 @@ def _load_standalone():
 def _load_needs_plan():
     """Extract _NEEDS_PLAN_PROGRAMS from ai_agent.py source."""
     ai_agent_path = _find_ai_agent_py()
-    with open(ai_agent_path) as f:
+    with open(ai_agent_path, encoding='utf-8') as f:
         source = f.read()
     m = re.search(
         r"^_NEEDS_PLAN_PROGRAMS\s*=\s*frozenset\(\{([^}]*?)\}\)",

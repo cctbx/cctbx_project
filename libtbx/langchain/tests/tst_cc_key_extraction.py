@@ -88,7 +88,7 @@ def test_canonical_cc_key_is_recognized():
     silently.
     """
     print("Test: canonical_cc_key_is_recognized")
-    with open(_find_ai_agent_py()) as f:
+    with open(_find_ai_agent_py(), encoding='utf-8') as f:
         source = f.read()
 
     # Find the `_cc = (` block that lives near the "model_map_cc"
@@ -108,7 +108,7 @@ def test_canonical_cc_key_is_recognized():
 def test_fallback_structure_model_uses_canonical_cc_key():
     """The structure-model fallback path must also use `model_map_cc`."""
     print("Test: fallback_structure_model_uses_canonical_cc_key")
-    with open(_find_ai_agent_py()) as f:
+    with open(_find_ai_agent_py(), encoding='utf-8') as f:
         source = f.read()
 
     # Find the for-loop that iterates CC fallback keys.

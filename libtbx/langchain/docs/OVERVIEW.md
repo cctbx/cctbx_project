@@ -126,9 +126,10 @@ generalize beyond v116.10:
   `_check_program_prerequisites` is mostly redundant after Phase
   6b but retained as defense in depth.
 
-**Post-Phase-5 additions.** Three user-reported issues surfaced
-during deployment and were patched after the Phase 5 docs
-shipped:
+**Post-Phase-5 additions.** Three user-reported issues, one
+internally-discovered fix during integration testing, and two
+test suites closing planned verification gaps were patched after
+the Phase 5 docs shipped:
 
 - **CC key extraction (S20).** A successful cryo-EM workflow
   displayed the misleading "SESSION STOPPED - INCOMPLETE" banner
@@ -171,6 +172,30 @@ shipped:
   pattern already exists nearby.** Both bugs had close analogs
   that simply hadn't been extended to cover the affected case.
 
+- **Tier 1 follow-up tests (S23 + S24).** Two test suites that
+  close verification gaps flagged in the v116.10 review:
+  `tst_initialize_plan_smoke.py` (9 tests) asserts on
+  `_initialize_plan_inner`'s observable side effects — directive
+  rewrites, plan-generation gating — for each branch of its
+  decision tree, complementing the trace-only tests in
+  `tst_dock_and_stop.py`; and
+  `tst_phase3d_motivating_tutorial.py` (3 tests) provides
+  decision-tree, YAML format, and skip-aware session-based
+  verification for the dock-and-stop motivating case. With these
+  tests, all four Tier 1 items from the v116.10 follow-up plan
+  are now complete (1.1 done in earlier amendment cycles; 1.2
+  handled by Tom directly; 1.3 = S23; 1.4 = S24).
+
+- **GUI tutorial override fix.** Discovered during integration
+  testing of Phase 6c. When running a tutorial whose README
+  mentioned a phenix program not yet supported by the AI Agent,
+  the GUI blocked Run with a `Sorry` dialog even when the user
+  provided their own files and advice. The fix in
+  `wxGUI2/Programs/AIAgent.py`: guard the blocking dialog with
+  `not has_files and not has_advice` so it only fires when the
+  user is actually relying on the README. The informational
+  banner stays. User-confirmed working.
+
 ### Prior cycle
 
 The v115 cycle addressed 22 infrastructure items identified from
@@ -198,6 +223,9 @@ repo root for status.
 | Text-mode `open()` without `encoding=` | ungoverned | automated | `tst_file_encoding.py` directory-scan tests (v116.10) |
 | Workflow state stuck at `xray_initial` post-ligandfit | yes (restart at cycle 3) | advances correctly | `tst_ligand_workflow_restart.py` Section A (v116.10 Phase 6c) |
 | `ligand_fit_output` not selected as best model | yes (scored below refined) | inherits metrics, becomes best | `tst_ligand_workflow_restart.py` Section C (v116.10 Phase 6c) |
+| `_initialize_plan_inner` side effects untested | only trace-tested | behavioral tests | `tst_initialize_plan_smoke.py` (v116.10 Tier 1 follow-up) |
+| Phase 3d dock-and-stop tutorial verification | trace-only | tutorial integration test | `tst_phase3d_motivating_tutorial.py` (v116.10 Tier 1 follow-up) |
+| GUI tutorial Run blocked despite user input | yes (bug) | guarded on user input | manual verification + scenario tracing |
 
 ---
 

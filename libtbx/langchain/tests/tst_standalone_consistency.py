@@ -174,7 +174,7 @@ def _load_standalone_programs():
     import re
     ai_agent_path = _find_ai_agent_py()
 
-    with open(ai_agent_path) as f:
+    with open(ai_agent_path, encoding='utf-8') as f:
         source = f.read()
 
     # Extract the _STANDALONE_PROGRAMS and _NEEDS_PLAN_PROGRAMS
@@ -481,7 +481,7 @@ def test_standalone_is_a_frozenset():
     except RuntimeError:
         print("  SKIP (ai_agent.py not found)")
         return
-    with open(ai_agent_path) as f:
+    with open(ai_agent_path, encoding='utf-8') as f:
         source = f.read()
     assert re.search(
         r"^_STANDALONE_PROGRAMS\s*=\s*frozenset\(",

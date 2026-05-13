@@ -320,7 +320,157 @@ the nsf-d2-ligand tutorial to confirm: (a) R-free still reaches
 ~0.21 or better, (b) the reasoning report no longer shows "first
 refinement step" 4 times, (c) no tutorial expectations break.
 
+### Post-Phase-5 Addition: Tier 1 Follow-Up Tests (S23 + S24)
 
+#### Summary
+
+Two new test suites that close verification gaps flagged in the
+v116.10 review. Both are pure tests (no production code changes);
+they verify existing behavior that previously had only indirect
+coverage.
+
+#### Tests Added
+
+**S23 — `tst_initialize_plan_smoke.py` (9 tests)**
+
+`_initialize_plan_inner` had decision-tree traces in
+`tst_dock_and_stop.py` and `tst_standalone_consistency.py`, but
+neither test actually CALLED the function. A future refactor
+could change side effects (directive rewrites, stop_after
+clearing, plan-generation gating) without tripping any existing
+test.
+
+The new tests assert on the function's observable side effects
+for 9 scenarios covering each branch of the decision tree:
+
+| Case | Scenario | Expected outcome |
+|------|----------|------------------|
+| A | standalone (non-preprocessing) + task | single_program_skip; no rewrite |
+| B | preprocessing + task (no explicit stop) | rewrite intent; clear stop_after; proceed |
+| C | preprocessing + task + "and stop" advice | preprocessing_explicit_stop_skip; preserve directive |
+| D | needs_plan + task | rewrite intent; KEEP stop_after; proceed |
+| E | v116.10 elif full-plan target | rewrite intent; preserve stop_after; proceed |
+| F | task intent + no stop_after | single_program_skip (else branch) |
+| G | solve intent + no stop_after | proceed_to_generate_plan |
+| H | Phase 3d dock_in_map + task | single_program_skip (post-Phase-3d) |
+| Extra | xtriage + explicit_stop | preprocessing_explicit_stop_skip (xtriage is BOTH preprocessing and standalone — preprocessing branch fires first) |
+
+The "extra" case surfaced from a test development misclassification
+that was caught by the actual control-flow trace — exactly the
+kind of subtlety this layer of testing is meant to catch.
+
+The harness parses `_STANDALONE_PROGRAMS` and `_NEEDS_PLAN_PROGRAMS`
+from source (same pattern as `tst_dock_and_stop.py`), then replays
+the decision tree in a minimal harness. The full function can't
+be imported because of PHENIX dependencies; the harness mirrors
+the control flow exactly so a refactor that changes side effects
+requires the test to be updated in parallel.
+
+**S24 — `tst_phase3d_motivating_tutorial.py` (3 tests)**
+
+Closes the **highest-priority verification gap** from the v116.10
+review: Phase 3d's behavior change was verified only by
+decision-tree traces; no tutorial exercised the dock-and-stop
+path with sequence + map.
+
+Three layers:
+
+1. **Decision-tree** (unconditional): asserts dock_in_map + task
+   routes to `single_program_skip` (Phase 3d post-fix).
+2. **YAML expectations format** (unconditional):
+   `get_expectations_yaml_entry()` returns the snippet to add to
+   `tutorial_expectations.yaml`; test verifies it parses and
+   contains the expected program ordering.
+3. **Session-based** (skip-aware): given a real session.json
+   fixture (via `DOCK_AND_STOP_FIXTURE` env var or
+   `tests/fixtures/dock_and_stop_session.json`), asserts on
+   actual program ordering and the absence of the anti-pattern
+   `"no model file found"`.
+
+A `docs/PHASE_3D_TUTORIAL_README.md` walks through wiring up the
+synthetic tutorial data (sequence + map) and the session fixture.
+
+#### Files Modified
+
+| File | Lines |
+|------|-------|
+| `tests/tst_initialize_plan_smoke.py` (new) | 631 |
+| `tests/tst_phase3d_motivating_tutorial.py` (new) | 367 |
+| `tests/run_all_tests.py` (S23 + S24 registered) | +58 |
+| `docs/PHASE_3D_TUTORIAL_README.md` (new) | ~100 |
+
+#### Verification
+
+| Check | Result |
+|-------|--------|
+| Both new test files: Python syntax | Parses |
+| `tst_initialize_plan_smoke.py` | 9/9 pass |
+| `tst_phase3d_motivating_tutorial.py` | 3/3 pass (one skip-aware) |
+| `tst_dock_and_stop.py` (existing, regression) | 5/5 pass |
+
+#### Tier 1 status
+
+With S23 and S24 shipped, all four Tier 1 items from the
+v116.10 follow-up plan are now complete:
+
+| Item | Status |
+|------|--------|
+| 1.1 Phase 5 docs amendment for CC key fix | Done (covered by prior CHANGELOG amendments) |
+| 1.2 Multi-clause stop test cases | Handled by Tom directly |
+| 1.3 Phase 3a behavioral smoke test | Done (S23) |
+| 1.4 Phase 3d motivating-case tutorial | Done (S24) |
+
+### Post-Phase-5 Addition: GUI Tutorial Override Fix
+
+#### Summary
+
+When running a tutorial whose README mentions phenix programs
+not yet available in the AI Agent (e.g., `groel-dock-refine`
+mentions a currently-unsupported program), the GUI was blocking
+Run with a `Sorry` dialog even after the user provided their own
+files and advice that overrode the README.
+
+#### Bug Details
+
+| Symptom | "This tutorial requires programs not yet available" dialog blocks Run, even when user has provided their own files and instructions |
+| Root Cause | `AIAgent.py:validate_params()` has two consecutive checks. The first correctly distinguishes user-provided input from README fallback. The second (the tutorial-blocking block) fires unconditionally based on `tut.can_run` regardless of whether the user was using the README at all. |
+| Fix | One condition added to the tutorial-blocking guard: only fire when `not has_files and not has_advice`. The banner at the top of the page still shows the informational "tutorial requires X" warning — that's fine and was kept. |
+
+#### Files Modified
+
+| File | Lines | Change |
+|------|-------|--------|
+| `wxGUI2/Programs/AIAgent.py` | 69-86 | Added `and not has_files and not has_advice` to the blocking guard |
+
+#### Scenario Verification
+
+| Scenario | files | advice | tut.can_run | Pre-fix | Post-fix |
+|----------|-------|--------|-------------|---------|----------|
+| Tutorial, no own input | No | No | False | BLOCKED ✓ | BLOCKED ✓ |
+| Tutorial + own files (bug case) | Yes | No | False | BLOCKED (bug) | PROCEEDS ✓ |
+| Tutorial + own advice | No | Yes | False | BLOCKED (bug) | PROCEEDS ✓ |
+| Tutorial + both | Yes | Yes | False | BLOCKED (bug) | PROCEEDS ✓ |
+| Non-tutorial, no input | No | No | n/a | First block raises | First block raises ✓ |
+| Tutorial with supported programs | any | any | True | PROCEEDS ✓ | PROCEEDS ✓ |
+
+Three pre-fix bug scenarios fixed; no correct behavior changed.
+
+#### Verification
+
+GUI code (wxPython, requires a display to run). Verified by:
+- Python syntax check
+- Manual scenario tracing through 7 user paths
+
+User-confirmed working: Tom retested groel-dock-refine after
+deploying the fix and the dialog no longer blocks Run.
+
+#### Self-Review Note
+
+This fix was discovered during integration testing of Phase 6c
+(ligand workflow restart), not from a planned cycle item. The
+banner display (informational) was deliberately left in place so
+users still see what the README is asking for; only the
+blocking dialog was conditioned on user-override.
 
 ## Version 115.09b (GUI Fixes + Ligand Workflow + Bug 1)
 
