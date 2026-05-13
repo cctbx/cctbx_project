@@ -3740,6 +3740,142 @@ User-confirmed working.
 
 ---
 
+### Post-Phase-5 Addition: Declarative Program Requirements (Tier 2.1, S25)
+
+#### What it is
+
+An optional `requirements:` block in `programs.yaml` entries
+that declares the session-level conditions under which a program
+is a valid candidate. When present, the block is evaluated by
+`WorkflowEngine._check_requirements()` as an additional filter
+pass inside `_filter_programs_missing_data_inputs`. When absent
+(the typical case), nothing changes.
+
+#### Why it exists
+
+Before Tier 2.1, program-filtering rules lived in **four
+mechanisms**:
+
+1. **State machine routing** (`_detect_xray_step`, etc.) — decides
+   which workflow step the session is in.
+2. **YAML step conditions** (`workflows.yaml`) — per-step filters
+   with `has`/`has_any`/`not_done`/etc. clauses.
+3. **`_filter_programs_missing_data_inputs`** — hand-coded
+   filter for xtriage/mtriage (Phase 4b).
+4. **`_check_program_prerequisites`** — hand-coded per-program
+   Python branches for ~7 programs.
+
+None is a clean place to declare "this program is a candidate
+when these conditions hold." A new program that needs filtering
+typically gets a hand-coded if-branch in Mechanism 3 or 4, growing
+those functions over time.
+
+The declarative `requirements:` block is the **preferred path
+for new program filtering rules going forward**. The four
+existing mechanisms aren't being grown; they remain in place
+for the rules they already enforce.
+
+#### Schema (v1)
+
+```yaml
+phenix.<program>:
+  # ... existing fields (description, experiment_types, inputs, etc.) ...
+  requirements:    # optional
+    requires:
+      - <clause>
+      - <clause>
+```
+
+Grammar (closed, boolean-only):
+
+| Clause | Semantics |
+|--------|-----------|
+| `has: <name>` | `context["has_<name>"]` truthy |
+| `has_any: [<name>, ...]` | At least one `context["has_<n>"]` truthy |
+| `not_has: <name>` | Not `context["has_<name>"]` |
+| `done: <name>` | `context["<name>_done"]` truthy |
+| `not_done: <name>` | Not `context["<name>_done"]` |
+
+Clauses are AND'd together. The grammar is intentionally closed.
+No `if/then`, no nested logic. If a requirement needs control
+flow, put it in Python (Mechanism 3 or 4) instead.
+
+#### Order of operations
+
+When `_filter_programs_missing_data_inputs` runs, the order is:
+
+1. Existing xtriage/mtriage hand-coded checks (Phase 4b)
+2. **New declarative `_check_requirements` pass** — evaluates
+   the `requirements:` block for any program that has one
+3. Returns the filtered list
+
+The declarative pass can only **remove** programs from
+`valid_programs`. It cannot add. If the existing Phase 4b check
+removes a program, the declarative pass never sees it.
+
+#### Boolean-only constraint
+
+`_check_requirements()` reads only the `context` dictionary. It
+does NOT open files, read MTZ headers, or perform any I/O. This
+keeps the parser pure and testable.
+
+If a future declaration needs a property of a file (e.g., "MTZ
+has FOM columns"), the correct path is:
+
+1. Extend file categorization or context-population code to set
+   a context flag for the property
+2. Reference the flag in `requirements:`
+
+Not: have `_check_requirements()` open the file and look.
+
+#### When to add a `requirements:` block
+
+Add a declaration when:
+
+- The program currently has no filter in any of the four
+  mechanisms, and can be picked by the LLM in sessions where it
+  would crash at runtime; OR
+- Existing filtering is incomplete and the gap creates real
+  wasted cycles or user-visible errors.
+
+DO NOT add a declaration just because it would be "cleaner."
+Duplicating rules already enforced by Mechanisms 1–4 creates
+maintenance cost without functional gain.
+
+#### Context-flag audit checklist
+
+Before adding any `requirements:` declaration, verify:
+
+- [ ] Each `has: X` flag's `has_<X>` is actually set somewhere
+      in `_build_context()` or an upstream populator
+- [ ] The flag is set BEFORE
+      `_filter_programs_missing_data_inputs` runs
+- [ ] Add a positive test (flag True → program kept)
+- [ ] Add a negative test (flag False → program filtered)
+
+A `requirements:` declaration that references a flag no code
+ever sets produces silent always-filtered behavior. The audit
+catches this before merge.
+
+#### Current declarations
+
+| Program | Reason |
+|---------|--------|
+| `phenix.autobuild` | Plugs the runtime-crash gap when picked without phases or a model. See CHANGELOG for details. |
+
+That's the entire population at v116.10. Future additions
+follow the discipline above.
+
+#### Reference
+
+The full design rationale, 16 pitfalls with mitigations, and
+three rejected alternatives are in `PATH_Y_DESIGN.md`
+(packaged separately during Tier 2.1 design review). External
+review by Gemini approved the design with refinements that
+were incorporated.
+
+---
+
 ## Event System
 
 The agent uses a structured event system for transparent decision logging.

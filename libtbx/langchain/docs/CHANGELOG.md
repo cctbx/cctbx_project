@@ -472,6 +472,132 @@ banner display (informational) was deliberately left in place so
 users still see what the README is asking for; only the
 blocking dialog was conditioned on user-override.
 
+### Post-Phase-5 Addition: Declarative Program Requirements (Tier 2.1, S25)
+
+#### Summary
+
+Added an optional `requirements:` block to entries in
+`programs.yaml`. When present, the block is evaluated by a new
+filter pass inside `_filter_programs_missing_data_inputs`.
+Programs without the block are unaffected. Initial scope: one
+declaration (`phenix.autobuild`) to plug a known gap where the
+program could be picked and crash at runtime with `MTZ lacks
+phase/FOM columns`.
+
+This is the result of Tier 2.1 design work, reviewed externally
+by Gemini and refined in the `PATH_Y_DESIGN.md` document.
+
+#### Bug Details
+
+| Symptom | LLM picks `phenix.autobuild` in sessions without phase information; command runs and fails with `MTZ lacks phase/FOM columns` after building setup. One wasted cycle plus a confusing runtime error. |
+| Root Cause | Autobuild had an explanation path (`explain_unavailable_program`) telling the LLM why it shouldn't pick autobuild, but no actual filter. The LLM could ignore the explanation. The state machine alone didn't gate autobuild because the relevant step has multiple valid programs and the conditions in `workflows.yaml` weren't expressive enough. |
+| Fix | Declarative `requirements:` block on `phenix.autobuild` evaluated by new `_check_requirements()` parser. Filter integrates inside `_filter_programs_missing_data_inputs` after the existing xtriage/mtriage checks. |
+
+#### Files Modified
+
+| File | Lines | Change |
+|------|-------|--------|
+| `agent/workflow_engine.py` | +135 | New method `_check_requirements()` (~100 lines including grammar docs); new clause-keyword set `_KNOWN_REQUIREMENT_CLAUSES`; integration block inside `_filter_programs_missing_data_inputs` (~22 lines) |
+| `knowledge/programs.yaml` | +4 | `requirements:` block on `phenix.autobuild` entry |
+| `tests/run_all_tests.py` | +22 | Register S25 (Program Requirements) |
+
+#### Declarative Schema (v1)
+
+```yaml
+phenix.<program>:
+  # ... existing fields ...
+  requirements:    # NEW — optional
+    requires:
+      - <clause>
+      - <clause>
+```
+
+Grammar (closed, boolean-only):
+
+| Clause | Semantics |
+|--------|-----------|
+| `has: <name>` | `context["has_<name>"]` truthy |
+| `has_any: [<name>, ...]` | At least one `context["has_<n>"]` truthy |
+| `not_has: <name>` | Not `context["has_<name>"]` |
+| `done: <name>` | `context["<name>_done"]` truthy |
+| `not_done: <name>` | Not `context["<name>_done"]` |
+
+The grammar is intentionally closed. No `if/then`, no nested
+logic, no metric comparisons. Per Pitfall 10 of the design
+doc: if a requirement needs control flow, it goes in Python
+(Mechanism 3 or 4), not here.
+
+#### autobuild Declaration
+
+```yaml
+phenix.autobuild:
+  requirements:
+    requires:
+      - has_any: [data_mtz, phased_data_mtz]
+      - has_any: [model, placed_model, phased_data_mtz]
+```
+
+`has_phased_data_mtz` appears in both clauses because a phased
+MTZ satisfies both "x-ray data" and "phase information"
+independently. So a phased MTZ alone is sufficient. Other
+qualifying scenarios: raw data + model, raw data + placed
+model (after phaser). Filtered scenarios: data alone, model
+alone, empty session.
+
+#### Tests (30 new test cases)
+
+| Section | Tests | Description |
+|---------|-------|-------------|
+| A. Parser unit tests | 17 | Each clause type evaluated in isolation; AND of clauses; malformed input handling; unknown-keyword warning + strict-mode raise |
+| B. Filter integration | 6 | autobuild scenarios: phased alone (keep), data+model (keep), data+placed_model (keep), data alone (filter), model alone (filter), empty session (filter) |
+| C. Backward compat | 7 | Programs without `requirements:` unaffected; existing xtriage/mtriage filters still work; order of operations correct; mixed program lists handled |
+
+Run with `phenix.python tests/tst_program_requirements.py`.
+
+#### Order of Operations
+
+The new filter integrates into the existing pipeline at step 4:
+
+1. State machine (Mechanism 1) — decides current step
+2. YAML step conditions (Mechanism 2) — filters programs within step
+3. `_filter_programs_missing_data_inputs` — existing xtriage/mtriage checks
+4. **`_check_requirements` — NEW declarative filter (this delivery)**
+5. `_check_program_prerequisites` (Mechanism 4) — runs for directive additions
+
+`requirements:` can only remove programs from `valid_programs`,
+never add them.
+
+#### Forward-Looking Guidance
+
+Per the design doc, `requirements:` is **the preferred path
+for new program filtering rules going forward**. The four
+existing hand-coded mechanisms aren't being grown.
+Documentation rules:
+
+- Add `requirements:` ONLY when the existing mechanisms don't
+  cover the filtering need (avoid duplication)
+- The grammar is closed; extension requires documented
+  justification per Pitfall 10
+- The block is boolean-only; file-content checks (e.g., "MTZ
+  has FOM columns") must be exposed as context flags elsewhere
+  (per Pitfall 16)
+- Before adding a new declaration, complete the context-flag
+  audit checklist (per Pitfall 15)
+
+See `PATH_Y_DESIGN.md` in the design package for the full
+rationale, 16 pitfalls with mitigations, and three rejected
+alternatives.
+
+#### Verification
+
+| Check | Result |
+|-------|--------|
+| Python syntax (workflow_engine.py, run_all_tests.py) | parse OK |
+| New test suite (30 tests) | 30 passed, 0 failed |
+| Backward-compat: existing `tst_data_input_filter` regression | xtriage/mtriage filters still pass |
+| Context-flag audit for autobuild's 4 referenced flags | All set in `_build_context()` before filter runs |
+| Tutorials touching autobuild | Pending Tom's manual verification |
+
 ## Version 115.09b (GUI Fixes + Ligand Workflow + Bug 1)
 
 ### Summary

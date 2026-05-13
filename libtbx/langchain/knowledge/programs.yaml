@@ -570,6 +570,18 @@ phenix.autobuild:
   stop_directive_patterns:
     - 'autobuild'
 
+  # v116.10 Tier 2.1: Declarative requirements.
+  # autobuild requires x-ray data AND (a model OR phase information).
+  # `has_phased_data_mtz` appears in both clauses because a phased
+  # MTZ satisfies both "x-ray data" and "phase information"
+  # independently — a phased MTZ alone is sufficient to run autobuild.
+  # See ARCHITECTURE.md "Declarative Program Requirements" section
+  # for the schema and audit rules.
+  requirements:
+    requires:
+      - has_any: [data_mtz, phased_data_mtz]
+      - has_any: [model, placed_model, phased_data_mtz]
+
   inputs:
     required:
       data_mtz:

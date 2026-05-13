@@ -9,7 +9,6 @@ _apply_workflow_intent_fallback.
 from __future__ import absolute_import, division, print_function
 import sys
 import os
-import re
 
 # Setup import paths
 sys.path.insert(0, os.path.dirname(

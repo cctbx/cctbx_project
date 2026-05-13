@@ -2358,7 +2358,142 @@ class WorkflowEngine:
                           % (context.get("has_full_map"),
                              context.get("has_half_map")))
 
+        # v116.10 Tier 2.1: Declarative requirements pass.
+        #
+        # Programs with a `requirements:` block in programs.yaml are
+        # evaluated here.  Programs without the block are unaffected
+        # — this pass is purely additive.
+        #
+        # The check is boolean-only: it reads only context flags and
+        # does NO file I/O.  See PATH_Y_DESIGN.md and the
+        # "Declarative requirements" section of ARCHITECTURE.md.
+        try:
+            from libtbx.langchain.knowledge.yaml_loader import (
+                get_program as _get_program)
+        except ImportError:
+            _get_program = None
+
+        if _get_program is not None:
+            for program in list(result):
+                prog_def = _get_program(program)
+                if prog_def and "requirements" in prog_def:
+                    req_block = prog_def["requirements"]
+                    if not self._check_requirements(req_block, context):
+                        result.remove(program)
+                        if _diag:
+                            print("  [DIAG] %s removed by declarative "
+                                  "requirements: %s"
+                                  % (program, req_block))
+
         return result
+
+    # v116.10 Tier 2.1: declarative requirements clause keywords.
+    #
+    # Any keyword in a `requirements:` block NOT in this set is a
+    # bug — the A6-style guard in _check_requirements raises in
+    # PHENIX_AGENT_STRICT mode and prints a loud warning otherwise.
+    _KNOWN_REQUIREMENT_CLAUSES = frozenset([
+        "has",        # {"has": "sequence"}      → context["has_sequence"]
+        "has_any",    # {"has_any": [...]}       → any of context["has_<x>"]
+        "not_has",    # {"not_has": "model"}     → not context["has_model"]
+        "done",       # {"done": "xtriage"}      → context["xtriage_done"]
+        "not_done",   # {"not_done": "autobuild"} → not context["autobuild_done"]
+    ])
+
+    def _check_requirements(self, req_block, context):
+        """Evaluate a `requirements:` block against the workflow context.
+
+        Boolean-only — no file I/O.  Reads only the context dictionary.
+        Any "semantic" check (e.g., "MTZ has FOM columns") must be
+        expressed as a context flag set elsewhere, NOT by reading
+        files here.  See Pitfall 16 in PATH_Y_DESIGN.md.
+
+        Grammar (v1):
+
+            requirements:
+              requires:
+                - has: <name>          # context["has_<name>"] truthy
+                - has_any: [<name>, ...]  # any context["has_<n>"] truthy
+                - not_has: <name>      # not context["has_<name>"]
+                - done: <name>         # context["<name>_done"] truthy
+                - not_done: <name>     # not context["<name>_done"]
+
+        The grammar is closed.  Adding new keywords requires
+        documented justification — see Pitfall 10 in PATH_Y_DESIGN.md.
+        If a requirement needs if/then logic, it does NOT belong here;
+        put it in Python (Mechanism 3 or 4).
+
+        Args:
+            req_block: dict with a `requires:` key (list of clauses)
+            context: workflow context dict
+
+        Returns:
+            bool: True if all clauses in `requires:` pass, False
+                  otherwise.  Returns True if req_block is malformed
+                  (defensive — never filter on bad input; rely on tests
+                  and the audit checklist to catch bad YAML).
+        """
+        if not isinstance(req_block, dict):
+            return True
+
+        requires = req_block.get("requires", [])
+        if not isinstance(requires, list):
+            return True
+
+        for clause in requires:
+            if not isinstance(clause, dict):
+                continue
+
+            # ── A6-style guard: catch unknown keywords ─────────────
+            unknown = set(clause.keys()) - self._KNOWN_REQUIREMENT_CLAUSES
+            if unknown:
+                msg = (
+                    "Unknown clause keyword(s) %s in requirements: "
+                    "block — add a handler to _check_requirements() "
+                    "or fix the YAML.  Clause is being SKIPPED "
+                    "(treated as satisfied)." % sorted(unknown))
+                if os.environ.get("PHENIX_AGENT_STRICT"):
+                    raise ValueError(msg)
+                else:
+                    print("ERROR: " + msg)
+                # Skip the unknown keys but continue with known ones.
+
+            # ── has ────────────────────────────────────────────────
+            # {"has": "sequence"} → context["has_sequence"] must be truthy
+            if "has" in clause:
+                if not context.get("has_" + clause["has"]):
+                    return False
+
+            # ── has_any ────────────────────────────────────────────
+            # {"has_any": ["data_mtz", "phased_data_mtz"]}
+            # → at least one of context["has_data_mtz"] /
+            #                  context["has_phased_data_mtz"]
+            if "has_any" in clause:
+                names = clause["has_any"]
+                if not isinstance(names, list):
+                    continue
+                if not any(context.get("has_" + n) for n in names):
+                    return False
+
+            # ── not_has ────────────────────────────────────────────
+            # {"not_has": "model"} → context["has_model"] must be falsy
+            if "not_has" in clause:
+                if context.get("has_" + clause["not_has"]):
+                    return False
+
+            # ── done ───────────────────────────────────────────────
+            # {"done": "xtriage"} → context["xtriage_done"] must be truthy
+            if "done" in clause:
+                if not context.get(clause["done"] + "_done"):
+                    return False
+
+            # ── not_done ───────────────────────────────────────────
+            # {"not_done": "autobuild"} → context["autobuild_done"] falsy
+            if "not_done" in clause:
+                if context.get(clause["not_done"] + "_done"):
+                    return False
+
+        return True
 
     def _check_program_prerequisites(self, program, context, step_name):
         """

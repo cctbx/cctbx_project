@@ -32,13 +32,13 @@ try:
     from libtbx.langchain.knowledge.plan_schema import (
         StructurePlan, StageDef,
         STAGE_PENDING, STAGE_ACTIVE, STAGE_COMPLETE,
-        STAGE_SKIPPED, STAGE_FAILED,
+        STAGE_SKIPPED,
     )
 except ImportError:
     from knowledge.plan_schema import (
         StructurePlan, StageDef,
         STAGE_PENDING, STAGE_ACTIVE, STAGE_COMPLETE,
-        STAGE_SKIPPED, STAGE_FAILED,
+        STAGE_SKIPPED,
     )
 
 

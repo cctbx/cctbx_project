@@ -312,16 +312,21 @@ def test_yaml_loader_actually_reads_utf8():
     print("Test: yaml_loader_actually_reads_utf8")
     import tempfile
 
-    # Try to import yaml_loader
+    # Try to import yaml_loader (availability probe — the test below
+    # exercises open() directly with encoding='utf-8' rather than calling
+    # _load_yaml_file, which requires a real knowledge directory).
     try:
-        from libtbx.langchain.knowledge.yaml_loader import (
-            _load_yaml_file)
+        from libtbx.langchain.knowledge import yaml_loader
     except ImportError:
         try:
-            from knowledge.yaml_loader import _load_yaml_file
+            from knowledge import yaml_loader
         except ImportError:
             print("  SKIP (yaml_loader not importable in test env)")
             return
+
+    # Pre-condition: the function this test documents must exist
+    assert hasattr(yaml_loader, '_load_yaml_file'), \
+        "yaml_loader._load_yaml_file is missing"
 
     # Build a temp YAML with bytes that crash GBK but are valid UTF-8.
     # 0x94 alone is invalid GBK at most positions but valid as

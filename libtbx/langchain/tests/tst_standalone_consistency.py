@@ -207,8 +207,12 @@ def _load_standalone_programs():
 
 # Try to install stubs and load the constants
 try:
-    from libtbx.langchain.agent.directive_extractor import _ACTION_TABLE
-    _PHENIX_AVAILABLE = True
+    # Availability probe — does the directive_extractor module load
+    # with the real PHENIX dependencies?  The actual _ACTION_TABLE
+    # symbol is loaded later by _load_action_table() which has its
+    # own try/except chain.
+    from libtbx.langchain.agent import directive_extractor
+    _PHENIX_AVAILABLE = directive_extractor is not None
 except ImportError:
     _install_stubs()
     _PHENIX_AVAILABLE = False

@@ -137,6 +137,12 @@ Systematic Testing Framework (v115.08):
        fixture; runs decision-tree + YAML format checks unconditionally.
        Closes the highest-priority verification gap from the v116.10 review
        (3 tests, v116.10 Tier 1 follow-up)
+  S25. Program Requirements - declarative `requirements:` schema for
+       programs.yaml. Verifies the _check_requirements parser, the filter
+       integration (autobuild scenarios), and backward-compat (programs
+       without the block are unaffected). Plugs the autobuild gap where
+       the program could be picked and crash at runtime
+       (30 tests, v116.10 Tier 2.1)
 """
 
 from __future__ import absolute_import, division, print_function
@@ -1333,6 +1339,22 @@ def main():
               f"tst_phase3d_motivating_tutorial: {e}")
         results.append(("Phase 3d Motivating Tutorial",
                        "tst_phase3d_motivating_tutorial", False, 0))
+
+    # --- Program Requirements (v116.10 Tier 2.1 — declarative schema) ---
+    try:
+        from tests.tst_program_requirements import (
+            run_all_tests as run_program_requirements_tests)
+        success, elapsed = run_test_module(
+            "tst_program_requirements",
+            run_program_requirements_tests, args.verbose)
+        results.append(("Program Requirements",
+                       "tst_program_requirements",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_program_requirements: {e}")
+        results.append(("Program Requirements",
+                       "tst_program_requirements", False, 0))
 
     # --- Summary ---
     total_elapsed = time.time() - total_start
