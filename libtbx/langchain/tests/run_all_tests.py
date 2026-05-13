@@ -142,7 +142,7 @@ Systematic Testing Framework (v115.08):
        integration (autobuild scenarios), and backward-compat (programs
        without the block are unaffected). Plugs the autobuild gap where
        the program could be picked and crash at runtime
-       (30 tests, v116.10 Tier 2.1)
+       (40 tests, v116.10 Tier 2.1 + 2.1.1)
 """
 
 from __future__ import absolute_import, division, print_function

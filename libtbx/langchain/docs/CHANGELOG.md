@@ -593,10 +593,82 @@ alternatives.
 | Check | Result |
 |-------|--------|
 | Python syntax (workflow_engine.py, run_all_tests.py) | parse OK |
-| New test suite (30 tests) | 30 passed, 0 failed |
+| New test suite (40 tests) | 40 passed, 0 failed |
 | Backward-compat: existing `tst_data_input_filter` regression | xtriage/mtriage filters still pass |
 | Context-flag audit for autobuild's 4 referenced flags | All set in `_build_context()` before filter runs |
-| Tutorials touching autobuild | Pending Tom's manual verification |
+| `tst_scenario_tracer.py` (S5A) | Passes after Tier 2.1.1 fix below |
+| `tst_phase4_history_flags.py` (all_read_flags_are_written) | Passes after Tier 2.1.1 fix below |
+
+#### Post-Deployment Fix (Tier 2.1.1): `any_of` clause + phantom flag
+
+After initial deployment, two test failures surfaced that required
+the Tier 2.1 implementation to be revised:
+
+**Failure 1 — S5A in `tst_scenario_tracer.py`:**
+
+The simulator reported `autobuild not available after autosol`. The
+v1 rule required `has_any: [model, placed_model, phased_data_mtz]`
+in its second clause, but in the simulator (and some real session
+paths) `autosol_done=True` is set without `has_phased_data_mtz` being
+updated on the same cycle. The existing explanation code at
+`explain_unavailable_program` uses `phaser_done OR autosol_done OR
+has_placed_model_from_history` as the gate; my v1 rule diverged from
+this and was stricter.
+
+**Failure 2 — phantom `has_` flag in `tst_phase4_history_flags.py`:**
+
+The static flag scanner regex matches `context.get("has_X")` to
+extract flag names. The v1 implementation had `context.get("has_" +
+clause["has"])` patterns, which the regex extracted as just `has_`
+(captured up to the first closing quote). This produced a false
+"flag read but not written" warning.
+
+**Fixes shipped in Tier 2.1.1:**
+
+1. **Grammar extension: `any_of` clause type** (Pitfall 10 justification
+   provided in workflow_engine.py docstring). Where `has_any: [...]`
+   takes a list of names and auto-prefixes `has_`, `any_of: [...]`
+   takes a list of sub-clauses (each is itself a clause: `has`,
+   `done`, `not_has`, `has_any`, or nested `any_of`). This allows
+   mixing flag families:
+
+   ```yaml
+   - any_of:
+       - has: phased_data_mtz
+       - done: autosol
+       - done: phaser
+   ```
+
+2. **Refactor key construction in `_check_requirements`** to use
+   intermediate variables (matching the pattern already used in
+   `_check_conditions`). Replaces `context.get("has_" + name)` with
+   `key = "has_" + name; context.get(key)` so the static scanner
+   doesn't trip on a literal `"has_"` inside a `context.get(...)`.
+
+3. **Update `phenix.autobuild` requirements**: replace the
+   inline-only `has_any` second clause with an `any_of` covering
+   both flag families:
+
+   ```yaml
+   requirements:
+     requires:
+       - has_any: [data_mtz, phased_data_mtz]
+       - any_of:
+           - has: phased_data_mtz
+           - has: model
+           - has: placed_model
+           - has: placed_model_from_history
+           - done: phaser
+           - done: autosol
+   ```
+
+   This now exactly mirrors the existing explanation pattern.
+
+4. **Test suite expanded from 30 → 40**: added 6 tests for the
+   new `any_of` clause type (positive/negative/nested/empty/malformed/
+   AND-combined), plus 4 regression tests for the S5A scenario
+   (autobuild kept after autosol_done, phaser_done,
+   has_placed_model_from_history; still filtered when no history at all).
 
 ## Version 115.09b (GUI Fixes + Ligand Workflow + Bug 1)
 

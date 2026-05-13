@@ -330,19 +330,125 @@ def test_strict_mode_raises_on_unknown_keyword():
     print("  PASS")
 
 
+def test_any_of_passes_when_one_sub_clause_passes():
+    """any_of with mixed clause types: passes if any sub-clause is true."""
+    print("Test: any_of_passes_when_one_sub_clause_passes")
+    eng = _engine()
+    block = {"requires": [{"any_of": [
+        {"has": "model"},
+        {"done": "phaser"},
+    ]}]}
+    # has_model True → passes
+    assert eng._check_requirements(block, {"has_model": True}) is True
+    # phaser_done True → passes (different flag family)
+    assert eng._check_requirements(block, {"phaser_done": True}) is True
+    print("  PASS")
+
+
+def test_any_of_fails_when_no_sub_clauses_pass():
+    print("Test: any_of_fails_when_no_sub_clauses_pass")
+    eng = _engine()
+    block = {"requires": [{"any_of": [
+        {"has": "model"},
+        {"done": "phaser"},
+    ]}]}
+    # Neither has_model nor phaser_done → fails
+    assert eng._check_requirements(block, {}) is False
+    # Unrelated flag set → still fails
+    assert eng._check_requirements(
+        block, {"has_data_mtz": True}) is False
+    print("  PASS")
+
+
+def test_any_of_with_nested_has_any():
+    """any_of sub-clauses can themselves be has_any clauses."""
+    print("Test: any_of_with_nested_has_any")
+    eng = _engine()
+    block = {"requires": [{"any_of": [
+        {"has_any": ["model", "placed_model"]},
+        {"done": "autosol"},
+    ]}]}
+    # has_placed_model True → first branch passes (via has_any)
+    assert eng._check_requirements(
+        block, {"has_placed_model": True}) is True
+    # autosol_done True → second branch passes (via done)
+    assert eng._check_requirements(
+        block, {"autosol_done": True}) is True
+    # Neither → fails
+    assert eng._check_requirements(block, {}) is False
+    print("  PASS")
+
+
+def test_any_of_with_empty_sub_clauses_fails():
+    """An any_of with no sub-clauses can satisfy nothing, so fails."""
+    print("Test: any_of_with_empty_sub_clauses_fails")
+    eng = _engine()
+    block = {"requires": [{"any_of": []}]}
+    # No sub-clauses → no way to satisfy → fail
+    assert eng._check_requirements(block, {"has_anything": True}) is False
+    print("  PASS")
+
+
+def test_any_of_with_non_list_skipped_defensively():
+    """Malformed any_of (non-list) is skipped, not treated as fail."""
+    print("Test: any_of_with_non_list_skipped_defensively")
+    eng = _engine()
+    block = {"requires": [{"any_of": "not a list"}]}
+    # Malformed → defensively passes (no fail-closed on bad YAML)
+    assert eng._check_requirements(block, {}) is True
+    print("  PASS")
+
+
+def test_and_of_has_any_plus_any_of():
+    """Top-level AND of a has_any and an any_of: both must pass."""
+    print("Test: and_of_has_any_plus_any_of")
+    eng = _engine()
+    block = {"requires": [
+        {"has_any": ["data_mtz", "phased_data_mtz"]},
+        {"any_of": [
+            {"has": "model"},
+            {"done": "autosol"},
+        ]},
+    ]}
+    # data + model: both pass
+    assert eng._check_requirements(
+        block, {"has_data_mtz": True, "has_model": True}) is True
+    # data + autosol_done: both pass (model not present but autosol_done is)
+    assert eng._check_requirements(
+        block, {"has_data_mtz": True, "autosol_done": True}) is True
+    # data alone: first passes, second fails
+    assert eng._check_requirements(
+        block, {"has_data_mtz": True}) is False
+    # model alone: first fails
+    assert eng._check_requirements(
+        block, {"has_model": True}) is False
+    print("  PASS")
+
+
 # =============================================================================
 # B. Filter integration tests — _filter_programs_missing_data_inputs
 #    with autobuild's declaration
 # =============================================================================
 
-# The autobuild requirements: block as it will appear in
-# programs.yaml.  Tests install this into _TEST_PROGRAM_REGISTRY.
+# The autobuild requirements: block as it appears in programs.yaml.
+# Tests install this into _TEST_PROGRAM_REGISTRY.
+#
+# v116.10 Tier 2.1 update: second clause uses any_of to accept either
+# file-based (has_*) OR history-based (_done) flags.  This matches the
+# existing explanation pattern in explain_unavailable_program.
 AUTOBUILD_DEF = {
     "experiment_types": ["xray"],
     "requirements": {
         "requires": [
             {"has_any": ["data_mtz", "phased_data_mtz"]},
-            {"has_any": ["model", "placed_model", "phased_data_mtz"]},
+            {"any_of": [
+                {"has": "phased_data_mtz"},
+                {"has": "model"},
+                {"has": "placed_model"},
+                {"has": "placed_model_from_history"},
+                {"done": "phaser"},
+                {"done": "autosol"},
+            ]},
         ]
     }
 }
@@ -448,6 +554,83 @@ def test_autobuild_filtered_with_empty_session():
             {},
         )
         assert result == []
+    finally:
+        _clear_registry()
+    print("  PASS")
+
+
+def test_autobuild_kept_after_autosol_done():
+    """S5A regression: autosol succeeded → autobuild must be available.
+
+    The simulator (and some real session paths) set autosol_done=True
+    after autosol completes, but may not set has_phased_data_mtz on
+    the same cycle.  The rule must accept autosol_done as satisfying
+    the phase-information requirement.
+    """
+    print("Test: autobuild_kept_after_autosol_done")
+    _install_autobuild_only()
+    try:
+        eng = _engine()
+        result = eng._filter_programs_missing_data_inputs(
+            ["phenix.autobuild"],
+            {"has_data_mtz": True, "autosol_done": True},
+        )
+        assert result == ["phenix.autobuild"], (
+            "S5A: autobuild must survive when autosol_done=True; "
+            "got %r" % result)
+    finally:
+        _clear_registry()
+    print("  PASS")
+
+
+def test_autobuild_kept_after_phaser_done():
+    """Analogous to S5A but for the MR path: phaser_done satisfies
+    the phase/model requirement."""
+    print("Test: autobuild_kept_after_phaser_done")
+    _install_autobuild_only()
+    try:
+        eng = _engine()
+        result = eng._filter_programs_missing_data_inputs(
+            ["phenix.autobuild"],
+            {"has_data_mtz": True, "phaser_done": True},
+        )
+        assert result == ["phenix.autobuild"]
+    finally:
+        _clear_registry()
+    print("  PASS")
+
+
+def test_autobuild_kept_with_placed_model_from_history():
+    """A model placed in earlier session history satisfies the model
+    requirement.  Matches existing explanation pattern."""
+    print("Test: autobuild_kept_with_placed_model_from_history")
+    _install_autobuild_only()
+    try:
+        eng = _engine()
+        result = eng._filter_programs_missing_data_inputs(
+            ["phenix.autobuild"],
+            {"has_data_mtz": True, "has_placed_model_from_history": True},
+        )
+        assert result == ["phenix.autobuild"]
+    finally:
+        _clear_registry()
+    print("  PASS")
+
+
+def test_autobuild_still_filtered_when_only_data_no_history():
+    """Negative case unchanged: raw data alone, no phase info, no
+    model, no completed phasing program — autobuild filtered."""
+    print("Test: autobuild_still_filtered_when_only_data_no_history")
+    _install_autobuild_only()
+    try:
+        eng = _engine()
+        result = eng._filter_programs_missing_data_inputs(
+            ["phenix.autobuild"],
+            {"has_data_mtz": True},
+        )
+        assert result == [], (
+            "Raw data alone (no model, no phases, no done flags) "
+            "should still filter autobuild; got %r" % result)
     finally:
         _clear_registry()
     print("  PASS")

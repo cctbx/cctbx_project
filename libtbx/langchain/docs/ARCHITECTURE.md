@@ -3795,10 +3795,21 @@ Grammar (closed, boolean-only):
 | `not_has: <name>` | Not `context["has_<name>"]` |
 | `done: <name>` | `context["<name>_done"]` truthy |
 | `not_done: <name>` | Not `context["<name>_done"]` |
+| `any_of: [<clause>, ...]` | At least one sub-clause passes (allows mixing flag families) |
 
 Clauses are AND'd together. The grammar is intentionally closed.
-No `if/then`, no nested logic. If a requirement needs control
-flow, put it in Python (Mechanism 3 or 4) instead.
+No `if/then`, no nested logic beyond `any_of` (which is logical
+OR of sub-clauses). If a requirement needs control flow, put it
+in Python (Mechanism 3 or 4) instead.
+
+**The difference between `has_any` and `any_of`:**
+
+- `has_any: [model, placed_model]` takes flag *names* and
+  auto-prefixes `has_`. Restricted to one family of flags.
+- `any_of: [{has: X}, {done: Y}]` takes full *clauses*, so it
+  can mix flag families (`has_*` and `*_done`). Used when a
+  semantic requirement covers multiple flag types — e.g.,
+  autobuild's "model OR phases OR phaser_done OR autosol_done".
 
 #### Order of operations
 

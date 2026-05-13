@@ -2398,6 +2398,7 @@ class WorkflowEngine:
         "not_has",    # {"not_has": "model"}     → not context["has_model"]
         "done",       # {"done": "xtriage"}      → context["xtriage_done"]
         "not_done",   # {"not_done": "autobuild"} → not context["autobuild_done"]
+        "any_of",     # {"any_of": [<clause>, ...]} → at least one sub-clause passes
     ])
 
     def _check_requirements(self, req_block, context):
@@ -2408,7 +2409,7 @@ class WorkflowEngine:
         expressed as a context flag set elsewhere, NOT by reading
         files here.  See Pitfall 16 in PATH_Y_DESIGN.md.
 
-        Grammar (v1):
+        Grammar (v2):
 
             requirements:
               requires:
@@ -2417,11 +2418,20 @@ class WorkflowEngine:
                 - not_has: <name>      # not context["has_<name>"]
                 - done: <name>         # context["<name>_done"] truthy
                 - not_done: <name>     # not context["<name>_done"]
+                - any_of:              # any sub-clause passes (v2 addition)
+                  - <clause>
+                  - <clause>
 
         The grammar is closed.  Adding new keywords requires
         documented justification — see Pitfall 10 in PATH_Y_DESIGN.md.
         If a requirement needs if/then logic, it does NOT belong here;
         put it in Python (Mechanism 3 or 4).
+
+        Implementation note: context-key construction uses intermediate
+        variables (e.g., `key = "has_" + name; context.get(key)`) rather
+        than inline string concatenation, so the static flag scanner
+        (tst_phase4_history_flags.py) doesn't trip on a phantom "has_"
+        literal.  This matches the pattern in _check_conditions().
 
         Args:
             req_block: dict with a `requires:` key (list of clauses)
@@ -2461,7 +2471,8 @@ class WorkflowEngine:
             # ── has ────────────────────────────────────────────────
             # {"has": "sequence"} → context["has_sequence"] must be truthy
             if "has" in clause:
-                if not context.get("has_" + clause["has"]):
+                key = "has_" + clause["has"]
+                if not context.get(key):
                     return False
 
             # ── has_any ────────────────────────────────────────────
@@ -2472,25 +2483,54 @@ class WorkflowEngine:
                 names = clause["has_any"]
                 if not isinstance(names, list):
                     continue
-                if not any(context.get("has_" + n) for n in names):
+                keys = ["has_" + n for n in names]
+                if not any(context.get(k) for k in keys):
                     return False
 
             # ── not_has ────────────────────────────────────────────
             # {"not_has": "model"} → context["has_model"] must be falsy
             if "not_has" in clause:
-                if context.get("has_" + clause["not_has"]):
+                key = "has_" + clause["not_has"]
+                if context.get(key):
                     return False
 
             # ── done ───────────────────────────────────────────────
             # {"done": "xtriage"} → context["xtriage_done"] must be truthy
             if "done" in clause:
-                if not context.get(clause["done"] + "_done"):
+                key = clause["done"] + "_done"
+                if not context.get(key):
                     return False
 
             # ── not_done ───────────────────────────────────────────
             # {"not_done": "autobuild"} → context["autobuild_done"] falsy
             if "not_done" in clause:
-                if context.get(clause["not_done"] + "_done"):
+                key = clause["not_done"] + "_done"
+                if context.get(key):
+                    return False
+
+            # ── any_of ─────────────────────────────────────────────
+            # {"any_of": [<clause>, <clause>, ...]}
+            # → at least one sub-clause passes.  Sub-clauses use the
+            # same grammar as top-level clauses (has/has_any/not_has/
+            # done/not_done/any_of), enabling disjunction over mixed
+            # flag types (e.g., "has_phases OR done_autosol").
+            #
+            # Why this is needed (Pitfall 10 justification):
+            # autobuild's real semantic is "data + (phases OR model OR
+            # phaser_done OR autosol_done)" — mixes has_ and _done flag
+            # families.  Existing has_any can't express this because
+            # it auto-prefixes "has_" to every name.
+            if "any_of" in clause:
+                sub_clauses = clause["any_of"]
+                if not isinstance(sub_clauses, list):
+                    continue
+                matched = False
+                for sub in sub_clauses:
+                    if isinstance(sub, dict) and self._check_requirements(
+                            {"requires": [sub]}, context):
+                        matched = True
+                        break
+                if not matched:
                     return False
 
         return True
