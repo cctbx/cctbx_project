@@ -3617,9 +3617,9 @@ Plus one test added to existing `tst_contract_compliance.py`
 
 ### Post-Phase-5 Reliability Layers
 
-Two additional fixes were added after Phase 5 documentation
-shipped, both addressing user-reported issues that surfaced
-during deployment. They extend the v116.10 framing with two
+Three additional fixes were added after Phase 5 documentation
+shipped, all addressing user-reported issues that surfaced
+during deployment. They extend the v116.10 framing with three
 new layers:
 
 **Layer 5 — Result classification.** A successful cryo-EM
@@ -3656,6 +3656,40 @@ test updates. The scanner uses Python's `tokenize` module rather
 than regex heuristics, so docstrings and string-literal
 occurrences of `open(` are correctly excluded.
 
+**Layer 7 — State-machine integrity under skipped steps.** The
+nsf-d2-ligand tutorial demonstrated a class of bugs where the
+workflow state machine and the best-files tracker diverged from
+ground truth, causing the LLM to receive a stale worldview and
+restart its reasoning at cycle 3+. Two interacting fixes
+restored integrity:
+
+1. `_detect_xray_step` returned "analyze" whenever
+   `xtriage_done=False`, regardless of what downstream programs
+   had completed. When users skipped xtriage (via
+   `start_with_program=phenix.refine` and `model_is_placed=True`
+   directives), state never advanced past `xray_initial`. The
+   fix added a `past_analysis` check mirroring the equivalent
+   logic already present in `_detect_cryoem_step`: if any
+   downstream program has completed (`refine_done`,
+   `ligandfit_done`, `phaser_done`, etc.) or a positioned model
+   exists on disk, advance past analyze.
+
+2. `best_files_tracker` scored `ligand_fit_output` (stage 105)
+   below `refined` (stage 100 + R-free contribution ≈ 22 = ≈122).
+   So after phenix.ligandfit produced `ligand_fit_1.pdb`, the
+   "best model" pointer stayed on the unliganded refined model.
+   The fix extended the existing `with_ligand` metric inheritance
+   to also cover `ligand_fit_output`: a one-condition change from
+   `stage == "with_ligand"` to `stage in ("with_ligand",
+   "ligand_fit_output")`.
+
+Together these advance the workflow state correctly through
+post-ligandfit cycles and ensure the LLM sees the liganded model
+as the current best. The post-fix workflow shape is
+**refine → ligandfit → combine_ligand (pdbtools) → refine**,
+the canonical sequence with pdbtools properly executing instead
+of being skipped.
+
 ### Post-Phase-5 Files Modified
 
 | File | Fix | Sites |
@@ -3667,6 +3701,8 @@ occurrences of `open(` are correctly excluded.
 | `knowledge/` (3 files) | encoding | 3 |
 | `utils/run_utils.py` | encoding | 1 |
 | `tests/` (37 files) | encoding | 248 |
+| `agent/workflow_engine.py` | Phase 6c past_analysis | 1 function (lines 1040-1086) |
+| `agent/best_files_tracker.py` | Phase 6c ligand_fit_output inheritance | 1 condition (lines 564-583) |
 
 ### Post-Phase-5 Test Suites Added
 
@@ -3674,6 +3710,7 @@ occurrences of `open(` are correctly excluded.
 |------|-------|----------|
 | `tst_cc_key_extraction.py` (S20) | 11 | Cycle metric CC lookup recognizes canonical `model_map_cc` |
 | `tst_file_encoding.py` (S21) | 7 | Every text-mode `open()` specifies `encoding='utf-8'`; directory-scan tests cover new files automatically |
+| `tst_ligand_workflow_restart.py` (S22) | 14 | `_detect_xray_step` past_analysis check (8 tests); existing-behavior regression (2 tests); `ligand_fit_output` metric inheritance (4 tests) |
 
 ---
 

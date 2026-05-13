@@ -1038,7 +1038,53 @@ class WorkflowEngine:
                 "skipping analyze, routing to obtain_model for prediction")
 
         # Step 1: Need analysis
-        if not context.get("xtriage_done"):
+        # v116.10 Phase 6c: xtriage-aware "past analysis" check.
+        #
+        # Previously this returned "analyze" any time xtriage hadn't run,
+        # which is wrong for the many paths that legitimately skip xtriage:
+        #
+        #   - User supplies a pre-refined model + start_with_program=
+        #     phenix.refine (the ligand-fitting tutorial)
+        #   - The plan explicitly skips analyze (PLAN: "Skipped 1 prerequisite
+        #     stage(s) — user requested phenix.refine")
+        #   - Refinement, ligand fitting, or other downstream programs have
+        #     run successfully but xtriage_done flag remained False
+        #
+        # In those cases the workflow was getting stuck reporting STATE=
+        # xray_initial / "Need to analyze data quality first" at every cycle,
+        # even after multiple successful refinements and a ligand fit.  The
+        # LLM, given that worldview, reasonably concluded "this is the first
+        # refinement step" and re-applied initial-cycle directives (e.g.
+        # generate_r_free_flags=true) at cycles 3, 4, 5 — see the
+        # nsf-d2-ligand tutorial restart bug.
+        #
+        # This mirrors the equivalent check in _detect_cryoem_step at the
+        # top of that function.  The logic is: if ANY downstream program
+        # has done work, we are demonstrably past the analyze step.
+        # Done flags reflect history; file-presence flags reflect on-disk
+        # evidence (covers session resumption where history was lost).
+        past_analysis = (
+            context.get("xtriage_done") or
+            # Downstream programs whose completion proves analysis is past
+            context.get("refine_done", False) or
+            context.get("phaser_done", False) or
+            context.get("autobuild_done", False) or
+            context.get("autosol_done", False) or
+            context.get("autosol_attempted", False) or
+            context.get("ligandfit_done", False) or
+            context.get("rsr_done", False) or
+            context.get("dock_done", False) or
+            context.get("predict_done", False) or
+            context.get("predict_full_done", False) or
+            # File-presence fallback: a positioned model on disk proves
+            # placement happened (covers session resumption)
+            context.get("has_placed_model_from_history", False) or
+            context.get("has_refined_model", False) or
+            context.get("has_ligand_fit", False) or
+            # Probe ran (placement was definitively assessed)
+            context.get("placement_probed", False)
+        )
+        if not past_analysis:
             return self._make_step_result(steps, "analyze",
                 "Need to analyze data quality first")
 

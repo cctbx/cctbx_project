@@ -561,11 +561,24 @@ class BestFilesTracker:
         if category == "map_coeffs_mtz":
             return self._evaluate_map_coeffs_mtz(path, cycle, metrics, stage, score)
 
-        # Special handling for with_ligand models: inherit metrics from the
-        # current best model so the ligand-combined file isn't penalized for
-        # lacking R-free metrics. A with_ligand model is always derived from
-        # the current best refined model, so it deserves the same quality score.
-        if category == "model" and stage == "with_ligand" and not metrics:
+        # Special handling for with_ligand and ligand_fit_output models:
+        # inherit metrics from the current best model so the ligand-combined
+        # file isn't penalized for lacking R-free metrics. A with_ligand or
+        # ligand_fit_output model is always derived from the current best
+        # refined model, so it deserves the same quality score.
+        #
+        # v116.10 Phase 6c: extended to ligand_fit_output.  Without this,
+        # phenix.ligandfit's output (e.g. ligand_fit_1.pdb) scores 105
+        # (stage only, no metrics), while the previous refined model scores
+        # 100 + ~22 (R-free contribution) = ~122 — so the agent's "best
+        # model" pointer stays on the unliganded refined model after
+        # ligandfit succeeds.  Subsequent context handoff to the LLM then
+        # tells it the model is the unliganded one, causing the
+        # post-ligandfit-refine cycle to re-refine without ligand awareness.
+        # See nsf-d2-ligand tutorial restart bug for the full chain.
+        if (category == "model"
+                and stage in ("with_ligand", "ligand_fit_output")
+                and not metrics):
             current = self.best.get(category)
             if current and current.metrics:
                 inherited_metrics = dict(current.metrics)

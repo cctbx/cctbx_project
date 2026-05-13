@@ -122,6 +122,11 @@ Systematic Testing Framework (v115.08):
   S21. File Encoding - text-mode open() calls specify encoding='utf-8',
        preventing UnicodeDecodeError crashes on non-UTF-8 system locales
        (Chinese/Japanese Windows in particular) (5 tests, v116.10)
+  S22. Ligand Workflow Restart - _detect_xray_step advances past "analyze"
+       when downstream programs have run; best_files_tracker treats
+       ligand_fit_output as new best by inheriting metrics from prior
+       refined model. Fixes nsf-d2-ligand tutorial restarting at cycle 3
+       (14 tests, v116.10 Phase 6c)
 """
 
 from __future__ import absolute_import, division, print_function
@@ -1270,6 +1275,22 @@ def main():
         print(f"\u26a0\ufe0f  Could not import tst_file_encoding: {e}")
         results.append(("File Encoding",
                        "tst_file_encoding", False, 0))
+
+    # --- Ligand Workflow Restart (v116.10 Phase 6c) ---
+    try:
+        from tests.tst_ligand_workflow_restart import (
+            run_all_tests as run_ligand_workflow_restart_tests)
+        success, elapsed = run_test_module(
+            "tst_ligand_workflow_restart",
+            run_ligand_workflow_restart_tests, args.verbose)
+        results.append(("Ligand Workflow Restart",
+                       "tst_ligand_workflow_restart",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_ligand_workflow_restart: {e}")
+        results.append(("Ligand Workflow Restart",
+                       "tst_ligand_workflow_restart", False, 0))
 
     # --- Summary ---
     total_elapsed = time.time() - total_start

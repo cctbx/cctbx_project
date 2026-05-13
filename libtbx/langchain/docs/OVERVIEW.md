@@ -126,7 +126,7 @@ generalize beyond v116.10:
   `_check_program_prerequisites` is mostly redundant after Phase
   6b but retained as defense in depth.
 
-**Post-Phase-5 additions.** Two user-reported issues surfaced
+**Post-Phase-5 additions.** Three user-reported issues surfaced
 during deployment and were patched after the Phase 5 docs
 shipped:
 
@@ -153,6 +153,24 @@ shipped:
   text files are opened; relying on defaults assumes a locale
   the user may not have.**
 
+- **Ligand workflow restart (S22, Phase 6c).** The nsf-d2-ligand
+  tutorial restarted its reasoning at cycle 3, with the LLM
+  declaring *"As this is the first refinement step"* even after
+  successful refinement and ligand fitting had completed. Two
+  interacting bugs: `_detect_xray_step` returned "analyze" any
+  time `xtriage_done=False` regardless of downstream progress;
+  `best_files_tracker` scored `ligand_fit_output` (105) below
+  `refined` (≈122) so the agent's "best model" pointer stayed on
+  the unliganded refined model. Both fixes mirror existing
+  in-codebase patterns: the `past_analysis` check copies
+  `_detect_cryoem_step`; the inheritance fix extends the
+  existing `with_ligand` machinery to also cover
+  `ligand_fit_output`. This adds a sixth principle: **when
+  fixing analogous bugs in parallel code paths (X-ray vs cryo-EM,
+  with_ligand vs ligand_fit_output), check whether the fix
+  pattern already exists nearby.** Both bugs had close analogs
+  that simply hadn't been extended to cover the affected case.
+
 ### Prior cycle
 
 The v115 cycle addressed 22 infrastructure items identified from
@@ -178,6 +196,8 @@ repo root for status.
 | Cryo-EM runs reported INCOMPLETE | yes (CC bug) | fixed | `tst_cc_key_extraction.py` (v116.10) |
 | Non-UTF-8 Windows startup crash | yes | fixed | `tst_file_encoding.py` (v116.10) |
 | Text-mode `open()` without `encoding=` | ungoverned | automated | `tst_file_encoding.py` directory-scan tests (v116.10) |
+| Workflow state stuck at `xray_initial` post-ligandfit | yes (restart at cycle 3) | advances correctly | `tst_ligand_workflow_restart.py` Section A (v116.10 Phase 6c) |
+| `ligand_fit_output` not selected as best model | yes (scored below refined) | inherits metrics, becomes best | `tst_ligand_workflow_restart.py` Section C (v116.10 Phase 6c) |
 
 ---
 

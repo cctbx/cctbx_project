@@ -218,6 +218,108 @@ than per-patch comments. Future maintainers cleaning up the
 codebase should know the `encoding='utf-8'` convention is
 load-bearing for non-UTF-8 Windows locales.
 
+### Post-Phase-5 Addition: Ligand Workflow Restart Fix (Phase 6c, S22)
+
+#### Summary
+
+The nsf-d2-ligand tutorial restarted its reasoning at cycle 3:
+after a successful refinement (cycle 1) and a successful ligand
+fit (cycle 2), cycle 3 reported `STATE: xray_initial / Need to
+analyze data quality first` and the LLM produced the reasoning
+*"As this is the first refinement step, I will set
+'generate_rfree_flags=true'."* The same pattern repeated at
+cycles 4 and 5. Three interacting issues were diagnosed; two
+fixes resolve all three.
+
+#### Bug Details
+
+| Bug | Symptom | Root Cause | Fix |
+|-----|---------|------------|-----|
+| **1** | Every cycle reports `STATE: xray_initial` even after refine and ligandfit succeeded | `_detect_xray_step` returns "analyze" any time `xtriage_done=False`, regardless of downstream progress. When the user supplies a pre-placed model + `start_with_program=phenix.refine` (which skips xtriage), the state never advances | Added a `past_analysis` check that mirrors `_detect_cryoem_step`: if any downstream program has completed (`refine_done`, `ligandfit_done`, `phaser_done`, etc.) or a positioned model exists on disk, advance past analyze |
+| **2** | After ligandfit succeeds, the "best model" pointer stays on the previous unliganded refined model | `best_files_tracker` scores `ligand_fit_output` (stage 105) below `refined` (stage 100 + R-free contribution ~22 = ~122). LigandFit's output (no R-free metrics) loses the scoring contest, so the LLM is told the model is still the unliganded one | Extended the existing `with_ligand` metric inheritance to also cover `ligand_fit_output`. One-condition change: `stage == "with_ligand"` → `stage in ("with_ligand", "ligand_fit_output")` |
+| **3** | LLM mechanically re-applies first-cycle directives (`generate_rfree_flags=true`) at cycles 3, 4, 5 | Observable consequence of Bugs 1 and 2 — when the agent presents a stale worldview (state=xray_initial + unliganded model as "current"), the LLM correctly applies first-cycle directives because the worldview says we're at cycle 1 | No separate fix needed; resolves automatically once the LLM sees correct state (Bug 1) and current model (Bug 2) |
+
+#### Files Modified
+
+| File | Lines | Change |
+|------|-------|--------|
+| `agent/workflow_engine.py` | 1040-1086 | Replaced 3-line early return with 45-line `past_analysis` check (mirrors `_detect_cryoem_step` at lines 1283-1299) |
+| `agent/best_files_tracker.py` | 564-583 | Extended condition `stage == "with_ligand"` to `stage in ("with_ligand", "ligand_fit_output")`; existing inheritance machinery handles the rest |
+
+#### Tests
+
+`tst_ligand_workflow_restart.py` (14 tests, suite S22):
+
+- **Section A** (8 tests): `past_analysis` check — verifies each
+  downstream flag (`refine_done`, `ligandfit_done`,
+  `phaser_done`, etc.) correctly advances past analyze; verifies
+  fresh cycle 1 still routes to analyze; reproduces the exact
+  nsf-d2-ligand cycle 3 context and confirms it returns
+  `combine_ligand`.
+- **Section B** (2 tests): regression — Phase 6b sequence-only
+  precedence still fires; fresh data+model upload still goes to
+  analyze first.
+- **Section C** (4 tests): `ligand_fit_output` metric
+  inheritance — ligand_fit_1.pdb becomes best with inherited
+  R-free; existing `with_ligand` inheritance still works;
+  explicit metrics on ligand_fit_output are respected (no
+  inheritance); end-to-end refine→ligandfit→refine tracks correctly.
+
+Uses the same libtbx-stub pattern as `tst_sequence_only_routing.py`
+(Phase 6b tests), so workflow_engine routing tests run without a
+real PHENIX install.
+
+#### Verification
+
+| Check | Result |
+|-------|--------|
+| Python syntax (both patched files) | Parses |
+| `tst_ligand_workflow_restart.py` (14 new tests) | 14/14 pass |
+| `tst_sequence_only_routing.py` (Phase 6b, 10 tests) | 10/10 pass (regression) |
+| `tst_data_input_filter.py` (Phase 4b, 22 tests) | 22/22 pass (regression) |
+| Empirical bug reproduction | Pre-fix: ligand_fit_1.pdb does NOT become best (score 122 stays on refined). Post-fix: ligand_fit_1.pdb becomes best (score 127 = stage 105 + inherited R-free 22) |
+| nsf-d2-ligand cycle 3 routing | Returns `combine_ligand` (correct flow through pdbtools) |
+
+#### Workflow Shape Change
+
+A behavioral change worth flagging: the workflow shape is
+different after this fix.
+
+| Before | After |
+|--------|-------|
+| refine → ligandfit → refine → refine → refine (3 refines without progress until guard fires) | refine → ligandfit → combine_ligand (pdbtools) → refine (canonical flow) |
+
+Both reach acceptable R-free, but the post-fix flow is the
+canonical sequence with the combine_ligand step properly
+executing. Tutorial expectations that encode the old shape
+("expect 3 refine cycles after ligandfit") would need updating.
+
+#### Self-Review Note
+
+Both fixes are non-novel — each mirrors a proven pattern already
+in the codebase:
+
+- Fix 1 mirrors `_detect_cryoem_step`'s `past_analysis` exactly.
+  The cryo-EM version has a comment explaining why the check
+  exists: *"This handles tutorials that skip mtriage and also
+  prevents the workflow from getting stuck in 'analyze' if
+  mtriage's done flag wasn't set."* The X-ray version simply
+  lacked the equivalent.
+- Fix 2 extends an existing two-line metric-inheritance pattern
+  to one additional stage. A one-character-ish change.
+
+A new principle surfaced from this round: **when fixing
+analogous bugs in parallel code paths (X-ray vs cryo-EM,
+with_ligand vs ligand_fit_output), check whether the fix
+pattern already exists nearby**. Both bugs had close analogs
+that simply hadn't been extended to cover the affected case.
+
+The highest residual risk is that this delivery was tested at
+source level but not via a live tutorial run. Tom should re-run
+the nsf-d2-ligand tutorial to confirm: (a) R-free still reaches
+~0.21 or better, (b) the reasoning report no longer shows "first
+refinement step" 4 times, (c) no tutorial expectations break.
+
 
 
 ## Version 115.09b (GUI Fixes + Ligand Workflow + Bug 1)
