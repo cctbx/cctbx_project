@@ -39,7 +39,6 @@ from libtbx import object_oriented_patterns as oop
 from libtbx import adopt_optional_init_args
 
 from cctbx.array_family import flex
-from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import miller
 from cctbx import maptbx
