@@ -17,6 +17,7 @@ patterns developers should know about:
 | **v116.10 Tier 2.1** | **Declarative `requirements:` schema** in `programs.yaml` — a new way to add program-level filtering rules without writing imperative Python | §4 Step 1; §13 Configuration Reference |
 | **v116.11** | Stop condition fix — preprocessor-inserted `**Stop Condition**: None` headers were treated as user stop intent. Strengthened `_strip_preprocessor_stop_condition` regex + defense-in-depth strip + suppress `start_with_program` for preprocessed advice | §3 directive extractor (see §3i) |
 | **v116.12** | Cryo-EM validation-aware auto-stop — `metrics_analyzer.py` cryo-EM `latest_cc > 0.70` branch now mirrors the X-ray validation_done check. PLAN node defense-in-depth elif + diagnostic context dump | §3j metrics/stop conditions |
+| **v116.13** | Cryo-EM validation check in `metric_evaluator.py` — v116.12 patched the wrong file (`metrics_analyzer.py` is dead code when `USE_YAML_METRICS=True`, the default). v116.13 patches the YAML-driven production path. **Both fixes deployed together.** | §3j metrics/stop conditions |
 
 If you're adding a program with input-availability requirements,
 use the declarative `requirements:` schema (§4 Step 1) — it's
@@ -116,8 +117,9 @@ work both inside PHENIX and standalone.
 
 Test suite count is approximate and grows steadily; v116.10 added
 89 new test cases across 7 new files (S13–S19) plus 40 for Tier
-2.1 (S25); v116.11 added 15 (S26); v116.12 added 27 (S27+S28). See
-§5 Testing for the harness conventions and §14 for legacy notes.
+2.1 (S25); v116.11 added 15 (S26); v116.12 added 27 (S27+S28);
+v116.13 added 15 (S29). See §5 Testing for the harness conventions
+and §14 for legacy notes.
 
 ---
 
@@ -937,9 +939,10 @@ to avoid regression. See `tst_stop_condition_false_positive.py`
 (S26) for the regression test pattern.
 
 
-### 3j. Metrics and Stop Conditions (v116.12 symmetry)
+### 3j. Metrics and Stop Conditions (v116.12 + v116.13 symmetry)
 
-**Files:** `agent/metrics_analyzer.py`, `agent/metric_evaluator.py`,
+**Files:** `agent/metrics_analyzer.py`,
+`agent/metric_evaluator.py`,
 `agent/graph_nodes.py` (PLAN node auto-stop chain)
 
 `analyze_metrics_trend()` examines the metrics history
@@ -949,32 +952,59 @@ consults `metrics_trend.should_stop` and runs through
 an elif chain of suppression checks before firing
 AUTO-STOP.
 
-**X-ray/cryo-EM symmetry (v116.12).** Pre-v116.12, the
-cryo-EM `latest_cc > 0.70` branch in
-`_analyze_cryoem_trend` unconditionally set
-`should_stop=True`. The X-ray equivalent (lines
-365-385) correctly checked whether validation
-(`phenix.molprobity` or `phenix.model_vs_data`) had
-been run before allowing auto-stop. The two paths
-drifted out of sync; v116.12 restores symmetry:
+**Two parallel implementations — important to know about.**
+The codebase has two implementations of the stop logic
+in the agent/ directory:
+
+| File | Function | When it runs |
+|------|----------|--------------|
+| `agent/metric_evaluator.py` | `MetricEvaluator.analyze_trend()` | When `USE_YAML_METRICS=True` (the default in `graph_nodes.py` line 103) |
+| `agent/metrics_analyzer.py` | `_analyze_xray_trend()` / `_analyze_cryoem_trend()` (hardcoded) | Only as fallback when the YAML evaluator raises |
+
+`metrics_analyzer.py::analyze_metrics_trend()` is the
+public entry point. At line 271 it checks
+`use_yaml_evaluator` and, if True, delegates immediately
+to `analyze_refinement_trend()` (a wrapper around
+`MetricEvaluator.analyze_trend`) and returns. The
+hardcoded code beneath that check is the rarely-taken
+fallback path.
+
+**When changing stop logic**: always update BOTH files.
+The v116.12 fix only updated `metrics_analyzer.py` and
+deployed without effect because `metric_evaluator.py`
+(the production path) wasn't touched. v116.13 fixed
+this, but the underlying DRY violation remains. Code
+review for any change in this area should require
+matching updates in both files.
+
+**X-ray/cryo-EM symmetry (v116.12 + v116.13).** Both
+implementations now check `validation_done` before
+allowing auto-stop on success. Pre-v116.12, the cryo-EM
+`latest_cc > target` branch in both files
+unconditionally set `should_stop=True`. The X-ray
+equivalent correctly checked validation. v116.12 fixed
+the asymmetry in `metrics_analyzer.py`; v116.13 fixed
+it in `metric_evaluator.py`. The pattern (mirrored in
+both files):
 
 ```python
-# Cryo-EM SUCCESS branch (v116.12)
-if latest_cc > 0.70:
-    validation_done = any(
-        m.get("program") in (
-            "phenix.molprobity",
-            "phenix.validation_cryoem",
-        )
-        for m in metrics_history
+# Cryo-EM SUCCESS branch (v116.12 + v116.13)
+validation_done = any(
+    m.get("program") in (
+        "phenix.molprobity",
+        "phenix.validation_cryoem",
     )
+    for m in metrics_history
+)
+
+if latest_cc > target:
     if validation_done:
         result["should_stop"] = True
         # ... existing behavior
     else:
         result["should_stop"] = False
         result["suggest_validation"] = True
-        # trend_summary: "TARGET REACHED, VALIDATE BEFORE STOPPING"
+        # trend_summary: "TARGET REACHED" (preserved format)
 ```
 
 Note: `phenix.model_vs_data` does NOT count for cryo-EM
@@ -1000,17 +1030,38 @@ session_info. The AUTO-STOP path now also logs a
 diagnostic context dump with all the gating values to
 `debug_log`, making future regressions debuggable.
 
-**When adding a new stop condition** (e.g., a new
-`should_stop=True` path in `_analyze_cryoem_trend` or
-`_analyze_xray_trend`), think about whether validation
-should be required first. Mirror the existing
-validation_done pattern if so. The X-ray
-`r_free < success_threshold` and cryo-EM
-`latest_cc > 0.70` both check validation; PLATEAU and
-EXCESSIVE intentionally don't (loop guards).
+After v116.13, this PLAN-node suppression is genuinely
+defense-in-depth: `should_stop` is no longer set to
+True when validation hasn't run, so the chain is
+rarely entered with `should_stop=True` in the cryo-EM
+SUCCESS case.
 
-See `tst_cryoem_stop_validation.py` (S27) and
-`tst_plan_autostop_validation_suppression.py` (S28)
+**When adding a new stop condition** (e.g., a new
+`should_stop=True` path in either implementation),
+think about whether validation should be required
+first. Mirror the existing validation_done pattern if
+so. The X-ray `r_free < success_threshold` and
+cryo-EM `latest_cc > target` both check validation;
+PLATEAU and EXCESSIVE intentionally don't (loop
+guards).
+
+**Lessons from the v116.12 miss** (worth internalizing):
+
+- When patching a function, search the module for
+  early-return paths, delegation, and alternative
+  implementations. A simple
+  `grep -n "use_yaml\|analyze_refinement_trend"`
+  on `metrics_analyzer.py` would have caught the
+  parallel-implementation issue before the patch.
+- When a deployed fix doesn't change behavior, look at
+  the message format first. If the printed strings
+  don't match the patched code, the patch is in dead
+  code — not a deployment lag, not a missing field, but
+  the wrong file.
+
+See `tst_cryoem_stop_validation.py` (S27),
+`tst_plan_autostop_validation_suppression.py` (S28),
+and `tst_cryoem_metric_evaluator_validation.py` (S29)
 for the regression test patterns.
 
 
@@ -2127,6 +2178,7 @@ Recent suites worth knowing about (full list in
 | S26 | Stop condition false positive (v116.11) | Tests resolver-direct behavior + upstream strip; uses `_resolve_after_program` directly to isolate from `intent_classifier` |
 | S27 | Cryo-EM stop validation (v116.12 Fix #1) | Mirrors X-ray test pattern; verifies X-ray path unchanged |
 | S28 | PLAN AUTO-STOP suppression (v116.12 Fix #2) | Tests the PLAN node elif chain in isolation via synthetic state dicts |
+| S29 | Cryo-EM metric evaluator validation (v116.13) | Tests `MetricEvaluator.analyze_trend` directly via libtbx-stub including yaml_loader; cautionary tale about patching dead code (see §3j) |
 
 ### Test runner convention
 

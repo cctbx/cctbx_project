@@ -385,11 +385,17 @@ reconstruct it when the correct program runs.
 ### STOP CONDITIONS
 
 Set "stop": true when:
-- **X-ray**: R-free < 0.25 (or dynamic target based on resolution)
-- **Cryo-EM**: Map-model CC > 0.70
+- **X-ray**: R-free < 0.25 (or dynamic target based on resolution) AND validation has been run
+- **Cryo-EM**: Map-model CC > 0.70 AND validation has been run
 - **Plateau**: Metrics trend shows <0.3% improvement for 3+ cycles
 - **Stuck**: Same error repeated 3+ times with no progress
 - **No valid programs**: Workflow state shows only STOP is valid
+
+**CRITICAL**: Reaching the quality target (R-free or map-model CC) is NOT by itself
+sufficient to stop. If validation programs (phenix.molprobity, phenix.validation_cryoem,
+phenix.map_correlations, phenix.model_vs_data) appear in VALID PROGRAMS and validation
+has not yet been run, you MUST choose a validation program rather than STOP.
+Hitting the metric target means it is time to validate, not time to quit.
 
 ### SPECIAL CASES
 
@@ -399,9 +405,13 @@ Set "stop": true when:
 **HIGH RESOLUTION** (< 1.5Å): Consider anisotropic_adp=true in refine
 
 **VALIDATION**: Run validation programs when:
-  - R-free target reached (to confirm model quality)
+  - **X-ray**: R-free target reached (to confirm model quality)
+  - **Cryo-EM**: Map-model CC > 0.70 reached (to confirm model quality)
   - After 3+ refine cycles (to check for problems)
-  - If R-free is good but model looks wrong
+  - If metrics are good but model looks wrong
+  When the workflow state is "validate" (X-ray: xray_refined; cryo-EM: cryoem_refined)
+  and VALID PROGRAMS contains a validation program, run it. Do NOT set stop=true
+  in preference to running an available validation program.
 
 ### IMPORTANT RULES
 
@@ -411,6 +421,7 @@ Set "stop": true when:
 4. **Always set resolution for predict_and_build** if building
 5. **Files must exist** - only use files from the inventory
 6. **Strategy is program-specific** - never put parameters for program X in a strategy for program Y; when stop=true, strategy must be empty
+7. **Validate before stopping** - if validation programs are in VALID PROGRAMS and no validation has been run this session, choose a validation program rather than STOP, even when the quality target has been reached
 """
 
 
@@ -455,27 +466,9 @@ def _format_directives_for_prompt(directives):
         if "after_program" in stop_cond:
             after_prog = stop_cond["after_program"]
             lines.append("- Stop after %s completes" % after_prog)
-            # v116.10 Phase 6a: target-not-now framing.
-            #
-            # The previous wording said "CRITICAL: You MUST run X.
-            # Do NOT keep running refinement cycles - run X instead!"
-            # which caused the LLM to pick after_program even when
-            # it was not in VALID PROGRAMS (e.g. predict_and_build at
-            # xray_initial), triggering the after_program_not_available
-            # STOP defense.
-            #
-            # The new wording aligns with the authoritative VALID
-            # PROGRAMS guidance later in the prompt ("You MUST choose
-            # from the valid programs above, or set 'stop': true."):
-            #   - after_program is a STOP TARGET, not a now-directive
-            #   - When the target is in VALID PROGRAMS, pick it
-            #   - When the target is not in VALID PROGRAMS, pick a
-            #     prerequisite from VALID PROGRAMS
-            #   - Never pick a program outside VALID PROGRAMS
-            lines.append("- **Stop target: %s.** The agent will stop once this program completes." % after_prog)
-            lines.append("- If %s is in VALID PROGRAMS this cycle, choose it." % after_prog)
-            lines.append("- If %s is NOT in VALID PROGRAMS, choose the appropriate prerequisite from VALID PROGRAMS. The workflow will reach %s when its inputs become available." % (after_prog, after_prog))
-            lines.append("- Never pick a program outside VALID PROGRAMS. Programs outside the list cannot run this cycle.")
+            # Add explicit guidance to run the program - make it very clear
+            lines.append("- **CRITICAL: You MUST run %s before stopping. If it's in VALID PROGRAMS, choose it NOW.**" % after_prog)
+            lines.append("- Do NOT keep running refinement cycles - run %s instead!" % after_prog)
         if "max_refine_cycles" in stop_cond:
             lines.append("- Maximum %d refinement cycles" % stop_cond["max_refine_cycles"])
         if "r_free_target" in stop_cond:

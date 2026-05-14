@@ -171,6 +171,18 @@ Systematic Testing Framework (v115.08):
        future debugging.  Defense-in-depth for cases where
        plan_has_pending_stages doesn't fire
        (11 tests, v116.12 Fix #2)
+
+  S29. Cryo-EM Metric Evaluator Validation - v116.13 actual fix.
+       v116.12 patched metrics_analyzer.py but graph_nodes.py sets
+       USE_YAML_METRICS=True (default), which delegates trend
+       analysis to MetricEvaluator.analyze_trend() in
+       metric_evaluator.py — the actual production path.  v116.12's
+       fix was in dead code.  v116.13 adds the validation_done check
+       to MetricEvaluator's cryo-EM SUCCESS branch, mirroring the
+       X-ray pattern (which already had it).  Tests verify the fix
+       at the class level, X-ray path unchanged, and validation
+       program recognition (phenix.molprobity, phenix.validation_cryoem)
+       (15 tests, v116.13)
 """
 
 from __future__ import absolute_import, division, print_function
@@ -1431,6 +1443,73 @@ def main():
               f"tst_plan_autostop_validation_suppression: {e}")
         results.append(("PLAN AUTO-STOP Suppression",
                        "tst_plan_autostop_validation_suppression", False, 0))
+
+    # --- Cryo-EM Metric Evaluator Validation (v116.13) ---
+    try:
+        from tests.tst_cryoem_metric_evaluator_validation import (
+            run_all_tests as run_cryoem_metric_eval_tests)
+        success, elapsed = run_test_module(
+            "tst_cryoem_metric_evaluator_validation",
+            run_cryoem_metric_eval_tests, args.verbose)
+        results.append(("Cryo-EM Metric Evaluator Validation",
+                       "tst_cryoem_metric_evaluator_validation",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_cryoem_metric_evaluator_validation: {e}")
+        results.append(("Cryo-EM Metric Evaluator Validation",
+                       "tst_cryoem_metric_evaluator_validation", False, 0))
+
+    # --- Directive Extractor Sentinel Space Group (v116.15) ---
+    try:
+        from tests.tst_directive_extractor_sentinel_space_group import (
+            run_all_tests as run_sentinel_sg_tests)
+        success, elapsed = run_test_module(
+            "tst_directive_extractor_sentinel_space_group",
+            run_sentinel_sg_tests, args.verbose)
+        results.append(("Directive Extractor Sentinel Space Group",
+                       "tst_directive_extractor_sentinel_space_group",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_directive_extractor_sentinel_space_group: {e}")
+        results.append(("Directive Extractor Sentinel Space Group",
+                       "tst_directive_extractor_sentinel_space_group",
+                       False, 0))
+
+    # --- Directive Extractor Behavior Regression (v116.15) ---
+    try:
+        from tests.tst_directive_extractor_behavior_regression import (
+            run_all_tests as run_dx_regression_tests)
+        success, elapsed = run_test_module(
+            "tst_directive_extractor_behavior_regression",
+            run_dx_regression_tests, args.verbose)
+        results.append(("Directive Extractor Behavior Regression",
+                       "tst_directive_extractor_behavior_regression",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_directive_extractor_behavior_regression: {e}")
+        results.append(("Directive Extractor Behavior Regression",
+                       "tst_directive_extractor_behavior_regression",
+                       False, 0))
+
+    # --- Validate-Step After-Program Guard (v116.17) ---
+    try:
+        from tests.tst_validate_step_after_program_guard import (
+            run_all_tests as run_validate_guard_tests)
+        success, elapsed = run_test_module(
+            "tst_validate_step_after_program_guard",
+            run_validate_guard_tests, args.verbose)
+        results.append(("Validate-Step After-Program Guard",
+                       "tst_validate_step_after_program_guard",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_validate_step_after_program_guard: {e}")
+        results.append(("Validate-Step After-Program Guard",
+                       "tst_validate_step_after_program_guard",
+                       False, 0))
 
     # --- Summary ---
     total_elapsed = time.time() - total_start

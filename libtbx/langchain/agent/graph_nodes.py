@@ -642,6 +642,37 @@ def perceive(state):
         files_local=files_local,
     )
 
+    # v116.16 DIAG: dump workflow_state right after detect_workflow_state
+    # returns, BEFORE any PERCEIVE post-processing.  Gated on env var so
+    # it's a no-op for normal runs.  Enabled with PHENIX_AGENT_DIAG_PLAN=1.
+    if os.environ.get("PHENIX_AGENT_DIAG_PLAN"):
+        import json as _diag_json
+        print("=" * 70)
+        print("[DIAG_PLAN] AFTER detect_workflow_state (PERCEIVE node)")
+        print("=" * 70)
+        print("[DIAG_PLAN]   state         = %r"
+              % workflow_state.get("state"))
+        print("[DIAG_PLAN]   step_info     = %r"
+              % workflow_state.get("step_info"))
+        print("[DIAG_PLAN]   valid_programs= %r"
+              % workflow_state.get("valid_programs"))
+        print("[DIAG_PLAN]   reason        = %r"
+              % (workflow_state.get("reason") or "")[:200])
+        try:
+            print("[DIAG_PLAN]   directives    = %s"
+                  % _diag_json.dumps(state.get("directives", {}), indent=2))
+        except Exception:
+            print("[DIAG_PLAN]   directives    = %r"
+                  % state.get("directives", {}))
+        _si = state.get("session_info", {}) or {}
+        print("[DIAG_PLAN]   plan_has_pending_stages   = %r"
+              % _si.get("plan_has_pending_stages"))
+        print("[DIAG_PLAN]   plan_next_stage_programs  = %r"
+              % _si.get("plan_next_stage_programs"))
+        print("[DIAG_PLAN]   advice_changed            = %r"
+              % _si.get("advice_changed"))
+        print("=" * 70, flush=True)
+
     # Q1: When the user provides new advice on resume and the workflow is
     # already in the 'complete' phase, the valid_programs list is just
     # ["STOP"], which means the LLM never gets to act on the new advice.
@@ -1921,6 +1952,43 @@ def plan(state):
             "PLAN: Injected error context for "
             "self-correction (%s)" % _err_cat)
 
+    # v116.16 DIAG: dump exactly what's being given to get_planning_prompt
+    # — i.e. what the LLM will see for valid_programs and directives.
+    # Gated on env var so it's a no-op for normal runs.
+    # Enabled with PHENIX_AGENT_DIAG_PLAN=1.
+    if os.environ.get("PHENIX_AGENT_DIAG_PLAN"):
+        import json as _diag_json
+        print("=" * 70)
+        print("[DIAG_PLAN] BEFORE get_planning_prompt (PLAN node, LLM call)")
+        print("=" * 70)
+        print("[DIAG_PLAN]   state         = %r"
+              % workflow_state.get("state"))
+        print("[DIAG_PLAN]   step_info     = %r"
+              % workflow_state.get("step_info"))
+        print("[DIAG_PLAN]   valid_programs= %r"
+              % workflow_state.get("valid_programs"))
+        print("[DIAG_PLAN]   reason        = %r"
+              % (workflow_state.get("reason") or "")[:200])
+        try:
+            print("[DIAG_PLAN]   directives    = %s"
+                  % _diag_json.dumps(directives, indent=2))
+        except Exception:
+            print("[DIAG_PLAN]   directives    = %r" % directives)
+        print("[DIAG_PLAN]   metrics_trend.should_stop = %r"
+              % metrics_trend.get("should_stop"))
+        print("[DIAG_PLAN]   metrics_trend.reason      = %r"
+              % metrics_trend.get("reason"))
+        print("[DIAG_PLAN]   metrics_trend.trend_summary = %r"
+              % metrics_trend.get("trend_summary"))
+        _si2 = state.get("session_info", {}) or {}
+        print("[DIAG_PLAN]   plan_has_pending_stages   = %r"
+              % _si2.get("plan_has_pending_stages"))
+        print("[DIAG_PLAN]   plan_next_stage_programs  = %r"
+              % _si2.get("plan_next_stage_programs"))
+        print("[DIAG_PLAN]   user_advice (first 200ch) = %r"
+              % (user_advice or "")[:200])
+        print("=" * 70, flush=True)
+
     system_msg, user_msg = get_planning_prompt(
         history=state.get("history", []),
         analysis=state.get("log_analysis", {}),
@@ -1932,6 +2000,15 @@ def plan(state):
         directives=directives,
         best_files=best_files
     )
+
+    # v116.16 DIAG: dump the assembled user_msg so we see literally what
+    # the LLM reads (VALID PROGRAMS line, Stop Conditions block, etc.).
+    if os.environ.get("PHENIX_AGENT_DIAG_PLAN"):
+        print("=" * 70)
+        print("[DIAG_PLAN] ASSEMBLED PROMPT (user_msg, first 4000 chars)")
+        print("=" * 70)
+        print(user_msg[:4000] if user_msg else "<empty>")
+        print("=" * 70, flush=True)
 
     # 4. Get LLM (with validation)
     llm, error = get_planning_llm(provider)

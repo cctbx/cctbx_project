@@ -497,11 +497,29 @@ class MetricEvaluator:
         # Get target from YAML
         target = self.get_target("map_cc") or 0.70
 
+        # Check for validation (v116.13 - mirror X-ray pattern at line 403).
+        # Pre-v116.13, the cryo-EM SUCCESS branch unconditionally set
+        # should_stop=True when CC > target, skipping the validation stage
+        # even when phenix.molprobity / phenix.validation_cryoem hadn't run.
+        # The X-ray equivalent (line 403-419) already checks validation_done;
+        # this restores symmetry.  Accepts both phenix.molprobity (general
+        # cryo-EM validation) and phenix.validation_cryoem (cryo-EM-specific).
+        validation_done = any(
+            m.get("program") in ("phenix.molprobity", "phenix.validation_cryoem")
+            for m in metrics_history
+        )
+
         # SUCCESS check
         if latest_cc > target:
-            result["should_stop"] = True
-            result["reason"] = "SUCCESS: Map-model CC (%.3f) above target (%.2f)" % (latest_cc, target)
-            result["recommendation"] = "stop"
+            if validation_done:
+                result["should_stop"] = True
+                result["reason"] = "SUCCESS: Map-model CC (%.3f) above target (%.2f)" % (latest_cc, target)
+                result["recommendation"] = "stop"
+            else:
+                result["should_stop"] = False
+                result["reason"] = "Map-model CC (%.3f) above target - recommend validation" % latest_cc
+                result["recommendation"] = "validate"
+                result["suggest_validation"] = True
             result["trend_summary"] = "Map CC: %.3f - TARGET REACHED" % latest_cc
             return result
 

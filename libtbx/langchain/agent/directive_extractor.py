@@ -1045,6 +1045,37 @@ def _normalize_unit_cell(value):
     return ' '.join(('%g' % f) for f in floats)
 
 
+# v116.15: Sentinel values that the advice preprocessor LLM emits when
+# the user did NOT specify a value.  The preprocessor uses a standardized
+# template ("Space group: None", "Unit cell: Not specified", etc.) and
+# these placeholders must never be stored as real directives — they
+# pollute every session with meaningless values and confuse the planner.
+#
+# Used by BOTH `_apply_crystal_symmetry_fallback` (regex path) AND
+# `validate_directives` (LLM-extracted path) so the rules cannot drift.
+_SYMMETRY_SENTINELS = frozenset([
+    "none", "not mentioned", "not specified", "not given", "not provided",
+    "not applicable", "unknown", "n/a", "na", "null", "tbd",
+    "to be determined", "see above", "auto", "automatic", "default",
+    "identification",  # historical: seen in some preprocessor outputs
+    "false", "true",   # the preprocessor sometimes outputs literal booleans
+])
+
+
+def _is_symmetry_sentinel(value):
+    """Return True when `value` is one of the standardized placeholder
+    strings that mean "the user did not specify a value" rather than a
+    real crystallographic value.
+
+    Compares case-insensitively against the trimmed value.  Returns
+    False for None and non-strings (caller is expected to have
+    a string already).
+    """
+    if not isinstance(value, str):
+        return False
+    return value.strip().lower() in _SYMMETRY_SENTINELS
+
+
 def _apply_crystal_symmetry_fallback(directives, user_advice, log):
     """
     Regex-based fallback for unit_cell and space_group extraction.
@@ -1122,10 +1153,21 @@ def _apply_crystal_symmetry_fallback(directives, user_advice, log):
         sg_match = re.search(_sg_pat, user_advice, re.IGNORECASE)
         if sg_match:
             sg_str = sg_match.group(1).strip().rstrip('.')
-            if sg_str:
+            # v116.15: Reject sentinel values that mean "not specified".
+            # The advice preprocessor LLM emits a standardized template
+            # that always includes lines like "Space group: None".  The
+            # raw regex above happily matches these and stored the literal
+            # sentinel string as a directive, polluting every session
+            # with a meaningless space_group="None" entry.  Real space-
+            # group symbols (P 32 2 1, P63, C2, etc.) never collide with
+            # these natural-language placeholders.
+            if sg_str and not _is_symmetry_sentinel(sg_str):
                 _ensure_default()["space_group"] = sg_str
                 log("DIRECTIVES: Regex fallback extracted "
                     "space_group=%s" % sg_str)
+            elif sg_str:
+                log("DIRECTIVES: Regex fallback ignored space_group=%r "
+                    "(sentinel value, not a real space group)" % sg_str)
 
     return directives
 
@@ -1199,16 +1241,16 @@ def validate_directives(directives, log=None):
                         del valid_settings["unit_cell"]
 
                 # Validate space_group: reject placeholder/non-crystallographic values
+                # v116.15: Use the shared _is_symmetry_sentinel helper so the
+                # sentinel set stays in sync with _apply_crystal_symmetry_fallback.
+                # Structural checks (must start with a letter, length) remain here
+                # because they are LLM-output specific (the regex path already
+                # guarantees the shape by construction).
                 if "space_group" in valid_settings:
                     raw_sg = str(valid_settings["space_group"]).strip()
                     _sg_invalid = (
                         not raw_sg
-                        or raw_sg.lower() in (
-                            "none", "not mentioned", "not specified",
-                            "unknown", "n/a", "na", "identification",
-                            "to be determined", "tbd", "see above",
-                            "false", "true", "null",
-                        )
+                        or _is_symmetry_sentinel(raw_sg)
                         # Must start with a letter (space group symbol)
                         or not raw_sg[0].isalpha()
                         # Must be short enough to be a real symbol

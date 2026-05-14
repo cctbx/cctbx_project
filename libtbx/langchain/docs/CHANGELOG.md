@@ -1,5 +1,168 @@
 # CHANGELOG — v116
 
+## Version 116.13 (Cryo-EM Validation Check in metric_evaluator.py)
+
+### Summary
+
+The real fix for the AF_7mjs Stage 5 (validation) skip bug. v116.12
+patched `agent/metrics_analyzer.py` but missed that
+`agent/graph_nodes.py` sets `USE_YAML_METRICS = True` (the default).
+With that flag set, `analyze_metrics_trend()` delegates immediately
+to `analyze_refinement_trend()` in `agent/metric_evaluator.py` —
+**a parallel implementation v116.12 never patched.** The v116.12
+fix was applied to dead code; the production path retained the
+same asymmetry (X-ray branch checks validation_done, cryo-EM branch
+doesn't).
+
+v116.13 patches the live code path: adds the validation_done check
+to `MetricEvaluator.analyze_trend()` cryo-EM SUCCESS branch
+(line ~500), mirroring the existing X-ray pattern at line 403.
+
+### Modified Files (1 production file)
+
+| File | Lines | Description |
+|------|-------|-------------|
+| `agent/metric_evaluator.py` | +20 / -3 | Mirror X-ray validation_done check in the cryo-EM `latest_cc > target` branch. Recognizes `phenix.molprobity` and `phenix.validation_cryoem`. |
+
+### Why v116.12 didn't work
+
+`agent/graph_nodes.py` line 103:
+```python
+USE_YAML_METRICS = True      # Use metrics.yaml for trend analysis
+```
+
+`agent/metrics_analyzer.py` line 271-276:
+```python
+if use_yaml_evaluator and analyze_refinement_trend is not None:
+    try:
+        return analyze_refinement_trend(metrics_history, ...)
+    except Exception as e:
+        print("Warning: YAML evaluator failed, using hardcoded: %s" % e, ...)
+```
+
+When `USE_YAML_METRICS = True`, `analyze_metrics_trend` delegates
+the entire trend analysis to `analyze_refinement_trend()` in
+`metric_evaluator.py` and returns immediately. The hardcoded code
+(where v116.12 Fix #1 was applied) only runs as a fallback when
+the YAML evaluator raises an exception.
+
+Verification: both v116.12 deployed files were byte-identical to
+the patched versions, but behavior was unchanged. The fix was in
+dead code.
+
+### Three-place asymmetry that should have been spotted
+
+| Path | File | Line | Has validation_done check? |
+|------|------|------|----------------------------|
+| YAML evaluator (active) | `metric_evaluator.py` | ~500 cryo-EM | **NO** (fixed by v116.13) |
+| YAML evaluator (active) | `metric_evaluator.py` | ~403 X-ray | YES (pre-existing) |
+| Hardcoded fallback | `metrics_analyzer.py` | ~505 cryo-EM | NO (fixed by v116.12 in dead code) |
+| Hardcoded fallback | `metrics_analyzer.py` | ~365 X-ray | YES (pre-existing) |
+
+After v116.13, all four paths have the validation_done check.
+
+### Code change
+
+```python
+# Get target from YAML
+target = self.get_target("map_cc") or 0.70
+
+# v116.13: Mirror X-ray validation_done check at line 403.
+validation_done = any(
+    m.get("program") in ("phenix.molprobity", "phenix.validation_cryoem")
+    for m in metrics_history
+)
+
+# SUCCESS check
+if latest_cc > target:
+    if validation_done:
+        result["should_stop"] = True
+        result["reason"] = "SUCCESS: Map-model CC (%.3f) above target (%.2f)" % (latest_cc, target)
+        result["recommendation"] = "stop"
+    else:
+        result["should_stop"] = False
+        result["reason"] = "Map-model CC (%.3f) above target - recommend validation" % latest_cc
+        result["recommendation"] = "validate"
+        result["suggest_validation"] = True
+    result["trend_summary"] = "Map CC: %.3f - TARGET REACHED" % latest_cc
+    return result
+```
+
+The trend_summary `"Map CC: X.XXX - TARGET REACHED"` format is
+preserved exactly, so the cycle box display doesn't change.
+
+### Tests (1 new file, 15 tests)
+
+| File | Tests | Pre-fix | Post-fix |
+|------|-------|---------|----------|
+| `tst_cryoem_metric_evaluator_validation.py` (S29) | 15 (22 assertions) | 6 fail (9 pass) | 15 / 15 pass |
+
+Test coverage:
+
+- **`test_af7mjs_regression`**: exact AF_7mjs metrics history (cycle 4 RSR, CC=0.827) → should_stop=False
+- **`test_cc_above_target_with_molprobity_done`** / **`_with_validation_cryoem_done`**: both validation programs recognized
+- **`test_phenix_model_vs_data_not_cryoem_validation`**: X-ray validation program doesn't count for cryo-EM
+- **`test_validation_earlier_in_history_counts`**: validation mid-history still counts (any() over full history)
+- **`test_cc_above_target_validation_not_done`**: defer to validation when not done
+- **`test_reason_mentions_validation`**: reason hints at validation
+- **`test_trend_summary_format_preserved`**: TARGET REACHED display preserved
+- **`test_cc_just_above_threshold`** / **`_exactly_at_threshold_no_success`** / **`_below_target_no_success_suggestion`**: boundary conditions (strict `>`)
+- **`test_xray_path_unchanged_validation_done`** / **`_not_done`**: X-ray path regression guard
+- **`test_using_evaluator_class_directly`**: fix is at the MetricEvaluator class level, not just a wrapper
+- **`test_consecutive_field_still_set`**: existing result fields preserved
+
+Registered in `tests/run_all_tests.py` as suite S29.
+
+### Lesson from the v116.12 miss
+
+When patching a function: **before writing the patch, search the
+module for early-return paths, delegation, and alternative
+implementations.** The function signature and first 30 lines tell
+you whether you're patching live code.
+
+A simple grep would have caught this:
+```bash
+grep -n "use_yaml\|analyze_refinement_trend" agent/metrics_analyzer.py
+```
+
+When a deployed fix doesn't change behavior: **look at the
+message format first.** If the printed strings don't match the
+patched code, the patch is in dead code. The session output had
+`"above target (0.70)"` but v116.12 produced `"above 0.70 target"`
+— I noticed but explained it away as a deployment lag instead of
+treating it as definitive evidence.
+
+### Compatibility
+
+- X-ray workflows unchanged (X-ray path already had this check)
+- Workflows with validation already done: no behavior change
+- Workflows below CC target: no behavior change (SUCCESS branch doesn't fire)
+- No directive or contract changes
+- Trend summary format unchanged
+
+### Relation to v116.12
+
+v116.12's `metrics_analyzer.py` patch remains in place but is
+dead code (only runs when YAML evaluator raises an exception).
+Leaving it provides correct behavior in the unlikely fallback case.
+
+v116.12's `graph_nodes.py` Fix #2 (defense-in-depth elif +
+diagnostic context dump) remains valuable: now genuinely
+defense-in-depth rather than necessary, and the diagnostic logging
+will help if any other `should_stop=True` source (PLATEAU,
+EXCESSIVE) ever fires with a pending validation stage.
+
+### Known limitations
+
+| Limitation | Impact |
+|------------|--------|
+| **Two parallel stop-logic implementations** | `metrics_analyzer.py` and `metric_evaluator.py` both implement cryo-EM stop logic. v116.12 + v116.13 has both fixed, but future drift is a real risk. Code review for any change to one should require updating the other. |
+| **PLATEAU and EXCESSIVE paths don't check validation** | Currently neither X-ray nor cryo-EM PLATEAU/EXCESSIVE branches gate on validation_done. v116.13 doesn't change this. If a workflow PLATEAUs at CC=0.72 without validation, stop still fires. Pre-existing semantic question. |
+| **Cosmetic `'unknown'` in F7 fallback** | Unchanged from v116.12. When stop intent sets `decision_info["program"] = None`, F7's fallback prints `'unknown'`. Session correctly ends; only display text is wrong. |
+| **`plan_has_pending_stages` mystery** | Still unresolved why v116.12 Fix #2's earlier `plan_has_pending_stages` elif didn't suppress AF_7mjs. v116.13 makes this moot for the SUCCESS path (we don't reach the PLAN auto-stop chain), but a future PLATEAU/EXCESSIVE stop with a pending validation stage could resurface the same issue. |
+
+---
+
 ## Version 116.12 (Cryo-EM Validation-Aware Auto-Stop)
 
 ### Summary

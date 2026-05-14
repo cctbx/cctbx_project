@@ -2065,13 +2065,49 @@ class WorkflowEngine:
                 # step detector may have already added programs like
                 # predict_and_build to 'result', and the LLM (or fallback) will
                 # pick those instead of stopping.
-                non_stop = [p for p in result if p != "STOP"]
-                if non_stop:
+                #
+                # v116.17: GUARD — Do NOT wipe valid_programs to [STOP] when
+                # the workflow has reached the validate step with validation
+                # still pending.  The after_program directive means "stop
+                # after this program completes", but the implicit contract
+                # for production runs is that validation runs AFTER refinement
+                # before the workflow stops.  Without this guard, an
+                # after_program=phenix.real_space_refine directive (whether
+                # set legitimately or mis-extracted from a goal description)
+                # skips validation entirely, even though molprobity /
+                # validation_cryoem / map_correlations are sitting in the
+                # validate step's program list.
+                #
+                # The user can still opt out: setting skip_validation:true in
+                # stop_conditions tells us they don't want the automatic
+                # validation step, in which case the original wipe still
+                # fires.
+                if (step_name == "validate" and
+                        context is not None and
+                        not context.get("validation_done") and
+                        not stop_cond.get("skip_validation")):
                     modifications.append(
-                        "Cleared programs %s (after_program %s completed, workflow done)" % (
-                        non_stop, after_program))
-                result[:] = ["STOP"]
-                modifications.append("Set valid_programs=[STOP] (after_program %s completed)" % after_program)
+                        "after_program %s completed but validate step "
+                        "reached with validation pending — keeping "
+                        "validation programs (%s) available; "
+                        "set skip_validation:true to override"
+                        % (after_program,
+                           [p for p in result if p != "STOP"]))
+                    # Ensure STOP is also available so the LLM can choose
+                    # to stop after running validation; the validate-step
+                    # at_target logic at line ~1739 normally adds it, but
+                    # belt-and-suspenders here in case the caller's path
+                    # didn't hit that branch.
+                    if "STOP" not in result:
+                        result.append("STOP")
+                else:
+                    non_stop = [p for p in result if p != "STOP"]
+                    if non_stop:
+                        modifications.append(
+                            "Cleared programs %s (after_program %s completed, workflow done)" % (
+                            non_stop, after_program))
+                    result[:] = ["STOP"]
+                    modifications.append("Set valid_programs=[STOP] (after_program %s completed)" % after_program)
             else:
                 # after_program not yet run - add it to valid programs
                 should_add = self._check_program_prerequisites(after_program, context, step_name)
