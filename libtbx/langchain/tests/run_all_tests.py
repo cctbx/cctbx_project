@@ -143,6 +143,15 @@ Systematic Testing Framework (v115.08):
        without the block are unaffected). Plugs the autobuild gap where
        the program could be picked and crash at runtime
        (40 tests, v116.10 Tier 2.1 + 2.1.1)
+
+  S26. Stop Condition False Positive - v116.11 fix for AF_7mjs regression.
+       The preprocessor-inserted "**Stop Condition**: None" header was
+       interpreted as a real stop signal by _resolve_after_program,
+       causing the planner to skip prerequisite stages.  Tests the
+       strengthened _strip_preprocessor_stop_condition regex, the
+       defense-in-depth strip in the resolver, and the start_with_program
+       suppression for preprocessed advice
+       (15 tests, v116.11)
 """
 
 from __future__ import absolute_import, division, print_function
@@ -1355,6 +1364,22 @@ def main():
               f"tst_program_requirements: {e}")
         results.append(("Program Requirements",
                        "tst_program_requirements", False, 0))
+
+    # --- Stop Condition False Positive (v116.11) ---
+    try:
+        from tests.tst_stop_condition_false_positive import (
+            run_all_tests as run_stop_condition_tests)
+        success, elapsed = run_test_module(
+            "tst_stop_condition_false_positive",
+            run_stop_condition_tests, args.verbose)
+        results.append(("Stop Condition False Positive",
+                       "tst_stop_condition_false_positive",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_stop_condition_false_positive: {e}")
+        results.append(("Stop Condition False Positive",
+                       "tst_stop_condition_false_positive", False, 0))
 
     # --- Summary ---
     total_elapsed = time.time() - total_start

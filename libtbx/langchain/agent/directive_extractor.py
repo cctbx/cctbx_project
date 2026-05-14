@@ -73,8 +73,21 @@ def _strip_preprocessor_stop_condition(user_advice):
 
     # 'Stop Condition:' is ALWAYS safe to strip — real users
     # write 'stop after X', not 'Stop Condition: stop after X'.
+    #
+    # v116.11: Updated regex to handle:
+    #   - Markdown bold wrapping: '**Stop Condition**: ...'
+    #   - Numbered list prefix:   '7. **Stop Condition**: ...'
+    #   - Bullet list prefix:     '- Stop Condition: ...'
+    # All variations are produced by the advice preprocessor LLM on
+    # different runs; the original regex (anchored at line-start with
+    # optional whitespace only) missed all but the plainest form.
     cleaned = re.sub(
-        r'^[ \t]*stop\s+condition\s*:\s*[^\n]*$',
+        # Optional leading whitespace, list markers (1., 7., -, *),
+        # markdown bold (**), then 'stop condition', then optional
+        # close-bold and arbitrary punctuation before the colon.
+        r'^[ \t]*(?:[\d]+\.\s*|[-*]\s*)?\**\s*'
+        r'stop\s+condition'
+        r'\**\s*:\s*[^\n]*$',
         '', user_advice,
         flags=re.IGNORECASE | re.MULTILINE,
     )
@@ -83,6 +96,9 @@ def _strip_preprocessor_stop_condition(user_advice):
     # preprocessor output (indicated by other signature headers).
     # This avoids stripping raw user input like 'Goal: R-free
     # below 0.25' when preprocess_advice=False.
+    #
+    # v116.11: Updated regex to handle markdown bold + numbered
+    # list prefix, same as the Stop Condition strip above.
     _PREPROCESSOR_SIGNATURES = (
         r'input\s+files?\s+found',
         r'experiment\s+type',
@@ -90,13 +106,16 @@ def _strip_preprocessor_stop_condition(user_advice):
         r'special\s+instructions?',
     )
     is_preprocessed = any(
-        re.search(r'(?i)^[ \t]*%s\s*:' % sig, cleaned,
+        re.search(r'(?i)^[ \t]*(?:[\d]+\.\s*|[-*]\s*)?\**\s*%s\**\s*:'
+                  % sig, cleaned,
                   re.MULTILINE)
         for sig in _PREPROCESSOR_SIGNATURES
     )
     if is_preprocessed:
         cleaned = re.sub(
-            r'^[ \t]*(?:primary\s+)?goal\s*:\s*[^\n]*$',
+            r'^[ \t]*(?:[\d]+\.\s*|[-*]\s*)?\**\s*'
+            r'(?:primary\s+)?goal'
+            r'\**\s*:\s*[^\n]*$',
             '', cleaned,
             flags=re.IGNORECASE | re.MULTILINE,
         )
@@ -2260,11 +2279,27 @@ def _resolve_after_program(directives, advice_lower):
     if not actions:
         return  # No actions detected — leave directives as-is
 
-    # Detect stop intent: \bstop\b with negation guard
-    _has_stop = bool(re.search(r'\bstop\b', advice_lower))
+    # Detect stop intent: \bstop\b with negation guard.
+    #
+    # v116.11: The preprocessor inserts a structured
+    # "Stop Condition: None" (sometimes "**Stop Condition**:")
+    # header line on every run.  These lines are stripped by
+    # _strip_preprocessor_stop_condition() at the entry of
+    # both extract_directives and extract_directives_simple
+    # (line ~487 and ~2489), so under normal flow they don't
+    # reach this function.  As defense-in-depth — in case a
+    # caller bypasses that strip — we also strip them here
+    # before checking for \bstop\b.  Without this, the
+    # "Stop Condition" header was producing false-positive
+    # _has_stop=True (AF_7mjs regression).
+    _stop_search_text = re.sub(
+        r'(?i)(?:^|\n)[ \t]*(?:[\d]+\.\s*|[-*]\s*)?\**\s*'
+        r'stop\s+condition\**\s*:[^\n]*',
+        '\n', advice_lower)
+    _has_stop = bool(re.search(r'\bstop\b', _stop_search_text))
     if _has_stop and re.search(
             r"(?:don'?t|do\s+not|never)\s+stop",
-            advice_lower):
+            _stop_search_text):
         _has_stop = False
 
     # Infer experiment type from advice text (same heuristic
@@ -2283,6 +2318,34 @@ def _resolve_after_program(directives, advice_lower):
         _exp = "cryoem"
     else:
         _exp = "xray"  # Default to xray
+
+    # Detect preprocessed advice — used below to suppress
+    # start_with_program writes when the multi-action signal
+    # comes from descriptive preprocessor prose rather than
+    # imperative user advice.
+    #
+    # v116.11: AF_7mjs regression — the preprocessor produces
+    # Primary Goal text like "Run PredictAndBuild ... rebuild
+    # the loop and refine the model" describing a workflow.
+    # _detect_actions finds multiple actions (predict_build,
+    # refine), and pre-fix the resolver set start_with_program=
+    # phenix.predict_and_build.  The planner then treats that
+    # as a skip-prerequisites directive and skips Stage 1
+    # (mtriage) + Stage 2 (denmod), giving a 3-stage plan
+    # instead of the correct 5-stage plan.  When the advice
+    # is preprocessed, descriptive multi-action prose is the
+    # norm, not user prescription; don't infer start_with.
+    _PREPROC_SIGS = (
+        r'input\s+files?\s+found',
+        r'experiment\s+type',
+        r'key\s+parameters?',
+        r'special\s+instructions?',
+    )
+    _is_preprocessed = any(
+        re.search(r'(?i)^[ \t]*(?:[\d]+\.\s*|[-*]\s*)?\**\s*%s\**\s*:'
+                  % sig, advice_lower, re.MULTILINE)
+        for sig in _PREPROC_SIGS
+    )
 
     _sc = directives.get("stop_conditions", {})
     n = len(actions)
@@ -2305,15 +2368,25 @@ def _resolve_after_program(directives, advice_lower):
             # "do A and B" → clear, plan drives
             _sc.pop("after_program", None)
             _sc.pop("skip_validation", None)
-        # Set start_with_program to first action
-        first_action = actions[0][0]
-        first_prog = _ACTION_TABLE[first_action].get(
-            _exp) or _ACTION_TABLE[first_action].get("xray")
-        if first_prog:
-            if "stop_conditions" not in directives:
-                directives["stop_conditions"] = {}
-            directives["stop_conditions"][
-                "start_with_program"] = first_prog
+        # Set start_with_program to first action.
+        #
+        # v116.11: Skip this for preprocessed advice — the
+        # multi-action signal there comes from descriptive
+        # prose (Primary Goal summary), not user prescription.
+        # Setting start_with would cause the planner to skip
+        # prerequisite stages (AF_7mjs regression).  Real user
+        # prose like "run phaser and refine" still gets
+        # start_with=phaser (preprocessed=False).
+        if not _is_preprocessed:
+            first_action = actions[0][0]
+            first_prog = _ACTION_TABLE[first_action].get(
+                _exp) or _ACTION_TABLE[first_action].get(
+                "xray")
+            if first_prog:
+                if "stop_conditions" not in directives:
+                    directives["stop_conditions"] = {}
+                directives["stop_conditions"][
+                    "start_with_program"] = first_prog
     elif n == 1 and _has_stop:
         # "do A and stop" → set after_program to the detected
         # action's program.  Always override — the LLM often
@@ -2783,6 +2856,15 @@ def extract_directives_simple(user_advice):
     # user commands.  Preprocessor output is identified by
     # signature headers (Input Files Found, Experiment Type,
     # Key Parameters, Special Instructions).
+    #
+    # v116.11: Updated regex to handle markdown bold + numbered
+    # list prefix, matching the strengthening in
+    # _strip_preprocessor_stop_condition.  Pre-fix, this regex
+    # required headers to start with the literal signature word
+    # (no list marker, no markdown), so AF_7mjs-style preprocessor
+    # output with "1. **Input Files Found**:" was NOT detected as
+    # preprocessed, causing tutorial_patterns to run on
+    # descriptive prose.
     _PREPROC_SIGS = (
         r'input\s+files?\s+found',
         r'experiment\s+type',
@@ -2790,8 +2872,8 @@ def extract_directives_simple(user_advice):
         r'special\s+instructions?',
     )
     _is_preprocessed = any(
-        re.search(r'(?i)^[ \t]*%s\s*:' % sig,
-                  user_advice, re.MULTILINE)
+        re.search(r'(?i)^[ \t]*(?:[\d]+\.\s*|[-*]\s*)?\**\s*%s\**\s*:'
+                  % sig, user_advice, re.MULTILINE)
         for sig in _PREPROC_SIGS
     )
 
