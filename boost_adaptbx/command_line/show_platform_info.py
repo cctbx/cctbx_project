@@ -29,7 +29,7 @@ def run(out=None, omit_unicode_experiment=False):
   print("platform.architecture():", platform.architecture(), file=out)
   for attr in ["division_by_zero", "invalid", "overflow"]:
     attr = "floating_point_exceptions.%s_trapped" % attr
-    print("%s:" % attr, eval("bp.%s" % attr), file=out)
+    print("%s:" % attr, getattr(bp, attr), file=out)
   print("number of processors:", introspection.number_of_processors(
     return_value_if_unknown="unknown"), file=out)
   introspection.machine_memory_info().show(out=out)
