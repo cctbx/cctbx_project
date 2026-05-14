@@ -1635,8 +1635,50 @@ def plan(state):
             state = {**state,
                      "metrics_trend": metrics_trend}
 
+        # v116.12 Fix #2 (defense-in-depth): Suppress AUTO-STOP when
+        # workflow_engine.detect_step returned step="validate", which
+        # means validation_done=False AND we've reached refinement
+        # targets.  Without this, an upstream metrics_trend.should_stop
+        # (e.g. cryo-EM CC>0.70 — see metrics_analyzer.py Fix #1) would
+        # bypass the validation stage.  This is a second line of
+        # defense in case plan_has_pending_stages is unset (no expert
+        # plan, or the flag wasn't propagated through session_info).
+        # Together with Fix #1 in metrics_analyzer.py, this ensures
+        # validation runs before the workflow auto-stops.
+        elif (state.get("workflow_state", {}).get("step_info", {}).get("step") == "validate"
+              and not _ws_context.get("validation_done", False)):
+            state = _log(state,
+                "PLAN: Suppressing AUTO-STOP — "
+                "workflow_engine says validate next, "
+                "validation_done=False (%s)" % reason)
+            metrics_trend = dict(metrics_trend)
+            metrics_trend["should_stop"] = False
+            metrics_trend["reason"] = (
+                "Suppressed: validation step pending")
+            state = {**state,
+                     "metrics_trend": metrics_trend}
+
         else:
             # No after_program directive and no pending ligandfit, allow auto-stop
+            # v116.12: Diagnostic dump before stopping — helps debug
+            # cases where a stop fired despite a pending validation
+            # stage. Captures the values that gated the elif chain.
+            _step_info = state.get("workflow_state", {}).get("step_info", {})
+            state = _log(state,
+                "PLAN: AUTO-STOP context: "
+                "plan_has_pending_stages=%r, "
+                "step=%r, "
+                "validation_done=%r, "
+                "after_program=%r, "
+                "experiment_type=%r" % (
+                    session_info.get("plan_has_pending_stages"),
+                    _step_info.get("step"),
+                    _ws_context.get("validation_done"),
+                    state.get("directives", {})
+                         .get("stop_conditions", {})
+                         .get("after_program"),
+                    state.get("workflow_state", {}).get("experiment_type"),
+                ))
             state = _log(state, "PLAN: AUTO-STOP triggered: %s" % reason)
             # Emit STOP_DECISION event
             state = _emit(state, EventType.STOP_DECISION,
@@ -2776,7 +2818,7 @@ def _read_sequence(filepath):
     no whitespace), or empty string on failure.
     """
     try:
-        with open(filepath, "r", encoding='utf-8') as f:
+        with open(filepath, "r") as f:
             lines = f.readlines()
         seq_lines = []
         for line in lines:

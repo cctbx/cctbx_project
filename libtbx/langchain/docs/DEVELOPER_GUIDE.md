@@ -6,6 +6,26 @@
 
 ---
 
+### What's new in v116 (May 2026)
+
+The v116 series consolidates reliability work and adds two new
+patterns developers should know about:
+
+| Version | Change | Where it shows up |
+|---------|--------|-------------------|
+| **v116.10** | Six reliability fixes (predict-and-stop, after-program prompt, data-input filter, protocol hygiene, sequence-only routing, plan-classification cleanup) | §3a workflow engine; §6 safety; §8 contract |
+| **v116.10 Tier 2.1** | **Declarative `requirements:` schema** in `programs.yaml` — a new way to add program-level filtering rules without writing imperative Python | §4 Step 1; §13 Configuration Reference |
+| **v116.11** | Stop condition fix — preprocessor-inserted `**Stop Condition**: None` headers were treated as user stop intent. Strengthened `_strip_preprocessor_stop_condition` regex + defense-in-depth strip + suppress `start_with_program` for preprocessed advice | §3 directive extractor (see §3i) |
+| **v116.12** | Cryo-EM validation-aware auto-stop — `metrics_analyzer.py` cryo-EM `latest_cc > 0.70` branch now mirrors the X-ray validation_done check. PLAN node defense-in-depth elif + diagnostic context dump | §3j metrics/stop conditions |
+
+If you're adding a program with input-availability requirements,
+use the declarative `requirements:` schema (§4 Step 1) — it's
+cleaner than the older imperative filter functions. See
+ARCHITECTURE.md "Declarative Program Requirements (Tier 2.1)" for
+the full design rationale.
+
+---
+
 ---
 
 ## 1. Architecture at a Glance
@@ -91,8 +111,13 @@ work both inside PHENIX and standalone.
 | `programs/` | 4 .py | PHENIX program driver |
 | `phenix_ai/` | 14 .py | Server, agents, parsers |
 | `wxGUI2/` | 6 .py | GUI panels |
-| `tests/` | 55 .py | Test suites (~1100 tests) |
+| `tests/` | 60+ .py | Test suites (~1300+ tests) |
 | `docs/` | 15+ .md | Documentation |
+
+Test suite count is approximate and grows steadily; v116.10 added
+89 new test cases across 7 new files (S13–S19) plus 40 for Tier
+2.1 (S25); v116.11 added 15 (S26); v116.12 added 27 (S27+S28). See
+§5 Testing for the harness conventions and §14 for legacy notes.
 
 ---
 
@@ -274,6 +299,12 @@ each experiment type (X-ray and cryo-EM).
      programs, `prefer_programs` reorders them
    - Apply plan directives (Expert mode):
      `prefer_programs` from the current plan stage
+   - **(v116.10 Tier 2.1)** Apply declarative
+     `requirements:` from each program's `programs.yaml`
+     entry, evaluated via `_check_requirements()`.
+     Removes programs whose required context isn't
+     present (e.g., autobuild without phased data and
+     no placed model). See §4 Step 1 for the schema.
 
 3. The resulting list is passed to the LLM (or
    rules-based selector) which picks one.
@@ -855,6 +886,134 @@ for backward compatibility. All callback sends must
 be wrapped in `try/except Exception: pass` (non-
 critical, must not crash the agent).
 
+### 3i. Directive Extractor (v116.11 hardening)
+
+**Files:** `agent/directive_extractor.py`, `agent/advice_preprocessor.py`
+
+The directive extractor parses user advice (or
+preprocessor-generated structured summaries) into JSON
+directives that drive workflow filtering:
+`after_program`, `start_with_program`, `skip_programs`,
+`prefer_programs`, `skip_validation`, and per-program
+parameter overrides.
+
+**Preprocessor format awareness (v116.11).** The advice
+preprocessor LLM produces output with labeled sections
+like `7. **Stop Condition**: None`. These section
+headers must NOT be interpreted as real user intent —
+the heuristic regex inside `_resolve_after_program`
+will match `\bstop\b` inside the header text otherwise.
+The extractor handles this in three coordinated places:
+
+1. `_strip_preprocessor_stop_condition` removes the
+   header at the entry of both `extract_directives`
+   and `extract_directives_simple`. The regex matches
+   numbered prefixes (`7.`), bullet markers (`-`/`*`),
+   and markdown bold (`**Header**:`).
+2. `_resolve_after_program` performs a defense-in-depth
+   strip on `advice_lower` before the `\bstop\b` check.
+3. When the advice is detected as preprocessor output
+   (signature headers present), the resolver no longer
+   writes `start_with_program` from multi-action prose
+   like "Run PredictAndBuild ... rebuild ... refine".
+   Real user prose like "run phaser and refine" still
+   sets `start_with_program=phenix.phaser`.
+
+**Semantic distinction worth remembering:**
+
+| Directive | Semantics | Should come from |
+|-----------|-----------|------------------|
+| `after_program` | "Stop after this program runs" | Explicit user stop intent |
+| `start_with_program` | "Start here, skip prerequisites" | Explicit user start intent |
+
+`start_with_program` is more aggressive (skips planner
+prerequisites). Inferring it from descriptive prose is
+fundamentally riskier than inferring `after_program`.
+The v116.11 fix codifies this in the resolver.
+
+When adding new heuristic patterns to the extractor,
+test against both user prose AND preprocessor output
+to avoid regression. See `tst_stop_condition_false_positive.py`
+(S26) for the regression test pattern.
+
+
+### 3j. Metrics and Stop Conditions (v116.12 symmetry)
+
+**Files:** `agent/metrics_analyzer.py`, `agent/metric_evaluator.py`,
+`agent/graph_nodes.py` (PLAN node auto-stop chain)
+
+`analyze_metrics_trend()` examines the metrics history
+and returns a dict with `should_stop`, `reason`,
+`trend_summary`, and `recommendation`. The PLAN node
+consults `metrics_trend.should_stop` and runs through
+an elif chain of suppression checks before firing
+AUTO-STOP.
+
+**X-ray/cryo-EM symmetry (v116.12).** Pre-v116.12, the
+cryo-EM `latest_cc > 0.70` branch in
+`_analyze_cryoem_trend` unconditionally set
+`should_stop=True`. The X-ray equivalent (lines
+365-385) correctly checked whether validation
+(`phenix.molprobity` or `phenix.model_vs_data`) had
+been run before allowing auto-stop. The two paths
+drifted out of sync; v116.12 restores symmetry:
+
+```python
+# Cryo-EM SUCCESS branch (v116.12)
+if latest_cc > 0.70:
+    validation_done = any(
+        m.get("program") in (
+            "phenix.molprobity",
+            "phenix.validation_cryoem",
+        )
+        for m in metrics_history
+    )
+    if validation_done:
+        result["should_stop"] = True
+        # ... existing behavior
+    else:
+        result["should_stop"] = False
+        result["suggest_validation"] = True
+        # trend_summary: "TARGET REACHED, VALIDATE BEFORE STOPPING"
+```
+
+Note: `phenix.model_vs_data` does NOT count for cryo-EM
+(it's X-ray-only). `phenix.validation_cryoem` is the
+cryo-EM-specific validation program.
+
+**PLAN node auto-stop chain (post-v116.12).**
+
+```
+if metrics_trend.should_stop:
+    if advice_changed:                                # fall through
+    elif after_program := ...:                        # handle after_program
+    elif user_wants_ligandfit and !ligandfit_done:    # suppress
+    elif plan_has_pending_stages:                     # suppress (expert plan)
+    elif step=="validate" and !validation_done:       # NEW: defense-in-depth
+    else:                                             # diagnostic dump + AUTO-STOP
+```
+
+The new elif (5th position) catches cases where
+`plan_has_pending_stages` doesn't fire — e.g., no
+expert plan, or the flag didn't propagate through
+session_info. The AUTO-STOP path now also logs a
+diagnostic context dump with all the gating values to
+`debug_log`, making future regressions debuggable.
+
+**When adding a new stop condition** (e.g., a new
+`should_stop=True` path in `_analyze_cryoem_trend` or
+`_analyze_xray_trend`), think about whether validation
+should be required first. Mirror the existing
+validation_done pattern if so. The X-ray
+`r_free < success_threshold` and cryo-EM
+`latest_cc > 0.70` both check validation; PLATEAU and
+EXCESSIVE intentionally don't (loop guards).
+
+See `tst_cryoem_stop_validation.py` (S27) and
+`tst_plan_autostop_validation_suppression.py` (S28)
+for the regression test patterns.
+
+
 > **YAML is the source of truth for all subsystem behavior.** The workflow
 > engine, command builder, and program registry are all driven by YAML files
 > in `knowledge/`. When reading the subsystem descriptions above:
@@ -1040,6 +1199,35 @@ phenix.new_program:
   user_advice_keywords:
     - "keyword1"
     - "keyword2"
+
+  # Declarative requirements (v116.10 Tier 2.1).
+  # Filter program out of valid_programs when context
+  # is missing inputs.  Cleaner than imperative Python
+  # filter functions (which still exist for legacy
+  # programs).  Evaluated by _check_requirements() in
+  # workflow_engine.py.
+  #
+  # The 'requires:' list is AND-combined: every clause
+  # must be satisfiable.  Inside 'any_of:', clauses are
+  # OR-combined.  Supported clause types:
+  #
+  #   has: <flag>             -> context["has_<flag>"] truthy
+  #   has_any: [a, b, c]      -> any of has_a / has_b / has_c truthy
+  #   done: <program>         -> context["<program>_done"] truthy
+  #   not_has: <flag>         -> context["has_<flag>"] falsy
+  #   any_of: [<clause>, ...] -> at least one sub-clause satisfies
+  #
+  # Example (phenix.autobuild, prevents runtime crash):
+  requirements:
+    requires:
+      - has_any: [data_mtz, phased_data_mtz]
+      - any_of:
+          - has: phased_data_mtz
+          - has: model
+          - has: placed_model
+          - has: placed_model_from_history
+          - done: phaser
+          - done: autosol
 ```
 
 ### Key Fields for Automatic Handling
@@ -1914,6 +2102,100 @@ This document describes the testing infrastructure for the PHENIX AI Agent.
 ### Overview
 
 The test suite uses a **cctbx-style testing approach** with plain functions and fail-fast behavior, meaning the first assertion failure stops execution with a full traceback. This matches the testing conventions used throughout the PHENIX/cctbx ecosystem.
+
+### Test suite catalog (selected v116-era suites)
+
+Each `tst_*.py` is registered in `tests/run_all_tests.py` with a
+suite identifier (S13, S14, ...). New suites are added by:
+
+1. Creating `tests/tst_<descriptive_name>.py` with a
+   `run_all_tests()` entry point (see "Test runner convention"
+   below).
+2. Adding an import + `results.append(...)` block to
+   `run_all_tests.py`.
+3. Documenting the suite in the docstring at the top of
+   `run_all_tests.py`.
+
+Recent suites worth knowing about (full list in
+`run_all_tests.py` docstring):
+
+| Suite | Topic | Pattern to learn from |
+|-------|-------|------------------------|
+| S13–S19 | v116.10 reliability fixes (user advice, after-program prompt, data-input filter, protocol hygiene, sequence-only routing, standalone consistency, dock-and-stop) | Shows fixture isolation and trace-equivalence testing |
+| S20 | Post-Phase-5 CC key extraction fix | Audit-style: validates assumptions about output key names |
+| S25 | Declarative `requirements:` schema (v116.10 Tier 2.1) | 40 tests; covers AND/OR semantics, clause types, integration with workflow_engine |
+| S26 | Stop condition false positive (v116.11) | Tests resolver-direct behavior + upstream strip; uses `_resolve_after_program` directly to isolate from `intent_classifier` |
+| S27 | Cryo-EM stop validation (v116.12 Fix #1) | Mirrors X-ray test pattern; verifies X-ray path unchanged |
+| S28 | PLAN AUTO-STOP suppression (v116.12 Fix #2) | Tests the PLAN node elif chain in isolation via synthetic state dicts |
+
+### Test runner convention
+
+Test files follow a standard structure recognized by
+`run_all_tests.py`:
+
+```python
+def run_all_tests():
+    """Entry point for the test harness."""
+    try:
+        from libtbx.langchain.tests.tst_utils import (
+            run_tests_with_fail_fast)
+    except ImportError:
+        try:
+            from tests.tst_utils import run_tests_with_fail_fast
+        except ImportError:
+            _standalone_runner()
+            return
+    run_tests_with_fail_fast()
+
+
+def _standalone_runner():
+    """Fallback for environments without libtbx."""
+    test_fns = [v for k, v in sorted(globals().items())
+                if k.startswith("test_") and callable(v)]
+    for fn in test_fns:
+        try:
+            fn()
+        except Exception as e:
+            # record failure
+            ...
+    print("%d passed, %d failed" % (PASS, FAIL))
+
+
+if __name__ == "__main__":
+    _standalone_runner()
+```
+
+Individual test functions are discovered by name (`test_*`) so no
+explicit registration is needed within the file.
+
+### libtbx stub pattern (for standalone runs)
+
+New tests that import production code from `agent/` must work
+without a PHENIX install. The standard pattern stubs the
+`libtbx.langchain` module hierarchy at the top of the test file
+before importing:
+
+```python
+if "libtbx" not in sys.modules:
+    import types as _types
+    for _mod in (
+        "libtbx", "libtbx.langchain",
+        "libtbx.langchain.agent",
+        # ... add submodules used by your import chain
+    ):
+        sys.modules[_mod] = _types.ModuleType(_mod)
+    # Then attach minimal stub functions/classes as needed
+
+try:
+    from libtbx.langchain.agent.your_module import your_func
+except ImportError:
+    from agent.your_module import your_func
+```
+
+This lets developers run tests during code review without a
+PHENIX build. See `tst_cryoem_stop_validation.py` for a minimal
+example and `tst_plan_autostop_validation_suppression.py` for a
+fuller stub when the import chain is large.
 
 ### Quick Start
 
@@ -2866,6 +3148,8 @@ The client calls `decide_next_step()` with these arguments:
 | `unplaced_model_cell` | `None` | v3 | Pre-extracted CRYST1 cell `[a,b,c,α,β,γ]` |
 | `model_hetatm_residues` | `None` | v3 | Pre-extracted HETATM data `[[chain,resseq,resname],...]` |
 | `client_protocol_version` | `1` | v3 | Protocol version of the sending client |
+| `plan_has_pending_stages` | `False` | v4 | True when the strategic plan has pending stages with programs that could run; PLAN node uses this to suppress premature AUTO-STOP |
+| `asu_copies` | `None` | v5 | Number of copies in the ASU (int or None); from user directives or xtriage analysis |
 
 ### Server → Client (Response)
 
@@ -2896,10 +3180,19 @@ Defined in `agent/contract.py`:
 
 | Constant | Value | Purpose |
 |----------|-------|---------|
-| `CURRENT_PROTOCOL_VERSION` | `3` | What the latest client sends |
+| `CURRENT_PROTOCOL_VERSION` | `5` | What the latest client sends |
 | `MIN_SUPPORTED_PROTOCOL_VERSION` | `1` | Oldest client the server accepts |
 
 The client imports `CURRENT_PROTOCOL_VERSION` from contract.py via `_get_protocol_version()` in `ai_agent.py`, so bumping the constant updates both server and client automatically.
+
+**v116.10 drift protection.** `contract.py` now ships a
+`validate_contract()` function that asserts three invariants:
+`CURRENT_PROTOCOL_VERSION >= max(field_versions)`,
+`MIN_SUPPORTED_PROTOCOL_VERSION <= CURRENT`, and
+`MIN >= 1`. Run by `tst_contract_compliance.py::test_contract_validate_passes`
+on every test run. The bug it prevents: adding a v4/v5 field to
+`SESSION_INFO_FIELDS` while forgetting to bump
+`CURRENT_PROTOCOL_VERSION` (silent client/server drift).
 
 ### The Rules
 
@@ -4128,6 +4421,66 @@ consulted]` in the Expert Assessment output.
 
 *This table is derived from `programs.yaml`. Edit the
 YAML, not this table.*
+
+### Declarative `requirements:` schema (v116.10 Tier 2.1)
+
+Programs may declare context preconditions in their
+`programs.yaml` entry. The workflow engine's
+`_check_requirements()` evaluates these before
+including the program in `valid_programs`.
+
+**Clause types** (all live under `requirements: requires:`):
+
+| Clause | Truthy when | Notes |
+|--------|-------------|-------|
+| `has: <flag>` | `context["has_<flag>"]` is truthy | Auto-prefixes `has_` |
+| `has_any: [a, b, c]` | Any of `has_a`/`has_b`/`has_c` is truthy | OR over a list of `has` |
+| `done: <program>` | `context["<program>_done"]` is truthy | Auto-appends `_done` |
+| `not_has: <flag>` | `context["has_<flag>"]` is falsy | Inverted `has` |
+| `any_of: [<clause>, ...]` | At least one sub-clause satisfies | Sub-clauses are full clauses; can nest |
+
+**AND/OR semantics:** `requires:` is a list, AND-combined.
+Each list element is a clause; inside `any_of:`, clauses
+are OR-combined.
+
+**When to use it:** any program whose runtime requires a
+specific context state (an input file category, a prior
+program's completion, an existing flag). The agent will
+silently filter the program out rather than letting it
+crash at runtime.
+
+**When to leave it alone:** if your program is universally
+available (e.g., `phenix.xtriage` at the start of an X-ray
+workflow), no `requirements:` block is needed. Programs
+without the block are unaffected — backward-compatible by
+default.
+
+**Worked example** (autobuild — needs phases AND either
+phased data or a model to refine into):
+
+```yaml
+phenix.autobuild:
+  requirements:
+    requires:
+      - has_any: [data_mtz, phased_data_mtz]
+      - any_of:
+          - has: phased_data_mtz
+          - has: model
+          - has: placed_model
+          - has: placed_model_from_history
+          - done: phaser
+          - done: autosol
+```
+
+This mirrors the existing `explain_unavailable_program`
+gating exactly. Always check whether existing imperative
+filtering code already covers your case before adding a
+new `requirements:` block — duplication will silently
+double-filter.
+
+See ARCHITECTURE.md "Declarative Program Requirements
+(Tier 2.1)" for full design rationale, 16 pitfalls with
+mitigations, and three rejected alternatives.
 
 ### Plan Templates (`knowledge/plan_templates.yaml`)
 

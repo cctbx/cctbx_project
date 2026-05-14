@@ -152,6 +152,25 @@ Systematic Testing Framework (v115.08):
        defense-in-depth strip in the resolver, and the start_with_program
        suppression for preprocessed advice
        (15 tests, v116.11)
+
+  S27. Cryo-EM Stop Validation - v116.12 Fix #1 for AF_7mjs Stage 5 skip.
+       The cryo-EM auto-stop condition (CC > 0.70) lacked the
+       validation_done check that the X-ray path has.  This caused
+       the agent to stop after refinement without running validation
+       (phenix.molprobity).  Tests verify the validation_done check
+       in _analyze_cryoem_trend, accept both phenix.molprobity and
+       phenix.validation_cryoem as cryo-EM validation, and confirm
+       the X-ray path is unaffected
+       (16 tests, v116.12 Fix #1)
+
+  S28. PLAN AUTO-STOP Suppression - v116.12 Fix #2 defense-in-depth.
+       New elif suppresses AUTO-STOP when workflow_engine reports
+       step="validate" with validation_done=False.  Diagnostic context
+       dump in the AUTO-STOP path records plan_has_pending_stages,
+       step, validation_done, after_program, experiment_type to aid
+       future debugging.  Defense-in-depth for cases where
+       plan_has_pending_stages doesn't fire
+       (11 tests, v116.12 Fix #2)
 """
 
 from __future__ import absolute_import, division, print_function
@@ -1380,6 +1399,38 @@ def main():
               f"tst_stop_condition_false_positive: {e}")
         results.append(("Stop Condition False Positive",
                        "tst_stop_condition_false_positive", False, 0))
+
+    # --- Cryo-EM Stop Validation (v116.12 Fix #1) ---
+    try:
+        from tests.tst_cryoem_stop_validation import (
+            run_all_tests as run_cryoem_stop_tests)
+        success, elapsed = run_test_module(
+            "tst_cryoem_stop_validation",
+            run_cryoem_stop_tests, args.verbose)
+        results.append(("Cryo-EM Stop Validation",
+                       "tst_cryoem_stop_validation",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_cryoem_stop_validation: {e}")
+        results.append(("Cryo-EM Stop Validation",
+                       "tst_cryoem_stop_validation", False, 0))
+
+    # --- PLAN AUTO-STOP Suppression (v116.12 Fix #2) ---
+    try:
+        from tests.tst_plan_autostop_validation_suppression import (
+            run_all_tests as run_plan_autostop_tests)
+        success, elapsed = run_test_module(
+            "tst_plan_autostop_validation_suppression",
+            run_plan_autostop_tests, args.verbose)
+        results.append(("PLAN AUTO-STOP Suppression",
+                       "tst_plan_autostop_validation_suppression",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_plan_autostop_validation_suppression: {e}")
+        results.append(("PLAN AUTO-STOP Suppression",
+                       "tst_plan_autostop_validation_suppression", False, 0))
 
     # --- Summary ---
     total_elapsed = time.time() - total_start

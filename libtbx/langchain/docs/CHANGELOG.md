@@ -1,5 +1,177 @@
 # CHANGELOG — v116
 
+## Version 116.12 (Cryo-EM Validation-Aware Auto-Stop)
+
+### Summary
+
+Two coordinated fixes for the AF_7mjs Stage 5 (validation) skip
+bug. The agent ran the correct 5-stage plan but auto-stopped after
+Stage 4 (refinement, CC=0.78) without running validation
+(phenix.molprobity).
+
+Root cause: asymmetry between X-ray and cryo-EM stop logic in
+`agent/metrics_analyzer.py`. The X-ray path correctly defers
+auto-stop until validation runs; the cryo-EM path didn't. The two
+paths drifted out of sync.
+
+### Modified Files (2 production files)
+
+| File | Phases | Changes |
+|------|--------|---------|
+| `agent/metrics_analyzer.py` | Fix #1 | +25 / -4 lines. Mirror the X-ray validation_done check in the cryo-EM `latest_cc > 0.70` branch. Recognizes `phenix.molprobity` and `phenix.validation_cryoem`. When validation isn't done, sets `should_stop=False` and `suggest_validation=True` instead of stopping immediately. |
+| `agent/graph_nodes.py` | Fix #2 | +41 / -0 lines. Two additions in the PLAN node's auto-stop chain: (a) new `elif` between `plan_has_pending_stages` and the final `else` — suppresses AUTO-STOP when `workflow_state.step_info.step == "validate"` AND `validation_done == False`; (b) diagnostic context dump in the AUTO-STOP path logging `plan_has_pending_stages`, `step`, `validation_done`, `after_program`, `experiment_type` to `debug_log`. |
+
+### Bug Details
+
+#### Symptom
+
+```
+[STATE]  cryoem_refined
+  Model refined, need validation - Goal: Ensure model meets quality standards (CC: 0.783)
+[STOP]
+  SUCCESS: Map-model CC (0.783) above target (0.70)
+No command was generated for program 'unknown'. Ending session.
+```
+
+AF_7mjs (cryo-EM, half-maps + sequence, PredictAndBuild) had a
+plan with 5 stages. After Stage 4 (`phenix.real_space_refine`)
+produced `map_cc=0.7832`, the agent should have advanced to Stage
+5 (`phenix.molprobity`). Instead it auto-stopped. The state
+machine even reported "Model refined, need validation" but the
+threshold-based stop fired anyway.
+
+Session JSON confirmed:
+- Plan had 5 stages (correct)
+- Stages 1-3 complete (correct)
+- Stage 4 active, `cycles_used=2`, `success_criteria: model_map_cc > 0.7` met
+- Stage 5 `status="pending"`, `programs=["phenix.molprobity"]`, **never ran**
+- Cycle 5 reasoning: `"Automatically stopping: SUCCESS: Map-model CC (0.783) above target (0.70). Map CC: 0.783 - TARGET REACHED"`
+- Cycle 5 program: empty (None); F7 fallback printed `'unknown'`
+
+#### Root cause analysis
+
+The X-ray and cryo-EM stop paths in `analyze_metrics_trend` should
+be symmetric on the "success → validation" question. They were
+not.
+
+**X-ray path (lines 365-385) — correct:**
+```python
+if latest_r_free < success_threshold:
+    validation_done = any(
+        m.get("program") in ("phenix.molprobity", "phenix.model_vs_data")
+        for m in metrics_history
+    )
+    if validation_done:
+        result["should_stop"] = True
+    else:
+        result["should_stop"] = False
+        result["suggest_validation"] = True
+```
+
+**Cryo-EM path (lines 506-511) — bug:**
+```python
+if latest_cc > 0.70:
+    result["should_stop"] = True   # No validation check
+    return result
+```
+
+The cryo-EM path was probably written first and the validation_done
+check was added to the X-ray path later. The two paths drifted.
+
+### Three logical changes
+
+| Change | Location | What |
+|--------|----------|------|
+| **Fix #1: validation_done check** | `metrics_analyzer.py` `_analyze_cryoem_trend`, `latest_cc > 0.70` branch | Mirror X-ray pattern. When validation not done, `should_stop=False` + `suggest_validation=True` + trend_summary `"Map-model CC: X.XXX - TARGET REACHED, VALIDATE BEFORE STOPPING"`. Accepts `phenix.molprobity` and `phenix.validation_cryoem` as valid cryo-EM validation programs. |
+| **Fix #2a: validate-step suppression elif** | `graph_nodes.py` `plan()` auto-stop chain, between `plan_has_pending_stages` and `else` | Defense-in-depth. Suppresses AUTO-STOP when `workflow_state.step_info.step == "validate"` AND `not validation_done`. Catches cases where `plan_has_pending_stages` doesn't fire. |
+| **Fix #2b: diagnostic context dump** | `graph_nodes.py` `plan()` else (AUTO-STOP) branch | Logs `plan_has_pending_stages`, `step`, `validation_done`, `after_program`, `experiment_type` to `debug_log` before stopping. Makes future regressions debuggable. |
+
+### Priority order in the elif chain (after Fix #2)
+
+```
+1. advice_changed       (user provided new advice on resume)
+2. after_program        (user-specified stop target)
+3. user_wants_ligandfit (ligandfit prerequisite pending)
+4. plan_has_pending_stages (expert plan has pending stages)
+5. step=="validate" AND !validation_done  ← NEW (defense-in-depth)
+6. else AUTO-STOP (now with diagnostic context dump)
+```
+
+Rationale: user/plan intent (1-4) wins over engine-derived intent
+(5). The new check is the last line of defense.
+
+### Tests (2 new files, 27 new test cases)
+
+| File | Phase | Cases | Covers |
+|------|-------|-------|--------|
+| `tst_cryoem_stop_validation.py` (S27) | Fix #1 | 16 (31 assertions) | AF_7mjs regression, both validation programs recognized, X-ray validation programs explicitly don't count, CC just-above threshold, CC exactly at threshold (strict `>`), validation_done with EXCESSIVE / PLATEAU paths, X-ray path unchanged |
+| `tst_plan_autostop_validation_suppression.py` (S28) | Fix #2 | 11 (28 assertions) | New elif fires when step=="validate" + !validation_done; doesn't fire when validation_done=True; doesn't fire when step != "validate"; priority order with other suppressors; diagnostic dump appears only on AUTO-STOP; dump records correct values |
+
+Both test files use the libtbx-stub pattern so they run standalone
+without a PHENIX install.
+
+Registered in `tests/run_all_tests.py` as suites S27 and S28.
+
+### Verification
+
+```
+=== Fix #1 tests ===          (pre-fix:)
+31 passed, 0 failed           18 passed, 13 failed
+
+=== Fix #2 tests ===          (pre-fix:)
+28 passed, 0 failed           10 passed, 13 failed
+
+=== Regression check (existing v116.11 suites) ===
+tst_stop_condition_false_positive: 15 passed, 0 failed
+tst_general_resolver:              21 passed, 0 failed
+tst_dock_and_stop:                  5 passed, 0 failed
+tst_standalone_consistency:         8 passed, 0 failed
+tst_initialize_plan_smoke:          9 passed, 0 failed
+tst_file_encoding:                  7 passed, 0 failed
+tst_program_requirements:          40 passed, 0 failed
+```
+
+### Why TWO fixes if Fix #1 is the primary
+
+Fix #1 alone should prevent the bug (don't set `should_stop=True`
+until validation is done). Fix #2 adds:
+
+1. **Unsolved-mystery insurance.** We could not determine from the
+   AF_7mjs session JSON why `plan_has_pending_stages` didn't
+   suppress the AUTO-STOP. The function should have returned True
+   against the final plan state. Fix #2's diagnostic logging is
+   specifically designed to catch this on future runs.
+
+2. **Defense-in-depth on a class of bugs.** Other code paths
+   might set `should_stop=True` outside `_analyze_cryoem_trend`
+   (PLATEAU, EXCESSIVE, future additions). Fix #2 protects
+   against any future "stop fires while validate is pending"
+   regression.
+
+3. **No cost.** Fix #2's new elif only fires when the existing
+   chain would have stopped AND `step="validate"` AND
+   `validation_done=False`. If Fix #1 works, Fix #2's new elif
+   never fires in practice.
+
+### Compatibility
+
+- **X-ray workflows unchanged.** Fix #1 only modifies the cryo-EM
+  branch. The X-ray pattern it mirrors was already there.
+- **Workflows with validation already done**: `should_stop=True`
+  fires as before. No behavior change.
+- **No directives or contract changes.** No client protocol updates.
+- **AF_7mjs and similar cryo-EM tutorials**: workflow now correctly
+  advances to validation stage instead of stopping prematurely.
+
+### Known limitations (not blocking AF_7mjs)
+
+| Limitation | Impact |
+|------------|--------|
+| **Cosmetic 'unknown' in F7 fallback** | "No command was generated for program 'unknown'" comes from `_run_single_cycle`: `decision_info.get('program', '') or 'unknown'`. When `program=None` (stop intent), `None or 'unknown'` = `'unknown'`. Cleaner: show `'STOP'` or `stop_reason`. Not blocking; session correctly ends. |
+| **Unknown why `plan_has_pending_stages` didn't suppress** | Function should return True against AF_7mjs session JSON. Possibilities: stale session.data at check time, transport-layer propagation issue, or deployed version differs from analyzed version. Fix #2's diagnostic logging will surface this on future occurrences. |
+| **Map-CC trend_summary format change** | Before: `"Map-model CC: 0.620 → 0.780 (+25.8% last cycle)"`. After (validation done): `"Map-model CC: 0.780 - ABOVE TARGET"`. After (validation not done): `"Map-model CC: 0.780 - TARGET REACHED, VALIDATE BEFORE STOPPING"`. UI log parsers that match the trend format may need to be updated. Mirrors X-ray's pre-existing pattern. |
+| **MTZ warning in cryo-EM workflows** | Pre-existing diagnostic: `"WARNING: Refinement completed but best_files[map_coeffs_mtz] is EMPTY"`. Cryo-EM doesn't produce MTZ — the slot doesn't apply. Should be gated on `experiment_type == "xray"`. Not blocking. |
+
 ## Version 116.11 (AF_7mjs Stop Condition Fix + Test Cleanup)
 
 ### Summary

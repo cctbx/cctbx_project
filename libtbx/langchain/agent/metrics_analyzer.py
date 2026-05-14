@@ -504,11 +504,33 @@ def _analyze_cryoem_trend(metrics_history, result):
     # === STOP CONDITIONS ===
 
     # 1. SUCCESS: CC above target (was 0.75, now 0.70)
+    #
+    # v116.12: Mirror the X-ray validation_done check so we don't auto-stop
+    # before running validation (phenix.molprobity / phenix.validation_cryoem).
+    # Pre-v116.12, this auto-stopped immediately when CC > 0.70, skipping
+    # the validation stage even when the plan had one pending.  See the
+    # X-ray path above (line ~365) for the symmetric pattern.
     if latest_cc > 0.70:
-        result["should_stop"] = True
-        result["reason"] = "SUCCESS: Map-model CC (%.3f) above 0.70 target" % latest_cc
-        result["recommendation"] = "stop"
-        return result
+        # Check if validation has been done - don't auto-stop without validation
+        validation_done = any(
+            m.get("program") in ("phenix.molprobity", "phenix.validation_cryoem")
+            for m in metrics_history
+        )
+
+        if validation_done:
+            result["should_stop"] = True
+            result["reason"] = "SUCCESS: Map-model CC (%.3f) above 0.70 target" % latest_cc
+            result["recommendation"] = "stop"
+            result["trend_summary"] = "Map-model CC: %.3f - ABOVE TARGET" % latest_cc
+            return result
+        else:
+            # Success reached but validation not done - recommend validation, not stop
+            result["should_stop"] = False
+            result["reason"] = "Map-model CC (%.3f) above target - recommend validation before stopping" % latest_cc
+            result["recommendation"] = "validate"
+            result["trend_summary"] = "Map-model CC: %.3f - TARGET REACHED, VALIDATE BEFORE STOPPING" % latest_cc
+            result["suggest_validation"] = True
+            return result
 
     # 2. PLATEAU: Less than 0.3% improvement for 3+ cycles (more patience)
     if len(cc_values) >= 4:

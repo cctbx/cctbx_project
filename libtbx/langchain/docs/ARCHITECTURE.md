@@ -2113,8 +2113,16 @@ The workflow stops when:
 2. **Plateau**: < 0.5% improvement for 2+ consecutive cycles
 3. **Hopeless bailout**: R-free > 0.50 after 1+ refinement cycle, but only if `autobuild_done` (v115.05 — gives autobuild a chance to rebuild missing density before declaring the structure unsolvable)
 4. **Hard limit**: 3+ refinement cycles regardless of R-free
-5. **Validation Gate**: Must run molprobity before stopping if R-free is good
+5. **Validation Gate**: Must run molprobity before stopping if R-free is good (X-ray) or CC > 0.70 (cryo-EM, since v116.12)
 6. **Clashscore shortcut**: clashscore < 10 with reasonable R-free, but only if `refine_count >= 1` (v115.05 — prevents declaring at-target before any refinement has run)
+
+**v116.12: cryo-EM/X-ray validation symmetry.** Both experiment
+types now defer auto-stop until validation runs. Pre-v116.12 the
+cryo-EM `latest_cc > 0.70` branch in `analyze_metrics_trend`
+unconditionally set `should_stop=True`; X-ray correctly checked
+`validation_done` first. The two paths are now symmetric. See
+`## Cryo-EM Validation-Aware Auto-Stop (v116.12)` below for
+details.
 
 ### Refinement Loop Enforcement
 
@@ -4039,6 +4047,155 @@ prose, but not from preprocessor descriptive summaries.
 | File | Tests | Covers |
 |------|-------|--------|
 | `tests/tst_stop_condition_false_positive.py` (S26) | 15 | Primary AF_7mjs regression; markdown variants; user prose preservation; resolver-direct tests for negation, legitimate stops, multi-action handling; start_with_program suppression. Uses libtbx-stub pattern; tests targeting resolver behavior call `_resolve_after_program` directly to isolate from `intent_classifier`. |
+
+---
+
+## Cryo-EM Validation-Aware Auto-Stop (v116.12)
+
+### Problem context
+
+The X-ray and cryo-EM stop logic in `agent/metrics_analyzer.py`
+both have a "success → stop" branch: X-ray fires when
+`r_free < success_threshold`, cryo-EM fires when `latest_cc > 0.70`.
+The two branches drifted apart in their handling of validation:
+
+| Path | success branch | validation check? |
+|------|----------------|--------------------|
+| X-ray (lines 365-385) | `r_free < success_threshold` | YES — `phenix.molprobity` or `phenix.model_vs_data` in history |
+| Cryo-EM (lines 506-511 pre-v116.12) | `latest_cc > 0.70` | NO — unconditionally `should_stop=True` |
+
+The X-ray validation check is intentional: it defers auto-stop so
+that validation (molprobity / model_vs_data) can run before the
+session ends. Without validation, model quality isn't assessed —
+the agent stops with an unvalidated structure.
+
+The cryo-EM branch was missing this check. AF_7mjs (cryo-EM,
+half-maps + sequence, PredictAndBuild) had a 5-stage plan ending
+in `phenix.molprobity` validation. After Stage 4 (refinement)
+produced `map_cc=0.7832`, the cryo-EM `latest_cc > 0.70` branch
+set `should_stop=True` and the agent stopped before reaching
+Stage 5.
+
+### Fix shape
+
+Two coordinated changes:
+
+| Change | Location | What |
+|--------|----------|------|
+| **Fix #1: cryo-EM validation_done check** | `agent/metrics_analyzer.py` `_analyze_cryoem_trend`, `latest_cc > 0.70` branch | Mirror the X-ray pattern. When `validation_done=True`, behavior unchanged (`should_stop=True`). When `validation_done=False`, set `should_stop=False` + `suggest_validation=True` + trend_summary `"Map-model CC: X.XXX - TARGET REACHED, VALIDATE BEFORE STOPPING"`. |
+| **Fix #2: PLAN node defense-in-depth** | `agent/graph_nodes.py` PLAN node auto-stop chain | (a) New `elif` between `plan_has_pending_stages` and the final `else`: suppress AUTO-STOP when `workflow_state.step_info.step == "validate"` AND `not validation_done`. (b) Diagnostic context dump in the AUTO-STOP path logs `plan_has_pending_stages`, `step`, `validation_done`, `after_program`, `experiment_type` to `debug_log`. |
+
+### Validation programs recognized
+
+The cryo-EM validation_done check accepts either:
+- `phenix.molprobity` (general validation, also used in X-ray)
+- `phenix.validation_cryoem` (cryo-EM-specific validation)
+
+`phenix.model_vs_data` does NOT count for cryo-EM (it's X-ray-only).
+
+### PLAN node auto-stop chain (post-v116.12)
+
+The chain in `agent/graph_nodes.py` `plan()`:
+
+```python
+if metrics_trend.get("should_stop"):
+    if advice_changed:
+        # fall through to LLM planning
+    elif after_program := ...:
+        # handle after_program intent
+    elif user_wants_ligandfit:
+        # suppress for ligandfit prerequisite
+    elif plan_has_pending_stages:
+        # suppress for plan-driven workflow
+    elif (step == "validate" and not validation_done):   # NEW v116.12
+        # suppress: engine says validate next
+    else:
+        # log diagnostic context (NEW v116.12)
+        # AUTO-STOP fires
+```
+
+Priority order matters: user/plan intent (1-4) wins over
+engine-derived intent (5). The new elif is the last line of defense
+before the unconditional AUTO-STOP.
+
+### Why two fixes for one bug
+
+Fix #1 alone is sufficient to prevent the bug — `should_stop` is
+never set to True when validation hasn't been done. Fix #2 provides:
+
+1. **Defense-in-depth for unknown propagation issues.** From the
+   AF_7mjs session JSON, `_plan_has_pending_stages` SHOULD have
+   returned True at cycle 5 entry (stage 4 active + stage 5
+   pending). The function correctly reads `session.data["plan"]`.
+   Yet the AUTO-STOP fired — meaning either the session data was
+   different at the time of check, or the flag didn't propagate
+   through the transport layer. We could not determine which.
+   Fix #2's diagnostic logging will capture this on future runs.
+
+2. **Class-of-bugs protection.** Other `should_stop=True` sources
+   (PLATEAU, EXCESSIVE, future additions in metrics_analyzer)
+   would also be caught by the new elif.
+
+### Diagnostic context dump
+
+Format (single log line, repr-formatted values for unambiguous reading):
+
+```
+PLAN: AUTO-STOP context: plan_has_pending_stages=False, step='complete',
+  validation_done=True, after_program=None, experiment_type='cryoem'
+```
+
+Logged via `_log` → `state["debug_log"]` and as a `DEBUG` event
+in `state["events"]`. Visible at verbose verbosity (`vlog.verbose`)
+in the same `=== PLAN DEBUG ===` section as other PLAN logs.
+
+Fields chosen for grep-ability and to capture exactly the values
+that gated the elif chain. Notably absent: `metrics_trend` itself
+(already logged separately) and the raw map_cc/r_free values
+(already in the stop reason).
+
+### Compatibility
+
+- X-ray workflows unchanged (Fix #1 only touches the cryo-EM branch).
+- Workflows that have already run validation: behavior unchanged
+  (`should_stop=True` still fires for CC > 0.70 + validation_done).
+- No directive or contract changes.
+- AF_7mjs and similar tutorials: agent now correctly advances to
+  validation stage rather than stopping prematurely after refinement.
+
+### Known limitations
+
+1. **Cosmetic 'unknown' in F7 fallback**: The `_run_single_cycle`
+   fallback prints `"No command was generated for program 'unknown'"`
+   when the stop intent sets `decision_info["program"] = None`. The
+   computation `decision_info.get('program', '') or 'unknown'`
+   evaluates `None or 'unknown'` to `'unknown'`. Cleaner would be
+   `decision_info.get('program') or 'STOP'` when `decision_info.get('stop')`.
+   Not blocking; the session correctly ends.
+
+2. **MTZ warning in cryo-EM**: Pre-existing diagnostic
+   `"WARNING: Refinement completed but best_files[map_coeffs_mtz] is EMPTY"`
+   fires for cryo-EM workflows where MTZ doesn't apply. Should be
+   gated on `experiment_type == "xray"`. Not blocking.
+
+3. **plan_has_pending_stages mystery unresolved**: The function
+   should have suppressed AUTO-STOP for AF_7mjs. Fix #2's
+   diagnostic logging is the workaround until a future occurrence
+   surfaces the root cause.
+
+### Files
+
+| File | Changes |
+|------|---------|
+| `agent/metrics_analyzer.py` | +25 / -4 |
+| `agent/graph_nodes.py` | +41 / -0 |
+
+### Tests
+
+| File | Tests | Covers |
+|------|-------|--------|
+| `tests/tst_cryoem_stop_validation.py` (S27) | 16 (31 assertions) | AF_7mjs regression; both validation programs (`molprobity`, `validation_cryoem`); X-ray validation programs (`model_vs_data`) explicitly don't count for cryo-EM; CC just-above threshold; CC exactly at 0.70 (strict `>`); EXCESSIVE still fires regardless of validation (loop guard); X-ray path unchanged. Uses libtbx-stub pattern. |
+| `tests/tst_plan_autostop_validation_suppression.py` (S28) | 11 (28 assertions) | New elif fires when step="validate" + !validation_done; doesn't fire when validation_done=True; doesn't fire when step!="validate"; priority order with other suppressors (plan_has_pending_stages, after_program); diagnostic dump appears only on AUTO-STOP; dump records correct values. Uses libtbx-stub pattern. |
 
 ---
 
