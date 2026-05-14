@@ -2211,6 +2211,7 @@ class manager(object):
     if self._processed_pdb_file:
       self._clash_guard_msg = self._processed_pdb_file.clash_guard(
         new_sites_cart = self.get_sites_cart())
+      self._all_chain_proxies=self._processed_pdb_file.all_chain_proxies
     # This must happen after process call.
     # Reason: contents of model and _model_input can get out of sync any time.
     self._model_input = None
