@@ -1,14 +1,11 @@
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.powder_refine_geometry
 from __future__ import division
-import logging
 
 from iotbx.phil import parse
 from dials.util import show_mail_on_error
 from dials.util.options import ArgumentParser
 from xfel.small_cell.geometry_refiner import PowderGeometryRefiner
 
-
-logger = logging.getLogger("dials.command_line.powder_refine_geometry")
 
 help_message = """
 Refine detector geometry using powder diffraction d-spacings.
@@ -93,9 +90,6 @@ output {
   experiments = refined.expt
     .type = path
     .help = Output filename for refined experiments
-  log = powder_refine_geometry.log
-    .type = path
-    .help = Output log file
 }
 """
 )
