@@ -1,5 +1,178 @@
 # CHANGELOG — v116
 
+## Version 116.11 (AF_7mjs Stop Condition Fix + Test Cleanup)
+
+### Summary
+
+Two coordinated changes shipped together:
+
+1. **Directive extractor fix** for an AF_7mjs (and likely other
+   cryo-EM tutorial) regression: the preprocessor-inserted
+   `**Stop Condition**: None` header was being misinterpreted as
+   real user stop intent, causing the planner to skip prerequisite
+   stages and produce wrong plans.
+
+2. **Test file cleanup** — removed `libtbx.find_unused_imports`
+   warnings from 5 test files by switching to real symbol references
+   (no `# noqa` shortcuts).
+
+The directive extractor fix was the trigger; the test cleanup
+shipped in the same cycle since it was in flight.
+
+### Modified Files (1 production file, 5 test files)
+
+| File | Changes |
+|------|---------|
+| `agent/directive_extractor.py` | +98 / -17 lines. Three logical changes (see Bug Details below): (1) strengthened the regex used at all three places that detect preprocessor formatting — handles markdown bold (`**Header**:`), numbered list prefixes (`7. Header:`), and bullet markers (`- Header:`); (2) defense-in-depth Stop Condition strip inside `_resolve_after_program` before the `\bstop\b` check; (3) suppression of `start_with_program` writes from `_resolve_after_program` when advice is preprocessor output, since multi-action signals in descriptive Primary Goal prose are not user prescription. |
+| `tests/tst_file_encoding.py` | Switched from `from yaml_loader import _load_yaml_file` to `from knowledge import yaml_loader` + `hasattr(yaml_loader, '_load_yaml_file')` availability probe. Real symbol reference, no `# noqa`. |
+| `tests/tst_general_resolver.py` | Removed unused `import re` (was at top, never referenced). |
+| `tests/tst_skip_to_program.py` | Removed unused `STAGE_FAILED` from the plan_schema import tuple. |
+| `tests/tst_standalone_consistency.py` | Switched from importing `_ACTION_TABLE` directly to importing the `directive_extractor` module and checking `directive_extractor is not None` as an availability probe. The actual symbol is loaded later by `_load_action_table()` which has its own fallback chain. |
+| `tests/tst_user_advice_filter.py` | Merged the two import attempts (libtbx and local) into a single try/except chain. Eliminated the dead `_real` alias that existed only to satisfy the linter. |
+
+### Bug Details
+
+#### v116.11 root cause: latent strip-regex weakness
+
+`_strip_preprocessor_stop_condition` at line 44 of
+`directive_extractor.py` exists specifically to remove
+preprocessor-inserted headers at the entry of both extraction
+paths (`extract_directives` and `extract_directives_simple`). Its
+regex required headers to start with the literal word:
+
+```python
+r'^[ \t]*stop\s+condition\s*:\s*[^\n]*$'
+```
+
+But the advice-preprocessor LLM produces output with **markdown
+bold and numbered list prefixes** like:
+
+```
+7. **Stop Condition**: None
+```
+
+The strip never matched this format. Before v115.10, no code
+path did a bare `\bstop\b` search on the un-stripped text, so the
+bug was latent. v115.10's new `_resolve_after_program` introduced
+the first sensitive consumer.
+
+#### Symptom: AF_7mjs three-stage plan
+
+When the agent ran AF_7mjs with the v115.10 directive extractor,
+the resolver matched `\bstop\b` against the un-stripped
+`**Stop Condition**` header, set `_has_stop=True`, and combined
+with the multi-action detection in the Primary Goal text
+("Run PredictAndBuild ... rebuild ... refine") produced
+directives like:
+
+```yaml
+after_program: phenix.real_space_refine
+skip_validation: True
+start_with_program: phenix.predict_and_build
+```
+
+The planner interpreted `start_with_program` as a skip-prerequisites
+directive and produced a 3-stage plan starting at Stage 3 instead
+of the correct 5-stage cryo-EM plan starting with `mtriage`. The
+March 30, 2026 working run produced the correct 5-stage output;
+something between then and May 11 (v115.10 deployment) exposed
+the latent bug.
+
+#### Three logical changes in directive_extractor.py
+
+| Change | Locations | What |
+|--------|-----------|------|
+| **Strengthen preprocessor-format regex** | `_strip_preprocessor_stop_condition` (Stop Condition strip, Primary Goal strip, and `_PREPROCESSOR_SIGNATURES` detection) + the pre-existing `_is_preprocessed` check at line 2860 in `extract_directives_simple` | Adds optional numbered list prefix (`[\d]+\.`), bullet markers (`[-*]`), and markdown bold (`\**`) wrappers around the header keyword. Three locations, identical pattern, for consistency. |
+| **Defense-in-depth Stop Condition strip** | Top of `_resolve_after_program`, before the `\bstop\b` check | Strips the Stop Condition header again before computing `_has_stop`. Under normal flow this is redundant with the upstream strip, but catches future code paths that bypass `_strip_preprocessor_stop_condition`. |
+| **Suppress `start_with_program` for preprocessed advice** | Multi-action branch of `_resolve_after_program` | New `_is_preprocessed` check inside the resolver. When the advice is detected as preprocessor output, the multi-action branch no longer writes `start_with_program`. Reasoning: in preprocessed advice, multi-action mentions come from descriptive Primary Goal prose ("Run PredictAndBuild ... dock/trim ... rebuild ... refine"), not user prescription. Setting `start_with_program` from descriptive prose makes the planner skip prerequisite stages. Real user prose like "run phaser and refine" is unaffected — no preprocessor signatures, so `start_with_program=phenix.phaser` still gets set as before. |
+
+### Tests (1 new file, 15 tests)
+
+| File | Tests | Covers |
+|------|-------|--------|
+| `tst_stop_condition_false_positive.py` (S26) | 15 | Primary AF_7mjs regression; markdown header variants (5); upstream-strip preserves user prose (3); Primary Goal strip strengthened; `_resolve_after_program` directly for resolver-isolated behavior (negation, legitimate stop, multi-action with/without stop, real user prose for start_with); start_with suppression for preprocessed advice. |
+
+Registered in `tests/run_all_tests.py` as suite S26.
+
+The test file uses the libtbx-stub pattern so it runs without a
+real PHENIX install. Tests that target specific resolver behavior
+call `_resolve_after_program` directly to isolate from
+`intent_classifier`, which is a separate, legitimate extraction
+path that can also write `after_program` through its own
+mechanism.
+
+### Verification
+
+- **Reproducer**: full AF_7mjs processed advice now produces empty
+  or minimal directives (matching the March 30 working behavior).
+  No `after_program` write, no `start_with_program` write.
+- **Real PHENIX**: 15/15 tests pass via `phenix.python
+  tst_stop_condition_false_positive.py` after the test-environment
+  sensitivity fix (`test_only_primary_goal_extracted_no_stop` was
+  initially too strict — it didn't account for `intent_classifier`
+  legitimately writing `after_program` for simple "Refine the
+  model." advice; rewrote the test to call `_strip_preprocessor_stop_condition`
+  in isolation).
+- **No regressions**: all existing test suites pass
+  (`tst_general_resolver` 21/21, `tst_dock_and_stop` 5/5,
+  `tst_program_requirements` 40/40, `tst_standalone_consistency`
+  8/8, `tst_initialize_plan_smoke` 9/9, `tst_file_encoding` 7/7).
+
+### Self-Review Findings
+
+The fix went through five review iterations before settling on the
+current shape. Each iteration found a problem with the previous
+diagnosis:
+
+1. **First diagnosis (wrong shape):** Strip the header inside
+   `_resolve_after_program` only. This is a symptom fix — it
+   treats the bug at the consumer, not the cause. The right fix
+   point was the upstream `_strip_preprocessor_stop_condition`.
+
+2. **Second diagnosis (incomplete):** Mark resolver writes with
+   `_set_by_pattern=True` so the intent-driven clearing block
+   could remove them. But the clearing block only handles
+   `after_program`, not `start_with_program`. The actual
+   problematic write on AF_7mjs was `start_with_program`.
+
+3. **Third diagnosis (right shape):** Suppress `start_with_program`
+   writes when advice is preprocessed. Simpler than mark-and-clear;
+   addresses the root semantic confusion (descriptive prose ≠ user
+   prescription).
+
+4. **Fourth iteration:** Found that the pre-existing
+   `_is_preprocessed` regex at line 2860 of `extract_directives_simple`
+   was inconsistent with my upstream fix — it still used the old
+   regex that didn't handle markdown. Strengthened for consistency.
+
+5. **Fifth iteration:** Test failure in real PHENIX revealed that
+   `intent_classifier` writes `after_program` through a separate
+   path. Rewrote affected tests to use `_resolve_after_program`
+   directly when targeting resolver-specific behavior.
+
+### Known limitations (not blocking AF_7mjs)
+
+| Limitation | Impact |
+|------------|--------|
+| **Conditional stop in Special Instructions** | Text like "Stop the analysis if R-free > 0.5" in Special Instructions could still false-positive `_has_stop=True`. AF_7mjs's actual Special Instructions don't contain stop words. Pre-existing fragility. |
+| **DRY violation across 3 `_PREPROC_SIGS` locations** | Same signature list and regex appears at three locations in `directive_extractor.py`. Cosmetic; future refactor should extract to a module-level helper. |
+| **Line 2860 `_is_preprocessed` covered only indirectly** | My test suite verifies the strengthened regex via the strip function (which uses the same pattern). The line 2860 instance is mechanically a copy of tested code, but a direct test would be cleaner. |
+
+### Test Cleanup Details
+
+The unused-imports fix used **real symbol references**, not
+`# noqa: F401` suppression. The `libtbx.find_unused_imports`
+tool requires that imported names actually be referenced; a
+`noqa` comment doesn't satisfy it.
+
+The general pattern was: where a test imports a symbol only to
+verify the module is available, switch to importing the module
+itself and using `hasattr()` or `is not None` as the availability
+probe. This is both more honest about what the test depends on
+and less brittle if the symbol gets renamed.
+
+---
+
 ## Version 116.10 (Reliability and Classification Cleanup)
 
 ### Summary

@@ -1445,6 +1445,15 @@ validation. Three mechanisms ensure the pipeline completes:
    (multi-step → plan drives). If the user says "fit ligand and
    stop", after_program is set to ligandfit.  Replaces the per-
    workflow ligand after_program clearing from v115.09b.
+
+   *v116.11 refinement*: The resolver no longer writes
+   `start_with_program` when the advice is detected as preprocessor
+   output (signature headers present). Multi-action signals from
+   descriptive Primary Goal prose ("Run PredictAndBuild ... rebuild
+   ... refine") were being treated as "user wants to start with X",
+   causing the planner to skip prerequisite stages. Real user prose
+   without preprocessor signatures is unaffected — "run phaser and
+   refine" still sets `start_with_program=phenix.phaser`.
 2. **`combine_ligand` guard** (`workflow_engine.py`): Forces
    `valid_programs = ["phenix.pdbtools"]` for the combine step,
    regardless of what `_apply_directives` returns.
@@ -3884,6 +3893,152 @@ three rejected alternatives are in `PATH_Y_DESIGN.md`
 (packaged separately during Tier 2.1 design review). External
 review by Gemini approved the design with refinements that
 were incorporated.
+
+---
+
+## Stop Condition Header Handling (v116.11)
+
+### Problem context
+
+The advice preprocessor LLM produces structured output with
+labeled sections like:
+
+```
+1. **Input Files Found**: 7mjs_23883_H.fa, ...
+2. **Experiment Type**: cryo-EM
+3. **Primary Goal**: Run PredictAndBuild ... rebuild ... refine
+4. **Key Parameters**: ...
+5. **Program Parameters**: ...
+6. **Special Instructions**: ...
+7. **Stop Condition**: None
+```
+
+Items 3 (Primary Goal) and 7 (Stop Condition) are particularly
+sensitive: the preprocessor's natural-language summaries can match
+heuristic regexes downstream that were designed for direct user
+prose. Stop Condition is always inserted on every run; Primary
+Goal carries a workflow narrative that mentions multiple program
+families.
+
+The agent has long had `_strip_preprocessor_stop_condition` at the
+entry of both `extract_directives` and `extract_directives_simple`
+to remove these headers before they can confuse downstream
+heuristics. That function existed pre-v116.11; the v116.11 fix
+strengthens its regex.
+
+### Why the latent bug surfaced in v115.10
+
+Pre-v115.10, the strip function's regex required the header to
+start with the literal word `stop condition` at column 0. The
+preprocessor's markdown bold + numbered list prefix (`7. **Stop
+Condition**: None`) didn't match. The strip never fired on real
+preprocessor output, but **no downstream code did a bare `\bstop\b`
+search** on the un-stripped text either, so the latent bug had no
+symptom.
+
+v115.10's general `_resolve_after_program` introduced
+`re.search(r'\bstop\b', advice_lower)` as the stop-intent detector
+inside the resolver. That was the first sensitive consumer. The
+header's `stop` (in `**Stop Condition**`) immediately matched,
+producing `_has_stop=True` for every preprocessed advice. The
+multi-action detection in the Primary Goal ("Run PredictAndBuild
+... rebuild ... refine") then combined with `_has_stop=True` to
+produce a wrong `after_program` write *and* a wrong
+`start_with_program=phenix.predict_and_build` write, which the
+planner interpreted as a skip-prerequisites directive.
+
+For AF_7mjs, this skipped Stages 1 (data assessment) and 2 (map
+improvement) and started the plan at Stage 3. The pre-v115.10
+March 30, 2026 run produced the correct 5-stage plan.
+
+### Fix shape
+
+Three logical changes in `agent/directive_extractor.py` (+98/-17
+lines total):
+
+| Change | What | Effect |
+|--------|------|--------|
+| Strengthen preprocessor-format regex (3 locations) | The regex now matches optional numbered list prefix (`[\d]+\.\s*`), bullet markers (`[-*]\s*`), and markdown bold (`\**`) wrappers around the header keyword. Applied to `_strip_preprocessor_stop_condition`'s Stop Condition strip, its Primary Goal strip, its `_PREPROCESSOR_SIGNATURES` detection, AND the pre-existing `_is_preprocessed` check at line 2860 of `extract_directives_simple` (which gates `tutorial_patterns`). | Root-cause fix. Headers are now correctly stripped by the existing pipeline, benefiting every downstream consumer. |
+| Defense-in-depth strip in `_resolve_after_program` | Before computing `_has_stop`, strip the Stop Condition header again from `advice_lower`. | Under normal flow this is redundant with the upstream strip. Catches future code paths that bypass `_strip_preprocessor_stop_condition` (e.g., if a new caller directly invokes `_resolve_after_program`). |
+| Suppress `start_with_program` writes for preprocessed advice | New `_is_preprocessed` detection inside `_resolve_after_program`. When advice is preprocessor output (signature headers present), skip the `start_with_program` write in the multi-action branch. | Direct semantic fix. The resolver was treating "advice text mentions multiple actions" as equivalent to "user wants to start with X and skip prerequisites." That's true for imperative user prose ("run phaser and refine") but false for descriptive preprocessor prose ("Run PredictAndBuild ... rebuild ... refine"). |
+
+### Why the third change instead of mark-and-clear
+
+An alternative considered: mark resolver writes with
+`_set_by_pattern=True` so the intent-driven clearing block could
+remove them when `intent` is `solve`/`solve_constrained`. This is
+the same mechanism `tutorial_patterns` and `denmod_patterns`
+already use.
+
+**Rejected** because the clearing block only handles
+`after_program`, not `start_with_program`. The actual problematic
+write on AF_7mjs was `start_with_program`. Mark-and-clear would
+have required adding a parallel clearing path for
+`start_with_program`, which is more complex than simply not
+writing it in the first place when the source is descriptive
+preprocessor prose.
+
+### Semantic distinction the fix encodes
+
+`after_program` and `start_with_program` look symmetric but have
+different semantics:
+
+| Directive | Semantics | Should come from |
+|-----------|-----------|------------------|
+| `after_program` | "Stop after this program runs" | Explicit user stop intent ("X and stop") |
+| `start_with_program` | "Start here, skip prerequisites" | Explicit user start intent ("just run X") |
+
+`start_with_program` is more aggressive — it tells the planner to
+skip work the agent would otherwise consider necessary. Inferring
+it from descriptive prose is a fundamentally different bar than
+inferring `after_program`. The v116.11 fix codifies this: the
+resolver still infers `start_with_program` from imperative user
+prose, but not from preprocessor descriptive summaries.
+
+### Compatibility
+
+- Real user prose without preprocessor signatures is unaffected.
+  "run phaser and refine" still produces
+  `start_with_program=phenix.phaser` (no signatures → not
+  preprocessed → resolver writes normally).
+- The intent_classifier path is unaffected. It writes
+  `after_program` for `intent=task` through a separate mechanism
+  that doesn't go through the resolver's `_has_stop` check.
+- Existing tests that exercise the resolver's multi-action +
+  legitimate-stop behavior still pass — those use direct user
+  prose, not preprocessor output.
+
+### Known limitations
+
+1. **Conditional stop in Special Instructions**: text like "Stop
+   the analysis if R-free > 0.5" in Special Instructions still
+   false-positives `_has_stop=True` because the strip targets the
+   header only, not the section body. Pre-existing fragility; not
+   blocking AF_7mjs.
+
+2. **DRY violation**: the strengthened regex is duplicated at three
+   locations (lines 77, 100, 2338, 2868). A future refactor should
+   extract a module-level helper.
+
+3. **User adopting preprocessor format**: if a user manually writes
+   advice in the preprocessor's structured format (e.g.,
+   `**Stop Condition**: After phaser`), their stop intent is
+   stripped. This matches the original design intent of
+   `_strip_preprocessor_stop_condition` (the comment says "real
+   users write 'stop after X', not 'Stop Condition: stop after
+   X'"); v116.11 preserves this behavior.
+
+### Files
+
+| File | Changes |
+|------|---------|
+| `agent/directive_extractor.py` | +98 / -17 |
+
+### Tests
+
+| File | Tests | Covers |
+|------|-------|--------|
+| `tests/tst_stop_condition_false_positive.py` (S26) | 15 | Primary AF_7mjs regression; markdown variants; user prose preservation; resolver-direct tests for negation, legitimate stops, multi-action handling; start_with_program suppression. Uses libtbx-stub pattern; tests targeting resolver behavior call `_resolve_after_program` directly to isolate from `intent_classifier`. |
 
 ---
 
