@@ -814,6 +814,10 @@ class manager(Base_geometry):
     if self.reference_dihedral_manager is not None:
       return self.reference_dihedral_manager.get_n_proxies()
 
+  def get_n_reference_hbond_proxies(self):
+    return self._get_n_bond_proxies_origin(
+      origin_id=origin_ids.get_origin_id('reference hydrogen bonds'))
+
   def sync_reference_dihedral_with_ncs(self, log):
     if (self.reference_dihedral_manager is not None and
         self.ncs_dihedral_manager is not None):
@@ -2017,6 +2021,7 @@ class manager(Base_geometry):
       elif key in mon_lib_srv.link_link_id_dict:
         links['link_%s' % key] = mon_lib_srv.link_link_id_dict[key].as_cif_block()
       elif origin_id_info[0] in ['hydrogen bonds',
+                                 'reference hydrogen bonds',
                                  'edits',
                                  'metal coordination',
                                  'glycosidic custom',

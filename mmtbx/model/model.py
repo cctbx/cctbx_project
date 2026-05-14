@@ -42,7 +42,7 @@ from mmtbx.ncs.ncs_utils import apply_transforms
 from mmtbx.command_line import find_tls_groups
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
-    add_reference_dihedral_restraints_if_requested, reference_model_str, reference_model
+    add_reference_model_restraints_if_requested, reference_model_str, reference_model
 from mmtbx.geometry_restraints.torsion_restraints.torsion_ncs import torsion_ncs
 from mmtbx.refinement import print_statistics
 from mmtbx.refinement import anomalous_scatterer_groups
@@ -2323,7 +2323,7 @@ class manager(object):
     #     xrs=xray_structure,
     #     prefix=None)
     if hasattr(pdb_interpretation_params, "reference_model"):
-      add_reference_dihedral_restraints_if_requested(
+      add_reference_model_restraints_if_requested(
           self,
           geometry=geometry,
           params=pdb_interpretation_params.reference_model,
