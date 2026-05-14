@@ -52,7 +52,7 @@ class mopac_manager(base_qm_manager.base_qm_manager):
                         'quintet', # - 4 unpaired electrons
                         'sextet', # - 5 unpaired electrons
                         'septet',
-                        ][self.multiplicity]
+                        ][self.multiplicity] + ' UHF'
     additional_options=''
     if gradients_only:
       additional_options+=' 1SCF GRAD ANALYT'
