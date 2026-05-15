@@ -546,6 +546,60 @@ def is_stop_intent(intent):
     return False
 
 
+# Indicators of a transient API-availability error vs a real test
+# error.  Same patterns as production's
+# rate_limit_handler.is_rate_limit_error.  We use a separate function
+# here (rather than importing) so the framework remains usable
+# standalone without libtbx.
+_API_AVAILABILITY_INDICATORS = (
+    "429", "503",
+    "rate limit", "rate_limit", "ratelimit",
+    "resource exhausted", "resourceexhausted",
+    "quota exceeded", "quotaexceeded",
+    "too many requests", "toomanyrequests",
+    "throttl", "retry after", "retry-after",
+    "slow down", "capacity", "overloaded",
+    "unavailable", "servererror",
+)
+
+
+def is_api_availability_error(error_msg):
+    """Heuristic: does this error message look like an API-availability
+    issue (rate limit, quota, 503, overloaded, etc.) as opposed to a
+    real bug?
+
+    Used to annotate the per-scenario output line so transient API
+    failures are visibly distinguished from genuine test failures.
+    """
+    if not error_msg:
+        return False
+    low = error_msg.lower()
+    for indicator in _API_AVAILABILITY_INDICATORS:
+        if indicator in low:
+            return True
+    return False
+
+
+def classify_errored_outcomes(outcomes):
+    """Count how many errored outcomes are API-availability vs other.
+
+    Returns (n_api, n_other) where n_api + n_other == count of errored
+    outcomes.
+    """
+    n_api = 0
+    n_other = 0
+    for o in outcomes:
+        if o.error is None and o.passed:
+            continue
+        if o.error is None:
+            continue  # semantic fail, not an error
+        if is_api_availability_error(o.error):
+            n_api += 1
+        else:
+            n_other += 1
+    return n_api, n_other
+
+
 def call_planning_llm(state_inputs, provider):
     """Call the production-faithful planning LLM chain.
 
@@ -1000,15 +1054,28 @@ def run_scenario_against_providers(scenario, providers, run_one_fn,
                 early = "  *early stop*"
             tag = "%d/%d" % (verdict.n_passed, verdict.n_runs_executed)
 
-            # Phase 2: surface failure / error counts when nonzero so
-            # they aren't hidden inside a passing reliability verdict.
-            # E.g., a 4/5 PASS at threshold 0.8 means one run failed —
-            # that's information you want to see at a glance.
+            # Surface failure / error counts when nonzero so they aren't
+            # hidden inside a passing reliability verdict.  E.g., a 4/5
+            # PASS at threshold 0.8 means one run failed — that's
+            # information you want to see at a glance.  When errored
+            # runs are API-availability issues (503, 429, rate limit,
+            # etc.) annotate them as such, so transient API issues
+            # aren't confused with real LLM behavior problems.
             suffix_parts = []
             if verdict.n_failed > 0:
                 suffix_parts.append("%d fail" % verdict.n_failed)
             if verdict.n_errored > 0:
-                suffix_parts.append("%d err" % verdict.n_errored)
+                n_api, n_other = classify_errored_outcomes(verdict.outcomes)
+                if n_api == verdict.n_errored:
+                    # All errored runs are API availability — call it out
+                    suffix_parts.append("%d err: API unavailable"
+                                        % verdict.n_errored)
+                elif n_api > 0:
+                    # Mixed
+                    suffix_parts.append("%d err (%d API, %d other)"
+                                        % (verdict.n_errored, n_api, n_other))
+                else:
+                    suffix_parts.append("%d err" % verdict.n_errored)
             suffix = "  [%s]" % ", ".join(suffix_parts) if suffix_parts else ""
 
             print("  [%s]   %-40s  %s  %-5s (%.1fs)%s%s"

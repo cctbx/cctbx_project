@@ -31,7 +31,8 @@ from framework import (
     create_log_dir, run_scenario_against_providers,
     write_run_summary,
     make_directive_extraction_run_fn,
-    make_planning_run_fn)
+    make_planning_run_fn,
+    is_api_availability_error)
 
 
 # Map suite name -> (scenarios-builder, run_one_fn).
@@ -244,15 +245,22 @@ Examples:
           % (totals["passed"], totals["failed"],
              totals["errored"], totals["skipped"]))
 
-    # Phase 2: surface individual-run fail / err counts across all
-    # scenarios.  A reliability test can pass overall while still
-    # exhibiting individual failures (e.g. 4/5 at threshold 0.8 = PASS
-    # but 1 individual fail); the verdict alone hides that.
+    # Surface individual-run fail / err counts across all scenarios.
+    # A reliability test can pass overall while still exhibiting
+    # individual failures (e.g. 4/5 at threshold 0.8 = PASS but 1
+    # individual fail); the verdict alone hides that.  When errored
+    # runs are API-availability issues, label them so transient
+    # provider issues aren't confused with real LLM problems.
     indiv_failed = sum(
         len([o for o in v.outcomes if not o.passed and o.error is None])
         for v in all_verdicts)
     indiv_errored = sum(
         len([o for o in v.outcomes if not o.passed and o.error is not None])
+        for v in all_verdicts)
+    indiv_api_err = sum(
+        len([o for o in v.outcomes
+             if (not o.passed and o.error is not None
+                 and is_api_availability_error(o.error))])
         for v in all_verdicts)
     if indiv_failed > 0 or indiv_errored > 0:
         parts = []
@@ -260,8 +268,15 @@ Examples:
             parts.append("%d individual run%s failed"
                          % (indiv_failed, "s" if indiv_failed != 1 else ""))
         if indiv_errored > 0:
-            parts.append("%d errored"
-                         % indiv_errored)
+            if indiv_api_err == indiv_errored:
+                parts.append("%d errored (all API availability)"
+                             % indiv_errored)
+            elif indiv_api_err > 0:
+                parts.append("%d errored (%d API availability, %d other)"
+                             % (indiv_errored, indiv_api_err,
+                                indiv_errored - indiv_api_err))
+            else:
+                parts.append("%d errored" % indiv_errored)
         print("         (%s)" % ", ".join(parts))
 
     print("Total LLM calls: %d" % totals["total_llm_calls"])
