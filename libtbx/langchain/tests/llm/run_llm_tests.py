@@ -26,11 +26,12 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 
-from framework import (AVAILABLE_PROVIDERS, build_summary,
-                       create_log_dir, run_scenario_against_providers,
-                       write_run_summary,
-                       make_directive_extraction_run_fn,
-                       make_planning_run_fn)
+from framework import (
+    AVAILABLE_PROVIDERS, build_summary,
+    create_log_dir, run_scenario_against_providers,
+    write_run_summary,
+    make_directive_extraction_run_fn,
+    make_planning_run_fn)
 
 
 # Map suite name -> (scenarios-builder, run_one_fn).

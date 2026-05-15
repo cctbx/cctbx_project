@@ -34,8 +34,9 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 
-from framework import (Scenario, load_fixture,
-                       make_directive_extraction_run_fn)
+from framework import (
+    Scenario, load_fixture,
+    make_directive_extraction_run_fn)
 
 
 # =====================================================================
@@ -249,9 +250,10 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
 
-    from framework import (AVAILABLE_PROVIDERS, build_summary,
-                           create_log_dir, run_scenario_against_providers,
-                           write_run_summary)
+    from framework import (
+        AVAILABLE_PROVIDERS, build_summary,
+        create_log_dir, run_scenario_against_providers,
+        write_run_summary)
     import time
 
     if not AVAILABLE_PROVIDERS:

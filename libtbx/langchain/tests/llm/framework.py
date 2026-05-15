@@ -29,7 +29,7 @@ import sys
 import time
 import traceback
 from dataclasses import dataclass, field
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, List, Optional
 
 
 # ----------------------------------------------------------------------
@@ -580,8 +580,8 @@ def call_planning_llm(state_inputs, provider):
             from libtbx.langchain.agent.graph_nodes import (
                 get_planning_llm, parse_intent_json)
         except ImportError:
-            from agent.graph_nodes import (get_planning_llm,
-                                            parse_intent_json)
+            from agent.graph_nodes import (
+                get_planning_llm, parse_intent_json)
     except ImportError as e:
         return ("", None, "ImportError (graph_nodes): %s" % e, log)
 

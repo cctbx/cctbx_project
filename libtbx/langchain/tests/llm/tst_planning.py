@@ -34,8 +34,9 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 
-from framework import (Scenario, is_stop_intent, make_planning_run_fn,
-                       validate_planning_state)
+from framework import (
+    Scenario, is_stop_intent, make_planning_run_fn,
+    validate_planning_state)
 
 
 # =====================================================================
@@ -988,9 +989,10 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
 
-    from framework import (AVAILABLE_PROVIDERS, build_summary,
-                           create_log_dir, run_scenario_against_providers,
-                           write_run_summary)
+    from framework import (
+        AVAILABLE_PROVIDERS, build_summary,
+        create_log_dir, run_scenario_against_providers,
+        write_run_summary)
     import time
 
     if not AVAILABLE_PROVIDERS:
