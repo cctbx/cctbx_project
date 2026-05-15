@@ -538,7 +538,16 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
         return extract_directives_simple(user_advice)
 
     # Build the prompt
-    prompt = DIRECTIVE_EXTRACTION_PROMPT.format(user_advice=user_advice)
+    # v116.20: use .replace() instead of .format() because the prompt template
+    # contains unescaped JSON examples like {"program_settings": {...}} whose
+    # braces would be misinterpreted as format placeholders, causing
+    # KeyError when extract_directives is called standalone (e.g. from tests
+    # or debug scripts).  Production avoids this because directive extraction
+    # routes through the ai_analysis server, but standalone callers trip on
+    # it.  .replace() does the same single substitution without invoking
+    # str.format()'s placeholder mini-language; behavior-preserving for the
+    # production path.
+    prompt = DIRECTIVE_EXTRACTION_PROMPT.replace("{user_advice}", user_advice)
 
     # Call LLM
     try:
@@ -576,6 +585,27 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
 
         # Validate and clean directives
         directives = validate_directives(directives, log)
+
+        # v116.19a (Option A): narrow grounding guardrail — drop
+        # LLM-fabricated after_program / prefer_programs in two cases:
+        #   (1) the program name doesn't appear anywhere in the advice
+        #       (pure fabrication, e.g. AF_7mjs's
+        #       after_program=phenix.real_space_refine where neither
+        #       "real_space_refine" nor any spelling variant appears in
+        #       the README); or
+        #   (2) the advice came through the preprocessor AND has no
+        #       explicit stop intent AND no imperative marker near the
+        #       program name (AF_7mjs's misextraction of
+        #       phenix.predict_and_build would also fall here, since
+        #       "PredictAndBuild" is in the advice but no "stop after"
+        #       or "only" or "just" appears near it and the user said
+        #       Stop Condition: None).
+        # Bare user input like "run xtriage on my data" passes the
+        # guardrail (program name is present, advice is not
+        # preprocessed) so the directive extractor's documented
+        # bare-imperative mappings continue to work.
+        directives = _validate_after_program_grounded(
+            directives, user_advice, log)
 
         # Regex fallback: ensure unit_cell and space_group are always captured.
         # The LLM sometimes returns an empty dict (or only stop_conditions) even
@@ -1074,6 +1104,331 @@ def _is_symmetry_sentinel(value):
     if not isinstance(value, str):
         return False
     return value.strip().lower() in _SYMMETRY_SENTINELS
+
+
+# =============================================================================
+# v116.19a — Narrow Grounding Guardrail (Option A) for LLM-extracted
+#             after_program / prefer_programs
+# =============================================================================
+#
+# The directive-extraction LLM occasionally fabricates a stop_conditions.
+# after_program or workflow_preferences.prefer_programs entry from goal
+# text alone — e.g. extracting after_program=phenix.real_space_refine
+# from "rebuild the loop and refine the model" in a multi-stage tutorial
+# whose Stop Condition: field is literally "None".
+#
+# Observed rate is low (~7% across mixed evidence) but produces
+# spurious directives that pollute every subsequent prompt and bias
+# the planner.  v116.17 ensures the misextraction is non-fatal at the
+# validate-step chokepoint; v116.19a prevents the bad directive from
+# being emitted in the first place by validating LLM output against
+# the source text.
+#
+# OPTION A — Narrow guardrail.  Drops a directive only when EITHER:
+#   (1) The program name is COMPLETELY absent from user_advice in any
+#       canonical spelling variant.  This catches pure fabrications
+#       like AF_7mjs's after_program=phenix.real_space_refine (the
+#       string "real_space_refine" never appears in the advice).
+#       Rule (1) fires regardless of whether the advice came from a
+#       preprocessor.
+#
+#   (2) BOTH of:
+#       (a) The advice came through the preprocessor (we detect this
+#           by signature headers like "Input Files Found",
+#           "Experiment Type", etc.) AND lacks any explicit "stop after"
+#           imperative anywhere, indicating the user did not request a
+#           stop; AND
+#       (b) No imperative marker appears within 300 chars of the
+#           program-name occurrence in user_advice.
+#
+# Rule (2) catches the AF_7mjs class where the program name IS in the
+# preprocessed advice ("PredictAndBuild" is part of the Primary Goal)
+# but no stop was requested.  It also catches LLM hallucinations where
+# a different program name was confabulated.
+#
+# Both rules deliberately DO NOTHING for raw (non-preprocessed) user
+# advice that doesn't fail rule (1).  This preserves the directive
+# extractor prompt's documented mappings for bare imperatives like
+# "run xtriage" → after_program=phenix.xtriage.  Those phrases never
+# arrive in preprocessed form, so rule (2)(a) fails and rule (1) is
+# satisfied (program name IS in advice).
+
+# Imperative phrases that indicate the user is scoping or stopping
+# the workflow at a specific program.  Case-insensitive substring
+# match on a window around the program-name occurrence.
+_IMPERATIVE_STOP_MARKERS = (
+    "stop after",
+    "stop_after",
+    "only run",
+    "just run",
+    "just do",
+    "after running",
+    "nothing else",
+    "skip the rest",
+    "skip everything",
+    "and then stop",
+    "and stop",
+    "stop when",
+    "stop_condition: stop",  # advice preprocessor sometimes uses this form
+    "stop condition: stop",
+)
+
+
+# Signature headers produced by the advice preprocessor LLM.  When any
+# of these appears as a top-of-line header in the advice text, we
+# conclude the advice came through the preprocessor (and thus may
+# contain a fabricated Stop Condition: None line that was stripped
+# before extraction).  Matches the _PREPROC_SIGS list in
+# _resolve_after_program (which sees the post-strip advice).
+_PREPROCESSOR_SIGNATURE_PATTERNS = (
+    r'input\s+files?\s+found',
+    r'experiment\s+type',
+    r'key\s+parameters?',
+    r'special\s+instructions?',
+)
+
+
+def _advice_came_from_preprocessor(user_advice):
+    """Return True if user_advice has the structural signature of
+    advice-preprocessor output.
+
+    Used by the v116.19a guardrail as gate (2)(a): the narrow rule
+    only fires for preprocessed advice, leaving raw user input
+    (e.g. ``"run xtriage on my data"``) untouched.
+    """
+    if not isinstance(user_advice, str) or not user_advice:
+        return False
+    advice_lower = user_advice.lower()
+    for sig in _PREPROCESSOR_SIGNATURE_PATTERNS:
+        if re.search(
+                r'(?i)^[ \t]*(?:[\d]+\.\s*|[-*]\s*)?\**\s*%s\**\s*:'
+                % sig, advice_lower, re.MULTILINE):
+            return True
+    return False
+
+
+def _advice_has_explicit_stop_intent(user_advice):
+    """Return True if user_advice anywhere contains an imperative stop
+    intent.
+
+    This is the global check that distinguishes "user wanted a stop"
+    (in which case we trust the LLM's after_program even on preprocessed
+    advice) from "user wanted no stop" (in which case any after_program
+    is likely a fabrication from goal verbs).
+
+    The check looks for ``\\bstop after\\b`` and a small set of
+    related global imperatives.  More forgiving than the per-program
+    window check because we don't need to tie the imperative to a
+    specific program name — we only need to know if the user ever
+    said "stop".
+    """
+    if not isinstance(user_advice, str) or not user_advice:
+        return False
+    advice_lower = user_advice.lower()
+    # Use word boundaries to avoid substring matches like
+    # "after running into trouble".
+    patterns = (
+        r'\bstop\s+after\b',
+        r'\bstop_after\b',
+        r'\bonly\s+run\b',
+        r'\bjust\s+run\b',
+        r'\bjust\s+do\b',
+        r'\bnothing\s+else\b',
+        r'\band\s+stop\b',
+        r'\bstop\s+when\b',
+    )
+    for pattern in patterns:
+        if re.search(pattern, advice_lower):
+            return True
+    return False
+
+
+def _program_name_variants(program):
+    """Return all spelling variants of `program` to search for in advice.
+
+    For ``"phenix.real_space_refine"`` returns 5 variants:
+        "phenix.real_space_refine"   — canonical
+        "real_space_refine"           — bare suffix
+        "real space refine"           — underscores → spaces
+        "real-space-refine"           — underscores → hyphens
+        "RealSpaceRefine"             — CamelCase
+
+    For ``"phenix.predict_and_build"`` returns:
+        "phenix.predict_and_build", "predict_and_build",
+        "predict and build", "predict-and-build", "PredictAndBuild"
+
+    Returns an empty tuple for None / empty / non-string input.
+    """
+    if not isinstance(program, str) or not program:
+        return ()
+    suffix = program
+    if suffix.lower().startswith("phenix."):
+        suffix = suffix[len("phenix."):]
+    variants = [program]
+    if suffix != program:
+        variants.append(suffix)
+    # underscored → spaces
+    spaced = suffix.replace("_", " ")
+    if spaced != suffix and spaced not in variants:
+        variants.append(spaced)
+    # underscored → hyphens
+    hyphened = suffix.replace("_", "-")
+    if hyphened != suffix and hyphened not in variants:
+        variants.append(hyphened)
+    # underscored → camelcased (e.g. predict_and_build → PredictAndBuild)
+    if "_" in suffix:
+        camel = "".join(part.capitalize() for part in suffix.split("_"))
+        if camel and camel not in variants:
+            variants.append(camel)
+    return tuple(variants)
+
+
+def _find_variant_in_text(variants, text, log=None):
+    """Find the first (variant, position) pair where `variant` appears
+    in `text` on a word boundary.  Case-insensitive.  Returns
+    (None, -1) if no variant matches.
+
+    Word-boundary matching avoids matching "refine" inside the
+    longer token "real_space_refine".
+    """
+    text_lower = text.lower()
+    for variant in variants:
+        # Build a word-boundary pattern.  re.escape handles dots and
+        # other regex metacharacters in the variant text.  Word
+        # boundaries are anchored at non-word transitions.
+        pattern = r'(?<![A-Za-z0-9_])' + re.escape(variant.lower()) + \
+                  r'(?![A-Za-z0-9_])'
+        match = re.search(pattern, text_lower)
+        if match:
+            return (variant, match.start())
+    return (None, -1)
+
+
+def _imperative_marker_nearby(text, position, window=300):
+    """Return True iff any phrase in `_IMPERATIVE_STOP_MARKERS`
+    appears in `text` within `window` characters before or after
+    `position`.  Case-insensitive substring match.
+
+    Substring matching (not word-boundary) means ``"just run"`` would
+    match ``"just running"``.  This is intentional — false positives
+    here cause the guardrail to KEEP a directive that arguably should
+    be dropped (a benign failure), while false negatives would DROP a
+    legitimate user-requested stop (which we want to avoid).
+    """
+    if position < 0:
+        return False
+    lo = max(0, position - window)
+    hi = position + window
+    window_text = text[lo:hi].lower()
+    for marker in _IMPERATIVE_STOP_MARKERS:
+        if marker in window_text:
+            return True
+    return False
+
+
+def _is_program_grounded(program, user_advice, log=None):
+    """v116.19a Option A grounding check.
+
+    Returns True (= keep the directive) UNLESS one of the failure modes
+    fires:
+
+      Failure 1 — Pure fabrication: the program name (any variant) is
+                  not present in user_advice.  Drop the directive.
+
+      Failure 2 — Preprocessed + no-stop-intent + no imperative near
+                  program: the advice came from the preprocessor,
+                  the user did NOT request a stop, and no imperative
+                  appears near the program name.  Drop the directive.
+
+    Otherwise return True.
+
+    This is the Option A narrow variant of the original v116.19 helper.
+    Compared with the original (broad) version:
+
+      * Both versions drop on Failure 1 (pure fabrication).
+      * The original ALSO dropped on "program name in advice but no
+        imperative nearby", regardless of preprocessor.  Option A
+        does NOT drop in that case for raw (non-preprocessed) advice,
+        so the directive-extractor's documented bare-imperative
+        mappings ("run xtriage" → after_program=phenix.xtriage)
+        continue to work.
+    """
+    if not program or not user_advice:
+        # Defensive: if either input is empty, can't make a judgment.
+        # Return True (keep) — let other layers handle.
+        return True
+    variants = _program_name_variants(program)
+    if not variants:
+        return True
+    variant, position = _find_variant_in_text(variants, user_advice, log)
+
+    # Failure 1: pure fabrication — program name absent from advice.
+    if variant is None:
+        if log:
+            log("DIRECTIVES: %s not grounded — program name absent "
+                "from user advice (pure fabrication)" % program)
+        return False
+
+    # Failure 2: preprocessed + no global stop intent + no imperative
+    # marker near the program.
+    if (_advice_came_from_preprocessor(user_advice) and
+            not _advice_has_explicit_stop_intent(user_advice) and
+            not _imperative_marker_nearby(user_advice, position)):
+        if log:
+            log("DIRECTIVES: %s not grounded — preprocessed advice "
+                "with no stop intent and no imperative marker within "
+                "300 chars of %r" % (program, variant))
+        return False
+
+    return True
+
+
+def _validate_after_program_grounded(directives, user_advice, log):
+    """Drop stop_conditions.after_program and workflow_preferences.
+    prefer_programs entries that the LLM fabricated from goal text.
+
+    See `_is_program_grounded` for the grounding criteria (v116.19a
+    Option A: drops on pure fabrication OR on preprocessed advice
+    with no stop intent and no nearby imperative).
+
+    Returns the (possibly modified) directives dict.  Logs each drop.
+    """
+    if not isinstance(directives, dict) or not user_advice:
+        return directives
+
+    # after_program
+    stop_cond = directives.get("stop_conditions")
+    if isinstance(stop_cond, dict) and stop_cond.get("after_program"):
+        after_prog = stop_cond["after_program"]
+        if not _is_program_grounded(after_prog, user_advice, log):
+            log("DIRECTIVES: Dropping fabricated "
+                "stop_conditions.after_program=%s" % after_prog)
+            del stop_cond["after_program"]
+            # Clean up empty stop_conditions
+            if not stop_cond:
+                del directives["stop_conditions"]
+
+    # prefer_programs
+    wf_prefs = directives.get("workflow_preferences")
+    if isinstance(wf_prefs, dict) and wf_prefs.get("prefer_programs"):
+        prefer = wf_prefs["prefer_programs"]
+        if isinstance(prefer, list):
+            kept = []
+            for prog in prefer:
+                if _is_program_grounded(prog, user_advice, log):
+                    kept.append(prog)
+                else:
+                    log("DIRECTIVES: Dropping fabricated "
+                        "workflow_preferences.prefer_programs "
+                        "entry %s" % prog)
+            if kept:
+                wf_prefs["prefer_programs"] = kept
+            else:
+                del wf_prefs["prefer_programs"]
+                if not wf_prefs:
+                    del directives["workflow_preferences"]
+
+    return directives
 
 
 def _apply_crystal_symmetry_fallback(directives, user_advice, log):

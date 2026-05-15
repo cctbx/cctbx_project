@@ -1511,6 +1511,23 @@ def main():
                        "tst_validate_step_after_program_guard",
                        False, 0))
 
+    # --- Directive Extractor Grounding Guardrail (v116.19) ---
+    try:
+        from tests.tst_directive_extractor_grounding import (
+            run_all_tests as run_grounding_tests)
+        success, elapsed = run_test_module(
+            "tst_directive_extractor_grounding",
+            run_grounding_tests, args.verbose)
+        results.append(("Directive Extractor Grounding Guardrail",
+                       "tst_directive_extractor_grounding",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_directive_extractor_grounding: {e}")
+        results.append(("Directive Extractor Grounding Guardrail",
+                       "tst_directive_extractor_grounding",
+                       False, 0))
+
     # --- Summary ---
     total_elapsed = time.time() - total_start
 
