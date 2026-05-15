@@ -2195,6 +2195,39 @@ class WorkflowEngine:
                            [p for p in result if p != "STOP"]))
                     if "STOP" not in result:
                         result.append("STOP")
+                # skip_validation contract: when the user explicitly said
+                # "skip validation" alongside an after_program stop, the
+                # original v112.78 design still calls for a clean STOP
+                # without offering validation programs to the LLM.  The
+                # "Validation can be skipped before stopping" prompt hint
+                # is weak compared to the after_program "CRITICAL: stop"
+                # directive, so leaving molprobity / model_vs_data in
+                # valid_programs would risk the LLM running them anyway,
+                # breaking the user's explicit skip-validation contract.
+                #
+                # This is one specific case where the wipe-to-[STOP]
+                # behavior IS correct: the user gave an unambiguous
+                # combination ("stop after X, skip validation") that the
+                # workflow_engine should enforce structurally rather than
+                # trust the LLM to respect.  Limited to validate step
+                # only — other steps (refine, etc.) still get min-run
+                # semantics where the LLM can elect to continue.
+                elif (step_name == "validate" and
+                        context is not None and
+                        not context.get("validation_done") and
+                        stop_cond.get("skip_validation")):
+                    non_stop = [p for p in result if p != "STOP"]
+                    if non_stop:
+                        modifications.append(
+                            "Cleared programs %s "
+                            "(after_program %s completed + "
+                            "skip_validation=True at validate step)"
+                            % (non_stop, after_program))
+                    result[:] = ["STOP"]
+                    modifications.append(
+                        "Set valid_programs=[STOP] "
+                        "(after_program %s + skip_validation contract)"
+                        % after_program)
                 else:
                     # v112.78: append STOP, do NOT wipe.  The LLM picks
                     # STOP based on the strong prompt directive when the
