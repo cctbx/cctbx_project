@@ -666,11 +666,11 @@ def perceive(state):
                   % state.get("directives", {}))
         _si = state.get("session_info", {}) or {}
         print("[DIAG_PLAN]   plan_has_pending_stages   = %r"
-              % _si.get("plan_has_pending_stages"))
+              % _si.get("plan_has_pending_stages", False))
         print("[DIAG_PLAN]   plan_next_stage_programs  = %r"
-              % _si.get("plan_next_stage_programs"))
+              % _si.get("plan_next_stage_programs", None))
         print("[DIAG_PLAN]   advice_changed            = %r"
-              % _si.get("advice_changed"))
+              % _si.get("advice_changed", False))
         print("=" * 70, flush=True)
 
     # Q1: When the user provides new advice on resume and the workflow is
@@ -1702,7 +1702,7 @@ def plan(state):
                 "validation_done=%r, "
                 "after_program=%r, "
                 "experiment_type=%r" % (
-                    session_info.get("plan_has_pending_stages"),
+                    session_info.get("plan_has_pending_stages", False),
                     _step_info.get("step"),
                     _ws_context.get("validation_done"),
                     state.get("directives", {})
@@ -1982,9 +1982,9 @@ def plan(state):
               % metrics_trend.get("trend_summary"))
         _si2 = state.get("session_info", {}) or {}
         print("[DIAG_PLAN]   plan_has_pending_stages   = %r"
-              % _si2.get("plan_has_pending_stages"))
+              % _si2.get("plan_has_pending_stages", False))
         print("[DIAG_PLAN]   plan_next_stage_programs  = %r"
-              % _si2.get("plan_next_stage_programs"))
+              % _si2.get("plan_next_stage_programs", None))
         print("[DIAG_PLAN]   user_advice (first 200ch) = %r"
               % (user_advice or "")[:200])
         print("=" * 70, flush=True)
