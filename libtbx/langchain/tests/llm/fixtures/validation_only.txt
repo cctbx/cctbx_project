@@ -1,0 +1,21 @@
+1. **Input Files Found**: model.pdb, data.mtz
+
+2. **Experiment Type**: X-ray crystallography
+
+3. **Primary Goal**: Validate the provided structure using phenix.molprobity. No refinement needed; just check geometry and report.
+
+4. **Key Parameters**:
+   - Wavelength: 1.0
+   - Resolution limit: 2.0
+   - Number of expected sites: N/A
+   - Heavy atom type: N/A
+   - Space group: P 21 21 21
+
+5. **Program Parameters**: None
+
+6. **Special Instructions**:
+- This task is comprehensive validation of the provided structure.
+- Run MolProbity on this structure to assess geometry.
+- Analysis only — do not refine.
+
+7. **Stop Condition**: Validation only — stop after validation programs complete.

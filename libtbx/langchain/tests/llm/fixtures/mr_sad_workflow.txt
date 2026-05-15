@@ -1,0 +1,21 @@
+1. **Input Files Found**: data.mtz, search.pdb, sequence.fa
+
+2. **Experiment Type**: X-ray crystallography
+
+3. **Primary Goal**: Use MR-SAD phasing. Run phenix.autosol with the MR-SAD strategy enabled, providing the search model and anomalous data together.
+
+4. **Key Parameters**:
+   - Wavelength: 0.9793 (selenium edge)
+   - Resolution limit: 2.8
+   - Number of expected sites: 4
+   - Heavy atom type: Se
+   - Space group: P 21 21 21
+
+5. **Program Parameters**:
+mr_sad=True
+
+6. **Special Instructions**:
+- This is an MR-SAD experiment.
+- The anomalous signal comes from selenium sites.
+
+7. **Stop Condition**: None

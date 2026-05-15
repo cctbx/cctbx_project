@@ -1,0 +1,20 @@
+1. **Input Files Found**: refl.mtz, init.pdb
+
+2. **Experiment Type**: X-ray crystallography
+
+3. **Primary Goal**: Refine the structure using the provided data and starting model.
+
+4. **Key Parameters**:
+   - Wavelength: 1.0
+   - Resolution limit: 2.5
+   - Number of expected sites: N/A
+   - Heavy atom type: N/A
+   - Space group: P 32 2 1
+
+5. **Program Parameters**: None
+
+6. **Special Instructions**:
+- Use the unit cell and space group provided.
+- Maintain a resolution limit of 2.5 Angstroms during refinement.
+
+7. **Stop Condition**: None
