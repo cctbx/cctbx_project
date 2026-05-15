@@ -2036,6 +2036,13 @@ def _analyze_history(history):
     # =========================================================================
     info = {
         "programs_run": set(),
+        # Programs that have at least one SUCCESSFUL completion in history.
+        # Distinct from programs_run, which counts any attempt regardless of
+        # outcome.  Used by workflow_engine._apply_directives to verify that
+        # an after_program directive's target was actually met, not just
+        # attempted-and-failed.  A program is counted as successful here
+        # whenever an entry's result does NOT match _is_failed_result.
+        "successful_programs": set(),
         # predict_and_build flags — no history_detection (Python-only cascade)
         "predict_done": False,
         "predict_full_done": False,
@@ -2167,6 +2174,21 @@ def _analyze_history(history):
         # Program done flags — YAML-driven detection for all strategies
         # =====================================================================
         result = entry.get("result", "") if isinstance(entry, dict) else ""
+
+        # Bug 3 fix: track which programs have at least one SUCCESSFUL
+        # entry.  Used downstream by _apply_directives to distinguish
+        # "after_program ran (success or failure)" from "after_program
+        # actually completed".  Without this, a failed refine that
+        # incremented refine_count would satisfy an
+        # after_program=phenix.refine directive and wipe valid_programs
+        # to [STOP], locking the workflow on first failure.
+        if prog and not _is_failed_result(result):
+            info["successful_programs"].add(prog)
+            # Also record the dotted name (e.g. "phenix.refine") since
+            # directives reference programs with the prefix while
+            # programs_run normalizes; both lookups should work.
+            if not prog.startswith("phenix."):
+                info["successful_programs"].add("phenix." + prog)
 
         # Handles: set_flag, run_once, and count strategies.
         # Covers all programs with history_detection in programs.yaml.

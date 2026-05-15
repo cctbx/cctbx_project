@@ -161,6 +161,21 @@ class WorkflowEngine:
             # Last program that ran (for after_program directive check)
             "last_program": history_info.get("last_program"),
 
+            # Bug 3 fix: set of programs with at least one SUCCESSFUL entry
+            # in history (NOT just any attempt).  Used by _apply_directives
+            # to verify that an after_program directive's named program
+            # actually completed before wiping valid_programs to [STOP].
+            #
+            # If history_info doesn't include this field (e.g. older callers
+            # that pass a minimal dict like {"xtriage_done": True}), the
+            # default is an empty set.  An empty set means "no programs
+            # observed to succeed", which makes the override fire on any
+            # after_program directive — the safe behavior for unknown
+            # history.  Callers that DO know the history (workflow_state.py
+            # _analyze_history) populate this from real entries.
+            "successful_programs": history_info.get(
+                "successful_programs", set()),
+
             # Metrics
             "r_free": self._get_metric(analysis, history_info, "r_free", "last_r_free"),
             "r_work": self._get_metric(analysis, history_info, "r_work", "last_r_work"),
@@ -2007,6 +2022,40 @@ class WorkflowEngine:
                             "Overrode after_program_done "
                             "(CC=%.3f < 0.70)" % _cc)
 
+                # Bug 3 fix: failure override.  The metric-quality
+                # override above only fires when metrics are PRESENT
+                # but bad.  When a program crashes BEFORE writing
+                # any metrics (e.g. parameter-parse failure in
+                # phenix.refine), refine_count is incremented but
+                # r_free stays None, so the R-free check above is
+                # skipped and after_program_done stays True.  This
+                # produced the lock-in bug where one failed refine
+                # made the agent declare the workflow complete and
+                # wipe valid_programs to [STOP].
+                #
+                # The fix: if after_program is not in the set of
+                # programs that have SUCCESSFULLY completed at
+                # least once, override after_program_done to False.
+                # This forces the workflow to continue (LLM can
+                # retry the failed program, the consecutive-failure
+                # guard at graph_nodes.py ~1844 caps retries at 2).
+                #
+                # Note: context.successful_programs is populated by
+                # workflow_state._analyze_history from real history
+                # entries; it defaults to an empty set for callers
+                # that don't pass real history (e.g. the test
+                # entry points at the bottom of this file).
+                if after_program_done and context:
+                    _succeeded = context.get(
+                        "successful_programs") or set()
+                    if after_program not in _succeeded:
+                        after_program_done = False
+                        modifications.append(
+                            "Overrode after_program_done "
+                            "(%s was attempted but never "
+                            "completed successfully; allowing "
+                            "retry)" % after_program)
+
             # v115.09b: Post-ligandfit exemption.
             # When the ligand-fitting workflow has mandatory
             # pending steps (combine with pdbtools, then
@@ -2060,28 +2109,79 @@ class WorkflowEngine:
                             result.remove(rp)
                             result.insert(0, rp)
             elif after_program_done:
-                # User's workflow is complete — replace the entire valid_programs
-                # list with just STOP.  Simply appending STOP is not enough: the
-                # step detector may have already added programs like
-                # predict_and_build to 'result', and the LLM (or fallback) will
-                # pick those instead of stopping.
+                # v112.78 semantics RESTORED — after_program is a MIN-RUN
+                # guarantee, not a hard stop.
                 #
-                # v116.17: GUARD — Do NOT wipe valid_programs to [STOP] when
-                # the workflow has reached the validate step with validation
-                # still pending.  The after_program directive means "stop
-                # after this program completes", but the implicit contract
-                # for production runs is that validation runs AFTER refinement
-                # before the workflow stops.  Without this guard, an
-                # after_program=phenix.real_space_refine directive (whether
-                # set legitimately or mis-extracted from a goal description)
-                # skips validation entirely, even though molprobity /
-                # validation_cryoem / map_correlations are sitting in the
-                # validate step's program list.
+                # Per docs/ARCHITECTURE.md line 162 and lines 546-551,
+                # after_program is documented as a minimum-run guarantee:
+                # PLAN suppresses auto-stop until the target program has
+                # run, but the LLM decides when to actually stop, guided
+                # by the strong textual directive injected into the prompt
+                # ("CRITICAL: stop after X.  Do NOT keep running...").
                 #
-                # The user can still opt out: setting skip_validation:true in
-                # stop_conditions tells us they don't want the automatic
-                # validation step, in which case the original wipe still
-                # fires.
+                # The earlier behavior here — wiping valid_programs to
+                # [STOP] once the named program had run — treated
+                # after_program as a HARD stop instead.  That contradicted
+                # the documented design and caused premature termination
+                # in two important cases:
+                #
+                #   (1) Multi-goal requests where the directive extractor
+                #       can only name one program (the v112.78 note's
+                #       explicit motivating case).  E.g. user advice:
+                #       "Refine the model and fit ATP using LigandFit"
+                #       — directive extractor sets after_program=
+                #       phenix.refine; after refine succeeds, the wipe
+                #       killed ligandfit even though it was sitting in
+                #       valid_programs ready to run.
+                #
+                #   (2) Plan-driven progression.  plan_to_directives
+                #       (knowledge/plan_schema.py) intentionally emits
+                #       after_program as the current stage's program (see
+                #       ARCHITECTURE.md lines 1172-1176).  Under min-run
+                #       semantics that's fine — it guarantees the stage's
+                #       program runs.  Under the (wrong) hard-stop
+                #       semantics, it caused the workflow to "complete"
+                #       at every stage transition.
+                #
+                # The two pre-existing band-aids on this code path are
+                # evidence that the wipe was already known to be wrong:
+                #
+                #   - v115.09b post-ligandfit exemption (combine_ligand /
+                #     needs_post_ligandfit_refine, ~50 lines above): the
+                #     "if _post_ligandfit_pending" branch already runs
+                #     before this one and bypasses the wipe entirely.
+                #     With v112.78 restored, that branch's downstream
+                #     concern (the wipe killing follow-up work) is no
+                #     longer present, but the branch is harmless to keep
+                #     (it also prioritizes refine programs, which is
+                #     still useful guidance for the LLM).
+                #
+                #   - v116.17 validate-step guard (below): a per-step
+                #     softening of the wipe that preserved validation
+                #     programs.  With v112.78 restored, validation is
+                #     preserved by the general append-not-wipe behavior;
+                #     the guard becomes redundant but harmless.  Left in
+                #     place for explicit logging in the validate case.
+                #
+                # User-requested "run X and stop" continues to work as
+                # before — the strong prompt directive plus the user's
+                # own advice drives the LLM to STOP after X.  The min-run
+                # guarantee ensures X actually ran first.
+                #
+                # PROMPT GUIDANCE: prompts_hybrid.py lines 466-471 inject
+                # "CRITICAL: You MUST run X before stopping" and "Do NOT
+                # keep running refinement cycles - run X instead!" — that
+                # is the actual mechanism that biases the LLM toward STOP
+                # for user-requested stops.  The valid_programs list is
+                # the menu of options the LLM can choose from; the prompt
+                # tells it which one to prefer.
+
+                # The existing v116.17 validate-step guard.  Kept for its
+                # diagnostic logging — the general min-run behavior below
+                # would also preserve validation programs, so this branch
+                # is no longer strictly necessary, but the explicit
+                # "validation pending" message is more informative than
+                # the generic min-run message.
                 if (step_name == "validate" and
                         context is not None and
                         not context.get("validation_done") and
@@ -2093,21 +2193,21 @@ class WorkflowEngine:
                         "set skip_validation:true to override"
                         % (after_program,
                            [p for p in result if p != "STOP"]))
-                    # Ensure STOP is also available so the LLM can choose
-                    # to stop after running validation; the validate-step
-                    # at_target logic at line ~1739 normally adds it, but
-                    # belt-and-suspenders here in case the caller's path
-                    # didn't hit that branch.
                     if "STOP" not in result:
                         result.append("STOP")
                 else:
-                    non_stop = [p for p in result if p != "STOP"]
-                    if non_stop:
-                        modifications.append(
-                            "Cleared programs %s (after_program %s completed, workflow done)" % (
-                            non_stop, after_program))
-                    result[:] = ["STOP"]
-                    modifications.append("Set valid_programs=[STOP] (after_program %s completed)" % after_program)
+                    # v112.78: append STOP, do NOT wipe.  The LLM picks
+                    # STOP based on the strong prompt directive when the
+                    # user actually requested it; the LLM picks something
+                    # else when the after_program came from plan
+                    # progression and the user's advice indicates more
+                    # work is wanted.
+                    if "STOP" not in result:
+                        result.append("STOP")
+                    modifications.append(
+                        "after_program %s min-run satisfied — "
+                        "STOP available; LLM decides whether to stop "
+                        "(v112.78 semantics)" % after_program)
             else:
                 # after_program not yet run - add it to valid programs
                 should_add = self._check_program_prerequisites(after_program, context, step_name)
