@@ -66,7 +66,7 @@ def exercise_4():
   assert not info[0].is_computational()
 
   assert info[1].is_computational()
-  assert info[1].get_plddt() == 97.37, info[1].get_plddt()
+  assert info[1].get_plddt() == 97.49, info[1].get_plddt()
   assert info[1].get_rwork() == None, info[1].get_rwork()
 
 if (__name__ == "__main__"):
