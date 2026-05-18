@@ -1438,12 +1438,16 @@ class CalibrationDialog(BaseDialog):
     # Bindings
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice,
               id=self.trial_number.ctr.GetId())
+    self.Bind(wx.EVT_CHECKLISTBOX, self.onRunsChecked, self.trial_runs.ctr)
     self.Bind(wx.EVT_BUTTON, self.onBrowse, self.phil_path.button1)
     self.Bind(wx.EVT_BUTTON, self.onDefault, self.phil_path.button2)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
     self.Bind(wx.EVT_BUTTON, self.onCancel, id=wx.ID_CANCEL)
 
     self.SetTitle('Calibration Settings')
+    # Cached values read by FramesSentinel from its background thread
+    self.selected_trial_number = trials[0] if trials else ''
+    self.selected_run_numbers = []
     self.find_runs()
 
     self.frames_sentinel = None
@@ -1529,6 +1533,11 @@ class CalibrationDialog(BaseDialog):
 
   def onTrialChoice(self, e):
     self.find_runs()
+    self.selected_trial_number = self.trial_number.ctr.GetStringSelection()
+    self.selected_run_numbers = []
+
+  def onRunsChecked(self, e):
+    self.selected_run_numbers = list(self.trial_runs.ctr.GetCheckedStrings())
 
   def find_runs(self):
     self.trial_runs.ctr.Clear()
