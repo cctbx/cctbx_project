@@ -133,7 +133,7 @@ filter
   .help = or to modify the entire experiment by a reindexing operator
   .help = refer to the select section for filtering of individual reflections
   {
-  algorithm = n_obs resolution unit_cell energy bootstrap
+  algorithm = n_obs resolution unit_cell energy bootstrap experiment_prefix
     .type = choice(multi=True)
   n_obs {
     min = None
@@ -235,6 +235,11 @@ filter
     random_seed = 0
       .type = int
       .help = seed for the bootstrap filtering algorithm (random selection with replacement)
+  }
+  experiment_prefix {
+    prefix = None
+      .type = str
+      .help = Only accept experiments with this string as the prefix for their identifier
   }
 }
 """
