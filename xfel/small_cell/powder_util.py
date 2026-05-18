@@ -234,7 +234,7 @@ Currently supported options: %s""" %backend_list
         def onmove(event):
           if fig.canvas.toolbar.mode: return
           x = event.xdata
-          vertical_line.set_xdata(x)
+          vertical_line.set_xdata([x])
           if plt.getp(vertical_line, 'visible'):
             ax.figure.canvas.draw()
         def onclick(event):
