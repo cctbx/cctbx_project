@@ -398,6 +398,16 @@ def main():
         print(f"⚠️  Could not import tst_directive_extractor: {e}")
         results.append(("Directive Extractor", "tst_directive_extractor", False, 0))
 
+    # --- Raw-Advice Authoritative Extraction Tests (Step 1) ---
+    try:
+        from tests.tst_extract_raw_advice import run_all_tests as run_extract_raw_advice_tests
+        success, elapsed = run_test_module(
+            "tst_extract_raw_advice", run_extract_raw_advice_tests, args.verbose)
+        results.append(("Raw-Advice Authoritative Extraction", "tst_extract_raw_advice", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_extract_raw_advice: {e}")
+        results.append(("Raw-Advice Authoritative Extraction", "tst_extract_raw_advice", False, 0))
+
     # --- Directive Validator Tests ---
     try:
         from tests.tst_directive_validator import run_all_tests as run_directive_validator_tests
@@ -1526,6 +1536,142 @@ def main():
               f"tst_directive_extractor_grounding: {e}")
         results.append(("Directive Extractor Grounding Guardrail",
                        "tst_directive_extractor_grounding",
+                       False, 0))
+
+    # --- Grounding + stop_after_requested Interaction (v117.1) ---
+    try:
+        from tests.tst_grounding_stop_after_requested import (
+            run_all_tests as run_grounding_flag_tests)
+        success, elapsed = run_test_module(
+            "tst_grounding_stop_after_requested",
+            run_grounding_flag_tests, args.verbose)
+        results.append(("Grounding + stop_after_requested Interaction",
+                       "tst_grounding_stop_after_requested",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_grounding_stop_after_requested: {e}")
+        results.append(("Grounding + stop_after_requested Interaction",
+                       "tst_grounding_stop_after_requested",
+                       False, 0))
+
+    # --- After-Program Fill-In from Raw Advice (v117.2) ---
+    try:
+        from tests.tst_after_program_fill_from_raw import (
+            run_all_tests as run_after_program_fill_tests)
+        success, elapsed = run_test_module(
+            "tst_after_program_fill_from_raw",
+            run_after_program_fill_tests, args.verbose)
+        results.append(("After-Program Fill-In from Raw Advice",
+                       "tst_after_program_fill_from_raw",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_after_program_fill_from_raw: {e}")
+        results.append(("After-Program Fill-In from Raw Advice",
+                       "tst_after_program_fill_from_raw",
+                       False, 0))
+
+    # --- Extended Stop-Intent Phrasings (v117.3) ---
+    try:
+        from tests.tst_extended_stop_phrasings import (
+            run_all_tests as run_extended_stop_tests)
+        success, elapsed = run_test_module(
+            "tst_extended_stop_phrasings",
+            run_extended_stop_tests, args.verbose)
+        results.append(("Extended Stop-Intent Phrasings",
+                       "tst_extended_stop_phrasings",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_extended_stop_phrasings: {e}")
+        results.append(("Extended Stop-Intent Phrasings",
+                       "tst_extended_stop_phrasings",
+                       False, 0))
+
+    # --- Preprocessor File Override (v118.A2) ---
+    try:
+        from tests.tst_preprocessor_file_override import (
+            run_all_tests as run_preprocessor_file_override_tests)
+        success, elapsed = run_test_module(
+            "tst_preprocessor_file_override",
+            run_preprocessor_file_override_tests, args.verbose)
+        results.append(("Preprocessor File Override",
+                       "tst_preprocessor_file_override",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_preprocessor_file_override: {e}")
+        results.append(("Preprocessor File Override",
+                       "tst_preprocessor_file_override",
+                       False, 0))
+
+    # --- Directive Layer Diagnostics (v118.C-prime) ---
+    try:
+        from tests.tst_directive_layer_diagnostics import (
+            run_all_tests as run_directive_layer_diagnostics_tests)
+        success, elapsed = run_test_module(
+            "tst_directive_layer_diagnostics",
+            run_directive_layer_diagnostics_tests, args.verbose)
+        results.append(("Directive Layer Diagnostics",
+                       "tst_directive_layer_diagnostics",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_directive_layer_diagnostics: {e}")
+        results.append(("Directive Layer Diagnostics",
+                       "tst_directive_layer_diagnostics",
+                       False, 0))
+
+    # --- PHIL Namespace Cleaner (v118.B) ---
+    try:
+        from tests.tst_phil_namespace_cleaner import (
+            run_all_tests as run_phil_namespace_cleaner_tests)
+        success, elapsed = run_test_module(
+            "tst_phil_namespace_cleaner",
+            run_phil_namespace_cleaner_tests, args.verbose)
+        results.append(("PHIL Namespace Cleaner",
+                       "tst_phil_namespace_cleaner",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_phil_namespace_cleaner: {e}")
+        results.append(("PHIL Namespace Cleaner",
+                       "tst_phil_namespace_cleaner",
+                       False, 0))
+
+    # --- Extraction-Failure Visibility (v118.E) ---
+    try:
+        from tests.tst_extraction_failure_visibility import (
+            run_all_tests as run_extraction_failure_visibility_tests)
+        success, elapsed = run_test_module(
+            "tst_extraction_failure_visibility",
+            run_extraction_failure_visibility_tests, args.verbose)
+        results.append(("Extraction-Failure Visibility",
+                       "tst_extraction_failure_visibility",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_extraction_failure_visibility: {e}")
+        results.append(("Extraction-Failure Visibility",
+                       "tst_extraction_failure_visibility",
+                       False, 0))
+
+    # --- BUILD experiment_type + R-free Auto-fill (v118.F) ---
+    try:
+        from tests.tst_build_experiment_type_and_rfree import (
+            run_all_tests as run_build_experiment_type_and_rfree_tests)
+        success, elapsed = run_test_module(
+            "tst_build_experiment_type_and_rfree",
+            run_build_experiment_type_and_rfree_tests, args.verbose)
+        results.append(("BUILD experiment_type + R-free Auto-fill",
+                       "tst_build_experiment_type_and_rfree",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_build_experiment_type_and_rfree: {e}")
+        results.append(("BUILD experiment_type + R-free Auto-fill",
+                       "tst_build_experiment_type_and_rfree",
                        False, 0))
 
     # --- Summary ---

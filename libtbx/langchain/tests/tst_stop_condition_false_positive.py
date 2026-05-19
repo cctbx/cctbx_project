@@ -180,19 +180,24 @@ def test_af7mjs_internal_flag_does_not_leak_to_output():
     print("  PASS")
 
 
-def test_stop_condition_header_with_value_is_still_ignored():
-    """Even if 'Stop Condition: <something>' has a value, the bare
-    \\bstop\\b match must not fire (the structured value is parsed
-    elsewhere, not here).
+def test_stop_condition_header_with_value_triggers_resolver():
+    """v116.x stop_refactor: 'Stop Condition: <real value>' is now
+    treated as a positive stop signal by _is_stop_after_requested.
+    This is intentional — the field documents user intent ("the user's
+    README says stop after phaser"), and the new architecture wants
+    that intent captured.
 
-    Calls _resolve_after_program directly to isolate resolver
-    behavior from intent_classifier (which can also write
-    after_program through a separate, legitimate path).
+    Pre-stop_refactor, the resolver had inline logic that stripped
+    "Stop Condition:" lines and only checked bare \\bstop\\b in the
+    remaining text — so a structured Stop Condition value was ignored.
+    Post-stop_refactor, the centralized helper _is_stop_after_requested
+    explicitly recognizes _STOP_CONDITION_VALUE (anything other than
+    None/not specified/N/A/null) as a positive signal.
+
+    This test documents the new behavior so future edits don't
+    accidentally revert it.
     """
-    print("Test: stop_condition_header_with_value_is_still_ignored")
-    # advice_lower as the resolver would see it (post-strip)
-    # If upstream strip works, this exact text won't reach the
-    # resolver — but the defense-in-depth strip should handle it.
+    print("Test: stop_condition_header_with_value_triggers_resolver")
     advice_lower = """primary goal: do molecular replacement and refine the model.
 
 stop condition: after phaser.
@@ -200,10 +205,17 @@ stop condition: after phaser.
     directives = {}
     _resolve_after_program(directives, advice_lower)
     sc = directives.get("stop_conditions", {})
-    assert "after_program" not in sc, (
-        "after_program should not be set from 'Stop Condition: After phaser.' "
-        "header alone — that field is parsed by a different mechanism.  "
-        "Got: %r" % sc)
+    # The resolver detects [solve, refine] actions plus the stop signal
+    # from "Stop Condition: after phaser." (a value, not None).  Under
+    # n>1+stop, after_program = last action = refine.
+    assert "after_program" in sc, (
+        "after_program should be set when 'Stop Condition: <value>' "
+        "signals user-stop intent.  Got: %r" % sc)
+    # stop_after_requested should also be True (the resolver sets it
+    # whenever it sets after_program from a positive stop signal).
+    assert sc.get("stop_after_requested") is True, (
+        "stop_after_requested should be True when Stop Condition has "
+        "a real value.  Got: %r" % sc)
     print("  PASS")
 
 

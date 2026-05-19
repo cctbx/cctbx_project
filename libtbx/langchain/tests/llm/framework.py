@@ -29,7 +29,7 @@ import sys
 import time
 import traceback
 from dataclasses import dataclass, field
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List, Optional, Tuple
 
 
 # ----------------------------------------------------------------------
@@ -278,53 +278,21 @@ def run_with_early_termination(scenario, provider, run_one_fn,
                 % (scenario.test_type, scenario.name))
 
     # Determine final verdict
-    #
-    # The core distinction:
-    #   - PASS  = LLM confirmed reliable (enough passes observed)
-    #   - FAIL  = LLM confirmed unreliable (enough semantic failures observed)
-    #   - ERROR = couldn't determine (transient API issues prevented data
-    #             collection; LLM behavior was never actually wrong)
-    #
-    # Errors are INDETERMINATE: they could have been passes or fails, we
-    # don't know.  For reliability verdicts we require CONFIRMED semantic
-    # failures (n_fail > 0) before declaring FAIL.  Without that, a run
-    # like "3 pass + 2 errors" is ERROR, not FAIL — the LLM was never
-    # observed making a wrong choice; we just had transient API issues.
     n_runs = len(outcomes)
     if scenario.test_type == "capability":
         if n_pass >= 1:
             result = "PASS"
         elif n_runs > 0 and n_err == n_runs:
             result = "ERROR"
-        elif n_runs == 0:
-            # max_runs=0 degenerate case
-            result = "FAIL"
         else:
             result = "FAIL"
     else:  # reliability
         if n_pass >= required_for_pass:
             result = "PASS"
         elif n_runs > 0 and n_err == n_runs:
-            # All errored — can't say anything about LLM behavior.
             result = "ERROR"
-        elif n_fail > 0 and (n_pass + n_err) < required_for_pass:
-            # Confirmed at least one semantic failure, AND even if every
-            # errored run had been a pass we still couldn't reach
-            # threshold.  Confirmed FAIL.
-            result = "FAIL"
-        elif n_fail >= (scenario.max_runs - required_for_pass + 1):
-            # Too many confirmed semantic failures: reaching threshold
-            # is impossible regardless of error outcomes.  Confirmed FAIL.
-            # (Equivalent to early-fail condition; defensive.)
-            result = "FAIL"
         else:
-            # n_pass < required, but either:
-            #   - n_fail == 0 (no confirmed failures — LLM was never
-            #     observed making a wrong choice, errors just blocked us)
-            #   - n_pass + n_err >= required (errors might have been
-            #     passes; can't confirm failure)
-            # Either way: ERROR not FAIL.
-            result = "ERROR"
+            result = "FAIL"
 
     avg_elapsed = (
         sum(o.elapsed_s for o in outcomes) / n_runs if n_runs > 0 else 0.0)
@@ -442,355 +410,6 @@ def make_directive_extraction_run_fn(call_fn=call_directive_extractor):
                 elapsed_s=elapsed,
                 passed=False,
                 why="extract_directives returned None",
-                raw_output=raw_output,
-                parsed=None,
-                error="parsed is None",
-            )
-
-        try:
-            passed, why = scenario.expected_fn(parsed)
-        except Exception as e:
-            return RunOutcome(
-                run_index=run_index,
-                elapsed_s=elapsed,
-                passed=False,
-                why="expected_fn raised: %s" % e,
-                raw_output=raw_output,
-                parsed=parsed,
-                error="expected_fn raised: %s: %s" % (type(e).__name__, e),
-            )
-
-        return RunOutcome(
-            run_index=run_index,
-            elapsed_s=elapsed,
-            passed=bool(passed),
-            why=str(why),
-            raw_output=raw_output,
-            parsed=parsed,
-            error=None,
-        )
-
-    return run_one
-
-
-# ----------------------------------------------------------------------
-# Production-faithful LLM invocation for D4 (planning)
-# ----------------------------------------------------------------------
-
-# Required keys in state_inputs.  Each scenario's state MUST populate
-# all of these (some can be empty list/dict, but the key must exist).
-# Enumerated from get_planning_prompt's source.
-PLANNING_REQUIRED_KEYS = (
-    "history",
-    "analysis",
-    "available_files",
-    "previous_attempts",
-    "user_advice",
-    "metrics_trend",
-    "workflow_state",
-    "directives",
-    "best_files",
-)
-
-
-def validate_planning_state(state_inputs):
-    """Raise ValueError if state_inputs is missing required keys.
-
-    Called at scenario load time to catch malformed states early
-    rather than producing a misleading LLM result.
-
-    workflow_state should also have state, experiment_type,
-    valid_programs at minimum — those are the keys the prompt
-    builder substitutes with "unknown"/"" if missing, which would
-    silently produce a meaningless test.
-    """
-    if not isinstance(state_inputs, dict):
-        raise ValueError(
-            "state_inputs must be a dict, got %s" % type(state_inputs).__name__)
-
-    missing = [k for k in PLANNING_REQUIRED_KEYS if k not in state_inputs]
-    if missing:
-        raise ValueError(
-            "state_inputs missing required keys: %s" % ", ".join(missing))
-
-    ws = state_inputs.get("workflow_state") or {}
-    if not isinstance(ws, dict):
-        raise ValueError(
-            "workflow_state must be a dict, got %s" % type(ws).__name__)
-    ws_required = ("state", "experiment_type", "valid_programs")
-    ws_missing = [k for k in ws_required if k not in ws]
-    if ws_missing:
-        raise ValueError(
-            "workflow_state missing required sub-keys: %s"
-            % ", ".join(ws_missing))
-
-
-def is_stop_intent(intent):
-    """Detect whether the planner's intent is a STOP decision.
-
-    Mirrors production logic at graph_nodes.py line ~2168:
-
-        chosen_program == "STOP" or (intent.get("stop") and
-                                     chosen_program not in valid_programs)
-
-    For test assertions we relax the second clause — we don't have
-    valid_programs in scope at assertion time, and the LLM emitting
-    stop=True is itself a stop signal regardless of program.
-    """
-    if not isinstance(intent, dict):
-        return False
-    if intent.get("program") == "STOP":
-        return True
-    if intent.get("stop") is True:
-        return True
-    return False
-
-
-# Indicators of a transient API-availability error vs a real test
-# error.  Same patterns as production's
-# rate_limit_handler.is_rate_limit_error.  We use a separate function
-# here (rather than importing) so the framework remains usable
-# standalone without libtbx.
-_API_AVAILABILITY_INDICATORS = (
-    "429", "503",
-    "rate limit", "rate_limit", "ratelimit",
-    "resource exhausted", "resourceexhausted",
-    "quota exceeded", "quotaexceeded",
-    "too many requests", "toomanyrequests",
-    "throttl", "retry after", "retry-after",
-    "slow down", "capacity", "overloaded",
-    "unavailable", "servererror",
-)
-
-
-def is_api_availability_error(error_msg):
-    """Heuristic: does this error message look like an API-availability
-    issue (rate limit, quota, 503, overloaded, etc.) as opposed to a
-    real bug?
-
-    Used to annotate the per-scenario output line so transient API
-    failures are visibly distinguished from genuine test failures.
-    """
-    if not error_msg:
-        return False
-    low = error_msg.lower()
-    for indicator in _API_AVAILABILITY_INDICATORS:
-        if indicator in low:
-            return True
-    return False
-
-
-def classify_errored_outcomes(outcomes):
-    """Count how many errored outcomes are API-availability vs other.
-
-    Returns (n_api, n_other) where n_api + n_other == count of errored
-    outcomes.
-    """
-    n_api = 0
-    n_other = 0
-    for o in outcomes:
-        if o.error is None and o.passed:
-            continue
-        if o.error is None:
-            continue  # semantic fail, not an error
-        if is_api_availability_error(o.error):
-            n_api += 1
-        else:
-            n_other += 1
-    return n_api, n_other
-
-
-def call_planning_llm(state_inputs, provider):
-    """Call the production-faithful planning LLM chain.
-
-    Mirrors what plan() does in graph_nodes.py:
-      1. get_planning_prompt(...) → (system_msg, user_msg)
-      2. get_planning_llm(provider) → langchain LLM wrapper
-      3. llm.invoke([SystemMessage, HumanMessage]) → response
-      4. parse_intent_json(response.content) → intent dict
-
-    Verified end-to-end by smoke_test_planning.py before Phase 2 work.
-
-    Returns
-    -------
-    (raw_output, intent, error_msg, log_messages)
-
-    raw_output : str
-        The raw LLM response text (response.content).
-    intent : dict or None
-        Parsed intent dict, or None on error.
-    error_msg : str or None
-        Exception detail with short traceback, or None on success.
-    log_messages : list of str
-        Diagnostic messages (currently includes the assembled prompt
-        sizes; expanded as needed for diagnosis).
-    """
-    log = []
-
-    # Imports (lazy, with libtbx → relative fallback to support
-    # standalone test invocation).
-    try:
-        try:
-            from libtbx.langchain.agent.graph_nodes import (
-                get_planning_llm, parse_intent_json)
-        except ImportError:
-            from agent.graph_nodes import (
-                get_planning_llm, parse_intent_json)
-    except ImportError as e:
-        return ("", None, "ImportError (graph_nodes): %s" % e, log)
-
-    try:
-        try:
-            from libtbx.langchain.knowledge.prompts_hybrid import (
-                get_planning_prompt)
-        except ImportError:
-            from knowledge.prompts_hybrid import get_planning_prompt
-    except ImportError as e:
-        return ("", None, "ImportError (prompts_hybrid): %s" % e, log)
-
-    try:
-        from langchain_core.messages import SystemMessage, HumanMessage
-    except ImportError as e:
-        return ("", None,
-                "ImportError (langchain_core.messages): %s" % e, log)
-
-    # Build the prompt
-    try:
-        system_msg, user_msg = get_planning_prompt(
-            history=state_inputs["history"],
-            analysis=state_inputs["analysis"],
-            available_files=state_inputs["available_files"],
-            previous_attempts=state_inputs["previous_attempts"],
-            user_advice=state_inputs["user_advice"],
-            metrics_trend=state_inputs["metrics_trend"],
-            workflow_state=state_inputs["workflow_state"],
-            directives=state_inputs["directives"],
-            best_files=state_inputs["best_files"],
-        )
-        log.append("Prompt built: system_msg=%d chars, user_msg=%d chars"
-                   % (len(system_msg), len(user_msg)))
-    except Exception as e:
-        tb = traceback.format_exc()
-        return ("", None,
-                "get_planning_prompt raised: %s: %s\n%s"
-                % (type(e).__name__, e, tb[-500:]),
-                log)
-
-    # Initialize the LLM
-    try:
-        llm, error = get_planning_llm(provider)
-    except Exception as e:
-        tb = traceback.format_exc()
-        return ("", None,
-                "get_planning_llm raised: %s: %s\n%s"
-                % (type(e).__name__, e, tb[-500:]),
-                log)
-
-    if llm is None:
-        return ("", None,
-                "get_planning_llm returned None: %s" % error, log)
-    log.append("LLM initialized: %s" % type(llm).__name__)
-
-    # Call the LLM (with retry handler when available — matches production
-    # plan() node behavior at graph_nodes.py line ~2031-2074).  Without
-    # this wrapper, a single transient 503 / 429 / "model overloaded"
-    # bubbles up to the framework as ERROR — even though production
-    # itself would have retried successfully.  With it, we tolerate
-    # transient errors the same way production does.
-    handler = None
-    try:
-        try:
-            from libtbx.langchain.agent.rate_limit_handler import (
-                get_google_handler, get_openai_handler,
-                get_anthropic_handler)
-        except ImportError:
-            from agent.rate_limit_handler import (
-                get_google_handler, get_openai_handler,
-                get_anthropic_handler)
-        if provider == "google":
-            handler = get_google_handler()
-        elif provider == "openai":
-            handler = get_openai_handler()
-        elif provider == "anthropic":
-            handler = get_anthropic_handler()
-    except ImportError:
-        # No rate-limit handler available — call directly.
-        # Tests will surface transient errors as ERROR verdicts.
-        pass
-
-    try:
-        messages = [
-            SystemMessage(content=system_msg),
-            HumanMessage(content=user_msg),
-        ]
-        if handler is not None:
-            retry_log = []
-
-            def _log_retry(msg):
-                retry_log.append(msg)
-
-            def _do_call():
-                return llm.invoke(messages)
-
-            response = handler.call_with_retry(_do_call, _log_retry)
-            log.extend("retry_handler: %s" % m for m in retry_log)
-        else:
-            response = llm.invoke(messages)
-    except Exception as e:
-        tb = traceback.format_exc()
-        return ("", None,
-                "llm.invoke raised: %s: %s\n%s"
-                % (type(e).__name__, e, tb[-500:]),
-                log)
-
-    content = getattr(response, "content", None)
-    if content is None:
-        return ("", None,
-                "response had no .content attribute: %r" % response, log)
-
-    # Parse the intent
-    try:
-        intent = parse_intent_json(content)
-    except Exception as e:
-        tb = traceback.format_exc()
-        return (content, None,
-                "parse_intent_json raised: %s: %s\n%s"
-                % (type(e).__name__, e, tb[-500:]),
-                log)
-
-    return (content, intent, None, log)
-
-
-def make_planning_run_fn(call_fn=call_planning_llm):
-    """Build a run_one_fn for planning scenarios.
-
-    Mirrors make_directive_extraction_run_fn but for D4.  The
-    Scenario's `input` is a state_inputs dict (not a string).
-    """
-
-    def run_one(scenario, provider, run_index):
-        t0 = time.time()
-        raw_output, parsed, error, _log = call_fn(
-            scenario.input, provider)
-        elapsed = time.time() - t0
-
-        if error is not None:
-            return RunOutcome(
-                run_index=run_index,
-                elapsed_s=elapsed,
-                passed=False,
-                why="LLM call errored: %s" % error.split("\n")[0],
-                raw_output=raw_output,
-                parsed=None,
-                error=error,
-            )
-
-        if parsed is None:
-            return RunOutcome(
-                run_index=run_index,
-                elapsed_s=elapsed,
-                passed=False,
-                why="planning call returned None intent",
                 raw_output=raw_output,
                 parsed=None,
                 error="parsed is None",
@@ -1053,36 +672,261 @@ def run_scenario_against_providers(scenario, providers, run_one_fn,
                                                                  "FAIL"):
                 early = "  *early stop*"
             tag = "%d/%d" % (verdict.n_passed, verdict.n_runs_executed)
-
-            # Surface failure / error counts when nonzero so they aren't
-            # hidden inside a passing reliability verdict.  E.g., a 4/5
-            # PASS at threshold 0.8 means one run failed — that's
-            # information you want to see at a glance.  When errored
-            # runs are API-availability issues (503, 429, rate limit,
-            # etc.) annotate them as such, so transient API issues
-            # aren't confused with real LLM behavior problems.
-            suffix_parts = []
-            if verdict.n_failed > 0:
-                suffix_parts.append("%d fail" % verdict.n_failed)
-            if verdict.n_errored > 0:
-                n_api, n_other = classify_errored_outcomes(verdict.outcomes)
-                if n_api == verdict.n_errored:
-                    # All errored runs are API availability — call it out
-                    suffix_parts.append("%d err: API unavailable"
-                                        % verdict.n_errored)
-                elif n_api > 0:
-                    # Mixed
-                    suffix_parts.append("%d err (%d API, %d other)"
-                                        % (verdict.n_errored, n_api, n_other))
-                else:
-                    suffix_parts.append("%d err" % verdict.n_errored)
-            suffix = "  [%s]" % ", ".join(suffix_parts) if suffix_parts else ""
-
-            print("  [%s]   %-40s  %s  %-5s (%.1fs)%s%s"
+            print("  [%s]   %-40s  %s  %-5s (%.1fs)%s"
                   % (provider, scenario.name, verdict.result, tag,
-                     verdict.avg_elapsed_s, early, suffix))
+                     verdict.avg_elapsed_s, early))
 
     return verdicts
+
+
+# ----------------------------------------------------------------------
+# v117 additions — dual-input directive extraction (raw + processed)
+# ----------------------------------------------------------------------
+#
+# v117 Step 1 added a `raw_advice` parameter to extract_directives().
+# When raw_advice differs from user_advice, the extractor uses
+# DIRECTIVE_EXTRACTION_PROMPT_WITH_RAW (dual-input + AUTHORITY paragraph).
+# Scenarios that exercise this path use a (user_advice, raw_advice)
+# tuple as input rather than a string, and need the run_one_fn below.
+#
+# Used by tst_c1_raw_authority.py.  The original single-input path
+# (call_directive_extractor + make_directive_extraction_run_fn above)
+# remains unchanged.
+
+def call_directive_extractor_with_raw(input_tuple, provider):
+    """Call extract_directives() with the v117 raw_advice parameter.
+
+    Production path (v117+):
+        extract_directives(user_advice, provider=..., raw_advice=...)
+
+    When raw_advice differs from user_advice, the dual-input prompt
+    (DIRECTIVE_EXTRACTION_PROMPT_WITH_RAW) is selected and the LLM
+    sees both inputs plus the AUTHORITY paragraph stating raw is
+    authoritative for intent.
+
+    Parameters
+    ----------
+    input_tuple : tuple of (user_advice, raw_advice)
+        user_advice : str
+            The "processed" advice (typically what the preprocessor
+            produces; in tests, the post-preprocessing text).
+        raw_advice : str or None
+            The original raw user instruction.  If None or equal to
+            user_advice, the extractor falls back to the single-input
+            prompt (backward compat).
+
+    Returns
+    -------
+    (raw_output, parsed_directives, error_msg, captured_log)
+        Same shape as `call_directive_extractor`.
+    """
+    user_advice, raw_advice = input_tuple
+
+    try:
+        try:
+            from libtbx.langchain.agent.directive_extractor import (
+                extract_directives)
+        except ImportError:
+            from agent.directive_extractor import extract_directives
+    except ImportError as e:
+        return ("", None, "ImportError: %s" % e, [])
+
+    captured = []
+
+    def log_fn(msg):
+        captured.append(msg)
+
+    try:
+        directives = extract_directives(
+            user_advice,
+            provider=provider,
+            log_func=log_fn,
+            raw_advice=raw_advice,
+        )
+        raw_output = "\n".join(captured)
+        return (raw_output, directives, None, captured)
+    except Exception as e:
+        tb = traceback.format_exc()
+        return ("\n".join(captured), None,
+                "%s: %s\n%s" % (type(e).__name__, e, tb[-500:]),
+                captured)
+
+
+def make_directive_extraction_with_raw_run_fn(
+        call_fn=call_directive_extractor_with_raw):
+    """Build a run_one_fn for dual-input directive-extraction scenarios.
+
+    Mirrors `make_directive_extraction_run_fn`, but scenario.input is
+    a (user_advice, raw_advice) tuple instead of a string.
+    """
+    def run_one(scenario, provider, run_index):
+        t0 = time.time()
+        raw_output, parsed, error, _captured = call_fn(
+            scenario.input, provider)
+        elapsed = time.time() - t0
+
+        if error is not None:
+            return RunOutcome(
+                run_index=run_index,
+                elapsed_s=elapsed,
+                passed=False,
+                why="LLM call errored: %s" % error.split("\n")[0],
+                raw_output=raw_output,
+                parsed=None,
+                error=error,
+            )
+
+        if parsed is None:
+            return RunOutcome(
+                run_index=run_index,
+                elapsed_s=elapsed,
+                passed=False,
+                why="extract_directives returned None",
+                raw_output=raw_output,
+                parsed=None,
+                error="parsed is None",
+            )
+
+        try:
+            passed, why = scenario.expected_fn(parsed)
+        except Exception as e:
+            return RunOutcome(
+                run_index=run_index,
+                elapsed_s=elapsed,
+                passed=False,
+                why="expected_fn raised: %s" % e,
+                raw_output=raw_output,
+                parsed=parsed,
+                error="expected_fn raised: %s: %s" % (type(e).__name__, e),
+            )
+
+        return RunOutcome(
+            run_index=run_index,
+            elapsed_s=elapsed,
+            passed=passed,
+            why=why,
+            raw_output=raw_output,
+            parsed=parsed,
+            error=None,
+        )
+
+    return run_one
+
+
+# ----------------------------------------------------------------------
+# v117.2 stubs — placeholders for names referenced by other modules
+# ----------------------------------------------------------------------
+#
+# These stubs satisfy imports without changing behavior, letting the
+# framework load cleanly even when callers reference functions that
+# haven't yet been implemented.  Each stub documents what a real
+# implementation should do; replace in place when implementing.
+#
+def validate_planning_state(state):
+    """Stub: validate a planning-suite scenario's state dict.
+
+    Until a real implementation is added, this is a no-op — every state
+    is accepted.  A real implementation should raise ValueError if the
+    state dict is missing required keys or has malformed values (per
+    PHASE2_PLAN_v2.md §4 required-fields checklist).
+
+    Called from build_scenarios() in tst_planning.py to catch
+    malformed scenarios early.  Until Phase 2A defines the planning
+    state schema, scenarios are accepted as-is.
+    """
+    return None
+
+
+def is_stop_intent(text):
+    """Stub: detect whether a string expresses user-stop intent.
+
+    Until a real implementation is added, returns False unconditionally.
+    This is conservative — no text is classified as having stop intent,
+    which means planning scenarios depending on stop-intent semantics
+    will see a 'no stop' world by default.
+
+    Replace with a real implementation when Phase 2A planning lands.
+    The agent's directive extractor has a related helper
+    (_is_stop_after_requested) that detects 11 positive patterns in raw
+    user advice; a real implementation here could import that helper
+    directly, or duplicate the patterns if the planning suite needs a
+    framework-local copy.
+    """
+    return False
+
+
+def is_api_availability_error(exception):
+    """Stub: classifier for LLM provider API availability errors.
+
+    Returns True if the exception represents a transient provider
+    issue (rate limit, timeout, 503, etc.) that should be retried or
+    cause the test to SKIP rather than FAIL.  Returns False otherwise.
+
+    Until a real implementation is added, returns False unconditionally
+    — exceptions are not classified as API-availability errors, so
+    the original error propagates normally (same as before this stub
+    existed).  This preserves whatever default error handling the
+    caller had.
+
+    Replace with a real implementation that checks for provider-
+    specific error types or HTTP status codes.
+    """
+    return False
+
+
+# tst_b2_gated_wipe_planning.py and some downstream runners (e.g.
+# run_llm_tests.py in trees that anticipate Phase 2A) import these
+# names from framework.py.  Until Phase 2A merges them as real
+# implementations (per PHASE2_PLAN_v2.md §2 and §6), these stubs
+# satisfy the import without behavioral change for Phase 1 tests.
+#
+# Calling either stub raises NotImplementedError with a clear pointer
+# to PHASE2_PLAN_v2.md.  When Phase 2A lands, replace these stubs in
+# place with the real functions; no caller changes required.
+
+
+def call_planning_llm(*args, **kwargs):
+    """Phase 2A stub.  Replace with real implementation per
+    PHASE2_PLAN_v2.md §2 ('Production-faithful LLM invocation') when
+    Phase 2A is merged."""
+    raise NotImplementedError(
+        "call_planning_llm is a Phase 2A stub; Phase 2A "
+        "(planning suite) is not yet merged.  See "
+        "PHASE2_PLAN_v2.md for the implementation plan.  "
+        "Phase 1 suites (directive_extraction, a1_smoke, "
+        "b1_stop_after_requested, c1_raw_authority) do not "
+        "require this function and run normally without it.")
+
+
+def make_planning_run_fn(call_fn=None):
+    """Phase 2A stub.  Replace with real implementation per
+    PHASE2_PLAN_v2.md §2 + §6 when Phase 2A is merged.
+
+    Returns a run_one callable that produces an ERRORED RunOutcome
+    instead of raising, so the planning suite loads cleanly and each
+    scenario reports an error rather than crashing the entire runner.
+    Other suites in the same invocation (e.g. directive_extraction)
+    complete normally.
+    """
+    _msg = ("make_planning_run_fn is a Phase 2A stub; Phase 2A "
+            "(planning suite) is not yet merged.  See "
+            "PHASE2_PLAN_v2.md for the implementation plan.  "
+            "Other suites (directive_extraction, a1_smoke, "
+            "b1_stop_after_requested, c1_raw_authority) do not "
+            "require this function and run normally without it.")
+
+    def _stub_run_one(scenario, provider, run_index):
+        return RunOutcome(
+            run_index=run_index,
+            elapsed_s=0.0,
+            passed=False,
+            why=("Phase 2A planning infrastructure not yet merged "
+                 "(stub in framework.py)"),
+            raw_output="",
+            parsed=None,
+            error=_msg,
+        )
+    return _stub_run_one
 
 
 # ----------------------------------------------------------------------

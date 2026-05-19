@@ -458,26 +458,74 @@ def _format_directives_for_prompt(directives):
         lines.append("")
 
     # Stop conditions
+    #
+    # v116.x: build the body lines first, then emit the header only if
+    # we have non-empty content.  Under the new architecture,
+    # `after_program` without `stop_after_requested=True` is a plan-
+    # progression hint that produces no prompt content — without this
+    # restructuring, we would emit a "**Stop Conditions:**" header
+    # followed by nothing.
     stop_cond = directives.get("stop_conditions", {})
     if stop_cond:
-        lines.append("**Stop Conditions:**")
+        _stop_body = []
         if "after_cycle" in stop_cond:
-            lines.append("- Stop after cycle %d" % stop_cond["after_cycle"])
+            _stop_body.append("- Stop after cycle %d" % stop_cond["after_cycle"])
         if "after_program" in stop_cond:
             after_prog = stop_cond["after_program"]
-            lines.append("- Stop after %s completes" % after_prog)
-            # Add explicit guidance to run the program - make it very clear
-            lines.append("- **CRITICAL: You MUST run %s before stopping. If it's in VALID PROGRAMS, choose it NOW.**" % after_prog)
-            lines.append("- Do NOT keep running refinement cycles - run %s instead!" % after_prog)
+            stop_after_requested = bool(
+                stop_cond.get("stop_after_requested"))
+
+            if stop_after_requested:
+                # User explicitly requested stop after this program.
+                # Tell the LLM clearly.
+                _stop_body.append("- Stop after %s completes" % after_prog)
+                # v116.10 Phase 6a: target-not-now framing.
+                #
+                # The previous wording said "CRITICAL: You MUST run X.
+                # Do NOT keep running refinement cycles - run X instead!"
+                # which caused the LLM to pick after_program even when
+                # it was not in VALID PROGRAMS (e.g. predict_and_build at
+                # xray_initial), triggering the after_program_not_available
+                # STOP defense.
+                #
+                # The new wording aligns with the authoritative VALID
+                # PROGRAMS guidance later in the prompt ("You MUST choose
+                # from the valid programs above, or set 'stop': true."):
+                #   - after_program is a STOP TARGET, not a now-directive
+                #   - When the target is in VALID PROGRAMS, pick it
+                #   - When the target is not in VALID PROGRAMS, pick a
+                #     prerequisite from VALID PROGRAMS
+                #   - Never pick a program outside VALID PROGRAMS
+                _stop_body.append("- **Stop target: %s.** The agent will stop once this program completes." % after_prog)
+                _stop_body.append("- If %s is in VALID PROGRAMS this cycle, choose it." % after_prog)
+                _stop_body.append("- If %s is NOT in VALID PROGRAMS, choose the appropriate prerequisite from VALID PROGRAMS. The workflow will reach %s when its inputs become available." % (after_prog, after_prog))
+                _stop_body.append("- Never pick a program outside VALID PROGRAMS. Programs outside the list cannot run this cycle.")
+            else:
+                # v116.x: after_program is a plan-progression hint only
+                # (e.g. emitted per-stage by plan_to_directives).  No
+                # user stop is implied.  Telling the LLM "stop after X"
+                # in this case would be misleading — the workflow is
+                # meant to continue to the next plan stage after X runs.
+                #
+                # We skip the "Stop target" lines entirely.  The
+                # workflow_engine's min-run guarantee already
+                # prioritizes X to the front of VALID PROGRAMS, so the
+                # LLM will pick X naturally without being told to stop
+                # afterward.
+                pass
         if "max_refine_cycles" in stop_cond:
-            lines.append("- Maximum %d refinement cycles" % stop_cond["max_refine_cycles"])
+            _stop_body.append("- Maximum %d refinement cycles" % stop_cond["max_refine_cycles"])
         if "r_free_target" in stop_cond:
-            lines.append("- Target R-free: %.3f" % stop_cond["r_free_target"])
+            _stop_body.append("- Target R-free: %.3f" % stop_cond["r_free_target"])
         if "map_cc_target" in stop_cond:
-            lines.append("- Target map CC: %.2f" % stop_cond["map_cc_target"])
+            _stop_body.append("- Target map CC: %.2f" % stop_cond["map_cc_target"])
         if stop_cond.get("skip_validation"):
-            lines.append("- Validation can be skipped before stopping")
-        lines.append("")
+            _stop_body.append("- Validation can be skipped before stopping")
+
+        if _stop_body:
+            lines.append("**Stop Conditions:**")
+            lines.extend(_stop_body)
+            lines.append("")
 
     # Workflow preferences
     workflow_prefs = directives.get("workflow_preferences", {})

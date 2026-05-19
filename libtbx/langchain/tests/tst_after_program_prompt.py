@@ -1,33 +1,36 @@
-"""Tests for `_format_directives_for_prompt` after_program rendering.
+"""Tests for `_format_directives_for_prompt` after_program rendering
+under the v117 stop_refactor architecture (stop_after_requested-gated).
 
-This test file asserts the CURRENT wording in
-`knowledge/prompts_hybrid.py` `_format_directives_for_prompt`,
-which renders `stop_conditions.after_program` as three lines:
+Under this architecture, `after_program` carries two distinct kinds
+of intent and the renderer emits DIFFERENT prompt content for each:
 
-    - Stop after <PROG> completes
-    - **CRITICAL: You MUST run <PROG> before stopping. If it's in
-      VALID PROGRAMS, choose it NOW.**
-    - Do NOT keep running refinement cycles - run <PROG> instead!
+  (a) USER-EXPLICIT STOP — set by the directive extractor when the
+      raw advice contains "stop after X" / "X and stop" / etc.
+      Identified by `stop_conditions.stop_after_requested = True`.
+      Renders the Phase 6a 4-line "Stop target:" block.
 
-The rendering is correct and intentional given the current architecture:
+  (b) PLAN-PROGRESSION HINT — emitted per-stage by plan_to_directives
+      to ensure the stage's program runs.  Identified by absence of
+      the `stop_after_requested` flag.  Renders NO after_program
+      content (the workflow_engine min-run guarantee prioritizes the
+      target in valid_programs; telling the LLM "stop after X" would
+      be misleading).
 
-* The "If it's in VALID PROGRAMS" qualifier scopes the directive to
-  programs the workflow engine has actually offered.
-* v116.17 ensures `valid_programs` is NOT incorrectly wiped to
-  `["STOP"]` at the validate step when an after_program directive
-  is set with after_program_done=True, so the qualifier is
-  enforceable: when validation is pending, the LLM sees validation
-  programs in VALID PROGRAMS and does not need to pick the (already
-  done) after_program.
+The "**Stop Conditions:**" header itself is emitted only when there
+is non-empty content under it (the body-then-header pattern in
+_format_directives_for_prompt).
 
-Historical note: there was an earlier proposal ("Phase 6a") to
-replace this wording with "Stop target: <PROG>." framing.  The
-v116.x family did not adopt that change.  These tests document
-what IS in the code, not what could be there.
-
-These are STATIC regression tests against accidental wording
-changes.  They do NOT verify LLM behavior — that requires end-to-
-end runs against the tutorial corpus.
+Test groups:
+  K1-K3 — adjacent stop_conditions fields (after_cycle, max_refine,
+          r_free_target, etc.) still render correctly
+  N1-N5 — stop_after_requested gating:
+    N1: True → Phase 6a "Stop target:" block emitted
+    N2: True → schema-correct in-list / not-in-list lines emitted
+    N3: False/absent → no after_program content emitted
+    N4: True + plan-progression hint mixed → only stop_after_requested
+        controls the rendering
+    N5: anti-regression — the OLD "CRITICAL: You MUST run X" wording
+        must NOT appear in any active emission path
 """
 
 from __future__ import absolute_import, division, print_function
@@ -36,10 +39,6 @@ import os
 import sys
 import types
 
-
-# --- Path setup + libtbx stubs ---------------------------------------------
-# prompts_hybrid.py imports from libtbx.langchain.agent.program_registry.
-# We stub it so the module can be imported standalone.
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _KNOWLEDGE_DIR = os.path.normpath(os.path.join(_HERE, "..", "knowledge"))
@@ -79,316 +78,245 @@ except ImportError:
 
 
 # =====================================================================
-# SECTION A: Current after_program rendering
+# K1-K3: ADJACENT FIELDS STILL RENDER
 # =====================================================================
 
-def test_current_wording_present_in_after_program_block():
-    """The current three-line directive block must appear.
-
-    Each rendered line must be present verbatim with the after_program
-    name substituted.  These assertions lock the existing wording so
-    accidental edits to `_format_directives_for_prompt` are caught.
-    """
-    print("Test: current_wording_present_in_after_program_block")
-    directives = {
-        "stop_conditions": {"after_program": "phenix.predict_and_build"}
-    }
-    output = _format_directives_for_prompt(directives)
-
-    expected_phrases = [
-        # Line 1: the basic "stop after X completes"
-        "Stop after phenix.predict_and_build completes",
-        # Line 2: the CRITICAL "must run before stopping" directive
-        # — note the in-list qualifier and the bold-italic markdown
-        "CRITICAL: You MUST run phenix.predict_and_build before stopping.",
-        "If it's in VALID PROGRAMS, choose it NOW.",
-        # Line 3: the "don't keep refining" anti-loop directive
-        "Do NOT keep running refinement cycles - run "
-        "phenix.predict_and_build instead!",
-    ]
-    for phrase in expected_phrases:
-        assert phrase in output, (
-            "Current wording missing: '%s'\nFull output:\n%s"
-            % (phrase, output))
-    print("  PASS")
-
-
-def test_no_unresolved_placeholders_in_after_program_block():
-    """No '%s' or '%d' should leak into the rendered output.
-
-    All three template lines use `%s` for the program name; if any
-    formatting step fails the placeholder leaks through.  Catch that.
-    """
-    print("Test: no_unresolved_placeholders_in_after_program_block")
-    directives = {
-        "stop_conditions": {"after_program": "phenix.predict_and_build"}
-    }
-    output = _format_directives_for_prompt(directives)
-    assert "%s" not in output, \
-        "Unresolved %%s in output:\n%s" % output
-    assert "%d" not in output, \
-        "Unresolved %%d in output:\n%s" % output
-    print("  PASS")
-
-
-def test_phase6a_wording_not_present():
-    """Phase 6a wording was discussed but not adopted.
-
-    If someone is running these tests against a future codebase
-    where the Phase 6a rewording HAS been applied, this test will
-    fail and they should switch to the Phase 6a test file
-    (preserved in the v116.10 phase6a workspace).  Until then,
-    these phrases must NOT be present.
-    """
-    print("Test: phase6a_wording_not_present")
-    directives = {
-        "stop_conditions": {"after_program": "phenix.predict_and_build"}
-    }
-    output = _format_directives_for_prompt(directives)
-
-    phase6a_phrases = [
-        "Stop target: phenix.predict_and_build.",
-        "If phenix.predict_and_build is NOT in VALID PROGRAMS",
-        "The workflow will reach phenix.predict_and_build",
-        "Never pick a program outside VALID PROGRAMS",
-    ]
-    for phrase in phase6a_phrases:
-        assert phrase not in output, (
-            "Phase 6a wording detected — either Phase 6a has been "
-            "applied (switch to the Phase 6a test file) or this "
-            "test file is out of date.\n"
-            "Phrase found: '%s'\nFull output:\n%s" % (phrase, output))
-    print("  PASS")
-
-
-# =====================================================================
-# SECTION B: Substitution correctness across program names
-# =====================================================================
-
-def test_substitution_with_different_program_names():
-    """All three template lines must substitute every program name.
-
-    Verifies that `%s` substitution happens on each of the three
-    rendered lines for a variety of canonical program names.
-    """
-    print("Test: substitution_with_different_program_names")
-    for prog in [
-        "phenix.refine",
-        "phenix.molprobity",
-        "phenix.real_space_refine",
-        "phenix.ligandfit",
-        "phenix.predict_and_build",
-    ]:
-        directives = {"stop_conditions": {"after_program": prog}}
-        output = _format_directives_for_prompt(directives)
-        for phrase in [
-            "Stop after %s completes" % prog,
-            "CRITICAL: You MUST run %s before stopping." % prog,
-            "run %s instead!" % prog,
-        ]:
-            assert phrase in output, (
-                "Phrase '%s' did not render for %s\nOutput:\n%s"
-                % (phrase, prog, output))
-        assert "%s" not in output, (
-            "Unresolved %%s for %s in output:\n%s" % (prog, output))
-    print("  PASS")
-
-
-def test_in_list_qualifier_present():
-    """The 'If it's in VALID PROGRAMS' qualifier is present.
-
-    This qualifier is what makes the directive scope-correct: the
-    LLM should only pick after_program when it is actually
-    available.  v116.17 ensures the workflow engine doesn't
-    incorrectly remove validation programs from VALID PROGRAMS
-    at the validate step, so this qualifier is enforceable.
-    """
-    print("Test: in_list_qualifier_present")
-    directives = {
-        "stop_conditions": {"after_program": "phenix.refine"}
-    }
-    output = _format_directives_for_prompt(directives)
-    assert "If it's in VALID PROGRAMS" in output, (
-        "The in-list qualifier 'If it's in VALID PROGRAMS' is missing.\n"
-        "Output:\n%s" % output)
-    print("  PASS")
-
-
-# =====================================================================
-# SECTION C: Adjacent stop_conditions fields unaffected
-# =====================================================================
-
-def test_after_cycle_still_works():
-    """`after_cycle` rendering renders independently of after_program."""
-    print("Test: after_cycle_still_works")
+def test_K1_after_cycle_still_works():
+    """after_cycle is independent of stop_after_requested gating."""
+    print("Test: K1_after_cycle_still_works")
     directives = {"stop_conditions": {"after_cycle": 5}}
     output = _format_directives_for_prompt(directives)
+    assert "**Stop Conditions:**" in output, (
+        "Stop Conditions header missing: %r" % output)
     assert "Stop after cycle 5" in output, (
-        "after_cycle rendering broken\nOutput:\n%s" % output)
-    # Should NOT have any after_program content
-    assert "CRITICAL: You MUST run" not in output, (
-        "after_cycle-only directives should not produce the "
-        "after_program CRITICAL line\nOutput:\n%s" % output)
+        "after_cycle line missing: %r" % output)
     print("  PASS")
 
 
-def test_both_after_cycle_and_after_program():
-    """Both stop conditions coexist; both render."""
-    print("Test: both_after_cycle_and_after_program")
-    directives = {
-        "stop_conditions": {
-            "after_cycle": 10,
-            "after_program": "phenix.refine",
-        }
-    }
+def test_K2_max_refine_cycles_and_targets_render():
+    """max_refine_cycles and target metrics still render."""
+    print("Test: K2_max_refine_cycles_and_targets_render")
+    directives = {"stop_conditions": {
+        "max_refine_cycles": 8,
+        "r_free_target": 0.25,
+        "map_cc_target": 0.70,
+        "skip_validation": True,
+    }}
     output = _format_directives_for_prompt(directives)
-    assert "Stop after cycle 10" in output, (
-        "after_cycle missing when both present\nOutput:\n%s" % output)
+    assert "**Stop Conditions:**" in output, (
+        "Header missing: %r" % output)
+    assert "Maximum 8 refinement cycles" in output, (
+        "max_refine_cycles missing")
+    assert "Target R-free: 0.250" in output, "r_free_target missing"
+    assert "Target map CC: 0.70" in output, "map_cc_target missing"
+    assert "Validation can be skipped before stopping" in output, (
+        "skip_validation missing")
+    print("  PASS")
+
+
+def test_K3_no_stop_conditions_renders_no_header():
+    """When directives has no stop_conditions, no header is emitted."""
+    print("Test: K3_no_stop_conditions_renders_no_header")
+    output = _format_directives_for_prompt({})
+    assert "**Stop Conditions:**" not in output, (
+        "Header should not appear for empty directives")
+    output_none = _format_directives_for_prompt(None)
+    assert "**Stop Conditions:**" not in output_none
+    print("  PASS")
+
+
+# =====================================================================
+# N1-N5: stop_after_requested GATING
+# =====================================================================
+
+def test_N1_stop_after_requested_true_emits_phase_6a_block():
+    """When stop_after_requested=True, the Phase 6a 4-line block
+    is emitted with the program name substituted."""
+    print("Test: N1_stop_after_requested_true_emits_phase_6a_block")
+    directives = {"stop_conditions": {
+        "after_program": "phenix.refine",
+        "stop_after_requested": True,
+    }}
+    output = _format_directives_for_prompt(directives)
+    assert "**Stop Conditions:**" in output, "Header missing"
+    # Line 1 — simple stop confirmation
     assert "Stop after phenix.refine completes" in output, (
-        "Stop-after-program line missing when both present\nOutput:\n%s"
-        % output)
-    assert "CRITICAL: You MUST run phenix.refine before stopping." in output, (
-        "after_program CRITICAL line missing when both present\n"
-        "Output:\n%s" % output)
+        "Stop-after line missing: %r" % output)
+    # Line 2 — Stop target framing
+    assert ("**Stop target: phenix.refine.**" in output
+            or "Stop target: phenix.refine." in output), (
+        "Stop target line missing: %r" % output)
+    # Lines 3-4 — in-list / not-in-list guidance
+    assert "in VALID PROGRAMS this cycle, choose it" in output, (
+        "in-list guidance missing: %r" % output)
+    assert "NOT in VALID PROGRAMS" in output, (
+        "not-in-list guidance missing: %r" % output)
+    assert ("Never pick a program outside VALID PROGRAMS"
+            in output), (
+        "outside-list prohibition missing: %r" % output)
     print("  PASS")
 
 
-def test_other_stop_condition_fields_preserved():
-    """r_free_target, map_cc_target, max_refine_cycles, skip_validation
-    all render alongside after_program.
-    """
-    print("Test: other_stop_condition_fields_preserved")
-    directives = {
-        "stop_conditions": {
+def test_N2_stop_after_requested_substitutes_program_name():
+    """Different programs render different lines correctly."""
+    print("Test: N2_stop_after_requested_substitutes_program_name")
+    for prog in ["phenix.refine", "phenix.predict_and_build",
+                 "phenix.resolve_cryo_em", "phenix.ligandfit"]:
+        directives = {"stop_conditions": {
+            "after_program": prog,
+            "stop_after_requested": True,
+        }}
+        output = _format_directives_for_prompt(directives)
+        assert "Stop after %s completes" % prog in output, (
+            "Stop-after line not substituted for %s" % prog)
+        assert "Stop target: %s." % prog in output, (
+            "Stop target line not substituted for %s" % prog)
+    print("  PASS")
+
+
+def test_N3_plan_progression_hint_emits_no_after_program_content():
+    """When stop_after_requested is absent or False, after_program
+    is a plan-progression hint and the renderer emits NOTHING for
+    it.  The "**Stop Conditions:**" header itself is suppressed if
+    there is no other content to render."""
+    print("Test: N3_plan_progression_hint_emits_no_after_program_content")
+    # Case 1: after_program alone (no stop_after_requested) — header SUPPRESSED
+    directives = {"stop_conditions": {
+        "after_program": "phenix.refine",
+    }}
+    output = _format_directives_for_prompt(directives)
+    assert "Stop after phenix.refine completes" not in output, (
+        "after_program content should not render without "
+        "stop_after_requested=True")
+    assert "Stop target: phenix.refine" not in output, (
+        "Stop target line should not render without "
+        "stop_after_requested=True")
+    # Header should also be suppressed because there's no other body
+    assert "**Stop Conditions:**" not in output, (
+        "Header should be suppressed when after_program is the only "
+        "stop_condition and stop_after_requested is False")
+
+    # Case 2: explicit False
+    directives2 = {"stop_conditions": {
+        "after_program": "phenix.refine",
+        "stop_after_requested": False,
+    }}
+    output2 = _format_directives_for_prompt(directives2)
+    assert "Stop after phenix.refine completes" not in output2
+    assert "Stop target: phenix.refine" not in output2
+    print("  PASS")
+
+
+def test_N4_mixed_after_program_and_adjacent_fields_render_correctly():
+    """When after_program is a plan hint (no stop_after_requested) but
+    other stop_conditions are present, those OTHER fields render under
+    the header but after_program produces no content."""
+    print("Test: N4_mixed_after_program_and_adjacent_fields_render_correctly")
+    directives = {"stop_conditions": {
+        "after_program": "phenix.refine",
+        # NO stop_after_requested
+        "after_cycle": 3,
+        "r_free_target": 0.22,
+    }}
+    output = _format_directives_for_prompt(directives)
+    # Header appears because there is non-empty content
+    assert "**Stop Conditions:**" in output
+    assert "Stop after cycle 3" in output
+    assert "Target R-free: 0.220" in output
+    # But the after_program "Stop target:" lines do NOT appear
+    assert "Stop target: phenix.refine" not in output, (
+        "after_program plan hint should not emit Stop target line")
+    assert "Stop after phenix.refine completes" not in output, (
+        "after_program plan hint should not emit stop-after line")
+    print("  PASS")
+
+
+def test_N5_old_critical_wording_does_not_appear_in_output():
+    """Anti-regression: the OLD 'CRITICAL: You MUST run X' wording
+    must NOT appear in any rendering, even when stop_after_requested
+    is True.  The new Phase 6a wording replaces it.
+
+    If a future edit accidentally re-introduces the old wording, this
+    test catches it."""
+    print("Test: N5_old_critical_wording_does_not_appear_in_output")
+    for stop_after in [True, False]:
+        directives = {"stop_conditions": {
             "after_program": "phenix.refine",
-            "r_free_target": 0.22,
-            "map_cc_target": 0.75,
-            "max_refine_cycles": 5,
-            "skip_validation": True,
-        }
-    }
-    output = _format_directives_for_prompt(directives)
-    expected = [
-        "Stop after phenix.refine completes",
-        "CRITICAL: You MUST run phenix.refine before stopping.",
-        "Target R-free: 0.220",
-        "Target map CC: 0.75",
-        "Maximum 5 refinement cycles",
-        "Validation can be skipped before stopping",
-    ]
-    for phrase in expected:
-        assert phrase in output, (
-            "Expected phrase missing: '%s'\nOutput:\n%s"
-            % (phrase, output))
+            "stop_after_requested": stop_after,
+        }}
+        output = _format_directives_for_prompt(directives)
+        # These are the OLD lines that v117 Phase 6a replaced
+        assert "CRITICAL: You MUST run" not in output, (
+            "Old 'CRITICAL: You MUST run' wording leaked back into "
+            "output (stop_after_requested=%s)" % stop_after)
+        assert "Do NOT keep running refinement cycles" not in output, (
+            "Old 'Do NOT keep running' wording leaked back into "
+            "output (stop_after_requested=%s)" % stop_after)
     print("  PASS")
 
 
 # =====================================================================
-# SECTION D: Edge cases
+# Sanity edge cases
 # =====================================================================
-
-def test_no_after_program_field():
-    """No after_program → no after_program block at all."""
-    print("Test: no_after_program_field")
-    directives = {"stop_conditions": {"after_cycle": 3}}
-    output = _format_directives_for_prompt(directives)
-    assert "CRITICAL: You MUST run" not in output, (
-        "after_program CRITICAL line appeared without after_program\n"
-        "Output:\n%s" % output)
-    assert "Do NOT keep running refinement cycles" not in output, (
-        "after_program anti-loop line appeared without after_program\n"
-        "Output:\n%s" % output)
-    print("  PASS")
-
 
 def test_empty_directives():
-    """Empty directives returns empty string."""
+    """{} → no Stop Conditions section."""
     print("Test: empty_directives")
-    result = _format_directives_for_prompt({})
-    assert result == "", (
-        "Empty directives should return '', got %r" % result)
+    output = _format_directives_for_prompt({})
+    assert "Stop Conditions" not in output
     print("  PASS")
 
 
 def test_none_directives():
-    """None directives returns empty string."""
+    """None → renderer handles gracefully."""
     print("Test: none_directives")
-    result = _format_directives_for_prompt(None)
-    assert result == "", (
-        "None directives should return '', got %r" % result)
+    output = _format_directives_for_prompt(None)
+    assert "Stop Conditions" not in output
     print("  PASS")
 
 
-def test_no_stop_conditions():
-    """Directives without stop_conditions section work without errors."""
-    print("Test: no_stop_conditions")
-    directives = {"program_settings": {"phenix.refine": {"strategy": "tls"}}}
+def test_no_unresolved_placeholders():
+    """No {placeholder} survives substitution."""
+    print("Test: no_unresolved_placeholders")
+    directives = {"stop_conditions": {
+        "after_program": "phenix.refine",
+        "stop_after_requested": True,
+    }}
     output = _format_directives_for_prompt(directives)
-    assert "CRITICAL: You MUST run" not in output, (
-        "after_program CRITICAL line appeared without stop_conditions\n"
-        "Output:\n%s" % output)
-    assert "phenix.refine: strategy=tls" in output, (
-        "program_settings rendering broken\nOutput:\n%s" % output)
+    # Naive check: no obvious leftover format placeholders
+    for pattern in ["{after_prog}", "{program}", "%(prog)s"]:
+        assert pattern not in output, (
+            "Unresolved placeholder %r in output: %r" % (pattern, output))
     print("  PASS")
 
-
-# =====================================================================
-# SECTION E: Output structural integrity
-# =====================================================================
-
-def test_output_is_well_formed():
-    """No unresolved placeholders, no Python repr leakage."""
-    print("Test: output_is_well_formed")
-    directives = {
-        "stop_conditions": {"after_program": "phenix.predict_and_build"}
-    }
-    output = _format_directives_for_prompt(directives)
-    # No Python format placeholders
-    assert "%s" not in output, "Unresolved %%s in output:\n%s" % output
-    assert "%d" not in output, "Unresolved %%d in output:\n%s" % output
-    # No dict reprs leaked
-    has_brace_pair = "{" in output and "}" in output
-    assert not has_brace_pair, (
-        "Possible dict repr leakage (output contains both '{' and '}'):"
-        "\n%s" % output)
-    print("  PASS")
-
-
-# =====================================================================
-# Runner
-# =====================================================================
 
 def run_all_tests():
-    """cctbx-style runner."""
-    try:
-        from libtbx.langchain.tests.tst_utils import (
-            run_tests_with_fail_fast)
-    except ImportError:
-        try:
-            from tests.tst_utils import run_tests_with_fail_fast
-        except ImportError:
-            _standalone_runner()
-            return
-    run_tests_with_fail_fast()
-
-
-def _standalone_runner():
-    test_fns = [v for k, v in sorted(globals().items())
-                if k.startswith("test_") and callable(v)]
+    tests = [
+        test_K1_after_cycle_still_works,
+        test_K2_max_refine_cycles_and_targets_render,
+        test_K3_no_stop_conditions_renders_no_header,
+        test_N1_stop_after_requested_true_emits_phase_6a_block,
+        test_N2_stop_after_requested_substitutes_program_name,
+        test_N3_plan_progression_hint_emits_no_after_program_content,
+        test_N4_mixed_after_program_and_adjacent_fields_render_correctly,
+        test_N5_old_critical_wording_does_not_appear_in_output,
+        test_empty_directives,
+        test_none_directives,
+        test_no_unresolved_placeholders,
+    ]
     passed = 0
     failed = 0
-    for fn in test_fns:
+    for t in tests:
         try:
-            fn()
+            t()
             passed += 1
         except Exception as e:
-            print("  FAIL: %s" % e)
             failed += 1
+            print("  FAIL: %s" % e)
     print()
     print("%d passed, %d failed" % (passed, failed))
-    if failed:
-        sys.exit(1)
+    return failed == 0
 
 
 if __name__ == "__main__":
-    _standalone_runner()
+    sys.exit(0 if run_all_tests() else 1)

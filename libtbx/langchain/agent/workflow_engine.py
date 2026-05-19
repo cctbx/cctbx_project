@@ -2109,119 +2109,82 @@ class WorkflowEngine:
                             result.remove(rp)
                             result.insert(0, rp)
             elif after_program_done:
-                # v112.78 semantics RESTORED — after_program is a MIN-RUN
-                # guarantee, not a hard stop.
+                # v116.x: stop_after_requested gates the stop analysis.
                 #
-                # Per docs/ARCHITECTURE.md line 162 and lines 546-551,
-                # after_program is documented as a minimum-run guarantee:
-                # PLAN suppresses auto-stop until the target program has
-                # run, but the LLM decides when to actually stop, guided
-                # by the strong textual directive injected into the prompt
-                # ("CRITICAL: stop after X.  Do NOT keep running...").
+                # `after_program` carries two distinct kinds of intent
+                # which used to be indistinguishable here:
                 #
-                # The earlier behavior here — wiping valid_programs to
-                # [STOP] once the named program had run — treated
-                # after_program as a HARD stop instead.  That contradicted
-                # the documented design and caused premature termination
-                # in two important cases:
+                #   (a) USER/README explicit stop ("refine and stop")
+                #       — the user wants the workflow to stop after
+                #       this program completes.  Set by the directive
+                #       extractor when explicit stop phrasing is
+                #       detected in the raw advice text.
                 #
-                #   (1) Multi-goal requests where the directive extractor
-                #       can only name one program (the v112.78 note's
-                #       explicit motivating case).  E.g. user advice:
-                #       "Refine the model and fit ATP using LigandFit"
-                #       — directive extractor sets after_program=
-                #       phenix.refine; after refine succeeds, the wipe
-                #       killed ligandfit even though it was sitting in
-                #       valid_programs ready to run.
+                #   (b) PLAN progression hint (per-stage after_program
+                #       from plan_to_directives) — the plan wants to
+                #       make sure THIS stage's program runs.  No user
+                #       intent to stop is implied.
                 #
-                #   (2) Plan-driven progression.  plan_to_directives
-                #       (knowledge/plan_schema.py) intentionally emits
-                #       after_program as the current stage's program (see
-                #       ARCHITECTURE.md lines 1172-1176).  Under min-run
-                #       semantics that's fine — it guarantees the stage's
-                #       program runs.  Under the (wrong) hard-stop
-                #       semantics, it caused the workflow to "complete"
-                #       at every stage transition.
+                # The directive extractor flags case (a) by setting
+                # `stop_conditions.stop_after_requested = True` (see
+                # `_is_stop_after_requested` and the resolver in
+                # `agent/directive_extractor.py`).  Plan progression
+                # does NOT set this flag.
                 #
-                # The two pre-existing band-aids on this code path are
-                # evidence that the wipe was already known to be wrong:
+                # Under v116.x we gate the stop analysis on the flag:
                 #
-                #   - v115.09b post-ligandfit exemption (combine_ligand /
-                #     needs_post_ligandfit_refine, ~50 lines above): the
-                #     "if _post_ligandfit_pending" branch already runs
-                #     before this one and bypasses the wipe entirely.
-                #     With v112.78 restored, that branch's downstream
-                #     concern (the wipe killing follow-up work) is no
-                #     longer present, but the branch is harmless to keep
-                #     (it also prioritizes refine programs, which is
-                #     still useful guidance for the LLM).
+                #   - stop_after_requested = True
+                #     → user said stop; wipe valid_programs to [STOP]
+                #       to enforce it structurally.  No more "LLM
+                #       might pick a different program" worries — we
+                #       know the user wants stop.
                 #
-                #   - v116.17 validate-step guard (below): a per-step
-                #     softening of the wipe that preserved validation
-                #     programs.  With v112.78 restored, validation is
-                #     preserved by the general append-not-wipe behavior;
-                #     the guard becomes redundant but harmless.  Left in
-                #     place for explicit logging in the validate case.
+                #   - stop_after_requested = False
+                #     → after_program is a plan progression hint only.
+                #       The target program has run; do NOTHING here
+                #       and let the workflow advance naturally to the
+                #       next plan stage / step.
                 #
-                # User-requested "run X and stop" continues to work as
-                # before — the strong prompt directive plus the user's
-                # own advice drives the LLM to STOP after X.  The min-run
-                # guarantee ensures X actually ran first.
+                # This replaces the previous v112.78-restored
+                # "append STOP" behavior, which was the right answer
+                # under the old model where we could not distinguish
+                # the two cases.  With the flag, we can wipe safely
+                # for user stops (no more lockouts of multi-goal
+                # workflows) and skip stop analysis entirely for plan
+                # progression (no more "Stop after refine" prompts in
+                # the middle of a 6-stage plan).
                 #
-                # PROMPT GUIDANCE: prompts_hybrid.py lines 466-471 inject
-                # "CRITICAL: You MUST run X before stopping" and "Do NOT
-                # keep running refinement cycles - run X instead!" — that
-                # is the actual mechanism that biases the LLM toward STOP
-                # for user-requested stops.  The valid_programs list is
-                # the menu of options the LLM can choose from; the prompt
-                # tells it which one to prefer.
+                # `skip_validation` is no longer needed as a carve-out
+                # here.  It is set by the extractor on every user
+                # stop, but we no longer act on it in this branch —
+                # the wipe enforces the user's explicit stop intent
+                # whether or not validation programs are in the YAML
+                # step.
+                stop_after_requested = bool(
+                    stop_cond.get("stop_after_requested"))
 
-                # The existing v116.17 validate-step guard.  Kept for its
-                # diagnostic logging — the general min-run behavior below
-                # would also preserve validation programs, so this branch
-                # is no longer strictly necessary, but the explicit
-                # "validation pending" message is more informative than
-                # the generic min-run message.
-                if (step_name == "validate" and
-                        context is not None and
-                        not context.get("validation_done") and
-                        not stop_cond.get("skip_validation")):
+                if stop_after_requested:
+                    non_stop = [p for p in result if p != "STOP"]
+                    if non_stop:
+                        modifications.append(
+                            "Cleared programs %s "
+                            "(stop_after_requested + "
+                            "after_program %s completed)"
+                            % (non_stop, after_program))
+                    result[:] = ["STOP"]
                     modifications.append(
-                        "after_program %s completed but validate step "
-                        "reached with validation pending — keeping "
-                        "validation programs (%s) available; "
-                        "set skip_validation:true to override"
-                        % (after_program,
-                           [p for p in result if p != "STOP"]))
-                    if "STOP" not in result:
-                        result.append("STOP")
+                        "Set valid_programs=[STOP] "
+                        "(user-explicit stop after %s)"
+                        % after_program)
                 else:
-                    # v112.78: append STOP, do NOT wipe.  The LLM picks
-                    # STOP based on the strong prompt directive when the
-                    # user actually requested it; the LLM picks something
-                    # else when the after_program came from plan
-                    # progression and the user's advice indicates more
-                    # work is wanted.
-                    #
-                    # NOTE on skip_validation: skip_validation=True is
-                    # PERMISSION to stop without validating, not a BAN on
-                    # validation (per directive_extractor.py line 222 and
-                    # ARCHITECTURE.md line 474).  The extractor sets it
-                    # broadly — "ALWAYS set skip_validation=true" on any
-                    # user-explicit stop.  Wiping valid_programs whenever
-                    # skip_validation=True would re-create the original
-                    # premature-stop bug for every user who says
-                    # "X and stop" once the workflow reaches validate.
-                    # We trust the LLM to follow the explicit stop
-                    # directive in the prompt; if that proves unreliable
-                    # in practice, the fix is in prompt strength
-                    # (prompts_hybrid.py), not here.
-                    if "STOP" not in result:
-                        result.append("STOP")
+                    # No user stop — after_program is a plan
+                    # progression hint.  The program has run; let
+                    # the workflow advance naturally.
                     modifications.append(
-                        "after_program %s min-run satisfied — "
-                        "STOP available; LLM decides whether to stop "
-                        "(v112.78 semantics)" % after_program)
+                        "after_program %s min-run satisfied "
+                        "(plan progression hint, no user stop) "
+                        "— leaving valid_programs intact"
+                        % after_program)
             else:
                 # after_program not yet run - add it to valid programs
                 should_add = self._check_program_prerequisites(after_program, context, step_name)

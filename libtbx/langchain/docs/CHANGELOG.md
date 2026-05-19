@@ -1,4 +1,496 @@
-# CHANGELOG — v116
+# CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3
+
+## Version 117.3 (Extended stop-intent phrasing recognition)
+
+### Summary
+
+A C1 LLM test run after v117.2 surfaced one remaining openai failure
+in the existing `tst_directive_extraction.py::explicit_stop_after_phaser`
+scenario (0/5 on openai, 1/1 on google).  The fixture's user-side
+phrasing is `"Stop the workflow immediately after phaser completes"`
+in its Special Instructions section.
+
+Diagnosis: this phrasing is a clear user-stop directive, but neither
+the v117.2 LLM prompt schema documentation nor the regex backstops
+(`_IMPERATIVE_STOP_MARKERS`, `_POSITIVE_STOP_AFTER_PATTERNS`) had any
+entry that recognized it.  Result: the LLM extracted
+`after_program=phenix.phaser` correctly, but did NOT set
+`stop_after_requested=True`, so v117.1's flag-exemption couldn't fire,
+and the v116.19a grounding guardrail's Failure 2 path dropped the
+directive as "fabricated."
+
+### The fix — three independent additions
+
+**Change 1 — `_IMPERATIVE_STOP_MARKERS`.**  Added 5 new substring
+markers used by the grounding guardrail's window-bounded
+imperative-check (300 chars near program name):
+`"stop the workflow"`, `"immediately after"`, `"after it completes"`,
+`"after it finishes"`, `"is the last step"`.
+
+**Change 2 — `_POSITIVE_STOP_AFTER_PATTERNS`.**  Added 2 new
+contiguous-phrase regex patterns: `\bstop\s+the\s+workflow\b` and
+`\bis\s+the\s+last\s+step\b`.  Two over-permissive patterns
+(`\bafter\s+\w+\s+completes?\b`, `\bafter\s+\w+\s+(?:finishes|is\s+done)\b`)
+were considered during planning and dropped after the K5 false-positive
+verification — they would have fired on descriptive prose like
+"validation runs after refinement completes."
+
+**Change 3 — `DIRECTIVE_EXTRACTION_PROMPT` schema docs.**  Extended
+the `stop_after_requested` documentation with 4 new recognized
+phrasings and 2 program-neutral few-shot examples (using "refinement"
+and `<program>` placeholder to avoid biasing extraction toward
+specific Phenix tools).  The dual-input prompt
+`DIRECTIVE_EXTRACTION_PROMPT_WITH_RAW` inherits the change via the
+existing `.replace()` mechanism.
+
+### How the fix works end-to-end
+
+Two paths now correctly recognize the new phrasings:
+
+1. **Via the LLM (preferred):** the schema docs + examples teach the
+   LLM to emit `stop_after_requested=True` alongside `after_program`
+   when the user says "stop the workflow after X" / "X is the last
+   step" / etc.  v117.1's grounding-flag exemption then keeps
+   `after_program` intact.
+
+2. **Via the regex backstops (safety net):** even when the LLM
+   misses the flag (as openai did pre-v117.3), the new regex
+   patterns in `_POSITIVE_STOP_AFTER_PATTERNS` cause
+   `_is_stop_after_requested(stripped_advice)` to return True.  The
+   downstream `_apply_workflow_intent_fallback` then sets the flag
+   via `_resolve_after_program`.  Meanwhile, the new imperative
+   markers cause the grounding guardrail's `_imperative_marker_nearby`
+   check to succeed, so `after_program` is preserved through Failure 2.
+
+The end-to-end test simulation confirms both paths.  In the C1 failure
+scenario where the LLM emits `after_program=phenix.phaser` but no
+flag, v117.3 produces:
+
+```json
+{
+  "after_program": "phenix.phaser",
+  "stop_after_requested": true,
+  "skip_validation": true
+}
+```
+
+### What changes for users
+
+For `explicit_stop_after_phaser`-class workflows (preprocessed
+advice containing "stop the workflow immediately after X" or similar
+phrasings), the production workflow now correctly stops after the
+user's intended program completes.  Pre-v117.3, the openai provider
+would silently continue past the user's stop.
+
+For all other scenarios, behavior is unchanged.  The new patterns
+and markers are additive; no existing patterns are modified or
+removed.
+
+### Tests
+
+New unit test file `tests/tst_extended_stop_phrasings.py` with 9
+boundary tests (K1, K2, K4, K5, K6, K7a, K7b, K8a, K8b):
+
+| Test | Purpose |
+|------|---------|
+| K1 | `_is_stop_after_requested` recognizes "stop the workflow" phrasing |
+| K2 | `_is_stop_after_requested` recognizes "X is the last step" |
+| K4 | AF_7mjs preservation — stripped advice still returns False |
+| K5 | Descriptive "validation runs after refinement completes" → False (false-positive guard) |
+| K6 | `_imperative_marker_nearby` fires on the explicit_stop_after_phaser fixture |
+| K7a, K7b | Existing C1 phrasings ("density modify and stop", "refine and stop") still recognized |
+| K8a, K8b | Negation guards ("do not stop", "Stop Condition: None") still suppress |
+
+K3 was considered and dropped from the test plan because the existing
+`,\s*stop\b` pattern already catches "after phaser completes, stop".
+K9 and K10 (cross-sentence safety) were dropped because the
+pre-existing v117.2 behavior of `\bstop\s+if\b` matching within
+single sentences is a separately tracked issue, not v117.3 scope.
+
+The v117.2 sandbox suite (106 tests) plus the 9 new K-tests gives
+115/115 passing on v117.3.
+
+### Expected LLM test results after applying
+
+| Test | v117.2 | v117.3 |
+|------|--------|--------|
+| `explicit_stop_after_phaser` openai | 0/5 | expected ≥4/5 |
+| `explicit_stop_after_phaser` google | 1/1 | maintained |
+| C1 suite | 6/6 | maintained |
+| B1 suite | 10/10 | maintained |
+| A1 suite | 6/6 | maintained |
+| Other 5 `tst_directive_extraction.py` scenarios | passing | maintained |
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `agent/directive_extractor.py` | 34 lines added across 3 blocks; no removals |
+| `tests/tst_extended_stop_phrasings.py` | **NEW** — 9 unit tests |
+
+### Architectural notes
+
+**Pipeline ordering unchanged.**  v117.3 does not add a new pipeline
+step.  The accumulated post-LLM processing order from v117.2 stays:
+
+1. `_validate_after_program_grounded` (v116.19a + v117.1 flag exemption)
+2. `_apply_crystal_symmetry_fallback`
+3. v117.2 fill_in_from_raw
+4. Ollama empty-directives retry
+5. Intent classification merge
+6. Intent override block
+7. `_apply_workflow_intent_fallback` (calls `_resolve_after_program`)
+
+v117.3 extends the regex sets and marker tuples consumed by steps 1,
+3, and 7.  No new pipeline step; no new state fields.
+
+**Plan revisions during implementation.**  The plan in
+`v117_3_PLAN.md` was revised twice during implementation:
+
+- Revision 2: absorbed Gemini's review feedback (bounding discipline
+  in Change 2, few-shot examples in Change 3, rejection of auto-
+  healing alternative documented in §9).
+- During Step 2 (TDD baseline check): K3 was discovered to already
+  pass on v117.2 (redundant) and K9/K10 were discovered to surface a
+  pre-existing `\bstop\s+if\b` issue not introduced by v117.3.
+  Both adjustments narrowed test scope without weakening coverage.
+- During Step 2 (K5 false-positive verification): the over-permissive
+  patterns in Change 2 were dropped (Option 3).
+
+### Process note — fourth pipeline augmentation
+
+This is the fourth iterative behavior augmentation to `extract_directives`
+and its helpers in six days (Step 1 / v117.1 / v117.2 / v117.3).  Per
+the v117.2 CHANGELOG flag, a fifth such gap should trigger a
+consolidation discussion rather than a fifth additive patch.
+
+v117.3's scope was kept narrow specifically because of this concern:
+the change is purely additive to existing data structures (5 entries
+added to a tuple, 2 entries added to another tuple, 4 + 2 lines added
+to a docstring).  No new helpers, no new pipeline step.
+
+---
+
+## Version 117.2 (Fill in after_program from raw advice when LLM omits it)
+
+### Summary
+
+A C1 LLM test run after the v117.1 grounding fix surfaced a remaining
+gap on openai: for the input `"refine and stop"` (raw) with processed
+advice ending in `"Stop Condition: None"`, openai's extractor
+occasionally emits `stop_after_requested=True` but omits
+`after_program` entirely.
+
+Without `after_program`, `workflow_engine._apply_directives`' gated
+wipe code is unreachable — the wipe is gated on `if after_program:`.
+The user's stop intent is signaled but cannot be acted on; the
+workflow continues past where the user wanted it to stop.
+
+### The fix
+
+In `extract_directives()`, after the existing LLM extraction and
+validation flow but before the intent-override block, add a small
+fallback: when `stop_after_requested=True` and `after_program` is
+unset, run the existing `_resolve_after_program()` regex resolver
+against the raw advice to fill in `after_program` via `_ACTION_TABLE`.
+
+Guards:
+- Only fires when the LLM left `after_program` unset (does not
+  override LLM choices)
+- Only fires when raw advice contains stop intent per
+  `_is_stop_after_requested` (does not amplify hallucinated flags)
+- Uses `raw_advice` if available; falls back to `user_advice` for
+  callers using the single-input path
+
+### What changes for users
+
+For the affected scenarios — openai + `"refine and stop"` /
+`"run xtriage and stop"` / `"density modify and stop"` against
+preprocessor-mangled processed advice — the production workflow now
+correctly stops after the user's intended program completes, where
+it previously continued past it.
+
+For all other scenarios (LLM emits both fields correctly; or raw
+advice has no stop intent; or flag is unset), behavior is unchanged.
+
+### Tests
+
+New unit test file `tests/tst_after_program_fill_from_raw.py` with
+6 boundary cases (K1-K6):
+- K1: flag True + after_program missing + raw has stop intent →
+  after_program filled in (the C1 fix case)
+- K2: flag True + after_program already set → no change (LLM choice
+  wins)
+- K3: flag True + after_program missing + raw has NO stop intent →
+  no change (guard prevents amplifying hallucination)
+- K4: flag absent → no change
+- K5: raw_advice None → falls back to user_advice (single-input
+  compatibility)
+- K6: `"run xtriage and stop"` → after_program=phenix.xtriage
+  (confirms resolver handles other action verbs)
+
+The v117.1 sandbox suite still passes 100/100.  With v117.2 added:
+106/106.
+
+### Expected LLM test results after applying
+
+| Suite | Pre-v117.1 | v117.1 | v117.2 |
+|-------|------------|--------|--------|
+| A1 (smoke) | 4/6 | 6/6 | 6/6 |
+| B1 (stop_after_requested) | 8/10 | 10/10 | 10/10 |
+| C1 (raw authority) | 0/6 | 5/6 | 6/6 (expected) |
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `agent/directive_extractor.py` | 30-line addition in `extract_directives()` |
+| `tests/tst_after_program_fill_from_raw.py` | **NEW** — 6 unit tests |
+
+### Architectural note
+
+This is a third behavior-augmentation in three days touching
+`extract_directives()`.  The accumulated post-LLM processing path now
+runs (in order):
+
+1. `_validate_after_program_grounded` (v116.19a, with v117.1 flag
+   exemption)
+2. `_apply_crystal_symmetry_fallback`
+3. **v117.2 fill_in_from_raw** (new)
+4. Ollama empty-directives retry
+5. Intent classification merge
+6. Intent override block (solve / solve_constrained / task)
+7. `_apply_workflow_intent_fallback` (calls
+   `_resolve_after_program` on processed advice)
+
+The v117.2 fill-in is positioned after grounding (so it can't be
+undone by it) and before the intent block (so it doesn't accidentally
+clear a flag the resolver just confirmed).  See DEVELOPER_GUIDE.md
+§3i for the full design rationale.
+
+### Process note
+
+Like v117.1, v117.2 was surfaced by the C1 LLM test — the test's
+remaining single failure after v117.1 produced exactly the diagnostic
+log needed to identify the gap.  The pattern of "ship the fix, run
+the LLM tests, examine remaining failures with the same surgical
+discipline" is working.
+
+---
+
+## Version 117.1 (Grounding ∧ stop_after_requested Interaction Fix)
+
+### Summary
+
+The C1 LLM test (raw-authority end-to-end) surfaced an architectural
+conflict between v116.19a's grounding guardrail and v117 Step 1's
+raw-advice extraction.  Both were correct in isolation but collided
+in production.
+
+**The conflict:** when the user typed `"density modify and stop"`,
+v117 Step 1's AUTHORITY paragraph correctly led the LLM to produce
+`after_program=phenix.resolve_cryo_em, stop_after_requested=True` —
+mapping the action verb to the cryo-EM density-modification program
+even though "resolve_cryo_em" doesn't appear literally in the advice.
+
+Then v116.19a's grounding guardrail dropped `after_program` because
+the program name was "absent from user advice (pure fabrication)" by
+its literal-substring test.  The user-stop intent was retained as
+the flag, but the target program was lost.
+
+### The fix
+
+When the LLM sets BOTH `after_program` AND `stop_after_requested=True`
+on the same `stop_conditions` block, the literal-name grounding check
+is skipped.  The flag IS the grounding signal — the LLM made an
+explicit user-stop assertion based on the raw advice and the
+AUTHORITY paragraph, which is strictly stronger evidence than the
+heuristic substring check.
+
+The fix is 11 lines in `_validate_after_program_grounded`
+(`agent/directive_extractor.py`) with the new behavior gated on the
+`stop_after_requested` flag presence.  No other production code
+changes.
+
+### Behavior preservation
+
+- **AF_7mjs case** (the case v116.19a was originally written for):
+  preserved.  AF_7mjs's preprocessed advice has no positive stop
+  signal, so `stop_after_requested` is not set and the guardrail
+  fires as before.
+- **Pure fabrication** (program name absent, no flag): still dropped.
+- **Flag explicitly False**: still dropped (flag must be True to
+  trigger the skip).
+- **Grounded program with no flag**: still kept (existing v116.19a
+  behavior unchanged).
+
+### Tests
+
+New unit test file `tests/tst_grounding_stop_after_requested.py` with
+5 boundary cases:
+- K1: LLM sets both signals → after_program preserved (the C1 case)
+- K2: LLM sets only after_program (no flag) → dropped (AF_7mjs case)
+- K3: pure fabrication, no flag → dropped
+- K4: flag explicitly False → dropped
+- K5: grounded program, no flag → kept (sanity baseline)
+
+The v117 sandbox suite still passes 95/95.  With the new file the
+total is 100/100.
+
+### LLM test results expected after applying
+
+| Suite | Pre-v117.1 | Post-v117.1 |
+|-------|------------|-------------|
+| A1 (smoke) | 4/6 | 6/6 |
+| B1 (stop_after_requested) | 8/10 | 10/10 |
+| C1 (raw authority) | 0/6 | 6/6 |
+
+The c1_density_modify_raw_authority scenario also has a relaxed
+assertion accepting any density-modification-family program
+(resolve_cryo_em / resolve / density_modification / parrot /
+solvent_modify), since the raw input `"density modify and stop"`
+doesn't specify cryo-EM vs X-ray context.  Strict assertions remain
+on c1_refine_raw_authority and c1_xtriage_raw_authority where the
+program name appears in the raw input itself.
+
+### Files changed
+
+| File | Change | md5 (pre → post) |
+|------|--------|------------------|
+| `agent/directive_extractor.py` | 11-line addition to `_validate_after_program_grounded` | (v117 → v117.1) |
+| `tests/tst_grounding_stop_after_requested.py` | **NEW** — 5 unit tests | — |
+| `tests/llm/tst_c1_raw_authority.py` | relaxed C1.1 assertion | — |
+| `tests/llm/tst_b1_stop_after_requested.py` | relaxed B1.1 assertion | — |
+| `tests/llm/tst_a1_extractor_smoke.py` | relaxed A1.1 assertion | — |
+
+### Process note
+
+The C1 test was correctly designed and produced exactly the failure
+it should have: the LLM-layer behavior was right, but a downstream
+guardrail dropped its output.  The test "failing" surfaced the
+architectural conflict.  This is the second time in v117 that a
+test failure surfaced a real finding — the first was the baseline
+drift caught in Step B by
+`test_af7mjs_no_start_with_program_for_preprocessed`.
+
+---
+
+## Version 117 (Extraction Reliability — Step 1: Raw-Advice-Authoritative Directive Extraction)
+
+### Summary
+
+The LLM advice preprocessor occasionally mangles short imperative user
+input.  The most reproducible failure: when the user writes
+`"density modify and stop"` and the preprocessor is run with the openai
+provider, the preprocessed output expands the request into a multi-step
+Primary Goal and writes `Stop Condition: None` — the user's stop intent
+is silently dropped.  Because the downstream directive extractor only
+sees the preprocessed text, the LLM-extracted directives miss the stop
+signal entirely; recovery depends on the v116.x regex stop-condition
+backstops in `workflow_engine.py::_apply_directives` and the simple
+pattern-extractor fallback in `extract_directives_simple`.  Those
+backstops have their own gaps (the markdown-bold/numbered preprocessor
+output formats — see `EXTRACTOR_BUGS_FINDING.md` Finding 2 — slip
+through some of the strip regexes), so reliance on them is fragile.
+
+Step 1 fixes this at the source by giving the LLM directive extractor
+**both** inputs (raw user text and preprocessed advice) with an explicit
+authority rule: **raw wins for intent** (`after_program`,
+`start_with_program`, `stop_after_requested`); processed fills gaps for
+files, parameters, and experiment type the raw is silent on; on
+disagreement, raw is the source of truth.
+
+The change is purely additive — old clients that don't send raw advice
+get identical behavior to today.  New clients (which set
+`user_advice_raw` alongside `user_advice_for_directives`) get the
+dual-input prompt and the more reliable stop-intent extraction.
+
+### Modified Files
+
+| File | Lines | Description |
+|------|-------|-------------|
+| `agent/directive_extractor.py` | +112 | Add `_RAW_INPUT_BLOCK` and `_SINGLE_INPUT_BLOCK` named template fragments. Derive `DIRECTIVE_EXTRACTION_PROMPT_WITH_RAW` from `DIRECTIVE_EXTRACTION_PROMPT` via `str.replace()` with an import-time `assert` guarding single-match. `extract_directives()` gains `raw_advice=None` parameter and a selector that picks dual-input only when raw is provided and differs from processed. `stop_after_requested` schema doc added to the prompt with recognized phrasings (`"stop after X"`, `"X and stop"`, `"X, then stop"`). |
+| `phenix_ai/run_ai_analysis.py` | +57 | `run_directive_extraction` gains `raw_user_advice=None` parameter (sub-step 1B); plumbs to `extract_directives(raw_advice=...)`. `run_advice_preprocessing` gains Step 1F metric instrumentation — emits one greppable `PP_FILE_METRIC` line per call, comparing the LLM-derived `extracted_files` against a regex baseline run on the raw advice.  Gated to fire only when the LLM produced a distinct output; a `PP_FILE_METRIC: skipped` marker covers the alternative so log data is unambiguous. |
+| `agent/session.py` | +28 | `AgentSession.extract_directives()` gains `raw_advice=None` parameter with default-source from `self.data["raw_advice"]` (CCTBX None-safe), plumbs to the module-level `extract_directives()`. |
+| `agent/advice_preprocessor.py` | +95 | New "RAW-ADVICE FILE DETECTION (STEP 1F METRICS)" section. `extract_files_from_raw_advice(raw_advice)` runs a conservative regex over raw text and returns deduplicated lowercase basenames.  `_summarize_file_detection_metric(llm_files, regex_files)` builds the `PP_FILE_METRIC` summary line. |
+| `phenix/programs/ai_analysis.py` | +30 | New PHIL param `user_advice_raw = None` next to `user_advice_for_directives`. `_build_server_args` encodes `user_advice_raw` for transport when set. `_run_directive_extraction_locally` reads, decodes, and plumbs as `raw_user_advice=` to `run_directive_extraction`. |
+| `phenix/programs/ai_agent.py` | +19 | New PHIL param `user_advice_raw = None` mirroring `ai_analysis.py`. `_extract_directives` sets `directive_params.ai_analysis.user_advice_raw = session.data.get("raw_advice") or None` after the existing `user_advice_for_directives` setter. |
+| `tests/tst_extract_raw_advice.py` | +675 (new file) | 20-test module across 8 sections: prompt structure, signature/selector, Tom's openai case (structural), plumbing source-scans for run_directive_extraction / session.py / ai_analysis.py / ai_agent.py, and 1F behavioral tests for the file-detection regex and metric summary plus a source-scan for the run_advice_preprocessing emission point. |
+| `tests/run_all_tests.py` | +10 | Register the new test module after `tst_directive_extractor`. |
+
+### Backward compatibility
+
+Old clients send `user_advice_for_directives` only (the processed text).
+New server reads `user_advice_raw` as `None` (PHIL default), passes
+`None` through to `extract_directives`, which falls back to the
+single-input prompt — identical to old behavior.  Deployment story:
+server-first.  No "new client + old server" scenario exists because
+clients always lag the server.
+
+### Pre-existing bugs found while implementing Step 1
+
+Two bugs that predate Step 1 were uncovered during sub-step 1A and are
+documented separately in `EXTRACTOR_BUGS_FINDING.md`:
+
+1. **Brace bug (medium severity)** —
+   `DIRECTIVE_EXTRACTION_PROMPT.format()` raises
+   `KeyError('"program_settings"')` because the unit_cell example in the
+   prompt body contains unescaped JSON braces.  The crash is caught by
+   a broad `except` at `run_ai_analysis.py:1020` and silently logged to
+   `debug_log`, returning an empty directives dict.  **The LLM
+   directive extractor has been dark in production.**  The
+   google-vs-openai differences Tom investigated turn out to be
+   preprocessor LLM differences, not extractor LLM differences.  Fix is
+   5 characters (double every `{` and `}` in the JSON example).  Step
+   1's value isn't observable until this is fixed.
+
+2. **Stripper regex bug (low severity)** —
+   `_strip_preprocessor_stop_condition()` regex
+   `r'^[ \t]*stop\s+condition\s*:\s*[^\n]*$'` only matches plain
+   `"Stop Condition:"` lines, not the markdown-bold forms
+   (`**Stop Condition**: None`) or numbered forms
+   (`7. Stop Condition: None`) the preprocessor actually emits.
+   Currently benign because the downstream `_STOP_CONDITION_NONE`
+   regex DOES handle markdown forms, but worth fixing for
+   consistency.
+
+### Why the existing v116.x regex backstops are still in play
+
+The v116.x stop-after refactor (`stop_conditions.stop_after_requested`
+flag, workflow_engine wiping `valid_programs` to `[STOP]`) remains as
+defense-in-depth.  Step 1 makes the LLM extractor's output more
+reliable, but the regex backstops in
+`workflow_engine.py::_apply_directives` continue to catch any case the
+LLM extractor still misses.  Belt and braces.
+
+### Testing
+
+| Test module | Tests | Result |
+|-------------|-------|--------|
+| `tst_extract_raw_advice.py` (new) | 20 | 20/20 pass |
+| End-to-end extractor cases (existing) | 12 | 12/12 pass |
+| Workflow engine integration (existing) | 11 | 11/11 pass |
+| Audit-fixes i2 (existing) | 3 | 3/3 pass |
+
+The new test module verifies the same 20 invariants both pass on
+post-Step-1 code AND fail on pre-Step-1 code with diagnostic messages,
+giving anyone running the suite against an older checkout an immediate
+checklist of what needs to be done.
+
+### Sub-step inventory (for review and roll-back)
+
+The change landed as 8 sub-steps with checkpoints between each.  Diffs
+per sub-step are stored alongside the production files:
+
+- **1A** — `agent/directive_extractor.py` (prompt + signature)
+- **1B** — `phenix_ai/run_ai_analysis.py::run_directive_extraction`
+- **1B-bis** — `agent/session.py::AgentSession.extract_directives`
+- **1C** — `phenix/programs/ai_analysis.py` (PHIL + dispatcher)
+- **1D** — `phenix/programs/ai_agent.py` (PHIL + client touch)
+- **1E** — `tests/tst_extract_raw_advice.py` + registration
+- **1F** — `agent/advice_preprocessor.py` regex + metric in `run_advice_preprocessing`
+- **1G** — this CHANGELOG entry plus ARCHITECTURE.md and DEVELOPER_GUIDE.md updates
+
 
 ## Version 116.13 (Cryo-EM Validation Check in metric_evaluator.py)
 

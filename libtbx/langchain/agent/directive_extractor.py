@@ -241,6 +241,30 @@ Output a JSON object with these sections. Include ONLY sections that have releva
    - "skip_validation": bool - If true, allow stopping without running molprobity
    - "r_free_target": float - Stop when R-free reaches this value
    - "map_cc_target": float - Stop when map correlation reaches this value
+   - "stop_after_requested": bool, optional
+     Set to true when the user's RAW INSTRUCTION explicitly says to stop
+     after a specific program. Recognized phrasings:
+       - "stop after X" / "X and stop" / "X, then stop"
+       - "stop when ..." / "stop once ..." / "stop if ..." / "stop at ..."
+       - "only run X" / "just run X" / "just do X"
+       - "Stop Condition: <concrete value>" (a real condition, not "None")
+       - "stop the workflow [immediately] after X" / "stop X after it completes"
+       - "after X completes/finishes, stop" / "after X is done, stop"
+       - "X is the last step" (X is the user-intended terminal program)
+       - Any user phrasing that names a target program followed by a
+         clear signal that no further programs should run after that one.
+     Set false or omit when:
+       - No such phrasing in the raw instruction
+       - Raw says "don't stop" / "never stop" / "continue past X"
+       - Stop Condition reads "None" / "not specified" / "N/A"
+     The raw instruction is the authority. If raw says "X and stop" but
+     preprocessed says "Stop Condition: None", set this true.
+     Examples:
+       - "stop the workflow immediately after refinement completes" →
+         after_program=phenix.refine, stop_after_requested=true,
+         skip_validation=true
+       - "<program> is the last step" → after_program=<program>,
+         stop_after_requested=true, skip_validation=true
 
 3. "file_preferences": Specific files to use or avoid
    - "model": string - Preferred model file name
@@ -297,7 +321,7 @@ IMPORTANT GUIDELINES:
 **CRITICAL: unit_cell and space_group — always use "default" scope**
 - When the user specifies a unit cell or space group, put it under "default" so it applies to all programs:
   ```json
-  {"program_settings": {"default": {"unit_cell": "116.097 116.097 44.175 90 90 120"}}}
+  {{"program_settings": {{"default": {{"unit_cell": "116.097 116.097 44.175 90 90 120"}}}}}}
   ```
 - Convert any parenthesized comma-separated tuple to a plain space-separated string: strip `(`, `)`, and replace `,` with spaces.
 - Example triggers: "use unit cell (a, b, c, α, β, γ)", "the specified unit cell is ...", "space group P 32 2 1"
@@ -465,21 +489,77 @@ Examples of what NOT to do:
 Output ONLY valid JSON. No explanation, no markdown code blocks, just the JSON object."""
 
 
+# v117 Step 1: dual-input prompt for raw-advice-authoritative extraction.
+#
+# Derived from DIRECTIVE_EXTRACTION_PROMPT by swapping the USER ADVICE
+# block for a dual-input block (raw + processed) plus an AUTHORITY
+# paragraph telling the LLM that raw is authoritative for intent
+# (after_program, start_with_program, stop_after_requested).
+#
+# Used by extract_directives() when raw_advice is provided and differs
+# from the processed advice — i.e., when the preprocessor's transformation
+# may have lost or distorted the user's intent. Single-input behavior
+# (backward compat) is preserved when raw_advice is None or matches
+# user_advice.
+_DUAL_INPUT_BLOCK = """=== USER'S RAW INSTRUCTION (authoritative for intent) ===
+{raw_advice}
+=== END RAW INSTRUCTION ===
+
+=== PREPROCESSED ADVICE (for file mentions, parameters, experiment type) ===
+{processed_advice}
+=== END PREPROCESSED ADVICE ===
+
+AUTHORITY:
+The RAW INSTRUCTION is the source of truth for the user's intent.
+This includes which program(s) the user wants to run (after_program,
+start_with_program) and whether the user wants the workflow to stop
+after a specific program (stop_after_requested).
+
+When the raw and preprocessed advice disagree about intent — for
+example, raw says "X and stop" but preprocessed says
+"Stop Condition: None", or raw mentions one action but preprocessed
+expands to multiple — defer to the raw instruction. The preprocessor
+sometimes loses stop signals or hallucinates additional steps when
+expanding short commands.
+
+Use the PREPROCESSED ADVICE for fields the raw instruction is silent
+on: specific filenames, numeric parameters, experiment type, and
+crystallographic details."""
+
+_SINGLE_INPUT_BLOCK = """=== USER ADVICE ===
+{user_advice}
+=== END USER ADVICE ==="""
+
+DIRECTIVE_EXTRACTION_PROMPT_WITH_RAW = (
+    DIRECTIVE_EXTRACTION_PROMPT.replace(
+        _SINGLE_INPUT_BLOCK,
+        _DUAL_INPUT_BLOCK,
+    ))
+
+
 # =============================================================================
 # EXTRACTION FUNCTION
 # =============================================================================
 
 def extract_directives(user_advice, provider="google", model=None, log_func=None,
-                       use_rules_only=False):
+                       use_rules_only=False, raw_advice=None):
     """
     Extract structured directives from user advice using LLM.
 
     Args:
-        user_advice: Natural language user instructions
+        user_advice: Natural language user instructions (typically the
+            preprocessed advice when called from the server).
         provider: LLM provider ("google", "openai", "anthropic")
         model: Specific model to use (optional, uses default for provider)
         log_func: Optional logging function
         use_rules_only: If True, skip LLM and use simple pattern extraction
+        raw_advice: Optional raw user instruction (pre-preprocessing).
+            When provided and different from user_advice, the LLM sees
+            both: raw is authoritative for intent (after_program,
+            start_with_program, stop_after_requested); processed is the
+            source for file mentions, parameters, and experiment type.
+            When None or equal to user_advice, falls back to the
+            single-input prompt (backward compat).
 
     Returns:
         dict: Extracted directives, or empty dict if extraction fails
@@ -547,7 +627,21 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
     # it.  .replace() does the same single substitution without invoking
     # str.format()'s placeholder mini-language; behavior-preserving for the
     # production path.
-    prompt = DIRECTIVE_EXTRACTION_PROMPT.replace("{user_advice}", user_advice)
+    #
+    # v117 Step 1: dual-input form when raw_advice differs from
+    # user_advice — gives the extractor LLM the raw user instruction
+    # alongside the preprocessed advice, with an AUTHORITY paragraph
+    # telling it that raw is authoritative for intent fields.  Falls
+    # back to single-input when raw_advice is None or matches
+    # user_advice (backward compat).
+    if (raw_advice and raw_advice.strip()
+            and raw_advice != user_advice):
+        prompt = (DIRECTIVE_EXTRACTION_PROMPT_WITH_RAW
+                  .replace("{raw_advice}", raw_advice)
+                  .replace("{processed_advice}", user_advice))
+    else:
+        prompt = DIRECTIVE_EXTRACTION_PROMPT.replace(
+            "{user_advice}", user_advice)
 
     # Call LLM
     try:
@@ -613,6 +707,36 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
         # deterministic and only fills in fields the LLM left empty.
         directives = _apply_crystal_symmetry_fallback(directives, user_advice, log)
 
+        # v117.2: when the LLM set stop_after_requested=True but did NOT
+        # set after_program, fall back to the regex resolver on the raw
+        # advice to fill in after_program.  This closes a gap surfaced
+        # by C1 c1_refine_raw_authority on openai: the LLM occasionally
+        # signals user-stop intent without specifying the target program,
+        # which leaves workflow_engine's gated wipe code unreachable
+        # (the wipe path is gated on `if after_program:`).  The resolver
+        # uses _ACTION_TABLE to map verbs in the raw advice (refine,
+        # xtriage, density modify, ...) to programs.
+        #
+        # Guards:
+        #  - Only fires when the LLM left after_program unset.
+        #  - Only fires when raw advice contains stop intent (per
+        #    _is_stop_after_requested), preventing the resolver from
+        #    amplifying a possibly-hallucinated flag.
+        #  - Uses raw_advice if available; falls back to user_advice
+        #    for callers that don't pass raw_advice (single-input path).
+        _sc_v172 = directives.get("stop_conditions") or {}
+        if (_sc_v172.get("stop_after_requested") is True
+                and not _sc_v172.get("after_program")):
+            _v172_source = raw_advice if raw_advice else user_advice
+            if _v172_source and _is_stop_after_requested(_v172_source):
+                _v172_before = dict(_sc_v172)
+                _resolve_after_program(directives, _v172_source.lower())
+                _sc_v172_after = directives.get("stop_conditions") or {}
+                if _sc_v172_after.get("after_program"):
+                    log("DIRECTIVES: Filled in after_program=%s from raw "
+                        "advice (LLM set stop_after_requested but omitted "
+                        "after_program)" % _sc_v172_after["after_program"])
+
         # If validation stripped everything for ollama, try simple extraction
         if not directives and provider == "ollama":
             log("DIRECTIVES: Validation emptied directives, trying simple extraction")
@@ -632,11 +756,10 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
             directives.get("intent") or {}).get("intent")
 
         # Check if user EXPLICITLY said "stop after X"
-        # (preserve explicit stops regardless of intent)
-        _has_explicit_stop = bool(re.search(
-            r'\bstop\s+after\b|\bonly\s+run\b'
-            r'|\bjust\s+(?:do|run)\b',
-            user_advice, re.IGNORECASE))
+        # (preserve explicit stops regardless of intent).
+        # v116.x: use the centralized helper that handles
+        # "Stop Condition: None" correctly.
+        _has_explicit_stop = _is_stop_after_requested(user_advice)
 
         if _intent == "task":
             _task_prog = (
@@ -649,6 +772,11 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
                     "after_program"] = _task_prog
                 directives["stop_conditions"][
                     "skip_validation"] = True
+                # v116.x: intent="task" is a user-explicit single-
+                # program request.  Flag the stop_after_requested so
+                # the workflow engine treats it correctly.
+                directives["stop_conditions"][
+                    "stop_after_requested"] = True
         elif _intent == "solve":
             sc = directives.get("stop_conditions", {})
             if ("after_program" in sc
@@ -658,6 +786,7 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
                     % sc["after_program"])
                 del sc["after_program"]
                 sc.pop("skip_validation", None)
+                sc.pop("stop_after_requested", None)
                 if not sc:
                     directives.pop(
                         "stop_conditions", None)
@@ -670,6 +799,7 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
                     % sc["after_program"])
                 del sc["after_program"]
                 sc.pop("skip_validation", None)
+                sc.pop("stop_after_requested", None)
                 if not sc:
                     directives.pop(
                         "stop_conditions", None)
@@ -703,6 +833,29 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
 
     except Exception as e:
         log("DIRECTIVES: Extraction failed - %s" % str(e))
+        # v118.E (Q3 per Gemini): developer-visibility log line for
+        # the silent-fallback case.  Without this, a developer
+        # debugging a strange run might assume the LLM extracted
+        # the parameters when it was actually the regex backstop
+        # saving the cycle.
+        log("CRITICAL_FALLBACK: LLM extraction failed; falling "
+            "back to rule-based directive extractor.")
+        # v118.E (Q1 per Gemini): operator-visibility stderr marker.
+        # log_func may be filtered or unwired in some deployments;
+        # stderr is always visible.  Wrapped in try/except so the
+        # diagnostic can never break the existing fallback path
+        # (same safety pattern as C-prime's [DIRECTIVE_LAYERS]
+        # diagnostic emission).
+        try:
+            import sys
+            sys.stderr.write(
+                "[DIRECTIVE_EXTRACTION_FAILED] LLM extraction "
+                "call did not complete (provider=%s): %s. "
+                "Falling back to rules-only resolver.\n"
+                % (provider, str(e)))
+            sys.stderr.flush()
+        except Exception:
+            pass
         return {}
 
 
@@ -1032,6 +1185,124 @@ VALID_SETTINGS = {
     "copies": int,       # ASU copy count (e.g. "4 copies of the search model")
 }
 
+
+# v118.B2a: Translation map for known semantic near-misses
+# (information-conservation per v118 master plan).
+#
+# When the preprocessor LLM emits a recognizable INTENT under a wrong
+# PHIL namespace, we HEAL it to the bare strategy form rather than
+# dropping it.  The bare form is what the planner/BUILD pipeline
+# already knows how to translate to the correct namespace per program
+# (see knowledge/prompts_hybrid.py:316, Strategy schema).
+#
+# The most common near-miss observed in production (AIAgent_211,
+# testit fresh-run 2026-05-18) is r_free_flags.generate emitted under
+# data_manager. or xray_data. namespace prefixes.
+#
+# Add new entries here as new near-miss patterns are observed in
+# production logs.  Conservative by design: only translate when the
+# semantic intent CERTAINLY matches the target bare name.
+PHIL_NAMESPACE_TRANSLATIONS = {
+    # All forms of "generate R-free flags" → bare strategy hint
+    "data_manager.r_free_flags.generate":  "generate_rfree_flags",
+    "xray_data.r_free_flags.generate":     "generate_rfree_flags",
+    "r_free_flags.generate":               "generate_rfree_flags",
+}
+
+
+# v118.B2b: Bad PHIL namespace prefixes.
+#
+# Any program_settings key starting with one of these prefixes is a
+# PHIL namespace identifier that does not belong in program-agnostic
+# program_settings.  The cleaner drops them with a log message.
+#
+# IMPORTANT — program-specific prefixes are NOT included here:
+#   autosol.   ligandfit.   phaser.   xtriage.   polder.   etc.
+# Those programs are routinely orchestrated and their parameter
+# namespaces (e.g. "autosol.atom_type=Se") must be allowed through.
+BAD_PHIL_NAMESPACE_PREFIXES = (
+    "data_manager.",      # iotbx data_manager scope
+    "refinement.",        # internal phenix.refine scope
+    "miller_array.",      # data_manager subfield
+    "fmodel.",            # data_manager subfield
+    "scaling.input.",     # xtriage internal
+)
+
+
+def _heal_namespaced_phil_keys(settings, prog_name, log_func):
+    """Heal or drop namespaced PHIL keys in a program_settings dict.
+
+    For each key in `settings`:
+
+      Rule 1 (HEAL): if the key is in PHIL_NAMESPACE_TRANSLATIONS,
+        replace it with the bare strategy form.  Preserves the
+        user's semantic intent across a near-miss namespace error.
+
+      Rule 2 (DROP): if the key starts with a known-bad PHIL prefix,
+        drop it with a log message.  These prefixes identify scopes
+        that don't belong in program-agnostic program_settings.
+
+      Rule 3 (KEEP): everything else passes through unchanged.
+        Preserves both known params and forward compatibility for
+        future bare-name params we don't know about yet.  Also lets
+        program-specific dotted keys (e.g. "autosol.atom_type")
+        pass through for orchestration.
+
+    Conflict policy: if a translated key would overwrite an existing
+    bare key (i.e. both "data_manager.r_free_flags.generate" and
+    "generate_rfree_flags" present), the EXISTING bare form is
+    authoritative; the translation is logged but does not overwrite.
+
+    Returns a NEW dict with healed/dropped keys applied.  Logs
+    every translation and every drop with program name, key,
+    value, and reason.
+    """
+    if not isinstance(settings, dict):
+        return settings
+
+    cleaned = {}
+    for key, value in settings.items():
+        # Rule 1: known semantic translation (heal)
+        if key in PHIL_NAMESPACE_TRANSLATIONS:
+            new_key = PHIL_NAMESPACE_TRANSLATIONS[key]
+            if new_key in settings:
+                # Bare form already present; preserve it, don't overwrite.
+                log_func(
+                    "DIRECTIVES: Discarding namespaced PHIL key in %s: "
+                    "%s=%s (bare form %s already present)"
+                    % (prog_name, key, value, new_key))
+            elif new_key in cleaned:
+                # Already translated something else to this bare key.
+                log_func(
+                    "DIRECTIVES: Skipping duplicate namespaced PHIL "
+                    "key in %s: %s=%s (bare form %s already set "
+                    "this pass)" % (prog_name, key, value, new_key))
+            else:
+                log_func(
+                    "DIRECTIVES: Healed namespaced PHIL key in %s: "
+                    "%s=%s -> %s=%s (bare form is correct strategy "
+                    "hint)" % (prog_name, key, value, new_key, value))
+                cleaned[new_key] = value
+            continue
+
+        # Rule 2: known-bad PHIL namespace prefix (drop)
+        bad_prefix = None
+        for prefix in BAD_PHIL_NAMESPACE_PREFIXES:
+            if key.startswith(prefix):
+                bad_prefix = prefix
+                break
+        if bad_prefix is not None:
+            log_func(
+                "DIRECTIVES: Dropping namespaced PHIL key from %s: "
+                "%s=%s (prefix %r - emit bare name instead)"
+                % (prog_name, key, value, bad_prefix))
+            continue
+
+        # Rule 3: keep everything else (existing behavior).
+        cleaned[key] = value
+
+    return cleaned
+
 # Valid stop condition keys
 VALID_STOP_CONDITIONS = {
     "after_program": str,
@@ -1040,6 +1311,11 @@ VALID_STOP_CONDITIONS = {
     "skip_validation": bool,
     "r_free_target": float,
     "map_cc_target": float,
+    # v116.x: gate for stop analysis in
+    # workflow_engine._apply_directives.  True iff the directive
+    # extractor detected an explicit user-stop intent.  Plan-injected
+    # after_program (per-stage hint) does NOT set this flag.
+    "stop_after_requested": bool,
 }
 
 
@@ -1171,6 +1447,18 @@ _IMPERATIVE_STOP_MARKERS = (
     "stop when",
     "stop_condition: stop",  # advice preprocessor sometimes uses this form
     "stop condition: stop",
+    # v117.3: phrasings surfaced by the explicit_stop_after_phaser
+    # openai failure (0/5 on v117.2).  All are window-bounded substring
+    # matches near the program-name occurrence in preprocessed advice.
+    # AF_7mjs verified clean against all five (none of these phrases
+    # appear in AF_7mjs's stripped advice, so K2 grounding test
+    # remains green).  See v117.3 plan §4 for the false-positive
+    # analysis.
+    "stop the workflow",
+    "immediately after",
+    "after it completes",
+    "after it finishes",
+    "is the last step",
 )
 
 
@@ -1400,7 +1688,22 @@ def _validate_after_program_grounded(directives, user_advice, log):
     stop_cond = directives.get("stop_conditions")
     if isinstance(stop_cond, dict) and stop_cond.get("after_program"):
         after_prog = stop_cond["after_program"]
-        if not _is_program_grounded(after_prog, user_advice, log):
+        # v117 Step 1 interaction: if the LLM also set
+        # stop_after_requested=True on the same stop_conditions block,
+        # that flag *is* the grounding signal — the LLM made an
+        # explicit user-stop assertion based on the raw advice and the
+        # AUTHORITY paragraph in DIRECTIVE_EXTRACTION_PROMPT_WITH_RAW.
+        # In that case, skip the literal-name grounding check that
+        # would otherwise drop after_program as "fabrication".  The
+        # AF_7mjs case is preserved: AF_7mjs's preprocessed advice has
+        # no positive stop signal, so stop_after_requested would NOT
+        # be set, and the grounding check fires as before.
+        if stop_cond.get("stop_after_requested") is True:
+            if log:
+                log("DIRECTIVES: Keeping after_program=%s "
+                    "(stop_after_requested=True confirms user stop "
+                    "intent; grounding check skipped)" % after_prog)
+        elif not _is_program_grounded(after_prog, user_advice, log):
             log("DIRECTIVES: Dropping fabricated "
                 "stop_conditions.after_program=%s" % after_prog)
             del stop_cond["after_program"]
@@ -1568,6 +1871,15 @@ def validate_directives(directives, log=None):
 
                 if not isinstance(settings, dict):
                     continue
+
+                # v118.B2: Heal/drop namespaced PHIL keys BEFORE
+                # type-validation.  Translates known near-misses
+                # (e.g. data_manager.r_free_flags.generate ->
+                # generate_rfree_flags) and drops keys in bad-PHIL
+                # namespace prefixes.  Program-specific dotted keys
+                # like "autosol.atom_type" pass through.
+                settings = _heal_namespaced_phil_keys(
+                    settings, prog, _log)
 
                 valid_settings = {}
                 for key, value in settings.items():
@@ -1811,8 +2123,12 @@ def _fix_ligand_workflow_conflict(directives, log):
         log("DIRECTIVES: Clearing after_program=phenix.refine due to ligand workflow in constraints")
         log("DIRECTIVES: (User wants full ligand fitting workflow, not to stop at first refinement)")
 
-        # Remove the conflicting after_program
+        # v116.x: clear stop_after_requested and skip_validation
+        # since the user-stop intent is being overridden by the
+        # ligand-workflow conflict.
         del directives["stop_conditions"]["after_program"]
+        directives["stop_conditions"].pop("stop_after_requested", None)
+        directives["stop_conditions"].pop("skip_validation", None)
 
         # If stop_conditions is now empty, remove it
         if not directives["stop_conditions"]:
@@ -1939,6 +2255,10 @@ def _fix_multi_step_workflow_conflict(directives, log):
         log("DIRECTIVES: Constraints: %s" % constraints_text[:200])
 
         del directives["stop_conditions"]["after_program"]
+        # v116.x: clear stop_after_requested too — the user-stop
+        # intent is being overridden because the constraints
+        # contradict it (they describe work AFTER the named program).
+        directives["stop_conditions"].pop("stop_after_requested", None)
 
         # If stop_conditions is now empty (or only has skip_validation), clean up
         remaining = {k: v for k, v in directives["stop_conditions"].items()
@@ -2055,6 +2375,10 @@ def _fix_skip_after_program_conflict(directives, log):
         log("DIRECTIVES: Removing after_program (user explicitly said don't run this program)")
 
         del directives["stop_conditions"]["after_program"]
+        # v116.x: clear stop_after_requested too — the user-stop
+        # intent is being overridden because the user also said
+        # don't run this program.
+        directives["stop_conditions"].pop("stop_after_requested", None)
 
         # Try to infer correct stop: if user wanted refinement, set max_refine_cycles
         # Look for refinement-related terms in constraints, program_settings, or
@@ -2640,6 +2964,99 @@ def _detect_actions(advice_lower):
     return sorted(found.items(), key=lambda x: x[1])
 
 
+# ── Stop-after detection ──────────────────────────────────────────
+# v116.x: distinguish USER-explicit "stop after X" from plan-injected
+# `after_program` per-stage hints.  Used as the gate for stop-analysis
+# in workflow_engine._apply_directives.  See ARCHITECTURE.md
+# "Stop-after directive routing" for the design rationale.
+
+_POSITIVE_STOP_AFTER_PATTERNS = (
+    re.compile(r'\bstop\s+after\b', re.IGNORECASE),
+    re.compile(r'\band\s+stop\b', re.IGNORECASE),
+    re.compile(r'\bthen\s+stop\b', re.IGNORECASE),
+    re.compile(r',\s*stop\b', re.IGNORECASE),
+    re.compile(r'\.\s+stop\b', re.IGNORECASE),
+    re.compile(r'\bstop\s+when\b', re.IGNORECASE),
+    re.compile(r'\bstop\s+once\b', re.IGNORECASE),
+    re.compile(r'\bstop\s+if\b', re.IGNORECASE),
+    re.compile(r'\bstop\s+at\b', re.IGNORECASE),
+    re.compile(r'\bonly\s+run\b', re.IGNORECASE),
+    re.compile(r'\bjust\s+(?:do|run)\b', re.IGNORECASE),
+    # v117.3: contiguous-phrase patterns for phrasings that
+    # _IMPERATIVE_STOP_MARKERS catches near the program name but
+    # that ALSO deserve global recognition (so _is_stop_after_requested
+    # returns True and the v117.1 grounding-flag exemption fires
+    # even when the LLM doesn't set stop_after_requested itself).
+    # Both patterns are contiguous multi-word phrases that cannot
+    # span sentence boundaries by construction.  Over-permissive
+    # "after X completes/finishes" patterns were considered and
+    # rejected during v117.3 plan review — see plan §3 Change 2.
+    re.compile(r'\bstop\s+the\s+workflow\b', re.IGNORECASE),
+    re.compile(r'\bis\s+the\s+last\s+step\b', re.IGNORECASE),
+)
+
+_NEGATIVE_STOP_PATTERN = re.compile(
+    r"(?:don'?t|do\s+not|never)\s+stop", re.IGNORECASE)
+
+# "Stop Condition: None" / "Stop Condition: not specified" / heading-
+# only — explicit NO-stop-condition signal in README/preprocessed
+# advice.  Must be stripped before pattern matching so the bare word
+# "stop" inside this phrase doesn't trigger a false positive.
+_STOP_CONDITION_NONE = re.compile(
+    r'\*?\*?stop\s+conditions?\*?\*?\s*[:=]\s*'
+    r'(?:none|not\s+specified|n/?a|null|\s*$)',
+    re.IGNORECASE)
+
+# "Stop Condition: <real value>" — explicit YES-stop-condition signal.
+_STOP_CONDITION_VALUE = re.compile(
+    r'\*?\*?stop\s+conditions?\*?\*?\s*[:=]\s*'
+    r'(?!none\b|not\s+specified\b|n/?a\b|null\b|\s*$)\S',
+    re.IGNORECASE)
+
+
+def _is_stop_after_requested(advice):
+    """Return True iff the user explicitly requested a stop-after condition.
+
+    True iff the raw user advice (or README content) contains an
+    explicit stop-after phrasing.  False for the absence of any stop
+    signal, for explicit "Stop Condition: None", and for explicit
+    negations like "do not stop".
+
+    The bare word "stop" is not sufficient; it must match one of the
+    recognised positive patterns.  This is distinct from plan-injected
+    `after_program` hints — those do NOT invoke this function and
+    therefore stop_after_requested stays False under plan progression.
+
+    Args:
+        advice: raw user advice string (may include README content,
+                preprocessed sections, etc.).
+
+    Returns:
+        True if the advice contains an explicit stop-after directive.
+    """
+    if not advice:
+        return False
+
+    # Explicit negation overrides everything else.
+    if _NEGATIVE_STOP_PATTERN.search(advice):
+        return False
+
+    # Strip "Stop Condition: None" patterns so they don't trigger
+    # bare-"stop" false positives downstream.
+    text = _STOP_CONDITION_NONE.sub(' ', advice)
+
+    # Positive: "Stop Condition: <real value>".
+    if _STOP_CONDITION_VALUE.search(text):
+        return True
+
+    # Positive: recognised stop-after phrasings.
+    for pat in _POSITIVE_STOP_AFTER_PATTERNS:
+        if pat.search(text):
+            return True
+
+    return False
+
+
 def _resolve_after_program(directives, advice_lower):
     """General after_program resolver.
 
@@ -2676,28 +3093,13 @@ def _resolve_after_program(directives, advice_lower):
     if not actions:
         return  # No actions detected — leave directives as-is
 
-    # Detect stop intent: \bstop\b with negation guard.
-    #
-    # v116.11: The preprocessor inserts a structured
-    # "Stop Condition: None" (sometimes "**Stop Condition**:")
-    # header line on every run.  These lines are stripped by
-    # _strip_preprocessor_stop_condition() at the entry of
-    # both extract_directives and extract_directives_simple
-    # (line ~487 and ~2489), so under normal flow they don't
-    # reach this function.  As defense-in-depth — in case a
-    # caller bypasses that strip — we also strip them here
-    # before checking for \bstop\b.  Without this, the
-    # "Stop Condition" header was producing false-positive
-    # _has_stop=True (AF_7mjs regression).
-    _stop_search_text = re.sub(
-        r'(?i)(?:^|\n)[ \t]*(?:[\d]+\.\s*|[-*]\s*)?\**\s*'
-        r'stop\s+condition\**\s*:[^\n]*',
-        '\n', advice_lower)
-    _has_stop = bool(re.search(r'\bstop\b', _stop_search_text))
-    if _has_stop and re.search(
-            r"(?:don'?t|do\s+not|never)\s+stop",
-            _stop_search_text):
-        _has_stop = False
+    # Detect stop intent.  Use the dedicated helper that handles
+    # "Stop Condition: None" / "not specified" correctly — the
+    # bare \bstop\b check used previously had a false positive on
+    # advice containing "Stop Condition: None" (e.g. Tom's
+    # nsf-d2-ligand case, where the user explicitly said "no stop"
+    # but the regex matched the word "Stop" in the heading).
+    _has_stop = _is_stop_after_requested(advice_lower)
 
     # Infer experiment type from advice text (same heuristic
     # as extract_directives_simple).
@@ -2761,10 +3163,19 @@ def _resolve_after_program(directives, advice_lower):
                     "after_program"] = last_prog
                 directives["stop_conditions"][
                     "skip_validation"] = True
+                # v116.x: flag user-explicit stop so the consumer
+                # (workflow_engine._apply_directives) knows to apply
+                # the after_program_done stop analysis.  Plan-injected
+                # after_program does NOT set this flag, which is what
+                # lets multi-stage plans progress without being cut
+                # short at each stage boundary.
+                directives["stop_conditions"][
+                    "stop_after_requested"] = True
         else:
             # "do A and B" → clear, plan drives
             _sc.pop("after_program", None)
             _sc.pop("skip_validation", None)
+            _sc.pop("stop_after_requested", None)
         # Set start_with_program to first action.
         #
         # v116.11: Skip this for preprocessed advice — the
@@ -2800,6 +3211,9 @@ def _resolve_after_program(directives, advice_lower):
                 "after_program"] = prog
             directives["stop_conditions"][
                 "skip_validation"] = True
+            # v116.x: see comment above on stop_after_requested.
+            directives["stop_conditions"][
+                "stop_after_requested"] = True
     # n == 1, no stop → leave as-is
     # n == 0 → leave as-is
 
@@ -3209,6 +3623,8 @@ def extract_directives_simple(user_advice):
         # "stop after first/one refinement" - also accept "stop after refinement"
         if re.search(r'stop\s+after\s+(?:the\s+)?(?:first|one|1|a\s+single)?\s*refine', advice_lower):
             directives["stop_conditions"]["after_program"] = "phenix.refine"
+            # v116.x: this regex matches "stop after" — an explicit user stop.
+            directives["stop_conditions"]["stop_after_requested"] = True
             # Only set max_refine_cycles=1 if explicitly "first" or "one"
             if re.search(r'(?:first|one|1|single)\s*refine', advice_lower):
                 directives["stop_conditions"]["max_refine_cycles"] = 1
@@ -3340,6 +3756,13 @@ def extract_directives_simple(user_advice):
                         "after_program"] = program
                     directives["stop_conditions"][
                         "skip_validation"] = True
+                    # v116.x: tutorial pattern match = explicit
+                    # stop intent.  Tentative — intent classifier
+                    # processing below will pop it along with
+                    # after_program if the intent classifier
+                    # disagrees.
+                    directives["stop_conditions"][
+                        "stop_after_requested"] = True
                     # Internal flag: this was inferred
                     # from patterns, not user command
                     directives["stop_conditions"][
@@ -3362,6 +3785,10 @@ def extract_directives_simple(user_advice):
                     # The LLM extraction will do better with context
                     directives["stop_conditions"]["after_program"] = "phenix.resolve_cryo_em"
                 directives["stop_conditions"]["skip_validation"] = True
+                # v116.x: denmod pattern match = explicit "density
+                # modify and stop" intent.  Tentative — intent
+                # classifier may override.
+                directives["stop_conditions"]["stop_after_requested"] = True
                 directives["stop_conditions"]["_set_by_pattern"] = True
                 break
 
@@ -3383,6 +3810,10 @@ def extract_directives_simple(user_advice):
                 "after_program"] = _task_prog
             directives["stop_conditions"][
                 "skip_validation"] = True
+            # v116.x: intent="task" = user explicitly wants a
+            # single program then stop.
+            directives["stop_conditions"][
+                "stop_after_requested"] = True
 
     elif _intent == "solve":
         # Solve: no artificial stops.  Remove any
@@ -3392,6 +3823,7 @@ def extract_directives_simple(user_advice):
                 "_set_by_pattern"):
             del sc["after_program"]
             sc.pop("skip_validation", None)
+            sc.pop("stop_after_requested", None)
             sc.pop("_set_by_pattern", None)
             if not sc:
                 directives.pop("stop_conditions", None)
@@ -3404,6 +3836,7 @@ def extract_directives_simple(user_advice):
                 "_set_by_pattern"):
             del sc["after_program"]
             sc.pop("skip_validation", None)
+            sc.pop("stop_after_requested", None)
             sc.pop("_set_by_pattern", None)
             if not sc:
                 directives.pop("stop_conditions", None)

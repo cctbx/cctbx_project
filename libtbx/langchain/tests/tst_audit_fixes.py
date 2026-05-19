@@ -612,10 +612,20 @@ def test_i1_max_refine_cycles_cryoem_uses_rsr_count():
 
 
 def test_i2_after_program_beats_quality_gate():
-    """I2: after_program → STOP only; validate programs NOT injected.
+    """I2: at_target gate at refine step removes refine programs and adds STOP
+    when the after_program target has run AND quality target is reached.
 
     Distinguishes max_refine_cycles (controlled landing: validate + STOP)
-    from after_program (unconditional stop: STOP only).
+    from after_program at_target + done.
+
+    Note (v116.x v112.78 restoration): pre-v116.x, after_program produced
+    STOP-only via the now-removed wipe in `_apply_directives`.  Under the
+    restored v112.78 semantics, after_program is a min-run guarantee
+    rather than a hard stop, so this assertion is now upheld by the
+    at_target gate (which removes refine programs when quality target is
+    reached) rather than by the wipe.  In this specific scenario the
+    observable outcome is the same; the docstring is updated to reflect
+    the actual mechanism.
     """
     print("Test: i2_after_program_beats_quality_gate")
     if not _IMPORTS_OK:
@@ -657,6 +667,229 @@ def test_i2_after_program_beats_quality_gate():
                  "Got: %s" % valid)
 
     print("  PASSED")
+
+
+def test_i2_v112_78_after_program_min_run_not_hard_stop():
+    """v116.x: plan-injected after_program (no user stop) does NOT trigger
+    stop analysis.  Workflow advances naturally; ligandfit remains available.
+
+    This is the regression-prevention test for Tom's nsf-d2-ligand
+    ligandfit case.  User advice: "Refine the model and fit ATP using
+    LigandFit. Stop Condition: None."  The plan emits
+    after_program=phenix.refine for the refine stage (a min-run hint).
+    No user stop is requested.  After refine succeeds, valid_programs
+    at step=refine should contain ligandfit and STOP should NOT be
+    added — the workflow continues to ligandfit naturally.
+
+    Setup is chosen to bypass the at_target gate (R-free not at target)
+    so the test directly exercises the new
+    _apply_directives `stop_after_requested` gating.
+
+    See ARCHITECTURE.md "Stop-after directive routing (v116.x)" for
+    the design rationale.
+    """
+    print("Test: i2_v112_78_after_program_min_run_not_hard_stop")
+    if not _IMPORTS_OK:
+        print("  SKIP (imports unavailable)")
+        return
+
+    try:
+        from agent.workflow_engine import WorkflowEngine
+    except ImportError:
+        print("  SKIP (WorkflowEngine unavailable)")
+        return
+
+    engine = WorkflowEngine()
+
+    # X-ray scenario, refine done but NOT at target (R-free 0.40 > 0.30):
+    # ensures at_target=False, so the at_target gate doesn't pre-empt the
+    # _apply_directives path.  User wants ligandfit (Tom's case).
+    context = {
+        "refine_count": 1,
+        "rsr_count": 0,
+        "r_free": 0.40,           # not at target
+        "map_cc": None,
+        "clashscore": None,
+        "validation_done": False,
+        "last_program": "phenix.refine",
+        "has_model": True, "has_placed_model": True, "has_refined_model": True,
+        "has_data_mtz": True, "has_sequence": False, "has_ligand_file": True,
+        "has_full_map": False, "has_half_map": False,
+        "user_wants_ligandfit": True,
+        "ligandfit_done": False,
+        "has_ligand_fit": False,
+        "resolution": 2.0,
+        # successful_programs must include phenix.refine so the Bug 3
+        # failure override does NOT fire — we want to exercise the
+        # after_program_done branch (which is what v116.x gates).
+        "successful_programs": {"phenix.refine"},
+    }
+    # No stop_after_requested → plan-progression hint only.
+    directives = {"stop_conditions": {"after_program": "phenix.refine"}}
+
+    valid = engine.get_valid_programs(
+        experiment_type="xray",
+        step_info={"step": "refine"},
+        context=context,
+        directives=directives,
+    )
+
+    assert_in("phenix.ligandfit", valid,
+              "ligandfit must remain available so the LLM can choose "
+              "it per user advice — this is Tom's ligandfit case "
+              "the old wipe was breaking.  Got: %s" % valid)
+    assert_false(valid == ["STOP"],
+                 "valid_programs must NOT be wiped to [STOP] "
+                 "(no stop_after_requested → no stop analysis).  "
+                 "Got: %s" % valid)
+    assert_false("STOP" in valid,
+                 "STOP must NOT be added when no user stop requested — "
+                 "the workflow should advance naturally per plan "
+                 "progression.  Got: %s" % valid)
+
+    print("  PASSED")
+
+
+def test_i2_v112_78_user_explicit_stop_still_offers_STOP():
+    """v116.x: user-explicit "X and stop" (stop_after_requested=True) wipes
+    valid_programs to [STOP] once X completes.  Clean structural stop.
+
+    Complementary case to
+    test_i2_v112_78_after_program_min_run_not_hard_stop: when the user
+    explicitly requested a stop, the workflow_engine enforces it
+    structurally rather than relying on the LLM to interpret the prompt.
+
+    Pre-v116.x relied on the LLM picking STOP based on a "Stop target: X"
+    prompt directive (v112.78 append-STOP semantics).  Under v116.x,
+    when the directive extractor flagged user-explicit intent via
+    stop_after_requested, we wipe to [STOP] — no ambiguity, no risk
+    of the LLM running molprobity instead of stopping.
+    """
+    print("Test: i2_v112_78_user_explicit_stop_still_offers_STOP")
+    if not _IMPORTS_OK:
+        print("  SKIP (imports unavailable)")
+        return
+
+    try:
+        from agent.workflow_engine import WorkflowEngine
+    except ImportError:
+        print("  SKIP (WorkflowEngine unavailable)")
+        return
+
+    engine = WorkflowEngine()
+
+    context = {
+        "refine_count": 1,
+        "rsr_count": 0,
+        "r_free": 0.40,           # not at target — exercise _apply_directives path
+        "map_cc": None,
+        "clashscore": None,
+        "validation_done": False,
+        "last_program": "phenix.refine",
+        "has_model": True, "has_placed_model": True, "has_refined_model": True,
+        "has_data_mtz": True, "has_sequence": False, "has_ligand_file": False,
+        "has_full_map": False, "has_half_map": False,
+        "user_wants_ligandfit": False,  # NOT a ligandfit case
+        "resolution": 2.0,
+        # successful_programs must include phenix.refine so the Bug 3
+        # failure override does NOT fire.
+        "successful_programs": {"phenix.refine"},
+    }
+    # User-explicit stop pattern: directive extractor sets
+    # stop_after_requested=True alongside skip_validation=True (per
+    # its "ALWAYS set" rule).
+    directives = {
+        "stop_conditions": {
+            "after_program": "phenix.refine",
+            "skip_validation": True,
+            "stop_after_requested": True,
+        }
+    }
+
+    valid = engine.get_valid_programs(
+        experiment_type="xray",
+        step_info={"step": "refine"},
+        context=context,
+        directives=directives,
+    )
+
+    assert_equal(valid, ["STOP"],
+                 "User-explicit stop should wipe valid_programs to "
+                 "[STOP] for clean structural stop.  Got: %s" % valid)
+
+    print("  PASSED")
+
+
+def test_is_stop_after_requested_helper():
+    """v116.x: _is_stop_after_requested() correctly classifies advice text.
+
+    This is the foundation of the v116.x stop-after architecture.  The
+    helper distinguishes user-explicit stop intent from absence of stop
+    intent (including the pre-existing bare-`\\bstop\\b` false positive on
+    "Stop Condition: None" that caused Tom's nsf-d2-ligand bug).
+
+    Covers positive patterns (stop after X / X and stop / only run X /
+    just do X / stop when|once|if|at / Stop Condition: <real value>),
+    negative patterns (do not stop / never stop), and the explicit
+    "Stop Condition: None" / "not specified" no-signal cases.
+    """
+    print("Test: is_stop_after_requested_helper")
+    if not _IMPORTS_OK:
+        print("  SKIP (imports unavailable)")
+        return
+
+    try:
+        from agent.directive_extractor import _is_stop_after_requested
+    except ImportError:
+        print("  SKIP (_is_stop_after_requested unavailable)")
+        return
+
+    cases = [
+        # Positive cases — explicit stop-after intent
+        ("Stop after refine.", True),
+        ("Refine and stop.", True),
+        ("Refine, then stop.", True),
+        ("Refine, stop.", True),
+        ("Stop when R-free < 0.25", True),
+        ("Stop once xtriage completes", True),
+        ("Stop if convergence", True),
+        ("Stop at cycle 3", True),
+        ("Only run refine.", True),
+        ("Just run refine.", True),
+        ("Just do refine.", True),
+        ("Stop Condition: after refine.", True),
+
+        # Negative cases — explicit no-stop or absent stop intent
+        ("Refine the model.", False),
+        ("Stop Condition: None", False),
+        ("**Stop Condition**: None", False),
+        ("Stop Condition: not specified", False),
+        ("Stop Condition: N/A", False),
+        ("**Stop Conditions**:", False),       # heading only
+        ("Refine and don't stop.", False),
+        ("Do refine. Never stop.", False),
+        ("Just refine.", False),               # no "do"/"run" → no positive match
+
+        # Tom's exact case
+        ("Primary Goal: Refine the model and fit ATP using LigandFit. "
+         "Stop Condition: None.", False),
+    ]
+
+    failed = []
+    for advice, expected in cases:
+        actual = _is_stop_after_requested(advice)
+        if actual != expected:
+            failed.append((advice, expected, actual))
+
+    if failed:
+        for advice, expected, actual in failed:
+            print("  FAIL: %r → expected %r, got %r"
+                  % (advice[:60], expected, actual))
+        raise AssertionError(
+            "_is_stop_after_requested: %d/%d cases failed"
+            % (len(failed), len(cases)))
+
+    print("  PASSED (%d/%d cases)" % (len(cases), len(cases)))
 
 
 # =============================================================================

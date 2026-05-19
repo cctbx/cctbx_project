@@ -1,48 +1,45 @@
-"""Tests for v116.17 validate-step after_program guard.
+"""Tests for `_apply_directives` after_program_done branch under the
+v117 stop_refactor architecture (stop_after_requested-gated).
 
-Bug: When `directives.stop_conditions.after_program` is set AND the
-after_program has been run (after_program_done=True), `_apply_directives`
-at `agent/workflow_engine.py` line 2073 wiped the entire `valid_programs`
-list to `["STOP"]` — even at the `validate` step where molprobity /
-validation_cryoem / map_correlations should still be runnable.
+ARCHITECTURE (v117):
+  The `elif after_program_done:` branch in `_apply_directives` is now
+  gated by `stop_conditions.stop_after_requested`:
 
-For AF_7mjs (cryo-EM tutorial), the directive extractor mis-extracted
-`after_program=phenix.real_space_refine` from the README's Primary Goal
-("rebuild the loop and refine the model"), despite a CRITICAL rule in
-the extractor prompt forbidding fabrication of stop conditions from
-goal descriptions.  This combined with the wipe to cause cycle 5 to
-stop without ever running validation.
+    stop_after_requested=True  + after_program_done → wipe to [STOP]
+    stop_after_requested=False + after_program_done → no modification
+                                                      (plan progresses)
 
-The v116.16 diagnostic patch confirmed the chain:
+  This supersedes:
+    - v112.78 "append STOP" everywhere (replaced by gated wipe)
+    - v116.17 validate-step guard (no longer special-cased; the wipe
+      only fires when user-explicit stop is requested, and at that
+      point wiping at the validate step is what the user asked for)
+    - skip_validation carve-out (the flag is sufficient signal now)
 
-  PERCEIVE.detect_workflow_state → valid_programs=['STOP']
-  PLAN.before_LLM_call          → valid_programs=['STOP']
-  prompt as seen by LLM         → "VALID PROGRAMS: STOP"
+  Reference: `plans/stop_refactor_plan.md`, `info2.dat` (May 16 design
+  discussion).
 
-The LLM correctly chose STOP because that was its only option.
+WHAT REMAINS UNCHANGED:
+  - The v116.17 validate-step guard CODE is still present in the file
+    for explicit logging when at validate step + after_program_done
+    + validation pending.  The guard's WIPE behavior is replaced by
+    the gated logic; the diagnostic branch lives on.
+  - Bug 3 retry path (failed refine still retries).
+  - Post-ligandfit exemption.
+  - Min-run guarantee for not-yet-done after_program.
 
-Fix: in `_apply_directives`'s `elif after_program_done` branch, do NOT
-wipe `valid_programs` when:
-  * step_name == "validate" (we're at the validation step)
-  * validation_done is False (we haven't validated yet)
-  * skip_validation is NOT set in stop_conditions (user hasn't opted out)
-
-Under those conditions, the validation programs that the validate step
-provides are preserved, and STOP is appended (belt-and-suspenders) so
-the LLM can choose either path.
-
-These tests verify:
-  - AF_7mjs regression: validate-step + cryo-EM after_program_done →
-    validation programs preserved
-  - Same for X-ray (parallel path, after_program=phenix.refine)
-  - skip_validation:true escape hatch still wipes to [STOP] as before
-  - validation_done=True still wipes to [STOP] (normal completion)
-  - Other steps (not "validate") still wipe to [STOP] (the existing
-    use case where after_program completed and workflow is done)
-  - context=None doesn't crash the guard
-  - STOP is in the result so LLM can choose to stop after validating
-  - after_program directive of phenix.molprobity (a validation program
-    itself) still works correctly when validation_done=True
+TEST GROUPS (M1-M7):
+  M1: stop_after_requested=True + done → wipe (user-explicit stop fires)
+  M2: stop_after_requested=False + done → no wipe (plan progression)
+  M3: AF_7mjs preservation — validate step + after_program_done +
+      no user-explicit stop → validation programs preserved (plan
+      progression interpretation)
+  M4: same for X-ray parallel path
+  M5: Bug-3-style retry — failed refine still retries even with
+      stop_after_requested=True
+  M6: Not-yet-done after_program — min-run guarantee applies regardless
+      of flag
+  M7: context=None doesn't crash
 """
 
 import sys
@@ -139,16 +136,11 @@ if "libtbx" not in sys.modules:
 from agent.workflow_engine import WorkflowEngine
 
 
-def _make_engine_with_directives():
-    """Return (engine, common_directives, common_context) for cryo-EM AF_7mjs scenario."""
-    engine = WorkflowEngine()
-    directives = {
-        "stop_conditions": {
-            "after_program": "phenix.real_space_refine",
-        },
-    }
-    context = {
-        "rsr_count": 1,           # RSR has run once
+def _af7mjs_context():
+    """AF_7mjs cryo-EM scenario: RSR has run once successfully,
+    validation pending."""
+    return {
+        "rsr_count": 1,
         "refine_count": 0,
         "validation_done": False,
         "map_cc": 0.786,
@@ -156,56 +148,266 @@ def _make_engine_with_directives():
         "has_placed_model": True,
         "experiment_type": "cryoem",
         "last_program": "phenix.real_space_refine",
+        # Bug 3 override needs this to recognize successful completion.
+        # Without it, after_program_done flips to False for retry.
+        "successful_programs": {"phenix.real_space_refine"},
     }
-    return engine, directives, context
+
+
+def _xray_context():
+    """X-ray scenario: refine has run successfully, validation pending."""
+    return {
+        "refine_count": 1,
+        "rsr_count": 0,
+        "validation_done": False,
+        "r_free": 0.24,
+        "has_refined_model": True,
+        "has_placed_model": True,
+        "experiment_type": "xray",
+        "last_program": "phenix.refine",
+        "successful_programs": {"phenix.refine"},
+    }
 
 
 # =============================================================================
-# Core regression: AF_7mjs scenario — validate step keeps validation programs
+# M1: stop_after_requested=True + after_program_done → wipe
 # =============================================================================
 
-def test_cryoem_validate_step_preserves_validation_programs():
-    print("[test] Cryo-EM validate step preserves validation programs "
-          "when after_program=RSR done")
-    engine, directives, context = _make_engine_with_directives()
+def test_M1a_user_explicit_stop_validate_step_wipes_to_stop():
+    """When user explicitly requested stop (stop_after_requested=True)
+    and the target program has run, valid_programs is wiped to [STOP]
+    even at the validate step.  (Option (a) per info2.dat: hard stop,
+    no validation.)"""
+    print("[test] M1a: user-explicit stop + validate step -> wipe to [STOP]")
+    engine = WorkflowEngine()
+    directives = {"stop_conditions": {
+        "after_program": "phenix.real_space_refine",
+        "stop_after_requested": True,
+    }}
     valid_in = ["phenix.molprobity", "phenix.validation_cryoem",
                 "phenix.map_correlations"]
     result = engine._apply_directives(
-        valid_in, directives, "validate", context, experiment_type="cryoem")
-    assert "phenix.molprobity" in result, \
-        "molprobity should remain available, got: %r" % result
-    assert "phenix.validation_cryoem" in result, \
-        "validation_cryoem should remain available, got: %r" % result
-    assert "phenix.map_correlations" in result, \
-        "map_correlations should remain available, got: %r" % result
-    assert result != ["STOP"], \
-        "valid_programs must NOT be wiped to [STOP], got: %r" % result
-    print("  PASS — result: %r" % result)
+        valid_in, directives, "validate", _af7mjs_context(),
+        experiment_type="cryoem")
+    assert result == ["STOP"], (
+        "User-explicit stop should wipe to [STOP] even at validate "
+        "step, got: %r" % result)
+    print("  PASS")
 
 
-def test_cryoem_validate_step_stop_is_appended():
-    print("[test] STOP is appended so LLM may still choose to stop")
-    engine, directives, context = _make_engine_with_directives()
-    valid_in = ["phenix.molprobity", "phenix.validation_cryoem",
-                "phenix.map_correlations"]
+def test_M1b_user_explicit_stop_refine_step_wipes_to_stop():
+    """Same: user-explicit stop wipes at refine step too."""
+    print("[test] M1b: user-explicit stop + refine step -> wipe to [STOP]")
+    engine = WorkflowEngine()
+    directives = {"stop_conditions": {
+        "after_program": "phenix.real_space_refine",
+        "stop_after_requested": True,
+    }}
+    valid_in = ["phenix.real_space_refine", "phenix.dock_in_map"]
     result = engine._apply_directives(
-        valid_in, directives, "validate", context, experiment_type="cryoem")
-    assert "STOP" in result, \
-        "STOP should be present in result so LLM can opt to stop, got: %r" % result
+        valid_in, directives, "refine", _af7mjs_context(),
+        experiment_type="cryoem")
+    assert result == ["STOP"], (
+        "User-explicit stop should wipe to [STOP] at any step, got: %r"
+        % result)
+    print("  PASS")
+
+
+def test_M1c_user_explicit_stop_complete_step_wipes_to_stop():
+    """Same at the complete step."""
+    print("[test] M1c: user-explicit stop + complete step -> wipe to [STOP]")
+    engine = WorkflowEngine()
+    directives = {"stop_conditions": {
+        "after_program": "phenix.real_space_refine",
+        "stop_after_requested": True,
+    }}
+    valid_in = ["phenix.real_space_refine"]
+    result = engine._apply_directives(
+        valid_in, directives, "complete", _af7mjs_context(),
+        experiment_type="cryoem")
+    assert result == ["STOP"], (
+        "User-explicit stop at complete step -> [STOP], got: %r" % result)
     print("  PASS")
 
 
 # =============================================================================
-# X-ray parallel path
+# M2: stop_after_requested=False/absent + after_program_done -> no wipe
 # =============================================================================
 
-def test_xray_validate_step_preserves_validation_programs():
-    print("[test] X-ray validate step preserves validation programs "
-          "when after_program=refine done")
+def test_M2a_plan_progression_validate_step_no_wipe():
+    """When stop_after_requested is False/absent, after_program is a
+    plan-progression hint.  At the validate step with after_program
+    done, the validation programs must remain available."""
+    print("[test] M2a: plan progression + validate step -> no wipe")
     engine = WorkflowEngine()
-    directives = {
-        "stop_conditions": {"after_program": "phenix.refine"},
+    directives = {"stop_conditions": {
+        "after_program": "phenix.real_space_refine",
+    }}
+    valid_in = ["phenix.molprobity", "phenix.validation_cryoem",
+                "phenix.map_correlations"]
+    result = engine._apply_directives(
+        valid_in, directives, "validate", _af7mjs_context(),
+        experiment_type="cryoem")
+    for p in ("phenix.molprobity", "phenix.validation_cryoem",
+              "phenix.map_correlations"):
+        assert p in result, (
+            "%s should remain in result for plan-progression case, "
+            "got: %r" % (p, result))
+    assert result != ["STOP"], (
+        "Plan progression should not wipe to [STOP], got: %r" % result)
+    print("  PASS")
+
+
+def test_M2b_plan_progression_flag_false_no_wipe():
+    """Same with stop_after_requested=False explicitly set."""
+    print("[test] M2b: stop_after_requested=False + validate -> no wipe")
+    engine = WorkflowEngine()
+    directives = {"stop_conditions": {
+        "after_program": "phenix.real_space_refine",
+        "stop_after_requested": False,
+    }}
+    valid_in = ["phenix.molprobity", "phenix.validation_cryoem"]
+    result = engine._apply_directives(
+        valid_in, directives, "validate", _af7mjs_context(),
+        experiment_type="cryoem")
+    assert "phenix.molprobity" in result
+    print("  PASS")
+
+
+# =============================================================================
+# M3: AF_7mjs - the original cryo-EM regression
+# =============================================================================
+
+def test_M3_af7mjs_cryoem_validate_preserves_validation():
+    """AF_7mjs scenario: cryo-EM tutorial, the extractor (mis)set
+    after_program=phenix.real_space_refine from preprocessed prose.
+    No user-explicit stop was requested.  At the validate step with
+    RSR done, validation programs must remain available."""
+    print("[test] M3: AF_7mjs cryo-EM validate preserves validation")
+    engine = WorkflowEngine()
+    directives = {"stop_conditions": {
+        "after_program": "phenix.real_space_refine",
+    }}
+    valid_in = ["phenix.molprobity", "phenix.validation_cryoem",
+                "phenix.map_correlations"]
+    result = engine._apply_directives(
+        valid_in, directives, "validate", _af7mjs_context(),
+        experiment_type="cryoem")
+    assert "phenix.molprobity" in result
+    assert "phenix.validation_cryoem" in result
+    assert "phenix.map_correlations" in result
+    assert result != ["STOP"]
+    print("  PASS - result: %r" % result)
+
+
+# =============================================================================
+# M4: X-ray parallel
+# =============================================================================
+
+def test_M4_xray_validate_preserves_validation():
+    """X-ray parallel to M3."""
+    print("[test] M4: X-ray validate step preserves validation")
+    engine = WorkflowEngine()
+    directives = {"stop_conditions": {
+        "after_program": "phenix.refine",
+    }}
+    valid_in = ["phenix.molprobity", "phenix.model_vs_data",
+                "phenix.map_correlations"]
+    result = engine._apply_directives(
+        valid_in, directives, "validate", _xray_context(),
+        experiment_type="xray")
+    assert "phenix.molprobity" in result
+    assert "phenix.model_vs_data" in result
+    assert result != ["STOP"]
+    print("  PASS - result: %r" % result)
+
+
+# =============================================================================
+# M5: Bug-3 retry path under stop_after_requested=True
+# =============================================================================
+
+def test_M5_bug3_retry_still_works_with_stop_after_requested():
+    """When the target program failed and is set up to retry, the
+    Bug 3 override fires BEFORE the wipe - the failed program must
+    still be available for retry even with stop_after_requested=True.
+
+    Property called out in info2.dat: failed refine still retries
+    because the Bug 3 override fires inside after_program_done
+    calculation, so after_program_done is False and the wipe doesn't
+    apply.
+    """
+    print("[test] M5: Bug-3 retry works with stop_after_requested=True")
+    engine = WorkflowEngine()
+    directives = {"stop_conditions": {
+        "after_program": "phenix.real_space_refine",
+        "stop_after_requested": True,
+    }}
+    context = {
+        "rsr_count": 0,
+        "refine_count": 0,
+        "validation_done": False,
+        "map_cc": 0.0,
+        "has_refined_model": False,
+        "has_placed_model": True,
+        "experiment_type": "cryoem",
+        "last_program": None,
     }
+    valid_in = ["phenix.real_space_refine", "phenix.molprobity"]
+    result = engine._apply_directives(
+        valid_in, directives, "refine", context, experiment_type="cryoem")
+    assert "phenix.real_space_refine" in result, (
+        "Target program must remain available when not yet completed, "
+        "got: %r" % result)
+    assert result != ["STOP"], (
+        "Should not wipe when after_program not yet done, got: %r" % result)
+    print("  PASS - result: %r" % result)
+
+
+# =============================================================================
+# M6: Min-run guarantee unchanged
+# =============================================================================
+
+def test_M6a_min_run_target_preserved_when_not_done():
+    """When after_program is set but not yet done, the target program
+    is preserved at the front of valid_programs regardless of the
+    stop_after_requested flag."""
+    print("[test] M6a: min-run guarantee preserves target when not done")
+    engine = WorkflowEngine()
+    for flag_state in [True, False, None]:
+        directives = {"stop_conditions": {
+            "after_program": "phenix.refine",
+        }}
+        if flag_state is not None:
+            directives["stop_conditions"]["stop_after_requested"] = flag_state
+        context = {
+            "refine_count": 0,
+            "rsr_count": 0,
+            "validation_done": False,
+            "r_free": None,
+            "has_refined_model": False,
+            "has_placed_model": True,
+            "experiment_type": "xray",
+            "last_program": None,
+        }
+        valid_in = ["phenix.refine", "phenix.molprobity"]
+        result = engine._apply_directives(
+            valid_in, directives, "refine", context,
+            experiment_type="xray")
+        assert "phenix.refine" in result, (
+            "Target program missing when not yet done (flag=%r): %r"
+            % (flag_state, result))
+        assert result != ["STOP"], (
+            "Wipe should not fire when target not yet done (flag=%r): %r"
+            % (flag_state, result))
+    print("  PASS")
+
+
+def test_M6b_no_after_program_no_change():
+    """When after_program is not set at all, _apply_directives makes
+    no after_program-related modifications."""
+    print("[test] M6b: no after_program -> no after_program-related change")
+    engine = WorkflowEngine()
+    directives = {"stop_conditions": {}}
     context = {
         "refine_count": 1,
         "rsr_count": 0,
@@ -216,220 +418,64 @@ def test_xray_validate_step_preserves_validation_programs():
         "experiment_type": "xray",
         "last_program": "phenix.refine",
     }
-    valid_in = ["phenix.molprobity", "phenix.model_vs_data",
-                "phenix.map_correlations"]
+    valid_in = ["phenix.molprobity", "phenix.model_vs_data"]
     result = engine._apply_directives(
         valid_in, directives, "validate", context, experiment_type="xray")
-    assert "phenix.molprobity" in result, \
-        "molprobity should remain for X-ray validate step, got: %r" % result
-    assert "phenix.model_vs_data" in result, \
-        "model_vs_data should remain for X-ray validate step, got: %r" % result
-    assert result != ["STOP"], \
-        "X-ray validate step must NOT be wiped to [STOP], got: %r" % result
-    print("  PASS — result: %r" % result)
-
-
-# =============================================================================
-# Escape hatch: skip_validation:true preserves the original wipe behavior
-# =============================================================================
-
-def test_skip_validation_overrides_guard():
-    print("[test] skip_validation:true makes the wipe fire as before")
-    engine, directives, context = _make_engine_with_directives()
-    directives["stop_conditions"]["skip_validation"] = True
-    valid_in = ["phenix.molprobity", "phenix.validation_cryoem",
-                "phenix.map_correlations"]
-    result = engine._apply_directives(
-        valid_in, directives, "validate", context, experiment_type="cryoem")
-    assert result == ["STOP"], \
-        "With skip_validation:true the wipe should fire, got: %r" % result
-    print("  PASS — wipe behavior preserved")
-
-
-# =============================================================================
-# validation_done=True triggers the normal wipe (workflow truly complete)
-# =============================================================================
-
-def test_validation_already_done_wipes_to_stop():
-    print("[test] validation_done=True triggers normal wipe")
-    engine, directives, context = _make_engine_with_directives()
-    context["validation_done"] = True
-    valid_in = ["phenix.molprobity", "phenix.validation_cryoem",
-                "phenix.map_correlations"]
-    result = engine._apply_directives(
-        valid_in, directives, "validate", context, experiment_type="cryoem")
-    assert result == ["STOP"], \
-        "validation_done=True should wipe to [STOP], got: %r" % result
+    assert result != ["STOP"]
+    assert "phenix.molprobity" in result
     print("  PASS")
 
 
 # =============================================================================
-# Non-validate steps still wipe (preserve original "workflow done" behavior)
+# M7: context=None safety
 # =============================================================================
 
-def test_refine_step_still_wipes_to_stop():
-    print("[test] Other steps (e.g. 'refine') still wipe to [STOP] as before")
-    engine, directives, context = _make_engine_with_directives()
-    # At refine step, after_program=RSR was the user's last requested action;
-    # without an explicit validation pending guard the wipe should fire.
-    valid_in = ["phenix.real_space_refine", "phenix.dock_in_map"]
-    result = engine._apply_directives(
-        valid_in, directives, "refine", context, experiment_type="cryoem")
-    assert result == ["STOP"], \
-        "Non-validate steps should still wipe to [STOP], got: %r" % result
-    print("  PASS")
-
-
-def test_complete_step_still_wipes_to_stop():
-    print("[test] 'complete' step still wipes to [STOP] as before")
-    engine, directives, context = _make_engine_with_directives()
-    valid_in = ["STOP"]
-    result = engine._apply_directives(
-        valid_in, directives, "complete", context, experiment_type="cryoem")
-    assert result == ["STOP"], \
-        "'complete' step should still wipe to [STOP], got: %r" % result
-    print("  PASS")
-
-
-# =============================================================================
-# Safety: context=None should not crash the guard
-# =============================================================================
-
-def test_context_none_does_not_crash():
-    print("[test] context=None does not crash the guard")
+def test_M7_context_none_does_not_crash():
+    """_apply_directives must handle context=None gracefully."""
+    print("[test] M7: context=None does not crash")
     engine = WorkflowEngine()
-    directives = {
-        "stop_conditions": {"after_program": "phenix.real_space_refine"},
-    }
-    # When context is None we cannot determine validation_done, so the
-    # guard should NOT fire and behavior falls through to the original
-    # wipe.  This matches the existing pattern in the function where
-    # after_program_done is computed only when context is not None.
-    valid_in = ["phenix.molprobity", "phenix.validation_cryoem"]
-    # after_program_done is False when context is None (per the function's
-    # own check at line ~1962), so this exercises the "after_program not
-    # yet run" branch rather than the wipe.  Test that no exception is
-    # raised regardless of which branch fires.
+    directives = {"stop_conditions": {
+        "after_program": "phenix.refine",
+        "stop_after_requested": True,
+    }}
+    valid_in = ["phenix.refine", "phenix.molprobity"]
     try:
         result = engine._apply_directives(
-            valid_in, directives, "validate", None, experiment_type="cryoem")
-        assert isinstance(result, list), "Result must be a list, got: %r" % result
+            valid_in, directives, "refine", None, experiment_type="xray")
     except Exception as e:
-        raise AssertionError("Guard crashed with context=None: %s" % e)
-    print("  PASS")
+        raise AssertionError(
+            "_apply_directives raised with context=None: %s" % e)
+    assert isinstance(result, list)
+    print("  PASS - no crash, result: %r" % result)
 
-
-# =============================================================================
-# After_program is itself a validation program — works correctly
-# =============================================================================
-
-def test_after_program_is_validation_program():
-    print("[test] after_program=phenix.molprobity, molprobity done → "
-          "wipe correctly fires (validation done)")
-    engine = WorkflowEngine()
-    directives = {
-        "stop_conditions": {"after_program": "phenix.molprobity"},
-    }
-    context = {
-        "validation_done": True,  # molprobity ran, so this is True
-        "rsr_count": 1,
-        "refine_count": 0,
-        "map_cc": 0.85,
-        "has_refined_model": True,
-        "experiment_type": "cryoem",
-        "last_program": "phenix.molprobity",
-    }
-    valid_in = ["phenix.molprobity", "phenix.validation_cryoem",
-                "phenix.map_correlations"]
-    result = engine._apply_directives(
-        valid_in, directives, "validate", context, experiment_type="cryoem")
-    assert result == ["STOP"], \
-        "When after_program=validation program and it ran, wipe should " \
-        "fire (validation_done=True), got: %r" % result
-    print("  PASS")
-
-
-# =============================================================================
-# Without an after_program directive, no wipe ever fires (sanity check)
-# =============================================================================
-
-def test_no_after_program_no_change():
-    print("[test] Without after_program directive, _apply_directives does "
-          "not touch validation programs")
-    engine = WorkflowEngine()
-    directives = {}  # no stop_conditions at all
-    context = {
-        "rsr_count": 1,
-        "validation_done": False,
-        "map_cc": 0.786,
-        "experiment_type": "cryoem",
-    }
-    valid_in = ["phenix.molprobity", "phenix.validation_cryoem",
-                "phenix.map_correlations"]
-    result = engine._apply_directives(
-        valid_in, directives, "validate", context, experiment_type="cryoem")
-    for prog in valid_in:
-        assert prog in result, \
-            "%s should remain in result, got: %r" % (prog, result)
-    print("  PASS")
-
-
-# =============================================================================
-# Modifications log mentions the guard fired (helps debugging)
-# =============================================================================
-
-def test_guard_logs_explanation():
-    print("[test] When guard fires, a 'validation pending' message is in log")
-    # We can't easily capture modifications without instrumenting; instead
-    # check that the function ran without error and returned the expected
-    # shape.  The actual log message is verified by source review (the
-    # patched code adds 'after_program ... validation pending' string).
-    engine, directives, context = _make_engine_with_directives()
-    valid_in = ["phenix.molprobity", "phenix.validation_cryoem"]
-    result = engine._apply_directives(
-        valid_in, directives, "validate", context, experiment_type="cryoem")
-    # Just confirm the guard fired (validation programs preserved)
-    assert "phenix.molprobity" in result
-    print("  PASS — guard fired (verified by behavioral test above)")
-
-
-# =============================================================================
-# Test runner (matches the project's tst_*.py convention)
-# =============================================================================
 
 def run_all_tests():
-    try:
-        from libtbx.langchain.tests.tst_utils import run_tests_with_fail_fast
-    except ImportError:
-        try:
-            from tests.tst_utils import run_tests_with_fail_fast
-        except ImportError:
-            _standalone_runner()
-            return
-    run_tests_with_fail_fast()
-
-
-def _standalone_runner():
-    test_fns = [(k, v) for k, v in sorted(globals().items())
-                if k.startswith("test_") and callable(v)]
+    tests = [
+        test_M1a_user_explicit_stop_validate_step_wipes_to_stop,
+        test_M1b_user_explicit_stop_refine_step_wipes_to_stop,
+        test_M1c_user_explicit_stop_complete_step_wipes_to_stop,
+        test_M2a_plan_progression_validate_step_no_wipe,
+        test_M2b_plan_progression_flag_false_no_wipe,
+        test_M3_af7mjs_cryoem_validate_preserves_validation,
+        test_M4_xray_validate_preserves_validation,
+        test_M5_bug3_retry_still_works_with_stop_after_requested,
+        test_M6a_min_run_target_preserved_when_not_done,
+        test_M6b_no_after_program_no_change,
+        test_M7_context_none_does_not_crash,
+    ]
     passed = 0
     failed = 0
-    for name, fn in test_fns:
+    for t in tests:
         try:
-            fn()
+            t()
             passed += 1
         except Exception as e:
-            print("  FAIL [%s]: %s" % (name, e))
             failed += 1
+            print("  FAIL: %s" % e)
     print()
     print("%d passed, %d failed" % (passed, failed))
-    if failed:
-        sys.exit(1)
-    print("=" * 60)
-    print("OK: tst_validate_step_after_program_guard  (%d/%d)"
-          % (passed, passed + failed))
-    print("=" * 60)
+    return failed == 0
 
 
 if __name__ == "__main__":
-    _standalone_runner()
+    sys.exit(0 if run_all_tests() else 1)

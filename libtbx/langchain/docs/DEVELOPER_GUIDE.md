@@ -6,27 +6,6 @@
 
 ---
 
-### What's new in v116 (May 2026)
-
-The v116 series consolidates reliability work and adds two new
-patterns developers should know about:
-
-| Version | Change | Where it shows up |
-|---------|--------|-------------------|
-| **v116.10** | Six reliability fixes (predict-and-stop, after-program prompt, data-input filter, protocol hygiene, sequence-only routing, plan-classification cleanup) | §3a workflow engine; §6 safety; §8 contract |
-| **v116.10 Tier 2.1** | **Declarative `requirements:` schema** in `programs.yaml` — a new way to add program-level filtering rules without writing imperative Python | §4 Step 1; §13 Configuration Reference |
-| **v116.11** | Stop condition fix — preprocessor-inserted `**Stop Condition**: None` headers were treated as user stop intent. Strengthened `_strip_preprocessor_stop_condition` regex + defense-in-depth strip + suppress `start_with_program` for preprocessed advice | §3 directive extractor (see §3i) |
-| **v116.12** | Cryo-EM validation-aware auto-stop — `metrics_analyzer.py` cryo-EM `latest_cc > 0.70` branch now mirrors the X-ray validation_done check. PLAN node defense-in-depth elif + diagnostic context dump | §3j metrics/stop conditions |
-| **v116.13** | Cryo-EM validation check in `metric_evaluator.py` — v116.12 patched the wrong file (`metrics_analyzer.py` is dead code when `USE_YAML_METRICS=True`, the default). v116.13 patches the YAML-driven production path. **Both fixes deployed together.** | §3j metrics/stop conditions |
-
-If you're adding a program with input-availability requirements,
-use the declarative `requirements:` schema (§4 Step 1) — it's
-cleaner than the older imperative filter functions. See
-ARCHITECTURE.md "Declarative Program Requirements (Tier 2.1)" for
-the full design rationale.
-
----
-
 ---
 
 ## 1. Architecture at a Glance
@@ -112,14 +91,8 @@ work both inside PHENIX and standalone.
 | `programs/` | 4 .py | PHENIX program driver |
 | `phenix_ai/` | 14 .py | Server, agents, parsers |
 | `wxGUI2/` | 6 .py | GUI panels |
-| `tests/` | 60+ .py | Test suites (~1300+ tests) |
+| `tests/` | 55 .py | Test suites (~1100 tests) |
 | `docs/` | 15+ .md | Documentation |
-
-Test suite count is approximate and grows steadily; v116.10 added
-89 new test cases across 7 new files (S13–S19) plus 40 for Tier
-2.1 (S25); v116.11 added 15 (S26); v116.12 added 27 (S27+S28);
-v116.13 added 15 (S29). See §5 Testing for the harness conventions
-and §14 for legacy notes.
 
 ---
 
@@ -301,12 +274,35 @@ each experiment type (X-ray and cryo-EM).
      programs, `prefer_programs` reorders them
    - Apply plan directives (Expert mode):
      `prefer_programs` from the current plan stage
-   - **(v116.10 Tier 2.1)** Apply declarative
-     `requirements:` from each program's `programs.yaml`
-     entry, evaluated via `_check_requirements()`.
-     Removes programs whose required context isn't
-     present (e.g., autobuild without phased data and
-     no placed model). See §4 Step 1 for the schema.
+
+**`after_program` semantics (v112.78, refactored v116.x):**
+`after_program` in `stop_conditions` is a **minimum-run
+guarantee**, not a hard stop.  When the named target
+program has not yet run, it is added to the front of
+`valid_programs` to ensure it runs.
+
+Once the target program HAS run, behavior depends on
+`stop_conditions.stop_after_requested`:
+
+- `stop_after_requested=True` (user/README explicitly
+  requested a stop-after) → `valid_programs` is wiped to
+  `[STOP]`.  The user said stop; the workflow_engine
+  enforces it.
+- `stop_after_requested=False` (typically a plan-progression
+  hint from `plan_to_directives`) → no action.  The workflow
+  advances naturally to the next step / plan stage.
+
+The flag is set by the directive extractor
+(`agent/directive_extractor.py`) via `_is_stop_after_requested()`
+when the raw user advice or README contains explicit stop-after
+phrasing.  Plan-injected `after_program` does NOT set the flag.
+`prompts_hybrid.py` also gates on the flag and emits "Stop
+target: X" prompt directives only when it is True.
+
+See `ARCHITECTURE.md` "Stop-after directive routing (v116.x)"
+for the full discussion, including how this replaces the
+previous "append-STOP" approach and why a `skip_validation`
+carve-out was rejected.
 
 3. The resulting list is passed to the LLM (or
    rules-based selector) which picks one.
@@ -337,6 +333,95 @@ xray:
       transitions:
         on_complete: refine
 ```
+
+#### 3a.1. Stop-condition processing (v116.x)
+
+Stop conditions flow through three layers:
+
+1. **Detection** (`agent/directive_extractor.py`):
+   `_is_stop_after_requested(advice)` returns True when the raw
+   user advice contains explicit stop-after phrasing.  Positive
+   patterns: `"stop after X"`, `"X and stop"`, `"only run X"`,
+   `"just (do|run) X"`, `"stop when"`, `"stop once"`, `"stop if"`,
+   `"stop at"`, `"Stop Condition: <real value>"`.  Negative
+   patterns: `"don't stop"`, `"do not stop"`, `"never stop"`.
+   Special-cased to False: `"Stop Condition: None"`, `"Stop
+   Condition: not specified"`, heading-only `"Stop Conditions:"`,
+   absence of any stop signal.
+
+2. **Persistence** (`agent/directive_extractor.py`,
+   `VALID_STOP_CONDITIONS`): `stop_after_requested: bool` is part
+   of the directives schema and survives `validate_directives()`.
+   The directive extractor sets it alongside `after_program` and
+   `skip_validation` at every site where explicit user intent is
+   detected (resolver `+stop` branches, intent="task",
+   `tutorial_patterns`, `denmod_patterns`, `"stop after
+   refinement"` regex).  It also pops the flag wherever
+   `after_program` is removed (intent="solve" / "solve_constrained"
+   carve-outs, ligand-workflow conflict, downstream-work conflict,
+   skip-program conflict, resolver multi-action-no-stop branch).
+
+3. **Consumption** (two consumers gate on the flag):
+   - `agent/workflow_engine.py::_apply_directives` — when
+     `after_program` is set AND target has run AND
+     `stop_after_requested=True`, wipes `valid_programs` to
+     `[STOP]`.  Otherwise (no flag, plan progression), takes no
+     action.
+   - `knowledge/prompts_hybrid.py::_format_directives_for_prompt`
+     — emits "Stop target: X" prompt directives only when
+     `stop_after_requested=True`.  Without this gating, plan-
+     injected `after_program` would produce misleading prompts
+     telling the LLM to stop mid-plan.  As a side effect, the
+     `**Stop Conditions:**` section header is now emitted only
+     when there is non-empty body content under it.
+
+**Why this design (vs simpler alternatives):**
+
+- A simpler `if after_program is set, treat as hard stop` was tried
+  and reverted (v112.78): too many cases where `after_program` is a
+  plan-progression hint, not a user stop.
+- A pure min-run `if after_program is set, ensure it runs, never
+  stop` was tried and reverted (v112.78 restoration patch): the
+  workflow_engine no longer enforces user stops, leaving the LLM
+  as the only mechanism — works most of the time but no structural
+  guarantee.
+- The flag distinguishes the two cases at the source, so the
+  consumers can act unambiguously without subtle prompt-engineering
+  workarounds or `skip_validation` carve-outs.
+
+**Adding a new stop-condition trigger:**
+
+If you want a new phrase to count as a user-explicit stop:
+
+1. Add the pattern to `_POSITIVE_STOP_AFTER_PATTERNS` in
+   `directive_extractor.py` (a compiled `re.Pattern`).
+2. Add a test case to `tst_audit_fixes.py` covering both the
+   positive case (sets the flag) and a negation case (doesn't).
+3. No changes to consumers — they read the flag, they don't
+   re-implement detection.
+
+If you want to suppress a phrase that's currently triggering a
+false positive:
+
+1. Either add to `_NEGATIVE_STOP_PATTERNS` (if the phrase always
+   means "don't stop") or to the `_STOP_CONDITION_NONE` regex (if
+   it's a no-value marker like `"None"` / `"not specified"`).
+2. Add a test case.
+
+**Adding a new code path that emits `after_program`:**
+
+If you add a new place where directives gain an `after_program`
+based on user intent, you MUST also set
+`directives["stop_conditions"]["stop_after_requested"] = True`
+in the same code path.  If you add a code path that REMOVES
+`after_program` (e.g. due to a new conflict), you MUST also
+`pop("stop_after_requested", None)` from the same dict.  The
+flag is a parallel signal to `after_program`; the two must stay
+consistent.
+
+If your code path emits `after_program` from a PLAN context
+(not user intent), do NOT set the flag.  Plan-injected
+`after_program` is by design a min-run hint only.
 
 ### 3b. Command Builder
 
@@ -888,183 +973,6 @@ for backward compatibility. All callback sends must
 be wrapped in `try/except Exception: pass` (non-
 critical, must not crash the agent).
 
-### 3i. Directive Extractor (v116.11 hardening)
-
-**Files:** `agent/directive_extractor.py`, `agent/advice_preprocessor.py`
-
-The directive extractor parses user advice (or
-preprocessor-generated structured summaries) into JSON
-directives that drive workflow filtering:
-`after_program`, `start_with_program`, `skip_programs`,
-`prefer_programs`, `skip_validation`, and per-program
-parameter overrides.
-
-**Preprocessor format awareness (v116.11).** The advice
-preprocessor LLM produces output with labeled sections
-like `7. **Stop Condition**: None`. These section
-headers must NOT be interpreted as real user intent —
-the heuristic regex inside `_resolve_after_program`
-will match `\bstop\b` inside the header text otherwise.
-The extractor handles this in three coordinated places:
-
-1. `_strip_preprocessor_stop_condition` removes the
-   header at the entry of both `extract_directives`
-   and `extract_directives_simple`. The regex matches
-   numbered prefixes (`7.`), bullet markers (`-`/`*`),
-   and markdown bold (`**Header**:`).
-2. `_resolve_after_program` performs a defense-in-depth
-   strip on `advice_lower` before the `\bstop\b` check.
-3. When the advice is detected as preprocessor output
-   (signature headers present), the resolver no longer
-   writes `start_with_program` from multi-action prose
-   like "Run PredictAndBuild ... rebuild ... refine".
-   Real user prose like "run phaser and refine" still
-   sets `start_with_program=phenix.phaser`.
-
-**Semantic distinction worth remembering:**
-
-| Directive | Semantics | Should come from |
-|-----------|-----------|------------------|
-| `after_program` | "Stop after this program runs" | Explicit user stop intent |
-| `start_with_program` | "Start here, skip prerequisites" | Explicit user start intent |
-
-`start_with_program` is more aggressive (skips planner
-prerequisites). Inferring it from descriptive prose is
-fundamentally riskier than inferring `after_program`.
-The v116.11 fix codifies this in the resolver.
-
-When adding new heuristic patterns to the extractor,
-test against both user prose AND preprocessor output
-to avoid regression. See `tst_stop_condition_false_positive.py`
-(S26) for the regression test pattern.
-
-
-### 3j. Metrics and Stop Conditions (v116.12 + v116.13 symmetry)
-
-**Files:** `agent/metrics_analyzer.py`,
-`agent/metric_evaluator.py`,
-`agent/graph_nodes.py` (PLAN node auto-stop chain)
-
-`analyze_metrics_trend()` examines the metrics history
-and returns a dict with `should_stop`, `reason`,
-`trend_summary`, and `recommendation`. The PLAN node
-consults `metrics_trend.should_stop` and runs through
-an elif chain of suppression checks before firing
-AUTO-STOP.
-
-**Two parallel implementations — important to know about.**
-The codebase has two implementations of the stop logic
-in the agent/ directory:
-
-| File | Function | When it runs |
-|------|----------|--------------|
-| `agent/metric_evaluator.py` | `MetricEvaluator.analyze_trend()` | When `USE_YAML_METRICS=True` (the default in `graph_nodes.py` line 103) |
-| `agent/metrics_analyzer.py` | `_analyze_xray_trend()` / `_analyze_cryoem_trend()` (hardcoded) | Only as fallback when the YAML evaluator raises |
-
-`metrics_analyzer.py::analyze_metrics_trend()` is the
-public entry point. At line 271 it checks
-`use_yaml_evaluator` and, if True, delegates immediately
-to `analyze_refinement_trend()` (a wrapper around
-`MetricEvaluator.analyze_trend`) and returns. The
-hardcoded code beneath that check is the rarely-taken
-fallback path.
-
-**When changing stop logic**: always update BOTH files.
-The v116.12 fix only updated `metrics_analyzer.py` and
-deployed without effect because `metric_evaluator.py`
-(the production path) wasn't touched. v116.13 fixed
-this, but the underlying DRY violation remains. Code
-review for any change in this area should require
-matching updates in both files.
-
-**X-ray/cryo-EM symmetry (v116.12 + v116.13).** Both
-implementations now check `validation_done` before
-allowing auto-stop on success. Pre-v116.12, the cryo-EM
-`latest_cc > target` branch in both files
-unconditionally set `should_stop=True`. The X-ray
-equivalent correctly checked validation. v116.12 fixed
-the asymmetry in `metrics_analyzer.py`; v116.13 fixed
-it in `metric_evaluator.py`. The pattern (mirrored in
-both files):
-
-```python
-# Cryo-EM SUCCESS branch (v116.12 + v116.13)
-validation_done = any(
-    m.get("program") in (
-        "phenix.molprobity",
-        "phenix.validation_cryoem",
-    )
-    for m in metrics_history
-)
-
-if latest_cc > target:
-    if validation_done:
-        result["should_stop"] = True
-        # ... existing behavior
-    else:
-        result["should_stop"] = False
-        result["suggest_validation"] = True
-        # trend_summary: "TARGET REACHED" (preserved format)
-```
-
-Note: `phenix.model_vs_data` does NOT count for cryo-EM
-(it's X-ray-only). `phenix.validation_cryoem` is the
-cryo-EM-specific validation program.
-
-**PLAN node auto-stop chain (post-v116.12).**
-
-```
-if metrics_trend.should_stop:
-    if advice_changed:                                # fall through
-    elif after_program := ...:                        # handle after_program
-    elif user_wants_ligandfit and !ligandfit_done:    # suppress
-    elif plan_has_pending_stages:                     # suppress (expert plan)
-    elif step=="validate" and !validation_done:       # NEW: defense-in-depth
-    else:                                             # diagnostic dump + AUTO-STOP
-```
-
-The new elif (5th position) catches cases where
-`plan_has_pending_stages` doesn't fire — e.g., no
-expert plan, or the flag didn't propagate through
-session_info. The AUTO-STOP path now also logs a
-diagnostic context dump with all the gating values to
-`debug_log`, making future regressions debuggable.
-
-After v116.13, this PLAN-node suppression is genuinely
-defense-in-depth: `should_stop` is no longer set to
-True when validation hasn't run, so the chain is
-rarely entered with `should_stop=True` in the cryo-EM
-SUCCESS case.
-
-**When adding a new stop condition** (e.g., a new
-`should_stop=True` path in either implementation),
-think about whether validation should be required
-first. Mirror the existing validation_done pattern if
-so. The X-ray `r_free < success_threshold` and
-cryo-EM `latest_cc > target` both check validation;
-PLATEAU and EXCESSIVE intentionally don't (loop
-guards).
-
-**Lessons from the v116.12 miss** (worth internalizing):
-
-- When patching a function, search the module for
-  early-return paths, delegation, and alternative
-  implementations. A simple
-  `grep -n "use_yaml\|analyze_refinement_trend"`
-  on `metrics_analyzer.py` would have caught the
-  parallel-implementation issue before the patch.
-- When a deployed fix doesn't change behavior, look at
-  the message format first. If the printed strings
-  don't match the patched code, the patch is in dead
-  code — not a deployment lag, not a missing field, but
-  the wrong file.
-
-See `tst_cryoem_stop_validation.py` (S27),
-`tst_plan_autostop_validation_suppression.py` (S28),
-and `tst_cryoem_metric_evaluator_validation.py` (S29)
-for the regression test patterns.
-
-
 > **YAML is the source of truth for all subsystem behavior.** The workflow
 > engine, command builder, and program registry are all driven by YAML files
 > in `knowledge/`. When reading the subsystem descriptions above:
@@ -1075,6 +983,312 @@ for the regression test patterns.
 
 
 ---
+
+### 3i. Stop-after Routing and Raw-Advice Extraction (v117 / v117.1 / v117.2 / v117.3)
+
+The v117 family introduced two related changes to directive
+extraction and stop-after handling.  This subsection covers what a
+new developer needs to know to safely modify either area.
+
+#### The two kinds of `after_program`
+
+`stop_conditions.after_program` carries two distinct intents
+depending on whether `stop_conditions.stop_after_requested` is set:
+
+```
+stop_after_requested=True   → user-explicit stop
+                              wipe valid_programs to ["STOP"] when done
+                              prompt emits "Stop target: X" 4-line block
+
+stop_after_requested=False  → plan-progression hint
+or absent                     no wipe; plan progresses naturally
+                              prompt emits nothing for after_program
+```
+
+The flag is set in two ways:
+
+1. **Directive extractor regex helper** `_is_stop_after_requested`
+   detects 11 positive patterns: `"X and stop"`, `"stop after X"`,
+   `"only run X"`, `"just run X"`, `"Stop Condition: <real value>"`,
+   the period-stop pattern `"\. stop"`, and others.  Run automatically
+   on the user advice; flag set if any pattern matches.
+
+2. **LLM directly** — the JSON schema documents `stop_after_requested`
+   as a boolean field.  The dual-input prompt (see below) instructs
+   the LLM to set it based on the raw user instruction.
+
+The downstream code that respects this flag:
+- `workflow_engine._apply_directives` — gates the wipe
+- `prompts_hybrid._format_directives_for_prompt` — gates the 4-line block
+
+#### Raw-advice dual-input extraction
+
+`extract_directives()` accepts an optional `raw_advice` parameter.
+When supplied and different from `user_advice`, the extractor uses
+`DIRECTIVE_EXTRACTION_PROMPT_WITH_RAW` (dual-input + AUTHORITY
+paragraph) instead of the single-input prompt.  When equal or None,
+behavior is unchanged (backward compat).
+
+The AUTHORITY paragraph tells the LLM that raw is the source of truth
+for intent (after_program, start_with_program, stop_after_requested)
+and processed fills gaps for files, parameters, and experiment type.
+
+Plumbing path: client sets `session.data["raw_advice"]` →
+`programs/ai_agent.py::_extract_directives` reads it →
+`directive_params.ai_analysis.user_advice_raw` →
+`programs/ai_analysis.py` PHIL parameter →
+`phenix_ai/run_ai_analysis.py::run_directive_extraction` →
+`extract_directives(..., raw_advice=...)`.
+
+#### The grounding ∧ flag interaction (v117.1)
+
+The v116.19a `_validate_after_program_grounded` guardrail drops
+`after_program` when the program name doesn't appear literally in the
+advice — protecting against fabrication.  But when v117 Step 1's
+AUTHORITY paragraph correctly leads the LLM from a verb in the raw
+advice (e.g. "density modify") to a learned mapping (e.g.
+`phenix.resolve_cryo_em`), the literal-substring check fires
+incorrectly.
+
+v117.1 resolves this: when the LLM sets BOTH `after_program` AND
+`stop_after_requested=True`, the literal grounding check is skipped.
+The flag is the LLM's explicit user-stop assertion — strictly
+stronger evidence than the heuristic check.
+
+**Rule for modifying this area:** before changing either the
+grounding guardrail or the flag handling, ensure all 5 cases in
+`tests/tst_grounding_stop_after_requested.py` (K1-K5) still pass.
+They lock the interaction at the boundary.
+
+#### Filling `after_program` from raw advice (v117.2)
+
+After v117.1 fixed the grounding guardrail, a separate gap remained:
+the LLM (specifically openai, observed on the C1 test) occasionally
+emits `stop_after_requested=True` but omits `after_program` for
+ambiguous inputs.  Without `after_program`, the gated wipe in
+`workflow_engine._apply_directives` is unreachable (the wipe path is
+gated on `if after_program:`).
+
+v117.2 closes the gap in `extract_directives()`: when the flag is set
+but the program field is unset, call `_resolve_after_program()` on
+the raw advice to fill in `after_program` via `_ACTION_TABLE`.
+
+The fix's three guards:
+
+```python
+if stop_after_requested is True and not after_program:
+    if raw_advice and _is_stop_after_requested(raw_advice):
+        _resolve_after_program(directives, raw_advice.lower())
+```
+
+- The `not after_program` guard means the fix never overrides an LLM
+  choice; it only fills in when the LLM omitted the field.
+- The `_is_stop_after_requested(raw_advice)` guard means a
+  hallucinated flag (LLM sets True against advice with no stop
+  signal) does not get amplified — the resolver isn't called.
+- The `raw_advice or user_advice` fallback maintains backward
+  compatibility with callers that pass only `user_advice` (single-
+  input path; the fallback gives them the same benefit).
+
+The fix lives at line ~700 in `agent/directive_extractor.py`,
+between `_apply_crystal_symmetry_fallback` and the ollama-empty
+retry, after grounding has already validated/dropped any LLM-set
+`after_program`.
+
+**Rule for modifying this area**: before changing the fill-in
+logic, ensure all 6 cases in
+`tests/tst_after_program_fill_from_raw.py` (K1-K6) still pass.
+K1 (the C1 fix) and K3 (no stop intent in raw → no fill) are the
+most important — they together define the lock between "do useful
+work" and "don't amplify bad data."
+
+#### Extended stop-intent phrasings (v117.3)
+
+After v117.2 fixed the C1 "missing after_program" gap, openai's
+extractor still failed on the pre-existing
+`tst_directive_extraction.py::explicit_stop_after_phaser` test
+(0/5).  The fixture's user-side phrasing in the Special Instructions
+section is `"Stop the workflow immediately after phaser completes"`
+— a clear user-stop directive that:
+
+- v117.2's regex helpers don't recognize (no pattern matches it)
+- The LLM (openai) doesn't translate into `stop_after_requested=True`
+  (the schema docs gave no example of this phrasing class)
+
+So openai produced `after_program=phenix.phaser` without the flag,
+v117.1's exemption couldn't fire, and Failure 2 in
+`_validate_after_program_grounded` dropped the directive.
+
+v117.3 closes the gap with three small additive changes:
+
+1. **`_IMPERATIVE_STOP_MARKERS`** (in `agent/directive_extractor.py`
+   around line 1283) gains 5 new entries:
+   `"stop the workflow"`, `"immediately after"`,
+   `"after it completes"`, `"after it finishes"`,
+   `"is the last step"`.
+
+2. **`_POSITIVE_STOP_AFTER_PATTERNS`** (around line 2812) gains 2
+   new regex patterns:
+   `r'\bstop\s+the\s+workflow\b'` and `r'\bis\s+the\s+last\s+step\b'`.
+
+3. **`DIRECTIVE_EXTRACTION_PROMPT`** schema docs for
+   `stop_after_requested` (around line 244) gain 4 new recognized
+   phrasings and 2 program-neutral few-shot examples.
+
+**Why some markers are NOT in the regex list**: this is a deliberate
+asymmetry.  Marker matching is window-bounded (300 chars near program
+name), so `"immediately after"` is safe there but unsafe as a global
+regex (would fire on "the workflow continues immediately after
+prediction").  The over-permissive `\bafter\s+\w+\s+completes?\b`
+and `\bafter\s+\w+\s+(?:finishes|is\s+done)\b` patterns were
+considered for the regex list and **dropped** during planning after
+K5 verified the false positive on "validation runs after refinement
+completes."
+
+**Rule for modifying this area**: before changing any of the three
+v117.3 additions, ensure all 9 cases in
+`tests/tst_extended_stop_phrasings.py` (K1, K2, K4, K5, K6, K7a/b,
+K8a/b) still pass.  K4 (AF_7mjs preservation) and K5 (descriptive
+false-positive guard) are the most important: they lock the
+preservation properties that the rejected over-permissive patterns
+would have broken.
+
+**End-to-end flow with v117.3 applied** for the
+`explicit_stop_after_phaser` failure mode:
+
+- LLM emits `after_program=phenix.phaser` (correct) but no
+  `stop_after_requested` flag (the openai gap)
+- Grounding guardrail's `_imperative_marker_nearby` fires because
+  the new marker `"stop the workflow"` matches within 300 chars of
+  the phaser occurrence → `after_program` preserved
+- Downstream `_apply_workflow_intent_fallback` calls
+  `_resolve_after_program`; `_is_stop_after_requested` on the
+  stripped advice returns True because of the new regex pattern →
+  `stop_after_requested=True` set automatically
+
+Result: full correct directives reach `workflow_engine._apply_directives`.
+
+#### Modifying these areas — checklist
+
+- [ ] If changing `_is_stop_after_requested`, also check the 11
+      positive patterns vs the unit tests in
+      `tst_extract_raw_advice.py::test_is_stop_after_requested_helper_basic_cases`
+- [ ] If changing `_apply_directives` after_program logic, verify
+      M1-M7 in `tst_validate_step_after_program_guard.py`
+- [ ] If changing `_format_directives_for_prompt` after_program
+      handling, verify K1-K3 + N1-N5 in `tst_after_program_prompt.py`.
+      N5 is an anti-regression test for the old "CRITICAL: You MUST
+      run X" wording — keep the new wording.
+- [ ] If changing `_validate_after_program_grounded`, verify K1-K5
+      in `tst_grounding_stop_after_requested.py`.  Specifically, K2
+      (AF_7mjs case still dropped without flag) and K1 (C1 case
+      preserved with flag).
+- [ ] If changing the v117.2 fill-in logic in `extract_directives`,
+      verify K1-K6 in `tst_after_program_fill_from_raw.py`.  K1 (fix
+      fires) and K3 (guard against hallucinated flag) are the
+      essential pair.
+- [ ] If changing v117.3 markers or patterns in
+      `_IMPERATIVE_STOP_MARKERS` / `_POSITIVE_STOP_AFTER_PATTERNS`,
+      verify all 9 cases in `tst_extended_stop_phrasings.py`.  K4
+      (AF_7mjs preservation) and K5 (descriptive false-positive
+      guard) are essential — they prevent reintroduction of the
+      over-permissive patterns rejected during plan review.
+- [ ] If changing the extractor LLM prompt — both
+      `DIRECTIVE_EXTRACTION_PROMPT` and
+      `DIRECTIVE_EXTRACTION_PROMPT_WITH_RAW` — verify the schema
+      documentation for `stop_after_requested` and the AUTHORITY
+      paragraph remain consistent.
+
+#### Anti-patterns to avoid
+
+- **Re-introducing v112.78's "wipe everywhere".**  Wiping
+  `valid_programs` to `["STOP"]` whenever `after_program_done` would
+  regress AF_7mjs and any future per-stage min-run hints.  The wipe
+  must be gated on `stop_after_requested=True`.
+- **Tightening grounding to drop after_program when the flag is
+  True.**  This would re-resurface the C1 failure.  The flag is the
+  grounding signal in that case.
+- **Adding `after_program` patterns that don't also pop
+  `stop_after_requested`** (or vice versa).  Pattern-based
+  assignments are tentative — the intent classifier may override
+  them.  All pop sites must clear both.  See
+  `agent/directive_extractor.py`: 8 pop sites including
+  `_set_by_pattern` cleanup.
+- **Reading `stop_after_requested` from anywhere except
+  `stop_conditions`.**  The flag lives only there; downstream readers
+  should always destructure from `directives["stop_conditions"]`.
+- **Removing the `_is_stop_after_requested(raw_advice)` guard in
+  v117.2's fill-in code.**  This guard is what prevents a
+  hallucinated `stop_after_requested=True` from getting amplified
+  into a hallucinated `after_program`.  If the LLM sets the flag
+  against advice that genuinely has no stop intent, the resolver
+  must not be invoked — leave the bad state alone rather than
+  compound it.
+- **Reintroducing the rejected `\bafter\s+\w+\s+completes?\b`-class
+  patterns into `_POSITIVE_STOP_AFTER_PATTERNS`.**  These were considered
+  during v117.3 planning and dropped after K5 verified the false
+  positive on descriptive prose like "validation runs after refinement
+  completes."  If the failure mode reappears in a new LLM test
+  fixture, address it through `_IMPERATIVE_STOP_MARKERS` (window-
+  bounded) instead, or via prompt schema docs.  The bare regex
+  patterns are too permissive.
+
+#### Why the docs were updated late
+
+v117 originally shipped without full doc reconciliation (see
+`next_steps.md` §4.3) because the stop_refactor delivery's docs were
+built against a baseline that predated some v116.14+ content.
+Wholesale replacement would have regressed that content.  This
+section was hand-merged in v117.1.
+
+### 3j. PHIL Parameter Authoring
+
+When adding a new PHIL parameter to a program (`programs/<file>.py`),
+the parameter block goes inside a PHIL scope and looks like:
+
+```
+my_param = None
+  .type = str
+  .short_caption = Brief one-line caption
+  .help = Longer description that may span \
+          multiple lines using backslash-newline continuation.
+  .style = hidden
+```
+
+**Syntax constraints that may not be obvious:**
+
+- **No semicolons in `.help` strings.**  The PHIL parser does not
+  accept semicolons inside `.help` values.  A `.help` value like
+  `"Optional; when set the server uses it"` will cause the parser
+  to fail or misread the field.  Use periods, commas, or em-dashes
+  instead.  Observed during v117 Step 1 when the original `.help`
+  for `user_advice_raw` used a semicolon and broke PHIL parsing.
+- **Backslash-continuation for multi-line `.help`.**  PHIL strings
+  end at the next unescaped newline.  Use `\` at the end of each
+  continued line.
+- **Caption is one line.**  `.short_caption` cannot span lines and
+  cannot contain newlines or backslash-continuations.
+- **`.style = hidden` keeps the parameter out of GUI auto-rendering.**
+  Use for server-internal params (e.g., the `user_advice_raw` field
+  added in v117 Step 1) that aren't meant to be set by GUI users.
+- **PHIL parameter names are lowercase with underscores.**  No
+  camelCase, no hyphens.  Sub-scopes use dotted notation
+  (`my_scope.my_param`).
+
+**Mirroring PHIL on client and server:**
+
+For parameters that flow client → server through PHIL serialization
+(see §3i for the v117 raw-advice path as an example), the PHIL
+parameter MUST be defined identically in both
+`programs/ai_agent.py` (client) and `programs/ai_analysis.py`
+(server).  Mismatched definitions cause `phil` to either drop the
+parameter at one end or raise on unknown keys at the other.
+
+When adding such a parameter, add it to both files in the same
+commit, verify the parse on both sides with
+`libtbx.python -c 'from programs.ai_agent import master_phil_str; ...'`,
+and run the cross-tree tests (`tst_audit_fixes.py` exercises the
+end-to-end PHIL flow when run in the PHENIX tree).
 
 ## 4. Adding a New Program
 
@@ -1250,35 +1464,6 @@ phenix.new_program:
   user_advice_keywords:
     - "keyword1"
     - "keyword2"
-
-  # Declarative requirements (v116.10 Tier 2.1).
-  # Filter program out of valid_programs when context
-  # is missing inputs.  Cleaner than imperative Python
-  # filter functions (which still exist for legacy
-  # programs).  Evaluated by _check_requirements() in
-  # workflow_engine.py.
-  #
-  # The 'requires:' list is AND-combined: every clause
-  # must be satisfiable.  Inside 'any_of:', clauses are
-  # OR-combined.  Supported clause types:
-  #
-  #   has: <flag>             -> context["has_<flag>"] truthy
-  #   has_any: [a, b, c]      -> any of has_a / has_b / has_c truthy
-  #   done: <program>         -> context["<program>_done"] truthy
-  #   not_has: <flag>         -> context["has_<flag>"] falsy
-  #   any_of: [<clause>, ...] -> at least one sub-clause satisfies
-  #
-  # Example (phenix.autobuild, prevents runtime crash):
-  requirements:
-    requires:
-      - has_any: [data_mtz, phased_data_mtz]
-      - any_of:
-          - has: phased_data_mtz
-          - has: model
-          - has: placed_model
-          - has: placed_model_from_history
-          - done: phaser
-          - done: autosol
 ```
 
 ### Key Fields for Automatic Handling
@@ -1410,6 +1595,18 @@ phenix.new_program:
 
 Patterns are sorted by length at load time (longest first) so more specific
 patterns match before shorter ones.
+
+When the user's advice matches one of these patterns AND contains an
+explicit stop-after phrasing recognised by `_is_stop_after_requested()`
+(v116.x — `"stop after X"`, `"X and stop"`, `"only run X"`, etc.), the
+directive extractor sets both `stop_conditions.after_program=phenix.new_program`
+AND `stop_conditions.stop_after_requested=True`.  Without the flag,
+`after_program` is treated as a min-run hint only — see section 3a
+"`after_program` semantics".  If you want your program to support
+user-explicit stops, the helper's standard positive patterns cover the
+common phrasings without per-program work.  Adding patterns specific to
+your program (e.g., `"run_only_new_program"`) is only needed if users
+might use a phrasing the helper doesn't recognise.
 
 **When to add `done_tracking`:**
 - Your program gates a workflow phase (e.g., xtriage gates "analyze")
@@ -2085,6 +2282,12 @@ python agent/program_validator.py --list
    - Check conditions in `workflows.yaml`
    - Verify file categorization is correct
    - Check if `_done` flag is blocking it
+   - If `after_program` is set and target has run AND
+     `stop_after_requested=True` (v116.x), valid_programs is
+     wiped to `[STOP]`.  Check the directive extraction logs for
+     `"DIRECTIVES: stop_after_requested"`.  If False / absent,
+     the workflow advances naturally — see section 3a
+     "`after_program` semantics".
 
 2. **Metrics not extracted?**
    - Test regex pattern against actual log output
@@ -2153,101 +2356,6 @@ This document describes the testing infrastructure for the PHENIX AI Agent.
 ### Overview
 
 The test suite uses a **cctbx-style testing approach** with plain functions and fail-fast behavior, meaning the first assertion failure stops execution with a full traceback. This matches the testing conventions used throughout the PHENIX/cctbx ecosystem.
-
-### Test suite catalog (selected v116-era suites)
-
-Each `tst_*.py` is registered in `tests/run_all_tests.py` with a
-suite identifier (S13, S14, ...). New suites are added by:
-
-1. Creating `tests/tst_<descriptive_name>.py` with a
-   `run_all_tests()` entry point (see "Test runner convention"
-   below).
-2. Adding an import + `results.append(...)` block to
-   `run_all_tests.py`.
-3. Documenting the suite in the docstring at the top of
-   `run_all_tests.py`.
-
-Recent suites worth knowing about (full list in
-`run_all_tests.py` docstring):
-
-| Suite | Topic | Pattern to learn from |
-|-------|-------|------------------------|
-| S13–S19 | v116.10 reliability fixes (user advice, after-program prompt, data-input filter, protocol hygiene, sequence-only routing, standalone consistency, dock-and-stop) | Shows fixture isolation and trace-equivalence testing |
-| S20 | Post-Phase-5 CC key extraction fix | Audit-style: validates assumptions about output key names |
-| S25 | Declarative `requirements:` schema (v116.10 Tier 2.1) | 40 tests; covers AND/OR semantics, clause types, integration with workflow_engine |
-| S26 | Stop condition false positive (v116.11) | Tests resolver-direct behavior + upstream strip; uses `_resolve_after_program` directly to isolate from `intent_classifier` |
-| S27 | Cryo-EM stop validation (v116.12 Fix #1) | Mirrors X-ray test pattern; verifies X-ray path unchanged |
-| S28 | PLAN AUTO-STOP suppression (v116.12 Fix #2) | Tests the PLAN node elif chain in isolation via synthetic state dicts |
-| S29 | Cryo-EM metric evaluator validation (v116.13) | Tests `MetricEvaluator.analyze_trend` directly via libtbx-stub including yaml_loader; cautionary tale about patching dead code (see §3j) |
-
-### Test runner convention
-
-Test files follow a standard structure recognized by
-`run_all_tests.py`:
-
-```python
-def run_all_tests():
-    """Entry point for the test harness."""
-    try:
-        from libtbx.langchain.tests.tst_utils import (
-            run_tests_with_fail_fast)
-    except ImportError:
-        try:
-            from tests.tst_utils import run_tests_with_fail_fast
-        except ImportError:
-            _standalone_runner()
-            return
-    run_tests_with_fail_fast()
-
-
-def _standalone_runner():
-    """Fallback for environments without libtbx."""
-    test_fns = [v for k, v in sorted(globals().items())
-                if k.startswith("test_") and callable(v)]
-    for fn in test_fns:
-        try:
-            fn()
-        except Exception as e:
-            # record failure
-            ...
-    print("%d passed, %d failed" % (PASS, FAIL))
-
-
-if __name__ == "__main__":
-    _standalone_runner()
-```
-
-Individual test functions are discovered by name (`test_*`) so no
-explicit registration is needed within the file.
-
-### libtbx stub pattern (for standalone runs)
-
-New tests that import production code from `agent/` must work
-without a PHENIX install. The standard pattern stubs the
-`libtbx.langchain` module hierarchy at the top of the test file
-before importing:
-
-```python
-if "libtbx" not in sys.modules:
-    import types as _types
-    for _mod in (
-        "libtbx", "libtbx.langchain",
-        "libtbx.langchain.agent",
-        # ... add submodules used by your import chain
-    ):
-        sys.modules[_mod] = _types.ModuleType(_mod)
-    # Then attach minimal stub functions/classes as needed
-
-try:
-    from libtbx.langchain.agent.your_module import your_func
-except ImportError:
-    from agent.your_module import your_func
-```
-
-This lets developers run tests during code review without a
-PHENIX build. See `tst_cryoem_stop_validation.py` for a minimal
-example and `tst_plan_autostop_validation_suppression.py` for a
-fuller stub when the import chain is large.
 
 ### Quick Start
 
@@ -2468,7 +2576,9 @@ Total: **1080+ tests across 38 files**
 | `test_e1_rsr_map_cc_uses_last_cycle` | tst_audit_fixes.py | RSR map_cc returns final macro-cycle value |
 | `test_i1_max_refine_cycles_xray_controlled_landing` | tst_audit_fixes.py | Hitting max_refine_cycles injects validate + STOP, not bare STOP |
 | `test_i1_max_refine_cycles_cryoem_uses_rsr_count` | tst_audit_fixes.py | Cryo-EM limit uses rsr_count, not refine_count |
-| `test_i2_after_program_beats_quality_gate` | tst_audit_fixes.py | after_program → STOP only (no validate injection) |
+| `test_i2_after_program_beats_quality_gate` | tst_audit_fixes.py | At step=refine with at_target=True and after_program done, refine programs are removed and STOP added.  Docstring updated (v116.x) to reflect that this is upheld by the at_target gate; the explicit-wipe-on-stop only fires when `stop_after_requested=True`. Test passes unchanged. |
+| `test_i2_v112_78_after_program_min_run_not_hard_stop` | tst_audit_fixes.py | v116.x regression test for Tom's nsf-d2-ligand ligandfit case: after_program done at refine step with NO `stop_after_requested` (plan progression hint) must leave ligandfit available, NOT add STOP, NOT wipe to [STOP]. |
+| `test_i2_v112_78_user_explicit_stop_still_offers_STOP` | tst_audit_fixes.py | v116.x complementary test: user-explicit "X and stop" (`stop_after_requested=True`) wipes `valid_programs` to `[STOP]` once X has run. |
 | `test_p1_handle_session_management_display_sets_result` | tst_audit_fixes.py | `display_and_stop` populates `self.result` via `_finalize_session(skip_summary=True)` |
 | `test_p2_remove_last_n_saves_and_populates_result` | tst_audit_fixes.py | `remove_last_n` saves to disk AND updates `result.session_data` |
 | `test_p3_get_results_safe_before_run` | tst_audit_fixes.py | `get_results()` on fresh instance returns None, not AttributeError |
@@ -3200,8 +3310,6 @@ The client calls `decide_next_step()` with these arguments:
 | `unplaced_model_cell` | `None` | v3 | Pre-extracted CRYST1 cell `[a,b,c,α,β,γ]` |
 | `model_hetatm_residues` | `None` | v3 | Pre-extracted HETATM data `[[chain,resseq,resname],...]` |
 | `client_protocol_version` | `1` | v3 | Protocol version of the sending client |
-| `plan_has_pending_stages` | `False` | v4 | True when the strategic plan has pending stages with programs that could run; PLAN node uses this to suppress premature AUTO-STOP |
-| `asu_copies` | `None` | v5 | Number of copies in the ASU (int or None); from user directives or xtriage analysis |
 
 ### Server → Client (Response)
 
@@ -3232,19 +3340,10 @@ Defined in `agent/contract.py`:
 
 | Constant | Value | Purpose |
 |----------|-------|---------|
-| `CURRENT_PROTOCOL_VERSION` | `5` | What the latest client sends |
+| `CURRENT_PROTOCOL_VERSION` | `3` | What the latest client sends |
 | `MIN_SUPPORTED_PROTOCOL_VERSION` | `1` | Oldest client the server accepts |
 
 The client imports `CURRENT_PROTOCOL_VERSION` from contract.py via `_get_protocol_version()` in `ai_agent.py`, so bumping the constant updates both server and client automatically.
-
-**v116.10 drift protection.** `contract.py` now ships a
-`validate_contract()` function that asserts three invariants:
-`CURRENT_PROTOCOL_VERSION >= max(field_versions)`,
-`MIN_SUPPORTED_PROTOCOL_VERSION <= CURRENT`, and
-`MIN >= 1`. Run by `tst_contract_compliance.py::test_contract_validate_passes`
-on every test run. The bug it prevents: adding a v4/v5 field to
-`SESSION_INFO_FIELDS` while forgetting to bump
-`CURRENT_PROTOCOL_VERSION` (silent client/server drift).
 
 ### The Rules
 
@@ -3350,6 +3449,62 @@ them (`"%.3f" % r_free`) must use `_safe_float()` or equivalent coercion.
 **Enforced by**: `tst_phase3_bug5.py :: test_bug4_*` tests (8 tests
 covering string coercion, garbage handling, crash prevention, gap
 detection, None preservation, metric_evaluator, cryo-EM CC, and kb_tags).
+
+### RULE 10: When adding a new LLM-driven extractor, plumb raw advice alongside processed
+
+**Background.** The advice preprocessor sits between the user's raw
+text and any downstream LLM that consumes that text.  The preprocessor
+LLM occasionally mangles short imperative input — the openai-provider
+"density modify and stop" failure case is documented in
+`CHANGELOG.md` under Step 1 / v117.  When a downstream LLM
+extractor sees only the preprocessed text, the user's original intent
+can be silently lost.
+
+**The rule.** When you write a new LLM-driven extractor that consumes
+user advice (any new prompt that takes `user_advice=` in
+`directive_extractor`-shape), give it BOTH raw and processed inputs
+with an explicit authority rule for the fields you care about.  Use
+the Step 1 plumbing as a template:
+
+1. The extractor function accepts `raw_advice=None` alongside
+   `user_advice=` and selects between single-input and dual-input
+   prompts based on `raw_advice is not None and raw_advice.strip()
+   and raw_advice != user_advice`.
+2. The dual-input prompt is derived from the single-input prompt via
+   `str.replace()` of a named block, guarded by an import-time
+   `assert ... .count(_SINGLE_INPUT_BLOCK) == 1` so future prompt edits
+   that break the derivation fail at import.
+3. Add the corresponding PHIL field
+   (`user_advice_raw`-shape) to both `ai_analysis.py` (server) and
+   `ai_agent.py` (client).  Wire it through `_build_server_args` and
+   the local dispatcher.  Backward-compatible: defaults to `None` and
+   old clients fall through to single-input.
+4. Set the client-side PHIL value from `session.data["raw_advice"]`
+   in the function that builds `directive_params`.  Use
+   `session.data.get("raw_advice") or None` (None-safe per
+   guideline §3) so an unset key or stored-as-empty doesn't put a
+   bogus empty string on the wire.
+
+**Files that establish the template:**
+
+| Role | File | Function/symbol |
+|------|------|-----------------|
+| Prompt + selector | `agent/directive_extractor.py` | `extract_directives()`, `_RAW_INPUT_BLOCK`, `DIRECTIVE_EXTRACTION_PROMPT_WITH_RAW` |
+| Module wrapper | `phenix_ai/run_ai_analysis.py` | `run_directive_extraction(raw_user_advice=...)` |
+| Session wrapper | `agent/session.py` | `AgentSession.extract_directives(raw_advice=...)` |
+| Server PHIL + dispatch | `phenix/programs/ai_analysis.py` | `user_advice_raw` PHIL, `_build_server_args`, `_run_directive_extraction_locally` |
+| Client touch + PHIL | `phenix/programs/ai_agent.py` | `user_advice_raw` PHIL, `_extract_directives` setter |
+
+**Why not just read raw from somewhere downstream?** Because the
+agent's preprocessing flow is what produces `session.data["raw_advice"]`,
+and that data is client-side state at the time we build PHIL.  The
+clean way to get it to the server is over the wire as a PHIL field;
+adding it to `session_info` (which goes elsewhere) would conflate two
+different transport channels.
+
+**Enforced by**: `tst_extract_raw_advice.py` source-scans every link in
+the chain.  Run on pre-Step-1 code, every test in that module fails
+with a diagnostic message pointing at the missing piece.
 
 ### What's Implemented
 
@@ -4473,66 +4628,6 @@ consulted]` in the Expert Assessment output.
 
 *This table is derived from `programs.yaml`. Edit the
 YAML, not this table.*
-
-### Declarative `requirements:` schema (v116.10 Tier 2.1)
-
-Programs may declare context preconditions in their
-`programs.yaml` entry. The workflow engine's
-`_check_requirements()` evaluates these before
-including the program in `valid_programs`.
-
-**Clause types** (all live under `requirements: requires:`):
-
-| Clause | Truthy when | Notes |
-|--------|-------------|-------|
-| `has: <flag>` | `context["has_<flag>"]` is truthy | Auto-prefixes `has_` |
-| `has_any: [a, b, c]` | Any of `has_a`/`has_b`/`has_c` is truthy | OR over a list of `has` |
-| `done: <program>` | `context["<program>_done"]` is truthy | Auto-appends `_done` |
-| `not_has: <flag>` | `context["has_<flag>"]` is falsy | Inverted `has` |
-| `any_of: [<clause>, ...]` | At least one sub-clause satisfies | Sub-clauses are full clauses; can nest |
-
-**AND/OR semantics:** `requires:` is a list, AND-combined.
-Each list element is a clause; inside `any_of:`, clauses
-are OR-combined.
-
-**When to use it:** any program whose runtime requires a
-specific context state (an input file category, a prior
-program's completion, an existing flag). The agent will
-silently filter the program out rather than letting it
-crash at runtime.
-
-**When to leave it alone:** if your program is universally
-available (e.g., `phenix.xtriage` at the start of an X-ray
-workflow), no `requirements:` block is needed. Programs
-without the block are unaffected — backward-compatible by
-default.
-
-**Worked example** (autobuild — needs phases AND either
-phased data or a model to refine into):
-
-```yaml
-phenix.autobuild:
-  requirements:
-    requires:
-      - has_any: [data_mtz, phased_data_mtz]
-      - any_of:
-          - has: phased_data_mtz
-          - has: model
-          - has: placed_model
-          - has: placed_model_from_history
-          - done: phaser
-          - done: autosol
-```
-
-This mirrors the existing `explain_unavailable_program`
-gating exactly. Always check whether existing imperative
-filtering code already covers your case before adding a
-new `requirements:` block — duplication will silently
-double-filter.
-
-See ARCHITECTURE.md "Declarative Program Requirements
-(Tier 2.1)" for full design rationale, 16 pitfalls with
-mitigations, and three rejected alternatives.
 
 ### Plan Templates (`knowledge/plan_templates.yaml`)
 

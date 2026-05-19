@@ -122,9 +122,22 @@ class CommandContext:
       workflow_state.get("resolution")
     )
 
+    # v118.F1: prefer session-locked experiment_type (set after first
+    # successful program; see programs/ai_agent.py:5009).  Fall back
+    # to the workflow-state-inferred value, which is populated for
+    # cycle 1 based on input file extensions and workflow context.
+    # Without this fallback, cycle-1 BUILD sees experiment_type=""
+    # and downstream guards like the R-free auto-fill (line ~2144)
+    # would silently skip.  Mirrors the resolution-fallback pattern
+    # immediately above.
+    experiment_type = (
+      session_info.get("experiment_type", "")
+      or workflow_state.get("experiment_type", "")
+    )
+
     return cls(
       cycle_number=state.get("cycle_number", 1),
-      experiment_type=session_info.get("experiment_type", ""),
+      experiment_type=experiment_type,
       resolution=resolution,
       best_files=session_info.get("best_files", {}),
       rfree_mtz=session_info.get("rfree_mtz"),
@@ -2141,7 +2154,18 @@ class CommandBuilder:
     #      (AF_POMGNT2) → rfree_mtz is locked after cycle 1, skipped
     # When rfree_mtz is NOT set, this is either the first refinement
     # or all previous refinements failed — generate=True is correct.
-    if program == "phenix.refine" and context.experiment_type == "xray":
+    #
+    # v118.F2: removed `context.experiment_type == "xray"` guard.
+    # phenix.refine is intrinsically an xray-only program; no cryoem
+    # code path invokes it.  The previous guard combined with cycle-1
+    # timing (experiment_type empty until first program returns)
+    # caused production failure AIAgent_245: OpenAI's planner picked
+    # phenix.refine directly in cycle 1 with no prior xtriage, the
+    # guard skipped the auto-fill, the command was emitted without
+    # generate_rfree_flags=True, and refinement failed on the missing
+    # R-free flags.  F1 also addresses the root cycle-1 threading
+    # issue; F2 removes this redundant guard as defense-in-depth.
+    if program == "phenix.refine":
       if not context.rfree_mtz:
         if "generate_rfree_flags" not in strategy:
           strategy["generate_rfree_flags"] = True
