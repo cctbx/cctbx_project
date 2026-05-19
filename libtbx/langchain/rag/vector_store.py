@@ -14,13 +14,26 @@ Usage:
 from __future__ import absolute_import, division, print_function
 
 import time
-from typing import List, Iterable
+from typing import List, Iterable, Optional, Any
 assert Iterable is not None
 
-import chromadb
 from langchain_core.documents import Document
-from langchain_chroma import Chroma
 
+# v118.G1b: lazy chromadb via shared helper.  chromadb's transitive
+# protobuf dep can fail with TypeError in some envs (Tom's linux conda
+# env, 2026-05-19).  See docs/DEVELOPER_GUIDE.md "Optional dependency
+# handling".
+from libtbx.langchain.rag._chroma_resilience import (
+    ensure_chroma,
+    chroma_unavailable_error,
+)
+
+# v118.G1b note (per Gemini Q7): document_loader is currently
+# protobuf-safe — it uses langchain_community and langchain_text_splitters,
+# neither of which is in the chromadb chain.  If a future change
+# introduces a chromadb-dep code path into document_loader, this eager
+# import becomes a regression site and must be refactored to lazy at
+# that time.
 from libtbx.langchain.rag.document_loader import _custom_chunker
 
 
@@ -47,7 +60,7 @@ def create_and_persist_db(
     pause_between_batches: float = 2.0,
     max_attempts: int = 6,
     max_backoff: float = 60.0
-) -> Chroma:
+) -> Optional[Any]:
     """
     Build a Chroma vector store with batching to avoid SQLite limits and API rate limits.
 
@@ -61,7 +74,11 @@ def create_and_persist_db(
         max_backoff: Maximum backoff time in seconds
 
     Returns:
-        Chroma: The created vector store, or None if creation failed
+        Chroma vector store, or None if creation failed.  (Annotated as
+        Optional[Any] rather than ``Chroma`` so that ``typing.get_type_hints()``
+        does not raise NameError in environments where chromadb is
+        unavailable — see docs/DEVELOPER_GUIDE.md "Optional dependency
+        handling".)
 
     Example:
         from libtbx.langchain.core.llm import get_llm_and_embeddings
@@ -72,6 +89,12 @@ def create_and_persist_db(
         docs, _ = load_all_docs_from_folder('./docs/')
         vectorstore = create_and_persist_db(docs, embeddings, './docs_db')
     """
+    # v118.G1b: probe chromadb lazily.  Raises a clear RuntimeError with
+    # install hint when the chromadb stack is unavailable.
+    chromadb_mod, Chroma = ensure_chroma()
+    if Chroma is None:
+        raise chroma_unavailable_error()
+
     docs_chunks = _custom_chunker(docs)
 
     # Deduplicate
@@ -83,7 +106,7 @@ def create_and_persist_db(
             seen.add(key)
             unique_docs.append(d)
 
-    client = chromadb.PersistentClient(path=db_dir)
+    client = chromadb_mod.PersistentClient(path=db_dir)
 
     vectorstore = Chroma(
         client=client,

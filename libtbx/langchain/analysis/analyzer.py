@@ -21,11 +21,13 @@ from langchain_core.prompts import PromptTemplate
 from google.api_core import exceptions as google_exceptions
 
 from libtbx import group_args
-from libtbx.langchain.rag.retriever import (
-  load_persistent_db,
-  create_reranking_retriever,
-  create_log_analysis_chain,
-)
+# v118.G2: retriever functions moved to function-body scope below.
+# rag.retriever imports langchain_chroma which has known protobuf
+# version conflicts in some envs.  Eager top-level import here would
+# crash this module entirely (including prompt-only functions like
+# get_log_analysis_prompt), so the imports are deferred to
+# analyze_log_summary() where they are actually used.
+# See docs/DEVELOPER_GUIDE.md "Optional dependency handling".
 
 
 # =============================================================================
@@ -125,6 +127,13 @@ async def analyze_log_summary(log_info, llm, embeddings,
       print(result.analysis)
   """
   try:
+    # v118.G2: lazy retriever import — see module-level note above.
+    from libtbx.langchain.rag.retriever import (
+      load_persistent_db,
+      create_reranking_retriever,
+      create_log_analysis_chain,
+    )
+
     vectorstore = load_persistent_db(embeddings, db_dir=db_dir)
     analysis_prompt = get_log_analysis_prompt()
     retriever = create_reranking_retriever(vectorstore, llm, timeout=timeout)

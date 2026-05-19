@@ -1674,6 +1674,23 @@ def main():
                        "tst_build_experiment_type_and_rfree",
                        False, 0))
 
+    # --- Optional Dependency Resilience (v118.G) ---
+    try:
+        from tests.tst_optional_dep_resilience import (
+            run_all_tests as run_optional_dep_resilience_tests)
+        success, elapsed = run_test_module(
+            "tst_optional_dep_resilience",
+            run_optional_dep_resilience_tests, args.verbose)
+        results.append(("Optional Dependency Resilience",
+                       "tst_optional_dep_resilience",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_optional_dep_resilience: {e}")
+        results.append(("Optional Dependency Resilience",
+                       "tst_optional_dep_resilience",
+                       False, 0))
+
     # --- Summary ---
     total_elapsed = time.time() - total_start
 

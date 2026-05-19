@@ -1263,6 +1263,23 @@ my_param = None
   to fail or misread the field.  Use periods, commas, or em-dashes
   instead.  Observed during v117 Step 1 when the original `.help`
   for `user_advice_raw` used a semicolon and broke PHIL parsing.
+- **Hyphens in `.help` strings are risky too.**  Hyphenated words
+  like `backward-compatible` or `multi-step` can cause the PHIL
+  parser to interpret the hyphenated token as a malformed
+  definition name and crash with
+  `RuntimeError: Syntax error: improper definition name`.
+  The failure mode depends on tokenizer context: hyphens inside
+  parentheses are often tolerated, but hyphens after sentence-
+  ending punctuation are not.  Observed in v118 when
+  `user_advice_raw`'s `.help` text contained `backward-compatible`
+  after `Optional;` — and notably, those two rule violations
+  were on the same line, so it's not always obvious which one is
+  the actual trigger.  When the error message names a hyphenated
+  token, check the surrounding text for a semicolon that may have
+  prematurely terminated the `.help` value and put the tokenizer
+  in the wrong state.  Safest practice: write `backward compatible`
+  or `multi step` (space-separated), or keep the help to a single
+  line where the entire value-after-`=` is taken verbatim.
 - **Backslash-continuation for multi-line `.help`.**  PHIL strings
   end at the next unescaped newline.  Use `\` at the end of each
   continued line.
@@ -1289,6 +1306,177 @@ commit, verify the parse on both sides with
 `libtbx.python -c 'from programs.ai_agent import master_phil_str; ...'`,
 and run the cross-tree tests (`tst_audit_fixes.py` exercises the
 end-to-end PHIL flow when run in the PHENIX tree).
+
+### Optional dependency handling
+
+`libtbx.langchain` integrates several optional Python packages
+(`langchain_openai`, `langchain_anthropic`, `langchain_google_genai`,
+`langchain_chroma`, `chromadb`, etc.).  These packages can fail to
+import in user environments for many reasons beyond "not installed":
+
+1. **Not installed** — `ImportError`.
+2. **Version conflicts among transitive deps** — surface as
+   `TypeError`, `RuntimeError`, etc. raised from inside the
+   package's own import-time code.  (Observed in v118 when
+   `chromadb` → `opentelemetry` → `protobuf` raised
+   `TypeError: Descriptors cannot be created directly` because
+   the protobuf version was too new for chromadb's bundled
+   `_pb2.py` files.)
+3. **Missing native binaries** — `OSError`.
+4. **API breakage between versions** — `AttributeError` at
+   import time.
+
+To keep cctbx modules importable in any environment, use this
+pattern for optional dependencies.
+
+**Don't (eager at module top):**
+```python
+from langchain_chroma import Chroma  # at module top
+
+def use_chroma(embeddings):
+    return Chroma(embedding_function=embeddings)
+```
+
+This fails to import the entire module — including unrelated
+helper functions — in any env where the dep is unusable.
+
+**Do (lazy with probe + shared helper when 2+ files share a dep):**
+
+Create a private helper module (e.g.
+`rag/_chroma_resilience.py`):
+```python
+_PROBE_STATE = None
+_IMPORT_ERROR = None
+_MODULE = None
+_CLASS = None
+
+
+def ensure_chroma():
+    global _PROBE_STATE, _IMPORT_ERROR, _MODULE, _CLASS
+    if _PROBE_STATE is not None:
+        return _MODULE, _CLASS
+    try:
+        import chromadb as _chromadb_mod
+        from langchain_chroma import Chroma as _Chroma
+        _MODULE = _chromadb_mod
+        _CLASS = _Chroma
+        _PROBE_STATE = True
+    except Exception as e:        # NOT just ImportError
+        _IMPORT_ERROR = "%s: %s" % (type(e).__name__, e)
+        _PROBE_STATE = False
+    return _MODULE, _CLASS
+
+
+def is_chroma_available():
+    return ensure_chroma()[0] is not None
+
+
+def chroma_unavailable_error():
+    err = _IMPORT_ERROR or "unknown"
+    return RuntimeError(
+        "chromadb is required for this feature but not usable: %s\n"
+        "Install: pip install langchain_chroma chromadb" % err)
+```
+
+Then in each consumer:
+```python
+from libtbx.langchain.rag._chroma_resilience import (
+    ensure_chroma, chroma_unavailable_error)
+
+
+def use_chroma(embeddings):
+    _, Chroma = ensure_chroma()
+    if Chroma is None:
+        raise chroma_unavailable_error()
+    return Chroma(embedding_function=embeddings)
+```
+
+**Critical rules:**
+
+- **Catch `Exception` broadly, not just `ImportError`.**  Version
+  conflicts in transitive deps surface as other exception types.
+- **Don't make module-load conditional on the dep being usable.**
+  Always import the module successfully.  Failure happens at
+  use-time, not import-time.
+- **Provide an informative error at use-time** with install hint.
+- **Extract to a shared helper** when 2+ files in the same
+  package need the same probe.  Single source of truth for the
+  cache and error message.
+- **For type annotations referring to the optional class**, use
+  `Optional[Any]` from `typing` rather than the optional class
+  itself.  Both `from __future__ import annotations` (PEP 563)
+  and string literals like `-> "Chroma"` defer evaluation but
+  create a hidden `NameError` trap if anything calls
+  `typing.get_type_hints()` on the module while the dep is
+  unavailable.  `Optional[Any]` has no such trap and preserves
+  the "may return None" semantic.  Document the specific class
+  in the docstring instead.
+
+**For tests** that genuinely need the optional dep:
+
+```python
+_RAG_SKIP_REASON = None
+try:
+    import langchain_chroma  # noqa: F401
+    import chromadb  # noqa: F401
+except Exception as e:
+    _RAG_SKIP_REASON = "%s: %s" % (type(e).__name__, e)
+
+
+def _skip_if_rag_missing(cls):
+    if _RAG_SKIP_REASON:
+        for attr_name in list(dir(cls)):
+            if attr_name.startswith("test_"):
+                setattr(cls, attr_name,
+                        unittest.skip(_RAG_SKIP_REASON)(
+                            getattr(cls, attr_name)))
+    return cls
+
+
+@_skip_if_rag_missing
+class TestRAGFeatures(unittest.TestCase):
+    def test_chroma_query(self):
+        ...
+```
+
+The class-level decorator skips an entire group of tests when the
+probe detects the dep is unusable.  Use `Exception` (not just
+`ImportError`) in the probe.
+
+**Architectural note — LLM-visible tools:**
+
+If a future architecture exposes RAG functionality as a tool the
+LLM can choose (e.g., a `QueryDocumentationTool` in the planner's
+tool list), gate the tool registration on `is_chroma_available()`:
+
+```python
+from libtbx.langchain.rag._chroma_resilience import is_chroma_available
+
+if is_chroma_available():
+    register_tool(QueryDocumentationTool())
+else:
+    log("Optional dependency 'chromadb' unavailable. "
+        "Documentation search tool disabled.")
+```
+
+This prevents the LLM from seeing a tool it cannot use.  v118 does
+NOT expose RAG as an LLM tool (the planner chooses among PHENIX
+programs configured in `knowledge/programs.yaml`, none of which
+depend on chromadb), so no tool-registration gating is currently
+needed.
+
+**Why "catch Exception" — concrete example:**
+
+The chromadb failure that prompted this pattern manifests as:
+```
+TypeError: Descriptors cannot be created directly.
+If this call came from a _pb2.py file, your generated code is
+out of date and must be regenerated with protoc >= 3.19.0.
+```
+
+This is raised from inside `opentelemetry`'s `_pb2.py` during
+chromadb's import.  `except ImportError` would not catch it.  A
+defensive probe must use `except Exception`.
 
 ## 4. Adding a New Program
 

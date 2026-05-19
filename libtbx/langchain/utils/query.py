@@ -11,14 +11,15 @@ import os
 
 import openai
 from google.api_core import exceptions as google_exceptions
-from langchain_google_genai._common import GoogleGenerativeAIError
+# v118.G2b: GoogleGenerativeAIError and retriever functions moved to
+# function-body scope below.  langchain_google_genai._common and
+# rag.retriever both import optional packages (langchain_chroma) that
+# can fail with TypeError in some envs.  Eager imports here would
+# crash utils.query entirely (including the test that asserts
+# query_docs is non-None).  See docs/DEVELOPER_GUIDE.md
+# "Optional dependency handling".
 
 from libtbx.langchain.core.llm import get_llm_and_embeddings
-from libtbx.langchain.rag.retriever import (
-    load_persistent_db,
-    create_reranking_retriever,
-    create_reranking_rag_chain,
-)
 from libtbx.langchain.knowledge.prompts import get_docs_query_prompt
 
 
@@ -78,6 +79,14 @@ def query_docs(query_text, llm=None, embeddings=None,
         but include the use of Coot or Isolde if appropriate. Name the tools
         that are to be used, along with their inputs and outputs and what
         they do."""
+
+    # v118.G2b: lazy imports — see module-level note above.
+    from libtbx.langchain.rag.retriever import (
+        load_persistent_db,
+        create_reranking_retriever,
+        create_reranking_rag_chain,
+    )
+    from langchain_google_genai._common import GoogleGenerativeAIError
 
     vectorstore = load_persistent_db(embeddings, db_dir=db_dir)
     retriever = create_reranking_retriever(vectorstore, llm, timeout=timeout)

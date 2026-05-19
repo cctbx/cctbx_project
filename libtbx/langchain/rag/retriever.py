@@ -19,7 +19,15 @@ import os
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import PromptTemplate
-from langchain_chroma import Chroma
+# v118.G1: chromadb has known protobuf version conflicts in some envs
+# (TypeError: Descriptors cannot be created directly).  Lazy-import via
+# shared helper so this module imports cleanly in any env; failure is
+# deferred to function-call time with a clear install hint.
+# See docs/DEVELOPER_GUIDE.md "Optional dependency handling".
+from libtbx.langchain.rag._chroma_resilience import (
+    ensure_chroma,
+    chroma_unavailable_error,
+)
 assert PromptTemplate is not None
 
 
@@ -56,6 +64,14 @@ def load_persistent_db(embeddings, db_dir: str = "./docs_db", collection_name: s
     Loads a persisted Chroma vector store from disk.
     Now defaults to collection_name="docs" to match your build script.
     """
+    # v118.G1: probe chromadb lazily.  When the chromadb stack is
+    # unavailable (version conflicts, not installed, etc.), raise a
+    # clear RuntimeError with install hint instead of letting a
+    # confusing TypeError bubble up from inside opentelemetry.
+    _chromadb_mod, Chroma = ensure_chroma()
+    if Chroma is None:
+        raise chroma_unavailable_error()
+
     if not os.path.exists(db_dir):
         raise FileNotFoundError(f"Database directory not found at '{db_dir}'.")
 
