@@ -440,10 +440,21 @@ An unplaced PDB + cryo-EM map always requires phenix.dock_in_map before refineme
 - Setting after_program="phenix.autosol" would skip phaser, which breaks MR-SAD.
 - Only set after_program="phenix.autosol" if the user explicitly says to skip molecular replacement and run autosol standalone.
   (Note: phenix.map_sharpening is the dedicated map sharpening tool - use this for sharpening requests)
-- For cryo-EM density modification (NOT sharpening): "density modification", "denmod", "resolve_cryo_em" → after_program="phenix.resolve_cryo_em", skip_validation=true
-  (Note: phenix.resolve_cryo_em is for density modification, NOT for map sharpening - use phenix.map_sharpening for sharpening)
-- For X-ray: "density modification", "improve phases", "denmod" → after_program="phenix.autobuild_denmod", skip_validation=true
-  (Note: X-ray density modification uses phenix.autobuild with maps_only=True)
+- For "density modification", "denmod", or "density modify":
+  CHECK THE EXPERIMENT TYPE in the preprocessed advice FIRST.
+  * If experiment type is cryo-EM, OR input mentions half-maps, .ccp4, .mrc,
+    mtriage, or resolve_cryo_em:
+    → after_program="phenix.resolve_cryo_em", skip_validation=true
+    (phenix.resolve_cryo_em is the cryo-EM density modification program;
+     do NOT confuse with phenix.map_sharpening which is for sharpening)
+  * If experiment type is X-ray, OR input mentions .mtz, .hkl, xtriage,
+    phaser, autosol, SAD, MAD, or "improve phases":
+    → after_program="phenix.autobuild_denmod", skip_validation=true
+    (X-ray density modification uses phenix.autobuild with maps_only=True)
+  * If experiment type is not explicitly stated and inputs are ambiguous:
+    default to phenix.resolve_cryo_em.  Cryo-EM is the more common case
+    for half-map inputs; X-ray density modification requires explicit
+    X-ray-only signals like .mtz files.
 - "MR-SAD", "MR SAD", "MRSAD", "molecular replacement SAD" → Set use_mr_sad=true in workflow_preferences AND use_experimental_phasing=true. Do NOT set after_program="phenix.autosol" because phaser must run first to place the model. The workflow is: phaser → autosol with the phaser output as partpdb_file.
   If user says "stop after autosol" or similar, set after_program="phenix.autosol" AND skip_validation=true.
 - "dock in map", "fit model to map" → after_program="phenix.dock_in_map", skip_validation=true
@@ -700,6 +711,15 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
         # bare-imperative mappings continue to work.
         directives = _validate_after_program_grounded(
             directives, user_advice, log)
+
+        # v118.9: correct LLM-emitted after_program when it's
+        # canonical for the wrong experiment type (e.g., picked
+        # autobuild_denmod for cryo-EM data).  See module-level
+        # PROGRAM_REPRINTS_BY_EXPERIMENT_TYPE for the mapping table
+        # and `_apply_experiment_type_program_reprints` for placement
+        # rationale (runs AFTER grounding by design).
+        directives = _apply_experiment_type_program_reprints(
+            directives, user_advice, raw_advice, log)
 
         # Regex fallback: ensure unit_cell and space_group are always captured.
         # The LLM sometimes returns an empty dict (or only stop_conditions) even
@@ -1325,6 +1345,42 @@ VALID_STOP_CONDITIONS = {
 }
 
 
+# v118.9: experiment-type-conditional program canonicalization.
+#
+# Some Phenix programs are canonical for a specific experiment type
+# but have a counterpart for the other type that does roughly the
+# equivalent thing.  The LLM directive extractor occasionally picks
+# the wrong one — e.g. "density modify" on cryo-EM data gets mapped
+# to `phenix.autobuild_denmod` (X-ray) instead of
+# `phenix.resolve_cryo_em` (cryo-EM).
+#
+# This table declares known LLM-mistake mappings.  Keys are
+# `(target_experiment_type, wrong_program)`; values are the right
+# program for that experiment type.
+#
+# Detection logic lives in `_apply_experiment_type_program_reprints`.
+# Adding new entries requires no code changes beyond adding a row
+# here and a corresponding K-test in
+# `tst_density_modify_experiment_type.py`.
+#
+# Be conservative when extending: include only pairs that are
+# truly canonical-equivalents in different experiment types
+# (same operation, different program).  Pairs that do
+# semantically-different things (e.g. xtriage vs mtriage — data
+# triage vs map triage) should NOT be in this table.
+PROGRAM_REPRINTS_BY_EXPERIMENT_TYPE = {
+    # Cryo-EM data + LLM picked X-ray density-modification program.
+    # Observed in production: runs 237/239 with raw advice
+    # "density modify and stop" on half-map cryo-EM data.
+    ("cryoem", "phenix.autobuild_denmod"): "phenix.resolve_cryo_em",
+
+    # Mirror case: X-ray data + LLM picked cryo-EM density-modification
+    # program.  Not yet observed in production but the validator handles
+    # both directions symmetrically.
+    ("xray", "phenix.resolve_cryo_em"): "phenix.autobuild_denmod",
+}
+
+
 def _normalize_unit_cell(value):
     """
     Normalise a unit-cell value to a plain space-separated string.
@@ -1737,6 +1793,159 @@ def _validate_after_program_grounded(directives, user_advice, log):
                 if not wf_prefs:
                     del directives["workflow_preferences"]
 
+    return directives
+
+
+# v118.9: helpers for experiment-type-conditional program canonicalization.
+# See PROGRAM_REPRINTS_BY_EXPERIMENT_TYPE module-level table for the
+# mapping data.  See v118_9_PLAN_rev2.md for design rationale and
+# the analysis of why this validator runs AFTER
+# _validate_after_program_grounded (Gemini's Gap A critique reviewed
+# in detail).
+
+def _detect_experiment_type_signals(combined_advice):
+    """Return one of 'cryoem', 'xray', or None based on signals in
+    the given advice text.
+
+    Uses the same regex as the rules-only resolver in
+    extract_directives_simple (around line ~3700).  Factored out so
+    the LLM-path validator and the rules-only fallback share one
+    canonical detector.
+
+    The cryo-EM signals are: cryo-em, half-map (any spacing/hyphen),
+    .ccp4 / .mrc file extensions, mtriage, resolve_cryo_em, full-map.
+
+    The X-ray signals are: x-ray, .mtz / .hkl file extensions,
+    xtriage, phaser, autosol, sad, mad, molecular replacement,
+    autobuild_denmod.
+
+    Returns None when signals are ambiguous (both fire) or absent
+    (neither fires).  The caller MUST handle None as "decline to act".
+    """
+    if not combined_advice:
+        return None
+    advice_lower = combined_advice.lower()
+    is_cryoem = bool(re.search(
+        r'cryo-?em|half.?map|\.mrc\b|\.ccp4\b|mtriage|'
+        r'resolve_cryo_em|full.?map',
+        advice_lower))
+    is_xray = bool(re.search(
+        r'x-?ray|\.mtz\b|\.hkl\b|xtriage|phaser|autosol|'
+        r'sad|mad|molecular.?replacement|autobuild_denmod',
+        advice_lower))
+    if is_cryoem and not is_xray:
+        return "cryoem"
+    if is_xray and not is_cryoem:
+        return "xray"
+    return None  # ambiguous (both or neither)
+
+
+def _apply_experiment_type_program_reprints(
+        directives, user_advice, raw_advice, log):
+    """Correct after_program when the LLM picked a program that's
+    canonical for the wrong experiment type.
+
+    Reads PROGRAM_REPRINTS_BY_EXPERIMENT_TYPE (module-level table).
+    For each (target_type, wrong_program) -> right_program mapping,
+    if:
+      - directives' after_program matches wrong_program AND
+      - experiment-type detection identifies target_type unambiguously
+
+    ...then replaces with right_program.  Logs every correction via
+    the [DIRECTIVE_CORRECTION] marker to both log_func and stderr
+    (mirrors Section E's diagnostic safety pattern), and records a
+    `_corrected_from` sidecar in the stop_conditions dict.
+
+    Placement note: this validator runs AFTER
+    _validate_after_program_grounded.  Why:
+
+      - In the observed-bug case (Tom's runs 237/239), the LLM
+        emits stop_after_requested=True alongside the wrong
+        after_program.  The grounding check bypasses entirely in
+        that case (see _validate_after_program_grounded:1697-1712),
+        leaving the wrong program intact for us to correct.
+
+      - In the no-user-intent case (stop_after_requested=False), the
+        grounding check fires.  Since the LLM-fabricated wrong
+        program name typically doesn't appear in the user advice
+        either (user said "density modify", not "autobuild_denmod"),
+        grounding drops the after_program.  Our validator then has
+        nothing to correct — which is the safer outcome (no
+        after_program is better than a wrong one).
+
+      - Reversing the order would create a different bug: our
+        validator would correct autobuild_denmod -> resolve_cryo_em,
+        then grounding would notice that "resolve_cryo_em" also
+        isn't in user_advice (user said "density modify") and
+        drop it as fabrication.
+
+    No-op when:
+      - directives has no stop_conditions or no after_program
+      - after_program is not a key in the reprints table
+      - experiment-type signals are ambiguous (None)
+
+    Args:
+        directives: post-LLM directives dict (may be modified in
+            place)
+        user_advice: the preprocessed advice (may contain
+            Experiment Type, file extensions)
+        raw_advice: the raw user advice (may be None for
+            single-input path).  When present, combined with
+            user_advice for experiment-type detection to maximize
+            signal coverage.
+        log: log_func
+
+    Returns:
+        the (possibly modified) directives dict
+    """
+    if not isinstance(directives, dict):
+        return directives
+    stop_cond = directives.get("stop_conditions") or {}
+    after_prog = stop_cond.get("after_program")
+    if not after_prog:
+        return directives
+
+    # Combine raw + preprocessed to maximize signal coverage.
+    # raw_advice may contain file mentions ("half-maps", ".ccp4")
+    # that user_advice has already paraphrased; preprocessed
+    # advice contains the explicit "Experiment Type: cryo-EM"
+    # field.  Both are useful.
+    combined = " ".join(filter(None, [raw_advice or "",
+                                        user_advice or ""]))
+    if not combined.strip():
+        return directives
+
+    target_type = _detect_experiment_type_signals(combined)
+    if target_type is None:
+        return directives  # ambiguous: decline to act
+
+    key = (target_type, after_prog)
+    right_prog = PROGRAM_REPRINTS_BY_EXPERIMENT_TYPE.get(key)
+    if right_prog is None:
+        return directives  # not a known incorrect choice for this type
+
+    # Perform correction
+    stop_cond["after_program"] = right_prog
+    stop_cond["_corrected_from"] = {
+        "from": after_prog,
+        "to": right_prog,
+        "reason": "experiment_type_mismatch",
+        "experiment_type": target_type,
+    }
+    diag_msg = (
+        "[DIRECTIVE_CORRECTION] Mapped after_program=%s to %s "
+        "based on Experiment Type: %s"
+        % (after_prog, right_prog, target_type))
+    if log:
+        log(diag_msg)
+    # Also write to stderr.  Mirrors Section E's safety pattern:
+    # try/except so the diagnostic can never break the correction.
+    try:
+        import sys
+        sys.stderr.write(diag_msg + "\n")
+        sys.stderr.flush()
+    except Exception:
+        pass
     return directives
 
 

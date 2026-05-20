@@ -1691,6 +1691,23 @@ def main():
                        "tst_optional_dep_resilience",
                        False, 0))
 
+    # --- Density Modification Experiment-Type Reprints (v118.9) ---
+    try:
+        from tests.tst_density_modify_experiment_type import (
+            run_all_tests as run_denmod_reprints_tests)
+        success, elapsed = run_test_module(
+            "tst_density_modify_experiment_type",
+            run_denmod_reprints_tests, args.verbose)
+        results.append(("Density Modify Experiment Type Reprints",
+                       "tst_density_modify_experiment_type",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_density_modify_experiment_type: {e}")
+        results.append(("Density Modify Experiment Type Reprints",
+                       "tst_density_modify_experiment_type",
+                       False, 0))
+
     # --- Environment Dependency Check (v118.6.7) ---
     # Note: this checks the PYTHON ENVIRONMENT, not code behavior.  It
     # will FAIL on any environment that doesn't have the full ai_agent
