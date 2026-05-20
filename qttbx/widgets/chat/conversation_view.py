@@ -1,25 +1,29 @@
-"""Scrollable list of MessageBubbles + inline ToolApprovalCards.
+"""Scrollable list of MessageBubbles + inline ToolApprovalCards +
+QuestionCards.
 
 The view is the streaming target for the runner:
   - add_message(m)              - append a finalized Message bubble
   - start_assistant_bubble()    - create + return an in-progress bubble
   - finalize_assistant_bubble() - close the in-progress bubble
   - add_approval_request(req)   - coalesce by batch_id into one card
+  - add_question_request(req)   - render a multi-choice question card
 
 It does NOT own the AgentSession or QtAgentRunner; the chat window wires
-runner signals to view methods, and the view emits approval_decided so the
-window can push responses through the runner."""
+runner signals to view methods, and the view emits approval_decided /
+question_answered so the window can push responses through the runner."""
 
 from qttbx.qt import QtCore, QtWidgets
 
 from qttbx.widgets.chat.agent.conversation import Message, now
 from qttbx.widgets.chat.message_bubble import MessageBubble
+from qttbx.widgets.chat.question_card import QuestionCard
 from qttbx.widgets.chat.tool_approval import ToolApprovalCard
 
 
 class ConversationView(QtWidgets.QScrollArea):
 
   approval_decided = QtCore.Signal(list)         # list[ToolApprovalResponse]
+  question_answered = QtCore.Signal(str, dict)   # request_id, answers
   image_clicked = QtCore.Signal(str, str)        # conv_id, sha256
 
   def __init__(self, parent=None, storage=None, conv_id=None):
@@ -39,6 +43,7 @@ class ConversationView(QtWidgets.QScrollArea):
     self._bubbles = []                             # type: list[MessageBubble]
     self._approval_cards = []                      # type: list[ToolApprovalCard]
     self._approval_by_batch = {}                   # batch_id -> ToolApprovalCard
+    self._question_cards = []                      # type: list[QuestionCard]
     self._in_progress = None
     # Sticky "follow the bottom" flag. True by default and re-asserted
     # whenever the user takes an action that should bring the latest
@@ -53,6 +58,13 @@ class ConversationView(QtWidgets.QScrollArea):
     self._follow_bottom = True
     bar = self.verticalScrollBar()
     bar.actionTriggered.connect(self._on_user_scroll_action)
+    # When a bubble grows (auto_height resize, new cell appended) the
+    # scrollbar's range increases. _maybe_scroll_to_bottom's
+    # singleShot(0) fires before Qt processes that layout pass, so
+    # setValue(maximum) lands on a stale max. Hook rangeChanged as
+    # the authoritative "content grew" signal -- if we're following,
+    # snap to the new max once it lands.
+    bar.rangeChanged.connect(self._on_range_changed)
 
   def set_conversation(self, storage, conv_id):
     self._storage = storage
@@ -137,15 +149,39 @@ class ConversationView(QtWidgets.QScrollArea):
   def _on_card_decided(self, responses):
     self.approval_decided.emit(responses)
 
+  # ---- question API --------------------------------------------------------
+
+  def add_question_request(self, req):
+    """Render a QuestionCard for an ``AskUserQuestionRequested``. One
+    card per request -- there's no batching since the model groups its
+    questions into a single tool call already."""
+    card = QuestionCard(self._container)
+    card.set_request(req.request_id, req.questions)
+    card.answered.connect(self._on_question_answered)
+    self._insert_widget(card)
+    self._question_cards.append(card)
+    self._maybe_scroll_to_bottom()
+
+  def _on_question_answered(self, request_id, answers):
+    self.question_answered.emit(request_id, answers)
+
+  def question_cards(self):
+    return list(self._question_cards)
+
+  def question_card_count(self):
+    return len(self._question_cards)
+
   # ---- clear ---------------------------------------------------------------
 
   def clear(self):                                       # noqa: A003
-    for w in list(self._bubbles) + list(self._approval_cards):
+    for w in (list(self._bubbles) + list(self._approval_cards)
+              + list(self._question_cards)):
       w.setParent(None)
       w.deleteLater()
     self._bubbles.clear()
     self._approval_cards.clear()
     self._approval_by_batch.clear()
+    self._question_cards.clear()
     self._in_progress = None
 
   # ---- introspection (for tests) ------------------------------------------
@@ -201,3 +237,11 @@ class ConversationView(QtWidgets.QScrollArea):
   def _do_scroll_to_bottom(self):
     bar = self.verticalScrollBar()
     bar.setValue(bar.maximum())
+
+  def _on_range_changed(self, _min, _max):
+    """Fires whenever the scrollbar range changes -- i.e. whenever
+    the contained content grows or shrinks. If we're following the
+    bottom, snap to the new maximum now that the layout has settled."""
+    if self._follow_bottom:
+      bar = self.verticalScrollBar()
+      bar.setValue(bar.maximum())

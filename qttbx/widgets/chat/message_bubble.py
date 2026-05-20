@@ -215,6 +215,27 @@ class MessageBubble(QtWidgets.QFrame):
           self)
         self._text_view = None
         self._layout.addWidget(cell)
+    elif block.type == "server_tool_use":
+      # API-executed tool call (e.g., web_search, web_fetch,
+      # code_execution). Reuse ToolCallDisclosure; the result lands
+      # later in the same turn as a server_tool_result block and folds
+      # into this cell via set_tool_use_finished.
+      self.add_tool_use_cell(
+        tool_id=block.data.get("id", ""),
+        name="server: " + (block.data.get("name", "?") or "?"),
+        args=block.data.get("input", {}))
+    elif block.type == "server_tool_result":
+      tool_use_id = block.data.get("tool_use_id", "")
+      result_text = _format_server_tool_result(block.data.get("content", {}))
+      if tool_use_id and tool_use_id in self._tool_cells_by_id:
+        self.set_tool_use_finished(
+          tool_id=tool_use_id, result=result_text)
+      else:
+        # Orphan (no matching use cell in this bubble): render as a
+        # plain text cell so the result still appears.
+        self._append_text_markdown(
+          "*server tool result:* `" + tool_use_id + "`\n\n```\n"
+          + result_text + "\n```")
     elif block.type == "image":
       # Load the attachment into a QPixmap via image_cache (decoded once
       # per session) and render as an inline thumbnail. Falls back to a
@@ -416,3 +437,28 @@ def _flatten_result_text(blocks):
     if t == "text":
       out.append(data.get("text", ""))
   return "\n".join(out)
+
+
+def _format_server_tool_result(content):
+  """Render a server-tool result payload for the disclosure body.
+
+  The Anthropic API returns an opaque dict per server tool. Pretty-print
+  it as JSON; for ``web_search`` specifically, extract the result list
+  into a more readable bullet list so the disclosure isn't a wall of
+  JSON for the most common case."""
+  if not isinstance(content, dict):
+    return str(content)
+  # web_search: content has "content": [{"type":"web_search_result", ...}, ...]
+  inner = content.get("content")
+  if isinstance(inner, list) and inner and isinstance(inner[0], dict) \
+      and inner[0].get("type") == "web_search_result":
+    lines = []
+    for r in inner:
+      title = r.get("title", "(no title)")
+      url = r.get("url", "")
+      lines.append("- %s\n  %s" % (title, url))
+    return "\n".join(lines)
+  try:
+    return json.dumps(content, indent=2, default=str)
+  except Exception:
+    return repr(content)

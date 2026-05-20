@@ -83,3 +83,54 @@ class Agent(ABC):
     """Return the Qt dialog class to prompt for this provider's
     credentials. Each provider gets its own dialog matching its auth
     model."""
+
+  def submit_approval(self, response):
+    """Forward a user approval decision to the agent if it owns the
+    request. Default implementation returns ``False`` -- the agent
+    didn't originate the request, so the runner should fall through
+    to the session's approval queue.
+
+    Backends that gate tool execution via a provider-side callback
+    (e.g. the Claude Code SDK's ``can_use_tool``) override this to
+    fulfill a pending future when ``response.request_id`` matches one
+    they emitted. Returning ``True`` tells the runner the request was
+    handled here and should NOT also land in the session queue (which
+    is parked on a different tool's approval).
+
+    Parameters
+    ----------
+    response : ToolApprovalResponse
+        The user's decision delivered from the GUI.
+
+    Returns
+    -------
+    bool
+        ``True`` if the agent owned ``response.request_id``, else
+        ``False``.
+    """
+    return False
+
+  def submit_question_answer(self, request_id, answers):
+    """Forward the user's answers to a question the agent asked via
+    ``AskUserQuestionRequested``. Default returns ``False`` -- the
+    agent never asks structured questions.
+
+    Backends that expose an "ask the user" MCP tool override this to
+    fulfill the pending future when ``request_id`` matches one they
+    emitted.
+
+    Parameters
+    ----------
+    request_id : str
+        The same id the agent put on the ``AskUserQuestionRequested``.
+    answers : dict
+        ``{question_text: selected_label}`` (single-select) or
+        ``{question_text: [labels...]}`` (multi-select), plus an
+        optional ``"_notes"`` sub-dict for free-form additions.
+
+    Returns
+    -------
+    bool
+        ``True`` if the agent owned ``request_id``, else ``False``.
+    """
+    return False

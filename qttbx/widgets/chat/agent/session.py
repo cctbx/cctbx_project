@@ -15,8 +15,9 @@ from qttbx.widgets.chat.agent.conversation import (
   ContentBlock, Conversation, Message, TokenUsage, now)
 from qttbx.widgets.chat.agent.errors import TurnCancelled
 from qttbx.widgets.chat.agent.events import (
-  AgentError, ImageEmitted, Thinking, TextDelta, ToolResultsBatched,
-  ToolUseRequested, TurnDone, TokenUsage as TokenUsageEvent)
+  AgentError, ImageEmitted, ServerToolResult, ServerToolUsed,
+  Thinking, TextDelta, ToolResultsBatched, ToolUseRequested, TurnDone,
+  TokenUsage as TokenUsageEvent)
 from qttbx.widgets.chat.agent.tools import (
   ToolApprovalRequest, ToolApprovalResponse, _Cancelled)
 
@@ -265,6 +266,13 @@ def _accumulate(msg, event, tool_calls, storage, conv_id):
     msg.content.append(ContentBlock(type="tool_use", data={
       "id": event.id, "name": event.name, "input": event.input}))
     tool_calls.append(event)
+  elif isinstance(event, ServerToolUsed):
+    # API-executed; no dispatch needed. Persist for the bubble + replay.
+    msg.content.append(ContentBlock(type="server_tool_use", data={
+      "id": event.id, "name": event.name, "input": event.input}))
+  elif isinstance(event, ServerToolResult):
+    msg.content.append(ContentBlock(type="server_tool_result", data={
+      "tool_use_id": event.tool_use_id, "content": event.content}))
   elif isinstance(event, ImageEmitted):
     att = storage.store_attachment(conv_id, event.data, event.mime)
     msg.content.append(ContentBlock(type="image", data={

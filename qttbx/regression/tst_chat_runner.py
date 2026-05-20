@@ -162,11 +162,51 @@ def exercise_cancel_when_idle_does_not_poison_next_turn():
     shutil.rmtree(tmp)
 
 
+def exercise_submit_approval_routes_to_agent_when_agent_owns_request_id():
+  """When the agent owns a request_id (e.g. Claude Code's
+  can_use_tool callback emitted it), runner.submit_approval must
+  forward to agent.submit_approval and NOT push to the session
+  queue. The session might be parked on its own unrelated approval,
+  and grabbing the SDK-side response would mis-route."""
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  tmp = tempfile.mkdtemp()
+  try:
+    from qttbx.widgets.chat.agent.tools import ToolApprovalResponse
+
+    class _OwningAgent:
+      """Pretends to own request_id 'agent_owned'."""
+      received = []
+
+      def submit_approval(self, response):
+        _OwningAgent.received.append(response)
+        return response.request_id == "agent_owned"
+
+    events = []   # no streamed events
+    session, _ = _make_session(events, tmp)
+    session.agent = _OwningAgent()
+    runner = QtAgentRunner(session)
+    # request_id the agent owns -> session queue stays empty.
+    runner.submit_approval(ToolApprovalResponse(
+      request_id="agent_owned", decision="approve"))
+    assert session.approval_queue.empty(), \
+      "agent-owned response should NOT land in session queue"
+    assert _OwningAgent.received[-1].request_id == "agent_owned"
+    # request_id the agent doesn't own -> falls through to session.
+    runner.submit_approval(ToolApprovalResponse(
+      request_id="session_owned", decision="approve"))
+    assert not session.approval_queue.empty()
+    pulled = session.approval_queue.get_nowait()
+    assert pulled.request_id == "session_owned", pulled
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise():
   exercise_emits_text_delta_then_turn_done()
   exercise_cancel_stops_the_turn()
   exercise_error_event_emits_error_signal()
   exercise_cancel_when_idle_does_not_poison_next_turn()
+  exercise_submit_approval_routes_to_agent_when_agent_owns_request_id()
 
 
 if __name__ == "__main__":

@@ -1,11 +1,11 @@
 """QtAgentRunner — wrap AgentSession to emit Qt signals on the GUI thread.
 
-Section 4.5 of the design spec. The runner owns:
+The runner owns:
   - the AgentSession (no Qt dependency itself)
   - a worker QThread that runs session.run_turn
   - the CancelToken for the current turn
   - the approval queue (shared with the session) so the GUI Stop button can
-    flush a _Cancelled sentinel into it (Section 10.4)
+    flush a _Cancelled sentinel into it
 """
 
 import traceback
@@ -14,8 +14,10 @@ from qttbx.qt import QtCore
 
 from qttbx.widgets.chat.agent.errors import AgentError, CancelToken
 from qttbx.widgets.chat.agent.events import (
-  ImageEmitted, TextDelta, Thinking, TokenUsage as TokenUsageEvent,
-  ToolResultsBatched, ToolUseRequested, TurnDone)
+  AskUserQuestionRequested, ImageEmitted, ServerToolResult,
+  ServerToolUsed, TextDelta, Thinking,
+  TokenUsage as TokenUsageEvent, ToolResultsBatched, ToolUseRequested,
+  TurnDone)
 from qttbx.widgets.chat.agent.tools import (
   ToolApprovalRequest, _Cancelled)
 
@@ -68,25 +70,32 @@ class QtAgentRunner(QtCore.QObject):
   Signals (all GUI-thread):
     text_delta(str)
     thinking_delta(str)
-    tool_use_requested(object)   # ToolUseRequested or ToolApprovalRequest
-    tool_results_batched(object) # ToolResultsBatched
+    tool_use_requested(object)        # ToolUseRequested or ToolApprovalRequest
+    tool_results_batched(object)      # ToolResultsBatched
+    server_tool_used(object)          # ServerToolUsed
+    server_tool_result(object)        # ServerToolResult
     image_emitted(object)
-    usage(object)                # TokenUsage event
-    turn_done(str)               # stop_reason
-    error(str, bool, str)        # message, recoverable, kind
+    ask_user_question_requested(object)  # AskUserQuestionRequested
+    usage(object)                     # TokenUsage event
+    turn_done(str)                    # stop_reason
+    error(str, bool, str)             # message, recoverable, kind
 
   Lifecycle: one runner per ChatWindow, reused across turns. Only one turn
   may run at a time; start_turn while busy is a no-op (returns False).
 
-  Thread affinity: start_turn, cancel, submit_approval, and wait_for_idle
-  must be called from the GUI thread; they touch _thread / _worker / _cancel
-  which are GUI-thread-owned."""
+  Thread affinity: start_turn, cancel, submit_approval,
+  submit_question_answer, and wait_for_idle must be called from the GUI
+  thread; they touch _thread / _worker / _cancel which are
+  GUI-thread-owned."""
 
   text_delta = QtCore.Signal(str)
   thinking_delta = QtCore.Signal(str)
   tool_use_requested = QtCore.Signal(object)
   tool_results_batched = QtCore.Signal(object)
+  server_tool_used = QtCore.Signal(object)
+  server_tool_result = QtCore.Signal(object)
   image_emitted = QtCore.Signal(object)
+  ask_user_question_requested = QtCore.Signal(object)
   usage = QtCore.Signal(object)
   turn_done = QtCore.Signal(str)
   error = QtCore.Signal(str, bool, str)
@@ -98,7 +107,7 @@ class QtAgentRunner(QtCore.QObject):
     self._worker = None
     self._cancel = CancelToken()
     # Approval queues parked on by the session worker — the GUI flushes
-    # _Cancelled sentinels into these on cancel (Section 10.4).
+    # _Cancelled sentinels into these on cancel.
     self._pending_approval_queues = [self.session.approval_queue]
 
   # ---- public API ----------------------------------------------------------
@@ -119,9 +128,9 @@ class QtAgentRunner(QtCore.QObject):
     return True
 
   def cancel(self):
-    """Set the cancel token AND flush _Cancelled sentinels into every
-    parked approval queue so a worker blocked on queue.get() wakes up
-    (Section 10.4). Must be called from the GUI thread."""
+    """Set the cancel token AND flush ``_Cancelled`` sentinels into
+    every parked approval queue so a worker blocked on
+    ``queue.get()`` wakes up. Must be called from the GUI thread."""
     if not self.is_busy():
       # No worker to cancel; pushing a sentinel now would mis-cancel the
       # next turn (the queue is shared with the session).
@@ -132,11 +141,31 @@ class QtAgentRunner(QtCore.QObject):
       q.put_nowait(_Cancelled())
 
   def submit_approval(self, response):
-    """Push a ToolApprovalResponse into the session's approval queue.
-    Must be called from the GUI thread."""
-    self.session.approval_queue.put(response)
+    """Route a ``ToolApprovalResponse`` from the GUI to whoever asked.
+
+    Tries ``agent.submit_approval`` first: backends that gate tool
+    execution via a provider-side callback (e.g. the Claude Code SDK's
+    ``can_use_tool``) own their own pending requests and resolve them
+    themselves. If the agent doesn't recognize the ``request_id``, the
+    response goes to the session's approval queue (the path for tools
+    the session dispatches directly).
+
+    Must be called from the GUI thread.
+    """
+    handled = self.session.agent.submit_approval(response)
+    if not handled:
+      self.session.approval_queue.put(response)
     if response.decision == "deny_and_stop":
       self._cancel.set()
+
+  def submit_question_answer(self, request_id, answers):
+    """Forward the user's answers to an in-flight
+    ``AskUserQuestionRequested`` straight to the agent. Backends that
+    don't own the request silently no-op (return ``False``).
+
+    Must be called from the GUI thread.
+    """
+    return self.session.agent.submit_question_answer(request_id, answers)
 
   def is_busy(self):
     return self._thread is not None and self._thread.isRunning()
@@ -161,8 +190,14 @@ class QtAgentRunner(QtCore.QObject):
       self.tool_use_requested.emit(ev)
     elif isinstance(ev, ToolResultsBatched):
       self.tool_results_batched.emit(ev)
+    elif isinstance(ev, ServerToolUsed):
+      self.server_tool_used.emit(ev)
+    elif isinstance(ev, ServerToolResult):
+      self.server_tool_result.emit(ev)
     elif isinstance(ev, ImageEmitted):
       self.image_emitted.emit(ev)
+    elif isinstance(ev, AskUserQuestionRequested):
+      self.ask_user_question_requested.emit(ev)
     elif isinstance(ev, TokenUsageEvent):
       self.usage.emit(ev)
     elif isinstance(ev, TurnDone):
