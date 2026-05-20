@@ -18,9 +18,10 @@ class ChatTopBar(QtWidgets.QFrame):
     self.title_label = QtWidgets.QLabel(self)
     self.title_label.setStyleSheet("font-weight: bold;")
     self.model_label = QtWidgets.QLabel(self)
-    self.model_label.setStyleSheet("color: #666;")
+    self.model_label.setStyleSheet("color: palette(mid);")
     self.debug_label = QtWidgets.QLabel(self)
-    self.debug_label.setStyleSheet("color: #888; font-style: italic;")
+    self.debug_label.setStyleSheet(
+      "color: palette(mid); font-style: italic;")
     # Elide from the left so the basename of the debug log stays visible.
     self.debug_label.setTextInteractionFlags(
       QtCore.Qt.TextSelectableByMouse)

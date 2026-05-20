@@ -15,6 +15,12 @@ class MessageInput(QtWidgets.QWidget):
   stop = QtCore.Signal()
   attachment_rejected = QtCore.Signal(str)
   save_chat = QtCore.Signal()                      # 'Save chat' button click
+  auto_approve_changed = QtCore.Signal(bool)       # checked state
+
+  # Idle placeholder text. Exposed as a class constant so callers
+  # (ChatWindow) can swap to a cycling 'Thinking...' style placeholder
+  # while a turn is in flight and restore the default on turn_done.
+  DEFAULT_PLACEHOLDER = "Message Claude...  (Ctrl/Cmd+Enter to send)"
 
   _MAX_IMAGE_BYTES = 20 * 1024 * 1024
   _ALLOWED_MIMES = frozenset((
@@ -39,12 +45,19 @@ class MessageInput(QtWidgets.QWidget):
     # Text edit gets the full width; the VBox owns horizontal expansion
     # so the edit grows with the panel automatically.
     self._edit = QtWidgets.QPlainTextEdit(self)
-    self._edit.setPlaceholderText(
-      "Message Claude...  (Ctrl/Cmd+Enter to send)")
+    self._edit.setPlaceholderText(self.DEFAULT_PLACEHOLDER)
     self._edit.installEventFilter(self)
+    # Cache the theme's stock placeholder colour (dim grey on most
+    # palettes). set_placeholder(..., dim=False) swaps in the regular
+    # text colour so 'Thinking...' verbs read at full contrast;
+    # reset_placeholder restores this dim value.
+    self._dim_placeholder_color = (
+      self._edit.palette().color(QtGui.QPalette.PlaceholderText))
     layout.addWidget(self._edit)
     # Button row below the edit. Save chat sits on the left; the
-    # stretch pushes Attach + Send to the right.
+    # auto-approve toggle sits in the centre (flanked by stretches so
+    # it stays centred as the row grows); Attach + Send are on the
+    # right.
     button_row = QtWidgets.QHBoxLayout()
     button_row.setContentsMargins(0, 0, 0, 0)
     self._save_chat_btn = QtWidgets.QPushButton("Save chat", self)
@@ -56,6 +69,14 @@ class MessageInput(QtWidgets.QWidget):
     # but spells less clearly than an explicit emit).
     self._save_chat_btn.clicked.connect(self._on_save_chat_clicked)
     button_row.addWidget(self._save_chat_btn)
+    button_row.addStretch(1)
+    self._auto_approve_btn = QtWidgets.QPushButton("Auto-approve", self)
+    self._auto_approve_btn.setCheckable(True)
+    self._auto_approve_btn.setToolTip(
+      "Approve every tool request automatically for this session. "
+      "Skips the approval card -- use with care.")
+    self._auto_approve_btn.toggled.connect(self._on_auto_approve_toggled)
+    button_row.addWidget(self._auto_approve_btn)
     button_row.addStretch(1)
     self._attach_btn = QtWidgets.QToolButton(self)
     self._attach_btn.setText("@")    # ASCII-safe; UI later replaces with icon
@@ -77,6 +98,38 @@ class MessageInput(QtWidgets.QWidget):
 
   def clear(self):                                       # noqa: A003
     self._edit.clear()
+
+  def set_placeholder(self, text, dim=True):
+    """Update the edit's placeholder text.
+
+    Parameters
+    ----------
+    text : str
+        Placeholder string. Empty / None clears it.
+    dim : bool, optional
+        When ``True`` (default) the placeholder is rendered in the
+        theme's ``PlaceholderText`` palette colour (the usual dim
+        grey). When ``False`` it uses the regular ``Text`` colour so
+        the placeholder reads at full contrast -- used by ChatWindow
+        for the 'Thinking...' verb cycle so the verbs aren't visually
+        muted.
+    """
+    palette = self._edit.palette()
+    target_color = (
+      self._dim_placeholder_color if dim
+      else palette.color(QtGui.QPalette.Text))
+    palette.setColor(QtGui.QPalette.PlaceholderText, target_color)
+    self._edit.setPalette(palette)
+    self._edit.setPlaceholderText(text or "")
+    # QPlainTextEdit only repaints the cursor area on placeholder
+    # change when focused, so the user sees a stale tail (just the
+    # first letter of the new verb updates). Force the viewport to
+    # repaint the whole placeholder region.
+    self._edit.viewport().update()
+
+  def reset_placeholder(self):
+    """Restore the idle placeholder (default text + dim colour)."""
+    self.set_placeholder(self.DEFAULT_PLACEHOLDER, dim=True)
 
   # ---- busy / button state -------------------------------------------------
 
@@ -163,6 +216,26 @@ class MessageInput(QtWidgets.QWidget):
 
   def _on_save_chat_clicked(self, _checked=False):
     self.save_chat.emit()
+
+  # ---- auto-approve --------------------------------------------------------
+
+  def _on_auto_approve_toggled(self, checked):
+    """Reflect the toggled state in the button's label and propagate
+    via the public ``auto_approve_changed`` signal. The button is
+    checkable; Qt's native pressed-in 'checked' rendering plus the
+    label flip ('Auto-approve' -> 'Auto-approve: ON') signals the
+    state without a colour override (a hardcoded colour would read
+    poorly on one theme or the other)."""
+    self._auto_approve_btn.setText(
+      "Auto-approve: ON" if checked else "Auto-approve")
+    self.auto_approve_changed.emit(bool(checked))
+
+  def set_auto_approve(self, on):
+    """Programmatic sync (for tests and direct callers). Avoids a
+    feedback loop by checking the button's state before re-toggling."""
+    on = bool(on)
+    if self._auto_approve_btn.isChecked() != on:
+      self._auto_approve_btn.setChecked(on)
 
   # ---- send / stop ---------------------------------------------------------
 

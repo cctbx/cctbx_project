@@ -22,7 +22,7 @@ class _ToolResultCell(QtWidgets.QFrame):
     header = QtWidgets.QLabel(
       "result%s" % (" (error)" if is_error else ""), self)
     if is_error:
-      header.setStyleSheet("color: #b00;")
+      header.setStyleSheet("color: #c0392b;")
     layout.addWidget(header)
     text = _flatten_result_text(content_blocks)
     if text:
@@ -39,7 +39,7 @@ class _ThinkingCell(QtWidgets.QFrame):
     layout.setContentsMargins(6, 2, 6, 2)
     label = QtWidgets.QLabel("[thinking] %s" % (text or ""), self)
     label.setWordWrap(True)
-    label.setStyleSheet("color: #888; font-style: italic;")
+    label.setStyleSheet("color: palette(mid); font-style: italic;")
     layout.addWidget(label)
     self._label = label
 
@@ -90,7 +90,8 @@ class _ImageCell(QtWidgets.QFrame):
     self.thumbnail.mousePressEvent = self._thumb_clicked
     layout.addWidget(self.thumbnail)
     self.caption_label = QtWidgets.QLabel(caption or "", self)
-    self.caption_label.setStyleSheet("color: #888; font-style: italic;")
+    self.caption_label.setStyleSheet(
+      "color: palette(mid); font-style: italic;")
     self.caption_label.setWordWrap(True)
     layout.addWidget(self.caption_label)
     if not caption:

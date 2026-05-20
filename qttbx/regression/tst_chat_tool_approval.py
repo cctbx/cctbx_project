@@ -92,12 +92,34 @@ def exercise_remember_tool_checkbox_sets_remember_field():
   assert decisions[0][0].remember == "tool"
 
 
+def exercise_card_hides_and_disables_buttons_after_click():
+  """After a decision is emitted, the card must (a) hide so the
+  conversation view doesn't carry a stale prompt forward, and (b)
+  disable its button row so a double-click before Qt removes the
+  widget can't fire the decision a second time. Applies to every
+  button -- approve, deny, and stop."""
+  from qttbx.widgets.chat.tool_approval import ToolApprovalCard
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  for click_method in ("click_approve_all", "click_deny_all", "click_stop"):
+    card = ToolApprovalCard()
+    card.set_requests([_req()])
+    card.show()
+    decisions = []
+    card.decided.connect(lambda r: decisions.append(r))
+    assert not card.isHidden(), click_method
+    getattr(card, click_method)()
+    assert len(decisions) == 1, (click_method, decisions)
+    assert card.isHidden(), click_method
+    assert not card._buttons_widget.isEnabled(), click_method
+
+
 def exercise():
   exercise_single_card_approve_emits_response()
   exercise_single_card_deny_and_stop()
   exercise_batched_card_approve_all_emits_n_responses_in_order()
   exercise_batched_deny_all()
   exercise_remember_tool_checkbox_sets_remember_field()
+  exercise_card_hides_and_disables_buttons_after_click()
 
 
 if __name__ == "__main__":

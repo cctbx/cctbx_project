@@ -15,10 +15,16 @@ from qttbx.qt import QtCore, QtWidgets
 
 from qttbx.widgets.chat.agent.tools import ToolApprovalResponse
 
-_RISK_COLORS = {
-  "read": "#888",
-  "write": "#c80",
-  "destructive": "#c33",
+# Per-risk text styling for the title (single-card) / per-line
+# (batched). 'write' (the most common risk) uses no color override so
+# it inherits the active theme's text color -- a hardcoded amber like
+# '#c80' renders as low-contrast orange on dark themes. Read uses a
+# palette-aware dim grey; destructive uses a red that stays readable
+# on light + dark.
+_RISK_STYLES = {
+  "read":        "color: palette(mid);",
+  "write":       "",
+  "destructive": "color: #c0392b;",
 }
 
 
@@ -82,8 +88,7 @@ class ToolApprovalCard(QtWidgets.QFrame):
       title = "%s requests: %s" % (r.tool_source, r.tool_name)
       head = QtWidgets.QLabel(title, box)
       f = head.font(); f.setBold(True); head.setFont(f)
-      head.setStyleSheet(
-        "color: %s;" % _RISK_COLORS.get(r.risk, "#888"))
+      head.setStyleSheet(_RISK_STYLES.get(r.risk, ""))
       layout.addWidget(head)
       preview = QtWidgets.QLabel(_short_json(r.input, 200), box)
       preview.setWordWrap(True)
@@ -97,8 +102,7 @@ class ToolApprovalCard(QtWidgets.QFrame):
         line = QtWidgets.QLabel(
           "  - %s - %s" % (r.tool_name, _short_json(r.input, 120)), box)
         line.setWordWrap(True)
-        line.setStyleSheet(
-          "color: %s;" % _RISK_COLORS.get(r.risk, "#888"))
+        line.setStyleSheet(_RISK_STYLES.get(r.risk, ""))
         layout.addWidget(line)
     return box
 
@@ -147,6 +151,13 @@ class ToolApprovalCard(QtWidgets.QFrame):
                            decision=decision, remember=remember)
       for r in self._requests
     ]
+    # Card has served its purpose -- disable so a stray re-click can't
+    # emit again, then hide so the conversation view doesn't keep a
+    # stale prompt around. Qt's QVBoxLayout skips hidden widgets so
+    # the visible layout collapses naturally.
+    if self._buttons_widget is not None:
+      self._buttons_widget.setEnabled(False)
+    self.hide()
     self.decided.emit(responses)
 
 

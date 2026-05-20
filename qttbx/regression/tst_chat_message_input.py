@@ -115,6 +115,73 @@ def exercise_save_chat_button_emits_signal():
   assert fired == [True], fired
 
 
+def exercise_placeholder_set_and_reset():
+  """set_placeholder swaps the edit's placeholderText; reset returns
+  to MessageInput.DEFAULT_PLACEHOLDER. Used by ChatWindow to cycle
+  'Thinking...' verbs while a turn is in flight."""
+  from qttbx.widgets.chat.message_input import MessageInput
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  w = MessageInput()
+  assert w._edit.placeholderText() == MessageInput.DEFAULT_PLACEHOLDER
+  w.set_placeholder("Refining...")
+  assert w._edit.placeholderText() == "Refining..."
+  w.reset_placeholder()
+  assert w._edit.placeholderText() == MessageInput.DEFAULT_PLACEHOLDER
+
+
+def exercise_placeholder_dim_flag_controls_palette_role():
+  """set_placeholder(..., dim=False) renders the placeholder at the
+  regular Text colour (full contrast) rather than the theme's dim
+  PlaceholderText colour. reset_placeholder restores the dim. Used
+  by ChatWindow so 'Thinking...' verbs aren't visually muted."""
+  from qttbx.qt import QtGui
+  from qttbx.widgets.chat.message_input import MessageInput
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  w = MessageInput()
+  text_color = w._edit.palette().color(QtGui.QPalette.Text)
+  dim_color = w._dim_placeholder_color
+  # Idle: dim placeholder.
+  assert w._edit.palette().color(QtGui.QPalette.PlaceholderText) == \
+    dim_color
+  # Thinking: full contrast.
+  w.set_placeholder("Refining...", dim=False)
+  assert w._edit.palette().color(QtGui.QPalette.PlaceholderText) == \
+    text_color
+  # Reset returns to dim.
+  w.reset_placeholder()
+  assert w._edit.palette().color(QtGui.QPalette.PlaceholderText) == \
+    dim_color
+
+
+def exercise_auto_approve_button_is_checkable_and_emits_signal():
+  """The centred 'Auto-approve' button is a checkable QPushButton.
+  Clicking it flips the checked state and emits
+  auto_approve_changed(checked); the label flips so the user can tell
+  the toggle is active. No colour override on either state so the
+  text stays readable in both light and dark themes."""
+  from qttbx.widgets.chat.message_input import MessageInput
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  w = MessageInput()
+  assert w._auto_approve_btn.isCheckable()
+  assert not w._auto_approve_btn.isChecked()
+  assert w._auto_approve_btn.text() == "Auto-approve"
+  changes = []
+  w.auto_approve_changed.connect(lambda v: changes.append(v))
+  w._auto_approve_btn.click()
+  assert changes == [True], changes
+  assert w._auto_approve_btn.isChecked()
+  assert "ON" in w._auto_approve_btn.text()
+  # No colour rule on the button: a hardcoded colour reads poorly on
+  # one theme or the other, and Qt's native checked-state rendering
+  # is enough of a visual cue alongside the label flip.
+  assert "color:" not in (
+    w._auto_approve_btn.styleSheet() or "").replace(" ", "").lower()
+  w._auto_approve_btn.click()
+  assert changes == [True, False], changes
+  assert not w._auto_approve_btn.isChecked()
+  assert w._auto_approve_btn.text() == "Auto-approve"
+
+
 def exercise():
   exercise_send_signal_carries_text_and_empty_attachments()
   exercise_empty_send_is_no_op()
@@ -123,6 +190,9 @@ def exercise():
   exercise_unsupported_mime_is_dropped_with_warning()
   exercise_oversized_image_is_resampled()
   exercise_save_chat_button_emits_signal()
+  exercise_auto_approve_button_is_checkable_and_emits_signal()
+  exercise_placeholder_set_and_reset()
+  exercise_placeholder_dim_flag_controls_palette_role()
 
 
 if __name__ == "__main__":
