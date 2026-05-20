@@ -14,7 +14,7 @@ Usage:
     directives = extract_directives(
         user_advice="use resolution 3 in autosol but 2.5 in refine",
         provider="google",
-        model="gemini-2.0-flash"
+        model="gemini-2.5-flash-lite"
     )
 
     # Result:
@@ -953,7 +953,12 @@ def _call_llm_fallback(prompt, provider, model, log):
                 from google import genai
                 from google.genai import types
 
-                model_name = model or "gemini-2.0-flash"
+                # v118.8: bump default from gemini-2.0-flash (retired by
+                # Google, returns 404 NOT_FOUND for new users as of 2026).
+                # Matches the default used by core/llm.get_llm_and_embeddings
+                # so directive extractor and planner converge on the same
+                # model.  Caller can still override via `model=` parameter.
+                model_name = model or "gemini-2.5-flash-lite"
 
                 # Get API key from environment
                 api_key = os.environ.get("GOOGLE_API_KEY")
@@ -991,7 +996,8 @@ def _call_llm_fallback(prompt, provider, model, log):
                     return None
                 genai_old.configure(api_key=api_key)
 
-                model_name = model or "gemini-2.0-flash"
+                # v118.8: bump default — see new-package path above.
+                model_name = model or "gemini-2.5-flash-lite"
                 gen_model = genai_old.GenerativeModel(model_name)
 
                 def make_call():

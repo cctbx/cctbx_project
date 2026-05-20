@@ -652,7 +652,12 @@ def _call_google_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
         from google import genai
         from google.genai import types
 
-        model_name = model or "gemini-2.0-flash"
+        # v118.8: bump default from gemini-2.0-flash (retired by Google,
+        # returns 404 NOT_FOUND for new users as of 2026).  Matches the
+        # default used by core/llm.get_llm_and_embeddings so all LLM
+        # consumers (planner, directive extractor) converge on one
+        # current model.  Caller can override via `model=` parameter.
+        model_name = model or "gemini-2.5-flash-lite"
         client = genai.Client(api_key=api_key)
 
         response = client.models.generate_content(
@@ -670,7 +675,8 @@ def _call_google_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
         import google.generativeai as genai_old
 
         genai_old.configure(api_key=api_key)
-        model_name = model or "gemini-2.0-flash"
+        # v118.8: bump default — see new-package path above.
+        model_name = model or "gemini-2.5-flash-lite"
         gen_model = genai_old.GenerativeModel(model_name)
 
         response = gen_model.generate_content(
