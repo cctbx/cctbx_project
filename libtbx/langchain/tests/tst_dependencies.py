@@ -19,7 +19,8 @@ Categories
    - yaml (pyyaml)
 
 2. PROVIDER (at least one must succeed; user picks via config):
-   - google: langchain_google_genai + google.generativeai
+   - google: langchain_google_genai + EITHER google.genai (new)
+     OR google.generativeai (deprecated; will be removed by Google)
    - openai: langchain_openai (+ openai)
    - anthropic: langchain_anthropic (+ anthropic)
    - ollama: langchain_ollama
@@ -28,7 +29,6 @@ Categories
    makes the code gracefully degrade when these are absent):
    - chromadb
    - langchain_chroma
-   - flashrank
    - langchain_cohere + cohere
 
 4. DOC-LOADING (only needed to rebuild the RAG database; users
@@ -42,12 +42,17 @@ Categories
    - markdown_it
    - linkify_it
 
-6. RUNTIME PROBE (the v118.G failure mode):
-   - `from langchain_chroma import Chroma` — catches protobuf
-     version conflict that surfaces at import time as TypeError.
-     If both chromadb and langchain_chroma are pip-installed but
-     this probe fails, suggest the opentelemetry-proto upgrade
-     documented in v118.6.1's install hint.
+6. RUNTIME PROBES (catch "installed but broken" failure modes):
+   - Chroma: `from langchain_chroma import Chroma` — catches the
+     v118.G protobuf-version conflict.  If both chromadb and
+     langchain_chroma are pip-installed but this probe fails,
+     suggest the opentelemetry-proto upgrade documented in
+     v118.6.1's install hint.
+   - FlashrankRerank: needed at runtime by analyze_log_summary()
+     and query_docs() via create_reranking_retriever().  If
+     chromadb is available but flashrank isn't, RAG queries will
+     crash — surface this as FAIL so the user installs flashrank
+     before first use.
 
 Test outcomes
 -------------
@@ -89,9 +94,14 @@ PROVIDERS = [
     # (pip_name, primary_import_name, description, [(extra_pip, extra_import), ...])
     # `extra_import` is given EXPLICITLY (not derived) because some packages have
     # dotted import paths or names that don't match pip name + s/-/_/.
-    # Notably: `google-generativeai` (pip) → `google.generativeai` (import).
+    #
+    # GOOGLE: google.generativeai is being deprecated in favor of google.genai
+    # (https://github.com/google-gemini/deprecated-generative-ai-python).  Code
+    # in agent/directive_extractor.py already tries the new package first and
+    # falls back.  The env check treats EITHER package as satisfying the extra:
+    # see _probe_google_extras() below.
     ("langchain-google-genai", "langchain_google_genai", "Google Gemini provider",
-        [("google-generativeai", "google.generativeai")]),
+        "GOOGLE_SPECIAL"),
     ("langchain-openai",       "langchain_openai",       "OpenAI provider",
         [("openai", "openai")]),
     ("langchain-anthropic",    "langchain_anthropic",    "Anthropic provider",
@@ -103,9 +113,12 @@ PROVIDERS = [
 RAG_OPTIONAL = [
     ("langchain-chroma", "langchain_chroma", "RAG vector store wrapper"),
     ("chromadb",         "chromadb",         "RAG vector DB engine"),
-    ("flashrank",        "flashrank",        "Reranking retriever"),
     ("langchain-cohere", "langchain_cohere", "Cohere reranker (alternative)"),
     ("cohere",           "cohere",           "Cohere API client"),
+    # flashrank moved to runtime probe — see _probe_flashrank_runtime() and
+    # _report_flashrank_runtime_probe().  It's needed at runtime by both
+    # analyze_log_summary() and query_docs() via create_reranking_retriever(),
+    # so missing-flashrank surfaces as a runtime failure, not a warning.
 ]
 
 DOC_LOADING_OPTIONAL = [
@@ -161,11 +174,124 @@ def _probe_chroma_class():
         return (False, "%s: %s" % (type(e).__name__, e))
 
 
+def _probe_google_extras():
+    """Probe for the Google Gemini SDK with deprecation-awareness.
+
+    The `google-generativeai` package (Python import: `google.generativeai`)
+    has been deprecated by Google in favor of `google-genai` (Python
+    import: `google.genai`).  Both packages can satisfy ai_agent's
+    Google provider — `directive_extractor.py` tries the new one
+    first and falls back to the old one.
+
+    Returns:
+        (ok, found_pip_name, error_string)
+        - ok=True if EITHER package is importable
+        - found_pip_name names which one was found (or None on failure)
+        - error_string describes the failure mode if neither importable
+    """
+    # Try the new package first
+    ok_new, err_new = _probe("google.genai")
+    if ok_new:
+        return (True, "google-genai", None)
+    # Fall back to the deprecated one
+    ok_old, err_old = _probe("google.generativeai")
+    if ok_old:
+        return (True, "google-generativeai (deprecated; switch to google-genai)", None)
+    # Neither available
+    return (False, None,
+            "neither google.genai (%s) nor google.generativeai (%s) is importable"
+            % (err_new, err_old))
+
+
+def _probe_flashrank_runtime():
+    """Probe whether FlashrankRerank can actually be instantiated.
+
+    flashrank is needed at runtime by analyze_log_summary() and
+    query_docs() via create_reranking_retriever() in rag/retriever.py.
+    Plain `import flashrank` may succeed while instantiation fails
+    (e.g. missing native binaries, model download issues).
+
+    Detects the analogous failure mode to v118.G's chromadb probe:
+    "package imports but symbol cannot be loaded."
+    """
+    try:
+        from langchain_community.document_compressors import FlashrankRerank
+        if FlashrankRerank is None:
+            return (False, "FlashrankRerank is None after import")
+        # Don't instantiate — instantiation tries to download model weights.
+        # Just confirm the class is constructible (has __init__).
+        if not callable(FlashrankRerank):
+            return (False, "FlashrankRerank is not callable")
+        return (True, None)
+    except Exception as e:
+        return (False, "%s: %s" % (type(e).__name__, e))
+
+
 # ---------------------------------------------------------------
 # Reporting
 # ---------------------------------------------------------------
 
+def _report_flashrank_runtime_probe():
+    """Probe whether FlashrankRerank can be loaded for reranking.
+
+    Returns True if usable OR if the user is clearly opting out of
+    RAG entirely (chromadb missing → no RAG path will be taken).
+    """
+    print()
+    print("=== Reranker runtime probe ===")
+    # Skip if RAG itself isn't available — no point probing the reranker
+    chroma_ok, _ = _probe("chromadb")
+    if not chroma_ok:
+        print("  [SKIP]    Reranker probe — chromadb not installed; "
+              "the reranking path is unreachable in this env")
+        return True
+    ok, err = _probe_flashrank_runtime()
+    if ok:
+        print("  [ OK ]    FlashrankRerank loaded; reranking retriever usable")
+        return True
+    print("  [FAIL]    FlashrankRerank could not be loaded: %s" % err)
+    print()
+    print("  flashrank is needed at runtime by both `analyze_log_summary()`")
+    print("  and `query_docs()` via `create_reranking_retriever()`.  Without")
+    print("  it, every RAG query will fail.  Install:")
+    print()
+    print("    pip install flashrank")
+    print()
+    print("  Or, if you want to use RAG without reranking, code changes")
+    print("  in analyzer.py/query.py would be needed to use a non-reranking")
+    print("  retriever path.")
+    return False
+
+
 def _report_category(name, entries, *, severity):
+    """Probe every package in a category and print PASS/FAIL/WARN
+    for each.  Returns (passed_pip_names, failed_pip_names).
+    """
+    print()
+    print("=== %s ===" % name)
+    passed = []
+    failed = []
+    for entry in entries:
+        if len(entry) == 4:
+            pip_name, import_name, desc, _extras = entry
+        else:
+            pip_name, import_name, desc = entry
+        ok, err = _probe(import_name)
+        if ok:
+            print("  [ OK ]    %s (%s) — %s" % (pip_name, import_name, desc))
+            passed.append(pip_name)
+        else:
+            tag = "[FAIL]" if severity == "required" else \
+                  "[WARN]" if severity in ("rag", "doc", "render") else \
+                  "[----]"  # provider — fail-once handled by caller
+            print("  %s    %s (%s) — %s" % (tag, pip_name, import_name, desc))
+            print("              error: %s" % err)
+            print("              install: pip install %s" % pip_name)
+            failed.append(pip_name)
+    return passed, failed
+
+
+
     """Probe every package in a category and print PASS/FAIL/WARN
     for each.  Returns (passed_pip_names, failed_pip_names).
     """
@@ -267,18 +393,38 @@ def check_environment(strict=False):
         ok, err = _probe(import_name)
         # Probe each extra by its EXPLICIT import name (do NOT derive
         # via s/-/_/ — `google-generativeai` imports as `google.generativeai`).
+        #
+        # GOOGLE_SPECIAL: the Google provider needs either google-genai
+        # (current) or google-generativeai (deprecated).  Either suffices.
         extras_ok = True
         extras_err = None
-        for extra_pip, extra_import in extras:
-            xok, xerr = _probe(extra_import)
+        extras_found = None  # for display: what was actually found
+        if extras == "GOOGLE_SPECIAL":
+            xok, found_pkg, xerr = _probe_google_extras()
             if not xok:
                 extras_ok = False
-                extras_err = "%s (import %s): %s" % (extra_pip, extra_import, xerr)
-                break
+                extras_err = xerr
+            else:
+                extras_found = found_pkg
+            display_extras = [("google-genai or google-generativeai", None)]
+            install_extras = ["google-genai"]  # recommend the new one
+        else:
+            for extra_pip, extra_import in extras:
+                xok, xerr = _probe(extra_import)
+                if not xok:
+                    extras_ok = False
+                    extras_err = "%s (import %s): %s" % (extra_pip, extra_import, xerr)
+                    break
+            display_extras = list(extras)
+            install_extras = [p for p, _ in extras]
+
         if ok and extras_ok:
             line = "  [ OK ]    %s — %s" % (pip_name, desc)
-            if extras:
-                line += "  (+ %s)" % ", ".join(p for p, _ in extras)
+            if extras_found:
+                # GOOGLE_SPECIAL path — show which one was found
+                line += "  (+ %s)" % extras_found
+            elif display_extras:
+                line += "  (+ %s)" % ", ".join(p for p, _ in display_extras)
             print(line)
             providers_ok.append(pip_name)
         else:
@@ -288,8 +434,8 @@ def check_environment(strict=False):
             if not extras_ok:
                 print("              extras missing: %s" % extras_err)
             install_cmd = "pip install %s" % pip_name
-            if extras:
-                install_cmd += " " + " ".join(p for p, _ in extras)
+            if install_extras:
+                install_cmd += " " + " ".join(install_extras)
             print("              install: %s" % install_cmd)
 
     # 3. RAG-OPTIONAL
@@ -299,6 +445,9 @@ def check_environment(strict=False):
 
     # 4. Runtime probe — catches v118.G's protobuf failure case
     chroma_probe_ok = _report_chroma_runtime_probe()
+
+    # 4b. Reranker runtime probe — catches missing/broken flashrank
+    flashrank_probe_ok = _report_flashrank_runtime_probe()
 
     # 5. DOC-LOADING
     _, doc_failed = _report_category(
@@ -329,6 +478,10 @@ def check_environment(strict=False):
     if not chroma_probe_ok:
         fatal.append("RAG runtime probe failed — chromadb stack "
                      "installed but broken (see remediation above)")
+    if not flashrank_probe_ok:
+        fatal.append("Reranker runtime probe failed — chromadb is "
+                     "available but flashrank is not, so RAG queries "
+                     "will crash at runtime (see remediation above)")
 
     if fatal:
         print()
@@ -351,6 +504,7 @@ def check_environment(strict=False):
     print("  Required: %d/%d" % (len(req_passed), len(REQUIRED)))
     print("  Provider: %s" % ", ".join(providers_ok))
     print("  RAG runtime probe: OK")
+    print("  Reranker runtime probe: OK")
 
     optional_missing = doc_failed + render_failed
     if optional_missing:
