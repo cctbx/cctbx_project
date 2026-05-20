@@ -210,8 +210,8 @@ class TestSectionG(unittest.TestCase):
     def test_k_g3_vector_store_imports_when_chromadb_broken(self):
         """K_G3: vector_store.py module-load succeeds with broken chromadb.
 
-        Verifies G1b's annotation handling (Optional[Any] instead of
-        Chroma) and lazy imports work together.
+        Verifies G1b's annotation handling (no Chroma in annotation)
+        and lazy imports work together.
         """
         # Verify by parsing the file and checking import structure
         path = os.path.join(ROOT, "rag", "vector_store.py")
@@ -231,9 +231,8 @@ class TestSectionG(unittest.TestCase):
             "K_G3 failed: vector_store.py should import from "
             "_chroma_resilience helper")
 
-        # Should have `-> Optional[Any]:` (not `-> Chroma:`)
-        self.assertIn("-> Optional[Any]:", source,
-            "K_G3 failed: return annotation should be Optional[Any]")
+        # Must NOT have `-> Chroma:` annotation (would NameError under
+        # get_type_hints when chromadb is unavailable)
         self.assertNotIn("-> Chroma:", source,
             "K_G3 failed: return annotation still uses Chroma")
         print("  PASS: K_G3 (vector_store G1b structure)")
@@ -428,29 +427,39 @@ class TestSectionG(unittest.TestCase):
     #   (Gemini Q5 regression guard)
     # -----------------------------------------------------------
     def test_k_g10_get_type_hints_safe_on_vector_store(self):
-        """K_G10: vector_store.create_and_persist_db has annotations
-        that resolve safely under typing.get_type_hints() even when
+        """K_G10: vector_store.create_and_persist_db must not reference
+        ``Chroma`` in any return-type annotation, so that
+        ``typing.get_type_hints()`` cannot raise NameError when
         chromadb is unavailable.
 
-        Gemini Q5: using `from __future__ import annotations` or string
-        annotation `-> "Chroma"` creates a NameError trap if anything
-        calls get_type_hints().  We use `-> Optional[Any]` which has
-        no NameError trap.
+        Gemini Q5: using ``from __future__ import annotations`` or
+        string annotation ``-> "Chroma"`` creates a NameError trap if
+        anything calls ``get_type_hints()``.  We omit the return-type
+        annotation entirely — the docstring documents the return type
+        for human readers.  (v118.6.6: previously used ``Optional[Any]``
+        but ``libtbx.find_unused_imports`` flagged those typing imports;
+        dropping the annotation entirely is even simpler and stricter.)
         """
-        # Parse the source and verify the annotation is Optional[Any]
+        # Parse the source and verify the annotation does NOT reference Chroma
         path = os.path.join(ROOT, "rag", "vector_store.py")
         with open(path) as f:
             source = f.read()
-        self.assertIn(") -> Optional[Any]:", source,
-            "K_G10 failed: return annotation should be Optional[Any]")
-        # Optional and Any must be importable from typing (stdlib)
-        self.assertIn("from typing import", source,
-            "K_G10 failed: Optional/Any not imported from typing")
-        self.assertIn("Optional", source.split("def create_and_persist_db")[0],
-            "K_G10 failed: Optional should be imported before function")
-        self.assertIn("Any", source.split("def create_and_persist_db")[0],
-            "K_G10 failed: Any should be imported before function")
-        print("  PASS: K_G10 (vector_store annotation is reflection-safe)")
+        # No `-> Chroma:` annotation anywhere
+        self.assertNotIn("-> Chroma:", source,
+            "K_G10 failed: return annotation must not reference Chroma "
+            "(use no annotation or Optional[Any])")
+        # Specifically the create_and_persist_db function signature must
+        # not have Chroma in it
+        sig_start = source.find("def create_and_persist_db")
+        sig_end = source.find('"""', sig_start)  # end of signature at docstring
+        self.assertGreater(sig_end, sig_start,
+            "K_G10 failed: could not locate create_and_persist_db signature")
+        signature_block = source[sig_start:sig_end]
+        self.assertNotIn("Chroma", signature_block,
+            "K_G10 failed: 'Chroma' appears in create_and_persist_db "
+            "signature — this triggers NameError under get_type_hints() "
+            "when chromadb is unavailable")
+        print("  PASS: K_G10 (vector_store signature is reflection-safe)")
 
     # -----------------------------------------------------------
     # K_G11: analyze_log_summary error message propagates cleanly

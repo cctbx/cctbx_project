@@ -42,8 +42,7 @@ from framework import Scenario
 
 # v117 added two functions to framework.py for dual-input
 # extraction.  Apply v117_framework_dot_py.diff before running this test.
-from framework import (call_directive_extractor_with_raw,
-                       make_directive_extraction_with_raw_run_fn)
+from framework import make_directive_extraction_with_raw_run_fn
 
 
 # =====================================================================
@@ -242,9 +241,7 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
 
-    from framework import (AVAILABLE_PROVIDERS, build_summary,
-                           create_log_dir, run_scenario_against_providers,
-                           write_run_summary)
+    from framework import AVAILABLE_PROVIDERS, build_summary, create_log_dir, run_scenario_against_providers, write_run_summary
     import time
 
     if not AVAILABLE_PROVIDERS:

@@ -56,8 +56,14 @@ except Exception as e:
 # as a documented pattern for future tests.
 _RAG_SKIP_REASON = None
 try:
-    import langchain_chroma  # noqa: F401
-    import chromadb  # noqa: F401
+    import langchain_chroma
+    import chromadb
+    # Reference the imported names so libtbx.find_unused_imports recognizes
+    # these as used.  The actual purpose of these imports is the side
+    # effect: if either raises during import (including TypeError from
+    # protobuf version conflicts), _RAG_SKIP_REASON is populated by the
+    # except clause below.
+    _RAG_PROBED = (langchain_chroma.__name__, chromadb.__name__)
 except Exception as e:
     _RAG_SKIP_REASON = (
         "langchain RAG stack (chromadb) not usable: %s: %s"

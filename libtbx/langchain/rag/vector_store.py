@@ -14,7 +14,7 @@ Usage:
 from __future__ import absolute_import, division, print_function
 
 import time
-from typing import List, Iterable, Optional, Any
+from typing import List, Iterable
 assert Iterable is not None
 
 from langchain_core.documents import Document
@@ -60,7 +60,7 @@ def create_and_persist_db(
     pause_between_batches: float = 2.0,
     max_attempts: int = 6,
     max_backoff: float = 60.0
-) -> Optional[Any]:
+):
     """
     Build a Chroma vector store with batching to avoid SQLite limits and API rate limits.
 
@@ -74,11 +74,10 @@ def create_and_persist_db(
         max_backoff: Maximum backoff time in seconds
 
     Returns:
-        Chroma vector store, or None if creation failed.  (Annotated as
-        Optional[Any] rather than ``Chroma`` so that ``typing.get_type_hints()``
-        does not raise NameError in environments where chromadb is
-        unavailable — see docs/DEVELOPER_GUIDE.md "Optional dependency
-        handling".)
+        Chroma vector store, or None if creation failed.  (The return-type
+        annotation is omitted so that this module can be imported in
+        environments where chromadb / langchain_chroma is unavailable —
+        see docs/DEVELOPER_GUIDE.md "Optional dependency handling".)
 
     Example:
         from libtbx.langchain.core.llm import get_llm_and_embeddings

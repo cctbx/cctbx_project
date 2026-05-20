@@ -54,7 +54,7 @@ from framework import Scenario
 # at the plan.  The unit-level equivalent (testing only the wipe
 # behavior in workflow_engine._apply_directives) is at
 # tst_validate_step_after_program_guard.py::test_M1a_*.
-from framework import (call_planning_llm, make_planning_run_fn)
+from framework import make_planning_run_fn
 
 
 # =====================================================================
@@ -225,9 +225,7 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
 
-    from framework import (AVAILABLE_PROVIDERS, build_summary,
-                           create_log_dir, run_scenario_against_providers,
-                           write_run_summary)
+    from framework import AVAILABLE_PROVIDERS, build_summary, create_log_dir, run_scenario_against_providers, write_run_summary
     import time
 
     if not AVAILABLE_PROVIDERS:
