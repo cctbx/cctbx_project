@@ -1,0 +1,77 @@
+"""Chat session logging: one log file per launcher invocation, plus a
+redaction helper applied to any payload-bearing log call (Section 15.3 of
+the design spec).
+
+Rotation policy: keep up to 7 most-recent session logs under
+<chat_root>/logs/. Older logs are deleted on launch."""
+
+import datetime
+import re
+
+LOG_KEEP = 7
+
+# Regexes are anchored loosely so the helper catches the common header
+# spellings without being clever about quoting.
+_REDACT_PATTERNS = (
+  (re.compile(r'(sk-ant-[A-Za-z0-9_\-]+)'), '<REDACTED>'),
+  (re.compile(r'(Bearer\s+)[A-Za-z0-9_\-\.]+', re.IGNORECASE), r'\1<REDACTED>'),
+  (re.compile(r'(x-api-key\s*[:=]\s*)\S+', re.IGNORECASE), r'\1<REDACTED>'),
+  (re.compile(r'("api_key"\s*:\s*)"[^"]+"'), r'\1"<REDACTED>"'),
+)
+
+
+def session_log_path(chat_root):
+  ts = datetime.datetime.now().strftime("%Y%m%dT%H%M%S%f")
+  return chat_root / "logs" / ("chat-%s.log" % ts)
+
+
+def open_session_log(chat_root):
+  """Create the logs dir if missing, prune old logs, and return
+  (open file handle, Path). Caller owns the handle and must close it."""
+  log_dir = chat_root / "logs"
+  log_dir.mkdir(parents=True, exist_ok=True)
+  # Prune before creating today's log so LOG_KEEP counts only pre-existing
+  # files; the new log we're about to open is excluded from the count.
+  _prune_old_logs(log_dir, "chat-*.log")
+  path = session_log_path(chat_root)
+  return open(path, "w", buffering=1), path
+
+
+def debug_log_path(chat_root):
+  ts = datetime.datetime.now().strftime("%Y%m%dT%H%M%S%f")
+  return chat_root / "logs" / ("debug-%s.log" % ts)
+
+
+def open_debug_log(chat_root):
+  """Per-launch debug log alongside the session log. Returns (open
+  file handle, Path); caller owns the handle.
+
+  Distinct from open_session_log: only created when the launcher is
+  invoked with --debug. Collects what would otherwise be lost when
+  phenix.chat runs without a visible terminal — uncaught exceptions,
+  AgentError events surfaced by the runner, and (for the claude_code
+  backend) the SDK's debug_stderr stream. Same LOG_KEEP rotation as
+  session logs but tracked separately so debug history doesn't push
+  out routine session logs."""
+  log_dir = chat_root / "logs"
+  log_dir.mkdir(parents=True, exist_ok=True)
+  _prune_old_logs(log_dir, "debug-*.log")
+  path = debug_log_path(chat_root)
+  return open(path, "w", buffering=1), path
+
+
+def redact_secrets(text):
+  """Apply all redaction patterns to text. Idempotent."""
+  for pat, repl in _REDACT_PATTERNS:
+    text = pat.sub(repl, text)
+  return text
+
+
+def _prune_old_logs(log_dir, pattern):
+  logs = sorted(log_dir.glob(pattern),
+                key=lambda p: p.stat().st_mtime, reverse=True)
+  for p in logs[LOG_KEEP:]:
+    try:
+      p.unlink()
+    except OSError:
+      pass
