@@ -1,8 +1,8 @@
 """Profile loader and Profile dataclass.
 
-Section 13 of the design spec. JSON files; cascading override
-(project > user > built-in); one level of based_on inheritance with cycle
-detection; ${VAR} and ${env:NAME} expansion in mcp_servers strings.
+JSON files; cascading override (project > user > built-in); one level
+of ``based_on`` inheritance with cycle detection; ``${VAR}`` and
+``${env:NAME}`` expansion in ``mcp_servers`` strings.
 """
 
 import json
@@ -86,7 +86,7 @@ class ProfileLoader:
   """Resolve and load profiles with cascading override and inheritance."""
 
   def __init__(self, builtin_dir, user_dir=None, project_dir=None, log=None):
-    # Search order: project > user > built-in (Section 13.4).
+    # Search order: project > user > built-in.
     self.search_dirs = [d for d in (project_dir, user_dir, builtin_dir) if d]
     self.log = log if log is not None else sys.stdout
 
@@ -168,8 +168,8 @@ def _build_profile(data, source_path):
   if system_prompt and system_prompt_file:
     raise Sorry("Profile %s: system_prompt and system_prompt_file are mutually exclusive" % source_path)
   if system_prompt_file:
-    # Per Section 13.3: system_prompt_file goes through the same ${VAR}
-    # expansion as mcp_servers fields. E.g., "${PROFILE_DIR}/prompt.md".
+    # system_prompt_file goes through the same ${VAR} expansion as
+    # mcp_servers fields. E.g., "${PROFILE_DIR}/prompt.md".
     expanded = _expand_str(system_prompt_file, source_path)
     file_path = (Path(source_path).parent / expanded).resolve()
     if not file_path.exists():

@@ -1,9 +1,8 @@
 """Chat session logging: one log file per launcher invocation, plus a
-redaction helper applied to any payload-bearing log call (Section 15.3 of
-the design spec).
+redaction helper applied to any payload-bearing log call.
 
 Rotation policy: keep up to 7 most-recent session logs under
-<chat_root>/logs/. Older logs are deleted on launch."""
+``<chat_root>/logs/``. Older logs are deleted on launch."""
 
 import datetime
 import re

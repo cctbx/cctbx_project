@@ -38,17 +38,34 @@ class SkillLoader:
 
   def load_default(self, additional=(), disabled=frozenset(),
                    mcp_servers=None):
-    """Built-ins first (minus disabled), then `additional` resolved against
-    project/user paths or absolute paths. Built-in wins on name collision.
+    """Load built-in skills (minus ``disabled``), then ``additional``
+    skills resolved against project/user paths or absolute paths.
+    Built-in wins on name collision.
 
-    mcp_servers: iterable of names of MCP servers known to be available
-      (typically derived from profile.mcp_servers, or [] when --no-mcp
-      is set). When provided, skills whose `requires` frontmatter lists
-      a server not in this set are filtered out — they can't usefully
-      run, so loading them would only mislead the agent into calling
-      tools that don't exist. Pass None (default) to skip this check
-      for backward compatibility and for callers that don't know which
-      servers will be wired up."""
+    Parameters
+    ----------
+    additional : iterable of str or dict, optional
+        Extra skill references. A string is resolved against the
+        loader's search paths; a dict with a ``path`` key is taken as
+        an absolute / project-relative path.
+    disabled : frozenset of str, optional
+        Names of built-in skills to skip.
+    mcp_servers : iterable of str, optional
+        Names of MCP servers known to be available for this session
+        (typically derived from ``profile.mcp_servers``, or ``[]`` when
+        ``--no-mcp`` is set). When provided, skills whose ``requires``
+        frontmatter lists a server outside this set are filtered out
+        -- loading them would only mislead the agent into calling
+        tools that don't exist. ``None`` (default) skips the check
+        entirely, which suits callers that don't know which servers
+        will be wired up.
+
+    Returns
+    -------
+    list of Skill
+        Loaded skills in the order they will appear in the system
+        prompt.
+    """
     if mcp_servers is None:
       available = None
     else:
@@ -150,12 +167,24 @@ class SkillLoader:
   # ---- system prompt assembly ----------------------------------------------
 
   def assemble_system_prompt(self, base_prompt, skills):
-    """Build the system prompt for a session from loaded skills.
+    """Build the session's system prompt from the loaded skills.
 
     Re-callable so an agent can rebuild the prompt mid-session if the
     skill set changes. ``always``-mode skills inline their full body;
     ``on_demand`` skills emit name + description only (the body is
     fetched via the ``load_skill`` tool).
+
+    Parameters
+    ----------
+    base_prompt : str
+        Profile-level system prompt that precedes the skill sections.
+    skills : list of Skill
+        Skills to surface in the prompt.
+
+    Returns
+    -------
+    str
+        The assembled system prompt.
     """
     sections = [base_prompt, ""]
     if skills:
@@ -180,13 +209,23 @@ class SkillLoader:
   # ---- tools (registered with ToolRegistry) --------------------------------
 
   def tools(self, skills):
-    """Return ``[(ToolSpec, handler), ...]`` for the skill-loader tools.
+    """Return the skill-loader tools to register with a ``ToolRegistry``.
 
-    ``read_skill_file`` and ``list_skill_files`` are always registered
-    when any skill is loaded; ``load_skill`` is only registered when at
-    least one skill is ``mode=on_demand`` (otherwise every skill's body
-    is already inline in the system prompt and ``load_skill`` has no
-    purpose). All three are skill-source ``risk='read'``.
+    ``read_skill_file`` and ``list_skill_files`` are always emitted
+    when any skill is loaded; ``load_skill`` is only emitted when at
+    least one skill is ``mode=on_demand`` (otherwise every skill's
+    body is already inline in the system prompt and ``load_skill``
+    has no purpose). All three are skill-source ``risk='read'``.
+
+    Parameters
+    ----------
+    skills : list of Skill
+        Skills the agent has access to.
+
+    Returns
+    -------
+    list of (ToolSpec, callable)
+        Pairs ready to feed into ``ToolRegistry.register_skill_tool``.
     """
     from qttbx.widgets.chat.agent.base import ToolSpec
     if not skills:

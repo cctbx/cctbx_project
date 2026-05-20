@@ -1,13 +1,14 @@
-"""LRU image cache for the chat UI (Section 12.5 of the design spec).
+"""LRU image cache for the chat UI.
 
-Keyed by (conv_id, sha256) for full-size, (conv_id, sha256, width) for
-thumbnails. Capacity is in entry count, not bytes — the design caps at
-~200 full-size QImages which is a reasonable proxy for the ~200MB target
-at typical chat image sizes. Disk-backed thumbnail cache is a follow-up.
+Keyed by ``(conv_id, sha256)`` for full-size, ``(conv_id, sha256,
+width)`` for thumbnails. Capacity is in entry count, not bytes —
+~200 full-size ``QImage`` instances is a reasonable proxy for ~200 MB
+at typical chat image sizes.
 
-`get_image` / `get_thumbnail` are module-level helpers backed by a
-single default ImageCache instance set via `set_default_cache` (this lets
-multiple widgets share a single cache without each holding a reference)."""
+``get_image`` / ``get_thumbnail`` are module-level helpers backed by a
+single default ``ImageCache`` instance set via ``set_default_cache``,
+which lets multiple widgets share a single cache without each holding
+a reference."""
 
 from collections import OrderedDict
 
@@ -63,8 +64,8 @@ def get_image(storage, conv_id, sha256):
   try:
     data = storage.load_attachment(conv_id, sha256)
   except Exception:
-    # Missing or unreadable; surface a placeholder rather than crashing the
-    # widget — Section 12 design favors graceful degradation.
+    # Missing or unreadable; surface a placeholder rather than crashing
+    # the widget.
     return _placeholder()
   if not img.loadFromData(data):
     return _placeholder()

@@ -24,16 +24,23 @@ class ContentBlock:
   """One element of a ``Message.content`` list.
 
   ``type`` is one of: ``'text'``, ``'image'``, ``'thinking'``,
-  ``'tool_use'``, ``'tool_result'``. The ``data`` shape is
-  type-specific::
+  ``'tool_use'``, ``'tool_result'``, ``'server_tool_use'``,
+  ``'server_tool_result'``. The ``data`` shape is type-specific::
 
-      text         {'text': str}
-      image        {'attachment_sha256': str, 'mime': str,
-                    'caption': str | None}
-      thinking     {'text': str, 'signature': str | None}
-      tool_use     {'id': str, 'name': str, 'input': dict}
-      tool_result  {'tool_use_id': str, 'content': list[ContentBlock],
-                    'is_error': bool}
+      text                {'text': str}
+      image               {'attachment_sha256': str, 'mime': str,
+                           'caption': str | None}
+      thinking            {'text': str, 'signature': str | None}
+      tool_use            {'id': str, 'name': str, 'input': dict}
+      tool_result         {'tool_use_id': str,
+                           'content': list[ContentBlock],
+                           'is_error': bool}
+      server_tool_use     {'id': str, 'name': str, 'input': dict}
+                          -- API-executed (e.g. ``web_search``); no
+                          client dispatch.
+      server_tool_result  {'tool_use_id': str, 'content': dict}
+                          -- opaque provider payload paired with the
+                          matching ``server_tool_use``.
   """
   type: str
   data: dict
@@ -66,9 +73,9 @@ class Attachment:
 
 @dataclass
 class SubagentRecord:
-  """Persisted sub-conversation under <conv_dir>/subagents/<sub_id>.json
-  (Section 11.5). Loaded on demand when the user inspects the parent's
-  subagent tool-use cell."""
+  """Persisted sub-conversation under ``<conv_dir>/subagents/<sub_id>.json``.
+  Loaded on demand when the user inspects the parent's subagent
+  tool-use cell."""
   sub_id: str
   parent_conversation_id: str
   parent_tool_use_id: str

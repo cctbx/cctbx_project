@@ -1,9 +1,9 @@
 """Credentials dialog widgets for chat agents.
 
-Section 10.4 of the design spec. The base CredentialsDialog provides the
-common UX (instructions, masked input, show/hide toggle, save-to-keychain
-checkbox, test/save/cancel buttons). Each agent subclasses to set its own
-title, instructions, and (later) test-connection logic.
+The base ``CredentialsDialog`` provides the common UX (instructions,
+masked input, show/hide toggle, save-to-keychain checkbox, save and
+cancel buttons). Each agent subclasses to set its own title and
+instructions.
 """
 
 from qttbx.qt import QtWidgets

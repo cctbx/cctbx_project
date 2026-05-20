@@ -1,13 +1,14 @@
 """Per-project conversation storage.
 
-Section 6 of the design spec. Layout:
-  <project_dir>/.phenix_chat/
-    index.json
-    conversations/<conv_id>/
-      meta.json
-      messages.json
-      attachments/sha256-<hex>.<ext>
-      subagents/<sub_id>.json
+Layout::
+
+    <project_dir>/.phenix_chat/
+      index.json
+      conversations/<conv_id>/
+        meta.json
+        messages.json
+        attachments/sha256-<hex>.<ext>
+        subagents/<sub_id>.json
 
 Atomic writes via tmp + rename. Lazy directory creation. Content-addressed
 attachments (sha256-keyed; automatic dedup within a conversation).
@@ -206,7 +207,7 @@ def _parse_dt(s):
 def _check_schema_version(doc, source):
   """Raise Sorry if the document's schema_version is from a future version
   we don't know how to migrate. Currently v1 only (no migrations needed);
-  this is the seam future migrations plug into (Section 6.6)."""
+  this is the seam future migrations plug into."""
   if not isinstance(doc, dict):
     return
   version = doc.get("schema_version", _SCHEMA_VERSION)

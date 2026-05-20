@@ -129,7 +129,7 @@ class AgentSession:
       _accumulate(msg, event, tool_calls, self.storage, self.conv.meta.id)
     return msg, tool_calls
 
-  # ---- tool dispatch (Section 4.4) -----------------------------------------
+  # ---- tool dispatch -------------------------------------------------------
 
   def _dispatch_and_build_results(self, tool_calls, cancel):
     batch_id = _new_id("b_") if len(tool_calls) > 1 else None
@@ -209,7 +209,8 @@ class AgentSession:
 
   def _await_approval(self, req):
     """Park the worker on the approval queue. Wakes on either a real
-    ToolApprovalResponse or a _Cancelled sentinel (Section 10.4)."""
+    ``ToolApprovalResponse`` or a ``_Cancelled`` sentinel pushed by the
+    GUI's cancel handler."""
     self.on_event(req)                              # surface to UI
     response = self.approval_queue.get()
     if isinstance(response, _Cancelled):

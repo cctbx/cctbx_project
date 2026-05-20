@@ -1,8 +1,8 @@
-"""Side artifact panel (Section 12.2 of the design spec).
+"""Side artifact panel.
 
-Holds a history of Artifact instances; renders the current one via the
-renderer registry in artifact.py. Image renderer ships in v1; other
-kinds are addable via register_renderer."""
+Holds a history of ``Artifact`` instances and renders the current one
+via the renderer registry in ``artifact.py``. Ships with an image
+renderer; other kinds can be added via ``register_renderer``."""
 
 from qttbx.qt import QtCore, QtGui, QtWidgets
 

@@ -1,8 +1,9 @@
 """Path resolution for project directory and chat-data root.
 
-Section 6.3 of the design spec. The active project directory is where
-conversations and Phenix job dirs live; .phenix_chat/ is created lazily
-on first persistence write.
+The active project directory is where conversations and Phenix job dirs
+live; ``.phenix_chat/`` is created lazily on first persistence write so
+cwd-as-project doesn't leave a hidden dir behind for chats that never
+sent a message.
 """
 
 import os

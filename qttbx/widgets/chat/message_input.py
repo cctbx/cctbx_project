@@ -1,11 +1,15 @@
 """Multi-line chat input with attachments, drag-drop, paste, and a
-Send/Stop button.
+button row (Save chat / Auto-approve / attach / Send).
 
-The button label flips to 'Stop' when set_busy(True) is called; click_send
-emits 'stop' in that mode. Attachments are added via attach_bytes (also
-fed by drag-drop, Ctrl/Cmd+V paste, or the paperclip file picker) and
-travel with the next send signal as a list[dict] of
-  {"bytes": bytes, "mime": str, "filename": str}."""
+The Send button's label flips to 'Stop' when ``set_busy(True)`` is
+called; ``click_send`` emits ``stop`` in that mode. Attachments are
+added via ``attach_bytes`` (also fed by drag-drop, Ctrl/Cmd+V paste,
+or the ``@`` attach button) and travel with the next ``send`` signal
+as a ``list[dict]`` of ``{"bytes": bytes, "mime": str, "filename":
+str}``. ``auto_approve_changed`` carries the auto-approve toggle's
+checked state; ``save_chat`` is a parameterless signal the chat window
+listens to so it can prompt for a destination and write the
+markdown export."""
 
 from qttbx.qt import QtCore, QtGui, QtWidgets
 

@@ -124,12 +124,12 @@ _ROLE_LABELS = {"user": "You", "assistant": "Claude"}
 
 class MessageBubble(QtWidgets.QFrame):
   """Visually one chat turn (user or assistant). The bubble accumulates
-  child cells in vertical order matching message.content.
+  child cells in vertical order matching ``message.content``.
 
-  Flattened layout (spec section 3): no QFrame border / background; the
-  role word is bold-prefixed onto the first text cell (e.g.
-  ``<b>You:</b> refine 1yjp``) rather than rendered as a separate
-  header label. Turn separation comes from the 12 px top margin."""
+  Flattened layout: no QFrame border / background; the role word is
+  bold-prefixed onto the first text cell (e.g. ``<b>You:</b> refine
+  1yjp``) rather than rendered as a separate header label. Turn
+  separation comes from the 12 px top margin."""
 
   image_clicked = QtCore.Signal(str, str)        # conv_id, sha256
 
