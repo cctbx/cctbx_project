@@ -106,6 +106,34 @@ def find_common_water_resseq_max(pdb_hierarchy):
             break
   return result
 
+def missing_atoms(acp, verbose=False):
+  rc={}
+  for mm in acp.all_monomer_mappings:
+    # assert mm.incomplete_info is None, 'incomplete_info %s' % mm.incomplete_info
+    for atom in mm.expected_atoms: break
+    key=atom.parent().id_str()
+    resname=atom.parent().resname
+    if mm.incomplete_info:
+      rc[key]={}
+      rc[key]['resname']=resname
+      rc[key]['class']=mm.classification
+      rc[key]['incomplete']=mm.incomplete_info
+    elif mm.missing_atoms_info:
+      rc[key]={}
+      rc[key]['resname']=resname
+      rc[key]['class']=mm.classification
+      rc[key]['missing']=mm.missing_atoms_info
+    if verbose:
+      for types in ['heavy', 'hydrogens']:
+        atoms=mm.missing_atoms_info.get(types, [])
+        if atoms:
+          print(f'  {types}')
+          for name, item in atoms.items():
+            print(name)
+            # item.show()
+  return rc
+
+
 def cctbx_depreciation_warning(s):
   print('%s\n# cctbx depreciation warning: %s\n%s' %(
     '~'*80, s, '~'*80))
@@ -347,6 +375,7 @@ class manager(object):
 
     self.link_records_in_pdb_format = None # Nigel's stuff up to refactoring
     self._all_monomer_mappings = None
+    self._missing_atoms = None
 
     # These are new
     self.xray_scattering_dict = None    # 2020: leave only one: self._scattering_dict
@@ -2211,7 +2240,7 @@ class manager(object):
     if self._processed_pdb_file:
       self._clash_guard_msg = self._processed_pdb_file.clash_guard(
         new_sites_cart = self.get_sites_cart())
-      self._all_chain_proxies=self._processed_pdb_file.all_chain_proxies
+      self._missing_atoms=missing_atoms(self._processed_pdb_file.all_chain_proxies)
     # This must happen after process call.
     # Reason: contents of model and _model_input can get out of sync any time.
     self._model_input = None
