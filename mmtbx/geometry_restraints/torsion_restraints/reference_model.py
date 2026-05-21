@@ -12,6 +12,7 @@ from mmtbx import secondary_structure
 from scitbx.matrix import rotate_point_around_axis
 from libtbx.str_utils import make_sub_header
 from mmtbx.geometry_restraints.torsion_restraints import utils
+import math
 import sys
 import time
 import iotbx
@@ -108,6 +109,19 @@ reference_model
       .help = this is to used internally to disambiguate cases where multiple \
               reference models contain the same chain ID. This normally does \
               not need to be set by the user
+  }
+  ramachandran_targets
+    .short_caption = Reference-derived Ramachandran targets
+    .style = box auto_align
+  {
+    enabled = False
+      .type = bool
+      .help = "If oldfield Ramachandran restraints are active, override the \
+               tabulated phi/psi targets with the angles measured from this \
+               reference model for every residue with a matched reference. \
+               The standard reference_model dihedral restraints on phi/psi \
+               (when params.enabled is also True) are not removed; both \
+               families of restraints apply concurrently."
   }
   hydrogen_bonds
     .short_caption = Reference H-bond restraints
@@ -226,6 +240,20 @@ def _lookup_working_h_iseq(work_hierarchy, ref_hierarchy, m_donor_iseq,
       return atom.i_seq
   return None
 
+def _phi_psi_from_iseqs(sites_cart, i_seqs):
+  """Compute (phi, psi) in degrees from the 5 i_seqs of an oldfield rama proxy.
+
+  Phi uses i_seqs[0..3], psi uses i_seqs[1..4] — see ramachandran.h
+  target_phi_psi template (the C++ code that this function reproduces in
+  Python so we can compute angles from arbitrary site arrays)."""
+  phi_sites = tuple(tuple(sites_cart[j]) for j in i_seqs[0:4])
+  psi_sites = tuple(tuple(sites_cart[j]) for j in i_seqs[1:5])
+  phi = cctbx.geometry_restraints.dihedral(
+    sites=phi_sites, angle_ideal=0, weight=1).angle_model
+  psi = cctbx.geometry_restraints.dihedral(
+    sites=psi_sites, angle_ideal=0, weight=1).angle_model
+  return phi, psi
+
 def add_reference_model_restraints_if_requested(
     model,
     geometry,
@@ -234,17 +262,22 @@ def add_reference_model_restraints_if_requested(
     log=None):
   """Build a reference_model and apply requested reference-derived restraints.
 
-  Dispatches independently on params.enabled (torsion restraints) and
-  params.hydrogen_bonds.enabled (H-bond bond and angle restraints). The two
-  flags are independent: either, both, or neither may be active. The
-  reference_model object is constructed once regardless and attached to the
-  geometry via adopt_reference_dihedral_manager so downstream code paths
-  (in particular GRM.get_reference_hbond_proxies) can reach it.
+  Dispatches independently on params.enabled (torsion restraints),
+  params.hydrogen_bonds.enabled (H-bond bond and angle restraints), and
+  params.ramachandran_targets.enabled (oldfield phi/psi target override).
+  Any subset (or none) may be active. The reference_model object is
+  constructed once regardless and attached to the geometry via
+  adopt_reference_dihedral_manager so downstream code paths can reach it.
+
+  Returns the number of Ramachandran targets overridden, or 0 if the rama
+  path was not requested.
   """
   want_dihedrals = bool(params.enabled)
   want_hbonds = bool(getattr(params, 'hydrogen_bonds', None) and
                      params.hydrogen_bonds.enabled)
-  if not (want_dihedrals or want_hbonds):
+  want_rama = bool(getattr(params, 'ramachandran_targets', None) and
+                   params.ramachandran_targets.enabled)
+  if not (want_dihedrals or want_hbonds or want_rama):
     return 0
   if (params.use_starting_model_as_reference and
     (len(params.file) > 0) and params.file[0] is not None):
@@ -298,6 +331,12 @@ def add_reference_model_restraints_if_requested(
             "working model has no hydrogen atoms; all D-H-A angle "
             "restraints were skipped. ***",
             file=log)
+  n_rama_changed = 0
+  if want_rama:
+    n_rama_changed = rm.apply_ramachandran_targets(geometry.ramachandran_manager)
+    print("*** %d Ramachandran targets replaced from reference model ***"
+          % n_rama_changed, file=log)
+  return n_rama_changed
 
 class reference_model(object):
 
@@ -611,6 +650,65 @@ class reference_model(object):
     if self.reference_dihedral_proxies is not None:
       return self.reference_dihedral_proxies.size()
     return 0
+
+  def apply_ramachandran_targets(self, ramachandran_manager):
+    """Override the oldfield phi/psi targets in `ramachandran_manager` with
+    angles measured from this reference_model's reference hierarchies.
+
+    For each oldfield proxy, attempts to map all 5 i_seqs through
+    self.match_map[file]; on success, computes phi (i_seqs[0:4]) and psi
+    (i_seqs[1:5]) from self.sites_cart_ref[file] and writes
+        (phi_ref, psi_ref, distance)
+    into ramachandran_manager.target_phi_psi[i]. The third element is the
+    angular distance sqrt(dphi^2 + dpsi^2) between the refined and reference
+    phi/psi at the time of this call, computed with wrapped angle deltas; it
+    is read by the C++ residual function when params.oldfield.weight is None.
+
+    Proxies that do not fully map are left untouched (they keep the tabulated
+    target produced at ramachandran_manager construction).
+
+    Returns the number of overridden proxies.
+    """
+    rt_params = getattr(self.params, 'ramachandran_targets', None)
+    if rt_params is None or not rt_params.enabled:
+      return 0
+    if ramachandran_manager is None:
+      raise Sorry(
+        "reference_model.ramachandran_targets.enabled=True requires an "
+        "active Ramachandran restraints manager. Also set "
+        "pdb_interpretation.ramachandran_plot_restraints.enabled=True.")
+    if ramachandran_manager.params.inject_emsley8k_into_oldfield_favored:
+      raise Sorry(
+        "reference_model.ramachandran_targets.enabled=True requires "
+        "pdb_interpretation.ramachandran_plot_restraints."
+        "inject_emsley8k_into_oldfield_favored=False; otherwise favored "
+        "residues are silently restrained with emsley8k and the "
+        "reference-derived targets are not applied to them.")
+    if ramachandran_manager.get_n_oldfield_proxies() == 0:
+      return 0
+    refined_sites = self.pdb_hierarchy.atoms().extract_xyz()
+    n_changed = 0
+    for i, proxy in enumerate(ramachandran_manager._oldfield_proxies):
+      i_seqs = tuple(proxy.get_i_seqs())
+      mapped = None
+      for fn in self.reference_file_list:
+        mm = self.match_map.get(fn)
+        if mm is None: continue
+        ref_iseqs = tuple(mm.get(j) for j in i_seqs)
+        if None in ref_iseqs: continue
+        mapped = (fn, ref_iseqs)
+        break
+      if mapped is None: continue
+      fn, ref_iseqs = mapped
+      ref_sites = self.sites_cart_ref[fn]
+      phi_ref, psi_ref = _phi_psi_from_iseqs(ref_sites, ref_iseqs)
+      phi_refined, psi_refined = _phi_psi_from_iseqs(refined_sites, i_seqs)
+      dphi = cctbx.geometry_restraints.angle_delta_deg(phi_ref, phi_refined)
+      dpsi = cctbx.geometry_restraints.angle_delta_deg(psi_ref, psi_refined)
+      distance = math.sqrt(dphi * dphi + dpsi * dpsi)
+      ramachandran_manager.target_phi_psi[i] = (phi_ref, psi_ref, distance)
+      n_changed += 1
+    return n_changed
 
   def top_out_function(self, x, weight, top):
     return top*(1-exp(-weight*x**2/top))

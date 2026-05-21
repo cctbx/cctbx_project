@@ -831,6 +831,11 @@ class manager(object):
       params         = rama_params,
       log            = self.log)
     grm.set_ramachandran_restraints(manager = ramachandran_restraints_manager)
+    ref_mgr = getattr(grm, 'reference_dihedral_manager', None)
+    if ref_mgr is not None:
+      rt_params = getattr(ref_mgr.params, 'ramachandran_targets', None)
+      if rt_params is not None and rt_params.enabled:
+        ref_mgr.apply_ramachandran_targets(ramachandran_restraints_manager)
 
   def unset_ramachandran_plot_restraints(self):
     if self.get_restraints_manager() is not None:
