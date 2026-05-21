@@ -6,6 +6,7 @@ import sys
 import os, math
 import boost_adaptbx.boost.python as bp
 from scitbx.array_family import flex
+import cctbx.geometry_restraints
 from mmtbx.validation import ramalyze
 from mmtbx.conformation_dependent_library import generate_protein_threes
 from six.moves import range
@@ -591,7 +592,9 @@ class ramachandran_manager(object):
     class rama_for_show:
       def __init__(self,
           labels,
-          residual):
+          residual,
+          phi_psi_current=None,
+          phi_psi_target=None):
         adopt_init_args(self, locals())
     assert by_value in ["residual", "delta"]
     assert site_labels is None or len(site_labels) == sites_cart.size()
@@ -606,22 +609,40 @@ class ramachandran_manager(object):
     result_phi_psi_2 = []
     labels = site_labels if site_labels is not None \
         else [str(i) for i in range(sites_cart.size())]
-    for proxies, residual_array, result in [
-        (self._oldfield_proxies, self.residuals_array_oldfield, result_oldfield),
-        (self._emsley_proxies, self.residuals_array_emsley, result_emsley),
-        (self._emsley8k_proxies, self.residuals_array_emsley8k, result_emsley8k),
-        (self._phi_psi_2_proxies, self.residuals_array_phi_psi_2, result_phi_psi_2),
+    for proxies, residual_array, result, is_oldfield in [
+        (self._oldfield_proxies, self.residuals_array_oldfield,
+         result_oldfield, True),
+        (self._emsley_proxies, self.residuals_array_emsley,
+         result_emsley, False),
+        (self._emsley8k_proxies, self.residuals_array_emsley8k,
+         result_emsley8k, False),
+        (self._phi_psi_2_proxies, self.residuals_array_phi_psi_2,
+         result_phi_psi_2, False),
         ]:
       if proxies is not None and proxies.size() > 0:
         for i, pr in enumerate(proxies):
           i_seqs = pr.get_i_seqs()
+          phi_psi_current = None
+          phi_psi_target = None
+          if is_oldfield and self.target_phi_psi is not None:
+            phi_sites = tuple(tuple(sites_cart[j]) for j in i_seqs[0:4])
+            psi_sites = tuple(tuple(sites_cart[j]) for j in i_seqs[1:5])
+            phi_curr = cctbx.geometry_restraints.dihedral(
+              sites=phi_sites, angle_ideal=0, weight=1).angle_model
+            psi_curr = cctbx.geometry_restraints.dihedral(
+              sites=psi_sites, angle_ideal=0, weight=1).angle_model
+            phi_psi_current = (phi_curr, psi_curr)
+            t = self.target_phi_psi[i]
+            phi_psi_target = (t[0], t[1])
           result.append(rama_for_show(
               [labels[i_seqs[0]],
                labels[i_seqs[1]],
                labels[i_seqs[2]],
                labels[i_seqs[3]],
                labels[i_seqs[4]]],
-              residual_array[i]))
+              residual_array[i],
+              phi_psi_current=phi_psi_current,
+              phi_psi_target=phi_psi_target))
         if by_value == "residual":
           result.sort(key=lambda x: x.residual, reverse=True)
     return result_oldfield, result_emsley, result_emsley8k, result_phi_psi_2
@@ -660,6 +681,15 @@ class ramachandran_manager(object):
         print("    %s            %5.2e" % (p.labels[0], p.residual), file=f)
         for i in range(1,5):
           print("    %s" % p.labels[i], file=f)
+        if p.phi_psi_target is not None:
+          phi_c, psi_c = p.phi_psi_current
+          phi_t, psi_t = p.phi_psi_target
+          dphi = cctbx.geometry_restraints.angle_delta_deg(phi_c, phi_t)
+          dpsi = cctbx.geometry_restraints.angle_delta_deg(psi_c, psi_t)
+          print("    phi=%7.2f  target=%7.2f  delta=%6.2f" % (
+            phi_c, phi_t, dphi), file=f)
+          print("    psi=%7.2f  target=%7.2f  delta=%6.2f" % (
+            psi_c, psi_t, dpsi), file=f)
       print("", file=f)
 
 def load_tables():
