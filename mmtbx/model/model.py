@@ -110,7 +110,10 @@ def missing_atoms(acp, verbose=False):
   rc={}
   for mm in acp.all_monomer_mappings:
     # assert mm.incomplete_info is None, 'incomplete_info %s' % mm.incomplete_info
+    atom=None
     for atom in mm.expected_atoms: break
+    if atom is None: continue
+    if atom.parent() is None: continue
     key=atom.parent().id_str()
     resname=atom.parent().resname
     if mm.incomplete_info:
