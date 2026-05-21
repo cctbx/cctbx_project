@@ -1708,6 +1708,23 @@ def main():
                        "tst_density_modify_experiment_type",
                        False, 0))
 
+    # --- Settings List Coercion (v118.10) ---
+    try:
+        from tests.tst_settings_list_coercion import (
+            run_all_tests as run_list_coercion_tests)
+        success, elapsed = run_test_module(
+            "tst_settings_list_coercion",
+            run_list_coercion_tests, args.verbose)
+        results.append(("Settings List Coercion",
+                       "tst_settings_list_coercion",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_settings_list_coercion: {e}")
+        results.append(("Settings List Coercion",
+                       "tst_settings_list_coercion",
+                       False, 0))
+
     # --- Environment Dependency Check (v118.6.7) ---
     # Note: this checks the PYTHON ENVIRONMENT, not code behavior.  It
     # will FAIL on any environment that doesn't have the full ai_agent

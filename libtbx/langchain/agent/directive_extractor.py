@@ -2045,6 +2045,91 @@ def _apply_crystal_symmetry_fallback(directives, user_advice, log):
     return directives
 
 
+def _coerce_setting_value(value, expected_type):
+    """Convert a directive setting value to its expected type,
+    handling LLM-shape variability across providers.
+
+    Google's directive-extraction LLM tends to wrap scalar values
+    in lists (e.g. ``["S"]`` for ``additional_atom_types``).
+    OpenAI emits the same content as a bare scalar (``"S"``).
+    Naive ``str(["S"])`` produces ``"['S']"`` — the original
+    v118.10 bug.  This helper normalizes both shapes.
+
+    Behavior:
+
+    * value is list/tuple, length 0:
+      - expected_type is str → return ``""``
+      - non-str expected_type → raise ValueError
+    * value is list/tuple, length 1:
+      Unpack the single element and recurse with expected_type.
+      Handles ``[False]`` → ``False``, ``[5]`` → ``5``,
+      ``["S"]`` → ``"S"`` all correctly (no Python truthiness
+      trap from ``bool([False]) == True``).
+    * value is list/tuple, length 2+:
+      - expected_type is str → join elements with `" "` (PHIL
+        multi-value string syntax), strip outer whitespace
+      - non-str expected_type → raise ValueError (no sensible
+        scalar coercion)
+    * value is dict + expected_type is str:
+      raise ValueError (no sensible coercion).
+    * all other cases:
+      apply ``expected_type(value)`` as before (backward-compat).
+
+    Future-proofing convention: this helper coerces lists to
+    scalar (str via space-join, others via single-element unpack)
+    ONLY for non-list expected_types.  If a future setting
+    legitimately needs to be a list, declare it with
+    ``expected_type=list`` in VALID_SETTINGS — this function will
+    then pass-through the list unchanged.
+
+    Known limitation: deeply nested lists (e.g. ``[["S"]]``)
+    unpack to ``["S"]``, then space-join produces ``"['S']"`` —
+    back to the original bug shape.  This is accepted because
+    LLMs emitting nested lists for flat PHIL parameters is
+    genuinely malformed output.
+
+    Quote-stripping NOT performed: LLMs occasionally emit
+    elements with internal quotes like ``["'xtriage'"]``.
+    Stripping outer quotes would damage legitimate PHIL content
+    like ``["O5'"]`` (sugar atom with prime mark) or selection
+    strings with internal quotes.  Whitespace stripping is done
+    only on the joined multi-element result.
+
+    Args:
+        value: the raw LLM-emitted value
+        expected_type: one of str, int, float, bool from
+            VALID_SETTINGS or VALID_STOP_CONDITIONS
+
+    Returns:
+        the value coerced to expected_type
+
+    Raises:
+        ValueError or TypeError if coercion isn't sensible
+    """
+    if isinstance(value, (list, tuple)):
+        if len(value) == 0:
+            if expected_type is str:
+                return ""
+            raise ValueError(
+                "empty list cannot coerce to %s"
+                % expected_type.__name__)
+        if len(value) == 1:
+            # Single-element: unpack and recurse.  Type-preserving
+            # for bool/int/float/str.
+            return _coerce_setting_value(value[0], expected_type)
+        # Multi-element: only str can absorb (space-join is the
+        # canonical PHIL multi-value-string syntax)
+        if expected_type is str:
+            return " ".join(str(x) for x in value).strip()
+        raise ValueError(
+            "multi-element list cannot coerce to %s: %r"
+            % (expected_type.__name__, value))
+    if expected_type is str and isinstance(value, dict):
+        raise ValueError(
+            "dict cannot coerce to str: %r" % (value,))
+    return expected_type(value)
+
+
 def validate_directives(directives, log=None):
     """
     Validate and clean extracted directives.
@@ -2101,7 +2186,32 @@ def validate_directives(directives, log=None):
                     if key in VALID_SETTINGS:
                         try:
                             expected_type = VALID_SETTINGS[key]
-                            valid_settings[key] = expected_type(value)
+                            # v118.10: coerce list/tuple shapes
+                            # (Google emits lists where OpenAI emits
+                            # scalars) BEFORE the type cast.  Bare
+                            # `expected_type(value)` would call
+                            # ``str(["S"])`` which produces
+                            # ``"['S']"`` — the original bug.
+                            coerced = _coerce_setting_value(
+                                value, expected_type)
+                            if isinstance(value, (list, tuple)):
+                                # Distinct log lines per content:
+                                # single-element = JSON-shape artifact;
+                                # multi-element = content-ambiguity
+                                # signal.  Both worth visibility.
+                                if len(value) <= 1:
+                                    _log(
+                                        "DIRECTIVES: Unpacked "
+                                        "single-element list for "
+                                        "%s: %r → %r"
+                                        % (key, value, coerced))
+                                else:
+                                    _log(
+                                        "DIRECTIVES: Joined "
+                                        "multi-element list for "
+                                        "%s: %r → %r"
+                                        % (key, value, coerced))
+                            valid_settings[key] = coerced
                         except (ValueError, TypeError):
                             _log("DIRECTIVES: Invalid value for %s: %s" % (key, value))
                     else:
@@ -2197,16 +2307,38 @@ def validate_directives(directives, log=None):
                 if key in VALID_STOP_CONDITIONS:
                     try:
                         expected_type = VALID_STOP_CONDITIONS[key]
+                        # v118.10: coerce list/tuple shapes BEFORE
+                        # the `value not in VALID_PROGRAMS` check
+                        # below — that check raises TypeError on a
+                        # list input ("unhashable type: 'list'"),
+                        # which the outer except would swallow,
+                        # silently dropping the directive.
+                        coerced = _coerce_setting_value(
+                            value, expected_type)
+                        if isinstance(value, (list, tuple)):
+                            if len(value) <= 1:
+                                _log(
+                                    "DIRECTIVES: Unpacked "
+                                    "single-element list for "
+                                    "%s: %r → %r"
+                                    % (key, value, coerced))
+                            else:
+                                _log(
+                                    "DIRECTIVES: Joined "
+                                    "multi-element list for "
+                                    "%s: %r → %r"
+                                    % (key, value, coerced))
                         if key == "after_program":
-                            # Validate program name
-                            if value not in VALID_PROGRAMS:
-                                fixed = _fix_program_name(value)
+                            # Validate program name (now safe — the
+                            # coerced value is a string).
+                            if coerced not in VALID_PROGRAMS:
+                                fixed = _fix_program_name(coerced)
                                 if fixed:
-                                    value = fixed
+                                    coerced = fixed
                                 else:
-                                    _log("DIRECTIVES: Invalid stop program %s" % value)
+                                    _log("DIRECTIVES: Invalid stop program %s" % coerced)
                                     continue
-                        valid_stop[key] = expected_type(value)
+                        valid_stop[key] = coerced
                     except (ValueError, TypeError):
                         _log("DIRECTIVES: Invalid stop condition %s: %s" % (key, value))
                 else:
