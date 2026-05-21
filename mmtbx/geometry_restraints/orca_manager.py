@@ -168,7 +168,7 @@ end
   def get_coordinate_lines(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False):
     if self.multiplicity in [None, Auto]:
       self.multiplicity=1
-    outl = '* xyz %s %s\n' % (self.charge, self.multiplicity)
+    outl = '* xyz %s %s\n' % (self.get_charge(), self.multiplicity)
     for i, atom in enumerate(self.atoms):
       outl += ' %s %0.5f %0.5f %0.5f # %s %s\n' % (
         atom.element,

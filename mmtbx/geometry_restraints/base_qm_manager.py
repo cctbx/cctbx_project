@@ -188,6 +188,7 @@ class base_manager():
       )
     residues = []
     for i, atom in enumerate(self.atoms):
+      if atom.parent() is None: continue
       ann=''
       if self.ligand_atoms_array: ann=self.ligand_atoms_array[i]
       outl += '  %s %s\n' % (atom.quote(), ann)
@@ -197,7 +198,17 @@ class base_manager():
     outl += '\n  '.join(residues)
     return outl
 
-  def get_charge(self): return self.charge
+  def check_charge(self):
+    from mmtbx.ligands.electrons import default_metal_charges
+    from mmtbx.monomer_library.pdb_interpretation import ad_hoc_single_atom_residue_element_types
+    for atom in self.atoms:
+      if atom.element.upper() in ad_hoc_single_atom_residue_element_types:
+        if atom.element.capitalize() not in default_metal_charges:
+          print(f'\n\n  Atom\n    {atom.quote()}\n  may need an atomic charge. The charge is currently {self.charge}.\n\n')
+
+  def get_charge(self):
+    self.check_charge()
+    return self.charge
 
   def set_charge(self, charge): self.charge = charge
 
@@ -361,6 +372,7 @@ class base_qm_manager(base_manager):
         if sel:
           tmp.append(atom)
       coordinates=tmp
+    assert coordinates
     return flex.vec3_double(coordinates), flex.vec3_double(coordinates_buffer)
 
   def get_energy(self,

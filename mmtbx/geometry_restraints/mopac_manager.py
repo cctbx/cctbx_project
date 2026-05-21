@@ -60,7 +60,7 @@ class mopac_manager(base_qm_manager.base_qm_manager):
      self.method,
      self.basis_set,
      self.solvent_model,
-     'CHARGE=%s %s' % (self.charge, nproc_str),
+     'CHARGE=%s %s' % (self.get_charge(), nproc_str),
      multiplicity_str,
      additional_options,
      self.preamble,
@@ -175,9 +175,10 @@ class mopac_manager(base_qm_manager.base_qm_manager):
       )
     return cmd
 
-  def run_cmd(self, redirect_output=False, log=None):
+  def run_cmd(self, redirect_output=False, verbose=False, log=None):
     t0=time.time()
     cmd = self.get_cmd()
+    if verbose: print(cmd)
     self.error_lines=[
       'THE SCF CALCULATION FAILED.',
       'UNABLE TO ACHIEVE SELF-CONSISTENCE',
