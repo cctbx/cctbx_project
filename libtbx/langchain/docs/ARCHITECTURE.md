@@ -1617,6 +1617,351 @@ regex pattern would fire on descriptive prose like "the workflow
 continues immediately after prediction."  The asymmetric placement
 is deliberate.
 
+### 14. Diagnostic Markers for LLM Pipeline Failures (v118 Section E)
+
+**Rationale**: Pre-v118, when an LLM call in the preprocessor or
+directive extractor failed (network error, JSON parse failure,
+retired model 404, malformed response), the failure was caught
+inside `_call_llm` and the code fell through to the rules-only
+backstop.  This was correct behavior for resilience but produced
+no diagnostic trail: from outside the function, a successful
+rules-only fallback looked identical to a successful LLM call.
+
+v118 Section E adds two stderr markers:
+
+- **`[DIRECTIVE_EXTRACTION_FAILED]`** at
+  `agent/directive_extractor.py` — fires when the directive-
+  extraction LLM call raises any exception.  Message includes
+  the provider, model name, and full exception text.
+
+- **`[ADVICE_PREPROCESSING_FAILED]`** at
+  `agent/advice_preprocessor.py` — analogous marker for
+  preprocessor LLM failures.
+
+Both markers dual-write to the log function AND stderr (the
+stderr write is wrapped in `try/except` so logging can never
+break the fallback path).
+
+**Why important for future work**: Section E proved essential
+for diagnosing v118 Section 8 (the gemini-2.0-flash retirement).
+Without Section E, the server-side 404 would have been buried in
+server stderr with no marker the client could grep.  With
+Section E, the marker name itself was the search key, and the
+root cause was visible from client logs alone.  v119's planned
+"server stderr → client diagnostic_messages" feature is a direct
+continuation of this principle.
+
+### 15. Diagnostic Layer Split: User Intent vs Effective Runtime (v118 Section C-prime)
+
+**Rationale**: Pre-v118, the displayed "Extracted Directives:"
+block in client logs was overloaded: it showed the LLM's
+extracted directives but ALSO the post-grounding and
+post-fallback overlays applied by `_apply_directives`,
+`_validate_after_program_grounded`, and friends.  When provider
+asymmetry caused different behavior (e.g., OpenAI vs Google on
+the same advice), the client log alone couldn't tell whether
+the LLM extracted differently or whether the runtime overlays
+differed.
+
+v118 Section C-prime splits the diagnostic output into:
+
+- **`directives_user_intent`** — the LLM's pure extraction
+  output, before any runtime overlays
+- **`directives_effective_runtime`** — what the workflow
+  actually consumed after all overlays applied
+
+The two are displayed in adjacent sections of the cycle log.
+When they match, the LLM-vs-rules path is straightforward.
+When they differ, the difference is exactly the runtime
+overlay's contribution, which the user can compare against
+documented overlay rules to diagnose.
+
+**Why important for future work**: this is the pattern any
+future "what did the LLM actually emit" question relies on.
+Section 9's `_corrected_from` sidecar (see Section 21 below)
+follows the same principle of preserving provenance through
+runtime transformations.
+
+### 16. PHIL Namespace Healing (v118 Section B)
+
+**Rationale**: LLMs sometimes emit PHIL paths with wrong
+namespace prefixes — e.g., `data_manager.r_free_flags.generate`
+where the canonical PHIL path is bare
+`generate_rfree_flags=True` for phenix.refine, or
+`refinement.refine.strategy` where the canonical is
+`refine.strategy`.  Pre-v118, these wrong-namespace paths
+silently flowed to phenix programs and were rejected by PHIL
+parsing, producing "unknown parameter" errors with no
+attribution to the LLM as the source.
+
+v118 Section B adds:
+
+- **`PHIL_NAMESPACE_TRANSLATIONS`** static table mapping known-
+  bad PHIL paths to their canonical forms
+- **`_heal_namespaced_phil_keys()`** helper applied in
+  `validate_directives` per-program — for each setting key
+  the LLM emitted, check the translation table and rewrite
+  if matched
+- **`BAD_PHIL_NAMESPACE_PREFIXES`** companion table — drop
+  (with log line) any key whose prefix matches a known-bad
+  pattern that has no canonical translation
+
+Section B's `tst_phil_namespace_cleaner.py` (14 tests) locks
+the translation table.
+
+**Why important for future work**: the translation table is
+finite and grows with each observed LLM mistake.  v119's
+deferred work item §3.1 considers replacing the static table
+with dynamic `master_phil` resolution at extract time, which
+would eliminate drift between the table and actual program
+schemas.
+
+### 17. BUILD experiment_type Threading + R-free Auto-fill (v118 Section F)
+
+**Rationale**: `agent/command_builder.py:_select_files` had
+two pre-v118 brittlenesses:
+
+1. **Hardcoded "xray" assumption in the cycle-1 fast path**:
+   when `experiment_type` wasn't yet locked (because xtriage
+   hadn't run on cycle 1), the file selector defaulted to
+   X-ray file slots.  For cryo-EM tutorials where the planner
+   skipped xtriage and jumped directly to phenix.refine, this
+   produced wrong file selections.
+
+2. **No R-free generate-flag injection**: when the user
+   supplied an MTZ with no R-free flags and asked for
+   refinement, phenix.refine would error.  The right command
+   line is
+   `phenix.refine ... xray_data.r_free_flags.generate=True`,
+   but Section F's predecessors had no logic to detect
+   "first refinement + no rfree_mtz locked" and add the flag.
+
+v118 Section F adds:
+
+- **`experiment_type` threading** through `_select_files`:
+  the parameter is passed explicitly from cycle-1 plan
+  context (where it's known from input file extensions even
+  if not yet locked in session state).  Replaces the hardcoded
+  default with a true value.
+- **Auto-fill of `xray_data.r_free_flags.generate=True`** when
+  `_select_files` detects refinement-without-rfree-mtz on a
+  first-refinement cycle.  BUILD log line:
+  `BUILD: First refinement - will generate R-free flags (no rfree_mtz locked)`.
+
+Section F is the **first v118 section that touches server-side
+code**.  After Section F, the v118 ledger formally distinguishes
+client-side from server-side changes; server-side changes
+require both file deployment AND server process restart.
+
+**Why important for future work**: Section F's "experiment
+type isn't known yet" handling is a workaround for the deeper
+issue that `session.set_experiment_type()` only locks after the
+first program returns.  v119 deferred work item §3.3 considers
+inferring experiment type from input file extensions at session
+creation time, which would obviate Section F's threading hack.
+
+### 18. Optional Dependency Resilience + Environment Probe (v118 Section G + 6.7)
+
+**Rationale**: The `rag/vector_store.py` module conditionally
+imports `chromadb` via `langchain_chroma`.  Pre-v118, this
+import was wrapped in `except ImportError`.  Production
+deployments started failing with `TypeError` from the
+opentelemetry-proto / protobuf chain (a dependency of chromadb
+that fails on version mismatches with a TypeError, not an
+ImportError).  Result: the LLM-features-disabled fallback path
+didn't fire, and tutorial runs failed at module load time.
+
+v118 Section G:
+
+- Broadens the exception class from `except ImportError` to
+  `except Exception` at the chromadb import site
+- Logs the specific exception text so the operator can see
+  which dependency version is conflicting
+- Falls through to LLM-features-disabled path on any chromadb
+  load failure
+
+v118 Section 6.7 (rev 3) adds **`tests/tst_dependencies.py`** —
+an environment-readiness test that runs a **true runtime probe**
+(`from langchain_chroma import Chroma`) rather than just
+attempting to import top-level packages.  This catches the
+exact deep-import failure modes Section G was designed for.
+
+Together, Section G and 6.7 are the first v118 sections verified
+on both Mac and Linux production environments.  v118.G also
+established the **stub-module isolation pattern** for K-tests
+(see `tests/tst_optional_dep_resilience.py`): the test
+synthesizes a stub `chromadb` module that raises the protobuf
+TypeError on import, exercising Section G's broadened exception
+handler without needing a real broken chromadb install.
+
+**Why important for future work**: the "catch Exception not
+just ImportError" lesson generalizes to any lazy-import gate
+in the codebase.  v119 deferred work item §3.4 calls for an
+audit of other lazy-import sites.
+
+### 19. Default Model Names + Retired-Model Detection (v118 Section 8)
+
+**Rationale**: Google retired `gemini-2.0-flash` on
+2026-05-20.  Production server's directive extraction began
+silently 404'ing because three independent hardcoded
+model-default tables in the codebase still pointed at the
+retired name:
+
+1. `core/llm.py` (already pointed at current model)
+2. `agent/api_client.py` (at TWO sites: lines 655 and 673)
+3. `agent/directive_extractor.py` (fallback path)
+
+v118 Section 8 rev 3 bumps all three to
+`gemini-2.5-flash-lite`.  Section 8 rev 1 fixed only the
+directive_extractor — the api_client occurrences were missed,
+and the bug persisted.  Rev 2 needed a patch script; rev 3
+shipped the full files.  This experience generated the v119
+cadence convention: every string-replacement starts with
+`grep -rn 'STRING' $PHENIX/modules/cctbx_project/libtbx/langchain/`.
+
+Section 8 is **client + SERVER**: the server's long-running
+process has the directive_extractor and api_client modules
+loaded at boot.  Code changes don't take effect until
+the server restarts.  This experience also informs v119's
+planned operational guards (server `/version` endpoint +
+startup canary that issues a 1-token dummy inference call to
+catch retired-model 404 at boot).
+
+**Why important for future work**: v119 deferred work item
+§3.5 calls for centralizing all model defaults in
+`core/llm.DEFAULT_MODELS` with a single
+`default_model_for_provider()` accessor.  Then the next
+retirement requires one string change rather than three.
+
+### 20. Experiment-Type-Conditional Program Canonicalization (v118 Section 9)
+
+**Rationale**: Tom's runs 237 and 239 ("density modify and
+stop" on cryo-EM half-maps) produced
+`after_program=phenix.autobuild_denmod` (the X-ray density
+modification program) instead of `phenix.resolve_cryo_em`
+(the cryo-EM equivalent).  Because `autobuild_denmod` never
+runs in a cryo-EM workflow, the stop guard never fired and
+the workflow continued through all 5 stages.
+
+The bug was at the LLM-extraction layer: the directive-
+extraction prompt at lines 443-445 had two parallel rules
+(cryo-EM density mod, X-ray density mod) both matching the
+literal phrase "density modify".  The LLM picked the X-ray
+default (likely recency bias plus the X-ray rule appearing
+second) even when the preprocessed advice clearly stated
+`Experiment Type: cryo-EM`.
+
+v118 Section 9 adds three layers:
+
+1. **Prompt restructure** (lines 443-462): replaces the two
+   parallel rules with an explicit decision tree —
+   "CHECK THE EXPERIMENT TYPE in the preprocessed advice
+   FIRST" — and a default-to-cryo-EM rule for ambiguous cases.
+2. **Module-level `PROGRAM_REPRINTS_BY_EXPERIMENT_TYPE` table**
+   with two symmetric entries:
+   `("cryoem", "phenix.autobuild_denmod"): "phenix.resolve_cryo_em"`
+   and the X-ray mirror.  Read by
+   `_apply_experiment_type_program_reprints()` which runs
+   AFTER `_validate_after_program_grounded`.  Placement is
+   intentional: grounding bypasses when
+   `stop_after_requested=True`, so the wrong program survives
+   intact for correction.  Moving the validator before
+   grounding would create the opposite bug.
+3. **`[DIRECTIVE_CORRECTION]` log marker** + `_corrected_from`
+   sidecar field in `stop_conditions` recording
+   `{from, to, reason, experiment_type}` for traceability.
+
+K_DENMOD test suite (13 tests) covers the bug case, mirror
+case, no-change cases, ambiguous-experiment cases, grounding-
+bypass interaction, and diagnostic emission verification.
+
+**Why important for future work**: Section 9 demonstrates the
+"table-driven canonicalization" pattern: a declarative
+mapping table consumed by a generic validator, with new entries
+addable in one line.  v119 may extend the table conservatively
+if production logs reveal more analogous LLM mistakes; pairs
+that do semantically-different things (xtriage vs mtriage)
+should NOT be added.
+
+### 21. List-to-String Coercion in Directive Validation (v118 Section 10)
+
+**Rationale**: Tom's P9 SAD run with Google provider produced
+`additional_atom_types=['S']` (the Python repr of a single-
+element list) instead of the canonical `S`.  autosol rejected
+the bracketed string.  The same input on OpenAI produced `S`
+correctly.
+
+Root cause: provider-specific JSON shape mismatch.
+
+```
+OpenAI:  "additional_atom_types": "S"        ← string
+Google:  "additional_atom_types": ["S"]       ← list of strings
+```
+
+`validate_directives` called `expected_type(value)` with
+`expected_type=str`:
+
+```python
+str("S")     →  "S"        # OpenAI: correct
+str(["S"])   →  "['S']"    # Google: Python repr - WRONG
+```
+
+v118 Section 10 adds **`_coerce_setting_value(value, expected_type)`**
+helper applied at TWO call sites in `validate_directives`:
+
+- **Site 1 (program_settings, ~line 2104)** — Tom's bug.
+- **Site 2 (stop_conditions, ~line 2209)** — latent
+  silent-drop: the pre-coerce check
+  `value not in VALID_PROGRAMS` raises
+  `TypeError("unhashable type: 'list'")` on list input,
+  swallowed by the outer `except (ValueError, TypeError)`.
+  Today Google emitting `after_program=["phenix.autosol"]`
+  silently drops the directive.
+
+Helper behavior:
+
+- **Single-element list/tuple of any type**: unpack and
+  recurse.  Type-preserving for bool/int/float/str.  Fixes the
+  Python truthiness trap where `bool([False]) == True` would
+  silently flip a boolean.
+- **Multi-element list/tuple + str expected_type**: space-join
+  (PHIL multi-value-string syntax).
+- **Multi-element + non-str**: raise ValueError → outer
+  except → logged and dropped.
+- **Dict + str**: raise ValueError → same.
+- **All other cases**: `expected_type(value)` as before
+  (backward-compat for OpenAI's scalar path).
+
+Emits one of two log markers:
+
+- `DIRECTIVES: Unpacked single-element list for X: Y → Z`
+  (the JSON-shape-artifact case)
+- `DIRECTIVES: Joined multi-element list for X: Y → Z`
+  (the content-ambiguity case)
+
+K_LIST test suite (12 tests) including K11 which verifies the
+**v118.10 + v118.9 interaction chain**: a list-formatted
+`after_program=["phenix.autobuild_denmod"]` in cryo-EM context
+is coerced by v118.10 to a string, which v118.9 then rewrites
+to `phenix.resolve_cryo_em`.  Without v118.10 the list would
+have been silently dropped before v118.9 could correct it.
+
+**Why important for future work**: Section 10's helper
+documents a **future-proofing convention** in its docstring —
+if a future PHIL field legitimately needs a list value,
+declare it with `expected_type=list` in `VALID_SETTINGS` and
+the helper passes lists through unchanged.  This structurally
+prevents future maintainers from breaking the helper by
+adding a list-bearing field with the wrong type annotation.
+
+A latent analogous bug remains in
+`file_preferences` validation (line ~2371 of
+`directive_extractor.py`): `bool(value)` on
+`prefer_anomalous=[False]` would silently return True.
+v118.10 doesn't touch that block because Tom's bug is in
+`program_settings`.  v119 deferred work item §3.6 calls for
+extending the helper to that block.
+
 ## Workflow States
 
 ### X-ray Crystallography Workflow

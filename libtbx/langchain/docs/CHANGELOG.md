@@ -1,4 +1,246 @@
-# CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3
+# CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3 / v118
+
+## Version 118 (Preprocessor resilience + operational hardening)
+
+### Summary
+
+v118 is a 12-layer cumulative release addressing a class of bugs
+surfaced in the 2026-05-19 production logs (AIAgent_240/241/243/245)
+and follow-up reports through 2026-05-21.  The layers are
+independent fixes that share the architectural pattern
+"strengthen the directive pipeline against LLM-shape and
+provider-asymmetry variance":
+
+```
+v117.3 → A → C-prime → B → E → F → 5.1 → G → 6.1-6.7 → 8 → 9 → 10
+```
+
+Each layer ships with its own test suite using the mock-LLM
+pattern from `tst_after_program_fill_from_raw.py`.  Total
+sandbox tests after v118.10: 204/204 passing.
+
+### Per-layer breakdown
+
+**Section A (client) — File-list preservation**
+`agent/advice_preprocessor.py`,
+`programs/ai_agent.py`,
+`tests/tst_preprocessor_file_override.py`.  Preserves the input
+file list across the preprocessor's text-vs-context round-trip
+via UNION semantics in
+`_ensure_file_list_in_processed_advice()`.  +12 tests.
+
+**Section C-prime (client) — Diagnostic split**
+`programs/ai_agent.py`,
+`tests/tst_directive_layer_diagnostics.py`.  Splits the previously-
+overloaded "directives" diagnostic output into
+`directives_user_intent` (what the LLM extracted) vs
+`directives_effective_runtime` (what the runtime actually
+applied after grounding / fallback overlays).  Makes provider-
+asymmetry symptoms diagnosable from logs alone.  +7 tests.
+
+**Section B (client) — PHIL namespace healing**
+`agent/advice_preprocessor.py`,
+`agent/directive_extractor.py`,
+`tests/tst_phil_namespace_cleaner.py`.  Static translation
+table `PHIL_NAMESPACE_TRANSLATIONS` rewrites known-bad PHIL
+paths (e.g. `data_manager.r_free_flags.generate` →
+`xray_data.r_free_flags.generate` → bare
+`generate_rfree_flags`).  Drops with log line when path can't
+be healed.  +14 tests.
+
+**Section E (client) — LLM-failure diagnostic markers**
+`agent/advice_preprocessor.py`,
+`agent/directive_extractor.py`,
+`tests/tst_extraction_failure_visibility.py`.  Adds
+`[DIRECTIVE_EXTRACTION_FAILED]` and
+`[ADVICE_PREPROCESSING_FAILED]` stderr markers with the
+exception text when an LLM call fails (network error, JSON
+parse failure, retired model 404, etc.).  Section E proved
+essential for diagnosing v118.8 — without it, the server
+404 would have been buried in the server-side stderr with
+no marker for client-side log search.  +11 tests.
+
+**Section F (SERVER) — BUILD experiment_type + R-free auto-fill**
+`agent/command_builder.py`,
+`tests/tst_build_experiment_type_and_rfree.py`.  First v118
+section that touches server-side code.  Threads
+`experiment_type` through `_select_files` (was hardcoded
+"xray" in the cycle-1 fast path → cryo-EM cycle-1 BUILD
+selected wrong file slots when xtriage hadn't run yet).
+Adds R-free generate-flag auto-fill for first-refinement-with-
+no-rfree-mtz cases (was the AIAgent_245 reproducer:
+phenix.refine ... xray_data.r_free_flags.generate=True).
++9 tests.
+
+**Section 5.1 (client) — PHIL .help hyphen/semicolon hotfix**
+`agent/advice_preprocessor.py`.  Drops hyphen-prefix and
+semicolon-suffix forms from `[--help]` patterns that occasionally
+make it through advice quoting.
+
+**Section G (client) — Optional dependency resilience**
+`rag/vector_store.py`,
+`tests/tst_optional_dep_resilience.py`,
+plus 6.x test-infrastructure cleanups.  Wraps the optional
+chromadb → langchain_chroma chain in
+`except Exception` (not `except ImportError`), because
+protobuf version conflicts surface as `TypeError`, not
+`ImportError`.  Adds environment-readiness test
+`tst_dependencies.py` (v118.6.7 rev 3) that runs a true
+runtime probe (`from langchain_chroma import Chroma`) rather
+than just attempting to import.  +11 + 11 = +22 tests.
+First v118 section verified on both Mac and Linux production
+environments.
+
+**Section 8 rev 3 (client + SERVER) — Model bump**
+`agent/directive_extractor.py`,
+`agent/api_client.py`.  Bumps the default Google model from
+`gemini-2.0-flash` (retired by Google 2026-05-20) to
+`gemini-2.5-flash-lite` in TWO files.  Without Section 8 the
+server's directive extraction silently 404'd; Section E's
+diagnostic surfaced the root cause in seconds.  First v118
+section that required server-side deployment + process
+restart for the fix to take effect.  No new tests (string
+replacement only); confirmed server-verified via Section E
+markers vanishing on retry.
+
+**Section 9 rev 2 (SERVER) — Experiment-type-conditional program canonicalization**
+`agent/directive_extractor.py`,
+`tests/tst_density_modify_experiment_type.py`.  After Section 8
+fixed the 404, runs 237/239 (Tom's "density modify and stop"
+on cryo-EM half-maps) showed the LLM still picking
+`phenix.autobuild_denmod` (X-ray) instead of
+`phenix.resolve_cryo_em` (cryo-EM).  Section 9 adds three
+layers:
+
+  1. Decision-tree prompt restructure at lines 443-462 of
+     `DIRECTIVE_EXTRACTION_PROMPT`: replaces two parallel
+     cryo-EM/X-ray rules with an explicit "CHECK THE
+     EXPERIMENT TYPE FIRST" decision tree.
+  2. Module-level `PROGRAM_REPRINTS_BY_EXPERIMENT_TYPE`
+     table (2 entries, symmetric) consumed by a new
+     `_apply_experiment_type_program_reprints()` validator.
+     Validator runs AFTER `_validate_after_program_grounded`
+     by design (grounding bypasses on
+     `stop_after_requested=True`, so the wrong program
+     survives intact for correction).  Emits
+     `[DIRECTIVE_CORRECTION]` log line + stores
+     `_corrected_from` sidecar field in `stop_conditions`
+     for traceability.
+  3. K_DENMOD test suite (13 tests) covering the bug case,
+     mirror case, no-change cases, ambiguous cases, grounding-
+     bypass interaction, and diagnostic emission verification.
+
++13 tests.
+
+**Section 10 (SERVER) — List-to-string coercion**
+`agent/directive_extractor.py`,
+`tests/tst_settings_list_coercion.py`.  Provider-specific JSON
+shape mismatch: OpenAI emits `"additional_atom_types": "S"`
+(string); Google's `gemini-2.5-flash-lite` emits
+`"additional_atom_types": ["S"]` (list).  Validation loop
+called `str(["S"])` which produced `"['S']"` (Python repr,
+with brackets) — autosol rejected the malformed string.
+Section 10 adds `_coerce_setting_value()` helper that:
+
+  - Unpacks single-element lists/tuples of any type
+    (`[False]` → `False`, fixing the Python truthiness
+    trap `bool([False]) == True`).
+  - Space-joins multi-element list/tuples for str-typed
+    fields (PHIL multi-value-string syntax).
+  - Raises ValueError for unsupported coercions (dict→str,
+    multi-element list to non-str), caught by outer
+    try/except and logged.
+
+Helper applied at TWO call sites: `program_settings`
+validation (Tom's bug) and `stop_conditions` validation
+(latent bug — list-shaped `after_program` raised
+`TypeError("unhashable type: 'list'")` from the
+`value not in VALID_PROGRAMS` check, silently swallowed
+and the directive dropped).  K_LIST test suite (12 tests)
+includes K11 verifying the v118.10 + v118.9 interaction
+chain end-to-end.  +12 tests.
+
+### Process notes from v118
+
+**Whole-tree grep before declaring a string-replacement done.**
+Section 8 rev 1 fixed the model string in
+`agent/directive_extractor.py` only.  The server kept
+failing because `agent/api_client.py` also hardcoded the
+retired model name at two locations.  Rev 2 needed a patch
+script; rev 3 had the full file with both occurrences
+updated.  v119 cadence convention (per consolidated
+next_steps): every string-replacement starts with
+`grep -rn 'STRING' $PHENIX/modules/cctbx_project/libtbx/langchain/`.
+
+**Stub-module isolation for K-tests.** Section F established
+the pattern of K-tests using stub modules for
+`agent.program_registry` and `agent.intent_classifier` so
+tests run in seconds without the full PHENIX conda env.
+Sections G and 10 reused this pattern.
+
+**Gemini-reviewed plan rev cycles.** Sections G, 9, and 10
+each went through 2–4 plan revs incorporating Gemini critique
+before implementation.  Each revision caught a real concern:
+v118.G's annotation issue (rev 2), v118.9's table-driven
+design (rev 2), v118.10's bool-truthiness trap (rev 3).
+
+### Files changed (cumulative)
+
+| File | Sections that touched it |
+|---|---|
+| `agent/directive_extractor.py` | B, E, 8, 9, 10 |
+| `agent/advice_preprocessor.py` | A, B, E, 5.1 |
+| `agent/api_client.py` | 8 |
+| `agent/command_builder.py` | F |
+| `programs/ai_agent.py` | A, C-prime |
+| `rag/vector_store.py` | G |
+| `tests/tst_preprocessor_file_override.py` | A (new) |
+| `tests/tst_directive_layer_diagnostics.py` | C-prime (new) |
+| `tests/tst_phil_namespace_cleaner.py` | B (new) |
+| `tests/tst_extraction_failure_visibility.py` | E (new) |
+| `tests/tst_build_experiment_type_and_rfree.py` | F (new) |
+| `tests/tst_optional_dep_resilience.py` | G (new) |
+| `tests/tst_dependencies.py` | 6.7 (new) |
+| `tests/tst_density_modify_experiment_type.py` | 9 (new) |
+| `tests/tst_settings_list_coercion.py` | 10 (new) |
+| `tests/run_all_tests.py` | A, C-prime, B, E, F, G, 6.7, 9, 10 (registrations) |
+
+### Verification
+
+Sandbox: 204/204 passing.
+
+Production verified:
+- Section G: Mac and Linux production envs
+- Section 8: server stderr clean of
+  `[DIRECTIVE_EXTRACTION_FAILED]` markers after deploy
+- v117.3 + Section A + Section C-prime: confirmed via prior
+  production runs
+
+Production awaiting:
+- Section 9: rerun "density modify and stop" on cryo-EM
+- Section 10: rerun P9 SAD with Google provider
+
+### Architectural watchpoint triggered
+
+At v118.10 the project is at **10 iterations** in the
+preprocessor → extractor → planner → BUILD pipeline (original
+threshold was 6).  Specific signs that have appeared:
+
+- New sections added for yet-another-LLM-emission-shape failure
+  modes (v118.9 wrong canonical name; v118.10 list-wrapping)
+- Defensive logic at one layer compensating for upstream
+  limits (v118.9 validator, v118.10 helper)
+- Cross-section coupling: v118.10's K11 explicitly tests the
+  v118.10 → v118.9 chain
+
+v119 will pursue operational hardening (centralized model
+defaults, server `/version` endpoint, startup canary, server→
+client diagnostic echo) and prompt consolidation; v120 may
+pursue Direction A (single structured-extraction LLM call
+replacing preprocessor + extractor + planner).  See
+`v118_next_steps_consolidated_rev4.md` for the full v119+ plan.
+
+---
 
 ## Version 117.3 (Extended stop-intent phrasing recognition)
 

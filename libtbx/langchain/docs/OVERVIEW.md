@@ -70,14 +70,111 @@ phenix.ai_agent input_directory=/path/to/tutorial/
 
 ## Active Development
 
-The v116.10 cleanup cycle is complete; see [CHANGELOG.md
-v116.10](CHANGELOG.md) for the full per-bug breakdown.
+The v118 cycle is complete; see [CHANGELOG.md
+v118](CHANGELOG.md) for the full per-section breakdown.
 
-**Scope** — Six bugs in advice parsing, LLM prompting, program
-selection, and plan classification, plus drift-detection machinery
-for the wire contract and the client's plan-generation logic.
-Five files modified, 89 new tests across 7 new test files plus
-one augmented file (`tst_contract_compliance.py`).
+**Scope** — Twelve layers stacked over v117.3 addressing
+preprocessor resilience, LLM-shape variability across providers,
+operational hardening, and bug-class elimination:
+`v117.3 → A → C-prime → B → E → F → 5.1 → G → 6.1–6.7 → 8 → 9 → 10`.
+Total sandbox: 204/204 tests passing.
+
+**Categories of work** — Four themes across the twelve layers:
+
+1. **Pipeline diagnostics** (Sections E, C-prime) — adds
+   `[DIRECTIVE_EXTRACTION_FAILED]` / `[ADVICE_PREPROCESSING_FAILED]`
+   stderr markers and splits the displayed directives diagnostic
+   into `directives_user_intent` vs `directives_effective_runtime`.
+   These layers proved essential for diagnosing Section 8 (the
+   gemini-2.0-flash retirement) — the marker name itself was the
+   search key.
+2. **Content-shape normalization** (Sections B, 9, 10) — static
+   `PHIL_NAMESPACE_TRANSLATIONS` for LLM-emitted PHIL paths;
+   `PROGRAM_REPRINTS_BY_EXPERIMENT_TYPE` for cryo-EM-vs-X-ray
+   density-modification disambiguation; `_coerce_setting_value`
+   for list-vs-scalar JSON shape mismatch between OpenAI and
+   Google.  All three follow the same pattern: declarative table
+   consumed by a generic validator, with `_corrected_from`-style
+   provenance preserved through transformations.
+3. **Operational hardening** (Sections A, F, G, 6.7, 8) — file-
+   list preservation across preprocessor round-trips; cycle-1
+   experiment_type threading + R-free auto-fill in
+   `command_builder`; chromadb load resilience against protobuf
+   `TypeError`; environment-readiness runtime probe in
+   `tst_dependencies.py`; default-model bumps across all three
+   hardcoded sites.  Section G was the first verified on both
+   Mac and Linux production environments.
+4. **Server-side deployment discipline** (Sections F, 8, 9, 10) —
+   four server-side sections in v118 (vs zero in v117) require
+   file deployment AND server process restart for the fix to
+   take effect.
+
+**Principles surfaced** — Three patterns from v118 that
+generalize beyond it:
+
+1. **Whole-tree grep before declaring a string-replacement done.**
+   Section 8 rev 1 missed `api_client.py`; rev 2 needed a patch
+   script; rev 3 shipped the full files.  v119 cadence convention:
+   every string-replacement starts with `grep -rn 'STRING'` across
+   the full langchain tree.
+
+2. **Stub-module isolation for K-tests.**  Section F established
+   the pattern, extended to G and 9/10: K-tests synthesize stub
+   modules for `agent.program_registry`,
+   `agent.intent_classifier`, etc.  Runs in seconds without the
+   full PHENIX conda env; deterministic; no real LLM calls.
+
+3. **Gemini-reviewed plan rev cycles.**  Sections G, 9, and 10
+   each cycled through 2–4 plan revs against Gemini critique
+   before implementation.  Each revision caught a real concern.
+   v118.10 rev 3 in particular caught the `bool([False]) == True`
+   truthiness trap that rev 2 would have shipped.
+
+**Architectural watchpoint triggered.**  At v118.10 the project
+is at 10 iterations in the preprocessor → extractor → planner →
+BUILD pipeline (original threshold was 6).  v119 will pursue
+operational hardening (centralized model defaults, server
+`/version` endpoint, startup canary, server-stderr-to-client
+diagnostic echo) and prompt consolidation; v120 may pursue
+Direction A (single structured-extraction LLM call replacing the
+three-LLM chain).  See
+`v118_next_steps_consolidated_rev4.md` for the full v119+ plan.
+
+### v117 cycle (preceding v118)
+
+The v117 cycle (v117 → v117.1 → v117.2 → v117.3) reworked the
+directive-extraction pipeline to make it robust against
+preprocessor mangling of user stop intent:
+
+- **v117 Step 1**: `DIRECTIVE_EXTRACTION_PROMPT_WITH_RAW` —
+  extractor LLM now receives raw advice alongside processed
+  advice via an AUTHORITY paragraph stating raw is the source
+  of truth for intent.  Eliminates the entire class of
+  "preprocessor changed `Stop Condition: None` into `Stop
+  Condition: None`" bugs.
+- **v117.1**: grounding ∧ `stop_after_requested` interaction —
+  v116.19a's grounding guardrail conflicted with v117 Step 1
+  when both `after_program` and `stop_after_requested=True`
+  were set; v117.1 exempts the grounding check in this case.
+- **v117.2**: fill `after_program` from raw advice when LLM
+  omits it — closes the C1 LLM-test gap where openai sometimes
+  failed to set `after_program` even when raw advice was
+  explicit.
+- **v117.3**: extended stop-intent phrasing recognition —
+  adds 5 imperative markers and 2 regex patterns to recognize
+  "stop the workflow", "is the last step", etc.
+
+See ARCHITECTURE.md §§9–13 for the v117 architectural changes
+and CHANGELOG.md for the per-version details.
+
+### v116.10 cycle (Pre-v117)
+
+The v116.10 cleanup cycle addressed six bugs in advice
+parsing, LLM prompting, program selection, and plan
+classification, plus drift-detection machinery for the wire
+contract and the client's plan-generation logic.  Five files
+modified, 89 new tests across 7 new test files plus one
+augmented file (`tst_contract_compliance.py`).
 
 **Categories of work** — The fixes operate at four layers:
 mechanical filters (Phase 4b strips programs whose inputs aren't
@@ -1388,6 +1485,12 @@ python3 tests/tst_phase7_routing_simulation.py  # Single phase
 
 | Version | Key Changes |
 |---------|-------------|
+| v118 | **Preprocessor resilience + operational hardening** (12 layers stacked over v117.3): Section A file-list preservation (UNION text+context, `_ensure_file_list_in_processed_advice`); Section C-prime diagnostic split (`directives_user_intent` vs `directives_effective_runtime`); Section B PHIL namespace healing (`PHIL_NAMESPACE_TRANSLATIONS` static table); Section E LLM-failure diagnostic markers (`[DIRECTIVE_EXTRACTION_FAILED]`, `[ADVICE_PREPROCESSING_FAILED]` stderr); Section F **server-side** BUILD `experiment_type` threading + R-free auto-fill in `command_builder._select_files` (first v118 section touching server); Section 5.1 PHIL `.help` hyphen/semicolon hotfix; Section G optional dep resilience (`except Exception` not `except ImportError` for chromadb/protobuf chain) + 6.7 environment-readiness runtime probe `tst_dependencies.py` (first v118 verified Mac + Linux); Section 8 model bump `gemini-2.0-flash` → `gemini-2.5-flash-lite` (THREE hardcoded sites in `core/llm.py`, `agent/api_client.py`, `agent/directive_extractor.py` — first v118 requiring server restart for deploy); Section 9 cryo-EM vs X-ray density-mod canonicalization via `PROGRAM_REPRINTS_BY_EXPERIMENT_TYPE` table + `_apply_experiment_type_program_reprints` validator + `[DIRECTIVE_CORRECTION]` log marker + `_corrected_from` sidecar (Tom's "density modify and stop" bug); Section 10 list-to-string coercion via `_coerce_setting_value` helper (single-element unpack type-preserving; multi-element space-join for str-typed fields) applied at TWO call sites in `validate_directives` — fixes Google's `additional_atom_types=["S"]` producing `"['S']"` AND latent silent-drop for list-shaped `after_program`. 9 new test suites, 204/204 sandbox tests pass. Architectural watchpoint triggered (10 iterations); v119 will pursue operational hardening + prompt consolidation. |
+| v117.3 | **Extended stop-intent phrasing recognition**: 5 new entries in `_IMPERATIVE_STOP_MARKERS` ("stop the workflow", "immediately after", etc.), 2 new regex patterns in `_POSITIVE_STOP_AFTER_PATTERNS` ("\\bstop\\s+the\\s+workflow\\b", "\\bis\\s+the\\s+last\\s+step\\b"), 4 new phrasings in `DIRECTIVE_EXTRACTION_PROMPT` schema docs. Closes the C1 LLM-test `explicit_stop_after_phaser` failure where openai's extractor produced `after_program=phenix.phaser` but failed to set `stop_after_requested=True`. Asymmetric placement: imperative markers are 300-char window-bounded so safer there than as global regex. Bare addition to existing data structures — no new pipeline steps or state fields. |
+| v117.2 | **Fill `after_program` from raw advice when LLM omits it**: in `extract_directives()`, after existing layers run, if `stop_after_requested=True` but `after_program` is missing, scan raw advice for a program name with `_POSITIVE_STOP_AFTER_PATTERNS` and fill. Closes the C1 LLM-test gap where openai sometimes failed to set `after_program` even when raw advice was explicit. |
+| v117.1 | **Grounding ∧ `stop_after_requested` interaction fix**: v116.19a's grounding guardrail conflicted with v117 Step 1 — when LLM set BOTH `after_program` and `stop_after_requested=True`, grounding's Failure 2 dropped the directive. v117.1 exempts the grounding check when `stop_after_requested=True` (the user explicitly requested stop; the after_program is the stop target, not a fabricated program assertion). |
+| v117 | **Extraction reliability — raw-advice-authoritative directive extraction**: new `DIRECTIVE_EXTRACTION_PROMPT_WITH_RAW` with AUTHORITY paragraph stating raw advice is the source of truth for intent. Extractor LLM now receives raw advice alongside processed advice. Eliminates the entire class of "preprocessor changed `Stop Condition: None`" bugs that motivated the cycle. Falls back gracefully to single-input form when raw == processed. |
+| v116.10 | **Cleanup cycle**: 6 bugs in advice parsing, LLM prompting, program selection, plan classification + drift detection. Phase 4b filter (strip programs whose inputs aren't present), Phase 6a prompt reframe (after_program), Phase 6b state-machine routing (can't-analyze sessions), Phases 1/3a/3d plan classification (`_initialize_plan_inner` standalone-programs), Phase 2 wire-contract drift catcher. S20-S24 post-Phase-5: CC key extraction (`map_model_cc` vs `model_map_cc`); file encoding (305 sites + directory-scan test); ligand workflow restart (`_detect_xray_step` past_analysis check + `with_ligand` extension to `ligand_fit_output`). 89 new tests across 7 new files + augmented `tst_contract_compliance.py`. Three principles: filter before adding to `valid_programs`; refactor means no behavior change; drift catchers belong in the existing test suite. |
 | v115.10 | **General `after_program` resolver**: Replaces per-workflow overlays (ligand-fit clearing, denmod stop/clear, continuation_indicators, downstream_tasks, multi_program_patterns) with a single `_ACTION_TABLE`-based mechanism. 14 actions with keywords mapped to xray/cryoem programs. Rules: multiple actions + stop → after_program = last; multiple + no stop → clear; single + stop → set. Features: word-boundary matching, action-specific negation detection ("don't build"), predict+build compound rule, cryo-EM experiment type inference. 33 old regex patterns removed, replaced by keyword-based action detection. 20 unit tests (91 assertions). 1 file modified (`directive_extractor.py`). |
 | v115.09b | **GUI Fixes + Ligand Workflow + Production Bugs**: (1) `explicit_program` done-flag guard prevents LLM-driven program loops (bgal_denmod, hipip-refine). (2) Ligand-fitting workflow: `after_program` clearing for multi-step workflows; `combine_ligand` guard forces pdbtools-only; post-ligandfit exemption defers `after_program_done` during combine/refine; `model_is_placed=True` for ligand-fit signals. (3) Pose file exclusion at three levels: `session.get_available_files()` basename filter (primary), `workflow_state.py` categorization, `programs.yaml` `exclude_patterns`. (4) `phaser_sad.atom_type` interception → `additional_atom_types` conversion in autosol. (5) Polder `requires_resolution` invariant with `auto_fill_resolution` + `xray_data.high_resolution` strategy flag. (6) Preprocessing stop override with `_has_explicit_stop` regex. (7) GUI auto-discovery skip for user-selected files. (8) `missing_crystal_symmetry` diagnosable error for xtriage with .sca data. 8 files modified. |
 | v115.09 | **Tutorial Routing Fixes**: (1) Cryo-EM `past_analysis` gate: added `map_sharpening_done`, `map_symmetry_done`, `has_optimized_full_map` — unblocks bgal_denmod, apoferritin_denmod, ion_channel_denmod after map_sharpening; regex broadened to match actual output filenames. (2) `.sca-only` data detection in `perceive()` — deferred, needs reactive approach. (3) Validation-only routing: `wants_validation_only` directive extracted via LLM prompt + rules-based fallback + post-LLM overlay → validation shortcut in `_detect_xray_step` → `validate_existing` plan template; PDB scan limit 500→2000 in `_is_valid_file` (3dnd.pdb has 546 header lines); `has_phased_data_mtz` added. (4) MR-SAD routing: `force_mr` flag when `use_mr_sad` + model not categorized as search_model → phaser offered; MR-SAD guard updated. Critical deployment fix: rules-based intent patterns moved to shared `_apply_workflow_intent_fallback()` called as post-LLM overlay. 7 files modified. |
