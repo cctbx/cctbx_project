@@ -444,6 +444,14 @@ class Script(DCScript):
 
     experiments = flatten_experiments(params.input.experiments)
 
+    # XFEL stills .expt files carry a shared wavelength-less XFELBeam plus
+    # per-frame wavelengths in the scan; resolve each experiment's monochromatic
+    # beam up front so the residual/prediction code can call beam.get_s0().
+    # A no-op for ordinary beams. This tool only reads experiments, so it is
+    # safe to replace the beam in place here.
+    for expt in experiments:
+        expt.beam = expt.get_monochromatic_beam()
+
     # Find all detector objects
     detectors = experiments.detectors()
 
