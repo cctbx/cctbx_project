@@ -13,7 +13,10 @@ except ImportError:
 
 
 def _app():
-  return QApplication.instance() or QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  app = QApplication.instance() or QApplication(sys.argv)
+  init_default_app_font(app)
+  return app
 
 
 def exercise_credentials_dialog_base_returns_none_on_cancel():

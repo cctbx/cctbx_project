@@ -19,12 +19,14 @@ except ImportError:
 
 
 from qttbx.widgets.chat.agent.storage import ConversationStorage
+from qttbx.widgets.font_init import init_default_app_font
 from qttbx.widgets.chat.artifact import Artifact
 from qttbx.widgets.chat.artifact_panel import ArtifactPanel
 
 
 def _png_bytes(color=(0, 0, 255)):
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   img = QtGui.QImage(40, 30, QtGui.QImage.Format_ARGB32)
   img.fill(QtGui.QColor(*color))
   buf = QtCore.QBuffer()
@@ -35,12 +37,14 @@ def _png_bytes(color=(0, 0, 255)):
 
 def exercise_empty_state_has_no_current_artifact():
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   p = ArtifactPanel()
   assert p.current_artifact() is None
 
 
 def exercise_add_image_artifact_auto_advances():
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   tmp = tempfile.mkdtemp()
   try:
     storage = ConversationStorage(project_dir=Path(tmp), log=null_out())
@@ -57,6 +61,7 @@ def exercise_add_image_artifact_auto_advances():
 
 def exercise_user_navigation_pins_index():
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   tmp = tempfile.mkdtemp()
   try:
     storage = ConversationStorage(project_dir=Path(tmp), log=null_out())
@@ -84,6 +89,7 @@ def exercise_user_navigation_pins_index():
 
 def exercise_show_image_focuses_existing_or_inserts():
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   tmp = tempfile.mkdtemp()
   try:
     storage = ConversationStorage(project_dir=Path(tmp), log=null_out())

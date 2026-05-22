@@ -26,6 +26,8 @@ except ImportError:
 def exercise_set_and_append_markdown():
   from qttbx.widgets.chat.markdown_view import MarkdownView
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
   v = MarkdownView()
   v.set_markdown("**hello**")
   assert "hello" in v.toPlainText()
@@ -37,6 +39,8 @@ def exercise_set_and_append_markdown():
 def exercise_clear():
   from qttbx.widgets.chat.markdown_view import MarkdownView
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
   v = MarkdownView()
   v.set_markdown("x")
   v.clear()
@@ -51,6 +55,8 @@ def exercise_auto_height_no_scrollbar():
   from qttbx.qt import QtCore
   from qttbx.widgets.chat.markdown_view import MarkdownView
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
   v = MarkdownView()
   assert v.verticalScrollBarPolicy() == QtCore.Qt.ScrollBarAlwaysOff
   assert v.horizontalScrollBarPolicy() == QtCore.Qt.ScrollBarAlwaysOff
@@ -139,6 +145,8 @@ def exercise_image_renders_link_to_attachment_when_storage_present():
   from qttbx.widgets.chat.markdown_export import conversation_to_markdown
   from qttbx.qt import QtCore, QtGui
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
   tmp = tempfile.mkdtemp()
   try:
     storage = ConversationStorage(project_dir=tmp, log=null_out())

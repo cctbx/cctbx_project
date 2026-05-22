@@ -27,7 +27,10 @@ from qttbx.widgets.chat.image_cache import (
 
 
 def _qapp():
-  return QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  return app
 
 
 def _png_bytes(width=10, height=10, color=(255, 0, 0)):

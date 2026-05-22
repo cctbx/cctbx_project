@@ -16,6 +16,7 @@ except ImportError:
   sys.exit(0)
 
 from qttbx.widgets.chat.agent.tools import ToolApprovalRequest
+from qttbx.widgets.font_init import init_default_app_font
 
 
 def _req(request_id="r1", tool_name="phenix_start_job",
@@ -29,6 +30,7 @@ def _req(request_id="r1", tool_name="phenix_start_job",
 def exercise_single_card_approve_emits_response():
   from qttbx.widgets.chat.tool_approval import ToolApprovalCard
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   card = ToolApprovalCard()
   card.set_requests([_req()])
   decisions = []
@@ -42,6 +44,7 @@ def exercise_single_card_approve_emits_response():
 def exercise_single_card_deny_and_stop():
   from qttbx.widgets.chat.tool_approval import ToolApprovalCard
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   card = ToolApprovalCard()
   card.set_requests([_req()])
   decisions = []
@@ -53,6 +56,7 @@ def exercise_single_card_deny_and_stop():
 def exercise_batched_card_approve_all_emits_n_responses_in_order():
   from qttbx.widgets.chat.tool_approval import ToolApprovalCard
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   card = ToolApprovalCard()
   card.set_requests([
     _req(request_id="a", batch_id="B"),
@@ -71,6 +75,7 @@ def exercise_batched_card_approve_all_emits_n_responses_in_order():
 def exercise_batched_deny_all():
   from qttbx.widgets.chat.tool_approval import ToolApprovalCard
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   card = ToolApprovalCard()
   card.set_requests([_req(request_id="a", batch_id="B"),
                      _req(request_id="b", batch_id="B")])
@@ -83,6 +88,7 @@ def exercise_batched_deny_all():
 def exercise_remember_tool_checkbox_sets_remember_field():
   from qttbx.widgets.chat.tool_approval import ToolApprovalCard
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   card = ToolApprovalCard()
   card.set_requests([_req()])
   card.set_remember_tool(True)
@@ -100,6 +106,7 @@ def exercise_card_hides_and_disables_buttons_after_click():
   button -- approve, deny, and stop."""
   from qttbx.widgets.chat.tool_approval import ToolApprovalCard
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   for click_method in ("click_approve_all", "click_deny_all", "click_stop"):
     card = ToolApprovalCard()
     card.set_requests([_req()])

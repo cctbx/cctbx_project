@@ -16,6 +16,7 @@ except ImportError:
   sys.exit(0)
 
 from qttbx.widgets.chat.agent.conversation import ContentBlock, Message, now
+from qttbx.widgets.font_init import init_default_app_font
 
 
 def _qapp():
@@ -25,6 +26,7 @@ def _qapp():
 def exercise_renders_user_text():
   from qttbx.widgets.chat.message_bubble import MessageBubble
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   m = Message(role="user", timestamp=now(), content=[
     ContentBlock(type="text", data={"text": "hello world"})])
   b = MessageBubble(m)
@@ -34,6 +36,7 @@ def exercise_renders_user_text():
 def exercise_renders_tool_use_cell():
   from qttbx.widgets.chat.message_bubble import MessageBubble
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   m = Message(role="assistant", timestamp=now(), content=[
     ContentBlock(type="text", data={"text": "calling tool"}),
     ContentBlock(type="tool_use", data={
@@ -47,6 +50,7 @@ def exercise_renders_tool_use_cell():
 def exercise_renders_thinking_block():
   from qttbx.widgets.chat.message_bubble import MessageBubble
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   m = Message(role="assistant", timestamp=now(), content=[
     ContentBlock(type="thinking", data={"text": "I should think hard"}),
     ContentBlock(type="text", data={"text": "answer"}),
@@ -60,6 +64,7 @@ def exercise_renders_thinking_block():
 def exercise_image_block_renders_as_placeholder():
   from qttbx.widgets.chat.message_bubble import MessageBubble
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   m = Message(role="assistant", timestamp=now(), content=[
     ContentBlock(type="image", data={
       "attachment_sha256": "abcdef0123456789",
@@ -74,6 +79,7 @@ def exercise_image_block_renders_as_placeholder():
 def exercise_streaming_append():
   from qttbx.widgets.chat.message_bubble import MessageBubble
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   m = Message(role="assistant", timestamp=now(), content=[
     ContentBlock(type="text", data={"text": ""})])
   b = MessageBubble(m)
@@ -88,6 +94,7 @@ def exercise_thinking_delta_after_text_starts_new_block():
   last-block semantics of append_text_delta."""
   from qttbx.widgets.chat.message_bubble import MessageBubble
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   m = Message(role="assistant", timestamp=now(), content=[
     ContentBlock(type="thinking", data={"text": "T1"}),
     ContentBlock(type="text", data={"text": "middle"}),
@@ -109,6 +116,8 @@ def exercise_image_cell_renders_real_image():
   from libtbx.utils import null_out
 
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+
+  init_default_app_font(app)
   tmp = tempfile.mkdtemp()
   try:
     storage = ConversationStorage(project_dir=Path(tmp), log=null_out())
@@ -137,6 +146,8 @@ def exercise_image_cell_click_emits_signal():
   from libtbx.utils import null_out
 
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+
+  init_default_app_font(app)
   tmp = tempfile.mkdtemp()
   try:
     storage = ConversationStorage(project_dir=Path(tmp), log=null_out())

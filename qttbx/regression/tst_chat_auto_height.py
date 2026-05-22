@@ -11,7 +11,10 @@ from libtbx.utils import format_cpu_times
 
 def _qapp():
   from qttbx.qt import QtWidgets
-  return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+  from qttbx.widgets.font_init import init_default_app_font
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+  init_default_app_font(app)
+  return app
 
 
 def exercise_helper_disables_both_scrollbars():

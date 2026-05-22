@@ -19,6 +19,8 @@ except ImportError:
 def exercise_send_signal_carries_text_and_empty_attachments():
   from qttbx.widgets.chat.message_input import MessageInput
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
   w = MessageInput()
   w.set_text("hello")
   received = []
@@ -32,6 +34,8 @@ def exercise_send_signal_carries_text_and_empty_attachments():
 def exercise_empty_send_is_no_op():
   from qttbx.widgets.chat.message_input import MessageInput
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
   w = MessageInput()
   received = []
   w.send.connect(lambda msg, atts: received.append(msg))
@@ -42,6 +46,8 @@ def exercise_empty_send_is_no_op():
 def exercise_set_busy_toggles_to_stop():
   from qttbx.widgets.chat.message_input import MessageInput
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
   w = MessageInput()
   stops = []
   w.stop.connect(lambda: stops.append(True))
@@ -55,6 +61,8 @@ def exercise_set_busy_toggles_to_stop():
 def exercise_attach_bytes_appears_in_send_payload():
   from qttbx.widgets.chat.message_input import MessageInput
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
   w = MessageInput()
   w.attach_bytes(b"\x89PNG\r\n\x1a\nfake", "image/png",
                  filename="img.png")
@@ -74,6 +82,8 @@ def exercise_attach_bytes_appears_in_send_payload():
 def exercise_unsupported_mime_is_dropped_with_warning():
   from qttbx.widgets.chat.message_input import MessageInput
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
   w = MessageInput()
   warned = []
   w.attachment_rejected.connect(lambda msg: warned.append(msg))
@@ -86,6 +96,8 @@ def exercise_oversized_image_is_resampled():
   from qttbx.qt import QtCore, QtGui
   from qttbx.widgets.chat.message_input import MessageInput
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
   img = QtGui.QImage(2000, 2000, QtGui.QImage.Format_ARGB32)
   img.fill(QtGui.QColor(50, 100, 150))
   buf = QtCore.QBuffer()
@@ -108,6 +120,8 @@ def exercise_save_chat_button_emits_signal():
   here -- MessageInput stays UI-only."""
   from qttbx.widgets.chat.message_input import MessageInput
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
   w = MessageInput()
   fired = []
   w.save_chat.connect(lambda: fired.append(True))
@@ -121,6 +135,8 @@ def exercise_placeholder_set_and_reset():
   'Thinking...' verbs while a turn is in flight."""
   from qttbx.widgets.chat.message_input import MessageInput
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
   w = MessageInput()
   assert w._edit.placeholderText() == MessageInput.DEFAULT_PLACEHOLDER
   w.set_placeholder("Refining...")
@@ -137,6 +153,8 @@ def exercise_placeholder_dim_flag_controls_palette_role():
   from qttbx.qt import QtGui
   from qttbx.widgets.chat.message_input import MessageInput
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
   w = MessageInput()
   text_color = w._edit.palette().color(QtGui.QPalette.Text)
   dim_color = w._dim_placeholder_color
@@ -161,6 +179,8 @@ def exercise_auto_approve_button_is_checkable_and_emits_signal():
   text stays readable in both light and dark themes."""
   from qttbx.widgets.chat.message_input import MessageInput
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
   w = MessageInput()
   assert w._auto_approve_btn.isCheckable()
   assert not w._auto_approve_btn.isChecked()

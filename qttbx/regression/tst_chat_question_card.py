@@ -18,7 +18,10 @@ except ImportError:
 
 
 def _qapp():
-  return QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  return app
 
 
 def _single_select_question(label_choice):

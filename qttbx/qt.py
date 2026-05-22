@@ -35,7 +35,16 @@ except ImportError:
       "or `pip install PySide6` / `pip install PySide2`."
     ) from _err
 
-__all__ = ["QtCore", "QtGui", "QtWidgets", "shiboken", "QT_API"]
+# Cross-version aliases for symbols that Qt6 moved out of QtWidgets into
+# QtGui. Branch on QT_API rather than try/except: it ties each alias
+# directly to the binding it targets, and the cost of the missing-attr
+# probe is avoided.
+if QT_API == "PySide6":
+  QShortcut = QtGui.QShortcut
+else:
+  QShortcut = QtWidgets.QShortcut
+
+__all__ = ["QtCore", "QtGui", "QtWidgets", "shiboken", "QT_API", "QShortcut"]
 
 # Register the namespace modules under qttbx.qt.* so callers can use the
 # submodule import form (e.g. `from qttbx.qt.QtCore import Qt`). PySide

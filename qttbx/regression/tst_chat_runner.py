@@ -20,6 +20,7 @@ except ImportError:
   sys.exit(0)
 
 from qttbx.widgets.chat.agent.base import Agent, AgentCapabilities
+from qttbx.widgets.font_init import init_default_app_font
 from qttbx.widgets.chat.agent.conversation import (
   ContentBlock, Conversation, Message, now)
 from qttbx.widgets.chat.agent.events import (
@@ -72,6 +73,7 @@ def _pump(app, ms=200):
 
 def exercise_emits_text_delta_then_turn_done():
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   tmp = tempfile.mkdtemp()
   try:
     events = [TextDelta(text="hello "), TextDelta(text="world"),
@@ -102,6 +104,7 @@ def exercise_cancel_stops_the_turn():
   """Cancel mid-stream — the scripted agent honors cancel between events
   so the turn ends with stop_reason='cancelled'."""
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   tmp = tempfile.mkdtemp()
   try:
     events = [TextDelta(text="hello"), TurnDone(stop_reason="end_turn")]
@@ -120,6 +123,7 @@ def exercise_cancel_stops_the_turn():
 
 def exercise_error_event_emits_error_signal():
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   tmp = tempfile.mkdtemp()
   try:
     from qttbx.widgets.chat.agent.errors import AgentError
@@ -145,6 +149,7 @@ def exercise_cancel_when_idle_does_not_poison_next_turn():
   """Clicking Stop after a turn finishes must not push a sentinel that the
   next turn's first approval.get() would consume."""
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   tmp = tempfile.mkdtemp()
   try:
     events = [TextDelta(text="x"), TurnDone(stop_reason="end_turn")]
@@ -169,6 +174,7 @@ def exercise_submit_approval_routes_to_agent_when_agent_owns_request_id():
   queue. The session might be parked on its own unrelated approval,
   and grabbing the SDK-side response would mis-route."""
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
   tmp = tempfile.mkdtemp()
   try:
     from qttbx.widgets.chat.agent.tools import ToolApprovalResponse
