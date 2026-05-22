@@ -293,13 +293,19 @@ namespace {
           data)->storage.bytes;
       PyObject* as_long = PyNumber_Long(obj);
       if (!as_long) boost::python::throw_error_already_set();
-      CppType value = static_cast<CppType>(PyLong_AsLong(as_long));
-      if (value == static_cast<CppType>(-1) && PyErr_Occurred()) {
+      long long wide_value = PyLong_AsLongLong(as_long);
+      if (wide_value == -1 && PyErr_Occurred()) {
         Py_DECREF(as_long);
         boost::python::throw_error_already_set();
       }
       Py_DECREF(as_long);
-      new (storage) CppType(value);
+      if (wide_value < static_cast<long long>(std::numeric_limits<CppType>::min()) ||
+          wide_value > static_cast<long long>(std::numeric_limits<CppType>::max())) {
+        PyErr_SetString(PyExc_OverflowError,
+          "NumPy scalar value out of range for target C++ integer type");
+        boost::python::throw_error_already_set();
+      }
+      new (storage) CppType(static_cast<CppType>(wide_value));
       data->convertible = storage;
     }
   };
