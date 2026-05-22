@@ -2,6 +2,7 @@
 #include <boost/python/numpy.hpp>
 #include <boost/python.hpp>
 #include <boost/python/converter/registry.hpp>
+#include <limits>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/flex_grid.h>
 #include <boost_adaptbx/type_id_eq.h>
