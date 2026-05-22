@@ -17,6 +17,7 @@ def run(args):
   exercise_array_iadd(np, flex)
   exercise_construction_from_numpy_scalars(np, flex)
   exercise_value_preservation(np, flex)
+  exercise_integer_overflow(np, flex)
   print("OK")
 
 def exercise_original_reproducer(np, flex):
@@ -104,6 +105,30 @@ def exercise_value_preservation(np, flex):
   b = flex.int(1)
   b[0] = np.int32(2147483647)  # INT32_MAX
   assert b[0] == 2147483647
+
+def exercise_integer_overflow(np, flex):
+  """Test that out-of-range numpy scalars raise errors, not silently truncate."""
+  c = flex.int(1)
+  # INT32_MAX should work
+  c[0] = np.int64(2147483647)
+  assert c[0] == 2147483647
+  # INT32_MIN should work
+  c[0] = np.int64(-2147483648)
+  assert c[0] == -2147483648
+  # INT32_MAX + 1 should raise an error
+  raised = False
+  try:
+    c[0] = np.int64(2147483648)
+  except Exception:
+    raised = True
+  assert raised, "Expected error for INT32_MAX + 1, got silent truncation"
+  # Large uint64 should raise an error
+  raised = False
+  try:
+    c[0] = np.uint64(4294967295)
+  except Exception:
+    raised = True
+  assert raised, "Expected error for large uint64, got silent truncation"
 
 if __name__ == "__main__":
   run(args=sys.argv[1:])
