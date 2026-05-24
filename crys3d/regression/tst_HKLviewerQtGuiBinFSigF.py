@@ -49,7 +49,12 @@ def run():
                           stdin = subprocess.PIPE,
                           stdout = subprocess.PIPE,
                           stderr = subprocess.STDOUT)
-  souterr,err = obj.communicate()
+  try:
+    souterr,err = obj.communicate(timeout=60)
+  except subprocess.TimeoutExpired:
+    obj.kill()
+    souterr,err = obj.communicate()
+    raise RuntimeError("cctbx.HKLinfo exceeded 60 s and was killed")
   tests_HKLviewer.Append2LogFile("QtGuiBinFSigFHKLviewer.log", souterr)
   souterr = souterr.decode().replace("\r\n", "\n") # omit \r\n line endings on Windows
   assert (contains_substring( souterr, expectedstr ) )

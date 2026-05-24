@@ -211,7 +211,12 @@ def exerciseQtGUI(philstr, refl2match, prefix=""):
                          stdin = subprocess.PIPE,
                          stdout = subprocess.PIPE,
                          stderr = subprocess.STDOUT)
-  remove_settings_result,err = obj.communicate()
+  try:
+    remove_settings_result,err = obj.communicate(timeout=30)
+  except subprocess.TimeoutExpired:
+    obj.kill()
+    remove_settings_result,err = obj.communicate()
+    raise RuntimeError("cctbx.HKLviewer remove_settings exceeded 30 s and was killed")
 
   print("Starting the real HKLviewer test...")
   with open(prefix + "HKLviewer_philinput.txt","w") as f:
@@ -236,7 +241,13 @@ def exerciseQtGUI(philstr, refl2match, prefix=""):
                          stdin = subprocess.PIPE,
                          stdout = subprocess.PIPE,
                          stderr = subprocess.STDOUT)
-  HKLviewer_result,err = obj.communicate()
+  hklviewer_budget = closetime * 2 + 60
+  try:
+    HKLviewer_result,err = obj.communicate(timeout=hklviewer_budget)
+  except subprocess.TimeoutExpired:
+    obj.kill()
+    HKLviewer_result,err = obj.communicate()
+    raise RuntimeError("cctbx.HKLviewer exceeded %d s and was killed" % hklviewer_budget)
   # append terminal output to log file
   Append2LogFile(outputfname, remove_settings_result)
   Append2LogFile(outputfname, HKLviewer_result)
