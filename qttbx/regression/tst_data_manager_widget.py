@@ -17,6 +17,8 @@ def _get_app():
   global _app
   if _app is None:
     _app = QApplication.instance() or QApplication([])
+    from qttbx.widgets.font_init import init_default_app_font
+    init_default_app_font(_app)
   return _app
 
 
@@ -1642,7 +1644,7 @@ def exercise_widget_root_relative_display():
 def exercise_widget_click_outside_clears_selection():
   """Clicking the viewport below the last row clears the selection."""
   import tempfile
-  from qttbx.qt.QtCore import QPoint, Qt
+  from qttbx.qt.QtCore import QPointF, Qt
   from qttbx.qt.QtGui import QMouseEvent
   from qttbx.qt.QtWidgets import QApplication
   from iotbx.data_manager import DataManager
@@ -1670,7 +1672,12 @@ def exercise_widget_click_outside_clears_selection():
 
   # Synthesize a click on the viewport far below any row.
   viewport = w._table.viewport()
-  press = QMouseEvent(QMouseEvent.MouseButtonPress, QPoint(50, 5000),
+  # Use the 6-arg (localPos, globalPos) constructor with QPointF.
+  # The 5-arg QPoint variant is deprecated in Qt6/PySide6 (collapses to
+  # the device-bearing overload). globalPos doesn't matter for this
+  # event so it mirrors localPos.
+  pos = QPointF(50, 5000)
+  press = QMouseEvent(QMouseEvent.MouseButtonPress, pos, pos,
                       Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
   app.sendEvent(viewport, press)
 

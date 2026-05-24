@@ -18,6 +18,8 @@ def _get_app():
   global _app
   if _app is None:
     _app = QApplication.instance() or QApplication([])
+    from qttbx.widgets.font_init import init_default_app_font
+    init_default_app_font(_app)
   return _app
 
 import libtbx.phil
