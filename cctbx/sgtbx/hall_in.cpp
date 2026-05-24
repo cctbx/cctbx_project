@@ -66,27 +66,30 @@ namespace cctbx { namespace sgtbx {
       return '\0';
     }
 
+    struct tr_map
+    {
+      tr_map(char s, tr_vec const& v) : symbol(s), vec(v) {}
+      char symbol;
+      tr_vec vec;
+    };
+
+    static const tr_map hall_translations[] =
+    {
+      tr_map('a', tr_vec_12(6, 0, 0)),
+      tr_map('b', tr_vec_12(0, 6, 0)),
+      tr_map('c', tr_vec_12(0, 0, 6)),
+      tr_map('n', tr_vec_12(6, 6, 6)),
+      tr_map('u', tr_vec_12(3, 0, 0)),
+      tr_map('v', tr_vec_12(0, 3, 0)),
+      tr_map('w', tr_vec_12(0, 0, 3)),
+      tr_map('d', tr_vec_12(3, 3, 3)),
+    };
+
+    const std::size_t n_hall_translations =
+      sizeof hall_translations / sizeof (*hall_translations);
+
     tr_vec const& get_translation(char symbol)
     {
-      struct tr_map
-      {
-        tr_map(char s, tr_vec const& v) : symbol(s), vec(v) {}
-        char symbol;
-        tr_vec vec;
-      };
-      static const tr_map hall_translations[] =
-      {
-        tr_map('a', tr_vec_12(6, 0, 0)),
-        tr_map('b', tr_vec_12(0, 6, 0)),
-        tr_map('c', tr_vec_12(0, 0, 6)),
-        tr_map('n', tr_vec_12(6, 6, 6)),
-        tr_map('u', tr_vec_12(3, 0, 0)),
-        tr_map('v', tr_vec_12(0, 3, 0)),
-        tr_map('w', tr_vec_12(0, 0, 3)),
-        tr_map('d', tr_vec_12(3, 3, 3)),
-      };
-      const std::size_t n_hall_translations =
-        sizeof hall_translations / sizeof (*hall_translations);
       symbol = tolower(symbol);
       for(std::size_t i=0;i<n_hall_translations;i++) {
         if (hall_translations[i].symbol == symbol) {
