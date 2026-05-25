@@ -408,8 +408,8 @@ def fit_rotatable2(model, fmodel):
   model.set_hydrogen_bond_length(use_neutron_distances = use_neutron_distances)
   model.idealize_h_riding()
   #
+  fmodel.xray_structure.set_sites_cart(model.get_sites_cart())
   fmodel.update_xray_structure(
-    xray_structure = model.get_xray_structure(),
     update_f_calc  = True,
     update_f_mask  = True)
   fmodel.update_all_scales()
