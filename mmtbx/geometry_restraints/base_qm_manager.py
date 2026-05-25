@@ -8,6 +8,7 @@ from libtbx.utils import Sorry
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
 from libtbx import easy_run
+from libtbx import Auto
 
 def dist2(xyz1, xyz2):
   d2=0
@@ -208,9 +209,16 @@ class base_manager():
 
   def get_charge(self):
     self.check_charge()
+    if self.charge in [None, Auto]: self.charge=0
     return self.charge
 
-  def set_charge(self, charge): self.charge = charge
+  def set_charge(self, charge): self.charge=charge
+
+  def get_multiplicity(self):
+    if self.multiplicity in [None, Auto]: self.multiplicity=1
+    return self.multiplicity
+
+  def set_multiplicity(self, multiplicity): self.multiplicity=multiplicity
 
   def add_atoms(self, atoms, replace=False):
     if replace:

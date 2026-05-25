@@ -3,7 +3,6 @@ import os
 import time
 
 from libtbx.utils import Sorry
-from libtbx import Auto
 from scitbx.array_family import flex
 from mmtbx.geometry_restraints import base_qm_manager
 
@@ -168,11 +167,7 @@ end
     return outl
 
   def get_coordinate_lines(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False):
-    if self.multiplicity in [None, Auto]:
-      self.multiplicity=1
-    if self.charge in [Auto]:
-      self.charge=0
-    outl = '* xyz %s %s\n' % (self.get_charge(), self.multiplicity)
+    outl = '* xyz %s %s\n' % (self.get_charge(), self.get_multiplicity())
     for i, atom in enumerate(self.atoms):
       outl += ' %s %0.5f %0.5f %0.5f # %s %s\n' % (
         atom.element,

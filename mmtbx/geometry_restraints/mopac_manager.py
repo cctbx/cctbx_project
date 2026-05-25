@@ -42,17 +42,16 @@ class mopac_manager(base_qm_manager.base_qm_manager):
       nproc_str=''
     else:
       nproc_str='THREADS=%s' % self.nproc
-    multiplicity_str=''
-    if self.multiplicity not in [None, Auto, 1]:
-      multiplicity_str=[None,
-                        'singlet', # - 0 unpaired electrons
-                        'doublet', # - 1 unpaired electrons
-                        'triplet', # - 2 unpaired electrons
-                        'quartet', # - 3 unpaired electrons
-                        'quintet', # - 4 unpaired electrons
-                        'sextet', # - 5 unpaired electrons
-                        'septet',
-                        ][self.multiplicity] + ' UHF'
+    multiplicity=self.get_multiplicity()
+    multiplicity_str=[None,
+                      'singlet', # - 0 unpaired electrons
+                      'doublet', # - 1 unpaired electrons
+                      'triplet', # - 2 unpaired electrons
+                      'quartet', # - 3 unpaired electrons
+                      'quintet', # - 4 unpaired electrons
+                      'sextet', # - 5 unpaired electrons
+                      'septet',
+                      ][multiplicity] + ' UHF'
     additional_options=''
     if gradients_only:
       additional_options+=' 1SCF GRAD ANALYT'
