@@ -114,7 +114,10 @@ def missing_atoms(acp, verbose=False):
     for atom in mm.expected_atoms: break
     if atom is None: continue
     if atom.parent() is None: continue
-    key=atom.parent().id_str()
+    if mm.conf_altloc:
+      key=f'"{mm.conf_altloc}"{atom.parent().id_str()}'
+    else:
+      key=f'{atom.parent().id_str()}'
     resname=atom.parent().resname
     if mm.incomplete_info:
       rc[key]={}

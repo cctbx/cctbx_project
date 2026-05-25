@@ -166,16 +166,18 @@ def generate_residue_tuples(hierarchy,
           conformer.altloc))
         while threes: del threes[0]
         threes.start=None
+        threes.conformer=conformer.altloc
+        if verbose: print('  conformer set to %s' % threes.conformer)
         threes.end=None
         list_of_threes = []
         for residue in conformer.residues():
+          if get_class(residue.resname) not in residue_lookup:
+            continue
           if verbose:
             if residue.resname not in ["HOH"]:
               print('    residue: resname="%s" resid="%s"' % (
                 residue.resname, residue.resid()))
           if verbose: print('      residue class : %s' % get_class(residue.resname))
-          if get_class(residue.resname) not in residue_lookup:
-            continue
           if include_non_linked:
             list.append(threes, residue)
             if len(threes)>length: del threes[0]
@@ -198,6 +200,7 @@ def generate_residue_tuples(hierarchy,
                                  allow_poly_ca=allow_poly_ca,
                                  include_non_linked=include_non_linked,
                                  )
+            tmp.conformer=conformer.altloc
             for pr in threes: tmp.append(pr)
             list_of_threes.append(tmp)
             #
