@@ -151,23 +151,27 @@ class orca_manager(base_qm_manager.base_qm_manager):
 SOSCFStart 0.00033 # Default value of orbital gradient is 0.0033. Here reduced by a factor of 10.
 
 end
+%maxcore 2048
 '''
     addiotnal_options=''
     ptr=1
     if gradients_only:
       ptr=2
-    outl = '%s\n! %s %s %s %s %s\n\n' % (standard_options,
+    outl = '%s\n! %s %s %s %s %s\n%s\n' % (standard_options,
                                        self.method,
                                        self.basis_set,
                                        self.solvent_model,
                                        ['Opt', 'LooseOpt', 'EnGrad'][ptr],
                                        addiotnal_options,
+                                       '',
                                        )
     return outl
 
   def get_coordinate_lines(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False):
     if self.multiplicity in [None, Auto]:
       self.multiplicity=1
+    if self.charge in [Auto]:
+      self.charge=0
     outl = '* xyz %s %s\n' % (self.get_charge(), self.multiplicity)
     for i, atom in enumerate(self.atoms):
       outl += ' %s %0.5f %0.5f %0.5f # %s %s\n' % (
