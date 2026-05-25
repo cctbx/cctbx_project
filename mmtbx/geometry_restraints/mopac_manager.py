@@ -56,11 +56,15 @@ class mopac_manager(base_qm_manager.base_qm_manager):
     additional_options=''
     if gradients_only:
       additional_options+=' 1SCF GRAD ANALYT'
+    charge=self.get_charge()
+    if charge in [Auto]:
+      self.charge=0
+      charge=self.charge
     outl = '%s %s %s %s DISP %s %s\n%s\n\n' % (
      self.method,
      self.basis_set,
      self.solvent_model,
-     'CHARGE=%s %s' % (self.get_charge(), nproc_str),
+     'CHARGE=%s %s' % (charge, nproc_str),
      multiplicity_str,
      additional_options,
      self.preamble,
