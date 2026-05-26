@@ -675,7 +675,7 @@ class place_hydrogens():
     self.site_labels_no_para = [atom.id_str().replace('pdb=','').replace('"','')
       for atom in self.model.get_hierarchy().atoms().select(sel_h_not_in_para_but_not_lone)]
     if not sel_h_not_in_para.all_eq(False):
-      sel_h_not_in_para = sel_h_not_in_para.set_selected(sel_h_not_in_para, False)
+      sel_h_not_in_para = sel_h_not_in_para.set_selected(water_selection, False)
       self.model = self.model.select(~sel_h_not_in_para)
     self.time_remove_H_nopara = round(time.time()-t0, 2)
     # Reset occupancies, ADPs and idealize H atom positions
