@@ -521,7 +521,6 @@ class place_hydrogens():
                keep_existing_H       = False,
                validate_e            = False,
                print_time            = False):
-
     self.model                 = model
     self.use_neutron_distances = use_neutron_distances
     self.n_terminal_charge     = n_terminal_charge
@@ -594,10 +593,6 @@ class place_hydrogens():
     pdb_hierarchy = self.add_missing_H_atoms_at_bogus_position(
       exclude_water = self.exclude_water)
     self.time_add_missing_H = round(time.time()-t0, 2)
-    # DEBUG
-    #print(pdb_hierarchy.composition().n_hd)
-    #f = open("intermediate1.pdb","w")
-    #f.write(self.model.model_as_pdb())
 
     # Place N-terminal propeller hydrogens
     # TODO double check N-terminal position for PRO residues
@@ -609,11 +604,6 @@ class place_hydrogens():
 
     pdb_hierarchy.sort_atoms_in_place()
     pdb_hierarchy.atoms().reset_serial()
-
-    # DEBUG
-    #f = open("intermediate2.pdb","w")
-    #f.write(self.model.model_as_pdb())
-
     # Make new model obj and get restraints manager
     # ---------------------------------------------
     p = get_reduce_pdb_interpretation_params(self.use_neutron_distances)
@@ -630,13 +620,8 @@ class place_hydrogens():
                        make_restraints=True,
                        # retain_zero_dihedrals=True,
                        )
-    #self.model.idealize_h_minimization()
-    #STOP()
+
     self.time_make_grm = round(time.time()-t0, 2)
-
-    #f = open("intermediate3.pdb","w")
-    #f.write(self.model.model_as_pdb())
-
     # Return if no H have been placed
     sel_h = self.model.get_hd_selection()
     if sel_h.count(True) == 0: return
@@ -656,9 +641,6 @@ class place_hydrogens():
 
     sel_h = self.model.get_hd_selection()
 
-    #f = open("intermediate3a.pdb","w")
-    #f.write(self.model.model_as_pdb())
-
     # Setup riding H manager
     # ----------------------
     t0 = time.time()
@@ -667,7 +649,6 @@ class place_hydrogens():
     if riding_h_manager is None:
       return
     self.time_riding_manager = round(time.time()-t0, 2)
-
     # Remove H that could not be parameterized
     # ----------------------------------------
     t0 = time.time()
@@ -684,29 +665,19 @@ class place_hydrogens():
     #   selection = (sel_h_not_in_para.select(~water_selection)).iselection())
     # sel_h_not_in_para = flex.bool(self.model.size(), sel_h_not_in_para)
 
-    # if not self.exclude_water and water_selection.count(True)>0:
-    #   workaround_002(
-    #     model     = self.model,
-    #     selection = water_selection.iselection())
-
+    if not self.exclude_water and water_selection.count(True)>0:
+      workaround_002(
+        model     = self.model,
+        selection = water_selection.iselection())
+      water_selection = self.model.solvent_selection()
     # no need to display lone H atoms in the log, so remove from labels
     sel_h_not_in_para_but_not_lone = sel_h_not_in_para.exclusive_or(sel_lone_H)
     self.site_labels_no_para = [atom.id_str().replace('pdb=','').replace('"','')
       for atom in self.model.get_hierarchy().atoms().select(sel_h_not_in_para_but_not_lone)]
     if not sel_h_not_in_para.all_eq(False):
+      sel_h_not_in_para = sel_h_not_in_para.set_selected(sel_h_not_in_para, False)
       self.model = self.model.select(~sel_h_not_in_para)
     self.time_remove_H_nopara = round(time.time()-t0, 2)
-
-    #f = open("intermediate4.pdb","w")
-    #f.write(self.model.model_as_pdb())
-
-# to be removed; was for curiosity only
-#    if self.validate_e:
-#      t0 = time.time()
-#      self.validate_electrons()
-#      if self.print_time:
-#        print("validate electrons:", round(time.time()-t0, 2))
-
     # Reset occupancies, ADPs and idealize H atom positions
     # -----------------------------------------------------
     t0 = time.time()
