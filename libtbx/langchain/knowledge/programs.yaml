@@ -19,6 +19,35 @@
 #   which would generalize tracking behavior. Fix 10A already has run_once
 #   correctly nested inside done_tracking, so this works fine — the strategy
 #   enum is a future consideration if more tracking modes are needed.
+#
+# -----------------------------------------------------------------------------
+# DESIGN NOTE (exclude_patterns) — v119.H11
+# -----------------------------------------------------------------------------
+# exclude_patterns: list of strings used to exclude files from a slot by name.
+#
+# SEMANTICS: WORD-BOUNDARY matching against the filename stem (extension
+# stripped).  A pattern matches if it appears in the stem preceded by
+# start-of-string or one of [_, -, .], AND followed by one of [_, -, .]
+# or end-of-stem.  See agent/file_utils.py::matches_exclude_pattern.
+#
+# IMPORTANT: Do NOT use leading or trailing underscore in patterns.
+#   GOOD:  "refine"   matches refine_001.cif, phenix_refine.cif
+#   BAD:   "refine_"  does NOT match refine_001.cif — the trailing _ in
+#                     the pattern requires another boundary char after it,
+#                     and '0' is not a boundary char
+#   BAD:   "_half"    does NOT match protein_half.ccp4 — the leading _ in
+#                     the pattern requires a boundary char before it that
+#                     is also consumed by the regex's boundary-prefix group
+#
+# IMPORTANT: To catch alphanumeric-suffix variants (e.g., 'something_half1'
+# where a digit immediately follows the pattern with no separator), include
+# explicit suffix patterns alongside the bare pattern:
+#   GOOD:  [half, half1, half2, half_1, half_2]
+# The bare "half" catches the un-numbered case (protein_half.ccp4); the
+# numerics catch the no-separator cases that "half" cannot.
+#
+# Authoring tests: tests/tst_autosol_bugs.py::test_bug11_matches_exclude_pattern_semantics
+# documents the exact behavior with 10 named cases.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -155,7 +184,10 @@ phenix.mtriage:
       full_map:
         extensions: [.mrc, .ccp4, .map]
         flag: "full_map="
-        exclude_patterns: [half_1, half_2, half1, half2, _half]
+        # v119.H11: was "_half" — leading _ broke word-boundary match;
+        # "half" catches the un-numbered case (protein_half.ccp4) while the
+        # numeric patterns (half1, half2) catch the no-separator variants.
+        exclude_patterns: [half_1, half_2, half1, half2, half]
       half_map:
         extensions: [.mrc, .ccp4, .map]
         flag: "half_map="
@@ -1177,11 +1209,12 @@ phenix.refine:
         # that look like .cif but are NOT small-molecule ligand restraints.
         # Passing them positionally to phenix.refine causes "wrong number of
         # models" errors.  Real ligand CIFs are named *.ligands.cif or
-        # similar.  Pattern matches are against lowercase basename.
+        # similar.  Pattern matches use word-boundary semantics (see top of
+        # this file) — patterns must NOT have leading or trailing underscore.
         exclude_patterns:
           - "overall_best"
           - "overall_best_final"
-          - "refine_"
+          - "refine"               # v119.H11: was "refine_" — trailing _ broke word-boundary match
           - "autobuild"
           - "predict_and_build"
 
@@ -1378,7 +1411,8 @@ phenix.real_space_refine:
       map:
         extensions: [.mrc, .ccp4, .map]
         flag: ""
-        exclude_patterns: [half_1, half_2, half1, half2, _half]
+        # v119.H11: was "_half" — leading _ broke word-boundary match
+        exclude_patterns: [half_1, half_2, half1, half2, half]
 
   # Input priorities for cryo-EM refinement
   # 

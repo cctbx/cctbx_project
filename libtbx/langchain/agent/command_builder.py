@@ -39,6 +39,51 @@ from libtbx.langchain.agent.program_registry import ProgramRegistry
 
 
 # =============================================================================
+# EXCLUDE PATTERNS HELPER (v119.H12 — consolidation of H10's closure)
+# =============================================================================
+# H10 introduced a closure `_matches_exclude_patterns_h10` defined inside
+# `_find_file_for_slot` and applied at 7 sites there, plus a direct call
+# in `_select_files` (line 698) using `matches_exclude_pattern` because
+# the closure wasn't in scope.  H12 consolidates these into a single
+# module-level helper for consistency and DRY.
+#
+# Design choice (per Gemini's H12 plan review): the helper accepts the
+# raw exclude_patterns list, not the input_def dict.  This decouples
+# the helper from the program-registry schema and seamlessly handles
+# `_select_files`'s call site (which has the list, not a wrapping dict
+# in scope).  Within `_find_file_for_slot` the list is extracted once
+# at the top of the function, restoring the closure's micro-perf
+# property (one dict lookup, not seven).
+#
+# Sense-inversion: the closure returned True if the file MATCHED the
+# patterns (i.e., should be rejected).  This helper returns True if
+# the file PASSES (i.e., is NOT rejected).  Call-site reads more
+# naturally as `if not _file_passes_exclude_patterns(f, excl): continue`.
+
+def _file_passes_exclude_patterns(file_path, exclude_patterns):
+  """Return True if file_path is NOT rejected by exclude_patterns.
+
+  An empty patterns list always returns True (nothing to reject).
+  Patterns are matched against the basename via the word-boundary
+  semantics in agent/file_utils.py::matches_exclude_pattern; see
+  tests/tst_autosol_bugs.py::test_bug11_matches_exclude_pattern_semantics
+  for the pinned behavior of that function.
+
+  Args:
+    file_path: path or basename of the candidate file
+    exclude_patterns: list of pattern strings (may be empty)
+
+  Returns:
+    bool: True if the file passes (should NOT be rejected),
+      False if any pattern matches the basename.
+  """
+  if not exclude_patterns:
+    return True
+  return not matches_exclude_pattern(
+    os.path.basename(file_path), exclude_patterns)
+
+
+# =============================================================================
 # COMMAND CONTEXT
 # =============================================================================
 
@@ -695,6 +740,22 @@ class CommandBuilder:
                 best_model_excluded = True
                 break
 
+        # v119.H10/H12: also honor exclude_patterns from the model slot definition.
+        # The model slot in phenix.refine has exclude_patterns
+        # ['ligand', 'lig.pdb', 'ligand_fit'] specifically to prevent
+        # promoted ligand-fit outputs from being injected here.  Without
+        # this check, a stale best_files['model'] pointing at e.g.
+        # `something_ligand_fit.pdb` would override correct selection.
+        if not best_model_excluded:
+          _model_def = inputs.get("required", {}).get("model",
+              inputs.get("optional", {}).get("model", {}))
+          _model_excl = _model_def.get("exclude_patterns", [])
+          if not _file_passes_exclude_patterns(best_model_path, _model_excl):
+            self._log(context,
+              "BUILD: best_model %s matches model slot exclude_patterns, skipping" % (
+                os.path.basename(best_model_path)))
+            best_model_excluded = True
+
         if not best_model_excluded:
           for slot in ["model", "pdb", "pdb_file"]:
             if slot in all_inputs:
@@ -1257,6 +1318,22 @@ class CommandBuilder:
     extensions = input_def.get("extensions", [])
     is_multiple = input_def.get("multiple", False)
 
+    # v119.H10/H12: honor exclude_patterns from input_def at every
+    # selection path inside _find_file_for_slot.
+    # Pre-H10, exclude_patterns was only consulted at PRIORITY 4
+    # (extension fallback).  PRIORITY 2 (best_files), PRIORITY 2.5
+    # (recovery strategies), PRIORITY 3 (category-based), and
+    # PRIORITY 3.5 (fallback best_files) all bypassed it.
+    # The AIAgent_62 cycle-7 crash ("wrong number of models" when
+    # refine_001_001.cif was passed as a positional second model
+    # to phenix.refine) was caused by PRIORITY 3 category-match
+    # picking a model mmCIF for the ligand_cif slot, even though
+    # the slot's exclude_patterns explicitly listed "refine_".
+    # H12: consolidated H10's closure into a module-level helper
+    # (_file_passes_exclude_patterns).  We extract the list once
+    # here so the per-site checks below are a single function call.
+    _exclude_patterns = input_def.get("exclude_patterns", [])
+
     # PRIORITY 1: Locked R-free data_mtz (X-ray refinement only)
     # Some programs (e.g., autosol) need original data, not rfree-locked MTZ
     priorities = self._registry.get_input_priorities(program, input_name)
@@ -1291,6 +1368,11 @@ class CommandBuilder:
           excluded = self._should_exclude(
             best_path, exclude_categories, priority_categories,
             context.categorized_files)
+          # v119.H10/H12: also honor exclude_patterns from input_def
+          if not excluded and not _file_passes_exclude_patterns(best_path, _exclude_patterns):
+            self._log(context, "BUILD: Skipping best_%s (matches exclude_patterns: %s)" %
+                (best_category, os.path.basename(best_path)))
+            excluded = True
           if not excluded:
             self._log(context, "BUILD: Using best_%s for %s" % (best_category, input_name))
             self._record_selection(input_name, best_path, "best_files")
@@ -1312,6 +1394,11 @@ class CommandBuilder:
         for avail in available_files:
           if (os.path.basename(avail) == recovery_base and
               any(avail.lower().endswith(ext) for ext in extensions)):
+            # v119.H10/H12: honor exclude_patterns even for recovery files
+            if not _file_passes_exclude_patterns(avail, _exclude_patterns):
+              self._log(context, "BUILD: Recovery file rejected (matches exclude_patterns): %s" %
+                  recovery_base)
+              continue
             self._log(context, "BUILD: Using file with recovery strategy for %s: %s" %
                 (input_name, recovery_base))
             self._record_selection(input_name, avail, "recovery_preferred")
@@ -1354,7 +1441,8 @@ class CommandBuilder:
           subcat_files = context.categorized_files.get(subcat, [])
           valid_files = [f for f in subcat_files
                  if not is_excluded(f)
-                 and any(f.lower().endswith(ext) for ext in extensions)]
+                 and any(f.lower().endswith(ext) for ext in extensions)
+                 and _file_passes_exclude_patterns(f, _exclude_patterns)]  # v119.H10/H12
           if valid_files:
             self._log(context, "BUILD: Found file in preferred subcategory '%s'" % subcat)
             return self._get_most_recent_file(valid_files)
@@ -1364,7 +1452,8 @@ class CommandBuilder:
         cat_files = context.categorized_files.get(cat, [])
         valid_files = [f for f in cat_files
                if not is_excluded(f)
-               and any(f.lower().endswith(ext) for ext in extensions)]
+               and any(f.lower().endswith(ext) for ext in extensions)
+               and _file_passes_exclude_patterns(f, _exclude_patterns)]  # v119.H10/H12
         if valid_files:
           self._log(context, "BUILD: Found file in category '%s'" % cat)
           return self._get_most_recent_file(valid_files)
@@ -1382,7 +1471,9 @@ class CommandBuilder:
         for cat in priority_categories:
           cat_files = context.categorized_files.get(cat, [])
           for f in cat_files:
-            if f not in seen and not is_excluded(f) and                                 any(f.lower().endswith(ext) for ext in extensions):
+            if (f not in seen and not is_excluded(f)
+                and any(f.lower().endswith(ext) for ext in extensions)
+                and _file_passes_exclude_patterns(f, _exclude_patterns)):  # v119.H10/H12
               all_valid.append(f)
               seen.add(f)
         if all_valid:
@@ -1416,6 +1507,11 @@ class CommandBuilder:
       best_path = self._best_path(context.best_files.get(best_category))
       if best_path and self._file_is_available(best_path):
         if any(best_path.lower().endswith(ext) for ext in extensions):
+          # v119.H10/H12: honor exclude_patterns even on require_best_files_only path
+          if not _file_passes_exclude_patterns(best_path, _exclude_patterns):
+            self._log(context, "BUILD: require_best_files_only: best_%s rejected "
+                "(matches exclude_patterns): %s" % (best_category, os.path.basename(best_path)))
+            return None
           self._log(context, "BUILD: require_best_files_only: using best_%s for %s" %
               (best_category, input_name))
           self._record_selection(input_name, best_path, "best_files_required")
@@ -1452,6 +1548,11 @@ class CommandBuilder:
           excluded = self._should_exclude(
             best_path, exclude_categories_check, priority_categories,
             context.categorized_files)
+          # v119.H10/H12: also honor exclude_patterns at the fallback best_files path
+          if not excluded and not _file_passes_exclude_patterns(best_path, _exclude_patterns):
+            self._log(context, "BUILD: best_%s fallback rejected (matches exclude_patterns): %s" %
+                (best_category, os.path.basename(best_path)))
+            excluded = True
           if not excluded:
             self._log(context, "BUILD: Using best_%s as fallback for %s "
                 "(category lookup found no files)" % (best_category, input_name))

@@ -672,9 +672,19 @@ def run_scenario_against_providers(scenario, providers, run_one_fn,
                                                                  "FAIL"):
                 early = "  *early stop*"
             tag = "%d/%d" % (verdict.n_passed, verdict.n_runs_executed)
-            print("  [%s]   %-40s  %s  %-5s (%.1fs)%s"
+            # v119.H6.1 (PHASE2_PLAN §5): surface individual fail / err
+            # counts inline so reliability tests passing on threshold
+            # don't hide the failures they tolerated.  A 4/5 PASS at
+            # threshold 0.8 still had 1 failure worth seeing.  Only
+            # append when nonzero — keep the happy path clean.
+            suffix = ""
+            if verdict.n_failed > 0:
+                suffix += "  [%d fail]" % verdict.n_failed
+            if verdict.n_errored > 0:
+                suffix += "  [%d err]" % verdict.n_errored
+            print("  [%s]   %-40s  %s  %-5s (%.1fs)%s%s"
                   % (provider, scenario.name, verdict.result, tag,
-                     verdict.avg_elapsed_s, early))
+                     verdict.avg_elapsed_s, suffix, early))
 
     return verdicts
 
@@ -823,35 +833,80 @@ def make_directive_extraction_with_raw_run_fn(
 # implementation should do; replace in place when implementing.
 #
 def validate_planning_state(state):
-    """Stub: validate a planning-suite scenario's state dict.
+    """Validate a planning-suite scenario's state dict.
 
-    Until a real implementation is added, this is a no-op — every state
-    is accepted.  A real implementation should raise ValueError if the
-    state dict is missing required keys or has malformed values (per
-    PHASE2_PLAN_v2.md §4 required-fields checklist).
+    Raises ValueError if `state` is missing any required top-level
+    key from PHASE2_PLAN §4.1.  Called from build_scenarios() in
+    tst_planning.py at load time so malformed scenarios fail fast.
 
-    Called from build_scenarios() in tst_planning.py to catch
-    malformed scenarios early.  Until Phase 2A defines the planning
-    state schema, scenarios are accepted as-is.
+    Each required key must exist in the dict (some may be empty
+    list/dict, but the key must be present — otherwise the
+    prompt builder substitutes a default that may not match the
+    scenario's intent, producing misleading test results).
+
+    Authoring note: this enforces a small "authoring tax" on
+    future test-case writers.  Minimal scenarios cannot pass a
+    2-key dict; they must explicitly declare empty list/dict
+    for the other 7 keys.  The trade-off is deliberate: catch
+    structural mismatches at scenario-load time rather than
+    after a confusing LLM run.  See PHASE2_PLAN §4.1 for the
+    canonical key list and rationale.
+
+    Args:
+        state: scenario state-inputs dict.
+
+    Returns:
+        None on success.
+
+    Raises:
+        ValueError if state is not a dict, or if any required
+        top-level key is missing.
     """
+    if not isinstance(state, dict):
+        raise ValueError(
+            "planning state must be a dict, got %s"
+            % type(state).__name__)
+    required = (
+        "history", "analysis", "available_files", "previous_attempts",
+        "user_advice", "metrics_trend", "workflow_state", "directives",
+        "best_files",
+    )
+    missing = [k for k in required if k not in state]
+    if missing:
+        raise ValueError(
+            "planning state missing required keys: %s"
+            % ", ".join(missing))
     return None
 
 
-def is_stop_intent(text):
-    """Stub: detect whether a string expresses user-stop intent.
+def is_stop_intent(intent):
+    """Detect whether a planning-LLM intent expresses a STOP decision.
 
-    Until a real implementation is added, returns False unconditionally.
-    This is conservative — no text is classified as having stop intent,
-    which means planning scenarios depending on stop-intent semantics
-    will see a 'no stop' world by default.
+    Production (graph_nodes.py around line 2168) treats EITHER signal
+    as a stop request:
 
-    Replace with a real implementation when Phase 2A planning lands.
-    The agent's directive extractor has a related helper
-    (_is_stop_after_requested) that detects 11 positive patterns in raw
-    user advice; a real implementation here could import that helper
-    directly, or duplicate the patterns if the planning suite needs a
-    framework-local copy.
+      * intent["program"] == "STOP"
+      * intent["stop"] is True
+
+    We match production parity here.  Strict equality with True
+    (not truthy) — production rejects e.g. {"stop": "true"} as a
+    typed mismatch.
+
+    Args:
+        intent: parsed-intent dict from parse_intent_json, or None
+            on error paths.  Defensive: non-dict inputs return False
+            (the framework also calls this from assertion helpers
+            that may pass None when the LLM call errored).
+
+    Returns:
+        bool — True if intent represents STOP, False otherwise.
     """
+    if not isinstance(intent, dict):
+        return False
+    if intent.get("program") == "STOP":
+        return True
+    if intent.get("stop") is True:
+        return True
     return False
 
 
@@ -874,59 +929,232 @@ def is_api_availability_error(exception):
     return False
 
 
-# tst_b2_gated_wipe_planning.py and some downstream runners (e.g.
-# run_llm_tests.py in trees that anticipate Phase 2A) import these
-# names from framework.py.  Until Phase 2A merges them as real
-# implementations (per PHASE2_PLAN_v2.md §2 and §6), these stubs
-# satisfy the import without behavioral change for Phase 1 tests.
-#
-# Calling either stub raises NotImplementedError with a clear pointer
-# to PHASE2_PLAN_v2.md.  When Phase 2A lands, replace these stubs in
-# place with the real functions; no caller changes required.
+# ----------------------------------------------------------------------
+# v119.H6 Phase 2A — Planning suite (D4) real implementations
+# ----------------------------------------------------------------------
+# These replace the H3b-era stubs.  See PHASE2_PLAN_v2.md for the
+# full design rationale.  Plan rev 3 design notes:
+#   - get_planning_llm(provider) returns (llm, error_message); llm is
+#     None on error (graph_nodes.py:198 reference).
+#   - parse_intent_json(content) returns dict on success or raises
+#     ValueError on unparseable input (graph_nodes.py:1430 reference).
+#   - call_planning_llm hoists raw_output outside the try block so
+#     the exception handler preserves the LLM's malformed text when
+#     parse_intent_json raises — the most diagnostically valuable
+#     failure mode (Gemini rev 3 catch).
+#   - Rate-limit handler matches production's plan() invocation
+#     pattern (graph_nodes.py:2032-2074); optional fallback to
+#     direct llm.invoke if rate_limit_handler isn't importable
+#     (preserves sandbox testability).
 
 
-def call_planning_llm(*args, **kwargs):
-    """Phase 2A stub.  Replace with real implementation per
-    PHASE2_PLAN_v2.md §2 ('Production-faithful LLM invocation') when
-    Phase 2A is merged."""
-    raise NotImplementedError(
-        "call_planning_llm is a Phase 2A stub; Phase 2A "
-        "(planning suite) is not yet merged.  See "
-        "PHASE2_PLAN_v2.md for the implementation plan.  "
-        "Phase 1 suites (directive_extraction, a1_smoke, "
-        "b1_stop_after_requested, c1_raw_authority) do not "
-        "require this function and run normally without it.")
+def call_planning_llm(state_inputs, provider):
+    """Production-faithful planning LLM call.
 
+    Mirrors the invocation pattern in agent/graph_nodes.py::plan()
+    (lines 1992-2090), including rate-limit handling.
 
-def make_planning_run_fn(call_fn=None):
-    """Phase 2A stub.  Replace with real implementation per
-    PHASE2_PLAN_v2.md §2 + §6 when Phase 2A is merged.
+    Args:
+        state_inputs: dict with the nine top-level keys required by
+            get_planning_prompt: history, analysis, available_files,
+            previous_attempts, user_advice, metrics_trend,
+            workflow_state, directives, best_files.  Each key is
+            unpacked into the corresponding get_planning_prompt
+            keyword argument.
+        provider: "google", "openai", or "anthropic" — passed to
+            get_planning_llm which returns a cached LLM instance.
 
-    Returns a run_one callable that produces an ERRORED RunOutcome
-    instead of raising, so the planning suite loads cleanly and each
-    scenario reports an error rather than crashing the entire runner.
-    Other suites in the same invocation (e.g. directive_extraction)
-    complete normally.
+    Returns:
+        4-tuple (raw_output: str, intent: dict or None,
+                 error: str or None, captured: list of str)
+
+        Success: raw_output = response.content (the LLM's JSON string)
+                 intent     = parse_intent_json(response.content) dict
+                 error      = None
+                 captured   = list of rate-limit retry messages
+                              (typically [] in the happy path)
+
+        Error:   raw_output = whatever the LLM produced before the
+                              error.  If parse_intent_json raised,
+                              this is the MALFORMED LLM text — the
+                              most diagnostically useful field for
+                              triaging an LLM that emitted bad JSON.
+                              "" if the failure was pre-LLM-call.
+                 intent     = None
+                 error      = "<ExceptionType>: <message>\\n<short tb>"
+                 captured   = any rate-limit messages collected
+                              before the error
     """
-    _msg = ("make_planning_run_fn is a Phase 2A stub; Phase 2A "
-            "(planning suite) is not yet merged.  See "
-            "PHASE2_PLAN_v2.md for the implementation plan.  "
-            "Other suites (directive_extraction, a1_smoke, "
-            "b1_stop_after_requested, c1_raw_authority) do not "
-            "require this function and run normally without it.")
+    # Hoist raw_output outside the try block so that parse_intent_json
+    # failures preserve the LLM's malformed text for diagnosis
+    # (Gemini rev 3 catch).
+    raw_output = ""
 
-    def _stub_run_one(scenario, provider, run_index):
+    try:
+        try:
+            from libtbx.langchain.agent.graph_nodes import (
+                get_planning_llm, parse_intent_json)
+            from libtbx.langchain.knowledge.prompts_hybrid import (
+                get_planning_prompt)
+        except ImportError:
+            from agent.graph_nodes import (
+                get_planning_llm, parse_intent_json)
+            from knowledge.prompts_hybrid import get_planning_prompt
+        from langchain_core.messages import SystemMessage, HumanMessage
+    except ImportError as e:
+        return ("", None, "ImportError: %s" % e, [])
+
+    captured = []
+
+    # Optional rate-limit handler — mirror production's pattern:
+    # try libtbx then relative; pass None if unavailable (e.g.
+    # sandbox without the rate_limit_handler package).
+    handler = None
+    try:
+        try:
+            from libtbx.langchain.agent.rate_limit_handler import (
+                get_google_handler, get_openai_handler,
+                get_anthropic_handler)
+        except ImportError:
+            from agent.rate_limit_handler import (
+                get_google_handler, get_openai_handler,
+                get_anthropic_handler)
+        if provider == "google":
+            handler = get_google_handler()
+        elif provider == "openai":
+            handler = get_openai_handler()
+        elif provider == "anthropic":
+            handler = get_anthropic_handler()
+    except ImportError:
+        # No rate limit handler available; will call llm directly.
+        pass
+
+    try:
+        # Build prompt the same way production does.  Pass the nine
+        # required keys through; tst_planning.py's validate_planning_state
+        # guarantees they exist (per PHASE2_PLAN §4.1).
+        system_msg, user_msg = get_planning_prompt(
+            history=state_inputs.get("history", []),
+            analysis=state_inputs.get("analysis", {}),
+            available_files=state_inputs.get("available_files", []),
+            previous_attempts=state_inputs.get("previous_attempts", []),
+            user_advice=state_inputs.get("user_advice", ""),
+            metrics_trend=state_inputs.get("metrics_trend", {}),
+            workflow_state=state_inputs.get("workflow_state", {}),
+            directives=state_inputs.get("directives", {}),
+            best_files=state_inputs.get("best_files", {}),
+        )
+
+        # Get cached LLM.  Per graph_nodes.py:198, signature is
+        # (llm, error_message) where llm is None on error.
+        llm, llm_error = get_planning_llm(provider)
+        if llm is None:
+            return ("", None,
+                    "get_planning_llm error: %s" % llm_error, captured)
+
+        messages = [
+            SystemMessage(content=system_msg),
+            HumanMessage(content=user_msg),
+        ]
+
+        # Invoke with rate-limit handler if available.  Production
+        # pattern: handler.call_with_retry(make_call, log_wrapper).
+        if handler is not None:
+            def make_call():
+                return llm.invoke(messages)
+
+            def log_wrapper(msg):
+                captured.append("RATE_LIMIT: %s" % msg)
+
+            response = handler.call_with_retry(make_call, log_wrapper)
+        else:
+            response = llm.invoke(messages)
+
+        # Populate raw_output BEFORE parse_intent_json so that if
+        # the parse raises, the exception handler returns the
+        # malformed text for diagnosis.
+        raw_output = getattr(response, "content", "") or ""
+
+        # Parse intent.  Per graph_nodes.py:1406-1443, returns dict
+        # on success or raises ValueError on unparseable JSON.
+        intent = parse_intent_json(raw_output)
+        return (raw_output, intent, None, captured)
+
+    except Exception as e:
+        tb = traceback.format_exc()
+        # Return the POPULATED raw_output (Gemini rev 3 fix) — if
+        # the failure was in parse_intent_json, raw_output contains
+        # the malformed LLM text that triggered it.  For pre-LLM
+        # failures (prompt builder, get_planning_llm), raw_output
+        # is still "" — those paths have no LLM output to preserve.
+        return (raw_output, None,
+                "%s: %s\n%s" % (type(e).__name__, e, tb[-500:]),
+                captured)
+
+
+def make_planning_run_fn(call_fn=call_planning_llm):
+    """Build a run_one_fn for planning scenarios.
+
+    Mirrors make_directive_extraction_run_fn for the D4 planning
+    suite.  Structurally simpler than the D2 helper because
+    parse_intent_json never returns None (it either returns dict
+    or raises, per graph_nodes.py:1430) — so no "parsed is None"
+    defensive branch needed.
+
+    Args:
+        call_fn: injectable for framework-level testing.  Defaults
+            to the production-faithful call_planning_llm.
+
+    Returns:
+        run_one(scenario, provider, run_index) -> RunOutcome
+    """
+
+    def run_one(scenario, provider, run_index):
+        t0 = time.time()
+        raw_output, parsed, error, _captured = call_fn(
+            scenario.input, provider)
+        elapsed = time.time() - t0
+
+        if error is not None:
+            return RunOutcome(
+                run_index=run_index,
+                elapsed_s=elapsed,
+                passed=False,
+                why="LLM call errored: %s" % error.split("\n")[0],
+                raw_output=raw_output,
+                parsed=None,
+                error=error,
+            )
+
+        # No "parsed is None" branch: parse_intent_json never
+        # returns None — it either returns dict or raises, and the
+        # raise is caught above as error != None.
+
+        try:
+            passed, why = scenario.expected_fn(parsed)
+        except Exception as e:
+            return RunOutcome(
+                run_index=run_index,
+                elapsed_s=elapsed,
+                passed=False,
+                why="expected_fn raised: %s" % e,
+                raw_output=raw_output,
+                parsed=parsed,
+                error="expected_fn raised: %s: %s"
+                      % (type(e).__name__, e),
+            )
+
         return RunOutcome(
             run_index=run_index,
-            elapsed_s=0.0,
-            passed=False,
-            why=("Phase 2A planning infrastructure not yet merged "
-                 "(stub in framework.py)"),
-            raw_output="",
-            parsed=None,
-            error=_msg,
+            elapsed_s=elapsed,
+            passed=bool(passed),
+            why=str(why),
+            raw_output=raw_output,
+            parsed=parsed,
+            error=None,
         )
-    return _stub_run_one
+
+    return run_one
 
 
 # ----------------------------------------------------------------------

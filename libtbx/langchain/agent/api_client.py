@@ -43,6 +43,27 @@ assert sanitize_request is not None
 assert sanitize_response is not None
 assert get_transport_config is not None
 
+# v119.H1: central per-provider default models.  All four _call_*_llm
+# functions below resolve their model defaults via this helper rather
+# than hardcoding strings.  Fallback import path supports both PHENIX
+# and standalone-tests invocation per AI Agent guideline section 3.
+# v119.H13: also brings in helpers for ollama URL normalization,
+# env-var precedence, and provider-error classification.
+try:
+    from libtbx.langchain.core.llm import (
+        default_model_for_provider,
+        # v119.H13
+        normalize_ollama_openai_base_url,
+        resolve_model_for_provider,
+    )
+except ImportError:
+    from core.llm import (
+        default_model_for_provider,
+        # v119.H13
+        normalize_ollama_openai_base_url,
+        resolve_model_for_provider,
+    )
+
 
 # =============================================================================
 # SESSION STATE BUILDING
@@ -647,17 +668,17 @@ def _call_google_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
     if not api_key:
         raise ValueError("GOOGLE_API_KEY environment variable not set")
 
+    # v119.H1: central default; both google.genai paths share it.
+    if model is None:
+        model_name = default_model_for_provider("google")
+    else:
+        model_name = model
+
     # Try new google.genai package first
     try:
         from google import genai
         from google.genai import types
 
-        # v118.8: bump default from gemini-2.0-flash (retired by Google,
-        # returns 404 NOT_FOUND for new users as of 2026).  Matches the
-        # default used by core/llm.get_llm_and_embeddings so all LLM
-        # consumers (planner, directive extractor) converge on one
-        # current model.  Caller can override via `model=` parameter.
-        model_name = model or "gemini-2.5-flash-lite"
         client = genai.Client(api_key=api_key)
 
         response = client.models.generate_content(
@@ -675,8 +696,6 @@ def _call_google_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
         import google.generativeai as genai_old
 
         genai_old.configure(api_key=api_key)
-        # v118.8: bump default — see new-package path above.
-        model_name = model or "gemini-2.5-flash-lite"
         gen_model = genai_old.GenerativeModel(model_name)
 
         response = gen_model.generate_content(
@@ -693,7 +712,7 @@ def _call_openai_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
     """Call OpenAI's API."""
     import openai
 
-    model_name = model or "gpt-4o-mini"
+    model_name = model or default_model_for_provider("openai")
     client = openai.OpenAI()  # Uses OPENAI_API_KEY env var
 
     response = client.chat.completions.create(
@@ -709,7 +728,7 @@ def _call_anthropic_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
     """Call Anthropic's API."""
     import anthropic
 
-    model_name = model or "claude-sonnet-4-20250514"
+    model_name = model or default_model_for_provider("anthropic")
     client = anthropic.Anthropic()  # Uses ANTHROPIC_API_KEY env var
 
     response = client.messages.create(
@@ -721,11 +740,19 @@ def _call_anthropic_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
 
 
 def _call_ollama_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
-    """Call Ollama API (OpenAI-compatible)."""
+    """Call Ollama API (OpenAI-compatible).
+
+    v119.H13:
+      - Item A: normalize OLLAMA_BASE_URL to guarantee /v1 suffix
+      - Item B: honor OLLAMA_LLM_MODEL env-var via
+        resolve_model_for_provider (parity with directive_extractor
+        and core/llm.py).
+    """
     import openai
 
-    model_name = model or "llama3.2"
-    base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+    model_name = model or resolve_model_for_provider("ollama")  # v119.H13/B
+    base_url = normalize_ollama_openai_base_url(                  # v119.H13/A
+        os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434"))
 
     client = openai.OpenAI(
         base_url=base_url,

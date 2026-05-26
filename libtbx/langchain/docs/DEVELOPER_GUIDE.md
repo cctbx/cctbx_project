@@ -3528,7 +3528,7 @@ Defined in `agent/contract.py`:
 
 | Constant | Value | Purpose |
 |----------|-------|---------|
-| `CURRENT_PROTOCOL_VERSION` | `3` | What the latest client sends |
+| `CURRENT_PROTOCOL_VERSION` | `5` | What the latest client sends |
 | `MIN_SUPPORTED_PROTOCOL_VERSION` | `1` | Oldest client the server accepts |
 
 The client imports `CURRENT_PROTOCOL_VERSION` from contract.py via `_get_protocol_version()` in `ai_agent.py`, so bumping the constant updates both server and client automatically.
@@ -4351,6 +4351,92 @@ test what they claim to:
 - **Floating point comparisons.** Tests must use
   `approx_equal()` (from `libtbx.test_utils`), never
   `==`, for any value derived from a calculation.
+- **Sandbox stubs lie if not pinned to real-function
+  semantics.** When a test imports a function from
+  `agent.X` and the sandbox provides a stub for `agent.X`,
+  the test exercises stub semantics, not real semantics.
+  An LLM may write a stub that "looks right" but does
+  something subtly different from the real function
+  (substring match vs word-boundary regex match, eager
+  vs lazy evaluation, normalization steps that change
+  the answer).  See "Semantic-pin tests" below for the
+  policy that prevents this.
+
+#### Semantic-pin tests (the v119.H10 → H11 lesson)
+
+The H10 → H11 ship cycle in May 2026 exposed a sandbox
+failure mode worth capturing as policy.
+
+**What happened**: H10 added an `exclude_patterns` filter
+at 8 file-selection paths in `command_builder.py` to
+reject model mmCIF files (`refine_*.cif`) from being
+injected positionally as a second model into
+`phenix.refine`.  The sandbox stub for
+`agent.file_utils.matches_exclude_pattern` did
+substring matching.  H10's K-suite passed (15+ tests).
+H10 was packaged as "fixes AIAgent_62 cycle-7 crash."
+
+When Tom installed H10 and ran the test suite against
+the real PHENIX environment, Test 4 failed.  A diagnostic
+script that called `matches_exclude_pattern` directly
+revealed the real function uses **word-boundary regex
+matching**, not substring matching:
+
+```python
+# agent/file_utils.py — real semantics
+re.search(
+    r'(?:^|[_\-\.])' + re.escape(pat_stem) + r'(?=[_\-\.]|$)',
+    stem)
+```
+
+The YAML pattern `"refine_"` (with trailing underscore)
+matches `"refine_001_001.cif"` under substring semantics
+but NOT under word-boundary semantics (the regex requires
+another boundary char after the trailing `_`, but `0` is
+not a boundary).  H10's filter fired but rejected
+nothing.
+
+**The policy**: every function with non-obvious semantics
+(regex matching, parsing, escaping, normalization,
+canonicalization) that's stubbed for sandbox testing
+must have a paired **semantic-pin test** in the test
+suite.  The semantic-pin test:
+
+1. Calls the REAL function (not the stub), via
+   try/except import to handle sandbox-without-real
+   environments.
+2. Asserts behavior on a fixture of named cases
+   including at least one case where the stub-vs-real
+   semantics would diverge.
+3. Has a graceful sandbox-skip fallback when the
+   real function isn't importable, so lightweight CI
+   environments don't error.
+
+**Template**: `tests/tst_autosol_bugs.py::test_bug11_matches_exclude_pattern_semantics`.
+10 named cases pinning the real function's behavior,
+including the trailing-underscore case that distinguishes
+substring from word-boundary semantics.  Read the test
+and copy its shape when introducing any similar
+sandbox-stubbed function.
+
+**Why this works as a parity check**: when a sandbox
+test imports `matches_exclude_pattern` and the import
+resolution finds a stub, the same test that pins the
+real function's behavior will FAIL against the stub IF
+the stub semantics diverge from real semantics.  The
+divergence is caught at the moment a sandbox test runs.
+No separate "differential parity test" is needed unless
+you also want to enforce stub-real equivalence across
+fixtures that don't already appear in the semantic pin.
+
+**Forward-looking corollary**: if you write a stub, write
+it to match the real function's semantics, not to a
+plausibly-correct intuition.  When in doubt, read the
+real function's source.  When the real function lives
+in a module you can't import in sandbox, document the
+stub's intended semantics in a docstring and add a
+semantic-pin test that exercises both the stub and the
+real function via try/import.
 
 ### Commit quality
 

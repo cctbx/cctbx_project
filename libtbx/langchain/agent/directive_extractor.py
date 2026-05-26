@@ -14,7 +14,7 @@ Usage:
     directives = extract_directives(
         user_advice="use resolution 3 in autosol but 2.5 in refine",
         provider="google",
-        model="gemini-2.5-flash-lite"
+        model="gemini-2.5-flash-lite"   # or None for the agent default
     )
 
     # Result:
@@ -32,6 +32,28 @@ import json
 import os
 import re
 import warnings
+
+
+# v119.H1: central per-provider default models for the fallback LLM
+# path.  Resolves model defaults via core/llm.py rather than
+# hardcoding strings.  Fallback import path supports both PHENIX and
+# standalone-tests invocation per AI Agent guideline section 3.
+try:
+    from libtbx.langchain.core.llm import (
+        default_model_for_provider,
+        # v119.H13
+        normalize_ollama_openai_base_url,
+        resolve_model_for_provider,
+        _classify_provider_error,
+    )
+except ImportError:
+    from core.llm import (
+        default_model_for_provider,
+        # v119.H13
+        normalize_ollama_openai_base_url,
+        resolve_model_for_provider,
+        _classify_provider_error,
+    )
 
 
 # =============================================================================
@@ -866,8 +888,38 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
         # diagnostic can never break the existing fallback path
         # (same safety pattern as C-prime's [DIRECTIVE_LAYERS]
         # diagnostic emission).
+        #
+        # v119.H13: route through _classify_provider_error so the
+        # operator sees one of:
+        #   [DIRECTIVE_EXTRACTION_MODEL_RETIRED]      (action: update DEFAULT_MODELS)
+        #   [DIRECTIVE_EXTRACTION_MODEL_UNAVAILABLE]  (action: pull/rename — Tom's case)
+        #   [DIRECTIVE_EXTRACTION_AUTH_FAILED]        (action: check API key)
+        # instead of an opaque [DIRECTIVE_EXTRACTION_FAILED] for the
+        # primary api_client path.  The fallback _call_llm_fallback
+        # path also classifies (at the per-provider exception block);
+        # H13 makes the primary path match.
         try:
+            # Resolve the model name we attempted, matching the same
+            # precedence the api_client path uses, so the marker's
+            # hint mentions the actual model name (not a placeholder).
+            try:
+                attempted_model = (
+                    model
+                    or resolve_model_for_provider(provider))
+            except Exception:
+                attempted_model = model or "<unknown>"
+            tag, hint = _classify_provider_error(e, attempted_model)
             import sys
+            if tag == 'DIRECTIVE_EXTRACTION_MODEL_RETIRED':
+                _emit_retired_model_marker(
+                    provider, attempted_model, log)
+            elif tag == 'DIRECTIVE_EXTRACTION_MODEL_UNAVAILABLE':
+                _emit_unavailable_model_marker(
+                    provider, attempted_model, hint, log)
+            # Always also emit the legacy generic FAILED marker so
+            # existing log-grep pipelines (which Tom's machine relies
+            # on) still see the v118.E format.  The richer marker
+            # appears IN ADDITION to FAILED, not in place of it.
             sys.stderr.write(
                 "[DIRECTIVE_EXTRACTION_FAILED] LLM extraction "
                 "call did not complete (provider=%s): %s. "
@@ -940,10 +992,139 @@ def _call_llm(prompt, provider, model, log):
         return _call_llm_fallback(prompt, provider, model, log)
 
 
+def _looks_like_retired_model_error(err_str, model_name):
+    """Best-effort detection of 'model no longer exists' API responses.
+
+    v119.H1: distinguishes retired-model 404s from generic API
+    failures so operators see exactly which file to edit
+    (core/llm.py) when a provider drops a model.
+
+    Matches on either:
+      - a strong retirement phrase ("no longer available",
+        "has been deprecated", "is deprecated", "model not found"),
+        which is unambiguous regardless of HTTP status, OR
+      - a 404/NOT_FOUND signature combined with the model name or
+        a weaker "is not found" phrase.
+
+    False-negatives are fine -- the generic [DIRECTIVE_EXTRACTION_FAILED]
+    still fires.  False-positives would mis-route a transient error
+    as a retired model -- noisy but recoverable.
+
+    Args:
+      err_str: the exception message (str) from a failed API call
+      model_name: the model name passed to the failing call
+
+    Returns:
+      bool
+    """
+    if not err_str:
+        return False
+    lower = err_str.lower()
+
+    # Strong retirement phrases match regardless of HTTP status.
+    # Real APIs report retirement variously: 404 with body, 400
+    # with message, 200 OK with error in JSON.
+    strong_phrases = (
+        "no longer available",
+        "has been deprecated",
+        "is deprecated",
+        "model not found",
+    )
+    for phrase in strong_phrases:
+        if phrase in lower:
+            return True
+
+    # 404/NOT_FOUND class -- requires extra evidence to avoid false
+    # positives on URL typos and similar generic 404s.
+    has_404 = (
+        ("404" in lower)
+        or ("not_found" in lower)
+        or ("not found" in lower))
+    if has_404:
+        if model_name and model_name.lower() in lower:
+            return True
+        if "is not found" in lower:
+            return True
+    return False
+
+
+def _emit_retired_model_marker(provider, model_name, log):
+    """Emit a [DIRECTIVE_EXTRACTION_MODEL_RETIRED] stderr marker.
+
+    v119.H1.  Parallel to v118.E's [DIRECTIVE_EXTRACTION_FAILED] /
+    [ADVICE_PREPROCESSING_FAILED] markers.  Tells the operator
+    exactly which file to edit (core/llm.py) and which constants.
+
+    Args:
+      provider: the provider string ("google", "openai", ...)
+      model_name: the retired model that was attempted
+      log: the existing log function passed through _call_llm_fallback
+
+    Never raises -- the stderr write is wrapped in try/except so a
+    broken stderr can never break the fallback path.
+    """
+    try:
+        import sys
+        sys.stderr.write(
+          "[DIRECTIVE_EXTRACTION_MODEL_RETIRED] "
+          "provider=%s model=%r appears to be retired.  "
+          "Update the relevant table in "
+          "libtbx/langchain/core/llm.py "
+          "(DECISION_MODEL_DEFAULTS / RAG_MODEL_DEFAULTS / "
+          "RAG_EMBEDDING_DEFAULTS / EXPENSIVE_MODEL_DEFAULTS / "
+          "CHEAP_MODEL_DEFAULTS) to a current model and add "
+          "%r to RETIRED_MODELS.\n" % (
+            provider, model_name, model_name))
+        sys.stderr.flush()
+    except Exception:
+        # Stderr write must never break the fallback path.
+        pass
+    log("DIRECTIVES: model %s appears retired - see "
+        "[DIRECTIVE_EXTRACTION_MODEL_RETIRED] in stderr"
+        % model_name)
+
+
+def _emit_unavailable_model_marker(provider, model_name, hint, log):
+    """Emit a [DIRECTIVE_EXTRACTION_MODEL_UNAVAILABLE] stderr marker.
+
+    v119.H13.  Parallel to _emit_retired_model_marker.  Distinct
+    operational meaning: the model name is unknown to THIS server
+    (e.g., not pulled on Ollama, or a typo in OLLAMA_LLM_MODEL).
+    The action is to pull/rename, not to update DEFAULT_MODELS.
+
+    Args:
+      provider: the provider string
+      model_name: the model name that was attempted
+      hint: a short operator-action string from
+        _classify_provider_error
+      log: the existing log function
+
+    Never raises -- the stderr write is wrapped in try/except.
+    """
+    try:
+        import sys
+        sys.stderr.write(
+          "[DIRECTIVE_EXTRACTION_MODEL_UNAVAILABLE] "
+          "provider=%s model=%r is unknown to this server.  "
+          "%s\n" % (provider, model_name, hint or ""))
+        sys.stderr.flush()
+    except Exception:
+        pass
+    log("DIRECTIVES: model %s unavailable on this server - see "
+        "[DIRECTIVE_EXTRACTION_MODEL_UNAVAILABLE] in stderr"
+        % model_name)
+
+
 def _call_llm_fallback(prompt, provider, model, log):
     """
     Fallback LLM call when main infrastructure not available.
     Includes retry logic for rate limit errors with exponential backoff and decay.
+
+    Property (v119.H1): on any exception from the API call, this
+    function emits at most one [DIRECTIVE_EXTRACTION_MODEL_RETIRED]
+    marker (when the failure matches a retired-model signature) and
+    returns None -- no model-family variant cycling.  Preserve this
+    single-call property in future refactors.
     """
     # Import rate limit handler - try multiple paths
     get_google_handler = None
@@ -967,18 +1148,16 @@ def _call_llm_fallback(prompt, provider, model, log):
         log("DIRECTIVES: %s" % msg)
 
     if provider == "google":
+        # v119.H1: resolve default once; both SDK paths below share it.
+        if model is None:
+            model_name = default_model_for_provider("google")
+        else:
+            model_name = model
         try:
             # Try new google.genai package first (recommended)
             try:
                 from google import genai
                 from google.genai import types
-
-                # v118.8: bump default from gemini-2.0-flash (retired by
-                # Google, returns 404 NOT_FOUND for new users as of 2026).
-                # Matches the default used by core/llm.get_llm_and_embeddings
-                # so directive extractor and planner converge on the same
-                # model.  Caller can still override via `model=` parameter.
-                model_name = model or "gemini-2.5-flash-lite"
 
                 # Get API key from environment
                 api_key = os.environ.get("GOOGLE_API_KEY")
@@ -1016,8 +1195,6 @@ def _call_llm_fallback(prompt, provider, model, log):
                     return None
                 genai_old.configure(api_key=api_key)
 
-                # v118.8: bump default — see new-package path above.
-                model_name = model or "gemini-2.5-flash-lite"
                 gen_model = genai_old.GenerativeModel(model_name)
 
                 def make_call():
@@ -1037,14 +1214,24 @@ def _call_llm_fallback(prompt, provider, model, log):
                     return make_call()
 
         except Exception as e:
-            log("DIRECTIVES: Google API call failed - %s" % str(e))
+            err_str = str(e)
+            # v119.H1: distinguish retired-model 404 from generic
+            # API failures so operators see exactly which file to
+            # edit.  Property: at most one marker per fallback call,
+            # then return None -- no model-family variant cycling.
+            if _looks_like_retired_model_error(err_str, model_name):
+                _emit_retired_model_marker("google", model_name, log)
+            log("DIRECTIVES: Google API call failed - %s" % err_str)
             return None
 
     elif provider == "openai":
+        if model is None:
+            model_name = default_model_for_provider("openai")
+        else:
+            model_name = model
         try:
             import openai
 
-            model_name = model or "gpt-4o-mini"
             client = openai.OpenAI()
 
             def make_call():
@@ -1063,14 +1250,20 @@ def _call_llm_fallback(prompt, provider, model, log):
                 return make_call()
 
         except Exception as e:
-            log("DIRECTIVES: OpenAI API call failed - %s" % str(e))
+            err_str = str(e)
+            if _looks_like_retired_model_error(err_str, model_name):
+                _emit_retired_model_marker("openai", model_name, log)
+            log("DIRECTIVES: OpenAI API call failed - %s" % err_str)
             return None
 
     elif provider == "anthropic":
+        if model is None:
+            model_name = default_model_for_provider("anthropic")
+        else:
+            model_name = model
         try:
             import anthropic
 
-            model_name = model or "claude-sonnet-4-20250514"
             client = anthropic.Anthropic()
 
             def make_call():
@@ -1088,16 +1281,33 @@ def _call_llm_fallback(prompt, provider, model, log):
                 return make_call()
 
         except Exception as e:
-            log("DIRECTIVES: Anthropic API call failed - %s" % str(e))
+            err_str = str(e)
+            if _looks_like_retired_model_error(err_str, model_name):
+                _emit_retired_model_marker("anthropic", model_name, log)
+            log("DIRECTIVES: Anthropic API call failed - %s" % err_str)
             return None
 
     elif provider == "ollama":
+        # v119.H13 Item B: honor OLLAMA_LLM_MODEL env-var override.
+        # Previously called default_model_for_provider("ollama")
+        # unconditionally, which ignored the env-var contract that
+        # core/llm.py:get_llm_and_embeddings has always honored.
+        if model is None:
+            model_name = resolve_model_for_provider("ollama")
+        else:
+            model_name = model
         try:
             # Ollama uses OpenAI-compatible API
             import openai
 
-            model_name = model or "llama3.2"
-            base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+            # v119.H13 Item A: normalize the base URL.  Setting
+            # OLLAMA_BASE_URL=http://localhost:11434 (no /v1 suffix)
+            # is reasonable but previously broke OpenAI-SDK path
+            # construction → "404 page not found".  The helper
+            # idempotently appends /v1.  Default fallback is also
+            # the bare host now; the helper supplies /v1 uniformly.
+            base_url = normalize_ollama_openai_base_url(
+                os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434"))
 
             client = openai.OpenAI(
                 base_url=base_url,
@@ -1117,7 +1327,19 @@ def _call_llm_fallback(prompt, provider, model, log):
             return make_call()
 
         except Exception as e:
-            log("DIRECTIVES: Ollama API call failed - %s" % str(e))
+            # v119.H13 Item C: route through unified classifier.
+            # Three sub-classes: MODEL_RETIRED (update DEFAULT_MODELS),
+            # MODEL_UNAVAILABLE (pull/rename), AUTH_FAILED (key issue),
+            # FAILED (generic).  Backwards-compatible with v119.H1's
+            # _emit_retired_model_marker path.
+            err_str = str(e)
+            tag, hint = _classify_provider_error(e, model_name)
+            if tag == 'DIRECTIVE_EXTRACTION_MODEL_RETIRED':
+                _emit_retired_model_marker("ollama", model_name, log)
+            elif tag == 'DIRECTIVE_EXTRACTION_MODEL_UNAVAILABLE':
+                _emit_unavailable_model_marker(
+                    "ollama", model_name, hint, log)
+            log("DIRECTIVES: Ollama API call failed - %s" % err_str)
             return None
 
     else:
@@ -2130,6 +2352,142 @@ def _coerce_setting_value(value, expected_type):
     return expected_type(value)
 
 
+# v119.H2.1: values that count as "skip this program" at the
+# program_settings level.  LLMs fluctuate between native JSON bool
+# and string variants depending on provider/temperature/token-
+# boundary effects; this list catches the common permutations so
+# Google's "skip": true and OpenAI's "skip": "true" both promote
+# deterministically.  Per Gemini guardrail A.
+#
+# Note on equality semantics: Python treats 1.0 == 1 == True, so
+# any of these compare-equal forms also match this membership
+# check.  That's fine -- float 1.0 from an LLM still means "truthy".
+_SKIP_TRUE_VALUES = (True, "true", "True", "TRUE",
+                     "yes", "Yes", "YES",
+                     1, "1",
+                     "skip", "Skip", "SKIP")
+
+
+def _promote_skip_settings_to_skip_programs(directives, log=None):
+    """Promote program_settings[X].skip=truthy to skip_programs.
+
+    v119.H2.1.  Fixes a pre-existing gap where the LLM correctly
+    encodes "don't run X" as program_settings[X].skip=true but the
+    downstream consumer reads skip_programs from
+    workflow_preferences.
+
+    In-place mutation.  Modifies `directives`.
+
+    For each program_settings entry whose settings dict contains a
+    'skip' key with a value in _SKIP_TRUE_VALUES:
+      1. Append the program name to workflow_preferences.skip_programs
+         (creating the list if needed; de-duplicates).
+      2. Pop the 'skip' key from the program's settings dict (so the
+         downstream per-setting validation does NOT log "Unknown
+         setting skip=True (keeping)").
+      3. If the program's settings dict is now empty, remove the
+         program entry entirely (matches what the regex fallback
+         in extract_directives_simple produces for the same input,
+         keeps output tidy).
+
+    IMPORTANT -- call order in validate_directives:
+      This helper MUST run BEFORE the per-setting validation loop
+      iterates settings.items().  The wiring at the top of
+      validate_directives ensures this.  Without that ordering,
+      the "Unknown setting skip=True (keeping)" log line would
+      fire even when the value gets promoted, polluting logs and
+      breaking the no-leftover-log K_H2.1 assertion.
+
+    Defensive bail policy:
+      If workflow_preferences or skip_programs exist on the input
+      but have unexpected types (workflow_preferences not a dict,
+      skip_programs not a list), this helper leaves ALL
+      program_settings entries unchanged (including their skip
+      keys).  The downstream per-setting validation will then log
+      the legacy "Unknown setting skip=True (keeping)" line, which
+      is the right signal that the LLM emitted malformed
+      workflow_preferences.  Partial processing would be worse
+      than no processing in this corner case.
+
+    Liberal on input acceptance, strict on output shape: any value
+    in _SKIP_TRUE_VALUES counts as truthy; the promoted result is
+    always a list of strings under workflow_preferences.skip_programs.
+
+    Args:
+        directives: dict.  Modified in place.
+        log: optional logging callable (signature: log(msg_str))
+
+    Returns:
+        None.  The mutation is the side effect.
+    """
+    def _log(msg):
+        if log:
+            log(msg)
+
+    if not isinstance(directives, dict):
+        return
+    prog_settings = directives.get("program_settings")
+    if not isinstance(prog_settings, dict):
+        return
+
+    # Collect promotions first.  Don't mutate prog_settings while
+    # iterating its keys.
+    to_promote = []  # list of program names whose skip-flag we will pop
+    for prog, settings in prog_settings.items():
+        if not isinstance(settings, dict):
+            continue
+        # Filter empty / non-string program names.  If the LLM
+        # somehow emits program_settings[""] = {"skip": true},
+        # promoting "" to skip_programs would put junk through
+        # the downstream pipeline.
+        if not prog or not isinstance(prog, str):
+            continue
+        if "skip" not in settings:
+            continue
+        if settings["skip"] in _SKIP_TRUE_VALUES:
+            to_promote.append(prog)
+
+    if not to_promote:
+        return
+
+    # Ensure workflow_preferences.skip_programs exists.  Defensive
+    # bail: if either is present but malformed, return without
+    # popping any skip keys.  Leaves the LLM's malformed output
+    # visible to downstream validation.
+    if "workflow_preferences" not in directives:
+        directives["workflow_preferences"] = {}
+    wf = directives["workflow_preferences"]
+    if not isinstance(wf, dict):
+        _log("DIRECTIVES: workflow_preferences is not a dict; "
+             "skip-promotion skipped (input was malformed)")
+        return
+    if "skip_programs" not in wf:
+        wf["skip_programs"] = []
+    elif not isinstance(wf["skip_programs"], list):
+        _log("DIRECTIVES: skip_programs is not a list; "
+             "skip-promotion skipped (input was malformed)")
+        return
+
+    for prog in to_promote:
+        settings = prog_settings[prog]
+        # Pop (not delete-after-read): cleaner idiomatic mutation,
+        # guarantees the key is gone before any downstream code
+        # sees it.
+        settings.pop("skip", None)
+        # Add to skip_programs (de-duplicated).
+        if prog not in wf["skip_programs"]:
+            wf["skip_programs"].append(prog)
+            _log("DIRECTIVES: Promoted %s from program_settings.skip "
+                 "to workflow_preferences.skip_programs" % prog)
+        else:
+            _log("DIRECTIVES: Dropped redundant program_settings.skip "
+                 "for %s (already in skip_programs)" % prog)
+        # If the program's settings dict is now empty, remove the
+        # program entry.
+        if not settings:
+            del prog_settings[prog]
+
+
 def validate_directives(directives, log=None):
     """
     Validate and clean extracted directives.
@@ -2149,6 +2507,15 @@ def validate_directives(directives, log=None):
 
     if not directives or not isinstance(directives, dict):
         return {}
+
+    # v119.H2.1: Promote LLM-emitted program_settings[X].skip=true
+    # to workflow_preferences.skip_programs[X] BEFORE per-setting
+    # validation runs.  Must run before the per-setting validation
+    # loop below so the popped 'skip' key never reaches the
+    # "Unknown setting skip=True (keeping)" log line later in this
+    # function.  See _promote_skip_settings_to_skip_programs for
+    # full rationale.
+    _promote_skip_settings_to_skip_programs(directives, log=_log)
 
     validated = {}
 
@@ -2367,8 +2734,36 @@ def validate_directives(directives, log=None):
                     if isinstance(value, list):
                         valid_prefs[key] = [str(v) for v in value if v]
                 elif key in ("prefer_anomalous", "prefer_unmerged", "prefer_merged"):
-                    # Boolean data type preferences
-                    valid_prefs[key] = bool(value)
+                    # Boolean data type preferences.
+                    # v119.H5.1.1: defend against LLM emitting
+                    # list-wrapped booleans (e.g. [False] which
+                    # bare bool() would incorrectly treat as
+                    # truthy because non-empty list is truthy).
+                    # Type-gated by isinstance(v[0], bool) so
+                    # adding a list-typed key to this tuple in
+                    # the future wouldn't trigger silent
+                    # flattening — only genuine [bool] unwraps.
+                    _v = value
+                    if (isinstance(_v, list) and len(_v) == 1
+                            and isinstance(_v[0], bool)):
+                        _v = _v[0]
+                    if isinstance(_v, bool):
+                        valid_prefs[key] = _v
+                    elif isinstance(_v, int) and not isinstance(_v, bool):
+                        # Bare int 0/1 preserved (existing
+                        # behaviour).  bool is a subclass of int
+                        # in Python, but the case above already
+                        # caught it.
+                        valid_prefs[key] = bool(_v)
+                    elif isinstance(_v, str):
+                        # Bare string preserved (existing
+                        # behaviour, including the legacy quirk
+                        # that bool("false") == True; intentional
+                        # — separate bug class, separate ship).
+                        valid_prefs[key] = bool(_v)
+                    else:
+                        _log("DIRECTIVES: Invalid value for "
+                             "%s: %r" % (key, value))
 
             if valid_prefs:
                 validated["file_preferences"] = valid_prefs
@@ -2396,7 +2791,22 @@ def validate_directives(directives, log=None):
                 elif key in ("use_experimental_phasing", "use_molecular_replacement",
                              "use_mr_sad", "model_is_placed",
                              "wants_validation_only"):
-                    valid_wf[key] = bool(value)
+                    # v119.H5.1.1: same list-wrap defense as the
+                    # file_preferences boolean block above — see
+                    # there for full rationale.
+                    _v = value
+                    if (isinstance(_v, list) and len(_v) == 1
+                            and isinstance(_v[0], bool)):
+                        _v = _v[0]
+                    if isinstance(_v, bool):
+                        valid_wf[key] = _v
+                    elif isinstance(_v, int) and not isinstance(_v, bool):
+                        valid_wf[key] = bool(_v)
+                    elif isinstance(_v, str):
+                        valid_wf[key] = bool(_v)
+                    else:
+                        _log("DIRECTIVES: Invalid value for "
+                             "%s: %r" % (key, value))
 
             if valid_wf:
                 validated["workflow_preferences"] = valid_wf
@@ -2933,6 +3343,32 @@ def merge_directives(base, override):
     base_stop = base.get("stop_conditions", {})
     over_stop = override.get("stop_conditions", {})
     if base_stop or over_stop:
+        # v119.H5.1.1: protect after_program corrections.
+        # The _corrected_from sidecar describes the CURRENT
+        # value of after_program. If override changes
+        # after_program:
+        #   - to the same value the correction reverted away
+        #     from (over_stop[after_program] ==
+        #     _corrected_from.from): prevent the un-correction
+        #     by stripping from override; sidecar stays valid.
+        #   - to any other value, AND override doesn't bring
+        #     its own sidecar: let override win for
+        #     after_program but clear base's now-stale sidecar
+        #     (Gemini blanket-wipe).  Otherwise the dict-merge
+        #     would leave a "zombie" sidecar whose `to` field
+        #     no longer describes the result.
+        # The dict comprehension rebuilds preserve the
+        # merge_directives no-mutation-of-inputs invariant
+        # (same pattern as the program_settings deep-merge
+        # above uses dict()).
+        base_cf = base_stop.get("_corrected_from")
+        if base_cf and "after_program" in over_stop:
+            if over_stop["after_program"] == base_cf.get("from"):
+                over_stop = {k: v for k, v in over_stop.items()
+                             if k != "after_program"}
+            elif "_corrected_from" not in over_stop:
+                base_stop = {k: v for k, v in base_stop.items()
+                             if k != "_corrected_from"}
         merged["stop_conditions"] = {**base_stop, **over_stop}
 
     # Merge file_preferences (override wins)

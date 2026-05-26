@@ -182,6 +182,46 @@ RESPONSE_V2_SCHEMA = {
         "description": "Server software version",
     },
 
+    # v119.H2: agent build metadata (version + defaults fingerprint
+    # + started_at).  Populated at the response post-processor
+    # envelope in run_ai_agent.py via core/_build_info.inject_agent_build.
+    "agent_build": {
+        "type": dict,
+        "default": {},
+        "description": (
+            "Server agent build metadata (v119.H2+). "
+            "Old clients ignore this field. "
+            "Subfields: version, defaults_fingerprint, started_at."
+        ),
+        "subfields": {
+            "version": {
+                "type": str,
+                "default": "unknown",
+                "description": (
+                    "Agent build version from VERSION file at "
+                    "langchain/ root (e.g. '119.H2')."
+                ),
+            },
+            "defaults_fingerprint": {
+                "type": str,
+                "default": "",
+                "description": (
+                    "SHA-256 fingerprint of the active model "
+                    "default tables in core/llm.py.  Format: "
+                    "'sha256:<hex>'.  Excludes RETIRED_MODELS."
+                ),
+            },
+            "started_at": {
+                "type": str,
+                "default": "",
+                "description": (
+                    "Server module-load time. Strict UTC ISO 8601: "
+                    "YYYY-MM-DDTHH:MM:SSZ."
+                ),
+            },
+        },
+    },
+
     # Core decision
     "decision": {
         "type": dict,

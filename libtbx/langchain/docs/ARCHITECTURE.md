@@ -132,6 +132,7 @@ Both LocalAgent and RemoteAgent use the same v2 JSON API and **identical transpo
 │                    ▼                                             │
 │  prepare_response_for_transport()                                │
 │       │                                                          │
+│       ├── 0. inject_agent_build()  [v119.H2; success+error]      │
 │       ├── 1. sanitize_response()                                 │
 │       ├── 2. json.dumps()                                        │
 │       └── 3. encode_for_rest()                                   │
@@ -139,6 +140,12 @@ Both LocalAgent and RemoteAgent use the same v2 JSON API and **identical transpo
 ```
 
 **Key Design Decision**: LocalAgent performs the full encode/decode roundtrip locally, even though it could skip encoding. This ensures that transport bugs are caught during local testing rather than only appearing in production server scenarios.
+
+**v119.H2 injection point**: `inject_agent_build()` runs at the
+top of `_build_group_args_response` before serialization, on
+both the success and error paths.  Every response carries
+`agent_build = {version, defaults_fingerprint, started_at}` —
+see KDD 23.
 
 ## Component Responsibilities
 
@@ -1962,6 +1969,1251 @@ v118.10 doesn't touch that block because Tom's bug is in
 `program_settings`.  v119 deferred work item §3.6 calls for
 extending the helper to that block.
 
+### 22. Centralized LLM Model Defaults (v119.H1)
+
+**Rationale**: Before v119, model names were repeated as default
+arguments at each call site: `model="gpt-4o-mini"` in three
+places of `agent/api_client.py`, `model="gemini-2.5-flash-lite"`
+in `agent/directive_extractor.py`, and so on.  Each retirement
+update required hunting through the codebase for every
+occurrence.  Worse, the **default model for a given
+(provider, role)** was not a queryable property of the system —
+it was implicit in scattered keyword arguments.
+
+v119.H1 establishes five DEFAULTS tables in `core/llm.py`:
+
+- `DECISION_MODEL_DEFAULTS` — what extractor/planner/intent
+  classifier use.
+- `RAG_MODEL_DEFAULTS` — what the RAG retrieval LLM uses.
+- `RAG_EMBEDDING_DEFAULTS` — embedding model names.
+- `EXPENSIVE_MODEL_DEFAULTS` — heavyweight reasoning calls.
+- `CHEAP_MODEL_DEFAULTS` — lightweight classification calls.
+
+Plus a `default_model_for_provider(provider, role="DECISION")`
+helper that all call sites use.  `agent/api_client.py` and
+`agent/directive_extractor.py` were refactored to import and
+use this helper.
+
+A `RETIRED_MODELS` frozenset names models known to be retired
+(e.g., `"gemini-1.0-pro"`, `"gpt-3.5-turbo-16k"`).  When a
+request comes in with an explicit model name that's in
+`RETIRED_MODELS`, the call site emits a stderr marker
+`[DIRECTIVE_EXTRACTION_MODEL_RETIRED]` before falling through to
+the default.  This is defense-in-depth against the v118.8 class
+of incident (server returning a 404 because the configured model
+was retired by the provider).
+
+**Why important for future work**: with one place to update,
+retirement-driven model changes become a single-line edit.  The
+H2 fingerprint mechanism (KDD 23) intentionally excludes
+`RETIRED_MODELS` from its hash so retirement updates don't
+trigger canary fingerprint drift.  Future work that needs to
+inspect "what model would be used for X" can call
+`default_model_for_provider("google", "DECISION")` rather than
+reading source.
+
+K_H1 (`tests/tst_default_models.py`, 22 tests) locks the
+invariants: every (provider, role) combination resolves, all
+DEFAULTS keys are stable strings, RETIRED_MODELS membership
+triggers the stderr marker.
+
+### 23. Server Build Metadata Channel — agent_build (v119.H2)
+
+**Rationale**: Before v119, the client had no programmatic way
+to know which server build it was talking to.  A wrong-version
+server (built from the wrong branch, or with a stale
+`core/llm.py`) would behave subtly differently but be
+indistinguishable from a correct deploy in client logs.  This
+class of incident is hard to catch because individual responses
+look fine — only an aggregate "is this the build I deployed?"
+question would surface the issue.
+
+v119.H2 establishes an unconditional server→client metadata
+channel.  Every server response carries an `agent_build` object:
+
+```json
+{
+  "agent_build": {
+    "version": "119.H3",
+    "defaults_fingerprint": "sha256:77bf7421...",
+    "started_at": "2026-05-22T18:42:13Z"
+  }
+}
+```
+
+- **`version`** is the contents of `VERSION` (new file at
+  `langchain/` root), accessible via `core/_version.py`.  When
+  Tom edits VERSION and redeploys, the next response reflects it.
+- **`defaults_fingerprint`** is `sha256:<64-hex>` covering all
+  five DEFAULTS tables from KDD 22, EXCLUDING `RETIRED_MODELS`.
+  Identical fingerprints across responses mean identical tables
+  across processes; drift means someone edited `core/llm.py`
+  without bumping VERSION.
+- **`started_at`** is strict UTC ISO 8601 captured once at module
+  load.  Lets the operator tell "is this a fresh process?" from
+  the response alone.
+
+Injection happens at the top of `_build_group_args_response` in
+`phenix_ai/run_ai_agent.py`, before serialization.  Both success
+and error responses get the channel.  The H3a canary explicitly
+exercises the error path to confirm the injection fires there.
+
+`core/_build_info.py` exposes two helpers:
+
+- `get_agent_build_info()` — returns the live three-field dict.
+- `inject_agent_build(response)` — sets `response["agent_build"]`
+  in place.
+
+`knowledge/api_schema.py` gains an `agent_build` schema entry so
+the field is documented and validated.
+
+**Why important for future work**: the channel is the
+foundation for the H3 canary (KDD 25) and for any future client
+that needs to display server-build info to operators
+(deferred follow-up §14.5).  K_H2 (24 tests) covers the
+fingerprint computation invariants (deterministic across
+processes, sensitive to `core/llm.py` edits, insensitive to
+`RETIRED_MODELS` edits), the schema entry, and the injection
+firing on both success and error paths.
+
+### 24. skip_programs Promotion (v119.H2.1)
+
+**Rationale**: The directive extraction prompt schema offers
+two parallel ways to express "don't run program X":
+
+- `program_settings: {phenix.X: {skip: true}}`
+- `workflow_preferences: {skip_programs: ["phenix.X"]}`
+
+The LLM, looking at the prompt, often picks the former — it's
+a natural reading.  But downstream code (planner, workflow
+engine) reads only the latter.  Result: the user said "skip X,"
+the LLM correctly captured "skip X" in `program_settings[X].skip`,
+and the program ran anyway.  The bug pre-existed v119 and was
+surfaced by the existing
+`tst_directive_extraction.py::skip_programs` Scenario.
+
+v119.H2.1 adds `_promote_skip_settings_to_skip_programs()` at
+the **top** of `validate_directives`, before per-setting
+validation runs.  The helper:
+
+1. Scans `program_settings.{program}.skip` for any truthy form
+   per `_SKIP_TRUE_VALUES` (12 forms covering `true`, `True`,
+   `"yes"`, `"on"`, `1`, etc.).
+2. For each truthy hit, appends the program name to
+   `workflow_preferences.skip_programs` (creating that path if
+   absent).
+3. Uses `.pop()` (not read-and-leave) so the LLM's
+   `program_settings[X].skip` doesn't get re-interpreted later.
+4. Prunes the parent `program_settings[X]` dict if it becomes
+   empty after the pop.
+5. Deduplicates `skip_programs` (preserves order; the first
+   occurrence wins).
+
+The promotion happens **before** per-setting validation so the
+LLM's truthy-string forms don't get rejected as
+`expected_type=bool` mismatches before promotion can fire.
+
+**Why important for future work**: H2.1's order-of-operations
+matters.  Future additions to `validate_directives` that need
+to see post-promotion state should run after H2.1.  Future
+prompt-consolidation work that closes the
+`program_settings[X].skip` ambiguity at the LLM-emission layer
+(deferred follow-up §8.1) would let H2.1 be removed, but until
+then H2.1 is the load-bearing fix.
+
+K_H2.1 (11 tests in `tests/tst_skip_promotion.py`) covers all
+four Gemini guardrails (truthiness, .pop(), pruning, dedup),
+idempotency, defensive bail on malformed input, and an
+end-to-end assertion against the LLM extraction Scenario.
+
+### 25. Startup Canary Infrastructure (v119.H3)
+
+**Rationale**: With KDD 22's centralization and KDD 23's metadata
+channel in place, v119.H3 closes the loop with two independent
+consumers that probe distinct failure surfaces:
+
+- **H3a — metadata canary (K-suite)**: tests that `agent_build`
+  in a real server response matches operator-pinned expectations
+  in `tests/canary_expected.json`.  Catches: wrong branch
+  deployed, `core/llm.py` edited without VERSION bump, H2
+  injection broken.  No LLM call, no API keys, runs in CI.
+- **H3b — LLM smoke canary (operator-invoked)**: tests that the
+  deployed environment can actually make an LLM call through
+  the production-faithful framework.  Catches: API keys missing
+  / wrong / expired, provider returning 404 on configured
+  model, langchain dependency version drift, network timeouts.
+  Requires API keys; not in CI.
+
+**H3a probe design.**  The probe sends a request through `run()`
+that triggers the **error path** (so `agent_build` gets injected
+without invoking the LangGraph pipeline).  An earlier design
+attempted to trigger this via missing required fields — but
+`_parse_request` calls `apply_request_defaults` BEFORE
+`validate_request`, which fills in defaults for all "required"
+fields.  The current design uses a **type-mismatched** field
+(`"files"` set to a string instead of a list).
+`apply_request_defaults` only fills in MISSING fields, not
+existing-but-wrong-typed ones, so `validate_request` catches the
+type error and routes to `_build_error_response`.  A
+`client_command: "CANARY_PING"` marker in the probe makes
+malformed-on-purpose requests visible in server logs.
+
+**H3b orchestrator design.**  `tests/llm/canary_check.py`
+combines (1) the metadata pinning check (using
+`get_agent_build_info()` directly, no LLM) with (2) a one-shot
+LLM probe through `framework.call_directive_extractor` (the same
+production-faithful entry point the LLM test suite uses).  The
+probe is **also** registered as a `canary` Scenario in
+`tst_directive_extraction.build_scenarios()`, so it can be run
+independently via the standard CLI for debugging:
+`phenix.python tests/llm/run_llm_tests.py --scenario canary`.
+
+The LLM probe is wrapped in a `concurrent.futures.ThreadPoolExecutor`
+context manager with a 30-second timeout.  Per Gemini's
+recommendation, the timeout is enforced externally in the
+orchestrator (no production-code modification).  The 30-second
+threshold accounts for two LLM round-trips (intent classification
++ main directive extraction), each subject to network variance;
+shorter timeouts produced false positives during real-network
+testing.
+
+**Graduated severity** (Tom's choice c): version mismatch is a
+hard fail (wrong build deployed → block deploy); fingerprint
+drift is a soft warning (may be intentional, e.g., a retirement
+update landed mid-version); malformed fingerprint is a hard fail
+(unambiguously broken).  Exit codes from H3b's CLI follow the
+same gradient.
+
+**The `canary_expected.json` lockstep**: K_H3a's
+`test_version_file_matches_canary_expected` asserts that the
+VERSION file and the JSON's `agent_version` field agree.  This
+catches the operator-drift case where one is edited but not the
+other — visible immediately rather than after a confusing test
+failure on PHENIX.
+
+**Why important for future work**: KDD 25 is the load-bearing
+piece for deploy-pipeline confidence.  The deferred §14.1
+"auto-startup canary" follow-up would have the server itself run
+H3 on first request and log to stderr; the manual H3b workflow
+covers the same operational need until that lands.
+
+K_H3a (10 tests in `tests/tst_canary.py`) covers: config file
+presence and schema, probe mechanics (error path triggers,
+agent_build present, probe is fast), version pinning (deployed
+matches JSON, JSON matches VERSION file), fingerprint pinning
+(hard fail on malformed, soft warn on drift), end-to-end
+consistency.
+
+### 26. Preprocessor Telemetry: [STEP_1F] Marker (v119.H4 / H4.1)
+
+**Rationale**: The LLM-based advice preprocessor is on the
+live decision path; before deprecating it (Phase 2B), we need
+direct evidence that the regex-based scanner extracts the same
+file references the LLM extracts.  KDD 26 introduces a
+telemetry marker (`[STEP_1F]`) emitted after every successful
+preprocessing call that compares the LLM's file-list against
+the scanner's file-list on the SAME advice text, capturing the
+symmetric difference for later aggregation.
+
+**Implementation**: `phenix_ai/run_ai_analysis.py`'s
+`run_advice_preprocessing` calls a new
+`agent/raw_advice_scanner.py` module after the LLM
+preprocessing completes, then emits one marker line per call:
+
+```
+[STEP_1F] preprocessing_metrics preprocessor_mode=llm_comparison
+  scanner_version=119.H4.1 llm_files=[...] regex_files=[...]
+  in_llm_only=[...] in_regex_only=[...]
+```
+
+`scanner_version` is read from the `VERSION` file at runtime
+so aggregation can segment telemetry by scanner generation.
+Companion `[STEP_1F_FAILED]` marker fires if the metric block
+itself raises (wrapped in defensive try/except so the marker
+emission never breaks preprocessing).
+
+**H4.1 — Golden-master corpus pinning**: a 31-document corpus
+in `tests/step_1f_corpus.json` with hand-labeled file mentions.
+K_H4's golden-master test pins scanner recall against this
+corpus at **0.9810**, well above the **0.90** trigger
+threshold from the v118 next-steps doc §3.7.  Phase 2B
+activation is **unblocked** as a result.
+
+**Why important for future work**: KDD 26 is the empirical
+basis for the Phase 2B preprocessor deprecation decision.
+The marker emission is also the first H-series feature
+deliberately designed for a future relay-channel ship (KDD 27)
+— H4 emitted to server stderr only; H5 surfaced it
+client-side.
+
+### 27. diagnostic_messages Relay Channel (v119.H5 / H5.1)
+
+**Rationale**: Server-side `[STEP_1F]` markers (KDD 26) emit
+to the server's stderr.  When the agent dispatches to
+`ai.phenix-online.org`, that stderr isn't relayed to the
+client — the operator sees the marker locally (when
+`run_on_server=False`) but not remotely.  KDD 27 closes the
+gap by adding a `diagnostic_messages` list field on
+`working_results` that flows through both dispatch modes
+identically.
+
+**The uniformity criterion** (introduced in H5 plan rev 5
+after a uniformity-violation in rev 4): all actions should
+take place identically whether analysis runs on the server or
+locally.  Local execution is just "the network round-trip
+happens in memory."  Same code paths, same data flow, same
+return contract.  Rev 4 had violated this by gating the
+client's re-emit on dispatch mode; rev 5 removed the gate
+and the helper's stderr write, making local and remote modes
+produce identical operator-visible output.
+
+**Architecture**: three layers, each contributing one
+invariant:
+
+1. **Engine**: `phenix_ai/run_ai_analysis.py`'s engine
+   functions (`run_advice_preprocessing`,
+   `run_directive_extraction`, `run_failure_diagnosis`) each
+   have a function-local `diagnostic_messages = []` (no
+   mutable defaults), threaded through every return path.
+   A `_emit_marker(list, str)` helper appends to the list;
+   it never writes to stderr and never raises.
+2. **Transport (Total Initialization Policy)**: every
+   `working_results` from `programs/ai_analysis.py::get_results_from_all`
+   gets `diagnostic_messages=[]` regardless of mode.
+   `get_results_as_JSON` serializes the field unconditionally;
+   `_process_server_success` decodes it unconditionally on
+   the client.  Local-mode `_run_*_locally` helpers thread
+   markers from the engine into `working_results`.
+3. **Client (centralized re-emit)**: a single
+   `_relay_diagnostic_messages_to_stderr` helper in
+   `programs/ai_analysis.py::run_job_on_server_or_locally`
+   re-emits every list entry to stderr after the dispatcher
+   returns.  Adding new markers requires NO client-side
+   changes — confirmed by H5.1 which added three markers
+   without touching `programs/ai_agent.py`.
+
+**Markers covered**:
+- v119.H5: `[STEP_1F]`, `[STEP_1F_FAILED]` (from KDD 26's
+  preprocessing metric block)
+- v119.H5.1: `[ADVICE_PREPROCESSING_FAILED]` (outer
+  exception handler of `run_advice_preprocessing`),
+  `[DIRECTIVE_EXTRACTION_FAILED]` (outer exception handler
+  of `run_directive_extraction` — distinct from the inner
+  one in `agent/directive_extractor.py` which still emits
+  to stderr only), `[FAILURE_DIAGNOSIS_FAILED]` (outer
+  exception handler of `run_failure_diagnosis`).
+
+The H5.1 markers fire only on UNEXPECTED exceptions.
+Configuration mistakes (invalid provider, missing API key)
+are handled gracefully upstream by `validate_api_keys` and
+`setup_llms` and don't reach these handlers.  This is by
+design — these markers are catastrophic-failure telemetry,
+not configuration-error reporting.
+
+**Backward compatibility (Gemini rev 2 mandate)**: a server
+without H5 returns no `diagnostic_messages` field; the
+client's defensive unpack returns `[]`; the centralized
+re-emit produces no output; the operator's experience is
+indistinguishable from the H4 baseline.  Verified by K_H5 §C
+`test_old_server_response_handled_defensively` and
+`test_corrupted_payload_decoded_defensively`.
+
+**Test strategy**: K_H5 organized into 6 sections at H5.1
+(§A helper unit, §B field-in-return, §C backward compat,
+§D uniform client re-emit, §E production encode/decode
+round-trip, §F extended markers).  §F exception tests use
+deterministic monkey-patching (patching `validate_api_keys`
+or `setup_llms` to raise) plus Gemini Q2 dual-assertion
+(marker present AND debug_log evidence of exception path)
+for robustness against future upstream graceful-handling
+refactors.
+
+26 tests total; libtbx-dependent tests SKIP cleanly in
+sandbox and PASS under PHENIX.
+
+**Why important for future work**: KDD 27 is the
+architectural foundation for any future operator-visibility
+work.  Adding a new marker is a one-line change at the
+engine site — no client-side, no protocol changes, no
+backward-compat concerns.  H5.2 (queued, not started) will
+extend the channel to three remaining stderr-only markers in
+`agent/directive_extractor.py`.
+
+### 28. Canary Probe Robustness Across Providers (v119.H5.1)
+
+**Rationale** (surfaced during H5.1 verification): the H3b
+canary probe text `"Run phenix.refine on the model"` produced
+false-fail on OpenAI.  OpenAI faithfully extracted no
+parameters (the input mentions phenix.refine but no settable
+parameters), returning
+`{"program_settings": {"phenix.refine": {}}}`.
+`validate_directives` (correctly) stripped the empty inner
+dict, yielding `{}`.  The canary asserts non-empty, so it
+failed even though OpenAI behaved correctly.
+
+Google tended to over-extract (added inferred fields like
+`start_with_program`), masking the issue.
+
+**Fix**: change the probe text to `"Run phenix.refine with
+resolution 2.5"` — one concrete settable parameter that any
+LLM should extract, ensuring the validated dict is non-empty
+across providers.  Same canary purpose (provider
+reachability), now robust to provider compliance variance.
+
+**Why important for future work**: KDD 28 is a small-scope
+example of a broader pattern — canary probes should include
+at least one concrete extractable signal, not just an action
+verb plus an entity name.  The natural extension for v120 is
+to verify the same property holds for other LLM-probing
+tests as Phase 2A planning-suite scaffolding lights up.
+
+### 29. Sidecar-Aware Merge + Type-Gated Boolean Coercion (v119.H5.1.1)
+
+**Rationale**: Two latent bugs in
+`agent/directive_extractor.py` surfaced during the §2.1
+review of v118.9 leftovers.  Both are subtle interactions
+between the multi-source directive-extraction architecture
+(LLM extraction + simple-extraction regex + experiment-type
+correction) and Python's coercion semantics.
+
+**Bug 1 — Stale `_corrected_from` sidecar**: when LLM
+extraction returns a wrong-for-experiment-type
+`after_program`, `_apply_experiment_type_program_reprints`
+corrects it and attaches a `_corrected_from` sidecar
+describing the transition.  When `merge_directives` then
+combines the corrected directives with simple-extraction
+output (which independently re-extracts the original
+`after_program` from raw advice), the override-wins
+dict-merge had two pathologies:
+
+1. *Correction reverted*: simple-extraction's value matched
+   `_corrected_from.from`, the merge silently un-corrected
+   the field; sidecar stayed around but no longer described
+   a true correction.
+2. *Zombie metadata*: simple-extraction (or any other
+   override) set `after_program` to a THIRD value (neither
+   the corrected `to` nor the original `from`), leaving
+   the sidecar with stale `from`/`to` fields that
+   contradicted the current value.
+
+**Fix 1**: detect both cases inside `merge_directives`
+itself (semantic belongs in the merge helper, not at
+callers).  Decision matrix:
+
+| Scenario | Action |
+|---|---|
+| Override `after_program` matches `_corrected_from.from` | Strip from override; preserve correction; keep sidecar |
+| Override `after_program` is a third value, no own sidecar | Let override win; clear base's stale sidecar |
+| Override brings its own `_corrected_from` | Standard dict-merge (override's sidecar wins) |
+| Override doesn't touch `after_program` | Standard dict-merge |
+| Base has no `_corrected_from` | Standard dict-merge (no protection needed) |
+
+Implementation uses dict-comprehension rebuilds to preserve
+the existing no-mutation-of-inputs invariant in
+`merge_directives` (same pattern as the program_settings
+deep-merge above already uses).
+
+**Bug 2 — Boolean list-coercion**: `bool([False])` returns
+`True` in Python because non-empty list is truthy.  Two
+sites in `validate_directives` did bare `bool(value)` on
+boolean preferences:
+- `prefer_anomalous`, `prefer_unmerged`, `prefer_merged`
+  in `file_preferences`
+- `use_experimental_phasing`, `use_molecular_replacement`,
+  `use_mr_sad`, `model_is_placed`,
+  `wants_validation_only` in `workflow_preferences`
+
+If the LLM emits `[false]` (list-wrapped — happens
+occasionally with provider/temperature variance), the
+bare `bool()` would silently flip semantics.
+
+**Fix 2**: explicit type-gated inline unwrap at both sites:
+
+```python
+if isinstance(_v, list) and len(_v) == 1 and isinstance(_v[0], bool):
+    _v = _v[0]
+if isinstance(_v, bool):
+    valid_prefs[key] = _v
+elif isinstance(_v, int) and not isinstance(_v, bool):
+    valid_prefs[key] = bool(_v)
+elif isinstance(_v, str):
+    valid_prefs[key] = bool(_v)
+else:
+    _log(...)
+```
+
+The `isinstance(_v[0], bool)` guard bounds the unwrap to
+genuine `[bool]` — `[1]`, `[True, False]`, `["true"]`, etc.
+fall through to the drop+log branch.  Future maintainer
+adding a list-typed key to either boolean tuple wouldn't
+trigger silent flattening (the value would drop+log, which
+surfaces the mistake during testing).
+
+Explicit pattern chosen over the existing v118.10
+`_coerce_setting_value` helper.  Gemini's plan review
+flagged the helper's broader semantics (string-join for
+multi-element lists, dict rejection, etc.) as future-
+maintenance risk.  The inline pattern is 4 lines that
+obviously match the bug they fix.
+
+**Pre-existing wrongness NOT fixed**: `bool("false")`
+returns `True` in Python — a separate string-truthy quirk
+preserved for non-list inputs.  Separate bug class; if it
+manifests in production, separate ship.
+
+**Test strategy**: K_H5_1_1 organized into 2 sections:
+§A merge_directives sidecar protection (7 tests), §B
+validate_directives boolean list-wrap defense (16 tests).
+Both sections include no-mutation-of-inputs invariant
+tests verifying the dict-comprehension rebuilds don't
+accidentally mutate caller dicts.
+
+23 tests total; no libtbx dependency (`merge_directives`
+and `validate_directives` are pure-Python helpers, so all
+tests PASS in sandbox and under PHENIX without SKIPs).
+
+**Why important for future work**: KDD 29 demonstrates two
+patterns worth applying elsewhere in the cluster:
+
+1. *Semantic-protection helpers belong in the merge layer,
+   not at callers*.  Both production callers of
+   `merge_directives` benefit from the sidecar protection
+   automatically; neither had to be touched.  Future
+   merge-class helpers should follow this pattern.
+2. *Explicit type-gates for narrow scopes beat
+   general-purpose helpers when the cost of helper-coupling
+   exceeds the saved lines.*  The `_coerce_setting_value`
+   helper is the right tool for its use case
+   (`program_settings` and `stop_conditions` value coercion
+   with multiple expected types) but a heavier weapon than
+   needed for the narrow "[bool] → bool" unwrap.
+
+### 30. Phase 2A Planning-Suite Framework Patterns (v119.H6)
+
+**Context**: H3b shipped `tests/llm/framework.py` with
+`call_directive_extractor` implemented and three sibling
+functions as stubs.  The 8 planning scenarios in
+`tst_planning.py` ERRORed at 0.0s because the stubs raised
+`NotImplementedError`.  H6 replaced the stubs with real
+implementations, unblocking ~12 minutes of planning-LLM
+reliability testing per Mac run.
+
+**Decision**: Four design patterns that together make the
+planning framework production-faithful without coupling it
+to the production class hierarchy:
+
+#### 30.1 Production parity, not test convenience
+
+`is_stop_intent(intent)` checks BOTH signals that production
+checks at `graph_nodes.py:~2168`:
+```python
+return intent.get("program") == "STOP" or intent.get("stop") is True
+```
+
+The strict `is True` (rather than truthy) matches
+production exactly.  Subtle but important: a test framework
+that accepted `stop: "yes"` or `stop: 1` would be more
+permissive than production and could mask future regressions
+where production tightens up the check.  The K_H6 §A tests
+pin both signals AND the strictness.
+
+#### 30.2 Lazy imports for sandbox testability
+
+The framework's planning functions need `BedrockChatBuilder`,
+the rate-limit handler, and PHENIX configuration utilities.
+Importing them at module-load time would make the framework
+unimportable in sandbox.  Solution: lazy imports inside the
+function body, so the test framework loads fine but the
+actual planning call requires PHENIX.
+
+Pattern:
+```python
+def call_planning_llm(state_inputs, provider="google"):
+    # Lazy imports — only fire when called, not at module load
+    from langchain.agent.graph_nodes import plan as _plan_function
+    from libtbx.langchain.agent.rate_limit_handler import (
+        get_google_handler)
+    ...
+```
+
+Sandbox: framework imports OK; K_H6 §D tests SKIP gracefully
+because the production dependencies aren't available.
+
+PHENIX: K_H6 §D tests also SKIP — but for a DIFFERENT
+reason.  Under PHENIX, the libtbx import succeeds, so the
+sandbox `sys.modules` fakes never get a chance to be loaded
+by the test.  The mechanic is identical in both
+environments; only the gating differs.  K_H6 §D documents
+this and pins what it CAN pin (the sandbox version's
+mechanic).
+
+#### 30.3 raw_output preservation invariant (Gemini rev-3 critical fix)
+
+When `parse_intent_json` parses the planning LLM's output:
+```python
+# WRONG (rev 1, rev 2)
+try:
+    raw_output = ...
+    intent = parse_intent_json(raw_output)
+except Exception:
+    return {"raw_output": ???, ...}  # raw_output undefined!
+
+# RIGHT (rev 3)
+raw_output = ...  # ALWAYS bound, BEFORE the try
+try:
+    intent = parse_intent_json(raw_output)
+except Exception:
+    return {"raw_output": raw_output, ...}  # always available
+```
+
+Hoist `raw_output = ...` BEFORE the try block.  If
+`parse_intent_json` raises (JSON parse failure on malformed
+LLM output), the exception handler returns the LLM's
+original malformed text for diagnosis instead of crashing
+the test framework or returning empty string.
+
+K_H6 §D pins this with a test that mocks
+`parse_intent_json` to raise, asserts the result contains
+the original raw text.
+
+#### 30.4 K-test SKIP-under-PHENIX pattern for monkey-patched modules
+
+`tests/tst_planning_framework.py` §D monkey-patches
+`sys.modules['langchain.agent.graph_nodes']` to control
+what `call_planning_llm` invokes.  Under sandbox this
+works fine (no libtbx in play).  Under PHENIX, the
+libtbx-version of the import wins, so the monkey-patch
+doesn't take effect.
+
+Resolution: §D tests check for libtbx availability and
+SKIP cleanly under PHENIX.  The mechanic is the same in
+both environments; sandbox tests pin the contract.  Live
+planning tests under PHENIX exercise the actual production
+path.
+
+This is the OPPOSITE pattern from H3a / H4 / H5 where
+sandbox SKIPs and PHENIX PASSes.  Both patterns are valid
+— the question is "where does the import resolution prevent
+the test mechanism from working?"
+
+**Why important for future work**: any future framework
+function that needs to monkey-patch a production module
+should follow §30.4's pattern (SKIP under PHENIX, full
+coverage under sandbox).  Production behavior is exercised
+by the live LLM tests directly; the K-test pins the
+mechanism.
+
+### 31. Scanner-First Activation Patterns (v119.H7)
+
+**Context**: H4.1 measured `raw_advice_scanner`'s recall at
+0.9810 against the LLM extraction's output, exceeding the
+0.90 threshold from PHASE2_PLAN for Phase 2B activation.
+H7 activated Scope B: scanner becomes the primary source
+for `extracted_files`, with the LLM extraction kept as
+fallback.
+
+**Decision**: Four design patterns informed by Gemini
+critique cycles + a critical implementation-time
+correction.
+
+#### 31.1 Q2-strict: consumer contract preservation
+
+When swapping the primary file-extraction source, the
+output contract of the new source must match the existing
+consumer's expectation EXACTLY.  Inspection of
+`programs/ai_agent.py:8128-8174` revealed:
+
+- The consumer's own comment at line 8142 names the field
+  "Files mentioned in advice" — that's the semantic
+  contract.
+- Auto-promotion to `original_files` at lines 8157-8158
+  means polluted `extracted_files` directly inflates the
+  agent's active input set.
+
+Decision: scanner called with `None` hint (NOT
+`file_list`).  Preserves "files mentioned in advice text
+only" semantics.  Passing `file_list` would have silently
+inflated `extracted_files` with workspace files the user
+never mentioned — surfacing as "agent analyzed files I
+didn't ask about" in production.
+
+**Pattern**: any source-swap should be preceded by
+inspection of every downstream consumer to verify contract
+compatibility.  Code inspection beats plan inspection.
+
+#### 31.2 Defense-in-depth fallback with libtbx → relative imports
+
+The new primary path can fail; the fallback path must
+remain reliable.  Pattern from H7's
+`run_ai_analysis.py:1009-1069`:
+
+```python
+try:
+    try:
+        from libtbx.langchain.agent.raw_advice_scanner import (
+            scan_files_in_advice)
+    except ImportError:
+        from agent.raw_advice_scanner import scan_files_in_advice
+    extracted_files = scan_files_in_advice(raw_advice, None)
+    ...
+except Exception as e:
+    debug_log.append(f"raw_advice_scanner failed: {e}; ...")
+    if processed_advice and processed_advice != raw_advice:
+        try:
+            try:
+                from libtbx.langchain.agent.advice_preprocessor import (
+                    extract_files_from_processed_advice)
+            except ImportError:
+                from agent.advice_preprocessor import (
+                    extract_files_from_processed_advice)
+            extracted_files = extract_files_from_processed_advice(...)
+        except Exception as e2:
+            debug_log.append(f"LLM fallback extraction also failed: {e2}; ...")
+```
+
+The Gemini rev-2 critical fix: the FALLBACK import path
+must ALSO use libtbx → relative.  Rev 1 used a bare libtbx
+import in the fallback, which would silently fail in
+sandbox (or any environment where libtbx isn't available)
+and be swallowed by the outer except handler — a silent
+failure of the safety net.
+
+**Pattern**: any "safety net" import must mirror the
+primary path's import-fallback pattern.  Inconsistency
+defeats the purpose.
+
+#### 31.3 Telemetry-axis independence after primary-source change
+
+H4 designed `[STEP_1F]` to compare LLM extraction vs scanner
+extraction.  Pre-H7 this was implicit: `extracted_files` was
+the LLM's output, `regex_files_raw` was the scanner's.
+Post-H7, `extracted_files` is the scanner's output.
+
+**Trap**: if the [STEP_1F] block reuses `extracted_files`
+as the LLM-comparison axis, it would compare
+scanner-to-scanner and the recall numbers would always be
+inflated.  Caught during implementation review.
+
+Resolution: the [STEP_1F] block now calls
+`extract_files_from_processed_advice` SEPARATELY from the
+main extraction path:
+```python
+_llm_extracted = []
+try:
+    try:
+        from libtbx... import extract_files_from_processed_advice
+    except ImportError:
+        from agent... import extract_files_from_processed_advice
+    _llm_extracted = extract_files_from_processed_advice(processed_advice)
+except Exception:
+    _llm_extracted = []
+llm_normalized = _step_1f_normalize(_llm_extracted)  # NOT extracted_files
+```
+
+Cost: one extra pure-regex call per request (microseconds).
+Benefit: the telemetry's diagnostic value (scanner vs LLM
+drift detection) is preserved.
+
+**Pattern**: when changing the SOURCE of a variable that
+also drives telemetry, audit every downstream consumer of
+that variable to verify the source-change doesn't
+invalidate the telemetry's comparison semantics.
+
+K_H7's `test_telemetry_independence_from_extracted_files`
+pins this property at the source level — a future refactor
+that accidentally reverts to reusing `extracted_files` is
+caught immediately.
+
+#### 31.4 Recall metrics with explicit naming and zero-division guards
+
+Two new inline metrics added to `[STEP_1F]`:
+- `scanner_recall_against_llm` (`|intersection|/|llm_files|`)
+- `llm_recall_against_scanner` (`|intersection|/|regex_files|`)
+
+Explicit semantic names (not `recall` with implicit
+direction).  Future readers know the numerator without
+checking docs.
+
+Both metrics zero-division-guarded: empty denominator → 1.0
+(mathematically sound for recall — 100% of zero targets
+captured — and avoids `ZeroDivisionError` in production on
+advice with no file mentions).
+
+**Pattern**: any inline metric must (a) have an explicit
+semantic name, (b) be zero-division-guarded with a
+documented degenerate value, and (c) appear in [STEP_1F]
+without modifying existing fields (additive-only).
+
+**Why important for future work**: KDD 31 demonstrates the
+discipline needed for primary-source swaps in production
+code paths.  Three of the four sub-patterns (Q2-strict,
+import-fallback consistency, telemetry-axis independence)
+came from defending against silent failure modes.  The
+fourth (explicit metric naming) prevents future telemetry
+schema drift.
+
+The same discipline applies to any future Phase 2B Scope C
+work that removes the LLM preprocessor entirely.  When
+`llm_files=[]` always, the recall metrics degrade
+gracefully but tagging via `preprocessor_mode=regex_only`
+becomes essential for aggregation tooling.
+
+### 32. Template-Literal Allowlist Pattern (v119.H8)
+
+**Context**: An LLM-emitted strategy for `phenix.autobuild_denmod`
+was reaching the post-build `sanitize_command` call with
+`maps_only=True` stripped out, despite the parameter being a
+legitimate part of the program's command template in
+`programs.yaml`.  Without `maps_only=True`, `autobuild_denmod`
+tries to rebuild the model rather than just producing density-
+modified maps — wrong program semantics.
+
+**Decision**: the per-program parameter allowlist used by
+`sanitize_command::_load_prog_allowlist` to enforce Rule D
+("strip unknown program-specific parameters") must include
+**literal `key=value` tokens baked into the command template**,
+not just the entries declared in `strategy_flags`.
+
+#### 32.1 Template-literal tokens are program invariants, not LLM strategies
+
+`programs.yaml` distinguishes between two kinds of command-line
+parameters for any given program:
+
+- **Strategy-tunable parameters**, declared under
+  `strategy_flags` in the program definition.  These are
+  parameters the LLM is permitted to set as part of a strategy
+  dict (e.g., `nproc`, `resolution`).  The allowlist already
+  derived these correctly.
+- **Template-literal parameters**, baked directly into the
+  `command:` template string (e.g.,
+  `phenix.autobuild_denmod ... maps_only=True`).  These are
+  program invariants — fixed properties of how the agent invokes
+  the program for a given workflow purpose.  The LLM has no
+  business changing them; the strategy system has no entry for
+  them.
+
+Pre-H8, the allowlist derived only from `strategy_flags`, so
+Rule D treated template-literal parameters as "unknown" and
+stripped them.  The autobuild_denmod case was the visible
+production symptom; the bug class affects any program with
+template-literal parameters not also declared in `strategy_flags`.
+
+**Pattern**: when sanitization rules consult a configuration
+artifact to decide what to allow, that artifact must enumerate
+**all** legitimate parameters — even ones the user/LLM has no
+business setting.  An invariant baked into a template is still
+a parameter that will appear on the command line; the
+sanitizer must know about it.
+
+#### 32.2 Placeholder vs literal in template extraction
+
+The fix walks `prog_def.get('command', '')` with the regex
+`r'(?:^|\s)([a-zA-Z_][a-zA-Z0-9_.]*)='` and adds each matched
+parameter name (leaf-only, lowercased) to the allowlist.
+
+The `(?:^|\s)` prefix is load-bearing: it requires start-of-
+string or whitespace before the identifier, which is precisely
+what distinguishes a **literal parameter token** like
+` maps_only=True` (preceded by whitespace) from a
+**placeholder substitution target** like `{data_mtz}=...`
+(preceded by `{`).  The `{` is neither start-of-string nor
+whitespace, so the regex doesn't match — and placeholder names
+correctly do NOT pollute the allowlist.
+
+This design treats the command-template's text as a parseable
+sublanguage with two distinct token classes:
+
+- `KEY=VALUE` at word-boundary → parameter (add KEY's leaf to
+  allowlist).
+- `{PLACEHOLDER}` inside the template → substitution slot, NOT
+  a parameter.
+
+K_H8's `test_bug8_template_literal_extraction_ignores_placeholders`
+pins this regex contract.
+
+**Pattern**: in any DSL with both literal tokens and
+substitution syntax, the consumer that needs to distinguish
+them must anchor on the literal form's boundary properties
+(whitespace, punctuation), not just on the identifier shape.
+
+#### 32.3 Program-invariant override at the registry, not the sanitizer
+
+A defense-in-depth concern: now that `maps_only` is in the
+allowlist, what stops an LLM from emitting
+`strategy.maps_only=False` to override the template's
+`maps_only=True`?  Answer: `ProgramRegistry.build_command`
+already drops unknown strategy entries — and `maps_only` is
+NOT in `phenix.autobuild_denmod`'s `strategy_flags`, so the
+LLM's strategy entry IS unknown and IS dropped (with a
+"Unknown strategy 'maps_only'" log line).
+
+So the contract is split:
+
+- **`_load_prog_allowlist` / `sanitize_command`** (post-build):
+  "preserve template-literal parameters from being stripped as
+  unknown."  H8's fix.
+- **`ProgramRegistry.build_command`** (build): "drop LLM
+  strategy entries that aren't in `strategy_flags`."  Pre-existing
+  behavior.
+
+Together they enforce: template invariants reach the command
+line; LLM cannot override them via strategy.
+
+K_H8's `test_bug8_adversarial_strategy_override_dropped` (Claude-
+reviewer-suggested) pins this two-step invariant.  The test
+emits `strategy={"maps_only": False}`, verifies the registry
+logs "Unknown strategy 'maps_only'" and drops it, and confirms
+the resulting command still contains the template-literal
+`maps_only=True` only.
+
+**Pattern**: when defense-in-depth is split across two
+processing stages, each stage's tests should assert both its
+own contract and the joint outcome.  Don't rely on the reader
+to compose the invariants mentally.
+
+**Why important for future work**: KDD 32 surfaces a class of
+issue that's invisible until a specific program's specific
+parameter is checked — most programs have parameters that pass
+through cleanly because their command template happens to fall
+into a path the allowlist loader handles.  When adding any new
+program with template literals in its command template, run K_H8's
+allowlist-loader test against the new program's parameters as a
+smoke check.  Generalization candidate: a property test that
+verifies the allowlist round-trips for every program in
+`programs.yaml`.
+
+### 33. Per-Program PHIL Scope Rewriting (v119.H9)
+
+**Context**: `phenix.predict_and_build` was being given commands
+with `crystal_symmetry.unit_cell=...` but the program expects
+`crystal_info.unit_cell=...`.  PHENIX rejected with "Some PHIL
+parameters are not recognized".  The wrong scope was being
+emitted because `agent/program_registry.py` (around line 778)
+unconditionally prepends `crystal_symmetry.` to bare unit_cell
+and space_group parameters, and the per-program rewrite table
+in `knowledge/parameter_fixes.json` — while containing other
+entries for `phenix.predict_and_build` (file-name remappings,
+`nproc` scopings) — had no scope-rewrite entries to redirect
+the `crystal_symmetry.*` parameters to `crystal_info.*` for
+this specific program.
+
+**Decision**: the architectural layering for per-parameter
+PHIL scope handling is **two-layer with explicit per-program
+overrides**:
+
+1. **Layer 1 — uniform default scoping** (`program_registry.py`):
+   parameters are prepended with the most common scope
+   (`crystal_symmetry.` for unit_cell / space_group).  This is
+   correct for the majority of PHENIX programs.
+2. **Layer 2 — per-program rewrite table**
+   (`knowledge/parameter_fixes.json`): for programs whose PHIL
+   scope differs from the default, an explicit entry maps the
+   default-scoped parameter name to the program-specific name.
+
+The fix is purely additive at Layer 2 — four new rewrite entries
+plus one annotation under the existing `phenix.predict_and_build`
+block in the JSON:
+
+```json
+"phenix.predict_and_build": {
+  // pre-existing entries (file-name remapping, nproc scoping)
+  "data_file": "xray_data_file",
+  "input_files.data_file": "input_files.xray_data_file",
+  "control.nproc": null,
+  "prediction.nproc": null,
+  // v119.H9 additions
+  "_comment_cs": "predict_and_build uses crystal_info.* scope (v119.H9)",
+  "crystal_symmetry.space_group": "crystal_info.space_group",
+  "crystal_symmetry.unit_cell":   "crystal_info.unit_cell",
+  "xray_data.space_group":        "crystal_info.space_group",
+  "xray_data.unit_cell":          "crystal_info.unit_cell"
+}
+```
+
+The `_comment_cs` key is skipped by `fix_program_parameters`
+(which ignores keys starting with `_`), so it serves as inline
+documentation for the rewrite table.  The `xray_data.*` fallback
+entries (Gemini-suggested) handle the case where an LLM emits a
+different incorrect scope; both get rewritten to `crystal_info.*`.
+
+#### 33.1 Why a rewrite table, not a fix in the registry
+
+An alternative design would have been to change Layer 1 to
+look up the correct scope per program from `programs.yaml` —
+removing the need for a separate rewrite table.  H9 deliberately
+did not go this route:
+
+- The default-and-override design is **incremental and
+  reversible**.  Each program's exception is one JSON entry;
+  reverting is one line.  A Layer 1 rewrite would touch
+  registry code and risk regressions for programs not yet
+  covered by tests.
+- The rewrite table is **self-documenting**.  Reading
+  `parameter_fixes.json` reveals exactly which programs deviate
+  from the default scope, which is itself a maintenance signal.
+- The rewrite table is **runtime-checkable** without server
+  restart in dev — testing a fix is editing a JSON file.
+
+**Pattern**: when the majority case of a configuration is
+correct and a minority needs deviation, prefer a per-exception
+table over generalizing the rule.  The exception table is the
+contract surface for the deviation.
+
+#### 33.2 K_H9 module-cache invalidation
+
+`parameter_fixes.json` is loaded by `agent/planner.py` on first
+call to `get_parameter_fixes()` and cached at module scope via
+`_PARAMETER_FIXES = None` (sentinel) → populated dict on first
+load.  K_H9's tests need to exercise different file states
+(e.g., test 4 verifies idempotence by ensuring no double-rewrite
+of an already-correctly-scoped command).  Solution: a
+test-module-level `_reload_parameter_fixes()` helper that resets
+the cache sentinel back to `None`, forcing the next call to
+re-read the JSON file:
+
+```python
+def _reload_parameter_fixes():
+    """Force re-read of parameter_fixes.json (defeat the module cache)."""
+    try:
+        from libtbx.langchain.agent import planner as _p
+    except ImportError:
+        try:
+            from agent import planner as _p
+        except ImportError:
+            return
+    _p._PARAMETER_FIXES = None
+```
+
+All four K_H9 tests call this at the top.  The mechanism is
+deliberately direct: `_PARAMETER_FIXES` is a public-by-convention
+module attribute (no leading underscore on the sentinel access
+pattern; the leading underscore on the name is hygienic, not a
+strict private marker), and resetting it to `None` triggers
+`get_parameter_fixes`'s built-in lazy-load path.  No `importlib`
+reload is needed — and would be wrong, since reloading the
+planner module would invalidate `fix_program_parameters` references
+held by other tests.
+
+This pattern generalizes: any K-test that depends on
+JSON-or-YAML-loaded data with module-level lazy caching can
+expose a similar single-line invalidation helper.
+
+**Pattern**: when a test exercises configuration data that's
+lazily cached at module scope, expose an invalidation hook
+rather than relying on test-isolation order.  Cached data +
+test order dependence = flaky tests.  Direct cache-sentinel
+reset is preferable to `importlib.reload` because the latter
+also invalidates function references and re-runs module
+initialization.
+
+**Why important for future work**: KDD 33 establishes the
+contract surface for adding new program-specific PHIL deviations.
+When a new PHENIX program is added with non-default scoping
+(check by attempting to run a typical command and observing
+PHIL rejections), the fix path is: add an entry to
+`parameter_fixes.json` + add a K-test in `tst_autosol_bugs.py`
+following the K_H9 pattern.  No registry or planner code change
+is needed for the common case.
+
+### 34. `exclude_patterns` Word-Boundary Semantics (v119.H10 / H11)
+
+**Context**: AIAgent_62 cycle 7 emitted a `phenix.refine` command
+with `refine_001_001.cif` (a model mmCIF from an earlier refine
+step) injected as a positional third argument.  PHENIX
+interpreted it as a SECOND model and crashed with "wrong number
+of models".  The `phenix.refine::ligand_cif` slot in
+`programs.yaml` declares `exclude_patterns: [..., "refine_", ...]`
+specifically to reject such files; the schema designer's intent
+was clear, but the filter wasn't taking effect.
+
+The fix split across two ships because two independent bugs
+were stacked.  Both are needed; H10 alone does not fix the
+cycle-7 crash.
+
+#### 34.1 Structural application of `exclude_patterns` across all selection paths (H10)
+
+`CommandBuilder._find_file_for_slot` in `agent/command_builder.py`
+has multiple file-selection paths (PRIORITY 1 through 4) plus a
+refinement pre-population path in `_select_files`.  The in-code
+comment that H10 left at line 1279 documents the pre-H10 state:
+
+> Pre-H10, `exclude_patterns` was only consulted at PRIORITY 4
+> (extension fallback).  PRIORITY 2 (best_files), PRIORITY 2.5
+> (recovery strategies), PRIORITY 3 (category-based), and
+> PRIORITY 3.5 (fallback best_files) all bypassed it.
+
+(`_select_files` also has an LLM-selected files path (line 963)
+with its own `exclude_patterns` check; whether that check predates
+H10 is not marked in the code.  H10's helper covers the auto-fill
+paths inside `_find_file_for_slot`, which is where the bug class
+lives.)
+
+The AIAgent_62 cycle-7 build picked the bad file via **PRIORITY
+3 (category-based)** — one of the paths that bypassed the
+filter.  Since cycle 7's LLM did not explicitly select a
+ligand_cif file, auto-fill ran and grabbed `refine_001_001.cif`
+out of the `ligand_cif` category without checking the slot's
+`exclude_patterns`.
+
+**Decision**: define a closure `_matches_exclude_patterns_h10(f)`
+at the entry of `_find_file_for_slot` (line 1292) and apply it
+at every auto-fill site:
+
+```python
+_exclude_patterns_h10 = input_def.get("exclude_patterns", [])
+def _matches_exclude_patterns_h10(f):
+    if not _exclude_patterns_h10:
+        return False
+    return matches_exclude_pattern(
+        os.path.basename(f), _exclude_patterns_h10)
+```
+
+Applied at 7 sites inside `_find_file_for_slot` (PRIORITY 2
+best_files at line 1333, PRIORITY 2.5 recovery_strategies at
+line 1359, PRIORITY 3 category variants at lines 1406/1417/1437,
+PRIORITY 3.5 `require_best_files_only` at line 1472, PRIORITY
+3.5 fallback best_files at line 1513) plus 1 site in
+`_select_files` (line 698) for refinement pre-population
+(`best_files["model"]` honoring exclude_patterns from the model
+slot — uses `matches_exclude_pattern` directly rather than the
+closure, since `_select_files` doesn't have the closure in
+scope).  Total: 8 application sites, 9 `v119.H10` markers
+(8 application sites + 1 marker on the helper-definition comment
+block).
+
+**Pattern**: when a slot-level filter must apply consistently
+across multiple selection algorithms, the filter is the contract;
+each algorithm-specific code path must honor it.  Closures
+provide the necessary lexical scoping for the input_def-derived
+list without requiring helper functions to be passed through
+every signature.
+
+(Subsequent helper-consistency refactor — extract module-level
+`_file_passes_exclude_patterns(file_path, input_def)` and replace
+all 8 sites — is tracked as a deferred follow-up; the H10 closure
+form is correct but DRY can be improved.)
+
+#### 34.2 Word-boundary matching semantics in `matches_exclude_pattern` (function-side, intentional)
+
+`agent/file_utils.py::matches_exclude_pattern` uses **word-boundary
+regex matching**, not substring matching:
+
+```python
+re.search(
+    r'(?:^|[_\-\.])' + re.escape(pat_stem) + r'(?=[_\-\.]|$)',
+    stem)
+```
+
+The pattern must be preceded by start-of-string or one of
+`_`/`-`/`.`, AND followed by one of `_`/`-`/`.`/end-of-stem.
+(Extension-suffix patterns like `"lig.pdb"` are special-cased:
+the basename must end with `.pdb` AND the stem-portion must
+satisfy the word-boundary regex against `lig`.)
+
+**Why word-boundary**: prevents false positives like `"ligand"`
+matching `"noligand.pdb"`, where the pattern's intent is the
+ligand-output naming convention (`ligand.pdb`, `my_ligand.pdb`),
+not arbitrary substring containment.  Substring matching would
+have semantic gotchas at scale.
+
+**Why this is a design decision, not just a function**: the
+semantics constrain the YAML pattern authoring grammar.  Patterns
+must be authored TO this semantics.  Patterns authored AGAINST
+this semantics (assuming substring) silently fail to match —
+exactly what happened with `"refine_"` (trailing underscore
+breaks the regex because the next char in the filename is `0`,
+not a boundary char).
+
+#### 34.3 YAML pattern authoring grammar (H11)
+
+H11 corrects three YAML patterns that had been authored against
+substring semantics:
+
+- `phenix.refine::ligand_cif`: `"refine_"` → `"refine"`
+- `phenix.mtriage::full_map`: `"_half"` → `"half"`
+- `phenix.real_space_refine::map`: `"_half"` → `"half"`
+
+H11 also embeds a `DESIGN NOTE (exclude_patterns)` block at the
+top of `knowledge/programs.yaml` documenting the grammar for
+future YAML authors:
+
+- **Rule 1**: Patterns must NOT have leading or trailing
+  underscore.  `"refine"` is correct; `"refine_"` and `"_refine"`
+  are broken.
+- **Rule 2**: To catch alphanumeric-suffix variants where a
+  digit immediately follows the pattern stem with no separator
+  (e.g., `protein_half1.ccp4`), include explicit suffix patterns
+  alongside the bare pattern: `[half, half1, half2, half_1, half_2]`.
+  Bare `"half"` does NOT match `protein_half1.ccp4` because `1`
+  is not a boundary char — Gemini's plan review caught this and
+  required the numeric defense-in-depth patterns be preserved.
+
+**Pattern**: when a function's semantics constrain a configuration
+grammar, the constraint must be authored as inline documentation
+at the grammar's authoring site.  Function-level docstrings are
+necessary but not sufficient — config authors don't open the
+function source.
+
+#### 34.4 Semantic-pin tests for sandbox-vs-real-function divergence (H11)
+
+The H10 → H11 cycle exposed a sandboxing failure mode worth
+capturing as policy.
+
+The H10 sandbox stub for `matches_exclude_pattern` did substring
+matching (the wrong semantics).  H10's K-suite passed in sandbox
+because the stub-vs-YAML pattern interaction happened to give
+the right answer for the test files.  Against the REAL function,
+the same YAML pattern (`"refine_"`) returned False — H10's
+filter fired but rejected nothing.  H10 packaged as "fixes the
+cycle-7 bug" — it didn't.
+
+**Decision**: every function with non-obvious semantics (regex
+matching, parsing, escaping, normalization) that's stubbed in
+sandbox should have a paired semantic-pin test that calls the
+REAL function with documented expected behavior.
+`test_bug11_matches_exclude_pattern_semantics` in
+`tst_autosol_bugs.py` is the template — 10 named cases asserting
+specific function behavior, with a graceful sandbox-skip fallback
+when the real function isn't importable.
+
+**How the divergence is caught going forward**:
+- In production environments (Tom's PHENIX), the real function
+  is importable; the test runs against it; semantic pins assert
+  the documented behavior.  If the function ever changes, the
+  test fails.
+- In sandbox environments with a stub, the test still runs
+  against whatever `matches_exclude_pattern` resolves to.  If
+  the stub has substring semantics, the trailing-underscore
+  assertion (`assert_false(real_func("refine_001.cif", ["refine_"]))`)
+  fails because the substring stub returns True.  The divergence
+  surfaces immediately.
+
+**Pattern**: when sandbox stubs exist, the parity check is implicit
+in any test that asserts function behavior — provided the test
+asserts behavior the stub-vs-real difference would cross.  The
+H11 test does this deliberately, including the trailing-underscore
+case that specifically distinguishes substring from word-boundary
+matching.
+
+(A formal differential parity test — import both stub and real,
+assert equal returns on a fixture — is tracked as deferred Item
+2.4 in `v119_H11_PLAN_rev2.md`.  It requires a stub-package
+artifact that doesn't currently exist as a real PHENIX tree
+member; the semantic-pin test is the actionable substitute for
+now.)
+
+**Why important for future work**: KDD 34 captures the discipline
+needed when configuration grammars constrain function semantics
+and vice versa.  The four sub-patterns (structural application of
+filters, function-side word-boundary semantics, YAML authoring
+grammar, semantic-pin tests) form a unit: applying filters at all
+paths only matters if the patterns match; authoring patterns
+correctly only matters if filters apply at all paths; and the
+sandbox-vs-real semantics drift problem applies anywhere stubs
+exist.  Future similar work — for instance, applying a new
+`include_patterns` or per-slot file-type rules — should follow
+the same four-step discipline.
+
 ## Workflow States
 
 ### X-ray Crystallography Workflow
@@ -2952,6 +4204,72 @@ at all. The two systems share the same LLM providers but serve
 different purposes: THINK produces per-cycle expert assessments that
 feed PLAN, while `ai_analysis.py` standard mode produces standalone
 summaries for human consumption.
+
+### Observability across the client/server split (v119.H4 lesson)
+
+The local/remote execution split has a non-obvious consequence
+for **observability**: stderr and other auxiliary output streams
+behave differently depending on which side of the split a piece of
+code is executing on. Instrumentation that "works locally" can
+silently disappear when the same code runs remotely.
+
+**Local mode** (`run_on_server=False` or `provider=ollama`):
+`_run_advice_preprocessing_locally`, `_run_directive_extraction_locally`,
+and similar helpers in `ai_analysis.py` call into
+`phenix_ai/run_ai_analysis.py` in the **client process**. Anything
+those functions write to `sys.stderr` (e.g., diagnostic markers,
+exception tracebacks, fault-isolation fallbacks) lands in the
+client's terminal stderr, the same stream as the rest of
+`phenix.ai_agent`'s output. With `phenix.ai_agent ... 2>&1 | tee
+output.log` (or any shell-level capture), the marker is preserved.
+
+**Remote mode**: the same code runs inside the
+`ai.phenix-online.org` server process. Its `sys.stderr` is the
+server's stderr, not the client's. Successful results are returned
+to the client as a structured dict; the server's stderr is **not**
+included in that dict. Exceptions are an exception (pun intended):
+when the server-side call raises, the traceback IS relayed back as
+a string inside the result, which is how the v118 PHIL parse error
+became visible to the client in the first place. But normal
+diagnostic output from a successful server-side call has no path
+to the client log.
+
+**Implications for new instrumentation:**
+
+1. **Server-side markers in normal control flow are invisible to
+   the client** unless explicitly threaded through the result dict.
+   `sys.stderr.write("[MY_MARKER] ...")` works under
+   `run_on_server=False` but disappears under remote mode.
+2. **For telemetry that must survive both modes**, the canonical
+   pattern is to (a) write to stderr as before, AND (b) include the
+   marker value as a field in the `group_args` result so the client
+   receives it and can re-emit it on the client side.
+3. **For server-only telemetry**, write to a known file path on
+   the server host (e.g., a dedicated log file). The operator who
+   maintains the server collects this directly; the client doesn't
+   need to see it.
+4. **For local-only debugging**, plain `sys.stderr.write` or
+   `print` is fine. But remember to `force run_on_server=False`
+   explicitly when testing — otherwise the run may silently go
+   remote and the markers will not appear locally regardless of
+   how the code is patched.
+
+**Concrete example (v119.H4 Step 1F):** The Step 1F metric block
+in `run_advice_preprocessing` writes its `[STEP_1F]` marker to
+`sys.stderr`. This was diagnosed during H4 deployment when a run
+that appeared to be local was actually being dispatched to the
+remote server, and the markers (correctly emitted on the server's
+stderr) were never seen by the client. The marker shows correctly
+when `run_on_server=False` is set in PHIL. For broader-coverage
+telemetry collection across both modes, future iterations may need
+to thread the metric tuple through the result dict (option 2
+above) or write to a dedicated server-side log file (option 3).
+
+This concerns observability only — it does not affect the **Local/
+Remote Parity Invariant** above. Both modes execute the same code
+on identical input and produce identical output via the documented
+return contract. The difference is in *how visible* internal
+runtime details are to the operator running the client.
 
 ### Always server-side (no user action needed)
 

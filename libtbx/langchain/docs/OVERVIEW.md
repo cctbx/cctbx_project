@@ -70,10 +70,61 @@ phenix.ai_agent input_directory=/path/to/tutorial/
 
 ## Active Development
 
+The v119 cluster is the active cycle; see [CHANGELOG.md
+v119](CHANGELOG.md) for the per-ship breakdown.
+
+**Scope** — Eighteen ships stacked over v118 in two phases.
+First, an operational-hardening + Phase 2A/B sub-cluster
+(`v118 → H1 → H2 → H2.1 → H3 → H3b → H4 → H4.1 → H5 → H5.1 → H5.1.1
+→ H6 → H6.1 → H7`): centralized LLM model defaults (H1), a
+server-to-client build metadata channel (H2), skip_programs
+promotion (H2.1), a startup-canary infrastructure (H3/H3b),
+preprocessor telemetry markers with golden-master corpus pinning
+(H4/H4.1), a uniform diagnostic-messages relay channel (H5/H5.1)
+with two latent-bug cleanups (H5.1.1), the planning-suite
+reliability testing framework (H6/H6.1), and Phase 2B's
+scanner-first file extraction activation (H7).  Second, a
+production-bug sub-cluster (`H7 → H8 → H9 → H10 → H11`) fixing
+four bugs surfaced by AIAgent_62 and run_38 batch testing:
+template-literal allowlist gap (H8), `predict_and_build` PHIL
+scope mismatch (H9), and a paired structural + data fix for
+`exclude_patterns` (H10 closes a gap where 7 of 9 selection paths
+didn't honor the filter; H11 corrects three YAML patterns that
+had been authored with substring semantics in mind despite the
+function using word-boundary matching).
+
+Total v119 cluster tests: **181 K-tests + 30 live LLM tests +
+14 production-bug K-tests** (4 Bug 8, 4 Bug 9, 5 Bug 10, 1 Bug
+11).  All ships verified through act → review → Gemini-critique →
+ship cadence.
+
+**v119 lessons surfaced** — Two patterns from the H8–H11 sub-
+cluster that generalize:
+
+1. **Sandbox stubs for non-obvious-semantics functions need
+   semantic-pin tests.**  H10's sandbox stub for
+   `matches_exclude_pattern` did substring matching while the
+   real function uses word-boundary matching.  H10's K-suite
+   passed in sandbox but the cycle-7 bug remained in production
+   because the YAML patterns assumed substring semantics.  H11
+   added `test_bug11_matches_exclude_pattern_semantics` — 10
+   named cases against the real function — as the template for
+   catching such divergences.  Documented in `DEVELOPER_GUIDE.md`
+   §10.3 ("Test adequacy").
+
+2. **Configuration grammar must be authored to function
+   semantics.**  The `exclude_patterns` YAML grammar requires
+   word-boundary-correct patterns: no leading or trailing
+   underscores; explicit numeric variants alongside bare patterns
+   when alphanumeric suffixes are expected (`half`, `half1`,
+   `half2`).  H11 embeds a `DESIGN NOTE` block at the top of
+   `programs.yaml` documenting these rules so future YAML authors
+   don't repeat the substring-style authoring mistake.
+
 The v118 cycle is complete; see [CHANGELOG.md
 v118](CHANGELOG.md) for the full per-section breakdown.
 
-**Scope** — Twelve layers stacked over v117.3 addressing
+**v118 scope** — Twelve layers stacked over v117.3 addressing
 preprocessor resilience, LLM-shape variability across providers,
 operational hardening, and bug-class elimination:
 `v117.3 → A → C-prime → B → E → F → 5.1 → G → 6.1–6.7 → 8 → 9 → 10`.

@@ -1,4 +1,1123 @@
-# CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3 / v118
+# CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3 / v118 / v119
+
+## Version 119 (Operational Hardening + Phase 2A + Phase 2B + Production Bug Cluster — H1, H2, H2.1, H3, H3b, H4, H4.1, H5, H5.1, H5.1.1, H6, H6.1, H7, H8, H9, H10, H11)
+
+### Summary
+
+v119 is an eighteen-ship cluster pursuing the operational-hardening
+agenda from `v118_next_steps_consolidated_rev4.md` §4.7B plus
+the Phase 2A planning-suite framework (H6/H6.1), the Phase 2B
+preprocessor activation (H7), and a four-ship production-bug
+sub-cluster (H8–H11) surfaced by AIAgent_62 and run_38 batch
+testing.  The ships are independent and ship-self-contained:
+
+```
+v118 → H1 → H2 → H2.1 → H3 → H3b → H4 → H4.1 → H5 → H5.1 → H5.1.1 → H6 → H6.1 → H7 → H8 → H9 → H10 → H11
+```
+
+Together they establish: a single source of truth for LLM model
+defaults (H1), a build-metadata channel from server to client
+(H2), promotion of LLM-emitted skip flags to the workflow layer
+(H2.1), a startup-canary infrastructure for detecting wrong-
+build deploys and unhealthy LLM environments (H3/H3b), a
+preprocessing-telemetry marker ([STEP_1F]) with golden-master
+corpus pinning (H4/H4.1), a uniform diagnostic-messages
+relay channel that surfaces server-side stderr markers to the
+client transparently (H5 + H5.1), two latent-bug cleanups in
+the directive extractor (H5.1.1), the planning-suite reliability
+testing framework (H6) with per-scenario failure-count reporting
+(H6.1), and the Phase 2B scanner-first file extraction activation
+that completes the preprocessor deprecation trigger first set
+up in H4 (H7).  The H8–H11 sub-cluster fixes four production
+bugs surfaced during batch testing: template-literal allowlist
+gap (H8), `predict_and_build` PHIL scope mismatch (H9), structural
+gap in `exclude_patterns` application across selection paths
+(H10), and YAML pattern authoring vs function-semantics mismatch
+that prevented H10's filters from rejecting their intended targets
+(H11).
+
+Total K-test additions across the cluster: **181 v119-cluster
+K-tests** plus **30 live LLM tests** (directive_extraction +
+planning) plus **14 production-bug K-tests** in the H8–H11
+sub-cluster (4 Bug 8, 4 Bug 9, 5 Bug 10, 1 Bug 11).  See the
+per-suite breakdown in `next_steps_post_v119.md` "Test totals"
+section.
+
+All ships verified through act → review → Gemini-critique → ship
+cadence.
+
+### Per-ship breakdown
+
+**H1 (client+server) — Default Model Centralization**
+`core/llm.py`, `agent/api_client.py`, `agent/directive_extractor.py`,
+`tests/test_api_keys.py`, `tests/tst_default_models.py`.  Replaces
+scattered per-call-site model defaults (`"gpt-4o-mini"`,
+`"gemini-2.5-flash-lite"`, etc.) with five centralized DEFAULTS
+tables in `core/llm.py`: `DECISION`, `RAG`, `RAG_EMBEDDING`,
+`EXPENSIVE`, `CHEAP`.  Adds `default_model_for_provider(provider,
+role="DECISION")` helper.  Adds `RETIRED_MODELS` frozenset and
+emits `[DIRECTIVE_EXTRACTION_MODEL_RETIRED]` stderr marker when
+a request specifies a retired model name (defense-in-depth
+against the v118.8 server-404 class of incident).  +22 tests
+(K_H1).
+
+**H2 (client+server) — Server Build Metadata Channel**
+`VERSION` (new at langchain/ root), `core/_version.py` (new),
+`core/_build_info.py` (new, with `get_agent_build_info()` and
+`inject_agent_build()`), `core/llm.py` (+`compute_defaults_fingerprint()`
+which excludes `RETIRED_MODELS`), `knowledge/api_schema.py`
+(+`agent_build` schema entry), `phenix_ai/run_ai_agent.py`
+(injection at top of `_build_group_args_response`),
+`tests/tst_agent_build_info.py`.  Every server response now
+carries `response["agent_build"] = {version, defaults_fingerprint,
+started_at}` in strict UTC ISO 8601.  Baseline fingerprint at
+H2 ship: `sha256:77bf7421...`.  The `defaults_fingerprint`
+deliberately excludes `RETIRED_MODELS` so retirement updates
+don't trigger fingerprint drift.  +24 tests (K_H2).  Also updates
+`docs/DEVELOPER_GUIDE.md` §8 to reflect `CURRENT_PROTOCOL_VERSION = 5`
+(was stale at `3`).
+
+**H2.1 (client) — skip_programs Promotion (micro-ship)**
+`agent/directive_extractor.py`, `tests/tst_skip_promotion.py`.
+Closes a pre-existing bug surfaced by the
+`tst_directive_extraction.py::skip_programs` scenario: the LLM
+emits `program_settings[X].skip=true` (a natural reading of the
+prompt schema), but downstream code reads
+`workflow_preferences.skip_programs`.  Fix: a new
+`_promote_skip_settings_to_skip_programs()` helper at the top of
+`validate_directives`, BEFORE per-setting validation.  Includes
+all four Gemini guardrails: truthy-value acceptance (12 forms via
+`_SKIP_TRUE_VALUES` constant), `.pop()` instead of read+leave,
+empty-sub-dict pruning, deduplication.  +11 tests (K_H2.1).
+
+**H3 (test infrastructure) — Startup Canary**
+`tests/canary_expected.json` (new pinned config), `tests/canary_utils.py`
+(new shared loader), `tests/tst_canary.py` (K_H3a, ~280 lines),
+`tests/llm/tst_directive_extraction.py` (+canary Scenario),
+`tests/llm/canary_check.py` (H3b orchestrator).  Two independent
+canaries that consume the H2 metadata channel:
+
+- **H3a (metadata canary, K-suite)** sends an intentionally
+  wrong-typed request through `run()` (specifically `files` as
+  string instead of list — necessary because schema defaults
+  would silently repair simple missing-field probes).  The error
+  path returns immediately with H2's `agent_build` injected.
+  K_H3a (10 tests) asserts: agent_build matches
+  `canary_expected.json` (hard fail on version mismatch, soft
+  warn on fingerprint drift per Tom's graduated severity), VERSION
+  file matches the JSON's `agent_version` (catches operator
+  drift), probe is fast (<3s — catches accidental LLM leak into
+  error path).
+- **H3b (LLM smoke canary, operator-invoked)** combines the
+  metadata check with a one-shot directive-extraction probe
+  ("Run phenix.refine on the model") via the framework's
+  production-faithful `call_directive_extractor` entry point.
+  Wraps the LLM call in a `ThreadPoolExecutor` with a 30-second
+  strict timeout (sized for two LLM round-trips: intent
+  classification + main extraction).  Google→OpenAI provider
+  preference.  Probe runs through the same Scenario registered in
+  `tst_directive_extraction.build_scenarios()`, so it can also
+  be invoked via the standard CLI for debugging:
+  `phenix.python tests/llm/run_llm_tests.py --scenario canary`.
+  +10 tests (K_H3a; H3b is operator-invoked, not in K-suite).
+
+VERSION bumped to `119.H3`.  `defaults_fingerprint` unchanged
+from H1 baseline because H3 doesn't touch `core/llm.py`.
+
+**H4 (server) — [STEP_1F] Preprocessing Metrics Marker**
+`phenix_ai/run_ai_analysis.py`, `agent/raw_advice_scanner.py`
+(new), `tests/tst_raw_advice_scanner.py`, `tests/step_1f_corpus.json`
+(new), `tests/run_all_tests.py`.  Adds a `[STEP_1F]` stderr
+marker emitted by `run_advice_preprocessing` after a successful
+preprocessing call.  The marker compares LLM-extracted file
+mentions against a regex-based scanner's extraction
+(`raw_advice_scanner.py`) on the SAME advice text, capturing
+the symmetric difference for telemetry: `llm_files`,
+`regex_files`, `in_llm_only`, `in_regex_only`.  Companion
+`[STEP_1F_FAILED]` marker fires if the metric block itself
+raises.  Includes `scanner_version` field (read from VERSION
+at runtime) so telemetry can be segmented by scanner generation
+in aggregation.  +31 tests (K_H4).  No `defaults_fingerprint`
+drift.  VERSION bumped to `119.H4`.
+
+**H4.1 (server) — [STEP_1F] Golden-Master Corpus Pinning**
+`agent/raw_advice_scanner.py`, `tests/step_1f_corpus.json`,
+`tests/tst_raw_advice_scanner.py`.  Adds a 31-document corpus
+(`step_1f_corpus.json`) with hand-labeled file mentions per
+document, and pins the scanner's measured recall at
+**0.9810** against this corpus.  K_H4's golden-master test
+fails if scanner edits drift recall.  This unblocks Phase 2B
+activation (replacing the LLM preprocessor with the scanner)
+because recall ≥ 0.90 was the trigger threshold from H4 plan
+rev 1 §6.  No marker semantics change.  VERSION bumped to
+`119.H4.1`.
+
+**H5 (client+server) — diagnostic_messages Relay Channel**
+`phenix_ai/run_ai_analysis.py`, `programs/ai_analysis.py`,
+`tests/tst_diagnostic_messages.py` (new), `tests/run_all_tests.py`,
+`tests/canary_expected.json`, `VERSION`.  Closes the
+observability gap diagnosed during H4 deployment: H4's
+`[STEP_1F]` markers emit to the SERVER's stderr when the call
+dispatches to `ai.phenix-online.org`, but the server's stderr
+isn't relayed to the client.  H5 adds a `diagnostic_messages`
+list field to `working_results` and threads it end-to-end
+through both dispatch modes (local in-memory passing AND
+remote REST round-trip).  Engine-side `_emit_marker(list, str)`
+helper appends markers to the list during processing.  Client
+re-emits at a single uniform site
+(`_relay_diagnostic_messages_to_stderr` called from
+`run_job_on_server_or_locally`).  The operator sees identical
+`[STEP_1F]`/`[STEP_1F_FAILED]` output regardless of where
+analysis ran.
+
+Key design decisions, locked across all H5.x work:
+- **Total Initialization Policy**: every `working_results`
+  from `get_results_from_all` gets `diagnostic_messages=[]`
+  regardless of mode — defensive against
+  add-marker-but-forget-to-init regressions.
+- **Centralized re-emit**: single site in
+  `programs/ai_analysis.py::run_job_on_server_or_locally`.
+  Adding new markers requires NO client-side changes.
+- **Uniformity criterion** (introduced in H5 plan rev 5 after
+  Tom flagged rev 4's dispatch-mode branch): local and remote
+  modes produce identical operator-visible output; no
+  dispatch-mode branches in client behavior.
+- **Helper safety**: `_emit_marker` is a pure list-append with
+  `isinstance(list)` guard; never writes to stderr; never
+  raises.  Wrapped at call sites in `try/except: pass` for
+  defense against `"%s" % e` format failures.
+- **Server-client compatibility**: defensive unpack handles
+  missing field, non-list payloads, and corrupted JSON.
+  Verified by K_H5 §C `test_old_server_response_handled_defensively`
+  and `test_corrupted_payload_decoded_defensively`.
+
+K_H5 organized into 5 sections at H5 ship: §A helper unit
+tests (4), §B field-in-return tests (4, libtbx-dependent), §C
+backward compatibility (3), §D uniform client re-emit (6), §E
+production encode/decode integration (4).  +21 tests at H5
+ship.  VERSION bumped to `119.H5`.
+
+**H5.1 (client+server) — Channel Extended to 3 More Markers**
+`phenix_ai/run_ai_analysis.py`, `programs/ai_analysis.py`,
+`tests/tst_diagnostic_messages.py`, `tests/llm/canary_check.py`,
+`tests/llm/tst_directive_extraction.py`, `tests/run_all_tests.py`,
+`tests/canary_expected.json`, `VERSION`, `README.md`.  Instruments
+three more engine-level exception handlers to flow through the
+H5 channel:
+
+| Marker | Engine site |
+|---|---|
+| `[ADVICE_PREPROCESSING_FAILED]` | `run_advice_preprocessing` main exception handler |
+| `[DIRECTIVE_EXTRACTION_FAILED]` (outer) | `run_directive_extraction` main exception handler |
+| `[FAILURE_DIAGNOSIS_FAILED]` | `run_failure_diagnosis` main exception handler |
+
+These markers fire only on UNEXPECTED exceptions (library
+bugs, programmer errors).  Configuration mistakes (invalid
+provider, missing API key) are handled gracefully upstream by
+`validate_api_keys` and `setup_llms` and don't trigger these
+markers.
+
+Two Gemini-mandated guardrails apply uniformly:
+1. **No mutable default arguments**: all three functions use
+   function-local `diagnostic_messages = []`, fresh per call.
+   K_H5 §F field-in-return tests pin this via mutate-then-
+   call-again checks.
+2. **Emit before return, no new returns in except**: exception
+   handlers append the marker then fall through to the main
+   return.  Prevents accidental control-flow forks.
+
+Tests use deterministic monkey-patching (patching
+`validate_api_keys` or `setup_llms` to raise) plus Gemini Q2
+dual-assertion (marker present AND debug_log evidence of
+exception path) for robustness against future upstream
+graceful-handling refactors.
+
+Also folded in: **canary probe-text fix**.  The H3b live-LLM
+canary used input `"Run phenix.refine on the model"` which
+OpenAI faithfully extracted as `{"program_settings":
+{"phenix.refine": {}}}` — semantically correct (no parameters
+mentioned) but stripped to `{}` by `validate_directives`
+because the inner dict is empty.  Google over-extracted and
+returned non-empty, hiding the issue.  Probe updated to `"Run
+phenix.refine with resolution 2.5"`; the concrete parameter
+ensures non-empty validation across providers without changing
+the canary's purpose (provider reachability, not extraction
+quality).
+
+K_H5 extended with §F (5 new tests), bringing K_H5 to **26
+tests**.  VERSION bumped to `119.H5.1`.  No `defaults_fingerprint`
+drift.
+
+**H5.1.1 (client) — §2.1 v118.9 leftover cleanups (micro-ship)**
+`agent/directive_extractor.py`, `tests/tst_directive_validation.py`
+(new K_H5_1_1, 23 tests), `tests/run_all_tests.py`,
+`tests/canary_expected.json`, `VERSION`, `README.md`.  Two
+latent bugs in `agent/directive_extractor.py` surfaced
+during the §2.1 review of v118.9 leftovers:
+
+**Item 3 — `_corrected_from` sidecar protection in
+`merge_directives`**.  The sidecar describes the CURRENT
+value of `after_program` after an
+experiment-type-mismatch correction.  Pre-fix, the
+default override-wins dict-merge had two pathologies:
+
+1. *Correction reverted*: if override's `after_program`
+   matched `_corrected_from.from`, the LLM correction was
+   silently un-corrected by simple-extraction merge.
+2. *Zombie metadata* (caught during Gemini plan review):
+   if override set `after_program` to a third value (not
+   matching `_corrected_from.from`), the sidecar's `to`
+   field became stale — pointing at a transition that no
+   longer described the current value.
+
+Fix: detect both cases inside `merge_directives`:
+- Override matches `_corrected_from.from` → strip from
+  override (preserve correction, keep sidecar)
+- Override is a third value AND has no own sidecar →
+  let override win, clear base's stale sidecar
+- Override brings own sidecar → standard dict-merge
+  (override's wins)
+- Override doesn't touch `after_program` → standard
+  dict-merge
+
+`programs/ai_agent.py` is NOT modified.  Both production
+callers (`phenix_ai/run_ai_analysis.py:1276` and
+`programs/ai_agent.py:8376`) inherit the fix automatically.
+
+**Item 4 — Boolean list-wrap defense in
+`validate_directives`**.  `bool([False])` returns `True`
+in Python (non-empty list is truthy) — silently flipping
+semantics if the LLM emitted a list-wrapped boolean.  Two
+sites had this:
+- `prefer_anomalous`, `prefer_unmerged`, `prefer_merged`
+  in `file_preferences`
+- `use_experimental_phasing`, `use_molecular_replacement`,
+  `use_mr_sad`, `model_is_placed`,
+  `wants_validation_only` in `workflow_preferences`
+
+Fix: explicit type-gated inline pattern at both sites.
+Only unwraps `[bool]` (not `[int]`/`[str]`/etc.) — bounded
+blast radius even against future maintenance error
+(adding a list-typed key to either boolean tuple would
+trigger drop+log rather than silent flattening).
+Explicit pattern chosen over the existing
+`_coerce_setting_value` helper to bound the unwrap to
+genuine `[bool]` only.
+
+Items 1 and 2 from §2.1 deferred (Item 1:
+`_detect_experiment_type_signals` vs
+`_resolve_after_program` aren't actually duplicates —
+different regex breadth + ambiguity handling; unification
+would be behavioural change.  Item 2:
+`directives.get("stop_conditions") or {}` is idiomatic
+safe read-only fallback, not a bug.).  See §1 of
+`next_steps_post_v119.md` for the closure record.
+
+Pre-existing wrongness NOT fixed by this ship:
+`bool("false")` returns `True` in Python — a separate
+string-truthy quirk preserved for non-list inputs.
+K_H5_1_1's `test_validate_bool_bare_string_legacy_quirk`
+pins the existing behaviour so a future fix catches it
+deliberately.
+
++23 tests (K_H5_1_1 — 7 §A merge-protection + 16 §B
+list-wrap-defense, including no-mutation-of-inputs
+invariants for both branches).  VERSION bumped to
+`119.H5.1.1`.  No `defaults_fingerprint` drift.
+
+**H6 (test infrastructure) — Phase 2A planning-suite framework**
+`tests/llm/framework.py`, `tests/tst_planning_framework.py`
+(new K_H6, 18 tests), `tests/run_all_tests.py`,
+`tests/canary_expected.json`, `VERSION`, `README.md`.
+
+H6 replaces four stubs in `tests/llm/framework.py` with
+real implementations, unblocking the 8-scenario planning
+LLM reliability suite that has been queued since H3b:
+
+- **`is_stop_intent(intent)`** — production-parity STOP
+  detection.  Matches both signals production checks at
+  `graph_nodes.py:~2168`: `program == "STOP"` OR
+  `stop is True` (strict equality, not truthy).
+- **`validate_planning_state(state)`** — 9-key structural
+  validation per PHASE2_PLAN_v2.md §4.1.  Raises
+  ValueError on missing keys.  Called from
+  `tst_planning.py::build_scenarios()` at load time.
+- **`call_planning_llm(state_inputs, provider)`** —
+  production-faithful invocation mirroring
+  `graph_nodes.py::plan()` lines 1992-2090, including the
+  rate-limit handler.  Critical Gemini rev-3 fix:
+  `raw_output` is hoisted outside the try block so that
+  if `parse_intent_json` raises, the exception handler
+  returns the LLM's malformed text for diagnosis.
+- **`make_planning_run_fn(call_fn=...)`** — factory mirroring
+  `make_directive_extraction_run_fn`, simplified since
+  `parse_intent_json` never returns None (it either returns
+  dict or raises).
+
+K_H6's 18 tests cover all four implementations across 4
+sections: §A `is_stop_intent` (6), §B `validate_planning_state`
+(5), §C `make_planning_run_fn` (5), §D `call_planning_llm`
+raw_output preservation (2).  §D tests SKIP gracefully
+under PHENIX where the libtbx import path bypasses the
+sandbox `sys.modules` fakes — sandbox tests pin the
+mechanic; live planning runs exercise it in production.
+
+Mac verification: 8 planning scenarios × 2 providers
+(google, openai) = **16 PASS live LLM tests**, all
+early-stopping at threshold.  This is the first time the
+planning LLM has had reliability testing analogous to
+directive_extraction.
+
+VERSION bumped to `119.H6`.  No `defaults_fingerprint`
+drift.  Plan: `v119_H6_PLAN_rev3.md`.
+
+**H6.1 (micro-ship) — Per-scenario fail/err suffix**
+`tests/llm/framework.py`, `VERSION`,
+`tests/canary_expected.json`, `README.md`.
+
+PHASE2_PLAN_v2.md §5 part 1: per-scenario output line
+in `run_scenario_against_providers` gains a `[N fail]` /
+`[N err]` suffix when nonzero.  Helps surface failures
+that a reliability test tolerated by passing on threshold
+(e.g., "PASS 4/5" — what did the 1 failure look like?).
+
+Byte-identical to H6 output when both counts are zero,
+which is the current observed reality across all 30
+PASS scenarios from the H6 Mac run.
+
+PHASE2_PLAN §5 part 2 (summary parenthetical) was
+already implemented in `tests/llm/run_llm_tests.py`
+lines 248-280 — no edit needed there.
+
+Single edit in `framework.py` (~10 net lines).  No new
+K-tests (purely cosmetic output formatting).  VERSION
+bumped to `119.H6.1`.  No `defaults_fingerprint` drift.
+
+**H7 (production code) — Phase 2B activation: scanner-first file extraction**
+`phenix_ai/run_ai_analysis.py`, `tests/tst_phase2b_activation.py`
+(new K_H7, 15 tests), `tests/run_all_tests.py`,
+`tests/canary_expected.json`, `VERSION`, `README.md`.
+
+H7 activates Phase 2B's first scope (Scope B per plan):
+**scanner is the primary source for `extracted_files`**,
+replacing the LLM preprocessor's
+`extract_files_from_processed_advice` as the default path.
+Unblocked since H4.1 measured scanner recall = 0.9810
+against the LLM extraction (well above the 0.90
+deprecation threshold from PHASE2_PLAN).
+
+Two edits to `phenix_ai/run_ai_analysis.py`:
+
+**Edit 1 — Scanner-first extraction (lines 1009-1069):**
+- Scanner runs unconditionally on `raw_advice` (was gated
+  on `processed_advice` existing pre-H7).  Net file
+  detection improves when LLM preprocessing fails.
+- Q2-strict: scanner called with `None` hint (NOT
+  `file_list`).  Preserves the existing consumer contract
+  at `programs/ai_agent.py:8128-8174` — the consumer's
+  own comment names the field "Files mentioned in advice"
+  (line 8142) and auto-promotes extracted files to the
+  agent's `original_files`.  Passing `file_list` would
+  silently inflate `original_files` with workspace files
+  the user never mentioned.
+- Fallback to LLM extraction preserved inside try/except,
+  using the libtbx → relative import pattern (Gemini
+  rev-2 critical fix: a bare libtbx import in the
+  fallback would silently fail in sandbox and be
+  swallowed by the outer except handler).
+- Double-failure path explicitly logs the second exception
+  (not swallowed by `except Exception: pass`).
+
+**Edit 2 — Inline recall metrics in [STEP_1F] (lines 1155-1208):**
+- Two new fields added to the existing [STEP_1F] marker:
+  `scanner_recall_against_llm` (|intersection|/|llm_files|,
+  the per-request equivalent of H4.1's 0.9810 corpus
+  measurement) and `llm_recall_against_scanner`
+  (|intersection|/|regex_files|, signals scanner-regex
+  extension needs).  Both formatted as `%.4f`.
+- Both metrics zero-division-guarded: empty denominator →
+  1.0 (mathematically sound for recall, avoids
+  ZeroDivisionError on advice with no file mentions).
+- Purely additive change.  No existing [STEP_1F] fields
+  modified.  No dashboard pollution risk (no existing
+  inline `recall` field to displace).
+
+**Subtle correction caught during implementation review:**
+Post-H7, `extracted_files` is scanner-derived, so the
+[STEP_1F] block can't use it as the LLM-comparison axis
+(would compare scanner-to-scanner, defeating telemetry).
+Fix: the block now calls
+`extract_files_from_processed_advice` separately to obtain
+the LLM view for comparison.  Fault-isolated: any failure
+yields empty list; outer [STEP_1F_FAILED] catches
+exceptions.  K_H7's
+`test_telemetry_independence_from_extracted_files` pins
+this property at the source level.
+
+K_H7 (15 tests across 4 sections): §A scanner contract
+(4), §B fallback semantics (3), §C recall metrics with
+zero-div guards (3), §D integration smoke including
+source-level regression pins (5).
+
+Mac verification: **30/30 live LLM tests PASS**
+(14 directive_extraction + 16 planning), **135/135
+K-suite modules PASS** including K_H7's 15 new tests.
+Scenarios that reference specific files
+(`resolution_and_space_group`, `skip_programs`) still
+pass — Q2-strict preserved the consumer contract.
+
+`programs/ai_agent.py` NOT modified.  `core/llm.py` NOT
+modified (`defaults_fingerprint` unchanged at
+`sha256:77bf7421...`).
+
+VERSION bumped to `119.H7`.  Plan:
+`v119_H7_PLAN_rev2_2.md` (final, post-Gemini-rev-2,
+post-baseline-correction).
+
+**H8 (production code) — Template-literal allowlist fix
+(production bug sub-cluster begins)**
+`agent/command_postprocessor.py`, `tests/tst_autosol_bugs.py`
+(new K_H8, 4 tests), `tests/canary_expected.json`, `VERSION`,
+`README.md`.
+
+H8 closes a production bug surfaced in AIAgent_62 cycle 4
+(bromodomain ligand demo) where `phenix.autobuild_denmod` was
+being emitted WITHOUT its `maps_only=True` flag.  Without that
+flag, `autobuild_denmod` tries to rebuild the model rather than
+just producing density-modified maps — wrong program semantics
+for the cycle's intent.
+
+**Root cause**: `agent/command_postprocessor.py::sanitize_command`
+applies Rule D ("strip unknown program-specific parameters") using
+a per-program allowlist built by `_load_prog_allowlist`.  The
+allowlist was constructed only from the program's `strategy_flags`
+dictionary — entries the LLM is permitted to set.  But
+`programs.yaml` command templates also contain **literal key=value
+tokens** baked into the template itself, like
+`phenix.autobuild_denmod ... maps_only=True`.  These literal
+parameters are program invariants, not LLM-tunable strategies, so
+they were absent from `strategy_flags` and therefore absent from
+the allowlist.  When sanitize_command processed the realized
+command, Rule D treated `maps_only=True` as an "unknown parameter"
+and stripped it.
+
+**The fix — one new block of code in `_load_prog_allowlist`**
+(lines 406–432, marked v119.H8):
+
+After building the strategy_flags-derived allowlist, the code
+now walks the program's command template (`prog_def.get('command', '')`)
+and adds every literal `key=` parameter found:
+
+```python
+_cmd_template = prog_def.get('command', '')
+if _cmd_template:
+    for _m in re.finditer(
+            r'(?:^|\s)([a-zA-Z_][a-zA-Z0-9_.]*)=',
+            _cmd_template):
+        _bare = _m.group(1).split('.')[-1].lower()
+        if _bare:
+            allowlist.add(_bare)
+```
+
+Three properties of the regex are load-bearing:
+
+1. **`(?:^|\s)` prefix**: requires start-of-string or whitespace
+   before the identifier.  This is what makes `{placeholder}`-style
+   substitution targets NOT match — the `{` character is neither.
+   So `{data_mtz}` doesn't pollute the allowlist with `data_mtz`
+   the way it would if any `[a-zA-Z_]=` were accepted.
+2. **`[a-zA-Z_][a-zA-Z0-9_.]*=` pattern**: matches dotted PHIL
+   paths like `xray_data.r_free_flags.generate=True` as a single
+   token, then takes the leaf via `split('.')[-1]`.  This handles
+   both bare and scoped parameters uniformly.
+3. **Leaf-only addition**: the allowlist contains bare leaves
+   (e.g., `maps_only`), so the post-PHIL-flattening sanitization
+   step (which compares leaves) works correctly.
+
+K_H8 (4 tests in `tst_autosol_bugs.py`):
+
+- `test_bug8_template_literal_maps_only_preserved` — primary
+  regression.  Builds a realistic post-registry command for
+  `phenix.autobuild_denmod` and asserts `maps_only=True` survives
+  `sanitize_command`.
+- `test_bug8_load_allowlist_includes_template_literals` — unit
+  test on `_load_prog_allowlist` directly.  Confirms the allowlist
+  for `phenix.autobuild_denmod` includes `maps_only` AND retains
+  pre-existing entries (`nproc`, `resolution`) — i.e., no
+  regression in the existing strategy_flags logic.
+- `test_bug8_template_literal_extraction_ignores_placeholders` —
+  pins the `(?:^|\s)` regex anchor's safety guarantee.  Verifies
+  that `{data_mtz}` and similar placeholder syntax do NOT extract
+  into the allowlist.
+- `test_bug8_adversarial_strategy_override_dropped` — defense-in-
+  depth.  Confirms that if an LLM emits `strategy.maps_only=False`
+  to override the template invariant, `program_registry.build_command`
+  drops the unknown strategy entry (logs "Unknown strategy
+  'maps_only'") and the template's `maps_only=True` remains
+  authoritative.  This was Claude-reviewer-suggested to ensure
+  the fix doesn't accidentally allow LLM override of program
+  invariants.
+
+`agent/planner.py` NOT modified.  `agent/command_builder.py`
+NOT modified.  `core/llm.py` NOT modified (`defaults_fingerprint`
+unchanged).  `knowledge/programs.yaml` NOT modified — the
+allowlist content (in `strategy_flags`) is correct; the template
+literals just had to be discovered too.
+
+VERSION bumped to `119.H8`.
+
+**H9 (data + tests) — `phenix.predict_and_build` PHIL scope
+rewrite**
+`knowledge/parameter_fixes.json`, `tests/tst_autosol_bugs.py`
+(new K_H9, 4 tests), `tests/canary_expected.json`, `VERSION`,
+`README.md`.
+
+H9 closes a production bug surfaced in run_38_openai cycle 2:
+`phenix.predict_and_build` was emitting parameters like
+`crystal_symmetry.unit_cell=...` and `crystal_symmetry.space_group=...`,
+but the `phenix.predict_and_build` program expects
+`crystal_info.unit_cell=...` and `crystal_info.space_group=...`.
+PHENIX rejected the command with "Some PHIL parameters are not
+recognized".
+
+**Root cause** — a 3-layer pipeline gap:
+
+- **Layer 1** (`agent/program_registry.py`, around line 778):
+  when a bare unit_cell or space_group parameter is built into a
+  command, the registry unconditionally prepends the
+  `crystal_symmetry.` scope:
+
+  ```python
+  if key in ('unit_cell', 'space_group'):
+      cmd_key = 'crystal_symmetry.%s' % key
+  ```
+
+  This is correct for most programs.
+- **Layer 2** (`agent/planner.py::fix_program_parameters`,
+  consuming `knowledge/parameter_fixes.json`): for programs whose
+  PHIL scope differs from `crystal_symmetry`, the parameter
+  name is rewritten.  Pre-H9, the existing `parameter_fixes.json`
+  had rewrite entries for `phenix.refine` (which goes the other
+  direction: `crystal_info.*` → `crystal_symmetry.*` for the
+  refine-specific scope handling) but **no scope-rewrite entries
+  for `phenix.predict_and_build`**.  The program's existing entry
+  in the JSON had only `data_file`, `input_files.data_file`,
+  `control.nproc`, `prediction.nproc` mappings.
+
+So when Layer 1 produced `crystal_symmetry.unit_cell=...` for
+`phenix.predict_and_build`, Layer 2 had no rewrite rule for that
+parameter, the wrong-scope parameter survived to the command line,
+and PHENIX rejected it.
+
+**The fix — 4 new rewrite entries plus 1 annotation in
+`knowledge/parameter_fixes.json` under `phenix.predict_and_build`:**
+
+```json
+"phenix.predict_and_build": {
+  "data_file": "xray_data_file",                              // pre-existing
+  "input_files.data_file": "input_files.xray_data_file",      // pre-existing
+  "control.nproc": null,                                       // pre-existing
+  "prediction.nproc": null,                                    // pre-existing
+  "_comment_cs": "predict_and_build uses crystal_info.* scope (v119.H9)",  // NEW
+  "crystal_symmetry.space_group": "crystal_info.space_group",  // NEW
+  "crystal_symmetry.unit_cell":   "crystal_info.unit_cell",    // NEW
+  "xray_data.space_group":        "crystal_info.space_group",  // NEW
+  "xray_data.unit_cell":          "crystal_info.unit_cell"     // NEW
+}
+```
+
+The `xray_data.*` fallback entries handle the case where an LLM
+might emit `xray_data.unit_cell` (a different incorrect scope)
+— Gemini's review suggested covering this for robustness.  The
+`_comment_cs` key is skipped by `fix_program_parameters` (which
+ignores keys starting with `_`), so it functions as inline
+documentation.
+
+**K_H9 testing wrinkle**: `parameter_fixes.json` is loaded once
+on first call and cached at module scope in `agent/planner.py`
+via `_PARAMETER_FIXES = None` (lazily populated by
+`get_parameter_fixes()`).  K_H9's tests need to invalidate this
+cache between runs so they exercise the JSON file's current
+state.  Solution: a module-local `_reload_parameter_fixes()`
+helper in the test file that simply sets the planner module's
+cache back to `None`:
+
+```python
+def _reload_parameter_fixes():
+    """Force re-read of parameter_fixes.json (defeat the module cache)."""
+    try:
+        from libtbx.langchain.agent import planner as _p
+    except ImportError:
+        try:
+            from agent import planner as _p
+        except ImportError:
+            return
+    _p._PARAMETER_FIXES = None
+```
+
+All four K_H9 tests call this at the top.  This pattern
+generalizes: any K-test that depends on JSON-or-YAML-loaded
+data with module-level lazy caching needs an explicit
+invalidation hook.
+
+K_H9 (4 tests in `tst_autosol_bugs.py`):
+`test_bug9_predict_and_build_unit_cell_scope_rewrite`,
+`test_bug9_predict_and_build_space_group_scope_rewrite`,
+`test_bug9_predict_and_build_xray_data_fallback_rewrite`
+(Gemini-suggested coverage),
+`test_bug9_predict_and_build_idempotent_on_correct_scope`
+(no double-rewrite when input is already correct).
+
+`agent/program_registry.py` NOT modified — Layer 1 is correct
+as the default behavior; Layer 2's rewrite table is the
+extensibility point for per-program exceptions.  `agent/planner.py`
+NOT modified — the consumer of `parameter_fixes.json` already
+applied entries uniformly.  `defaults_fingerprint` unchanged at
+`sha256:77bf7421...`.
+
+VERSION bumped to `119.H9`.  Plan: `v119_H9_PLAN.md`
+(Gemini-reviewed, green light).
+
+**H10 (production code) — `exclude_patterns` structural fix
+(prerequisite for H11)**
+`agent/command_builder.py`, `tests/tst_autosol_bugs.py` (new
+K_H10, 5 tests), `tests/canary_expected.json`, `VERSION`,
+`README.md`.
+
+H10 closes a structural gap surfaced in AIAgent_62 cycle 7:
+`phenix.refine` emitted a command with `refine_001_001.cif` (a
+model mmCIF from an earlier refine step) as a positional third
+argument.  PHENIX interpreted it as a SECOND model and crashed
+with "wrong number of models".  The `phenix.refine::ligand_cif`
+slot has an `exclude_patterns` filter specifically to prevent
+this, but the filter wasn't being applied at the relevant
+selection path.
+
+**Root cause** — `agent/command_builder.py`'s file-selection
+algorithm has multiple paths through `_find_file_for_slot` plus
+a pre-population step in `_select_files`.  The in-code H10
+comment (line 1279-1283) summarizes the gap:
+
+> Pre-H10, `exclude_patterns` was only consulted at PRIORITY 4
+> (extension fallback).  PRIORITY 2 (best_files), PRIORITY 2.5
+> (recovery strategies), PRIORITY 3 (category-based), and
+> PRIORITY 3.5 (fallback best_files) all bypassed it.
+
+(The LLM-selected path at line 963 in `_select_files` had its
+own exclude_patterns check; whether this predated H10 is not
+marked.  The bug class was the auto-fill paths inside
+`_find_file_for_slot`, which is what H10's helper covers.)
+
+The AIAgent_62 cycle-7 build picked `refine_001_001.cif` via
+**PRIORITY 3 (category-based)** — one of the paths that
+bypassed the filter.  Since the cycle-7 LLM did not specify a
+ligand_cif file, auto-fill ran, hit PRIORITY 3, and picked the
+wrong file from the `ligand_cif` category.
+
+**The fix — helper + 8 application sites, 9 markers:**
+
+A closure `_matches_exclude_patterns_h10(f)` defined at the
+entry of `_find_file_for_slot` (line 1292):
+
+```python
+_exclude_patterns_h10 = input_def.get("exclude_patterns", [])
+def _matches_exclude_patterns_h10(f):
+    if not _exclude_patterns_h10:
+        return False
+    return matches_exclude_pattern(
+        os.path.basename(f), _exclude_patterns_h10)
+```
+
+Applied as an additional filter clause at every auto-fill site:
+
+- 7 sites inside `_find_file_for_slot` (lines 1333, 1359, 1406,
+  1417, 1437, 1472, 1513): PRIORITY 2 best_files, PRIORITY 2.5
+  recovery_strategies, PRIORITY 3 category subcat / parent /
+  multiple variants, PRIORITY 3.5 `require_best_files_only`,
+  PRIORITY 3.5 fallback best_files.
+- 1 site inside `_select_files` (line 698): refinement pre-
+  population.  `best_files["model"]` was being injected without
+  honoring the model slot's exclude_patterns; the patch adds the
+  check inline (using `matches_exclude_pattern` directly rather
+  than via the closure, since `_select_files` doesn't have one).
+
+Total: 9 `v119.H10` markers in the file (1 helper definition
+comment block + 7 closure-application sites + 1 in `_select_files`).
+
+**Implementation lesson** — the 8th patch site (refinement pre-
+population in `_select_files`) was discovered during act/verify
+when Test 3 (`test_bug10_exclude_patterns_applied_in_best_files_path`)
+failed initially.  The diagnostic revealed that
+`_find_file_for_slot` was never called for the model slot when
+pre-population had already injected `best_files["model"]`.  Fix:
+extend the patch to `_select_files`.  This is the
+"act/verify catches missed sites" pattern that justifies
+running each test as it's written rather than batching them.
+
+K_H10 (5 tests in `tst_autosol_bugs.py`):
+`test_bug10_ligand_cif_slot_rejects_model_mmcif` (primary
+regression),
+`test_bug10_ligand_cif_slot_accepts_legitimate_cif` (no
+over-rejection),
+`test_bug10_exclude_patterns_applied_in_best_files_path` (pins
+pre-population fix),
+`test_bug10_exclude_patterns_applied_in_category_path` (pins
+PRIORITY 3 category fix — this was the test that failed on
+Tom's real PHENIX and surfaced the H11 follow-on),
+`test_bug10_unrelated_slots_unaffected` (no-regression sentinel,
+Claude-reviewer suggested).
+
+**Important caveat — H10's tarball README is INCORRECT** about
+fully fixing the AIAgent_62 cycle-7 bug.  H10 IS code-correct
+(all patches fire), but a pre-existing bug in the YAML
+`exclude_patterns` data (substring-style authoring of
+`"refine_"` despite the function using word-boundary semantics)
+prevented the filter from rejecting `refine_001_001.cif`.  H10
+provides the structural prerequisite; **H11 is required to
+actually fix the bug**.  See H11 below.
+
+`agent/file_utils.py` NOT modified — the `matches_exclude_pattern`
+function's semantics are correct and intentional (word-boundary
+regex matching).  `core/llm.py` NOT modified.  `defaults_fingerprint`
+unchanged.
+
+VERSION bumped to `119.H10`.  Plan: `v119_H10_PLAN_rev2.md`
+(Gemini-reviewed).
+
+**H11 (data) — exclude_patterns YAML word-boundary fix
+(completes H10)**
+`knowledge/programs.yaml`, `tests/tst_autosol_bugs.py`,
+`tests/canary_expected.json`, `VERSION`, `README.md`.
+
+H11 completes the H10 fix.  When Tom installed H10 and ran
+`tst_autosol_bugs.py`, Test 4
+(`test_bug10_exclude_patterns_applied_in_category_path`) failed
+on his machine while it had passed in the sandbox.  A diagnostic
+script (`h10_diagnostic.py`) called `matches_exclude_pattern`
+directly on representative cases and revealed that the function
+uses **word-boundary regex matching**, not substring matching:
+
+```python
+# agent/file_utils.py
+re.search(
+    r'(?:^|[_\-\.])' + re.escape(pat_stem) + r'(?=[_\-\.]|$)',
+    stem)
+```
+
+A pattern matches if it appears in the stem preceded by start-of-
+string or one of `_`/`-`/`.`, AND followed by one of `_`/`-`/`.`/
+end-of-stem.  Under this semantics, three YAML patterns authored
+with substring intent did NOT match their intended targets:
+
+| Slot | Pattern | Why broken |
+|---|---|---|
+| `phenix.refine::ligand_cif` | `"refine_"` | Trailing `_` requires another boundary char after; in `refine_001_001.cif` the next char is `0`, not a boundary.  **THE bug — broke AIAgent_62 cycle 7.** |
+| `phenix.mtriage::full_map` | `"_half"` | Leading `_` consumed by boundary-prefix regex group; mismatch with stem position. |
+| `phenix.real_space_refine::map` | `"_half"` | Same as above. |
+
+The sandbox stub for `matches_exclude_pattern` used substring
+matching, so H10's tests passed in sandbox but failed against
+the real function.  H10 packaged as "fixes the cycle-7 bug" —
+it didn't; H10's filter fired but `matches_exclude_pattern` returned
+False on every file because of the YAML pattern bug.
+
+**The fix — three independent edits:**
+
+1. **YAML pattern corrections (3 lines):**
+   - `phenix.refine::ligand_cif`: `"refine_"` → `"refine"`
+   - `phenix.mtriage::full_map`: `"_half"` → `"half"`
+   - `phenix.real_space_refine::map`: `"_half"` → `"half"`
+
+   Word-boundary `"refine"` correctly matches `refine_001.cif`,
+   `phenix_refine.cif`, `pre_refine_template.cif`; correctly
+   skips `refining_template.cif`.  Word-boundary `"half"`
+   correctly matches `protein_half.ccp4` (un-numbered case).
+   The numeric patterns `half_1`, `half_2`, `half1`, `half2` are
+   preserved alongside the bare `"half"` because Gemini's plan
+   review caught that bare `"half"` fails on `protein_half1.ccp4`
+   (the `1` immediately after `half` is not a boundary char).
+
+2. **YAML authoring docstring (~25 lines in `programs.yaml`):**
+   A `DESIGN NOTE (exclude_patterns)` block near the top of the
+   file documenting the word-boundary semantics, with worked GOOD
+   and BAD examples for both trailing-underscore and leading-
+   underscore traps.  Inlined per Gemini's plan-review recommendation
+   to maximize contextual freshness for future YAML authors.
+
+3. **Bug 11 semantic-pin test (1 new test, 10 named cases):**
+   `test_bug11_matches_exclude_pattern_semantics` calls the real
+   `matches_exclude_pattern` and asserts its actual behavior on
+   10 documented cases, including the trailing-underscore bug
+   (`"refine_"` does NOT match `refine_001.cif`), the bare-pattern
+   correctness (`"refine"` does match), the alphanumeric-boundary
+   subtlety (`"half"` does NOT match `protein_half1.ccp4`), and
+   extension-suffix patterns.  Includes a graceful sandbox-skip
+   fallback so lightweight CI environments don't error.
+
+K_H11 (1 test): `tst_autosol_bugs.py::test_bug11_matches_exclude_pattern_semantics`.
+
+**Cluster regression check post-H11:** All 9 v119-cluster K-suites
+PASS (160 PASS, 0 FAIL).  Bug 8 (4), Bug 9 (4), Bug 10 (5), Bug
+11 (1): all PASS in sandbox against word-boundary-correct stub.
+**VERSION/canary lockstep verified.**  `defaults_fingerprint`
+unchanged at `sha256:77bf7421...`.
+
+`agent/command_builder.py` NOT modified (all 9 H10 markers
+preserved).  `agent/file_utils.py` NOT modified (word-boundary
+semantics are intentional and now documented in the YAML
+authoring guide).  `core/llm.py` NOT modified.
+
+**The load-bearing verification** — H11's actual proof of correctness
+is Tom rerunning the AIAgent_62 bromodomain demo on the Mac.
+Cycle 7's `phenix.refine` command must NOT include
+`refine_001_001.cif` as a positional argument.  Pre-H11 (with
+H10 installed) this still fails; H10 + H11 together should fix it.
+
+VERSION bumped to `119.H11`.  Plan: `v119_H11_PLAN_rev2.md`
+(final, post-Gemini-rev-2).
+
+**Lesson captured (H10 → H11 sandbox cycle):**
+
+The H10 → H11 transition surfaced a sandboxing failure mode worth
+remembering as policy:
+
+- The H10 sandbox stub for `matches_exclude_pattern` did substring
+  matching.  The real PHENIX function does word-boundary matching.
+- The stub was wrong but no test caught the divergence.  H10's
+  sandbox K-suite passed.
+- H10 was packaged and presented as "fixes the AIAgent_62 cycle-7
+  bug" — it didn't.  H10's filter fired but the YAML pattern
+  didn't match.
+- The divergence was discovered at install-time when Tom's `phenix.python
+  tst_autosol_bugs.py` Test 4 failed against the real function.
+- The `h10_diagnostic.py` script that called `matches_exclude_pattern`
+  directly with representative cases revealed the semantics.
+
+Forward policy (also captured in `DEVELOPER_GUIDE.md` §10.3 "Test
+adequacy"): sandbox stubs for functions with non-obvious semantics
+(regex, parsing, escaping, etc.) should be accompanied by a
+semantic-pin test that calls the real function with documented
+expected behavior.  `test_bug11_matches_exclude_pattern_semantics`
+is the template — when a test that uses the real function asserts
+documented behavior, any future stub-vs-real divergence is caught
+the moment a sandbox test runs against the real function.
+
+### Architectural notes
+
+**Zero modifications to existing production code paths in H1–H3.**
+H1 centralizes; H2 channels; H2.1 promotes; H3 observes.  None of
+those four ships touches the workflow_engine, the metric_evaluator,
+the LangGraph pipeline, or any other component on the live
+decision path.  The K-suites for H2/H2.1/H3 explicitly verify
+this with regression assertions against H1.
+
+**H4 onwards: server-side instrumentation only, no decision-path
+changes.**  H4 adds `[STEP_1F]` emission inside
+`run_advice_preprocessing` after preprocessing completes — pure
+telemetry, doesn't alter what advice is produced.  H5 and H5.1
+add the `diagnostic_messages` list to `working_results` and
+thread it through return paths; the list never feeds back into
+any decision.  K_H5 §B `test_*_field_in_return_path` tests pin
+that the field has no side effect on `directives`,
+`processed_advice`, or `diagnosis_text`.
+
+**The "graceful skip" pattern, generalized.**  K_H1 introduced
+`_try_import_*()` helpers that return `(value, None)` on success
+or `(None, error_msg)` on ImportError, letting tests skip
+cleanly in sandbox while running fully under PHENIX.  K_H2/H2.1/H3/H4/H5
+all adopt this pattern.  Sandbox runs report mixed PASS/SKIP;
+PHENIX runs report all PASS.  This makes pre-ship verification
+possible without requiring a PHENIX environment for every
+edit-cycle.
+
+**Gemini-reviewed plan rev cycles.**  Each ship went through
+2–5 plan revs incorporating Gemini critique before
+implementation.  H3 in particular: Gemini contributed the
+shared loader factoring (Q5), the dedicated `CANARY_PING`
+marker (Q2), the "stay loose" assertion threshold for the LLM
+probe (Q3), and the strict client-side timeout recommendation
+(later relaxed from 5s to 30s after Tom observed false-positive
+timeouts on real network latency).  H5 hit 5 plan revs; rev 5
+corrected a uniformity-criterion violation in rev 4 (removed
+dispatch-mode branch in client behavior).  H5.1 plan rev 2
+centralized the re-emit (backported to H5 since H5 hadn't
+deployed to server yet) — the centralization saved the planned
+H5.1 client-side edits entirely.
+
+**Self-review on fresh extract.**  H2/H2.1/H3 reviews caught
+stale line-number references, unused imports, and an incorrect
+import path (`phenix_ai.X` vs the correct
+`phenix.phenix_ai.X` — phenix_ai lives in the phenix-project
+source tree, not the langchain tree).  H5.1 review after the
+`run_utils.py` audit changed the test strategy: invalid-provider
+injection wouldn't trigger the new markers because
+`validate_api_keys` silently passes unknown providers and
+`setup_llms` swallows its own exceptions.  Switched to
+deterministic monkey-patching with the Gemini Q2 dual-assertion
+mitigation.
+
+### Files changed (cumulative)
+
+| File | Ship |
+|---|---|
+| `VERSION` | H2 (new), H3 (→119.H3), H4 (→119.H4), H4.1 (→119.H4.1), H5 (→119.H5), H5.1 (→119.H5.1), H5.1.1 (→119.H5.1.1) |
+| `core/_version.py` | H2 (new) |
+| `core/_build_info.py` | H2 (new) |
+| `core/llm.py` | H1 (DEFAULTS tables + helpers), H2 (+fingerprint) |
+| `agent/api_client.py` | H1 (uses default_model_for_provider) |
+| `agent/directive_extractor.py` | H1 (uses defaults), H2.1 (+skip promotion), H5.1.1 (+sidecar protection in merge_directives, +type-gated bool unwrap at two validate_directives sites) |
+| `agent/raw_advice_scanner.py` | H4 (new), H4.1 (pinned vs corpus) |
+| `knowledge/api_schema.py` | H2 (+agent_build schema) |
+| `phenix_ai/run_ai_agent.py` | H2 (+inject_agent_build) |
+| `phenix_ai/run_ai_analysis.py` | H4 (+[STEP_1F] emission), H5 (+_emit_marker helper, diagnostic_messages in run_advice_preprocessing), H5.1 (+diagnostic_messages in run_directive_extraction and run_failure_diagnosis), H7 (+scanner-first extraction + recall metrics + telemetry-independent LLM call for [STEP_1F]) |
+| `programs/ai_analysis.py` | H5 (+ encode/decode, Total Init, _relay helper, centralized re-emit, local-mode passthroughs), H5.1 (+passthroughs in directive_extraction_locally and failure_diagnosis_locally) |
+| `tests/test_api_keys.py` | H1 (uses defaults) |
+| `tests/tst_default_models.py` | H1 (new) |
+| `tests/tst_agent_build_info.py` | H2 (new) |
+| `tests/tst_skip_promotion.py` | H2.1 (new) |
+| `tests/canary_expected.json` | H3 (new), H4/H4.1/H5/H5.1/H5.1.1/H6/H6.1/H7 (version sync each ship) |
+| `tests/canary_utils.py` | H3 (new) |
+| `tests/tst_canary.py` | H3 (new) |
+| `tests/step_1f_corpus.json` | H4 (new), H4.1 (frozen at 31 docs) |
+| `tests/tst_raw_advice_scanner.py` | H4 (new), H4.1 (+golden-master test) |
+| `tests/tst_diagnostic_messages.py` | H5 (new, 21 tests across 5 sections), H5.1 (+§F, →26 tests) |
+| `tests/tst_directive_validation.py` | H5.1.1 (new, 23 tests across §A merge protection + §B list-wrap defense) |
+| `tests/llm/framework.py` | H3b (initial framework with stubs), H6 (4 stubs replaced with real implementations + raw_output preservation fix), H6.1 (+ per-scenario fail/err suffix) |
+| `tests/tst_planning_framework.py` | H6 (new K_H6, 18 tests across §A is_stop_intent + §B validate_planning_state + §C make_planning_run_fn + §D call_planning_llm raw_output preservation) |
+| `tests/tst_phase2b_activation.py` | H7 (new K_H7, 15 tests across §A scanner contract + §B fallback semantics + §C recall metrics + §D integration smoke incl. source-level regression pins) |
+| `tests/llm/tst_directive_extraction.py` | H3 (+canary Scenario), H5.1 (probe text fix) |
+| `tests/llm/canary_check.py` | H3 (new), H5.1 (probe text fix) |
+| `tests/run_all_tests.py` | H1, H2, H2.1, H3, H4, H5, H5.1, H5.1.1, H6, H7 (K-suite registrations) |
+| `docs/DEVELOPER_GUIDE.md` | H2 (§8 protocol version 3→5) |
+
+Note on `programs/ai_agent.py`: **never modified** in the v119
+cluster.  Two architectural properties confirm this:
+- For H5/H5.1: the centralized re-emit in
+  `programs/ai_analysis.py::run_job_on_server_or_locally`
+  means adding new markers to engine functions requires NO
+  client-side changes.  H5.1 added three new markers without
+  touching `ai_agent.py`.
+- For H5.1.1: the sidecar-protection fix lives inside the
+  shared `merge_directives` helper; both callers
+  (`run_ai_analysis.py:1276` and `ai_agent.py:8376`) inherit
+  the fix automatically.
+
+### Verification
+
+Under PHENIX (verified on Tom's Mac, end of H7):
+- K_H1 (Default Models): 22 PASS (+1 SKIP under sandbox; 23 under PHENIX)
+- K_H2 (Agent Build Info): 24 PASS
+- K_H2.1 (skip_programs Promotion): 11 PASS
+- K_H3a (Startup Canary): 3 PASS (+7 SKIP under sandbox; 10 under PHENIX — VERSION reads 119.H7; lockstep verified)
+- K_H4 (Raw Advice Scanner + STEP_1F): 31 PASS (golden-master recall 0.9810 preserved through H7's scanner-first switch)
+- K_H5 (Diagnostic Messages Channel): 13 PASS (+13 SKIP under sandbox; 26 under PHENIX)
+- K_H5_1_1 (Directive Validation Cleanups): 23 PASS
+- K_H6 (Planning Framework): 18 PASS (sandbox-side §D mock tests SKIP under PHENIX where libtbx import wins the race; same mechanic pinned by sandbox version)
+- K_H7 (Phase 2B Activation): 15 PASS
+
+Total v119-cluster K-tests after v119.H7: **181 PASS under
+PHENIX** (sandbox runs report mixed PASS/SKIP; PHENIX runs
+report all PASS).
+
+Plus the 126 pre-v119 K-suite modules in `run_all_tests.py`,
+all continuing to PASS as regression checks.  Total module
+count: **135 modules, 135 PASS, 0 FAIL** on Mac end-of-H7.
+
+**Test-count correction note:** Earlier ship docs (through
+H5.1.1 and H6) reported cumulative v119-cluster counts with
+a ~7-test arithmetic drift (155 post-H5.1.1, 173 post-H6,
+188 first-draft post-H7).  The verified-correct counts
+above sum to 181; this is the authoritative number going
+forward.
+
+Operator-invoked / live LLM tests verified on Mac (end of H7):
+- `tests/llm/canary_check.py` (H3b orchestrator) — verified
+  end-to-end with both Google AND OpenAI providers.
+- `tests/llm/tst_directive_extraction.py` — all 7 scenarios ×
+  2 providers = **14 PASS**.  File-detection-sensitive
+  scenarios (`resolution_and_space_group`, `skip_programs`)
+  pass after H7's scanner-first switch — Q2-strict preserved
+  the consumer contract.
+- `tests/llm/tst_planning.py` (NEW, exercised via H6's
+  framework implementations) — 8 scenarios × 2 providers =
+  **16 PASS**.  Early-stopping at threshold; no failures
+  observed.  First reliability testing of the planning LLM.
+
+**Cumulative live LLM test count after H7: 30 PASS
+(14 directive_extraction + 16 planning), 0 FAIL, 86 LLM
+calls, ~12 minutes wall-clock.**
+
+### Deployment status
+
+| Ship | Server (ai.phenix-online.org) | Mac (development) |
+|---|---|---|
+| H1, H2, H2.1, H3, H4, H4.1 | Deployed | Installed and verified |
+| **H5** | Not yet deployed | Verified end-to-end |
+| **H5.1** | Not yet deployed | Verified (K-suite + 14/14 directive_extraction live) |
+| **H5.1.1** | Not yet deployed | Verified (+23/23 K_H5_1_1) |
+| **H6** (test-only) | N/A (no server-visible changes) | Verified (+18/18 K_H6 + 16/16 planning live) |
+| **H6.1** (test-only) | N/A (no server-visible changes) | Verified (output formatting only) |
+| **H7** | Not yet deployed | **Verified (+15/15 K_H7 + 30/30 live LLM still PASS, 135/135 K-modules)** |
+
+Recommended sequencing for server deployment of the
+production-code ships:
+H5 → H5.1 → H5.1.1 → H7 (each independent and rollback-safe;
+combined deploy also safe).  H6 and H6.1 affect only `tests/`
+files and don't need server deployment.
+
+H5/H5.1/H5.1.1 are in `tests/` and `phenix_ai/` (plus
+`programs/ai_analysis.py` for the relay channel).  H7 is
+entirely in `phenix_ai/run_ai_analysis.py` (production
+code) plus its K-suite.  Different code paths, safe to
+combine or sequence in any order.
+
+### v120 outlook
+
+The v119 cluster completes the operational-hardening agenda from
+`v118_next_steps_consolidated_rev4.md` §4.7B with the addition of
+the H4 telemetry-marker, H5 relay-channel, H5.1.1 directive-
+extractor cleanups, H6 planning-suite framework, and H7
+Phase 2B scanner-first activation that weren't in the original
+§4.7B list.  Deferred §14 items: auto-startup canary in
+production (§14.1), Anthropic RAG branch (§14.3),
+history_record propagation of agent_build (§14.5).
+
+**Major v119 outcomes (now done):**
+- ✓ **Phase 2A** (H6): planning-LLM reliability testing
+  framework.  16 planning scenarios PASS across both providers.
+- ✓ **Phase 2B Scope B** (H7): scanner-first file extraction
+  with LLM fallback.  Deterministic file detection for the
+  consumer at `programs/ai_agent.py:8128`.
+
+**Outstanding for v119.H5.x or v120:**
+- **H5.2 (queued, not started)** — extend the diagnostic_messages
+  channel to three more stderr-only markers in
+  `agent/directive_extractor.py`:
+  `[DIRECTIVE_EXTRACTION_FAILED]` (inner — fires on transient
+  LLM-call exceptions caught and returning `{}`),
+  `[DIRECTIVE_EXTRACTION_MODEL_RETIRED]`, and
+  `[DIRECTIVE_CORRECTION]`.  Per Tom's choice, let H5/H5.1 bake
+  in production first to validate the channel design with real
+  failures before extending.
+- **Phase 2B Scope C** — kill the LLM preprocessor entirely.
+  H7 captured most of Phase 2B's value (deterministic file
+  detection); Scope C's primary value is latency reduction
+  (~5-15s per request saved).  Needs corpus testing that
+  directive extraction quality is preserved when fed raw
+  advice instead of structured-section advice.
+- **Pre-existing libtbx-only imports** (§3.11 in next_steps) —
+  consistency sweep across the codebase for the libtbx →
+  relative fallback pattern that H5+ / H6 / H7 uniformly use.
+
+v120 is also expected to pursue prompt consolidation for
+directive extraction (the natural pair to H1's model-name
+centralization) and possibly Direction A (the single-call
+structured extraction that would collapse preprocessor +
+extractor + planner — referenced at the end of the v118
+entry).  Specific direction TBD; scope shrinks if Phase 2B
+Scope C succeeds.
+
+---
 
 ## Version 118 (Preprocessor resilience + operational hardening)
 

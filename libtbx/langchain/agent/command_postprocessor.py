@@ -402,6 +402,35 @@ def _load_prog_allowlist(program_name):
       strategy_flags = (
         prog_def.get('strategy_flags') or {})
       allowlist = set(_UNIVERSAL_KEYS)
+
+      # v119.H8: Add literal key=value tokens from the command
+      # template (e.g. "phenix.autobuild ... maps_only=True" →
+      # 'maps_only').  These are program-specific invariants
+      # encoded into the template itself; the allowlist must
+      # include them so Rule D in sanitize_command doesn't strip
+      # them out.  Without this, any literal flag in a command
+      # template that isn't ALSO declared in strategy_flags
+      # would be silently dropped — defeating the purpose of the
+      # template-level invariant.
+      #
+      # The regex requires (?:^|\s) before the identifier, so
+      # placeholders like {data_mtz} don't match (the '{' is
+      # neither start-of-string nor whitespace).  Uses the
+      # module-level `re` import already at line 28.
+      _cmd_template = prog_def.get('command', '')
+      if _cmd_template:
+        for _m in re.finditer(
+            r'(?:^|\s)([a-zA-Z_][a-zA-Z0-9_.]*)=',
+            _cmd_template):
+          # Take the bare leaf (after the last dot).  The
+          # `if _bare:` guard is NOT redundant: a pathological
+          # template like "foo.=value" would match with key
+          # 'foo.' whose split('.')[-1] is '' — guard against
+          # adding an empty string to the allowlist.
+          _bare = _m.group(1).split('.')[-1].lower()
+          if _bare:
+            allowlist.add(_bare)
+
       for sfkey, sfdef in strategy_flags.items():
         if isinstance(sfdef, dict):
           flag_tpl = sfdef.get('flag', '')

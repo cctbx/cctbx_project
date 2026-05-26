@@ -1745,6 +1745,209 @@ def main():
                        "tst_dependencies",
                        False, 0))
 
+    # --- Default Model Centralization (v119.H1) ---
+    # Regression suite for the centralized model-default tables in
+    # core/llm.py.  Asserts that every call-site reads via
+    # default_model_for_provider() and that no orphan model strings
+    # appear in agent/ runtime code (AST scan).  Also baseline-
+    # fingerprints the H1 table values so accidental drift surfaces
+    # immediately.
+    try:
+        from tests.tst_default_models import (
+            run_all_tests as run_default_models_tests)
+        success, elapsed = run_test_module(
+            "tst_default_models",
+            run_default_models_tests, args.verbose)
+        results.append(("Default Model Centralization",
+                       "tst_default_models",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_default_models: {e}")
+        results.append(("Default Model Centralization",
+                       "tst_default_models",
+                       False, 0))
+
+    # --- Agent Build Info (v119.H2) ---
+    # Verifies the v119.H2 server build metadata channel: VERSION
+    # file, defaults fingerprint, agent_build response field, and
+    # the single injection point in _build_group_args_response.
+    # Includes backwards-compat assertions that existing fields are
+    # unchanged.
+    try:
+        from tests.tst_agent_build_info import (
+            run_all_tests as run_agent_build_info_tests)
+        success, elapsed = run_test_module(
+            "tst_agent_build_info",
+            run_agent_build_info_tests, args.verbose)
+        results.append(("Agent Build Info",
+                       "tst_agent_build_info",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_agent_build_info: {e}")
+        results.append(("Agent Build Info",
+                       "tst_agent_build_info",
+                       False, 0))
+
+    # --- skip_programs Promotion (v119.H2.1) ---
+    # Verifies the v119.H2.1 promotion of LLM-emitted
+    # program_settings[X].skip=true to
+    # workflow_preferences.skip_programs[X], wired into the top
+    # of validate_directives in agent/directive_extractor.py.
+    # Includes side-effect correctness, idempotency, defensive
+    # bail behavior, and an end-to-end assertion that fixes the
+    # skip_programs scenario in tests/llm/tst_directive_extraction.py.
+    try:
+        from tests.tst_skip_promotion import (
+            run_all_tests as run_skip_promotion_tests)
+        success, elapsed = run_test_module(
+            "tst_skip_promotion",
+            run_skip_promotion_tests, args.verbose)
+        results.append(("skip_programs Promotion",
+                       "tst_skip_promotion",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_skip_promotion: {e}")
+        results.append(("skip_programs Promotion",
+                       "tst_skip_promotion",
+                       False, 0))
+
+    # --- Startup Canary (v119.H3a) ---
+    # Verifies the deployed server's agent_build matches what
+    # canary_expected.json pins.  Catches wrong-build deploys
+    # (built from wrong branch), tables in core/llm.py edited
+    # without a VERSION bump (fingerprint drift), and operator
+    # drift between VERSION and canary_expected.json.
+    try:
+        from tests.tst_canary import (
+            run_all_tests as run_canary_tests)
+        success, elapsed = run_test_module(
+            "tst_canary",
+            run_canary_tests, args.verbose)
+        results.append(("Startup Canary",
+                       "tst_canary",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_canary: {e}")
+        results.append(("Startup Canary",
+                       "tst_canary",
+                       False, 0))
+
+    # --- Preprocessor Metrics Logger / Step 1F (v119.H4) ---
+    # Tests the regex-based file detector module used by the
+    # Step 1F metric block in run_advice_preprocessing.
+    # Telemetry-gathering for Phase 2B trigger evaluation:
+    # records (llm_files, regex_files) tuples in production
+    # logs to measure regex_recall = |LLM \u2229 regex|/|LLM|.
+    # Scanner is stdlib-only — all 16 tests run in sandbox.
+    try:
+        from tests.tst_raw_advice_scanner import (
+            run_all_tests as run_h4_tests)
+        success, elapsed = run_test_module(
+            "tst_raw_advice_scanner",
+            run_h4_tests, args.verbose)
+        results.append(("Preprocessor Metrics",
+                       "tst_raw_advice_scanner",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_raw_advice_scanner: {e}")
+        results.append(("Preprocessor Metrics",
+                       "tst_raw_advice_scanner",
+                       False, 0))
+
+    # --- Diagnostic Messages / Relay Channel (v119.H5 + H5.1) ---
+    # Verifies the _emit_marker helper and the diagnostic_messages
+    # field in run_advice_preprocessing's result.  Closes the
+    # "server-side stderr markers invisible to client" gap that
+    # was diagnosed during H4 deployment.
+    #
+    # 26 tests organized into 6 sections:
+    #   §A helper unit tests (sandbox + PHENIX)
+    #   §B field-in-return tests (PHENIX only)
+    #   §C backward compatibility, including corrupted payloads
+    #      (sandbox + PHENIX)
+    #   §D uniform client re-emit (sandbox + PHENIX, paraphrased ref impl)
+    #   §E production encode/decode roundtrip (PHENIX only — exercises
+    #      get_results_from_all (Total Init seed) and
+    #      Program.get_results_as_JSON directly against the same JSON
+    #      wire format _process_server_success decodes)
+    #   §F extended markers (v119.H5.1, PHENIX only — verifies
+    #      [ADVICE_PREPROCESSING_FAILED], [DIRECTIVE_EXTRACTION_FAILED],
+    #      and [FAILURE_DIAGNOSIS_FAILED] markers via deterministic
+    #      monkey-patching; also pins Total Init for the new
+    #      run_directive_extraction and run_failure_diagnosis paths)
+    try:
+        from tests.tst_diagnostic_messages import (
+            run_all_tests as run_h5_tests)
+        success, elapsed = run_test_module(
+            "tst_diagnostic_messages",
+            run_h5_tests, args.verbose)
+        results.append(("Diagnostic Messages",
+                       "tst_diagnostic_messages",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_diagnostic_messages: {e}")
+        results.append(("Diagnostic Messages",
+                       "tst_diagnostic_messages",
+                       False, 0))
+
+    # 56. Directive Validation (K_H5_1_1, v119.H5.1.1) -- merge_directives
+    #     _corrected_from sidecar protection (Item 3) and validate_directives
+    #     boolean list-wrap defense (Item 4).  §2.1 v118.9 leftovers cleanup.
+    try:
+        from tests.tst_directive_validation import (
+            run_all_tests as run_h5_1_1_tests)
+        success, elapsed = run_test_module(
+            "tst_directive_validation",
+            run_h5_1_1_tests, args.verbose)
+        results.append(("Directive Validation",
+                       "tst_directive_validation",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_directive_validation: {e}")
+        results.append(("Directive Validation",
+                       "tst_directive_validation",
+                       False, 0))
+
+    # 57. Planning Framework (K_H6, v119.H6) -- Phase 2A planning suite
+    #     framework infrastructure: is_stop_intent, validate_planning_state,
+    #     make_planning_run_fn factory, and call_planning_llm raw_output
+    #     preservation on parse_intent_json failures.
+    try:
+        from tests.tst_planning_framework import (
+            run_all_tests as run_h6_tests)
+        success, elapsed = run_test_module(
+            "tst_planning_framework",
+            run_h6_tests, args.verbose)
+        results.append(("Planning Framework",
+                       "tst_planning_framework",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_planning_framework: {e}")
+        results.append(("Planning Framework",
+                       "tst_planning_framework",
+                       False, 0))
+
+    # 58. Phase 2B Activation (K_H7, v119.H7) -- scanner-first file
+    #     extraction.  Tests the building blocks composed by
+    #     run_advice_preprocessing post-H7: scanner contract
+    #     (type/sorting/dedup invariants), scanner-first-with-fallback
+    #     decision matrix, recall metrics with zero-division guards,
+    #     and [STEP_1F] telemetry format regression.
+    try:
+        from tests.tst_phase2b_activation import (
+            run_all_tests as run_h7_tests)
+        success, elapsed = run_test_module(
+            "tst_phase2b_activation",
+            run_h7_tests, args.verbose)
+        results.append(("Phase 2B Activation",
+                       "tst_phase2b_activation",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_phase2b_activation: {e}")
+        results.append(("Phase 2B Activation",
+                       "tst_phase2b_activation",
+                       False, 0))
+
     # --- Summary ---
     total_elapsed = time.time() - total_start
 

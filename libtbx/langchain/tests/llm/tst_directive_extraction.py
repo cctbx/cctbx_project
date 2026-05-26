@@ -159,6 +159,25 @@ def _use_mr_sad(directives):
     return (False, "use_mr_sad not set; workflow_preferences=%r" % wf)
 
 
+def _canary_expected_fn(directives):
+    """v119.H3b startup canary: stay loose (Gemini Q3).
+
+    Asserts only that the LLM returned a parseable non-empty dict.
+    Does NOT pin specific content -- the purpose of this scenario is
+    environmental connectivity / API auth / langchain version
+    sanity, not model intelligence.  Content-pinning would be
+    flaky across providers and model versions.
+
+    Returns (passed: bool, why: str).
+    """
+    if not isinstance(directives, dict):
+        return (False, "expected dict, got %s"
+                       % type(directives).__name__)
+    if not directives:
+        return (False, "expected non-empty dict; LLM returned {}")
+    return (True, "directives dict has %d keys" % len(directives))
+
+
 # =====================================================================
 # Scenarios
 # =====================================================================
@@ -237,6 +256,34 @@ def build_scenarios():
             max_runs=5,
             input=load_fixture("mr_sad_workflow.txt"),
             expected_fn=_use_mr_sad,
+        ),
+        # v119.H3b: startup canary scenario.  Smoke-test the LLM
+        # provider reachability with a minimal directive extraction
+        # probe.  Asserts only that the LLM returned a parseable
+        # non-empty directives dict (see _canary_expected_fn).  This
+        # scenario is invoked by tests/llm/canary_check.py (the
+        # operator's unified canary tool) and can also be run
+        # standalone via the standard runner for debugging:
+        #   phenix.python tests/llm/run_llm_tests.py --scenario canary
+        Scenario(
+            name="canary",
+            description=(
+                "v119.H3b startup canary: smoke-test LLM provider "
+                "reachability with a minimal directive extraction "
+                "probe.  Asserts only that the LLM returned a "
+                "parseable non-empty directives dict; does NOT "
+                "pin content (LLM variance across providers/versions "
+                "would make content-pinning flaky).  "
+                "v119.H5.1: probe includes one concrete settable "
+                "parameter so validate_directives doesn't strip "
+                "the response to {} when an LLM faithfully "
+                "extracts nothing from a parameter-free advice."),
+            decision_point="directive_extraction",
+            test_type="capability",
+            max_runs=1,
+            threshold=1.0,
+            input="Run phenix.refine with resolution 2.5",
+            expected_fn=_canary_expected_fn,
         ),
     ]
 
