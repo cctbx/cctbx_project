@@ -117,7 +117,7 @@ def run(target_evaluator,
       if(max_iterations is not None and icall>max_iterations): break
       if(callback_after_step is not None):
         if(callback_after_step(minimizer) is True):
-          print("lbfgs minimizer stop: callback_after_step is True")
+          #print("lbfgs minimizer stop: callback_after_step is True")
           break
   except RuntimeError as e:
     lbfgsb_minimizer.error = str(e)
