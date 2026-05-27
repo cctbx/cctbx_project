@@ -317,7 +317,7 @@ phenix.map_symmetry:
 
   hints:
     - "Run on full map to detect point-group symmetry"
-    - "Output .ncs_spec file can be used by resolve_cryo_em, predict_and_build, or apply_ncs"
+    - "Output .ncs_spec file can be used by resolve_cryo_em or apply_ncs (NOT predict_and_build — see v119.H14.2)"
     - "Optional: specify expected ncs_type if known (C2, D2, C3, etc.)"
 
   user_advice_keywords:
@@ -365,9 +365,25 @@ phenix.predict_and_build:
         multiple: true
         auto_fill: false
         description: "Only used when no full map is available; prefer full_map when present"
-      ncs_spec:
-        extensions: [.ncs_spec]
-        flag: "map_model.ncs_file="
+      # v119.H14.2: ncs_spec input REMOVED.  Pre-H14.2, the entry
+      # declared `flag: "map_model.ncs_file="`, but predict_and_build
+      # does NOT accept that (or any) NCS-file PHIL parameter.  Tom's
+      # 2026-05-26 1029B-sad ollama run with no PDB file in the
+      # directory surfaced this: the agent auto-discovered the
+      # leftover find_ncs.ncs_spec file, looked up the documented
+      # flag, emitted `map_model.ncs_file=...find_ncs.ncs_spec`, and
+      # predict_and_build failed with "Some PHIL parameters are not
+      # recognized."  Cycle-level retry re-emitted the same bad
+      # parameter and looped.
+      #
+      # predict_and_build runs NCS detection internally if needed;
+      # there is no external-file mechanism to inject one.  Removing
+      # the entry stops the agent from attempting to pass any
+      # .ncs_spec file it discovers in the input directory.
+      #
+      # find_ncs's downstream-consumer hint (line ~320) was also
+      # updated to remove predict_and_build from the list of programs
+      # that accept its .ncs_spec output.
 
   outputs:
     files:
@@ -389,7 +405,9 @@ phenix.predict_and_build:
       - map_cc
 
   # Half-maps are used for density modification alongside the full map
-  command: "phenix.predict_and_build {sequence} {data_mtz} {full_map} {half_map} {ncs_spec}"
+  # v119.H14.2: dropped {ncs_spec} from command template — see the
+  # optional-inputs comment above for the rationale.
+  command: "phenix.predict_and_build {sequence} {data_mtz} {full_map} {half_map}"
 
   defaults:
     control.nproc: 4

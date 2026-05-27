@@ -1,18 +1,22 @@
 # CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3 / v118 / v119
 
-## Version 119 (Operational Hardening + Phase 2A + Phase 2B + Production Bug Cluster — H1, H2, H2.1, H3, H3b, H4, H4.1, H5, H5.1, H5.1.1, H6, H6.1, H7, H8, H9, H10, H11)
+## Version 119 (Operational Hardening + Phase 2A + Phase 2B + Production Bug Cluster — H1, H2, H2.1, H3, H3b, H4, H4.1, H5, H5.1, H5.1.1, H6, H6.1, H7, H8, H9, H10, H11, H12, H13, H14, H14.1, H14.2)
 
 ### Summary
 
-v119 is an eighteen-ship cluster pursuing the operational-hardening
+v119 is a twenty-ship cluster pursuing the operational-hardening
 agenda from `v118_next_steps_consolidated_rev4.md` §4.7B plus
 the Phase 2A planning-suite framework (H6/H6.1), the Phase 2B
-preprocessor activation (H7), and a four-ship production-bug
+preprocessor activation (H7), a four-ship production-bug
 sub-cluster (H8–H11) surfaced by AIAgent_62 and run_38 batch
-testing.  The ships are independent and ship-self-contained:
+testing, a follow-up cleanup pass for the exclude_patterns
+mechanism + categorizer semantic pinning (H12), and an
+Ollama-provider robustness pass with retired-model 404 detection
+surfaced by Tom's `run_39a_ollama` failure (H13).  The ships are
+independent and ship-self-contained:
 
 ```
-v118 → H1 → H2 → H2.1 → H3 → H3b → H4 → H4.1 → H5 → H5.1 → H5.1.1 → H6 → H6.1 → H7 → H8 → H9 → H10 → H11
+v118 → H1 → H2 → H2.1 → H3 → H3b → H4 → H4.1 → H5 → H5.1 → H5.1.1 → H6 → H6.1 → H7 → H8 → H9 → H10 → H11 → H12 → H13
 ```
 
 Together they establish: a single source of truth for LLM model
@@ -34,14 +38,31 @@ gap (H8), `predict_and_build` PHIL scope mismatch (H9), structural
 gap in `exclude_patterns` application across selection paths
 (H10), and YAML pattern authoring vs function-semantics mismatch
 that prevented H10's filters from rejecting their intended targets
-(H11).
+(H11).  H12 is a follow-up cleanup pass: it refactors H10's
+closure into a module-level helper (8 application sites
+consolidated to 1 helper) and adds a semantic-pin test file for
+every public function in `agent/file_utils.py` (the
+`tst_file_categorizer.py` suite — pre-emptive defense against
+sandbox-stub drift, the lesson H11 surfaced).  H13 fixes two
+Ollama-provider bugs surfaced by Tom's `run_39a_ollama` failure
+on cci-gpu-01: `OLLAMA_BASE_URL` env-var override silently
+broke the OpenAI-SDK path construction when the user-set value
+omitted `/v1`, and `OLLAMA_LLM_MODEL` env-var was inconsistently
+honored (only `core/llm.get_llm_and_embeddings` honored it; both
+`directive_extractor` and `api_client` ignored it).  H13 also
+completes the v118 §3.5 retired-model 404 detection work,
+refining the classification into three sub-categories
+(MODEL_RETIRED vs MODEL_UNAVAILABLE vs FAILED) so the operator
+sees actionable hints rather than opaque "404 page not found".
 
-Total K-test additions across the cluster: **181 v119-cluster
+Total K-test additions across the cluster: **189 v119-cluster
 K-tests** plus **30 live LLM tests** (directive_extraction +
 planning) plus **14 production-bug K-tests** in the H8–H11
-sub-cluster (4 Bug 8, 4 Bug 9, 5 Bug 10, 1 Bug 11).  See the
-per-suite breakdown in `next_steps_post_v119.md` "Test totals"
-section.
+sub-cluster (4 Bug 8, 4 Bug 9, 5 Bug 10, 1 Bug 11), plus
+**8 categorizer semantic-pin K-tests** added by H12, plus
+**13 provider-error classification K-tests** added by H13.
+See the per-suite breakdown in `next_steps_post_v119.md`
+"Test totals" section.
 
 All ships verified through act → review → Gemini-critique → ship
 cadence.
@@ -901,6 +922,794 @@ expected behavior.  `test_bug11_matches_exclude_pattern_semantics`
 is the template — when a test that uses the real function asserts
 documented behavior, any future stub-vs-real divergence is caught
 the moment a sandbox test runs against the real function.
+
+**H12 (production code) — `exclude_patterns` helper DRY refactor +
+categorizer semantic-pin suite (deferred follow-up cluster from H11)**
+`agent/command_builder.py`, `tests/tst_file_categorizer.py`
+(NEW, ~75 cases across 8 tests), `tests/canary_expected.json`,
+`VERSION`, `README.md`.
+
+H12 closes three deferred items from `v119_H11_PLAN_rev2.md`
+(items 2.2, 2.3, 2.4) bundled into a single follow-up ship.  The
+items are independent in scope but share file area and zero
+behavioral change:
+
+**Item 2.3 — helper DRY refactor in `agent/command_builder.py`**:
+
+H10 introduced a closure `_matches_exclude_patterns_h10(f)`
+defined at the entry of `_find_file_for_slot` and applied at
+7 sites there, plus a direct call to `matches_exclude_pattern`
+in `_select_files` (line 698) where the closure wasn't in
+scope.  H12 consolidates these into a single module-level
+helper near the top of `command_builder.py`:
+
+```python
+def _file_passes_exclude_patterns(file_path, exclude_patterns):
+    """Return True if file_path is NOT rejected by exclude_patterns."""
+    if not exclude_patterns:
+        return True
+    return not matches_exclude_pattern(
+        os.path.basename(file_path), exclude_patterns)
+```
+
+Three design choices per Gemini's H12 plan review:
+
+1. **Signature takes `exclude_patterns: list`, not `input_def: dict`**.
+   Decouples the helper from the program-registry schema; lets
+   `_select_files`'s call site (which has the list, not a
+   wrapping dict in scope) pass it directly.  Within
+   `_find_file_for_slot`, the list is extracted once at the top
+   of the function — preserving the closure's micro-perf
+   property (one dict lookup, not 7).
+2. **Sense-inversion**.  The closure returned True if the file
+   MATCHED (i.e., should be rejected).  The helper returns True
+   if the file PASSES (i.e., is NOT rejected).  Call sites read
+   more naturally as `if not _file_passes_exclude_patterns(f, p): continue`.
+3. **Marker convention**: each refactored call site is marked
+   `# v119.H10/H12` rather than dropping the H10 history.  Clean
+   audit trail: the BEHAVIOR comes from H10's bug fix; the
+   present STRUCTURAL form belongs to H12.
+
+Total: 8 application sites consolidated to 1 helper, 9
+`v119.H10/H12` markers in `command_builder.py`.
+
+**Items 2.2 + 2.4 — `tests/tst_file_categorizer.py` (NEW)**:
+
+Semantic-pin tests for every public function in
+`agent/file_utils.py`.  Generalizes the discipline that
+`test_bug11_matches_exclude_pattern_semantics` applied to one
+function — pre-emptive defense against the kind of
+sandbox-stub-vs-real drift that masked the AIAgent_62 cycle-7
+bug for one ship.
+
+Functions covered (8 tests, ~75 documented assertions):
+- `classify_mtz_type` — 12 cases across 5 rules + ordering
+  invariant comment
+- `get_mtz_stage` — 9 cases (data_mtz, map_coeffs_mtz subcategories,
+  unrecognized-category passthrough)
+- `get_category_for_extension` — 19 cases including
+  case-insensitivity, multi-dot filenames (`model.backup.pdb`),
+  no-extension files (`README`, `LOCAL_MAP`), unknown extensions,
+  trailing-dot edge case
+- `is_mtz_file` — 8 cases including case-insensitivity, trailing-
+  suffix discrimination
+- `is_model_file` — 12 cases pinning the load-bearing quirk that
+  `.pdb` extension overrides the `'ligand'`-in-name filter (so
+  `ligand_fit.pdb` IS a model file but `my_ligand.cif` is not)
+- `is_map_file`, `is_sequence_file` — 7 cases each
+- Cross-function consistency — 4 integration cases verifying
+  `is_mtz_file` + `classify_mtz_type` + `get_mtz_stage` agree
+  and that `is_X_file` / `get_category_for_extension` are
+  internally consistent
+
+`matches_exclude_pattern` is NOT re-pinned here —
+`test_bug11_matches_exclude_pattern_semantics` already covers
+it canonically.
+
+Gemini-suggested cases folded in: multi-dot (`model.backup.pdb`,
+`data.processed.mtz`), no-extension (`README`, `LOCAL_MAP`,
+`file.`), `is_model_file` boundary (`ligand_fit.pdb` vs
+`co_crystallized_ligand_structure.cif`), and a rule-ordering
+invariant comment in `test_classify_mtz_type_semantics`.
+
+**Why these bundle as 2.2 + 2.4**: Gemini's original 2.4
+proposal was a "differential parity test" comparing real
+function vs sandbox stub.  Reframed in H12 as "broaden the
+semantic-pin discipline to ALL of `agent/file_utils.py`" —
+because (a) sandbox stubs aren't a real artifact in the PHENIX
+tree, (b) `test_bug11_*` already provides the canonical parity
+check for the one function with documented divergence problems,
+and (c) generalizing the pattern to the other functions in
+`file_utils.py` is the more useful generalization.
+
+K_categorizer: 8 tests, all PASS in sandbox.  All 6 K_Bug 10
++ K_Bug 11 tests still PASS unchanged after the H12 refactor,
+providing the strong assurance that behavior is preserved.
+`defaults_fingerprint` unchanged.
+
+`agent/file_utils.py` NOT modified — its functions are the
+SUBJECT of pinning, not the subject of change.  All H1–H11
+changes carried forward.
+
+VERSION bumped to `119.H12`.  Plan: `v119_H12_PLAN.md`
+(Gemini-reviewed).
+
+**H13 (production code) — Ollama provider robustness + retired-
+model 404 detection (v118 §3.5 closed; AIAgent_run_39a_ollama bugs
+fixed)**
+`core/llm.py`, `agent/directive_extractor.py`, `agent/api_client.py`,
+`tests/tst_provider_error_classification.py` (NEW, 13 tests),
+`tests/tst_default_models.py` (+8 H13 tests),
+`tests/canary_expected.json`, `VERSION`, `README.md`.
+
+H13 closes a production bug surfaced by Tom's
+`phenix.ai_agent provider=ollama ...` run on cci-gpu-01.  The
+failure mode was `[DIRECTIVE_EXTRACTION_FAILED]: 404 page not
+found, falling back to rules-only resolver` — opaque and
+non-actionable.  Diagnostic surfaced two stacked bugs PLUS an
+opportunity to complete the v118 §3.5 retired-model classification
+work that was deferred through H1–H12.
+
+**Root cause — TWO bugs, each duplicated at 2 sites:**
+
+- **Bug A — URL mismatch.**  `agent/directive_extractor.py:1226`
+  and `agent/api_client.py:735` had:
+  ```python
+  base_url = os.environ.get(
+      "OLLAMA_BASE_URL", "http://localhost:11434/v1")
+  ```
+  When the user set `OLLAMA_BASE_URL=http://localhost:11434`
+  (no `/v1`), the env-var completely overrode the `/v1`-suffixed
+  default.  The OpenAI Python SDK appends `/chat/completions`
+  to the base URL, so the actual request went to
+  `http://localhost:11434/chat/completions`.  Ollama exposes
+  the OpenAI-compat API only at `/v1/chat/completions`; for
+  any other path it returns the HTML literal `404 page not
+  found`.  Tom's user-facing behavior (matching `OLLAMA_HOST`
+  which is the bare host) silently broke.
+
+- **Bug B — env-var override ignored.**  `directive_extractor.py:1219`
+  and `api_client.py:734` called `default_model_for_provider("ollama")`
+  unconditionally — ignoring `OLLAMA_LLM_MODEL` even when the
+  user set it.  This is inconsistent with
+  `core/llm.py:get_llm_and_embeddings` which DID honor the
+  env-var ("Env-var overrides take precedence; fall back to
+  the central default tables when the env vars are unset").
+  H1 centralized the table; it missed centralizing the
+  precedence rule.
+
+**The fix — three new helpers in `core/llm.py`:**
+
+```python
+def normalize_ollama_openai_base_url(base_url):
+    """Idempotently append /v1.  Empty string and None pass through."""
+    if not base_url:
+        return base_url
+    stripped = base_url.rstrip('/')
+    if stripped.endswith('/v1'):
+        return stripped
+    return stripped + '/v1'
+
+_PROVIDER_MODEL_ENV_OVERRIDES = {"ollama": "OLLAMA_LLM_MODEL"}
+
+def resolve_model_for_provider(provider, role="decision"):
+    """Env-var precedence: env-var wins, central default falls back."""
+    env_var = _PROVIDER_MODEL_ENV_OVERRIDES.get(
+        (provider or "").lower().strip())
+    if env_var:
+        env_value = os.getenv(env_var)
+        if env_value:
+            return env_value
+    return default_model_for_provider(provider, role=role)
+```
+
+Plus a unified provider-error classifier
+`_classify_provider_error(exc, model_name)` (also in `core/llm.py`)
+that distinguishes four error classes:
+
+| Marker tag | Trigger | Operator action |
+|---|---|---|
+| `DIRECTIVE_EXTRACTION_MODEL_RETIRED` | 404 + retirement phrase ("deprecated"/"no longer available"/"retired") near the word "model" | Update `DEFAULT_MODELS` |
+| `DIRECTIVE_EXTRACTION_MODEL_UNAVAILABLE` | 404 + `model '...' not found` regex match (Tom's case) | Pull the model, or check env-var typo |
+| `DIRECTIVE_EXTRACTION_AUTH_FAILED` | 401 or "unauthorized" or "invalid api key" | Check provider API key |
+| `DIRECTIVE_EXTRACTION_FAILED` | Anything else | Investigate manually |
+
+Defense-in-depth design (Gemini's H13 plan review):
+
+1. **Programmatic property interrogation** — reads
+   `status_code`, `.response.status_code` (chained), `.body`
+   (dict), `.message` attributes BEFORE falling back to
+   `str(exc)`.  Defends against SDK exceptions that hide HTTP
+   details behind opaque `__str__` representations.
+2. **Co-occurrence rule for RETIRED** — the retirement phrase
+   must appear within 80 chars of the word "model".
+   Distinguishes legitimate retirement ("The model X has been
+   deprecated") from edge-proxy 404 pages with similar
+   language ("This endpoint is deprecated; see new path").
+3. **UNAVAILABLE regex** — `model\s+['"]X['"]\s+not\s+found`
+   matches Tom's exact error pattern from ollama
+   (`{"error":{"message":"model 'llama3.2' not found"}}`).
+
+**Where the helpers are applied:**
+
+- `agent/directive_extractor.py` ollama block (the
+  `_call_llm_fallback` path): URL via
+  `normalize_ollama_openai_base_url`, model via
+  `resolve_model_for_provider`, classifier dispatch in the
+  exception handler with two emit helpers
+  (`_emit_retired_model_marker` from v119.H1 +
+  `_emit_unavailable_model_marker` NEW in H13).
+- `agent/api_client.py::_call_ollama_llm` (the primary path):
+  same URL and model fixes.  Classifier dispatch happens at
+  the OUTER catch in `extract_directives` line 876 — see H13.1
+  fix in the README for details.
+- `core/llm.py::get_llm_and_embeddings` (the native-`/api/chat`
+  path via `langchain-ollama`): NOT modified.  That path uses
+  ChatOllama with the native endpoint and DOES NOT need `/v1`;
+  applying `normalize_ollama_openai_base_url` would break it.
+  An explicit comment at the call site documents the asymmetry.
+  Env-var precedence already worked correctly here (it was the
+  inconsistency-source for H13).
+
+**K_provider_error (13 tests in
+`tst_provider_error_classification.py`)**:
+
+- 3 RETIRED cases: Google verbose 404, OpenAI clean 404,
+  Anthropic `model_not_found`
+- 3 UNAVAILABLE cases: Tom's exact error verbatim (primary
+  regression), variant with `qwen2.5:72b`, double-quoted
+  format
+- 3 FAILED cases (negative): edge-proxy "endpoint deprecated"
+  (LOAD-BEARING co-occurrence sentinel), bare 404, empty
+  exception
+- 2 AUTH cases: 401, "invalid api key" without status code
+- 2 class-attribute defense cases (Gemini's review): mock
+  exception with `status_code=404`, mock with `.response.status_code`
+  chained
+
+**K_default_models extension** (`tst_default_models.py`, +8 tests):
+- 4 `resolve_model_for_provider` tests: unset env-var falls
+  through, set env-var overrides, empty env-var falls through,
+  unknown provider raises
+- 4 `normalize_ollama_openai_base_url` tests: appends `/v1`,
+  idempotent, None passthrough, empty-string passthrough
+  (added in H13.1 after self-review found the original helper
+  produced `'/v1'` from an empty input — see H13.1 notes)
+
+Also updates 2 existing source-scan tests
+(`test_api_client_ollama_uses_central_default`,
+`test_directive_extractor_fallback_uses_central_defaults`) to
+accept BOTH `default_model_for_provider` AND
+`resolve_model_for_provider` references — the centralization
+invariant is "every provider resolves via a central helper",
+not "every provider uses the exact same helper name".
+
+**Refined v118 §3.5 scope**:
+
+Pre-H13 the existing `_looks_like_retired_model_error` (from
+v119.H1) lumped "model not found" together with retirement
+phrases, which would have misclassified Tom's case as
+retirement (the operator hint would say "update
+DEFAULT_MODELS" — wrong action; the right action is `ollama
+pull`).  H13's classifier separates these into RETIRED vs
+UNAVAILABLE so the hint matches the operator action.
+
+**Known limitation** (NOT fixed in H13): the H1-era
+`_looks_like_retired_model_error` + `_emit_retired_model_marker`
+path is still used by google/openai/anthropic exception
+handlers in `_call_llm_fallback`.  Only the ollama path was
+migrated to the unified classifier.  Migrating the other three
+providers is candidate work for H14 (scope deferred since the
+immediate bug was ollama-specific).
+
+VERSION bumped to `119.H13` (then `119.H13.1` after the
+self-review surfaced two issues — see "H13.1 post-review fixes"
+in the ship README).  Plans: `v119_H13_PLAN_rev3.md` (rev3,
+post-Ollama-diagnosis; rev1 and rev2 covered the broader
+§3.5 + §4.9 scope before run_39a_ollama narrowed the focus).
+
+`defaults_fingerprint` unchanged at
+`sha256:77bf7421...` — H13 added new functions but didn't
+modify the `DEFAULT_MODELS` tables that feed the fingerprint.
+
+**Deferred to H14** (per H13's rev3 plan): §4.9
+prompt-consolidation refactor of `DIRECTIVE_EXTRACTION_PROMPT`.
+Medium risk, needs multi-pass approach + Gemini review +
+LLM-roundtrip verification.  Was bundled with §3.5 in H13's
+rev1/rev2 plans; rev3 split to keep H13's blast radius small
+after Tom's bug took priority.
+
+**H14 (production code) — Three independent regressions surfaced by
+run_39_openai batch analysis**
+`agent/directive_extractor.py`, `programs/ai_agent.py`,
+`tests/tst_solve_action_keywords.py` (NEW, 13 tests),
+`tests/tst_step1f_single_emit.py` (NEW, 8 tests),
+`tests/tst_space_group_validation.py` (NEW, 24 tests),
+`tests/tst_utils.py` (NEW — restored sandbox helper, enables
+3 previously-shipped K-tests to run in sandbox),
+`tests/tst_autosol_bugs.py` (1 test relaxed from exact-signature
+match to substring — was brittle to additive kwargs),
+`tests/canary_expected.json`, `VERSION`.
+
+H14 closes three independent regressions surfaced by post-H13 batch
+analysis of `run_39_openai` (520 runs, May 2026) compared against
+`run_25_openai` (720 runs, March 2026 baseline).  The investigation
+was made possible by `scan_batch_runs.py` (a new
+operations-side scanner that triages run logs into Tier-1 crashes,
+Tier-2 diagnostic markers, Tier-3 state anomalies, and Tier-4 soft
+anomalies) and a controlled three-way log comparison of the
+1029B-sad dataset across run_25-solve, run_39-solve, and
+run_39-stop variants.  The three items are independent; they ship
+together because they were diagnosed in one investigation pass.
+
+**Item 1 — Phaser false-positive in `_ACTION_TABLE["solve"]`
+(operationally biggest win):**
+
+The rules-only directive extractor's `_ACTION_TABLE["solve"]`
+entry treated the goal phrase "solve the structure" as a synonym
+for "do molecular replacement with phaser."  When a README
+contained BOTH that goal phrase AND another action (e.g., the
+"Stop after refinement" suffix), the multi-action branch in
+`_apply_workflow_intent_fallback` (`n > 1` case) set
+`start_with_program = phenix.phaser` — forcing phaser into the
+workflow even on SAD/MAD datasets where the correct method is
+autosol.  Once phaser was in the workflow, it ran on a model that
+autosol had already refined to a multi-chain ASU; phaser's
+composition check then errored with `composition will not fit in
+the unit cell volume`.  24 occurrences across 5 datasets in
+run_39 (1029B-sad, 1J4R-ligand, 1aba-polder, 3tpp-ensemble-refine,
+7rpq_AF_reference_model).
+
+The controlled comparison confirmed the trigger:
+  - `run_25/1029B-sad__rules_only_solve` (README without "stop"):
+    workflow xtriage→autosol→autobuild→molprobity→refine.  SUCCESS.
+  - `run_39/1029B-sad__rules_only_solve` (same README): IDENTICAL
+    workflow.  SUCCESS.
+  - `run_39/1029B-sad__rules_only_stop` (README with "Stop after
+    refinement" added): xtriage→autosol→refine→phaser×4.  FAILED.
+
+The only input that differed was the README — adding one line
+that the rules-only extractor turned into a stop directive AND
+a phaser start_with directive.
+
+**Fix:** Remove the goal phrases `"solve the structure"` and
+`"solve structure"` from the `solve` action's keyword list.
+Explicit method keywords (`"molecular replacement"`, `"phaser"`,
+`"mr "`) remain — only the ambiguous goal phrasing is removed.
+This restores the semantic: `solve` action means "user explicitly
+asked for MR," not "user expressed a goal of solving the
+structure."  When the goal phrase appears alone, no action fires
+and `RulesSelector` picks the right method based on data type.
+
+The `asu_copies` → `phaser.search_copies` injection in
+`graph_nodes.py` (originally Item 2 of the H14 plan, also surfaced
+by this investigation) was DROPPED from H14 after Tom's domain
+input: "the value from xtriage is usually pretty good, keep it as
+is."  When phaser legitimately runs (with a single-chain search
+model), `search_copies=N` from xtriage's Matthews `Best guess` is
+the correct value.  The problem in run_39 was not the injection —
+it was that phaser shouldn't have been running at all on
+already-phased SAD data.  Item 1 prevents that, eliminating the
+24/24 phaser failures.  Defensive instrumentation for the
+multi-chain-search-model case is deferred to a candidate H15
+item.
+
+**Item 2 — STEP_1F preprocessor double-emit (cosmetic but
+high-volume):**
+
+`[STEP_1F] preprocessing_metrics` lines were being emitted twice
+per advice preprocessing call.  60.6% of run_39_openai runs (315
+of 520) had adjacent duplicate STEP_1F lines.  The cause: TWO
+sites both iterated `diagnostic_messages` and wrote to stderr:
+
+  1. `phenix.programs.ai_analysis._relay_diagnostic_messages_to_stderr`
+     (the v119.H5.1 dispatcher-level relay; called inside
+     `run_job_on_server_or_locally` at 4 return paths)
+  2. `programs/ai_agent.py:8087-8103` (a client-side relay block
+     from v119.H5 §2.9 that survived the H5.1 refactor)
+
+The H5 §2.9 comment at site 2 claimed it was "the SINGLE, uniform
+site where operators see them."  That claim was correct at the
+time H5 shipped, but the H5.1 refactor moved the relay INTO the
+dispatcher (the architecturally correct location, since the
+dispatcher is the single place that handles all dispatch paths
+uniformly).  Site 2 was never deleted, became dead duplicate code,
+and survived undetected because the duplicate emit doesn't break
+anything functionally — operators just saw each marker twice.
+
+**Fix:** Delete the client-side relay block in `ai_agent.py`,
+replace with a marker comment explaining the H14 deletion and
+referencing the dispatcher's relay as the canonical site.  Source
+scan tests pin the absence of `for _msg in _diagnostics` in
+`ai_agent.py` and the continued presence of
+`_relay_diagnostic_messages_to_stderr` (with 4 call sites) in
+`ai_analysis.py`.
+
+**Item 3 — `space_group` validation extensions (defensive
+cleanup):**
+
+The pre-H14 validator at `validate_directives()` already dropped
+LLM-emitted `space_group` placeholder values via the
+`_SYMMETRY_SENTINELS` frozenset (`"Not specified"`, `"Not
+provided"`, etc.) plus negative structural checks (must start
+with a letter; length <= 25).  Two gaps remained:
+
+  1. The sentinel set did not include the "Not explicitly *"
+     family.  Tom's qwen2.5:72b xtriage tutorial verification of
+     H13.1 surfaced the truncated value `"Not explicitly mentio"`
+     — LLM output hit a length cap mid-phrase and emitted a
+     partial sentinel that wasn't in the set.  The H13.1 ship's
+     plan-side override prevented downstream harm in that case,
+     but the value was still passed through `validate_directives`
+     unchanged.
+
+  2. The negative structural checks let multi-word English
+     phrases through if they happened to start with a letter
+     and fit in 25 chars — e.g., `"Solve the structure"` passed
+     all three checks.  Such values then reached PHENIX as
+     bogus PHIL params and produced obscure errors.
+
+**Fix (two additive parts):**
+
+(a) Extended `_SYMMETRY_SENTINELS` with the "not explicitly
+{mentioned,stated,given,specified,defined,listed,noted}" family
+including truncated forms.  Frozenset is additive — pre-H14
+sentinel behavior is preserved (regression tested).
+
+(b) Added a positive Hermann-Mauguin shape check
+`_looks_like_space_group(value)` that accepts standard space-group
+symbols and rejects prose phrases.  Wired into
+`validate_directives()` as an additional invalid-value condition.
+
+**Regex evolution — two review passes shaped the final pattern:**
+
+*Initial draft* (matched 71/230 official symbols — 31%):
+
+```python
+r'^[PFICRHAB]\s*-?\d{0,3}(?:\s*[-/_]?\s*\d{0,3}){0,4}'
+r'(?:\s*\(\s*no\.?\s*\d+\s*\))?$'
+```
+
+This too-strict pattern rejected 159 valid space groups: all
+monoclinic slash forms (P21/c, P21/n, C2/c), all orthorhombic
+mirror/glide groups (Pmma, Pnma, Pbca, Fdd2), all tetragonal
+forms with mirrors (P4mm, P4/mmm, I41/amd), all cubic
+high-symmetry groups (Pm-3m, Im-3m, Fd-3m, Ia-3d).  Self-review
+against the full 230-symbol list (per Tom's "must admit all 240
+space groups correctly" instruction) caught this before ship.
+
+*After self-review* (matched 230/230 canonical but rejected
+alternative settings):
+
+```python
+r'^[PFICRHAB][0-9mcndabe\s/_\-]{0,24}'
+r'(?:\s*\(\s*no\.?\s*\d+\s*\))?$'
+```
+
+The `e` letter was required for the 2002-ITA renamings of the
+centered orthorhombic groups (Aem2, Aea2, Cmce, Cmme, Ccce).
+
+*Gemini external review (Risk A)* identified that this regex
+rejected alternative cell/origin settings.  International Tables
+Vol. A defines colon-suffixed forms used in real PDB/mmCIF
+metadata and cctbx tool output:
+
+  - `R3:H` vs `R3:R` — rhombohedral axis choice (7 space groups)
+  - `:1` vs `:2` — origin choice (24 centrosymmetric groups,
+    mostly cubic + some tetragonal)
+  - `:a` / `:b` / `:c` — unique-axis cell choice (monoclinic
+    groups #3–15)
+
+These would have been silently dropped as malformed prose.
+Gemini's fix: add `:` to the interior alphabet.  Additional
+finding during implementation: the axis-spec letters `h` and `r`
+(in `R3:H`, `R3:R`) also weren't in the alphabet, so they had
+to be added too.
+
+*Final regex* (admits all 230 + all alternative settings):
+
+```python
+_HM_FORM_RE = re.compile(
+    r'^[PFICRHAB]'
+    r'[0-9mcndabehr\s/_\-:]{0,24}'
+    r'(?:\s*\(\s*no\.?\s*\d+\s*\))?$',
+    re.IGNORECASE
+)
+```
+
+Alphabet rationale:
+
+  - `[PFICRHAB]` — the 8 Bravais lattice letters (P primitive,
+    F face-centered, I body-centered, C base-centered, R
+    rhombohedral, H hexagonal-centered, A and B alternative
+    base-centerings)
+  - `0-9` — symmetry-element orders, screw-axis subscripts,
+    IUCr number digits
+  - `m c n d a b e` — mirror plane (m), glide planes (c, n, d, a, b),
+    double glide (e — 2002 ITA)
+  - `h r` — axis-spec suffix letters for rhombohedral hexagonal /
+    rhombohedral settings (e.g., `R3:H`, `R3:R`)
+  - `space / _ - :` — separators (slash for `P21/c`, dash for
+    `P-1`, underscore for mmCIF, colon for alternative settings)
+
+*Gemini Risk B* (acknowledged as known limitation, pinned with
+a K-test): the permissive alphabet still admits short English
+words that happen to use only HM-alphabet characters — `Panda`,
+`Fame`, `Bad`, `Cab`, `Bed`, `Acme` all match.  This is not a
+realistic LLM output for `space_group`, and the pre-H14 negative
+checks already let these through.  Closing this gap fully would
+require enumerating the 230 canonical symbols via `cctbx.sgtbx`,
+which is beyond a directive sanity check's scope.  The test
+`test_hm_form_known_limitation_short_words` pins the limitation
+so future contributors don't think "Panda accepts" is a bug; the
+test `test_hm_form_rejects_words_with_non_alphabet_chars` pins
+the positive guarantee that words with non-alphabet letters
+(`Phaser`, `Pizza`, `Place`, `Process`) ARE rejected.
+
+**Test coverage** for Item 3 — 24 K-tests:
+
+  - §A: 3 new sentinel coverage (including truncated forms)
+  - §B: 1 existing-sentinel regression
+  - §C: 6 HM-shape checks (standard symbols, 230/230 official,
+    spaced variants, parenthetical numbers, prose rejection,
+    empty/None rejection)
+  - §D: 5 end-to-end through `validate_directives`
+  - §E: 4 equivalence-class tests (case-insensitive,
+    spacing, 1-placeholder, setting variants)
+  - §F: 3 alternative-setting tests (rhombohedral, origin
+    choice, unique axis) — per Gemini Risk A
+  - §G: 2 limitation documentation tests — per Gemini Risk B
+
+`hallucinated_param_value` rate in run_39 was 71 (down from 148
+in run_25 — already trending down before H14), of which most
+were `space_group=*` variants.  H14 should drive this further
+down without affecting valid values.
+
+**Plans:** `v119_H14_PLAN_rev1.md` (rev1).  Rev0 (an internal
+draft) contained four items; Item 2 (`asu_copies` injection) was
+dropped after Tom's domain call.
+
+VERSION bumped to `119.H14`.  `defaults_fingerprint` unchanged at
+`sha256:77bf7421...` — H14 did not touch the `DEFAULT_MODELS`
+tables.
+
+**Additional housekeeping:**
+
+  - Added `tests/tst_utils.py` (sandbox helper for
+    `run_tests_with_fail_fast()`).  H13.1 shipped three K-test
+    files (`tst_autosol_bugs.py`, `tst_file_categorizer.py`,
+    `tst_provider_error_classification.py`) that depended on this
+    helper but the helper itself wasn't in the ship — those tests
+    couldn't run in sandbox.  Now they can.
+  - Relaxed `tst_autosol_bugs.py` Bug 5 test from exact-multi-line
+    signature match to substring check.  The original test pinned
+    the exact `def _track_output_files(...)` signature including
+    indentation; a later addition of `skip_if_failed=False` to
+    that signature broke the test.  The test's intent ("function
+    accepts working_dir") is preserved with the substring form.
+
+### v119.H14.1 — Ollama-fallback bypass closure for space_group validation
+
+**Trigger**: Tom's 2026-05-26 ollama xtriage tutorial verification of
+H14 (the gate-C test for Item 3) showed `space_group=Not explicitly
+mentio` still appearing in the extracted directives, despite H14
+being installed (the `[STEP_1F]` line confirmed
+`scanner_version=119.H14`).  Gate C failed in production.
+
+**Root cause** — two cooperating issues:
+
+(a) `directive_extractor.py` has TWO space-group extraction paths:
+
+  | Path                              | Validates? |
+  |-----------------------------------|------------|
+  | LLM-JSON success → `extract_directives` line 714 calls `validate_directives` | ✓ |
+  | LLM fallback → `extract_directives_simple` returns directly (no validation) | ✗ |
+
+  When ollama's LLM fails to return parseable JSON (small local
+  models frequently fail JSON discipline), `extract_directives` falls
+  back to `extract_directives_simple`.  This simple extractor has its
+  OWN space_group regex at line ~4350:
+
+  ```python
+  _sg_pattern = (
+      r'space[_ ]group'
+      r'(?:\s*[=:]\s*|\s+(?:is|of|=|:)?\s*)'
+      r'([A-Za-z][A-Za-z0-9 /_-]{1,20})'
+  )
+  ```
+
+  This regex matched `"Space group: Not explicitly mentioned"` in
+  Tom's preprocessed advice and captured the first 21 chars
+  (`{1,20}` quantifier + initial letter): `"Not explicitly mentio"`.
+  The dict was returned directly, bypassing the H14 sentinel
+  (`_SYMMETRY_SENTINELS`) and shape check (`_looks_like_space_group`)
+  that lived inside `validate_directives`.
+
+  Correction to H14's CHANGELOG attribution: the H14 entry said the
+  truncation came from "LLM hitting a length cap mid-phrase".  The
+  diagnosis was wrong — the LLM passed `"Space group: Not explicitly
+  mentioned"` through fully (visible in Tom's session summary at
+  line 197 of `ollama_xtriage.log`).  The truncation came from the
+  `{1,20}` quantifier in the simple extractor's regex.  The H14
+  sentinel set still correctly catches the truncated form, but the
+  validator was never invoked on the simple-extractor path.
+
+(b) Latent `VALID_STOP_CONDITIONS` gap: the key `start_with_program`
+is set by `_resolve_after_program` (called from
+`_apply_workflow_intent_fallback`) when advice contains multiple
+actions plus a stop intent (the Item 1 path).  It's consumed
+downstream by `workflow_engine.py` (line ~2288), `ai_agent.py`
+(~2816, ~3004, ~4555), and `ai_analysis.py` (~160).  But the key
+was missing from `VALID_STOP_CONDITIONS`, so `validate_directives`
+would log `Unknown stop condition start_with_program` and DROP it.
+Pre-H14.1 this was invisible because validate_directives ran
+BEFORE `_apply_workflow_intent_fallback` (the order:
+extract → validate → fallback-overlay).  The key was added
+post-validation in the LLM path.  But once H14.1 added
+validate_directives to the END of the simple extractor (where the
+fallback overlay runs INSIDE extract_directives_simple before
+returning), `start_with_program` would have been stripped without
+this fix — breaking H14 Item 1.
+
+**Fix (two parts)**:
+
+(a) Added `start_with_program: str` to `VALID_STOP_CONDITIONS`
+(`agent/directive_extractor.py`, line ~1555).  Latent-bug fix: the
+key was already consumed widely downstream; pre-H14.1 it just never
+hit `validate_directives` so the gap went unnoticed.
+
+(b) Modified `extract_directives_simple` signature to take an
+optional `log=None` parameter (backward-compatible with the four
+external callers in `ai_agent.py` and `run_ai_analysis.py` that
+pass single-arg).  Added a final
+`directives = validate_directives(directives, log)` call before
+the return.  This closes the ollama-fallback bypass and makes
+`validate_directives` the canonical final-sanity step for both
+extraction paths — future validator extensions automatically apply
+to both.
+
+**Investigation method**: the gap was discovered by direct
+reproduction.  Given Tom's preprocessed advice text and the
+observed `space_group=Not explicitly mentio` symptom, calling
+`extract_directives_simple(tom_advice)` reproduced the bug; calling
+`validate_directives(simple_result)` on the result dropped the
+value correctly.  The two-step trace pinpointed the missing wiring.
+A broad audit of `extract_directives_simple` output against
+`validate_directives` then surfaced the `start_with_program` issue
+before H14.1 could ship — running validate_directives on results
+from `multi_action_with_stop`, `polder_selection`, and other Item 1
+patterns showed `start_with_program` being silently stripped.
+Without the latent-bug audit, H14.1 would have fixed Item 3 while
+breaking Item 1.
+
+**Test coverage** — 12 K-tests in
+`tests/tst_simple_extractor_validation.py`:
+
+  - §A (2): Tom's exact ollama xtriage case (gate C closure) — verifies
+    `space_group=Not explicitly mentio` is dropped with the canonical
+    `DIRECTIVES: Dropping invalid space_group value` log line, and
+    that other extracted values (resolution=1.7) survive intact
+  - §B (2): Item 1 preservation through validation — explicit MR + stop
+    must set `start_with_program=phenix.phaser` and have it survive
+    validate_directives; the 1029B-sad pattern (goal phrase + stop,
+    no MR keyword) must NOT set start_with_program (n=1 branch)
+  - §C (2): VALID_STOP_CONDITIONS now includes start_with_program;
+    direct validate_directives call preserves the key without the
+    "Unknown stop condition" log line
+  - §D (4): other simple-extractor outputs survive validation —
+    atom_type, max_refine_cycles, skip_programs, valid space_group
+  - §E (1): backward compat — the four external callers in
+    ai_agent.py / run_ai_analysis.py that pass single-arg continue
+    to work
+  - §F (1): validate_directives is idempotent (external code may
+    call validate_directives on results; running it twice must be
+    a no-op)
+
+`tests/tst_simple_extractor_validation.py` (NEW, 12 tests),
+`agent/directive_extractor.py` (VALID_STOP_CONDITIONS extension +
+extract_directives_simple final-validate),
+`tests/canary_expected.json` (agent_version: 119.H14.1),
+`tests/run_all_tests.py` (registers tst_simple_extractor_validation).
+
+VERSION bumped to `119.H14.1`.  `defaults_fingerprint` unchanged at
+`sha256:77bf7421...`.
+
+**What this changes for production**:
+
+  - Gate C now passes for ollama runs: `space_group=Not explicitly
+    mentio` (and any other invalid value the simple extractor's
+    permissive regex captures) is dropped before reaching downstream
+    code.  Tom should re-run his ollama xtriage tutorial to verify;
+    expected log line: `DIRECTIVES: Dropping invalid space_group
+    value: 'Not explicitly mentio'`.
+  - Item 1 fix unchanged (the latent bug fix preserves
+    start_with_program through validation).
+  - Item 2 unchanged.
+  - The MR-SAD-hallucination bug surfaced in Tom's 1029B-sad ollama
+    run (LLM set `use_mr_sad=True` for a SAD-only README) is a
+    SEPARATE issue, candidate for H15.  It's an LLM-prompt-engineering
+    or post-LLM-validation problem, not an H14 problem.
+
+### v119.H14.2 — programs.yaml: predict_and_build does not accept ncs_spec
+
+**Trigger**: Tom's 2026-05-26 1029B-sad ollama production verification
+of H14.1 (run after removing the PDB file from the input directory)
+hit a different failure mode.  With no PDB present, the workflow
+correctly routed to `phenix.predict_and_build` instead of phaser.
+The agent's file auto-discovery found a leftover `find_ncs.ncs_spec`
+file from a previous run and looked up the documented PHIL flag in
+`knowledge/programs.yaml`:
+
+```yaml
+phenix.predict_and_build:
+  inputs:
+    optional:
+      ncs_spec:
+        extensions: [.ncs_spec]
+        flag: "map_model.ncs_file="     # ← stale documentation
+```
+
+The agent emitted that flag, and predict_and_build rejected it
+with `Some PHIL parameters are not recognized by
+phenix.predict_and_build`.  Cycle-level retry re-emitted the same
+bad parameter and the workflow looped.
+
+**Root cause**: per Tom's domain confirmation, predict_and_build
+does NOT accept any NCS-file PHIL parameter (it runs NCS detection
+internally if needed).  The yaml entry was either stale (PHIL
+grammar changed) or never quite right.  No code change was needed,
+only a configuration fix.
+
+**Fix** (purely in `knowledge/programs.yaml`):
+
+  1. Removed the `ncs_spec` block from
+     `phenix.predict_and_build.inputs.optional`
+  2. Removed `{ncs_spec}` from the command template
+  3. Updated `phenix.map_symmetry`'s downstream-consumer hint to
+     drop predict_and_build from the list of programs that consume
+     `.ncs_spec` output
+
+**No code changes.**  The agent's file auto-discovery and PHIL
+emission machinery already does the right thing given the
+configuration — once the yaml stops declaring predict_and_build
+as an ncs_spec consumer, the agent stops trying to pass one.
+
+**Defensive consideration noted but NOT shipped**: a generic
+PHIL-validation-at-command-build-time pass (look up the program's
+master_phil, drop unknown keys with a `DIRECTIVES: Dropping unknown
+PHIL key for <program>` log line) would catch this entire class of
+programs.yaml drift bug at the point of emission rather than at
+program execution time.  Scoped as a candidate for H15 or later.
+The H14.2 ship is the one-line config fix only.
+
+**Test coverage** — 5 K-tests in
+`tests/tst_predict_and_build_no_ncs.py`:
+
+  - §A (3): predict_and_build's inputs.optional no longer contains
+    ncs_spec; command template no longer references {ncs_spec};
+    command template regression guard (sequence/data_mtz/full_map/half_map
+    placeholders still present)
+  - §B (1): map_symmetry's hint no longer advertises predict_and_build
+    as a downstream consumer of .ncs_spec output (or explicitly says
+    it's NOT a consumer)
+  - §C (1): sibling regression guard — resolve_cryo_em's ncs_spec
+    entry remains intact (predict_and_build is the only program
+    being corrected; resolve_cryo_em DOES accept `ncs_file=`)
+
+`knowledge/programs.yaml` (3 surgical edits),
+`tests/tst_predict_and_build_no_ncs.py` (NEW, 5 tests),
+`tests/canary_expected.json` (agent_version: 119.H14.2),
+`tests/run_all_tests.py` (registers tst_predict_and_build_no_ncs).
+
+VERSION bumped to `119.H14.2`.  `defaults_fingerprint` unchanged
+at `sha256:77bf7421...`.
+
+**What this changes for production**: when the 1029B-sad README
+runs with no PDB in the input directory, the workflow no longer
+loops on a rejected PHIL parameter.  Tom can confirm by re-running
+his 1029B-sad ollama test1 directory (after `rm 1029B.pdb*`); the
+predict_and_build command should now omit any `map_model.ncs_file=`
+parameter.
 
 ### Architectural notes
 

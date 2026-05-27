@@ -4438,6 +4438,397 @@ stub's intended semantics in a docstring and add a
 semantic-pin test that exercises both the stub and the
 real function via try/import.
 
+**H12 extension — broaden the pinning beyond the one bug**:
+the H10/H11 incident pinned `matches_exclude_pattern`
+specifically because that was the function with documented
+divergence.  But the same risk applies to every function in
+`agent/file_utils.py` — small, non-trivial logic that's easy
+to stub badly.  H12 generalized the pattern by adding
+`tests/tst_file_categorizer.py` with 8 tests / ~75
+documented assertions covering EVERY public function in
+`file_utils.py`: `classify_mtz_type` (rule ordering invariant),
+`get_mtz_stage`, `get_category_for_extension` (multi-dot,
+no-extension edge cases), `is_mtz_file`, `is_model_file`
+(load-bearing `.pdb`-overrides-`'ligand'`-filter quirk),
+`is_map_file`, `is_sequence_file`, plus cross-function
+consistency.
+
+**Pattern**: when one function in a module exhibits the
+sandbox-stub divergence problem, the other functions in the
+same module are candidates for the same defense.  The cost
+of a comprehensive semantic-pin suite is low (one new test
+file, no production code change); the benefit is pre-emptive
+detection of future divergences.
+
+**The highest-value pinning targets are non-obvious quirks**.
+A test that pins the obvious behavior is less useful than
+one that pins a documented exception.  When you find
+yourself writing "BTW, this case is the exception to the
+rule" in a docstring, that case should have a test.
+`is_model_file('ligand_fit.pdb') == True` (because `.pdb`
+extension overrides the `'ligand'`-in-name filter) is the
+template — a load-bearing quirk that's easy to "simplify"
+away in a refactor.
+
+#### Centralizing access patterns, not just data tables (v119.H1 → H13 lesson)
+
+The H13 ship (May 2026) surfaced a different category of
+inconsistency: H1 centralized the LLM `DEFAULT_MODELS` table
+in `core/llm.py`, but each consumer of the table acquired
+its own ad-hoc access pattern over time.  Three of the four
+ollama consumer sites read the table directly via
+`default_model_for_provider("ollama")`.  The fourth site
+(in `get_llm_and_embeddings`) honored `OLLAMA_LLM_MODEL`
+env-var as an override.  Tom set `OLLAMA_LLM_MODEL=qwen2.5:72b`
+expecting the documented override behavior; two of the four
+consumers silently ignored it.
+
+**The policy**: centralization happens in stages.  Stage 1
+extracts the data table (H1 did this).  Stage 2 extracts the
+access patterns or rules over the table.  H13's
+`resolve_model_for_provider()` is the Stage 2 helper: it
+wraps the precedence rule "env-var wins, central default
+falls back" and is consumed by every site that needs a
+model name.
+
+When introducing centralization:
+
+1. **Identify both the data AND the rules**.  Don't ship the
+   table without auditing the consumers' access patterns —
+   if they're inconsistent, the table's central status is
+   illusory.
+2. **Extract the rule before the rule diverges further**.  A
+   new consumer added after Stage 1 but before Stage 2 will
+   add its own access pattern, increasing the eventual
+   migration cost.
+3. **Empty-string handling for env-var overrides**: treat
+   empty string as unset, matching shell intuition.
+   `setenv OLLAMA_LLM_MODEL ""` should fall through to the
+   default, not silently break the consumer.  Pinned in
+   `tst_default_models.py::test_resolve_model_for_provider_empty_env_falls_through`.
+4. **Source-scan tests need to accept multiple helper names**
+   during a transition.  `tst_default_models.py`'s per-site
+   tests now accept BOTH `default_model_for_provider` AND
+   `resolve_model_for_provider` references — the invariant is
+   "every consumer uses a central helper", not "every consumer
+   uses the same helper name."
+
+#### Error categories should map to operator actions (v119.H13 lesson)
+
+H13's `_classify_provider_error` splits 404 errors into
+three sub-categories: `MODEL_RETIRED` (provider deprecated
+the model), `MODEL_UNAVAILABLE` (model unknown to this
+server), and `FAILED` (generic).  Each has a distinct
+operator-action hint.  Pre-H13, all 404s were classified
+as RETIRED with hint "update DEFAULT_MODELS" — wrong action
+for Tom's actual case (`ollama pull X` was the right action).
+
+**The policy**: when adding a diagnostic marker for an error
+class, ask "what should the operator do when they see this?"
+If multiple actions are possible depending on context, the
+marker is too coarse — split it.
+
+Design constraints when splitting:
+
+1. **Co-occurrence rules** to avoid false-positives.  H13's
+   RETIRED classifier requires "model" word within 80 chars
+   of retirement phrase, distinguishing legitimate model
+   retirement from edge-proxy 404 pages mentioning
+   "deprecated endpoint."  A naive single-phrase match
+   would mis-route the latter.
+2. **Class-attribute interrogation** for SDK robustness.
+   Read `exc.status_code` and `exc.response.status_code`
+   programmatically BEFORE falling back to string matching
+   on `str(exc)`.  Some SDK exceptions hide details behind
+   opaque `__str__` representations.
+3. **Load-bearing test sentinels**.  Pin the load-bearing
+   distinctions with explicit test cases — e.g.,
+   `test_classify_edge_proxy_404_not_retired`.  If a future
+   refactor weakens the co-occurrence rule, the sentinel
+   fires loudly.
+4. **Backward-compatible emission**.  When adding richer
+   markers, ALSO emit the legacy marker (in addition, not
+   in place of).  Log-grep pipelines and monitoring
+   dashboards depend on the legacy markers; H13 emits both
+   `[DIRECTIVE_EXTRACTION_FAILED]` (legacy) and the richer
+   tag (new) so existing infrastructure continues to work
+   while operators get the actionable hint.
+
+#### Goal phrases vs method requests in keyword lists (v119.H14 lesson)
+
+H14 fixed a long-standing bug in `_ACTION_TABLE["solve"]`: the
+keyword list conflated GOAL phrases (`"solve the structure"`)
+with METHOD requests (`"molecular replacement"`, `"phaser"`,
+`"mr "`).  Adding the goal phrase made the extractor inject
+`start_with_program = phenix.phaser` on any README that
+expressed the goal — even on SAD/MAD datasets where phaser is
+the wrong method.
+
+**Rule for keyword-list authoring**: each entry in
+`_ACTION_TABLE` represents a METHOD request — "the user
+explicitly asked for THIS tool."  Goal phrases ("solve",
+"refine to convergence", "validate the model") belong in
+intent classification (`classify_intent` in
+`agent/intent_classifier.py`), not in method-action
+keyword lists.  The two layers serve different purposes:
+
+| Layer | Inputs | Outputs | Use case |
+|---|---|---|---|
+| `_ACTION_TABLE` | exact keyword match | program name + workflow directive | "user asked for phaser → run phaser" |
+| `classify_intent` | full advice text | intent classification (`solve`/`refine`/`validate`/etc.) | "user wants to solve → adjust workflow rules accordingly" |
+
+**Check before adding a keyword to `_ACTION_TABLE`**:
+
+1. Is this keyword UNAMBIGUOUSLY a method name?  If a user
+   says it, do they specifically mean "use this tool"?
+   ("phaser" → yes.  "solve" → no, the method depends on
+   data type.)
+2. Could this keyword combine with another action's keyword
+   to trigger the `n > 1` branch in
+   `_apply_workflow_intent_fallback`?  If yes, walk through
+   the resulting `start_with_program` + `after_program` and
+   verify the workflow is correct.
+3. Pin the decision with a K-test: assert the keyword
+   triggers the action AND assert that goal-only phrasings
+   do NOT trigger it.
+
+#### Single-emit invariant for output channels (v119.H14 lesson)
+
+H14 removed a duplicate `diagnostic_messages` relay that
+survived a v119.H5 → H5.1 refactor.  Both the dispatcher and
+the client iterated the list and wrote to stderr, causing
+every marker to be emitted twice.  The bug was invisible
+functionally — operators just saw duplicate lines — and
+survived until run_39 batch analysis surfaced the
+60.6%-of-runs pattern.
+
+**Rule for adding output channels**: any structured output
+channel (markers, telemetry, log lines) must have ONE
+canonical relay site, documented as such.  When refactoring
+to introduce a new central relay, audit ALL pre-existing
+relay sites and remove them in the SAME ship — not later,
+not "as cleanup."  Surviving duplicate relay sites cause
+silent over-emission that's easy to miss and hard to detect
+without batch-level statistical analysis.
+
+**Check before adding a marker emit**:
+
+1. Is there already a relay function for this channel
+   (`_relay_diagnostic_messages_to_stderr`, etc.)?  If so,
+   USE it, don't write to stderr inline.
+2. If you're adding a relay function, GREP for any existing
+   inline stderr writes that emit markers from the same
+   channel.  Delete them in the same change set.
+3. Document the relay function's role in its docstring:
+   "this is the SINGLE site that writes marker X to
+   stderr."  If a later refactor invalidates the claim,
+   the docstring becomes the audit trail that the next
+   investigator follows.
+
+H14 also enforces this with a K-test that source-scans
+`programs/ai_agent.py` for `for _msg in _diagnostics` — if
+the duplicate ever returns, the test catches it.
+
+#### Positive shape checks complement sentinel sets (v119.H14 lesson)
+
+H14 strengthened `validate_directives` for `space_group`.
+Pre-H14 the validator had a sentinel set
+(`_SYMMETRY_SENTINELS`) and negative structural checks
+(starts-with-letter, length <= 25).  Those caught most cases
+but missed prose phrases that happened to look like real
+values (`"Solve the structure"` passes all three checks).
+H14 added a positive Hermann-Mauguin shape check.
+
+**Rule for validating LLM-emitted parameter values**: use a
+LAYERED check.
+
+| Layer | What it catches | When to use |
+|---|---|---|
+| Sentinel set (frozenset) | Known placeholder phrases | LLMs frequently emit these; cheap match |
+| Negative structural checks | Obvious shape violations (empty, too long, starts with digit) | First-pass quick rejection |
+| Positive shape check (regex) | Anything that ISN'T the expected form | Final guarantee against prose / hallucination |
+
+The positive check is the SOUNDER guarantee but is the most
+costly to author (need to know the value's grammar).  Use it
+when the value space is well-defined (Hermann-Mauguin
+symbols, ISO dates, semver numbers) and the cost of
+passing a bad value through is high (PHENIX crashes with
+obscure errors, data corruption, etc.).
+
+**Anti-pattern to avoid**: relying ONLY on a sentinel set
+when the value space has structural rules.  Sentinel sets
+are necessarily incomplete because LLMs can emit arbitrarily
+new placeholder phrasings.  A positive shape check closes
+that open-ended gap.
+
+#### Validate positive shape checks against the FULL domain (v119.H14 lesson)
+
+H14's positive HM shape check went through two review passes
+before reaching its final form.  Both reviews caught real bugs
+that would have shipped silent false-negatives — valid user
+inputs being dropped as malformed.
+
+**Lesson 1 — verify against an authoritative list, not your
+hand-picked sample.**  The initial H14 regex was tested against
+a hand-picked set of ~15 well-known protein space groups and
+all passed.  But running it against the full 230 International
+Tables symbols showed only 71 matched (31%).  The missing 159
+included all monoclinic slash forms (`P21/c`, `P21/n`), all
+orthorhombic mirror/glide groups (`Pmma`, `Pnma`, `Pbca`), all
+tetragonal mirror forms, and all cubic high-symmetry groups
+(`Pm-3m`, `Im-3m`, `Fd-3m`).  Hand-picked test sets give false
+confidence; the full domain enumeration is the right
+benchmark.
+
+Concrete K-test pattern when the domain is enumerable:
+
+```python
+def test_pattern_accepts_full_domain():
+    """Pin the regex behavior against the AUTHORITATIVE list,
+    not a hand-picked subset."""
+    all_canonical = [...]  # complete enumeration, ideally from
+                            # a library (cctbx.sgtbx, etc.)
+    assert len(all_canonical) == EXPECTED_TOTAL, "..."
+    failures = [v for v in all_canonical if not pattern.match(v)]
+    assert not failures, "Domain values rejected: %r" % failures
+```
+
+**Lesson 2 — consider alternative forms, not just canonical
+ones.**  After the regex was fixed to match all 230 canonical
+symbols, Gemini's external review (Risk A) caught that
+alternative cell/origin settings were still rejected:
+
+- `R3:H` vs `R3:R` (rhombohedral axis choice)
+- `P4/n:1` vs `P4/n:2` (origin choice)
+- `P21/c:b` (unique-axis cell choice)
+
+These aren't in the 230-symbol canonical list — they're
+*derived* forms that appear in real PDB/mmCIF metadata.  The
+fix required adding `:`, `h`, `r` to the alphabet.  When
+validating a domain with multiple notation conventions,
+enumerate the conventions explicitly:
+
+| Question | For the HM regex |
+|---|---|
+| What's the canonical form? | 230 short symbols (ITA Vol A) |
+| What alternative forms exist? | Colon-suffixed settings (`:H`/`:R`, `:1`/`:2`, `:a`/`:b`/`:c`) |
+| What separators / whitespace are accepted? | Space-separated full forms, slash, dash, underscore, colon |
+| What case variants are accepted? | Lower and upper (PHENIX is case-insensitive) |
+
+**Lesson 3 — document acceptable residual leaks instead of
+chasing perfection.**  Even the final regex admits short English
+words that happen to use only HM-alphabet characters (`Panda`,
+`Bed`, `Cab` — Gemini Risk B).  The right response is NOT to
+keep tightening the regex.  No realistic LLM emits "Panda" as a
+space-group value, and closing this gap fully would require
+enumerating the 230 + alternative-setting symbols via
+`cctbx.sgtbx` — a substantive dependency.  Instead, pin the
+limitation with a K-test that documents the leak and the
+acceptable upstream filters:
+
+```python
+def test_pattern_known_limitation():
+    """DOCUMENTED LIMITATION: ...
+    The acceptable upstream filters are: ...
+    The future path forward (if production surfaces this class
+    of hallucination) is to enumerate the domain via <library>
+    rather than tighten the regex."""
+    # Pin the current behavior, not assert it goes away
+```
+
+This makes the limitation discoverable (future contributors
+won't think it's a bug) and points to the right next step
+(enumeration via library, not regex iteration).
+
+#### Validate on every path, not just the happy path (v119.H14.1 lesson)
+
+H14 added a positive Hermann-Mauguin shape check on
+`space_group` inside `validate_directives`.  Local sandbox
+tests proved the check worked.  Tom's 2026-05-26 production
+verification on ollama showed the bug was NOT closed in
+production — the bogus `Not explicitly mentio` value still
+reached the displayed directives even though
+`scanner_version=119.H14` confirmed H14 was installed.
+
+**Root cause**: `directive_extractor.py` had TWO paths that
+produce a directives dict:
+
+1. LLM-success path → `extract_directives` calls
+   `validate_directives` on the result
+2. LLM-failure / `use_rules_only` path → falls back to
+   `extract_directives_simple` and returns the result
+   DIRECTLY (no validation)
+
+The simple extractor had its own permissive space_group regex
+that captured `"Not explicitly mentio"` from the
+preprocessed advice (the truncation was the regex's
+`{1,20}` quantifier, not an LLM length cap — the
+H14 CHANGELOG misattributed this).  The dict went straight
+to the agent.  H14's sentinel check was bypassed.
+
+**Lesson**: when a validator is added to fix a class of bugs,
+trace EVERY code path that produces the value being validated
+— not just the path you originally identified.  Two
+diagnostic moves to make this concrete:
+
+1. **Grep for all producers**.  For `directive_extractor.py`,
+   the validator was `validate_directives` and the producers
+   were `extract_directives` (with validation) and
+   `extract_directives_simple` (without).  A single grep for
+   `def extract_` would have surfaced both producers and
+   prompted the question "which of these call
+   `validate_directives`?".
+
+2. **End-to-end production verification, not just sandbox
+   K-tests**.  The H14 K-tests called `validate_directives`
+   directly and passed.  Tom's production run was what
+   exposed the gap.  K-tests that reproduce the production
+   entry point (`extract_directives(advice, provider="ollama")`)
+   with empty LLM responses would have caught the bypass.
+
+**Architectural fix pattern: converged validators**.  Rather
+than duplicate the validator inline at each producer site,
+make the validator the canonical final-sanity step that ALL
+producers converge through:
+
+```python
+def extract_thing_simple(advice, log=None):
+    # ... pattern-matching extraction ...
+    return validate_thing(result, log)   # ← final-sanity
+
+def extract_thing_llm(advice, ...):
+    # ... LLM extraction ...
+    return validate_thing(result, log)   # ← same validator
+```
+
+Now: adding a new extractor adds one line (call the
+validator before return); adding a new validator rule changes
+one site (the validator function); neither requires touching
+the other.
+
+**Prerequisite check before applying converged-validator
+pattern**: audit whether `validate_thing` strips anything
+that the producers legitimately set.  H14.1 surfaced a latent
+bug during this audit — `start_with_program` was set by the
+simple extractor's `_resolve_after_program` overlay but
+wasn't in `VALID_STOP_CONDITIONS`.  Pre-H14.1, the bug was
+invisible because the LLM path called validate BEFORE the
+overlay added the key.  Adding the converged-validator
+pattern would have stripped the key, silently breaking H14
+Item 1.  The audit caught this in time:
+
+```bash
+# For each key the simple extractor sets:
+$ grep -n 'directives\["X"\]' agent/directive_extractor.py
+
+# Check whether that key is in the validator's allow-list:
+$ grep -A 10 'VALID_X_CONDITIONS' agent/directive_extractor.py
+```
+
+Any key in the producer but not in the allow-list is a
+latent bug surfaced by the converged-validator pattern.  Fix
+it BEFORE applying the converged pattern, not after.
+
 ### Commit quality
 
 Before committing LLM-generated code:

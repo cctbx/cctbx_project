@@ -1831,9 +1831,15 @@ def test_bug5_track_output_files_accepts_working_dir():
     source = f.read()
 
   # Function signature must accept working_dir
-  assert_in("def _track_output_files(self, log_text, session_start_time, "
-       "session=None,\n                          cycle=0, working_dir=None)",
-       source,
+  # v119.H14: relaxed from exact multi-line signature match to a
+  # substring check — the original test pinned the exact signature
+  # including newline + indent, which broke when later changes added
+  # additional kwargs (e.g., skip_if_failed=False) to the signature.
+  # The real intent is "the function accepts working_dir"; verify
+  # that without locking the rest of the signature.
+  assert_in("def _track_output_files(", source,
+       "_track_output_files must be defined")
+  assert_in("working_dir=None", source,
        "_track_output_files must accept working_dir parameter")
 
   # Must use working_dir for directory scanning, not os.getcwd()

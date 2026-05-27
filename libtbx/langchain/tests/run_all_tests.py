@@ -1948,6 +1948,117 @@ def main():
                        "tst_phase2b_activation",
                        False, 0))
 
+    # 59. Solve action keyword cleanup (K_H14_ITEM_1, v119.H14) --
+    #     Phaser false-positive surfaced by run_39_openai batch
+    #     analysis.  _ACTION_TABLE["solve"] entry treated the goal
+    #     phrase "solve the structure" as a synonym for "do MR with
+    #     phaser".  When combined with another action + stop, this
+    #     forced phaser into the workflow on SAD/MAD datasets where
+    #     autosol is the correct method.
+    try:
+        from tests.tst_solve_action_keywords import (
+            run_all_tests as run_h14_item1_tests)
+        success, elapsed = run_test_module(
+            "tst_solve_action_keywords",
+            run_h14_item1_tests, args.verbose)
+        results.append(("Solve Action Keywords (H14)",
+                       "tst_solve_action_keywords",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_solve_action_keywords: {e}")
+        results.append(("Solve Action Keywords (H14)",
+                       "tst_solve_action_keywords",
+                       False, 0))
+
+    # 60. STEP_1F single-emit (K_H14_ITEM_2, v119.H14) --
+    #     Duplicate diagnostic_messages relay surfaced by
+    #     run_39_openai batch analysis: 60.6% of runs showed adjacent
+    #     duplicate [STEP_1F] preprocessing_metrics lines.  Two relay
+    #     sites both wrote to stderr; the client-side duplicate
+    #     (programs/ai_agent.py:8087-8103) was removed; the dispatcher
+    #     (programs/ai_analysis.py) is the single uniform site.
+    try:
+        from tests.tst_step1f_single_emit import (
+            run_all_tests as run_h14_item2_tests)
+        success, elapsed = run_test_module(
+            "tst_step1f_single_emit",
+            run_h14_item2_tests, args.verbose)
+        results.append(("STEP_1F Single-Emit (H14)",
+                       "tst_step1f_single_emit",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_step1f_single_emit: {e}")
+        results.append(("STEP_1F Single-Emit (H14)",
+                       "tst_step1f_single_emit",
+                       False, 0))
+
+    # 61. Space-group validation extensions (K_H14_ITEM_3, v119.H14) --
+    #     Extends _SYMMETRY_SENTINELS with the "Not explicitly
+    #     mentioned" family (including truncated LLM-output forms
+    #     like "Not explicitly mentio").  Adds a positive
+    #     Hermann-Mauguin shape check (_looks_like_space_group) that
+    #     catches prose phrases ("Solve the structure") that the
+    #     pre-H14 negative checks let through.
+    try:
+        from tests.tst_space_group_validation import (
+            run_all_tests as run_h14_item3_tests)
+        success, elapsed = run_test_module(
+            "tst_space_group_validation",
+            run_h14_item3_tests, args.verbose)
+        results.append(("Space-Group Validation (H14)",
+                       "tst_space_group_validation",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_space_group_validation: {e}")
+        results.append(("Space-Group Validation (H14)",
+                       "tst_space_group_validation",
+                       False, 0))
+
+    # --- Simple-Extractor Validation Closure Tests (v119.H14.1) ---
+    # v119.H14.1: extract_directives_simple now ends with
+    # validate_directives, closing the ollama-fallback bypass that
+    # Tom's 2026-05-26 xtriage run surfaced (space_group="Not
+    # explicitly mentio" reached the directives despite H14 Item 3
+    # being installed).  Also fixes a latent VALID_STOP_CONDITIONS
+    # gap (start_with_program was set by _resolve_after_program and
+    # consumed downstream but wasn't in VALID_STOP_CONDITIONS).
+    try:
+        from tests.tst_simple_extractor_validation import (
+            run_all_tests as run_h14_1_tests)
+        success, elapsed = run_test_module(
+            "tst_simple_extractor_validation",
+            run_h14_1_tests, args.verbose)
+        results.append(("Simple Extractor Validation (H14.1)",
+                       "tst_simple_extractor_validation",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_simple_extractor_validation: {e}")
+        results.append(("Simple Extractor Validation (H14.1)",
+                       "tst_simple_extractor_validation",
+                       False, 0))
+
+    # --- predict_and_build no-NCS-input config fix (v119.H14.2) ---
+    # v119.H14.2: programs.yaml fix — predict_and_build does not
+    # accept an NCS-file PHIL parameter.  Pre-H14.2 the yaml
+    # declared `flag: "map_model.ncs_file="` for predict_and_build,
+    # which the agent dutifully emitted, and the command failed with
+    # "Some PHIL parameters are not recognized."  H14.2 removes the
+    # entry (Tom's 2026-05-26 1029B-sad ollama-no-PDB run surfaced).
+    try:
+        from tests.tst_predict_and_build_no_ncs import (
+            run_all_tests as run_h14_2_tests)
+        success, elapsed = run_test_module(
+            "tst_predict_and_build_no_ncs",
+            run_h14_2_tests, args.verbose)
+        results.append(("predict_and_build no-NCS (H14.2)",
+                       "tst_predict_and_build_no_ncs",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_predict_and_build_no_ncs: {e}")
+        results.append(("predict_and_build no-NCS (H14.2)",
+                       "tst_predict_and_build_no_ncs",
+                       False, 0))
+
     # --- Summary ---
     total_elapsed = time.time() - total_start
 

@@ -73,7 +73,7 @@ phenix.ai_agent input_directory=/path/to/tutorial/
 The v119 cluster is the active cycle; see [CHANGELOG.md
 v119](CHANGELOG.md) for the per-ship breakdown.
 
-**Scope** — Eighteen ships stacked over v118 in two phases.
+**Scope** — Twenty-one ships stacked over v118 in three phases.
 First, an operational-hardening + Phase 2A/B sub-cluster
 (`v118 → H1 → H2 → H2.1 → H3 → H3b → H4 → H4.1 → H5 → H5.1 → H5.1.1
 → H6 → H6.1 → H7`): centralized LLM model defaults (H1), a
@@ -91,15 +91,35 @@ scope mismatch (H9), and a paired structural + data fix for
 `exclude_patterns` (H10 closes a gap where 7 of 9 selection paths
 didn't honor the filter; H11 corrects three YAML patterns that
 had been authored with substring semantics in mind despite the
-function using word-boundary matching).
+function using word-boundary matching).  Third, three follow-up
+ships (`H11 → H12 → H13 → H14`): H12 refactors H10's closure into
+a module-level helper and adds a categorizer semantic-pin suite
+generalizing the H11 lesson to all of `agent/file_utils.py`; H13
+fixes two Ollama-provider bugs surfaced by Tom's `run_39a_ollama`
+failure (URL `/v1` suffix not normalized on env-var override,
+`OLLAMA_LLM_MODEL` env-var ignored by two consumer sites) and
+completes the v118 §3.5 retired-model classification work with
+a three-way 404 sub-categorization (RETIRED vs UNAVAILABLE vs
+FAILED); H14 fixes three independent regressions surfaced by
+`run_39_openai` batch analysis — a phaser false-positive from
+goal phrases in `_ACTION_TABLE["solve"]` (the 1029B-sad case),
+a duplicate `diagnostic_messages` relay causing `[STEP_1F]`
+markers to be emitted twice (60.6% of runs), and a
+`space_group` validation gap that let prose phrases through.
 
-Total v119 cluster tests: **181 K-tests + 30 live LLM tests +
+Total v119 cluster tests: **189 K-tests + 30 live LLM tests +
 14 production-bug K-tests** (4 Bug 8, 4 Bug 9, 5 Bug 10, 1 Bug
-11).  All ships verified through act → review → Gemini-critique →
-ship cadence.
+11) **+ 8 categorizer semantic-pin K-tests** (H12) **+ 13
+provider-error classification K-tests** (H13) **+ 62 H14+H14.1+H14.2
+K-tests** (13 solve-keywords, 8 STEP_1F single-emit, 24 space_group
+validation including 230/230 official Hermann-Mauguin symbols and
+all alternative cell/origin settings, 12 simple-extractor validation
+closure, 5 predict_and_build no-NCS config fix).  All ships verified
+through act → review → Gemini-critique → ship → production-verify
+cadence.
 
-**v119 lessons surfaced** — Two patterns from the H8–H11 sub-
-cluster that generalize:
+**v119 lessons surfaced** — Seven patterns from the cluster
+that generalize:
 
 1. **Sandbox stubs for non-obvious-semantics functions need
    semantic-pin tests.**  H10's sandbox stub for
@@ -109,8 +129,12 @@ cluster that generalize:
    because the YAML patterns assumed substring semantics.  H11
    added `test_bug11_matches_exclude_pattern_semantics` — 10
    named cases against the real function — as the template for
-   catching such divergences.  Documented in `DEVELOPER_GUIDE.md`
-   §10.3 ("Test adequacy").
+   catching such divergences.  H12 then generalized the pattern
+   to all of `agent/file_utils.py` via `tst_file_categorizer.py`
+   (8 tests, ~75 assertions covering `classify_mtz_type`,
+   `is_model_file`, `get_category_for_extension`, and the other
+   public functions).  Documented in `DEVELOPER_GUIDE.md` §10.3
+   ("Test adequacy").
 
 2. **Configuration grammar must be authored to function
    semantics.**  The `exclude_patterns` YAML grammar requires
@@ -120,6 +144,97 @@ cluster that generalize:
    `half2`).  H11 embeds a `DESIGN NOTE` block at the top of
    `programs.yaml` documenting these rules so future YAML authors
    don't repeat the substring-style authoring mistake.
+
+3. **Centralization happens in stages — data first, rules
+   second.**  H1 centralized the LLM `DEFAULT_MODELS` table but
+   not the env-var precedence rule over it.  Two consumer sites
+   that read the table directly didn't honor `OLLAMA_LLM_MODEL`,
+   while a third site DID — silently inconsistent.  Tom's
+   `run_39a_ollama` exposed this when his `OLLAMA_LLM_MODEL=qwen2.5:72b`
+   was ignored.  H13 added `resolve_model_for_provider()` to
+   centralize the precedence rule, then routed all three consumer
+   sites through it.  Forward policy: when centralizing a data
+   table, also centralize the access patterns or expect the
+   patterns to diverge across consumers over time.
+
+4. **Error categories should map to operator actions, not just
+   error types.**  Pre-H13, all 404s from LLM providers were
+   classified as RETIRED, hint "update DEFAULT_MODELS".  Tom's
+   actual failure was MODEL_UNAVAILABLE (model not pulled on
+   local Ollama) — the right hint is "run `ollama pull X`".
+   H13's `_classify_provider_error` splits 404 into three
+   operationally-distinct sub-classes (RETIRED, UNAVAILABLE,
+   FAILED) plus AUTH_FAILED for 401-class errors, with each
+   tag carrying an actionable hint.  Co-occurrence rule
+   ("model" word must appear within 80 chars of retirement
+   phrase) defends against false-positives from edge-proxy 404
+   pages mentioning "endpoint deprecated".
+
+5. **Goal phrases and method requests live in different
+   layers.**  H14 surfaced a conflation in
+   `_ACTION_TABLE["solve"]`: keyword lists conflated GOAL
+   phrasings (`"solve the structure"`) with METHOD requests
+   (`"phaser"`, `"molecular replacement"`).  The goal phrase
+   matching forced phaser into workflows on SAD datasets where
+   autosol is the right method — a regression invisible until
+   batch analysis showed 24 phaser-composition failures across
+   5 datasets in run_39.  Forward policy: each
+   `_ACTION_TABLE` keyword must represent an UNAMBIGUOUS method
+   request; goal phrasings belong in `classify_intent` or in
+   workflow rules that key on data type, not in method-action
+   keyword lists.  The H14 investigation method itself was
+   replicable: a controlled three-way log comparison
+   (same README ± one line) isolated the trigger to a
+   single-line README diff, converting a statistical signal
+   from `scan_batch_runs.py` into a mechanistic root cause.
+
+6. **Positive shape checks must validate against the FULL
+   domain, not a hand-picked sample.**  H14's `_HM_FORM_RE`
+   regex went through two review passes before reaching its
+   final form.  The first draft was tested against ~15
+   well-known protein space groups and all passed — but
+   running it against the full 230 International Tables
+   symbols showed only 71 matched (31%).  The missing 159
+   included all monoclinic slash forms, all orthorhombic
+   mirror/glide groups, and all cubic high-symmetry groups.
+   Hand-picked test sets give false confidence; the authoritative
+   list is the right benchmark.  Gemini's subsequent external
+   review then caught that even the 230/230-matching regex
+   rejected alternative cell/origin settings (`R3:H`, `P4/n:2`,
+   `P21/c:b`) that appear in real PDB/mmCIF metadata.  Forward
+   policy: when authoring a positive shape check for a
+   well-defined domain (Hermann-Mauguin symbols, ISO dates,
+   semver numbers), enumerate the full canonical set as a
+   K-test regression guard, and explicitly consider what
+   alternative forms exist beyond the canonical.  The
+   `test_hm_form_accepts_all_230_space_groups` test pins
+   this with the explicit 230-symbol list inline.
+
+7. **Validators must converge from every producer path.**
+   H14.1 surfaced a gap H14 missed: `directive_extractor.py`
+   had TWO producers of the directives dict — the LLM-success
+   path (validated) and the `extract_directives_simple`
+   fallback path (NOT validated).  Tom's 2026-05-26 ollama
+   production run exposed the gap when the bogus value
+   `space_group=Not explicitly mentio` survived to the agent
+   even with H14 installed.  The fix: rather than duplicate
+   the validator inline at each producer, make the validator
+   the canonical final-sanity step that ALL producers
+   converge through — extract → validate, always.  Forward
+   policy: when adding a validator for a class of bugs, grep
+   for ALL producers of the value being validated; ensure
+   each one calls the same validator before returning.
+   Concurrent latent-bug audit: check that the validator's
+   allow-list contains EVERY key the producers legitimately
+   set (H14.1 caught a missing `start_with_program` entry in
+   `VALID_STOP_CONDITIONS` this way — pre-existing latent bug
+   that the converged-validator pattern would have surfaced
+   as a regression in Item 1's behavior).  The lesson
+   beneath the technical fix: sandbox K-tests that hit the
+   validator directly aren't enough — K-tests must reproduce
+   the production entry point with the same provider/failure
+   modes (empty LLM response, malformed JSON, `use_rules_only=True`)
+   to catch bypass paths.
 
 The v118 cycle is complete; see [CHANGELOG.md
 v118](CHANGELOG.md) for the full per-section breakdown.

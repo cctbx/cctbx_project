@@ -3214,6 +3214,698 @@ exist.  Future similar work — for instance, applying a new
 `include_patterns` or per-slot file-type rules — should follow
 the same four-step discipline.
 
+### 35. Helper Consolidation Pattern (v119.H12)
+
+**Context**: H10 introduced a closure inside `_find_file_for_slot`
+that captured `input_def["exclude_patterns"]` and applied a
+filter at 7 call sites within that function.  A parallel
+`_select_files` call site (line 698) used `matches_exclude_pattern`
+directly because the closure wasn't in scope.  Total: 9
+v119.H10 markers, 8 application sites, 1 closure + 1 direct
+call.
+
+The result was logically correct but structurally noisy: same
+intent at 8 sites with slightly different invocation forms.  H12
+consolidates these into a single module-level helper.
+
+#### 35.1 When closure → helper is the right consolidation
+
+Three properties of the call-site population made closure → helper
+the clean refactor:
+
+- **Single derived input** (the exclude_patterns list) is the
+  same at every site within `_find_file_for_slot`.
+- **One parallel site outside** the closure's scope
+  (`_select_files`) duplicated the logic with a different
+  invocation form.
+- **No per-site state** beyond the shared input — the helper
+  is a pure function of `(file_path, exclude_patterns)`.
+
+When ALL three hold, hoisting to a module-level helper:
+
+1. Eliminates the scope asymmetry (every call site uses the
+   same function call).
+2. Lets the input be extracted ONCE at the top of the larger
+   function (preserves the closure's micro-perf property).
+3. Makes the helper unit-testable as a single function.
+
+If any of the three didn't hold — e.g., if `_select_files`
+needed a different filter shape, or if the helper depended on
+mutable per-site state — closure → helper would force awkward
+parameter threading and the closure would be the better
+factoring.
+
+**Pattern**: structural refactors of working code should hold
+the test suite invariant.  H12's regression gate was Bug 10
++ Bug 11 tests (6 tests directly exercising the exclude_patterns
+mechanism) all passing unchanged.  If those had failed,
+behavior had drifted; if they passed, the refactor was safe.
+
+#### 35.2 Helper signature: accept the raw input, not the wrapper dict
+
+Gemini's H12 plan review observation: helpers that decouple
+from the caller's schema are more reusable.  H12's
+`_file_passes_exclude_patterns(file_path, exclude_patterns)`
+takes the raw list, not the `input_def` dict that contains it.
+This lets `_select_files`'s call site — which works with the
+raw list extracted locally — pass it directly without first
+re-wrapping into a dict.
+
+**Pattern**: when a helper consumes one field from a larger
+schema object, prefer the field type over the schema type as
+the parameter.  Schema-typed parameters couple the helper to
+the schema's evolution; field-typed parameters are stable.
+
+#### 35.3 Marker convention: preserve history through refactor
+
+H12's refactor sites are marked `# v119.H10/H12` rather than
+just `# v119.H12`.  This preserves the audit trail: the
+behavior comes from H10's bug fix; the structural form belongs
+to H12.  A future reader doing `git blame` or searching for
+v119.H10 markers still finds these sites; a future reader
+searching for v119.H12 finds them too.
+
+**Pattern**: when refactoring marked code, preserve the
+original marker as a suffix or prefix, don't replace it.  Code
+markers are commit-shadow metadata that compounds, not the
+single most-recent marker.
+
+#### 35.4 Semantic-pin tests for stub-vulnerable functions
+
+The categorizer suite (`tst_file_categorizer.py`, 8 tests, 75
+documented assertions) pins every public function in
+`agent/file_utils.py` — `classify_mtz_type`, `get_mtz_stage`,
+`get_category_for_extension`, `is_mtz_file`, `is_model_file`,
+`is_map_file`, `is_sequence_file`.  Generalizes
+`test_bug11_matches_exclude_pattern_semantics` from one
+function to all of `file_utils.py`.
+
+Why these functions specifically:
+
+- Pre-H11, the sandbox stubbed `matches_exclude_pattern` with
+  substring matching, while the real function uses word-boundary
+  matching.  The stub-real semantic drift masked a production
+  bug for one ship cycle.
+- The other functions in `file_utils.py` have similar
+  characteristics — small, non-trivial logic that's easy to
+  stub badly and hard to verify just by reading.
+
+**Pattern**: when a function has non-obvious semantics
+(regex matching, parsing, classification with rule ordering,
+documented quirks), it should have a semantic-pin test
+that exercises the REAL function against a documented
+fixture.  The test's value is not just regression detection;
+it's documentation of "what the function actually does"
+that's machine-verifiable.
+
+Notable cases the categorizer suite pins:
+
+- `classify_mtz_type` rule ordering — `refine_001.mtz` matches
+  both Rule 1 and Rule 2; the test pins that Rule 1 fires first.
+- `is_model_file`'s load-bearing quirk: `.pdb` extension
+  overrides the `'ligand'`-in-name filter, so `ligand_fit.pdb`
+  IS a model file (intended for content-based guards
+  downstream).  A future contributor who "simplifies" the
+  function would break this if no test pinned the contract.
+- Multi-dot extensions, no-extension files (Gemini-suggested
+  defensive cases).
+
+**Pattern**: "non-obvious quirks" are the highest-value pinning
+targets.  A test that asserts the obvious behavior is less
+useful than one that asserts a documented exception.  When you
+find yourself writing "BTW, this case is the exception to the
+rule", that case should have a test.
+
+### 36. Ollama Provider Robustness Patterns (v119.H13)
+
+**Context**: Tom's `phenix.ai_agent provider=ollama ...` run on
+cci-gpu-01 failed with `[DIRECTIVE_EXTRACTION_FAILED]: 404 page
+not found`.  Diagnostic isolated two stacked bugs in the
+Ollama-provider call sites of `agent/directive_extractor.py`
+and `agent/api_client.py`, plus an opportunity to complete the
+v118 §3.5 retired-model classification work.
+
+#### 36.1 URL normalization as caller-side robustness
+
+The OpenAI Python SDK appends `/chat/completions` to the
+configured `base_url` to construct the actual request URL.
+Ollama's OpenAI-compat endpoint lives at
+`/v1/chat/completions`, so `base_url` must end in `/v1`.
+
+Pre-H13, the code's default was `"http://localhost:11434/v1"`
+but the env-var path
+(`os.environ.get("OLLAMA_BASE_URL", default)`) had a silent
+trap: if the user set `OLLAMA_BASE_URL=http://localhost:11434`
+(without `/v1` — a natural value matching `OLLAMA_HOST`), the
+env-var fully overrode the default, including the `/v1` suffix
+the default supplied.  Result: request went to
+`http://localhost:11434/chat/completions` → Ollama's literal
+HTML `404 page not found`.
+
+**Decision**: instead of forcing users to know the SDK's
+behavior, the caller normalizes the URL.  The
+`normalize_ollama_openai_base_url(base_url)` helper idempotently
+ensures `/v1` suffix:
+
+```python
+def normalize_ollama_openai_base_url(base_url):
+    if not base_url:
+        return base_url  # passthrough None and empty string
+    stripped = base_url.rstrip('/')
+    if stripped.endswith('/v1'):
+        return stripped
+    return stripped + '/v1'
+```
+
+Properties:
+
+- **Idempotent**: calling on an already-normalized URL returns
+  the same URL (modulo trailing-slash stripping).
+- **Empty-string and None passthrough**: caller's default-handling
+  decides what to do.  Without this property, an empty
+  `OLLAMA_BASE_URL` would produce `'/v1'` — a useless URL
+  fragment that would fail downstream in a confusing way.
+- **Single source of truth**: the same helper applies at both
+  Ollama call sites, eliminating the silent-trap.
+
+**Crucial NON-application**: `core/llm.py:get_llm_and_embeddings`
+uses `ChatOllama` (langchain-ollama's native API), which hits
+Ollama's native `/api/chat` endpoint and does NOT want `/v1`.
+Applying the helper there would BREAK the native path.  An
+explicit comment at that call site documents the asymmetry
+and warns future refactors.
+
+**Pattern**: when an environment variable becomes part of a
+larger constructed value, the env-var alone is not enough
+context to validate correctness.  The construction logic
+should be a single helper that both the default and the
+env-var path flow through.  This eliminates the silent-trap
+where the default works but the env-var (which the user
+believes is equivalent) doesn't.
+
+#### 36.2 Centralizing env-var precedence rules
+
+`core/llm.py:get_llm_and_embeddings` correctly honored
+`OLLAMA_LLM_MODEL` ("env-var wins, central default falls back")
+since v118.  But two other Ollama call sites
+(`directive_extractor.py:1219` and `api_client.py:734`) called
+`default_model_for_provider("ollama")` unconditionally —
+ignoring the env-var.
+
+H1 centralized the model-defaults TABLE.  H13 completes the
+job by centralizing the PRECEDENCE RULE:
+
+```python
+_PROVIDER_MODEL_ENV_OVERRIDES = {
+    "ollama": "OLLAMA_LLM_MODEL",
+    # future providers add their env-var name here
+}
+
+def resolve_model_for_provider(provider, role="decision"):
+    env_var = _PROVIDER_MODEL_ENV_OVERRIDES.get(
+        (provider or "").lower().strip())
+    if env_var:
+        env_value = os.getenv(env_var)
+        if env_value:
+            return env_value
+    return default_model_for_provider(provider, role=role)
+```
+
+Empty env-var (`OLLAMA_LLM_MODEL=""`) is treated as unset and
+falls through to the central default — protecting operators
+from the foot-gun where setting the env-var to `""` would
+break their setup with no explanation.
+
+**Pattern**: centralization happens in stages.  Stage 1: extract
+the data table (H1 did this for `DEFAULT_MODELS`).  Stage 2:
+extract the access patterns / rules over the table (H13 does
+this for env-var precedence).  After Stage 2, every consumer
+of the table is also a consumer of the rule.  If Stage 1
+shipped but Stage 2 didn't, the table acquires inconsistent
+access patterns over time as new consumers are added — exactly
+the failure H13 found.
+
+The pre-existing inline pattern in `get_llm_and_embeddings`
+is left as-is rather than refactored to use the new helper.
+Two reasons: (a) it uses `role="rag"` while the helper
+defaults to `role="decision"`; (b) it has a sibling
+`OLLAMA_EMBED_MODEL` env-var the helper doesn't know about.
+Refactoring would require either threading the role arg AND
+generalizing the env-var-name lookup, with no behavior change.
+A comment at the call site documents the parity (same rule,
+different inline implementation).
+
+#### 36.3 Three-way 404 sub-classification
+
+Pre-H13 the existing `_looks_like_retired_model_error` (from
+v119.H1) lumped "model not found" together with retirement
+phrases.  That worked for the original §3.5 use case (cloud
+provider drops a model from its catalog) but misclassifies the
+"local Ollama doesn't have this model pulled" case as
+retirement.  The operator hint would say "update DEFAULT_MODELS"
+— the wrong action.  The right action for the local case is
+`ollama pull X`.
+
+H13's `_classify_provider_error(exc, model_name)` returns one of
+four marker tags:
+
+| Tag | Trigger | Action |
+|---|---|---|
+| `MODEL_RETIRED` | 404 + retirement phrase near "model" word | Update DEFAULT_MODELS |
+| `MODEL_UNAVAILABLE` | 404 + `model '...' not found` regex | Pull / rename |
+| `AUTH_FAILED` | 401 / "unauthorized" / "invalid api key" | Check API key |
+| `FAILED` | Anything else | Investigate |
+
+The classification distinctions are operationally meaningful —
+each tag maps to a different operator action.  The hint text
+in each tag includes the specific action: "Update
+`core/llm.DEFAULT_MODELS`", "Run `ollama pull X`", "Check the
+provider API key".
+
+**Pattern**: error categories should map to operator actions,
+not just error types.  An error type ("404 not found") could
+have multiple operator actions depending on context; the
+classification should disambiguate.  When a single error type
+maps to multiple actions, the classifier should split it.
+
+#### 36.4 Defense-in-depth via class attribute + content matching
+
+The classifier interrogates BOTH the exception's structured
+properties AND its stringification:
+
+```python
+status_code = (
+    getattr(exc, 'status_code', None)
+    or getattr(getattr(exc, 'response', None), 'status_code', None))
+
+err_body = ""
+if hasattr(exc, 'body') and isinstance(getattr(exc, 'body'), dict):
+    err_body = str(exc.body).lower()
+elif hasattr(exc, 'message'):
+    err_body = str(exc.message).lower()
+err_all = (str(exc) + " " + err_body).lower()
+```
+
+Defends against two SDK behaviors:
+
+- Some SDKs surface HTTP details on attributes only (`exc.status_code`,
+  `exc.response.status_code`) while `__str__` returns an opaque
+  class name or short code.  Pure string-matching would miss these.
+- Other SDKs put the body in `__str__` directly but not in
+  attributes.  Pure attribute interrogation would miss these.
+
+Combined, the classifier handles both shapes.
+
+**Pattern**: when consuming third-party exceptions whose internal
+shape varies, redundantly interrogate both structured and
+text-based forms.  The cost is small (a few lines) and the
+robustness payoff is large (works across SDK versions and
+provider variants).
+
+#### 36.5 Co-occurrence rule against semantic false-positives
+
+Naive matching ("404" + "deprecated") would false-positive on
+edge-proxy 404 pages mentioning "this endpoint is deprecated;
+see new path".  The endpoint is deprecated, not the model;
+classifying as `MODEL_RETIRED` would noise the operator alert
+channel.
+
+H13's classifier requires the retirement phrase to appear
+within 80 characters of the word "model":
+
+```python
+for phrase in _RETIREMENT_PHRASES:
+    for m in re.finditer(re.escape(phrase), err_all):
+        window = err_all[max(0, m.start() - 80) : m.end() + 80]
+        if 'model' in window:
+            return MODEL_RETIRED, ...
+```
+
+The 80-char window is wide enough to capture realistic
+retirement messages ("The model X has been deprecated") and
+narrow enough to reject co-mentions where the words happen to
+appear in the same exception but not in the same semantic
+context.
+
+A load-bearing K-test pin
+(`test_classify_edge_proxy_404_not_retired`) asserts the
+edge-proxy case classifies as `FAILED`, not `RETIRED`.  If a
+future refactor weakens the co-occurrence rule, this test
+fires loudly.
+
+**Pattern**: pattern-matching error classifiers benefit from
+co-occurrence rules over single-phrase rules.  A single phrase
+can appear in many contexts; a phrase-pair requirement adds
+context-sensitivity for minimal complexity cost.
+
+#### 36.6 H13 known limitations (carried as future work)
+
+- **Other-provider classifier migration**: H13's classifier is
+  used by the ollama exception handler in `_call_llm_fallback`
+  and by the primary-path `extract_directives` catch.  The
+  google/openai/anthropic per-provider catches in
+  `_call_llm_fallback` still use H1's older
+  `_looks_like_retired_model_error` helper, which doesn't
+  distinguish UNAVAILABLE.  Migrating these three providers
+  is a candidate H14 cleanup.
+- **AUTH_FAILED has no dedicated emit helper**: when the
+  classifier returns `AUTH_FAILED`, no marker is written to
+  stderr (only the generic log line).  The hint is available
+  but unused.  Pattern-consistency would add
+  `_emit_auth_failed_marker`; deferred since the immediate
+  bug was not auth-related.
+
+### 37. Three Latent Regressions Surfaced by Batch Analysis (v119.H14)
+
+**Context**: Tom's `run_39_openai` batch (520 runs, May 2026)
+showed regressions vs `run_25_openai` (720 runs, March 2026):
+phenix_sorry rate up from 16.9% to 28.1%, empty_summary rate up
+from 24.2% to 36.0%.  `scan_batch_runs.py` (a new ops-side
+triage tool that classifies run logs into Tier-1 crashes /
+Tier-2 diagnostic markers / Tier-3 state anomalies / Tier-4 soft
+anomalies) localized the regressions to three independent code
+paths.  H14 fixes all three.
+
+The investigation method itself is worth recording: a controlled
+three-way log comparison of the 1029B-sad dataset across
+`run_25-solve`, `run_39-solve`, and `run_39-stop` variants
+isolated the trigger of the phaser bug to a single-line README
+diff.  This kind of "same input minus one line" comparison is
+the right diagnostic technique when a batch shows category-level
+regressions — it converts a statistical signal into a
+mechanistic one.
+
+#### 37.1 Goal phrases vs method requests in `_ACTION_TABLE`
+
+The rules-only directive extractor's `_ACTION_TABLE` maps
+keyword matches in user advice to workflow actions.  Pre-H14
+the `solve` entry's keyword list was:
+
+```python
+"solve": {
+    "xray": "phenix.phaser",
+    "keywords": ["molecular replacement", "solve the structure",
+                 "solve structure", "phaser", "mr "],
+}
+```
+
+This conflated two distinct semantic categories:
+
+- **Method requests**: `"molecular replacement"`, `"phaser"`,
+  `"mr "` — user explicitly asks for MR.
+- **Goal phrases**: `"solve the structure"`, `"solve structure"`
+  — user expresses a GOAL.  The right METHOD depends on the
+  data type (MR for native + search model, autosol for SAD/MAD,
+  predict_and_build for native + predicted model).
+
+Including goal phrases in the action's keyword list meant the
+extractor inferred "user wants MR" from any README mentioning
+the goal.  When that goal phrase appeared alongside another
+action keyword (e.g., "Stop after refinement" matching the
+`refine` action), the multi-action branch in
+`_apply_workflow_intent_fallback` set `start_with_program =
+phenix.phaser` — forcing MR into the workflow.  On SAD/MAD
+datasets, autosol then ran first anyway (workflow rules), but
+the persistent directive meant phaser was retried later cycle
+after cycle.
+
+**Decision**: keyword lists in `_ACTION_TABLE` are restricted
+to explicit METHOD requests.  Goal phrases (the user's intent
+to solve, refine, validate, etc.) belong elsewhere — either in
+the `classify_intent` machinery (which separately determines
+the user's overall intent independently of method-specific
+actions) or in workflow rules that key on data type.
+
+**Property preserved**: when a method keyword IS explicitly
+present (`"run phaser to place the model"`,
+`"use molecular replacement"`), the `solve` action still
+triggers and `start_with_program = phenix.phaser` is still set.
+The cleanup removes only the false-positive on goal-only
+phrasings.
+
+This decision is small (5 chars removed from a keyword list)
+but it pins a SEMANTIC invariant: **method actions match
+method requests, not user goals.**  The H14 comment in the
+`_ACTION_TABLE` entry records the invariant so future
+keyword-list additions can be audited against it.
+
+#### 37.2 Single-emit invariant for diagnostic_messages relay
+
+Pre-v119.H5 markers like `[STEP_1F]` wrote directly to stderr
+from inside the preprocessor.  v119.H5 §2.9 introduced the
+`diagnostic_messages` channel: the preprocessor appends marker
+strings to a list, the dispatcher relays the list to stderr at
+the return path.  v119.H5.1 refactored further by moving the
+relay INTO the dispatcher (`programs/ai_analysis.py`'s
+`run_job_on_server_or_locally`) so all four return paths
+(server local, server remote, client local, client remote)
+share the same relay implementation.
+
+The H5 → H5.1 refactor left a duplicate.  The pre-refactor
+client-side relay in `programs/ai_agent.py` (lines 8087-8103
+in the H13.1 ship) survived into H14.  Both relays fired on
+every return, doubling every marker.
+
+**Decision**: invariant is **single emit per marker**.  The
+relay belongs in ONE place — the dispatcher — because that's
+the single chokepoint that handles all dispatch modes
+uniformly.  Client-side relay code is removed and a marker
+comment records the H14 deletion so future readers don't
+re-introduce it from old patterns.
+
+The relay function's docstring already said "this is the
+SINGLE, uniform site where operators see them."  H14 brings
+the implementation in line with that claim — pre-H14 there
+were two sites, and the docstring was wishful by ~one ship.
+
+#### 37.3 Positive shape check for `space_group` values
+
+The pre-H14 `validate_directives()` validator combined:
+
+1. **Sentinel set** (`_SYMMETRY_SENTINELS`): explicit
+   case-insensitive match against known placeholder phrases
+   (`"not specified"`, `"not provided"`, etc.).
+2. **Negative structural checks**: must start with a letter;
+   length <= 25 characters.
+
+These two checks together caught most cases but had a
+predictable gap class: **prose phrases that happened to start
+with a letter and fit in 25 chars** (e.g., `"Solve the
+structure"`).  Such phrases passed both checks and reached
+PHENIX as bogus PHIL params.
+
+**Decision**: add a POSITIVE shape check
+(`_looks_like_space_group`) in addition to the negative ones.
+The pattern accepts standard Hermann-Mauguin space-group
+symbols and rejects prose.
+
+**Why both negative and positive checks**: the sentinel set is
+the cheaper match for the common case (LLMs emit placeholders
+verbatim).  The positive shape check is the SOUNDER guarantee
+for the uncommon case (LLMs emit prose).  Together they are
+both fast (frozenset lookup + single regex) and tight (only
+real space-group symbols pass).
+
+**The final regex** (after two review passes):
+
+```python
+_HM_FORM_RE = re.compile(
+    r'^[PFICRHAB]'
+    r'[0-9mcndabehr\s/_\-:]{0,24}'
+    r'(?:\s*\(\s*no\.?\s*\d+\s*\))?$',
+    re.IGNORECASE
+)
+```
+
+The alphabet carries crystallographic meaning at every position:
+
+- `[PFICRHAB]` — the 8 Bravais lattice letters
+- `0-9` — symmetry-element orders, screw subscripts, digits
+- `m c n d a b` — mirror plane and four glide-plane types
+- `e` — 2002-ITA double-glide (required for Aem2, Aea2, Cmce,
+  Cmme, Ccce; without it 5 of 230 canonical symbols would be
+  rejected)
+- `h r` — axis-spec suffix letters for rhombohedral
+  hexagonal/rhombohedral settings (R3:H, R3:R)
+- `space / _ -` — separators (PERCEIVE-style spacing,
+  monoclinic slash, inversion-center dash, mmCIF underscore)
+- `:` — alternative cell/origin setting prefix (R3:H, P4/n:2,
+  P21/c:b)
+
+**Regex evolution — two review passes**:
+
+The first draft pattern was too strict:
+
+```python
+r'^[PFICRHAB]\s*-?\d{0,3}(?:\s*[-/_]?\s*\d{0,3}){0,4}'
+r'(?:\s*\(\s*no\.?\s*\d+\s*\))?$'
+```
+
+It matched only 71/230 canonical symbols.  Self-review against
+the full 230-symbol list (per Tom's "must admit all 240 space
+groups correctly" instruction) caught this — the strict
+digits-only inner pattern rejected all monoclinic slash forms
+(P21/c, P21/n), all orthorhombic mirror/glide groups (Pmma,
+Pnma, Pbca), all tetragonal mirror forms (P4mm, P4/mmm), and
+all cubic high-symmetry groups (Pm-3m, Im-3m, Fd-3m, Ia-3d).
+The fix was to switch from a digits-only inner pattern to a
+character-class with the symmetry-indicator letters added.
+
+Gemini then reviewed and identified that the self-review-fixed
+regex still rejected alternative cell/origin settings:
+
+- `R3:H` / `R3:R` — rhombohedral axis choice
+- `P4/n:1` / `P4/n:2` — origin choice (centrosymmetric groups)
+- `P21/c:b` — unique-axis cell choice (monoclinic)
+
+These forms appear in real PDB/mmCIF metadata and cctbx tool
+output.  The fix was to add `:` to the alphabet (Gemini's
+explicit recommendation) plus `h` and `r` (Gemini's example
+`R3:H` requires both — colon alone would not have been enough).
+
+**Acknowledged residual limitation** (Gemini Risk B): the
+permissive alphabet still admits short English words that
+happen to use only HM-alphabet characters: `Panda`, `Fame`,
+`Bad`, `Cab`, `Bed`, `Acme` all match.  These are not
+realistic LLM outputs for `space_group`, and the pre-H14
+negative checks already let them through.  Closing this gap
+fully would require enumerating the 230 canonical symbols
+(plus their alternative-setting variants) via
+`cctbx.sgtbx.space_group_info` — a substantive cctbx
+dependency beyond a directive sanity check's scope.  The
+limitation is pinned with `test_hm_form_known_limitation_short_words`
+so future contributors don't mistake "Panda accepts" for a
+bug; the positive guarantee that words with non-alphabet
+letters (Phaser, Pizza, Place) ARE rejected is pinned with
+`test_hm_form_rejects_words_with_non_alphabet_chars`.
+
+**Sentinel extension policy**: the additions to
+`_SYMMETRY_SENTINELS` (the `"not explicitly *"` family plus
+common truncated forms like `"not explicitly mentio"`)
+recognize a class of LLM output where length-limited models
+emit a partial sentinel phrase.  Truncated-form sentinels are
+worth carrying because they're cheap (frozenset entries) and
+they catch real production cases (Tom's qwen2.5:72b output).
+
+**PHENIX fallback property**: dropping a malformed `space_group`
+value is preferable to passing it through, since PHENIX can
+usually auto-detect crystal symmetry from data when the
+directive lacks an explicit value.  Pass-through of bogus
+values produces obscure downstream errors;
+`validate_directives` drops with a clear log line.
+
+#### 37.4 H14 known limitations
+
+- **Goal-phrase signal lost from extractor**: removing
+  `"solve the structure"` from the `solve` action means the
+  rules-only path no longer learns user GOAL from that
+  phrasing.  That signal is still available to the
+  `classify_intent` path (LLM-driven, used in non-rules-only
+  modes).  For rules-only operation, the workflow engine's
+  data-type rules suffice to pick the right method without
+  the directive layer needing to encode the goal.
+- **`asu_copies` → `phaser.search_copies` injection
+  unmodified**: the `graph_nodes.py` injection that fires
+  whenever phaser runs (using xtriage's Matthews `Best guess`)
+  is correct domain behavior — `search_copies` should match
+  the ASU copy count.  The 1029B-sad failure was upstream
+  (Item 1 above): phaser ran when it shouldn't have, on a
+  search model that was already the full ASU.  When phaser
+  legitimately runs with a single-chain search model, the
+  injection is right.  Defensive instrumentation for the
+  multi-chain-search-model case (a `[BUILD]` warning if the
+  model file appears multi-chain when `search_copies` > 1) is
+  a candidate H15 item, NOT urgent.
+
+#### 37.5 Dual-path validation closure (v119.H14.1)
+
+H14 added the sentinel + Hermann-Mauguin shape check on
+`space_group` inside `validate_directives`.  Tom's
+2026-05-26 production verification of H14 with ollama showed
+the fix did NOT close the bug in production — `space_group=Not
+explicitly mentio` still reached the displayed directives even
+though `scanner_version=119.H14` confirmed the H14 code was
+installed.
+
+**Root cause**: `directive_extractor.py` has TWO paths that
+produce a directives dict:
+
+```
+                    extract_directives(advice, provider)
+                                 │
+                ┌────────────────┼────────────────┐
+                ↓                ↓                ↓
+       LLM returns valid    LLM returns      use_rules_only=True
+       parseable JSON       empty/invalid    (bypass LLM)
+                │                │                │
+                │                ↓                ↓
+                │      extract_directives_simple (regex path)
+                │                │                │
+                │                │                │
+                └───→ validate_directives ←───────┘
+                                 │              [pre-H14.1: simple
+                                 ↓               path returned
+                              return              WITHOUT validation]
+```
+
+Pre-H14.1, the `extract_directives_simple` path returned its
+result directly to the agent.  This worked for the LLM-success
+case (where the agent's `extract_directives` wrapped the call
+with `validate_directives`), but when the LLM failed and the
+fallback was returned, OR when `use_rules_only=True` was set,
+validation was skipped.
+
+The simple extractor has its OWN space_group regex (at line
+~4350 in directive_extractor.py):
+
+```python
+r'space[_ ]group(?:\s*[=:]\s*|\s+(?:is|of|=|:)?\s*)([A-Za-z][A-Za-z0-9 /_-]{1,20})'
+```
+
+This pattern is **permissive by design** — it accepts up to
+20 chars of `[A-Za-z0-9 /_-]` after a leading letter, so
+"Not explicitly mentioned" → captures "Not explicitly mentio"
+(21 chars).  Pre-H14.1, the bogus value passed straight
+through to the agent.
+
+**Architectural decision in H14.1**: rather than duplicate
+the H14 sentinel/shape check inline at the simple extractor's
+regex site, make `validate_directives` the canonical
+final-sanity step that BOTH paths converge through.  The
+simple extractor now ends with:
+
+```python
+directives = validate_directives(directives, log)
+return directives
+```
+
+This means future validator extensions automatically apply to
+both paths — no risk of one path drifting from the other.
+The pattern is "extract-then-validate" instead of
+"validate-inside-each-extractor".
+
+**Prerequisite fix**: `start_with_program` had to be added to
+`VALID_STOP_CONDITIONS`.  This was a pre-existing latent bug
+— the key was set by `_resolve_after_program` and consumed by
+`workflow_engine.py`, `ai_agent.py`, and `ai_analysis.py`,
+but missing from the validator's allow-list.  Pre-H14.1 the
+gap was invisible because the LLM path's call order was
+`extract → validate → fallback-overlay`, so the resolver
+added `start_with_program` AFTER validate ran.  In the simple
+extractor, the resolver runs INSIDE the extractor (before
+return), so the post-H14.1 final-validate would have stripped
+the key without this fix — silently breaking H14 Item 1's
+fix for the rules-only path.
+
+**Lesson generalized**: when a value's validator and its
+extraction sites are decoupled, the canonical pattern is
+"all extractors converge through a single validator at the
+extract-function boundary" — never "validator runs in one
+extractor but not others."  Adding a new extractor adds a
+single line (call the validator before return); adding a new
+validator rule changes one site (the validator function);
+neither requires touching the other.
+
 ## Workflow States
 
 ### X-ray Crystallography Workflow

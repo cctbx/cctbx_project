@@ -1564,6 +1564,22 @@ VALID_STOP_CONDITIONS = {
     # extractor detected an explicit user-stop intent.  Plan-injected
     # after_program (per-stage hint) does NOT set this flag.
     "stop_after_requested": bool,
+    # v119.H14.1: start_with_program — set by _resolve_after_program
+    # (called from _apply_workflow_intent_fallback) when the user's
+    # advice contains multiple actions plus a stop intent.  Downstream
+    # consumers in workflow_engine.py (line ~2288), ai_agent.py
+    # (~2816, ~3004), and ai_analysis.py (~160) read this key.
+    # Pre-H14.1 it was a latent bug: present everywhere in the codebase
+    # but not in VALID_STOP_CONDITIONS, so validate_directives would
+    # log "Unknown stop condition start_with_program" and drop it
+    # whenever validate_directives was called on a dict that already
+    # had it set.  This didn't break the LLM path (the resolver runs
+    # AFTER validate, so the key is added post-validation), but it
+    # broke when H14.1 added validate_directives at the end of
+    # extract_directives_simple — Tom's run_39 rules-only-stop case
+    # for 1029B-sad would have its start_with_program=phenix.phaser
+    # silently dropped by validate.
+    "start_with_program": str,
 }
 
 
@@ -1649,6 +1665,19 @@ _SYMMETRY_SENTINELS = frozenset([
     "to be determined", "see above", "auto", "automatic", "default",
     "identification",  # historical: seen in some preprocessor outputs
     "false", "true",   # the preprocessor sometimes outputs literal booleans
+    # v119.H14: extended sentinel set for "Not explicitly ..." patterns.
+    # The run_39_openai batch (and Tom's xtriage tutorial verification
+    # for H13.1) showed qwen2.5:72b and other LLMs emitting these as
+    # space_group values when the README didn't specify one.  Includes
+    # truncated forms (LLM output sometimes hits length caps mid-phrase,
+    # e.g., "Not explicitly mentio").
+    "not explicitly mentioned", "not explicitly mentio",
+    "not explicitly stated", "not explicitly state",
+    "not explicitly given", "not explicitly giv",
+    "not explicitly specified", "not explicitly specif",
+    "not explicitly defined", "not explicitly defin",
+    "not explicitly listed", "not explicitly list",
+    "not explicitly noted", "not explicitly not",
 ])
 
 
@@ -1664,6 +1693,72 @@ def _is_symmetry_sentinel(value):
     if not isinstance(value, str):
         return False
     return value.strip().lower() in _SYMMETRY_SENTINELS
+
+
+# v119.H14: Hermann-Mauguin space-group pattern.
+#
+# Accepts (case-insensitively): any short token starting with a lattice
+# letter [PFICRHAB] followed by characters from the Hermann-Mauguin
+# alphabet (digits, m, c, n, d, a, b, e, h, r, spaces, slashes, dashes,
+# underscores, colons), with optional trailing "(No. N)" annotation.
+#
+# All 230 official space groups (International Tables Vol A) match.
+#
+# Alternative cell/origin settings (via colon-prefixed suffix) also
+# match: R3:H vs R3:R (rhombohedral hexagonal-axes vs rhombohedral-axes
+# settings — note the 'h' and 'r' in the alphabet), P4/n:1 vs P4/n:2
+# (origin choices 1 and 2 for centrosymmetric groups), P21/c:b
+# (unique-axis cell choice for monoclinic).  Per Gemini H14 review:
+# these appear in PDB/mmCIF metadata and cctbx tool output; rejecting
+# them as malformed would drop legitimate user input.
+#
+# The 'e' letter is required for the 2002-ITA renamings of the
+# centered orthorhombic groups Aem2, Aea2, Cmce, Cmme, Ccce.
+# The 'h' and 'r' letters are required for rhombohedral axis
+# specifiers (R3:H, R3:R) — they don't appear in any of the 230
+# standard symbols themselves.
+#
+# Examples rejected: "Not explicitly mentioned", "Solve the
+# structure", "garbage value 42", "" — multi-word prose phrases
+# that the pre-H14 negative checks let through.
+#
+# Acknowledged limitation: the regex is permissive within the
+# space-group alphabet — short English words that happen to start
+# with a lattice letter and use only alphabet characters would
+# technically match: Panda, Fame, Bad, Cab, Can, Bed, Acme, etc.
+# These are not realistic LLM outputs for space_group (LLMs emit
+# either a valid HM symbol or an obviously-prose sentinel), and
+# the pre-H14 negative checks already let them through.  The H14
+# regex closes the LARGE class of prose leaks (multi-word, contains
+# characters outside the alphabet) without trying to be a full
+# space-group validator — that would require knowing the 230
+# official symbols, which is beyond the scope of a directive
+# sanity check.  See test_hm_form_known_limitation_short_words.
+_HM_FORM_RE = re.compile(
+    r'^[PFICRHAB]'
+    r'[0-9mcndabehr\s/_\-:]{0,24}'
+    r'(?:\s*\(\s*no\.?\s*\d+\s*\))?$',
+    re.IGNORECASE
+)
+
+
+def _looks_like_space_group(value):
+    """Return True if `value` resembles a Hermann-Mauguin space-group
+    symbol.  Used by validate_directives() to catch LLM-emitted prose
+    (e.g., "Solve the structure") that survives the sentinel check.
+
+    All 230 official Hermann-Mauguin space-group symbols return True.
+    Multi-word English phrases and tokens containing characters outside
+    the HM alphabet return False.
+
+    Pre-H14 the validator relied on negative checks (sentinel set +
+    starts-with-letter + length<=25), which let multi-word phrases
+    through if they started with a letter.  This positive shape check
+    closes that gap while preserving all real space groups.
+    """
+    if not isinstance(value, str):
+        return False
+    return bool(_HM_FORM_RE.match(value.strip()))
 
 
 # =============================================================================
@@ -2605,6 +2700,19 @@ def validate_directives(directives, log=None):
                 # Structural checks (must start with a letter, length) remain here
                 # because they are LLM-output specific (the regex path already
                 # guarantees the shape by construction).
+                #
+                # v119.H14: Added positive Hermann-Mauguin check (_HM_FORM_RE).
+                # The pre-H14 negative checks (sentinel + first-letter +
+                # length<=25) let multi-word phrases like "Solve the
+                # structure" or "From data file" through, since they start
+                # with a letter and are <=25 chars.  Such values then reached
+                # PHENIX as bogus PHIL params and produced obscure errors.
+                # The HM check positively confirms the value looks like a
+                # space-group symbol (lattice letter + digits/spaces) before
+                # accepting it.  Forms accepted: "P 1 21 1", "P21", "P212121",
+                # "P-1", "F222", "P 1 21 1 (No. 4)".  Truly exotic forms
+                # (e.g., "R 3 :H" with axis hint) will be dropped — those
+                # are rare; PHENIX can usually detect from data.
                 if "space_group" in valid_settings:
                     raw_sg = str(valid_settings["space_group"]).strip()
                     _sg_invalid = (
@@ -2614,6 +2722,8 @@ def validate_directives(directives, log=None):
                         or not raw_sg[0].isalpha()
                         # Must be short enough to be a real symbol
                         or len(raw_sg) > 25
+                        # v119.H14: must match Hermann-Mauguin shape
+                        or not _looks_like_space_group(raw_sg)
                     )
                     if _sg_invalid:
                         _log("DIRECTIVES: Dropping invalid space_group value: %r" % raw_sg)
@@ -3575,8 +3685,19 @@ _ACTION_TABLE = {
         "xray": "phenix.phaser",
         "cryoem": None,
         "keywords": [
-            "molecular replacement", "solve the structure",
-            "solve structure", "phaser", "mr ",
+            # v119.H14: removed "solve the structure" and
+            # "solve structure" — these are goal phrases, not method
+            # requests.  When a README says "Solve the structure..."
+            # combined with another action (e.g., "...and stop after
+            # refinement"), the multi-action branch was setting
+            # start_with_program=phenix.phaser, which forced phaser
+            # into the workflow even on SAD/MAD datasets where the
+            # correct method is autosol.  The remaining keywords
+            # still match explicit method requests ("molecular
+            # replacement", "phaser", "mr "), which is the intended
+            # semantic of the `solve` action.  See run_39_openai
+            # batch analysis (1029B-sad and similar datasets).
+            "molecular replacement", "phaser", "mr ",
         ],
     },
     "phase": {
@@ -4100,7 +4221,7 @@ def _apply_workflow_intent_fallback(directives, advice_lower):
     _resolve_after_program(directives, advice_lower)
 
 
-def extract_directives_simple(user_advice):
+def extract_directives_simple(user_advice, log=None):
     """
     Extract directives using simple pattern matching (no LLM).
 
@@ -4109,9 +4230,17 @@ def extract_directives_simple(user_advice):
 
     Args:
         user_advice: User advice string
+        log: optional log function (e.g., ``print`` or a custom
+            logger).  Forwarded to ``validate_directives`` at the
+            end so sanity-check drops are visible to operators.
+            v119.H14.1: defaults to None (silent) for backward
+            compatibility with the four external callers in
+            ai_agent.py and run_ai_analysis.py that didn't pass
+            a logger pre-H14.1.
 
     Returns:
-        dict: Extracted directives (limited)
+        dict: Extracted directives (limited), passed through
+        ``validate_directives`` for sanity-check normalization.
     """
     if not user_advice:
         return {}
@@ -4653,6 +4782,35 @@ def extract_directives_simple(user_advice):
     _intent_dict = directives.get("intent")
     if isinstance(_intent_dict, dict):
         directives["intent"] = _intent_dict.get("intent")
+
+    # v119.H14.1: apply validate_directives as a final sanity pass.
+    #
+    # Pre-H14.1, extract_directives_simple returned its result without
+    # going through validate_directives.  The H14 Item 3 fix
+    # (sentinel + Hermann-Mauguin shape check on space_group) lived in
+    # validate_directives, so it was BYPASSED in the ollama-fallback
+    # path: when the ollama LLM failed to return parseable JSON,
+    # extract_directives fell back to extract_directives_simple, whose
+    # OWN space-group regex at line ~4350 captured the literal
+    # "Not explicitly mentio" (truncated by the regex's {1,20}
+    # quantifier from "Not explicitly mentioned" in the preprocessed
+    # advice), then returned that dict directly to the agent.  Tom's
+    # ollama xtriage tutorial run on 2026-05-26 (gate C) confirmed
+    # the bug — the bogus space_group value reached the displayed
+    # directives even with H14 installed.
+    #
+    # The fix is to ensure validate_directives runs on ALL paths,
+    # not just the LLM-extracted-JSON path.  This makes
+    # validate_directives the canonical "final-sanity" step for every
+    # consumer of extract_directives* — future validator extensions
+    # automatically apply to both paths.
+    #
+    # Prerequisite: VALID_STOP_CONDITIONS must include
+    # start_with_program (added in H14.1 above) — extract_directives_simple
+    # legitimately sets that key via _resolve_after_program when the
+    # advice has multiple actions + stop intent, and pre-H14.1
+    # validate_directives would have stripped it.
+    directives = validate_directives(directives, log)
 
     return directives
 
