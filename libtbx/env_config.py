@@ -277,6 +277,80 @@ def write_do_not_edit(f, win_bat=False):
   print(s+' THIS IS AN AUTOMATICALLY GENERATED FILE.', file=f)
   print(s+' DO NOT EDIT! CHANGES WILL BE LOST.', file=f)
 
+def conda_activation_dispatcher_lines(shell):
+  """Lines for a conda-package dispatcher that run the conda environment
+  activation scripts without requiring "conda activate".
+
+  The activation scripts in <prefix>/etc/conda/activate.d set environment
+  variables some packages need at runtime (e.g. GSETTINGS_SCHEMA_DIR,
+  XML_CATALOG_FILES). They reference CONDA_PREFIX, so it is set to the
+  environment prefix only while they run and then restored to its original
+  value, leaving only the variables the scripts export. Sourcing is skipped if
+  the environment is already active (CONDA_PREFIX already points at this
+  prefix). A different active environment is not deactivated first, so its
+  activation variables may linger.
+
+  Parameters
+  ----------
+  shell : str
+      The dispatcher type, either "sh" (Linux/macOS) or "bat" (Windows). For
+      "sh" LIBTBX_PREFIX is the environment prefix; for "bat" LIBTBX_PREFIX is
+      <prefix>\\Library, so the prefix is %LIBTBX_PREFIX%\\.. .
+
+  Returns
+  -------
+  list of str
+      The dispatcher lines that source the activation scripts.
+
+  Raises
+  ------
+  ValueError
+      If shell is neither "sh" nor "bat".
+  """
+  if (shell == "sh"):
+    return [
+      '# Run the conda environment activation scripts (etc/conda/activate.d) so',
+      '# packages that rely on activation-time environment variables work',
+      '# without "conda activate". CONDA_PREFIX is set only while the scripts',
+      '# are sourced, then restored, so only the variables they export persist.',
+      'if [ "${CONDA_PREFIX}" != "${LIBTBX_PREFIX}" ] && [ -d "${LIBTBX_PREFIX}/etc/conda/activate.d" ]; then',
+      '  libtbx_conda_prefix_was_set="${CONDA_PREFIX+set}"',
+      '  libtbx_conda_prefix_backup="${CONDA_PREFIX}"',
+      '  CONDA_PREFIX="${LIBTBX_PREFIX}"',
+      '  export CONDA_PREFIX',
+      '  for libtbx_activate_script in "${CONDA_PREFIX}"/etc/conda/activate.d/*.sh; do',
+      '    if [ -r "${libtbx_activate_script}" ]; then',
+      '      . "${libtbx_activate_script}"',
+      '    fi',
+      '  done',
+      '  if [ "${libtbx_conda_prefix_was_set}" = "set" ]; then',
+      '    CONDA_PREFIX="${libtbx_conda_prefix_backup}"',
+      '    export CONDA_PREFIX',
+      '  else',
+      '    unset CONDA_PREFIX',
+      '  fi',
+      '  unset libtbx_activate_script libtbx_conda_prefix_backup libtbx_conda_prefix_was_set',
+      'fi',
+    ]
+  elif (shell == "bat"):
+    return [
+      r'@rem Run the conda environment activation scripts (etc\conda\activate.d)',
+      r'@rem so packages that rely on activation-time environment variables work',
+      r'@rem without "conda activate". CONDA_PREFIX is set only while the scripts',
+      r'@rem are called, then restored, so only the variables they export persist.',
+      r'@set "LIBTBX_CONDA_PREFIX_BACKUP=%CONDA_PREFIX%"',
+      r'@for %%F in ("%LIBTBX_PREFIX%\..") do @set "LIBTBX_CONDA_PREFIX=%%~fF"',
+      r'@set LIBTBX_RUN_ACTIVATE=0',
+      r'@if /i not "%CONDA_PREFIX%"=="%LIBTBX_CONDA_PREFIX%" @if exist "%LIBTBX_CONDA_PREFIX%\etc\conda\activate.d\" @set LIBTBX_RUN_ACTIVATE=1',
+      r'@if "%LIBTBX_RUN_ACTIVATE%"=="1" @set "CONDA_PREFIX=%LIBTBX_CONDA_PREFIX%"',
+      r'@if "%LIBTBX_RUN_ACTIVATE%"=="1" @for %%S in ("%LIBTBX_CONDA_PREFIX%\etc\conda\activate.d\*.bat") do @call "%%S"',
+      r'@if "%LIBTBX_RUN_ACTIVATE%"=="1" @set "CONDA_PREFIX=%LIBTBX_CONDA_PREFIX_BACKUP%"',
+      r'@set "LIBTBX_CONDA_PREFIX="',
+      r'@set "LIBTBX_CONDA_PREFIX_BACKUP="',
+      r'@set "LIBTBX_RUN_ACTIVATE="',
+    ]
+  raise ValueError("shell must be 'sh' or 'bat', not %r" % (shell,))
+
 def open_info(path, mode="w", info="   "):
   print(info, path.basename())
   try: return path.open(mode)
@@ -1217,6 +1291,8 @@ Wait for the command to finish, then try again.""" % vars())
               print(line, file=f)
             else :
               print("@" + line, file=f)
+        for line in conda_activation_dispatcher_lines(shell="bat"):
+          print(line, file=f)
         write_dispatcher_include(where="at_start")
         print('@set LIBTBX_PYEXE=%s' % self.python_exe.bat_value(anchor_var='LIBTBX_PREFIX'), file=f)
         write_dispatcher_include(where="before_command")
@@ -1278,6 +1354,8 @@ Wait for the command to finish, then try again.""" % vars())
         print('  unset DYLD_FALLBACK_LIBRARY_PATH', file=f)
         print('  export PATH="${LIBTBX_PREFIX}/bin:${PATH}"', file=f)
         print('fi', file=f)
+        for line in conda_activation_dispatcher_lines(shell="sh"):
+          print(line, file=f)
         source_is_py = False
         if (source_file is not None):
           dispatcher_name = target_file.basename()
