@@ -61,17 +61,17 @@ class plot_container(wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin):
       panel.SetSizer(szr)
       txt = wx.StaticText(parent=panel,
         label="Plotting disabled due to missing libraries.")
-      szr.Add(txt, 1, wx.ALL|wx.ALIGN_CENTER, 10)
+      szr.Add(txt, 1, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, 10)
       txt.SetForegroundColour((255,0,0))
       font = txt.GetFont()
       font.SetWeight(wx.FONTWEIGHT_BOLD)
       txt.SetFont(font)
       txt2 = wx.StaticText(parent=panel, label="Original error:")
       txt2.SetForegroundColour((255,0,0))
-      szr.Add(txt2, 1, wx.ALL|wx.ALIGN_CENTER, 10)
+      szr.Add(txt2, 1, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, 10)
       txt3 = wx.StaticText(parent=panel, label=str(e))
       txt3.SetForegroundColour((255,0,0))
-      szr.Add(txt3, 1, wx.ALL|wx.ALIGN_CENTER, 10)
+      szr.Add(txt3, 1, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, 10)
       self.Add(panel, 1, wx.EXPAND|wx.ALL)
       self.null_fmt = oop.null()
     else :
@@ -448,7 +448,7 @@ class plot_frame(wx.Frame):
     tb.SetToolBitmapSize((32,32))
     self.SetToolBar(tb)
     for (name, bitmap, function) in tb_buttons :
-      tool_button = tb.AddLabelTool(-1, name, bitmap, kind=wx.ITEM_NORMAL)
+      tool_button = tb.AddTool(-1, name, bitmap, kind=wx.ITEM_NORMAL)
       self.Bind(wx.EVT_MENU, function, tool_button)
     self.toolbar = tb
 

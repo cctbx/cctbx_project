@@ -79,8 +79,6 @@ class ValidatedTextCtrl(wx.TextCtrl, phil_controls.PhilCtrl):
       self.SetBackgroundColour((200,200,200))
 
 Validator = wx.Validator
-if wx.VERSION < (4, 0):
-  Validator = wx.PyValidator
 
 class TextCtrlValidator(Validator):
   def __init__(self):

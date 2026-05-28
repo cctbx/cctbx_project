@@ -54,8 +54,8 @@ class wx_renderer(mmtbx.polygon.output.renderer):
 
   def draw_labels(self, out, label, min, max, value, pos, angle):
     gc = out
-    label_font = wx.Font(14, wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.BOLD)
-    stat_font = wx.Font(12, wx.MODERN, wx.NORMAL, wx.NORMAL)
+    label_font = wx.Font(14, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
+    stat_font = wx.Font(12, wx.FONTFAMILY_MODERN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
     gc.PushState()
     gc.SetPen(wx.Pen("black", 1))
     gc.SetFont(gc.CreateFont(label_font, wx.BLACK))
@@ -120,7 +120,7 @@ class PolygonPanel(wx.Panel):
 
   def draw_color_key(self, dc):
     gc = wx.GraphicsContext.Create(dc)
-    stat_font = wx.Font(12, wx.MODERN, wx.NORMAL, wx.NORMAL)
+    stat_font = wx.Font(12, wx.FONTFAMILY_MODERN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
     x = 40
     y = self.h - 10
     i = 0
@@ -148,7 +148,7 @@ class PolygonPanel(wx.Panel):
 
   def OnSave(self, event=None):
     rect = self.GetRect()
-    bitmap = wx.EmptyBitmap(rect.width, rect.height)
+    bitmap = wx.Bitmap(rect.width, rect.height)
     memory_dc = wx.MemoryDC()
     memory_dc.SelectObject(bitmap)
     memory_dc.SetBackgroundMode(wx.TRANSPARENT)
@@ -196,10 +196,10 @@ class PolygonFrame(wx.Frame):
     plot_icon = wxtbx.bitmaps.fetch_icon_bitmap("mimetypes", "spreadsheet")
     if (save_icon is not None) and (plot_icon is not None):
       self.toolbar = wx.ToolBar(self, style=wx.TB_TEXT)
-      save_btn = self.toolbar.AddLabelTool(-1, "Save", save_icon,
+      save_btn = self.toolbar.AddTool(-1, "Save", save_icon,
         kind=wx.ITEM_NORMAL)
       self.Bind(wx.EVT_MENU, self.OnSave, save_btn)
-      hist_btn = self.toolbar.AddLabelTool(-1, "Show histograms", plot_icon,
+      hist_btn = self.toolbar.AddTool(-1, "Show histograms", plot_icon,
         kind=wx.ITEM_NORMAL)
       self.Bind(wx.EVT_MENU, self.OnDisplayHistogram, hist_btn)
       self.SetToolBar(self.toolbar)
