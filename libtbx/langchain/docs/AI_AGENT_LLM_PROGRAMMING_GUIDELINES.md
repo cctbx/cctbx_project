@@ -219,7 +219,7 @@ N new tests.
 Run with: `python3 tests/run_all_tests.py`
 ```
 
-See `docs/project/CHANGELOG.md` for examples.
+See `docs/CHANGELOG.md` for examples.
 
 ---
 
