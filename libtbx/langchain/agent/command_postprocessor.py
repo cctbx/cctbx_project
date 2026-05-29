@@ -963,3 +963,335 @@ def inject_program_defaults(command, program_name, log=None):
       log("  [inject_program_defaults] appended default %s" % param)
 
   return command
+
+
+# =========================================================================
+# Reasoning/command divergence detection (v119.H15 Item 3)
+# =========================================================================
+#
+# Tom's bromodomain run 135 cycle 7 surfaced a classic LLM hallucination
+# pattern: the reasoning paragraph said "I will use the MTZ file from
+# the last refinement" but the command used `7qz0.mtz` (the raw input
+# data file, with no R-free flags).  Cycle failed; downstream cascade
+# (via Bug 1 and Bug 2) led to the wrong workflow conclusion.
+#
+# Per the H15 plan (with Gemini critique integrated), this is shipped
+# as a DETECT-ONLY measurement instrument in Phase 1.  Future work
+# (constrained decoding / two-pass generation) is the proper fix; this
+# function gives us production telemetry to size that work.
+#
+# Two outputs:
+#   - suspect_count: how many divergences detected (for [DIVERGENCE]
+#     telemetry logging)
+#   - blocking_error: not None ONLY when the command's chosen file
+#     literally doesn't exist on disk and would cause OS-level
+#     FileNotFoundError (per H15 plan question 3: block on FNF,
+#     detect-only otherwise)
+# =========================================================================
+
+# Categorical phrase patterns: what the reasoning mentions →
+# what file category we expect in the command.  Each entry is
+# (regex-pattern, category-key, description-for-logging).
+#
+# Categories map to file-resolution rules below.  Conservative
+# initial list — expand based on production telemetry once we
+# see [DIVERGENCE] rates.
+_REASONING_PHRASE_CATEGORIES = [
+  # "MTZ from the last refinement", "map from the previous refine"
+  # — qualifier-AFTER-noun form (Tom's exact case in cycle 7).
+  (
+    re.compile(
+      r'\b(?:mtz|map|output|result|data|file)\b[^.!?]{0,60}?'
+      r'\bfrom\s+(?:the\s+)?(?:last|previous|prior)\s+'
+      r'refine(?:ment)?\b',
+      re.IGNORECASE,
+    ),
+    "last_refine_mtz",
+    "MTZ from the last refinement",
+  ),
+  # "from the last refinement", "last refine output",
+  # "previous refinement's MTZ" — qualifier-BEFORE-noun form.
+  (
+    re.compile(
+      r'\b(?:last|previous|prior)\s+refinement?(?:\'s)?'
+      r'\s+(?:mtz|map|output|result)\b',
+      re.IGNORECASE,
+    ),
+    "last_refine_mtz",
+    "MTZ from the last refinement (qualifier-first)",
+  ),
+  # "from the last refine" — bare verb form
+  (
+    re.compile(
+      r'\b(?:last|previous|prior)\s+refine\b',
+      re.IGNORECASE,
+    ),
+    "last_refine_mtz",
+    "Last refine output",
+  ),
+  # "best refinement MTZ", "best refine map"
+  (
+    re.compile(
+      r'\bbest\s+refine(?:ment)?(?:\'s)?'
+      r'\s+(?:mtz|map|output|result|data)\b',
+      re.IGNORECASE,
+    ),
+    "best_refine_mtz",
+    "Best refinement file",
+  ),
+  # "denmod map", "modified map", "density modified map"
+  (
+    re.compile(
+      r'\b(?:denmod|density[\s-]?modified|modified)\s+map\b',
+      re.IGNORECASE,
+    ),
+    "denmod_map",
+    "Density-modified map",
+  ),
+  # "best map coefficients", "best map_coeffs"
+  (
+    re.compile(
+      r'\bbest\s+map[\s_-]?coeff(?:icient)?s?\b',
+      re.IGNORECASE,
+    ),
+    "best_map_coeffs",
+    "Best map coefficients",
+  ),
+]
+
+# Negation cues that suppress divergence detection.  If the reasoning
+# explicitly states "instead of X" or "rather than X", the LLM is
+# overriding the obvious choice and we shouldn't flag.
+_NEGATION_CUES = re.compile(
+  r'\b(?:instead\s+of|rather\s+than|not\s+the|avoid(?:ing)?|skip(?:ping)?)\b',
+  re.IGNORECASE,
+)
+
+
+def _extract_command_files(command):
+  """Pull plausible file references out of a command string.
+
+  Heuristic: anything that ends in a recognized extension is
+  considered a file.  Position doesn't matter (PHIL key=value
+  form is common too)."""
+  if not command:
+    return []
+  # Match paths or basenames ending in common file extensions
+  # File-like tokens: alphanumeric, dot, slash, underscore, dash
+  pattern = re.compile(
+    r'[\w./\\-]+\.(?:mtz|pdb|cif|map|ccp4|mrc|fa|fasta|hkl|sca)\b',
+    re.IGNORECASE,
+  )
+  return list(pattern.findall(command))
+
+
+def _file_matches_category(filepath, category, active_files,
+                           best_files):
+  """Check if a chosen filepath matches the expected category.
+
+  Conservative: when context is missing (active_files/best_files
+  empty), return True so we DON'T fire false-positive divergences.
+  This function answers "could this be the right file" not "is
+  this definitely the right file."
+
+  Returns True for match (no divergence), False for clear mismatch.
+  """
+  if not filepath:
+    return True
+  basename = filepath.rsplit('/', 1)[-1].lower()
+
+  if category == "last_refine_mtz":
+    # A refine output MTZ has "refine" in its basename and is .mtz
+    if 'refine' in basename and basename.endswith('.mtz'):
+      return True
+    # If we have active_files context, check whether the chosen
+    # path is in the set of known refine outputs
+    if active_files:
+      refine_mtzs = [
+        f for f in active_files
+        if 'refine' in str(f).lower() and str(f).lower().endswith('.mtz')
+      ]
+      if any(filepath.endswith(rm.rsplit('/', 1)[-1])
+             for rm in refine_mtzs):
+        return True
+      # Active files known AND we have refine MTZs in them, but
+      # the chosen file matches none → divergence
+      if refine_mtzs:
+        return False
+    # No context to disprove — assume match
+    return True
+
+  if category == "best_refine_mtz":
+    if best_files:
+      best = best_files.get("refine_mtz") or best_files.get("refine_data_mtz")
+      if best and filepath.endswith(str(best).rsplit('/', 1)[-1]):
+        return True
+      if best:
+        return False
+    return True
+
+  if category in ("denmod_map", "best_map_coeffs"):
+    if best_files:
+      key = "denmod_map_coeffs" if category == "denmod_map" \
+        else "map_coeffs_mtz"
+      best = best_files.get(key)
+      if best and filepath.endswith(str(best).rsplit('/', 1)[-1]):
+        return True
+      if best:
+        return False
+    # Heuristic: denmod files usually have "denmod" in name
+    if category == "denmod_map" and 'denmod' in basename:
+      return True
+    return True
+
+  # Unknown category → can't judge → no divergence
+  return True
+
+
+def cross_check_reasoning_vs_command(
+    reasoning, command, program=None,
+    active_files=None, best_files=None,
+    file_exists_check=None,
+    log=None,
+):
+  """Detect when reasoning text references a file category
+  that doesn't match the command's chosen file.
+
+  v119.H15 Item 3: detect-only measurement instrument.  Per
+  the H15 plan (and Gemini's "this is a circuit breaker not a
+  constraint" critique), the proper architectural fix is
+  constrained decoding / two-pass generation.  This function
+  gives us production telemetry to size that work.
+
+  Phase 1 behavior:
+    - Detect divergences and emit [DIVERGENCE] log lines
+    - Block (raise ValueError-like return) ONLY when the chosen
+      file literally doesn't exist on disk and would cause an
+      OS-level FileNotFoundError.  Otherwise pass through.
+
+  Args:
+    reasoning: str, the LLM's reasoning paragraph.
+    command: str, the command string.
+    program: optional str, the program name (for log context).
+    active_files: optional iterable of str, files currently
+      tracked in session.  Used for file-category resolution.
+    best_files: optional dict mapping category → filepath
+      (e.g. {"refine_mtz": ".../overall_best_refine_data.mtz"}).
+    file_exists_check: optional callable(filepath) → bool.
+      When provided, used to check whether divergent files
+      exist on disk.  Defaults to os.path.exists.
+    log: optional callable(str) for logging [DIVERGENCE]
+      and [DIVERGENCE_BLOCK] events.
+
+  Returns:
+    (suspect_count, blocking_error) tuple.
+    - suspect_count: int, number of categorical phrases
+      detected in reasoning that don't match the command.
+    - blocking_error: None for detect-only (Phase 1), OR a
+      string describing the missing file when the divergent
+      file doesn't exist on disk.  Callers should treat a
+      non-None blocking_error as "stop, do not execute this
+      command."
+
+  Never raises.
+  """
+  try:
+    return _cross_check_inner(
+      reasoning, command, program,
+      active_files, best_files,
+      file_exists_check, log,
+    )
+  except Exception as e:
+    if log:
+      log("  [DIVERGENCE] cross-check raised %s — proceeding" % e)
+    return (0, None)
+
+
+def _cross_check_inner(reasoning, command, program,
+                       active_files, best_files,
+                       file_exists_check, log):
+  """Inner cross-check logic.  May raise."""
+  if not reasoning or not command:
+    return (0, None)
+
+  active_files = active_files or []
+  best_files = best_files or {}
+  if file_exists_check is None:
+    import os as _os
+    file_exists_check = _os.path.exists
+
+  cmd_files = _extract_command_files(command)
+
+  suspect_count = 0
+  blocking_error = None
+
+  for pattern, category, desc in _REASONING_PHRASE_CATEGORIES:
+    matches = list(pattern.finditer(reasoning))
+    if not matches:
+      continue
+    # Check if any match is in a negation context.  Simple
+    # heuristic: if a negation cue appears in the same sentence
+    # (split on .!?), suppress.
+    suppressed = False
+    for m in matches:
+      # Find sentence containing this match
+      start = m.start()
+      sentence_start = max(
+        reasoning.rfind('.', 0, start),
+        reasoning.rfind('!', 0, start),
+        reasoning.rfind('?', 0, start),
+      ) + 1
+      sentence_end = len(reasoning)
+      for ch in '.!?':
+        idx = reasoning.find(ch, m.end())
+        if idx >= 0:
+          sentence_end = min(sentence_end, idx)
+      sentence = reasoning[sentence_start:sentence_end]
+      if _NEGATION_CUES.search(sentence):
+        suppressed = True
+        break
+    if suppressed:
+      continue
+
+    # Reasoning mentions this category.  Check if command's
+    # files match.  We test EACH candidate file in the command
+    # against the category; divergence is "no file matches."
+    if not cmd_files:
+      continue
+    any_match = False
+    for cf in cmd_files:
+      if _file_matches_category(
+        cf, category, active_files, best_files,
+      ):
+        any_match = True
+        break
+    if not any_match:
+      suspect_count += 1
+      if log:
+        log(
+          "  [DIVERGENCE] reasoning mentions %s but command "
+          "uses %r (program=%s)"
+          % (desc, cmd_files, program or "?")
+        )
+      # Block-on-FNF check: if any command file doesn't exist
+      # on disk, treat as blocking.
+      for cf in cmd_files:
+        # Heuristic: only check absolute-looking paths
+        if cf.startswith('/') or cf.startswith('\\'):
+          try:
+            if not file_exists_check(cf):
+              blocking_error = (
+                "Reasoning mentions %s but command uses "
+                "%r which does not exist on disk"
+                % (desc, cf)
+              )
+              if log:
+                log(
+                  "  [DIVERGENCE_BLOCK] %s" % blocking_error
+                )
+              break
+          except Exception:
+            # Filesystem check failed — fall through, don't block
+            pass
+
+  return (suspect_count, blocking_error)

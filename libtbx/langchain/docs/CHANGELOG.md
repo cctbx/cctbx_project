@@ -1,6 +1,6 @@
 # CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3 / v118 / v119
 
-## Version 119 (Operational Hardening + Phase 2A + Phase 2B + Production Bug Cluster — H1, H2, H2.1, H3, H3b, H4, H4.1, H5, H5.1, H5.1.1, H6, H6.1, H7, H8, H9, H10, H11, H12, H13, H14, H14.1, H14.2)
+## Version 119 (Operational Hardening + Phase 2A + Phase 2B + Production Bug Cluster — H1, H2, H2.1, H3, H3b, H4, H4.1, H5, H5.1, H5.1.1, H6, H6.1, H7, H8, H9, H10, H11, H12, H13, H14, H14.1, H14.2, H15, H16, H16.1, H17, H17.1, H18, H18.1, H18.2)
 
 ### Summary
 
@@ -16,7 +16,7 @@ surfaced by Tom's `run_39a_ollama` failure (H13).  The ships are
 independent and ship-self-contained:
 
 ```
-v118 → H1 → H2 → H2.1 → H3 → H3b → H4 → H4.1 → H5 → H5.1 → H5.1.1 → H6 → H6.1 → H7 → H8 → H9 → H10 → H11 → H12 → H13
+v118 → H1 → H2 → H2.1 → H3 → H3b → H4 → H4.1 → H5 → H5.1 → H5.1.1 → H6 → H6.1 → H7 → H8 → H9 → H10 → H11 → H12 → H13 → H14 → H14.1 → H14.2 → H15 → H16 → H16.1 → H17 → H17.1 → H18 → H18.1 → H18.2
 ```
 
 Together they establish: a single source of truth for LLM model
@@ -55,14 +55,156 @@ refining the classification into three sub-categories
 (MODEL_RETIRED vs MODEL_UNAVAILABLE vs FAILED) so the operator
 sees actionable hints rather than opaque "404 page not found".
 
+H14/H14.1/H14.2 close three independent regressions surfaced by
+`run_39_openai` batch analysis: a phaser false-positive in
+`_ACTION_TABLE["solve"]` (24 occurrences across 5 datasets where
+the multi-action branch forced phaser into SAD/MAD workflows), a
+duplicate `[STEP_1F]` emission, and a permissive space_group
+regex producing "Not explicitly mentio" truncations that bypassed
+the v118.9 validator on the rules-only path.  H14.2 is a one-line
+config fix removing `ncs_spec` from `predict_and_build`'s strategy_flags.
+
+H15 closes Tom's bromodomain resume failure (run 144).  When new
+advice was provided on resume, `gate_stop` was cleared but
+per-stage statuses were not — the gate immediately re-fired
+"all stages complete" and the LLM saw STATE=complete, choosing
+polder against user intent.  H15 adds `reopen_stages_for_directives`
+to `plan_generator.py`: a TARGETED single-stage reopen that finds
+the LATEST completed stage whose `programs` list contains a program
+named in `directives.program_settings` and resets ONLY that stage
+to PENDING.  Per Gemini's critique of the original H15 plan, the
+blast radius is O(1) regardless of plan size — no cascade-resets,
+no downstream stages reopened.
+
+H16/H16.1 closes 88 TIER-1 failures across run_25 and run_39
+matching "Sorry: Multiple equally suitable arrays of observed
+xray data found", concentrated in AF_exoV_MRSAD and lysozyme-MRSAD
+tutorials.  H16 adds the new `agent/mtz_inspector` module:
+`inspect_mtz()` reads MTZ column structure via cctbx,
+`select_obs_labels_for(program, info)` applies a per-program
+preference policy (merged for MR, anomalous for SAD), and a new
+`auto_fill_obs_labels` invariant in `programs.yaml` triggers the
+builder to inject the chosen labels into xtriage, autosol,
+phaser, and predict_and_build commands.  H16.1 bumps the scanner
+version pin and adjusts `[STEP_1F]` telemetry.
+
+H17/H17.1 closes Tom's lysozyme-MRSAD cycle-5 reactive recovery
+gap.  The LLM passed `lyso2001_scala1.mtz` (raw anomalous MTZ
+without phase columns) as `map_file=` to `phenix.autobuild`,
+which requires `PHIB` phase columns; autobuild crashed with
+"Sorry, PHIB is required for input_map_file"; the agent halted
+after 4 retries.  H17 adds:
+- A new `missing_phib_input_map_file` entry in
+  `recoverable_errors.yaml` with strict conjunction detection
+  (matches the exact PHIB-required error text, not just any "PHIB"
+  mention).
+- A new `strip_parameter` resolution kind in `error_analyzer.py`
+  alongside the existing `add_parameter` and `select_value` kinds.
+- A new `strip_flags` field on the `ErrorRecovery` dataclass.
+
+H17 shipped the analyzer side but exposed Scenario B: detection
+fires and `[NOTICE]` prints, but the executor never strips the
+flag from the retry command.  H17.1 closes that gap with three
+edits to `programs/ai_agent.py`: `_handle_recovery` stashes
+`strip_flags` into `session.data["pending_strip_recoveries"]`;
+`_execute_command` pops the entry at the top of each cycle and
+applies a robust regex (per Gemini's critique: handles
+quoted-with-spaces, PHIL spacing, and single/double quote
+variants); `_print_recovery_notice` shows
+"Action: Stripping [flags]" instead of the awkward "Selecting ''"
+for strip recoveries.  Validated end-to-end on lysozyme-MRSAD:
+cycle 5 detection + cycle 6 [STRIP] line + autobuild SUCCESS.
+
+H18 closes the AF_7mjs density-modify-and-stop regression
+(separate from §20's bug, surfaced after H17.1 deployed): user
+wrote "density modify and stop" with cryo-EM half-map inputs; the
+extractor produced `after_program=phenix.autobuild_denmod` (X-ray
+density-modification); the §20 correction failed to fire because
+its text-only `_detect_experiment_type_signals` returned None
+(terse user text has neither cryo-EM nor X-ray tokens); the LLM
+downstream bypassed the failed stop check and ran
+`phenix.predict_and_build`, overriding user intent.  H18 adds a
+new public helper `agent/file_utils.infer_experiment_type_from_files()`
+that uses file extensions as the deterministic primary signal,
+and rewires BOTH `_apply_experiment_type_program_reprints` AND
+`_resolve_after_program` (the v115.10 post-LLM overlay) to use
+files-first detection with text-based detection as fallback.
+Files-win policy on conflict per Gemini's H18 review.  Enriched
+`[DIRECTIVE_CORRECTION]` telemetry records `source=files|text`
+and `OVERRIDDEN` annotations; new `[DIRECTIVE_CORRECTION_MIXED]`
+marker fires on accumulated-files drift (Pitfall 1).
+`agent/plan_generator._build_context` was also refactored to use
+the shared helper, establishing a single source of truth for
+file-based experiment-type inference.
+
+H18.1 closes a PHIL declaration deploy-gap surfaced when Tom
+deployed H18 and re-ran AF_7mjs.  All 20 H18 K-tests passed in
+the sandbox; production still ran `predict_and_build` on cycle 3.
+The log showed `AttributeError: Assignment to non-existing
+attribute "ai_analysis.original_files_for_directives"` at
+`ai_agent.py` line 8513.  H18 had added the PHIL declaration to
+`programs/ai_analysis.py` but not to `programs/ai_agent.py`'s
+OWN `master_params` string — and `directive_params =
+copy.deepcopy(self.params)` copies the AGENT's params object,
+which is parsed against the agent's `master_params`.  The
+assignment crashed; the surrounding try/except swallowed it
+silently; directive extraction returned `{}`; the agent ran the
+default plan template.  H18.1 adds the missing PHIL declaration
+(14 lines) to `ai_agent.py`'s `master_params`, plus a new
+`tst_h18_1_phil_roundtrip.py` (6 K-tests) that exercises the
+full parse → extract → deep-copy → assign path the production
+code uses.  Source-grep K-test runs in sandbox without PHENIX;
+live-PHIL K-tests skip gracefully there.  No code logic
+changed.
+
+H18.2 closes a THIRD `_resolve_after_program` callsite that H18
+missed.  After H18.1 deployed cleanly, Tom re-ran AF_7mjs with a
+runtime tracer installed (`h18_install_runtime_tracer.py` —
+patches the deployed `directive_extractor.py` in-place with
+`[H18_TRACE]` markers at every key decision point).  The trace
+revealed that the LLM was emitting
+`{"stop_conditions": {"stop_after_requested": true}}` — note: no
+`after_program` field at all.  H18's site 1
+(`_apply_experiment_type_program_reprints`) correctly took its
+"no after_prog → early return" branch.  Then a v117.2 fallback at
+`directive_extractor.py:783` fired (its raison d'être: fill in
+`after_program` when the LLM sets `stop_after_requested=True` but
+omits the program field), calling `_resolve_after_program` on the
+raw advice "density modify and stop" — but **without
+`original_files`**.  Pre-H18.2, that callsite was a third site
+the H18 audit missed.  The resolver defaulted `_exp="xray"` via
+the text-only heuristic (raw advice has no
+cryo-EM/X-ray tokens) and mapped `denmod` →
+`phenix.autobuild_denmod`.  H18's site 2
+(`_apply_workflow_intent_fallback`) DOES pass `original_files`,
+but the preprocessed advice contains "Stop Condition: None" so
+`_is_stop_after_requested` returned False, pushing the resolver
+into "n==1, no stop → leave as-is" — and the buggy after_program
+from the v117.2 path persisted.  H18.2 adds `original_files=
+original_files` to the v117.2 callsite (one line in
+`agent/directive_extractor.py:796`) plus 3 new K-tests
+(K21/K22/K23) extending the suite to 23 tests.  K21 is the exact
+AF_7mjs production reproduction (mocked LLM returns the same
+shape the production LLM did).
+
 Total K-test additions across the cluster: **189 v119-cluster
 K-tests** plus **30 live LLM tests** (directive_extraction +
 planning) plus **14 production-bug K-tests** in the H8–H11
 sub-cluster (4 Bug 8, 4 Bug 9, 5 Bug 10, 1 Bug 11), plus
 **8 categorizer semantic-pin K-tests** added by H12, plus
-**13 provider-error classification K-tests** added by H13.
-See the per-suite breakdown in `next_steps_post_v119.md`
-"Test totals" section.
+**13 provider-error classification K-tests** added by H13, plus
+**45 K-tests** in H14 (13 keyword + 8 single-emit + 24
+space_group), plus **14 K-tests** in H14.1 (validate_directives
+closure), plus **7 K-tests** in H15 (resume reopen), plus
+**8 K-tests** in H16 (obs_labels auto-fill), plus **16 K-tests**
+in H17/H17.1 (7 detection + 9 strip executor), plus **7 K-tests**
+in H18 (experiment-type-from-files), merged into the existing 13
+§20 tests to extend `tst_density_modify_experiment_type.py` to a
+20-test suite, plus **6 K-tests** in H18.1 (PHIL round-trip
+deploy-gap defense), plus **3 K-tests** in H18.2 (v117.2 fallback
+threads files; merged into `tst_density_modify_experiment_type.py`
+extending it to a 23-test suite).  See the per-suite breakdown in
+`next_steps_post_v119.md` "Test totals" section.
 
 All ships verified through act → review → Gemini-critique → ship
 cadence.
@@ -1710,6 +1852,663 @@ loops on a rejected PHIL parameter.  Tom can confirm by re-running
 his 1029B-sad ollama test1 directory (after `rm 1029B.pdb*`); the
 predict_and_build command should now omit any `map_model.ncs_file=`
 parameter.
+
+**H15 (production code) — Resume reopen targeted stages**
+`agent/plan_generator.py` (new `reopen_stages_for_directives`
+and `_reopen_stages_inner` helpers),
+`tests/tst_resume_reopen_stages.py` (NEW, 7 tests),
+`tests/canary_expected.json` (agent_version: 119.H15),
+`tests/run_all_tests.py` (registers tst_resume_reopen_stages),
+VERSION.
+
+Trigger: Tom's bromodomain resume failure (run 144).  Three
+compounding causes formed the failure mode:
+1. Bug 1 corrupted `final_refinement.status` to COMPLETE
+2. Resume cleared `gate_stop` but NOT per-stage statuses
+3. Gate immediately re-fired "all stages complete" → LLM
+   saw STATE=complete → chose polder against user intent
+
+H15 Item 1 prevents the corruption going forward.  Item 2
+is the resume safety net: when new advice is provided on
+resume, walk the directives and reopen affected stages.
+
+**Targeted single-stage reopen design** (per Gemini's critique
+of the original blast-radius proposal): rather than reopen
+every stage downstream of the matched program, find the
+LATEST completed stage whose `programs` list contains a
+program named in `directives.program_settings`, and reset
+ONLY that stage to PENDING.  Reset `cycles_used → 0` and
+clear runtime fields (started_at, completed_at, last_result).
+Don't cascade-reset stages downstream; don't reopen earlier
+stages with the same program; skipped stages stay skipped.
+
+This keeps blast radius O(1) regardless of plan size.
+
+The 7 K-tests pin the design contract:
+- §A: Tom's exact scenario
+- §B: No advice change → no-op
+- §C: Directive for unmatched program → no reopen
+- §D: Multiple programs in directives → still O(1)
+- §E: Skipped stages stay skipped
+- §F: Empty plan / empty directives → no-op, no exception
+- §G: Stage's strategy already honors directive — H15 design
+  says reopen anyway (semantic: "user re-asserted intent")
+
+`defaults_fingerprint` unchanged at `sha256:77bf7421...`.
+
+**What this changes for production**: when Tom resumes a
+completed bromodomain run with new advice mentioning a
+program inside an earlier stage, only that stage is
+reopened; the rest of the plan stays intact.  The gate no
+longer immediately re-fires "all complete" because at least
+one stage is now PENDING.
+
+**H16 (production code) — MTZ obs_labels auto-fill for
+multi-array MTZ files**
+`agent/mtz_inspector.py` (NEW: `inspect_mtz()`,
+`select_obs_labels_for(program, info)`,
+`has_ambiguous_arrays()`, `_PROGRAM_PREFERENCES` table),
+`knowledge/programs.yaml` (new `auto_fill_obs_labels`
+invariant on xtriage, autosol, phaser, predict_and_build),
+`agent/command_builder.py` (consumer of the new invariant),
+`tests/tst_obs_labels_auto_fill.py` (NEW, 8 tests across
+four layers: policy unit tests, MTZ inspector, builder
+integration simulation, YAML config validation),
+`tests/canary_expected.json` (agent_version: 119.H16),
+VERSION.
+
+Trigger: 88 TIER-1 failures across two batch scans
+(run_25, run_39) matching "Sorry: Multiple equally suitable
+arrays of observed xray data found", concentrated in
+AF_exoV_MRSAD and lysozyme-MRSAD tutorials.  The failure
+mode: the MTZ contains multiple legitimate observation
+arrays (e.g., merged Iobs AND anomalous I(+)/I(-)) and
+PHENIX programs error out unless the user disambiguates
+via `scaling.input.xray_data.obs_labels=` (or equivalent
+per-program PHIL path).  Pre-H16, the LLM had to know to
+inject this parameter manually for every multi-array MTZ;
+when it forgot, the program crashed and the agent treated
+it as an unrecoverable error.
+
+**Three-layer mechanism**:
+
+1. **MTZ inspector** (`agent/mtz_inspector.py`):
+   `inspect_mtz(path)` reads the MTZ via `iotbx.mtz` (cctbx)
+   and returns a dict describing each column group (anomalous
+   intensities, anomalous amplitudes, merged intensities,
+   merged amplitudes, R-free flags, etc.).  Side-effect-free;
+   never raises (returns `{"error": ...}` on file-read
+   failures so the caller can decide).
+
+2. **Per-program preference policy**:
+   `select_obs_labels_for(program, mtz_info)` reads the
+   `_PROGRAM_PREFERENCES` table (e.g., `phenix.phaser` prefers
+   merged for MR; `phenix.autosol` prefers anomalous for SAD)
+   and returns the program-specific obs_labels string to
+   inject.  Returns `None` when no ambiguity exists.
+
+3. **YAML invariant + builder hook**: `programs.yaml` declares
+   `auto_fill_obs_labels: true` on xtriage, autosol, phaser,
+   and predict_and_build.  `command_builder._apply_invariants()`
+   reads the flag, calls `inspect_mtz()` on the relevant
+   `data_mtz` input, calls `select_obs_labels_for()`, and
+   injects the result into the command before execution.
+
+The 8 K-tests cover all four layers: policy unit tests
+(pure functions, no I/O); MTZ inspector tests (cctbx-dependent,
+gracefully skip in sandbox); builder integration simulation
+(mirrors the actual `_apply_invariants()` branch); YAML
+config validation.
+
+H16.1 follow-up (no code change): bumped the scanner version
+pin in `[STEP_1F]` telemetry to `119.H16.1` so production logs
+clearly indicate the obs_labels auto-fill is active.
+
+`defaults_fingerprint` unchanged at `sha256:77bf7421...`.
+
+**What this changes for production**: the 88 TIER-1
+"Multiple equally suitable arrays" failures no longer fire.
+PHENIX programs receive an explicit obs_labels parameter
+appropriate to their use case (merged for MR, anomalous for
+SAD).  Programs that previously crashed on cycle 1 with the
+ambiguity error now run normally on the user's first attempt.
+
+**H17 (production code) — autobuild PHIB-required reactive
+recovery (analyzer side)**
+`knowledge/recoverable_errors.yaml` (NEW
+`missing_phib_input_map_file` entry),
+`agent/error_analyzer.py` (NEW `strip_flags` field on
+`ErrorRecovery` dataclass; NEW generic `_resolve_strip_parameter`
+handler alongside existing `_resolve_add_parameter` and
+`_resolve_select_value`; `_extract_error_info` returns marker
+dict for strip_parameter errors),
+`tests/tst_error_analyzer.py` (7 new K-tests covering H17
+detection + retroactive resolution of the latent
+`rfree_flags_mismatch` resolution that had been declared in
+YAML but never wired in the analyzer),
+`tests/canary_expected.json` (agent_version: 119.H17),
+VERSION.
+
+Trigger: Tom's lysozyme-MRSAD tutorial cycle 5.  The LLM
+correctly identified MR-SAD as the workflow and ran xtriage
+→ phaser → autosol successfully (Bayes CC 74.20); on cycle 5
+it then called `phenix.autobuild` with the user-supplied
+`lyso2001_scala1.mtz` (raw anomalous MTZ without phases) as
+`map_file=`.  autobuild requires `PHIB` phase columns in
+`input_map_file`/`map_file`; the program crashed with "Sorry,
+PHIB is required for input_map_file"; the agent had no
+recovery template; the workflow halted after four retries.
+
+**The right fix is reactive, not proactive**.  The user-supplied
+`map_coeffs.mtz` is a legitimate input in many workflows (any
+post-phasing build).  Pre-emptively rejecting `map_file=` on
+all autobuild calls would break the legitimate case.  H17
+detects the specific PHIB-required error AFTER it fires and
+strips the offending parameter on retry.
+
+**Strict conjunction detection**: the YAML pattern requires
+BOTH the literal phrase "PHIB is required for input_map_file"
+AND the column-spec context.  Without the conjunction, generic
+"PHIB" mentions in unrelated error messages would false-positive.
+
+**New `strip_parameter` resolution kind**: alongside the
+existing `add_parameter` (adds a flag) and `select_value`
+(disambiguates an enum), H17 introduces `strip_parameter`
+for the case where the right fix is to REMOVE an inappropriate
+flag entirely.  The `strip_parameters` YAML list names the
+PHIL paths to strip (e.g., `[map_file, input_map_file,
+input_files.map_file]` — three aliases for the same input
+slot).
+
+**Retroactive side benefit**: `rfree_flags_mismatch` had been
+declared in `recoverable_errors.yaml` for months but never
+wired in the analyzer (it would never trigger).  H17's
+generic `_resolve_strip_parameter` handler retroactively
+resolves that error type too.
+
+Gemini's critique on the H17 plan recommended a robust regex
+for the strip operation: `r'(?:^|\s)' + re.escape(flag_prefix)
++ r'\s*=\s*(?:"[^"]*"|\'[^\']*\'|\S+)'` to handle
+quoted-with-spaces and PHIL spacing.  H17 plan adopted; H17.1
+implements the regex in the executor.
+
+`defaults_fingerprint` unchanged at `sha256:77bf7421...`.
+
+**H17.1 (production code) — Executor-side strip_flags wiring
+(completes H17)**
+`programs/ai_agent.py` (three edits: `_handle_recovery` stashes
+strip_flags; `_execute_command` pops and applies; new helper
+`_print_recovery_notice` shows "Action: Stripping [...]"),
+`tests/tst_h17_strip_executor.py` (NEW, 9 tests pinning the
+regex pattern against PHIL/quoted/end-of-line variants),
+`tests/canary_expected.json` (agent_version: 119.H17.1),
+VERSION.
+
+Pre-deploy review of H17 surfaced Scenario B: the analyzer
+emits ErrorRecovery with `strip_flags` populated and the
+`[NOTICE]` log fires, but the executor never actually strips
+the flag from the retry command.  H17 was analyzer-side only;
+H17.1 closes the executor gap.
+
+Three edits to `programs/ai_agent.py`:
+
+1. **`_handle_recovery`** (~line 3602): when `recovery.strip_flags`
+   is non-empty, stash the entry in
+   `session.data["pending_strip_recoveries"]` keyed by program
+   name.  Preserves the existing `set_recovery_strategy` call
+   for backward compat with `add_parameter` recoveries (which
+   don't need executor support — they're injected via the
+   existing strategy mechanism).
+
+2. **`_execute_command`** (~line 5694): at the top of the method,
+   pop any pending entry for the current program.  If present,
+   apply the robust regex (per Gemini's critique) to strip
+   each flag prefix.  Emit `[STRIP]` log line.  One-shot via
+   `pop()` — the entry is consumed on use so a subsequent
+   retry doesn't re-strip.
+
+3. **`_print_recovery_notice`** (~line 3783): show "Action:
+   Stripping [map_file, input_map_file, input_files.map_file]"
+   instead of the awkward "Selecting ''" for strip recoveries.
+
+The 9 K-tests in `tst_h17_strip_executor.py` pin the regex
+pattern itself.  If the pattern is changed in `ai_agent.py`,
+the test file's reference implementation must be updated
+in lockstep.  The tests cover: basic, PHIL spacing (spaces
+around `=`), double-quoted, single-quoted, end-of-line
+(no trailing whitespace), the exact lysozyme command, all
+three PHIL variants in sequence, a false-positive guard
+(substring of a different flag name), and idempotence
+(running the strip twice doesn't corrupt the command).
+
+Validated end-to-end on Tom's lysozyme-MRSAD:
+- Cycle 1: xtriage `ambiguous_data_labels` recovery (pre-H17
+  mechanism, still works)
+- Cycle 2: xtriage SUCCESS
+- Cycles 3-4: phaser SUCCESS (LLG 95.0), autosol SUCCESS
+  (Bayes CC 74.20)
+- Cycle 5: autobuild FAILED with PHIB error → H17 fires
+  `[NOTICE] DETECTED RECOVERABLE ERROR` with "Action:
+  Stripping [map_file, input_map_file, input_files.map_file]"
+- Cycle 6: `[STRIP] phenix.autobuild: removed 'map_file=...'
+  from retry command (recovery: missing_phib_input_map_file)`
+  followed by `Running:` (no map_file= in command), autobuild
+  SUCCESS.
+
+`defaults_fingerprint` unchanged at `sha256:77bf7421...`.
+
+(Note: cycles 7-10 then thrashed on a separate post-autobuild
+issue — bad metrics parsing "Residues Built: 5220629854239855"
+and state-machine over-reaction to R-free=0.52.  Booked as
+separate issue, not H17.)
+
+**What this changes for production**: the lysozyme-MRSAD
+tutorial completes through autobuild without halting at the
+PHIB error.  The reactive recovery infrastructure (YAML +
+analyzer + executor) now supports three resolution kinds:
+add_parameter, select_value, strip_parameter.
+
+**H18 (production code) — File-based experiment-type
+detection as primary signal**
+`agent/file_utils.py` (NEW public helper
+`infer_experiment_type_from_files()`),
+`agent/directive_extractor.py` (files-first detection in BOTH
+`_apply_experiment_type_program_reprints` AND
+`_resolve_after_program`; `extract_directives()` accepts
+`original_files` kwarg; `_apply_workflow_intent_fallback()`
+threads files through),
+`agent/plan_generator.py` (`_build_context` delegates to
+shared helper for single source of truth),
+`programs/ai_agent.py` (passes file inventory to extraction
+via new PHIL param),
+`programs/ai_analysis.py` (NEW PHIL param
+`original_files_for_directives`; threaded through
+`_run_directive_extraction_locally` and the args-builder),
+`phenix_ai/run_ai_analysis.py` (`run_directive_extraction()`
+accepts `original_files`; passes to `extract_directives()`),
+`tests/tst_density_modify_experiment_type.py` (extended 13 →
+20 tests; K14-K20 cover H18 surface),
+`tests/canary_expected.json` (agent_version: 119.H18),
+VERSION.
+
+Trigger: Tom's AF_7mjs density-modify-and-stop regression
+(distinct from the v118.9 §20 bug, surfaced after H17.1
+deployed).  User wrote literally "density modify and stop"
+with cryo-EM half-map inputs (`.ccp4` files, no `.mtz`); the
+extractor produced `after_program=phenix.autobuild_denmod`
+(the X-ray density-modification program); the §20 correction
+was supposed to map this to `phenix.resolve_cryo_em` for
+cryo-EM data but its text-only
+`_detect_experiment_type_signals` returned None ("ambiguous,
+decline to act") because the terse user text "density modify
+and stop" has neither cryo-EM nor X-ray tokens.  The LLM
+downstream then saw the wrong `after_program` in VALID
+PROGRAMS, recognized it couldn't actually run (cryo-EM has
+no MTZ), and selected `phenix.predict_and_build` as "the
+next logical step" — overriding the user's explicit "stop"
+instruction.
+
+**Root cause**: §20's correction relied on text-based
+detection alone.  For terse advice, text gives no signal,
+and the file inventory (the unambiguous evidence) was never
+inspected.  ARCHITECTURE.md §17 documents that
+`session.set_experiment_type()` only locks AFTER the first
+program returns — so at directive-extraction time, the
+locked experiment_type is None and the validator had to
+infer one.  ARCHITECTURE.md §3.3 already proposed inferring
+experiment type from file extensions at session creation;
+H18 is the smallest first step in that direction.
+
+**New public helper**: `agent/file_utils.py` gains
+`infer_experiment_type_from_files(files) -> (type,
+evidence_dict)`.  Returns "xray" for files with `.mtz/.sca/.hkl`
+extensions alone, "cryoem" for `.mrc/.ccp4/.map` alone, and
+None for mixed or empty inputs.  The asymmetric semantics
+match the existing `_detect_experiment_type_signals` policy.
+Evidence dict carries the unique extensions seen and an
+`is_mixed` flag for telemetry.
+
+**Detection priority (locked policy)** — applied identically
+in both correction sites:
+```python
+target_type = None
+if original_files:
+    file_type, evidence = infer_experiment_type_from_files(original_files)
+    target_type = file_type   # files-win on conflict
+
+if target_type is None:
+    text_type = _detect_experiment_type_signals(combined_advice)
+    target_type = text_type
+
+if target_type is None:
+    return directives  # decline to act
+```
+
+Files-win is the policy per Gemini's H18 review: file
+extensions are the hard physical boundary (passing `.ccp4`
+to an X-ray-only program crashes at parse time regardless
+of what the user wrote); text-based detection has known
+false-positive vectors ("mad" in "modify", "sad" in
+arbitrary sentences).
+
+**Two correction sites needed the fix**.  H18 rev 1
+implemented files-first only in
+`_apply_experiment_type_program_reprints` (§20's site).
+During the merge into Tom's existing
+`tst_density_modify_experiment_type.py` suite, K14 (the
+exact AF_7mjs failing case) revealed a second silent-revert
+site: `_resolve_after_program` (the v115.10 post-LLM
+overlay) had its own text-only experiment-type heuristic
+that defaulted `_exp="xray"` for terse advice and
+unconditionally overrode `after_program`.  H18 rev 2 fixes
+both sites identically.
+
+**Telemetry (Pitfall 2 — Silent Override Hazard)**: the
+enriched `[DIRECTIVE_CORRECTION]` marker records
+`source=files|text`, `evidence=['.ccp4', ...]`, and
+`text_signal=xray, OVERRIDDEN` (when files override
+contrary text).  Example:
+```
+[DIRECTIVE_CORRECTION] Mapped after_program=phenix.autobuild_denmod
+  to phenix.resolve_cryo_em (source=files, target_type=cryoem,
+  evidence=['.ccp4'], text_signal=xray, OVERRIDDEN)
+```
+
+**Telemetry (Pitfall 1 — Dirty Directory Poisoning)**:
+long-running sessions that MERGE files across cycles (per
+`Session.set_project_info` documented in session.py:494-510)
+could accumulate both `.mtz` and `.ccp4`, pushing detection
+into "mixed → None" state.  A new
+`[DIRECTIVE_CORRECTION_MIXED]` log marker fires when both
+types are detected, making accumulated-files drift visible
+in audit logs.  In practice this is a non-issue for the
+AF_7mjs bug path because directive extraction is gated by
+`directives_extracted=True` (only fires on initial
+extraction, before any cycle has run), but the telemetry
+is there defensively.
+
+**Single source of truth**: `agent/plan_generator._build_context`
+was refactored to call the new shared helper.  Previously
+it had its own private file-extension mapping at lines
+232-236; H18 routes it through `infer_experiment_type_from_files`
+so plan_generator and directive_extractor cannot drift
+apart on detection behavior.
+
+The 7 new K-tests in `tst_density_modify_experiment_type.py`
+(K14-K20) extend the existing 13 §20 tests to a 20-test
+suite covering both v118.9 §20 and v119.H18:
+- K14: AF_7mjs failure verbatim — terse advice + cryo-EM
+  files → corrected via files (source=files)
+- K15: Mirror — terse advice + X-ray files
+- K16: Backward compat — no files → text fallback still
+  corrects (source=text)
+- K17: Pre-H18 bug path — no files + terse text → declines
+  (proves H18 requires file threading)
+- K18: Files-win on conflict + OVERRIDDEN telemetry
+- K19: Mixed input → defers to text + emits
+  `[..._MIXED]` marker
+- K20: plan_generator delegates to shared helper
+
+All 20 tests pass.  Full sandbox sweep: 227 PASS, 22 SKIP,
+no regressions.
+
+`defaults_fingerprint` unchanged at `sha256:77bf7421...`.
+
+**Backward compatibility**: `original_files` parameter is
+optional with default `None` at every signature change
+(`extract_directives`, `_apply_experiment_type_program_reprints`,
+`_resolve_after_program`, `_apply_workflow_intent_fallback`,
+`run_directive_extraction`).  Pre-H18 callsites without files
+get exact pre-H18 behavior — text-only detection.
+
+**What this changes for production**: AF_7mjs "density
+modify and stop" + cryo-EM files now correctly:
+1. Files detector identifies cryoem from `.ccp4`
+2. After_program is corrected to `phenix.resolve_cryo_em`
+3. `[DIRECTIVE_CORRECTION]` log shows `source=files`
+4. Stop check fires after `resolve_cryo_em` completes
+5. Agent halts honoring user intent; no `predict_and_build`
+
+**H18.1 (production code) — PHIL declaration deploy-gap hotfix**
+`programs/ai_agent.py` (+14 lines: new `original_files_for_directives`
+declaration in `master_params` after `user_advice_raw`),
+`tests/tst_h18_1_phil_roundtrip.py` (NEW, 6 K-tests),
+`tests/run_all_tests.py` (registers the new test),
+`tests/canary_expected.json` (agent_version: 119.H18.1),
+VERSION.
+
+Trigger: Tom re-ran AF_7mjs with H18 deployed.  All sandbox
+tests passed.  Production still ran `predict_and_build` on
+cycle 3 instead of stopping after `resolve_cryo_em`.  The log
+showed:
+
+```
+DIRECTIVES: Extraction failed - Assignment to non-existing
+  attribute "ai_analysis.original_files_for_directives"
+  File ".../programs/ai_agent.py", line 8513, in _extract_directives
+    directive_params.ai_analysis.original_files_for_directives = (
+```
+
+**Root cause**: H18 added the PHIL parameter declaration to
+`programs/ai_analysis.py` (the analysis server's master_phil)
+and added the assignment site at `programs/ai_agent.py:8513`,
+but DID NOT add the PHIL declaration to `programs/ai_agent.py`'s
+OWN `master_params` string (defined at line 144).
+`directive_params = copy.deepcopy(self.params)` copies the
+agent's params, which are parsed against the agent's
+master_params — so the assignment failed.  The crash was
+caught by the surrounding try/except in `_extract_directives`
+and directive extraction silently returned `{}`.  The agent
+then ran with no user-supplied `after_program`, no
+`stop_after_requested`, falling back to the default cryo-EM
+plan template: cycle 1 mtriage, cycle 2 resolve_cryo_em,
+cycle 3 `phenix.predict_and_build` (Stage 3 of the plan).
+
+**Why H18's 20 K-tests passed despite the production failure**:
+the existing tests in `tst_density_modify_experiment_type.py`
+call helpers directly with Python dicts.  They never exercise
+the PHIL parse → deep-copy → assign path.  The bug was
+entirely in the PHIL layer, which the tests bypassed.
+
+**The fix**: add the missing PHIL declaration to
+`programs/ai_agent.py`'s `master_params` string, mirroring
+the declaration already in `programs/ai_analysis.py`.  No
+code logic changes.
+
+**Preventive K-test pattern**:
+`tests/tst_h18_1_phil_roundtrip.py` adds 6 K-tests:
+
+1. **Source-grep verification** (sandbox-safe): confirms the
+   PHIL declaration is present in `ai_agent.py`'s
+   `master_params` region.  Runs anywhere, no libtbx
+   required.
+2. **PHIL parse + extract** (PHENIX-only, skips in sandbox):
+   actually calls `libtbx.phil.parse()` on the extracted
+   master_params and confirms `extract()` produces an object
+   with the new attribute.
+3. **Assignment reproduction** (PHENIX-only): deep-copies the
+   extracted params and performs the exact assignment that
+   crashed in production.  Must succeed.
+4. **Server-side definition present**: confirms
+   `programs/ai_analysis.py` still has the matching PHIL
+   declaration.  Guards against fixing one side and
+   accidentally regressing the other.
+5. **Assignment site anchor**: confirms the assignment is
+   still at the expected location in `ai_agent.py`.
+   Catches refactors that would move the call site without
+   updating the test.
+6. **Cross-file consistency**: same parameter name in both
+   files.  Catches typo divergence.
+
+Validated by temporarily reverting H18.1's PHIL block and
+confirming test 1 fails with a clear message identifying
+the deploy gap.  Restored — all 6 pass.
+
+`defaults_fingerprint` unchanged at `sha256:77bf7421...`.
+
+**What this changes for production**: AF_7mjs is finally
+fixed.  The PHIL assignment in `_extract_directives` succeeds,
+`original_files_for_directives` is threaded to the directive
+extractor, the experiment-type correction fires, and the
+agent stops after `resolve_cryo_em` as the user requested.
+
+**Lesson** (in DEVELOPER_GUIDE.md §3j + new lesson section):
+this codebase has two independent master_params blocks
+(`programs/ai_agent.py` and `programs/ai_analysis.py`).
+Adding a parameter to one does NOT propagate to the other.
+For any new PHIL parameter that flows client → server, BOTH
+declarations must be added in the same commit, with mirroring
+`.help` comments, and the PHIL-roundtrip K-test pattern
+applied to catch the deploy gap at sandbox time.
+
+**H18.2 (production code) — third `_resolve_after_program`
+callsite missed in H18 audit**
+`agent/directive_extractor.py` (+13 lines: pass
+`original_files=original_files` to the v117.2 fallback
+callsite at line 796, plus comment explaining the H18.2
+rationale),
+`tests/tst_density_modify_experiment_type.py` (+200 lines: K21
+production reproduction, K22 X-ray mirror, K23 backward-compat
+no-files path),
+`tests/canary_expected.json` (agent_version: 119.H18.2),
+VERSION.
+
+Trigger: Tom re-ran AF_7mjs with the H18.1 hotfix deployed and
+a runtime tracer installed (`h18_install_runtime_tracer.py`
+patches the deployed `directive_extractor.py` in-place with
+`[H18_TRACE]` markers at every key decision point in the
+pipeline).  The trace revealed the exact failure mode:
+
+```
+[H18_TRACE] extract_directives ENTRY:
+  raw_advice='User instructions:\ndensity modify and stop'
+  original_files=['7mjs_23883_H_1.ccp4', '7mjs_23883_H_2.ccp4',
+                  '7mjs_23883_H.fa']
+[H18_TRACE] CALLING _apply_experiment_type_program_reprints:
+  after_prog=None
+[H18_TRACE] _apply_reprints: after_prog=None
+  stop_cond={'stop_after_requested': True}
+[H18_TRACE] _apply_reprints EARLY RETURN: no after_prog
+[H18_TRACE] AFTER _apply_experiment_type_program_reprints:
+  after_prog=None
+[H18_TRACE] before _apply_workflow_intent_fallback:
+  stop_conds={'stop_after_requested': True,
+              'after_program': 'phenix.autobuild_denmod',
+              'skip_validation': True}
+```
+
+`after_program` was None when H18's first site ran (correct,
+since the LLM didn't emit it), then was SET to the wrong value
+by the time the second site ran.  Something BETWEEN the two
+H18 sites was setting `phenix.autobuild_denmod`.
+
+**Root cause**: a v117.2 fallback path at
+`directive_extractor.py:783` fires when the LLM emits
+`stop_after_requested=True` but omits `after_program`.  It calls
+`_resolve_after_program` to fill in the missing field by parsing
+the raw advice:
+
+```python
+# Pre-H18.2:
+_resolve_after_program(directives, _v172_source.lower())
+#                                                       ↑
+#                                       MISSING: original_files
+```
+
+Without `original_files`, `_resolve_after_program` defaulted
+`_exp="xray"` via the text-only heuristic (raw advice "density
+modify and stop" has no cryo-EM/X-ray tokens) and mapped
+`denmod` → `phenix.autobuild_denmod`.
+
+The downstream `_apply_workflow_intent_fallback` DOES pass
+`original_files` (H18 site 2 was correctly updated).  But at
+that point the preprocessed advice contains "Stop Condition:
+None", so `_is_stop_after_requested(advice)` returned False.
+This pushed the resolver into the
+"n==1, no stop → leave as-is" branch — the buggy
+`after_program` from the v117.2 path persisted.
+
+**Why H18's audit missed this**: H18 identified TWO callsites
+billed as "experiment-type detection" sites
+(`_apply_experiment_type_program_reprints` and
+`_apply_workflow_intent_fallback`).  The v117.2 fallback was
+billed differently — as a "fill in the missing field" site.
+Internally it called the same `_resolve_after_program` function
+with the same files-win contract, but the label was different,
+so the H18 grep audit didn't include it.
+
+**The fix is one line** at the v117.2 callsite:
+
+```python
+# Post-H18.2:
+_resolve_after_program(directives, _v172_source.lower(),
+                       original_files=original_files)
+```
+
+Plus a comment explaining the H18.2 rationale.
+
+**After H18.2, all three `_resolve_after_program` callsites in
+`extract_directives` pass `original_files`**:
+
+```
+$ grep -n "_resolve_after_program(" agent/directive_extractor.py \
+       | grep -v "^.*def "
+796:  _resolve_after_program(directives, _v172_source.lower(),
+                            original_files=original_files)  # ← H18.2
+4371: _resolve_after_program(directives, advice_lower,
+                            original_files=original_files)  # ← H18 (workflow_intent)
+```
+
+The fourth callsite in `extract_directives_simple` (line 4920)
+doesn't take files by design (rules-only path).  Out of scope.
+
+**Preventive K-tests**:
+
+- **K21**: AF_7mjs production reproduction.  Mocked LLM returns
+  the exact directive shape Tom's production LLM produced
+  (`{"stop_conditions": {"stop_after_requested": true}}` — no
+  `after_program`).  Cryo-EM files.  Expected:
+  `after_program=phenix.resolve_cryo_em` via the v117.2 fallback
+  using H18.2's `original_files` threading.
+- **K22**: X-ray mirror.  LLM omits `after_program`; X-ray files
+  (.mtz).  Expected: `after_program=phenix.autobuild_denmod`
+  (the correct X-ray choice).
+- **K23**: Backward compat.  `original_files=None`; text-only
+  cryo-em signal in raw advice.  Expected:
+  `phenix.resolve_cryo_em` via the text-fallback branch of
+  `_resolve_after_program`.
+
+All 23 tests in `tst_density_modify_experiment_type.py` pass
+(13 original §20 tests + 7 H18 tests + 3 H18.2 tests).
+
+`defaults_fingerprint` unchanged at `sha256:77bf7421...`.
+
+**What this changes for production**: AF_7mjs "density modify and
+stop" with cryo-EM files finally works correctly:
+- Cycle 1: mtriage → SUCCESS
+- Cycle 2: resolve_cryo_em → SUCCESS
+- Cycle 3: **STOP** (after_program=phenix.resolve_cryo_em matched,
+  stop_after_requested=True)
+
+NO predict_and_build in cycle 3.
+
+**Lesson** (in DEVELOPER_GUIDE.md): when adding an optional
+parameter to a function, grep for ALL callsites of that function
+regardless of what the surrounding code is "doing".  The
+parameter's contract is part of the function's identity; every
+caller must opt in or the bug travels through the callers that
+didn't.  H18 grepped for two billed-as-"experiment-type-detection"
+sites and missed a third site billed as
+"fill-in-missing-field" — same function, same parameter, same
+contract, different label.
+
+The K-test pattern that catches this class of bug is
+production-faithful end-to-end: mock the LLM with the exact shape
+production emits, run the full `extract_directives()` pipeline,
+assert on the final state.  This catches every internal site that
+touches the parameter because it tests behavior at the
+entry-point contract, not at any individual function.  K21 follows
+this pattern.
 
 ### Architectural notes
 

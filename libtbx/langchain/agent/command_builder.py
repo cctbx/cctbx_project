@@ -138,6 +138,22 @@ class CommandContext:
   # Logging callback
   log: Any = None  # Callable for logging, or None
 
+  # v119.H16.2: MTZ column structure for the currently-selected data MTZ.
+  # Populated by inspect_mtz() (see agent/mtz_inspector.py).  Consumed
+  # by the auto_fill_obs_labels invariant branch in _apply_invariants().
+  # Shape: {"merged_intensities": [...], "merged_amplitudes": [...],
+  #         "anomalous_intensities": [...], "anomalous_amplitudes": [...],
+  #         "rfree_label": str|None, "is_multi_array": bool}
+  # None when cctbx is unavailable, MTZ isn't readable, or the data MTZ
+  # hasn't been selected yet.
+  #
+  # IMPORTANT: this field is appended at the END of the dataclass field
+  # list to preserve POSITIONAL construction compatibility for any code
+  # that builds CommandContext with positional args.  Inserting in the
+  # middle of the field list breaks such callers — see the H16 → H16.2
+  # bug-fix history.
+  mtz_inspection: Optional[Dict[str, Any]] = None
+
   def file_preferences(self) -> Dict[str, Any]:
     """Return directives.file_preferences dict (empty dict if not set)."""
     return self.directives.get("file_preferences", {}) if self.directives else {}
@@ -180,6 +196,35 @@ class CommandContext:
       or workflow_state.get("experiment_type", "")
     )
 
+    # v119.H16: Inspect the selected data MTZ for column structure.
+    # When the MTZ contains multiple suitable observation arrays, the
+    # auto_fill_obs_labels invariant uses this info to inject the
+    # correct obs_labels= flag.  A precomputed value cached on `state`
+    # (same-request memoization) takes precedence; otherwise we run
+    # cctbx inspection lazily from the selected data MTZ.
+    # All failure paths return None (no inspection → no injection).
+    #
+    # Note: mtz_inspection is SERVER-COMPUTED data, derived here from
+    # the selected data MTZ.  It is intentionally NOT read from the
+    # client session_info dict and is therefore NOT a registered field
+    # in the client/server contract (agent/contract.py).  The only
+    # cache source is `state` (set by a prior call within the same
+    # request); absent that, we compute it fresh below.
+    mtz_inspection = state.get("mtz_inspection")
+    if mtz_inspection is None:
+      try:
+        data_mtz = (session_info.get("best_files", {})
+                    .get("data_mtz"))
+        if data_mtz:
+          try:
+            from libtbx.langchain.agent.mtz_inspector \
+              import inspect_mtz
+          except ImportError:
+            from agent.mtz_inspector import inspect_mtz
+          mtz_inspection = inspect_mtz(data_mtz)
+      except Exception:
+        mtz_inspection = None
+
     return cls(
       cycle_number=state.get("cycle_number", 1),
       experiment_type=experiment_type,
@@ -196,6 +241,7 @@ class CommandContext:
       directives=state.get("directives", {}),
       model_hetatm_residues=session_info.get("model_hetatm_residues"),
       files_local=state.get("files_local", True),
+      mtz_inspection=mtz_inspection,
     )
 
   def _log(self, msg: str):
@@ -2209,6 +2255,72 @@ class CommandBuilder:
         prefix = fix.get("auto_fill_output_prefix")
         if isinstance(prefix, str):
           strategy["output_prefix"] = self._generate_output_prefix(program, context)
+
+      # v119.H16: Auto-fill obs_labels for multi-array MTZ.
+      #
+      # When the data MTZ contains multiple equally-suitable observation
+      # arrays (typical for MRSAD / SAD tutorials carrying both anomalous
+      # pairs and merged intensities), PHENIX refuses to guess and
+      # aborts with "Multiple equally suitable arrays of observed xray
+      # data found".  This branch injects a deterministic per-program
+      # choice based on the MTZ structure inspected by cctbx.
+      #
+      # See agent/mtz_inspector.py for:
+      #   - inspect_mtz(): MTZ → structured label dict
+      #   - select_obs_labels_for(): per-program preference policy
+      #
+      # The injection fires only when ALL of:
+      #   1. invariant declares auto_fill_obs_labels: true (YAML)
+      #   2. obs_labels NOT already in strategy (user/LLM didn't set it)
+      #   3. context.mtz_inspection populated with is_multi_array=True
+      #   4. the policy returns a non-None label string for this program
+      #
+      # All four gates must pass.  Single-array MTZs skip silently.
+      # Missing inspection context (pre-H16 resume, or cctbx
+      # unavailable) skips silently.  Telemetry logs both injection
+      # firing AND fall-through so production can monitor coverage.
+      if fix.get("auto_fill_obs_labels") and "obs_labels" not in strategy:
+        try:
+          try:
+            from libtbx.langchain.agent.mtz_inspector import (
+              select_obs_labels_for, has_ambiguous_arrays,
+            )
+          except ImportError:
+            from agent.mtz_inspector import (
+              select_obs_labels_for, has_ambiguous_arrays,
+            )
+          mtz_info = getattr(context, "mtz_inspection", None)
+          if has_ambiguous_arrays(mtz_info):
+            labels = select_obs_labels_for(program, mtz_info)
+            if labels:
+              strategy["obs_labels"] = labels
+              self._log(
+                context,
+                "[OBS_LABELS] injected: %s '%s' "
+                "(from multi-array MTZ inspection)"
+                % (program, labels),
+              )
+            else:
+              self._log(
+                context,
+                "[OBS_LABELS] no suitable labels for %s "
+                "(available categories: %s)"
+                % (program,
+                   [k for k, v in mtz_info.items()
+                    if isinstance(v, list) and v]),
+              )
+          # else: single-array or no inspection — silent no-op.
+          # PHENIX picks the only option unambiguously when there's
+          # only one suitable array set, so no injection needed.
+        except ImportError:
+          # mtz_inspector not deployed (pre-H16 server) — skip silently.
+          pass
+        except Exception as _e:
+          self._log(
+            context,
+            "[OBS_LABELS] auto-fill raised %s — proceeding "
+            "without injection" % _e,
+          )
 
     # Check for programs that need R-free resolution matching
     # If R-free flags were generated at a limited resolution, certain programs

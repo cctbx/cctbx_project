@@ -223,3 +223,84 @@ def matches_exclude_pattern(basename, patterns):
             stem):
             return True
     return False
+
+
+# =============================================================================
+# v119.H18: Experiment-type inference from file extensions
+# =============================================================================
+#
+# Used by directive_extractor._apply_experiment_type_program_reprints
+# to correct LLM-emitted after_program when the LLM picks a program
+# canonical for the wrong experiment type (e.g. autobuild_denmod for
+# cryo-EM data).
+#
+# This is the smallest step toward ARCHITECTURE.md §3.3 (infer
+# experiment type from file extensions at session creation time).
+# It does NOT change session-locking semantics — Session.set_experiment_type()
+# still locks after the first program returns.  This helper is an
+# advisory used at directive-extraction time, before any program runs.
+
+_XRAY_DATA_EXTS  = (".mtz", ".sca", ".hkl")
+_CRYOEM_MAP_EXTS = (".mrc", ".ccp4", ".map")
+
+
+def infer_experiment_type_from_files(files):
+    """Infer experiment type from file extensions.
+
+    Returns a tuple (experiment_type, evidence_dict):
+        experiment_type: "xray" | "cryoem" | None
+        evidence_dict:
+            {"xray_exts": sorted list of unique xray extensions seen,
+             "cryoem_exts": sorted list of unique cryo-EM extensions seen,
+             "is_mixed": True iff both types are present}
+
+    The asymmetric semantics (xray ∧ ¬cryoem; cryoem ∧ ¬xray) match
+    `_detect_experiment_type_signals` in directive_extractor: returns
+    None for genuinely ambiguous inputs (both types present, or
+    neither).
+
+    Telemetry: callers inspect evidence_dict to log which extensions
+    drove the decision, and detect "mixed-input drift" (Pitfall 1
+    from Gemini's H18 review) — long-running sessions that
+    accumulate both data types in original_files.
+
+    Args:
+        files: iterable of file paths or basenames.  Non-strings
+            and None are silently ignored.
+
+    Examples:
+        >>> infer_experiment_type_from_files(["data.mtz", "model.pdb"])
+        ('xray', {'xray_exts': ['.mtz'], 'cryoem_exts': [], 'is_mixed': False})
+
+        >>> infer_experiment_type_from_files(["map1.ccp4", "map2.mrc"])
+        ('cryoem', {'xray_exts': [], 'cryoem_exts': ['.ccp4', '.mrc'], 'is_mixed': False})
+
+        >>> infer_experiment_type_from_files(["model.pdb"])
+        (None, {'xray_exts': [], 'cryoem_exts': [], 'is_mixed': False})
+
+        >>> infer_experiment_type_from_files(["data.mtz", "map.ccp4"])
+        (None, {'xray_exts': ['.mtz'], 'cryoem_exts': ['.ccp4'], 'is_mixed': True})
+
+        >>> infer_experiment_type_from_files([])
+        (None, {'xray_exts': [], 'cryoem_exts': [], 'is_mixed': False})
+    """
+    xray_exts = []
+    cryoem_exts = []
+    for f in (files or []):
+        if not isinstance(f, str):
+            continue
+        ext = os.path.splitext(f)[1].lower()
+        if ext in _XRAY_DATA_EXTS:
+            xray_exts.append(ext)
+        elif ext in _CRYOEM_MAP_EXTS:
+            cryoem_exts.append(ext)
+    evidence = {
+        "xray_exts":   sorted(set(xray_exts)),
+        "cryoem_exts": sorted(set(cryoem_exts)),
+        "is_mixed":    bool(xray_exts and cryoem_exts),
+    }
+    if xray_exts and not cryoem_exts:
+        return ("xray", evidence)
+    if cryoem_exts and not xray_exts:
+        return ("cryoem", evidence)
+    return (None, evidence)

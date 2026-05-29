@@ -575,7 +575,8 @@ DIRECTIVE_EXTRACTION_PROMPT_WITH_RAW = (
 # =============================================================================
 
 def extract_directives(user_advice, provider="google", model=None, log_func=None,
-                       use_rules_only=False, raw_advice=None):
+                       use_rules_only=False, raw_advice=None,
+                       original_files=None):
     """
     Extract structured directives from user advice using LLM.
 
@@ -593,6 +594,13 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
             source for file mentions, parameters, and experiment type.
             When None or equal to user_advice, falls back to the
             single-input prompt (backward compat).
+        original_files: optional list of input file paths/basenames
+            from the user's inventory.  When provided, used as the
+            PRIMARY signal for experiment-type-based after_program
+            correction (v119.H18).  Files-win policy on conflict
+            with text-derived signals.  When None or empty, falls
+            back to text-only detection (backward compat with
+            pre-H18 callsites).
 
     Returns:
         dict: Extracted directives, or empty dict if extraction fails
@@ -740,8 +748,11 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
         # PROGRAM_REPRINTS_BY_EXPERIMENT_TYPE for the mapping table
         # and `_apply_experiment_type_program_reprints` for placement
         # rationale (runs AFTER grounding by design).
+        # v119.H18: pass original_files so the validator can use
+        # file extensions as the primary signal (files-win policy).
         directives = _apply_experiment_type_program_reprints(
-            directives, user_advice, raw_advice, log)
+            directives, user_advice, raw_advice, log,
+            original_files=original_files)
 
         # Regex fallback: ensure unit_cell and space_group are always captured.
         # The LLM sometimes returns an empty dict (or only stop_conditions) even
@@ -772,7 +783,18 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
             _v172_source = raw_advice if raw_advice else user_advice
             if _v172_source and _is_stop_after_requested(_v172_source):
                 _v172_before = dict(_sc_v172)
-                _resolve_after_program(directives, _v172_source.lower())
+                # v119.H18.2: pass original_files here too.  Without
+                # it, this v117.2 fallback path (LLM emitted
+                # stop_after_requested=True but no after_program)
+                # called _resolve_after_program with no file
+                # signal, causing _exp to default to "xray" and
+                # mapping denmod → phenix.autobuild_denmod for
+                # cryo-EM inputs.  This was the THIRD
+                # _resolve_after_program callsite (the other two
+                # were already H18-aware via _apply_workflow_intent_fallback).
+                # The AF_7mjs production failure path.
+                _resolve_after_program(directives, _v172_source.lower(),
+                                       original_files=original_files)
                 _sc_v172_after = directives.get("stop_conditions") or {}
                 if _sc_v172_after.get("after_program"):
                     log("DIRECTIVES: Filled in after_program=%s from raw "
@@ -868,8 +890,12 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
         # intent patterns.  The LLM often ignores wants_validation_only
         # and use_mr_sad even when the advice clearly requests them.
         # This ensures the critical routing flags are always set.
+        # v119.H18: pass original_files so the resolver's experiment-
+        # type detection uses files as the primary signal (files-win),
+        # preventing it from reverting H18's earlier correction.
         _apply_workflow_intent_fallback(
-            directives, user_advice.lower())
+            directives, user_advice.lower(),
+            original_files=original_files)
 
         return directives
 
@@ -2158,7 +2184,8 @@ def _detect_experiment_type_signals(combined_advice):
 
 
 def _apply_experiment_type_program_reprints(
-        directives, user_advice, raw_advice, log):
+        directives, user_advice, raw_advice, log,
+        original_files=None):
     """Correct after_program when the LLM picked a program that's
     canonical for the wrong experiment type.
 
@@ -2172,6 +2199,10 @@ def _apply_experiment_type_program_reprints(
     the [DIRECTIVE_CORRECTION] marker to both log_func and stderr
     (mirrors Section E's diagnostic safety pattern), and records a
     `_corrected_from` sidecar in the stop_conditions dict.
+
+    v119.H18: detection now uses file extensions as the PRIMARY
+    signal, falling back to text-based detection when files are
+    unavailable or inconclusive.  See "Detection priority" below.
 
     Placement note: this validator runs AFTER
     _validate_after_program_grounded.  Why:
@@ -2196,10 +2227,24 @@ def _apply_experiment_type_program_reprints(
         isn't in user_advice (user said "density modify") and
         drop it as fabrication.
 
+    Detection priority (v119.H18, files-win policy):
+      1. Try file-based detection on original_files.  If
+         unambiguous, use it (and log if it overrode a contrary
+         text signal).
+      2. Fall back to text-based detection if files are absent,
+         empty, or mixed.
+      3. Decline to act if both signals are None.
+
+    When file inventory contains BOTH types (e.g. accumulated across
+    a multi-cycle session — Pitfall 1 from Gemini's H18 review), the
+    file signal returns None and we defer to text.  A
+    [DIRECTIVE_CORRECTION_MIXED] line is logged so any future drift
+    is visible in audit logs.
+
     No-op when:
       - directives has no stop_conditions or no after_program
       - after_program is not a key in the reprints table
-      - experiment-type signals are ambiguous (None)
+      - both file-based and text-based detection return None
 
     Args:
         directives: post-LLM directives dict (may be modified in
@@ -2211,6 +2256,10 @@ def _apply_experiment_type_program_reprints(
             user_advice for experiment-type detection to maximize
             signal coverage.
         log: log_func
+        original_files: optional list of file paths/basenames from
+            the user's input inventory.  When provided, used as the
+            PRIMARY signal for experiment-type detection.  When None
+            or empty, falls back to text-based detection (v119.H18).
 
     Returns:
         the (possibly modified) directives dict
@@ -2222,6 +2271,31 @@ def _apply_experiment_type_program_reprints(
     if not after_prog:
         return directives
 
+    # v119.H18: PRIMARY signal — file extensions.  Deterministic
+    # and unambiguous.  Used in preference to text-based detection
+    # because the AF_7mjs failure case ("density modify and stop"
+    # with cryo-EM files) produces empty text signals.
+    file_type = None
+    evidence = {"xray_exts": [], "cryoem_exts": [], "is_mixed": False}
+    if original_files:
+        try:
+            try:
+                from libtbx.langchain.agent.file_utils import (
+                    infer_experiment_type_from_files)
+            except ImportError:
+                from agent.file_utils import (
+                    infer_experiment_type_from_files)
+            file_type, evidence = infer_experiment_type_from_files(
+                original_files)
+        except Exception:
+            # Defensive: if file_utils import fails for any reason,
+            # fall through to text-based detection.  Never let the
+            # helper break the correction path.
+            file_type = None
+            evidence = {"xray_exts": [], "cryoem_exts": [],
+                        "is_mixed": False}
+
+    # FALLBACK signal — text-based detection on combined advice.
     # Combine raw + preprocessed to maximize signal coverage.
     # raw_advice may contain file mentions ("half-maps", ".ccp4")
     # that user_advice has already paraphrased; preprocessed
@@ -2229,10 +2303,26 @@ def _apply_experiment_type_program_reprints(
     # field.  Both are useful.
     combined = " ".join(filter(None, [raw_advice or "",
                                         user_advice or ""]))
-    if not combined.strip():
-        return directives
+    text_type = None
+    if combined.strip():
+        text_type = _detect_experiment_type_signals(combined)
 
-    target_type = _detect_experiment_type_signals(combined)
+    # Pitfall 1 telemetry: log mixed-input drift so accumulating
+    # original_files in long sessions is visible in audit logs.
+    if evidence.get("is_mixed") and log:
+        try:
+            log("[DIRECTIVE_CORRECTION_MIXED] Both X-ray (%s) and "
+                "cryo-EM (%s) files present in inventory; "
+                "deferring to text-based detection (text=%s)"
+                % (evidence["xray_exts"],
+                   evidence["cryoem_exts"], text_type))
+        except Exception:
+            pass
+
+    # POLICY: files win on conflict.  Files are the hard physical
+    # boundary — passing a .ccp4 to an X-ray-only program crashes
+    # at runtime regardless of what the user wrote.
+    target_type = file_type if file_type is not None else text_type
     if target_type is None:
         return directives  # ambiguous: decline to act
 
@@ -2242,17 +2332,36 @@ def _apply_experiment_type_program_reprints(
         return directives  # not a known incorrect choice for this type
 
     # Perform correction
+    source = "files" if file_type else "text"
+    text_overridden = (text_type if (file_type and text_type
+                                     and text_type != file_type)
+                       else None)
     stop_cond["after_program"] = right_prog
     stop_cond["_corrected_from"] = {
         "from": after_prog,
         "to": right_prog,
         "reason": "experiment_type_mismatch",
         "experiment_type": target_type,
+        "source": source,
+        "evidence": evidence if file_type else None,
+        "text_signal_overridden": text_overridden,
     }
+
+    # Pitfall 2 telemetry: enriched [DIRECTIVE_CORRECTION] marker
+    # so file-based overrides of explicit text are auditable.
+    extra = ""
+    if file_type:
+        ev_list = (evidence["cryoem_exts"]
+                   if target_type == "cryoem"
+                   else evidence["xray_exts"])
+        extra = ", evidence=%s" % (ev_list,)
+        if text_overridden:
+            extra += (", text_signal=%s, OVERRIDDEN"
+                      % text_overridden)
     diag_msg = (
         "[DIRECTIVE_CORRECTION] Mapped after_program=%s to %s "
-        "based on Experiment Type: %s"
-        % (after_prog, right_prog, target_type))
+        "(source=%s, target_type=%s%s)"
+        % (after_prog, right_prog, source, target_type, extra))
     if log:
         log(diag_msg)
     # Also write to stderr.  Mirrors Section E's safety pattern:
@@ -3961,7 +4070,7 @@ def _is_stop_after_requested(advice):
     return False
 
 
-def _resolve_after_program(directives, advice_lower):
+def _resolve_after_program(directives, advice_lower, original_files=None):
     """General after_program resolver.
 
     Corrects after_program based on how many workflow actions the
@@ -3978,6 +4087,15 @@ def _resolve_after_program(directives, advice_lower):
 
     Called from _apply_workflow_intent_fallback (both LLM and
     rules-only paths).
+
+    v119.H18: optional ``original_files`` parameter.  When provided,
+    experiment-type detection uses file extensions as the PRIMARY
+    signal (files-win policy, mirrors the policy in
+    ``_apply_experiment_type_program_reprints``).  This fixes the
+    case where the resolver previously defaulted ``_exp="xray"`` for
+    terse advice with no experiment-type tokens, causing it to
+    silently revert a correct H18 correction.  When None or empty,
+    falls back to the pre-H18 text-only heuristic (backward compat).
     """
     # If this is preprocessed text (has "Primary Goal:" header),
     # extract just that line for action detection.  The full
@@ -4005,22 +4123,45 @@ def _resolve_after_program(directives, advice_lower):
     # but the regex matched the word "Stop" in the heading).
     _has_stop = _is_stop_after_requested(advice_lower)
 
-    # Infer experiment type from advice text (same heuristic
-    # as extract_directives_simple).
-    _is_cryoem = bool(re.search(
-        r'cryo-?em|half.?map|\.mrc|\.map|full.?map|mtriage'
-        r'|sharpen|map.sharpening|auto.sharpen'
-        r'|resolve.cryo|dock.in.map|map.to.model'
-        r'|density.modif\w*\s+map',
-        advice_lower))
-    _is_xray = bool(re.search(
-        r'x-?ray|\.mtz|\.hkl|xtriage|phaser|autosol|'
-        r'sad|mad|molecular.?replacement',
-        advice_lower))
-    if _is_cryoem and not _is_xray:
-        _exp = "cryoem"
-    else:
-        _exp = "xray"  # Default to xray
+    # v119.H18: PRIMARY signal — file extensions when supplied.
+    # Mirrors the files-win policy in
+    # _apply_experiment_type_program_reprints.  Without this, terse
+    # advice without explicit cryo-EM/X-ray tokens caused the
+    # text heuristic below to default _exp="xray", silently
+    # reverting a correct H18 correction made earlier in the
+    # extract_directives pipeline.
+    _exp = None
+    if original_files:
+        try:
+            try:
+                from libtbx.langchain.agent.file_utils import (
+                    infer_experiment_type_from_files)
+            except ImportError:
+                from agent.file_utils import (
+                    infer_experiment_type_from_files)
+            _file_exp, _ = infer_experiment_type_from_files(
+                original_files)
+            _exp = _file_exp
+        except Exception:
+            _exp = None
+
+    # FALLBACK signal — text heuristic.  Used only when files
+    # weren't supplied OR are mixed (helper returned None).
+    if _exp is None:
+        _is_cryoem = bool(re.search(
+            r'cryo-?em|half.?map|\.mrc|\.map|full.?map|mtriage'
+            r'|sharpen|map.sharpening|auto.sharpen'
+            r'|resolve.cryo|dock.in.map|map.to.model'
+            r'|density.modif\w*\s+map',
+            advice_lower))
+        _is_xray = bool(re.search(
+            r'x-?ray|\.mtz|\.hkl|xtriage|phaser|autosol|'
+            r'sad|mad|molecular.?replacement',
+            advice_lower))
+        if _is_cryoem and not _is_xray:
+            _exp = "cryoem"
+        else:
+            _exp = "xray"  # Default to xray
 
     # Detect preprocessed advice — used below to suppress
     # start_with_program writes when the multi-action signal
@@ -4139,7 +4280,8 @@ def _resolve_after_program(directives, advice_lower):
             "stop_after_predict"] = True
 
 
-def _apply_workflow_intent_fallback(directives, advice_lower):
+def _apply_workflow_intent_fallback(directives, advice_lower,
+                                    original_files=None):
     """Apply deterministic workflow intent patterns to directives.
 
     v115.09: Shared by both LLM and rules-based paths.  When the LLM
@@ -4156,6 +4298,12 @@ def _apply_workflow_intent_fallback(directives, advice_lower):
     Args:
         directives: dict — modified in place.
         advice_lower: str — lowercased user advice text.
+        original_files: optional list of input file paths.  When
+            provided, threaded through to ``_resolve_after_program``
+            so its experiment-type heuristic uses file extensions
+            as the primary signal (v119.H18 files-win policy).
+            Backward-compat: defaults to None for callsites that
+            don't have file information.
     """
     # Validation-only intent.
     # NOTE: "analysis only" deliberately omitted — it matches
@@ -4218,7 +4366,10 @@ def _apply_workflow_intent_fallback(directives, advice_lower):
     # clearing, denmod stop/clear) with a single mechanism
     # that counts distinct action mentions and checks for
     # "stop" to determine the correct after_program.
-    _resolve_after_program(directives, advice_lower)
+    # v119.H18: pass original_files so files-win experiment-type
+    # detection extends here too.
+    _resolve_after_program(directives, advice_lower,
+                           original_files=original_files)
 
 
 def extract_directives_simple(user_advice, log=None):

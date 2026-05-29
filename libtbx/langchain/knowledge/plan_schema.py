@@ -113,6 +113,15 @@ class StageDef(object):
     self.start_cycle = None    # cycle number when entered
     self.end_cycle = None      # cycle number when exited
     self.result_metrics = {}   # metrics at stage completion
+    # v119.H15 Item 1: deviation metadata.  Populated when a
+    # stage transitions due to a plan deviation (LLM ran a
+    # program belonging to a later stage out of plan order).
+    # See StructurePlan.advance().  These fields are optional
+    # observability data — None means "no deviation recorded
+    # for this stage."  Captured here (not in a side channel)
+    # so they survive serialization and resume.
+    self.failure_reason = None  # e.g. "abandoned_by_deviation"
+    self.entered_via = None     # e.g. "deviation" | "advance" | None
 
   def to_dict(self):
     """Serialize to JSON-safe dict."""
@@ -139,6 +148,9 @@ class StageDef(object):
       "start_cycle": self.start_cycle,
       "end_cycle": self.end_cycle,
       "result_metrics": dict(self.result_metrics),
+      # v119.H15 Item 1: deviation metadata
+      "failure_reason": self.failure_reason,
+      "entered_via": self.entered_via,
     }
 
   @classmethod
@@ -172,6 +184,10 @@ class StageDef(object):
     stage.result_metrics = dict(
       d.get("result_metrics", {})
     )
+    # v119.H15 Item 1: deviation metadata (optional —
+    # absent in pre-H15 session JSONs).
+    stage.failure_reason = d.get("failure_reason")
+    stage.entered_via = d.get("entered_via")
     return stage
 
   def is_exhausted(self):
@@ -220,6 +236,62 @@ def _program_matches_phase(program_name, phase_programs):
     if program_name.startswith(pp + "_"):
       return True
   return False
+
+
+# ── Success-criteria checker (v119.H15 Item 1) ──────
+
+def _criteria_met(stage, structure_model):
+  """Check whether a stage's success_criteria are met.
+
+  Used by StructurePlan.advance(force=False) to decide
+  between STAGE_COMPLETE and STAGE_FAILED when advancing
+  away from a stage prematurely (LLM ran a later-stage
+  program and triggered catch-up).
+
+  Returns True (treat as met / let stage advance to
+  COMPLETE) when:
+    - stage has no success_criteria (e.g. validation
+      stages with empty criteria — they always complete
+      cleanly when their program runs)
+    - structure_model is None (can't evaluate; preserve
+      legacy "advance anyway" behavior)
+    - all criteria evaluate to True against the model
+
+  Returns False (treat as failed / mark STAGE_FAILED)
+  when at least one criterion evaluates to False.
+
+  Implementation: delegates to GateEvaluator._check_success
+  via a lazy import (avoids a hard module-level
+  circular dependency between plan_schema and
+  gate_evaluator).  If the import fails for any reason,
+  returns True (graceful degradation — error toward
+  legacy behavior, never panic).
+  """
+  if not stage.success_criteria:
+    return True
+  if structure_model is None:
+    return True
+  try:
+    try:
+      from libtbx.langchain.agent.gate_evaluator \
+        import GateEvaluator
+    except ImportError:
+      from agent.gate_evaluator import GateEvaluator
+    all_met, _details = GateEvaluator()._check_success(
+      stage.success_criteria, structure_model
+    )
+    return all_met
+  except Exception:
+    # Defensive: never raise from this helper.  If
+    # criteria evaluation is broken for any reason,
+    # fall back to legacy behavior (treat as met).
+    logger.debug(
+      "_criteria_met fallback: criteria evaluation "
+      "failed for stage %r",
+      stage.id,
+      exc_info=True,
+    )
+    return True
 
 
 # ── StructurePlan ───────────────────────────────────
@@ -289,13 +361,40 @@ class StructurePlan(object):
       return self.stages[idx]
     return None
 
-  def advance(self):
+  def advance(self, force=True, structure_model=None,
+              via=None):
     """Move to next stage.
 
-    Marks the current stage as complete and activates
-    the next pending stage. Skips stages whose skip_if
-    condition is noted (actual evaluation is done by
-    the gate evaluator, which calls skip_stage()).
+    Marks the current stage and activates the next
+    pending stage.  How the current stage is marked
+    depends on `force` and `structure_model`:
+
+    - force=True (default, legacy behavior): current
+      stage is marked STAGE_COMPLETE if it was
+      STAGE_ACTIVE.  No criteria check.  This is what
+      every pre-H15 caller of advance() expected.
+
+    - force=False: current stage's success_criteria are
+      checked against structure_model.  If criteria are
+      met (or empty, or model unavailable), marked
+      STAGE_COMPLETE.  If criteria are NOT met, marked
+      STAGE_FAILED with failure_reason populated.
+
+    The `via` argument optionally tags the newly-active
+    stage's `entered_via` field for observability —
+    typically set by the catch-up call site to "deviation"
+    so downstream code (and humans reading session JSON)
+    can tell which transitions were plan-driven vs.
+    LLM-driven.
+
+    Args:
+      force: bool, default True.  When True, current
+        stage always marked COMPLETE on advance.  When
+        False, criteria are evaluated.
+      structure_model: StructureModel or dict-like with
+        get_metric().  Only consulted when force=False.
+      via: optional str.  Tagged onto the next active
+        stage's entered_via field.
 
     Returns:
       True if advanced to a new stage.
@@ -303,10 +402,26 @@ class StructurePlan(object):
     """
     if not self.stages:
       return False
-    # Mark current as complete
+    # Mark current stage's exit status
     curr = self.current_stage()
     if curr and curr.status == STAGE_ACTIVE:
-      curr.status = STAGE_COMPLETE
+      if force:
+        # Legacy behavior — pre-H15 callers preserved
+        curr.status = STAGE_COMPLETE
+      else:
+        # Strict semantics — check success criteria
+        if _criteria_met(curr, structure_model):
+          curr.status = STAGE_COMPLETE
+        else:
+          # v119.H15 Item 1: explicit failure rather
+          # than silently marking complete.  The
+          # failure_reason field is observability for
+          # session inspection and any future plan-
+          # repair logic.  result_metrics are PRESERVED
+          # (per H15 plan question 1: observation vs
+          # status are orthogonal).
+          curr.status = STAGE_FAILED
+          curr.failure_reason = "abandoned_by_deviation"
     # Find next pending stage
     for i in range(
       self.current_stage_index + 1, len(self.stages)
@@ -314,10 +429,49 @@ class StructurePlan(object):
       if self.stages[i].status == STAGE_PENDING:
         self.current_stage_index = i
         self.stages[i].status = STAGE_ACTIVE
+        if via:
+          self.stages[i].entered_via = via
         return True
     # No more pending stages — plan is done
     self.current_stage_index = len(self.stages)
     return False
+
+  def record_plan_deviation(self, session_data,
+                            from_stage_id, to_stage_id,
+                            program_name, cycle_number):
+    """Record a structured plan-deviation event.
+
+    Called by record_stage_cycle when the LLM ran a
+    program that matched a later stage's programs list,
+    triggering a catch-up.  Stored in session_data
+    under "plan_deviations" as a list of dicts.
+
+    This data captures the LLM-vs-plan divergence in
+    a form that future architectural work (e.g., a
+    proper deviation-aware repair pass) can drive
+    decisions from.  In H15, it's observability-only.
+
+    Args:
+      session_data: dict to append the event into.
+        Modified in place.  No-op if not a dict.
+      from_stage_id: str, the stage the agent was IN.
+      to_stage_id: str, the stage the agent CATCHES UP to.
+      program_name: str, the LLM's chosen program.
+      cycle_number: int, the cycle of the deviation.
+    """
+    if not isinstance(session_data, dict):
+      return
+    events = session_data.setdefault(
+      "plan_deviations", []
+    )
+    events.append({
+      "_v": 1,
+      "cycle": int(cycle_number) if cycle_number
+              is not None else None,
+      "from_stage": str(from_stage_id),
+      "to_stage": str(to_stage_id),
+      "program": str(program_name),
+    })
 
   def retreat_to(self, stage_id, cycle_number=None):
     """Go back to a named stage.
@@ -456,7 +610,10 @@ class StructurePlan(object):
       if curr.start_cycle is None:
         curr.start_cycle = int(cycle_number)
 
-  def record_stage_cycle(self, program_name=None):
+  def record_stage_cycle(self, program_name=None,
+                         structure_model=None,
+                         session_data=None,
+                         cycle_number=None):
     """Increment the cycle counter for current stage.
 
     Counting rules:
@@ -465,17 +622,49 @@ class StructurePlan(object):
     - program matches current stage → count
     - program matches NO stage → count (reactive
       program like pdbtools running during stage)
-    - program matches a LATER stage → advance the
-      plan to that stage and count there (the agent
-      ran ahead of the plan tracker)
+    - program matches a LATER stage → catch up to that
+      stage (PLAN DEVIATION) and count there
     - program matches an EARLIER stage → skip
       (e.g. xtriage re-run during refinement)
 
     Matching includes variant programs: e.g.
     phenix.autobuild_denmod counts as autobuild.
 
+    v119.H15 Item 1: when the agent runs a program
+    matching a later stage (the catch-up path), the
+    intermediate-stage advances now use STRICT semantics:
+    each intermediate stage's success_criteria are
+    checked.  Stages that meet criteria are marked
+    STAGE_COMPLETE; stages that don't are marked
+    STAGE_FAILED with `failure_reason="abandoned_by_deviation"`.
+    This replaces the pre-H15 behavior of marking every
+    intermediate stage COMPLETE regardless of criteria
+    (which corrupted Tom's bromodomain session — see
+    H15 plan for the full diagnosis).
+
+    The catch-up itself still occurs.  H15 doesn't
+    eliminate the "tail wagging the dog" architectural
+    smell (that would require a proper deviation-halt
+    + plan-repair pass); it just makes the catch-up
+    HONEST about which stages it abandoned without
+    meeting their goals.
+
+    A deviation event is also recorded in session_data
+    (if provided) under "plan_deviations" — a structured
+    log that future architectural work can drive
+    decisions from.
+
     Args:
       program_name: str or None.
+      structure_model: optional, used to evaluate
+        success_criteria on catch-up intermediate stages.
+        When None, intermediate stages fall back to
+        legacy mark-COMPLETE behavior (graceful
+        degradation when ai_agent.py is pre-H15).
+      session_data: optional dict to record deviation
+        events into.  Modified in place.
+      cycle_number: optional, tagged onto deviation
+        events for forensics.
     """
     curr = self.current_stage()
     if curr:
@@ -490,11 +679,7 @@ class StructurePlan(object):
           ):
             curr.cycles_used += 1
             return
-          # Does it match a LATER stage? If so, the
-          # agent ran ahead — advance the plan to
-          # catch up.  Intermediate stages are marked
-          # complete (the agent effectively handled
-          # them).
+          # Does it match a LATER stage?  PLAN DEVIATION.
           curr_idx = self.current_stage_index
           for i in range(
             curr_idx + 1, len(self.stages)
@@ -503,22 +688,41 @@ class StructurePlan(object):
             if (s.programs
                 and _program_matches_phase(
                   program_name, s.programs)):
-              # Advance through all intermediate
-              # stages to reach this one
               logger.info(
-                "Plan catch-up: program %s matches "
+                "Plan deviation: program %s matches "
                 "stage '%s' (index %d), advancing "
-                "from '%s' (index %d)"
+                "from '%s' (index %d) with strict "
+                "criteria check"
                 % (program_name, s.id, i,
                    curr.id, curr_idx))
+              # v119.H15 Item 1: structured deviation
+              # event for session JSON
+              self.record_plan_deviation(
+                session_data,
+                from_stage_id=curr.id,
+                to_stage_id=s.id,
+                program_name=program_name,
+                cycle_number=cycle_number,
+              )
+              # Walk forward with strict semantics.  Each
+              # intermediate stage's criteria are checked;
+              # stages that don't meet criteria → FAILED,
+              # not COMPLETE.  The first stage we advance
+              # INTO (the new active one) gets entered_via
+              # tagged so the gate evaluator and resume
+              # logic can see this was a deviation.
+              first_advance = True
               while (self.current_stage_index < i
-                     and self.advance()):
-                pass
-              # Now count for the new current stage,
-              # but only if it actually matches the
-              # program.  If advance() overshot (e.g.
-              # the target stage was SKIPPED), don't
-              # mis-count on an unrelated stage.
+                     and self.advance(
+                       force=False,
+                       structure_model=structure_model,
+                       via=("deviation"
+                            if first_advance else None),
+                     )):
+                first_advance = False
+              # Count for the new current stage if it
+              # matches the program (defensive against
+              # overshoot e.g. if target was SKIPPED).
               new_curr = self.current_stage()
               if (new_curr
                   and new_curr.programs
@@ -560,6 +764,11 @@ class StructurePlan(object):
 
     Returns:
       True if no pending or active stages remain.
+
+    Note: returns True even when one or more stages are in
+    STAGE_FAILED state.  Callers that need to distinguish
+    "all clean" from "exhausted with failures" should use
+    get_failed_stage_ids() in conjunction with this check.
     """
     for stage in self.stages:
       if stage.status in (
@@ -567,6 +776,26 @@ class StructurePlan(object):
       ):
         return False
     return len(self.stages) > 0
+
+  def get_failed_stage_ids(self):
+    """List the IDs of stages currently in STAGE_FAILED.
+
+    v119.H15 H1 fix: enables the gate evaluator to emit a
+    stop reason that distinguishes "plan ran to completion"
+    from "plan ran out of stages with one or more failed."
+    Without this, the gate's stop event always said "all
+    stages complete" even when a stage had status FAILED
+    (e.g., abandoned via H15 Item 1's strict catch-up).
+
+    Pure query — no mutation.
+
+    Returns:
+      list of str.  Empty list when no stages are FAILED.
+    """
+    return [
+      s.id for s in self.stages
+      if s.status == STAGE_FAILED
+    ]
 
   def get_stage_by_id(self, stage_id):
     """Look up a stage by ID.

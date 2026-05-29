@@ -1708,6 +1708,26 @@ def main():
                        "tst_density_modify_experiment_type",
                        False, 0))
 
+    # --- H18.1 PHIL round-trip for original_files_for_directives ---
+    # Catches the deploy gap where master_params in ai_agent.py is
+    # missing a PHIL definition that an assignment site assumes
+    # exists.  See tst_h18_1_phil_roundtrip.py module docstring.
+    try:
+        from tests.tst_h18_1_phil_roundtrip import (
+            run_all_tests as run_h18_1_phil_tests)
+        success, elapsed = run_test_module(
+            "tst_h18_1_phil_roundtrip",
+            run_h18_1_phil_tests, args.verbose)
+        results.append(("H18.1 PHIL Round-Trip",
+                       "tst_h18_1_phil_roundtrip",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_h18_1_phil_roundtrip: {e}")
+        results.append(("H18.1 PHIL Round-Trip",
+                       "tst_h18_1_phil_roundtrip",
+                       False, 0))
+
     # --- Settings List Coercion (v118.10) ---
     try:
         from tests.tst_settings_list_coercion import (
@@ -2057,6 +2077,89 @@ def main():
         print(f"\u26a0\ufe0f  Could not import tst_predict_and_build_no_ncs: {e}")
         results.append(("predict_and_build no-NCS (H14.2)",
                        "tst_predict_and_build_no_ncs",
+                       False, 0))
+
+    # --- Plan catch-up failure semantics (v119.H15 Item 1) ---
+    # H15 Item 1: StructurePlan.advance() now distinguishes
+    # criteria-met-COMPLETE vs criteria-unmet-FAILED when called
+    # from record_stage_cycle's catch-up path.  Catches Tom's
+    # bromodomain bug where final_refinement was silently marked
+    # complete despite R-free=0.272 > target=0.25.
+    try:
+        from tests.tst_plan_catchup_failure_semantics import (
+            run_all_tests as run_h15_1_tests)
+        success, elapsed = run_test_module(
+            "tst_plan_catchup_failure_semantics",
+            run_h15_1_tests, args.verbose)
+        results.append(("Plan catch-up failure semantics (H15 Item 1)",
+                       "tst_plan_catchup_failure_semantics",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_plan_catchup_failure_semantics: {e}")
+        results.append(("Plan catch-up failure semantics (H15 Item 1)",
+                       "tst_plan_catchup_failure_semantics",
+                       False, 0))
+
+    # --- Resume reopen targeted stages (v119.H15 Item 2) ---
+    # H15 Item 2: reopen_stages_for_directives() — when the user
+    # resumes with new advice, walk directives.program_settings and
+    # reopen ONLY the LATEST completed stage matching each program.
+    # Single-stage targeted reopen (per Gemini critique of cascade).
+    try:
+        from tests.tst_resume_reopen_stages import (
+            run_all_tests as run_h15_2_tests)
+        success, elapsed = run_test_module(
+            "tst_resume_reopen_stages",
+            run_h15_2_tests, args.verbose)
+        results.append(("Resume reopen stages (H15 Item 2)",
+                       "tst_resume_reopen_stages",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_resume_reopen_stages: {e}")
+        results.append(("Resume reopen stages (H15 Item 2)",
+                       "tst_resume_reopen_stages",
+                       False, 0))
+
+    # --- Reasoning/command divergence detection (v119.H15 Item 3) ---
+    # H15 Item 3: cross_check_reasoning_vs_command() — detect-only
+    # telemetry that fires when the LLM's reasoning paragraph
+    # references a categorical file ("MTZ from last refinement")
+    # but the command uses a different file.  Blocks ONLY when the
+    # divergent file doesn't exist on disk (FileNotFoundError).
+    try:
+        from tests.tst_reasoning_command_divergence import (
+            run_all_tests as run_h15_3_tests)
+        success, elapsed = run_test_module(
+            "tst_reasoning_command_divergence",
+            run_h15_3_tests, args.verbose)
+        results.append(("Reasoning/command divergence (H15 Item 3)",
+                       "tst_reasoning_command_divergence",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_reasoning_command_divergence: {e}")
+        results.append(("Reasoning/command divergence (H15 Item 3)",
+                       "tst_reasoning_command_divergence",
+                       False, 0))
+
+    # --- obs_labels auto-fill for multi-array MTZ (v119.H16) ---
+    # H16: cctbx-based MTZ inspection + per-program label-selection
+    # policy + auto_fill_obs_labels invariant.  Targets 88 TIER-1
+    # "Multiple equally suitable arrays" failures in AF_exoV_MRSAD
+    # and lysozyme-MRSAD tutorials.  Three programs covered:
+    # refine, phaser, autosol.
+    try:
+        from tests.tst_obs_labels_auto_fill import (
+            run_all_tests as run_h16_tests)
+        success, elapsed = run_test_module(
+            "tst_obs_labels_auto_fill",
+            run_h16_tests, args.verbose)
+        results.append(("obs_labels auto-fill (H16)",
+                       "tst_obs_labels_auto_fill",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_obs_labels_auto_fill: {e}")
+        results.append(("obs_labels auto-fill (H16)",
+                       "tst_obs_labels_auto_fill",
                        False, 0))
 
     # --- Summary ---

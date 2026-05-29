@@ -118,6 +118,46 @@ errors:
       - "xray_data.r_free_flags.generate=True"
       - "xray_data.r_free_flags.generate"
 
+  # ---------------------------------------------------------------------------
+  # Missing PHIB columns in input_map_file (v119.H17)
+  # ---------------------------------------------------------------------------
+  # Occurs when phenix.autobuild is given a `map_file=` MTZ that lacks
+  # phase columns (PHIB/FOM).  This is the post-MR-SAD failure mode
+  # observed in lysozyme-MRSAD (run test4, 2026-05-28): the LLM filled
+  # `map_file=` with the raw anomalous data MTZ, which has only Fobs.
+  #
+  # Recovery: strip `map_file=` from the retry command.  autobuild
+  # then uses `data=` alone (which carries phases when it's the
+  # AutoSol/refine output).
+  #
+  # Note: detection requires BOTH "PHIB" AND "input_map_file" — a
+  # conjunction.  A loose match on just "input_map_file" would
+  # false-positive on unrelated PHENIX validation errors that mention
+  # the slot in other contexts (e.g. geometry restraint validation).
+  #
+  # Example error:
+  #   Sorry, PHIB is required for input_map_file
+  #   (['F_CuKa','None','None'] supplied for ['FP','PHIB','FOM'])
+  # ---------------------------------------------------------------------------
+  missing_phib_input_map_file:
+    description: "input_map_file MTZ lacks PHIB phase columns"
+    max_retries: 1
+
+    # Detection requires both anchors to rule out false positives.
+    detection_patterns:
+      - "PHIB is required for input_map_file"
+      - "PHIB.*required.*input_map_file"
+
+    resolution: strip_parameter
+    strip_parameters:
+      # Cover the common PHIL key variants for the input_map_file slot.
+      # The strip happens by flag NAME (the executor matches "name="
+      # in the retry command), so all forms with these prefixes get
+      # removed.
+      - "map_file"
+      - "input_map_file"
+      - "input_files.map_file"
+
 
 # =============================================================================
 # LABEL CLASSIFICATION PATTERNS

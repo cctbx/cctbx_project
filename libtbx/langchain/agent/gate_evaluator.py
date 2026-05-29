@@ -341,6 +341,28 @@ class GateEvaluator(object):
 
     # Is plan already complete?
     if plan.is_complete():
+      # v119.H15 H1 fix: distinguish a clean completion
+      # from one where stages were abandoned via deviation
+      # (now marked STAGE_FAILED per H15 Item 1).  Pre-fix
+      # the gate always said "all stages complete," hiding
+      # the failure from human-readable logs.  hasattr
+      # guard preserves graceful degradation on a
+      # deployment skew where gate_evaluator.py is post-H15
+      # but plan_schema.py is pre-H15.
+      _failed_ids = []
+      if hasattr(plan, "get_failed_stage_ids"):
+        try:
+          _failed_ids = plan.get_failed_stage_ids() or []
+        except Exception:
+          _failed_ids = []
+      if _failed_ids:
+        return GateResult(
+          action="stop",
+          reason=(
+            "plan exhausted with %d failed stage(s): %s"
+            % (len(_failed_ids), ", ".join(_failed_ids))
+          ),
+        )
       return GateResult(
         action="stop",
         reason="all stages complete",

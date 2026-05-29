@@ -776,6 +776,179 @@ def test_full_experimental_phases_recovery():
 
 
 # =============================================================================
+# v119.H17: strip_parameter resolution tests
+# =============================================================================
+#
+# H17 adds the `missing_phib_input_map_file` recovery (autobuild given
+# a map_file= MTZ lacking PHIB phase columns) and wires the generic
+# `strip_parameter` resolution that was declared in YAML for
+# `rfree_flags_mismatch` but had no code dispatch before H17.
+#
+# Tests below cover:
+#   - Detection of the exact lysozyme-MRSAD error message
+#   - ErrorRecovery.strip_flags content
+#   - ErrorRecovery.flags stays empty (no spurious additions)
+#   - rfree_flags_mismatch retroactive resolution (bonus side benefit)
+#   - Pattern variants
+#   - False-positive guard: "input_map_file" mention in unrelated
+#     contexts (without PHIB) must NOT trigger the H17 recovery
+# =============================================================================
+
+H17_LYSOZYME_LOG = """
+Running: phenix.autobuild data=.../overall_best_refine_data.mtz \
+seq_file=.../hewl.seq model=.../1fkq_prot.pdb \
+map_file=.../lyso2001_scala1.mtz rebuild_in_place=False nproc=4
+
+Sorry:
+Sorry, PHIB is required for input_map_file
+( ['F_CuKa', 'None', 'None'] supplied for ['FP', 'PHIB', 'FOM'])
+"""
+
+
+def test_h17_detect_phib_missing_from_lysozyme_log():
+    """Detection of the exact PHIB-missing error from Tom's lysozyme-MRSAD run."""
+    analyzer = create_analyzer()
+    error_type = analyzer._detect_error_type(H17_LYSOZYME_LOG)
+    assert_equal(error_type, "missing_phib_input_map_file")
+
+
+def test_h17_recovery_strips_map_file_flags():
+    """Recovery for PHIB error includes the expected flag prefixes to strip."""
+    analyzer = create_analyzer()
+    session = MockSession({"recovery_attempts": {}})
+
+    recovery = analyzer.analyze(
+        log_text=H17_LYSOZYME_LOG,
+        program="phenix.autobuild",
+        context={},
+        session=session,
+    )
+
+    assert_not_none(recovery)
+    assert_equal(recovery.error_type, "missing_phib_input_map_file")
+    assert_equal(recovery.retry_program, "phenix.autobuild")
+    # All three PHIL variants for the slot must be in strip_flags
+    assert_in("map_file", recovery.strip_flags)
+    assert_in("input_map_file", recovery.strip_flags)
+    assert_in("input_files.map_file", recovery.strip_flags)
+
+
+def test_h17_recovery_does_not_add_flags():
+    """strip_parameter recoveries leave .flags empty — they only remove,
+    never add."""
+    analyzer = create_analyzer()
+    session = MockSession({"recovery_attempts": {}})
+
+    recovery = analyzer.analyze(
+        log_text=H17_LYSOZYME_LOG,
+        program="phenix.autobuild",
+        context={},
+        session=session,
+    )
+
+    assert_not_none(recovery)
+    assert_equal(recovery.flags, {},
+                 "strip_parameter recovery must not populate .flags")
+
+
+def test_h17_false_positive_input_map_file_without_phib():
+    """A log mentioning 'input_map_file' in an unrelated context
+    (WITHOUT 'PHIB') must NOT trigger missing_phib_input_map_file.
+
+    This is the false-positive guard Gemini specifically asked for:
+    a loose match on just 'input_map_file' or 'required for
+    input_map_file' (without the PHIB anchor) would false-positive
+    on unrelated PHENIX validation errors that mention the slot in
+    other contexts.
+    """
+    analyzer = create_analyzer()
+    # Realistic unrelated error that mentions input_map_file but NOT PHIB
+    log = """
+    Sorry, please check your input_map_file path — the file
+    appears to be missing or unreadable.  Verify the path exists.
+    """
+
+    error_type = analyzer._detect_error_type(log)
+    assert_true(error_type != "missing_phib_input_map_file",
+                "Unrelated 'input_map_file' message should NOT trigger "
+                "missing_phib_input_map_file; got error_type=%r" % error_type)
+
+
+def test_h17_rfree_flags_mismatch_now_resolves():
+    """Regression for the bonus retroactive fix: H17 wires the generic
+    strip_parameter dispatch, which retroactively resolves
+    rfree_flags_mismatch (previously declared in YAML but unimplemented).
+    """
+    analyzer = create_analyzer()
+    session = MockSession({"recovery_attempts": {}})
+
+    log = """
+    Sorry, please resolve the R-free flags mismatch.
+    The input MTZ already contains R-free flags.
+    """
+
+    recovery = analyzer.analyze(
+        log_text=log,
+        program="phenix.refine",
+        context={},
+        session=session,
+    )
+
+    assert_not_none(recovery)
+    assert_equal(recovery.error_type, "rfree_flags_mismatch")
+    # Should strip the generate flag (both variants from YAML)
+    assert_in("xray_data.r_free_flags.generate=True", recovery.strip_flags)
+    assert_in("xray_data.r_free_flags.generate", recovery.strip_flags)
+    assert_equal(recovery.flags, {})
+
+
+def test_h17_phib_pattern_variant_with_spacing():
+    """The second YAML pattern 'PHIB.*required.*input_map_file' allows
+    for wording variants (different word ordering, extra spaces).
+    Ensures the detector isn't overly literal."""
+    analyzer = create_analyzer()
+    # Variant with different spacing — DOTALL means .* spans newlines
+    log = """
+    Sorry, PHIB column is required for the input_map_file parameter
+    in autobuild.  Got Fobs only.
+    """
+
+    error_type = analyzer._detect_error_type(log)
+    assert_equal(error_type, "missing_phib_input_map_file")
+
+
+def test_h17_strip_flags_field_default_empty_list():
+    """ErrorRecovery.strip_flags defaults to an empty list for
+    backward compatibility with existing recoveries
+    (ambiguous_data_labels, ambiguous_experimental_phases) that
+    don't strip anything."""
+    analyzer = create_analyzer()
+    session = MockSession({"recovery_attempts": {}})
+
+    log = """
+    Multiple equally suitable arrays of observed xray data found.
+    Possible choices:
+      /path/data.mtz:IMEAN,SIGIMEAN
+      /path/data.mtz:I(+),SIGI(+),I(-),SIGI(-)
+    Please use scaling.input.xray_data.obs_labels
+    to specify an unambiguous substring.
+    """
+
+    recovery = analyzer.analyze(
+        log_text=log,
+        program="phenix.xtriage",
+        context={},
+        session=session,
+    )
+
+    assert_not_none(recovery)
+    assert_equal(recovery.error_type, "ambiguous_data_labels")
+    # Existing recoveries should have empty strip_flags (no behavior change)
+    assert_equal(recovery.strip_flags, [],
+                 "Pre-H17 recoveries should have empty strip_flags")
+
+
+# =============================================================================
 # TEST RUNNER
 # =============================================================================
 

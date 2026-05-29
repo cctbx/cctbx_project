@@ -603,6 +603,13 @@ phenix.phaser:
       type: string
       display_name: "Space Group"
 
+  invariants:
+    - name: auto_fill_obs_labels
+      description: "Disambiguate multi-array MTZ (v119.H16). OPTIONAL auto-fill: obs_labels is only needed when the data MTZ has multiple suitable arrays. This invariant deliberately omits a 'check: has_strategy' clause so it does NOT block command building when obs_labels is absent (the common single-array case). The fix runs in _apply_invariants and injects obs_labels only when inspect_mtz reports is_multi_array."
+      fix:
+        auto_fill_obs_labels: true
+      message: "obs_labels auto-fill for multi-array MTZ (non-blocking)"
+
 
 phenix.autobuild:
   description: "Iterative model building and refinement"
@@ -1337,6 +1344,16 @@ phenix.refine:
     resolution_limit:
       flag: "xray_data.high_resolution={value}"
       type: float
+    # CANONICAL FORM for new obs_labels entries (v119.H16+):
+    #   obs_labels:
+    #     flag: 'xray_data.labels="{value}"'   # Note: quoted value
+    # Existing entries in phaser/autobuild/autosol/predict_and_build
+    # use the unquoted form for compatibility; migration is a
+    # backlog item.  Use the quoted form for any future additions.
+    obs_labels:
+      flag: 'xray_data.labels="{value}"'
+      type: string
+      hint: "Observation column labels for multi-array MTZ disambiguation (auto-filled by H16)"
     nproc:
       flag: "refinement.main.nproc={value}"
       type: int
@@ -1403,6 +1420,12 @@ phenix.refine:
       fix:
         auto_fill_output_prefix: "refine"
       message: "Auto-generating unique output prefix"
+
+    - name: auto_fill_obs_labels
+      description: "Disambiguate multi-array MTZ (v119.H16). OPTIONAL auto-fill: obs_labels is only needed when the data MTZ has multiple suitable arrays. This invariant deliberately omits a 'check: has_strategy' clause so it does NOT block command building when obs_labels is absent (the common single-array case). The fix runs in _apply_invariants and injects obs_labels only when inspect_mtz reports is_multi_array."
+      fix:
+        auto_fill_obs_labels: true
+      message: "obs_labels auto-fill for multi-array MTZ (non-blocking)"
 
 
 phenix.real_space_refine:

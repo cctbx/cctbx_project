@@ -1,11 +1,20 @@
-"""Tests for v118.9: experiment-type-conditional program canonicalization.
+"""Tests for v118.9 + v119.H18: experiment-type-conditional program
+canonicalization.
 
 The v118.9 plan adds a code-side validator that corrects after_program
 when the LLM directive extractor picks a program that's canonical for
 the wrong experiment type (e.g., autobuild_denmod for cryo-EM data
 instead of resolve_cryo_em).
 
-This file holds the K_DENMOD test suite (13 tests) that locks the
+v119.H18 extends the validator with file-extension-based detection
+as the PRIMARY signal (text-based detection remains as fallback).
+Triggered by the AF_7mjs regression: user wrote "density modify and
+stop" with cryo-EM half-map inputs, the preprocessor produced terse
+output with no experiment-type marker, and v118.9's text-only
+detector returned None ("decline to act"), leaving the wrong
+program intact.
+
+This file holds the K_DENMOD test suite (20 tests) that locks the
 validator's behavior:
 
   Bug case (the reason the validator exists):
@@ -35,6 +44,21 @@ validator's behavior:
   Diagnostic transparency (Gemini Gap C response):
     K13  — Correction emits [DIRECTIVE_CORRECTION] log marker AND
             stderr line AND _corrected_from sidecar field
+
+  H18: file-extension-based primary signal:
+    K14  — AF_7mjs failure verbatim: terse advice + cryo-EM files
+            → corrected via files (source=files)
+    K15  — Mirror: terse advice + X-ray files → corrected via files
+    K16  — Backward compat: cryo-EM advice + NO files → text
+            fallback still works (source=text)
+    K17  — Pre-H18 bug-path: terse advice + NO files → declines
+            (no signal, no correction)
+    K18  — Files-win on conflict: cryo-EM files + advice says
+            X-ray → files win, OVERRIDDEN logged
+    K19  — Mixed-input drift (Pitfall 1): both .mtz and .ccp4 in
+            inventory → defers to text, [..._MIXED] logged
+    K20  — plan_generator uses shared helper (single source of
+            truth refactor)
 
 All tests use the mock-LLM pattern from
 tst_after_program_fill_from_raw.py: monkey-patch _call_llm to return
@@ -563,6 +587,489 @@ def test_K13_correction_emits_diagnostic_markers():
 
 
 # =====================================================================
+# H18 input fixtures
+# =====================================================================
+# These mimic the actual preprocessor output for the AF_7mjs failure
+# case: terse advice with NO explicit experiment-type marker.  The
+# pre-H18 detector returns None for these inputs (no cryo-EM / no
+# X-ray tokens).  H18 fixes the case by inspecting the file inventory
+# directly.
+
+_PROCESSED_TERSE = (
+    "Primary Goal: Perform density modification and stop.\n\n"
+    "Stop Condition: stop after density modification completes"
+)
+
+# Cryo-EM file inventory (matches AF_7mjs production run):
+_AF7MJS_FILES = [
+    "/path/7mjs_23883_H_1.ccp4",
+    "/path/7mjs_23883_H_2.ccp4",
+    "/path/sub_02_resolve_cryo_em/rcm_0/initial_map.ccp4",
+    "/path/sub_02_resolve_cryo_em/rcm_0/denmod_map.ccp4",
+    "/path/7mjs_23883_H.fa",
+]
+
+# Pure X-ray file inventory (mirror case):
+_XRAY_FILES = [
+    "/path/data.mtz",
+    "/path/model.pdb",
+    "/path/sequence.fa",
+]
+
+# Mixed inventory (Pitfall 1: dirty-directory accumulation):
+_MIXED_FILES = [
+    "/path/old_data.mtz",      # from an earlier cycle
+    "/path/current_map.ccp4",  # current cryo-EM input
+]
+
+
+# =====================================================================
+# K14 — AF_7mjs failure case (file-based primary signal)
+# =====================================================================
+
+def test_K14_h18_af7mjs_terse_advice_cryoem_files():
+    """K14: The AF_7mjs failure verbatim — terse advice with no
+    experiment-type tokens, plus cryo-EM file inventory.
+
+    Pre-H18: text-only detector returns None ("ambiguous"); no
+    correction; bug persists (after_program stays autobuild_denmod
+    and the LLM downstream picks predict_and_build, overriding
+    user intent).
+
+    H18: file-based detector identifies cryo-EM from .ccp4
+    extensions; correction fires; after_program → resolve_cryo_em
+    with source=files in the sidecar."""
+    print("Test: K14_h18_af7mjs_terse_advice_cryoem_files")
+    _with_mock_llm(
+        '{"stop_conditions": {"stop_after_requested": true, '
+        '"after_program": "phenix.autobuild_denmod", '
+        '"skip_validation": true}}')
+    result = de.extract_directives(
+        _PROCESSED_TERSE, provider="google",
+        log_func=_quiet_log,
+        raw_advice="density modify and stop",
+        original_files=_AF7MJS_FILES,
+    )
+    sc = result.get("stop_conditions", {})
+    assert sc.get("after_program") == "phenix.resolve_cryo_em", (
+        "Expected H18 file-based correction; got %r"
+        % sc.get("after_program"))
+    cf = sc.get("_corrected_from") or {}
+    assert cf.get("source") == "files", (
+        "Expected source=files in sidecar; got %r" % cf.get("source"))
+    assert cf.get("experiment_type") == "cryoem"
+    ev = cf.get("evidence") or {}
+    assert ".ccp4" in ev.get("cryoem_exts", []), (
+        "Expected .ccp4 in evidence; got %r" % ev)
+    print("  PASS")
+
+
+# =====================================================================
+# K15 — Mirror: terse advice + X-ray files
+# =====================================================================
+
+def test_K15_h18_mirror_terse_advice_xray_files():
+    """K15: Symmetric mirror.  LLM picks resolve_cryo_em for X-ray
+    data; file-based detector identifies xray from .mtz; correction
+    flips to autobuild_denmod."""
+    print("Test: K15_h18_mirror_terse_advice_xray_files")
+    _with_mock_llm(
+        '{"stop_conditions": {"stop_after_requested": true, '
+        '"after_program": "phenix.resolve_cryo_em", '
+        '"skip_validation": true}}')
+    result = de.extract_directives(
+        _PROCESSED_TERSE, provider="google",
+        log_func=_quiet_log,
+        raw_advice="density modify and stop",
+        original_files=_XRAY_FILES,
+    )
+    sc = result.get("stop_conditions", {})
+    assert sc.get("after_program") == "phenix.autobuild_denmod"
+    cf = sc.get("_corrected_from") or {}
+    assert cf.get("source") == "files"
+    assert cf.get("experiment_type") == "xray"
+    print("  PASS")
+
+
+# =====================================================================
+# K16 — Backward compat: no files → text fallback still works
+# =====================================================================
+
+def test_K16_h18_backward_compat_text_fallback():
+    """K16: When original_files is not provided, the validator must
+    fall back to text-only detection — the pre-H18 behavior.
+
+    This protects K1-K13 from regression.  Here we re-prove that
+    the text path still corrects when given preprocessor-shaped
+    advice that contains the cryo-EM markers.  Equivalent to K1 but
+    asserts source=text in the sidecar."""
+    print("Test: K16_h18_backward_compat_text_fallback")
+    _with_mock_llm(
+        '{"stop_conditions": {"stop_after_requested": true, '
+        '"after_program": "phenix.autobuild_denmod"}}')
+    result = de.extract_directives(
+        _PROCESSED_CRYOEM, provider="google",
+        log_func=_quiet_log,
+        raw_advice="density modify and stop",
+        # no original_files
+    )
+    sc = result.get("stop_conditions", {})
+    assert sc.get("after_program") == "phenix.resolve_cryo_em"
+    cf = sc.get("_corrected_from") or {}
+    assert cf.get("source") == "text", (
+        "Expected source=text when no files passed; got %r"
+        % cf.get("source"))
+    print("  PASS")
+
+
+# =====================================================================
+# K17 — Pre-H18 bug path: terse advice + no files → declines
+# =====================================================================
+
+def test_K17_h18_no_signal_declines():
+    """K17: Demonstrates that H18's improvement REQUIRES files to be
+    threaded through.  Without files AND without text experiment-
+    type markers, the validator correctly declines (the pre-H18 bug
+    path is preserved when files aren't supplied).
+
+    Why this matters: the LLM-pipeline integration must pass
+    original_files for the AF_7mjs fix to activate.  This test
+    pins that contract."""
+    print("Test: K17_h18_no_signal_declines")
+    _with_mock_llm(
+        '{"stop_conditions": {"stop_after_requested": true, '
+        '"after_program": "phenix.autobuild_denmod"}}')
+    result = de.extract_directives(
+        _PROCESSED_TERSE, provider="google",
+        log_func=_quiet_log,
+        raw_advice="density modify and stop",
+        original_files=None,  # explicit None
+    )
+    sc = result.get("stop_conditions", {})
+    # No correction → after_program unchanged
+    assert sc.get("after_program") == "phenix.autobuild_denmod", (
+        "Expected no correction without files+text signal; got %r"
+        % sc.get("after_program"))
+    assert "_corrected_from" not in sc
+    print("  PASS")
+
+
+# =====================================================================
+# K18 — Files-win on conflict (with OVERRIDDEN telemetry)
+# =====================================================================
+
+def test_K18_h18_files_win_on_conflict():
+    """K18: When files and text disagree, files win (per Gemini's
+    H18 review policy).  Telemetry requirement: log must include
+    OVERRIDDEN annotation for audit.
+
+    Justification: files are the hard physical boundary — passing
+    .ccp4 to an X-ray-only program crashes regardless of what the
+    user wrote.  Text-based detection has known false-positive
+    vectors ('mad' in 'modify', 'sad' in arbitrary sentences)."""
+    print("Test: K18_h18_files_win_on_conflict")
+    _with_mock_llm(
+        '{"stop_conditions": {"stop_after_requested": true, '
+        '"after_program": "phenix.autobuild_denmod"}}')
+
+    log_messages = []
+    def _capture_log(msg):
+        log_messages.append(msg)
+
+    # User text says X-ray (preprocessor marker); files are cryo-EM
+    result = de.extract_directives(
+        _PROCESSED_XRAY, provider="google",
+        log_func=_capture_log,
+        raw_advice="this is x-ray data, please run density modification",
+        original_files=["/p/map.ccp4"],
+    )
+    sc = result.get("stop_conditions", {})
+    # Files won: correction fired in the cryo-EM direction
+    assert sc.get("after_program") == "phenix.resolve_cryo_em", (
+        "Files should override text; got %r"
+        % sc.get("after_program"))
+    cf = sc.get("_corrected_from") or {}
+    assert cf.get("source") == "files"
+    assert cf.get("text_signal_overridden") == "xray", (
+        "Expected text_signal_overridden=xray in sidecar; got %r"
+        % cf.get("text_signal_overridden"))
+
+    # Telemetry must mark the override
+    correction_logs = [m for m in log_messages
+                       if "[DIRECTIVE_CORRECTION]" in m
+                       and "_MIXED" not in m]
+    assert correction_logs, "Expected DIRECTIVE_CORRECTION log"
+    assert "OVERRIDDEN" in correction_logs[0], (
+        "Log must include OVERRIDDEN annotation; got %r"
+        % correction_logs[0])
+    print("  PASS")
+
+
+# =====================================================================
+# K19 — Mixed-input drift defers to text + emits [..._MIXED]
+# =====================================================================
+
+def test_K19_h18_mixed_input_defers_to_text():
+    """K19: Pitfall 1 mitigation.  Long-running sessions can
+    accumulate both .mtz and .ccp4 in original_files (per
+    Session.set_project_info MERGE semantics).  File-based
+    detection returns None for mixed input; we defer to text.
+
+    A [DIRECTIVE_CORRECTION_MIXED] line MUST be logged so any
+    future drift is visible in audit logs immediately."""
+    print("Test: K19_h18_mixed_input_defers_to_text")
+    _with_mock_llm(
+        '{"stop_conditions": {"stop_after_requested": true, '
+        '"after_program": "phenix.autobuild_denmod"}}')
+
+    log_messages = []
+    def _capture_log(msg):
+        log_messages.append(msg)
+
+    # Text says cryo-em; files are mixed (.mtz + .ccp4)
+    result = de.extract_directives(
+        _PROCESSED_CRYOEM, provider="google",
+        log_func=_capture_log,
+        raw_advice="density modify and stop",
+        original_files=_MIXED_FILES,
+    )
+    sc = result.get("stop_conditions", {})
+    # Correction still fires via text fallback
+    assert sc.get("after_program") == "phenix.resolve_cryo_em"
+    cf = sc.get("_corrected_from") or {}
+    assert cf.get("source") == "text", (
+        "Expected source=text when files are mixed; got %r"
+        % cf.get("source"))
+
+    # Mixed-input audit marker
+    mixed_logs = [m for m in log_messages
+                  if "[DIRECTIVE_CORRECTION_MIXED]" in m]
+    assert len(mixed_logs) == 1, (
+        "Expected exactly one [DIRECTIVE_CORRECTION_MIXED] line; "
+        "got %d: %r" % (len(mixed_logs), mixed_logs))
+    assert ".mtz" in mixed_logs[0]
+    assert ".ccp4" in mixed_logs[0]
+    print("  PASS")
+
+
+# =====================================================================
+# K20 — plan_generator uses the shared helper (single SoT)
+# =====================================================================
+
+def test_K20_h18_plan_generator_uses_shared_helper():
+    """K20: plan_generator._build_context delegates experiment-type
+    inference to the shared infer_experiment_type_from_files helper
+    (Item 3 of the H18 plan).
+
+    Ensures plan_generator and directive_extractor cannot drift
+    apart on detection behavior — both call the same function.
+
+    Behavioral pin: mixed input yields None (semantically tighter
+    than pre-H18 last-write-wins, which silently picked the
+    LAST-seen extension).  In practice plan inputs are never mixed,
+    but this test pins the new contract."""
+    print("Test: K20_h18_plan_generator_uses_shared_helper")
+    try:
+        from libtbx.langchain.agent.file_utils import (
+            infer_experiment_type_from_files)
+        from libtbx.langchain.agent.plan_generator import _build_context
+    except ImportError:
+        from agent.file_utils import infer_experiment_type_from_files
+        from agent.plan_generator import _build_context
+
+    # Cryo-EM input: both must report cryoem
+    files = _AF7MJS_FILES
+    ctx = _build_context(available_files=files)
+    helper_type, _ = infer_experiment_type_from_files(files)
+    assert ctx["experiment_type"] == "cryoem"
+    assert helper_type == "cryoem"
+
+    # X-ray input: both must report xray
+    ctx_x = _build_context(available_files=_XRAY_FILES)
+    helper_x, _ = infer_experiment_type_from_files(_XRAY_FILES)
+    assert ctx_x["experiment_type"] == "xray"
+    assert helper_x == "xray"
+
+    # Mixed input: both must report None (new tighter semantics)
+    helper_mix, ev = infer_experiment_type_from_files(_MIXED_FILES)
+    assert helper_mix is None, (
+        "Helper must return None for mixed input; got %r"
+        % helper_mix)
+    assert ev["is_mixed"] is True
+    print("  PASS")
+
+
+# =====================================================================
+# K21 — v117.2 fallback also threads original_files (H18.2)
+# =====================================================================
+#
+# Production failure path discovered AFTER H18 and H18.1 shipped:
+# the AF_7mjs run with LLM extraction produced
+# stop_conditions={"stop_after_requested": True} but NO after_program.
+# This triggered the v117.2 fallback at directive_extractor.py:783
+# which called _resolve_after_program WITHOUT original_files.  The
+# resolver defaulted _exp="xray" via the text-only heuristic and
+# mapped denmod → phenix.autobuild_denmod.  The downstream
+# _apply_workflow_intent_fallback ran with original_files but saw
+# preprocessed advice with "Stop Condition: None" — so its
+# _is_stop_after_requested returned False, and the n==1+no-stop
+# branch left the buggy after_program in place.
+#
+# H18.2 fix: the v117.2 callsite now passes original_files=
+# original_files to _resolve_after_program, mirroring the H18 policy
+# at the OTHER two _resolve_after_program callsites.
+
+def test_K21_h18_2_v117_2_fallback_threads_files():
+    """K21: when the LLM emits stop_after_requested=True but no
+    after_program, the v117.2 fallback path must use files-first
+    experiment-type detection (mirroring H18's policy at the other
+    two _resolve_after_program callsites).  Production failure
+    reproduction; was the AF_7mjs cycle-3 predict_and_build bug."""
+    print("Test: K21_h18_2_v117_2_fallback_threads_files")
+    try:
+        from libtbx.langchain.agent.directive_extractor import (
+            extract_directives,
+        )
+    except ImportError:
+        from agent.directive_extractor import extract_directives
+
+    # Reproduce Tom's AF_7mjs case exactly:
+    # - The LLM (mocked here) returns stop_after_requested=True but
+    #   omits after_program (the exact production behavior observed
+    #   in the runtime tracer output).
+    # - Preprocessed advice has "Stop Condition: None"
+    # - Raw advice has "density modify and stop"
+    # - File inventory is cryo-EM (.ccp4 only)
+
+    PROCESSED_ADVICE = (
+        "1. **Input Files Found**: 7mjs_23883_H_1.ccp4, "
+        "7mjs_23883_H_2.ccp4, 7mjs_23883_H.fa\n\n"
+        "2. **Experiment Type**: cryo-EM (inferred from "
+        "half-maps)\n\n"
+        "3. **Primary Goal**: Perform density modification.\n\n"
+        "4. **Key Parameters**: None\n\n"
+        "5. **Program Parameters**: None\n\n"
+        "6. **Special Instructions**: None\n\n"
+        "7. **Stop Condition**: None"
+    )
+    RAW_ADVICE = "User instructions:\ndensity modify and stop"
+    ORIGINAL_FILES = _AF7MJS_FILES
+
+    # Reproduce the exact LLM output Tom's production trace showed:
+    # stop_after_requested=True with NO after_program.  Use the
+    # standard _with_mock_llm pattern that returns a JSON string
+    # (matching the production protocol).
+    _with_mock_llm(
+        '{"stop_conditions": {"stop_after_requested": true}}'
+    )
+    try:
+        result = extract_directives(
+            user_advice=PROCESSED_ADVICE,
+            raw_advice=RAW_ADVICE,
+            original_files=ORIGINAL_FILES,
+            provider="google",
+        )
+    finally:
+        # Restore — other tests will install their own mocks
+        pass
+
+    sc = (result or {}).get("stop_conditions", {})
+    after_prog = sc.get("after_program")
+    assert after_prog == "phenix.resolve_cryo_em", (
+        "K21 production reproduction FAILED.  v117.2 fallback didn't "
+        "thread original_files, so denmod defaulted to xray → "
+        "phenix.autobuild_denmod.\n"
+        "Got: after_program=%r\n"
+        "Expected: phenix.resolve_cryo_em\n"
+        "Full stop_conditions: %s" % (after_prog, sc))
+    assert sc.get("stop_after_requested") is True
+    print("  PASS")
+
+
+def test_K22_h18_2_v117_2_fallback_xray_files():
+    """K22: mirror of K21 for X-ray inputs.  When LLM omits
+    after_program and files are X-ray (.mtz), v117.2 fallback must
+    produce phenix.autobuild_denmod (the correct X-ray choice)."""
+    print("Test: K22_h18_2_v117_2_fallback_xray_files")
+    try:
+        from libtbx.langchain.agent.directive_extractor import (
+            extract_directives,
+        )
+    except ImportError:
+        from agent.directive_extractor import extract_directives
+
+    PROCESSED_ADVICE = (
+        "1. **Input Files Found**: data.mtz, model.pdb\n\n"
+        "2. **Experiment Type**: X-ray\n\n"
+        "3. **Primary Goal**: Perform density modification.\n\n"
+        "7. **Stop Condition**: None"
+    )
+    RAW_ADVICE = "User instructions:\ndensity modify and stop"
+    XRAY_FILES = ["data.mtz", "model.pdb"]
+
+    _with_mock_llm(
+        '{"stop_conditions": {"stop_after_requested": true}}'
+    )
+    result = extract_directives(
+        user_advice=PROCESSED_ADVICE,
+        raw_advice=RAW_ADVICE,
+        original_files=XRAY_FILES,
+        provider="google",
+    )
+
+    sc = (result or {}).get("stop_conditions", {})
+    after_prog = sc.get("after_program")
+    assert after_prog == "phenix.autobuild_denmod", (
+        "K22 FAILED.  Got: after_program=%r (expected "
+        "phenix.autobuild_denmod for X-ray inputs)" % after_prog)
+    print("  PASS")
+
+
+def test_K23_h18_2_v117_2_no_files_falls_back_to_text():
+    """K23: backward compat — when original_files is None, the
+    v117.2 fallback must fall back to text-only detection (pre-H18
+    behavior).  Confirms files=None doesn't break the existing
+    text path."""
+    print("Test: K23_h18_2_v117_2_no_files_falls_back_to_text")
+    try:
+        from libtbx.langchain.agent.directive_extractor import (
+            extract_directives,
+        )
+    except ImportError:
+        from agent.directive_extractor import extract_directives
+
+    # Raw advice with strong cryo-EM text signal — text-only
+    # detection should produce phenix.resolve_cryo_em
+    RAW_ADVICE = ("User instructions:\nperform cryo-em density "
+                  "modification and stop")
+    PROCESSED_ADVICE = (
+        "1. **Input Files Found**: None\n\n"
+        "2. **Experiment Type**: cryo-EM\n\n"
+        "3. **Primary Goal**: Density modify.\n\n"
+        "7. **Stop Condition**: None"
+    )
+
+    _with_mock_llm(
+        '{"stop_conditions": {"stop_after_requested": true}}'
+    )
+    # original_files=None — must not crash, must use text path
+    result = extract_directives(
+        user_advice=PROCESSED_ADVICE,
+        raw_advice=RAW_ADVICE,
+        original_files=None,
+        provider="google",
+    )
+
+    sc = (result or {}).get("stop_conditions", {})
+    after_prog = sc.get("after_program")
+    assert after_prog == "phenix.resolve_cryo_em", (
+        "K23 FAILED.  Got: after_program=%r (expected "
+        "phenix.resolve_cryo_em from text-only cryo-em signal)"
+        % after_prog)
+    print("  PASS")
+
+
+# =====================================================================
 # Runner
 # =====================================================================
 
@@ -581,6 +1088,17 @@ def run_all_tests():
         test_K11_grounding_bypass_then_correction,
         test_K12_no_bypass_grounding_drops_bad_name,
         test_K13_correction_emits_diagnostic_markers,
+        # v119.H18 additions
+        test_K14_h18_af7mjs_terse_advice_cryoem_files,
+        test_K15_h18_mirror_terse_advice_xray_files,
+        test_K16_h18_backward_compat_text_fallback,
+        test_K17_h18_no_signal_declines,
+        test_K18_h18_files_win_on_conflict,
+        test_K19_h18_mixed_input_defers_to_text,
+        test_K20_h18_plan_generator_uses_shared_helper,
+        test_K21_h18_2_v117_2_fallback_threads_files,
+        test_K22_h18_2_v117_2_fallback_xray_files,
+        test_K23_h18_2_v117_2_no_files_falls_back_to_text,
     ]
     passed = 0
     failed = 0

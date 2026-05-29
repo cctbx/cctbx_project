@@ -873,10 +873,29 @@ automatic recovery through three systems that execute
 in sequence:
 
 1. **ErrorAnalyzer** (YAML-driven, `recoverable_errors.yaml`):
-   Detects errors the agent can auto-fix. Currently
-   handles ambiguous data labels and ambiguous
-   experimental phases. Produces file-level recovery
-   flags and forces a retry.
+   Detects errors the agent can auto-fix. Three resolution
+   kinds are currently supported:
+   - **`select_value`**: disambiguates an enum the LLM
+     left ambiguous (e.g., `ambiguous_data_labels` for
+     multi-array MTZ).  Picks a default per a YAML-defined
+     preference policy.
+   - **`add_parameter`**: injects a missing flag (e.g.,
+     `xray_data.r_free_flags.generate=True` when the user's
+     MTZ lacks R-free flags).
+   - **`strip_parameter`** (v119.H17): removes an
+     inappropriate flag entirely on retry.  Used when the
+     LLM passed a flag whose value type doesn't match what
+     the program accepts (e.g., raw `data.mtz` as
+     autobuild's `map_file=` parameter, which requires
+     PHIB/FOM phase columns).  Executor support in
+     `programs/ai_agent.py` (H17.1) applies a robust regex
+     to strip the flag from the retry command before
+     execution, preserving PHIL spacing, quoted-with-spaces,
+     and single-quoted values.
+
+   ErrorAnalyzer produces file-level recovery flags and
+   forces a retry.  See `tests/tst_error_analyzer.py` and
+   `tests/tst_h17_strip_executor.py` for the contract.
 
 2. **DiagnosisDetector** (YAML-driven, `diagnosable_errors.yaml`):
    Detects terminal errors needing human intervention
@@ -1298,8 +1317,72 @@ For parameters that flow client → server through PHIL serialization
 (see §3i for the v117 raw-advice path as an example), the PHIL
 parameter MUST be defined identically in both
 `programs/ai_agent.py` (client) and `programs/ai_analysis.py`
-(server).  Mismatched definitions cause `phil` to either drop the
-parameter at one end or raise on unknown keys at the other.
+(server).
+
+**These are independent schemas.**  `ai_agent.py` parses its OWN
+`master_params` string (defined at line ~144) when the user runs
+`phenix.ai_agent`.  `ai_analysis.py` parses its OWN `master_params`
+when the analysis server is invoked.  Adding a parameter to ONE
+does NOT propagate to the other — they're parsed independently.
+
+**Failure mode if you forget to mirror:**
+
+The client does `directive_params = copy.deepcopy(self.params)`
+and then assigns a new attribute.  If that attribute is NOT
+declared in the CLIENT's master_params, the assignment raises:
+
+```
+AttributeError: Assignment to non-existing attribute
+  "ai_analysis.your_new_field"
+```
+
+In production this is caught by the surrounding try/except and
+silently swallowed — directive extraction returns `{}`, the
+agent ignores the parameter, and behavior drifts in ways that
+may take a production run to notice.  This was the H18 → H18.1
+production failure mode.
+
+**Defensive test pattern** (`tests/tst_h18_1_phil_roundtrip.py`):
+
+When adding a new PHIL parameter, add a K-test that exercises
+the full parse + extract + deep-copy + assign path:
+
+```python
+def test_phil_roundtrip_for_new_param():
+    # Source-grep variant — runs in sandbox without libtbx
+    with open("programs/ai_agent.py") as f:
+        content = f.read()
+    start = content.find('master_params = """')
+    end = content.find('master_phil = libtbx.phil.parse')
+    master_region = content[start:end]
+    assert "your_new_field" in master_region
+
+    # Live-PHIL variant — needs PHENIX, skips gracefully
+    try:
+        import libtbx.phil, copy
+    except ImportError:
+        return
+    master_phil = libtbx.phil.parse(master_region.split('"""', 1)[1])
+    params = master_phil.extract()
+    directive_params = copy.deepcopy(params)
+    directive_params.ai_analysis.your_new_field = "test"
+    assert directive_params.ai_analysis.your_new_field == "test"
+```
+
+This catches the entire class of "I forgot to declare the param
+in master_params" bugs at sandbox time.
+
+**Checklist before shipping a new PHIL parameter that flows
+client → server:**
+
+1. Add declaration to `programs/ai_agent.py:master_params` AND
+   `programs/ai_analysis.py:master_params`.
+2. Add a `.help` comment in each declaration noting the
+   cross-file mirror requirement.
+3. Add a `tst_*_phil_roundtrip.py` style K-test that exercises
+   the PHIL parse → assign path for the new field.
+4. Run sandbox tests; the source-grep check should pass.
+5. Deploy to PHENIX and run the live-PHIL test; should also pass.
 
 When adding such a parameter, add it to both files in the same
 commit, verify the parse on both sides with
@@ -4828,6 +4911,425 @@ $ grep -A 10 'VALID_X_CONDITIONS' agent/directive_extractor.py
 Any key in the producer but not in the allow-list is a
 latent bug surfaced by the converged-validator pattern.  Fix
 it BEFORE applying the converged pattern, not after.
+
+#### Targeted reset blast radius (v119.H15 lesson)
+
+H15 fixed Tom's bromodomain resume failure (run 144).  The
+original H15 plan proposed reopening every stage downstream
+of any matched program — "if the user mentions phaser, reset
+phaser AND every refine/build stage after it."  Gemini's
+critique flagged this as O(N) blast radius: on a 12-stage
+cryo-EM pipeline, mentioning an early program in resume
+advice would reset 10+ stages of completed work.
+
+**Lesson**: when a re-trigger mechanism needs to invalidate
+prior state, prefer the SMALLEST blast radius consistent with
+the user's stated intent.  Three principles:
+
+1. **Single-stage default**.  Pick ONE stage to reset based
+   on a deterministic rule.  H15's rule: "the LATEST
+   completed stage whose `programs` list contains the named
+   program."  This matches the strongest semantic
+   interpretation: "the user wants to re-do this program
+   in its most recent context."  Reopening earlier stages
+   would discard work done after them.
+
+2. **No cascade**.  Don't reset stages downstream of the
+   reopened one — they'll re-fire naturally when the
+   reopened stage completes, IF they need to.  Cascade
+   resets assume downstream stages depend on the reopened
+   one, which is often but not always true.
+
+3. **Respect skip semantics**.  Skipped stages stay
+   skipped.  The user can't un-skip a stage by mentioning
+   its program; that requires explicit directives.
+
+The result is O(1) blast radius regardless of plan size.
+The 7 K-tests in `tests/tst_resume_reopen_stages.py` pin
+this contract — specifically test §G ("stage's strategy
+already honors directive") proves that the design reopens
+the stage anyway, treating user re-assertion as the
+authoritative signal.
+
+**Generalize**: any "user re-asserts X" mechanism should
+identify the SMALLEST unit of state affected by X and reset
+only that.  Cascade resets are an anti-pattern for resume
+flows — they pretend to be safe but discard legitimate
+prior work.
+
+#### Reactive recovery requires executor support (v119.H17 → H17.1 lesson)
+
+H17 added a new `strip_parameter` resolution kind to the
+recoverable-errors system: when the LLM passes an
+inappropriate flag (e.g., `map_file=` to autobuild without
+phases), strip it from the retry command rather than
+trying to add a fix-up flag.  The implementation looked
+complete: YAML entry declared the pattern and the
+`strip_parameters` list; `error_analyzer.py` gained a
+`strip_flags` field on `ErrorRecovery`; the pre-deploy
+review concluded "ready to ship."
+
+In production, H17 fired correctly — the `[NOTICE]
+DETECTED RECOVERABLE ERROR` log appeared with "Action:
+Stripping [...]" — but the retry command still contained
+the offending flag.  H17 was analyzer-side only.  The
+executor in `programs/ai_agent.py` had no code to actually
+strip the flag from the command before running it.
+
+**Lesson**: when adding a new resolution kind to a
+detect-and-recover system, trace the END-TO-END path
+through the executor.  Three concrete checks:
+
+1. **Detection emits a SIGNAL the executor can act on.**
+   `ErrorRecovery.strip_flags` is the signal; the
+   executor must read it.
+2. **The executor consumes the signal.**  In ai_agent.py,
+   `_handle_recovery` was the obvious site for stashing
+   the strip directive; `_execute_command` was the obvious
+   site for applying it.  Pre-H17.1 neither was wired.
+3. **The on-disk command differs after the strip.**
+   K-tests should assert the command STRING differs
+   between pre-strip and post-strip — not just that the
+   recovery struct contains the strip directive.
+
+The H17 → H17.1 pattern: ship the detection side first
+(YAML + analyzer) because that exercises the detection
+logic against real production errors.  Once detection is
+confirmed firing, the executor wire-up is mechanical.
+But don't conflate "detection works" with "fix works" —
+the K-tests for H17.1 (`tst_h17_strip_executor.py`)
+specifically test the executor regex against PHIL spacing,
+quoted-with-spaces, single quotes, and end-of-line — the
+forms a naive `\S+` pattern would corrupt.
+
+**Generalize**: any add-a-new-resolution-kind change to a
+reactive system needs THREE patches (declaration,
+detection wiring, executor wiring) and corresponding
+K-tests for each layer.  Missing the executor layer is
+the most common gap because the analyzer-side change
+"looks complete" without it.
+
+#### Multi-site detection — fix every text-based site (v119.H18 lesson)
+
+H18 fixed the AF_7mjs density-modify-and-stop regression
+by switching `_apply_experiment_type_program_reprints`
+from text-based detection to file-based detection (with
+text as fallback).  The patch looked complete and the
+6 new K-tests passed in the standalone H18 test file.
+
+During the merge into the existing
+`tst_density_modify_experiment_type.py` suite, K14 (the
+exact AF_7mjs production input) failed: the correction
+fired correctly (logs showed `[DIRECTIVE_CORRECTION]
+source=files`), but the final `after_program` reverted to
+`phenix.autobuild_denmod` anyway.
+
+The cause: `_resolve_after_program` (the v115.10 post-LLM
+overlay called from `_apply_workflow_intent_fallback`) had
+its OWN text-only experiment-type heuristic.  For terse
+advice ("density modify and stop"), its heuristic returned
+no signal, defaulted `_exp="xray"`, then looked up
+`_ACTION_TABLE["density_modify"]["xray"]` =
+`phenix.autobuild_denmod` and unconditionally overwrote the
+H18 correction.
+
+**Lesson**: when fixing a categorical bug (like "wrong
+experiment-type inference"), grep for every site that does
+the same kind of inference.  Don't trust that fixing the
+"obvious" site is sufficient.
+
+Concrete grep commands that would have caught this earlier:
+
+```bash
+# Find every function that infers experiment_type from text:
+grep -n 'is_cryoem\|is_xray\|cryo-?em\|x-?ray' agent/directive_extractor.py
+
+# Find every site that defaults to a specific experiment type:
+grep -n '_exp\s*=\s*"xray"\|_exp\s*=\s*"cryoem"' agent/directive_extractor.py
+
+# Find every consumer of _ACTION_TABLE:
+grep -n '_ACTION_TABLE\[' agent/directive_extractor.py
+```
+
+Either of the first two would have surfaced
+`_resolve_after_program` as a second site with the same
+flaw.
+
+**The merge-to-existing-suite caught this; standalone
+tests would not.**  K1-K13 (the pre-H18 §20 tests) all
+used preprocessor-shaped advice with EXPLICIT
+"Experiment Type: cryo-EM" / "Experiment Type: X-ray"
+text markers.  The text-based heuristic in
+`_resolve_after_program` got the right answer for those
+inputs because the text contained the signal.  Only K14's
+TERSE advice ("Primary Goal: Perform density modification
+and stop", with NO experiment-type marker — matching the
+real AF_7mjs preprocessor output) exposed the second-site
+revert.
+
+**Generalize**: when shipping a fix for a categorical bug,
+add at least one K-test that exercises the SAME entry
+point as the production failure (not the validator in
+isolation).  And merge new K-tests into the existing
+suite for that subsystem — separate test files miss
+interactions between old and new code.
+
+**See also (v119.H18.2)**: this lesson applies to function
+CALLSITES too, not just internal heuristic sites.  H18 fixed
+two callsites of `_resolve_after_program` but missed a third
+that called the same function with a different surrounding
+comment.  See the "Grep for ALL callsites when adding an
+optional parameter" lesson below.
+
+#### PHIL parameter declarations are per-master_params, not transitive (v119.H18.1 lesson)
+
+H18 introduced a new PHIL parameter
+`ai_analysis.original_files_for_directives` for threading the
+input file inventory through to directive extraction.  The
+declaration was added to `programs/ai_analysis.py` (the
+analysis server's master_phil).  The USAGE site at
+`programs/ai_agent.py:8513` then did:
+
+```python
+directive_params = copy.deepcopy(self.params)
+directive_params.ai_analysis.original_files_for_directives = (
+    ",".join(_basenames))
+```
+
+The 20 K-tests in `tst_density_modify_experiment_type.py`
+passed because they called the helpers directly (with Python
+dicts as inputs) — they never exercised the PHIL layer.
+
+In production, every directive-extraction attempt crashed
+with:
+
+```
+AttributeError: Assignment to non-existing attribute
+  "ai_analysis.original_files_for_directives"
+```
+
+Directive extraction returned `{}` and the agent ran the
+default cryo-EM plan stages through to predict_and_build
+because no user-supplied stop directive ever made it into
+the session.
+
+**Root cause**: this codebase has TWO independent
+master_params blocks:
+
+- `programs/ai_agent.py` line 144 — the agent's PHIL.  This
+  is what gets parsed into `self.params` when the user runs
+  `phenix.ai_agent`.
+- `programs/ai_analysis.py` line ~120 — the analysis server's
+  PHIL.  This is what gets parsed when the analysis server
+  is invoked as a sub-process or via the remote-agent path.
+
+These two declarations are NOT transitive.  Adding a parameter
+to `ai_analysis.py`'s master_params does NOT make it available
+on `ai_agent.py`'s params object.  The agent calls
+`copy.deepcopy(self.params)` to build `directive_params`,
+which preserves the agent's PHIL schema.  Any assignment to
+an attribute that schema doesn't declare raises
+`AttributeError`.
+
+**Lesson — PHIL declarations live with the consumer, not the
+producer**.  When adding a new field:
+
+1. **Identify EVERY entry point that produces a params object
+   matching this scope.**  In this codebase, the question
+   "where is `params.ai_analysis.<field>` ever extracted or
+   assigned?" has TWO answers: ai_agent.py and ai_analysis.py.
+2. **Add the PHIL declaration to EVERY one of them.**  Both
+   must declare the field — they're independent schemas.
+3. **Cross-reference the declarations in comments.**  A
+   one-line `.help` note like "This PHIL definition must mirror
+   the one in programs/<other>.py" prevents the gap from
+   reopening during future refactors.
+
+**The preventive K-test pattern** (`tst_h18_1_phil_roundtrip.py`):
+
+```python
+def test_master_params_parses_with_new_attribute():
+    """Source-grep + actual PHIL parse + deep-copy + assignment.
+    Catches the deploy gap at sandbox time."""
+    # 1. Extract master_params from ai_agent.py
+    with open("programs/ai_agent.py") as f:
+        content = f.read()
+    start = content.find('master_params = """') + 18
+    end = content.find('"""', start)
+    master_params_str = content[start:end]
+
+    # 2. Parse with libtbx.phil (skip gracefully in sandbox
+    #    without PHENIX)
+    try:
+        import libtbx.phil
+    except ImportError:
+        return  # sandbox-safe skip
+    master_phil = libtbx.phil.parse(master_params_str)
+    params = master_phil.extract()
+
+    # 3. Deep-copy (mirroring ai_agent.py:8483)
+    import copy
+    directive_params = copy.deepcopy(params)
+
+    # 4. Reproduce the production assignment
+    directive_params.ai_analysis.new_field = "test_value"
+
+    # 5. Verify it took
+    assert directive_params.ai_analysis.new_field == "test_value"
+```
+
+Plus a source-grep variant for sandbox use (no PHENIX
+required):
+
+```python
+def test_master_params_string_contains_param():
+    """Sandbox-safe: confirm the PHIL declaration is present
+    in the master_params region."""
+    with open("programs/ai_agent.py") as f:
+        content = f.read()
+    start = content.find('master_params = """')
+    end = content.find('master_phil = libtbx.phil.parse')
+    master_region = content[start:end]
+    assert "new_field" in master_region, (
+        "PHIL declaration missing — deploy gap will crash "
+        "production")
+```
+
+The source-grep variant runs anywhere — no libtbx required —
+and is the load-bearing test for catching the gap before
+deploy.
+
+**Generalize: schema declarations don't propagate.**  This
+lesson extends beyond PHIL to any place where data objects
+are constructed against a schema:
+
+- TypedDict subclasses (`AgentState` in `graph_state.py`)
+- Dataclasses with explicit fields (`ErrorRecovery` in
+  `error_analyzer.py`)
+- Pydantic models (none currently in this codebase, but the
+  pattern is the same)
+
+For each, adding a new field requires updating the schema in
+EVERY producer module.  When in doubt: grep for the type name
+and audit each construction site.
+
+#### Grep for ALL callsites when adding an optional parameter (v119.H18.2 lesson)
+
+H18 added an optional `original_files` parameter to
+`_resolve_after_program()` in `agent/directive_extractor.py`,
+along with files-first experiment-type detection inside it.
+The H18 audit identified TWO callsites that needed to pass
+`original_files`:
+
+1. `_apply_experiment_type_program_reprints` (the §20 site)
+2. `_apply_workflow_intent_fallback` (the post-LLM overlay)
+
+Both were updated.  H18's 20 K-tests passed.  The H18.1 PHIL
+deploy gap was then fixed.  Tom re-ran AF_7mjs.  Production
+STILL failed: the agent ran `phenix.predict_and_build` on
+cycle 3 instead of stopping after `phenix.resolve_cryo_em`.
+
+The runtime tracer (`h18_install_runtime_tracer.py`) revealed
+the exact sequence:
+
+```
+[H18_TRACE] _apply_reprints: after_prog=None
+[H18_TRACE] _apply_reprints EARLY RETURN: no after_prog
+[H18_TRACE] AFTER _apply_experiment_type_program_reprints: after_prog=None
+[H18_TRACE] before _apply_workflow_intent_fallback:
+  stop_conds={..., 'after_program': 'phenix.autobuild_denmod', ...}
+```
+
+`after_program` was None when H18's first site ran, then set
+to the WRONG value by the time the second site ran.  Something
+between the two sites was writing `phenix.autobuild_denmod`.
+
+That something was a THIRD callsite I missed.  At
+`directive_extractor.py:783` lives a v117.2 fallback path that
+fires when the LLM emits `stop_after_requested=True` but
+omits `after_program`.  It calls `_resolve_after_program` to
+fill in the missing field by parsing the raw advice:
+
+```python
+# Pre-H18.2 code at line 783:
+_v172_source = raw_advice if raw_advice else user_advice
+if _v172_source and _is_stop_after_requested(_v172_source):
+    _resolve_after_program(directives, _v172_source.lower())
+    #                                                       ↑
+    #                                       MISSING: original_files
+```
+
+Without `original_files`, the resolver defaulted `_exp="xray"`
+via the text-only heuristic ("density modify and stop" has no
+cryo-EM/X-ray tokens) and mapped `denmod` →
+`phenix.autobuild_denmod`.
+
+The downstream `_apply_workflow_intent_fallback` DOES pass
+`original_files`, but at THAT point the preprocessed advice
+contains "Stop Condition: None", so
+`_is_stop_after_requested(advice)` returns False, pushing the
+resolver into the `n==1, no stop → leave as-is` branch.  The
+buggy `after_program` from the v117.2 path persisted.
+
+**Why H18's audit missed this**: the H18 plan correctly
+identified the `_apply_experiment_type_program_reprints` site
+and the `_apply_workflow_intent_fallback` site — both billed
+as "experiment-type detection" sites in the codebase.  The
+v117.2 fallback was billed differently: as a "fill in the
+missing field" site.  Internally it called the same
+`_resolve_after_program` function with the same files-win
+contract — but the LABEL was different, so I never grepped
+for it.
+
+**The fix is one line** at the v117.2 callsite:
+
+```python
+# Post-H18.2:
+_resolve_after_program(directives, _v172_source.lower(),
+                       original_files=original_files)
+```
+
+**Lesson — when adding an optional parameter to a function,
+grep for ALL callsites of that function regardless of what
+the surrounding code is "doing"**.  The optional parameter's
+contract is part of the function's identity; every caller
+must opt in to the new contract or the bug travels through
+the callers that didn't.
+
+Concrete grep step that would have caught H18.2 at H18 time:
+
+```bash
+# Step 1 in every "add optional parameter to function X" PR:
+grep -n "X(" *.py | grep -v "^.*def X"
+```
+
+Audit each line.  If the new parameter changes function
+behavior in a way that matters at THAT callsite, pass it.  If
+not, document why.  Either way, don't leave callsites
+silently passing the legacy default.
+
+**The K-test pattern that catches this class of bug** is the
+production-faithful end-to-end test
+(`tst_density_modify_experiment_type.py::K21`):
+
+- Mock the LLM to return the EXACT shape Tom saw in
+  production (`{"stop_conditions": {"stop_after_requested":
+  true}}` — note: no `after_program`).
+- Run the full `extract_directives()` pipeline.
+- Assert on the final state, not on intermediate function
+  outputs.
+
+This pattern catches every internal site that touches
+`after_program` because it tests behavior at the entry-point
+contract, not at any individual function.
+
+**Generalize the K-test pattern**: when a fix changes behavior
+inside a complex pipeline, the regression test for that fix
+should drive through the pipeline ENTRY POINT — not the
+function the fix is in.  Internal-function tests catch
+internal-function regressions; entry-point tests catch
+multi-site regressions.  Both are necessary; entry-point is
+the load-bearing one.
 
 ### Commit quality
 

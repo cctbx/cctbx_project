@@ -50,6 +50,7 @@ SHARED_MODULES = [
     "file_utils.py",
     "advice_preprocessor.py",
     "contract.py",
+    "mtz_inspector.py",  # v119.H16: imported by command_builder (shared)
 ]
 
 SERVER_ONLY_MODULES = ["graph_nodes.py"]
@@ -73,10 +74,10 @@ FORBIDDEN_IN_SHARED = [
 KNOWN_AGENT_MODULES = {
     "advice_preprocessor", "best_files_tracker", "command_builder",
     "command_postprocessor", "contract", "event_log", "file_utils",
-    "graph_nodes", "metrics_analyzer", "nl_to_phil", "pattern_manager",
-    "perceive_checks", "placement_checker", "planner", "program_registry",
-    "rate_limit_handler", "rules_selector", "session", "template_builder",
-    "workflow_engine", "workflow_state",
+    "graph_nodes", "metrics_analyzer", "mtz_inspector", "nl_to_phil",
+    "pattern_manager", "perceive_checks", "placement_checker", "planner",
+    "program_registry", "rate_limit_handler", "rules_selector", "session",
+    "template_builder", "workflow_engine", "workflow_state",
 }
 
 KNOWN_KNOWLEDGE_MODULES = {"program_registration", "prompts_hybrid", "yaml_loader"}
