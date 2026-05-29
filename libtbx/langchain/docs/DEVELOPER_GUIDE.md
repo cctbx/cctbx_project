@@ -5331,6 +5331,106 @@ internal-function regressions; entry-point tests catch
 multi-site regressions.  Both are necessary; entry-point is
 the load-bearing one.
 
+#### Sanity-check "missing input" — observed pattern, deliberately not auto-handled (v119 design note)
+
+A `run_40_openai` batch scan revealed 15 of 21 logs with the
+same failure shape: `EMPTY_RUN_NO_PROGRAM` on every variant
+of the HNP3-mr-rosetta tutorial — across rules-only, LLM, and
+think extraction modes.  Identical failure across LLM and
+rules-only paths is a tell: the bug lives BELOW the directive-
+extraction layer.
+
+Root cause: the tutorial ships its data inside a single
+`mr_rosetta.tar.gz` archive (README documents this).  File
+discovery finds the tarball but has no visibility into its
+contents.  PERCEIVE correctly notes "no MTZ, no model, no
+map" and sanity-aborts.
+
+**Both behaviors are individually correct**.  File discovery
+correctly enumerates the directory.  PERCEIVE correctly
+sanity-aborts when there's no data.  The case is interesting
+because the `.tar.gz` is INPUT DATA from the user's
+perspective, INVISIBLE from the discovery layer's
+perspective, and ABSENT from PERCEIVE's perspective.
+
+**Design decision: don't auto-extract.**  We considered
+adding an auto-extraction hook between `_auto_discover_files`
+and `set_project_info` that would unpack the archive in place
+when no usable data was present alongside it.  Prototyped it,
+wrote a bounded-contract module with path-escape defense,
+symlink refusal, no-overwrite, and 15 K-tests.  Then decided
+not to ship.
+
+The reasoning:
+
+1. **Real users don't ship tarballs to the agent.**  In
+   production, users have a directory with `.mtz` and `.pdb`
+   files already laid out.  The HNP3 case is an artifact of
+   how the PHENIX tutorial corpus packages its examples — a
+   tutorial-distribution decision, not an agent-design
+   constraint.
+2. **Production code with no production caller is a
+   liability.**  Auto-extracting archives carries real risk
+   surface — path escapes, symlink attacks, clobbered
+   files, runaway extraction on giant archives — that
+   would need to be maintained forever for a problem only
+   the batch test suite hits.
+3. **The right fix is at the test-harness level.**  Either
+   pre-extract HNP3's tarball before invoking the agent in
+   the batch suite, or exclude HNP3-mr-rosetta from the
+   batch corpus with a comment explaining the
+   incompatibility.  Both keep the agent codebase clean.
+4. **Failure mode is already legible.**  The agent's
+   sanity-abort message names exactly what's missing
+   ("No reflection data file found for X-ray workflow")
+   and points at the directory.  A human looking at the
+   log can see `mr_rosetta.tar.gz` and infer the fix in
+   seconds.
+
+**What to do when this pattern recurs:**
+
+If a real user reports the same failure (data in a tarball
+the agent can't see), the right response is:
+
+1. First, ask: is this a real workflow or a tutorial
+   artifact?  Real workflows almost never look like this.
+2. If real: tell the user to extract the archive and re-run.
+   The agent will pick up the files on the second pass.
+3. Only if the same case recurs frequently from genuine
+   user workflows should auto-extraction be revisited.  At
+   that point, the prototype design (bounded trigger,
+   no-overwrite, path-escape defense, symlink refusal,
+   idempotent, never-raises) is the starting point.
+
+**The general principle (worth keeping as a design lens):**
+when a sanity check fires on missing inputs, ask TWO
+questions:
+
+1. Is the input genuinely absent?  (User forgot to provide
+   it.)
+2. Is the input present but invisible?  (Compressed in a
+   tarball, in a subdirectory, behind a symlink to an
+   unusual path, etc.)
+
+If the second is plausible AND it's a real user pattern (not
+a test-harness artifact), the discovery layer should either
+expand visibility or surface an actionable error that
+distinguishes between the two.  Don't conflate "I don't see
+it" with "it's not there."
+
+**Generalize beyond data ingest**: the "absent vs invisible"
+distinction applies anywhere a pipeline reports "X missing".
+Authentication systems should distinguish "no credentials"
+from "credentials expired."  Compilers should distinguish
+"header not on path" from "header exists but include guard
+didn't expand."  Error messages that say "X missing" without
+distinguishing the two confuse users.
+
+But — and this is the key takeaway from the HNP3 case — the
+principle doesn't always require implementation.  Sometimes
+the right move is to recognize the pattern, document it,
+fix the test harness, and keep production code lean.
+
 ### Commit quality
 
 Before committing LLM-generated code:
