@@ -287,7 +287,6 @@ def test_inspect_mtz_with_real_cctbx():
     pair, merged intensities, merged amplitudes — three suitable
     data array sets.  is_multi_array MUST be True for this case."""
     try:
-        from iotbx.reflection_file_reader import any_reflection_file
         from cctbx import miller, crystal
         from cctbx.array_family import flex
     except ImportError:

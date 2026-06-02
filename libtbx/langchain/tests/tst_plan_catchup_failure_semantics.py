@@ -53,7 +53,7 @@ if _PARENT not in sys.path:
 
 from knowledge.plan_schema import (
     StageDef, StructurePlan,
-    STAGE_PENDING, STAGE_ACTIVE, STAGE_COMPLETE,
+    STAGE_ACTIVE, STAGE_COMPLETE,
     STAGE_FAILED, STAGE_SKIPPED,
 )
 

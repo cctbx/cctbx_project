@@ -515,7 +515,8 @@ def _libtbx_planning_available():
     of the mechanic is sufficient.
     """
     try:
-        import libtbx.langchain.agent.graph_nodes  # noqa: F401
+        from libtbx.langchain.agent import graph_nodes  # noqa: F401
+        nothing = graph_nodes
         return True
     except ImportError:
         return False
