@@ -141,7 +141,7 @@ RSCC.
     '''
     make_sub_header('Placing hydrogen atoms with reduce2', out=self.logger)
     try:
-      self.working_model,_ = check_and_add_hydrogen(
+      self.working_model, _, _ = check_and_add_hydrogen(
         probe_parameters=self.params.probe,
         data_manager_model=model,
         stop_for_unknowns = False,
