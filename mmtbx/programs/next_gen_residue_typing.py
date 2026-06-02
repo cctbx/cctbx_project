@@ -10,7 +10,6 @@ try:
 except ImportError:
   pass
 from libtbx.utils import Sorry
-# from datetime import datetime
 
 from cctbx.geometry_restraints.linking_class import linking_class
 origin_ids = linking_class()
@@ -527,7 +526,6 @@ Example:
       chains={}
       for chain in hierarchy.chains(): chains[chain.id]=1
       grm = model.get_restraints_manager()
-      import time
       t = compute(hierarchy, grm)
       if not self.params.quiet: print_types(t)
       self.results['types']=t

@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
+import copy
+
 from libtbx.utils import Sorry
 
 from rdkit import Chem
@@ -1020,7 +1022,6 @@ def mol_to_3d(mol):
   """
   Convert a rdkit mol to 3D coordinates
   """
-  assert 0
   assert len(mol.GetConformers())==0, "mol already has conformer"
   param = rdDistGeom.ETKDGv3()
   conf_id = rdDistGeom.EmbedMolecule(mol, clearConfs=True)
@@ -1033,6 +1034,14 @@ def mol_to_2d(mol):
   mol = Chem.Mol(mol) # copy to preserve original coords
   ret = Chem.rdDepictor.Compute2DCoords(mol)
   return mol
+
+def molecule_to_image(molecule, file_name, size=(2000,1500), draw2d=True):
+  from rdkit.Chem import AllChem
+  from rdkit.Chem import Draw
+  molecule=copy.deepcopy(molecule)
+  if draw2d: AllChem.Compute2DCoords(molecule)
+  image = Draw.MolToImage(molecule, size=size)
+  return image
 
 def print_coordinates(mol):
   conformer = mol.GetConformer()
@@ -1047,12 +1056,13 @@ def mol_from_smiles(smiles, embed3d=True, addHs=True, removeHs=False, verbose=Fa
   """
   Convert a smiles string to rdkit mol
   """
-  assert 0
   ps = Chem.SmilesParserParams()
   ps.removeHs=removeHs
   rdmol = Chem.MolFromSmiles(smiles, ps)
   if verbose: print('rdmol',rdmol)
-  if rdmol is None: return rdmol
+  if rdmol is None:
+    raise Sorry(f'invalid SMILES {smiles}')
+    # return rdmol
   if verbose: print('rdmol',rdmol.Debug())
   if addHs: rdmol = Chem.AddHs(rdmol)
   if verbose: print('rdmol',rdmol.Debug())
@@ -1067,8 +1077,8 @@ def mol_from_smiles(smiles, embed3d=True, addHs=True, removeHs=False, verbose=Fa
   if embed3d:
     conf_id = AllChem.EmbedMolecule(rdmol, AllChem.ETKDG())
     if conf_id == -1:
-      print("Could not generate 3D coordinates")
-      return None
+      raise Sorry("Could not generate 3D coordinates")
+      # return None
     AllChem.MMFFOptimizeMolecule(rdmol, confId=conf_id)
     if verbose:
       print_coordinates(rdmol)
