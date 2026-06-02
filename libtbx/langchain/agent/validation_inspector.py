@@ -50,6 +50,19 @@ def run_validation(model_path, data_path=None,
       model_path,
     )
     return None
+  # Pre-check: a model file with no ATOM/HETATM records (e.g. a stub or a
+  # failed/empty refine output) is not a usable model.  Skip validation
+  # cleanly rather than letting DataManager.process_model_file raise
+  # "not a recognized model file" and surface an alarming traceback for what
+  # is an expected, benign condition.  The agent falls back to log-only
+  # analysis exactly as it does for any other None return.
+  if not _model_file_has_atom_records(model_path):
+    logger.info(
+      "Validation skipped: %s has no ATOM/HETATM records "
+      "(no usable model) — continuing with log-only analysis.",
+      model_path,
+    )
+    return None
   try:
     return _run_validation_inner(
       model_path=model_path,
@@ -58,12 +71,71 @@ def run_validation(model_path, data_path=None,
       sequence_path=sequence_path,
       experiment_type=experiment_type,
     )
-  except Exception:
-    logger.warning(
-      "Validation failed, continuing with log-only "
-      "analysis:\n%s", traceback.format_exc()
-    )
+  except Exception as e:
+    # An unrecognized / unparseable model file is an expected, benign
+    # condition (the agent continues with log-only analysis).  Log it
+    # cleanly without a traceback; reserve the full traceback for genuine,
+    # unexpected validation failures so real problems stay visible.
+    msg = str(e)
+    if ("not a recognized model file" in msg
+        or "no ATOM" in msg
+        or "no atoms" in msg.lower()):
+      logger.info(
+        "Validation skipped: %s — continuing with log-only analysis.",
+        msg,
+      )
+    else:
+      logger.warning(
+        "Validation failed, continuing with log-only "
+        "analysis:\n%s", traceback.format_exc()
+      )
     return None
+
+
+def _model_file_has_atom_records(model_path):
+  """Return True if the file contains at least one ATOM/HETATM record.
+
+  Cheap, format-tolerant pre-check used to skip validation of empty or
+  stub model files before invoking the DataManager (which raises on them).
+  Reads the file as text and scans for record markers; handles both PDB
+  (lines starting with ATOM/HETATM) and mmCIF (atom_site loop rows), and
+  transparently handles gzip-compressed models (.pdb.gz / .cif.gz, detected
+  by magic bytes).  On any read error, returns True so the normal validation
+  path (and its existing error handling) still runs — this pre-check only
+  ever SKIPS on a confident "no atoms" determination, never on uncertainty.
+  """
+  try:
+    opener = open
+    open_kwargs = {"errors": "replace"}
+    # Detect gzip by magic bytes (0x1f 0x8b) rather than trusting the
+    # extension.  A gzipped model read as plain text would show no ATOM
+    # records and be wrongly skipped, so route it through gzip.open.
+    try:
+      with open(model_path, "rb") as probe:
+        if probe.read(2) == b"\x1f\x8b":
+          import gzip
+          opener = gzip.open
+          open_kwargs = {"mode": "rt", "errors": "replace"}
+    except Exception:
+      # Can't even probe — fall through to the text path; its own except
+      # below will return True (don't skip) if it also fails.
+      pass
+
+    with opener(model_path, **open_kwargs) as fh:
+      saw_atom_site_loop = False
+      for line in fh:
+        s = line.lstrip()
+        if s.startswith("ATOM") or s.startswith("HETATM"):
+          return True
+        # mmCIF: the _atom_site loop carries coordinate rows.  Presence of
+        # the category is a strong signal the model has atoms; treat as
+        # "has atoms" to avoid false-skip on valid mmCIF models.
+        if s.startswith("_atom_site."):
+          saw_atom_site_loop = True
+      return saw_atom_site_loop
+  except Exception:
+    # Can't read it confidently — don't skip; let the normal path decide.
+    return True
 
 
 def _run_validation_inner(model_path, data_path,
@@ -666,6 +738,11 @@ def _read_2fofc_map(map_coeffs_path):
   Looks for FWT/PHFWT, 2FOFCWT/PH2FOFCWT, or similar
   column names. Excludes mFo-DFc columns (DELFWT,
   FOFCWT).
+
+  May raise.  The iotbx import and MTZ parsing can raise
+  in environments without iotbx or on malformed files;
+  the caller (_validate_data_model) wraps this path in
+  try/except and degrades gracefully.
 
   Returns:
     (map_data, d_min) or (None, None) if not found.

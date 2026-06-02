@@ -681,21 +681,29 @@ The decision flow follows a clean, layered architecture where each component has
 
 ## LLM Provider Architecture
 
-The agent supports three LLM providers: **google**, **openai**, and **ollama**. The
-provider is set via `params.communication.provider` (or the `LLM_PROVIDER` env var)
-and flows consistently through every LLM call point — there is no cross-provider
-fallback.
+The agent supports five LLM providers: **google**, **openai**, **ollama**,
+**anthropic** (Claude), and **portkey** (the Portkey gateway fronting Azure
+OpenAI). The canonical list lives in `core/llm.SUPPORTED_PROVIDERS` (single
+source of truth — `graph_nodes.py` and `programs/ai_agent.py` import it rather
+than keeping their own copies; see §"Provider Routing — Single Source of Truth"
+below). The provider is set via `params.communication.provider` (or the
+`LLM_PROVIDER` env var) and flows consistently through every LLM call point —
+there is no cross-provider fallback.
 
 ### LLM Call Points
 
 The system uses three distinct LLM roles, each with provider-specific model defaults:
 
-| Activity | Function | ollama | google | openai |
-|---|---|---|---|---|
-| **Agent decisions** (PLAN node) | `get_planning_llm()` → `get_expensive_llm()` | qwen3:32b (json_mode) | gemini-2.5-pro | gpt-5 |
-| **Log summarization** | `get_cheap_llm()` | qwen2.5:7b | gemini-2.5-flash-lite | gpt-5-nano |
-| **RAG analysis** | `get_expensive_llm()` | qwen3:32b | gemini-2.5-pro | gpt-5 |
-| **Directive extraction** | `call_llm_simple()` | direct ollama HTTP | gemini-2.0-flash | (provider default) |
+| Activity | Function | ollama | google | openai | anthropic | portkey |
+|---|---|---|---|---|---|---|
+| **Agent decisions** (PLAN node) | `get_planning_llm()` → `get_expensive_llm()` | qwen3:32b (json_mode) | gemini-2.5-pro | gpt-5 | claude-opus-4 | gpt-5 (Azure) |
+| **Log summarization** | `get_cheap_llm()` | qwen2.5:7b | gemini-2.5-flash-lite | gpt-5-nano | claude-sonnet-4 | gpt-5 (Azure) |
+| **RAG analysis** | `get_expensive_llm()` | qwen3:32b | gemini-2.5-pro | gpt-5 | claude-opus-4 | gpt-5 (Azure) |
+| **Directive extraction** | `call_llm_simple()` | direct ollama HTTP | gemini-2.0-flash | (provider default) | claude-sonnet-4 | gpt-5 (Azure) |
+
+Model defaults come from the five role tables in `core/llm.py` and can be
+overridden per provider via env var (`OLLAMA_LLM_MODEL`, `ANTHROPIC_LLM_MODEL`,
+`PHENIX_PORTKEY_MODEL`).
 
 ### Provider Flow
 
@@ -748,10 +756,106 @@ params.communication.provider = "<provider>"
 
 ### Adding a New Provider
 
-1. Add provider case to `get_llm_and_embeddings()` in `core/llm.py`
-2. Add validation check in `validate_provider()` in `agent/graph_nodes.py`
-3. Add `_call_<provider>_llm()` function in `agent/api_client.py`
-4. Add rate limit handler in `agent/rate_limit_handler.py` (optional)
+`SUPPORTED_PROVIDERS` in `core/llm.py` is the single source of truth; every
+routing point below either reads it or branches on the provider name. The
+complete checklist (learned across the v120 portkey/anthropic work):
+
+1. Add the provider to `SUPPORTED_PROVIDERS` in `core/llm.py`.
+2. Add model defaults to the role tables in `core/llm.py`
+   (`DECISION/RAG/RAG_EMBEDDING/EXPENSIVE_MODEL_DEFAULTS`) and, if it takes an
+   env-var model override, to `_PROVIDER_MODEL_ENV_OVERRIDES`.
+3. Add the provider branch to `get_llm_and_embeddings()` and `get_expensive_llm()`
+   in `core/llm.py`. (`get_cheap_llm()` needs no change — it falls through to
+   the factory for any provider without a `CHEAP_MODEL_DEFAULTS` entry.)
+4. Add `_call_<provider>_llm()` + dispatch in `agent/api_client.py`.
+5. Add the provider branch in `directive_extractor._call_llm` (handler-select,
+   both import paths) and `_call_llm_fallback`.
+6. Add a rate-limit handler in `agent/rate_limit_handler.py` (a dedicated one,
+   not a borrowed `get_openai_handler`, so metrics stay unpolluted).
+7. Add the key/config check in `graph_nodes.validate_provider()` (execution-time
+   only — never assert keys at import) and the handler-select at the second
+   `graph_nodes` LLM site; add the handler in `thinking_agent._get_rate_handler`.
+8. Add the provider to the `provider` PHIL enums in `programs/ai_agent.py` and
+   `programs/ai_analysis.py` (the GUI dropdown regenerates from these).
+9. If the provider can do embeddings (RAG): add it to `run_utils.validate_api_keys`,
+   `run_utils.get_db_dir_for_provider`, `analysis/summarizer.py` chunk sizes,
+   `run_query_docs.py`, and the database-build tools
+   `command_line/rebuild_ai_database.py` + `update_ai_database.py`. If it has no
+   native embeddings (like anthropic), wire chat only and let
+   `_delegate_embeddings_for_nonnative()` handle the embeddings side.
+10. Add the runtime deps to `phenix_ai/install_ai_tools.csh`.
+
+### Provider Routing — Single Source of Truth (v120 P2)
+
+Before v120, `SUPPORTED_PROVIDERS` was duplicated as independent literals in
+`agent/graph_nodes.py` and `programs/ai_agent.py` (the latter as a hardcoded
+fallback list). The two could drift — a provider added to one but not the
+other would validate in one layer and be rejected in another. v120 centralizes
+the list in `core/llm.py`; both consumers import it via the standard two-path
+`try/except ImportError` fallback. The `ai_agent.py` literal was removed
+entirely: its consumer is an *error-advice* helper, so on import failure it
+degrades to the provider-agnostic rules-only suggestion rather than raising a
+second exception over the original error. A runtime import-identity test
+(`tst_supported_providers_single_source.py`) pins that `graph_nodes` re-exports
+the same object and that no literal survives outside `core/llm.py`.
+
+### Portkey + Anthropic Specifics (v120 P3)
+
+- **Portkey** is OpenAI-SDK-compatible. The langchain path
+  (`get_llm_and_embeddings`) uses `ChatOpenAI`/`OpenAIEmbeddings` pointed at
+  `PORTKEY_BASE_URL` with `PORTKEY_AZURE_API_KEY`; the raw-SDK call path
+  (`api_client._call_portkey_llm`, `directive_extractor` fallback) uses the
+  Portkey SDK with `provider="azure-openai"`. Both read env at call time and
+  raise a clear `ValueError` (never a bare `KeyError`) when a var is missing.
+  The env check precedes the SDK import so a misconfigured-but-installed
+  deployment gets the friendly message.
+- **Asymmetric kwargs** are handled by `sanitize_llm_kwargs(provider, kwargs)`,
+  keyed per provider: portkey (Azure gpt-5) renames `max_tokens →
+  max_completion_tokens` and drops `temperature`; anthropic always keeps
+  `max_tokens` (`ChatAnthropic` requires it) but `temperature` is
+  **model-dependent** — the Claude 4.6/4.7+ reasoning family
+  (`claude-sonnet-4-6`, `claude-opus-4-7`, future 4.8+) rejects
+  `temperature`/`top_p`/`top_k` with HTTP 400, so both `sanitize_llm_kwargs`
+  and the `ChatAnthropic` constructor drop them for that family (detected by
+  `anthropic_model_rejects_sampling_params()`, a model-name family check).
+  Older Claude models still accept `temperature` and keep it. The factory's
+  `ChatAnthropic(...)` only passes `temperature=` when the model accepts it.
+- **Embeddings.** Anthropic has no native embeddings endpoint. The factory
+  always returns a working chat LLM; the embeddings object is constructed
+  lazily (no network call), so the end-of-run `agent_session` assessment —
+  which constructs but never queries embeddings — is safe even with a
+  no-access key. For anthropic, `_delegate_embeddings_for_nonnative()`
+  delegates to OpenAI/Google when a key is present (emitting a
+  `[PROVIDER_DELEGATION]` marker), else returns `None`; it never raises on
+  construction. A real embeddings *query* failure (only via `standard`/RAG)
+  surfaces a clear execution-time error echoing the raw upstream message,
+  not a `"Unauthorized"` string match.
+
+### FORCE_NO_AI_SERVER (v120 P1)
+
+`programs/ai_agent.py::run()` checks `FORCE_NO_AI_SERVER`: when set to the
+literal `1` (whitespace-stripped) it forces `communication.run_on_server=False`,
+placed after `set_defaults()` and before session-management dispatch so it
+covers all execution paths (v2-API, `iterate_agent`,
+`run_job_on_server_or_locally`). The same override is mirrored in
+`programs/ai_analysis.py::run()` (placed before its
+`run_job_on_server_or_locally` dispatch), so the env var also forces local
+execution for `phenix.ai_analysis` across every analysis_mode (standard,
+agent_session, advice_preprocessing, directive_extraction, failure_diagnosis).
+The shipped PHIL default stays `True` — this is the surgical local-only switch,
+not a baseline change. No effect on `predict_and_build`/`predict_model` run
+separately. The flag is **absolute**: both dispatchers
+(`run_job_on_server_or_locally` in `ai_agent.py` and `ai_analysis.py`) re-check
+it and refuse to submit to the server, even via the no-local-database fallback
+that `standard` mode would otherwise take. When local execution is impossible
+(standard mode, no local RAG database for the provider), the dispatcher raises
+`Sorry` with actionable guidance instead of silently contacting the server; the
+LLM-only modes (directive_extraction, advice_preprocessing, failure_diagnosis,
+agent_session) never need the database and always run local. Because provider
+travels in the request `settings` and is consumed only in shared
+`agent/`+`core/` code, local and server execution run identical branches; the
+only difference is whether information crosses machines. The server simply also
+needs the provider's keys in its environment (deployment, not code).
 
 ## Data Flow
 
@@ -1291,6 +1395,55 @@ identically:
   unchanged.
 - Between-cycle operations: unchanged (none at `thinking_level=none`;
   full planning at `thinking_level=expert`).
+
+**Unintended rules fallback: LLM-unavailable observability**
+
+The `use_rules_only=True` mode above is *intentional* and clearly announced.
+The agent also falls back to `_mock_plan`/`RulesSelector` *unintentionally*
+when the requested LLM provider cannot be reached: `plan` calls
+`_handle_llm_failure`, which (below `MAX_LLM_FAILURES`) returns `_mock_plan`.
+That fallback used to be silent, so a run could complete on rules without the
+user realizing the LLM never contributed. v120 makes it observable, with a
+deliberate split that survives both local and server execution:
+
+- **Signal carrier — the `events` list.** `_handle_llm_failure` emits a
+  structured `EventType.NOTICE` event with a machine-readable discriminator
+  `notice_kind="llm_unavailable"` (plus `provider` and a human `message`), via
+  `_emit` (which copies the list — no in-place mutation). `events` is a plain
+  `List[Dict]` in `AgentState` (no reducer), preserved by every downstream node
+  (`build`/`validate`/`fallback`/`output` all return `{**state}` or never
+  clobber it), and is a member of `contract.RESPONSE_FIELDS`, so it crosses the
+  REST boundary identically — `run_ai_agent._build_response_from_state` passes
+  `events` into both `create_response` and `create_stop_response`. No change to
+  the contract, schema, server dispatcher, event log, or formatter was needed.
+- **Per-cycle vs per-run scoping.** Graph state is per-cycle (each cycle is a
+  fresh `graph.invoke`), so there is no run-level flag in graph state. Within a
+  single invoke, emission is guarded once by `llm_notice_emitted_this_invoke`
+  (the `validate→plan` retry edge can call the handler more than once per
+  cycle) — a key deliberately scoped to the invoke and **not** named like the
+  driver's run-level key, to avoid scope confusion. The NOTICE is therefore
+  emitted each cycle the LLM is unavailable (honest per-cycle reporting).
+- **Driver aggregation.** `ai_agent.print_history_record` →
+  `_detect_llm_unavailable_from_events` scans each cycle's
+  `history_record["events"]` for the discriminator and sets the run-level
+  `session.data["llm_ever_unavailable"]` (which persists across cycles). The
+  hook is guarded `if session is not None` (the display-only/replay path calls
+  `print_history_record` without a session) and never raises.
+  `_finalize_session` prints an `IMPORTANT: THIS RUN DID NOT USE THE LLM`
+  banner, prefixes the Results-tab summary, and exposes `llm_ever_unavailable`
+  on the result object for the GUI.
+- **Visibility is double-covered.** At normal/verbose verbosity the NOTICE
+  renders inside the cycle box via `EventFormatter`; at quiet verbosity (where
+  the formatter's quiet path omits NOTICE) the same text still appears because
+  `_handle_llm_failure` also logs it to `debug_log`. So the per-cycle notice is
+  visible at every verbosity through at least one channel, and driver detection
+  (from the structured event) is verbosity-independent.
+
+This is observability only — it does not change program selection. Known gap
+(documented for a possible follow-up): a pure display-only replay of a saved
+session that never re-runs cycles will not show the end-of-run banner, because
+session cycle records do not persist `events`; closing that would require a
+`session.py` schema change.
 
 **Log section extraction** (`agent/log_section_extractor.py`):
 
@@ -4610,7 +4763,90 @@ production-faithful K-test that drives through the entry-point
 contract (not the function under test directly) so any missed
 callsite surfaces immediately.
 
+### 44. PHIL Multi-Line String Authoring: the Continuation-Space Rule (v120)
+
+**Symptom**: `phenix.python tst_h18_1_phil_roundtrip.py` failed
+with `RuntimeError: Syntax error: expected "=", found "is"
+(input line 433)` — and after fixing that, `found "set"`.  The
+parse of `programs/ai_agent.py`'s `master_params` string was
+aborting partway through.  Nothing was wrong with the parameter
+being parsed; the error pointed at words (`is`, `set`) in the
+middle of a `.help` description.
+
+**Root cause (verified against the real `libtbx.phil` parser, not
+inferred)**: a multi-line **unquoted** `.help` value continued
+with a backslash, but the backslash was preceded by a non-space
+character:
+
+```
+.help = Provider for AI analysis. Ollama is cheapest,\     ← BAD: "...cheapest,\"  (comma then backslash)
+     OpenAI is most thorough, ...
+```
+
+PHIL's lexer requires a **space before the continuation
+backslash** in an unquoted value.  Without it, the continuation
+is not recognized; the next line is re-lexed as a fresh
+statement, PHIL reads its first token (`OpenAI`, `Normally`) as a
+parameter name and then expects `=`, finding the next word
+instead (`is`, `set`).  The offending word is a red herring — the
+real fault is the missing space.
+
+**The rule, established empirically with the parser:**
+
+| Form | Line ends with | Parses? |
+|------|----------------|---------|
+| Unquoted multi-line | `<non-space>\` | **NO** — always fails, regardless of continuation content (even a single plain word breaks) |
+| Unquoted multi-line | `<space>\`     | yes |
+| Quoted multi-line   | `"…"\`         | yes — quoted continuations follow different rules and do **not** need the leading space |
+
+The minimal fix is therefore a **single space before the
+backslash**, not quoting and not rewording:
+
+```
+.help = Provider for AI analysis. Ollama is cheapest, \    ← GOOD: space before backslash
+     OpenAI is most thorough, ...
+```
+
+**Scope of the v120 fix**: only THREE unquoted helps were broken
+— `provider` (added in v120; the regression that surfaced this),
+plus the pre-existing `url` and `port` helps (both continued
+`...server\` then `Normally set automatically`).  The sibling
+`url_type` and `token` helps were already correct because they
+happened to end `. \` (space before backslash).  The fix added
+one space to each of the three; the other ~30 multi-line helps in
+the two `master_params` strings were left untouched.  Both
+`programs/ai_agent.py` and `programs/ai_analysis.py` carry dual
+schemas (see §42), so the same three were fixed in both.
+
+**Why the quoted scope `.caption` blocks were never affected**:
+the `ai_analysis` scope caption is a multi-line **quoted** string
+(`"…"\` per line).  Quoted continuations parse fine without the
+leading space, which is why they were never flagged.
+
+**Authoring guidance (avoid this class entirely):**
+- Prefer a **single-line** `.help`/`.caption` string when it fits.
+- For genuinely long text, either (a) use unquoted continuation
+  with a **space before every backslash**, or (b) use a quoted
+  multi-line string (`"part one "` / `"part two"` per line).  Pick
+  one style per block; do not mix.
+- Do **not** assume "it compiles as Python, so it parses as PHIL."
+  The triple-quoted `master_params` is just a Python string;
+  `py_compile` says nothing about PHIL validity.
+
+**Verification recipe** (works in a plain sandbox — no full
+PHENIX needed): `pip install cctbx-base --break-system-packages`
+gives a real `libtbx.phil`.  Then extract the `master_params`
+triple-quoted block with a regex and call
+`libtbx.phil.parse(block, process_includes=True)`.  The parser
+stops at the FIRST error, so fix-and-re-parse iteratively until it
+passes, then scan for any remaining unquoted multi-line help that
+ends in `<non-space>\` to catch latent failures the parser has not
+yet reached.  This is exactly how the v120 fix was confirmed
+complete (zero remaining unquoted `<non-space>\` continuations in
+either file).
+
 ## Workflow States
+
 
 ### X-ray Crystallography Workflow
 

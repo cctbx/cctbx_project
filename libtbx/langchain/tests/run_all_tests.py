@@ -255,6 +255,45 @@ def main():
         print(f"⚠️  Could not import tst_api_schema: {e}")
         results.append(("API Schema", "tst_api_schema", False, 0))
 
+    # --- FORCE_NO_AI_SERVER Tests (v120 Task 1) ---
+    try:
+        from tests.tst_force_no_ai_server import run_all_tests as run_force_no_ai_server_tests
+        success, elapsed = run_test_module(
+            "tst_force_no_ai_server", run_force_no_ai_server_tests, args.verbose)
+        results.append(("FORCE_NO_AI_SERVER", "tst_force_no_ai_server", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_force_no_ai_server: {e}")
+        results.append(("FORCE_NO_AI_SERVER", "tst_force_no_ai_server", False, 0))
+
+    # --- SUPPORTED_PROVIDERS Single Source Tests (v120 Phase 2) ---
+    try:
+        from tests.tst_supported_providers_single_source import run_all_tests as run_supported_providers_tests
+        success, elapsed = run_test_module(
+            "tst_supported_providers_single_source", run_supported_providers_tests, args.verbose)
+        results.append(("SUPPORTED_PROVIDERS Single Source", "tst_supported_providers_single_source", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_supported_providers_single_source: {e}")
+        results.append(("SUPPORTED_PROVIDERS Single Source", "tst_supported_providers_single_source", False, 0))
+
+    # --- Portkey + Anthropic Provider Wiring Tests (v120 Phase 3) ---
+    try:
+        from tests.tst_v120_providers import run_all_tests as run_v120_providers_tests
+        success, elapsed = run_test_module(
+            "tst_v120_providers", run_v120_providers_tests, args.verbose)
+        results.append(("v120 Providers (Portkey/Anthropic)", "tst_v120_providers", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_v120_providers: {e}")
+        results.append(("v120 Providers (Portkey/Anthropic)", "tst_v120_providers", False, 0))
+
+    try:
+        from tests.tst_llm_unavailable_notice import run_all_tests as run_llm_unavailable_tests
+        success, elapsed = run_test_module(
+            "tst_llm_unavailable_notice", run_llm_unavailable_tests, args.verbose)
+        results.append(("LLM-unavailable notice", "tst_llm_unavailable_notice", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_llm_unavailable_notice: {e}")
+        results.append(("LLM-unavailable notice", "tst_llm_unavailable_notice", False, 0))
+
     # --- Best Files Tracker Tests ---
     try:
         from tests.tst_best_files_tracker import run_all_tests as run_best_files_tests

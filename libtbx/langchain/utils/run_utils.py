@@ -115,6 +115,17 @@ def validate_api_keys(provider, debug_log=None):
   elif provider == 'openai':
     if not os.getenv("OPENAI_API_KEY"):
       return "OPENAI_API_KEY environment variable not set."
+  elif provider == 'anthropic':
+    if not os.getenv("ANTHROPIC_API_KEY"):
+      return "ANTHROPIC_API_KEY environment variable not set."
+  elif provider == 'portkey':
+    # portkey fronts Azure OpenAI via the Portkey gateway; both the gateway
+    # key and base URL are required.  Reported here (clear message) rather
+    # than failing late at the API call.
+    missing = [n for n in ("PORTKEY_AZURE_API_KEY", "PORTKEY_BASE_URL")
+               if not os.getenv(n)]
+    if missing:
+      return "%s environment variable(s) not set." % ", ".join(missing)
 
   return None
 
@@ -146,6 +157,9 @@ def get_db_dir_for_provider(provider, db_dir=None, debug_log=None):
     'google': "./docs_db_google",
     'openai': "./docs_db_openai",
     'ollama': "./docs_db_ollama",
+    # portkey fronts Azure OpenAI; its embeddings DB is distinct from the
+    # direct-openai one (different deployment/keying), so give it its own dir.
+    'portkey': "./docs_db_portkey",
   }
 
   db_dir = defaults.get(provider, "./docs_db_ollama")

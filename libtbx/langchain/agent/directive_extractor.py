@@ -971,7 +971,8 @@ def _call_llm(prompt, provider, model, log):
         handler = None
         try:
             from libtbx.langchain.agent.rate_limit_handler import (
-                get_google_handler, get_openai_handler, get_anthropic_handler
+                get_google_handler, get_openai_handler, get_anthropic_handler,
+                get_portkey_handler
             )
 
             # Select handler based on provider
@@ -981,10 +982,13 @@ def _call_llm(prompt, provider, model, log):
                 handler = get_openai_handler()
             elif provider == "anthropic":
                 handler = get_anthropic_handler()
+            elif provider == "portkey":
+                handler = get_portkey_handler()
         except ImportError:
             try:
                 from agent.rate_limit_handler import (
-                    get_google_handler, get_openai_handler, get_anthropic_handler
+                    get_google_handler, get_openai_handler, get_anthropic_handler,
+                    get_portkey_handler
                 )
                 if provider == "google":
                     handler = get_google_handler()
@@ -992,6 +996,8 @@ def _call_llm(prompt, provider, model, log):
                     handler = get_openai_handler()
                 elif provider == "anthropic":
                     handler = get_anthropic_handler()
+                elif provider == "portkey":
+                    handler = get_portkey_handler()
             except ImportError:
                 pass  # No retry logic available
 
@@ -1156,16 +1162,19 @@ def _call_llm_fallback(prompt, provider, model, log):
     get_google_handler = None
     get_openai_handler = None
     get_anthropic_handler = None
+    get_portkey_handler = None
 
     try:
         from libtbx.langchain.agent.rate_limit_handler import (
-            get_google_handler, get_openai_handler, get_anthropic_handler
+            get_google_handler, get_openai_handler, get_anthropic_handler,
+            get_portkey_handler
         )
     except ImportError:
         try:
             # Try relative import for standalone testing
             from agent.rate_limit_handler import (
-                get_google_handler, get_openai_handler, get_anthropic_handler
+                get_google_handler, get_openai_handler, get_anthropic_handler,
+                get_portkey_handler
             )
         except ImportError:
             pass  # No retry logic available
@@ -1311,6 +1320,54 @@ def _call_llm_fallback(prompt, provider, model, log):
             if _looks_like_retired_model_error(err_str, model_name):
                 _emit_retired_model_marker("anthropic", model_name, log)
             log("DIRECTIVES: Anthropic API call failed - %s" % err_str)
+            return None
+
+    elif provider == "portkey":
+        # Azure OpenAI via the Portkey SDK (provider="azure-openai").
+        # gpt-5 upstream: max_completion_tokens, no temperature.  Env vars
+        # are read at call time; missing ones are reported, not KeyError'd.
+        if model is None:
+            model_name = resolve_model_for_provider("portkey", role="decision")
+        else:
+            model_name = model
+        try:
+            from portkey_ai import Portkey
+
+            api_key = os.environ.get("PORTKEY_AZURE_API_KEY")
+            base_url = os.environ.get("PORTKEY_BASE_URL")
+            _missing = [n for n, v in (
+                ("PORTKEY_AZURE_API_KEY", api_key),
+                ("PORTKEY_BASE_URL", base_url)) if not v]
+            if _missing:
+                raise ValueError(
+                    "Provider 'portkey' requires environment variable(s): %s."
+                    % ", ".join(_missing))
+
+            client = Portkey(
+                api_key=api_key,
+                base_url=base_url,
+                provider="azure-openai",
+            )
+
+            def make_call():
+                response = client.chat.completions.create(
+                    model=model_name,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_completion_tokens=2000,
+                )
+                return response.choices[0].message.content
+
+            if get_portkey_handler:
+                handler = get_portkey_handler()
+                return handler.call_with_retry(make_call, log_wrapper)
+            else:
+                return make_call()
+
+        except Exception as e:
+            err_str = str(e)
+            if _looks_like_retired_model_error(err_str, model_name):
+                _emit_retired_model_marker("portkey", model_name, log)
+            log("DIRECTIVES: Portkey API call failed - %s" % err_str)
             return None
 
     elif provider == "ollama":

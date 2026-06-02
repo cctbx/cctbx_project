@@ -642,7 +642,7 @@ def call_llm_simple(prompt, provider="google", model=None, temperature=0.1, max_
 
     Args:
         prompt: The prompt text to send
-        provider: LLM provider ("google", "openai", "anthropic", "ollama")
+        provider: LLM provider ("google", "openai", "anthropic", "ollama", "portkey")
         model: Model name (uses provider default if None)
         temperature: Sampling temperature (default 0.1 for consistency)
         max_tokens: Maximum tokens in response
@@ -658,6 +658,8 @@ def call_llm_simple(prompt, provider="google", model=None, temperature=0.1, max_
         return _call_anthropic_llm(prompt, model, temperature, max_tokens)
     elif provider == "ollama":
         return _call_ollama_llm(prompt, model, temperature, max_tokens)
+    elif provider == "portkey":
+        return _call_portkey_llm(prompt, model, temperature, max_tokens)
     else:
         raise ValueError(f"Unknown provider: {provider}")
 
@@ -737,6 +739,44 @@ def _call_anthropic_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
         messages=[{"role": "user", "content": prompt}]
     )
     return response.content[0].text
+
+
+def _call_portkey_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
+    """Call Azure OpenAI via the Portkey SDK (OpenAI-compatible gateway).
+
+    v120: matches the deployment in add_portkey_support.patch -- the Portkey
+    SDK with provider="azure-openai".  Azure gpt-5 uses max_completion_tokens
+    (not max_tokens) and rejects temperature, so neither is forwarded.  Env
+    vars are read at call time; a missing one raises a clear ValueError
+    (via portkey_langchain_config-style checks) rather than a bare KeyError.
+
+    The `temperature` parameter is accepted for dispatch-signature parity but
+    intentionally not sent to the Azure-OpenAI upstream.
+    """
+    from portkey_ai import Portkey
+
+    api_key = os.environ.get("PORTKEY_AZURE_API_KEY")
+    base_url = os.environ.get("PORTKEY_BASE_URL")
+    missing = [n for n, v in (
+        ("PORTKEY_AZURE_API_KEY", api_key),
+        ("PORTKEY_BASE_URL", base_url)) if not v]
+    if missing:
+        raise ValueError(
+            "Provider 'portkey' requires environment variable(s): %s."
+            % ", ".join(missing))
+
+    model_name = model or resolve_model_for_provider("portkey", role="decision")
+    client = Portkey(
+        api_key=api_key,
+        base_url=base_url,
+        provider="azure-openai",
+    )
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[{"role": "user", "content": prompt}],
+        max_completion_tokens=max_tokens,
+    )
+    return response.choices[0].message.content
 
 
 def _call_ollama_llm(prompt, model=None, temperature=0.1, max_tokens=2000):

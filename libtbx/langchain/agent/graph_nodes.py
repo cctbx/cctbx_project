@@ -142,8 +142,12 @@ builder = TemplateBuilder()
 _llm = None
 _llm_provider = None
 
-# Supported providers
-SUPPORTED_PROVIDERS = ["google", "openai", "ollama"]
+# Supported providers -- imported from the single source of truth in
+# core/llm.py so this layer can never drift from ai_agent.py's view.
+try:
+    from libtbx.langchain.core.llm import SUPPORTED_PROVIDERS
+except ImportError:
+    from core.llm import SUPPORTED_PROVIDERS
 
 
 # =============================================================================
@@ -191,6 +195,24 @@ def validate_provider(provider):
                 "  2. Set OLLAMA_BASE_URL to point to your server\n"
                 "  3. Use a different provider: provider='google' or provider='openai'"
             ) % ollama_url
+    elif provider == "anthropic":
+        if not os.getenv("ANTHROPIC_API_KEY"):
+            return False, (
+                "Provider 'anthropic' requires ANTHROPIC_API_KEY environment variable.\n"
+                "Set it with: export ANTHROPIC_API_KEY='your-key-here'"
+            )
+    elif provider == "portkey":
+        # portkey fronts Azure OpenAI via the Portkey gateway; both the
+        # gateway key and base URL are required (checked here at validation
+        # time, friendly message -- not a bare KeyError at call time).
+        _missing = [n for n in ("PORTKEY_AZURE_API_KEY", "PORTKEY_BASE_URL")
+                    if not os.getenv(n)]
+        if _missing:
+            return False, (
+                "Provider 'portkey' requires environment variable(s): %s.\n"
+                "Set them with: export PORTKEY_AZURE_API_KEY='...' "
+                "PORTKEY_BASE_URL='...'"
+            ) % ", ".join(_missing)
 
     return True, None
 
@@ -2032,7 +2054,8 @@ def plan(state):
         handler = None
         try:
             from libtbx.langchain.agent.rate_limit_handler import (
-                get_google_handler, get_openai_handler, get_anthropic_handler
+                get_google_handler, get_openai_handler, get_anthropic_handler,
+                get_portkey_handler
             )
             if provider == "google":
                 handler = get_google_handler()
@@ -2040,11 +2063,14 @@ def plan(state):
                 handler = get_openai_handler()
             elif provider == "anthropic":
                 handler = get_anthropic_handler()
+            elif provider == "portkey":
+                handler = get_portkey_handler()
         except ImportError:
             try:
                 # Try relative import for standalone testing
                 from agent.rate_limit_handler import (
-                    get_google_handler, get_openai_handler, get_anthropic_handler
+                    get_google_handler, get_openai_handler, get_anthropic_handler,
+                    get_portkey_handler
                 )
                 if provider == "google":
                     handler = get_google_handler()
@@ -2052,6 +2078,8 @@ def plan(state):
                     handler = get_openai_handler()
                 elif provider == "anthropic":
                     handler = get_anthropic_handler()
+                elif provider == "portkey":
+                    handler = get_portkey_handler()
             except ImportError:
                 pass  # No rate limit handler available
 
@@ -2577,6 +2605,13 @@ def _handle_llm_failure(state, error_msg):
     """
     MAX_LLM_FAILURES = 3  # Stop after this many consecutive failures
 
+    # Defensive: this is a failure handler and must never itself raise.
+    # Callers pass str(e) or a string error today, but normalize here so a
+    # None/non-string error can't turn a handled LLM failure into a crash
+    # (which would abort the whole run -- worse than the degradation we report).
+    if not isinstance(error_msg, str):
+        error_msg = "unknown error" if error_msg is None else str(error_msg)
+
     # Check for FATAL errors that won't resolve by retrying
     provider = state.get("provider", "google")
     fatal_error = _check_fatal_llm_error(error_msg, provider=provider)
@@ -2590,6 +2625,40 @@ def _handle_llm_failure(state, error_msg):
     state = {**state, "llm_consecutive_failures": failures}
 
     state = _log(state, "PLAN: LLM failure %d/%d" % (failures, MAX_LLM_FAILURES))
+
+    # LLM-unavailable observability.  Graph state is per-cycle (each cycle is a
+    # fresh graph.invoke), so this CANNOT be a run-level flag here -- the
+    # run-level aggregation lives on the driver (ai_agent.py via session.data).
+    # What we do here, once per invoke, is:
+    #   (1) emit a structured EventType.NOTICE event carrying a machine-readable
+    #       discriminator (notice_kind="llm_unavailable").  This rides the
+    #       `events` list, which is preserved by every downstream node and
+    #       crosses the REST boundary identically for local and server runs;
+    #       the driver detects it to set its run-level session.data flag.
+    #   (2) log a human-readable line to debug_log (formatter-independent, shown
+    #       at every verbosity), so the per-cycle notice is always user-visible.
+    # The guard key is scoped to THIS invoke (route_after_validate can loop
+    # validate->plan, calling this handler more than once per cycle); it is
+    # deliberately NOT named like the driver's run-level key to avoid scope
+    # confusion.
+    if not state.get("llm_notice_emitted_this_invoke"):
+        _prov = state.get("provider", "unknown")
+        _human = (
+            "LLM PROVIDER UNAVAILABLE -- provider '%s' could not be "
+            "reached. This cycle is using RULES-BASED program selection (no "
+            "LLM); decisions come from deterministic workflow rules, not the "
+            "LLM, so results may differ from an LLM-driven run. Last error: %s"
+        ) % (_prov, error_msg[:160])
+        # (1) structured event for machine detection by the driver
+        state = _emit(
+            state, EventType.NOTICE,
+            notice_kind="llm_unavailable",
+            provider=_prov,
+            message=_human,
+        )
+        # (2) human-readable line (debug_log; shown at all verbosities)
+        state = _log(state, _human)
+        state = {**state, "llm_notice_emitted_this_invoke": True}
 
     # Check if we should stop gracefully
     if failures >= MAX_LLM_FAILURES:

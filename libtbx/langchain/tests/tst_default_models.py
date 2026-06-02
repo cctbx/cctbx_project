@@ -491,26 +491,33 @@ def test_baseline_values_unchanged():
     intended developer workflow.
     """
     llm = _import_core_llm()
+    # v120: anthropic + portkey entries added.  portkey fronts Azure OpenAI
+    # (default gpt-5); anthropic chat defaults for decision/expensive roles.
     expected_decision = {
       "google":    "gemini-2.5-flash-lite",
       "openai":    "gpt-4o-mini",
-      "anthropic": "claude-sonnet-4-20250514",
+      "anthropic": "claude-sonnet-4-6",
       "ollama":    "llama3.2",
+      "portkey":   "gpt-5",
     }
     expected_rag = {
       "google":    "gemini-2.5-flash-lite",
       "openai":    "gpt-5-nano",
       "ollama":    "llama3.1:70b",
+      "portkey":   "gpt-5",
     }
     expected_rag_embedding = {
       "google":    "gemini-embedding-001",
       "openai":    "text-embedding-3-small",
       "ollama":    "nomic-embed-text",
+      "portkey":   "text-embedding-3-small",
     }
     expected_expensive = {
       "google":    "gemini-2.5-pro",
       "openai":    "gpt-5",
       "ollama":    "qwen3:32b",
+      "anthropic": "claude-opus-4-7",
+      "portkey":   "gpt-5",
     }
     expected_cheap = {
       "ollama":    "qwen2.5:7b",

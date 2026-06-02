@@ -36,6 +36,43 @@ if _PARENT not in sys.path:
     sys.path.insert(0, _PARENT)
 
 
+# -----------------------------------------------------------------------------
+# Locate ai_agent.py / ai_analysis.py across layouts.
+#
+# In a sandbox checkout these live at <langchain>/programs/.  In a real PHENIX
+# build they live in the phenix tree: from
+# .../modules/cctbx_project/libtbx/langchain it is 3 ups to .../modules, then
+# phenix/phenix/programs.  (Four ups overshoots modules — that was the original
+# bug that made these tests fail with FileNotFoundError in the build.)
+# An explicit AI_AGENT_PY / AI_ANALYSIS_PY env var overrides everything.
+# Returns None if not found, so callers skip gracefully rather than crash.
+# -----------------------------------------------------------------------------
+def _find_program_source(basename, env_var):
+    candidates = [
+        os.path.join(_PARENT, "programs", basename),                # sandbox
+        os.path.join(_PARENT, "..", "..", "..",
+                     "phenix", "phenix", "programs", basename),     # PHENIX build
+        os.path.join(_PARENT, "..", "..", "..",
+                     "phenix", "programs", basename),               # flatter layout
+    ]
+    for cand in candidates:
+        cand = os.path.abspath(cand)
+        if os.path.isfile(cand):
+            return cand
+    env = os.environ.get(env_var)
+    if env and os.path.isfile(env):
+        return env
+    return None
+
+
+def _find_ai_agent_source():
+    return _find_program_source("ai_agent.py", "AI_AGENT_PY")
+
+
+def _find_ai_analysis_source():
+    return _find_program_source("ai_analysis.py", "AI_ANALYSIS_PY")
+
+
 # =============================================================================
 # Test 1: ai_agent.py's master_params declares original_files_for_directives
 # =============================================================================
@@ -49,9 +86,10 @@ def test_master_params_string_contains_param():
     master_params string verbatim.  If this fails, the deploy gap
     that caused production failure has reopened."""
     print("  test_master_params_string_contains_param")
-    ai_agent_path = os.path.join(_PARENT, "programs", "ai_agent.py")
-    assert os.path.exists(ai_agent_path), (
-        "ai_agent.py not found at %s" % ai_agent_path)
+    ai_agent_path = _find_ai_agent_source()
+    if ai_agent_path is None:
+        print("    SKIP (ai_agent.py not found in this checkout)")
+        return
 
     with open(ai_agent_path, "r") as f:
         contents = f.read()
@@ -96,7 +134,10 @@ def test_master_params_parses_with_new_attribute():
         return
 
     # Re-parse master_params in isolation
-    ai_agent_path = os.path.join(_PARENT, "programs", "ai_agent.py")
+    ai_agent_path = _find_ai_agent_source()
+    if ai_agent_path is None:
+        print("    SKIP (ai_agent.py not found in this checkout)")
+        return
     with open(ai_agent_path, "r") as f:
         contents = f.read()
 
@@ -141,7 +182,10 @@ def test_assignment_does_not_raise():
         print("    SKIP (libtbx.phil not available — needs PHENIX)")
         return
 
-    ai_agent_path = os.path.join(_PARENT, "programs", "ai_agent.py")
+    ai_agent_path = _find_ai_agent_source()
+    if ai_agent_path is None:
+        print("    SKIP (ai_agent.py not found in this checkout)")
+        return
     with open(ai_agent_path, "r") as f:
         contents = f.read()
     start = contents.find('master_params = """') + len('master_params = """')
@@ -196,13 +240,11 @@ def test_ai_analysis_phil_definition_still_present():
     for the SERVER-side PHIL parser when extraction runs on the
     server."""
     print("  test_ai_analysis_phil_definition_still_present")
-    ai_analysis_path = os.path.join(
-        _PARENT, "programs", "ai_analysis.py")
-    if not os.path.exists(ai_analysis_path):
-        # In some sandbox layouts the file might not be at this path —
-        # skip rather than fail.  The H18 ship guarantees it for the
-        # PHENIX-layout deployment.
-        print("    SKIP (ai_analysis.py not at sandbox path)")
+    ai_analysis_path = _find_ai_analysis_source()
+    if ai_analysis_path is None:
+        # File not found in this checkout — skip rather than fail.  The H18
+        # ship guarantees it for the PHENIX-layout deployment.
+        print("    SKIP (ai_analysis.py not found in this checkout)")
         return
     with open(ai_analysis_path, "r") as f:
         contents = f.read()
@@ -223,7 +265,10 @@ def test_assignment_line_still_in_ai_agent_py():
     test will fail loudly so the lockstep relationship with the PHIL
     definition is preserved."""
     print("  test_assignment_line_still_in_ai_agent_py")
-    ai_agent_path = os.path.join(_PARENT, "programs", "ai_agent.py")
+    ai_agent_path = _find_ai_agent_source()
+    if ai_agent_path is None:
+        print("    SKIP (ai_agent.py not found in this checkout)")
+        return
     with open(ai_agent_path, "r") as f:
         contents = f.read()
     needle = (
@@ -245,13 +290,12 @@ def test_cross_file_consistency():
     print("  test_cross_file_consistency")
     PARAM = "original_files_for_directives"
     files = [
-        ("programs/ai_agent.py", PARAM),
-        ("programs/ai_analysis.py", PARAM),
+        ("programs/ai_agent.py", _find_ai_agent_source(), PARAM),
+        ("programs/ai_analysis.py", _find_ai_analysis_source(), PARAM),
     ]
-    for relpath, needle in files:
-        full = os.path.join(_PARENT, relpath)
-        if not os.path.exists(full):
-            print("    SKIP %s (not at sandbox path)" % relpath)
+    for relpath, full, needle in files:
+        if full is None:
+            print("    SKIP %s (not found in this checkout)" % relpath)
             continue
         with open(full, "r") as f:
             contents = f.read()

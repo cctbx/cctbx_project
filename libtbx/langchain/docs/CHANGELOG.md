@@ -1,4 +1,260 @@
-# CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3 / v118 / v119
+# CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3 / v118 / v119 / v120
+
+## Version 120 (New Providers: Portkey + Claude, and FORCE_NO_AI_SERVER — P1, P2, P3)
+
+### Summary
+
+v120 is a three-phase feature cluster that (1) adds an environment
+override, `FORCE_NO_AI_SERVER`, for forcing local execution, and
+(2) adds two new LLM providers — **portkey** (the Portkey gateway
+fronting Azure OpenAI) and **anthropic** (Claude) — wired through
+every provider-routing decision point in the agent.  The phases are
+independent and ship-self-contained:
+
+```
+v119 → P1 (FORCE_NO_AI_SERVER) → P2 (single-source SUPPORTED_PROVIDERS) → P3 (portkey + anthropic providers)
+```
+
+The work originated from a user request to run the agent against the
+Portkey access platform, accompanied by a working proof-of-concept
+patch (`add_portkey_support.patch`).  That patch was the authoritative
+source for the deployment specifics (Portkey SDK with
+`provider="azure-openai"`, env vars `PORTKEY_AZURE_API_KEY` /
+`PORTKEY_BASE_URL` / `PHENIX_PORTKEY_MODEL`, the Azure gpt-5 call shape
+of `max_completion_tokens` with no `temperature`), but its structure
+was re-targeted onto current code and hardened for production.  Claude
+(anthropic) was added in the same pass because it was already
+half-scaffolded and shares every touch-point portkey needed.
+
+Three deliberate departures from the proof-of-concept patch: (a) the
+patch flipped the `run_on_server` PHIL default `True → False` in both
+program files, silently changing behaviour for every user — v120 keeps
+the `True` default and provides `FORCE_NO_AI_SERVER=1` for the same
+local-only effect without a baseline change; (b) the patch read env
+vars with `os.environ[...]` (bare `KeyError` on a missing var) — v120
+checks at call time and raises a clear `ValueError` naming the missing
+variable; (c) the patch reused `get_openai_handler()` for portkey —
+v120 adds a dedicated `get_portkey_handler()` so rate-limit metrics and
+failure logging stay unpolluted.
+
+### P1 — FORCE_NO_AI_SERVER
+
+`programs/ai_agent.py::run()` gained a single override, placed after
+`set_defaults()` and before session-management dispatch so it covers
+the v2-API, `iterate_agent`, and `run_job_on_server_or_locally` paths:
+when `FORCE_NO_AI_SERVER=1` (literal, whitespace-stripped), it forces
+`communication.run_on_server = False` and logs the override via
+`self.vlog.normal`.  Any other value, or unset, is a no-op.  The same
+override is mirrored in `programs/ai_analysis.py::run()` (placed before
+its `run_job_on_server_or_locally` dispatch), so the env var forces local
+execution for `phenix.ai_analysis` too, across every analysis_mode
+(standard, agent_session, advice_preprocessing, directive_extraction,
+failure_diagnosis).  It does not affect `predict_and_build` /
+`predict_model` when those are run separately.  Behaviour is otherwise
+identical to server mode — only the locus of execution changes.
+
+### P2 — single-source SUPPORTED_PROVIDERS
+
+Before v120, `SUPPORTED_PROVIDERS` existed as two independent literals
+(`agent/graph_nodes.py` and a hardcoded fallback in
+`programs/ai_agent.py`) that could drift silently.  P2 centralizes the
+canonical list in `core/llm.py`; both consumers now import it (with the
+standard two-path `try/except ImportError` fallback).  The hardcoded
+literal in `ai_agent.py` was removed — but because its consumer is an
+*error-advice* helper, an import failure degrades to the
+provider-agnostic rules-only suggestion rather than raising a second
+exception over the original error.  This eliminates the dual-literal
+drift hazard at the root; a runtime import-identity test replaces the
+regex source-scan originally planned.
+
+### P3 — portkey + anthropic providers
+
+`core/llm.py`: portkey + anthropic added to the model-default tables;
+`PHENIX_PORTKEY_MODEL` and `ANTHROPIC_LLM_MODEL` added to the env-var
+override map; three new helpers — `portkey_langchain_config()` (call-time
+env check, clear `ValueError`), `sanitize_llm_kwargs(provider, kwargs)`
+(dict-driven per-provider kwarg reshaping), and
+`_delegate_embeddings_for_nonnative()` (the embeddings policy below);
+factory branches for both providers; `get_expensive_llm` branches.
+`SUPPORTED_PROVIDERS` activated to the five-provider set.
+
+The **asymmetric-args** trap is handled in `sanitize_llm_kwargs`:
+portkey (Azure gpt-5) renames `max_tokens → max_completion_tokens` and
+drops `temperature`; anthropic always keeps `max_tokens` (`ChatAnthropic`
+requires it) but its `temperature` handling is **model-dependent**.  The
+Claude 4.6/4.7+ reasoning family (e.g. `claude-sonnet-4-6`,
+`claude-opus-4-7`) rejects `temperature`/`top_p`/`top_k` with HTTP 400
+("temperature is deprecated for this model" — adaptive thinking took over
+sampling control), so `sanitize_llm_kwargs` and the `ChatAnthropic`
+constructor drop those params for that family, detected by
+`anthropic_model_rejects_sampling_params()` (model-name based, so future
+4.8+ models are covered).  Older Claude models (Sonnet 4 / Opus 4 dated,
+3.x) still accept `temperature` and keep it.  (This was tightened after a
+live anthropic reliability run surfaced the 400; the original assumption
+that all Claude models accept `temperature` held only for the pre-4.6
+models v120 was first written against.)
+
+The **embeddings policy** (anthropic has no native embeddings endpoint;
+the user's Portkey key can reach the embeddings deployment, but their
+current key lacks access): `get_llm_and_embeddings` always returns a
+working chat LLM; the embeddings object is constructed lazily (no
+network call) so the agent's end-of-run `agent_session` assessment —
+which constructs but never queries embeddings — is safe even with a
+no-access key.  For anthropic, embeddings delegate to a default provider
+(OpenAI/Google) when a key is present, else return `None`, emitting a
+`[PROVIDER_DELEGATION]` marker; the helper never raises on construction.
+An actual embeddings *query* failure (only reachable via
+`phenix.ai_analysis standard`/RAG, never the agent) surfaces a clear
+execution-time error echoing the raw upstream message rather than
+matching on `"Unauthorized"`.
+
+Call sites updated to route portkey/anthropic: `agent/api_client.py`
+(`_call_portkey_llm` + dispatch), `agent/directive_extractor.py`
+(`_call_llm` handler-select + `_call_llm_fallback`),
+`agent/rate_limit_handler.py` (`get_portkey_handler`),
+`agent/graph_nodes.py` (`validate_provider` key-checks + second handler
+site), `agent/thinking_agent.py` (`_get_rate_handler`).  The embeddings/
+RAG database path was completed end-to-end: `utils/run_utils.py`
+(`validate_api_keys` gates both providers; `get_db_dir_for_provider`
+gained `docs_db_portkey`), `analysis/summarizer.py` (portkey chunk
+sizes), `run_query_docs.py` (accepts both), and the database-build tools
+`command_line/rebuild_ai_database.py` + `update_ai_database.py` (accept
+`portkey` from argv with key-check).  Anthropic is intentionally **not**
+a database-build provider (no native embeddings).  `get_ai_db_dir` /
+`have_ai_database` in `phenix_ai/utilities.py` are provider-agnostic
+(string interpolation → `docs_db_<provider>`) and needed no change.
+
+PHIL `provider` enums in `programs/ai_agent.py` and
+`programs/ai_analysis.py` extended to `ollama *google openai anthropic
+portkey` (the GUI dropdown regenerates automatically).  `install_ai_tools.csh`
+adds `anthropic`, `langchain-anthropic`, `portkey-ai`.
+
+The supplied server dispatcher (`phenix_ai/run_ai_agent.py`), GUI
+(`wxGUI2/Programs/AIAgent.py`), and contract (`agent/contract.py`)
+needed no changes: provider travels in the request `settings` and is
+consumed only in shared `agent/`+`core/` code, so local and server run
+identical branches — the server only additionally needs the keys in its
+environment (deployment, not code).  The user's deployment is local-only
+with `PORTKEY_AZURE_API_KEY` set on the workstation.
+
+### LLM-unavailable observability
+
+Previously, when the requested LLM provider could not be reached, the
+agent silently degraded to rules-based program selection (`_mock_plan`
+→ `RulesSelector`) and a run could complete on rules without the user
+realizing the LLM never contributed.  Now the condition is made obvious
+in two places, visible in both CLI and GUI, on both the local and the
+server execution paths.
+
+The signal travels through the `events` list, which is already part of the
+server→client response contract (`agent/contract.py` `RESPONSE_FIELDS`) and is
+preserved by every graph node (verified: `events` is a plain `List[Dict]` in
+`graph_state.py` with no reducer, and `build`/`validate`/`fallback`/`output`
+all return `{**state}` or never clobber it).  Using the existing carrier means
+**no change to `contract.py`, `api_schema.py`, `run_ai_agent.py`,
+`event_log.py`, `event_formatter.py`, or `session.py`** — the fix is confined
+to `graph_nodes.py` and `ai_agent.py`.
+
+- **Per cycle (graph):** `agent/graph_nodes.py::_handle_llm_failure` emits a
+  structured `EventType.NOTICE` event carrying a machine-readable
+  discriminator `notice_kind="llm_unavailable"` (plus `provider` and a
+  human `message`), and also logs the human line to `debug_log` (shown at
+  every verbosity, independent of the event formatter).  Emission is guarded
+  once per `graph.invoke` by `llm_notice_emitted_this_invoke` — a key scoped
+  to the single invoke (the `validate→plan` retry edge can call the handler
+  more than once per cycle), deliberately *not* named like the driver's
+  run-level key to avoid scope confusion.  Graph state is per-cycle (each
+  cycle is a fresh `graph.invoke`), so there is no run-level flag in graph
+  state; the NOTICE is emitted each cycle the LLM is unavailable (honest
+  per-cycle reporting).
+- **Per run (driver):** `programs/ai_agent.py::print_history_record` →
+  `_detect_llm_unavailable_from_events` scans each cycle's
+  `history_record["events"]` for the discriminator and, on first sight, sets
+  the run-level `session.data["llm_ever_unavailable"]` (and provider).
+  `session.data` persists across cycles, unlike graph state, so this is the
+  durable run-level signal.  The detection hook is guarded `if session is not
+  None` (the display-only/replay path calls `print_history_record` without a
+  session) and never raises.  `_finalize_session` shows an end-of-run banner
+  ("IMPORTANT: THIS RUN DID NOT USE THE LLM") via
+  `session_data_flag_llm_unavailable`; the Results-tab summary is prefixed
+  with a one-line warning and the result object exposes
+  `llm_ever_unavailable` for programmatic/GUI use.
+
+This is observability only — it does not change which program the agent
+selects, only how clearly the rules-fallback is reported.  (The explicit
+`use_rules_only=True` mode was already announced clearly; this covers the
+*unintended* fallback when a provider is down.)  Known gap, documented for a
+later follow-up: a pure display-only replay of a saved session that never
+re-runs cycles will not show the end-of-run banner, because the session cycle
+records do not persist `events`; fixing that would require a `session.py`
+schema change and is out of scope here.
+
+### PHIL multi-line `.help` continuation fix
+
+The v120 `provider` enum gained a multi-line `.help` description, written as an
+unquoted continuation where the first line ended `...quickest,\` — a backslash
+with no preceding space.  PHIL requires a **space before the continuation
+backslash** in an unquoted value; without it the continuation is not joined and
+the next line is re-lexed as a new statement, producing
+`Syntax error: expected "=", found "is"`.  This broke
+`tst_h18_1_phil_roundtrip.py`'s parse tests in BOTH
+`programs/ai_agent.py` and `programs/ai_analysis.py` (dual schemas, see
+ARCHITECTURE §42).  Fixing the provider help then surfaced two pre-existing
+helps with the same flaw (`url`, `port`, continued `...server\` then
+`Normally set automatically` → `found "set"`).
+
+Fix: add a single space before the backslash on the three broken helps
+(`provider`, `url`, `port`) in each file.  The sibling `url_type`/`token` helps
+were already correct (they ended `. \`) and were left untouched, as were the
+~30 other multi-line helps and the quoted multi-line scope `.caption` (quoted
+continuations follow different rules and need no leading space).  The full rule,
+the empirical verification method, and authoring guidance are documented in
+ARCHITECTURE §44.
+
+### Tests
+
+| File | Tests | Covers |
+|------|-------|--------|
+| `tests/tst_force_no_ai_server.py` | 10 (new) | P1: env-value truth table (`1`/`0`/`true`/empty/whitespace), quiet-when-already-false, + source-scan drift guards (block present, placed after set_defaults / before session dispatch, literal-`"1"` contract) |
+| `tests/tst_supported_providers_single_source.py` | 5 (new) | P2: runtime import-identity (graph_nodes re-exports core.llm's list), source scans that both consumers import from core.llm and no literal survives outside core.llm |
+| `tests/tst_v120_providers.py` | 21 (new) | P3: `sanitize_llm_kwargs` both directions (portkey remaps/drops, anthropic keeps), `portkey_langchain_config` clear-ValueError, SUPPORTED_PROVIDERS + PHIL-enum coverage, embeddings delegation None-without-keys + never-raises, dummy-key lazy construction with no network (mocked SDK), embeddings-query clear-error contract, `validate_api_keys` gates new providers, per-call-site source scans |
+| `tests/tst_default_models.py` | (updated) | Exact-baseline dicts updated for portkey/anthropic table entries |
+| `tests/tst_llm_unavailable_notice.py` | 10 (new) | LLM-unavailable observability: structured NOTICE event shape + discriminator, emit-once-per-invoke guard, **events list not mutated in place**, **propagation (event → driver detection → `session.data` flag)** — the check the prior implementation lacked — idempotent across cycles, ignores unrelated events, `session=None` safe, + source scans that graph_nodes emits the NOTICE with the scoped guard key (and does NOT use the run-level key name), ai_agent detects by discriminator + banners + guards `session is not None`, and `run_ai_agent.py` still passes `events` into the response builders (server path) |
+
+All three new suites registered in `tests/run_all_tests.py`.  Standalone
+suites run under plain `python3`; live Portkey/Anthropic round-trips
+remain in the keyed `tests/llm/` suite (real keys + network).
+
+### Files changed (cumulative)
+
+| File | Phase |
+|---|---|
+| `core/llm.py` | P2 (canonical `SUPPORTED_PROVIDERS`), P3 (tables, env-overrides, `portkey_langchain_config`/`sanitize_llm_kwargs`/`_delegate_embeddings_for_nonnative`, portkey+anthropic factory & expensive branches) |
+| `agent/graph_nodes.py` | P2 (import `SUPPORTED_PROVIDERS`), P3 (`validate_provider` key-checks + second handler site) |
+| `agent/api_client.py` | P3 (`_call_portkey_llm` + dispatch) |
+| `agent/directive_extractor.py` | P3 (portkey in `_call_llm` + `_call_llm_fallback`) |
+| `agent/rate_limit_handler.py` | P3 (`get_portkey_handler`) |
+| `agent/thinking_agent.py` | P3 (`_get_rate_handler` portkey) |
+| `analysis/summarizer.py` | P3 (portkey chunk sizes) |
+| `utils/run_utils.py` | P3 (`validate_api_keys` + `get_db_dir_for_provider`) |
+| `run_query_docs.py` | P3 (accepts portkey + anthropic) |
+| `programs/ai_agent.py` | P1 (`FORCE_NO_AI_SERVER`), P2 (import `SUPPORTED_PROVIDERS`, remove literal), P3 (PHIL enum) |
+| `programs/ai_analysis.py` | P1 (`FORCE_NO_AI_SERVER`), P3 (PHIL enum) |
+| `command_line/rebuild_ai_database.py` | P3 (accepts portkey) |
+| `command_line/update_ai_database.py` | P3 (accepts portkey) |
+| `phenix_ai/install_ai_tools.csh` | P3 (anthropic, langchain-anthropic, portkey-ai) |
+| `tests/tst_force_no_ai_server.py` | P1 (new) |
+| `tests/tst_supported_providers_single_source.py` | P2 (new) |
+| `tests/tst_v120_providers.py` | P3 (new) |
+| `tests/tst_default_models.py` | P3 (baseline dicts updated) |
+| `tests/run_all_tests.py` | P1/P2/P3 (register three suites) |
+
+**Verified no change:** `phenix_ai/run_ai_agent.py`,
+`wxGUI2/Programs/AIAgent.py`, `agent/contract.py`,
+`phenix_ai/utilities.py`.
+
+---
+
 
 ## Version 119 (Operational Hardening + Phase 2A + Phase 2B + Production Bug Cluster — H1, H2, H2.1, H3, H3b, H4, H4.1, H5, H5.1, H5.1.1, H6, H6.1, H7, H8, H9, H10, H11, H12, H13, H14, H14.1, H14.2, H15, H16, H16.1, H17, H17.1, H18, H18.1, H18.2)
 

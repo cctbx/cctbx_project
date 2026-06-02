@@ -51,28 +51,37 @@ _llm_verbosity = None
 DECISION_MODEL_DEFAULTS = {
   "google":    "gemini-2.5-flash-lite",
   "openai":    "gpt-4o-mini",
-  "anthropic": "claude-sonnet-4-20250514",
+  "anthropic": "claude-sonnet-4-6",
   "ollama":    "llama3.2",
+  # portkey fronts Azure OpenAI; the upstream model is chosen by
+  # PHENIX_PORTKEY_MODEL (default below).  gpt-5 is the deployment default.
+  "portkey":   "gpt-5",
 }
 
 RAG_MODEL_DEFAULTS = {
-  # Note: get_llm_and_embeddings has no anthropic branch.  If a
-  # future change adds one, add anthropic here too.
+  # anthropic has no entry: get_llm_and_embeddings delegates anthropic
+  # embeddings (no native endpoint) and anthropic is not used for RAG.
   "google":    "gemini-2.5-flash-lite",
   "openai":    "gpt-5-nano",
   "ollama":    "llama3.1:70b",
+  "portkey":   "gpt-5",
 }
 
 RAG_EMBEDDING_DEFAULTS = {
   "google":    "gemini-embedding-001",
   "openai":    "text-embedding-3-small",
   "ollama":    "nomic-embed-text",
+  # portkey embeddings route through the same Azure gateway using an
+  # OpenAI-compatible embedding deployment.
+  "portkey":   "text-embedding-3-small",
 }
 
 EXPENSIVE_MODEL_DEFAULTS = {
   "google":    "gemini-2.5-pro",
   "openai":    "gpt-5",
   "ollama":    "qwen3:32b",
+  "anthropic": "claude-opus-4-7",
+  "portkey":   "gpt-5",
 }
 
 # CHEAP only contains explicit overrides -- remote providers fall
@@ -97,6 +106,8 @@ RETIRED_MODELS = frozenset([
   # LLM models -- Anthropic
   "claude-2",
   "claude-instant-1",
+  "claude-sonnet-4-20250514",  # Claude Sonnet 4, retired 2026-04-20
+  "claude-opus-4-20250514",    # Claude Opus 4, retired 2026-04-20
   # LLM models -- Ollama (older defaults)
   "llama2",
   # Embedding models -- Google
@@ -104,6 +115,20 @@ RETIRED_MODELS = frozenset([
   # Embedding models -- OpenAI
   "text-embedding-ada-002",
 ])
+
+
+# =====================================================================
+# Supported LLM providers -- single source of truth.
+# =====================================================================
+# Canonical list of provider names the agent accepts.  graph_nodes.py
+# and phenix/programs/ai_agent.py both import THIS list rather than
+# keeping their own copies, so a provider can never be wired into one
+# layer but silently rejected by another.  Keep this in sync with the
+# `provider` PHIL enums in ai_agent.py and ai_analysis.py (a test
+# asserts the enum set covers this list).
+#
+# v120: anthropic (Claude) and portkey (Azure-OpenAI gateway) added.
+SUPPORTED_PROVIDERS = ["google", "openai", "ollama", "anthropic", "portkey"]
 
 
 def compute_defaults_fingerprint():
@@ -243,9 +268,14 @@ def normalize_ollama_openai_base_url(base_url):
 # precedence in get_llm_and_embeddings.
 _PROVIDER_MODEL_ENV_OVERRIDES = {
   "ollama": "OLLAMA_LLM_MODEL",
-  # google/openai/anthropic models are not commonly overridden
-  # via env-var in this codebase; if a future need arises, add
-  # the env-var name here.
+  # portkey forwards this model string to the Azure-OpenAI upstream.
+  # Matches the user's add_portkey_support.patch (PHENIX_PORTKEY_MODEL,
+  # default gpt-5 in the DEFAULTS tables above).
+  "portkey": "PHENIX_PORTKEY_MODEL",
+  # anthropic model override for parity with OLLAMA_LLM_MODEL.
+  "anthropic": "ANTHROPIC_LLM_MODEL",
+  # google/openai models are not commonly overridden via env-var in
+  # this codebase; if a future need arises, add the env-var name here.
 }
 
 
@@ -422,6 +452,160 @@ def _llm_log(msg, level='normal'):
     print(msg)
 
 
+# =====================================================================
+# v120 — Portkey (Azure-OpenAI gateway) + per-provider kwarg sanitizing
+# =====================================================================
+# Portkey is an OpenAI-SDK-compatible gateway.  The user's deployment
+# (add_portkey_support.patch) fronts Azure OpenAI via the Portkey SDK
+# with provider="azure-openai".  Two env vars are required at call time:
+#   PORTKEY_AZURE_API_KEY  -- the Portkey gateway key
+#   PORTKEY_BASE_URL       -- the Portkey gateway base URL
+# and the upstream model is chosen by PHENIX_PORTKEY_MODEL (default gpt-5,
+# resolved via resolve_model_for_provider / the DEFAULTS tables).
+
+PORTKEY_DEFAULT_MODEL = "gpt-5"
+
+
+def portkey_langchain_config():
+  """Return (api_key, base_url) for the langchain ChatOpenAI/Embeddings
+  portkey path, reading env vars at CALL time (never import time).
+
+  Raises a clear ValueError naming the missing variable rather than a
+  bare KeyError (the patch used os.environ[...] which raises KeyError).
+  """
+  api_key = os.getenv("PORTKEY_AZURE_API_KEY")
+  base_url = os.getenv("PORTKEY_BASE_URL")
+  missing = [name for name, val in (
+    ("PORTKEY_AZURE_API_KEY", api_key),
+    ("PORTKEY_BASE_URL", base_url)) if not val]
+  if missing:
+    raise ValueError(
+      "Provider 'portkey' requires the environment variable(s): %s. "
+      "Set them before running with provider=portkey." % ", ".join(missing))
+  return api_key, base_url
+
+
+def anthropic_model_rejects_sampling_params(model_name):
+  """True if the given Anthropic model rejects temperature/top_p/top_k.
+
+  v120 update: the Claude 4.6 / 4.7 (and later) reasoning family retired the
+  sampling parameters -- adaptive thinking controls randomness instead, and
+  Anthropic returns HTTP 400 "temperature is deprecated for this model" if
+  any are sent.  Older Claude models (Sonnet 4 / Opus 4 / 3.x) still accept
+  temperature.  We detect by model-name family rather than hardcoding a list,
+  so future 4.8+ models are covered without another edit.
+
+  Matches: claude-*-4-6*, claude-*-4-7*, and 4.8+ (any claude-*-4-N with
+  N >= 6), e.g. claude-sonnet-4-6, claude-opus-4-7, claude-opus-4-8.
+  """
+  m = (model_name or "").lower()
+  if "claude" not in m:
+    return False
+  # Find a 4-minor pattern like "4-6", "4-7", "4-8" ... (dateless canonical IDs
+  # for the 4.6 generation and later).  Sonnet 4 / Opus 4 use a date suffix
+  # (claude-opus-4-20250514) -- a 4 followed by an 8-digit date, NOT a small
+  # minor -- so those correctly fall through as "accepts temperature".
+  import re as _re
+  match = _re.search(r"claude-[a-z]+-4-(\d+)", m)
+  if not match:
+    return False
+  minor = match.group(1)
+  # A date snapshot (8 digits) is the pre-4.6 dated form; treat as accepts.
+  if len(minor) >= 5:
+    return False
+  try:
+    return int(minor) >= 6
+  except ValueError:
+    return False
+
+
+def sanitize_llm_kwargs(provider, kwargs):
+  """Reshape a shared kwargs dict to each provider's accepted schema.
+
+  Keyed by provider so we never apply a blanket strip.  This exists so a
+  *shared* kwargs dict (temperature / max_tokens assembled once) can't crash
+  a strict client.  Returns a NEW dict; never mutates the caller's.
+
+    - portkey  (Azure-OpenAI upstream, gpt-5): rename max_tokens ->
+               max_completion_tokens, drop temperature (Azure gpt-5 rejects
+               both forms).
+    - anthropic: keep max_tokens (ChatAnthropic REQUIRES it).  For
+               temperature, it depends on the model: the 4.6/4.7+ reasoning
+               family REJECTS temperature (HTTP 400), so drop it for those;
+               older Claude models keep it.  Detected via
+               anthropic_model_rejects_sampling_params() on the 'model' kwarg.
+    - others (openai/google/ollama): unchanged.
+
+  Known limitation: the portkey rule assumes the Azure-OpenAI upstream in
+  use today.  If portkey is ever pointed at a non-Azure upstream that needs
+  temperature, this rule must become upstream-aware (e.g. keyed on
+  PHENIX_PORTKEY_MODEL).
+  """
+  clean = dict(kwargs)
+  prov = (provider or "").lower().strip()
+  if prov == "portkey":
+    if "max_tokens" in clean:
+      clean["max_completion_tokens"] = clean.pop("max_tokens")
+    clean.pop("temperature", None)
+  elif prov == "anthropic":
+    # Keep max_tokens (required).  Drop temperature only for models that
+    # reject it (4.6/4.7+ reasoning family); older models keep it.
+    model_name = clean.get("model") or clean.get("model_name")
+    if anthropic_model_rejects_sampling_params(model_name):
+      clean.pop("temperature", None)
+      clean.pop("top_p", None)
+      clean.pop("top_k", None)
+  return clean
+
+
+def _delegate_embeddings_for_nonnative(
+  requesting_provider, embedding_model_name=None,
+  batch_size=100, timeout=120):
+  """Embeddings fallback for providers with no native embeddings endpoint
+  (currently anthropic).
+
+  Policy (v120 §4.6): never raise on construction.  Delegate to a default
+  embeddings provider when a key is available; otherwise return None.  The
+  agent's end-of-run assessment never queries embeddings, so None is safe
+  there; only a real RAG query needs a working backend, and that path
+  surfaces its own clear error if none exists.
+  """
+  # Prefer OpenAI, then Google, based on which key is present.
+  if os.getenv("OPENAI_API_KEY"):
+    try:
+      from langchain_openai import OpenAIEmbeddings
+      model = embedding_model_name or default_model_for_provider(
+        "openai", role="rag_embedding")
+      _llm_log(
+        "[PROVIDER_DELEGATION] Fallback embedding triggered under "
+        "non-native provider context (%s -> openai)" % requesting_provider,
+        level='verbose')
+      return OpenAIEmbeddings(model=model, chunk_size=batch_size)
+    except Exception:
+      pass  # fall through to next option / None
+  if os.getenv("GOOGLE_API_KEY"):
+    try:
+      from langchain_google_genai import GoogleGenerativeAIEmbeddings
+      model = embedding_model_name or default_model_for_provider(
+        "google", role="rag_embedding")
+      _llm_log(
+        "[PROVIDER_DELEGATION] Fallback embedding triggered under "
+        "non-native provider context (%s -> google)" % requesting_provider,
+        level='verbose')
+      return GoogleGenerativeAIEmbeddings(
+        model=model, timeout=timeout, batch_size=batch_size,
+        google_api_key=os.getenv("GOOGLE_API_KEY"))
+    except Exception:
+      pass
+  # No delegate available: None is correct (never raise here).
+  _llm_log(
+    "[PROVIDER_DELEGATION] No embeddings backend available for "
+    "non-native provider %s; returning None (RAG unavailable, chat "
+    "unaffected)" % requesting_provider,
+    level='verbose')
+  return None
+
+
 def get_llm_and_embeddings(
   provider: str = None,
   llm_model_name: str = None,
@@ -582,10 +766,89 @@ def get_llm_and_embeddings(
       f"Using OpenAI: {llm_model_name}",
       level='verbose')
 
+  elif provider == "portkey":
+    # Portkey is OpenAI-SDK-compatible; langchain's ChatOpenAI /
+    # OpenAIEmbeddings talk to the Portkey gateway by pointing base_url at
+    # it with the Portkey key.  (The raw-SDK call path in api_client /
+    # directive_extractor uses the Portkey SDK directly with
+    # provider="azure-openai"; this langchain path is the embeddings-capable
+    # equivalent used by get_llm_and_embeddings / RAG.)
+    # Check env FIRST (clear ValueError) before importing the SDK, so a
+    # misconfigured deployment gets the friendly message rather than an
+    # import error.
+    api_key, base_url = portkey_langchain_config()  # call-time env check
+    from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+
+    if llm_model_name is None:
+      llm_model_name = resolve_model_for_provider("portkey", role="rag")
+    if embedding_model_name is None:
+      embedding_model_name = default_model_for_provider(
+        "portkey", role="rag_embedding")
+
+    # gpt-5 via Azure rejects temperature and uses max_completion_tokens;
+    # ChatOpenAI is constructed without temperature accordingly.  We do not
+    # pass max_tokens here (langchain default), so no remap is needed at
+    # construction; sanitize_llm_kwargs covers any shared-kwargs call path.
+    llm = ChatOpenAI(
+      model=llm_model_name,
+      api_key=api_key,
+      base_url=base_url,
+      timeout=timeout,
+      max_retries=2,
+    )
+    # Embeddings object construction is lazy (no network call), so this is
+    # safe even when the current key lacks embeddings access -- the agent's
+    # end-of-run assessment constructs but never queries it.  An actual RAG
+    # query against a no-access key surfaces a clear error at query time
+    # (handled in the RAG path), never here.
+    embeddings = OpenAIEmbeddings(
+      model=embedding_model_name,
+      api_key=api_key,
+      base_url=base_url,
+      chunk_size=batch_size,
+    )
+    _llm_log(
+      f"Using Portkey (azure-openai): {llm_model_name}",
+      level='verbose')
+
+  elif provider == "anthropic":
+    # Anthropic has no native embeddings endpoint.  Return a working chat
+    # LLM and delegate embeddings to a default provider when one is
+    # available, else None (the agent's end-of-run assessment never queries
+    # embeddings, so None is harmless there).  Construction must never raise
+    # on the embeddings side.
+    from langchain_anthropic import ChatAnthropic
+
+    if llm_model_name is None:
+      llm_model_name = resolve_model_for_provider(
+        "anthropic", role="expensive")
+
+    # ChatAnthropic REQUIRES max_tokens.  temperature is model-dependent: the
+    # 4.6/4.7+ reasoning family rejects it (HTTP 400 "temperature is
+    # deprecated for this model"), so only pass it for models that accept it.
+    anthropic_kwargs = {
+      "model": llm_model_name,
+      "timeout": timeout,
+      "max_tokens": 4096,
+      "max_retries": 2,
+    }
+    if not anthropic_model_rejects_sampling_params(llm_model_name):
+      anthropic_kwargs["temperature"] = temperature
+    llm = ChatAnthropic(**anthropic_kwargs)
+    embeddings = _delegate_embeddings_for_nonnative(
+      requesting_provider="anthropic",
+      embedding_model_name=embedding_model_name,
+      batch_size=batch_size,
+      timeout=timeout,
+    )
+    _llm_log(
+      f"Using Anthropic: {llm_model_name}",
+      level='verbose')
+
   else:
     raise ValueError(
       f"Unsupported provider: '{provider}'."
-      " Choose 'ollama', 'google', or 'openai'.")
+      " Choose 'ollama', 'google', 'openai', 'anthropic', or 'portkey'.")
 
   return llm, embeddings
 
@@ -627,6 +890,22 @@ def get_expensive_llm(
         provider=provider, timeout=timeout,
         llm_model_name=expensive_model,
         json_mode=json_mode)
+      _llm_log(
+        "Using expensive model for analysis:"
+        f" {expensive_llm.model}",
+        level='verbose')
+    elif provider == "portkey":
+      expensive_llm, embeddings = get_llm_and_embeddings(
+        provider=provider, timeout=timeout,
+        llm_model_name=expensive_model)
+      _llm_log(
+        "Using expensive model for analysis:"
+        f" {expensive_llm.model_name}",
+        level='verbose')
+    elif provider == "anthropic":
+      expensive_llm, embeddings = get_llm_and_embeddings(
+        provider=provider, timeout=timeout,
+        llm_model_name=expensive_model)
       _llm_log(
         "Using expensive model for analysis:"
         f" {expensive_llm.model}",

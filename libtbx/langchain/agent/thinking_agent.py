@@ -1632,10 +1632,12 @@ def _get_rate_handler(provider):
   try:
     try:
       from libtbx.langchain.agent.rate_limit_handler import (
-        get_google_handler, get_openai_handler, get_anthropic_handler)
+        get_google_handler, get_openai_handler, get_anthropic_handler,
+        get_portkey_handler)
     except ImportError:
       from agent.rate_limit_handler import (
-        get_google_handler, get_openai_handler, get_anthropic_handler)
+        get_google_handler, get_openai_handler, get_anthropic_handler,
+        get_portkey_handler)
 
     if provider == "google":
       return get_google_handler()
@@ -1643,6 +1645,8 @@ def _get_rate_handler(provider):
       return get_openai_handler()
     elif provider == "anthropic":
       return get_anthropic_handler()
+    elif provider == "portkey":
+      return get_portkey_handler()
   except ImportError:
     pass
   return None

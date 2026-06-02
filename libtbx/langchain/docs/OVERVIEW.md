@@ -1651,6 +1651,7 @@ python3 tests/tst_phase7_routing_simulation.py  # Single phase
 
 | Version | Key Changes |
 |---------|-------------|
+| v120 | **New providers (Portkey + Claude) + `FORCE_NO_AI_SERVER`** (three phases P1–P3): **P1** adds the `FORCE_NO_AI_SERVER=1` environment override in `programs/ai_agent.py::run()` that forces `communication.run_on_server=False` (local execution) without changing the shipped PHIL default — no effect on `predict_and_build`/`predict_model` run separately; **P2** centralizes `SUPPORTED_PROVIDERS` as a single source of truth in `core/llm.py` (was duplicated literals in `graph_nodes.py` and `ai_agent.py` that could drift), with both consumers importing it; **P3** adds **portkey** (the Portkey gateway fronting Azure OpenAI, via the Portkey SDK with `provider="azure-openai"`; env `PORTKEY_AZURE_API_KEY`/`PORTKEY_BASE_URL`/`PHENIX_PORTKEY_MODEL`) and **anthropic** (Claude; env `ANTHROPIC_API_KEY`) as provider choices, wired through every routing point: `core/llm.py` factory + `get_expensive_llm` + new helpers (`portkey_langchain_config`, `sanitize_llm_kwargs`, `_delegate_embeddings_for_nonnative`), `api_client._call_portkey_llm`, `directive_extractor` (`_call_llm` + fallback), `rate_limit_handler.get_portkey_handler`, `graph_nodes.validate_provider` + handler site, `thinking_agent`, the embeddings/RAG DB path (`run_utils`, `summarizer`, `run_query_docs`, `rebuild_ai_database`, `update_ai_database`), PHIL enums, and `install_ai_tools.csh`. `sanitize_llm_kwargs` resolves the asymmetric-args trap (portkey drops `temperature` + remaps to `max_completion_tokens`; anthropic keeps both, which `ChatAnthropic` requires). Embeddings degrade gracefully for non-native providers (delegate or `None`, never raise on construction). Provider travels in request `settings` so local and server run identical code. Derived from a user proof-of-concept patch, hardened for production (no PHIL-default flip, clear `ValueError` over bare `KeyError`, dedicated rate handler). 36 new K-tests across three suites. |
 | v119 | **Operational hardening + production-bug cluster** (twenty-eight ships H1–H18.2): H1 centralizes LLM model defaults in `core/llm.DEFAULTS`; H2 adds the server→client `agent_build` metadata channel with version+fingerprint injection; H3/H3b add a startup canary that detects wrong-build deploys and unhealthy LLM environments; H4/H4.1 add the `[STEP_1F]` preprocessing-telemetry marker pinned by a golden-master corpus; H5/H5.1 establish a uniform `diagnostic_messages` relay surfacing server-side stderr markers to the client transparently; H5.1.1 cleans up two latent v118.9 bugs; H6/H6.1 add the planning-suite reliability testing framework; H7 activates Phase 2B scanner-first file extraction; H8–H11 fix four production bugs (template-literal allowlist, predict_and_build PHIL scope, `exclude_patterns` application gap, YAML pattern semantics); H12 refactors the exclude_patterns helper to module level with semantic-pin tests; H13 fixes two Ollama-provider bugs (`OLLAMA_BASE_URL` path construction, `OLLAMA_LLM_MODEL` honored only in `core/llm`) and refines retired-model 404 classification into three actionable sub-categories; H14/H14.1/H14.2 close three independent regressions from `run_39_openai` batch (phaser false-positive in `_ACTION_TABLE["solve"]`, duplicate `[STEP_1F]` emission, space_group `Hermann-Mauguin`-shape validation) and a one-line `programs.yaml` fix (`predict_and_build` does not accept `ncs_spec`); **H15** Tom's bromodomain resume failure (run 144) — `reopen_stages_for_directives` targeted single-stage reopen with O(1) blast radius via the LATEST-stage rule; **H16/H16.1** obs_labels auto-fill for multi-array MTZ via new `agent/mtz_inspector` module + `auto_fill_obs_labels` invariant in `programs.yaml` (closes 88 TIER-1 "Multiple equally suitable arrays" failures across run_25/run_39); **H17/H17.1** `phenix.autobuild` PHIB-required recovery — YAML `recoverable_errors.yaml` entry + new `strip_parameter` resolution in `error_analyzer` + executor-side strip_flags wiring in `programs/ai_agent.py` (Tom's lysozyme-MRSAD cycle-5 reactive recovery); **H18** file-based experiment-type detection — new public helper `agent/file_utils.infer_experiment_type_from_files()` used as PRIMARY signal in BOTH `_apply_experiment_type_program_reprints` AND `_resolve_after_program` (files-win on conflict with text; `[DIRECTIVE_CORRECTION]` marker enriched with `source=files\|text` and `OVERRIDDEN` annotations; Pitfall 1 `[DIRECTIVE_CORRECTION_MIXED]` telemetry for accumulated-files drift; fixes AF_7mjs "density modify and stop" regression where terse advice + cryo-EM files silently produced `phenix.autobuild_denmod` instead of `phenix.resolve_cryo_em`); **H18.1** PHIL declaration deploy-gap hotfix — adds the missing `original_files_for_directives` PHIL declaration to `programs/ai_agent.py`'s `master_params` string (H18 had added it only to `programs/ai_analysis.py`, but `directive_params = copy.deepcopy(self.params)` copies the agent's params which use the agent's schema — production crashed with `AttributeError`, directive extraction silently returned `{}`, and the agent ran the default plan template through to predict_and_build); new `tst_h18_1_phil_roundtrip.py` (6 K-tests) exercises the full PHIL parse → extract → deep-copy → assign path the production code uses, catching the deploy-gap class of bug at sandbox time; **H18.2** third `_resolve_after_program` callsite missed in H18 audit — when the LLM emits `stop_after_requested=True` with NO `after_program` field, a v117.2 fallback at `directive_extractor.py:783` fires to fill in the missing program by parsing raw advice, but pre-H18.2 it called `_resolve_after_program` WITHOUT `original_files` (the H18 audit grepped for sites billed as "experiment-type detection" and missed this site billed as "fill in missing field"); the resolver defaulted `_exp="xray"` via text-only fallback and mapped `denmod` → `phenix.autobuild_denmod` even for cryo-EM file inventories; H18 site 2 (`_apply_workflow_intent_fallback`) couldn't fix it because preprocessed advice's "Stop Condition: None" pushed the resolver into the "leave as-is" branch; H18.2 adds `original_files=original_files` to the v117.2 callsite (one line) plus 3 new K-tests (K21/K22/K23) extending `tst_density_modify_experiment_type.py` to 23 tests including the AF_7mjs production reproduction (K21 mocks the LLM with the exact directives shape Tom's production LLM produced and asserts the full pipeline produces `phenix.resolve_cryo_em`). Total cluster: **249+ K-tests added**. All ships verified through act → review → Gemini-critique → ship cadence. |
 | v118 | **Preprocessor resilience + operational hardening** (12 layers stacked over v117.3): Section A file-list preservation (UNION text+context, `_ensure_file_list_in_processed_advice`); Section C-prime diagnostic split (`directives_user_intent` vs `directives_effective_runtime`); Section B PHIL namespace healing (`PHIL_NAMESPACE_TRANSLATIONS` static table); Section E LLM-failure diagnostic markers (`[DIRECTIVE_EXTRACTION_FAILED]`, `[ADVICE_PREPROCESSING_FAILED]` stderr); Section F **server-side** BUILD `experiment_type` threading + R-free auto-fill in `command_builder._select_files` (first v118 section touching server); Section 5.1 PHIL `.help` hyphen/semicolon hotfix; Section G optional dep resilience (`except Exception` not `except ImportError` for chromadb/protobuf chain) + 6.7 environment-readiness runtime probe `tst_dependencies.py` (first v118 verified Mac + Linux); Section 8 model bump `gemini-2.0-flash` → `gemini-2.5-flash-lite` (THREE hardcoded sites in `core/llm.py`, `agent/api_client.py`, `agent/directive_extractor.py` — first v118 requiring server restart for deploy); Section 9 cryo-EM vs X-ray density-mod canonicalization via `PROGRAM_REPRINTS_BY_EXPERIMENT_TYPE` table + `_apply_experiment_type_program_reprints` validator + `[DIRECTIVE_CORRECTION]` log marker + `_corrected_from` sidecar (Tom's "density modify and stop" bug); Section 10 list-to-string coercion via `_coerce_setting_value` helper (single-element unpack type-preserving; multi-element space-join for str-typed fields) applied at TWO call sites in `validate_directives` — fixes Google's `additional_atom_types=["S"]` producing `"['S']"` AND latent silent-drop for list-shaped `after_program`. 9 new test suites, 204/204 sandbox tests pass. Architectural watchpoint triggered (10 iterations); v119 will pursue operational hardening + prompt consolidation. |
 | v117.3 | **Extended stop-intent phrasing recognition**: 5 new entries in `_IMPERATIVE_STOP_MARKERS` ("stop the workflow", "immediately after", etc.), 2 new regex patterns in `_POSITIVE_STOP_AFTER_PATTERNS` ("\\bstop\\s+the\\s+workflow\\b", "\\bis\\s+the\\s+last\\s+step\\b"), 4 new phrasings in `DIRECTIVE_EXTRACTION_PROMPT` schema docs. Closes the C1 LLM-test `explicit_stop_after_phaser` failure where openai's extractor produced `after_program=phenix.phaser` but failed to set `stop_after_requested=True`. Asymmetric placement: imperative markers are 300-char window-bounded so safer there than as global regex. Bare addition to existing data structures — no new pipeline steps or state fields. |
@@ -1728,12 +1729,71 @@ installation. Install via `phenix.python -m pip install <package>` or via the
 | `langchain-core`, `langchain-community` | LLM orchestration core and community integrations | Server and local |
 | `langchain-google-genai` | Google Gemini LLM provider | Server and local |
 | `langchain-openai` | OpenAI LLM provider | Server and local |
+| `langchain-anthropic`, `anthropic` | Anthropic (Claude) LLM provider | Server and local |
+| `portkey-ai` | Portkey gateway SDK (Azure-OpenAI upstream); optional — a manual fallback path works without it | Server and local |
 | `langchain-chroma` | Chroma vector store for document retrieval | Server and local |
 | `flashrank` | Local cross-encoder reranking (no API key needed) | Server, or local if `run_on_server=False` |
 | `markdown-it-py` | HTML rendering of analysis output | Server and local |
 
 **Note:** `flashrank` downloads its model (~34MB) automatically on first use.
 No Cohere API key is required — reranking runs entirely locally.
+
+### LLM Providers and Environment Variables
+
+The `communication.provider` PHIL parameter selects the LLM backend.
+Supported values: `ollama` (local), `google` (default), `openai`,
+`anthropic` (Claude), `portkey` (Portkey gateway fronting Azure OpenAI).
+Each provider reads its credentials from the environment at call time
+(only the selected provider's keys are checked):
+
+| Provider | Required environment variables | Optional |
+|----------|--------------------------------|----------|
+| `google` | `GOOGLE_API_KEY` | — |
+| `openai` | `OPENAI_API_KEY` | — |
+| `anthropic` | `ANTHROPIC_API_KEY` | `ANTHROPIC_LLM_MODEL` (model override) |
+| `ollama` | (reachable Ollama server) | `OLLAMA_BASE_URL`, `OLLAMA_LLM_MODEL`, `OLLAMA_EMBED_MODEL` |
+| `portkey` | `PORTKEY_AZURE_API_KEY`, `PORTKEY_BASE_URL` | `PHENIX_PORTKEY_MODEL` (upstream model, default `gpt-5`) |
+
+**`FORCE_NO_AI_SERVER`** — set to `1` to force local execution
+(`communication.run_on_server=False`) regardless of the PHIL default.
+Useful for running entirely on one machine (e.g. the Portkey local-only
+deployment).  It applies to both `phenix.ai_agent` and `phenix.ai_analysis`
+(all analysis_modes); it does not affect `predict_and_build` / `predict_model`
+when those are run separately.  The flag is **absolute**: it never contacts
+the Phenix server.  If local execution is impossible — `standard` analysis
+mode needs a local RAG database and none exists for the chosen provider — the
+job errors out with actionable guidance (build the database with
+`phenix.rebuild_ai_database <provider>`, use an LLM-only mode, or unset the
+flag) rather than silently falling back to the server.  The LLM-only modes
+(directive_extraction, advice_preprocessing, failure_diagnosis, agent_session)
+never need the database, so they always run local under the flag.  Behaviour
+is otherwise identical to server mode; only the locus of execution changes.
+
+**Embeddings note:** `anthropic` has no native embeddings endpoint and
+`portkey` requires an embeddings-capable deployment.  Chat works for
+both regardless; the standalone `phenix.ai_analysis` RAG tool
+(`standard` mode) is the only path that needs a working embeddings
+backend.  For `anthropic`, embeddings transparently delegate to OpenAI
+or Google when a key is available.  `anthropic` is intentionally not
+offered by the database-build tools (`rebuild_ai_database` /
+`update_ai_database`) since it cannot produce embeddings.
+
+**LLM-unavailable notice:** if the requested provider cannot be reached, the
+agent falls back to RULES-BASED program selection (deterministic workflow
+rules, no LLM) rather than stopping outright.  This used to be silent.  It is
+now surfaced clearly, in both CLI and GUI and on both local and server runs:
+- **Per cycle**, each cycle that falls back prints a `NOTICE: LLM PROVIDER
+  UNAVAILABLE` line naming the provider and stating that rules-based selection
+  is in use for that cycle.  (Shown every affected cycle, so a long run never
+  *looks* like the LLM quietly recovered.)
+- **At the end of the run**, an `IMPORTANT: THIS RUN DID NOT USE THE LLM`
+  banner is printed, the Results-tab summary is prefixed with the same warning,
+  and the result object carries an `llm_ever_unavailable` flag.
+
+This is observability only — it does not change which program the agent
+selects, only how visibly the rules-fallback is reported.  (Setting
+`use_rules_only=True` explicitly is a separate, already-announced mode; the
+notice covers the *unintended* fallback when a provider is down.)
 
 **Note:** The `langchain-classic` package is **not required**. The agent implements
 document chain and compression retriever functionality directly using `langchain-core`
