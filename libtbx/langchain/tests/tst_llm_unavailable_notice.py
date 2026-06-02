@@ -199,6 +199,48 @@ def test_detection_session_none_is_safe():
     _detect_replica(state["events"], None)   # must not raise
 
 
+def test_per_run_flag_reset_clears_stale_value():
+    """The run-level flag is PER-RUN: a value loaded from a prior run's saved
+    session must be cleared at run start, so re-running in a directory whose
+    prior run hit an LLM outage does NOT falsely report 'DID NOT USE THE LLM'
+    when this run makes no LLM attempt (e.g. gate stops immediately).
+
+    Mirrors the reset applied in ai_agent.iterate_agent /
+    _handle_display_and_stop right after AgentSession construction."""
+    # Simulate a session loaded from a prior run that hit an outage.
+    loaded_data = {"llm_ever_unavailable": True,
+                   "llm_unavailable_provider": "anthropic",
+                   "cycles": []}
+    # The per-run reset:
+    loaded_data.pop("llm_ever_unavailable", None)
+    loaded_data.pop("llm_unavailable_provider", None)
+    # Banner condition (session_data_flag_llm_unavailable) must now be False.
+    assert not loaded_data.get("llm_ever_unavailable"), \
+        "stale flag from prior run must be cleared at run start"
+
+    # And a genuine in-run failure after reset still sets it:
+    session = _FakeSession()
+    session.data = dict(loaded_data)
+    s = _emit_replica({}, "anthropic", "down")
+    _detect_replica(s["events"], session)
+    assert session.data.get("llm_ever_unavailable") is True, \
+        "a real in-run LLM failure must still set the flag after reset"
+
+
+def test_ai_agent_resets_flag_per_run():
+    """Source-scan: ai_agent.py must reset the run-level flag at run start
+    (both the iterate_agent path and the display_and_stop path)."""
+    path = _find_ai_agent()
+    if path is None:
+        print("  (skip) ai_agent.py not found in this checkout")
+        return
+    with open(path, "r") as fh:
+        src = fh.read()
+    assert src.count('pop("llm_ever_unavailable"') >= 2, \
+        "ai_agent must reset llm_ever_unavailable at run start on BOTH the " \
+        "iterate_agent and display_and_stop finalize paths (>=2 pop sites)"
+
+
 # ---------------------------------------------------------------------------
 # Source-scan: graph_nodes.py
 # ---------------------------------------------------------------------------
@@ -278,6 +320,8 @@ _TESTS = [
     test_detection_idempotent_across_cycles,
     test_detection_ignores_unrelated_events,
     test_detection_session_none_is_safe,
+    test_per_run_flag_reset_clears_stale_value,
+    test_ai_agent_resets_flag_per_run,
     test_graph_nodes_emits_structured_notice,
     test_ai_agent_detects_and_banners,
     test_server_path_carries_events,
