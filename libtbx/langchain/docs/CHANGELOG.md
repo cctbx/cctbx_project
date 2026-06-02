@@ -180,6 +180,19 @@ to `graph_nodes.py` and `ai_agent.py`.
   with a one-line warning and the result object exposes
   `llm_ever_unavailable` for programmatic/GUI use.
 
+**Per-run flag reset (false-positive fix).** The run-level
+`llm_ever_unavailable` flag lives in `session.data`, which is persisted to
+`agent_session.json` and reloaded on the next run.  It must describe whether
+the LLM was unavailable during THIS run, so `iterate_agent` (and the
+`display_and_stop` finalize path) clear it right after loading the session;
+the per-cycle detection re-sets it only if a cycle in this run actually
+attempts the LLM and fails.  Without the reset, re-running in a directory
+whose prior run hit an LLM outage would falsely print the end-of-run
+"DID NOT USE THE LLM" banner even when the current run made no LLM attempt at
+all — e.g. when the gate stops immediately because all stages are already
+complete.  Deleting the agent directory also avoided it (no saved flag to
+inherit), which is how the issue was originally spotted.
+
 This is observability only — it does not change which program the agent
 selects, only how clearly the rules-fallback is reported.  (The explicit
 `use_rules_only=True` mode was already announced clearly; this covers the
