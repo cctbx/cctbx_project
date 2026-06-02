@@ -79,7 +79,7 @@ def exercise_runtime():
     os.makedirs(activate_dir)
     write_file(os.path.join(activate_dir, activate_name), activate_text)
 
-    lines = header + env_config.conda_activation_dispatcher_lines(shell) + footer
+    lines = header + env_config.conda_activation_lines(shell) + footer
     script = os.path.join(tmp, script_name)
     write_file(script, "\n".join(lines) + "\n")
     if not is_nt:
