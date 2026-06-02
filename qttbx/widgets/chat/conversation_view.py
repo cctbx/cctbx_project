@@ -5,7 +5,8 @@ The view is the streaming target for the runner:
   - add_message(m)              - append a finalized Message bubble
   - start_assistant_bubble()    - create + return an in-progress bubble
   - finalize_assistant_bubble() - close the in-progress bubble
-  - add_approval_request(req)   - coalesce by batch_id into one card
+  - add_approval_request(req)   - coalesce concurrent same-batch
+                                  requests; fresh card once decided
   - add_question_request(req)   - render a multi-choice question card
 
 It does NOT own the AgentSession or QtAgentRunner; the chat window wires
@@ -131,11 +132,20 @@ class ConversationView(QtWidgets.QScrollArea):
   # ---- approval API --------------------------------------------------------
 
   def add_approval_request(self, req):
-    """Append a request to an existing batched card if batch_id matches,
-    otherwise create a new card."""
-    if req.batch_id and req.batch_id in self._approval_by_batch:
-      card = self._approval_by_batch[req.batch_id]
-      card.set_requests(list(card._requests) + [req])
+    """Render an approval card for ``req``.
+
+    Same-batch_id requests coalesce into one card only while that card is
+    still awaiting a decision -- a backend that emits a whole batch at
+    once gets a single Approve-all card. The Anthropic backend instead
+    dispatches serially, blocking on the approval queue between tools, so
+    request 2 arrives only after request 1's card has been decided and
+    hidden. That card is skipped here and a fresh, visible card is
+    created; appending to the hidden card would strand the request and
+    hang the turn."""
+    existing = (self._approval_by_batch.get(req.batch_id)
+                if req.batch_id else None)
+    if existing is not None and not existing.is_decided():
+      existing.set_requests(list(existing._requests) + [req])
       return
     card = ToolApprovalCard(self._container)
     card.set_requests([req])

@@ -120,6 +120,21 @@ def exercise_card_hides_and_disables_buttons_after_click():
     assert not card._buttons_widget.isEnabled(), click_method
 
 
+def exercise_is_decided_reflects_decision_state():
+  """is_decided() is False until the card emits a decision, then True.
+  ConversationView consults it to tell an already-answered batch card
+  from a live one when a serially-dispatched same-batch request arrives,
+  so it never appends a new request to a hidden, decided card."""
+  from qttbx.widgets.chat.tool_approval import ToolApprovalCard
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  card = ToolApprovalCard()
+  card.set_requests([_req()])
+  assert not card.is_decided()
+  card.click_approve_all()
+  assert card.is_decided()
+
+
 def exercise():
   exercise_single_card_approve_emits_response()
   exercise_single_card_deny_and_stop()
@@ -127,6 +142,7 @@ def exercise():
   exercise_batched_deny_all()
   exercise_remember_tool_checkbox_sets_remember_field()
   exercise_card_hides_and_disables_buttons_after_click()
+  exercise_is_decided_reflects_decision_state()
 
 
 if __name__ == "__main__":

@@ -39,6 +39,7 @@ class ToolApprovalCard(QtWidgets.QFrame):
     super().__init__(parent)
     self.setFrameShape(QtWidgets.QFrame.StyledPanel)
     self._requests = []
+    self._decided = False
     self._remember_tool = False
     self._remember_server = False
     self._layout = QtWidgets.QVBoxLayout(self)
@@ -57,6 +58,13 @@ class ToolApprovalCard(QtWidgets.QFrame):
 
   def set_remember_server(self, value):
     self._remember_server = bool(value)
+
+  def is_decided(self):
+    """True once a decision has been emitted (the card is then hidden and
+    its buttons disabled). ConversationView consults this so it never
+    appends a newly arrived same-batch request to an already-answered
+    card."""
+    return self._decided
 
   def click_approve_all(self):
     self._emit("approve")
@@ -155,6 +163,7 @@ class ToolApprovalCard(QtWidgets.QFrame):
     # emit again, then hide so the conversation view doesn't keep a
     # stale prompt around. Qt's QVBoxLayout skips hidden widgets so
     # the visible layout collapses naturally.
+    self._decided = True
     if self._buttons_widget is not None:
       self._buttons_widget.setEnabled(False)
     self.hide()

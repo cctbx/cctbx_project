@@ -116,6 +116,37 @@ def exercise_solo_request_without_batch_id_gets_own_card():
   assert v.approval_card_count() == 2
 
 
+def exercise_same_batch_after_decision_starts_a_fresh_card():
+  """Multi-tool turns dispatch serially: the session emits approval
+  request 2 only AFTER request 1 has been decided and its card hidden
+  (it blocks on the approval queue between tools). A second same-batch
+  request must therefore get its own fresh card -- appending it to the
+  already-decided, hidden card strands the request and hangs the turn
+  (the multi-tool approval deadlock)."""
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  _qapp()
+  v = ConversationView()
+  v.start_assistant_bubble()
+  v.add_approval_request(ToolApprovalRequest(
+    request_id="t1", tool_name="t", tool_source="builtin",
+    input={}, risk="write", summary=None, batch_id="B"))
+  assert v.approval_card_count() == 1
+  card1 = v.approval_cards()[0]
+  # The user approves the first tool; the card emits its decision + hides.
+  card1.click_approve_all()
+  # The session dispatches tool 1, then emits the second same-batch request.
+  v.add_approval_request(ToolApprovalRequest(
+    request_id="t2", tool_name="t", tool_source="builtin",
+    input={}, risk="write", summary=None, batch_id="B"))
+  # A second, distinct card must carry t2 -- not an append to hidden card1.
+  assert v.approval_card_count() == 2, v.approval_card_count()
+  card2 = v.approval_cards()[1]
+  assert card2 is not card1
+  assert [r.request_id for r in card2._requests] == ["t2"]
+  # The decided card keeps only its own request.
+  assert [r.request_id for r in card1._requests] == ["t1"]
+
+
 def exercise_clear():
   from qttbx.widgets.chat.conversation_view import ConversationView
   _qapp()
@@ -371,6 +402,7 @@ def exercise():
   exercise_batched_approval_coalesces_by_batch_id()
   exercise_two_batches_two_cards()
   exercise_solo_request_without_batch_id_gets_own_card()
+  exercise_same_batch_after_decision_starts_a_fresh_card()
   exercise_clear()
   exercise_image_click_propagates_to_view()
   exercise_add_message_always_scrolls_to_bottom()
