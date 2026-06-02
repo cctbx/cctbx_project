@@ -855,7 +855,7 @@ class xfel_db_application(db_application):
 
     slr = rungroup.streaming_last_run
     if slr is None:
-      return run_num_int >= sfr
+      return int(run_number) >= sfr
     return sfr <= int(run_number) <= slr
 
   def get_all_rungroups(self, only_active = False):

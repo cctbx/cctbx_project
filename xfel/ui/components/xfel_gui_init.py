@@ -10,6 +10,7 @@ Description : XFEL UI Initialization module
 
 import os
 import queue
+import signal
 import wx
 import time
 import numpy as np
@@ -1331,13 +1332,24 @@ class StreamingUpdate(wx.PyCommandEvent):
     return self._status
 
 class StreamingSentinel(Thread):
-  ''' Background thread that polls the Orchestrator for status and forwards
-      add_node / remove_node commands from the GUI command queue. '''
+  ''' Background thread that owns the dials_streaming Orchestrator for its entire
+      lifetime: it constructs the Orchestrator, launches the system, polls it for
+      status, forwards add/remove-node commands from the GUI command queue, and
+      shuts it down on stop.
 
-  def __init__(self, parent, active=True):
+      The Orchestrator is created and driven ENTIRELY on this thread because it owns
+      a ZMQ ROUTER socket (not thread-safe) and must not have its construction race
+      with command/status calls from another thread. The Orchestrator is constructed
+      with install_signal_handlers=False: signal.signal() is illegal off the main
+      thread, and the GUI installs its own SIGINT/SIGTERM handlers (see
+      MainWindow.start_streaming) to drive graceful shutdown on Ctrl+C. '''
+
+  def __init__(self, parent, params, active=True):
     Thread.__init__(self)
     self.parent = parent
+    self.params = params
     self.active = active
+    self.orchestrator = None
     self.daemon = True
 
   def post_update(self, status):
@@ -1345,34 +1357,57 @@ class StreamingSentinel(Thread):
     wx.PostEvent(self.parent.run_window.streaming_tab, evt)
 
   def run(self):
+    from dials_streaming.components.Orchestrator import Orchestrator
+    try:
+      # Construct and launch on this thread (sole owner of the ZMQ command socket).
+      self.orchestrator = Orchestrator(self.params, install_signal_handlers=False)
+      self.parent.orchestrator = self.orchestrator
+      self.orchestrator.start()  # non-blocking: returns once ControlHub is ready
+      self.parent.run_window.streaming_light.change_status('on')
+    except Exception as e:
+      print('StreamingSentinel start error:', e)
+      self.parent.run_window.streaming_light.change_status('alert')
+      self.active = False
+
     while self.active:
-      # Drain the command queue
+      # Drain the command queue. A spinner value of n adds n nodes as one job and
+      # removes a job of exactly n nodes (add_group/remove_group are symmetric).
       cmd_queue = self.parent.streaming_cmd_queue
       while not cmd_queue.empty():
         try:
           cmd, n = cmd_queue.get_nowait()
         except queue.Empty:
           break
-        if self.parent.orchestrator is None:
-          break
         if cmd == 'add':
-          for _ in range(n):
-            self.parent.orchestrator.add_node()
+          self.orchestrator.add_group(n)
         elif cmd == 'remove':
-          for _ in range(n):
-            self.parent.orchestrator.remove_node()
+          self.orchestrator.remove_group(n)
 
       # Poll orchestrator status
       try:
-        if self.parent.orchestrator is not None:
-          status = self.parent.orchestrator.get_status()
-          self.post_update(status)
-          self.parent.run_window.streaming_light.change_status('on')
+        control = self.orchestrator.request_status()
+        status = {
+          'n_nodes': self.orchestrator.n_nodes,
+          'mode': self.orchestrator.params.deployment.mode,
+          'control': control,
+        }
+        self.post_update(status)
+        self.parent.run_window.streaming_light.change_status('on')
       except Exception as e:
         print('StreamingSentinel error:', e)
         self.parent.run_window.streaming_light.change_status('alert')
 
       time.sleep(5)
+
+    # Graceful shutdown on the owning thread so the command socket is only ever
+    # touched here.
+    if self.orchestrator is not None:
+      try:
+        self.orchestrator.shutdown()
+      except Exception as e:
+        print('StreamingSentinel shutdown error:', e)
+      self.orchestrator = None
+      self.parent.orchestrator = None
 
 # ------------------------------- Main Window -------------------------------- #
 
@@ -1392,6 +1427,10 @@ class MainWindow(wx.Frame):
     self.streaming_sentinel = None
     self.orchestrator = None
     self.streaming_cmd_queue = queue.Queue()
+    # Previous SIGINT/SIGTERM handlers, saved while streaming is active so Ctrl+C
+    # shuts the orchestrator down gracefully before the GUI exits.
+    self._streaming_prev_sigint = None
+    self._streaming_prev_sigterm = None
 
     if not params:
       params = load_cached_settings()
@@ -1691,13 +1730,20 @@ class MainWindow(wx.Frame):
 
   def onStreaming(self, e):
     ''' Toggle streaming orchestrator '''
-    if self.orchestrator is not None:
+    if self.streaming_sentinel is not None:
       self.stop_streaming()
     else:
       self.start_streaming()
 
+  def _streaming_signal_handler(self, sig, frame):
+    ''' Gracefully shut down the orchestrator on Ctrl+C, then re-deliver the signal
+        to the restored handler so the GUI exits as it normally would. '''
+    self.stop_streaming(block=True)  # restores the previous handlers
+    os.kill(os.getpid(), sig)
+
   def start_streaming(self):
-    from dials_streaming.components.Orchestrator import Orchestrator
+    from dials_streaming.components.phil import phil_scope, validate
+    from libtbx.phil import parse
     phil_text = self.run_window.streaming_tab.phil.ctr.GetValue()
     # Persist PHIL on shared filesystem so Orchestrator and compute nodes can read it
     if not os.path.exists(settings_dir):
@@ -1705,10 +1751,30 @@ class MainWindow(wx.Frame):
     streaming_phil_path = os.path.join(settings_dir, 'streaming_phil.txt')
     with open(streaming_phil_path, 'w') as f:
       f.write(phil_text)
+
+    # Build and validate the params on the main thread so errors surface in a dialog
+    # rather than crashing a background thread. n_nodes comes from the spinner; the
+    # GUI always launches the orchestrator in remote (Slurm) mode.
     n_nodes = self.run_window.streaming_tab.node_spin.GetValue()
-    self.orchestrator = Orchestrator(params_file_name=streaming_phil_path, n_nodes=n_nodes, mode='slurm')
-    self.orchestrator.start()
-    self.streaming_sentinel = StreamingSentinel(self, active=True)
+    try:
+      params = phil_scope.fetch(sources=[parse(phil_text)]).extract()
+      params.deployment.n_nodes = n_nodes
+      params.deployment.mode = 'remote'
+      validate(params, streamer=False)
+    except Exception as e:
+      wx.MessageBox('Could not start streaming:\n\n{}'.format(e),
+                    'Streaming configuration error', wx.OK | wx.ICON_ERROR)
+      return
+
+    # The StreamingSentinel constructs and owns the Orchestrator on its own thread
+    # (see StreamingSentinel). Install signal handlers here, on the main thread, so
+    # Ctrl+C drives a graceful shutdown (the embedded Orchestrator does not install
+    # its own -- install_signal_handlers=False).
+    self._streaming_prev_sigint = signal.signal(signal.SIGINT,
+                                                 self._streaming_signal_handler)
+    self._streaming_prev_sigterm = signal.signal(signal.SIGTERM,
+                                                  self._streaming_signal_handler)
+    self.streaming_sentinel = StreamingSentinel(self, params, active=True)
     self.streaming_sentinel.start()
     self.run_window.streaming_light.change_status('on')
     self.toolbar.SetToolNormalBitmap(self.tb_btn_streaming.Id,
@@ -1718,14 +1784,22 @@ class MainWindow(wx.Frame):
     self.run_window.streaming_tab.btn_remove_node.Enable()
 
   def stop_streaming(self, block=True):
+    # The sentinel owns the Orchestrator and calls shutdown() on its own thread when
+    # it stops, so we only signal+join here -- never touch the command socket from
+    # the main thread.
     if self.streaming_sentinel is not None and self.streaming_sentinel.active:
       self.streaming_sentinel.active = False
       if block:
         self.streaming_sentinel.join()
     self.streaming_sentinel = None
-    if self.orchestrator is not None:
-      self.orchestrator.shutdown()
-      self.orchestrator = None
+    self.orchestrator = None
+    # Restore the signal handlers saved when streaming started.
+    if self._streaming_prev_sigint is not None:
+      signal.signal(signal.SIGINT, self._streaming_prev_sigint)
+      self._streaming_prev_sigint = None
+    if self._streaming_prev_sigterm is not None:
+      signal.signal(signal.SIGTERM, self._streaming_prev_sigterm)
+      self._streaming_prev_sigterm = None
     self.run_window.streaming_light.change_status('off')
     if not self.params.monitoring_mode and self.params.facility.name == 'streaming':
       self.toolbar.SetToolNormalBitmap(self.tb_btn_streaming.Id,
@@ -4347,13 +4421,13 @@ class StreamingTab(BaseTab):
     self.Bind(EVT_STREAMING_UPDATE, self.onStreamingUpdate)
 
   def onAddNode(self, e):
-    if self.main.orchestrator is None:
+    if self.main.streaming_sentinel is None:
       return
     n = self.node_spin.GetValue()
     self.main.streaming_cmd_queue.put(('add', n))
 
   def onRemoveNode(self, e):
-    if self.main.orchestrator is None:
+    if self.main.streaming_sentinel is None:
       return
     n = self.node_spin.GetValue()
     self.main.streaming_cmd_queue.put(('remove', n))
@@ -4362,10 +4436,19 @@ class StreamingTab(BaseTab):
     status = e.GetValue()
     if status is None:
       return
-    orch = status.get('orchestrator', {})
-    n_nodes = orch.get('n_nodes', '?')
-    mode = orch.get('mode', '?')
-    self.status_text.SetLabel('Running — {} node(s), mode: {}'.format(n_nodes, mode))
+    n_nodes = status.get('n_nodes', '?')
+    mode = status.get('mode', '?')
+    control = status.get('control', {}) or {}
+    active_runs = control.get('active_runs', [])
+    draining = control.get('draining_nodes', [])
+    summary = 'Running — {} node(s), mode: {}'.format(n_nodes, mode)
+    if 'error' in control:
+      summary += ' | control: {}'.format(control['error'])
+    else:
+      summary += ' | active runs: {}'.format(len(active_runs))
+      if draining:
+        summary += ' | draining: {}'.format(list(draining))
+    self.status_text.SetLabel(summary)
 
 # ------------------------------- UI Elements -------------------------------- #
 
